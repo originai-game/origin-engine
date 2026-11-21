@@ -29,7 +29,7 @@ export function RpgEnemyInfo(props: RpgEnemyInfoProps) {
       class={`flex-col items-center w-full text-fg text-stroke-3 text-stroke-bg nine-plate-cut bg-plate-hi p-2 gap-y-2 ${packClass("Plate", "frame")}`}
       label={props.name}
     >
-      <View class={`flex-row items-center justify-center w-full shrink-0 min-h-[2.286rem] py-[0.143rem] px-[0.857rem] shadow-[inset_0px_-1px_0px_#343d4f]`}>
+      <View class={`flex-row items-center justify-center w-full shrink-0 min-h-8 py-0.5 px-3 shadow-[inset_0px_-1px_0px_#343d4f]`}>
         <Text
           role="heading"
           level={3}
@@ -40,7 +40,7 @@ export function RpgEnemyInfo(props: RpgEnemyInfoProps) {
       </View>
       <Text class={`text-sm font-semibold text-center`}>{props.name}</Text>
       <Show when={props.portrait !== 0}>
-        <View class={`w-[46%] max-w-[6.857rem] aspect-square overflow-hidden compact:hidden`}>
+        <View class={`w-23/50 max-w-24 aspect-square overflow-hidden compact:hidden`}>
           <Image class={`size-full`} src={props.portrait} label="" />
         </View>
       </Show>
@@ -61,7 +61,7 @@ export function RpgEnemyInfo(props: RpgEnemyInfoProps) {
               data-strong={e().tone === "strong"}
             >
               <Icon
-                class={`size-[1.714rem] shrink-0 group-data-harm/tone:text-danger group-data-boon/tone:text-success group-data-weak/tone:text-warn group-data-strong/tone:text-info`}
+                class={`size-6 shrink-0 group-data-harm/tone:text-danger group-data-boon/tone:text-success group-data-weak/tone:text-warn group-data-strong/tone:text-info`}
                 name={e().icon}
               />
               <Text

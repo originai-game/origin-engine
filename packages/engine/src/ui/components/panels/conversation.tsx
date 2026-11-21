@@ -77,17 +77,17 @@ export function RpgConversation(props: RpgConversationProps) {
   });
   return (
     <View class={`nine-plate-cut bg-plate-hi text-fg flex-row grow shrink basis-0 flex-wrap overflow-y-auto p-4 gap-4 disabled:text-fg-subtle ${packClass("Plate", "frame")}`} label={props.speaker ? props.speaker : t("rpg.talk.narration")}>
-      <View class="absolute left-4 right-[30%] top-0 h-px bg-linear-to-r from-gold/50 to-transparent pointer-events-none" />
+      <View class="absolute left-4 right-3/10 top-0 h-px bg-linear-to-r from-gold/50 to-transparent pointer-events-none" />
       <Show when={props.portrait}>
-        <Image class="w-[11.4rem] object-cover object-top compact:size-24 shrink-0" src={props.portrait} />
+        <Image class="w-40 object-cover object-top compact:size-24 shrink-0" src={props.portrait} />
       </Show>
-      <View class="w-[42%] py-3 px-0 gap-2 compact:w-full compact:grow compact:shrink compact:basis-0 compact:p-0">
+      <View class="w-21/50 py-3 px-0 gap-2 compact:w-full compact:grow compact:shrink compact:basis-0 compact:p-0">
         <Show when={props.speaker}>
-          <Text class={`font-bold text-lg text-gold-fg self-start max-w-full pr-4 pl-2 tracking-[0.14em] bg-gold nine-chip-cut py-0.5 m-0`}>
+          <Text class={`font-bold text-lg text-gold-fg self-start max-w-full pr-4 pl-2 tracking-label bg-gold nine-chip-cut py-0.5 m-0`}>
             {props.speaker}
           </Text>
         </Show>
-        <Text class={`text-[1.571rem] font-bold m-0 compact:text-[1.286rem]`} label={props.line}>
+        <Text class={`text-2xl font-bold m-0 compact:text-lg`} label={props.line}>
           {shown()}
         </Text>
         <Show when={(props.showControls ?? false)}>
@@ -99,7 +99,7 @@ export function RpgConversation(props: RpgConversationProps) {
               <Text>{t("rpg.talk.skip")}</Text>
             </View>
             <View class={`flex-row gap-1 group/auto relative min-h-11 shrink px-4 items-center justify-center data-selected:text-gold ${packClass("Button", "plate")}`} role="button" pressed={(props.auto ?? false)} disabled={!(props.canAuto ?? true)} onPress={(e) => props.onToggleAuto?.(e)} data-selected={(props.auto ?? false)}>
-              <View class="absolute left-0 inset-y-0 w-[3.424px] bg-gold hidden group-data-selected/auto:block" />
+              <View class="absolute left-0 inset-y-0 w-0.75 bg-gold hidden group-data-selected/auto:block" />
               <Text>{t("rpg.talk.auto")}</Text>
             </View>
           </View>
@@ -117,7 +117,7 @@ export function RpgConversation(props: RpgConversationProps) {
             {(r) => (
             <View class="w-full">
               <View class={`flex-row items-center justify-start gap-1 group/row relative nine-plate-cut border border-rim text-fg transition duration-317 w-full min-h-9 pointer-coarse:min-h-11 py-1 px-3 ${r().id === props.selected ? packClass("Row", "frame", "selected") : packClass("Row", "frame")} hover:bg-surface-hover disabled:text-fg-subtle data-used:text-fg-subtle data-down:opacity-45`} role="option" selected={r().id === props.selected} onPress={(e) => props.onReply?.(e, r().id)} data-used={r().used} data-selected={r().id === props.selected}>
-                <View class="absolute left-0 inset-y-0 w-[3.424px] bg-hud-accent hidden group-data-selected/row:block" />
+                <View class="absolute left-0 inset-y-0 w-0.75 bg-hud-accent hidden group-data-selected/row:block" />
                 <View class="flex-row items-center w-full gap-3">
                   <Text class={`tabular-nums min-w-6 text-center font-bold py-0 px-0.5 nine-chip-cut ${r().id === props.selected ? "bg-gold text-gold-fg shadow-none" : `text-gold bg-well group-data-used/row:text-fg-subtle ${packClass("Chip", "frame")}`}`}>
                     {t("rpg.talk.number", { number: r().number })}

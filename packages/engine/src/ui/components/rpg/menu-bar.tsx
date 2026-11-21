@@ -29,7 +29,7 @@ export function RpgMenuBar(props: RpgMenuBarProps) {
         <View class="flex-row w-full">
           <For each={props.tabs ?? []} key={(c) => c.id}>
             {(c) => (
-            <View class={`group/tab flex-1 min-w-0 compact:flex-none compact:basis-auto flex-row items-center justify-center min-h-11 px-4 compact:px-3 whitespace-nowrap text-base compact:text-caption font-bold tracking-[0.12em] compact:tracking-[0.04em] uppercase bg-glass text-fg-muted hover:bg-surface-hover data-selected:text-fg data-selected:bg-surface-hover data-selected:shadow-[inset_0px_-3px_0px_#38e8ff] focus-visible:shadow-[inset_0px_0px_0px_2px_#ffffff] ${packClass("Button", "plate")}`} role="tab" label={c().label} selected={c().id === props.tab} data-selected={c().id === props.tab} onPress={(e) => props.onChoose?.(e, c().id)}>
+            <View class={`group/tab flex-1 min-w-0 compact:flex-none compact:basis-auto flex-row items-center justify-center min-h-11 px-4 compact:px-3 whitespace-nowrap text-base compact:text-caption font-bold tracking-wide compact:tracking-sm uppercase bg-glass text-fg-muted hover:bg-surface-hover data-selected:text-fg data-selected:bg-surface-hover data-selected:shadow-[inset_0px_-3px_0px_#38e8ff] focus-visible:shadow-[inset_0px_0px_0px_2px_#ffffff] ${packClass("Button", "plate")}`} role="tab" label={c().label} selected={c().id === props.tab} data-selected={c().id === props.tab} onPress={(e) => props.onChoose?.(e, c().id)}>
               <Text class="whitespace-nowrap overflow-hidden">
                 {c().label}
               </Text>

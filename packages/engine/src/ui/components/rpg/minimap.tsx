@@ -30,8 +30,8 @@ export interface RpgMinimapProps {
 export function RpgMinimap(props: RpgMinimapProps) {
   const zoom = () => ((props.zoom ?? 0.5) > 0 ? (props.zoom ?? 0.5) : 1);
   return (
-    <View class={`flex-col items-center gap-y-[0.571rem] max-w-full shrink-0 text-fg compact:gap-y-[0.429rem]`} role="group" label={props.place !== "" ? props.place : t("rpg.map.name")}>
-      <View class="relative size-[10.971rem] compact:size-[7.314rem]">
+    <View class={`flex-col items-center gap-y-2 max-w-full shrink-0 text-fg compact:gap-y-1.5`} role="group" label={props.place !== "" ? props.place : t("rpg.map.name")}>
+      <View class="relative size-38.5 compact:size-25.5">
         <View class="absolute inset-0 overflow-hidden rounded-full bg-tile shadow-minimap" role="image" label={t("rpg.map.name")}>
           <Show when={props.map}>
             <Image class="absolute" style={{ width: `${100 / zoom()}%`, height: `${100 / zoom()}%`, left: `${50 - (props.centerX ?? 0.5) * 100 / zoom()}%`, top: `${50 - (props.centerY ?? 0.5) * 100 / zoom()}%` }} src={props.map} />
@@ -42,7 +42,7 @@ export function RpgMinimap(props: RpgMinimapProps) {
           <For each={props.blips ?? []} key={(b) => b.id}>
             {(b) => (
             <View class="absolute" style={{ left: `${50 + (b().x - (props.centerX ?? 0.5)) * 100 / zoom()}%`, top: `${50 + (b().y - (props.centerY ?? 0.5)) * 100 / zoom()}%` }}>
-              <View class={`-translate-x-1/2 -translate-y-1/2 size-[0.571rem] rounded-full shadow-[0px_0px_0px_2px_#060910cc] data-ally:bg-info data-foe:rounded-none data-foe:rotate-45 data-foe:bg-danger data-foe:shadow-[0px_0px_0px_2px_#060910cc,0px_0px_8px_#ff4d5ee6] data-boss:size-[0.786rem] data-boss:rounded-none data-boss:rotate-45 data-boss:bg-danger data-boss:shadow-[0px_0px_0px_2px_#060910cc,0px_0px_8px_#ff4d5ee6] data-objective:size-[0.786rem] data-objective:rounded-none data-objective:rotate-45 data-objective:bg-gold compact:size-2 compact:data-boss:size-[0.714rem] compact:data-objective:size-[0.714rem]`}
+              <View class={`-translate-x-1/2 -translate-y-1/2 size-2 rounded-full shadow-[0px_0px_0px_2px_#060910cc] data-ally:bg-info data-foe:rounded-none data-foe:rotate-45 data-foe:bg-danger data-foe:shadow-[0px_0px_0px_2px_#060910cc,0px_0px_8px_#ff4d5ee6] data-boss:size-2.75 data-boss:rounded-none data-boss:rotate-45 data-boss:bg-danger data-boss:shadow-[0px_0px_0px_2px_#060910cc,0px_0px_8px_#ff4d5ee6] data-objective:size-2.75 data-objective:rounded-none data-objective:rotate-45 data-objective:bg-gold compact:size-2 compact:data-boss:size-2.5 compact:data-objective:size-2.5`}
                 role="image" label={b().label}
                 data-ally={b().kind === "ally"} data-foe={b().kind === "foe"} data-boss={b().kind === "boss"} data-objective={b().kind === "objective"} />
             </View>
@@ -50,7 +50,7 @@ export function RpgMinimap(props: RpgMinimapProps) {
           </For>
           {/* The player's arrow: the SVG wedge stands in as a stroked
               closed Line, turned to the heading. */}
-          <View class="absolute left-1/2 top-1/2 size-[0.929rem] compact:size-[0.786rem]" style={{ transform: `translate(-50%, -50%) rotate(${props.heading}deg)` }}>
+          <View class="absolute left-1/2 top-1/2 size-3.25 compact:size-2.75" style={{ transform: `translate(-50%, -50%) rotate(${props.heading}deg)` }}>
             <Line class="size-full stroke-fg" points={[0.8, 12.2, 6.5, 0.8, 12.2, 12.2, 6.5, 8.9]} closed={true} />
           </View>
         </View>
@@ -68,7 +68,7 @@ export function RpgMinimap(props: RpgMinimapProps) {
             </Text>
           </Show>
           <Show when={props.clock !== ""}>
-            <Text class={`shrink max-w-[50%] py-0 px-1 text-xs font-bold tabular-nums whitespace-nowrap overflow-hidden text-fg nine-chip-cut bg-well ${packClass("Chip", "frame")}`}>
+            <Text class={`shrink max-w-1/2 py-0 px-1 text-xs font-bold tabular-nums whitespace-nowrap overflow-hidden text-fg nine-chip-cut bg-well ${packClass("Chip", "frame")}`}>
               {props.clock}
             </Text>
           </Show>

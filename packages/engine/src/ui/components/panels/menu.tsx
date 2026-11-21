@@ -3,7 +3,7 @@ import "./menu.en.ogt";
 
 /** One entry row: dim type on the pack's row, lit by the hover ground and its leading edge under the pointer, the keys or the focus; a disabled row faint and shadowless. */
 const row =
-  `group/row transition duration-317 w-full h-auto min-h-[2.714rem] p-0 pointer-coarse:min-h-11 text-fg-muted hover:bg-surface-hover hover:text-fg hover:shadow-[inset_3.424px_0px_0px_#38e8ff,inset_0px_1px_0px_#ffffff2e] focus-visible:bg-surface-hover focus-visible:text-fg focus-visible:shadow-[inset_3.424px_0px_0px_#38e8ff,inset_0px_1px_0px_#ffffff2e] active:bg-surface-hover active:text-fg active:shadow-[inset_3.424px_0px_0px_#38e8ff,inset_0px_1px_0px_#ffffff2e] disabled:bg-transparent disabled:bg-none disabled:shadow-none disabled:text-fg-subtle data-danger:text-danger data-danger:hover:text-danger data-danger:focus-visible:text-danger disabled:data-danger:text-fg-subtle data-down:opacity-45 ${packClass("Row", "frame")}`;
+  `group/row transition duration-317 w-full h-auto min-h-9.5 p-0 pointer-coarse:min-h-11 text-fg-muted hover:bg-surface-hover hover:text-fg hover:shadow-[inset_3.424px_0px_0px_#38e8ff,inset_0px_1px_0px_#ffffff2e] focus-visible:bg-surface-hover focus-visible:text-fg focus-visible:shadow-[inset_3.424px_0px_0px_#38e8ff,inset_0px_1px_0px_#ffffff2e] active:bg-surface-hover active:text-fg active:shadow-[inset_3.424px_0px_0px_#38e8ff,inset_0px_1px_0px_#ffffff2e] disabled:bg-transparent disabled:bg-none disabled:shadow-none disabled:text-fg-subtle data-danger:text-danger data-danger:hover:text-danger data-danger:focus-visible:text-danger disabled:data-danger:text-fg-subtle data-down:opacity-45 ${packClass("Row", "frame")}`;
 
 export interface MenuProps {
   /** Its entries, submenus' too, a keyed collection of { id, label, kind, icon, shortcut, checked, danger, disabled, parent, more }: kind item, check, radio, separator or header; icon an icon name before the label (empty: none); shortcut shown at the end (Ctrl+S); checked a check or radio entry is on; danger a destructive command in the danger ink; disabled shown but inert; parent the id of the entry whose submenu it is in (empty: the top level); more it opens a submenu (a chevron at its end). */
@@ -32,7 +32,7 @@ export interface MenuProps {
  */
 export function Menu(props: MenuProps) {
   return (
-    <View class={`pt-1 pb-2 bg-linear-to-b from-raised-pressed to-glass-lo shadow-[inset_0px_0px_0px_1px_#ffffff2e,inset_0px_1px_0px_#ffffff8c,0px_20.576px_45.712px_#00000099] text-fg min-w-[17.143rem] max-w-full px-0 m-0 gap-0 ${packClass("Panel", "frame")}`} role="menu" label={props.label || t("component.menu.name")}>
+    <View class={`pt-1 pb-2 bg-linear-to-b from-raised-pressed to-glass-lo shadow-[inset_0px_0px_0px_1px_#ffffff2e,inset_0px_1px_0px_#ffffff8c,0px_20.576px_45.712px_#00000099] text-fg min-w-60 max-w-full px-0 m-0 gap-0 ${packClass("Panel", "frame")}`} role="menu" label={props.label || t("component.menu.name")}>
       <Show when={props.submenu !== ""}>
         <View class={row} role="menuitem" label={t("component.menu.back")} onPress={(e) => props.onBack?.(e)}>
           <View class="flex-row items-center w-full gap-2">
@@ -59,7 +59,7 @@ export function Menu(props: MenuProps) {
                   data-danger={e().danger}
                 >
                   <View class="flex-row items-center w-full gap-2">
-                    <View class="flex-row items-center justify-center gap-0 size-[1.286rem]">
+                    <View class="flex-row items-center justify-center gap-0 size-4.5">
                       <Show when={e().icon && e().kind !== "check" && e().kind !== "radio"}>
                         <Icon class="size-full" name={e().icon} />
                       </Show>
@@ -67,7 +67,7 @@ export function Menu(props: MenuProps) {
                         <Icon name="check" class="text-hud-accent size-3/4" />
                       </Show>
                       <Show when={e().kind === "radio" && e().checked}>
-                        <View class="bg-hud-accent rotate-45 size-[45%]" />
+                        <View class="bg-hud-accent rotate-45 size-9/20" />
                       </Show>
                     </View>
                     <Text class="grow shrink text-start text-base leading-snug font-semibold break-words">
@@ -84,7 +84,7 @@ export function Menu(props: MenuProps) {
                   </View>
                 </View>
               }>
-                <Text class="tracking-[0.14em] uppercase text-fg-subtle pt-2 pb-0.5 text-xs font-bold px-4">
+                <Text class="tracking-label uppercase text-fg-subtle pt-2 pb-0.5 text-xs font-bold px-4">
                   {e().label}
                 </Text>
               </Show>

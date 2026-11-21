@@ -40,13 +40,13 @@ function LegendMark(props: { kind: string }) {
       </Show>
     }>
       <Match when={props.kind === "quest"}>
-        <View class={`shrink size-[0.714rem] rotate-45 bg-gold`} />
+        <View class={`shrink size-2.5 rotate-45 bg-gold`} />
       </Match>
       <Match when={props.kind === "danger"}>
         <Line class={`shrink size-4 stroke-danger`} points={[7, 1, 13, 12, 1, 12]} closed />
       </Match>
       <Match when={props.kind === "waypoint"}>
-        <View class={`shrink size-4 rounded-full border-[3px] border-hud-accent`} />
+        <View class={`shrink size-4 rounded-full border-3 border-hud-accent`} />
       </Match>
     </Switch>
   );
@@ -93,36 +93,36 @@ export function RpgWorldMap(props: RpgWorldMapProps) {
                   onPress={(e) => props.onChoose?.(e, m().id)}
                 >
                   <Show when={m().id === props.selected}>
-                    <View class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 size-[4.571rem] rounded-full shadow-[0px_0px_0px_2.288px_#ffffffeb,0px_0px_0px_6.857px_#ffcf5a59,0px_0px_22.857px_#ffcf5ab3]" />
+                    <View class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 size-16 rounded-full shadow-[0px_0px_0px_2.288px_#ffffffeb,0px_0px_0px_6.857px_#ffcf5a59,0px_0px_22.857px_#ffcf5ab3]" />
                   </Show>
-                  <View class="relative flex-row items-center justify-center size-[2.143rem] group-data-selected/marker:size-[2.857rem]">
+                  <View class="relative flex-row items-center justify-center size-7.5 group-data-selected/marker:size-10">
                     <Switch fallback={
                       <Show when={m().kind === "player"}>
-                        <View class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 size-[71%] rounded-full bg-hud-accent shadow-[0px_0px_0px_5px_#38e8ff47,0px_0px_0px_11px_#38e8ff1f,0px_0px_20px_#38e8ff]" />
-                        <Line class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 size-[60%] rotate-[35deg] stroke-hud-accent-fg" points={[8, 1, 14, 14, 8, 10.5, 2, 14]} closed />
+                        <View class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 size-71/100 rounded-full bg-hud-accent shadow-[0px_0px_0px_5px_#38e8ff47,0px_0px_0px_11px_#38e8ff1f,0px_0px_20px_#38e8ff]" />
+                        <Line class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 size-3/5 rotate-35 stroke-hud-accent-fg" points={[8, 1, 14, 14, 8, 10.5, 2, 14]} closed />
                       </Show>
                     }>
                       <Match when={m().kind === "quest"}>
-                        <View class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 size-[62%] rotate-45 bg-linear-to-b from-gold-hi via-gold to-gold" />
-                        <View class="relative flex-col items-center gap-[0.128rem]">
-                          <View class="w-[0.357rem] h-[0.929rem] bg-gold-fg" />
-                          <View class="w-[0.357rem] h-[0.357rem] bg-gold-fg" />
+                        <View class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 size-31/50 rotate-45 bg-linear-to-b from-gold-hi via-gold to-gold" />
+                        <View class="relative flex-col items-center gap-0.5">
+                          <View class="w-1.25 h-3.25 bg-gold-fg" />
+                          <View class="w-1.25 h-1.25 bg-gold-fg" />
                         </View>
                       </Match>
                       <Match when={m().kind === "danger"}>
-                        <Line class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 size-[2.143rem] stroke-[3px] stroke-danger" points={[15, 3, 27, 26, 3, 26]} closed />
-                        <View class="relative mt-[0.471rem] flex-col items-center gap-[0.128rem]">
-                          <View class="w-[0.357rem] h-[0.929rem] bg-foe-fg" />
-                          <View class="w-[0.357rem] h-[0.357rem] bg-foe-fg" />
+                        <Line class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 size-7.5 stroke-3 stroke-danger" points={[15, 3, 27, 26, 3, 26]} closed />
+                        <View class="relative mt-1.75 flex-col items-center gap-0.5">
+                          <View class="w-1.25 h-3.25 bg-foe-fg" />
+                          <View class="w-1.25 h-1.25 bg-foe-fg" />
                         </View>
                       </Match>
                       <Match when={m().kind === "waypoint"}>
-                        <View class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 size-[71%] rounded-full bg-hud-accent shadow-[0px_0px_10px_#38e8ff99]" />
-                        <View class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 size-[35%] rounded-full bg-tile" />
+                        <View class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 size-71/100 rounded-full bg-hud-accent shadow-[0px_0px_10px_#38e8ff99]" />
+                        <View class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 size-7/20 rounded-full bg-tile" />
                       </Match>
                     </Switch>
                   </View>
-                  <Text class={`absolute left-1/2 -translate-x-1/2 top-[2.929rem] py-[0.143rem] px-1 whitespace-nowrap text-sm font-semibold text-fg nine-plate-cut bg-well compact:hidden compact:group-data-selected/marker:block group-data-selected/marker:top-[3.286rem] group-data-selected/marker:text-base ${packClass("Chip", "frame")}`}>
+                  <Text class={`absolute left-1/2 -translate-x-1/2 top-10.25 py-0.5 px-1 whitespace-nowrap text-sm font-semibold text-fg nine-plate-cut bg-well compact:hidden compact:group-data-selected/marker:block group-data-selected/marker:top-11.5 group-data-selected/marker:text-base ${packClass("Chip", "frame")}`}>
                     {m().label}
                   </Text>
                 </View>
@@ -138,7 +138,7 @@ export function RpgWorldMap(props: RpgWorldMapProps) {
         </View>
       </Show>
       <Show when={(props.legend ?? []).length}>
-        <View class={`absolute left-2 bottom-2 max-w-[94%] flex-row flex-wrap items-center gap-x-2 gap-y-1 py-0.5 px-3 text-caption nine-plate-cut bg-plate-hi compact:left-1 compact:right-1 compact:bottom-1 compact:flex-nowrap compact:justify-center compact:px-2 compact:text-sm text-fg ${packClass("Plate", "frame")}`} role="group" label={t("rpg.map.legend")}>
+        <View class={`absolute left-2 bottom-2 max-w-47/50 flex-row flex-wrap items-center gap-x-2 gap-y-1 py-0.5 px-3 text-caption nine-plate-cut bg-plate-hi compact:left-1 compact:right-1 compact:bottom-1 compact:flex-nowrap compact:justify-center compact:px-2 compact:text-sm text-fg ${packClass("Plate", "frame")}`} role="group" label={t("rpg.map.legend")}>
           <For each={props.legend ?? []} key={(l) => l.id}>
             {(l) => (
               <View class={`shrink-0 flex-row items-center gap-1 whitespace-nowrap`}>

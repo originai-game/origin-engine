@@ -50,7 +50,7 @@ export function ShooterRadar(props: ShooterRadarProps) {
   const mapTop = () => `calc(${SIDE / 2}rem - ${cy() * (SIDE / zoom())}rem)`;
   return (
     <View
-      class="relative size-[10.971rem] compact:size-[5.714rem] max-w-full text-fg"
+      class="relative size-38.5 compact:size-20 max-w-full text-fg"
       role="image"
       label={t("shooter.radar.name")}
     >
@@ -63,12 +63,12 @@ export function ShooterRadar(props: ShooterRadarProps) {
           />
         </Show>
         <View class="absolute inset-0 bg-[conic-gradient(from_-32deg,rgb(255_255_255/0.28),rgb(255_255_255/0.04)_64deg,transparent_64deg)]" />
-        <View class="absolute left-1/2 top-1/2 size-[45%] -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/14" />
-        <View class="absolute left-1/2 top-1/2 size-[92%] -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/14" />
+        <View class="absolute left-1/2 top-1/2 size-9/20 -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/14" />
+        <View class="absolute left-1/2 top-1/2 size-23/25 -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/14" />
         <For each={props.blips ?? []} key={(b) => b.id}>
           {(b) => (
             <View
-              class={`absolute size-[0.643rem] compact:size-[0.5rem] -translate-x-1/2 -translate-y-1/2 data-ally:rounded-full data-ally:bg-ally data-ally:shadow-[0px_0px_0px_0.143rem_#1b1f29cc] data-foe:rotate-45 data-foe:bg-danger data-foe:shadow-[0px_0px_0.571rem_#ff4d5ee6] data-objective:size-[0.929rem] data-objective:rotate-45 data-objective:bg-gold`}
+              class={`absolute size-2.25 compact:size-1.75 -translate-x-1/2 -translate-y-1/2 data-ally:rounded-full data-ally:bg-ally data-ally:shadow-[0px_0px_0px_0.143rem_#1b1f29cc] data-foe:rotate-45 data-foe:bg-danger data-foe:shadow-[0px_0px_0.571rem_#ff4d5ee6] data-objective:size-3.25 data-objective:rotate-45 data-objective:bg-gold`}
               label={b().label}
               style={{
                 left: `calc(${SIDE / 2}rem + ${(b().x - cx()) * (SIDE / zoom())}rem)`,
@@ -93,10 +93,10 @@ export function ShooterRadar(props: ShooterRadarProps) {
           <Line points={[8, 0, 15, 16, 8, 12, 1, 16]} closed class="stroke-white stroke-[1.5]" />
         </View>
         <View class="absolute inset-0 rounded-full bg-[radial-gradient(circle,transparent_50%,rgb(0_0_0/0.55)_72%)]" />
-        <View class="absolute left-0 top-0 right-0 h-[30%] bg-linear-to-b from-[rgb(255_255_255/0.16)] to-transparent" />
+        <View class="absolute left-0 top-0 right-0 h-3/10 bg-linear-to-b from-[rgb(255_255_255/0.16)] to-transparent" />
       </View>
       <Text
-        class={`absolute top-0 left-1/2 -translate-x-1/2 py-0 px-1 text-[0.857rem] font-bold whitespace-nowrap text-fg nine-chip-cut bg-tile ${packClass("Chip", "frame")}`}
+        class={`absolute top-0 left-1/2 -translate-x-1/2 py-0 px-1 text-xs font-bold whitespace-nowrap text-fg nine-chip-cut bg-tile ${packClass("Chip", "frame")}`}
       >
         {t("shooter.radar.north")}
       </Text>

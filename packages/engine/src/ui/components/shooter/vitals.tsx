@@ -44,13 +44,13 @@ export function ShooterVitals(props: ShooterVitalsProps) {
   const rim = "shadow-[0px_0px_0px_1px_rgb(255_255_255/0.22),inset_0px_1px_0px_0px_rgb(255_255_255/0.14),0px_0.143rem_0.286rem_rgb(0_0_0/0.45)]";
   return (
     <View
-      class={`group/vitals flex-row items-end gap-x-[1rem] w-[23.571rem] max-w-full compact:w-full compact:gap-x-2 text-fg`}
+      class={`group/vitals flex-row items-end gap-x-3.5 w-82.5 max-w-full compact:w-full compact:gap-x-2 text-fg`}
       role="group"
       label={t("shooter.vitals.name")}
       data-low={low()}
     >
-      <View class="shrink-0 size-[4.571rem] compact:size-[2.857rem] rounded-[1rem] bg-linear-to-b from-white/75 via-white/22 to-white/14">
-        <View class="absolute inset-[0.143rem] rounded-[0.857rem] overflow-hidden bg-linear-to-b from-plate-hi to-plate-lo">
+      <View class="shrink-0 size-16 compact:size-10 rounded-[1rem] bg-linear-to-b from-white/75 via-white/22 to-white/14">
+        <View class="absolute inset-0.5 rounded-panel overflow-hidden bg-linear-to-b from-plate-hi to-plate-lo">
           <Show when={(props.portrait ?? 0) > 0} fallback={
             <View class="size-full flex-row items-center justify-center">
               <Icon class="size-1/2 text-fg/66" name="person" />
@@ -60,30 +60,30 @@ export function ShooterVitals(props: ShooterVitalsProps) {
           </Show>
         </View>
       </View>
-      <View class="flex-1 min-w-0 flex-col gap-y-[0.357rem]">
+      <View class="flex-1 min-w-0 flex-col gap-y-1.25">
         <View class="flex-row flex-wrap items-baseline gap-x-2 min-w-0">
           <View class="shrink basis-auto flex-row items-baseline gap-x-2 min-w-0">
             <Show when={(props.name ?? "") != ""}>
-              <Text class="min-w-0 text-[1.143rem] font-semibold whitespace-nowrap truncate text-fg text-shadow-2xs text-stroke-3 text-stroke-bg">{props.name}</Text>
+              <Text class="min-w-0 text-base font-semibold whitespace-nowrap truncate text-fg text-shadow-2xs text-stroke-3 text-stroke-bg">{props.name}</Text>
             </Show>
             <Show when={(props.level ?? 0) > 0}>
-              <Text class="shrink-0 text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap text-hud-accent text-shadow-2xs text-stroke-3 text-stroke-bg">
+              <Text class="shrink-0 text-xs font-semibold tracking-label uppercase whitespace-nowrap text-hud-accent text-shadow-2xs text-stroke-3 text-stroke-bg">
                 {t("shooter.vitals.level", { level: props.level ?? 0 })}
               </Text>
             </Show>
           </View>
           <View class="shrink-0 ml-auto flex-row items-baseline gap-x-1">
-            <Text class="text-[1.714rem] leading-none font-bold tabular-nums whitespace-nowrap text-fg text-shadow-2xs text-stroke-3 text-stroke-bg group-data-low/vitals:text-danger compact:text-[1.143rem]">
+            <Text class="text-title leading-none font-bold tabular-nums whitespace-nowrap text-fg text-shadow-2xs text-stroke-3 text-stroke-bg group-data-low/vitals:text-danger compact:text-base">
               {formatNumber(props.health)}
             </Text>
-            <Text class="text-[0.929rem] font-bold tabular-nums whitespace-nowrap text-fg/66 text-shadow-2xs text-stroke-3 text-stroke-bg">
+            <Text class="text-caption font-bold tabular-nums whitespace-nowrap text-fg/66 text-shadow-2xs text-stroke-3 text-stroke-bg">
               {t("shooter.vitals.max", { max: formatNumber(healthMax()) })}
             </Text>
           </View>
         </View>
         <Show when={shieldMax() > 0}>
           <View
-            class={`relative w-full h-[0.643rem] compact:h-[0.429rem] overflow-hidden -skew-x-[22deg] bg-track ${rim}`}
+            class={`relative w-full h-2.25 compact:h-1.5 overflow-hidden -skew-x-22 bg-track ${rim}`}
             role="meter"
             label={t("shooter.vitals.shield")}
             valueMin={0}
@@ -91,17 +91,17 @@ export function ShooterVitals(props: ShooterVitalsProps) {
             valueNow={props.shield ?? 0}
           >
             <View class="absolute left-0 top-0 h-full bg-ally shadow-[0.143rem_0px_0.714rem_rgb(79_216_255/0.8)]" style={{ width: `${shieldShare() * 100}%` }}>
-              <View class="absolute left-0 right-0 top-0 h-[42%] bg-linear-to-b from-white/55 to-transparent" />
+              <View class="absolute left-0 right-0 top-0 h-21/50 bg-linear-to-b from-white/55 to-transparent" />
             </View>
             <View class="absolute inset-0 pointer-events-none">
               <For each={Array.from({ length: Math.max(cells() - 1, 0) }, (_, k) => k)} key={(k) => `c${k}`}>
-                {(k) => <View class="absolute top-0 bottom-0 w-[0.214rem] bg-tile" style={{ left: `${((k() + 1) / cells()) * 100}%` }} />}
+                {(k) => <View class="absolute top-0 bottom-0 w-0.75 bg-tile" style={{ left: `${((k() + 1) / cells()) * 100}%` }} />}
               </For>
             </View>
           </View>
         </Show>
         <View
-          class={`relative w-full h-[1.143rem] compact:h-[0.786rem] overflow-hidden -skew-x-[22deg] bg-track ${rim} group-data-low/vitals:shadow-[0px_0px_0px_1px_#ff4d5e,0px_0px_0.857rem_rgb(255_77_94/0.7)] group-data-low/vitals:animate-pulse`}
+          class={`relative w-full h-4 compact:h-2.75 overflow-hidden -skew-x-22 bg-track ${rim} group-data-low/vitals:shadow-[0px_0px_0px_1px_#ff4d5e,0px_0px_0.857rem_rgb(255_77_94/0.7)] group-data-low/vitals:animate-pulse`}
           role="meter"
           label={t("shooter.vitals.health")}
           valueMin={0}
@@ -113,7 +113,7 @@ export function ShooterVitals(props: ShooterVitalsProps) {
             class={`absolute left-0 top-0 h-full bg-[rgb(244_246_251)] shadow-[0.143rem_0px_0.714rem_rgb(244_246_251/0.55)] group-data-low/vitals:bg-danger group-data-low/vitals:shadow-[0.143rem_0px_0.714rem_rgb(255_77_94/0.8)]`}
             style={{ width: `${healthShare() * 100}%` }}
           >
-            <View class="absolute left-0 right-0 top-0 h-[42%] bg-linear-to-b from-white/55 to-transparent" />
+            <View class="absolute left-0 right-0 top-0 h-21/50 bg-linear-to-b from-white/55 to-transparent" />
           </View>
         </View>
       </View>

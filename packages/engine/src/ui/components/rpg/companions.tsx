@@ -26,14 +26,14 @@ function isLow(props: RpgCompanionsProps, m: { fallen: boolean; health: number; 
 export function RpgCompanions(props: RpgCompanionsProps) {
   return (
     <View
-      class={`flex-col w-64 max-w-full text-fg text-stroke-3 text-stroke-bg nine-plate-cut bg-plate-hi p-2 gap-y-[0.643rem] compact:flex-row compact:flex-wrap compact:w-full compact:gap-x-3 compact:gap-y-2 ${packClass("Plate", "frame")}`}
+      class={`flex-col w-64 max-w-full text-fg text-stroke-3 text-stroke-bg nine-plate-cut bg-plate-hi p-2 gap-y-2.25 compact:flex-row compact:flex-wrap compact:w-full compact:gap-x-3 compact:gap-y-2 ${packClass("Plate", "frame")}`}
       role="group"
       label={t("rpg.party.name")}
     >
       <For each={props.members ?? []} key={(m) => m.id}>
         {(m) => (
         <View
-          class={`group/member grid grid-cols-[auto_minmax(0,1fr)_auto] gap-x-[0.714rem] gap-y-1 items-center min-w-0 compact:flex-col compact:items-stretch compact:gap-y-[0.214rem] data-fallen:opacity-60`}
+          class={`group/member grid grid-cols-[auto_minmax(0,1fr)_auto] gap-x-2.5 gap-y-1 items-center min-w-0 compact:flex-col compact:items-stretch compact:gap-y-0.75 data-fallen:opacity-60`}
           role="group"
           label={m().fallen ? t("rpg.companions.member", { name: m().name, state: t("rpg.companions.fallen") }) : m().name}
           data-fallen={m().fallen}
@@ -47,7 +47,7 @@ export function RpgCompanions(props: RpgCompanionsProps) {
               {m().name}
             </Text>
             <Show when={m().fallen}>
-              <Text class={`shrink-0 text-xs font-semibold tracking-[0.14em] uppercase text-danger whitespace-nowrap compact:tracking-normal`}>
+              <Text class={`shrink-0 text-xs font-semibold tracking-label uppercase text-danger whitespace-nowrap compact:tracking-normal`}>
                 {t("rpg.companions.fallen")}
               </Text>
             </Show>
@@ -58,7 +58,7 @@ export function RpgCompanions(props: RpgCompanionsProps) {
           </Show>
           <Show when={m().key}>
             <Text
-              class={`row-span-3 self-center min-w-[1.571rem] max-w-[5.143rem] px-1 text-xs leading-[1.5] font-bold text-center text-hud-accent-fg bg-linear-to-b from-white to-key-lo rounded-[4.576px] shadow-[0px_2.288px_0px_#0000008c,inset_0px_-2.288px_0px_#0000002e] whitespace-nowrap overflow-hidden text-ellipsis pointer-coarse:hidden`}
+              class={`row-span-3 self-center min-w-5.5 max-w-18 px-1 text-xs leading-[1.5] font-bold text-center text-hud-accent-fg bg-linear-to-b from-white to-key-lo rounded-[4.576px] shadow-[0px_2.288px_0px_#0000008c,inset_0px_-2.288px_0px_#0000002e] whitespace-nowrap overflow-hidden text-ellipsis pointer-coarse:hidden`}
             >
               {m().key}
             </Text>

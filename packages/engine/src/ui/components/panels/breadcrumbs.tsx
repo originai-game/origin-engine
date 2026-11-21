@@ -26,17 +26,17 @@ export function Breadcrumbs(props: BreadcrumbsProps) {
           {(crumb) => (
           <View class={`flex-row items-center max-w-full min-h-8 gap-1 shrink pointer-coarse:min-h-11`} role="listitem" data-current={crumb().current}>
             <Show when={crumb().icon}>
-              <Icon class={`text-fg-muted size-[1.286rem] shrink-0`} name={crumb().icon} />
+              <Icon class={`text-fg-muted size-4.5 shrink-0`} name={crumb().icon} />
             </Show>
             <Show when={crumb().current} fallback={
                 <>
-                  <View class={`flex-row items-center justify-center gap-1 font-semibold text-[1.071rem] leading-snug text-fg-muted hover:text-fg focus-visible:text-fg shrink-0 min-w-0`} role="link" onPress={(e) => props.onChoose?.(e, crumb().id)}>
+                  <View class={`flex-row items-center justify-center gap-1 font-semibold text-reading leading-snug text-fg-muted hover:text-fg focus-visible:text-fg shrink-0 min-w-0`} role="link" onPress={(e) => props.onChoose?.(e, crumb().id)}>
                     <Text class="min-w-0">{crumb().label}</Text>
                   </View>
                   <Line class={`text-fg-subtle w-2 h-3 shrink-0 rtl:-scale-x-100`} points={[2, 1, 6, 6, 2, 11]} viewBox="0 0 8 12" />
                 </>
             }>
-              <Text class={`text-fg pb-0.5 text-[1.071rem] font-bold leading-snug tracking-normal normal-case border-b-2 border-hud-accent shrink-0 min-w-0`} current={true}>
+              <Text class={`text-fg pb-0.5 text-reading font-bold leading-snug tracking-normal normal-case border-b-2 border-hud-accent shrink-0 min-w-0`} current={true}>
                 {crumb().label}
               </Text>
             </Show>

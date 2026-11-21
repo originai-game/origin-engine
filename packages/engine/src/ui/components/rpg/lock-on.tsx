@@ -13,7 +13,7 @@ export interface RpgLockOnProps {
  */
 export function RpgLockOn(props: RpgLockOnProps) {
   return (
-    <View class={`relative size-[6.171rem] shrink-0 pointer-events-none compact:size-[4.114rem]`} role="status" label={props.target !== "" ? t("rpg.lock.target", { name: props.target }) : t("rpg.lock.none")} data-locked={props.target !== ""}>
+    <View class={`relative size-21.5 shrink-0 pointer-events-none compact:size-14.5`} role="status" label={props.target !== "" ? t("rpg.lock.target", { name: props.target }) : t("rpg.lock.none")} data-locked={props.target !== ""}>
       <Show when={props.target !== ""}>
         {/* The reticle: the svelte's four conic arcs (white, 40° each at
             0°, 70°, 160° and 250°, clockwise from up) as nine-ring Views;

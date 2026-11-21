@@ -28,14 +28,14 @@ export function ShooterPrompt(props: ShooterPromptProps) {
       <Show when={props.text != ""}>
         <Show when={props.key != ""}>
           <Text
-            class={`shrink basis-auto max-w-[40%] min-w-[1.571rem] py-0 px-1 text-[0.857rem] leading-[1.5] font-bold text-center text-key-fg bg-linear-to-b from-white to-key-hi rounded-[0.286rem] shadow-[0px_0.143rem_0px_#0000008c,inset_0px_-0.143rem_0px_#0000002e] whitespace-nowrap truncate`}
+            class={`shrink basis-auto max-w-2/5 min-w-5.5 py-0 px-1 text-xs leading-[1.5] font-bold text-center text-key-fg bg-linear-to-b from-white to-key-hi rounded-control shadow-[0px_0.143rem_0px_#0000008c,inset_0px_-0.143rem_0px_#0000002e] whitespace-nowrap truncate`}
           >
             {props.key}
           </Text>
         </Show>
-        <Text class={`min-w-0 text-[1.143rem] font-semibold whitespace-nowrap truncate text-shadow-2xs text-stroke-3 text-stroke-bg compact:text-[0.929rem]`}>{props.text}</Text>
+        <Text class={`min-w-0 text-base font-semibold whitespace-nowrap truncate text-shadow-2xs text-stroke-3 text-stroke-bg compact:text-caption`}>{props.text}</Text>
         <Show when={props.disabled && props.reason != ""}>
-          <Text class={`shrink-0 text-[0.857rem] font-semibold tracking-[0.14em] uppercase text-danger whitespace-nowrap text-shadow-2xs text-stroke-3 text-stroke-bg`}>{props.reason}</Text>
+          <Text class={`shrink-0 text-xs font-semibold tracking-label uppercase text-danger whitespace-nowrap text-shadow-2xs text-stroke-3 text-stroke-bg`}>{props.reason}</Text>
         </Show>
       </Show>
     </View>

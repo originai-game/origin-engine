@@ -42,14 +42,14 @@ export interface RpgLeaderProps {
 export function RpgLeader(props: RpgLeaderProps) {
   const low = () => props.healthMax > 0 && props.health <= props.healthMax * (props.low ?? 0.25);
   return (
-    <View class={`flex-row items-center gap-x-[0.857rem] w-[23.571rem] max-w-full text-fg text-stroke-3 text-stroke-bg compact:gap-x-2 compact:w-full`} role="group" label={props.name !== "" ? props.name : t("rpg.party.health")}>
+    <View class={`flex-row items-center gap-x-3 w-82.5 max-w-full text-fg text-stroke-3 text-stroke-bg compact:gap-x-2 compact:w-full`} role="group" label={props.name !== "" ? props.name : t("rpg.party.health")}>
       {/* Portrait: the HUD's portrait block. */}
       <View class="shrink-0">
         <HudPortrait portrait={props.portrait} dimmed={false} />
       </View>
       {/* Body: the name and level take the row first, the figure at its
           end; the bars, each shorter and thinner than the one above. */}
-      <View class="flex-col grow min-w-0 gap-y-[0.357rem] compact:gap-y-[0.286rem]">
+      <View class="flex-col grow min-w-0 gap-y-1.25 compact:gap-y-1">
         <View class="flex-row flex-wrap items-baseline gap-x-1 min-w-0">
           <View class="flex-row items-baseline gap-x-1 min-w-0 shrink">
             <Show when={props.name !== ""}>
@@ -58,7 +58,7 @@ export function RpgLeader(props: RpgLeaderProps) {
               </Text>
             </Show>
             <Show when={props.level > 0}>
-              <Text class={`shrink text-xs font-semibold tracking-[0.14em] uppercase whitespace-nowrap text-hud-accent`}>
+              <Text class={`shrink text-xs font-semibold tracking-label uppercase whitespace-nowrap text-hud-accent`}>
                 {t("rpg.leader.level", { level: props.level })}
               </Text>
             </Show>
@@ -76,12 +76,12 @@ export function RpgLeader(props: RpgLeaderProps) {
         </View>
         <HudBar value={props.health} max={props.healthMax} ghost={props.ghost} low={low()} />
         <Show when={props.manaMax > 0}>
-          <View class="w-[86%]">
+          <View class="w-43/50">
             <HudBar value={props.mana} max={props.manaMax} kind="mana" />
           </View>
         </Show>
         <Show when={props.staminaMax > 0}>
-          <View class="w-[72%]">
+          <View class="w-18/25">
             <HudBar value={props.stamina} max={props.staminaMax} kind="stamina" segment={props.segment ?? 0} />
           </View>
         </Show>

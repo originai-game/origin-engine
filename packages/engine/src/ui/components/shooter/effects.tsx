@@ -36,26 +36,26 @@ export function ShooterEffects(props: ShooterEffectsProps) {
       <For each={props.effects ?? []} key={(e) => e.id}>
         {(e) => (
           <View
-            class="group/effects flex-col items-center gap-y-[0.214rem] w-fit max-w-full"
+            class="group/effects flex-col items-center gap-y-0.75 w-fit max-w-full"
             label={e().label ? t("shooter.effects.effect", { name: e().name, label: e().label }) : e().name}
             data-harmful={e().harmful}
           >
-            <View class="relative size-[2.286rem] compact:size-[1.714rem] rounded-tl-[0.357rem] bg-success group-data-harmful/effects:bg-danger">
+            <View class="relative size-8 compact:size-6 rounded-tl-[0.357rem] bg-success group-data-harmful/effects:bg-danger">
               <Show when={e().icon} fallback={
-                <View class="absolute inset-[0.143rem] rounded-tl-[0.357rem] flex-row items-center justify-center bg-plate-hi">
+                <View class="absolute inset-0.5 rounded-tl-[0.357rem] flex-row items-center justify-center bg-plate-hi">
                   <Show when={e().glyph}>
-                    <Icon class="size-[60%] text-fg" name={e().glyph} />
+                    <Icon class="size-3/5 text-fg" name={e().glyph} />
                   </Show>
                 </View>
               }>
-                <Image class="absolute inset-[0.143rem] rounded-tl-[0.357rem]" src={e().icon ?? 0} />
+                <Image class="absolute inset-0.5 rounded-tl-[0.357rem]" src={e().icon ?? 0} />
               </Show>
               <Show when={(e().remaining ?? -1) >= 0}>
                 <View class="absolute inset-0 nine-tile bg-scrim" wipe={1 - Math.min(Math.max(e().remaining ?? 0, 0), 1)} wipeCcw />
               </Show>
             </View>
             <Show when={e().label}>
-              <Text class={`max-w-[4rem] py-0 px-[0.357rem] text-[0.857rem] font-bold tabular-nums whitespace-nowrap truncate text-fg text-shadow-2xs nine-chip-cut bg-tile compact:px-[0.214rem] group-data-harmful/effects:text-danger ${packClass("Chip", "frame")}`}>
+              <Text class={`max-w-14 py-0 px-1.25 text-xs font-bold tabular-nums whitespace-nowrap truncate text-fg text-shadow-2xs nine-chip-cut bg-tile compact:px-0.75 group-data-harmful/effects:text-danger ${packClass("Chip", "frame")}`}>
                 {e().label}
               </Text>
             </Show>

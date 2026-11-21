@@ -45,7 +45,7 @@ export function DataGrid(props: DataGridProps) {
       <View class={`min-h-8 border-b border-white/8 grid gap-x-3 w-full py-2 px-3 compact:flex compact:gap-x-3 compact:flex-wrap compact:gap-y-0.5 compact:items-baseline`} role="row" style={{ gridTemplateColumns: String(props.tracks || "1fr 1fr 1fr 1fr") }}>
         <For each={props.columns} key={(c) => c.id}>
           {(c, i) => (
-          <Text class={`font-semibold text-[0.857rem] leading-4.5 text-fg-muted whitespace-nowrap tracking-[0.14em] uppercase data-numeric:text-end compact:grow-0 compact:shrink-0 compact:basis-auto compact:w-auto compact:order-3 compact:data-first:whitespace-normal compact:data-first:grow compact:data-first:shrink compact:data-first:basis-0 compact:data-first:order-0 compact:data-first:min-w-0 compact:data-last:order-1 compact:data-middle:hidden`} role="columnheader" data-numeric={c().numeric} data-first={i() === 0} data-last={i() === props.columns.length - 1} data-middle={i() > 0 && i() < props.columns.length - 1}>
+          <Text class={`font-semibold text-xs leading-4.5 text-fg-muted whitespace-nowrap tracking-label uppercase data-numeric:text-end compact:grow-0 compact:shrink-0 compact:basis-auto compact:w-auto compact:order-3 compact:data-first:whitespace-normal compact:data-first:grow compact:data-first:shrink compact:data-first:basis-0 compact:data-first:order-0 compact:data-first:min-w-0 compact:data-last:order-1 compact:data-middle:hidden`} role="columnheader" data-numeric={c().numeric} data-first={i() === 0} data-last={i() === props.columns.length - 1} data-middle={i() > 0 && i() < props.columns.length - 1}>
             {c().label}
           </Text>
           )}
@@ -58,7 +58,7 @@ export function DataGrid(props: DataGridProps) {
                     <For each={props.rows} key={(r) => r.id}>
                       {(r) => (
                       <View class={`group/row relative nine-plate-cut border border-rim w-full min-w-0 items-baseline grid gap-x-3 py-1 px-3 compact:flex compact:flex-wrap compact:gap-x-3 compact:gap-y-0.5 compact:py-2 hover:bg-surface-hover ${r().id === props.selected ? packClass("Row", "frame", "selected") : packClass("Row", "frame")} data-down:opacity-45`} role="row" selected={r().id === props.selected} onPress={(e) => props.onChoose?.(e, r().id)} data-selected={r().id === props.selected} style={{ gridTemplateColumns: String(props.tracks || "1fr 1fr 1fr 1fr") }}>
-                        <View class="absolute left-0 inset-y-0 w-[3.424px] bg-hud-accent hidden group-data-selected/row:block" />
+                        <View class="absolute left-0 inset-y-0 w-0.75 bg-hud-accent hidden group-data-selected/row:block" />
                         <For each={r().cells} key={(c) => c.id}>
                           {(c, i) => (
                           <>

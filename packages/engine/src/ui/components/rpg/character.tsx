@@ -44,22 +44,22 @@ export function RpgCharacter(props: RpgCharacterProps) {
       data-dense={props.dense}
     >
       <Show when={props.title !== ""} fallback={
-          <View class={`flex-row items-start w-full gap-x-[0.857rem] pb-2 shadow-[inset_0px_-1px_0px_#ffffff24]`}>
+          <View class={`flex-row items-start w-full gap-x-3 pb-2 shadow-[inset_0px_-1px_0px_#ffffff24]`}>
             <Show when={props.portrait !== 0}>
               <Image
-                class={`size-[4.571rem] shrink-0 rounded-[0.571rem] compact:size-[3.429rem]`}
+                class={`size-16 shrink-0 rounded-block compact:size-12`}
                 src={props.portrait}
                 label=""
               />
             </Show>
-            <View class={`flex-col items-start min-w-0 gap-y-[0.143rem]`}>
+            <View class={`flex-col items-start min-w-0 gap-y-0.5`}>
               <Text
-                class={`max-w-full text-3xl leading-[1.05] font-bold tracking-[0.14em] uppercase text-fg compact:text-xl`}
+                class={`max-w-full text-3xl leading-[1.05] font-bold tracking-label uppercase text-fg compact:text-xl`}
               >
                 {props.name}
               </Text>
               <Text
-                class={`max-w-full text-xs leading-[1.3] font-semibold tracking-[0.14em] uppercase text-fg-muted`}
+                class={`max-w-full text-xs leading-snug font-semibold tracking-label uppercase text-fg-muted`}
               >
                 {props.line}
               </Text>
@@ -68,18 +68,18 @@ export function RpgCharacter(props: RpgCharacterProps) {
           </View>
       }>
         <View class={`flex-row items-center justify-center w-full shrink-0`}>
-          <View class={`w-[3.429rem] h-4 shrink-0`} />
+          <View class={`w-12 h-4 shrink-0`} />
           <Text
-            class={`min-w-0 text-[1.714rem] leading-[1.1] font-bold tracking-[0.14em] uppercase text-fg text-center whitespace-normal`}
+            class={`min-w-0 text-title leading-[1.1] font-bold tracking-label uppercase text-fg text-center whitespace-normal`}
           >
             {props.title}
           </Text>
-          <View class={`w-[3.429rem] h-4 shrink-0`} />
+          <View class={`w-12 h-4 shrink-0`} />
         </View>
       </Show>
       <View class={`relative flex-row justify-between w-full px-1 py-2 bg-linear-to-b from-hud-accent/10 to-transparent`}>
         <Show when={props.figure !== 0}>
-          <View class={`absolute left-[18%] top-0 bottom-0 w-[64%]`}>
+          <View class={`absolute left-9/50 top-0 bottom-0 w-16/25`}>
             <Image class={`size-full`} src={props.figure} label="" />
           </View>
         </Show>
@@ -88,7 +88,7 @@ export function RpgCharacter(props: RpgCharacterProps) {
             {(s) => (
             <Show when={s().side === "start"}>
               <View
-                class={`flex-row items-center justify-center gap-1 group/cell flex size-[5.429rem] p-1 nine-plate-cut bg-tile text-fg data-empty:bg-tile data-empty:text-fg-muted compact:size-[3.857rem] compact:p-[0.143rem] group-data-dense/sheet:size-[3.429rem] group-data-dense/sheet:p-[0.143rem] ${packClass("Button", "plate")}`}
+                class={`flex-row items-center justify-center gap-1 group/cell flex size-19 p-1 nine-plate-cut bg-tile text-fg data-empty:bg-tile data-empty:text-fg-muted compact:size-13.5 compact:p-0.5 group-data-dense/sheet:size-12 group-data-dense/sheet:p-0.5 ${packClass("Button", "plate")}`}
                 role="button"
                 label={s().label}
                 selected={s().id === props.selected}
@@ -119,7 +119,7 @@ export function RpgCharacter(props: RpgCharacterProps) {
             {(s) => (
             <Show when={s().side === "end"}>
               <View
-                class={`flex-row items-center justify-center gap-1 group/cell flex size-[5.429rem] p-1 nine-plate-cut bg-tile text-fg data-empty:bg-tile data-empty:text-fg-muted compact:size-[3.857rem] compact:p-[0.143rem] group-data-dense/sheet:size-[3.429rem] group-data-dense/sheet:p-[0.143rem] ${packClass("Button", "plate")}`}
+                class={`flex-row items-center justify-center gap-1 group/cell flex size-19 p-1 nine-plate-cut bg-tile text-fg data-empty:bg-tile data-empty:text-fg-muted compact:size-13.5 compact:p-0.5 group-data-dense/sheet:size-12 group-data-dense/sheet:p-0.5 ${packClass("Button", "plate")}`}
                 role="button"
                 label={s().label}
                 selected={s().id === props.selected}
@@ -148,7 +148,7 @@ export function RpgCharacter(props: RpgCharacterProps) {
       </View>
       <Show when={(props.attributes ?? []).length}>
         <View
-          class={`flex flex-wrap items-stretch w-full gap-x-[0.857rem] gap-y-1 pt-2 shadow-[inset_0px_1px_0px_#ffffff24] group-data-dense/sheet:gap-x-2`}
+          class={`flex flex-wrap items-stretch w-full gap-x-3 gap-y-1 pt-2 shadow-[inset_0px_1px_0px_#ffffff24] group-data-dense/sheet:gap-x-2`}
           role="table"
           label={t("rpg.character.attributes")}
         >
@@ -157,7 +157,7 @@ export function RpgCharacter(props: RpgCharacterProps) {
               {(a) => (
               <Show when={a().group === "a"}>
                 <View class={`flex-row items-center gap-2 py-1 shadow-[inset_0px_-1px_0px_#ffffff24]`} role="row">
-                  <Icon class={`text-fg-muted size-[1.143rem] shrink-0 group-data-dense/sheet:hidden`} name={a().icon} />
+                  <Icon class={`text-fg-muted size-4 shrink-0 group-data-dense/sheet:hidden`} name={a().icon} />
                   <Text class={`min-w-0 grow text-caption font-semibold text-fg-muted`} role="rowheader">
                     {a().label}
                   </Text>
@@ -175,7 +175,7 @@ export function RpgCharacter(props: RpgCharacterProps) {
               {(a) => (
               <Show when={a().group === "b"}>
                 <View class={`flex-row items-center gap-2 py-1 shadow-[inset_0px_-1px_0px_#ffffff24]`} role="row">
-                  <Icon class={`text-fg-muted size-[1.143rem] shrink-0 group-data-dense/sheet:hidden`} name={a().icon} />
+                  <Icon class={`text-fg-muted size-4 shrink-0 group-data-dense/sheet:hidden`} name={a().icon} />
                   <Text class={`min-w-0 grow text-caption font-semibold text-fg-muted`} role="rowheader">
                     {a().label}
                   </Text>

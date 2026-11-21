@@ -55,8 +55,8 @@ export function TooltipCard(props: TooltipCardProps) {
   return (
     <View class="flex-row flex-wrap items-start max-w-full text-fg gap-2 compact:flex-col-reverse compact:flex-nowrap compact:items-stretch" role="tooltip" label={props.title} description={props.body}>
       <Show when={props.compareTitle !== ""}>
-        <View class={`bg-linear-to-b from-raised-pressed to-plate-lo shadow-[inset_0px_0px_0px_1px_#ffffff1f,inset_0px_1px_0px_#ffffff66] text-fg w-[21.429rem] max-w-full py-3 px-4 gap-2 compact:w-auto shrink ${packClass("Panel", "frame")}`}>
-          <Text class="font-semibold text-xs leading-snug text-fg-subtle tracking-[0.14em] uppercase">
+        <View class={`bg-linear-to-b from-raised-pressed to-plate-lo shadow-[inset_0px_0px_0px_1px_#ffffff1f,inset_0px_1px_0px_#ffffff66] text-fg w-75 max-w-full py-3 px-4 gap-2 compact:w-auto shrink ${packClass("Panel", "frame")}`}>
+          <Text class="font-semibold text-xs leading-snug text-fg-subtle tracking-label uppercase">
             {props.compareTitle}
           </Text>
           <View class="w-full h-px bg-sheen m-0" role="separator" />
@@ -64,7 +64,7 @@ export function TooltipCard(props: TooltipCardProps) {
             <For each={props.compareStats}>
               {(s, i) => (
                 <View class={`${statRow}`} data-last={i() === props.compareStats.length - 1}>
-                  <Text class="grow shrink basis-[7.857rem] text-fg-muted text-base leading-snug">
+                  <Text class="grow shrink basis-27.5 text-fg-muted text-base leading-snug">
                     {s().label}
                   </Text>
                   <Text class="tabular-nums text-fg text-base font-bold whitespace-nowrap shrink">
@@ -77,7 +77,7 @@ export function TooltipCard(props: TooltipCardProps) {
         </View>
       </Show>
       <View
-        class={`group/card relative bg-linear-to-b from-raised-pressed to-plate-lo text-fg data-common:text-common data-uncommon:text-uncommon data-rare:text-rare data-epic:text-epic data-legendary:text-legendary data-mythic:text-mythic w-[21.429rem] max-w-full py-3 px-4 gap-2 compact:w-auto shrink overflow-hidden ${packClass("Panel", "frame")}`}
+        class={`group/card relative bg-linear-to-b from-raised-pressed to-plate-lo text-fg data-common:text-common data-uncommon:text-uncommon data-rare:text-rare data-epic:text-epic data-legendary:text-legendary data-mythic:text-mythic w-75 max-w-full py-3 px-4 gap-2 compact:w-auto shrink overflow-hidden ${packClass("Panel", "frame")}`}
         data-common={tier() === "common"}
         data-uncommon={tier() === "uncommon"}
         data-rare={tier() === "rare"}
@@ -86,12 +86,12 @@ export function TooltipCard(props: TooltipCardProps) {
         data-mythic={tier() === "mythic"}
       >
         <Show when={tiered()}>
-          <View class="absolute inset-x-0 top-0 h-[90px] bg-linear-to-b from-current to-transparent opacity-16 pointer-events-none" />
-          <View class="absolute left-0 right-0 top-0 h-[2px] bg-current pointer-events-none" />
+          <View class="absolute inset-x-0 top-0 h-22.5 bg-linear-to-b from-current to-transparent opacity-16 pointer-events-none" />
+          <View class="absolute left-0 right-0 top-0 h-0.5 bg-current pointer-events-none" />
         </Show>
         <View class="relative flex-row items-center gap-y-2 gap-x-3 w-full">
           <Show when={props.image || props.icon}>
-            <View class="flex-row items-center justify-center gap-2 size-[3.429rem] overflow-hidden bg-tile">
+            <View class="flex-row items-center justify-center gap-2 size-12 overflow-hidden bg-tile">
               <Show when={tiered()}>
                 <View class="absolute inset-0 bg-current opacity-40" />
               </Show>
@@ -110,25 +110,25 @@ export function TooltipCard(props: TooltipCardProps) {
               <View class="flex-row flex-wrap items-center gap-y-0.5 gap-x-2 mt-0.5">
                 <View class="flex-row items-center gap-1 shrink">
                   <Show when={tier()}>
-                    <View class="bg-current rotate-45 size-[0.429rem]" />
+                    <View class="bg-current rotate-45 size-1.5" />
                   </Show>
                   <Show when={tier() && tier() !== "common"}>
-                    <View class="bg-current rotate-45 size-[0.429rem]" />
+                    <View class="bg-current rotate-45 size-1.5" />
                   </Show>
                   <Show when={tier() === "rare" || tier() === "epic" || tier() === "legendary" || tier() === "mythic"}>
-                    <View class="bg-current rotate-45 size-[0.429rem]" />
+                    <View class="bg-current rotate-45 size-1.5" />
                   </Show>
                   <Show when={tier() === "epic" || tier() === "legendary" || tier() === "mythic"}>
-                    <View class="bg-current rotate-45 size-[0.429rem]" />
+                    <View class="bg-current rotate-45 size-1.5" />
                   </Show>
                   <Show when={tier() === "legendary" || tier() === "mythic"}>
-                    <View class="bg-current rotate-45 size-[0.429rem]" />
+                    <View class="bg-current rotate-45 size-1.5" />
                   </Show>
                   <Show when={tier() === "mythic"}>
-                    <View class="bg-current rotate-45 size-[0.429rem]" />
+                    <View class="bg-current rotate-45 size-1.5" />
                   </Show>
                 </View>
-                <Text class="font-semibold text-xs leading-snug text-fg-muted tracking-[0.14em] uppercase shrink">
+                <Text class="font-semibold text-xs leading-snug text-fg-muted tracking-label uppercase shrink">
                   {props.subtitle}
                 </Text>
               </View>
@@ -141,7 +141,7 @@ export function TooltipCard(props: TooltipCardProps) {
             <For each={props.stats}>
               {(s, i) => (
                 <View class={statRow} data-last={i() === props.stats.length - 1} data-change-removed={(s().change) === "removed"}>
-                  <Text class="grow shrink basis-[7.857rem] text-fg-muted text-base leading-snug">
+                  <Text class="grow shrink basis-27.5 text-fg-muted text-base leading-snug">
                     {s().label}
                   </Text>
                   <Text class="tabular-nums text-fg text-base font-bold whitespace-nowrap shrink">
@@ -149,15 +149,15 @@ export function TooltipCard(props: TooltipCardProps) {
                   </Text>
                   <Show when={s().change === "added" || s().change === "removed"} fallback={
                     <Show when={(s().delta ?? 0) !== 0}>
-                      <View class="flex-row items-center min-w-[3.714rem] justify-end text-base font-bold gap-0.5 data-good:text-success data-bad:text-danger shrink" data-good={s().better ? (s().delta ?? 0) < 0 : (s().delta ?? 0) > 0} data-bad={s().better ? (s().delta ?? 0) > 0 : (s().delta ?? 0) < 0}>
-                        <Icon name="play" class="size-[0.643rem] -rotate-90 data-bad:rotate-90" data-bad={(s().delta ?? 0) < 0} />
+                      <View class="flex-row items-center min-w-13 justify-end text-base font-bold gap-0.5 data-good:text-success data-bad:text-danger shrink" data-good={s().better ? (s().delta ?? 0) < 0 : (s().delta ?? 0) > 0} data-bad={s().better ? (s().delta ?? 0) > 0 : (s().delta ?? 0) < 0}>
+                        <Icon name="play" class="size-2.25 -rotate-90 data-bad:rotate-90" data-bad={(s().delta ?? 0) < 0} />
                         <Text class="tabular-nums whitespace-nowrap shrink">
                           {s().deltaText}
                         </Text>
                       </View>
                     </Show>
                   }>
-                    <Text class={`font-bold text-[10px] leading-snug text-success tracking-[0.14em] whitespace-nowrap bg-well py-0.5 px-1 group-data-change-removed/row:text-fg-subtle ${packClass("Chip", "frame")}`}>
+                    <Text class={`font-bold text-[10px] leading-snug text-success tracking-label whitespace-nowrap bg-well py-0.5 px-1 group-data-change-removed/row:text-fg-subtle ${packClass("Chip", "frame")}`}>
                       {s().change === "added" ? t("tooltip.change.added") : t("tooltip.change.removed")}
                     </Text>
                   </Show>

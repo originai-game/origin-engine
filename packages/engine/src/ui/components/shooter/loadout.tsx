@@ -56,17 +56,17 @@ export function Loadout(props: LoadoutProps) {
   const selected = () => (props.slots ?? []).find((s) => s.id == props.selected);
   const categoryLabel = (c: LoadoutCategory) => (c.label ?? "") != "" ? c.label : t(`shooter.loadout.category.${c.id}`);
   const KEY = "shrink-0 pointer-coarse:hidden text-[1.5rem] leading-none";
-  const BUTTON = `flex-row items-center justify-center gap-x-1 min-h-11 px-4 min-w-[7.5rem] text-[0.929rem] font-bold tracking-[0.14em] uppercase text-fg nine-plate-cut bg-raised-lo hover:bg-raised-hover-lo disabled:opacity-45 compact:flex-1 ${packClass("Button", "plate")}`;
+  const BUTTON = `flex-row items-center justify-center gap-x-1 min-h-11 px-4 min-w-26.25 text-caption font-bold tracking-label uppercase text-fg nine-plate-cut bg-raised-lo hover:bg-raised-hover-lo disabled:opacity-45 compact:flex-1 ${packClass("Button", "plate")}`;
   return (
     <View class={`flex-col w-full h-full max-w-full gap-y-4 p-4 text-fg bg-glass nine-panel-cut ${packClass("Panel", "frame")}`} role="group" label={heading()}>
-      <Text class="max-w-full text-[3.286rem] leading-none font-bold uppercase tracking-[0.04em] compact:text-[2rem]">{heading()}</Text>
+      <Text class="max-w-full text-[3.286rem] leading-none font-bold uppercase tracking-sm compact:text-display-sm">{heading()}</Text>
       <View class="flex-1 min-h-0 flex-col gap-y-4">
         <Scroll class="flex-1 min-h-0 w-full pr-4">
           <View class="flex-row flex-wrap gap-x-4 gap-y-4 content-start">
           <For each={props.categories ?? []} key={(c) => c.id}>
             {(c) => (
-              <View class="group/cat basis-[18rem] grow min-w-0 flex-col" label={categoryLabel(c())}>
-                <Text class="w-full pb-1 border-b border-white/30 text-[0.857rem] leading-[1.3] font-semibold tracking-[0.14em] uppercase">{categoryLabel(c())}</Text>
+              <View class="group/cat basis-63 grow min-w-0 flex-col" label={categoryLabel(c())}>
+                <Text class="w-full pb-1 border-b border-white/30 text-xs leading-snug font-semibold tracking-label uppercase">{categoryLabel(c())}</Text>
                 <View class="flex-col gap-y-1 pt-2">
                   <For each={(props.slots ?? []).filter((s) => s.category == c().id)} key={(s) => s.id}>
                     {(s) => (
@@ -81,15 +81,15 @@ export function Loadout(props: LoadoutProps) {
                         data-locked={s().locked === true}
                       >
                         <Icon class="shrink-0 size-6 text-fg group-data-locked/item:text-fg-muted" name={s().locked ? "lock" : s().icon ?? ""} />
-                        <View class="flex-1 min-w-0 flex-col items-start gap-y-[0.071rem]">
-                          <Text class="w-full text-start text-[1.071rem] leading-[1.15] font-bold text-fg">{s().name}</Text>
+                        <View class="flex-1 min-w-0 flex-col items-start gap-y-0.25">
+                          <Text class="w-full text-start text-reading leading-[1.15] font-bold text-fg">{s().name}</Text>
                           <Show when={(s().detail ?? "") != "" || s().equipped}>
-                            <View class="flex-row flex-wrap items-center gap-x-1 gap-y-[0.071rem]">
+                            <View class="flex-row flex-wrap items-center gap-x-1 gap-y-0.25">
                               <Show when={(s().detail ?? "") != ""}>
-                                <Text class="text-start text-[0.929rem] font-semibold whitespace-nowrap text-fg-muted">{s().detail}</Text>
+                                <Text class="text-start text-caption font-semibold whitespace-nowrap text-fg-muted">{s().detail}</Text>
                               </Show>
                               <Show when={s().equipped}>
-                                <Text class={`shrink py-0 px-1 text-[0.857rem] leading-[1.5] font-bold tracking-[0.14em] uppercase text-bg nine-chip-cut bg-success ${packClass("Chip", "frame")}`}>
+                                <Text class={`shrink py-0 px-1 text-xs leading-[1.5] font-bold tracking-label uppercase text-bg nine-chip-cut bg-success ${packClass("Chip", "frame")}`}>
                                   {t("shooter.loadout.equipped")}
                                 </Text>
                               </Show>
@@ -99,7 +99,7 @@ export function Loadout(props: LoadoutProps) {
                         <Show when={(s().cost ?? "") != ""}>
                           <View class="shrink-0 flex-row items-center gap-x-1">
                             <Icon class="shrink-0 size-4 text-gold group-data-locked/item:text-fg-muted" name="coin" />
-                            <Text class="text-[1.143rem] font-bold tabular-nums whitespace-nowrap text-accent-ink group-data-locked/item:text-fg-muted">{s().cost}</Text>
+                            <Text class="text-base font-bold tabular-nums whitespace-nowrap text-accent-ink group-data-locked/item:text-fg-muted">{s().cost}</Text>
                           </View>
                         </Show>
                       </View>
@@ -110,7 +110,7 @@ export function Loadout(props: LoadoutProps) {
             )}
           </For>
           <Show when={(props.slots ?? []).length == 0}>
-            <Text class="text-[1.143rem] text-fg-muted">{t("shooter.loadout.empty")}</Text>
+            <Text class="text-base text-fg-muted">{t("shooter.loadout.empty")}</Text>
           </Show>
           </View>
         </Scroll>
@@ -121,7 +121,7 @@ export function Loadout(props: LoadoutProps) {
           </View>
           <Show when={selected()}>
             <View
-              class={`flex-row items-center justify-center gap-x-1 min-h-11 px-4 min-w-[7.5rem] text-[0.929rem] font-bold tracking-[0.14em] uppercase text-accent-fg nine-plate-cut bg-accent disabled:opacity-45 compact:flex-1 ${packClass("Button", "plate", "primary")}`}
+              class={`flex-row items-center justify-center gap-x-1 min-h-11 px-4 min-w-26.25 text-caption font-bold tracking-label uppercase text-accent-fg nine-plate-cut bg-accent disabled:opacity-45 compact:flex-1 ${packClass("Button", "plate", "primary")}`}
               role="button"
               label={t("shooter.loadout.equip")}
               disabled={selected()?.locked || selected()?.equipped}

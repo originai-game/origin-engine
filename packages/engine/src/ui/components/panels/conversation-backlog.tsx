@@ -38,7 +38,7 @@ export function RpgConversationBacklog(props: RpgConversationBacklogProps) {
   return (
     <View class={`border-rim bg-linear-to-b from-glass-hi to-glass-lo shadow-panel text-fg w-full p-4 gap-3 rounded-panel border disabled:text-fg-subtle ${packClass("Panel", "frame")}`} label={props.title || t("rpg.talk.history")} busy={(props.loading ?? false)} onAction={{ back: (e) => props.onClose?.(e) }}>
       <View class={`flex-row flex-wrap items-center gap-2`}>
-        <Text class={`grow shrink font-display text-base font-bold leading-tight tracking-[-0.01em] text-fg m-0`}>
+        <Text class={`grow shrink font-display text-base font-bold leading-tight tracking-tight text-fg m-0`}>
           {props.title || t("rpg.talk.history")}
         </Text>
         <View class={`flex-row gap-1 min-h-11 shrink px-4 items-center justify-center ${packClass("Button", "plate")}`} role="button" onPress={(e) => props.onClose?.(e)}>
@@ -60,8 +60,8 @@ export function RpgConversationBacklog(props: RpgConversationBacklogProps) {
         <For each={(props.lines ?? [])} key={(entry) => entry.id}>
           {(entry) => (
           <View class={`group/row relative nine-plate-cut border border-rim text-fg transition duration-317 py-2 px-3 gap-2 ${packClass("Row", "frame")} hover:bg-surface-hover data-playing:bg-surface-hover disabled:text-fg-subtle data-done:text-fg-subtle data-down:opacity-45`} data-playing={entry().id === props.playing}>
-            <View class="absolute left-0 inset-y-0 w-[3.424px] bg-gold hidden group-data-playing/row:block" />
-            <Text class={`font-bold text-caption text-gold tracking-[0.14em] uppercase m-0 data-narration:text-fg-muted data-narration:normal-case`} data-narration={!entry().speaker}>
+            <View class="absolute left-0 inset-y-0 w-0.75 bg-gold hidden group-data-playing/row:block" />
+            <Text class={`font-bold text-caption text-gold tracking-label uppercase m-0 data-narration:text-fg-muted data-narration:normal-case`} data-narration={!entry().speaker}>
               {entry().speaker || t("rpg.talk.narration")}
             </Text>
             <Text class={`text-fg m-0 data-narration:text-fg-muted data-narration:italic`} data-narration={!entry().speaker}>

@@ -77,7 +77,7 @@ export function RpgItemCard(props: RpgItemCardProps) {
       data-tier-legendary={tier() === "legendary"}
       data-tier-mythic={tier() === "mythic"}
     >
-      <View class="absolute left-4 right-[30%] top-0 h-px bg-linear-to-r from-sheen to-transparent to-70% pointer-events-none" />
+      <View class="absolute left-4 right-3/10 top-0 h-px bg-linear-to-r from-sheen to-transparent to-70% pointer-events-none" />
       <View class="shrink w-full gap-1 overflow-auto">
         <View class="w-full gap-0 compact:flex-row compact:items-center compact:gap-2">
           <View class={`group/hero justify-center items-center w-full text-common group-data-tier-uncommon/card:text-uncommon group-data-tier-rare/card:text-rare group-data-tier-epic/card:text-epic group-data-tier-legendary/card:text-legendary group-data-tier-mythic/card:text-mythic border-b border-rim-soft gap-2 compact:relative compact:grow-0 compact:shrink-0 compact:basis-auto compact:w-auto compact:border-0 compact:text-fg`}>
@@ -90,7 +90,7 @@ export function RpgItemCard(props: RpgItemCardProps) {
           </View>
           <View class={`min-h-12 pt-2 pb-1 border-b border-rim-soft w-full px-4 gap-0.5 compact:min-w-0 compact:grow compact:shrink compact:basis-0 compact:p-0 compact:border-0`}>
             <Show when={props.kind}>
-              <Text class="text-xs font-semibold tracking-[0.18em] uppercase text-common group-data-tier-uncommon/card:text-uncommon group-data-tier-rare/card:text-rare group-data-tier-epic/card:text-epic group-data-tier-legendary/card:text-legendary group-data-tier-mythic/card:text-mythic compact:whitespace-nowrap compact:text-ellipsis compact:overflow-hidden" label={props.kind}>
+              <Text class="text-xs font-semibold tracking-kicker uppercase text-common group-data-tier-uncommon/card:text-uncommon group-data-tier-rare/card:text-rare group-data-tier-epic/card:text-epic group-data-tier-legendary/card:text-legendary group-data-tier-mythic/card:text-mythic compact:whitespace-nowrap compact:text-ellipsis compact:overflow-hidden" label={props.kind}>
                 {props.kind}
               </Text>
             </Show>
@@ -108,14 +108,14 @@ export function RpgItemCard(props: RpgItemCardProps) {
           {(s) => (
             <View class="flex-row flex-wrap items-end nine-plate-cut bg-glass py-2 px-3 gap-x-3 gap-y-0.5" label={s().label}>
               <View class="grow gap-0.5">
-                <Text class="text-xs font-semibold tracking-[0.18em] uppercase text-fg-subtle">{s().label}</Text>
+                <Text class="text-xs font-semibold tracking-kicker uppercase text-fg-subtle">{s().label}</Text>
                 <View class="flex-row items-center flex-wrap gap-1">
                   <Text class="tabular-nums text-fg text-display-lg leading-flat font-bold whitespace-nowrap compact:text-xl shrink">
                     {s().value}
                   </Text>
                   <Show when={s().delta}>
                     <View class={`${deltaChip} data-trend-up:nine-plate-cut data-trend-down:nine-plate-cut`} data-trend-down={(s().trend) === "down"} data-trend-up={(s().trend) === "up"}>
-                      <Icon name="play" class="hidden bg-current size-[0.571rem] group-data-trend-up/delta:flex -rotate-90 group-data-trend-down/delta:flex group-data-trend-down/delta:rotate-90" />
+                      <Icon name="play" class="hidden bg-current size-2 group-data-trend-up/delta:flex -rotate-90 group-data-trend-down/delta:flex group-data-trend-down/delta:rotate-90" />
                       <Text class="whitespace-nowrap shrink">{s().delta}</Text>
                     </View>
                   </Show>
@@ -123,7 +123,7 @@ export function RpgItemCard(props: RpgItemCardProps) {
               </View>
               <Show when={s().current}>
                 <View class="ml-auto items-end text-end gap-0.5">
-                  <Text class="text-xs font-semibold tracking-[0.18em] uppercase text-fg-subtle">
+                  <Text class="text-xs font-semibold tracking-kicker uppercase text-fg-subtle">
                     {t("rpg.card.current")}
                   </Text>
                   <Text class="tabular-nums text-fg-muted text-lg font-bold whitespace-nowrap">
@@ -137,37 +137,37 @@ export function RpgItemCard(props: RpgItemCardProps) {
         <Show when={props.stats.length}>
           <View role="table" label={props.name}>
             <View class="flex-row items-center gap-y-0.5 gap-x-1 py-0.5 compact:hidden" role="row">
-              <Text class="text-xs font-semibold tracking-[0.18em] uppercase text-fg-subtle grow shrink basis-0 items-center pl-7" role="columnheader" label={t("rpg.card.stat")} />
-              <View class="flex-row items-center ml-auto w-[13.286rem] gap-1">
-                <Text class="text-xs font-bold tracking-[0.18em] uppercase text-fg-subtle w-auto text-end whitespace-nowrap min-w-[3.143rem]" role="columnheader">
+              <Text class="text-xs font-semibold tracking-kicker uppercase text-fg-subtle grow shrink basis-0 items-center pl-7" role="columnheader" label={t("rpg.card.stat")} />
+              <View class="flex-row items-center ml-auto w-46.5 gap-1">
+                <Text class="text-xs font-bold tracking-kicker uppercase text-fg-subtle w-auto text-end whitespace-nowrap min-w-11" role="columnheader">
                   {t("rpg.card.this")}
                 </Text>
                 <View class="w-auto grow shrink basis-0" />
-                <Text class="text-xs font-semibold tracking-[0.18em] uppercase text-fg-subtle w-auto text-end whitespace-nowrap shrink min-w-[3.429rem] text-ellipsis overflow-hidden compact:hidden" role="columnheader">
+                <Text class="text-xs font-semibold tracking-kicker uppercase text-fg-subtle w-auto text-end whitespace-nowrap shrink min-w-12 text-ellipsis overflow-hidden compact:hidden" role="columnheader">
                   {t("rpg.card.current")}
                 </Text>
               </View>
             </View>
             <For each={props.stats}>
               {(s) => (
-                <View class="flex-row items-center gap-y-0.5 gap-x-1 text-fg transition duration-317 flex-wrap min-h-[2.857rem] border-t border-rim-soft py-0.5 hover:bg-surface-hover" role="row">
-                  <View class="flex-row items-center grow shrink basis-[5.714rem] text-fg-muted gap-1">
+                <View class="flex-row items-center gap-y-0.5 gap-x-1 text-fg transition duration-317 flex-wrap min-h-10 border-t border-rim-soft py-0.5 hover:bg-surface-hover" role="row">
+                  <View class="flex-row items-center grow shrink basis-20 text-fg-muted gap-1">
                     <Icon class="size-6" name={s().icon} />
                     <Text class="shrink" role="rowheader">{s().label}</Text>
                   </View>
                   <View class="flex-row items-center ml-auto gap-1">
-                    <Text class="tabular-nums text-fg w-[3.143rem] font-bold text-end whitespace-nowrap shrink" role="cell">
+                    <Text class="tabular-nums text-fg w-11 font-bold text-end whitespace-nowrap shrink" role="cell">
                       {s().value}
                     </Text>
-                    <View class="flex-row items-center w-[4.571rem] gap-2 shrink" role="cell">
+                    <View class="flex-row items-center w-16 gap-2 shrink" role="cell">
                       <Show when={s().delta}>
                         <View class={deltaChip} data-trend-down={(s().trend) === "down"} data-trend-up={(s().trend) === "up"}>
-                          <Icon name="play" class="hidden bg-current size-[0.571rem] group-data-trend-up/delta:flex -rotate-90 group-data-trend-down/delta:flex group-data-trend-down/delta:rotate-90" />
+                          <Icon name="play" class="hidden bg-current size-2 group-data-trend-up/delta:flex -rotate-90 group-data-trend-down/delta:flex group-data-trend-down/delta:rotate-90" />
                           <Text class="whitespace-nowrap shrink">{s().delta}</Text>
                         </View>
                       </Show>
                     </View>
-                    <Text class="tabular-nums text-fg-muted w-[3.429rem] text-end whitespace-nowrap compact:hidden shrink" role="cell">
+                    <Text class="tabular-nums text-fg-muted w-12 text-end whitespace-nowrap compact:hidden shrink" role="cell">
                       {s().current}
                     </Text>
                   </View>
@@ -191,13 +191,13 @@ export function RpgItemCard(props: RpgItemCardProps) {
           </Show>
           <View class="flex-row items-center w-full gap-1">
             <Show when={props.primary}>
-              <Button variant="primary" class={`grow-[1.4] shrink basis-0 min-h-[3.614rem] gap-1 compact:min-h-11 ${packClass("Button", "plate", "primary")}`} disabled={!props.canPrimary} label={props.primary} onPress={(e) => props.onEquip?.(e)}>
+              <Button variant="primary" class={`grow-[1.4] shrink basis-0 min-h-12.75 gap-1 compact:min-h-11 ${packClass("Button", "plate", "primary")}`} disabled={!props.canPrimary} label={props.primary} onPress={(e) => props.onEquip?.(e)}>
                 <Text glyph="details" class={keyCap} />
                 <Text>{props.primary}</Text>
               </Button>
             </Show>
             <Show when={props.secondary}>
-              <Button class={`grow shrink basis-0 min-h-[3.614rem] gap-1 compact:min-h-11 ${packClass("Button", "plate")}`} disabled={!props.canSecondary} onPress={(e) => props.onDiscard?.(e)}>
+              <Button class={`grow shrink basis-0 min-h-12.75 gap-1 compact:min-h-11 ${packClass("Button", "plate")}`} disabled={!props.canSecondary} onPress={(e) => props.onDiscard?.(e)}>
                 <Text>{props.secondary}</Text>
               </Button>
             </Show>

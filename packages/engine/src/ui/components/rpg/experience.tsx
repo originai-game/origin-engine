@@ -26,13 +26,13 @@ export function RpgExperience(props: RpgExperienceProps) {
       valueNow={props.value <= 0 ? 0 : props.value >= 1 ? 100 : props.value * 100}
     >
       <Text
-        class={`self-start max-w-full px-[1.714rem] text-xs font-semibold tracking-[0.14em] uppercase text-fg/78 whitespace-nowrap overflow-hidden text-stroke-3 text-stroke-bg compact:px-3 compact:tracking-normal`}
+        class={`self-start max-w-full px-6 text-xs font-semibold tracking-label uppercase text-fg/78 whitespace-nowrap overflow-hidden text-stroke-3 text-stroke-bg compact:px-3 compact:tracking-normal`}
       >
         {props.level > 0
           ? t("rpg.xp.caption", { level: props.level, share: share(props.value <= 0 ? 0 : props.value >= 1 ? 1 : props.value) })
           : t("rpg.xp.share", { share: share(props.value <= 0 ? 0 : props.value >= 1 ? 1 : props.value) })}
       </Text>
-      <View class={`w-full h-[0.429rem] bg-track compact:h-[0.286rem]`}>
+      <View class={`w-full h-1.5 bg-track compact:h-1`}>
         <View
           class={`h-full bg-linear-to-r from-xp to-xp shadow-[0px_0px_10px_#a98bff]`}
           style={{ width: `${(props.value <= 0 ? 0 : props.value >= 1 ? 1 : props.value) * 100}%` }}

@@ -35,7 +35,7 @@ export interface ShooterPickupsProps {
  */
 export function ShooterPickups(props: ShooterPickupsProps) {
   return (
-    <View class="flex-col items-end gap-y-[0.357rem] max-w-full text-fg" role="log" label={t("shooter.pickups.name")}>
+    <View class="flex-col items-end gap-y-1.25 max-w-full text-fg" role="log" label={t("shooter.pickups.name")}>
       <For each={props.items ?? []} key={(p) => p.id}>
         {(p, i) => (
           <View
@@ -46,7 +46,7 @@ export function ShooterPickups(props: ShooterPickupsProps) {
             data-rarity-legendary={p().rarity === "legendary"}
             data-later={i() >= 1}
           >
-            <View class="shrink-0 my-[0.143rem] size-[1.571rem] compact:size-[1.286rem] nine-chip-cut overflow-hidden bg-plate-hi">
+            <View class="shrink-0 my-0.5 size-5.5 compact:size-4.5 nine-chip-cut overflow-hidden bg-plate-hi">
               <Show when={p().icon} fallback={
                 <Show when={p().glyph}>
                   <Icon class="size-full text-fg" name={p().glyph} />
@@ -55,14 +55,14 @@ export function ShooterPickups(props: ShooterPickupsProps) {
                 <Image class="size-full" src={p().icon} />
               </Show>
             </View>
-            <Text class="min-w-0 text-[1rem] font-semibold whitespace-nowrap truncate text-shadow-2xs text-stroke-3 text-stroke-bg compact:text-[0.929rem]">{p().name}</Text>
+            <Text class="min-w-0 text-sm font-semibold whitespace-nowrap truncate text-shadow-2xs text-stroke-3 text-stroke-bg compact:text-caption">{p().name}</Text>
             <Text
-              class={`shrink-0 text-[1rem] font-bold tabular-nums whitespace-nowrap text-fg/66 text-shadow-2xs text-stroke-3 text-stroke-bg compact:text-[0.929rem] group-data-rarity-rare/pickup:text-rare group-data-rarity-epic/pickup:text-epic group-data-rarity-legendary/pickup:text-gold`}
+              class={`shrink-0 text-sm font-bold tabular-nums whitespace-nowrap text-fg/66 text-shadow-2xs text-stroke-3 text-stroke-bg compact:text-caption group-data-rarity-rare/pickup:text-rare group-data-rarity-epic/pickup:text-epic group-data-rarity-legendary/pickup:text-gold`}
             >
               {t("shooter.pickups.count", { quantity: formatNumber(p().quantity ?? 0) })}
             </Text>
             <View
-              class={`shrink-0 self-stretch w-[0.214rem] ml-1 bg-white/60 group-data-rarity-rare/pickup:bg-rare group-data-rarity-epic/pickup:bg-epic group-data-rarity-legendary/pickup:bg-gold`}
+              class={`shrink-0 self-stretch w-0.75 ml-1 bg-white/60 group-data-rarity-rare/pickup:bg-rare group-data-rarity-epic/pickup:bg-epic group-data-rarity-legendary/pickup:bg-gold`}
             />
           </View>
         )}

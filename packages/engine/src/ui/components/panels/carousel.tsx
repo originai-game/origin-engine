@@ -43,7 +43,7 @@ export function Carousel(props: CarouselProps) {
               <Image class={`object-cover w-full h-32 rounded-[6.864px]`} src={page().image} />
             </Show>
             <Show when={page().title}>
-              <Text class={`font-display text-[1.143rem] font-bold leading-tight tracking-[-0.01em] text-fg m-0`}>
+              <Text class={`font-display text-base font-bold leading-tight tracking-tight text-fg m-0`}>
                 {page().title}
               </Text>
             </Show>

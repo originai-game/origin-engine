@@ -46,7 +46,7 @@ export function RpgParty(props: RpgPartyProps) {
                   <Text class="text-xs font-bold tabular-nums">{formatNumber(m().level)}</Text>
                 </Show>
               </View>
-              <Text class="py-[0.143rem] px-1 text-center whitespace-nowrap text-ellipsis overflow-hidden text-fg">
+              <Text class="py-0.5 px-1 text-center whitespace-nowrap text-ellipsis overflow-hidden text-fg">
                 {m().name}
               </Text>
               <View class="mx-1">

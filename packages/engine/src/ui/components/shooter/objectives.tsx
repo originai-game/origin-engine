@@ -34,25 +34,25 @@ export function ShooterObjectives(props: ShooterObjectivesProps) {
   const heading = () => (props.label ?? "") != "" ? props.label : t("shooter.objective.label");
   return (
     <View
-      class={`flex-col gap-y-[0.429rem] w-[20rem] max-w-full compact:w-full text-fg`}
+      class={`flex-col gap-y-1.5 w-70 max-w-full compact:w-full text-fg`}
       role="group"
       label={heading()}
     >
       <Show when={(props.goals ?? []).length}>
-        <Text class={`min-w-0 text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap truncate text-hud-accent text-shadow-2xs text-stroke-3 text-stroke-bg compact:hidden`}>{heading()}</Text>
+        <Text class={`min-w-0 text-xs font-semibold tracking-label uppercase whitespace-nowrap truncate text-hud-accent text-shadow-2xs text-stroke-3 text-stroke-bg compact:hidden`}>{heading()}</Text>
         <For each={props.goals ?? []} key={(g) => g.id}>
           {(g) => (
             <View class={`group/goal flex-row items-center gap-1 min-w-0 opacity-66 data-current:opacity-100 compact:hidden data-current:compact:flex`} data-current={g().current === true}>
               <View
-                class={`shrink-0 size-[0.571rem] mx-[0.143rem] rotate-45 bg-white/66 shadow-[0px_0px_0px_0.143rem_#1a1e28d9] group-data-current/goal:size-[0.714rem] group-data-current/goal:mx-[0.071rem] group-data-current/goal:bg-gold`}
+                class={`shrink-0 size-2 mx-0.5 rotate-45 bg-white/66 shadow-[0px_0px_0px_0.143rem_#1a1e28d9] group-data-current/goal:size-2.5 group-data-current/goal:mx-0.25 group-data-current/goal:bg-gold`}
               />
               <Text
-                class={`shrink basis-auto min-w-0 text-[1.071rem] font-semibold whitespace-nowrap truncate text-fg text-shadow-2xs text-stroke-3 text-stroke-bg group-data-current/goal:text-[1.143rem]`}
+                class={`shrink basis-auto min-w-0 text-reading font-semibold whitespace-nowrap truncate text-fg text-shadow-2xs text-stroke-3 text-stroke-bg group-data-current/goal:text-base`}
               >
                 {g().text}
               </Text>
               <Show when={g().tag}>
-                <Text class={`shrink-0 py-0 px-1 text-[0.857rem] font-bold tabular-nums whitespace-nowrap text-fg nine-chip-cut bg-tile ${packClass("Chip", "frame")}`}>
+                <Text class={`shrink-0 py-0 px-1 text-xs font-bold tabular-nums whitespace-nowrap text-fg nine-chip-cut bg-tile ${packClass("Chip", "frame")}`}>
                   {g().tag}
                 </Text>
               </Show>

@@ -68,13 +68,13 @@ export function RpgTrade(props: RpgTradeProps) {
       label={props.title || t("rpg.trade.title")}
       busy={locked()}
     >
-      <View class="absolute left-4 right-[30%] top-0 h-px bg-linear-to-r from-sheen to-transparent to-70% pointer-events-none" />
+      <View class="absolute left-4 right-3/10 top-0 h-px bg-linear-to-r from-sheen to-transparent to-70% pointer-events-none" />
       <View class="shrink flex-row flex-wrap items-end min-h-12 border-b border-rim-soft w-full py-1 px-4 gap-3">
         <View class="grow shrink basis-0 gap-0.5 compact:basis-full">
-          <Text class="text-xs font-semibold tracking-[0.18em] uppercase text-fg-subtle whitespace-nowrap">
+          <Text class="text-xs font-semibold tracking-kicker uppercase text-fg-subtle whitespace-nowrap">
             {t("rpg.trade.kicker")}
           </Text>
-          <Text class="font-display text-base font-bold leading-tight tracking-[-0.01em] text-fg m-0">
+          <Text class="font-display text-base font-bold leading-tight tracking-tight text-fg m-0">
             {props.title || t("rpg.trade.title")}
           </Text>
         </View>
@@ -95,7 +95,7 @@ export function RpgTrade(props: RpgTradeProps) {
         </View>
         <Show when={props.wallet}>
           <View class="shrink flex-row items-center text-fg pr-2 pl-0.5 bg-tile-pressed shadow-[inset_0px_0px_0px_1px_#4e586c] font-bold py-0.5 gap-1 rounded-capsule">
-            <View class="shrink-0 bg-gold rounded-capsule size-[1.571rem]" />
+            <View class="shrink-0 bg-gold rounded-capsule size-5.5" />
             <Text class="whitespace-nowrap tabular-nums">{props.wallet}</Text>
           </View>
         </Show>
@@ -138,11 +138,11 @@ export function RpgTrade(props: RpgTradeProps) {
                 data-tier-mythic={(good().rarity || "common") === "mythic"}
               >
                 <View class="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-2 gap-y-0.5 w-full">
-                  <View class={`${socket} gap-2 size-[3.143rem] group-data-not-available/row:opacity-45 compact:row-span-2`}>
+                  <View class={`${socket} gap-2 size-11 group-data-not-available/row:opacity-45 compact:row-span-2`}>
                     <Show when={(good().rarity || "common") !== "common"}>
                       <View class="absolute inset-0 nine-plate-cut bg-current opacity-30" />
                     </Show>
-                    <Icon class="relative size-[74%]" name={good().icon} />
+                    <Icon class="relative size-37/50" name={good().icon} />
                   </View>
                   <View class="grow shrink basis-0 min-w-0 items-start text-start gap-0.5">
                     <Text class="text-fg font-semibold group-data-tier-uncommon/row:text-uncommon group-data-tier-rare/row:text-rare group-data-tier-epic/row:text-epic group-data-tier-legendary/row:text-legendary group-data-tier-mythic/row:text-mythic" label={good().name}>
@@ -181,11 +181,11 @@ export function RpgTrade(props: RpgTradeProps) {
             <Show when={good().id === props.selected}>
               <View class="w-full pt-2 border-t border-rim-soft gap-2" label={good().name}>
                 <View class="flex-row items-center w-full gap-2 compact:flex-wrap">
-                  <View class={`${socket} gap-2 size-[4.286rem]`}>
+                  <View class={`${socket} gap-2 size-15`}>
                     <Show when={(good().rarity || "common") !== "common"}>
                       <View class="absolute inset-0 nine-plate-cut bg-current opacity-30" />
                     </Show>
-                    <Icon class="relative size-[74%]" name={good().icon} />
+                    <Icon class="relative size-37/50" name={good().icon} />
                   </View>
                   <View class="grow shrink basis-0 min-w-0 items-start text-start gap-0.5">
                     <Text class="font-semibold text-fg group-data-tier-uncommon/row:text-uncommon group-data-tier-rare/row:text-rare group-data-tier-epic/row:text-epic group-data-tier-legendary/row:text-legendary group-data-tier-mythic/row:text-mythic">{good().name}</Text>
@@ -200,7 +200,7 @@ export function RpgTrade(props: RpgTradeProps) {
                     </Show>
                   </View>
                   <View class="shrink items-end text-end gap-0.5 compact:basis-full compact:flex-row compact:items-baseline compact:justify-end compact:gap-2">
-                    <Text class="text-xs font-semibold tracking-[0.18em] uppercase text-fg-subtle whitespace-nowrap">
+                    <Text class="text-xs font-semibold tracking-kicker uppercase text-fg-subtle whitespace-nowrap">
                       {t("rpg.trade.total")}
                     </Text>
                     <Text class="tabular-nums text-fg text-xl font-bold whitespace-nowrap" label={t("rpg.trade.price", { price: good().price })}>
@@ -214,12 +214,12 @@ export function RpgTrade(props: RpgTradeProps) {
                   </View>
                 </View>
                 <Show when={selling()} fallback={
-                  <Button variant="primary" class={`w-full min-h-[3.614rem] gap-1 ${packClass("Button", "plate", "primary")}`} disabled={!good().available || locked()} label={t("rpg.trade.buy")} onPress={(e) => props.onBuy?.(e, good().id)}>
+                  <Button variant="primary" class={`w-full min-h-12.75 gap-1 ${packClass("Button", "plate", "primary")}`} disabled={!good().available || locked()} label={t("rpg.trade.buy")} onPress={(e) => props.onBuy?.(e, good().id)}>
                     <Text glyph="details" class={keyCap} />
                     <Text>{t("rpg.trade.buy")}</Text>
                   </Button>
                 }>
-                  <Button variant="primary" class={`w-full min-h-[3.614rem] gap-1 ${packClass("Button", "plate", "primary")}`} disabled={!good().available || locked()} label={t("rpg.trade.sell")} onPress={(e) => props.onSell?.(e, good().id)}>
+                  <Button variant="primary" class={`w-full min-h-12.75 gap-1 ${packClass("Button", "plate", "primary")}`} disabled={!good().available || locked()} label={t("rpg.trade.sell")} onPress={(e) => props.onSell?.(e, good().id)}>
                     <Text glyph="details" class={keyCap} />
                     <Text>{t("rpg.trade.sell")}</Text>
                   </Button>

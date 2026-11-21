@@ -16,7 +16,7 @@ export interface RpgLootFeedProps {
  */
 export function RpgLootFeed(props: RpgLootFeedProps) {
   return (
-    <View class={`flex-col items-start gap-y-[0.357rem] max-w-full text-fg`} role="log" label={t("rpg.lootfeed.name")}>
+    <View class={`flex-col items-start gap-y-1.25 max-w-full text-fg`} role="log" label={t("rpg.lootfeed.name")}>
       <For each={props.items ?? []} key={(p) => p.id}>
         {(p, i) => (
         <View class={`max-w-full min-w-0 shrink-0 compact:data-later:hidden transition duration-240 ease-out starting:opacity-0 starting:translate-y-2 exit:opacity-0`} data-later={i() >= 1}>

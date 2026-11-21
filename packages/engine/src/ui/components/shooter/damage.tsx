@@ -31,22 +31,22 @@ export function ShooterDamage(props: ShooterDamageProps) {
       <For each={props.hits ?? []} key={(h) => h.id}>
         {(h, i) => (
           <View
-            class={`flex-col items-start ml-0 animate-pop transition duration-200 exit:opacity-0 data-later:ml-[2.571rem] data-later:opacity-80 data-third:ml-[4.571rem] data-third:opacity-60 compact:data-later:hidden`}
+            class={`flex-col items-start ml-0 animate-pop transition duration-200 exit:opacity-0 data-later:ml-9 data-later:opacity-80 data-third:ml-16 data-third:opacity-60 compact:data-later:hidden`}
             data-later={i() >= 1}
             data-third={i() >= 2}
           >
             <Show when={i() < 1 && h().kind == "headshot"}>
-              <Text class={`text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap text-gold text-shadow-2xs text-stroke-3 text-stroke-bg compact:tracking-normal`}>
+              <Text class={`text-xs font-semibold tracking-label uppercase whitespace-nowrap text-gold text-shadow-2xs text-stroke-3 text-stroke-bg compact:tracking-normal`}>
                 {t("shooter.dealt.headshot")}
               </Text>
             </Show>
             <Show when={i() < 1 && h().kind == "kill"}>
-              <Text class={`text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap text-gold text-shadow-2xs text-stroke-3 text-stroke-bg compact:tracking-normal`}>
+              <Text class={`text-xs font-semibold tracking-label uppercase whitespace-nowrap text-gold text-shadow-2xs text-stroke-3 text-stroke-bg compact:tracking-normal`}>
                 {t("shooter.dealt.kill")}
               </Text>
             </Show>
             <Text
-              class={`text-[2.857rem] leading-none font-bold tabular-nums whitespace-nowrap text-fg text-shadow-2xs text-stroke-3 text-stroke-bg data-headshot:text-gold data-kill:text-gold data-shield:text-ally compact:text-[1.571rem]`}
+              class={`text-display-lg leading-none font-bold tabular-nums whitespace-nowrap text-fg text-shadow-2xs text-stroke-3 text-stroke-bg data-headshot:text-gold data-kill:text-gold data-shield:text-ally compact:text-2xl`}
               data-headshot={h().kind == "headshot"}
               data-kill={h().kind == "kill"}
               data-shield={h().kind == "shield"}

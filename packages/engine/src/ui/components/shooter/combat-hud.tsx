@@ -55,7 +55,7 @@ export function CombatHud(props: CombatHudProps) {
   return (
     <View class="relative inset-0 w-full h-full pointer-events-none">
       <View class="absolute inset-0">
-        <View class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 size-[18rem] compact:size-[12rem]">
+        <View class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 size-63 compact:size-42">
           <DamageDirection hits={props.hits ?? []} />
         </View>
         <View class="absolute inset-0 flex-row items-center justify-center">
@@ -72,7 +72,7 @@ export function CombatHud(props: CombatHudProps) {
         <Killfeed rows={props.feed ?? []} />
       </View>
       <View
-        class={`absolute left-4 bottom-4 py-2 px-3 w-[20rem] max-w-full border-rim bg-linear-to-b from-plate-hi to-plate-lo shadow-plate compact:left-3 compact:right-3 compact:bottom-3 compact:w-auto`}
+        class={`absolute left-4 bottom-4 py-2 px-3 w-70 max-w-full border-rim bg-linear-to-b from-plate-hi to-plate-lo shadow-plate compact:left-3 compact:right-3 compact:bottom-3 compact:w-auto`}
       >
         <StatBar
           value={props.health ?? 0}
@@ -94,7 +94,7 @@ export function CombatHud(props: CombatHudProps) {
           name={t("shooter.hud.health")}
         />
       </View>
-      <View class="absolute right-4 bottom-4 compact:right-3 compact:bottom-[4.75rem]">
+      <View class="absolute right-4 bottom-4 compact:right-3 compact:bottom-16.75">
         <AmmoCounter
           weapon={props.weapon ?? ""}
           mode={props.mode ?? "auto"}

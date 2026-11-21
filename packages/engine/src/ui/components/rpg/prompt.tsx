@@ -22,7 +22,7 @@ export function RpgPrompt(props: RpgPromptProps) {
     <View class={`group/prompt self-center flex-row items-center justify-center max-w-full gap-1 py-1 px-2 nine-plate-cut ${packClass("Plate", "frame")}`} role="status" disabled={props.disabled} data-disabled={props.disabled}>
       <Show when={props.text !== ""}>
         <Show when={props.key !== ""}>
-          <View class={`shrink min-w-[1.714rem] max-w-[40%] py-0 px-1 leading-[1.6] text-xs font-bold text-center text-key-fg bg-linear-to-b from-key-hi to-key-lo rounded-[4.576px] shadow-[0px_2.288px_0px_#0000008c,inset_0px_-2.288px_0px_#0000002e] whitespace-nowrap overflow-hidden group-data-disabled/prompt:opacity-55 pointer-coarse:hidden`}>
+          <View class={`shrink min-w-6 max-w-2/5 py-0 px-1 leading-loose text-xs font-bold text-center text-key-fg bg-linear-to-b from-key-hi to-key-lo rounded-[4.576px] shadow-[0px_2.288px_0px_#0000008c,inset_0px_-2.288px_0px_#0000002e] whitespace-nowrap overflow-hidden group-data-disabled/prompt:opacity-55 pointer-coarse:hidden`}>
             <Text>{props.key}</Text>
           </View>
         </Show>
@@ -30,7 +30,7 @@ export function RpgPrompt(props: RpgPromptProps) {
           {props.text}
         </Text>
         <Show when={props.disabled && props.reason !== ""}>
-          <Text class={`shrink text-xs font-semibold tracking-[0.14em] uppercase whitespace-nowrap text-danger`}>
+          <Text class={`shrink text-xs font-semibold tracking-label uppercase whitespace-nowrap text-danger`}>
             {props.reason}
           </Text>
         </Show>

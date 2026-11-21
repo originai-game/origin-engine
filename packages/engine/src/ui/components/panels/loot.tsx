@@ -57,12 +57,12 @@ export function RpgLoot(props: RpgLootProps) {
       busy={loading() || busy()}
       onAction={{ back: (e) => props.onClose?.(e) }}
     >
-      <View class="absolute left-4 right-[30%] top-0 h-px bg-linear-to-r from-sheen to-transparent to-70% pointer-events-none" />
+      <View class="absolute left-4 right-3/10 top-0 h-px bg-linear-to-r from-sheen to-transparent to-70% pointer-events-none" />
       <View class="shrink border-b border-rim-soft w-full py-1 px-4 gap-0.5">
-        <Text class="text-xs font-semibold tracking-[0.18em] uppercase text-fg-subtle whitespace-nowrap">
+        <Text class="text-xs font-semibold tracking-kicker uppercase text-fg-subtle whitespace-nowrap">
           {items().length ? t("rpg.loot.kicker", { count: formatNumber(items().length) }) : t("rpg.loot.title")}
         </Text>
-        <Text class="font-display text-base font-bold leading-tight tracking-[-0.01em] text-fg m-0">
+        <Text class="font-display text-base font-bold leading-tight tracking-tight text-fg m-0">
           {props.title || t("rpg.loot.title")}
         </Text>
       </View>
@@ -97,11 +97,11 @@ export function RpgLoot(props: RpgLootProps) {
                 data-tier-legendary={(item().rarity || "common") === "legendary"}
                 data-tier-mythic={(item().rarity || "common") === "mythic"}
               >
-                <View class={`${socket} self-start gap-2 size-[3.429rem] group-data-not-available/row:opacity-45 compact:row-span-2`}>
+                <View class={`${socket} self-start gap-2 size-12 group-data-not-available/row:opacity-45 compact:row-span-2`}>
                   <Show when={(item().rarity || "common") !== "common"}>
                     <View class="absolute inset-0 nine-plate-cut bg-current opacity-30" />
                   </Show>
-                  <Icon class="relative size-[78%]" name={item().icon} />
+                  <Icon class="relative size-39/50" name={item().icon} />
                 </View>
                 <View class="grow shrink basis-0 min-w-0 gap-0.5">
                   <View class="flex-row items-baseline gap-2 min-w-0">

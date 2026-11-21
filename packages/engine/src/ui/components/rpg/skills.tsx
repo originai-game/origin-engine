@@ -21,11 +21,11 @@ export interface RpgSkillsProps {
  */
 export function RpgSkills(props: RpgSkillsProps) {
   return (
-    <View class={`flex-row items-end max-w-full gap-x-[0.714rem] compact:gap-x-[0.429rem] text-fg`} role="list" label={t("rpg.skills.name")}>
+    <View class={`flex-row items-end max-w-full gap-x-2.5 compact:gap-x-1.5 text-fg`} role="list" label={t("rpg.skills.name")}>
       <For each={props.slots ?? []} key={(s) => s.id}>
         {(s, i) => (
           <View
-            class={`flex-col items-center gap-y-[0.357rem] shrink min-w-0 data-after-items:ml-[0.714rem] compact:data-after-items:ml-0 data-kind-ultimate:ml-[0.429rem] compact:data-kind-ultimate:ml-[0.143rem] compact:data-kind-item:hidden`}
+            class={`flex-col items-center gap-y-1.25 shrink min-w-0 data-after-items:ml-2.5 compact:data-after-items:ml-0 data-kind-ultimate:ml-1.5 compact:data-kind-ultimate:ml-0.5 compact:data-kind-item:hidden`}
             role="listitem"
             data-kind-item={s().kind === "item"}
             data-kind-ultimate={s().kind === "ultimate"}

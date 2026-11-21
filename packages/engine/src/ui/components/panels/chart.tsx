@@ -27,9 +27,9 @@ export function Chart(props: ChartProps) {
   const n = () => Math.max(props.bars.length, props.line?.length ?? 0);
   const linePoints = () => (props.line ?? []).flatMap((v, i) => [i + 0.5, max() - Math.min(Math.max(v, 0), max())]);
   return (
-    <View class="w-[34.286rem] max-w-full gap-1 p-4 nine-panel-cut bg-glass text-fg" role="figure" label={props.title || t("component.chart.name")}>
+    <View class="w-120 max-w-full gap-1 p-4 nine-panel-cut bg-glass text-fg" role="figure" label={props.title || t("component.chart.name")}>
       <Show when={props.subtitle}>
-        <Text class="text-caption font-bold tracking-[0.14em] uppercase text-hud-accent">{props.subtitle}</Text>
+        <Text class="text-caption font-bold tracking-label uppercase text-hud-accent">{props.subtitle}</Text>
       </Show>
       <Show when={props.title}>
         <Text class="text-base font-bold text-fg">{props.title}</Text>
@@ -66,7 +66,7 @@ export function Chart(props: ChartProps) {
             </For>
           </View>
           <Show when={(props.line?.length ?? 0) > 1}>
-            <Line class="absolute inset-0 size-full stroke-[3px] stroke-gold" points={linePoints()} viewBox={[n(), max()]} />
+            <Line class="absolute inset-0 size-full stroke-3 stroke-gold" points={linePoints()} viewBox={[n(), max()]} />
           </Show>
           <Show when={!props.bars.length && !(props.line?.length)}>
             <Text class="absolute inset-0 p-4 text-fg-muted" role="status">{t("component.chart.empty")}</Text>

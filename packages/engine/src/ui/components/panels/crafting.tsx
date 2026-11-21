@@ -4,7 +4,7 @@ import { Spinner } from "../base/spinner";
 import "./economy.en.ogt";
 
 /** A binding's key cap: hidden on touch, where no key is pressed. */
-const keyCap = `shrink-0 pointer-coarse:hidden text-[1.286rem] leading-none`;
+const keyCap = `shrink-0 pointer-coarse:hidden text-lg leading-none`;
 
 export interface RpgCraftingProps {
   /** The station name; empty uses Crafting. */
@@ -56,12 +56,12 @@ export interface RpgCraftingProps {
 export function RpgCrafting(props: RpgCraftingProps) {
   return (
     <View class={`grow shrink basis-0 border-rim rounded-panel bg-linear-to-b from-glass-hi to-glass-lo shadow-panel text-fg w-full p-4 gap-3 border disabled:text-fg-subtle ${packClass("Panel", "frame")}`} label={props.title || t("rpg.craft.title")} busy={(props.loading ?? false) || (props.busy ?? false)}>
-      <View class="absolute left-4 right-[30%] top-0 h-px bg-linear-to-r from-slot-selected-edge to-transparent to-70% pointer-events-none" />
+      <View class="absolute left-4 right-3/10 top-0 h-px bg-linear-to-r from-slot-selected-edge to-transparent to-70% pointer-events-none" />
       <View class={`min-h-12 border-b border-rim-soft w-full py-1 px-4 gap-0.5`}>
-        <Text class={`text-[0.857rem] font-semibold tracking-[0.18em] uppercase text-fg-muted whitespace-nowrap`}>
+        <Text class={`text-xs font-semibold tracking-kicker uppercase text-fg-muted whitespace-nowrap`}>
           {t("rpg.craft.title")}
         </Text>
-        <Text class={`font-display text-base font-bold leading-tight tracking-[-0.01em] text-fg m-0`}>
+        <Text class={`font-display text-base font-bold leading-tight tracking-tight text-fg m-0`}>
           {props.title || t("rpg.craft.title")}
         </Text>
       </View>
@@ -88,10 +88,10 @@ export function RpgCrafting(props: RpgCraftingProps) {
             <For each={(props.recipes ?? [])} key={(recipe) => recipe.id}>
               {(recipe) => (
               <View class={`flex-row items-center justify-start gap-1 group/row relative nine-plate-cut border border-rim-soft border-l-3 text-fg transition duration-317 w-full min-h-11 pr-2 pl-3 py-1 hover:bg-surface-hover ${recipe().id === props.selected ? packClass("Row", "frame", "selected") : packClass("Row", "frame")} disabled:text-fg-subtle data-down:opacity-45 data-tier-uncommon:border-l-uncommon data-tier-rare:border-l-rare data-tier-epic:border-l-epic data-tier-legendary:border-l-legendary data-tier-mythic:border-l-mythic data-tier-uncommon:text-uncommon data-tier-rare:text-rare data-tier-epic:text-epic data-tier-legendary:text-legendary data-tier-mythic:text-mythic`} role="option" selected={recipe().id === props.selected} disabled={(props.loading ?? false) || (props.busy ?? false)} onPress={(e) => props.onChoose?.(e, recipe().id)} data-not-can={!(recipe().canCraft)} data-selected={recipe().id === props.selected} data-tier-uncommon={(recipe().rarity || 'common') === "uncommon"} data-tier-rare={(recipe().rarity || 'common') === "rare"} data-tier-epic={(recipe().rarity || 'common') === "epic"} data-tier-legendary={(recipe().rarity || 'common') === "legendary"} data-tier-mythic={(recipe().rarity || 'common') === "mythic"}>
-                <View class="absolute left-0 inset-y-0 w-[3.424px] bg-hud-accent hidden group-data-selected/row:block" />
+                <View class="absolute left-0 inset-y-0 w-0.75 bg-hud-accent hidden group-data-selected/row:block" />
                 <View class={`items-center w-full gap-2`}>
-                  <View class={`justify-center items-center bg-tile border-[1.5px] border-common nine-plate-cut gap-2 size-[3.143rem] shrink-0 group-data-not-can/row:opacity-45 group-data-tier-uncommon/row:border-uncommon group-data-tier-rare/row:border-rare group-data-tier-epic/row:border-epic group-data-tier-legendary/row:border-legendary group-data-tier-mythic/row:border-mythic ${packClass("Slot", "frame")}`}>
-                    <Icon class={`size-[74%]`} name={recipe().icon} />
+                  <View class={`justify-center items-center bg-tile border-[1.5px] border-common nine-plate-cut gap-2 size-11 shrink-0 group-data-not-can/row:opacity-45 group-data-tier-uncommon/row:border-uncommon group-data-tier-rare/row:border-rare group-data-tier-epic/row:border-epic group-data-tier-legendary/row:border-legendary group-data-tier-mythic/row:border-mythic ${packClass("Slot", "frame")}`}>
+                    <Icon class={`size-37/50`} name={recipe().icon} />
                   </View>
                   <View class="items-start text-start gap-0.5 shrink min-w-0">
                     <Text class={`font-semibold`}>
@@ -137,10 +137,10 @@ export function RpgCrafting(props: RpgCraftingProps) {
                   </View>
                   <Show when={(props.ingredients ?? []).length}>
                     <View class="gap-1">
-                      <Text class={`text-[0.857rem] font-semibold tracking-[0.18em] uppercase text-fg-subtle whitespace-nowrap m-0`}>
+                      <Text class={`text-xs font-semibold tracking-kicker uppercase text-fg-subtle whitespace-nowrap m-0`}>
                         {t("rpg.craft.ingredients")}
                       </Text>
-                      <View class={`grid grid-cols-[repeat(auto-fill,minmax(9.286rem,1fr))] p-0 m-0 gap-1`}>
+                      <View class={`grid grid-cols-fill-32.5 p-0 m-0 gap-1`}>
                         <For each={(props.ingredients ?? [])} key={(ingredient) => ingredient.id}>
                           {(ingredient) => (
                           <View class={`bg-tile border border-rim-soft nine-plate-cut py-1 px-2 gap-0.5 data-not-sufficient:border-danger/55`} data-not-sufficient={!(ingredient().sufficient)}>
@@ -171,7 +171,7 @@ export function RpgCrafting(props: RpgCraftingProps) {
                       <View class={`flex-row gap-1 min-w-11 min-h-11 shrink px-4 items-center justify-center ${packClass("Button", "plate")}`} role="button" label={t("rpg.economy.less")} disabled={!(props.canDecrease ?? false) || (props.loading ?? false) || (props.busy ?? false)} onPress={(e) => props.onDecrease?.(e, recipe().id)}>
                         <Text>{t("rpg.economy.minus")}</Text>
                       </View>
-                      <View class={`grid items-center justify-items-center min-w-[4.571rem] min-h-11 text-lg font-bold bg-well border border-white/6 shrink`} label={t("rpg.economy.quantity", { quantity: (props.quantity ?? 1) })}>
+                      <View class={`grid items-center justify-items-center min-w-16 min-h-11 text-lg font-bold bg-well border border-white/6 shrink`} label={t("rpg.economy.quantity", { quantity: (props.quantity ?? 1) })}>
                         <Text class="tabular-nums">{formatNumber((props.quantity ?? 1))}</Text>
                       </View>
                       <View class={`flex-row gap-1 min-w-11 min-h-11 shrink px-4 items-center justify-center ${packClass("Button", "plate")}`} role="button" label={t("rpg.economy.more")} disabled={!(props.canIncrease ?? false) || (props.loading ?? false) || (props.busy ?? false)} onPress={(e) => props.onIncrease?.(e, recipe().id)}>
@@ -184,7 +184,7 @@ export function RpgCrafting(props: RpgCraftingProps) {
                       </Text>
                     </Show>
                   </View>
-                  <Button variant="primary" class="w-full min-h-[3.614rem]" disabled={!recipe().canCraft || (props.loading ?? false) || (props.busy ?? false)} label={t("rpg.craft.make")} onPress={(e) => props.onCraft?.(e, recipe().id)} onAction={{ details: (e) => props.onCraft?.(e, recipe().id) }}>
+                  <Button variant="primary" class="w-full min-h-12.75" disabled={!recipe().canCraft || (props.loading ?? false) || (props.busy ?? false)} label={t("rpg.craft.make")} onPress={(e) => props.onCraft?.(e, recipe().id)} onAction={{ details: (e) => props.onCraft?.(e, recipe().id) }}>
                     <Text glyph={"details"} class={keyCap} />
                     <Text>{t("rpg.craft.make")}</Text>
                   </Button>

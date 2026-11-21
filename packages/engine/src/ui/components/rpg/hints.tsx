@@ -15,7 +15,7 @@ export interface RpgHintsProps {
 export function RpgHints(props: RpgHintsProps) {
   return (
     <View
-      class={`flex-row flex-wrap justify-end max-w-full text-fg nine-plate-cut bg-plate-hi p-2 gap-x-[1.143rem] gap-y-1 pointer-coarse:hidden ${packClass("Plate", "frame")}`}
+      class={`flex-row flex-wrap justify-end max-w-full text-fg nine-plate-cut bg-plate-hi p-2 gap-x-4 gap-y-1 pointer-coarse:hidden ${packClass("Plate", "frame")}`}
       role="list"
       label={t("rpg.hints.name")}
     >
@@ -24,13 +24,13 @@ export function RpgHints(props: RpgHintsProps) {
         <View class={`flex-row items-center min-w-0 max-w-full gap-1`} role="listitem">
           <Show when={h().key}>
             <Text
-              class={`shrink min-w-[1.714rem] max-w-[8.571rem] px-1 text-xs leading-[1.6] font-bold text-center text-hud-accent-fg bg-linear-to-b from-white to-key-lo rounded-[4.576px] shadow-[0px_2.288px_0px_#0000008c,inset_0px_-2.288px_0px_#0000002e] whitespace-nowrap overflow-hidden text-ellipsis`}
+              class={`shrink min-w-6 max-w-30 px-1 text-xs leading-loose font-bold text-center text-hud-accent-fg bg-linear-to-b from-white to-key-lo rounded-[4.576px] shadow-[0px_2.288px_0px_#0000008c,inset_0px_-2.288px_0px_#0000002e] whitespace-nowrap overflow-hidden text-ellipsis`}
             >
               {h().key}
             </Text>
           </Show>
           <Text
-            class={`min-w-0 text-xs font-semibold tracking-[0.14em] uppercase opacity-78 whitespace-nowrap overflow-hidden text-ellipsis text-stroke-3 text-stroke-bg`}
+            class={`min-w-0 text-xs font-semibold tracking-label uppercase opacity-78 whitespace-nowrap overflow-hidden text-ellipsis text-stroke-3 text-stroke-bg`}
           >
             {h().label}
           </Text>

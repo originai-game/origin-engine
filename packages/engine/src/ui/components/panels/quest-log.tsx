@@ -35,7 +35,7 @@ export function RpgQuestLog(props: RpgQuestLogProps) {
   return (
     <View class={`relative grow shrink basis-0 min-h-0 nine-panel-cut bg-glass text-fg w-full p-4 gap-2 disabled:text-fg-subtle ${packClass("Panel", "frame")}`} label={props.title}>
       <View class={`flex-row items-center min-h-12 border-b border-rim-soft w-full py-1 px-4 gap-2`}>
-        <Text class={`grow shrink basis-0 font-display text-base font-bold leading-tight tracking-[-0.01em] text-fg m-0`}>
+        <Text class={`grow shrink basis-0 font-display text-base font-bold leading-tight tracking-tight text-fg m-0`}>
           {props.title}
         </Text>
       </View>
@@ -51,7 +51,7 @@ export function RpgQuestLog(props: RpgQuestLogProps) {
             <View class="w-full gap-0.5" label={g().label} data-done={g().done}>
               <View class={`group/heading flex-row items-center tracking-xs text-fg-muted pt-1 pb-0.5 px-2 m-0 gap-1`} role="heading" data-done={g().done}>
                 <View class="w-2 h-0.75 bg-gold data-done:bg-none data-done:bg-fg-subtle" data-done={g().done} />
-                <Text class={`font-semibold text-caption text-gold tracking-[0.14em] uppercase whitespace-nowrap text-ellipsis overflow-hidden group-data-done/heading:text-fg-subtle shrink`}>
+                <Text class={`font-semibold text-caption text-gold tracking-label uppercase whitespace-nowrap text-ellipsis overflow-hidden group-data-done/heading:text-fg-subtle shrink`}>
                   {g().label}
                 </Text>
               </View>
@@ -66,7 +66,7 @@ export function RpgQuestLog(props: RpgQuestLogProps) {
                           {q().name}
                         </Text>
                         <Show when={q().fresh && !g().done}>
-                          <Text class={`font-bold text-caption tracking-[0.14em] uppercase whitespace-nowrap text-gold-fg bg-gold nine-chip-cut py-0 px-1 animate-pop ${packClass("Chip", "frame")}`}>
+                          <Text class={`font-bold text-caption tracking-label uppercase whitespace-nowrap text-gold-fg bg-gold nine-chip-cut py-0 px-1 animate-pop ${packClass("Chip", "frame")}`}>
                             {t("rpg.quests.fresh")}
                           </Text>
                         </Show>

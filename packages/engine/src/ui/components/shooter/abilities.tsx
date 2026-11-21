@@ -45,20 +45,20 @@ export interface ShooterAbilitiesProps {
  */
 export function ShooterAbilities(props: ShooterAbilitiesProps) {
   return (
-    <View class="flex-row items-end gap-x-[1rem] max-w-full compact:gap-x-[0.571rem] text-fg" label={t("shooter.abilities.name")}>
+    <View class="flex-row items-end gap-x-3.5 max-w-full compact:gap-x-2 text-fg" label={t("shooter.abilities.name")}>
       <For each={props.slots ?? []} key={(s) => s.id}>
         {(s) => (
           <View
-            class={`flex-col items-center gap-y-[0.357rem] shrink basis-auto min-w-0 group/ability data-ultimate:size-[6rem] compact:data-ultimate:size-[3.143rem]`}
+            class={`flex-col items-center gap-y-1.25 shrink basis-auto min-w-0 group/ability data-ultimate:size-21 compact:data-ultimate:size-11`}
             label={s().name}
             data-ultimate={s().ultimate === true}
             data-ready={s().ready || (s().ultimate && (s().charge ?? 0) >= 1)}
             data-disabled={s().disabled === true}
           >
-            <View class="relative size-[3.714rem] compact:size-[2.571rem] group-data-ultimate/ability:size-[6rem] compact:group-data-ultimate/ability:size-[3.143rem]">
+            <View class="relative size-13 compact:size-9 group-data-ultimate/ability:size-21 compact:group-data-ultimate/ability:size-11">
               <Show when={s().ultimate}>
                 <View
-                  class="absolute inset-0 rounded-full overflow-hidden border-[3px] border-white/14 bg-tile"
+                  class="absolute inset-0 rounded-full overflow-hidden border-3 border-white/14 bg-tile"
                   role="meter"
                   label={t("shooter.abilities.charge")}
                   valueMin={0}
@@ -72,16 +72,16 @@ export function ShooterAbilities(props: ShooterAbilitiesProps) {
                 </View>
               </Show>
               <View
-                class={`absolute inset-0 flex-row items-center justify-center group-data-ultimate/ability:inset-[11%]`}
+                class={`absolute inset-0 flex-row items-center justify-center group-data-ultimate/ability:inset-11/100`}
               >
                 <View
-                  class={`relative size-full rounded-[0.714rem] bg-linear-to-b from-white/75 via-white/22 to-white/14 group-data-ready/ability:from-white group-data-ready/ability:to-hud-accent group-data-ready/ability:shadow-[0px_0px_0.714rem_rgb(56_232_255/0.55)] group-data-disabled/ability:opacity-45 group-data-ultimate/ability:rounded-tl-[0.357rem] group-data-ultimate/ability:rounded-tr-[0.357rem]`}
+                  class={`relative size-full rounded-card bg-linear-to-b from-white/75 via-white/22 to-white/14 group-data-ready/ability:from-white group-data-ready/ability:to-hud-accent group-data-ready/ability:shadow-[0px_0px_0.714rem_rgb(56_232_255/0.55)] group-data-disabled/ability:opacity-45 group-data-ultimate/ability:rounded-tl-[0.357rem] group-data-ultimate/ability:rounded-tr-[0.357rem]`}
                 >
-                  <View class="absolute inset-[0.143rem] rounded-[0.571rem] overflow-hidden bg-plate-hi">
+                  <View class="absolute inset-0.5 rounded-block overflow-hidden bg-plate-hi">
                     <Show when={s().icon} fallback={
                       <View class="size-full flex-row items-center justify-center">
                         <Show when={s().glyph}>
-                          <Icon class="size-[50%] text-fg" name={s().glyph} />
+                          <Icon class="size-1/2 text-fg" name={s().glyph} />
                         </Show>
                       </View>
                     }>
@@ -96,14 +96,14 @@ export function ShooterAbilities(props: ShooterAbilitiesProps) {
                   </View>
                   <Show when={(s().cooldown ?? 0) > 0 && (s().time ?? "") != ""}>
                     <View class="absolute inset-0 flex-row items-center justify-center pointer-events-none">
-                      <Text class="text-[1.714rem] leading-none font-bold tabular-nums whitespace-nowrap text-fg text-shadow-2xs text-stroke-3 text-stroke-bg compact:text-[1.143rem] group-data-ultimate/ability:text-[1.143rem] compact:group-data-ultimate/ability:text-[0.929rem]">
+                      <Text class="text-title leading-none font-bold tabular-nums whitespace-nowrap text-fg text-shadow-2xs text-stroke-3 text-stroke-bg compact:text-base group-data-ultimate/ability:text-base compact:group-data-ultimate/ability:text-caption">
                         {s().time}
                       </Text>
                     </View>
                   </Show>
                   <Show when={s().ultimate && (s().charge ?? 0) < 1}>
                     <View class="absolute inset-0 flex-row items-center justify-center pointer-events-none">
-                      <Text class="text-[1.714rem] leading-none font-bold tabular-nums whitespace-nowrap text-fg text-shadow-2xs text-stroke-3 text-stroke-bg compact:text-[1.143rem] group-data-ultimate/ability:text-[1.143rem] compact:group-data-ultimate/ability:text-[0.929rem]">
+                      <Text class="text-title leading-none font-bold tabular-nums whitespace-nowrap text-fg text-shadow-2xs text-stroke-3 text-stroke-bg compact:text-base group-data-ultimate/ability:text-base compact:group-data-ultimate/ability:text-caption">
                         {`${formatNumber(Math.max(s().charge ?? 0, 0) * 100, { decimals: 0 })}%`}
                       </Text>
                     </View>
@@ -112,7 +112,7 @@ export function ShooterAbilities(props: ShooterAbilitiesProps) {
               </View>
               <Show when={(s().count ?? 0) > 0}>
                 <Text
-                  class={`absolute -top-[0.429rem] -right-[0.429rem] max-w-[4.457rem] py-0 px-[0.357rem] text-[0.857rem] font-bold tabular-nums whitespace-nowrap truncate text-fg nine-chip-cut bg-tile ${packClass("Chip", "frame")}`}
+                  class={`absolute -top-1.5 -right-1.5 max-w-15.5 py-0 px-1.25 text-xs font-bold tabular-nums whitespace-nowrap truncate text-fg nine-chip-cut bg-tile ${packClass("Chip", "frame")}`}
                 >
                   {t("shooter.abilities.count", { count: formatNumber(s().count ?? 0) })}
                 </Text>
@@ -120,7 +120,7 @@ export function ShooterAbilities(props: ShooterAbilitiesProps) {
             </View>
             <Show when={(s().key ?? "") != ""}>
               <Text
-                class={`shrink basis-auto max-w-full min-w-[1.571rem] py-0 px-1 text-[0.857rem] leading-[1.5] font-bold text-center text-key-fg bg-linear-to-b from-white to-key-hi rounded-[0.286rem] shadow-[0px_0.143rem_0px_#0000008c,inset_0px_-0.143rem_0px_#0000002e] whitespace-nowrap truncate pointer-coarse:hidden`}
+                class={`shrink basis-auto max-w-full min-w-5.5 py-0 px-1 text-xs leading-[1.5] font-bold text-center text-key-fg bg-linear-to-b from-white to-key-hi rounded-control shadow-[0px_0.143rem_0px_#0000008c,inset_0px_-0.143rem_0px_#0000002e] whitespace-nowrap truncate pointer-coarse:hidden`}
               >
                 {s().key}
               </Text>
