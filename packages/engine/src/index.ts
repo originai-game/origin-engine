@@ -48,6 +48,7 @@ export const str = ((capacity, value = "", options) => Object.freeze({ ...fieldS
 export const list = ((of, capacity, options) =>
   Object.freeze({ kind: of.kind, default: Object.freeze([]), options: Object.freeze({ ...(options ?? {}) }), list: capacity })) as typeof Api.list;
 export * from "./generated/exports.ts";
+export * from "./generated/vocabulary.ts";
 
 export const defineComponent: typeof Api.defineComponent = (name, fields) =>
   defineRecord("component", name, fields as unknown as Record<string, FieldSpec>) as never;

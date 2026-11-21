@@ -243,6 +243,10 @@ pub fn generate(api: &Api) -> Vec<Generated> {
             contents: r#gen::ts::exports_ts(&ix),
         },
         Generated {
+            path: "packages/engine/src/generated/vocabulary.ts".to_string(),
+            contents: r#gen::ts::vocabulary_ts(&ix),
+        },
+        Generated {
             path: "crates/og-api/src/generated/host.rs".to_string(),
             contents: r#gen::host::host_rs(&ix),
         },

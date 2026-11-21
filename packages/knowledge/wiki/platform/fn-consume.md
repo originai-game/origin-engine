@@ -30,4 +30,4 @@ fn consume {
 }
 ```
 
-<sub>Module `platform` line 354</sub>
+<sub>Module `platform` line 360</sub>

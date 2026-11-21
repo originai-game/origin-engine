@@ -366,7 +366,19 @@ impl<'a> Validator<'a, '_> {
     fn constant(&mut self, c: &Const) {
         self.name(screaming, &c.name, c.line, "const", "SCREAMING_SNAKE_CASE");
         self.doc(&c.doc, c.line, || format!("const `{}`", c.name));
-        if !matches!(
+        if c.ty.is_string_list() {
+            // The members are the value string's whitespace-separated words; each is arbitrary text.
+            match &c.value {
+                Value::String(s) if !s.split_whitespace().next().unwrap_or_default().is_empty() => {}
+                _ => self.error(
+                    c.line,
+                    format!(
+                        "const `{}`: a List.String const's value is one string of its members, whitespace-separated",
+                        c.name
+                    ),
+                ),
+            }
+        } else if !matches!(
             c.ty.name(),
             "u32" | "i32" | "f32" | "f64" | "String" | "bool"
         ) || !c.ty.args().is_empty()
@@ -374,7 +386,7 @@ impl<'a> Validator<'a, '_> {
             self.error(
                 c.line,
                 format!(
-                    "const `{}` has type `{}`: a const is a u32, i32, f32, f64, String or bool",
+                    "const `{}` has type `{}`: a const is a u32, i32, f32, f64, String, bool or a List.String of whitespace-separated members",
                     c.name, c.ty
                 ),
             );

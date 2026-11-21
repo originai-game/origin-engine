@@ -242,6 +242,13 @@ impl TypeRef {
         }
     }
 
+    /// Whether `ty` is `List.String`: a const of it holds its members
+    /// whitespace-separated in one string, which the validator requires and
+    /// the generators split.
+    pub fn is_string_list(&self) -> bool {
+        self.name() == "List" && self.args().first().is_some_and(|a| a.name() == "String")
+    }
+
     pub fn name(&self) -> &str {
         match self {
             TypeRef::Named { name, .. } => name,

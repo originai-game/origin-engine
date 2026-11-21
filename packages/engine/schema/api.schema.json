@@ -11207,7 +11207,84 @@
         "RoomPeerLeft",
         "RoomMessage"
       ],
-      "consts": [],
+      "consts": [
+        {
+          "name": "CORE_ONLY_METHODS",
+          "type": "List<String>",
+          "value": [
+            "store.get",
+            "store.set",
+            "store.list",
+            "leaderboard.submit",
+            "leaderboard.top",
+            "leaderboard.around",
+            "telemetry",
+            "catalog.head"
+          ],
+          "doc": "The core methods that are not service methods: the store and its save slots, the leaderboards, telemetry and the catalog's head — what any host answers from its own storage. The provider's CORE_METHODS is these plus SERVICE_METHODS; capabilities is these, the services and the extensions."
+        },
+        {
+          "name": "SERVICE_METHODS",
+          "type": "List<String>",
+          "value": [
+            "purchase.products",
+            "purchase.buy",
+            "purchase.entitlements",
+            "purchase.consume",
+            "ad.ready",
+            "ad.show",
+            "achievement.unlock",
+            "achievement.progress",
+            "achievement.list",
+            "player.get",
+            "friends.list",
+            "invite.send",
+            "invite.list",
+            "share"
+          ],
+          "doc": "The service methods: purchases, ads, achievements, the player, friends, invites and share (docs/platform-asks.md #19). They need the platform's services, so a host without one answers it `unavailable`."
+        },
+        {
+          "name": "HOST_EXTENSIONS",
+          "type": "List<String>",
+          "value": [
+            "point",
+            "ai.mark"
+          ],
+          "doc": "Methods one host defines: `point` (Origin Point) and `ai.mark` are OriginGame's, not core methods (docs/platform-asks.md)."
+        },
+        {
+          "name": "ERROR_CODES",
+          "type": "List<String>",
+          "value": [
+            "offline",
+            "timeout",
+            "invalid",
+            "unauthorized",
+            "not_found",
+            "conflict",
+            "too_large",
+            "rate_limited",
+            "unavailable",
+            "failed",
+            "cancelled",
+            "no_fill"
+          ],
+          "doc": "Every error code an answer may carry (PlatformError.code); a call may be retried later for RETRYABLE_CODES."
+        },
+        {
+          "name": "RETRYABLE_CODES",
+          "type": "List<String>",
+          "value": [
+            "offline",
+            "timeout",
+            "unavailable",
+            "rate_limited",
+            "no_fill"
+          ],
+          "doc": "The error codes whose call may succeed later (`retryable: true`)."
+        }
+      ],
       "functions": [
         {
           "name": "storeGet",

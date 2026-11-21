@@ -33,4 +33,4 @@ fn storeGet {
 }
 ```
 
-<sub>Module `platform` line 120</sub>
+<sub>Module `platform` line 126</sub>

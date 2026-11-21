@@ -1,46 +1,38 @@
 // The provider contract (src/provider.ts, docs/design.md §2.8 Providers):
-// its vocabulary and error codes agree with the IDL's (platform.ogt), and the
-// providers in the tree keep it under checkPlatformProvider: the local
+// its vocabulary is the IDL's — platform.ogt's list constants, generated into
+// src/generated/vocabulary.ts by `og api gen` (`og api check` holds the
+// generated files to the IDL) and re-exported by provider.ts. The providers
+// in the tree keep the contract under checkPlatformProvider: the local
 // document with and without its fake, no platform, and the Player bridge
 // (shell/platform.ts) over a stand-in Player with every method and with
 // few. The checker itself catches a provider that answers twice, never, or
 // with the wrong shape. The page's choice of providers (pageProviders) is
 // checked, and a publish build never fakes a purchase through it.
 import { expect, test } from "bun:test";
-import { readFileSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
-import { catalogHeadAnswer, checkPlatformProvider, CORE_METHODS, staticCatalog, ERROR_CODES, HOST_EXTENSIONS, PROVIDER_VERSION, RETRYABLE_CODES, SERVICE_METHODS, unavailable, type PlatformProvider } from "../src/provider.ts";
+import { catalogHeadAnswer, checkPlatformProvider, CORE_METHODS, CORE_ONLY_METHODS, staticCatalog, ERROR_CODES, HOST_EXTENSIONS, PROVIDER_VERSION, RETRYABLE_CODES, SERVICE_METHODS, unavailable, type PlatformProvider } from "../src/provider.ts";
+import * as vocabulary from "../src/generated/vocabulary.ts";
 import { fail, LOCAL_CAPABILITIES, localPlatform, memoryPersistence, noPlatform } from "../src/platform-local.ts";
 import { pageProviders, playerPlatform, type PlayerLink } from "../shell/platform.ts";
 import { contentBase } from "../shell/page.ts";
 import type { PlayerResult } from "../shell/player.ts";
 
-const repo = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
-const idl = readFileSync(join(repo, "crates/og-api/api/platform.ogt"), "utf8");
-
-/** The words of an IDL doc sentence: `a, b and c` → [a, b, c]. */
-const words = (text: string) => text.split(/,\s*|\s+and\s+|\s+or\s+/).map((w) => w.trim().replace(/\s*\(.*$/, "")).filter(Boolean);
-
-test("the vocabulary is the IDL's: PlatformInfo.capabilities lists exactly CORE_METHODS and HOST_EXTENSIONS", () => {
-  const m = /field capabilities List\.String "The methods it answers: ([^"(]+?) \(og\.platform\.supports/.exec(idl);
-  expect(m).not.toBeNull();
-  const listed = words(m![1]!).sort();
-  expect(listed).toEqual([...CORE_METHODS, ...HOST_EXTENSIONS].sort());
-  expect(new Set([...CORE_METHODS, ...HOST_EXTENSIONS]).size).toBe(CORE_METHODS.length + HOST_EXTENSIONS.length);
+test("the vocabulary is generated from the IDL: provider re-exports platform.ogt's list constants", () => {
+  // Re-exports, not copies: the same arrays the generator wrote.
+  expect(SERVICE_METHODS).toBe(vocabulary.SERVICE_METHODS);
+  expect(HOST_EXTENSIONS).toBe(vocabulary.HOST_EXTENSIONS);
+  expect(ERROR_CODES).toBe(vocabulary.ERROR_CODES);
+  expect(RETRYABLE_CODES).toBe(vocabulary.RETRYABLE_CODES);
+  // The partitions make the vocabulary: CORE_METHODS is each partition once, services within the core, extensions beside it.
+  expect([...CORE_METHODS]).toEqual([...CORE_ONLY_METHODS, ...SERVICE_METHODS]);
   expect(SERVICE_METHODS.every((s) => (CORE_METHODS as readonly string[]).includes(s))).toBeTrue();
+  expect(HOST_EXTENSIONS.every((h) => !(CORE_METHODS as readonly string[]).includes(h))).toBeTrue();
+  // The local platform answers the core vocabulary but `catalog.head` (only a content base serves it).
+  expect(new Set([...LOCAL_CAPABILITIES, "catalog.head"])).toEqual(new Set([...CORE_ONLY_METHODS, ...HOST_EXTENSIONS]));
   expect(PROVIDER_VERSION).toBe(1);
 });
 
-test("the error codes and the retryable ones are the IDL's", () => {
-  const m = /Errors carry the Player's stable codes: (.+?); retryable is true for ([^."]+)\./.exec(idl);
-  expect(m).not.toBeNull();
-  // "cancelled (the player backed out ...) and no_fill (no ad to show now)": the codes before each note.
-  const codes = m![1]!.replace(/\([^)]*\)/g, "");
-  expect(words(codes).sort()).toEqual([...ERROR_CODES].sort());
-  expect(words(m![2]!).sort()).toEqual([...RETRYABLE_CODES].sort());
-  const field = /field code String "([^"]+)\."/.exec(idl)!;
-  expect(words(field[1]!).sort()).toEqual([...ERROR_CODES].sort());
+test("the retryable error codes are among all of them, and the local failures follow", () => {
+  expect(RETRYABLE_CODES.every((c) => (ERROR_CODES as readonly string[]).includes(c))).toBeTrue();
   // The local platform's failures follow it (no_fill is retryable, as og.platform says).
   expect(fail("no_fill", "x")).toMatchObject({ ok: false, error: { code: "no_fill", retryable: true } });
   expect(unavailable("share")).toEqual({ ok: false, error: { code: "unavailable", message: "this host answers no share", retryable: true } });

@@ -24,7 +24,7 @@ export type { PlatformAnswer, PlatformCall, PlatformLink, PlatformNotice };
 /** What answers an engine's platform calls: the provider contract's PlatformProvider. */
 export type PlatformHost = PlatformProvider;
 
-/** The store, leaderboards, telemetry, Origin Point and AI marks: what the local platform always answers. */
+/** The store, leaderboards, telemetry, Origin Point and AI marks: what the local platform always answers (the core vocabulary but `catalog.head`, which only a content base serves). */
 export const LOCAL_CAPABILITIES = ["store.get", "store.set", "store.list", "leaderboard.submit", "leaderboard.top", "leaderboard.around", "telemetry", "point", "ai.mark"] as const;
 
 /** A product the fake sells. */

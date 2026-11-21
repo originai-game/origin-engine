@@ -24564,6 +24564,29 @@ export interface QuestView {
 // See `saves §7`.
 
 /**
+ * The core methods that are not service methods: the store and its save slots, the leaderboards, telemetry and the catalog's head — what any host answers from its own storage. The provider's CORE_METHODS is these plus SERVICE_METHODS; capabilities is these, the services and the extensions.
+ */
+export declare const CORE_ONLY_METHODS: readonly ["store.get", "store.set", "store.list", "leaderboard.submit", "leaderboard.top", "leaderboard.around", "telemetry", "catalog.head"];
+
+/**
+ * The service methods: purchases, ads, achievements, the player, friends, invites and share (docs/platform-asks.md #19). They need the platform's services, so a host without one answers it `unavailable`.
+ */
+export declare const SERVICE_METHODS: readonly ["purchase.products", "purchase.buy", "purchase.entitlements", "purchase.consume", "ad.ready", "ad.show", "achievement.unlock", "achievement.progress", "achievement.list", "player.get", "friends.list", "invite.send", "invite.list", "share"];
+
+/**
+ * Methods one host defines: `point` (Origin Point) and `ai.mark` are OriginGame's, not core methods (docs/platform-asks.md).
+ */
+export declare const HOST_EXTENSIONS: readonly ["point", "ai.mark"];
+
+/**
+ * Every error code an answer may carry (PlatformError.code); a call may be retried later for RETRYABLE_CODES.
+ */
+export declare const ERROR_CODES: readonly ["offline", "timeout", "invalid", "unauthorized", "not_found", "conflict", "too_large", "rate_limited", "unavailable", "failed", "cancelled", "no_fill"];
+
+/** The error codes whose call may succeed later (`retryable: true`). */
+export declare const RETRYABLE_CODES: readonly ["offline", "timeout", "unavailable", "rate_limited", "no_fill"];
+
+/**
  * How a leaderboard sorts; the first submission to a board fixes it.
  * - `"desc"`: Higher is better (scores).
  * - `"asc"`: Lower is better (times).

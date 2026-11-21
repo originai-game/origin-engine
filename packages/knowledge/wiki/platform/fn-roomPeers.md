@@ -28,4 +28,4 @@ fn roomPeers {
 }
 ```
 
-<sub>Module `platform` line 628</sub>
+<sub>Module `platform` line 634</sub>

@@ -21,29 +21,23 @@
  */
 export const PROVIDER_VERSION = 1;
 
-/** Purchases, ads, achievements, the player, friends, invites and share (docs/platform-asks.md #19). */
-export const SERVICE_METHODS = [
-  "purchase.products",
-  "purchase.buy",
-  "purchase.entitlements",
-  "purchase.consume",
-  "ad.ready",
-  "ad.show",
-  "achievement.unlock",
-  "achievement.progress",
-  "achievement.list",
-  "player.get",
-  "friends.list",
-  "invite.send",
-  "invite.list",
-  "share",
-] as const;
+// The vocabulary is the IDL's (crates/og-api/api/platform.ogt), generated into
+// ./generated/vocabulary.ts by `og api gen` and re-exported here: a method or
+// an error code the IDL gains is this module's without a hand edit.
 
-/** The methods any store or portal can answer: the core vocabulary. */
-export const CORE_METHODS = ["store.get", "store.set", "store.list", "leaderboard.submit", "leaderboard.top", "leaderboard.around", "telemetry", "catalog.head", ...SERVICE_METHODS] as const;
+import { CORE_ONLY_METHODS, ERROR_CODES, HOST_EXTENSIONS, RETRYABLE_CODES, SERVICE_METHODS } from "./generated/vocabulary.ts";
+
+/** The methods any host answers from its own storage: the store, the leaderboards, telemetry and the catalog. */
+export { CORE_ONLY_METHODS };
+
+/** Purchases, ads, achievements, the player, friends, invites and share (docs/platform-asks.md #19). */
+export { SERVICE_METHODS };
+
+/** The methods any store or portal can answer: the core vocabulary — the core-only methods plus the service methods. */
+export const CORE_METHODS = [...CORE_ONLY_METHODS, ...SERVICE_METHODS] as const;
 
 /** Methods one host defines: `point` (Origin Point) and `ai.mark` are OriginGame's. */
-export const HOST_EXTENSIONS = ["point", "ai.mark"] as const;
+export { HOST_EXTENSIONS };
 
 export type CoreMethod = (typeof CORE_METHODS)[number];
 export type HostExtension = (typeof HOST_EXTENSIONS)[number];
@@ -54,11 +48,11 @@ export type PlatformMethod = CoreMethod | HostExtension;
 export const ONE_WAY_METHODS: readonly PlatformMethod[] = ["telemetry"];
 
 /** Every error code an answer may carry (crates/og-api/api/platform.ogt). */
-export const ERROR_CODES = ["offline", "timeout", "invalid", "unauthorized", "not_found", "conflict", "too_large", "rate_limited", "unavailable", "failed", "cancelled", "no_fill"] as const;
+export { ERROR_CODES };
 export type ErrorCode = (typeof ERROR_CODES)[number];
 
 /** The codes whose call may succeed later (`retryable: true`). */
-export const RETRYABLE_CODES = ["offline", "timeout", "unavailable", "rate_limited", "no_fill"] as const satisfies readonly ErrorCode[];
+export { RETRYABLE_CODES };
 
 const RETRYABLE: ReadonlySet<string> = new Set(RETRYABLE_CODES);
 

@@ -245,7 +245,7 @@ impl<'a> Gen<'a, '_> {
                     self.line(&format!(
                         "export declare const {}: {};",
                         c.name,
-                        const_literal(c)
+                        const_type(c)
                     ));
                 }
                 Item::Handle(h) => {
@@ -756,7 +756,9 @@ pub fn exports_ts(ix: &Index<'_>) -> String {
             .items
             .iter()
             .filter_map(|i| match i {
-                Item::Const(c) => Some(c),
+                // A list constant's members are written to vocabulary.ts instead,
+                // which the provider and host modules read without the runtime.
+                Item::Const(c) if !c.ty.is_string_list() => Some(c),
                 _ => None,
             })
             .collect();
@@ -798,12 +800,72 @@ pub fn exports_ts(ix: &Index<'_>) -> String {
     out
 }
 
+/// The IDL's list constants (`List.String`): each value is its members,
+/// whitespace-separated in one string, written as a readonly array. Emitted
+/// apart from [`exports_ts`], whose column factories import the runtime: the
+/// provider and host modules read the vocabulary without it.
+pub fn vocabulary_ts(ix: &Index<'_>) -> String {
+    let mut out = format!(
+        "// {GENERATED_BY}\n\
+         // The IDL's list constants (`List.String`): each const's value is its members,\n\
+         // whitespace-separated in one string, as a readonly array. Emitted apart from\n\
+         // exports.ts, whose column factories import the runtime: provider and host\n\
+         // modules read these without it.\n"
+    );
+    for m in &ix.api.modules {
+        let consts: Vec<(&Const, &str)> = m
+            .items
+            .iter()
+            .filter_map(|i| match i {
+                Item::Const(c) if c.ty.is_string_list() => {
+                    if let og_core::ogt::Value::String(s) = &c.value {
+                        Some((c, s.as_str()))
+                    } else {
+                        None
+                    }
+                }
+                _ => None,
+            })
+            .collect();
+        if consts.is_empty() {
+            continue;
+        }
+        let _ = writeln!(out, "\n// {}", m.name);
+        for (c, members) in consts {
+            let _ = writeln!(out, "\n/** {} */", c.doc.join(" "));
+            let _ = writeln!(
+                out,
+                "export const {} = [{}] as const;",
+                c.name,
+                list_members(members).join(", ")
+            );
+        }
+    }
+    out
+}
+
 /// A constant's value as a TypeScript literal (its declared type too).
 fn const_literal(c: &Const) -> String {
     match &c.value {
         og_core::ogt::Value::String(s) => Json::str(s.clone()).render().trim_end().to_string(),
         v => crate::values::show(v),
     }
+}
+
+/// A string-list constant's members as TypeScript string literals.
+fn list_members(s: &str) -> Vec<String> {
+    s.split_whitespace().map(Json::str).map(|j| j.render().trim_end().to_string()).collect()
+}
+
+/// A constant's TypeScript type: its value as a literal type; a list
+/// constant's members a readonly tuple.
+fn const_type(c: &Const) -> String {
+    if c.ty.is_string_list() {
+        if let og_core::ogt::Value::String(s) = &c.value {
+            return format!("readonly [{}]", list_members(s).join(", "));
+        }
+    }
+    const_literal(c)
 }
 
 fn paren(t: &str) -> String {

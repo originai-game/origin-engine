@@ -34,4 +34,4 @@ fn now {
 }
 ```
 
-<sub>Module `platform` line 492</sub>
+<sub>Module `platform` line 498</sub>

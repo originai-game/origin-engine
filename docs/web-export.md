@@ -775,10 +775,12 @@ break): a `PlatformProvider` (`host`, `capabilities`, `handle(calls,
 answer, link)`, optional `poll`; the shapes `PlatformCall`,
 `PlatformAnswer`, `PlatformNotice`, `PlatformLink`) and a `RoomProvider`
 (`host`, `handle(ops, deliver)`, optional `attach(deliver)`; `RoomOp` and
-`RoomEvent` are og-net's protocol). The vocabulary is data:
-`CORE_METHODS`, `HOST_EXTENSIONS` (`point`, `ai.mark`: OriginGame's),
-`ERROR_CODES` and `RETRYABLE_CODES`, kept equal to `platform.ogt`'s by
-`tests/provider.test.ts`. A provider answers each call once (`telemetry`
+`RoomEvent` are og-net's protocol). The vocabulary is the IDL's:
+`platform.ogt`'s list constants (`SERVICE_METHODS`, `CORE_ONLY_METHODS`,
+`HOST_EXTENSIONS`, `ERROR_CODES` and `RETRYABLE_CODES`) are generated into
+`src/generated/vocabulary.ts` by `og api gen` and re-exported by
+`provider.ts` (`CORE_METHODS` is the core-only methods plus the service
+methods). A provider answers each call once (`telemetry`
 never) and anything it does not list `unavailable`;
 `checkPlatformProvider(provider)` checks this in a provider author's own
 tests.

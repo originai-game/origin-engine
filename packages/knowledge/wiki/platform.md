@@ -8,7 +8,7 @@ See `saves §7`.
 
 - **TypeScript**: functions are the namespace `og.platform`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
-- **Core** (what most games use): `PlatformResult`, `og.platform.storeGet`, `og.platform.result`, `QuickPlayDesc`, `og.platform.quickPlay`; 73 more are advanced (`og api show platform --all`).
+- **Core** (what most games use): `PlatformResult`, `og.platform.storeGet`, `og.platform.result`, `QuickPlayDesc`, `og.platform.quickPlay`; 78 more are advanced (`og api show platform --all`).
 - **Index**: [every module and guide](index.md).
 
 ```ogt
@@ -23,6 +23,11 @@ module platform {
 
 | Name | Kind | Signature | Summary |
 |---|---|---|---|
+| [`CORE_ONLY_METHODS`](#const-CORE_ONLY_METHODS) | constant |  | The core methods that are not service methods: the store and its save slots, the leaderboards, telemetry and the catalog's head — what any host answers from its own storage. |
+| [`SERVICE_METHODS`](#const-SERVICE_METHODS) | constant |  | The service methods: purchases, ads, achievements, the player, friends, invites and share (docs/platform-asks.md #19). |
+| [`HOST_EXTENSIONS`](#const-HOST_EXTENSIONS) | constant |  | Methods one host defines: `point` (Origin Point) and `ai.mark` are OriginGame's, not core methods (docs/platform-asks.md). |
+| [`ERROR_CODES`](#const-ERROR_CODES) | constant |  | Every error code an answer may carry (PlatformError.code); a call may be retried later for RETRYABLE_CODES. |
+| [`RETRYABLE_CODES`](#const-RETRYABLE_CODES) | constant |  | The error codes whose call may succeed later (`retryable: true`). |
 | [`PlatformOrder`](platform/type-PlatformOrder.md) | enum |  | How a leaderboard sorts; the first submission to a board fixes it. |
 | [`og.PlatformAnswered`](platform/record-PlatformAnswered.md) | event |  | An answer arrived: sent by og.platform at the start of the tick it was applied, read by systems the tick after (og.platform.result has it at once). |
 | [`StoreSetDesc`](platform/type-StoreSetDesc.md) | desc struct |  | A write to the store. |
@@ -101,3 +106,43 @@ module platform {
 | [`og.platform.roomPeers`](platform/fn-roomPeers.md) | function | `(world: World): readonly RoomPeer[]` | The peers in this engine's room, this one included, by number; empty in none. |
 | [`og.platform.roomInfo`](platform/fn-roomInfo.md) | function | `(world: World): RoomInfo` | The room this engine is in, and what carries rooms here. |
 | [`og.platform.roomMessage`](platform/fn-roomMessage.md) | function | `(world: World, message: number): RoomMessageData \| null` | A message og.RoomMessage announced: who sent it and what it carries. |
+
+## Constants
+
+| Constant | Type | Value | Doc |
+|---|---|---|---|
+| <a id="const-CORE_ONLY_METHODS"></a>`CORE_ONLY_METHODS` | `readonly string[]` | `"store.get store.set store.list leaderboard.submit leaderboard.top leaderboard.around telemetry catalog.head"` | The core methods that are not service methods: the store and its save slots, the leaderboards, telemetry and the catalog's head — what any host answers from its own storage. The provider's CORE_METHODS is these plus SERVICE_METHODS; capabilities is these, the services and the extensions. |
+| <a id="const-SERVICE_METHODS"></a>`SERVICE_METHODS` | `readonly string[]` | `"purchase.products purchase.buy purchase.entitlements purchase.consume ad.ready ad.show achievement.unlock achievement.progress achievement.list player.get friends.list invite.send invite.list share"` | The service methods: purchases, ads, achievements, the player, friends, invites and share (docs/platform-asks.md #19). They need the platform's services, so a host without one answers it `unavailable`. |
+| <a id="const-HOST_EXTENSIONS"></a>`HOST_EXTENSIONS` | `readonly string[]` | `"point ai.mark"` | Methods one host defines: `point` (Origin Point) and `ai.mark` are OriginGame's, not core methods (docs/platform-asks.md). |
+| <a id="const-ERROR_CODES"></a>`ERROR_CODES` | `readonly string[]` | `"offline timeout invalid unauthorized not_found conflict too_large rate_limited unavailable failed cancelled no_fill"` | Every error code an answer may carry (PlatformError.code); a call may be retried later for RETRYABLE_CODES. |
+| <a id="const-RETRYABLE_CODES"></a>`RETRYABLE_CODES` | `readonly string[]` | `"offline timeout unavailable rate_limited no_fill"` | The error codes whose call may succeed later (`retryable: true`). |
+
+```ogt
+const CORE_ONLY_METHODS List.String "store.get store.set store.list leaderboard.submit leaderboard.top leaderboard.around telemetry catalog.head" "The core methods that are not service methods: the store and its save slots, the leaderboards, telemetry and the catalog's head — what any host answers from its own storage. The provider's CORE_METHODS is these plus SERVICE_METHODS; capabilities is these, the services and the extensions."
+```
+
+<sub>Module `platform` line 6</sub>
+
+```ogt
+const SERVICE_METHODS List.String "purchase.products purchase.buy purchase.entitlements purchase.consume ad.ready ad.show achievement.unlock achievement.progress achievement.list player.get friends.list invite.send invite.list share" "The service methods: purchases, ads, achievements, the player, friends, invites and share (docs/platform-asks.md #19). They need the platform's services, so a host without one answers it `unavailable`."
+```
+
+<sub>Module `platform` line 7</sub>
+
+```ogt
+const HOST_EXTENSIONS List.String "point ai.mark" "Methods one host defines: `point` (Origin Point) and `ai.mark` are OriginGame's, not core methods (docs/platform-asks.md)."
+```
+
+<sub>Module `platform` line 8</sub>
+
+```ogt
+const ERROR_CODES List.String "offline timeout invalid unauthorized not_found conflict too_large rate_limited unavailable failed cancelled no_fill" "Every error code an answer may carry (PlatformError.code); a call may be retried later for RETRYABLE_CODES."
+```
+
+<sub>Module `platform` line 9</sub>
+
+```ogt
+const RETRYABLE_CODES List.String "offline timeout unavailable rate_limited no_fill" "The error codes whose call may succeed later (`retryable: true`)."
+```
+
+<sub>Module `platform` line 10</sub>

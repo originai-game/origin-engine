@@ -230,6 +230,9 @@ and diagnostics show the angle-bracket form.
 - desc fields (and record fields) without a zero value or a `default`;
   defaults of the wrong type or outside `min`..`max`; a range on a
   non-numeric field; an unknown unit;
+- a const of a type that is not a u32, i32, f32, f64, String, bool or
+  `List.String`; a `List.String` const whose value is not one string of its
+  members, whitespace-separated;
 - a required parameter after an optional one;
 - columns whose name is not their value type, whose array cannot hold the
   value's scalars, or whose stride is not the value's scalar count;
