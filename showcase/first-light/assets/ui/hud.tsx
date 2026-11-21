@@ -1,4 +1,4 @@
-import { Icon, Show, Text, View, type UiEvent } from "@origingame/engine/ui";
+import { Icon, Show, Text, View, packClass, type UiEvent } from "@origingame/engine/ui";
 import { AbilityBar } from "@origingame/engine/ui/components";
 import { RpgQuestTracker } from "@origingame/engine/ui/components";
 
@@ -32,7 +32,7 @@ export function Hud(props: HudProps) {
     <Show when={props.shown}>
       <View class="absolute inset-0 justify-between pt-[calc(env(hud-inset-top)+16px)] pr-[calc(env(hud-inset-right)+16px)] pb-[calc(env(hud-inset-bottom)+16px)] pl-[calc(env(hud-inset-left)+16px)]">
         <View class="flex-row flex-wrap items-start gap-3">
-          <View class="bg-surface outline outline-border -outline-offset-1 py-2 px-4 gap-0.5 rounded-panel" role="status">
+          <View class={`bg-surface nine-plate-cut py-2 px-4 gap-0.5 ${packClass("Plate", "frame")}`} role="status">
             <View class="flex-row items-center gap-1">
               <Icon class="size-4 text-fg" name="clock" />
               <Text class="text-display-sm font-bold font-mono text-fg whitespace-nowrap">{props.clock}</Text>
