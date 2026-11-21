@@ -271,14 +271,17 @@ fn main() {
         t.frame(&fonts, &icons);
         // The camera pans a px a frame; every tenth plate is off screen.
         for f in 0..6 {
-            let project = |target, _lift: [f32; 3]| {
+            let project = |target, _lift: [f32; 3], _occlusion: bool| {
                 let og_ui_next::tree::AnchorTarget::Entity(e) = target else {
                     return None;
                 };
-                (e % 10 != 0).then_some([
-                    (e as f32 * 6.0 + f as f32) % 1200.0,
-                    (e as f32 * 3.0) % 700.0,
-                ])
+                (e % 10 != 0).then_some(og_ui_next::tree::Sighting {
+                    at: [
+                        (e as f32 * 6.0 + f as f32) % 1200.0,
+                        (e as f32 * 3.0) % 700.0,
+                    ],
+                    ..Default::default()
+                })
             };
             let a = allocations();
             let s = Instant::now();
@@ -309,14 +312,17 @@ fn main() {
         t.frame(&face, &icons);
         let mut next = 1000u32;
         for f in 0..180u32 {
-            let project = |target, _lift: [f32; 3]| {
+            let project = |target, _lift: [f32; 3], _occlusion: bool| {
                 let og_ui_next::tree::AnchorTarget::Entity(e) = target else {
                     return None;
                 };
-                Some([
-                    (e as f32 * 7.0 + f as f32) % 1240.0 + 20.0,
-                    (e as f32 * 3.0) % 680.0 + 20.0,
-                ])
+                Some(og_ui_next::tree::Sighting {
+                    at: [
+                        (e as f32 * 7.0 + f as f32) % 1240.0 + 20.0,
+                        (e as f32 * 3.0) % 680.0 + 20.0,
+                    ],
+                    ..Default::default()
+                })
             };
             t.set_time(f64::from(f) / 60.0, false);
             let moving_only = f % 4 == 3;

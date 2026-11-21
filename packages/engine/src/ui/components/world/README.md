@@ -30,9 +30,12 @@ and dressed is `../README.md`.
 
 ## Waiting on the placement
 
-The anchor does not yet tell a component its distance scale, its clamp
-side or angle or its LOD, keep a label inside the screen (`contain`, a
-clamp margin), reserve rects or danger areas, bound a loot stack, lay mass
+The anchor clamps to the screen's edge (`clamp`, marking the side as
+`data-edge-*`), stacks or hides overlapping anchors (`declutter`,
+`priority`) and fades or hides them behind drawn geometry (`occlusion`).
+It does not yet tell a component its distance scale, its clamp angle or
+its LOD, keep an on-screen label inside the screen (`contain`), reserve
+rects or danger areas, bound a loot stack, lay mass
 bars apart from the labels or carry a shield track on a mass bar (UI Sol's
 placement items). Until it does the game passes `range`, `edge`,
 `compact` and `more`; a clamped bubble's tail points down; a label whose

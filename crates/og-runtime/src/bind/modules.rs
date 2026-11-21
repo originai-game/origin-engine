@@ -211,18 +211,38 @@ pub(crate) fn mount_back(
                     let mut zones = ui.take_control_zones();
                     if let Ok(eng) = engine(engine_id)
                         && let rs = &mut *eng.render.borrow_mut()
-                        && let Some(next) = &mut rs.ui_next
+                        && let crate::present::extract::RenderState {
+                            ui_next: Some(next),
+                            textures,
+                            geo,
+                            scene,
+                            models,
+                            geometries,
+                            ..
+                        } = rs
                     {
                         // The controls show what the last sample read.
                         next.zone_states(og_input::actions::lock(&zones_to).zone_states());
                         out.0.extend(next.end(
                             engine_id,
                             &ui,
-                            &rs.textures,
+                            textures,
                             ui_time,
                             t.rate.max(1),
                             &crate::author::probe::now_ms,
                             Some(&|bits| ui_world::Feed::world_pose(ctx, bits).map(|p| p.0)),
+                            // What hides an anchored node with `occlusion`:
+                            // the meshes drawn as the tick started.
+                            &mut |from, to, skip| {
+                                crate::present::geometry::blocked(
+                                    geo,
+                                    scene,
+                                    models,
+                                    geometries,
+                                    (from, to),
+                                    skip,
+                                )
+                            },
                         ));
                         out.1.extend(next.take_missing(&ui));
                         zones = next.control_zones(zones);

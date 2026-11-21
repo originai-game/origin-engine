@@ -730,8 +730,8 @@ impl Tree {
                             self.paint = true;
                         }
                         // `anchor` an entity's number or a world point
-                        // `x,y,z` (empty: back in flow), `lift` a world
-                        // offset: the host places the node (§World).
+                        // `x,y,z` (empty: back in flow): the host places
+                        // the node (§World).
                         "anchor" => {
                             let n: Vec<f32> = value
                                 .split([',', ' '])
@@ -748,49 +748,81 @@ impl Tree {
                                     .map(|b| super::AnchorTarget::Entity(b as u64)),
                             };
                             let node = self.els[e as usize].node;
-                            let was = self.els[e as usize].anchor.is_some();
+                            let a = self.els[e as usize]
+                                .anchor
+                                .get_or_insert_with(|| Box::new(super::Anchor::new()));
+                            let was = a.target.is_some();
+                            a.target = target;
                             match target {
-                                Some(t) if was => {
-                                    self.els[e as usize]
-                                        .anchor
-                                        .as_mut()
-                                        .expect("anchored")
-                                        .target = t
-                                }
+                                Some(_) if was => {}
                                 // Off the screen until the host places it.
-                                Some(target) => {
-                                    self.els[e as usize].anchor = Some(Box::new(super::Anchor {
-                                        target,
-                                        lift: [0.0; 3],
-                                        at: [0.0; 2],
-                                        shown: false,
-                                        ticked: false,
-                                    }));
+                                Some(_) => {
+                                    (a.shown, a.ticked, a.seen) = (false, false, None);
                                     self.anchored.push(e);
                                     self.sem.place(node, None);
                                     self.reapply(e);
                                 }
                                 None if was => {
-                                    self.els[e as usize].anchor = None;
                                     self.anchored.retain(|&a| a != e);
                                     self.sem.unplace(node);
+                                    for name in [
+                                        "clamped",
+                                        "edge-top",
+                                        "edge-right",
+                                        "edge-bottom",
+                                        "edge-left",
+                                        "occluded",
+                                    ] {
+                                        self.mark(e, name, false);
+                                    }
                                     self.reapply(e);
                                 }
                                 None => {}
                             }
                             self.paint = true;
                         }
-                        "lift" => {
-                            let mut lift = [0.0f32; 3];
-                            for (l, t) in lift
-                                .iter_mut()
-                                .zip(value.split([',', ' ']).filter(|t| !t.is_empty()))
-                            {
-                                *l = t.parse().unwrap_or(0.0);
+                        // How the host places it (§World): `lift` a world
+                        // offset, `occlusion` none, fade or hide behind
+                        // geometry, `declutter` none, stack or hide over
+                        // another, `priority` which keeps its place,
+                        // `clamp` edge pins it inside the screen,
+                        // `clampMargin` px from its edge.
+                        "lift" | "occlusion" | "declutter" | "priority" | "clamp"
+                        | "clampMargin" => {
+                            let a = self.els[e as usize]
+                                .anchor
+                                .get_or_insert_with(|| Box::new(super::Anchor::new()));
+                            let v = value.trim();
+                            match name {
+                                "lift" => {
+                                    a.lift = [0.0; 3];
+                                    for (l, t) in a
+                                        .lift
+                                        .iter_mut()
+                                        .zip(v.split([',', ' ']).filter(|t| !t.is_empty()))
+                                    {
+                                        *l = t.parse().unwrap_or(0.0);
+                                    }
+                                }
+                                "occlusion" => {
+                                    a.occlusion = match v {
+                                        "fade" => super::Occlusion::Fade,
+                                        "hide" => super::Occlusion::Hide,
+                                        _ => super::Occlusion::None,
+                                    }
+                                }
+                                "declutter" => {
+                                    a.declutter = match v {
+                                        "stack" => super::Declutter::Stack,
+                                        "hide" => super::Declutter::Hide,
+                                        _ => super::Declutter::None,
+                                    }
+                                }
+                                "priority" => a.priority = v.parse().unwrap_or(0.0),
+                                "clamp" => a.clamp = v == "edge",
+                                _ => a.margin = v.parse().unwrap_or(super::CLAMP_MARGIN),
                             }
-                            if let Some(a) = &mut self.els[e as usize].anchor {
-                                a.lift = lift;
-                            }
+                            self.paint = true;
                         }
                         // The box image's own props over its classes':
                         // `src` a texture handle, the wipe a number per tick.
@@ -961,7 +993,7 @@ impl Tree {
     /// `data-*` prop, a class or the tree's shape: its own `data-*` names,
     /// then each of its nearest ancestor groups' as `group/name`, and
     /// restyles the nodes whose context changed.
-    fn refresh_data(&mut self) {
+    pub(super) fn refresh_data(&mut self) {
         if !std::mem::take(&mut self.data_dirty) {
             return;
         }
@@ -1093,7 +1125,9 @@ impl Tree {
                 let b = self.arena.box_of(el.node);
                 let own = [x, y, x + b.w, y + b.h];
                 let cut = match el.arena_parent {
-                    _ if el.anchor.is_some() || self.xfs.get(e).is_some_and(|&xf| xf != 0) => own,
+                    _ if el.anchored().is_some() || self.xfs.get(e).is_some_and(|&xf| xf != 0) => {
+                        own
+                    }
                     NONE => own,
                     p => self.cuts.get(p as usize).copied().unwrap_or(own),
                 };
@@ -1399,9 +1433,12 @@ mod tests {
         t.apply(&b.bytes()).unwrap();
         let asked = std::cell::RefCell::new(Vec::new());
         let place = |t: &mut Tree, at: Option<[f32; 2]>| {
-            t.place_anchors(|target, lift| {
+            t.place_anchors(|target, lift, _| {
                 asked.borrow_mut().push((target, lift));
-                at
+                at.map(|at| super::super::Sighting {
+                    at,
+                    ..Default::default()
+                })
             });
             frame(t);
         };
@@ -1439,6 +1476,264 @@ mod tests {
             t.pointer(130.0, 65.0, false, true);
             assert!(t.events.is_empty(), "{at:?}");
         }
+    }
+
+    /// Anchored 50×20 boxes `(id, props)`, each sighted where `at` puts
+    /// its id; `class` adds classes to each.
+    fn anchored(t: &mut Tree, class: &str, nodes: &[(u32, &[(&str, &str)])]) {
+        let mut b = Batch::default();
+        for &(id, props) in nodes {
+            b.op(1).u32(id).u8(0);
+            b.op(4).u32(id).str(&format!("b {class}"));
+            // Placement props before `anchor` hold too.
+            for &(k, v) in props {
+                b.op(6).u32(id).str(k).str(v);
+            }
+            b.op(6).u32(id).str("anchor").str(&id.to_string());
+            b.op(8).u32(0).u32(id).u32(u32::MAX);
+        }
+        t.apply(&b.bytes()).unwrap();
+    }
+
+    fn placed(t: &Tree, id: u32) -> Option<[f32; 2]> {
+        let n = t.dump_ops().into_iter().find(|n| n.id == id).unwrap();
+        n.shown.then_some([n.rect[0], n.rect[1]])
+    }
+
+    fn sighted(at: [f32; 2], depth: f32) -> Option<super::super::Sighting> {
+        Some(super::super::Sighting {
+            at,
+            depth,
+            ..Default::default()
+        })
+    }
+
+    /// `declutter="stack"` takes the anchored nodes by priority, then the
+    /// nearer first, each moved straight up clear of those before it (a
+    /// gap of 2 px), and hidden when that leaves the top; `hide` hides one
+    /// that overlaps; a node without `declutter` neither moves nor blocks.
+    #[test]
+    fn decluttered_anchors_stack_by_priority_then_depth() {
+        let mut t = tree();
+        let stack: &[(&str, &str)] = &[("declutter", "stack")];
+        anchored(
+            &mut t,
+            "",
+            &[
+                (1, &[("declutter", "stack"), ("priority", "1")]),
+                (2, stack),
+                (3, stack),
+                (4, &[]),
+                (5, &[("declutter", "hide")]),
+                (6, stack),
+                (7, stack),
+                (8, stack),
+            ],
+        );
+        // id: (at, depth). 1 is the farthest of 1 to 5 but ranks first.
+        let at = |id: u64| match id {
+            1 => ([100.0, 100.0], 9.0),
+            2 => ([100.0, 100.0], 3.0),
+            3 => ([100.0, 100.0], 6.0),
+            4 => ([100.0, 100.0], 1.0),
+            5 => ([100.0, 100.0], 7.0),
+            6 => ([100.0, 30.0], 8.0),
+            7 => ([100.0, 10.0], 8.5),
+            _ => ([100.0, 5.0], 8.7),
+        };
+        t.place_anchors(|target, _, _| {
+            let super::super::AnchorTarget::Entity(id) = target else {
+                unreachable!()
+            };
+            let (p, d) = at(id);
+            sighted(p, d)
+        });
+        frame(&mut t);
+        assert_eq!(
+            placed(&t, 1),
+            Some([100.0, 100.0]),
+            "the first keeps its place"
+        );
+        assert_eq!(
+            placed(&t, 2),
+            Some([100.0, 78.0]),
+            "the nearer of the rest over it"
+        );
+        assert_eq!(placed(&t, 3), Some([100.0, 56.0]), "then over both");
+        assert_eq!(
+            placed(&t, 4),
+            Some([100.0, 100.0]),
+            "no declutter: it stays"
+        );
+        assert_eq!(placed(&t, 5), None, "hide: it overlaps the first");
+        assert_eq!(placed(&t, 6), Some([100.0, 30.0]), "clear of 3 by 6 px");
+        assert_eq!(placed(&t, 7), Some([100.0, 8.0]), "over 6, inside the top");
+        assert_eq!(placed(&t, 8), None, "over 7 would leave the top");
+    }
+
+    /// `clamp="edge"` pins an anchored node whose drawn box would leave
+    /// the margin (24 px by default) where the line from the screen's
+    /// centre toward its target meets it, behind the camera too, and marks
+    /// it `data-clamped` and `data-edge-<side>`; one inside stays put and
+    /// unmarked. Its drawn box (after its transform) is what stays inside.
+    #[test]
+    fn an_edge_clamped_anchor_pins_inside_the_margin_toward_its_target() {
+        let mut t = tree();
+        t.set_resolver(Box::new(|class, _, _, data| {
+            let mut r = Record::default();
+            let mut s = taffy::Style::default();
+            if class.contains('b') {
+                s.size = taffy::Size::from_lengths(50.0, 20.0);
+            }
+            r.layout = rune_taffy::CompactStyle::from(&s);
+            if class.contains("up") {
+                r.skin.transform.translate = [0.0, -40.0];
+            }
+            r.font_size = match data {
+                "clamped edge-right" => 30.0,
+                "clamped edge-bottom" => 31.0,
+                "" => 16.0,
+                _ => 0.0,
+            };
+            r
+        }));
+        anchored(
+            &mut t,
+            "",
+            &[(1, &[("clamp", "edge")]), (3, &[("clamp", "edge")])],
+        );
+        anchored(
+            &mut t,
+            "up",
+            &[(2, &[("clampMargin", "24"), ("clamp", "edge")])],
+        );
+        let place = |t: &mut Tree, out: bool| {
+            t.place_anchors(|target, _, _| {
+                let super::super::AnchorTarget::Entity(id) = target else {
+                    unreachable!()
+                };
+                Some(match (id, out) {
+                    (1, true) => super::super::Sighting {
+                        at: [1000.0, 150.0],
+                        ..Default::default()
+                    },
+                    // Behind the camera, the way it would turn: down.
+                    (2, true) => super::super::Sighting {
+                        at: [200.0, 600.0],
+                        behind: true,
+                        ..Default::default()
+                    },
+                    _ => super::super::Sighting {
+                        at: [100.0, 100.0],
+                        ..Default::default()
+                    },
+                })
+            });
+            frame(t);
+        };
+        let size = |t: &Tree, id: usize| t.els[t.by_js[id] as usize].record.font_size;
+        // Two placings: the second has the boxes laid out.
+        place(&mut t, true);
+        place(&mut t, true);
+        // 1's box centre (1025, 160) seen from (200, 150): x has 151 px of
+        // room over an 825 px run, so it is 0.183 of the way.
+        let [x, y] = placed(&t, 1).unwrap();
+        assert!(
+            (x - 326.0).abs() < 0.01 && (y - 141.83).abs() < 0.01,
+            "{x}, {y}"
+        );
+        assert_eq!(size(&t, 1), 30.0, "clamped, on the right edge");
+        // 2 is drawn 40 px above its top left: its drawn box's bottom
+        // (top left + 20 - 40) sits on the margin, 276.
+        let [x, y] = placed(&t, 2).unwrap();
+        assert!(
+            (x - 181.905).abs() < 0.01 && (y - 296.0).abs() < 0.01,
+            "{x}, {y}"
+        );
+        assert_eq!(size(&t, 2), 31.0, "clamped, on the bottom edge");
+        assert_eq!(placed(&t, 3), Some([100.0, 100.0]), "inside: put");
+        assert_eq!(size(&t, 3), 16.0, "and unmarked");
+        place(&mut t, false);
+        assert_eq!(placed(&t, 1), Some([100.0, 100.0]));
+        assert_eq!(size(&t, 1), 16.0, "back inside, unmarked");
+    }
+
+    /// `occlusion` asks the host, at the tick only, whether geometry hides
+    /// the target: `fade` draws it at 0.35 (`data-occluded`), `hide` hides
+    /// it, none never asks; an edge-clamped one is never occluded, and a
+    /// frame between ticks keeps the tick's answer.
+    #[test]
+    fn an_occluded_anchor_fades_or_hides_as_the_tick_saw_it() {
+        let mut t = tree();
+        anchored(
+            &mut t,
+            "ink",
+            &[
+                (1, &[("occlusion", "fade")]),
+                (2, &[("occlusion", "hide")]),
+                (3, &[]),
+                (4, &[("occlusion", "fade"), ("clamp", "edge")]),
+            ],
+        );
+        let asked = std::cell::RefCell::new(Vec::new());
+        let place = |t: &mut Tree, tick: bool, behind_wall: bool| {
+            let project = |target, _, ask| {
+                let super::super::AnchorTarget::Entity(id) = target else {
+                    unreachable!()
+                };
+                asked.borrow_mut().push((id, ask));
+                let x = if id == 4 { 1000.0 } else { 60.0 * id as f32 };
+                Some(super::super::Sighting {
+                    at: [x, 100.0],
+                    occluded: ask && behind_wall,
+                    ..Default::default()
+                })
+            };
+            if tick {
+                t.place_anchors(project);
+            } else {
+                t.follow_anchors(project);
+            }
+            frame(t);
+        };
+        let fill = |t: &Tree, id: u32| {
+            let [x, y] = placed(t, id)?;
+            t.drawn
+                .quads
+                .iter()
+                .find(|q| q.rect[0] == x && q.rect[1] == y)
+                .map(|q| q.color[3])
+        };
+        place(&mut t, true, true);
+        assert_eq!(
+            *asked.borrow(),
+            [(1, true), (2, true), (3, false), (4, true)],
+            "only the nodes with occlusion are asked"
+        );
+        assert_eq!(fill(&t, 1), Some(super::super::OCCLUDED_ALPHA));
+        assert_eq!(placed(&t, 2), None, "hide");
+        assert_eq!(fill(&t, 3), Some(1.0), "no occlusion");
+        assert_eq!(fill(&t, 4), Some(1.0), "clamped: never occluded");
+        assert!(
+            t.els[t.by_js[1] as usize]
+                .attrs
+                .iter()
+                .any(|a| &**a == "occluded")
+        );
+        asked.borrow_mut().clear();
+        place(&mut t, false, false);
+        assert!(
+            asked.borrow().iter().all(|&(_, ask)| !ask),
+            "never between ticks"
+        );
+        assert_eq!(
+            fill(&t, 1),
+            Some(super::super::OCCLUDED_ALPHA),
+            "the tick's answer holds"
+        );
+        place(&mut t, true, false);
+        assert_eq!(fill(&t, 1), Some(1.0));
+        assert_eq!(fill(&t, 2), Some(1.0), "in sight again");
     }
 
     /// A `<Line>`'s `viewBox` maps its points onto the laid-out box as it

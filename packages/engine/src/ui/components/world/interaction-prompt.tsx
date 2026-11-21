@@ -41,7 +41,9 @@ export interface InteractionPromptProps {
  * rectangle around the cut), so the glass's rim is dropped. The key cap's
  * action glyph has no TSX surface: the cap shows the game's key when it
  * gives one and keeps the action's name as a state otherwise, and the old
- * anchor's avoidance, max distance and decluttering are dropped too.
+ * anchor's avoidance and max distance are dropped too. It keeps its place
+ * over the plates and labels that stack (the anchor's declutter, priority
+ * 1).
  */
 export function InteractionPrompt(props: InteractionPromptProps) {
   const hold = () => props.hold ?? -1;
@@ -55,6 +57,8 @@ export function InteractionPrompt(props: InteractionPromptProps) {
     <View
       anchor={props.entity ? (props.entity as Entity) : point()}
       lift={[0, props.height ?? 0, 0]}
+      declutter="stack"
+      priority={1}
       class="-translate-x-1/2 -translate-y-full group flex-row items-center animate-pop text-fg"
       role="status"
       label={`${props.verb}${name() !== "" ? ` ${name()}` : ""}`}

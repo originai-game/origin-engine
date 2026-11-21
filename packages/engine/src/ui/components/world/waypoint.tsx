@@ -27,11 +27,11 @@ export interface WaypointProps {
  * A place to go: a lit diamond with a dark core in the kind's colour, its
  * name under it and the distance on a dark tag. Off screen, a chevron
  * points the way. Read only; the game owns the distance and what counts
- * as near and far. The old anchor's decluttering, avoidance, edge
- * clamping and chevron have no TSX surface (the new anchor never moves a
- * node inside the screen's edge): an off-screen waypoint hides with any
- * other off-surface node, and the edge prop and the chevron it drew are
- * dropped.
+ * as near and far. Off screen or behind the camera it pins 24 px inside
+ * the screen's edge toward its point (the anchor's clamp, which marks the
+ * side as `data-edge-*`). The old anchor's decluttering, avoidance and
+ * chevron have no TSX surface: the edge prop leans the label toward the
+ * side the game names, and the chevron it drew is dropped.
  */
 export function Waypoint(props: WaypointProps) {
   const kind = () => ((props.kind ?? "") == "" ? "objective" : (props.kind ?? ""));
@@ -45,6 +45,7 @@ export function Waypoint(props: WaypointProps) {
     <View
       anchor={props.entity ? (props.entity as Entity) : point()}
       lift={[0, props.height ?? 0, 0]}
+      clamp="edge"
       class="group flex-col items-center gap-y-[0.214rem]"
       label={label() !== "" ? label() : distance()}
       data-objective={kind() === "objective"}

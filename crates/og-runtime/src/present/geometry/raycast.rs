@@ -284,3 +284,48 @@ pub fn og_render_raycast(
         Ok(hits.into_iter().map(|(_, v)| v).collect::<Vec<_>>())
     })()
 }
+
+/// Whether a visible mesh drawn as the tick started, other than
+/// `skip`'s, meets the segment from `from` to `to` (og.render.raycast's
+/// record, every layer): what hides an anchored TSX node with
+/// `occlusion` from the eye, as a depth test would (og-ui-next
+/// CONVENTIONS.md §World). Nothing occludes before a tick has recorded.
+pub(crate) fn blocked(
+    g: &mut GeoState,
+    scene: &og_render::RenderScene,
+    models: &IdMap<u64, Parts>,
+    geometries: &[MeshHandle],
+    (from, to): (Vec3, Vec3),
+    skip: Option<u64>,
+) -> bool {
+    let run = to - from;
+    let length = run.length();
+    if !length.is_finite() || length < 1e-4 {
+        return false;
+    }
+    let dir = run / length;
+    // Short of the target itself, so a surface it stands on is not in front.
+    let reach = length * (1.0 - 1e-3);
+    let GeoState {
+        record, hierarchy, ..
+    } = g;
+    let list = match record {
+        Some((_, r)) => r.targets(hierarchy, models, geometries),
+        None => return false,
+    };
+    list.iter()
+        .filter(|t| t.visible && Some(t.entity) != skip)
+        .any(|t| {
+            let det = t.transform.determinant();
+            if !det.is_finite() || det.abs() < 1e-12 {
+                return false;
+            }
+            let Some(bvh) = bvh_of(g, scene, t.mesh) else {
+                return false;
+            };
+            let inv = t.transform.inverse();
+            // Not normalised: t along it is the world distance.
+            let (lo, ld) = (inv.transform_point3(from), inv.transform_vector3(dir));
+            !bvh.raycast(lo, ld, reach, true).is_empty()
+        })
+}

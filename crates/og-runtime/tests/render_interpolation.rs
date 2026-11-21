@@ -349,10 +349,10 @@ const TAG: u32 = 2;
 /// to it.
 struct Tagger(Rc<std::cell::Cell<f64>>);
 
-/// A 40×20 red View anchored by its top left to `entity` in engine `e`'s
-/// TSX tree, as the TS renderer's op batch (og-ui-next CONVENTIONS.md
-/// §Ops, §World) mounts it.
-fn mount_tag(e: u32, entity: u64) {
+/// A 40×20 red View anchored by its top left to `anchor` (an entity's
+/// number or `x,y,z`) in engine `e`'s TSX tree with `props`, as the TS
+/// renderer's op batch (og-ui-next CONVENTIONS.md §Ops, §World) mounts it.
+fn mount_tag(e: u32, anchor: &str, props: &[(&str, &str)]) {
     let mut ops = Vec::new();
     let str = |ops: &mut Vec<u8>, s: &str| {
         ops.extend_from_slice(&(s.len() as u32).to_le_bytes());
@@ -365,16 +365,19 @@ fn mount_tag(e: u32, entity: u64) {
     ops.push(4);
     ops.extend_from_slice(&1u32.to_le_bytes());
     str(&mut ops, "w-[40px] h-[20px] bg-[#ff0000]");
-    ops.push(6);
-    ops.extend_from_slice(&1u32.to_le_bytes());
-    str(&mut ops, "anchor");
-    str(&mut ops, &entity.to_string());
+    for (k, v) in [("anchor", anchor)].iter().chain(props) {
+        ops.push(6);
+        ops.extend_from_slice(&1u32.to_le_bytes());
+        str(&mut ops, k);
+        str(&mut ops, v);
+    }
     ops.push(8);
     for v in [0u32, 1, u32::MAX] {
         ops.extend_from_slice(&v.to_le_bytes());
     }
     let mut batch = og_ui_next::tree::MAGIC.to_vec();
-    batch.extend_from_slice(&4u32.to_le_bytes());
+    // The op count: create, class, the props, insert.
+    batch.extend_from_slice(&(4 + props.len() as u32).to_le_bytes());
     batch.extend_from_slice(&ops);
     let reply = og_runtime::og_engine_ui_patch(e, &batch);
     assert!(
@@ -459,7 +462,7 @@ fn an_anchored_element_stays_on_its_entity_between_ticks() {
         .as_f64()
         .unwrap(),
     );
-    mount_tag(e, entity.get() as u64);
+    mount_tag(e, &(entity.get() as u64).to_string(), &[]);
     let camera = json!({ "position": { "x": 0, "y": 0, "z": 5 }, "fov": 50.0 }).to_string();
     value(write_resource(e, "og.Camera", &camera));
     let mut offsets = Vec::new();
@@ -491,4 +494,62 @@ fn an_anchored_element_stays_on_its_entity_between_ticks() {
             "frame {i}: the box sits {o:.2} px from its entity's drawn place, {first:.2} on the first: {offsets:?}"
         );
     }
+}
+
+/// `occlusion="hide"` hides an anchored node while a drawn mesh stands
+/// between the camera and its point, and shows it once the mesh moves out
+/// of the way: the tick's end asks og.render.raycast's record of the
+/// meshes drawn as the tick started.
+#[test]
+fn an_anchored_element_behind_a_drawn_mesh_hides() {
+    set_hooks(Rc::new(Tagger(Rc::new(std::cell::Cell::new(0.0)))));
+    og_host_begin_bundle();
+    let game = og_game_game(Some(json!({ "seed": 1, "systems": [] }).to_string()));
+    let e = value(og_engine_create(game, "{}".into())).as_u64().unwrap() as u32;
+    let seen = Rc::new(RefCell::new(None));
+    set_render_backend(e, Some(Box::new(Shapes(seen.clone())))).unwrap();
+    let geometry = value(og_runtime::host_impl::answer(og_render_box_geometry(
+        e,
+        Some("{}".into()),
+    )));
+    let material = value(og_runtime::host_impl::answer(og_render_standard_material(
+        e,
+        Some("{}".into()),
+    )));
+    // A unit box half way between the camera (z 5) and the point (z 0).
+    let wall = value(og_runtime::host_impl::answer(og_world_spawn(
+        e,
+        Some(json!({ "position": { "x": 0, "y": 0, "z": 2.5 } }).to_string()),
+    )))
+    .as_f64()
+    .unwrap();
+    value(og_runtime::host_impl::answer(og_world_insert(
+        e,
+        wall,
+        "og.Mesh".into(),
+        Some(json!({ "geometry": geometry, "material": material }).to_string()),
+    )));
+    mount_tag(e, "0,0,0", &[("occlusion", "hide")]);
+    let camera = json!({ "position": { "x": 0, "y": 0, "z": 5 }, "fov": 50.0 }).to_string();
+    value(write_resource(e, "og.Camera", &camera));
+    for _ in 0..6 {
+        frame(e, TICK_MS);
+    }
+    assert_eq!(*seen.borrow(), None, "behind the box: hidden");
+    let away = json!({ "position": { "x": 50, "y": 0, "z": 2.5 } }).to_string();
+    value(og_runtime::host_impl::answer(og_world_set(
+        e,
+        wall,
+        "og.Transform".into(),
+        away,
+    )));
+    for _ in 0..6 {
+        frame(e, TICK_MS);
+    }
+    let (x, y) = seen.borrow().expect("the box moved away: shown");
+    // Its top left on the point, the surface's centre.
+    assert!(
+        (x - 660.0).abs() < 1.0 && (y - 370.0).abs() < 1.0,
+        "{x}, {y}"
+    );
 }

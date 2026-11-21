@@ -133,13 +133,35 @@ export interface HostProps {
    * parent's flow: its box's top left at that point as the tick's camera
    * sees it, at its laid-out size (move it with `translate-*` classes, such
    * as `-translate-x-1/2 -translate-y-full` to stand over it). Off the
-   * screen, behind the camera or on a dead entity it is hidden: it paints
-   * nothing, takes no press and leaves the accessibility tree. Never seen
-   * by the simulation.
+   * screen, behind the camera or on a dead entity it is hidden (unless
+   * `clamp`): it paints nothing, takes no press and leaves the
+   * accessibility tree. Never seen by the simulation.
    */
   anchor?: Entity | readonly [number, number, number] | null | undefined;
   /** The anchor's offset in world units, such as `[0, 2, 0]` over a head. */
   lift?: readonly [number, number, number] | undefined;
+  /**
+   * Behind a drawn mesh, as the tick's camera sees the anchor's point
+   * (other than its own entity's): `fade` draws it at 0.35 opacity, `hide`
+   * hides it; it carries `data-occluded` either way. Checked at each
+   * tick's end.
+   */
+  occlusion?: "none" | "fade" | "hide" | undefined;
+  /**
+   * Over another anchored element that declutters: `stack` moves it
+   * straight up clear of it, `hide` hides it. Higher `priority`, then the
+   * nearer, keeps its place.
+   */
+  declutter?: "none" | "stack" | "hide" | undefined;
+  /** Which of two decluttering anchors keeps its place: higher first (0). */
+  priority?: number | undefined;
+  /**
+   * `edge`: off the screen or behind the camera it stays, pinned
+   * `clampMargin` px (24) inside the screen's edge toward its point, and
+   * carries `data-clamped` and `data-edge-top|right|bottom|left`.
+   */
+  clamp?: "none" | "edge" | undefined;
+  clampMargin?: number | undefined;
   /** `data-*` states class variants read (`data-ready:`). */
   [data: `data-${string}`]: string | number | boolean | undefined;
 }

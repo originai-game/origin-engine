@@ -54,8 +54,9 @@ export interface NameplateProps {
  * cast row (the spell and its time over a thin bar). Read only; the game
  * owns every figure and state. The old style's lean (skewX), the wings'
  * and the target brackets' clip-path arrows, the interrupted cast's hatch
- * and the anchor's decluttering, edge clamping, occlusion and max
- * distance have no TSX surface and are dropped; the quarters are drawn as
+ * and the anchor's max distance have no TSX surface and are dropped; it
+ * stacks over the plates it overlaps and fades behind drawn geometry
+ * (the anchor's declutter and occlusion); the quarters are drawn as
  * three notch marks, the plate does not scale when targeted, and the
  * plate's room cap (a viewport measure) stands as max-w-full.
  */
@@ -77,6 +78,8 @@ export function Nameplate(props: NameplateProps) {
     <View
       anchor={props.entity ? (props.entity as Entity) : point()}
       lift={[0, props.height ?? 0, 0]}
+      declutter="stack"
+      occlusion="fade"
       class="group -translate-x-1/2 -translate-y-full flex-col items-center gap-y-[0.143rem] w-max max-w-full text-fg leading-[1.12]"
       label={props.name}
       data-boss={props.boss}

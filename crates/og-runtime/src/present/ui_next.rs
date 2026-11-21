@@ -846,6 +846,7 @@ impl Next {
         tps: u32,
         now: &dyn Fn() -> f64,
         world: Option<&dyn Fn(u64) -> Option<og_core::glam::Vec3>>,
+        occluded: &mut dyn FnMut(og_core::glam::Vec3, og_core::glam::Vec3, Option<u64>) -> bool,
     ) -> Vec<String> {
         let mut warnings = std::mem::take(&mut self.held);
         let settings = settings_of(engine);
@@ -885,17 +886,28 @@ impl Next {
         tree.set_time(time, settings.reduced_motion);
         tree.set_cover(cover, settings.reduced_motion);
         // Anchored nodes where the tick's camera sees their entity or point
-        // (CONVENTIONS.md §World); none without a camera or a world.
+        // (CONVENTIONS.md §World), and whether drawn geometry stands in
+        // front of the ones that ask; none without a camera or a world.
         let view = ui.world_view();
         let (w, h) = (v.width, v.height);
-        tree.place_anchors(|target, lift| {
+        tree.place_anchors(|target, lift, ask| {
             let (view, world) = (view.as_ref()?, world?);
-            let p = match target {
-                og_ui_next::tree::AnchorTarget::Entity(bits) => world(bits)?,
-                og_ui_next::tree::AnchorTarget::Point(p) => p.into(),
+            let (p, skip) = match target {
+                og_ui_next::tree::AnchorTarget::Entity(bits) => (world(bits)?, Some(bits)),
+                og_ui_next::tree::AnchorTarget::Point(p) => (p.into(), None),
             };
-            let (x, y, _) = view.project(p + og_core::glam::Vec3::from(lift), w, h)?;
-            Some([x, y])
+            let p = p + og_core::glam::Vec3::from(lift);
+            let mut seen = sighting(view, p, w, h);
+            if ask && !seen.behind {
+                // From the eye, or along the view axis for an orthographic one.
+                let from = if view.orthographic {
+                    p - view.forward * seen.depth
+                } else {
+                    view.eye
+                };
+                seen.occluded = occluded(from, p, skip);
+            }
+            Some(seen)
         });
         // The pointer, in the units og-ui's input is in, on the tree's
         // surface: a press and a release over one element click it.
@@ -1066,7 +1078,11 @@ impl Next {
     pub(crate) fn follow_anchors(
         &mut self,
         ui: &og_ui::Ui,
-        project: impl FnMut(og_ui_next::tree::AnchorTarget, [f32; 3]) -> Option<[f32; 2]>,
+        project: impl FnMut(
+            og_ui_next::tree::AnchorTarget,
+            [f32; 3],
+            bool,
+        ) -> Option<og_ui_next::tree::Sighting>,
     ) {
         let Some(tree) = self.tree.as_mut() else {
             return;
@@ -1302,6 +1318,33 @@ impl Next {
             "kinds": kinds, "font": self.font, "glyphs": glyphs,
             "generation": p.generation,
         })
+    }
+}
+
+/// What `view` sees of world point `p` on a `w`×`h` CSS px surface, for an
+/// anchored TSX node (og-ui-next CONVENTIONS.md §World): its surface point
+/// and depth, or behind the eye a point well off the surface the way the
+/// camera would turn to it, where an edge-clamped node pins.
+pub(crate) fn sighting(
+    view: &og_ui::WorldView,
+    p: og_core::glam::Vec3,
+    w: f32,
+    h: f32,
+) -> og_ui_next::tree::Sighting {
+    match view.project(p, w, h) {
+        Some((x, y, depth)) => og_ui_next::tree::Sighting {
+            at: [x, y],
+            depth,
+            ..Default::default()
+        },
+        None => {
+            let d = view.direction(p, w, h) * (w + h);
+            og_ui_next::tree::Sighting {
+                at: [w / 2.0 + d.x, h / 2.0 + d.y],
+                behind: true,
+                ..Default::default()
+            }
+        }
     }
 }
 

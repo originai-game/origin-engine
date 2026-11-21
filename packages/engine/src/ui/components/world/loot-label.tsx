@@ -38,7 +38,9 @@ export interface LootLabelProps {
  * epic and legendary raise a beam. Reports pick (the chip); the game owns
  * what is picked up. The old ground pool (the tier's glow where the item
  * lies, a `<ground>` plane) has no TSX surface and is dropped, as are the
- * old anchor's decluttering, avoidance, max distance and occlusion fade.
+ * old anchor's avoidance and max distance; labels stack clear of each
+ * other and fade behind drawn geometry (the anchor's declutter and
+ * occlusion).
  * The hovered chip's pick-up key (the action's bound glyph) has no TSX
  * surface and is dropped; the chip keeps the action's name as a state. A
  * long name wraps without breaking.
@@ -53,6 +55,8 @@ export function LootLabel(props: LootLabelProps) {
     <View
       anchor={props.entity ? (props.entity as Entity) : point()}
       lift={[0, props.height ?? 0, 0]}
+      declutter="stack"
+      occlusion="fade"
       class="-translate-x-1/2 group flex-col items-center"
       data-common={rarity() === "common"}
       data-uncommon={rarity() === "uncommon"}

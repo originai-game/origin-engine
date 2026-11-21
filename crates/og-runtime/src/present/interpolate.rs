@@ -377,13 +377,12 @@ pub(crate) fn ui_anchors(rs: &mut RenderState, h: &mut Hierarchy, camera: Option
     let Some(next) = rs.ui_next.as_mut() else {
         return;
     };
-    next.follow_anchors(&ui, |target, lift| {
+    next.follow_anchors(&ui, |target, lift, _| {
         let p = match target {
             og_ui_next::tree::AnchorTarget::Entity(bits) => h.world_of(bits).w_axis.truncate(),
             og_ui_next::tree::AnchorTarget::Point(p) => p.into(),
         };
-        let (x, y, _) = view.project(p + Vec3::from(lift), w, ht)?;
-        Some([x, y])
+        Some(super::ui_next::sighting(&view, p + Vec3::from(lift), w, ht))
     });
 }
 

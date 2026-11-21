@@ -31,8 +31,8 @@ export interface SpeechBubbleProps {
  * rectangles around the cut), so the glass's rim, the drop shadow and a
  * shout's warm rim are dropped; a shout keeps its bolder line. The 27
  * character measure stands as a fixed 12.6rem (the ch unit and the
- * viewport room caps have no class surface), and the old anchor's
- * decluttering has none either.
+ * viewport room caps have no class surface). Bubbles stack clear of each
+ * other (the anchor's declutter).
  */
 export function SpeechBubble(props: SpeechBubbleProps) {
   const reaction = () => ((props.reaction ?? "") == "" ? "friendly" : (props.reaction ?? ""));
@@ -43,6 +43,7 @@ export function SpeechBubble(props: SpeechBubbleProps) {
     <View
       anchor={props.entity ? (props.entity as Entity) : point()}
       lift={[0, props.height ?? 0, 0]}
+      declutter="stack"
       class="-translate-x-1/2 -translate-y-full group flex-col items-center animate-pop text-fg"
       role="status"
       label={speaker() !== "" ? t("world.speech.name", { speaker: speaker() }) : props.text}

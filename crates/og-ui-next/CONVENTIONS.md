@@ -340,10 +340,13 @@ Visual hiding is a class; `hidden` the prop hides from the tree alone.
 A nameplate, a damage number, an interaction prompt, a waypoint or a
 speech bubble is a node with `anchor`: an entity, or a world point
 `[x, y, z]` (setProp text: the entity's number, or `x,y,z`; empty puts it
-back in flow), and `lift`, a world offset added before projecting.
+back in flow), and `lift`, a world offset added before projecting. Its
+placement props (`occlusion`, `declutter`, `priority`, `clamp`,
+`clampMargin`, `lift`) hold in any order with `anchor`.
 
 ```tsx
-<View anchor={enemy} lift={[0, 2.1, 0]} class="-translate-x-1/2 -translate-y-full">…</View>
+<View anchor={enemy} lift={[0, 2.1, 0]} declutter="stack" occlusion="fade"
+      class="-translate-x-1/2 -translate-y-full">…</View>
 ```
 
 - It is out of its parent's flow (absolute) and laid out at its own size;
@@ -353,13 +356,38 @@ back in flow), and `lift`, a world offset added before projecting.
 - Its target off the surface, behind the camera, or a dead entity hides it
   (and a hidden parent): it paints nothing, takes no press, and leaves the
   accessibility tree and the probe's elements, so autoplay never presses
-  it. Nothing tests occlusion.
+  it.
+- `clamp="edge"` (a waypoint, a ping) keeps it instead: when its drawn box
+  (after its transform) would leave the surface less `clampMargin` px (24),
+  or its target is behind the camera, its box's centre pins on the line
+  from the surface's centre toward the target where that line meets the
+  margin, as Unreal's and Unity's off-screen indicators do. It carries
+  `data-clamped` and `data-edge-top|right|bottom|left` (the side), which
+  its classes read (`group-data-edge-left:` turns a chevron). A dead
+  entity still hides it.
+- `occlusion="fade"` or `"hide"`: at each tick's end the host asks whether
+  a visible mesh drawn as the tick started stands between the eye and the
+  point (og.render.raycast's record, every layer, the anchored entity's
+  own meshes excepted): a line trace, as Unreal's widget components and
+  Unity's world-space UI test it. `fade` draws it and its subtree at 0.35
+  opacity, still pressable; `hide` hides it as off the screen does. It
+  carries `data-occluded`. An edge-clamped node is never occluded, and a
+  frame between ticks keeps the tick's answer.
+- `declutter="stack"` or `"hide"`: after layout the decluttering nodes are
+  taken by `priority` (higher first), then depth (nearer first), then
+  order; each that comes within 2 px of one placed before it moves straight
+  up clear of it (`stack`, nameplates over a crowd) or hides (`hide`), and
+  one that would leave the top hides (MapLibre's collision pass, one
+  direction). A node without `declutter` neither moves nor blocks; an
+  edge-clamped one does not declutter.
 - The host places it at each tick's end, after the game's systems, from the
   tick's camera and entities' world poses (`Tree::place_anchors`, which
-  allocates nothing); the simulation never reads it. On a frame drawn
-  between ticks it moves with the drawn camera and its entity's drawn
-  (blended) place (`Tree::follow_anchors`), so it stays on what it names;
-  one the tick hid stays hidden.
+  allocates nothing unless a `data-clamped`, `data-edge-*` or
+  `data-occluded` changes); the simulation never reads it. On a frame
+  drawn between ticks it moves with the drawn camera and its entity's
+  drawn (blended) place (`Tree::follow_anchors`), so it stays on what it
+  names; one the tick hid stays hidden. Clamping and decluttering settle
+  after layout on every frame (`Tree::present`), from this frame's boxes.
 
 ## Classes and the Record (head 1)
 
