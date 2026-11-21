@@ -63,6 +63,8 @@ pub struct PaintQuad {
     pub kind: u32,
     pub a: u32,
     pub b: u32,
+    /// Its transform, of [`Paint::transforms`]; 0 none.
+    pub xf: u32,
 }
 
 /// A linear gradient: `stops` of [`Paint::stops`] from `first`, along the
@@ -85,6 +87,9 @@ pub struct PaintStop {
     pub _pad: [f32; 3],
 }
 
+/// The identity of [`Paint::transforms`].
+pub const IDENTITY: [f32; 8] = [1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0];
+
 /// A built-in icon's stroke segment, `[ax, ay, bx, by]` in its 24-unit
 /// space.
 pub type IconSegment = [f32; 4];
@@ -104,6 +109,10 @@ pub struct Paint {
     /// font adds pages as glyphs render; a glyph is drawn from the first
     /// page that has it).
     pub fonts: Vec<Vec<FontHandle>>,
+    /// Paint-time transforms, CSS's `matrix(a, b, c, d, e, f)` on CSS px
+    /// as `[a, b, c, d, e, f, 0, 0]` (x' = a x + c y + e); entry 0 is the
+    /// identity, which the shader skips.
+    pub transforms: Vec<[f32; 8]>,
     /// Every built-in icon's segments: one table, shared by every paint.
     pub icons: Option<Arc<[IconSegment]>>,
     /// Bumped each time anything above changes.
@@ -116,6 +125,8 @@ impl Paint {
         self.quads.clear();
         self.gradients.clear();
         self.stops.clear();
+        self.transforms.clear();
+        self.transforms.push(IDENTITY);
     }
 
     /// Adds a gradient of `stops` (offset, linear RGBA) at `angle`; its

@@ -199,6 +199,9 @@ pub struct Tree {
     /// Each element's text laid out as glyph quads from its leaf's top
     /// left, kept while its text, width and run stay.
     glyphs: Vec<Glyphs>,
+    /// Each element's transform in `drawn.transforms` (its own composed
+    /// with its ancestors'; 0 none), what its children compose onto.
+    xfs: Vec<u32>,
     /// The mount being made and the key of the row being made.
     mounting: u32,
     row: Rc<str>,
@@ -226,6 +229,8 @@ struct Glyphs {
     text: String,
     key: [u32; 5],
     quads: Vec<PaintQuad>,
+    /// Each line's start x, baseline and width, for its decoration.
+    lines: Vec<[f32; 3]>,
 }
 
 mod ops;
@@ -372,6 +377,7 @@ impl Tree {
             drawn: Paint::default(),
             abs: Vec::new(),
             glyphs: Vec::new(),
+            xfs: Vec::new(),
             mounting: 0,
             row: "".into(),
             pressed: NONE,
@@ -1127,6 +1133,7 @@ impl Tree {
         self.abs.clear();
         self.abs.resize(self.els.len(), (0.0, 0.0, false, [0.0; 4]));
         self.glyphs.resize_with(self.els.len(), Glyphs::default);
+        self.xfs.resize(self.els.len(), 0);
         let m = &fonts.body.metrics;
         for k in 0..self.order.len() {
             let e = self.order[k] as usize;
@@ -1160,10 +1167,19 @@ impl Tree {
                 clip
             };
             self.abs[e] = (x, y, visible, inner);
+            let pxf = if el.arena_parent == NONE {
+                0
+            } else {
+                self.xfs[el.arena_parent as usize]
+            };
+            self.xfs[e] = pxf;
             if !visible {
                 continue;
             }
             let p = &mut self.drawn;
+            let start = p.quads.len();
+            let xf = transformed(p, pxf, &r.skin.transform, [x, y, b.w, b.h]);
+            self.xfs[e] = xf;
             let alpha = el.eff.opacity;
             let rect = [x, y, b.w, b.h];
             let s = &r.skin;
@@ -1322,12 +1338,73 @@ impl Tree {
                 let g = &mut self.glyphs[e];
                 lay_out(g, &el.text, &el.eff, lb.w, m);
                 let (lx, ly) = (x + lb.x, y + lb.y);
+                let sh = r.skin.text_shadow;
+                if sh.color[3] > 0.0 {
+                    let mut c = sh.color;
+                    c[3] *= alpha;
+                    let [dx, dy] = sh.offset;
+                    p.quads.extend(g.quads.iter().map(|q| PaintQuad {
+                        rect: [
+                            q.rect[0] + lx + dx,
+                            q.rect[1] + ly + dy,
+                            q.rect[2],
+                            q.rect[3],
+                        ],
+                        clip,
+                        color: c,
+                        p: [q.p[0], sh.blur, 0.0, 0.0],
+                        ..*q
+                    }));
+                }
                 p.quads.extend(g.quads.iter().map(|q| PaintQuad {
                     rect: [q.rect[0] + lx, q.rect[1] + ly, q.rect[2], q.rect[3]],
                     clip,
                     color: ink,
                     ..*q
                 }));
+                let d = r.skin.decoration;
+                if d.line != 0 {
+                    let mut c = if d.color[3] > 0.0 {
+                        d.color
+                    } else {
+                        el.eff.ink
+                    };
+                    c[3] *= alpha;
+                    let size = el.eff.size;
+                    let th = if d.thickness > 0.0 {
+                        d.thickness
+                    } else {
+                        (size / 14.0).max(1.0)
+                    };
+                    use crate::style::Decoration as D;
+                    for &[x0, base, w] in &g.lines {
+                        let at = [
+                            (D::UNDERLINE, base + 0.12 * size),
+                            (D::OVERLINE, base - m.ascender * size),
+                            (D::LINE_THROUGH, base - 0.3 * size),
+                        ];
+                        for (bit, cy) in at {
+                            if d.line & bit != 0 {
+                                let rect = [lx + x0, ly + cy - th / 2.0, w, th];
+                                p.quads.push(quad(
+                                    PaintKind::Solid,
+                                    rect,
+                                    clip,
+                                    c,
+                                    [0.0; 4],
+                                    [0.0; 4],
+                                    0,
+                                    0,
+                                ));
+                            }
+                        }
+                    }
+                }
+            }
+            if xf != 0 {
+                for q in &mut self.drawn.quads[start..] {
+                    q.xf = xf;
+                }
             }
         }
         self.drawn.generation += 1;
@@ -1477,7 +1554,40 @@ fn quad(
         kind: kind as u32,
         a,
         b,
+        xf: 0,
     }
+}
+
+/// Adds the transform of a box `rect` (x, y, w, h) composed onto its
+/// parent's `parent` to `p.transforms`: its index, or `parent` when its own
+/// is the identity. CSS's order: move to the origin, translate, rotate,
+/// scale, move back.
+fn transformed(p: &mut Paint, parent: u32, t: &crate::style::Transform, rect: [f32; 4]) -> u32 {
+    if t.translate == [0.0; 2] && t.scale == [1.0; 2] && t.rotate == 0.0 {
+        return parent;
+    }
+    if p.transforms.is_empty() {
+        p.transforms.push(og_draw::paint::IDENTITY);
+    }
+    let (sin, cos) = og_core::math::sin_cos(t.rotate);
+    let [sx, sy] = t.scale;
+    let (a, b, c, d) = (cos * sx, sin * sx, -sin * sy, cos * sy);
+    let ox = rect[0] + t.origin[0] * rect[2];
+    let oy = rect[1] + t.origin[1] * rect[3];
+    let e = ox + t.translate[0] - (a * ox + c * oy);
+    let f = oy + t.translate[1] - (b * ox + d * oy);
+    let [pa, pb, pc, pd, pe, pf, _, _] = p.transforms[parent as usize];
+    p.transforms.push([
+        pa * a + pc * b,
+        pb * a + pd * b,
+        pa * c + pc * d,
+        pb * c + pd * d,
+        pa * e + pc * f + pe,
+        pb * e + pd * f + pf,
+        0.0,
+        0.0,
+    ]);
+    p.transforms.len() as u32 - 1
 }
 
 /// Corner radii (top left, top right, bottom right, bottom left) on a
@@ -1518,55 +1628,58 @@ fn lay_out(g: &mut Glyphs, text: &str, eff: &Inherit, width: f32, m: &og_text::t
         g.text.push_str(text);
     }
     g.quads.clear();
+    g.lines.clear();
     let glyph = (m.ascender - m.descender) * size;
     let weight = if bold { size * 0.03 } else { 0.0 };
     let track = if size > 0.0 { tracking / size } else { 0.0 };
     let features = og_text::shape::Features::NONE;
-    let place = |k: usize, l: &str, w: f32, quads: &mut Vec<PaintQuad>| {
-        let top = k as f32 * line + (line - glyph) / 2.0;
-        let dx = match t.align {
-            1 => (width - w) / 2.0,
-            2 => width - w,
-            _ => 0.0,
+    let place =
+        |k: usize, l: &str, w: f32, quads: &mut Vec<PaintQuad>, lines: &mut Vec<[f32; 3]>| {
+            let top = k as f32 * line + (line - glyph) / 2.0;
+            let dx = match t.align {
+                1 => (width - w) / 2.0,
+                2 => width - w,
+                _ => 0.0,
+            };
+            let baseline = top + m.ascender * size;
+            lines.push([dx, baseline, w]);
+            let mut pen = 0.0f32;
+            let mut prev: Option<char> = None;
+            for ch in l.chars() {
+                if !m.has(ch) {
+                    prev = None;
+                    continue;
+                }
+                if let Some(p) = prev {
+                    pen += m.kern(p, ch);
+                }
+                if !ch.is_whitespace() {
+                    quads.push(quad(
+                        PaintKind::Glyph,
+                        [dx + pen * size, baseline, size, 0.0],
+                        [0.0; 4],
+                        [0.0; 4],
+                        [0.0; 4],
+                        [weight, 0.0, 0.0, 0.0],
+                        ch as u32,
+                        0,
+                    ));
+                }
+                pen += m.advance(ch) + track;
+                prev = Some(ch);
+            }
         };
-        let baseline = top + m.ascender * size;
-        let mut pen = 0.0f32;
-        let mut prev: Option<char> = None;
-        for ch in l.chars() {
-            if !m.has(ch) {
-                prev = None;
-                continue;
-            }
-            if let Some(p) = prev {
-                pen += m.kern(p, ch);
-            }
-            if !ch.is_whitespace() {
-                quads.push(quad(
-                    PaintKind::Glyph,
-                    [dx + pen * size, baseline, size, 0.0],
-                    [0.0; 4],
-                    [0.0; 4],
-                    [0.0; 4],
-                    [weight, 0.0, 0.0, 0.0],
-                    ch as u32,
-                    0,
-                ));
-            }
-            pen += m.advance(ch) + track;
-            prev = Some(ch);
-        }
-    };
     let one = og_text::text::widest_line(text, m, size, tracking, features);
     if t.nowrap || (one <= width + 0.5 && !text.contains('\n')) {
         for (k, l) in text.split('\n').enumerate() {
             let w = og_text::text::widest_line(l, m, size, tracking, features);
-            place(k, l, w, &mut g.quads);
+            place(k, l, w, &mut g.quads, &mut g.lines);
         }
         return;
     }
     let lines = og_text::text::break_lines(text, m, size, tracking, features, Some(width + 0.5));
     for (k, l) in lines.iter().enumerate() {
-        place(k, &l.text, l.width, &mut g.quads);
+        place(k, &l.text, l.width, &mut g.quads, &mut g.lines);
     }
 }
 
@@ -1704,6 +1817,84 @@ mod tests {
         assert!(
             (angle - og_core::math::atan2(1.0, 2.0)).abs() < 1e-3,
             "{angle}"
+        );
+    }
+
+    /// A transform moves a box and everything under it at paint, about its
+    /// origin, composed down the tree; its layout stays. A text's shadow
+    /// paints under its glyphs and its underline after them.
+    #[test]
+    fn a_transform_composes_down_the_tree_and_text_paints_its_shadow_and_lines() {
+        let doc = UiDocument::parse(
+            "x.svelte",
+            "<meta name=\"component\" content=\"x\">\n\
+             <div id=\"P\"><div id=\"C\"><span id=\"T\">ab</span></div></div>\n\
+             <style>\n#P { width: 100px; height: 40px; background: #102030; rotate: 90deg; }\n\
+             #C { width: 20px; height: 10px; background: #fff; translate: 30px 0; }\n\
+             #T { text-shadow: 1px 2px 0 #000; text-decoration: underline; }\n</style>",
+        )
+        .unwrap();
+        let look = Rc::new(Look::load(
+            &[Layer {
+                tokens: crate::look::default_tokens(),
+                surfaces: crate::look::DEFAULT_SURFACES,
+            }],
+            "dark",
+        ));
+        let mut tree = Tree::new(look, [Arc::new(doc)]);
+        tree.resize(400.0, 300.0);
+        tree.mount("x", &[]).unwrap();
+        let fonts = og_ui::Fonts {
+            body: og_ui::UiFont {
+                handle: Some(og_draw::FontHandle::from_index(0)),
+                metrics: og_text::text::FontMetrics::fixed(0.5),
+            },
+            ..Default::default()
+        };
+        tree.frame(&fonts, &IconAtlas::default());
+        let (px, py, pw, ph) = tree.find("P").unwrap();
+        let (cx, cy, _, _) = tree.find("C").unwrap();
+        assert_eq!((cx, cy), (px, py), "layout does not move");
+        let d = &tree.drawn;
+        let at = |q: &PaintQuad, x: f32, y: f32| {
+            let [a, b, c, dd, e, f, _, _] = d.transforms[q.xf as usize];
+            [a * x + c * y + e, b * x + dd * y + f]
+        };
+        let near =
+            |u: [f32; 2], v: [f32; 2]| (u[0] - v[0]).abs() < 1e-3 && (u[1] - v[1]).abs() < 1e-3;
+        // P turns a quarter clockwise about its centre: its top left goes
+        // to the top right of the turned box.
+        let (mx, my) = (px + pw / 2.0, py + ph / 2.0);
+        let pq = &d.quads[0];
+        assert!(pq.xf != 0);
+        assert!(
+            near(at(pq, px, py), [mx + ph / 2.0, my - pw / 2.0]),
+            "{:?}",
+            at(pq, px, py)
+        );
+        // C moves 30px along P's turned x axis: down the screen.
+        let cq = &d.quads[1];
+        assert!(cq.xf != pq.xf);
+        assert!(
+            near(at(cq, cx, cy), [mx + ph / 2.0, my - pw / 2.0 + 30.0]),
+            "{:?}",
+            at(cq, cx, cy)
+        );
+        let kinds: Vec<u32> = d.quads[2..].iter().map(|q| q.kind).collect();
+        let g = PaintKind::Glyph as u32;
+        assert_eq!(
+            kinds,
+            [g, g, g, g, PaintKind::Solid as u32],
+            "shadow, glyphs, underline"
+        );
+        assert_eq!(
+            d.quads[2].rect[0] - d.quads[4].rect[0],
+            1.0,
+            "the shadow's offset"
+        );
+        assert!(
+            d.quads[2..].iter().all(|q| q.xf == cq.xf),
+            "the text rides its parents"
         );
     }
 

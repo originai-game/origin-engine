@@ -54,6 +54,7 @@ pub(crate) struct PaintRenderer {
     gradients: wgpu::Buffer,
     stops: wgpu::Buffer,
     segments: wgpu::Buffer,
+    transforms: wgpu::Buffer,
     group: Option<wgpu::BindGroup>,
     uploaded: Option<Uploaded>,
     /// The icon table uploaded (its address and length).
@@ -134,6 +135,7 @@ impl PaintRenderer {
                 entry(2, storage),
                 entry(3, storage),
                 entry(4, storage),
+                entry(5, storage),
             ],
         });
         let pl = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
@@ -194,6 +196,7 @@ impl PaintRenderer {
             gradients: buffer(device, "ui paint gradients", 0),
             stops: buffer(device, "ui paint stops", 0),
             segments: buffer(device, "ui paint icons", 0),
+            transforms: buffer(device, "ui paint transforms", 0),
             group: None,
             uploaded: None,
             icons: (0, 0),
@@ -276,6 +279,19 @@ impl PaintRenderer {
             "ui paint stops",
             &self.stop_rows,
         );
+        let identity = [og_draw::paint::IDENTITY];
+        let transforms = if paint.transforms.is_empty() {
+            &identity[..]
+        } else {
+            &paint.transforms[..]
+        };
+        grew |= write(
+            device,
+            queue,
+            &mut self.transforms,
+            "ui paint transforms",
+            transforms,
+        );
         if let Some(icons) = &paint.icons {
             let at = (icons.as_ptr() as usize, icons.len());
             if at != self.icons {
@@ -294,6 +310,7 @@ impl PaintRenderer {
                     self.gradients.as_entire_binding(),
                     self.stops.as_entire_binding(),
                     self.segments.as_entire_binding(),
+                    self.transforms.as_entire_binding(),
                 ],
             ));
         }
@@ -314,7 +331,7 @@ impl PaintRenderer {
                 color: q.color,
                 r: q.radius,
                 p: q.p,
-                k: [q.kind, q.a, q.b, 0],
+                k: [q.kind, q.a, q.b, q.xf],
                 ..Default::default()
             };
             if q.kind == PaintKind::Glyph as u32 {

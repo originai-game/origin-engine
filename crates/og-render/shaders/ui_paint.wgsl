@@ -31,7 +31,7 @@ struct PaintGpu {
   p: vec4<f32>,
   // x: the kind (0 solid, 1 gradient, 2 glyph, 3 icon, 4 border, 5 shadow,
   // 6 inset shadow), y and z its gradient, or its first segment and their
-  // count.
+  // count, w its transform (0 none).
   k: vec4<u32>,
 };
 @group(0) @binding(1) var<storage, read> quads: array<PaintGpu>;
@@ -41,6 +41,8 @@ struct PaintGpu {
 @group(0) @binding(3) var<storage, read> stops: array<vec4<f32>>;
 // The built-in icons' segments, a b in their 24-unit space.
 @group(0) @binding(4) var<storage, read> segments: array<vec4<f32>>;
+// Paint-time transforms, two entries each: CSS's matrix a b c d, then e f.
+@group(0) @binding(5) var<storage, read> transforms: array<vec4<f32>>;
 
 @group(1) @binding(0) var page: texture_2d<f32>;
 @group(1) @binding(1) var page_sampler: sampler;
@@ -53,6 +55,8 @@ struct PaintOut {
   @location(0) local: vec2<f32>,
   @location(1) uv: vec2<f32>,
   @location(2) @interpolate(flat) index: u32,
+  // Device pixels per CSS pixel of the box, its transform's scale included.
+  @location(3) @interpolate(flat) aa: f32,
 };
 
 @vertex
@@ -65,7 +69,14 @@ fn vs_paint(@builtin(vertex_index) vi: u32, @builtin(instance_index) ii: u32) ->
   // What the quad covers around the box's centre: a box and a device pixel
   // for its antialiased edge; a glyph's quad, which holds its field's reach;
   // a shadow's moved, grown box and its blur's reach (three deviations).
-  let px = 1.0 / max(frame.output.z, 1e-3);
+  var m = vec4<f32>(1.0, 0.0, 0.0, 1.0);
+  var t = vec2<f32>(0.0);
+  if (q.k.w != 0u) {
+    m = transforms[2u * q.k.w];
+    t = transforms[2u * q.k.w + 1u].xy;
+  }
+  let aa = frame.output.z * sqrt(max(abs(m.x * m.w - m.y * m.z), 1e-6));
+  let px = 1.0 / max(aa, 1e-3);
   let half = 0.5 * q.rect.zw;
   var lo = -half - vec2<f32>(px);
   var hi = half + vec2<f32>(px);
@@ -78,13 +89,16 @@ fn vs_paint(@builtin(vertex_index) vi: u32, @builtin(instance_index) ii: u32) ->
     hi = q.p.xy + reach;
   }
   let local = mix(lo, hi, c);
-  let css = q.rect.xy + half + local;
+  let at = q.rect.xy + half + local;
+  // The transform moves the quad; the box's distances stay its own.
+  let css = vec2<f32>(m.x * at.x + m.z * at.y, m.y * at.x + m.w * at.y) + t;
   let device = css * frame.output.z;
   var o: PaintOut;
   o.position = vec4<f32>(device.x / frame.output.x * 2.0 - 1.0, 1.0 - device.y / frame.output.y * 2.0, 0.0, 1.0);
   o.local = local;
   o.uv = vec2<f32>(mix(q.uv.x, q.uv.z, c.x), mix(q.uv.y, q.uv.w, c.y));
   o.index = ii;
+  o.aa = aa;
   return o;
 }
 
@@ -188,7 +202,7 @@ fn fs_paint(in: PaintOut) -> @location(0) vec4<f32> {
   if (css.x < q.clip.x || css.y < q.clip.y || css.x >= q.clip.z || css.y >= q.clip.w) {
     discard;
   }
-  let scale = frame.output.z;
+  let scale = in.aa;
   let half = 0.5 * q.rect.zw;
   var rgb = q.color.rgb;
   var a = q.color.a;
@@ -210,6 +224,10 @@ fn fs_paint(in: PaintOut) -> @location(0) vec4<f32> {
         // A colour page: its images, at the text's alpha.
         rgb = m.rgb;
         a *= m.a;
+      } else if (q.p.y * scale > 1.0) {
+        // A text shadow's blur (CSS's radius, a deviation of half), as far
+        // as the field reaches.
+        a *= 0.5 + 0.5 * erf_approx(d / (0.5 * q.p.y * scale * 1.4142135));
       } else {
         a *= clamp(d + 0.5, 0.0, 1.0);
       }

@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {
+      "member": "UI styles",
+      "summary": "og-ui's paint pass draws translate, scale and rotate about transform-origin, composed down the tree as CSS composes them (layout and hit testing do not move, and a transformed box's overflow clip stays axis-aligned), text-shadow (one layer, its blur as far as the glyph's distance field reaches) and text-decoration's underline, overline and line-through."
+    }
+  ]
+}
