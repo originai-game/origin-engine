@@ -1,5 +1,5 @@
 import { Show, View, t } from "@origingame/engine/ui";
-import "./lock-on.en.ogt";
+import "./rpg.en.ogt";
 
 export interface RpgLockOnProps {
   /** The locked target's name for a reader; empty hides the reticle (nothing is locked). */

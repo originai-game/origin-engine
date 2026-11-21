@@ -1,5 +1,5 @@
 import { For, Show, Text, View, formatNumber, t } from "@origingame/engine/ui";
-import "./hits.en.ogt";
+import "./rpg.en.ogt";
 
 export interface RpgHitsProps {
   /** The latest damage and healing figures, newest first, keyed rows of { id, amount, kind, call, word }: kind normal, critical (gold and slanted, the largest), burn (damage over time in an ember ink, its word beside it), heal (green with a plus) or miss (on data-kind); call the words over a critical as the game words them (Critical · Weak point), empty for none; word the figure's kind as the game words it (burn), empty for none. The newest stands largest; when there are older ones it keeps room before it, where they step down and away (a phone shows the newest alone); the game trims the list and places it. */

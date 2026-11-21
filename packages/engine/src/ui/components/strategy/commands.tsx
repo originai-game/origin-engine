@@ -1,6 +1,6 @@
 import type { Texture } from "@origingame/engine";
 import { For, Icon, Image, Show, Text, View, t, type UiEvent } from "@origingame/engine/ui";
-import "./commands.en.ogt";
+import "./strategy.en.ogt";
 
 export interface StrategyCommandsProps {
   /** The command card in grid order, four to a row, keyed rows of { id, name, icon, glyph, key, action, enabled, affordable, cost, costIcon, cooldown, time, active, detail, cooldownText, readyText, reason }: name for a reader and the info card's title, empty draws an empty cell; icon the command's picture (og.load.texture), 0 draws glyph (an icon of the atlas); key the hotkey as the game names it (A), or action the input action whose bound glyph the cap shows (og.input.defineAction), both empty hide it, hidden under a touch screen; enabled false greys it and it sends nothing; affordable false greys it and shows cost on a red tag; cost and costIcon the price as the game words it (200) and the resource's picture; cooldown 0 to 1 still to run, a dark sweep over the art, with time its figure (18); active a toggle that is on or the order in hand, its edge lit; detail, cooldownText and readyText the info card's words (Cooldown 45 s, Ready in 18 s); reason why it cannot be used now (Need a Blacksmith), on the info card. */

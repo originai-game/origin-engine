@@ -1,6 +1,6 @@
 import type { Texture } from "@origingame/engine";
 import { Image, Show, Text, View, formatNumber, t } from "@origingame/engine/ui";
-import "./vitals.en.ogt";
+import "./rpg.en.ogt";
 
 export interface RpgVitalsProps {
   /** The character's name; read out, and shown on the large plate. */

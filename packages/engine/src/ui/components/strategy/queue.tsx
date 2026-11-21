@@ -1,6 +1,6 @@
 import type { Texture } from "@origingame/engine";
 import { For, Icon, Image, Show, Text, View, t, type UiEvent } from "@origingame/engine/ui";
-import "./queue.en.ogt";
+import "./strategy.en.ogt";
 
 export interface StrategyQueueProps {
   /** What produces, as the game words it (Barracks queue); empty takes the kit's (Production). */

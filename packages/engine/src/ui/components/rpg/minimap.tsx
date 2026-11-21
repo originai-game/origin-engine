@@ -1,6 +1,6 @@
 import type { Texture } from "@origingame/engine";
 import { For, Image, Line, Show, Text, View, t } from "@origingame/engine/ui";
-import "./minimap.en.ogt";
+import "./rpg.en.ogt";
 
 export interface RpgMinimapProps {
   /** The map texture (og.load.texture); 0 draws the dark well alone. */

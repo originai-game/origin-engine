@@ -1,7 +1,7 @@
 import type { Texture } from "@origingame/engine";
 import { For, Icon, Image, Show, Text, View, formatNumber, t, type UiEvent } from "@origingame/engine/ui";
 import { HudBar } from "../hud/bar";
-import "./party.en.ogt";
+import "./rpg.en.ogt";
 
 export interface RpgPartyProps {
   /** Keyed rows of { id, name, portrait, level, health, healthMax, mana, manaMax, down }: portrait a texture (og.load.texture), 0 none; down greys the card and marks it. */

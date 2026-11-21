@@ -2,7 +2,7 @@ import type { Texture } from "@origingame/engine";
 import { Show, Text, View, formatNumber, t } from "@origingame/engine/ui";
 import { HudBar } from "../hud/bar";
 import { HudPortrait } from "../hud/portrait";
-import "./leader.en.ogt";
+import "./rpg.en.ogt";
 
 export interface RpgLeaderProps {
   /** The leader's name; empty hides it. */

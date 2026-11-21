@@ -1,5 +1,5 @@
 import { Show, Text, View, t } from "@origingame/engine/ui";
-import "./clock.en.ogt";
+import "./strategy.en.ogt";
 
 export interface StrategyClockProps {
   /** What the clock counts as the game words it (Day 3, Match), before the time; empty hides it. */

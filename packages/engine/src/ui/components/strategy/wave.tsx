@@ -1,6 +1,6 @@
 import type { Texture } from "@origingame/engine";
 import { For, Icon, Image, Show, Text, View, formatDuration, t, type UiEvent } from "@origingame/engine/ui";
-import "./wave.en.ogt";
+import "./strategy.en.ogt";
 
 export interface StrategyWaveProps {
   /** The wave on now or coming, from 1. */

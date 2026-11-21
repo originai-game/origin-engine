@@ -1,5 +1,5 @@
 import { Show, Text, View } from "@origingame/engine/ui";
-import "./prompt.en.ogt";
+import "./rpg.en.ogt";
 
 export interface RpgPromptProps {
   /** The input that does it as the game names it (F, Hold E); empty hides the key cap. */

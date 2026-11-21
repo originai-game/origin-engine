@@ -1,6 +1,6 @@
 import type { Texture } from "@origingame/engine";
 import { For, Image, Show, View, t } from "@origingame/engine/ui";
-import "./minimap.en.ogt";
+import "./strategy.en.ogt";
 
 export interface StrategyMinimapProps {
   /** The whole map's picture (og.load.texture), drawn square; 0 draws the dark well alone. */

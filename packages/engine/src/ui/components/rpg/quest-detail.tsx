@@ -1,6 +1,6 @@
 import type { Texture } from "@origingame/engine";
 import { For, Icon, Image, Scroll, Show, Text, View, t, type UiEvent } from "@origingame/engine/ui";
-import "./quest-detail.en.ogt";
+import "./rpg.en.ogt";
 
 export interface RpgQuestDetailProps {
   /** The quest's name, in the heading band. */

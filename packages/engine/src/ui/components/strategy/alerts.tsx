@@ -1,5 +1,5 @@
 import { For, Show, Text, View, t } from "@origingame/engine/ui";
-import "./alerts.en.ogt";
+import "./strategy.en.ogt";
 
 export interface StrategyAlertsProps {
   /** The alerts and notices, newest first, keyed rows of { id, kind, text, key, faded }: kind danger (under attack), done (research complete) or info, on data-kind, each with its own mark and edge; text the game's words; key the input that jumps to it as the game names it (Space), on a key cap, empty none, hidden under a touch screen; faded an older notice, set back (data-faded). */
