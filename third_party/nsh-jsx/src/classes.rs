@@ -2,7 +2,7 @@
 //! `classList` attributes are parsed with the core's own parser and theme,
 //! and unknown classes are reported with their source position.
 
-use nsh_core::tailwind::{Theme, parse};
+use nsh_tailwind::tailwind::{Theme, parse};
 use oxc::{
     allocator::Allocator,
     ast::ast::{
@@ -62,7 +62,9 @@ impl Checker<'_> {
     /// sides of conditionals and `&&` / `||`, the parts of templates.
     fn expression(&mut self, e: &Expression<'_>) {
         match e {
-            Expression::StringLiteral(s) => self.classes(&s.value, s.span.start + 1),
+            Expression::StringLiteral(s) => {
+                self.classes(&s.value.display().to_string(), s.span.start + 1)
+            }
             Expression::TemplateLiteral(t) => {
                 let last = t.quasis.len().saturating_sub(1);
                 for (i, q) in t.quasis.iter().enumerate() {
@@ -103,7 +105,7 @@ impl<'a> Visit<'a> for Checker<'_> {
         };
         match (name.name.as_str(), &attr.value) {
             ("class" | "contentContainerClass", Some(JSXAttributeValue::StringLiteral(s))) => {
-                self.classes(&s.value, s.span.start + 1);
+                self.classes(&s.value.display().to_string(), s.span.start + 1);
             }
             (
                 "class" | "contentContainerClass",
@@ -119,7 +121,7 @@ impl<'a> Visit<'a> for Checker<'_> {
                         if let ObjectPropertyKind::ObjectProperty(p) = p {
                             match &p.key {
                                 PropertyKey::StringLiteral(s) => {
-                                    self.classes(&s.value, s.span.start + 1)
+                                    self.classes(&s.value.display().to_string(), s.span.start + 1)
                                 }
                                 PropertyKey::StaticIdentifier(i) => {
                                     self.classes(&i.name, i.span.start)
@@ -160,25 +162,16 @@ export function A(p: { on: boolean }) {
     }
 
     #[test]
-    fn theme_tokens_are_classes() {
-        let source = r#"<View class="bg-primary text-muted-foreground bg-chart-up rounded-(--radius-card)" />"#;
-        let themed = |theme: nsh_base::Theme| {
-            let mut tailwind = Theme::default();
-            tailwind.set_tokens(theme.tokens());
-            tailwind
-        };
-        let found = check(
-            source,
-            SourceType::tsx(),
-            &themed(nsh_base::Theme::default()),
-        );
+    fn theme_keys_are_classes() {
+        let source = r#"<View class="bg-surface rounded-card text-fg-muted" />"#;
+        let found = check(source, SourceType::tsx(), &Theme::default());
         let names: Vec<&str> = found.iter().map(|u| u.class.as_str()).collect();
-        assert_eq!(names, ["bg-chart-up", "rounded-(--radius-card)"]);
-        // The app's own theme (`nsh.json` `"theme"`) adds its keys.
-        let theme = nsh_base::Theme::from_json(
-            r##"{ "cssVars": { "theme": { "radius-card": "10px" }, "light": { "chart-up": "#00ff00" } } }"##,
+        assert_eq!(names, ["bg-surface", "rounded-card", "text-fg-muted"]);
+        // A pack's theme adds its keys.
+        let theme = Theme::from_json(
+            r##"{ "colors": { "surface": "#1b1d24", "fg-muted": "#888" }, "radius": { "card": 10 } }"##,
         )
         .unwrap();
-        assert!(check(source, SourceType::tsx(), &themed(theme)).is_empty());
+        assert!(check(source, SourceType::tsx(), &theme).is_empty());
     }
 }

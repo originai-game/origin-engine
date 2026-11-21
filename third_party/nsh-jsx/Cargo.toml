@@ -1,0 +1,18 @@
+# NSH's JSX compiler and class check: see PATCHED.md.
+[package]
+name = "nsh-jsx"
+version = "0.0.0"
+edition = "2024"
+license = "Apache-2.0"
+description = "NSH's JSX compiler (TSX to Solid-style renderer calls, one oxc pass) and its build-time Tailwind class check."
+publish = false
+
+[lib]
+path = "src/lib.rs"
+doctest = false
+
+[dependencies]
+oxc = { version = "=0.157.0", features = ["transformer", "codegen", "semantic", "ast_visit"] }
+oxc_sourcemap = "9"
+serde_json = "1"
+nsh-tailwind = { path = "../nsh-tailwind" }

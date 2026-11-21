@@ -1,12 +1,9 @@
 //! One module to the JS the runtime runs: TypeScript removed and the JSX
-//! compiled by nsh's compiler ([`crate::jsx`]) in one oxc pass. The bundler
-//! runs it on every module; without feature `bundle` it is all there is
-//! ([`crate::compile_module`], e.g. for the website's playground in
-//! WebAssembly, where rolldown does not build).
+//! compiled by nsh's compiler ([`crate::jsx`]) in one oxc pass. `og build`'s
+//! Bun plugin runs it on every game module with JSX ([`crate::compile`]).
 
 use std::path::Path;
 
-use nsh_core::element::description::{ExportKind, SetDescription};
 use oxc::{
     allocator::Allocator,
     codegen::{Codegen, CodegenOptions},
@@ -17,80 +14,22 @@ use oxc::{
 };
 use oxc_sourcemap::SourceMap;
 
-/// What the bundler knows of the native modules a host serves: nsh's own,
-/// the runtime's registries and the UI sets (`BundleOptions::ui_sets`).
+/// What the compile knows of the modules games import: the exports to
+/// check named imports against and the components to hint at (both empty:
+/// Bun's bundler reports a missing export, and the engine's components are
+/// ordinary imports).
 #[derive(Debug, Default)]
 pub(crate) struct NativeModules {
-    specifiers: std::collections::BTreeSet<String>,
-    /// The names each module exports, to check named imports against
-    /// (empty without feature `bundle`: nothing is checked).
+    /// The names each module exports, to check named imports against.
     exports: std::collections::BTreeMap<String, Vec<String>>,
-    /// The runtime's and the UI sets' components (export, module), for
-    /// hints about tags.
+    /// Components (export, module), for hints about tags.
     pub(crate) components: Vec<(String, String)>,
-}
-
-impl NativeModules {
-    pub(crate) fn new(ui_sets: &[SetDescription]) -> Self {
-        let mut out = Self {
-            specifiers: nsh_core::js::NATIVE_MODULES
-                .iter()
-                .map(|s| (*s).to_owned())
-                .collect(),
-            ..Self::default()
-        };
-        for name in nsh_core::js::STANDARD_MODULES {
-            out.specifiers.insert((*name).to_owned());
-        }
-        for r in nsh_core::runtime::registries() {
-            if let Some(spec) = r.specifier() {
-                out.specifiers.insert(spec.to_owned());
-                out.components.extend(
-                    r.specs()
-                        .iter()
-                        .map(|c| (c.export.clone(), spec.to_owned())),
-                );
-            }
-        }
-        for set in ui_sets {
-            out.specifiers.insert(set.specifier.clone());
-            out.components.extend(
-                set.exports_of(ExportKind::Component)
-                    .map(|export| (export.to_owned(), set.specifier.clone())),
-            );
-        }
-        #[cfg(feature = "bundle")]
-        for spec in &out.specifiers {
-            if let Some(names) = nsh_js::native_module_exports(spec, ui_sets) {
-                out.exports.insert(spec.clone(), names);
-            }
-        }
-        out
-    }
-
-    /// Whether `spec` is a native module.
-    #[cfg(feature = "bundle")]
-    pub(crate) fn contains(&self, spec: &str) -> bool {
-        self.specifiers.contains(spec)
-    }
-
-    /// nsh's modules apps import (`nsh`, `nsh/base`, ...), sorted: the
-    /// native modules named `nsh` or `nsh/…` (`nsh:rt`, compiled JSX's, is
-    /// not one).
-    #[cfg(feature = "bundle")]
-    pub(crate) fn nsh(&self) -> impl Iterator<Item = &str> {
-        self.specifiers
-            .iter()
-            .map(String::as_str)
-            .filter(|s| *s == "nsh" || s.starts_with("nsh/"))
-    }
 }
 
 /// A module compiled by [`compile_native`].
 pub(crate) struct Compiled {
     pub(crate) code: String,
-    /// What bundling keeps (`compile_module` returns the code alone).
-    #[cfg_attr(not(feature = "bundle"), expect(dead_code))]
+    /// The source map, to the module's own text.
     pub(crate) map: SourceMap<'static>,
     /// Components taking their props apart ([`crate::props`]), to warn of.
     pub(crate) destructured: Vec<crate::props::DestructuredProps>,
@@ -207,7 +146,8 @@ fn check_named_imports(
         let Statement::ImportDeclaration(import) = statement else {
             continue;
         };
-        let module = import.source.value.as_str();
+        let module = import.source.value.display().to_string();
+        let module = module.as_str();
         let (true, Some(exports), Some(specifiers)) = (
             !import.import_kind.is_type(),
             modules.exports.get(module),

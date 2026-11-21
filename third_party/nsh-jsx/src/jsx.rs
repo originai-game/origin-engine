@@ -54,51 +54,35 @@ use oxc::{
 pub(crate) enum Compiled {
     /// The host element of this core tag, made in place.
     Host(&'static str),
-    /// The renderer's list (`nsh:rt`'s `list`).
-    List,
-    /// A call of the export, a native component rendering the host element
-    /// of this core tag with more to it (`Canvas`'s drawing, `Dialog`'s
-    /// `open`, `InputAccessoryView` only on iOS).
-    Component(&'static str),
+    /// `<Show when fallback keyed>`: the renderer's `cond`.
+    Show,
+    /// `<For each key>`: the renderer's `each`.
+    For,
 }
 
-/// nsh's primitives, by their home (module, export), and what their tags
-/// compile to: `nsh`'s, `nsh/base`'s `Input` and `Dialog` and
-/// `nsh/mobile`'s `InputAccessoryView`.
+/// The module games import primitives from.
+pub(crate) const UI: &str = "@origingame/engine/ui";
+
+/// The module compiled code imports the renderer's functions from.
+pub(crate) const RT: &str = "@origingame/engine/ui/rt";
+
+/// The engine's primitives (crates/og-ui-next/CONVENTIONS.md §Components),
+/// by their home (module, export), and what their tags compile to. The tag
+/// names are the Ops `create` tags.
 pub(crate) const PRIMITIVES: &[(&str, &str, Compiled)] = &[
-    ("nsh", "View", Compiled::Host("view")),
-    ("nsh", "Text", Compiled::Host("text")),
-    ("nsh", "Scroll", Compiled::Host("scroll")),
-    ("nsh", "Overlay", Compiled::Host("overlay")),
-    ("nsh", "Shader", Compiled::Host("shader")),
-    ("nsh", "ShaderEffect", Compiled::Host("shadereffect")),
-    (
-        "nsh",
-        "ShaderTransition",
-        Compiled::Host("shadertransition"),
-    ),
-    ("nsh", "ScreenEffect", Compiled::Host("screeneffect")),
-    (
-        "nsh",
-        "ScreenTransition",
-        Compiled::Host("screentransition"),
-    ),
-    ("nsh", "Image", Compiled::Host("image")),
-    ("nsh", "WebView", Compiled::Host("webview")),
-    ("nsh", "Video", Compiled::Host("video")),
-    ("nsh", "List", Compiled::List),
-    ("nsh", "Canvas", Compiled::Component("canvas")),
-    ("nsh/base", "Input", Compiled::Host("input")),
-    ("nsh/base", "Dialog", Compiled::Component("modal")),
-    (
-        "nsh/mobile",
-        "InputAccessoryView",
-        Compiled::Component("inputaccessory"),
-    ),
+    (UI, "View", Compiled::Host("view")),
+    (UI, "Text", Compiled::Host("text")),
+    (UI, "Image", Compiled::Host("image")),
+    (UI, "Icon", Compiled::Host("icon")),
+    (UI, "Scroll", Compiled::Host("scroll")),
+    (UI, "Input", Compiled::Host("input")),
+    (UI, "Svg", Compiled::Host("svg")),
+    (UI, "Show", Compiled::Show),
+    (UI, "For", Compiled::For),
 ];
 
 /// The control flow tags, global unless a binding of the name shadows them.
-const GLOBALS: &[&str] = &["If", "Each"];
+const GLOBALS: &[&str] = &[];
 
 /// The renderer's functions compiled code calls (imported as `_$<name>`).
 const HELPERS: &[&str] = &[
@@ -126,7 +110,7 @@ fn export_name(n: &ModuleExportName<'_>) -> String {
     match n {
         ModuleExportName::IdentifierName(n) => n.name.to_string(),
         ModuleExportName::IdentifierReference(n) => n.name.to_string(),
-        ModuleExportName::StringLiteral(n) => n.value.to_string(),
+        ModuleExportName::StringLiteral(n) => n.value.display().to_string(),
     }
 }
 
@@ -137,7 +121,8 @@ fn imported_primitives(program: &Program<'_>) -> HashMap<String, Compiled> {
         let Statement::ImportDeclaration(i) = statement else {
             continue;
         };
-        let module = i.source.value.as_str();
+        let module = i.source.value.display().to_string();
+        let module = module.as_str();
         for spec in i.specifiers.iter().flatten() {
             let ImportDeclarationSpecifier::ImportSpecifier(s) = spec else {
                 continue;
@@ -195,14 +180,11 @@ pub(crate) fn transform<'a>(
     if imports.is_empty() {
         return Ok(());
     }
-    let text = format!(
-        "import {{ {} }} from \"nsh:rt\";\n{head}",
-        imports.join(", ")
-    );
+    let text = format!("import {{ {} }} from \"{RT}\";\n{head}", imports.join(", "));
     let text = allocator.alloc_str(&text);
     let parsed = Parser::new(allocator, text, SourceType::mjs()).parse();
     if let Some(err) = parsed.diagnostics.into_iter().next() {
-        return Err(format!("nsh compiler: {err}"));
+        return Err(format!("JSX compiler: {err}"));
     }
     let mut body = parsed.program.body;
     let mut splice = Splice {
@@ -605,24 +587,21 @@ impl<'a> Compiler<'a, '_> {
                 match self.binding(name) {
                     Some(true) => Some(match self.primitives.get(name) {
                         Some(Compiled::Host(core)) => Tag::Host(core),
-                        Some(Compiled::List) => Tag::Component(self.use_helper("list")),
-                        Some(Compiled::Component(_)) | None => Tag::Component(name.to_owned()),
+                        Some(Compiled::Show) => Tag::If,
+                        Some(Compiled::For) => Tag::Each,
+                        None => Tag::Component(name.to_owned()),
                     }),
                     Some(false) => Some(Tag::Component(name.to_owned())),
-                    None => match name {
-                        "If" => Some(Tag::If),
-                        "Each" => Some(Tag::Each),
-                        _ => {
-                            let hint = match self.module_of(name) {
-                                Some(module) => {
-                                    format!(": add `import {{ {name} }} from \"{module}\"`")
-                                }
-                                None => String::new(),
-                            };
-                            self.error(format!("<{name}> names nothing in scope{hint}"), r.span);
-                            None
-                        }
-                    },
+                    None => {
+                        let hint = match self.module_of(name) {
+                            Some(module) => {
+                                format!(": add `import {{ {name} }} from \"{module}\"`")
+                            }
+                            None => String::new(),
+                        };
+                        self.error(format!("<{name}> names nothing in scope{hint}"), r.span);
+                        None
+                    }
                 }
             }
             JSXElementName::MemberExpression(m) => Some(Tag::Component(member(m))),
@@ -669,11 +648,14 @@ impl<'a> Compiler<'a, '_> {
             });
         match best {
             Some(name) => format!(": write <{name}>{}", self.import_hint(name)),
-            None => ": write the component's name (`<View>`, imported from \"nsh\")".to_owned(),
+            None => {
+                ": write the component's name (`<View>`, imported from \"@origingame/engine/ui\")"
+                    .to_owned()
+            }
         }
     }
 
-    /// `` and `import { View } from "nsh"` `` for a name not in scope that
+    /// `` and `import { View } from "@origingame/engine/ui"` `` for a name not in scope that
     /// nsh or a UI set exports; nothing for one in scope or a global.
     fn import_hint(&self, name: &str) -> String {
         if self.binding(name).is_some() {
@@ -721,7 +703,7 @@ impl<'a> Compiler<'a, '_> {
                     .map(|e| e.to_string())
                     .unwrap_or_default();
                 self.error(
-                    format!("nsh compiler: generated invalid code ({detail}): {text}"),
+                    format!("JSX compiler: generated invalid code ({detail}): {text}"),
                     span,
                 );
                 Expression::new_null_literal(span, &AstBuilder::new(self.allocator))
@@ -792,7 +774,11 @@ impl<'a> Compiler<'a, '_> {
                     match a.value {
                         None => body.push_str(&self.prop(&v, &name, "true")),
                         Some(JSXAttributeValue::StringLiteral(s)) => {
-                            body.push_str(&self.prop(&v, &name, &quote(&s.value)));
+                            body.push_str(&self.prop(
+                                &v,
+                                &name,
+                                &quote(&s.value.display().to_string()),
+                            ));
                         }
                         Some(JSXAttributeValue::ExpressionContainer(c)) => {
                             if let Some(e) = self.expression(c.unbox().expression) {
@@ -838,12 +824,12 @@ impl<'a> Compiler<'a, '_> {
                     None => continue,
                 },
                 JSXChild::ExpressionContainer(c) => match &c.expression {
-                    JSXExpression::StringLiteral(s) => (s.value.to_string(), s.span),
+                    JSXExpression::StringLiteral(s) => (s.value.display().to_string(), s.span),
                     JSXExpression::NumericLiteral(n) => (n.raw_str().to_string(), n.span),
                     JSXExpression::TemplateLiteral(t) if t.expressions.is_empty() => (
                         t.quasis
                             .iter()
-                            .filter_map(|q| q.value.cooked.as_deref())
+                            .filter_map(|q| q.value.cooked.and_then(|c| c.as_str()))
                             .collect(),
                         t.span,
                     ),
@@ -1103,7 +1089,7 @@ impl<'a> Compiler<'a, '_> {
                     match a.value {
                         None => props.push(format!("{k}: true")),
                         Some(JSXAttributeValue::StringLiteral(s)) => {
-                            props.push(format!("{k}: {}", quote(&s.value)));
+                            props.push(format!("{k}: {}", quote(&s.value.display().to_string())));
                         }
                         Some(JSXAttributeValue::ExpressionContainer(c)) => {
                             if let Some(mut e) = self.expression(c.unbox().expression) {
@@ -1210,13 +1196,15 @@ impl<'a> Compiler<'a, '_> {
                     }
                     let value = match a.value {
                         None => "true".to_owned(),
-                        Some(JSXAttributeValue::StringLiteral(s)) => quote(&s.value),
+                        Some(JSXAttributeValue::StringLiteral(s)) => {
+                            quote(&s.value.display().to_string())
+                        }
                         Some(JSXAttributeValue::ExpressionContainer(c)) => {
                             let c = c.unbox();
-                            // `<If>`'s `else` is a branch, kept as a child
-                            // expression is: `else={label()}` follows `label`
+                            // `<Show>`'s `fallback` is a branch, kept as a child
+                            // expression is: `fallback={label()}` follows `label`
                             // (an element is made once, as before).
-                            let kept = name == "else"
+                            let kept = name == "fallback"
                                 && !matches!(
                                     c.expression,
                                     JSXExpression::JSXElement(_) | JSXExpression::JSXFragment(_)
@@ -1240,11 +1228,17 @@ impl<'a> Compiler<'a, '_> {
         out
     }
 
-    /// `<If when={c} else={…}>…</If>`.
+    /// `<Show when={c} fallback={…}>…</Show>`; `keyed` makes the branch
+    /// again whenever `when`'s value changes, not only its truthiness.
     fn if_(&mut self, el: JSXElement<'a>, g: &mut Gen<'a>) -> String {
         let span = el.span;
         let opening = el.opening_element.unbox();
-        let attrs = self.flow_attrs("If", opening.attributes, &["when", "else"], g);
+        let attrs = self.flow_attrs(
+            "Show",
+            opening.attributes,
+            &["when", "fallback", "keyed"],
+            g,
+        );
         let get = |name: &str| {
             attrs
                 .iter()
@@ -1252,7 +1246,7 @@ impl<'a> Compiler<'a, '_> {
                 .map(|(_, v)| v.clone())
         };
         let Some(when) = get("when") else {
-            self.error("<If> needs `when`", span);
+            self.error("<Show> needs `when`", span);
             return "undefined".to_owned();
         };
         let cond = self.use_helper("cond");
@@ -1269,9 +1263,11 @@ impl<'a> Compiler<'a, '_> {
                 }
             }
             let then = format!("() => ({render})({HOLE}w)");
-            let branches = match get("else") {
-                Some(otherwise) => format!("{then}, () => {otherwise}"),
-                None => then,
+            let branches = match (get("fallback"), get("keyed")) {
+                (Some(otherwise), Some(keyed)) => format!("{then}, () => {otherwise}, {keyed}"),
+                (Some(otherwise), None) => format!("{then}, () => {otherwise}"),
+                (None, Some(keyed)) => format!("{then}, undefined, {keyed}"),
+                (None, None) => then,
             };
             return format!("(({HOLE}w) => {cond}({HOLE}w, {branches}))(() => {when})");
         }
@@ -1281,27 +1277,33 @@ impl<'a> Compiler<'a, '_> {
             [one] => one.clone(),
             many => format!("[{}]", many.join(", ")),
         };
-        match get("else") {
-            Some(otherwise) => {
+        match (get("fallback"), get("keyed")) {
+            (Some(otherwise), Some(keyed)) => {
+                format!("{cond}(() => {when}, () => {then}, () => {otherwise}, {keyed})")
+            }
+            (Some(otherwise), None) => {
                 format!("{cond}(() => {when}, () => {then}, () => {otherwise})")
             }
-            None => format!("{cond}(() => {when}, () => {then})"),
+            (None, Some(keyed)) => {
+                format!("{cond}(() => {when}, () => {then}, undefined, {keyed})")
+            }
+            (None, None) => format!("{cond}(() => {when}, () => {then})"),
         }
     }
 
-    /// `<Each of={items} key={(item) => item.id}>{(item, index) => …}</Each>`.
+    /// `<For each={items} key={(item) => item.id}>{(item, index) => …}</For>`.
     fn each(&mut self, el: JSXElement<'a>, g: &mut Gen<'a>) -> String {
         let span = el.span;
         let opening = el.opening_element.unbox();
-        let attrs = self.flow_attrs("Each", opening.attributes, &["of", "key"], g);
+        let attrs = self.flow_attrs("For", opening.attributes, &["each", "key"], g);
         let get = |name: &str| {
             attrs
                 .iter()
                 .find(|(n, _)| n == name)
                 .map(|(_, v)| v.clone())
         };
-        let Some(of) = get("of") else {
-            self.error("<Each> needs `of`", span);
+        let Some(of) = get("each") else {
+            self.error("<For> needs `each`", span);
             return "undefined".to_owned();
         };
         let mut render = None;
@@ -1315,7 +1317,7 @@ impl<'a> Compiler<'a, '_> {
                 }
                 other => {
                     self.error(
-                        "<Each> takes one child: a function rendering an item, `{(item, index) => …}`",
+                        "<For> takes one child: a function rendering an item, `{(item, index) => …}`",
                         other.span(),
                     );
                     return "undefined".to_owned();
@@ -1324,7 +1326,7 @@ impl<'a> Compiler<'a, '_> {
         }
         let Some(render) = render else {
             self.error(
-                "<Each> takes one child: a function rendering an item, `{(item, index) => …}`",
+                "<For> takes one child: a function rendering an item, `{(item, index) => …}`",
                 span,
             );
             return "undefined".to_owned();
@@ -1338,7 +1340,7 @@ impl<'a> Compiler<'a, '_> {
 }
 
 /// Whether `children` are one function written in place, whitespace aside
-/// (`<If>`'s `{(value) => …}`).
+/// (`<Show>`'s `{(value) => …}`).
 fn lone_function_child(children: &[JSXChild<'_>]) -> bool {
     let mut meaningful = children
         .iter()
@@ -1400,7 +1402,7 @@ mod tests {
             None,
             None,
             Some("App.tsx"),
-            &crate::compile::NativeModules::new(&[nsh_base::registry().into()]),
+            &crate::compile::NativeModules::default(),
         )
         .map(|c| c.code)
     }
@@ -1434,7 +1436,7 @@ mod tests {
         );
         assert_eq!(decode_entities("日本&"), "日本&");
         let code = compile(
-            r#"import { Text } from "nsh";
+            r#"import { Text } from "@origingame/engine/ui";
             export const a = <Text>A & 中文测试</Text>;"#,
         )
         .unwrap();
@@ -1447,7 +1449,7 @@ mod tests {
             compile("const here = new URL(\".\", import.meta.url); const meta = import.meta;")
                 .unwrap();
         assert!(
-            code.starts_with(r#"import { metaUrl as _$metaUrl } from "nsh:rt";"#),
+            code.starts_with(r#"import { metaUrl as _$metaUrl } from "@origingame/engine/ui/rt";"#),
             "{code}"
         );
         assert!(
@@ -1460,7 +1462,7 @@ mod tests {
     #[test]
     fn host_elements_static_and_dynamic_props() {
         let code = flat(&compile(
-            r#"import { View } from "nsh";
+            r#"import { View } from "@origingame/engine/ui";
             const n = 1; let f = (x: number) => x;
             export const a = <View testID="a" accessible pointerEvents={n} accessibilityLabel={f(n)} onPress={f} onLongPress={n > 0 ? f : undefined} />;"#,
         )
@@ -1487,40 +1489,32 @@ mod tests {
             "{code}"
         );
         // The import of a primitive compiled in place goes.
-        assert!(code.starts_with(r#"import { element as _$element, prop as _$prop, bindProp as _$bindProp } from "nsh:rt";"#), "{code}");
-        assert!(!code.contains(r#"from "nsh";"#), "{code}");
+        assert!(code.starts_with(r#"import { element as _$element, prop as _$prop, bindProp as _$bindProp } from "@origingame/engine/ui/rt";"#), "{code}");
+        assert!(!code.contains(r#"from "@origingame/engine/ui";"#), "{code}");
     }
 
-    /// Every primitive compiles in place by its import from `nsh`.
+    /// Every primitive compiles in place by its import from the engine's
+    /// UI module; the import then goes.
     #[test]
-    fn primitives_from_nsh_compile_in_place() {
+    fn primitives_compile_in_place() {
         let code = flat(
             &compile(
-                r#"import { Canvas, Image, List, Text, Video, View, WebView } from "nsh";
-            export const a = <View><Text>t</Text><Image src="x" /><WebView src="about:blank" /><Video src="v" /></View>;
-            export const b = <List each={[1]}>{(i) => <Text>{i()}</Text>}</List>;
-            export const c = <Canvas draw={() => {}} />;
-            Image.prefetch("x");"#,
+                r#"import { Icon, Image, Input, Scroll, Svg, Text, View } from "@origingame/engine/ui";
+            export const a = <View><Text>t</Text><Image src="x" /><Icon name="i" /><Input /><Svg /><Scroll /></View>;"#,
             )
             .unwrap(),
         );
-        for tag in ["view", "text", "image", "webview", "video"] {
+        for tag in ["view", "text", "image", "icon", "input", "svg", "scroll"] {
             assert!(code.contains(&format!(r#"_$element("{tag}")"#)), "{code}");
         }
-        assert!(code.contains("_$component(_$list, {"), "{code}");
-        assert!(code.contains("_$component(Canvas, {"), "{code}");
-        // What is used as a value or called stays imported.
-        assert!(
-            code.contains(r#"import { Canvas, Image } from "nsh";"#),
-            "{code}"
-        );
+        assert!(!code.contains(r#"from "@origingame/engine/ui";"#), "{code}");
     }
 
     #[test]
     fn bindings_in_scope_win_over_primitives_and_globals() {
         let code = flat(
             &compile(
-                r#"import { View, Text } from "nsh";
+                r#"import { View, Text } from "@origingame/engine/ui";
             export function Outer() {
                 const Text = (p: { children?: unknown }) => p.children;
                 const If = (p: { when: boolean }) => p.when;
@@ -1541,7 +1535,7 @@ mod tests {
         // A primitive used as a value is a component.
         assert!(code.contains("_$component(C, {})"), "{code}");
         assert!(
-            code.contains(r#"import { View, Text } from "nsh";"#),
+            code.contains(r#"import { View, Text } from "@origingame/engine/ui";"#),
             "{code}"
         );
     }
@@ -1551,21 +1545,12 @@ mod tests {
         let err = error("export const a = <view />;");
         assert!(err.contains("lowercase tag <view>"), "{err}");
         assert!(
-            err.contains(r#"write <View> and `import { View } from "nsh"`"#),
+            err.contains(r#"write <View> and `import { View } from "@origingame/engine/ui"`"#),
             "{err}"
         );
-        let err = error("export const a = <web-view />;");
+        let err = error("export const a = <show when>x</show>;");
         assert!(
-            err.contains(r#"write <WebView> and `import { WebView } from "nsh"`"#),
-            "{err}"
-        );
-        let err = error("export const a = <input-accessory />;");
-        assert!(err.contains("write <InputAccessoryView>"), "{err}");
-        let err = error("export const a = <each of={[]}>{() => null}</each>;");
-        assert!(err.contains("write <Each> (a global: no import)"), "{err}");
-        let err = error("export const a = <text-view />;");
-        assert!(
-            err.contains(r#"write <TextView> and `import { TextView } from "nsh/base"`"#),
+            err.contains(r#"write <Show> and `import { Show } from "@origingame/engine/ui"`"#),
             "{err}"
         );
         let err = error(
@@ -1583,7 +1568,7 @@ mod tests {
         let err = error("export const a = <Text>x</Text>;");
         assert!(err.contains("<Text> names nothing in scope"), "{err}");
         assert!(
-            err.contains(r#"<Text> names nothing in scope: add `import { Text } from "nsh"`"#),
+            err.contains("<Text> names nothing in scope: add `import { Text } from"),
             "{err}"
         );
         let err = error("export const a = <Frobnicate />;");
@@ -1591,51 +1576,9 @@ mod tests {
     }
 
     #[test]
-    fn every_host_element_has_one_home() {
-        for tag in [
-            "view",
-            "text",
-            "image",
-            "scroll",
-            "input",
-            "canvas",
-            "webview",
-            "video",
-            "modal",
-            "inputaccessory",
-        ] {
-            assert!(nsh_core::Tag::from_name(tag).is_some(), "{tag}");
-            let names: std::collections::HashSet<&str> = PRIMITIVES
-                .iter()
-                .filter(
-                    |(.., c)| matches!(c, Compiled::Host(t) | Compiled::Component(t) if *t == tag),
-                )
-                .map(|(_, export, _)| *export)
-                .collect();
-            assert_eq!(names.len(), 1, "<{tag}>");
-        }
-        let mut seen = std::collections::HashSet::new();
-        for (module, export, compiled) in PRIMITIVES {
-            assert!(seen.insert((*module, *export)), "{module} {export} twice");
-            // A name is one primitive in every module that exports it.
-            assert!(
-                PRIMITIVES
-                    .iter()
-                    .filter(|(_, e, _)| e == export)
-                    .all(|(.., c)| c == compiled),
-                "{export}"
-            );
-            assert!(
-                nsh_core::js::NATIVE_MODULES.contains(module) || *module == "nsh/base",
-                "{module}"
-            );
-        }
-    }
-
-    #[test]
     fn component_props_children_and_spreads() {
         let code = flat(&compile(
-            r#"import { Text } from "nsh";
+            r#"import { Text } from "@origingame/engine/ui";
             declare const Card: any, s: () => number, rest: object;
             export const a = <Card title={s()} n={1} {...rest} footer={<Text>f</Text>}>one {s()}</Card>;"#,
         )
@@ -1664,7 +1607,7 @@ mod tests {
     #[test]
     fn refs_assign_variables_or_call_functions() {
         let code = flat(&compile(
-            r#"import { View } from "nsh";
+            r#"import { View } from "@origingame/engine/ui";
             let el: unknown; export const a = <View ref={el} />; export const b = <View ref={(n) => (el = n)} />;"#,
         )
         .unwrap());
@@ -1683,7 +1626,7 @@ mod tests {
     fn refs_of_consts_fields_and_assertions() {
         let code = flat(
             &compile(
-                r#"import { View, signal } from "nsh";
+                r#"import { View, signal } from "@origingame/engine/ui";
             import { shared } from "./refs";
             const s = signal<unknown>(); const refs: { a?: unknown, [k: string]: unknown } = {};
             declare const k: () => string; let el: unknown;
@@ -1740,7 +1683,7 @@ mod tests {
             ),
         ] {
             let err = compile(&format!(
-                r#"import {{ Scroll, Text, View }} from "nsh"; export const a = {source};"#
+                r#"import {{ Scroll, Text, View }} from "@origingame/engine/ui"; export const a = {source};"#
             ))
             .unwrap_err();
             // The report wraps long messages: compared without whitespace.
@@ -1753,7 +1696,7 @@ mod tests {
         }
         // Text in a <Text>, whitespace, expressions and components' children stay.
         compile(
-            r#"import { Text, View } from "nsh"; declare const Card: any, name: string;
+            r#"import { Text, View } from "@origingame/engine/ui"; declare const Card: any, name: string;
             export const a = <View>
               <Text>Hi {name}</Text>
               {name}
@@ -1767,11 +1710,11 @@ mod tests {
     fn an_if_with_a_function_child_hands_it_an_accessor_of_when() {
         let code = flat(
             &compile(
-                r#"import { Text } from "nsh";
+                r#"import { Text, Show } from "@origingame/engine/ui";
             declare const user: () => { name: string } | null;
-            export const a = <If when={user()} else={<Text>out</Text>}>
+            export const a = <Show when={user()} fallback={<Text>out</Text>}>
               {(u) => <Text>{u().name}</Text>}
-            </If>;"#,
+            </Show>;"#,
             )
             .unwrap(),
         );
@@ -1788,10 +1731,10 @@ mod tests {
     fn an_if_else_expression_is_kept_as_a_child_is() {
         let code = flat(
             &compile(
-                r#"import { Text } from "nsh";
+                r#"import { Text, Show } from "@origingame/engine/ui";
             declare const on: () => boolean, label: () => string;
-            export const a = <If when={on()} else={label()}>on</If>;
-            export const b = <If when={on()} else={<Text>off</Text>}>on</If>;"#,
+            export const a = <Show when={on()} fallback={label()}>on</Show>;
+            export const b = <Show when={on()} fallback={<Text>off</Text>}>on</Show>;"#,
             )
             .unwrap(),
         );
@@ -1811,11 +1754,11 @@ mod tests {
     fn control_flow() {
         let code = flat(
             &compile(
-                r#"import { View, Text } from "nsh";
+                r#"import { View, Text, Show, For } from "@origingame/engine/ui";
             declare const on: () => boolean, items: () => { id: string }[];
             export const a = <View>
-                <If when={on()} else={<Text>off</Text>}>on</If>
-                <Each of={items()} key={(i) => i.id}>{(item) => <Text>{item().id}</Text>}</Each>
+                <Show when={on()} fallback={<Text>off</Text>}>on</Show>
+                <For each={items()} key={(i) => i.id}>{(item) => <Text>{item().id}</Text>}</For>
             </View>;"#,
             )
             .unwrap(),
@@ -1830,26 +1773,29 @@ mod tests {
         );
         assert!(code.contains("(i) => i.id)"), "{code}");
         let err = compile(
-            r#"import { Text } from "nsh"; export const a = <Each of={[]}><Text /></Each>;"#,
+            r#"import { Text, For } from "@origingame/engine/ui"; export const a = <For each={[]}><Text /></For>;"#,
         )
         .unwrap_err();
-        assert!(err.contains("<Each> takes one child"), "{err}");
-        let err = compile("export const a = <If>x</If>;").unwrap_err();
-        assert!(err.contains("<If> needs `when`"), "{err}");
+        assert!(err.contains("<For> takes one child"), "{err}");
+        let err = compile(
+            r#"import { Show } from "@origingame/engine/ui"; export const a = <Show>x</Show>;"#,
+        )
+        .unwrap_err();
+        assert!(err.contains("<Show> needs `when`"), "{err}");
     }
 
     #[test]
     fn imports_tags_use_stay_and_type_only_ones_go() {
         let code = flat(
             &compile(
-                r#"import { Button, Edges } from "nsh/base";
+                r#"import { Button, Edges } from "./base";
             let r: Edges | undefined;
             export const a = <Button ref={r} />;"#,
             )
             .unwrap(),
         );
         assert!(
-            code.contains(r#"import { Button } from "nsh/base";"#),
+            code.contains(r#"import { Button } from "./base";"#),
             "{code}"
         );
         assert!(
