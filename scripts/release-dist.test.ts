@@ -265,3 +265,20 @@ describe("og vfx add's signature check", () => {
     expect(() => verifyMinisign(read("SHA256SUMS"), read("SHA256SUMS.minisig").toString(), ENGINE_PUBKEY)).toThrow(/not the engine's F6CC11AC12997D89/);
   });
 });
+
+test("docs/web-export.md's variant table is wasm-crates.txt's feature sets", () => {
+  // The gate builds og-host-web's wasm variants with scripts/wasm-crates.txt's
+  // `variant` and `lanes` lines (scripts/lib.sh reads it); the doc's Built-with
+  // column states each set, so a feature change on either side shows here.
+  const repo = join(import.meta.dir, "..");
+  const feats = new Map<string, string>();
+  for (const line of readFileSync(join(repo, "scripts", "wasm-crates.txt"), "utf8").split("\n")) {
+    const w = line.replace(/#.*/, "").trim().split(/\s+/);
+    if ((w[0] === "variant" || w[0] === "lanes") && w[2] === "og-host-web") feats.set(w[1]!, w[3]!);
+  }
+  const doc = readFileSync(join(repo, "docs", "web-export.md"), "utf8");
+  const table = doc.slice(doc.indexOf("| Variant | Where |"));
+  const cells = [...table.matchAll(/`--no-default-features --features ([a-z0-9,]+)`/g)].map((m) => m[1]!);
+  expect([...new Set(cells)].sort()).toEqual([...new Set(feats.values())].sort());
+  for (const name of [...feats.keys()]) expect(doc).toContain(`--features ${feats.get(name)}`);
+});
