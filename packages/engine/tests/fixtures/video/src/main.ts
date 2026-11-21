@@ -7,9 +7,11 @@
 // AV1 decoded as it plays) on the screen from its current time.
 // `surfaces` takes the sprite away and shows the player's texture twice:
 // as the map of an unlit og.Mesh plane on the left half of the view, and
-// on a UI document's image on the right half (Surfaces binds it every tick).
+// on a UI image on the right half (Surfaces binds it every tick).
 import { og, defineSystem } from "@origingame/engine";
-import type { World } from "@origingame/engine";
+import type { Texture, World } from "@origingame/engine";
+import { mount, useStore } from "@origingame/engine/ui";
+import { Frame } from "./frame.tsx";
 
 function must<T>(r: { ok: true; value: T } | { ok: false; reason: string }): T {
   if (!r.ok) throw new Error(r.reason);
@@ -53,11 +55,13 @@ export default og.game({
     must(world.insert(screen, og.Sprite, { texture: info.texture, width: 16, height: 9 }));
     must(world.insert(screen, og.VideoPlayer, { video: info.video }));
     must(world.insert(screen, og.AudioSource, {}));
-    must(og.load.document(world, "ui/frame.svelte"));
   },
   ui(world) {
-    const scope = og.ui.scope(world, "video");
-    must(scope.mount("frame", "frame", { texture: scope.writable("texture", 0) }));
+    const texture = og.ui.scope(world, "video").writable("texture", 0);
+    mount(world, () => {
+      const shown = useStore(texture);
+      return Frame({ get texture() { return shown() as Texture | 0; } });
+    }, {}, { layer: "hud" });
   },
   commands: {
     stream: (world: World) => {

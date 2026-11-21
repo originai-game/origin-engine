@@ -9,6 +9,8 @@
 //   og run tests/fixtures/vehicle-terrain --commands "0.2:key_down:KeyW;2:key_down:KeyD;3:key_up:KeyD;3.5:quit"
 import { og, math, defineComponent, defineResource, defineSystem, f32, u32 } from "@origingame/engine";
 import type { Entity, Quaternion, Vector3, World } from "@origingame/engine";
+import { mount, useStore } from "@origingame/engine/ui";
+import { Hud as HudView } from "../assets/ui/hud.tsx";
 
 function must<T>(r: { ok: true; value: T } | { ok: false; reason: string }): T {
   if (!r.ok) throw new Error(r.reason);
@@ -66,7 +68,6 @@ function build(world: World): void {
     font: must(og.load.font(world, "fonts/InstrumentSans-Regular.ttf")),
     monoFont: must(og.load.font(world, "fonts/PTMono-Regular.ttf")),
   });
-  must(og.load.document(world, "ui/hud.svelte"));
   const info = must(og.terrain.load(world, "terrain/hills.ogt"));
   const hills = must(world.spawn({ name: "hills" }));
   must(world.insert(hills, og.Terrain, { data: info.data }));
@@ -199,7 +200,7 @@ const Chase = defineSystem("Chase", { reads: [og.Transform], writes: [og.Camera]
   cam.quaternion = og.transform.lookAt(cam.position, { x: t.position.x, y: t.position.y + 1, z: t.position.z });
 });
 
-/** The HUD (assets/ui/hud.svelte): the speed, bottom right, clear of the host's controls. */
+/** The HUD (assets/ui/hud.tsx): the speed, bottom right, clear of the host's controls. */
 const Hud = defineSystem("Hud", { reads: [Drive] }, (_q, _t, world) => {
   const d = must(world.resource(Drive));
   must(og.ui.scope(world, "hud").writable("kmh", 0).set(Math.round(d.kmh)));
@@ -213,8 +214,11 @@ export default og.game({
   systems: [Driver, Ground, Effects, Marks, Chase, Hud],
   start: build,
   ui(world) {
-    const scope = og.ui.scope(world, "hud");
-    must(scope.mount("hud", "hud", { kmh: scope.writable("kmh", 0) }));
+    const kmh = og.ui.scope(world, "hud").writable("kmh", 0);
+    mount(world, () => {
+      const speed = useStore(kmh);
+      return HudView({ get kmh() { return speed(); } });
+    }, {}, { layer: "hud" });
   },
   facts: (world) => {
     const d = world.resource(Drive);

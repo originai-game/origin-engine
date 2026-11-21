@@ -1,9 +1,11 @@
-// The courier's HUD (assets/ui/hud.svelte): the engine's minimap, timer,
+// The courier's HUD (assets/ui/hud.tsx): the engine's minimap, timer,
 // tracker, bar and action hints, fed from the world each tick. H hides it.
 import { defineResource, defineSystem, f64, og } from "@origingame/engine";
-import type { World } from "@origingame/engine";
+import type { Texture, World } from "@origingame/engine";
 import { Pedestrian } from "./cast.ts";
 import { must } from "./util.ts";
+import { mount, useStore } from "@origingame/engine/ui";
+import { Hud as HudView } from "../assets/ui/hud.tsx";
 
 /** Seconds to make the drop, and where it is: under the gate. */
 const DELIVERY = 180;
@@ -52,32 +54,41 @@ function markers(world: World): Marker[] {
 /** What the HUD draws with, loaded in start (GameDesc.ui only reads the world): the map's texture. */
 export const HudAssets = defineResource("HudAssets", { map: f64() });
 
-/** Loads the HUD's document and map; called from start. */
+/** Loads the HUD's map; called from start. */
 export function loadHud(world: World): void {
   og.ui.configure(world, {
     font: must(og.load.font(world, "fonts/latin/NotoSans-Latin.ttf")),
     fallbackIcons: { texture: must(og.load.texture(world, "ui/icons/ink-icons.png")), columns: 8, rows: 4, names: INK_ICONS },
   });
-  must(og.load.document(world, "ui/hud.svelte"));
   must(world.resource(HudAssets)).map = must(og.load.texture(world, "textures/map.png")) as number;
 }
 
-/** Registers the HUD's stores and mounts it (GameDesc.ui). */
+/** Registers the HUD's stores and mounts it (GameDesc.ui); the TSX follows the stores. */
 export function mountHud(world: World): void {
   const scope = og.ui.scope(world, "hud");
-  must(scope.mount("hud", "DeliveryHud", {
+  const stores = {
     shown: scope.writable("shown", true),
     seconds: scope.writable("seconds", DELIVERY),
-    total: scope.writable("total", DELIVERY),
-    parcel: scope.writable("parcel", "Parcel 7C · Fragile"),
-    steps: scope.collection("steps", STEPS, { key: "id" }),
     distance: scope.writable("distance", ""),
-    condition: scope.writable("condition", 96),
-    map: scope.writable("map", must(world.resource(HudAssets)).map),
     markers: scope.collection("markers", markers(world), { key: "id" }),
-    district: scope.writable("district", "Lantern Row"),
-    hints: scope.collection("hints", HINTS, { key: "action" }),
-  }));
+  };
+  const map = must(world.resource(HudAssets)).map as Texture;
+  mount(world, () => {
+    const shown = useStore(stores.shown), seconds = useStore(stores.seconds), distance = useStore(stores.distance), marks = useStore(stores.markers);
+    return HudView({
+      get shown() { return shown(); },
+      get seconds() { return seconds(); },
+      total: DELIVERY,
+      parcel: "Parcel 7C · Fragile",
+      steps: STEPS,
+      get distance() { return distance(); },
+      condition: 96,
+      map,
+      get markers() { return marks(); },
+      district: "Lantern Row",
+      hints: HINTS,
+    });
+  }, {}, { layer: "hud" });
 }
 
 /** Shows or hides the HUD. */
