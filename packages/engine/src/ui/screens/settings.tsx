@@ -36,7 +36,7 @@ export function SettingsScreen(props: SettingsScreenProps) {
   const openChoice = createSignal("");
   return (
     <View class={`pt-8 pb-6 text-fg gap-y-4 px-12 overflow-hidden compact:pt-4 compact:pb-3 compact:gap-y-3 compact:px-4`}>
-      <View class={`absolute bg-linear-to-b from-[#03060ee5] via-[#03060ed1] via-40% to-[#03060ef0] inset-0`} />
+      <View class={`absolute bg-linear-to-b from-black/90 via-black/82 via-40% to-black/94 inset-0`} />
       <View class={`min-h-12 border-b border-rim-soft items-baseline gap-x-4 py-1 px-4 compact:flex-wrap compact:gap-y-1`}>
         <Button class={`text-fg/74 compact:-ml-2 shrink ${packClass("Button", "plate")}`} onPress={(e) => props.onBack?.(e)}>
           <View class="items-center gap-x-1">
@@ -49,7 +49,7 @@ export function SettingsScreen(props: SettingsScreenProps) {
             {t("screen.settings.title")}
           </Text>
           <Show when={props.note !== ""}>
-            <Text class="mr-0 ml-auto text-base text-[#ffb35c] line-clamp-2 my-0 compact:ml-0 compact:text-[0.929rem] shrink">
+            <Text class="mr-0 ml-auto text-base text-warn line-clamp-2 my-0 compact:ml-0 compact:text-[0.929rem] shrink">
               {props.note}
             </Text>
           </Show>
@@ -62,7 +62,7 @@ export function SettingsScreen(props: SettingsScreenProps) {
             <Scroll class="grow shrink gap-x-6 py-0.5 px-4 compact:gap-x-4 compact:-mx-4">
               <For each={props.pages}>
                 {(p) => (
-                <View class={`text-fg-muted transition duration-317 data-selected:text-fg data-selected:bg-none data-selected:bg-raised-hover-lo hover:bg-none hover:bg-[#7379851d] compact:text-base`} role="tab" tabIndex={0} selected={props.page === p().id} label={p().name} onPress={(e) => props.onPage?.(e, p().id)}>
+                <View class={`text-fg-muted transition duration-317 data-selected:text-fg data-selected:bg-none data-selected:bg-raised-hover-lo hover:bg-none hover:bg-fill compact:text-base`} role="tab" tabIndex={0} selected={props.page === p().id} label={p().name} onPress={(e) => props.onPage?.(e, p().id)}>
                   <Text>{p().name}</Text>
                 </View>
                 )}
@@ -88,7 +88,7 @@ export function SettingsScreen(props: SettingsScreenProps) {
                 };
                 return (
                 <Show when={entry().page === props.page}>
-                  <View class={`group/row bg-linear-to-r from-[#151d2eb8] to-[#0b101c80] text-fg transition duration-317 hover:bg-transparent hover:bg-[#38e8ff3d] data-selected:text-fg disabled:text-fg-subtle data-done:text-fg-subtle data-down:opacity-45`} label={entry().description}>
+                  <View class={`group/row bg-linear-to-r from-entry-lo to-entry-lo/50 text-fg transition duration-317 hover:bg-transparent hover:bg-[#38e8ff3d] data-selected:text-fg disabled:text-fg-subtle data-done:text-fg-subtle data-down:opacity-45`} label={entry().description}>
                     <Show when={entry().kind === "toggle"}>
                       <View class="group/switch min-h-16 text-[1.286rem] grow shrink text-fg/74 py-1 px-4 compact:text-[1.143rem] compact:gap-y-1 compact:py-2 compact:px-3 group-hover/row:text-fg" role="switch" tabIndex={0} checked={entry().value === true} label={entry().name} data-checked={entry().value === true} onPress={(e) => props.onChange?.(e, entry().id, !(entry().value === true))}>
                         <Text>{entry().name}</Text>
@@ -151,7 +151,7 @@ export function SettingsScreen(props: SettingsScreenProps) {
                             <Icon class={`size-4 shrink ${openChoice() === entry().id ? "rotate-180" : ""}`} name="chevronDown" />
                           </View>
                           <Show when={openChoice() === entry().id}>
-                            <View class={`flex-col rounded-[4.576px] bg-[#0b101ce6] shadow-[inset_0px_0px_0px_1px_#4e586c] overflow-hidden`} role="listbox" label={entry().name} onAction={{ back: (e) => openChoice.set("") }}>
+                            <View class={`flex-col rounded-[4.576px] bg-tile shadow-[inset_0px_0px_0px_1px_#4e586c] overflow-hidden`} role="listbox" label={entry().name} onAction={{ back: (e) => openChoice.set("") }}>
                               <For each={entry().options ?? []}>
                                 {(opt) => (
                                   <View class="flex-row items-center justify-start gap-2 min-h-8 py-0 px-3 text-start text-sm font-semibold text-fg bg-raised-lo shadow-[inset_0px_0px_0px_1px_#4e586c,inset_0px_1px_0px_0px_#ffffff1f] transition duration-317 hover:bg-none hover:bg-raised-hover-lo data-selected:text-accent data-selected:bg-[#38e8ff26] data-selected:shadow-[inset_0px_0px_0px_1px_#38e8ff]" role="option" tabIndex={0} selected={opt() === String(entry().value)} label={opt()} onPress={(e) => { props.onChange?.(e, entry().id, opt()); openChoice.set(""); }}>
@@ -196,7 +196,7 @@ export function SettingsScreen(props: SettingsScreenProps) {
             <Button class={`mr-auto compact:mr-0 compact:col-span-full compact:justify-self-start compact:-ml-2 shrink ${packClass("Button", "plate")}`} onPress={(e) => props.onDefaults?.(e)}>
               <Text>{t("screen.settings.defaults")}</Text>
             </Button>
-            <Button class={`text-fg bg-[#171f30d6] nine-plate-cut min-w-[11.429rem] h-9 disabled:border-transparent active:border-transparent hover:bg-[#171f30d6] hover:bg-transparent hover:border-transparent compact:min-w-0 data-pressed:hover:border-transparent shrink ${packClass("Button", "plate")}`} onPress={(e) => props.onRevert?.(e)} disabled={!props.pending}>
+            <Button class={`text-fg bg-plate-hi nine-plate-cut min-w-[11.429rem] h-9 disabled:border-transparent active:border-transparent hover:bg-plate-hi hover:bg-transparent hover:border-transparent compact:min-w-0 data-pressed:hover:border-transparent shrink ${packClass("Button", "plate")}`} onPress={(e) => props.onRevert?.(e)} disabled={!props.pending}>
               <Text>{t("screen.settings.revert")}</Text>
             </Button>
             <Button class={`text-accent nine-plate-cut min-w-[11.429rem] h-9 compact:min-w-0 shrink ${packClass("Button", "plate", "primary")}`} disabled={!props.pending} onPress={(e) => props.onApply?.(e)}>

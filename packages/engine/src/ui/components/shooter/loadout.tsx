@@ -56,7 +56,7 @@ export function Loadout(props: LoadoutProps) {
   const selected = () => (props.slots ?? []).find((s) => s.id == props.selected);
   const categoryLabel = (c: LoadoutCategory) => (c.label ?? "") != "" ? c.label : t(`shooter.loadout.category.${c.id}`);
   const KEY = "shrink-0 size-6 min-w-6 text-center text-[0.929rem] leading-[1.6] font-bold text-[#262b38] bg-linear-to-b from-white to-[#d8dbe2] rounded-[0.286rem] shadow-[0px_0.143rem_0px_#0000008c,inset_0px_-0.143rem_0px_#0000002e] text-shadow-none pointer-coarse:hidden";
-  const BUTTON = `flex-row items-center justify-center gap-x-1 min-h-11 px-4 min-w-[7.5rem] text-[0.929rem] font-bold tracking-[0.14em] uppercase text-fg nine-plate-cut bg-[#2c3140eb] hover:bg-[#373d4ff2] disabled:opacity-45 compact:flex-1 ${packClass("Button", "plate")}`;
+  const BUTTON = `flex-row items-center justify-center gap-x-1 min-h-11 px-4 min-w-[7.5rem] text-[0.929rem] font-bold tracking-[0.14em] uppercase text-fg nine-plate-cut bg-raised-lo hover:bg-raised-hover-lo disabled:opacity-45 compact:flex-1 ${packClass("Button", "plate")}`;
   return (
     <View class="flex-col w-full h-full max-w-full gap-y-4 text-fg" role="group" label={heading()}>
       <Text class="max-w-full text-[3.286rem] leading-none font-bold uppercase tracking-[0.04em] text-fg shadow-[0px_0.143rem_0.571rem_rgb(0_0_0/0.6)] compact:text-[2rem]">{heading()}</Text>
@@ -71,7 +71,7 @@ export function Loadout(props: LoadoutProps) {
                   <For each={(props.slots ?? []).filter((s) => s.category == c().id)} key={(s) => s.id}>
                     {(s) => (
                       <View
-                        class={`group/item flex-row items-center gap-x-3 w-full min-h-11 py-2 px-3 nine-plate-cut bg-[#232837ed] hover:bg-[#323848ed] data-selected:bg-[#38e8ff26] disabled:opacity-100 disabled:text-fg/66 transition duration-317`}
+                        class={`group/item flex-row items-center gap-x-3 w-full min-h-11 py-2 px-3 nine-plate-cut bg-entry-lo hover:bg-entry-hi data-selected:bg-[#38e8ff26] disabled:opacity-100 disabled:text-fg/66 transition duration-317`}
                         role="button"
                         label={s().name}
                         pressed={s().id == props.selected}
@@ -89,7 +89,7 @@ export function Loadout(props: LoadoutProps) {
                                 <Text class="text-start text-[0.929rem] font-semibold whitespace-nowrap text-fg/66">{s().detail}</Text>
                               </Show>
                               <Show when={s().equipped}>
-                                <Text class={`shrink py-0 px-1 text-[0.857rem] leading-[1.5] font-bold tracking-[0.14em] uppercase text-[#0f2c1d] nine-chip-cut bg-[#9becca] ${packClass("Chip", "frame")}`}>
+                                <Text class={`shrink py-0 px-1 text-[0.857rem] leading-[1.5] font-bold tracking-[0.14em] uppercase text-bg nine-chip-cut bg-success ${packClass("Chip", "frame")}`}>
                                   {t("shooter.loadout.equipped")}
                                 </Text>
                               </Show>
@@ -98,8 +98,8 @@ export function Loadout(props: LoadoutProps) {
                         </View>
                         <Show when={(s().cost ?? "") != ""}>
                           <View class="shrink-0 flex-row items-center gap-x-1">
-                            <Icon class="shrink-0 size-4 text-[#ffcf5a] group-data-locked/item:text-fg/66" name="coin" />
-                            <Text class="text-[1.143rem] font-bold tabular-nums whitespace-nowrap text-[#ffcf5a] group-data-locked/item:text-fg/66">{s().cost}</Text>
+                            <Icon class="shrink-0 size-4 text-gold group-data-locked/item:text-fg/66" name="coin" />
+                            <Text class="text-[1.143rem] font-bold tabular-nums whitespace-nowrap text-gold group-data-locked/item:text-fg/66">{s().cost}</Text>
                           </View>
                         </Show>
                       </View>
@@ -121,14 +121,14 @@ export function Loadout(props: LoadoutProps) {
           </View>
           <Show when={selected()}>
             <View
-              class={`flex-row items-center justify-center gap-x-1 min-h-11 px-4 min-w-[7.5rem] text-[0.929rem] font-bold tracking-[0.14em] uppercase text-[#011e0f] nine-plate-cut bg-[#55e39a] disabled:opacity-45 compact:flex-1 ${packClass("Button", "plate", "primary")}`}
+              class={`flex-row items-center justify-center gap-x-1 min-h-11 px-4 min-w-[7.5rem] text-[0.929rem] font-bold tracking-[0.14em] uppercase text-accent-fg nine-plate-cut bg-accent disabled:opacity-45 compact:flex-1 ${packClass("Button", "plate", "primary")}`}
               role="button"
               label={t("shooter.loadout.equip")}
               disabled={selected()?.locked || selected()?.equipped}
               onPress={(e) => props.onEquip?.(e, props.selected ?? "")}
             >
               <Text class={KEY} glyph="details" />
-              <Text class="text-[#011e0f]">{t("shooter.loadout.equip")}</Text>
+              <Text class="text-accent-fg">{t("shooter.loadout.equip")}</Text>
             </View>
           </Show>
         </View>

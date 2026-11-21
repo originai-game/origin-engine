@@ -58,7 +58,7 @@ export function ShooterSquad(props: ShooterSquadProps) {
             >
               <View class="flex-row items-baseline gap-x-[0.714rem] min-w-0">
                 <View class="shrink-0 self-center size-[2.857rem] compact:size-[2rem] rounded-[0.714rem] bg-linear-to-b from-white/75 via-white/22 to-white/14">
-                  <View class="absolute inset-[0.143rem] rounded-[0.571rem] overflow-hidden bg-[#1e2637e5]">
+                  <View class="absolute inset-[0.143rem] rounded-[0.571rem] overflow-hidden bg-plate-hi">
                     <Show when={(m().portrait ?? 0) > 0} fallback={
                       <View class="size-full flex-row items-center justify-center">
                         <Icon class="size-[50%] text-fg/66" name="person" />
@@ -72,7 +72,7 @@ export function ShooterSquad(props: ShooterSquadProps) {
                   <Text class="min-w-0 text-[1.071rem] font-semibold whitespace-nowrap truncate text-fg text-shadow-2xs text-stroke-3 text-stroke-bg compact:text-[0.929rem]">{m().name}</Text>
                   <Show when={(m().status ?? "") != ""}>
                     <Text
-                      class={`shrink-0 max-w-full min-w-0 text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap truncate text-fg/78 text-shadow-2xs text-stroke-3 text-stroke-bg data-reviving:text-[#4fd8ff] data-down:text-[#ff4d5e]`}
+                      class={`shrink-0 max-w-full min-w-0 text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap truncate text-fg/78 text-shadow-2xs text-stroke-3 text-stroke-bg data-reviving:text-[#4fd8ff] data-down:text-danger`}
                       data-reviving={m().state == "reviving"}
                       data-down={down()}
                     >
@@ -82,19 +82,19 @@ export function ShooterSquad(props: ShooterSquadProps) {
                 </View>
               </View>
               <Show when={(m().shieldMax ?? 0) > 0}>
-                <View class="relative self-center w-full h-[0.429rem] compact:h-[0.286rem] overflow-hidden -skew-x-[22deg] bg-[#1b1f29b8] shadow-[0px_0px_0px_1px_rgb(255_255_255/0.22),inset_0px_1px_0px_0px_rgb(255_255_255/0.14),0px_0.143rem_0.286rem_rgb(0_0_0/0.45)]">
+                <View class="relative self-center w-full h-[0.429rem] compact:h-[0.286rem] overflow-hidden -skew-x-[22deg] bg-tile shadow-[0px_0px_0px_1px_rgb(255_255_255/0.22),inset_0px_1px_0px_0px_rgb(255_255_255/0.14),0px_0.143rem_0.286rem_rgb(0_0_0/0.45)]">
                   <View class="absolute left-0 top-0 h-full bg-[rgb(79_216_255)] shadow-[0.143rem_0px_0.714rem_rgb(79_216_255/0.8)]" style={{ width: `${shieldShare() * 100}%` }}>
                     <View class="absolute left-0 right-0 top-0 h-[42%] bg-linear-to-b from-white/55 to-transparent" />
                   </View>
                   <View class="absolute inset-0 pointer-events-none">
                     <For each={Array.from({ length: Math.max(cells() - 1, 0) }, (_, k) => k)} key={(k) => `c${k}`}>
-                      {(k) => <View class="absolute top-0 bottom-0 w-[0.143rem] bg-[#1b1f29eb]" style={{ left: `${((k() + 1) / cells()) * 100}%` }} />}
+                      {(k) => <View class="absolute top-0 bottom-0 w-[0.143rem] bg-tile" style={{ left: `${((k() + 1) / cells()) * 100}%` }} />}
                     </For>
                   </View>
                 </View>
               </Show>
               <View
-                class="relative self-center w-full h-[0.429rem] compact:h-[0.286rem] overflow-hidden -skew-x-[22deg] bg-[#1b1f29b8] shadow-[0px_0px_0px_1px_rgb(255_255_255/0.22),inset_0px_1px_0px_0px_rgb(255_255_255/0.14),0px_0.143rem_0.286rem_rgb(0_0_0/0.45)]"
+                class="relative self-center w-full h-[0.429rem] compact:h-[0.286rem] overflow-hidden -skew-x-[22deg] bg-tile shadow-[0px_0px_0px_1px_rgb(255_255_255/0.22),inset_0px_1px_0px_0px_rgb(255_255_255/0.14),0px_0.143rem_0.286rem_rgb(0_0_0/0.45)]"
                 role="meter"
                 label={t("shooter.vitals.health")}
                 valueMin={0}

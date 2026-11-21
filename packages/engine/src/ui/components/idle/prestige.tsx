@@ -58,7 +58,7 @@ export function IdlePrestige(props: IdlePrestigeProps) {
       <Scroll class="shrink gap-0 ">
         <View class="w-full gap-3">
           <View class="flex-row items-center w-full gap-3">
-            <View class={`justify-center items-center bg-[#04060c8c] shadow-[inset_0px_0px_0px_1.5px_#ffffff47,0px_4.576px_11.424px_#00000080] gap-2 size-16 rounded-full`}>
+            <View class={`justify-center items-center bg-tile shadow-[inset_0px_0px_0px_1.5px_#ffffff47,0px_4.576px_11.424px_#00000080] gap-2 size-16 rounded-full`}>
               <Icon class="size-[70%]" name={props.icon} />
             </View>
             <View class="grow shrink basis-0 gap-0">
@@ -82,7 +82,7 @@ export function IdlePrestige(props: IdlePrestigeProps) {
             <View class="w-full p-0 m-0 gap-0.5" label={t("idle.prestige.bonus")}>
               <For each={props.rows}>
                 {(r) => (
-                <View class={`flex-row items-center nine-plate-cut bg-[#090e1a8c] text-fg transition duration-317 border border-[#343d4f] w-full min-h-8 py-0.5 px-2 gap-1 data-selected:text-fg disabled:text-fg-subtle data-done:text-fg-subtle data-down:opacity-45 compact:flex-wrap compact:py-0.5 compact:px-1`} label={t("idle.prestige.rowName", { label: r().label, now: r().now, after: r().after })}>
+                <View class={`flex-row items-center nine-plate-cut bg-entry-lo text-fg transition duration-317 border border-rim-soft w-full min-h-8 py-0.5 px-2 gap-1 data-selected:text-fg disabled:text-fg-subtle data-done:text-fg-subtle data-down:opacity-45 compact:flex-wrap compact:py-0.5 compact:px-1`} label={t("idle.prestige.rowName", { label: r().label, now: r().now, after: r().after })}>
                   <Icon class="size-6" name={r().icon} />
                   <Text class={`grow shrink basis-0 text-fg text-start font-semibold`}>
                     {r().label}
@@ -102,10 +102,10 @@ export function IdlePrestige(props: IdlePrestigeProps) {
             </View>
           </Show>
           <Show when={props.requirement !== ''}>
-            <View class={`bg-[#04060c8c] shadow-[inset_0px_0px_0px_1px_#ffffff24] p-2 gap-1`} data-met={props.met === true}>
+            <View class={`bg-tile shadow-[inset_0px_0px_0px_1px_#ffffff24] p-2 gap-1`} data-met={props.met === true}>
               <View class="flex-row items-center w-full gap-1">
                 <Text class="grow shrink basis-0 text-start text-fg">{props.requirement}</Text>
-                <View class={`flex-row items-center bg-[#060910e0] nine-chip-cut text-[0.857rem] font-semibold tracking-[0.14em] uppercase text-fg/78 py-0 px-1 gap-0.5 data-met:bg-success data-met:bg-none data-met:text-[#041016] ${packClass("Chip", "frame")}`} data-met={props.met === true}>
+                <View class={`flex-row items-center bg-tile nine-chip-cut text-[0.857rem] font-semibold tracking-[0.14em] uppercase text-fg/78 py-0 px-1 gap-0.5 data-met:bg-success data-met:bg-none data-met:text-bg ${packClass("Chip", "frame")}`} data-met={props.met === true}>
                   <Icon class="text-shadow-2xs size-3" name={props.met ? 'check' : 'lock'} />
                   <Text class="whitespace-nowrap text-shadow-2xs shrink">
                     {props.met ? t("idle.prestige.met") : t("idle.prestige.notMet")}
@@ -134,7 +134,7 @@ export function IdlePrestige(props: IdlePrestigeProps) {
             </Button>
           </View>
       }>
-        <View class={`bg-[#04060c8c] shadow-[inset_0px_0px_0px_1.5px_#ffb547,0px_0px_20.576px_#ffb54780] p-3 gap-3`} role="alertdialog" label={t("idle.prestige.ask", { gain: props.gain, currency: props.currency })} onAction={{ back: (e) => props.onCancel?.(e) }}>
+        <View class={`bg-tile shadow-[inset_0px_0px_0px_1.5px_#ffb547,0px_0px_20.576px_#ffb54780] p-3 gap-3`} role="alertdialog" label={t("idle.prestige.ask", { gain: props.gain, currency: props.currency })} onAction={{ back: (e) => props.onCancel?.(e) }}>
           <Text class="text-fg m-0">{t("idle.prestige.ask", { gain: props.gain, currency: props.currency })}</Text>
           <View class="flex-row flex-wrap items-center w-full justify-end gap-2">
             <Button class={`min-h-11 min-w-30 gap-1 compact:min-w-0 compact:grow compact:shrink compact:basis-0 pointer-coarse:grow pointer-coarse:shrink pointer-coarse:basis-0 ${packClass("Button", "plate")}`} onPress={(e) => props.onCancel?.(e)}>

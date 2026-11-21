@@ -44,7 +44,7 @@ export function ShooterObjectives(props: ShooterObjectivesProps) {
           {(g) => (
             <View class={`flex-row items-center gap-1 min-w-0 opacity-66 data-current:opacity-100 compact:hidden data-current:compact:flex`}>
               <View
-                class={`shrink-0 size-[0.571rem] mx-[0.143rem] rotate-45 bg-white/66 shadow-[0px_0px_0px_0.143rem_#1a1e28d9] data-current:size-[0.714rem] data-current:mx-[0.071rem] data-current:bg-[#ffcf5a]`}
+                class={`shrink-0 size-[0.571rem] mx-[0.143rem] rotate-45 bg-white/66 shadow-[0px_0px_0px_0.143rem_#1a1e28d9] data-current:size-[0.714rem] data-current:mx-[0.071rem] data-current:bg-gold`}
               />
               <Text
                 class={`shrink basis-auto min-w-0 text-[1.071rem] font-semibold whitespace-nowrap truncate text-fg text-shadow-2xs text-stroke-3 text-stroke-bg data-current:text-[1.143rem]`}
@@ -52,7 +52,7 @@ export function ShooterObjectives(props: ShooterObjectivesProps) {
                 {g().text}
               </Text>
               <Show when={g().tag}>
-                <Text class={`shrink-0 py-0 px-1 text-[0.857rem] font-bold tabular-nums whitespace-nowrap text-fg nine-chip-cut bg-[#1b1f29e0] ${packClass("Chip", "frame")}`}>
+                <Text class={`shrink-0 py-0 px-1 text-[0.857rem] font-bold tabular-nums whitespace-nowrap text-fg nine-chip-cut bg-tile ${packClass("Chip", "frame")}`}>
                   {g().tag}
                 </Text>
               </Show>

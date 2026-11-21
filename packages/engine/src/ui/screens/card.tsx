@@ -20,7 +20,7 @@ export interface CardProps {
 export function Card(props: CardProps) {
   return (
     <View class={`text-fg w-70 max-w-full p-0 gap-2 disabled:text-fg-subtle ${packClass("Panel", "frame")}`}>
-      <Button class={`text-fg bg-[#171f30d6] border border-[#ffffff2e] nine-plate-cut w-full text-start p-3 ${packClass("Button", "plate")}`} onPress={(e) => props.onOpen?.(e)} label={props.title}>
+      <Button class={`text-fg bg-plate-hi border border-white/18 nine-plate-cut w-full text-start p-3 ${packClass("Button", "plate")}`} onPress={(e) => props.onOpen?.(e)} label={props.title}>
         <View class="w-full gap-2">
           <Image class={`w-full aspect-[16/9] nine-plate-cut data-hidden:hidden`} src={props.image} data-hidden={props.image === 0} />
           <View class="flex-wrap items-start gap-y-1 gap-x-2">

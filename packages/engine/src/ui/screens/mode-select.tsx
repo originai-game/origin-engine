@@ -27,7 +27,7 @@ export function ModeSelectScreen(props: ModeSelectScreenProps) {
       <Show when={props.keyArt !== 0}>
         <Art class="absolute object-cover inset-0 size-full" kind="keyArt" src={props.keyArt} />
       </Show>
-      <View class={`absolute bg-linear-to-b from-[#03060edb] via-[#03060eb2] via-40% to-[#03060eeb] inset-0`} />
+      <View class={`absolute bg-linear-to-b from-black/86 via-black/70 via-40% to-black/92 inset-0`} />
       <View class={`min-h-12 border-b border-rim-soft items-center gap-x-4 py-1 px-4 narrow:flex-wrap narrow:gap-y-1`}>
         <Button class={`narrow:-ml-2 shrink ${packClass("Button", "plate")}`} onPress={(e) => props.onBack?.(e)}>
           <View class="items-center gap-x-1">
@@ -47,9 +47,9 @@ export function ModeSelectScreen(props: ModeSelectScreenProps) {
             <View class={`group/mode text-fg transition duration-317 data-selected:border-accent data-done:border-success data-active:border-accent disabled:text-fg-subtle disabled:scale-100 active:scale-96 active:translate-x-0 active:translate-y-0 data-locked:scale-100 data-down:opacity-45 hover:translate-x-0 hover:-translate-y-0.25`} onPress={(e) => props.onSelect?.(e, mode().id)} tabIndex={0} data-selection-off={mode().id !== props.selected} data-selection-on={mode().id === props.selected} data-lock-open={!mode().locked} data-lock-locked={mode().locked}>
               <View class={`grow shrink justify-end nine-panel-cut overflow-hidden`}>
                 <Art class="absolute object-cover inset-0 size-full" kind="levelThumb" src={mode().texture} />
-                <View class={`absolute bg-linear-to-b from-transparent from-35% via-[#03060e8c] via-60% to-[#03060ef5] inset-0`} />
+                <View class={`absolute bg-linear-to-b from-transparent from-35% via-black/55 via-60% to-black/96 inset-0`} />
                 <Show when={mode().tag}>
-                  <Text class={`text-shadow-2xs bg-[#060910e0] nine-chip-cut absolute top-4 right-4 text-[0.857rem] font-bold tracking-[0.14em] uppercase text-fg whitespace-nowrap text-ellipsis py-0.5 px-2 overflow-hidden data-fresh:bg-[#38e8ff] data-fresh:bg-none data-fresh:text-[#0a0f19] compact:top-2 compact:right-2 ${packClass("Chip", "frame")}`} data-fresh={mode().locked}>
+                  <Text class={`text-shadow-2xs bg-tile nine-chip-cut absolute top-4 right-4 text-[0.857rem] font-bold tracking-[0.14em] uppercase text-fg whitespace-nowrap text-ellipsis py-0.5 px-2 overflow-hidden data-fresh:bg-[#38e8ff] data-fresh:bg-none data-fresh:text-[#0a0f19] compact:top-2 compact:right-2 ${packClass("Chip", "frame")}`} data-fresh={mode().locked}>
                     {mode().tag}
                   </Text>
                 </Show>
@@ -61,7 +61,7 @@ export function ModeSelectScreen(props: ModeSelectScreenProps) {
                     {mode().line}
                   </Text>
                   <Show when={mode().locked}>
-                    <View class={`items-center gap-x-1 text-base font-semibold text-[#ffb35c]`}>
+                    <View class={`items-center gap-x-1 text-base font-semibold text-warn`}>
                       <Icon class="size-4" name="lock" />
                       <Text class="shrink">{mode().reason}</Text>
                     </View>

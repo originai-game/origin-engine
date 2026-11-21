@@ -37,7 +37,7 @@ export interface ListItemProps {
 export function ListItem(props: ListItemProps) {
   return (
     <View class="grow shrink basis-0 h-auto gap-2">
-      <View class={`text-fg transition duration-317 w-full min-h-11 text-start py-2 px-3 rounded-control hover:bg-[#7379851d] hover:bg-none active:bg-[#73798532] active:bg-none data-selected:bg-select-hi data-selected:bg-none data-selected:text-fg data-selected:shadow-[inset_3px_0px_0px_#e8e8ed] disabled:bg-transparent disabled:bg-none disabled:text-fg-subtle data-done:text-fg-subtle data-down:opacity-45`} role="button" label={props.title} description={props.subtitle} pressed={(props.selected ?? false)} busy={(props.loading ?? false)} disabled={(props.disabled ?? false) || (props.loading ?? false)} onPress={(e) => props.onChoose?.(e)}>
+      <View class={`text-fg transition duration-317 w-full min-h-11 text-start py-2 px-3 rounded-control hover:bg-fill hover:bg-none active:bg-fill-strong active:bg-none data-selected:bg-select-hi data-selected:bg-none data-selected:text-fg data-selected:shadow-[inset_3px_0px_0px_#e8e8ed] disabled:bg-transparent disabled:bg-none disabled:text-fg-subtle data-done:text-fg-subtle data-down:opacity-45`} role="button" label={props.title} description={props.subtitle} pressed={(props.selected ?? false)} busy={(props.loading ?? false)} disabled={(props.disabled ?? false) || (props.loading ?? false)} onPress={(e) => props.onChoose?.(e)}>
         <View class="flex-row flex-wrap items-center w-full gap-3">
           <Show when={(props.image ?? 0) || props.icon}>
             <View class={`bg-tile shadow-sunk justify-center items-center self-start gap-2 size-11 rounded-control`}>

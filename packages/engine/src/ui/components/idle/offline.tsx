@@ -59,7 +59,7 @@ export function IdleOffline(props: IdleOfflineProps) {
           <View class="flex-row flex-wrap items-center w-full p-0 m-0 gap-1" label={t("idle.offline.earned")}>
             <For each={props.earned}>
               {(e) => (
-              <View class={`w-full grow shrink basis-0 items-center min-w-[108.8px] max-w-48 bg-[#0b101ce5] border border-[#343d4f] nine-plate-cut p-1 m-0 gap-0 compact:min-w-[89.6px]`} label={t("idle.offline.row", { name: e().name, amount: e().amount })}>
+              <View class={`w-full grow shrink basis-0 items-center min-w-[108.8px] max-w-48 bg-tile border border-rim-soft nine-plate-cut p-1 m-0 gap-0 compact:min-w-[89.6px]`} label={t("idle.offline.row", { name: e().name, amount: e().amount })}>
                 <View class={`grow shrink basis-0 justify-center items-center gap-2 size-12`}>
                   <Icon class="size-full" name={e().icon} />
                 </View>

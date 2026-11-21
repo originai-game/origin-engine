@@ -31,17 +31,17 @@ export interface PuzzleGoalsProps {
  */
 export function PuzzleGoals(props: PuzzleGoalsProps) {
   return (
-    <View class={`grow shrink basis-0 border-rim bg-linear-to-b from-[#1e2637e5] to-plate-lo text-fg h-auto p-2 gap-2 rounded-block border disabled:text-fg-subtle`} label={t("puzzle.goals.name")} data-low={props.low === true}>
+    <View class={`grow shrink basis-0 border-rim bg-linear-to-b from-plate-hi to-plate-lo text-fg h-auto p-2 gap-2 rounded-block border disabled:text-fg-subtle`} label={t("puzzle.goals.name")} data-low={props.low === true}>
       <View class="flex-row flex-wrap p-1 gap-3 compact:gap-1">
-        <View class={`items-center justify-center min-w-[102.4px] bg-[#04060c8c] border border-[#ffffff24] py-1 px-2 gap-0 compact:min-w-[83.2px] data-low:border-[1.5px] data-low:border-[#ffb547] ${packClass("Plate", "frame")}`} role={props.counter === 'time' ? 'timer' : 'status'} label={props.counter === 'time' ? t("puzzle.goals.timeLeft", { time: formatDuration(props.seconds) }) : t("puzzle.goals.movesLeft", { moves: props.moves })} data-low={props.low === true}>
-          <Text class={`tabular-nums text-fg whitespace-nowrap text-[2.857rem] font-bold data-low:text-[#ffb547] compact:text-[2.143rem]`} data-low={props.low === true}>
+        <View class={`items-center justify-center min-w-[102.4px] bg-tile border border-white/14 py-1 px-2 gap-0 compact:min-w-[83.2px] data-low:border-[1.5px] data-low:border-warn ${packClass("Plate", "frame")}`} role={props.counter === 'time' ? 'timer' : 'status'} label={props.counter === 'time' ? t("puzzle.goals.timeLeft", { time: formatDuration(props.seconds) }) : t("puzzle.goals.movesLeft", { moves: props.moves })} data-low={props.low === true}>
+          <Text class={`tabular-nums text-fg whitespace-nowrap text-[2.857rem] font-bold data-low:text-warn compact:text-[2.143rem]`} data-low={props.low === true}>
             {props.counter === 'time' ? formatDuration(props.seconds) : formatNumber(props.moves)}
           </Text>
           <Text class={`tracking-[0.14em] uppercase text-fg/78 whitespace-nowrap text-[0.857rem] font-semibold text-shadow-2xs`}>
             {props.counter === 'time' ? t("puzzle.goals.time") : t("puzzle.goals.moves")}
           </Text>
           <Show when={props.low}>
-            <Text class={`mt-0.5 whitespace-nowrap text-[0.857rem] font-semibold tracking-[0.14em] uppercase text-[#2a1400] bg-[#ffb547] nine-chip-cut text-shadow-2xs py-0 px-1 ${packClass("Chip", "frame")}`}>
+            <Text class={`mt-0.5 whitespace-nowrap text-[0.857rem] font-semibold tracking-[0.14em] uppercase text-bg bg-warn nine-chip-cut text-shadow-2xs py-0 px-1 ${packClass("Chip", "frame")}`}>
               {t("puzzle.goals.low")}
             </Text>
           </Show>
@@ -54,7 +54,7 @@ export function PuzzleGoals(props: PuzzleGoalsProps) {
                 <Icon class="text-shadow-2xs size-full" name={g().icon} />
               </View>
               <Show when={g().done}>
-                <Icon class={`absolute top-0.5 right-0.5 bg-success shadow-[0px_0px_9.136px_#45e08f] size-4 rounded-control text-[#041016]`} name="check" />
+                <Icon class={`absolute top-0.5 right-0.5 bg-success shadow-[0px_0px_9.136px_#45e08f] size-4 rounded-control text-bg`} name="check" />
               </Show>
               <Text class={`whitespace-nowrap text-[1.429rem] font-bold tabular-nums text-fg text-shadow-2xs data-done:text-success`} data-done={g().done}>
                 {formatNumber(g().left)}

@@ -58,7 +58,7 @@ export function ShooterAbilities(props: ShooterAbilitiesProps) {
             <View class="relative size-[3.714rem] compact:size-[2.571rem] data-ultimate:size-[6rem] compact:data-ultimate:size-[3.143rem]">
               <Show when={s().ultimate}>
                 <View
-                  class="absolute inset-0 rounded-full overflow-hidden border-[3px] border-white/14 bg-[#151820]"
+                  class="absolute inset-0 rounded-full overflow-hidden border-[3px] border-white/14 bg-tile"
                   role="meter"
                   label={t("shooter.abilities.charge")}
                   valueMin={0}
@@ -77,7 +77,7 @@ export function ShooterAbilities(props: ShooterAbilitiesProps) {
                 <View
                   class={`relative size-full rounded-[0.714rem] bg-linear-to-b from-white/75 via-white/22 to-white/14 data-ready:from-white data-ready:to-[#38e8ff] data-ready:shadow-[0px_0px_0.714rem_rgb(56_232_255/0.55)] data-disabled:opacity-45 group-data-ultimate/ability:rounded-tl-[0.357rem] group-data-ultimate/ability:rounded-tr-[0.357rem]`}
                 >
-                  <View class="absolute inset-[0.143rem] rounded-[0.571rem] overflow-hidden bg-[#2a2d38]">
+                  <View class="absolute inset-[0.143rem] rounded-[0.571rem] overflow-hidden bg-plate-hi">
                     <Show when={s().icon} fallback={
                       <View class="size-full flex-row items-center justify-center">
                         <Show when={s().glyph}>
@@ -89,7 +89,7 @@ export function ShooterAbilities(props: ShooterAbilitiesProps) {
                     </Show>
                     <Show when={(s().cooldown ?? 0) > 0}>
                       <View
-                        class="absolute left-0 right-0 top-0 bg-[#151820ad]"
+                        class="absolute left-0 right-0 top-0 bg-black/68"
                         style={{ height: `${Math.min(s().cooldown ?? 0, 1) * 100}%` }}
                       />
                     </Show>
@@ -112,7 +112,7 @@ export function ShooterAbilities(props: ShooterAbilitiesProps) {
               </View>
               <Show when={(s().count ?? 0) > 0}>
                 <Text
-                  class={`absolute -top-[0.429rem] -right-[0.429rem] max-w-[4.457rem] py-0 px-[0.357rem] text-[0.857rem] font-bold tabular-nums whitespace-nowrap truncate text-fg nine-chip-cut bg-[#1b1f29e0] ${packClass("Chip", "frame")}`}
+                  class={`absolute -top-[0.429rem] -right-[0.429rem] max-w-[4.457rem] py-0 px-[0.357rem] text-[0.857rem] font-bold tabular-nums whitespace-nowrap truncate text-fg nine-chip-cut bg-tile ${packClass("Chip", "frame")}`}
                 >
                   {t("shooter.abilities.count", { count: formatNumber(s().count ?? 0) })}
                 </Text>

@@ -31,7 +31,7 @@ export function ShooterRound(props: ShooterRoundProps) {
     >
       <Show when={(props.round ?? 0) > 0 || (props.clock ?? "") != ""}>
         <View
-          class={`shrink basis-auto min-w-0 flex-row items-baseline gap-1 py-[0.214rem] px-2 nine-plate-cut bg-[#1e2637e5] compact:flex-wrap ${packClass("Plate", "frame")}`}
+          class={`shrink basis-auto min-w-0 flex-row items-baseline gap-1 py-[0.214rem] px-2 nine-plate-cut bg-plate-hi compact:flex-wrap ${packClass("Plate", "frame")}`}
         >
           <Show when={(props.round ?? 0) > 0}>
             <Text class="min-w-0 text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap truncate text-fg/78">
@@ -40,7 +40,7 @@ export function ShooterRound(props: ShooterRoundProps) {
           </Show>
           <Show when={(props.clock ?? "") != ""}>
             <Text
-              class={`shrink-0 text-[1.143rem] leading-[1.1] font-bold tabular-nums whitespace-nowrap text-fg data-urgent:text-[#ff4d5e] compact:text-[0.929rem]`}
+              class={`shrink-0 text-[1.143rem] leading-[1.1] font-bold tabular-nums whitespace-nowrap text-fg data-urgent:text-danger compact:text-[0.929rem]`}
               role="timer"
               data-urgent={props.urgent}
             >
@@ -56,7 +56,7 @@ export function ShooterRound(props: ShooterRoundProps) {
             {formatNumber(props.ours ?? 0)}
           </Text>
           <View class="self-center w-[0.714rem] h-[0.143rem] bg-white/66" />
-          <Text class="text-[1.714rem] leading-none font-bold tabular-nums whitespace-nowrap text-[#ff4d5e] text-shadow-2xs text-stroke-3 text-stroke-bg compact:text-[1.143rem]">
+          <Text class="text-[1.714rem] leading-none font-bold tabular-nums whitespace-nowrap text-danger text-shadow-2xs text-stroke-3 text-stroke-bg compact:text-[1.143rem]">
             {formatNumber(props.theirs ?? 0)}
           </Text>
         </View>

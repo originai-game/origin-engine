@@ -32,7 +32,7 @@ export interface CurrencyProps {
  */
 export function Currency(props: CurrencyProps) {
   return (
-    <View class={`flex-row items-center pr-3 pl-1 border-rim bg-linear-to-b from-[#1e2637e5] to-plate-lo shadow-plate text-fg w-fit max-w-full py-1 gap-2 rounded-block border disabled:text-fg-subtle`} label={props.name || t("currency.name")} busy={props.loading} aria-disabled={props.unavailable} data-full={props.full} data-unavailable={props.unavailable}>
+    <View class={`flex-row items-center pr-3 pl-1 border-rim bg-linear-to-b from-plate-hi to-plate-lo shadow-plate text-fg w-fit max-w-full py-1 gap-2 rounded-block border disabled:text-fg-subtle`} label={props.name || t("currency.name")} busy={props.loading} aria-disabled={props.unavailable} data-full={props.full} data-unavailable={props.unavailable}>
       <Show when={props.icon}>
         <View class={`bg-tile shadow-sunk justify-center items-center gap-2 size-9 rounded-control`}>
           <Icon class={`size-6`} name={props.icon} />

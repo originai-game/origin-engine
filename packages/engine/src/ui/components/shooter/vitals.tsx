@@ -50,7 +50,7 @@ export function ShooterVitals(props: ShooterVitalsProps) {
       data-low={low()}
     >
       <View class="shrink-0 size-[4.571rem] compact:size-[2.857rem] rounded-[1rem] bg-linear-to-b from-white/75 via-white/22 to-white/14">
-        <View class="absolute inset-[0.143rem] rounded-[0.857rem] overflow-hidden bg-linear-to-b from-[#2a2c3a] to-[#191b28]">
+        <View class="absolute inset-[0.143rem] rounded-[0.857rem] overflow-hidden bg-linear-to-b from-plate-hi to-plate-lo">
           <Show when={(props.portrait ?? 0) > 0} fallback={
             <View class="size-full flex-row items-center justify-center">
               <Icon class="size-1/2 text-fg/66" name="person" />
@@ -73,7 +73,7 @@ export function ShooterVitals(props: ShooterVitalsProps) {
             </Show>
           </View>
           <View class="shrink-0 ml-auto flex-row items-baseline gap-x-1">
-            <Text class="text-[1.714rem] leading-none font-bold tabular-nums whitespace-nowrap text-fg text-shadow-2xs text-stroke-3 text-stroke-bg group-data-low/vitals:text-[#ff4d5e] compact:text-[1.143rem]">
+            <Text class="text-[1.714rem] leading-none font-bold tabular-nums whitespace-nowrap text-fg text-shadow-2xs text-stroke-3 text-stroke-bg group-data-low/vitals:text-danger compact:text-[1.143rem]">
               {formatNumber(props.health)}
             </Text>
             <Text class="text-[0.929rem] font-bold tabular-nums whitespace-nowrap text-fg/66 text-shadow-2xs text-stroke-3 text-stroke-bg">
@@ -83,7 +83,7 @@ export function ShooterVitals(props: ShooterVitalsProps) {
         </View>
         <Show when={shieldMax() > 0}>
           <View
-            class={`relative w-full h-[0.643rem] compact:h-[0.429rem] overflow-hidden -skew-x-[22deg] bg-[#1b1f29b8] ${rim}`}
+            class={`relative w-full h-[0.643rem] compact:h-[0.429rem] overflow-hidden -skew-x-[22deg] bg-tile ${rim}`}
             role="meter"
             label={t("shooter.vitals.shield")}
             valueMin={0}
@@ -95,13 +95,13 @@ export function ShooterVitals(props: ShooterVitalsProps) {
             </View>
             <View class="absolute inset-0 pointer-events-none">
               <For each={Array.from({ length: Math.max(cells() - 1, 0) }, (_, k) => k)} key={(k) => `c${k}`}>
-                {(k) => <View class="absolute top-0 bottom-0 w-[0.214rem] bg-[#1b1f29eb]" style={{ left: `${((k() + 1) / cells()) * 100}%` }} />}
+                {(k) => <View class="absolute top-0 bottom-0 w-[0.214rem] bg-tile" style={{ left: `${((k() + 1) / cells()) * 100}%` }} />}
               </For>
             </View>
           </View>
         </Show>
         <View
-          class={`relative w-full h-[1.143rem] compact:h-[0.786rem] overflow-hidden -skew-x-[22deg] bg-[#1b1f29b8] ${rim} group-data-low/vitals:shadow-[0px_0px_0px_1px_#ff4d5e,0px_0px_0.857rem_rgb(255_77_94/0.7)] group-data-low/vitals:animate-pulse`}
+          class={`relative w-full h-[1.143rem] compact:h-[0.786rem] overflow-hidden -skew-x-[22deg] bg-tile ${rim} group-data-low/vitals:shadow-[0px_0px_0px_1px_#ff4d5e,0px_0px_0.857rem_rgb(255_77_94/0.7)] group-data-low/vitals:animate-pulse`}
           role="meter"
           label={t("shooter.vitals.health")}
           valueMin={0}
@@ -110,7 +110,7 @@ export function ShooterVitals(props: ShooterVitalsProps) {
         >
           <View class="absolute left-0 top-0 h-full bg-[linear-gradient(90deg,rgb(255_207_90/0.15),rgb(255_207_90/0.85))]" style={{ width: `${ghostShare() * 100}%` }} />
           <View
-            class={`absolute left-0 top-0 h-full bg-[rgb(244_246_251)] shadow-[0.143rem_0px_0.714rem_rgb(244_246_251/0.55)] group-data-low/vitals:bg-[#ff4d5e] group-data-low/vitals:shadow-[0.143rem_0px_0.714rem_rgb(255_77_94/0.8)]`}
+            class={`absolute left-0 top-0 h-full bg-[rgb(244_246_251)] shadow-[0.143rem_0px_0.714rem_rgb(244_246_251/0.55)] group-data-low/vitals:bg-danger group-data-low/vitals:shadow-[0.143rem_0px_0.714rem_rgb(255_77_94/0.8)]`}
             style={{ width: `${healthShare() * 100}%` }}
           >
             <View class="absolute left-0 right-0 top-0 h-[42%] bg-linear-to-b from-white/55 to-transparent" />

@@ -91,7 +91,7 @@ export function CardCollection(props: CardCollectionProps) {
                           <View class="absolute pointer-events-none inset-0" />
                         </Show>
                         <Show when={c().owned > 0}>
-                          <Text class={`absolute right-0.5 top-0.5 nine-chip-cut bg-[#060910e0] text-fg text-[0.857rem] font-bold py-0 px-0.5 ${packClass("Chip", "frame")}`}>
+                          <Text class={`absolute right-0.5 top-0.5 nine-chip-cut bg-tile text-fg text-[0.857rem] font-bold py-0 px-0.5 ${packClass("Chip", "frame")}`}>
                             {t("card.collection.owned", { count: c().owned })}
                           </Text>
                         </Show>
@@ -107,7 +107,7 @@ export function CardCollection(props: CardCollectionProps) {
                         <CardFace name={c().name} cost={c().cost} icon={c().icon} art={c().art} type={c().type} typeLabel={c().typeLabel} rarity={c().rarity} text={c().text} dim={false} />
                       </View>
                       <Show when={c().owned > 0}>
-                        <Text class={`absolute right-0.5 top-0.5 nine-chip-cut bg-[#060910e0] text-fg text-[0.857rem] font-bold py-0 px-0.5 ${packClass("Chip", "frame")}`}>
+                        <Text class={`absolute right-0.5 top-0.5 nine-chip-cut bg-tile text-fg text-[0.857rem] font-bold py-0 px-0.5 ${packClass("Chip", "frame")}`}>
                           {t("card.collection.owned", { count: c().owned })}
                         </Text>
                       </Show>
@@ -121,7 +121,7 @@ export function CardCollection(props: CardCollectionProps) {
                   {c().inDeck > 0 ? t("card.collection.inDeck", { count: c().inDeck }) : t("card.collection.notInDeck")}
                 </Text>
                 <Show when={!c().canAdd}>
-                  <Text class={`max-w-full text-center text-[0.857rem] font-bold text-[#ffd0d4]`}>
+                  <Text class={`max-w-full text-center text-[0.857rem] font-bold text-danger`}>
                     {c().reason || (c().locked ? t("card.collection.locked") : t("card.collection.refused"))}
                   </Text>
                 </Show>

@@ -29,12 +29,12 @@ export interface PauseScreenProps {
 export function PauseScreen(props: PauseScreenProps) {
   return (
     <View class="text-fg overflow-hidden">
-      <View class={`absolute inset-0 compact:bg-linear-to-b compact:from-[#03060eb2] compact:via-[#03060edb] compact:via-40% compact:to-[#03060ef5] compact:bg-transparent`} />
+      <View class={`absolute inset-0 compact:bg-linear-to-b compact:from-black/70 compact:via-black/86 compact:via-40% compact:to-black/96 compact:bg-transparent`} />
       <Scroll class={`pr-8 pl-12 text-fg w-160 max-w-full h-full transition duration-240 ease-out py-8 compact:pt-8 compact:pb-4 compact:w-full compact:px-4 short:py-3 short:px-4 disabled:text-fg-subtle starting:opacity-0 starting:-translate-x-6 starting:translate-y-0 shrink`}>
         <Text class={`font-display text-8xl font-bold leading-tight tracking-xs uppercase text-fg text-shadow-xs text-shadow-bg/60 m-0 compact:text-[2.857rem]`}>
           {t("screen.pause.title")}
         </Text>
-        <View class={`gap-y-0.5 self-start w-[27.143rem] max-w-full mt-4 bg-[#171f30d6] border border-[#ffffff2e] nine-panel-cut py-3 px-4 short:hidden compact:self-stretch compact:w-auto compact:mt-3 compact:py-2 compact:px-3 ${packClass("Panel", "frame")}`}>
+        <View class={`gap-y-0.5 self-start w-[27.143rem] max-w-full mt-4 bg-plate-hi border border-white/18 nine-panel-cut py-3 px-4 short:hidden compact:self-stretch compact:w-auto compact:mt-3 compact:py-2 compact:px-3 ${packClass("Panel", "frame")}`}>
           <Show when={props.objective !== ""}>
             <Text class="text-[0.786rem] font-bold tracking-[0.24em] uppercase text-fg/56 m-0">
               {t("screen.pause.objectiveLabel")}
@@ -99,7 +99,7 @@ export function PauseScreen(props: PauseScreenProps) {
               </Text>
             </View>
           </View>
-          <View class={`w-full min-h-11 text-fg/56 py-1 px-4 hover:bg-transparent hover:bg-[#38e8ff3d] hover:text-[#ff8076] active:bg-transparent active:bg-linear-to-r active:from-[#38e8ff57] active:via-[#38e8ff1f] active:via-55% active:to-transparent disabled:bg-transparent disabled:bg-none compact:pr-4 compact:pl-6`} role="button" onPress={(e) => props.onQuit?.(e)}>
+          <View class={`w-full min-h-11 text-fg/56 py-1 px-4 hover:bg-transparent hover:bg-[#38e8ff3d] hover:text-danger active:bg-transparent active:bg-linear-to-r active:from-[#38e8ff57] active:via-[#38e8ff1f] active:via-55% active:to-transparent disabled:bg-transparent disabled:bg-none compact:pr-4 compact:pl-6`} role="button" onPress={(e) => props.onQuit?.(e)}>
             <View class="items-center gap-x-3 w-full">
               <Text class="grow shrink text-start text-[1.714rem] leading-tight font-semibold text-shadow-xs text-shadow-bg/60 compact:text-[1.429rem]">
                 {t("screen.pause.quit")}

@@ -22,7 +22,7 @@ export function Meter(props: MeterProps) {
     <View
       role="meter"
       label={props.label}
-      class={`group/meter w-40 h-3 overflow-hidden rounded-capsule bg-[#73798532] shadow-sunk ${props.class ?? ""}`}
+      class={`group/meter w-40 h-3 overflow-hidden rounded-capsule bg-fill-strong shadow-sunk ${props.class ?? ""}`}
       data-suboptimum={props.region === "suboptimum"}
       data-poor={props.region === "poor"}
     >

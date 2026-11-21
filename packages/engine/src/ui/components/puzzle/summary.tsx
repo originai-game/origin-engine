@@ -42,9 +42,9 @@ export interface PuzzleSummaryProps {
  */
 export function PuzzleSummary(props: PuzzleSummaryProps) {
   return (
-    <View class={`pt-6 pb-4 border-rim-soft nine-panel-cut bg-[#0f1522ed] border border-[#ffffff2e] transition duration-317 w-full max-w-115.5 px-6 gap-3 border compact:pt-4 compact:pb-3 compact:px-3 compact:gap-1 data-selected:border-accent data-down:opacity-45 ${packClass("Panel", "frame")}`} label={props.result === 'win' ? t("puzzle.summary.win") : t("puzzle.summary.lose")} onAction={{ back: (e) => props.onMenu?.(e) }} data-result-lose={(props.result) === 'lose'}>
+    <View class={`pt-6 pb-4 border-rim-soft nine-panel-cut bg-card border border-white/18 transition duration-317 w-full max-w-115.5 px-6 gap-3 border compact:pt-4 compact:pb-3 compact:px-3 compact:gap-1 data-selected:border-accent data-down:opacity-45 ${packClass("Panel", "frame")}`} label={props.result === 'win' ? t("puzzle.summary.win") : t("puzzle.summary.lose")} onAction={{ back: (e) => props.onMenu?.(e) }} data-result-lose={(props.result) === 'lose'}>
       <View class={`group/band items-center p-0 gap-0.5`} data-result-lose={(props.result) === 'lose'}>
-        <Text class={`font-display text-[2rem] font-bold leading-tight tracking-sm uppercase text-transparent text-center bg-linear-to-b from-white from-18% via-[#ffecaa] via-52% to-[#ffb547] m-0 group-data-result-lose/band:bg-linear-to-b group-data-result-lose/band:from-white group-data-result-lose/band:from-10% group-data-result-lose/band:via-[#ffa0a6] group-data-result-lose/band:via-48% group-data-result-lose/band:to-[#de2634] group-data-result-lose/band:bg-transparent`}>
+        <Text class={`font-display text-[2rem] font-bold leading-tight tracking-sm uppercase text-transparent text-center bg-linear-to-b from-white from-18% via-[#ffecaa] via-52% to-warn m-0 group-data-result-lose/band:bg-linear-to-b group-data-result-lose/band:from-white group-data-result-lose/band:from-10% group-data-result-lose/band:via-danger group-data-result-lose/band:via-48% group-data-result-lose/band:to-[#de2634] group-data-result-lose/band:bg-transparent`}>
           {props.result === 'win' ? t("puzzle.summary.win") : t("puzzle.summary.lose")}
         </Text>
         <Show when={props.level}>
@@ -74,7 +74,7 @@ export function PuzzleSummary(props: PuzzleSummaryProps) {
         </Show>
       </View>
       <Show when={(props.rows ?? []).length}>
-        <View class="grow shrink bg-[#060910e0] shadow-[inset_0px_1px_0px_#ffffff38] gap-2">
+        <View class="grow shrink bg-tile shadow-[inset_0px_1px_0px_#ffffff38] gap-2">
           <Scroll class={`py-1 px-3 gap-2 `} role="table" label={t("puzzle.summary.breakdown")}>
             <For each={props.rows}>
               {(r) => (

@@ -35,7 +35,7 @@ export function ShooterPrompt(props: ShooterPromptProps) {
         </Show>
         <Text class={`min-w-0 text-[1.143rem] font-semibold whitespace-nowrap truncate text-shadow-2xs text-stroke-3 text-stroke-bg compact:text-[0.929rem]`}>{props.text}</Text>
         <Show when={props.disabled && props.reason != ""}>
-          <Text class={`shrink-0 text-[0.857rem] font-semibold tracking-[0.14em] uppercase text-[#ff4d5e] whitespace-nowrap text-shadow-2xs text-stroke-3 text-stroke-bg`}>{props.reason}</Text>
+          <Text class={`shrink-0 text-[0.857rem] font-semibold tracking-[0.14em] uppercase text-danger whitespace-nowrap text-shadow-2xs text-stroke-3 text-stroke-bg`}>{props.reason}</Text>
         </Show>
       </Show>
     </View>

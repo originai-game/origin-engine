@@ -36,9 +36,9 @@ export interface CardFaceProps {
  */
 export function CardFace(props: CardFaceProps) {
   return (
-    <View class={`group/cardface nine-plate-cut bg-[#1b2335] text-rim-strong w-full p-1 gap-0.5 overflow-hidden`} data-type-attack={(props.type) === 'attack'} data-type-curse={(props.type) === 'curse'} data-type-power={(props.type) === 'power'} data-type-relic={(props.type) === 'relic'} data-type-skill={(props.type) === 'skill'} data-type-status={(props.type) === 'status'} data-dim={props.dim === true} data-medium={props.size === 'medium' || props.size === 'small' || props.size === 'tiny'} data-small={props.size === 'small' || props.size === 'tiny'} data-tiny={props.size === 'tiny'}>
+    <View class={`group/cardface nine-plate-cut bg-entry-hi text-rim-strong w-full p-1 gap-0.5 overflow-hidden`} data-type-attack={(props.type) === 'attack'} data-type-curse={(props.type) === 'curse'} data-type-power={(props.type) === 'power'} data-type-relic={(props.type) === 'relic'} data-type-skill={(props.type) === 'skill'} data-type-status={(props.type) === 'status'} data-dim={props.dim === true} data-medium={props.size === 'medium' || props.size === 'small' || props.size === 'tiny'} data-small={props.size === 'small' || props.size === 'tiny'} data-tiny={props.size === 'tiny'}>
       <View class="absolute bg-linear-to-b from-current to-transparent to-32% opacity-22 inset-0" />
-      <View class={`flex-row items-center grow shrink basis-0 min-h-[18%] justify-center nine-plate-cut bg-[#03050ab2] text-border-strong gap-0 overflow-hidden`}>
+      <View class={`flex-row items-center grow shrink basis-0 min-h-[18%] justify-center nine-plate-cut bg-tile-pressed text-border-strong gap-0 overflow-hidden`}>
         <View class="absolute opacity-45 inset-0" />
         <Show when={props.art} fallback={
             <Icon class="w-[56%] h-[76%] text-fg shrink" name={props.icon} />
@@ -50,12 +50,12 @@ export function CardFace(props: CardFaceProps) {
         {props.name}
       </Text>
       <Show when={props.typeLabel}>
-        <Text class={`text-center whitespace-nowrap text-ellipsis text-[0.786rem] font-bold tracking-[0.14em] uppercase text-fg-muted m-0 overflow-hidden group-data-type-attack/cardface:text-[#ffa896] group-data-type-skill/cardface:text-[#a0ceff] group-data-type-power/cardface:text-[#d6b4fe] group-data-type-curse/cardface:text-[#cec6de] group-data-tiny/cardface:hidden`}>
+        <Text class={`text-center whitespace-nowrap text-ellipsis text-[0.786rem] font-bold tracking-[0.14em] uppercase text-fg-muted m-0 overflow-hidden group-data-type-attack/cardface:text-danger group-data-type-skill/cardface:text-info group-data-type-power/cardface:text-epic group-data-type-curse/cardface:text-fg-muted group-data-tiny/cardface:hidden`}>
           {props.typeLabel}
         </Text>
       </Show>
       <Show when={props.text}>
-        <Text class={`text-center line-clamp-4 text-[0.893rem] leading-snug text-fg bg-[#03050a8c] py-0.5 px-1 m-0 overflow-hidden group-data-medium/cardface:line-clamp-3 group-data-small/cardface:line-clamp-2 group-data-tiny/cardface:line-clamp-1`}>
+        <Text class={`text-center line-clamp-4 text-[0.893rem] leading-snug text-fg bg-tile-pressed py-0.5 px-1 m-0 overflow-hidden group-data-medium/cardface:line-clamp-3 group-data-small/cardface:line-clamp-2 group-data-tiny/cardface:line-clamp-1`}>
           {props.text}
         </Text>
       </Show>

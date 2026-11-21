@@ -72,7 +72,7 @@ export function CombatHud(props: CombatHudProps) {
         <Killfeed rows={props.feed ?? []} />
       </View>
       <View
-        class={`absolute left-4 bottom-4 py-2 px-3 w-[20rem] max-w-full border-rim bg-linear-to-b from-[#1e2637e5] to-plate-lo shadow-plate compact:left-3 compact:right-3 compact:bottom-3 compact:w-auto`}
+        class={`absolute left-4 bottom-4 py-2 px-3 w-[20rem] max-w-full border-rim bg-linear-to-b from-plate-hi to-plate-lo shadow-plate compact:left-3 compact:right-3 compact:bottom-3 compact:w-auto`}
       >
         <StatBar
           value={props.health ?? 0}

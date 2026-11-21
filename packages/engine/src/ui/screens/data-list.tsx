@@ -19,7 +19,7 @@ export interface DataListProps {
  */
 export function DataList(props: DataListProps) {
   return (
-    <View class={`nine-panel-cut bg-[#171f30d6] border border-[#ffffff2e] text-fg w-full p-0 ${packClass("Panel", "frame")}`} busy={props.loading}>
+    <View class={`nine-panel-cut bg-plate-hi border border-white/18 text-fg w-full p-0 ${packClass("Panel", "frame")}`} busy={props.loading}>
       <Scroll class="grow shrink basis-0 w-full">
         <Show when={(props.rows ?? []).length} fallback={
             <Text class={`text-center text-fg/56 m-6`}>{props.loading ? props.busy : props.empty}</Text>

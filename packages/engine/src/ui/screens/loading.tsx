@@ -44,9 +44,9 @@ export function LoadingScreen(props: LoadingScreenProps) {
       <Show when={!props.keyArt}>
         <View class="absolute inset-0" />
       </Show>
-      <View class={`absolute bg-linear-to-r from-[#04060c73] to-transparent to-55% inset-0`} />
+      <View class={`absolute bg-linear-to-r from-black/45 to-transparent to-55% inset-0`} />
       <View class="absolute top-auto bottom-0 pt-16 inset-x-0 gap-[1.429rem] compact:pt-[1.429rem] compact:gap-4 short:pt-[1.143rem] short:gap-[0.714rem]">
-        <View class="absolute -z-1 top-auto bottom-0 bg-linear-to-b from-transparent to-[#04060ceb] inset-x-0" />
+        <View class="absolute -z-1 top-auto bottom-0 bg-linear-to-b from-transparent to-black/92 inset-x-0" />
         <View class="gap-[1.429rem] short:flex-row short:items-end short:gap-[1.143rem] compact:gap-4">
           <View class="max-w-3/5 gap-0.5 compact:max-w-full short:max-w-[45%] short:grow short:shrink short:basis-0 short:min-w-0">
             <View class={`items-center text-[0.857rem] font-semibold tracking-[0.14em] uppercase text-[#38e8ff] gap-[0.714rem] transition duration-240 ease-out starting:opacity-0 starting:translate-y-2`}>
@@ -57,9 +57,9 @@ export function LoadingScreen(props: LoadingScreenProps) {
               {props.place}
             </Text>
           </View>
-          <View class={`pt-[1.143rem] pb-[1.286rem] nine-panel-cut bg-[#171f30d6] text-fg max-w-[54.286rem] px-[1.571rem] gap-1 compact:py-[0.857rem] compact:px-4 grow short:shrink short:basis-0 short:min-w-0 short:py-[0.714rem] short:px-4 disabled:text-fg-subtle transition duration-240 ease-out starting:opacity-0 starting:translate-y-2 ${packClass("Panel", "frame")}`}>
+          <View class={`pt-[1.143rem] pb-[1.286rem] nine-panel-cut bg-plate-hi text-fg max-w-[54.286rem] px-[1.571rem] gap-1 compact:py-[0.857rem] compact:px-4 grow short:shrink short:basis-0 short:min-w-0 short:py-[0.714rem] short:px-4 disabled:text-fg-subtle transition duration-240 ease-out starting:opacity-0 starting:translate-y-2 ${packClass("Panel", "frame")}`}>
             <View class="flex-row items-center gap-2">
-              <Text class={`tracking-[0.14em] uppercase text-[#38e8ff] text-[0.857rem] font-bold bg-[#060910e0] nine-plate-cut py-[0.143rem] px-[0.571rem] m-0 ${packClass("Chip", "frame")}`}>
+              <Text class={`tracking-[0.14em] uppercase text-[#38e8ff] text-[0.857rem] font-bold bg-tile nine-plate-cut py-[0.143rem] px-[0.571rem] m-0 ${packClass("Chip", "frame")}`}>
                 {t("screen.loading.tip")}
               </Text>
               <View class={`shrink ml-auto gap-x-1 text-[0.857rem] font-semibold tracking-[0.14em] px-1 pointer-coarse:min-h-11`} role="button" onPress={(e) => props.onNextTip?.(e)}>

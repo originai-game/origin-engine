@@ -31,10 +31,10 @@ export interface PuzzleLevelPathProps {
  */
 export function PuzzleLevelPath(props: PuzzleLevelPathProps) {
   return (
-    <View class={`grow shrink basis-0 border-rim bg-linear-to-b from-[#1e2637e5] to-plate-lo text-fg w-full p-2 gap-2 rounded-block border`} label={t("puzzle.path.name")}>
+    <View class={`grow shrink basis-0 border-rim bg-linear-to-b from-plate-hi to-plate-lo text-fg w-full p-2 gap-2 rounded-block border`} label={t("puzzle.path.name")}>
       <Show when={(props.levels ?? []).length && (props.chapters ?? []).length} fallback={
           <View class={`grow shrink basis-0 justify-center items-center p-6 gap-2`} role="status">
-            <Text class={`text-[1.143rem] leading-4.5 text-fg text-center bg-[#060910e0] py-2 px-3 m-0`}>
+            <Text class={`text-[1.143rem] leading-4.5 text-fg text-center bg-tile py-2 px-3 m-0`}>
               {t("puzzle.path.empty")}
             </Text>
           </View>
@@ -43,12 +43,12 @@ export function PuzzleLevelPath(props: PuzzleLevelPathProps) {
           <For each={props.chapters}>
             {(c) => (
             <View class="mb-4 gap-0" label={c().label}>
-              <View class={`sticky top-0 z-1 w-full pt-2 pb-3 bg-[#171f30d6] border border-[#ffffff2e] nine-plate-cut px-3 gap-1 ${packClass("Plate", "frame")}`}>
+              <View class={`sticky top-0 z-1 w-full pt-2 pb-3 bg-plate-hi border border-white/18 nine-plate-cut px-3 gap-1 ${packClass("Plate", "frame")}`}>
                 <View class="flex-row items-center w-full gap-1">
                   <Text class={`grow shrink basis-0 font-display text-[1.857rem] font-bold leading-[1.15] tracking-[-0.01em] text-fg text-start whitespace-nowrap m-0 overflow-hidden compact:text-[1.429rem]`}>
                     {c().label}
                   </Text>
-                  <View class={`flex-row items-center text-caption bg-[#060910e0] shadow-[inset_0px_1px_0px_#ffffff38] text-fg transition duration-317 py-[0.143rem] px-2 gap-0.5 rounded-capsule`} label={t("puzzle.path.chapterStarsName", { earned: c().earned, total: c().total })}>
+                  <View class={`flex-row items-center text-caption bg-tile shadow-[inset_0px_1px_0px_#ffffff38] text-fg transition duration-317 py-[0.143rem] px-2 gap-0.5 rounded-capsule`} label={t("puzzle.path.chapterStarsName", { earned: c().earned, total: c().total })}>
                     <Icon class={`text-gold size-[14.3px]`} name="star" />
                     <Text class="text-[1.143rem] font-bold tabular-nums whitespace-nowrap shrink">
                       {t("puzzle.path.chapterStars", { earned: c().earned, total: c().total })}
@@ -85,7 +85,7 @@ export function PuzzleLevelPath(props: PuzzleLevelPathProps) {
                           </View>
                         </View>
                         <Show when={l().state === 'done'}>
-                          <View class={`flex-row items-end absolute left-1/2 translate-x-[-50%] bg-linear-to-b from-[#171f30] to-[#080c16] shadow-[inset_0px_1px_0px_#ffffff59,0px_3.424px_9.136px_#00000080] py-[0.143rem] px-1 gap-0 rounded-capsule`} data-state-current={(l().state) === 'current'} data-state-locked={(l().state) === 'locked'} data-state-open={(l().state) === 'open'}>
+                          <View class={`flex-row items-end absolute left-1/2 translate-x-[-50%] bg-linear-to-b from-plate-hi to-plate-lo shadow-[inset_0px_1px_0px_#ffffff59,0px_3.424px_9.136px_#00000080] py-[0.143rem] px-1 gap-0 rounded-capsule`} data-state-current={(l().state) === 'current'} data-state-locked={(l().state) === 'locked'} data-state-open={(l().state) === 'open'}>
                             <Icon class="text-white/40 size-[1.189rem] compact:size-[0.951rem] data-lit:text-gold shrink" name="star" data-lit={l().stars >= 1} />
                             <Show when={l().maxStars >= 2}>
                               <Icon class="text-white/40 size-[1.463rem] compact:size-[1.17rem] data-lit:text-gold shrink" name="star" data-lit={l().stars >= 2} />
@@ -98,12 +98,12 @@ export function PuzzleLevelPath(props: PuzzleLevelPathProps) {
                         <Show when={l().state === 'current'} fallback={
                             <Show when={l().id === props.selected} fallback={
                                 <Show when={l().state === 'open'}>
-                                  <Text class={`font-bold text-[0.857rem] leading-[1.6] text-fg absolute left-1/2 translate-x-[-50%] whitespace-nowrap tracking-[0.14em] uppercase bg-[#060910e0] py-0 px-1`}>
+                                  <Text class={`font-bold text-[0.857rem] leading-[1.6] text-fg absolute left-1/2 translate-x-[-50%] whitespace-nowrap tracking-[0.14em] uppercase bg-tile py-0 px-1`}>
                                     {t("puzzle.path.open")}
                                   </Text>
                                 </Show>
                             }>
-                              <Text class={`font-bold text-[0.857rem] leading-[1.6] text-fg absolute left-1/2 translate-x-[-50%] whitespace-nowrap tracking-[0.14em] uppercase bg-[#060910e0] py-0 px-1`}>
+                              <Text class={`font-bold text-[0.857rem] leading-[1.6] text-fg absolute left-1/2 translate-x-[-50%] whitespace-nowrap tracking-[0.14em] uppercase bg-tile py-0 px-1`}>
                                 {t("puzzle.path.selected")}
                               </Text>
                             </Show>

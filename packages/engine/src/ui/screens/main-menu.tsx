@@ -55,7 +55,7 @@ export function MainMenuScreen(props: MainMenuScreenProps) {
           </Text>
         </Show>
         <Show when={props.news !== ""}>
-          <View class={`absolute right-12 bottom-12 items-center gap-x-3 w-[25.714rem] bg-[#171f30d6] border border-[#ffffff2e] nine-panel-cut py-3 px-4 compact:static compact:w-auto compact:max-w-none compact:mt-auto compact:mb-3 compact:py-2 compact:px-3 short:hidden hover:translate-x-0 hover:-translate-y-0.25 active:translate-x-0 active:translate-y-0 ${packClass("Panel", "frame")}`} onPress={(e) => props.onNews?.(e)} tabIndex={0}>
+          <View class={`absolute right-12 bottom-12 items-center gap-x-3 w-[25.714rem] bg-plate-hi border border-white/18 nine-panel-cut py-3 px-4 compact:static compact:w-auto compact:max-w-none compact:mt-auto compact:mb-3 compact:py-2 compact:px-3 short:hidden hover:translate-x-0 hover:-translate-y-0.25 active:translate-x-0 active:translate-y-0 ${packClass("Panel", "frame")}`} onPress={(e) => props.onNews?.(e)} tabIndex={0}>
             <View class="gap-y-0.5 grow shrink">
               <Text class="text-[0.857rem] font-bold tracking-[0.28em] uppercase text-[#38e8ff] m-0">
                 {t("screen.main-menu.newsEyebrow")}

@@ -29,7 +29,7 @@ export function CreditsScreen(props: CreditsScreenProps) {
       <Show when={props.keyArt !== 0}>
         <Art class="absolute object-cover inset-0 size-full" kind="keyArt" src={props.keyArt} />
       </Show>
-      <View class={`absolute inset-0 compact:bg-linear-to-b compact:from-[#03060edb] compact:via-[#03060eb2] compact:via-40% compact:to-[#03060eeb] compact:bg-transparent`} />
+      <View class={`absolute inset-0 compact:bg-linear-to-b compact:from-black/86 compact:via-black/70 compact:via-40% compact:to-black/92 compact:bg-transparent`} />
       <View class="flex-row items-center py-4 px-8 gap-2 compact:py-2 compact:px-3">
         <Button class={`shrink ${packClass("Button", "plate")}`} onPress={(e) => props.onBack?.(e)}>
           <View class="items-center gap-x-1">

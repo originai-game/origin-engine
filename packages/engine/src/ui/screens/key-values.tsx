@@ -10,7 +10,7 @@ export function KeyValues(props: KeyValuesProps) {
     <View class={`text-fg w-full p-0 m-0 disabled:text-fg-subtle`}>
       <For each={props.rows}>
         {(r) => (
-        <View class={`text-fg transition duration-317 items-center min-h-[2.571rem] border-b border-white/14 py-1 px-0 gap-2 rounded-control hover:bg-[#7379851d] hover:bg-none active:bg-[#73798532] active:bg-none data-selected:bg-rim-soft data-selected:bg-none data-selected:text-fg data-selected:shadow-[inset_3px_0px_0px_#e8e8ed] disabled:bg-transparent disabled:bg-none disabled:text-fg-subtle data-done:text-fg-subtle data-down:opacity-45`}>
+        <View class={`text-fg transition duration-317 items-center min-h-[2.571rem] border-b border-white/14 py-1 px-0 gap-2 rounded-control hover:bg-fill hover:bg-none active:bg-fill-strong active:bg-none data-selected:bg-rim-soft data-selected:bg-none data-selected:text-fg data-selected:shadow-[inset_3px_0px_0px_#e8e8ed] disabled:bg-transparent disabled:bg-none disabled:text-fg-subtle data-done:text-fg-subtle data-down:opacity-45`}>
           <Text class={`tracking-xs text-fg/74 grow shrink basis-0 m-0`}>
             {r().key}
           </Text>

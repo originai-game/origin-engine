@@ -36,17 +36,17 @@ export function ShooterDamage(props: ShooterDamageProps) {
             data-third={i() >= 2}
           >
             <Show when={i() < 1 && h().kind == "headshot"}>
-              <Text class={`text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap text-[#ffcf5a] text-shadow-2xs text-stroke-3 text-stroke-bg compact:tracking-normal`}>
+              <Text class={`text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap text-gold text-shadow-2xs text-stroke-3 text-stroke-bg compact:tracking-normal`}>
                 {t("shooter.dealt.headshot")}
               </Text>
             </Show>
             <Show when={i() < 1 && h().kind == "kill"}>
-              <Text class={`text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap text-[#ffcf5a] text-shadow-2xs text-stroke-3 text-stroke-bg compact:tracking-normal`}>
+              <Text class={`text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap text-gold text-shadow-2xs text-stroke-3 text-stroke-bg compact:tracking-normal`}>
                 {t("shooter.dealt.kill")}
               </Text>
             </Show>
             <Text
-              class={`text-[2.857rem] leading-none font-bold tabular-nums whitespace-nowrap text-fg text-shadow-2xs text-stroke-3 text-stroke-bg data-headshot:text-[#ffcf5a] data-kill:text-[#ffcf5a] data-shield:text-[#4fd8ff] compact:text-[1.571rem]`}
+              class={`text-[2.857rem] leading-none font-bold tabular-nums whitespace-nowrap text-fg text-shadow-2xs text-stroke-3 text-stroke-bg data-headshot:text-gold data-kill:text-gold data-shield:text-[#4fd8ff] compact:text-[1.571rem]`}
               data-headshot={h().kind == "headshot"}
               data-kill={h().kind == "kill"}
               data-shield={h().kind == "shield"}

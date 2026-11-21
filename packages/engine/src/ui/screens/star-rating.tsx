@@ -21,7 +21,7 @@ export function StarRating(props: StarRatingProps) {
       <For each={props.stars}>
         {(s) => (
         <View class={`size-8 shrink ${s().lit ? "data-lit:animate-pop" : ""}`} data-lit={s().lit} style={{ animationDelay: `${(120 * (s().index))}ms` }}>
-          <Icon class={`inset-0 size-full ${s().lit ? "text-[#ffcf5a]" : "text-white/42"}`} name="star" />
+          <Icon class={`inset-0 size-full ${s().lit ? "text-gold" : "text-white/42"}`} name="star" />
         </View>
         )}
       </For>

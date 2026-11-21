@@ -12,7 +12,7 @@ export interface ProgressProps {
 export function Progress(props: ProgressProps) {
   const fraction = () => Math.min(Math.max(props.value, 0), 1);
   return (
-    <View role="progressbar" label={props.label} class={`w-full h-2 overflow-hidden rounded-capsule bg-[#73798532] shadow-sunk ${props.class ?? ""}`}>
+    <View role="progressbar" label={props.label} class={`w-full h-2 overflow-hidden rounded-capsule bg-fill-strong shadow-sunk ${props.class ?? ""}`}>
       <View
         class={`h-full min-w-2 rounded-capsule bg-accent shadow-[inset_0px_1px_0px_0px_#ffffff0f] transition-layout duration-180 ease-out data-empty:hidden`}
         data-empty={fraction() <= 0}

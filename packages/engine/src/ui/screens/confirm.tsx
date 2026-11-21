@@ -26,8 +26,8 @@ export function Confirm(props: ConfirmProps) {
     <Show when={props.open}>
       <View class="grow shrink basis-0 w-[32.857rem] max-w-full h-auto pt-6 pb-4 text-fg px-6 gap-2 short:min-w-105 short:w-fit short:max-w-180 compact:p-4" modal={true} label={props.title} data-danger={props.danger === true} onAction={{ back: (e) => props.onCancel?.(e) }}>
       <Show when={props.danger}>
-        <View class={`items-center gap-x-2 text-[0.857rem] font-bold tracking-[0.14em] uppercase text-[#ff8076]`}>
-          <Text class="rotate-45 bg-[#ff8076] size-[0.571rem]" />
+        <View class={`items-center gap-x-2 text-[0.857rem] font-bold tracking-[0.14em] uppercase text-danger`}>
+          <Text class="rotate-45 bg-danger size-[0.571rem]" />
           <Text class="shrink">{t("screen.confirm.undone")}</Text>
         </View>
       </Show>

@@ -36,7 +36,7 @@ export interface LeaderboardScreenProps {
 
 export function LeaderboardScreen(props: LeaderboardScreenProps) {
   return (
-    <View class={`bg-linear-to-r from-[#04060ce5] via-[#04060c9e] via-55% to-[#04060ccc] text-fg grow shrink basis-0 p-8 gap-3 compact:p-3 compact:gap-2 disabled:text-fg-subtle`}>
+    <View class={`bg-linear-to-r from-black/90 via-black/62 via-55% to-black/81 text-fg grow shrink basis-0 p-8 gap-3 compact:p-3 compact:gap-2 disabled:text-fg-subtle`}>
       <View class={`w-full max-w-264 flex-wrap items-center gap-y-2 gap-x-3 p-0 mx-auto`}>
         <Button class={`shrink ${packClass("Button", "plate")}`} onPress={(e) => props.onBack?.(e)}><Text>{t("screen.common.back")}</Text></Button>
         <Text class={`font-display text-[3.286rem] font-bold leading-flat tracking-sm uppercase text-fg grow shrink m-0 compact:text-[2rem]`}>
@@ -46,7 +46,7 @@ export function LeaderboardScreen(props: LeaderboardScreenProps) {
           <Text>{props.period}</Text>
         </Button>
       </View>
-      <View class="flex-row flex-wrap items-center w-fit max-w-264 bg-[#060910e0] nine-plate-cut p-0.75 mx-auto gap-0 compact:w-full" focus-group="wrap">
+      <View class="flex-row flex-wrap items-center w-fit max-w-264 bg-tile nine-plate-cut p-0.75 mx-auto gap-0 compact:w-full" focus-group="wrap">
         <Button class={`uppercase tracking-wide data-selection-off:text-fg/66 data-selection-on:text-fg data-selection-on:bg-linear-to-t data-selection-on:from-[#38e8ff33] data-selection-on:to-transparent data-selection-on:bg-transparent data-selection-on:shadow-[inset_0px_-2.288px_0px_#38e8ff] compact:tracking-sm compact:grow compact:shrink compact:basis-0 compact:min-w-0 compact:px-1 ${packClass("Button", "plate")}`} data-selection-off={props.tab !== "global"} data-selection-on={props.tab === "global"}>
           <Text class="compact:text-ellipsis">{t("screen.leaderboard.global")}</Text>
         </Button>
@@ -58,14 +58,14 @@ export function LeaderboardScreen(props: LeaderboardScreenProps) {
         </Button>
       </View>
       <Show when={props.tab === "league"}>
-        <View class={`w-full max-w-264 items-center nine-panel-cut flex-wrap bg-[#171f30d6] border border-[#ffffff2e] py-2 px-3 mx-auto gap-3 ${packClass("Panel", "frame")}`}>
+        <View class={`w-full max-w-264 items-center nine-panel-cut flex-wrap bg-plate-hi border border-white/18 py-2 px-3 mx-auto gap-3 ${packClass("Panel", "frame")}`}>
           <Text class="text-[1.714rem] font-bold tracking-sm uppercase text-gold m-0 shrink">
             {props.league.name}
           </Text>
           <Text class="grow shrink text-caption text-fg/66 m-0">
             {t("screen.leaderboard.Lines", { league_demote: props.league.demote, league_promote: props.league.promote })}
           </Text>
-          <Text class="text-[0.857rem] font-bold tracking-[0.14em] uppercase text-fg bg-[#060910e0] shadow-[inset_0px_1px_0px_#ffffff38] whitespace-nowrap py-0 px-1 m-0 shrink">
+          <Text class="text-[0.857rem] font-bold tracking-[0.14em] uppercase text-fg bg-tile shadow-[inset_0px_1px_0px_#ffffff38] whitespace-nowrap py-0 px-1 m-0 shrink">
             {t("screen.leaderboard.Ends", { league_ends: formatDuration(props.league.ends) })}
           </Text>
         </View>
@@ -75,7 +75,7 @@ export function LeaderboardScreen(props: LeaderboardScreenProps) {
           <View>{props.board?.()}</View>
           <For each={props.rows}>
             {(r) => (
-            <View class={`group/row nine-plate-cut bg-[#171f30c7] text-fg transition duration-317 grid grid-cols-[auto_auto_minmax(0,1fr)_auto] items-center gap-x-3 pr-3 pl-1 py-1 hover:bg-transparent hover:bg-[#2a3750e5] data-mine-you:bg-transparent data-mine-you:bg-[#38e8ff3d] data-mine-you:text-fg data-down:opacity-45 narrow:grid-cols-[auto_auto_minmax(0,1fr)] narrow:gap-y-0 compact:gap-x-2 active:scale-99`} onPress={(e) => props.onRow?.(e, r().id)} tabIndex={0} data-mine-other={!r().you} data-mine-you={r().you} data-promote={props.tab === "league" && r().rank <= props.league.promote} data-place-1={(r().rank <= 3 ? r().rank : 0) === 1} data-place-2={(r().rank <= 3 ? r().rank : 0) === 2} data-place-3={(r().rank <= 3 ? r().rank : 0) === 3}>
+            <View class={`group/row nine-plate-cut bg-entry-lo text-fg transition duration-317 grid grid-cols-[auto_auto_minmax(0,1fr)_auto] items-center gap-x-3 pr-3 pl-1 py-1 hover:bg-transparent hover:bg-entry-hi data-mine-you:bg-transparent data-mine-you:bg-[#38e8ff3d] data-mine-you:text-fg data-down:opacity-45 narrow:grid-cols-[auto_auto_minmax(0,1fr)] narrow:gap-y-0 compact:gap-x-2 active:scale-99`} onPress={(e) => props.onRow?.(e, r().id)} tabIndex={0} data-mine-other={!r().you} data-mine-you={r().you} data-promote={props.tab === "league" && r().rank <= props.league.promote} data-place-1={(r().rank <= 3 ? r().rank : 0) === 1} data-place-2={(r().rank <= 3 ? r().rank : 0) === 2} data-place-3={(r().rank <= 3 ? r().rank : 0) === 3}>
               <Text class={`text-center min-w-[3.714rem] leading-[2.714rem] whitespace-nowrap text-[1.143rem] font-bold tabular-nums bg-white/14 nine-chip-cut py-0 px-1 m-0 compact:min-w-[2.714rem] compact:leading-[2.286rem] group-data-place-1/row:bg-none group-data-place-1/row:bg-gold group-data-place-1/row:text-[#1e1604] group-data-place-2/row:bg-none group-data-place-2/row:bg-[#d0daec] group-data-place-2/row:text-[#1e1604] group-data-place-3/row:bg-none group-data-place-3/row:bg-[#e69662] group-data-place-3/row:text-[#1e1604] ${packClass("Chip", "frame")}`}>
                 {t("screen.leaderboard.RowRank", { value: ordinal(r().rank) })}
               </Text>
@@ -85,7 +85,7 @@ export function LeaderboardScreen(props: LeaderboardScreenProps) {
                   {r().name}
                 </Text>
                 <Show when={r().you}>
-                  <Text class="text-[0.857rem] font-bold tracking-[0.14em] uppercase text-[#38e8ff] bg-[#060910e0] shadow-[inset_0px_0px_0px_1px_#38e8ff73,inset_0px_2px_0px_#38e8ff] whitespace-nowrap py-0 px-1">
+                  <Text class="text-[0.857rem] font-bold tracking-[0.14em] uppercase text-[#38e8ff] bg-tile shadow-[inset_0px_0px_0px_1px_#38e8ff73,inset_0px_2px_0px_#38e8ff] whitespace-nowrap py-0 px-1">
                     {t("screen.leaderboard.you")}
                   </Text>
                 </Show>
@@ -105,7 +105,7 @@ export function LeaderboardScreen(props: LeaderboardScreenProps) {
         <Text class="text-[1.143rem] font-semibold whitespace-nowrap shrink m-0 overflow-hidden">
           {props.me.name}
         </Text>
-        <Text class="text-[0.857rem] font-bold tracking-[0.14em] uppercase text-[#38e8ff] bg-[#060910e0] shadow-[inset_0px_0px_0px_1px_#38e8ff73,inset_0px_2px_0px_#38e8ff] whitespace-nowrap mr-auto py-0 px-1">
+        <Text class="text-[0.857rem] font-bold tracking-[0.14em] uppercase text-[#38e8ff] bg-tile shadow-[inset_0px_0px_0px_1px_#38e8ff73,inset_0px_2px_0px_#38e8ff] whitespace-nowrap mr-auto py-0 px-1">
           {t("screen.leaderboard.you")}
         </Text>
         <Text class={`tabular-nums text-fg text-[2.429rem] font-bold whitespace-nowrap text-end m-0 compact:text-[1.714rem] shrink`}>

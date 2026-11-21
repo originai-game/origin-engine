@@ -54,7 +54,7 @@ export function ShooterRadar(props: ShooterRadarProps) {
       role="image"
       label={t("shooter.radar.name")}
     >
-      <View class="absolute inset-0 overflow-hidden rounded-full bg-[#161a23] shadow-[0px_0px_0px_0.143rem_#12151ce6,0px_0px_0px_0.214rem_rgb(255_255_255/0.35),0px_0.714rem_2rem_rgb(0_0_0/0.6)]">
+      <View class="absolute inset-0 overflow-hidden rounded-full bg-tile shadow-[0px_0px_0px_0.143rem_#12151ce6,0px_0px_0px_0.214rem_rgb(255_255_255/0.35),0px_0.714rem_2rem_rgb(0_0_0/0.6)]">
         <Show when={(props.map ?? 0) > 0}>
           <Image
             class="absolute"
@@ -68,7 +68,7 @@ export function ShooterRadar(props: ShooterRadarProps) {
         <For each={props.blips ?? []} key={(b) => b.id}>
           {(b) => (
             <View
-              class={`absolute size-[0.643rem] compact:size-[0.5rem] -translate-x-1/2 -translate-y-1/2 data-ally:rounded-full data-ally:bg-[#4fd8ff] data-ally:shadow-[0px_0px_0px_0.143rem_#1b1f29cc] data-foe:rotate-45 data-foe:bg-[#ff4d5e] data-foe:shadow-[0px_0px_0.571rem_#ff4d5ee6] data-objective:size-[0.929rem] data-objective:rotate-45 data-objective:bg-[#ffcf5a]`}
+              class={`absolute size-[0.643rem] compact:size-[0.5rem] -translate-x-1/2 -translate-y-1/2 data-ally:rounded-full data-ally:bg-[#4fd8ff] data-ally:shadow-[0px_0px_0px_0.143rem_#1b1f29cc] data-foe:rotate-45 data-foe:bg-danger data-foe:shadow-[0px_0px_0.571rem_#ff4d5ee6] data-objective:size-[0.929rem] data-objective:rotate-45 data-objective:bg-gold`}
               label={b().label}
               style={{
                 left: `calc(${SIDE / 2}rem + ${(b().x - cx()) * (SIDE / zoom())}rem)`,
@@ -96,7 +96,7 @@ export function ShooterRadar(props: ShooterRadarProps) {
         <View class="absolute left-0 top-0 right-0 h-[30%] bg-linear-to-b from-[rgb(255_255_255/0.16)] to-transparent" />
       </View>
       <Text
-        class={`absolute top-0 left-1/2 -translate-x-1/2 py-0 px-1 text-[0.857rem] font-bold whitespace-nowrap text-fg nine-chip-cut bg-[#1b1f29e0] ${packClass("Chip", "frame")}`}
+        class={`absolute top-0 left-1/2 -translate-x-1/2 py-0 px-1 text-[0.857rem] font-bold whitespace-nowrap text-fg nine-chip-cut bg-tile ${packClass("Chip", "frame")}`}
       >
         {t("shooter.radar.north")}
       </Text>

@@ -18,7 +18,7 @@ export interface FilmGalleryScreenProps {
 export function FilmGalleryScreen(props: FilmGalleryScreenProps) {
   return (
     <View class={`pt-8 pb-6 text-fg gap-y-4 px-12 overflow-hidden compact:pt-4 compact:gap-y-3`}>
-      <View class={`absolute bg-linear-to-b from-[#03060ee5] via-[#03060ed1] via-40% to-[#03060ef0] inset-0`} />
+      <View class={`absolute bg-linear-to-b from-black/90 via-black/82 via-40% to-black/94 inset-0`} />
       <View class={`items-baseline gap-x-4 p-0 compact:flex-wrap compact:gap-y-1`}>
         <Button class={`text-fg/74 compact:-ml-2 ${packClass("Button", "plate")}`} onPress={(e) => props.onBack?.(e)}>
           <View class="items-center gap-x-1">
@@ -39,8 +39,8 @@ export function FilmGalleryScreen(props: FilmGalleryScreenProps) {
                 <Show when={c().locked} fallback={
                     <Art class={`absolute object-cover inset-0 size-full`} kind="keyArt" src={c().thumb} />
                 }>
-                  <View class={`absolute items-center justify-center bg-[#070b14eb] inset-0 size-full`}>
-                    <Icon class="text-[#ffb35c] size-6 shrink" name="lock" />
+                  <View class={`absolute items-center justify-center bg-black/92 inset-0 size-full`}>
+                    <Icon class="text-warn size-6 shrink" name="lock" />
                   </View>
                 </Show>
                 <View class="absolute shadow-[inset_0px_0px_0px_1px_#ffffff29,inset_0px_1px_0px_#ffffff8c] inset-0 group-data-locked/card:shadow-[inset_0px_0px_0px_1px_#ffffff1f] group-data-selected/card:shadow-[inset_0px_0px_0px_2.288px_#38e8ff,inset_0px_3.424px_0px_#ffffff80]" />

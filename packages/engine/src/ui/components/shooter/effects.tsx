@@ -40,9 +40,9 @@ export function ShooterEffects(props: ShooterEffectsProps) {
             label={e().label ? t("shooter.effects.effect", { name: e().name, label: e().label }) : e().name}
             data-harmful={e().harmful}
           >
-            <View class="relative size-[2.286rem] compact:size-[1.714rem] rounded-tl-[0.357rem] bg-[#55e39a] data-harmful:bg-[#ff4d5e]">
+            <View class="relative size-[2.286rem] compact:size-[1.714rem] rounded-tl-[0.357rem] bg-success data-harmful:bg-danger">
               <Show when={e().icon} fallback={
-                <View class="absolute inset-[0.143rem] rounded-tl-[0.357rem] flex-row items-center justify-center bg-[#2a2d38]">
+                <View class="absolute inset-[0.143rem] rounded-tl-[0.357rem] flex-row items-center justify-center bg-plate-hi">
                   <Show when={e().glyph}>
                     <Icon class="size-[60%] text-fg" name={e().glyph} />
                   </Show>
@@ -55,7 +55,7 @@ export function ShooterEffects(props: ShooterEffectsProps) {
               </Show>
             </View>
             <Show when={e().label}>
-              <Text class={`max-w-[4rem] py-0 px-[0.357rem] text-[0.857rem] font-bold tabular-nums whitespace-nowrap truncate text-fg text-shadow-2xs nine-chip-cut bg-[#1b1f29e0] compact:px-[0.214rem] data-harmful:text-[#ff4d5e] ${packClass("Chip", "frame")}`}>
+              <Text class={`max-w-[4rem] py-0 px-[0.357rem] text-[0.857rem] font-bold tabular-nums whitespace-nowrap truncate text-fg text-shadow-2xs nine-chip-cut bg-tile compact:px-[0.214rem] data-harmful:text-danger ${packClass("Chip", "frame")}`}>
                 {e().label}
               </Text>
             </Show>

@@ -35,7 +35,7 @@ export function CardPiles(props: CardPilesProps) {
               <View class="flex-row items-center absolute shadow-[inset_0px_0px_0px_1.5px_#ffffff38] justify-center inset-0 gap-0 group-data-empty/stack:bg-none group-data-empty/stack:bg-transparent group-data-empty/stack:shadow-[inset_0px_0px_0px_1.5px_#ffffff47]">
                 <Icon class="text-fg-muted size-[56%] shrink" name={p().icon} />
               </View>
-              <Text class={`absolute -right-1 -bottom-0.5 min-w-4 text-center whitespace-nowrap nine-chip-cut bg-fg text-[#050810] text-[1.143rem] font-bold py-0 px-0.5 group-data-kind-discard/pile:bg-none group-data-kind-discard/pile:bg-[#ff6a4d] group-data-empty/stack:bg-none group-data-empty/stack:bg-white/16 group-data-empty/stack:text-fg-muted ${packClass("Chip", "frame")}`}>
+              <Text class={`absolute -right-1 -bottom-0.5 min-w-4 text-center whitespace-nowrap nine-chip-cut bg-fg text-fg-inverse text-[1.143rem] font-bold py-0 px-0.5 group-data-kind-discard/pile:bg-none group-data-kind-discard/pile:bg-danger group-data-empty/stack:bg-none group-data-empty/stack:bg-white/16 group-data-empty/stack:text-fg-muted ${packClass("Chip", "frame")}`}>
                 {formatNumber(p().count)}
               </Text>
             </View>

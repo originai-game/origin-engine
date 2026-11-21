@@ -22,15 +22,15 @@ export interface CalendarProps {
  */
 export function Calendar(props: CalendarProps) {
   return (
-    <View class={`nine-panel-cut bg-[#171f30d6] border border-[#ffffff2e] text-fg w-full max-w-90 p-3 gap-2 ${packClass("Panel", "frame")}`} label={props.month}>
+    <View class={`nine-panel-cut bg-plate-hi border border-white/18 text-fg w-full max-w-90 p-3 gap-2 ${packClass("Panel", "frame")}`} label={props.month}>
       <View class={`min-h-12 border-b border-rim-soft items-center py-1 px-4 gap-1`}>
-        <Button class={`bg-[#04060c9e] shadow-[inset_0px_0px_0px_1px_#ffffff1a] min-w-11 min-h-11 p-0 rounded-[4.576px] ${packClass("Button", "plate")}`} onPress={(e) => props.onPrevious?.(e)} label={props.month}>
+        <Button class={`bg-tile shadow-[inset_0px_0px_0px_1px_#ffffff1a] min-w-11 min-h-11 p-0 rounded-[4.576px] ${packClass("Button", "plate")}`} onPress={(e) => props.onPrevious?.(e)} label={props.month}>
           <Icon name="chevronLeft" />
         </Button>
         <Text class={`font-display text-[1.143rem] font-bold leading-tight tracking-[-0.01em] text-fg grow shrink basis-0 text-center m-0`}>
           {props.month}
         </Text>
-        <Button class={`bg-[#04060c9e] shadow-[inset_0px_0px_0px_1px_#ffffff1a] min-w-11 min-h-11 p-0 rounded-[4.576px] ${packClass("Button", "plate")}`} onPress={(e) => props.onNext?.(e)} label={props.month}>
+        <Button class={`bg-tile shadow-[inset_0px_0px_0px_1px_#ffffff1a] min-w-11 min-h-11 p-0 rounded-[4.576px] ${packClass("Button", "plate")}`} onPress={(e) => props.onNext?.(e)} label={props.month}>
           <Icon name="chevronRight" />
         </Button>
       </View>
@@ -44,7 +44,7 @@ export function Calendar(props: CalendarProps) {
         </For>
         <For each={props.days}>
           {(d) => (
-          <View class={`border-rim-soft bg-[#04060c9e] shadow-[inset_0px_0px_0px_1px_#ffffff1a] text-fg transition duration-317 w-full min-h-11 font-bold border data-selected:border-accent data-done:border-success data-active:border-accent data-outside:bg-none data-outside:bg-transparent data-outside:shadow-none data-outside:text-fg/50 data-today:bg-linear-to-b data-today:from-[#eaffff] data-today:to-[#38e8ff] data-today:bg-transparent data-today:shadow-none data-today:text-[#0b0f18] active:scale-96 data-locked:scale-100 disabled:scale-100 data-down:opacity-45 ${packClass("calendar", "cell", d().today ? "primary" : "quiet")}`} role="button" current={d().today} onPress={(e) => props.onPick?.(e, d().id)} data-outside={d().outside} data-marked={d().marked} data-today={d().today} data-variant-primary={(d().today ? "primary" : "quiet") === "primary"} data-variant-quiet={(d().today ? "primary" : "quiet") === "quiet"}>
+          <View class={`border-rim-soft bg-tile shadow-[inset_0px_0px_0px_1px_#ffffff1a] text-fg transition duration-317 w-full min-h-11 font-bold border data-selected:border-accent data-done:border-success data-active:border-accent data-outside:bg-none data-outside:bg-transparent data-outside:shadow-none data-outside:text-fg/50 data-today:bg-linear-to-b data-today:from-[#eaffff] data-today:to-[#38e8ff] data-today:bg-transparent data-today:shadow-none data-today:text-[#0b0f18] active:scale-96 data-locked:scale-100 disabled:scale-100 data-down:opacity-45 ${packClass("Calendar", "cell", d().today ? "primary" : "quiet")}`} role="button" current={d().today} onPress={(e) => props.onPick?.(e, d().id)} data-outside={d().outside} data-marked={d().marked} data-today={d().today} data-variant-primary={(d().today ? "primary" : "quiet") === "primary"} data-variant-quiet={(d().today ? "primary" : "quiet") === "quiet"}>
             <Text class="tabular-nums">{d().label}</Text>
             <Show when={d().marked}>
               <Text class="absolute bottom-0.5 rotate-45 bg-gold shadow-[0px_0px_9.136px_#ffcf5a] tabular-nums size-1" />
