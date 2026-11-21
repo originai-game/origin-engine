@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {
+      "member": "UI styles",
+      "summary": "og-ui's paint pass draws borders (each side its own width), per-corner border-radius (scaled down together when corners overlap, as CSS does), box-shadow layers outside and inset with a Gaussian blur, outline with outline-offset, and a linear-gradient aimed `to` a corner at the box's own diagonal. Transforms, text-shadow, text-decoration and backdrop blur still parse without painting."
+    }
+  ]
+}

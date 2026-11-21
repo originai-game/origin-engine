@@ -1,9 +1,10 @@
 // The UI's paint pass (src/ui/paint.rs): og-ui's paint arena drawn with one
 // pipeline per target format, every variant a branch on the instance's kind,
 // so nothing is compiled after boot. Each instance is a box in CSS pixels
-// (origin top left, y down) with its clip: a rounded box in a colour or a
-// gradient, an MSDF glyph of the bound font page, or a built-in icon's
-// stroked segments. Colours are linear and straight; an sRGB view encodes in
+// (origin top left, y down) with its clip: a box rounded per corner in a
+// colour or a gradient, a border ring, an outer or inset Gaussian box
+// shadow, an MSDF glyph of the bound font page, or a built-in icon's stroked
+// segments. Colours are linear and straight; an sRGB view encodes in
 // hardware, any other output here.
 
 struct PaintFrame {
@@ -23,10 +24,14 @@ struct PaintGpu {
   color: vec4<f32>,
   // A glyph's atlas region, u0 v0 u1 v1.
   uv: vec4<f32>,
-  // x: a box's radius, or a glyph's weight (CSS px).
+  // A box's corner radii, top left, top right, bottom right, bottom left.
+  r: vec4<f32>,
+  // A glyph's weight in x; a border's widths, top right bottom left; a
+  // shadow's offset (xy), blur (z) and spread (w); CSS px.
   p: vec4<f32>,
-  // x: the kind (0 solid, 1 gradient, 2 glyph, 3 icon), y and z its
-  // gradient, or its first segment and their count.
+  // x: the kind (0 solid, 1 gradient, 2 glyph, 3 icon, 4 border, 5 shadow,
+  // 6 inset shadow), y and z its gradient, or its first segment and their
+  // count.
   k: vec4<u32>,
 };
 @group(0) @binding(1) var<storage, read> quads: array<PaintGpu>;
@@ -57,11 +62,22 @@ fn vs_paint(@builtin(vertex_index) vi: u32, @builtin(instance_index) ii: u32) ->
     vec2<f32>(0.0, 0.0), vec2<f32>(1.0, 1.0), vec2<f32>(0.0, 1.0));
   let q = quads[ii];
   let c = corners[vi];
-  // A box grows by a device pixel for its antialiased edge; a glyph's quad
-  // already holds its field's reach.
-  let grow = select(1.0 / max(frame.output.z, 1e-3), 0.0, q.k.x == 2u);
+  // What the quad covers around the box's centre: a box and a device pixel
+  // for its antialiased edge; a glyph's quad, which holds its field's reach;
+  // a shadow's moved, grown box and its blur's reach (three deviations).
+  let px = 1.0 / max(frame.output.z, 1e-3);
   let half = 0.5 * q.rect.zw;
-  let local = (c - vec2<f32>(0.5)) * (q.rect.zw + vec2<f32>(2.0 * grow));
+  var lo = -half - vec2<f32>(px);
+  var hi = half + vec2<f32>(px);
+  if (q.k.x == 2u) {
+    lo = -half;
+    hi = half;
+  } else if (q.k.x == 5u) {
+    let reach = max(half + vec2<f32>(q.p.w + 1.5 * q.p.z + px), vec2<f32>(0.0));
+    lo = q.p.xy - reach;
+    hi = q.p.xy + reach;
+  }
+  let local = mix(lo, hi, c);
   let css = q.rect.xy + half + local;
   let device = css * frame.output.z;
   var o: PaintOut;
@@ -74,10 +90,45 @@ fn vs_paint(@builtin(vertex_index) vi: u32, @builtin(instance_index) ii: u32) ->
 
 // srgb_encode and srgb_decode are color.wgsl's (the library, prepended).
 
-// A box of half size `half` rounded by `r`: its signed distance.
-fn sd_round_box(p: vec2<f32>, half: vec2<f32>, r: f32) -> f32 {
-  let q = abs(p) - half + vec2<f32>(r);
-  return length(max(q, vec2<f32>(0.0))) + min(max(q.x, q.y), 0.0) - r;
+// A box of half size `half` with corner radii `r` (top left, top right,
+// bottom right, bottom left; y down): its signed distance at `p`.
+fn sd_round_box(p: vec2<f32>, half: vec2<f32>, r: vec4<f32>) -> f32 {
+  var k = select(r.x, r.y, p.x > 0.0);
+  if (p.y > 0.0) {
+    k = select(r.w, r.z, p.x > 0.0);
+  }
+  let rad = clamp(k, 0.0, max(min(half.x, half.y), 0.0));
+  let q = abs(p) - half + vec2<f32>(rad);
+  return length(max(q, vec2<f32>(0.0))) + min(max(q.x, q.y), 0.0) - rad;
+}
+
+// A distance's coverage over a device pixel (`scale` of them a CSS px).
+fn edge(d: f32, scale: f32) -> f32 {
+  return clamp(0.5 - d * scale, 0.0, 1.0);
+}
+
+// erf, to 5e-4 (Abramowitz and Stegun's 7.1.26 family, Winitzki's form).
+fn erf_approx(x: f32) -> f32 {
+  let x2 = x * x;
+  let a = 0.147;
+  let v = sqrt(1.0 - exp(-x2 * (1.2732395 + a * x2) / (1.0 + a * x2)));
+  return select(-v, v, x >= 0.0);
+}
+
+// A distance's coverage blurred by CSS's blur radius `blur` (a Gaussian of
+// deviation blur / 2, as CSS draws a shadow); sharp under half a pixel.
+fn blurred(d: f32, blur: f32, scale: f32) -> f32 {
+  let sigma = 0.5 * blur;
+  if (sigma * scale < 0.5) {
+    return edge(d, scale);
+  }
+  return 0.5 - 0.5 * erf_approx(d / (sigma * 1.4142135));
+}
+
+// Radii `r` grown by `by` for a shadow's spread; a square corner stays
+// square, as CSS keeps it.
+fn grown(r: vec4<f32>, by: f32) -> vec4<f32> {
+  return select(vec4<f32>(0.0), max(r + vec4<f32>(by), vec4<f32>(0.0)), r > vec4<f32>(0.0));
 }
 
 // Gradient `gi` at `p` in a box of half size `half`: CSS's linear
@@ -148,8 +199,7 @@ fn fs_paint(in: PaintOut) -> @location(0) vec4<f32> {
       rgb = g.rgb;
       a *= g.a;
       dither = true;
-      let d = sd_round_box(in.local, half, min(q.p.x, min(half.x, half.y)));
-      a *= clamp(0.5 - d * scale, 0.0, 1.0);
+      a *= edge(sd_round_box(in.local, half, q.r), scale);
     }
     case 2u: {
       let unit_range = vec2<f32>(page_params.x) / max(page_params.yz, vec2<f32>(1.0));
@@ -170,9 +220,34 @@ fn fs_paint(in: PaintOut) -> @location(0) vec4<f32> {
       let d = icon_distance(p, q.k.y, q.k.z) * (side / 24.0);
       a *= clamp(0.5 - d * scale, 0.0, 1.0);
     }
+    case 4u: {
+      // The ring between the box and its inner edge, each side in by its
+      // width, each corner's radius less its wider side's.
+      let w = q.p;
+      let ihalf = half - 0.5 * vec2<f32>(w.w + w.y, w.x + w.z);
+      let ic = 0.5 * vec2<f32>(w.w - w.y, w.x - w.z);
+      let ir = max(q.r - vec4<f32>(max(w.x, w.w), max(w.x, w.y), max(w.z, w.y), max(w.z, w.w)), vec4<f32>(0.0));
+      var inner = 0.0;
+      if (ihalf.x > 0.0 && ihalf.y > 0.0) {
+        inner = edge(sd_round_box(in.local - ic, ihalf, ir), scale);
+      }
+      a *= edge(sd_round_box(in.local, half, q.r), scale) * (1.0 - inner);
+    }
+    case 5u: {
+      let s = sd_round_box(in.local - q.p.xy, half + vec2<f32>(q.p.w), grown(q.r, q.p.w));
+      let body = edge(sd_round_box(in.local, half, q.r), scale);
+      a *= blurred(s, q.p.z, scale) * (1.0 - body);
+    }
+    case 6u: {
+      let hole_half = half - vec2<f32>(q.p.w);
+      var hole = 0.0;
+      if (hole_half.x > 0.0 && hole_half.y > 0.0) {
+        hole = blurred(sd_round_box(in.local - q.p.xy, hole_half, grown(q.r, -q.p.w)), q.p.z, scale);
+      }
+      a *= edge(sd_round_box(in.local, half, q.r), scale) * (1.0 - hole);
+    }
     default: {
-      let d = sd_round_box(in.local, half, min(q.p.x, min(half.x, half.y)));
-      a *= clamp(0.5 - d * scale, 0.0, 1.0);
+      a *= edge(sd_round_box(in.local, half, q.r), scale);
     }
   }
   if (a <= 0.0) {

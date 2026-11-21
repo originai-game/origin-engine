@@ -26,6 +26,5 @@ accesskit = "=0.25.2"
 rustc-hash = "2"
 bytemuck = { workspace = true }
 serde_json = "1"
-
-[dev-dependencies]
+# Its math (atan2 for a corner gradient's angle).
 og-core = { path = "../og-core" }

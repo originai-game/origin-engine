@@ -9,10 +9,10 @@
 //! ([`crate::overlay::OverlayFrame::ui_at`]).
 
 use crate::FontHandle;
+use crate::scene::GlyphKey;
 use crate::sprites::FontLayout;
 use bytemuck::{Pod, Zeroable};
 use og_draw::paint::{Paint, PaintKind};
-use crate::scene::GlyphKey;
 
 /// `struct PaintGpu` in ui_paint.wgsl.
 #[repr(C)]
@@ -22,6 +22,7 @@ pub(crate) struct PaintGpu {
     clip: [f32; 4],
     color: [f32; 4],
     uv: [f32; 4],
+    r: [f32; 4],
     p: [f32; 4],
     k: [u32; 4],
 }
@@ -174,7 +175,8 @@ impl PaintRenderer {
                 },
             )
         };
-        let (output, linear) = crate::frame_pipelines(|| (pipeline(output_format), linear_format.map(pipeline)));
+        let (output, linear) =
+            crate::frame_pipelines(|| (pipeline(output_format), linear_format.map(pipeline)));
         PaintRenderer {
             output,
             linear,
@@ -255,13 +257,25 @@ impl PaintRenderer {
                 .iter()
                 .map(|g| [g.angle, g.first as f32, g.count as f32, 0.0]),
         );
-        grew |= write(device, queue, &mut self.gradients, "ui paint gradients", &self.gradient_rows);
+        grew |= write(
+            device,
+            queue,
+            &mut self.gradients,
+            "ui paint gradients",
+            &self.gradient_rows,
+        );
         self.stop_rows.clear();
         for s in &paint.stops {
             self.stop_rows.push(s.color);
             self.stop_rows.push([s.offset, 0.0, 0.0, 0.0]);
         }
-        grew |= write(device, queue, &mut self.stops, "ui paint stops", &self.stop_rows);
+        grew |= write(
+            device,
+            queue,
+            &mut self.stops,
+            "ui paint stops",
+            &self.stop_rows,
+        );
         if let Some(icons) = &paint.icons {
             let at = (icons.as_ptr() as usize, icons.len());
             if at != self.icons {
@@ -298,7 +312,8 @@ impl PaintRenderer {
                 rect: q.rect,
                 clip: q.clip,
                 color: q.color,
-                p: [q.radius, 0.0, 0.0, 0.0],
+                r: q.radius,
+                p: q.p,
                 k: [q.kind, q.a, q.b, 0],
                 ..Default::default()
             };
@@ -322,7 +337,12 @@ impl PaintRenderer {
                     continue;
                 }
                 let [x, baseline, size, _] = q.rect;
-                g.rect = [x + pl * size, baseline - pt * size, (pr - pl) * size, (pt - pb) * size];
+                g.rect = [
+                    x + pl * size,
+                    baseline - pt * size,
+                    (pr - pl) * size,
+                    (pt - pb) * size,
+                ];
                 let [al, at, ar, ab] = glyph.atlas_bounds;
                 let s = l.atlas_size;
                 g.uv = [al / s.x, at / s.y, ar / s.x, ab / s.y];

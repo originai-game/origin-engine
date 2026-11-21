@@ -1102,29 +1102,106 @@ impl Tree {
             let p = &mut self.drawn;
             let alpha = el.eff.opacity;
             let rect = [x, y, b.w, b.h];
-            // One radius a quad until the pass takes four corners.
-            let radius = r
-                .skin
-                .radius
-                .iter()
-                .copied()
-                .fold(0.0, f32::max)
-                .min(b.w.min(b.h) / 2.0);
-            if r.skin.fill[3] > 0.0 {
-                let mut c = r.skin.fill;
+            let s = &r.skin;
+            let radius = radii(s.radius, b.w, b.h);
+            let faded = |mut c: Rgba| {
                 c[3] *= alpha;
-                p.quads
-                    .push(quad(PaintKind::Solid, rect, clip, c, radius, 0, 0));
+                c
+            };
+            // Outer shadows under the box, the last listed lowest.
+            let shadows = &s.shadows[..usize::from(s.shadow_count)];
+            for sh in shadows
+                .iter()
+                .rev()
+                .filter(|sh| !sh.inset && sh.color[3] > 0.0)
+            {
+                let p4 = [sh.offset[0], sh.offset[1], sh.blur, sh.spread];
+                p.quads.push(quad(
+                    PaintKind::Shadow,
+                    rect,
+                    clip,
+                    faded(sh.color),
+                    radius,
+                    p4,
+                    0,
+                    0,
+                ));
             }
-            if let Some(g) = &r.skin.gradient {
-                let gi = p.gradient(g.angle, g.stops().iter().copied());
+            if s.fill[3] > 0.0 {
+                p.quads.push(quad(
+                    PaintKind::Solid,
+                    rect,
+                    clip,
+                    faded(s.fill),
+                    radius,
+                    [0.0; 4],
+                    0,
+                    0,
+                ));
+            }
+            if let Some(g) = &s.gradient {
+                // A `to <corner>` line runs perpendicular to the diagonal
+                // between the other two corners, so its angle is the box's.
+                let angle = match g.corner {
+                    [0, _] | [_, 0] => g.angle,
+                    [cx, cy] => og_core::math::atan2(f32::from(cx) * b.h, -f32::from(cy) * b.w),
+                };
+                let gi = p.gradient(angle, g.stops().iter().copied());
                 p.quads.push(quad(
                     PaintKind::Gradient,
                     rect,
                     clip,
                     [1.0, 1.0, 1.0, alpha],
                     radius,
+                    [0.0; 4],
                     gi,
+                    0,
+                ));
+            }
+            for sh in shadows
+                .iter()
+                .rev()
+                .filter(|sh| sh.inset && sh.color[3] > 0.0)
+            {
+                let p4 = [sh.offset[0], sh.offset[1], sh.blur, sh.spread];
+                p.quads.push(quad(
+                    PaintKind::InsetShadow,
+                    rect,
+                    clip,
+                    faded(sh.color),
+                    radius,
+                    p4,
+                    0,
+                    0,
+                ));
+            }
+            if s.border_color[3] > 0.0 && s.border.iter().any(|&w| w > 0.0) {
+                p.quads.push(quad(
+                    PaintKind::Border,
+                    rect,
+                    clip,
+                    faded(s.border_color),
+                    radius,
+                    s.border,
+                    0,
+                    0,
+                ));
+            }
+            let o = &s.outline;
+            if o.width > 0.0 && o.color[3] > 0.0 {
+                // The ring of the box grown by the offset and the width; its
+                // corners follow the box's, as browsers draw them.
+                let out = o.offset + o.width;
+                let grown = [x - out, y - out, b.w + 2.0 * out, b.h + 2.0 * out];
+                let rr = radius.map(|k| if k > 0.0 { (k + out).max(0.0) } else { 0.0 });
+                p.quads.push(quad(
+                    PaintKind::Border,
+                    grown,
+                    clip,
+                    faded(o.color),
+                    rr,
+                    [o.width; 4],
+                    0,
                     0,
                 ));
             }
@@ -1145,7 +1222,8 @@ impl Tree {
                             [square[0], top + asc * size, size, 0.0],
                             clip,
                             ink,
-                            0.0,
+                            [0.0; 4],
+                            [0.0; 4],
                             ch as u32,
                             1,
                         ));
@@ -1163,7 +1241,8 @@ impl Tree {
                                 square,
                                 clip,
                                 ink,
-                                0.0,
+                                [0.0; 4],
+                                [0.0; 4],
                                 first,
                                 count,
                             ));
@@ -1305,12 +1384,14 @@ impl Tree {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn quad(
     kind: PaintKind,
     rect: [f32; 4],
     clip: [f32; 4],
     color: Rgba,
-    radius: f32,
+    radius: [f32; 4],
+    p: [f32; 4],
     a: u32,
     b: u32,
 ) -> PaintQuad {
@@ -1319,10 +1400,24 @@ fn quad(
         clip,
         color,
         radius,
+        p,
         kind: kind as u32,
         a,
         b,
     }
+}
+
+/// Corner radii (top left, top right, bottom right, bottom left) on a
+/// `w`×`h` box, all scaled down by one factor when two on a side would
+/// overlap, as CSS scales them.
+fn radii(r: [f32; 4], w: f32, h: f32) -> [f32; 4] {
+    let [tl, tr, br, bl] = r.map(|k| k.max(0.0));
+    let fit = |side: f32, sum: f32| if sum > side { side / sum } else { 1.0 };
+    let f = fit(w, tl + tr)
+        .min(fit(w, bl + br))
+        .min(fit(h, tl + bl))
+        .min(fit(h, tr + br));
+    [tl * f, tr * f, br * f, bl * f]
 }
 
 /// Lays `text` out as glyph quads of font slot 0 from its leaf's top left
@@ -1377,7 +1472,8 @@ fn lay_out(g: &mut Glyphs, text: &str, eff: &Inherit, width: f32, m: &og_text::t
                     [dx + pen * size, baseline, size, 0.0],
                     [0.0; 4],
                     [0.0; 4],
-                    weight,
+                    [0.0; 4],
+                    [weight, 0.0, 0.0, 0.0],
                     ch as u32,
                     0,
                 ));
@@ -1470,6 +1566,68 @@ mod tests {
                 .unwrap()
         };
         assert!(at(true) > at(false), "the text over its panel");
+    }
+
+    /// A box paints its outer shadows under it, then its fill and gradient,
+    /// its inset shadows, its border and its outline, with CSS's radii
+    /// (scaled down together when they overlap) and a corner gradient
+    /// aimed by the box's aspect.
+    #[test]
+    fn a_box_paints_shadows_fill_border_and_outline_in_order() {
+        let doc = UiDocument::parse(
+            "b.svelte",
+            "<meta name=\"component\" content=\"b\">\n\
+             <div id=\"B\"></div>\n\
+             <style>\n#B { width: 200px; height: 100px; background: linear-gradient(to top right, #000, #fff), #102030; \
+             border: 1px solid #ff0000; border-width: 1px 2px 3px 4px; border-radius: 80px 80px 80px 0; \
+             box-shadow: 0 4px 8px #000, inset 0 0 2px #fff; outline: 2px solid #00ff00; outline-offset: 3px; }\n</style>",
+        )
+        .unwrap();
+        let look = Rc::new(Look::load(
+            &[Layer {
+                tokens: crate::look::default_tokens(),
+                surfaces: crate::look::DEFAULT_SURFACES,
+            }],
+            "dark",
+        ));
+        let mut tree = Tree::new(look, [Arc::new(doc)]);
+        tree.resize(400.0, 300.0);
+        tree.mount("b", &[]).unwrap();
+        tree.frame(&og_ui::Fonts::default(), &IconAtlas::default());
+        let q = &tree.drawn.quads;
+        let kinds: Vec<u32> = q.iter().map(|q| q.kind).collect();
+        use PaintKind as K;
+        assert_eq!(
+            kinds,
+            [
+                K::Shadow,
+                K::Solid,
+                K::Gradient,
+                K::InsetShadow,
+                K::Border,
+                K::Border
+            ]
+            .map(|k| k as u32)
+        );
+        // 80 + 80 on the 100px sides: all four scale by 100 / 160.
+        assert_eq!(q[1].radius, [50.0, 50.0, 50.0, 0.0]);
+        assert_eq!(q[0].p, [0.0, 4.0, 8.0, 0.0], "offset, blur, spread");
+        assert_eq!(q[4].p, [1.0, 2.0, 3.0, 4.0], "the border's widths");
+        let (x, y, w, h) = tree.find("B").unwrap();
+        assert_eq!(
+            q[5].rect,
+            [x - 5.0, y - 5.0, w + 10.0, h + 10.0],
+            "outline 3px out, 2px wide"
+        );
+        assert_eq!(q[5].p, [2.0; 4]);
+        assert_eq!(
+            q[5].radius,
+            [55.0, 55.0, 55.0, 0.0],
+            "a square corner stays square"
+        );
+        // To the top right of a 2:1 box: perpendicular to the other diagonal.
+        let angle = tree.drawn.gradients[0].angle;
+        assert!((angle - og_core::math::atan2(1.0, 2.0)).abs() < 1e-3, "{angle}");
     }
 
     /// A `display: none` element paints nothing, nor does what is under

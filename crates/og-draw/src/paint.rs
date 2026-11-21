@@ -5,7 +5,8 @@
 //! moves.
 //!
 //! A quad is a box in CSS pixels with its clip and colour and what fills
-//! it ([`PaintKind`]): a solid rounded box, a gradient, an MSDF glyph of
+//! it ([`PaintKind`]): a solid rounded box, a gradient, a border ring, an
+//! outer or inset box shadow, an MSDF glyph of
 //! one of [`Paint::fonts`] (resolved against the font's pages by the
 //! renderer), or a built-in icon drawn as its stroked segments from
 //! [`Paint::icons`], a table made once and shared.
@@ -24,12 +25,23 @@ pub enum PaintKind {
     /// [`Paint::gradients`], at `color`'s alpha.
     Gradient = 1,
     /// Glyph `a` (its char) of font `b` of [`Paint::fonts`]: `rect`'s x is
-    /// the pen and y the baseline, w the size in CSS px; `radius` the
+    /// the pen and y the baseline, w the size in CSS px; `p`'s x the
     /// weight's thickening, CSS px.
     Glyph = 2,
     /// Built-in icon segments `a..a + b` of [`Paint::icons`] (24-unit icon
     /// space, 2 units wide, round), in `rect`, in `color`.
     Icon = 3,
+    /// The ring between the box rounded by `radius` and it inset by `p`'s
+    /// widths (top, right, bottom, left), in `color`: a border, or an
+    /// outline drawn as the ring of a box grown around its owner.
+    Border = 4,
+    /// The box's outer shadow, outside the box only: the box moved by `p`'s
+    /// x and y, grown by its spread (w) and blurred by its blur (z, CSS's
+    /// blur radius, a Gaussian of half its deviation), in `color`.
+    Shadow = 5,
+    /// An inset shadow, inside the box only: the box less its hole (the box
+    /// moved by `p`'s x and y, shrunk by its spread, blurred by its blur).
+    InsetShadow = 6,
 }
 
 /// One quad of the arena (`struct PaintIn` in ui_paint.wgsl's terms
@@ -43,7 +55,11 @@ pub struct PaintQuad {
     pub clip: [f32; 4],
     /// Linear RGBA, straight alpha.
     pub color: [f32; 4],
-    pub radius: f32,
+    /// Corner radii, top left, top right, bottom right, bottom left.
+    pub radius: [f32; 4],
+    /// The kind's parameters: a glyph's thickening in x, a border's widths,
+    /// a shadow's offset, blur and spread.
+    pub p: [f32; 4],
     pub kind: u32,
     pub a: u32,
     pub b: u32,
@@ -104,13 +120,18 @@ impl Paint {
 
     /// Adds a gradient of `stops` (offset, linear RGBA) at `angle`; its
     /// index for [`PaintKind::Gradient`].
-    pub fn gradient(&mut self, angle: f32, stops: impl IntoIterator<Item = (f32, [f32; 4])>) -> u32 {
+    pub fn gradient(
+        &mut self,
+        angle: f32,
+        stops: impl IntoIterator<Item = (f32, [f32; 4])>,
+    ) -> u32 {
         let first = self.stops.len() as u32;
-        self.stops.extend(stops.into_iter().map(|(offset, color)| PaintStop {
-            color,
-            offset,
-            _pad: [0.0; 3],
-        }));
+        self.stops
+            .extend(stops.into_iter().map(|(offset, color)| PaintStop {
+                color,
+                offset,
+                _pad: [0.0; 3],
+            }));
         self.gradients.push(PaintGradient {
             angle,
             first,
