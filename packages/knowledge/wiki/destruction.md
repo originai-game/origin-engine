@@ -87,70 +87,70 @@ module destruction {
 const CAUSE_IMPACT u32 0 "Fractured.cause: a collision's impulse (og.CollisionStarted) past the prop's impactThreshold."
 ```
 
-<sub>Module `destruction` line 7</sub>
+<sub>Module `destruction` line 8</sub>
 
 ```ogt
 const CAUSE_DAMAGE u32 1 "Fractured.cause: og.destruction.damage."
 ```
 
-<sub>Module `destruction` line 8</sub>
+<sub>Module `destruction` line 9</sub>
 
 ```ogt
 const CAUSE_EXPLOSION u32 2 "Fractured.cause: og.destruction.explode; PixelDetached.cause: og.destruction.explode2d."
 ```
 
-<sub>Module `destruction` line 9</sub>
+<sub>Module `destruction` line 10</sub>
 
 ```ogt
 const CAUSE_STRESS u32 3 "Fractured.cause: the stress solver: a part that could no longer hold its own weight."
 ```
 
-<sub>Module `destruction` line 10</sub>
+<sub>Module `destruction` line 11</sub>
 
 ```ogt
 const CAUSE_SHATTER u32 4 "Fractured.cause: a chunk with children (the fracture block's `children`) took three times the damage that breaks a bond of its cross-section, and broke into them: they fly free, each its own body, leaving a hole."
 ```
 
-<sub>Module `destruction` line 11</sub>
+<sub>Module `destruction` line 12</sub>
 
 ```ogt
 const MATERIAL_BRICK u32 0 "og.destruction.material: brickwork in mortar (no-tension masonry: stands by its weight, steps back over its piers)."
 ```
 
-<sub>Module `destruction` line 12</sub>
+<sub>Module `destruction` line 13</sub>
 
 ```ogt
 const MATERIAL_CONCRETE u32 1 "og.destruction.material: plain concrete (strong, breaks in chunky lumps, holds what is left)."
 ```
 
-<sub>Module `destruction` line 13</sub>
+<sub>Module `destruction` line 14</sub>
 
 ```ogt
 const MATERIAL_WOOD u32 2 "og.destruction.material: timber boards (light and weak across the grain: splinters where it lands or is struck)."
 ```
 
-<sub>Module `destruction` line 14</sub>
+<sub>Module `destruction` line 15</sub>
 
 ```ogt
 const MATERIAL_GLASS u32 3 "og.destruction.material: a glass pane (shatters at a touch, no stress solver)."
 ```
 
-<sub>Module `destruction` line 15</sub>
+<sub>Module `destruction` line 16</sub>
 
 ```ogt
 const MATERIAL_STONE u32 4 "og.destruction.material: dry-laid stone (masonry with no mortar: no tension, heavier and tougher than brick)."
 ```
 
-<sub>Module `destruction` line 16</sub>
+<sub>Module `destruction` line 17</sub>
 
 ```ogt
 const CAUSE_FRACTURE u32 5 "Fractured.cause: og.destruction.fracture; PixelDetached.cause: og.destruction.fracture2d."
 ```
 
-<sub>Module `destruction` line 17</sub>
+<sub>Module `destruction` line 18</sub>
 
 ```ogt
 const CAUSE_CARVE u32 6 "PixelDetached.cause: og.destruction.carve2d cut it loose."
 ```
 
-<sub>Module `destruction` line 18</sub>
+<sub>Module `destruction` line 19</sub>

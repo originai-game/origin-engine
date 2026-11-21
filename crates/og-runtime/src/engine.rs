@@ -200,6 +200,13 @@ pub trait Hooks {
     fn release_stream(&self, pack: &str, textures: &[String]) {
         let _ = (pack, textures);
     }
+    /// Content needing the engine wasm modules `modules` is being prepared
+    /// (`world::needs`): a host whose engine is split fetches and puts
+    /// them in place now, if they are not, so no call waits on one later.
+    /// A host with every module in place has nothing to do.
+    fn prefetch_modules(&self, modules: &[String]) {
+        let _ = modules;
+    }
     /// A cooked texture for the renderer, in the device's encoding when
     /// `formats` (the attached renderer's) names one: og-bundle's transcoder
     /// (native, feature `transcode`) by default, every mip level; the web

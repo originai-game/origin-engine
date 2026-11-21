@@ -339,3 +339,65 @@ entity \"boss\" {
     );
     assert_eq!(load(&root, "prefabs/king.ogt").entities.len(), 4);
 }
+
+/// The engine modules a scene needs (the manifest's `modules`) reach
+/// through what it places: a prefab's records and a sub-scene's, never the
+/// game's own; the bundle's are the boot scene's, or every asset's when
+/// project.ogt names no boot scene.
+#[test]
+fn a_scene_needs_the_modules_of_what_it_places() {
+    let root = project("module-needs");
+    write(
+        &root,
+        "prefabs/guard.ogt",
+        "type prefab\nversion 1\n---\nentity \"guard\" {\n  NavAgent {\n    speed 2\n  }\n}\n",
+    );
+    write(
+        &root,
+        "scenes/arena.ogt",
+        "type scene\nversion 1\n---\nname \"Arena\"\nentity \"ball\" {\n  RigidBody {\n    mass 2\n  }\n}\n",
+    );
+    write(
+        &root,
+        "scenes/hub.ogt",
+        "type scene\nversion 1\n---\nname \"Hub\"\nentity \"g\" {\n  prefab \"prefabs/guard.ogt\"\n}\nentity \"a\" {\n  scene \"scenes/arena.ogt\"\n}\n",
+    );
+    write(
+        &root,
+        "scenes/menu.ogt",
+        "type scene\nversion 1\n---\nname \"Menu\"\nentity \"m\" {\n  Health {\n    hp 1\n  }\n}\n",
+    );
+    let modules = |root: &Path, id: &str| {
+        let b = Bundle::open(&root.join("cooked")).unwrap();
+        let m = b.manifest();
+        let a = m
+            .assets
+            .iter()
+            .find(|a| a.source == id)
+            .unwrap()
+            .modules
+            .clone();
+        (a, m.modules.clone())
+    };
+    let r = cook_with(&root, false);
+    assert!(
+        r.assets.iter().all(|a| a.error.is_none()),
+        "{:?}",
+        r.assets
+            .iter()
+            .filter_map(|a| a.error.as_ref())
+            .collect::<Vec<_>>()
+    );
+    let (hub, bundle) = modules(&root, "scenes/hub.ogt");
+    assert_eq!(hub, ["nav", "physics"]);
+    assert_eq!(modules(&root, "scenes/arena.ogt").0, ["physics"]);
+    assert!(modules(&root, "scenes/menu.ogt").0.is_empty());
+    // No boot scene named: every asset's.
+    assert_eq!(bundle, ["nav", "physics"]);
+    std::fs::write(root.join("project.ogt"), "type project\nversion 1\n---\nscene menu\nscenes {\n  menu \"scenes/menu.ogt\"\n  hub \"scenes/hub.ogt\"\n}\n").unwrap();
+    cook_with(&root, false);
+    assert!(
+        modules(&root, "scenes/hub.ogt").1.is_empty(),
+        "the boot scene is the menu, which needs none"
+    );
+}

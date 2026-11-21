@@ -2,6 +2,7 @@ module nav {
   doc "Navigation: grids (A* and jump point search, eight-way moves that never cut a blocked corner, line-of-sight smoothing), flow fields for crowds, and navmeshes (cooked, or built at runtime) with funnel paths and box obstacles that rebuild only the tiles they touch."
   doc "Agents are entities with an og.NavAgent (and an og.Transform): the og.nav system, after the game's systems and before physics, plans and follows their paths with og.Steering; an og.Velocity gets its velocity written, else the Transform moves. All of it is deterministic and in snapshots. Agents move on x and y in 2D, x and z in 3D."
   guide "world §9"
+  split nav
 
   handle Navigation "A grid, a navmesh or a flow field agents plan on."
 

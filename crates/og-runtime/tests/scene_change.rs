@@ -16,7 +16,8 @@
 //! for the scene's groups, or release letting go of the scene in place's;
 //! the change happening at the call (a system's call then tears the world
 //! mid-tick, and two hosts change at different ticks), or a tick late; the
-//! boot scene's child left behind; an entity the game spawned despawned
+//! boot scene's child left behind; preload not asking the host for the
+//! engine modules the scene needs (the cook's `modules`); an entity the game spawned despawned
 //! with the scene; a pending change lost by a snapshot; a world that never
 //! changes scene registering og.SceneState (its hash moves); a stage with a
 //! fraction outside 0 to 1 accepted.
@@ -55,6 +56,18 @@ entity \"door\" {
 }
 ";
 
+/// A scene that needs the physics module (docs/web-export.md §Modules).
+const ARENA: &str = "type scene
+version 1
+---
+name \"Arena\"
+entity \"ball\" {
+  RigidBody {
+    mass 2
+  }
+}
+";
+
 fn project() -> &'static Path {
     static ROOT: OnceLock<PathBuf> = OnceLock::new();
     ROOT.get_or_init(|| {
@@ -69,6 +82,7 @@ fn project() -> &'static Path {
         write("p/a.hex", "ff0000\n00ff00\n0000ff\n");
         write("scenes/main.ogt", MAIN);
         write("scenes/level2.ogt", LEVEL2);
+        write("scenes/arena.ogt", ARENA);
         let report = og_cook::cook_project(&root, &og_cook::CookOptions::default()).unwrap();
         assert!(report.ok(), "{:?}", report.errors());
         root
@@ -83,6 +97,8 @@ struct Net {
     asked: bool,
     /// og.loading's reports, as the host heard them.
     loading: Vec<(String, f64, String)>,
+    /// The engine modules the engine asked the host for, a call each.
+    prefetched: Vec<Vec<String>>,
     /// What og.scene.current answered inside the Watch system, a tick each.
     current: Vec<Option<String>>,
 }
@@ -116,6 +132,9 @@ impl Hooks for Host {
     fn read_progress(&self, path: &str) -> Option<(f64, f64)> {
         let n = self.0.borrow();
         (path.contains("/stream/") && n.asked && !n.landed).then_some((n.received, 0.0))
+    }
+    fn prefetch_modules(&self, modules: &[String]) {
+        self.0.borrow_mut().prefetched.push(modules.to_vec());
     }
     fn loading(&self, _engine: u32, stage: &str, fraction: f64, label: &str) {
         self.0
@@ -234,6 +253,17 @@ fn progress_sums_the_scenes_packs_as_they_arrive_and_preload_asks_for_them() {
         refused.contains("main, level2") || refused.contains("level2, main"),
         "{refused}"
     );
+}
+
+#[test]
+fn preload_asks_the_host_for_the_engine_modules_the_scene_needs() {
+    let (engine, net) = start(None);
+    frame(engine);
+    net.borrow_mut().prefetched.clear();
+    ok(og_scene_preload(engine, "level2".into()));
+    assert!(net.borrow().prefetched.is_empty(), "level2 needs no module");
+    ok(og_scene_preload(engine, "scenes/arena.ogt".into()));
+    assert_eq!(net.borrow().prefetched, [["physics"]]);
 }
 
 #[test]

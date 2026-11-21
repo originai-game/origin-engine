@@ -180,6 +180,13 @@ pub struct ManifestAsset {
     /// FNV-1a over the source and its import settings.
     pub source_hash: u64,
     pub source_bytes: u64,
+    /// The engine wasm modules loading it needs (`modules nav physics`,
+    /// sorted; empty: none, and no line): its records' (the IDL's
+    /// `split`) and those of every asset it references, a scene's
+    /// sub-scenes and prefabs included. og.scene.preload, og.load.scene
+    /// and a timeline's pre-roll fetch them ahead of their first call
+    /// (docs/web-export.md §Modules).
+    pub modules: Vec<String>,
     pub outputs: Vec<ManifestOutput>,
 }
 
@@ -192,6 +199,13 @@ pub struct Manifest {
     /// text). What the build, publish and the play page take the
     /// profile from.
     pub profile: crate::look::Profile,
+    /// The engine wasm modules opening the bundle needs (`modules nav
+    /// physics`, sorted; empty: none, and no line): its boot scene's
+    /// (project.ogt `scene`, as [`ManifestAsset::modules`]), or every
+    /// asset's when the cook cannot name that scene. og build loads them
+    /// beside the primary; og.load.bundle fetches them once the bundle
+    /// opens.
+    pub modules: Vec<String>,
     /// Per asset kind, the option text its stamps cover.
     pub options: BTreeMap<String, String>,
     /// Sorted by source path.
@@ -262,6 +276,21 @@ impl Manifest {
             },
             ..Default::default()
         };
+        let words = |e: &og_core::ogt::Entry| -> Result<Vec<String>, LoadError> {
+            e.values
+                .iter()
+                .map(|v| v.as_word().map(str::to_string))
+                .collect::<Option<Vec<_>>>()
+                .ok_or_else(|| {
+                    bad(format!(
+                        "line {}: modules names engine modules, written bare",
+                        e.line
+                    ))
+                })
+        };
+        if let Some(e) = doc.body.get("modules") {
+            m.modules = words(e)?;
+        }
         if let Some(block) = doc.body.get("options").and_then(|e| e.block.as_ref()) {
             for e in &block.entries {
                 m.options.insert(
@@ -303,6 +332,11 @@ impl Manifest {
                 kind: field(block, "kind", a.line)?,
                 source_hash: hexf(block, "source", a.line)?,
                 source_bytes: num(block, "bytes", a.line)?,
+                modules: block
+                    .get("modules")
+                    .map(words)
+                    .transpose()?
+                    .unwrap_or_default(),
                 outputs: Vec::new(),
             };
             for o in block.get_all("output") {
@@ -434,6 +468,13 @@ impl Manifest {
         doc.body.push(Entry::new("cooker").with(s(&self.cooker)));
         doc.body
             .push(Entry::new("profile").with(s(self.profile.name())));
+        if !self.modules.is_empty() {
+            doc.body.push(
+                self.modules
+                    .iter()
+                    .fold(Entry::new("modules"), |e, m| e.with(w(m))),
+            );
+        }
         let mut options = Block::new();
         for (k, v) in &self.options {
             options.push(Entry::new(k.clone()).with(s(v)));
@@ -444,6 +485,13 @@ impl Manifest {
                 .with(Entry::new("kind").with(w(&a.kind)))
                 .with(Entry::new("source").with(s(&hex(a.source_hash))))
                 .with(Entry::new("bytes").with(n(a.source_bytes)));
+            if !a.modules.is_empty() {
+                b.push(
+                    a.modules
+                        .iter()
+                        .fold(Entry::new("modules"), |e, m| e.with(w(m))),
+                );
+            }
             for o in &a.outputs {
                 let ob = Block::new()
                     .with(Entry::new("type").with(w(&o.ty)))

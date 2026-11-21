@@ -23,4 +23,4 @@ enum SightPlane {
 }
 ```
 
-<sub>Module `sight` line 5</sub>
+<sub>Module `sight` line 6</sub>

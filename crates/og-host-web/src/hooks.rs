@@ -142,6 +142,16 @@ impl Hooks for WebHooks {
         }
     }
 
+    fn prefetch_modules(&self, modules: &[String]) {
+        crate::MODULE_PREFETCHER.with(|f| {
+            if let Some(prefetch) = &*f.borrow() {
+                let names: js_sys::Array = modules.iter().map(|m| JsValue::from_str(m)).collect();
+                // A failed prefetch is the first call's to load or report.
+                let _ = prefetch.call1(&JsValue::NULL, &names);
+            }
+        });
+    }
+
     fn inflate_start(&self, key: u64, zlib: &[u8]) -> bool {
         INFLATER.with(|f| match &*f.borrow() {
             Some(inflate) => inflate

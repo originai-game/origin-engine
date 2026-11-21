@@ -113,6 +113,9 @@ thread_local! {
     /// The Worker's `inflate(key, bytes)` (DecompressionStream), and what it answered by key.
     static INFLATER: RefCell<Option<js_sys::Function>> = const { RefCell::new(None) };
     static INFLATED: RefCell<IdMap<u64, Result<Vec<u8>, String>>> = const { RefCell::new(IdMap::new()) };
+    /// The Worker's `prefetch(names)` (split.ts loadEngineModules): content
+    /// needing those engine modules is being prepared (og-runtime's `world::needs`).
+    static MODULE_PREFETCHER: RefCell<Option<js_sys::Function>> = const { RefCell::new(None) };
     /// The Worker's `decodeImage(key, bytes)` (createImageBitmap), and what it answered by key.
     static IMAGE_DECODER: RefCell<Option<js_sys::Function>> = const { RefCell::new(None) };
     /// The Worker's `fetchImage(key, url, integrity)` for a document's

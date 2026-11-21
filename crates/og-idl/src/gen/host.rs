@@ -781,6 +781,9 @@ pub fn records_rs(ix: &Index<'_>) -> String {
          \x20   pub name: &'static str,\n\
          \x20   /// The schema name it registers under.\n\
          \x20   pub schema: &'static str,\n\
+         \x20   /// The engine wasm modules whose code runs once a world holds it\n\
+         \x20   /// (the IDL's `split`); empty: the primary module's.\n\
+         \x20   pub split: &'static [&'static str],\n\
          \x20   pub fields: &'static [FieldDecl],\n\
          }\n\n\
          /// Every engine-owned record, in declaration order.\n\
@@ -790,10 +793,17 @@ pub fn records_rs(ix: &Index<'_>) -> String {
         for item in &m.items {
             let Item::Record(r) = item else { continue };
             out.push_str(&format!(
-                "    RecordDecl {{\n        kind: \"{}\",\n        name: \"{}\",\n        schema: \"{}\",\n        fields: &[\n",
+                "    RecordDecl {{\n        kind: \"{}\",\n        name: \"{}\",\n        schema: \"{}\",\n        split: &[{}],\n        fields: &[\n",
                 r.kind.as_str(),
                 r.name,
-                schema_name(&r.name)
+                schema_name(&r.name),
+                r.split
+                    .as_ref()
+                    .unwrap_or(&m.split)
+                    .iter()
+                    .map(|s| format!("{s:?}"))
+                    .collect::<Vec<_>>()
+                    .join(", ")
             ));
             for f in &r.fields {
                 let default = default_json(ix, &f.ty, f.default.as_deref())

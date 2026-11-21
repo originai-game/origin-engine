@@ -29,4 +29,4 @@ component SightBlocker {
 }
 ```
 
-<sub>Module `sight` line 60</sub>
+<sub>Module `sight` line 61</sub>

@@ -115,14 +115,19 @@ pub fn bindings(ix: &Index<'_>) -> String {
                             o
                         })
                         .collect();
-                    records[slot].push(
-                        Json::obj()
-                            .with("id", Json::num(id))
-                            .with("name", Json::str(r.name.clone()))
-                            .with("schema", Json::str(super::schema_name(&r.name)))
-                            .with("module", Json::str(m.name.clone()))
-                            .with("fields", Json::Arr(fields)),
-                    );
+                    let mut o = Json::obj()
+                        .with("id", Json::num(id))
+                        .with("name", Json::str(r.name.clone()))
+                        .with("schema", Json::str(super::schema_name(&r.name)))
+                        .with("module", Json::str(m.name.clone()));
+                    let split = r.split.as_ref().unwrap_or(&m.split);
+                    if !split.is_empty() {
+                        o.set(
+                            "split",
+                            Json::Arr(split.iter().cloned().map(Json::str).collect()),
+                        );
+                    }
+                    records[slot].push(o.with("fields", Json::Arr(fields)));
                 }
                 Item::Callback(c) => callbacks.push(
                     Json::obj()
@@ -136,6 +141,16 @@ pub fn bindings(ix: &Index<'_>) -> String {
         }
     }
     let [components, resources, events] = records;
+    // The engine wasm modules each IDL module's members live in: a game
+    // naming a member loads them (packages/engine/src/node/modules.ts).
+    let mut splits = Json::obj();
+    for m in api.modules.iter().filter(|m| !m.split.is_empty()) {
+        splits.set(
+            &m.name,
+            Json::Arr(m.split.iter().cloned().map(Json::str).collect()),
+        );
+    }
+    root.set("splits", splits);
     root.set("columns", Json::Arr(columns));
     root.set("components", Json::Arr(components));
     root.set("resources", Json::Arr(resources));

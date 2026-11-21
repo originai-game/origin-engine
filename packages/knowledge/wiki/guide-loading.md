@@ -561,6 +561,10 @@ og.scene.change(world, "level2");
   not: show it, never branch a tick on it in a networked game.
 - og.stream.status and og.stream.budget give each group's `received`
   and `progress`; og.load.progress gives a bundle's.
+- On the web, preloading also fetches the engine code the scene needs:
+  its physics, navigation, dialogue or video, and those of the scenes
+  and prefabs it places. A level that is the first to use physics
+  therefore does not wait for that code when it starts.
 
 The built-in `loading` screen (key art, place, tip, bar, percent) is the
 cover. Mount it with stores, feed its bar each tick, change once the

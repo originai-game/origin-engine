@@ -368,12 +368,26 @@ version, content-addressed and immutable, at
 (`application/wasm`, `Access-Control-Allow-Origin: *`,
 `Cross-Origin-Resource-Policy: cross-origin`), listed in SHA256SUMS
 (`scripts/release-dist.ts`, docs/release.md §1). `og build --publish`
-records in og-build.json's `modules` the ones the game references (a
-member of their IDL modules named in its sources, scenes or documents),
-their `base` and the `origin` the page's Content-Security-Policy must
-allow in `connect-src`; the Worker fetches the referenced ones in CORS
-mode beside the primary during the loading screen and puts them in place
-before the first tick. The rest load on their first call.
+records in og-build.json's `modules` the ones the game references (those
+its boot scene needs, as the cook recorded them, and those whose IDL
+module's members its code names), their `base` and the `origin` the
+page's Content-Security-Policy must allow in `connect-src`; the Worker
+fetches the referenced ones in CORS mode beside the primary during the
+loading screen and puts them in place before the first tick.
+
+**What content needs.** The cook records in cooked/.cook.ogt the modules
+each asset needs, `modules nav physics` in its block (sorted, absent when
+none): its own records' (the IDL's `split` line on a module or a record:
+`RigidBody` is in `physics`), its kind's (a dialogue `story`, a video
+`video`, a navmesh `nav`), and those of every asset it places or plays (a
+scene's sub-scenes, prefabs and models, a timeline's clips and scenes).
+A top-level `modules` line is the bundle's: its boot scene's (project.ogt
+`scene` through `scenes`), or every asset's when project.ogt names none.
+The engine asks its host for them as content is prepared (og-runtime's
+`world::needs`, the `prefetch_modules` hook): og.load.bundle as the bundle
+opens; og.load.scene, og.scene.preload, og.scene.change and a sub-scene
+as the scene loads. The rest load on their first call, which is the
+fallback, never a different result.
 
 `og build --publish --modules local` copies every module into the
 output's `modules/` and fetches

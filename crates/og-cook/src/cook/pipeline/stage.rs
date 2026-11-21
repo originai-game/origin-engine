@@ -15,6 +15,10 @@ pub(crate) struct Project {
     /// The creation form's profile (`look::project_profile`): the
     /// manifest's.
     pub(crate) profile: crate::look::Profile,
+    /// The boot scene's asset id: project.ogt's `scene` (else `main`)
+    /// through its `scenes` block; `None` when the block does not name it
+    /// (the game's GameDesc does, which the cook does not read).
+    pub(crate) boot: Option<String>,
     /// `cook { uses }`: the assets other cooked bundles provide.
     pub(crate) provided: provided::Provided,
 }
@@ -41,6 +45,23 @@ impl Project {
             .unwrap_or_default();
         let provided =
             provided::Provided::read(root, doc.as_ref().map(|d| &d.body)).map_err(CookError)?;
+        let boot = doc.as_ref().and_then(|d| {
+            let name = d
+                .body
+                .get("scene")
+                .and_then(|e| e.values.first())
+                .and_then(|v| v.as_word().or_else(|| v.as_str()))
+                .unwrap_or("main");
+            let path = d
+                .body
+                .get("scenes")?
+                .block
+                .as_ref()?
+                .get(name)?
+                .string(0)
+                .ok()?;
+            Some(crate::runtime::asset_id(path).to_string())
+        });
         let budget_desc = format!(
             "budgets triangles {} vertices {}",
             budgets.triangles, budgets.vertices
@@ -55,6 +76,7 @@ impl Project {
             story_functions,
             story_functions_stamp,
             profile,
+            boot,
             provided,
         })
     }

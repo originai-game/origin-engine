@@ -405,6 +405,7 @@ pub fn cook_project_with_texture_cache(
         story_functions: &project.story_functions,
         story_functions_stamp: &project.story_functions_stamp,
         profile: project.profile,
+        boot: project.boot.as_deref(),
         provided: &project.provided,
         texture_cache,
         project_key: project_key.as_deref(),

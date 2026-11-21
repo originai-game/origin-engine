@@ -133,6 +133,11 @@ export async function start(game: GameToken, data: Start, run: Run, gate: Gate, 
     // Streamed video: WebCodecs where the browser decodes AV1, else rav1d's own wasm module (fetched only then).
     await installVideo(glue, data.av1, data.decoders?.av1);
     run.audioDecoder = data.decoders?.audio;
+    // The engine modules a bundle, scene or pre-roll needs, fetched as it is
+    // prepared rather than at its first call (docs/web-export.md §Modules).
+    glue.og_web_set_module_prefetcher?.((names) => {
+      loadEngineModules(names).catch(() => {});
+    });
     // Uncooked images (og.load.imageData) are decoded by the browser, never in the wasm.
     installImageDecoder(glue);
     // Every Basis texture the engine asks for, from any bundle or pack, is transcoded by the Workers' pool.

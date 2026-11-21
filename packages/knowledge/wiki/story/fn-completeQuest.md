@@ -30,4 +30,4 @@ fn completeQuest {
 }
 ```
 
-<sub>Module `story` line 446</sub>
+<sub>Module `story` line 447</sub>

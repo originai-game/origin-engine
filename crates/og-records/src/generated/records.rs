@@ -46,6 +46,9 @@ pub struct RecordDecl {
     pub name: &'static str,
     /// The schema name it registers under.
     pub schema: &'static str,
+    /// The engine wasm modules whose code runs once a world holds it
+    /// (the IDL's `split`); empty: the primary module's.
+    pub split: &'static [&'static str],
     pub fields: &'static [FieldDecl],
 }
 
@@ -55,6 +58,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "event",
         name: "WorldRestored",
         schema: "og.WorldRestored",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "from",
@@ -96,6 +100,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "component",
         name: "Transform",
         schema: "og.Transform",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "position",
@@ -154,6 +159,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "component",
         name: "Parent",
         schema: "og.Parent",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "entity",
@@ -178,6 +184,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "component",
         name: "MatrixWorld",
         schema: "og.MatrixWorld",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "matrix",
@@ -202,6 +209,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "component",
         name: "Volume",
         schema: "og.Volume",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "size",
@@ -260,6 +268,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "resource",
         name: "WorldOrigin",
         schema: "og.WorldOrigin",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "step",
@@ -403,6 +412,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "event",
         name: "OriginShifted",
         schema: "og.OriginShifted",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "delta",
@@ -478,6 +488,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "resource",
         name: "Time",
         schema: "og.Time",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "tick",
@@ -621,6 +632,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "component",
         name: "TimeGroup",
         schema: "og.TimeGroup",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "group",
@@ -645,6 +657,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "resource",
         name: "TimeGroups",
         schema: "og.TimeGroups",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "scales",
@@ -669,6 +682,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "resource",
         name: "Rng",
         schema: "og.Rng",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "seed",
@@ -710,6 +724,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "event",
         name: "PauseIntent",
         schema: "og.PauseIntent",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "scale",
@@ -734,6 +749,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "resource",
         name: "Input",
         schema: "og.Input",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "pointer",
@@ -1132,6 +1148,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "resource",
         name: "Pointers",
         schema: "og.Pointers",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "heldMask",
@@ -1394,6 +1411,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "resource",
         name: "PointerLock",
         schema: "og.PointerLock",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "wanted",
@@ -1435,6 +1453,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "resource",
         name: "Gamepad",
         schema: "og.Gamepad",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "connectedMask",
@@ -2292,6 +2311,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "event",
         name: "KeyDown",
         schema: "og.KeyDown",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "key",
@@ -2350,6 +2370,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "event",
         name: "TextInput",
         schema: "og.TextInput",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "text",
@@ -2408,6 +2429,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "event",
         name: "KeyUp",
         schema: "og.KeyUp",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "key",
@@ -2449,6 +2471,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "event",
         name: "PointerDown",
         schema: "og.PointerDown",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "x",
@@ -2541,6 +2564,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "event",
         name: "PointerUp",
         schema: "og.PointerUp",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "x",
@@ -2633,6 +2657,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "event",
         name: "PointerMove",
         schema: "og.PointerMove",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "x",
@@ -2725,6 +2750,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "event",
         name: "Wheel",
         schema: "og.Wheel",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "deltaX",
@@ -2766,6 +2792,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "event",
         name: "A11yAction",
         schema: "og.A11yAction",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "action",
@@ -2807,6 +2834,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "resource",
         name: "Camera",
         schema: "og.Camera",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "position",
@@ -3290,6 +3318,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "component",
         name: "OrbitCamera",
         schema: "og.OrbitCamera",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "target",
@@ -3552,6 +3581,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "component",
         name: "FollowCamera",
         schema: "og.FollowCamera",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "offset",
@@ -3627,6 +3657,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "component",
         name: "Follow2D",
         schema: "og.Follow2D",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "offset",
@@ -3838,6 +3869,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "component",
         name: "CameraZone",
         schema: "og.CameraZone",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "min",
@@ -3913,6 +3945,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "component",
         name: "CameraRail",
         schema: "og.CameraRail",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "points",
@@ -4107,6 +4140,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "component",
         name: "VirtualCamera",
         schema: "og.VirtualCamera",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "priority",
@@ -4488,6 +4522,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "resource",
         name: "CameraBrain",
         schema: "og.CameraBrain",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "enabled",
@@ -4852,6 +4887,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "event",
         name: "CameraCut",
         schema: "og.CameraCut",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "from",
@@ -4910,6 +4946,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "component",
         name: "Mesh",
         schema: "og.Mesh",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "geometry",
@@ -5070,6 +5107,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "component",
         name: "DirectionalLight",
         schema: "og.DirectionalLight",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "color",
@@ -5281,6 +5319,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "component",
         name: "PointLight",
         schema: "og.PointLight",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "color",
@@ -5407,6 +5446,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "component",
         name: "SpotLight",
         schema: "og.SpotLight",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "color",
@@ -5567,6 +5607,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "resource",
         name: "RenderSettings",
         schema: "og.RenderSettings",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "environmentIntensity",
@@ -6237,6 +6278,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "component",
         name: "Interpolation",
         schema: "og.Interpolation",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "off",
@@ -6261,6 +6303,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "resource",
         name: "Environment",
         schema: "og.Environment",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "map",
@@ -6523,6 +6566,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "resource",
         name: "PostEffects",
         schema: "og.PostEffects",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "ao",
@@ -7890,6 +7934,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "resource",
         name: "LensFlare",
         schema: "og.LensFlare",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "enabled",
@@ -8101,6 +8146,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "resource",
         name: "GlobalIllumination",
         schema: "og.GlobalIllumination",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "enabled",
@@ -8329,6 +8375,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "resource",
         name: "Stylise",
         schema: "og.Stylise",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "pixelHeight",
@@ -9424,6 +9471,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "resource",
         name: "MaterialStyle",
         schema: "og.MaterialStyle",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "toon",
@@ -9805,6 +9853,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "resource",
         name: "Lighting2D",
         schema: "og.Lighting2D",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "enabled",
@@ -9914,6 +9963,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "component",
         name: "Light2D",
         schema: "og.Light2D",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "color",
@@ -10108,6 +10158,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "component",
         name: "Occluder2D",
         schema: "og.Occluder2D",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "width",
@@ -10183,6 +10234,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "component",
         name: "LightMask2D",
         schema: "og.LightMask2D",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "layers",
@@ -10207,6 +10259,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "component",
         name: "Decal",
         schema: "og.Decal",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "color",
@@ -10418,6 +10471,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "component",
         name: "ParticleSystem",
         schema: "og.ParticleSystem",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "emitter",
@@ -10527,6 +10581,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "event",
         name: "ParticleEvent",
         schema: "og.ParticleEvent",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "entity",
@@ -10619,6 +10674,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "component",
         name: "Trail",
         schema: "og.Trail",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "lifetime",
@@ -10864,6 +10920,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "component",
         name: "EffectMesh",
         schema: "og.EffectMesh",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "geometry",
@@ -11007,6 +11064,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "component",
         name: "Beam",
         schema: "og.Beam",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "end",
@@ -11235,6 +11293,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "component",
         name: "Sprite",
         schema: "og.Sprite",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "texture",
@@ -11871,6 +11930,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "component",
         name: "Afterimage",
         schema: "og.Afterimage",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "count",
@@ -11980,6 +12040,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "component",
         name: "ReflectionProbe",
         schema: "og.ReflectionProbe",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "resolution",
@@ -12072,6 +12133,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "component",
         name: "Lines",
         schema: "og.Lines",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "geometry",
@@ -12266,6 +12328,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "component",
         name: "Points",
         schema: "og.Points",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "geometry",
@@ -12409,6 +12472,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "component",
         name: "CameraView",
         schema: "og.CameraView",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "target",
@@ -12722,6 +12786,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "component",
         name: "Mirror",
         schema: "og.Mirror",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "target",
@@ -12831,6 +12896,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "component",
         name: "RectLight",
         schema: "og.RectLight",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "color",
@@ -12957,6 +13023,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "component",
         name: "LightVolume",
         schema: "og.LightVolume",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "spacing",
@@ -12981,6 +13048,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "component",
         name: "RealtimeLightVolume",
         schema: "og.RealtimeLightVolume",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "updatesPerFrame",
@@ -13022,6 +13090,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "component",
         name: "Model",
         schema: "og.Model",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "asset",
@@ -13233,6 +13302,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "component",
         name: "PrefabLink",
         schema: "og.PrefabLink",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "prefab",
@@ -13291,6 +13361,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "event",
         name: "AssetReady",
         schema: "og.AssetReady",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "asset",
@@ -13332,6 +13403,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "event",
         name: "AssetFailed",
         schema: "og.AssetFailed",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "asset",
@@ -13390,6 +13462,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "component",
         name: "RigidBody",
         schema: "og.RigidBody",
+        split: &["physics"],
         fields: &[
             FieldDecl {
                 name: "kind",
@@ -13584,6 +13657,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "component",
         name: "Collider",
         schema: "og.Collider",
+        split: &["physics"],
         fields: &[
             FieldDecl {
                 name: "shape",
@@ -13812,6 +13886,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "component",
         name: "ForceField",
         schema: "og.ForceField",
+        split: &["physics"],
         fields: &[
             FieldDecl {
                 name: "kind",
@@ -13887,6 +13962,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "component",
         name: "Velocity",
         schema: "og.Velocity",
+        split: &["physics"],
         fields: &[
             FieldDecl {
                 name: "linear",
@@ -13928,6 +14004,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "resource",
         name: "Physics",
         schema: "og.Physics",
+        split: &["physics"],
         fields: &[
             FieldDecl {
                 name: "profile",
@@ -14054,6 +14131,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "event",
         name: "CollisionStarted",
         schema: "og.CollisionStarted",
+        split: &["physics"],
         fields: &[
             FieldDecl {
                 name: "a",
@@ -14163,6 +14241,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "event",
         name: "CollisionEnded",
         schema: "og.CollisionEnded",
+        split: &["physics"],
         fields: &[
             FieldDecl {
                 name: "a",
@@ -14204,6 +14283,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "event",
         name: "SensorEntered",
         schema: "og.SensorEntered",
+        split: &["physics"],
         fields: &[
             FieldDecl {
                 name: "sensor",
@@ -14245,6 +14325,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "event",
         name: "SensorExited",
         schema: "og.SensorExited",
+        split: &["physics"],
         fields: &[
             FieldDecl {
                 name: "sensor",
@@ -14286,6 +14367,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "event",
         name: "JointBroken",
         schema: "og.JointBroken",
+        split: &["physics"],
         fields: &[
             FieldDecl {
                 name: "joint",
@@ -14378,6 +14460,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "component",
         name: "ContactHook",
         schema: "og.ContactHook",
+        split: &["physics"],
         fields: &[
             FieldDecl {
                 name: "oneWay",
@@ -14470,6 +14553,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "event",
         name: "BodySlept",
         schema: "og.BodySlept",
+        split: &["physics"],
         fields: &[
             FieldDecl {
                 name: "entity",
@@ -14494,6 +14578,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "event",
         name: "BodyWoke",
         schema: "og.BodyWoke",
+        split: &["physics"],
         fields: &[
             FieldDecl {
                 name: "entity",
@@ -14518,6 +14603,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "event",
         name: "Contact",
         schema: "og.Contact",
+        split: &["physics"],
         fields: &[
             FieldDecl {
                 name: "a",
@@ -14576,6 +14662,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "component",
         name: "Joint",
         schema: "og.Joint",
+        split: &["physics"],
         fields: &[
             FieldDecl {
                 name: "kind",
@@ -14974,6 +15061,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "component",
         name: "CharacterController",
         schema: "og.CharacterController",
+        split: &["physics"],
         fields: &[
             FieldDecl {
                 name: "move",
@@ -15321,6 +15409,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "component",
         name: "PlatformerController",
         schema: "og.PlatformerController",
+        split: &["physics"],
         fields: &[
             FieldDecl {
                 name: "run",
@@ -16042,6 +16131,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "event",
         name: "CharacterEvent",
         schema: "og.CharacterEvent",
+        split: &["physics"],
         fields: &[
             FieldDecl {
                 name: "entity",
@@ -16100,6 +16190,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "component",
         name: "Vehicle",
         schema: "og.Vehicle",
+        split: &["physics"],
         fields: &[
             FieldDecl {
                 name: "throttle",
@@ -16753,6 +16844,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "component",
         name: "VehicleWheel",
         schema: "og.VehicleWheel",
+        split: &["physics"],
         fields: &[
             FieldDecl {
                 name: "radius",
@@ -16930,6 +17022,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "component",
         name: "Rope",
         schema: "og.Rope",
+        split: &["physics"],
         fields: &[
             FieldDecl {
                 name: "segments",
@@ -17158,6 +17251,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "component",
         name: "Cloth",
         schema: "og.Cloth",
+        split: &["physics"],
         fields: &[
             FieldDecl {
                 name: "columns",
@@ -17437,6 +17531,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "component",
         name: "Garment",
         schema: "og.Garment",
+        split: &["physics"],
         fields: &[
             FieldDecl {
                 name: "mesh",
@@ -17699,6 +17794,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "component",
         name: "SoftBody",
         schema: "og.SoftBody",
+        split: &["physics"],
         fields: &[
             FieldDecl {
                 name: "shape",
@@ -18046,6 +18142,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "component",
         name: "Fluid2D",
         schema: "og.Fluid2D",
+        split: &["physics"],
         fields: &[
             FieldDecl {
                 name: "count",
@@ -18393,6 +18490,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "component",
         name: "Fluid3D",
         schema: "og.Fluid3D",
+        split: &["physics"],
         fields: &[
             FieldDecl {
                 name: "count",
@@ -18893,6 +18991,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "component",
         name: "Ragdoll",
         schema: "og.Ragdoll",
+        split: &["physics"],
         fields: &[
             FieldDecl {
                 name: "weight",
@@ -19036,6 +19135,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "component",
         name: "WaterSurface",
         schema: "og.WaterSurface",
+        split: &["physics"],
         fields: &[
             FieldDecl {
                 name: "resolution",
@@ -19162,6 +19262,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "component",
         name: "WaterLine",
         schema: "og.WaterLine",
+        split: &["physics"],
         fields: &[
             FieldDecl {
                 name: "width",
@@ -19322,6 +19423,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "component",
         name: "Buoyancy",
         schema: "og.Buoyancy",
+        split: &["physics"],
         fields: &[
             FieldDecl {
                 name: "waterDensity",
@@ -19414,6 +19516,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "event",
         name: "Splash",
         schema: "og.Splash",
+        split: &["physics"],
         fields: &[
             FieldDecl {
                 name: "water",
@@ -19489,6 +19592,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "resource",
         name: "Fog",
         schema: "og.Fog",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "enabled",
@@ -19768,6 +19872,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "component",
         name: "FogVolume",
         schema: "og.FogVolume",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "color",
@@ -19826,6 +19931,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "resource",
         name: "Sky",
         schema: "og.Sky",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "enabled",
@@ -20122,6 +20228,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "resource",
         name: "DayNight",
         schema: "og.DayNight",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "enabled",
@@ -20299,6 +20406,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "resource",
         name: "Season",
         schema: "og.Season",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "enabled",
@@ -20476,6 +20584,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "resource",
         name: "PhysicalSky",
         schema: "og.PhysicalSky",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "enabled",
@@ -20602,6 +20711,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "resource",
         name: "Clouds",
         schema: "og.Clouds",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "enabled",
@@ -20830,6 +20940,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "resource",
         name: "Aurora",
         schema: "og.Aurora",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "enabled",
@@ -21058,6 +21169,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "resource",
         name: "WeatherState",
         schema: "og.WeatherState",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "soakTime",
@@ -21456,6 +21568,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "event",
         name: "LightningStrike",
         schema: "og.LightningStrike",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "position",
@@ -21497,6 +21610,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "resource",
         name: "Weather",
         schema: "og.Weather",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "kind",
@@ -21725,6 +21839,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "resource",
         name: "Wind",
         schema: "og.Wind",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "direction",
@@ -21817,6 +21932,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "component",
         name: "WindMotor",
         schema: "og.WindMotor",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "kind",
@@ -21875,6 +21991,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "component",
         name: "Water",
         schema: "og.Water",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "size",
@@ -22630,6 +22747,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "component",
         name: "Water2D",
         schema: "og.Water2D",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "top",
@@ -22756,6 +22874,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "component",
         name: "Skeleton",
         schema: "og.Skeleton",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "asset",
@@ -22848,6 +22967,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "component",
         name: "BoneAttachment",
         schema: "og.BoneAttachment",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "node",
@@ -22872,6 +22992,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "component",
         name: "CrowdAnimation",
         schema: "og.CrowdAnimation",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "skeleton",
@@ -22998,6 +23119,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "component",
         name: "AnimationPlayer",
         schema: "og.AnimationPlayer",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "clip",
@@ -23141,6 +23263,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "component",
         name: "AnimationGraph",
         schema: "og.AnimationGraph",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "asset",
@@ -23369,6 +23492,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "component",
         name: "Blendshapes",
         schema: "og.Blendshapes",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "source",
@@ -23563,6 +23687,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "component",
         name: "IkChain",
         schema: "og.IkChain",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "skeleton",
@@ -23774,6 +23899,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "component",
         name: "LookAt",
         schema: "og.LookAt",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "skeleton",
@@ -23985,6 +24111,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "component",
         name: "JointLimit",
         schema: "og.JointLimit",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "skeleton",
@@ -24094,6 +24221,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "component",
         name: "FootLock",
         schema: "og.FootLock",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "skeleton",
@@ -24220,6 +24348,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "component",
         name: "SpringBone",
         schema: "og.SpringBone",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "skeleton",
@@ -24448,6 +24577,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "component",
         name: "SpringCollider",
         schema: "og.SpringCollider",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "skeleton",
@@ -24574,6 +24704,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "event",
         name: "AnimationEvent",
         schema: "og.AnimationEvent",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "entity",
@@ -24666,6 +24797,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "component",
         name: "Flipbook",
         schema: "og.Flipbook",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "sheet",
@@ -24809,6 +24941,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "event",
         name: "FlipbookEvent",
         schema: "og.FlipbookEvent",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "entity",
@@ -24884,6 +25017,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "component",
         name: "Skeleton2D",
         schema: "og.Skeleton2D",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "rig",
@@ -25095,6 +25229,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "event",
         name: "Skeleton2DEvent",
         schema: "og.Skeleton2DEvent",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "entity",
@@ -25187,6 +25322,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "component",
         name: "IkTarget2D",
         schema: "og.IkTarget2D",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "skeleton",
@@ -25313,6 +25449,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "event",
         name: "TweenCompleted",
         schema: "og.TweenCompleted",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "tween",
@@ -25371,6 +25508,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "event",
         name: "TweenEvent",
         schema: "og.TweenEvent",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "tween",
@@ -25463,6 +25601,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "component",
         name: "Tilemap",
         schema: "og.Tilemap",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "map",
@@ -25640,6 +25779,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "component",
         name: "AudioSource",
         schema: "og.AudioSource",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "sound",
@@ -26106,6 +26246,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "component",
         name: "AudioListener",
         schema: "og.AudioListener",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "volume",
@@ -26164,6 +26305,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "resource",
         name: "Audio",
         schema: "og.Audio",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "master",
@@ -26375,6 +26517,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "component",
         name: "AudioBusFx",
         schema: "og.AudioBusFx",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "bus",
@@ -26858,6 +27001,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "component",
         name: "AudioBusNode",
         schema: "og.AudioBusNode",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "index",
@@ -26916,6 +27060,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "component",
         name: "AudioSnapshot",
         schema: "og.AudioSnapshot",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "active",
@@ -27025,6 +27170,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "component",
         name: "AudioEvent",
         schema: "og.AudioEvent",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "sounds",
@@ -27406,6 +27552,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "component",
         name: "ReverbZone",
         schema: "og.ReverbZone",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "bus",
@@ -27498,6 +27645,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "component",
         name: "Music",
         schema: "og.Music",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "bpm",
@@ -27624,6 +27772,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "event",
         name: "MusicBeat",
         schema: "og.MusicBeat",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "entity",
@@ -27699,6 +27848,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "event",
         name: "SoundStarted",
         schema: "og.SoundStarted",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "entity",
@@ -27757,6 +27907,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "event",
         name: "SoundEnded",
         schema: "og.SoundEnded",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "entity",
@@ -27832,6 +27983,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "component",
         name: "NavAgent",
         schema: "og.NavAgent",
+        split: &["nav"],
         fields: &[
             FieldDecl {
                 name: "nav",
@@ -28162,6 +28314,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "component",
         name: "Steering",
         schema: "og.Steering",
+        split: &["nav"],
         fields: &[
             FieldDecl {
                 name: "seek",
@@ -28475,6 +28628,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "component",
         name: "NavFilter",
         schema: "og.NavFilter",
+        split: &["nav"],
         fields: &[
             FieldDecl {
                 name: "areaCosts",
@@ -28516,6 +28670,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "component",
         name: "Crowd",
         schema: "og.Crowd",
+        split: &["nav"],
         fields: &[
             FieldDecl {
                 name: "neighbours",
@@ -28591,6 +28746,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "event",
         name: "NavLinkReached",
         schema: "og.NavLinkReached",
+        split: &["nav"],
         fields: &[
             FieldDecl {
                 name: "agent",
@@ -28717,6 +28873,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "component",
         name: "AiAgent",
         schema: "og.AiAgent",
+        split: &["nav"],
         fields: &[
             FieldDecl {
                 name: "behaviour",
@@ -28843,6 +29000,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "component",
         name: "Perception",
         schema: "og.Perception",
+        split: &["nav"],
         fields: &[
             FieldDecl {
                 name: "sight",
@@ -29122,6 +29280,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "component",
         name: "Perceivable",
         schema: "og.Perceivable",
+        split: &["nav"],
         fields: &[
             FieldDecl {
                 name: "team",
@@ -29163,6 +29322,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "event",
         name: "AiChanged",
         schema: "og.AiChanged",
+        split: &["nav"],
         fields: &[
             FieldDecl {
                 name: "entity",
@@ -29238,6 +29398,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "event",
         name: "AiActionStarted",
         schema: "og.AiActionStarted",
+        split: &["nav"],
         fields: &[
             FieldDecl {
                 name: "entity",
@@ -29313,6 +29474,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "event",
         name: "AiActionStopped",
         schema: "og.AiActionStopped",
+        split: &["nav"],
         fields: &[
             FieldDecl {
                 name: "entity",
@@ -29388,6 +29550,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "resource",
         name: "Story",
         schema: "og.Story",
+        split: &["story"],
         fields: &[
             FieldDecl {
                 name: "lines",
@@ -29446,6 +29609,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "event",
         name: "DialogueShown",
         schema: "og.DialogueShown",
+        split: &["story"],
         fields: &[
             FieldDecl {
                 name: "conversation",
@@ -29487,6 +29651,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "event",
         name: "DialogueEnded",
         schema: "og.DialogueEnded",
+        split: &["story"],
         fields: &[
             FieldDecl {
                 name: "conversation",
@@ -29511,6 +29676,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "event",
         name: "DialogueCheck",
         schema: "og.DialogueCheck",
+        split: &["story"],
         fields: &[
             FieldDecl {
                 name: "conversation",
@@ -29603,6 +29769,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "event",
         name: "QuestUpdated",
         schema: "og.QuestUpdated",
+        split: &["story"],
         fields: &[
             FieldDecl {
                 name: "quest",
@@ -29644,6 +29811,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "event",
         name: "BarkSaid",
         schema: "og.BarkSaid",
+        split: &["story"],
         fields: &[
             FieldDecl {
                 name: "entity",
@@ -29719,6 +29887,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "event",
         name: "StoryEvent",
         schema: "og.StoryEvent",
+        split: &["story"],
         fields: &[
             FieldDecl {
                 name: "conversation",
@@ -29777,6 +29946,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "event",
         name: "PlatformAnswered",
         schema: "og.PlatformAnswered",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "request",
@@ -29818,6 +29988,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "event",
         name: "PlatformNotice",
         schema: "og.PlatformNotice",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "notice",
@@ -29859,6 +30030,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "resource",
         name: "PlatformGrants",
         schema: "og.PlatformGrants",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "ids",
@@ -29883,6 +30055,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "event",
         name: "RoomJoined",
         schema: "og.RoomJoined",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "ok",
@@ -29975,6 +30148,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "event",
         name: "RoomPeerJoined",
         schema: "og.RoomPeerJoined",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "peer",
@@ -30016,6 +30190,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "event",
         name: "RoomPeerLeft",
         schema: "og.RoomPeerLeft",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "peer",
@@ -30057,6 +30232,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "event",
         name: "RoomMessage",
         schema: "og.RoomMessage",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "from",
@@ -30115,6 +30291,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "component",
         name: "Terrain",
         schema: "og.Terrain",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "data",
@@ -30258,6 +30435,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "component",
         name: "TerrainStamp",
         schema: "og.TerrainStamp",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "data",
@@ -30350,6 +30528,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "component",
         name: "TerrainScatter",
         schema: "og.TerrainScatter",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "data",
@@ -30748,6 +30927,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "component",
         name: "Grass",
         schema: "og.Grass",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "data",
@@ -31282,6 +31462,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "component",
         name: "GrassType",
         schema: "og.GrassType",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "height",
@@ -31391,6 +31572,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "component",
         name: "GrassPusher",
         schema: "og.GrassPusher",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "radius",
@@ -31449,6 +31631,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "component",
         name: "ScatterClearing",
         schema: "og.ScatterClearing",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "size",
@@ -31473,6 +31656,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "component",
         name: "StreamCell",
         schema: "og.StreamCell",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "scene",
@@ -31599,6 +31783,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "component",
         name: "StreamAnchor",
         schema: "og.StreamAnchor",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "reach",
@@ -31640,6 +31825,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "component",
         name: "CellMember",
         schema: "og.CellMember",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "cell",
@@ -31664,6 +31850,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "event",
         name: "CellEvent",
         schema: "og.CellEvent",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "cell",
@@ -31722,6 +31909,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "event",
         name: "StreamEvent",
         schema: "og.StreamEvent",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "group",
@@ -31763,6 +31951,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "event",
         name: "MediaIntent",
         schema: "og.MediaIntent",
+        split: &["video"],
         fields: &[
             FieldDecl {
                 name: "player",
@@ -31855,6 +32044,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "component",
         name: "VideoPlayer",
         schema: "og.VideoPlayer",
+        split: &["video"],
         fields: &[
             FieldDecl {
                 name: "video",
@@ -32015,6 +32205,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "resource",
         name: "WorldBounds",
         schema: "og.WorldBounds",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "min",
@@ -32073,6 +32264,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "component",
         name: "PathFollower",
         schema: "og.PathFollower",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "path",
@@ -32216,6 +32408,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "component",
         name: "Timeline",
         schema: "og.Timeline",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "asset",
@@ -32308,6 +32501,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "event",
         name: "TimelineStarted",
         schema: "og.TimelineStarted",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "entity",
@@ -32349,6 +32543,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "event",
         name: "TimelineMarker",
         schema: "og.TimelineMarker",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "entity",
@@ -32424,6 +32619,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "event",
         name: "TimelineEnded",
         schema: "og.TimelineEnded",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "entity",
@@ -32465,6 +32661,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "resource",
         name: "Lockstep",
         schema: "og.Lockstep",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "enabled",
@@ -32642,6 +32839,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "component",
         name: "PlayerInput",
         schema: "og.PlayerInput",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "player",
@@ -32768,6 +32966,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "event",
         name: "Desync",
         schema: "og.Desync",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "tick",
@@ -32826,6 +33025,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "event",
         name: "SeatDropped",
         schema: "og.SeatDropped",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "seat",
@@ -32901,6 +33101,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "event",
         name: "SeatRejoined",
         schema: "og.SeatRejoined",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "seat",
@@ -32959,6 +33160,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "event",
         name: "PeerStalled",
         schema: "og.PeerStalled",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "peer",
@@ -33017,6 +33219,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "resource",
         name: "SharedWorld",
         schema: "og.SharedWorld",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "sendRateHz",
@@ -33109,6 +33312,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "component",
         name: "SharedAvatar",
         schema: "og.SharedAvatar",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "kind",
@@ -33133,6 +33337,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "component",
         name: "RemoteAvatar",
         schema: "og.RemoteAvatar",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "id",
@@ -33208,6 +33413,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "component",
         name: "SharedObject",
         schema: "og.SharedObject",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "version",
@@ -33232,6 +33438,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "event",
         name: "SharedJoined",
         schema: "og.SharedJoined",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "player",
@@ -33290,6 +33497,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "event",
         name: "SharedLeft",
         schema: "og.SharedLeft",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "reason",
@@ -33314,6 +33522,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "event",
         name: "PresenceEntered",
         schema: "og.PresenceEntered",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "entity",
@@ -33389,6 +33598,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "event",
         name: "PresenceLeft",
         schema: "og.PresenceLeft",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "entity",
@@ -33430,6 +33640,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "event",
         name: "SharedCorrected",
         schema: "og.SharedCorrected",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "sequence",
@@ -33454,6 +33665,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "event",
         name: "SharedObjectChanged",
         schema: "og.SharedObjectChanged",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "entity",
@@ -33512,6 +33724,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "event",
         name: "SharedObjectGone",
         schema: "og.SharedObjectGone",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "entity",
@@ -33553,6 +33766,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "event",
         name: "SharedOpAnswered",
         schema: "og.SharedOpAnswered",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "op",
@@ -33611,6 +33825,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "resource",
         name: "ArtPalette",
         schema: "og.ArtPalette",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "colors",
@@ -33720,6 +33935,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "resource",
         name: "ArtPixels",
         schema: "og.ArtPixels",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "unit",
@@ -33829,6 +34045,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "resource",
         name: "ArtTexels",
         schema: "og.ArtTexels",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "density",
@@ -33904,6 +34121,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "resource",
         name: "ArtShape",
         schema: "og.ArtShape",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "propFaces",
@@ -34047,6 +34265,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "resource",
         name: "ArtLine",
         schema: "og.ArtLine",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "width",
@@ -34139,6 +34358,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "resource",
         name: "ArtMotion",
         schema: "og.ArtMotion",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "stepFps",
@@ -34197,6 +34417,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "resource",
         name: "ArtCamera",
         schema: "og.ArtCamera",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "projection",
@@ -34323,6 +34544,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "component",
         name: "MotionAgent",
         schema: "og.MotionAgent",
+        split: &["motion"],
         fields: &[
             FieldDecl {
                 name: "rig",
@@ -34398,6 +34620,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "component",
         name: "Destructible",
         schema: "og.Destructible",
+        split: &["destruction", "physics"],
         fields: &[
             FieldDecl {
                 name: "toughness",
@@ -34677,6 +34900,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "component",
         name: "Chunk",
         schema: "og.Chunk",
+        split: &["destruction", "physics"],
         fields: &[
             FieldDecl {
                 name: "destructible",
@@ -34769,6 +34993,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "event",
         name: "Fractured",
         schema: "og.Fractured",
+        split: &["destruction", "physics"],
         fields: &[
             FieldDecl {
                 name: "entity",
@@ -34895,6 +35120,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "resource",
         name: "Destruction",
         schema: "og.Destruction",
+        split: &["destruction", "physics"],
         fields: &[
             FieldDecl {
                 name: "maxChunks",
@@ -35004,6 +35230,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "component",
         name: "PixelTerrain",
         schema: "og.PixelTerrain",
+        split: &["destruction", "physics"],
         fields: &[
             FieldDecl {
                 name: "width",
@@ -35334,6 +35561,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "component",
         name: "PixelPiece",
         schema: "og.PixelPiece",
+        split: &["destruction", "physics"],
         fields: &[
             FieldDecl {
                 name: "terrain",
@@ -35426,6 +35654,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "event",
         name: "PixelDetached",
         schema: "og.PixelDetached",
+        split: &["destruction", "physics"],
         fields: &[
             FieldDecl {
                 name: "terrain",
@@ -35518,6 +35747,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "component",
         name: "Vfx",
         schema: "og.Vfx",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "asset",
@@ -35695,6 +35925,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "event",
         name: "VfxEvent",
         schema: "og.VfxEvent",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "entity",
@@ -35770,6 +36001,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "component",
         name: "SightMap",
         schema: "og.SightMap",
+        split: &["nav"],
         fields: &[
             FieldDecl {
                 name: "cell",
@@ -35879,6 +36111,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "component",
         name: "Sight",
         schema: "og.Sight",
+        split: &["nav"],
         fields: &[
             FieldDecl {
                 name: "team",
@@ -35920,6 +36153,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "component",
         name: "SightBlocker",
         schema: "og.SightBlocker",
+        split: &["nav"],
         fields: &[
             FieldDecl {
                 name: "enabled",
@@ -35944,6 +36178,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "component",
         name: "Film",
         schema: "og.Film",
+        split: &["story", "video"],
         fields: &[
             FieldDecl {
                 name: "conversation",
@@ -36172,6 +36407,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "component",
         name: "FilmDeck",
         schema: "og.FilmDeck",
+        split: &["story", "video"],
         fields: &[
             FieldDecl {
                 name: "film",
@@ -36213,6 +36449,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "event",
         name: "FilmSegment",
         schema: "og.FilmSegment",
+        split: &["story", "video"],
         fields: &[
             FieldDecl {
                 name: "film",
@@ -36271,6 +36508,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "event",
         name: "FilmChoice",
         schema: "og.FilmChoice",
+        split: &["story", "video"],
         fields: &[
             FieldDecl {
                 name: "film",
@@ -36346,6 +36584,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "event",
         name: "FilmChapter",
         schema: "og.FilmChapter",
+        split: &["story", "video"],
         fields: &[
             FieldDecl {
                 name: "film",
@@ -36404,6 +36643,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "event",
         name: "FilmEnded",
         schema: "og.FilmEnded",
+        split: &["story", "video"],
         fields: &[
             FieldDecl {
                 name: "film",
@@ -36462,6 +36702,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "resource",
         name: "SceneState",
         schema: "og.SceneState",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "current",
@@ -36537,6 +36778,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "event",
         name: "SceneChanged",
         schema: "og.SceneChanged",
+        split: &[],
         fields: &[
             FieldDecl {
                 name: "scene",

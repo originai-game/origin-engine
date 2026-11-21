@@ -25,4 +25,4 @@ struct RewardView {
 }
 ```
 
-<sub>Module `story` line 266</sub>
+<sub>Module `story` line 267</sub>

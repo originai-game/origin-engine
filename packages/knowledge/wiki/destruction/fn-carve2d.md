@@ -35,4 +35,4 @@ fn carve2d {
 }
 ```
 
-<sub>Module `destruction` line 487</sub>
+<sub>Module `destruction` line 488</sub>

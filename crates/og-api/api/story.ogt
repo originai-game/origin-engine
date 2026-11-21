@@ -2,6 +2,7 @@ module story {
   doc "Dialogue and quests: Yarn Spinner 3.2.2 dialogue in `.yarn` files (declaring `#og-profile:yarn-spinner-3.2.2`), compiled by og cook, every line and option with an explicit stable `#line:` id; quests as `type quest` data with stages, reflected event objectives and rewards."
   doc "og.story.load a dialogue or quest in setup, og.story.start a conversation, read og.story.view, answer with og.story.advance or og.story.choose. Lines resolve through og.i18n on every read. Barks are `og-topic` nodes the engine schedules. Saves keep stable ids, never bytecode offsets; a missing saved continuation is an error."
   guide "yarn"
+  split story
 
   enum StorySaliency {
     doc "How Yarn node and line groups choose eligible content. All random draws use the checkpointed story RNG fork."

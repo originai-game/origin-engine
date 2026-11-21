@@ -36,4 +36,4 @@ component Sight {
 }
 ```
 
-<sub>Module `sight` line 45</sub>
+<sub>Module `sight` line 46</sub>

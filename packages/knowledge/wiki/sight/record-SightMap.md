@@ -52,4 +52,4 @@ component SightMap {
 }
 ```
 
-<sub>Module `sight` line 18</sub>
+<sub>Module `sight` line 19</sub>

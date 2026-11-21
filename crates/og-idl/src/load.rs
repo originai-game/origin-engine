@@ -69,6 +69,7 @@ impl Loader {
             place: Place::Namespace,
             publish: true,
             core: Vec::new(),
+            split: Vec::new(),
             see: Vec::new(),
             items: Vec::new(),
             line: node.line,
@@ -90,6 +91,7 @@ impl Loader {
                         ),
                     }
                 }
+                "split" => module.split = self.split(child).unwrap_or_default(),
                 "place" => match child.values.first().and_then(Value::as_word) {
                     Some("namespace") => module.place = Place::Namespace,
                     Some("root") => module.place = Place::Root,
@@ -619,6 +621,7 @@ impl Loader {
             groups: Vec::new(),
             methods: Vec::new(),
             see: Vec::new(),
+            split: None,
             line: node.line,
         };
         for child in children(node) {
@@ -626,6 +629,7 @@ impl Loader {
                 "doc" => r.doc.extend(self.doc_line(child)),
                 "guide" => r.see.extend(self.guide_ref(child)),
                 "aliases" => r.aliases.extend(self.doc_line(child)),
+                "split" => r.split = self.split(child),
                 "group" => r.groups.extend(self.group(child)),
                 "field" => {
                     if let Some(mut f) = self.field(child) {
@@ -641,7 +645,7 @@ impl Loader {
                 other => self.error(
                     child.line,
                     format!(
-                        "unknown key `{other}` in {} `{}`: expected doc, guide, aliases, group, field{}",
+                        "unknown key `{other}` in {} `{}`: expected doc, guide, aliases, split, group, field{}",
                         kind.as_str(),
                         r.name,
                         if kind == RecordKind::Resource {
@@ -654,6 +658,26 @@ impl Loader {
             }
         }
         Some(r)
+    }
+
+    /// `split physics` or `split story video`: engine wasm module names,
+    /// written bare; `split none` is the primary module (a record of a
+    /// split IDL module whose code stays there).
+    fn split(&mut self, node: &Node) -> Option<Vec<String>> {
+        let words: Option<Vec<&str>> = node.values.iter().map(Value::as_word).collect();
+        match words {
+            Some(w) if w == ["none"] => Some(Vec::new()),
+            Some(w) if !w.is_empty() && !w.contains(&"none") => {
+                Some(w.into_iter().map(str::to_string).collect())
+            }
+            _ => {
+                self.error(
+                    node.line,
+                    "`split` names the engine wasm modules that hold it, written bare (`split physics`), or `split none`",
+                );
+                None
+            }
+        }
     }
 
     /// `guide "saves §2"` or `guide "saves"`.

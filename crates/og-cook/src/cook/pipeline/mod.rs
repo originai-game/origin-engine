@@ -11,6 +11,7 @@ pub mod graph;
 pub(super) mod import_defaults;
 pub(super) mod index;
 pub(super) mod kinds;
+pub(super) mod needs;
 pub(super) mod options;
 pub(super) mod output;
 pub(super) mod plan;

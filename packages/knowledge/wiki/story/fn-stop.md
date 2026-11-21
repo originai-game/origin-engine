@@ -30,4 +30,4 @@ fn stop {
 }
 ```
 
-<sub>Module `story` line 371</sub>
+<sub>Module `story` line 372</sub>

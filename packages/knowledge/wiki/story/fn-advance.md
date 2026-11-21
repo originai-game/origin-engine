@@ -30,4 +30,4 @@ fn advance {
 }
 ```
 
-<sub>Module `story` line 356</sub>
+<sub>Module `story` line 357</sub>

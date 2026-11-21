@@ -263,6 +263,7 @@ pub(crate) fn write(
     let mut manifest = Manifest {
         cooker: COOKER_VERSION.to_string(),
         profile,
+        modules: Vec::new(),
         options: BTreeMap::from([
             ("font".to_string(), font_desc.to_string()),
             ("mesh".to_string(), mesh_desc.to_string()),
@@ -283,6 +284,7 @@ pub(crate) fn write(
             kind: s.kind.name.to_string(),
             source_hash: s.hash,
             source_bytes: reports[si].source_bytes,
+            modules: Vec::new(),
             outputs: Vec::new(),
         };
         for (m, bytes, mut rep) in outs {
@@ -429,6 +431,7 @@ pub(crate) fn finish(
             removed.push(f.clone());
         }
     }
+    needs::record(&mut manifest, sources, parsed_refs, cx.boot);
     std::fs::create_dir_all(cooked_dir)
         .map_err(|e| CookError(format!("{}: {e}", cooked_dir.display())))?;
     let text = manifest.to_text();

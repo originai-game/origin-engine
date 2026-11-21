@@ -27,6 +27,10 @@ pub(crate) struct Cx<'a> {
     pub(crate) story_functions_stamp: &'a [u8],
     /// The project's profile (its creation form's): the manifest's.
     pub(crate) profile: crate::look::Profile,
+    /// The boot scene's asset id (project.ogt `scene` through `scenes`), or
+    /// `None` when project.ogt names none: the manifest's `modules` are
+    /// then every asset's.
+    pub(crate) boot: Option<&'a str>,
     /// The shared action cache and the project's key in it
     /// (`action_cache`), which a plan may read before anything cooks.
     pub(crate) texture_cache: Option<&'a Path>,

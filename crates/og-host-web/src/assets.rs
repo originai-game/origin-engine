@@ -352,6 +352,14 @@ pub fn og_web_install_video(
     });
 }
 
+/// The Worker's `prefetch(names)`, called with the engine wasm modules
+/// content being prepared needs (the cooked manifest's `modules`): it
+/// fetches and puts in place those not loaded yet (docs/web-export.md §Modules).
+#[wasm_bindgen]
+pub fn og_web_set_module_prefetcher(prefetch: js_sys::Function) {
+    crate::MODULE_PREFETCHER.with(|f| *f.borrow_mut() = Some(prefetch));
+}
+
 /// The Worker's `decodeImage(key, bytes)`, called to decode an uncooked
 /// image (og.load.imageData) away from the engine with the browser's own
 /// decoders; it answers later with `og_web_put_image` or `og_web_fail_image`.

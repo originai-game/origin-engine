@@ -341,6 +341,7 @@ impl Assets {
                         entry.status = Status::Failed(format!("{}{manifest}: {e}", code("failed")));
                         return;
                     }
+                    crate::world::needs::bundle(&bundle);
                     entry.status = Status::Ready;
                     entry.payload = Payload::Bundle {
                         bundle: Box::new(bundle),
@@ -735,6 +736,7 @@ pub(crate) fn load_scene_from(
     if let Some(&i) = eng.assets.borrow().by_path.get(&key) {
         return Ok(i);
     }
+    crate::world::needs::asset(eng, &id, Some(bundle));
     let group = eng.assets.borrow().group_from(&id, Some(bundle));
     // A cell group's sub-scene: its handle now, its scene once its pack
     // has landed (at once when it has).

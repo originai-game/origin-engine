@@ -35,4 +35,4 @@ fn explored {
 }
 ```
 
-<sub>Module `sight` line 79</sub>
+<sub>Module `sight` line 80</sub>

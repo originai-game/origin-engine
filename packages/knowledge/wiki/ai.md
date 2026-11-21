@@ -66,7 +66,7 @@ column Behaviour {
 }
 ```
 
-<sub>Module `ai` line 8</sub>
+<sub>Module `ai` line 9</sub>
 
 ## Constants
 
@@ -81,22 +81,22 @@ column Behaviour {
 const AI_RUNNING u32 1 "AiAgent.status: the tree or state is still running."
 ```
 
-<sub>Module `ai` line 15</sub>
+<sub>Module `ai` line 16</sub>
 
 ```ogt
 const AI_SUCCESS u32 2 "AiAgent.status: the tree succeeded on the last think."
 ```
 
-<sub>Module `ai` line 16</sub>
+<sub>Module `ai` line 17</sub>
 
 ```ogt
 const AI_FAILURE u32 3 "AiAgent.status: the tree failed on the last think."
 ```
 
-<sub>Module `ai` line 17</sub>
+<sub>Module `ai` line 18</sub>
 
 ```ogt
 const AI_INTERRUPTED u32 4 "AiActionStopped.result: the action stopped before the game finished it (another branch won, the state changed, the agent restarted)."
 ```
 
-<sub>Module `ai` line 18</sub>
+<sub>Module `ai` line 19</sub>

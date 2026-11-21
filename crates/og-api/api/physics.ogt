@@ -3,6 +3,7 @@ module physics {
   doc "The profile is 2D in a `form \"2d\"` project. In 2D, bodies move in the xy plane and rotate about z; a transform keeps its z. A collider without a RigidBody is static at its transform."
   doc "The rapier world persists between ticks and is world state: snapshots, restore and the world hash cover the whole simulation. Events sent in tick N are read in tick N + 1."
   guide "physics"
+  split physics
   core RigidBody Collider Velocity CharacterController Vehicle ColliderShape
 
   const MAX_RAYCAST_HITS u32 256 "The most hits og.physics.castRayAll returns."

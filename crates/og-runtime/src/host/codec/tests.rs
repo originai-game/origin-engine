@@ -242,6 +242,7 @@ fn an_engine_record_text_field_takes_the_idl_capacity() {
         kind: "component",
         name: "Tag",
         schema: "og.Tag",
+        split: &[],
         fields,
     };
     let layout = Layout::from_decl(&decl).unwrap();
@@ -267,6 +268,7 @@ fn an_engine_record_list_field_takes_the_idl_capacity() {
         kind: "resource",
         name: "Chain",
         schema: "og.Chain",
+        split: &[],
         fields,
     };
     let layout = Layout::from_decl(&decl).unwrap();

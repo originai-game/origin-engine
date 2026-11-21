@@ -6,6 +6,7 @@
 
 pub(crate) mod assets;
 pub(crate) mod data;
+pub(crate) mod needs;
 pub(crate) mod origin;
 pub(crate) mod prefab;
 pub(crate) mod region;

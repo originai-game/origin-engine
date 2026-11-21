@@ -111,4 +111,4 @@ component Destructible {
 }
 ```
 
-<sub>Module `destruction` line 20</sub>
+<sub>Module `destruction` line 21</sub>

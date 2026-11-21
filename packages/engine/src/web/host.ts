@@ -210,6 +210,8 @@ export interface WebExtras {
   og_web_put_inflated?(key: number, bytes: Uint8Array): void;
   og_web_fail_inflated?(key: number, reason: string): void;
   og_web_set_image_decoder?(decode: (key: number, bytes: Uint8Array) => void): void;
+  /** The engine modules content being prepared needs (the cooked manifest's `modules`): fetched now (split.ts loadEngineModules). */
+  og_web_set_module_prefetcher?(prefetch: (names: string[]) => void): void;
   /** RGBA8 rows as the file stores them, and the EXIF orientation it names for them (1: upright). */
   og_web_put_image?(key: number, width: number, height: number, rgba: Uint8Array, orientation: number): void;
   /** The EXIF orientation (1 to 8) a PNG, JPEG or WebP names: the native host's reader (og-runtime's exif_orientation). */

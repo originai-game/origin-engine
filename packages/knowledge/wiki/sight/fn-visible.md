@@ -38,4 +38,4 @@ fn visible {
 }
 ```
 
-<sub>Module `sight` line 69</sub>
+<sub>Module `sight` line 70</sub>

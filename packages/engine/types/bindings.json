@@ -2,6 +2,37 @@
   "$comment": "Generated from crates/og-api/api.ogt by `og api gen`. Do not edit: `og api check` fails on any difference; change api.ogt and regenerate.",
   "package": "@origingame/engine",
   "api": 1,
+  "splits": {
+    "physics": [
+      "physics"
+    ],
+    "nav": [
+      "nav"
+    ],
+    "ai": [
+      "nav"
+    ],
+    "story": [
+      "story"
+    ],
+    "video": [
+      "video"
+    ],
+    "motion": [
+      "motion"
+    ],
+    "destruction": [
+      "destruction",
+      "physics"
+    ],
+    "sight": [
+      "nav"
+    ],
+    "film": [
+      "story",
+      "video"
+    ]
+  },
   "columns": [
     {
       "name": "f32",
@@ -2733,6 +2764,9 @@
       "name": "RigidBody",
       "schema": "og.RigidBody",
       "module": "physics",
+      "split": [
+        "physics"
+      ],
       "fields": [
         {
           "name": "kind",
@@ -2806,6 +2840,9 @@
       "name": "Collider",
       "schema": "og.Collider",
       "module": "physics",
+      "split": [
+        "physics"
+      ],
       "fields": [
         {
           "name": "shape",
@@ -2898,6 +2935,9 @@
       "name": "ForceField",
       "schema": "og.ForceField",
       "module": "physics",
+      "split": [
+        "physics"
+      ],
       "fields": [
         {
           "name": "kind",
@@ -2931,6 +2971,9 @@
       "name": "Velocity",
       "schema": "og.Velocity",
       "module": "physics",
+      "split": [
+        "physics"
+      ],
       "fields": [
         {
           "name": "linear",
@@ -2959,6 +3002,9 @@
       "name": "ContactHook",
       "schema": "og.ContactHook",
       "module": "physics",
+      "split": [
+        "physics"
+      ],
       "fields": [
         {
           "name": "oneWay",
@@ -3004,6 +3050,9 @@
       "name": "Joint",
       "schema": "og.Joint",
       "module": "physics",
+      "split": [
+        "physics"
+      ],
       "fields": [
         {
           "name": "kind",
@@ -3150,6 +3199,9 @@
       "name": "CharacterController",
       "schema": "og.CharacterController",
       "module": "physics",
+      "split": [
+        "physics"
+      ],
       "fields": [
         {
           "name": "move",
@@ -3286,6 +3338,9 @@
       "name": "PlatformerController",
       "schema": "og.PlatformerController",
       "module": "physics",
+      "split": [
+        "physics"
+      ],
       "fields": [
         {
           "name": "run",
@@ -3547,6 +3602,9 @@
       "name": "Vehicle",
       "schema": "og.Vehicle",
       "module": "physics",
+      "split": [
+        "physics"
+      ],
       "fields": [
         {
           "name": "throttle",
@@ -3775,6 +3833,9 @@
       "name": "VehicleWheel",
       "schema": "og.VehicleWheel",
       "module": "physics",
+      "split": [
+        "physics"
+      ],
       "fields": [
         {
           "name": "radius",
@@ -3840,6 +3901,9 @@
       "name": "Rope",
       "schema": "og.Rope",
       "module": "physics",
+      "split": [
+        "physics"
+      ],
       "fields": [
         {
           "name": "segments",
@@ -3935,6 +3999,9 @@
       "name": "Cloth",
       "schema": "og.Cloth",
       "module": "physics",
+      "split": [
+        "physics"
+      ],
       "fields": [
         {
           "name": "columns",
@@ -4036,6 +4103,9 @@
       "name": "Garment",
       "schema": "og.Garment",
       "module": "physics",
+      "split": [
+        "physics"
+      ],
       "fields": [
         {
           "name": "mesh",
@@ -4135,6 +4205,9 @@
       "name": "SoftBody",
       "schema": "og.SoftBody",
       "module": "physics",
+      "split": [
+        "physics"
+      ],
       "fields": [
         {
           "name": "shape",
@@ -4262,6 +4335,9 @@
       "name": "Fluid2D",
       "schema": "og.Fluid2D",
       "module": "physics",
+      "split": [
+        "physics"
+      ],
       "fields": [
         {
           "name": "count",
@@ -4388,6 +4464,9 @@
       "name": "Fluid3D",
       "schema": "og.Fluid3D",
       "module": "physics",
+      "split": [
+        "physics"
+      ],
       "fields": [
         {
           "name": "count",
@@ -4580,6 +4659,9 @@
       "name": "Ragdoll",
       "schema": "og.Ragdoll",
       "module": "physics",
+      "split": [
+        "physics"
+      ],
       "fields": [
         {
           "name": "weight",
@@ -4639,6 +4721,9 @@
       "name": "WaterSurface",
       "schema": "og.WaterSurface",
       "module": "physics",
+      "split": [
+        "physics"
+      ],
       "fields": [
         {
           "name": "resolution",
@@ -4688,6 +4773,9 @@
       "name": "WaterLine",
       "schema": "og.WaterLine",
       "module": "physics",
+      "split": [
+        "physics"
+      ],
       "fields": [
         {
           "name": "width",
@@ -4749,6 +4837,9 @@
       "name": "Buoyancy",
       "schema": "og.Buoyancy",
       "module": "physics",
+      "split": [
+        "physics"
+      ],
       "fields": [
         {
           "name": "waterDensity",
@@ -6757,6 +6848,9 @@
       "name": "NavAgent",
       "schema": "og.NavAgent",
       "module": "nav",
+      "split": [
+        "nav"
+      ],
       "fields": [
         {
           "name": "nav",
@@ -6882,6 +6976,9 @@
       "name": "Steering",
       "schema": "og.Steering",
       "module": "nav",
+      "split": [
+        "nav"
+      ],
       "fields": [
         {
           "name": "seek",
@@ -6998,6 +7095,9 @@
       "name": "NavFilter",
       "schema": "og.NavFilter",
       "module": "nav",
+      "split": [
+        "nav"
+      ],
       "fields": [
         {
           "name": "areaCosts",
@@ -7018,6 +7118,9 @@
       "name": "Crowd",
       "schema": "og.Crowd",
       "module": "nav",
+      "split": [
+        "nav"
+      ],
       "fields": [
         {
           "name": "neighbours",
@@ -7050,6 +7153,9 @@
       "name": "AiAgent",
       "schema": "og.AiAgent",
       "module": "ai",
+      "split": [
+        "nav"
+      ],
       "fields": [
         {
           "name": "behaviour",
@@ -7097,6 +7203,9 @@
       "name": "Perception",
       "schema": "og.Perception",
       "module": "ai",
+      "split": [
+        "nav"
+      ],
       "fields": [
         {
           "name": "sight",
@@ -7208,6 +7317,9 @@
       "name": "Perceivable",
       "schema": "og.Perceivable",
       "module": "ai",
+      "split": [
+        "nav"
+      ],
       "fields": [
         {
           "name": "team",
@@ -7810,6 +7922,9 @@
       "name": "VideoPlayer",
       "schema": "og.VideoPlayer",
       "module": "video",
+      "split": [
+        "video"
+      ],
       "fields": [
         {
           "name": "video",
@@ -8058,6 +8173,9 @@
       "name": "MotionAgent",
       "schema": "og.MotionAgent",
       "module": "motion",
+      "split": [
+        "motion"
+      ],
       "fields": [
         {
           "name": "rig",
@@ -8088,6 +8206,10 @@
       "name": "Destructible",
       "schema": "og.Destructible",
       "module": "destruction",
+      "split": [
+        "destruction",
+        "physics"
+      ],
       "fields": [
         {
           "name": "toughness",
@@ -8186,6 +8308,10 @@
       "name": "Chunk",
       "schema": "og.Chunk",
       "module": "destruction",
+      "split": [
+        "destruction",
+        "physics"
+      ],
       "fields": [
         {
           "name": "destructible",
@@ -8224,6 +8350,10 @@
       "name": "PixelTerrain",
       "schema": "og.PixelTerrain",
       "module": "destruction",
+      "split": [
+        "destruction",
+        "physics"
+      ],
       "fields": [
         {
           "name": "width",
@@ -8336,6 +8466,10 @@
       "name": "PixelPiece",
       "schema": "og.PixelPiece",
       "module": "destruction",
+      "split": [
+        "destruction",
+        "physics"
+      ],
       "fields": [
         {
           "name": "terrain",
@@ -8438,6 +8572,9 @@
       "name": "SightMap",
       "schema": "og.SightMap",
       "module": "sight",
+      "split": [
+        "nav"
+      ],
       "fields": [
         {
           "name": "cell",
@@ -8481,6 +8618,9 @@
       "name": "Sight",
       "schema": "og.Sight",
       "module": "sight",
+      "split": [
+        "nav"
+      ],
       "fields": [
         {
           "name": "team",
@@ -8500,6 +8640,9 @@
       "name": "SightBlocker",
       "schema": "og.SightBlocker",
       "module": "sight",
+      "split": [
+        "nav"
+      ],
       "fields": [
         {
           "name": "enabled",
@@ -8513,6 +8656,10 @@
       "name": "Film",
       "schema": "og.Film",
       "module": "film",
+      "split": [
+        "story",
+        "video"
+      ],
       "fields": [
         {
           "name": "conversation",
@@ -8600,6 +8747,10 @@
       "name": "FilmDeck",
       "schema": "og.FilmDeck",
       "module": "film",
+      "split": [
+        "story",
+        "video"
+      ],
       "fields": [
         {
           "name": "film",
@@ -11286,6 +11437,9 @@
       "name": "Physics",
       "schema": "og.Physics",
       "module": "physics",
+      "split": [
+        "physics"
+      ],
       "fields": [
         {
           "name": "profile",
@@ -12313,6 +12467,9 @@
       "name": "Story",
       "schema": "og.Story",
       "module": "story",
+      "split": [
+        "story"
+      ],
       "fields": [
         {
           "name": "lines",
@@ -12736,6 +12893,10 @@
       "name": "Destruction",
       "schema": "og.Destruction",
       "module": "destruction",
+      "split": [
+        "destruction",
+        "physics"
+      ],
       "fields": [
         {
           "name": "maxChunks",
@@ -13181,6 +13342,9 @@
       "name": "CollisionStarted",
       "schema": "og.CollisionStarted",
       "module": "physics",
+      "split": [
+        "physics"
+      ],
       "fields": [
         {
           "name": "a",
@@ -13231,6 +13395,9 @@
       "name": "CollisionEnded",
       "schema": "og.CollisionEnded",
       "module": "physics",
+      "split": [
+        "physics"
+      ],
       "fields": [
         {
           "name": "a",
@@ -13249,6 +13416,9 @@
       "name": "SensorEntered",
       "schema": "og.SensorEntered",
       "module": "physics",
+      "split": [
+        "physics"
+      ],
       "fields": [
         {
           "name": "sensor",
@@ -13267,6 +13437,9 @@
       "name": "SensorExited",
       "schema": "og.SensorExited",
       "module": "physics",
+      "split": [
+        "physics"
+      ],
       "fields": [
         {
           "name": "sensor",
@@ -13285,6 +13458,9 @@
       "name": "JointBroken",
       "schema": "og.JointBroken",
       "module": "physics",
+      "split": [
+        "physics"
+      ],
       "fields": [
         {
           "name": "joint",
@@ -13318,6 +13494,9 @@
       "name": "BodySlept",
       "schema": "og.BodySlept",
       "module": "physics",
+      "split": [
+        "physics"
+      ],
       "fields": [
         {
           "name": "entity",
@@ -13331,6 +13510,9 @@
       "name": "BodyWoke",
       "schema": "og.BodyWoke",
       "module": "physics",
+      "split": [
+        "physics"
+      ],
       "fields": [
         {
           "name": "entity",
@@ -13344,6 +13526,9 @@
       "name": "Contact",
       "schema": "og.Contact",
       "module": "physics",
+      "split": [
+        "physics"
+      ],
       "fields": [
         {
           "name": "a",
@@ -13367,6 +13552,9 @@
       "name": "CharacterEvent",
       "schema": "og.CharacterEvent",
       "module": "physics",
+      "split": [
+        "physics"
+      ],
       "fields": [
         {
           "name": "entity",
@@ -13390,6 +13578,9 @@
       "name": "Splash",
       "schema": "og.Splash",
       "module": "physics",
+      "split": [
+        "physics"
+      ],
       "fields": [
         {
           "name": "water",
@@ -13673,6 +13864,9 @@
       "name": "NavLinkReached",
       "schema": "og.NavLinkReached",
       "module": "nav",
+      "split": [
+        "nav"
+      ],
       "fields": [
         {
           "name": "agent",
@@ -13724,6 +13918,9 @@
       "name": "AiChanged",
       "schema": "og.AiChanged",
       "module": "ai",
+      "split": [
+        "nav"
+      ],
       "fields": [
         {
           "name": "entity",
@@ -13752,6 +13949,9 @@
       "name": "AiActionStarted",
       "schema": "og.AiActionStarted",
       "module": "ai",
+      "split": [
+        "nav"
+      ],
       "fields": [
         {
           "name": "entity",
@@ -13780,6 +13980,9 @@
       "name": "AiActionStopped",
       "schema": "og.AiActionStopped",
       "module": "ai",
+      "split": [
+        "nav"
+      ],
       "fields": [
         {
           "name": "entity",
@@ -13808,6 +14011,9 @@
       "name": "DialogueShown",
       "schema": "og.DialogueShown",
       "module": "story",
+      "split": [
+        "story"
+      ],
       "fields": [
         {
           "name": "conversation",
@@ -13826,6 +14032,9 @@
       "name": "DialogueEnded",
       "schema": "og.DialogueEnded",
       "module": "story",
+      "split": [
+        "story"
+      ],
       "fields": [
         {
           "name": "conversation",
@@ -13839,6 +14048,9 @@
       "name": "DialogueCheck",
       "schema": "og.DialogueCheck",
       "module": "story",
+      "split": [
+        "story"
+      ],
       "fields": [
         {
           "name": "conversation",
@@ -13872,6 +14084,9 @@
       "name": "QuestUpdated",
       "schema": "og.QuestUpdated",
       "module": "story",
+      "split": [
+        "story"
+      ],
       "fields": [
         {
           "name": "quest",
@@ -13890,6 +14105,9 @@
       "name": "BarkSaid",
       "schema": "og.BarkSaid",
       "module": "story",
+      "split": [
+        "story"
+      ],
       "fields": [
         {
           "name": "entity",
@@ -13918,6 +14136,9 @@
       "name": "StoryEvent",
       "schema": "og.StoryEvent",
       "module": "story",
+      "split": [
+        "story"
+      ],
       "fields": [
         {
           "name": "conversation",
@@ -14110,6 +14331,9 @@
       "name": "MediaIntent",
       "schema": "og.MediaIntent",
       "module": "video",
+      "split": [
+        "video"
+      ],
       "fields": [
         {
           "name": "player",
@@ -14463,6 +14687,10 @@
       "name": "Fractured",
       "schema": "og.Fractured",
       "module": "destruction",
+      "split": [
+        "destruction",
+        "physics"
+      ],
       "fields": [
         {
           "name": "entity",
@@ -14510,6 +14738,10 @@
       "name": "PixelDetached",
       "schema": "og.PixelDetached",
       "module": "destruction",
+      "split": [
+        "destruction",
+        "physics"
+      ],
       "fields": [
         {
           "name": "terrain",
@@ -14575,6 +14807,10 @@
       "name": "FilmSegment",
       "schema": "og.FilmSegment",
       "module": "film",
+      "split": [
+        "story",
+        "video"
+      ],
       "fields": [
         {
           "name": "film",
@@ -14598,6 +14834,10 @@
       "name": "FilmChoice",
       "schema": "og.FilmChoice",
       "module": "film",
+      "split": [
+        "story",
+        "video"
+      ],
       "fields": [
         {
           "name": "film",
@@ -14626,6 +14866,10 @@
       "name": "FilmChapter",
       "schema": "og.FilmChapter",
       "module": "film",
+      "split": [
+        "story",
+        "video"
+      ],
       "fields": [
         {
           "name": "film",
@@ -14649,6 +14893,10 @@
       "name": "FilmEnded",
       "schema": "og.FilmEnded",
       "module": "film",
+      "split": [
+        "story",
+        "video"
+      ],
       "fields": [
         {
           "name": "film",

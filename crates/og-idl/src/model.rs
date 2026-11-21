@@ -173,6 +173,10 @@ pub struct Module {
     /// use, which `og api show <module>` lists; the rest are advanced.
     /// Empty: the module declares no tiers and every item is listed.
     pub core: Vec<String>,
+    /// The engine wasm modules that hold its members (`split physics`,
+    /// packages/engine/scripts/wasm-modules.json): a game that uses one of
+    /// them loads these. Empty: its members are in the primary module.
+    pub split: Vec<String>,
     pub see: Vec<GuideRef>,
     pub items: Vec<Item>,
     pub line: usize,
@@ -631,5 +635,8 @@ pub struct Record {
     pub methods: Vec<Function>,
     /// `guide` lines: the guide sections that carry its workflow.
     pub see: Vec<GuideRef>,
+    /// Its own `split` line, replacing its module's: the engine wasm
+    /// modules whose code runs once a world holds it. `None`: the module's.
+    pub split: Option<Vec<String>>,
     pub line: usize,
 }
