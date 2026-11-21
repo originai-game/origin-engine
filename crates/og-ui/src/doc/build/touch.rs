@@ -300,11 +300,7 @@ mod tests {
             })
             .unwrap();
         }
-        map.set_surface(og_input::Surface {
-            width: 800.0,
-            height: 480.0,
-            coarse: true,
-        });
+        map.set_surface(og_input::Surface { coarse: true });
         map.set_zones(zones);
         map.sample(
             &Default::default(),
@@ -405,11 +401,7 @@ mod tests {
             })
             .unwrap();
         }
-        map.set_surface(og_input::Surface {
-            width: size[0],
-            height: size[1],
-            coarse: false,
-        });
+        map.set_surface(og_input::Surface { coarse: false });
         map.set_zones(zones);
         map.sample(
             &Default::default(),

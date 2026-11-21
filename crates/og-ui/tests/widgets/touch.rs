@@ -56,11 +56,7 @@ impl Actions {
             ..ActionDesc::default()
         })
         .unwrap();
-        map.set_surface(og_input::Surface {
-            width: 800.0,
-            height: 600.0,
-            coarse: true,
-        });
+        map.set_surface(og_input::Surface { coarse: true });
         map.set_zones(d.ui.take_control_zones().expect("the stick's zone"));
         Actions { map, tick: 0 }
     }
