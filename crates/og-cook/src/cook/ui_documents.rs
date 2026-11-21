@@ -265,7 +265,14 @@ fn plan_document<'a>(
     }
     let dependencies = dependencies.join("\n");
     assets::record_dependencies(parsed_refs, &s.rel, &dependencies);
-    let st = stamp(&[b"svelte document 1", &hash, dependencies.as_bytes()]);
+    // The new core's looks: a token, surface or compiler change cooks
+    // the documents' compiled styles again.
+    let layers = [og_ui_next::look::Layer {
+        tokens: og_ui_next::look::default_tokens(),
+        surfaces: og_ui_next::look::DEFAULT_SURFACES,
+    }];
+    let looks = ["dark", "light"].map(|s| og_ui_next::look::Look::key_of(&layers, s).to_le_bytes());
+    let st = stamp(&[b"svelte document 2", &hash, dependencies.as_bytes(), &looks[0], &looks[1]]);
     outs.push((
         s.rel.clone(),
         format::Document::NAME,
@@ -306,6 +313,17 @@ impl Job for DocumentJob<'_> {
             let bytes = serde_json::to_vec(uses).expect("strings serialize");
             w.raw("uses", bytes, 16);
         }
+        // Its styles on og-ui's new core, compiled against the default
+        // look in each scheme (og_ui_next::cooked): the runtime maps them.
+        with_next_looks(|looks| {
+            for (scheme, look) in looks {
+                let style =
+                    og_ui_next::doc::DocStyle::compile(doc, look.tokens(), look.surfaces());
+                if let Some(bytes) = og_ui_next::cooked::encode(&style, doc.nodes.len(), look) {
+                    w.raw(&format!("next-{scheme}"), bytes, 16);
+                }
+            }
+        });
         let slots = doc
             .nodes
             .iter()
@@ -324,6 +342,24 @@ impl Job for DocumentJob<'_> {
         ));
         Ok((w.finish(), notes))
     }
+}
+
+/// The default look of og-ui's new core in each scheme, read once per
+/// cook thread (a look is not shared between threads).
+fn with_next_looks<R>(f: impl FnOnce(&[(&str, og_ui_next::look::Look); 2]) -> R) -> R {
+    thread_local! {
+        static LOOKS: std::cell::OnceCell<[(&'static str, og_ui_next::look::Look); 2]> =
+            const { std::cell::OnceCell::new() };
+    }
+    LOOKS.with(|l| {
+        f(l.get_or_init(|| {
+            let layers = [og_ui_next::look::Layer {
+                tokens: og_ui_next::look::default_tokens(),
+                surfaces: og_ui_next::look::DEFAULT_SURFACES,
+            }];
+            ["dark", "light"].map(|s| (s, og_ui_next::look::Look::load(&layers, s)))
+        }))
+    })
 }
 
 /// The kinds this module cooks.

@@ -144,6 +144,9 @@ pub struct Tree {
     docs: Vec<Compiled>,
     by_name: FxHashMap<Box<str>, u32>,
     library: FxHashMap<Box<str>, Arc<UiDocument>>,
+    /// Documents' styles as the cook compiled them ([`crate::cooked`]),
+    /// by document source.
+    cooked: FxHashMap<Box<str>, Rc<[u8]>>,
     insts: Vec<Inst>,
     els: Vec<El>,
     ifs: Vec<IfBlock>,
@@ -306,6 +309,7 @@ impl Tree {
                 .into_iter()
                 .map(|d| (d.name.as_str().into(), d))
                 .collect(),
+            cooked: FxHashMap::default(),
             insts: Vec::new(),
             els: Vec::new(),
             ifs: Vec::new(),
@@ -322,6 +326,12 @@ impl Tree {
         }
     }
 
+    /// The cook's compiled style of document `source` ([`crate::cooked`]):
+    /// taken when it was compiled against this tree's look and parse.
+    pub fn set_cooked(&mut self, source: &str, bytes: Rc<[u8]>) {
+        self.cooked.insert(source.into(), bytes);
+    }
+
     pub fn len(&self) -> usize {
         self.els.len()
     }
@@ -335,7 +345,12 @@ impl Tree {
             return Some(d);
         }
         let doc = self.library.get(name)?.clone();
-        let style = DocStyle::compile(&doc, &self.look.tokens, &self.look.surfaces);
+        // The cook's compile of it against this look, else one now.
+        let style = self
+            .cooked
+            .get(doc.source.as_str())
+            .and_then(|b| crate::cooked::decode(b, doc.nodes.len(), self.look.key))
+            .unwrap_or_else(|| DocStyle::compile(&doc, self.look.tokens(), self.look.surfaces()));
         let mut style_of = vec![NONE; doc.nodes.len()];
         for (k, n) in style.nodes.iter().enumerate() {
             style_of[n.node as usize] = k as u32;
@@ -1236,7 +1251,7 @@ mod tests {
         .unwrap();
         let look = Rc::new(Look::load(
             &[Layer {
-                tokens: &crate::look::default_tokens(),
+                tokens: crate::look::default_tokens(),
                 surfaces: crate::look::DEFAULT_SURFACES,
             }],
             "dark",
@@ -1263,7 +1278,7 @@ mod tests {
         .unwrap();
         let look = Rc::new(Look::load(
             &[Layer {
-                tokens: &crate::look::default_tokens(),
+                tokens: crate::look::default_tokens(),
                 surfaces: crate::look::DEFAULT_SURFACES,
             }],
             "dark",
@@ -1303,7 +1318,7 @@ mod tests {
         .unwrap();
         let look = Rc::new(Look::load(
             &[Layer {
-                tokens: &crate::look::default_tokens(),
+                tokens: crate::look::default_tokens(),
                 surfaces: crate::look::DEFAULT_SURFACES,
             }],
             "dark",
@@ -1341,7 +1356,7 @@ mod tests {
         .unwrap();
         let look = Rc::new(Look::load(
             &[Layer {
-                tokens: &crate::look::default_tokens(),
+                tokens: crate::look::default_tokens(),
                 surfaces: crate::look::DEFAULT_SURFACES,
             }],
             "dark",
@@ -1366,7 +1381,7 @@ mod tests {
         .unwrap();
         let look = Rc::new(Look::load(
             &[Layer {
-                tokens: &crate::look::default_tokens(),
+                tokens: crate::look::default_tokens(),
                 surfaces: crate::look::DEFAULT_SURFACES,
             }],
             "dark",
@@ -1409,7 +1424,7 @@ mod tests {
         .unwrap();
         let look = Rc::new(Look::load(
             &[Layer {
-                tokens: &crate::look::default_tokens(),
+                tokens: crate::look::default_tokens(),
                 surfaces: crate::look::DEFAULT_SURFACES,
             }],
             "dark",
@@ -1445,7 +1460,7 @@ mod tests {
         .unwrap();
         let look = Rc::new(Look::load(
             &[Layer {
-                tokens: &crate::look::default_tokens(),
+                tokens: crate::look::default_tokens(),
                 surfaces: crate::look::DEFAULT_SURFACES,
             }],
             "dark",
@@ -1474,7 +1489,7 @@ mod tests {
         .unwrap();
         let look = Rc::new(Look::load(
             &[Layer {
-                tokens: &crate::look::default_tokens(),
+                tokens: crate::look::default_tokens(),
                 surfaces: crate::look::DEFAULT_SURFACES,
             }],
             "dark",
@@ -1500,7 +1515,7 @@ mod tests {
         .unwrap();
         let look = Rc::new(Look::load(
             &[Layer {
-                tokens: &crate::look::default_tokens(),
+                tokens: crate::look::default_tokens(),
                 surfaces: crate::look::DEFAULT_SURFACES,
             }],
             "dark",

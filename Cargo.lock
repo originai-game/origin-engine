@@ -3236,6 +3236,7 @@ dependencies = [
  "og-timeline",
  "og-tween",
  "og-ui",
+ "og-ui-next",
  "og-video",
  "opus-pure",
  "oxc_allocator",

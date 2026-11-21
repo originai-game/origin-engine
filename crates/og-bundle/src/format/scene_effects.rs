@@ -342,7 +342,8 @@ impl BlobKind for Style {
 
 row!(
     /// The root of a scriptless Svelte UI document blob (`.svelte`).
-    DocumentMeta, "og.UiDocument", 2 {
+    /// Version 3 adds the new core's compiled styles (`next-<scheme>`).
+    DocumentMeta, "og.UiDocument", 3 {
         /// Bytes of the validated document text in `text`.
         text_bytes: u32,
     }
@@ -350,7 +351,9 @@ row!(
 
 /// The UI document blob: `text` holds the document the cook validated
 /// against og-ui's reflected props (`og_ui::UiDocument::parse`), parsed
-/// again at load (docs/ui.md §2.1).
+/// again at load (docs/ui.md §2.1); `next-dark` and `next-light`, when
+/// present, hold its styles compiled for og-ui's new core in each scheme
+/// (`og_ui_next::cooked`).
 pub struct Document;
 impl BlobKind for Document {
     const NAME: &'static str = "og.UiDocument";

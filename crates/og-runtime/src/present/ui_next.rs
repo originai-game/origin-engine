@@ -89,6 +89,17 @@ fn source(v: &Value) -> Option<(String, String)> {
     ))
 }
 
+/// Document `id`'s style as the cook compiled it for the new core in
+/// `scheme`, when its blob has one.
+fn cooked_style(engine: u32, id: &str, scheme: &str) -> Option<Rc<[u8]>> {
+    let eng = crate::engine::engine(engine).ok()?;
+    let assets = eng.assets.borrow();
+    let (bytes, bundle) = assets.blob(id).ok()?;
+    bundle
+        .document_next_style(id, bytes.bytes(), scheme)
+        .map(Rc::from)
+}
+
 fn allocations() -> usize {
     og_core::alloc::thread_allocations()
 }
@@ -305,20 +316,29 @@ impl Next {
         if self.mounts.is_empty() {
             return warnings;
         }
+        let scheme_name = if scheme == og_ui::Scheme::Light {
+            "light"
+        } else {
+            "dark"
+        };
         if self.look.is_none() {
             let t = now();
-            let tokens = og_ui_next::look::default_tokens();
-            self.look = Some(Rc::new(Look::load(
-                &[Layer {
-                    tokens: &tokens,
-                    surfaces: og_ui_next::look::DEFAULT_SURFACES,
-                }],
-                if scheme == og_ui::Scheme::Light {
-                    "light"
-                } else {
-                    "dark"
-                },
-            )));
+            let layers = [Layer {
+                tokens: og_ui_next::look::default_tokens(),
+                surfaces: og_ui_next::look::DEFAULT_SURFACES,
+            }];
+            // The cook compiled every document's style against this look
+            // and carries its root: no token or sheet is read here.
+            let key = Look::key_of(&layers, scheme_name);
+            let root = ui.documents().into_iter().find_map(|n| {
+                let doc = ui.shared_document(&n)?;
+                let bytes = cooked_style(engine, &doc.source, scheme_name)?;
+                og_ui_next::cooked::root(&bytes, key)
+            });
+            self.look = Some(Rc::new(match root {
+                Some(steps) => Look::cooked(&layers, scheme_name, steps),
+                None => Look::load(&layers, scheme_name),
+            }));
             self.spans.look = now() - t;
         }
         let a0 = allocations();
@@ -330,7 +350,13 @@ impl Next {
                 .into_iter()
                 .filter_map(|n| ui.shared_document(&n));
             let look = self.look.clone().expect("loaded above");
-            let mut tree = Tree::new(look, library);
+            let library: Vec<_> = library.collect();
+            let mut tree = Tree::new(look, library.iter().cloned());
+            for doc in &library {
+                if let Some(bytes) = cooked_style(engine, &doc.source, scheme_name) {
+                    tree.set_cooked(&doc.source, bytes);
+                }
+            }
             tree.set_strings(
                 &self.language,
                 Box::new(move |key| crate::bind::i18n::message(engine, key)),

@@ -926,6 +926,13 @@ impl Bundle {
         }
     }
 
+    /// A UI document blob's styles compiled for og-ui's new core in
+    /// `scheme` (`og_ui_next::cooked`); none from an older cook.
+    pub fn document_next_style<'b>(&self, id: &str, bytes: &'b [u8], scheme: &str) -> Option<&'b [u8]> {
+        let blob = self.blob::<format::Document>(id, bytes).ok()?;
+        blob.raw_opt(&format!("next-{scheme}"))
+    }
+
     /// The ids of the documents defining the components a UI document blob
     /// uses (the game's, or the engine's `@ui/` ones), which loading it
     /// loads too; none for a document without.

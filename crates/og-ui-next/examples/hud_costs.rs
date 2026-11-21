@@ -98,7 +98,7 @@ fn main() {
     let look = Rc::new(look());
     println!(
         "look: {} tokens, loaded in {:.2} ms",
-        look.tokens.len(),
+        look.tokens().len(),
         t.elapsed().as_secs_f64() * 1e3
     );
     let steps = json!([

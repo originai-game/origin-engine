@@ -32,7 +32,7 @@
 //! | effect material (`og.EffectMaterial`, an `.ogt` of `type effect`) | [`EffectMeta`] | `text` (the validated effect file) |
 //! | composed effect (`og.Vfx`, an `.ogt` of `type vfx`) | [`VfxMeta`] | `text` (the validated vfx file) |
 //! | UI style (`og.UiStyle`, an `.ogt` of `type style`) | [`StyleMeta`] | `text` (the validated style file) |
-//! | UI document (`og.UiDocument`, an `.ogt` of `type screen` or `type component`) | [`DocumentMeta`] | `text` (the validated document) |
+//! | UI document (`og.UiDocument`, an `.ogt` of `type screen` or `type component`) | [`DocumentMeta`] | `text` (the validated document); `next-dark`, `next-light` (its styles compiled for og-ui's new core) |
 //! | material shader (`og.MaterialShader`, an `.ogt` of `type shader`) | [`ShaderMeta`] | `text` (the canonical shader file, code inlined) |
 //! | custom post pass (`og.PostPass`, an `.ogt` of `type post`) | [`PostMeta`] | `text` (the canonical post file, code inlined) |
 //! | 2D rig (`og.Skeleton2D`, an `.ogt` of `type rig2d`) | [`Rig2DMeta`] | `text` (the canonical rig: a DragonBones export converted, the texture's id and size) |
