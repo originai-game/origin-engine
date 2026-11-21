@@ -19,6 +19,7 @@ pub mod nav;
 pub mod pack;
 pub mod prim;
 pub mod queue;
+pub mod record;
 pub mod sheet;
 pub mod style;
 pub mod text;
