@@ -1,3 +1,4 @@
+import type { Texture } from "@origingame/engine";
 import { Icon, Image, Show, Text, View, t } from "@origingame/engine/ui";
 import "./card.en.ogt";
 
@@ -9,7 +10,7 @@ export interface CardFaceProps {
   /** Its art as an icon in the style's or the game's atlas, used when art is 0. */
   icon: string;
   /** A painted picture (og.load.texture) filling the art window; 0 shows the icon. */
-  art: number;
+  art: Texture | 0;
   /** The card's type for the pack's frame (attack, skill, power, curse, status, or the game's own word); it reaches the frame as data-type. */
   type: string;
   /** The type line as the game words it (Attack, Skill · Rare); empty hides it. */
@@ -42,7 +43,7 @@ export function CardFace(props: CardFaceProps) {
         <Show when={props.art} fallback={
             <Icon class="w-[56%] h-[76%] text-fg shrink" name={props.icon} />
         }>
-          <Image class="absolute object-cover inset-0 size-full" src={String(props.art)} />
+          <Image class="absolute object-cover inset-0 size-full" src={props.art} />
         </Show>
       </View>
       <Text class={`text-fg text-center line-clamp-2 text-base font-bold leading-[1.15] bg-material-control-hover py-0.5 px-1 m-0 overflow-hidden group-data-medium/cardface:line-clamp-1`}>

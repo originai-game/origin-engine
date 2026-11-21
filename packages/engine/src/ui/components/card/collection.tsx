@@ -1,3 +1,4 @@
+import type { Texture } from "@origingame/engine";
 import { For, Scroll, Show, Text, type UiEvent, View, formatNumber, t } from "@origingame/engine/ui";
 import { CardFace } from "./face";
 import "./card.en.ogt";
@@ -10,7 +11,7 @@ export interface CardCollectionProps {
   /** The id of the filter applied; the game filters the cards it passes. */
   filter: string;
   /** The cards shown, already filtered and sorted by the game: keyed rows of { id, name, cost, icon, art, type, typeLabel, rarity, text, owned, inDeck, canAdd, locked, reason }. owned and inDeck are the game's counts (owned above 1 is shown, inDeck above 0); canAdd is the game's answer (limit, rarity rule, not owned); locked marks a card not owned yet; reason is why the game will not add it, in the game's words (spoken and marked when canAdd is false; empty says Not owned for a locked card, Cannot be added otherwise). */
-  cards: ReadonlyArray<{ id: string; name: string; cost: string; icon: string; art: number; type: string; typeLabel: string; rarity: string; text: string; owned: number; inDeck: number; canAdd: boolean; locked: boolean; reason: string }>;
+  cards: ReadonlyArray<{ id: string; name: string; cost: string; icon: string; art: Texture | 0; type: string; typeLabel: string; rarity: string; text: string; owned: number; inDeck: number; canAdd: boolean; locked: boolean; reason: string }>;
   /** The card shown in detail; empty is none. */
   selected: string;
   /** What an empty result says; empty is No cards match. */

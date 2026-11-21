@@ -1,3 +1,4 @@
+import type { Texture } from "@origingame/engine";
 import { For, Image, Scroll, Show, Text, type UiEvent, View, t } from "@origingame/engine/ui";
 import { EmptyState } from "../base/empty-state";
 import { ErrorState } from "../base/error-state";
@@ -8,7 +9,7 @@ export interface NewsProps {
   /** Heading; empty uses News and updates. */
   title?: string;
   /** Keyed { id, title, date, kind, summary, body, image, unread, pinned, actionLabel } articles in the game's order. kind is game-formatted text (Patch notes, Event); body is plain multiline text, never HTML. image is a loaded texture handle or 0. Default []. */
-  entries?: ReadonlyArray<{ id: string; title: string; date: string; kind: string; summary: string; body: string; image: number; unread: boolean; pinned: boolean; actionLabel: string }>;
+  entries?: ReadonlyArray<{ id: string; title: string; date: string; kind: string; summary: string; body: string; image: Texture | 0; unread: boolean; pinned: boolean; actionLabel: string }>;
   /** Expanded article id, game-owned. A toggle reports choose with that key; the game may clear it to collapse. */
   selected?: string;
   /** Loading articles; no article actions are present. Default false. */
@@ -72,7 +73,7 @@ export function News(props: NewsProps) {
                             </Show>
                             <Show when={entry().id === props.selected}>
                               <Show when={entry().image}>
-                                <Image class={`w-full max-h-60 aspect-[2/1] object-cover rounded-tl-[6.864px] rounded-tr-none rounded-br-[6.864px] rounded-bl-none data-muted:opacity-45`} src={String(entry().image)} />
+                                <Image class={`w-full max-h-60 aspect-[2/1] object-cover rounded-tl-[6.864px] rounded-tr-none rounded-br-[6.864px] rounded-bl-none data-muted:opacity-45`} src={entry().image} />
                               </Show>
                               <Show when={entry().body}>
                                 <Text class={`text-fg-muted m-0`}>

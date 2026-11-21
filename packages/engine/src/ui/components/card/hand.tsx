@@ -1,3 +1,4 @@
+import type { Texture } from "@origingame/engine";
 import { For, Icon, Show, Text, type UiEvent, View, t } from "@origingame/engine/ui";
 import { Button } from "../../controls/button";
 import { CardFace } from "./face";
@@ -5,7 +6,7 @@ import "./card.en.ogt";
 
 export interface CardHandProps {
   /** The hand in the game's order, keyed rows of { id, name, cost, icon, art, type, typeLabel, rarity, text, playable, reason, at }: playable is the game's answer (cost, targets, rules), never the hand's; reason the game's words for an unplayable card (No energy), empty Cannot be played; at is the card's place across a fanned hand from -1 (first) to 1 (last), 0 the middle, which the game derives from the order. */
-  cards: ReadonlyArray<{ id: string; name: string; cost: string; icon: string; art: number; type: string; typeLabel: string; rarity: string; text: string; playable: boolean; at: number; reason?: string }>;
+  cards: ReadonlyArray<{ id: string; name: string; cost: string; icon: string; art: Texture | 0; type: string; typeLabel: string; rarity: string; text: string; playable: boolean; at: number; reason?: string }>;
   /** The id of the card the player picked up (it rises and offers Play when playable); empty is none. */
   selected: string;
   /** How far a fanned hand turns its end cards, in degrees (the game's choice, 0 a flat row). */

@@ -1,3 +1,4 @@
+import type { Texture } from "@origingame/engine";
 import { For, Icon, Scroll, Show, Text, type UiEvent, View, t } from "@origingame/engine/ui";
 import { Button } from "../../controls/button";
 import { CardFace } from "./face";
@@ -9,7 +10,7 @@ export interface CardRewardProps {
   /** A small line over the title naming the moment (Victory · Floor 7); empty hides it. */
   kicker?: string;
   /** The offers the game rolled, keyed rows of { id, relic, name, cost, icon, art, type, typeLabel, rarity, text, enabled }: relic true draws a relic (its icon, typeLabel or Relic, name and text) instead of a card; enabled false when the game will not let it be taken. */
-  choices: ReadonlyArray<{ id: string; relic: boolean; name: string; cost: string; icon: string; art: number; type: string; typeLabel: string; rarity: string; text: string; enabled: boolean }>;
+  choices: ReadonlyArray<{ id: string; relic: boolean; name: string; cost: string; icon: string; art: Texture | 0; type: string; typeLabel: string; rarity: string; text: string; enabled: boolean }>;
   /** The offer the player is looking at (focused or tapped once); empty is none. */
   selected: string;
   /** The skip button's text (Skip, Take nothing); empty hides it (Back still reports skip; a game that offers none ignores it). */

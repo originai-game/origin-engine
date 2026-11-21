@@ -1,3 +1,4 @@
+import type { Texture } from "@origingame/engine";
 import { For, Scroll, Show, Text, type UiEvent, View, t } from "@origingame/engine/ui";
 import { Avatar } from "../base/avatar";
 import { Spinner } from "../base/spinner";
@@ -9,7 +10,7 @@ export interface ProfileProps {
   /** Stable player handle or discriminator, as the game words it; empty hides it. */
   handle: string;
   /** Loaded portrait texture; zero uses the base Avatar fallback. */
-  portrait: number;
+  portrait: Texture | 0;
   /** Level shown by Avatar; zero hides it. */
   level: number;
   /** Avatar presence: online, away, busy or offline; empty hides it. */
