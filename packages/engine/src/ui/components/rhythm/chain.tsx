@@ -44,7 +44,7 @@ export function RhythmChain(props: RhythmChainProps) {
           >
             <View class={`absolute inset-0 flex-row gap-[3px]`}>
               <For each={Array.from({ length: props.steps ?? 8 }, (_, i) => i)}>
-                {() => <View class={`w-[12px] shrink-0 bg-white/22`} />}
+                {() => <View class={`w-[12px] shrink-0 bg-sheen`} />}
               </For>
             </View>
             <View

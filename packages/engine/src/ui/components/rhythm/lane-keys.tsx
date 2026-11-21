@@ -20,7 +20,7 @@ export function RhythmLaneKeys(props: RhythmLaneKeysProps) {
             <View
               role="text"
               label={l().held ? t("rhythm.lanes.held", { key: l().key }) : l().key}
-              class={`min-w-[3.143rem] compact:min-w-[2.143rem] min-h-[2.429rem] compact:min-h-[2rem] px-1 flex-row items-center justify-center bg-linear-to-b from-white to-key-lo rounded-[4.576px] shadow-[0px_2.288px_0px_#0000008c,inset_0px_-2.288px_0px_#0000002e] data-held:bg-linear-to-b data-held:from-hud-accent-hi data-held:to-hud-accent data-held:shadow-[0px_0px_14px_#38e8ff,inset_0px_-2.288px_0px_#0000002e]`}
+              class={`min-w-[3.143rem] compact:min-w-[2.143rem] min-h-[2.429rem] compact:min-h-[2rem] px-1 flex-row items-center justify-center bg-linear-to-b from-key-hi to-key-lo rounded-[4.576px] shadow-[0px_2.288px_0px_#0000008c,inset_0px_-2.288px_0px_#0000002e] data-held:bg-linear-to-b data-held:from-hud-accent-hi data-held:to-hud-accent data-held:shadow-[0px_0px_14px_#38e8ff,inset_0px_-2.288px_0px_#0000002e]`}
               data-held={l().held}
             >
               <Text class={`text-[1.143rem] compact:text-[0.929rem] font-bold text-hud-accent-fg text-center`}>{l().key}</Text>

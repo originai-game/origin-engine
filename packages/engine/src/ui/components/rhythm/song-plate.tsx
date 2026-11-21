@@ -33,7 +33,7 @@ export function RhythmSongPlate(props: RhythmSongPlateProps) {
       role="group"
       label={t("rhythm.plate.name", { title: props.title })}
     >
-      <View class={`shrink size-[6rem] compact:size-[4rem] rounded-[1rem] bg-linear-to-b from-white/75 via-white/22 to-white/14 p-[2px]`}>
+      <View class={`shrink size-[6rem] compact:size-[4rem] rounded-[1rem] bg-linear-to-b from-rim-strong via-rim to-rim-soft p-[2px]`}>
         <Show when={props.jacket} fallback={
           <View class={`size-full rounded-[0.857rem] bg-plate-hi flex-row items-center justify-center`}>
             <Icon class={`size-[44%] text-hud-accent`} name="music" />
@@ -55,7 +55,7 @@ export function RhythmSongPlate(props: RhythmSongPlateProps) {
           <View class={`flex flex-row flex-wrap gap-1 mt-0.5`}>
             <Show when={props.chart !== ""}>
               <Text
-                class={`max-w-full py-0 px-1 text-[0.857rem] font-bold tracking-[0.14em] uppercase whitespace-nowrap text-ellipsis overflow-hidden text-white bg-chart-normal nine-chip-cut data-tier-easy:bg-chart-easy data-tier-hard:bg-chart-hard data-tier-expert:bg-fever data-tier-master:bg-chart-master data-tier-special:bg-chart-master ${packClass("Chip", "frame")}`}
+                class={`max-w-full py-0 px-1 text-[0.857rem] font-bold tracking-[0.14em] uppercase whitespace-nowrap text-ellipsis overflow-hidden text-fg bg-chart-normal nine-chip-cut data-tier-easy:bg-chart-easy data-tier-hard:bg-chart-hard data-tier-expert:bg-fever data-tier-master:bg-chart-master data-tier-special:bg-chart-master ${packClass("Chip", "frame")}`}
                 data-tier-easy={props.tier === "easy"}
                 data-tier-hard={props.tier === "hard"}
                 data-tier-expert={props.tier === "expert"}

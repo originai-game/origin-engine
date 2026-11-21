@@ -50,10 +50,10 @@ export function RhythmGauge(props: RhythmGaugeProps) {
           style={{ height: `${full * 100}%` }}
         />
         <For each={Array.from({ length: 9 }, (_, i) => i)}>
-          {(i) => <View class={`absolute left-0 right-0 h-[3px] bg-black/85`} style={{ top: `${(i() + 1) * 10}%`, marginTop: "-1.5px" }} />}
+          {(i) => <View class={`absolute left-0 right-0 h-[3px] bg-shade-deep`} style={{ top: `${(i() + 1) * 10}%`, marginTop: "-1.5px" }} />}
         </For>
       </View>
-      <Text class={`text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap text-fg/78 text-stroke-3 text-stroke-bg group-data-kind-fever/gauge:text-fever`}>
+      <Text class={`text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap text-fg-muted text-stroke-3 text-stroke-bg group-data-kind-fever/gauge:text-fever`}>
         {(props.kind ?? "life") === "fever" ? t("rhythm.gauge.fever") : t("rhythm.gauge.life")}
       </Text>
       <Show when={props.failed} fallback={
@@ -74,7 +74,7 @@ export function RhythmGauge(props: RhythmGaugeProps) {
       </Show>
       <Show when={props.key !== ""}>
         <Text
-          class={`max-w-full px-1 text-center text-[0.857rem] font-bold bg-linear-to-b from-white to-key-lo text-hud-accent-fg rounded-[4.576px] shadow-[0px_2.288px_0px_#0000008c,inset_0px_-2.288px_0px_#0000002e] data-ready:bg-linear-to-b data-ready:from-hud-accent-hi data-ready:to-hud-accent data-ready:shadow-[0px_0px_14px_#38e8ff,inset_0px_-2.288px_0px_#0000002e]`}
+          class={`max-w-full px-1 text-center text-[0.857rem] font-bold bg-linear-to-b from-key-hi to-key-lo text-hud-accent-fg rounded-[4.576px] shadow-[0px_2.288px_0px_#0000008c,inset_0px_-2.288px_0px_#0000002e] data-ready:bg-linear-to-b data-ready:from-hud-accent-hi data-ready:to-hud-accent data-ready:shadow-[0px_0px_14px_#38e8ff,inset_0px_-2.288px_0px_#0000002e]`}
           data-ready={props.ready}
         >
           {props.key}

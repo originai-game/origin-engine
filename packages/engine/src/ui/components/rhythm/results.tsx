@@ -67,7 +67,7 @@ export function RhythmResults(props: RhythmResultsProps) {
               </Show>
               <View class={`flex-col items-start gap-0.5 min-w-0`}>
                 <Text
-                  class={`whitespace-nowrap py-0 px-2 text-[1.143rem] font-bold tracking-[0.14em] uppercase text-gold-fg bg-hud-accent nine-chip-cut data-tag-failed:text-white data-tag-failed:bg-critical ${packClass("Chip", "frame")}`}
+                  class={`whitespace-nowrap py-0 px-2 text-[1.143rem] font-bold tracking-[0.14em] uppercase text-gold-fg bg-hud-accent nine-chip-cut data-tag-failed:text-fg data-tag-failed:bg-critical ${packClass("Chip", "frame")}`}
                   data-tag-cleared={props.cleared}
                   data-tag-failed={!props.cleared}
                 >
@@ -75,7 +75,7 @@ export function RhythmResults(props: RhythmResultsProps) {
                 </Text>
                 <Show when={props.mark !== ""}>
                   <Text
-                    class={`whitespace-nowrap py-0 px-2 text-[1.143rem] font-bold tracking-[0.14em] uppercase text-black bg-chart-master nine-chip-cut ${packClass("Chip", "frame")}`}
+                    class={`whitespace-nowrap py-0 px-2 text-[1.143rem] font-bold tracking-[0.14em] uppercase text-gold-fg bg-gold nine-chip-cut`}
                     data-tag-fullcombo={props.mark === "fullCombo"}
                     data-tag-allperfect={props.mark === "allPerfect"}
                   >
@@ -151,7 +151,7 @@ export function RhythmResults(props: RhythmResultsProps) {
           label={t("rhythm.results.retry")}
           disabled={!props.canRetry}
           onPress={(e) => props.onRetry?.(e)}
-          class={`min-h-[3.143rem] min-w-[8.571rem] compact:flex-1 compact:min-w-0 flex-row items-center justify-center gap-1 px-2 rounded-[4.576px] border border-rim text-fg hover:bg-white/6 disabled:opacity-45 ${packClass("Button", "plate")}`}
+          class={`min-h-[3.143rem] min-w-[8.571rem] compact:flex-1 compact:min-w-0 flex-row items-center justify-center gap-1 px-2 rounded-[4.576px] border border-rim text-fg hover:bg-raised-hi disabled:opacity-45 ${packClass("Button", "plate")}`}
         >
           <Text class={`text-[0.929rem] font-bold tracking-[0.14em] uppercase`}>{t("rhythm.results.retry")}</Text>
         </View>
