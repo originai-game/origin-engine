@@ -18,6 +18,9 @@ test("the vendored bun-types, its docs/ci.md pin and BUN_VERSION are one version
   const typesRow = /^\| bun-types [^|]*\| ([^ |]+) \|/m.exec(ci)?.[1];
   expect(bun, "BUN_VERSION in scripts/install-tools.sh").toBeDefined();
   expect({ vendored, bunRow, typesRow }, "move packages/engine/vendor/bun-types (README.md) and docs/ci.md with BUN_VERSION").toEqual({ vendored: bun, bunRow: bun, typesRow: bun });
+  // The install test's image copies the same bun in.
+  const dockerfile = read("tests/install/Dockerfile");
+  expect(/COPY --from=oven\/bun:(\S+) \/usr\/local\/bin\/bun/.exec(dockerfile)?.[1]).toBe(bun);
 });
 
 // The engine package's own typecheck reads the same vendored file through
