@@ -111,7 +111,7 @@ export function Inbox(props: InboxProps) {
                                   <For each={(props.attachments ?? [])}>
                                     {(attachment) => (
                                     <Show when={attachment().message === message().id}>
-                                      <View class={`flex-row items-center pr-3 pl-2 bg-well/82 border border-gold/60 nine-chip-cut py-1 gap-2 shrink ${packClass("Chip", "frame")}`}>
+                                      <View class={`flex-row items-center pr-3 pl-2 bg-well/82 border border-gold/60 nine-chip-cut py-1 gap-2 shrink text-fg ${packClass("Chip", "frame")}`}>
                                         <Icon class={`text-gold size-4`} name={attachment().icon} />
                                         <View class={`shrink`}>
                                           <Text>{attachment().name}</Text>

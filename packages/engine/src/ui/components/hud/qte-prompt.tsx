@@ -41,13 +41,13 @@ export function QtePrompt(props: QtePromptProps) {
   const held = () => holdFill() > 0;
   return (
     <View
-      class={`flex-col max-w-full gap-y-2 border-rim bg-linear-to-b from-plate-hi to-plate-lo shadow-plate rounded-block border p-2 ${packClass("Plate", "frame")}`}
+      class={`flex-col max-w-full gap-y-2 border-rim bg-linear-to-b from-plate-hi to-plate-lo shadow-plate rounded-block border p-2 text-fg ${packClass("Plate", "frame")}`}
       label={(props.label ?? "") !== "" ? props.label : t("hud.qte-prompt.respond")}
       busy={state === "waiting"}
       data-state-success={state === "success"}
       data-state-failed={state === "failure" || state === "expired"}
     >
-      <Text class="text-[0.929rem] font-semibold text-fg text-shadow-xs">{(props.label ?? "") !== "" ? props.label : t("hud.qte-prompt.respond")}</Text>
+      <Text class="text-[0.929rem] font-semibold text-shadow-xs">{(props.label ?? "") !== "" ? props.label : t("hud.qte-prompt.respond")}</Text>
       <View
         class={`relative flex-row items-center justify-center min-h-11 max-w-full py-2 px-3 gap-x-2 border-rim-strong bg-linear-to-b from-plate-hi to-plate-lo shadow-[0px_0px_0px_1px_#00000073,inset_0px_1px_0px_0px_#ffffff14,0px_6px_18px_-6px_#00000099] rounded-button border overflow-hidden active:bg-none active:bg-tile-pressed active:scale-96 disabled:opacity-50 disabled:scale-100`}
         role="button"
@@ -63,7 +63,7 @@ export function QtePrompt(props: QtePromptProps) {
         <Show when={(props.keyLabel ?? "") !== ""}>
           <Text class="shrink-0 text-[0.929rem] leading-[1.6] font-bold text-center text-key-fg bg-linear-to-b from-white to-key-hi rounded-[0.286rem] shadow-[0px_0.143rem_0px_#0000008c,inset_0px_-0.143rem_0px_#0000002e] whitespace-nowrap text-shadow-none px-1">{props.keyLabel}</Text>
         </Show>
-        <Text class="min-w-0 text-[0.857rem] font-semibold tracking-[0.14em] uppercase text-fg text-shadow-xs">
+        <Text class="min-w-0 text-[0.857rem] font-semibold tracking-[0.14em] uppercase text-shadow-xs">
           {hold ? t("hud.qte-prompt.hold") : (props.mode ?? "press") === "mash" ? t("hud.qte-prompt.mash") : t("hud.qte-prompt.press")}
         </Text>
         <Show when={held()}>
@@ -73,12 +73,12 @@ export function QtePrompt(props: QtePromptProps) {
       <Text class={`text-caption text-shadow-xs ${stateInk()}`} role="status">
         {state === "success" ? t("hud.qte-prompt.success") : state === "failure" ? t("hud.qte-prompt.failure") : state === "expired" ? t("hud.qte-prompt.expired") : state === "waiting" ? t("hud.qte-prompt.waiting") : props.disabled ? t("hud.qte-prompt.disabled") : t("hud.qte-prompt.active")}
       </Text>
-      <Text class="text-caption text-fg-muted text-shadow-xs">{t("hud.qte-prompt.time")}</Text>
+      <Text class="text-caption opacity-80 text-shadow-xs">{t("hud.qte-prompt.time")}</Text>
       <View class="relative w-full h-[0.571rem] overflow-hidden bg-track shadow-[0px_0px_0px_1px_#ffffff38,inset_0px_1px_0px_0px_#ffffff24,0px_0.143rem_0.286rem_#00000073]" role="progressbar" label={t("hud.qte-prompt.time")} valueMin={0} valueMax={100} valueNow={Math.min(Math.max(props.remaining ?? 0, 0), 1) * 100}>
         <View class="absolute left-0 top-0 h-full bg-accent transition-layout duration-300 ease-out" style={{ width: `${Math.min(Math.max(props.remaining ?? 0, 0), 1) * 100}%` }} />
       </View>
       <Show when={(props.mode ?? "press") === "mash"}>
-        <Text class="text-caption text-fg-muted text-shadow-xs">{t("hud.qte-prompt.progress")}</Text>
+        <Text class="text-caption opacity-80 text-shadow-xs">{t("hud.qte-prompt.progress")}</Text>
         <View class="relative w-full h-[0.571rem] overflow-hidden bg-track shadow-[0px_0px_0px_1px_#ffffff38,inset_0px_1px_0px_0px_#ffffff24,0px_0.143rem_0.286rem_#00000073]" role="progressbar" label={t("hud.qte-prompt.progress")} valueMin={0} valueMax={100} valueNow={Math.min(Math.max(props.progress ?? 0, 0), 1) * 100}>
           <View class="absolute left-0 top-0 h-full bg-accent transition-layout duration-300 ease-out" style={{ width: `${Math.min(Math.max(props.progress ?? 0, 0), 1) * 100}%` }} />
         </View>

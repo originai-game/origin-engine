@@ -99,17 +99,17 @@ export function RpgQuestDetail(props: RpgQuestDetailProps) {
                 <View class={`flex-row flex-wrap items-stretch gap-2`} role="list">
                   <For each={props.rewards ?? []} key={(r) => r.id}>
                     {(r) => (
-                      <View class={`group/reward flex-row items-center gap-3 grow min-w-[17.829rem] compact:min-w-0 compact:w-full py-1 pl-1 pr-3 nine-chip-cut bg-glass/88 ${packClass("Chip", "frame")}`} role="listitem" data-unique={r().detail !== ""}>
+                      <View class={`group/reward flex-row items-center gap-3 grow min-w-[17.829rem] compact:min-w-0 compact:w-full py-1 pl-1 pr-3 nine-chip-cut bg-glass/88 text-fg ${packClass("Chip", "frame")}`} role="listitem" data-unique={r().detail !== ""}>
                         <View class={`relative shrink-0 size-12 nine-socket`}>
                           <View class={`absolute inset-0 nine-socket-rim bg-white/40 group-data-unique/reward:bg-gold`} />
                           <View class={`size-full flex-row items-center justify-center`}>
-                            <Icon class={`size-6 text-fg group-data-unique/reward:text-gold`} name={r().icon} />
+                            <Icon class={`size-6 group-data-unique/reward:text-gold`} name={r().icon} />
                           </View>
                         </View>
                         <View class={`flex-col min-w-0`}>
-                          <Text class={`font-bold text-fg`}>{r().label}</Text>
+                          <Text class={`font-bold`}>{r().label}</Text>
                           <Show when={r().detail}>
-                            <Text class={`text-caption text-fg-muted group-data-unique/reward:text-gold`}>{r().detail}</Text>
+                            <Text class={`text-caption opacity-80 group-data-unique/reward:text-gold`}>{r().detail}</Text>
                           </Show>
                         </View>
                       </View>

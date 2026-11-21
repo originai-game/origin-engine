@@ -30,7 +30,7 @@ export function RpgHints(props: RpgHintsProps) {
             </Text>
           </Show>
           <Text
-            class={`min-w-0 text-xs font-semibold tracking-[0.14em] uppercase text-fg/78 whitespace-nowrap overflow-hidden text-ellipsis text-stroke-3 text-stroke-bg`}
+            class={`min-w-0 text-xs font-semibold tracking-[0.14em] uppercase opacity-78 whitespace-nowrap overflow-hidden text-ellipsis text-stroke-3 text-stroke-bg`}
           >
             {h().label}
           </Text>

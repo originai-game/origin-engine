@@ -105,7 +105,7 @@ export function RpgCharacter(props: RpgCharacterProps) {
               >
                 <View class={`flex-col justify-center items-center w-full h-full`}>
                   <Icon
-                    class={`text-fg size-full group-data-empty/cell:size-1/2`}
+                    class={`size-full group-data-empty/cell:size-1/2`}
                     name={s().icon || "plus"}
                   />
                 </View>
@@ -136,7 +136,7 @@ export function RpgCharacter(props: RpgCharacterProps) {
               >
                 <View class={`flex-col justify-center items-center w-full h-full`}>
                   <Icon
-                    class={`text-fg size-full group-data-empty/cell:size-1/2`}
+                    class={`size-full group-data-empty/cell:size-1/2`}
                     name={s().icon || "plus"}
                   />
                 </View>

@@ -38,8 +38,8 @@ export function RpgMenuBar(props: RpgMenuBarProps) {
           </For>
         </View>
       </View>
-      <View class={`shrink-0 size-11 flex-row items-center justify-center nine-plate-cut bg-glass-hi/95 hover:bg-raised-hi/95 ${packClass("Button", "plate")}`} role="button" label={t("rpg.menu.close")} onPress={(e) => props.onClose?.(e)}>
-        <Icon class="size-1/2 text-fg" name="close" />
+      <View class={`shrink-0 size-11 flex-row items-center justify-center nine-plate-cut bg-glass-hi/95 hover:bg-raised-hi/95 text-fg ${packClass("Button", "plate")}`} role="button" label={t("rpg.menu.close")} onPress={(e) => props.onClose?.(e)}>
+        <Icon class="size-1/2" name="close" />
       </View>
     </View>
   );

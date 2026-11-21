@@ -159,7 +159,7 @@ export function ArenaLobby(props: ArenaLobbyProps) {
             disabled={!(props.canStart ?? false)}
             onPress={(e) => props.onStart?.(e)}
           >
-            <Text class="text-caption font-bold tracking-[0.14em] uppercase text-glass">{t("arena.lobby.start")}</Text>
+            <Text class="text-caption font-bold tracking-[0.14em] uppercase">{t("arena.lobby.start")}</Text>
           </View>
         </Show>
       </View>

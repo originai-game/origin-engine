@@ -83,11 +83,11 @@ export function StrategyCommands(props: StrategyCommandsProps) {
           <Show when={c().name} fallback={
               <View class={`nine-plate-cut bg-sheen`} />
           }>
-            <View class={`flex-row items-center justify-center gap-1 group/cmd flex p-[0.143rem] nine-plate-cut bg-white/75 data-active:bg-hud-accent disabled:opacity-45 ${packClass("Button", "plate")}`} role="button" label={c().name} description={c().reason ? c().reason : c().readyText ? c().readyText : c().detail} pressed={c().active} disabled={!c().enabled || !c().affordable} data-cooling={c().cooldown > 0} data-active={c().active} onPress={(e) => props.onCommand?.(e, c().id)}>
+            <View class={`flex-row items-center justify-center gap-1 group/cmd flex p-[0.143rem] nine-plate-cut bg-white/75 data-active:bg-hud-accent disabled:opacity-45 text-fg ${packClass("Button", "plate")}`} role="button" label={c().name} description={c().reason ? c().reason : c().readyText ? c().readyText : c().detail} pressed={c().active} disabled={!c().enabled || !c().affordable} data-cooling={c().cooldown > 0} data-active={c().active} onPress={(e) => props.onCommand?.(e, c().id)}>
               <View class="relative size-full overflow-hidden">
                 <Show when={c().icon} fallback={
                     <View class="absolute inset-0 flex-row items-center justify-center bg-linear-to-b from-plate-hi to-plate-lo">
-                      <Icon class={`size-[55%] text-fg`} name={c().glyph} />
+                      <Icon class={`size-[55%]`} name={c().glyph} />
                     </View>
                 }>
                   <Image class={`absolute inset-0 size-full group-disabled/cmd:opacity-45`} src={c().icon} />
@@ -101,13 +101,13 @@ export function StrategyCommands(props: StrategyCommandsProps) {
                 </Show>
                 <Show when={c().cooldown > 0 && c().time}>
                   <View class="absolute inset-x-0 top-1/2 -translate-y-1/2 flex-row justify-center">
-                    <Text class={`text-[1.714rem] leading-[1] font-bold tabular-nums whitespace-nowrap text-fg text-stroke-3 text-stroke-bg`}>
+                    <Text class={`text-[1.714rem] leading-[1] font-bold tabular-nums whitespace-nowrap text-stroke-3 text-stroke-bg`}>
                       {c().time}
                     </Text>
                   </View>
                 </Show>
                 <Show when={c().action || c().key}>
-                  <Text class={`absolute left-1 top-[0.143rem] max-w-[94%] py-0 px-0 leading-[1.2] text-xs font-bold text-fg whitespace-nowrap overflow-hidden text-stroke-3 text-stroke-bg pointer-coarse:hidden`} glyph={c().key ? undefined : c().action}>
+                  <Text class={`absolute left-1 top-[0.143rem] max-w-[94%] py-0 px-0 leading-[1.2] text-xs font-bold whitespace-nowrap overflow-hidden text-stroke-3 text-stroke-bg pointer-coarse:hidden`} glyph={c().key ? undefined : c().action}>
                     {c().key}
                   </Text>
                 </Show>

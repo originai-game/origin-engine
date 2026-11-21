@@ -22,8 +22,8 @@ export function RhythmChain(props: RhythmChainProps) {
       <Show when={props.multiplier !== ""}>
         <Show when={`${props.multiplier}·${props.hit}`} keyed>
           {() => (
-          <View class={`flex-row items-baseline gap-1 py-0.5 px-3 shrink bg-plate-hi nine-plate-cut animate-pop ${packClass("Plate", "frame")}`}>
-            <Text class={`text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap text-fg/78`}>
+          <View class={`flex-row items-baseline gap-1 py-0.5 px-3 shrink bg-plate-hi nine-plate-cut animate-pop text-fg ${packClass("Plate", "frame")}`}>
+            <Text class={`text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap opacity-78`}>
               {t("rhythm.chain.label")}
             </Text>
             <Text class={`text-[1.714rem] leading-[1.1] font-bold tabular-nums whitespace-nowrap text-hud-accent`}>

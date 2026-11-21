@@ -35,7 +35,7 @@ export function CardHand(props: CardHandProps) {
     <View class={`grow shrink basis-0 text-fg justify-center p-0 gap-0 disabled:text-fg-subtle`} label={props.label || t("card.hand.name")}>
       <Show when={props.cards.length} fallback={
           <View class="grow shrink basis-0 justify-center items-center w-full gap-2" role="status">
-            <Text class="m-0">{t("card.hand.empty")}</Text>
+            <Text class={`m-0 py-2 px-4 text-fg bg-glass nine-plate-cut ${packClass("Plate", "frame")}`}>{t("card.hand.empty")}</Text>
           </View>
       }>
         <View class="flex-row items-end grow shrink basis-0 w-full justify-center pt-14 pb-14 px-8 gap-0" role="listbox" label={props.label || t("card.hand.name")}>

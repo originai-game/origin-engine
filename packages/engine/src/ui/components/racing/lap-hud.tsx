@@ -64,17 +64,17 @@ export function RacingLapHud(props: RacingLapHudProps) {
         <View class="flex min-w-0 flex-col items-start gap-y-[0.571rem] pb-[0.286rem] compact:gap-y-[0.286rem] compact:pb-0">
           <Show when={props.laps > 0 || props.lap > 0}>
             <View
-              class={`group/lap shrink-0 flex-row items-baseline gap-x-[0.571rem] py-[0.214rem] px-[0.643rem] bg-plate-hi nine-plate-cut ${packClass("Plate", "frame")}`}
+              class={`group/lap shrink-0 flex-row items-baseline gap-x-[0.571rem] py-[0.214rem] px-[0.643rem] bg-plate-hi nine-plate-cut text-fg ${packClass("Plate", "frame")}`}
               role="group"
               label={props.laps > 0 && props.lap > 0 ? t("racing.lap.lapValue", { lap: props.lap, laps: props.laps }) : t("racing.lap.lap")}
               data-final={props.finalLap}
             >
-              <Text class={`text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap text-fg/78 group-data-final/lap:text-hud-accent`}>
+              <Text class={`text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap opacity-78 group-data-final/lap:text-hud-accent`}>
                 {props.finalLap ? t("racing.lap.finalLap") : t("racing.lap.lap")}
               </Text>
-              <Text class={`text-[1.071rem] font-bold tabular-nums whitespace-nowrap text-fg`}>{props.lap > 0 ? formatNumber(props.lap) : t("racing.lap.pending")}</Text>
+              <Text class={`text-[1.071rem] font-bold tabular-nums whitespace-nowrap`}>{props.lap > 0 ? formatNumber(props.lap) : t("racing.lap.pending")}</Text>
               <Show when={props.laps > 0}>
-                <Text class={`text-[0.929rem] font-bold tabular-nums whitespace-nowrap text-fg-muted`}>{t("racing.lap.ofSpaced", { total: props.laps })}</Text>
+                <Text class={`text-[0.929rem] font-bold tabular-nums whitespace-nowrap opacity-80`}>{t("racing.lap.ofSpaced", { total: props.laps })}</Text>
               </Show>
             </View>
           </Show>

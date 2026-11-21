@@ -102,7 +102,7 @@ export function ArenaReady(props: ArenaReadyProps) {
           onPress={(e) => props.onAccept?.(e)}
           data-selected={props.response == "ready"}
         >
-          <Text class="text-boon-fg">{t("ready.accept")}</Text>
+          <Text>{t("ready.accept")}</Text>
         </View>
         <View
           class={BUTTON}

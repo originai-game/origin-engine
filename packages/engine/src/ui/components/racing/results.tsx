@@ -58,12 +58,12 @@ export function RacingResults(props: RacingResultsProps) {
                   <Text class={`text-[6rem] leading-[0.9] font-bold italic whitespace-nowrap text-hud-accent text-stroke-3 text-stroke-bg compact:text-[3.143rem]`}>
                     {r().state === "dnf" || r().state === "dsq" ? (r().state === "dsq" ? t("racing.results.dsq") : t("racing.results.dnf")) : ordinal(r().position)}
                   </Text>
-                  <View class={`flex-row flex-wrap items-baseline justify-between gap-x-3 py-2 px-3 bg-plate-hi nine-plate-cut ${packClass("Plate", "frame")}`}>
+                  <View class={`flex-row flex-wrap items-baseline justify-between gap-x-3 py-2 px-3 bg-plate-hi nine-plate-cut text-fg ${packClass("Plate", "frame")}`}>
                     <Text class={hudLabel}>{t("racing.results.time")}</Text>
-                    <Text class={`text-[2.429rem] font-bold tabular-nums whitespace-nowrap text-fg compact:text-[1.714rem]`}>{r().time}</Text>
+                    <Text class={`text-[2.429rem] font-bold tabular-nums whitespace-nowrap compact:text-[1.714rem]`}>{r().time}</Text>
                   </View>
                   <Show when={r().points !== ""}>
-                    <View class={`flex-row flex-wrap items-baseline justify-between gap-x-3 py-2 px-3 bg-plate-hi nine-plate-cut ${packClass("Plate", "frame")}`}>
+                    <View class={`flex-row flex-wrap items-baseline justify-between gap-x-3 py-2 px-3 bg-plate-hi nine-plate-cut text-fg ${packClass("Plate", "frame")}`}>
                       <Text class={hudLabel}>{t("racing.results.points")}</Text>
                       <Text class={`text-[2.429rem] font-bold tabular-nums whitespace-nowrap text-gold compact:text-[1.714rem]`}>{r().points}</Text>
                     </View>

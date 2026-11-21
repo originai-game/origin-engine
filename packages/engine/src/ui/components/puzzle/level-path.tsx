@@ -43,9 +43,9 @@ export function PuzzleLevelPath(props: PuzzleLevelPathProps) {
           <For each={props.chapters}>
             {(c) => (
             <View class="mb-4 gap-0" label={c().label}>
-              <View class={`sticky top-0 z-1 w-full pt-2 pb-3 bg-plate-hi border border-white/18 nine-plate-cut px-3 gap-1 ${packClass("Plate", "frame")}`}>
+              <View class={`sticky top-0 z-1 w-full pt-2 pb-3 bg-plate-hi border border-white/18 nine-plate-cut px-3 gap-1 text-fg ${packClass("Plate", "frame")}`}>
                 <View class="flex-row items-center w-full gap-1">
-                  <Text class={`grow shrink basis-0 font-display text-[1.857rem] font-bold leading-[1.15] tracking-[-0.01em] text-fg text-start whitespace-nowrap m-0 overflow-hidden compact:text-[1.429rem]`}>
+                  <Text class={`grow shrink basis-0 font-display text-[1.857rem] font-bold leading-[1.15] tracking-[-0.01em] text-start whitespace-nowrap m-0 overflow-hidden compact:text-[1.429rem]`}>
                     {c().label}
                   </Text>
                   <View class={`flex-row items-center text-caption bg-tile shadow-[inset_0px_1px_0px_#ffffff38] text-fg transition duration-317 py-[0.143rem] px-2 gap-0.5 rounded-capsule`} label={t("puzzle.path.chapterStarsName", { earned: c().earned, total: c().total })}>

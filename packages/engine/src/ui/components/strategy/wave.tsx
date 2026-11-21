@@ -49,13 +49,13 @@ export function StrategyWave(props: StrategyWaveProps) {
       data-done={props.phase === "done"}
       data-near={props.phase === "countdown" && next() >= 0 && next() <= (props.warnAt ?? 5)}
     >
-      <View class={`flex-row items-center gap-x-[0.714rem] min-w-0 py-[0.429rem] px-4 nine-plate-cut bg-plate-hi compact:gap-x-[0.571rem] compact:py-[0.286rem] compact:px-[0.714rem] ${packClass("Plate", "frame")}`}>
+      <View class={`flex-row items-center gap-x-[0.714rem] min-w-0 py-[0.429rem] px-4 nine-plate-cut bg-plate-hi compact:gap-x-[0.571rem] compact:py-[0.286rem] compact:px-[0.714rem] text-fg ${packClass("Plate", "frame")}`}>
         <Show when={props.icon}>
           <Image class={`shrink size-[1.714rem] rounded-tl-[4.576px] rounded-tr-none rounded-br-[4.576px] rounded-bl-none`} src={props.icon} />
         </Show>
         <View class={`flex-col gap-y-[0.071rem] flex-1 min-w-0`}>
           <View class={`flex-row items-center gap-x-[0.429rem] min-w-0`}>
-            <Text class={`shrink min-w-0 text-xs font-semibold tracking-[0.14em] uppercase whitespace-nowrap text-danger group-data-done/wave:text-fg/78 compact:text-xs compact:tracking-normal`}>
+            <Text class={`shrink min-w-0 text-xs font-semibold tracking-[0.14em] uppercase whitespace-nowrap text-danger group-data-done/wave:opacity-78 compact:text-xs compact:tracking-normal`}>
               {props.waves > 0
                 ? (props.name !== "" ? t("strategy.wave.titleOfNamed", { wave: props.wave, waves: props.waves, name: props.name }) : t("strategy.wave.titleOf", { wave: props.wave, waves: props.waves }))
                 : (props.name !== "" ? t("strategy.wave.titleNamed", { wave: props.wave, name: props.name }) : t("strategy.wave.title", { wave: props.wave }))}
@@ -111,13 +111,13 @@ export function StrategyWave(props: StrategyWaveProps) {
       </Show>
       <Show when={props.canCallEarly && props.phase !== "done"}>
         <View
-          class={`flex-row items-center justify-center gap-1 min-h-[3.143rem] min-w-0 max-w-full py-[0.286rem] px-[0.857rem] nine-plate-cut bg-plate-hi ${packClass("Button", "plate", "primary")}`}
+          class={`flex-row items-center justify-center gap-1 min-h-[3.143rem] min-w-0 max-w-full py-[0.286rem] px-[0.857rem] nine-plate-cut bg-plate-hi text-fg ${packClass("Button", "plate", "primary")}`}
           role="button"
           label={t("strategy.wave.callEarly")}
           onPress={(e) => props.onCallEarly?.(e)}
         >
           <View class={`flex-row flex-wrap items-baseline justify-center gap-x-[0.571rem] max-w-full min-w-0`}>
-            <Text class={`shrink text-xs font-bold tracking-[0.14em] uppercase whitespace-nowrap text-fg`}>
+            <Text class={`shrink text-xs font-bold tracking-[0.14em] uppercase whitespace-nowrap`}>
               {t("strategy.wave.callEarly")}
             </Text>
             <Show when={props.reward !== ""}>

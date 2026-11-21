@@ -27,7 +27,7 @@ export function StrategyClock(props: StrategyClockProps) {
       data-paused={props.paused}
     >
       <Show when={props.label !== ""}>
-        <Text class={`min-w-0 text-xs font-semibold tracking-[0.14em] uppercase whitespace-nowrap overflow-hidden text-fg/78 compact:text-xs compact:tracking-normal`}>
+        <Text class={`min-w-0 text-xs font-semibold tracking-[0.14em] uppercase whitespace-nowrap overflow-hidden opacity-78 compact:text-xs compact:tracking-normal`}>
           {props.label}
         </Text>
       </Show>

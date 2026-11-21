@@ -62,17 +62,17 @@ export function CardReward(props: CardRewardProps) {
             }>
               <View class={`flex-row items-stretch gap-1 group/relic shrink basis-[13.714rem] min-w-[105.6px] aspect-[7/10] justify-stretch p-0 compact:grow-0 compact:shrink-0 compact:min-w-0`} role="option" disabled={!c().enabled} selected={c().id === props.selected} label={c().name} description={c().text} onPress={(e) => props.onPick?.(e, c().id)}>
                 <View class="grow w-full">
-                  <View class={`grow w-full items-center justify-center text-center border-[1.5px] border-gold/70 nine-plate-cut p-2 gap-1 overflow-hidden ${packClass("Plate", "frame")}`}>
+                  <View class={`grow w-full items-center justify-center text-center border-[1.5px] border-gold/70 nine-plate-cut p-2 gap-1 overflow-hidden text-fg ${packClass("Plate", "frame")}`}>
                     <View class={`flex-row items-center w-[42%] aspect-square justify-center bg-tile-pressed gap-0`}>
                       <Icon class="text-gold size-[58%] shrink" name={c().icon} />
                     </View>
                     <Text class={`w-full whitespace-nowrap text-ellipsis text-[0.786rem] font-bold tracking-[0.14em] uppercase text-gold overflow-hidden`}>
                       {c().typeLabel || t("card.reward.relic")}
                     </Text>
-                    <Text class={`text-fg w-full line-clamp-2 text-base font-bold overflow-hidden`}>
+                    <Text class={`w-full line-clamp-2 text-base font-bold overflow-hidden`}>
                       {c().name}
                     </Text>
-                    <Text class={`w-full line-clamp-5 text-[0.893rem] text-fg overflow-hidden`}>
+                    <Text class={`w-full line-clamp-5 text-[0.893rem] overflow-hidden`}>
                       {c().text}
                     </Text>
                   </View>

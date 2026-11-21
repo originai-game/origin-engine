@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "Built-in UI components",
+      "summary": "A component's pack slot (Plate.frame, Chip.frame, Button.plate, Button.plate.primary) now carries its text colour on the slot element, and its children inherit it instead of setting their own, so a pack whose variant paints the ground sets the ink for every label on it (69 places across the arena, card, HUD, meta, panels, puzzle, racing, rhythm, RPG, shooter, strategy and world kits and the screens). Quieter labels on a slot use opacity instead of fg-muted. Loadout, rhythm Results and Song select sit on an opaque Panel.frame ground, the card face's ground is opaque, and the empty hand's line sits on a Plate.frame, so their text reads over a bright scene in every pack. Results' Failed tag reads in white, the Full combo and All perfect tags and Song select's New tag in black, and Song select's chosen row is a select-hi ground with an accent ring, not a translucent accent wash."
+    }
+  ]
+}

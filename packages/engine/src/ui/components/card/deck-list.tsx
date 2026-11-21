@@ -69,7 +69,7 @@ export function CardDeckList(props: CardDeckListProps) {
             <For each={props.entries}>
               {(e) => (
               <View class={`flex-row items-center bg-linear-to-r from-entry-hi to-entry-lo text-rim-strong transition duration-317 w-full pr-0.5 gap-0.5 rounded-control data-selected:bg-transparent data-selected:bg-hud-accent/24 data-type-attack:text-danger data-type-skill:text-info data-type-power:text-epic data-type-curse:text-fg-subtle data-down:opacity-45`} role="listitem" current={e().id === props.selected} data-type-attack={(e().type) === 'attack'} data-type-curse={(e().type) === 'curse'} data-type-power={(e().type) === 'power'} data-type-skill={(e().type) === 'skill'} data-type-status={(e().type) === 'status'} data-selected={e().id === props.selected}>
-                <Button class={`grow shrink basis-0 min-h-11 px-2 ${packClass("Button", "plate")}`} label={e().name} onPress={(ev) => props.onChoose?.(ev, e().id)}>
+                <Button class={`grow shrink basis-0 min-h-11 px-2 text-fg ${packClass("Button", "plate")}`} label={e().name} onPress={(ev) => props.onChoose?.(ev, e().id)}>
                   <View class="flex-row items-center w-full gap-2">
                     <View class={`flex-row items-center w-[1.821rem] h-[2.036rem] justify-center bg-linear-to-b from-hud-accent-hi to-hud-accent text-hud-accent-fg font-bold gap-0`} label={t("card.face.cost", { cost: e().cost })}>
                       <Text class="shrink">{e().cost}</Text>
@@ -77,7 +77,7 @@ export function CardDeckList(props: CardDeckListProps) {
                     <Text class={`grow shrink basis-0 text-start whitespace-nowrap text-ellipsis font-semibold overflow-hidden`}>
                       {e().name}
                     </Text>
-                    <Text class={`whitespace-nowrap font-bold text-fg`}>
+                    <Text class={`whitespace-nowrap font-bold`}>
                       {t("card.deck.copies", { count: e().copies })}
                     </Text>
                   </View>

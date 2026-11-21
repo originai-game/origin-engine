@@ -36,7 +36,7 @@ export function StrategyQueue(props: StrategyQueueProps) {
         <For each={props.items ?? []} key={(q) => q.id}>
           {(q, i) => (
           <View
-            class={`flex-row items-center justify-center gap-1 shrink size-[1.914rem] compact:size-[1.783rem] p-[0.143rem] nine-chip-cut bg-white/75 data-state-blocked:bg-danger data-first:size-[2.514rem] compact:data-first:size-[2.286rem] ${packClass("Button", "plate")}`}
+            class={`flex-row items-center justify-center gap-1 shrink size-[1.914rem] compact:size-[1.783rem] p-[0.143rem] nine-chip-cut bg-white/75 data-state-blocked:bg-danger data-first:size-[2.514rem] compact:data-first:size-[2.286rem] text-fg ${packClass("Button", "plate")}`}
             role="button"
             label={t("strategy.queue.cancel", { name: q().name })}
             description={q().reason !== "" ? q().reason : q().timeText}
@@ -48,7 +48,7 @@ export function StrategyQueue(props: StrategyQueueProps) {
             <View class="relative size-full overflow-hidden">
               <Show when={q().picture} fallback={
                   <View class="absolute inset-0 flex-row items-center justify-center bg-linear-to-b from-plate-hi to-plate-lo">
-                    <Icon class={`size-[60%] text-fg`} name={q().icon} />
+                    <Icon class={`size-[60%]`} name={q().icon} />
                   </View>
               }>
                 <Image class="absolute inset-0 size-full" src={q().picture} />

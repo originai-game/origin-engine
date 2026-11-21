@@ -87,7 +87,7 @@ export function RpgConversation(props: RpgConversationProps) {
             {props.speaker}
           </Text>
         </Show>
-        <Text class={`text-[1.571rem] font-bold text-fg m-0 compact:text-[1.286rem]`} label={props.line}>
+        <Text class={`text-[1.571rem] font-bold m-0 compact:text-[1.286rem]`} label={props.line}>
           {shown()}
         </Text>
         <Show when={(props.showControls ?? false)}>

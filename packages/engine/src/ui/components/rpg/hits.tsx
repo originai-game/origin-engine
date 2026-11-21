@@ -33,12 +33,12 @@ export function RpgHits(props: RpgHitsProps) {
           </Show>
           <View class="flex-row items-baseline min-w-0 max-w-full gap-1">
             <Show when={h().kind !== "miss"}>
-              <Text class={`shrink text-display-md leading-none font-bold tabular-nums whitespace-nowrap text-fg data-critical:text-[3.571rem] data-critical:italic data-critical:text-gold data-burn:text-legendary data-heal:text-success compact:text-[1.714rem] compact:data-critical:text-4xl`}>
+              <Text class={`shrink text-display-md leading-none font-bold tabular-nums whitespace-nowrap data-critical:text-[3.571rem] data-critical:italic data-critical:text-gold data-burn:text-legendary data-heal:text-success compact:text-[1.714rem] compact:data-critical:text-4xl`}>
                 {h().kind === "heal" ? t("rpg.hits.heal", { amount: formatNumber(h().amount) }) : formatNumber(h().amount)}
               </Text>
             </Show>
             <Show when={h().word}>
-              <Text class={`min-w-0 text-sm font-bold whitespace-nowrap overflow-hidden text-fg data-burn:text-legendary data-miss:text-[1.714rem] data-miss:text-fg-muted`}>
+              <Text class={`min-w-0 text-sm font-bold whitespace-nowrap overflow-hidden data-burn:text-legendary data-miss:text-[1.714rem] data-miss:opacity-80`}>
                 {h().word}
               </Text>
             </Show>

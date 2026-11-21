@@ -122,7 +122,7 @@ export function StrategySelection(props: StrategySelectionProps) {
               <For each={props.units ?? []} key={(u) => u.id}>
                 {(u, i) => (
                 <View
-                  class={`flex-row items-center justify-center gap-1 shrink p-[0.143rem] size-[2.143rem] compact:size-[2.286rem] nine-chip-cut bg-white/75 data-selected:bg-hud-accent compact:data-past:hidden ${packClass("Button", "plate")}`}
+                  class={`flex-row items-center justify-center gap-1 shrink p-[0.143rem] size-[2.143rem] compact:size-[2.286rem] nine-chip-cut bg-white/75 data-selected:bg-hud-accent compact:data-past:hidden text-fg ${packClass("Button", "plate")}`}
                   role="option"
                   label={u().name}
                   description={t("strategy.selection.unitValue", { count: u().count, now: u().health, max: u().healthMax })}
@@ -135,7 +135,7 @@ export function StrategySelection(props: StrategySelectionProps) {
                   <View class="relative size-full overflow-hidden">
                     <Show when={u().portrait} fallback={
                         <View class="absolute inset-0 flex-row items-center justify-center bg-linear-to-b from-plate-hi to-plate-lo">
-                          <Icon class={`size-[60%] text-fg`} name={u().icon} />
+                          <Icon class={`size-[60%]`} name={u().icon} />
                         </View>
                     }>
                       <Image class="absolute inset-0 size-full" src={u().portrait} />

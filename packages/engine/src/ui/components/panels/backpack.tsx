@@ -71,9 +71,9 @@ export function RpgBackpack(props: RpgBackpackProps) {
           </Text>
         </View>
         <Show when={props.gold}>
-          <View class={`flex-row items-center pr-2 pl-0.5 bg-well/62 py-0.5 gap-1 nine-chip-cut ${packClass("Chip", "frame")}`} label={t("rpg.backpack.gold", { gold: props.gold })}>
+          <View class={`flex-row items-center pr-2 pl-0.5 bg-well/62 py-0.5 gap-1 nine-chip-cut text-fg ${packClass("Chip", "frame")}`} label={t("rpg.backpack.gold", { gold: props.gold })}>
             <Icon class="size-[1.571rem] text-gold" name="coin" />
-            <Text class={`tabular-nums text-fg whitespace-nowrap font-bold shrink`}>
+            <Text class={`tabular-nums whitespace-nowrap font-bold shrink`}>
               {props.gold}
             </Text>
           </View>

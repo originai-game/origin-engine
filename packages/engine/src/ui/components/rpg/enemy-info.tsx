@@ -33,18 +33,18 @@ export function RpgEnemyInfo(props: RpgEnemyInfoProps) {
         <Text
           role="heading"
           level={3}
-          class={`text-sm font-bold text-fg whitespace-nowrap text-stroke-3 text-stroke-bg`}
+          class={`text-sm font-bold whitespace-nowrap text-stroke-3 text-stroke-bg`}
         >
           {t("rpg.enemy.name")}
         </Text>
       </View>
-      <Text class={`text-sm font-semibold text-fg text-center`}>{props.name}</Text>
+      <Text class={`text-sm font-semibold text-center`}>{props.name}</Text>
       <Show when={props.portrait !== 0}>
         <View class={`w-[46%] max-w-[6.857rem] aspect-square overflow-hidden compact:hidden`}>
           <Image class={`size-full`} src={props.portrait} label="" />
         </View>
       </Show>
-      <Text class={`text-caption text-fg-muted text-center`}>{t("rpg.party.level", { level: props.level })}</Text>
+      <Text class={`text-caption opacity-80 text-center`}>{t("rpg.party.level", { level: props.level })}</Text>
       <View class="relative self-stretch mx-1">
         <HudBar value={props.health} max={props.healthMax} showValue />
       </View>
@@ -61,7 +61,7 @@ export function RpgEnemyInfo(props: RpgEnemyInfoProps) {
               data-strong={e().tone === "strong"}
             >
               <Icon
-                class={`size-[1.714rem] shrink-0 text-fg group-data-harm/tone:text-danger group-data-boon/tone:text-success group-data-weak/tone:text-warn group-data-strong/tone:text-info`}
+                class={`size-[1.714rem] shrink-0 group-data-harm/tone:text-danger group-data-boon/tone:text-success group-data-weak/tone:text-warn group-data-strong/tone:text-info`}
                 name={e().icon}
               />
               <Text

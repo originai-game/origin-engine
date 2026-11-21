@@ -38,12 +38,12 @@ export function RpgParty(props: RpgPartyProps) {
                   <Image class="absolute inset-0 size-full" src={m().portrait} />
                 </Show>
               </View>
-              <View class={`absolute left-1 top-1 w-8 min-h-8 flex-col items-center justify-center py-0 px-1 bg-raised-lo shadow-[inset_0px_0px_0px_1px_#4e586c] rounded-capsule ${packClass("Chip", "frame")}`} label={m().down ? t("rpg.party.down") : t("rpg.party.level", { level: m().level })}>
+              <View class={`absolute left-1 top-1 w-8 min-h-8 flex-col items-center justify-center py-0 px-1 bg-raised-lo shadow-[inset_0px_0px_0px_1px_#4e586c] rounded-capsule text-fg ${packClass("Chip", "frame")}`} label={m().down ? t("rpg.party.down") : t("rpg.party.level", { level: m().level })}>
                 <Show when={!m().down} fallback={
-                    <Icon class="size-4 text-fg" name="skull" />
+                    <Icon class="size-4" name="skull" />
                 }>
-                  <Text class="text-xs font-bold text-fg">{t("rpg.party.lv")}</Text>
-                  <Text class="text-xs font-bold tabular-nums text-fg">{formatNumber(m().level)}</Text>
+                  <Text class="text-xs font-bold">{t("rpg.party.lv")}</Text>
+                  <Text class="text-xs font-bold tabular-nums">{formatNumber(m().level)}</Text>
                 </Show>
               </View>
               <Text class="py-[0.143rem] px-1 text-center whitespace-nowrap text-ellipsis overflow-hidden text-fg">

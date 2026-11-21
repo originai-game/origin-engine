@@ -31,16 +31,16 @@ export function ShooterRound(props: ShooterRoundProps) {
     >
       <Show when={(props.round ?? 0) > 0 || (props.clock ?? "") != ""}>
         <View
-          class={`shrink basis-auto min-w-0 flex-row items-baseline gap-1 py-[0.214rem] px-2 nine-plate-cut bg-plate-hi compact:flex-wrap ${packClass("Plate", "frame")}`}
+          class={`shrink basis-auto min-w-0 flex-row items-baseline gap-1 py-[0.214rem] px-2 nine-plate-cut bg-plate-hi compact:flex-wrap text-fg ${packClass("Plate", "frame")}`}
         >
           <Show when={(props.round ?? 0) > 0}>
-            <Text class="min-w-0 text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap truncate text-fg/78">
+            <Text class="min-w-0 text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap truncate opacity-78">
               {t("shooter.round.label", { round: props.round ?? 0 })}
             </Text>
           </Show>
           <Show when={(props.clock ?? "") != ""}>
             <Text
-              class={`shrink-0 text-[1.143rem] leading-[1.1] font-bold tabular-nums whitespace-nowrap text-fg data-urgent:text-danger compact:text-[0.929rem]`}
+              class={`shrink-0 text-[1.143rem] leading-[1.1] font-bold tabular-nums whitespace-nowrap data-urgent:text-danger compact:text-[0.929rem]`}
               role="timer"
               data-urgent={props.urgent}
             >

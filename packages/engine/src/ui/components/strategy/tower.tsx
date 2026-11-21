@@ -127,7 +127,7 @@ export function StrategyTower(props: StrategyTowerProps) {
         </Scroll>
       </Show>
       <View class="flex-row justify-end compact:justify-stretch">
-        <View class={`flex-row justify-center items-center gap-x-1 min-h-[3.143rem] py-[0.143rem] px-3 nine-plate-cut bg-plate-hi text-xs font-bold tracking-[0.14em] uppercase compact:w-full ${packClass("Button", "plate")}`} role="button" label={t("strategy.tower.sell")} disabled={!(props.canSell ?? false)} onPress={(e) => props.onSell?.(e)}>
+        <View class={`flex-row justify-center items-center gap-x-1 min-h-[3.143rem] py-[0.143rem] px-3 nine-plate-cut bg-plate-hi text-xs font-bold tracking-[0.14em] uppercase compact:w-full text-fg ${packClass("Button", "plate")}`} role="button" label={t("strategy.tower.sell")} disabled={!(props.canSell ?? false)} onPress={(e) => props.onSell?.(e)}>
           <Text>{t("strategy.tower.sell")}</Text>
           <Show when={props.sellText !== ""}>
             <Text class={`min-w-0 whitespace-nowrap overflow-hidden text-gold tracking-normal normal-case`}>

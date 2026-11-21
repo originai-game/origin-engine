@@ -23,7 +23,7 @@ export function StrategyResources(props: StrategyResourcesProps) {
         {(r) => (
         <View class={`group/res flex-row items-center gap-x-2 min-w-0 compact:gap-x-1`} role="group" label={t("strategy.resources.value", { name: r().name, amount: r().amount })} data-warn={r().warn}>
           <Show when={r().icon} fallback={
-              <Icon class={`shrink size-[1.714rem] text-fg compact:size-[1.143rem]`} name={r().glyph} />
+              <Icon class={`shrink size-[1.714rem] compact:size-[1.143rem]`} name={r().glyph} />
           }>
             <Image class={`shrink size-[1.714rem] rounded-tl-[4.576px] rounded-tr-none rounded-br-[4.576px] rounded-bl-none compact:size-[1.143rem]`} src={r().icon} />
           </Show>
@@ -33,14 +33,14 @@ export function StrategyResources(props: StrategyResourcesProps) {
                 {r().amount}
               </Text>
               <Show when={r().cap}>
-                <Text class={`shrink text-caption leading-[1.1] font-bold tabular-nums whitespace-nowrap text-fg-muted compact:text-xs`}>
+                <Text class={`shrink text-caption leading-[1.1] font-bold tabular-nums whitespace-nowrap opacity-80 compact:text-xs`}>
                   {t("strategy.resources.cap", { cap: r().cap })}
                 </Text>
               </Show>
             </View>
             <Show when={r().note} fallback={
                 <Show when={r().rate}>
-                  <Text class={`min-w-0 leading-[1.2] text-xs font-semibold tabular-nums whitespace-nowrap overflow-hidden text-fg-muted data-gain:text-success data-loss:text-danger data-note:text-gold compact:text-xs`} data-gain={r().trend === "gain"} data-loss={r().trend === "loss"} data-note={r().trend === "note"}>
+                  <Text class={`min-w-0 leading-[1.2] text-xs font-semibold tabular-nums whitespace-nowrap overflow-hidden opacity-80 data-gain:text-success data-loss:text-danger data-note:text-gold compact:text-xs`} data-gain={r().trend === "gain"} data-loss={r().trend === "loss"} data-note={r().trend === "note"}>
                     {r().rate}
                   </Text>
                 </Show>
@@ -59,7 +59,7 @@ export function StrategyResources(props: StrategyResourcesProps) {
         </Text>
       </Show>
       <Show when={!(props.resources ?? []).length && props.tier === ""}>
-        <View class={`text-xs font-semibold tracking-[0.14em] uppercase whitespace-nowrap text-fg/78`} role="status">
+        <View class={`text-xs font-semibold tracking-[0.14em] uppercase whitespace-nowrap opacity-78`} role="status">
           <Text>{t("strategy.resources.empty")}</Text>
         </View>
       </Show>
