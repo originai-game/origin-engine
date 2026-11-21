@@ -18,6 +18,7 @@
 import { afterAll, beforeAll, expect, test } from "bun:test";
 import { Shell } from "../src/web/shell.ts";
 import type { A11yNode, A11yTree } from "../src/web/a11y.ts";
+import { whole } from "./support/a11y.ts";
 import { install, StandInDocument, standInCanvas, type StandInElement, type StandInInput } from "./support/dom.ts";
 
 /** The engine Worker as the shell holds it: answers `start`, keeps the input events it is sent. */
@@ -71,7 +72,7 @@ const adjust = (el: StandInElement, up: boolean) => {
 
 test("a slider's and a spinbutton's native range carry the UI's bounds and value", async () => {
   const { doc, worker, shell } = await start();
-  worker.say({ type: "a11y", tree: tree(35, 4) });
+  worker.say({ type: "a11y", update: whole(tree(35, 4)) });
   await settle();
   const volume = mirrored(doc, "Settings/Volume");
   expect(volume.tagName).toBe("INPUT");
@@ -83,7 +84,7 @@ test("a slider's and a spinbutton's native range carry the UI's bounds and value
   const free = mirrored(doc, "Settings/Free");
   expect([free.getAttribute("aria-valuemin"), free.getAttribute("aria-valuemax"), free.getAttribute("aria-valuenow")]).toEqual([null, null, "-3"]);
   // The bounds follow the tree; a node that stops being a range loses them.
-  worker.say({ type: "a11y", tree: { ...tree(35, 4), nodes: tree(35, 4).nodes.map((n) => (n.path === "Settings/Volume" ? { ...n, valueMax: 200 } : n.path === "Settings/Free" ? { ...n, role: "text", valueNow: null } : n)) } });
+  worker.say({ type: "a11y", update: whole({ ...tree(35, 4), nodes: tree(35, 4).nodes.map((n) => (n.path === "Settings/Volume" ? { ...n, valueMax: 200 } : n.path === "Settings/Free" ? { ...n, role: "text", valueNow: null } : n)) }) });
   await settle();
   expect(mirrored(doc, "Settings/Volume").getAttribute("aria-valuemax")).toBe("200");
   const text = mirrored(doc, "Settings/Free");
@@ -94,7 +95,7 @@ test("a slider's and a spinbutton's native range carry the UI's bounds and value
 
 test("a reader's adjust on the mirrored range asks the UI to step, and the range goes back to the UI's value", async () => {
   const { doc, worker, shell } = await start();
-  worker.say({ type: "a11y", tree: tree(35, 4) });
+  worker.say({ type: "a11y", update: whole(tree(35, 4)) });
   await settle();
   const volume = mirrored(doc, "Settings/Volume") as StandInInput;
   // Held one step from either end, so a step either way lands on one side.
@@ -107,7 +108,7 @@ test("a reader's adjust on the mirrored range asks the UI to step, and the range
   expect(worker.sent.filter((e) => e.kind === "a11y").at(-1)).toEqual({ kind: "a11y", action: "decrement", path: "Settings/Count" });
   expect(count.value).toBe("4");
   // The UI stepped: the next tree moves the range and its value with it.
-  worker.say({ type: "a11y", tree: tree(40, 3) });
+  worker.say({ type: "a11y", update: whole(tree(40, 3)) });
   await settle();
   expect([volume.min, volume.value, volume.max, volume.getAttribute("aria-valuenow")]).toEqual(["39", "40", "41", "40"]);
   expect(count.getAttribute("aria-valuenow")).toBe("3");

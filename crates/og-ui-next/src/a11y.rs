@@ -868,6 +868,127 @@ fn push_words(out: &mut String, t: &str) {
     }
 }
 
+/// The arena node a host's request names: the path the web mirror sends
+/// back is the node's id.
+pub fn target(path: &str) -> Option<Id> {
+    path.parse().ok()
+}
+
+/// An update as the web shell's mirror takes it (`web/a11y.ts`
+/// `A11yUpdate`): `full` (it holds the whole tree), `focus` (the focused
+/// node's path, empty for none) and the changed nodes, each with its path
+/// (its id as text), ARIA role, name, description, value, states, range,
+/// live setting, box in CSS px and its children's paths. The root, path
+/// `"0"`, is the canvas; a node no `children` reaches any more is gone.
+pub fn web(u: &TreeUpdate) -> serde_json::Value {
+    use serde_json::json;
+    let nodes: Vec<serde_json::Value> = u
+        .nodes
+        .iter()
+        .map(|(id, n)| {
+            let b = n.bounds().unwrap_or_default();
+            let mut states = Vec::new();
+            let role = n.role();
+            match n.toggled() {
+                Some(t) if matches!(role, Role::Button) => {
+                    if t != Toggled::False {
+                        states.push("pressed");
+                    }
+                }
+                Some(Toggled::True) => states.push("checked"),
+                Some(Toggled::Mixed) => states.push("mixed"),
+                _ => {}
+            }
+            let flags = [
+                (n.is_disabled(), "disabled"),
+                (n.is_selected() == Some(true), "selected"),
+                (n.is_expanded() == Some(true), "expanded"),
+                (n.is_expanded() == Some(false), "collapsed"),
+                (n.is_busy(), "busy"),
+                (n.is_modal(), "modal"),
+                (n.aria_current().is_some(), "current"),
+                (n.supports_action(Action::Focus), "focusable"),
+            ];
+            states.extend(flags.iter().filter(|f| f.0).map(|f| f.1));
+            json!({
+                "path": id.0.to_string(),
+                "role": aria(role),
+                "name": n.label().or(if role == Role::Label { n.value() } else { None }).unwrap_or(""),
+                "description": n.description().unwrap_or(""),
+                "value": if role == Role::Label { None } else { n.value() }.unwrap_or(""),
+                "states": states,
+                "valueMin": n.min_numeric_value(),
+                "valueMax": n.max_numeric_value(),
+                "valueNow": n.numeric_value(),
+                "level": n.level(),
+                "live": match n.live() {
+                    Some(Live::Polite) => "polite",
+                    Some(Live::Assertive) => "assertive",
+                    _ => "",
+                },
+                "atomic": n.is_live_atomic(),
+                "x": b.x0, "y": b.y0, "width": b.x1 - b.x0, "height": b.y1 - b.y0,
+                "children": n.children().iter().map(|c| c.0.to_string()).collect::<Vec<_>>(),
+            })
+        })
+        .collect();
+    json!({
+        "full": u.tree.is_some(),
+        "focus": if u.focus == ROOT { String::new() } else { u.focus.0.to_string() },
+        "nodes": nodes,
+    })
+}
+
+/// The ARIA role a node mirrors as ([`role_of`] backwards).
+fn aria(role: Role) -> &'static str {
+    match role {
+        Role::Window => "",
+        Role::Button => "button",
+        Role::Link => "link",
+        Role::Heading => "heading",
+        Role::Image => "img",
+        Role::Label => "text",
+        Role::CheckBox => "checkbox",
+        Role::RadioButton => "radio",
+        Role::Switch => "switch",
+        Role::Slider => "slider",
+        Role::SpinButton => "spinbutton",
+        Role::TextInput => "textbox",
+        Role::ComboBox => "combobox",
+        Role::ListBox => "listbox",
+        Role::ListBoxOption => "option",
+        Role::Tab => "tab",
+        Role::TabList => "tablist",
+        Role::TabPanel => "tabpanel",
+        Role::RadioGroup => "radiogroup",
+        Role::ProgressIndicator => "progressbar",
+        Role::Meter => "meter",
+        Role::Timer => "timer",
+        Role::Status => "status",
+        Role::Alert => "alert",
+        Role::Log => "log",
+        Role::Dialog => "dialog",
+        Role::AlertDialog => "alertdialog",
+        Role::Tooltip => "tooltip",
+        Role::Splitter => "separator",
+        Role::List => "list",
+        Role::ListItem => "listitem",
+        Role::Menu => "menu",
+        Role::MenuBar => "menubar",
+        Role::MenuItem => "menuitem",
+        Role::MenuItemCheckBox => "menuitemcheckbox",
+        Role::MenuItemRadio => "menuitemradio",
+        Role::Toolbar => "toolbar",
+        Role::Grid => "grid",
+        Role::Row => "row",
+        Role::GridCell => "gridcell",
+        Role::Region => "region",
+        Role::Navigation => "navigation",
+        Role::Main => "main",
+        _ => "group",
+    }
+}
+
 fn info() -> TreeInfo {
     TreeInfo {
         root: ROOT,

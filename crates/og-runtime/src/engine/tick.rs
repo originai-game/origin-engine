@@ -293,8 +293,8 @@ pub fn frame(id: u32, elapsed_ms: f64) -> String {
     if !rumble.is_empty() {
         answer["rumble"] = json!(rumble);
     }
-    // `a11y`: the UI's accessibility tree (as og.ui.a11y answers it), on
-    // the frames where it changed, for a host that mirrors it (create
+    // `a11y`: what changed in the UI's accessibility tree since the last
+    // answer (og-ui-next `a11y::web`), for a host that mirrors it (create
     // option `a11y`: the web shell's DOM mirror).
     if let Some(tree) = a11y {
         answer["a11y"] = tree;
@@ -315,39 +315,13 @@ pub fn frame(id: u32, elapsed_ms: f64) -> String {
     answer.to_string()
 }
 
-/// The UI's accessibility tree when it differs from the one the last frame
-/// answer carried (by [`og_ui::A11yTree::digest`]), with what its live
-/// regions announce against that one (`announce`: `[{text, assertive}]`;
-/// nothing for the first tree, after a restore or a scope change).
+/// The new core's accessibility update for a host that mirrors it, when
+/// what the tree shows changed since the last frame answer.
 fn a11y_changed(eng: &Engine) -> Option<Value> {
     if !eng.state.borrow().a11y_mirror {
         return None;
     }
-    let ui = eng.state.borrow().ui.clone()?;
-    let ui = ui.lock();
-    let tree = ui.a11y();
-    let digest = tree.digest().max(1);
-    let mut st = eng.state.borrow_mut();
-    if st.a11y_digest == digest {
-        return None;
-    }
-    st.a11y_digest = digest;
-    let frame = ui.semantic_changes(None).1;
-    let announce: Vec<Value> = match &st.a11y_sent {
-        Some((since, sent)) if ui.semantic_news(Some(*since)) => tree
-            .announcements(sent)
-            .into_iter()
-            .map(|a| json!({ "text": a.text, "assertive": a.assertive }))
-            .collect(),
-        _ => Vec::new(),
-    };
-    st.a11y_sent = Some((frame, tree.clone()));
-    let mut json = crate::host::wire::ToJson::to_json(&super::modules::a11y_tree(
-        tree,
-        ui.frame().unit.max(1.0),
-    ));
-    json["announce"] = Value::from(announce);
-    Some(json)
+    eng.render.try_borrow_mut().ok()?.ui_next.as_mut()?.a11y()
 }
 
 /// The haptic patterns the UI played since the last frame answer.

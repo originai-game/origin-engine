@@ -920,6 +920,35 @@ mod tests {
             (status.role(), status.label()),
             (accesskit::Role::Status, Some("Wave 3"))
         );
+        // As the web mirror takes it.
+        let web = a11y::web(&u);
+        assert_eq!(web["full"], true);
+        let path = two.to_string();
+        let b = web["nodes"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|n| n["path"] == path.as_str())
+            .unwrap();
+        assert_eq!(
+            (&b["role"], &b["name"], &b["states"], &b["width"]),
+            (
+                &"button".into(),
+                &"Play".into(),
+                &serde_json::json!(["focusable"]),
+                &50.0.into()
+            )
+        );
+        let s = web["nodes"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|n| n["path"] == four.to_string().as_str())
+            .unwrap();
+        assert_eq!(
+            (&s["role"], &s["live"], &s["atomic"]),
+            (&"status".into(), &"polite".into(), &true.into())
+        );
         assert!(t.a11y(&mut client, None, 1.0).is_none(), "nothing changed");
         let mut b = Batch::default();
         b.op(10).u32(2);

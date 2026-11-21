@@ -1,5 +1,6 @@
 import type * as Api from "@origingame/engine";
 import type { Dispatcher } from "../generated/abi.ts";
+import type { A11yUpdate } from "../web/a11y.ts";
 import { type PlatformAnswer, type PlatformCall, type PlatformHost, type PlatformLink, type PlatformNotice, noPlatform } from "../platform-local.ts";
 import { type GameToken, callbacks, conditions, engineGames, engineRoots, gameHandles, hookEntries, systems } from "./declare.ts";
 import { abi, words } from "./host.ts";
@@ -304,8 +305,8 @@ export class Engine {
     haptics?: [number, number, number, number][][];
     /** og.input.rumble's requests since the last frame: [pad (-1 every pad), low, high, ms] (web/gamepad.ts playRumble plays them). */
     rumble?: [number, number, number, number][];
-    /** The UI's accessibility tree, on the frames where it changed, when the engine was created with `a11y` (web/a11y.ts mirrors it). */
-    a11y?: Api.A11yTree;
+    /** What changed in the UI's accessibility tree since the last frame, when the engine was created with `a11y` (web/a11y.ts mirrors it). */
+    a11y?: A11yUpdate;
     /** A playing video player with `wait` could not show its frame: no tick runs until it can (web/shell.ts onBuffering). Absent: false. */
     buffering?: boolean;
     /** og.PointerLock.wanted: the game asks for the pointer lock (the web shell requests it on the next press on the canvas, and exits it when false). */

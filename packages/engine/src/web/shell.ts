@@ -61,7 +61,7 @@
 import { writeRing, type InjectedInput } from "./input.ts";
 import type { CursorImage } from "../runtime.ts";
 import type { TextEntry, TextTarget } from "./text-input.ts";
-import type { A11yMirror, A11yTree } from "./a11y.ts";
+import type { A11yMirror, A11yUpdate } from "./a11y.ts";
 import { playHaptics, type HapticPulse } from "./haptics.ts";
 import { playRumble, type RumbleRequest } from "./gamepad.ts";
 import type { RpcRings } from "./rpc-ring.ts";
@@ -307,7 +307,7 @@ export class Shell {
         return;
       }
       if (m.type === "a11y") {
-        this.#a11y?.update((m as unknown as { tree: A11yTree }).tree);
+        this.#a11y?.update((m as unknown as { update: A11yUpdate }).update);
         this.#text?.relabel();
         return;
       }

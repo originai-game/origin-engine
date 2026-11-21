@@ -1,42 +1,34 @@
-// The accessibility mirror (crates/og-ui/README.md §Accessibility tree): the
-// UI is drawn into a canvas, which a screen reader cannot read, so the shell
-// keeps a DOM copy of `og.ui.a11y()` over it. Each node with a role becomes
-// an invisible element at the node's bounds, nested as the tree nests it,
-// with its ARIA role, name, value and states; the Worker sends the tree
-// with a frame's answer only when its digest changed (og-runtime's
-// `a11y_changed`), so an unchanged screen costs the page nothing.
+// The accessibility mirror: the UI is drawn into a canvas, which a screen
+// reader cannot read, so the shell keeps a DOM copy of the new core's
+// accessibility tree (crates/og-ui-next/src/a11y.rs) over it. The Worker
+// sends what changed with a frame's answer (`A11yUpdate`: the nodes whose
+// fingerprint moved, og-ui-next `a11y::web`), and nothing when nothing did;
+// the mirror keeps every node it was sent, and a node no node's `children`
+// reach any more is gone. Each node becomes an invisible element at its
+// bounds, nested as the tree nests it, with its ARIA role, name, value and
+// states.
 //
-// - Focus follows og-ui's: the element of the focused path takes DOM focus
+// - Focus follows the UI's: the element of the focused node takes DOM focus
 //   (unless the page's focus is in a field of its own, or the UI's text
 //   control has the hidden textarea, text-input.ts). While that textarea
 //   has the focus it is the field for assistive technology (named after
 //   the field's node): the field's own element is aria-hidden and its
 //   parent owns the textarea (`standIn`).
-// - Live regions are announced as the engine says (og-ui's
-//   `A11yTree::announcements`, the tree's `announce`): what changed in an
-//   `aria-live` region, a status or an alert since the tree before is
-//   written into a polite or an assertive live region of the page. The
-//   mirrored nodes carry no aria-live of their own, so nothing is said twice.
+// - Live regions are the page's: a node with a live setting (a status, an
+//   alert, `live`) carries aria-live and aria-atomic, and its text is its
+//   content, so the browser announces what changes in it.
 // - The DOM reaches the UI as input: a screen reader's click on an element
-//   is `{ kind: "a11y", action: "activate", path }` and its moving focus
-//   onto one is `focus`; `adjust` sends `increment`/`decrement` for an
-//   adjustable one. A slider and a stepper's spinbutton are mirrored as an
-//   `<input type="range">` (with its role: `slider`, `spinbutton`) held at
-//   the UI's value, one step from either end: a screen reader's own adjust
-//   gesture (VoiceOver's swipe up or down, TalkBack's volume keys, an arrow
-//   while interacting) moves the native value, or sets it from
-//   `aria-valuenow` and the step, and fires `input`, which becomes
+//   is `{ kind: "a11y", action: "activate", path }` (the path is the node's
+//   id) and its moving focus onto one is `focus`; `adjust` sends
+//   `increment`/`decrement` for an adjustable one. A slider and a
+//   spinbutton are mirrored as an `<input type="range">` (with its role)
+//   held at the UI's value, one step from either end: a screen reader's own
+//   adjust gesture moves the native value and fires `input`, which becomes
 //   `increment` or `decrement` and puts the value back (the UI owns the
-//   value and its step; `aria-valuenow` and `aria-valuetext` say it, and
-//   `aria-valuemin` and `aria-valuemax` its bounds from the tree's
-//   `valueMin` and `valueMax`, over the native range's own). A
-//   stepper's − and + follow its range as siblings (an input holds no
-//   children). Keys pressed while a
-//   mirrored element has the DOM focus still go to the engine as keys (the
-//   shell listens on the page and keeps the arrows from the native range),
-//   where the focused control takes them: arrows move a focused slider.
-//   og-ui acts on the requests at the next frame against the controls it
-//   drew (nav.rs `apply_a11y`).
+//   value and its step; `aria-valuenow`, `aria-valuemin`, `aria-valuemax`
+//   and `aria-valuetext` say it). A range's children follow it as siblings
+//   (an input holds no children). Keys pressed while a mirrored element has
+//   the DOM focus still go to the engine as keys.
 //
 // The elements take no pointer events (the canvas does) and draw nothing:
 // they exist for assistive technology, and a screen reader's focus ring
@@ -44,8 +36,28 @@
 
 import type { InjectedInput } from "./input.ts";
 
-/** One node of the UI's accessibility tree (IDL ui.A11yNode). */
+/** One node as the Worker sends it (og-ui-next `a11y::web`). */
+export interface A11yWireNode extends Omit<A11yNode, "parent"> {
+  /** Its children's paths, in order. */
+  readonly children: readonly string[];
+}
+
+/** What changed in the tree since the last update (a frame answer's `a11y`). */
+export interface A11yUpdate {
+  /** It holds the whole tree: what the mirror had is dropped. */
+  readonly full: boolean;
+  /** The focused node's path; empty for none. */
+  readonly focus: string;
+  /** The nodes that changed, the root (path "0", the canvas) among them when its children did. */
+  readonly nodes: readonly A11yWireNode[];
+}
+
+/** The tree's root: the canvas itself, not mirrored. */
+const ROOT = "0";
+
+/** One node of the mirrored tree, with its parent's path ("" under the root). */
 export interface A11yNode {
+  /** Its id in the tree, as text. */
   readonly path: string;
   readonly parent: string;
   readonly role: string;
@@ -64,27 +76,19 @@ export interface A11yNode {
   readonly live?: string;
   /** A live region that announces its whole text. */
   readonly atomic?: boolean;
-  /** A notification that announces as it appears. */
-  readonly notify?: boolean;
+  /** A heading's level, 1 to 6; null (or absent) for none. */
+  readonly level?: number | null;
   readonly x: number;
   readonly y: number;
   readonly width: number;
   readonly height: number;
 }
 
-/** The UI's accessibility tree (IDL ui.A11yTree). */
+/** The mirrored tree: its nodes in tree order, the focusable ones, the focused one. */
 export interface A11yTree {
   readonly nodes: readonly A11yNode[];
   readonly focusOrder: readonly string[];
   readonly focused: string;
-  /** What the live regions announce against the tree sent before (frame answers only). */
-  readonly announce?: readonly Announcement[];
-}
-
-/** One live region announcement (og-ui `Announcement`). */
-export interface Announcement {
-  readonly text: string;
-  readonly assertive: boolean;
 }
 
 /** Roles whose `checked` state is reported either way. */
@@ -105,9 +109,9 @@ export class A11yMirror {
   readonly root: HTMLDivElement;
   readonly #canvas: HTMLCanvasElement;
   readonly #send: (event: InjectedInput) => void;
-  readonly #polite: HTMLDivElement;
-  readonly #assertive: HTMLDivElement;
   readonly #elements = new Map<string, HTMLElement>();
+  /** Every node the Worker sent that is still in the tree, by path. */
+  readonly #sent = new Map<string, A11yWireNode>();
   #tree: A11yTree = { nodes: [], focusOrder: [], focused: "" };
   /** The path this mirror last moved DOM focus to (its own focus events are not the reader's). */
   #focusing = "";
@@ -124,18 +128,6 @@ export class A11yMirror {
     const root = doc.createElement("div");
     root.dataset.ogA11y = "";
     Object.assign(root.style, { position: "fixed", left: "0px", top: "0px", width: "0px", height: "0px", pointerEvents: "none", overflow: "visible", zIndex: "0" } satisfies Partial<CSSStyleDeclaration>);
-    const region = (live: "polite" | "assertive") => {
-      const r = doc.createElement("div");
-      r.setAttribute("aria-live", live);
-      r.setAttribute("aria-atomic", "false");
-      r.setAttribute("role", live === "polite" ? "status" : "alert");
-      r.dataset.ogA11yLive = live;
-      Object.assign(r.style, HIDDEN);
-      root.appendChild(r);
-      return r;
-    };
-    this.#polite = region("polite");
-    this.#assertive = region("assertive");
     doc.body.appendChild(root);
     this.root = root;
     const on = <K extends keyof HTMLElementEventMap>(type: K, fn: (e: HTMLElementEventMap[K]) => void) => {
@@ -220,8 +212,31 @@ export class A11yMirror {
     this.#send({ kind: "a11y", action: up ? "increment" : "decrement", path });
   }
 
-  /** The UI's tree changed: bring the DOM in line with it. */
-  update(tree: A11yTree): void {
+  /** What changed in the UI's tree: merged into what was sent, then mirrored. */
+  update(update: A11yUpdate): void {
+    if (update.full) this.#sent.clear();
+    for (const n of update.nodes) this.#sent.set(n.path, n);
+    // Tree order from the root; what no node reaches any more is gone.
+    const nodes: A11yNode[] = [];
+    const reached = new Set<string>([ROOT]);
+    const walk = (path: string, parent: string) => {
+      for (const c of this.#sent.get(path)?.children ?? []) {
+        const n = this.#sent.get(c);
+        if (!n || reached.has(c)) continue;
+        reached.add(c);
+        const { children: _, ...rest } = n;
+        nodes.push({ ...rest, parent });
+        walk(c, c);
+      }
+    };
+    walk(ROOT, "");
+    for (const path of this.#sent.keys()) if (!reached.has(path)) this.#sent.delete(path);
+    const focusOrder = nodes.filter((n) => n.states.includes("focusable")).map((n) => n.path);
+    this.#mirror({ nodes, focusOrder, focused: update.focus });
+  }
+
+  /** Brings the DOM in line with the whole tree. */
+  #mirror(tree: A11yTree): void {
     const doc = this.root.ownerDocument;
     this.#place();
     const byPath = new Map(tree.nodes.map((n) => [n.path, n]));
@@ -271,9 +286,6 @@ export class A11yMirror {
         height: `${Math.max(1, node.height)}px`,
       });
     }
-    // The live regions stay last, after every layer.
-    this.root.append(this.#polite, this.#assertive);
-    this.#announce(tree);
     this.#tree = tree;
     this.#stand();
     this.#follow(tree);
@@ -303,7 +315,10 @@ export class A11yMirror {
     const box = node.role === "textbox" || node.role === "combobox";
     set("aria-description", box ? null : node.description || null);
     set("aria-placeholder", node.role === "textbox" ? node.description || null : null);
-    if (node.role === "heading") set("aria-level", "2");
+    set("aria-level", node.role === "heading" ? String(node.level ?? 2) : null);
+    // The page announces a live node's changes itself.
+    set("aria-live", node.live || null);
+    set("aria-atomic", node.live ? String(node.atomic ?? false) : null);
     if (node.role === "dialog") set("aria-modal", "true");
     const focusable = states.has("focusable") || tree.focusOrder.includes(node.path);
     // A native range is in the page's Tab order unless told otherwise; the UI owns focus.
@@ -343,18 +358,6 @@ export class A11yMirror {
         set("aria-valuetext", null);
         set("aria-description", node.value || null);
       } else set("aria-valuetext", node.value || null);
-    }
-  }
-
-  /** The engine's announcements are said once through the live regions. */
-  #announce(tree: A11yTree): void {
-    for (const a of tree.announce ?? []) {
-      const region = a.assertive ? this.#assertive : this.#polite;
-      const line = region.ownerDocument.createElement("div");
-      line.textContent = a.text;
-      region.appendChild(line);
-      // Keep the region short: a reader has said what was added.
-      while (region.childElementCount > 3) region.firstElementChild?.remove();
     }
   }
 
@@ -425,14 +428,4 @@ const NODE: Partial<CSSStyleDeclaration> = {
   whiteSpace: "nowrap",
   appearance: "none",
   boxSizing: "border-box",
-};
-
-/** A live region: read, never seen. */
-const HIDDEN: Partial<CSSStyleDeclaration> = {
-  position: "absolute",
-  width: "1px",
-  height: "1px",
-  overflow: "hidden",
-  clipPath: "inset(50%)",
-  whiteSpace: "nowrap",
 };

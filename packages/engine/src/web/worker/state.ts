@@ -93,7 +93,7 @@ export class PageRelay {
     }
     if (answered.copy !== undefined) post({ type: "copy", text: answered.copy });
     if (answered.saved?.scenes.length) post({ type: "saved", scenes: answered.saved.scenes });
-    if (answered.a11y !== undefined) post({ type: "a11y", tree: answered.a11y });
+    if (answered.a11y !== undefined) post({ type: "a11y", update: answered.a11y });
     if (answered.haptics?.length) post({ type: "haptics", patterns: answered.haptics });
     if (answered.rumble?.length) post({ type: "rumble", rumble: answered.rumble });
     const shape = typeof answered.cursor === "string" ? answered.cursor : "default";

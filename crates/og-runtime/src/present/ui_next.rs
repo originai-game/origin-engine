@@ -92,6 +92,8 @@ pub(crate) struct Next {
     font: bool,
     /// The locale the tree's strings are in.
     language: String,
+    /// The accessibility tree the host's mirror was last sent.
+    a11y: og_ui_next::a11y::Tree,
 }
 
 fn source(v: &Value) -> Option<(String, String)> {
@@ -223,6 +225,7 @@ impl Next {
             spans: Spans::default(),
             font: false,
             language: String::new(),
+            a11y: og_ui_next::a11y::Tree::new(),
         }
     }
 
@@ -508,6 +511,8 @@ impl Next {
         self.pack = active_pack(engine).map(|(id, _)| id);
         self.resolved = None;
         self.resolve(engine, ui);
+        // A new arena: the mirror is sent its whole tree again.
+        self.a11y.reset();
         self.spans.build = now() - t0;
         self.spans.build_allocations = allocations() - a0;
     }
@@ -633,6 +638,15 @@ impl Next {
         self.spans.refolded = commit.refolded;
         self.spans.elements = tree.len();
         warnings
+    }
+
+    /// The accessibility tree's update for the web shell's mirror
+    /// ([`og_ui_next::a11y::web`]), when what it shows changed since the
+    /// last one; in CSS px, as the tree lays out.
+    pub(crate) fn a11y(&mut self) -> Option<Value> {
+        let tree = self.tree.as_ref()?;
+        let update = tree.a11y(&mut self.a11y, None, 1.0)?;
+        Some(og_ui_next::a11y::web(&update))
     }
 
     /// The spans as the probe's timings name them.

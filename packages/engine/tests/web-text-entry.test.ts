@@ -19,6 +19,7 @@
 import { afterAll, beforeAll, expect, test } from "bun:test";
 import { Shell } from "../src/web/shell.ts";
 import type { A11yNode, A11yTree } from "../src/web/a11y.ts";
+import { whole } from "./support/a11y.ts";
 import type { TextTarget } from "../src/web/text-input.ts";
 import { exposed, install, roleOf, StandInDocument, standInCanvas, type StandInElement } from "./support/dom.ts";
 
@@ -72,11 +73,11 @@ for (const order of ["the tree first", "the focus first"] as const) {
   test(`a focused text field: the focus is on a named, exposed text box, the field's own, inside its dialog (${order})`, async () => {
     const { doc, worker, shell } = await start();
     // Before any field is focused the textarea is no text box a reader meets.
-    worker.say({ type: "a11y", tree: { nodes: [node(DIALOG, "", "dialog", "Name your bell-keeper")], focusOrder: [], focused: "" } });
+    worker.say({ type: "a11y", update: whole({ nodes: [node(DIALOG, "", "dialog", "Name your bell-keeper")], focusOrder: [], focused: "" }) });
     await settle();
     expect(boxes(doc).length).toBe(0);
     // The engine Worker posts `text` before the frame's `a11y` (worker.ts relay); a later frame may bring the tree.
-    const messages = [{ type: "text", target }, { type: "a11y", tree: tree("") }];
+    const messages = [{ type: "text", target }, { type: "a11y", update: whole(tree("")) }];
     for (const m of order === "the focus first" ? messages : messages.reverse()) {
       worker.say(m);
       await settle();
@@ -96,7 +97,7 @@ for (const order of ["the tree first", "the focus first"] as const) {
     expect(mirrored(doc, DIALOG).getAttribute("aria-owns")).toBe(area.id);
     expect(doc.byId(area.id)).toBe(area);
     // What the field holds is read with it.
-    worker.say({ type: "a11y", tree: tree("Mei") });
+    worker.say({ type: "a11y", update: whole(tree("Mei")) });
     await settle();
     expect(area.getAttribute("aria-description")).toBe("Mei");
     // The field lets go: the textarea leaves the reader's way, the field comes back.
@@ -119,7 +120,7 @@ test("a field focused before the mirror has it is named by its id until the tree
   const area = doc.activeElement!;
   expect(exposed(area)).toBe(true);
   expect(area.getAttribute("aria-label")).toBe("Name");
-  worker.say({ type: "a11y", tree: { ...tree(""), nodes: tree("").nodes.map((n) => (n.path === FIELD ? { ...n, name: "Your name" } : n)) } });
+  worker.say({ type: "a11y", update: whole({ ...tree(""), nodes: tree("").nodes.map((n) => (n.path === FIELD ? { ...n, name: "Your name" } : n)) }) });
   await settle();
   expect(area.getAttribute("aria-label")).toBe("Your name");
   shell.dispose();

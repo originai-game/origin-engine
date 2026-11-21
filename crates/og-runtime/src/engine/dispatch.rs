@@ -203,15 +203,8 @@ pub(crate) struct State {
     /// The UI's last frame answers (og.ui.frameViewport, frameTheme).
     pub ui_answers: crate::bind::modules::UiAnswers,
     /// The host mirrors the UI's accessibility tree (create option `a11y`,
-    /// the web Worker): frame answers carry the tree when it changed.
+    /// the web Worker): frame answers carry what changed in it.
     pub a11y_mirror: bool,
-    /// The digest of the accessibility tree the last frame answer carried
-    /// (`A11yTree::digest`; 0: none sent yet), so the mirror is sent the
-    /// tree only when it changes.
-    pub a11y_digest: u64,
-    /// The tree the last frame answer carried and the UI's semantic frame
-    /// then, which live regions announce against (`A11yTree::announcements`).
-    pub a11y_sent: Option<(u64, og_ui::A11yTree)>,
     /// Cursor images decoded from their textures, by source
     /// ([`crate::host::ui_cursor`]).
     pub cursor_images: crate::host::ui_cursor::Kept,
