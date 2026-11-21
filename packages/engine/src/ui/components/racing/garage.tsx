@@ -1,3 +1,4 @@
+import type { Texture } from "@origingame/engine";
 import { For, Icon, Image, Scroll, Show, Text, View, t, type UiEvent } from "@origingame/engine/ui";
 import { StatBar } from "../hud/stat-bar";
 import "./racing.en.ogt";
@@ -6,7 +7,7 @@ export interface RacingGarageProps {
   /** The page's heading; empty takes the kit's (Garage). */
   title?: string;
   /** The cars in the game's order, keyed rows of { id, title, body, image, owned, locked, affordable, price }: title the car's name, body its class line, image a texture (og.load.texture, 0 none); owned the player has it; locked it cannot be had yet; affordable the game allows buying it now (false disables Buy and names it Too costly); price what buying costs or why it is locked, as the game words it (12,500 cr, Reach level 12). */
-  vehicles?: ReadonlyArray<{ id: string; title: string; body: string; image: number; owned: boolean; locked: boolean; affordable: boolean; price: string }>;
+  vehicles?: ReadonlyArray<{ id: string; title: string; body: string; image: Texture | 0; owned: boolean; locked: boolean; affordable: boolean; price: string }>;
   /** The car in view (its tile selected, its stats shown, the action for it); empty is none. */
   shown: string;
   /** The shown car's place in vehicles, from 0, read out as n of N beside the arrows (the game keeps it with shown). */
@@ -50,11 +51,11 @@ export function RacingGarage(props: RacingGarageProps) {
   return (
     <View class={`relative flex-col gap-6 w-full h-full overflow-hidden bg-[#0d1119] text-fg p-6 compact:p-2`} role="group" label={heading()}>
       <Show when={shownVehicle()?.image} keyed>
-        {(img) => <Image src={String(img())} class="absolute inset-0 size-full" />}
+        {(img) => <Image src={img()} class="absolute inset-0 size-full" />}
       </Show>
       <View class="absolute inset-0 pointer-events-none bg-linear-to-b from-[#060910b3] via-transparent to-[#060910eb] compact:bottom-auto compact:h-[38%]" />
       <View class="relative flex-row w-full shrink-0">
-        <Text class={`flex-1 min-w-0 text-[0.857rem] leading-[1.3] font-semibold tracking-[0.14em] uppercase text-fg text-shadow-xs text-shadow-bg/55`}>{heading()}</Text>
+        <Text class={`flex-1 min-w-0 text-[0.857rem] leading-[1.3] font-semibold tracking-[0.14em] uppercase text-fg text-stroke-3 text-stroke-bg`}>{heading()}</Text>
       </View>
       <Show when={vehicles().length} fallback={
         <View class="relative flex-col items-center justify-center gap-6 w-full h-full" role="status">
@@ -76,8 +77,8 @@ export function RacingGarage(props: RacingGarageProps) {
                   <Show when={!v().image}>
                     <View class={`w-full aspect-[3.2] bg-[#ffffff0a] shadow-[inset_0px_0px_0px_1px_#ffffff1a] rounded-tl-[11.43px] rounded-tr-none rounded-br-[11.43px] rounded-bl-none`} />
                   </Show>
-                  <Text class={`w-full text-left text-[0.857rem] leading-[1.3] font-semibold tracking-[0.14em] uppercase text-[#38e8ff] text-shadow-xs text-shadow-bg/55`}>{v().body}</Text>
-                  <Text class={`w-full text-left text-[4.714rem] leading-none font-bold italic uppercase text-fg text-shadow-xs text-shadow-bg/55 line-clamp-3 overflow-hidden`}>{v().title}</Text>
+                  <Text class={`w-full text-left text-[0.857rem] leading-[1.3] font-semibold tracking-[0.14em] uppercase text-[#38e8ff] text-stroke-3 text-stroke-bg`}>{v().body}</Text>
+                  <Text class={`w-full text-left text-[4.714rem] leading-none font-bold italic uppercase text-fg text-stroke-3 text-stroke-bg line-clamp-3 overflow-hidden`}>{v().title}</Text>
                 </View>
               )}
             </Show>
@@ -85,7 +86,7 @@ export function RacingGarage(props: RacingGarageProps) {
               <View class={stepButton} role="button" label={t("racing.garage.prev")} onPress={(e) => props.onTabPrev?.(e)}>
                 <Icon name="back" class="size-6 text-fg" />
               </View>
-              <Text class={`min-w-16 text-center whitespace-nowrap text-[1.286rem] font-bold tabular-nums text-fg text-shadow-xs text-shadow-bg/55`}>
+              <Text class={`min-w-16 text-center whitespace-nowrap text-[1.286rem] font-bold tabular-nums text-fg text-stroke-3 text-stroke-bg`}>
                 {t("racing.garage.count", { n: props.index + 1, total: vehicles().length })}
               </Text>
               <View class={stepButton} role="button" label={t("racing.garage.next")} onPress={(e) => props.onTabNext?.(e)}>

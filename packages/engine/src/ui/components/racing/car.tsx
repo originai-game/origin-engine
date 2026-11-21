@@ -24,7 +24,7 @@ export function RacingCar(props: RacingCarProps) {
   return (
     <View class={`group/car flex-col gap-y-[0.429rem] w-fit max-w-full items-start text-fg compact:gap-y-[0.214rem]`} role="group" label={t("racing.car.name")} data-pit={props.pit} data-low={props.fuelLow}>
       <Show when={(props.tyres ?? []).length}>
-        <Text class={`max-w-full text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap text-[#ffffffc7] text-shadow-xs text-shadow-bg/55 compact:hidden compact:tracking-normal`}>{t("racing.car.tyres")}</Text>
+        <Text class={`max-w-full text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap text-[#ffffffc7] text-stroke-3 text-stroke-bg compact:hidden compact:tracking-normal`}>{t("racing.car.tyres")}</Text>
         <View class={`grid grid-cols-2 gap-[0.357rem] max-w-full compact:gap-[0.214rem]`} role="list" label={t("racing.car.tyres")}>
           <For each={props.tyres ?? []} key={(y) => y.id}>
             {(y) => (
@@ -49,14 +49,14 @@ export function RacingCar(props: RacingCarProps) {
           valueNow={(props.fuel ?? 0) >= 1 ? 100 : (props.fuel ?? 0) * 100}
           valueText={props.fuelText}
         >
-          <Text class={`shrink-0 text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap text-[#ffffffc7] text-shadow-xs text-shadow-bg/55 group-data-low/car:text-[#ff4d5e] compact:tracking-normal`}>
+          <Text class={`shrink-0 text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap text-[#ffffffc7] text-stroke-3 text-stroke-bg group-data-low/car:text-[#ff4d5e] compact:tracking-normal`}>
             {props.fuelLow ? t("racing.car.fuelLow") : t("racing.car.fuel")}
           </Text>
           <View class={`shrink-0 relative w-[5rem] h-[0.429rem] overflow-hidden bg-[#04060cb8] shadow-[0px_0px_0px_1px_#ffffff38,inset_0px_1px_0px_#ffffff24,0px_2px_5.714px_#00000073] group-data-low/car:shadow-[0px_0px_0px_1px_#ff4d5e,0px_0px_12.714px_#ff4d5eb3] compact:w-[3.143rem]`}>
             <View class="absolute left-0 top-0 h-full bg-[#f4f6fb] group-data-low/car:bg-[#ff4d5e] group-data-low/car:shadow-[2.288px_0px_10px_#ff4d5ecc]" style={{ width: `${Math.min(props.fuel ?? 0, 1) * 100}%` }} />
           </View>
           <Show when={props.fuelText !== ""}>
-            <Text class={`shrink min-w-0 text-[0.857rem] font-bold tabular-nums whitespace-nowrap overflow-hidden text-fg text-shadow-xs text-shadow-bg/55`}>{props.fuelText}</Text>
+            <Text class={`shrink min-w-0 text-[0.857rem] font-bold tabular-nums whitespace-nowrap overflow-hidden text-fg text-stroke-3 text-stroke-bg`}>{props.fuelText}</Text>
           </Show>
         </View>
       </Show>

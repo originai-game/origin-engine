@@ -1,3 +1,4 @@
+import type { Texture } from "@origingame/engine";
 import { For, Icon, Image, Show, Text, View, formatDuration, t, type UiEvent } from "@origingame/engine/ui";
 import "./wave.en.ogt";
 
@@ -9,7 +10,7 @@ export interface StrategyWaveProps {
   /** The wave's name as the game words it (Siege), after its number; empty none. */
   name: string;
   /** The wave's picture (og.load.texture) in a cut tile before it; 0 hides it. */
-  icon: number;
+  icon: Texture | 0;
   /** countdown (the wave is coming), active (a wave is on) or done (every wave cleared), as the game says: data-phase; active and done stand as words in place of the countdown. */
   phase: string;
   /** Seconds to the wave while it is coming, shown as a countdown (0:42); negative hides it. Default -1. */
@@ -50,7 +51,7 @@ export function StrategyWave(props: StrategyWaveProps) {
     >
       <View class={`flex-row items-center gap-x-[0.714rem] min-w-0 py-[0.429rem] px-[1rem] bg-linear-to-b from-[#1e2637e5] to-plate-lo shadow-[inset_0_0_0_1px_#ff4d5e73,inset_0_2px_0_#ff4d5e] rounded-tl-[6.858px] rounded-tr-none rounded-br-[6.858px] rounded-bl-none group-data-done/wave:shadow-plate compact:gap-x-[0.571rem] compact:py-[0.286rem] compact:px-[0.714rem]`}>
         <Show when={props.icon}>
-          <Image class={`shrink size-[1.714rem] rounded-tl-[4.576px] rounded-tr-none rounded-br-[4.576px] rounded-bl-none`} src={String(props.icon)} />
+          <Image class={`shrink size-[1.714rem] rounded-tl-[4.576px] rounded-tr-none rounded-br-[4.576px] rounded-bl-none`} src={props.icon} />
         </Show>
         <View class={`flex-col gap-y-[0.071rem] flex-1 min-w-0`}>
           <View class={`flex-row items-center gap-x-[0.429rem] min-w-0`}>
@@ -66,12 +67,12 @@ export function StrategyWave(props: StrategyWaveProps) {
             </Show>
           </View>
           <Show when={props.phase === "countdown" && next() >= 0} fallback={
-              <Text class={`min-w-0 text-[1.143rem] leading-[1.2] font-bold whitespace-nowrap overflow-hidden text-shadow-xs text-shadow-bg/55 group-data-done/wave:text-[#55e39a]`} role="status">
+              <Text class={`min-w-0 text-[1.143rem] leading-[1.2] font-bold whitespace-nowrap overflow-hidden text-stroke-3 text-stroke-bg group-data-done/wave:text-[#55e39a]`} role="status">
                 {props.phase === "done" ? t("strategy.wave.done") : props.phase === "active" ? t("strategy.wave.active") : t("strategy.wave.countdown")}
               </Text>
           }>
             <View class={`flex-row items-center gap-x-[0.571rem] min-w-0`} role="timer" label={t("strategy.wave.next")} valueText={formatDuration(next())}>
-              <Text class={`shrink text-[1.286rem] leading-[1.1] font-bold tabular-nums whitespace-nowrap text-shadow-xs text-shadow-bg/55 group-data-near/wave:text-[#ff4d5e] compact:text-[1.071rem]`}>
+              <Text class={`shrink text-[1.286rem] leading-[1.1] font-bold tabular-nums whitespace-nowrap text-stroke-3 text-stroke-bg group-data-near/wave:text-[#ff4d5e] compact:text-[1.071rem]`}>
                 {formatDuration(next())}
               </Text>
               <Show when={props.nextTotal > 0}>

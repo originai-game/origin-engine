@@ -1,9 +1,10 @@
+import type { Texture } from "@origingame/engine";
 import { For, Image, Show, View, t } from "@origingame/engine/ui";
 import "./minimap.en.ogt";
 
 export interface StrategyMinimapProps {
   /** The whole map's picture (og.load.texture), drawn square; 0 draws the dark well alone. */
-  map: number;
+  map: Texture | 0;
   /** What the minimap shows, keyed rows of { id, kind, x, y, base, label }: kind own, ally, foe or neutral (a resource, a relic; on data-kind, each its colour, a neutral a diamond); x and y on the map, 0 to 1; base marks a building or a town, drawn larger (data-base); label names it for a reader. */
   dots?: ReadonlyArray<{ id: string; kind: string; x: number; y: number; base: boolean; label: string }>;
   /** The camera's view on the map: its left edge, 0 to 1. */
@@ -30,7 +31,7 @@ export function StrategyMinimap(props: StrategyMinimapProps) {
     <View class={`shrink p-[0.143rem] bg-linear-to-b from-[#ffffffbf] via-[#ffffff38] via-45% to-[#ffffff24] rounded-tl-[6.858px] rounded-tr-none rounded-br-[6.858px] rounded-bl-none w-[14.264rem] h-[14.264rem] compact:w-[6.857rem] compact:h-[6.857rem]`} role="group" label={t("strategy.minimap.name")}>
       <View class="relative size-full overflow-hidden bg-[#0b1220] rounded-tl-[6.858px] rounded-tr-none rounded-br-[6.858px] rounded-bl-none" role="image" label={t("strategy.minimap.name")}>
         <Show when={props.map}>
-          <Image class="absolute inset-0 size-full" src={String(props.map)} />
+          <Image class="absolute inset-0 size-full" src={props.map} />
         </Show>
         <For each={props.dots ?? []} key={(d) => d.id}>
           {(d) => (

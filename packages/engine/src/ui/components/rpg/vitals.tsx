@@ -1,3 +1,4 @@
+import type { Texture } from "@origingame/engine";
 import { Image, Show, Text, View, formatNumber, t } from "@origingame/engine/ui";
 import "./vitals.en.ogt";
 
@@ -5,7 +6,7 @@ export interface RpgVitalsProps {
   /** The character's name; read out, and shown on the large plate. */
   name: string;
   /** A head-and-shoulders texture (og.load.texture); 0 is none. */
-  portrait: number;
+  portrait: Texture | 0;
   /** The level on the badge; 0 hides the badge. */
   level: number;
   /** Health now. */
@@ -33,7 +34,7 @@ export function RpgVitals(props: RpgVitalsProps) {
     <View class={`group/plate relative w-fit flex-row text-fg`} role="group" label={props.name} data-down={props.down} data-plate={props.plate} data-plate-large={props.plate === "large"} data-plate-compact={props.plate === "compact"}>
       <View class={`shrink size-16 overflow-hidden rounded-capsule group-data-plate-large/plate:size-[10.971rem] compact:group-data-plate-large/plate:size-[7.2rem]`}>
         <Show when={props.portrait !== 0}>
-          <Image class={`size-full`} src={String(props.portrait)} />
+          <Image class={`size-full`} src={props.portrait} />
         </Show>
       </View>
       <Show when={props.level !== 0}>
@@ -45,7 +46,7 @@ export function RpgVitals(props: RpgVitalsProps) {
         <View class={`relative flex-row items-center justify-center overflow-hidden h-2 group-data-plate-large/plate:h-[1.371rem] group-data-plate-large/plate:min-h-6 compact:group-data-plate-large/plate:h-[1.029rem] bg-[#04060cb8]`} role="meter" label={t("rpg.party.health")} valueText={t("rpg.party.figure", { now: props.health, max: props.healthMax })}>
           <View class="absolute left-0 inset-y-0 bg-health" style={{ width: `${bar(props.healthMax > 0 ? props.health / props.healthMax : 0)}%` }} />
           <Show when={props.plate === "large"}>
-            <Text class={`relative whitespace-nowrap px-1 text-[0.857rem] font-bold tabular-nums text-fg text-shadow-xs text-shadow-bg/55`}>
+            <Text class={`relative whitespace-nowrap px-1 text-[0.857rem] font-bold tabular-nums text-fg text-stroke-3 text-stroke-bg`}>
               {t("rpg.party.figure", { now: props.health, max: props.healthMax })}
             </Text>
           </Show>
@@ -54,7 +55,7 @@ export function RpgVitals(props: RpgVitalsProps) {
           <View class={`relative flex-row items-center justify-center overflow-hidden h-2 group-data-plate-large/plate:h-[1.371rem] group-data-plate-large/plate:min-h-6 compact:group-data-plate-large/plate:h-[1.029rem] bg-[#04060cb8]`} role="meter" label={t("rpg.party.mana")} valueText={t("rpg.party.figure", { now: props.mana, max: props.manaMax })}>
             <View class="absolute left-0 inset-y-0 bg-mana" style={{ width: `${bar(props.mana / props.manaMax)}%` }} />
             <Show when={props.plate === "large"}>
-              <Text class={`relative whitespace-nowrap px-1 text-[0.857rem] font-bold tabular-nums text-fg text-shadow-xs text-shadow-bg/55`}>
+              <Text class={`relative whitespace-nowrap px-1 text-[0.857rem] font-bold tabular-nums text-fg text-stroke-3 text-stroke-bg`}>
                 {t("rpg.party.figure", { now: props.mana, max: props.manaMax })}
               </Text>
             </Show>

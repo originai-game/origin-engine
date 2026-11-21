@@ -1,3 +1,4 @@
+import type { Texture } from "@origingame/engine";
 import { For, Icon, Image, Show, Text, View, t } from "@origingame/engine/ui";
 import "./rhythm.en.ogt";
 
@@ -9,7 +10,7 @@ export interface RhythmSongPlateProps {
   /** The tempo as the game words it (174, 90–180); empty hides it. */
   bpm: string;
   /** The cover art texture (og.load.texture); 0 shows the music glyph in its place. */
-  jacket: number;
+  jacket: Texture | 0;
   /** The chart's family (easy, normal, hard, expert, master, special): the colour of its chip, on data-tier, never alone. */
   tier: string;
   /** The chart's name as the game words it (Expert); empty hides the chip. */
@@ -38,15 +39,15 @@ export function RhythmSongPlate(props: RhythmSongPlateProps) {
             <Icon class={`size-[44%] text-[#38e8ff]`} name="music" />
           </View>
         }>
-          <Image class={`size-full rounded-[0.857rem] object-cover`} src={String(props.jacket)} />
+          <Image class={`size-full rounded-[0.857rem] object-cover`} src={props.jacket} />
         </Show>
       </View>
       <View class={`flex-col gap-0.5 min-w-0 grow`}>
-        <Text class={`text-[1.714rem] compact:text-[1.143rem] leading-[1.15] font-bold whitespace-nowrap text-ellipsis overflow-hidden text-fg text-shadow-xs text-shadow-bg/55`}>
+        <Text class={`text-[1.714rem] compact:text-[1.143rem] leading-[1.15] font-bold whitespace-nowrap text-ellipsis overflow-hidden text-fg text-stroke-3 text-stroke-bg`}>
           {props.title}
         </Text>
         <Show when={props.artist !== "" || props.bpm !== ""}>
-          <Text class={`text-[1.143rem] compact:text-[0.929rem] font-semibold whitespace-nowrap text-ellipsis overflow-hidden text-fg-muted text-shadow-xs text-shadow-bg/55`}>
+          <Text class={`text-[1.143rem] compact:text-[0.929rem] font-semibold whitespace-nowrap text-ellipsis overflow-hidden text-fg-muted text-stroke-3 text-stroke-bg`}>
             {props.artist !== "" && props.bpm !== "" ? t("rhythm.plate.byline", { artist: props.artist, bpm: props.bpm }) : (props.artist !== "" ? props.artist : t("rhythm.songs.bpm", { bpm: props.bpm }))}
           </Text>
         </Show>

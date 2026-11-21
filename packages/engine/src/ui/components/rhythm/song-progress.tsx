@@ -34,9 +34,9 @@ export function RhythmSongProgress(props: RhythmSongProgressProps) {
         <Show when={full < 0.9} fallback={
           <View class={`flex-row w-full px-3 mt-1 justify-end`}>
             <View class={`flex-row items-baseline gap-0.5 shrink`}>
-              <Text class={`text-[0.929rem] font-bold tabular-nums whitespace-nowrap text-fg text-shadow-xs text-shadow-bg/55`}>{props.elapsed}</Text>
+              <Text class={`text-[0.929rem] font-bold tabular-nums whitespace-nowrap text-fg text-stroke-3 text-stroke-bg`}>{props.elapsed}</Text>
               <Show when={props.length !== ""}>
-                <Text class={`text-[0.929rem] font-bold tabular-nums whitespace-nowrap text-fg-muted text-shadow-xs text-shadow-bg/55`}>
+                <Text class={`text-[0.929rem] font-bold tabular-nums whitespace-nowrap text-fg-muted text-stroke-3 text-stroke-bg`}>
                   {t("rhythm.progress.length", { length: props.length })}
                 </Text>
               </Show>
@@ -45,9 +45,9 @@ export function RhythmSongProgress(props: RhythmSongProgressProps) {
         }>
           <View class={`flex-row w-full px-3 mt-1`}>
             <View class={`flex-row items-baseline gap-0.5 shrink`} style={{ marginLeft: `${full * 100}%` }}>
-              <Text class={`text-[0.929rem] font-bold tabular-nums whitespace-nowrap text-fg text-shadow-xs text-shadow-bg/55`}>{props.elapsed}</Text>
+              <Text class={`text-[0.929rem] font-bold tabular-nums whitespace-nowrap text-fg text-stroke-3 text-stroke-bg`}>{props.elapsed}</Text>
               <Show when={props.length !== ""}>
-                <Text class={`text-[0.929rem] font-bold tabular-nums whitespace-nowrap text-fg-muted text-shadow-xs text-shadow-bg/55`}>
+                <Text class={`text-[0.929rem] font-bold tabular-nums whitespace-nowrap text-fg-muted text-stroke-3 text-stroke-bg`}>
                   {t("rhythm.progress.length", { length: props.length })}
                 </Text>
               </Show>

@@ -1,3 +1,4 @@
+import type { Texture } from "@origingame/engine";
 import { For, Image, Show, Text, View, t } from "@origingame/engine/ui";
 import "./racing.en.ogt";
 
@@ -5,7 +6,7 @@ export interface RacingBoostProps {
   /** The meter's name as the game words it (Nitro, ERS, Boost); empty takes the kit's (Boost). */
   label?: string;
   /** The meter's picture (og.load.texture) in a cut tile before it; 0 hides it. */
-  icon: number;
+  icon: Texture | 0;
   /** The input that fires it as the game names it (Shift), on a key cap after the label; empty for none; hidden under a touch screen. */
   key: string;
   /** What is left now. */
@@ -41,11 +42,11 @@ export function RacingBoost(props: RacingBoostProps) {
       data-firing={props.firing}
     >
       <Show when={props.icon}>
-        <Image src={String(props.icon)} class={`size-[2.429rem] shrink-0 rounded-tl-[6.858px] rounded-tr-none rounded-br-[6.858px] rounded-bl-none compact:size-[1.714rem]`} />
+        <Image src={props.icon} class={`size-[2.429rem] shrink-0 rounded-tl-[6.858px] rounded-tr-none rounded-br-[6.858px] rounded-bl-none compact:size-[1.714rem]`} />
       </Show>
       <View class={`flex-1 min-w-0 flex-col gap-y-[0.357rem]`}>
         <View class="flex-row items-center gap-x-2 min-w-0">
-          <Text class={`shrink min-w-0 text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap overflow-hidden text-[#4fd8ff] text-shadow-xs text-shadow-bg/55 compact:tracking-normal`}>{label()}</Text>
+          <Text class={`shrink min-w-0 text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap overflow-hidden text-[#4fd8ff] text-stroke-3 text-stroke-bg compact:tracking-normal`}>{label()}</Text>
           <Show when={(props.key ?? "") !== ""}>
             <Text class={`shrink min-w-[1.571rem] max-w-[60%] pointer-coarse:hidden bg-linear-to-b from-[#ffffff] to-[#c9d1e2] text-[#0b0f18] rounded-[4.576px] shadow-[0px_2.288px_0px_#0000008c,inset_0px_-2.288px_0px_#0000002e] text-[0.857rem] leading-[1.5] font-bold tabular-nums text-center whitespace-nowrap overflow-hidden py-0 px-1`}>{props.key}</Text>
           </Show>

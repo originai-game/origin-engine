@@ -1,3 +1,4 @@
+import type { Texture } from "@origingame/engine";
 import { For, Icon, Image, Scroll, Show, Text, View, t, type UiEvent } from "@origingame/engine/ui";
 import { Spinner } from "../base/spinner";
 import "./rhythm.en.ogt";
@@ -6,7 +7,7 @@ export interface RhythmSongSelectProps {
   /** The page's heading (a pack or folder name); empty takes the kit's (Songs). */
   title: string;
   /** The songs in the game's order, keyed rows of { id, title, artist, bpm, length, jacket, locked, fresh, cleared }: bpm and length as the game words them (128, 90–180; 2:14); jacket the cover art texture (og.load.texture, 0 none); locked the song cannot be played yet (its row is disabled); fresh newly added (New); cleared the player has cleared it (Cleared). */
-  songs: ReadonlyArray<{ id: string; title: string; artist: string; bpm: string; length: string; jacket: number; locked: boolean; fresh: boolean; cleared: boolean }>;
+  songs: ReadonlyArray<{ id: string; title: string; artist: string; bpm: string; length: string; jacket: Texture | 0; locked: boolean; fresh: boolean; cleared: boolean }>;
   /** The song in focus as the game holds it (its row selected, its details shown); empty is none. */
   selected: string;
   /** The song whose preview the game is playing (Previewing); empty is none. */
@@ -41,7 +42,7 @@ export function RhythmSongSelect(props: RhythmSongSelectProps) {
       data-status={props.status}
     >
       <View class={`flex-row shrink w-full min-h-0`}>
-        <Text class={`text-[2.857rem] compact:text-[1.714rem] leading-[1.1] font-bold tracking-[0.14em] uppercase min-w-0 whitespace-nowrap text-ellipsis overflow-hidden text-fg text-shadow-xs text-shadow-bg/55`}>
+        <Text class={`text-[2.857rem] compact:text-[1.714rem] leading-[1.1] font-bold tracking-[0.14em] uppercase min-w-0 whitespace-nowrap text-ellipsis overflow-hidden text-fg text-stroke-3 text-stroke-bg`}>
           {props.title !== "" ? props.title : t("rhythm.songs.title")}
         </Text>
       </View>
@@ -81,7 +82,7 @@ export function RhythmSongSelect(props: RhythmSongSelectProps) {
                                 <Icon class={`size-[44%] text-[#38e8ff]`} name="music" />
                               </View>
                             }>
-                              <Image class={`size-full rounded-[0.7rem] object-cover`} src={String(s().jacket)} />
+                              <Image class={`size-full rounded-[0.7rem] object-cover`} src={s().jacket} />
                             </Show>
                           </View>
                           <View class={`flex-col items-start gap-0.5 min-w-0 grow`}>
@@ -158,7 +159,7 @@ export function RhythmSongSelect(props: RhythmSongSelectProps) {
                                 <Icon class={`size-[44%] text-[#38e8ff]`} name="music" />
                               </View>
                             }>
-                              <Image class={`size-full rounded-[1rem] object-cover`} src={String(s().jacket)} />
+                              <Image class={`size-full rounded-[1rem] object-cover`} src={s().jacket} />
                             </Show>
                             <View class={`absolute inset-0 rounded-[1rem] bg-bg/55 opacity-0 group-data-locked/detail:opacity-100`} />
                           </View>
@@ -179,7 +180,7 @@ export function RhythmSongSelect(props: RhythmSongSelectProps) {
                               </Show>
                             </View>
                           </Show>
-                          <Text class={`w-full text-start text-[3.571rem] compact:text-[1.714rem] leading-[1.05] font-bold whitespace-nowrap text-ellipsis overflow-hidden text-fg text-shadow-xs text-shadow-bg/55`}>
+                          <Text class={`w-full text-start text-[3.571rem] compact:text-[1.714rem] leading-[1.05] font-bold whitespace-nowrap text-ellipsis overflow-hidden text-fg text-stroke-3 text-stroke-bg`}>
                             {s().title}
                           </Text>
                           <Text class={`w-full text-start text-[1.143rem] compact:text-[0.929rem] whitespace-nowrap text-ellipsis overflow-hidden text-fg-muted`}>

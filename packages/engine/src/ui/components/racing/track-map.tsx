@@ -128,7 +128,7 @@ export function RacingTrackMap(props: RacingTrackMapProps) {
       <Show when={props.name !== "" || props.length !== ""}>
         <View class="flex-row items-center justify-between gap-x-2 min-w-0 compact:hidden">
           <Show when={props.name !== ""}>
-            <Text class={`shrink min-w-0 text-[1.071rem] font-semibold whitespace-nowrap overflow-hidden text-fg text-shadow-xs text-shadow-bg/55`}>{props.name}</Text>
+            <Text class={`shrink min-w-0 text-[1.071rem] font-semibold whitespace-nowrap overflow-hidden text-fg text-stroke-3 text-stroke-bg`}>{props.name}</Text>
           </Show>
           <Show when={props.length !== ""}>
             <Text

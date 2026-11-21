@@ -84,7 +84,7 @@ export function StrategySelection(props: StrategySelectionProps) {
           <View class={`flex-row flex-wrap items-start justify-between gap-x-[0.857rem] gap-y-[0.286rem] min-w-0`}>
             <View class={`flex-col gap-y-[0.071rem] flex-1 min-w-0`}>
               <View class={`flex-row items-baseline gap-x-[0.429rem] min-w-0`}>
-                <Text class={`shrink min-w-0 text-[1.429rem] leading-[1.15] font-bold whitespace-nowrap overflow-hidden text-shadow-xs text-shadow-bg/55 compact:text-[1.143rem]`}>
+                <Text class={`shrink min-w-0 text-[1.429rem] leading-[1.15] font-bold whitespace-nowrap overflow-hidden text-stroke-3 text-stroke-bg compact:text-[1.143rem]`}>
                   {props.name}
                 </Text>
                 <Show when={props.count > 1}>

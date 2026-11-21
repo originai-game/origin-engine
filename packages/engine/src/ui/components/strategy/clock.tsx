@@ -31,7 +31,7 @@ export function StrategyClock(props: StrategyClockProps) {
           {props.label}
         </Text>
       </Show>
-      <Text class={`shrink text-[1.286rem] leading-[1.1] font-bold tabular-nums whitespace-nowrap text-shadow-xs text-shadow-bg/55 compact:text-[1.071rem]`}>
+      <Text class={`shrink text-[1.286rem] leading-[1.1] font-bold tabular-nums whitespace-nowrap text-stroke-3 text-stroke-bg compact:text-[1.071rem]`}>
         {props.time}
       </Text>
       <Show when={props.paused} fallback={

@@ -1,9 +1,10 @@
+import type { Texture } from "@origingame/engine";
 import { For, Image, Line, Match, Show, Switch, Text, View, t, type UiEvent } from "@origingame/engine/ui";
 import "./world-map.en.ogt";
 
 export interface RpgWorldMapProps {
   /** The map's texture (og.load.texture); markers sit on it in fractions of its size. */
-  map: number;
+  map: Texture | 0;
   /** Keyed rows of { id, kind, x, y, label }: kind is quest, waypoint, danger or player; x and y 0 to 1 across and down the map. */
   markers?: ReadonlyArray<{ id: string; kind: string; x: number; y: number; label: string }>;
   /** The marker selected; empty is none. */
@@ -77,7 +78,7 @@ export function RpgWorldMap(props: RpgWorldMapProps) {
         onPointerUp={(e) => props.onRelease?.(e)}
       >
         <View class="absolute left-0 top-0" style={{ width: `${((props.zoom ?? 1) || 1) * 100}%`, height: `${((props.zoom ?? 1) || 1) * 100}%`, translate: `${props.panX ?? 0}px ${props.panY ?? 0}px` }}>
-          <Image class={`absolute inset-0 size-full`} src={String(props.map)} />
+          <Image class={`absolute inset-0 size-full`} src={props.map} />
           <View class="absolute inset-0" role="group" label={t("rpg.map.places")}>
             <For each={props.markers ?? []} key={(m) => m.id}>
               {(m) => (

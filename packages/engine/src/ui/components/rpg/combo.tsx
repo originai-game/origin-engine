@@ -20,7 +20,7 @@ export interface RpgComboProps {
 export function RpgCombo(props: RpgComboProps) {
   return (
     <View
-      class={`flex-col items-end max-w-full text-fg text-shadow-xs text-shadow-bg/55`}
+      class={`flex-col items-end max-w-full text-fg text-stroke-3 text-stroke-bg`}
       role="status"
       label={t("rpg.combo.hits", { count: props.count })}
     >

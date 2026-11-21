@@ -21,7 +21,7 @@ export function StrategyAlerts(props: StrategyAlertsProps) {
         <View class={`group/alert flex-row items-center gap-x-2 max-w-full min-w-0 pt-1 pr-[0.857rem] pb-1 pl-0 bg-linear-to-r from-[#070b14db] to-[#070b1459] compact:gap-x-1.5 compact:pt-[0.214rem] compact:pr-[0.571rem] compact:pb-[0.214rem]`} label={a().kind === "danger" ? t("strategy.alerts.danger", { text: a().text }) : a().kind === "done" ? t("strategy.alerts.done", { text: a().text }) : a().text} data-danger={a().kind === "danger"} data-done={a().kind === "done"} data-info={a().kind === "info"} data-faded={a().faded}>
           <View class={`shrink self-stretch w-[0.214rem] mr-1 bg-white/60 group-data-danger/alert:bg-[#ff4d5e] group-data-done/alert:bg-[#55e39a] group-data-info/alert:bg-[#38e8ff]`} />
           <View class={`shrink rotate-45 size-2 bg-white/60 shadow-[0_0_0_2.288px_#060910d9] group-data-danger/alert:bg-[#ff4d5e] group-data-done/alert:bg-[#55e39a] group-data-info/alert:bg-[#38e8ff]`} />
-          <Text class={`min-w-0 text-[1rem] font-semibold whitespace-nowrap overflow-hidden text-shadow-xs text-shadow-bg/55 group-data-faded/alert:text-fg-muted compact:text-[0.929rem]`}>
+          <Text class={`min-w-0 text-[1rem] font-semibold whitespace-nowrap overflow-hidden text-stroke-3 text-stroke-bg group-data-faded/alert:text-fg-muted compact:text-[0.929rem]`}>
             {a().text}
           </Text>
           <Show when={a().key}>

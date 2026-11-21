@@ -1,9 +1,10 @@
+import type { Texture } from "@origingame/engine";
 import { For, Icon, Image, Show, Text, View, t } from "@origingame/engine/ui";
 import "./resources.en.ogt";
 
 export interface StrategyResourcesProps {
   /** The stockpiles in the game's order, keyed rows of { id, name, icon, glyph, amount, cap, rate, trend, note, warn }: name for a reader (Gold); icon its picture (og.load.texture), 0 draws glyph (an icon of the atlas) instead; amount the store as the game words it (1,250); cap a ceiling shown after it (/ 50, the population's), empty none; rate the income as the game words it (+12/s), under the amount, inked by trend (gain, loss or none: data-trend); note a word in place of the rate (Near cap), empty none; warn marks a store at its limit in gold (data-warn). */
-  resources?: ReadonlyArray<{ id: string; name: string; icon: number; glyph: string; amount: string; cap: string; rate: string; trend: string; note: string; warn: boolean }>;
+  resources?: ReadonlyArray<{ id: string; name: string; icon: Texture | 0; glyph: string; amount: string; cap: string; rate: string; trend: string; note: string; warn: boolean }>;
   /** The age or tier as the game words it (Castle Age), on a lit tag after the stockpiles; empty hides it. */
   tier: string;
 }
@@ -24,11 +25,11 @@ export function StrategyResources(props: StrategyResourcesProps) {
           <Show when={r().icon} fallback={
               <Icon class={`shrink size-[1.714rem] text-fg compact:size-[1.143rem]`} name={r().glyph} />
           }>
-            <Image class={`shrink size-[1.714rem] rounded-tl-[4.576px] rounded-tr-none rounded-br-[4.576px] rounded-bl-none compact:size-[1.143rem]`} src={String(r().icon)} />
+            <Image class={`shrink size-[1.714rem] rounded-tl-[4.576px] rounded-tr-none rounded-br-[4.576px] rounded-bl-none compact:size-[1.143rem]`} src={r().icon} />
           </Show>
           <View class="flex-col min-w-0">
             <View class="flex-row items-baseline gap-x-[0.214rem] min-w-0">
-              <Text class={`min-w-0 text-[1.286rem] leading-[1.1] font-bold tabular-nums whitespace-nowrap overflow-hidden text-shadow-xs text-shadow-bg/55 group-data-warn/res:text-gold compact:text-[1.071rem]`}>
+              <Text class={`min-w-0 text-[1.286rem] leading-[1.1] font-bold tabular-nums whitespace-nowrap overflow-hidden text-stroke-3 text-stroke-bg group-data-warn/res:text-gold compact:text-[1.071rem]`}>
                 {r().amount}
               </Text>
               <Show when={r().cap}>

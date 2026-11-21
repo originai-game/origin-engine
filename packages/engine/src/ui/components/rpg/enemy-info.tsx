@@ -1,3 +1,4 @@
+import type { Texture } from "@origingame/engine";
 import { For, Icon, Image, Show, Text, View, t } from "@origingame/engine/ui";
 import { HudBar } from "../hud/bar";
 import "./rpg.en.ogt";
@@ -6,7 +7,7 @@ export interface RpgEnemyInfoProps {
   /** The enemy's name. */
   name: string;
   /** Its portrait (og.load.texture); 0 is none. */
-  portrait: number;
+  portrait: Texture | 0;
   /** Its level. */
   level: number;
   /** Health now. */
@@ -25,14 +26,14 @@ export interface RpgEnemyInfoProps {
 export function RpgEnemyInfo(props: RpgEnemyInfoProps) {
   return (
     <View
-      class={`flex-col items-center w-full text-fg text-shadow-xs text-shadow-bg/55 border-rim bg-linear-to-b from-[#1e2637e5] to-plate-lo shadow-plate rounded-block border p-2 gap-y-2`}
+      class={`flex-col items-center w-full text-fg text-stroke-3 text-stroke-bg border-rim bg-linear-to-b from-[#1e2637e5] to-plate-lo shadow-plate rounded-block border p-2 gap-y-2`}
       label={props.name}
     >
       <View class={`flex-row items-center justify-center w-full shrink-0 min-h-[2.286rem] py-[0.143rem] px-[0.857rem] shadow-[inset_0px_-1px_0px_#343d4f]`}>
         <Text
           role="heading"
           level={3}
-          class={`text-[1rem] font-bold text-fg whitespace-nowrap text-shadow-xs text-shadow-bg/55`}
+          class={`text-[1rem] font-bold text-fg whitespace-nowrap text-stroke-3 text-stroke-bg`}
         >
           {t("rpg.enemy.name")}
         </Text>
@@ -40,7 +41,7 @@ export function RpgEnemyInfo(props: RpgEnemyInfoProps) {
       <Text class={`text-[1rem] font-semibold text-fg text-center`}>{props.name}</Text>
       <Show when={props.portrait !== 0}>
         <View class={`w-[46%] max-w-[6.857rem] aspect-square overflow-hidden compact:hidden`}>
-          <Image class={`size-full`} src={String(props.portrait)} label="" />
+          <Image class={`size-full`} src={props.portrait} label="" />
         </View>
       </Show>
       <Text class={`text-[0.929rem] text-fg-muted text-center`}>{t("rpg.party.level", { level: props.level })}</Text>

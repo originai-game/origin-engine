@@ -75,7 +75,7 @@ export function RacingTelemetry(props: RacingTelemetryProps) {
                   data-red={red()}
                 />
                 <Text
-                  class={`absolute text-[0.857rem] leading-none font-bold tabular-nums whitespace-nowrap text-fg text-shadow-xs text-shadow-bg/55 data-red:text-[#ff4d5e] compact:hidden`}
+                  class={`absolute text-[0.857rem] leading-none font-bold tabular-nums whitespace-nowrap text-fg text-stroke-3 text-stroke-bg data-red:text-[#ff4d5e] compact:hidden`}
                   style={{ left: `${50 + Math.sin(a()) * 35}%`, top: `${50 - Math.cos(a()) * 35}%`, transform: "translate(-50%,-50%)" }}
                   data-red={red()}
                 >

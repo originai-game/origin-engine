@@ -1,10 +1,11 @@
+import type { Texture } from "@origingame/engine";
 import { For, Icon, Image, Show, Text, View, formatNumber, t } from "@origingame/engine/ui";
 import "../hud/slot.en.ogt";
 import "./rpg.en.ogt";
 
 export interface RpgSkillsProps {
   /** The bar's slots in the game's order, keyed rows of { id, name, icon, glyph, key, kind, cooldown, time, count, ready, unaffordable, reason, charges, chargesMax, charge }: name for a reader; icon a texture (0: the glyph, an icon name, in its place); key the input as the game names it (1, Q), on a key cap under the slot; kind skill, item (a consumable: a smaller slot with its count on a tag, set apart before the skills; a phone leaves items out) or ultimate (a larger hexagon inside a gold ring that fills with charge, 0 to 1, its share in figures until full; on data-kind); cooldown the share still to run, 0 to 1 (a dark radial sweep over the art with a lit leading edge), with time its figure as the game words it (8); count the items held (×5; 0 hides it); ready lit (a lit edge and glow); unaffordable it cannot be paid for (the art greys under a veil and reason, as the game words it (No mana), stands on it); chargesMax 0 hides the charge pips, else charges of them are lit over the slot. */
-  slots?: ReadonlyArray<{ id: string; name: string; icon: number; glyph: string; key: string; kind: string; cooldown: number; time: string; count: number; ready: boolean; unaffordable: boolean; reason: string; charges: number; chargesMax: number; charge: number }>;
+  slots?: ReadonlyArray<{ id: string; name: string; icon: Texture | 0; glyph: string; key: string; kind: string; cooldown: number; time: string; count: number; ready: boolean; unaffordable: boolean; reason: string; charges: number; chargesMax: number; charge: number }>;
 }
 
 /**
@@ -61,7 +62,7 @@ export function RpgSkills(props: RpgSkillsProps) {
                       </Show>
                     </View>
                   }>
-                    <Image class={`absolute inset-0 size-full`} src={String(s().icon)} />
+                    <Image class={`absolute inset-0 size-full`} src={s().icon} />
                   </Show>
                   <Show when={s().unaffordable}>
                     <View class="absolute inset-0 bg-[#06091080]" />
@@ -73,21 +74,21 @@ export function RpgSkills(props: RpgSkillsProps) {
               </View>
               <Show when={s().cooldown > 0 && s().time}>
                 <View class="absolute inset-0 flex-row items-center justify-center">
-                  <Text class={`text-[1.714rem] leading-none font-bold tabular-nums whitespace-nowrap text-fg text-shadow-xs text-shadow-bg/55 compact:text-[1.143rem] data-kind-ultimate:text-[1.143rem] compact:data-kind-ultimate:text-[0.929rem]`}>
+                  <Text class={`text-[1.714rem] leading-none font-bold tabular-nums whitespace-nowrap text-fg text-stroke-3 text-stroke-bg compact:text-[1.143rem] data-kind-ultimate:text-[1.143rem] compact:data-kind-ultimate:text-[0.929rem]`}>
                     {s().time}
                   </Text>
                 </View>
               </Show>
               <Show when={s().unaffordable && s().reason && s().cooldown <= 0}>
                 <View class="absolute inset-0 flex-row items-center justify-center p-1">
-                  <Text class={`max-w-full text-[0.857rem] leading-none font-bold uppercase text-center text-[#78b2ff] text-shadow-xs text-shadow-bg/55`}>
+                  <Text class={`max-w-full text-[0.857rem] leading-none font-bold uppercase text-center text-[#78b2ff] text-stroke-3 text-stroke-bg`}>
                     {s().reason}
                   </Text>
                 </View>
               </Show>
               <Show when={s().kind === "ultimate" && s().charge < 1}>
                 <View class="absolute inset-0 flex-row items-center justify-center">
-                  <Text class={`text-[1.143rem] leading-none font-bold tabular-nums whitespace-nowrap text-fg text-shadow-xs text-shadow-bg/55 compact:text-[0.929rem]`}>
+                  <Text class={`text-[1.143rem] leading-none font-bold tabular-nums whitespace-nowrap text-fg text-stroke-3 text-stroke-bg compact:text-[0.929rem]`}>
                     {`${formatNumber((s().charge <= 0 ? 0 : s().charge) * 100, { decimals: 0 })}%`}
                   </Text>
                 </View>

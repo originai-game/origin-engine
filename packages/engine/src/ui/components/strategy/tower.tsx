@@ -44,7 +44,7 @@ export function StrategyTower(props: StrategyTowerProps) {
             <Image class="size-full" src={props.portrait} />
           </Show>
         </View>
-        <Text class={`flex-1 min-w-0 text-[1.429rem] leading-[1.15] font-bold text-fg whitespace-nowrap overflow-hidden text-shadow-xs text-shadow-bg/55`} role="heading" level={2}>
+        <Text class={`flex-1 min-w-0 text-[1.429rem] leading-[1.15] font-bold text-fg whitespace-nowrap overflow-hidden text-stroke-3 text-stroke-bg`} role="heading" level={2}>
           {props.name !== "" ? props.name : t("strategy.tower.name")}
         </Text>
         <Show when={props.level > 0}>

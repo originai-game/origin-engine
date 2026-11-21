@@ -24,7 +24,7 @@ export function RpgCommands(props: RpgCommandsProps) {
         <Text
           role="heading"
           level={3}
-          class={`text-[1rem] font-bold text-fg whitespace-nowrap text-shadow-xs text-shadow-bg/55`}
+          class={`text-[1rem] font-bold text-fg whitespace-nowrap text-stroke-3 text-stroke-bg`}
         >
           {t("rpg.commands.name")}
         </Text>
@@ -44,7 +44,7 @@ export function RpgCommands(props: RpgCommandsProps) {
             <View class={`flex-col justify-center items-center gap-1 w-full h-full`}>
               <Icon class={`size-[3.429rem] text-fg group-disabled/cmd:text-fg-subtle`} name={c().icon} />
               <Text
-                class={`max-w-full px-1 text-[0.929rem] font-semibold whitespace-nowrap overflow-hidden text-ellipsis text-shadow-xs text-shadow-bg/55`}
+                class={`max-w-full px-1 text-[0.929rem] font-semibold whitespace-nowrap overflow-hidden text-ellipsis text-stroke-3 text-stroke-bg`}
               >
                 {c().label}
               </Text>

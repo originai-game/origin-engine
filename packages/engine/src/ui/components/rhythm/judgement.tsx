@@ -43,7 +43,7 @@ export function RhythmJudgement(props: RhythmJudgementProps) {
           <Show when={!props.broken}>
             <Show when={Math.max(props.hit, 1)} keyed>
               {() => (
-              <Text class={`text-[10.714rem] compact:text-[3.714rem] leading-[0.85] font-bold tabular-nums italic whitespace-nowrap text-fg text-shadow-xs text-shadow-bg/55 animate-beat`}>
+              <Text class={`text-[10.714rem] compact:text-[3.714rem] leading-[0.85] font-bold tabular-nums italic whitespace-nowrap text-fg text-stroke-3 text-stroke-bg animate-beat`}>
                 {formatNumber(props.combo)}
               </Text>
               )}

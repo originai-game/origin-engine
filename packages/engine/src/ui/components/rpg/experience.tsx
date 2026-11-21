@@ -26,7 +26,7 @@ export function RpgExperience(props: RpgExperienceProps) {
       valueNow={props.value <= 0 ? 0 : props.value >= 1 ? 100 : props.value * 100}
     >
       <Text
-        class={`self-start max-w-full px-[1.714rem] text-[0.857rem] font-semibold tracking-[0.14em] uppercase text-[#ffffffc7] whitespace-nowrap overflow-hidden text-shadow-xs text-shadow-bg/55 compact:px-3 compact:tracking-normal`}
+        class={`self-start max-w-full px-[1.714rem] text-[0.857rem] font-semibold tracking-[0.14em] uppercase text-[#ffffffc7] whitespace-nowrap overflow-hidden text-stroke-3 text-stroke-bg compact:px-3 compact:tracking-normal`}
       >
         {props.level > 0
           ? t("rpg.xp.caption", { level: props.level, share: share(props.value <= 0 ? 0 : props.value >= 1 ? 1 : props.value) })

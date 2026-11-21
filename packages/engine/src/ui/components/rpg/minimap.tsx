@@ -1,9 +1,10 @@
+import type { Texture } from "@origingame/engine";
 import { For, Image, Line, Show, Text, View, t } from "@origingame/engine/ui";
 import "./minimap.en.ogt";
 
 export interface RpgMinimapProps {
   /** The map texture (og.load.texture); 0 draws the dark well alone. */
-  map: number;
+  map: Texture | 0;
   /** The map point under the player, 0 to 1 across. Default 0.5. */
   centerX?: number;
   /** The map point under the player, 0 to 1 down. Default 0.5. */
@@ -33,7 +34,7 @@ export function RpgMinimap(props: RpgMinimapProps) {
       <View class="relative size-[10.971rem] compact:size-[7.314rem]">
         <View class="absolute inset-0 overflow-hidden rounded-full bg-[#0b1220] shadow-minimap" role="image" label={t("rpg.map.name")}>
           <Show when={props.map}>
-            <Image class="absolute" style={{ width: `${100 / zoom()}%`, height: `${100 / zoom()}%`, left: `${50 - (props.centerX ?? 0.5) * 100 / zoom()}%`, top: `${50 - (props.centerY ?? 0.5) * 100 / zoom()}%` }} src={String(props.map)} />
+            <Image class="absolute" style={{ width: `${100 / zoom()}%`, height: `${100 / zoom()}%`, left: `${50 - (props.centerX ?? 0.5) * 100 / zoom()}%`, top: `${50 - (props.centerY ?? 0.5) * 100 / zoom()}%` }} src={props.map} />
           </Show>
           {/* The sweep: its conic gradient and radial mask stand in as a
               plain veil. */}
@@ -62,7 +63,7 @@ export function RpgMinimap(props: RpgMinimapProps) {
       <Show when={props.place !== "" || props.clock !== ""}>
         <View class="flex-row items-center justify-center max-w-full min-w-0 gap-1 compact:flex-wrap compact:gap-y-0">
           <Show when={props.place !== ""}>
-            <Text class={`min-w-0 text-[1.071rem] font-semibold whitespace-nowrap overflow-hidden text-fg text-shadow-xs text-shadow-bg/55 compact:text-[0.929rem]`}>
+            <Text class={`min-w-0 text-[1.071rem] font-semibold whitespace-nowrap overflow-hidden text-fg text-stroke-3 text-stroke-bg compact:text-[0.929rem]`}>
               {props.place}
             </Text>
           </Show>

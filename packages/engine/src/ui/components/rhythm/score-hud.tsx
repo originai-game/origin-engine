@@ -22,17 +22,17 @@ export interface RhythmScoreHudProps {
 export function RhythmScoreHud(props: RhythmScoreHudProps) {
   return (
     <View class={`flex-col items-end gap-0 max-w-full`} role="group" label={t("rhythm.hud.name")}>
-      <Text class={`text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap text-[#ffffffc7] text-shadow-xs text-shadow-bg/55`}>
+      <Text class={`text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap text-[#ffffffc7] text-stroke-3 text-stroke-bg`}>
         {t("rhythm.hud.score")}
       </Text>
-      <Text class={`text-[4.714rem] compact:text-[2.714rem] leading-[0.9] font-bold tabular-nums whitespace-nowrap text-fg text-shadow-xs text-shadow-bg/55`}>
+      <Text class={`text-[4.714rem] compact:text-[2.714rem] leading-[0.9] font-bold tabular-nums whitespace-nowrap text-fg text-stroke-3 text-stroke-bg`}>
         {formatNumber(props.score)}
       </Text>
       <Show when={props.accuracy !== "" || props.grade !== ""}>
         <View class={`flex-row items-baseline justify-end gap-1 mt-1 compact:mt-0.5`}>
           <Show when={props.accuracy !== ""}>
             <Text
-              class={`text-[1.714rem] compact:text-[1.143rem] font-bold tabular-nums whitespace-nowrap text-fg text-shadow-xs text-shadow-bg/55`}
+              class={`text-[1.714rem] compact:text-[1.143rem] font-bold tabular-nums whitespace-nowrap text-fg text-stroke-3 text-stroke-bg`}
               label={t("rhythm.hud.accuracyName", { accuracy: props.accuracy })}
             >
               {props.accuracy}
@@ -40,7 +40,7 @@ export function RhythmScoreHud(props: RhythmScoreHudProps) {
           </Show>
           <Show when={props.grade !== ""}>
             <Text
-              class={`text-[2.429rem] compact:text-[1.714rem] leading-none font-bold italic whitespace-nowrap text-gold text-shadow-xs text-shadow-bg/55`}
+              class={`text-[2.429rem] compact:text-[1.714rem] leading-none font-bold italic whitespace-nowrap text-gold text-stroke-3 text-stroke-bg`}
               label={t("rhythm.hud.gradeName", { grade: props.grade })}
             >
               {props.grade}
@@ -50,10 +50,10 @@ export function RhythmScoreHud(props: RhythmScoreHudProps) {
       </Show>
       <Show when={(props.best ?? 0) > 0}>
         <View class={`flex-row items-baseline justify-end gap-1 mt-0.5`}>
-          <Text class={`text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap text-[#ffffffc7] text-shadow-xs text-shadow-bg/55`}>
+          <Text class={`text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap text-[#ffffffc7] text-stroke-3 text-stroke-bg`}>
             {t("rhythm.hud.best")}
           </Text>
-          <Text class={`text-[1.143rem] font-bold tabular-nums whitespace-nowrap text-fg-muted text-shadow-xs text-shadow-bg/55`}>
+          <Text class={`text-[1.143rem] font-bold tabular-nums whitespace-nowrap text-fg-muted text-stroke-3 text-stroke-bg`}>
             {formatNumber(props.best ?? 0)}
           </Text>
           <Text

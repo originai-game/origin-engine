@@ -24,7 +24,7 @@ export function RhythmDifficulty(props: RhythmDifficultyProps) {
   return (
     <View class={`flex-col gap-1 w-full min-w-0 text-fg`} label={props.title !== "" ? props.title : t("rhythm.difficulty.title")}>
       <View class={`flex-row shrink w-full min-h-0`}>
-        <Text class={`text-[0.857rem] font-semibold tracking-[0.14em] uppercase min-w-0 whitespace-nowrap text-fg text-shadow-xs text-shadow-bg/55 overflow-hidden`}>
+        <Text class={`text-[0.857rem] font-semibold tracking-[0.14em] uppercase min-w-0 whitespace-nowrap text-fg text-stroke-3 text-stroke-bg overflow-hidden`}>
           {props.title !== "" ? props.title : t("rhythm.difficulty.title")}
         </Text>
       </View>

@@ -55,7 +55,7 @@ export function RacingLapHud(props: RacingLapHudProps) {
             role="group"
             label={props.position > 0 ? t("racing.lap.positionValue", { position: props.position, racers: props.racers }) : t("racing.lap.position")}
           >
-            <Text class={`text-[6rem] leading-[0.8] italic font-bold tabular-nums whitespace-nowrap text-fg text-shadow-xs text-shadow-bg/55 compact:text-[3.143rem]`}>
+            <Text class={`text-[6rem] leading-[0.8] italic font-bold tabular-nums whitespace-nowrap text-fg text-stroke-3 text-stroke-bg compact:text-[3.143rem]`}>
               {props.position > 0 ? formatNumber(props.position) : t("racing.lap.pending")}
             </Text>
             <Text class={`text-[2.143rem] leading-[0.8] italic font-bold whitespace-nowrap text-fg-muted compact:text-[1.714rem]`}>{t("racing.lap.of", { total: props.racers })}</Text>

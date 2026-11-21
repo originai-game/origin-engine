@@ -1,3 +1,4 @@
+import type { Texture } from "@origingame/engine";
 import { For, Icon, Image, Show, Text, View, t, type UiEvent } from "@origingame/engine/ui";
 import "./queue.en.ogt";
 
@@ -5,7 +6,7 @@ export interface StrategyQueueProps {
   /** What produces, as the game words it (Barracks queue); empty takes the kit's (Production). */
   title: string;
   /** The queue in the game's order, first in production, keyed rows of { id, name, picture, icon, count, progress, timeText, state, reason }: name for a reader; picture a texture (og.load.texture), 0 draws icon from the atlas; count a stack of the same order (×2, shown above 1); progress 0 to 1 done, a dark sweep over the first order's art for what is still to run; timeText its time left as the game words it (0:08), on the first order's tile, empty none; state building, waiting, paused or blocked (data-state; paused and blocked are also words after the tiles); reason why it is blocked (Need 3 supply), empty none. */
-  items?: ReadonlyArray<{ id: string; name: string; picture: number; icon: string; count: number; progress: number; timeText: string; state: string; reason: string }>;
+  items?: ReadonlyArray<{ id: string; name: string; picture: Texture | 0; icon: string; count: number; progress: number; timeText: string; state: string; reason: string }>;
   /** Orders queued, as the game counts them (stacks included), shown over limit on a tag. */
   queued: number;
   /** The most the queue holds: its free places are drawn as empty tiles after the orders; 0 hides the count and the free places. */
@@ -50,7 +51,7 @@ export function StrategyQueue(props: StrategyQueueProps) {
                     <Icon class={`size-[60%] text-fg`} name={q().icon} />
                   </View>
               }>
-                <Image class="absolute inset-0 size-full" src={String(q().picture)} />
+                <Image class="absolute inset-0 size-full" src={q().picture} />
               </Show>
               <Show when={q().state === "blocked"}>
                 <View class="absolute inset-0 bg-bg/55" />
@@ -60,7 +61,7 @@ export function StrategyQueue(props: StrategyQueueProps) {
               </Show>
               <Show when={q().state !== "waiting" && q().timeText !== ""}>
                 <View class="absolute inset-x-0 inset-y-0 flex-row items-center justify-center">
-                  <Text class={`shrink text-[1.714rem] leading-none font-bold tabular-nums whitespace-nowrap text-shadow-xs text-shadow-bg/55`}>
+                  <Text class={`shrink text-[1.714rem] leading-none font-bold tabular-nums whitespace-nowrap text-stroke-3 text-stroke-bg`}>
                     {q().timeText}
                   </Text>
                 </View>

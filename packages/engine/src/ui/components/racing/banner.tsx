@@ -37,7 +37,7 @@ export function RacingBanner(props: RacingBannerProps) {
   const plateInner = () => (
     <>
       <View class="flex-row items-baseline justify-center gap-x-2 max-w-full min-w-0">
-        <Text class={`min-w-0 text-[1.714rem] leading-[1.1] font-bold tabular-nums tracking-[0.22em] uppercase whitespace-nowrap overflow-hidden text-fg text-shadow-xs text-shadow-bg/55 compact:text-[1.143rem] group-data-kind-countdown/plate:text-[2.429rem] group-data-kind-countdown/plate:tracking-normal`}>
+        <Text class={`min-w-0 text-[1.714rem] leading-[1.1] font-bold tabular-nums tracking-[0.22em] uppercase whitespace-nowrap overflow-hidden text-fg text-stroke-3 text-stroke-bg compact:text-[1.143rem] group-data-kind-countdown/plate:text-[2.429rem] group-data-kind-countdown/plate:tracking-normal`}>
           {kind() === "countdown" ? formatNumber(props.figure) : kind() === "go" ? t("racing.banner.go") : kind() === "finalLap" ? t("racing.banner.finalLap") : kind() === "finish" ? t("racing.banner.finish") : props.text}
         </Text>
         <Show when={kind() === "finish" && props.place > 0}>
@@ -45,7 +45,7 @@ export function RacingBanner(props: RacingBannerProps) {
         </Show>
       </View>
       <Show when={props.detail !== ""}>
-        <Text class={`max-w-full min-w-0 text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap overflow-hidden text-[#ffffffc7] text-shadow-xs text-shadow-bg/55 compact:tracking-normal`}>{props.detail}</Text>
+        <Text class={`max-w-full min-w-0 text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap overflow-hidden text-[#ffffffc7] text-stroke-3 text-stroke-bg compact:tracking-normal`}>{props.detail}</Text>
       </Show>
     </>
   );

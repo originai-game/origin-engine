@@ -1,9 +1,10 @@
+import type { Texture } from "@origingame/engine";
 import { For, Image, Show, Text, View, formatNumber, t, type UiEvent } from "@origingame/engine/ui";
 import "./groups.en.ogt";
 
 export interface StrategyGroupsProps {
   /** The control groups and quick picks (the idle villagers, the army) in the game's order, keyed rows of { id, label, key, icon, count, active, alert }: label for a reader (Group 1, Idle villagers); key the group's key as the game names it (1), on a key cap; icon a picture (og.load.texture) before the count, 0 none; count what it holds; active the group selected now, lit (aria-pressed); alert one that wants the player (idle villagers waiting), its count and edge in gold (data-alert). */
-  groups?: ReadonlyArray<{ id: string; label: string; key: string; icon: number; count: number; active: boolean; alert: boolean }>;
+  groups?: ReadonlyArray<{ id: string; label: string; key: string; icon: Texture | 0; count: number; active: boolean; alert: boolean }>;
   /** Pick. */
   onPick?: (e: UiEvent, id: string) => void;
 }
@@ -27,7 +28,7 @@ export function StrategyGroups(props: StrategyGroupsProps) {
               </Text>
             </Show>
             <Show when={g().icon}>
-              <Image class={`shrink size-[1.714rem] rounded-tl-[4.576px] rounded-tr-none rounded-br-[4.576px] rounded-bl-none`} src={String(g().icon)} />
+              <Image class={`shrink size-[1.714rem] rounded-tl-[4.576px] rounded-tr-none rounded-br-[4.576px] rounded-bl-none`} src={g().icon} />
             </Show>
             <Text class={`shrink text-[1.143rem] font-bold tabular-nums whitespace-nowrap group-data-alert/grp:text-gold compact:text-[0.929rem]`}>
               {formatNumber(g().count)}

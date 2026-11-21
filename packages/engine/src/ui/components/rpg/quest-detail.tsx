@@ -1,3 +1,4 @@
+import type { Texture } from "@origingame/engine";
 import { For, Icon, Image, Scroll, Show, Text, View, t, type UiEvent } from "@origingame/engine/ui";
 import "./quest-detail.en.ogt";
 
@@ -19,7 +20,7 @@ export interface RpgQuestDetailProps {
   /** Show the Show on map action, which reports locate. */
   canLocate: boolean;
   /** A texture beside the rewards (og.load.texture), with its own space; 0 is none. */
-  scenery: number;
+  scenery: Texture | 0;
   /** Track or Stop tracking. */
   onTrack?: (e: UiEvent) => void;
   /** Show on map. */
@@ -45,14 +46,14 @@ export function RpgQuestDetail(props: RpgQuestDetailProps) {
       {/* Band */}
       <View class={`relative shrink-0 w-full min-h-[6.857rem] group-data-with-scenery/frame:min-h-[13.714rem]`}>
         <Show when={props.scenery !== 0}>
-          <Image class={`absolute inset-0 size-full`} src={String(props.scenery)} />
+          <Image class={`absolute inset-0 size-full`} src={props.scenery} />
           <View class="absolute inset-0 bg-linear-to-b from-transparent via-[#060d1cb3] via-55% to-[#060d1c]" />
         </Show>
         <View class="absolute bottom-0 left-0 flex-col gap-0.5 min-w-0 pt-3 pb-2 px-4 compact:px-3">
           <Show when={props.label}>
             <Text class={`text-caption font-semibold tracking-[0.14em] uppercase whitespace-nowrap text-gold`}>{props.label}</Text>
           </Show>
-          <Text class={`min-w-0 text-[2.429rem] leading-tight text-fg text-shadow-xs text-shadow-bg/55 compact:text-[1.714rem]`} role="heading" level={2}>
+          <Text class={`min-w-0 text-[2.429rem] leading-tight text-fg text-stroke-3 text-stroke-bg compact:text-[1.714rem]`} role="heading" level={2}>
             {props.name}
           </Text>
         </View>

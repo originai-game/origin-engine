@@ -1,9 +1,10 @@
+import type { Texture } from "@origingame/engine";
 import { For, Icon, Image, Show, Text, View, t, type UiEvent } from "@origingame/engine/ui";
 import "./commands.en.ogt";
 
 export interface StrategyCommandsProps {
   /** The command card in grid order, four to a row, keyed rows of { id, name, icon, glyph, key, action, enabled, affordable, cost, costIcon, cooldown, time, active, detail, cooldownText, readyText, reason }: name for a reader and the info card's title, empty draws an empty cell; icon the command's picture (og.load.texture), 0 draws glyph (an icon of the atlas); key the hotkey as the game names it (A), or action the input action whose bound glyph the cap shows (og.input.defineAction), both empty hide it, hidden under a touch screen; enabled false greys it and it sends nothing; affordable false greys it and shows cost on a red tag; cost and costIcon the price as the game words it (200) and the resource's picture; cooldown 0 to 1 still to run, a dark sweep over the art, with time its figure (18); active a toggle that is on or the order in hand, its edge lit; detail, cooldownText and readyText the info card's words (Cooldown 45 s, Ready in 18 s); reason why it cannot be used now (Need a Blacksmith), on the info card. */
-  commands?: ReadonlyArray<{ id: string; name: string; icon: number; glyph: string; key: string; action: string; enabled: boolean; affordable: boolean; cost: string; costIcon: number; cooldown: number; time: string; active: boolean; detail: string; cooldownText: string; readyText: string; reason: string }>;
+  commands?: ReadonlyArray<{ id: string; name: string; icon: Texture | 0; glyph: string; key: string; action: string; enabled: boolean; affordable: boolean; cost: string; costIcon: Texture | 0; cooldown: number; time: string; active: boolean; detail: string; cooldownText: string; readyText: string; reason: string }>;
   /** The command whose info card stands over the grid (the one under the pointer, as the game decides); empty shows none. A phone shows none. */
   focused: string;
   /** Command. */
@@ -48,7 +49,7 @@ export function StrategyCommands(props: StrategyCommandsProps) {
                 <Show when={c().cost}>
                   <View class={`shrink flex-row items-center gap-x-1 data-short:text-[#ff4d5e]`} data-short={!c().affordable}>
                     <Show when={c().costIcon}>
-                      <Image class={`shrink size-[1.143rem]`} src={String(c().costIcon)} />
+                      <Image class={`shrink size-[1.143rem]`} src={c().costIcon} />
                     </Show>
                     <Text class={`text-[1.143rem] font-bold tabular-nums whitespace-nowrap data-short:text-[#ff4d5e]`} data-short={!c().affordable}>
                       {c().cost}
@@ -89,20 +90,20 @@ export function StrategyCommands(props: StrategyCommandsProps) {
                       <Icon class={`size-[55%] text-fg`} name={c().glyph} />
                     </View>
                 }>
-                  <Image class={`absolute inset-0 size-full group-disabled/cmd:opacity-45`} src={String(c().icon)} />
+                  <Image class={`absolute inset-0 size-full group-disabled/cmd:opacity-45`} src={c().icon} />
                 </Show>
                 <Show when={c().cooldown > 0}>
                   <View class="absolute inset-x-0 top-0 bg-[#060910ad]" style={{ height: `${Math.min(1, c().cooldown) * 100}%` }} />
                 </Show>
                 <Show when={c().cooldown > 0 && c().time}>
                   <View class="absolute inset-x-0 top-1/2 -translate-y-1/2 flex-row justify-center">
-                    <Text class={`text-[1.714rem] leading-[1] font-bold tabular-nums whitespace-nowrap text-fg text-shadow-xs text-shadow-bg/55`}>
+                    <Text class={`text-[1.714rem] leading-[1] font-bold tabular-nums whitespace-nowrap text-fg text-stroke-3 text-stroke-bg`}>
                       {c().time}
                     </Text>
                   </View>
                 </Show>
                 <Show when={c().action || c().key}>
-                  <Text class={`absolute left-1 top-[0.143rem] max-w-[94%] py-0 px-0 leading-[1.2] text-[0.857rem] font-bold text-fg whitespace-nowrap overflow-hidden text-shadow-xs text-shadow-bg/55 pointer-coarse:hidden`} glyph={c().key ? undefined : c().action}>
+                  <Text class={`absolute left-1 top-[0.143rem] max-w-[94%] py-0 px-0 leading-[1.2] text-[0.857rem] font-bold text-fg whitespace-nowrap overflow-hidden text-stroke-3 text-stroke-bg pointer-coarse:hidden`} glyph={c().key ? undefined : c().action}>
                     {c().key}
                   </Text>
                 </Show>

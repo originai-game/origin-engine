@@ -1,3 +1,4 @@
+import type { Texture } from "@origingame/engine";
 import { Icon, Image, Show, Text, View, t, type UiEvent } from "@origingame/engine/ui";
 import "./place-card.en.ogt";
 
@@ -7,7 +8,7 @@ export interface RpgPlaceCardProps {
   /** A line or two about it; empty hides it. */
   about: string;
   /** Its picture (og.load.texture); 0 hides it. */
-  picture: number;
+  picture: Texture | 0;
   /** The player has marked it: the button offers Unmark. */
   marked: boolean;
   /** Fast travel to it is possible: the button is enabled. */
@@ -31,7 +32,7 @@ export function RpgPlaceCard(props: RpgPlaceCardProps) {
     <View class={`flex-row items-stretch w-full min-w-0 text-fg bg-[#0e1626f0] shadow-[inset_0px_0px_0px_1px_#4e586c] rounded-tl-[13.714px] rounded-tr-none rounded-br-[13.714px] rounded-bl-none`} role="region" label={props.name}>
       <Show when={props.picture}>
         <View class="relative shrink-0 w-[34%] compact:w-[26%] overflow-hidden">
-          <Image class="absolute inset-0 size-full" src={String(props.picture)} />
+          <Image class="absolute inset-0 size-full" src={props.picture} />
           <View class="absolute inset-x-0 bottom-0 h-1/2 bg-linear-to-t from-[#0e1626f0] to-transparent" />
         </View>
       </Show>

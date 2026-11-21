@@ -1,3 +1,4 @@
+import type { Texture } from "@origingame/engine";
 import { For, Icon, Image, Show, Text, View, t, type UiEvent } from "@origingame/engine/ui";
 import "./rpg.en.ogt";
 
@@ -9,9 +10,9 @@ export interface RpgCharacterProps {
   /** The class and level line as the game words it (Rogue · Level 12). */
   line: string;
   /** A head-and-shoulders texture (og.load.texture); 0 hides it. */
-  portrait: number;
+  portrait: Texture | 0;
   /** A full-figure texture shown between the slot columns; 0 leaves the ground. */
-  figure: number;
+  figure: Texture | 0;
   /** The equipment slots, keyed rows of { id, side, label, icon, rarity }: side is start or end (the column it stands in, mirrored right to left); an empty icon is an empty slot showing its label. */
   slots?: ReadonlyArray<{ id: string; side: string; label: string; icon: string; rarity: string }>;
   /** The selected slot's id; empty is none. */
@@ -47,7 +48,7 @@ export function RpgCharacter(props: RpgCharacterProps) {
             <Show when={props.portrait !== 0}>
               <Image
                 class={`size-[4.571rem] shrink-0 rounded-[0.571rem] compact:size-[3.429rem]`}
-                src={String(props.portrait)}
+                src={props.portrait}
                 label=""
               />
             </Show>
@@ -79,7 +80,7 @@ export function RpgCharacter(props: RpgCharacterProps) {
       <View class={`relative flex-row justify-between w-full px-1 py-2 bg-linear-to-b from-[#38e8ff1a] to-transparent`}>
         <Show when={props.figure !== 0}>
           <View class={`absolute left-[18%] top-0 bottom-0 w-[64%]`}>
-            <Image class={`size-full`} src={String(props.figure)} label="" />
+            <Image class={`size-full`} src={props.figure} label="" />
           </View>
         </Show>
         <View class={`relative flex-col justify-between self-stretch gap-y-1`} role="group">

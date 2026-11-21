@@ -53,22 +53,22 @@ export function RhythmGauge(props: RhythmGaugeProps) {
           {(i) => <View class={`absolute left-0 right-0 h-[3px] bg-bg/85`} style={{ top: `${(i() + 1) * 10}%`, marginTop: "-1.5px" }} />}
         </For>
       </View>
-      <Text class={`text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap text-[#ffffffc7] text-shadow-xs text-shadow-bg/55 group-data-kind-fever/gauge:text-[#ff3d8a]`}>
+      <Text class={`text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap text-[#ffffffc7] text-stroke-3 text-stroke-bg group-data-kind-fever/gauge:text-[#ff3d8a]`}>
         {(props.kind ?? "life") === "fever" ? t("rhythm.gauge.fever") : t("rhythm.gauge.life")}
       </Text>
       <Show when={props.failed} fallback={
         <Show when={props.danger}>
-          <Text role="status" class={`text-[0.857rem] font-bold tracking-[0.14em] uppercase whitespace-nowrap text-danger text-shadow-xs text-shadow-bg/55`}>
+          <Text role="status" class={`text-[0.857rem] font-bold tracking-[0.14em] uppercase whitespace-nowrap text-danger text-stroke-3 text-stroke-bg`}>
             {t("rhythm.gauge.danger")}
           </Text>
         </Show>
       }>
-        <Text role="status" class={`text-[0.857rem] font-bold tracking-[0.14em] uppercase whitespace-nowrap text-danger text-shadow-xs text-shadow-bg/55`}>
+        <Text role="status" class={`text-[0.857rem] font-bold tracking-[0.14em] uppercase whitespace-nowrap text-danger text-stroke-3 text-stroke-bg`}>
           {t("rhythm.gauge.failed")}
         </Text>
       </Show>
       <Show when={props.ready}>
-        <Text role="status" class={`text-[0.857rem] font-bold tracking-[0.14em] uppercase whitespace-nowrap text-[#ff3d8a] text-shadow-xs text-shadow-bg/55`}>
+        <Text role="status" class={`text-[0.857rem] font-bold tracking-[0.14em] uppercase whitespace-nowrap text-[#ff3d8a] text-stroke-3 text-stroke-bg`}>
           {t("rhythm.gauge.ready")}
         </Text>
       </Show>

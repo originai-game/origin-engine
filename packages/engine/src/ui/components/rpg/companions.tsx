@@ -1,10 +1,11 @@
+import type { Texture } from "@origingame/engine";
 import { For, Icon, Image, Show, Text, View, t } from "@origingame/engine/ui";
 import { HudBar } from "../hud/bar";
 import "./rpg.en.ogt";
 
 export interface RpgCompanionsProps {
   /** The leader's companions in the game's order, keyed rows of { id, name, portrait, health, healthMax, ghost, mana, manaMax, key, fallen }: portrait a texture (0: the person glyph); ghost the health before the latest loss; manaMax 0 hides the mana bar; key the input that switches to them as the game names it (2), on a key cap at the plate's end, empty for none; fallen out of the fight (on data-fallen: the plate dims, the portrait greys and a Fallen tag stands beside the name). */
-  members?: ReadonlyArray<{ id: string; name: string; portrait: number; health: number; healthMax: number; ghost: number; mana: number; manaMax: number; key: string; fallen: boolean }>;
+  members?: ReadonlyArray<{ id: string; name: string; portrait: Texture | 0; health: number; healthMax: number; ghost: number; mana: number; manaMax: number; key: string; fallen: boolean }>;
   /** The share of health under which a companion is low: the fill turns to danger and the rim glows (0.25). */
   low?: number;
 }
@@ -24,7 +25,7 @@ function isLow(props: RpgCompanionsProps, m: { fallen: boolean; health: number; 
 export function RpgCompanions(props: RpgCompanionsProps) {
   return (
     <View
-      class={`flex-col w-[16rem] max-w-full text-fg text-shadow-xs text-shadow-bg/55 border-rim bg-linear-to-b from-[#1e2637e5] to-plate-lo shadow-plate rounded-block border p-2 gap-y-[0.643rem] compact:flex-row compact:flex-wrap compact:w-full compact:gap-x-3 compact:gap-y-2`}
+      class={`flex-col w-[16rem] max-w-full text-fg text-stroke-3 text-stroke-bg border-rim bg-linear-to-b from-[#1e2637e5] to-plate-lo shadow-plate rounded-block border p-2 gap-y-[0.643rem] compact:flex-row compact:flex-wrap compact:w-full compact:gap-x-3 compact:gap-y-2`}
       role="group"
       label={t("rpg.party.name")}
     >
@@ -43,7 +44,7 @@ export function RpgCompanions(props: RpgCompanionsProps) {
               data-dimmed={m().fallen}
             >
               <Show when={m().portrait !== 0} fallback={<Icon class={`size-3/4 text-fg group-data-dimmed/portrait:text-fg-subtle`} name="person" />}>
-                <Image class={`size-full`} src={String(m().portrait)} label="" />
+                <Image class={`size-full`} src={m().portrait} label="" />
               </Show>
             </View>
           </View>

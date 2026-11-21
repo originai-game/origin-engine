@@ -1,3 +1,4 @@
+import type { Texture } from "@origingame/engine";
 import { For, Icon, Image, Show, Text, View, formatNumber, t } from "@origingame/engine/ui";
 import { HudBar } from "../hud/bar";
 import "./leader.en.ogt";
@@ -8,7 +9,7 @@ export interface RpgLeaderProps {
   /** The level beside the name; 0 hides it. */
   level: number;
   /** A head-and-shoulders texture (og.load.texture); 0 draws the person glyph. */
-  portrait: number;
+  portrait: Texture | 0;
   /** Health now, shown as a figure over its most and as the fat bar. */
   health: number;
   /** Most health. */
@@ -40,7 +41,7 @@ export interface RpgLeaderProps {
 export function RpgLeader(props: RpgLeaderProps) {
   const low = () => props.healthMax > 0 && props.health <= props.healthMax * (props.low ?? 0.25);
   return (
-    <View class={`flex-row items-center gap-x-[0.857rem] w-[23.571rem] max-w-full text-fg text-shadow-xs text-shadow-bg/55 compact:gap-x-2 compact:w-full`} role="group" label={props.name !== "" ? props.name : t("rpg.party.health")}>
+    <View class={`flex-row items-center gap-x-[0.857rem] w-[23.571rem] max-w-full text-fg text-stroke-3 text-stroke-bg compact:gap-x-2 compact:w-full`} role="group" label={props.name !== "" ? props.name : t("rpg.party.health")}>
       {/* Portrait: a large HudPortrait, lifted off the scene; the octagon
           cut stands in as a square plate with a lit edge. */}
       <View class="shrink-0 p-[2px] bg-[#ffffff59] shadow-[0px_5px_10px_#000000a6] size-[4.857rem] compact:size-[3.143rem]">
@@ -50,7 +51,7 @@ export function RpgLeader(props: RpgLeaderProps) {
                 <Icon class="size-1/2 text-fg-muted" name="person" />
               </View>
           }>
-            <Image class="absolute inset-0 size-full" src={String(props.portrait)} />
+            <Image class="absolute inset-0 size-full" src={props.portrait} />
           </Show>
         </View>
       </View>

@@ -27,7 +27,7 @@ export function RacingPedals(props: RacingPedalsProps) {
         >
           <View class="absolute bottom-0 left-0 w-full bg-[#55e39a]" style={{ height: `${(props.throttle <= 0 ? 0 : props.throttle >= 1 ? 1 : props.throttle) * 100}%` }} />
         </View>
-        <Text class={`text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap text-[#ffffffc7] text-shadow-xs text-shadow-bg/55 compact:tracking-normal`}>{t("racing.pedals.throttle")}</Text>
+        <Text class={`text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap text-[#ffffffc7] text-stroke-3 text-stroke-bg compact:tracking-normal`}>{t("racing.pedals.throttle")}</Text>
       </View>
       <View class="flex-col items-center gap-y-[0.357rem]">
         <View
@@ -40,7 +40,7 @@ export function RacingPedals(props: RacingPedalsProps) {
         >
           <View class="absolute bottom-0 left-0 w-full bg-[#ff4d5e]" style={{ height: `${(props.brake <= 0 ? 0 : props.brake >= 1 ? 1 : props.brake) * 100}%` }} />
         </View>
-        <Text class={`text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap text-[#ffffffc7] text-shadow-xs text-shadow-bg/55 compact:tracking-normal`}>{t("racing.pedals.brake")}</Text>
+        <Text class={`text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap text-[#ffffffc7] text-stroke-3 text-stroke-bg compact:tracking-normal`}>{t("racing.pedals.brake")}</Text>
       </View>
     </View>
   );

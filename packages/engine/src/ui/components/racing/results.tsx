@@ -55,7 +55,7 @@ export function RacingResults(props: RacingResultsProps) {
             <Show when={playerRow()} keyed>
               {(r) => (
                 <>
-                  <Text class={`text-[6rem] leading-[0.9] font-bold italic whitespace-nowrap text-[#38e8ff] text-shadow-xs text-shadow-bg/55 compact:text-[3.143rem]`}>
+                  <Text class={`text-[6rem] leading-[0.9] font-bold italic whitespace-nowrap text-[#38e8ff] text-stroke-3 text-stroke-bg compact:text-[3.143rem]`}>
                     {r().state === "dnf" || r().state === "dsq" ? (r().state === "dsq" ? t("racing.results.dsq") : t("racing.results.dnf")) : ordinal(r().position)}
                   </Text>
                   <View class={`flex-row flex-wrap items-baseline justify-between gap-x-3 py-2 px-3 bg-linear-to-b from-[#1e2637e5] to-plate-lo shadow-[inset_0px_0px_0px_1px_#ffffff2e,inset_0px_1px_0px_#ffffff8c] rounded-tl-[6.858px] rounded-tr-none rounded-br-[6.858px] rounded-bl-none`}>
