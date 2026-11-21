@@ -21893,7 +21893,7 @@ export interface AudioSource {
 }
 
 /**
- * Where spatial sources are heard from: the entity's world transform (its og.Transform down og.Parent, so a listener under a camera rig hears from the rig), looking down its -Z with +X to the right (three.js's convention). The first listener in query order is used; with none, the origin looking down -Z.
+ * Where spatial sources are heard from: the entity's world transform (its og.Transform down og.Parent, so a listener under a camera rig hears from the rig), looking down its -Z with +X to the right (three.js's convention). The first listener in query order is used; with none, the camera (og.Camera's pose), whose movement is the Doppler velocity; with no camera, the origin looking down -Z.
  * See `audio §2`.
  *
  * The value of the `AudioListener` component (token `og.AudioListener`).
@@ -35909,7 +35909,7 @@ export declare namespace og {
    */
   const AudioSource: ComponentType<{ readonly sound: FieldSpec<"Sound">; readonly bus: FieldSpec<"AudioBus">; readonly volume: FieldSpec<"f32">; readonly playbackRate: FieldSpec<"f32">; readonly pan: FieldSpec<"f32">; readonly loop: FieldSpec<"bool">; readonly loopStart: FieldSpec<"f32">; readonly loopEnd: FieldSpec<"f32">; readonly spatial: FieldSpec<"bool">; readonly refDistance: FieldSpec<"f32">; readonly maxDistance: FieldSpec<"f32">; readonly rolloffFactor: FieldSpec<"f32">; readonly playing: FieldSpec<"bool">; readonly priority: FieldSpec<"u32">; readonly lowpass: FieldSpec<"f32">; readonly occlude: FieldSpec<"bool">; readonly distanceCutoff: FieldSpec<"f32">; readonly startAt: FieldSpec<"f64">; readonly startOffset: FieldSpec<"f64">; readonly fade: FieldSpec<"f32">; readonly dopplerFactor: FieldSpec<"f32">; readonly innerAngle: FieldSpec<"f32">; readonly outerAngle: FieldSpec<"f32">; readonly outerGain: FieldSpec<"f32">; readonly virtualize: FieldSpec<"bool">; readonly retrigger: FieldSpec<"bool">; readonly userBus: FieldSpec<"u32"> }, AudioSource>;
   /**
-   * Where spatial sources are heard from: the entity's world transform (its og.Transform down og.Parent, so a listener under a camera rig hears from the rig), looking down its -Z with +X to the right (three.js's convention). The first listener in query order is used; with none, the origin looking down -Z.
+   * Where spatial sources are heard from: the entity's world transform (its og.Transform down og.Parent, so a listener under a camera rig hears from the rig), looking down its -Z with +X to the right (three.js's convention). The first listener in query order is used; with none, the camera (og.Camera's pose), whose movement is the Doppler velocity; with no camera, the origin looking down -Z.
    * See `audio §2`.
    */
   const AudioListener: ComponentType<{ readonly volume: FieldSpec<"f32">; readonly dopplerFactor: FieldSpec<"f32">; readonly panningModel: FieldSpec<"PanningModel"> }, AudioListener>;

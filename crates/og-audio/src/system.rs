@@ -8,9 +8,9 @@ use crate::command::{
 };
 use crate::schema::{
     Audio, AudioBusFx, AudioBusNode, AudioEvent, AudioEventVoice, AudioListener, AudioMix,
-    AudioPlayback, AudioSnapshot, AudioSource, AudioStream, BUS_COUNT, GRAPH_LEN, GRAPH_STRIDE,
-    MAX_BUSES, Parent, ReverbZone, SoundEnded, SoundStarted, Transform, Volume, end_reason,
-    panning_model, zone_weight,
+    AudioPlayback, AudioSnapshot, AudioSource, AudioStream, BUS_COUNT, CameraPose, GRAPH_LEN,
+    GRAPH_STRIDE, MAX_BUSES, Parent, ReverbZone, SoundEnded, SoundStarted, Transform, Volume,
+    end_reason, panning_model, zone_weight,
 };
 use crate::sound::SoundBank;
 use og_core::IdMap;
@@ -86,6 +86,12 @@ struct Replay {
 
 /// The ticks of plays kept to recognise a replayed one.
 const KEEP_SENT: u64 = 256;
+
+/// `AudioStream.listener`'s bits while the camera is the listener (Godot's
+/// rule: without a listener entity, the camera is heard from). A live
+/// entity's bits are at most 2^53 - 1 (`og_core::handle`), so it is never
+/// one.
+const CAMERA_LISTENER: u64 = u64::MAX;
 
 /// The connection between one world's audio system and its sink (a mixer
 /// on the web Worker, cpal, or the null sink). Cloning shares it.
@@ -416,52 +422,56 @@ pub fn install(world: &mut World, desc: &AudioDesc) -> Result<AudioLink> {
     crate::events::install(world)?;
     let system_link = link.clone();
     let occluder = desc.occluder.clone();
-    world.add_system(
-        SystemDesc::new(SYSTEM_NAME)
-            .read::<Audio>()
-            .read::<AudioListener>()
-            .read::<Transform>()
-            .read::<Parent>()
-            .read::<AudioBusFx>()
-            .read::<AudioBusNode>()
-            .write::<AudioSnapshot>()
-            .write::<AudioMix>()
-            .write::<ReverbZone>()
-            .write::<AudioSource>()
-            .write::<AudioPlayback>()
-            .write::<AudioStream>()
-            .write::<SoundStarted>()
-            .write::<SoundEnded>()
-            // 0: playing sources, 1: sources not yet started,
-            // 2: playheads whose source was removed, 3: listeners.
-            .query(
-                QueryDesc::new()
-                    .write::<AudioSource>()
-                    .write::<AudioPlayback>(),
-            )
-            .query(
-                QueryDesc::new()
-                    .write::<AudioSource>()
-                    .without::<AudioPlayback>(),
-            )
-            .query(
-                QueryDesc::new()
-                    .write::<AudioPlayback>()
-                    .without::<AudioSource>(),
-            )
-            .query(QueryDesc::new().read::<AudioListener>().read::<Transform>())
-            // 4: bus effects.
-            .query(QueryDesc::new().read::<AudioBusFx>())
-            // 5: reverb zones.
-            .query(QueryDesc::new().write::<ReverbZone>().read::<Transform>())
-            // 6: child entities, whose sources, listeners and zones are
-            // placed down the og.Parent chain.
-            .query(QueryDesc::new().read::<Parent>())
-            // 7: user buses, 8: mixer snapshots.
-            .query(QueryDesc::new().read::<AudioBusNode>())
-            .query(QueryDesc::new().write::<AudioSnapshot>()),
-        move |ctx| run(ctx, &system_link, occluder.as_ref()),
-    )?;
+    let mut desc = SystemDesc::new(SYSTEM_NAME)
+        .read::<Audio>()
+        .read::<AudioListener>()
+        .read::<Transform>()
+        .read::<Parent>()
+        .read::<AudioBusFx>()
+        .read::<AudioBusNode>()
+        .write::<AudioSnapshot>()
+        .write::<AudioMix>()
+        .write::<ReverbZone>()
+        .write::<AudioSource>()
+        .write::<AudioPlayback>()
+        .write::<AudioStream>()
+        .write::<SoundStarted>()
+        .write::<SoundEnded>()
+        // 0: playing sources, 1: sources not yet started,
+        // 2: playheads whose source was removed, 3: listeners.
+        .query(
+            QueryDesc::new()
+                .write::<AudioSource>()
+                .write::<AudioPlayback>(),
+        )
+        .query(
+            QueryDesc::new()
+                .write::<AudioSource>()
+                .without::<AudioPlayback>(),
+        )
+        .query(
+            QueryDesc::new()
+                .write::<AudioPlayback>()
+                .without::<AudioSource>(),
+        )
+        .query(QueryDesc::new().read::<AudioListener>().read::<Transform>())
+        // 4: bus effects.
+        .query(QueryDesc::new().read::<AudioBusFx>())
+        // 5: reverb zones.
+        .query(QueryDesc::new().write::<ReverbZone>().read::<Transform>())
+        // 6: child entities, whose sources, listeners and zones are
+        // placed down the og.Parent chain.
+        .query(QueryDesc::new().read::<Parent>())
+        // 7: user buses, 8: mixer snapshots.
+        .query(QueryDesc::new().read::<AudioBusNode>())
+        .query(QueryDesc::new().write::<AudioSnapshot>());
+    // The camera as the listener, read only when the world has it (a game's
+    // host always registers og.Camera, as ui_world declares its read;
+    // without it the origin stand-in holds).
+    if world.id_by_name("og.Camera").is_ok() {
+        desc = desc.read::<CameraPose>();
+    }
+    world.add_system(desc, move |ctx| run(ctx, &system_link, occluder.as_ref()))?;
     Ok(link)
 }
 
@@ -1249,7 +1259,24 @@ fn run(ctx: &mut SystemContext<'_>, link: &AudioLink, occluder: Option<&Occluder
         }
         stream.listener = e.to_bits();
         stream.listener_at = t.position;
+    } else if let Ok(cam) = ctx.resource_copy::<CameraPose>() {
+        // Godot's rule: without a listener entity, the camera is heard
+        // from (its pose, at og.AudioListener's defaults); its Doppler
+        // velocity is the view's movement since the last tick.
+        ear.position = cam.position;
+        ear.inverse = cam.quaternion.normalize().inverse();
+        if stream.listener == CAMERA_LISTENER {
+            ear.velocity = tick_velocity(
+                stream.listener_at,
+                cam.position,
+                tick_rate,
+                audio.speed_of_sound,
+            );
+        }
+        stream.listener = CAMERA_LISTENER;
+        stream.listener_at = cam.position;
     } else {
+        // No camera resource: the origin looking down -Z.
         stream.listener = 0;
         stream.listener_at = Vec3::ZERO;
     }

@@ -591,6 +591,15 @@ impl<'w> SystemContext<'w> {
         .map_err(|_| crate::world::no_resource(T::NAME))
     }
 
+    /// A copy of resource `T` decoded from its packed bytes (declared read):
+    /// the read of a record resource, whose schema's name `T`'s is.
+    pub fn resource_copy<T: Reflect>(&self) -> Result<T> {
+        let id = self.world.id_by_name(T::NAME)?;
+        self.require(id, false)?;
+        let bytes = self.world.resource_bytes(id)?;
+        self.world.registry.decode(id, &bytes)
+    }
+
     /// Events of type `T` delivered this tick (sent during the previous tick
     /// or by the host before this one).
     pub fn events<T: Reflect>(&self) -> Result<Vec<T>> {

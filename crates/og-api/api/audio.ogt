@@ -181,7 +181,7 @@ module audio {
   }
 
   component AudioListener {
-    doc "Where spatial sources are heard from: the entity's world transform (its og.Transform down og.Parent, so a listener under a camera rig hears from the rig), looking down its -Z with +X to the right (three.js's convention). The first listener in query order is used; with none, the origin looking down -Z."
+    doc "Where spatial sources are heard from: the entity's world transform (its og.Transform down og.Parent, so a listener under a camera rig hears from the rig), looking down its -Z with +X to the right (three.js's convention). The first listener in query order is used; with none, the camera (og.Camera's pose), whose movement is the Doppler velocity; with no camera, the origin looking down -Z."
     guide "audio §2"
     field volume f32 "A gain on every spatial source this listener hears." {
       default 1

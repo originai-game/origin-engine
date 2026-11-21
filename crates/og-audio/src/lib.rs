@@ -77,9 +77,9 @@ pub use mixer::{Clock, MixStats, Mixer, MixerDesc};
 pub use music::{MUSIC_SYSTEM, next_times};
 pub use schema::{
     Audio, AudioBusFx, AudioBusNode, AudioEvent, AudioEventVoice, AudioListener, AudioMix,
-    AudioPlayback, AudioSnapshot, AudioSource, AudioStream, Bus, MAX_BUSES, Music, MusicBeat,
-    Parent, ReverbZone, SoundEnded, SoundStarted, Transform, Volume, end_reason, event_order,
-    zone_weight,
+    AudioPlayback, AudioSnapshot, AudioSource, AudioStream, Bus, CameraPose, MAX_BUSES, Music,
+    MusicBeat, Parent, ReverbZone, SoundEnded, SoundStarted, Transform, Volume, end_reason,
+    event_order, zone_weight,
 };
 pub use sink::{HeadlessMode, HeadlessSink, SinkStats, wav};
 pub use sound::{

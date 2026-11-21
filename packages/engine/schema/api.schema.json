@@ -40492,7 +40492,7 @@
     "AudioListener": {
       "x-og-kind": "component",
       "x-og-module": "audio",
-      "description": "Where spatial sources are heard from: the entity's world transform (its og.Transform down og.Parent, so a listener under a camera rig hears from the rig), looking down its -Z with +X to the right (three.js's convention). The first listener in query order is used; with none, the origin looking down -Z.\nSee `audio §2`.",
+      "description": "Where spatial sources are heard from: the entity's world transform (its og.Transform down og.Parent, so a listener under a camera rig hears from the rig), looking down its -Z with +X to the right (three.js's convention). The first listener in query order is used; with none, the camera (og.Camera's pose), whose movement is the Doppler velocity; with no camera, the origin looking down -Z.\nSee `audio §2`.",
       "type": "object",
       "properties": {
         "volume": {

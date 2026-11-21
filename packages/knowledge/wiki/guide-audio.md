@@ -50,8 +50,9 @@ world.set(feet, og.AudioEvent, { trigger: true });   // the engine resets it
 
 - Spatial gain and pan are computed in the tick from the source's world
   transform relative to the first og.AudioListener's, in three.js's
-  convention: the listener looks down -Z, +X is right. With no listener it
-  is the origin looking down -Z.
+  convention: the listener looks down -Z, +X is right. With no listener the
+  camera (`og.Camera`'s pose) is the ear, its movement the Doppler
+  velocity; with no camera, the origin looking down -Z.
 - A source, a listener or a zone on a child entity is placed at its
   og.Transform composed down og.Parent, as og.MatrixWorld is: a sound on a
   child is heard where its parent carries it, a listener under a camera rig

@@ -11,6 +11,9 @@
 //! - the HRTF does not delay or shadow the far ear, a centred source is
 //!   not centred, the stereo path changes when it is off, or turning it off
 //!   leaves the voice on it → `the_hrtf_delays_and_shadows_the_far_ear`
+//! - without a listener entity the ear is the origin, not the camera
+//!   (Godot's rule), or the camera's movement gives no Doppler →
+//!   `the_camera_is_the_listener_unless_the_game_sets_one`
 //! - a feature's state is left out of the world (a velocity from outside
 //!   the snapshot, a direction the mixer keeps alone), so a second run or a
 //!   restore mid-walk differs →
@@ -21,8 +24,8 @@ use crate::support;
 use og_audio::command::Op;
 use og_audio::schema::panning_model;
 use og_audio::{
-    AudioLink, AudioListener, AudioPlayback, AudioSource, AudioStream, HeadlessMode, HeadlessSink,
-    SoundBank, Transform,
+    AudioLink, AudioListener, AudioPlayback, AudioSource, AudioStream, CameraPose, HeadlessMode,
+    HeadlessSink, SoundBank, Transform,
 };
 use og_core::glam::Vec3;
 use og_core::math::quat_from_axis_angle;
@@ -197,6 +200,99 @@ fn doppler_shifts_by_the_motion_along_the_line_between_source_and_listener() {
     assert!(
         (f64::from(heard[20]) - want).abs() < 2e-4,
         "a listener walking at 5 m/s towards it: {} (want {want})",
+        heard[20]
+    );
+}
+
+/// Godot's rule: without a listener entity, the camera's pose is the ear;
+/// the game's listener entity wins when it sets one.
+#[test]
+fn the_camera_is_the_listener_unless_the_game_sets_one() {
+    let bank = SoundBank::new();
+    let sound = tone(&bank);
+    // The camera 100 m west of the source, looking along +X at it: the ear
+    // is 10 m from it and dead centre; the origin (a cameraless world's
+    // ear) is 110 m away and hears it hard right.
+    let looking_x = quat_from_axis_angle(Vec3::Y, -std::f32::consts::FRAC_PI_2);
+    let hear = |listener: Option<AudioListener>| -> (f32, f32) {
+        let (mut world, link) = listener_world(&bank);
+        set_camera(
+            &mut world,
+            CameraPose {
+                position: Vec3::new(100.0, 0.0, 0.0),
+                quaternion: looking_x,
+            },
+        );
+        if let Some(l) = listener {
+            world.spawn((Transform::default(), l)).unwrap();
+        }
+        let e = world
+            .spawn((
+                Transform::at(Vec3::new(110.0, 0.0, 0.0)),
+                looping_spatial(sound),
+            ))
+            .unwrap();
+        let mut sink = HeadlessSink::new(&link, HeadlessMode::Capture { sample_rate: RATE });
+        for _ in 0..5 {
+            world.step().unwrap();
+            sink.pump();
+        }
+        let p = world.get::<AudioPlayback>(e).unwrap();
+        (p.gain, p.pan)
+    };
+    let (gain, pan) = hear(None);
+    // The inverse model at 10 m (ref 2, rolloff 1); the source dead ahead.
+    assert!(
+        (f64::from(gain) - 0.2).abs() < 1e-3,
+        "10 m ahead of the camera: {gain}"
+    );
+    assert!(pan.abs() < 1e-3, "dead ahead of the camera: {pan}");
+    // The game's listener entity wins: the origin's ear again (110 m is
+    // past maxDistance 100, so the model clamps there).
+    let (gain, pan) = hear(Some(AudioListener::default()));
+    assert!(
+        (f64::from(gain) - 2.0 / 100.0).abs() < 1e-3,
+        "110 m from the origin's ear (clamped at maxDistance 100): {gain}"
+    );
+    assert!(
+        f64::from(pan) > 0.99,
+        "hard right of the origin's -Z: {pan}"
+    );
+
+    // The camera's movement is the ear's velocity: driving it towards the
+    // still source at 10 m/s shifts the pitch like a walking listener, and
+    // its first tick has none.
+    let (mut world, _link) = listener_world(&bank);
+    set_camera(
+        &mut world,
+        CameraPose {
+            position: Vec3::new(90.0, 0.0, 0.0),
+            quaternion: looking_x,
+        },
+    );
+    let e = world
+        .spawn((
+            Transform::at(Vec3::new(110.0, 0.0, 0.0)),
+            looping_spatial(sound),
+        ))
+        .unwrap();
+    let mut heard = Vec::new();
+    for t in 0..30u64 {
+        set_camera(
+            &mut world,
+            CameraPose {
+                position: Vec3::new(90.0 + t as f32 / 6.0, 0.0, 0.0), // 10 m/s
+                quaternion: looking_x,
+            },
+        );
+        world.step().unwrap();
+        heard.push(pitch(&world, e));
+    }
+    assert_eq!(heard[0], 1.0, "the camera's first tick has no velocity");
+    let want = (C + 10.0) / C;
+    assert!(
+        (f64::from(heard[20]) - want).abs() < 2e-4,
+        "the camera driving at 10 m/s: {} (want {want})",
         heard[20]
     );
 }

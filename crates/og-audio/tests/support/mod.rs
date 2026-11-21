@@ -4,7 +4,8 @@
 
 use og_audio::qoa;
 use og_audio::{
-    AudioDesc, AudioLink, AudioListener, AudioSource, SoundBank, SoundEnded, Transform, install,
+    AudioDesc, AudioLink, AudioListener, AudioSource, CameraPose, SoundBank, SoundEnded, Transform,
+    install,
 };
 use og_core::glam::Vec3;
 use og_core::{Reflect, Rng};
@@ -44,6 +45,8 @@ pub fn world_with(bank: &SoundBank, systems: impl FnOnce(&mut World)) -> (World,
     world.register::<Transform>().unwrap();
     world.register::<AudioSource>().unwrap();
     world.register::<SoundEnded>().unwrap();
+    // The camera resource (a game always has it); tests read it with set_camera.
+    world.register::<CameraPose>().unwrap();
     systems(&mut world);
     let link = install(
         &mut world,
@@ -54,6 +57,11 @@ pub fn world_with(bank: &SoundBank, systems: impl FnOnce(&mut World)) -> (World,
     )
     .expect("install");
     (world, link)
+}
+
+/// Sets the camera's pose (without a listener entity, audio hears from it).
+pub fn set_camera(w: &mut World, pose: CameraPose) {
+    w.insert_resource(pose).expect("camera");
 }
 
 /// Tags the moving spatial source of the scene.

@@ -7,7 +7,7 @@
 // attribute does not reach.
 #![allow(clippy::approx_constant)]
 
-use og_core::glam::Vec3;
+use og_core::glam::{Quat, Vec3};
 use og_core::{List, Reflect};
 
 /// The buses a source can play on. `Master` is also the gain every bus
@@ -184,7 +184,8 @@ impl AudioSource {
 /// Where spatial sources are heard from: the entity's world transform (its
 /// Transform composed down og.Parent, so a listener under a camera rig hears
 /// from the rig). The first listener in query order is used; without one,
-/// the origin looking down -Z.
+/// the camera's pose (`og.Camera`), whose movement is the Doppler velocity;
+/// without a camera, the origin looking down -Z.
 #[derive(Clone, Copy, Debug, PartialEq, Reflect)]
 #[reflect(name = "og.AudioListener")]
 pub struct AudioListener {
@@ -415,6 +416,20 @@ pub struct AudioStream {
     /// That listener's world position last tick (its Doppler velocity is the change).
     #[reflect(name = "listenerAt", worldspace = "world")]
     pub listener_at: Vec3,
+}
+
+/// The camera's pose, read as the audio listener when no entity carries
+/// `og.AudioListener` (`og.Camera`'s first two fields, decoded from its
+/// packed bytes).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Reflect)]
+#[reflect(name = "og.Camera")]
+pub struct CameraPose {
+    /// Where the camera is.
+    #[reflect(unit = "m", worldspace = "world")]
+    pub position: Vec3,
+    /// Its rotation; the camera looks down its local -Z.
+    #[reflect(default = [0, 0, 0, 1])]
+    pub quaternion: Quat,
 }
 
 /// `og.Parent` and `og.Transform`, og-ecs's: the system places sources,
