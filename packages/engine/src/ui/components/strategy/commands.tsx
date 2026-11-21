@@ -1,0 +1,130 @@
+import { For, Icon, Image, Show, Text, View, t, type UiEvent } from "@origingame/engine/ui";
+import "./commands.en.ogt";
+
+export interface StrategyCommandsProps {
+  /** The command card in grid order, four to a row, keyed rows of { id, name, icon, glyph, key, action, enabled, affordable, cost, costIcon, cooldown, time, active, detail, cooldownText, readyText, reason }: name for a reader and the info card's title, empty draws an empty cell; icon the command's picture (og.load.texture), 0 draws glyph (an icon of the atlas); key the hotkey as the game names it (A), or action the input action whose bound glyph the cap shows (og.input.defineAction), both empty hide it, hidden under a touch screen; enabled false greys it and it sends nothing; affordable false greys it and shows cost on a red tag; cost and costIcon the price as the game words it (200) and the resource's picture; cooldown 0 to 1 still to run, a dark sweep over the art, with time its figure (18); active a toggle that is on or the order in hand, its edge lit; detail, cooldownText and readyText the info card's words (Cooldown 45 s, Ready in 18 s); reason why it cannot be used now (Need a Blacksmith), on the info card. */
+  commands?: ReadonlyArray<{ id: string; name: string; icon: number; glyph: string; key: string; action: string; enabled: boolean; affordable: boolean; cost: string; costIcon: number; cooldown: number; time: string; active: boolean; detail: string; cooldownText: string; readyText: string; reason: string }>;
+  /** The command whose info card stands over the grid (the one under the pointer, as the game decides); empty shows none. A phone shows none. */
+  focused: string;
+  /** Command. */
+  onCommand?: (e: UiEvent, id: string) => void;
+}
+
+/**
+ * The command card at the bottom right: abilities, orders and buildings
+ * as square tiles four to a row, each its picture with a lit edge, the
+ * hotkey in its corner, a cooldown as a dark sweep with the seconds left,
+ * a command that cannot be paid for greyed with its price on a red tag, a
+ * disabled one greyed, the order in hand lit; the info card of the
+ * command in focus over the grid (its name and key, what it does, its
+ * price, cooldown and when it is ready, or why it cannot be used).
+ * Reports command (the tile's key; a disabled or unaffordable tile sends
+ * nothing); the game owns every cost, cooldown and rule.
+ */
+export function StrategyCommands(props: StrategyCommandsProps) {
+  return (
+    <View class={`w-fit max-w-full min-w-0 flex-col items-stretch text-fg gap-y-2`}>
+      <For each={props.commands ?? []} key={(c) => c.id}>
+        {(c) => (
+        <Show when={c().id === props.focused && c().name}>
+          <View class={`flex-col gap-y-1 w-[16.914rem] max-w-full min-w-0 py-2 px-3 bg-linear-to-b from-[#1e2637e5] to-plate-lo shadow-[inset_0_0_0_1px_#38e8ff73,inset_0_2px_0_#38e8ff] rounded-tl-[6.858px] rounded-tr-none rounded-br-[6.858px] rounded-bl-none compact:hidden`} role="tooltip">
+            <View class="flex-row items-center justify-between gap-x-2 min-w-0">
+              <Text class={`shrink min-w-0 text-[1.071rem] font-bold whitespace-nowrap overflow-hidden`}>
+                {c().name}
+              </Text>
+              <Show when={c().key}>
+                <Text class={`shrink min-w-[1.429rem] max-w-[40%] py-0 px-[0.357rem] leading-[1.5] text-[0.857rem] font-bold text-center text-[#0b0f18] bg-linear-to-b from-[#ffffff] to-[#c9d1e2] rounded-[4.576px] shadow-[0px_2.288px_0px_#0000008c,inset_0px_-2.288px_0px_#0000002e] whitespace-nowrap overflow-hidden`}>
+                  {c().key}
+                </Text>
+              </Show>
+            </View>
+            <Show when={c().detail}>
+              <Text class={`text-[0.929rem] leading-[1.35] text-fg-muted whitespace-normal`}>
+                {c().detail}
+              </Text>
+            </Show>
+            <Show when={c().cost || c().cooldownText || c().readyText}>
+              <View class="flex-row flex-wrap items-center gap-x-2 gap-y-1 min-w-0">
+                <Show when={c().cost}>
+                  <View class={`shrink flex-row items-center gap-x-1 data-short:text-[#ff4d5e]`} data-short={!c().affordable}>
+                    <Show when={c().costIcon}>
+                      <Image class={`shrink size-[1.143rem]`} src={String(c().costIcon)} />
+                    </Show>
+                    <Text class={`text-[1.143rem] font-bold tabular-nums whitespace-nowrap data-short:text-[#ff4d5e]`} data-short={!c().affordable}>
+                      {c().cost}
+                    </Text>
+                  </View>
+                </Show>
+                <Show when={c().cooldownText}>
+                  <Text class={`shrink min-w-0 py-0 px-[0.429rem] leading-[1.5] text-[0.857rem] font-bold whitespace-nowrap overflow-hidden bg-[#060910e0] shadow-[inset_0px_1px_0px_#ffffff38] rounded-tl-[4.576px] rounded-tr-none rounded-br-[4.576px] rounded-bl-none`}>
+                    {c().cooldownText}
+                  </Text>
+                </Show>
+                <Show when={c().readyText}>
+                  <Text class={`shrink min-w-0 py-0 px-[0.429rem] leading-[1.5] text-[0.857rem] font-bold whitespace-nowrap overflow-hidden text-gold bg-[#060910e0] shadow-[inset_0px_1px_0px_#ffffff38] rounded-tl-[4.576px] rounded-tr-none rounded-br-[4.576px] rounded-bl-none`}>
+                    {c().readyText}
+                  </Text>
+                </Show>
+              </View>
+            </Show>
+            <Show when={c().reason}>
+              <View class={`text-[0.929rem] leading-[1.35] font-semibold text-[#ff4d5e] whitespace-normal`} role="status">
+                <Text>{c().reason}</Text>
+              </View>
+            </Show>
+          </View>
+        </Show>
+        )}
+      </For>
+      <View class={`group/grid grid grid-cols-4 auto-rows-[3.657rem] gap-1 justify-start self-end p-[0.714rem] bg-linear-to-b from-[#1e2637e5] to-plate-lo shadow-plate rounded-tl-[6.858px] rounded-tr-none rounded-br-[6.858px] rounded-bl-none compact:grid-cols-8 compact:justify-between compact:self-stretch compact:p-[0.357rem]`} role="toolbar" label={t("strategy.commands.name")}>
+        <For each={props.commands ?? []} key={(c) => c.id}>
+          {(c) => (
+          <Show when={c().name} fallback={
+              <View class={`bg-[#ffffff1f] rounded-tl-[6.858px] rounded-tr-none rounded-br-[6.858px] rounded-bl-none`} />
+          }>
+            <View class={`group/cmd flex p-[0.143rem] bg-linear-to-b from-[#ffffffbf] via-[#ffffff38] via-45% to-[#ffffff24] data-active:bg-linear-to-b data-active:from-[#ffffff] data-active:to-[#38e8ff] rounded-tl-[6.858px] rounded-tr-none rounded-br-[6.858px] rounded-bl-none disabled:opacity-45`} role="button" label={c().name} description={c().reason ? c().reason : c().readyText ? c().readyText : c().detail} pressed={c().active} disabled={!c().enabled || !c().affordable} data-cooling={c().cooldown > 0} data-active={c().active} onPress={(e) => props.onCommand?.(e, c().id)}>
+              <View class="relative size-full overflow-hidden rounded-tl-[6.858px] rounded-tr-none rounded-br-[6.858px] rounded-bl-none">
+                <Show when={c().icon} fallback={
+                    <View class="absolute inset-0 flex-row items-center justify-center bg-linear-to-b from-[#1e2637e5] to-plate-lo">
+                      <Icon class={`size-[55%] text-fg`} name={c().glyph} />
+                    </View>
+                }>
+                  <Image class={`absolute inset-0 size-full group-disabled/cmd:opacity-45`} src={String(c().icon)} />
+                </Show>
+                <Show when={c().cooldown > 0}>
+                  <View class="absolute inset-x-0 top-0 bg-[#060910ad]" style={{ height: `${Math.min(1, c().cooldown) * 100}%` }} />
+                </Show>
+                <Show when={c().cooldown > 0 && c().time}>
+                  <View class="absolute inset-x-0 top-1/2 -translate-y-1/2 flex-row justify-center">
+                    <Text class={`text-[1.714rem] leading-[1] font-bold tabular-nums whitespace-nowrap text-fg text-shadow-xs text-shadow-bg/55`}>
+                      {c().time}
+                    </Text>
+                  </View>
+                </Show>
+                <Show when={c().action || c().key}>
+                  <Text class={`absolute left-1 top-[0.143rem] max-w-[94%] py-0 px-0 leading-[1.2] text-[0.857rem] font-bold text-fg whitespace-nowrap overflow-hidden text-shadow-xs text-shadow-bg/55`} glyph={c().key ? undefined : c().action}>
+                    {c().key}
+                  </Text>
+                </Show>
+                <Show when={!c().affordable && c().cost}>
+                  <Text class={`absolute right-[0.214rem] bottom-[0.214rem] max-w-[97%] py-0 px-1 leading-[1.35] text-[0.857rem] font-bold tabular-nums whitespace-nowrap overflow-hidden text-[#ff4d5e] bg-[#060910e0] shadow-[inset_0px_1px_0px_#ffffff38] rounded-tl-[4.576px] rounded-tr-none rounded-br-[4.576px] rounded-bl-none`}>
+                    {c().cost}
+                  </Text>
+                </Show>
+              </View>
+            </View>
+          </Show>
+          )}
+        </For>
+      </View>
+    </View>
+  );
+}
+
+export const fixtures: Record<string, Partial<StrategyCommandsProps>> = {
+  default: {"focused":"rally","commands":[{"id":"attack","name":"Attack move","icon":0,"glyph":"sword","key":"A","action":"","enabled":true,"affordable":true,"cost":"","costIcon":0,"cooldown":0,"time":"","active":true,"detail":"Move, attacking enemies on the way.","cooldownText":"","readyText":"","reason":""},{"id":"hold","name":"Hold ground","icon":0,"glyph":"shield","key":"H","action":"","enabled":true,"affordable":true,"cost":"","costIcon":0,"cooldown":0,"time":"","active":false,"detail":"Stand and fight where you are.","cooldownText":"","readyText":"","reason":""},{"id":"rally","name":"Rally banner","icon":0,"glyph":"flag","key":"R","action":"","enabled":true,"affordable":true,"cost":"250","costIcon":0,"cooldown":0.6,"time":"18","active":false,"detail":"Nearby troops move 15% faster and hold formation for 20 s.","cooldownText":"Cooldown 45 s","readyText":"Ready in 18 s","reason":""},{"id":"upgrade","name":"Forge upgrade","icon":0,"glyph":"gear","key":"U","action":"","enabled":true,"affordable":true,"cost":"","costIcon":0,"cooldown":0,"time":"","active":false,"detail":"Better weapons for every Man-at-Arms.","cooldownText":"","readyText":"","reason":""},{"id":"barracks","name":"Barracks","icon":0,"glyph":"home","key":"B","action":"","enabled":true,"affordable":true,"cost":"150","costIcon":0,"cooldown":0,"time":"","active":false,"detail":"Trains infantry.","cooldownText":"","readyText":"","reason":""},{"id":"tower","name":"Watchtower","icon":0,"glyph":"flag","key":"T","action":"","enabled":true,"affordable":false,"cost":"200","costIcon":0,"cooldown":0,"time":"","active":false,"detail":"Shoots at enemies in range.","cooldownText":"","readyText":"","reason":"Need 200 stone"},{"id":"archer","name":"Archer","icon":0,"glyph":"bolt","key":"E","action":"","enabled":true,"affordable":true,"cost":"60","costIcon":0,"cooldown":0,"time":"","active":false,"detail":"A ranged soldier.","cooldownText":"","readyText":"","reason":""},{"id":"blank","name":"","icon":0,"glyph":"","key":"","action":"","enabled":false,"affordable":true,"cost":"","costIcon":0,"cooldown":0,"time":"","active":false,"detail":"","cooldownText":"","readyText":"","reason":""}]},
+  unaffordable: {"focused":"castle","commands":[{"id":"castle","name":"Castle","icon":0,"glyph":"crown","key":"C","action":"","enabled":true,"affordable":false,"cost":"650","costIcon":0,"cooldown":0,"time":"","active":false,"detail":"A stronghold that trains knights.","cooldownText":"","readyText":"","reason":"Need 650 stone"},{"id":"wall","name":"Stone wall","icon":0,"glyph":"shield","key":"W","action":"","enabled":true,"affordable":false,"cost":"40","costIcon":0,"cooldown":0,"time":"","active":false,"detail":"","cooldownText":"","readyText":"","reason":"Need 40 stone"},{"id":"house","name":"House","icon":0,"glyph":"home","key":"Q","action":"","enabled":true,"affordable":true,"cost":"50","costIcon":0,"cooldown":0,"time":"","active":false,"detail":"","cooldownText":"","readyText":"","reason":""},{"id":"age","name":"Next age","icon":0,"glyph":"star","key":"","action":"","enabled":false,"affordable":true,"cost":"800","costIcon":0,"cooldown":0,"time":"","active":false,"detail":"","cooldownText":"","readyText":"","reason":"Needs two Castle Age buildings"}]},
+  cooling: {"focused":"charge","commands":[{"id":"charge","name":"Charge","icon":0,"glyph":"bolt","key":"C","action":"","enabled":false,"affordable":true,"cost":"","costIcon":0,"cooldown":0.95,"time":"57","active":false,"detail":"Run at the enemy, knocking them down.","cooldownText":"Cooldown 60 s","readyText":"Ready in 57 s","reason":""},{"id":"heal","name":"Mend","icon":0,"glyph":"potion","key":"M","action":"","enabled":true,"affordable":true,"cost":"","costIcon":0,"cooldown":0.25,"time":"4","active":false,"detail":"","cooldownText":"","readyText":"","reason":""},{"id":"stop","name":"Stop","icon":0,"glyph":"pause","key":"S","action":"","enabled":true,"affordable":true,"cost":"","costIcon":0,"cooldown":0,"time":"","active":false,"detail":"","cooldownText":"","readyText":"","reason":""}]},
+  empty: {"focused":"","commands":[]},
+  overflow: {"focused":"banner","commands":[{"id":"move","name":"Move","icon":0,"glyph":"play","key":"M","action":"","enabled":true,"affordable":true,"cost":"","costIcon":0,"cooldown":0,"time":"","active":false,"detail":"","cooldownText":"","readyText":"","reason":""},{"id":"stop","name":"Stop","icon":0,"glyph":"pause","key":"S","action":"","enabled":true,"affordable":true,"cost":"","costIcon":0,"cooldown":0,"time":"","active":false,"detail":"","cooldownText":"","readyText":"","reason":""},{"id":"hold","name":"Hold position","icon":0,"glyph":"shield","key":"H","action":"","enabled":true,"affordable":true,"cost":"","costIcon":0,"cooldown":0,"time":"","active":false,"detail":"","cooldownText":"","readyText":"","reason":""},{"id":"attack","name":"Attack move","icon":0,"glyph":"sword","key":"Left Shoulder + A","action":"","enabled":true,"affordable":true,"cost":"","costIcon":0,"cooldown":0,"time":"","active":true,"detail":"","cooldownText":"","readyText":"","reason":""},{"id":"patrol","name":"Patrol","icon":0,"glyph":"map","key":"P","action":"","enabled":true,"affordable":true,"cost":"","costIcon":0,"cooldown":0,"time":"","active":false,"detail":"","cooldownText":"","readyText":"","reason":""},{"id":"banner","name":"Raise the Banner of the Old Kingdom over the Northern Expeditionary Host","icon":0,"glyph":"flag","key":"B","action":"","enabled":false,"affordable":false,"cost":"12,800,000","costIcon":0,"cooldown":0,"time":"","active":false,"detail":"Every unit within forty paces of the banner fights as if it were at full health for as long as the banner stands, and routed units return to the field.","cooldownText":"Cooldown 10 min","readyText":"","reason":"Requires the Hall of Ancestors and 400 renown"},{"id":"rally","name":"Rally","icon":0,"glyph":"crown","key":"R","action":"","enabled":false,"affordable":true,"cost":"","costIcon":0,"cooldown":0.95,"time":"1:54","active":false,"detail":"","cooldownText":"","readyText":"","reason":""},{"id":"heal","name":"Mend","icon":0,"glyph":"potion","key":"Z","action":"","enabled":true,"affordable":true,"cost":"","costIcon":0,"cooldown":0,"time":"","active":false,"detail":"","cooldownText":"","readyText":"","reason":""},{"id":"form","name":"Formation","icon":0,"glyph":"gear","key":"F","action":"","enabled":true,"affordable":true,"cost":"","costIcon":0,"cooldown":0,"time":"","active":false,"detail":"","cooldownText":"","readyText":"","reason":""},{"id":"split","name":"Split","icon":0,"glyph":"plus","key":"X","action":"","enabled":true,"affordable":true,"cost":"","costIcon":0,"cooldown":0,"time":"","active":false,"detail":"","cooldownText":"","readyText":"","reason":""},{"id":"garrison","name":"Garrison","icon":0,"glyph":"home","key":"G","action":"","enabled":true,"affordable":true,"cost":"","costIcon":0,"cooldown":0,"time":"","active":false,"detail":"","cooldownText":"","readyText":"","reason":""},{"id":"delete","name":"Delete","icon":0,"glyph":"close","key":"Del","action":"","enabled":true,"affordable":true,"cost":"","costIcon":0,"cooldown":0,"time":"","active":false,"detail":"","cooldownText":"","readyText":"","reason":""}]},
+};
