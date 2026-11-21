@@ -12,7 +12,7 @@
 import type * as Api from "@origingame/engine";
 import type { HostAbi } from "./generated/abi.ts";
 import { boundHost } from "./runtime.ts";
-import { sincos } from "./systems/cameras.ts";
+import { sincos } from "./math.ts";
 
 type V2 = { x: number; y: number };
 type W = { readonly id: number };

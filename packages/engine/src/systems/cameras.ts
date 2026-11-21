@@ -10,9 +10,10 @@
 //
 // og.Camera is world state (snapshots, the world hash), so every number here
 // comes from + - * / and sqrt, which JavaScript engines round identically:
-// angles go through `sincos` below, never Math.sin, and rotations through
+// angles go through `sincos` (math.ts), never Math.sin, and rotations through
 // og.transform.lookAt, which the engine computes.
 
+import { sincos } from "../math.ts";
 import { defineSystem, transform, ui, BUILTINS, type SystemToken, type Token, type WorldImpl } from "../runtime.ts";
 
 const T = BUILTINS as unknown as Record<string, Token>;
@@ -26,40 +27,6 @@ const Follow2D = T.Follow2D!;
 const PI = 3.141592653589793;
 const TAU = 2 * PI;
 
-/** sin and cos of `x` with basic arithmetic only: the same bits on every host. */
-export function sincos(x: number): [number, number] {
-  // Reduce to r in [-pi/4, pi/4] and a quadrant.
-  const q = Math.round(x / (PI / 2));
-  const r = x - q * (PI / 2);
-  const r2 = r * r;
-  // Taylor series to r^15 / r^14: below 1e-15 on [-pi/4, pi/4].
-  let s = 1 / 1307674368000;
-  s = s * -r2 + 1 / 6227020800;
-  s = s * -r2 + 1 / 39916800;
-  s = s * -r2 + 1 / 362880;
-  s = s * -r2 + 1 / 5040;
-  s = s * -r2 + 1 / 120;
-  s = s * -r2 + 1 / 6;
-  s = r - r * r2 * s;
-  let c = 1 / 87178291200;
-  c = c * -r2 + 1 / 479001600;
-  c = c * -r2 + 1 / 3628800;
-  c = c * -r2 + 1 / 40320;
-  c = c * -r2 + 1 / 720;
-  c = c * -r2 + 1 / 24;
-  c = c * -r2 + 1 / 2;
-  c = 1 - r2 * c;
-  switch (((q % 4) + 4) % 4) {
-    case 0:
-      return [s, c];
-    case 1:
-      return [c, -s];
-    case 2:
-      return [-s, -c];
-    default:
-      return [-c, s];
-  }
-}
 
 const clamp = (v: number, lo: number, hi: number) => (v < lo ? lo : v > hi ? hi : v);
 
