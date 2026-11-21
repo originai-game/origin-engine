@@ -109,13 +109,13 @@ impl Renderer {
             let fonts = &self.cache.fonts;
             let textures = self.cache.textures.len();
             // An image waits for its texture: a loaded one re-resolves.
-            let revisions = scene
-                .font_revisions()
-                .iter()
-                .chain(&[textures as u64])
-                .fold(0xcbf2_9ce4_8422_2325u64, |h, r| {
-                    (h ^ r).wrapping_mul(0x0100_0000_01b3)
-                });
+            let revisions = og_core::hash::hash_words(
+                scene
+                    .font_revisions()
+                    .iter()
+                    .copied()
+                    .chain([textures as u64]),
+            );
             self.paint.upload(
                 &self.device,
                 &self.queue,

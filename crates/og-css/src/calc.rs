@@ -479,22 +479,17 @@ fn random_base(key: &RandomKey<'_>, basis: Basis) -> f64 {
         RandomKey::Fixed(r) => return *r,
         RandomKey::Name(n) => n,
     };
-    let mut h = 0xcbf2_9ce4_8422_2325u64;
-    let mut eat = |bytes: &[u8]| {
-        for &b in bytes {
-            h = (h ^ b as u64).wrapping_mul(0x100_0000_01b3);
-        }
-        h = (h ^ 0xff).wrapping_mul(0x100_0000_01b3);
+    let mut h = og_core::hash::StableHasher::new();
+    let eat = |h: &mut og_core::hash::StableHasher, bytes: &[u8]| {
+        h.write(bytes);
+        h.write(&[0xff]);
     };
-    eat(n.dashed.as_bytes());
-    eat(n.ua.unwrap_or("").as_bytes());
-    eat(&if n.element { basis.element } else { 0 }.to_le_bytes());
-    eat(&basis.document.to_le_bytes());
+    eat(&mut h, n.dashed.as_bytes());
+    eat(&mut h, n.ua.unwrap_or("").as_bytes());
+    eat(&mut h, &if n.element { basis.element } else { 0 }.to_le_bytes());
+    eat(&mut h, &basis.document.to_le_bytes());
     // SplitMix64's finaliser, then 53 bits: a uniform [0, 1).
-    let mut z = h.wrapping_add(0x9e37_79b9_7f4a_7c15);
-    z = (z ^ (z >> 30)).wrapping_mul(0xbf58_476d_1ce4_e5b9);
-    z = (z ^ (z >> 27)).wrapping_mul(0x94d0_49bb_1331_11eb);
-    z ^= z >> 31;
+    let z = og_core::hash::splitmix64(h.finish());
     (z >> 11) as f64 / (1u64 << 53) as f64
 }
 

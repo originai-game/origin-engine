@@ -30,12 +30,6 @@ fn write(root: &Path, path: &str, text: &str) {
     std::fs::write(p, text).unwrap();
 }
 
-fn fnv(bytes: &[u8]) -> u64 {
-    bytes.iter().fold(0xcbf2_9ce4_8422_2325, |h, &b| {
-        (h ^ b as u64).wrapping_mul(0x0100_0000_01b3)
-    })
-}
-
 /// The new tracks' fields are checked against the engine's records at
 /// cook, naming the field: a field the record lacks (with its fields), one
 /// a timeline cannot drive, a value of the wrong shape, a resource given an
@@ -179,7 +173,7 @@ fn a_shot_track_cooks_to_its_pinned_text_and_a_key_without_a_camera_is_refused()
         "{text}"
     );
     assert_eq!(
-        (blob.len(), format!("{:016x}", fnv(text.as_bytes())), {
+        (blob.len(), format!("{:016x}", og_core::hash::hash_bytes(text.as_bytes())), {
             use og_cook::format::BlobKind;
             og_cook::format::Timeline::schema_version()
         }),

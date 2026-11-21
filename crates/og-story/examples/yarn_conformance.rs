@@ -572,9 +572,7 @@ fn main() {
         let name = file.strip_prefix(root).unwrap().display().to_string();
         match run(&file) {
             Ok(bytes) => {
-                let hash = bytes.iter().fold(0xcbf29ce484222325_u64, |h, b| {
-                    (h ^ u64::from(*b)).wrapping_mul(0x100000001b3)
-                });
+                let hash = og_core::hash::hash_bytes(&bytes);
                 println!("PASS\t{name}\t{hash:016x}");
                 passed += 1;
             }
@@ -590,9 +588,7 @@ fn main() {
         let case: MarkupCase = serde_json::from_str(line).unwrap();
         match markup_case(case) {
             Ok(bytes) => {
-                let hash = bytes.iter().fold(0xcbf29ce484222325_u64, |h, b| {
-                    (h ^ u64::from(*b)).wrapping_mul(0x100000001b3)
-                });
+                let hash = og_core::hash::hash_bytes(&bytes);
                 println!("PASS\tmarkup/{index}\t{hash:016x}");
                 passed += 1;
             }
@@ -620,9 +616,7 @@ fn main() {
         };
         if matches {
             let bytes = format!("{actual:?}");
-            let hash = bytes.bytes().fold(0xcbf29ce484222325_u64, |h, b| {
-                (h ^ u64::from(b)).wrapping_mul(0x100000001b3)
-            });
+            let hash = og_core::hash::hash_bytes(bytes.as_bytes());
             println!("PASS\tformat/{index}\t{hash:016x}");
             passed += 1;
         } else {

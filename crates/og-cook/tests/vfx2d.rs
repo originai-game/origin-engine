@@ -46,20 +46,18 @@ fn cooked(root: &Path) -> Bundle {
 /// comet, puffs, cracks, burst, ring, particles, flash).
 #[test]
 fn library_recipes_render_the_forges_frames() {
-    let mut fnv: u64 = 0xcbf2_9ce4_8422_2325;
+    let mut fnv = og_core::hash::StableHasher::new();
     let mut texels = 0;
     for name in ["level-up", "meteor-strike"] {
         let text = std::fs::read_to_string(fixtures().join(format!("{name}.json"))).unwrap();
         for f in vfx2d::render_json(&text).unwrap().frames {
             texels += f.len() / 4;
-            for b in f {
-                fnv = (fnv ^ u64::from(b)).wrapping_mul(0x0100_0000_01b3);
-            }
+            fnv.write(&f);
         }
     }
     assert_eq!(texels, 362_496);
     assert_eq!(
-        format!("{fnv:016x}"),
+        format!("{:016x}", fnv.finish()),
         "db3e83dceb9cbd67",
         "the frames are no longer the Forge's: render the recipes with its engine.js and compare"
     );

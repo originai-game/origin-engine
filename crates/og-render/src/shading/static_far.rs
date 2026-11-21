@@ -281,43 +281,48 @@ impl StaticFar {
 
 /// What the far field depends on of its lights.
 fn lights_hash(lights: &[Light], far: &[usize], reach: f32) -> u64 {
-    let mut h = 0xcbf2_9ce4_8422_2325u64;
-    let mut eat = |x: f32| {
-        h = (h ^ u64::from(x.to_bits())).wrapping_mul(0x0000_0100_0000_01b3);
-    };
-    eat(reach);
+    let mut words = vec![u64::from(reach.to_bits())];
+    let eat = |words: &mut Vec<u64>, x: f32| words.push(u64::from(x.to_bits()));
+    eat(&mut words, reach);
     for &i in far {
         let l = &lights[i];
-        eat(i as f32);
+        eat(&mut words, i as f32);
         for v in [l.position, l.color] {
-            v.to_array().into_iter().for_each(&mut eat);
+            v.to_array().into_iter().for_each(|x| eat(&mut words, x));
         }
-        [l.intensity, l.range, l.radius]
-            .into_iter()
-            .for_each(&mut eat);
+        [l.intensity, l.range, l.radius].into_iter().for_each(|x| eat(&mut words, x));
         match l.kind {
-            LightKind::Point => eat(0.0),
+            LightKind::Point => eat(&mut words, 0.0),
             LightKind::Spot {
                 direction,
                 angle_degrees,
                 penumbra,
             } => {
-                direction.to_array().into_iter().for_each(&mut eat);
-                eat(angle_degrees);
-                eat(penumbra);
+                direction
+                    .to_array()
+                    .into_iter()
+                    .for_each(|x| eat(&mut words, x));
+                eat(&mut words, angle_degrees);
+                eat(&mut words, penumbra);
             }
             LightKind::Rect {
                 half_width,
                 half_height,
                 two_sided,
             } => {
-                half_width.to_array().into_iter().for_each(&mut eat);
-                half_height.to_array().into_iter().for_each(&mut eat);
-                eat(f32::from(u8::from(two_sided)));
+                half_width
+                    .to_array()
+                    .into_iter()
+                    .for_each(|x| eat(&mut words, x));
+                half_height
+                    .to_array()
+                    .into_iter()
+                    .for_each(|x| eat(&mut words, x));
+                eat(&mut words, f32::from(u8::from(two_sided)));
             }
         }
     }
-    h
+    og_core::hash::hash_words(words)
 }
 
 #[cfg(test)]

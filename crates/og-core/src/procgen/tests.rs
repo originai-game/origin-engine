@@ -198,11 +198,6 @@ fn wfc_refuses_tiles_that_cannot_fit_naming_a_cell() {
 /// in packages/engine/tests/modules.test.ts pins the same values).
 #[test]
 fn every_generator_gives_its_pinned_output_for_a_seed() {
-    fn fnv(bytes: impl IntoIterator<Item = u8>) -> u64 {
-        bytes.into_iter().fold(0xcbf2_9ce4_8422_2325, |h, b| {
-            (h ^ b as u64).wrapping_mul(0x0100_0000_01b3)
-        })
-    }
     let mut r = Rng::new(42);
     let picks: Vec<u8> = (0..64)
         .map(|_| weighted(&mut r, &[1.0, 0.0, 3.0, 0.5]).unwrap() as u8)
@@ -235,20 +230,24 @@ fn every_generator_gives_its_pinned_output_for_a_seed() {
         attempts: 5,
     })
     .unwrap();
+    fn bytes(v: impl IntoIterator<Item = u8>) -> Vec<u8> {
+        v.into_iter().collect()
+    }
     let got = [
-        fnv(picks),
-        fnv(perm.iter().flat_map(|x| x.to_le_bytes())),
-        fnv(f32s(&grid(NoiseKind::Perlin, true))),
-        fnv(f32s(&grid(NoiseKind::Perlin, false))),
-        fnv(f32s(&grid(NoiseKind::Simplex, true))),
-        fnv(f32s(&grid(NoiseKind::Simplex, false))),
-        fnv(poisson.iter().flat_map(|p| f32s(p))),
-        fnv(bsp.cells.iter().copied()),
-        fnv(w
-            .tiles
-            .iter()
-            .zip(&w.rotations)
-            .map(|(t, r)| (t * 4 + r) as u8)),
+        crate::hash::hash_bytes(&picks),
+        crate::hash::hash_bytes(&bytes(perm.iter().flat_map(|x| x.to_le_bytes()))),
+        crate::hash::hash_bytes(&f32s(&grid(NoiseKind::Perlin, true))),
+        crate::hash::hash_bytes(&f32s(&grid(NoiseKind::Perlin, false))),
+        crate::hash::hash_bytes(&f32s(&grid(NoiseKind::Simplex, true))),
+        crate::hash::hash_bytes(&f32s(&grid(NoiseKind::Simplex, false))),
+        crate::hash::hash_bytes(&bytes(poisson.iter().flat_map(|p| f32s(p)))),
+        crate::hash::hash_bytes(&bytes(bsp.cells.iter().copied())),
+        crate::hash::hash_bytes(&bytes(
+            w.tiles
+                .iter()
+                .zip(&w.rotations)
+                .map(|(t, r)| (t * 4 + r) as u8),
+        )),
     ];
     let text: Vec<String> = got.iter().map(|h| format!("{h:016x}")).collect();
     assert_eq!(text, PINNED, "{text:?}");

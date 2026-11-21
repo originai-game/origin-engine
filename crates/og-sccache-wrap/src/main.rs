@@ -312,9 +312,7 @@ fn reproducible(args: &mut Vec<OsString>, remaps: &std::ffi::OsStr) {
     ]
     .join("\n");
     // FNV-1a: stable across hosts and toolchains, unlike std's hashers.
-    let hash = identity.bytes().fold(0xcbf2_9ce4_8422_2325u64, |h, b| {
-        (h ^ u64::from(b)).wrapping_mul(0x0100_0000_01b3)
-    });
+    let hash = og_core::hash::hash_bytes(identity.as_bytes());
     let metadata = format!("metadata={hash:016x}");
     let mut i = 1;
     while i < args.len() {

@@ -334,14 +334,14 @@ impl Renderer {
                 width: self.out_width,
                 height: self.out_height,
                 scale: overlay::OverlayRenderer::scale(self.out_height, o).to_bits(),
-                revisions: scene
-                    .font_revisions()
-                    .iter()
-                    .chain(scene.texture_revisions())
-                    .chain(scene.texture_array_revisions())
-                    .fold(0xcbf2_9ce4_8422_2325, |h, r| {
-                        (h ^ r).wrapping_mul(0x0100_0000_01b3)
-                    }),
+                revisions: og_core::hash::hash_words(
+                    scene
+                        .font_revisions()
+                        .iter()
+                        .chain(scene.texture_revisions())
+                        .chain(scene.texture_array_revisions())
+                        .copied(),
+                ),
                 textures: self.cache.textures.len(),
                 vectors: scene.ui.ui_vectors.len(),
             })

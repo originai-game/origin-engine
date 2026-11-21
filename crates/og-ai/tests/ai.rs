@@ -563,14 +563,8 @@ fn a_yard_without_g2_4_features_hashes_and_moves_as_before_it() {
             );
         }
     };
-    let fnv = |h: &mut u64, bits: u32| {
-        for b in bits.to_le_bytes() {
-            *h ^= b as u64;
-            *h = h.wrapping_mul(0x0000_0100_0000_01b3);
-        }
-    };
     let mut y = yard();
-    let mut trail = 0xcbf2_9ce4_8422_2325u64;
+    let mut trail = og_core::hash::StableHasher::new();
     let mut commands = Vec::new();
     let mut snap = None;
     for t in 0..300u32 {
@@ -583,7 +577,7 @@ fn a_yard_without_g2_4_features_hashes_and_moves_as_before_it() {
         for &e in &y.agents {
             let p = y.world.get::<Transform>(e).unwrap().position;
             for c in [p.x, p.y, p.z] {
-                fnv(&mut trail, c.to_bits());
+                trail.write(&c.to_bits().to_le_bytes());
             }
         }
     }
@@ -598,7 +592,7 @@ fn a_yard_without_g2_4_features_hashes_and_moves_as_before_it() {
         "the guard moved"
     );
     assert_eq!(
-        (hash.as_str(), format!("{trail:016x}").as_str()),
+        (hash.as_str(), format!("{:016x}", trail.finish()).as_str()),
         (YARD_HASH, YARD_TRAIL),
         "a yard using no G2-4 feature hashes or moves otherwise than on main 67a07d57"
     );
@@ -619,12 +613,12 @@ fn a_yard_without_g2_4_features_hashes_and_moves_as_before_it() {
         for &e in &z.agents {
             let p = z.world.get::<Transform>(e).unwrap().position;
             for c in [p.x, p.y, p.z] {
-                fnv(&mut trail2, c.to_bits());
+                trail2.write(&c.to_bits().to_le_bytes());
             }
         }
     }
     assert_eq!(format!("{:016x}", z.world.world_hash()), hash);
-    assert_eq!(trail2, trail, "the restored yard moved otherwise");
+    assert_eq!(trail2.finish(), trail.finish(), "the restored yard moved otherwise");
 }
 
 /// [`a_yard_without_g2_4_features_hashes_and_moves_as_before_it`]'s world

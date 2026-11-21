@@ -59,13 +59,12 @@ fn main() {
             let start = Instant::now();
             let g = model.generate(&inputs);
             times.push(start.elapsed().as_secs_f64() * 1e3);
-            hash = g
-                .motion
-                .iter()
-                .chain(&g.student.root)
-                .fold(0xcbf29ce484222325, |h, v| {
-                    (h ^ u64::from(v.to_bits())).wrapping_mul(0x100000001b3)
-                });
+            hash = og_core::hash::hash_words(
+                g.motion
+                    .iter()
+                    .chain(&g.student.root)
+                    .map(|v| u64::from(v.to_bits())),
+            );
         }
         // The same characters split over 8 threads, one generation each.
         if n >= 8 {

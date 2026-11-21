@@ -234,14 +234,11 @@ fn a_three_minute_track_streams_in_chunks_sample_identical_to_the_whole_file() {
 }
 
 fn pcm_hash(pcm: &[f32]) -> u64 {
-    let mut h = 0xcbf2_9ce4_8422_2325u64;
-    for x in pcm {
-        for b in x.to_bits().to_le_bytes() {
-            h ^= u64::from(b);
-            h = h.wrapping_mul(0x100_0000_01b3);
-        }
-    }
-    h
+    og_core::hash::hash_bytes(
+        &pcm.iter()
+            .flat_map(|x| x.to_bits().to_le_bytes())
+            .collect::<Vec<u8>>(),
+    )
 }
 
 #[test]

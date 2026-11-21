@@ -1135,13 +1135,6 @@ mod tests {
     const SIZE: [f32; 2] = [512.0, 512.0];
     const HEIGHT: [f32; 2] = [-40.0, 120.0];
 
-    fn fnv(h: &mut u64, bytes: &[u8]) {
-        for b in bytes {
-            *h ^= *b as u64;
-            *h = h.wrapping_mul(0x0000_0100_0000_01b3);
-        }
-    }
-
     /// The generated field's hash, held here: the same on every host and
     /// build. A change to any stage's arithmetic moves it; so does a
     /// platform that rounds differently (the gate runs this on macOS
@@ -1150,15 +1143,15 @@ mod tests {
     fn a_generated_field_hashes_the_same_everywhere() {
         let g = read(EVERYTHING);
         let a = generate(&g, SIZE, HEIGHT);
-        let mut h = 0xcbf2_9ce4_8422_2325u64;
+        let mut h = og_core::hash::StableHasher::new();
         for x in &a.heights {
-            fnv(&mut h, &x.to_bits().to_le_bytes());
+            h.write(&x.to_bits().to_le_bytes());
         }
-        fnv(&mut h, a.control.as_deref().unwrap());
-        fnv(&mut h, &a.river_length.to_bits().to_le_bytes());
+        h.write(a.control.as_deref().unwrap());
+        h.write(&a.river_length.to_bits().to_le_bytes());
         assert_eq!(a.heights.len(), 256 * 256);
         assert!(!a.river.is_empty(), "rivers run");
-        assert_eq!(h, 0x3545_dee3_68d7_5755, "the generated field's hash");
+        assert_eq!(h.finish(), 0x3545_dee3_68d7_5755, "the generated field's hash");
     }
 
     #[test]

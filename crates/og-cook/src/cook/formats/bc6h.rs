@@ -425,7 +425,7 @@ mod tests {
         for (k, mode) in MODES.iter().enumerate() {
             for (signed, want) in [(false, HASHES[k][0]), (true, HASHES[k][1])] {
                 let mut s: u64 = 0x2545F4914F6CDD1D ^ (k as u64).wrapping_mul(0x9E3779B97F4A7C15);
-                let mut h = 0xcbf29ce484222325u64;
+                let mut h = og_core::hash::StableHasher::new();
                 for _ in 0..256 {
                     let mut next = || {
                         s ^= s << 13;
@@ -438,14 +438,11 @@ mod tests {
                     v = (v & !((1u128 << width) - 1)) | u128::from(mode.bits);
                     for t in decode_block_half(&v.to_le_bytes(), signed) {
                         for c in t {
-                            for b in c.to_le_bytes() {
-                                h ^= u64::from(b);
-                                h = h.wrapping_mul(0x100000001b3);
-                            }
+                            h.write(&c.to_le_bytes());
                         }
                     }
                 }
-                assert_eq!(h, want, "mode {k} (bits {:05b}) signed {signed}", mode.bits);
+                assert_eq!(h.finish(), want, "mode {k} (bits {:05b}) signed {signed}", mode.bits);
             }
         }
     }

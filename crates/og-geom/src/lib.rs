@@ -323,14 +323,7 @@ mod geom_contracts {
     }
 
     fn fnv(bits: &[u32]) -> u64 {
-        let mut h = 0xcbf2_9ce4_8422_2325u64;
-        for b in bits {
-            for byte in b.to_le_bytes() {
-                h ^= byte as u64;
-                h = h.wrapping_mul(0x100_0000_01b3);
-            }
-        }
-        h
+        og_core::hash::hash_bytes(&bits.iter().flat_map(|b| b.to_le_bytes()).collect::<Vec<u8>>())
     }
 
     // ── counts equal to three.js's ──────────────────────────────────────────────
@@ -716,16 +709,13 @@ mod geom_contracts {
     // ── og.Path2 and og.Shape flattened in Rust, as the TypeScript runtime does ─
 
     fn fnv_points(points: &[DVec2]) -> u64 {
-        let mut h = 0xcbf2_9ce4_8422_2325u64;
-        for p in points {
-            for v in [p.x, p.y] {
-                for byte in v.to_le_bytes() {
-                    h ^= byte as u64;
-                    h = h.wrapping_mul(0x100_0000_01b3);
-                }
-            }
-        }
-        h
+        og_core::hash::hash_bytes(
+            &points
+                .iter()
+                .flat_map(|p| [p.x, p.y])
+                .flat_map(|v| v.to_le_bytes())
+                .collect::<Vec<u8>>(),
+        )
     }
 
     /// The same calls as packages/engine/src/geom.ts's og.Path2 and og.Shape

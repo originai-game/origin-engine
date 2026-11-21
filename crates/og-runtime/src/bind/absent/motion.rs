@@ -133,11 +133,7 @@ pub(crate) mod present {
         /// model): the stand-in's hash is FNV-1a of exactly that.
         #[test]
         fn idle_hash_is_the_full_presenters() {
-            let fnv = |s: &str| {
-                s.bytes().fold(0xcbf2_9ce4_8422_2325u64, |h, b| {
-                    (h ^ u64::from(b)).wrapping_mul(0x0000_0100_0000_01b3)
-                })
-            };
+            let fnv = |s: &str| og_core::hash::hash_bytes(s.as_bytes());
             let mut p = Presenter::default();
             assert_eq!(p.hash(), fnv("None|None|None|"));
             p.stepped = Some(7);
