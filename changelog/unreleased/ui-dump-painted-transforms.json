@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "og probe dump_ui: textTransform",
+      "summary": "A transformed text's textTransform is now reported in a running game. It was always null there, because the host takes the tree's paint each frame and the dump read the transforms from it; the tree now keeps the transforms of its last paint. The accessibility tree's bounds of a transformed node read the same transforms."
+    }
+  ]
+}

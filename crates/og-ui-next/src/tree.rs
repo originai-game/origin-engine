@@ -329,6 +329,10 @@ pub struct Tree {
     /// Each element's transform in `drawn.transforms` (its own composed
     /// with its ancestors'; 0 none), what its children compose onto.
     xfs: Vec<u32>,
+    /// The transforms of the last paint, which `xfs` index: [`Tree::drawn`]
+    /// is the host's to take, and the probe reads where a text was drawn
+    /// after it has.
+    painted_transforms: Vec<[f32; 8]>,
     /// The host's: an image's source (a texture handle) as the slot it
     /// draws, read as the tree paints, so a replaced texture follows.
     textures: Option<Textures>,
@@ -567,6 +571,7 @@ impl Tree {
             anchored: Vec::new(),
             glyphs: Vec::new(),
             xfs: Vec::new(),
+            painted_transforms: Vec::new(),
             textures: None,
             mounting: 0,
             row: "".into(),
@@ -1396,7 +1401,9 @@ impl Tree {
             if xf == 0 || el.dead {
                 continue;
             }
-            let [a, b, c, d, tx, ty, _, _] = self.drawn.transforms[xf as usize];
+            let Some(&[a, b, c, d, tx, ty, _, _]) = self.painted_transforms.get(xf as usize) else {
+                continue;
+            };
             let bx = self
                 .motion
                 .box_of(el.node)
@@ -2056,6 +2063,7 @@ impl Tree {
                 }
             }
         }
+        self.painted_transforms.clone_from(&self.drawn.transforms);
         let mut quads = std::mem::take(&mut self.drawn.quads);
         self.paint_virtual_cursor(&mut quads);
         self.drawn.quads = quads;

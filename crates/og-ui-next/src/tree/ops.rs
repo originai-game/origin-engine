@@ -1119,7 +1119,7 @@ impl Tree {
                         .get(e)
                         .copied()
                         .filter(|&xf| xf != 0)
-                        .and_then(|xf| self.drawn.transforms.get(xf as usize))
+                        .and_then(|xf| self.painted_transforms.get(xf as usize))
                         .map(|&[a, b, c, d, tx, ty, _, _]| [a, b, c, d, tx, ty]),
                 })
             })
@@ -1826,7 +1826,8 @@ mod tests {
     /// The ops' tags, a11y props and listeners reach the accessibility
     /// tree: a pressed view is a button named by its text, at its box; a
     /// A node under a transform (a dialog scaling in) is where it is
-    /// drawn in the accessibility tree, not at its layout box.
+    /// drawn in the accessibility tree and the probe, not at its layout
+    /// box, after the host took the paint.
     #[test]
     fn a_transformed_node_is_where_it_is_drawn() {
         let mut t = tree();
@@ -1837,6 +1838,11 @@ mod tests {
         b.op(8).u32(0).u32(1).u32(u32::MAX);
         t.apply(&b.bytes()).unwrap();
         frame(&mut t);
+        // A host takes the paint it presents; where things were drawn stays.
+        drop(std::mem::take(&mut t.drawn));
+        let ops = t.dump_ops();
+        let n = ops.iter().find(|n| n.id == 1).unwrap();
+        assert_eq!(n.transform, Some([0.5, 0.0, 0.0, 0.5, 12.5, 5.0]));
         let node = t.els[t.op(1).unwrap() as usize].node as u64;
         let mut client = a11y::Tree::new();
         let u = t.a11y(&mut client, None, 1.0).unwrap();
