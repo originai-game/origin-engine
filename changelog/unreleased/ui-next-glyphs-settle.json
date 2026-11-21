@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "UI text",
+      "summary": "When og-ui's new core first paints a tree (a mount, a pack or scheme change), every run-time glyph its text needs renders on that frame, so text appears with its panels instead of filling in a few glyphs a frame on the web. That frame costs the glyphs' rendering at once."
+    }
+  ]
+}

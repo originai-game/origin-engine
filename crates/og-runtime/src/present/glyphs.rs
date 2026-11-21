@@ -331,7 +331,12 @@ pub(crate) fn generate(rs: &mut RenderState) -> usize {
     instances(rs);
     let mut rendered = 0;
     // A capture draws every glyph asked for (`RenderState::glyphs_settle`).
-    let settle = std::mem::take(&mut rs.glyphs_settle);
+    // So does a fresh new-core tree's first paint: every glyph its text
+    // needs at once, not a few a frame on the web.
+    let settle = std::mem::take(&mut rs.glyphs_settle)
+        | rs.ui_next
+            .as_mut()
+            .is_some_and(|n| std::mem::take(&mut n.settle_glyphs));
     let renders: Vec<usize> = rs.runtime_fonts.keys().copied().collect();
     for render in renders {
         let Some(pages) = rs.fonts.get(render).map(|p| p.pages.clone()) else {

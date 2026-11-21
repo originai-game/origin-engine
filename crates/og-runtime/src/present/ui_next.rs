@@ -94,6 +94,12 @@ pub(crate) struct Next {
     language: String,
     /// The accessibility tree the host's mirror was last sent.
     a11y: og_ui_next::a11y::Tree,
+    /// A tree was made and has not painted yet.
+    fresh: bool,
+    /// The frame's run-time glyphs render all at once, not a few a frame
+    /// (`glyphs::generate`): a fresh tree painted, so its text arrives
+    /// with its panels.
+    pub(crate) settle_glyphs: bool,
 }
 
 fn source(v: &Value) -> Option<(String, String)> {
@@ -227,6 +233,8 @@ impl Next {
             font: false,
             language: String::new(),
             a11y: og_ui_next::a11y::Tree::new(),
+            fresh: false,
+            settle_glyphs: false,
         }
     }
 
@@ -514,6 +522,7 @@ impl Next {
         self.resolve(engine, ui);
         // A new arena: the mirror is sent its whole tree again.
         self.a11y.reset();
+        self.fresh = true;
         self.spans.build = now() - t0;
         self.spans.build_allocations = allocations() - a0;
     }
@@ -629,6 +638,7 @@ impl Next {
             let generation = self.paint.generation + 1;
             std::mem::swap(&mut self.paint, &mut tree.drawn);
             self.paint.generation = generation;
+            self.settle_glyphs |= std::mem::take(&mut self.fresh);
         }
         let allocated = allocations() - a0;
         self.spans.frame = t2 - t0;
