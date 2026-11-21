@@ -24,13 +24,13 @@ export function RhythmDifficulty(props: RhythmDifficultyProps) {
   return (
     <View class={`flex-col gap-1 w-full min-w-0 text-fg`} label={props.title !== "" ? props.title : t("rhythm.difficulty.title")}>
       <View class={`flex-row shrink w-full min-h-0`}>
-        <Text class={`text-[0.857rem] font-semibold tracking-[0.14em] uppercase min-w-0 whitespace-nowrap text-fg text-stroke-3 text-stroke-bg overflow-hidden`}>
+        <Text class={`text-xs font-semibold tracking-label uppercase min-w-0 whitespace-nowrap text-fg text-stroke-3 text-stroke-bg overflow-hidden`}>
           {props.title !== "" ? props.title : t("rhythm.difficulty.title")}
         </Text>
       </View>
       <Show when={(props.levels ?? []).length} fallback={
         <View role="status" class={`self-start py-2 px-3 bg-well`}>
-          <Text class={`text-[1.143rem] text-fg`}>{t("rhythm.difficulty.empty")}</Text>
+          <Text class={`text-base text-fg`}>{t("rhythm.difficulty.empty")}</Text>
         </View>
       }>
         <Scroll class={`min-h-0 flex-1`}>
@@ -38,7 +38,7 @@ export function RhythmDifficulty(props: RhythmDifficultyProps) {
             <For each={props.levels ?? []} key={(l) => l.id}>
               {(l) => (
                 <View
-                  class={`group/difficulty relative grow shrink basis-[10.714rem] min-w-0 min-h-[6.286rem] compact:min-h-[3.143rem] flex-col items-stretch justify-start pt-[13px] compact:pt-[7px] px-[18px] compact:px-[10px] pb-2 compact:pb-1 transition duration-317 bg-tile/90 hover:bg-glass shadow-none rounded-none data-selected:bg-linear-to-r data-selected:from-hud-accent/24 data-selected:via-hud-accent/8 data-selected:to-hud-accent/3 data-selected:shadow-[inset_3px_0px_0px_#38e8ff,inset_0px_1px_0px_#ffffff2e] data-selected:-translate-y-[6px] compact:data-selected:translate-y-0 disabled:opacity-55 disabled:bg-tile/90 disabled:shadow-none`}
+                  class={`group/difficulty relative grow shrink basis-37.5 min-w-0 min-h-22 compact:min-h-11 flex-col items-stretch justify-start pt-3.25 compact:pt-1.75 px-4.5 compact:px-2.5 pb-2 compact:pb-1 transition duration-317 bg-tile/90 hover:bg-glass shadow-none rounded-none data-selected:bg-linear-to-r data-selected:from-hud-accent/24 data-selected:via-hud-accent/8 data-selected:to-hud-accent/3 data-selected:shadow-[inset_3px_0px_0px_#38e8ff,inset_0px_1px_0px_#ffffff2e] data-selected:-translate-y-1.5 compact:data-selected:translate-y-0 disabled:opacity-55 disabled:bg-tile/90 disabled:shadow-none`}
                   role="option"
                   label={t("rhythm.difficulty.ratingName", { label: l().label, rating: l().rating })}
                   selected={l().id === props.selected}
@@ -53,36 +53,36 @@ export function RhythmDifficulty(props: RhythmDifficultyProps) {
                   data-tier-special={l().tier === "special"}
                   data-selected={l().id === props.selected}
                 >
-                  <View class={`absolute left-0 right-0 top-0 h-[5px] bg-chart-normal group-data-tier-easy/difficulty:bg-chart-easy group-data-tier-hard/difficulty:bg-chart-hard group-data-tier-expert/difficulty:bg-chart-expert group-data-tier-master/difficulty:bg-chart-master group-data-tier-special/difficulty:bg-fever`} />
+                  <View class={`absolute left-0 right-0 top-0 h-1.25 bg-chart-normal group-data-tier-easy/difficulty:bg-chart-easy group-data-tier-hard/difficulty:bg-chart-hard group-data-tier-expert/difficulty:bg-chart-expert group-data-tier-master/difficulty:bg-chart-master group-data-tier-special/difficulty:bg-fever`} />
                   <View class={`flex-col items-start grow gap-0.5 compact:flex-row compact:flex-wrap compact:items-center compact:gap-x-1`}>
                     <View class={`flex-row items-center flex-wrap gap-y-0.5 gap-x-1 max-w-full min-w-0 compact:flex-1 compact:basis-full`}>
-                      <Text class={`text-[0.857rem] font-bold tracking-[0.14em] uppercase min-w-0 max-w-full whitespace-nowrap text-ellipsis overflow-hidden text-chart-normal group-data-tier-easy/difficulty:text-chart-easy group-data-tier-hard/difficulty:text-chart-hard group-data-tier-expert/difficulty:text-chart-expert group-data-tier-master/difficulty:text-chart-master group-data-tier-special/difficulty:text-fever data-selected:text-fg`}>
+                      <Text class={`text-xs font-bold tracking-label uppercase min-w-0 max-w-full whitespace-nowrap text-ellipsis overflow-hidden text-chart-normal group-data-tier-easy/difficulty:text-chart-easy group-data-tier-hard/difficulty:text-chart-hard group-data-tier-expert/difficulty:text-chart-expert group-data-tier-master/difficulty:text-chart-master group-data-tier-special/difficulty:text-fever data-selected:text-fg`}>
                         {l().label}
                       </Text>
                       <Show when={l().locked}>
                         <View class={`flex-row items-center gap-1 shrink py-0 px-1 bg-well nine-chip-cut text-fg ${packClass("Chip", "frame")}`} data-tag-locked={true}>
-                          <Icon class={`size-[1.143rem] opacity-80`} name="lock" />
-                          <Text class={`text-[0.857rem] font-bold tracking-[0.14em] uppercase whitespace-nowrap opacity-80`}>{t("rhythm.difficulty.locked")}</Text>
+                          <Icon class={`size-4 opacity-80`} name="lock" />
+                          <Text class={`text-xs font-bold tracking-label uppercase whitespace-nowrap opacity-80`}>{t("rhythm.difficulty.locked")}</Text>
                         </View>
                       </Show>
                       <Show when={l().id === props.selected}>
                         <View class={`flex-row items-center shrink py-0 px-1 bg-well nine-chip-cut text-fg ${packClass("Chip", "frame")}`} data-tag-selected={true}>
-                          <Text class={`text-[0.857rem] font-bold tracking-[0.14em] uppercase whitespace-nowrap`}>{t("rhythm.difficulty.selected")}</Text>
+                          <Text class={`text-xs font-bold tracking-label uppercase whitespace-nowrap`}>{t("rhythm.difficulty.selected")}</Text>
                         </View>
                       </Show>
                     </View>
                     <View class={`self-start shrink compact:self-center`}>
-                      <Text class={`text-[3.714rem] compact:text-[1.857rem] leading-none font-bold tabular-nums whitespace-nowrap text-fg disabled:text-fg-muted`}>
+                      <Text class={`text-7xl compact:text-3xl leading-none font-bold tabular-nums whitespace-nowrap text-fg disabled:text-fg-muted`}>
                         {t("rhythm.difficulty.rating", { rating: l().rating })}
                       </Text>
                     </View>
                     <View class={`flex-row items-center max-w-full min-w-0 compact:flex-none`}>
                       <Show when={l().grade !== ""}>
                         <View class={`flex-row items-center shrink py-0 px-1 bg-well nine-chip-cut text-gold ${packClass("Chip", "frame")}`} data-tag-grade={true}>
-                          <Text class={`text-[0.857rem] font-bold tracking-[0.14em] uppercase whitespace-nowrap`}>{l().grade}</Text>
+                          <Text class={`text-xs font-bold tracking-label uppercase whitespace-nowrap`}>{l().grade}</Text>
                         </View>
                       </Show>
-                      <Text class={`min-w-0 text-[1.143rem] font-bold tabular-nums whitespace-nowrap text-ellipsis overflow-hidden text-fg-muted`}>
+                      <Text class={`min-w-0 text-base font-bold tabular-nums whitespace-nowrap text-ellipsis overflow-hidden text-fg-muted`}>
                         {l().score !== "" ? l().score : t("rhythm.difficulty.unplayed")}
                       </Text>
                     </View>

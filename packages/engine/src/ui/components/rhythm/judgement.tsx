@@ -48,7 +48,7 @@ export function RhythmJudgement(props: RhythmJudgementProps) {
           <Show when={!props.broken}>
             <Show when={Math.max(props.hit, 1)} keyed>
               {() => (
-              <Text class={`text-[10.714rem] compact:text-[3.714rem] leading-[0.85] font-bold tabular-nums italic whitespace-nowrap text-fg text-stroke-3 text-stroke-bg animate-beat`}>
+              <Text class={`text-[10.714rem] compact:text-7xl leading-[0.85] font-bold tabular-nums italic whitespace-nowrap text-fg text-stroke-3 text-stroke-bg animate-beat`}>
                 {formatNumber(props.combo)}
               </Text>
               )}
@@ -56,14 +56,14 @@ export function RhythmJudgement(props: RhythmJudgementProps) {
           </Show>
           <View class={`flex-col items-center gap-0.5 compact:flex-row compact:items-baseline compact:gap-2`}>
             <Text
-              class={`text-[1.143rem] font-semibold uppercase whitespace-nowrap text-hud-accent tracking-[0.4em] compact:tracking-[0.14em] data-broken:text-fg-muted data-broken:tracking-[0.14em]`}
+              class={`text-base font-semibold uppercase whitespace-nowrap text-hud-accent tracking-[0.4em] compact:tracking-label data-broken:text-fg-muted data-broken:tracking-label`}
               data-broken={props.broken}
             >
               {props.broken ? t("rhythm.judge.broken") : t("rhythm.judge.combo")}
             </Text>
             <Show when={!props.broken && props.mark !== ""}>
               <Text
-                class={`mt-1 compact:mt-0 py-0 px-2 text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap text-gold bg-well nine-chip-cut ${packClass("Chip", "frame")}`}
+                class={`mt-1 compact:mt-0 py-0 px-2 text-xs font-semibold tracking-label uppercase whitespace-nowrap text-gold bg-well nine-chip-cut ${packClass("Chip", "frame")}`}
                 data-mark-fullcombo={props.mark === "fullCombo"}
                 data-mark-allperfect={props.mark === "allPerfect"}
               >
@@ -84,7 +84,7 @@ export function RhythmJudgement(props: RhythmJudgementProps) {
           data-judgement-miss={judgement === "miss"}
         >
           <Text
-            class={`max-w-full min-w-0 text-[4.571rem] compact:text-[1.714rem] leading-[1.05] font-bold italic tracking-[0.12em] uppercase text-center whitespace-nowrap text-ellipsis overflow-hidden text-gold data-judgement-great:text-hud-accent data-judgement-good:text-boon data-judgement-bad:text-warn data-judgement-miss:text-fg-muted`}
+            class={`max-w-full min-w-0 text-8xl compact:text-title leading-[1.05] font-bold italic tracking-wide uppercase text-center whitespace-nowrap text-ellipsis overflow-hidden text-gold data-judgement-great:text-hud-accent data-judgement-good:text-boon data-judgement-bad:text-warn data-judgement-miss:text-fg-muted`}
             data-judgement-perfect={judgement === "perfect"}
             data-judgement-great={judgement === "great"}
             data-judgement-good={judgement === "good"}
@@ -97,7 +97,7 @@ export function RhythmJudgement(props: RhythmJudgementProps) {
             <View class={`flex-row items-baseline justify-center gap-1`}>
               <Show when={props.timing !== ""}>
                 <Text
-                  class={`text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap text-fg data-timing-early:text-hud-accent data-timing-late:text-late`}
+                  class={`text-xs font-semibold tracking-label uppercase whitespace-nowrap text-fg data-timing-early:text-hud-accent data-timing-late:text-late`}
                   data-timing-early={props.timing === "early"}
                   data-timing-late={props.timing === "late"}
                 >
@@ -106,7 +106,7 @@ export function RhythmJudgement(props: RhythmJudgementProps) {
               </Show>
               <Show when={props.offset !== ""}>
                 <Text
-                  class={`text-[1.143rem] font-bold tabular-nums whitespace-nowrap text-gold data-timing-early:text-hud-accent data-timing-late:text-late`}
+                  class={`text-base font-bold tabular-nums whitespace-nowrap text-gold data-timing-early:text-hud-accent data-timing-late:text-late`}
                   data-timing-early={props.timing === "early"}
                   data-timing-late={props.timing === "late"}
                 >

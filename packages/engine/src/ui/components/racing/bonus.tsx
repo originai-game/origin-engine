@@ -23,11 +23,11 @@ export interface RacingBonusProps {
 export function RacingBonus(props: RacingBonusProps) {
   const share = () => Math.min(Math.max(props.value, 0), 1);
   return (
-    <View class={`flex-col items-center gap-y-[1.571rem] w-fit max-w-full text-fg compact:flex-row compact:justify-center compact:gap-x-[0.857rem]`} role="group" label={t("racing.bonus.name")}>
+    <View class={`flex-col items-center gap-y-5.5 w-fit max-w-full text-fg compact:flex-row compact:justify-center compact:gap-x-3`} role="group" label={t("racing.bonus.name")}>
       <Show when={props.meter !== ""}>
-        <View class={`flex-col items-center gap-y-[0.429rem] max-w-full compact:flex-[0_1_auto] compact:min-w-0`} role="meter" label={props.meter} valueMin={0} valueMax={100} valueNow={share() * 100}>
-          <Text class={`max-w-full min-w-0 text-[0.857rem] font-semibold tracking-[0.22em] uppercase whitespace-nowrap overflow-hidden text-hud-accent text-stroke-3 text-stroke-bg compact:tracking-normal`}>{props.meter}</Text>
-          <View class={`relative w-[12.857rem] max-w-full h-[0.5rem] overflow-hidden bg-well/82 shadow-[0px_0px_0px_1px_#ffffff38,inset_0px_1px_0px_#ffffff24,0px_2px_5.714px_#00000073] compact:w-[7.143rem] compact:h-[0.357rem]`}>
+        <View class={`flex-col items-center gap-y-1.5 max-w-full compact:flex-[0_1_auto] compact:min-w-0`} role="meter" label={props.meter} valueMin={0} valueMax={100} valueNow={share() * 100}>
+          <Text class={`max-w-full min-w-0 text-xs font-semibold tracking-[0.22em] uppercase whitespace-nowrap overflow-hidden text-hud-accent text-stroke-3 text-stroke-bg compact:tracking-normal`}>{props.meter}</Text>
+          <View class={`relative w-45 max-w-full h-1.75 overflow-hidden bg-well/82 shadow-[0px_0px_0px_1px_#ffffff38,inset_0px_1px_0px_#ffffff24,0px_2px_5.714px_#00000073] compact:w-25 compact:h-1.25`}>
             <View class="absolute left-0 top-0 h-full bg-hud-accent shadow-[2.288px_0px_10px_#38e8ffbf]" style={{ width: `${share() * 100}%` }} />
           </View>
         </View>
@@ -35,10 +35,10 @@ export function RacingBonus(props: RacingBonusProps) {
       <Show when={props.points !== ""}>
         <Show when={props.at + 1} keyed>
           {() => (
-            <View class={`flex-col items-center gap-y-[0.143rem] max-w-full min-w-0 compact:items-start compact:flex-[0_1_auto] animate-stamp`} role="status">
-              <Text class={`pl-[0.286rem] pr-[0.571rem] text-[2.429rem] leading-none italic font-bold tabular-nums whitespace-nowrap text-fg text-stroke-3 text-stroke-bg compact:pl-0 compact:pr-[0.429rem] compact:text-[1.143rem]`}>{props.points}</Text>
+            <View class={`flex-col items-center gap-y-0.5 max-w-full min-w-0 compact:items-start compact:flex-[0_1_auto] animate-stamp`} role="status">
+              <Text class={`pl-1 pr-2 text-display-md leading-none italic font-bold tabular-nums whitespace-nowrap text-fg text-stroke-3 text-stroke-bg compact:pl-0 compact:pr-1.5 compact:text-base`}>{props.points}</Text>
               <Show when={props.detail !== ""}>
-                <Text class={`max-w-full min-w-0 text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap overflow-hidden text-gold text-stroke-3 text-stroke-bg compact:tracking-normal`}>{props.detail}</Text>
+                <Text class={`max-w-full min-w-0 text-xs font-semibold tracking-label uppercase whitespace-nowrap overflow-hidden text-gold text-stroke-3 text-stroke-bg compact:tracking-normal`}>{props.detail}</Text>
               </Show>
             </View>
           )}

@@ -29,14 +29,14 @@ export function RhythmGauge(props: RhythmGaugeProps) {
   const full = props.value <= 0 ? 0 : props.value >= 1 ? 1 : props.value;
   return (
     <View
-      class={`group/gauge flex-col items-center gap-1 h-full min-h-[8.571rem] compact:min-h-0 max-w-[6.857rem] w-full text-fg`}
+      class={`group/gauge flex-col items-center gap-1 h-full min-h-30 compact:min-h-0 max-w-24 w-full text-fg`}
       data-kind-fever={(props.kind ?? "life") === "fever"}
       data-side-end={(props.side ?? "start") === "end"}
       data-danger={props.danger}
       data-ready={props.ready}
     >
       <View
-        class={`relative flex-1 min-h-0 w-[1.857rem] compact:w-[1.143rem] overflow-hidden -skew-y-[12deg] group-data-side-end/gauge:skew-y-[12deg] bg-well/82 shadow-[0px_0px_0px_1px_#ffffff40,0px_3px_8px_#00000073] data-danger:shadow-[0px_0px_0px_1px_#ff4d5e,0px_0px_12px_#ff4d5eb3] data-danger:animate-pulse data-ready:shadow-[0px_0px_14px_#38e8ff,inset_0px_0px_0px_1px_#ffffff40]`}
+        class={`relative flex-1 min-h-0 w-6.5 compact:w-4 overflow-hidden -skew-y-12 group-data-side-end/gauge:skew-y-12 bg-well/82 shadow-[0px_0px_0px_1px_#ffffff40,0px_3px_8px_#00000073] data-danger:shadow-[0px_0px_0px_1px_#ff4d5e,0px_0px_12px_#ff4d5eb3] data-danger:animate-pulse data-ready:shadow-[0px_0px_14px_#38e8ff,inset_0px_0px_0px_1px_#ffffff40]`}
         role="meter"
         label={(props.kind ?? "life") === "fever" ? t("rhythm.gauge.fever") : t("rhythm.gauge.life")}
         valueMin={0}
@@ -50,31 +50,31 @@ export function RhythmGauge(props: RhythmGaugeProps) {
           style={{ height: `${full * 100}%` }}
         />
         <For each={Array.from({ length: 9 }, (_, i) => i)}>
-          {(i) => <View class={`absolute left-0 right-0 h-[3px] bg-shade-deep`} style={{ top: `${(i() + 1) * 10}%`, marginTop: "-1.5px" }} />}
+          {(i) => <View class={`absolute left-0 right-0 h-0.75 bg-shade-deep`} style={{ top: `${(i() + 1) * 10}%`, marginTop: "-1.5px" }} />}
         </For>
       </View>
-      <Text class={`text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap text-fg-muted text-stroke-3 text-stroke-bg group-data-kind-fever/gauge:text-fever`}>
+      <Text class={`text-xs font-semibold tracking-label uppercase whitespace-nowrap text-fg-muted text-stroke-3 text-stroke-bg group-data-kind-fever/gauge:text-fever`}>
         {(props.kind ?? "life") === "fever" ? t("rhythm.gauge.fever") : t("rhythm.gauge.life")}
       </Text>
       <Show when={props.failed} fallback={
         <Show when={props.danger}>
-          <Text role="status" class={`text-[0.857rem] font-bold tracking-[0.14em] uppercase whitespace-nowrap text-danger text-stroke-3 text-stroke-bg`}>
+          <Text role="status" class={`text-xs font-bold tracking-label uppercase whitespace-nowrap text-danger text-stroke-3 text-stroke-bg`}>
             {t("rhythm.gauge.danger")}
           </Text>
         </Show>
       }>
-        <Text role="status" class={`text-[0.857rem] font-bold tracking-[0.14em] uppercase whitespace-nowrap text-danger text-stroke-3 text-stroke-bg`}>
+        <Text role="status" class={`text-xs font-bold tracking-label uppercase whitespace-nowrap text-danger text-stroke-3 text-stroke-bg`}>
           {t("rhythm.gauge.failed")}
         </Text>
       </Show>
       <Show when={props.ready}>
-        <Text role="status" class={`text-[0.857rem] font-bold tracking-[0.14em] uppercase whitespace-nowrap text-fever text-stroke-3 text-stroke-bg`}>
+        <Text role="status" class={`text-xs font-bold tracking-label uppercase whitespace-nowrap text-fever text-stroke-3 text-stroke-bg`}>
           {t("rhythm.gauge.ready")}
         </Text>
       </Show>
       <Show when={props.key !== ""}>
         <Text
-          class={`max-w-full px-1 text-center text-[0.857rem] font-bold bg-linear-to-b from-key-hi to-key-lo text-hud-accent-fg rounded-[4.576px] shadow-[0px_2.288px_0px_#0000008c,inset_0px_-2.288px_0px_#0000002e] data-ready:bg-linear-to-b data-ready:from-hud-accent-hi data-ready:to-hud-accent data-ready:shadow-[0px_0px_14px_#38e8ff,inset_0px_-2.288px_0px_#0000002e]`}
+          class={`max-w-full px-1 text-center text-xs font-bold bg-linear-to-b from-key-hi to-key-lo text-hud-accent-fg rounded-[4.576px] shadow-[0px_2.288px_0px_#0000008c,inset_0px_-2.288px_0px_#0000002e] data-ready:bg-linear-to-b data-ready:from-hud-accent-hi data-ready:to-hud-accent data-ready:shadow-[0px_0px_14px_#38e8ff,inset_0px_-2.288px_0px_#0000002e]`}
           data-ready={props.ready}
         >
           {props.key}

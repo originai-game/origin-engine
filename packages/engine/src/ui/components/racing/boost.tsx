@@ -33,7 +33,7 @@ export function RacingBoost(props: RacingBoostProps) {
   };
   return (
     <View
-      class={`group/boost flex-row items-center gap-x-[0.714rem] w-[17.143rem] max-w-full text-fg compact:w-full compact:gap-x-[0.429rem]`}
+      class={`group/boost flex-row items-center gap-x-2.5 w-60 max-w-full text-fg compact:w-full compact:gap-x-1.5`}
       role="meter"
       label={label()}
       valueMin={0}
@@ -42,22 +42,22 @@ export function RacingBoost(props: RacingBoostProps) {
       data-firing={props.firing}
     >
       <Show when={props.icon}>
-        <Image src={props.icon} class={`size-[2.429rem] shrink-0 nine-plate-cut compact:size-[1.714rem]`} />
+        <Image src={props.icon} class={`size-8.5 shrink-0 nine-plate-cut compact:size-6`} />
       </Show>
-      <View class={`flex-1 min-w-0 flex-col gap-y-[0.357rem]`}>
+      <View class={`flex-1 min-w-0 flex-col gap-y-1.25`}>
         <View class="flex-row items-center gap-x-2 min-w-0">
-          <Text class={`shrink min-w-0 text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap overflow-hidden text-ally text-stroke-3 text-stroke-bg compact:tracking-normal`}>{label()}</Text>
+          <Text class={`shrink min-w-0 text-xs font-semibold tracking-label uppercase whitespace-nowrap overflow-hidden text-ally text-stroke-3 text-stroke-bg compact:tracking-normal`}>{label()}</Text>
           <Show when={(props.key ?? "") !== ""}>
-            <Text class={`shrink min-w-[1.571rem] max-w-[60%] pointer-coarse:hidden bg-linear-to-b from-key-hi to-key-lo text-hud-accent-fg rounded-[4.576px] shadow-[0px_2.288px_0px_#0000008c,inset_0px_-2.288px_0px_#0000002e] text-[0.857rem] leading-[1.5] font-bold tabular-nums text-center whitespace-nowrap overflow-hidden py-0 px-1`}>{props.key}</Text>
+            <Text class={`shrink min-w-5.5 max-w-3/5 pointer-coarse:hidden bg-linear-to-b from-key-hi to-key-lo text-hud-accent-fg rounded-[4.576px] shadow-[0px_2.288px_0px_#0000008c,inset_0px_-2.288px_0px_#0000002e] text-xs leading-[1.5] font-bold tabular-nums text-center whitespace-nowrap overflow-hidden py-0 px-1`}>{props.key}</Text>
           </Show>
         </View>
-        <View class={`relative w-full h-[0.857rem] overflow-hidden bg-well/82 shadow-[0px_0px_0px_1px_#ffffff38,inset_0px_1px_0px_#ffffff24,0px_2px_5.714px_#00000073] compact:h-[0.571rem]`}>
+        <View class={`relative w-full h-3 overflow-hidden bg-well/82 shadow-[0px_0px_0px_1px_#ffffff38,inset_0px_1px_0px_#ffffff24,0px_2px_5.714px_#00000073] compact:h-2`}>
           <View class="absolute left-0 top-0 h-full bg-ally group-data-firing/boost:shadow-[2.288px_0px_10px_#4fd8ffcc]" style={{ width: `${frac() * 100}%` }} />
           {/* The cell cuts (a repeating-gradient mask in the svelte): one separator per cell. */}
           <For each={Array.from({ length: Math.max(1, Math.floor(props.cells ?? 5)) - 1 })}>
             {(_, i) => (
               <View
-                class="absolute h-full w-[0.214rem] bg-tile/92 pointer-events-none"
+                class="absolute h-full w-0.75 bg-tile/92 pointer-events-none"
                 style={{ left: `${((i() + 1) / Math.max(1, Math.floor(props.cells ?? 5))) * 100}%` }}
               />
             )}

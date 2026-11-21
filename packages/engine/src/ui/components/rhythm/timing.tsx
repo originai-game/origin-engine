@@ -17,7 +17,7 @@ export interface RhythmTimingProps {
 export function RhythmTiming(props: RhythmTimingProps) {
   return (
     <View
-      class={`flex-col gap-1 w-[14rem] max-w-full py-2 px-3 bg-plate-hi nine-plate-cut text-fg ${packClass("Plate", "frame")}`}
+      class={`flex-col gap-1 w-49 max-w-full py-2 px-3 bg-plate-hi nine-plate-cut text-fg ${packClass("Plate", "frame")}`}
       role="group"
       label={t("rhythm.timing.name")}
     >
@@ -35,24 +35,24 @@ export function RhythmTiming(props: RhythmTimingProps) {
                 data-judgement-bad={c().judgement === "bad"}
                 data-judgement-miss={c().judgement === "miss"}
               >
-                <Text class={`min-w-0 flex-1 text-[1.143rem] compact:text-[0.929rem] font-bold whitespace-nowrap text-ellipsis overflow-hidden`}>{c().label}</Text>
-                <Text class={`shrink text-[1.143rem] compact:text-[0.929rem] font-bold tabular-nums whitespace-nowrap`}>{formatNumber(c().count)}</Text>
+                <Text class={`min-w-0 flex-1 text-base compact:text-caption font-bold whitespace-nowrap text-ellipsis overflow-hidden`}>{c().label}</Text>
+                <Text class={`shrink text-base compact:text-caption font-bold tabular-nums whitespace-nowrap`}>{formatNumber(c().count)}</Text>
               </View>
             )}
           </For>
         </View>
       </Show>
       <View class={`flex-col gap-0.5`}>
-        <Text class={`text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap text-fg-muted compact:hidden`}>
+        <Text class={`text-xs font-semibold tracking-label uppercase whitespace-nowrap text-fg-muted compact:hidden`}>
           {t("rhythm.timing.label")}
         </Text>
         <View class={`flex flex-row flex-wrap justify-between items-center gap-y-0.5 gap-x-1 compact:flex-nowrap`}>
-          <View class={`relative h-[6px] flex-1 basis-full compact:basis-0 compact:min-w-0 bg-well/82 shadow-[0px_0px_0px_1px_#ffffff38]`}>
-            <View class={`absolute left-1/2 -translate-x-1/2 top-0 -mt-[4px] w-[2px] h-[14px] bg-sheen`} />
+          <View class={`relative h-1.5 flex-1 basis-full compact:basis-0 compact:min-w-0 bg-well/82 shadow-[0px_0px_0px_1px_#ffffff38]`}>
+            <View class={`absolute left-1/2 -translate-x-1/2 top-0 -mt-1 w-0.5 h-3.5 bg-sheen`} />
             <For each={props.hits ?? []} key={(h) => h.id}>
               {(h) => (
                 <View
-                  class={`absolute top-0 -translate-x-1/2 w-[3px] h-[12px] -mt-[3px] bg-gold data-judgement-great:bg-hud-accent data-judgement-good:bg-boon data-judgement-bad:bg-warn data-judgement-miss:bg-fg-muted`}
+                  class={`absolute top-0 -translate-x-1/2 w-0.75 h-3 -mt-0.75 bg-gold data-judgement-great:bg-hud-accent data-judgement-good:bg-boon data-judgement-bad:bg-warn data-judgement-miss:bg-fg-muted`}
                   style={{
                     left: `${(h().offset <= -1 ? 0 : h().offset >= 1 ? 1 : (h().offset + 1) / 2) * 100}%`,
                     opacity: 1 - (h().age <= 0 ? 0 : h().age >= 1 ? 1 : h().age) * 0.8,
@@ -66,10 +66,10 @@ export function RhythmTiming(props: RhythmTimingProps) {
               )}
             </For>
           </View>
-          <Text class={`text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap text-fg-muted`}>
+          <Text class={`text-xs font-semibold tracking-label uppercase whitespace-nowrap text-fg-muted`}>
             {t("rhythm.judge.early")}
           </Text>
-          <Text class={`text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap text-fg-muted`}>
+          <Text class={`text-xs font-semibold tracking-label uppercase whitespace-nowrap text-fg-muted`}>
             {t("rhythm.judge.late")}
           </Text>
         </View>

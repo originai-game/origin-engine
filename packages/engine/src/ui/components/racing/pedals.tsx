@@ -15,10 +15,10 @@ export interface RacingPedalsProps {
  */
 export function RacingPedals(props: RacingPedalsProps) {
   return (
-    <View class={`flex-row items-end gap-x-[0.857rem] text-fg compact:gap-x-[0.571rem]`} role="group" label={t("racing.pedals.name")}>
-      <View class="flex-col items-center gap-y-[0.357rem]">
+    <View class={`flex-row items-end gap-x-3 text-fg compact:gap-x-2`} role="group" label={t("racing.pedals.name")}>
+      <View class="flex-col items-center gap-y-1.25">
         <View
-          class={`relative w-[0.857rem] h-[4.143rem] overflow-hidden bg-well/82 shadow-[0px_0px_0px_1px_#ffffff38] compact:w-[0.643rem] compact:h-[2.857rem]`}
+          class={`relative w-3 h-14.5 overflow-hidden bg-well/82 shadow-[0px_0px_0px_1px_#ffffff38] compact:w-2.25 compact:h-10`}
           role="meter"
           label={t("racing.pedals.throttleName")}
           valueMin={0}
@@ -27,11 +27,11 @@ export function RacingPedals(props: RacingPedalsProps) {
         >
           <View class="absolute bottom-0 left-0 w-full bg-boon" style={{ height: `${(props.throttle <= 0 ? 0 : props.throttle >= 1 ? 1 : props.throttle) * 100}%` }} />
         </View>
-        <Text class={`text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap text-fg-muted text-stroke-3 text-stroke-bg compact:tracking-normal`}>{t("racing.pedals.throttle")}</Text>
+        <Text class={`text-xs font-semibold tracking-label uppercase whitespace-nowrap text-fg-muted text-stroke-3 text-stroke-bg compact:tracking-normal`}>{t("racing.pedals.throttle")}</Text>
       </View>
-      <View class="flex-col items-center gap-y-[0.357rem]">
+      <View class="flex-col items-center gap-y-1.25">
         <View
-          class={`relative w-[0.857rem] h-[4.143rem] overflow-hidden bg-well/82 shadow-[0px_0px_0px_1px_#ffffff38] compact:w-[0.643rem] compact:h-[2.857rem]`}
+          class={`relative w-3 h-14.5 overflow-hidden bg-well/82 shadow-[0px_0px_0px_1px_#ffffff38] compact:w-2.25 compact:h-10`}
           role="meter"
           label={t("racing.pedals.brakeName")}
           valueMin={0}
@@ -40,7 +40,7 @@ export function RacingPedals(props: RacingPedalsProps) {
         >
           <View class="absolute bottom-0 left-0 w-full bg-foe" style={{ height: `${(props.brake <= 0 ? 0 : props.brake >= 1 ? 1 : props.brake) * 100}%` }} />
         </View>
-        <Text class={`text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap text-fg-muted text-stroke-3 text-stroke-bg compact:tracking-normal`}>{t("racing.pedals.brake")}</Text>
+        <Text class={`text-xs font-semibold tracking-label uppercase whitespace-nowrap text-fg-muted text-stroke-3 text-stroke-bg compact:tracking-normal`}>{t("racing.pedals.brake")}</Text>
       </View>
     </View>
   );

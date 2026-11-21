@@ -18,17 +18,17 @@ export interface StrategyResourcesProps {
  */
 export function StrategyResources(props: StrategyResourcesProps) {
   return (
-    <View class={`flex-row flex-wrap items-center w-fit max-w-full min-w-0 gap-x-[1.571rem] gap-y-[0.429rem] py-[0.429rem] px-[1.143rem] text-fg nine-plate-cut bg-plate-hi compact:w-full compact:justify-between compact:gap-x-2 compact:gap-y-1 compact:py-1 compact:px-[0.714rem] ${packClass("Plate", "frame")}`} role="group" label={t("strategy.resources.name")}>
+    <View class={`flex-row flex-wrap items-center w-fit max-w-full min-w-0 gap-x-5.5 gap-y-1.5 py-1.5 px-4 text-fg nine-plate-cut bg-plate-hi compact:w-full compact:justify-between compact:gap-x-2 compact:gap-y-1 compact:py-1 compact:px-2.5 ${packClass("Plate", "frame")}`} role="group" label={t("strategy.resources.name")}>
       <For each={props.resources ?? []} key={(r) => r.id}>
         {(r) => (
         <View class={`group/res flex-row items-center gap-x-2 min-w-0 compact:gap-x-1`} role="group" label={t("strategy.resources.value", { name: r().name, amount: r().amount })} data-warn={r().warn}>
           <Show when={r().icon} fallback={
-              <Icon class={`shrink size-[1.714rem] compact:size-[1.143rem]`} name={r().glyph} />
+              <Icon class={`shrink size-6 compact:size-4`} name={r().glyph} />
           }>
-            <Image class={`shrink size-[1.714rem] rounded-tl-[4.576px] rounded-tr-none rounded-br-[4.576px] rounded-bl-none compact:size-[1.143rem]`} src={r().icon} />
+            <Image class={`shrink size-6 rounded-tl-[4.576px] rounded-tr-none rounded-br-[4.576px] rounded-bl-none compact:size-4`} src={r().icon} />
           </Show>
           <View class="flex-col min-w-0">
-            <View class="flex-row items-baseline gap-x-[0.214rem] min-w-0">
+            <View class="flex-row items-baseline gap-x-0.75 min-w-0">
               <Text class={`min-w-0 text-lg leading-[1.1] font-bold tabular-nums whitespace-nowrap overflow-hidden text-stroke-3 text-stroke-bg group-data-warn/res:text-gold compact:text-reading`}>
                 {r().amount}
               </Text>
@@ -54,12 +54,12 @@ export function StrategyResources(props: StrategyResourcesProps) {
         )}
       </For>
       <Show when={props.tier !== ""}>
-        <Text class={`shrink py-[0.143rem] px-[0.571rem] text-xs font-bold tracking-[0.14em] uppercase whitespace-nowrap overflow-hidden text-gold-fg nine-chip-cut bg-hud-accent ${packClass("Chip", "frame")}`}>
+        <Text class={`shrink py-0.5 px-2 text-xs font-bold tracking-label uppercase whitespace-nowrap overflow-hidden text-gold-fg nine-chip-cut bg-hud-accent ${packClass("Chip", "frame")}`}>
           {props.tier}
         </Text>
       </Show>
       <Show when={!(props.resources ?? []).length && props.tier === ""}>
-        <View class={`text-xs font-semibold tracking-[0.14em] uppercase whitespace-nowrap opacity-78`} role="status">
+        <View class={`text-xs font-semibold tracking-label uppercase whitespace-nowrap opacity-78`} role="status">
           <Text>{t("strategy.resources.empty")}</Text>
         </View>
       </Show>

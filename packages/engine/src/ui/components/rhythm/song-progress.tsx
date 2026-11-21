@@ -27,16 +27,16 @@ export function RhythmSongProgress(props: RhythmSongProgressProps) {
       valueNow={props.value <= 0 ? 0 : props.value >= 1 ? 100 : props.value * 100}
       valueText={props.elapsed !== "" ? t("rhythm.progress.time", { elapsed: props.elapsed, length: props.length }) : `${formatNumber(full * 100, { decimals: 0 })}%`}
     >
-      <View class={`relative w-full h-[0.357rem] bg-well/79`}>
+      <View class={`relative w-full h-1.25 bg-well/79`}>
         <View class={`absolute left-0 top-0 h-full bg-linear-to-r from-hud-accent to-sheen shadow-[0px_0px_12px_#38e8ff]`} style={{ width: `${full * 100}%` }} />
       </View>
       <Show when={props.elapsed !== ""}>
         <Show when={full < 0.9} fallback={
           <View class={`flex-row w-full px-3 mt-1 justify-end`}>
             <View class={`flex-row items-baseline gap-0.5 shrink`}>
-              <Text class={`text-[0.929rem] font-bold tabular-nums whitespace-nowrap text-fg text-stroke-3 text-stroke-bg`}>{props.elapsed}</Text>
+              <Text class={`text-caption font-bold tabular-nums whitespace-nowrap text-fg text-stroke-3 text-stroke-bg`}>{props.elapsed}</Text>
               <Show when={props.length !== ""}>
-                <Text class={`text-[0.929rem] font-bold tabular-nums whitespace-nowrap text-fg-muted text-stroke-3 text-stroke-bg`}>
+                <Text class={`text-caption font-bold tabular-nums whitespace-nowrap text-fg-muted text-stroke-3 text-stroke-bg`}>
                   {t("rhythm.progress.length", { length: props.length })}
                 </Text>
               </Show>
@@ -45,9 +45,9 @@ export function RhythmSongProgress(props: RhythmSongProgressProps) {
         }>
           <View class={`flex-row w-full px-3 mt-1`}>
             <View class={`flex-row items-baseline gap-0.5 shrink`} style={{ marginLeft: `${full * 100}%` }}>
-              <Text class={`text-[0.929rem] font-bold tabular-nums whitespace-nowrap text-fg text-stroke-3 text-stroke-bg`}>{props.elapsed}</Text>
+              <Text class={`text-caption font-bold tabular-nums whitespace-nowrap text-fg text-stroke-3 text-stroke-bg`}>{props.elapsed}</Text>
               <Show when={props.length !== ""}>
-                <Text class={`text-[0.929rem] font-bold tabular-nums whitespace-nowrap text-fg-muted text-stroke-3 text-stroke-bg`}>
+                <Text class={`text-caption font-bold tabular-nums whitespace-nowrap text-fg-muted text-stroke-3 text-stroke-bg`}>
                   {t("rhythm.progress.length", { length: props.length })}
                 </Text>
               </Show>

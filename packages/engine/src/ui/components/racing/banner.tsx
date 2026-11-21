@@ -37,15 +37,15 @@ export function RacingBanner(props: RacingBannerProps) {
   const plateInner = () => (
     <>
       <View class="flex-row items-baseline justify-center gap-x-2 max-w-full min-w-0">
-        <Text class={`min-w-0 text-[1.714rem] leading-[1.1] font-bold tabular-nums tracking-[0.22em] uppercase whitespace-nowrap overflow-hidden text-fg text-stroke-3 text-stroke-bg compact:text-[1.143rem] group-data-kind-countdown/plate:text-[2.429rem] group-data-kind-countdown/plate:tracking-normal`}>
+        <Text class={`min-w-0 text-title leading-[1.1] font-bold tabular-nums tracking-[0.22em] uppercase whitespace-nowrap overflow-hidden text-fg text-stroke-3 text-stroke-bg compact:text-base group-data-kind-countdown/plate:text-display-md group-data-kind-countdown/plate:tracking-normal`}>
           {kind() === "countdown" ? formatNumber(props.figure) : kind() === "go" ? t("racing.banner.go") : kind() === "finalLap" ? t("racing.banner.finalLap") : kind() === "finish" ? t("racing.banner.finish") : props.text}
         </Text>
         <Show when={kind() === "finish" && props.place > 0}>
-          <Text class={`shrink-0 text-[1.714rem] font-bold tabular-nums whitespace-nowrap text-hud-accent compact:text-[1.143rem]`}>{ordinal(props.place)}</Text>
+          <Text class={`shrink-0 text-title font-bold tabular-nums whitespace-nowrap text-hud-accent compact:text-base`}>{ordinal(props.place)}</Text>
         </Show>
       </View>
       <Show when={props.detail !== ""}>
-        <Text class={`max-w-full min-w-0 text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap overflow-hidden text-fg-muted text-stroke-3 text-stroke-bg compact:tracking-normal`}>{props.detail}</Text>
+        <Text class={`max-w-full min-w-0 text-xs font-semibold tracking-label uppercase whitespace-nowrap overflow-hidden text-fg-muted text-stroke-3 text-stroke-bg compact:tracking-normal`}>{props.detail}</Text>
       </Show>
     </>
   );
@@ -58,7 +58,7 @@ export function RacingBanner(props: RacingBannerProps) {
               when={kind() === "countdown"}
               fallback={
                 <View
-                  class={`group/plate flex-col items-center max-w-full min-w-0 gap-y-[0.143rem] py-[0.429rem] px-[1.286rem] bg-plate-hi nine-plate-cut transition duration-240 ease-out starting:opacity-0 starting:translate-y-2 compact:py-[0.286rem] compact:px-[1rem] ${packClass("Plate", "frame")}`}
+                  class={`group/plate flex-col items-center max-w-full min-w-0 gap-y-0.5 py-1.5 px-4.5 bg-plate-hi nine-plate-cut transition duration-240 ease-out starting:opacity-0 starting:translate-y-2 compact:py-1 compact:px-3.5 ${packClass("Plate", "frame")}`}
                   data-kind-countdown={false}
                 >
                   {plateInner()}
@@ -66,7 +66,7 @@ export function RacingBanner(props: RacingBannerProps) {
               }
             >
               <View
-                class={`group/plate flex-col items-center max-w-full min-w-0 gap-y-[0.143rem] py-[0.429rem] px-[1.286rem] bg-plate-hi nine-plate-cut animate-stamp compact:py-[0.286rem] compact:px-[1rem] ${packClass("Plate", "frame")}`}
+                class={`group/plate flex-col items-center max-w-full min-w-0 gap-y-0.5 py-1.5 px-4.5 bg-plate-hi nine-plate-cut animate-stamp compact:py-1 compact:px-3.5 ${packClass("Plate", "frame")}`}
                 data-kind-countdown={true}
               >
                 {plateInner()}

@@ -33,21 +33,21 @@ export function RhythmSongPlate(props: RhythmSongPlateProps) {
       role="group"
       label={t("rhythm.plate.name", { title: props.title })}
     >
-      <View class={`shrink size-[6rem] compact:size-[4rem] rounded-[1rem] bg-linear-to-b from-rim-strong via-rim to-rim-soft p-[2px]`}>
+      <View class={`shrink size-21 compact:size-14 rounded-[1rem] bg-linear-to-b from-rim-strong via-rim to-rim-soft p-0.5`}>
         <Show when={props.jacket} fallback={
-          <View class={`size-full rounded-[0.857rem] bg-plate-hi flex-row items-center justify-center`}>
-            <Icon class={`size-[44%] text-hud-accent`} name="music" />
+          <View class={`size-full rounded-panel bg-plate-hi flex-row items-center justify-center`}>
+            <Icon class={`size-11/25 text-hud-accent`} name="music" />
           </View>
         }>
-          <Image class={`size-full rounded-[0.857rem] object-cover`} src={props.jacket} />
+          <Image class={`size-full rounded-panel object-cover`} src={props.jacket} />
         </Show>
       </View>
       <View class={`flex-col gap-0.5 min-w-0 grow`}>
-        <Text class={`text-[1.714rem] compact:text-[1.143rem] leading-[1.15] font-bold whitespace-nowrap text-ellipsis overflow-hidden text-fg text-stroke-3 text-stroke-bg`}>
+        <Text class={`text-title compact:text-base leading-[1.15] font-bold whitespace-nowrap text-ellipsis overflow-hidden text-fg text-stroke-3 text-stroke-bg`}>
           {props.title}
         </Text>
         <Show when={props.artist !== "" || props.bpm !== ""}>
-          <Text class={`text-[1.143rem] compact:text-[0.929rem] font-semibold whitespace-nowrap text-ellipsis overflow-hidden text-fg-muted text-stroke-3 text-stroke-bg`}>
+          <Text class={`text-base compact:text-caption font-semibold whitespace-nowrap text-ellipsis overflow-hidden text-fg-muted text-stroke-3 text-stroke-bg`}>
             {props.artist !== "" && props.bpm !== "" ? t("rhythm.plate.byline", { artist: props.artist, bpm: props.bpm }) : (props.artist !== "" ? props.artist : t("rhythm.songs.bpm", { bpm: props.bpm }))}
           </Text>
         </Show>
@@ -55,7 +55,7 @@ export function RhythmSongPlate(props: RhythmSongPlateProps) {
           <View class={`flex flex-row flex-wrap gap-1 mt-0.5`}>
             <Show when={props.chart !== ""}>
               <Text
-                class={`max-w-full py-0 px-1 text-[0.857rem] font-bold tracking-[0.14em] uppercase whitespace-nowrap text-ellipsis overflow-hidden text-fg bg-chart-normal nine-chip-cut data-tier-easy:bg-chart-easy data-tier-hard:bg-chart-hard data-tier-expert:bg-fever data-tier-master:bg-chart-master data-tier-special:bg-chart-master ${packClass("Chip", "frame")}`}
+                class={`max-w-full py-0 px-1 text-xs font-bold tracking-label uppercase whitespace-nowrap text-ellipsis overflow-hidden text-fg bg-chart-normal nine-chip-cut data-tier-easy:bg-chart-easy data-tier-hard:bg-chart-hard data-tier-expert:bg-fever data-tier-master:bg-chart-master data-tier-special:bg-chart-master ${packClass("Chip", "frame")}`}
                 data-tier-easy={props.tier === "easy"}
                 data-tier-hard={props.tier === "hard"}
                 data-tier-expert={props.tier === "expert"}
@@ -67,7 +67,7 @@ export function RhythmSongPlate(props: RhythmSongPlateProps) {
             </Show>
             <For each={props.modifiers ?? []} key={(m) => m.id}>
               {(m) => (
-                <Text class={`max-w-full py-0 px-1 text-[0.857rem] font-bold tracking-[0.14em] uppercase whitespace-nowrap text-ellipsis overflow-hidden text-fg bg-well nine-chip-cut ${packClass("Chip", "frame")}`}>
+                <Text class={`max-w-full py-0 px-1 text-xs font-bold tracking-label uppercase whitespace-nowrap text-ellipsis overflow-hidden text-fg bg-well nine-chip-cut ${packClass("Chip", "frame")}`}>
                   {m().label}
                 </Text>
               )}

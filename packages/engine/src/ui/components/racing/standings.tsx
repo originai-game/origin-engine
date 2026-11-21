@@ -34,21 +34,21 @@ export function RacingStandings(props: RacingStandingsProps) {
   };
   return (
     <View
-      class={`group/standings flex-col w-[17.857rem] max-w-full max-h-full text-fg compact:w-full`}
+      class={`group/standings flex-col w-62.5 max-w-full max-h-full text-fg compact:w-full`}
       label={name()}
       data-near={props.room === "short" || props.room === "shorter"}
       data-only={props.room === "shorter"}
       data-fallback={!props.hasPlayer}
     >
       <Show when={rows().length} fallback={
-        <Text class={`py-[0.286rem] px-2 text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap text-fg-muted bg-glass`} role="status">{t("racing.standings.empty")}</Text>
+        <Text class={`py-1 px-2 text-xs font-semibold tracking-label uppercase whitespace-nowrap text-fg-muted bg-glass`} role="status">{t("racing.standings.empty")}</Text>
       }>
         <Scroll class="w-full min-h-0 flex-1">
-          <View class="flex-col w-full gap-y-[0.286rem] compact:gap-y-[0.143rem]" role="list" label={name()}>
+          <View class="flex-col w-full gap-y-1 compact:gap-y-0.5" role="list" label={name()}>
             <For each={rows()} key={(r) => r.id}>
               {(r, i) => (
                 <View
-                  class={`group/srow flex-row items-center gap-x-[0.571rem] w-full min-w-0 pr-[0.857rem] bg-glass nine-plate-cut data-off:hidden data-retired:opacity-60 data-player:bg-hud-accent compact:gap-x-[0.429rem] compact:pr-[0.571rem] compact:hidden compact:data-on:flex compact:group-data-fallback/standings:data-top:flex`}
+                  class={`group/srow flex-row items-center gap-x-2 w-full min-w-0 pr-3 bg-glass nine-plate-cut data-off:hidden data-retired:opacity-60 data-player:bg-hud-accent compact:gap-x-1.5 compact:pr-2 compact:hidden compact:data-on:flex compact:group-data-fallback/standings:data-top:flex`}
                   role="listitem"
                   label={r().name}
                   current={r().player}
@@ -58,17 +58,17 @@ export function RacingStandings(props: RacingStandingsProps) {
                   data-player={r().player}
                   data-retired={r().state === "retired"}
                 >
-                  <Text class={`shrink-0 w-[2.143rem] leading-[1.857rem] text-center text-[1.071rem] font-bold tabular-nums whitespace-nowrap text-fg bg-surface group-data-player/srow:bg-plate-hi compact:w-[1.714rem] compact:leading-[1.429rem] compact:text-[0.929rem]`}>
+                  <Text class={`shrink-0 w-7.5 leading-6.5 text-center text-reading font-bold tabular-nums whitespace-nowrap text-fg bg-surface group-data-player/srow:bg-plate-hi compact:w-6 compact:leading-5 compact:text-caption`}>
                     {formatNumber(r().position)}
                   </Text>
                   <View
-                    class={`shrink-0 w-[0.357rem] h-[1.429rem] bg-sheen compact:h-[1rem]`}
+                    class={`shrink-0 w-1.25 h-5 bg-sheen compact:h-3.5`}
                     style={{ backgroundColor: r().color || undefined }}
                   />
-                  <Text class={`flex-1 min-w-0 text-[1.071rem] font-semibold whitespace-nowrap overflow-hidden text-fg compact:text-[0.929rem]`}>{r().name}</Text>
+                  <Text class={`flex-1 min-w-0 text-reading font-semibold whitespace-nowrap overflow-hidden text-fg compact:text-caption`}>{r().name}</Text>
                   <Show when={r().state !== "racing"}>
                     <Text
-                      class={`shrink-0 py-0 px-[0.357rem] text-[0.857rem] font-bold tracking-[0.14em] uppercase whitespace-nowrap text-fg bg-well nine-chip-cut data-pitting:text-gold data-retired:text-foe ${packClass("Chip", "frame")}`}
+                      class={`shrink-0 py-0 px-1.25 text-xs font-bold tracking-label uppercase whitespace-nowrap text-fg bg-well nine-chip-cut data-pitting:text-gold data-retired:text-foe ${packClass("Chip", "frame")}`}
                       label={r().state === "pitting" ? t("racing.standings.pittingName") : r().state === "retired" ? t("racing.standings.retiredName") : t("racing.standings.finishedName")}
                       data-pitting={r().state === "pitting"}
                       data-retired={r().state === "retired"}
@@ -77,7 +77,7 @@ export function RacingStandings(props: RacingStandingsProps) {
                     </Text>
                   </Show>
                   <Show when={r().gap !== "" || (r().position === 1 && r().state !== "retired")}>
-                    <Text class={`shrink-0 text-[1.071rem] font-bold tabular-nums whitespace-nowrap text-fg group-data-player/srow:text-gold-fg data-leader:text-fg-muted compact:text-[0.929rem]`} data-leader={r().gap === ""}>
+                    <Text class={`shrink-0 text-reading font-bold tabular-nums whitespace-nowrap text-fg group-data-player/srow:text-gold-fg data-leader:text-fg-muted compact:text-caption`} data-leader={r().gap === ""}>
                       {r().gap !== "" ? r().gap : t("racing.standings.leader")}
                     </Text>
                   </Show>

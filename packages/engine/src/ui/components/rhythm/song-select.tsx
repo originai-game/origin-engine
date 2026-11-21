@@ -43,7 +43,7 @@ export function RhythmSongSelect(props: RhythmSongSelectProps) {
       data-status-error={props.status === "error"}
     >
       <View class={`flex-row shrink w-full min-h-0`}>
-        <Text class={`text-[2.857rem] compact:text-[1.714rem] leading-[1.1] font-bold tracking-[0.14em] uppercase min-w-0 whitespace-nowrap text-ellipsis overflow-hidden text-fg text-stroke-3 text-stroke-bg`}>
+        <Text class={`text-display-lg compact:text-title leading-[1.1] font-bold tracking-label uppercase min-w-0 whitespace-nowrap text-ellipsis overflow-hidden text-fg text-stroke-3 text-stroke-bg`}>
           {props.title !== "" ? props.title : t("rhythm.songs.title")}
         </Text>
       </View>
@@ -52,7 +52,7 @@ export function RhythmSongSelect(props: RhythmSongSelectProps) {
           <Show when={(props.songs ?? []).length} fallback={
             <View role="status" class={`flex-col items-center justify-center grow min-h-0`}>
               <View class={`flex-col items-center gap-1 py-3 px-4 bg-plate-hi nine-plate-cut text-fg ${packClass("Plate", "frame")}`}>
-                <Text class={`text-[1.143rem] text-center`}>{t("rhythm.songs.empty")}</Text>
+                <Text class={`text-base text-center`}>{t("rhythm.songs.empty")}</Text>
               </View>
             </View>
           }>
@@ -74,62 +74,62 @@ export function RhythmSongSelect(props: RhythmSongSelectProps) {
                         data-previewing={s().id === props.previewing}
                         data-locked={s().locked}
                         data-selected={s().id === props.selected}
-                        class={`transition duration-317 w-full min-w-0 min-h-[3.143rem] py-1 pl-1 pr-3 compact:data-selected:pl-1 nine-plate-cut bg-tile hover:bg-surface disabled:opacity-62 disabled:bg-tile data-selected:ml-[24px] compact:data-selected:ml-0 data-selected:py-2 data-selected:bg-surface-hover data-selected:inset-ring-2 data-selected:inset-ring-hud-accent`}
+                        class={`transition duration-317 w-full min-w-0 min-h-11 py-1 pl-1 pr-3 compact:data-selected:pl-1 nine-plate-cut bg-tile hover:bg-surface disabled:opacity-62 disabled:bg-tile data-selected:ml-6 compact:data-selected:ml-0 data-selected:py-2 data-selected:bg-surface-hover data-selected:inset-ring-2 data-selected:inset-ring-hud-accent`}
                       >
                         <View class={`flex-row items-center gap-4 w-full min-w-0`}>
-                          <View class={`shrink size-[4.286rem] compact:size-[3.429rem] data-selected:size-[5.714rem] rounded-[0.8rem] bg-linear-to-b from-rim-strong via-rim to-rim-soft p-[2px] data-selected:from-rim-strong data-selected:via-rim data-selected:to-hud-accent`}>
+                          <View class={`shrink size-15 compact:size-12 data-selected:size-20 rounded-[0.8rem] bg-linear-to-b from-rim-strong via-rim to-rim-soft p-0.5 data-selected:from-rim-strong data-selected:via-rim data-selected:to-hud-accent`}>
                             <Show when={s().jacket} fallback={
                               <View class={`size-full rounded-[0.7rem] bg-glass flex-row items-center justify-center`}>
-                                <Icon class={`size-[44%] text-hud-accent`} name="music" />
+                                <Icon class={`size-11/25 text-hud-accent`} name="music" />
                               </View>
                             }>
                               <Image class={`size-full rounded-[0.7rem] object-cover`} src={s().jacket} />
                             </Show>
                           </View>
                           <View class={`flex-col items-start gap-0.5 min-w-0 grow`}>
-                            <Text class={`max-w-full text-start text-[1.429rem] compact:text-[1.143rem] leading-[1.2] font-semibold whitespace-nowrap text-ellipsis overflow-hidden text-fg data-selected:text-[1.857rem] compact:data-selected:text-[1.143rem] data-selected:font-bold`}>
+                            <Text class={`max-w-full text-start text-xl compact:text-base leading-[1.2] font-semibold whitespace-nowrap text-ellipsis overflow-hidden text-fg data-selected:text-3xl compact:data-selected:text-base data-selected:font-bold`}>
                               {s().title}
                             </Text>
-                            <Text class={`max-w-full text-start text-[0.929rem] whitespace-nowrap text-ellipsis overflow-hidden text-fg-muted`}>
+                            <Text class={`max-w-full text-start text-caption whitespace-nowrap text-ellipsis overflow-hidden text-fg-muted`}>
                               {s().artist}
                             </Text>
                             <Show when={s().id === props.selected || s().id === props.previewing || s().fresh || s().cleared || s().locked}>
-                              <View class={`flex flex-row flex-wrap gap-0.5 mt-[3px]`}>
+                              <View class={`flex flex-row flex-wrap gap-0.5 mt-0.75`}>
                                 <Show when={s().id === props.selected}>
                                   <View class={`flex-row items-center shrink py-0 px-1 bg-well nine-chip-cut text-hud-accent ${packClass("Chip", "frame")}`} data-tag-selected={true}>
-                                    <Text class={`text-[0.857rem] font-bold tracking-[0.14em] uppercase whitespace-nowrap`}>{t("rhythm.songs.selected")}</Text>
+                                    <Text class={`text-xs font-bold tracking-label uppercase whitespace-nowrap`}>{t("rhythm.songs.selected")}</Text>
                                   </View>
                                 </Show>
                                 <Show when={s().id === props.previewing}>
                                   <View class={`flex-row items-center gap-1 shrink py-0 px-1 bg-well nine-chip-cut text-hud-accent ${packClass("Chip", "frame")}`} data-tag-previewing={true}>
-                                    <View class={`shrink flex-row items-end gap-0.5 h-[11px]`}>
-                                      <View class={`w-[3px] h-[60%] bg-hud-accent animate-pulse`} />
-                                      <View class={`w-[3px] h-full bg-hud-accent animate-pulse`} />
-                                      <View class={`w-[3px] h-[40%] bg-hud-accent animate-pulse`} />
+                                    <View class={`shrink flex-row items-end gap-0.5 h-2.75`}>
+                                      <View class={`w-0.75 h-3/5 bg-hud-accent animate-pulse`} />
+                                      <View class={`w-0.75 h-full bg-hud-accent animate-pulse`} />
+                                      <View class={`w-0.75 h-2/5 bg-hud-accent animate-pulse`} />
                                     </View>
-                                    <Text class={`text-[0.857rem] font-bold tracking-[0.14em] uppercase whitespace-nowrap`}>{t("rhythm.songs.previewing")}</Text>
+                                    <Text class={`text-xs font-bold tracking-label uppercase whitespace-nowrap`}>{t("rhythm.songs.previewing")}</Text>
                                   </View>
                                 </Show>
                                 <Show when={s().fresh}>
                                   <View class={`flex-row items-center shrink py-0 px-1 bg-hud-accent nine-chip-cut text-hud-accent-fg`} data-tag-fresh={true}>
-                                    <Text class={`text-[0.857rem] font-bold tracking-[0.14em] uppercase whitespace-nowrap`}>{t("rhythm.songs.fresh")}</Text>
+                                    <Text class={`text-xs font-bold tracking-label uppercase whitespace-nowrap`}>{t("rhythm.songs.fresh")}</Text>
                                   </View>
                                 </Show>
                                 <Show when={s().cleared}>
                                   <View class={`flex-row items-center shrink py-0 px-1 bg-well nine-chip-cut text-boon ${packClass("Chip", "frame")}`} data-tag-cleared={true}>
-                                    <Text class={`text-[0.857rem] font-bold tracking-[0.14em] uppercase whitespace-nowrap`}>{t("rhythm.songs.cleared")}</Text>
+                                    <Text class={`text-xs font-bold tracking-label uppercase whitespace-nowrap`}>{t("rhythm.songs.cleared")}</Text>
                                   </View>
                                 </Show>
                                 <Show when={s().locked}>
                                   <View class={`flex-row items-center gap-1 shrink py-0 px-1 bg-well nine-chip-cut text-fg ${packClass("Chip", "frame")}`} data-tag-locked={true}>
-                                    <Icon class={`size-[1.143rem] opacity-80`} name="lock" />
-                                    <Text class={`text-[0.857rem] font-bold tracking-[0.14em] uppercase whitespace-nowrap opacity-80`}>{t("rhythm.songs.locked")}</Text>
+                                    <Icon class={`size-4 opacity-80`} name="lock" />
+                                    <Text class={`text-xs font-bold tracking-label uppercase whitespace-nowrap opacity-80`}>{t("rhythm.songs.locked")}</Text>
                                   </View>
                                 </Show>
                               </View>
                             </Show>
                           </View>
-                          <Text class={`shrink text-[1.714rem] compact:text-[1.143rem] leading-none font-bold tabular-nums whitespace-nowrap text-fg`}>
+                          <Text class={`shrink text-title compact:text-base leading-none font-bold tabular-nums whitespace-nowrap text-fg`}>
                             {t("rhythm.songs.bpm", { bpm: s().bpm })}
                           </Text>
                         </View>
@@ -140,7 +140,7 @@ export function RhythmSongSelect(props: RhythmSongSelectProps) {
               </Scroll>
               <Show when={props.selected === ""}>
                 <View label={t("rhythm.songs.none")} class={`flex-col items-center justify-center grow min-h-0 min-w-0`}>
-                  <Text class={`py-2 px-3 text-[1.143rem] text-fg text-center bg-well`}>{t("rhythm.songs.none")}</Text>
+                  <Text class={`py-2 px-3 text-base text-fg text-center bg-well`}>{t("rhythm.songs.none")}</Text>
                 </View>
               </Show>
               <For each={props.songs ?? []} key={(s) => s.id}>
@@ -153,11 +153,11 @@ export function RhythmSongSelect(props: RhythmSongSelectProps) {
                       class={`group/detail flex-[4] min-w-0 min-h-0 p-1 compact:flex-none compact:w-full compact:p-0 ${packClass("Panel", "frame")}`}
                     >
                       <View class={`flex-row items-start gap-4 w-full min-w-0 compact:items-center`}>
-                        <View class={`shrink w-[42%] max-w-[21.429rem] compact:w-[6.571rem] compact:max-w-none aspect-square rounded-[1.2rem] bg-linear-to-b from-sheen to-hud-accent shadow-[0px_0px_10px_#38e8ff] p-[3px] group-data-locked/detail:from-rim-strong group-data-locked/detail:via-rim group-data-locked/detail:to-rim-soft group-data-locked/detail:shadow-none`}>
+                        <View class={`shrink w-21/50 max-w-75 compact:w-23 compact:max-w-none aspect-square rounded-[1.2rem] bg-linear-to-b from-sheen to-hud-accent shadow-[0px_0px_10px_#38e8ff] p-0.75 group-data-locked/detail:from-rim-strong group-data-locked/detail:via-rim group-data-locked/detail:to-rim-soft group-data-locked/detail:shadow-none`}>
                           <View class={`relative size-full rounded-[1rem] bg-glass`}>
                             <Show when={s().jacket} fallback={
                               <View class={`absolute inset-0 flex-row items-center justify-center`}>
-                                <Icon class={`size-[44%] text-hud-accent`} name="music" />
+                                <Icon class={`size-11/25 text-hud-accent`} name="music" />
                               </View>
                             }>
                               <Image class={`size-full rounded-[1rem] object-cover`} src={s().jacket} />
@@ -170,31 +170,31 @@ export function RhythmSongSelect(props: RhythmSongSelectProps) {
                             <View class={`flex flex-row flex-wrap gap-0.5`}>
                               <Show when={s().fresh}>
                                 <View class={`flex-row items-center shrink py-0 px-1 bg-hud-accent nine-chip-cut text-hud-accent-fg`} data-tag-fresh={true}>
-                                  <Text class={`text-[0.857rem] font-bold tracking-[0.14em] uppercase whitespace-nowrap`}>{t("rhythm.songs.fresh")}</Text>
+                                  <Text class={`text-xs font-bold tracking-label uppercase whitespace-nowrap`}>{t("rhythm.songs.fresh")}</Text>
                                 </View>
                               </Show>
                               <Show when={s().locked}>
                                 <View class={`flex-row items-center gap-1 shrink py-0 px-1 bg-well nine-chip-cut text-fg ${packClass("Chip", "frame")}`} data-tag-locked={true}>
-                                  <Icon class={`size-[1.143rem] opacity-80`} name="lock" />
-                                  <Text class={`text-[0.857rem] font-bold tracking-[0.14em] uppercase whitespace-nowrap opacity-80`}>{t("rhythm.songs.locked")}</Text>
+                                  <Icon class={`size-4 opacity-80`} name="lock" />
+                                  <Text class={`text-xs font-bold tracking-label uppercase whitespace-nowrap opacity-80`}>{t("rhythm.songs.locked")}</Text>
                                 </View>
                               </Show>
                             </View>
                           </Show>
-                          <Text class={`w-full text-start text-[3.571rem] compact:text-[1.714rem] leading-[1.05] font-bold whitespace-nowrap text-ellipsis overflow-hidden text-fg text-stroke-3 text-stroke-bg`}>
+                          <Text class={`w-full text-start text-[3.571rem] compact:text-title leading-[1.05] font-bold whitespace-nowrap text-ellipsis overflow-hidden text-fg text-stroke-3 text-stroke-bg`}>
                             {s().title}
                           </Text>
-                          <Text class={`w-full text-start text-[1.143rem] compact:text-[0.929rem] whitespace-nowrap text-ellipsis overflow-hidden text-fg-muted`}>
+                          <Text class={`w-full text-start text-base compact:text-caption whitespace-nowrap text-ellipsis overflow-hidden text-fg-muted`}>
                             {s().artist}
                           </Text>
                           <View class={`flex flex-row flex-wrap gap-2 py-1 items-stretch max-w-full compact:flex-nowrap compact:items-center compact:py-0`}>
-                            <View class={`flex-col items-start gap-0 min-w-[5.714rem] compact:min-w-0 compact:min-h-0 compact:flex-row compact:items-baseline compact:gap-1 py-1 px-2 bg-plate-hi nine-plate-cut text-fg ${packClass("Plate", "frame")}`}>
-                              <Text class={`text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap opacity-78 compact:hidden`}>{t("rhythm.songs.bpmLabel")}</Text>
-                              <Text class={`text-[2.429rem] compact:text-[1.143rem] leading-[1.05] font-bold tabular-nums whitespace-nowrap`}>{s().bpm}</Text>
+                            <View class={`flex-col items-start gap-0 min-w-20 compact:min-w-0 compact:min-h-0 compact:flex-row compact:items-baseline compact:gap-1 py-1 px-2 bg-plate-hi nine-plate-cut text-fg ${packClass("Plate", "frame")}`}>
+                              <Text class={`text-xs font-semibold tracking-label uppercase whitespace-nowrap opacity-78 compact:hidden`}>{t("rhythm.songs.bpmLabel")}</Text>
+                              <Text class={`text-display-md compact:text-base leading-[1.05] font-bold tabular-nums whitespace-nowrap`}>{s().bpm}</Text>
                             </View>
-                            <View class={`flex-col items-start gap-0 min-w-[5.714rem] compact:min-w-0 compact:min-h-0 compact:flex-row compact:items-baseline compact:gap-1 py-1 px-2 bg-plate-hi nine-plate-cut text-fg ${packClass("Plate", "frame")}`}>
-                              <Text class={`text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap opacity-78 compact:hidden`}>{t("rhythm.songs.lengthLabel")}</Text>
-                              <Text class={`text-[2.429rem] compact:text-[1.143rem] leading-[1.05] font-bold tabular-nums whitespace-nowrap`}>{s().length}</Text>
+                            <View class={`flex-col items-start gap-0 min-w-20 compact:min-w-0 compact:min-h-0 compact:flex-row compact:items-baseline compact:gap-1 py-1 px-2 bg-plate-hi nine-plate-cut text-fg ${packClass("Plate", "frame")}`}>
+                              <Text class={`text-xs font-semibold tracking-label uppercase whitespace-nowrap opacity-78 compact:hidden`}>{t("rhythm.songs.lengthLabel")}</Text>
+                              <Text class={`text-display-md compact:text-base leading-[1.05] font-bold tabular-nums whitespace-nowrap`}>{s().length}</Text>
                             </View>
                             <View
                               role="button"
@@ -204,17 +204,17 @@ export function RhythmSongSelect(props: RhythmSongSelectProps) {
                               onPress={(e) => props.onPreview?.(e, s().id)}
                               onAction={{ details: (e) => props.onPreview?.(e, s().id) }}
                               data-pressed={s().id === props.previewing}
-                              class={`min-h-[3.143rem] compact:min-h-[2.514rem] min-w-[8.571rem] compact:min-w-0 flex-row items-center justify-center gap-1 px-3 bg-glass nine-plate-cut hover:bg-plate-hi data-pressed:bg-hud-accent text-fg data-pressed:text-hud-accent-fg disabled:opacity-50 disabled:bg-glass ${packClass("Button", "plate")}`}
+                              class={`min-h-11 compact:min-h-8.75 min-w-30 compact:min-w-0 flex-row items-center justify-center gap-1 px-3 bg-glass nine-plate-cut hover:bg-plate-hi data-pressed:bg-hud-accent text-fg data-pressed:text-hud-accent-fg disabled:opacity-50 disabled:bg-glass ${packClass("Button", "plate")}`}
                             >
                               <Text class={`shrink-0 pointer-coarse:hidden text-[1.75rem] leading-none`} glyph="details" />
                               <Show when={s().id === props.previewing}>
-                                <View class={`shrink flex-row items-end gap-0.5 h-[11px] compact:hidden`}>
-                                  <View class={`w-[3px] h-[60%] bg-current animate-pulse`} />
-                                  <View class={`w-[3px] h-full bg-current animate-pulse`} />
-                                  <View class={`w-[3px] h-[40%] bg-current animate-pulse`} />
+                                <View class={`shrink flex-row items-end gap-0.5 h-2.75 compact:hidden`}>
+                                  <View class={`w-0.75 h-3/5 bg-current animate-pulse`} />
+                                  <View class={`w-0.75 h-full bg-current animate-pulse`} />
+                                  <View class={`w-0.75 h-2/5 bg-current animate-pulse`} />
                                 </View>
                               </Show>
-                              <Text class={`text-[0.929rem] font-bold tracking-[0.14em] uppercase whitespace-nowrap`}>
+                              <Text class={`text-caption font-bold tracking-label uppercase whitespace-nowrap`}>
                                 {s().id === props.previewing ? t("rhythm.songs.previewing") : t("rhythm.songs.preview")}
                               </Text>
                             </View>
@@ -230,14 +230,14 @@ export function RhythmSongSelect(props: RhythmSongSelectProps) {
           }>
             <View role="alert" data-status-error={true} class={`flex-col items-center justify-center grow min-h-0`}>
               <View class={`flex-col items-center gap-1 py-3 px-4 bg-plate-hi nine-plate-cut text-fg ${packClass("Plate", "frame")}`}>
-                <Text class={`text-[1.143rem] text-center`}>{t("rhythm.songs.error")}</Text>
+                <Text class={`text-base text-center`}>{t("rhythm.songs.error")}</Text>
                 <View
                   role="button"
                   label={t("rhythm.songs.retry")}
                   onPress={(e) => props.onRetry?.(e)}
-                  class={`min-h-[3.143rem] min-w-[8.571rem] flex-row items-center justify-center gap-1 px-3 bg-hud-accent nine-plate-cut hover:bg-hud-accent text-gold-fg ${packClass("Button", "plate", "primary")}`}
+                  class={`min-h-11 min-w-30 flex-row items-center justify-center gap-1 px-3 bg-hud-accent nine-plate-cut hover:bg-hud-accent text-gold-fg ${packClass("Button", "plate", "primary")}`}
                 >
-                  <Text class={`text-[0.929rem] font-bold tracking-[0.14em] uppercase`}>{t("rhythm.songs.retry")}</Text>
+                  <Text class={`text-caption font-bold tracking-label uppercase`}>{t("rhythm.songs.retry")}</Text>
                 </View>
               </View>
             </View>
@@ -246,7 +246,7 @@ export function RhythmSongSelect(props: RhythmSongSelectProps) {
           <View role="status" class={`flex-col items-center justify-center grow min-h-0`}>
             <View class={`flex-col items-center gap-1 py-3 px-4 bg-plate-hi nine-plate-cut text-fg ${packClass("Plate", "frame")}`}>
               <Spinner name={t("rhythm.songs.loading")} />
-              <Text class={`text-[1.143rem] text-center`}>{t("rhythm.songs.loading")}</Text>
+              <Text class={`text-base text-center`}>{t("rhythm.songs.loading")}</Text>
             </View>
           </View>
         </Show>

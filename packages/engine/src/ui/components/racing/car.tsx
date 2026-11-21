@@ -22,14 +22,14 @@ export interface RacingCarProps {
  */
 export function RacingCar(props: RacingCarProps) {
   return (
-    <View class={`group/car flex-col gap-y-[0.429rem] w-fit max-w-full items-start text-fg compact:gap-y-[0.214rem]`} role="group" label={t("racing.car.name")} data-pit={props.pit} data-low={props.fuelLow}>
+    <View class={`group/car flex-col gap-y-1.5 w-fit max-w-full items-start text-fg compact:gap-y-0.75`} role="group" label={t("racing.car.name")} data-pit={props.pit} data-low={props.fuelLow}>
       <Show when={(props.tyres ?? []).length}>
-        <Text class={`max-w-full text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap text-fg/78 text-stroke-3 text-stroke-bg compact:hidden compact:tracking-normal`}>{t("racing.car.tyres")}</Text>
-        <View class={`grid grid-cols-2 gap-[0.357rem] max-w-full compact:gap-[0.214rem]`} role="list" label={t("racing.car.tyres")}>
+        <Text class={`max-w-full text-xs font-semibold tracking-label uppercase whitespace-nowrap text-fg/78 text-stroke-3 text-stroke-bg compact:hidden compact:tracking-normal`}>{t("racing.car.tyres")}</Text>
+        <View class={`grid grid-cols-2 gap-1.25 max-w-full compact:gap-0.75`} role="list" label={t("racing.car.tyres")}>
           <For each={props.tyres ?? []} key={(y) => y.id}>
             {(y) => (
               <Text
-                class={`min-w-0 py-0 px-[0.429rem] text-[0.857rem] leading-[1.5] font-bold tabular-nums whitespace-nowrap overflow-hidden text-fg bg-well nine-chip-cut data-good:text-boon data-worn:text-gold data-bad:text-foe ${packClass("Chip", "frame")}`}
+                class={`min-w-0 py-0 px-1.5 text-xs leading-[1.5] font-bold tabular-nums whitespace-nowrap overflow-hidden text-fg bg-well nine-chip-cut data-good:text-boon data-worn:text-gold data-bad:text-foe ${packClass("Chip", "frame")}`}
                 role="listitem"
                 data-good={y().state === "good"}
                 data-worn={y().state === "worn"}
@@ -49,20 +49,20 @@ export function RacingCar(props: RacingCarProps) {
           valueNow={(props.fuel ?? 0) >= 1 ? 100 : (props.fuel ?? 0) * 100}
           valueText={props.fuelText}
         >
-          <Text class={`shrink-0 text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap text-fg/78 text-stroke-3 text-stroke-bg group-data-low/car:text-foe compact:tracking-normal`}>
+          <Text class={`shrink-0 text-xs font-semibold tracking-label uppercase whitespace-nowrap text-fg/78 text-stroke-3 text-stroke-bg group-data-low/car:text-foe compact:tracking-normal`}>
             {props.fuelLow ? t("racing.car.fuelLow") : t("racing.car.fuel")}
           </Text>
-          <View class={`shrink-0 relative w-[5rem] h-[0.429rem] overflow-hidden bg-well/82 shadow-[0px_0px_0px_1px_#ffffff38,inset_0px_1px_0px_#ffffff24,0px_2px_5.714px_#00000073] group-data-low/car:shadow-[0px_0px_0px_1px_#ff4d5e,0px_0px_12.714px_#ff4d5eb3] compact:w-[3.143rem]`}>
+          <View class={`shrink-0 relative w-17.5 h-1.5 overflow-hidden bg-well/82 shadow-[0px_0px_0px_1px_#ffffff38,inset_0px_1px_0px_#ffffff24,0px_2px_5.714px_#00000073] group-data-low/car:shadow-[0px_0px_0px_1px_#ff4d5e,0px_0px_12.714px_#ff4d5eb3] compact:w-11`}>
             <View class="absolute left-0 top-0 h-full bg-fg group-data-low/car:bg-foe group-data-low/car:shadow-[2.288px_0px_10px_#ff4d5ecc]" style={{ width: `${Math.min(props.fuel ?? 0, 1) * 100}%` }} />
           </View>
           <Show when={props.fuelText !== ""}>
-            <Text class={`shrink min-w-0 text-[0.857rem] font-bold tabular-nums whitespace-nowrap overflow-hidden text-fg text-stroke-3 text-stroke-bg`}>{props.fuelText}</Text>
+            <Text class={`shrink min-w-0 text-xs font-bold tabular-nums whitespace-nowrap overflow-hidden text-fg text-stroke-3 text-stroke-bg`}>{props.fuelText}</Text>
           </Show>
         </View>
       </Show>
       <Show when={props.pit}>
-        <View class={`max-w-full min-w-0 py-0 px-[0.571rem] bg-gold nine-chip-cut compact:tracking-normal text-hud-accent-fg ${packClass("Chip", "frame")}`} role="status">
-          <Text class={`text-[0.857rem] leading-[1.6] font-bold tracking-[0.14em] uppercase whitespace-nowrap overflow-hidden compact:tracking-normal`}>{t("racing.car.pit")}</Text>
+        <View class={`max-w-full min-w-0 py-0 px-2 bg-gold nine-chip-cut compact:tracking-normal text-hud-accent-fg ${packClass("Chip", "frame")}`} role="status">
+          <Text class={`text-xs leading-loose font-bold tracking-label uppercase whitespace-nowrap overflow-hidden compact:tracking-normal`}>{t("racing.car.pit")}</Text>
         </View>
       </Show>
     </View>

@@ -82,21 +82,21 @@ export function RacingTrackMap(props: RacingTrackMapProps) {
   const track = () => pathPoints(props.path);
   const driven = () => pathPoints(props.driven);
   return (
-    <View class={`flex-col gap-y-[0.286rem] w-[15.714rem] max-w-full text-fg compact:w-[8.571rem]`} role="group" label={props.name !== "" ? props.name : t("racing.map.name")}>
-      <View class="relative w-full aspect-[13/11]" role="image" label={t("racing.map.name")}>
+    <View class={`flex-col gap-y-1 w-55 max-w-full text-fg compact:w-30`} role="group" label={props.name !== "" ? props.name : t("racing.map.name")}>
+      <View class="relative w-full aspect-13/11" role="image" label={t("racing.map.name")}>
         <Show when={props.path !== ""}>
           {/* The road's band, then its line, from the same path data; the
               points stay in the path's 260 by 220 box and the tree maps
               them onto the plate, which already has the box's aspect. */}
-          <Line class="absolute inset-0 size-full stroke-well stroke-[14px]" points={track().points} closed={track().closed} viewBox={[260, 220]} fit="fill" />
-          <Line class="absolute inset-0 size-full stroke-white/85 stroke-[4px]" points={track().points} closed={track().closed} viewBox={[260, 220]} fit="fill" />
+          <Line class="absolute inset-0 size-full stroke-well stroke-14" points={track().points} closed={track().closed} viewBox={[260, 220]} fit="fill" />
+          <Line class="absolute inset-0 size-full stroke-white/85 stroke-4" points={track().points} closed={track().closed} viewBox={[260, 220]} fit="fill" />
         </Show>
         <Show when={props.driven !== ""}>
-          <Line class="absolute inset-0 size-full stroke-hud-accent stroke-[4px]" points={driven().points} viewBox={[260, 220]} fit="fill" />
+          <Line class="absolute inset-0 size-full stroke-hud-accent stroke-4" points={driven().points} viewBox={[260, 220]} fit="fill" />
         </Show>
         <Show when={props.path !== ""}>
           <View
-            class="absolute w-[13.5px] h-[4.2px] bg-fg"
+            class="absolute w-3.5 h-1 bg-fg"
             style={{ left: `${props.startX / 260 * 100}%`, top: `${props.startY / 220 * 100}%`, transform: `translate(-50%,-50%) rotate(${props.startAngle}deg)` }}
           />
         </Show>
@@ -106,7 +106,7 @@ export function RacingTrackMap(props: RacingTrackMapProps) {
               when={c().player}
               fallback={
                 <View
-                  class="absolute size-[11.9px] rounded-full border-2 border-well bg-sheen"
+                  class="absolute size-3 rounded-full border-2 border-well bg-sheen"
                   style={{ left: `${c().x / 260 * 100}%`, top: `${c().y / 220 * 100}%`, transform: "translate(-50%,-50%)", backgroundColor: c().color || undefined }}
                   role="image"
                   label={c().name}
@@ -115,7 +115,7 @@ export function RacingTrackMap(props: RacingTrackMapProps) {
             >
               {/* The arrow: a filled triangle from borders, turned to its heading. */}
               <View
-                class="absolute size-0 border-x-[7px] border-b-[11px] border-x-transparent border-b-fg"
+                class="absolute size-0 border-x-7 border-b-11 border-x-transparent border-b-fg"
                 style={{ left: `${c().x / 260 * 100}%`, top: `${c().y / 220 * 100}%`, transform: `translate(-50%,-55%) rotate(${c().heading}deg)` }}
                 role="image"
                 label={c().name}
@@ -127,11 +127,11 @@ export function RacingTrackMap(props: RacingTrackMapProps) {
       <Show when={props.name !== "" || props.length !== ""}>
         <View class="flex-row items-center justify-between gap-x-2 min-w-0 compact:hidden">
           <Show when={props.name !== ""}>
-            <Text class={`shrink min-w-0 text-[1.071rem] font-semibold whitespace-nowrap overflow-hidden text-fg text-stroke-3 text-stroke-bg`}>{props.name}</Text>
+            <Text class={`shrink min-w-0 text-reading font-semibold whitespace-nowrap overflow-hidden text-fg text-stroke-3 text-stroke-bg`}>{props.name}</Text>
           </Show>
           <Show when={props.length !== ""}>
             <Text
-              class={`shrink-0 max-w-[50%] ml-auto py-0 px-[0.429rem] text-[0.857rem] font-bold tabular-nums whitespace-nowrap overflow-hidden bg-well nine-chip-cut text-fg ${packClass("Chip", "frame")}`}
+              class={`shrink-0 max-w-1/2 ml-auto py-0 px-1.5 text-xs font-bold tabular-nums whitespace-nowrap overflow-hidden bg-well nine-chip-cut text-fg ${packClass("Chip", "frame")}`}
               label={`${t("racing.map.length")} ${props.length}`}
             >
               {props.length}

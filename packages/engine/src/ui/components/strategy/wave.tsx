@@ -43,25 +43,25 @@ export function StrategyWave(props: StrategyWaveProps) {
   const next = () => props.next ?? -1;
   return (
     <View
-      class={`group/wave flex-col gap-y-[0.357rem] w-fit max-w-full min-w-0 text-fg compact:w-full`}
+      class={`group/wave flex-col gap-y-1.25 w-fit max-w-full min-w-0 text-fg compact:w-full`}
       label={t("strategy.wave.name")}
       data-final={props.finalWave}
       data-done={props.phase === "done"}
       data-near={props.phase === "countdown" && next() >= 0 && next() <= (props.warnAt ?? 5)}
     >
-      <View class={`flex-row items-center gap-x-[0.714rem] min-w-0 py-[0.429rem] px-4 nine-plate-cut bg-plate-hi compact:gap-x-[0.571rem] compact:py-[0.286rem] compact:px-[0.714rem] text-fg ${packClass("Plate", "frame")}`}>
+      <View class={`flex-row items-center gap-x-2.5 min-w-0 py-1.5 px-4 nine-plate-cut bg-plate-hi compact:gap-x-2 compact:py-1 compact:px-2.5 text-fg ${packClass("Plate", "frame")}`}>
         <Show when={props.icon}>
-          <Image class={`shrink size-[1.714rem] rounded-tl-[4.576px] rounded-tr-none rounded-br-[4.576px] rounded-bl-none`} src={props.icon} />
+          <Image class={`shrink size-6 rounded-tl-[4.576px] rounded-tr-none rounded-br-[4.576px] rounded-bl-none`} src={props.icon} />
         </Show>
-        <View class={`flex-col gap-y-[0.071rem] flex-1 min-w-0`}>
-          <View class={`flex-row items-center gap-x-[0.429rem] min-w-0`}>
-            <Text class={`shrink min-w-0 text-xs font-semibold tracking-[0.14em] uppercase whitespace-nowrap text-danger group-data-done/wave:opacity-78 compact:text-xs compact:tracking-normal`}>
+        <View class={`flex-col gap-y-0.25 flex-1 min-w-0`}>
+          <View class={`flex-row items-center gap-x-1.5 min-w-0`}>
+            <Text class={`shrink min-w-0 text-xs font-semibold tracking-label uppercase whitespace-nowrap text-danger group-data-done/wave:opacity-78 compact:text-xs compact:tracking-normal`}>
               {props.waves > 0
                 ? (props.name !== "" ? t("strategy.wave.titleOfNamed", { wave: props.wave, waves: props.waves, name: props.name }) : t("strategy.wave.titleOf", { wave: props.wave, waves: props.waves }))
                 : (props.name !== "" ? t("strategy.wave.titleNamed", { wave: props.wave, name: props.name }) : t("strategy.wave.title", { wave: props.wave }))}
             </Text>
             <Show when={props.finalWave}>
-              <Text class={`shrink py-0 px-[0.357rem] leading-[1.4] text-xs font-bold whitespace-nowrap text-gold nine-chip-cut bg-well ${packClass("Chip", "frame")}`}>
+              <Text class={`shrink py-0 px-1.25 leading-[1.4] text-xs font-bold whitespace-nowrap text-gold nine-chip-cut bg-well ${packClass("Chip", "frame")}`}>
                 {t("strategy.wave.final")}
               </Text>
             </Show>
@@ -71,12 +71,12 @@ export function StrategyWave(props: StrategyWaveProps) {
                 {props.phase === "done" ? t("strategy.wave.done") : props.phase === "active" ? t("strategy.wave.active") : t("strategy.wave.countdown")}
               </Text>
           }>
-            <View class={`flex-row items-center gap-x-[0.571rem] min-w-0`} role="timer" label={t("strategy.wave.next")} valueText={formatDuration(next())}>
+            <View class={`flex-row items-center gap-x-2 min-w-0`} role="timer" label={t("strategy.wave.next")} valueText={formatDuration(next())}>
               <Text class={`shrink text-lg leading-[1.1] font-bold tabular-nums whitespace-nowrap text-stroke-3 text-stroke-bg group-data-near/wave:text-danger compact:text-reading`}>
                 {formatDuration(next())}
               </Text>
               <Show when={props.nextTotal > 0}>
-                <View class={`relative flex-1 min-w-[5.486rem] compact:min-w-[3.429rem] h-[0.429rem] overflow-hidden bg-track shadow-[0_0_0_1px_#ffffff38,inset_0_1px_0_#ffffff24,0_2px_4px_#00000073]`}>
+                <View class={`relative flex-1 min-w-19.25 compact:min-w-12 h-1.5 overflow-hidden bg-track shadow-[0_0_0_1px_#ffffff38,inset_0_1px_0_#ffffff24,0_2px_4px_#00000073]`}>
                   <View class={`absolute inset-y-0 left-0 bg-danger bg-linear-to-b from-white/40 to-transparent to-42%`} style={{ width: `${(next() >= props.nextTotal ? 1 : next() / props.nextTotal) * 100}%` }} />
                 </View>
               </Show>
@@ -85,17 +85,17 @@ export function StrategyWave(props: StrategyWaveProps) {
         </View>
       </View>
       <Show when={(props.enemies ?? []).length && props.phase !== "done"}>
-        <View class={`flex-col gap-y-[0.214rem] min-w-0`} role="list" label={t("strategy.wave.incoming")}>
+        <View class={`flex-col gap-y-0.75 min-w-0`} role="list" label={t("strategy.wave.incoming")}>
           <For each={props.enemies ?? []} key={(e) => e.id}>
             {(e) => (
-            <View class={`group/enemy flex-row items-center gap-x-[0.429rem] min-w-0 pt-[0.143rem] pb-[0.143rem] pr-[0.714rem] bg-linear-to-r from-well to-well/40`} role="listitem" label={e().scouted ? t("strategy.wave.enemyName", { count: e().count, name: e().name }) : t("strategy.wave.unknown")} data-boss={e().boss} data-unscouted={!e().scouted}>
-              <View class={`shrink self-stretch w-[0.214rem] mr-[0.286rem] bg-danger group-data-unscouted/enemy:bg-white/60`} />
-              <Icon class={`shrink size-[1.143rem] text-fg`} name={e().icon} />
+            <View class={`group/enemy flex-row items-center gap-x-1.5 min-w-0 pt-0.5 pb-0.5 pr-2.5 bg-linear-to-r from-well to-well/40`} role="listitem" label={e().scouted ? t("strategy.wave.enemyName", { count: e().count, name: e().name }) : t("strategy.wave.unknown")} data-boss={e().boss} data-unscouted={!e().scouted}>
+              <View class={`shrink self-stretch w-0.75 mr-1 bg-danger group-data-unscouted/enemy:bg-white/60`} />
+              <Icon class={`shrink size-4 text-fg`} name={e().icon} />
               <Text class={`flex-1 min-w-0 text-sm font-semibold whitespace-nowrap overflow-hidden group-data-unscouted/enemy:text-fg-muted`}>
                 {e().scouted ? e().name : t("strategy.wave.unknown")}
               </Text>
               <Show when={e().boss}>
-                <Text class={`shrink py-0 px-[0.357rem] leading-[1.4] text-xs font-bold whitespace-nowrap text-danger nine-chip-cut bg-well ${packClass("Chip", "frame")}`}>
+                <Text class={`shrink py-0 px-1.25 leading-[1.4] text-xs font-bold whitespace-nowrap text-danger nine-chip-cut bg-well ${packClass("Chip", "frame")}`}>
                   {t("strategy.wave.boss")}
                 </Text>
               </Show>
@@ -111,13 +111,13 @@ export function StrategyWave(props: StrategyWaveProps) {
       </Show>
       <Show when={props.canCallEarly && props.phase !== "done"}>
         <View
-          class={`flex-row items-center justify-center gap-1 min-h-[3.143rem] min-w-0 max-w-full py-[0.286rem] px-[0.857rem] nine-plate-cut bg-plate-hi text-fg ${packClass("Button", "plate", "primary")}`}
+          class={`flex-row items-center justify-center gap-1 min-h-11 min-w-0 max-w-full py-1 px-3 nine-plate-cut bg-plate-hi text-fg ${packClass("Button", "plate", "primary")}`}
           role="button"
           label={t("strategy.wave.callEarly")}
           onPress={(e) => props.onCallEarly?.(e)}
         >
-          <View class={`flex-row flex-wrap items-baseline justify-center gap-x-[0.571rem] max-w-full min-w-0`}>
-            <Text class={`shrink text-xs font-bold tracking-[0.14em] uppercase whitespace-nowrap`}>
+          <View class={`flex-row flex-wrap items-baseline justify-center gap-x-2 max-w-full min-w-0`}>
+            <Text class={`shrink text-xs font-bold tracking-label uppercase whitespace-nowrap`}>
               {t("strategy.wave.callEarly")}
             </Text>
             <Show when={props.reward !== ""}>

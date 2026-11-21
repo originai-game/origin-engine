@@ -30,10 +30,10 @@ export interface RacingGarageProps {
   onBuy?: (e: UiEvent, id: string) => void;
 }
 
-const buttonBase = `min-h-11 flex-row flex-wrap items-center justify-center gap-1 py-[0.143rem] px-4 text-[0.929rem] font-bold tracking-[0.14em] uppercase text-fg bg-plate-hi hover:bg-glass-hi disabled:opacity-45 nine-plate-cut ${packClass("Button", "plate")}`;
+const buttonBase = `min-h-11 flex-row flex-wrap items-center justify-center gap-1 py-0.5 px-4 text-caption font-bold tracking-label uppercase text-fg bg-plate-hi hover:bg-glass-hi disabled:opacity-45 nine-plate-cut ${packClass("Button", "plate")}`;
 const stepButton = `size-11 items-center justify-center p-0 text-fg bg-plate-hi hover:bg-glass-hi nine-plate-cut ${packClass("Button", "plate")}`;
-const goButton = `min-h-11 flex-row flex-wrap items-center justify-center gap-1 py-[0.143rem] px-4 text-[0.929rem] font-bold tracking-[0.14em] uppercase text-fg bg-plate-hi hover:bg-glass-hi disabled:opacity-45 flex-1 min-w-[8.571rem] nine-plate-cut ${packClass("Button", "plate", "primary")}`;
-const keyCap = `shrink-0 pointer-coarse:hidden text-[1.286rem] leading-none`;
+const goButton = `min-h-11 flex-row flex-wrap items-center justify-center gap-1 py-0.5 px-4 text-caption font-bold tracking-label uppercase text-fg bg-plate-hi hover:bg-glass-hi disabled:opacity-45 flex-1 min-w-30 nine-plate-cut ${packClass("Button", "plate", "primary")}`;
+const keyCap = `shrink-0 pointer-coarse:hidden text-lg leading-none`;
 
 /**
  * Choosing a car: the shown car large (its picture, name and class) with
@@ -54,13 +54,13 @@ export function RacingGarage(props: RacingGarageProps) {
       <Show when={shownVehicle()?.image} keyed>
         {(img) => <Image src={img()} class="absolute inset-0 size-full" />}
       </Show>
-      <View class="absolute inset-0 pointer-events-none bg-linear-to-b from-well/80 via-transparent to-plate-lo compact:bottom-auto compact:h-[38%]" />
+      <View class="absolute inset-0 pointer-events-none bg-linear-to-b from-well/80 via-transparent to-plate-lo compact:bottom-auto compact:h-19/50" />
       <View class="relative flex-row w-full shrink-0">
-        <Text class={`flex-1 min-w-0 text-[0.857rem] leading-[1.3] font-semibold tracking-[0.14em] uppercase text-fg text-stroke-3 text-stroke-bg`}>{heading()}</Text>
+        <Text class={`flex-1 min-w-0 text-xs leading-snug font-semibold tracking-label uppercase text-fg text-stroke-3 text-stroke-bg`}>{heading()}</Text>
       </View>
       <Show when={vehicles().length} fallback={
         <View class="relative flex-col items-center justify-center gap-6 w-full h-full" role="status">
-          <Text class={`text-[1.143rem] text-fg-muted`}>{t("racing.garage.empty")}</Text>
+          <Text class={`text-base text-fg-muted`}>{t("racing.garage.empty")}</Text>
           <View class={buttonBase} role="button" label={t("racing.garage.back")} onPress={(e) => props.onBack?.(e)} onAction={{ back: (e) => props.onBack?.(e) }}>
             <Text glyph="back" class={keyCap} />
             <Text>{t("racing.garage.back")}</Text>
@@ -78,7 +78,7 @@ export function RacingGarage(props: RacingGarageProps) {
                   <Show when={!v().image}>
                     <View class={`w-full aspect-[3.2] bg-lit-soft nine-panel-cut`} />
                   </Show>
-                  <Text class={`w-full text-left text-[0.857rem] leading-[1.3] font-semibold tracking-[0.14em] uppercase text-hud-accent text-stroke-3 text-stroke-bg`}>{v().body}</Text>
+                  <Text class={`w-full text-left text-xs leading-snug font-semibold tracking-label uppercase text-hud-accent text-stroke-3 text-stroke-bg`}>{v().body}</Text>
                   <Text class={`w-full text-left text-[4.714rem] leading-none font-bold italic uppercase text-fg text-stroke-3 text-stroke-bg line-clamp-3 overflow-hidden`}>{v().title}</Text>
                 </View>
               )}
@@ -87,7 +87,7 @@ export function RacingGarage(props: RacingGarageProps) {
               <View class={stepButton} role="button" label={t("racing.garage.prev")} onPress={(e) => props.onTabPrev?.(e)}>
                 <Icon name="back" class="size-6 text-fg" />
               </View>
-              <Text class={`min-w-16 text-center whitespace-nowrap text-[1.286rem] font-bold tabular-nums text-fg text-stroke-3 text-stroke-bg`}>
+              <Text class={`min-w-16 text-center whitespace-nowrap text-lg font-bold tabular-nums text-fg text-stroke-3 text-stroke-bg`}>
                 {t("racing.garage.count", { n: props.index + 1, total: vehicles().length })}
               </Text>
               <View class={stepButton} role="button" label={t("racing.garage.next")} onPress={(e) => props.onTabNext?.(e)}>
@@ -149,7 +149,7 @@ export function RacingGarage(props: RacingGarageProps) {
             <For each={vehicles()} key={(v) => v.id}>
               {(v) => (
                 <View
-                  class={`flex-row items-center justify-center gap-1 shrink-0 w-[12.143rem] min-h-16 px-2 py-1 bg-glass nine-plate-cut data-selected:bg-raised-pressed data-locked:text-fg-muted compact:w-[8.857rem]`}
+                  class={`flex-row items-center justify-center gap-1 shrink-0 w-42.5 min-h-16 px-2 py-1 bg-glass nine-plate-cut data-selected:bg-raised-pressed data-locked:text-fg-muted compact:w-31`}
                   role="option"
                   selected={v().id === props.shown}
                   label={v().title}
@@ -159,9 +159,9 @@ export function RacingGarage(props: RacingGarageProps) {
                   data-locked={v().locked}
                 >
                   <View class="flex-col gap-1 w-full items-start">
-                    <Text class={`w-full text-left text-[0.929rem] leading-[1.15] font-bold text-fg`}>{v().title}</Text>
+                    <Text class={`w-full text-left text-caption leading-[1.15] font-bold text-fg`}>{v().title}</Text>
                     <Text
-                      class={`max-w-full py-0 px-1 text-[0.857rem] leading-[1.5] font-bold tracking-[0.14em] uppercase bg-well nine-chip-cut text-fg data-driving:text-hud-accent-fg data-driving:bg-hud-accent data-locked:text-fg-muted data-price:text-gold ${packClass("Chip", "frame")}`}
+                      class={`max-w-full py-0 px-1 text-xs leading-[1.5] font-bold tracking-label uppercase bg-well nine-chip-cut text-fg data-driving:text-hud-accent-fg data-driving:bg-hud-accent data-locked:text-fg-muted data-price:text-gold ${packClass("Chip", "frame")}`}
                       data-driving={v().id === props.chosen}
                       data-locked={v().locked && v().id !== props.chosen}
                       data-price={!v().locked && v().id !== props.chosen && !v().owned}

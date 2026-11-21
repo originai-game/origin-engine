@@ -23,10 +23,10 @@ export function RhythmChain(props: RhythmChainProps) {
         <Show when={`${props.multiplier}·${props.hit}`} keyed>
           {() => (
           <View class={`flex-row items-baseline gap-1 py-0.5 px-3 shrink bg-plate-hi nine-plate-cut animate-pop text-fg ${packClass("Plate", "frame")}`}>
-            <Text class={`text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap opacity-78`}>
+            <Text class={`text-xs font-semibold tracking-label uppercase whitespace-nowrap opacity-78`}>
               {t("rhythm.chain.label")}
             </Text>
-            <Text class={`text-[1.714rem] leading-[1.1] font-bold tabular-nums whitespace-nowrap text-hud-accent`}>
+            <Text class={`text-title leading-[1.1] font-bold tabular-nums whitespace-nowrap text-hud-accent`}>
               {props.multiplier}
             </Text>
           </View>
@@ -34,7 +34,7 @@ export function RhythmChain(props: RhythmChainProps) {
         </Show>
         <Show when={(props.steps ?? 8) > 0}>
           <View
-            class={`relative shrink -skew-x-[22deg]`}
+            class={`relative shrink -skew-x-22`}
             style={{ width: `${(props.steps ?? 8) * 15 - 3}px`, height: "5px" }}
             role="meter"
             label={t("rhythm.chain.steps")}
@@ -42,18 +42,18 @@ export function RhythmChain(props: RhythmChainProps) {
             valueMax={props.steps ?? 8}
             valueNow={props.step < 0 ? 0 : props.step > (props.steps ?? 8) ? (props.steps ?? 8) : props.step}
           >
-            <View class={`absolute inset-0 flex-row gap-[3px]`}>
+            <View class={`absolute inset-0 flex-row gap-0.75`}>
               <For each={Array.from({ length: props.steps ?? 8 }, (_, i) => i)}>
-                {() => <View class={`w-[12px] shrink-0 bg-sheen`} />}
+                {() => <View class={`w-3 shrink-0 bg-sheen`} />}
               </For>
             </View>
             <View
               class={`absolute inset-y-0 left-0 overflow-hidden`}
               style={{ width: `${(props.step <= 0 ? 0 : props.step >= (props.steps ?? 8) ? 1 : props.step / (props.steps ?? 8)) * ((props.steps ?? 8) * 15 - 3)}px` }}
             >
-              <View class={`h-full flex-row gap-[3px]`} style={{ width: `${(props.steps ?? 8) * 15 - 3}px` }}>
+              <View class={`h-full flex-row gap-0.75`} style={{ width: `${(props.steps ?? 8) * 15 - 3}px` }}>
                 <For each={Array.from({ length: props.steps ?? 8 }, (_, i) => i)}>
-                  {() => <View class={`w-[12px] shrink-0 bg-hud-accent shadow-[0px_0px_6px_#38e8ff]`} />}
+                  {() => <View class={`w-3 shrink-0 bg-hud-accent shadow-[0px_0px_6px_#38e8ff]`} />}
                 </For>
               </View>
             </View>

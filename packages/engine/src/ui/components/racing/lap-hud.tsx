@@ -46,44 +46,44 @@ export interface RacingLapHudProps {
  */
 export function RacingLapHud(props: RacingLapHudProps) {
   return (
-    <View class={`flex-col gap-y-[1.286rem] w-[17.857rem] max-w-full text-fg compact:gap-y-[0.571rem] compact:w-full`} label={t("racing.lap.name")} data-final={props.finalLap}>
+    <View class={`flex-col gap-y-4.5 w-62.5 max-w-full text-fg compact:gap-y-2 compact:w-full`} label={t("racing.lap.name")} data-final={props.finalLap}>
       {/* Head */}
-      <View class="flex-row items-end gap-x-[1.143rem] min-w-0 compact:gap-x-2">
+      <View class="flex-row items-end gap-x-4 min-w-0 compact:gap-x-2">
         <Show when={props.racers > 0}>
           <View
             class="shrink-0 flex-row items-baseline"
             role="group"
             label={props.position > 0 ? t("racing.lap.positionValue", { position: props.position, racers: props.racers }) : t("racing.lap.position")}
           >
-            <Text class={`text-[6rem] leading-[0.8] italic font-bold tabular-nums whitespace-nowrap text-fg text-stroke-3 text-stroke-bg compact:text-[3.143rem]`}>
+            <Text class={`text-[6rem] leading-[0.8] italic font-bold tabular-nums whitespace-nowrap text-fg text-stroke-3 text-stroke-bg compact:text-6xl`}>
               {props.position > 0 ? formatNumber(props.position) : t("racing.lap.pending")}
             </Text>
-            <Text class={`text-[2.143rem] leading-[0.8] italic font-bold whitespace-nowrap text-fg-muted compact:text-[1.714rem]`}>{t("racing.lap.of", { total: props.racers })}</Text>
+            <Text class={`text-4xl leading-[0.8] italic font-bold whitespace-nowrap text-fg-muted compact:text-title`}>{t("racing.lap.of", { total: props.racers })}</Text>
           </View>
         </Show>
-        <View class="flex min-w-0 flex-col items-start gap-y-[0.571rem] pb-[0.286rem] compact:gap-y-[0.286rem] compact:pb-0">
+        <View class="flex min-w-0 flex-col items-start gap-y-2 pb-1 compact:gap-y-1 compact:pb-0">
           <Show when={props.laps > 0 || props.lap > 0}>
             <View
-              class={`group/lap shrink-0 flex-row items-baseline gap-x-[0.571rem] py-[0.214rem] px-[0.643rem] bg-plate-hi nine-plate-cut text-fg ${packClass("Plate", "frame")}`}
+              class={`group/lap shrink-0 flex-row items-baseline gap-x-2 py-0.75 px-2.25 bg-plate-hi nine-plate-cut text-fg ${packClass("Plate", "frame")}`}
               role="group"
               label={props.laps > 0 && props.lap > 0 ? t("racing.lap.lapValue", { lap: props.lap, laps: props.laps }) : t("racing.lap.lap")}
               data-final={props.finalLap}
             >
-              <Text class={`text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap opacity-78 group-data-final/lap:text-hud-accent`}>
+              <Text class={`text-xs font-semibold tracking-label uppercase whitespace-nowrap opacity-78 group-data-final/lap:text-hud-accent`}>
                 {props.finalLap ? t("racing.lap.finalLap") : t("racing.lap.lap")}
               </Text>
-              <Text class={`text-[1.071rem] font-bold tabular-nums whitespace-nowrap`}>{props.lap > 0 ? formatNumber(props.lap) : t("racing.lap.pending")}</Text>
+              <Text class={`text-reading font-bold tabular-nums whitespace-nowrap`}>{props.lap > 0 ? formatNumber(props.lap) : t("racing.lap.pending")}</Text>
               <Show when={props.laps > 0}>
-                <Text class={`text-[0.929rem] font-bold tabular-nums whitespace-nowrap opacity-80`}>{t("racing.lap.ofSpaced", { total: props.laps })}</Text>
+                <Text class={`text-caption font-bold tabular-nums whitespace-nowrap opacity-80`}>{t("racing.lap.ofSpaced", { total: props.laps })}</Text>
               </Show>
             </View>
           </Show>
           <Show when={props.gained !== 0}>
-            <View class="group/gained flex-row items-center gap-x-[0.357rem] max-w-full min-w-0" data-trend-down={props.gained < 0}>
+            <View class="group/gained flex-row items-center gap-x-1.25 max-w-full min-w-0" data-trend-down={props.gained < 0}>
               <View
-                class={`shrink-0 size-[0.571rem] -rotate-45 border-l-2 border-b-2 border-hud-accent group-data-trend-down/gained:rotate-45 group-data-trend-down/gained:border-t-2 group-data-trend-down/gained:border-r-2 group-data-trend-down/gained:border-l-0 group-data-trend-down/gained:border-b-0 group-data-trend-down/gained:border-foe`}
+                class={`shrink-0 size-2 -rotate-45 border-l-2 border-b-2 border-hud-accent group-data-trend-down/gained:rotate-45 group-data-trend-down/gained:border-t-2 group-data-trend-down/gained:border-r-2 group-data-trend-down/gained:border-l-0 group-data-trend-down/gained:border-b-0 group-data-trend-down/gained:border-foe`}
               />
-              <Text class={`min-w-0 text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap overflow-hidden text-hud-accent group-data-trend-down/gained:text-foe compact:tracking-normal`}>
+              <Text class={`min-w-0 text-xs font-semibold tracking-label uppercase whitespace-nowrap overflow-hidden text-hud-accent group-data-trend-down/gained:text-foe compact:tracking-normal`}>
                 {props.gained > 0 ? t("racing.lap.up", { n: props.gained }) : t("racing.lap.down", { n: -props.gained })}
               </Text>
             </View>
@@ -91,24 +91,24 @@ export function RacingLapHud(props: RacingLapHudProps) {
         </View>
       </View>
       {/* Times: on a plate, so the rows and times read over a bright scene in every pack. */}
-      <View class={`flex-col gap-y-1 compact:gap-y-[0.143rem] py-2 px-3 compact:py-1 compact:px-2 bg-glass nine-plate-cut ${packClass("Plate", "frame")}`} role="list" label={t("racing.lap.times")}>
+      <View class={`flex-col gap-y-1 compact:gap-y-0.5 py-2 px-3 compact:py-1 compact:px-2 bg-glass nine-plate-cut ${packClass("Plate", "frame")}`} role="list" label={t("racing.lap.times")}>
         <View class="flex-row items-baseline justify-between gap-x-2 min-w-0" role="listitem">
-          <Text class={`min-w-0 text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap overflow-hidden text-fg-muted compact:tracking-normal`}>{t("racing.lap.current")}</Text>
-          <Text class={`text-[1.714rem] leading-[1.05] font-bold tabular-nums whitespace-nowrap text-fg`}>{props.current !== "" ? props.current : t("racing.lap.none")}</Text>
+          <Text class={`min-w-0 text-xs font-semibold tracking-label uppercase whitespace-nowrap overflow-hidden text-fg-muted compact:tracking-normal`}>{t("racing.lap.current")}</Text>
+          <Text class={`text-title leading-[1.05] font-bold tabular-nums whitespace-nowrap text-fg`}>{props.current !== "" ? props.current : t("racing.lap.none")}</Text>
         </View>
         <View class="group/lastrow flex-row items-baseline justify-between gap-x-2 min-w-0 compact:hidden" role="listitem" data-fresh={props.freshBest}>
-          <Text class={`min-w-0 text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap overflow-hidden text-fg-muted compact:tracking-normal`}>{t("racing.lap.last")}</Text>
-          <View class="flex-row items-baseline gap-x-[0.429rem]">
+          <Text class={`min-w-0 text-xs font-semibold tracking-label uppercase whitespace-nowrap overflow-hidden text-fg-muted compact:tracking-normal`}>{t("racing.lap.last")}</Text>
+          <View class="flex-row items-baseline gap-x-1.5">
             <Show when={props.freshBest}>
               {/* A tag in the best lap's own colour (the fixed dark well and the violet ink): the pack's neutral chip does not dress it. */}
-              <Text class={`shrink-0 py-0 px-[0.357rem] text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap text-epic bg-well nine-chip-cut`}>{t("racing.lap.newBest")}</Text>
+              <Text class={`shrink-0 py-0 px-1.25 text-xs font-semibold tracking-label uppercase whitespace-nowrap text-epic bg-well nine-chip-cut`}>{t("racing.lap.newBest")}</Text>
             </Show>
-            <Text class={`text-[1.143rem] font-bold tabular-nums whitespace-nowrap text-fg-muted`}>{props.last !== "" ? props.last : t("racing.lap.none")}</Text>
+            <Text class={`text-base font-bold tabular-nums whitespace-nowrap text-fg-muted`}>{props.last !== "" ? props.last : t("racing.lap.none")}</Text>
           </View>
         </View>
         <View class="flex-row items-baseline justify-between gap-x-2 min-w-0" role="listitem">
-          <Text class={`min-w-0 text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap overflow-hidden text-fg-muted compact:tracking-normal`}>{t("racing.lap.best")}</Text>
-          <Text class={`shrink-0 py-0 px-[0.429rem] text-[1.143rem] font-bold tabular-nums whitespace-nowrap text-epic bg-well nine-chip-cut`}>{props.best !== "" ? props.best : t("racing.lap.none")}</Text>
+          <Text class={`min-w-0 text-xs font-semibold tracking-label uppercase whitespace-nowrap overflow-hidden text-fg-muted compact:tracking-normal`}>{t("racing.lap.best")}</Text>
+          <Text class={`shrink-0 py-0 px-1.5 text-base font-bold tabular-nums whitespace-nowrap text-epic bg-well nine-chip-cut`}>{props.best !== "" ? props.best : t("racing.lap.none")}</Text>
         </View>
         <Show when={props.split !== ""}>
           <View
@@ -124,10 +124,10 @@ export function RacingLapHud(props: RacingLapHudProps) {
             data-ahead={(props.splitState ?? "even") === "ahead"}
             data-behind={(props.splitState ?? "even") === "behind"}
           >
-            <Text class={`min-w-0 text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap overflow-hidden text-fg-muted compact:tracking-normal`}>{props.sector !== "" ? props.sector : t("racing.lap.split")}</Text>
+            <Text class={`min-w-0 text-xs font-semibold tracking-label uppercase whitespace-nowrap overflow-hidden text-fg-muted compact:tracking-normal`}>{props.sector !== "" ? props.sector : t("racing.lap.split")}</Text>
             {/* A tag in the split's own colour ahead and behind (boon and foe fills with their inks); the pack's neutral chip dresses only the even state. */}
             <Text
-              class={`shrink-0 py-0 px-[0.429rem] text-[1.071rem] font-bold tabular-nums whitespace-nowrap text-fg bg-well nine-chip-cut data-ahead:bg-boon data-ahead:text-boon-fg data-behind:bg-foe data-behind:text-foe-fg ${(props.splitState ?? "even") === "even" ? packClass("Chip", "frame") : ""}`}
+              class={`shrink-0 py-0 px-1.5 text-reading font-bold tabular-nums whitespace-nowrap text-fg bg-well nine-chip-cut data-ahead:bg-boon data-ahead:text-boon-fg data-behind:bg-foe data-behind:text-foe-fg ${(props.splitState ?? "even") === "even" ? packClass("Chip", "frame") : ""}`}
               data-ahead={(props.splitState ?? "even") === "ahead"}
               data-behind={(props.splitState ?? "even") === "behind"}
             >
