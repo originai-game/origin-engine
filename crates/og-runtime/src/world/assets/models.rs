@@ -313,8 +313,8 @@ fn scatter_meshes(
     out
 }
 
-/// `mesh` once at each of `placements`, as one mesh (itself where it
-/// stands once, as made).
+/// `mesh` once at each of `placements`, as one mesh with its foliage
+/// placed alike (itself where it stands once, as made).
 #[cfg(not(feature = "profile2d"))]
 fn placed_mesh(
     scene: &mut og_render::RenderScene,
@@ -352,7 +352,12 @@ fn placed_mesh(
             placed.indices.extend(triangle.map(|i| i + base));
         }
     }
-    scene.add_mesh(placed)
+    let foliage = scene.mesh_foliage(mesh).map(|f| f.placed(placements));
+    let placed = scene.add_mesh(placed);
+    if foliage.is_some() {
+        scene.set_mesh_foliage(placed, foliage);
+    }
+    placed
 }
 
 /// Adds a decoded model and its textures (in [`CookedModel::textures`]

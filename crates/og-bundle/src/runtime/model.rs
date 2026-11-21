@@ -126,7 +126,7 @@ impl CookedPrimitive {
         let mut at = vec![u32::MAX; self.vertices.len()];
         let mut vertices = Vec::new();
         // A thinned level's leaves as it draws them: larger about their
-        // anchors (a mesh of its own carries no foliage to grow them by).
+        // anchors (its foliage, `level_foliage`, has no level scales).
         let anchors = self
             .foliage
             .as_ref()
@@ -1050,14 +1050,42 @@ impl CookedModel {
     /// primitive, each level's mesh and its error, the largest distance from
     /// level 0 in the model's units (empty for a primitive of one level).
     pub fn add_lod_levels(&self, scene: &mut impl SceneResources) -> Vec<Vec<(MeshHandle, f32)>> {
-        self.primitives
-            .iter()
-            .map(|p| {
-                (1..p.lods.len())
-                    .map(|l| (scene.add_mesh(p.mesh_compact(l)), p.lods[l].error))
+        (0..self.primitives.len())
+            .map(|i| {
+                (1..self.primitives[i].lods.len())
+                    .map(|l| self.add_level(scene, i, l))
                     .collect()
             })
             .collect()
+    }
+
+    /// Primitive `i`'s level `l` as a mesh of its own, with its error and
+    /// its foliage (`level_foliage`).
+    fn add_level(&self, scene: &mut impl SceneResources, i: usize, l: usize) -> (MeshHandle, f32) {
+        let p = &self.primitives[i];
+        let m = scene.add_mesh(p.mesh_compact(l));
+        if let Some(f) = self.level_foliage(i, l) {
+            scene.set_mesh_foliage(m, Some(f));
+        }
+        (m, p.lods[l].error)
+    }
+
+    /// The foliage of primitive `i`'s level `l` as [`Self::mesh_foliage`]
+    /// gives the full mesh's, for its own mesh ([`CookedPrimitive::mesh_compact`]):
+    /// the rows of the vertices it keeps, in its order, and no level
+    /// scales (its thinned leaves are made larger in its vertices), so a
+    /// level drawn on its own (a scattered copy's) bends, grows and turns
+    /// as the full mesh does.
+    fn level_foliage(&self, i: usize, l: usize) -> Option<og_render_data::meshlet::MeshFoliage> {
+        let mut f = self.mesh_foliage(i)?;
+        let rows = f.vertices.clone();
+        f.vertices = self.primitives[i]
+            .lod_sources(l)
+            .into_iter()
+            .map(|s| rows[s as usize])
+            .collect();
+        f.level_scales = Vec::new();
+        Some(f)
     }
 
     /// Primitive `i`'s foliage for [`SceneResources::set_mesh_foliage`] on
@@ -1151,13 +1179,14 @@ impl CookedModel {
         self.primitives
             .iter()
             .zip(meshes)
-            .map(|(p, mesh)| {
+            .enumerate()
+            .map(|(i, (p, mesh))| {
                 shared
                     .lods
                     .entry(*mesh)
                     .or_insert_with(|| {
                         (1..p.lods.len())
-                            .map(|l| (scene.add_mesh(p.mesh_compact(l)), p.lods[l].error))
+                            .map(|l| self.add_level(scene, i, l))
                             .collect()
                     })
                     .clone()

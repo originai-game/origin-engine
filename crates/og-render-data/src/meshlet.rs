@@ -179,7 +179,7 @@ pub struct MeshFoliage {
     /// grows and falls with it.
     pub season: crate::foliage::LeafSeason,
     /// The crown its leaves fill, for the sky they hide from each other
-    /// (meshlet_sway.wgsl `meshlet_crown`): the half-extents of an
+    /// (foliage.wgsl `meshlet_crown`): the half-extents of an
     /// ellipsoid about [`Self::canopy_center`] (zero: no crown), and its
     /// leaves' extinction, half their one-sided area per unit of the
     /// ellipsoid's volume (randomly oriented leaves, Ross's G of 1/2), both
@@ -248,6 +248,41 @@ impl MeshFoliage {
             }
         }
         Ok(())
+    }
+
+    /// Its foliage for its mesh drawn once at each of `placements`, as one
+    /// mesh (og-runtime's placed scatter mesh): each vertex's pivot and
+    /// anchor placed as the vertex is, the vertices in placement order;
+    /// the canopy, top and crown where the first placement puts them (its
+    /// largest scale stretching the crown and thinning its extinction).
+    pub fn placed(&self, placements: &[Mat4]) -> MeshFoliage {
+        let first = placements.first().copied().unwrap_or(Mat4::IDENTITY);
+        let scale = first.to_scale_rotation_translation().0.abs().max_element();
+        let place = |t: &Mat4, r: [f32; 4]| {
+            let p = t.transform_point3(Vec3::new(r[0], r[1], r[2]));
+            [p.x, p.y, p.z, r[3]]
+        };
+        let c = self.canopy_center;
+        MeshFoliage {
+            vertices: placements
+                .iter()
+                .flat_map(|t| {
+                    self.vertices.iter().map(|v| crate::foliage::FoliageVertex {
+                        branch: place(t, v.branch),
+                        leaf: place(t, v.leaf),
+                    })
+                })
+                .collect(),
+            top: first.transform_point3(Vec3::new(c.x, self.top, c.z)).y,
+            canopy_center: first.transform_point3(c),
+            crown: self.crown * scale,
+            extinction: if scale > 0.0 {
+                self.extinction / scale
+            } else {
+                0.0
+            },
+            ..self.clone()
+        }
     }
 
     /// Its rows in the vertex pool: the header, then two rows a vertex.
