@@ -4,8 +4,9 @@
 //! The faces themselves cook as fonts by their own import settings; the
 //! index adds nothing to them, so a pack never changes another font's
 //! cooked output. The index carries the pack's hyphenation dictionaries
-//! for the game's locales (`hyphenation:<language>`), only when its
-//! style sheets declare `hyphens: auto`, and ICU's word
+//! for the game's locales (`hyphenation:<language>`), only when its code
+//! writes a `hyphens-auto` class or its style sheets declare `hyphens:
+//! auto`, and ICU's word
 //! dictionary for a shipped locale of its languages that needs one
 //! (`segmentation:<dictionary>`, og-i18n's `segmenter`): Chinese and
 //! Japanese, Thai, Lao, Khmer and Burmese, once per game.
@@ -32,21 +33,24 @@ struct Manifest {
     hyphenation: Vec<String>,
 }
 
-/// Whether a game's style sheets declare `hyphens: auto`
-/// (CSS Text 4 §6.1): only then does it ship hyphenation dictionaries.
-pub(crate) fn uses_auto_hyphens(sources: &[Source]) -> bool {
-    sources
-        .iter()
-        .filter(|s| s.kind == &crate::cook::ui_documents::STYLE)
-        .any(|s| {
-            let text = String::from_utf8_lossy(&s.bytes);
-            text.match_indices("hyphens").any(|(at, _)| {
-                text[at + "hyphens".len()..]
-                    .trim_start()
-                    .strip_prefix(':')
-                    .is_some_and(|v| v.trim_start().starts_with("auto"))
+/// Whether a game hyphenates (CSS Text 4 §6.1): its code writes a
+/// `hyphens-auto` class (`code`, the bundler graph's reading), or its style
+/// sheets declare `hyphens: auto`. Only then does it ship hyphenation
+/// dictionaries.
+pub(crate) fn uses_auto_hyphens(sources: &[Source], code: &CodeGraph) -> bool {
+    code.hyphens
+        || sources
+            .iter()
+            .filter(|s| s.kind == &crate::cook::ui_documents::STYLE)
+            .any(|s| {
+                let text = String::from_utf8_lossy(&s.bytes);
+                text.match_indices("hyphens").any(|(at, _)| {
+                    text[at + "hyphens".len()..]
+                        .trim_start()
+                        .strip_prefix(':')
+                        .is_some_and(|v| v.trim_start().starts_with("auto"))
+                })
             })
-        })
 }
 
 /// The dictionary languages of the locales a game ships: its string
@@ -65,8 +69,8 @@ pub(crate) fn shipped_languages(sources: &[Source]) -> std::collections::BTreeSe
 }
 
 /// The dictionaries of pack `m` a game of `sources` ships: (language, file).
-fn shipped(m: &Manifest, sources: &[Source]) -> Vec<(String, String)> {
-    if m.hyphenation.is_empty() || !uses_auto_hyphens(sources) {
+fn shipped(m: &Manifest, sources: &[Source], code: &CodeGraph) -> Vec<(String, String)> {
+    if m.hyphenation.is_empty() || !uses_auto_hyphens(sources, code) {
         return Vec::new();
     }
     let languages = shipped_languages(sources);
@@ -81,11 +85,11 @@ fn shipped(m: &Manifest, sources: &[Source]) -> Vec<(String, String)> {
         .collect()
 }
 
-/// The cook's warnings about hyphenation: a game that declares `hyphens:
-/// auto` and ships a locale whose own pack (one naming its language, with
+/// The cook's warnings about hyphenation: a game that hyphenates
+/// ([`uses_auto_hyphens`]) and ships a locale whose own pack (one naming its language, with
 /// dictionaries of its own) has none for it, which then does not hyphenate.
-pub(crate) fn check_hyphenation(sources: &[Source]) -> Vec<(String, String)> {
-    if !uses_auto_hyphens(sources) {
+pub(crate) fn check_hyphenation(sources: &[Source], code: &CodeGraph) -> Vec<(String, String)> {
+    if !uses_auto_hyphens(sources, code) {
         return Vec::new();
     }
     let languages = shipped_languages(sources);
@@ -327,7 +331,7 @@ fn plan_font_pack<'a>(
     // links them).
     let deps = dependencies(s);
     let dictionaries = manifest(s)
-        .map(|m| shipped(&m, cx.sources))
+        .map(|m| shipped(&m, cx.sources, &cx.options.code))
         .unwrap_or_default();
     let dir = s.path.parent().map(Path::to_path_buf).unwrap_or_default();
     let shipped: String = dictionaries

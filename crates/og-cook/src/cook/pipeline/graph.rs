@@ -5,8 +5,8 @@
 //! bundle (`<bundle>.graph.json`: the engine package's root and every file,
 //! by absolute path). The cook takes that graph as an input
 //! ([`super::CookOptions::code`]): the built-in UI a game draws, the string
-//! tables of the engine components it imports, and whether it raycasts are
-//! read from the modules the bundle holds, never from the files that happen
+//! tables of the engine components it imports, whether it raycasts and
+//! whether it hyphenates are read from the modules the bundle holds, never from the files that happen
 //! to sit in the project.
 use super::ts_refs;
 use std::collections::{BTreeMap, BTreeSet};
@@ -28,6 +28,10 @@ pub struct CodeGraph {
     /// The code reads `raycast` (og.render.raycast): its models carry a
     /// cooked raycast BVH.
     pub raycast: bool,
+    /// A string the code writes holds a `hyphens-auto` class (under any
+    /// variant): its text hyphenates, so its locales' hyphenation
+    /// dictionaries ship ([`hyphens_auto`]).
+    pub hyphens: bool,
     /// The game's own code the bundle holds (its modules outside the
     /// engine), by absolute path: what the asset index reads for the
     /// assets the code loads ([`super::assets::add_code`]).
@@ -57,6 +61,13 @@ impl CodeGraph {
                 if rel.extension().is_some_and(|e| e == "ogt") {
                     let id = format!("{TABLE_PREFIX}{}", rel.to_string_lossy().replace('\\', "/"));
                     graph.tables.insert(id, file);
+                } else if !graph.hyphens
+                    && rel.extension().is_some_and(|e| e == "tsx" || e == "ts")
+                    && let Ok(text) = std::fs::read_to_string(&file)
+                    && let Ok(refs) = ts_refs::parse(&file, &text)
+                {
+                    // The engine's components write classes too.
+                    graph.hyphens |= hyphens_auto(&refs);
                 }
                 continue;
             }
@@ -74,6 +85,7 @@ impl CodeGraph {
             let refs = ts_refs::parse(&file, &text)?;
             graph.raycast |= refs.names.contains("raycast")
                 || refs.literals.iter().any(|l| l.value == "raycast");
+            graph.hyphens |= hyphens_auto(&refs);
             graph.ids.extend(
                 refs.literals
                     .into_iter()
@@ -84,6 +96,21 @@ impl CodeGraph {
         }
         Ok(graph)
     }
+}
+
+/// Whether a string `refs` holds writes a `hyphens-auto` class: a
+/// whitespace-separated token whose utility, after its variants
+/// (`md:hyphens-auto`) and an important mark, is `hyphens-auto`.
+fn hyphens_auto(refs: &ts_refs::References) -> bool {
+    refs.literals
+        .iter()
+        .map(|l| l.value.as_str())
+        .chain(refs.fragments.iter().map(String::as_str))
+        .flat_map(str::split_ascii_whitespace)
+        .any(|class| {
+            let utility = class.rsplit(':').next().unwrap_or(class);
+            utility.trim_matches('!') == "hyphens-auto"
+        })
 }
 
 #[cfg(test)]
@@ -105,7 +132,14 @@ mod tests {
         let main = game.join("src/main.ts");
         std::fs::write(
             &main,
-            "// raycast in a comment\nconst s = \"no raycast\";\nexport default s;\n",
+            "// raycast and hyphens-auto in a comment\nconst s = \"no raycast\";\nexport default s;\n",
+        )
+        .unwrap();
+        // A class list built in a template, under a variant.
+        let page = game.join("src/page.tsx");
+        std::fs::write(
+            &page,
+            "export const P = (x: string) => <p class={`p-2 ${x} md:hyphens-auto`} />;\n",
         )
         .unwrap();
         let aim = game.join("src/aim.ts");
@@ -135,8 +169,17 @@ mod tests {
             &main,
             &aim,
         ]);
-        assert!(all.tsx && all.raycast);
+        assert!(all.tsx && all.raycast && !all.hyphens);
         assert_eq!(all.files, [main.clone(), aim.clone()]);
+        assert!(write(&[&main, &page]).hyphens);
+        // An engine component the game imports writes classes too.
+        let wrap = engine.join("src/ui/components/hud/wrap.tsx");
+        std::fs::write(
+            &wrap,
+            "export const W = () => <p class=\"hyphens-auto\" />;\n",
+        )
+        .unwrap();
+        assert!(write(&[&main, &wrap]).hyphens);
         assert_eq!(
             all.tables.into_iter().collect::<Vec<_>>(),
             vec![("@ui/components/hud/bar.en.ogt".to_string(), table)]

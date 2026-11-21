@@ -2472,8 +2472,9 @@ A pack also carries the hyphenation dictionaries of its languages
 (`<lang>.hyph`, listed under `hyphenation` in its `extension.json`):
 `latin` 27 and `cyrillic-greek` 7 of hypher's hyph-utf8 tries (MIT, from
 TeX's patterns; `make-packs.py` fetches them). The cook puts a dictionary
-in the pack's index (`hyphenation:<lang>`) only when the game's documents
-or style sheets declare `hyphens: auto` and one of its string tables'
+in the pack's index (`hyphenation:<lang>`) only when a module the game's
+bundle holds (its own or an engine component it imports) writes a
+`hyphens-auto` class, or a style sheet declares `hyphens: auto`, and one of its string tables'
 locales (else `en`) takes that language, so a game without automatic
 hyphenation ships none. A shipped locale whose pack has no dictionary
 for it is warned of at cook; its text breaks only at soft hyphens.

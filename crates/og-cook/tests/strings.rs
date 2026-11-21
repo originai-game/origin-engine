@@ -308,15 +308,15 @@ fn a_font_pack_indexes_its_faces_and_leaves_other_fonts_alone() {
     assert!(out.bytes <= 2 * 1024, "index {} bytes", out.bytes);
 }
 
-/// docs/ui.md §3.4: a font pack's hyphenation dictionaries (CSS
-/// `hyphens: auto`) ship in its cooked index only when the game's
-/// style sheets declare `hyphens: auto`, and only for the locales its string
+/// docs/ui.md §3.4: a font pack's hyphenation dictionaries ship in its
+/// cooked index only when the game's code writes a `hyphens-auto` class
+/// (the code graph's `hyphens`), and only for the locales its string
 /// tables name; a shipped locale whose pack has no dictionary for it is
 /// warned of, and still cooks.
 ///
 /// Ways it could fail: every pack language's dictionary shipped (a
-/// German or Hungarian one in an English game), a game without `hyphens:
-/// auto` paying for them, a dictionary's bytes changed on the way, or a
+/// German or Hungarian one in an English game), a game without
+/// `hyphens-auto` paying for them, a dictionary's bytes changed on the way, or a
 /// locale left without hyphenation silently.
 #[test]
 fn a_font_pack_ships_hyphenation_dictionaries_only_for_the_games_locales() {
@@ -335,13 +335,19 @@ fn a_font_pack_ships_hyphenation_dictionaries_only_for_the_games_locales() {
     for l in ["en", "de", "vi"] {
         files.push((format!("strings/{l}.ogt"), table(l, &[])));
     }
-    let sheet = |css: &str| format!("p {{ {css} }}\n").into_bytes();
-    let dictionaries = |name: &str, css: &str| {
-        let mut all = files.clone();
-        all.push(("ui/t/main.css".into(), sheet(css)));
-        let all: Vec<(&str, Vec<u8>)> = all.iter().map(|(p, b)| (p.as_str(), b.clone())).collect();
+    // `hyphens`: the code graph read a `hyphens-auto` class in the code.
+    let dictionaries = |name: &str, hyphens: bool| {
+        let all: Vec<(&str, Vec<u8>)> =
+            files.iter().map(|(p, b)| (p.as_str(), b.clone())).collect();
         let root = project(name, &all);
-        let report = cook_project(&root, &CookOptions::default()).unwrap();
+        let options = CookOptions {
+            code: og_cook::cook::CodeGraph {
+                hyphens,
+                ..Default::default()
+            },
+            ..CookOptions::default()
+        };
+        let report = cook_project(&root, &options).unwrap();
         assert!(report.ok(), "{:?}", report.errors());
         let bundle = Bundle::open(&root.join("cooked")).unwrap();
         let id = "fonts/latin/extension.json";
@@ -351,7 +357,7 @@ fn a_font_pack_ships_hyphenation_dictionaries_only_for_the_games_locales() {
         (shipped, report.warnings)
     };
 
-    let (shipped, warnings) = dictionaries("hyphens-auto", "hyphens: auto;");
+    let (shipped, warnings) = dictionaries("hyphens-auto", true);
     let languages: Vec<&str> = shipped.iter().map(|(l, _)| l.as_str()).collect();
     assert_eq!(languages, ["en", "de"]);
     for (l, bytes) in &shipped {
@@ -368,7 +374,7 @@ fn a_font_pack_ships_hyphenation_dictionaries_only_for_the_games_locales() {
         "{warnings:?}"
     );
 
-    let (shipped, warnings) = dictionaries("hyphens-manual", "hyphens: manual;");
+    let (shipped, warnings) = dictionaries("hyphens-manual", false);
     assert!(shipped.is_empty());
     assert!(
         !warnings.iter().any(|w| w.contains("hyphens")),

@@ -595,9 +595,9 @@ pub(crate) fn diagnose(
             }
         }
     }
-    // `hyphens: auto` in a locale its pack has no dictionary for, and a
+    // Hyphenation in a locale its pack has no dictionary for, and a
     // locale written without spaces that no pack carries a dictionary for.
-    for (rel, what) in font_pack::check_hyphenation(sources)
+    for (rel, what) in font_pack::check_hyphenation(sources, &options.code)
         .into_iter()
         .chain(font_pack::check_segmentation(sources))
     {

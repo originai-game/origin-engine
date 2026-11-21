@@ -31,6 +31,10 @@ pub struct References {
     /// Every name the code reads: identifiers it references and the
     /// properties it reads by name (`og.render.raycast` reads `raycast`).
     pub names: BTreeSet<String>,
+    /// The text between the substitutions of each template with some
+    /// (`p-2 ${x} hyphens-auto` holds `p-2 ` and ` hyphens-auto`): what a
+    /// class list built in a template writes, which is no asset path.
+    pub fragments: Vec<String>,
 }
 
 /// Parse instead of matching source text: comments, escapes, regex literals,
@@ -184,6 +188,12 @@ impl<'a> Visit<'a> for Visitor<'_> {
                 value: value.into(),
                 range: t.span.start as usize..t.span.end as usize,
             });
+        } else {
+            self.refs.fragments.extend(
+                t.quasis
+                    .iter()
+                    .filter_map(|q| q.value.cooked?.as_str().map(str::to_owned)),
+            );
         }
         walk::walk_template_literal(self, t);
     }
