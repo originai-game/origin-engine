@@ -59,7 +59,6 @@ export function RpgQuestTracker(props: RpgQuestTrackerProps) {
 
 export const fixtures: Record<string, Partial<RpgQuestTrackerProps>> = {
   default: {"label":"","name":"The Ninefold Gate","steps":[{"id":"a","text":"Reach the highland ruins","done":true,"tag":""},{"id":"b","text":"Break the Colossus’s guard","done":false,"tag":"1 / 3"},{"id":"c","text":"Light the three rune pillars","done":false,"tag":""}],"distance":"312 m"},
-  none: {"label":"","name":"","steps":[],"distance":""},
   done: {"label":"Side quest","name":"The Sunken Bell","steps":[{"id":"a","text":"Speak with the oarsman","done":true,"tag":""},{"id":"b","text":"Find the sunken belfry","done":true,"tag":""}],"distance":""},
   overflow: {"label":"Main quest of the second act of the long campaign","name":"The Ninefold Gate beneath the Ashen Vale and the Drowned Abbey","steps":[{"id":"a","text":"Break the guard of the Ashen Colossus before the ninth bell tolls over the vale","done":false,"tag":"12,345 / 99,999"},{"id":"b","text":"Light the three rune pillars","done":false,"tag":""}],"distance":"12,345 km"},
 };

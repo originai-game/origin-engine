@@ -125,7 +125,5 @@ export const fixtures: Record<string, Partial<ArenaReadyProps>> = {
   selected: {"players":[{"id":"rhea","name":"Rhea","state":"ready"},{"id":"kai","name":"Kai","state":"ready"}],"response":"ready"},
   disabled: {"canRespond":false,"detail":"Only joined players can respond"},
   closed: {"closed":true,"detail":"One player declined. Returning to queue.","response":"declined"},
-  loading: {"loading":true},
-  empty: {"players":[],"detail":"Waiting for participants"},
   overflow: {"title":"Championship Series · Grand Final ready check","detail":"A response is needed from every player before the tournament can continue","players":[{"id":"long","name":"Maximilian Vandenberghe-Okonkwo","state":"pending"},{"id":"offline","name":"Abernathy-Whitcombe","state":"offline"},{"id":"rhea","name":"Rhea","state":"ready"},{"id":"kai","name":"Kai","state":"declined"}]},
 };

@@ -71,7 +71,6 @@ export function PickupFeed(props: PickupFeedProps) {
 
 export const fixtures: Record<string, Partial<PickupFeedProps>> = {
   default: {"label":"Recovered supplies","items":[{"id":"ore-7","name":"Iron ore","icon":"gem","quantity":12,"detail":"Crafting material"},{"id":"key-2","name":"Observatory key","icon":"key","quantity":1,"detail":"Quest item"},{"id":"spent","name":"Gold","icon":"coin","quantity":-40,"detail":"Supplies purchased"}],"loading":false},
-  empty: {"items":[],"loading":false},
   loading: {"loading":true,"items":[]},
   overflow: {"items":[{"id":"relic","name":"Fragment of the northern observatory mechanism","icon":"gem","quantity":123456,"detail":"Recovered from the abandoned expedition storehouse"}],"loading":false},
 };

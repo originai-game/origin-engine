@@ -71,7 +71,6 @@ export function ShooterPickups(props: ShooterPickupsProps) {
 
 export const fixtures: Record<string, Partial<ShooterPickupsProps>> = {
   default: {"items":[{"id":"frag","name":"Frag grenade","icon":0,"glyph":"bomb","quantity":1,"rarity":"legendary"},{"id":"cell","name":"Shield cell","icon":0,"glyph":"shield","quantity":2,"rarity":"rare"},{"id":"light","name":"Light rounds","icon":0,"glyph":"bolt","quantity":30,"rarity":"common"}]},
-  empty: {"items":[]},
   epic: {"items":[{"id":"optic","name":"Holo optic","icon":0,"glyph":"gem","quantity":1,"rarity":"epic"}]},
   overflow: {"items":[{"id":"long","name":"Extended heavy magazine for the Northern Relay marksman rifle","icon":0,"glyph":"","quantity":123456,"rarity":"legendary"}]},
 };

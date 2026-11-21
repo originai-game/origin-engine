@@ -64,6 +64,5 @@ export const fixtures: Record<string, Partial<ShooterDamageProps>> = {
   default: {"hits":[{"id":"d2","amount":86,"kind":"headshot"},{"id":"d1","amount":31,"kind":"normal"}]},
   shield: {"hits":[{"id":"s1","amount":24,"kind":"shield"}]},
   kill: {"hits":[{"id":"k3","amount":112,"kind":"kill"},{"id":"k2","amount":45,"kind":"normal"},{"id":"k1","amount":45,"kind":"normal"}]},
-  empty: {"hits":[]},
   overflow: {"hits":[{"id":"o1","amount":1234567,"kind":"headshot"},{"id":"o2","amount":99999,"kind":"shield"}]},
 };

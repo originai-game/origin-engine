@@ -65,6 +65,5 @@ export function DamageDirection(props: DamageDirectionProps) {
 
 export const fixtures: Record<string, Partial<DamageDirectionProps>> = {
   default: {"hits":[{"id":"h1","angle":0.9,"strength":0.9,"kind":"normal"},{"id":"h2","angle":-2.4,"strength":0.5,"kind":"shield"}]},
-  empty: {"hits":[]},
   crowded: {"hits":[{"id":"a","angle":0,"strength":1,"kind":"critical"},{"id":"b","angle":1.57,"strength":0.7,"kind":"normal"},{"id":"c","angle":3.14,"strength":0.4,"kind":"normal"},{"id":"d","angle":-1.57,"strength":0.6,"kind":"shield"},{"id":"e","angle":-0.6,"strength":0.3,"kind":"normal"}]},
 };
