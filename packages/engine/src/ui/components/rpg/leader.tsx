@@ -1,6 +1,7 @@
 import type { Texture } from "@origingame/engine";
-import { For, Icon, Image, Show, Text, View, formatNumber, t } from "@origingame/engine/ui";
+import { Show, Text, View, formatNumber, t } from "@origingame/engine/ui";
 import { HudBar } from "../hud/bar";
+import { HudPortrait } from "../hud/portrait";
 import "./leader.en.ogt";
 
 export interface RpgLeaderProps {
@@ -42,18 +43,9 @@ export function RpgLeader(props: RpgLeaderProps) {
   const low = () => props.healthMax > 0 && props.health <= props.healthMax * (props.low ?? 0.25);
   return (
     <View class={`flex-row items-center gap-x-[0.857rem] w-[23.571rem] max-w-full text-fg text-stroke-3 text-stroke-bg compact:gap-x-2 compact:w-full`} role="group" label={props.name !== "" ? props.name : t("rpg.party.health")}>
-      {/* Portrait: a large HudPortrait, lifted off the scene; the octagon
-          cut stands in as a square plate with a lit edge. */}
-      <View class="shrink-0 p-[2px] bg-[#ffffff59] shadow-[0px_5px_10px_#000000a6] size-[4.857rem] compact:size-[3.143rem]">
-        <View class="relative size-full overflow-hidden bg-[#1e2637e5]">
-          <Show when={props.portrait} fallback={
-              <View class="absolute inset-0 flex-row items-center justify-center">
-                <Icon class="size-1/2 text-fg-muted" name="person" />
-              </View>
-          }>
-            <Image class="absolute inset-0 size-full" src={props.portrait} />
-          </Show>
-        </View>
+      {/* Portrait: the HUD's portrait block. */}
+      <View class="shrink-0">
+        <HudPortrait portrait={props.portrait} dimmed={false} />
       </View>
       {/* Body: the name and level take the row first, the figure at its
           end; the bars, each shorter and thinner than the one above. */}

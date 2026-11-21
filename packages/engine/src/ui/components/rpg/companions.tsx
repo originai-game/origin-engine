@@ -1,6 +1,7 @@
 import type { Texture } from "@origingame/engine";
-import { For, Icon, Image, Show, Text, View, t } from "@origingame/engine/ui";
+import { For, Show, Text, View, t } from "@origingame/engine/ui";
 import { HudBar } from "../hud/bar";
+import { HudPortrait } from "../hud/portrait";
 import "./rpg.en.ogt";
 
 export interface RpgCompanionsProps {
@@ -39,14 +40,7 @@ export function RpgCompanions(props: RpgCompanionsProps) {
           data-low={isLow(props, m())}
         >
           <View class={`row-span-3 self-center compact:hidden`}>
-            <View
-              class={`group/portrait relative size-[2.714rem] overflow-hidden rounded-[0.571rem] bg-[#171f30d6] shadow-[inset_0px_0px_0px_1px_#ffffff29] justify-center items-center data-dimmed:opacity-45`}
-              data-dimmed={m().fallen}
-            >
-              <Show when={m().portrait !== 0} fallback={<Icon class={`size-3/4 text-fg group-data-dimmed/portrait:text-fg-subtle`} name="person" />}>
-                <Image class={`size-full`} src={m().portrait} label="" />
-              </Show>
-            </View>
+            <HudPortrait portrait={m().portrait} dimmed={m().fallen} />
           </View>
           <View class={`flex-row items-baseline min-w-0 gap-1`}>
             <Text class={`shrink text-[1.071rem] font-semibold whitespace-nowrap overflow-hidden text-ellipsis compact:text-[0.929rem]`}>
