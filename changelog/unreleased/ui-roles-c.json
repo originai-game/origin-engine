@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "Hud, world and inspector components",
+      "summary": "The hud and world components and the inspector write theme steps and roles only, where they wrote brackets, literal colours and opacity modifiers: sizes and type steps (text-2xs to text-8xl, display-sm, reading, caption), leadings (tight, snug, normal, flat), radii (control, field, button, block, capsule), named shadows and rings (plate, float, key, raise, glow, inset-shadow-lit/sunk/lip, ring-rim/rim-strong/entry-hi/key-fg/shade-deep/well/gold/knob/warn/danger/critical/foe/mana/ally/xp/info/accent/late/sheen/knob) and grounds and inks by role (sheen, scrim, surface, raised-pressed, fg-muted, fg-subtle, rim, rim-strong, rim-soft, gold, gold-hi, gold-fg, success, danger, warn, foe, ally, mana, critical, late, xp, info, hud, hud-accent, tile, well, glass, lit, entry-hi, entry-grain). What a pack can restyle is a role, not a value. Data-driven inline widths are unchanged."
+    }
+  ]
+}

@@ -43,11 +43,11 @@ export interface InspectorProps {
 const TABS = [["entities", "Entities"], ["resources", "Resources"], ["ui", "UI"]] as const;
 
 const BOX: Record<Box["kind"], string> = {
-  bound: "border-danger/90",
-  margin: "border-warn/45",
-  border: "border-gold/55",
-  padding: "border-success/60",
-  content: "border-transparent bg-info/45",
+  bound: "border-danger",
+  margin: "border-warn",
+  border: "border-gold",
+  padding: "border-success",
+  content: "border-transparent bg-info",
 };
 
 /** A toolbar button: quiet, or primary while `on`. */
@@ -72,7 +72,7 @@ function Tool(props: { label: string; on?: boolean | undefined; quiet?: boolean 
 function Chevron(props: { open: boolean }) {
   return (
     <Line
-      class="size-4 shrink-0 stroke-fg-muted stroke-[1.75]"
+      class="size-4 shrink-0 stroke-fg-muted stroke-2"
       viewBox={[14, 14]}
       points={props.open ? [3.4, 5.3, 7, 9, 10.6, 5.3] : [5.3, 3.4, 9, 7, 5.3, 10.6]}
     />
