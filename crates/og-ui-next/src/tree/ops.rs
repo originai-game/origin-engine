@@ -687,6 +687,17 @@ impl Tree {
     }
 }
 
+/// An op node as the probe lists it ([`Tree::dump_ops`]).
+#[derive(Clone, Debug, PartialEq)]
+pub struct OpNode<'a> {
+    pub id: u32,
+    pub parent: u32,
+    pub node: Id,
+    pub rect: [f32; 4],
+    pub shown: bool,
+    pub text: &'a str,
+}
+
 impl Tree {
     /// The accessibility update to send `client` after this frame, when
     /// what it shows changed: the arena's nodes with their semantics, at
@@ -705,6 +716,46 @@ impl Tree {
             scale,
         };
         client.update(&self.arena, &self.sem, focus, viewport)
+    }
+
+    /// Every live op node, for the probe: its op id, its op parent's (0 at
+    /// a mount's top), its arena node, its box on screen (x, y, width,
+    /// height) as last painted, whether it shows, and its text.
+    pub fn dump_ops(&self) -> Vec<OpNode<'_>> {
+        self.els
+            .iter()
+            .enumerate()
+            .filter(|(_, el)| !el.dead && el.js != NONE)
+            .filter_map(|(e, el)| {
+                let &(x, y, shown, _) = self.abs.get(e)?;
+                let b = self.arena.box_of(el.node);
+                let parent = match el.parent {
+                    NONE => 0,
+                    p => self.els[p as usize].js,
+                };
+                Some(OpNode {
+                    id: el.js,
+                    parent,
+                    node: el.node,
+                    rect: [x, y, b.w, b.h],
+                    shown,
+                    text: &el.text,
+                })
+            })
+            .collect()
+    }
+
+    /// The accessibility tree now, built whole ([`a11y::snapshot`]), with
+    /// the focus where input put it: each arena node's facts and the focus
+    /// order. For readers that ask once (the probe).
+    pub fn a11y_snapshot(&self) -> (rustc_hash::FxHashMap<Id, a11y::Facts>, Vec<Id>) {
+        let (width, height) = self.env.size.get();
+        let viewport = a11y::Viewport {
+            width,
+            height,
+            scale: 1.0,
+        };
+        a11y::snapshot(&self.arena, &self.sem, self.focused(), viewport)
     }
 
     /// The viewport the tree lays out in, CSS px.
@@ -1110,6 +1161,22 @@ mod tests {
             (&"status".into(), &"polite".into(), &true.into())
         );
         assert!(t.a11y(&mut client, None, 1.0).is_none(), "nothing changed");
+        // The probe's view: every op node that shows, by op id, with its
+        // op parent, box and text.
+        let ops = t.dump_ops();
+        let at = |id: u32| ops.iter().find(|n| n.id == id).unwrap();
+        assert_eq!((at(2).parent, at(3).parent, at(1).parent), (1, 2, 0));
+        assert_eq!(
+            (at(2).node as u64, at(2).rect, at(3).text),
+            (two, [0.0, 0.0, 50.0, 20.0], "Play")
+        );
+        assert!(!at(5).shown, "a placeholder takes no room");
+        let (facts, order) = t.a11y_snapshot();
+        let f = &facts[&(two as Id)];
+        assert_eq!((f.role, f.name.as_str()), ("button", "Play"));
+        assert!(f.states.contains(&"focusable") && !f.states.contains(&"focused"));
+        assert_eq!(order, [two as Id], "the status is not focusable");
+        assert_eq!(facts[&(four as Id)].role, "status");
         let mut b = Batch::default();
         b.op(10).u32(2);
         t.apply(&b.bytes()).unwrap();

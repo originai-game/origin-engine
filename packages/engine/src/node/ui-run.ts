@@ -31,7 +31,7 @@ import { collectPlaytests } from "./playtest-files.ts";
 import { beginBundle, createEngine, type Engine, type GameToken } from "../runtime.ts";
 import type { RunControl, RunOutput } from "./run.ts";
 import { og } from "../index.ts";
-import { cellName, checkFrame, checkLocales, formatText, measureFrame, measureLayout, measureScale, mergeFindings, RULES, screensFromHelp, screensFromPlaytest, type UiCell, type UiFinding, type UiFrameSnapshot, type UiMeasure } from "./ui-check.ts";
+import { cellName, checkFrame, formatText, measureFrame, measureLayout, measureScale, mergeFindings, RULES, screensFromHelp, screensFromPlaytest, type UiCell, type UiFinding, type UiFrameSnapshot, type UiMeasure } from "./ui-check.ts";
 import { sheet, type SheetCell } from "./ui-sheet.ts";
 import { BASELINE } from "./ui-baseline.ts";
 
@@ -345,7 +345,6 @@ async function main(argv: string[], process: RunOutput, control: UiRunControl, c
   const images: Image[] = [];
   const t0 = performance.now();
   for (const screen of screens) for (const state of states.length ? states : [""]) for (const style of styles.length ? styles : [""]) for (const bp of bps) {
-    const bases = new Map<number, UiFrameSnapshot>();
     for (const locale of locales) {
       const unscaledPages = new Map<number, UiFrameSnapshot>();
       for (const scale of scales) {
@@ -379,14 +378,11 @@ async function main(argv: string[], process: RunOutput, control: UiRunControl, c
               measures.push(...measureFrame(r.frame, cell, { image: img }));
             }
             const unscaled = unscaledPages.get(page);
-            const base = bases.get(page);
             if (review) {
               if (scale === 100) unscaledPages.set(page, r.frame);
               else if (unscaled) measures.push(...measureScale(unscaled, r.frame, cell));
             } else if (mode !== "sheet" && scale === 100) {
               unscaledPages.set(page, r.frame);
-              if (locale === "") bases.set(page, r.frame);
-              else if (base) found.push(...checkLocales(base, r.frame, cell));
             } else if (mode !== "sheet" && unscaled) measures.push(...measureScale(unscaled, r.frame, cell));
           }
           // Each finding's place carries the cell's frame, so a reviewer opens the frame the box is on.

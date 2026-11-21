@@ -134,6 +134,9 @@ fn frame(engine: u32) -> Value {
             _ => None,
         })
         .collect();
+    // The TSX UI's nodes, in CSS px already, and its focus order: the a11y
+    // block below is theirs.
+    let (next, focus_order) = og_runtime::ui_next_dump(engine);
     let elements: Vec<Value> = ui
         .elements()
         .iter()
@@ -142,8 +145,8 @@ fn frame(engine: u32) -> Value {
             (e.x, e.y, e.width, e.height) = (e.x * u, e.y * u, e.width * u, e.height * u);
             e.to_json()
         })
+        .chain(next.iter().map(|e| e.to_json()))
         .collect();
-    let a11y = ui.a11y();
     json!({
         "viewport": {
             "width": vp.width * u, "height": vp.height * u, "dpr": vp.dpr / u,
@@ -181,11 +184,11 @@ fn frame(engine: u32) -> Value {
         "a11y": {
             // Off: the screen took the pad itself (og.ui.setNavigation(false)).
             "navigation": ui.navigation(),
-            "focused": a11y.focused,
-            "focusOrder": a11y.focus_order,
-            "nodes": a11y.nodes.iter().map(|n| json!({
-                "path": n.path, "parent": n.parent, "role": n.role, "name": n.name,
-                "states": n.states, "rect": [n.x * u, n.y * u, n.width * u, n.height * u],
+            "focused": next.iter().find(|e| e.states.iter().any(|s| s == "focused")).map_or("", |e| e.path.as_str()),
+            "focusOrder": focus_order,
+            "nodes": next.iter().filter(|e| !e.role.is_empty()).map(|e| json!({
+                "path": e.path, "role": e.role, "states": e.states,
+                "rect": [e.x, e.y, e.width, e.height],
             })).collect::<Vec<_>>(),
         },
         "motion": ui.motion_dump().iter().map(|m| json!({

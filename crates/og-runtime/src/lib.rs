@@ -357,6 +357,18 @@ pub fn ui_a11y_action(engine: u32, request: serde_json::Value) -> bool {
     og_input::InputSink::inject(&mut og_input::InputLayer::new(), world, &event)
 }
 
+/// The new core's TSX nodes as the probe lists them, and its focus order
+/// as their paths: `og ui check` reads them (og-host-node `og_node_ui_frame`).
+pub fn ui_next_dump(engine: u32) -> (Vec<og_probe::UiElement>, Vec<String>) {
+    let Ok(eng) = engine::engine(engine) else {
+        return Default::default();
+    };
+    let Ok(rs) = eng.render.try_borrow() else {
+        return Default::default();
+    };
+    rs.ui_next.as_ref().map(|n| n.op_dump()).unwrap_or_default()
+}
+
 /// The binary, host-neutral retained UI protocol.
 pub fn og_engine_ui_patch(world: u32, bytes: &[u8]) -> Vec<u8> {
     match shared_ui(world) {

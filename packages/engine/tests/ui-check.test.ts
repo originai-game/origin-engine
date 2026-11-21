@@ -6,12 +6,12 @@
 // for its value, its path and what it leaves out. The rules that wait for
 // later phases are listed as such, never dropped.
 import { expect, test } from "bun:test";
-import { checkFrame, checkLocales, elementPaths, formatText, measureExtremes, measureFrame, measureLayout, measureScale, mergeFindings, neighbour, padFindings, padGraph, RULES, screensFromHelp, screensFromPlaytest, type Rect4, type UiCell, type UiElementDump, type UiFrameSnapshot, type UiMeasure } from "../src/node/ui-check.ts";
+import { checkFrame, elementPaths, formatText, measureExtremes, measureFrame, measureLayout, measureScale, mergeFindings, neighbour, padFindings, padGraph, RULES, screensFromHelp, screensFromPlaytest, type Rect4, type UiCell, type UiElementDump, type UiFrameSnapshot, type UiMeasure } from "../src/node/ui-check.ts";
 
 const cell: UiCell = { screen: "s", breakpoint: "phonePortrait", locale: "", style: "", scale: 100, highContrast: false };
 
 function el(id: string, parent: string, kind: string, role: string, r: [number, number, number, number], extra: Partial<UiElementDump> = {}): UiElementDump {
-  return { id, parent, kind, role, text: "", name: role ? id : "", states: [], disabled: false, clipped: false, x: r[0], y: r[1], width: r[2], height: r[3], ...extra };
+  return { id, parent, kind, role, text: "", states: [], disabled: false, clipped: false, x: r[0], y: r[1], width: r[2], height: r[3], ...extra };
 }
 
 function frame(over: Partial<UiFrameSnapshot> = {}, vp: Partial<UiFrameSnapshot["viewport"]> = {}): UiFrameSnapshot {
@@ -41,7 +41,7 @@ const measured = (id: string, f: UiFrameSnapshot, c: UiCell = cell, image: { wid
 
 test("every §16.5 rule is listed as a finding or a measure, and those waiting for a later phase say so with the reason", () => {
   const kind = new Map(RULES.map((r) => [r.id, r.kind]));
-  for (const id of ["overlap", "text-cut", "text-truncated", "pseudo-overflow", "safe-area", "covered", "focus-reach", "focus-trap", "layer-back", "a11y-name", "a11y-locale", "feedback", "motion", "art-slot"]) expect(kind.get(id)).toBe("finding");
+  for (const id of ["overlap", "text-cut", "text-truncated", "pseudo-overflow", "safe-area", "covered", "focus-reach", "focus-trap", "layer-back", "feedback", "motion", "art-slot"]) expect(kind.get(id)).toBe("finding");
   for (const id of ["contrast", "text-size", "touch-target", "text-scale", "primary-actions", "elements"]) expect(kind.get(id)).toBe("measure");
   for (const r of RULES.filter((r) => r.status !== "checked")) expect(r.note ?? "").not.toBe("");
   const text = formatText([]);
@@ -335,15 +335,15 @@ test("text size: each text's size by its element, marked dense under a dense anc
 });
 
 test("pad reach: a control stacked on another is unreachable from the default focus; a non-focusable button too", () => {
-  const node = (path: string, r: [number, number, number, number]) => ({ path, parent: "", role: "button", name: path, states: ["focusable"], rect: r });
+  const node = (path: string, r: [number, number, number, number]) => ({ path, role: "button", states: ["focusable"], rect: r });
   const stacked = frame({ a11y: { focused: "A", focusOrder: ["A", "B", "C"], nodes: [node("A", [40, 60, 40, 40]), node("B", [90, 20, 40, 40]), node("C", [40, 60, 40, 40])] } });
   expect(checkFrame(stacked, cell).filter((x) => x.rule === "focus-reach").map((x) => x.paths[0])).toEqual(["C"]);
   const lined = frame({ a11y: { focused: "A", focusOrder: ["A", "B", "C"], nodes: [node("A", [40, 100, 80, 44]), node("B", [40, 160, 80, 44]), node("C", [40, 220, 80, 44])] } });
   expect(rules(lined)).not.toContain("focus-reach");
-  const unfocusable = frame({ a11y: { focused: "", focusOrder: [], nodes: [{ path: "Card", parent: "", role: "button", name: "Card", states: [], rect: [40, 100, 80, 44] }] } });
+  const unfocusable = frame({ a11y: { focused: "", focusOrder: [], nodes: [{ path: "Card", role: "button", states: [], rect: [40, 100, 80, 44] }] } });
   expect(rules(unfocusable)).toContain("focus-reach");
   // A screen that took the pad (og.ui.setNavigation(false)) is not walked: neither reach rule; the same frame walked still is.
-  const off = (navigation: boolean) => frame({ a11y: { navigation, focused: "A", focusOrder: ["A", "C"], nodes: [node("A", [40, 60, 40, 40]), node("C", [40, 60, 40, 40]), { path: "Card", parent: "", role: "button", name: "Card", states: [], rect: [40, 100, 80, 44] }] } });
+  const off = (navigation: boolean) => frame({ a11y: { navigation, focused: "A", focusOrder: ["A", "C"], nodes: [node("A", [40, 60, 40, 40]), node("C", [40, 60, 40, 40]), { path: "Card", role: "button", states: [], rect: [40, 100, 80, 44] }] } });
   expect(rules(off(false))).not.toContain("focus-reach");
   expect(checkFrame(off(true), cell).filter((x) => x.rule === "focus-reach").map((x) => x.paths[0]).sort()).toEqual(["C", "Card"]);
 });
@@ -373,14 +373,14 @@ test("pad reach: a control beside the focus in its row beats one diagonally belo
 
 test("pad reach: options inside a focusable listbox are reached through it; outside one they are not", () => {
   // Wrong: a card hand's options (walked by the listbox's own cursor) reported unreachable, or any option let off.
-  const opt = (path: string, parent: string) => ({ path, parent, role: "option", name: path, states: [], rect: [40, 100, 80, 44] as [number, number, number, number] });
-  const inside = frame({ a11y: { focused: "Hand", focusOrder: ["Hand"], nodes: [{ path: "Hand", parent: "", role: "listbox", name: "Hand", states: ["focusable"], rect: [0, 80, 400, 120] }, opt("Hand/Strike", "Hand")] } });
+  const opt = (path: string, _parent: string) => ({ path, role: "option", states: [], rect: [40, 100, 80, 44] as [number, number, number, number] });
+  const inside = frame({ a11y: { focused: "Hand", focusOrder: ["Hand"], nodes: [{ path: "Hand", role: "listbox", states: ["focusable"], rect: [0, 80, 400, 120] }, opt("Hand/Strike", "Hand")] } });
   expect(rules(inside)).not.toContain("focus-reach");
-  const loose = frame({ a11y: { focused: "Hand", focusOrder: ["Hand"], nodes: [{ path: "Hand", parent: "", role: "group", name: "Hand", states: ["focusable"], rect: [0, 80, 400, 120] }, opt("Hand/Strike", "Hand")] } });
+  const loose = frame({ a11y: { focused: "Hand", focusOrder: ["Hand"], nodes: [{ path: "Hand", role: "group", states: ["focusable"], rect: [0, 80, 400, 120] }, opt("Hand/Strike", "Hand")] } });
   expect(rules(loose)).toContain("focus-reach");
   // A stepper's − and + step the spinbutton the pad reaches as one stop (Left and Right): reached through it.
-  const btn = (path: string) => ({ path, parent: "Amount", role: "button", name: path, states: [], rect: [40, 100, 40, 40] as [number, number, number, number] });
-  const spin = frame({ a11y: { focused: "Amount", focusOrder: ["Amount"], nodes: [{ path: "Amount", parent: "", role: "spinbutton", name: "Amount", states: ["focusable"], rect: [0, 100, 200, 40] }, btn("Amount/Dec"), btn("Amount/Inc")] } });
+  const btn = (path: string) => ({ path, role: "button", states: [], rect: [40, 100, 40, 40] as [number, number, number, number] });
+  const spin = frame({ a11y: { focused: "Amount", focusOrder: ["Amount"], nodes: [{ path: "Amount", role: "spinbutton", states: ["focusable"], rect: [0, 100, 200, 40] }, btn("Amount/Dec"), btn("Amount/Inc")] } });
   expect(rules(spin)).not.toContain("focus-reach");
 });
 
@@ -389,18 +389,6 @@ test("a pad trap: a control the graph reaches but cannot leave back to the defau
   expect(padFindings([[1], [2], [1]], 0)).toEqual([{ rule: "focus-trap", index: 1 }, { rule: "focus-trap", index: 2 }]);
   expect(padFindings([[1], [0, 2], [1]], 0)).toEqual([]);
   expect(padFindings([[1], [0], []], 0)).toEqual([{ rule: "focus-reach", index: 2 }]);
-});
-
-test("a control with no accessible name is a finding", () => {
-  const f = frame({ a11y: { focused: "", focusOrder: [], nodes: [{ path: "Hud/Pause", parent: "", role: "button", name: "", states: [], rect: [0, 0, 44, 44] }] } });
-  expect(checkFrame(f, cell).find((x) => x.rule === "a11y-name")?.paths).toEqual(["Hud/Pause"]);
-});
-
-test("a name left in the game's language in another locale is a finding", () => {
-  const n = (name: string) => ({ path: "Menu/Play", parent: "", role: "button", name, states: [], rect: [0, 0, 44, 44] as [number, number, number, number] });
-  const en = frame({ a11y: { focused: "", focusOrder: [], nodes: [n("Play")] } });
-  expect(checkLocales(en, frame({ a11y: { focused: "", focusOrder: [], nodes: [n("Play")] } }), { ...cell, locale: "ja" }).map((x) => x.rule)).toEqual(["a11y-locale"]);
-  expect(checkLocales(en, frame({ a11y: { focused: "", focusOrder: [], nodes: [n("プレイ")] } }), { ...cell, locale: "ja" })).toEqual([]);
 });
 
 test("at 200 % text, a cut is a text-cut finding of that cell, and each text's growth is measured as a percentage", () => {

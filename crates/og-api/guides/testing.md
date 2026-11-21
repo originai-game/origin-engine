@@ -157,6 +157,13 @@ it once. Read state before guessing at it:
 - `dump_world`, `dump_entity:<name>`, `dump_ui`: what the world, an entity
   and the UI hold right now. Name entities: a dump of anonymous ids is
   hard to read and impossible to query by name.
+- `dump_ui` lists each node of a TSX UI that shows: `id` (the renderer's
+  node id), `parent`, `path` (the ids from the top, what `touch_move_to`
+  and the captures name), its box (`x`, `y`, `width`, `height`, CSS px)
+  and `text`. A control a player operates (a button, link, checkbox,
+  slider, tab, a focusable node) also has its `role`, its `name` where
+  that differs from its text, and among its `states` `disabled`,
+  `checked` and `focused`.
 - Something not on screen: `og probe visible '{"id": "door"}'` (or
   `dump_entity`'s `visible`) says whether the main camera draws it and
   why, as a reason code: `drawn`, `hlod`, `hidden` (with the `visible`

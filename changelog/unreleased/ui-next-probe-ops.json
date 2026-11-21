@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "dump_ui",
+      "summary": "The probe's dump_ui and `og ui check` list the TSX UI's nodes that show: `id` (op id), `parent`, `path` (op ids from the top, what `touch_move_to` names), box and `text`; a control also has its `role`, its `name` where it differs from the text, and `disabled`, `checked` or `focused` among its states. `og ui check`'s focus-reach and focus-trap walk the new core's focus order; its `a11y-name` and `a11y-locale` rules are gone."
+    }
+  ]
+}

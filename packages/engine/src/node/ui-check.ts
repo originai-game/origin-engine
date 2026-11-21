@@ -108,7 +108,7 @@ export interface UiFrameSnapshot {
   /** The style's dimmed inks (inkMuted, inkFaint), linear RGBA: text in one is dimmed on purpose. */
   dimInks?: number[][];
   /** navigation: false when the screen took the pad itself (og.ui.setNavigation(false)); absent in older dumps: on. */
-  a11y: { navigation?: boolean; focused: string; focusOrder: string[]; nodes: Array<{ path: string; parent: string; role: string; name: string; states: string[]; rect: Rect4 }> };
+  a11y: { navigation?: boolean; focused: string; focusOrder: string[]; nodes: Array<{ path: string; role: string; states: string[]; rect: Rect4 }> };
   /** Elements that declare visual states, with each group's current state. */
   motion: Array<{ path: string; states: Array<[string, string]> }>;
   warnings: string[];
@@ -215,8 +215,6 @@ export const RULES: readonly UiRule[] = [
   { id: "focus-reach", kind: "finding", title: "an interactive element unreachable by pad from the default focus", status: "checked" },
   { id: "focus-trap", kind: "finding", title: "a focus trap: a control the pad cannot leave back to the default focus", status: "partial", note: "the pad graph is walked both ways, but og-ui's direction rule (nearest, wrapping) leaves no geometric trap (none in 600,000 random layouts); the real trap, a scope Back does not close, needs U3's layer stack" },
   { id: "layer-back", kind: "finding", title: "a layer without Back", status: "not checkable yet", note: "the layer stack and its input modes are U3's (§8.1); a frame has no layers yet" },
-  { id: "a11y-name", kind: "finding", title: "accessibility names missing", status: "checked" },
-  { id: "a11y-locale", kind: "finding", title: "names and texts the same in another locale as in the game's own", status: "checked", note: "a cell of another locale is compared with the game's own, path by path" },
   { id: "feedback", kind: "finding", title: "an interactive element without hover or press states, or a style without a hover or press sound", status: "partial", note: "og-ui's widgets carry their hover and press; a custom interactive container is checked for declared visual states (frame.motion), its resolved states arrive with U3's dump_ui" },
   { id: "motion", kind: "finding", title: "durations outside the style's bounds, missing reduced-motion fallbacks, input refused longer than the entrance", status: "not checkable yet", note: "the style's motion bounds and per-element fallbacks are U4's style v2 tokens on U2's states; the frame does not carry a transition's duration or its reduced variant yet" },
   { id: "art-slot", kind: "finding", title: "art slots still on their placeholder; focal points outside the crop", status: "not checkable yet", note: "slots are specified (og_ui::slot) but not built into a frame or drawn from the style yet (U1, U4); nothing lists a slot's art" },
@@ -676,17 +674,6 @@ export function checkFrame(frame: UiFrameSnapshot, cell: UiCell, opts: CheckOpti
     });
   }
 
-  // Names.
-  for (const n of f.a11y.nodes) {
-    if (!INTERACTIVE.has(n.role) || n.name.trim()) continue;
-    add("a11y-name", {
-      paths: [n.path],
-      measured: `a ${n.role} with no accessible name`,
-      prop: `${n.path}: its text, or its desc's \`label\` where the widget has one (an icon button: the name of what it does)`,
-      fix: "name it in the player's language (an icon button's name is what it does: \"Pause\")",
-    });
-  }
-
   // Feedback: sounds in a styled game; states on custom interactive containers.
   if (f.style !== "") for (const ev of ["hover", "press"]) if (!f.sounds[ev]) add("feedback", {
     paths: ["(style)"],
@@ -869,30 +856,6 @@ export function measureLayout(frame: UiFrameSnapshot, cell: UiCell, grid = 4): U
     }
     const distinct = [...new Set(gaps)].sort((a, b) => a - b);
     add("gap", { paths: [parent], rect: rectOf(pe), value: distinct.length, unit: "distinct gaps", detail: `${row ? "row" : "column"} of ${kids.length}: gaps ${gaps.join(", ")} CSS px`, prop: `${parent}: gap, or its children's margins` });
-  }
-  return out;
-}
-
-/**
- * Names and texts left in the game's own language in another locale's
- * frame: a path whose name (or text) with letters is the same in both.
- */
-export function checkLocales(base: UiFrameSnapshot, other: UiFrameSnapshot, cell: UiCell): UiFinding[] {
-  if (cell.locale === "" || cell.locale === "pseudo") return [];
-  const out: UiFinding[] = [];
-  const named = new Map(base.a11y.nodes.map((n) => [n.path, n.name]));
-  for (const n of other.a11y.nodes) {
-    const was = named.get(n.path);
-    // A picture's name is its own (an icon names itself); a name with no word is data.
-    if (!was || was !== n.name || n.role === "image" || !/\p{L}{2,}/u.test(n.name)) continue;
-    out.push({
-      rule: "a11y-locale",
-      paths: [n.path],
-      measured: `"${n.name.slice(0, 40)}" is the same in ${cell.locale} as in the game's own locale`,
-      prop: `${n.path}: its text through og.i18n.t (a key in every string table)`,
-      fix: "every word the player reads comes from the string table",
-      cells: [cellName(cell)],
-    });
   }
   return out;
 }

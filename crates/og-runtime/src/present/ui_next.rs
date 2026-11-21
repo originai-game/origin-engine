@@ -10,12 +10,12 @@
 
 use og_reactive::reactive::session::{Command, Session};
 use og_ui_next::look::{Layer, Look};
-use og_ui_next::queue;
 use og_ui_next::pack::{Pack, Scheme};
+use og_ui_next::queue;
 use og_ui_next::tree::{Resolve, Tree};
 use serde_json::{Map, Value, json};
-use std::collections::BTreeMap;
 use std::cell::RefCell;
+use std::collections::BTreeMap;
 use std::rc::Rc;
 
 /// A mirrored keyed collection: its key field and rows in order.
@@ -155,7 +155,11 @@ fn pack_layer(engine: u32, id: &str) -> Option<og_ui_next::pack::Layer> {
 type SizeClass = (u8, bool, bool);
 
 fn size_class(widths: &[f32], [w, h]: [f32; 2]) -> SizeClass {
-    (widths.iter().filter(|&&x| w >= x).count() as u8, h < 500.0, w > h)
+    (
+        widths.iter().filter(|&&x| w >= x).count() as u8,
+        h < 500.0,
+        w > h,
+    )
 }
 
 /// The op nodes' class resolver: the default pack with style `pack`'s
@@ -188,9 +192,11 @@ fn resolver(engine: u32, pack: Option<&str>, dark: bool, window: [f32; 2]) -> (R
     // The tree asks for an entry's state records (motion's `starting:`
     // and `exit:`; the input's); the inline style lies over the classes.
     let resolve: Resolve = Box::new(move |class, style, states| {
-        classes
-            .borrow_mut()
-            .record_styled(class, style, &og_ui_next::classes::Env { states, ..env })
+        classes.borrow_mut().record_styled(
+            class,
+            style,
+            &og_ui_next::classes::Env { states, ..env },
+        )
     });
     (resolve, widths)
 }
@@ -204,7 +210,11 @@ impl Next {
         let window = [v.width, v.height];
         let dark = self.scheme == og_ui::Scheme::Dark;
         let at = size_class(&self.widths, window);
-        if self.resolved.as_ref().is_some_and(|(p, d, c)| *p == self.pack && *d == dark && *c == at) {
+        if self
+            .resolved
+            .as_ref()
+            .is_some_and(|(p, d, c)| *p == self.pack && *d == dark && *c == at)
+        {
             return;
         }
         let (resolve, widths) = resolver(engine, self.pack.as_deref(), dark, window);
@@ -760,7 +770,7 @@ impl Next {
     ) -> Option<og_ui_next::a11y::accesskit::TreeUpdate> {
         let tree = self.tree.as_ref()?;
         let css = tree.size().0.max(1.0);
-        tree.a11y(client, None, width as f32 / css)
+        tree.a11y(client, tree.focused(), width as f32 / css)
     }
 
     /// The spans as the probe's timings name them.
@@ -794,7 +804,108 @@ impl Next {
                 height,
                 ..Default::default()
             })
+            .chain(Self::op_elements(tree).0)
             .collect()
+    }
+
+    /// The TSX renderer's nodes that show, and the focus order as their
+    /// paths, with the accessibility tree built whole now (only when the
+    /// probe asks). Each is what a game-making agent reads: its op id, its
+    /// `path` of op ids (what `touch_move_to` and the captures name), its
+    /// box and text; a control's `role`; `disabled`, `checked` and
+    /// `focused` among its states; its name only where its text is not it.
+    fn op_elements(tree: &Tree) -> (Vec<og_probe::UiElement>, Vec<String>) {
+        /// The roles a player operates: what the model may press or move.
+        const CONTROLS: &[&str] = &[
+            "button",
+            "link",
+            "checkbox",
+            "radio",
+            "switch",
+            "slider",
+            "textbox",
+            "combobox",
+            "option",
+            "tab",
+            "spinbutton",
+            "menuitem",
+            "listbox",
+            "grid",
+            "tree",
+            "radiogroup",
+        ];
+        const STATES: &[&str] = &["disabled", "checked", "focused"];
+        let (facts, order) = tree.a11y_snapshot();
+        let ops = tree.dump_ops();
+        let parent: std::collections::HashMap<u32, u32> =
+            ops.iter().map(|n| (n.id, n.parent)).collect();
+        let path = |mut id: u32| {
+            let mut ids = vec![id];
+            while let Some(&p) = parent.get(&id).filter(|&&p| p != 0) {
+                ids.push(p);
+                id = p;
+            }
+            ids.iter()
+                .rev()
+                .map(u32::to_string)
+                .collect::<Vec<_>>()
+                .join("/")
+        };
+        let by_node: std::collections::HashMap<_, _> = ops.iter().map(|n| (n.node, n.id)).collect();
+        let order = order
+            .iter()
+            .filter_map(|node| by_node.get(node).map(|&id| path(id)))
+            .collect();
+        let elements = ops
+            .iter()
+            .filter(|n| n.shown)
+            .map(|n| {
+                let f = facts.get(&n.node);
+                let control = f
+                    .is_some_and(|f| CONTROLS.contains(&f.role) || f.states.contains(&"focusable"));
+                let [x, y, width, height] = n.rect;
+                og_probe::UiElement {
+                    id: n.id.to_string(),
+                    parent: if n.parent == 0 {
+                        String::new()
+                    } else {
+                        n.parent.to_string()
+                    },
+                    path: path(n.id),
+                    text: n.text.into(),
+                    role: f.filter(|_| control).map_or("", |f| f.role).into(),
+                    name: f
+                        .filter(|f| control && f.name != n.text)
+                        .map_or(String::new(), |f| f.name.clone()),
+                    states: f.map_or(Vec::new(), |f| {
+                        let mut s: Vec<String> = f
+                            .states
+                            .iter()
+                            .filter(|s| STATES.contains(s))
+                            .map(|s| s.to_string())
+                            .collect();
+                        s.dedup();
+                        s
+                    }),
+                    disabled: f.is_some_and(|f| f.states.contains(&"disabled")),
+                    x,
+                    y,
+                    width,
+                    height,
+                    ..Default::default()
+                }
+            })
+            .collect();
+        (elements, order)
+    }
+
+    /// The new core's op nodes as the probe lists them, and the focus
+    /// order as their paths: for `og ui check`.
+    pub(crate) fn op_dump(&self) -> (Vec<og_probe::UiElement>, Vec<String>) {
+        self.tree
+            .as_ref()
+            .map(Self::op_elements)
+            .unwrap_or_default()
     }
 
     /// What `__runtime_probe__` reads beside the timings.
@@ -884,8 +995,16 @@ mod tests {
         assert_ne!(light, pack.theme(Scheme::Dark)["colors"]["surface"]);
         let (resolve, _) = resolver(u32::MAX, None, true, [1280.0, 720.0]);
         let starting = og_ui_next::classes::state::STARTING;
-        assert_eq!(resolve("opacity-50 starting:opacity-0", "", 0).skin.opacity, 0.5);
-        assert_eq!(resolve("opacity-50 starting:opacity-0", "", starting).skin.opacity, 0.0);
+        assert_eq!(
+            resolve("opacity-50 starting:opacity-0", "", 0).skin.opacity,
+            0.5
+        );
+        assert_eq!(
+            resolve("opacity-50 starting:opacity-0", "", starting)
+                .skin
+                .opacity,
+            0.0
+        );
         // The op's inline style is over its classes.
         assert_eq!(resolve("opacity-50", "opacity: 0.25", 0).skin.opacity, 0.25);
     }
