@@ -27,7 +27,7 @@ export function HudTimer(props: HudTimerProps) {
   const critical = () => (props.countdown ?? false) && props.seconds <= (props.warnAt ?? 0) / 3;
   return (
     <View
-      class={`flex-col items-center gap-y-[0.143rem] border-rim bg-linear-to-b from-plate-hi to-plate-lo shadow-plate py-2 px-4 data-paused:opacity-60 text-fg ${packClass("Plate", "frame")}`}
+      class={`flex-col items-center gap-y-0.5 border-rim bg-linear-to-b from-plate-hi to-plate-lo shadow-plate py-2 px-4 data-paused:opacity-60 text-fg ${packClass("Plate", "frame")}`}
       role="timer"
       label={props.label || t("component.hud-timer.name")}
       valueText={formatDuration(props.seconds)}
@@ -36,7 +36,7 @@ export function HudTimer(props: HudTimerProps) {
       data-paused={props.paused}
     >
       <Show when={props.label}>
-        <Text class="text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap opacity-80 text-shadow-2xs">{props.label}</Text>
+        <Text class="text-xs font-semibold tracking-label uppercase whitespace-nowrap opacity-80 text-shadow-2xs">{props.label}</Text>
       </Show>
       <View class="flex-row items-center gap-1">
         <Show when={(props.countdown ?? false) && (props.total ?? 0) > 0}>

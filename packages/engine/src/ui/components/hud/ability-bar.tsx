@@ -25,7 +25,7 @@ export function AbilityBar(props: AbilityBarProps) {
     <View class={`flex-row flex-wrap items-start justify-center p-0 m-0 gap-1 data-column:flex-col data-column:flex-nowrap`} role="toolbar" label={t("component.ability-bar.name")} data-column={props.column}>
       <For each={props.slots}>
         {(s) => (
-        <View class="shrink basis-16 w-16 min-w-[3.143rem] items-center gap-2">
+        <View class="shrink basis-16 w-16 min-w-11 items-center gap-2">
           <AbilitySlot icon={s().icon} name={s().name} action={s().action} hotkey={s().hotkey} cooldown={s().cooldown} cooldownMax={s().cooldownMax} charges={0} maxCharges={0} count={s().count ?? 0} cost={s().cost} unaffordable={s().unaffordable} outOfRange={false} active={s().active} locked={s().locked} disabled={false} ultimate={-1} level={0} maxLevel={0} fit={true} onUse={(e) => props.onUse?.(e, s().id)} />
         </View>
         )}

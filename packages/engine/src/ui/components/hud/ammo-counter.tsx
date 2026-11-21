@@ -40,7 +40,7 @@ export function AmmoCounter(props: AmmoCounterProps) {
     (props.mode ?? "auto") == "auto" || ((props.mode ?? "auto") == "burst" && i < 2) || ((props.mode ?? "auto") == "single" && i < 1);
   return (
     <View
-      class={`flex-col items-end gap-y-[0.357rem] w-[16.429rem] max-w-full text-fg compact:w-auto compact:gap-y-[0.143rem]`}
+      class={`flex-col items-end gap-y-1.25 w-57.5 max-w-full text-fg compact:w-auto compact:gap-y-0.5`}
       role="group"
       label={t("shooter.ammo.name")}
       valueText={t("shooter.ammo.value", { magazine: props.magazine, capacity: props.capacity, reserve: props.reserve })}
@@ -49,66 +49,66 @@ export function AmmoCounter(props: AmmoCounterProps) {
     >
       <Show when={(props.secondary ?? "") != ""}>
         <View class="flex-row items-center gap-1 max-w-full min-w-0 opacity-80">
-          <Text class="text-[0.857rem] font-semibold tracking-[0.14em] uppercase text-fg/78 whitespace-nowrap truncate text-shadow-2xs text-stroke-3 text-stroke-bg min-w-0">{props.secondary}</Text>
+          <Text class="text-xs font-semibold tracking-label uppercase text-fg/78 whitespace-nowrap truncate text-shadow-2xs text-stroke-3 text-stroke-bg min-w-0">{props.secondary}</Text>
           <Show when={(props.secondaryAmmo ?? -1) >= 0}>
-            <Text class="shrink-0 text-[1.143rem] font-bold tabular-nums whitespace-nowrap text-fg text-shadow-2xs text-stroke-3 text-stroke-bg compact:text-[0.929rem]">{formatNumber(props.secondaryAmmo ?? 0)}</Text>
+            <Text class="shrink-0 text-base font-bold tabular-nums whitespace-nowrap text-fg text-shadow-2xs text-stroke-3 text-stroke-bg compact:text-caption">{formatNumber(props.secondaryAmmo ?? 0)}</Text>
           </Show>
           <Show when={(props.secondaryKey ?? "") != ""}>
-            <Text class={`shrink max-w-1/2 min-w-[1.429rem] py-0 px-1 text-[0.857rem] leading-[1.5] font-bold text-center text-key-fg bg-linear-to-b from-white to-key-hi rounded-[0.286rem] shadow-[0px_0.143rem_0px_#0000008c,inset_0px_-0.143rem_0px_#0000002e] whitespace-nowrap truncate pointer-coarse:hidden`}>
+            <Text class={`shrink max-w-1/2 min-w-5 py-0 px-1 text-xs leading-[1.5] font-bold text-center text-key-fg bg-linear-to-b from-white to-key-hi rounded-control shadow-[0px_0.143rem_0px_#0000008c,inset_0px_-0.143rem_0px_#0000002e] whitespace-nowrap truncate pointer-coarse:hidden`}>
               {props.secondaryKey}
             </Text>
           </Show>
         </View>
       </Show>
       <View class="flex-row items-baseline gap-2 max-w-full">
-        <Text class="min-w-0 text-[5.429rem] leading-[0.9] font-bold tabular-nums whitespace-nowrap text-fg text-shadow-2xs text-stroke-3 text-stroke-bg data-low:text-warn data-empty:text-foe compact:text-[2.571rem]" data-low={low()} data-empty={empty()}>
+        <Text class="min-w-0 text-[5.429rem] leading-[0.9] font-bold tabular-nums whitespace-nowrap text-fg text-shadow-2xs text-stroke-3 text-stroke-bg data-low:text-warn data-empty:text-foe compact:text-5xl" data-low={low()} data-empty={empty()}>
           {formatNumber(props.magazine)}
         </Text>
-        <Text class="shrink-0 text-[2rem] leading-none font-bold tabular-nums whitespace-nowrap text-fg/66 text-shadow-2xs text-stroke-3 text-stroke-bg compact:text-[1.143rem]">{formatNumber(props.reserve)}</Text>
+        <Text class="shrink-0 text-display-sm leading-none font-bold tabular-nums whitespace-nowrap text-fg/66 text-shadow-2xs text-stroke-3 text-stroke-bg compact:text-base">{formatNumber(props.reserve)}</Text>
       </View>
       <Show when={props.capacity > 0}>
         <Show
           when={props.capacity > 60}
           fallback={
-            <View class="flex-row gap-x-[0.143rem] w-full max-w-full h-[1rem] compact:h-[0.429rem]">
+            <View class="flex-row gap-x-0.5 w-full max-w-full h-3.5 compact:h-1.5">
               <For each={Array.from({ length: Math.min(props.capacity, 60) }, (_, i) => i)}>
                 {(i) => <View class="flex-1 h-full bg-white/22 data-on:bg-white" data-on={i() < props.magazine} />}
               </For>
             </View>
           }
         >
-          <View class="relative w-full max-w-full h-[0.429rem] bg-white/22">
+          <View class="relative w-full max-w-full h-1.5 bg-white/22">
             <View class="absolute left-0 top-0 h-full bg-white transition-layout duration-180 ease-out" style={{ width: `${Math.min(Math.max(props.magazine / props.capacity, 0), 1) * 100}%` }} />
           </View>
         </Show>
       </Show>
       <View class="flex-row items-center gap-1 max-w-full min-w-0 compact:flex-wrap compact:justify-end">
-        <View class="flex-row shrink-0 gap-x-[0.214rem] compact:hidden" data-auto={(props.mode ?? "auto") == "auto"} data-burst={(props.mode ?? "auto") == "burst"} data-single={(props.mode ?? "auto") == "single"}>
+        <View class="flex-row shrink-0 gap-x-0.75 compact:hidden" data-auto={(props.mode ?? "auto") == "auto"} data-burst={(props.mode ?? "auto") == "burst"} data-single={(props.mode ?? "auto") == "single"}>
           <For each={[0, 1, 2]}>
-            {(i) => <View class="w-[0.714rem] h-[0.286rem] bg-white/22 data-lit:bg-hud data-lit:shadow-[0px_0px_0.429rem_#38e8ff]" data-lit={lit(i())} />}
+            {(i) => <View class="w-2.5 h-1 bg-white/22 data-lit:bg-hud data-lit:shadow-[0px_0px_0.429rem_#38e8ff]" data-lit={lit(i())} />}
           </For>
         </View>
-        <Text class="min-w-0 text-[0.857rem] font-semibold tracking-[0.14em] uppercase text-fg whitespace-nowrap truncate text-shadow-2xs text-stroke-3 text-stroke-bg">{props.weapon}</Text>
+        <Text class="min-w-0 text-xs font-semibold tracking-label uppercase text-fg whitespace-nowrap truncate text-shadow-2xs text-stroke-3 text-stroke-bg">{props.weapon}</Text>
         <Show when={(props.mode ?? "auto") == "auto"}>
-          <Text class="shrink-0 text-[0.857rem] font-semibold tracking-[0.14em] uppercase text-fg/66 text-shadow-2xs text-stroke-3 text-stroke-bg">{t("shooter.ammo.auto")}</Text>
+          <Text class="shrink-0 text-xs font-semibold tracking-label uppercase text-fg/66 text-shadow-2xs text-stroke-3 text-stroke-bg">{t("shooter.ammo.auto")}</Text>
         </Show>
         <Show when={(props.mode ?? "auto") == "burst"}>
-          <Text class="shrink-0 text-[0.857rem] font-semibold tracking-[0.14em] uppercase text-fg/66 text-shadow-2xs text-stroke-3 text-stroke-bg">{t("shooter.ammo.burst")}</Text>
+          <Text class="shrink-0 text-xs font-semibold tracking-label uppercase text-fg/66 text-shadow-2xs text-stroke-3 text-stroke-bg">{t("shooter.ammo.burst")}</Text>
         </Show>
         <Show when={(props.mode ?? "auto") == "single"}>
-          <Text class="shrink-0 text-[0.857rem] font-semibold tracking-[0.14em] uppercase text-fg/66 text-shadow-2xs text-stroke-3 text-stroke-bg">{t("shooter.ammo.single")}</Text>
+          <Text class="shrink-0 text-xs font-semibold tracking-label uppercase text-fg/66 text-shadow-2xs text-stroke-3 text-stroke-bg">{t("shooter.ammo.single")}</Text>
         </Show>
       </View>
       <Show when={(props.reloading ?? -1) >= 0}>
         <View class="flex-row items-center gap-1 w-full">
-          <Text class="text-[0.857rem] font-semibold tracking-[0.14em] uppercase text-fg/78 whitespace-nowrap text-shadow-2xs text-stroke-3 text-stroke-bg">{t("shooter.ammo.reloading")}</Text>
-          <View class="flex-1 h-[0.286rem] overflow-hidden bg-track shadow-[0px_0px_0px_1px_#ffffff38,inset_0px_1px_0px_0px_#ffffff24]">
+          <Text class="text-xs font-semibold tracking-label uppercase text-fg/78 whitespace-nowrap text-shadow-2xs text-stroke-3 text-stroke-bg">{t("shooter.ammo.reloading")}</Text>
+          <View class="flex-1 h-1 overflow-hidden bg-track shadow-[0px_0px_0px_1px_#ffffff38,inset_0px_1px_0px_0px_#ffffff24]">
             <View class="h-full bg-hud transition-layout duration-180 ease-out" style={{ width: `${Math.min(props.reloading ?? 0, 1) * 100}%` }} />
           </View>
         </View>
       </Show>
       <Show when={props.magazine <= 0 && (props.reloading ?? -1) < 0}>
-        <Text class="text-[0.857rem] font-semibold tracking-[0.14em] uppercase text-foe animate-pulse text-shadow-2xs text-stroke-3 text-stroke-bg">{t("shooter.ammo.empty")}</Text>
+        <Text class="text-xs font-semibold tracking-label uppercase text-foe animate-pulse text-shadow-2xs text-stroke-3 text-stroke-bg">{t("shooter.ammo.empty")}</Text>
       </Show>
     </View>
   );

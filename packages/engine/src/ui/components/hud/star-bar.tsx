@@ -50,8 +50,8 @@ export function StarBar(props: StarBarProps) {
         </Show>
         <Text class="text-[27.36px] font-bold tabular-nums whitespace-nowrap text-fg text-shadow-xs group-data-compact/starbar:text-[20.64px]">{props.valueText || formatNumber(props.value ?? 0)}</Text>
       </View>
-      <View class={`relative group-data-compact/starbar:w-[10rem] w-[14.286rem] group-data-compact/starbar:h-6 h-8`}>
-        <View class="absolute inset-x-4 top-3 h-2 overflow-hidden rounded-capsule bg-bg-subtle group-data-compact/starbar:inset-x-3 group-data-compact/starbar:top-[10px] group-data-compact/starbar:h-1">
+      <View class={`relative group-data-compact/starbar:w-35 w-50 group-data-compact/starbar:h-6 h-8`}>
+        <View class="absolute inset-x-4 top-3 h-2 overflow-hidden rounded-capsule bg-bg-subtle group-data-compact/starbar:inset-x-3 group-data-compact/starbar:top-2.5 group-data-compact/starbar:h-1">
           <View class="h-full bg-gold" style={{ width: `${((props.value ?? 0) / max()) * 100}%` }} />
         </View>
         <For each={stars()} key={(star) => star.id}>
@@ -61,7 +61,7 @@ export function StarBar(props: StarBarProps) {
               data-lit={lit(star().at)}
               style={{ left: `calc(${star().at} * (100% - ${props.compact ? "1.5rem" : "2rem"}))` }}
             >
-              <Icon class={`size-[74%] ${lit(star().at) ? "text-gold" : "text-fg-muted"}`} name="star" />
+              <Icon class={`size-37/50 ${lit(star().at) ? "text-gold" : "text-fg-muted"}`} name="star" />
             </View>
           )}
         </For>

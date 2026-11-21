@@ -44,15 +44,15 @@ export function OverlayBar(props: OverlayBarProps) {
         {(o) => (
           <Show when={o().id === (props.selected ?? "")}>
             <View
-              class={`flex-col w-[20rem] max-w-full gap-y-[0.286rem] border-rim bg-linear-to-b from-plate-hi to-plate-lo shadow-plate rounded-block border py-2 px-3`}
+              class={`flex-col w-70 max-w-full gap-y-1 border-rim bg-linear-to-b from-plate-hi to-plate-lo shadow-plate rounded-block border py-2 px-3`}
               role="status"
               label={`${o().name}: ${o().low ?? ""} – ${o().high ?? ""}`}
             >
-              <Text class="text-[1rem] font-semibold whitespace-nowrap text-fg text-shadow-xs">{o().name}</Text>
+              <Text class="text-sm font-semibold whitespace-nowrap text-fg text-shadow-xs">{o().name}</Text>
               <View class="h-2 w-full rounded-[0.143rem]" style={{ background: `linear-gradient(90deg, ${o().ramp ?? ""})` }} />
-              <View class="flex-row w-full gap-x-[0.857rem]">
-                <Text class="min-w-0 text-[0.857rem] font-semibold tracking-[0.14em] uppercase text-fg-muted text-shadow-xs">{o().low ?? ""}</Text>
-                <Text class="min-w-0 flex-1 text-end text-[0.857rem] font-semibold tracking-[0.14em] uppercase text-fg-muted text-shadow-xs">{o().high ?? ""}</Text>
+              <View class="flex-row w-full gap-x-3">
+                <Text class="min-w-0 text-xs font-semibold tracking-label uppercase text-fg-muted text-shadow-xs">{o().low ?? ""}</Text>
+                <Text class="min-w-0 flex-1 text-end text-xs font-semibold tracking-label uppercase text-fg-muted text-shadow-xs">{o().high ?? ""}</Text>
               </View>
             </View>
           </Show>
@@ -70,15 +70,15 @@ export function OverlayBar(props: OverlayBarProps) {
                 onPress={(e) => props.onChoose?.(e, o().id)}
               >
                 <Show when={o().image} fallback={
-                  <View class="size-12 flex-col items-center justify-center rounded-[0.286rem] bg-tile border border-rim-soft">
+                  <View class="size-12 flex-col items-center justify-center rounded-control bg-tile border border-rim-soft">
                     <Show when={o().icon}>
                       <Icon class="size-6 text-fg" name={o().icon} />
                     </Show>
                   </View>
                 }>
-                  <Image class="size-12 rounded-[0.286rem]" src={o().image} />
+                  <Image class="size-12 rounded-control" src={o().image} />
                 </Show>
-                <Text class="text-[0.929rem] font-semibold whitespace-nowrap text-fg text-shadow-xs">{o().name}</Text>
+                <Text class="text-caption font-semibold whitespace-nowrap text-fg text-shadow-xs">{o().name}</Text>
               </View>
             )}
           </For>

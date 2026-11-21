@@ -59,7 +59,7 @@ export function HudSlot(props: HudSlotProps) {
   const unaffordable = () => props.unaffordable ?? false;
   return (
     <View
-      class={`relative w-fit max-w-full flex-col items-center gap-y-[0.357rem] ${props.class ?? ""}`}
+      class={`relative w-fit max-w-full flex-col items-center gap-y-1.25 ${props.class ?? ""}`}
       role="group"
       label={unaffordable() && (props.reason ?? "") !== "" ? t("hud.slot.state", { name: props.name, state: props.reason }) : props.name}
       data-ultimate={ultimate()}
@@ -69,7 +69,7 @@ export function HudSlot(props: HudSlotProps) {
     >
       <Show when={chargesMax() > 0}>
         <View
-          class="flex-row gap-x-[0.214rem]"
+          class="flex-row gap-x-0.75"
           role="meter"
           label={t("hud.slot.charges")}
           valueMin={0}
@@ -78,7 +78,7 @@ export function HudSlot(props: HudSlotProps) {
         >
           <For each={Array.from({ length: chargesMax() }, (_, i) => i)} key={(i) => i}>
             {(i) => (
-              <View class="relative w-[0.857rem] h-[0.357rem] rounded-[0.071rem] bg-white/22 overflow-hidden">
+              <View class="relative w-3 h-1.25 rounded-[0.071rem] bg-white/22 overflow-hidden">
                 <View
                   class="absolute inset-y-0 left-0 bg-hud-accent shadow-[0px_0px_0.429rem_#38e8ff]"
                   style={{ width: `${Math.min(Math.max(charges() - i(), 0), 1) * 100}%` }}
@@ -93,7 +93,7 @@ export function HudSlot(props: HudSlotProps) {
       >
         <Show when={ultimate()}>
           <View
-            class="absolute inset-0 rounded-full border-[3px] border-white/14 overflow-hidden"
+            class="absolute inset-0 rounded-full border-3 border-white/14 overflow-hidden"
             role="meter"
             label={t("hud.slot.charge")}
             valueMin={0}
@@ -104,7 +104,7 @@ export function HudSlot(props: HudSlotProps) {
           </View>
         </Show>
         <View
-          class={`absolute inset-[0.143rem] rounded-[0.429rem] data-ultimate:inset-[0.429rem] data-ultimate:rounded-capsule overflow-hidden ${ready() ? "bg-linear-to-b from-white to-hud-accent" : "bg-linear-to-b from-white/75 via-white/22 via-45% to-white/14"}`}
+          class={`absolute inset-0.5 rounded-field data-ultimate:inset-1.5 data-ultimate:rounded-capsule overflow-hidden ${ready() ? "bg-linear-to-b from-white to-hud-accent" : "bg-linear-to-b from-white/75 via-white/22 via-45% to-white/14"}`}
           data-ultimate={ultimate()}
         >
           <Show when={(props.icon ?? 0) > 0} fallback={
@@ -124,22 +124,22 @@ export function HudSlot(props: HudSlotProps) {
           </Show>
           <Show when={cooling() && (props.time ?? "") !== ""}>
             <View class="absolute inset-0 flex-row items-center justify-center">
-              <Text class={`${ultimate() ? "text-[1.143rem]" : "text-[1.714rem]"} leading-none font-bold tabular-nums whitespace-nowrap text-fg text-stroke-3 text-stroke-bg text-shadow-2xs`}>{props.time}</Text>
+              <Text class={`${ultimate() ? "text-base" : "text-title"} leading-none font-bold tabular-nums whitespace-nowrap text-fg text-stroke-3 text-stroke-bg text-shadow-2xs`}>{props.time}</Text>
             </View>
           </Show>
           <Show when={unaffordable() && (props.reason ?? "") !== "" && cooldown() <= 0}>
-            <View class="absolute inset-0 flex-row items-center justify-center px-[0.143rem]">
-              <Text class="max-w-full max-h-[84%] text-center text-[0.857rem] leading-none font-bold tracking-normal uppercase whitespace-nowrap overflow-hidden text-mana text-shadow-2xs">{props.reason}</Text>
+            <View class="absolute inset-0 flex-row items-center justify-center px-0.5">
+              <Text class="max-w-full max-h-21/25 text-center text-xs leading-none font-bold tracking-normal uppercase whitespace-nowrap overflow-hidden text-mana text-shadow-2xs">{props.reason}</Text>
             </View>
           </Show>
           <Show when={ultimate() && charge() < 1}>
             <View class="absolute inset-0 flex-row items-center justify-center">
-              <Text class="text-[1.143rem] leading-none font-bold tabular-nums whitespace-nowrap text-fg text-stroke-3 text-stroke-bg text-shadow-2xs">{`${formatNumber(charge() * 100, { decimals: 0 })}%`}</Text>
+              <Text class="text-base leading-none font-bold tabular-nums whitespace-nowrap text-fg text-stroke-3 text-stroke-bg text-shadow-2xs">{`${formatNumber(charge() * 100, { decimals: 0 })}%`}</Text>
             </View>
           </Show>
           <Show when={(props.count ?? 0) > 0}>
             <View class="absolute top-0 right-0">
-              <Text class="max-w-[4.386rem] -mt-[0.429rem] -mr-[0.286rem] bg-surface/88 shadow-[inset_0px_0.071rem_0px_0px_#ffffff38] px-[0.357rem] text-[0.857rem] font-bold tabular-nums whitespace-nowrap leading-[1.4] text-fg rounded-bl-[0.286rem] overflow-hidden">
+              <Text class="max-w-15.25 -mt-1.5 -mr-1 bg-surface/88 shadow-[inset_0px_0.071rem_0px_0px_#ffffff38] px-1.25 text-xs font-bold tabular-nums whitespace-nowrap leading-[1.4] text-fg rounded-bl-control overflow-hidden">
                 {t("hud.slot.count", { count: formatNumber(props.count ?? 0) })}
               </Text>
             </View>
@@ -148,7 +148,7 @@ export function HudSlot(props: HudSlotProps) {
       </View>
       <Show when={(props.key ?? "") !== ""}>
         <Text
-          class={`min-w-[1.714rem] max-w-[4.754rem] px-[0.25rem] pointer-coarse:hidden text-[0.857rem] leading-[1.6] font-bold text-center rounded-[0.286rem] shadow-[0px_0.143rem_0px_#0000008c,inset_0px_-0.143rem_0px_#0000002e] text-shadow-none whitespace-nowrap overflow-hidden ${ultimate() ? "text-gold-fg bg-linear-to-b from-gold-hi to-gold" : "text-key-fg bg-linear-to-b from-white to-key-hi"}`}
+          class={`min-w-6 max-w-16.75 px-1 pointer-coarse:hidden text-xs leading-loose font-bold text-center rounded-control shadow-[0px_0.143rem_0px_#0000008c,inset_0px_-0.143rem_0px_#0000002e] text-shadow-none whitespace-nowrap overflow-hidden ${ultimate() ? "text-gold-fg bg-linear-to-b from-gold-hi to-gold" : "text-key-fg bg-linear-to-b from-white to-key-hi"}`}
         >
           {props.key}
         </Text>

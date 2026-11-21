@@ -29,21 +29,21 @@ export function Celebration(props: CelebrationProps) {
         {() => (
           <View class="absolute inset-0 flex-col items-center justify-center" data-level={level()} data-burst={(props.kind ?? "") == "burst"} data-fireworks={(props.kind ?? "") == "fireworks"}>
             <Show when={level()}>
-              <View class="relative w-[30rem] max-w-full min-h-[20.571rem] flex-col items-center justify-center">
-                <View class="absolute size-[18.857rem] rounded-full border-[0.286rem] border-gold shadow-[0px_0px_1.143rem_#ffd23f,inset_0px_0px_1.143rem_#ffd23f] bg-gold-fg/31 animate-stamp compact:size-[6.8rem]" />
-                <Text class="relative max-w-full mb-3 text-[1.714rem] font-bold tracking-[0.14em] uppercase text-center text-gold animate-stamp">
+              <View class="relative w-105 max-w-full min-h-72 flex-col items-center justify-center">
+                <View class="absolute size-66 rounded-full border-4 border-gold shadow-[0px_0px_1.143rem_#ffd23f,inset_0px_0px_1.143rem_#ffd23f] bg-gold-fg/31 animate-stamp compact:size-23.75" />
+                <Text class="relative max-w-full mb-3 text-title font-bold tracking-label uppercase text-center text-gold animate-stamp">
                   {props.title || t("component.celebration.level-up")}
                 </Text>
                 <Show when={props.value}>
-                  <Text class="relative text-[8.571rem] font-bold tabular-nums leading-flat whitespace-nowrap text-fg shadow-none animate-pop compact:text-[2.429rem]">{props.value}</Text>
+                  <Text class="relative text-[8.571rem] font-bold tabular-nums leading-flat whitespace-nowrap text-fg shadow-none animate-pop compact:text-display-md">{props.value}</Text>
                 </Show>
               </View>
             </Show>
             <Show when={(props.kind ?? "") == "burst"}>
-              <View class="size-16 rounded-full border-[0.286rem] border-white shadow-[0px_0px_0.571rem_#ffffff] animate-ping" />
+              <View class="size-16 rounded-full border-4 border-white shadow-[0px_0px_0.571rem_#ffffff] animate-ping" />
             </Show>
             <Show when={(props.kind ?? "") == "fireworks"}>
-              <View class="absolute top-0 inset-x-0 h-[17.143rem] flex-row justify-between py-0 px-12">
+              <View class="absolute top-0 inset-x-0 h-60 flex-row justify-between py-0 px-12">
                 <View class="size-2 rounded-full bg-gold animate-pop" />
                 <View class="size-2 rounded-full bg-gold animate-pop" />
                 <View class="size-2 rounded-full bg-gold animate-pop" />

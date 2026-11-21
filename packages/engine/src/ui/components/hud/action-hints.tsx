@@ -56,9 +56,9 @@ function HintRow(props: { hold?: boolean; hint: string; action: string; onPress?
       data-action={props.action}
     >
       <Text class={`shrink-0 text-[1.5rem] leading-none`} glyph={props.action} />
-      <Text class="min-w-0 text-start text-[0.857rem] font-semibold tracking-[0.14em] uppercase text-fg-muted whitespace-nowrap truncate">{props.hint}</Text>
+      <Text class="min-w-0 text-start text-xs font-semibold tracking-label uppercase text-fg-muted whitespace-nowrap truncate">{props.hint}</Text>
       <Show when={held()}>
-        <View class="absolute bottom-0 left-0 h-[2px] bg-fg" style={{ width: `${progress() * 100}%` }} />
+        <View class="absolute bottom-0 left-0 h-0.5 bg-fg" style={{ width: `${progress() * 100}%` }} />
       </Show>
     </View>
   );

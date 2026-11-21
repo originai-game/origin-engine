@@ -24,7 +24,7 @@ export function HeroButton(props: HeroButtonProps) {
   const tone = props.tone ?? "";
   return (
     <View
-      class={`group/hero flex-row items-center justify-center min-h-12 w-full max-w-[14.286rem] py-3 px-4 gap-x-3 rounded-[0.857rem] border-2 border-white/12 bg-accent shadow-[0px_3px_0px_#00000073,0px_4px_12px_0px_#00000059] transition duration-150 hover:-translate-y-[1px] active:translate-y-[2px] active:shadow-[0px_1px_0px_#00000073] data-premium:bg-none data-premium:bg-gold data-secondary:bg-none data-secondary:bg-fg-subtle data-danger:bg-none data-danger:bg-danger disabled:translate-y-0 disabled:opacity-50`}
+      class={`group/hero flex-row items-center justify-center min-h-12 w-full max-w-50 py-3 px-4 gap-x-3 rounded-panel border-2 border-white/12 bg-accent shadow-[0px_3px_0px_#00000073,0px_4px_12px_0px_#00000059] transition duration-150 hover:-translate-y-px active:translate-y-0.5 active:shadow-[0px_1px_0px_#00000073] data-premium:bg-none data-premium:bg-gold data-secondary:bg-none data-secondary:bg-fg-subtle data-danger:bg-none data-danger:bg-danger disabled:translate-y-0 disabled:opacity-50`}
       role="button"
       label={props.label}
       disabled={props.disabled}
@@ -33,7 +33,7 @@ export function HeroButton(props: HeroButtonProps) {
       data-secondary={tone === "secondary"}
       data-danger={tone === "danger"}
     >
-      <Text class={`text-[18px] uppercase text-center whitespace-nowrap text-accent-fg group-data-premium/hero:text-fg-inverse group-data-secondary/hero:text-fg-inverse`}>{props.label}</Text>
+      <Text class={`text-lg uppercase text-center whitespace-nowrap text-accent-fg group-data-premium/hero:text-fg-inverse group-data-secondary/hero:text-fg-inverse`}>{props.label}</Text>
       <Show when={props.key}>
         <Text class={`text-caption uppercase text-center whitespace-nowrap text-accent-fg group-data-premium/hero:text-fg-inverse group-data-secondary/hero:text-fg-inverse`}>{props.key}</Text>
       </Show>

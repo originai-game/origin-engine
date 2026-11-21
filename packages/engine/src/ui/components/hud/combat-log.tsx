@@ -27,19 +27,19 @@ export function RpgCombatLog(props: CombatLogProps) {
   return (
     <View class={`flex-col w-full h-full min-h-0 border-rim bg-linear-to-b from-plate-hi to-plate-lo shadow-plate rounded-block border overflow-hidden`} role="log" label={t("rpg.log.name")}>
       <View class="flex-row shrink-0 h-8 items-center px-3">
-        <Text class="text-[1rem] font-semibold whitespace-nowrap text-fg text-shadow-xs">{t("rpg.log.name")}</Text>
+        <Text class="text-sm font-semibold whitespace-nowrap text-fg text-shadow-xs">{t("rpg.log.name")}</Text>
       </View>
       <View class="relative flex-1 min-h-0">
-        <Scroll class="absolute inset-0 pb-[1.143rem]">
+        <Scroll class="absolute inset-0 pb-4">
           <For each={props.lines ?? []} key={(l) => l.id}>
             {(l) => (
               <View
-                class={`group/line flex-col gap-y-[0.143rem] py-1 px-2 ${tone(l().tone)}`}
+                class={`group/line flex-col gap-y-0.5 py-1 px-2 ${tone(l().tone)}`}
                 data-tone-damage={l().tone === "damage"}
                 data-tone-heal={l().tone === "heal"}
                 data-tone-crit={l().tone === "crit"}
               >
-                <Text class={`text-[0.929rem] group-data-tone-damage/line:text-danger group-data-tone-heal/line:text-success group-data-tone-crit/line:text-warn text-shadow-xs`}>{l().text}</Text>
+                <Text class={`text-caption group-data-tone-damage/line:text-danger group-data-tone-heal/line:text-success group-data-tone-crit/line:text-warn text-shadow-xs`}>{l().text}</Text>
                 <Show when={l().detail}>
                   <Text class="pl-3 text-caption text-fg-muted text-shadow-xs">{l().detail}</Text>
                 </Show>
@@ -47,7 +47,7 @@ export function RpgCombatLog(props: CombatLogProps) {
             )}
           </For>
         </Scroll>
-        <View class="absolute inset-x-0 bottom-0 h-[1.143rem] bg-linear-to-t from-plate-lo to-transparent pointer-events-none" />
+        <View class="absolute inset-x-0 bottom-0 h-4 bg-linear-to-t from-plate-lo to-transparent pointer-events-none" />
       </View>
     </View>
   );

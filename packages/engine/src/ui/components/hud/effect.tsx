@@ -29,27 +29,27 @@ export function HudEffect(props: HudEffectProps) {
   const timed = () => (props.remaining ?? -1) >= 0;
   return (
     <View
-      class="group/effect flex-col items-center gap-y-[0.214rem] w-fit max-w-full text-fg"
+      class="group/effect flex-col items-center gap-y-0.75 w-fit max-w-full text-fg"
       role="group"
       label={props.label ? t("hud.effect.label", { name: props.name, label: props.label }) : props.name}
       data-harmful={props.harmful}
     >
-      <View class="relative size-[2.143rem] compact:size-[1.857rem] rounded-tl-[0.357rem] bg-boon group-data-harmful/effect:bg-foe">
+      <View class="relative size-7.5 compact:size-6.5 rounded-tl-[0.357rem] bg-boon group-data-harmful/effect:bg-foe">
         <Show when={props.icon} fallback={
-          <View class="absolute inset-[0.143rem] rounded-tl-[0.357rem] flex-row items-center justify-center bg-raised-lo">
+          <View class="absolute inset-0.5 rounded-tl-[0.357rem] flex-row items-center justify-center bg-raised-lo">
             <Show when={props.glyph}>
-              <Icon class="size-[60%] text-fg" name={props.glyph} />
+              <Icon class="size-3/5 text-fg" name={props.glyph} />
             </Show>
           </View>
         }>
-          <Image class="absolute inset-[0.143rem] rounded-tl-[0.357rem]" src={props.icon} />
+          <Image class="absolute inset-0.5 rounded-tl-[0.357rem]" src={props.icon} />
         </Show>
         <Show when={timed()}>
           <View class="absolute inset-0 nine-tile bg-shade-deep" wipe={1 - Math.min(Math.max(props.remaining ?? 0, 0), 1)} wipeCcw />
         </Show>
       </View>
       <Show when={props.label}>
-        <Text class={`max-w-[4.571rem] py-0 px-[0.357rem] text-[0.857rem] font-bold tabular-nums whitespace-nowrap truncate text-fg text-shadow-2xs nine-chip-cut bg-raised-pressed/88 compact:px-[0.214rem] group-data-harmful/effect:text-foe ${packClass("Chip", "frame")}`}>
+        <Text class={`max-w-16 py-0 px-1.25 text-xs font-bold tabular-nums whitespace-nowrap truncate text-fg text-shadow-2xs nine-chip-cut bg-raised-pressed/88 compact:px-0.75 group-data-harmful/effect:text-foe ${packClass("Chip", "frame")}`}>
           {props.label}
         </Text>
       </Show>

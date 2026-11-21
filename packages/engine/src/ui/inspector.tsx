@@ -123,7 +123,7 @@ export function Inspector(props: InspectorProps) {
         ref={(node) => send({ kind: "panel", value: node.id })}
         role="dialog"
         label="Inspector"
-        class="relative w-[360px] h-full flex-col gap-2 p-3 rounded-lg bg-surface border border-border shadow-panel text-fg pointer-events-auto"
+        class="relative w-90 h-full flex-col gap-2 p-3 rounded-lg bg-surface border border-border shadow-panel text-fg pointer-events-auto"
       >
         <View class="flex-row items-center gap-1">
           <Text class="text-base font-semibold whitespace-nowrap">Inspector</Text>
@@ -170,7 +170,7 @@ export function Inspector(props: InspectorProps) {
           onChange={(e) => changed("input", e.value)}
         />
         <Show when={v().tab === "entities"}>
-          <Scroll role="tree" label="Entities" class="h-[240px] shrink-0 flex-col">
+          <Scroll role="tree" label="Entities" class="h-60 shrink-0 flex-col">
             <For each={v().tree} key={(r) => r.id}>
               {(r) => (
                 <View class="flex-row items-center gap-0.5 shrink-0" style={{ "padding-left": `${r().depth * 12}px` }}>
@@ -244,7 +244,7 @@ export function Inspector(props: InspectorProps) {
                         <View data-on={f().mark} class="size-2 shrink-0 rounded-capsule data-on:bg-fg" />
                         <Text
                           data-tone={f().tone}
-                          class="w-[96px] shrink-0 truncate text-xs text-fg-muted data-[tone=override]:text-info data-[tone=flash]:text-warn"
+                          class="w-24 shrink-0 truncate text-xs text-fg-muted data-[tone=override]:text-info data-[tone=flash]:text-warn"
                           description={f().doc}
                         >
                           {f().name}
@@ -310,7 +310,7 @@ export function Inspector(props: InspectorProps) {
                         </For>
                       </View>
                       <Show when={f().flash}>
-                        <Text class="pl-[112px] text-xs text-warn">changed by the game: a system writes it every tick</Text>
+                        <Text class="pl-28 text-xs text-warn">changed by the game: a system writes it every tick</Text>
                       </Show>
                     </View>
                   )}

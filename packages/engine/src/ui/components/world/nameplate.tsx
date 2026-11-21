@@ -80,7 +80,7 @@ export function Nameplate(props: NameplateProps) {
       lift={[0, props.height ?? 0, 0]}
       declutter="stack"
       occlusion="fade"
-      class="group -translate-x-1/2 -translate-y-full flex-col items-center gap-y-[0.143rem] w-max max-w-full text-fg leading-[1.12]"
+      class="group -translate-x-1/2 -translate-y-full flex-col items-center gap-y-0.5 w-max max-w-full text-fg leading-tight"
       label={props.name}
       data-boss={props.boss}
       data-compact={props.compact}
@@ -93,34 +93,34 @@ export function Nameplate(props: NameplateProps) {
       data-reaction-player={reaction() === "player"}
     >
       <Show when={!props.compact}>
-        <View class="flex-row items-center justify-center gap-x-[0.286rem] max-w-full min-w-0">
+        <View class="flex-row items-center justify-center gap-x-1 max-w-full min-w-0">
           <Show when={level() !== ""} fallback={
             <Show when={props.boss}>
-              <View class="shrink-0 flex-row items-center justify-center h-[1.143rem] w-[1.357rem] nine-chip-cut bg-raised-pressed/88" label={t("world.nameplate.boss")}>
-                <Icon class="size-[0.786rem] text-fg" name="skull" />
+              <View class="shrink-0 flex-row items-center justify-center h-4 w-4.75 nine-chip-cut bg-raised-pressed/88" label={t("world.nameplate.boss")}>
+                <Icon class="size-2.75 text-fg" name="skull" />
               </View>
             </Show>
           }>
-            <View class="shrink-0 flex-row items-center justify-center h-[1.143rem] min-w-[1.357rem] px-[0.286rem] nine-chip-cut bg-raised-pressed/88 group-data-elite:bg-gold group-data-elite:text-gold-fg group-data-dead:opacity-50" label={t("world.nameplate.level", { level: level() })}>
-              <Text class="text-[0.786rem] leading-none font-bold tabular-nums">{level()}</Text>
+            <View class="shrink-0 flex-row items-center justify-center h-4 min-w-4.75 px-1 nine-chip-cut bg-raised-pressed/88 group-data-elite:bg-gold group-data-elite:text-gold-fg group-data-dead:opacity-50" label={t("world.nameplate.level", { level: level() })}>
+              <Text class="text-2xs leading-none font-bold tabular-nums">{level()}</Text>
             </View>
           </Show>
           <Show when={icon() !== ""}>
             <Icon class="shrink-0 size-4" name={icon()} />
           </Show>
-          <Text class="shrink min-w-0 max-w-[10.714rem] text-reading font-semibold whitespace-nowrap truncate text-gold text-shadow-2xs text-stroke-3 text-stroke-bg group-data-reaction-hostile:text-danger group-data-reaction-friendly:text-success group-data-reaction-player:text-hud-accent group-data-boss:max-w-[14.286rem] group-data-boss:text-[1.214rem] group-data-boss:font-bold group-data-boss:tracking-[0.07em] group-data-boss:uppercase group-data-targeted:text-fg group-data-dead:text-fg/45">{props.name}</Text>
+          <Text class="shrink min-w-0 max-w-37.5 text-reading font-semibold whitespace-nowrap truncate text-gold text-shadow-2xs text-stroke-3 text-stroke-bg group-data-reaction-hostile:text-danger group-data-reaction-friendly:text-success group-data-reaction-player:text-hud-accent group-data-boss:max-w-50 group-data-boss:text-[1.214rem] group-data-boss:font-bold group-data-boss:tracking-md group-data-boss:uppercase group-data-targeted:text-fg group-data-dead:text-fg/45">{props.name}</Text>
         </View>
         <Show when={title() !== ""}>
-          <Text class="min-w-0 max-w-[13.571rem] text-[0.75rem] font-semibold tracking-[0.13em] uppercase whitespace-nowrap truncate text-fg/78 text-shadow-2xs group-data-dead:text-fg/45">{title()}</Text>
+          <Text class="min-w-0 max-w-47.5 text-[0.75rem] font-semibold tracking-wide uppercase whitespace-nowrap truncate text-fg/78 text-shadow-2xs group-data-dead:text-fg/45">{title()}</Text>
         </Show>
         <Show when={props.dead && props.lootable}>
-          <Text role="status" class="text-[0.75rem] font-bold tracking-[0.13em] uppercase whitespace-nowrap text-gold text-shadow-2xs">{t("world.nameplate.lootable")}</Text>
+          <Text role="status" class="text-[0.75rem] font-bold tracking-wide uppercase whitespace-nowrap text-gold text-shadow-2xs">{t("world.nameplate.lootable")}</Text>
         </Show>
       </Show>
       <Show when={health() >= 0 && !props.dead}>
-        <View class="relative flex-row items-center gap-x-[0.357rem]">
+        <View class="relative flex-row items-center gap-x-1.25">
           <View
-            class={`relative h-2 w-[8.286rem] bg-track group-data-boss:h-[0.714rem] group-data-boss:w-[14.286rem] group-data-compact:h-[0.429rem] group-data-compact:w-[4.143rem] ${props.targeted ? (elite() ? "shadow-[0px_0px_0px_1.5px_#ffffff,0px_0px_0px_2.5px_#ffd23fb3]" : "shadow-[0px_0px_0px_1.5px_#ffffff,0px_0px_0.714rem_#ffffff59]") : elite() ? "shadow-[0px_0px_0px_1px_#ffd23f,0px_0.143rem_0.429rem_#00000080]" : "shadow-[0px_0px_0px_1px_#ffffff47,0px_0.143rem_0.429rem_#00000080]"}`}
+            class={`relative h-2 w-29 bg-track group-data-boss:h-2.5 group-data-boss:w-50 group-data-compact:h-1.5 group-data-compact:w-14.5 ${props.targeted ? (elite() ? "shadow-[0px_0px_0px_1.5px_#ffffff,0px_0px_0px_2.5px_#ffd23fb3]" : "shadow-[0px_0px_0px_1.5px_#ffffff,0px_0px_0.714rem_#ffffff59]") : elite() ? "shadow-[0px_0px_0px_1px_#ffd23f,0px_0.143rem_0.429rem_#00000080]" : "shadow-[0px_0px_0px_1px_#ffffff47,0px_0.143rem_0.429rem_#00000080]"}`}
             role="meter"
             label={t("world.nameplate.health")}
             valueMin={0}
@@ -135,7 +135,7 @@ export function Nameplate(props: NameplateProps) {
                 <View class="absolute top-0 bottom-0 bg-linear-to-b from-white/55 to-transparent to-42% bg-info" style={{ left: `${hp() * 100}%`, width: `${Math.min(props.shield ?? 0, 1) * 100}%` }} />
               </Show>
               <For each={[1, 2, 3]} key={(i) => i}>
-                {(i) => <View class="absolute top-0 bottom-0 w-[1px] bg-fg/75" style={{ left: `${i() * 25}%` }} />}
+                {(i) => <View class="absolute top-0 bottom-0 w-px bg-fg/75" style={{ left: `${i() * 25}%` }} />}
               </For>
             </View>
             <Show when={low()}>
@@ -149,20 +149,20 @@ export function Nameplate(props: NameplateProps) {
       </Show>
       <Show when={castName() !== "" && !props.compact && !props.dead}>
         <View
-          class="flex-col gap-y-[1px] min-w-36 max-w-[18.286rem] mt-[1px]"
+          class="flex-col gap-y-px min-w-36 max-w-64 mt-px"
           role="status"
           label={castState() === "locked" ? t("world.nameplate.uninterruptible", { spell: castName() }) : castState() === "interrupted" ? t("world.nameplate.interrupted") : t("world.nameplate.casting", { spell: castName() })}
           data-state-locked={castState() === "locked"}
           data-state-interrupted={castState() === "interrupted"}
         >
-          <View class="group/cast flex-row items-center gap-x-[0.429rem] min-w-0 text-[0.821rem] leading-[1.1] font-bold tracking-[0.07em] uppercase whitespace-nowrap text-warn group-data-state-locked:text-fg-muted group-data-state-interrupted:text-fg">
-            <Icon class="shrink-0 -mr-[0.214rem] size-[0.821rem]" name={castState() === "locked" ? "shield" : castState() === "interrupted" ? "close" : "bolt"} />
-            <Text class="grow min-w-0 max-w-[12.143rem] truncate">{castState() === "interrupted" ? t("world.nameplate.interrupted") : castName()}</Text>
+          <View class="group/cast flex-row items-center gap-x-1.5 min-w-0 text-[0.821rem] leading-[1.1] font-bold tracking-md uppercase whitespace-nowrap text-warn group-data-state-locked:text-fg-muted group-data-state-interrupted:text-fg">
+            <Icon class="shrink-0 -mr-0.75 size-2.75" name={castState() === "locked" ? "shield" : castState() === "interrupted" ? "close" : "bolt"} />
+            <Text class="grow min-w-0 max-w-42.5 truncate">{castState() === "interrupted" ? t("world.nameplate.interrupted") : castName()}</Text>
             <Show when={castTime() !== "" && castState() !== "interrupted"}>
               <Text class="shrink-0 tracking-normal tabular-nums text-fg">{castTime()}</Text>
             </Show>
           </View>
-          <View class="relative h-[0.357rem] overflow-hidden bg-track shadow-[0px_0px_0px_1px_#ffb5478c] group-data-state-locked:shadow-[0px_0px_0px_1px_#c6c9d499] group-data-state-interrupted:shadow-[0px_0px_0px_1px_#ff4d5e,0px_0px_0.714rem_#ff4d5ecc]">
+          <View class="relative h-1.25 overflow-hidden bg-track shadow-[0px_0px_0px_1px_#ffb5478c] group-data-state-locked:shadow-[0px_0px_0px_1px_#c6c9d499] group-data-state-interrupted:shadow-[0px_0px_0px_1px_#ff4d5e,0px_0px_0.714rem_#ff4d5ecc]">
             <View class="absolute left-0 top-0 bottom-0 bg-linear-to-r from-warn/45 via-warn via-80% to-white shadow-[0px_0px_0.571rem_#ffb547] group-data-state-locked:bg-linear-to-r group-data-state-locked:from-fg-muted/35 group-data-state-locked:via-fg group-data-state-locked:via-85% group-data-state-locked:to-white group-data-state-locked:shadow-none group-data-state-interrupted:bg-danger group-data-state-interrupted:shadow-none" style={{ width: `${castFill() * 100}%` }} />
           </View>
         </View>

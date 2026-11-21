@@ -31,24 +31,24 @@ export interface PickupFeedProps {
  */
 export function PickupFeed(props: PickupFeedProps) {
   return (
-    <View class={`flex-col max-w-full gap-y-[0.286rem] border-rim bg-linear-to-b from-plate-hi to-plate-lo shadow-plate rounded-block border p-2`} label={(props.label ?? "") !== "" ? props.label : t("hud.pickup-feed.name")} busy={props.loading}>
-      <Text class="text-[0.857rem] font-semibold tracking-[0.14em] uppercase text-fg-muted text-shadow-2xs">{(props.label ?? "") !== "" ? props.label : t("hud.pickup-feed.name")}</Text>
+    <View class={`flex-col max-w-full gap-y-1 border-rim bg-linear-to-b from-plate-hi to-plate-lo shadow-plate rounded-block border p-2`} label={(props.label ?? "") !== "" ? props.label : t("hud.pickup-feed.name")} busy={props.loading}>
+      <Text class="text-xs font-semibold tracking-label uppercase text-fg-muted text-shadow-2xs">{(props.label ?? "") !== "" ? props.label : t("hud.pickup-feed.name")}</Text>
       <Show when={props.loading} fallback={
         <>
-          <View class="flex-col gap-y-[0.143rem]" role="log" live="polite">
+          <View class="flex-col gap-y-0.5" role="log" live="polite">
             <For each={props.items ?? []} key={(item) => item.id}>
               {(item) => (
                 <View class="flex-row items-start gap-x-2">
                   <Show when={item().icon}>
                     <Icon class="shrink-0 size-4 text-fg" name={item().icon} />
                   </Show>
-                  <View class="flex-col flex-1 min-w-0 gap-y-[0.143rem]">
-                    <Text class="text-[0.929rem] whitespace-nowrap truncate text-fg text-shadow-2xs">{item().name}</Text>
+                  <View class="flex-col flex-1 min-w-0 gap-y-0.5">
+                    <Text class="text-caption whitespace-nowrap truncate text-fg text-shadow-2xs">{item().name}</Text>
                     <Show when={item().detail}>
-                      <Text class="text-[0.857rem] text-fg-muted text-shadow-2xs truncate">{item().detail}</Text>
+                      <Text class="text-xs text-fg-muted text-shadow-2xs truncate">{item().detail}</Text>
                     </Show>
                   </View>
-                  <Text class="shrink-0 text-[0.929rem] font-bold tabular-nums whitespace-nowrap text-success text-shadow-2xs data-down:text-danger" data-down={(item().quantity ?? 0) < 0}>
+                  <Text class="shrink-0 text-caption font-bold tabular-nums whitespace-nowrap text-success text-shadow-2xs data-down:text-danger" data-down={(item().quantity ?? 0) < 0}>
                     {(item().quantity ?? 0) > 0 ? "+" : ""}{formatNumber(item().quantity ?? 0)}
                   </Text>
                 </View>
@@ -56,13 +56,13 @@ export function PickupFeed(props: PickupFeedProps) {
             </For>
           </View>
           <Show when={(props.items ?? []).length === 0}>
-            <Text class="text-[0.857rem] text-fg-muted text-shadow-2xs">{t("hud.pickup-feed.empty")}</Text>
+            <Text class="text-xs text-fg-muted text-shadow-2xs">{t("hud.pickup-feed.empty")}</Text>
           </Show>
         </>
       }>
         <View class="flex-row items-center gap-x-2">
           <Spinner name={t("hud.pickup-feed.loading")} />
-          <Text class="text-[0.857rem] text-fg-muted text-shadow-2xs" role="status">{t("hud.pickup-feed.loading")}</Text>
+          <Text class="text-xs text-fg-muted text-shadow-2xs" role="status">{t("hud.pickup-feed.loading")}</Text>
         </View>
       </Show>
     </View>

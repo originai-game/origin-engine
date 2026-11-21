@@ -52,18 +52,18 @@ export function SpeechBubble(props: SpeechBubbleProps) {
       data-reaction-neutral={reaction() === "neutral"}
       data-reaction-player={reaction() === "player"}
     >
-      <View class="relative flex-col gap-y-[0.143rem] min-w-0 max-w-[12.6rem] py-2 px-[0.929rem] text-[1.036rem] leading-[1.32] nine-plate-cut bg-plate-hi">
+      <View class="relative flex-col gap-y-0.5 min-w-0 max-w-44 py-2 px-3.25 text-[1.036rem] leading-[1.32] nine-plate-cut bg-plate-hi">
         <Show when={speaker() !== ""}>
-          <Text class="min-w-0 max-w-full text-[0.75rem] font-bold tracking-[0.13em] uppercase whitespace-nowrap truncate text-success text-shadow-2xs group-data-reaction-hostile:text-danger group-data-reaction-neutral:text-gold group-data-reaction-player:text-hud-accent">{speaker()}</Text>
+          <Text class="min-w-0 max-w-full text-[0.75rem] font-bold tracking-wide uppercase whitespace-nowrap truncate text-success text-shadow-2xs group-data-reaction-hostile:text-danger group-data-reaction-neutral:text-gold group-data-reaction-player:text-hud-accent">{speaker()}</Text>
         </Show>
         <Text class="min-w-0 group-data-shout:font-bold">{props.text}</Text>
         <Show when={left() >= 0}>
-          <View class="absolute left-[0.714rem] right-[0.714rem] bottom-[0.214rem] h-[2px] bg-lit">
+          <View class="absolute left-2.5 right-2.5 bottom-0.75 h-0.5 bg-lit">
             <View class="h-full bg-sheen" style={{ width: `${Math.min(Math.max(left(), 0), 1) * 100}%` }} />
           </View>
         </Show>
       </View>
-      <View class="size-[0.714rem] rotate-45 -mt-[1px] bg-plate-hi" />
+      <View class="size-2.5 rotate-45 -mt-px bg-plate-hi" />
     </View>
   );
 }

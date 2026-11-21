@@ -19,13 +19,13 @@ export interface HudPortraitProps {
  */
 export function HudPortrait(props: HudPortraitProps) {
   return (
-    <View class={`relative size-[2.714rem] rounded-[0.857rem] bg-linear-to-b from-rim-strong via-rim via-45% to-rim-soft data-dimmed:opacity-45 ${props.class ?? ""}`} data-dimmed={props.dimmed}>
+    <View class={`relative size-9.5 rounded-panel bg-linear-to-b from-rim-strong via-rim via-45% to-rim-soft data-dimmed:opacity-45 ${props.class ?? ""}`} data-dimmed={props.dimmed}>
       <Show when={props.portrait} fallback={
-        <View class="absolute inset-[0.286rem] rounded-[0.714rem] bg-linear-to-b from-raised-lo to-surface flex-row items-center justify-center overflow-hidden">
+        <View class="absolute inset-1 rounded-card bg-linear-to-b from-raised-lo to-surface flex-row items-center justify-center overflow-hidden">
           <Icon class="size-1/2 text-fg-muted" name="person" />
         </View>
       }>
-        <Image class="absolute inset-[0.286rem] rounded-[0.714rem]" src={props.portrait ?? 0} />
+        <Image class="absolute inset-1 rounded-card" src={props.portrait ?? 0} />
       </Show>
     </View>
   );

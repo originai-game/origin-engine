@@ -54,7 +54,7 @@ function markerTone(m: MinimapMarker): string {
 export function Minimap(props: MinimapProps) {
   const size = () => props.size ?? 160;
   return (
-    <View class="flex-col items-center gap-y-[0.857rem]" role="image" label={props.label ?? ""}>
+    <View class="flex-col items-center gap-y-3" role="image" label={props.label ?? ""}>
       <View class="relative overflow-hidden rounded-button border border-rim shadow-plate" style={{ width: `${size()}px`, height: `${size()}px` }}>
         <Show when={(props.texture ?? 0) > 0} fallback={
           <View class="absolute inset-0 bg-tile">
@@ -80,7 +80,7 @@ export function Minimap(props: MinimapProps) {
         <For each={props.markers ?? []} key={(m) => m.id}>
           {(m) => (
             <View
-              class={`absolute rounded-full ${m().player ? "size-[0.857rem] border-2 border-accent" : "size-[0.571rem]"}`}
+              class={`absolute rounded-full ${m().player ? "size-3 border-2 border-accent" : "size-2"}`}
               style={{
                 background: markerTone(m()),
                 left: `${m().x * 100}%`,

@@ -45,16 +45,16 @@ export function ProgressRing(props: ProgressRingProps) {
             />
           </View>
           <View class="absolute inset-0 flex-row items-center justify-center pointer-events-none">
-            <Text class="text-[14.88px] tabular-nums whitespace-nowrap text-fg text-shadow-xs">
+            <Text class="text-reading tabular-nums whitespace-nowrap text-fg text-shadow-xs">
               {(props.label ?? "") !== "" ? props.label : `${formatNumber(share() * 100, { decimals: 0 })}%`}
             </Text>
           </View>
         </>
       }>
-        <View class={`absolute inset-0 rounded-full border-[4px] border-white/22 border-t-accent group-data-tone-success/ring:border-t-success group-data-tone-warn/ring:border-t-warn group-data-tone-danger/ring:border-t-danger group-data-tone-info/ring:border-t-info animate-spin`}>
+        <View class={`absolute inset-0 rounded-full border-4 border-white/22 border-t-accent group-data-tone-success/ring:border-t-success group-data-tone-warn/ring:border-t-warn group-data-tone-danger/ring:border-t-danger group-data-tone-info/ring:border-t-info animate-spin`}>
           <Show when={(props.label ?? "") !== ""}>
             <View class="absolute inset-0 flex-row items-center justify-center">
-              <Text class="text-[14.88px] whitespace-nowrap text-fg text-shadow-xs">{props.label}</Text>
+              <Text class="text-reading whitespace-nowrap text-fg text-shadow-xs">{props.label}</Text>
             </View>
           </Show>
         </View>

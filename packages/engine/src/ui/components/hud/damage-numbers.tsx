@@ -35,7 +35,7 @@ export function DamageNumbers(props: DamageNumbersProps) {
         return (
           <Text
             anchor={h().entity ? (h().entity as Entity) : point}
-            class="-translate-x-1/2 animate-float text-[1.286rem] font-bold tabular-nums whitespace-nowrap text-fg text-shadow-2xs"
+            class="-translate-x-1/2 animate-float text-lg font-bold tabular-nums whitespace-nowrap text-fg text-shadow-2xs"
             style={{ color: h().color || undefined }}
           >
             {formatNumber(h().amount)}

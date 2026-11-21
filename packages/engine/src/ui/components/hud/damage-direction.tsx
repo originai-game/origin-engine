@@ -40,7 +40,7 @@ function arcPoints(angle: number, strength: number): readonly number[] {
 
 export function DamageDirection(props: DamageDirectionProps) {
   return (
-    <View class="relative w-full h-full min-w-[6.857rem] min-h-[6.857rem] pointer-events-none" role="image" label={t("shooter.damage.name")}>
+    <View class="relative w-full h-full min-w-24 min-h-24 pointer-events-none" role="image" label={t("shooter.damage.name")}>
       <For each={props.hits ?? []} key={(h) => h.id}>
         {(h) => {
           const strength = Math.min(Math.max(h().strength ?? 0, 0), 1);
@@ -49,7 +49,7 @@ export function DamageDirection(props: DamageDirectionProps) {
               class="absolute inset-0 flex-row items-center justify-center transition duration-300 exit:opacity-0"
               style={{ opacity: 0.5 + strength * 0.5 }}
             >
-              <View class="relative size-[6.25rem]">
+              <View class="relative size-22">
                 <Line
                   points={arcPoints(h().angle, strength)}
                   class={h().kind === "shield" ? "stroke-ally stroke-[2.5]" : h().kind === "critical" ? "stroke-foe stroke-[3.5]" : "stroke-foe stroke-[2.5]"}

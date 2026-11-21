@@ -31,7 +31,7 @@ export function ProgressBar(props: ProgressBarProps) {
   const percent = () => `${formatNumber(Math.min(Math.max(props.value, 0), 1) * 100, { decimals: 0 })}%`;
   return (
     <View
-      class={`group/progress flex-col w-full min-w-0 gap-y-[0.286rem]`}
+      class={`group/progress flex-col w-full min-w-0 gap-y-1`}
       role="progressbar"
       label={(props.label ?? "") !== "" ? props.label : t("component.progress-bar.name")}
       valueMin={0}
@@ -48,14 +48,14 @@ export function ProgressBar(props: ProgressBarProps) {
       <Show when={(props.label ?? "") !== "" || props.showValue}>
         <View class="flex-row items-end">
           <Show when={(props.label ?? "") !== ""}>
-            <Text class="flex-1 min-w-0 text-[0.929rem] whitespace-nowrap truncate text-fg text-shadow-xs">{props.label}</Text>
+            <Text class="flex-1 min-w-0 text-caption whitespace-nowrap truncate text-fg text-shadow-xs">{props.label}</Text>
           </Show>
           <Show when={props.showValue && !props.indeterminate}>
-            <Text class="shrink-0 text-[14.88px] font-bold tabular-nums whitespace-nowrap text-fg text-shadow-xs">{(props.valueText ?? "") !== "" ? props.valueText : percent()}</Text>
+            <Text class="shrink-0 text-reading font-bold tabular-nums whitespace-nowrap text-fg text-shadow-xs">{(props.valueText ?? "") !== "" ? props.valueText : percent()}</Text>
           </Show>
         </View>
       </Show>
-      <View class="relative w-full h-[0.571rem] overflow-hidden bg-track shadow-[0px_0px_0px_1px_#ffffff38,inset_0px_1px_0px_0px_#ffffff24,0px_0.143rem_0.286rem_#00000073]">
+      <View class="relative w-full h-2 overflow-hidden bg-track shadow-[0px_0px_0px_1px_#ffffff38,inset_0px_1px_0px_0px_#ffffff24,0px_0.143rem_0.286rem_#00000073]">
         <Show when={!props.indeterminate}>
           <View
             class={`absolute left-0 top-0 h-full opacity-25 bg-accent group-data-tone-success/progress:bg-success group-data-tone-warn/progress:bg-warn group-data-tone-danger/progress:bg-danger group-data-tone-info/progress:bg-info`}

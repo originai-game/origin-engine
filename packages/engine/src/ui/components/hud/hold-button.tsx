@@ -66,7 +66,7 @@ export function HoldButton(props: HoldButtonProps) {
           <Text class="text-center">{props.holding}</Text>
         </Show>
         <Show when={held()}>
-          <View class={`absolute bottom-0 left-0 h-[2px] ${FILL[variant] ?? FILL.secondary}`} style={{ width: `${progress() * 100}%` }} />
+          <View class={`absolute bottom-0 left-0 h-0.5 ${FILL[variant] ?? FILL.secondary}`} style={{ width: `${progress() * 100}%` }} />
         </Show>
       </Button>
       <Show when={props.hint}>

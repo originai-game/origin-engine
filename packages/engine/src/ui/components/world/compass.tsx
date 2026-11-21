@@ -64,14 +64,14 @@ function PoiCopy(props: { poi: CompassPoi; wrap: number; units: string }) {
   const ink = () => poiInk(props.poi.kind);
   return (
     <View
-      class="absolute flex-col items-center gap-y-[0.214rem] w-[5.714rem] top-[2.786rem]"
+      class="absolute flex-col items-center gap-y-0.75 w-20 top-9.75"
       label={props.poi.label}
       style={{ left: `calc(${((props.poi.bearing * K + props.wrap) / 9) * 100}% - 2.857rem)` }}
     >
       <Show when={(props.poi.icon ?? "") !== ""} fallback={
-        <View class="size-[0.714rem] m-[0.071rem] rotate-45 shadow-[0px_0px_0px_0.143rem_#1a1e28d9]" style={{ background: ink() }} />
+        <View class="size-2.5 m-0.25 rotate-45 shadow-[0px_0px_0px_0.143rem_#1a1e28d9]" style={{ background: ink() }} />
       }>
-        <Icon class="size-[0.857rem]" name={props.poi.icon} style={{ color: ink() }} />
+        <Icon class="size-3" name={props.poi.icon} style={{ color: ink() }} />
       </Show>
       <Show when={(props.poi.distance ?? -1) >= 0}>
         <Text class="text-caption leading-[1.1] font-bold tabular-nums whitespace-nowrap text-fg text-shadow-xs">{`${formatNumber(props.poi.distance ?? 0)}${props.units}`}</Text>
@@ -86,15 +86,15 @@ export function Compass(props: CompassProps) {
   const pois = () => props.pois ?? [];
   return (
     <View class="flex-col items-center w-160 max-w-full" role="status" label={t("component.compass.name")} valueText={`${formatNumber(degrees())}°`}>
-      <View class="flex-col items-center relative z-[1] -mb-[0.286rem]">
-        <Text class="py-0 px-[0.357rem] text-xs leading-[1.35] font-bold tabular-nums text-key-fg bg-hud-accent rounded-tl-[0.286rem] rounded-br-[0.286rem] text-shadow-none">
+      <View class="flex-col items-center relative z-1 -mb-1">
+        <Text class="py-0 px-1.25 text-xs leading-[1.35] font-bold tabular-nums text-key-fg bg-hud-accent rounded-tl-control rounded-br-control text-shadow-none">
           {(degrees() < 9.5 ? "00" : degrees() < 99.5 ? "0" : "") + formatNumber(degrees()) + "°"}
         </Text>
       </View>
-      <View class="relative w-full h-[3.571rem] overflow-hidden">
-        <View class="absolute inset-x-0 top-0 h-[2.571rem] bg-linear-to-b from-surface/0 to-surface/55" />
+      <View class="relative w-full h-12.5 overflow-hidden">
+        <View class="absolute inset-x-0 top-0 h-9 bg-linear-to-b from-surface/0 to-surface/55" />
         <View
-          class="absolute top-0 bottom-0 left-1/2 w-[900%]"
+          class="absolute top-0 bottom-0 left-1/2 w-9/1"
           style={{ transform: `translateX(${(-(heading() * K + 3) / 9) * 100}%)` }}
         >
           <For each={POINTS.flatMap((p) => [0, 3, 6, 9].map((lap) => ({ at: p.at + lap, cardinal: p.cardinal, key: p.key, lap })))} key={(p) => `${p.key}-${p.lap}`}>
@@ -114,7 +114,7 @@ export function Compass(props: CompassProps) {
           <For each={Array.from({ length: 72 }, (_, k) => k)} key={(k) => k}>
             {(k) => (
               <View
-                class="absolute top-[1.857rem] w-[0.143rem] h-[0.429rem] bg-lit"
+                class="absolute top-6.5 w-0.5 h-1.5 bg-lit"
                 style={{ left: `${((k() * 0.125) / 9) * 100}%` }}
               />
             )}
@@ -122,7 +122,7 @@ export function Compass(props: CompassProps) {
           <For each={Array.from({ length: 24 }, (_, k) => k)} key={(k) => k}>
             {(k) => (
               <View
-                class="absolute top-[1.571rem] w-[0.143rem] h-[0.714rem] bg-sheen"
+                class="absolute top-5.5 w-0.5 h-2.5 bg-sheen"
                 style={{ left: `${((k() * 0.375) / 9) * 100}%` }}
               />
             )}
@@ -137,7 +137,7 @@ export function Compass(props: CompassProps) {
             )}
           </For>
         </View>
-        <View class="absolute top-[2.286rem] left-1/2 -translate-x-1/2 size-[0.571rem] rotate-45 bg-hud-accent" />
+        <View class="absolute top-8 left-1/2 -translate-x-1/2 size-2 rotate-45 bg-hud-accent" />
       </View>
     </View>
   );

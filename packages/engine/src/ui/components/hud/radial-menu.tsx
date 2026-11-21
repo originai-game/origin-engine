@@ -59,22 +59,22 @@ export function RadialMenu(props: RadialMenuProps) {
   const span = () => props.span ?? 0;
   const chosen = () => props.chosen ?? "";
   return (
-    <View class="relative size-[20rem] pointer-events-auto" role="menu" label={t("component.radial-menu.name")} onPointerMove={(e) => props.onAim?.(e)}>
+    <View class="relative size-70 pointer-events-auto" role="menu" label={t("component.radial-menu.name")} onPointerMove={(e) => props.onAim?.(e)}>
       <View class="absolute inset-0 rounded-full bg-hud shadow-[0px_0px_0px_1px_#00000073]" />
       <For each={props.items ?? []} key={(item) => item.id}>
         {(item) => (
           <View class="group/radialmenu absolute inset-0" data-chosen={item().id === chosen()}>
             <View class="absolute inset-0 flex-row items-center justify-center">
-              <View class="relative size-[20rem]">
-                <Line points={wedgePoints(item().at, span())} class="stroke-rim-soft group-data-chosen/radialmenu:stroke-accent stroke-[86px]" />
+              <View class="relative size-70">
+                <Line points={wedgePoints(item().at, span())} class="stroke-rim-soft group-data-chosen/radialmenu:stroke-accent stroke-86" />
               </View>
             </View>
             <View
-              class="absolute top-4 left-[7.5rem] size-20"
+              class="absolute top-4 left-26.25 size-20"
               style={{ transform: `rotate(${item().at * 360}deg)`, transformOrigin: "50% 180%" }}
             >
               <View
-                class="size-full flex-col items-center justify-center gap-y-[0.143rem]"
+                class="size-full flex-col items-center justify-center gap-y-0.5"
                 style={{ transform: `rotate(${item().at * -360}deg)` }}
               >
                 <View
@@ -90,11 +90,11 @@ export function RadialMenu(props: RadialMenuProps) {
                   <Show when={(item().icon ?? "") !== ""}>
                     <Icon class="size-6 text-fg group-data-chosen/radialitem:text-accent-fg group-data-chosen/radialitem:scale-110 group-data-disabled/radialitem:opacity-50" name={item().icon} />
                   </Show>
-                  <Text class="max-w-full text-[0.929rem] whitespace-nowrap text-fg text-shadow-xs group-data-chosen/radialitem:text-accent-fg group-data-disabled/radialitem:opacity-50">{item().label}</Text>
+                  <Text class="max-w-full text-caption whitespace-nowrap text-fg text-shadow-xs group-data-chosen/radialitem:text-accent-fg group-data-disabled/radialitem:opacity-50">{item().label}</Text>
                   <Show when={(item().cost ?? "") !== ""}>
-                    <View class="flex-row items-center gap-x-[0.143rem]">
+                    <View class="flex-row items-center gap-x-0.5">
                       <Icon class="size-4 text-fg" name="coin" />
-                      <Text class={`${item().unaffordable ? "text-danger" : "text-warn"} text-[14.88px] font-bold tabular-nums whitespace-nowrap text-shadow-xs`}>{item().cost}</Text>
+                      <Text class={`${item().unaffordable ? "text-danger" : "text-warn"} text-reading font-bold tabular-nums whitespace-nowrap text-shadow-xs`}>{item().cost}</Text>
                     </View>
                   </Show>
                 </View>

@@ -61,7 +61,7 @@ function Stick(props: { action: string; deadZone: number; disabled: boolean; lab
       touchStick={props.action}
       deadZone={props.deadZone}
     >
-      <View knob class="absolute size-[40%] rounded-full nine-disc bg-knob shadow-float -translate-x-1/2 -translate-y-1/2 left-1/2 top-1/2" />
+      <View knob class="absolute size-2/5 rounded-full nine-disc bg-knob shadow-float -translate-x-1/2 -translate-y-1/2 left-1/2 top-1/2" />
     </View>
   );
 }

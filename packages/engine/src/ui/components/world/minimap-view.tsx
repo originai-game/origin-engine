@@ -104,11 +104,11 @@ export function MinimapView(props: MinimapViewProps) {
   return (
     <View class="flex-col items-center gap-y-1" role="image" label={props.zone || t("component.minimap-view.name")} data-square={props.square === true}>
       <View
-        class={`relative rounded-full p-[0.357rem] data-square:rounded-[0.857rem] bg-conic from-rim-strong via-rim-soft to-rim-strong shadow-[0px_0.571rem_1.714rem_#0000008c]`}
+        class={`relative rounded-full p-1.25 data-square:rounded-panel bg-conic from-rim-strong via-rim-soft to-rim-strong shadow-[0px_0.571rem_1.714rem_#0000008c]`}
         data-square={props.square === true}
       >
         <View
-          class={`flex-row items-center justify-center gap-1 relative size-48 overflow-hidden rounded-full data-square:rounded-[0.714rem] bg-raised-lo pointer-events-auto`}
+          class={`flex-row items-center justify-center gap-1 relative size-48 overflow-hidden rounded-full data-square:rounded-card bg-raised-lo pointer-events-auto`}
           role="button"
           label={t("component.minimap-view.name")}
           onPress={(e) => props.onPick?.(e)}
@@ -166,17 +166,17 @@ export function MinimapView(props: MinimapViewProps) {
             <Line
               points={[ARROW_BOX / 2, 1.8, ARROW_BOX - 3.6, ARROW_BOX - 3.6, ARROW_BOX / 2, ARROW_BOX - 10.2, 3.6, ARROW_BOX - 3.6]}
               closed
-              class="stroke-white stroke-[2px]"
+              class="stroke-white stroke-2"
             />
           </View>
-          <View class="absolute inset-0 rounded-full pointer-events-none shadow-[inset_0px_0px_0px_0.071rem_#ffffff33,inset_0px_0px_2.143rem_#1a1e28b3] data-square:rounded-[0.714rem]" data-square={props.square === true} />
+          <View class="absolute inset-0 rounded-full pointer-events-none shadow-[inset_0px_0px_0px_0.071rem_#ffffff33,inset_0px_0px_2.143rem_#1a1e28b3] data-square:rounded-card" data-square={props.square === true} />
         </View>
-        <Text class="absolute top-[0.482rem] left-1/2 -translate-x-1/2 min-w-[1.714rem] h-[1.714rem] flex-row items-center justify-center rounded-full bg-danger shadow-[0px_0px_0px_0.143rem_#262a33,0px_0px_0.714rem_#ff4d5eb3] text-caption font-bold leading-none text-fg whitespace-nowrap">
+        <Text class="absolute top-1.75 left-1/2 -translate-x-1/2 min-w-6 h-6 flex-row items-center justify-center rounded-full bg-danger shadow-[0px_0px_0px_0.143rem_#262a33,0px_0px_0.714rem_#ff4d5eb3] text-caption font-bold leading-none text-fg whitespace-nowrap">
           {t("component.minimap-view.north")}
         </Text>
       </View>
       <Show when={(props.zone ?? "") !== ""}>
-        <Text class={`py-[0.143rem] px-[0.571rem] text-caption font-semibold tracking-[0.14em] uppercase whitespace-nowrap text-fg nine-plate-cut bg-plate-hi ${packClass("Plate", "frame")}`}>
+        <Text class={`py-0.5 px-2 text-caption font-semibold tracking-label uppercase whitespace-nowrap text-fg nine-plate-cut bg-plate-hi ${packClass("Plate", "frame")}`}>
           {props.zone}
         </Text>
       </Show>

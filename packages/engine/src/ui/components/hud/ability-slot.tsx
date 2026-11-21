@@ -46,11 +46,11 @@ export interface AbilitySlotProps {
 
 export function AbilitySlot(props: AbilitySlotProps) {
   return (
-    <View class={`group/abilityslot w-[3.429rem] max-w-full items-center p-0 gap-0.5 data-fit:w-full`} data-ultimate={(props.ultimate ?? -1) >= 0} data-fit={props.fit}>
+    <View class={`group/abilityslot w-12 max-w-full items-center p-0 gap-0.5 data-fit:w-full`} data-ultimate={(props.ultimate ?? -1) >= 0} data-fit={props.fit}>
       <View class={`flex-row items-center justify-center gap-1 group/slot border-rim-strong bg-linear-to-b from-plate-hi to-plate-lo shadow-[0px_0px_0px_1px_#00000073,inset_0px_1px_0px_0px_#ffffff14,0px_6px_18px_-6px_#00000099] transition duration-317 w-full aspect-square p-0 rounded-button border overflow-hidden data-selected:border-accent data-done:border-success data-active:border-accent data-active:shadow-[0px_0px_12px_#e8e8ed] data-full:border-gold data-shape-round:rounded-capsule data-shape-square:rounded-button active:bg-none active:bg-tile-pressed active:scale-96 hover:shadow-[inset_0px_0px_0px_1px_#8892a8,inset_0px_1px_0px_0px_#ffffff29,0px_6px_14px_-4px_#00000099] data-empty:shadow-sunk data-locked:shadow-sunk data-locked:scale-100 disabled:shadow-sunk disabled:scale-100 data-down:opacity-45 data-play-pulse:animate-pulse ${packClass("Slot", "frame")}`} role="button" onPress={(e) => props.onUse?.(e)} label={props.name} valueText={props.locked ? t("component.ability-slot.locked") : props.disabled ? t("component.ability-slot.unavailable") : props.cooldown > 0 ? formatNumber(props.cooldown) : t("component.ability-slot.ready")} disabled={props.locked || props.disabled} data-play-pulse={(props.active || (props.ultimate ?? -1) >= 1 ? 'pulse' : null) === "pulse"} data-cooling={props.cooldown > 0} data-tinted={props.unaffordable || props.outOfRange} data-full={(props.ultimate ?? -1) >= 1} data-active={props.active || (props.ultimate ?? -1) >= 1} data-locked={props.locked} data-shape-round={((props.ultimate ?? -1) >= 0 ? 'round' : 'square') === "round"} data-shape-square={((props.ultimate ?? -1) >= 0 ? 'round' : 'square') === "square"}>
         <View class="gap-2 size-full">
           <View class={`absolute bg-tile shadow-sunk justify-center items-center inset-0.5 gap-2 rounded-[7px] group-data-ultimate/abilityslot:rounded-capsule group-data-tinted/slot:bg-linear-to-t group-data-tinted/slot:from-danger/45 group-data-tinted/slot:to-transparent group-data-tinted/slot:to-75% group-data-tinted/slot:bg-tile`}>
-            <Icon class="text-fg text-shadow-2xs size-[66%] group-data-ultimate/abilityslot:size-1/2 group-disabled/slot:text-fg-subtle" name={props.icon} />
+            <Icon class="text-fg text-shadow-2xs size-33/50 group-data-ultimate/abilityslot:size-1/2 group-disabled/slot:text-fg-subtle" name={props.icon} />
           </View>
           <Show when={(props.ultimate ?? -1) >= 0}>
             <View class="absolute inset-0 nine-ring bg-gold" wipe={Math.min(Math.max(props.ultimate ?? 0, 0), 1)} />
@@ -72,7 +72,7 @@ export function AbilitySlot(props: AbilitySlotProps) {
           </Show>
           <Show when={props.disabled}>
             <View class="absolute inset-0 items-center justify-center">
-              <View class="w-[110%] h-1.25 shrink-0 bg-danger rounded-capsule -rotate-45" />
+              <View class="w-11/10 h-1.25 shrink-0 bg-danger rounded-capsule -rotate-45" />
             </View>
           </Show>
           <Show when={props.locked}>
@@ -96,7 +96,7 @@ export function AbilitySlot(props: AbilitySlotProps) {
             </Show>
           </Show>
           <Show when={props.count > 0}>
-            <Text class={`absolute right-1.5 bottom-1.5 tabular-nums text-fg text-shadow-2xs text-[14.88px]`}>
+            <Text class={`absolute right-1.5 bottom-1.5 tabular-nums text-fg text-shadow-2xs text-reading`}>
               {formatNumber(props.count)}
             </Text>
           </Show>

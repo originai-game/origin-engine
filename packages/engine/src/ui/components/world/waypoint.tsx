@@ -46,7 +46,7 @@ export function Waypoint(props: WaypointProps) {
       anchor={props.entity ? (props.entity as Entity) : point()}
       lift={[0, props.height ?? 0, 0]}
       clamp="edge"
-      class="group flex-col items-center gap-y-[0.214rem]"
+      class="group flex-col items-center gap-y-0.75"
       label={label() !== "" ? label() : distance()}
       data-objective={kind() === "objective"}
       data-ping={kind() === "ping"}
@@ -58,19 +58,19 @@ export function Waypoint(props: WaypointProps) {
       data-way-left={edge() === "left"}
       data-way-right={edge() === "right"}
     >
-      <View class="relative m-1 size-[1.214rem] rotate-45 bg-gold shadow-[0px_0px_0px_1.5px_#0d1016d9,0px_0px_0.857rem_#ffd23f] group-data-danger:bg-danger group-data-danger:shadow-[0px_0px_0px_1.5px_#0d1016d9,0px_0px_0.857rem_#ff4d5e] group-data-ally:bg-success group-data-ally:shadow-[0px_0px_0px_1.5px_#0d1016d9,0px_0px_0.857rem_#55e39a] group-data-loot:bg-epic group-data-loot:shadow-[0px_0px_0px_1.5px_#0d1016d9,0px_0px_0.857rem_#c86ff5] group-data-ping:bg-rare group-data-ping:shadow-[0px_0px_0px_1.5px_#0d1016d9,0px_0px_0.857rem_#5cc8ff] group-data-ping:animate-ping group-data-near:shadow-[0px_0px_0px_1.5px_#0d1016d9,0px_0px_0px_0.5rem_#ffd23f38,0px_0px_1.286rem_#ffd23f]">
-        <View class="absolute inset-[32%] bg-tile/78" />
+      <View class="relative m-1 size-4.25 rotate-45 bg-gold shadow-[0px_0px_0px_1.5px_#0d1016d9,0px_0px_0.857rem_#ffd23f] group-data-danger:bg-danger group-data-danger:shadow-[0px_0px_0px_1.5px_#0d1016d9,0px_0px_0.857rem_#ff4d5e] group-data-ally:bg-success group-data-ally:shadow-[0px_0px_0px_1.5px_#0d1016d9,0px_0px_0.857rem_#55e39a] group-data-loot:bg-epic group-data-loot:shadow-[0px_0px_0px_1.5px_#0d1016d9,0px_0px_0.857rem_#c86ff5] group-data-ping:bg-rare group-data-ping:shadow-[0px_0px_0px_1.5px_#0d1016d9,0px_0px_0.857rem_#5cc8ff] group-data-ping:animate-ping group-data-near:shadow-[0px_0px_0px_1.5px_#0d1016d9,0px_0px_0px_0.5rem_#ffd23f38,0px_0px_1.286rem_#ffd23f]">
+        <View class="absolute inset-8/25 bg-tile/78" />
       </View>
       <Show when={(label() !== "" && range() !== "far") || (distance() !== "")}>
-        <View class="flex-col items-center gap-y-[0.143rem] min-w-0 group-data-way-left:items-start group-data-way-right:items-end group-data-far:opacity-[0.82]">
+        <View class="flex-col items-center gap-y-0.5 min-w-0 group-data-way-left:items-start group-data-way-right:items-end group-data-far:opacity-82">
           <Show when={label() !== "" && range() !== "far"}>
-            <Text class="min-w-0 max-w-[14.286rem] text-[0.821rem] leading-[1.1] font-bold tracking-[0.13em] uppercase whitespace-nowrap truncate text-gold text-shadow-2xs text-stroke-3 text-stroke-bg group-data-danger:text-danger group-data-ally:text-success group-data-loot:text-epic group-data-ping:text-rare">{label()}</Text>
+            <Text class="min-w-0 max-w-50 text-[0.821rem] leading-[1.1] font-bold tracking-wide uppercase whitespace-nowrap truncate text-gold text-shadow-2xs text-stroke-3 text-stroke-bg group-data-danger:text-danger group-data-ally:text-success group-data-loot:text-epic group-data-ping:text-rare">{label()}</Text>
           </Show>
           <Show when={distance() !== ""}>
-            <View class="shrink-0 flex-row items-baseline py-[0.071rem] px-[0.429rem] nine-chip-cut bg-raised-pressed/88">
+            <View class="shrink-0 flex-row items-baseline py-0.25 px-1.5 nine-chip-cut bg-raised-pressed/88">
               <Text class="text-caption leading-[1.2] font-bold tabular-nums whitespace-nowrap text-fg">{distance()}</Text>
               <Show when={units() !== ""}>
-                <Text class="ml-[1px] text-[0.725rem] leading-[1.2] text-fg/66">{units()}</Text>
+                <Text class="ml-px text-[0.725rem] leading-[1.2] text-fg/66">{units()}</Text>
               </Show>
             </View>
           </Show>

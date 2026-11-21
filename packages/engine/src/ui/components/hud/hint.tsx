@@ -17,11 +17,11 @@ export function HudHint(props: HudHintProps) {
   return (
     <View class={`flex-row items-center gap-1 w-fit min-w-0 max-w-full pointer-coarse:hidden`}>
       <Show when={props.key}>
-        <Text class={`shrink max-w-[8.571rem] min-w-[1.714rem] py-0 px-1 text-[0.857rem] leading-[1.6] font-bold text-center text-key-fg bg-linear-to-b from-white to-key-hi rounded-[0.286rem] shadow-[0px_0.143rem_0px_#0000008c,inset_0px_-0.143rem_0px_#0000002e] whitespace-nowrap truncate`}>
+        <Text class={`shrink max-w-30 min-w-6 py-0 px-1 text-xs leading-loose font-bold text-center text-key-fg bg-linear-to-b from-white to-key-hi rounded-control shadow-[0px_0.143rem_0px_#0000008c,inset_0px_-0.143rem_0px_#0000002e] whitespace-nowrap truncate`}>
           {props.key}
         </Text>
       </Show>
-      <Text class="min-w-0 text-[0.857rem] font-semibold tracking-[0.14em] uppercase text-fg/78 whitespace-nowrap truncate text-shadow-2xs text-stroke-3 text-stroke-bg">{props.label}</Text>
+      <Text class="min-w-0 text-xs font-semibold tracking-label uppercase text-fg/78 whitespace-nowrap truncate text-shadow-2xs text-stroke-3 text-stroke-bg">{props.label}</Text>
     </View>
   );
 }

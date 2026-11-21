@@ -31,7 +31,7 @@ export function OrbMeter(props: OrbMeterProps) {
   const share = () => (max() <= 0 ? 0 : Math.min(Math.max(props.value, 0) / max(), 1));
   return (
     <View
-      class={`group/orb flex-col items-center gap-y-[0.143rem]`}
+      class={`group/orb flex-col items-center gap-y-0.5`}
       role="meter"
       label={(props.name ?? "") !== "" ? props.name : (props.label ?? "") !== "" ? props.label : t("component.orb-meter.health")}
       valueMin={0}
@@ -39,18 +39,18 @@ export function OrbMeter(props: OrbMeterProps) {
       valueNow={props.value}
       data-mana={(props.kind ?? "") === "mana"}
     >
-      <View class="relative size-[8rem]">
+      <View class="relative size-28">
         <View class="absolute inset-0 rounded-full bg-rim-strong shadow-[0px_0px_0px_1px_#292c32,0px_0.143rem_0.286rem_#00000073]">
           <View class="absolute inset-0 rounded-full bg-linear-to-b from-sheen to-transparent to-45%" />
           <View class="absolute inset-0 rounded-full bg-linear-to-t from-shade-deep to-transparent to-45%" />
         </View>
-        <View class="absolute inset-[0.429rem] rounded-full bg-surface" />
-        <View class="absolute inset-[0.643rem] rounded-full overflow-hidden bg-boon-fg shadow-[inset_0px_0px_1.429rem_#0000009e] group-data-mana/orb:bg-raised-pressed">
+        <View class="absolute inset-1.5 rounded-full bg-surface" />
+        <View class="absolute inset-2.25 rounded-full overflow-hidden bg-boon-fg shadow-[inset_0px_0px_1.429rem_#0000009e] group-data-mana/orb:bg-raised-pressed">
           <View class="absolute inset-x-0 bottom-0 border-t-[1.4px] border-t-boon bg-health group-data-mana/orb:border-t-mana group-data-mana/orb:bg-mana" style={{ height: `${share() * 100}%` }} />
           <View class="absolute left-[13.4%] size-[73.2%] rounded-full bg-sheen" style={{ top: `${Math.max(0, Math.min(1, 1.049 - share())) * 100}%` }} />
           <View class="absolute inset-0 bg-linear-to-b from-transparent from-35% to-shade-deep" />
         </View>
-        <View class="absolute inset-[0.643rem] rounded-full shadow-[inset_0px_0px_0px_1px_#ffffff47] pointer-events-none" />
+        <View class="absolute inset-2.25 rounded-full shadow-[inset_0px_0px_0px_1px_#ffffff47] pointer-events-none" />
         <Show when={props.showValue}>
           <View class="absolute inset-0 flex-row items-center justify-center">
             <Text class="text-[27.36px] font-bold tabular-nums whitespace-nowrap text-fg text-shadow-xs">{formatNumber(props.value)}</Text>
@@ -58,7 +58,7 @@ export function OrbMeter(props: OrbMeterProps) {
         </Show>
       </View>
       <Show when={props.label}>
-        <Text class="text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap text-fg text-shadow-xs">{props.label}</Text>
+        <Text class="text-xs font-semibold tracking-label uppercase whitespace-nowrap text-fg text-shadow-xs">{props.label}</Text>
       </Show>
     </View>
   );

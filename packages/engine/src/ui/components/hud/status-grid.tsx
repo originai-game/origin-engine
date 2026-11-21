@@ -56,7 +56,7 @@ function EffectTile(props: { effect: StatusGridEffect; debuff: boolean }) {
   const edge = () => (props.debuff ? EDGES[props.effect.type ?? ""] ?? "#ff9599" : "#8892a8");
   return (
     <View
-      class="group/statusgrid flex-col items-center gap-y-[0.143rem] min-w-[2.571rem]"
+      class="group/statusgrid flex-col items-center gap-y-0.5 min-w-9"
       label={props.effect.name}
       data-expiring={props.effect.expiring === true}
       data-type-magic={props.effect.type === "magic"}
@@ -66,7 +66,7 @@ function EffectTile(props: { effect: StatusGridEffect; debuff: boolean }) {
       data-type-bleed={props.effect.type === "bleed"}
     >
       <View
-        class={`relative size-8 overflow-hidden rounded-[0.286rem] bg-linear-to-b from-raised-lo to-surface shadow-[0px_0px_0px_1px_#00000073] flex-col items-center justify-center border`}
+        class={`relative size-8 overflow-hidden rounded-control bg-linear-to-b from-raised-lo to-surface shadow-[0px_0px_0px_1px_#00000073] flex-col items-center justify-center border`}
         style={{ borderColor: edge() }}
       >
         <Icon class="size-6 text-fg text-shadow-2xs group-data-expiring/statusgrid:animate-pulse" name={props.effect.icon} />
@@ -77,12 +77,12 @@ function EffectTile(props: { effect: StatusGridEffect; debuff: boolean }) {
       <Show when={stacks() > 1 || remaining() > 0}>
         <View class="flex-row items-center gap-x-1">
           <Show when={stacks() > 1}>
-            <Text class="bg-raised-pressed/88 shadow-[inset_0px_0px_0px_1px_#4e586c] rounded px-[0.143rem] text-[14.88px] font-bold tabular-nums whitespace-nowrap text-fg text-shadow-xs">
+            <Text class="bg-raised-pressed/88 shadow-[inset_0px_0px_0px_1px_#4e586c] rounded px-0.5 text-reading font-bold tabular-nums whitespace-nowrap text-fg text-shadow-xs">
               {t("component.status-grid.stacks", { count: stacks() })}
             </Text>
           </Show>
           <Show when={remaining() > 0}>
-            <Text class="bg-raised-pressed/88 shadow-[inset_0px_0px_0px_1px_#4e586c] rounded px-[0.143rem] text-[14.88px] font-bold tabular-nums whitespace-nowrap text-fg text-shadow-xs">
+            <Text class="bg-raised-pressed/88 shadow-[inset_0px_0px_0px_1px_#4e586c] rounded px-0.5 text-reading font-bold tabular-nums whitespace-nowrap text-fg text-shadow-xs">
               {effectTime(remaining())}
             </Text>
           </Show>
@@ -97,20 +97,20 @@ export function StatusGrid(props: StatusGridProps) {
   const debuffs = () => props.debuffs ?? [];
   return (
     <View class="flex-col gap-y-1">
-      <View class="flex-row flex-wrap items-start max-w-[20rem] gap-x-[0.857rem] gap-y-[0.857rem]" role="list" label={t("component.status-grid.buffs")}>
+      <View class="flex-row flex-wrap items-start max-w-70 gap-x-3 gap-y-3" role="list" label={t("component.status-grid.buffs")}>
         <For each={buffs()} key={(e) => e.id}>
           {(e) => <EffectTile effect={e()} debuff={false} />}
         </For>
         <Show when={(props.more ?? 0) > 0}>
-          <View class="flex-col items-center gap-y-[0.143rem] min-w-[2.571rem]">
-            <View class="relative size-8 overflow-hidden rounded-[0.286rem] bg-linear-to-b from-raised-lo to-surface shadow-[0px_0px_0px_1px_#00000073] border border-rim-strong flex-row items-center justify-center">
-              <Text class="text-[14.88px] font-bold tabular-nums whitespace-nowrap text-fg text-shadow-xs">{`+${formatNumber(props.more ?? 0)}`}</Text>
+          <View class="flex-col items-center gap-y-0.5 min-w-9">
+            <View class="relative size-8 overflow-hidden rounded-control bg-linear-to-b from-raised-lo to-surface shadow-[0px_0px_0px_1px_#00000073] border border-rim-strong flex-row items-center justify-center">
+              <Text class="text-reading font-bold tabular-nums whitespace-nowrap text-fg text-shadow-xs">{`+${formatNumber(props.more ?? 0)}`}</Text>
             </View>
           </View>
         </Show>
       </View>
       <Show when={debuffs().length > 0}>
-        <View class="flex-row flex-wrap items-start max-w-[20rem] gap-x-[0.857rem] gap-y-[0.857rem]" role="list" label={t("component.status-grid.debuffs")}>
+        <View class="flex-row flex-wrap items-start max-w-70 gap-x-3 gap-y-3" role="list" label={t("component.status-grid.debuffs")}>
           <For each={debuffs()} key={(e) => e.id}>
             {(e) => <EffectTile effect={e()} debuff={true} />}
           </For>

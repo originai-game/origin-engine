@@ -58,7 +58,7 @@ export function StatBar(props: StatBarProps) {
   const block = () => (cells() > 0 ? (props.segment ?? 1) / max() : 0);
   return (
     <View
-      class={`group/stat flex-col gap-y-[0.143rem] w-full text-fg data-mana:text-mana data-stamina:text-success data-xp:text-xp data-low:text-warn data-critical:text-danger`}
+      class={`group/stat flex-col gap-y-0.5 w-full text-fg data-mana:text-mana data-stamina:text-success data-xp:text-xp data-low:text-warn data-critical:text-danger`}
       role="meter"
       label={props.name || props.label || t("component.stat-bar.health")}
       valueMin={0}
@@ -78,10 +78,10 @@ export function StatBar(props: StatBarProps) {
         </Show>
         <Show when={props.label}>
           <View class="bg-raised-pressed/88 shadow-[inset_0px_0px_0px_1px_#ffffff38] rounded-control py-0 px-1 shrink-0">
-            <Text class="text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap text-fg-muted text-shadow-2xs">{props.label}</Text>
+            <Text class="text-xs font-semibold tracking-label uppercase whitespace-nowrap text-fg-muted text-shadow-2xs">{props.label}</Text>
           </View>
         </Show>
-        <View class="relative min-w-0 flex-1 h-[1.286rem] overflow-hidden bg-track shadow-[0px_0px_0px_1px_#ffffff38,inset_0px_1px_0px_0px_#ffffff24,0px_0.143rem_0.286rem_#00000073] group-data-critical/stat:shadow-[0px_0px_0px_1px_#de2634,0px_0px_0.857rem_#de2634b3] group-data-critical/stat:animate-pulse">
+        <View class="relative min-w-0 flex-1 h-4.5 overflow-hidden bg-track shadow-[0px_0px_0px_1px_#ffffff38,inset_0px_1px_0px_0px_#ffffff24,0px_0.143rem_0.286rem_#00000073] group-data-critical/stat:shadow-[0px_0px_0px_1px_#de2634,0px_0px_0.857rem_#de2634b3] group-data-critical/stat:animate-pulse">
           <View class="absolute left-0 top-0 h-full bg-fg-muted/80" style={{ width: `${Math.min(Math.max((props.recoverable ?? 0) / max(), fraction()), 1) * 100}%` }} />
           <View class="absolute left-0 top-0 h-full bg-linear-to-r from-gold/15 to-gold/85" style={{ width: `${fraction() * 100}%` }} />
           <Show when={(props.heal ?? 0) > 0}>
@@ -89,7 +89,7 @@ export function StatBar(props: StatBarProps) {
           </Show>
           <View class="absolute left-0 top-0 h-full bg-health shadow-[inset_0px_1px_0px_0px_#ffffff6b] transition-layout duration-180 ease-out group-data-mana/stat:bg-mana group-data-stamina/stat:bg-success group-data-xp/stat:bg-xp group-data-low/stat:bg-warn group-data-critical/stat:bg-critical" style={{ width: `${fraction() * 100}%` }} />
           <Show when={(props.shieldMax ?? 0) > 0 && (props.shield ?? 0) > 0}>
-            <View class="absolute left-0 top-0 w-full h-[34%] bg-info" style={{ width: `${Math.min((props.shield ?? 0) / (props.shieldMax ?? 1), 1) * 100}%` }} />
+            <View class="absolute left-0 top-0 w-full h-17/50 bg-info" style={{ width: `${Math.min((props.shield ?? 0) / (props.shieldMax ?? 1), 1) * 100}%` }} />
           </Show>
           <Show when={cells() > 0}>
             <For each={Array.from({ length: cells() }, (_, i) => i)}>
@@ -98,13 +98,13 @@ export function StatBar(props: StatBarProps) {
           </Show>
           <Show when={props.showValue && props.valueInside}>
             <View class="absolute right-0 top-0 h-full flex-row items-center px-2">
-              <Text class="text-[14.88px] font-bold tabular-nums whitespace-nowrap text-fg text-shadow-2xs group-data-critical/stat:text-danger">{text()}</Text>
+              <Text class="text-reading font-bold tabular-nums whitespace-nowrap text-fg text-shadow-2xs group-data-critical/stat:text-danger">{text()}</Text>
             </View>
           </Show>
         </View>
         <Show when={props.showValue && !props.valueInside}>
           <View class="bg-raised-pressed/88 shadow-[inset_0px_0px_0px_1px_#ffffff38] rounded-control py-0 px-1 shrink-0">
-            <Text class="text-[14.88px] font-bold tabular-nums whitespace-nowrap text-fg text-shadow-2xs group-data-critical/stat:text-danger">{text()}</Text>
+            <Text class="text-reading font-bold tabular-nums whitespace-nowrap text-fg text-shadow-2xs group-data-critical/stat:text-danger">{text()}</Text>
           </View>
         </Show>
       </View>
