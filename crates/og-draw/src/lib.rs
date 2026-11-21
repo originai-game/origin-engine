@@ -4,6 +4,7 @@
 //!
 //! - [`Overlay`]: screen-space sprites, text, glass panels and clip
 //!   rectangles, and the UI pass's [`ui::UiList`].
+//! - [`paint::Paint`]: og-ui's paint arena, drawn by the paint pass.
 //! - [`ui`]: the UI pass's shapes, paints, layers, filters, paths and mass
 //!   elements.
 //! - The resource handles ([`TextureHandle`], [`FontHandle`], ...) a scene
@@ -13,6 +14,7 @@
 
 mod color_vision;
 mod handles;
+pub mod paint;
 mod range_limit;
 mod sprites;
 pub mod ui;

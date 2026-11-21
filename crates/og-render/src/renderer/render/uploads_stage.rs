@@ -104,6 +104,26 @@ impl Renderer {
             );
             ui_uniform = Some(u);
         }
+        // og-ui's paint arena (ui/paint.rs): uploaded when it changed.
+        if !scene.ui.paint.is_empty() {
+            let fonts = &self.cache.fonts;
+            let revisions = scene
+                .font_revisions()
+                .iter()
+                .fold(0xcbf2_9ce4_8422_2325u64, |h, r| (h ^ r).wrapping_mul(0x0100_0000_01b3));
+            self.paint.upload(
+                &self.device,
+                &self.queue,
+                &scene.ui.paint,
+                |h| fonts.get(h.index()).map(|f| &f.layout),
+                revisions,
+                (self.out_width, self.out_height),
+                !self.output_format.is_srgb()
+                    && self.output_format != HDR_FORMAT
+                    && !self.has_linear_view(target),
+                crate::overlay::dither_step(self.output_format),
+            );
+        }
         // The sprite shaders' light map strips and ambient
         // (`SpriteFxFrame::light`).
         let ambient_2d = scene.sprite.lighting_2d.map_or(Vec3::ONE, |l| l.ambient);

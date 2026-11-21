@@ -223,6 +223,7 @@ impl RenderScene {
             },
             ui: SceneUi {
                 overlay: None,
+                paint: Default::default(),
                 ui_vectors: Vec::new(),
                 ui_materials: Vec::new(),
             },

@@ -270,7 +270,12 @@ impl Pass for OverlayPass {
         // The overlay: over the finished frame, in the output (or its sRGB
         // view), or in the glass source when what it draws reads what is
         // under it.
-        if let (false, Some(group0)) = (runs.is_empty(), r.ui_main_group()) {
+        // og-ui's paint arena draws at the UI's layer: after the runs
+        // under it, before a game's screen layers over it (ui/paint.rs).
+        let paint = r.paint.drawn() && !scene.ui.paint.is_empty();
+        let paint_at = overlay_frame.map_or(0, |f| f.ui_at).min(runs.len());
+        let group0 = r.ui_main_group();
+        if (!runs.is_empty() && group0.is_some()) || paint {
             let kind = match overlay_view {
                 Some(_) => ui::pass::TargetKind::Linear,
                 None => ui::pass::TargetKind::Output,
@@ -291,11 +296,17 @@ impl Pass for OverlayPass {
                 .chain(captures.iter().map(|c| c.0))
                 .collect();
             og_core::sort::sort_by_key(&mut cuts, |c| *c);
+            if paint {
+                cuts.push(paint_at);
+            }
+            og_core::sort::sort_by_key(&mut cuts, |c| *c);
             cuts.dedup();
             cuts.push(runs.len());
             let mut from = 0;
+            let mut painted = !paint;
             for &to in &cuts {
-                if to > from {
+                let paint_here = !painted && from == paint_at;
+                if to > from || paint_here {
                     let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                         label: Some("overlay"),
                         color_attachments: &[Some(wgpu::RenderPassColorAttachment {
@@ -312,8 +323,21 @@ impl Pass for OverlayPass {
                         occlusion_query_set: None,
                         multiview_mask: None,
                     });
-                    stats.draw_calls +=
-                        r.draw_overlay_runs(&mut pass, scene, &runs[from..to], group0, kind);
+                    if paint_here {
+                        painted = true;
+                        stats.draw_calls += r.paint.draw(
+                            &mut pass,
+                            kind == ui::pass::TargetKind::Linear,
+                            |page| match page {
+                                Some(f) => &r.cache.fonts[f.index()].bind_group,
+                                None => &r.sprite.white_sprite_group,
+                            },
+                        );
+                    }
+                    if let (true, Some(group0)) = (to > from, group0) {
+                        stats.draw_calls +=
+                            r.draw_overlay_runs(&mut pass, scene, &runs[from..to], group0, kind);
+                    }
                 }
                 // What the runs from `to` read, as the target stands now.
                 if let Some(g) = r.glass_targets.as_ref() {

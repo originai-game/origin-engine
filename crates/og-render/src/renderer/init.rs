@@ -612,6 +612,12 @@ impl Renderer {
             &sprite_layout,
         );
         let ui = ui::pass::UiRenderer::new(&device, &queue, &overlay, &sprite_layout);
+        let paint = ui::paint::PaintRenderer::new(
+            &device,
+            output_format,
+            offscreen_linear.or(surface_linear),
+            &sprite_layout,
+        );
         let glass = glass::GlassPasses::new(&device, &queue, output_format);
         let lines = lines::LineRenderer::new(
             &device,
@@ -729,6 +735,7 @@ impl Renderer {
             default_normal,
             overlay,
             ui,
+            paint,
             glass,
             glass_targets: None,
             cache: SceneCache::default(),

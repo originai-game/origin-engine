@@ -135,6 +135,10 @@ pub(crate) struct OverlayFrame {
     pub tables: UiTables,
     /// By target, then layer.
     pub runs: Vec<OverlayRun>,
+    /// The first of the output's runs over the UI's layer (a game's screen
+    /// layers above `UI_LAYER`): og-ui's paint arena draws before it
+    /// (ui/paint.rs).
+    pub ui_at: usize,
     /// The layers to draw, each before the target that composites it.
     pub layers: Vec<LayerPlan>,
     /// The gradient of each layer's gradient mask, by layer.
@@ -815,7 +819,14 @@ pub(crate) fn build<'a>(
     let mut instances = Vec::with_capacity(ov.len());
     let mut ui_instances = Vec::with_capacity(uv.len());
     let mut mass_instances = Vec::new();
-    for (t, _, source, index) in keyed {
+    let mut ui_at = None;
+    for (t, layer, source, index) in keyed {
+        // The paint arena draws between the runs under the UI's layer and
+        // those over it: none merges across.
+        let over_ui = t == 0 && layer >= 1 << 21 && ui_at.is_none();
+        if over_ui {
+            ui_at = Some(runs.len());
+        }
         if let OverlaySource::Mass(k) = source {
             let first = mass_instances.len() as u32;
             let batch = &ui.mass[k as usize];
@@ -831,7 +842,9 @@ pub(crate) fn build<'a>(
             }));
             let count = mass_instances.len() as u32 - first;
             match runs.last_mut() {
-                Some(run) if run.source == source && run.target == t => run.count += count,
+                Some(run) if run.source == source && run.target == t && !over_ui => {
+                    run.count += count
+                }
                 _ => runs.push(OverlayRun {
                     target: t,
                     source,
@@ -849,7 +862,7 @@ pub(crate) fn build<'a>(
             instances.len() as u32 - 1
         };
         match runs.last_mut() {
-            Some(run) if run.source == source && run.target == t => run.count += 1,
+            Some(run) if run.source == source && run.target == t && !over_ui => run.count += 1,
             _ => runs.push(OverlayRun {
                 target: t,
                 source,
@@ -862,6 +875,7 @@ pub(crate) fn build<'a>(
         instances,
         ui_instances,
         tables,
+        ui_at: ui_at.unwrap_or_else(|| runs.partition_point(|r| r.target == 0)),
         runs,
         backdrops: plans
             .iter()
@@ -1133,7 +1147,7 @@ const OVERLAY_WGSL: &str = wgsl!("overlay.wgsl");
 /// spreads its pixels across so a shallow ramp shows no steps where the
 /// output stores it. A float output is dithered for the 8 bits a display
 /// or a capture reads it back at.
-fn dither_step(format: wgpu::TextureFormat) -> f32 {
+pub(crate) fn dither_step(format: wgpu::TextureFormat) -> f32 {
     use wgpu::TextureFormat as F;
     match format {
         F::Rgb10a2Unorm => 1.0 / 1023.0,

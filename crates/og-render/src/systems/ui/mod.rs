@@ -35,6 +35,7 @@ pub(crate) mod build;
 pub mod filter;
 pub mod mass;
 pub(crate) mod overlay;
+pub(crate) mod paint;
 pub(crate) mod pass;
 
 pub use og_draw::ui::*;
@@ -65,6 +66,7 @@ pub(crate) fn shader_sources(add: &mut dyn FnMut(&str, String)) {
     add("ui", crate::ui::pass::ui_source());
     add("ui builtin materials", crate::ui::pass::builtin_source());
     add("ui mass", crate::ui::pass::mass_source());
+    add("ui paint", crate::ui::paint::source());
     add(
         "ui material (duotone)",
         crate::ui::ui_material_module_source(&crate::ui::example_ui_material()),

@@ -37,6 +37,10 @@ pub struct SceneLook {
 pub struct SceneUi {
     /// Screen-space sprites and text over the finished frame (`None`: none).
     pub overlay: Option<Overlay>,
+    /// og-ui's paint arena, drawn at the UI's layer of the overlay
+    /// (`ui/paint.rs`); kept across frames, uploaded when its generation
+    /// moves.
+    pub paint: og_draw::paint::Paint,
     /// Cooked vectors the overlay's UI draws ([`RenderScene::add_ui_vector`]).
     pub ui_vectors: Vec<crate::ui::UiVectorData>,
     /// Custom materials UI layers composite through

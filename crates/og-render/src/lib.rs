@@ -733,6 +733,7 @@ pub struct Renderer {
     overlay: overlay::OverlayRenderer,
     /// The UI pass's pipelines, tables and layers (src/ui/pass.rs).
     ui: ui::pass::UiRenderer,
+    paint: ui::paint::PaintRenderer,
     /// The overlay's glass: its passes, and its textures for the output's size.
     glass: glass::GlassPasses,
     glass_targets: Option<glass::GlassTargets>,

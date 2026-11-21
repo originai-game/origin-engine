@@ -900,6 +900,7 @@ impl Renderer {
                     .is_some_and(|of| !of.layers.is_empty()),
                 overlay: (routed && self.glass_targets.is_some())
                     || line_frame.overlay.1 > 0
+                    || !scene.ui.paint.is_empty()
                     || overlay_frame
                         .as_ref()
                         .is_some_and(|of| !of.main_runs().is_empty()),
