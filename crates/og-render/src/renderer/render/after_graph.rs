@@ -325,14 +325,20 @@ impl Pass for OverlayPass {
                     });
                     if paint_here {
                         painted = true;
-                        stats.draw_calls += r.paint.draw(
-                            &mut pass,
-                            kind == ui::pass::TargetKind::Linear,
-                            |page| match page {
-                                Some(f) => &r.cache.fonts[f.index()].bind_group,
-                                None => &r.sprite.white_sprite_group,
-                            },
-                        );
+                        stats.draw_calls +=
+                            r.paint
+                                .draw(&mut pass, kind == ui::pass::TargetKind::Linear, |bind| {
+                                    match bind {
+                                        ui::paint::PaintBind::Font(f) => {
+                                            &r.cache.fonts[f.index()].bind_group
+                                        }
+                                        ui::paint::PaintBind::Texture(t) => r.cache.sprite_groups
+                                            [t.index()]
+                                        .as_ref()
+                                        .expect("made at upload"),
+                                        ui::paint::PaintBind::White => &r.sprite.white_sprite_group,
+                                    }
+                                });
                     }
                     if let (true, Some(group0)) = (to > from, group0) {
                         stats.draw_calls +=

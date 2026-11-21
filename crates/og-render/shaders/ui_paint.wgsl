@@ -30,7 +30,7 @@ struct PaintGpu {
   // shadow's offset (xy), blur (z) and spread (w); CSS px.
   p: vec4<f32>,
   // x: the kind (0 solid, 1 gradient, 2 glyph, 3 icon, 4 border, 5 shadow,
-  // 6 inset shadow), y and z its gradient, or its first segment and their
+  // 6 inset shadow, 7 image), y and z its gradient, or its first segment and their
   // count, w its transform (0 none).
   k: vec4<u32>,
 };
@@ -80,7 +80,7 @@ fn vs_paint(@builtin(vertex_index) vi: u32, @builtin(instance_index) ii: u32) ->
   let half = 0.5 * q.rect.zw;
   var lo = -half - vec2<f32>(px);
   var hi = half + vec2<f32>(px);
-  if (q.k.x == 2u) {
+  if (q.k.x == 2u || q.k.x == 7u) {
     lo = -half;
     hi = half;
   } else if (q.k.x == 5u) {
@@ -263,6 +263,12 @@ fn fs_paint(in: PaintOut) -> @location(0) vec4<f32> {
         hole = blurred(sd_round_box(in.local - q.p.xy, hole_half, grown(q.r, -q.p.w)), q.p.z, scale);
       }
       a *= edge(sd_round_box(in.local, half, q.r), scale) * (1.0 - hole);
+    }
+    case 7u: {
+      // A texture's region: its colour times the quad's (the ink tints a
+      // mask; a picture's is white).
+      rgb *= m.rgb;
+      a *= m.a;
     }
     default: {
       a *= edge(sd_round_box(in.local, half, q.r), scale);

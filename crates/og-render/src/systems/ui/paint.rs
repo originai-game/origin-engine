@@ -8,9 +8,9 @@
 //! inside the overlay pass where the UI's layer lies
 //! ([`crate::overlay::OverlayFrame::ui_at`]).
 
-use crate::FontHandle;
 use crate::scene::GlyphKey;
 use crate::sprites::FontLayout;
+use crate::{FontHandle, TextureHandle};
 use bytemuck::{Pod, Zeroable};
 use og_draw::paint::{Paint, PaintKind};
 
@@ -27,11 +27,19 @@ pub(crate) struct PaintGpu {
     k: [u32; 4],
 }
 
-/// Consecutive instances drawn with one font page bound (`None`: the white
-/// sprite, nothing samples it).
+/// What a run binds as group 1: the white sprite (nothing samples it), a
+/// font page, or a texture's sprite group.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum PaintBind {
+    White,
+    Font(FontHandle),
+    Texture(TextureHandle),
+}
+
+/// Consecutive instances drawn with one group 1 bound.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) struct PaintRun {
-    pub page: Option<FontHandle>,
+    pub bind: PaintBind,
     pub first: u32,
     pub count: u32,
 }
@@ -219,6 +227,7 @@ impl PaintRenderer {
         queue: &wgpu::Queue,
         paint: &Paint,
         font: impl Fn(FontHandle) -> Option<&'a FontLayout>,
+        texture: impl Fn(TextureHandle) -> bool,
         revisions: u64,
         (width, height): (u32, u32),
         encode: bool,
@@ -250,7 +259,7 @@ impl PaintRenderer {
             return;
         }
         self.uploaded = Some(now);
-        self.resolve(paint, font);
+        self.resolve(paint, font, texture);
         let mut grew = self.group.is_none();
         grew |= write(device, queue, &mut self.quads, "ui paint quads", &self.gpu);
         self.gradient_rows.clear();
@@ -317,12 +326,18 @@ impl PaintRenderer {
     }
 
     /// The arena's quads as instances, each glyph from the first page of
-    /// its font that has it, and their runs.
-    fn resolve<'a>(&mut self, paint: &Paint, font: impl Fn(FontHandle) -> Option<&'a FontLayout>) {
+    /// its font that has it, each image of a loaded `texture`, and their
+    /// runs.
+    fn resolve<'a>(
+        &mut self,
+        paint: &Paint,
+        font: impl Fn(FontHandle) -> Option<&'a FontLayout>,
+        texture: impl Fn(TextureHandle) -> bool,
+    ) {
         self.gpu.clear();
         self.runs.clear();
         self.missing = 0;
-        let mut page: Option<FontHandle> = None;
+        let mut bind: Option<PaintBind> = None;
         let mut first = 0u32;
         for q in &paint.quads {
             let mut g = PaintGpu {
@@ -334,6 +349,9 @@ impl PaintRenderer {
                 k: [q.kind, q.a, q.b, q.xf],
                 ..Default::default()
             };
+            // What the quad samples; a quad that samples nothing draws with
+            // whatever is bound.
+            let mut wants = None;
             if q.kind == PaintKind::Glyph as u32 {
                 // Every page of a run-time font knows each glyph's advance;
                 // only the page that holds it has its bounds.
@@ -350,9 +368,6 @@ impl PaintRenderer {
                     continue;
                 };
                 let [pl, pb, pr, pt] = glyph.plane_bounds;
-                if pr <= pl || pt <= pb {
-                    continue;
-                }
                 let [x, baseline, size, _] = q.rect;
                 g.rect = [
                     x + pl * size,
@@ -366,23 +381,34 @@ impl PaintRenderer {
                 if l.color && !l.foreground {
                     g.color = [1.0, 1.0, 1.0, q.color[3]];
                 }
-                if page != Some(h) {
-                    if page.is_some() || self.gpu.len() as u32 > first {
-                        self.runs.push(PaintRun {
-                            page,
-                            first,
-                            count: self.gpu.len() as u32 - first,
-                        });
-                        first = self.gpu.len() as u32;
-                    }
-                    page = Some(h);
+                wants = Some(PaintBind::Font(h));
+            } else if q.kind == PaintKind::Image as u32 {
+                let t = TextureHandle::from_bits(q.a);
+                if !texture(t) {
+                    self.missing += 1;
+                    continue;
                 }
+                g.uv = q.p;
+                wants = Some(PaintBind::Texture(t));
+            }
+            if let Some(w) = wants
+                && bind != Some(w)
+            {
+                if self.gpu.len() as u32 > first {
+                    self.runs.push(PaintRun {
+                        bind: bind.unwrap_or(PaintBind::White),
+                        first,
+                        count: self.gpu.len() as u32 - first,
+                    });
+                    first = self.gpu.len() as u32;
+                }
+                bind = Some(w);
             }
             self.gpu.push(g);
         }
         if self.gpu.len() as u32 > first {
             self.runs.push(PaintRun {
-                page,
+                bind: bind.unwrap_or(PaintBind::White),
                 first,
                 count: self.gpu.len() as u32 - first,
             });
@@ -395,12 +421,13 @@ impl PaintRenderer {
     }
 
     /// Draws the uploaded paint into `pass` (an sRGB view's pipeline when
-    /// `linear`); `group1` binds a run's page. Returns the draws.
+    /// `linear`); `group1` binds a run's font page or texture. Returns the
+    /// draws.
     pub fn draw<'p>(
         &'p self,
         pass: &mut wgpu::RenderPass<'p>,
         linear: bool,
-        group1: impl Fn(Option<FontHandle>) -> &'p wgpu::BindGroup,
+        group1: impl Fn(PaintBind) -> &'p wgpu::BindGroup,
     ) -> u32 {
         let Some(group) = &self.group else {
             return 0;
@@ -412,7 +439,7 @@ impl PaintRenderer {
         pass.set_pipeline(pipeline);
         pass.set_bind_group(0, group, &[]);
         for r in &self.runs {
-            pass.set_bind_group(1, group1(r.page), &[]);
+            pass.set_bind_group(1, group1(r.bind), &[]);
             pass.draw(0..6, r.first..r.first + r.count);
         }
         self.runs.len() as u32

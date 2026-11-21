@@ -1385,8 +1385,21 @@ impl Tree {
                             1,
                         ));
                     }
-                    // A texture grid's cell: not painted by the arena yet.
-                    Some((IconCell::Image(..), _)) => {}
+                    // A texture grid's cell: a picture in its own colours, a
+                    // mask in the ink.
+                    Some((IconCell::Image(t, uv), picture)) => {
+                        let color = if picture { [1.0, 1.0, 1.0, alpha] } else { ink };
+                        p.quads.push(quad(
+                            PaintKind::Image,
+                            square,
+                            clip,
+                            color,
+                            [0.0; 4],
+                            uv,
+                            t.to_bits(),
+                            0,
+                        ));
+                    }
                     Some((IconCell::Builtin(name), _)) => {
                         let set = crate::icons::icons();
                         if p.icons.is_none() {

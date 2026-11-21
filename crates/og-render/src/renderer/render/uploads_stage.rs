@@ -107,15 +107,21 @@ impl Renderer {
         // og-ui's paint arena (ui/paint.rs): uploaded when it changed.
         if !scene.ui.paint.is_empty() {
             let fonts = &self.cache.fonts;
+            let textures = self.cache.textures.len();
+            // An image waits for its texture: a loaded one re-resolves.
             let revisions = scene
                 .font_revisions()
                 .iter()
-                .fold(0xcbf2_9ce4_8422_2325u64, |h, r| (h ^ r).wrapping_mul(0x0100_0000_01b3));
+                .chain(&[textures as u64])
+                .fold(0xcbf2_9ce4_8422_2325u64, |h, r| {
+                    (h ^ r).wrapping_mul(0x0100_0000_01b3)
+                });
             self.paint.upload(
                 &self.device,
                 &self.queue,
                 &scene.ui.paint,
                 |h| fonts.get(h.index()).map(|f| &f.layout),
+                |t| t.index() < textures,
                 revisions,
                 (self.out_width, self.out_height),
                 !self.output_format.is_srgb()
@@ -123,6 +129,12 @@ impl Renderer {
                     && !self.has_linear_view(target),
                 crate::overlay::dither_step(self.output_format),
             );
+            // Its images' sprite groups, made before the pass binds them.
+            for k in 0..self.paint.runs.len() {
+                if let ui::paint::PaintBind::Texture(t) = self.paint.runs[k].bind {
+                    self.sprite_group(Some(t));
+                }
+            }
         }
         // The sprite shaders' light map strips and ambient
         // (`SpriteFxFrame::light`).

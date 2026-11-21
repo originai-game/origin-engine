@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {
+      "member": "UI icons",
+      "summary": "On og-ui's new core, an icon from a texture grid paints: a picture in its own colours, a mask tinted by the text colour. It appears once its texture has loaded."
+    }
+  ]
+}

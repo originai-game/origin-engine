@@ -42,6 +42,10 @@ pub enum PaintKind {
     /// An inset shadow, inside the box only: the box less its hole (the box
     /// moved by `p`'s x and y, shrunk by its spread, blurred by its blur).
     InsetShadow = 6,
+    /// Region `p` (u0, v0, u1, v1) of texture `a` ([`crate::TextureHandle`]'s
+    /// bits) over `rect`, its colour times `color` (white for a picture,
+    /// the ink for a mask).
+    Image = 7,
 }
 
 /// One quad of the arena (`struct PaintIn` in ui_paint.wgsl's terms
