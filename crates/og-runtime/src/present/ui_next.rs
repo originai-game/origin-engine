@@ -782,7 +782,7 @@ impl Next {
         &mut self,
         engine: u32,
         (fonts, icons): (&og_ui_next::fonts::Fonts, &og_ui_next::icons::IconAtlas),
-        view: Option<og_ui::WorldView>,
+        view: Option<og_ui_next::view::WorldView>,
         textures: &[og_render::TextureHandle],
         time: f64,
         tps: u32,
@@ -1275,7 +1275,7 @@ impl Next {
 /// and depth, or behind the eye a point well off the surface the way the
 /// camera would turn to it, where an edge-clamped node pins.
 pub(crate) fn sighting(
-    view: &og_ui::WorldView,
+    view: &og_ui_next::view::WorldView,
     p: og_core::glam::Vec3,
     w: f32,
     h: f32,

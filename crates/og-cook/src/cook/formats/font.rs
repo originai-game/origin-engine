@@ -23,7 +23,7 @@ pub(crate) mod subset;
 /// Where a glyph by id (a shaped form) is keyed in the blob: 0x110000 + id,
 /// past every Unicode code point (og_bundle::format::GLYPH_ID_KEYS).
 use og_bundle::format::GLYPH_ID_KEYS;
-use og_ui::colr;
+use og_ui_next::colr;
 
 // The silhouette fields og-ui paints are the range the blob declares.
 const _: () = assert!(colr::FIELD_RANGE == og_bundle::format::COLOR_FIELD_RANGE);
@@ -1897,9 +1897,13 @@ mod tests {
             .expect("a color-runtime section");
         assert_eq!(rt.em_px, 48.0);
         let c = '\u{F0100}';
-        let painted =
-            og_ui::colr::render_runtime(&bytes, og_draw::GlyphKey::Char(c), rt.em_px, &rt.palette)
-                .expect("painted at run time");
+        let painted = og_ui_next::colr::render_runtime(
+            &bytes,
+            og_draw::GlyphKey::Char(c),
+            rt.em_px,
+            &rt.palette,
+        )
+        .expect("painted at run time");
         let (cooked, _) = cook(&bytes, &settings(false, "\u{F0100}"), 2, 0).expect("cooks");
         let b = og_blob::Blob::parse(&cooked, "test").unwrap();
         let rows = b

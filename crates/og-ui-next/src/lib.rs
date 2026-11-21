@@ -9,6 +9,7 @@ pub use nsh_tailwind::effects::Cursor;
 pub mod a11y;
 pub mod arena;
 pub mod classes;
+pub mod colr;
 pub mod cover;
 pub mod default_icons;
 pub mod fonts;
@@ -23,6 +24,7 @@ pub mod svg;
 pub mod text;
 pub mod tokens;
 pub mod tree;
+pub mod view;
 
 pub use tokens::Tokens;
 

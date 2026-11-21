@@ -585,15 +585,15 @@ fn view_proj(eng: &Engine) -> Result<(glam::Mat4, glam::Mat4, f32, f32), String>
 
 /// [`camera_of`] of og.Camera's JSON (a value that is not one: the default
 /// camera).
-pub(crate) fn camera_view(cam: &Value, w: f32, h: f32) -> og_ui::WorldView {
+pub(crate) fn camera_view(cam: &Value, w: f32, h: f32) -> og_ui_next::view::WorldView {
     camera_of(&record::Camera::from_json(cam).unwrap_or_default(), w, h)
 }
 
 /// og.Camera's projection times view on a `w`×`h` surface, and its eye,
 /// forward axis and whether it is orthographic: what og.camera's
 /// worldToScreen projects with and the UI's world anchors follow.
-pub(crate) fn camera_of(cam: &record::Camera, w: f32, h: f32) -> og_ui::WorldView {
-    og_ui::WorldView {
+pub(crate) fn camera_of(cam: &record::Camera, w: f32, h: f32) -> og_ui_next::view::WorldView {
+    og_ui_next::view::WorldView {
         view_proj: camera_view_proj(cam, w, h),
         eye: cam.position,
         forward: og_core::facing::camera_forward(cam.quaternion),

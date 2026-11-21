@@ -84,7 +84,7 @@ const CJK: &str = "templates/fonts/chinese-simplified/NotoSansSC-Regular.ttf";
 
 /// The sRGB pixel at (`x`, `y`) em from the pen of a colour glyph's image
 /// painted at `em_px`.
-fn pixel(image: &og_ui::colr::ColorImage, rgba: &[u8], em_px: f32, x: f32, y: f32) -> [u8; 4] {
+fn pixel(image: &og_ui_next::colr::ColorImage, rgba: &[u8], em_px: f32, x: f32, y: f32) -> [u8; 4] {
     let col = ((x - image.plane[0]) * em_px) as usize;
     let row = ((image.plane[3] - y) * em_px) as usize;
     let o = (row * image.width as usize + col) * 4;
@@ -843,12 +843,12 @@ fn colr_glyphs_paint_their_layers_and_gradients_in_colour() {
     let em = 32.0;
     let palette = [[1.0, 0.0, 0.0, 1.0], [0.0, 1.0, 0.0, 1.0]];
     let paint = |c: char| {
-        og_ui::colr::render_runtime(&bytes, og_draw::GlyphKey::Char(c), em, &palette)
+        og_ui_next::colr::render_runtime(&bytes, og_draw::GlyphKey::Char(c), em, &palette)
             .unwrap_or_else(|| panic!("{c} paints"))
     };
     // v0: entry 0 under, entry 1 over the right half.
     let a = paint('A');
-    let at = |g: &og_ui::colr::RuntimeColor, x| pixel(&g.image, &g.image.rgba, em, x, 0.4);
+    let at = |g: &og_ui_next::colr::RuntimeColor, x| pixel(&g.image, &g.image.rgba, em, x, 0.4);
     assert!(near_rgb(at(&a, 0.25), [255, 0, 0]), "{:?}", at(&a, 0.25));
     assert!(near_rgb(at(&a, 0.75), [0, 255, 0]), "{:?}", at(&a, 0.75));
     assert!(!a.image.foreground);
@@ -872,7 +872,8 @@ fn colr_glyphs_paint_their_layers_and_gradients_in_colour() {
     ));
     // A glyph without a colour paint is not painted in colour.
     assert!(
-        og_ui::colr::render_runtime(&bytes, og_draw::GlyphKey::Char('D'), em, &palette).is_none()
+        og_ui_next::colr::render_runtime(&bytes, og_draw::GlyphKey::Char('D'), em, &palette)
+            .is_none()
     );
 }
 
@@ -951,7 +952,7 @@ fn font_palette_draws_a_colour_face_in_the_palette_css_picks() {
         .iter()
         .find(|f| f.handle() == Some(drawn(&d, "L")[0].font))
         .unwrap();
-    let a = og_ui::colr::render_runtime(
+    let a = og_ui_next::colr::render_runtime(
         bytes,
         og_draw::GlyphKey::Char('A'),
         32.0,

@@ -4,7 +4,6 @@
 
 pub use og_text::text::*;
 
-pub mod colr;
 pub(crate) mod edit;
 pub mod hanging;
 #[doc(hidden)]

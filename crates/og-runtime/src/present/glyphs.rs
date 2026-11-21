@@ -8,7 +8,7 @@
 //! so text drawn page by page keeps one layout; the page that holds it
 //! learns its bounds. Pages are added as they fill. A colour font
 //! (`font { color true runtime true }`) paints a glyph with a COLR paint
-//! as the cook paints one (`og_ui::colr::render_runtime`) onto colour
+//! as the cook paints one (`og_ui_next::colr::render_runtime`) onto colour
 //! pages, each with a silhouette page for its shadows, glow and outline.
 
 use crate::present::extract::RenderState;
@@ -65,7 +65,7 @@ enum Rendered {
     /// A distance field (an outline glyph).
     Field(GlyphImage),
     /// A colour glyph's images and silhouette field.
-    Colour(og_ui::colr::RuntimeColor),
+    Colour(og_ui_next::colr::RuntimeColor),
 }
 
 /// A run-time page's kind, as the cooked font's pages: a distance field;
@@ -253,7 +253,7 @@ fn render_one(
     color: &Option<og_bundle::runtime::ColorRuntime>,
 ) -> Option<Rendered> {
     if let Some(c) = color
-        && let Some(g) = og_ui::colr::render_runtime(file.bytes(), k, c.em_px, &c.palette)
+        && let Some(g) = og_ui_next::colr::render_runtime(file.bytes(), k, c.em_px, &c.palette)
     {
         return Some(Rendered::Colour(g));
     }

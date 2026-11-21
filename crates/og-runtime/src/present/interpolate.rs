@@ -345,7 +345,12 @@ pub(crate) fn frame_alpha(before: f64, after: f64, tick_ms: f64, held: bool) -> 
 /// The camera a frame between ticks draws with on a `w`×`h` surface:
 /// og.Camera (`camera`, its JSON) blended with the tick before; `None`
 /// without one.
-fn drawn_view(s: &InterpState, camera: Option<&Value>, w: f32, h: f32) -> Option<og_ui::WorldView> {
+fn drawn_view(
+    s: &InterpState,
+    camera: Option<&Value>,
+    w: f32,
+    h: f32,
+) -> Option<og_ui_next::view::WorldView> {
     let c = camera?;
     let row = crate::host::wire::record::Camera::from_json(c).ok()?;
     let (p, q) = camera_pose(&row);

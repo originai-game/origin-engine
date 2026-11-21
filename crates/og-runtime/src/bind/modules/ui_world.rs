@@ -74,7 +74,7 @@ impl Feed {
         &self,
         ctx: &og_ecs::SystemContext<'_>,
         vp: &Viewport,
-    ) -> Option<og_ui::WorldView> {
+    ) -> Option<og_ui_next::view::WorldView> {
         let (id, layout) = self.camera.as_ref()?;
         let bytes = ctx.resource_bytes(*id).ok()?;
         let cam: crate::host::wire::record::Camera = layout.read(&bytes).ok()?;
