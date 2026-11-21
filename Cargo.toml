@@ -133,6 +133,16 @@ opt-level = 3
 opt-level = 3
 [profile.wasm.package.og-reactive]
 opt-level = 3
+# og-ui's new core (crates/og-ui-next): its arena, layout and update queue
+# run every frame the UI changes, as og-ui's do.
+[profile.wasm.package.og-ui-next]
+opt-level = 3
+[profile.wasm.package.rune-taffy]
+opt-level = 3
+[profile.wasm.package.taffy]
+opt-level = 3
+[profile.wasm.package.nsh-reactive]
+opt-level = 3
 [profile.wasm.package.wgpu]
 opt-level = 3
 [profile.wasm.package.og-ai]
