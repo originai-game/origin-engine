@@ -360,29 +360,6 @@ impl BlobKind for Pack {
 }
 
 row!(
-    /// The root of a scriptless Svelte UI document blob (`.svelte`).
-    /// Version 4: the new core's compiled styles, a section per look
-    /// (`next-<look key>`).
-    DocumentMeta, "og.UiDocument", 4 {
-        /// Bytes of the validated document text in `text`.
-        text_bytes: u32,
-    }
-);
-
-/// The UI document blob: `text` holds the document the cook validated
-/// against og-ui's reflected props (`og_ui::UiDocument::parse`), parsed
-/// again at load (docs/ui.md §2.1); each `next-<look key>` holds its
-/// style compiled for og-ui's new core against a look (the default or a
-/// pack of the project over it, in a scheme; `og_ui_next::cooked`).
-pub struct Document;
-impl BlobKind for Document {
-    const NAME: &'static str = "og.UiDocument";
-    fn schemas() -> Vec<Schema> {
-        vec![DocumentMeta::schema()]
-    }
-}
-
-row!(
     /// The root of a material shader blob (an `.ogt` of `type shader`).
     ShaderMeta, "og.MaterialShader", 1 {
         /// Bytes of the canonical shader text (code inlined) in `text`.

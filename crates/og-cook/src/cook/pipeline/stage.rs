@@ -12,8 +12,6 @@ pub(crate) struct Project {
     pub(crate) budget_desc: String,
     pub(crate) story_functions: BTreeMap<String, og_story::yarn::types::Function>,
     pub(crate) story_functions_stamp: Vec<u8>,
-    /// `frames`: the origins remote `<iframe>`s may load from.
-    pub(crate) frames: Vec<String>,
     /// The creation form's profile (`look::project_profile`): the
     /// manifest's.
     pub(crate) profile: crate::look::Profile,
@@ -34,12 +32,6 @@ impl Project {
         let budgets = doc
             .as_ref()
             .and_then(|d| stats::Budgets::from_project(&d.body).ok())
-            .unwrap_or_default();
-        let frames = doc
-            .as_ref()
-            .map(|d| og_ui::doc::frames::project_origins(&d.body))
-            .transpose()
-            .map_err(|e| CookError(format!("project.ogt:{e}")))?
             .unwrap_or_default();
         let profile = doc
             .as_ref()
@@ -62,7 +54,6 @@ impl Project {
             budget_desc,
             story_functions,
             story_functions_stamp,
-            frames,
             profile,
             provided,
         })
@@ -79,29 +70,20 @@ pub(crate) struct Scanned {
     pub(crate) ignored: Vec<String>,
     pub(crate) early_errors: Vec<EarlyError>,
     pub(crate) consumed: BTreeSet<String>,
-    pub(crate) components: BTreeMap<String, String>,
 }
 
 pub(crate) fn scan_sources(
     assets_dir: &Path,
     cook_index: &index::Index,
     threads: usize,
-    development: bool,
     code: &CodeGraph,
 ) -> Result<Scanned, CookError> {
     let Scan {
         mut sources,
         ignored,
         early_errors,
-        components,
         external,
-    } = scan::scan_with(
-        assets_dir,
-        &|path| cook_index.read(path),
-        threads,
-        development,
-        code,
-    )?;
+    } = scan::scan_with(assets_dir, &|path| cook_index.read(path), threads, code)?;
     cook_index.note_external(&external);
     let mut consumed: BTreeSet<String> = BTreeSet::new();
     // Pixel effects and flipbooks of animated sources become ordinary
@@ -115,7 +97,6 @@ pub(crate) fn scan_sources(
         ignored,
         early_errors,
         consumed,
-        components,
     })
 }
 

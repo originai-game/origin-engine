@@ -2714,7 +2714,7 @@ Their ids are under the reserved `@ui/` root: `@ui/components/<path>` and
   (`og.load.document(world, "@ui/screens/pause.svelte")`, then
   `og.ui.push(world, "pause", vm)`). The cook bundles each built-in screen
   whose id the game's code names as a string literal, with its strings and
-  components. `og ui types` types the built-ins the game uses. A built-in
+  components. A built-in
   screen reads its declared props bare (`{title}`, `bind:open={open}`), as
   a component does, so one document is pushed with a viewmodel or mounted
   with stores; `$toasts` and `$captions` are the engine's stores, not

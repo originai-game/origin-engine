@@ -35,12 +35,9 @@ pub(crate) struct Scan {
     pub(crate) sources: Vec<Source>,
     pub(crate) ignored: Vec<String>,
     pub(crate) early_errors: Vec<(String, &'static str, String)>,
-    /// Each component name the documents use or declare, by the id of the
-    /// document that defines it: the game's own, else a built-in one.
-    pub(crate) components: BTreeMap<String, String>,
     /// The files outside the project its built-in assets were read from (a
-    /// style pack's, a built-in document's): inputs of the cook as much as
-    /// its own assets are.
+    /// style pack's, an engine string table's): inputs of the cook as much
+    /// as its own assets are.
     pub(crate) external: Vec<PathBuf>,
 }
 
@@ -51,7 +48,6 @@ pub(crate) fn scan(assets_dir: &Path) -> Result<Scan, CookError> {
         assets_dir,
         &|path| std::fs::read(path),
         1,
-        false,
         &CodeGraph::default(),
     )
 }
@@ -89,13 +85,12 @@ pub fn own_lines(ty: &str) -> bool {
 }
 
 /// The extensions of the texts the scan reads more than once.
-const TEXTS: [&str; 4] = ["ogt", "css", "json", "svelte"];
+const TEXTS: [&str; 3] = ["ogt", "css", "json"];
 
 pub(crate) fn scan_with(
     assets_dir: &Path,
     read_file: &(impl Fn(&Path) -> std::io::Result<Vec<u8>> + Sync),
     threads: usize,
-    development: bool,
     code: &CodeGraph,
 ) -> Result<Scan, CookError> {
     let mut files = Vec::new();
@@ -165,49 +160,14 @@ pub(crate) fn scan_with(
             }
         }
     }
-    // The built-in components the game's documents use and the built-in
-    // screens its code names, that it does not declare, join it as well
-    // (`@ui/components/panels/backpack.svelte`, with its strings), and those
-    // they use in turn; a game's document of the same name wins.
-    let mut game = BTreeMap::new();
-    let mut used = BTreeSet::new();
     let mut early_errors: Vec<(String, &'static str, String)> = Vec::new();
-    for (rel, path) in &files {
-        if ext(rel) != "svelte" {
-            continue;
-        }
-        let Ok(text) =
-            read_file(path).and_then(|b| String::from_utf8(b).map_err(std::io::Error::other))
-        else {
-            continue;
-        };
-        // One that does not parse is the plan's error.
-        let imports = disk_imports(assets_dir, rel, &text);
-        let Ok(doc) = ui_components::parsed(rel, &text, imports) else {
-            continue;
-        };
-        game.entry(doc.name.clone()).or_insert_with(|| rel.clone());
-        used.extend(ui_components::uses(doc));
-    }
-    // The built-in screens the game's code names by id.
-    used.extend(code.ids.iter().cloned());
-    let components = match ui_components::resolve(game.clone(), used) {
-        Ok(r) => {
-            builtins.extend(r.files);
-            r.components
-        }
-        Err(e) => {
-            early_errors.push(("@ui".into(), "document", e));
-            game
-        }
-    };
     // The engine string tables the bundle holds (its components'), read
     // from the files the bundler resolved.
     let mut table_inputs = Vec::new();
     for (id, path) in &code.tables {
         match std::fs::read(path) {
             Ok(bytes) => {
-                builtins.insert(id.clone(), ui_components::intern(bytes));
+                builtins.insert(id.clone(), intern(bytes));
                 table_inputs.push(path.clone());
             }
             Err(e) => {
@@ -215,13 +175,10 @@ pub(crate) fn scan_with(
             }
         }
     }
-    // Documents and TSX UIs can use the default UI without naming a font
+    // TSX UIs can use the default UI without naming a font
     // or a look. Keep its outline-only face separate and lazy like a
     // font-pack face; projects with no UI do not carry it at all.
-    if code.tsx
-        || files.iter().any(|(id, _)| ext(id) == "svelte")
-        || builtins.keys().any(|id| ext(id) == "svelte")
-    {
+    if code.tsx {
         let settings = format!("{}.ogt", og_ui::DEFAULT_FONT_ASSET);
         for f in look::styles()
             .iter()
@@ -231,12 +188,9 @@ pub(crate) fn scan_with(
         }
     }
     // The default pack's images (its shapes, `nine-disc` …) are every UI's:
-    // they join a project with a document or a TSX UI, with their import
+    // they join a project with a TSX UI, with their import
     // settings, read from the built-in styles.
-    if code.tsx
-        || files.iter().any(|(id, _)| ext(id) == "svelte")
-        || builtins.keys().any(|id| ext(id) == "svelte")
-    {
+    if code.tsx {
         let pack = og_ui_next::pack::Layer::default_pack();
         let srcs: BTreeSet<String> = pack
             .assets()
@@ -262,37 +216,14 @@ pub(crate) fn scan_with(
             }
         }
     }
-    // A development cook from a checkout: the default style as the source
-    // tree has it, when that is not the compiled one (a token or
-    // default.css edit not yet built into the engine).
-    let mut base_inputs = Vec::new();
-    if development
-        && (files.iter().any(|(id, _)| ext(id) == "svelte")
-            || builtins.keys().any(|id| ext(id) == "svelte"))
-    {
-        let (css, inputs) = ui_components::base_css();
-        base_inputs = inputs;
-        match css {
-            Ok(Some(css)) => {
-                builtins.insert(ui_components::BASE.to_string(), css);
-            }
-            Ok(None) => {}
-            Err(e) => early_errors.push((ui_components::BASE.into(), "style", e)),
-        }
-    }
     for id in builtins.keys() {
         files.push((id.clone(), assets_dir.join(id)));
     }
     let mut external: Vec<PathBuf> = builtins
         .keys()
         .filter(|id| !code.tables.contains_key(*id))
-        .filter_map(|id| {
-            look::style_path(id)
-                .map(Path::to_path_buf)
-                .or_else(|| ui_components::path(id).ok())
-        })
+        .filter_map(|id| look::style_path(id).map(Path::to_path_buf))
         .collect();
-    external.extend(base_inputs);
     external.extend(table_inputs);
     let read = |rel: &str, path: &Path| -> Result<Vec<u8>, CookError> {
         match builtins.get(rel) {
@@ -322,6 +253,10 @@ pub(crate) fn scan_with(
             (Some(kind), _) => kind,
             (None, "json") if font_pack::is_pack(rel, &read(rel, path)?) => &font_pack::FONT_PACK,
             (None, "json") if ui_packs::is_pack(rel) => &ui_packs::PACK,
+            (None, "svelte") => {
+                early_errors.push((rel.clone(), "document", ".svelte documents are removed: write the screen as a TSX component and mount it with mount(world, Screen, props, { layer }) from @origingame/engine/ui".into()));
+                continue;
+            }
             (None, "ogt") => {
                 let text = String::from_utf8(read(rel, path)?)
                     .map_err(|_| CookError(format!("{}: not UTF-8 text", path.display())))?;
@@ -466,35 +401,31 @@ pub(crate) fn scan_with(
         sources,
         ignored,
         early_errors,
-        components,
         external,
     })
 }
 
-/// The stylesheets a game document's `@import`s name, read from `assets/`
-/// (one that cannot be read is left out: the plan reports it).
-fn disk_imports(assets_dir: &Path, rel: &str, text: &str) -> Vec<(String, String)> {
-    let mut out: Vec<(String, String)> = Vec::new();
-    let mut pending: Vec<(String, String)> = og_ui::UiDocument::imports(text)
-        .into_iter()
-        .map(|p| (rel.to_string(), p))
-        .collect();
-    while let Some((from, path)) = pending.pop() {
-        let at = og_ui::doc::at_rules::resolve(&from, &path);
-        if out.iter().any(|(p, _)| *p == at) || at.split('/').any(|c| c == ".." || c.is_empty()) {
-            continue;
-        }
-        let Ok(css) = std::fs::read_to_string(assets_dir.join(&at)) else {
-            continue;
-        };
-        pending.extend(
-            og_ui::UiDocument::imports(&css)
-                .into_iter()
-                .map(|p| (at.clone(), p)),
-        );
-        out.push((at, css));
+/// `bytes` for the process, each distinct content kept once (the cook
+/// lends its built-in files as `&'static`): a long-running cook keeps what
+/// it read, and only an edit adds a copy.
+fn intern(bytes: Vec<u8>) -> &'static [u8] {
+    use std::collections::HashMap;
+    type Kept = HashMap<u64, Vec<&'static [u8]>>;
+    static KEPT: std::sync::Mutex<Option<Kept>> = std::sync::Mutex::new(None);
+    let key = og_core::hash::hash_bytes(&bytes);
+    let mut kept = KEPT
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let same = kept
+        .get_or_insert_with(HashMap::new)
+        .entry(key)
+        .or_default();
+    if let Some(k) = same.iter().find(|k| ***k == *bytes) {
+        return k;
     }
-    out
+    let k: &'static [u8] = Box::leak(bytes.into_boxed_slice());
+    same.push(k);
+    k
 }
 
 /// The group of a planned output: its asset's, except a glTF's `#proxy`

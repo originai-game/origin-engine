@@ -344,7 +344,7 @@ impl<'a> Validator<'a, '_> {
             }
             match g.bound.name() {
                 "Fields" | "AnyComponent" | "AnyResource" | "AnyEvent" | "AnyReflected"
-                | "ScreenName" | "ComponentName" | "Json" | "UiStores" => {}
+                | "Json" | "UiStores" => {}
                 other => self.error(
                     g.line,
                     format!(
@@ -976,20 +976,6 @@ impl<'a> Validator<'a, '_> {
                         self.error(
                             line,
                             format!("`{name}<{a}>` needs {want} token or a generic bounded by one"),
-                        );
-                    }
-                }
-                "ScreenProps" | "ScreenValues" | "ComponentProps" => {
-                    let a = args[0].name();
-                    let bound = if name.starts_with("Screen") {
-                        "ScreenName"
-                    } else {
-                        "ComponentName"
-                    };
-                    if !generic(a).is_some_and(|g| g.bound.name() == bound) {
-                        self.error(
-                            line,
-                            format!("`{name}<{a}>` needs a generic bounded by {bound}"),
                         );
                     }
                 }

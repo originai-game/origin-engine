@@ -30,11 +30,6 @@
 //! diagnostics are on stdout; anything else, a signal, or a non-zero
 //! status with nothing parsed, is the checker failing, never "no errors".
 //!
-//! A project's UI documents are typed first (`og ui types`), so a
-//! viewmodel is checked against them; a document that does not parse is an
-//! error of the check (OG9102) with the cook's own message, since the cook
-//! refuses the same file.
-//!
 //! A material shader whose mesh surface does not take one of what a scene
 //! can put on it (og-render's capability table) is a warning (OG9103).
 //!
@@ -715,10 +710,6 @@ pub fn default_checkers() -> usize {
 pub struct Target {
     pub root: PathBuf,
     pub config: PathBuf,
-    /// The project's UI documents that do not parse (`og ui types`), found
-    /// as their types were written: errors of the check, as the cook
-    /// refuses the same documents.
-    pub untyped: Vec<Diagnostic>,
 }
 
 impl Target {
@@ -739,39 +730,17 @@ impl Target {
         Ok(Target {
             root: config.parent().unwrap_or(Path::new(".")).to_path_buf(),
             config,
-            untyped: Vec::new(),
         })
     }
 
     /// The configuration of a project (see the module doc).
     pub fn of(p: &Project) -> Result<Target, String> {
-        // Its documents' types first, so a viewmodel is checked against
-        // the documents as they are now (`og ui types`).
-        let untyped = if p.manifest {
-            crate::ui::write_types(&p.root)?
-                .untyped
-                .into_iter()
-                .map(|u| Diagnostic {
-                    file: Some(u.file),
-                    line: u.at.map(|(line, _)| line),
-                    col: u.at.map(|(_, col)| col),
-                    code: crate::ui::UNTYPED_CODE,
-                    message: u.message,
-                })
-                .collect()
-        } else {
-            Vec::new()
-        };
         let root = PathBuf::from(typescript_path(
             &p.root.canonicalize().unwrap_or_else(|_| p.root.clone()),
         ));
         let own = root.join("tsconfig.json");
         if own.is_file() {
-            return Ok(Target {
-                root,
-                config: own,
-                untyped,
-            });
+            return Ok(Target { root, config: own });
         }
         // The engine resolves as a package, through the project's link
         // (project::LINK), which a bare entry does not have.
@@ -802,11 +771,7 @@ impl Target {
         if std::fs::read_to_string(&path).ok().as_deref() != Some(text.as_str()) {
             std::fs::write(&path, text).map_err(|e| format!("{}: {e}", path.display()))?;
         }
-        Ok(Target {
-            root,
-            config: path,
-            untyped,
-        })
+        Ok(Target { root, config: path })
     }
 }
 
@@ -872,7 +837,6 @@ pub fn gate(p: &Project, package: &Path, json: bool) -> Result<Report, String> {
     }
     let target = Target::of(p)?;
     let mut report = checker.check(&target, default_checkers())?;
-    untyped_documents(&target, &mut report);
     module_state(p, &mut report);
     unknown_classes(p, &mut report);
     pack_grounds(p, &mut report);
@@ -1166,22 +1130,6 @@ fn shader_capabilities_lint(p: &Project, json: bool, to_stderr: bool) {
         eprintln!("{text}");
     } else {
         println!("{text}");
-    }
-}
-
-/// The UI documents that do not parse (`Target::untyped`): each an error of
-/// the report, so `og check` fails where the cook would refuse the document.
-fn untyped_documents(target: &Target, report: &mut Report) {
-    for d in &target.untyped {
-        report.raw.push_str(&format!(
-            "{}({},{}): error OG{}: {}\n",
-            d.file.as_deref().unwrap_or_default(),
-            d.line.unwrap_or(1),
-            d.col.unwrap_or(1),
-            d.code,
-            d.message
-        ));
-        report.diagnostics.push(d.clone());
     }
 }
 
@@ -1500,7 +1448,6 @@ pub fn run(args: &[&str]) -> ExitCode {
         Ok(r) => r,
         Err(e) => return fail(e),
     };
-    untyped_documents(&target, &mut report);
     if let Some(p) = &project {
         module_state(p, &mut report);
         unknown_classes(p, &mut report);

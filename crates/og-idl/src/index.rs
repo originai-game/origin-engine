@@ -38,9 +38,6 @@ pub const GENERICS: &[(&str, usize)] = &[
     ("ComponentType", 1),
     ("ResourceType", 1),
     ("EventType", 1),
-    ("ScreenProps", 1),
-    ("ScreenValues", 1),
-    ("ComponentProps", 1),
     ("UiReadable", 1),
     ("UiWritable", 1),
     ("UiStart", 1),
@@ -55,8 +52,6 @@ pub const META: &[&str] = &[
     "AnyResource",
     "AnyEvent",
     "AnyReflected",
-    "ScreenName",
-    "ComponentName",
     "UiStores",
 ];
 

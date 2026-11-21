@@ -274,8 +274,8 @@ refuses any other and names the ones it takes.
   metalness. The prepass and every shadow pass draw through the same
   entries.
 - A UI style is an `.ogt` of `type style`. Version 3 is the CSS dialect
-  (docs/ui.md §3.2), which `og style upgrade`, `og style new` and
-  `og ui migrate` write and every built-in style uses. It holds the
+  (docs/ui.md §3.2), which `og style upgrade` and `og style new` write
+  and every built-in style uses. It holds the
   tokens: rarity, team, damage and chart colours, each with its cue; the
   type scale per breakpoint; the space, size, radius and stroke scales;
   elevation; the shape language; motion springs and eases; and sounds and
@@ -283,11 +283,6 @@ refuses any other and names the ones it takes.
   (`--panel-raised: #211a15`). Selector blocks dress the parts
   (`Button::base.primary:active { -og-slice: … }`). Versions 1 and 2
   still load. The grammar is og-ui's `parse_style`.
-- A UI document is an `.ogt` of `type screen` or `type component`.
-  Version 2 uses CSS declarations for an element's look and layout
-  (docs/ui.md §3.2, og-ui's README §Documents); `og ui migrate` writes a
-  version 1 document as version 2. `og dev` reloads an edited document in
-  place.
 - A look is an `.ogt` of `type look`. Its top-level lines are `name`,
   `extends`, `ui` and `antialias`. `extends` names a built-in preset's
   slug or another look's asset id; the game's own

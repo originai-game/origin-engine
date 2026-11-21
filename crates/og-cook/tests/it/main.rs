@@ -22,8 +22,6 @@ mod conform_mesh;
 mod consumed_paths;
 #[path = "../cook_report.rs"]
 mod cook_report;
-#[path = "../documents.rs"]
-mod documents;
 #[path = "../effekseer.rs"]
 mod effekseer;
 #[path = "../environment.rs"]

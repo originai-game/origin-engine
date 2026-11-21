@@ -15,15 +15,11 @@
 //! skipped, strings kept. It finds `"#rrggbb"` strings (`hex("#…")`
 //! included), `{ r: <n>, g: <n>, b: <n> }` colour objects, `radius: <n>`
 //! and `radii: [<n>, …]` with a number other than 0, and `font: "<name>"`
-//! naming no font role. Documents (`type screen`, `type component`) are
-//! parsed: a literal `#rrggbb` paint in a prop, an `@media` override or a
-//! state, and a literal `border-radius` other than 0. The default
-//! argument is the project's `assets/ui`.
+//! naming no font role. The default argument is the project's
+//! `assets/ui`.
 
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
-
-use og_ui::doc::{Lit, Paint, PropValue, StateValue, UiDocument};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Finding {
@@ -262,64 +258,6 @@ pub fn scan_ts(file: &str, src: &str) -> Vec<Finding> {
     out
 }
 
-/// The findings of a document.
-pub fn scan_doc(file: &str, doc: &UiDocument) -> Vec<Finding> {
-    let lines: Vec<&str> = doc.text.lines().collect();
-    let mut out = Vec::new();
-    let mut push = |line: usize, kind: &'static str, text: String| {
-        if lines
-            .get(line.wrapping_sub(1))
-            .is_some_and(|l| l.contains(OK))
-        {
-            return;
-        }
-        out.push(Finding {
-            file: file.into(),
-            line,
-            col: 1,
-            kind,
-            text,
-        });
-    };
-    for n in &doc.nodes {
-        let sets = n
-            .props
-            .iter()
-            .chain(n.at.iter().flat_map(|(_, p)| p.iter()))
-            .chain(n.rules.iter().flat_map(|rule| rule.props.iter()));
-        for p in sets {
-            match &p.value {
-                PropValue::Lit(Lit::Paint(Paint::Color(_))) => {
-                    push(p.line, "colour", format!("{} {}", p.name(), p.source))
-                }
-                PropValue::Lit(Lit::Num(r)) if p.name() == "radius" && *r != 0.0 => {
-                    push(p.line, "radius", format!("border-radius {}", p.source))
-                }
-                _ => {}
-            }
-        }
-        for g in &n.groups {
-            for s in &g.states {
-                for v in &s.values {
-                    let what = match v {
-                        StateValue::Background(Paint::Color(c)) => Some(("background", c)),
-                        StateValue::Ink(Paint::Color(c)) => Some(("color", c)),
-                        _ => None,
-                    };
-                    if let Some((prop, c)) = what {
-                        push(
-                            n.line,
-                            "colour",
-                            format!("{}:{} {prop} {}", g.name, s.name, og_ui::tokens::hex(*c)),
-                        );
-                    }
-                }
-            }
-        }
-    }
-    out
-}
-
 fn collect(dir: &Path, out: &mut Vec<PathBuf>) {
     let Ok(entries) = std::fs::read_dir(dir) else {
         return;
@@ -333,9 +271,7 @@ fn collect(dir: &Path, out: &mut Vec<PathBuf>) {
             {
                 collect(&p, out);
             }
-        } else if (name.ends_with(".ts") && !name.ends_with(".d.ts") && !name.ends_with(".test.ts"))
-            || name.ends_with(".svelte")
-        {
+        } else if name.ends_with(".ts") && !name.ends_with(".d.ts") && !name.ends_with(".test.ts") {
             out.push(p);
         }
     }
@@ -361,9 +297,6 @@ pub fn scan(paths: &[PathBuf]) -> Result<Vec<Finding>, String> {
         let name = f.to_string_lossy().replace('\\', "/");
         if f.extension().is_some_and(|e| e == "ts") {
             out.extend(scan_ts(&name, &text));
-        } else if f.extension().is_some_and(|e| e == "svelte") {
-            let d = UiDocument::parse(&name, &text).map_err(|e| e.join("\n"))?;
-            out.extend(scan_doc(&name, &d));
         }
     }
     Ok(out)
@@ -472,19 +405,5 @@ const s = "#notahex";
                 (6, "font", "font: \"Cinzel\"".into()),
             ]
         );
-    }
-
-    /// Ways it could fail: a `var(--token)` paint reported, a literal
-    /// reported again for an `@media` block that does not set it, or a
-    /// zero radius reported.
-    #[test]
-    fn a_document_reports_literal_paint_and_radius_once() {
-        let text = "<meta name=\"component\" content=\"C\">\n<column><panel id=\"A\"/><panel id=\"B\"/></column>\n<style>\n#A { background: #102030; border-radius: 6px; }\n@media (width < 600px), (height < 600px) { #A { height: 32px; } }\n#B { background: var(--panel); border-radius: 0; }\n</style>";
-        let doc = UiDocument::parse("c.svelte", text).expect("parses");
-        let found: Vec<(usize, &str)> = scan_doc("c.svelte", &doc)
-            .iter()
-            .map(|f| (f.line, f.kind))
-            .collect();
-        assert_eq!(found, [(4, "colour"), (4, "radius")]);
     }
 }

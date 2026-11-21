@@ -40,15 +40,16 @@ Nothing is installed or copied to use them.
   props, and its group's README its intents and parts. The cook bundles
   every built-in component the game's documents use, with the components
   those use, and `og.load.document` of the screen loads them with it.
-- A built-in screen is loaded by its id and shown by its name:
+- A built-in screen is a TSX component, mounted on a layer:
 
-  ```ts
-  og.load.document(world, "@ui/screens/pause.svelte");
-  og.ui.push(world, "pause", vm);
+  ```tsx
+  import { mount } from "@origingame/engine/ui";
+  import { PauseScreen } from "@origingame/engine/ui/screens/pause.tsx";
+  const unmount = mount(world, () => <PauseScreen open />, {}, { layer: "menu" });
   ```
 
-  The cook bundles each built-in screen whose id the code names as a
-  string literal; `og ui types` types its viewmodel.
+  Its props are its exported interface (`PauseScreenProps`), which
+  `og check` checks.
 - To change one, run `og ui eject <name>` (`og ui eject pause`,
   `og ui eject panels/backpack`). It copies the document and its strings into
   `assets/ui/`, where the game owns it. The game's document of the same

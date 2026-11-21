@@ -932,55 +932,6 @@ impl Bundle {
         String::from_utf8(text.to_vec()).map_err(|_| invalid(&blob, "the pack is not UTF-8"))
     }
 
-    /// The validated text of a UI document blob (parse it with og-ui's
-    /// `UiDocument::parse`).
-    pub fn document_text(&self, id: &str, bytes: &[u8]) -> Result<String, LoadError> {
-        let blob = self.blob::<format::Document>(id, bytes)?;
-        let meta = one::<format::DocumentMeta>(&blob)?;
-        let text = blob.raw("text")?;
-        if text.len() < meta.text_bytes as usize {
-            return Err(invalid(&blob, "the document text is cut short"));
-        }
-        String::from_utf8(text[..meta.text_bytes as usize].to_vec())
-            .map_err(|_| invalid(&blob, "the document text is not UTF-8"))
-    }
-
-    /// The stylesheets a UI document blob's `@import`s name, by the path
-    /// written (for `UiDocument::parse_with_imports`); none for a document
-    /// without.
-    pub fn document_imports(
-        &self,
-        id: &str,
-        bytes: &[u8],
-    ) -> Result<Vec<(String, String)>, LoadError> {
-        let blob = self.blob::<format::Document>(id, bytes)?;
-        match blob.raw_opt("imports") {
-            None => Ok(Vec::new()),
-            Some(raw) => serde_json::from_slice(raw)
-                .map_err(|_| invalid(&blob, "the document's imports are malformed")),
-        }
-    }
-
-    /// A UI document blob's section `name`: its style compiled for
-    /// og-ui's new core against one look (`og_ui_next::look::section`);
-    /// none when the cook did not compile it for that look.
-    pub fn document_section<'b>(&self, id: &str, bytes: &'b [u8], name: &str) -> Option<&'b [u8]> {
-        let blob = self.blob::<format::Document>(id, bytes).ok()?;
-        blob.raw_opt(name)
-    }
-
-    /// The ids of the documents defining the components a UI document blob
-    /// uses (the game's, or the engine's `@ui/` ones), which loading it
-    /// loads too; none for a document without.
-    pub fn document_uses(&self, id: &str, bytes: &[u8]) -> Result<Vec<String>, LoadError> {
-        let blob = self.blob::<format::Document>(id, bytes)?;
-        match blob.raw_opt("uses") {
-            None => Ok(Vec::new()),
-            Some(raw) => serde_json::from_slice(raw)
-                .map_err(|_| invalid(&blob, "the document's component uses are malformed")),
-        }
-    }
-
     /// Decodes a sound blob (the QOA or Opus stays encoded until
     /// [`CookedSound::decode`]).
     pub fn sound(&self, id: &str, bytes: &[u8]) -> Result<CookedSound, LoadError> {

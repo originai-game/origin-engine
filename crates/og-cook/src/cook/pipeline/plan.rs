@@ -25,12 +25,6 @@ pub(crate) struct Cx<'a> {
     pub(crate) schema_hash: [u8; 8],
     pub(crate) story_functions: &'a BTreeMap<String, og_story::yarn::types::Function>,
     pub(crate) story_functions_stamp: &'a [u8],
-    pub(crate) document_themes: &'a [og_ui::Theme],
-    /// Each component name by the id of the document defining it: the
-    /// game's own, else a built-in `@ui/` one (the scan's).
-    pub(crate) components: &'a BTreeMap<String, String>,
-    /// project.ogt's `frames`: the origins remote `<iframe>`s may load from.
-    pub(crate) frames: &'a [String],
     /// The project's profile (its creation form's): the manifest's.
     pub(crate) profile: crate::look::Profile,
     /// The shared action cache and the project's key in it

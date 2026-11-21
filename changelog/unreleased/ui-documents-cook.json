@@ -1,0 +1,23 @@
+{
+  "simulation": "unchanged",
+  "breaking": [
+    {
+      "member": ".svelte assets",
+      "change": "The cook no longer cooks .svelte documents (the og.UiDocument blob is gone): a `.svelte` file under assets/ is a cook error that names the fix.",
+      "fix": "Write the screen as a TSX component and mount it with `mount(world, Screen, props, { layer })` from `@origingame/engine/ui`, then delete the .svelte file and any CSS it alone imported.",
+      "find": [".svelte"]
+    },
+    {
+      "member": "og ui types, og ui slots, og ui migrate",
+      "change": "Removed with the documents they read: og check, og dev, og run and og build no longer write .og/types/ui/, and og ui literals reads TypeScript only.",
+      "fix": "A TSX component's props are its own TypeScript interface, checked by og check. Delete .og/types/ui/ and any script that runs these commands.",
+      "find": ["og ui types", "og ui slots", "og ui migrate", ".og/types/ui"]
+    },
+    {
+      "member": "UiScreens, UiComponents, ScreenName, ComponentName, ScreenProps, ScreenValues, ComponentProps",
+      "change": "Removed from the engine's types: they typed documents by name for og.ui.push, which is gone.",
+      "fix": "Import the component's props interface from its module (`PauseScreenProps` from `@origingame/engine/ui/screens/pause.tsx`).",
+      "find": ["UiScreens", "UiComponents", "ScreenName", "ComponentName", "ScreenProps<", "ScreenValues<", "ComponentProps<"]
+    }
+  ]
+}

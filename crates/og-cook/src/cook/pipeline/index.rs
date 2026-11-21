@@ -184,12 +184,6 @@ fn inputs(root: &Path, code: &[PathBuf]) -> std::io::Result<BTreeMap<PathBuf, St
     for path in code {
         files.insert(path.clone(), stat(path)?);
     }
-    // The manifest selects the built-in documents and their transitive
-    // dependencies even when none of those documents' bytes changed.
-    if let Some(dir) = super::ui_components::ui_dir() {
-        let path = dir.join("manifest.json");
-        files.insert(path.clone(), stat(&path)?);
-    }
     // The model is an input too, even though its verified cache is outside
     // the project. Resolve the current pin before reusing a cooked checkpoint.
     if super::motion::uses_motion(root) {
@@ -292,11 +286,8 @@ impl Index {
     /// project's code, when code is all that has changed since: the asset
     /// tree and `project.ogt` are as they were, and so is what was written.
     pub fn only_code_changed(&self) -> Option<(Report, BeforeCode)> {
-        let manifest = super::ui_components::ui_dir().map(|dir| dir.join("manifest.json"));
         let report = self.checkpoint(|path| {
-            !path.starts_with(self.root.join("assets"))
-                && path != self.root.join("project.ogt")
-                && Some(path) != manifest.as_deref()
+            !path.starts_with(self.root.join("assets")) && path != self.root.join("project.ogt")
         })?;
         let before = self.saved.lock().expect("index lock").before_code.clone()?;
         Some((report, before))

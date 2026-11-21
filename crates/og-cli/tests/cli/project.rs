@@ -268,9 +268,6 @@ setInterval(() => {
     .unwrap();
     let game = dir.join("game");
     std::fs::create_dir_all(game.join("src")).unwrap();
-    std::fs::create_dir_all(game.join("assets/ui")).unwrap();
-    let document = "<meta name='screen' content='shop'><meta name='prop:gold' content='number' data-doc='Gold.'><div></div>";
-    std::fs::write(game.join("assets/ui/shop.svelte"), document).unwrap();
     std::fs::write(game.join("src/main.ts"), "export default 0;\n").unwrap();
     std::fs::write(
         game.join("project.ogt"),
@@ -338,8 +335,8 @@ setInterval(() => {
             "export const n: number = 1;\nexport default 0;\n".to_string(),
         ),
         (
-            "assets/ui/shop.svelte",
-            document.replace("content='number'", "content='string'"),
+            "src/main.ts",
+            "export const n: number = 2;\nexport default 0;\n".to_string(),
         ),
     ]
     .iter()
@@ -371,11 +368,6 @@ setInterval(() => {
         events.push(event);
     }
     let status = child.wait().unwrap();
-    let types = std::fs::read_to_string(game.join(".og/types/ui/shop.d.ts")).unwrap();
-    assert!(
-        types.contains("gold?: string"),
-        "the .svelte save must retype: {types}"
-    );
     let _ = std::fs::remove_dir_all(&dir);
     let mut pending = None;
     let mut reloads = 0;

@@ -310,7 +310,7 @@ fn a_font_pack_indexes_its_faces_and_leaves_other_fonts_alone() {
 
 /// docs/ui.md §3.4: a font pack's hyphenation dictionaries (CSS
 /// `hyphens: auto`) ship in its cooked index only when the game's
-/// documents declare `hyphens: auto`, and only for the locales its string
+/// style sheets declare `hyphens: auto`, and only for the locales its string
 /// tables name; a shipped locale whose pack has no dictionary for it is
 /// warned of, and still cooks.
 ///
@@ -335,13 +335,10 @@ fn a_font_pack_ships_hyphenation_dictionaries_only_for_the_games_locales() {
     for l in ["en", "de", "vi"] {
         files.push((format!("strings/{l}.ogt"), table(l, &[])));
     }
-    let document = |css: &str| {
-        format!("<meta name=\"component\" content=\"t\">\n<p>Silbentrennung</p>\n<style>p {{ {css} }}</style>\n")
-            .into_bytes()
-    };
+    let sheet = |css: &str| format!("p {{ {css} }}\n").into_bytes();
     let dictionaries = |name: &str, css: &str| {
         let mut all = files.clone();
-        all.push(("ui/t.svelte".into(), document(css)));
+        all.push(("ui/t/main.css".into(), sheet(css)));
         let all: Vec<(&str, Vec<u8>)> = all.iter().map(|(p, b)| (p.as_str(), b.clone())).collect();
         let root = project(name, &all);
         let report = cook_project(&root, &CookOptions::default()).unwrap();
@@ -443,44 +440,6 @@ fn a_font_pack_ships_word_dictionaries_only_for_the_games_locales() {
     assert!(
         !warnings.iter().any(|w| w.contains("dictionary")),
         "{warnings:?}"
-    );
-}
-
-/// A document's own strings (`<meta name="strings">`, as a built-in screen
-/// carries its `.en.ogt`) are its fallback text, not a locale's table: the
-/// check neither compares them with the base nor puts their keys on the
-/// game's own table of the same locale, whose real gaps it still reports.
-#[test]
-fn a_documents_own_strings_are_not_a_locale_table() {
-    let zh = String::from_utf8(table("zh", &[("a", "甲"), ("b", "乙")]))
-        .unwrap()
-        .replace("locale \"zh\"\n", "locale \"zh\"\nbase true\n")
-        .into_bytes();
-    let root = project(
-        "own",
-        &[
-            ("strings/zh.ogt", zh),
-            ("strings/en.ogt", table("en", &[("a", "A")])),
-            (
-                "ui/panel.svelte",
-                b"<meta name=\"screen\" content=\"panel\">\n<meta name=\"strings\" content=\"./panel.en.ogt\">\n<p>{t(\"panel.title\")}</p>\n"
-                    .to_vec(),
-            ),
-            ("ui/panel.en.ogt", table("en", &[("panel.title", "Panel")])),
-        ],
-    );
-    let report = cook_project(&root, &CookOptions::default()).unwrap();
-    assert!(report.errors().is_empty(), "{:?}", report.errors());
-    let keys: Vec<&String> = report
-        .warnings
-        .iter()
-        .filter(|w| w.contains(" key "))
-        .collect();
-    assert_eq!(
-        keys,
-        ["assets/strings/en.ogt: missing key 'b' (zh has it)"],
-        "{:?}",
-        report.warnings
     );
 }
 

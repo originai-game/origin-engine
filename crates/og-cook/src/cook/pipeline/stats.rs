@@ -608,19 +608,6 @@ fn other_stats(bundle: &Bundle, id: &str, ty: &str) -> Result<Option<(String, Va
                 }),
             )
         }
-        "og.UiDocument" => {
-            let text = bundle.document_text(id, &bytes()?).map_err(e)?;
-            let d = og_ui::UiDocument::parse(id, &text).map_err(|e| e.join("; "))?;
-            (
-                "document",
-                json!({
-                    "name": d.name,
-                    "elements": d.nodes.len(),
-                    "timelines": d.timelines.len(),
-                    "props": d.props.len(),
-                }),
-            )
-        }
         "og.UiStyle" => {
             let text = bundle.style_text(id, &bytes()?).map_err(e)?;
             let files = serde_json::from_str(&text).map_err(|e| format!("{id}: {e}"))?;

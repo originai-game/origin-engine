@@ -65,8 +65,6 @@ fn cooked(name: &str, atlas: Option<&str>) -> PathBuf {
         let _ = std::fs::remove_dir_all(&root);
         let fonts = root.join("assets/fonts");
         std::fs::create_dir_all(&fonts).unwrap();
-        std::fs::create_dir_all(root.join("assets/ui")).unwrap();
-        std::fs::write(root.join("assets/ui/status.svelte"), STATUS).unwrap();
         let style = repo().join("templates/styles/shared");
         std::fs::copy(
             style.join("ChakraPetch-BoldItalic.ttf"),

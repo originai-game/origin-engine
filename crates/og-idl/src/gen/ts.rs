@@ -151,25 +151,6 @@ export type Value<T> = T extends { readonly [valueType]: infer V } ? V : never;
 
 /** The typed column views of a component token, as `ArchetypeView.column` returns them. */
 export type View<T> = T extends ComponentType<infer F, any> ? ColumnViews<F> : never;
-
-/**
- * The game's screen documents by name, each with its viewmodel and events.
- * Empty here: `og ui types` writes one `.og/types/ui/<name>.d.ts`
- * per document that adds itself, so `og.ui.push(world, "shop", vm)` checks `vm`.
- */
-export interface UiScreens {}
-/** The game's component documents by name, as {@link UiScreens}. */
-export interface UiComponents {}
-/** A screen's name: one the game declares, or any string (untyped). */
-export type ScreenName = (keyof UiScreens & string) | (string & {});
-/** A component's name: one the game declares, or any string (untyped). */
-export type ComponentName = (keyof UiComponents & string) | (string & {});
-/** A declared screen's viewmodel; `unknown` for an undeclared name. */
-export type ScreenProps<S> = S extends keyof UiScreens ? UiScreens[S]["props"] : unknown;
-/** A declared screen's values as it holds them: every prop, a left-out one at its default. */
-export type ScreenValues<S> = S extends keyof UiScreens ? Required<UiScreens[S]["props"]> : unknown;
-/** A declared component's props; `unknown` for an undeclared name. */
-export type ComponentProps<C> = C extends keyof UiComponents ? UiComponents[C]["props"] : unknown;
 "#;
 
 impl<'a> Gen<'a, '_> {

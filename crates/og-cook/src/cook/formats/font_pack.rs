@@ -5,7 +5,7 @@
 //! index adds nothing to them, so a pack never changes another font's
 //! cooked output. The index carries the pack's hyphenation dictionaries
 //! for the game's locales (`hyphenation:<language>`), only when its
-//! documents or style sheets declare `hyphens: auto`, and ICU's word
+//! style sheets declare `hyphens: auto`, and ICU's word
 //! dictionary for a shipped locale of its languages that needs one
 //! (`segmentation:<dictionary>`, og-i18n's `segmenter`): Chinese and
 //! Japanese, Thai, Lao, Khmer and Burmese, once per game.
@@ -32,12 +32,12 @@ struct Manifest {
     hyphenation: Vec<String>,
 }
 
-/// Whether a game's documents or style sheets declare `hyphens: auto`
+/// Whether a game's style sheets declare `hyphens: auto`
 /// (CSS Text 4 §6.1): only then does it ship hyphenation dictionaries.
 pub(crate) fn uses_auto_hyphens(sources: &[Source]) -> bool {
     sources
         .iter()
-        .filter(|s| s.rel.ends_with(".svelte") || s.rel.ends_with(".css"))
+        .filter(|s| s.kind == &crate::cook::ui_documents::STYLE)
         .any(|s| {
             let text = String::from_utf8_lossy(&s.bytes);
             text.match_indices("hyphens").any(|(at, _)| {

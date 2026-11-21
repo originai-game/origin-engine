@@ -277,9 +277,6 @@ commands:
                       strings into a table beside it under game. keys, its imports of other
                       built-ins kept, and the game's imports of it pointed at the copy; refuses to
                       overwrite without --force; --list prints each with its doc comment's line
-  ui types [project]  write .og/types/ui/<name>.d.ts for every screen and component document:
-                      its props and the events it can send, so og.ui.push(world, name,
-                      vm) checks vm; og check, og run, og build and og dev write them first
   frame measure <png> [--region x,y,w,h] [--against x,y,w,h] [--units px|fraction]
       [--metric contrast,highpass,mean,ramp] [--rows N] [--json] [--require-checked]
                       a reviewer's numbers off a captured frame, the same on every machine: WCAG

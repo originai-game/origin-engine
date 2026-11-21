@@ -459,7 +459,6 @@ fn watch(root: &Path, threads: usize, json: bool, exit_after: Option<usize>) -> 
     let assets = root.join("assets");
     let mut watched = vec![assets.clone()];
     watched.extend(og_cook::cook::look::styles_dir().map(Path::to_path_buf));
-    watched.extend(og_cook::cook::ui_components::engine_sources());
     let take = || {
         let mut m = BTreeMap::new();
         for w in &watched {

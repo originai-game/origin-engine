@@ -43,7 +43,6 @@ pub mod riv;
 #[cfg(test)]
 #[path = "../../../../tests/temp.rs"]
 mod test_dir;
-pub mod ui_components;
 mod ui_documents;
 mod ui_packs;
 pub mod ui_screens;
@@ -329,14 +328,7 @@ pub fn cook_project_with_texture_cache(
         mut ignored,
         mut early_errors,
         mut consumed,
-        components,
-    } = scan_sources(
-        assets_dir,
-        &cook_index,
-        threads,
-        !options.publish,
-        &options.code,
-    )?;
+    } = scan_sources(assets_dir, &cook_index, threads, &options.code)?;
     laps.lap("scan");
     let imported = import(&mut sources, &mut consumed, texture_cache, threads);
     laps.lap("import");
@@ -389,7 +381,6 @@ pub fn cook_project_with_texture_cache(
         options.texture.describe(),
         texture_encoder.as_deref().unwrap_or("none")
     );
-    let document_themes = vec![og_ui::Theme::default()];
     let project_key = project_key(&cook_index, &sources, texture_cache);
     let shown = formats::font::subset::shown(root, sources.iter().map(|s| s.bytes.as_slice()));
     let cx = Cx {
@@ -413,9 +404,6 @@ pub fn cook_project_with_texture_cache(
         schema_hash,
         story_functions: &project.story_functions,
         story_functions_stamp: &project.story_functions_stamp,
-        document_themes: &document_themes,
-        components: &components,
-        frames: &project.frames,
         profile: project.profile,
         provided: &project.provided,
         texture_cache,
