@@ -29,7 +29,7 @@
 //   `then` steps → "og test keeps the local store across a playtest's
 //   processes …" (tests/fixtures/relaunch)
 import { expect, test } from "bun:test";
-import { cpSync, existsSync, mkdirSync, rmSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, readFileSync, rmSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { ogBin } from "./support/og-bin.ts";
 import { fileURLToPath } from "node:url";
@@ -77,18 +77,17 @@ test.skipIf(STALE_WASM)("og.Rng in reads forks a deterministic stream without mo
 
 type Procgen = { hashes: Record<string, string | number>; noise: number; refused: { ok: boolean; reason: string }; hash: string };
 
+/** The shared procgen pin (tests/fixtures/procgen-pin.json): the scenario and the cross-host hashes, also og-core's test's. */
+const procgenPin = JSON.parse(
+  readFileSync(join(dirname(fileURLToPath(import.meta.url)), "..", "..", "tests", "fixtures", "procgen-pin.json"), "utf8"),
+) as { pinned: Record<string, string> };
+
 test("og.procgen and og.Rng's picks give og-core's pinned outputs, bit for bit, through the API", () => {
   const node = run<Procgen>("node", "procgen");
   // og-core's procgen::tests::every_generator_gives_its_pinned_output_for_a_seed:
   // the floats survive the JSON wire exactly, so the hashes are the same.
   expect(node.hashes).toMatchObject({
-    perlin2: "f408080a80a69ae1",
-    perlin3: "c99bab4bf56e2da4",
-    simplex2: "f87052e661c5c7be",
-    simplex3: "7988b7773f1605ed",
-    poisson: "8c0c32d7c29b84cd",
-    bsp: "4c25af53c3dbd445",
-    wfc: "c3d44cb51b6ea25a",
+    ...procgenPin.pinned,
     // og.Rng's fork "picks" of a world seeded 42: equal across runs and hosts.
     weighted: "d9faff60662c6855",
     permutation: "496debfddbe40345",

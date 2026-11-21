@@ -57,6 +57,13 @@ function start(game: unknown): Engine {
 
 const out: Record<string, unknown> = { host, case: which };
 
+/** FNV-1a over a byte sequence, as 16 hex digits (og-core's `hash_bytes`). */
+const fnv = (bytes: Iterable<number>): string => {
+  let h = 0xcbf29ce484222325n;
+  for (const b of bytes) h = BigInt.asUintN(64, (h ^ BigInt(b)) * 0x100000001b3n);
+  return h.toString(16).padStart(16, "0");
+};
+
 if (which === "rng") {
   const { default: game, Repro } = await import("../fixtures/rng-readonly/src/main.ts");
   const engine = start(game);
@@ -242,11 +249,7 @@ if (which === "rng") {
   out.sites = report.sites.map((s) => ({ kind: s.kind, name: s.name, ran: s.ran, fired: s.fired })).sort((a, b) => `${a.kind}${a.name}`.localeCompare(`${b.kind}${b.name}`));
   out.hash = engine.hash();
 } else if (which === "story") {
-  const fnv = (text: string): string => {
-    let h = 0xcbf29ce484222325n;
-    for (const b of new TextEncoder().encode(text)) h = BigInt.asUintN(64, (h ^ BigInt(b)) * 0x100000001b3n);
-    return h.toString(16).padStart(16, "0");
-  };
+  const fnvText = (text: string): string => fnv(new TextEncoder().encode(text));
   const must = <T>(r: unknown): T => {
     const x = r as { ok: true; value: T } | { ok: false; reason: string };
     if (!x.ok) throw new Error(x.reason);
@@ -290,7 +293,7 @@ if (which === "rng") {
     if (roll !== null) rolls.push(roll);
   }
   Object.assign(out, {
-    transcript: fnv(lines.join("\n")),
+    transcript: fnvText(lines.join("\n")),
     lines: lines.length,
     rolls,
     gold: og.story.get(w, "gold"),
@@ -366,12 +369,15 @@ if (which === "rng") {
   out.picks = picks;
   out.hash = engine.hash();
 } else if (which === "procgen") {
-  // The same generators and settings as og-core's pinned test
-  // (procgen::tests::every_generator_gives_its_pinned_output_for_a_seed).
-  const fnv = (bytes: Iterable<number>): string => {
-    let h = 0xcbf29ce484222325n;
-    for (const b of bytes) h = BigInt.asUintN(64, (h ^ BigInt(b)) * 0x100000001b3n);
-    return h.toString(16).padStart(16, "0");
+  // The same generators and settings as og-core's pinned test, from the
+  // same fixture (tests/fixtures/procgen-pin.json): the scenario is read
+  // once. og.Rng's picks are a world's fork "picks" (seed 42), not
+  // og-core's Rng::new stream, so their hashes stay pinned in core.test.ts.
+  const pin = JSON.parse(readFileSync(join(pkg, "..", "..", "tests", "fixtures", "procgen-pin.json"), "utf8")) as {
+    noise: { seed: number; octaves: number; frequency: number; grid: { width: number; height: number; x: number; y: number; step: number; z: number } };
+    poisson: { seed: number; width: number; height: number; radius: number; attempts: number; maxPoints: number };
+    bsp: { seed: number };
+    wfc: { seed: number; width: number; height: number; wrap: boolean; attempts: number; tiles: { weight: number; sockets: [number, number, number, number]; rotations: boolean }[] };
   };
   const f32s = (v: readonly number[]) => new Uint8Array(new Float32Array(v).buffer);
   const u32s = (v: readonly number[]) => new Uint8Array(new Uint32Array(v).buffer);
@@ -381,16 +387,16 @@ if (which === "rng") {
   };
   const grid = (kind: "perlin" | "simplex", threeD: boolean) =>
     must(og.procgen.noiseGrid({
-      noise: { seed: 7, kind, octaves: 4, frequency: 0.13, threeD },
-      width: 16, height: 16, x: -3.5, y: 2.25, step: 0.7, z: 1.3,
+      noise: { seed: pin.noise.seed, kind, octaves: pin.noise.octaves, frequency: pin.noise.frequency, threeD },
+      ...pin.noise.grid,
     })) as number[];
-  const pipes = [
-    { weight: 2, up: 0, right: 0, down: 0, left: 0, rotations: false },
-    { weight: 1, up: 1, right: 0, down: 1, left: 0, rotations: true },
-    { weight: 1, up: 1, right: 1, down: 0, left: 0, rotations: true },
-  ];
-  const wfc = must(og.procgen.wfc({ seed: 9, width: 20, height: 12, tiles: pipes, wrap: true, attempts: 5 }));
-  const poisson = must(og.procgen.poissonDisk({ seed: 5, width: 40, height: 30, radius: 3, attempts: 30, maxPoints: 10000 }));
+  const wfc = must(
+    og.procgen.wfc({
+      seed: pin.wfc.seed, width: pin.wfc.width, height: pin.wfc.height, wrap: pin.wfc.wrap, attempts: pin.wfc.attempts,
+      tiles: pin.wfc.tiles.map((t) => ({ weight: t.weight, up: t.sockets[0], right: t.sockets[1], down: t.sockets[2], left: t.sockets[3], rotations: t.rotations })),
+    }),
+  );
+  const poisson = must(og.procgen.poissonDisk({ ...pin.poisson }));
   const engine = start(og.game({ tick: 60, seed: 42 }));
   const rng = must(engine.world.resource(og.Rng));
   const picks = rng.fork("picks");
@@ -400,7 +406,7 @@ if (which === "rng") {
     simplex2: fnv(f32s(grid("simplex", false))),
     simplex3: fnv(f32s(grid("simplex", true))),
     poisson: fnv(f32s(poisson.flatMap((p) => [p.x, p.y]))),
-    bsp: fnv(must(og.procgen.bsp({ seed: 3 })).cells),
+    bsp: fnv(must(og.procgen.bsp({ seed: pin.bsp.seed })).cells),
     wfc: fnv(wfc.tiles.map((t, i) => t * 4 + wfc.rotations[i]!)),
     weighted: fnv(Array.from({ length: 64 }, () => picks.weighted([1, 0, 3, 0.5]))),
     permutation: fnv(u32s(picks.permutation(32))),

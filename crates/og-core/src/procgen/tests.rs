@@ -195,39 +195,88 @@ fn wfc_refuses_tiles_that_cannot_fit_naming_a_cell() {
 /// level from. Any change to a draw order, a hash table or the float
 /// arithmetic moves them, and a moved one means every seeded world in
 /// every game changes; the web host must give the same (the bun test
-/// in packages/engine/tests/modules.test.ts pins the same values).
+/// in packages/engine/tests/core.test.ts runs the same scenario and
+/// pins the same values, both from tests/fixtures/procgen-pin.json).
 #[test]
 fn every_generator_gives_its_pinned_output_for_a_seed() {
-    let mut r = Rng::new(42);
-    let picks: Vec<u8> = (0..64)
-        .map(|_| weighted(&mut r, &[1.0, 0.0, 3.0, 0.5]).unwrap() as u8)
+    // The scenario is the fixture's, as the bun test's is: the two runs
+    // cannot describe different generators and settings. The weighted and
+    // the permutation picks are a host's own stream (Rng::new here,
+    // og.Rng's fork "picks" there), so their hashes stay local pins.
+    let pin: serde_json::Value =
+        serde_json::from_str(include_str!("../../../../tests/fixtures/procgen-pin.json")).unwrap();
+    let n = |at: &[&str]| -> u64 { pin.pointer(&format!("/{}", at.join("/"))).and_then(|v| v.as_u64()).expect("the fixture's number") };
+    let f = |at: &[&str]| -> f64 { pin.pointer(&format!("/{}", at.join("/"))).and_then(|v| v.as_f64()).expect("the fixture's number") };
+    let mut r = Rng::new(n(&["weighted", "seed"]) as u32);
+    let weights: Vec<f64> = pin["weighted"]["weights"]
+        .as_array()
+        .expect("the fixture's weights")
+        .iter()
+        .map(|w| w.as_f64().expect("a weight"))
         .collect();
-    let perm = permutation(&mut Rng::new(42), 32);
+    let picks: Vec<u8> = (0..n(&["weighted", "draws"]))
+        .map(|_| weighted(&mut r, &weights).unwrap() as u8)
+        .collect();
+    let perm = permutation(
+        &mut Rng::new(n(&["permutation", "seed"]) as u32),
+        n(&["permutation", "length"]) as u32,
+    );
     let f32s = |v: &[f32]| v.iter().flat_map(|x| x.to_le_bytes()).collect::<Vec<_>>();
     let grid = |kind, flat| {
         Fbm {
-            seed: 7,
+            seed: n(&["noise", "seed"]) as u32,
             kind,
-            octaves: 4,
-            frequency: 0.13,
+            octaves: n(&["noise", "octaves"]) as u32,
+            frequency: f(&["noise", "frequency"]) as f32,
             ..Fbm::default()
         }
-        .grid(16, 16, -3.5, 2.25, 0.7, 1.3, flat)
+        .grid(
+            n(&["noise", "grid", "width"]) as u32,
+            n(&["noise", "grid", "height"]) as u32,
+            f(&["noise", "grid", "x"]) as f32,
+            f(&["noise", "grid", "y"]) as f32,
+            f(&["noise", "grid", "step"]) as f32,
+            f(&["noise", "grid", "z"]) as f32,
+            flat,
+        )
     };
-    let poisson = poisson_disk(5, 40.0, 30.0, 3.0, 30, 10_000).unwrap();
+    let poisson = poisson_disk(
+        n(&["poisson", "seed"]) as u32,
+        f(&["poisson", "width"]) as f32,
+        f(&["poisson", "height"]) as f32,
+        f(&["poisson", "radius"]) as f32,
+        n(&["poisson", "attempts"]) as u32,
+        n(&["poisson", "maxPoints"]) as usize,
+    )
+    .unwrap();
     let bsp = bsp_rooms(&BspDesc {
-        seed: 3,
+        seed: n(&["bsp", "seed"]) as u32,
         ..BspDesc::default()
     })
     .unwrap();
+    let tiles: Vec<WfcTile> = pin["wfc"]["tiles"]
+        .as_array()
+        .expect("the fixture's tiles")
+        .iter()
+        .map(|t| WfcTile {
+            weight: t["weight"].as_f64().expect("a tile weight") as f32,
+            sockets: [
+                t["sockets"][0].as_u64().unwrap() as u32,
+                t["sockets"][1].as_u64().unwrap() as u32,
+                t["sockets"][2].as_u64().unwrap() as u32,
+                t["sockets"][3].as_u64().unwrap() as u32,
+            ],
+            rotations: t["rotations"].as_bool().expect("a tile's rotations"),
+        })
+        .collect();
     let w = wfc(&Wfc {
-        seed: 9,
-        width: 20,
-        height: 12,
-        tiles: pipes(),
+        seed: n(&["wfc", "seed"]) as u32,
+        width: n(&["wfc", "width"]) as u32,
+        height: n(&["wfc", "height"]) as u32,
+        tiles,
         fixed: vec![],
-        wrap: true,
-        attempts: 5,
+        wrap: pin["wfc"]["wrap"].as_bool().unwrap(),
+        attempts: n(&["wfc", "attempts"]) as u32,
     })
     .unwrap();
     fn bytes(v: impl IntoIterator<Item = u8>) -> Vec<u8> {
