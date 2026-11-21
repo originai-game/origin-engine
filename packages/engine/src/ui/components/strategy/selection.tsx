@@ -1,3 +1,4 @@
+import type { Texture } from "@origingame/engine";
 import { For, Icon, Image, Scroll, Show, Text, View, formatNumber, t, type UiEvent } from "@origingame/engine/ui";
 import "./selection.en.ogt";
 
@@ -13,7 +14,7 @@ export interface StrategySelectionProps {
   /** What it is doing as the game words it (Holding, Under construction), on a tag before the stats; empty none. */
   status: string;
   /** Its portrait (og.load.texture) in a tile with a lit edge; 0 draws icon instead. */
-  portrait: number;
+  portrait: Texture | 0;
   /** An icon of the atlas drawn when portrait is 0. */
   icon: string;
   /** Its health now (the subgroup's together), under the portrait as a bar and in figures. */
@@ -23,7 +24,7 @@ export interface StrategySelectionProps {
   /** Its stats on tags, keyed rows of { id, label, value }: label short as the game words it (ATK), value its figure (12). */
   stats?: ReadonlyArray<{ id: string; label: string; value: string }>;
   /** Each unit or subgroup selected, as cards in the game's order (shown when there are two or more; two rows, then they scroll), keyed rows of { id, name, kind, portrait, icon, count, health, healthMax }: portrait a texture, 0 draws icon from the atlas; count shown above 1 on a tag; health over healthMax a bar on the card, green, gold when hurt and red when low (data-tone). */
-  units?: ReadonlyArray<{ id: string; name: string; kind: string; portrait: number; icon: string; count: number; health: number; healthMax: number }>;
+  units?: ReadonlyArray<{ id: string; name: string; kind: string; portrait: Texture | 0; icon: string; count: number; health: number; healthMax: number }>;
   /** The card whose unit or subgroup the panel shows (its edge lit, aria-selected); empty none. */
   focused: string;
   /** Choose a card (its key: show that unit or subgroup). */
@@ -52,7 +53,7 @@ export function StrategySelection(props: StrategySelectionProps) {
               <Show when={props.portrait} fallback={
                   <Icon class={`size-[55%] text-fg`} name={props.icon} />
               }>
-                <Image class="size-full" src={String(props.portrait)} />
+                <Image class="size-full" src={props.portrait} />
               </Show>
             </View>
           </View>
@@ -136,7 +137,7 @@ export function StrategySelection(props: StrategySelectionProps) {
                           <Icon class={`size-[60%] text-fg`} name={u().icon} />
                         </View>
                     }>
-                      <Image class="absolute inset-0 size-full" src={String(u().portrait)} />
+                      <Image class="absolute inset-0 size-full" src={u().portrait} />
                     </Show>
                     <Show when={u().count > 1}>
                       <Text class={`absolute right-0 top-0 py-0 px-[0.143rem] leading-[1.2] text-[0.857rem] font-bold whitespace-nowrap bg-[#060910e0]`}>

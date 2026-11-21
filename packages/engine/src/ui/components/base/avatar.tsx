@@ -1,3 +1,4 @@
+import type { Texture } from "@origingame/engine";
 import { Icon, Image, Show, Text, View, formatNumber, t } from "@origingame/engine/ui";
 import { Spinner } from "./spinner";
 import "./avatar.en.ogt";
@@ -7,8 +8,8 @@ export interface AvatarProps {
   name?: string;
   /** Shows the name caption; false keeps the accessible name for composition beside a heading. Default true. */
   showName?: boolean;
-  /** A loaded portrait texture; 0 shows the fallback icon. Default 0. */
-  portrait?: number;
+  /** A loaded portrait texture; without one the fallback icon shows. */
+  portrait?: Texture | 0 | undefined;
   /** Fallback atlas icon when there is no portrait. Default "person". */
   icon?: string;
   /** Level badge; 0 hides it. Default 0. */
@@ -37,7 +38,7 @@ export function Avatar(props: AvatarProps) {
               <Show when={(props.portrait ?? 0)} fallback={
                   <Icon class={`text-fg-muted size-[56%]`} name={(props.icon ?? "person")} />
               }>
-                <Image class={`object-cover object-top size-full`} src={String(props.portrait ?? 0)} />
+                <Image class={`object-cover object-top size-full`} src={props.portrait} />
               </Show>
           }>
             <View class={`grow shrink basis-0 justify-center items-center gap-2 size-full`}>

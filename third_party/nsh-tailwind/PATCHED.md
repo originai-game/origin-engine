@@ -38,5 +38,12 @@ the changes after it are only these:
   (the HUD's safe area, which og-ui-next adds at layout) and
   `Style::env_padding`, which reads the padding's `env()` terms.
 
+- `style.rs` and `tailwind/utilities.rs` add the text outline:
+  `TextStyle::stroke_width` and `stroke_color`, the properties
+  `webkitTextStrokeWidth` and `webkitTextStrokeColor` (CSS's
+  `-webkit-text-stroke-width` and `-color`), and the classes
+  `text-stroke-<number>`, `text-stroke-[<length>]` and
+  `text-stroke-<color>`.
+
 Its own tests (`tailwind/tests.rs`, `geometry/tests.rs`, `style.rs`) run
 unchanged otherwise.

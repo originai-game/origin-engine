@@ -36,7 +36,9 @@ export function AbilitySlot(props: { icon: string; cooldown: number; ready: bool
 
 - **Primitives**, imported from `@origingame/engine/ui` (NSH's rule: tags
   are PascalCase imports; a lowercase tag is an error): `View`, `Text`,
-  `Image`, `Icon`, `Scroll`, `Input`, `Line` (a polyline: `points` x, y
+  `Image` (`src` a texture from `og.load.texture`, stretched over its box;
+  a class's `nine-<name>` slices a pack's art instead), `Icon`, `Scroll`,
+  `Input`, `Line` (a polyline: `points` x, y
   pairs in its box, `closed`, stroked by `stroke-<colour>` and
   `stroke-<width>`; no fill, curves or dashes), and the
   control flow `<Show when fallback keyed>` and `<For each key>{(item,
@@ -46,6 +48,11 @@ export function AbilitySlot(props: { icon: string; cooldown: number; ready: bool
 - **Props** keep camelCase names. Reading `props.x` inside JSX is
   reactive; a component body runs once (Solid's model), so derived values
   are functions or `createMemo`.
+- **Radial wipe**: any element with a box image (`Image src` or a
+  `nine-<name>` class) takes `wipe` (the share shown, 0 to 1, bound per
+  tick: a cooldown or a ring), `wipeStart` (radians, 0 up) and `wipeCcw`.
+  They are props, not classes, so a moving share never makes a class
+  string.
 - **State**: props are plain values or getters the renderer follows, never
   stores. A store (`og.ui.scope`) reaches a component as a signal through
   `useStore(store)`; a component never reads the simulation directly.
@@ -239,7 +246,12 @@ rune-taffy style, and these paint fields (fixed size, no allocation):
   `outline` (width, offset, colour); `opacity`; `transform` (translate,
   scale, rotate, origin; paint only); `backdrop_blur`;
 - text: `ink`, font size, weight, family, line height, tracking, align,
-  case, `truncate`/`line-clamp`, `text_shadow`, `decoration`.
+  case, `truncate`/`line-clamp`, `text_shadow`, `decoration`,
+  `text_stroke` (`text-stroke-<number>` or `-[<length>]` its width,
+  `text-stroke-<color>` its colour, the text's by default: an outline
+  drawn under the fill);
+- `image`, the box's nine-slice art, from the pack's `nine-<name>`
+  classes (§Theme and packs).
 
 A class the record has no field for is reported by `og check` as unknown,
 not dropped silently.
@@ -321,7 +333,9 @@ is an error naming where it is, never ignored):
   colours (a chamfered plate that follows the theme), false (default) for
   a picture drawn as it is. An entry may be a scheme pair. The class
   `nine-<name>` gives an element that art, under any variant
-  (`hover:nine-plate-lit`), in `variants` or in a component's own class.
+  (`hover:nine-plate-lit`), in `variants` or in a component's own class:
+  the last one that holds in the element's state and window wins, as for
+  any class. `og check` reports a `nine-<name>` the merged pack lacks.
   A look's distinctive shapes (cut corners, ornate frames, slot rims) are
   this art, never paint features: if it can be an image, the engine does
   not draw it. The cook checks every `nine-<name>` names an image and

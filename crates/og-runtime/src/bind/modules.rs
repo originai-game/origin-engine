@@ -36,11 +36,11 @@ mod game_widgets;
 use crate::{present::art, present::extract, world::assets};
 use game_widgets::ui_of;
 pub use game_widgets::{
-    og_ui_back, og_ui_bounds, og_ui_dismiss_toast, og_ui_feedback, og_ui_focus,
-    og_ui_hud_edit, og_ui_hud_layout, og_ui_hud_reset, og_ui_hud_select, og_ui_hud_step,
-    og_ui_navigate, og_ui_preview_viewport, og_ui_scroll_state, og_ui_set_haptics,
-    og_ui_set_hud_edit, og_ui_set_hud_layout, og_ui_set_hud_player, og_ui_set_navigation,
-    og_ui_set_players, og_ui_set_virtual_cursor, og_ui_tick, og_ui_toast, og_ui_virtual_cursor,
+    og_ui_back, og_ui_bounds, og_ui_dismiss_toast, og_ui_feedback, og_ui_focus, og_ui_hud_edit,
+    og_ui_hud_layout, og_ui_hud_reset, og_ui_hud_select, og_ui_hud_step, og_ui_navigate,
+    og_ui_preview_viewport, og_ui_scroll_state, og_ui_set_haptics, og_ui_set_hud_edit,
+    og_ui_set_hud_layout, og_ui_set_hud_player, og_ui_set_navigation, og_ui_set_players,
+    og_ui_set_virtual_cursor, og_ui_tick, og_ui_toast, og_ui_virtual_cursor,
 };
 
 pub(crate) mod docs;
@@ -223,6 +223,7 @@ pub(crate) fn mount_back(
                     let mut out = (frame.warnings.clone(), frame.missing_glyphs.clone());
                     // The documents on og-ui's new core lay out and paint
                     // after og-ui's frame (present/ui_next.rs).
+                    crate::present::ui_next::pack_images(engine_id);
                     if let Ok(eng) = engine(engine_id)
                         && let Some(next) = &mut eng.render.borrow_mut().ui_next
                     {

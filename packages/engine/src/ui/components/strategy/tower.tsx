@@ -1,3 +1,4 @@
+import type { Texture } from "@origingame/engine";
 import { For, Icon, Image, Scroll, Show, Text, View, t, type UiEvent } from "@origingame/engine/ui";
 import "./tower.en.ogt";
 
@@ -7,7 +8,7 @@ export interface StrategyTowerProps {
   /** An icon of the atlas for the tower, drawn when portrait is 0. */
   icon: string;
   /** A texture of the tower (og.load.texture); 0 draws icon. */
-  portrait: number;
+  portrait: Texture | 0;
   /** The tower's level as the game counts it; 0 hides it. */
   level: number;
   /** Its current stats, keyed rows of { id, label, value, next }: value as the game words it (42); next the value after the upgrade in focus (51), shown after an arrow, empty none. */
@@ -40,7 +41,7 @@ export function StrategyTower(props: StrategyTowerProps) {
           <Show when={props.portrait} fallback={
               <Icon class={`size-[70%] text-fg`} name={props.icon} />
           }>
-            <Image class="size-full" src={String(props.portrait)} />
+            <Image class="size-full" src={props.portrait} />
           </Show>
         </View>
         <Text class={`flex-1 min-w-0 text-[1.429rem] leading-[1.15] font-bold text-fg whitespace-nowrap overflow-hidden text-shadow-xs text-shadow-bg/55`} role="heading" level={2}>

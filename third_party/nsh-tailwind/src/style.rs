@@ -1150,6 +1150,12 @@ pub struct TextStyle {
     pub underline_offset: Option<Points>,
     /// Color of the decoration lines; the text color by default.
     pub decoration_color: Option<Color>,
+    /// The text's outline (`-webkit-text-stroke-width`, `text-stroke-*`),
+    /// drawn under its fill; none when unset.
+    pub stroke_width: Option<Points>,
+    /// The outline's colour (`-webkit-text-stroke-color`); the text
+    /// colour by default.
+    pub stroke_color: Option<Color>,
     /// Case transform.
     pub transform: Option<TextTransform>,
     /// The text shadow's color (`textShadow`, `text-shadow-*`: its widest
@@ -1197,6 +1203,8 @@ impl TextStyle {
         decoration_thickness: None,
         underline_offset: None,
         decoration_color: None,
+        stroke_width: None,
+        stroke_color: None,
         transform: None,
         shadow_color: None,
         shadow_offset: None,
@@ -1957,6 +1965,8 @@ style_keys! {
     LetterSpacing = "letterSpacing": Text "number",
     TextDecorationLine = "textDecorationLine": Text "\"none\" | \"underline\" | \"line-through\" | \"underline line-through\"",
     TextDecorationColor = "textDecorationColor": Text "ColorValue",
+    WebkitTextStrokeWidth = "webkitTextStrokeWidth": Text "number" "The width of the text's outline, drawn under its fill so half of it shows outside each glyph (`text-stroke-<number>`).",
+    WebkitTextStrokeColor = "webkitTextStrokeColor": Text "ColorValue" "The outline's colour, the text's by default (`text-stroke-<color>`).",
     WritingDirection = "writingDirection": Text "\"auto\" | \"ltr\" | \"rtl\"" "Base direction of the text; `auto` takes it from the content.",
     TextAlignVertical = "textAlignVertical": Text "\"auto\" | \"top\" | \"center\" | \"bottom\"" "Where text shorter than its box sits (`<Text>` with a height).",
     FontVariant = "fontVariant": Text "FontVariantName[] | (string & {})" "OpenType number and letter forms: a list (`[\"tabular-nums\"]`), or CSS's names separated by spaces (`\"tabular-nums small-caps\"`).",
@@ -3218,6 +3228,7 @@ impl StyleKey {
             | K::OutlineColor
             | K::Color
             | K::TextDecorationColor
+            | K::WebkitTextStrokeColor
             | K::PlaceholderColor
             | K::SelectionColor
             | K::CaretColor => PropertyValue::Color(color(value)?),
@@ -3513,6 +3524,10 @@ impl StyleKey {
             K::TextDecorationThickness => PropertyValue::OptPoints(match value {
                 StyleValue::Null | StyleValue::Str("auto") | StyleValue::Str("from-font") => None,
                 v => Some(px(length_value(v, 1.0)?.max(0.0))),
+            }),
+            K::WebkitTextStrokeWidth => PropertyValue::OptPoints(match value {
+                StyleValue::Null => None,
+                v => Some(px(length_value(v, 0.0)?.max(0.0))),
             }),
             K::TextUnderlineOffset => PropertyValue::OptPoints(match value {
                 StyleValue::Null | StyleValue::Str("auto") => None,
@@ -3819,6 +3834,7 @@ impl Style {
             StyleKey::BorderStartColor => self.logical.border_color[0] = Some(color),
             StyleKey::BorderEndColor => self.logical.border_color[1] = Some(color),
             StyleKey::TextDecorationColor => self.text.decoration_color = Some(color),
+            StyleKey::WebkitTextStrokeColor => self.text.stroke_color = Some(color),
             StyleKey::CaretColor => self.text.caret_color = Some(color),
             _ => debug_assert!(false, "set_color({key:?})"),
         }
@@ -4071,6 +4087,7 @@ impl Style {
             }
             (K::TextDecorationLine, V::TextDecoration(v)) => self.text.decoration = *v,
             (K::TextDecorationColor, V::Color(c)) => self.text.decoration_color = *c,
+            (K::WebkitTextStrokeColor, V::Color(c)) => self.text.stroke_color = *c,
             (K::PlaceholderColor, V::Color(c)) => self.text.placeholder_color = *c,
             (K::SelectionColor, V::Color(c)) => self.text.selection_color = *c,
             (K::CaretColor, V::Color(c)) => self.text.caret_color = *c,
@@ -4210,6 +4227,7 @@ impl Style {
             (K::TextDecorationStyle, V::DecorationStyle(v)) => self.text.decoration_style = *v,
             (K::TextDecorationThickness, V::OptPoints(v)) => self.text.decoration_thickness = *v,
             (K::TextUnderlineOffset, V::OptPoints(v)) => self.text.underline_offset = *v,
+            (K::WebkitTextStrokeWidth, V::OptPoints(v)) => self.text.stroke_width = *v,
 
             // Grid
             (K::GridTemplateColumns, V::GridTemplate(t)) => {

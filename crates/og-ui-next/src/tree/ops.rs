@@ -314,6 +314,23 @@ impl Tree {
         }
     }
 
+    /// Gives the op nodes whose `src` changed their textures' slots:
+    /// `slot` maps a texture handle as the game holds it to its slot (0
+    /// when it names none). The host calls it after each batch, where it
+    /// holds its textures.
+    pub fn resolve_sources(&mut self, slot: &dyn Fn(f64) -> u32) {
+        for e in std::mem::take(&mut self.sources) {
+            if let Some(props) = self.els[e as usize].image.as_deref_mut() {
+                props.texture = if props.handle.is_nan() {
+                    0
+                } else {
+                    slot(props.handle)
+                };
+                self.paint = true;
+            }
+        }
+    }
+
     /// The element op node `id` is.
     fn op(&self, id: u32) -> Result<u32, String> {
         match self.by_js.get(id as usize) {
@@ -353,6 +370,7 @@ impl Tree {
             record,
             holds: Box::default(),
             line: None,
+            image: None,
             eff: self.root,
         });
         if self.by_js.len() <= id as usize {
@@ -560,6 +578,32 @@ impl Tree {
                                         .map(|t| t.parse::<f32>().unwrap_or(0.0)),
                                 );
                                 points.truncate(points.len() & !1);
+                            }
+                            self.paint = true;
+                        }
+                        // The box image's own props over its classes':
+                        // `src` a texture handle the host resolves after
+                        // the batch, the wipe a number per tick.
+                        "src" | "wipe" | "wipeStart" | "wipeCcw" => {
+                            let props = self.els[e as usize].image.get_or_insert_with(|| {
+                                Box::new(super::ImageProps {
+                                    handle: f64::NAN,
+                                    ..Default::default()
+                                })
+                            });
+                            let number = value.parse::<f32>().ok().filter(|n| n.is_finite());
+                            match name {
+                                "src" => {
+                                    props.handle = value.parse::<f64>().unwrap_or(f64::NAN);
+                                    props.texture = 0;
+                                    self.sources.push(e);
+                                }
+                                "wipe" => props.wipe = number.map(|w| w.clamp(0.0, 1.0)),
+                                "wipeStart" => props.wipe_start = number,
+                                _ => {
+                                    props.wipe_ccw =
+                                        (!value.is_empty()).then(|| !matches!(value, "false" | "0"))
+                                }
                             }
                             self.paint = true;
                         }
@@ -954,6 +998,64 @@ mod tests {
         );
         let pts = &t.drawn.points[q.a as usize..(q.a + q.b) as usize];
         assert_eq!(pts, [[0.0, 10.0], [5.0, 0.0], [9.5, 10.0]]);
+    }
+
+    /// An `Image`'s `src` draws its texture over its box once the host
+    /// resolves the handle, and its wipe props lie over the classes' image
+    /// (a pack's nine-slice keeps its slices); a node with neither draws
+    /// no image.
+    #[test]
+    fn image_props_lie_over_the_classes_image() {
+        let mut t = tree();
+        t.set_resolver(Box::new(|class, _, _| {
+            let mut r = Record::default();
+            if class.contains("nine") {
+                r.skin.image.texture = 4;
+                r.skin.image.slice = [3.0; 4];
+            }
+            r
+        }));
+        let mut b = Batch::default();
+        b.op(1).u32(1).u8(2);
+        b.op(4).u32(1).str("w-4 h-4");
+        b.op(6).u32(1).str("src").str("4294967298");
+        b.op(1).u32(2).u8(0);
+        b.op(4).u32(2).str("nine");
+        b.op(6).u32(2).str("wipe").str("0.25");
+        b.op(6).u32(2).str("wipeStart").str("1.5");
+        b.op(6).u32(2).str("wipeCcw").str("true");
+        b.op(1).u32(3).u8(0);
+        b.op(6).u32(3).str("wipe").str("0.5");
+        for id in 1..=3 {
+            b.op(8).u32(0).u32(id).u32(u32::MAX);
+        }
+        t.apply(&b.bytes()).unwrap();
+        let images = |t: &Tree| -> Vec<(u32, [f32; 4], [f32; 4])> {
+            t.drawn
+                .quads
+                .iter()
+                .filter(|q| q.kind == PaintKind::Image as u32)
+                .map(|q| (q.a, q.wipe, q.p))
+                .collect()
+        };
+        frame(&mut t);
+        assert_eq!(images(&t).len(), 1, "an unresolved src draws nothing yet");
+        t.resolve_sources(&|h| if h == 4294967298.0 { 8 } else { 0 });
+        frame(&mut t);
+        let tex = |slot: u32| og_draw::TextureHandle::from_slot(slot).unwrap().to_bits();
+        let got = images(&t);
+        assert_eq!(got.len(), 2, "{got:?}");
+        assert_eq!(
+            (got[0].0, got[0].1),
+            (tex(8), [0.0, 0.0, 0.0, 0.0]),
+            "src, whole"
+        );
+        assert_eq!(
+            (got[1].0, got[1].1),
+            (tex(4), [0.75, 1.5, 1.0, 0.0]),
+            "the wipe over nine"
+        );
+        assert_eq!(got[1].2, [3.0; 4], "its slices are the classes'");
     }
 
     #[test]

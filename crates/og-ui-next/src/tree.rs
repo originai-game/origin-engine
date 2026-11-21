@@ -129,6 +129,37 @@ struct El {
     /// A `<Line>`'s points (x, y pairs in its box, CSS px) and whether it
     /// closes; `None` for any other node.
     line: Option<(Vec<f32>, bool)>,
+    /// An op node's own image props over its classes' box image; `None`
+    /// for a node that sets none.
+    image: Option<Box<ImageProps>>,
+}
+
+/// What an op node's props set of its box image (CONVENTIONS.md §Images):
+/// `src`'s texture (a handle, its slot once resolved), and the radial
+/// wipe bound per tick, so a moving share never makes a class string.
+#[derive(Clone, Copy, Debug, Default)]
+pub(crate) struct ImageProps {
+    /// `src`: the texture handle as the game holds it; NaN none.
+    pub(crate) handle: f64,
+    /// Its slot (`og_draw::TextureHandle::slot`); 0 none or unresolved.
+    pub(crate) texture: u32,
+    pub(crate) wipe: Option<f32>,
+    pub(crate) wipe_start: Option<f32>,
+    pub(crate) wipe_ccw: Option<bool>,
+}
+
+impl ImageProps {
+    /// The box image `base` (its classes') with these props over it.
+    fn over(&self, base: &crate::style::Slice) -> crate::style::Slice {
+        let mut im = *base;
+        if !self.handle.is_nan() {
+            im.texture = self.texture;
+        }
+        im.wipe = self.wipe.unwrap_or(im.wipe);
+        im.wipe_start = self.wipe_start.unwrap_or(im.wipe_start);
+        im.wipe_ccw = self.wipe_ccw.unwrap_or(im.wipe_ccw);
+        im
+    }
 }
 
 struct IfBlock {
@@ -226,6 +257,9 @@ pub struct Tree {
     by_js: Vec<u32>,
     classes: ops::Classes,
     pub events: Vec<ops::Fired>,
+    /// Op nodes whose `src` changed since the host last resolved it
+    /// ([`Tree::resolve_sources`]).
+    sources: Vec<u32>,
     /// What moves, keyed by arena node ([`crate::motion`]), at the UI
     /// tick's `time`; `shown` is what each element passes down this frame
     /// as motion shows it ([`Shown`]).
@@ -422,6 +456,7 @@ impl Tree {
             by_js: Vec::new(),
             classes: ops::Classes::default(),
             events: Vec::new(),
+            sources: Vec::new(),
             motion: crate::motion::Motion::new(),
             time: 0.0,
             shown: Vec::new(),
@@ -784,6 +819,7 @@ impl Tree {
             record,
             holds: Box::default(),
             line: None,
+            image: None,
             eff: self.root,
         });
         self.ordered = false;
@@ -1310,7 +1346,10 @@ impl Tree {
                     0,
                 ));
             }
-            let im = &s.image;
+            let im = &match &el.image {
+                Some(props) => props.over(&s.image),
+                None => s.image,
+            };
             let image = og_draw::TextureHandle::from_slot(im.texture).filter(|_| im.wipe > 0.0);
             // A fill-tinted image takes the fill's colour in its place.
             let fill_tints = image.is_some() && im.tint == crate::style::Tint::Fill;

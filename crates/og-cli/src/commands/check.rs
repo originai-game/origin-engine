@@ -1280,10 +1280,14 @@ fn module_state(p: &Project, report: &mut Report) {
 /// own (`assets/styles/game/pack.json`). A class with no field in the
 /// record is unknown too, so none is dropped silently.
 fn unknown_classes(p: &Project, report: &mut Report) {
-    let dir = p.entry.parent().unwrap_or(&p.root);
+    // The game's code and its UI components, where the template's
+    // tsconfig reads TSX.
     let mut files = Vec::new();
-    crate::lockstep_lint::sources(dir, &mut files);
+    crate::lockstep_lint::sources(p.entry.parent().unwrap_or(&p.root), &mut files);
+    crate::lockstep_lint::sources(&p.root.join("assets/ui"), &mut files);
     files.retain(|f| f.extension().is_some_and(|e| e == "tsx" || e == "jsx"));
+    files.sort();
+    files.dedup();
     if files.is_empty() {
         return;
     }
@@ -1297,8 +1301,22 @@ fn unknown_classes(p: &Project, report: &mut Report) {
             Err(_) => return,
         }
     }
-    let Ok(theme) = nsh_jsx::Theme::from_json(&Pack::new(&layers).theme_json(Scheme::Dark)) else {
+    let pack = Pack::new(&layers);
+    let Ok(theme) = nsh_jsx::Theme::from_json(&pack.theme_json(Scheme::Dark)) else {
         return;
+    };
+    // `nine-<name>` names one of the pack's images, under any variant.
+    let image = |class: &str| {
+        let name = class
+            .rsplit(':')
+            .next()
+            .unwrap_or(class)
+            .strip_prefix("nine-")?;
+        Some(
+            [Scheme::Light, Scheme::Dark]
+                .iter()
+                .any(|s| pack.images(*s).contains_key(name)),
+        )
     };
     for path in files {
         let Ok(text) = std::fs::read_to_string(&path) else {
@@ -1306,7 +1324,11 @@ fn unknown_classes(p: &Project, report: &mut Report) {
         };
         let file = typescript_path(path.strip_prefix(&p.root).unwrap_or(&path));
         for u in nsh_jsx::unknown_classes(&path.to_string_lossy(), &text, &theme) {
-            let message = format!("unknown class `{}`", u.class);
+            let message = match image(&u.class) {
+                Some(true) => continue,
+                Some(false) => format!("unknown class `{}`: the pack names no such image", u.class),
+                None => format!("unknown class `{}`", u.class),
+            };
             report.raw.push_str(&format!(
                 "{file}({},{}): error OG{UNKNOWN_CLASS}: {message}\n",
                 u.line, u.column

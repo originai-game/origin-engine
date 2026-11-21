@@ -1,3 +1,4 @@
+import type { Texture } from "@origingame/engine";
 import { Icon, Image, Show, Text, View, t, type UiEvent } from "@origingame/engine/ui";
 import { Spinner } from "./spinner";
 import "./states.en.ogt";
@@ -9,8 +10,8 @@ export interface ListItemProps {
   subtitle?: string;
   /** Optional leading icon, used when image is zero. */
   icon?: string;
-  /** Optional loaded portrait or item texture handle. Default 0. */
-  image?: number;
+  /** Optional loaded portrait or item texture. */
+  image?: Texture | 0 | undefined;
   /** The game's formatted trailing value. */
   value?: string;
   /** Optional trailing badge, such as New or 3. */
@@ -43,7 +44,7 @@ export function ListItem(props: ListItemProps) {
               <Show when={(props.image ?? 0)} fallback={
                   <Icon class={`size-6`} name={props.icon ?? ""} />
               }>
-                <Image class={`object-cover size-full data-muted:opacity-45`} src={String(props.image ?? 0)} />
+                <Image class={`object-cover size-full data-muted:opacity-45`} src={props.image} />
               </Show>
             </View>
           </Show>

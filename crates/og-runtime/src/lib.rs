@@ -99,8 +99,8 @@ pub use bind::modules::ui_world::{og_ui_define_mass, og_ui_mass_count, og_ui_spa
 pub use bind::modules::{
     THEME_COLORS, TYPE_STEPS, og_load_document, og_load_style, og_physics_overlap,
     og_physics_project_point, og_physics_raycast, og_physics_raycast_all, og_physics_set_mesh,
-    og_physics_shape_cast, og_ui_action_bar, og_ui_action_fired, og_ui_action_held,
-    og_ui_animate, og_ui_back, og_ui_bounds, og_ui_clear, og_ui_configure, og_ui_define_action,
+    og_physics_shape_cast, og_ui_action_bar, og_ui_action_fired, og_ui_action_held, og_ui_animate,
+    og_ui_back, og_ui_bounds, og_ui_clear, og_ui_configure, og_ui_define_action,
     og_ui_define_timeline, og_ui_device, og_ui_dismiss_toast, og_ui_doc_events,
     og_ui_document_schema, og_ui_feedback, og_ui_file_picker, og_ui_focus, og_ui_force_state,
     og_ui_frame_cursor, og_ui_frame_direction, og_ui_frame_glyph, og_ui_frame_messages,
@@ -375,13 +375,22 @@ pub fn og_engine_ui_patch(world: u32, bytes: &[u8]) -> Vec<u8> {
         // The documents run on og-ui's new core: its mounts are the new core's.
         Some(ui) => {
             let eng = engine::engine(world).expect("shared_ui found it");
+            let ops = bytes.strip_prefix(og_ui_next::tree::MAGIC);
+            if ops.is_some() {
+                eng.render
+                    .borrow_mut()
+                    .ui_next
+                    .get_or_insert_with(|| Box::new(present::ui_next::Next::new()));
+                present::ui_next::pack_images(world);
+            }
             let mut rs = eng.render.borrow_mut();
+            let rs = &mut *rs;
             let next = rs
                 .ui_next
                 .get_or_insert_with(|| Box::new(present::ui_next::Next::new()));
             // The TS renderer's op batches, beside the store's commands.
-            match bytes.strip_prefix(og_ui_next::tree::MAGIC) {
-                Some(ops) => next.ops(world, &ui.lock(), ops),
+            match ops {
+                Some(ops) => next.ops(world, &ui.lock(), ops, &rs.textures),
                 None => next.patch(bytes),
             }
         }

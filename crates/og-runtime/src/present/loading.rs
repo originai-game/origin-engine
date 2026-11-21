@@ -133,6 +133,7 @@ pub fn warm_tick(id: u32) {
         copy.end();
         // The new core's documents: the real tree, built once (its build
         // is a cache of the mounts; no game code runs).
+        crate::present::ui_next::pack_images(id);
         if let Some(next) = &mut eng.render.borrow_mut().ui_next {
             next.warm(id, &ui.lock());
         }

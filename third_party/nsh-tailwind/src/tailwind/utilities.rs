@@ -2255,6 +2255,17 @@ static PREFIXES: &[(&str, Handler)] = &[
         }
         part(Part::TextShadowColor(color(t, v)?))
     }),
+    // The text outline (`-webkit-text-stroke`): `text-stroke-<number>` its
+    // width in px, `text-stroke-<color>` its colour.
+    ("text-stroke", |t, v, _| {
+        if let Some(n) = int(v) {
+            return one(setn(K::WebkitTextStrokeWidth, n));
+        }
+        if let Some(c) = color(t, v) {
+            return one(setc(K::WebkitTextStrokeColor, c));
+        }
+        one(setn(K::WebkitTextStrokeWidth, arbitrary_points(t, v)?))
+    }),
     ("text", text),
     ("tracking", |t, v, n| {
         let em = match t.tracking.get(v) {

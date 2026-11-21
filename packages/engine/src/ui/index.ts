@@ -4,7 +4,7 @@
 // as a value. `mount` puts a component on a world's UI; `useStore` reads a store
 // as a signal; `t` and the formatters read the mount's world.
 
-import type { World } from "@origingame/engine";
+import type { Texture, World } from "@origingame/engine";
 import { abi } from "../runtime/host.ts";
 import { json } from "../runtime/result.ts";
 import { type Renderer, Renderer as UiRenderer, RendererContext, type UiNode, component, element, insert, spread } from "./rt.ts";
@@ -33,7 +33,8 @@ function host<P extends HostProps>(tag: string): (props: P) => UiNode {
 
 export const View = host<HostProps>("view");
 export const Text = host<HostProps>("text");
-export const Image = host<HostProps & { src?: string | undefined }>("image");
+/** A texture (`og.load.texture`; 0 none) drawn over its box, stretched; a class's `nine-<name>` slices a pack's. */
+export const Image = host<HostProps & { src?: Texture | 0 | undefined }>("image");
 export const Icon = host<HostProps & { name?: string | undefined }>("icon");
 export const Scroll = host<HostProps>("scroll");
 /**

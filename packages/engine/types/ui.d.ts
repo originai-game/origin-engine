@@ -4,7 +4,7 @@
 // the engine's source, which reads host APIs its lib does not declare.
 /// <reference path="./assets.d.ts" />
 
-import type { World } from "@origingame/engine";
+import type { Texture, World } from "@origingame/engine";
 
 declare global {
   namespace JSX {
@@ -97,13 +97,22 @@ export interface HostProps {
   valueMax?: number | undefined;
   valueNow?: number | undefined;
   valueText?: string | undefined;
+  /**
+   * The radial wipe of the box's image (an `Image`'s `src`, or a pack's
+   * `nine-<name>` class): the share shown, 0 to 1 (1 whole), bound per tick;
+   * from `wipeStart` radians (0 up), clockwise unless `wipeCcw`.
+   */
+  wipe?: number | undefined;
+  wipeStart?: number | undefined;
+  wipeCcw?: boolean | undefined;
   /** `data-*` states class variants read (`data-ready:`). */
   [data: `data-${string}`]: string | number | boolean | undefined;
 }
 
 export const View: (props: HostProps) => UiNode;
 export const Text: (props: HostProps) => UiNode;
-export const Image: (props: HostProps & { src?: string | undefined }) => UiNode;
+/** A texture (`og.load.texture`; 0 none) drawn over its box, stretched; a class's `nine-<name>` slices a pack's. */
+export const Image: (props: HostProps & { src?: Texture | 0 | undefined }) => UiNode;
 export const Icon: (props: HostProps & { name?: string | undefined }) => UiNode;
 export const Scroll: (props: HostProps) => UiNode;
 /**

@@ -6,7 +6,8 @@
 //! utilities win, variants after plain utilities.
 
 use crate::motion;
-use crate::style::{GRADIENT_STOPS, Gradient, Record, Rgba, SHADOWS, Shadow, Text};
+use crate::pack::NineSlice;
+use crate::style::{GRADIENT_STOPS, Gradient, Record, Rgba, SHADOWS, Shadow, Slice, Text, Tint};
 use nsh_tailwind::effects::{Filter, GradientKind, Keyframes};
 use nsh_tailwind::geometry::{DefiniteLength, Points, Size};
 use nsh_tailwind::style::{Color, Style, StyleValue, SvgPaint, TextAlign, TextTransform};
@@ -33,9 +34,33 @@ pub struct Env {
 /// A theme and the class strings resolved against it, each parsed once.
 pub struct Classes {
     theme: Theme,
-    lists: FxHashMap<Box<str>, ClassList>,
+    lists: FxHashMap<Box<str>, Parsed>,
     /// The pack's variant class strings by `Component.slot[.variant]`.
     variants: std::collections::BTreeMap<String, String>,
+    /// The pack's nine-slice images by name, in the scheme ([`nine_slice`]).
+    images: std::collections::BTreeMap<String, Slice>,
+}
+
+/// A class string parsed: its Tailwind classes, and the names of its
+/// `nine-<name>` classes in order.
+struct Parsed {
+    list: ClassList,
+    nine: Vec<Box<str>>,
+}
+
+/// A pack image (`Pack::images`) as the box image it draws, its texture
+/// the slot its `src` loaded into (0: none yet). A tinted one is a shape
+/// the box's fill colours.
+pub fn nine_slice(image: &NineSlice, texture: u32) -> Slice {
+    Slice {
+        texture,
+        slice: image.slice,
+        width: image.width.unwrap_or([0.0; 4]),
+        fill: image.fill,
+        tile: image.tile,
+        tint: if image.tint { Tint::Fill } else { Tint::Own },
+        ..Slice::default()
+    }
 }
 
 impl Classes {
@@ -53,6 +78,7 @@ impl Classes {
                 theme,
                 lists: FxHashMap::default(),
                 variants: Default::default(),
+                images: Default::default(),
             },
             ignored,
         ))
@@ -64,6 +90,14 @@ impl Classes {
     pub fn set_variants(&mut self, variants: std::collections::BTreeMap<String, String>) {
         self.variants = variants;
         self.lists.clear();
+    }
+
+    /// The pack's nine-slice images by name ([`nine_slice`]): a
+    /// `nine-<name>` class draws its image as the box's, under any variant
+    /// (the variant is not read: a pack splits its images by scheme
+    /// itself); the last one named wins.
+    pub fn set_images(&mut self, images: std::collections::BTreeMap<String, Slice>) {
+        self.images = images;
     }
 
     /// `classes` with its `@…` tokens replaced by the variants they name; a
@@ -99,28 +133,37 @@ impl Classes {
         Some(out)
     }
 
-    fn list(&mut self, classes: &str) -> &ClassList {
+    fn parsed(&mut self, classes: &str) -> &Parsed {
         if !self.lists.contains_key(classes) {
             let expanded = self.expand(classes);
-            let list = tailwind::parse(&self.theme, expanded.as_deref().unwrap_or(classes));
-            self.lists.insert(classes.into(), list);
+            let (nine, rest) = crate::pack::split_nine(expanded.as_deref().unwrap_or(classes));
+            let nine = nine.into_iter().map(Box::from).collect();
+            let list = tailwind::parse(&self.theme, &rest);
+            self.lists.insert(classes.into(), Parsed { list, nine });
         }
         &self.lists[classes]
     }
 
-    /// The classes of `classes` that are no known utility, as written.
+    /// The classes of `classes` that are no known utility, as written, and
+    /// its `nine-<name>` classes that name no image of the pack.
     pub fn unknown(&mut self, classes: &str) -> Vec<String> {
-        self.list(classes)
-            .unknown()
-            .iter()
-            .map(|c| c.to_string())
-            .collect()
+        let images = std::mem::take(&mut self.images);
+        let p = self.parsed(classes);
+        let mut out: Vec<String> = p.list.unknown().iter().map(|c| c.to_string()).collect();
+        out.extend(
+            p.nine
+                .iter()
+                .filter(|n| !images.contains_key(&***n))
+                .map(|n| format!("nine-{n}")),
+        );
+        self.images = images;
+        out
     }
 
     /// The state bits `classes` reads (`hover:` …): an element whose
     /// classes read none keeps one record.
     pub fn tracked(&mut self, classes: &str) -> u16 {
-        self.list(classes).tracked_states()
+        self.parsed(classes).list.tracked_states()
     }
 
     /// The record `classes` give an element in `env`.
@@ -135,7 +178,13 @@ impl Classes {
     /// takes. A declaration NSH does not know is skipped.
     pub fn record_styled(&mut self, classes: &str, style: &str, env: &Env) -> Record {
         let env = *env;
-        let list = self.list(classes).clone();
+        let parsed = self.parsed(classes);
+        let (list, nine) = (parsed.list.clone(), parsed.nine.clone());
+        let image = nine
+            .iter()
+            .rev()
+            .find_map(|n| self.images.get(&**n))
+            .copied();
         let cx = Context {
             env: ClassEnvironment {
                 dark: env.dark,
@@ -162,7 +211,11 @@ impl Classes {
             };
             let _ = out.set(&camel(name), value);
         }
-        record_of(&out, &props)
+        let mut record = record_of(&out, &props);
+        if let Some(image) = image {
+            record.skin.image = image;
+        }
+        record
     }
 }
 
@@ -337,6 +390,11 @@ fn record_of(style: &Style, props: &ClassProps) -> Record {
         skin.decoration.line = u8::from(d.underline) | (u8::from(d.line_through) << 2);
         skin.decoration.color = text.decoration_color.map_or(skin.ink, linear);
         skin.decoration.thickness = text.decoration_thickness.map_or(0.0, |p| p.0);
+    }
+    // The outline (`text-stroke-*`), its colour the text's by default.
+    if let Some(w) = text.stroke_width {
+        skin.text_stroke.width = w.0;
+        skin.text_stroke.color = text.stroke_color.map_or(skin.ink, linear);
     }
     let t = &mut r.text;
     if let Some(s) = text.font_size {
@@ -668,6 +726,65 @@ mod tests {
         // A variant the pack lacks keeps the slot's; a slot it lacks is unknown.
         assert_eq!(c.record("@Panel.frame.menu", &env).skin.opacity, 0.5);
         assert_eq!(c.unknown("@Card.body"), ["@Card.body"]);
+    }
+
+    #[test]
+    fn a_nine_class_draws_the_packs_image_as_the_box() {
+        let (mut c, _) = Classes::new(None).unwrap();
+        let image = |tint| NineSlice {
+            src: "styles/x/plate.png".into(),
+            slice: [12.0, 16.0, 12.0, 16.0],
+            width: None,
+            fill: false,
+            tile: true,
+            tint,
+        };
+        c.set_images(
+            [
+                ("plate".to_owned(), nine_slice(&image(true), 7)),
+                ("frame".to_owned(), nine_slice(&image(false), 9)),
+            ]
+            .into(),
+        );
+        let env = Env::default();
+        let r = c.record("p-2 nine-plate bg-red-500", &env);
+        let im = r.skin.image;
+        assert_eq!(
+            (im.texture, im.slice, im.width),
+            (7, [12.0, 16.0, 12.0, 16.0], [0.0; 4])
+        );
+        assert_eq!(
+            (im.fill, im.tile, im.tint, im.uv),
+            (false, true, Tint::Fill, [0.0, 0.0, 1.0, 1.0])
+        );
+        assert!(r.skin.fill[3] > 0.0, "the classes still apply");
+        // Under a variant too, the last one named winning, in its own colours.
+        let im = c.record("nine-plate md:nine-frame", &env).skin.image;
+        assert_eq!((im.texture, im.tint), (9, Tint::Own));
+        // A name the pack lacks draws nothing and is reported.
+        assert_eq!(c.record("nine-gone", &env).skin.image, Slice::default());
+        assert_eq!(c.unknown("p-2 nine-gone nine-plate"), ["nine-gone"]);
+    }
+
+    #[test]
+    fn a_text_stroke_class_outlines_the_text() {
+        let (mut c, _) = Classes::new(None).unwrap();
+        let env = Env::default();
+        let r = c.record("text-red-500 text-stroke-2 text-stroke-black", &env);
+        assert_eq!(r.skin.text_stroke.width, 2.0);
+        assert_eq!(r.skin.text_stroke.color, linear(Color(0x000000ff)));
+        assert_ne!(r.skin.ink, r.skin.text_stroke.color, "the fill stays red");
+        // Its colour is the text's unless named; a colour alone draws none.
+        let r = c.record("text-red-500 text-stroke-[1.5px]", &env);
+        assert_eq!(
+            (r.skin.text_stroke.width, r.skin.text_stroke.color),
+            (1.5, r.skin.ink)
+        );
+        assert_eq!(
+            c.record("text-stroke-black", &env).skin.text_stroke.width,
+            0.0
+        );
+        assert!(c.unknown("text-stroke-2 text-stroke-white").is_empty());
     }
 
     #[test]

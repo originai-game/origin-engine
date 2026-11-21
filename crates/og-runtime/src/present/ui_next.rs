@@ -72,6 +72,10 @@ pub(crate) struct Next {
     resolved: Option<(Option<String>, bool, SizeClass)>,
     /// The widths the resolver's theme breaks at (CSS px).
     widths: Vec<f32>,
+    /// The pack images' texture slots by `src`, and the style they were
+    /// loaded for ([`pack_images`]).
+    images: BTreeMap<String, u32>,
+    images_for: Option<Option<String>>,
     signals: BTreeMap<(String, String), u32>,
     rows: BTreeMap<(String, String), Rows>,
     /// Mounted documents: mount id to (document, inputs).
@@ -128,13 +132,61 @@ fn cooked_style(engine: u32, id: &str, name: &str) -> Option<Rc<[u8]>> {
 /// stored them), none for the default style.
 fn active_pack(engine: u32) -> Option<(String, Vec<(String, String)>)> {
     let eng = crate::engine::engine(engine).ok()?;
-    let handle = eng.state.borrow().ui_desc.get("style")?.as_f64()?;
-    let i = crate::world::assets::index_of(handle)?;
+    let id = style_id(engine)?;
     let assets = eng.assets.borrow();
-    let id = assets.styles.get(i)?.id.clone();
     let (bytes, bundle) = assets.blob(&id).ok()?;
     let text = bundle.style_text(&id, bytes.bytes()).ok()?;
     Some((id, serde_json::from_str(&text).ok()?))
+}
+
+/// The id of the style `og.ui.configure` set, none for the default.
+fn style_id(engine: u32) -> Option<String> {
+    let eng = crate::engine::engine(engine).ok()?;
+    let handle = eng.state.borrow().ui_desc.get("style")?.as_f64()?;
+    let i = crate::world::assets::index_of(handle)?;
+    Some(eng.assets.borrow().styles.get(i)?.id.clone())
+}
+
+/// Loads the textures of the active pack's nine-slice images (both
+/// schemes', over the default pack's) when the pack changed, so the
+/// class resolver draws them from the first frame they are named in.
+/// Called before the render state is borrowed for the UI (`load_texture`
+/// takes it): before an op batch, the tick's end and the warm build.
+pub(crate) fn pack_images(engine: u32) {
+    let Ok(eng) = crate::engine::engine(engine) else {
+        return;
+    };
+    let pack = style_id(engine);
+    match &eng.render.borrow().ui_next {
+        Some(next) if next.images_for.as_ref() != Some(&pack) => {}
+        _ => return,
+    }
+    let mut layers = vec![og_ui_next::pack::Layer::default_pack()];
+    layers.extend(pack.as_deref().and_then(|id| pack_layer(engine, id)));
+    let all = Pack::new(&layers);
+    let mut slots = BTreeMap::new();
+    let mut warnings = Vec::new();
+    for scheme in [Scheme::Light, Scheme::Dark] {
+        for image in all.images(scheme).values() {
+            if slots.contains_key(&image.src) {
+                continue;
+            }
+            let slot = match crate::world::assets::load_texture(&eng, &image.src) {
+                Ok(i) => eng.render.borrow().textures.get(i).map_or(0, |t| t.slot()),
+                Err(e) => {
+                    warnings.push(format!("og.ui: the pack's image {}: {e}", image.src));
+                    0
+                }
+            };
+            slots.insert(image.src.clone(), slot);
+        }
+    }
+    if let Some(next) = &mut eng.render.borrow_mut().ui_next {
+        next.images = slots;
+        next.images_for = Some(pack);
+        next.resolved = None;
+        next.held.extend(warnings);
+    }
 }
 
 /// Style `id`'s pack (its `pack.json`, cooked as an `og.UiPack`), if it
@@ -165,7 +217,13 @@ fn size_class(widths: &[f32], [w, h]: [f32; 2]) -> SizeClass {
 /// The op nodes' class resolver: the default pack with style `pack`'s
 /// over it, its theme in the scheme, for a UI box of `window` CSS px; and
 /// the widths that theme breaks at.
-fn resolver(engine: u32, pack: Option<&str>, dark: bool, window: [f32; 2]) -> (Resolve, Vec<f32>) {
+fn resolver(
+    engine: u32,
+    pack: Option<&str>,
+    dark: bool,
+    window: [f32; 2],
+    slots: &BTreeMap<String, u32>,
+) -> (Resolve, Vec<f32>) {
     let mut layers = vec![og_ui_next::pack::Layer::default_pack()];
     layers.extend(pack.and_then(|id| pack_layer(engine, id)));
     let scheme = if dark { Scheme::Dark } else { Scheme::Light };
@@ -183,6 +241,17 @@ fn resolver(engine: u32, pack: Option<&str>, dark: bool, window: [f32; 2]) -> (R
         .0;
     // `packClass` at runtime: `@Component.slot[.variant]` tokens.
     classes.set_variants(pack.variants().clone());
+    // `nine-<name>`: the pack's images, their textures loaded ahead
+    // ([`pack_images`]).
+    classes.set_images(
+        pack.images(scheme)
+            .iter()
+            .map(|(name, image)| {
+                let slot = slots.get(&image.src).copied().unwrap_or(0);
+                (name.clone(), og_ui_next::classes::nine_slice(image, slot))
+            })
+            .collect(),
+    );
     let classes = RefCell::new(classes);
     let env = og_ui_next::classes::Env {
         window,
@@ -217,7 +286,7 @@ impl Next {
         {
             return;
         }
-        let (resolve, widths) = resolver(engine, self.pack.as_deref(), dark, window);
+        let (resolve, widths) = resolver(engine, self.pack.as_deref(), dark, window, &self.images);
         tree.set_resolver(resolve);
         self.resolved = Some((self.pack.clone(), dark, size_class(&widths, window)));
         self.widths = widths;
@@ -238,6 +307,8 @@ impl Next {
             tree: None,
             resolved: None,
             widths: Vec::new(),
+            images: BTreeMap::new(),
+            images_for: None,
             signals: BTreeMap::new(),
             rows: BTreeMap::new(),
             mounts: BTreeMap::new(),
@@ -550,12 +621,26 @@ impl Next {
     /// build while the game loads and the first frame only commits and
     /// paints. The reply is the events since the last batch, or the
     /// refusal of an op.
-    pub(crate) fn ops(&mut self, engine: u32, ui: &og_ui::Ui, bytes: &[u8]) -> Vec<u8> {
+    /// `textures` are the render state's, which an `Image`'s `src` handle
+    /// indexes.
+    pub(crate) fn ops(
+        &mut self,
+        engine: u32,
+        ui: &og_ui::Ui,
+        bytes: &[u8],
+        textures: &[og_render::TextureHandle],
+    ) -> Vec<u8> {
         self.scheme = ui.theme().scheme;
         self.build(engine, ui, &crate::author::probe::now_ms);
         let tree = self.tree.as_mut().expect("built above");
         let mut out = Vec::new();
-        match tree.apply(bytes) {
+        let applied = tree.apply(bytes);
+        tree.resolve_sources(&|handle| {
+            crate::world::assets::index_of(handle)
+                .and_then(|i| textures.get(i))
+                .map_or(0, |t| t.slot())
+        });
+        match applied {
             Ok(()) => tree.take_events(&mut out),
             Err(e) => {
                 out.extend_from_slice(og_ui_next::tree::REFUSED);
@@ -986,14 +1071,14 @@ mod tests {
     fn the_resolver_reads_the_scheme_and_the_state_bits() {
         let pack = Pack::new(&[og_ui_next::pack::Layer::default_pack()]);
         for (dark, scheme) in [(false, Scheme::Light), (true, Scheme::Dark)] {
-            let (resolve, _) = resolver(u32::MAX, None, dark, [1280.0, 720.0]);
+            let (resolve, _) = resolver(u32::MAX, None, dark, [1280.0, 720.0], &BTreeMap::new());
             let hex = pack.theme(scheme)["colors"]["surface"].as_str().unwrap();
             let want = resolve(&format!("bg-[{hex}]"), "", 0).skin.fill;
             assert_eq!(resolve("bg-surface", "", 0).skin.fill, want, "{scheme:?}");
         }
         let light = pack.theme(Scheme::Light)["colors"]["surface"].clone();
         assert_ne!(light, pack.theme(Scheme::Dark)["colors"]["surface"]);
-        let (resolve, _) = resolver(u32::MAX, None, true, [1280.0, 720.0]);
+        let (resolve, _) = resolver(u32::MAX, None, true, [1280.0, 720.0], &BTreeMap::new());
         let starting = og_ui_next::classes::state::STARTING;
         assert_eq!(
             resolve("opacity-50 starting:opacity-0", "", 0).skin.opacity,
