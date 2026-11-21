@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "RacingResults",
+      "summary": "It draws on a panel ground (the Panel.frame variant), so its title, column heads and position numeral read over any scene; the numeral no longer runs into the title; the player row's name, time and points take the row's ink; a retired or disqualified row mutes its text instead of fading the whole row; the Fastest lap chip sits on an opaque surface."
+    }
+  ]
+}

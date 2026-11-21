@@ -43,7 +43,7 @@ export function RacingResults(props: RacingResultsProps) {
   const rows = () => props.rows ?? [];
   const playerRow = () => rows().find((r) => r.player);
   return (
-    <View class={`flex-col w-full h-full text-fg`} label={heading()}>
+    <View class={`flex-col gap-3 w-full h-full p-4 text-fg bg-glass nine-panel-cut ${packClass("Panel", "frame")}`} label={heading()}>
       <View class="flex-row w-full shrink-0">
         <Text class={`flex-1 min-w-0 text-[3.286rem] leading-[1.05] font-bold tracking-[0.04em] uppercase text-fg compact:text-[2rem]`}>{heading()}</Text>
       </View>
@@ -55,7 +55,7 @@ export function RacingResults(props: RacingResultsProps) {
             <Show when={playerRow()} keyed>
               {(r) => (
                 <>
-                  <Text class={`text-[6rem] leading-[0.9] font-bold italic whitespace-nowrap text-hud-accent text-stroke-3 text-stroke-bg compact:text-[3.143rem]`}>
+                  <Text class={`text-[6rem] leading-none font-bold italic whitespace-nowrap text-hud-accent text-stroke-3 text-stroke-bg compact:text-[3.143rem]`}>
                     {r().state === "dnf" || r().state === "dsq" ? (r().state === "dsq" ? t("racing.results.dsq") : t("racing.results.dnf")) : ordinal(r().position)}
                   </Text>
                   <View class={`flex-row flex-wrap items-baseline justify-between gap-x-3 py-2 px-3 bg-plate-hi nine-plate-cut text-fg ${packClass("Plate", "frame")}`}>
@@ -84,7 +84,7 @@ export function RacingResults(props: RacingResultsProps) {
                 <For each={rows()} key={(r) => r.id}>
                   {(r, i) => (
                     <View
-                      class={`group/results flex-row items-center gap-4 min-h-11 py-[0.143rem] pr-3 bg-glass/89 nine-plate-cut text-fg data-dnf:opacity-60 data-dsq:opacity-60 data-player:bg-hud-accent data-player:text-gold-fg compact:gap-[0.571rem] compact:py-[0.143rem] compact:pr-[0.286rem]`}
+                      class={`group/results flex-row items-center gap-4 min-h-11 py-[0.143rem] pr-3 bg-glass nine-plate-cut text-fg data-dnf:text-fg-muted data-dsq:text-fg-muted data-player:bg-hud-accent data-player:text-gold-fg compact:gap-[0.571rem] compact:py-[0.143rem] compact:pr-[0.286rem]`}
                       role="listitem"
                       label={r().name}
                       current={r().player}
@@ -99,25 +99,25 @@ export function RacingResults(props: RacingResultsProps) {
                         {r().state === "dnf" || r().state === "dsq" ? t("racing.results.unplaced") : formatNumber(r().position)}
                       </Text>
                       <View class="flex-1 min-w-0 flex-row flex-wrap items-center gap-x-0.5 gap-y-0.5">
-                        <Text class={`flex-1 basis-full text-left text-[1.071rem] font-semibold text-fg compact:text-[0.929rem]`}>{r().name}</Text>
+                        <Text class={`flex-1 basis-full text-left text-[1.071rem] font-semibold compact:text-[0.929rem]`}>{r().name}</Text>
                         <Show when={r().player}>
                           <Text class={`shrink-0 py-0 px-1 text-[0.857rem] font-bold tracking-[0.14em] uppercase whitespace-nowrap bg-well nine-chip-cut text-fg compact:tracking-[0.04em] compact:text-[0.857rem] ${packClass("Chip", "frame")}`}>{t("racing.results.you")}</Text>
                         </Show>
                         <Show when={r().fastest}>
-                          <Text class={`shrink-0 py-0 px-1 text-[0.857rem] font-bold tracking-[0.14em] uppercase whitespace-nowrap bg-well nine-chip-cut text-epic ${packClass("Chip", "frame")}`} label={t("racing.results.fastest")}>{t("racing.results.fastest")}</Text>
+                          <Text class={`shrink-0 py-0 px-1 text-[0.857rem] font-bold tracking-[0.14em] uppercase whitespace-nowrap bg-surface nine-chip-cut text-epic ${packClass("Chip", "frame")}`} label={t("racing.results.fastest")}>{t("racing.results.fastest")}</Text>
                         </Show>
                       </View>
                       <Show
                         when={r().state === "dnf" || r().state === "dsq"}
                         fallback={
-                          <Text class={`shrink-0 w-[7.886rem] text-right text-[1.714rem] font-bold tabular-nums whitespace-nowrap text-fg compact:w-[6.143rem] compact:text-[0.929rem]`}>{r().time}</Text>
+                          <Text class={`shrink-0 w-[7.886rem] text-right text-[1.714rem] font-bold tabular-nums whitespace-nowrap compact:w-[6.143rem] compact:text-[0.929rem]`}>{r().time}</Text>
                         }
                       >
                         <Text class={`shrink-0 ml-auto py-0 px-1 text-[0.857rem] font-bold tracking-[0.14em] uppercase whitespace-nowrap bg-well nine-chip-cut text-foe ${packClass("Chip", "frame")}`} label={r().state === "dsq" ? t("racing.results.dsqName") : t("racing.results.dnfName")}>
                           {r().state === "dsq" ? t("racing.results.dsq") : t("racing.results.dnf")}
                         </Text>
                       </Show>
-                      <Text class={`shrink-0 w-[3.429rem] text-right text-[1.714rem] font-bold tabular-nums whitespace-nowrap text-gold compact:w-[2.571rem] compact:text-[0.929rem]`}>{r().points}</Text>
+                      <Text class={`shrink-0 w-[3.429rem] text-right text-[1.714rem] font-bold tabular-nums whitespace-nowrap text-gold group-data-player/results:text-inherit compact:w-[2.571rem] compact:text-[0.929rem]`}>{r().points}</Text>
                     </View>
                   )}
                 </For>
