@@ -45,7 +45,6 @@ pub mod syntax;
 pub(crate) use crate::css::text_css;
 pub mod topology;
 pub(crate) use crate::css::tracks;
-pub mod types;
 pub use crate::css::variables;
 pub mod view_transition;
 
