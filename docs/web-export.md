@@ -321,9 +321,25 @@ instantiates the primary again on the shared memory, with the same
 placeholders (`scripts/og-pool-split.js`, which `scripts/rayon-worker.sh`
 wires into wasm-bindgen-rayon's Worker helper): a lane that first calls a
 module loads it into its own Worker's instance (a blocking request, from
-the HTTP cache once the engine Worker fetched it). A split module carries
-functions and no data, so loading it again writes nothing in the shared
-memory. The remote-frame twins ship whole.
+the HTTP cache once the engine Worker fetched it). The remote-frame twins
+ship whole.
+
+A split module carries its functions and the read-only data only they
+read: its tables, strings and shader text
+(`scripts/wasm-split-data.ts`). A publish module is linked with
+`--emit-relocs` (`crates/og-host-web/build.rs`), and the relocations of
+the raw module say which function and which data refer to which data
+symbol; a `.rodata` symbol whose every referrer, through any chain of
+data, is one module's function moves to that module, and one the primary
+or two modules reach stays. The primary keeps those bytes zeroed, and
+the module writes them back from an active data segment when it is
+instantiated, before any of its functions runs. The bound module ships
+without the relocations. The raw module's names are matched to
+wasm-bindgen's by rustc-demangle (`rustfilt -h`, pinned by
+`scripts/install-tools.sh`); a function it does not match counts as the
+primary's, which keeps its data. `modules.json` lists each module's
+`data` bytes. A lanes pool Worker that loads a module again writes the
+same bytes over the shared memory, which changes nothing a thread reads.
 
 The primary imports a placeholder for each split function
 (`placeholder.<module>`); `loadWebHost`'s optional fourth argument, a

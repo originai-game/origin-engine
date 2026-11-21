@@ -3,6 +3,9 @@
 # (rust-toolchain.toml covers rustc, rustfmt, clippy and the wasm target):
 #
 #   wasm-bindgen-cli  pinned to the wasm-bindgen version in Cargo.lock
+#   rustfilt          rustc-demangle's CLI, pinned by RUSTFILT_VERSION: names
+#                     the raw wasm's functions as wasm-bindgen does, so
+#                     wasm-split.ts moves each module's data with it
 #   brotli            the size gate's compressor
 #   bun               the TypeScript packages' test runner, pinned by BUN_VERSION
 #   ShellCheck        the gate scripts' linter, pinned by SHELLCHECK_VERSION (an
@@ -36,6 +39,7 @@ set -eu -o pipefail
 BUN_VERSION="${BUN_VERSION:-1.4.4}"
 SCCACHE_VERSION="${SCCACHE_VERSION:-0.19.0}"
 SHELLCHECK_VERSION="${SHELLCHECK_VERSION:-0.11.0}"
+RUSTFILT_VERSION="${RUSTFILT_VERSION:-0.2.1}"
 TSRS_VERSION="${TSRS_VERSION:-0.18.0-ts7.1.0-dev.20260929}"
 TSRS_REPORTS="7.1.0-dev.20260930.4"
 BINARYEN_VERSION="${BINARYEN_VERSION:-133}"
@@ -132,6 +136,16 @@ else
     cp "$tmp/cargo/bin/wasm-bindgen" "$BIN/"
   fi
   wasm-bindgen --version
+fi
+
+# rustfilt (no release binaries)
+if command -v rustfilt >/dev/null && [ "$(rustfilt --version | awk '{print $2}')" = "$RUSTFILT_VERSION" ]; then
+  og_say "rustfilt $RUSTFILT_VERSION: present"
+else
+  og_say "rustfilt $RUSTFILT_VERSION: installing (cargo install --locked)"
+  cargo install --locked --version "$RUSTFILT_VERSION" rustfilt --root "$tmp/cargo"
+  cp "$tmp/cargo/bin/rustfilt" "$BIN/"
+  rustfilt --version
 fi
 
 # brotli

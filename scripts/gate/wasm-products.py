@@ -27,7 +27,7 @@ def manifest(path):
 
 
 def key(kind, variant, source, command):
-    tools = ('wasm-bindgen',) if kind == 'bindgen' else ('bun', 'wasm-split')
+    tools = ('wasm-bindgen',) if kind == 'bindgen' else ('bun', 'wasm-split', 'rustfilt')
     tool_hashes = [file_hash(Path(shutil.which(tool) or '')) for tool in tools]
     # Splitting executes engine TS via the profile program. Use the complete
     # source tree for this experiment until its closure is proven.

@@ -311,6 +311,9 @@ wasm_bindgen_one() {
   rm -rf "$dir"
   wasm_product bindgen "$name" "$raw" "$dir" \
     wasm-bindgen --target web --out-dir "$dir" --out-name "$out" "$raw" || return 1
+  # A publish module's relocations (og-host-web's build.rs) are the split's,
+  # read from the raw module; the bound one ships without them.
+  bun "$OG_ROOT/packages/engine/scripts/wasm-split-data.ts" strip "$dir/${out}_bg.wasm" || return 1
   cp "$dir/${out}_bg.wasm" "$OG_WASM_OUT/dev/$name.wasm"
 }
 
@@ -329,11 +332,12 @@ wasm_split() {
     [ -d "$d" ] || continue
     name="$(basename "$d")"
     og_need wasm-split || return 1
+    og_need rustfilt || return 1
     mkdir -p "$OG_WASM_OUT/split/$name"
     profile=3d
     case "$name" in *2d) profile=2d ;; esac
     wasm_product split "$name" "$d" "$OG_WASM_OUT/split/$name" \
-      bun "$OG_ROOT/packages/engine/scripts/wasm-split.ts" "$d" "$OG_WASM_OUT/split/$name" "$profile" > "$OG_WASM_OUT/split/$name.log" 2>&1 &
+      bun "$OG_ROOT/packages/engine/scripts/wasm-split.ts" "$d" "$OG_WASM_OUT/split/$name" "$profile" "$OG_WASM_OUT/raw/$name.wasm" > "$OG_WASM_OUT/split/$name.log" 2>&1 &
     pids+=($!)
   done
   for d in "${pids[@]:-}"; do [ -z "$d" ] || wait "$d" || failed=1; done

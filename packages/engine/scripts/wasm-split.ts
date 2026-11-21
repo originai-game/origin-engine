@@ -2,7 +2,7 @@
 // capability (docs/web-export.md §Modules), with Binaryen's wasm-split
 // (pinned by scripts/install-tools.sh):
 //
-//   bun scripts/wasm-split.ts <bound dir> <out dir> [2d|3d]
+//   bun scripts/wasm-split.ts <bound dir> <out dir> <2d|3d> <raw wasm>
 //
 // <bound dir> holds wasm-bindgen's output with its name section
 // (origin-engine.js and origin-engine_bg.wasm, or the -lanes pair). <out dir>
@@ -12,11 +12,15 @@
 // module, which shares its directory with the single-threaded one. A function goes to the first module of wasm-modules.json whose
 // pattern its path matches, unless a game using no module runs it
 // (wasm-profile.ts): those stay in the primary, so such a game loads none.
+// <raw wasm> is the linked module before wasm-bindgen, with its relocations
+// (`--emit-relocs`): the read-only data only a module's functions reach
+// goes into that module (wasm-split-data.ts).
 import { createHash } from "node:crypto";
 import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { devNull, tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { giveData, moduleData, takeData } from "./wasm-split-data.ts";
 import { withoutNames } from "./wasm-symbols.ts";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -24,7 +28,7 @@ const here = dirname(fileURLToPath(import.meta.url));
 const FEATURES = ["--enable-threads", "--enable-bulk-memory", "--enable-mutable-globals", "--enable-sign-ext", "--enable-nontrapping-float-to-int", "--enable-reference-types", "--enable-multivalue"];
 
 declare const Bun: {
-  spawnSync(cmd: string[], o: { stdout: "pipe"; stderr: "pipe" }): { exitCode: number; stdout: Uint8Array; stderr: Uint8Array };
+  spawnSync(cmd: string[], o: { stdin?: Uint8Array; stdout: "pipe"; stderr: "pipe" }): { exitCode: number; stdout: Uint8Array; stderr: Uint8Array };
 };
 
 function run(cmd: string, args: string[]): string {
@@ -167,10 +171,22 @@ export function framePath(wasmFile: string, names: string[], table: Table, calls
   return seen;
 }
 
+/**
+ * Rust symbol names demangled as wasm-bindgen writes them: rustc-demangle
+ * keeping the hash, which is rustfilt's `-h` (scripts/install-tools.sh).
+ */
+function demangle(names: string[]): string[] {
+  const r = Bun.spawnSync(["rustfilt", "-h"], { stdin: new TextEncoder().encode(names.join("\n") + "\n"), stdout: "pipe", stderr: "pipe" });
+  if (r.exitCode !== 0) throw new Error(`rustfilt failed (scripts/install-tools.sh installs it): ${new TextDecoder().decode(r.stderr)}`);
+  const out = new TextDecoder().decode(r.stdout).split("\n");
+  if (out.length < names.length) throw new Error("rustfilt answered fewer names than it was given");
+  return out.slice(0, names.length);
+}
+
 /** Where a module's split modules sit beside it. */
 export const moduleDir = (lanes: boolean) => (lanes ? "modules-lanes" : "modules");
 
-export function splitEngine(bound: string, out: string, profile: "2d" | "3d" = "3d"): Record<string, { file: string; bytes: number; sha256: string }> {
+export function splitEngine(bound: string, out: string, profile: "2d" | "3d", raw: string): Record<string, { file: string; bytes: number; sha256: string; data: number }> {
   const lanes = existsSync(join(bound, "origin-engine-lanes_bg.wasm"));
   const stem = lanes ? "origin-engine-lanes" : "origin-engine";
   const dir = moduleDir(lanes);
@@ -213,20 +229,30 @@ export function splitEngine(bound: string, out: string, profile: "2d" | "3d" = "
     run("wasm-split", ["-g", "--multi-split", wasmFile, "--manifest", manifest, "--out-prefix", `${split}/`, "-o", join(split, "primary.wasm"), "--export-prefix=%", ...FEATURES]);
     rmSync(join(out, dir), { recursive: true, force: true });
     mkdirSync(join(out, dir), { recursive: true });
-    writeFileSync(join(out, `${stem}_bg.wasm`), readFileSync(join(split, "primary.wasm")));
-    const listed: Record<string, { file: string; bytes: number; sha256: string }> = {};
+    // Each module's data out of the primary and into it.
+    const primary = new Uint8Array(readFileSync(join(split, "primary.wasm")));
+    // The raw module's names are mangled (v0); wasm-bindgen's are demangled, which `assigned` holds.
+    const rawWasm = new Uint8Array(readFileSync(raw));
+    const mangled = functionNames(rawWasm);
+    const plainNames = demangle(mangled);
+    const demangled = new Map(mangled.map((n, i) => [n, plainNames[i]!]));
+    const data = moduleData(rawWasm, (fn) => assigned.get(demangled.get(fn) ?? fn) ?? null);
+    const listed: Record<string, { file: string; bytes: number; sha256: string; data: number }> = {};
     for (const m of [...groups.keys()].sort()) {
       // Written with its name section, like the primary: pack.sh's
       // wasm-symbols.ts moves it to the symbols archive. Named and listed by
       // the bytes that ship, without it; the release serves it as
       // /downloads/engine/<version>/wasm/<variant>/<module>.<hash12>.wasm.
-      const named = new Uint8Array(readFileSync(join(split, `${m}.wasm`)));
+      const ranges = data.get(m) ?? [];
+      const own = takeData(primary, ranges);
+      const named = giveData(new Uint8Array(readFileSync(join(split, `${m}.wasm`))), ranges, own);
       const bytes = withoutNames(named);
       const sha256 = createHash("sha256").update(bytes).digest("hex");
       const file = `${dir}/${m}.${sha256.slice(0, 12)}.wasm`;
       writeFileSync(join(out, file), named);
-      listed[m] = { file, bytes: bytes.length, sha256 };
+      listed[m] = { file, bytes: bytes.length, sha256, data: own.reduce((n, b) => n + b.length, 0) };
     }
+    writeFileSync(join(out, `${stem}_bg.wasm`), primary);
     writeFileSync(join(out, dir, "modules.json"), `${JSON.stringify(listed, null, 2)}\n`);
     return listed;
   } finally {
@@ -235,8 +261,8 @@ export function splitEngine(bound: string, out: string, profile: "2d" | "3d" = "
 }
 
 if (import.meta.main) {
-  const [bound, out, profile = "3d"] = process.argv.slice(2);
-  if (!bound || !out || (profile !== "2d" && profile !== "3d")) throw new Error("usage: bun scripts/wasm-split.ts <bound dir> <out dir> [2d|3d]");
-  const listed = splitEngine(bound, out, profile);
-  for (const [m, f] of Object.entries(listed)) console.log(`${m} ${f.bytes} ${f.sha256.slice(0, 12)}`);
+  const [bound, out, profile, raw] = process.argv.slice(2);
+  if (!bound || !out || (profile !== "2d" && profile !== "3d") || !raw) throw new Error("usage: bun scripts/wasm-split.ts <bound dir> <out dir> <2d|3d> <raw wasm>");
+  const listed = splitEngine(bound, out, profile, raw);
+  for (const [m, f] of Object.entries(listed)) console.log(`${m} ${f.bytes} ${f.sha256.slice(0, 12)} data ${f.data}`);
 }

@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "og build --publish",
+      "summary": "Each on-demand engine module (physics, story, nav, motion, destruction, video) carries the read-only data only its functions read, including motion's shader text, instead of every game downloading it in the primary: a game's first download is about 24 KB (brotli) smaller, and a module is that much larger when the game loads it. modules.json lists each module's `data` bytes. Nothing a game calls changes."
+    }
+  ]
+}

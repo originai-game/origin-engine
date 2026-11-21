@@ -3,7 +3,7 @@
 // addon and on the wasm module. Each host runs in its own process.
 import { fileURLToPath } from "node:url";
 import { expect, test } from "bun:test";
-import { existsSync, mkdtempSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 
@@ -102,6 +102,14 @@ for (const profile of ["3d", "2d"]) {
     for (const m of ["nav", "motion", "destruction", "video"]) expect(late.modules).not.toContain(m);
     expect(early.modules).toEqual(["destruction", "motion", "nav", "physics", "story", "video"]);
   }, 180_000);
+
+  // Each module carries the read-only data only its functions read, out of
+  // the primary (scripts/wasm-split-data.ts); the test above shows the
+  // world is unchanged with it moved.
+  test.skipIf(STALE_WASM || NO_SPLIT)(`a ${profile} split publish module's modules each carry their own data`, () => {
+    const listed = JSON.parse(readFileSync(join(pkg, "dist", profile === "2d" ? "web-publish-2d" : "web-publish", "modules", "modules.json"), "utf8")) as Record<string, { data: number }>;
+    for (const [m, e] of Object.entries(listed)) expect([m, e.data > 0]).toEqual([m, true]);
+  });
 
   // A game that uses none of them loads none: its meshes, ticks, frames and
   // snapshot never call into a module (tests/support/module-free.ts throws

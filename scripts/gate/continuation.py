@@ -48,10 +48,11 @@ def fingerprint(scope):
         # agent-browser install replacing the previous default.
         chrome = Path(command('bun', '-e', 'import {chromePath} from "./packages/engine/tests/web/cdp.ts"; console.log(chromePath())')).resolve(strict=True)
         runtime['chrome'] = (str(chrome), file_hash(chrome), command(str(chrome), '--version'))
-        splitter = shutil.which('wasm-split')
-        if not splitter:
-            return None
-        runtime['wasm-split'] = (file_hash(Path(splitter)), command(splitter, '--version'))
+        for tool in ('wasm-split', 'rustfilt'):
+            splitter = shutil.which(tool)
+            if not splitter:
+                return None
+            runtime[tool] = (file_hash(Path(splitter)), command(splitter, '--version'))
     engine = Path('packages/engine')
     products = {}
     roots = [engine / 'native', *sorted((engine / 'dist').glob('web*'))]
