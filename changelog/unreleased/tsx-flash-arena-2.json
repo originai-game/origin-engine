@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "@origingame/engine/ui/components",
+      "summary": "The arena's scoreboard and draft as TSX, beside their .svelte: ArenaScoreboard (each team a table of K, D, A and score or score alone, You and Disconnected marks, side by side or stacked, scrolling inside its height) and ArenaDraft (the phase band with the turn's HudTimer, struck bans and player picks per team, lock in). The teams wash in the default blue and red (the seed-team colours have no class surface), the portraits' octagons are rounded and the scroll fades are dropped."
+    }
+  ]
+}
