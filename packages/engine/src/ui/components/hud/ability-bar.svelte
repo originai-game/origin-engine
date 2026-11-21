@@ -21,6 +21,9 @@
 <style>
 #AbilityBar { margin: 0; padding: 0; list-style-type: none; justify-content: center; align-items: flex-start; }
 .column { flex-direction: column; flex-wrap: nowrap; align-items: center; }
-/* A slot's place: it shrinks before the strip breaks. */
-.item { flex: 0 1 var(--ability-bar-slot-size); min-inline-size: var(--ability-bar-slot-min); align-items: center; }
+/* A slot's place: it shrinks before the strip breaks. Its inline size is
+   what the strip asks of it when it sizes to its content (Flexbox §9.9.3:
+   a basis alone is not), so a strip in a centred row is as wide as its
+   slots rather than their minimum. */
+.item { flex: 0 1 var(--ability-bar-slot-size); inline-size: var(--ability-bar-slot-size); min-inline-size: var(--ability-bar-slot-min); align-items: center; }
 </style>
