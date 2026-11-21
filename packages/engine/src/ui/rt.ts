@@ -7,6 +7,7 @@
 // batch through og_engine_ui_patch and dispatches the events of its reply to
 // the handlers by node id. Nodes are plain handles: their state lives in Rust.
 
+import type { World } from "@origingame/engine";
 import {
   type Accessor,
   createMemo,
@@ -40,7 +41,7 @@ export class UiNode {
 /** What an event handler is given. */
 export interface UiEvent {
   /** The world the UI belongs to, for writing intents and commands. */
-  readonly world: unknown;
+  readonly world: World;
   readonly type: string;
   /** The pointer on the UI's surface. */
   readonly x: number;
@@ -76,8 +77,8 @@ export class Renderer {
   errors: string[] = [];
 
   private readonly transport: Transport;
-  readonly world: unknown;
-  constructor(transport: Transport, world: unknown) { this.transport = transport; this.world = world; }
+  readonly world: World;
+  constructor(transport: Transport, world: World) { this.transport = transport; this.world = world; }
 
   private room(n: number): void {
     if (this.at + n <= this.buf.byteLength) return;
@@ -306,6 +307,10 @@ function nodes(ui: Renderer, value: unknown, previous: UiNode[], out: UiNode[], 
   out.push(made);
 }
 
+function dynamic(value: unknown, depth = 0): boolean {
+  return typeof value === "function" || (depth < 64 && Array.isArray(value) && value.some((v) => dynamic(v, depth + 1)));
+}
+
 /** Puts `value`'s nodes in `parent` before `before` (last without), followed. */
 export function insert(parent: UiNode, value: unknown, before: UiNode | null = null): void {
   const ui = parent.ui;
@@ -319,9 +324,11 @@ export function insert(parent: UiNode, value: unknown, before: UiNode | null = n
     if (!same) for (const n of next) ui.insert(parent.id, n, before);
     previous = next;
   };
-  if (typeof value !== "function") { show(value); return; }
+  // A list with functions in it (consecutive dynamic children, as the
+  // compile groups them) is followed like a function.
+  if (!dynamic(value)) { show(value); return; }
   createRenderEffect(() => {
-    const v = (value as () => unknown)();
+    const v = typeof value === "function" ? (value as () => unknown)() : value;
     // A function returned is followed by an effect of its own, so what it
     // reads does not make the outer components again.
     if (typeof v === "function") createRenderEffect(() => show((v as () => unknown)()));

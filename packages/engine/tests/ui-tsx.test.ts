@@ -4,6 +4,7 @@
 // what changed, and an OGEV reply calls the node's handler with the world.
 
 import { expect, test } from "bun:test";
+import type { World } from "@origingame/engine";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -13,12 +14,15 @@ import { mount, renderers } from "../src/ui/index.ts";
 import { Renderer } from "../src/ui/rt.ts";
 import { createSignal } from "../src/ui/signals.ts";
 
-const SOURCE = `import { View, Text, Show } from "@origingame/engine/ui";
+const SOURCE = `import { View, Text, Show, Switch, Match, packClass } from "@origingame/engine/ui";
 export function Hud(props: { hp: number; on: boolean; press: (e: unknown) => void }) {
   return (
     <View class="p-4 bg-surface" onPress={props.press}>
       <Text class="text-fg">HP {props.hp}</Text>
       <Show when={props.on}><Text>on</Text></Show>
+      <Switch fallback={<Text>low</Text>}>
+        <Match when={props.hp > 3}><Text class={packClass("Hud", "hp", "high")}>high</Text></Match>
+      </Switch>
     </View>
   );
 }`;
@@ -71,13 +75,16 @@ test("a TSX component's ops, its updates and its events", async () => {
   const dir = mkdtempSync(join(tmpdir(), "og-tsx-"));
   try {
     const rt = fileURLToPath(new URL("../src/ui/rt.ts", import.meta.url));
-    writeFileSync(join(dir, "Hud.js"), compiled.code.replace('"@origingame/engine/ui/rt"', JSON.stringify(rt)));
+    const ui = fileURLToPath(new URL("../src/ui/index.ts", import.meta.url));
+    const code = compiled.code.replace('"@origingame/engine/ui/rt"', JSON.stringify(rt)).replace('"@origingame/engine/ui"', JSON.stringify(ui));
+    writeFileSync(join(dir, "Hud.js"), code);
     const { Hud } = await import(join(dir, "Hud.js"));
 
     const batches: Op[][] = [];
     let next: Uint8Array = reply([]);
-    const world = { id: 9001 };
-    renderers.set(world.id, new Renderer((bytes) => { batches.push(decode(bytes)); const r = next; next = reply([]); return r; }, world));
+    // The runtime's worlds carry their id; the public World does not name it.
+    const world = { id: 9001 } as unknown as World;
+    renderers.set(9001, new Renderer((bytes) => { batches.push(decode(bytes)); const r = next; next = reply([]); return r; }, world));
     const hp = createSignal(3), on = createSignal(false);
     const pressed: unknown[] = [];
     mount(world, Hud, { get hp() { return hp(); }, get on() { return on(); }, press: (e: unknown) => pressed.push(e) }, { layer: "hud" });
@@ -92,19 +99,28 @@ test("a TSX component's ops, its updates and its events", async () => {
     expect(first).toContainEqual(["createText", 5, "3"]);
     expect(first.at(-1)).toEqual(["insert", 0, 1, -1]);
     expect(first.some((op) => op[0] === "createText" && op[2] === "on")).toBe(false);
+    expect(first.filter((op) => op[0] === "createText" && (op[2] === "low" || op[2] === "high")).map((op) => op[2])).toEqual(["low"]);
 
     // A changed signal sends only its text; the branch shows when `on` does.
     hp.set(4);
     on.set(true);
-    renderers.get(world.id)!.flush();
+    renderers.get(9001)!.flush();
     const second = batches[1]!;
     expect(second).toContainEqual(["setText", 5, "4"]);
-    expect(second.filter((op) => op[0] === "createText")).toEqual([["createText", expect.any(Number), "on"]]);
+    // The Switch's case changes with hp: "high" is made, with its pack token, and "low" goes.
+    expect(second.filter((op) => op[0] === "createText").map((op) => op[2]).sort()).toEqual(["high", "on"]);
+    expect(second).toContainEqual(["setClass", expect.any(Number), "@Hud.hp.high"]);
+    const made = (text: string) => second.find((op) => op[0] === "createText" && op[2] === text)!;
+    const holder = (text: string) => second.find((op) => op[0] === "insert" && op[2] === made(text)[1])![1];
+    expect(second).toContainEqual(["insert", 2, holder("high"), -1]);
+    expect(second).toContainEqual(["insert", 2, holder("on"), -1]);
+    expect(second.filter((op) => op[0] === "remove" && op[1] === 2)).toHaveLength(1);
+    expect(second.filter((op) => op[0] === "release")).toHaveLength(1);
     expect(second.some((op) => op[0] === "create" && op[2] === 0)).toBe(false);
 
     // A press on the view (id 2) calls its handler with the world.
     next = reply([[2, 0]]);
-    renderers.get(world.id)!.flush();
+    renderers.get(9001)!.flush();
     expect(pressed).toEqual([expect.objectContaining({ world, type: "press", x: 12, y: 34 })]);
   } finally {
     rmSync(dir, { recursive: true, force: true });

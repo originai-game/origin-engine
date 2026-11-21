@@ -169,10 +169,12 @@ fn resolver(engine: u32, pack: Option<&str>, dark: bool, window: [f32; 2]) -> (R
         widths.extend(b.values().filter_map(Value::as_f64).map(|w| w as f32));
     }
     // The cook checked the theme: what it left out, it reported then.
-    let classes = og_ui_next::classes::Classes::new(Some(&pack.theme_json(scheme)))
+    let mut classes = og_ui_next::classes::Classes::new(Some(&pack.theme_json(scheme)))
         .or_else(|_| og_ui_next::classes::Classes::new(None))
         .expect("the default theme reads")
         .0;
+    // `packClass` at runtime: `@Component.slot[.variant]` tokens.
+    classes.set_variants(pack.variants().clone());
     let classes = RefCell::new(classes);
     let env = og_ui_next::classes::Env {
         window,

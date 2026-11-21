@@ -34,6 +34,8 @@ pub struct Env {
 pub struct Classes {
     theme: Theme,
     lists: FxHashMap<Box<str>, ClassList>,
+    /// The pack's variant class strings by `Component.slot[.variant]`.
+    variants: std::collections::BTreeMap<String, String>,
 }
 
 impl Classes {
@@ -50,14 +52,57 @@ impl Classes {
             Classes {
                 theme,
                 lists: FxHashMap::default(),
+                variants: Default::default(),
             },
             ignored,
         ))
     }
 
+    /// The pack's variants (`Pack::variants`), which `@Component.slot` and
+    /// `@Component.slot.variant` tokens in a class string stand for
+    /// (`packClass` at runtime): the slot's classes, then the variant's.
+    pub fn set_variants(&mut self, variants: std::collections::BTreeMap<String, String>) {
+        self.variants = variants;
+        self.lists.clear();
+    }
+
+    /// `classes` with its `@…` tokens replaced by the variants they name; a
+    /// token naming no variant stays, so it is reported unknown.
+    fn expand(&self, classes: &str) -> Option<String> {
+        if !classes.contains('@') {
+            return None;
+        }
+        let mut out = String::with_capacity(classes.len() * 4);
+        let mut push = |s: &str| {
+            out.push_str(s);
+            out.push(' ');
+        };
+        for class in classes.split_ascii_whitespace() {
+            let Some(key) = class.strip_prefix('@') else {
+                push(class);
+                continue;
+            };
+            let end = key.match_indices('.').nth(1).map_or(key.len(), |(i, _)| i);
+            match (self.variants.get(&key[..end]), self.variants.get(key)) {
+                (Some(slot), own) => {
+                    push(slot);
+                    if end < key.len()
+                        && let Some(own) = own
+                    {
+                        push(own);
+                    }
+                }
+                (None, Some(own)) => push(own),
+                (None, None) => push(class),
+            }
+        }
+        Some(out)
+    }
+
     fn list(&mut self, classes: &str) -> &ClassList {
         if !self.lists.contains_key(classes) {
-            let list = tailwind::parse(&self.theme, classes);
+            let expanded = self.expand(classes);
+            let list = tailwind::parse(&self.theme, expanded.as_deref().unwrap_or(classes));
             self.lists.insert(classes.into(), list);
         }
         &self.lists[classes]
@@ -586,5 +631,33 @@ mod tests {
         let r = c.record_styled(class, "bogus-thing: 3", &env);
         assert_eq!((w(&r), r.skin.opacity), (w(&base), 0.5));
         assert_eq!(camel("border-top-left-radius"), "borderTopLeftRadius");
+    }
+
+    #[test]
+    fn pack_tokens_stand_for_their_variants() {
+        let (mut c, _) = Classes::new(None).unwrap();
+        c.set_variants(
+            [
+                ("Panel.frame".to_owned(), "p-2 opacity-50".to_owned()),
+                ("Panel.frame.hud".to_owned(), "opacity-75".to_owned()),
+            ]
+            .into(),
+        );
+        let env = Env::default();
+        let pad = |r: &Record| taffy::Style::from(&r.layout).padding.top;
+        // The slot alone; the slot then its variant, the variant winning.
+        let r = c.record("@Panel.frame", &env);
+        assert_eq!(
+            (pad(&r), r.skin.opacity),
+            (taffy::LengthPercentage::length(8.0), 0.5)
+        );
+        let r = c.record("p-1 @Panel.frame.hud", &env);
+        assert_eq!(
+            (pad(&r), r.skin.opacity),
+            (taffy::LengthPercentage::length(8.0), 0.75)
+        );
+        // A variant the pack lacks keeps the slot's; a slot it lacks is unknown.
+        assert_eq!(c.record("@Panel.frame.menu", &env).skin.opacity, 0.5);
+        assert_eq!(c.unknown("@Card.body"), ["@Card.body"]);
     }
 }

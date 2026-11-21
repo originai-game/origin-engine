@@ -38,7 +38,8 @@ export function AbilitySlot(props: { icon: string; cooldown: number; ready: bool
   are PascalCase imports; a lowercase tag is an error): `View`, `Text`,
   `Image`, `Icon`, `Scroll`, `Input`, `Svg` with its shapes, and the
   control flow `<Show when fallback keyed>` and `<For each key>{(item,
-  index) => …}</For>` (`item` and `index` are accessors). Every other tag
+  index) => …}</For>` (`item` and `index` are accessors), and
+  `<Switch fallback><Match when>…</Match></Switch>` (components). Every other tag
   is a component call. Every optional prop also takes `undefined`.
 - **Props** keep camelCase names. Reading `props.x` inside JSX is
   reactive; a component body runs once (Solid's model), so derived values
@@ -77,9 +78,9 @@ imports the renderer, `@origingame/engine/ui/rt` (`packages/engine/src/ui/
 rt.ts`), which writes the §Ops batch and sends it when the mount is made
 and at every tick boundary. `og check` runs NSH's class check against the
 merged default and game packs: an unknown class is error OG9105 with its
-line and column. Class strings the compile sees as
-literals are listed for the cook, which resolves them into records ahead
-of time; only bound class strings go through the runtime cache.
+line and column. Class strings resolve at runtime, once per distinct string (about 6 µs each
+natively); nothing is cooked into records, so a pack or scheme switch
+resolves them again.
 
 ## Ops (TS renderer → Rust)
 
@@ -250,7 +251,11 @@ is an error naming where it is, never ignored):
 - **`variants`**: class strings a component appends after its own, keyed
   `Component.slot` or `Component.slot.variant` (PascalCase, then
   lower-case names). A component writes `packClass("Panel", "frame",
-  variant)` last in its `class`; with literal arguments the cook folds it.
+  variant)` last in its `class`: it answers the token
+  `@Panel.frame.variant`, which the class resolver replaces with the active
+  pack's slot string and then the variant's (an absent variant adds
+  nothing; an absent slot stays an unknown class), so a pack switch
+  restyles it. Nothing is folded at cook time.
   `og check` checks the strings against the merged theme.
 - **`fonts`**: faces `{ family, src, weight?, style?, unicodeRange? }`, `src`
   relative to the pack or `@styles/shared/…` / `@styles/cjk/…`.
