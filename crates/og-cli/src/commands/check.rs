@@ -1042,34 +1042,56 @@ fn ui_grounds_lint(root: &Path, dirs: &[&Path], game: Option<&Path>, json: bool)
     }
     let pack = Pack::new(&layers);
     let colors = crate::ui_grounds::colors(&Scheme::ALL.map(|s| pack.theme_json(s)));
-    let found = crate::ui_grounds::lint(root, dirs, &colors);
+    // The pack's own scheme first: a colour written by hand is a role's
+    // value in the scheme the UI was drawn in.
+    let schemes = match pack.scheme {
+        Some(Scheme::Light) => [Scheme::Light, Scheme::Dark],
+        _ => [Scheme::Dark, Scheme::Light],
+    };
+    let scale = crate::ui_values::Scale::new(&schemes.map(|s| pack.theme_json(s)));
+    let found = crate::ui_grounds::lint(root, dirs, &colors, &scale);
     if found.is_empty() {
         return;
     }
-    let code = crate::ui_grounds::CODE;
     if json {
         let event = serde_json::json!({
             "event": "ui-grounds",
             "warnings": found.iter().map(|(file, f)| serde_json::json!({
-                "file": file, "line": f.line, "col": f.col, "code": code, "class": f.class, "message": f.message,
+                "file": file, "line": f.line, "col": f.col, "code": f.code, "class": f.class, "message": f.message,
+                "fix": f.fix.as_ref().map(|(classes, _)| classes), "exact": f.fix.as_ref().map(|(_, exact)| exact),
             })).collect::<Vec<_>>(),
         });
         println!("{event}");
         return;
     }
-    let mut files: Vec<&str> = found.iter().map(|(f, _)| f.as_str()).collect();
-    files.dedup();
     for (file, f) in &found {
         println!(
-            "{file}({},{}): warning OG{code}: {}",
-            f.line, f.col, f.message
+            "{file}({},{}): warning OG{}: {}",
+            f.line, f.col, f.code, f.message
         );
     }
-    println!(
-        "og check: {} ground or ink warning(s) in {} file(s): text sits on a pack slot or an opaque theme ground, in that ground's ink (crates/og-ui-next/CONVENTIONS.md §Theme and packs, Grounds and inks)",
-        found.len(),
-        files.len()
-    );
+    let count = |code: u32| {
+        let of: Vec<&str> = found
+            .iter()
+            .filter(|(_, f)| f.code == code)
+            .map(|(file, _)| file.as_str())
+            .collect();
+        let mut files = of.clone();
+        files.dedup();
+        (of.len(), files.len())
+    };
+    let (grounds, in_files) = count(crate::ui_grounds::CODE);
+    if grounds > 0 {
+        println!(
+            "og check: {grounds} ground or ink warning(s) in {in_files} file(s): text sits on a pack slot or an opaque theme ground, in that ground's ink (crates/og-ui-next/CONVENTIONS.md §Theme and packs, Grounds and inks)"
+        );
+    }
+    let (values, in_files) = count(crate::ui_values::CODE);
+    if values > 0 {
+        println!(
+            "og check: {values} hand-written value warning(s) in {in_files} file(s): a size, a colour, a shadow or a strength is a theme step or role, never a bracket, a literal or an opacity modifier (crates/og-ui-next/CONVENTIONS.md §Theme and packs, Steps and roles)"
+        );
+    }
 }
 
 /// `og check`'s code for a material shader whose surface does not take

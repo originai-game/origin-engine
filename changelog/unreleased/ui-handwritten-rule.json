@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {
+      "member": "og check OG9109",
+      "summary": "`og check` warns (OG9109) where a game's TSX writes by hand a value the theme names, and names the class that replaces it: a bracketed length, type size, tracking, leading or radius (`w-[17.143rem]`: `w-60`; `text-[1.714rem]`: `text-title`; `tracking-[0.14em]`: `tracking-label`), a bracketed percentage (`size-[40%]`: `size-2/5`), a shadow written out (`shadow-[0px_0px_12px_#38e8ff]`: `shadow-glow`), a colour, `var(--…)` or literal `white` or `black` in a border, ring, stroke or shadow (`border-white/8`: `border-rim-soft`), and an opacity modifier on a role (`bg-well/79`: `bg-well`). Where no step is exact it names the nearest. `og check --json` carries the replacement as `fix` and whether it draws the same value as `exact`. Grid tracks of `auto` and `fr`, flex factors, `env()` insets and an inline `style` that carries data are not values and are left alone."
+    }
+  ]
+}

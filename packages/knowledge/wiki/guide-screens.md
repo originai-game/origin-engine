@@ -541,6 +541,19 @@ bars it does not hold, this guide does:
   The default teams 1 to 6 hold 0.1 for any team seed; past six teams
   colour alone cannot (teams 7 and 8 hold only 0.05), so a game with more than
   six sides gives each a second cue: a shape, a pattern or an icon.
+- **Steps and roles in a class string**: a TSX component writes the
+  theme's words, never a value of its own, so a style pack moves it.
+  `og check` warns at the class and names what to write instead: OG9108
+  for a ground or an ink written by hand (text sits on a pack slot or an
+  opaque theme ground, in that ground's ink), OG9109 for any other
+  hand-written value (`w-[17.143rem]` is `w-60`, `text-[1.714rem]` is
+  `text-title`, `size-[40%]` is `size-2/5`, `border-white/8` is
+  `border-rim-soft`, `bg-well/79` is `bg-well`, a written
+  `shadow-[…]` is the named shadows such as `shadow-glow shadow-gold`).
+  One rem is the theme's body step (14 px in the default pack) and one
+  spacing step 4 px. Grid tracks of `auto` and `fr`, flex factors and an
+  inline `style` that carries data (a bar's `width`) are structure and
+  stay written.
 - **Touch**: a control's shorter side at least 44 CSS px on a coarse
   pointer, and 8 px between neighbouring targets; primary actions in the
   bottom half on a phone held in portrait.

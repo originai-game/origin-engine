@@ -29,6 +29,8 @@ use oxc_span::SourceType;
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::path::Path;
 
+use crate::ui_values::Scale;
+
 /// The check's code in `og check`'s warnings.
 pub const CODE: u32 = 9108;
 
@@ -39,10 +41,15 @@ const OPAQUE: f32 = 0.85;
 /// One break of the rule.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Finding {
+    /// [`CODE`], or [`crate::ui_values::CODE`] for a hand-written value.
+    pub code: u32,
     pub line: u32,
     pub col: u32,
     pub class: String,
     pub message: String,
+    /// The class or classes a hand-written value's finding names, and
+    /// whether they draw the same value.
+    pub fix: Option<(String, bool)>,
 }
 
 /// The theme's colours by name: the least alpha the colour has over both
@@ -81,7 +88,7 @@ fn alpha(hex: &str) -> f32 {
 }
 
 /// The findings in one TSX source.
-pub fn scan(path: &Path, text: &str, colors: &Colors) -> Vec<Finding> {
+pub fn scan(path: &Path, text: &str, colors: &Colors, scale: &Scale) -> Vec<Finding> {
     let Ok(source_type) = SourceType::from_path(path) else {
         return Vec::new();
     };
@@ -94,6 +101,7 @@ pub fn scan(path: &Path, text: &str, colors: &Colors) -> Vec<Finding> {
     let mut v = Scan {
         text,
         colors,
+        scale,
         consts: names.consts,
         frames: Vec::new(),
         found: BTreeMap::new(),
@@ -131,6 +139,7 @@ struct Frame {
 struct Scan<'s, 'p, 'a> {
     text: &'s str,
     colors: &'s Colors,
+    scale: &'s Scale,
     consts: HashMap<&'p str, &'p Expression<'a>>,
     frames: Vec<Frame>,
     /// By byte offset, so a constant shared by several elements is one finding.
@@ -152,11 +161,30 @@ impl<'p, 'a> Scan<'_, 'p, 'a> {
 
     fn report(&mut self, class: &str, offset: u32, message: String) {
         let (line, col) = self.position(offset);
+        // A ground or an ink's finding stands over a hand-written
+        // value's at the same class.
+        self.found.insert(
+            offset,
+            Finding {
+                code: CODE,
+                line,
+                col,
+                class: class.to_owned(),
+                message,
+                fix: None,
+            },
+        );
+    }
+
+    fn report_value(&mut self, class: &str, offset: u32, fix: crate::ui_values::Fix) {
+        let (line, col) = self.position(offset);
         self.found.entry(offset).or_insert(Finding {
+            code: crate::ui_values::CODE,
             line,
             col,
             class: class.to_owned(),
-            message,
+            message: fix.message,
+            fix: (!fix.classes.is_empty()).then_some((fix.classes, fix.exact)),
         });
     }
 
@@ -211,6 +239,8 @@ impl<'p, 'a> Scan<'_, 'p, 'a> {
         for (class, at) in tokens {
             if let Some(message) = self.anywhere(&class) {
                 self.report(&class, at, message);
+            } else if let Some(fix) = crate::ui_values::hand_written(&class, self.scale) {
+                self.report_value(&class, at, fix);
             }
         }
     }
@@ -436,7 +466,7 @@ pub fn files(dirs: &[&Path]) -> Vec<std::path::PathBuf> {
 }
 
 /// Every finding under `dirs`, paths relative to `root`.
-pub fn lint(root: &Path, dirs: &[&Path], colors: &Colors) -> Vec<(String, Finding)> {
+pub fn lint(root: &Path, dirs: &[&Path], colors: &Colors, scale: &Scale) -> Vec<(String, Finding)> {
     let mut out = Vec::new();
     let mut seen = BTreeSet::new();
     for path in files(dirs) {
@@ -451,7 +481,7 @@ pub fn lint(root: &Path, dirs: &[&Path], colors: &Colors) -> Vec<(String, Findin
             .unwrap_or(&path)
             .to_string_lossy()
             .replace('\\', "/");
-        for f in scan(&path, &text, colors) {
+        for f in scan(&path, &text, colors, scale) {
             out.push((rel.clone(), f));
         }
     }
@@ -474,10 +504,43 @@ mod tests {
         .into_iter()
         .map(|(k, v)| (k.to_owned(), v))
         .collect();
-        scan(Path::new("a.tsx"), src, &colors)
+        scan(Path::new("a.tsx"), src, &colors, &Scale::new(&[]))
             .into_iter()
+            .filter(|f| f.code == CODE)
             .map(|f| format!("{}:{} {}", f.line, f.col, f.class))
             .collect()
+    }
+
+    /// A class that breaks both rules is reported once, as the ground it
+    /// is; a hand-written value elsewhere is OG9109 with its fix.
+    #[test]
+    fn a_ground_stands_over_a_hand_written_value() {
+        let themes = [r##"{"colors":{"well":"#060910e0","rim":"#4e586c"}}"##.to_owned()];
+        let src = r#"
+const X = <View class="bg-well/79 w-[2rem]"><Text>a</Text><View class="bg-well/79 border-rim/50" /></View>;"#;
+        let found: Vec<_> = scan(
+            Path::new("a.tsx"),
+            src,
+            &colors(&themes),
+            &Scale::new(&themes),
+        )
+        .into_iter()
+        .map(|f| (f.code, f.class, f.fix.map(|f| f.0)))
+        .collect();
+        let value = crate::ui_values::CODE;
+        assert_eq!(
+            found,
+            [
+                (CODE, "bg-well/79".to_owned(), None),
+                (value, "w-[2rem]".to_owned(), Some("w-8".to_owned())),
+                (value, "bg-well/79".to_owned(), Some("bg-well".to_owned())),
+                (
+                    value,
+                    "border-rim/50".to_owned(),
+                    Some("border-rim".to_owned())
+                ),
+            ]
+        );
     }
 
     #[test]

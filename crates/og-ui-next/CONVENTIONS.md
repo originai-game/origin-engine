@@ -614,6 +614,39 @@ element's ground counts as under text when the element is a `<Text>` or
 own ground covers; classes reach an element through its `class` literals,
 templates, conditionals and the constants and arrow functions they name.
 
+**Steps and roles.** A component writes no value of its own: a size, a
+colour, a shadow or a strength is a step or a role the theme names, so a
+pack moves it and two components agree.
+
+- A length is a spacing step (`w-60`, `gap-y-0.5`, `h-0.75`; quarter steps,
+  `px` for one pixel), a share a fraction (`w-2/5`, `right-3/10`, `full`),
+  never a bracket (`w-[17.143rem]`, `size-[40%]`). A grid of tiles names
+  its tile's least width in steps: `grid-cols-fill-33`, `grid-cols-fit-48`
+  (`repeat(auto-fill | auto-fit, minmax(…, 1fr))`).
+- Type is a `fontSize` step, a `tracking` and a `leading` name, a corner a
+  `radius` name; a border, ring or stroke is a whole number of px.
+- A shadow is the named set: one `shadow-*` (an elevation, `shadow-key`,
+  or a glow `shadow-glow-sm | glow | glow-lg`), one `inset-shadow-*`
+  (`lit`, `lip`, `sunk`, `glow`, or the mark of state `underline`,
+  `overline`, `bar`), a `ring` and an `inset-ring`, each coloured by a role
+  (`shadow-glow shadow-gold`, `inset-ring-1 inset-ring-rim`). A face whose
+  light fits none of these is the slot's pack art.
+- A colour is a role everywhere, not only under text: no `white` or
+  `black`, no `[#…]`, `rgb()` or `var(--…)` in a class, and no opacity
+  modifier on a role (`bg-well/79`, `border-rim/50`, `text-shadow-bg/55`):
+  the whole role, or the role that names the strength (`fg-muted`,
+  `rim-soft`, `lit-soft`, `shade`).
+- Structure is not a value and stays written: a grid template of `auto`,
+  `fr` and `minmax(0,1fr)` tracks, `flex`, `grow`, `row` and `col`
+  numbers, an `env()` inset, and an inline `style` that carries data (a
+  bar's `width: 40%`).
+
+`og check` reports each break as warning OG9109 at the class, naming the
+class that replaces it (`crates/og-cli/src/ui_values.rs`); `--json`
+carries it as `fix`, with `exact` false where it is the nearest step or
+role and moves the value. A class that also breaks the grounds rule is
+reported once, as OG9108.
+
 `spacing` stays Tailwind's 4 pt step. The cook compiles the merged theme
 into the theme the runtime loads and every variant string into records,
 like any literal class string.
