@@ -1,0 +1,77 @@
+import { For, Icon, Image, Show, Text, View, formatNumber, t } from "@origingame/engine/ui";
+import type { Texture } from "@origingame/engine";
+import "./shooter.en.ogt";
+
+export interface PickupItem {
+  id: string;
+  /** What the game calls it. */
+  name: string;
+  /** Its art, a texture (og.load.texture); 0 draws the glyph in its place. */
+  icon?: Texture | 0;
+  /** An icon of the atlas, drawn when there is no art; empty is none. */
+  glyph?: string;
+  /** The count gained (+30). */
+  quantity?: number;
+  /** common, rare, epic or legendary: the edge's and the count's colour. */
+  rarity?: string;
+}
+
+export interface ShooterPickupsProps {
+  /**
+   * What the player just picked up, newest first. The game trims old rows
+   * (a phone shows the newest); a new row slides in from the screen's edge
+   * and an old one fades out. Read only.
+   */
+  items?: ReadonlyArray<PickupItem>;
+}
+
+/**
+ * The pickup feed lower on the screen's side: each row an icon, the item's
+ * name and the count gained on a dark glass that fades toward the middle,
+ * its edge at the screen's side tinted by rarity. Read only. A row the For
+ * removes fades out on exit: by itself; the rows' FLIP reflow (the svelte's
+ * animate:flip) has no TSX surface and is dropped, as is the row's
+ * right-to-left mirror.
+ */
+export function ShooterPickups(props: ShooterPickupsProps) {
+  return (
+    <View class="flex-col items-end gap-y-[0.357rem] max-w-full text-fg" role="log" label={t("shooter.pickups.name")}>
+      <For each={props.items ?? []} key={(p) => p.id}>
+        {(p, i) => (
+          <View
+            class={`group/pickup relative flex-row items-center min-w-0 max-w-full pl-2 bg-linear-to-l from-[#1a1e28db] to-[#1a1e2859] compact:data-later:hidden transition duration-240 ease-out starting:opacity-0 starting:translate-x-4 exit:opacity-0`}
+            label={t("shooter.pickups.row", { name: p().name, quantity: p().quantity ?? 0 })}
+            data-rarity={p().rarity}
+            data-later={i() >= 1}
+          >
+            <View class="shrink-0 my-[0.143rem] size-[1.571rem] compact:size-[1.286rem] rounded-tl-[0.286rem] overflow-hidden bg-[#2a2d38]">
+              <Show when={p().icon} fallback={
+                <Show when={p().glyph}>
+                  <Icon class="size-full text-fg" name={p().glyph} />
+                </Show>
+              }>
+                <Image class="size-full" src={p().icon} />
+              </Show>
+            </View>
+            <Text class="min-w-0 text-[1rem] font-semibold whitespace-nowrap truncate text-shadow-2xs text-stroke-3 text-stroke-bg compact:text-[0.929rem]">{p().name}</Text>
+            <Text
+              class={`shrink-0 text-[1rem] font-bold tabular-nums whitespace-nowrap text-white/66 text-shadow-2xs text-stroke-3 text-stroke-bg compact:text-[0.929rem] group-data-rarity-rare/pickup:text-[#5cc8ff] group-data-rarity-epic/pickup:text-[#c86ff5] group-data-rarity-legendary/pickup:text-[#ffcf5a]`}
+            >
+              {t("shooter.pickups.count", { quantity: formatNumber(p().quantity ?? 0) })}
+            </Text>
+            <View
+              class={`shrink-0 self-stretch w-[0.214rem] ml-1 bg-white/60 group-data-rarity-rare/pickup:bg-[#5cc8ff] group-data-rarity-epic/pickup:bg-[#c86ff5] group-data-rarity-legendary/pickup:bg-[#ffcf5a]`}
+            />
+          </View>
+        )}
+      </For>
+    </View>
+  );
+}
+
+export const fixtures: Record<string, Partial<ShooterPickupsProps>> = {
+  default: {"items":[{"id":"frag","name":"Frag grenade","icon":0,"glyph":"bomb","quantity":1,"rarity":"legendary"},{"id":"cell","name":"Shield cell","icon":0,"glyph":"shield","quantity":2,"rarity":"rare"},{"id":"light","name":"Light rounds","icon":0,"glyph":"bolt","quantity":30,"rarity":"common"}]},
+  empty: {"items":[]},
+  epic: {"items":[{"id":"optic","name":"Holo optic","icon":0,"glyph":"gem","quantity":1,"rarity":"epic"}]},
+  overflow: {"items":[{"id":"long","name":"Extended heavy magazine for the Northern Relay marksman rifle","icon":0,"glyph":"","quantity":123456,"rarity":"legendary"}]},
+};
