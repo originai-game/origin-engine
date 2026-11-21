@@ -1,0 +1,4814 @@
+{
+  "about": "The look preset pixel flattened by og-cook's look step for each variant and mood a game's look may ask of it (`og api gen` writes it from templates/looks; never edit it).",
+  "looks": [
+    {
+      "look": {
+        "antialias": "off",
+        "blocks": {
+          "ArtCamera": {
+            "pixelPerfect": [
+              true
+            ],
+            "projection": [
+              "orthographic"
+            ]
+          },
+          "ArtLine": {
+            "place": [
+              "inside"
+            ],
+            "width": [
+              1
+            ]
+          },
+          "ArtPalette": {
+            "maxColors": [
+              64
+            ],
+            "rampSteps": [
+              6
+            ]
+          },
+          "ArtPixels": {
+            "logicalHeight": [
+              224
+            ],
+            "rotation": [
+              "cleanEdge"
+            ],
+            "snap": [
+              true
+            ],
+            "spriteSizes": [
+              16,
+              32,
+              48
+            ],
+            "unit": [
+              16
+            ]
+          },
+          "RenderSettings": {
+            "toneMapping": [
+              "none"
+            ]
+          },
+          "Stylise": {
+            "dither": [
+              "bayer4"
+            ],
+            "ditherStrength": [
+              0.5
+            ],
+            "pixelHeight": [
+              224
+            ],
+            "pixelSnap": [
+              true
+            ],
+            "posterize": [
+              8
+            ]
+          }
+        },
+        "mood": "bright",
+        "name": null,
+        "ui": "default",
+        "uiSeeds": {
+          "accent": "#ffcd75",
+          "neutral": "#333c57",
+          "primary": "#3b5dc9"
+        },
+        "variant": null
+      },
+      "mood": null,
+      "variant": null
+    },
+    {
+      "look": {
+        "antialias": "off",
+        "blocks": {
+          "ArtCamera": {
+            "pixelPerfect": [
+              true
+            ],
+            "projection": [
+              "orthographic"
+            ]
+          },
+          "ArtLine": {
+            "place": [
+              "inside"
+            ],
+            "width": [
+              1
+            ]
+          },
+          "ArtPalette": {
+            "maxColors": [
+              64
+            ],
+            "rampSteps": [
+              6
+            ]
+          },
+          "ArtPixels": {
+            "logicalHeight": [
+              224
+            ],
+            "rotation": [
+              "cleanEdge"
+            ],
+            "snap": [
+              true
+            ],
+            "spriteSizes": [
+              16,
+              32,
+              48
+            ],
+            "unit": [
+              16
+            ]
+          },
+          "RenderSettings": {
+            "toneMapping": [
+              "none"
+            ]
+          },
+          "Stylise": {
+            "dither": [
+              "bayer4"
+            ],
+            "ditherStrength": [
+              0.5
+            ],
+            "pixelHeight": [
+              224
+            ],
+            "pixelSnap": [
+              true
+            ],
+            "posterize": [
+              8
+            ]
+          }
+        },
+        "mood": "bright",
+        "name": null,
+        "ui": "default",
+        "uiSeeds": {
+          "accent": "#ffcd75",
+          "neutral": "#333c57",
+          "primary": "#3b5dc9"
+        },
+        "variant": null
+      },
+      "mood": "bright",
+      "variant": null
+    },
+    {
+      "look": {
+        "antialias": "off",
+        "blocks": {
+          "ArtCamera": {
+            "pixelPerfect": [
+              true
+            ],
+            "projection": [
+              "orthographic"
+            ]
+          },
+          "ArtLine": {
+            "place": [
+              "inside"
+            ],
+            "width": [
+              1
+            ]
+          },
+          "ArtPalette": {
+            "maxColors": [
+              64
+            ],
+            "rampSteps": [
+              6
+            ]
+          },
+          "ArtPixels": {
+            "logicalHeight": [
+              224
+            ],
+            "rotation": [
+              "cleanEdge"
+            ],
+            "snap": [
+              true
+            ],
+            "spriteSizes": [
+              16,
+              32,
+              48
+            ],
+            "unit": [
+              16
+            ]
+          },
+          "PostEffects": {
+            "balanceShadows": [
+              -0.02,
+              0,
+              0.04
+            ],
+            "contrast": [
+              0.12
+            ],
+            "saturation": [
+              -0.2
+            ],
+            "temperature": [
+              -0.06
+            ],
+            "vignette": [
+              true
+            ],
+            "vignetteIntensity": [
+              0.55
+            ]
+          },
+          "RenderSettings": {
+            "environmentIntensity": [
+              0.35
+            ],
+            "exposure": [
+              0.72
+            ],
+            "toneMapping": [
+              "none"
+            ]
+          },
+          "Stylise": {
+            "dither": [
+              "bayer4"
+            ],
+            "ditherStrength": [
+              0.5
+            ],
+            "pixelHeight": [
+              224
+            ],
+            "pixelSnap": [
+              true
+            ],
+            "posterize": [
+              8
+            ]
+          }
+        },
+        "mood": "dark",
+        "name": null,
+        "ui": "default",
+        "uiSeeds": {
+          "accent": "#ffcd75",
+          "neutral": "#333c57",
+          "primary": "#3b5dc9"
+        },
+        "variant": null
+      },
+      "mood": "dark",
+      "variant": null
+    },
+    {
+      "look": {
+        "antialias": "off",
+        "blocks": {
+          "ArtCamera": {
+            "pixelPerfect": [
+              true
+            ],
+            "projection": [
+              "orthographic"
+            ]
+          },
+          "ArtLine": {
+            "place": [
+              "inside"
+            ],
+            "width": [
+              1
+            ]
+          },
+          "ArtPalette": {
+            "maxColors": [
+              64
+            ],
+            "rampSteps": [
+              6
+            ]
+          },
+          "ArtPixels": {
+            "logicalHeight": [
+              224
+            ],
+            "rotation": [
+              "cleanEdge"
+            ],
+            "snap": [
+              true
+            ],
+            "spriteSizes": [
+              16,
+              32,
+              48
+            ],
+            "unit": [
+              16
+            ]
+          },
+          "PostEffects": {
+            "balanceHighlights": [
+              0.04,
+              0,
+              -0.04
+            ],
+            "saturation": [
+              0.08
+            ],
+            "temperature": [
+              0.3
+            ],
+            "tint": [
+              0.03
+            ]
+          },
+          "RenderSettings": {
+            "exposure": [
+              1.04
+            ],
+            "toneMapping": [
+              "none"
+            ]
+          },
+          "Stylise": {
+            "dither": [
+              "bayer4"
+            ],
+            "ditherStrength": [
+              0.5
+            ],
+            "pixelHeight": [
+              224
+            ],
+            "pixelSnap": [
+              true
+            ],
+            "posterize": [
+              8
+            ]
+          }
+        },
+        "mood": "warm",
+        "name": null,
+        "ui": "default",
+        "uiSeeds": {
+          "accent": "#ffcd75",
+          "neutral": "#333c57",
+          "primary": "#3b5dc9"
+        },
+        "variant": null
+      },
+      "mood": "warm",
+      "variant": null
+    },
+    {
+      "look": {
+        "antialias": "off",
+        "blocks": {
+          "ArtCamera": {
+            "pixelPerfect": [
+              true
+            ],
+            "projection": [
+              "orthographic"
+            ]
+          },
+          "ArtLine": {
+            "place": [
+              "inside"
+            ],
+            "width": [
+              1
+            ]
+          },
+          "ArtPalette": {
+            "maxColors": [
+              64
+            ],
+            "rampSteps": [
+              6
+            ]
+          },
+          "ArtPixels": {
+            "logicalHeight": [
+              224
+            ],
+            "rotation": [
+              "cleanEdge"
+            ],
+            "snap": [
+              true
+            ],
+            "spriteSizes": [
+              16,
+              32,
+              48
+            ],
+            "unit": [
+              16
+            ]
+          },
+          "PostEffects": {
+            "balanceShadows": [
+              -0.03,
+              0,
+              0.05
+            ],
+            "saturation": [
+              -0.1
+            ],
+            "temperature": [
+              -0.3
+            ]
+          },
+          "RenderSettings": {
+            "exposure": [
+              0.96
+            ],
+            "toneMapping": [
+              "none"
+            ]
+          },
+          "Stylise": {
+            "dither": [
+              "bayer4"
+            ],
+            "ditherStrength": [
+              0.5
+            ],
+            "pixelHeight": [
+              224
+            ],
+            "pixelSnap": [
+              true
+            ],
+            "posterize": [
+              8
+            ]
+          }
+        },
+        "mood": "cold",
+        "name": null,
+        "ui": "default",
+        "uiSeeds": {
+          "accent": "#ffcd75",
+          "neutral": "#333c57",
+          "primary": "#3b5dc9"
+        },
+        "variant": null
+      },
+      "mood": "cold",
+      "variant": null
+    },
+    {
+      "look": {
+        "antialias": "off",
+        "blocks": {
+          "ArtCamera": {
+            "pixelPerfect": [
+              true
+            ],
+            "projection": [
+              "orthographic"
+            ]
+          },
+          "ArtLine": {
+            "place": [
+              "inside"
+            ],
+            "width": [
+              1
+            ]
+          },
+          "ArtPalette": {
+            "maxColors": [
+              64
+            ],
+            "rampSteps": [
+              6
+            ]
+          },
+          "ArtPixels": {
+            "logicalHeight": [
+              224
+            ],
+            "rotation": [
+              "cleanEdge"
+            ],
+            "snap": [
+              true
+            ],
+            "spriteSizes": [
+              16,
+              32,
+              48
+            ],
+            "unit": [
+              16
+            ]
+          },
+          "PostEffects": {
+            "brightness": [
+              0.03
+            ],
+            "contrast": [
+              -0.18
+            ],
+            "saturation": [
+              -0.12
+            ],
+            "vibrance": [
+              0.05
+            ]
+          },
+          "RenderSettings": {
+            "environmentIntensity": [
+              0.8
+            ],
+            "toneMapping": [
+              "none"
+            ]
+          },
+          "Stylise": {
+            "dither": [
+              "bayer4"
+            ],
+            "ditherStrength": [
+              0.5
+            ],
+            "pixelHeight": [
+              224
+            ],
+            "pixelSnap": [
+              true
+            ],
+            "posterize": [
+              8
+            ]
+          }
+        },
+        "mood": "soft",
+        "name": null,
+        "ui": "default",
+        "uiSeeds": {
+          "accent": "#ffcd75",
+          "neutral": "#333c57",
+          "primary": "#3b5dc9"
+        },
+        "variant": null
+      },
+      "mood": "soft",
+      "variant": null
+    },
+    {
+      "look": {
+        "antialias": "off",
+        "blocks": {
+          "ArtCamera": {
+            "pixelPerfect": [
+              true
+            ],
+            "projection": [
+              "orthographic"
+            ]
+          },
+          "ArtLine": {
+            "place": [
+              "inside"
+            ],
+            "width": [
+              1
+            ]
+          },
+          "ArtPalette": {
+            "maxColors": [
+              64
+            ],
+            "rampSteps": [
+              6
+            ]
+          },
+          "ArtPixels": {
+            "logicalHeight": [
+              224
+            ],
+            "rotation": [
+              "cleanEdge"
+            ],
+            "snap": [
+              true
+            ],
+            "spriteSizes": [
+              16,
+              32,
+              48
+            ],
+            "unit": [
+              16
+            ]
+          },
+          "PostEffects": {
+            "contrast": [
+              0.25
+            ],
+            "saturation": [
+              0.12
+            ],
+            "vibrance": [
+              0.1
+            ],
+            "vignette": [
+              true
+            ],
+            "vignetteIntensity": [
+              0.45
+            ]
+          },
+          "RenderSettings": {
+            "environmentIntensity": [
+              0.3
+            ],
+            "toneMapping": [
+              "none"
+            ]
+          },
+          "Stylise": {
+            "dither": [
+              "bayer4"
+            ],
+            "ditherStrength": [
+              0.5
+            ],
+            "pixelHeight": [
+              224
+            ],
+            "pixelSnap": [
+              true
+            ],
+            "posterize": [
+              8
+            ]
+          }
+        },
+        "mood": "high-contrast",
+        "name": null,
+        "ui": "default",
+        "uiSeeds": {
+          "accent": "#ffcd75",
+          "neutral": "#333c57",
+          "primary": "#3b5dc9"
+        },
+        "variant": null
+      },
+      "mood": "high-contrast",
+      "variant": null
+    },
+    {
+      "look": {
+        "antialias": "off",
+        "blocks": {
+          "ArtCamera": {
+            "pixelPerfect": [
+              true
+            ],
+            "projection": [
+              "orthographic"
+            ]
+          },
+          "ArtLine": {
+            "place": [
+              "outside"
+            ],
+            "width": [
+              0
+            ]
+          },
+          "ArtPalette": {
+            "maxColors": [
+              16
+            ],
+            "rampSteps": [
+              4
+            ]
+          },
+          "ArtPixels": {
+            "logicalHeight": [
+              192
+            ],
+            "rotation": [
+              "nearest"
+            ],
+            "snap": [
+              true
+            ],
+            "spriteSizes": [
+              8,
+              16,
+              24
+            ],
+            "unit": [
+              16
+            ]
+          },
+          "RenderSettings": {
+            "toneMapping": [
+              "none"
+            ]
+          },
+          "Stylise": {
+            "dither": [
+              "none"
+            ],
+            "ditherStrength": [
+              1
+            ],
+            "pixelHeight": [
+              192
+            ],
+            "pixelSnap": [
+              true
+            ],
+            "posterize": [
+              4
+            ]
+          }
+        },
+        "mood": "bright",
+        "name": null,
+        "ui": "default",
+        "uiSeeds": {
+          "accent": "#ffcd75",
+          "neutral": "#333c57",
+          "primary": "#3b5dc9"
+        },
+        "variant": "8bit"
+      },
+      "mood": null,
+      "variant": "8bit"
+    },
+    {
+      "look": {
+        "antialias": "off",
+        "blocks": {
+          "ArtCamera": {
+            "pixelPerfect": [
+              true
+            ],
+            "projection": [
+              "orthographic"
+            ]
+          },
+          "ArtLine": {
+            "place": [
+              "outside"
+            ],
+            "width": [
+              0
+            ]
+          },
+          "ArtPalette": {
+            "maxColors": [
+              16
+            ],
+            "rampSteps": [
+              4
+            ]
+          },
+          "ArtPixels": {
+            "logicalHeight": [
+              192
+            ],
+            "rotation": [
+              "nearest"
+            ],
+            "snap": [
+              true
+            ],
+            "spriteSizes": [
+              8,
+              16,
+              24
+            ],
+            "unit": [
+              16
+            ]
+          },
+          "RenderSettings": {
+            "toneMapping": [
+              "none"
+            ]
+          },
+          "Stylise": {
+            "dither": [
+              "none"
+            ],
+            "ditherStrength": [
+              1
+            ],
+            "pixelHeight": [
+              192
+            ],
+            "pixelSnap": [
+              true
+            ],
+            "posterize": [
+              4
+            ]
+          }
+        },
+        "mood": "bright",
+        "name": null,
+        "ui": "default",
+        "uiSeeds": {
+          "accent": "#ffcd75",
+          "neutral": "#333c57",
+          "primary": "#3b5dc9"
+        },
+        "variant": "8bit"
+      },
+      "mood": "bright",
+      "variant": "8bit"
+    },
+    {
+      "look": {
+        "antialias": "off",
+        "blocks": {
+          "ArtCamera": {
+            "pixelPerfect": [
+              true
+            ],
+            "projection": [
+              "orthographic"
+            ]
+          },
+          "ArtLine": {
+            "place": [
+              "outside"
+            ],
+            "width": [
+              0
+            ]
+          },
+          "ArtPalette": {
+            "maxColors": [
+              16
+            ],
+            "rampSteps": [
+              4
+            ]
+          },
+          "ArtPixels": {
+            "logicalHeight": [
+              192
+            ],
+            "rotation": [
+              "nearest"
+            ],
+            "snap": [
+              true
+            ],
+            "spriteSizes": [
+              8,
+              16,
+              24
+            ],
+            "unit": [
+              16
+            ]
+          },
+          "PostEffects": {
+            "balanceShadows": [
+              -0.02,
+              0,
+              0.04
+            ],
+            "contrast": [
+              0.12
+            ],
+            "saturation": [
+              -0.2
+            ],
+            "temperature": [
+              -0.06
+            ],
+            "vignette": [
+              true
+            ],
+            "vignetteIntensity": [
+              0.55
+            ]
+          },
+          "RenderSettings": {
+            "environmentIntensity": [
+              0.35
+            ],
+            "exposure": [
+              0.72
+            ],
+            "toneMapping": [
+              "none"
+            ]
+          },
+          "Stylise": {
+            "dither": [
+              "none"
+            ],
+            "ditherStrength": [
+              1
+            ],
+            "pixelHeight": [
+              192
+            ],
+            "pixelSnap": [
+              true
+            ],
+            "posterize": [
+              4
+            ]
+          }
+        },
+        "mood": "dark",
+        "name": null,
+        "ui": "default",
+        "uiSeeds": {
+          "accent": "#ffcd75",
+          "neutral": "#333c57",
+          "primary": "#3b5dc9"
+        },
+        "variant": "8bit"
+      },
+      "mood": "dark",
+      "variant": "8bit"
+    },
+    {
+      "look": {
+        "antialias": "off",
+        "blocks": {
+          "ArtCamera": {
+            "pixelPerfect": [
+              true
+            ],
+            "projection": [
+              "orthographic"
+            ]
+          },
+          "ArtLine": {
+            "place": [
+              "outside"
+            ],
+            "width": [
+              0
+            ]
+          },
+          "ArtPalette": {
+            "maxColors": [
+              16
+            ],
+            "rampSteps": [
+              4
+            ]
+          },
+          "ArtPixels": {
+            "logicalHeight": [
+              192
+            ],
+            "rotation": [
+              "nearest"
+            ],
+            "snap": [
+              true
+            ],
+            "spriteSizes": [
+              8,
+              16,
+              24
+            ],
+            "unit": [
+              16
+            ]
+          },
+          "PostEffects": {
+            "balanceHighlights": [
+              0.04,
+              0,
+              -0.04
+            ],
+            "saturation": [
+              0.08
+            ],
+            "temperature": [
+              0.3
+            ],
+            "tint": [
+              0.03
+            ]
+          },
+          "RenderSettings": {
+            "exposure": [
+              1.04
+            ],
+            "toneMapping": [
+              "none"
+            ]
+          },
+          "Stylise": {
+            "dither": [
+              "none"
+            ],
+            "ditherStrength": [
+              1
+            ],
+            "pixelHeight": [
+              192
+            ],
+            "pixelSnap": [
+              true
+            ],
+            "posterize": [
+              4
+            ]
+          }
+        },
+        "mood": "warm",
+        "name": null,
+        "ui": "default",
+        "uiSeeds": {
+          "accent": "#ffcd75",
+          "neutral": "#333c57",
+          "primary": "#3b5dc9"
+        },
+        "variant": "8bit"
+      },
+      "mood": "warm",
+      "variant": "8bit"
+    },
+    {
+      "look": {
+        "antialias": "off",
+        "blocks": {
+          "ArtCamera": {
+            "pixelPerfect": [
+              true
+            ],
+            "projection": [
+              "orthographic"
+            ]
+          },
+          "ArtLine": {
+            "place": [
+              "outside"
+            ],
+            "width": [
+              0
+            ]
+          },
+          "ArtPalette": {
+            "maxColors": [
+              16
+            ],
+            "rampSteps": [
+              4
+            ]
+          },
+          "ArtPixels": {
+            "logicalHeight": [
+              192
+            ],
+            "rotation": [
+              "nearest"
+            ],
+            "snap": [
+              true
+            ],
+            "spriteSizes": [
+              8,
+              16,
+              24
+            ],
+            "unit": [
+              16
+            ]
+          },
+          "PostEffects": {
+            "balanceShadows": [
+              -0.03,
+              0,
+              0.05
+            ],
+            "saturation": [
+              -0.1
+            ],
+            "temperature": [
+              -0.3
+            ]
+          },
+          "RenderSettings": {
+            "exposure": [
+              0.96
+            ],
+            "toneMapping": [
+              "none"
+            ]
+          },
+          "Stylise": {
+            "dither": [
+              "none"
+            ],
+            "ditherStrength": [
+              1
+            ],
+            "pixelHeight": [
+              192
+            ],
+            "pixelSnap": [
+              true
+            ],
+            "posterize": [
+              4
+            ]
+          }
+        },
+        "mood": "cold",
+        "name": null,
+        "ui": "default",
+        "uiSeeds": {
+          "accent": "#ffcd75",
+          "neutral": "#333c57",
+          "primary": "#3b5dc9"
+        },
+        "variant": "8bit"
+      },
+      "mood": "cold",
+      "variant": "8bit"
+    },
+    {
+      "look": {
+        "antialias": "off",
+        "blocks": {
+          "ArtCamera": {
+            "pixelPerfect": [
+              true
+            ],
+            "projection": [
+              "orthographic"
+            ]
+          },
+          "ArtLine": {
+            "place": [
+              "outside"
+            ],
+            "width": [
+              0
+            ]
+          },
+          "ArtPalette": {
+            "maxColors": [
+              16
+            ],
+            "rampSteps": [
+              4
+            ]
+          },
+          "ArtPixels": {
+            "logicalHeight": [
+              192
+            ],
+            "rotation": [
+              "nearest"
+            ],
+            "snap": [
+              true
+            ],
+            "spriteSizes": [
+              8,
+              16,
+              24
+            ],
+            "unit": [
+              16
+            ]
+          },
+          "PostEffects": {
+            "brightness": [
+              0.03
+            ],
+            "contrast": [
+              -0.18
+            ],
+            "saturation": [
+              -0.12
+            ],
+            "vibrance": [
+              0.05
+            ]
+          },
+          "RenderSettings": {
+            "environmentIntensity": [
+              0.8
+            ],
+            "toneMapping": [
+              "none"
+            ]
+          },
+          "Stylise": {
+            "dither": [
+              "none"
+            ],
+            "ditherStrength": [
+              1
+            ],
+            "pixelHeight": [
+              192
+            ],
+            "pixelSnap": [
+              true
+            ],
+            "posterize": [
+              4
+            ]
+          }
+        },
+        "mood": "soft",
+        "name": null,
+        "ui": "default",
+        "uiSeeds": {
+          "accent": "#ffcd75",
+          "neutral": "#333c57",
+          "primary": "#3b5dc9"
+        },
+        "variant": "8bit"
+      },
+      "mood": "soft",
+      "variant": "8bit"
+    },
+    {
+      "look": {
+        "antialias": "off",
+        "blocks": {
+          "ArtCamera": {
+            "pixelPerfect": [
+              true
+            ],
+            "projection": [
+              "orthographic"
+            ]
+          },
+          "ArtLine": {
+            "place": [
+              "outside"
+            ],
+            "width": [
+              0
+            ]
+          },
+          "ArtPalette": {
+            "maxColors": [
+              16
+            ],
+            "rampSteps": [
+              4
+            ]
+          },
+          "ArtPixels": {
+            "logicalHeight": [
+              192
+            ],
+            "rotation": [
+              "nearest"
+            ],
+            "snap": [
+              true
+            ],
+            "spriteSizes": [
+              8,
+              16,
+              24
+            ],
+            "unit": [
+              16
+            ]
+          },
+          "PostEffects": {
+            "contrast": [
+              0.25
+            ],
+            "saturation": [
+              0.12
+            ],
+            "vibrance": [
+              0.1
+            ],
+            "vignette": [
+              true
+            ],
+            "vignetteIntensity": [
+              0.45
+            ]
+          },
+          "RenderSettings": {
+            "environmentIntensity": [
+              0.3
+            ],
+            "toneMapping": [
+              "none"
+            ]
+          },
+          "Stylise": {
+            "dither": [
+              "none"
+            ],
+            "ditherStrength": [
+              1
+            ],
+            "pixelHeight": [
+              192
+            ],
+            "pixelSnap": [
+              true
+            ],
+            "posterize": [
+              4
+            ]
+          }
+        },
+        "mood": "high-contrast",
+        "name": null,
+        "ui": "default",
+        "uiSeeds": {
+          "accent": "#ffcd75",
+          "neutral": "#333c57",
+          "primary": "#3b5dc9"
+        },
+        "variant": "8bit"
+      },
+      "mood": "high-contrast",
+      "variant": "8bit"
+    },
+    {
+      "look": {
+        "antialias": "off",
+        "blocks": {
+          "ArtCamera": {
+            "pixelPerfect": [
+              true
+            ],
+            "projection": [
+              "orthographic"
+            ]
+          },
+          "ArtLine": {
+            "place": [
+              "outside"
+            ],
+            "width": [
+              0
+            ]
+          },
+          "ArtPalette": {
+            "maxColors": [
+              16
+            ],
+            "rampSteps": [
+              0
+            ]
+          },
+          "ArtPixels": {
+            "logicalHeight": [
+              90
+            ],
+            "rotation": [
+              "nearest"
+            ],
+            "snap": [
+              true
+            ],
+            "spriteSizes": [
+              6,
+              8,
+              12
+            ],
+            "unit": [
+              8
+            ]
+          },
+          "RenderSettings": {
+            "toneMapping": [
+              "none"
+            ]
+          },
+          "Stylise": {
+            "dither": [
+              "none"
+            ],
+            "ditherStrength": [
+              1
+            ],
+            "pixelHeight": [
+              90
+            ],
+            "pixelSnap": [
+              true
+            ],
+            "posterize": [
+              4
+            ]
+          }
+        },
+        "mood": "dark",
+        "name": null,
+        "ui": "default",
+        "uiSeeds": {
+          "accent": "#ffcd75",
+          "neutral": "#333c57",
+          "primary": "#3b5dc9"
+        },
+        "variant": "coarse"
+      },
+      "mood": null,
+      "variant": "coarse"
+    },
+    {
+      "look": {
+        "antialias": "off",
+        "blocks": {
+          "ArtCamera": {
+            "pixelPerfect": [
+              true
+            ],
+            "projection": [
+              "orthographic"
+            ]
+          },
+          "ArtLine": {
+            "place": [
+              "outside"
+            ],
+            "width": [
+              0
+            ]
+          },
+          "ArtPalette": {
+            "maxColors": [
+              16
+            ],
+            "rampSteps": [
+              0
+            ]
+          },
+          "ArtPixels": {
+            "logicalHeight": [
+              90
+            ],
+            "rotation": [
+              "nearest"
+            ],
+            "snap": [
+              true
+            ],
+            "spriteSizes": [
+              6,
+              8,
+              12
+            ],
+            "unit": [
+              8
+            ]
+          },
+          "PostEffects": {
+            "brightness": [
+              0.02
+            ],
+            "contrast": [
+              0.04
+            ],
+            "saturation": [
+              0.15
+            ],
+            "temperature": [
+              0.06
+            ],
+            "vibrance": [
+              0.15
+            ]
+          },
+          "RenderSettings": {
+            "environmentIntensity": [
+              0.7
+            ],
+            "exposure": [
+              1.12
+            ],
+            "toneMapping": [
+              "none"
+            ]
+          },
+          "Stylise": {
+            "dither": [
+              "none"
+            ],
+            "ditherStrength": [
+              1
+            ],
+            "pixelHeight": [
+              90
+            ],
+            "pixelSnap": [
+              true
+            ],
+            "posterize": [
+              4
+            ]
+          }
+        },
+        "mood": "bright",
+        "name": null,
+        "ui": "default",
+        "uiSeeds": {
+          "accent": "#ffcd75",
+          "neutral": "#333c57",
+          "primary": "#3b5dc9"
+        },
+        "variant": "coarse"
+      },
+      "mood": "bright",
+      "variant": "coarse"
+    },
+    {
+      "look": {
+        "antialias": "off",
+        "blocks": {
+          "ArtCamera": {
+            "pixelPerfect": [
+              true
+            ],
+            "projection": [
+              "orthographic"
+            ]
+          },
+          "ArtLine": {
+            "place": [
+              "outside"
+            ],
+            "width": [
+              0
+            ]
+          },
+          "ArtPalette": {
+            "maxColors": [
+              16
+            ],
+            "rampSteps": [
+              0
+            ]
+          },
+          "ArtPixels": {
+            "logicalHeight": [
+              90
+            ],
+            "rotation": [
+              "nearest"
+            ],
+            "snap": [
+              true
+            ],
+            "spriteSizes": [
+              6,
+              8,
+              12
+            ],
+            "unit": [
+              8
+            ]
+          },
+          "RenderSettings": {
+            "toneMapping": [
+              "none"
+            ]
+          },
+          "Stylise": {
+            "dither": [
+              "none"
+            ],
+            "ditherStrength": [
+              1
+            ],
+            "pixelHeight": [
+              90
+            ],
+            "pixelSnap": [
+              true
+            ],
+            "posterize": [
+              4
+            ]
+          }
+        },
+        "mood": "dark",
+        "name": null,
+        "ui": "default",
+        "uiSeeds": {
+          "accent": "#ffcd75",
+          "neutral": "#333c57",
+          "primary": "#3b5dc9"
+        },
+        "variant": "coarse"
+      },
+      "mood": "dark",
+      "variant": "coarse"
+    },
+    {
+      "look": {
+        "antialias": "off",
+        "blocks": {
+          "ArtCamera": {
+            "pixelPerfect": [
+              true
+            ],
+            "projection": [
+              "orthographic"
+            ]
+          },
+          "ArtLine": {
+            "place": [
+              "outside"
+            ],
+            "width": [
+              0
+            ]
+          },
+          "ArtPalette": {
+            "maxColors": [
+              16
+            ],
+            "rampSteps": [
+              0
+            ]
+          },
+          "ArtPixels": {
+            "logicalHeight": [
+              90
+            ],
+            "rotation": [
+              "nearest"
+            ],
+            "snap": [
+              true
+            ],
+            "spriteSizes": [
+              6,
+              8,
+              12
+            ],
+            "unit": [
+              8
+            ]
+          },
+          "PostEffects": {
+            "balanceHighlights": [
+              0.04,
+              0,
+              -0.04
+            ],
+            "saturation": [
+              0.08
+            ],
+            "temperature": [
+              0.3
+            ],
+            "tint": [
+              0.03
+            ]
+          },
+          "RenderSettings": {
+            "exposure": [
+              1.04
+            ],
+            "toneMapping": [
+              "none"
+            ]
+          },
+          "Stylise": {
+            "dither": [
+              "none"
+            ],
+            "ditherStrength": [
+              1
+            ],
+            "pixelHeight": [
+              90
+            ],
+            "pixelSnap": [
+              true
+            ],
+            "posterize": [
+              4
+            ]
+          }
+        },
+        "mood": "warm",
+        "name": null,
+        "ui": "default",
+        "uiSeeds": {
+          "accent": "#ffcd75",
+          "neutral": "#333c57",
+          "primary": "#3b5dc9"
+        },
+        "variant": "coarse"
+      },
+      "mood": "warm",
+      "variant": "coarse"
+    },
+    {
+      "look": {
+        "antialias": "off",
+        "blocks": {
+          "ArtCamera": {
+            "pixelPerfect": [
+              true
+            ],
+            "projection": [
+              "orthographic"
+            ]
+          },
+          "ArtLine": {
+            "place": [
+              "outside"
+            ],
+            "width": [
+              0
+            ]
+          },
+          "ArtPalette": {
+            "maxColors": [
+              16
+            ],
+            "rampSteps": [
+              0
+            ]
+          },
+          "ArtPixels": {
+            "logicalHeight": [
+              90
+            ],
+            "rotation": [
+              "nearest"
+            ],
+            "snap": [
+              true
+            ],
+            "spriteSizes": [
+              6,
+              8,
+              12
+            ],
+            "unit": [
+              8
+            ]
+          },
+          "PostEffects": {
+            "balanceShadows": [
+              -0.03,
+              0,
+              0.05
+            ],
+            "saturation": [
+              -0.1
+            ],
+            "temperature": [
+              -0.3
+            ]
+          },
+          "RenderSettings": {
+            "exposure": [
+              0.96
+            ],
+            "toneMapping": [
+              "none"
+            ]
+          },
+          "Stylise": {
+            "dither": [
+              "none"
+            ],
+            "ditherStrength": [
+              1
+            ],
+            "pixelHeight": [
+              90
+            ],
+            "pixelSnap": [
+              true
+            ],
+            "posterize": [
+              4
+            ]
+          }
+        },
+        "mood": "cold",
+        "name": null,
+        "ui": "default",
+        "uiSeeds": {
+          "accent": "#ffcd75",
+          "neutral": "#333c57",
+          "primary": "#3b5dc9"
+        },
+        "variant": "coarse"
+      },
+      "mood": "cold",
+      "variant": "coarse"
+    },
+    {
+      "look": {
+        "antialias": "off",
+        "blocks": {
+          "ArtCamera": {
+            "pixelPerfect": [
+              true
+            ],
+            "projection": [
+              "orthographic"
+            ]
+          },
+          "ArtLine": {
+            "place": [
+              "outside"
+            ],
+            "width": [
+              0
+            ]
+          },
+          "ArtPalette": {
+            "maxColors": [
+              16
+            ],
+            "rampSteps": [
+              0
+            ]
+          },
+          "ArtPixels": {
+            "logicalHeight": [
+              90
+            ],
+            "rotation": [
+              "nearest"
+            ],
+            "snap": [
+              true
+            ],
+            "spriteSizes": [
+              6,
+              8,
+              12
+            ],
+            "unit": [
+              8
+            ]
+          },
+          "PostEffects": {
+            "brightness": [
+              0.03
+            ],
+            "contrast": [
+              -0.18
+            ],
+            "saturation": [
+              -0.12
+            ],
+            "vibrance": [
+              0.05
+            ]
+          },
+          "RenderSettings": {
+            "environmentIntensity": [
+              0.8
+            ],
+            "toneMapping": [
+              "none"
+            ]
+          },
+          "Stylise": {
+            "dither": [
+              "none"
+            ],
+            "ditherStrength": [
+              1
+            ],
+            "pixelHeight": [
+              90
+            ],
+            "pixelSnap": [
+              true
+            ],
+            "posterize": [
+              4
+            ]
+          }
+        },
+        "mood": "soft",
+        "name": null,
+        "ui": "default",
+        "uiSeeds": {
+          "accent": "#ffcd75",
+          "neutral": "#333c57",
+          "primary": "#3b5dc9"
+        },
+        "variant": "coarse"
+      },
+      "mood": "soft",
+      "variant": "coarse"
+    },
+    {
+      "look": {
+        "antialias": "off",
+        "blocks": {
+          "ArtCamera": {
+            "pixelPerfect": [
+              true
+            ],
+            "projection": [
+              "orthographic"
+            ]
+          },
+          "ArtLine": {
+            "place": [
+              "outside"
+            ],
+            "width": [
+              0
+            ]
+          },
+          "ArtPalette": {
+            "maxColors": [
+              16
+            ],
+            "rampSteps": [
+              0
+            ]
+          },
+          "ArtPixels": {
+            "logicalHeight": [
+              90
+            ],
+            "rotation": [
+              "nearest"
+            ],
+            "snap": [
+              true
+            ],
+            "spriteSizes": [
+              6,
+              8,
+              12
+            ],
+            "unit": [
+              8
+            ]
+          },
+          "PostEffects": {
+            "contrast": [
+              0.25
+            ],
+            "saturation": [
+              0.12
+            ],
+            "vibrance": [
+              0.1
+            ],
+            "vignette": [
+              true
+            ],
+            "vignetteIntensity": [
+              0.45
+            ]
+          },
+          "RenderSettings": {
+            "environmentIntensity": [
+              0.3
+            ],
+            "toneMapping": [
+              "none"
+            ]
+          },
+          "Stylise": {
+            "dither": [
+              "none"
+            ],
+            "ditherStrength": [
+              1
+            ],
+            "pixelHeight": [
+              90
+            ],
+            "pixelSnap": [
+              true
+            ],
+            "posterize": [
+              4
+            ]
+          }
+        },
+        "mood": "high-contrast",
+        "name": null,
+        "ui": "default",
+        "uiSeeds": {
+          "accent": "#ffcd75",
+          "neutral": "#333c57",
+          "primary": "#3b5dc9"
+        },
+        "variant": "coarse"
+      },
+      "mood": "high-contrast",
+      "variant": "coarse"
+    },
+    {
+      "look": {
+        "antialias": "off",
+        "blocks": {
+          "ArtCamera": {
+            "pixelPerfect": [
+              true
+            ],
+            "projection": [
+              "orthographic"
+            ]
+          },
+          "ArtLine": {
+            "place": [
+              "outside"
+            ],
+            "width": [
+              0
+            ]
+          },
+          "ArtPalette": {
+            "maxColors": [
+              128
+            ],
+            "rampSteps": [
+              0
+            ]
+          },
+          "ArtPixels": {
+            "logicalHeight": [
+              270
+            ],
+            "rotation": [
+              "cleanEdge"
+            ],
+            "snap": [
+              true
+            ],
+            "spriteSizes": [
+              32,
+              48,
+              64
+            ],
+            "unit": [
+              32
+            ]
+          },
+          "RenderSettings": {
+            "toneMapping": [
+              "none"
+            ]
+          },
+          "Stylise": {
+            "dither": [
+              "bayer8"
+            ],
+            "ditherStrength": [
+              0.6
+            ],
+            "pixelHeight": [
+              270
+            ],
+            "pixelSnap": [
+              true
+            ],
+            "posterize": [
+              12
+            ]
+          }
+        },
+        "mood": "warm",
+        "name": null,
+        "ui": "default",
+        "uiSeeds": {
+          "accent": "#ffcd75",
+          "neutral": "#333c57",
+          "primary": "#3b5dc9"
+        },
+        "variant": "detailed"
+      },
+      "mood": null,
+      "variant": "detailed"
+    },
+    {
+      "look": {
+        "antialias": "off",
+        "blocks": {
+          "ArtCamera": {
+            "pixelPerfect": [
+              true
+            ],
+            "projection": [
+              "orthographic"
+            ]
+          },
+          "ArtLine": {
+            "place": [
+              "outside"
+            ],
+            "width": [
+              0
+            ]
+          },
+          "ArtPalette": {
+            "maxColors": [
+              128
+            ],
+            "rampSteps": [
+              0
+            ]
+          },
+          "ArtPixels": {
+            "logicalHeight": [
+              270
+            ],
+            "rotation": [
+              "cleanEdge"
+            ],
+            "snap": [
+              true
+            ],
+            "spriteSizes": [
+              32,
+              48,
+              64
+            ],
+            "unit": [
+              32
+            ]
+          },
+          "PostEffects": {
+            "brightness": [
+              0.02
+            ],
+            "contrast": [
+              0.04
+            ],
+            "saturation": [
+              0.15
+            ],
+            "temperature": [
+              0.06
+            ],
+            "vibrance": [
+              0.15
+            ]
+          },
+          "RenderSettings": {
+            "environmentIntensity": [
+              0.7
+            ],
+            "exposure": [
+              1.12
+            ],
+            "toneMapping": [
+              "none"
+            ]
+          },
+          "Stylise": {
+            "dither": [
+              "bayer8"
+            ],
+            "ditherStrength": [
+              0.6
+            ],
+            "pixelHeight": [
+              270
+            ],
+            "pixelSnap": [
+              true
+            ],
+            "posterize": [
+              12
+            ]
+          }
+        },
+        "mood": "bright",
+        "name": null,
+        "ui": "default",
+        "uiSeeds": {
+          "accent": "#ffcd75",
+          "neutral": "#333c57",
+          "primary": "#3b5dc9"
+        },
+        "variant": "detailed"
+      },
+      "mood": "bright",
+      "variant": "detailed"
+    },
+    {
+      "look": {
+        "antialias": "off",
+        "blocks": {
+          "ArtCamera": {
+            "pixelPerfect": [
+              true
+            ],
+            "projection": [
+              "orthographic"
+            ]
+          },
+          "ArtLine": {
+            "place": [
+              "outside"
+            ],
+            "width": [
+              0
+            ]
+          },
+          "ArtPalette": {
+            "maxColors": [
+              128
+            ],
+            "rampSteps": [
+              0
+            ]
+          },
+          "ArtPixels": {
+            "logicalHeight": [
+              270
+            ],
+            "rotation": [
+              "cleanEdge"
+            ],
+            "snap": [
+              true
+            ],
+            "spriteSizes": [
+              32,
+              48,
+              64
+            ],
+            "unit": [
+              32
+            ]
+          },
+          "PostEffects": {
+            "balanceShadows": [
+              -0.02,
+              0,
+              0.04
+            ],
+            "contrast": [
+              0.12
+            ],
+            "saturation": [
+              -0.2
+            ],
+            "temperature": [
+              -0.06
+            ],
+            "vignette": [
+              true
+            ],
+            "vignetteIntensity": [
+              0.55
+            ]
+          },
+          "RenderSettings": {
+            "environmentIntensity": [
+              0.35
+            ],
+            "exposure": [
+              0.72
+            ],
+            "toneMapping": [
+              "none"
+            ]
+          },
+          "Stylise": {
+            "dither": [
+              "bayer8"
+            ],
+            "ditherStrength": [
+              0.6
+            ],
+            "pixelHeight": [
+              270
+            ],
+            "pixelSnap": [
+              true
+            ],
+            "posterize": [
+              12
+            ]
+          }
+        },
+        "mood": "dark",
+        "name": null,
+        "ui": "default",
+        "uiSeeds": {
+          "accent": "#ffcd75",
+          "neutral": "#333c57",
+          "primary": "#3b5dc9"
+        },
+        "variant": "detailed"
+      },
+      "mood": "dark",
+      "variant": "detailed"
+    },
+    {
+      "look": {
+        "antialias": "off",
+        "blocks": {
+          "ArtCamera": {
+            "pixelPerfect": [
+              true
+            ],
+            "projection": [
+              "orthographic"
+            ]
+          },
+          "ArtLine": {
+            "place": [
+              "outside"
+            ],
+            "width": [
+              0
+            ]
+          },
+          "ArtPalette": {
+            "maxColors": [
+              128
+            ],
+            "rampSteps": [
+              0
+            ]
+          },
+          "ArtPixels": {
+            "logicalHeight": [
+              270
+            ],
+            "rotation": [
+              "cleanEdge"
+            ],
+            "snap": [
+              true
+            ],
+            "spriteSizes": [
+              32,
+              48,
+              64
+            ],
+            "unit": [
+              32
+            ]
+          },
+          "RenderSettings": {
+            "toneMapping": [
+              "none"
+            ]
+          },
+          "Stylise": {
+            "dither": [
+              "bayer8"
+            ],
+            "ditherStrength": [
+              0.6
+            ],
+            "pixelHeight": [
+              270
+            ],
+            "pixelSnap": [
+              true
+            ],
+            "posterize": [
+              12
+            ]
+          }
+        },
+        "mood": "warm",
+        "name": null,
+        "ui": "default",
+        "uiSeeds": {
+          "accent": "#ffcd75",
+          "neutral": "#333c57",
+          "primary": "#3b5dc9"
+        },
+        "variant": "detailed"
+      },
+      "mood": "warm",
+      "variant": "detailed"
+    },
+    {
+      "look": {
+        "antialias": "off",
+        "blocks": {
+          "ArtCamera": {
+            "pixelPerfect": [
+              true
+            ],
+            "projection": [
+              "orthographic"
+            ]
+          },
+          "ArtLine": {
+            "place": [
+              "outside"
+            ],
+            "width": [
+              0
+            ]
+          },
+          "ArtPalette": {
+            "maxColors": [
+              128
+            ],
+            "rampSteps": [
+              0
+            ]
+          },
+          "ArtPixels": {
+            "logicalHeight": [
+              270
+            ],
+            "rotation": [
+              "cleanEdge"
+            ],
+            "snap": [
+              true
+            ],
+            "spriteSizes": [
+              32,
+              48,
+              64
+            ],
+            "unit": [
+              32
+            ]
+          },
+          "PostEffects": {
+            "balanceShadows": [
+              -0.03,
+              0,
+              0.05
+            ],
+            "saturation": [
+              -0.1
+            ],
+            "temperature": [
+              -0.3
+            ]
+          },
+          "RenderSettings": {
+            "exposure": [
+              0.96
+            ],
+            "toneMapping": [
+              "none"
+            ]
+          },
+          "Stylise": {
+            "dither": [
+              "bayer8"
+            ],
+            "ditherStrength": [
+              0.6
+            ],
+            "pixelHeight": [
+              270
+            ],
+            "pixelSnap": [
+              true
+            ],
+            "posterize": [
+              12
+            ]
+          }
+        },
+        "mood": "cold",
+        "name": null,
+        "ui": "default",
+        "uiSeeds": {
+          "accent": "#ffcd75",
+          "neutral": "#333c57",
+          "primary": "#3b5dc9"
+        },
+        "variant": "detailed"
+      },
+      "mood": "cold",
+      "variant": "detailed"
+    },
+    {
+      "look": {
+        "antialias": "off",
+        "blocks": {
+          "ArtCamera": {
+            "pixelPerfect": [
+              true
+            ],
+            "projection": [
+              "orthographic"
+            ]
+          },
+          "ArtLine": {
+            "place": [
+              "outside"
+            ],
+            "width": [
+              0
+            ]
+          },
+          "ArtPalette": {
+            "maxColors": [
+              128
+            ],
+            "rampSteps": [
+              0
+            ]
+          },
+          "ArtPixels": {
+            "logicalHeight": [
+              270
+            ],
+            "rotation": [
+              "cleanEdge"
+            ],
+            "snap": [
+              true
+            ],
+            "spriteSizes": [
+              32,
+              48,
+              64
+            ],
+            "unit": [
+              32
+            ]
+          },
+          "PostEffects": {
+            "brightness": [
+              0.03
+            ],
+            "contrast": [
+              -0.18
+            ],
+            "saturation": [
+              -0.12
+            ],
+            "vibrance": [
+              0.05
+            ]
+          },
+          "RenderSettings": {
+            "environmentIntensity": [
+              0.8
+            ],
+            "toneMapping": [
+              "none"
+            ]
+          },
+          "Stylise": {
+            "dither": [
+              "bayer8"
+            ],
+            "ditherStrength": [
+              0.6
+            ],
+            "pixelHeight": [
+              270
+            ],
+            "pixelSnap": [
+              true
+            ],
+            "posterize": [
+              12
+            ]
+          }
+        },
+        "mood": "soft",
+        "name": null,
+        "ui": "default",
+        "uiSeeds": {
+          "accent": "#ffcd75",
+          "neutral": "#333c57",
+          "primary": "#3b5dc9"
+        },
+        "variant": "detailed"
+      },
+      "mood": "soft",
+      "variant": "detailed"
+    },
+    {
+      "look": {
+        "antialias": "off",
+        "blocks": {
+          "ArtCamera": {
+            "pixelPerfect": [
+              true
+            ],
+            "projection": [
+              "orthographic"
+            ]
+          },
+          "ArtLine": {
+            "place": [
+              "outside"
+            ],
+            "width": [
+              0
+            ]
+          },
+          "ArtPalette": {
+            "maxColors": [
+              128
+            ],
+            "rampSteps": [
+              0
+            ]
+          },
+          "ArtPixels": {
+            "logicalHeight": [
+              270
+            ],
+            "rotation": [
+              "cleanEdge"
+            ],
+            "snap": [
+              true
+            ],
+            "spriteSizes": [
+              32,
+              48,
+              64
+            ],
+            "unit": [
+              32
+            ]
+          },
+          "PostEffects": {
+            "contrast": [
+              0.25
+            ],
+            "saturation": [
+              0.12
+            ],
+            "vibrance": [
+              0.1
+            ],
+            "vignette": [
+              true
+            ],
+            "vignetteIntensity": [
+              0.45
+            ]
+          },
+          "RenderSettings": {
+            "environmentIntensity": [
+              0.3
+            ],
+            "toneMapping": [
+              "none"
+            ]
+          },
+          "Stylise": {
+            "dither": [
+              "bayer8"
+            ],
+            "ditherStrength": [
+              0.6
+            ],
+            "pixelHeight": [
+              270
+            ],
+            "pixelSnap": [
+              true
+            ],
+            "posterize": [
+              12
+            ]
+          }
+        },
+        "mood": "high-contrast",
+        "name": null,
+        "ui": "default",
+        "uiSeeds": {
+          "accent": "#ffcd75",
+          "neutral": "#333c57",
+          "primary": "#3b5dc9"
+        },
+        "variant": "detailed"
+      },
+      "mood": "high-contrast",
+      "variant": "detailed"
+    },
+    {
+      "look": {
+        "antialias": "off",
+        "blocks": {
+          "ArtCamera": {
+            "pixelPerfect": [
+              true
+            ],
+            "projection": [
+              "orthographic"
+            ]
+          },
+          "ArtLine": {
+            "place": [
+              "outside"
+            ],
+            "width": [
+              0
+            ]
+          },
+          "ArtPalette": {
+            "maxColors": [
+              48
+            ],
+            "rampSteps": [
+              0
+            ]
+          },
+          "ArtPixels": {
+            "logicalHeight": [
+              216
+            ],
+            "rotation": [
+              "cleanEdge"
+            ],
+            "snap": [
+              true
+            ],
+            "spriteSizes": [
+              24,
+              32,
+              40
+            ],
+            "unit": [
+              16
+            ]
+          },
+          "RenderSettings": {
+            "bloom": [
+              true
+            ],
+            "bloomIntensity": [
+              0.9
+            ],
+            "bloomThreshold": [
+              0.7
+            ],
+            "toneMapping": [
+              "aces"
+            ]
+          },
+          "Stylise": {
+            "dither": [
+              "bayer4"
+            ],
+            "ditherStrength": [
+              1
+            ],
+            "pixelHeight": [
+              216
+            ],
+            "pixelSnap": [
+              true
+            ],
+            "posterize": [
+              8
+            ]
+          }
+        },
+        "mood": "dark",
+        "name": null,
+        "ui": "default",
+        "uiSeeds": {
+          "accent": "#ffcd75",
+          "neutral": "#333c57",
+          "primary": "#3b5dc9"
+        },
+        "variant": "luminous"
+      },
+      "mood": null,
+      "variant": "luminous"
+    },
+    {
+      "look": {
+        "antialias": "off",
+        "blocks": {
+          "ArtCamera": {
+            "pixelPerfect": [
+              true
+            ],
+            "projection": [
+              "orthographic"
+            ]
+          },
+          "ArtLine": {
+            "place": [
+              "outside"
+            ],
+            "width": [
+              0
+            ]
+          },
+          "ArtPalette": {
+            "maxColors": [
+              48
+            ],
+            "rampSteps": [
+              0
+            ]
+          },
+          "ArtPixels": {
+            "logicalHeight": [
+              216
+            ],
+            "rotation": [
+              "cleanEdge"
+            ],
+            "snap": [
+              true
+            ],
+            "spriteSizes": [
+              24,
+              32,
+              40
+            ],
+            "unit": [
+              16
+            ]
+          },
+          "PostEffects": {
+            "brightness": [
+              0.02
+            ],
+            "contrast": [
+              0.04
+            ],
+            "saturation": [
+              0.15
+            ],
+            "temperature": [
+              0.06
+            ],
+            "vibrance": [
+              0.15
+            ]
+          },
+          "RenderSettings": {
+            "bloom": [
+              true
+            ],
+            "bloomIntensity": [
+              0.9
+            ],
+            "bloomThreshold": [
+              0.7
+            ],
+            "environmentIntensity": [
+              0.7
+            ],
+            "exposure": [
+              1.12
+            ],
+            "toneMapping": [
+              "aces"
+            ]
+          },
+          "Stylise": {
+            "dither": [
+              "bayer4"
+            ],
+            "ditherStrength": [
+              1
+            ],
+            "pixelHeight": [
+              216
+            ],
+            "pixelSnap": [
+              true
+            ],
+            "posterize": [
+              8
+            ]
+          }
+        },
+        "mood": "bright",
+        "name": null,
+        "ui": "default",
+        "uiSeeds": {
+          "accent": "#ffcd75",
+          "neutral": "#333c57",
+          "primary": "#3b5dc9"
+        },
+        "variant": "luminous"
+      },
+      "mood": "bright",
+      "variant": "luminous"
+    },
+    {
+      "look": {
+        "antialias": "off",
+        "blocks": {
+          "ArtCamera": {
+            "pixelPerfect": [
+              true
+            ],
+            "projection": [
+              "orthographic"
+            ]
+          },
+          "ArtLine": {
+            "place": [
+              "outside"
+            ],
+            "width": [
+              0
+            ]
+          },
+          "ArtPalette": {
+            "maxColors": [
+              48
+            ],
+            "rampSteps": [
+              0
+            ]
+          },
+          "ArtPixels": {
+            "logicalHeight": [
+              216
+            ],
+            "rotation": [
+              "cleanEdge"
+            ],
+            "snap": [
+              true
+            ],
+            "spriteSizes": [
+              24,
+              32,
+              40
+            ],
+            "unit": [
+              16
+            ]
+          },
+          "RenderSettings": {
+            "bloom": [
+              true
+            ],
+            "bloomIntensity": [
+              0.9
+            ],
+            "bloomThreshold": [
+              0.7
+            ],
+            "toneMapping": [
+              "aces"
+            ]
+          },
+          "Stylise": {
+            "dither": [
+              "bayer4"
+            ],
+            "ditherStrength": [
+              1
+            ],
+            "pixelHeight": [
+              216
+            ],
+            "pixelSnap": [
+              true
+            ],
+            "posterize": [
+              8
+            ]
+          }
+        },
+        "mood": "dark",
+        "name": null,
+        "ui": "default",
+        "uiSeeds": {
+          "accent": "#ffcd75",
+          "neutral": "#333c57",
+          "primary": "#3b5dc9"
+        },
+        "variant": "luminous"
+      },
+      "mood": "dark",
+      "variant": "luminous"
+    },
+    {
+      "look": {
+        "antialias": "off",
+        "blocks": {
+          "ArtCamera": {
+            "pixelPerfect": [
+              true
+            ],
+            "projection": [
+              "orthographic"
+            ]
+          },
+          "ArtLine": {
+            "place": [
+              "outside"
+            ],
+            "width": [
+              0
+            ]
+          },
+          "ArtPalette": {
+            "maxColors": [
+              48
+            ],
+            "rampSteps": [
+              0
+            ]
+          },
+          "ArtPixels": {
+            "logicalHeight": [
+              216
+            ],
+            "rotation": [
+              "cleanEdge"
+            ],
+            "snap": [
+              true
+            ],
+            "spriteSizes": [
+              24,
+              32,
+              40
+            ],
+            "unit": [
+              16
+            ]
+          },
+          "PostEffects": {
+            "balanceHighlights": [
+              0.04,
+              0,
+              -0.04
+            ],
+            "saturation": [
+              0.08
+            ],
+            "temperature": [
+              0.3
+            ],
+            "tint": [
+              0.03
+            ]
+          },
+          "RenderSettings": {
+            "bloom": [
+              true
+            ],
+            "bloomIntensity": [
+              0.9
+            ],
+            "bloomThreshold": [
+              0.7
+            ],
+            "exposure": [
+              1.04
+            ],
+            "toneMapping": [
+              "aces"
+            ]
+          },
+          "Stylise": {
+            "dither": [
+              "bayer4"
+            ],
+            "ditherStrength": [
+              1
+            ],
+            "pixelHeight": [
+              216
+            ],
+            "pixelSnap": [
+              true
+            ],
+            "posterize": [
+              8
+            ]
+          }
+        },
+        "mood": "warm",
+        "name": null,
+        "ui": "default",
+        "uiSeeds": {
+          "accent": "#ffcd75",
+          "neutral": "#333c57",
+          "primary": "#3b5dc9"
+        },
+        "variant": "luminous"
+      },
+      "mood": "warm",
+      "variant": "luminous"
+    },
+    {
+      "look": {
+        "antialias": "off",
+        "blocks": {
+          "ArtCamera": {
+            "pixelPerfect": [
+              true
+            ],
+            "projection": [
+              "orthographic"
+            ]
+          },
+          "ArtLine": {
+            "place": [
+              "outside"
+            ],
+            "width": [
+              0
+            ]
+          },
+          "ArtPalette": {
+            "maxColors": [
+              48
+            ],
+            "rampSteps": [
+              0
+            ]
+          },
+          "ArtPixels": {
+            "logicalHeight": [
+              216
+            ],
+            "rotation": [
+              "cleanEdge"
+            ],
+            "snap": [
+              true
+            ],
+            "spriteSizes": [
+              24,
+              32,
+              40
+            ],
+            "unit": [
+              16
+            ]
+          },
+          "PostEffects": {
+            "balanceShadows": [
+              -0.03,
+              0,
+              0.05
+            ],
+            "saturation": [
+              -0.1
+            ],
+            "temperature": [
+              -0.3
+            ]
+          },
+          "RenderSettings": {
+            "bloom": [
+              true
+            ],
+            "bloomIntensity": [
+              0.9
+            ],
+            "bloomThreshold": [
+              0.7
+            ],
+            "exposure": [
+              0.96
+            ],
+            "toneMapping": [
+              "aces"
+            ]
+          },
+          "Stylise": {
+            "dither": [
+              "bayer4"
+            ],
+            "ditherStrength": [
+              1
+            ],
+            "pixelHeight": [
+              216
+            ],
+            "pixelSnap": [
+              true
+            ],
+            "posterize": [
+              8
+            ]
+          }
+        },
+        "mood": "cold",
+        "name": null,
+        "ui": "default",
+        "uiSeeds": {
+          "accent": "#ffcd75",
+          "neutral": "#333c57",
+          "primary": "#3b5dc9"
+        },
+        "variant": "luminous"
+      },
+      "mood": "cold",
+      "variant": "luminous"
+    },
+    {
+      "look": {
+        "antialias": "off",
+        "blocks": {
+          "ArtCamera": {
+            "pixelPerfect": [
+              true
+            ],
+            "projection": [
+              "orthographic"
+            ]
+          },
+          "ArtLine": {
+            "place": [
+              "outside"
+            ],
+            "width": [
+              0
+            ]
+          },
+          "ArtPalette": {
+            "maxColors": [
+              48
+            ],
+            "rampSteps": [
+              0
+            ]
+          },
+          "ArtPixels": {
+            "logicalHeight": [
+              216
+            ],
+            "rotation": [
+              "cleanEdge"
+            ],
+            "snap": [
+              true
+            ],
+            "spriteSizes": [
+              24,
+              32,
+              40
+            ],
+            "unit": [
+              16
+            ]
+          },
+          "PostEffects": {
+            "brightness": [
+              0.03
+            ],
+            "contrast": [
+              -0.18
+            ],
+            "saturation": [
+              -0.12
+            ],
+            "vibrance": [
+              0.05
+            ]
+          },
+          "RenderSettings": {
+            "bloom": [
+              true
+            ],
+            "bloomIntensity": [
+              0.9
+            ],
+            "bloomThreshold": [
+              0.7
+            ],
+            "environmentIntensity": [
+              0.8
+            ],
+            "toneMapping": [
+              "aces"
+            ]
+          },
+          "Stylise": {
+            "dither": [
+              "bayer4"
+            ],
+            "ditherStrength": [
+              1
+            ],
+            "pixelHeight": [
+              216
+            ],
+            "pixelSnap": [
+              true
+            ],
+            "posterize": [
+              8
+            ]
+          }
+        },
+        "mood": "soft",
+        "name": null,
+        "ui": "default",
+        "uiSeeds": {
+          "accent": "#ffcd75",
+          "neutral": "#333c57",
+          "primary": "#3b5dc9"
+        },
+        "variant": "luminous"
+      },
+      "mood": "soft",
+      "variant": "luminous"
+    },
+    {
+      "look": {
+        "antialias": "off",
+        "blocks": {
+          "ArtCamera": {
+            "pixelPerfect": [
+              true
+            ],
+            "projection": [
+              "orthographic"
+            ]
+          },
+          "ArtLine": {
+            "place": [
+              "outside"
+            ],
+            "width": [
+              0
+            ]
+          },
+          "ArtPalette": {
+            "maxColors": [
+              48
+            ],
+            "rampSteps": [
+              0
+            ]
+          },
+          "ArtPixels": {
+            "logicalHeight": [
+              216
+            ],
+            "rotation": [
+              "cleanEdge"
+            ],
+            "snap": [
+              true
+            ],
+            "spriteSizes": [
+              24,
+              32,
+              40
+            ],
+            "unit": [
+              16
+            ]
+          },
+          "PostEffects": {
+            "contrast": [
+              0.25
+            ],
+            "saturation": [
+              0.12
+            ],
+            "vibrance": [
+              0.1
+            ],
+            "vignette": [
+              true
+            ],
+            "vignetteIntensity": [
+              0.45
+            ]
+          },
+          "RenderSettings": {
+            "bloom": [
+              true
+            ],
+            "bloomIntensity": [
+              0.9
+            ],
+            "bloomThreshold": [
+              0.7
+            ],
+            "environmentIntensity": [
+              0.3
+            ],
+            "toneMapping": [
+              "aces"
+            ]
+          },
+          "Stylise": {
+            "dither": [
+              "bayer4"
+            ],
+            "ditherStrength": [
+              1
+            ],
+            "pixelHeight": [
+              216
+            ],
+            "pixelSnap": [
+              true
+            ],
+            "posterize": [
+              8
+            ]
+          }
+        },
+        "mood": "high-contrast",
+        "name": null,
+        "ui": "default",
+        "uiSeeds": {
+          "accent": "#ffcd75",
+          "neutral": "#333c57",
+          "primary": "#3b5dc9"
+        },
+        "variant": "luminous"
+      },
+      "mood": "high-contrast",
+      "variant": "luminous"
+    },
+    {
+      "look": {
+        "antialias": "off",
+        "blocks": {
+          "ArtCamera": {
+            "pixelPerfect": [
+              true
+            ],
+            "projection": [
+              "orthographic"
+            ]
+          },
+          "ArtLine": {
+            "place": [
+              "outside"
+            ],
+            "width": [
+              0
+            ]
+          },
+          "ArtPalette": {
+            "colors": [
+              "@palettes/handheld4"
+            ],
+            "dither": [
+              "bayer8"
+            ],
+            "maxColors": [
+              3
+            ],
+            "rampSteps": [
+              0
+            ],
+            "strict": [
+              true
+            ]
+          },
+          "ArtPixels": {
+            "logicalHeight": [
+              160
+            ],
+            "rotation": [
+              "nearest"
+            ],
+            "snap": [
+              true
+            ],
+            "spriteSizes": [
+              12,
+              16,
+              24
+            ],
+            "unit": [
+              16
+            ]
+          },
+          "RenderSettings": {
+            "toneMapping": [
+              "none"
+            ]
+          },
+          "Stylise": {
+            "dither": [
+              "bayer8"
+            ],
+            "ditherStrength": [
+              1
+            ],
+            "palette": [
+              "@palettes/handheld4"
+            ],
+            "pixelHeight": [
+              160
+            ],
+            "pixelSnap": [
+              true
+            ],
+            "posterize": [
+              4
+            ]
+          }
+        },
+        "mood": "soft",
+        "name": null,
+        "ui": "default",
+        "uiSeeds": {
+          "accent": "#ffcd75",
+          "neutral": "#333c57",
+          "primary": "#3b5dc9"
+        },
+        "variant": "monochrome"
+      },
+      "mood": null,
+      "variant": "monochrome"
+    },
+    {
+      "look": {
+        "antialias": "off",
+        "blocks": {
+          "ArtCamera": {
+            "pixelPerfect": [
+              true
+            ],
+            "projection": [
+              "orthographic"
+            ]
+          },
+          "ArtLine": {
+            "place": [
+              "outside"
+            ],
+            "width": [
+              0
+            ]
+          },
+          "ArtPalette": {
+            "colors": [
+              "@palettes/handheld4-bright"
+            ],
+            "dither": [
+              "bayer8"
+            ],
+            "maxColors": [
+              3
+            ],
+            "rampSteps": [
+              0
+            ],
+            "strict": [
+              true
+            ]
+          },
+          "ArtPixels": {
+            "logicalHeight": [
+              160
+            ],
+            "rotation": [
+              "nearest"
+            ],
+            "snap": [
+              true
+            ],
+            "spriteSizes": [
+              12,
+              16,
+              24
+            ],
+            "unit": [
+              16
+            ]
+          },
+          "RenderSettings": {
+            "toneMapping": [
+              "none"
+            ]
+          },
+          "Stylise": {
+            "dither": [
+              "bayer8"
+            ],
+            "ditherStrength": [
+              1
+            ],
+            "palette": [
+              "@palettes/handheld4-bright"
+            ],
+            "pixelHeight": [
+              160
+            ],
+            "pixelSnap": [
+              true
+            ],
+            "posterize": [
+              4
+            ]
+          }
+        },
+        "mood": "bright",
+        "name": null,
+        "ui": "default",
+        "uiSeeds": {
+          "accent": "#ffcd75",
+          "neutral": "#333c57",
+          "primary": "#3b5dc9"
+        },
+        "variant": "monochrome"
+      },
+      "mood": "bright",
+      "variant": "monochrome"
+    },
+    {
+      "look": {
+        "antialias": "off",
+        "blocks": {
+          "ArtCamera": {
+            "pixelPerfect": [
+              true
+            ],
+            "projection": [
+              "orthographic"
+            ]
+          },
+          "ArtLine": {
+            "place": [
+              "outside"
+            ],
+            "width": [
+              0
+            ]
+          },
+          "ArtPalette": {
+            "colors": [
+              "@palettes/handheld4-dark"
+            ],
+            "dither": [
+              "bayer8"
+            ],
+            "maxColors": [
+              3
+            ],
+            "rampSteps": [
+              0
+            ],
+            "strict": [
+              true
+            ]
+          },
+          "ArtPixels": {
+            "logicalHeight": [
+              160
+            ],
+            "rotation": [
+              "nearest"
+            ],
+            "snap": [
+              true
+            ],
+            "spriteSizes": [
+              12,
+              16,
+              24
+            ],
+            "unit": [
+              16
+            ]
+          },
+          "RenderSettings": {
+            "toneMapping": [
+              "none"
+            ]
+          },
+          "Stylise": {
+            "dither": [
+              "bayer8"
+            ],
+            "ditherStrength": [
+              1
+            ],
+            "palette": [
+              "@palettes/handheld4-dark"
+            ],
+            "pixelHeight": [
+              160
+            ],
+            "pixelSnap": [
+              true
+            ],
+            "posterize": [
+              4
+            ]
+          }
+        },
+        "mood": "dark",
+        "name": null,
+        "ui": "default",
+        "uiSeeds": {
+          "accent": "#ffcd75",
+          "neutral": "#333c57",
+          "primary": "#3b5dc9"
+        },
+        "variant": "monochrome"
+      },
+      "mood": "dark",
+      "variant": "monochrome"
+    },
+    {
+      "look": {
+        "antialias": "off",
+        "blocks": {
+          "ArtCamera": {
+            "pixelPerfect": [
+              true
+            ],
+            "projection": [
+              "orthographic"
+            ]
+          },
+          "ArtLine": {
+            "place": [
+              "outside"
+            ],
+            "width": [
+              0
+            ]
+          },
+          "ArtPalette": {
+            "colors": [
+              "@palettes/handheld4-warm"
+            ],
+            "dither": [
+              "bayer8"
+            ],
+            "maxColors": [
+              3
+            ],
+            "rampSteps": [
+              0
+            ],
+            "strict": [
+              true
+            ]
+          },
+          "ArtPixels": {
+            "logicalHeight": [
+              160
+            ],
+            "rotation": [
+              "nearest"
+            ],
+            "snap": [
+              true
+            ],
+            "spriteSizes": [
+              12,
+              16,
+              24
+            ],
+            "unit": [
+              16
+            ]
+          },
+          "RenderSettings": {
+            "toneMapping": [
+              "none"
+            ]
+          },
+          "Stylise": {
+            "dither": [
+              "bayer8"
+            ],
+            "ditherStrength": [
+              1
+            ],
+            "palette": [
+              "@palettes/handheld4-warm"
+            ],
+            "pixelHeight": [
+              160
+            ],
+            "pixelSnap": [
+              true
+            ],
+            "posterize": [
+              4
+            ]
+          }
+        },
+        "mood": "warm",
+        "name": null,
+        "ui": "default",
+        "uiSeeds": {
+          "accent": "#ffcd75",
+          "neutral": "#333c57",
+          "primary": "#3b5dc9"
+        },
+        "variant": "monochrome"
+      },
+      "mood": "warm",
+      "variant": "monochrome"
+    },
+    {
+      "look": {
+        "antialias": "off",
+        "blocks": {
+          "ArtCamera": {
+            "pixelPerfect": [
+              true
+            ],
+            "projection": [
+              "orthographic"
+            ]
+          },
+          "ArtLine": {
+            "place": [
+              "outside"
+            ],
+            "width": [
+              0
+            ]
+          },
+          "ArtPalette": {
+            "colors": [
+              "@palettes/handheld4-cold"
+            ],
+            "dither": [
+              "bayer8"
+            ],
+            "maxColors": [
+              3
+            ],
+            "rampSteps": [
+              0
+            ],
+            "strict": [
+              true
+            ]
+          },
+          "ArtPixels": {
+            "logicalHeight": [
+              160
+            ],
+            "rotation": [
+              "nearest"
+            ],
+            "snap": [
+              true
+            ],
+            "spriteSizes": [
+              12,
+              16,
+              24
+            ],
+            "unit": [
+              16
+            ]
+          },
+          "RenderSettings": {
+            "toneMapping": [
+              "none"
+            ]
+          },
+          "Stylise": {
+            "dither": [
+              "bayer8"
+            ],
+            "ditherStrength": [
+              1
+            ],
+            "palette": [
+              "@palettes/handheld4-cold"
+            ],
+            "pixelHeight": [
+              160
+            ],
+            "pixelSnap": [
+              true
+            ],
+            "posterize": [
+              4
+            ]
+          }
+        },
+        "mood": "cold",
+        "name": null,
+        "ui": "default",
+        "uiSeeds": {
+          "accent": "#ffcd75",
+          "neutral": "#333c57",
+          "primary": "#3b5dc9"
+        },
+        "variant": "monochrome"
+      },
+      "mood": "cold",
+      "variant": "monochrome"
+    },
+    {
+      "look": {
+        "antialias": "off",
+        "blocks": {
+          "ArtCamera": {
+            "pixelPerfect": [
+              true
+            ],
+            "projection": [
+              "orthographic"
+            ]
+          },
+          "ArtLine": {
+            "place": [
+              "outside"
+            ],
+            "width": [
+              0
+            ]
+          },
+          "ArtPalette": {
+            "colors": [
+              "@palettes/handheld4"
+            ],
+            "dither": [
+              "bayer8"
+            ],
+            "maxColors": [
+              3
+            ],
+            "rampSteps": [
+              0
+            ],
+            "strict": [
+              true
+            ]
+          },
+          "ArtPixels": {
+            "logicalHeight": [
+              160
+            ],
+            "rotation": [
+              "nearest"
+            ],
+            "snap": [
+              true
+            ],
+            "spriteSizes": [
+              12,
+              16,
+              24
+            ],
+            "unit": [
+              16
+            ]
+          },
+          "RenderSettings": {
+            "toneMapping": [
+              "none"
+            ]
+          },
+          "Stylise": {
+            "dither": [
+              "bayer8"
+            ],
+            "ditherStrength": [
+              1
+            ],
+            "palette": [
+              "@palettes/handheld4"
+            ],
+            "pixelHeight": [
+              160
+            ],
+            "pixelSnap": [
+              true
+            ],
+            "posterize": [
+              4
+            ]
+          }
+        },
+        "mood": "soft",
+        "name": null,
+        "ui": "default",
+        "uiSeeds": {
+          "accent": "#ffcd75",
+          "neutral": "#333c57",
+          "primary": "#3b5dc9"
+        },
+        "variant": "monochrome"
+      },
+      "mood": "soft",
+      "variant": "monochrome"
+    },
+    {
+      "look": {
+        "antialias": "off",
+        "blocks": {
+          "ArtCamera": {
+            "pixelPerfect": [
+              true
+            ],
+            "projection": [
+              "orthographic"
+            ]
+          },
+          "ArtLine": {
+            "place": [
+              "outside"
+            ],
+            "width": [
+              0
+            ]
+          },
+          "ArtPalette": {
+            "colors": [
+              "@palettes/handheld4-high-contrast"
+            ],
+            "dither": [
+              "bayer8"
+            ],
+            "maxColors": [
+              3
+            ],
+            "rampSteps": [
+              0
+            ],
+            "strict": [
+              true
+            ]
+          },
+          "ArtPixels": {
+            "logicalHeight": [
+              160
+            ],
+            "rotation": [
+              "nearest"
+            ],
+            "snap": [
+              true
+            ],
+            "spriteSizes": [
+              12,
+              16,
+              24
+            ],
+            "unit": [
+              16
+            ]
+          },
+          "RenderSettings": {
+            "toneMapping": [
+              "none"
+            ]
+          },
+          "Stylise": {
+            "dither": [
+              "bayer8"
+            ],
+            "ditherStrength": [
+              1
+            ],
+            "palette": [
+              "@palettes/handheld4-high-contrast"
+            ],
+            "pixelHeight": [
+              160
+            ],
+            "pixelSnap": [
+              true
+            ],
+            "posterize": [
+              4
+            ]
+          }
+        },
+        "mood": "high-contrast",
+        "name": null,
+        "ui": "default",
+        "uiSeeds": {
+          "accent": "#ffcd75",
+          "neutral": "#333c57",
+          "primary": "#3b5dc9"
+        },
+        "variant": "monochrome"
+      },
+      "mood": "high-contrast",
+      "variant": "monochrome"
+    },
+    {
+      "look": {
+        "antialias": "off",
+        "blocks": {
+          "ArtCamera": {
+            "pixelPerfect": [
+              true
+            ],
+            "projection": [
+              "orthographic"
+            ]
+          },
+          "ArtLine": {
+            "place": [
+              "outside"
+            ],
+            "width": [
+              0
+            ]
+          },
+          "ArtPalette": {
+            "maxColors": [
+              64
+            ],
+            "rampSteps": [
+              0
+            ]
+          },
+          "ArtPixels": {
+            "logicalHeight": [
+              180
+            ],
+            "rotation": [
+              "cleanEdge"
+            ],
+            "snap": [
+              true
+            ],
+            "spriteSizes": [
+              16,
+              24,
+              32
+            ],
+            "unit": [
+              16
+            ]
+          },
+          "RenderSettings": {
+            "toneMapping": [
+              "none"
+            ]
+          },
+          "Stylise": {
+            "dither": [
+              "none"
+            ],
+            "ditherStrength": [
+              1
+            ],
+            "pixelHeight": [
+              180
+            ],
+            "pixelSnap": [
+              true
+            ],
+            "posterize": [
+              8
+            ]
+          }
+        },
+        "mood": "bright",
+        "name": null,
+        "ui": "default",
+        "uiSeeds": {
+          "accent": "#ffcd75",
+          "neutral": "#333c57",
+          "primary": "#3b5dc9"
+        },
+        "variant": "topdown"
+      },
+      "mood": null,
+      "variant": "topdown"
+    },
+    {
+      "look": {
+        "antialias": "off",
+        "blocks": {
+          "ArtCamera": {
+            "pixelPerfect": [
+              true
+            ],
+            "projection": [
+              "orthographic"
+            ]
+          },
+          "ArtLine": {
+            "place": [
+              "outside"
+            ],
+            "width": [
+              0
+            ]
+          },
+          "ArtPalette": {
+            "maxColors": [
+              64
+            ],
+            "rampSteps": [
+              0
+            ]
+          },
+          "ArtPixels": {
+            "logicalHeight": [
+              180
+            ],
+            "rotation": [
+              "cleanEdge"
+            ],
+            "snap": [
+              true
+            ],
+            "spriteSizes": [
+              16,
+              24,
+              32
+            ],
+            "unit": [
+              16
+            ]
+          },
+          "RenderSettings": {
+            "toneMapping": [
+              "none"
+            ]
+          },
+          "Stylise": {
+            "dither": [
+              "none"
+            ],
+            "ditherStrength": [
+              1
+            ],
+            "pixelHeight": [
+              180
+            ],
+            "pixelSnap": [
+              true
+            ],
+            "posterize": [
+              8
+            ]
+          }
+        },
+        "mood": "bright",
+        "name": null,
+        "ui": "default",
+        "uiSeeds": {
+          "accent": "#ffcd75",
+          "neutral": "#333c57",
+          "primary": "#3b5dc9"
+        },
+        "variant": "topdown"
+      },
+      "mood": "bright",
+      "variant": "topdown"
+    },
+    {
+      "look": {
+        "antialias": "off",
+        "blocks": {
+          "ArtCamera": {
+            "pixelPerfect": [
+              true
+            ],
+            "projection": [
+              "orthographic"
+            ]
+          },
+          "ArtLine": {
+            "place": [
+              "outside"
+            ],
+            "width": [
+              0
+            ]
+          },
+          "ArtPalette": {
+            "maxColors": [
+              64
+            ],
+            "rampSteps": [
+              0
+            ]
+          },
+          "ArtPixels": {
+            "logicalHeight": [
+              180
+            ],
+            "rotation": [
+              "cleanEdge"
+            ],
+            "snap": [
+              true
+            ],
+            "spriteSizes": [
+              16,
+              24,
+              32
+            ],
+            "unit": [
+              16
+            ]
+          },
+          "PostEffects": {
+            "balanceShadows": [
+              -0.02,
+              0,
+              0.04
+            ],
+            "contrast": [
+              0.12
+            ],
+            "saturation": [
+              -0.2
+            ],
+            "temperature": [
+              -0.06
+            ],
+            "vignette": [
+              true
+            ],
+            "vignetteIntensity": [
+              0.55
+            ]
+          },
+          "RenderSettings": {
+            "environmentIntensity": [
+              0.35
+            ],
+            "exposure": [
+              0.72
+            ],
+            "toneMapping": [
+              "none"
+            ]
+          },
+          "Stylise": {
+            "dither": [
+              "none"
+            ],
+            "ditherStrength": [
+              1
+            ],
+            "pixelHeight": [
+              180
+            ],
+            "pixelSnap": [
+              true
+            ],
+            "posterize": [
+              8
+            ]
+          }
+        },
+        "mood": "dark",
+        "name": null,
+        "ui": "default",
+        "uiSeeds": {
+          "accent": "#ffcd75",
+          "neutral": "#333c57",
+          "primary": "#3b5dc9"
+        },
+        "variant": "topdown"
+      },
+      "mood": "dark",
+      "variant": "topdown"
+    },
+    {
+      "look": {
+        "antialias": "off",
+        "blocks": {
+          "ArtCamera": {
+            "pixelPerfect": [
+              true
+            ],
+            "projection": [
+              "orthographic"
+            ]
+          },
+          "ArtLine": {
+            "place": [
+              "outside"
+            ],
+            "width": [
+              0
+            ]
+          },
+          "ArtPalette": {
+            "maxColors": [
+              64
+            ],
+            "rampSteps": [
+              0
+            ]
+          },
+          "ArtPixels": {
+            "logicalHeight": [
+              180
+            ],
+            "rotation": [
+              "cleanEdge"
+            ],
+            "snap": [
+              true
+            ],
+            "spriteSizes": [
+              16,
+              24,
+              32
+            ],
+            "unit": [
+              16
+            ]
+          },
+          "PostEffects": {
+            "balanceHighlights": [
+              0.04,
+              0,
+              -0.04
+            ],
+            "saturation": [
+              0.08
+            ],
+            "temperature": [
+              0.3
+            ],
+            "tint": [
+              0.03
+            ]
+          },
+          "RenderSettings": {
+            "exposure": [
+              1.04
+            ],
+            "toneMapping": [
+              "none"
+            ]
+          },
+          "Stylise": {
+            "dither": [
+              "none"
+            ],
+            "ditherStrength": [
+              1
+            ],
+            "pixelHeight": [
+              180
+            ],
+            "pixelSnap": [
+              true
+            ],
+            "posterize": [
+              8
+            ]
+          }
+        },
+        "mood": "warm",
+        "name": null,
+        "ui": "default",
+        "uiSeeds": {
+          "accent": "#ffcd75",
+          "neutral": "#333c57",
+          "primary": "#3b5dc9"
+        },
+        "variant": "topdown"
+      },
+      "mood": "warm",
+      "variant": "topdown"
+    },
+    {
+      "look": {
+        "antialias": "off",
+        "blocks": {
+          "ArtCamera": {
+            "pixelPerfect": [
+              true
+            ],
+            "projection": [
+              "orthographic"
+            ]
+          },
+          "ArtLine": {
+            "place": [
+              "outside"
+            ],
+            "width": [
+              0
+            ]
+          },
+          "ArtPalette": {
+            "maxColors": [
+              64
+            ],
+            "rampSteps": [
+              0
+            ]
+          },
+          "ArtPixels": {
+            "logicalHeight": [
+              180
+            ],
+            "rotation": [
+              "cleanEdge"
+            ],
+            "snap": [
+              true
+            ],
+            "spriteSizes": [
+              16,
+              24,
+              32
+            ],
+            "unit": [
+              16
+            ]
+          },
+          "PostEffects": {
+            "balanceShadows": [
+              -0.03,
+              0,
+              0.05
+            ],
+            "saturation": [
+              -0.1
+            ],
+            "temperature": [
+              -0.3
+            ]
+          },
+          "RenderSettings": {
+            "exposure": [
+              0.96
+            ],
+            "toneMapping": [
+              "none"
+            ]
+          },
+          "Stylise": {
+            "dither": [
+              "none"
+            ],
+            "ditherStrength": [
+              1
+            ],
+            "pixelHeight": [
+              180
+            ],
+            "pixelSnap": [
+              true
+            ],
+            "posterize": [
+              8
+            ]
+          }
+        },
+        "mood": "cold",
+        "name": null,
+        "ui": "default",
+        "uiSeeds": {
+          "accent": "#ffcd75",
+          "neutral": "#333c57",
+          "primary": "#3b5dc9"
+        },
+        "variant": "topdown"
+      },
+      "mood": "cold",
+      "variant": "topdown"
+    },
+    {
+      "look": {
+        "antialias": "off",
+        "blocks": {
+          "ArtCamera": {
+            "pixelPerfect": [
+              true
+            ],
+            "projection": [
+              "orthographic"
+            ]
+          },
+          "ArtLine": {
+            "place": [
+              "outside"
+            ],
+            "width": [
+              0
+            ]
+          },
+          "ArtPalette": {
+            "maxColors": [
+              64
+            ],
+            "rampSteps": [
+              0
+            ]
+          },
+          "ArtPixels": {
+            "logicalHeight": [
+              180
+            ],
+            "rotation": [
+              "cleanEdge"
+            ],
+            "snap": [
+              true
+            ],
+            "spriteSizes": [
+              16,
+              24,
+              32
+            ],
+            "unit": [
+              16
+            ]
+          },
+          "PostEffects": {
+            "brightness": [
+              0.03
+            ],
+            "contrast": [
+              -0.18
+            ],
+            "saturation": [
+              -0.12
+            ],
+            "vibrance": [
+              0.05
+            ]
+          },
+          "RenderSettings": {
+            "environmentIntensity": [
+              0.8
+            ],
+            "toneMapping": [
+              "none"
+            ]
+          },
+          "Stylise": {
+            "dither": [
+              "none"
+            ],
+            "ditherStrength": [
+              1
+            ],
+            "pixelHeight": [
+              180
+            ],
+            "pixelSnap": [
+              true
+            ],
+            "posterize": [
+              8
+            ]
+          }
+        },
+        "mood": "soft",
+        "name": null,
+        "ui": "default",
+        "uiSeeds": {
+          "accent": "#ffcd75",
+          "neutral": "#333c57",
+          "primary": "#3b5dc9"
+        },
+        "variant": "topdown"
+      },
+      "mood": "soft",
+      "variant": "topdown"
+    },
+    {
+      "look": {
+        "antialias": "off",
+        "blocks": {
+          "ArtCamera": {
+            "pixelPerfect": [
+              true
+            ],
+            "projection": [
+              "orthographic"
+            ]
+          },
+          "ArtLine": {
+            "place": [
+              "outside"
+            ],
+            "width": [
+              0
+            ]
+          },
+          "ArtPalette": {
+            "maxColors": [
+              64
+            ],
+            "rampSteps": [
+              0
+            ]
+          },
+          "ArtPixels": {
+            "logicalHeight": [
+              180
+            ],
+            "rotation": [
+              "cleanEdge"
+            ],
+            "snap": [
+              true
+            ],
+            "spriteSizes": [
+              16,
+              24,
+              32
+            ],
+            "unit": [
+              16
+            ]
+          },
+          "PostEffects": {
+            "contrast": [
+              0.25
+            ],
+            "saturation": [
+              0.12
+            ],
+            "vibrance": [
+              0.1
+            ],
+            "vignette": [
+              true
+            ],
+            "vignetteIntensity": [
+              0.45
+            ]
+          },
+          "RenderSettings": {
+            "environmentIntensity": [
+              0.3
+            ],
+            "toneMapping": [
+              "none"
+            ]
+          },
+          "Stylise": {
+            "dither": [
+              "none"
+            ],
+            "ditherStrength": [
+              1
+            ],
+            "pixelHeight": [
+              180
+            ],
+            "pixelSnap": [
+              true
+            ],
+            "posterize": [
+              8
+            ]
+          }
+        },
+        "mood": "high-contrast",
+        "name": null,
+        "ui": "default",
+        "uiSeeds": {
+          "accent": "#ffcd75",
+          "neutral": "#333c57",
+          "primary": "#3b5dc9"
+        },
+        "variant": "topdown"
+      },
+      "mood": "high-contrast",
+      "variant": "topdown"
+    }
+  ],
+  "slug": "pixel"
+}

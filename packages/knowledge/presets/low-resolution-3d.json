@@ -1,0 +1,1693 @@
+{
+  "about": "The look preset low-resolution-3d flattened by og-cook's look step for each variant and mood a game's look may ask of it (`og api gen` writes it from templates/looks; never edit it).",
+  "looks": [
+    {
+      "look": {
+        "antialias": "off",
+        "blocks": {
+          "ArtCamera": {
+            "projection": [
+              "perspective"
+            ]
+          },
+          "ArtPalette": {
+            "dither": [
+              "bayer2"
+            ]
+          },
+          "ArtPixels": {
+            "logicalHeight": [
+              240
+            ]
+          },
+          "ArtShape": {
+            "characterFaces": [
+              1000
+            ],
+            "propFaces": [
+              300
+            ]
+          },
+          "ArtTexels": {
+            "density": [
+              64
+            ],
+            "filter": [
+              "nearest"
+            ],
+            "maxSize": [
+              256
+            ],
+            "mips": [
+              "none"
+            ]
+          },
+          "Fog": {
+            "color": [
+              "#262a33"
+            ],
+            "density": [
+              0.07
+            ],
+            "enabled": [
+              true
+            ]
+          },
+          "Sky": {
+            "enabled": [
+              true
+            ],
+            "ground": [
+              0.018,
+              0.021,
+              0.028
+            ],
+            "horizon": [
+              0.018,
+              0.021,
+              0.028
+            ],
+            "zenith": [
+              0.018,
+              0.021,
+              0.028
+            ]
+          },
+          "Stylise": {
+            "affineTexturing": [
+              1
+            ],
+            "depthBits": [
+              12
+            ],
+            "dither": [
+              "bayer2"
+            ],
+            "pixelHeight": [
+              240
+            ],
+            "posterize": [
+              16
+            ],
+            "vertexSnap": [
+              2
+            ]
+          }
+        },
+        "mood": "dark",
+        "name": null,
+        "ui": "default",
+        "uiSeeds": {
+          "neutral": "#262a33",
+          "primary": "#c08a3e"
+        },
+        "variant": null
+      },
+      "mood": null,
+      "variant": null
+    },
+    {
+      "look": {
+        "antialias": "off",
+        "blocks": {
+          "ArtCamera": {
+            "projection": [
+              "perspective"
+            ]
+          },
+          "ArtPalette": {
+            "dither": [
+              "bayer2"
+            ]
+          },
+          "ArtPixels": {
+            "logicalHeight": [
+              240
+            ]
+          },
+          "ArtShape": {
+            "characterFaces": [
+              1000
+            ],
+            "propFaces": [
+              300
+            ]
+          },
+          "ArtTexels": {
+            "density": [
+              64
+            ],
+            "filter": [
+              "nearest"
+            ],
+            "maxSize": [
+              256
+            ],
+            "mips": [
+              "none"
+            ]
+          },
+          "Fog": {
+            "color": [
+              "#262a33"
+            ],
+            "density": [
+              0.07
+            ],
+            "enabled": [
+              true
+            ]
+          },
+          "PostEffects": {
+            "brightness": [
+              0.02
+            ],
+            "contrast": [
+              0.04
+            ],
+            "saturation": [
+              0.15
+            ],
+            "temperature": [
+              0.06
+            ],
+            "vibrance": [
+              0.15
+            ]
+          },
+          "RenderSettings": {
+            "environmentIntensity": [
+              0.7
+            ],
+            "exposure": [
+              1.12
+            ]
+          },
+          "Sky": {
+            "enabled": [
+              true
+            ],
+            "ground": [
+              0.018,
+              0.021,
+              0.028
+            ],
+            "horizon": [
+              0.018,
+              0.021,
+              0.028
+            ],
+            "zenith": [
+              0.018,
+              0.021,
+              0.028
+            ]
+          },
+          "Stylise": {
+            "affineTexturing": [
+              1
+            ],
+            "depthBits": [
+              12
+            ],
+            "dither": [
+              "bayer2"
+            ],
+            "pixelHeight": [
+              240
+            ],
+            "posterize": [
+              16
+            ],
+            "vertexSnap": [
+              2
+            ]
+          }
+        },
+        "mood": "bright",
+        "name": null,
+        "ui": "default",
+        "uiSeeds": {
+          "neutral": "#262a33",
+          "primary": "#c08a3e"
+        },
+        "variant": null
+      },
+      "mood": "bright",
+      "variant": null
+    },
+    {
+      "look": {
+        "antialias": "off",
+        "blocks": {
+          "ArtCamera": {
+            "projection": [
+              "perspective"
+            ]
+          },
+          "ArtPalette": {
+            "dither": [
+              "bayer2"
+            ]
+          },
+          "ArtPixels": {
+            "logicalHeight": [
+              240
+            ]
+          },
+          "ArtShape": {
+            "characterFaces": [
+              1000
+            ],
+            "propFaces": [
+              300
+            ]
+          },
+          "ArtTexels": {
+            "density": [
+              64
+            ],
+            "filter": [
+              "nearest"
+            ],
+            "maxSize": [
+              256
+            ],
+            "mips": [
+              "none"
+            ]
+          },
+          "Fog": {
+            "color": [
+              "#262a33"
+            ],
+            "density": [
+              0.07
+            ],
+            "enabled": [
+              true
+            ]
+          },
+          "Sky": {
+            "enabled": [
+              true
+            ],
+            "ground": [
+              0.018,
+              0.021,
+              0.028
+            ],
+            "horizon": [
+              0.018,
+              0.021,
+              0.028
+            ],
+            "zenith": [
+              0.018,
+              0.021,
+              0.028
+            ]
+          },
+          "Stylise": {
+            "affineTexturing": [
+              1
+            ],
+            "depthBits": [
+              12
+            ],
+            "dither": [
+              "bayer2"
+            ],
+            "pixelHeight": [
+              240
+            ],
+            "posterize": [
+              16
+            ],
+            "vertexSnap": [
+              2
+            ]
+          }
+        },
+        "mood": "dark",
+        "name": null,
+        "ui": "default",
+        "uiSeeds": {
+          "neutral": "#262a33",
+          "primary": "#c08a3e"
+        },
+        "variant": null
+      },
+      "mood": "dark",
+      "variant": null
+    },
+    {
+      "look": {
+        "antialias": "off",
+        "blocks": {
+          "ArtCamera": {
+            "projection": [
+              "perspective"
+            ]
+          },
+          "ArtPalette": {
+            "dither": [
+              "bayer2"
+            ]
+          },
+          "ArtPixels": {
+            "logicalHeight": [
+              240
+            ]
+          },
+          "ArtShape": {
+            "characterFaces": [
+              1000
+            ],
+            "propFaces": [
+              300
+            ]
+          },
+          "ArtTexels": {
+            "density": [
+              64
+            ],
+            "filter": [
+              "nearest"
+            ],
+            "maxSize": [
+              256
+            ],
+            "mips": [
+              "none"
+            ]
+          },
+          "Fog": {
+            "color": [
+              "#262a33"
+            ],
+            "density": [
+              0.07
+            ],
+            "enabled": [
+              true
+            ]
+          },
+          "PostEffects": {
+            "balanceHighlights": [
+              0.04,
+              0,
+              -0.04
+            ],
+            "saturation": [
+              0.08
+            ],
+            "temperature": [
+              0.3
+            ],
+            "tint": [
+              0.03
+            ]
+          },
+          "RenderSettings": {
+            "exposure": [
+              1.04
+            ]
+          },
+          "Sky": {
+            "enabled": [
+              true
+            ],
+            "ground": [
+              0.018,
+              0.021,
+              0.028
+            ],
+            "horizon": [
+              0.018,
+              0.021,
+              0.028
+            ],
+            "zenith": [
+              0.018,
+              0.021,
+              0.028
+            ]
+          },
+          "Stylise": {
+            "affineTexturing": [
+              1
+            ],
+            "depthBits": [
+              12
+            ],
+            "dither": [
+              "bayer2"
+            ],
+            "pixelHeight": [
+              240
+            ],
+            "posterize": [
+              16
+            ],
+            "vertexSnap": [
+              2
+            ]
+          }
+        },
+        "mood": "warm",
+        "name": null,
+        "ui": "default",
+        "uiSeeds": {
+          "neutral": "#262a33",
+          "primary": "#c08a3e"
+        },
+        "variant": null
+      },
+      "mood": "warm",
+      "variant": null
+    },
+    {
+      "look": {
+        "antialias": "off",
+        "blocks": {
+          "ArtCamera": {
+            "projection": [
+              "perspective"
+            ]
+          },
+          "ArtPalette": {
+            "dither": [
+              "bayer2"
+            ]
+          },
+          "ArtPixels": {
+            "logicalHeight": [
+              240
+            ]
+          },
+          "ArtShape": {
+            "characterFaces": [
+              1000
+            ],
+            "propFaces": [
+              300
+            ]
+          },
+          "ArtTexels": {
+            "density": [
+              64
+            ],
+            "filter": [
+              "nearest"
+            ],
+            "maxSize": [
+              256
+            ],
+            "mips": [
+              "none"
+            ]
+          },
+          "Fog": {
+            "color": [
+              "#262a33"
+            ],
+            "density": [
+              0.07
+            ],
+            "enabled": [
+              true
+            ]
+          },
+          "PostEffects": {
+            "balanceShadows": [
+              -0.03,
+              0,
+              0.05
+            ],
+            "saturation": [
+              -0.1
+            ],
+            "temperature": [
+              -0.3
+            ]
+          },
+          "RenderSettings": {
+            "exposure": [
+              0.96
+            ]
+          },
+          "Sky": {
+            "enabled": [
+              true
+            ],
+            "ground": [
+              0.018,
+              0.021,
+              0.028
+            ],
+            "horizon": [
+              0.018,
+              0.021,
+              0.028
+            ],
+            "zenith": [
+              0.018,
+              0.021,
+              0.028
+            ]
+          },
+          "Stylise": {
+            "affineTexturing": [
+              1
+            ],
+            "depthBits": [
+              12
+            ],
+            "dither": [
+              "bayer2"
+            ],
+            "pixelHeight": [
+              240
+            ],
+            "posterize": [
+              16
+            ],
+            "vertexSnap": [
+              2
+            ]
+          }
+        },
+        "mood": "cold",
+        "name": null,
+        "ui": "default",
+        "uiSeeds": {
+          "neutral": "#262a33",
+          "primary": "#c08a3e"
+        },
+        "variant": null
+      },
+      "mood": "cold",
+      "variant": null
+    },
+    {
+      "look": {
+        "antialias": "off",
+        "blocks": {
+          "ArtCamera": {
+            "projection": [
+              "perspective"
+            ]
+          },
+          "ArtPalette": {
+            "dither": [
+              "bayer2"
+            ]
+          },
+          "ArtPixels": {
+            "logicalHeight": [
+              240
+            ]
+          },
+          "ArtShape": {
+            "characterFaces": [
+              1000
+            ],
+            "propFaces": [
+              300
+            ]
+          },
+          "ArtTexels": {
+            "density": [
+              64
+            ],
+            "filter": [
+              "nearest"
+            ],
+            "maxSize": [
+              256
+            ],
+            "mips": [
+              "none"
+            ]
+          },
+          "Fog": {
+            "color": [
+              "#262a33"
+            ],
+            "density": [
+              0.07
+            ],
+            "enabled": [
+              true
+            ]
+          },
+          "PostEffects": {
+            "brightness": [
+              0.03
+            ],
+            "contrast": [
+              -0.18
+            ],
+            "saturation": [
+              -0.12
+            ],
+            "vibrance": [
+              0.05
+            ]
+          },
+          "RenderSettings": {
+            "environmentIntensity": [
+              0.8
+            ]
+          },
+          "Sky": {
+            "enabled": [
+              true
+            ],
+            "ground": [
+              0.018,
+              0.021,
+              0.028
+            ],
+            "horizon": [
+              0.018,
+              0.021,
+              0.028
+            ],
+            "zenith": [
+              0.018,
+              0.021,
+              0.028
+            ]
+          },
+          "Stylise": {
+            "affineTexturing": [
+              1
+            ],
+            "depthBits": [
+              12
+            ],
+            "dither": [
+              "bayer2"
+            ],
+            "pixelHeight": [
+              240
+            ],
+            "posterize": [
+              16
+            ],
+            "vertexSnap": [
+              2
+            ]
+          }
+        },
+        "mood": "soft",
+        "name": null,
+        "ui": "default",
+        "uiSeeds": {
+          "neutral": "#262a33",
+          "primary": "#c08a3e"
+        },
+        "variant": null
+      },
+      "mood": "soft",
+      "variant": null
+    },
+    {
+      "look": {
+        "antialias": "off",
+        "blocks": {
+          "ArtCamera": {
+            "projection": [
+              "perspective"
+            ]
+          },
+          "ArtPalette": {
+            "dither": [
+              "bayer2"
+            ]
+          },
+          "ArtPixels": {
+            "logicalHeight": [
+              240
+            ]
+          },
+          "ArtShape": {
+            "characterFaces": [
+              1000
+            ],
+            "propFaces": [
+              300
+            ]
+          },
+          "ArtTexels": {
+            "density": [
+              64
+            ],
+            "filter": [
+              "nearest"
+            ],
+            "maxSize": [
+              256
+            ],
+            "mips": [
+              "none"
+            ]
+          },
+          "Fog": {
+            "color": [
+              "#262a33"
+            ],
+            "density": [
+              0.07
+            ],
+            "enabled": [
+              true
+            ]
+          },
+          "PostEffects": {
+            "contrast": [
+              0.25
+            ],
+            "saturation": [
+              0.12
+            ],
+            "vibrance": [
+              0.1
+            ],
+            "vignette": [
+              true
+            ],
+            "vignetteIntensity": [
+              0.45
+            ]
+          },
+          "RenderSettings": {
+            "environmentIntensity": [
+              0.3
+            ]
+          },
+          "Sky": {
+            "enabled": [
+              true
+            ],
+            "ground": [
+              0.018,
+              0.021,
+              0.028
+            ],
+            "horizon": [
+              0.018,
+              0.021,
+              0.028
+            ],
+            "zenith": [
+              0.018,
+              0.021,
+              0.028
+            ]
+          },
+          "Stylise": {
+            "affineTexturing": [
+              1
+            ],
+            "depthBits": [
+              12
+            ],
+            "dither": [
+              "bayer2"
+            ],
+            "pixelHeight": [
+              240
+            ],
+            "posterize": [
+              16
+            ],
+            "vertexSnap": [
+              2
+            ]
+          }
+        },
+        "mood": "high-contrast",
+        "name": null,
+        "ui": "default",
+        "uiSeeds": {
+          "neutral": "#262a33",
+          "primary": "#c08a3e"
+        },
+        "variant": null
+      },
+      "mood": "high-contrast",
+      "variant": null
+    },
+    {
+      "look": {
+        "antialias": "off",
+        "blocks": {
+          "ArtCamera": {
+            "projection": [
+              "perspective"
+            ]
+          },
+          "ArtPalette": {
+            "colors": [
+              "@palettes/1bit"
+            ],
+            "dither": [
+              "bayer8"
+            ],
+            "maxColors": [
+              4
+            ]
+          },
+          "ArtPixels": {
+            "logicalHeight": [
+              240
+            ]
+          },
+          "ArtShape": {
+            "characterFaces": [
+              10000
+            ],
+            "propFaces": [
+              0
+            ]
+          },
+          "ArtTexels": {
+            "density": [
+              0
+            ],
+            "filter": [
+              "any"
+            ],
+            "maxSize": [
+              0
+            ],
+            "mips": [
+              "any"
+            ]
+          },
+          "Fog": {
+            "color": [
+              0.62,
+              0.68,
+              0.76
+            ],
+            "density": [
+              0.02
+            ],
+            "enabled": [
+              false
+            ]
+          },
+          "RenderSettings": {
+            "toneMapping": [
+              "none"
+            ]
+          },
+          "Sky": {
+            "enabled": [
+              false
+            ],
+            "ground": [
+              0.16,
+              0.14,
+              0.12
+            ],
+            "horizon": [
+              0.78,
+              0.84,
+              0.92
+            ],
+            "zenith": [
+              0.18,
+              0.36,
+              0.78
+            ]
+          },
+          "Stylise": {
+            "affineTexturing": [
+              0
+            ],
+            "depthBits": [
+              0
+            ],
+            "dither": [
+              "bayer8"
+            ],
+            "palette": [
+              "@palettes/1bit"
+            ],
+            "pixelHeight": [
+              240
+            ],
+            "posterize": [
+              2
+            ],
+            "vertexSnap": [
+              0
+            ]
+          }
+        },
+        "mood": "high-contrast",
+        "name": null,
+        "ui": "default",
+        "uiSeeds": {
+          "neutral": "#262a33",
+          "primary": "#c08a3e"
+        },
+        "variant": "monochrome-dither"
+      },
+      "mood": null,
+      "variant": "monochrome-dither"
+    },
+    {
+      "look": {
+        "antialias": "off",
+        "blocks": {
+          "ArtCamera": {
+            "projection": [
+              "perspective"
+            ]
+          },
+          "ArtPalette": {
+            "colors": [
+              "@palettes/1bit-bright"
+            ],
+            "dither": [
+              "bayer8"
+            ],
+            "maxColors": [
+              4
+            ]
+          },
+          "ArtPixels": {
+            "logicalHeight": [
+              240
+            ]
+          },
+          "ArtShape": {
+            "characterFaces": [
+              10000
+            ],
+            "propFaces": [
+              0
+            ]
+          },
+          "ArtTexels": {
+            "density": [
+              0
+            ],
+            "filter": [
+              "any"
+            ],
+            "maxSize": [
+              0
+            ],
+            "mips": [
+              "any"
+            ]
+          },
+          "Fog": {
+            "color": [
+              0.62,
+              0.68,
+              0.76
+            ],
+            "density": [
+              0.02
+            ],
+            "enabled": [
+              false
+            ]
+          },
+          "RenderSettings": {
+            "toneMapping": [
+              "none"
+            ]
+          },
+          "Sky": {
+            "enabled": [
+              false
+            ],
+            "ground": [
+              0.16,
+              0.14,
+              0.12
+            ],
+            "horizon": [
+              0.78,
+              0.84,
+              0.92
+            ],
+            "zenith": [
+              0.18,
+              0.36,
+              0.78
+            ]
+          },
+          "Stylise": {
+            "affineTexturing": [
+              0
+            ],
+            "depthBits": [
+              0
+            ],
+            "dither": [
+              "bayer8"
+            ],
+            "palette": [
+              "@palettes/1bit-bright"
+            ],
+            "pixelHeight": [
+              240
+            ],
+            "posterize": [
+              2
+            ],
+            "vertexSnap": [
+              0
+            ]
+          }
+        },
+        "mood": "bright",
+        "name": null,
+        "ui": "default",
+        "uiSeeds": {
+          "neutral": "#262a33",
+          "primary": "#c08a3e"
+        },
+        "variant": "monochrome-dither"
+      },
+      "mood": "bright",
+      "variant": "monochrome-dither"
+    },
+    {
+      "look": {
+        "antialias": "off",
+        "blocks": {
+          "ArtCamera": {
+            "projection": [
+              "perspective"
+            ]
+          },
+          "ArtPalette": {
+            "colors": [
+              "@palettes/1bit-dark"
+            ],
+            "dither": [
+              "bayer8"
+            ],
+            "maxColors": [
+              4
+            ]
+          },
+          "ArtPixels": {
+            "logicalHeight": [
+              240
+            ]
+          },
+          "ArtShape": {
+            "characterFaces": [
+              10000
+            ],
+            "propFaces": [
+              0
+            ]
+          },
+          "ArtTexels": {
+            "density": [
+              0
+            ],
+            "filter": [
+              "any"
+            ],
+            "maxSize": [
+              0
+            ],
+            "mips": [
+              "any"
+            ]
+          },
+          "Fog": {
+            "color": [
+              0.62,
+              0.68,
+              0.76
+            ],
+            "density": [
+              0.02
+            ],
+            "enabled": [
+              false
+            ]
+          },
+          "RenderSettings": {
+            "toneMapping": [
+              "none"
+            ]
+          },
+          "Sky": {
+            "enabled": [
+              false
+            ],
+            "ground": [
+              0.16,
+              0.14,
+              0.12
+            ],
+            "horizon": [
+              0.78,
+              0.84,
+              0.92
+            ],
+            "zenith": [
+              0.18,
+              0.36,
+              0.78
+            ]
+          },
+          "Stylise": {
+            "affineTexturing": [
+              0
+            ],
+            "depthBits": [
+              0
+            ],
+            "dither": [
+              "bayer8"
+            ],
+            "palette": [
+              "@palettes/1bit-dark"
+            ],
+            "pixelHeight": [
+              240
+            ],
+            "posterize": [
+              2
+            ],
+            "vertexSnap": [
+              0
+            ]
+          }
+        },
+        "mood": "dark",
+        "name": null,
+        "ui": "default",
+        "uiSeeds": {
+          "neutral": "#262a33",
+          "primary": "#c08a3e"
+        },
+        "variant": "monochrome-dither"
+      },
+      "mood": "dark",
+      "variant": "monochrome-dither"
+    },
+    {
+      "look": {
+        "antialias": "off",
+        "blocks": {
+          "ArtCamera": {
+            "projection": [
+              "perspective"
+            ]
+          },
+          "ArtPalette": {
+            "colors": [
+              "@palettes/1bit-warm"
+            ],
+            "dither": [
+              "bayer8"
+            ],
+            "maxColors": [
+              4
+            ]
+          },
+          "ArtPixels": {
+            "logicalHeight": [
+              240
+            ]
+          },
+          "ArtShape": {
+            "characterFaces": [
+              10000
+            ],
+            "propFaces": [
+              0
+            ]
+          },
+          "ArtTexels": {
+            "density": [
+              0
+            ],
+            "filter": [
+              "any"
+            ],
+            "maxSize": [
+              0
+            ],
+            "mips": [
+              "any"
+            ]
+          },
+          "Fog": {
+            "color": [
+              0.62,
+              0.68,
+              0.76
+            ],
+            "density": [
+              0.02
+            ],
+            "enabled": [
+              false
+            ]
+          },
+          "RenderSettings": {
+            "toneMapping": [
+              "none"
+            ]
+          },
+          "Sky": {
+            "enabled": [
+              false
+            ],
+            "ground": [
+              0.16,
+              0.14,
+              0.12
+            ],
+            "horizon": [
+              0.78,
+              0.84,
+              0.92
+            ],
+            "zenith": [
+              0.18,
+              0.36,
+              0.78
+            ]
+          },
+          "Stylise": {
+            "affineTexturing": [
+              0
+            ],
+            "depthBits": [
+              0
+            ],
+            "dither": [
+              "bayer8"
+            ],
+            "palette": [
+              "@palettes/1bit-warm"
+            ],
+            "pixelHeight": [
+              240
+            ],
+            "posterize": [
+              2
+            ],
+            "vertexSnap": [
+              0
+            ]
+          }
+        },
+        "mood": "warm",
+        "name": null,
+        "ui": "default",
+        "uiSeeds": {
+          "neutral": "#262a33",
+          "primary": "#c08a3e"
+        },
+        "variant": "monochrome-dither"
+      },
+      "mood": "warm",
+      "variant": "monochrome-dither"
+    },
+    {
+      "look": {
+        "antialias": "off",
+        "blocks": {
+          "ArtCamera": {
+            "projection": [
+              "perspective"
+            ]
+          },
+          "ArtPalette": {
+            "colors": [
+              "@palettes/1bit-cold"
+            ],
+            "dither": [
+              "bayer8"
+            ],
+            "maxColors": [
+              4
+            ]
+          },
+          "ArtPixels": {
+            "logicalHeight": [
+              240
+            ]
+          },
+          "ArtShape": {
+            "characterFaces": [
+              10000
+            ],
+            "propFaces": [
+              0
+            ]
+          },
+          "ArtTexels": {
+            "density": [
+              0
+            ],
+            "filter": [
+              "any"
+            ],
+            "maxSize": [
+              0
+            ],
+            "mips": [
+              "any"
+            ]
+          },
+          "Fog": {
+            "color": [
+              0.62,
+              0.68,
+              0.76
+            ],
+            "density": [
+              0.02
+            ],
+            "enabled": [
+              false
+            ]
+          },
+          "RenderSettings": {
+            "toneMapping": [
+              "none"
+            ]
+          },
+          "Sky": {
+            "enabled": [
+              false
+            ],
+            "ground": [
+              0.16,
+              0.14,
+              0.12
+            ],
+            "horizon": [
+              0.78,
+              0.84,
+              0.92
+            ],
+            "zenith": [
+              0.18,
+              0.36,
+              0.78
+            ]
+          },
+          "Stylise": {
+            "affineTexturing": [
+              0
+            ],
+            "depthBits": [
+              0
+            ],
+            "dither": [
+              "bayer8"
+            ],
+            "palette": [
+              "@palettes/1bit-cold"
+            ],
+            "pixelHeight": [
+              240
+            ],
+            "posterize": [
+              2
+            ],
+            "vertexSnap": [
+              0
+            ]
+          }
+        },
+        "mood": "cold",
+        "name": null,
+        "ui": "default",
+        "uiSeeds": {
+          "neutral": "#262a33",
+          "primary": "#c08a3e"
+        },
+        "variant": "monochrome-dither"
+      },
+      "mood": "cold",
+      "variant": "monochrome-dither"
+    },
+    {
+      "look": {
+        "antialias": "off",
+        "blocks": {
+          "ArtCamera": {
+            "projection": [
+              "perspective"
+            ]
+          },
+          "ArtPalette": {
+            "colors": [
+              "@palettes/1bit-soft"
+            ],
+            "dither": [
+              "bayer8"
+            ],
+            "maxColors": [
+              4
+            ]
+          },
+          "ArtPixels": {
+            "logicalHeight": [
+              240
+            ]
+          },
+          "ArtShape": {
+            "characterFaces": [
+              10000
+            ],
+            "propFaces": [
+              0
+            ]
+          },
+          "ArtTexels": {
+            "density": [
+              0
+            ],
+            "filter": [
+              "any"
+            ],
+            "maxSize": [
+              0
+            ],
+            "mips": [
+              "any"
+            ]
+          },
+          "Fog": {
+            "color": [
+              0.62,
+              0.68,
+              0.76
+            ],
+            "density": [
+              0.02
+            ],
+            "enabled": [
+              false
+            ]
+          },
+          "RenderSettings": {
+            "toneMapping": [
+              "none"
+            ]
+          },
+          "Sky": {
+            "enabled": [
+              false
+            ],
+            "ground": [
+              0.16,
+              0.14,
+              0.12
+            ],
+            "horizon": [
+              0.78,
+              0.84,
+              0.92
+            ],
+            "zenith": [
+              0.18,
+              0.36,
+              0.78
+            ]
+          },
+          "Stylise": {
+            "affineTexturing": [
+              0
+            ],
+            "depthBits": [
+              0
+            ],
+            "dither": [
+              "bayer8"
+            ],
+            "palette": [
+              "@palettes/1bit-soft"
+            ],
+            "pixelHeight": [
+              240
+            ],
+            "posterize": [
+              2
+            ],
+            "vertexSnap": [
+              0
+            ]
+          }
+        },
+        "mood": "soft",
+        "name": null,
+        "ui": "default",
+        "uiSeeds": {
+          "neutral": "#262a33",
+          "primary": "#c08a3e"
+        },
+        "variant": "monochrome-dither"
+      },
+      "mood": "soft",
+      "variant": "monochrome-dither"
+    },
+    {
+      "look": {
+        "antialias": "off",
+        "blocks": {
+          "ArtCamera": {
+            "projection": [
+              "perspective"
+            ]
+          },
+          "ArtPalette": {
+            "colors": [
+              "@palettes/1bit"
+            ],
+            "dither": [
+              "bayer8"
+            ],
+            "maxColors": [
+              4
+            ]
+          },
+          "ArtPixels": {
+            "logicalHeight": [
+              240
+            ]
+          },
+          "ArtShape": {
+            "characterFaces": [
+              10000
+            ],
+            "propFaces": [
+              0
+            ]
+          },
+          "ArtTexels": {
+            "density": [
+              0
+            ],
+            "filter": [
+              "any"
+            ],
+            "maxSize": [
+              0
+            ],
+            "mips": [
+              "any"
+            ]
+          },
+          "Fog": {
+            "color": [
+              0.62,
+              0.68,
+              0.76
+            ],
+            "density": [
+              0.02
+            ],
+            "enabled": [
+              false
+            ]
+          },
+          "RenderSettings": {
+            "toneMapping": [
+              "none"
+            ]
+          },
+          "Sky": {
+            "enabled": [
+              false
+            ],
+            "ground": [
+              0.16,
+              0.14,
+              0.12
+            ],
+            "horizon": [
+              0.78,
+              0.84,
+              0.92
+            ],
+            "zenith": [
+              0.18,
+              0.36,
+              0.78
+            ]
+          },
+          "Stylise": {
+            "affineTexturing": [
+              0
+            ],
+            "depthBits": [
+              0
+            ],
+            "dither": [
+              "bayer8"
+            ],
+            "palette": [
+              "@palettes/1bit"
+            ],
+            "pixelHeight": [
+              240
+            ],
+            "posterize": [
+              2
+            ],
+            "vertexSnap": [
+              0
+            ]
+          }
+        },
+        "mood": "high-contrast",
+        "name": null,
+        "ui": "default",
+        "uiSeeds": {
+          "neutral": "#262a33",
+          "primary": "#c08a3e"
+        },
+        "variant": "monochrome-dither"
+      },
+      "mood": "high-contrast",
+      "variant": "monochrome-dither"
+    }
+  ],
+  "slug": "low-resolution-3d"
+}

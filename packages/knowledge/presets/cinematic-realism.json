@@ -1,0 +1,1258 @@
+{
+  "about": "The look preset cinematic-realism flattened by og-cook's look step for each variant and mood a game's look may ask of it (`og api gen` writes it from templates/looks; never edit it).",
+  "looks": [
+    {
+      "look": {
+        "antialias": null,
+        "blocks": {
+          "ArtCamera": {
+            "projection": [
+              "perspective"
+            ]
+          },
+          "ArtShape": {
+            "characterFaces": [
+              100000
+            ]
+          },
+          "ArtTexels": {
+            "density": [
+              512
+            ],
+            "filter": [
+              "linear"
+            ],
+            "mips": [
+              "full"
+            ]
+          },
+          "PostEffects": {
+            "chromaticAberration": [
+              0.5
+            ],
+            "filmGrain": [
+              0.03
+            ],
+            "vignette": [
+              true
+            ],
+            "vignetteIntensity": [
+              0.3
+            ]
+          },
+          "RenderSettings": {
+            "adaptSpeedDown": [
+              3
+            ],
+            "adaptSpeedUp": [
+              1
+            ],
+            "autoExposure": [
+              true
+            ],
+            "bloom": [
+              true
+            ],
+            "bloomIntensity": [
+              0.3
+            ],
+            "toneMapping": [
+              "agx"
+            ]
+          }
+        },
+        "mood": "cold",
+        "name": null,
+        "ui": "default",
+        "uiSeeds": {
+          "neutral": "#56606b",
+          "primary": "#5b7a99"
+        },
+        "variant": null
+      },
+      "mood": null,
+      "variant": null
+    },
+    {
+      "look": {
+        "antialias": null,
+        "blocks": {
+          "ArtCamera": {
+            "projection": [
+              "perspective"
+            ]
+          },
+          "ArtShape": {
+            "characterFaces": [
+              100000
+            ]
+          },
+          "ArtTexels": {
+            "density": [
+              512
+            ],
+            "filter": [
+              "linear"
+            ],
+            "mips": [
+              "full"
+            ]
+          },
+          "PostEffects": {
+            "brightness": [
+              0.02
+            ],
+            "chromaticAberration": [
+              0.5
+            ],
+            "contrast": [
+              0.04
+            ],
+            "filmGrain": [
+              0.03
+            ],
+            "saturation": [
+              0.15
+            ],
+            "temperature": [
+              0.06
+            ],
+            "vibrance": [
+              0.15
+            ],
+            "vignette": [
+              true
+            ],
+            "vignetteIntensity": [
+              0.3
+            ]
+          },
+          "RenderSettings": {
+            "adaptSpeedDown": [
+              3
+            ],
+            "adaptSpeedUp": [
+              1
+            ],
+            "autoExposure": [
+              true
+            ],
+            "bloom": [
+              true
+            ],
+            "bloomIntensity": [
+              0.3
+            ],
+            "environmentIntensity": [
+              0.7
+            ],
+            "exposure": [
+              1.12
+            ],
+            "toneMapping": [
+              "agx"
+            ]
+          }
+        },
+        "mood": "bright",
+        "name": null,
+        "ui": "default",
+        "uiSeeds": {
+          "neutral": "#56606b",
+          "primary": "#5b7a99"
+        },
+        "variant": null
+      },
+      "mood": "bright",
+      "variant": null
+    },
+    {
+      "look": {
+        "antialias": null,
+        "blocks": {
+          "ArtCamera": {
+            "projection": [
+              "perspective"
+            ]
+          },
+          "ArtShape": {
+            "characterFaces": [
+              100000
+            ]
+          },
+          "ArtTexels": {
+            "density": [
+              512
+            ],
+            "filter": [
+              "linear"
+            ],
+            "mips": [
+              "full"
+            ]
+          },
+          "PostEffects": {
+            "balanceShadows": [
+              -0.02,
+              0,
+              0.04
+            ],
+            "chromaticAberration": [
+              0.5
+            ],
+            "contrast": [
+              0.12
+            ],
+            "filmGrain": [
+              0.03
+            ],
+            "saturation": [
+              -0.2
+            ],
+            "temperature": [
+              -0.06
+            ],
+            "vignette": [
+              true
+            ],
+            "vignetteIntensity": [
+              0.5
+            ]
+          },
+          "RenderSettings": {
+            "adaptSpeedDown": [
+              3
+            ],
+            "adaptSpeedUp": [
+              1
+            ],
+            "autoExposure": [
+              true
+            ],
+            "bloom": [
+              true
+            ],
+            "bloomIntensity": [
+              0.3
+            ],
+            "environmentIntensity": [
+              0.35
+            ],
+            "exposure": [
+              0.72
+            ],
+            "toneMapping": [
+              "agx"
+            ]
+          }
+        },
+        "mood": "dark",
+        "name": null,
+        "ui": "default",
+        "uiSeeds": {
+          "neutral": "#56606b",
+          "primary": "#5b7a99"
+        },
+        "variant": null
+      },
+      "mood": "dark",
+      "variant": null
+    },
+    {
+      "look": {
+        "antialias": null,
+        "blocks": {
+          "ArtCamera": {
+            "projection": [
+              "perspective"
+            ]
+          },
+          "ArtShape": {
+            "characterFaces": [
+              100000
+            ]
+          },
+          "ArtTexels": {
+            "density": [
+              512
+            ],
+            "filter": [
+              "linear"
+            ],
+            "mips": [
+              "full"
+            ]
+          },
+          "PostEffects": {
+            "balanceHighlights": [
+              0.04,
+              0,
+              -0.04
+            ],
+            "chromaticAberration": [
+              0.5
+            ],
+            "filmGrain": [
+              0.03
+            ],
+            "saturation": [
+              0.08
+            ],
+            "temperature": [
+              0.3
+            ],
+            "tint": [
+              0.03
+            ],
+            "vignette": [
+              true
+            ],
+            "vignetteIntensity": [
+              0.3
+            ]
+          },
+          "RenderSettings": {
+            "adaptSpeedDown": [
+              3
+            ],
+            "adaptSpeedUp": [
+              1
+            ],
+            "autoExposure": [
+              true
+            ],
+            "bloom": [
+              true
+            ],
+            "bloomIntensity": [
+              0.3
+            ],
+            "exposure": [
+              1.04
+            ],
+            "toneMapping": [
+              "agx"
+            ]
+          }
+        },
+        "mood": "warm",
+        "name": null,
+        "ui": "default",
+        "uiSeeds": {
+          "neutral": "#56606b",
+          "primary": "#5b7a99"
+        },
+        "variant": null
+      },
+      "mood": "warm",
+      "variant": null
+    },
+    {
+      "look": {
+        "antialias": null,
+        "blocks": {
+          "ArtCamera": {
+            "projection": [
+              "perspective"
+            ]
+          },
+          "ArtShape": {
+            "characterFaces": [
+              100000
+            ]
+          },
+          "ArtTexels": {
+            "density": [
+              512
+            ],
+            "filter": [
+              "linear"
+            ],
+            "mips": [
+              "full"
+            ]
+          },
+          "PostEffects": {
+            "chromaticAberration": [
+              0.5
+            ],
+            "filmGrain": [
+              0.03
+            ],
+            "vignette": [
+              true
+            ],
+            "vignetteIntensity": [
+              0.3
+            ]
+          },
+          "RenderSettings": {
+            "adaptSpeedDown": [
+              3
+            ],
+            "adaptSpeedUp": [
+              1
+            ],
+            "autoExposure": [
+              true
+            ],
+            "bloom": [
+              true
+            ],
+            "bloomIntensity": [
+              0.3
+            ],
+            "toneMapping": [
+              "agx"
+            ]
+          }
+        },
+        "mood": "cold",
+        "name": null,
+        "ui": "default",
+        "uiSeeds": {
+          "neutral": "#56606b",
+          "primary": "#5b7a99"
+        },
+        "variant": null
+      },
+      "mood": "cold",
+      "variant": null
+    },
+    {
+      "look": {
+        "antialias": null,
+        "blocks": {
+          "ArtCamera": {
+            "projection": [
+              "perspective"
+            ]
+          },
+          "ArtShape": {
+            "characterFaces": [
+              100000
+            ]
+          },
+          "ArtTexels": {
+            "density": [
+              512
+            ],
+            "filter": [
+              "linear"
+            ],
+            "mips": [
+              "full"
+            ]
+          },
+          "PostEffects": {
+            "brightness": [
+              0.03
+            ],
+            "chromaticAberration": [
+              0.5
+            ],
+            "contrast": [
+              -0.18
+            ],
+            "filmGrain": [
+              0.03
+            ],
+            "saturation": [
+              -0.12
+            ],
+            "vibrance": [
+              0.05
+            ],
+            "vignette": [
+              true
+            ],
+            "vignetteIntensity": [
+              0.3
+            ]
+          },
+          "RenderSettings": {
+            "adaptSpeedDown": [
+              3
+            ],
+            "adaptSpeedUp": [
+              1
+            ],
+            "autoExposure": [
+              true
+            ],
+            "bloom": [
+              true
+            ],
+            "bloomIntensity": [
+              0.3
+            ],
+            "environmentIntensity": [
+              0.8
+            ],
+            "toneMapping": [
+              "agx"
+            ]
+          }
+        },
+        "mood": "soft",
+        "name": null,
+        "ui": "default",
+        "uiSeeds": {
+          "neutral": "#56606b",
+          "primary": "#5b7a99"
+        },
+        "variant": null
+      },
+      "mood": "soft",
+      "variant": null
+    },
+    {
+      "look": {
+        "antialias": null,
+        "blocks": {
+          "ArtCamera": {
+            "projection": [
+              "perspective"
+            ]
+          },
+          "ArtShape": {
+            "characterFaces": [
+              100000
+            ]
+          },
+          "ArtTexels": {
+            "density": [
+              512
+            ],
+            "filter": [
+              "linear"
+            ],
+            "mips": [
+              "full"
+            ]
+          },
+          "PostEffects": {
+            "chromaticAberration": [
+              0.5
+            ],
+            "contrast": [
+              0.25
+            ],
+            "filmGrain": [
+              0.03
+            ],
+            "saturation": [
+              0.12
+            ],
+            "vibrance": [
+              0.1
+            ],
+            "vignette": [
+              true
+            ],
+            "vignetteIntensity": [
+              0.4
+            ]
+          },
+          "RenderSettings": {
+            "adaptSpeedDown": [
+              3
+            ],
+            "adaptSpeedUp": [
+              1
+            ],
+            "autoExposure": [
+              true
+            ],
+            "bloom": [
+              true
+            ],
+            "bloomIntensity": [
+              0.3
+            ],
+            "environmentIntensity": [
+              0.3
+            ],
+            "toneMapping": [
+              "agx"
+            ]
+          }
+        },
+        "mood": "high-contrast",
+        "name": null,
+        "ui": "default",
+        "uiSeeds": {
+          "neutral": "#56606b",
+          "primary": "#5b7a99"
+        },
+        "variant": null
+      },
+      "mood": "high-contrast",
+      "variant": null
+    },
+    {
+      "look": {
+        "antialias": null,
+        "blocks": {
+          "ArtCamera": {
+            "projection": [
+              "any"
+            ]
+          },
+          "ArtShape": {
+            "characterFaces": [
+              10000
+            ]
+          },
+          "ArtTexels": {
+            "density": [
+              0
+            ],
+            "filter": [
+              "any"
+            ],
+            "mips": [
+              "any"
+            ]
+          },
+          "Fog": {
+            "color": [
+              "#6a6a70"
+            ],
+            "density": [
+              0.02
+            ],
+            "enabled": [
+              true
+            ]
+          },
+          "PostEffects": {
+            "chromaticAberration": [
+              0
+            ],
+            "filmGrain": [
+              0
+            ],
+            "vignette": [
+              true
+            ],
+            "vignetteIntensity": [
+              0.5
+            ]
+          },
+          "RenderSettings": {
+            "adaptSpeedDown": [
+              0
+            ],
+            "adaptSpeedUp": [
+              0
+            ],
+            "autoExposure": [
+              false
+            ],
+            "bloom": [
+              false
+            ],
+            "bloomIntensity": [
+              0.6
+            ],
+            "exposure": [
+              0.8
+            ],
+            "toneMapping": [
+              "agx"
+            ]
+          }
+        },
+        "mood": "dark",
+        "name": null,
+        "ui": "default",
+        "uiSeeds": {
+          "neutral": "#56606b",
+          "primary": "#5b7a99"
+        },
+        "variant": "muted"
+      },
+      "mood": null,
+      "variant": "muted"
+    },
+    {
+      "look": {
+        "antialias": null,
+        "blocks": {
+          "ArtCamera": {
+            "projection": [
+              "any"
+            ]
+          },
+          "ArtShape": {
+            "characterFaces": [
+              10000
+            ]
+          },
+          "ArtTexels": {
+            "density": [
+              0
+            ],
+            "filter": [
+              "any"
+            ],
+            "mips": [
+              "any"
+            ]
+          },
+          "Fog": {
+            "color": [
+              "#a4a4aa"
+            ],
+            "density": [
+              0.02
+            ],
+            "enabled": [
+              true
+            ]
+          },
+          "PostEffects": {
+            "brightness": [
+              0.03
+            ],
+            "chromaticAberration": [
+              0
+            ],
+            "filmGrain": [
+              0
+            ],
+            "saturation": [
+              0.12
+            ],
+            "temperature": [
+              0.05
+            ],
+            "vignette": [
+              true
+            ],
+            "vignetteIntensity": [
+              0.5
+            ]
+          },
+          "RenderSettings": {
+            "adaptSpeedDown": [
+              0
+            ],
+            "adaptSpeedUp": [
+              0
+            ],
+            "autoExposure": [
+              false
+            ],
+            "bloom": [
+              false
+            ],
+            "bloomIntensity": [
+              0.6
+            ],
+            "environmentIntensity": [
+              0.75
+            ],
+            "exposure": [
+              1.2
+            ],
+            "toneMapping": [
+              "agx"
+            ]
+          }
+        },
+        "mood": "bright",
+        "name": null,
+        "ui": "default",
+        "uiSeeds": {
+          "neutral": "#56606b",
+          "primary": "#5b7a99"
+        },
+        "variant": "muted"
+      },
+      "mood": "bright",
+      "variant": "muted"
+    },
+    {
+      "look": {
+        "antialias": null,
+        "blocks": {
+          "ArtCamera": {
+            "projection": [
+              "any"
+            ]
+          },
+          "ArtShape": {
+            "characterFaces": [
+              10000
+            ]
+          },
+          "ArtTexels": {
+            "density": [
+              0
+            ],
+            "filter": [
+              "any"
+            ],
+            "mips": [
+              "any"
+            ]
+          },
+          "Fog": {
+            "color": [
+              "#6a6a70"
+            ],
+            "density": [
+              0.02
+            ],
+            "enabled": [
+              true
+            ]
+          },
+          "PostEffects": {
+            "chromaticAberration": [
+              0
+            ],
+            "filmGrain": [
+              0
+            ],
+            "vignette": [
+              true
+            ],
+            "vignetteIntensity": [
+              0.5
+            ]
+          },
+          "RenderSettings": {
+            "adaptSpeedDown": [
+              0
+            ],
+            "adaptSpeedUp": [
+              0
+            ],
+            "autoExposure": [
+              false
+            ],
+            "bloom": [
+              false
+            ],
+            "bloomIntensity": [
+              0.6
+            ],
+            "exposure": [
+              0.8
+            ],
+            "toneMapping": [
+              "agx"
+            ]
+          }
+        },
+        "mood": "dark",
+        "name": null,
+        "ui": "default",
+        "uiSeeds": {
+          "neutral": "#56606b",
+          "primary": "#5b7a99"
+        },
+        "variant": "muted"
+      },
+      "mood": "dark",
+      "variant": "muted"
+    },
+    {
+      "look": {
+        "antialias": null,
+        "blocks": {
+          "ArtCamera": {
+            "projection": [
+              "any"
+            ]
+          },
+          "ArtShape": {
+            "characterFaces": [
+              10000
+            ]
+          },
+          "ArtTexels": {
+            "density": [
+              0
+            ],
+            "filter": [
+              "any"
+            ],
+            "mips": [
+              "any"
+            ]
+          },
+          "Fog": {
+            "color": [
+              "#6a6a70"
+            ],
+            "density": [
+              0.02
+            ],
+            "enabled": [
+              true
+            ]
+          },
+          "PostEffects": {
+            "balanceHighlights": [
+              0.04,
+              0,
+              -0.04
+            ],
+            "chromaticAberration": [
+              0
+            ],
+            "filmGrain": [
+              0
+            ],
+            "saturation": [
+              0.08
+            ],
+            "temperature": [
+              0.3
+            ],
+            "tint": [
+              0.03
+            ],
+            "vignette": [
+              true
+            ],
+            "vignetteIntensity": [
+              0.5
+            ]
+          },
+          "RenderSettings": {
+            "adaptSpeedDown": [
+              0
+            ],
+            "adaptSpeedUp": [
+              0
+            ],
+            "autoExposure": [
+              false
+            ],
+            "bloom": [
+              false
+            ],
+            "bloomIntensity": [
+              0.6
+            ],
+            "exposure": [
+              0.84
+            ],
+            "toneMapping": [
+              "agx"
+            ]
+          }
+        },
+        "mood": "warm",
+        "name": null,
+        "ui": "default",
+        "uiSeeds": {
+          "neutral": "#56606b",
+          "primary": "#5b7a99"
+        },
+        "variant": "muted"
+      },
+      "mood": "warm",
+      "variant": "muted"
+    },
+    {
+      "look": {
+        "antialias": null,
+        "blocks": {
+          "ArtCamera": {
+            "projection": [
+              "any"
+            ]
+          },
+          "ArtShape": {
+            "characterFaces": [
+              10000
+            ]
+          },
+          "ArtTexels": {
+            "density": [
+              0
+            ],
+            "filter": [
+              "any"
+            ],
+            "mips": [
+              "any"
+            ]
+          },
+          "Fog": {
+            "color": [
+              "#6a6a70"
+            ],
+            "density": [
+              0.02
+            ],
+            "enabled": [
+              true
+            ]
+          },
+          "PostEffects": {
+            "balanceShadows": [
+              -0.03,
+              0,
+              0.05
+            ],
+            "chromaticAberration": [
+              0
+            ],
+            "filmGrain": [
+              0
+            ],
+            "saturation": [
+              -0.1
+            ],
+            "temperature": [
+              -0.3
+            ],
+            "vignette": [
+              true
+            ],
+            "vignetteIntensity": [
+              0.5
+            ]
+          },
+          "RenderSettings": {
+            "adaptSpeedDown": [
+              0
+            ],
+            "adaptSpeedUp": [
+              0
+            ],
+            "autoExposure": [
+              false
+            ],
+            "bloom": [
+              false
+            ],
+            "bloomIntensity": [
+              0.6
+            ],
+            "exposure": [
+              0.76
+            ],
+            "toneMapping": [
+              "agx"
+            ]
+          }
+        },
+        "mood": "cold",
+        "name": null,
+        "ui": "default",
+        "uiSeeds": {
+          "neutral": "#56606b",
+          "primary": "#5b7a99"
+        },
+        "variant": "muted"
+      },
+      "mood": "cold",
+      "variant": "muted"
+    },
+    {
+      "look": {
+        "antialias": null,
+        "blocks": {
+          "ArtCamera": {
+            "projection": [
+              "any"
+            ]
+          },
+          "ArtShape": {
+            "characterFaces": [
+              10000
+            ]
+          },
+          "ArtTexels": {
+            "density": [
+              0
+            ],
+            "filter": [
+              "any"
+            ],
+            "mips": [
+              "any"
+            ]
+          },
+          "Fog": {
+            "color": [
+              "#8c8c92"
+            ],
+            "density": [
+              0.02
+            ],
+            "enabled": [
+              true
+            ]
+          },
+          "PostEffects": {
+            "brightness": [
+              0.05
+            ],
+            "chromaticAberration": [
+              0
+            ],
+            "contrast": [
+              -0.32
+            ],
+            "filmGrain": [
+              0
+            ],
+            "saturation": [
+              -0.1
+            ],
+            "vignette": [
+              true
+            ],
+            "vignetteIntensity": [
+              0.5
+            ]
+          },
+          "RenderSettings": {
+            "adaptSpeedDown": [
+              0
+            ],
+            "adaptSpeedUp": [
+              0
+            ],
+            "autoExposure": [
+              false
+            ],
+            "bloom": [
+              false
+            ],
+            "bloomIntensity": [
+              0.6
+            ],
+            "environmentIntensity": [
+              0.9
+            ],
+            "exposure": [
+              0.9
+            ],
+            "toneMapping": [
+              "agx"
+            ]
+          }
+        },
+        "mood": "soft",
+        "name": null,
+        "ui": "default",
+        "uiSeeds": {
+          "neutral": "#56606b",
+          "primary": "#5b7a99"
+        },
+        "variant": "muted"
+      },
+      "mood": "soft",
+      "variant": "muted"
+    },
+    {
+      "look": {
+        "antialias": null,
+        "blocks": {
+          "ArtCamera": {
+            "projection": [
+              "any"
+            ]
+          },
+          "ArtShape": {
+            "characterFaces": [
+              10000
+            ]
+          },
+          "ArtTexels": {
+            "density": [
+              0
+            ],
+            "filter": [
+              "any"
+            ],
+            "mips": [
+              "any"
+            ]
+          },
+          "Fog": {
+            "color": [
+              "#6a6a70"
+            ],
+            "density": [
+              0.02
+            ],
+            "enabled": [
+              true
+            ]
+          },
+          "PostEffects": {
+            "chromaticAberration": [
+              0
+            ],
+            "contrast": [
+              0.25
+            ],
+            "filmGrain": [
+              0
+            ],
+            "saturation": [
+              0.12
+            ],
+            "vibrance": [
+              0.1
+            ],
+            "vignette": [
+              true
+            ],
+            "vignetteIntensity": [
+              0.6
+            ]
+          },
+          "RenderSettings": {
+            "adaptSpeedDown": [
+              0
+            ],
+            "adaptSpeedUp": [
+              0
+            ],
+            "autoExposure": [
+              false
+            ],
+            "bloom": [
+              false
+            ],
+            "bloomIntensity": [
+              0.6
+            ],
+            "environmentIntensity": [
+              0.3
+            ],
+            "exposure": [
+              0.8
+            ],
+            "toneMapping": [
+              "agx"
+            ]
+          }
+        },
+        "mood": "high-contrast",
+        "name": null,
+        "ui": "default",
+        "uiSeeds": {
+          "neutral": "#56606b",
+          "primary": "#5b7a99"
+        },
+        "variant": "muted"
+      },
+      "mood": "high-contrast",
+      "variant": "muted"
+    }
+  ],
+  "slug": "cinematic-realism"
+}

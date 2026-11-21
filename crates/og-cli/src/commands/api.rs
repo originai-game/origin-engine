@@ -1,6 +1,7 @@
 //! `og api gen [--wiki]` and `og api check`: the IDL's generated files
 //! (crates/og-api/README.md), including the wiki the knowledge package ships
-//! (`packages/knowledge/wiki/`).
+//! (`packages/knowledge/wiki/`), and the look presets flattened by og-cook
+//! for its art brief (`packages/knowledge/presets/`).
 
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
@@ -85,6 +86,40 @@ fn api_gen(root: &Path, wiki: bool) -> ExitCode {
         {
             eprintln!("og api gen: {path}: {e}");
             return ExitCode::FAILURE;
+        }
+    }
+    // The flattened look presets the art brief reads.
+    if !wiki {
+        let presets = match presets(root) {
+            Ok(p) => p,
+            Err(e) => {
+                eprintln!("og api gen: {e}");
+                return ExitCode::FAILURE;
+            }
+        };
+        for (path, text) in &presets.files {
+            if std::fs::read_to_string(root.join(path)).ok().as_deref() != Some(text.as_str()) {
+                if let Err(e) = std::fs::create_dir_all(root.join(PRESETS_DIR))
+                    .and_then(|()| std::fs::write(root.join(path), text))
+                {
+                    eprintln!("og api gen: cannot write {path}: {e}");
+                    return ExitCode::FAILURE;
+                }
+                println!("wrote {path}");
+            }
+        }
+        for path in &presets.stale {
+            let stale = root.join(path);
+            let removed = if stale.is_dir() {
+                std::fs::remove_dir_all(&stale)
+            } else {
+                std::fs::remove_file(&stale)
+            };
+            if let Err(e) = removed {
+                eprintln!("og api gen: cannot remove the stale preset {path}: {e}");
+                return ExitCode::FAILURE;
+            }
+            println!("removed {path}");
         }
     }
     // The written guides (the component catalogue from og-ui's schema, the
@@ -183,6 +218,33 @@ fn ui_declarations(root: &Path) -> Result<Vec<og_idl::Generated>, String> {
     og_idl::ui_declarations(root, &tsrs.path)
 }
 
+/// Where `og api gen` writes the flattened look presets: the knowledge
+/// package's `presets/` (og-cook's `look::preset_documents`).
+const PRESETS_DIR: &str = "packages/knowledge/presets";
+
+/// The preset files `og api gen` writes, as (path, text), and the files
+/// under [`PRESETS_DIR`] it no longer writes.
+struct Presets {
+    files: Vec<(String, String)>,
+    stale: Vec<String>,
+}
+
+fn presets(root: &Path) -> Result<Presets, String> {
+    let files: Vec<(String, String)> = og_cook::cook::look::preset_documents()?
+        .into_iter()
+        .map(|(name, text)| (format!("{PRESETS_DIR}/{name}"), text))
+        .collect();
+    let mut stale: Vec<String> = std::fs::read_dir(root.join(PRESETS_DIR))
+        .into_iter()
+        .flatten()
+        .flatten()
+        .map(|e| format!("{PRESETS_DIR}/{}", e.file_name().to_string_lossy()))
+        .filter(|p| !files.iter().any(|(f, _)| f == p))
+        .collect();
+    stale.sort();
+    Ok(Presets { files, stale })
+}
+
 /// The guides `og api gen` writes from other sources than the IDL, as (path, text).
 fn written_guides(root: &Path) -> [(&'static str, String); 3] {
     [
@@ -248,15 +310,23 @@ fn api_check(root: &Path) -> ExitCode {
             return ExitCode::FAILURE;
         }
     }
-    let stale: Vec<og_idl::Drift> = written_guides(root)
+    let presets = match presets(root) {
+        Ok(p) => p,
+        Err(e) => {
+            eprintln!("og api check: {e}");
+            return ExitCode::FAILURE;
+        }
+    };
+    let written = written_guides(root)
         .into_iter()
+        .map(|(path, text)| (path.to_string(), text))
+        .chain(presets.files);
+    let stale: Vec<og_idl::Drift> = written
         .filter(|(path, text)| {
             std::fs::read_to_string(root.join(path)).ok().as_deref() != Some(text.as_str())
         })
-        .map(|(path, _)| og_idl::Drift::Differs {
-            path: path.into(),
-            line: 1,
-        })
+        .map(|(path, _)| og_idl::Drift::Differs { path, line: 1 })
+        .chain(presets.stale.into_iter().map(og_idl::Drift::Unexpected))
         .collect();
     let ui = match ui_declarations(root) {
         Ok(ui) => ui,

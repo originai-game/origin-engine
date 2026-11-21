@@ -1,0 +1,656 @@
+{
+  "about": "The look preset pixel-3d-hybrid flattened by og-cook's look step for each variant and mood a game's look may ask of it (`og api gen` writes it from templates/looks; never edit it).",
+  "looks": [
+    {
+      "look": {
+        "antialias": "off",
+        "blocks": {
+          "ArtCamera": {
+            "projection": [
+              "perspective"
+            ]
+          },
+          "ArtPalette": {
+            "maxColors": [
+              64
+            ]
+          },
+          "ArtPixels": {
+            "logicalHeight": [
+              240
+            ],
+            "rotation": [
+              "cleanEdge"
+            ],
+            "snap": [
+              true
+            ],
+            "spriteSizes": [
+              48,
+              64
+            ],
+            "unit": [
+              32
+            ]
+          },
+          "ArtShape": {
+            "propFaces": [
+              20000
+            ]
+          },
+          "PostEffects": {
+            "depthOfField": [
+              true
+            ],
+            "dofFalloff": [
+              2
+            ],
+            "dofMaxBlur": [
+              0.01
+            ],
+            "dofQuality": [
+              "low"
+            ],
+            "dofTiltShift": [
+              0.14
+            ]
+          },
+          "Stylise": {
+            "dither": [
+              "bayer4"
+            ],
+            "pixelHeight": [
+              240
+            ],
+            "pixelSnap": [
+              true
+            ],
+            "posterize": [
+              10
+            ]
+          }
+        },
+        "mood": "warm",
+        "name": null,
+        "ui": "fantasy",
+        "uiSeeds": {},
+        "variant": null
+      },
+      "mood": null,
+      "variant": null
+    },
+    {
+      "look": {
+        "antialias": "off",
+        "blocks": {
+          "ArtCamera": {
+            "projection": [
+              "perspective"
+            ]
+          },
+          "ArtPalette": {
+            "maxColors": [
+              64
+            ]
+          },
+          "ArtPixels": {
+            "logicalHeight": [
+              240
+            ],
+            "rotation": [
+              "cleanEdge"
+            ],
+            "snap": [
+              true
+            ],
+            "spriteSizes": [
+              48,
+              64
+            ],
+            "unit": [
+              32
+            ]
+          },
+          "ArtShape": {
+            "propFaces": [
+              20000
+            ]
+          },
+          "PostEffects": {
+            "brightness": [
+              0.02
+            ],
+            "contrast": [
+              0.04
+            ],
+            "depthOfField": [
+              true
+            ],
+            "dofFalloff": [
+              2
+            ],
+            "dofMaxBlur": [
+              0.01
+            ],
+            "dofQuality": [
+              "low"
+            ],
+            "dofTiltShift": [
+              0.14
+            ],
+            "saturation": [
+              0.15
+            ],
+            "temperature": [
+              0.06
+            ],
+            "vibrance": [
+              0.15
+            ]
+          },
+          "RenderSettings": {
+            "environmentIntensity": [
+              0.7
+            ],
+            "exposure": [
+              1.12
+            ]
+          },
+          "Stylise": {
+            "dither": [
+              "bayer4"
+            ],
+            "pixelHeight": [
+              240
+            ],
+            "pixelSnap": [
+              true
+            ],
+            "posterize": [
+              10
+            ]
+          }
+        },
+        "mood": "bright",
+        "name": null,
+        "ui": "fantasy",
+        "uiSeeds": {},
+        "variant": null
+      },
+      "mood": "bright",
+      "variant": null
+    },
+    {
+      "look": {
+        "antialias": "off",
+        "blocks": {
+          "ArtCamera": {
+            "projection": [
+              "perspective"
+            ]
+          },
+          "ArtPalette": {
+            "maxColors": [
+              64
+            ]
+          },
+          "ArtPixels": {
+            "logicalHeight": [
+              240
+            ],
+            "rotation": [
+              "cleanEdge"
+            ],
+            "snap": [
+              true
+            ],
+            "spriteSizes": [
+              48,
+              64
+            ],
+            "unit": [
+              32
+            ]
+          },
+          "ArtShape": {
+            "propFaces": [
+              20000
+            ]
+          },
+          "PostEffects": {
+            "balanceShadows": [
+              -0.02,
+              0,
+              0.04
+            ],
+            "contrast": [
+              0.12
+            ],
+            "depthOfField": [
+              true
+            ],
+            "dofFalloff": [
+              2
+            ],
+            "dofMaxBlur": [
+              0.01
+            ],
+            "dofQuality": [
+              "low"
+            ],
+            "dofTiltShift": [
+              0.14
+            ],
+            "saturation": [
+              -0.2
+            ],
+            "temperature": [
+              -0.06
+            ],
+            "vignette": [
+              true
+            ],
+            "vignetteIntensity": [
+              0.55
+            ]
+          },
+          "RenderSettings": {
+            "environmentIntensity": [
+              0.35
+            ],
+            "exposure": [
+              0.72
+            ]
+          },
+          "Stylise": {
+            "dither": [
+              "bayer4"
+            ],
+            "pixelHeight": [
+              240
+            ],
+            "pixelSnap": [
+              true
+            ],
+            "posterize": [
+              10
+            ]
+          }
+        },
+        "mood": "dark",
+        "name": null,
+        "ui": "fantasy",
+        "uiSeeds": {},
+        "variant": null
+      },
+      "mood": "dark",
+      "variant": null
+    },
+    {
+      "look": {
+        "antialias": "off",
+        "blocks": {
+          "ArtCamera": {
+            "projection": [
+              "perspective"
+            ]
+          },
+          "ArtPalette": {
+            "maxColors": [
+              64
+            ]
+          },
+          "ArtPixels": {
+            "logicalHeight": [
+              240
+            ],
+            "rotation": [
+              "cleanEdge"
+            ],
+            "snap": [
+              true
+            ],
+            "spriteSizes": [
+              48,
+              64
+            ],
+            "unit": [
+              32
+            ]
+          },
+          "ArtShape": {
+            "propFaces": [
+              20000
+            ]
+          },
+          "PostEffects": {
+            "depthOfField": [
+              true
+            ],
+            "dofFalloff": [
+              2
+            ],
+            "dofMaxBlur": [
+              0.01
+            ],
+            "dofQuality": [
+              "low"
+            ],
+            "dofTiltShift": [
+              0.14
+            ]
+          },
+          "Stylise": {
+            "dither": [
+              "bayer4"
+            ],
+            "pixelHeight": [
+              240
+            ],
+            "pixelSnap": [
+              true
+            ],
+            "posterize": [
+              10
+            ]
+          }
+        },
+        "mood": "warm",
+        "name": null,
+        "ui": "fantasy",
+        "uiSeeds": {},
+        "variant": null
+      },
+      "mood": "warm",
+      "variant": null
+    },
+    {
+      "look": {
+        "antialias": "off",
+        "blocks": {
+          "ArtCamera": {
+            "projection": [
+              "perspective"
+            ]
+          },
+          "ArtPalette": {
+            "maxColors": [
+              64
+            ]
+          },
+          "ArtPixels": {
+            "logicalHeight": [
+              240
+            ],
+            "rotation": [
+              "cleanEdge"
+            ],
+            "snap": [
+              true
+            ],
+            "spriteSizes": [
+              48,
+              64
+            ],
+            "unit": [
+              32
+            ]
+          },
+          "ArtShape": {
+            "propFaces": [
+              20000
+            ]
+          },
+          "PostEffects": {
+            "balanceShadows": [
+              -0.03,
+              0,
+              0.05
+            ],
+            "depthOfField": [
+              true
+            ],
+            "dofFalloff": [
+              2
+            ],
+            "dofMaxBlur": [
+              0.01
+            ],
+            "dofQuality": [
+              "low"
+            ],
+            "dofTiltShift": [
+              0.14
+            ],
+            "saturation": [
+              -0.1
+            ],
+            "temperature": [
+              -0.3
+            ]
+          },
+          "RenderSettings": {
+            "exposure": [
+              0.96
+            ]
+          },
+          "Stylise": {
+            "dither": [
+              "bayer4"
+            ],
+            "pixelHeight": [
+              240
+            ],
+            "pixelSnap": [
+              true
+            ],
+            "posterize": [
+              10
+            ]
+          }
+        },
+        "mood": "cold",
+        "name": null,
+        "ui": "fantasy",
+        "uiSeeds": {},
+        "variant": null
+      },
+      "mood": "cold",
+      "variant": null
+    },
+    {
+      "look": {
+        "antialias": "off",
+        "blocks": {
+          "ArtCamera": {
+            "projection": [
+              "perspective"
+            ]
+          },
+          "ArtPalette": {
+            "maxColors": [
+              64
+            ]
+          },
+          "ArtPixels": {
+            "logicalHeight": [
+              240
+            ],
+            "rotation": [
+              "cleanEdge"
+            ],
+            "snap": [
+              true
+            ],
+            "spriteSizes": [
+              48,
+              64
+            ],
+            "unit": [
+              32
+            ]
+          },
+          "ArtShape": {
+            "propFaces": [
+              20000
+            ]
+          },
+          "PostEffects": {
+            "brightness": [
+              0.03
+            ],
+            "contrast": [
+              -0.18
+            ],
+            "depthOfField": [
+              true
+            ],
+            "dofFalloff": [
+              2
+            ],
+            "dofMaxBlur": [
+              0.01
+            ],
+            "dofQuality": [
+              "low"
+            ],
+            "dofTiltShift": [
+              0.14
+            ],
+            "saturation": [
+              -0.12
+            ],
+            "vibrance": [
+              0.05
+            ]
+          },
+          "RenderSettings": {
+            "environmentIntensity": [
+              0.8
+            ]
+          },
+          "Stylise": {
+            "dither": [
+              "bayer4"
+            ],
+            "pixelHeight": [
+              240
+            ],
+            "pixelSnap": [
+              true
+            ],
+            "posterize": [
+              10
+            ]
+          }
+        },
+        "mood": "soft",
+        "name": null,
+        "ui": "fantasy",
+        "uiSeeds": {},
+        "variant": null
+      },
+      "mood": "soft",
+      "variant": null
+    },
+    {
+      "look": {
+        "antialias": "off",
+        "blocks": {
+          "ArtCamera": {
+            "projection": [
+              "perspective"
+            ]
+          },
+          "ArtPalette": {
+            "maxColors": [
+              64
+            ]
+          },
+          "ArtPixels": {
+            "logicalHeight": [
+              240
+            ],
+            "rotation": [
+              "cleanEdge"
+            ],
+            "snap": [
+              true
+            ],
+            "spriteSizes": [
+              48,
+              64
+            ],
+            "unit": [
+              32
+            ]
+          },
+          "ArtShape": {
+            "propFaces": [
+              20000
+            ]
+          },
+          "PostEffects": {
+            "contrast": [
+              0.25
+            ],
+            "depthOfField": [
+              true
+            ],
+            "dofFalloff": [
+              2
+            ],
+            "dofMaxBlur": [
+              0.01
+            ],
+            "dofQuality": [
+              "low"
+            ],
+            "dofTiltShift": [
+              0.14
+            ],
+            "saturation": [
+              0.12
+            ],
+            "vibrance": [
+              0.1
+            ],
+            "vignette": [
+              true
+            ],
+            "vignetteIntensity": [
+              0.45
+            ]
+          },
+          "RenderSettings": {
+            "environmentIntensity": [
+              0.3
+            ]
+          },
+          "Stylise": {
+            "dither": [
+              "bayer4"
+            ],
+            "pixelHeight": [
+              240
+            ],
+            "pixelSnap": [
+              true
+            ],
+            "posterize": [
+              10
+            ]
+          }
+        },
+        "mood": "high-contrast",
+        "name": null,
+        "ui": "fantasy",
+        "uiSeeds": {},
+        "variant": null
+      },
+      "mood": "high-contrast",
+      "variant": null
+    }
+  ],
+  "slug": "pixel-3d-hybrid"
+}

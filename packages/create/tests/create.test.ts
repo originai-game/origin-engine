@@ -199,8 +199,6 @@ test("the packed package creates the same skeleton, and briefs with the engine's
   const installed = join(scratch, "dist", "create");
   const knowledge = join(scratch, "dist", "engine", "knowledge");
   const source = join(pkg, "..", "knowledge");
-  const packedKnowledge = Bun.spawnSync(["bun", "scripts/pack.ts"], { cwd: source });
-  expect(packedKnowledge.exitCode, new TextDecoder().decode(packedKnowledge.stderr)).toBe(0);
   for (const part of [...JSON.parse(readFileSync(join(source, "package.json"), "utf8")).files, "package.json"]) cpSync(join(source, part), join(knowledge, part), { recursive: true });
   const manifest = JSON.parse(readFileSync(join(pkg, "package.json"), "utf8"));
   expect(manifest.files).not.toContain("archetypes");

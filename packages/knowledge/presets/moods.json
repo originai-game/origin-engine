@@ -1,0 +1,224 @@
+{
+  "about": "Each mood's layer as og-cook's look step lays it under a look whose chain reaches no preset (`og api gen` writes it from templates/looks/moods; never edit it).",
+  "looks": [
+    {
+      "look": {
+        "antialias": null,
+        "blocks": {
+          "PostEffects": {
+            "brightness": [
+              0.02
+            ],
+            "contrast": [
+              0.04
+            ],
+            "saturation": [
+              0.15
+            ],
+            "temperature": [
+              0.06
+            ],
+            "vibrance": [
+              0.15
+            ]
+          },
+          "RenderSettings": {
+            "environmentIntensity": [
+              0.7
+            ],
+            "exposure": [
+              1.12
+            ]
+          }
+        },
+        "mood": "bright",
+        "name": null,
+        "ui": null,
+        "uiSeeds": {},
+        "variant": null
+      },
+      "mood": "bright",
+      "variant": null
+    },
+    {
+      "look": {
+        "antialias": null,
+        "blocks": {
+          "PostEffects": {
+            "balanceShadows": [
+              -0.02,
+              0,
+              0.04
+            ],
+            "contrast": [
+              0.12
+            ],
+            "saturation": [
+              -0.2
+            ],
+            "temperature": [
+              -0.06
+            ],
+            "vignette": [
+              true
+            ],
+            "vignetteIntensity": [
+              0.55
+            ]
+          },
+          "RenderSettings": {
+            "environmentIntensity": [
+              0.35
+            ],
+            "exposure": [
+              0.72
+            ]
+          }
+        },
+        "mood": "dark",
+        "name": null,
+        "ui": null,
+        "uiSeeds": {},
+        "variant": null
+      },
+      "mood": "dark",
+      "variant": null
+    },
+    {
+      "look": {
+        "antialias": null,
+        "blocks": {
+          "PostEffects": {
+            "balanceHighlights": [
+              0.04,
+              0,
+              -0.04
+            ],
+            "saturation": [
+              0.08
+            ],
+            "temperature": [
+              0.3
+            ],
+            "tint": [
+              0.03
+            ]
+          },
+          "RenderSettings": {
+            "exposure": [
+              1.04
+            ]
+          }
+        },
+        "mood": "warm",
+        "name": null,
+        "ui": null,
+        "uiSeeds": {},
+        "variant": null
+      },
+      "mood": "warm",
+      "variant": null
+    },
+    {
+      "look": {
+        "antialias": null,
+        "blocks": {
+          "PostEffects": {
+            "balanceShadows": [
+              -0.03,
+              0,
+              0.05
+            ],
+            "saturation": [
+              -0.1
+            ],
+            "temperature": [
+              -0.3
+            ]
+          },
+          "RenderSettings": {
+            "exposure": [
+              0.96
+            ]
+          }
+        },
+        "mood": "cold",
+        "name": null,
+        "ui": null,
+        "uiSeeds": {},
+        "variant": null
+      },
+      "mood": "cold",
+      "variant": null
+    },
+    {
+      "look": {
+        "antialias": null,
+        "blocks": {
+          "PostEffects": {
+            "brightness": [
+              0.03
+            ],
+            "contrast": [
+              -0.18
+            ],
+            "saturation": [
+              -0.12
+            ],
+            "vibrance": [
+              0.05
+            ]
+          },
+          "RenderSettings": {
+            "environmentIntensity": [
+              0.8
+            ]
+          }
+        },
+        "mood": "soft",
+        "name": null,
+        "ui": null,
+        "uiSeeds": {},
+        "variant": null
+      },
+      "mood": "soft",
+      "variant": null
+    },
+    {
+      "look": {
+        "antialias": null,
+        "blocks": {
+          "PostEffects": {
+            "contrast": [
+              0.25
+            ],
+            "saturation": [
+              0.12
+            ],
+            "vibrance": [
+              0.1
+            ],
+            "vignette": [
+              true
+            ],
+            "vignetteIntensity": [
+              0.45
+            ]
+          },
+          "RenderSettings": {
+            "environmentIntensity": [
+              0.3
+            ]
+          }
+        },
+        "mood": "high-contrast",
+        "name": null,
+        "ui": null,
+        "uiSeeds": {},
+        "variant": null
+      },
+      "mood": "high-contrast",
+      "variant": null
+    }
+  ]
+}

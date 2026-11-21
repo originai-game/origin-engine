@@ -1,0 +1,582 @@
+{
+  "about": "The look preset neon-vector flattened by og-cook's look step for each variant and mood a game's look may ask of it (`og api gen` writes it from templates/looks; never edit it).",
+  "looks": [
+    {
+      "look": {
+        "antialias": null,
+        "blocks": {
+          "ArtPalette": {
+            "maxColors": [
+              5
+            ]
+          },
+          "MaterialStyle": {
+            "outlineColor": [
+              "#40f0ff"
+            ],
+            "outlineWidth": [
+              2
+            ],
+            "wireframe": [
+              true
+            ],
+            "wireframeAngle": [
+              30
+            ]
+          },
+          "RenderSettings": {
+            "bloom": [
+              true
+            ],
+            "bloomIntensity": [
+              1.2
+            ],
+            "bloomThreshold": [
+              0.6
+            ],
+            "environmentIntensity": [
+              0.05
+            ],
+            "toneMapping": [
+              "agx"
+            ]
+          },
+          "Sky": {
+            "enabled": [
+              true
+            ],
+            "ground": [
+              0,
+              0,
+              0
+            ],
+            "horizon": [
+              0.004,
+              0.002,
+              0.01
+            ],
+            "zenith": [
+              0,
+              0,
+              0
+            ]
+          }
+        },
+        "mood": "dark",
+        "name": null,
+        "ui": "scifi",
+        "uiSeeds": {},
+        "variant": null
+      },
+      "mood": null,
+      "variant": null
+    },
+    {
+      "look": {
+        "antialias": null,
+        "blocks": {
+          "ArtPalette": {
+            "maxColors": [
+              5
+            ]
+          },
+          "MaterialStyle": {
+            "outlineColor": [
+              "#40f0ff"
+            ],
+            "outlineWidth": [
+              2
+            ],
+            "wireframe": [
+              true
+            ],
+            "wireframeAngle": [
+              30
+            ]
+          },
+          "PostEffects": {
+            "brightness": [
+              0.02
+            ],
+            "contrast": [
+              0.04
+            ],
+            "saturation": [
+              0.15
+            ],
+            "temperature": [
+              0.06
+            ],
+            "vibrance": [
+              0.15
+            ]
+          },
+          "RenderSettings": {
+            "bloom": [
+              true
+            ],
+            "bloomIntensity": [
+              1.2
+            ],
+            "bloomThreshold": [
+              0.6
+            ],
+            "environmentIntensity": [
+              0.2
+            ],
+            "exposure": [
+              1.12
+            ],
+            "toneMapping": [
+              "agx"
+            ]
+          },
+          "Sky": {
+            "enabled": [
+              true
+            ],
+            "ground": [
+              0,
+              0,
+              0
+            ],
+            "horizon": [
+              0.004,
+              0.002,
+              0.01
+            ],
+            "zenith": [
+              0,
+              0,
+              0
+            ]
+          }
+        },
+        "mood": "bright",
+        "name": null,
+        "ui": "scifi",
+        "uiSeeds": {},
+        "variant": null
+      },
+      "mood": "bright",
+      "variant": null
+    },
+    {
+      "look": {
+        "antialias": null,
+        "blocks": {
+          "ArtPalette": {
+            "maxColors": [
+              5
+            ]
+          },
+          "MaterialStyle": {
+            "outlineColor": [
+              "#40f0ff"
+            ],
+            "outlineWidth": [
+              2
+            ],
+            "wireframe": [
+              true
+            ],
+            "wireframeAngle": [
+              30
+            ]
+          },
+          "RenderSettings": {
+            "bloom": [
+              true
+            ],
+            "bloomIntensity": [
+              1.2
+            ],
+            "bloomThreshold": [
+              0.6
+            ],
+            "environmentIntensity": [
+              0.05
+            ],
+            "toneMapping": [
+              "agx"
+            ]
+          },
+          "Sky": {
+            "enabled": [
+              true
+            ],
+            "ground": [
+              0,
+              0,
+              0
+            ],
+            "horizon": [
+              0.004,
+              0.002,
+              0.01
+            ],
+            "zenith": [
+              0,
+              0,
+              0
+            ]
+          }
+        },
+        "mood": "dark",
+        "name": null,
+        "ui": "scifi",
+        "uiSeeds": {},
+        "variant": null
+      },
+      "mood": "dark",
+      "variant": null
+    },
+    {
+      "look": {
+        "antialias": null,
+        "blocks": {
+          "ArtPalette": {
+            "maxColors": [
+              5
+            ]
+          },
+          "MaterialStyle": {
+            "outlineColor": [
+              "#40f0ff"
+            ],
+            "outlineWidth": [
+              2
+            ],
+            "wireframe": [
+              true
+            ],
+            "wireframeAngle": [
+              30
+            ]
+          },
+          "PostEffects": {
+            "balanceHighlights": [
+              0.04,
+              0,
+              -0.04
+            ],
+            "saturation": [
+              0.08
+            ],
+            "temperature": [
+              0.3
+            ],
+            "tint": [
+              0.03
+            ]
+          },
+          "RenderSettings": {
+            "bloom": [
+              true
+            ],
+            "bloomIntensity": [
+              1.2
+            ],
+            "bloomThreshold": [
+              0.6
+            ],
+            "environmentIntensity": [
+              0.05
+            ],
+            "exposure": [
+              1.04
+            ],
+            "toneMapping": [
+              "agx"
+            ]
+          },
+          "Sky": {
+            "enabled": [
+              true
+            ],
+            "ground": [
+              0,
+              0,
+              0
+            ],
+            "horizon": [
+              0.004,
+              0.002,
+              0.01
+            ],
+            "zenith": [
+              0,
+              0,
+              0
+            ]
+          }
+        },
+        "mood": "warm",
+        "name": null,
+        "ui": "scifi",
+        "uiSeeds": {},
+        "variant": null
+      },
+      "mood": "warm",
+      "variant": null
+    },
+    {
+      "look": {
+        "antialias": null,
+        "blocks": {
+          "ArtPalette": {
+            "maxColors": [
+              5
+            ]
+          },
+          "MaterialStyle": {
+            "outlineColor": [
+              "#40f0ff"
+            ],
+            "outlineWidth": [
+              2
+            ],
+            "wireframe": [
+              true
+            ],
+            "wireframeAngle": [
+              30
+            ]
+          },
+          "PostEffects": {
+            "balanceShadows": [
+              -0.03,
+              0,
+              0.05
+            ],
+            "saturation": [
+              -0.1
+            ],
+            "temperature": [
+              -0.3
+            ]
+          },
+          "RenderSettings": {
+            "bloom": [
+              true
+            ],
+            "bloomIntensity": [
+              1.2
+            ],
+            "bloomThreshold": [
+              0.6
+            ],
+            "environmentIntensity": [
+              0.05
+            ],
+            "exposure": [
+              0.96
+            ],
+            "toneMapping": [
+              "agx"
+            ]
+          },
+          "Sky": {
+            "enabled": [
+              true
+            ],
+            "ground": [
+              0,
+              0,
+              0
+            ],
+            "horizon": [
+              0.004,
+              0.002,
+              0.01
+            ],
+            "zenith": [
+              0,
+              0,
+              0
+            ]
+          }
+        },
+        "mood": "cold",
+        "name": null,
+        "ui": "scifi",
+        "uiSeeds": {},
+        "variant": null
+      },
+      "mood": "cold",
+      "variant": null
+    },
+    {
+      "look": {
+        "antialias": null,
+        "blocks": {
+          "ArtPalette": {
+            "maxColors": [
+              5
+            ]
+          },
+          "MaterialStyle": {
+            "outlineColor": [
+              "#40f0ff"
+            ],
+            "outlineWidth": [
+              2
+            ],
+            "wireframe": [
+              true
+            ],
+            "wireframeAngle": [
+              30
+            ]
+          },
+          "PostEffects": {
+            "brightness": [
+              0.03
+            ],
+            "contrast": [
+              -0.18
+            ],
+            "saturation": [
+              -0.12
+            ],
+            "vibrance": [
+              0.05
+            ]
+          },
+          "RenderSettings": {
+            "bloom": [
+              true
+            ],
+            "bloomIntensity": [
+              1.2
+            ],
+            "bloomThreshold": [
+              0.6
+            ],
+            "environmentIntensity": [
+              0.3
+            ],
+            "toneMapping": [
+              "agx"
+            ]
+          },
+          "Sky": {
+            "enabled": [
+              true
+            ],
+            "ground": [
+              0,
+              0,
+              0
+            ],
+            "horizon": [
+              0.004,
+              0.002,
+              0.01
+            ],
+            "zenith": [
+              0,
+              0,
+              0
+            ]
+          }
+        },
+        "mood": "soft",
+        "name": null,
+        "ui": "scifi",
+        "uiSeeds": {},
+        "variant": null
+      },
+      "mood": "soft",
+      "variant": null
+    },
+    {
+      "look": {
+        "antialias": null,
+        "blocks": {
+          "ArtPalette": {
+            "maxColors": [
+              5
+            ]
+          },
+          "MaterialStyle": {
+            "outlineColor": [
+              "#40f0ff"
+            ],
+            "outlineWidth": [
+              2
+            ],
+            "wireframe": [
+              true
+            ],
+            "wireframeAngle": [
+              30
+            ]
+          },
+          "PostEffects": {
+            "contrast": [
+              0.25
+            ],
+            "saturation": [
+              0.12
+            ],
+            "vibrance": [
+              0.1
+            ],
+            "vignette": [
+              true
+            ],
+            "vignetteIntensity": [
+              0.45
+            ]
+          },
+          "RenderSettings": {
+            "bloom": [
+              true
+            ],
+            "bloomIntensity": [
+              1.2
+            ],
+            "bloomThreshold": [
+              0.6
+            ],
+            "environmentIntensity": [
+              0
+            ],
+            "toneMapping": [
+              "agx"
+            ]
+          },
+          "Sky": {
+            "enabled": [
+              true
+            ],
+            "ground": [
+              0,
+              0,
+              0
+            ],
+            "horizon": [
+              0.004,
+              0.002,
+              0.01
+            ],
+            "zenith": [
+              0,
+              0,
+              0
+            ]
+          }
+        },
+        "mood": "high-contrast",
+        "name": null,
+        "ui": "scifi",
+        "uiSeeds": {},
+        "variant": null
+      },
+      "mood": "high-contrast",
+      "variant": null
+    }
+  ],
+  "slug": "neon-vector"
+}

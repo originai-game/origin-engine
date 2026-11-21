@@ -1,0 +1,10 @@
+{
+  "breaking": [
+    {
+      "member": "knowledge/presets/",
+      "change": "The engine package's knowledge/presets/ holds the look presets as og-cook's look step flattened them, not their source: `<slug>.json` lists the preset as a game's look asking for each of its variants (or none) in each mood (or its own), each `{ variant, mood, look: { name, mood, variant, ui, antialias, uiSeeds, blocks } }` with every field's values as written; `moods.json` holds each mood's layer under a look that reaches no preset, and `palettes.json` the built-in palettes' text by file name. The `.ogt` presets and their `assets/palettes/`, `moods/` and `variants/` directories are gone from it. The art brief (`readLook`, `presetLook`, whose signatures are unchanged) reads these files, so it can no longer disagree with the cook: a look that reaches no preset and asks a mood now gets the mood's layer, as the cook gives it. `ReadLookOptions.presets` names a directory of this shape.",
+      "fix": "Read `knowledge/presets/<slug>.json` and pick the entry whose `variant` and `mood` are the ones asked (null for none), or call `presetLook(slug, { variant, mood })`, which does. A `presets` option pointing at a copy of templates/looks points at knowledge/presets instead.",
+      "find": ["knowledge/presets", "presetsDir"]
+    }
+  ]
+}

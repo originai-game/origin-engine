@@ -1,0 +1,20 @@
+{
+  "about": "The engine's built-in palettes (`@palettes/<name>` in a look), each file's text by name (`og api gen` writes it from templates/looks/assets/palettes; never edit it).",
+  "palettes": {
+    "1bit-bright.hex": "; One bit in a bright mood: a lifted charcoal ink and white.\n; The engine's built-in palette @palettes/1bit-bright (templates/looks/assets/generate.ts), CC0.\n3a3a44\nffffff\n",
+    "1bit-cold.hex": "; One bit in a cold mood: a navy ink and pale ice.\n; The engine's built-in palette @palettes/1bit-cold (templates/looks/assets/generate.ts), CC0.\n0b1a2e\nd6ecf5\n",
+    "1bit-dark.hex": "; One bit in a dark mood: black and a dim grey.\n; The engine's built-in palette @palettes/1bit-dark (templates/looks/assets/generate.ts), CC0.\n000000\n8a8a92\n",
+    "1bit-soft.hex": "; One bit in a soft mood: a grey-violet ink and warm off-white, close in value.\n; The engine's built-in palette @palettes/1bit-soft (templates/looks/assets/generate.ts), CC0.\n4a4658\ne9e4dc\n",
+    "1bit-warm.hex": "; One bit in a warm mood: a brown ink and cream paper.\n; The engine's built-in palette @palettes/1bit-warm (templates/looks/assets/generate.ts), CC0.\n2a1408\nf4e2c0\n",
+    "1bit.hex": "; One bit: black and white.\n; The engine's built-in palette @palettes/1bit (templates/looks/assets/generate.ts), CC0.\n000000\nffffff\n",
+    "bright32.hex": "; Thirty-two bright, slightly warm colours for 16-bit-era pixel art: a grey ramp, skin, earth, foliage, water, fire and accents.\n; The engine's built-in palette @palettes/bright32 (templates/looks/assets/generate.ts), CC0.\n16141f\n2c2a3a\n4a4858\n6e6c7a\n9896a0\nc4c2c8\nefedf0\n5c3424\n8e5230\nc47c48\ne8b07c\nf8dcb4\n1e3a2c\n2f6038\n4c9a3c\n8cd048\nd4f070\n1c2a5c\n2a4c98\n3c80d0\n6cbcf0\nb4e8fc\n6c1c2c\nb42c30\ne8582c\nf89c34\nfcd84c\n3c1c58\n7c34a0\nd04ca8\nf490c4\n48d0b0\n",
+    "dusk16.hex": "; Sixteen colours of a dusk: near-black through purples and oranges to cream, and a cool sea ramp.\n; The engine's built-in palette @palettes/dusk16 (templates/looks/assets/generate.ts), CC0.\n100c18\n281838\n482458\n703068\na04068\nc85860\ne88058\nf8b060\nfcd888\nfff4c8\n304860\n407080\n60a098\n98d0b0\nd0f0d0\nffffff\n",
+    "handheld4-bright.hex": "; Four handheld greens in a bright mood: a lifted lime ramp, darkest to lightest.\n; The engine's built-in palette @palettes/handheld4-bright (templates/looks/assets/generate.ts), CC0.\n1f3a1a\n4f8a2e\na8cf45\neef7b0\n",
+    "handheld4-cold.hex": "; Four handheld tones in a cold mood: ice blues, darkest to lightest.\n; The engine's built-in palette @palettes/handheld4-cold (templates/looks/assets/generate.ts), CC0.\n101c2c\n2f4f6e\n6f9bb8\nc8e4ef\n",
+    "handheld4-dark.hex": "; Four handheld greens in a dark mood: deep greens down to near-black, darkest to lightest.\n; The engine's built-in palette @palettes/handheld4-dark (templates/looks/assets/generate.ts), CC0.\n0a120c\n1c3320\n3d6234\n78935a\n",
+    "handheld4-high-contrast.hex": "; Four handheld greens in a high-contrast mood: a near-black ink and a deep green, then two close light greens so a flat sky dithers between near neighbours.\n; The engine's built-in palette @palettes/handheld4-high-contrast (templates/looks/assets/generate.ts), CC0.\n0b0f0a\n2e4a26\nc6de7c\neaf4c4\n",
+    "handheld4-warm.hex": "; Four handheld tones in a warm mood: amber and sepia, darkest to lightest.\n; The engine's built-in palette @palettes/handheld4-warm (templates/looks/assets/generate.ts), CC0.\n2b1a10\n6b4423\nb8823d\nf0d9a0\n",
+    "handheld4.hex": "; Four greens of a green-screen handheld, darkest to lightest.\n; The engine's built-in palette @palettes/handheld4 (templates/looks/assets/generate.ts), CC0.\n14261b\n3d6234\n84a440\nc9da8f\n",
+    "lcd2.hex": "; Two greens of an early monochrome LCD: the dark ink and the lit glass.\n; The engine's built-in palette @palettes/lcd2 (templates/looks/assets/generate.ts), CC0.\n1f3320\na9c27a\n"
+  }
+}

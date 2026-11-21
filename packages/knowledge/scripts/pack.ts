@@ -1,10 +1,9 @@
 // prepack: copies the project template's text files into scaffold/template/
 // so the published package carries the scaffold overlay without the engine
-// repository (binaries stay out: distribution.json names them), and the look
-// presets with their palettes into presets/ (scripts/brief.ts). Both are
-// ignored by Git.
+// repository (binaries stay out: distribution.json names them); it is
+// ignored by Git. presets/ is tracked: og api gen writes it.
 
-import { cpSync, mkdirSync, readdirSync, readFileSync, rmSync } from "node:fs";
+import { cpSync, mkdirSync, readFileSync, rmSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
 import { defaultRoots, isText, PACKAGE_ROOT, TEMPLATE_SKIP, walk } from "./lib.ts";
 
@@ -26,20 +25,3 @@ for (const full of walk(source, TEMPLATE_SKIP)) {
 }
 process.stdout.write(`copied ${n} template text files into scaffold/template/\n`);
 
-// The look presets and the built-in palettes, under presets/: what
-// scripts/brief.ts reads a look's chain and palette from outside the engine
-// repository (templates/looks there). Not mounted for the platform.
-const looks = join(PACKAGE_ROOT, "..", "..", "templates", "looks");
-const presets = join(PACKAGE_ROOT, "presets");
-rmSync(presets, { recursive: true, force: true });
-mkdirSync(join(presets, "assets"), { recursive: true });
-let p = 0;
-for (const name of readdirSync(looks)) {
-  if (!name.endsWith(".ogt")) continue;
-  cpSync(join(looks, name), join(presets, name));
-  p++;
-}
-cpSync(join(looks, "assets", "palettes"), join(presets, "assets", "palettes"), { recursive: true });
-cpSync(join(looks, "moods"), join(presets, "moods"), { recursive: true });
-cpSync(join(looks, "variants"), join(presets, "variants"), { recursive: true });
-process.stdout.write(`copied ${p} look presets, their variants, the moods and the built-in palettes into presets/\n`);

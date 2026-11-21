@@ -425,6 +425,124 @@ fn flatten_asked(
     Ok(merged)
 }
 
+/// The built-in presets flattened, as the knowledge package's `presets/`
+/// carries them for the art brief (`packages/knowledge/scripts/brief.ts`,
+/// docs/art.md §2.2), by file name with its JSON: `<slug>.json` for each
+/// preset, its looks laid as a game's look asking for each variant (none
+/// and every one of the preset's) in each mood (its own and every one of
+/// [`crate::look::MOODS`]); `moods.json`, each mood's layer laid as under a
+/// chain that reaches no preset; and `palettes.json`, the built-in palettes'
+/// text by file name. This flattener is the only one: the brief lays only a
+/// game's own looks over these, field by field.
+pub fn preset_documents() -> Result<Vec<(String, String)>, String> {
+    let entry = |variant: Option<&str>, mood: Option<&str>, look: &LookFile| serde_json::json!({ "variant": variant, "mood": mood, "look": look_json(look) });
+    let asked = |slug: Option<&str>, variant: Option<&str>, mood: Option<&str>| {
+        let mut text = String::from("type look\nversion 1\n---\n");
+        for (key, v) in [("extends", slug), ("variant", variant), ("mood", mood)] {
+            if let Some(v) = v {
+                text.push_str(&format!("{key} \"{v}\"\n"));
+            }
+        }
+        // The asking look's id is the preset's own path, which never
+        // extends itself, so the slug is the built-in preset and no game's.
+        let id = format!("looks/{}.ogt", slug.unwrap_or("asked"));
+        let (mut seen, mut bases) = (vec![id.clone()], Vec::new());
+        flatten(&id, &text, Path::new(""), PRESETS, &mut seen, &mut bases)
+    };
+    let pretty = |v: serde_json::Value| {
+        serde_json::to_string_pretty(&v).expect("JSON values serialise") + "\n"
+    };
+    let mut out = Vec::new();
+    for (slug, _) in PRESETS {
+        let variants = VARIANT_LAYERS.iter().filter(|(s, _, _)| s == slug);
+        let mut looks = Vec::new();
+        for variant in std::iter::once(None).chain(variants.map(|(_, v, _)| Some(*v))) {
+            for mood in std::iter::once(None).chain(crate::look::MOODS.map(Some)) {
+                let look = asked(Some(slug), variant, mood).map_err(|e| format!("{slug}: {e}"))?;
+                looks.push(entry(variant, mood, &look));
+            }
+        }
+        let doc = serde_json::json!({
+            "about": format!("The look preset {slug} flattened by og-cook's look step for each variant and mood a game's look may ask of it (`og api gen` writes it from templates/looks; never edit it)."),
+            "slug": slug,
+            "looks": looks,
+        });
+        out.push((format!("{slug}.json"), pretty(doc)));
+    }
+    let mut moods = Vec::new();
+    for mood in crate::look::MOODS {
+        let look = asked(None, None, Some(mood))?;
+        moods.push(entry(None, Some(mood), &look));
+    }
+    out.push((
+        "moods.json".into(),
+        pretty(serde_json::json!({
+            "about": "Each mood's layer as og-cook's look step lays it under a look whose chain reaches no preset (`og api gen` writes it from templates/looks/moods; never edit it).",
+            "looks": moods,
+        })),
+    ));
+    let mut palettes = serde_json::Map::new();
+    for (id, bytes) in BUILTINS {
+        if let Some(name) = id.strip_prefix("@palettes/") {
+            let text = std::str::from_utf8(bytes).map_err(|_| format!("{id} is not text"))?;
+            palettes.insert(name.into(), text.into());
+        }
+    }
+    out.push((
+        "palettes.json".into(),
+        pretty(serde_json::json!({
+            "about": "The engine's built-in palettes (`@palettes/<name>` in a look), each file's text by name (`og api gen` writes it from templates/looks/assets/palettes; never edit it).",
+            "palettes": palettes,
+        })),
+    ));
+    Ok(out)
+}
+
+/// A flattened look as the presets' JSON holds it: its top-level fields and
+/// its blocks, each field's values as written (numbers, strings, `true` and
+/// `false` as booleans, other words as strings).
+fn look_json(look: &LookFile) -> serde_json::Value {
+    let value = |v: &Value| match v {
+        Value::Number(n) => {
+            let x = n.as_f64();
+            if x.fract() == 0.0 && x.abs() < 9e15 {
+                serde_json::json!(x as i64)
+            } else {
+                serde_json::json!(x)
+            }
+        }
+        Value::String(s) => serde_json::json!(s),
+        Value::Word(w) if w == "true" || w == "false" => serde_json::json!(w == "true"),
+        Value::Word(w) => serde_json::json!(w),
+    };
+    let blocks: serde_json::Map<String, serde_json::Value> = look
+        .blocks
+        .iter()
+        .map(|b| {
+            let fields: serde_json::Map<String, serde_json::Value> = b
+                .fields
+                .iter()
+                .map(|(f, v, _)| (f.clone(), v.iter().map(value).collect()))
+                .collect();
+            (b.resource.clone(), fields.into())
+        })
+        .collect();
+    let seeds: serde_json::Map<String, serde_json::Value> = look
+        .ui_seeds
+        .iter()
+        .map(|(n, h)| (n.clone(), h.clone().into()))
+        .collect();
+    serde_json::json!({
+        "name": look.name,
+        "mood": look.mood,
+        "variant": look.variant,
+        "ui": look.ui,
+        "antialias": look.antialias,
+        "uiSeeds": seeds,
+        "blocks": blocks,
+    })
+}
+
 /// The variants' layer `variant` of the preset `slug`
 /// (`variants/<slug>/<variant>.ogt`) laid over `base`, the preset
 /// flattened: field by field, the layer winning, its name, mood and

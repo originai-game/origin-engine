@@ -27,7 +27,7 @@
 //   bun scripts/brief.ts audio [--project <dir>] [--music <style> --mood <mood> --genre <genre>]
 //                        [--premise "<line>"] [--json]
 
-import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -887,11 +887,15 @@ function first(candidates: readonly string[]): string | undefined {
   return candidates.find((c) => existsSync(c));
 }
 
-/** Where this copy finds the presets (templates/looks in the engine repository, presets/ in a published package). */
+/**
+ * The look presets the package carries, flattened by og-cook's look step
+ * (its `look::preset_documents`, written by `og api gen`): `<slug>.json`
+ * holds the preset as a game's look asking for each of its variants in each
+ * mood, `moods.json` each mood under a look that reaches no preset, and
+ * `palettes.json` the built-in palettes.
+ */
 export function presetsDir(): string {
-  const dir = first([join(PKG, "..", "..", "templates", "looks"), join(PKG, "presets")]);
-  if (!dir) throw new Error(`no look presets next to ${PKG}: expected ../../templates/looks (engine repository) or presets/ (published package)`);
-  return dir;
+  return join(PKG, "presets");
 }
 
 /** The style catalogue the package carries. */
@@ -911,19 +915,23 @@ interface LookText {
   readonly blocks: Map<string, Map<string, ArtValue>>;
 }
 
+/** One field's values as written: a quoted string, a number, `true` or `false`, or another word. */
+type Written = string | number | boolean;
+
 const LIST_FIELDS = new Set(["spriteSizes", "accents"]);
 
-function valueOf(field: string, tokens: string[]): ArtValue {
-  const parsed = tokens.map((t) => (t.startsWith('"') ? JSON.parse(t) : t)) as string[];
-  const numbers = tokens.every((t) => /^-?\d+(\.\d+)?(e-?\d+)?$/i.test(t));
-  if (LIST_FIELDS.has(field) || tokens.length !== 1) {
-    if (numbers) return tokens.map(Number);
-    return parsed.join(" ");
-  }
-  const t = tokens[0]!;
-  if (numbers) return Number(t);
-  if (t === "true" || t === "false") return t === "true";
-  return parsed[0]!;
+/** A field's value as the brief reads it from its values as written: a list field or several values a list of numbers (else their words joined), one value itself. */
+function valueOf(field: string, values: readonly Written[]): ArtValue {
+  const numbers = values.every((v) => typeof v === "number");
+  if (LIST_FIELDS.has(field) || values.length !== 1) return numbers ? (values as number[]) : values.map(String).join(" ");
+  return values[0]!;
+}
+
+/** A token of a look line as written: a quoted string, a number, `true` or `false`, or a word. */
+function written(token: string): Written {
+  if (token.startsWith('"')) return JSON.parse(token) as string;
+  if (/^-?\d+(\.\d+)?(e-?\d+)?$/i.test(token)) return Number(token);
+  return token === "true" || token === "false" ? token === "true" : token;
 }
 
 /** Parse a `type look` .ogt (og-cook's grammar: top-level `extends`, blocks of `field value...`). */
@@ -954,7 +962,7 @@ export function parseLook(text: string, at = "look"): LookText {
       continue;
     }
     const [key, ...rest] = tokens;
-    if (block) block.set(key!, valueOf(key!, rest));
+    if (block) block.set(key!, valueOf(key!, rest.map(written)));
     else if (key === "extends") {
       if (rest.length !== 1 || !rest[0]!.startsWith('"')) throw new Error(`${at}: line ${sep + 2 + i}: 'extends' takes a preset's slug or a look's asset id, as a string`);
       ext = JSON.parse(rest[0]!) as string;
@@ -974,88 +982,78 @@ export function parseLook(text: string, at = "look"): LookText {
 /** An asset id as the cook keys it: `assets/` dropped. */
 const assetId = (p: string) => p.replace(/^\.?\/?assets\//, "");
 
-/**
- * The mood's layer for a preset (og-cook's `lay_mood`, docs/art.md §2.10):
- * `moods/<mood>/<slug>.<variant>.ogt` for a variant, else
- * `moods/<mood>/<slug>.ogt` beside the presets, else `moods/<mood>.ogt`. The
- * brief reads only its palette and art fields, which it lays by replacing;
- * the frame's numbers it moves are the cook's.
- */
-function moodLayer(mood: Mood, slug: string, variant: string | null, presets: string): LookText | null {
-  const own = variant === null ? [] : [join(presets, "moods", mood, `${slug}.${variant}.ogt`)];
-  const path = first([...own, join(presets, "moods", mood, `${slug}.ogt`), join(presets, "moods", `${mood}.ogt`)]);
-  return path ? parseLook(readFileSync(path, "utf8"), path) : null;
+/** One look of the presets' JSON (og-cook's `look_json`): its blocks' fields as written. */
+interface PresetLookJson {
+  readonly mood: Mood | null;
+  readonly variant: string | null;
+  readonly blocks: Readonly<Record<string, Readonly<Record<string, readonly Written[]>>>>;
+}
+
+/** The looks a presets file holds, each with the variant and mood a game's look asked for. */
+interface PresetFile {
+  readonly looks: readonly { readonly variant: string | null; readonly mood: Mood | null; readonly look: PresetLookJson }[];
+}
+
+function readJson<T>(path: string, what: string): T {
+  if (!existsSync(path)) throw new Error(`${what}: no ${path}`);
+  return JSON.parse(readFileSync(path, "utf8")) as T;
 }
 
 /**
- * The variant's layer of a preset (og-cook's `lay_variant`, docs/art.md
- * §2.11): `variants/<slug>/<variant>.ogt` beside the presets. Throws naming
- * the preset's variants when it has no such one.
+ * The look `text` (asset id `id`) flattened: the game's own looks of its
+ * `extends` chain (nearest wins, field by field) laid over what the chain
+ * reaches, which og-cook's look step flattened (`presetsDir`): the preset in
+ * the variant and mood the nearest look asks of it, or, for a chain that
+ * reaches no preset, the mood's layer alone. Returns the blocks, the preset,
+ * its variant and the mood the look is drawn in.
  */
-function variantLayer(slug: string, variant: string, presets: string): LookText {
-  const dir = join(presets, "variants", slug);
-  const path = join(dir, `${variant}.ogt`);
-  if (!existsSync(path)) {
-    const names = existsSync(dir) ? readdirSync(dir).filter((f) => f.endsWith(".ogt")).map((f) => f.slice(0, -4)).sort() : [];
-    throw new Error(`variant "${variant}": the preset ${slug} ${names.length ? `takes one of ${names.join(", ")}` : "has no variants"}`);
-  }
-  return parseLook(readFileSync(path, "utf8"), path);
-}
-
-/** The flattened look: blocks merged over the chain (nearest wins, field by field), the preset the chain reaches, the variant of it the nearest look asks for, and the mood it is drawn in (the nearest look's that names one, else the variant's or preset's own). */
-function flatten(id: string, text: string, assets: string | null, presets: string, ask: Mood | null = null): { blocks: Map<string, Map<string, ArtValue>>; preset: string | null; variant: string | null; mood: Mood | null } {
+function flatten(id: string, text: string, assets: string | null, presets: string): { blocks: Map<string, Map<string, ArtValue>>; preset: string | null; variant: string | null; mood: Mood | null } {
   const seen = [id];
   const chain: LookText[] = [parseLook(text, id)];
   let preset: string | null = null;
-  let variant: string | null = chain[0]!.variant;
-  let asked: Mood | null = ask ?? chain[0]!.mood;
-  let own: Mood | null = null;
   let from = id;
   for (let next = chain[0]!.extends; next !== null; ) {
-    if (seen.length > 9) throw new Error(`${id}: extends chains at most 8 looks deep`);
-    let base: { id: string; text: string; preset: boolean };
+    if (seen.length > 8) throw new Error(`${id}: extends chains at most 8 looks deep`);
+    let base: { id: string; text: string } | null = null;
     if (next.includes("/") || next.endsWith(".ogt")) {
       const bid = assetId(next);
       const path = assets ? join(assets, bid) : "";
       if (!assets || !existsSync(path)) throw new Error(`${from}: extends "${next}": there is no assets/${bid}`);
-      base = { id: bid, text: readFileSync(path, "utf8"), preset: false };
+      base = { id: bid, text: readFileSync(path, "utf8") };
     } else {
       const own = `looks/${next}.ogt`;
       const ownPath = assets ? join(assets, own) : "";
-      const presetPath = join(presets, `${next}.ogt`);
-      if (assets && own !== from && existsSync(ownPath)) base = { id: own, text: readFileSync(ownPath, "utf8"), preset: false };
-      else if (existsSync(presetPath)) base = { id: next, text: readFileSync(presetPath, "utf8"), preset: true };
+      if (assets && own !== from && existsSync(ownPath)) base = { id: own, text: readFileSync(ownPath, "utf8") };
+      else if (existsSync(join(presets, `${next}.json`))) preset = next;
       else throw new Error(`${from}: extends "${next}": neither assets/${own} nor a built-in preset`);
     }
+    if (base === null) break;
     if (seen.includes(base.id)) throw new Error(`extends goes round in a circle: ${[...seen, base.id].join(" → ")}`);
     seen.push(base.id);
     const parsed = parseLook(base.text, base.id);
-    if (base.preset && preset === null) {
-      preset = base.id;
-      own = parsed.mood;
-    } else if (preset === null) {
-      asked ??= parsed.mood;
-      variant ??= parsed.variant;
-    }
     chain.push(parsed);
     from = base.id;
     next = parsed.extends;
   }
-  if (variant !== null && preset === null) throw new Error(`variant "${variant}": a variant is one of a preset's, and ${id}'s chain reaches no preset`);
-  // The variant's layer lies over the preset, the mood's over both, under the looks that extend it.
+  // The nearest look's variant and mood ask for the whole chain.
+  const variant = chain.find((l) => l.variant !== null)?.variant ?? null;
+  const asked = chain.find((l) => l.mood !== null)?.mood ?? null;
+  let laid: PresetLookJson | null = null;
   if (preset !== null) {
-    const at = chain.findIndex((_, i) => i > 0 && seen[i] === preset);
-    if (variant !== null) {
-      const layer = variantLayer(preset, variant, presets);
-      own = layer.mood ?? own;
-      chain.splice(at, 0, layer);
+    const file = readJson<PresetFile>(join(presets, `${preset}.json`), `the preset ${preset}`);
+    const entry = file.looks.find((l) => l.variant === variant && l.mood === asked);
+    if (!entry) {
+      const names = [...new Set(file.looks.flatMap((l) => (l.variant === null ? [] : [l.variant])))];
+      throw new Error(`variant "${variant}": the preset ${preset} ${names.length ? `takes one of ${names.join(", ")}` : "has no variants"}`);
     }
-    if (asked !== null && asked !== own) {
-      const layer = moodLayer(asked, preset, variant, presets);
-      if (layer) chain.splice(at, 0, { ...layer, blocks: stringFields(layer.blocks) });
-    }
+    laid = entry.look;
+  } else if (variant !== null) {
+    throw new Error(`variant "${variant}": a variant is one of a preset's, and ${id}'s chain reaches no preset`);
+  } else if (asked !== null) {
+    laid = readJson<PresetFile>(join(presets, "moods.json"), "the moods").looks.find((l) => l.mood === asked)?.look ?? null;
   }
   const blocks = new Map<string, Map<string, ArtValue>>();
+  for (const [name, fields] of Object.entries(laid?.blocks ?? {})) blocks.set(name, new Map(Object.entries(fields).map(([k, v]) => [k, valueOf(k, v)])));
   for (const look of chain.reverse()) {
     for (const [name, fields] of look.blocks) {
       const merged = blocks.get(name) ?? new Map();
@@ -1063,26 +1061,20 @@ function flatten(id: string, text: string, assets: string | null, presets: strin
       blocks.set(name, merged);
     }
   }
-  return { blocks, preset, variant, mood: asked ?? own };
-}
-
-/** A layer's fields the brief lays by replacing: its palettes and words, not the frame's numbers it moves. */
-function stringFields(blocks: Map<string, Map<string, ArtValue>>): Map<string, Map<string, ArtValue>> {
-  return new Map([...blocks].map(([name, fields]) => [name, new Map([...fields].filter(([, v]) => typeof v === "string"))]));
+  return { blocks, preset, variant, mood: laid?.mood ?? asked };
 }
 
 /** The palette a handle names: a built-in `@palettes/<name>` or a file under the game's assets/. */
 function readPalette(handle: string, from: BriefPalette["from"], assets: string | null, presets: string): BriefPalette {
-  let path: string | undefined;
   if (handle.startsWith("@palettes/")) {
+    const builtIn = readJson<{ palettes: Record<string, string> }>(join(presets, "palettes.json"), "the built-in palettes").palettes;
     const name = handle.slice("@palettes/".length);
-    const dir = join(presets, "assets", "palettes");
-    path = first(/\.(hex|gpl)$/i.test(name) ? [join(dir, name)] : [join(dir, `${name}.hex`), join(dir, `${name}.gpl`)]);
-    if (!path) throw new Error(`"${handle}" is not one of the engine's built-in palettes (${dir})`);
-  } else {
-    path = assets ? join(assets, assetId(handle)) : undefined;
-    if (!path || !existsSync(path)) throw new Error(`the look's palette "${handle}" is not under assets/`);
+    const file = (/\.(hex|gpl)$/i.test(name) ? [name] : [`${name}.hex`, `${name}.gpl`]).find((f) => builtIn[f] !== undefined);
+    if (!file) throw new Error(`"${handle}" is not one of the engine's built-in palettes (${Object.keys(builtIn).join(", ")})`);
+    return { id: handle, from, colours: parsePalette(file, builtIn[file]!) };
   }
+  const path = assets ? join(assets, assetId(handle)) : undefined;
+  if (!path || !existsSync(path)) throw new Error(`the look's palette "${handle}" is not under assets/`);
   return { id: handle, from, colours: parsePalette(path, readFileSync(path, "utf8")) };
 }
 
@@ -1119,9 +1111,9 @@ function briefLook(blocks: Map<string, Map<string, ArtValue>>, preset: string | 
 }
 
 export interface ReadLookOptions {
-  /** The style catalogue; this copy's own when omitted. */
+  /** The style catalogue; the package's own when omitted. */
   readonly catalogue?: string;
-  /** The presets' directory; this copy's own when omitted. */
+  /** The flattened presets' directory (`presetsDir`); the package's own when omitted. */
   readonly presets?: string;
   /** For `presetLook`: the mood a game would ask of the preset; unset, its own. */
   readonly mood?: Mood;
@@ -1132,8 +1124,8 @@ export interface ReadLookOptions {
 /**
  * A project's look, flattened: project.ogt's `look "looks/<id>.ogt"` (the
  * look whose art contract the cook reads), its `extends` chain through the
- * game's own looks down to the preset (templates/looks in the engine
- * repository, presets/ in the published package), the palette it names, the
+ * game's own looks, laid over the preset as og-cook flattened it in the
+ * variant and mood the look asks (`presetsDir`), the palette it names, the
  * catalogue entry and preview of its preset, and the profile of project.ogt's
  * creation form (`profileOf`).
  * Throws with the fix when project.ogt names no look.
@@ -1158,12 +1150,11 @@ export function readLook(projectDir: string, options: ReadLookOptions = {}): Bri
 /** A preset's look alone (`presetLook("pixel")`), for a game not written yet, in its own mood or the one `options.mood` asks, as the preset or the variant `options.variant` asks; its profile is the style's only one, else unset. */
 export function presetLook(slug: string, options: ReadLookOptions = {}): BriefLook {
   const presets = options.presets ?? presetsDir();
-  const path = join(presets, `${slug}.ogt`);
-  if (!existsSync(path)) throw new Error(`no look preset '${slug}' in ${presets}`);
+  if (!existsSync(join(presets, `${slug}.json`))) throw new Error(`no look preset '${slug}' in ${presets}`);
   if (options.mood !== undefined && !(MOODS as readonly string[]).includes(options.mood)) throw new Error(`mood '${options.mood}': one of ${MOODS.join(", ")}`);
   // The preset as a game's look extending it would read it: the mood asked lies over it.
   const asked = `type look\nversion 1\n---\nextends ${JSON.stringify(slug)}\n${options.mood ? `mood ${JSON.stringify(options.mood)}\n` : ""}${options.variant ? `variant ${JSON.stringify(options.variant)}\n` : ""}`;
-  const { blocks, variant, mood } = flatten("<preset>", asked, null, presets);
+  const { blocks, variant, mood } = flatten(`looks/${slug}.ogt`, asked, null, presets);
   const look = briefLook(blocks, slug, variant, mood, null, presets, options.catalogue ?? catalogueFile(), undefined);
   const profiles = look.style?.look.profiles ?? [];
   return profiles.length === 1 ? { ...look, profile: profiles[0]! } : look;
