@@ -1,0 +1,11 @@
+type import
+version 1
+---
+# Cartoon's text face, variable (wght 300–700, wdth 75–125), so each weight is its own outlines. No atlas: every character is drawn from the outlines when first shown, so the whole file ships.
+font {
+  charset
+  chars " "
+  em_px 48
+  px_range 16
+  runtime true
+}

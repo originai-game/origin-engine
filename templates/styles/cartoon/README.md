@@ -22,7 +22,7 @@ deep sky) and a light one (cream panels on a day sky):
 | `motion.css` | Transitions on a spring (`-og-spring()`) for the core controls and the row and cell roles, the pressed plate's drop; a `prefers-reduced-motion` branch keeps every state change and drops the movement |
 | `sounds.css` | `-og-sound` sets from the shared library, pitched up, with a range so repeated taps differ |
 | `art/` | Marks, bursts and the ground's dots (SVG), each with its import `.ogt` (colour art sRGB; masks linear) |
-| `LilitaOne-Regular.ttf`, `Fredoka-*.ttf` | The pack's Latin faces, each with its import `.ogt`, and their licences (`OFL-*.txt`) |
+| `LilitaOne-Regular.ttf`, `Fredoka*.ttf` | The pack's Latin faces, each with its import `.ogt`, and their licences (`OFL-*.txt`) |
 
 ## Tokens
 
@@ -78,15 +78,18 @@ this pack's colours.
   (`OFL-LilitaOne.txt`): display, buttons and figures. The file is the
   release from Google Fonts (`ofl/lilitaone`, version 1.002), unmodified.
 - Fredoka (The Fredoka Project Authors, 2016), SIL Open Font License 1.1
-  (`OFL-Fredoka.txt`): text and labels. `Fredoka-Medium.ttf` and
-  `Fredoka-SemiBold.ttf` are instances of the variable font from Google
+  (`OFL-Fredoka.txt`): text and labels. `Fredoka[wdth,wght].ttf` is the
+  variable font from Google Fonts (`ofl/fredoka`), unmodified, which
+  pack.json names for wght 300–700. `Fredoka-Medium.ttf` and
+  `Fredoka-SemiBold.ttf`, kept until the CSS packs go, are instances of the variable font from Google
   Fonts (`ofl/fredoka`, version 2.001) at weights 500 and 600, width 100,
   subset to Latin-1, Latin Extended-A and general punctuation, unhinted.
   Fredoka declares no reserved font name.
 - Arrows and any other glyph the two faces lack come from Instrument Sans
   (`@styles/shared`, the `Cartoon Fallback` family after them in every
-  font list) and Chinese from ZCOOL KuaiLe (`@styles/cjk`), each under its
-  own licence there.
+  font list) and Chinese from ZCOOL KuaiLe for display and Noto Sans SC
+  (variable, wght 100–900) for text and labels (`@styles/cjk`), each under
+  its own licence there.
 - No face here carries Arabic, so the `ar` locale warns of missing glyphs
   under this pack; a game that ships Arabic adds a face for it.
 - The SVGs in `art/` were drawn for this pack; nothing in it is generated.

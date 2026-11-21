@@ -4,154 +4,61 @@
     {
       "family": "Cartoon Display",
       "src": "LilitaOne-Regular.ttf",
-      "weight": 400
+      "weight": [
+        400,
+        700
+      ]
     },
     {
       "family": "Cartoon Display",
-      "src": "LilitaOne-Regular.ttf",
-      "weight": 500
-    },
-    {
-      "family": "Cartoon Display",
-      "src": "LilitaOne-Regular.ttf",
-      "weight": 600
-    },
-    {
-      "family": "Cartoon Display",
-      "src": "LilitaOne-Regular.ttf",
-      "weight": 700
+      "src": "@styles/cjk/ZCOOLKuaiLe-Regular.ttf",
+      "weight": [
+        400,
+        700
+      ],
+      "unicodeRange": "U+2E80-2FDF, U+3000-303F, U+3400-4DBF, U+4E00-9FFF, U+FF00-FFEF"
     },
     {
       "family": "Cartoon Text",
-      "src": "Fredoka-Medium.ttf",
-      "weight": 400
+      "src": "Fredoka[wdth,wght].ttf",
+      "weight": [
+        300,
+        700
+      ]
     },
     {
       "family": "Cartoon Text",
-      "src": "Fredoka-Medium.ttf",
-      "weight": 500
-    },
-    {
-      "family": "Cartoon Text",
-      "src": "Fredoka-SemiBold.ttf",
-      "weight": 600
-    },
-    {
-      "family": "Cartoon Text",
-      "src": "Fredoka-SemiBold.ttf",
-      "weight": 700
+      "src": "@styles/cjk/NotoSansSC[wght].ttf",
+      "weight": [
+        100,
+        900
+      ],
+      "unicodeRange": "U+2E80-2FDF, U+3000-303F, U+3400-4DBF, U+4E00-9FFF, U+FF00-FFEF"
     },
     {
       "family": "Cartoon Label",
-      "src": "Fredoka-SemiBold.ttf",
-      "weight": 400
+      "src": "Fredoka[wdth,wght].ttf",
+      "weight": [
+        600,
+        700
+      ]
     },
     {
       "family": "Cartoon Label",
-      "src": "Fredoka-SemiBold.ttf",
-      "weight": 500
-    },
-    {
-      "family": "Cartoon Label",
-      "src": "Fredoka-SemiBold.ttf",
-      "weight": 600
-    },
-    {
-      "family": "Cartoon Label",
-      "src": "Fredoka-SemiBold.ttf",
-      "weight": 700
+      "src": "@styles/cjk/NotoSansSC[wght].ttf",
+      "weight": [
+        100,
+        900
+      ],
+      "unicodeRange": "U+2E80-2FDF, U+3000-303F, U+3400-4DBF, U+4E00-9FFF, U+FF00-FFEF"
     },
     {
       "family": "Cartoon Fallback",
-      "src": "@styles/shared/InstrumentSans-Regular.ttf",
-      "weight": 400
-    },
-    {
-      "family": "Cartoon Fallback",
-      "src": "@styles/shared/InstrumentSans-Regular.ttf",
-      "weight": 500
-    },
-    {
-      "family": "Cartoon Fallback",
-      "src": "@styles/shared/InstrumentSans-Regular.ttf",
-      "weight": 600
-    },
-    {
-      "family": "Cartoon Fallback",
-      "src": "@styles/shared/InstrumentSans-Regular.ttf",
-      "weight": 700
-    },
-    {
-      "family": "Cartoon Display",
-      "src": "@styles/cjk/ZCOOLKuaiLe-Regular.ttf",
-      "unicodeRange": "U+2E80-2FDF, U+3000-303F, U+3400-4DBF, U+4E00-9FFF, U+FF00-FFEF",
-      "weight": 400
-    },
-    {
-      "family": "Cartoon Display",
-      "src": "@styles/cjk/ZCOOLKuaiLe-Regular.ttf",
-      "unicodeRange": "U+2E80-2FDF, U+3000-303F, U+3400-4DBF, U+4E00-9FFF, U+FF00-FFEF",
-      "weight": 500
-    },
-    {
-      "family": "Cartoon Display",
-      "src": "@styles/cjk/ZCOOLKuaiLe-Regular.ttf",
-      "unicodeRange": "U+2E80-2FDF, U+3000-303F, U+3400-4DBF, U+4E00-9FFF, U+FF00-FFEF",
-      "weight": 600
-    },
-    {
-      "family": "Cartoon Display",
-      "src": "@styles/cjk/ZCOOLKuaiLe-Regular.ttf",
-      "unicodeRange": "U+2E80-2FDF, U+3000-303F, U+3400-4DBF, U+4E00-9FFF, U+FF00-FFEF",
-      "weight": 700
-    },
-    {
-      "family": "Cartoon Text",
-      "src": "@styles/cjk/ZCOOLKuaiLe-Regular.ttf",
-      "unicodeRange": "U+2E80-2FDF, U+3000-303F, U+3400-4DBF, U+4E00-9FFF, U+FF00-FFEF",
-      "weight": 400
-    },
-    {
-      "family": "Cartoon Text",
-      "src": "@styles/cjk/ZCOOLKuaiLe-Regular.ttf",
-      "unicodeRange": "U+2E80-2FDF, U+3000-303F, U+3400-4DBF, U+4E00-9FFF, U+FF00-FFEF",
-      "weight": 500
-    },
-    {
-      "family": "Cartoon Text",
-      "src": "@styles/cjk/ZCOOLKuaiLe-Regular.ttf",
-      "unicodeRange": "U+2E80-2FDF, U+3000-303F, U+3400-4DBF, U+4E00-9FFF, U+FF00-FFEF",
-      "weight": 600
-    },
-    {
-      "family": "Cartoon Text",
-      "src": "@styles/cjk/ZCOOLKuaiLe-Regular.ttf",
-      "unicodeRange": "U+2E80-2FDF, U+3000-303F, U+3400-4DBF, U+4E00-9FFF, U+FF00-FFEF",
-      "weight": 700
-    },
-    {
-      "family": "Cartoon Label",
-      "src": "@styles/cjk/ZCOOLKuaiLe-Regular.ttf",
-      "unicodeRange": "U+2E80-2FDF, U+3000-303F, U+3400-4DBF, U+4E00-9FFF, U+FF00-FFEF",
-      "weight": 400
-    },
-    {
-      "family": "Cartoon Label",
-      "src": "@styles/cjk/ZCOOLKuaiLe-Regular.ttf",
-      "unicodeRange": "U+2E80-2FDF, U+3000-303F, U+3400-4DBF, U+4E00-9FFF, U+FF00-FFEF",
-      "weight": 500
-    },
-    {
-      "family": "Cartoon Label",
-      "src": "@styles/cjk/ZCOOLKuaiLe-Regular.ttf",
-      "unicodeRange": "U+2E80-2FDF, U+3000-303F, U+3400-4DBF, U+4E00-9FFF, U+FF00-FFEF",
-      "weight": 600
-    },
-    {
-      "family": "Cartoon Label",
-      "src": "@styles/cjk/ZCOOLKuaiLe-Regular.ttf",
-      "unicodeRange": "U+2E80-2FDF, U+3000-303F, U+3400-4DBF, U+4E00-9FFF, U+FF00-FFEF",
-      "weight": 700
+      "src": "@styles/shared/InstrumentSans[wdth,wght].ttf",
+      "weight": [
+        400,
+        700
+      ]
     }
   ],
   "icons": {
@@ -453,10 +360,10 @@
       }
     },
     "fontFamily": {
-      "display": "\"Cartoon Display\", \"Cartoon Fallback\", ui-rounded, sans-serif",
-      "mono": "\"Cartoon Text\", \"Cartoon Fallback\", ui-rounded, sans-serif",
-      "rounded": "\"Cartoon Text\", \"Cartoon Fallback\", ui-rounded, sans-serif",
-      "sans": "\"Cartoon Text\", \"Cartoon Fallback\", ui-rounded, sans-serif"
+      "display": "\"Cartoon Display\", \"Cartoon Fallback\"",
+      "mono": "\"Cartoon Text\", \"Cartoon Fallback\"",
+      "rounded": "\"Cartoon Text\", \"Cartoon Fallback\"",
+      "sans": "\"Cartoon Text\", \"Cartoon Fallback\""
     },
     "radius": {
       "block": 14.0,

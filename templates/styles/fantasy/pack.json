@@ -59,9 +59,9 @@
       }
     },
     "fontFamily": {
-      "display": "\"Fantasy Display\", serif",
-      "mono": "\"Fantasy Serif\", serif",
-      "sans": "\"Fantasy Text\", \"Fantasy Serif\", serif"
+      "display": "\"Fantasy Display\"",
+      "mono": "\"Fantasy Serif\"",
+      "sans": "\"Fantasy Text\", \"Fantasy Serif\""
     },
     "radius": {
       "button": 4.0,
@@ -74,29 +74,80 @@
   "fonts": [
     {
       "family": "Fantasy Display",
-      "src": "@styles/shared/Cinzel-Bold.ttf",
-      "weight": 700
+      "src": "@styles/shared/Cinzel[wght].ttf",
+      "weight": [
+        400,
+        900
+      ]
     },
     {
-      "family": "Fantasy Caps",
-      "src": "@styles/shared/SpectralSC-SemiBold.ttf",
-      "weight": 600
+      "family": "Fantasy Display",
+      "src": "@styles/cjk/NotoSerifSC[wght].ttf",
+      "weight": [
+        200,
+        900
+      ],
+      "unicodeRange": "U+2E80-2FDF, U+3000-303F, U+3400-4DBF, U+4E00-9FFF, U+FF00-FFEF"
+    },
+    {
+      "family": "Fantasy Text",
+      "src": "@styles/shared/Newsreader[opsz,wght].ttf",
+      "weight": [
+        200,
+        800
+      ]
+    },
+    {
+      "family": "Fantasy Text",
+      "src": "@styles/shared/Spectral-SemiBold.ttf",
+      "weight": [
+        200,
+        800
+      ],
+      "unicodeRange": "U+2190-21FF"
+    },
+    {
+      "family": "Fantasy Text",
+      "src": "@styles/cjk/NotoSerifSC[wght].ttf",
+      "weight": [
+        200,
+        900
+      ],
+      "unicodeRange": "U+2E80-2FDF, U+3000-303F, U+3400-4DBF, U+4E00-9FFF, U+FF00-FFEF"
     },
     {
       "family": "Fantasy Serif",
       "src": "@styles/shared/Spectral-SemiBold.ttf",
-      "weight": 600
+      "weight": [
+        400,
+        700
+      ]
     },
     {
-      "family": "Fantasy Text",
-      "src": "@styles/shared/Newsreader-Medium.ttf",
-      "weight": 500
+      "family": "Fantasy Serif",
+      "src": "@styles/cjk/NotoSerifSC[wght].ttf",
+      "weight": [
+        200,
+        900
+      ],
+      "unicodeRange": "U+2E80-2FDF, U+3000-303F, U+3400-4DBF, U+4E00-9FFF, U+FF00-FFEF"
     },
     {
-      "family": "Fantasy Text",
-      "src": "@styles/shared/Spectral-SemiBold.ttf",
-      "unicodeRange": "U+2190-21FF",
-      "weight": 500
+      "family": "Fantasy Caps",
+      "src": "@styles/shared/SpectralSC-SemiBold.ttf",
+      "weight": [
+        400,
+        700
+      ]
+    },
+    {
+      "family": "Fantasy Caps",
+      "src": "@styles/cjk/NotoSerifSC[wght].ttf",
+      "weight": [
+        200,
+        900
+      ],
+      "unicodeRange": "U+2E80-2FDF, U+3000-303F, U+3400-4DBF, U+4E00-9FFF, U+FF00-FFEF"
     }
   ],
   "icons": {

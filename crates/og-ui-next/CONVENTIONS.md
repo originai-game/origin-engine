@@ -452,7 +452,14 @@ is an error naming where it is, never ignored):
   not draw it. The cook checks every `nine-<name>` names an image and
   every image is in the bundle.
 - **`fonts`**: faces `{ family, src, weight?, style?, unicodeRange? }`, `src`
-  relative to the pack or `@styles/shared/…` / `@styles/cjk/…`.
+  relative to the pack or `@styles/shared/…` / `@styles/cjk/…`, with CSS
+  `@font-face` meaning. `weight` is a number or a range `[min, max]`: on a
+  variable face the part of its `wght` axis the entry serves, on a static
+  face the weights it draws unsynthesised; omitted is 400 for a static
+  face and the whole axis for a variable one. One file per entry; within a
+  family entries are tried in declaration order, an entry skipped for a
+  character outside its `unicodeRange`, then the locale chain. Each role
+  has its own family, its CJK face last in it with a `unicodeRange`.
 - **`icons`**: `name → art file`, over the default set, for `<Icon name>`.
 - **`sounds`**: by event (`press`, `hover`, `select`, `confirm`, `cancel`,
   `back`, `open`, `close`, `error`, `reward`) for the whole pack, or under a

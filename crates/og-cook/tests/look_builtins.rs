@@ -53,10 +53,6 @@ fn a_look_naming_built_ins_cooks_them_into_the_bundle() {
     // Only what a look names.
     assert!(!ids.contains(&"@canvas/linen.png"), "{ids:?}");
     assert!(!ids.contains(&"@palettes/1bit.hex"), "{ids:?}");
-    assert!(
-        !ids.contains(&og_ui::DEFAULT_FONT_ASSET),
-        "a project without UI carries no default face: {ids:?}"
-    );
 
     let tex = bundle.load_texture("@canvas/paper.png").unwrap();
     assert_eq!((tex.meta.width, tex.meta.height), (256, 256));
@@ -79,6 +75,25 @@ fn a_look_naming_built_ins_cooks_them_into_the_bundle() {
     let again = cook_project(&root, &CookOptions::default()).unwrap();
     assert!(again.ok(), "{:?}", again.errors());
     assert!(again.cooked_outputs().is_empty(), "nothing re-cooks");
+}
+
+#[test]
+fn a_project_without_ui_carries_no_default_face() {
+    // cartoon's pack names the default face as its fallback, so only a look
+    // without a UI pack shows the cook adds none of its own.
+    let root = project(
+        "no-ui",
+        &[(
+            "looks/main.ogt",
+            "type look\nversion 1\n---\nStylise {\n  palette \"@palettes/handheld4\"\n}\n",
+        )],
+    );
+    let report = cook_project(&root, &CookOptions::default()).unwrap();
+    assert!(report.ok(), "{:?}", report.errors());
+    let bundle = Bundle::open(&root.join("cooked")).unwrap();
+    let ids: Vec<&str> = bundle.manifest().outputs().map(|o| o.id.as_str()).collect();
+    assert!(ids.contains(&"@palettes/handheld4.hex"), "{ids:?}");
+    assert!(!ids.contains(&og_ui::DEFAULT_FONT_ASSET), "{ids:?}");
 }
 
 #[test]

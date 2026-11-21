@@ -74,7 +74,11 @@ pub const SOUND_EVENTS: [&str; 10] = [
 pub struct Face {
     pub family: String,
     pub src: String,
-    pub weight: u16,
+    /// The weights this file draws, as CSS `font-weight: 400 700`: on a
+    /// variable face the part of its `wght` axis, on a static face the
+    /// weights it draws unsynthesised. `None` is 400 for a static face and
+    /// the whole axis for a variable one.
+    pub weight: Option<[u16; 2]>,
     pub italic: bool,
     /// A CSS `unicode-range` (`U+4E00-9FFF, U+3000-303F`): the face draws
     /// only these characters, so a fallback face covers a script.
@@ -376,7 +380,12 @@ impl Layer {
                 .fonts
                 .iter()
                 .map(|f| {
-                    let mut m = json!({ "family": f.family, "src": f.src, "weight": f.weight });
+                    let mut m = json!({ "family": f.family, "src": f.src });
+                    match f.weight {
+                        Some([a, b]) if a == b => m["weight"] = json!(a),
+                        Some(w) => m["weight"] = json!(w),
+                        None => {}
+                    }
                     if f.italic {
                         m["style"] = json!("italic");
                     }
@@ -676,12 +685,22 @@ fn face(v: &Value) -> Result<Face, String> {
             ));
         }
     }
-    let weight = match m.get("weight") {
-        None => 400,
-        Some(w) => w
-            .as_u64()
+    let one = |w: &Value| {
+        w.as_u64()
             .filter(|w| (1..=1000).contains(w))
-            .ok_or("weight: 1 to 1000")? as u16,
+            .map(|w| w as u16)
+    };
+    let bad = "weight: 1 to 1000, or [min, max]";
+    let weight = match m.get("weight") {
+        None => None,
+        Some(Value::Array(r)) => match r.as_slice() {
+            [a, b] => match (one(a), one(b)) {
+                (Some(a), Some(b)) if a <= b => Some([a, b]),
+                _ => return Err(bad.into()),
+            },
+            _ => return Err(bad.into()),
+        },
+        Some(w) => Some(one(w).map(|w| [w, w]).ok_or(bad)?),
     };
     let italic = match text("style").as_deref() {
         None | Some("normal") => false,
@@ -856,6 +875,10 @@ mod tests {
                 "sounds.Button.base.tap",
             ),
             (r##"{ "fonts": [{ "src": "a.ttf" }] }"##, "fonts[0]: family"),
+            (
+                r##"{ "fonts": [{ "family": "A", "src": "a.ttf", "weight": [700, 400] }] }"##,
+                "fonts[0]: weight",
+            ),
             (r##"{ "surfaces": {} }"##, "surfaces"),
         ] {
             let e = Layer::parse(text).unwrap_err();
@@ -868,7 +891,7 @@ mod tests {
         let mut l = Layer::parse(r##"{ "scheme": "light", "seeds": { "primary": { "light": "#111111", "dark": "#eeeeee" } },
             "theme": { "colors": { "gold": "#ffd23f", "surface": { "light": "#ffffff", "dark": "#000000" } } },
             "variants": { "Panel.frame": "p-2" },
-            "fonts": [{ "family": "A", "src": "a.ttf", "weight": 700, "unicodeRange": "U+4E00-9FFF" }, { "family": "B", "src": "@styles/shared/b.ttf" }],
+            "fonts": [{ "family": "A", "src": "a.ttf", "weight": 700, "unicodeRange": "U+4E00-9FFF" }, { "family": "B", "src": "@styles/shared/b.ttf" }, { "family": "B", "src": "v.ttf", "weight": [300, 700] }],
             "icons": { "star": "art/star.svg" },
             "sounds": { "press": { "clips": ["/sfx/tap.ogt"], "volume": [0.2, 0.3] }, "Button.base": { "hover": { "clips": ["t.ogt"] } } } }"##).unwrap();
         l.resolve("styles/cartoon");
@@ -879,9 +902,12 @@ mod tests {
                 "sfx/tap.ogt",
                 "styles/cartoon/a.ttf",
                 "styles/cartoon/art/star.svg",
-                "styles/cartoon/t.ogt"
+                "styles/cartoon/t.ogt",
+                "styles/cartoon/v.ttf"
             ]
         );
+        let weights: Vec<_> = l.fonts.iter().map(|f| f.weight).collect();
+        assert_eq!(weights, [Some([700, 700]), None, Some([300, 700])]);
         let again = Layer::parse(&l.to_json()).unwrap();
         assert_eq!(again.to_json(), l.to_json());
         assert_eq!(again.theme, l.theme);

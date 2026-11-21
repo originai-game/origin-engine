@@ -211,6 +211,7 @@
 /looks/preview/sources/grass.jpg
 /styles/cartoon/Fredoka-Medium.ttf
 /styles/cartoon/Fredoka-SemiBold.ttf
+/styles/cartoon/Fredoka\[wdth,wght].ttf
 /styles/cartoon/LilitaOne-Regular.ttf
 /styles/cartoon/art/button-disabled.png
 /styles/cartoon/art/button-hover.png
@@ -225,7 +226,9 @@
 /styles/cjk/FusionPixel12-zhHans.ttf
 /styles/cjk/NotoSansSC-Bold.ttf
 /styles/cjk/NotoSansSC-Regular.ttf
+/styles/cjk/NotoSansSC\[wght].ttf
 /styles/cjk/NotoSerifSC-SemiBold.ttf
+/styles/cjk/NotoSerifSC\[wght].ttf
 /styles/cjk/ZCOOLKuaiLe-Regular.ttf
 /styles/fantasy/art/chip.png
 /styles/fantasy/art/filigree-bl.png
@@ -249,13 +252,16 @@
 /styles/shared/BarlowCondensed-SemiBold.ttf
 /styles/shared/BarlowSemiCondensed-SemiBold.ttf
 /styles/shared/BigShouldersStencilDisplay-SemiBold.ttf
+/styles/shared/ChakraPetch-Bold.ttf
 /styles/shared/ChakraPetch-BoldItalic.ttf
 /styles/shared/ChakraPetch-SemiBold.ttf
 /styles/shared/Cinzel-Bold.ttf
+/styles/shared/Cinzel\[wght].ttf
 /styles/shared/InstrumentSans-Regular.ttf
 /styles/shared/InstrumentSans\[wdth,wght].ttf
 /styles/shared/Newsreader-Medium.ttf
 /styles/shared/Newsreader-SemiBold.ttf
+/styles/shared/Newsreader\[opsz,wght].ttf
 /styles/shared/PTMono-Regular.ttf
 /styles/shared/Rajdhani-Bold.ttf
 /styles/shared/Spectral-SemiBold.ttf

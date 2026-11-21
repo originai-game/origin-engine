@@ -16,6 +16,8 @@ is also the pixel style's Latin face: its import cooks Latin-1 too, on its
 | `NotoSansSC-Regular.ttf` | SIL OFL 1.1 (`OFL-NotoSansSC.txt`) | Noto Sans SC (google/fonts `ofl/notosanssc`), the variable font at wght 400, subset. Copyright 2014-2021 Adobe, with Reserved Font Name 'Source' |
 | `NotoSansSC-Bold.ttf` | SIL OFL 1.1 (`OFL-NotoSansSC.txt`) | the same at wght 700 |
 | `NotoSerifSC-SemiBold.ttf` | SIL OFL 1.1 (`OFL-NotoSerifSC.txt`) | Noto Serif SC (google/fonts `ofl/notoserifsc`) at wght 600, subset. Copyright 2012 Google Inc. |
+| `NotoSansSC[wght].ttf` | SIL OFL 1.1 (`OFL-NotoSansSC.txt`) | Noto Sans SC, the variable font (wght 100–900) from google/fonts `ofl/notosanssc`; unmodified and unsubset (the cook subsets it per game). Copyright 2014-2021 Adobe, with Reserved Font Name 'Source' |
+| `NotoSerifSC[wght].ttf` | SIL OFL 1.1 (`OFL-NotoSerifSC.txt`) | Noto Serif SC, the variable font (wght 200–900) from google/fonts `ofl/notoserifsc`; unmodified and unsubset. Copyright 2012 Google Inc. |
 | `ZCOOLKuaiLe-Regular.ttf` | SIL OFL 1.1 (`OFL-ZCOOLKuaiLe.txt`) | ZCOOL KuaiLe (google/fonts `ofl/zcoolkuaile`), subset (the face covers GB2312 level 1). Copyright 2018 The ZCOOL KuaiLe Project Authors |
 | `FusionPixel12-zhHans.ttf` | SIL OFL 1.1 (`OFL-FusionPixel.txt`) | Fusion Pixel Font 12px proportional zh_hans (github.com/TakWolf/fusion-pixel-font, release 2026.10.25), subset. Copyright (c) 2022, TakWolf |
 

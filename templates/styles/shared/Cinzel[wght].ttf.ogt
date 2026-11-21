@@ -1,0 +1,11 @@
+type import
+version 1
+---
+# Fantasy's display face, variable (wght 400–900). No atlas: drawn from the outlines, so the whole file ships.
+font {
+  charset
+  chars " "
+  em_px 48
+  px_range 16
+  runtime true
+}

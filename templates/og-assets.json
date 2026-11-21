@@ -1274,6 +1274,12 @@
       "visibility": "public"
     },
     {
+      "path": "styles/cartoon/Fredoka[wdth,wght].ttf",
+      "sha256": "2ba02e68b152868aef9ba28e24b3648c7d457fe6f25c761f2c2c53fb61a73fc8",
+      "size": 159184,
+      "visibility": "public"
+    },
+    {
       "path": "styles/cartoon/LilitaOne-Regular.ttf",
       "sha256": "f5b641c45c69d772ee4eda687bc9fda411d5cad6b0b45371491da4580cbc8d59",
       "size": 28092,
@@ -1358,9 +1364,21 @@
       "visibility": "public"
     },
     {
+      "path": "styles/cjk/NotoSansSC[wght].ttf",
+      "sha256": "a3041811a78c361b1de50f953c805e0244951c21c5bd412f7232ef0d899af0da",
+      "size": 17772300,
+      "visibility": "public"
+    },
+    {
       "path": "styles/cjk/NotoSerifSC-SemiBold.ttf",
       "sha256": "8b6b023704395fbe21784164caa19c015d10089b4cbb481d1271ce1aec189321",
       "size": 3114696,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/cjk/NotoSerifSC[wght].ttf",
+      "sha256": "050080d9255a86808f2945bffac582b31ef32bc36411ce29563b4961670c66f9",
+      "size": 25125512,
       "visibility": "public"
     },
     {
@@ -1502,6 +1520,12 @@
       "visibility": "public"
     },
     {
+      "path": "styles/shared/ChakraPetch-Bold.ttf",
+      "sha256": "65fbf76d95651697275e19db4d717c0e95a789ddd3476478b05292104db278a0",
+      "size": 78384,
+      "visibility": "public"
+    },
+    {
       "path": "styles/shared/ChakraPetch-BoldItalic.ttf",
       "sha256": "978a2829338c066144200f2d27b449fd1b006a353b61a00b8b946049c4ad4d6b",
       "size": 72476,
@@ -1517,6 +1541,12 @@
       "path": "styles/shared/Cinzel-Bold.ttf",
       "sha256": "2c6b1ff0d368efb73636700b69dbef707fa5602a06d085a4e91e5125082651f0",
       "size": 46124,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/Cinzel[wght].ttf",
+      "sha256": "f4d83d34d1f6c741193e4acf4b3dff9531e5a67b6aa65228d00a7db72a4e0f34",
+      "size": 125468,
       "visibility": "public"
     },
     {
@@ -1541,6 +1571,12 @@
       "path": "styles/shared/Newsreader-SemiBold.ttf",
       "sha256": "b60183a7463fa2c2eaf94667ad28a8a882052c01ce1fde9512c7ae8ab4b19593",
       "size": 42364,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/Newsreader[opsz,wght].ttf",
+      "sha256": "8a08d13f8a6c0d51be379a60af84f945f65369a67e509ee3c3bdcc421254d7c1",
+      "size": 451664,
       "visibility": "public"
     },
     {
