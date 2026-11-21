@@ -1207,6 +1207,7 @@ mod tests {
                     "row" => s.flex_direction = taffy::FlexDirection::Row,
                     "b" => s.size = taffy::Size::from_lengths(50.0, 20.0),
                     "big" => s.size = taffy::Size::from_lengths(400.0, 300.0),
+                    "col" => s.flex_direction = taffy::FlexDirection::Column,
                     _ => {}
                 }
             }
@@ -1217,6 +1218,23 @@ mod tests {
             // `half`: drawn at half its size about its centre.
             if class.split_whitespace().any(|c| c == "half") {
                 r.skin.transform.scale = [0.5, 0.5];
+            }
+            // `up`: drawn 40 px higher; `clip`: cuts what overflows it;
+            // `ink`: a white fill.
+            for c in class.split_whitespace() {
+                match c {
+                    "up" => r.skin.transform.translate = [0.0, -40.0],
+                    "clip" => {
+                        let mut l = taffy::Style::from(&r.layout);
+                        l.overflow = taffy::Point {
+                            x: taffy::Overflow::Hidden,
+                            y: taffy::Overflow::Hidden,
+                        };
+                        r.layout = rune_taffy::CompactStyle::from(&l);
+                    }
+                    "ink" => r.skin.fill = [1.0; 4],
+                    _ => {}
+                }
             }
             r
         }));
@@ -1855,6 +1873,36 @@ mod tests {
             .bounds()
             .unwrap();
         assert_eq!((r.x0, r.y0, r.x1, r.y1), (12.5, 5.0, 37.5, 15.0));
+    }
+
+    /// What a box under a transform clips is cut where that box is drawn,
+    /// not where it is laid out: a card lifted 40 px keeps its face.
+    #[test]
+    fn a_transformed_clip_moves_with_its_box() {
+        let mut t = tree();
+        let mut b = Batch::default();
+        b.op(1).u32(1).u8(0);
+        b.op(4).u32(1).str("big col");
+        // Three 20 px rows above it: laid out at y 60, drawn at 20.
+        for k in 5..8 {
+            b.op(1).u32(k).u8(0);
+            b.op(4).u32(k).str("b");
+            b.op(8).u32(1).u32(k).u32(u32::MAX);
+        }
+        b.op(1).u32(2).u8(0);
+        b.op(4).u32(2).str("b up");
+        b.op(1).u32(3).u8(0);
+        b.op(4).u32(3).str("b clip");
+        b.op(1).u32(4).u8(0);
+        b.op(4).u32(4).str("b ink");
+        b.op(8).u32(0).u32(1).u32(u32::MAX);
+        b.op(8).u32(1).u32(2).u32(u32::MAX);
+        b.op(8).u32(2).u32(3).u32(u32::MAX);
+        b.op(8).u32(3).u32(4).u32(u32::MAX);
+        t.apply(&b.bytes()).unwrap();
+        frame(&mut t);
+        let q = t.drawn.quads.iter().find(|q| q.color == [1.0; 4]).unwrap();
+        assert_eq!(q.clip, [0.0, 20.0, 50.0, 40.0]);
     }
 
     /// prop's text sets a role; a release takes the node out.

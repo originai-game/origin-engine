@@ -1663,6 +1663,29 @@ impl Tree {
             let start = p.quads.len();
             let xf = transformed(p, pxf, &t, [x, y, b.w, b.h]);
             self.xfs[e] = xf;
+            // The clip it sets for what it holds is drawn through its
+            // transform (an ancestor's or its own): the box that bounds its
+            // padding box there, against the clip it is drawn in.
+            if xf != 0 && inner != clip {
+                let [ma, mb, mc, md, me, mf, _, _] = p.transforms[xf as usize];
+                let (x0, y0, x1, y1) = (x + bl, y + bt, x + b.w - br, y + b.h - bb);
+                let mut bound = [f32::MAX, f32::MAX, f32::MIN, f32::MIN];
+                for [cx, cy] in [[x0, y0], [x1, y0], [x0, y1], [x1, y1]] {
+                    let (sx, sy) = (ma * cx + mc * cy + me, mb * cx + md * cy + mf);
+                    bound = [
+                        bound[0].min(sx),
+                        bound[1].min(sy),
+                        bound[2].max(sx),
+                        bound[3].max(sy),
+                    ];
+                }
+                self.abs[e].3 = [
+                    clip[0].max(bound[0]),
+                    clip[1].max(bound[1]),
+                    clip[2].min(bound[2]),
+                    clip[3].min(bound[3]),
+                ];
+            }
             let rect = [x, y, b.w, b.h];
             let radius = radii(s.radius, b.w, b.h);
             let faded = |mut c: Rgba| {
