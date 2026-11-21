@@ -138,43 +138,6 @@ fn fs_oit_mark(in: VertexOut, @builtin(front_facing) front_facing: bool) {
 }
 
 // The lit shading of a fragment (`fs`, and `fs_lean`).
-// What a crown's leaves pass on, forwards, of the light they take: half
-// their single scattering (their colour reflected and let through), and
-// none for a surface that is not a translucent leaf (its neighbours'
-// colour is not its own).
-fn crown_forward(s: Surface) -> vec3<f32> {
-  if (s.translucency <= 0.0) { return vec3<f32>(0.0); }
-  return 0.5 * min(s.albedo * (1.0 + s.translucency), vec3<f32>(1.0));
-}
-
-// What reaches a point behind `hidden` of a beam through a crown whose
-// leaves pass on `forward` of it: the light scattered forwards keeps
-// going, its extinction cut by `forward` (the delta scaling of Joseph,
-// Wiscombe and Weinman 1976), so it falls off as `forward` to the power
-// of the leaves crossed (a canopy's recollision, Smolander and Stenberg
-// 2005), and what is passed is what crosses the hidden share.
-fn crown_passed(hidden: f32, forward: vec3<f32>) -> vec3<f32> {
-  return pow(vec3<f32>(max(1.0 - hidden, 1e-4)), vec3<f32>(1.0) - forward);
-}
-
-// The light around a surface inside its tree's crown, which hides
-// `crown` of the sky (meshlet_sway.wgsl `meshlet_crown`, Hegeman et al.
-// 2006): the diffuse light is what comes through the gaps and what the
-// leaves pass on (`crown_passed`), in their colour, darker and greener
-// each leaf deeper; its reflection of the sky is occluded as Lagarde and
-// de Rousiers derive it from that visibility ("Moving Frostbite to PBR",
-// 2014), so a leaf deep in the crown keeps its hue instead of mirroring
-// the sky.
-fn crown_ambient(a: Ambient, s: Surface, n_dot_v: f32, crown: f32) -> Ambient {
-  if (crown <= 0.0) { return a; }
-  let seen = 1.0 - clamp(crown, 0.0, 1.0);
-  var o = a;
-  o.diffuse *= crown_passed(crown, crown_forward(s));
-  let specular = clamp(pow(n_dot_v + seen, exp2(-16.0 * s.roughness - 1.0)) - 1.0 + seen, 0.0, 1.0);
-  o.specular *= specular;
-  return o;
-}
-
 fn lit_fragment(in: VertexOut) -> vec4<f32> {
   let uv = stylised_uv(in.uv, in.affine);
   let base_uv = material_uv(UV_MAP, uv);
