@@ -21,17 +21,40 @@ use std::rc::Rc;
 
 const NONE: u32 = u32::MAX;
 
-/// The UI's box and input, which `:size()` and `:touch` read.
-#[derive(Default)]
+/// A host's string tables: a key's message (og.i18n), `None` when absent.
+pub type Strings = Box<dyn Fn(&str) -> Option<String>>;
+
+/// What the bindings read beside the stores: the UI's box and input, which
+/// `:size()` and `:touch` read, and the host's locale and string tables,
+/// which `t()` reads.
 pub struct Surface {
     pub size: Cell<(f32, f32)>,
     pub touch: Cell<bool>,
+    pub language: String,
+    pub strings: Option<Strings>,
+}
+
+impl Default for Surface {
+    fn default() -> Self {
+        Surface {
+            size: Cell::default(),
+            touch: Cell::default(),
+            language: "en".into(),
+            strings: None,
+        }
+    }
 }
 
 impl Env for Surface {
     fn screen(&self, class: Screen) -> bool {
         let (w, h) = self.size.get();
         class.holds(w, h, self.touch.get())
+    }
+    fn language(&self) -> &str {
+        &self.language
+    }
+    fn translate(&self, key: &str) -> Option<String> {
+        self.strings.as_ref()?(key)
     }
 }
 
@@ -190,6 +213,9 @@ impl og_ui::bind::Env for Fixed<'_> {
     fn screen(&self, class: Screen) -> bool {
         self.surface.screen(class)
     }
+    fn language(&self) -> &str {
+        &self.surface.language
+    }
     fn interaction_at(&self, node: usize, state: og_ui::bind::InteractionState) -> bool {
         state == og_ui::bind::InteractionState::More && self.more.contains(&(node as u32))
     }
@@ -225,6 +251,14 @@ fn more_of(e: &Expr, out: &mut Vec<u32>) {
 }
 
 impl Tree {
+    /// Gives the bindings the host's locale and string tables. Call it
+    /// before mounting: a binding reads them when it runs.
+    pub fn set_strings(&mut self, language: &str, strings: Strings) {
+        let env = Rc::get_mut(&mut self.env).expect("set before anything is mounted");
+        env.language = language.into();
+        env.strings = Some(strings);
+    }
+
     /// An empty tree over `look`, with the documents it may use.
     pub fn new(look: Rc<Look>, library: impl IntoIterator<Item = UiDocument>) -> Tree {
         let mut root = look.root.clone();
@@ -1190,6 +1224,34 @@ mod tests {
                 .unwrap()
         };
         assert!(level(true) > level(false), "the text over its panel");
+    }
+
+    /// `t()` reads the host's string tables; a key they lack shows as is.
+    #[test]
+    fn a_translated_text_shows_its_message() {
+        let doc = UiDocument::parse(
+            "s.svelte",
+            "<meta name=\"component\" content=\"s\">\n\
+             <div><span id=\"A\">{t(\"quests.main\")}</span><span id=\"B\">{t(\"quests.none\")}</span></div>",
+        )
+        .unwrap();
+        let look = Rc::new(Look::load(
+            &[Layer {
+                tokens: &crate::look::default_tokens(),
+                surfaces: crate::look::DEFAULT_SURFACES,
+            }],
+            "dark",
+        ));
+        let mut tree = Tree::new(look, [doc]);
+        tree.set_strings(
+            "en",
+            Box::new(|k| (k == "quests.main").then(|| "Main quest".to_string())),
+        );
+        tree.resize(200.0, 200.0);
+        tree.mount("s", &[]).unwrap();
+        tree.frame(&og_ui::Fonts::default(), &IconAtlas::default());
+        assert_eq!(tree.text("A"), Some("Main quest"));
+        assert_eq!(tree.text("B"), Some("quests.none"));
     }
 
     /// An icon no atlas names draws from the engine's built-in set.
