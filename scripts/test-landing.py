@@ -109,13 +109,15 @@ while [ -f "$CONTROL/$name.allow" ] && [ "$(wc -l < "$CONTROL/$name.allow")" -lt
             p = self.b / 'shared'
             p.write_text(p.read_text().replace('end', 'second'))
         else:
-            # Prose-only deltas: the one reuse case that still lands without a
-            # recheck when main moves (scripts/land.sh disjoint()).
-            for repo, path, text in ((self.a, 'docs/first.md', 'first\n'),
-                                     (self.b, 'docs/second.md', 'second\n')):
-                path = repo / path
-                path.parent.mkdir(parents=True, exist_ok=True)
-                path.write_text(text)
+            # The one reuse case left is prose-only deltas on both sides
+            # (scripts/land.sh disjoint()); a code delta on either side
+            # rechecks, so the shared-input case writes Cargo.toml.
+            first = self.a / ('Cargo.toml' if common else 'docs/first.md')
+            first.parent.mkdir(parents=True, exist_ok=True)
+            first.write_text('first\n')
+            second = self.b / 'docs/second.md'
+            second.parent.mkdir(parents=True, exist_ok=True)
+            second.write_text('second\n')
         self.commit(self.a, 'first')
         self.commit(self.b, 'second')
         a, b = self.start(self.a), self.start(self.b)
