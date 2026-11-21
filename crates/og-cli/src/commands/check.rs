@@ -943,6 +943,7 @@ pub fn gate(p: &Project, package: &Path, json: bool) -> Result<Report, String> {
     untyped_documents(&target, &mut report);
     module_state(p, &mut report);
     unknown_classes(p, &mut report);
+    missing_tables(&p.root, &project_dirs(p), &mut report);
     fields::check(p, &mut report);
     if json {
         println!("{}", report.json());
@@ -1347,6 +1348,81 @@ fn unknown_classes(p: &Project, report: &mut Report) {
 /// The diagnostic code of an unknown class in a game's TSX.
 const UNKNOWN_CLASS: u32 = 9105;
 
+/// The diagnostic code of a string table a source imports that is not there.
+const MISSING_TABLE: u32 = 9106;
+
+/// The `.ogt` files a source imports for their effect (`import "./x.en.ogt"`),
+/// each with its 1-based line and column.
+fn ogt_imports(text: &str) -> Vec<(u32, u32, &str)> {
+    let mut out = Vec::new();
+    for (i, line) in text.lines().enumerate() {
+        // A statement, not an import a comment or a string quotes.
+        let Some(stmt) = line.trim_start().strip_prefix("import") else {
+            continue;
+        };
+        let rest = stmt.trim_start();
+        let Some(quote) = rest.chars().next().filter(|c| *c == '"' || *c == '\'') else {
+            continue;
+        };
+        let body = &rest[1..];
+        let Some(end) = body.find(quote) else {
+            continue;
+        };
+        let spec = &body[..end];
+        if spec.ends_with(".ogt") {
+            let col = line.len() - rest.len() + 1;
+            out.push((i as u32 + 1, col as u32 + 1, spec));
+        }
+    }
+    out
+}
+
+/// Each `.ogt` a TS or TSX source under `dirs` imports beside itself that does
+/// not exist: an error naming the importer. The cook fails the whole asset
+/// that bundles it (every component's table with it), so a bad import stops
+/// at its author's check instead.
+fn missing_tables(root: &Path, dirs: &[PathBuf], report: &mut Report) {
+    let mut files = Vec::new();
+    for d in dirs {
+        crate::lockstep_lint::sources(d, &mut files);
+    }
+    files.sort();
+    files.dedup();
+    for path in files {
+        let Ok(text) = std::fs::read_to_string(&path) else {
+            continue;
+        };
+        let dir = path.parent().unwrap_or(root);
+        for (line, col, spec) in ogt_imports(&text) {
+            if !spec.starts_with('.') || dir.join(spec).is_file() {
+                continue;
+            }
+            let file = typescript_path(path.strip_prefix(root).unwrap_or(&path));
+            let message = format!(
+                "`{spec}` is not beside this file: a component imports only a string table in its own directory"
+            );
+            report.raw.push_str(&format!(
+                "{file}({line},{col}): error OG{MISSING_TABLE}: {message}\n"
+            ));
+            report.diagnostics.push(Diagnostic {
+                file: Some(file),
+                line: Some(line),
+                col: Some(col),
+                code: MISSING_TABLE,
+                message,
+            });
+        }
+    }
+}
+
+/// The directories whose sources a project's check reads.
+fn project_dirs(p: &Project) -> Vec<PathBuf> {
+    vec![
+        p.entry.parent().unwrap_or(&p.root).to_path_buf(),
+        p.root.join("assets/ui"),
+    ]
+}
+
 /// `gate`, and `Err` on a type error as well: what stops a bundle.
 pub fn require(p: &Project, package: &Path, json: bool) -> Result<Report, String> {
     let report = gate(p, package, json)?;
@@ -1454,7 +1530,12 @@ pub fn run(args: &[&str]) -> ExitCode {
     if let Some(p) = &project {
         module_state(p, &mut report);
         unknown_classes(p, &mut report);
+        missing_tables(&p.root, &project_dirs(p), &mut report);
         fields::check(p, &mut report);
+    } else {
+        // A configuration (packages/engine): every source under it, so an
+        // engine component's bad import fails the engine's own typecheck.
+        missing_tables(&target.root, std::slice::from_ref(&target.root), &mut report);
     }
     if json {
         println!("{}", report.json());
@@ -1491,6 +1572,43 @@ mod tests {
     // Every input below is tsrs 0.18.0's output, copied (the Windows path
     // excepted: no tsrs for Windows, so the line is a Linux one with its
     // path written the way tsgo prints one there).
+
+    #[test]
+    fn an_ogt_import_names_its_table() {
+        let text = "import { View } from \"@origingame/engine/ui\";\nimport \"./world.en.ogt\";\n  import './hud.ogt';\n// the `import \"./x.en.ogt\"` above\nconst s = \"import\";\n";
+        let found: Vec<_> = ogt_imports(text)
+            .into_iter()
+            .map(|(l, _, s)| (l, s))
+            .collect();
+        assert_eq!(found, vec![(2, "./world.en.ogt"), (3, "./hud.ogt")]);
+    }
+
+    #[test]
+    fn a_table_not_beside_its_importer_is_an_error() {
+        let dir = std::env::temp_dir().join(format!("og-check-ogt-{}", std::process::id()));
+        let hud = dir.join("hud");
+        std::fs::create_dir_all(&hud).unwrap();
+        std::fs::write(hud.join("bar.en.ogt"), "").unwrap();
+        std::fs::write(hud.join("bar.tsx"), "import \"./bar.en.ogt\";\n").unwrap();
+        std::fs::write(hud.join("damage.tsx"), "import \"./world.en.ogt\";\n").unwrap();
+        let mut report = Report {
+            tool: "tsrs",
+            version: String::new(),
+            config: String::new(),
+            ms: 0.0,
+            diagnostics: Vec::new(),
+            raw: String::new(),
+        };
+        missing_tables(&dir, std::slice::from_ref(&dir), &mut report);
+        std::fs::remove_dir_all(&dir).unwrap();
+        assert_eq!(report.diagnostics.len(), 1);
+        let d = &report.diagnostics[0];
+        assert_eq!(
+            (d.file.as_deref(), d.line, d.code),
+            (Some("hud/damage.tsx"), Some(1), MISSING_TABLE)
+        );
+        assert!(d.message.contains("./world.en.ogt"));
+    }
 
     #[test]
     fn a_located_diagnostic() {
