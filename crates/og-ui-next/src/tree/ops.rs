@@ -6,6 +6,7 @@
 
 use super::*;
 use crate::a11y;
+use rustc_hash::FxHashMap;
 
 /// The first bytes of an op batch, which no store command batch starts
 /// with (the wire codec's first byte is a value tag, 0 to 6).
@@ -330,14 +331,9 @@ impl Tree {
         shadow[3] *= 0.45;
         let fg = resolve("text-fg bg-focus", "", 0, "");
         self.cursor_colors = [shadow, fg.skin.ink, fg.skin.fill];
-        self.classes.resolve = Some(resolve);
-        self.restyle_all();
-    }
-
-    /// Takes another look (a scheme or pack change): what the root passes
-    /// down and every op node's record follow it.
-    pub fn set_look(&mut self, look: Rc<Look>) {
-        let mut root = look.root.clone();
+        // The root passes down the theme's body text in its ink, as the
+        // page's body does.
+        let mut root = resolve("text-fg text-body font-body", "", 0, "");
         root.text.set = 0;
         self.root = Inherit {
             size: root.font_size,
@@ -345,11 +341,11 @@ impl Tree {
             text: root.text,
             opacity: 1.0,
         };
-        self.look = look;
+        self.classes.resolve = Some(resolve);
         self.restyle_all();
         for e in 0..self.els.len() as u32 {
             let el = &self.els[e as usize];
-            if el.js != NONE && !el.dead && el.parent == NONE {
+            if !el.dead && el.parent == NONE {
                 self.reapply(e);
             }
         }
@@ -413,25 +409,19 @@ impl Tree {
         let e = self.els.len() as u32;
         self.els.push(El {
             node,
-            at: 0,
-            row: self.row.clone(),
-            disabled: NONE,
+            disabled: false,
             clickable: false,
             js: id,
             listens: 0,
             class,
             arena_parent: NONE,
             parent: NONE,
-            inst: NONE,
-            style: NONE,
             kind,
             leaf,
             text: String::new(),
             hidden: 0,
             dead: false,
-            queued: false,
             record,
-            holds: Box::default(),
             line: None,
             anchor: None,
             attrs: Vec::new(),
@@ -619,10 +609,7 @@ impl Tree {
                     match name {
                         "disabled" => {
                             let on = !matches!(value, "" | "false" | "0");
-                            match self.els[e as usize].disabled {
-                                NONE => self.els[e as usize].disabled = queue::signal(on.into()),
-                                s => queue::set(s, on.into()),
-                            }
+                            self.els[e as usize].disabled = on;
                             self.set_state(e, DISABLED, on);
                         }
                         "tabIndex" => {
@@ -1084,7 +1071,7 @@ impl Tree {
         focus: Option<Id>,
         scale: f32,
     ) -> Option<accesskit::TreeUpdate> {
-        let (width, height) = self.env.size.get();
+        let (width, height) = self.size;
         let viewport = a11y::Viewport {
             width,
             height,
@@ -1165,7 +1152,7 @@ impl Tree {
     /// the focus where input put it: each arena node's facts and the focus
     /// order. For readers that ask once (the probe).
     pub fn a11y_snapshot(&self) -> (rustc_hash::FxHashMap<Id, a11y::Facts>, Vec<Id>) {
-        let (width, height) = self.env.size.get();
+        let (width, height) = self.size;
         let viewport = a11y::Viewport {
             width,
             height,
@@ -1176,7 +1163,7 @@ impl Tree {
 
     /// The viewport the tree lays out in, CSS px.
     pub fn size(&self) -> (f32, f32) {
-        self.env.size.get()
+        self.size
     }
 
     /// Op node `id`'s box (x, y, width, height) as last painted, in the
@@ -1192,7 +1179,6 @@ impl Tree {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::look::Layer;
 
     /// An op batch as the TS renderer writes it.
     #[derive(Default)]
@@ -1225,14 +1211,7 @@ mod tests {
     }
 
     fn tree() -> Tree {
-        let look = Rc::new(Look::load(
-            &[Layer {
-                tokens: crate::look::default_tokens(),
-                surfaces: crate::look::DEFAULT_SURFACES,
-            }],
-            "dark",
-        ));
-        let mut t = Tree::new(look, []);
+        let mut t = Tree::new();
         t.resize(400.0, 300.0);
         // `row` lays its children in a row; `b` is 50 by 20.
         t.set_resolver(Box::new(|class, _, _, _| {
@@ -1305,13 +1284,12 @@ mod tests {
         let (two, three) = (t.op_box(2).unwrap(), t.op_box(3).unwrap());
         assert_eq!(three, [0.0, 0.0, 50.0, 20.0]);
         assert_eq!(two, [50.0, 0.0, 50.0, 20.0]);
-        let mut out = Vec::new();
         // 2 does not listen: a press on it fires nothing.
-        t.pointer(75.0, 10.0, true, false, &mut out);
-        t.pointer(75.0, 10.0, false, true, &mut out);
+        t.pointer(75.0, 10.0, true, false);
+        t.pointer(75.0, 10.0, false, true);
         assert!(t.events.is_empty());
-        t.pointer(25.0, 10.0, true, false, &mut out);
-        t.pointer(25.0, 10.0, false, true, &mut out);
+        t.pointer(25.0, 10.0, true, false);
+        t.pointer(25.0, 10.0, false, true);
         assert_eq!(t.events, [Fired::at(3, Event::Press, 25.0, 10.0)]);
         let mut reply = Vec::new();
         t.take_events(&mut reply);
@@ -1323,8 +1301,8 @@ mod tests {
         t.apply(&b.bytes()).unwrap();
         frame(&mut t);
         assert_eq!((t.op_box(1), t.op_box(3)), (None, None));
-        t.pointer(25.0, 10.0, true, false, &mut out);
-        t.pointer(25.0, 10.0, false, true, &mut out);
+        t.pointer(25.0, 10.0, true, false);
+        t.pointer(25.0, 10.0, false, true);
         assert!(t.events.is_empty(), "a released node answers nothing");
     }
 
@@ -1447,9 +1425,8 @@ mod tests {
         let two = t.els[t.op(2).unwrap() as usize].node;
         let (facts, _) = t.a11y_snapshot();
         assert_eq!(facts[&two].role, "button");
-        let mut out = Vec::new();
-        t.pointer(130.0, 65.0, true, false, &mut out);
-        t.pointer(130.0, 65.0, false, true, &mut out);
+        t.pointer(130.0, 65.0, true, false);
+        t.pointer(130.0, 65.0, false, true);
         assert_eq!(t.events.len(), 1, "a press where it is placed reaches it");
         t.take_events(&mut Vec::new());
         // Behind the camera, and in front but off the surface: hidden.
@@ -1457,8 +1434,8 @@ mod tests {
             place(&mut t, at);
             assert!(!node(&t, 2).1, "{at:?}");
             assert!(!t.a11y_snapshot().0.contains_key(&two), "{at:?}");
-            t.pointer(130.0, 65.0, true, false, &mut out);
-            t.pointer(130.0, 65.0, false, true, &mut out);
+            t.pointer(130.0, 65.0, true, false);
+            t.pointer(130.0, 65.0, false, true);
             assert!(t.events.is_empty(), "{at:?}");
         }
     }
@@ -1876,9 +1853,8 @@ mod tests {
         let a = alpha_at(&t, 50.0).unwrap();
         assert!((a - 0.5).abs() < 0.01, "half out after 0.1 s: {a}");
         assert!(t.op(4).is_err(), "a released id is free at once");
-        let mut out = Vec::new();
-        t.pointer(75.0, 10.0, true, false, &mut out);
-        t.pointer(75.0, 10.0, false, true, &mut out);
+        t.pointer(75.0, 10.0, true, false);
+        t.pointer(75.0, 10.0, false, true);
         assert!(t.events.is_empty(), "an exiting node answers nothing");
         t.set_time(1.7, false);
         frame(&mut t);
@@ -2217,7 +2193,7 @@ mod tests {
     }
 
     fn at(t: &mut Tree, x: f32, y: f32, pressed: bool, released: bool) {
-        t.pointer(x, y, pressed, released, &mut Vec::new());
+        t.pointer(x, y, pressed, released);
         frame(t);
     }
 
@@ -2278,7 +2254,7 @@ mod tests {
                 ..Default::default()
             };
             t.virtual_cursor(desc, &mut pad, &mut ptr, 60);
-            t.pointer(ptr.x, ptr.y, ptr.pressed, ptr.released, &mut Vec::new());
+            t.pointer(ptr.x, ptr.y, ptr.pressed, ptr.released);
             frame(t);
             pad
         };
@@ -2528,7 +2504,10 @@ mod tests {
         t.key("ArrowDown", false, false, false, false);
         assert_eq!(t.focused_id(), Some(2), "it took the arrow");
         assert_eq!((t.events[0].id, &*t.events[0].key), (2, "ArrowDown"));
-        assert!(t.nav(og_input::frame::Nav::Down), "the d-pad still moves it");
+        assert!(
+            t.nav(og_input::frame::Nav::Down),
+            "the d-pad still moves it"
+        );
         assert_eq!(t.focused_id(), Some(4));
     }
 
@@ -3059,8 +3038,8 @@ mod tests {
             changes(&mut t),
             ["abXe\u{301}", "abe\u{301}", "ae\u{301}", "a"]
         );
-        // The caret is after "a": half an em (the class's 14 px) in, at the
-        // fixed face's advance.
+        // The caret is after "a": half an em (the root's 16 px: the test's
+        // resolver gives no text size) in, at the fixed face's advance.
         let caret = |t: &mut Tree| {
             t.frame(&fonts, &IconAtlas::default());
             let x0 = t.op_box(1).unwrap()[0];
@@ -3070,7 +3049,7 @@ mod tests {
                 .find(|q| q.kind == og_draw::paint::PaintKind::Solid as u32 && q.rect[2] <= 2.0)
                 .map(|q| q.rect[0] - x0)
         };
-        assert_eq!(caret(&mut t), Some(7.0));
+        assert_eq!(caret(&mut t), Some(8.0));
         t.key("Home", false, false, false, false);
         assert_eq!(caret(&mut t), Some(0.0));
         let mut b = Batch::default();
@@ -3078,7 +3057,7 @@ mod tests {
         t.apply(&b.bytes()).unwrap();
         assert_eq!(
             caret(&mut t),
-            Some(21.0),
+            Some(24.0),
             "a new value puts the caret at its end"
         );
         assert!(

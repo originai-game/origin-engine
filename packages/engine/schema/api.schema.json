@@ -12679,7 +12679,7 @@
         },
         {
           "name": "scope",
-          "doc": "The entry to named svelte/store-compatible presentation data and retained document mounts. Rust owns values, the dependency graph and mounted elements. No Svelte compiler, runes, TS elements or asynchronous primitives. See docs/ui.md for a worked example and If you know Svelte.",
+          "doc": "The entry to named svelte/store-compatible presentation data. Rust owns the values and the dependency graph. See docs/ui.md for a worked example.",
           "params": [
             {
               "name": "world",
@@ -12720,7 +12720,7 @@
         },
         {
           "name": "UiScope",
-          "doc": "Named presentation stores for one world, following the svelte/store contract. Svelte template documents own structure; this scope supplies data. Re-register the same IDs on reload to preserve source values.",
+          "doc": "Named presentation stores for one world, following the svelte/store contract: the TSX UI reads them. Re-register the same IDs on reload to preserve source values.",
           "members": [
             {
               "name": "id",
@@ -12882,54 +12882,6 @@
                 }
               ],
               "returns": "UiCollection<T>",
-              "publish": true,
-              "host": false
-            },
-            {
-              "name": "mount",
-              "doc": "Register a loaded document once with named store inputs. The native renderer updates it from store changes; no per-element TypeScript calls are made. Re-registering the same ID and inputs preserves its mounted identity. Inputs stay subscribed until unmount or scope disposal. A `type screen` document is a layer of the stack while it is mounted (docs/ui.md §2.1): its `<meta name=\"screen\" data-layer …>` decides its kind, input, pause, Back and focus memory, Back or a `pop` trigger unmounts it, and its `@view-transition` animates it (a cross-fade by default) as it joins and leaves the stack.",
-              "params": [
-                {
-                  "name": "id",
-                  "type": "String",
-                  "optional": false,
-                  "doc": "Stable mount ID within this scope."
-                },
-                {
-                  "name": "document",
-                  "type": "String",
-                  "optional": false,
-                  "doc": "The loaded document's declared name."
-                },
-                {
-                  "name": "inputs",
-                  "type": "Map<UiReadable<Json>>",
-                  "optional": false,
-                  "doc": "Document input names mapped to named stores from this world."
-                },
-                {
-                  "name": "content",
-                  "type": "Map<String>",
-                  "optional": true,
-                  "doc": "Content passed by reference (Svelte snippets as props): a name the document renders with `{@render name()}`, mapped to a loaded document's name (its root) or `document#snippet` (one of its snippets), rendered with this mount's stores."
-                }
-              ],
-              "returns": "Result<Void>",
-              "publish": true,
-              "host": false
-            },
-            {
-              "name": "unmount",
-              "doc": "Remove a registered document and release its input subscriptions. Removing an absent mount succeeds.",
-              "params": [
-                {
-                  "name": "id",
-                  "type": "String",
-                  "optional": false,
-                  "doc": "The mount ID in this scope."
-                }
-              ],
-              "returns": "Result<Void>",
               "publish": true,
               "host": false
             },

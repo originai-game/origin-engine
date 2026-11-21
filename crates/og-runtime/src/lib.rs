@@ -380,8 +380,8 @@ pub fn og_engine_inspector_event(engine: u32, event: &str) -> bool {
 /// The binary, host-neutral retained UI protocol.
 pub fn og_engine_ui_patch(world: u32, bytes: &[u8]) -> Vec<u8> {
     match shared_ui(world) {
-        // The documents run on og-ui's new core: its mounts are the new core's.
-        Some(ui) => {
+        // A world with a UI: the TS renderer's ops and the game's stores.
+        Some(_) => {
             let eng = engine::engine(world).expect("shared_ui found it");
             let ops = bytes.strip_prefix(og_ui_next::tree::MAGIC);
             if ops.is_some() {
@@ -400,7 +400,7 @@ pub fn og_engine_ui_patch(world: u32, bytes: &[u8]) -> Vec<u8> {
                 // The TS renderer's op batches, beside the store's commands.
                 match ops {
                     Some(ops) => {
-                        let reply = next.ops(world, &ui.lock(), ops);
+                        let reply = next.ops(world, ops);
                         (reply, next.take_strings())
                     }
                     None => (next.patch(bytes), Vec::new()),

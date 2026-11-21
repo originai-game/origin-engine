@@ -122,13 +122,7 @@ pub fn warm_tick(id: u32) {
         let mut copy = ui.lock().clone();
         copy.begin(og_ui::InputFrame::default(), viewport);
         copy.end();
-        // The new core's documents: the real tree, built once (its build
-        // is a cache of the mounts; no game code runs).
         crate::present::ui_next::pack_images(id);
-        let rs = &mut *eng.render.borrow_mut();
-        if let Some(next) = &mut rs.ui_next {
-            next.warm(id, &ui.lock(), &rs.textures);
-        }
     }
     if let (Some(physics), Ok(world)) = (physics, eng.world()) {
         // A world without the physics settings has nothing to build.

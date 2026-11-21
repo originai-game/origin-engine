@@ -1,86 +1,25 @@
-//! A mounted document as the new core runs it: its elements made once in an
-//! [`Arena`], each binding an effect of the update queue ([`crate::queue`])
-//! that patches only the node it names. A frame drains the tree's ops,
-//! refolds the records of the elements whose conditions changed (and the
-//! text their subtree inherits), lays out what is dirty and paints again
-//! only when something changed. A frame with nothing queued does no work
+//! The TSX UI as the new core runs it: the renderer's op batches
+//! ([`ops`]) make and patch its elements in an [`Arena`], each with the
+//! record its classes resolve to. A frame applies what changed to the
+//! text its subtree inherits, lays out what is dirty and paints again
+//! only when something changed. A frame with nothing changed does no work
 //! and allocates nothing.
 
 use crate::arena::{Arena, Id, Run};
-use crate::doc::DocStyle;
-use crate::look::Look;
-use crate::queue::{self, Op, Reads, Target};
-use crate::style::{Record, Rgba, Text};
+use crate::record::{Record, Rgba, Text};
 use og_draw::paint::{Paint, PaintKind, PaintQuad};
-use og_reactive::bind::{Env, Expr, Scope, Screen};
-use og_ui::doc::{Act, Lit, NodeKind, PropValue, UiDocument, When, schema::Kind};
 use og_ui::{IconAtlas, IconCell};
-use rustc_hash::FxHashMap;
-use serde_json::Value;
-use std::cell::Cell;
-use std::rc::Rc;
-use std::sync::Arc;
 
 const NONE: u32 = u32::MAX;
 
-/// A host's string tables: a key's message (og.i18n), `None` when absent.
-pub type Strings = Box<dyn Fn(&str) -> Option<String>>;
-
-/// What the bindings read beside the stores: the UI's box and input, which
-/// `:size()` and `:touch` read, and the host's locale and string tables,
-/// which `t()` reads.
-pub struct Surface {
-    pub size: Cell<(f32, f32)>,
-    pub touch: Cell<bool>,
-    pub language: String,
-    pub strings: Option<Strings>,
-}
-
-impl Default for Surface {
-    fn default() -> Self {
-        Surface {
-            size: Cell::default(),
-            touch: Cell::default(),
-            language: "en".into(),
-            strings: None,
-        }
-    }
-}
-
-impl Env for Surface {
-    fn screen(&self, class: Screen) -> bool {
-        let (w, h) = self.size.get();
-        class.holds(w, h, self.touch.get())
-    }
-    fn language(&self) -> &str {
-        &self.language
-    }
-    fn translate(&self, key: &str) -> Option<String> {
-        self.strings.as_ref()?(key)
-    }
-}
-
-/// A document compiled against the look.
-struct Compiled {
-    doc: Arc<UiDocument>,
-    style: DocStyle,
-    /// A document node's index in `style.nodes`.
-    style_of: Vec<u32>,
-    /// A condition reads no store (`:size()`, `:dir()`): it is evaluated
-    /// when its element's record is folded.
-    fixed: Vec<bool>,
-    /// The scrollers a condition asks `:state(more)` of: (condition,
-    /// document node).
-    more: Vec<(u32, u32)>,
-}
-
-/// One instance of a document.
-struct Inst {
-    doc: u32,
-    /// The mount it is part of, in mounting order.
-    mount: u32,
-    /// Its scrollers (document nodes) whose content runs past their end.
-    more: Vec<u32>,
+/// What an op node is: a box (a View, a Button, a Scroll …), a text, an
+/// image or an icon.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Kind {
+    Box,
+    Label,
+    Image,
+    Icon,
 }
 
 /// The effective look an element passes to its children.
@@ -94,15 +33,11 @@ struct Inherit {
 
 struct El {
     node: Id,
-    /// Its document node.
-    at: u32,
-    /// The key of the innermost `{#each}` row it is in; empty outside one.
-    row: Rc<str>,
-    /// Its `disabled` attribute as a signal; NONE when it has none.
-    disabled: u32,
-    /// It answers a press: a button, or an element with a click handler.
+    /// Its `disabled` prop.
+    disabled: bool,
+    /// It answers a press: an element with a press or tap handler.
     clickable: bool,
-    /// The renderer's id of an op node ([`ops`]); NONE for a document's.
+    /// The renderer's id of the op node ([`ops`]).
     js: u32,
     /// An op node's events (bits by [`ops::Event`]) and its class entry.
     listens: u32,
@@ -111,8 +46,6 @@ struct El {
     arena_parent: u32,
     /// The element it inherits from.
     parent: u32,
-    inst: u32,
-    style: u32,
     kind: Kind,
     leaf: Option<Id>,
     /// Its text, a text leaf's or an icon's name: rewritten in place, so a
@@ -120,11 +53,7 @@ struct El {
     text: String,
     hidden: u16,
     dead: bool,
-    queued: bool,
     record: Record,
-    /// The store conditions it holds, bits by condition index: its own, as
-    /// each row of an `{#each}` sets its own of the same rule.
-    holds: Box<[u64]>,
     /// Not drawn since it was made or inserted: `Some(true)` inserted into
     /// a parent on screen. Its style is not drawn yet, so a restyle enters
     /// it again instead of running a transition (CSS never transitions an
@@ -235,67 +164,21 @@ impl ImageProps {
     }
 }
 
-struct IfBlock {
-    tops: Vec<u32>,
-    shown: bool,
-}
-
-struct EachBlock {
-    doc: u32,
-    inst: u32,
-    node: usize,
-    parent: u32,
-    arena_parent: Id,
-    scope: Vec<(Box<str>, u32)>,
-    chain: Vec<u32>,
-    list: u32,
-    rows: Vec<(u32, Vec<u32>)>,
-}
-
-/// Something an element did that its document reports to the game
-/// (`og.ui.docEvents`): `click` with its id, or `emit` with the handler
-/// an `on:` attribute names.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Event {
-    /// The mount, in mounting order.
-    pub mount: u32,
-    /// The element's document id.
-    pub path: Box<str>,
-    pub row_key: Rc<str>,
-    pub kind: &'static str,
-    pub name: Box<str>,
-}
-
-/// What a frame did: whether it laid out and painted, and its ops.
+/// What a frame did: whether it laid out and painted.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct Frame {
-    pub ops: usize,
-    pub refolded: usize,
     pub laid_out: bool,
     pub painted: bool,
 }
 
 pub struct Tree {
-    id: u32,
-    look: Rc<Look>,
-    env: Rc<Surface>,
-    docs: Vec<Compiled>,
-    by_name: FxHashMap<Box<str>, u32>,
-    library: FxHashMap<Box<str>, Arc<UiDocument>>,
-    /// Documents' styles as the cook compiled them ([`crate::cooked`]),
-    /// by document source.
-    cooked: FxHashMap<Box<str>, Rc<[u8]>>,
-    insts: Vec<Inst>,
+    /// The surface's size in CSS px ([`Tree::resize`]).
+    size: (f32, f32),
     els: Vec<El>,
-    ifs: Vec<IfBlock>,
-    eaches: Vec<EachBlock>,
     arena: Arena,
+    /// What the root passes down: the theme's body text and ink
+    /// ([`Tree::set_resolver`]).
     root: Inherit,
-    ops: Vec<Op>,
-    /// The size class as a signal ([`Screen`] bits), which the bindings
-    /// that read `:size()` or `:touch` track.
-    screen: u32,
-    dirty: Vec<u32>,
     paint: bool,
     /// The HUD's safe-area insets (top, right, bottom, left) a record's
     /// `env(hud-inset-*)` adds at layout ([`Tree::set_insets`]).
@@ -341,11 +224,6 @@ pub struct Tree {
     /// The host's: an image's source (a texture handle) as the slot it
     /// draws, read as the tree paints, so a replaced texture follows.
     textures: Option<Textures>,
-    /// The mount being made and the key of the row being made.
-    mounting: u32,
-    row: Rc<str>,
-    /// The element the pointer went down on, while it is held.
-    pressed: u32,
     /// The live elements depth first, a parent before its children (in
     /// paint order), made again when the structure changes; `el_of` maps
     /// an arena node to its element, `walk` is its stack.
@@ -421,114 +299,13 @@ pub use vcursor::{Pad as CursorPad, Pointer as CursorPointer, VirtualCursorDesc}
 /// ([`Tree::set_textures`]).
 pub type Textures = Box<dyn Fn(f64) -> u32>;
 
-static NEXT_TREE: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(1);
-
-fn lit(l: &Lit) -> Value {
-    match l {
-        Lit::Str(s) => s.as_str().into(),
-        Lit::Num(n) => serde_json::Number::from_f64(*n as f64).map_or(Value::Null, Value::Number),
-        Lit::Bool(b) => (*b).into(),
-        Lit::Strs(v) => v.iter().map(|s| Value::from(s.as_str())).collect(),
-        _ => Value::Null,
-    }
-}
-
-/// Whether `e` reads the UI's box or input (`:size()`, `:touch`).
-fn reads_screen(e: &Expr) -> bool {
-    match e {
-        Expr::Screen(_) => true,
-        Expr::Not(a) | Expr::Neg(a) | Expr::Format(_, a) | Expr::Numbers(a) => reads_screen(a),
-        Expr::Bin(_, a, b) | Expr::Index(a, b) => reads_screen(a) || reads_screen(b),
-        Expr::If(a, b, c) => reads_screen(a) || reads_screen(b) || reads_screen(c),
-        _ => false,
-    }
-}
-
-/// The signals of `scope` an expression reads, by their root name, and
-/// `screen` (the size class) when it reads the UI's box: a binding of
-/// `.step:state(current):size(compact)` runs again when the class moves.
-fn reads(e: &Expr, scope: &[(Box<str>, u32)], screen: u32) -> Reads {
-    let mut paths = Vec::new();
-    e.paths(&mut paths);
-    let mut out: Reads = Vec::new();
-    for p in paths {
-        let root = p.split('.').next().unwrap_or("");
-        if out.iter().any(|(n, _)| &**n == root) {
-            continue;
-        }
-        if let Some((n, s)) = scope.iter().rev().find(|(n, _)| &**n == root) {
-            out.push((n.clone(), *s));
-        }
-    }
-    if reads_screen(e) {
-        // A name no path takes: the value is read only to be tracked.
-        out.push(("\u{0}screen".into(), screen));
-    }
-    out
-}
-
-/// `e` over `reads`, as a derived signal.
-fn derive(e: Expr, reads: Reads, env: Rc<Surface>) -> u32 {
-    queue::derive(move || queue::eval(&e, &reads, &*env))
-}
-
-/// What a fixed condition reads: the surface, and the instance's
-/// scrollers with more below.
-struct Fixed<'a> {
-    surface: &'a Surface,
-    more: &'a [u32],
-}
-
-impl og_reactive::bind::Env for Fixed<'_> {
-    fn screen(&self, class: Screen) -> bool {
-        self.surface.screen(class)
-    }
-    fn language(&self) -> &str {
-        &self.surface.language
-    }
-    fn interaction_at(&self, node: usize, state: og_reactive::bind::InteractionState) -> bool {
-        state == og_reactive::bind::InteractionState::More && self.more.contains(&(node as u32))
-    }
-}
-
-fn eval_static(e: &Expr, env: &Fixed) -> bool {
-    og_reactive::bind::truthy(&e.eval(&Scope {
-        vm: &Value::Null,
-        locals: Vec::new(),
-        env,
-    }))
-}
-
-/// The scroller nodes `e` asks `:state(more)` of.
-fn more_of(e: &Expr, out: &mut Vec<u32>) {
-    match e {
-        Expr::InteractionAt {
-            node,
-            state: og_reactive::bind::InteractionState::More,
-        } => out.push(*node as u32),
-        Expr::Not(a) | Expr::Neg(a) => more_of(a, out),
-        Expr::Bin(_, a, b) => {
-            more_of(a, out);
-            more_of(b, out);
-        }
-        Expr::If(a, b, c) => {
-            more_of(a, out);
-            more_of(b, out);
-            more_of(c, out);
-        }
-        _ => {}
+impl Default for Tree {
+    fn default() -> Self {
+        Tree::new()
     }
 }
 
 impl Tree {
-    /// Gives the bindings the host's locale and string tables. Call it
-    /// before mounting: a binding reads them when it runs.
-    pub fn set_strings(&mut self, language: &str, strings: Strings) {
-        let env = Rc::get_mut(&mut self.env).expect("set before anything is mounted");
-        env.language = language.into();
-        env.strings = Some(strings);
-    }
-
     /// How an image's source resolves to its texture (the host's assets).
     pub fn set_textures(&mut self, textures: Textures) {
         self.textures = Some(textures);
@@ -541,35 +318,20 @@ impl Tree {
         self.paint = true;
     }
 
-    /// An empty tree over `look`, with the documents it may use.
-    pub fn new(look: Rc<Look>, library: impl IntoIterator<Item = Arc<UiDocument>>) -> Tree {
-        let mut root = look.root.clone();
-        root.text.set = 0;
+    /// An empty tree. Its root passes down the default body text until a
+    /// class resolver gives it the theme's ([`Tree::set_resolver`]).
+    pub fn new() -> Tree {
+        let root = Record::default();
         Tree {
-            id: NEXT_TREE.fetch_add(1, std::sync::atomic::Ordering::Relaxed),
-            env: Rc::new(Surface::default()),
+            size: (0.0, 0.0),
             root: Inherit {
                 size: root.font_size,
-                ink: root.skin.ink,
+                ink: [1.0; 4],
                 text: root.text,
                 opacity: 1.0,
             },
-            look,
-            docs: Vec::new(),
-            by_name: FxHashMap::default(),
-            library: library
-                .into_iter()
-                .map(|d| (d.name.as_str().into(), d))
-                .collect(),
-            cooked: FxHashMap::default(),
-            insts: Vec::new(),
             els: Vec::new(),
-            ifs: Vec::new(),
-            eaches: Vec::new(),
             arena: Arena::new(),
-            ops: Vec::new(),
-            screen: queue::signal(0.into()),
-            dirty: Vec::new(),
             paint: true,
             insets: [0.0; 4],
             drawn: Paint::default(),
@@ -580,9 +342,6 @@ impl Tree {
             xfs: Vec::new(),
             painted_transforms: Vec::new(),
             textures: None,
-            mounting: 0,
-            row: "".into(),
-            pressed: NONE,
             order: Vec::new(),
             ordered: false,
             el_of: Vec::new(),
@@ -610,442 +369,12 @@ impl Tree {
         }
     }
 
-    /// The cook's compiled style of document `source` ([`crate::cooked`]):
-    /// taken when it was compiled against this tree's look and parse.
-    pub fn set_cooked(&mut self, source: &str, bytes: Rc<[u8]>) {
-        self.cooked.insert(source.into(), bytes);
-    }
-
     pub fn len(&self) -> usize {
         self.els.len()
     }
 
     pub fn is_empty(&self) -> bool {
         self.els.is_empty()
-    }
-
-    fn compiled(&mut self, name: &str) -> Option<u32> {
-        if let Some(&d) = self.by_name.get(name) {
-            return Some(d);
-        }
-        let doc = self.library.get(name)?.clone();
-        // The cook's compile of it against this look, else one now.
-        let style = self
-            .cooked
-            .get(doc.source.as_str())
-            .and_then(|b| crate::cooked::decode(b, doc.nodes.len(), self.look.key))
-            .unwrap_or_else(|| DocStyle::compile(&doc, self.look.tokens(), self.look.surfaces()));
-        let mut style_of = vec![NONE; doc.nodes.len()];
-        for (k, n) in style.nodes.iter().enumerate() {
-            style_of[n.node as usize] = k as u32;
-        }
-        let fixed = style
-            .conditions
-            .iter()
-            .map(|c| {
-                let mut p = Vec::new();
-                c.paths(&mut p);
-                p.is_empty()
-            })
-            .collect();
-        let mut more = Vec::new();
-        for (k, c) in style.conditions.iter().enumerate() {
-            let mut nodes = Vec::new();
-            more_of(c, &mut nodes);
-            more.extend(nodes.into_iter().map(|n| (k as u32, n)));
-        }
-        self.docs.push(Compiled {
-            doc,
-            style,
-            style_of,
-            fixed,
-            more,
-        });
-        let d = self.docs.len() as u32 - 1;
-        self.by_name.insert(name.into(), d);
-        Some(d)
-    }
-
-    /// Mounts document `name` with its inputs (prop name to store signal).
-    pub fn mount(&mut self, name: &str, inputs: &[(&str, u32)]) -> Result<(), String> {
-        let mut scope: Vec<(Box<str>, u32)> = Vec::new();
-        for (n, s) in inputs {
-            scope.push(((*n).into(), *s));
-            scope.push((format!("${n}").into(), *s));
-        }
-        self.row = "".into();
-        self.instance(name, NONE, 0, scope, &mut Vec::new())
-            .ok_or_else(|| format!("og-ui-next: no document {name}"))?;
-        self.mounting += 1;
-        Ok(())
-    }
-
-    fn instance(
-        &mut self,
-        name: &str,
-        parent: u32,
-        arena_parent: Id,
-        mut scope: Vec<(Box<str>, u32)>,
-        chain: &mut Vec<u32>,
-    ) -> Option<()> {
-        let d = self.compiled(name)?;
-        let inst = self.insts.len() as u32;
-        self.insts.push(Inst {
-            doc: d,
-            mount: self.mounting,
-            more: Vec::new(),
-        });
-        // The document's own derived values, in order.
-        let derived = self.docs[d as usize].doc.derived.clone();
-        for (n, e) in derived {
-            let r = reads(&e, &scope, self.screen);
-            let s = derive(e, r, self.env.clone());
-            scope.push((n.into(), s));
-        }
-        let root = self.docs[d as usize].doc.root;
-        self.node(d, inst, root, parent, arena_parent, &scope, chain);
-        Some(())
-    }
-
-    #[allow(clippy::too_many_arguments)]
-    fn node(
-        &mut self,
-        d: u32,
-        inst: u32,
-        i: usize,
-        parent: u32,
-        arena_parent: Id,
-        scope: &[(Box<str>, u32)],
-        chain: &mut Vec<u32>,
-    ) {
-        let Some(n) = self.docs[d as usize].doc.nodes.get(i) else {
-            return;
-        };
-        let kind = n.kind.clone();
-        let children = n.children.clone();
-        match kind {
-            NodeKind::Element(k) => self.element(d, inst, i, k, parent, arena_parent, scope, chain),
-            NodeKind::If(e) => {
-                let b = self.ifs.len() as u32;
-                self.ifs.push(IfBlock {
-                    tops: Vec::new(),
-                    shown: true,
-                });
-                chain.push(b);
-                for c in children {
-                    self.node(d, inst, c, parent, arena_parent, scope, chain);
-                }
-                chain.pop();
-                let r = reads(&e, scope, self.screen);
-                queue::bind(
-                    self.id,
-                    Target::Shown { node: b },
-                    Rc::new(e),
-                    r,
-                    self.env.clone(),
-                );
-            }
-            NodeKind::For {
-                var,
-                index,
-                list,
-                key,
-                ..
-            } => {
-                let r = reads(&list, scope, self.screen);
-                let list_sig = derive(list, r, self.env.clone());
-                let b = self.eaches.len() as u32;
-                self.eaches.push(EachBlock {
-                    doc: d,
-                    inst,
-                    node: i,
-                    parent,
-                    arena_parent,
-                    scope: scope.to_vec(),
-                    chain: chain.clone(),
-                    list: list_sig,
-                    rows: Vec::new(),
-                });
-                self.rows(b, &var, index.as_deref(), &key);
-                let keys = Self::keys_of(var.clone(), key, list_sig, self.env.clone());
-                queue::bind(
-                    self.id,
-                    Target::Rebuild { node: b },
-                    Rc::new(Expr::Path("keys".into())),
-                    vec![("keys".into(), keys)],
-                    self.env.clone(),
-                );
-            }
-            NodeKind::Use(name) => {
-                let Some(cd) = self.compiled(&name) else {
-                    return;
-                };
-                let props = self.docs[cd as usize].doc.props.clone();
-                let args = self.docs[d as usize].doc.nodes[i].args.clone();
-                let mut inner: Vec<(Box<str>, u32)> = Vec::new();
-                for p in props {
-                    let arg = args
-                        .iter()
-                        .find(|(n, _, _)| *n == p.name)
-                        .map(|(_, v, _)| v);
-                    let s = match arg {
-                        Some(PropValue::Bind(e, _)) => {
-                            let r = reads(e, scope, self.screen);
-                            derive(e.clone(), r, self.env.clone())
-                        }
-                        Some(PropValue::Lit(l)) => queue::signal(lit(l)),
-                        _ => queue::signal(p.default.clone().unwrap_or(Value::Null)),
-                    };
-                    inner.push((p.name.into(), s));
-                }
-                self.instance(&name, parent, arena_parent, inner, chain);
-            }
-            NodeKind::Key(_) => {
-                for c in children {
-                    self.node(d, inst, c, parent, arena_parent, scope, chain);
-                }
-            }
-            NodeKind::Snippet(_) | NodeKind::Render { .. } => {}
-        }
-    }
-
-    /// The keys of a list signal's rows, as a derived signal.
-    fn keys_of(var: String, key: Expr, list: u32, env: Rc<Surface>) -> u32 {
-        queue::derive(move || {
-            let Value::Array(items) = queue::read(list) else {
-                return Value::Array(Vec::new());
-            };
-            items
-                .into_iter()
-                .map(|item| {
-                    key.eval(&Scope {
-                        vm: &Value::Null,
-                        locals: vec![(var.as_str(), item)],
-                        env: &*env,
-                    })
-                })
-                .collect()
-        })
-    }
-
-    /// Makes each row of list block `b`, its row a derived signal of the
-    /// list by key, under an owner of its own.
-    fn rows(&mut self, b: u32, var: &str, index: Option<&str>, key: &Expr) {
-        let e = &self.eaches[b as usize];
-        let (d, inst, node, parent, arena_parent, list) =
-            (e.doc, e.inst, e.node, e.parent, e.arena_parent, e.list);
-        let (mounting, outer_row) = (self.mounting, self.row.clone());
-        self.mounting = self.insts[inst as usize].mount;
-        let scope = e.scope.clone();
-        let mut chain = e.chain.clone();
-        let Value::Array(items) = queue::get(list) else {
-            return;
-        };
-        let children = self.docs[d as usize].doc.nodes[node].children.clone();
-        for (at, item) in items.into_iter().enumerate() {
-            let k = key.eval(&Scope {
-                vm: &Value::Null,
-                locals: vec![(var, item)],
-                env: &*self.env,
-            });
-            let first = self.els.len() as u32;
-            self.row = queue::text_of(&k).into();
-            let mut row_scope = scope.clone();
-            let root = queue::owned(|| {
-                let (var2, key2, env) = (var.to_string(), key.clone(), self.env.clone());
-                // Its item found in the list in place; only it is copied.
-                let row = queue::derive(move || {
-                    queue::read_with(list, |items| {
-                        let Value::Array(items) = items else {
-                            return Value::Null;
-                        };
-                        items
-                            .iter()
-                            .find(|item| {
-                                key2.eval(&Scope {
-                                    vm: &Value::Null,
-                                    locals: vec![(var2.as_str(), (*item).clone())],
-                                    env: &*env,
-                                }) == k
-                            })
-                            .cloned()
-                            .unwrap_or(Value::Null)
-                    })
-                });
-                row_scope.push((var.into(), row));
-                if let Some(ix) = index {
-                    row_scope.push((ix.into(), queue::signal(at.into())));
-                }
-                for &c in &children {
-                    self.node(d, inst, c, parent, arena_parent, &row_scope, &mut chain);
-                }
-            });
-            let tops = (first..self.els.len() as u32)
-                .filter(|&e| {
-                    self.els[e as usize].arena_parent == parent
-                        || self.els[e as usize].arena_parent == NONE
-                })
-                .collect();
-            self.eaches[b as usize].rows.push((root, tops));
-        }
-        self.mounting = mounting;
-        self.row = outer_row;
-    }
-
-    #[allow(clippy::too_many_arguments)]
-    fn element(
-        &mut self,
-        d: u32,
-        inst: u32,
-        i: usize,
-        kind: Kind,
-        parent: u32,
-        arena_parent: Id,
-        scope: &[(Box<str>, u32)],
-        chain: &[u32],
-    ) {
-        let style = self.docs[d as usize].style_of[i];
-        let e = self.els.len() as u32;
-        let record = self.fold(inst, style, &[]);
-        let (arena_at, arena_parent_el) = if record.fixed {
-            (0, NONE)
-        } else {
-            (arena_parent, parent)
-        };
-        let node = self.arena.element(arena_at, record.layout.clone());
-        let n = &self.docs[d as usize].doc.nodes[i];
-        let prop = |name: &str| {
-            n.props
-                .iter()
-                .find(|p| og_ui::doc::schema::PROPS[p.spec].name == name)
-                .map(|p| p.value.clone())
-        };
-        let text = match kind {
-            Kind::Label | Kind::Kbd | Kind::Button => prop("text"),
-            Kind::Icon => prop("icon"),
-            // An image's source: its box image's ([`Tree::set_text`]).
-            Kind::Image => prop("texture"),
-            _ => None,
-        };
-        let leaf = (text.is_some() && !matches!(kind, Kind::Icon | Kind::Image))
-            .then(|| self.arena.text(node, "", 16.0));
-        let children = n.children.clone();
-        let clickable = kind == Kind::Button
-            || n.triggers
-                .iter()
-                .any(|t| matches!(t.when, When::Click | When::Tap));
-        let disabled = match prop("disabled") {
-            Some(PropValue::Bind(x, _)) => {
-                let r = reads(&x, scope, self.screen);
-                derive(x, r, self.env.clone())
-            }
-            Some(PropValue::Lit(l)) => queue::signal(lit(&l)),
-            _ => NONE,
-        };
-        self.els.push(El {
-            node,
-            at: i as u32,
-            row: self.row.clone(),
-            disabled,
-            clickable,
-            js: NONE,
-            listens: 0,
-            class: NONE,
-            arena_parent: arena_parent_el,
-            parent,
-            inst,
-            style,
-            kind,
-            leaf,
-            text: String::new(),
-            hidden: 0,
-            dead: false,
-            queued: false,
-            record,
-            holds: Box::default(),
-            line: None,
-            anchor: None,
-            attrs: Vec::new(),
-            data: 0,
-            image: None,
-            entering: None,
-            eff: self.root,
-        });
-        self.ordered = false;
-        for &b in chain.iter() {
-            self.ifs[b as usize].tops.push(e);
-        }
-        self.inherit(e);
-        match text {
-            Some(PropValue::Lit(l)) => self.set_text(e, &queue::text_of(&lit(&l))),
-            Some(PropValue::Bind(x, _)) => {
-                let r = reads(&x, scope, self.screen);
-                queue::bind(
-                    self.id,
-                    Target::Text { node: e },
-                    Rc::new(x),
-                    r,
-                    self.env.clone(),
-                );
-            }
-            _ => {}
-        }
-        // Its conditions that read stores, each a binding.
-        if style != NONE {
-            let c = &self.docs[d as usize];
-            let [at, len] = c.style.nodes[style as usize].spans;
-            let conds: Vec<(u32, Rc<Expr>)> = c.style.spans[at as usize..(at + len) as usize]
-                .iter()
-                .filter(|s| s.condition != u32::MAX && !c.fixed[s.condition as usize])
-                .map(|s| {
-                    (
-                        s.condition,
-                        c.style.conditions[s.condition as usize].clone(),
-                    )
-                })
-                .collect();
-            if !conds.is_empty() {
-                let words = c.style.conditions.len().div_ceil(64);
-                self.els[e as usize].holds = vec![0; words].into_boxed_slice();
-            }
-            for (cond, x) in conds {
-                let r = reads(&x, scope, self.screen);
-                queue::bind(
-                    self.id,
-                    Target::Holds { node: e, cond },
-                    x,
-                    r,
-                    self.env.clone(),
-                );
-            }
-        }
-        if leaf.is_none() || kind == Kind::Button {
-            let mut inner = Vec::new();
-            for c in children {
-                self.node(d, inst, c, e, node, scope, &mut inner);
-            }
-        }
-    }
-
-    /// The record of an element of `inst` with `style`, under the store
-    /// conditions `holds` says it holds (bits by condition index).
-    fn fold(&self, inst: u32, style: u32, holds: &[u64]) -> Record {
-        if style == NONE {
-            return Record::default();
-        }
-        let ins = &self.insts[inst as usize];
-        let c = &self.docs[ins.doc as usize];
-        let env = Fixed {
-            surface: &self.env,
-            more: &ins.more,
-        };
-        c.style.record(style as usize, |cond| {
-            if c.fixed[cond as usize] {
-                eval_static(&c.style.conditions[cond as usize], &env)
-            } else {
-                holds.get((cond / 64) as usize).copied().unwrap_or(0) & (1 << (cond % 64)) != 0
-            }
-        })
     }
 
     /// `e`'s text; an image's is its source.
@@ -1108,7 +437,7 @@ impl Tree {
         let els = &self.els;
         self.anchored
             .retain(|&e| !els[e as usize].dead && els[e as usize].anchor.is_some());
-        let (w, h) = self.env.size.get();
+        let (w, h) = self.size;
         for &e in &self.anchored {
             let el = &mut self.els[e as usize];
             let a = el.anchor.as_mut().expect("an anchored node");
@@ -1204,30 +533,14 @@ impl Tree {
         }
     }
 
-    /// The viewport changed: the conditions that read it are folded again.
+    /// The surface's size changed: the next frame lays out and paints
+    /// again. A record that depends on the size class is the resolver's,
+    /// which the host replaces when the class moves.
     pub fn resize(&mut self, width: f32, height: f32) {
-        if self.env.size.get() == (width, height) {
-            return;
+        if self.size != (width, height) {
+            self.size = (width, height);
+            self.paint = true;
         }
-        let old = self.env.size.replace((width, height));
-        let classes = [Screen::Narrow, Screen::Short, Screen::Compact];
-        let moved = classes
-            .iter()
-            .any(|c| c.holds(old.0, old.1, false) != c.holds(width, height, false));
-        if moved {
-            let bits = classes
-                .iter()
-                .enumerate()
-                .filter(|(_, c)| c.holds(width, height, false))
-                .fold(0u32, |b, (k, _)| b | 1 << k);
-            queue::set(self.screen, bits.into());
-        }
-        if moved || self.els.is_empty() {
-            for e in 0..self.els.len() as u32 {
-                self.queue(e);
-            }
-        }
-        self.paint = true;
     }
 
     /// The HUD's safe-area insets on the tree's surface (top, right,
@@ -1248,92 +561,17 @@ impl Tree {
         self.paint = true;
     }
 
-    fn queue(&mut self, e: u32) {
-        let el = &mut self.els[e as usize];
-        if !el.queued {
-            el.queued = true;
-            self.dirty.push(e);
-        }
-    }
-
     /// The characters laid-out text drew that no face has, since the last
     /// call: a frame that found none allocates nothing.
     pub fn take_missing(&mut self) -> Vec<char> {
         std::mem::take(&mut self.missing)
     }
 
-    /// Drains the queue, refolds what changed, lays out and paints. The
+    /// Lays out what changed and paints. The
     /// fonts measure text; `icons` draws icons.
     pub fn frame(&mut self, fonts: &og_ui::Fonts, icons: &IconAtlas) -> Frame {
-        let mut out = self.commit();
         let (laid_out, painted) = self.present(fonts, icons);
-        out.laid_out = laid_out;
-        out.painted = painted;
-        out
-    }
-
-    /// The queue's ops applied and the changed records folded again: what
-    /// a frame does before layout.
-    pub fn commit(&mut self) -> Frame {
-        let mut out = Frame::default();
-        queue::drain(self.id, &mut self.ops);
-        out.ops = self.ops.len();
-        let mut ops = std::mem::take(&mut self.ops);
-        for op in ops.drain(..) {
-            match op {
-                Op::Text { node, text, .. } => self.set_text(node, &text),
-                Op::Holds { node, cond, on, .. } => {
-                    let w = &mut self.els[node as usize].holds[(cond / 64) as usize];
-                    let bit = 1u64 << (cond % 64);
-                    let was = *w & bit != 0;
-                    if was != on {
-                        *w ^= bit;
-                        self.queue(node);
-                    }
-                }
-                Op::Shown { node, on, .. } => {
-                    let b = &mut self.ifs[node as usize];
-                    if b.shown != on {
-                        b.shown = on;
-                        let tops = b.tops.clone();
-                        for e in tops {
-                            let el = &mut self.els[e as usize];
-                            el.hidden = if on {
-                                el.hidden.saturating_sub(1)
-                            } else {
-                                el.hidden + 1
-                            };
-                            self.queue(e);
-                        }
-                    }
-                }
-                Op::Rebuild { node, .. } => self.rebuild(node),
-            }
-        }
-        self.ops = ops;
-        if !self.dirty.is_empty() {
-            let mut dirty = std::mem::take(&mut self.dirty);
-            dirty.sort_unstable();
-            out.refolded = dirty.len();
-            for &e in &dirty {
-                let el = &self.els[e as usize];
-                if el.dead || el.js != NONE {
-                    continue;
-                }
-                let r = self.fold(el.inst, el.style, &el.holds);
-                self.els[e as usize].record = r;
-                self.els[e as usize].queued = false;
-            }
-            for &e in &dirty {
-                if !self.els[e as usize].dead {
-                    self.reapply(e);
-                }
-            }
-            dirty.clear();
-            self.dirty = dirty;
-            self.paint = true;
-        }
-        out
+        Frame { laid_out, painted }
     }
 
     /// The UI tick's time in seconds (unscaled: a paused game's menus
@@ -1353,7 +591,7 @@ impl Tree {
         }
         let moving = self.motion.tick_at(self.time);
         self.settle_exits();
-        let (w, h) = self.env.size.get();
+        let (w, h) = self.size;
         let tf = text_font(fonts);
         let faces = || {
             std::iter::once(tf.handle).chain(
@@ -1375,14 +613,6 @@ impl Tree {
         let laid_out = self.arena.layout(w, h, &mut |t, run, width| {
             crate::text::measure(m, t, run, width)
         });
-        // A scroller's `:state(more)` follows its layout: when one moved,
-        // what reads it is folded and laid out again in the same frame.
-        if laid_out && self.scrolled() {
-            self.commit();
-            self.arena.layout(w, h, &mut |t, run, width| {
-                crate::text::measure(m, t, run, width)
-            });
-        }
         if laid_out {
             self.clamp_scrolls();
         }
@@ -1437,77 +667,6 @@ impl Tree {
         out
     }
 
-    /// Sets each asked scroller's `:state(more)` from its layout and
-    /// queues the elements that read one that changed.
-    fn scrolled(&mut self) -> bool {
-        let mut moved = false;
-        for e in 0..self.els.len() {
-            let el = &self.els[e];
-            if el.dead || el.style == NONE {
-                continue;
-            }
-            let ins = &self.insts[el.inst as usize];
-            let c = &self.docs[ins.doc as usize];
-            if c.more.is_empty() {
-                continue;
-            }
-            let node = c.style.nodes[el.style as usize].node;
-            if !c.more.iter().any(|&(_, n)| n == node) {
-                continue;
-            }
-            let more = self.arena.runs_past_end(el.node);
-            let inst = el.inst;
-            let more_now = &mut self.insts[inst as usize].more;
-            if more_now.contains(&node) == more {
-                continue;
-            }
-            if more {
-                more_now.push(node);
-            } else {
-                more_now.retain(|&n| n != node);
-            }
-            moved = true;
-            let d = self.insts[inst as usize].doc as usize;
-            for r in 0..self.els.len() as u32 {
-                let el = &self.els[r as usize];
-                if el.inst != inst || el.style == NONE || el.dead {
-                    continue;
-                }
-                let c = &self.docs[d];
-                let [at, len] = c.style.nodes[el.style as usize].spans;
-                let reads = c.style.spans[at as usize..(at + len) as usize]
-                    .iter()
-                    .any(|s| c.more.iter().any(|&(k, n)| k == s.condition && n == node));
-                if reads {
-                    self.queue(r);
-                }
-            }
-        }
-        moved
-    }
-
-    fn rebuild(&mut self, b: u32) {
-        let rows = std::mem::take(&mut self.eaches[b as usize].rows);
-        for (root, tops) in rows {
-            queue::dispose(root);
-            for e in tops {
-                self.arena.detach(self.els[e as usize].node);
-            }
-            self.ordered = false;
-        }
-        // Everything the rows made is gone.
-        let NodeKind::For {
-            var, index, key, ..
-        } = self.docs[self.eaches[b as usize].doc as usize].doc.nodes[self.eaches[b as usize].node]
-            .kind
-            .clone()
-        else {
-            return;
-        };
-        self.rows(b, &var, index.as_deref(), &key);
-        self.paint = true;
-    }
-
     /// Makes `order` again when the structure changed: the elements under
     /// the arena's root depth first, in their arena order.
     fn order(&mut self) {
@@ -1542,7 +701,7 @@ impl Tree {
                 c
             })
         }
-        let (vw, vh) = self.env.size.get();
+        let (vw, vh) = self.size;
         let screen = [0.0, 0.0, vw, vh];
         let p = &mut self.drawn;
         p.clear();
@@ -2119,18 +1278,6 @@ impl Tree {
         }
     }
 
-    /// An element's box by its document id (`#Time`), for checks.
-    pub fn find(&self, id: &str) -> Option<(f32, f32, f32, f32)> {
-        let e = self.els.iter().position(|el| {
-            let ins = &self.insts[el.inst as usize];
-            let c = &self.docs[ins.doc as usize];
-            el.style != NONE && c.doc.nodes[c.style.nodes[el.style as usize].node as usize].id == id
-        })?;
-        let (x, y, _, _) = *self.abs.get(e)?;
-        let b = self.arena.box_of(self.els[e].node);
-        Some((x, y, b.w, b.h))
-    }
-
     /// The element a press at (x, y) reaches: of the shown, enabled
     /// elements that answer a press and whose box, inside the clip their
     /// parent paints them in, holds the point, the last made (a descendant
@@ -2174,11 +1321,7 @@ impl Tree {
             if !shown || !inside || !self.reachable(e as u32) {
                 continue;
             }
-            if enabled
-                && el.clickable
-                && el.disabled != NONE
-                && og_reactive::bind::truthy(&queue::get(el.disabled))
-            {
+            if enabled && el.clickable && el.disabled {
                 continue;
             }
             return e as u32;
@@ -2186,84 +1329,14 @@ impl Tree {
         NONE
     }
 
-    /// The pointer this frame, at (x, y) on the tree's surface: a press
-    /// takes the element under it, and a release over that same element
-    /// clicks it. A click reports `click` with its id, then `emit` for each
-    /// handler its `onclick` or `ontap` names, to `out`.
-    pub fn pointer(&mut self, x: f32, y: f32, pressed: bool, released: bool, out: &mut Vec<Event>) {
-        // Op nodes take the pointer when it moved, a frame painted since
-        // (a box may have come under it), or a button changed.
+    /// The pointer this frame, at (x, y) on the tree's surface. The op
+    /// nodes take it when it moved, a frame painted since (a box may have
+    /// come under it), or a button changed.
+    pub fn pointer(&mut self, x: f32, y: f32, pressed: bool, released: bool) {
         let was = std::mem::replace(&mut self.last_pointer, (x, y, self.paints));
         if self.has_ops() && (was != self.last_pointer || pressed || released) {
             self.pointer_ops(x, y, (was.0, was.1) != (x, y), pressed, released);
         }
-        if pressed {
-            let e = self.hit(x, y);
-            self.pressed = if e != NONE && self.els[e as usize].js == NONE {
-                e
-            } else {
-                NONE
-            };
-        }
-        if !released {
-            return;
-        }
-        let held = std::mem::replace(&mut self.pressed, NONE);
-        if held == NONE || self.hit(x, y) != held {
-            return;
-        }
-        let el = &self.els[held as usize];
-        let inst = &self.insts[el.inst as usize];
-        let n = &self.docs[inst.doc as usize].doc.nodes[el.at as usize];
-        let event = |kind, name: &str| Event {
-            mount: inst.mount,
-            path: n.id.as_str().into(),
-            row_key: el.row.clone(),
-            kind,
-            name: name.into(),
-        };
-        out.push(event("click", &n.id));
-        for t in &n.triggers {
-            if let (When::Click | When::Tap, Act::Emit(name)) = (&t.when, &t.act) {
-                out.push(event("emit", name));
-            }
-        }
-    }
-
-    /// Each live element with a document id: its id, its box on screen
-    /// (x, y, width, height), whether it shows, and its text.
-    pub fn dump(&self) -> Vec<(&str, [f32; 4], bool, &str)> {
-        self.els
-            .iter()
-            .enumerate()
-            .filter(|(_, el)| !el.dead && el.style != NONE)
-            .filter_map(|(e, el)| {
-                let ins = &self.insts[el.inst as usize];
-                let c = &self.docs[ins.doc as usize];
-                let id = c.doc.nodes[c.style.nodes[el.style as usize].node as usize]
-                    .id
-                    .as_str();
-                if id.is_empty() {
-                    return None;
-                }
-                let (x, y, shown, _) = *self.abs.get(e)?;
-                let b = self.arena.box_of(el.node);
-                Some((id, [x, y, b.w, b.h], shown, &*el.text))
-            })
-            .collect()
-    }
-
-    /// The text an element shows, by its document id.
-    pub fn text(&self, id: &str) -> Option<&str> {
-        self.els
-            .iter()
-            .find(|el| {
-                let ins = &self.insts[el.inst as usize];
-                let c = &self.docs[ins.doc as usize];
-                el.style != NONE
-                    && c.doc.nodes[c.style.nodes[el.style as usize].node as usize].id == id
-            })
-            .map(|el| &*el.text)
     }
 }
 
@@ -2471,754 +1544,5 @@ fn lay_out(
         place(k, &l.text, l.width, &mut g.quads, &mut g.lines);
         g.line_text.push_str(&l.text);
         g.line_text.push('\n');
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::look::Layer;
-
-    /// An overlay is its anchored children's containing block, even
-    /// inside a fixed box: they fill it, not the fixed box.
-    #[test]
-    fn an_anchored_child_fills_its_overlay_not_a_fixed_ancestor() {
-        let doc = UiDocument::parse(
-            "o.svelte",
-            "<meta name=\"component\" content=\"o\">\n\
-             <div id=\"Bar\"><div id=\"Face\" layout=\"overlay\"><div id=\"Art\" anchor=\"fill\"></div></div></div>\n\
-             <style>\n#Bar { position: fixed; left: 0; right: 0; bottom: 0; display: flex; justify-content: center; }\n\
-             #Face { width: 64px; height: 64px; }\n</style>",
-        )
-        .unwrap();
-        let look = Rc::new(Look::load(
-            &[Layer {
-                tokens: crate::look::default_tokens(),
-                surfaces: crate::look::DEFAULT_SURFACES,
-            }],
-            "dark",
-        ));
-        let mut tree = Tree::new(look, [Arc::new(doc)]);
-        tree.resize(1280.0, 720.0);
-        tree.mount("o", &[]).unwrap();
-        tree.frame(&og_ui::Fonts::default(), &IconAtlas::default());
-        let face = tree.find("Face").unwrap();
-        let art = tree.find("Art").unwrap();
-        assert_eq!(art, face, "the art covers its face");
-    }
-
-    /// A text paints over the panel it sits on: og-render draws a level's
-    /// texts before its shapes, so the text takes a higher level.
-    #[test]
-    fn a_text_paints_over_its_panel() {
-        let doc = UiDocument::parse(
-            "p.svelte",
-            "<meta name=\"component\" content=\"p\">\n\
-             <section id=\"P\"><span id=\"T\">06:54</span></section>\n\
-             <style>\n#P { background: #102030; padding: 8px; }\n</style>",
-        )
-        .unwrap();
-        let look = Rc::new(Look::load(
-            &[Layer {
-                tokens: crate::look::default_tokens(),
-                surfaces: crate::look::DEFAULT_SURFACES,
-            }],
-            "dark",
-        ));
-        let mut tree = Tree::new(look, [Arc::new(doc)]);
-        tree.resize(200.0, 200.0);
-        tree.mount("p", &[]).unwrap();
-        let fonts = og_ui::Fonts {
-            body: og_ui::UiFont {
-                handle: Some(og_draw::FontHandle::from_index(0)),
-                metrics: og_text::text::FontMetrics::fixed(0.5),
-            },
-            ..Default::default()
-        };
-        tree.frame(&fonts, &IconAtlas::default());
-        let at = |glyph: bool| {
-            tree.drawn
-                .quads
-                .iter()
-                .position(|q| (q.kind == PaintKind::Glyph as u32) == glyph)
-                .unwrap()
-        };
-        assert!(at(true) > at(false), "the text over its panel");
-    }
-
-    /// A tracked word in a box its measure sized paints on one line: the
-    /// measure takes tracking in em as og-text does, and paint breaks
-    /// lines from the same shaped layout ("Leaderb/oard" before).
-    #[test]
-    fn a_tracked_word_paints_on_the_one_line_its_box_was_sized_for() {
-        let doc = UiDocument::parse(
-            "w.svelte",
-            "<meta name=\"component\" content=\"w\">\n\
-             <div id=\"R\"><span id=\"T\">Leaderboard</span><span id=\"U\">Achievement</span></div>\n\
-             <style>\n#R { display: flex; flex-wrap: wrap; width: 400px; }\n\
-             #T, #U { font-size: 13px; letter-spacing: 0.14em; }\n</style>",
-        )
-        .unwrap();
-        let look = Rc::new(Look::load(
-            &[Layer {
-                tokens: crate::look::default_tokens(),
-                surfaces: crate::look::DEFAULT_SURFACES,
-            }],
-            "dark",
-        ));
-        let mut tree = Tree::new(look, [Arc::new(doc)]);
-        tree.resize(800.0, 200.0);
-        tree.mount("w", &[]).unwrap();
-        let path = concat!(
-            env!("CARGO_MANIFEST_DIR"),
-            "/../../templates/fonts/latin/NotoSans-Latin.ttf"
-        );
-        let file = og_text::shape::FontFile::new(Arc::new(std::fs::read(path).unwrap())).unwrap();
-        let atlas = og_draw::MsdfFont {
-            atlas: og_draw::TextureHandle::from_slot(1).unwrap(),
-            distance_range: 4.0,
-            foreground: false,
-            silhouette: false,
-            line_height: 1.2,
-            glyphs: Vec::new(),
-            kerning: Vec::new(),
-        };
-        let fonts = og_ui::Fonts {
-            body: og_ui::UiFont {
-                handle: Some(og_draw::FontHandle::from_index(0)),
-                metrics: og_text::text::FontMetrics::from_msdf(&atlas).with_file(Some(file)),
-            },
-            ..Default::default()
-        };
-        tree.frame(&fonts, &IconAtlas::default());
-        let (_, ty, tw, th) = tree.find("T").unwrap();
-        let (_, uy, uw, _) = tree.find("U").unwrap();
-        // Untracked, a 13px word is about 6.5px a letter: 0.14em adds
-        // 1.82px a letter, not the 23.7px a px-as-em measure gave.
-        assert!(tw < 13.0 * 11.0 * (0.62 + 0.14), "measured {tw}");
-        assert!(tw + uw < 400.0 && ty == uy, "both words share the row");
-        let baselines: Vec<f32> = tree
-            .drawn
-            .quads
-            .iter()
-            .filter(|q| q.kind == PaintKind::Glyph as u32)
-            .map(|q| q.rect[1])
-            .collect();
-        assert_eq!(baselines.len(), 22, "every letter drawn");
-        assert!(
-            baselines
-                .iter()
-                .all(|&b| (b - baselines[0]).abs() < 0.01 && b < th + ty),
-            "one line: {baselines:?}"
-        );
-    }
-
-    /// A box paints its outer shadows under it, then its fill and gradient,
-    /// its inset shadows, its border and its outline, with CSS's radii
-    /// (scaled down together when they overlap) and a corner gradient
-    /// aimed by the box's aspect.
-    #[test]
-    fn a_box_paints_shadows_fill_border_and_outline_in_order() {
-        let doc = UiDocument::parse(
-            "b.svelte",
-            "<meta name=\"component\" content=\"b\">\n\
-             <div id=\"B\"></div>\n\
-             <style>\n#B { width: 200px; height: 100px; background: linear-gradient(to top right, #000, #fff), #102030; \
-             border: 1px solid #ff0000; border-width: 1px 2px 3px 4px; border-radius: 80px 80px 80px 0; \
-             box-shadow: 0 4px 8px #000, inset 0 0 2px #fff; outline: 2px solid #00ff00; outline-offset: 3px; }\n</style>",
-        )
-        .unwrap();
-        let look = Rc::new(Look::load(
-            &[Layer {
-                tokens: crate::look::default_tokens(),
-                surfaces: crate::look::DEFAULT_SURFACES,
-            }],
-            "dark",
-        ));
-        let mut tree = Tree::new(look, [Arc::new(doc)]);
-        tree.resize(400.0, 300.0);
-        tree.mount("b", &[]).unwrap();
-        tree.frame(&og_ui::Fonts::default(), &IconAtlas::default());
-        let q = &tree.drawn.quads;
-        let kinds: Vec<u32> = q.iter().map(|q| q.kind).collect();
-        use PaintKind as K;
-        assert_eq!(
-            kinds,
-            [
-                K::Shadow,
-                K::Solid,
-                K::Gradient,
-                K::InsetShadow,
-                K::Border,
-                K::Border
-            ]
-            .map(|k| k as u32)
-        );
-        // 80 + 80 on the 100px sides: all four scale by 100 / 160.
-        assert_eq!(q[1].radius, [50.0, 50.0, 50.0, 0.0]);
-        assert_eq!(q[0].p, [0.0, 4.0, 8.0, 0.0], "offset, blur, spread");
-        assert_eq!(q[4].p, [1.0, 2.0, 3.0, 4.0], "the border's widths");
-        let (x, y, w, h) = tree.find("B").unwrap();
-        assert_eq!(
-            q[5].rect,
-            [x - 5.0, y - 5.0, w + 10.0, h + 10.0],
-            "outline 3px out, 2px wide"
-        );
-        assert_eq!(q[5].p, [2.0; 4]);
-        assert_eq!(
-            q[5].radius,
-            [55.0, 55.0, 55.0, 0.0],
-            "a square corner stays square"
-        );
-        // To the top right of a 2:1 box: perpendicular to the other diagonal.
-        let angle = tree.drawn.gradients[0].angle;
-        assert!(
-            (angle - og_core::math::atan2(1.0, 2.0)).abs() < 1e-3,
-            "{angle}"
-        );
-    }
-
-    /// A transform moves a box and everything under it at paint, about its
-    /// origin, composed down the tree; its layout stays. A text's shadow
-    /// paints under its glyphs and its underline after them.
-    #[test]
-    fn a_transform_composes_down_the_tree_and_text_paints_its_shadow_and_lines() {
-        let doc = UiDocument::parse(
-            "x.svelte",
-            "<meta name=\"component\" content=\"x\">\n\
-             <div id=\"P\"><div id=\"C\"><span id=\"T\">ab</span></div></div>\n\
-             <style>\n#P { width: 100px; height: 40px; background: #102030; rotate: 90deg; }\n\
-             #C { width: 20px; height: 10px; background: #fff; translate: 30px 0; }\n\
-             #T { text-shadow: 1px 2px 0 #000; text-decoration: underline; }\n</style>",
-        )
-        .unwrap();
-        let look = Rc::new(Look::load(
-            &[Layer {
-                tokens: crate::look::default_tokens(),
-                surfaces: crate::look::DEFAULT_SURFACES,
-            }],
-            "dark",
-        ));
-        let mut tree = Tree::new(look, [Arc::new(doc)]);
-        tree.resize(400.0, 300.0);
-        tree.mount("x", &[]).unwrap();
-        let fonts = og_ui::Fonts {
-            body: og_ui::UiFont {
-                handle: Some(og_draw::FontHandle::from_index(0)),
-                metrics: og_text::text::FontMetrics::fixed(0.5),
-            },
-            ..Default::default()
-        };
-        tree.frame(&fonts, &IconAtlas::default());
-        let (px, py, pw, ph) = tree.find("P").unwrap();
-        let (cx, cy, _, _) = tree.find("C").unwrap();
-        assert_eq!((cx, cy), (px, py), "layout does not move");
-        let d = &tree.drawn;
-        let at = |q: &PaintQuad, x: f32, y: f32| {
-            let [a, b, c, dd, e, f, _, _] = d.transforms[q.xf as usize];
-            [a * x + c * y + e, b * x + dd * y + f]
-        };
-        let near =
-            |u: [f32; 2], v: [f32; 2]| (u[0] - v[0]).abs() < 1e-3 && (u[1] - v[1]).abs() < 1e-3;
-        // P turns a quarter clockwise about its centre: its top left goes
-        // to the top right of the turned box.
-        let (mx, my) = (px + pw / 2.0, py + ph / 2.0);
-        let pq = &d.quads[0];
-        assert!(pq.xf != 0);
-        assert!(
-            near(at(pq, px, py), [mx + ph / 2.0, my - pw / 2.0]),
-            "{:?}",
-            at(pq, px, py)
-        );
-        // C moves 30px along P's turned x axis: down the screen.
-        let cq = &d.quads[1];
-        assert!(cq.xf != pq.xf);
-        assert!(
-            near(at(cq, cx, cy), [mx + ph / 2.0, my - pw / 2.0 + 30.0]),
-            "{:?}",
-            at(cq, cx, cy)
-        );
-        let kinds: Vec<u32> = d.quads[2..].iter().map(|q| q.kind).collect();
-        let g = PaintKind::Glyph as u32;
-        assert_eq!(
-            kinds,
-            [g, g, g, g, PaintKind::Solid as u32],
-            "shadow, glyphs, underline"
-        );
-        assert_eq!(
-            d.quads[2].rect[0] - d.quads[4].rect[0],
-            1.0,
-            "the shadow's offset"
-        );
-        assert!(
-            d.quads[2..].iter().all(|q| q.xf == cq.xf),
-            "the text rides its parents"
-        );
-    }
-
-    /// A fill-tinted image takes the box's fill colour and replaces the
-    /// fill under it; an image in its own colours sits over the fill.
-    #[test]
-    fn a_fill_tinted_image_takes_the_fill_in_its_place() {
-        for tint in [crate::style::Tint::Fill, crate::style::Tint::Own] {
-            let doc = UiDocument::parse(
-                "n.svelte",
-                "<meta name=\"component\" content=\"n\">\n\
-                 <div id=\"B\"></div>\n\
-                 <style>\n#B { width: 40px; height: 20px; background: #ff0000; }\n</style>",
-            )
-            .unwrap();
-            let look = Rc::new(Look::load(
-                &[Layer {
-                    tokens: crate::look::default_tokens(),
-                    surfaces: crate::look::DEFAULT_SURFACES,
-                }],
-                "dark",
-            ));
-            let mut tree = Tree::new(look, [Arc::new(doc)]);
-            tree.resize(100.0, 100.0);
-            tree.mount("n", &[]).unwrap();
-            for el in &mut tree.els {
-                if el.record.skin.fill[3] > 0.0 {
-                    el.record.skin.image = crate::style::Slice {
-                        texture: 3,
-                        tint,
-                        ..Default::default()
-                    };
-                }
-            }
-            tree.frame(&og_ui::Fonts::default(), &IconAtlas::default());
-            let q = &tree.drawn.quads;
-            let kinds: Vec<u32> = q.iter().map(|q| q.kind).collect();
-            let image = q
-                .iter()
-                .find(|q| q.kind == PaintKind::Image as u32)
-                .unwrap();
-            if tint == crate::style::Tint::Fill {
-                assert_eq!(kinds, [PaintKind::Image as u32], "no fill under it");
-                assert_eq!(image.color, [1.0, 0.0, 0.0, 1.0], "the fill's colour");
-            } else {
-                assert_eq!(kinds, [PaintKind::Solid as u32, PaintKind::Image as u32]);
-                assert_eq!(image.color, [1.0; 4], "its own colours");
-            }
-        }
-    }
-
-    /// A text's outline paints under its glyphs, each glyph thickened by
-    /// half the stroke, in the stroke's colour.
-    #[test]
-    fn a_text_outline_paints_under_its_glyphs() {
-        let doc = UiDocument::parse(
-            "o.svelte",
-            "<meta name=\"component\" content=\"o\">\n\
-             <span id=\"T\">ab</span>\n\
-             <style>\n#T { -webkit-text-stroke: 3px #ff0000; paint-order: stroke fill; }\n</style>",
-        )
-        .unwrap();
-        let look = Rc::new(Look::load(
-            &[Layer {
-                tokens: crate::look::default_tokens(),
-                surfaces: crate::look::DEFAULT_SURFACES,
-            }],
-            "dark",
-        ));
-        let mut tree = Tree::new(look, [Arc::new(doc)]);
-        tree.resize(200.0, 100.0);
-        tree.mount("o", &[]).unwrap();
-        let fonts = og_ui::Fonts {
-            body: og_ui::UiFont {
-                handle: Some(og_draw::FontHandle::from_index(0)),
-                metrics: og_text::text::FontMetrics::fixed(0.5),
-            },
-            ..Default::default()
-        };
-        tree.frame(&fonts, &IconAtlas::default());
-        let q: Vec<&PaintQuad> = tree
-            .drawn
-            .quads
-            .iter()
-            .filter(|q| q.kind == PaintKind::Glyph as u32)
-            .collect();
-        assert_eq!(q.len(), 4, "two outline glyphs, then two fill glyphs");
-        assert_eq!(q[0].color, [1.0, 0.0, 0.0, 1.0]);
-        assert_eq!(q[0].rect, q[2].rect, "the outline sits on its glyph");
-        assert_eq!(q[0].p[0] - q[2].p[0], 1.5, "half the stroke outside");
-        assert_ne!(q[2].color, q[0].color);
-    }
-
-    /// An `<img src={…}>` paints its source's texture over its box, once
-    /// the host resolves it, and nothing for a source it does not know.
-    #[test]
-    fn an_image_paints_the_texture_its_source_names() {
-        let doc = UiDocument::parse(
-            "i.svelte",
-            "<meta name=\"component\" content=\"i\">\n\
-             <img id=\"I\" src=\"7\" alt=\"\">\n\
-             <style>\n#I { width: 30px; height: 20px; }\n</style>",
-        )
-        .unwrap();
-        let look = Rc::new(Look::load(
-            &[Layer {
-                tokens: crate::look::default_tokens(),
-                surfaces: crate::look::DEFAULT_SURFACES,
-            }],
-            "dark",
-        ));
-        let mut tree = Tree::new(look, [Arc::new(doc)]);
-        tree.resize(100.0, 100.0);
-        tree.mount("i", &[]).unwrap();
-        let images = |t: &Tree| {
-            t.drawn
-                .quads
-                .iter()
-                .filter(|q| q.kind == PaintKind::Image as u32)
-                .map(|q| (q.a, q.rect))
-                .collect::<Vec<_>>()
-        };
-        tree.frame(&og_ui::Fonts::default(), &IconAtlas::default());
-        assert!(images(&tree).is_empty(), "no resolver yet");
-        let handle = og_draw::TextureHandle::from_index(3);
-        tree.set_textures(Box::new(move |h| if h == 7.0 { handle.slot() } else { 0 }));
-        tree.frame(&og_ui::Fonts::default(), &IconAtlas::default());
-        let (x, y, w, h) = tree.find("I").unwrap();
-        assert_eq!(images(&tree), [(handle.to_bits(), [x, y, w, h])]);
-    }
-
-    /// A `display: none` element paints nothing, nor does what is under
-    /// it: its zero box sits at its parent's corner, where its text would
-    /// pile on its siblings' (the quest steps a compact HUD hides).
-    #[test]
-    fn a_hidden_element_paints_nothing() {
-        let doc = UiDocument::parse(
-            "h.svelte",
-            "<meta name=\"component\" content=\"h\">\n\
-             <section id=\"P\"><span id=\"A\">shown</span><div id=\"G\"><span id=\"B\">gone</span></div></section>\n\
-             <style>\n#G { display: none; }\n</style>",
-        )
-        .unwrap();
-        let look = Rc::new(Look::load(
-            &[Layer {
-                tokens: crate::look::default_tokens(),
-                surfaces: crate::look::DEFAULT_SURFACES,
-            }],
-            "dark",
-        ));
-        let mut tree = Tree::new(look, [Arc::new(doc)]);
-        tree.resize(200.0, 200.0);
-        tree.mount("h", &[]).unwrap();
-        let fonts = og_ui::Fonts {
-            body: og_ui::UiFont {
-                handle: Some(og_draw::FontHandle::from_index(0)),
-                metrics: og_text::text::FontMetrics::fixed(0.5),
-            },
-            ..Default::default()
-        };
-        tree.frame(&fonts, &IconAtlas::default());
-        let glyphs = tree
-            .drawn
-            .quads
-            .iter()
-            .filter(|q| q.kind == PaintKind::Glyph as u32)
-            .count();
-        assert_eq!(glyphs, "shown".len(), "only the shown text");
-    }
-
-    /// An inset with `auto` sides places the box by the others: an
-    /// anchor's `inset: 4px auto auto 4px` sits 4px in from the top left.
-    #[test]
-    fn an_auto_inset_side_leaves_the_box_to_the_others() {
-        let doc = UiDocument::parse(
-            "i.svelte",
-            "<meta name=\"component\" content=\"i\">\n\
-             <div id=\"P\"><div id=\"B\"></div></div>\n\
-             <style>\n#P { width: 100px; height: 100px; }\n\
-             #B { position: absolute; inset: 4px auto auto 6px; width: 10px; height: 10px; }\n</style>",
-        )
-        .unwrap();
-        let look = Rc::new(Look::load(
-            &[Layer {
-                tokens: crate::look::default_tokens(),
-                surfaces: crate::look::DEFAULT_SURFACES,
-            }],
-            "dark",
-        ));
-        let mut tree = Tree::new(look, [Arc::new(doc)]);
-        tree.resize(200.0, 200.0);
-        tree.mount("i", &[]).unwrap();
-        tree.frame(&og_ui::Fonts::default(), &IconAtlas::default());
-        assert_eq!(tree.find("B"), Some((6.0, 4.0, 10.0, 10.0)));
-    }
-
-    /// An `auto` margin takes the free space, as flex places it: a row's
-    /// last item pushed to its end, a `center` layout centred.
-    #[test]
-    fn an_auto_margin_takes_the_free_space() {
-        let doc = UiDocument::parse(
-            "m.svelte",
-            "<meta name=\"component\" content=\"m\">\n\
-             <div id=\"R\" layout=\"row\"><div id=\"A\"></div><div id=\"B\"></div></div>\n\
-             <style>\n#R { width: 200px; }\n#A, #B { width: 20px; height: 10px; }\n\
-             #B { margin-left: auto; }\n</style>",
-        )
-        .unwrap();
-        let look = Rc::new(Look::load(
-            &[Layer {
-                tokens: crate::look::default_tokens(),
-                surfaces: crate::look::DEFAULT_SURFACES,
-            }],
-            "dark",
-        ));
-        let mut tree = Tree::new(look, [Arc::new(doc)]);
-        tree.resize(400.0, 400.0);
-        tree.mount("m", &[]).unwrap();
-        tree.frame(&og_ui::Fonts::default(), &IconAtlas::default());
-        assert_eq!(tree.find("B").unwrap().0, 180.0, "pushed to the row's end");
-    }
-
-    /// Each row of an `{#each}` holds its own state: one row's `state:done`
-    /// is not another's.
-    /// A press and release over one button clicks it, with its row's key
-    /// and the handler its onclick names; a disabled one, or a release
-    /// over another, clicks nothing.
-    #[test]
-    fn a_release_over_the_pressed_button_clicks_it() {
-        let doc = UiDocument::parse(
-            "b.svelte",
-            "<meta name=\"component\" content=\"b\">\n\
-             <div class=\"col\">{#each rows as r (r.id)}<button id=\"B\" class=\"b\" disabled={r.off} onclick={use}>go</button>{/each}</div>\n\
-             <style>\n.col { display: flex; flex-direction: column; }\n.b { width: 100px; height: 30px; }\n</style>",
-        )
-        .unwrap();
-        let look = Rc::new(Look::load(
-            &[Layer {
-                tokens: crate::look::default_tokens(),
-                surfaces: crate::look::DEFAULT_SURFACES,
-            }],
-            "dark",
-        ));
-        let mut tree = Tree::new(look, [Arc::new(doc)]);
-        tree.resize(400.0, 400.0);
-        let rows = serde_json::json!([
-            {"id": "a", "off": false},
-            {"id": "b", "off": false},
-            {"id": "c", "off": true},
-        ]);
-        tree.mount("b", &[("rows", queue::signal(rows))]).unwrap();
-        tree.frame(&og_ui::Fonts::default(), &IconAtlas::default());
-        let centres: Vec<(f32, f32)> = tree
-            .dump()
-            .iter()
-            .filter(|(id, ..)| *id == "B")
-            .map(|(_, [x, y, w, h], ..)| (x + w / 2.0, y + h / 2.0))
-            .collect();
-        assert_eq!(centres.len(), 3);
-        assert!(centres[1].1 > centres[0].1, "the rows stack: {centres:?}");
-        let click = |tree: &mut Tree, from: (f32, f32), to: (f32, f32)| {
-            let mut out = Vec::new();
-            tree.pointer(from.0, from.1, true, false, &mut out);
-            tree.pointer(to.0, to.1, false, true, &mut out);
-            out
-        };
-        let out = click(&mut tree, centres[1], centres[1]);
-        let seen: Vec<_> = out
-            .iter()
-            .map(|e| (e.kind, &*e.name, &*e.row_key))
-            .collect();
-        assert_eq!(seen, [("click", "B", "b"), ("emit", "use", "b")]);
-        assert!(
-            click(&mut tree, centres[2], centres[2]).is_empty(),
-            "disabled"
-        );
-        assert!(
-            click(&mut tree, centres[0], centres[1]).is_empty(),
-            "moved off"
-        );
-    }
-
-    #[test]
-    fn each_row_holds_its_own_state() {
-        let doc = UiDocument::parse(
-            "r.svelte",
-            "<meta name=\"component\" content=\"r\">\n\
-             <ul>{#each rows as r (r.id)}<li class=\"row\" state:done={r.done}>x</li>{/each}</ul>\n\
-             <style>\n.row { opacity: 0.25; }\n.row:state(done) { opacity: 1; }\n</style>",
-        )
-        .unwrap();
-        let look = Rc::new(Look::load(
-            &[Layer {
-                tokens: crate::look::default_tokens(),
-                surfaces: crate::look::DEFAULT_SURFACES,
-            }],
-            "dark",
-        ));
-        let mut tree = Tree::new(look, [Arc::new(doc)]);
-        tree.resize(400.0, 400.0);
-        let rows = serde_json::json!([
-            {"id": "a", "done": true},
-            {"id": "b", "done": false},
-            {"id": "c", "done": true},
-        ]);
-        tree.mount("r", &[("rows", queue::signal(rows))]).unwrap();
-        tree.frame(&og_ui::Fonts::default(), &IconAtlas::default());
-        let opacities: Vec<f32> = tree
-            .els
-            .iter()
-            .filter(|el| {
-                let c = &tree.docs[tree.insts[el.inst as usize].doc as usize];
-                el.style != NONE
-                    && c.doc.nodes[c.style.nodes[el.style as usize].node as usize]
-                        .selector_attrs
-                        .iter()
-                        .any(|(k, _)| k == "state:done")
-            })
-            .map(|el| el.record.skin.opacity)
-            .collect();
-        assert_eq!(opacities, [1.0, 0.25, 1.0]);
-    }
-
-    /// A condition that reads both a store and the size class holds again
-    /// when only the size class moves (a quest's current step on a phone).
-    #[test]
-    fn a_store_condition_on_the_size_class_follows_a_resize() {
-        let doc = UiDocument::parse(
-            "c.svelte",
-            "<meta name=\"component\" content=\"c\">\n\
-             <div><span id=\"S\" state:current={on}>x</span></div>\n\
-             <style>\n#S { opacity: 0.25; }\n#S:state(current):size(compact) { opacity: 1; }\n</style>",
-        )
-        .unwrap();
-        let look = Rc::new(Look::load(
-            &[Layer {
-                tokens: crate::look::default_tokens(),
-                surfaces: crate::look::DEFAULT_SURFACES,
-            }],
-            "dark",
-        ));
-        let mut tree = Tree::new(look, [Arc::new(doc)]);
-        tree.resize(1280.0, 720.0);
-        tree.mount("c", &[("on", queue::signal(true.into()))])
-            .unwrap();
-        let (fonts, icons) = (og_ui::Fonts::default(), IconAtlas::default());
-        let opacity = |t: &Tree| {
-            let e = t.els.iter().position(|el| {
-                let c = &t.docs[t.insts[el.inst as usize].doc as usize];
-                el.style != NONE
-                    && c.doc.nodes[c.style.nodes[el.style as usize].node as usize].id == "S"
-            });
-            t.els[e.unwrap()].record.skin.opacity
-        };
-        tree.frame(&fonts, &icons);
-        assert_eq!(opacity(&tree), 0.25, "wide");
-        tree.resize(844.0, 390.0);
-        tree.frame(&fonts, &icons);
-        assert_eq!(opacity(&tree), 1.0, "a phone on its side is compact");
-    }
-
-    /// `t()` reads the host's string tables; a key they lack shows as is.
-    #[test]
-    fn a_translated_text_shows_its_message() {
-        let doc = UiDocument::parse(
-            "s.svelte",
-            "<meta name=\"component\" content=\"s\">\n\
-             <div><span id=\"A\">{t(\"quests.main\")}</span><span id=\"B\">{t(\"quests.none\")}</span></div>",
-        )
-        .unwrap();
-        let look = Rc::new(Look::load(
-            &[Layer {
-                tokens: crate::look::default_tokens(),
-                surfaces: crate::look::DEFAULT_SURFACES,
-            }],
-            "dark",
-        ));
-        let mut tree = Tree::new(look, [Arc::new(doc)]);
-        tree.set_strings(
-            "en",
-            Box::new(|k| (k == "quests.main").then(|| "Main quest".to_string())),
-        );
-        tree.resize(200.0, 200.0);
-        tree.mount("s", &[]).unwrap();
-        tree.frame(&og_ui::Fonts::default(), &IconAtlas::default());
-        assert_eq!(tree.text("A"), Some("Main quest"));
-        assert_eq!(tree.text("B"), Some("quests.none"));
-    }
-
-    /// An icon no atlas names draws from the engine's built-in set.
-    #[test]
-    fn a_built_in_icon_draws() {
-        let doc = UiDocument::parse(
-            "i.svelte",
-            "<meta name=\"component\" content=\"i\">\n\
-             <div><og-icon id=\"I\" icon=\"clock\"></og-icon></div>\n\
-             <style>\n#I { width: 16px; height: 16px; }\n</style>",
-        )
-        .unwrap();
-        let look = Rc::new(Look::load(
-            &[Layer {
-                tokens: crate::look::default_tokens(),
-                surfaces: crate::look::DEFAULT_SURFACES,
-            }],
-            "dark",
-        ));
-        let mut tree = Tree::new(look, [Arc::new(doc)]);
-        tree.resize(200.0, 200.0);
-        tree.mount("i", &[]).unwrap();
-        tree.frame(&og_ui::Fonts::default(), &IconAtlas::default());
-        let icon = tree
-            .drawn
-            .quads
-            .iter()
-            .find(|q| q.kind == PaintKind::Icon as u32);
-        let (first, count) = crate::icons::icons().find("clock").unwrap();
-        assert_eq!(
-            icon.map(|q| (q.a, q.b, q.rect[2])),
-            Some((first, count, 16.0)),
-            "the clock's strokes in its 16 px box"
-        );
-        assert!(count > 4, "a circle and two hands: {count} segments");
-    }
-
-    /// A scroller's `:state(more)` holds while its content runs past its
-    /// end, and lets go when the content fits again.
-    #[test]
-    fn a_scroller_has_more_while_its_content_runs_past_its_end() {
-        let doc = UiDocument::parse(
-            "s.svelte",
-            "<meta name=\"component\" content=\"s\">\n\
-             <div id=\"G\" layout=\"stack\">{#if long}<div id=\"Tall\"></div>{/if}<div id=\"F\"></div></div>\n\
-             <style>\n#G { height: 40px; overflow-y: auto; }\n#Tall { height: 100px; flex-shrink: 0; }\n\
-             #F { height: 4px; opacity: 0.25; }\n#G:state(more) #F { opacity: 1; }\n</style>",
-        )
-        .unwrap();
-        let look = Rc::new(Look::load(
-            &[Layer {
-                tokens: crate::look::default_tokens(),
-                surfaces: crate::look::DEFAULT_SURFACES,
-            }],
-            "dark",
-        ));
-        let mut tree = Tree::new(look, [Arc::new(doc)]);
-        tree.resize(200.0, 200.0);
-        let long = queue::signal(true.into());
-        tree.mount("s", &[("long", long)]).unwrap();
-        let fonts = og_ui::Fonts::default();
-        let icons = IconAtlas::default();
-        let opacity = |t: &Tree| {
-            let e = t.els.iter().position(|el| {
-                let c = &t.docs[t.insts[el.inst as usize].doc as usize];
-                el.style != NONE
-                    && c.doc.nodes[c.style.nodes[el.style as usize].node as usize].id == "F"
-            });
-            t.els[e.unwrap()].record.skin.opacity
-        };
-        tree.frame(&fonts, &icons);
-        assert_eq!(opacity(&tree), 1.0, "100px in a 40px scroller has more");
-        queue::set(long, false.into());
-        tree.frame(&fonts, &icons);
-        assert_eq!(opacity(&tree), 0.25, "4px fits: no more");
-        assert_eq!(
-            tree.frame(&fonts, &icons),
-            Frame::default(),
-            "and it settles"
-        );
     }
 }

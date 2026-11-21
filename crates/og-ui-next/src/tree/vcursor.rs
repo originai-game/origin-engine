@@ -120,7 +120,7 @@ impl Tree {
             return;
         };
         v.desc = Some(d);
-        let (w, h) = self.env.size.get();
+        let (w, h) = self.size;
         let real = [pointer.x, pointer.y];
         let (dx, dy) = (real[0] - v.last[0], real[1] - v.last[1]);
         let moved = dx * dx + dy * dy > 0.25;
@@ -223,7 +223,7 @@ impl Tree {
         if v.desc.is_none() || !v.shown {
             return;
         }
-        let (w, h) = self.env.size.get();
+        let (w, h) = self.size;
         let [shadow, ink, focus] = self.cursor_colors;
         let mut r: f32 = 11.0;
         if v.over {

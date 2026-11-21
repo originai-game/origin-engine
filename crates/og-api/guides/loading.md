@@ -561,6 +561,7 @@ uncovered shows a stand-in or the old scene.
 
 ```ts
 const Travel = defineResource("Travel", { scene: str(64), changing: bool() });
+let unmount: (() => void) | undefined;
 
 // A command, a trigger or a menu: fetch the scene and cover the screen.
 function travel(world: World, scene: string, place: string): void {
@@ -569,11 +570,14 @@ function travel(world: World, scene: string, place: string): void {
   t.value.scene = scene;
   t.value.changing = false;
   const ui = og.ui.scope(world, "loading");
-  const stores = { place: ui.writable("place", ""), progress: ui.writable("progress", 0), ready: ui.writable("ready", false) };
-  stores.place.set(place);
-  stores.progress.set(0);
-  stores.ready.set(false);
-  ui.mount("loading", "loading", stores);
+  const progress = ui.writable("progress", 0);
+  const ready = ui.writable("ready", false);
+  progress.set(0);
+  ready.set(false);
+  unmount = mount(world, () => {
+    const p = useStore(progress), r = useStore(ready);
+    return <LoadingScreen keyArt={0} place={place} tip="" progress={p()} ready={r()} />;
+  }, {}, { layer: "system" });
 }
 
 const Arrive = defineSystem("Arrive", { reads: [og.SceneChanged], writes: [Travel] }, (_q, _time, world) => {
@@ -581,7 +585,8 @@ const Arrive = defineSystem("Arrive", { reads: [og.SceneChanged], writes: [Trave
   if (!t.ok || !t.value.scene) return;
   const ui = og.ui.scope(world, "loading");
   if (world.events(og.SceneChanged).length > 0) {
-    ui.unmount("loading"); // the new scene is in place
+    unmount?.(); // the new scene is in place
+    unmount = undefined;
     t.value.scene = "";
     return;
   }
@@ -595,8 +600,9 @@ const Arrive = defineSystem("Arrive", { reads: [og.SceneChanged], writes: [Trave
   }
 });
 
-// og.game({ resources: [Travel], systems: [Arrive],
-//   ui(world) { mount(world, () => LoadingScreen({ … }), {}); }, … })
+// mount and useStore from "@origingame/engine/ui",
+// LoadingScreen from "@origingame/engine/ui/components".
+// og.game({ resources: [Travel], systems: [Arrive], … })
 ```
 
 - Waiting on `ready` branches a tick on progress. That is fine alone;

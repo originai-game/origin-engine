@@ -961,8 +961,7 @@ impl Tree {
     }
 
     fn disabled(&self, e: u32) -> bool {
-        let el = &self.els[e as usize];
-        el.disabled != NONE && og_reactive::bind::truthy(&queue::get(el.disabled))
+        self.els[e as usize].disabled
     }
 
     /// Fires `event` on `e` when it listens. A pointer event's `value` is

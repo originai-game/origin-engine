@@ -26209,7 +26209,7 @@ export interface UiCollectionDesc {
 }
 
 /**
- * Named presentation stores for one world, following the svelte/store contract. Svelte template documents own structure; this scope supplies data. Re-register the same IDs on reload to preserve source values.
+ * Named presentation stores for one world, following the svelte/store contract: the TSX UI reads them. Re-register the same IDs on reload to preserve source values.
  */
 export interface UiScope {
   /** The stable scope ID. */
@@ -26252,21 +26252,6 @@ export interface UiScope {
    * @param desc The key field.
    */
   collection<T extends unknown>(id: string, items: readonly T[], desc?: UiCollectionDesc): UiCollection<T>;
-  /**
-   * Register a loaded document once with named store inputs. The native renderer updates it from store changes; no per-element TypeScript calls are made. Re-registering the same ID and inputs preserves its mounted identity. Inputs stay subscribed until unmount or scope disposal. A `type screen` document is a layer of the stack while it is mounted (docs/ui.md §2.1): its `<meta name="screen" data-layer …>` decides its kind, input, pause, Back and focus memory, Back or a `pop` trigger unmounts it, and its `@view-transition` animates it (a cross-fade by default) as it joins and leaves the stack.
-   *
-   * @param id Stable mount ID within this scope.
-   * @param document The loaded document's declared name.
-   * @param inputs Document input names mapped to named stores from this world.
-   * @param content Content passed by reference (Svelte snippets as props): a name the document renders with `{@render name()}`, mapped to a loaded document's name (its root) or `document#snippet` (one of its snippets), rendered with this mount's stores.
-   */
-  mount(id: string, document: string, inputs: Readonly<Record<string, UiReadable<unknown>>>, content?: Readonly<Record<string, string>>): Result<void>;
-  /**
-   * Remove a registered document and release its input subscriptions. Removing an absent mount succeeds.
-   *
-   * @param id The mount ID in this scope.
-   */
-  unmount(id: string): Result<void>;
   /**
    * Drain operation and scheduler errors naming scope and store. Errors are reported in publish too; the scheduler never throws into the engine.
    */
@@ -36975,7 +36960,7 @@ export declare namespace og {
      */
     function formatNumber(value: number, format?: NumberFormatDesc): string;
     /**
-     * The entry to named svelte/store-compatible presentation data and retained document mounts. Rust owns values, the dependency graph and mounted elements. No Svelte compiler, runes, TS elements or asynchronous primitives. See docs/ui.md for a worked example and If you know Svelte.
+     * The entry to named svelte/store-compatible presentation data. Rust owns the values and the dependency graph. See docs/ui.md for a worked example.
      *
      * @param world The world that owns the presentation checkpoint.
      * @param id An explicit, nonempty stable scope name.

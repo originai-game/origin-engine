@@ -11,10 +11,8 @@
 //!     cargo run --release -p og-ui-next --example op_costs [N]
 
 use og_ui::IconAtlas;
-use og_ui_next::look::{Layer, Look};
 use og_ui_next::style::Record;
 use og_ui_next::tree::{MAGIC, Tree};
-use std::rc::Rc;
 use std::time::Instant;
 
 #[global_allocator]
@@ -96,14 +94,7 @@ fn nameplates() -> Batch {
 }
 
 fn tree() -> Tree {
-    let look = Rc::new(Look::load(
-        &[Layer {
-            tokens: og_ui_next::look::default_tokens(),
-            surfaces: og_ui_next::look::DEFAULT_SURFACES,
-        }],
-        "dark",
-    ));
-    let mut t = Tree::new(look, []);
+    let mut t = Tree::new();
     t.resize(1280.0, 720.0);
     t.set_resolver(Box::new(|class, _, states, _| {
         let mut s = taffy::Style::default();
@@ -248,7 +239,7 @@ fn main() {
             for (px, py) in [(x + 2.0, y + h / 2.0), (1270.0, 710.0)] {
                 let a = allocations();
                 let s = Instant::now();
-                t.pointer(px, py, false, false, &mut Vec::new());
+                t.pointer(px, py, false, false);
                 t.frame(&fonts, &icons);
                 if round > 0 {
                     hovered.push((s.elapsed().as_secs_f64() * 1e3, allocations() - a));

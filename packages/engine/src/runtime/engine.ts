@@ -446,7 +446,8 @@ export const engineProbeCustom: Custom["EngineProbe"] = {
     rt.epoch++;
     const id = EngineProbe.handleOf(probe);
     const restored = abi().og_engine_probe_restore(id, sid);
-    uiReactors.get(id)?.restoreMounts();
+    // The stores' restored values reach their subscribers.
+    uiReactors.get(id)?.flush();
     return restored;
   },
 };

@@ -1,0 +1,11 @@
+{
+  "simulation": "unchanged",
+  "breaking": [
+    {
+      "member": "UiScope.mount",
+      "change": "Removed with UiScope.unmount and the .svelte documents they mounted: the UI is TSX components on the native renderer, and a scope only keeps the game's stores (writable, readable, derived, collection, get).",
+      "fix": "Mount the screen's TSX component instead: `const unmount = mount(world, () => <PauseScreen … />, {}, { layer: \"menu\" })` from `@origingame/engine/ui` (the built-in screens are in `@origingame/engine/ui/components`), and call `unmount()` where you called scope.unmount. Read a store in the component with `useStore(store)()`.",
+      "find": [".mount(\"", "scope.mount", ".unmount(\""]
+    }
+  ]
+}

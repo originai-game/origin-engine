@@ -123,10 +123,8 @@ export const worldCustom: Custom["World"] = {
       }
     }
     const restored = structural(parse<Result<void>>(abi().og_world_restore(world.id, save, json(desc))));
-    if (restored.ok) {
-      const mounts = uiReactors.get(world.id)?.restoreMounts();
-      if (mounts && !mounts.ok) return mounts;
-    }
+    // The stores' restored values reach their subscribers.
+    if (restored.ok) uiReactors.get(world.id)?.flush();
     return restored;
   },
   removed(world, component) {
