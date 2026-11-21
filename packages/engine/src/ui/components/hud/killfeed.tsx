@@ -38,7 +38,7 @@ export function Killfeed(props: KillfeedProps) {
       <For each={props.rows ?? []} key={(r) => r.id}>
         {(r) => (
           <View
-            class={`group/row relative flex-row items-center min-w-0 max-w-full pl-3 bg-linear-to-l from-[#1a1e28db] to-[#1a1e2859] compact:pl-2`}
+            class={`group/row relative flex-row items-center min-w-0 max-w-full pl-3 bg-linear-to-l from-[#1a1e28db] to-[#1a1e2859] compact:pl-2 transition duration-240 ease-out starting:opacity-0 starting:translate-x-4 exit:opacity-0`}
             label={t("shooter.killfeed.row", { killer: r().killer, victim: r().victim, weapon: r().weapon ?? "" })}
             data-self={r().self}
           >
