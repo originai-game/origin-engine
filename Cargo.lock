@@ -2591,6 +2591,18 @@ name = "nsh-reactive"
 version = "0.0.0"
 
 [[package]]
+name = "nsh-tailwind"
+version = "0.0.0"
+dependencies = [
+ "log",
+ "ordered-float",
+ "rustc-hash 2.1.3",
+ "serde",
+ "serde_json",
+ "taffy",
+]
+
+[[package]]
 name = "nu-ansi-term"
 version = "0.50.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3819,6 +3831,7 @@ version = "0.9.0"
 dependencies = [
  "bytemuck",
  "nsh-reactive",
+ "nsh-tailwind",
  "og-core",
  "og-css",
  "og-draw",

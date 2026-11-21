@@ -17,6 +17,8 @@ og-reactive = { path = "../og-reactive" }
 # The .svelte parser (doc::UiDocument), until it moves into this crate at the switch.
 og-ui = { path = "../og-ui" }
 nsh-reactive = { path = "../../third_party/nsh-reactive" }
+# Tailwind classes resolved to styles (NSH's resolver).
+nsh-tailwind = { path = "../../third_party/nsh-tailwind" }
 rune-taffy = { path = "../../third_party/rune-taffy" }
 taffy = { version = "=0.15.1", default-features = false, features = ["std", "taffy_tree", "flexbox", "grid", "block_layout", "content_size"] }
 rustc-hash = "2"

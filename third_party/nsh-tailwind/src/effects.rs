@@ -585,7 +585,7 @@ pub fn blur_radius(filters: &[Filter]) -> Points {
 ///
 /// Read on iOS, where it picks the material; the blur's radius still sets
 /// how strongly it is applied, as an approximation rather than a Gaussian radius.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, crate::element::PropEnum)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum BackdropMaterial {
     /// The thinnest material, the most of what is behind coming through.
     #[default]
@@ -657,7 +657,7 @@ pub struct MacOsBackdrop {
 /// The roles AppKit still documents: the newer content and under-window
 /// roles, and the older named roles apps still use (which AppKit marks
 /// deprecated in favor of the newer ones).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, crate::element::PropEnum)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum MacOsBackdropMaterial {
     /// The title bar's material.
     Titlebar,
@@ -691,7 +691,7 @@ pub enum MacOsBackdropMaterial {
 }
 
 /// `NSVisualEffectBlendingMode`: what a [`MacOsBackdrop`] blurs.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, crate::element::PropEnum)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum MacOsBackdropBlending {
     /// What is in the view's window behind it.
     #[default]
@@ -703,7 +703,7 @@ pub enum MacOsBackdropBlending {
 
 /// `NSVisualEffectState`: whether a [`MacOsBackdrop`] follows the window's
 /// active state.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, crate::element::PropEnum)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum MacOsBackdropState {
     /// Active while the window is, inactive otherwise.
     FollowsWindowActiveState,
@@ -726,7 +726,7 @@ pub struct WindowsBackdrop {
 }
 
 /// The material of a [`WindowsBackdrop`].
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, crate::element::PropEnum)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 #[non_exhaustive]
 pub enum WindowsBackdropMaterial {
     /// The system's blur of what is behind the window, with no tint of its

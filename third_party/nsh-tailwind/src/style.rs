@@ -12,7 +12,6 @@ use crate::{
         BackdropMaterial, BlendMode, BoxShadow, Cursor, Effects, Filter, GlassEffect, Gradient,
         KeyframeAnimation, Keyframes, MacOsBackdrop, Outline, Transition, TransitionProps,
     },
-    element::PropEnum,
     geometry::{
         AbsoluteLength, Corners, DefiniteLength, Edges, Percentage, Point, Points, REM_SIZE, Size,
         percentage, point, px,
@@ -483,7 +482,7 @@ impl TextTransform {
 }
 
 /// Where text that does not fit `numberOfLines` is cut (`textOverflow`).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, PropEnum)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub enum EllipsizeMode {
     /// "Lorem ips…" (default).
     #[default]
@@ -4310,23 +4309,6 @@ mod tests {
             [r#"Named("A\"B")"#, "Serif"]
         );
 
-        // Quotes and backslashes inside family names round-trip identically
-        // through css_font_families -> CanvasFont::parse -> text_style -> for_each_font_family.
-        for raw in [
-            "'A\"B', serif",
-            "\"A\\\"B\", serif",
-            "'A\\\\B', monospace",
-            "a\\b, sans-serif",
-            "'Quote\\'s, Back\\\\slash', ui-rounded",
-        ] {
-            let expected = decoded_families(raw);
-            let css_list = css_font_families(raw);
-            assert_eq!(decoded_families(&css_list), expected, "{raw}");
-            let shorthand = format!("13px {css_list}");
-            let parsed = crate::canvas::CanvasFont::parse(&shorthand).expect("valid CSS font");
-            let text_family = parsed.text_style().font_family.expect("has font_family");
-            assert_eq!(decoded_families(&text_family.name()), expected, "{raw}");
-        }
         assert_eq!(
             font_families("'A\"B', serif").collect::<Vec<_>>(),
             [FamilyName::Named("A\"B"), FamilyName::Serif]

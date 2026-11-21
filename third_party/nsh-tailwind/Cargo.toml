@@ -1,0 +1,21 @@
+# NSH's Tailwind class resolver and the value types it writes: see PATCHED.md.
+[package]
+name = "nsh-tailwind"
+version = "0.0.0"
+edition = "2024"
+license = "Apache-2.0"
+description = "NSH's Tailwind CSS v4.1 class resolver: class strings to typed styles, with its theme."
+publish = false
+
+[lib]
+path = "src/lib.rs"
+# Its doc examples name nsh_core, the crate they were written in.
+doctest = false
+
+[dependencies]
+taffy = { version = "=0.15.1", default-features = false, features = ["std", "flexbox", "grid", "block_layout", "content_size"] }
+rustc-hash = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+log = "0.4"
+ordered-float = { version = "5", default-features = false }

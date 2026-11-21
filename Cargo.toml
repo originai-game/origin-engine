@@ -143,6 +143,8 @@ opt-level = 3
 opt-level = 3
 [profile.wasm.package.nsh-reactive]
 opt-level = 3
+[profile.wasm.package.nsh-tailwind]
+opt-level = 3
 [profile.wasm.package.wgpu]
 opt-level = 3
 [profile.wasm.package.og-ai]

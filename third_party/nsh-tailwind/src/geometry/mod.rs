@@ -49,7 +49,3 @@ pub(crate) const fn size_pt(width: f32, height: f32) -> Size<Points> {
 
 #[cfg(test)]
 mod tests;
-#[cfg(test)]
-mod unit_scan;
-#[cfg(test)]
-mod unit_types;
