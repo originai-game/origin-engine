@@ -5,7 +5,7 @@ import type { Texture } from "@origingame/engine";
 export function Frame(props: { texture: Texture | 0 }) {
   return (
     <Show when={props.texture !== 0}>
-      <Image class="absolute left-[640px] top-[180px] w-[640px] h-[360px]" src={props.texture} label="" />
+      <Image class="absolute left-160 top-45 w-160 h-90" src={props.texture} label="" />
     </Show>
   );
 }
