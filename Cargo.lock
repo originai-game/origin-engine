@@ -2639,6 +2639,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "610a5acd306ec67f907abe5567859a3c693fb9886eb1f012ab8f2a47bef3db51"
 
 [[package]]
+name = "nsh-input"
+version = "0.0.0"
+dependencies = [
+ "log",
+ "nsh-tailwind",
+ "rustc-hash 2.1.3",
+]
+
+[[package]]
 name = "nsh-jsx"
 version = "0.0.0"
 dependencies = [
@@ -3895,6 +3904,7 @@ version = "0.9.0"
 dependencies = [
  "accesskit",
  "bytemuck",
+ "nsh-input",
  "nsh-reactive",
  "nsh-tailwind",
  "og-core",

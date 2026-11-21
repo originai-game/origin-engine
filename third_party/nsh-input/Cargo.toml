@@ -1,0 +1,18 @@
+# NSH's pointer-input decisions: see PATCHED.md.
+[package]
+name = "nsh-input"
+version = "0.0.0"
+edition = "2024"
+license = "Apache-2.0"
+description = "NSH's shared pointer-input decisions (press, pan, pinch, hover, wheel, tab order) over plain data."
+publish = false
+
+[lib]
+path = "src/lib.rs"
+# Its doc examples name nsh_core, the crate they were written in.
+doctest = false
+
+[dependencies]
+nsh-tailwind = { path = "../nsh-tailwind" }
+log = "0.4"
+rustc-hash = "2"
