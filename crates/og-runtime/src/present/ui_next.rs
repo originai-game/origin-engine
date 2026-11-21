@@ -68,8 +68,8 @@ pub(crate) struct Next {
     section: String,
     tree: Option<Tree>,
     /// What the tree's class resolver was made for: the pack, the scheme
-    /// (dark) and the UI box's size class.
-    resolved: Option<(Option<String>, bool, SizeClass)>,
+    /// (dark), high contrast and the UI box's size class.
+    resolved: Option<(Option<String>, bool, bool, SizeClass)>,
     /// The widths the resolver's theme breaks at (CSS px).
     widths: Vec<f32>,
     /// The pack images' texture slots by `src`, and the style they were
@@ -204,7 +204,13 @@ pub(crate) fn pack_images(engine: u32) {
             for clip in &s.clips {
                 let h = *clips.entry(clip.clone()).or_insert_with(|| {
                     match crate::world::assets::load_sound(&eng, clip) {
-                        Ok(i) => eng.assets.borrow().sound_handles.get(i).copied().unwrap_or(0),
+                        Ok(i) => eng
+                            .assets
+                            .borrow()
+                            .sound_handles
+                            .get(i)
+                            .copied()
+                            .unwrap_or(0),
                         Err(e) => {
                             warnings.push(format!("og.ui: the pack's sound {clip}: {e}"));
                             0
@@ -220,7 +226,10 @@ pub(crate) fn pack_images(engine: u32) {
                 volume: s.volume,
                 pitch: s.pitch,
             };
-            sounds.entry(scope.clone()).or_default().insert(event.clone(), cue);
+            sounds
+                .entry(scope.clone())
+                .or_default()
+                .insert(event.clone(), cue);
         }
     }
     let sounds = Rc::new(sounds);
@@ -268,6 +277,7 @@ fn resolver(
     engine: u32,
     pack: Option<&str>,
     dark: bool,
+    high_contrast: bool,
     window: [f32; 2],
     slots: &BTreeMap<String, u32>,
 ) -> (Resolve, Vec<f32>) {
@@ -282,7 +292,12 @@ fn resolver(
         widths.extend(b.values().filter_map(Value::as_f64).map(|w| w as f32));
     }
     // The cook checked the theme: what it left out, it reported then.
-    let mut classes = og_ui_next::classes::Classes::new(Some(&pack.theme_json(scheme)))
+    let theme = if high_contrast {
+        pack.theme_json_high_contrast(scheme)
+    } else {
+        pack.theme_json(scheme)
+    };
+    let mut classes = og_ui_next::classes::Classes::new(Some(&theme))
         .or_else(|_| og_ui_next::classes::Classes::new(None))
         .expect("the default theme reads")
         .0;
@@ -326,17 +341,26 @@ impl Next {
         let v = ui.frame().viewport;
         let window = [v.width, v.height];
         let dark = self.scheme == og_ui::Scheme::Dark;
+        // The page's `prefers-contrast: more`, as the host reports it.
+        let high = v.high_contrast;
         let at = size_class(&self.widths, window);
         if self
             .resolved
             .as_ref()
-            .is_some_and(|(p, d, c)| *p == self.pack && *d == dark && *c == at)
+            .is_some_and(|(p, d, h, c)| *p == self.pack && *d == dark && *h == high && *c == at)
         {
             return;
         }
-        let (resolve, widths) = resolver(engine, self.pack.as_deref(), dark, window, &self.images);
+        let (resolve, widths) = resolver(
+            engine,
+            self.pack.as_deref(),
+            dark,
+            high,
+            window,
+            &self.images,
+        );
         tree.set_resolver(resolve);
-        self.resolved = Some((self.pack.clone(), dark, size_class(&widths, window)));
+        self.resolved = Some((self.pack.clone(), dark, high, size_class(&widths, window)));
         self.widths = widths;
     }
 }
@@ -746,7 +770,10 @@ impl Next {
 
     /// The sounds the tree's controls played this frame (the pack's).
     pub(crate) fn take_sounds(&mut self) -> Vec<og_ui_next::tree::Play> {
-        self.tree.as_mut().map(|t| t.take_sounds()).unwrap_or_default()
+        self.tree
+            .as_mut()
+            .map(|t| t.take_sounds())
+            .unwrap_or_default()
     }
 
     pub(crate) fn take_strings(&mut self) -> Vec<String> {
@@ -1216,7 +1243,14 @@ mod tests {
     fn the_resolver_reads_the_scheme_and_the_state_bits() {
         let pack = Pack::new(&[og_ui_next::pack::Layer::default_pack()]);
         for (dark, scheme) in [(false, Scheme::Light), (true, Scheme::Dark)] {
-            let (resolve, _) = resolver(u32::MAX, None, dark, [1280.0, 720.0], &BTreeMap::new());
+            let (resolve, _) = resolver(
+                u32::MAX,
+                None,
+                dark,
+                false,
+                [1280.0, 720.0],
+                &BTreeMap::new(),
+            );
             let hex = pack.theme(scheme)["colors"]["surface"].as_str().unwrap();
             let want = resolve(&format!("bg-[{hex}]"), "", 0, "").skin.fill;
             assert_eq!(
@@ -1227,7 +1261,34 @@ mod tests {
         }
         let light = pack.theme(Scheme::Light)["colors"]["surface"].clone();
         assert_ne!(light, pack.theme(Scheme::Dark)["colors"]["surface"]);
-        let (resolve, _) = resolver(u32::MAX, None, true, [1280.0, 720.0], &BTreeMap::new());
+        // High contrast: a tile ground takes the strong border's colour.
+        let (high, _) = resolver(
+            u32::MAX,
+            None,
+            true,
+            true,
+            [1280.0, 720.0],
+            &BTreeMap::new(),
+        );
+        let strong = pack.theme(Scheme::Dark)["colors"]["border-strong"]
+            .as_str()
+            .unwrap();
+        assert_eq!(
+            high("bg-tile", "", 0, "").skin.fill,
+            high(&format!("bg-[{strong}]"), "", 0, "").skin.fill
+        );
+        let (resolve, _) = resolver(
+            u32::MAX,
+            None,
+            true,
+            false,
+            [1280.0, 720.0],
+            &BTreeMap::new(),
+        );
+        assert_ne!(
+            resolve("bg-tile", "", 0, "").skin.fill,
+            high("bg-tile", "", 0, "").skin.fill
+        );
         let starting = og_ui_next::classes::state::STARTING;
         assert_eq!(
             resolve("opacity-50 starting:opacity-0", "", 0, "")

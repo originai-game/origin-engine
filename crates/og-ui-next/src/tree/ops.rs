@@ -1123,10 +1123,15 @@ mod tests {
                     _ => {}
                 }
             }
-            Record {
+            let mut r = Record {
                 layout: rune_taffy::CompactStyle::from(&s),
                 ..Record::default()
+            };
+            // `half`: drawn at half its size about its centre.
+            if class.split_whitespace().any(|c| c == "half") {
+                r.skin.transform.scale = [0.5, 0.5];
             }
+            r
         }));
         t
     }
@@ -1591,6 +1596,32 @@ mod tests {
 
     /// The ops' tags, a11y props and listeners reach the accessibility
     /// tree: a pressed view is a button named by its text, at its box; a
+    /// A node under a transform (a dialog scaling in) is where it is
+    /// drawn in the accessibility tree, not at its layout box.
+    #[test]
+    fn a_transformed_node_is_where_it_is_drawn() {
+        let mut t = tree();
+        let mut b = Batch::default();
+        b.op(1).u32(1).u8(0);
+        b.op(4).u32(1).str("b half");
+        b.op(6).u32(1).str("role").str("button");
+        b.op(8).u32(0).u32(1).u32(u32::MAX);
+        t.apply(&b.bytes()).unwrap();
+        frame(&mut t);
+        let node = t.els[t.op(1).unwrap() as usize].node as u64;
+        let mut client = a11y::Tree::new();
+        let u = t.a11y(&mut client, None, 1.0).unwrap();
+        let r = u
+            .nodes
+            .iter()
+            .find(|n| n.0.0 == node)
+            .unwrap()
+            .1
+            .bounds()
+            .unwrap();
+        assert_eq!((r.x0, r.y0, r.x1, r.y1), (12.5, 5.0, 37.5, 15.0));
+    }
+
     /// prop's text sets a role; a release takes the node out.
     #[test]
     fn ops_reach_the_accessibility_tree() {

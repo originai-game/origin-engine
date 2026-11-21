@@ -177,11 +177,24 @@ pub struct Semantics {
     /// How many elements are modal: the walk looks for the topmost only
     /// when one is.
     modals: u32,
+    /// The box each transformed node is drawn in on screen (x, y, w, h),
+    /// where it is not its layout box: a node scaling in is where it shows.
+    drawn: FxHashMap<Id, [f32; 4]>,
 }
 
 impl Semantics {
     pub fn get(&self, id: Id) -> &Sem {
         self.nodes.get(id as usize).unwrap_or(&PLAIN)
+    }
+
+    /// The boxes the transformed nodes are drawn in after a paint (a
+    /// motion's scale, a translate): a node's bounds are where it is drawn,
+    /// so a reader's ring lands on it. Changes the stamp only when they did.
+    pub fn set_drawn(&mut self, drawn: FxHashMap<Id, [f32; 4]>) {
+        if drawn != self.drawn {
+            self.drawn = drawn;
+            self.rev += 1;
+        }
     }
 
     fn at(&mut self, id: Id) -> &mut Sem {
@@ -683,6 +696,8 @@ impl Tree {
                 Some([x, y]) => [x, y, b.w, b.h],
                 None => [w.origin[0] + b.x, w.origin[1] + b.y, b.w, b.h],
             };
+            // Where it is drawn; its children lie out from its layout box.
+            let shown = sem.drawn.get(&w.id).copied().unwrap_or(rect);
             let run = arena.text_of(w.id);
             let up = self.slots[w.slot];
             let mut slot = w.slot;
@@ -699,12 +714,12 @@ impl Tree {
             } else if let Some(r) = role(s, run.is_some()) {
                 let mut h = rustc_hash::FxHasher::default();
                 (s.print, r as u8, run).hash(&mut h);
-                rect.map(|f| (f * 32.0).round() as i32).hash(&mut h);
+                shown.map(|f| (f * 32.0).round() as i32).hash(&mut h);
                 self.slots.push(Slot {
                     id: w.id,
                     parent: w.slot,
                     role: r,
-                    rect,
+                    rect: shown,
                     print: h.finish(),
                     words: run.is_some_and(|t| !t.trim().is_empty()),
                 });

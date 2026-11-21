@@ -123,6 +123,9 @@ pub struct Layer {
     seeds: Vec<(String, [String; 2])>,
     /// The theme per scheme ([`Scheme::ALL`] order).
     theme: [Map<String, Value>; 2],
+    /// What the theme takes in high contrast (`prefers-contrast: more`),
+    /// per scheme: entries over the theme's, as `theme` writes them.
+    contrast: [Map<String, Value>; 2],
     pub variants: BTreeMap<String, String>,
     pub fonts: Vec<Face>,
     pub icons: BTreeMap<String, String>,
@@ -137,6 +140,8 @@ pub struct Layer {
 pub struct Pack {
     pub scheme: Option<Scheme>,
     themes: [Map<String, Value>; 2],
+    /// The high-contrast entries over each scheme's theme, merged.
+    contrast: [Map<String, Value>; 2],
     variants: BTreeMap<String, String>,
     pub fonts: Vec<Face>,
     pub icons: BTreeMap<String, String>,
@@ -169,35 +174,53 @@ impl Layer {
                 "seeds" => {
                     for (name, v) in object(v, "seeds")? {
                         if !SEEDS.contains(&name.as_str()) {
-                            return Err(format!("seeds.{name}: not a seed; one of {}", SEEDS.join(", ")));
+                            return Err(format!(
+                                "seeds.{name}: not a seed; one of {}",
+                                SEEDS.join(", ")
+                            ));
                         }
                         let at = format!("seeds.{name}");
                         let side = |s| match split(v, s, &at)? {
                             Value::String(c) => Ok(c),
                             _ => Err(format!("{at}: a CSS colour")),
                         };
-                        layer.seeds.push((name.clone(), [side(Scheme::Light)?, side(Scheme::Dark)?]));
+                        layer
+                            .seeds
+                            .push((name.clone(), [side(Scheme::Light)?, side(Scheme::Dark)?]));
                     }
                 }
-                "theme" => {
-                    for (section, _) in object(v, "theme")? {
+                "theme" | "contrast" => {
+                    for (section, _) in object(v, key)? {
                         if !THEME_KEYS.contains(&section.as_str()) {
-                            return Err(format!("theme.{section}: not a theme key; one of {}", THEME_KEYS.join(", ")));
+                            return Err(format!(
+                                "{key}.{section}: not a theme key; one of {}",
+                                THEME_KEYS.join(", ")
+                            ));
                         }
                     }
                     for (i, s) in Scheme::ALL.into_iter().enumerate() {
-                        let Value::Object(m) = split(v, s, "theme")? else { unreachable!() };
-                        layer.theme[i] = m;
+                        let Value::Object(m) = split(v, s, key)? else {
+                            unreachable!()
+                        };
+                        if key == "theme" {
+                            layer.theme[i] = m;
+                        } else {
+                            layer.contrast[i] = m;
+                        }
                     }
                 }
                 "variants" => {
                     for (k, v) in object(v, "variants")? {
                         if !variant_key(k) {
-                            return Err(format!("variants.{k}: a key is Component.slot or Component.slot.variant (PascalCase, then lower-case names)"));
+                            return Err(format!(
+                                "variants.{k}: a key is Component.slot or Component.slot.variant (PascalCase, then lower-case names)"
+                            ));
                         }
                         // An empty string declares the slot and adds nothing:
                         // the default pack's slots are the vocabulary.
-                        let class = v.as_str().ok_or_else(|| format!("variants.{k}: a class string"))?;
+                        let class = v
+                            .as_str()
+                            .ok_or_else(|| format!("variants.{k}: a class string"))?;
                         layer.variants.insert(k.clone(), class.trim().to_owned());
                     }
                 }
@@ -206,7 +229,9 @@ impl Layer {
                         return Err("fonts: an array of faces".into());
                     };
                     for (i, f) in faces.iter().enumerate() {
-                        layer.fonts.push(face(f).map_err(|e| format!("fonts[{i}]: {e}"))?);
+                        layer
+                            .fonts
+                            .push(face(f).map_err(|e| format!("fonts[{i}]: {e}"))?);
                     }
                 }
                 "images" => {
@@ -216,14 +241,17 @@ impl Layer {
                             return Err(format!("{at}: a name is lower-case words joined by `-`"));
                         }
                         for (i, s) in Scheme::ALL.into_iter().enumerate() {
-                            let image = nine(&split(v, s, &at)?).map_err(|e| format!("{at}: {e}"))?;
+                            let image =
+                                nine(&split(v, s, &at)?).map_err(|e| format!("{at}: {e}"))?;
                             layer.images[i].insert(name.clone(), image);
                         }
                     }
                 }
                 "icons" => {
                     for (name, src) in object(v, "icons")? {
-                        let src = src.as_str().ok_or_else(|| format!("icons.{name}: a path"))?;
+                        let src = src
+                            .as_str()
+                            .ok_or_else(|| format!("icons.{name}: a path"))?;
                         layer.icons.insert(name.clone(), src.to_owned());
                     }
                 }
@@ -231,24 +259,34 @@ impl Layer {
                     for (k, v) in object(v, "sounds")? {
                         if SOUND_EVENTS.contains(&k.as_str()) {
                             let s = sound(v).map_err(|e| format!("sounds.{k}: {e}"))?;
-                            layer.sounds.entry(String::new()).or_default().insert(k.clone(), s);
+                            layer
+                                .sounds
+                                .entry(String::new())
+                                .or_default()
+                                .insert(k.clone(), s);
                         } else if variant_key(k) {
                             let slot = layer.sounds.entry(k.clone()).or_default();
                             for (event, v) in object(v, &format!("sounds.{k}"))? {
                                 if !SOUND_EVENTS.contains(&event.as_str()) {
-                                    return Err(format!("sounds.{k}.{event}: one of {}", SOUND_EVENTS.join(", ")));
+                                    return Err(format!(
+                                        "sounds.{k}.{event}: one of {}",
+                                        SOUND_EVENTS.join(", ")
+                                    ));
                                 }
                                 let s = sound(v).map_err(|e| format!("sounds.{k}.{event}: {e}"))?;
                                 slot.insert(event.clone(), s);
                             }
                         } else {
-                            return Err(format!("sounds.{k}: an event ({}) or Component.slot[.variant]", SOUND_EVENTS.join(", ")));
+                            return Err(format!(
+                                "sounds.{k}: an event ({}) or Component.slot[.variant]",
+                                SOUND_EVENTS.join(", ")
+                            ));
                         }
                     }
                 }
                 other => {
                     return Err(format!(
-                        "{other}: not a pack key; one of about, scheme, seeds, theme, variants, images, fonts, icons, sounds"
+                        "{other}: not a pack key; one of about, scheme, seeds, theme, contrast, variants, images, fonts, icons, sounds"
                     ));
                 }
             }
@@ -262,9 +300,17 @@ impl Layer {
     pub fn assets(&self) -> Vec<&str> {
         let mut out: Vec<&str> = self.fonts.iter().map(|f| f.src.as_str()).collect();
         out.extend(self.icons.values().map(String::as_str));
-        out.extend(self.images.iter().flat_map(|m| m.values().map(|n| n.src.as_str())));
+        out.extend(
+            self.images
+                .iter()
+                .flat_map(|m| m.values().map(|n| n.src.as_str())),
+        );
         for sounds in self.sounds.values() {
-            out.extend(sounds.values().flat_map(|s| s.clips.iter().map(String::as_str)));
+            out.extend(
+                sounds
+                    .values()
+                    .flat_map(|s| s.clips.iter().map(String::as_str)),
+            );
         }
         out.sort_unstable();
         out.dedup();
@@ -288,7 +334,10 @@ impl Layer {
             m.values_mut().for_each(|n| at(&mut n.src));
         }
         for sounds in self.sounds.values_mut() {
-            sounds.values_mut().flat_map(|s| s.clips.iter_mut()).for_each(at);
+            sounds
+                .values_mut()
+                .flat_map(|s| s.clips.iter_mut())
+                .for_each(at);
         }
     }
 
@@ -312,6 +361,12 @@ impl Layer {
         if !light.is_empty() || !dark.is_empty() {
             let theme = design::join(&Value::Object(light.clone()), &Value::Object(dark.clone()));
             root.insert("theme".into(), theme);
+        }
+        let [light, dark] = &self.contrast;
+        if !light.is_empty() || !dark.is_empty() {
+            let contrast =
+                design::join(&Value::Object(light.clone()), &Value::Object(dark.clone()));
+            root.insert("contrast".into(), contrast);
         }
         if !self.variants.is_empty() {
             root.insert("variants".into(), json!(self.variants));
@@ -345,14 +400,18 @@ impl Layer {
                 }
                 m
             };
-            let side = |m: &BTreeMap<String, NineSlice>| Value::Object(m.iter().map(|(k, n)| (k.clone(), one(n))).collect());
+            let side = |m: &BTreeMap<String, NineSlice>| {
+                Value::Object(m.iter().map(|(k, n)| (k.clone(), one(n))).collect())
+            };
             root.insert("images".into(), design::join(&side(light), &side(dark)));
         }
         if !self.sounds.is_empty() {
-            let sound = |s: &Sound| json!({ "clips": s.clips, "volume": s.volume, "pitch": s.pitch });
+            let sound =
+                |s: &Sound| json!({ "clips": s.clips, "volume": s.volume, "pitch": s.pitch });
             let mut m = Map::new();
             for (scope, sounds) in &self.sounds {
-                let events: Map<String, Value> = sounds.iter().map(|(e, s)| (e.clone(), sound(s))).collect();
+                let events: Map<String, Value> =
+                    sounds.iter().map(|(e, s)| (e.clone(), sound(s))).collect();
                 if scope.is_empty() {
                     m.extend(events);
                 } else {
@@ -377,6 +436,7 @@ impl Pack {
         let mut pack = Pack {
             scheme: None,
             themes: Default::default(),
+            contrast: Default::default(),
             variants: BTreeMap::new(),
             fonts: Vec::new(),
             icons: BTreeMap::new(),
@@ -414,6 +474,9 @@ impl Pack {
                     }
                 }
             }
+            for (have, over) in pack.contrast.iter_mut().zip(&layer.contrast) {
+                merge(have, over);
+            }
             pack.variants.extend(layer.variants.clone());
             pack.fonts.extend(layer.fonts.iter().cloned());
             pack.icons.extend(layer.icons.clone());
@@ -421,7 +484,10 @@ impl Pack {
                 have.extend(over.clone());
             }
             for (scope, sounds) in &layer.sounds {
-                pack.sounds.entry(scope.clone()).or_default().extend(sounds.clone());
+                pack.sounds
+                    .entry(scope.clone())
+                    .or_default()
+                    .extend(sounds.clone());
             }
         }
         pack.themes = themes;
@@ -432,6 +498,16 @@ impl Pack {
     /// Tailwind theme extended by every layer.
     pub fn theme_json(&self, scheme: Scheme) -> String {
         Value::Object(self.themes[scheme as usize].clone()).to_string()
+    }
+
+    /// The theme in `scheme` in high contrast (`prefers-contrast:
+    /// more`), as [`Pack::theme_json`] gives it: every layer's `contrast`
+    /// entries over the theme (the default pack's from the design's
+    /// `:root[data-contrast=more]` tokens).
+    pub fn theme_json_high_contrast(&self, scheme: Scheme) -> String {
+        let mut theme = self.themes[scheme as usize].clone();
+        merge(&mut theme, &self.contrast[scheme as usize]);
+        Value::Object(theme).to_string()
     }
 
     /// The theme in `scheme`, as a JSON object.
@@ -450,13 +526,27 @@ impl Pack {
     }
 }
 
+/// `over`'s sections over `have`'s, entry by entry.
+fn merge(have: &mut Map<String, Value>, over: &Map<String, Value>) {
+    for (section, v) in over {
+        match (have.get_mut(section), v) {
+            (Some(Value::Object(h)), Value::Object(o)) => h.extend(o.clone()),
+            (_, v) => {
+                have.insert(section.clone(), v.clone());
+            }
+        }
+    }
+}
+
 fn object<'a>(v: &'a Value, at: &str) -> Result<&'a Map<String, Value>, String> {
     v.as_object().ok_or_else(|| format!("{at}: an object"))
 }
 
 /// Whether `v` is a scheme pair: exactly `light` and `dark`.
 fn pair(m: &Map<String, Value>) -> Option<(&Value, &Value)> {
-    (m.len() == 2).then(|| Some((m.get("light")?, m.get("dark")?))).flatten()
+    (m.len() == 2)
+        .then(|| Some((m.get("light")?, m.get("dark")?)))
+        .flatten()
 }
 
 /// `v` with every scheme pair replaced by its `scheme` side.
@@ -469,7 +559,9 @@ fn split(v: &Value, scheme: Scheme, at: &str) -> Result<Value, String> {
         return split(side, scheme, at);
     }
     if m.contains_key("light") || m.contains_key("dark") {
-        return Err(format!("{at}: a scheme pair has exactly `light` and `dark`"));
+        return Err(format!(
+            "{at}: a scheme pair has exactly `light` and `dark`"
+        ));
     }
     let mut out = Map::new();
     for (k, v) in m {
@@ -484,7 +576,8 @@ fn variant_key(k: &str) -> bool {
     let name = |p: &str| {
         !p.is_empty()
             && p.starts_with(|c: char| c.is_ascii_lowercase())
-            && p.chars().all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-')
+            && p.chars()
+                .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-')
     };
     matches!(parts.len(), 2 | 3)
         && parts[0].starts_with(|c: char| c.is_ascii_uppercase())
@@ -494,7 +587,11 @@ fn variant_key(k: &str) -> bool {
 
 fn kebab(name: &str) -> bool {
     !name.is_empty()
-        && name.split('-').all(|w| !w.is_empty() && w.chars().all(|c| c.is_ascii_lowercase() || c.is_ascii_digit()))
+        && name.split('-').all(|w| {
+            !w.is_empty()
+                && w.chars()
+                    .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit())
+        })
 }
 
 /// The names of the nine-slice art `classes` gives (`nine-<name>`, under
@@ -533,8 +630,16 @@ fn nine(v: &Value) -> Result<NineSlice, String> {
             return Err(format!("{k}: one of src, slice, width, fill, repeat, tint"));
         }
     }
-    let src = m.get("src").and_then(Value::as_str).ok_or("src: an image")?.to_owned();
-    let slice = insets(m.get("slice").ok_or("slice: the insets into the image, in its pixels")?, "slice")?;
+    let src = m
+        .get("src")
+        .and_then(Value::as_str)
+        .ok_or("src: an image")?
+        .to_owned();
+    let slice = insets(
+        m.get("slice")
+            .ok_or("slice: the insets into the image, in its pixels")?,
+        "slice",
+    )?;
     let width = m.get("width").map(|w| insets(w, "width")).transpose()?;
     let fill = match m.get("fill") {
         None => true,
@@ -551,7 +656,14 @@ fn nine(v: &Value) -> Result<NineSlice, String> {
         Some(Value::Bool(b)) => *b,
         Some(_) => return Err("tint: true or false".into()),
     };
-    Ok(NineSlice { src, slice, width, fill, tile, tint })
+    Ok(NineSlice {
+        src,
+        slice,
+        width,
+        fill,
+        tile,
+        tint,
+    })
 }
 
 fn face(v: &Value) -> Result<Face, String> {
@@ -559,7 +671,9 @@ fn face(v: &Value) -> Result<Face, String> {
     let text = |k: &str| m.get(k).and_then(Value::as_str).map(str::to_owned);
     for k in m.keys() {
         if !["family", "src", "weight", "style", "unicodeRange"].contains(&k.as_str()) {
-            return Err(format!("{k}: one of family, src, weight, style, unicodeRange"));
+            return Err(format!(
+                "{k}: one of family, src, weight, style, unicodeRange"
+            ));
         }
     }
     let weight = match m.get("weight") {
@@ -591,7 +705,11 @@ fn sound(v: &Value) -> Result<Sound, String> {
         }
     }
     let clips: Vec<String> = match m.get("clips") {
-        Some(Value::Array(a)) => a.iter().filter_map(Value::as_str).map(str::to_owned).collect(),
+        Some(Value::Array(a)) => a
+            .iter()
+            .filter_map(Value::as_str)
+            .map(str::to_owned)
+            .collect(),
         _ => Vec::new(),
     };
     if clips.is_empty() {
@@ -608,11 +726,47 @@ fn sound(v: &Value) -> Result<Sound, String> {
             _ => Err(format!("{k}: a number or [low, high]")),
         }
     };
-    Ok(Sound { clips, volume: range("volume", 1.0)?, pitch: range("pitch", 1.0)? })
+    Ok(Sound {
+        clips,
+        volume: range("volume", 1.0)?,
+        pitch: range("pitch", 1.0)?,
+    })
 }
 
 #[cfg(test)]
 mod tests {
+    /// High contrast is pack data: the default pack's from the design's
+    /// `[data-contrast=more]` tokens, and a style pack's `contrast` over it.
+    #[test]
+    fn high_contrast_is_each_layers_contrast_over_its_theme() {
+        let theme = |p: &super::Pack, high: bool| -> serde_json::Value {
+            let t = if high {
+                p.theme_json_high_contrast(super::Scheme::Dark)
+            } else {
+                p.theme_json(super::Scheme::Dark)
+            };
+            serde_json::from_str::<serde_json::Value>(&t).unwrap()["colors"].clone()
+        };
+        let base = super::Pack::new(&[super::Layer::default_pack()]);
+        let (plain, high) = (theme(&base, false), theme(&base, true));
+        assert_eq!(
+            high["fg-muted"], plain["fg"],
+            "muted ink reads as the body ink"
+        );
+        assert_eq!(high["tile"], plain["border-strong"]);
+        assert_eq!(high["accent"], plain["accent"], "the rest stays");
+        let own = super::Layer::parse(r##"{ "contrast": { "colors": { "tile": "#ffffff" } } }"##)
+            .unwrap();
+        let styled = super::Pack::new(&[super::Layer::default_pack(), own]);
+        assert_eq!(theme(&styled, true)["tile"], "#ffffff");
+        assert_eq!(
+            theme(&styled, true)["fg-muted"],
+            plain["fg"],
+            "the default's other entries stay"
+        );
+        assert_eq!(theme(&styled, false)["tile"], plain["tile"]);
+    }
+
     use super::*;
 
     fn pack(over: &str) -> Pack {
@@ -650,14 +804,20 @@ mod tests {
             let (mut c, ignored) = crate::classes::Classes::new(Some(&p.theme_json(s))).unwrap();
             assert!(ignored.is_empty(), "{s:?}: {ignored:?}");
             let classes = "bg-surface text-fg-muted border-border-strong rounded-card shadow-panel text-body font-display tracking-wide leading-snug ease-out bg-legendary";
-            assert!(c.unknown(classes).is_empty(), "{s:?}: {:?}", c.unknown(classes));
+            assert!(
+                c.unknown(classes).is_empty(),
+                "{s:?}: {:?}",
+                c.unknown(classes)
+            );
         }
     }
 
     #[test]
     fn seeds_derive_the_palette_and_written_colours_lie_over_it() {
         let base = Pack::new(&[Layer::default_pack()]);
-        let p = pack(r##"{ "seeds": { "primary": "#c8102e" }, "theme": { "colors": { "bg": "#010203" } } }"##);
+        let p = pack(
+            r##"{ "seeds": { "primary": "#c8102e" }, "theme": { "colors": { "bg": "#010203" } } }"##,
+        );
         for s in Scheme::ALL {
             assert_ne!(color(&p, s, "accent"), color(&base, s, "accent"), "{s:?}");
             assert_eq!(color(&p, s, "bg"), "#010203");
@@ -665,7 +825,11 @@ mod tests {
         // A red seed gives a red accent, in both schemes.
         for s in Scheme::ALL {
             let c = og_css::parse_color(&color(&p, s, "accent")).unwrap();
-            assert!(c.rgb[0] > c.rgb[1] && c.rgb[0] > c.rgb[2], "{s:?}: {:?}", c.rgb);
+            assert!(
+                c.rgb[0] > c.rgb[1] && c.rgb[0] > c.rgb[2],
+                "{s:?}: {:?}",
+                c.rgb
+            );
         }
     }
 
@@ -673,11 +837,23 @@ mod tests {
     fn every_form_error_names_where_it_is() {
         for (text, wants) in [
             (r##"{ "theme": { "colours": {} } }"##, "theme.colours"),
-            (r##"{ "theme": { "colors": { "a": { "light": "#000" } } } }"##, "theme.colors.a"),
-            (r##"{ "variants": { "panel.frame": "p-2" } }"##, "variants.panel.frame"),
-            (r##"{ "variants": { "Panel.Frame": "p-2" } }"##, "variants.Panel.Frame"),
+            (
+                r##"{ "theme": { "colors": { "a": { "light": "#000" } } } }"##,
+                "theme.colors.a",
+            ),
+            (
+                r##"{ "variants": { "panel.frame": "p-2" } }"##,
+                "variants.panel.frame",
+            ),
+            (
+                r##"{ "variants": { "Panel.Frame": "p-2" } }"##,
+                "variants.Panel.Frame",
+            ),
             (r##"{ "seeds": { "brand": "#000" } }"##, "seeds.brand"),
-            (r##"{ "sounds": { "Button.base": { "tap": { "clips": ["a"] } } } }"##, "sounds.Button.base.tap"),
+            (
+                r##"{ "sounds": { "Button.base": { "tap": { "clips": ["a"] } } } }"##,
+                "sounds.Button.base.tap",
+            ),
             (r##"{ "fonts": [{ "src": "a.ttf" }] }"##, "fonts[0]: family"),
             (r##"{ "surfaces": {} }"##, "surfaces"),
         ] {
@@ -695,7 +871,16 @@ mod tests {
             "icons": { "star": "art/star.svg" },
             "sounds": { "press": { "clips": ["/sfx/tap.ogt"], "volume": [0.2, 0.3] }, "Button.base": { "hover": { "clips": ["t.ogt"] } } } }"##).unwrap();
         l.resolve("styles/cartoon");
-        assert_eq!(l.assets(), ["@styles/shared/b.ttf", "sfx/tap.ogt", "styles/cartoon/a.ttf", "styles/cartoon/art/star.svg", "styles/cartoon/t.ogt"]);
+        assert_eq!(
+            l.assets(),
+            [
+                "@styles/shared/b.ttf",
+                "sfx/tap.ogt",
+                "styles/cartoon/a.ttf",
+                "styles/cartoon/art/star.svg",
+                "styles/cartoon/t.ogt"
+            ]
+        );
         let again = Layer::parse(&l.to_json()).unwrap();
         assert_eq!(again.to_json(), l.to_json());
         assert_eq!(again.theme, l.theme);
@@ -714,18 +899,39 @@ mod tests {
         l.resolve("styles/x");
         let p = Pack::new(&[Layer::default_pack(), l.clone()]);
         let plate = &p.images(Scheme::Dark)["plate"];
-        assert_eq!((plate.slice, plate.width, plate.tile, plate.fill, plate.tint), ([12.0, 16.0, 12.0, 16.0], Some([8.0; 4]), true, true, true));
+        assert_eq!(
+            (plate.slice, plate.width, plate.tile, plate.fill, plate.tint),
+            ([12.0, 16.0, 12.0, 16.0], Some([8.0; 4]), true, true, true)
+        );
         assert!(!p.images(Scheme::Dark)["frame"].tint);
-        assert_eq!(p.images(Scheme::Light)["frame"].src, "styles/x/art/frame-light.png");
+        assert_eq!(
+            p.images(Scheme::Light)["frame"].src,
+            "styles/x/art/frame-light.png"
+        );
         assert!(!p.images(Scheme::Dark)["frame"].fill);
         assert!(l.assets().contains(&"styles/x/art/frame.png"));
         assert_eq!(Layer::parse(&l.to_json()).unwrap().images, l.images);
-        assert_eq!(split_nine("p-4 nine-frame hover:nine-plate"), (vec!["frame", "plate"], "p-4".to_owned()));
+        assert_eq!(
+            split_nine("p-4 nine-frame hover:nine-plate"),
+            (vec!["frame", "plate"], "p-4".to_owned())
+        );
         for (text, wants) in [
-            (r#"{ "images": { "a": { "src": "a.png" } } }"#, "images.a: slice"),
-            (r#"{ "images": { "a": { "src": "a.png", "slice": [1, 2] } } }"#, "images.a: slice"),
-            (r#"{ "images": { "A": { "src": "a.png", "slice": 1 } } }"#, "images.A"),
-            (r#"{ "images": { "a": { "src": "a.png", "slice": 1, "repeat": "round" } } }"#, "images.a: repeat"),
+            (
+                r#"{ "images": { "a": { "src": "a.png" } } }"#,
+                "images.a: slice",
+            ),
+            (
+                r#"{ "images": { "a": { "src": "a.png", "slice": [1, 2] } } }"#,
+                "images.a: slice",
+            ),
+            (
+                r#"{ "images": { "A": { "src": "a.png", "slice": 1 } } }"#,
+                "images.A",
+            ),
+            (
+                r#"{ "images": { "a": { "src": "a.png", "slice": 1, "repeat": "round" } } }"#,
+                "images.a: repeat",
+            ),
         ] {
             let e = Layer::parse(text).unwrap_err();
             assert!(e.starts_with(wants), "{text}: {e}");

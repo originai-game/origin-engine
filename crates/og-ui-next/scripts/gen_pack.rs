@@ -6,5 +6,6 @@ fn main() {
         eprintln!("usage: gen-pack <default/pack.json>");
         std::process::exit(2);
     };
-    std::fs::write(&out, og_ui_next::pack::design::default_pack_json()).expect("write the default pack");
+    std::fs::write(&out, og_ui_next::pack::design::default_pack_json())
+        .expect("write the default pack");
 }

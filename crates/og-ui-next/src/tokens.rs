@@ -27,16 +27,36 @@ struct Layer {
 
 type Decls = Vec<(Box<str>, Box<str>)>;
 
-/// The scheme a block's prelude names: `light` for `:root.light` or
-/// `:root[data-scheme=light]`, none for a plain block.
-fn scheme_of(prelude: &str) -> Option<&str> {
+/// The overlay a block's prelude names: `light` for `:root.light` or
+/// `:root[data-scheme=light]`, [`CONTRAST`] for `:root[data-contrast=more]`
+/// and `dark more` for `:root[data-scheme=dark][data-contrast=more]`; none
+/// for a plain block.
+fn scheme_of(prelude: &str) -> Option<String> {
     let rest = prelude.trim().strip_prefix(":root")?;
     if let Some(name) = rest.strip_prefix('.') {
-        return Some(name.trim());
+        return Some(name.trim().to_owned());
     }
-    let inner = rest.strip_prefix("[data-scheme=")?.strip_suffix(']')?;
-    Some(inner.trim_matches(|c| c == '"' || c == '\''))
+    let (mut scheme, mut more) = (None, false);
+    for attr in rest.split_inclusive(']') {
+        let inner = attr.trim().strip_prefix('[')?.strip_suffix(']')?;
+        let (key, value) = inner.split_once('=')?;
+        let value = value.trim_matches(|c| c == '"' || c == '\'');
+        match key.trim() {
+            "data-scheme" => scheme = Some(value),
+            "data-contrast" if value == CONTRAST => more = true,
+            _ => return None,
+        }
+    }
+    match (scheme, more) {
+        (Some(s), false) => Some(s.to_owned()),
+        (None, true) => Some(CONTRAST.to_owned()),
+        (Some(s), true) => Some(format!("{s} {CONTRAST}")),
+        (None, false) => None,
+    }
 }
+
+/// The overlay of `prefers-contrast: more`.
+pub const CONTRAST: &str = "more";
 
 impl Tokens {
     /// The custom properties declared in `css` (every block's, the last
@@ -57,7 +77,7 @@ impl Tokens {
                 .filter(|(n, _)| n.starts_with("--"))
                 .map(|(n, v)| (n.into(), v.into()));
             match scheme_of(prelude) {
-                Some(scheme) => match layer.schemes.iter_mut().find(|(s, _)| &**s == scheme) {
+                Some(scheme) => match layer.schemes.iter_mut().find(|(s, _)| **s == *scheme) {
                     Some((_, d)) => d.extend(decls),
                     None => layer.schemes.push((scheme.into(), decls.collect())),
                 },
@@ -99,12 +119,27 @@ impl Tokens {
     /// outranks `:root`. A scheme no layer names is the base, and so is any
     /// scheme of a table [`Tokens::from_bytes`] read.
     pub fn scheme(&self, scheme: &str) -> Tokens {
+        self.table(scheme, false)
+    }
+
+    /// The table in `scheme`, in high contrast when `more`: within a layer
+    /// its base, the scheme's overlay, then [`CONTRAST`]'s and the
+    /// scheme's own contrast overlay (`dark more`).
+    pub fn table(&self, scheme: &str, more: bool) -> Tokens {
         if self.layers.is_empty() {
             return self.clone();
         }
+        let both = format!("{scheme} {CONTRAST}");
+        let names: &[&str] = if more {
+            &[scheme, CONTRAST, &both]
+        } else {
+            &[scheme]
+        };
         let mut t = Tokens::default();
         for layer in &self.layers {
-            let overlay = layer.schemes.iter().filter(|(s, _)| &**s == scheme);
+            let overlay = names
+                .iter()
+                .flat_map(|n| layer.schemes.iter().filter(move |(s, _)| &**s == *n));
             for (name, value) in layer.base.iter().chain(overlay.flat_map(|(_, d)| d)) {
                 t.set_raw(name, value);
             }

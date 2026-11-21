@@ -241,9 +241,11 @@ try {
     await frames(30);
     await commands("0.02:show:pause");
     await frames(3);
-    const early = (await elements()).find((e) => e.role === "dialog");
+    // The mirror's dialog, at the box it is drawn in (dump_ui gives roles to controls only).
+    const dialog = async () => (await t.eval<{ nodes: TreeNode[] }>("__og_shell__.a11y.tree")).nodes.find((n) => n.role === "dialog");
+    const early = await dialog();
     await frames(40);
-    const settled = (await elements()).find((e) => e.role === "dialog");
+    const settled = await dialog();
     return { early: early?.width ?? 0, settled: settled?.width ?? 0 };
   };
   const moving = await pauseWidth(false);

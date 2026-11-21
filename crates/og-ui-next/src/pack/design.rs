@@ -69,7 +69,9 @@ pub fn colors(seeds: &str) -> [Map<String, Value>; 2] {
     tables(seeds).map(|t| {
         let mut out = Map::new();
         for n in &names {
-            let Some(name) = n.strip_prefix("--color-") else { continue };
+            let Some(name) = n.strip_prefix("--color-") else {
+                continue;
+            };
             if let Some(c) = t.get(n).and_then(hex) {
                 out.insert(name.to_owned(), Value::String(c));
             }
@@ -95,8 +97,14 @@ fn round(v: f64) -> Value {
 
 /// `cubic-bezier(a, b, c, d)` as its four numbers.
 fn bezier(text: &str) -> Option<Value> {
-    let inner = text.trim().strip_prefix("cubic-bezier(")?.strip_suffix(')')?;
-    let n: Vec<f64> = inner.split(',').map(|x| x.trim().parse().ok()).collect::<Option<_>>()?;
+    let inner = text
+        .trim()
+        .strip_prefix("cubic-bezier(")?
+        .strip_suffix(')')?;
+    let n: Vec<f64> = inner
+        .split(',')
+        .map(|x| x.trim().parse().ok())
+        .collect::<Option<_>>()?;
     (n.len() == 4).then(|| json!(n))
 }
 
@@ -104,7 +112,9 @@ fn bezier(text: &str) -> Option<Value> {
 fn theme(t: &Tokens, names: &[String]) -> Map<String, Value> {
     let mut sections: Map<String, Value> = Map::new();
     let mut put = |section: &str, name: &str, v: Value| {
-        let s = sections.entry(section).or_insert_with(|| Value::Object(Map::new()));
+        let s = sections
+            .entry(section)
+            .or_insert_with(|| Value::Object(Map::new()));
         s.as_object_mut().unwrap().insert(name.to_owned(), v);
     };
     for n in names {
@@ -120,11 +130,15 @@ fn theme(t: &Tokens, names: &[String]) -> Map<String, Value> {
                 put("radius", name, json!(r));
             }
         } else if let Some(step) = after("--font-scale-").and_then(|s| s.strip_suffix("-size")) {
-            let line = t.get(&format!("--font-scale-{step}-line-height")).and_then(px);
+            let line = t
+                .get(&format!("--font-scale-{step}-line-height"))
+                .and_then(px);
             if let (Some(size), Some(line)) = (px(v), line) {
                 put("fontSize", step, json!([size, round(line / size)]));
             }
-        } else if let Some(step) = after("--font-scale-").and_then(|s| s.strip_suffix("-letter-spacing")) {
+        } else if let Some(step) =
+            after("--font-scale-").and_then(|s| s.strip_suffix("-letter-spacing"))
+        {
             if let Some(e) = em(v) {
                 put("tracking", step, round(e));
             }
@@ -140,7 +154,10 @@ fn theme(t: &Tokens, names: &[String]) -> Map<String, Value> {
             if let Ok(w) = v.parse::<u16>() {
                 put("fontWeight", name, json!(w));
             }
-        } else if let Some(name) = ["sans", "display", "mono", "rounded"].iter().find(|f| n == &format!("--font-{f}")) {
+        } else if let Some(name) = ["sans", "display", "mono", "rounded"]
+            .iter()
+            .find(|f| n == &format!("--font-{f}"))
+        {
             put("fontFamily", name, Value::String(v.to_owned()));
         } else if let Some(name) = after("--shadow-") {
             put("shadow", name, Value::String(v.to_owned()));
@@ -226,13 +243,39 @@ fn shapes() -> Value {
     Value::Object(out)
 }
 
+/// What each scheme's theme takes in high contrast: the entries of the
+/// `:root[data-contrast=more]` tokens' theme that differ from the plain one.
+fn contrast(names: &[String]) -> [Value; 2] {
+    let t = Tokens::parse(&FILES.concat());
+    Scheme::ALL.map(|s| {
+        let (plain, more) = (
+            theme(&t.table(s.name(), false), names),
+            theme(&t.table(s.name(), true), names),
+        );
+        let mut out = Map::new();
+        for (section, v) in more {
+            let (Value::Object(m), Some(Value::Object(p))) = (v, plain.get(&section)) else {
+                continue;
+            };
+            let changed: Map<String, Value> =
+                m.into_iter().filter(|(k, v)| p.get(k) != Some(v)).collect();
+            if !changed.is_empty() {
+                out.insert(section, Value::Object(changed));
+            }
+        }
+        Value::Object(out)
+    })
+}
+
 /// `default/pack.json`: the design tokens as a pack.
 pub fn default_pack_json() -> String {
     let names = names();
     let [light, dark] = tables("").map(|t| Value::Object(theme(&t, &names)));
+    let [more_light, more_dark] = contrast(&names);
     let pack = json!({
         "about": "The engine's default pack, generated from packages/design/tokens/*.css by crates/og-ui-next/scripts/gen-pack.sh; never edit it by hand. Theme names are the tokens' without their prefix: --color-fg-muted is the colour fg-muted, --radius-card the radius card, --font-scale-body-size the font size body.",
         "theme": join(&light, &dark),
+        "contrast": join(&more_light, &more_dark),
         "variants": SLOTS.iter().map(|(slot, _)| (slot.to_string(), json!(""))).collect::<Map<_, _>>(),
         "images": shapes(),
     });
@@ -265,7 +308,13 @@ mod tests {
     #[test]
     fn derived_palettes_keep_the_designs_contrast_pairs() {
         let css = include_str!("../../../../packages/design/tokens/contrast.css");
-        let list = css.split("--contrast:").nth(1).unwrap().split(';').next().unwrap();
+        let list = css
+            .split("--contrast:")
+            .nth(1)
+            .unwrap()
+            .split(';')
+            .next()
+            .unwrap();
         let pairs: Vec<(&str, &str)> = list
             .split(',')
             .filter_map(|p| match p.split_whitespace().collect::<Vec<_>>()[..] {
@@ -283,7 +332,11 @@ mod tests {
                     .filter(|&(.., r)| r < 4.5)
                     .map(|(a, b, r)| format!("{a} on {b} {r:.2}"))
                     .collect();
-                assert!(low.is_empty(), "seeds {seeds:?}, {:?}: {low:?}", Scheme::ALL[i]);
+                assert!(
+                    low.is_empty(),
+                    "seeds {seeds:?}, {:?}: {low:?}",
+                    Scheme::ALL[i]
+                );
             }
         }
     }

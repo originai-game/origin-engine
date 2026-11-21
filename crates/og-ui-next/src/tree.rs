@@ -383,8 +383,8 @@ struct Glyphs {
 
 mod input;
 mod ops;
-pub use ops::{EVENTS, Event as OpEvent, Fired, MAGIC, REFUSED, Resolve};
 pub use input::{Cue, Play, SoundTable};
+pub use ops::{EVENTS, Event as OpEvent, Fired, MAGIC, REFUSED, Resolve};
 
 /// An image's source, a texture handle as the game holds it, as its
 /// texture's slot (`og_draw::TextureHandle::slot`; 0 none)
@@ -1301,8 +1301,45 @@ impl Tree {
             self.repaint(fonts, icons);
             self.paint = false;
             self.paints += 1;
+            let drawn = self.drawn_boxes();
+            self.sem.set_drawn(drawn);
         }
         (laid_out, painted)
+    }
+
+    /// The box each element under a transform is drawn in (its painted
+    /// box's corners through the transform, bounded), by arena node: the
+    /// accessibility tree's bounds for it.
+    fn drawn_boxes(&self) -> rustc_hash::FxHashMap<Id, [f32; 4]> {
+        let mut out = rustc_hash::FxHashMap::default();
+        for (e, el) in self.els.iter().enumerate() {
+            let xf = self.xfs.get(e).copied().unwrap_or(0);
+            let Some(&(x, y, true, _)) = self.abs.get(e) else {
+                continue;
+            };
+            if xf == 0 || el.dead {
+                continue;
+            }
+            let [a, b, c, d, tx, ty, _, _] = self.drawn.transforms[xf as usize];
+            let bx = self
+                .motion
+                .box_of(el.node)
+                .unwrap_or_else(|| self.arena.box_of(el.node));
+            let corners = [(x, y), (x + bx.w, y), (x, y + bx.h), (x + bx.w, y + bx.h)]
+                .map(|(px, py)| (a * px + c * py + tx, b * px + d * py + ty));
+            let x0 = corners.iter().map(|p| p.0).fold(f32::INFINITY, f32::min);
+            let y0 = corners.iter().map(|p| p.1).fold(f32::INFINITY, f32::min);
+            let x1 = corners
+                .iter()
+                .map(|p| p.0)
+                .fold(f32::NEG_INFINITY, f32::max);
+            let y1 = corners
+                .iter()
+                .map(|p| p.1)
+                .fold(f32::NEG_INFINITY, f32::max);
+            out.insert(el.node, [x0, y0, x1 - x0, y1 - y0]);
+        }
+        out
     }
 
     /// Sets each asked scroller's `:state(more)` from its layout and
@@ -1428,7 +1465,9 @@ impl Tree {
                 .chain(runs.iter().map(|f| f.handle))
         };
         if p.fonts.len() != 2 + runs.len()
-            || firsts().zip(&p.fonts).any(|(h, slot)| slot.first().copied() != h)
+            || firsts()
+                .zip(&p.fonts)
+                .any(|(h, slot)| slot.first().copied() != h)
         {
             p.fonts = firsts().map(|h| h.iter().copied().collect()).collect();
         }
@@ -1509,16 +1548,17 @@ impl Tree {
             // What overflows a box that does not show it is cut to it.
             let o = taffy::CoreStyle::overflow(&r.layout);
             let scroller = self.input.per(e as u32).is_some_and(|p| p.scroller);
-            let inner = if scroller || o.x != taffy::Overflow::Visible || o.y != taffy::Overflow::Visible {
-                [
-                    clip[0].max(x),
-                    clip[1].max(y),
-                    clip[2].min(x + b.w),
-                    clip[3].min(y + b.h),
-                ]
-            } else {
-                clip
-            };
+            let inner =
+                if scroller || o.x != taffy::Overflow::Visible || o.y != taffy::Overflow::Visible {
+                    [
+                        clip[0].max(x),
+                        clip[1].max(y),
+                        clip[2].min(x + b.w),
+                        clip[3].min(y + b.h),
+                    ]
+                } else {
+                    clip
+                };
             self.abs[e] = (x, y, visible, inner);
             let pxf = if el.arena_parent == NONE {
                 0
@@ -1847,7 +1887,11 @@ impl Tree {
                 let t = &el.eff.text;
                 let size = el.eff.size;
                 let typed = !f.value.is_empty();
-                let before = if typed { &f.value[..f.caret.min(f.value.len())] } else { "" };
+                let before = if typed {
+                    &f.value[..f.caret.min(f.value.len())]
+                } else {
+                    ""
+                };
                 let features = og_text::shape::Features::NONE;
                 let pen = og_text::text::widest_line(before, m, size, t.tracking(size), features);
                 let dx = if typed {
@@ -1858,7 +1902,12 @@ impl Tree {
                 let glyph = (m.ascender - m.descender) * size;
                 let top = (t.line_height(size) - glyph) / 2.0;
                 let lb = self.arena.box_of(leaf);
-                let rect = [x + lb.x + dx + pen, y + lb.y + top, (size / 14.0).max(1.0), glyph];
+                let rect = [
+                    x + lb.x + dx + pen,
+                    y + lb.y + top,
+                    (size / 14.0).max(1.0),
+                    glyph,
+                ];
                 p.quads.push(quad(
                     PaintKind::Solid,
                     rect,

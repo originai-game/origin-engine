@@ -285,3 +285,26 @@
   --linear-color-accent-soft: oklch(from var(--color-accent) l c h / 0.029);
   --linear-color-scrim: rgb(0 0 0 / 0.687);
 }
+
+/* High contrast (`prefers-contrast: more`, or a game's own setting): the
+   inks step up (muted reads as the body ink, subtle as muted), fills and
+   control grounds as strong as the strong border, borders as the strong
+   one. Only lightness and alpha move; hue and chroma stay the scheme's. */
+:root[data-contrast=more] {
+  --color-fg-muted: oklch(from var(--seed-neutral) 0.21 min(c, 0.025) h);
+  --color-fg-subtle: oklch(from var(--seed-neutral) 0.396 min(c, 0.025) h);
+  --color-stage-muted: oklch(from var(--seed-neutral) 0.971 min(c, 0.04) h);
+  --color-fill: oklch(from var(--seed-neutral) 0.575 min(c, 0.02) h / 0.2);
+  --color-fill-strong: oklch(from var(--seed-neutral) 0.822 min(c, 0.04) h);
+  --color-border: oklch(from var(--seed-neutral) 0.822 min(c, 0.04) h);
+  --color-tile: oklch(from var(--seed-neutral) 0.822 min(c, 0.04) h);
+}
+
+:root[data-scheme=dark][data-contrast=more] {
+  --color-fg-muted: oklch(from var(--seed-neutral) 0.971 min(c, 0.025) h);
+  --color-fg-subtle: oklch(from var(--seed-neutral) 0.842 min(c, 0.025) h);
+  --color-fill: oklch(from var(--seed-neutral) 0.575 min(c, 0.02) h / 0.36);
+  --color-fill-strong: oklch(from var(--seed-neutral) 0.447 min(c, 0.04) h);
+  --color-border: oklch(from var(--seed-neutral) 0.447 min(c, 0.04) h);
+  --color-tile: oklch(from var(--seed-neutral) 0.447 min(c, 0.04) h);
+}

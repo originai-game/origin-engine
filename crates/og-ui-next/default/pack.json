@@ -1,5 +1,34 @@
 {
   "about": "The engine's default pack, generated from packages/design/tokens/*.css by crates/og-ui-next/scripts/gen-pack.sh; never edit it by hand. Theme names are the tokens' without their prefix: --color-fg-muted is the colour fg-muted, --radius-card the radius card, --font-scale-body-size the font size body.",
+  "contrast": {
+    "colors": {
+      "border": {
+        "dark": "#4b5568",
+        "light": "#bac5dc"
+      },
+      "fg-muted": {
+        "dark": "#edf6ff",
+        "light": "#121824"
+      },
+      "fg-subtle": {
+        "dark": "#c3cbdc",
+        "light": "#404754"
+      },
+      "fill": {
+        "dark": "#7379855c",
+        "light": "#73798533"
+      },
+      "fill-strong": {
+        "dark": "#4b5568",
+        "light": "#bac5dc"
+      },
+      "stage-muted": "#eaf6ff",
+      "tile": {
+        "dark": "#4b5568",
+        "light": "#bac5dc"
+      }
+    }
+  },
   "images": {
     "chip-cut": {
       "slice": 24,

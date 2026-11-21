@@ -247,6 +247,11 @@ fn read(file: &str, css: &str, tree: &mut Map<String, Value>) -> Result<String, 
                 .push(Value::String(block));
             continue;
         }
+        // High contrast's tokens are og-ui-next's pack data; og-ui remaps
+        // its own palette (Theme::to_high_contrast).
+        if selector.contains("[data-contrast=") {
+            continue;
+        }
         let dark = match selector {
             ":root" => false,
             ":root[data-scheme=dark]" => true,
