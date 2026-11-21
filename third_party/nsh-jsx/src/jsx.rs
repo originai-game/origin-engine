@@ -367,7 +367,9 @@ fn trimmed_span(span: Span, raw: &str) -> Span {
         return span;
     }
     let lead = (raw.len() - raw.trim_start().len()) as u32;
-    let trail = (raw.len() - raw.trim_end().len()) as u32;
+    // Origin Engine: whitespace alone (`<View> <Text>`) is an empty span at
+    // its start, not one whose start passes its end.
+    let trail = (raw.len() - raw.trim_end().len()).min(raw.len() - lead as usize) as u32;
     Span::new(span.start + lead, span.end - trail)
 }
 
@@ -806,7 +808,8 @@ impl<'a> Compiler<'a, '_> {
         if core != "text" {
             self.check_unshown_text(core, &el.children);
         }
-        self.host_children(&v, el.children, g, body);
+        let shows_text = core == "text";
+        self.host_children(&v, el.children, g, body, shows_text);
         v
     }
 
@@ -819,7 +822,7 @@ impl<'a> Compiler<'a, '_> {
             .map_or(core, |(_, name, _)| name);
         for child in children {
             let (text, span) = match child {
-                JSXChild::Text(t) => match clean_text(&t.value) {
+                JSXChild::Text(t) => match clean_text(&t.value).filter(|t| !t.trim().is_empty()) {
                     Some(text) => (text, trimmed_span(t.span, &t.value)),
                     None => continue,
                 },
@@ -950,6 +953,7 @@ impl<'a> Compiler<'a, '_> {
         children: oxc::allocator::Vec<'a, JSXChild<'a>>,
         g: &mut Gen<'a>,
         body: &mut String,
+        shows_text: bool,
     ) {
         enum Item {
             Static(String),
@@ -959,7 +963,11 @@ impl<'a> Compiler<'a, '_> {
         for child in children {
             match child {
                 JSXChild::Text(t) => {
-                    if let Some(text) = clean_text(&t.value) {
+                    // Origin Engine: whitespace between the children of an
+                    // element that shows no text (`<View> <Text>…`) is no node.
+                    if let Some(text) =
+                        clean_text(&t.value).filter(|text| shows_text || !text.trim().is_empty())
+                    {
                         let tv = self.var();
                         let make = self.use_helper("text");
                         body.push_str(&format!("const {tv} = {make}({});", quote(&text)));
@@ -1538,6 +1546,33 @@ mod tests {
             code.contains(r#"import { View, Text } from "@origingame/engine/ui";"#),
             "{code}"
         );
+    }
+
+    /// Whitespace beside an element on one line is a text node, as in
+    /// Solid; it compiles, and never aborts the compile.
+    #[test]
+    fn whitespace_beside_elements_on_one_line() {
+        for source in [
+            "<View> <Text>x</Text></View>",
+            "<View><Text>x</Text> </View>",
+            "<View>   <Text>x</Text> </View>",
+        ] {
+            let code = compile(&format!(
+                r#"import {{ Text, View }} from "@origingame/engine/ui"; export const a = {source};"#
+            ))
+            .unwrap();
+            assert!(code.contains(r#"_$element("text")"#), "{source}: {code}");
+            assert!(
+                !code.contains(r#"_$text(" ")"#),
+                "no node of whitespace: {code}"
+            );
+        }
+        // In a Text the space is text.
+        let code = compile(
+            r#"import { Text } from "@origingame/engine/ui"; export const a = <Text>a <Text>b</Text></Text>;"#,
+        )
+        .unwrap();
+        assert!(code.contains(r#"_$text("a ")"#), "{code}");
     }
 
     #[test]

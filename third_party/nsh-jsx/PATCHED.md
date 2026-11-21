@@ -25,3 +25,7 @@ directory has them unchanged; the changes after it are only these:
   primitives (`every_host_element_has_one_home`, `Canvas`, `WebView`,
   `nsh/base`) are replaced by the same checks over the engine's, and the
   class check's theme test reads a pack theme instead of `nsh_base`'s.
+- `jsx.rs`: whitespace alone beside the children of an element other than
+  `Text` (`<View> <Text>x</Text></View>`) is no text node and no error, and
+  `trimmed_span` gives such whitespace an empty span (NSH's subtracted past
+  its start, which aborts in oxc_span).
