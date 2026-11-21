@@ -1,4 +1,4 @@
-import { For, Icon, Image, Show, Text, View, t } from "@origingame/engine/ui";
+import { For, Icon, Image, Show, Text, View, packClass, t } from "@origingame/engine/ui";
 import type { Texture } from "@origingame/engine";
 import "./shooter.en.ogt";
 
@@ -25,11 +25,10 @@ export interface ShooterEffectsProps {
 
 /**
  * The effects on the player, over the vitals: each a small tile with two
- * corners cut, its edge green for a boon and red for a harm, the time still
- * to run as a dark sweep over its art and its time or stacks on a tag under
- * it. The game owns every timer; read only. The conic sweep and the tiles'
- * cut corners have no TSX surface: the sweep is a top-down overlay and the
- * corners rounded ones.
+ * corners cut, its edge green for a boon and red for a harm, the time
+ * already run as a dark sweep round its art and its time or stacks on a
+ * tag under it. The game owns every timer; read only. The tiles' cut
+ * corners have no TSX surface: they are rounded ones.
  */
 export function ShooterEffects(props: ShooterEffectsProps) {
   return (
@@ -52,14 +51,11 @@ export function ShooterEffects(props: ShooterEffectsProps) {
                 <Image class="absolute inset-[0.143rem] rounded-tl-[0.357rem]" src={e().icon ?? 0} />
               </Show>
               <Show when={(e().remaining ?? -1) >= 0}>
-                <View
-                  class="absolute left-[0.143rem] right-[0.143rem] top-[0.143rem] rounded-tl-[0.357rem] bg-[#151820ad]"
-                  style={{ height: `${Math.min(Math.max(e().remaining ?? 0, 0), 1) * 100}%` }}
-                />
+                <View class="absolute inset-0 nine-tile bg-black/55" wipe={1 - Math.min(Math.max(e().remaining ?? 0, 0), 1)} wipeCcw />
               </Show>
             </View>
             <Show when={e().label}>
-              <Text class="max-w-[4rem] py-0 px-[0.357rem] text-[0.857rem] font-bold tabular-nums whitespace-nowrap truncate text-fg text-shadow-2xs bg-[#1b1f29e0] shadow-[inset_0px_0px_0px_1px_#ffffff38] rounded-tl-[0.286rem] compact:px-[0.214rem] data-harmful:text-[#ff4d5e]">
+              <Text class={`max-w-[4rem] py-0 px-[0.357rem] text-[0.857rem] font-bold tabular-nums whitespace-nowrap truncate text-fg text-shadow-2xs nine-chip-cut bg-[#1b1f29e0] compact:px-[0.214rem] data-harmful:text-[#ff4d5e] ${packClass("Chip", "frame")}`}>
                 {e().label}
               </Text>
             </Show>

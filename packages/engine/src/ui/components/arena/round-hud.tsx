@@ -1,4 +1,4 @@
-import { Show, Text, View, formatNumber, t } from "@origingame/engine/ui";
+import { Show, Text, View, formatNumber, packClass, t } from "@origingame/engine/ui";
 import { HudTimer } from "../hud/hud-timer";
 import "./arena.en.ogt";
 
@@ -36,8 +36,10 @@ export interface ArenaRoundHudProps {
  * sets outcome: a banner across the screen says Round won, Round lost or
  * Round drawn (a status announced at once), its entrance replayed for a
  * new id and skipped under reduced motion. The game counts the score and
- * the time and decides the outcome; read only. Approximations: the team
- * plates' clipped corners are rounded, the verdict's gradient text fill
+ * the time and decides the outcome; read only. Approximations: team a's
+ * plate wears the pack's cut and keeps no rim or team edge (a cut takes
+ * one fill, and the pack has no mirrored cut, so team b keeps its
+ * rounded corner, gradient and rim), the verdict's gradient text fill
  * and stamp entrance are a solid ink with a glow (the entrance replay
  * with the banner's id is dropped), the team inks are the default blue
  * and red (the game's seed-team colours have no class surface), the
@@ -52,8 +54,8 @@ const TEAM_B_PLATE = "shadow-[inset_0px_0px_0px_1px_rgb(255_255_255/0.18),inset_
 const NAME = "min-w-0 text-[1.143rem] leading-[1.15] font-bold uppercase tracking-[0.04em] text-fg";
 const SCORE_A = "shrink-0 min-w-8 text-center text-[2.857rem] leading-none font-bold tabular-nums whitespace-nowrap text-[#50aaff] shadow-[0px_0px_1rem_rgb(80_170_255/0.5)] compact:text-[1.857rem]";
 const SCORE_B = "shrink-0 min-w-8 text-center text-[2.857rem] leading-none font-bold tabular-nums whitespace-nowrap text-[#ff6a5e] shadow-[0px_0px_1rem_rgb(255_106_94/0.5)] compact:text-[1.857rem]";
-const YOU = "shrink-0 py-0 px-1 text-[0.857rem] leading-[1.5] font-bold tracking-[0.14em] uppercase text-[#15181f] bg-[#38e8ff] rounded-tl-[0.286rem] whitespace-nowrap";
-const ROUND_PLATE = `flex-col items-center justify-center gap-y-0.5 py-0.5 px-4 bg-[#1b1f29e0] ${PLATE_RIM}`;
+const YOU = `shrink-0 py-0 px-1 text-[0.857rem] leading-[1.5] font-bold tracking-[0.14em] uppercase text-[#15181f] nine-chip-cut bg-[#38e8ff] whitespace-nowrap ${packClass("Chip", "frame")}`;
+const ROUND_PLATE = `flex-col items-center justify-center gap-y-0.5 py-0.5 px-4 bg-[#1b1f29e0] ${PLATE_RIM} ${packClass("Plate", "frame")}`;
 
 export function ArenaRoundHud(props: ArenaRoundHudProps) {
   const nameA = () => (props.nameA ?? "") != "" ? props.nameA : t("arena.team.a");
@@ -63,7 +65,7 @@ export function ArenaRoundHud(props: ArenaRoundHudProps) {
     <View class="flex-col items-center gap-y-6 max-w-full min-w-0 pointer-events-none text-fg compact:gap-y-4" role="group" label={t("arena.round.name")}>
       <View class="flex-row items-stretch justify-center gap-x-0.5 max-w-full min-w-0 compact:w-full compact:flex-wrap">
         <View
-          class={`shrink basis-auto min-w-0 flex-row items-center justify-end gap-x-2 rounded-tl-[0.714rem] py-1 px-4 ${TEAM_PLATE} ${TEAM_A_PLATE} compact:flex-1 compact:basis-0 compact:flex-wrap compact:content-center compact:gap-x-1 compact:py-0.5 compact:px-2`}
+          class={`shrink basis-auto min-w-0 flex-row items-center justify-end gap-x-2 nine-panel-cut bg-[#282e3cd6] py-1 px-4 compact:flex-1 compact:basis-0 compact:flex-wrap compact:content-center compact:gap-x-1 compact:py-0.5 compact:px-2 ${packClass("Plate", "frame")}`}
           role="group"
           label={nameA()}
           data-local={props.localTeam == "a"}

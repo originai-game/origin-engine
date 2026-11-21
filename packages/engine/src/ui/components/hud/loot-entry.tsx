@@ -1,4 +1,4 @@
-import { Icon, Image, Show, Text, View, formatNumber, t } from "@origingame/engine/ui";
+import { Icon, Image, Show, Text, View, formatNumber, packClass, t } from "@origingame/engine/ui";
 import type { Texture } from "@origingame/engine";
 import "./loot-entry.en.ogt";
 
@@ -39,7 +39,7 @@ export function HudLootEntry(props: HudLootEntryProps) {
       data-fading={props.fading}
     >
       <View class={`shrink-0 self-stretch w-[0.214rem] mr-1 bg-white/60 data-uncommon:bg-[#55e39a] data-rare:bg-[#5cc8ff] data-epic:bg-[#c86ff5] data-legendary:bg-[#ffcf5a]`} data-uncommon={rarity() === "uncommon"} data-rare={rarity() === "rare"} data-epic={rarity() === "epic"} data-legendary={rarity() === "legendary"} />
-      <View class="relative shrink-0 my-[0.214rem] size-[1.429rem] rounded-tl-[0.286rem] overflow-hidden bg-[#2a2d38] compact:size-[1.286rem]">
+      <View class="relative shrink-0 my-[0.214rem] size-[1.429rem] nine-chip-cut overflow-hidden bg-[#2a2d38] compact:size-[1.286rem]">
         <Show when={props.icon} fallback={
           <Show when={props.glyph}>
             <Icon class="absolute inset-0 size-full text-fg" name={props.glyph} />
@@ -52,7 +52,7 @@ export function HudLootEntry(props: HudLootEntryProps) {
         {props.name}
       </Text>
       <Show when={props.label}>
-        <Text class={`shrink min-w-0 py-0 px-[0.357rem] text-[0.857rem] font-bold whitespace-nowrap truncate text-fg bg-[#1b1f29e0] shadow-[inset_0px_1px_0px_0px_#ffffff38] rounded-tl-[0.286rem]`}>
+        <Text class={`shrink min-w-0 py-0 px-[0.357rem] text-[0.857rem] font-bold whitespace-nowrap truncate text-fg nine-chip-cut bg-[#1b1f29e0] ${packClass("Chip", "frame")}`}>
           {props.label}
         </Text>
       </Show>

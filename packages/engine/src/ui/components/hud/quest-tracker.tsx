@@ -1,4 +1,4 @@
-import { For, Show, Text, View, t } from "@origingame/engine/ui";
+import { For, Show, Text, View, packClass, t } from "@origingame/engine/ui";
 import "./quest-tracker.en.ogt";
 
 export interface RpgQuestTrackerProps {
@@ -30,7 +30,7 @@ export function RpgQuestTracker(props: RpgQuestTrackerProps) {
             {props.name}
           </Text>
           <Show when={props.distance}>
-            <Text class={`max-w-[45%] text-[0.857rem] font-bold tabular-nums whitespace-nowrap bg-[#060910e0] shadow-[inset_0px_1px_0px_#ffffff38] rounded-tl-[4.576px] rounded-tr-none rounded-br-[4.576px] rounded-bl-none text-fg py-0 px-1 overflow-hidden`}>
+            <Text class={`max-w-[45%] text-[0.857rem] font-bold tabular-nums whitespace-nowrap bg-[#060910e0] shadow-[inset_0px_1px_0px_#ffffff38] rounded-tl-[4.576px] rounded-tr-none rounded-br-[4.576px] rounded-bl-none text-fg py-0 px-1 overflow-hidden ${packClass("Chip", "frame")}`}>
               {props.distance}
             </Text>
           </Show>
@@ -44,7 +44,7 @@ export function RpgQuestTracker(props: RpgQuestTrackerProps) {
                 {s().text}
               </Text>
               <Show when={s().tag}>
-                <Text class={`max-w-[45%] text-[0.857rem] font-bold tabular-nums whitespace-nowrap bg-[#060910e0] shadow-[inset_0px_1px_0px_#ffffff38] rounded-tl-[4.576px] rounded-tr-none rounded-br-[4.576px] rounded-bl-none text-fg py-0 px-1 overflow-hidden`}>
+                <Text class={`max-w-[45%] text-[0.857rem] font-bold tabular-nums whitespace-nowrap bg-[#060910e0] shadow-[inset_0px_1px_0px_#ffffff38] rounded-tl-[4.576px] rounded-tr-none rounded-br-[4.576px] rounded-bl-none text-fg py-0 px-1 overflow-hidden ${packClass("Chip", "frame")}`}>
                   {s().tag}
                 </Text>
               </Show>

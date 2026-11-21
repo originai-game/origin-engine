@@ -1,5 +1,5 @@
 import type { Texture } from "@origingame/engine";
-import { For, Icon, Image, Show, Text, View, formatNumber, t } from "@origingame/engine/ui";
+import { For, Icon, Image, Show, Text, View, formatNumber, packClass, t } from "@origingame/engine/ui";
 import "./slot.en.ogt";
 
 export interface HudSlotProps {
@@ -43,9 +43,8 @@ export interface HudSlotProps {
  * count on a tag, and the ultimate in a hexagon inside a gold ring that
  * fills with its charge; a key cap under it. Its side is --hud-slot-size.
  * The game owns every cooldown, cost and charge; read only. The style cuts
- * the cell with clip-path and sweeps conically; here the cell is rounded,
- * the sweep a top-down veil with a lit edge and the ring a bottom fill,
- * until those surfaces exist.
+ * the cell with clip-path; here the cell is rounded and the sweep and the
+ * ring are pack art (a nine-disc wipe and a nine-ring wipe).
  */
 const SIDE = "3.657rem";
 
@@ -90,7 +89,7 @@ export function HudSlot(props: HudSlotProps) {
         </View>
       </Show>
       <View
-        class={`relative ${SIDE} ${SIDE} ${ready() ? "shadow-[0px_0px_0.714rem_#38e8ff]" : ""} ${ready() && ultimate() ? "shadow-[0px_0px_0.714rem_#ffcf5a]" : ""}`}
+        class={`relative ${SIDE} ${SIDE} ${ready() ? "shadow-[0px_0px_0.714rem_#38e8ff]" : ""} ${ready() && ultimate() ? "shadow-[0px_0px_0.714rem_#ffcf5a]" : ""} ${packClass("Slot", "frame")}`}
       >
         <Show when={ultimate()}>
           <View
@@ -101,7 +100,7 @@ export function HudSlot(props: HudSlotProps) {
             valueMax={100}
             valueNow={charge() <= 0 ? 0 : charge() >= 1 ? 100 : charge() * 100}
           >
-            <View class="absolute inset-x-0 bottom-0 bg-[#ffcf5a]" style={{ height: `${charge() * 100}%` }} />
+            <View class="absolute inset-0 nine-ring bg-[#ffcf5a]" wipe={Math.min(Math.max(charge(), 0), 1)} />
           </View>
         </Show>
         <View
@@ -121,7 +120,7 @@ export function HudSlot(props: HudSlotProps) {
             <View class="absolute inset-0 bg-[#191b2180]" />
           </Show>
           <Show when={cooling() && !unaffordable()}>
-            <View class="absolute inset-x-0 top-0 bg-[#191b21ad] border-b-2 border-white/95" style={{ height: `${cooldown() * 100}%` }} />
+            <View class="absolute inset-0 nine-disc bg-black/55" wipe={Math.min(cooldown(), 1)} wipeCcw />
           </Show>
           <Show when={cooling() && (props.time ?? "") !== ""}>
             <View class="absolute inset-0 flex-row items-center justify-center">

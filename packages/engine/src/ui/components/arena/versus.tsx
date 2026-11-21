@@ -1,4 +1,4 @@
-import { For, Icon, Image, Show, Text, View, t, type UiEvent } from "@origingame/engine/ui";
+import { For, Icon, Image, Show, Text, View, packClass, t, type UiEvent } from "@origingame/engine/ui";
 import type { Texture } from "@origingame/engine";
 import "./arena.en.ogt";
 
@@ -51,7 +51,7 @@ export interface ArenaVersusProps {
 const PORTRAIT = "shrink-0 size-[4.571rem] p-[3px] rounded-[0.857rem] bg-linear-to-b from-white/75 via-white/22 via-45% to-white/14 data-compact:size-[2.857rem]";
 const NAME = "min-w-0 text-start text-[1.286rem] leading-[1.15] font-bold text-fg";
 const CAPTION = "min-w-0 text-start text-[0.929rem] leading-[1.3] font-semibold text-white/66";
-const YOU = "flex-none self-start py-0 px-1 text-[0.857rem] leading-[1.5] font-bold tracking-[0.14em] uppercase text-fg bg-[#1b1f29e0] shadow-[inset_0px_1px_0px_0px_rgb(255_255_255/0.22)] rounded-tl-[0.286rem] whitespace-nowrap";
+const YOU = `flex-none self-start py-0 px-1 text-[0.857rem] leading-[1.5] font-bold tracking-[0.14em] uppercase text-fg nine-chip-cut bg-[#1b1f29e0] whitespace-nowrap ${packClass("Chip", "frame")}`;
 
 function Side(props: { name?: string; team: "a" | "b"; fighters?: ReadonlyArray<VersusFighter> }) {
   const heading = () => (props.name ?? "") != "" ? props.name : props.team == "a" ? t("arena.team.a") : t("arena.team.b");

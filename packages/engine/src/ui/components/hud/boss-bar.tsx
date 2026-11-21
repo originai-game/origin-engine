@@ -147,15 +147,15 @@ export function BossBar(props: BossBarProps) {
               </Show>
               <For each={props.weaknesses ?? []} key={(w) => w.id}>
                 {(w) => (
-                  <View class={`relative shrink-0 size-[1.571rem] rounded-tl-[0.286rem] bg-[#ff4d5e] compact:size-[1.143rem]`} role="image" label={t("hud.boss-bar.weak", { name: w().name ?? "" })}>
+                  <View class={`relative shrink-0 size-[1.571rem] nine-chip-cut bg-[#ff4d5e] compact:size-[1.143rem]`} role="image" label={t("hud.boss-bar.weak", { name: w().name ?? "" })}>
                     <Show when={w().icon} fallback={
-                      <View class="absolute inset-[0.143rem] rounded-tl-[0.286rem] flex-row items-center justify-center bg-[#2a2d38]">
+                      <View class="absolute inset-[0.143rem] nine-chip-cut flex-row items-center justify-center bg-[#2a2d38]">
                         <Show when={w().glyph}>
                           <Icon class="size-[64%] text-fg" name={w().glyph} />
                         </Show>
                       </View>
                     }>
-                      <Image class="absolute inset-[0.143rem] rounded-tl-[0.286rem]" src={w().icon} />
+                      <Image class="absolute inset-[0.143rem] nine-chip-cut" src={w().icon} />
                     </Show>
                   </View>
                 )}

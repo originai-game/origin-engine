@@ -1,4 +1,4 @@
-import { Show, Text, View, formatDuration, t } from "@origingame/engine/ui";
+import { Show, Text, View, formatDuration, packClass, t } from "@origingame/engine/ui";
 import "./hud-timer.en.ogt";
 
 export interface HudTimerProps {
@@ -20,15 +20,14 @@ export interface HudTimerProps {
  * A HUD clock on its plate: a caption, the seconds in the HUD's large
  * figure, and for a countdown with a total a ring of what is left, which
  * warns and then turns red near zero; paused, the time dims and breathes.
- * Read only. The ring's arc has no TSX surface: a View stand-in fills
- * what is left from the bottom, as ability-slot's ultimate does.
+ * Read only.
  */
 export function HudTimer(props: HudTimerProps) {
   const warn = () => (props.countdown ?? false) && props.seconds <= (props.warnAt ?? 0) && props.seconds > (props.warnAt ?? 0) / 3;
   const critical = () => (props.countdown ?? false) && props.seconds <= (props.warnAt ?? 0) / 3;
   return (
     <View
-      class={`flex-col items-center gap-y-[0.143rem] border-rim bg-linear-to-b from-[#1e2637e5] to-plate-lo shadow-plate py-2 px-4 data-paused:opacity-60`}
+      class={`flex-col items-center gap-y-[0.143rem] border-rim bg-linear-to-b from-[#1e2637e5] to-plate-lo shadow-plate py-2 px-4 data-paused:opacity-60 ${packClass("Plate", "frame")}`}
       role="timer"
       label={props.label || t("component.hud-timer.name")}
       valueText={formatDuration(props.seconds)}
@@ -41,8 +40,11 @@ export function HudTimer(props: HudTimerProps) {
       </Show>
       <View class="flex-row items-center gap-1">
         <Show when={(props.countdown ?? false) && (props.total ?? 0) > 0}>
-          <View class="relative size-6 overflow-hidden rounded-full border-[3px] border-white/22 shadow-sunk" data-warn={warn()} data-critical={critical()}>
-            <View class="absolute inset-x-0 bottom-0 bg-gold data-warn:bg-warn data-critical:bg-danger transition-layout duration-180 ease-out" data-warn={warn()} data-critical={critical()} style={{ height: `${Math.min(Math.max(props.seconds / (props.total ?? 1), 0), 1) * 100}%` }} />
+          <View class="relative size-6" data-warn={warn()} data-critical={critical()}>
+            <View
+              class="absolute inset-0 nine-ring bg-gold data-warn:bg-warn data-critical:bg-danger transition-layout duration-180 ease-out"
+              wipe={Math.min(Math.max(props.seconds / (props.total ?? 1), 0), 1)}
+            />
           </View>
         </Show>
         <Text

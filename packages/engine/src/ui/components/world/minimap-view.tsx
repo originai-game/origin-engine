@@ -1,4 +1,4 @@
-import { For, Image, Line, Show, Text, View, type UiEvent, t } from "@origingame/engine/ui";
+import { For, Image, Line, Show, Text, View, packClass, type UiEvent, t } from "@origingame/engine/ui";
 import type { Texture } from "@origingame/engine";
 import "./minimap-view.en.ogt";
 
@@ -47,8 +47,9 @@ export interface MinimapViewProps {
  * under it. Reports pick (a tap on the glass). The style draws the player
  * as a filled SVG arrow and the cone and bezel with conic gradients: the
  * arrow is a stroked <Line> triangle here, the cone's wedge and the
- * bezel's sheen are approximated, the objective marker's glow is dropped
- * and the bearing ticks are a plain hairline ring.
+ * bezel's sheen are approximated, the objective marker's glow is dropped,
+ * the bearing ticks are a plain hairline ring and the zone plate keeps no
+ * rim (a cut takes one fill).
  */
 const SIDE = 192; // px, the glass (size-5xl); the map math is in px.
 const PIP = 12 / 14; // rem, a marker pip (12 font steps).
@@ -178,7 +179,7 @@ export function MinimapView(props: MinimapViewProps) {
         </Text>
       </View>
       <Show when={(props.zone ?? "") !== ""}>
-        <Text class="py-[0.143rem] px-[0.571rem] text-[0.929rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap text-white bg-[#1e2637e5] shadow-[inset_0px_0px_0px_0.071rem_#ffffff2e,inset_0px_0.071rem_0px_0px_#ffffff8c] rounded-tl-[0.429rem]">
+        <Text class={`py-[0.143rem] px-[0.571rem] text-[0.929rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap text-white nine-plate-cut bg-[#1e2637e5] ${packClass("Plate", "frame")}`}>
           {props.zone}
         </Text>
       </Show>

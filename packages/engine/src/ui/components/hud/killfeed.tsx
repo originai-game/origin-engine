@@ -1,4 +1,4 @@
-import { For, Show, Text, View, t } from "@origingame/engine/ui";
+import { For, Show, Text, View, packClass, t } from "@origingame/engine/ui";
 import "./killfeed.en.ogt";
 
 export interface KillfeedRow {
@@ -50,7 +50,7 @@ export function Killfeed(props: KillfeedProps) {
               {r().victim}
             </Text>
             <Show when={r().headshot}>
-              <Text class={`shrink-0 py-0 px-[0.357rem] text-[0.857rem] font-bold tracking-[0.14em] uppercase whitespace-nowrap text-[#ff4d5e] text-shadow-none bg-[#1b1f29e0] shadow-[inset_0px_1px_0px_0px_#ffffff38] rounded-tl-[0.286rem]`}>
+              <Text class={`shrink-0 py-0 px-[0.357rem] text-[0.857rem] font-bold tracking-[0.14em] uppercase whitespace-nowrap text-[#ff4d5e] text-shadow-none nine-chip-cut bg-[#1b1f29e0] ${packClass("Chip", "frame")}`}>
                 {t("shooter.killfeed.hs")}
               </Text>
             </Show>

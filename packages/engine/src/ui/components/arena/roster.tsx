@@ -1,4 +1,4 @@
-import { For, Icon, Image, Scroll, Show, Text, View, t, type UiEvent } from "@origingame/engine/ui";
+import { For, Icon, Image, Scroll, Show, Text, View, packClass, t, type UiEvent } from "@origingame/engine/ui";
 import type { Texture } from "@origingame/engine";
 import "./arena.en.ogt";
 
@@ -54,15 +54,15 @@ export interface ArenaRosterProps {
  * choose with its key; a locked or taken one is disabled and names why
  * (Locked, Taken by …). The local player's character is selected and
  * named under the grid. The game decides what can be picked; the roster
- * only reports the choice. Approximations: the frame's and cells' cut
- * corners and the portraits' ratio edges are rounded, the chosen tile's
- * accent wash is a flat tint, a locked or taken portrait's greying filter
+ * only reports the choice. Approximations: the portraits' ratio edges are
+ * rounded, the chosen tile's accent wash is a flat tint and keeps no rim
+ * (a cut takes one fill), a locked or taken portrait's greying filter
  * is an opacity, and the scroll fade at the grid's foot is dropped.
  */
-const CARD = "w-full max-h-full p-4 flex-col gap-y-3 text-fg bg-linear-to-b from-[#232837ed] to-[#1a1e29f2] shadow-[inset_0px_0px_0px_1px_rgb(255_255_255/0.14),inset_0px_1px_0px_0px_rgb(255_255_255/0.5)] rounded-tl-[0.714rem] data-compact:p-2";
+const CARD = `w-full max-h-full p-4 flex-col gap-y-3 text-fg nine-panel-cut bg-[#232837ed] data-compact:p-2 ${packClass("Panel", "frame")}`;
 const MARK = "flex-row items-center gap-x-0.5 py-0 px-1 whitespace-nowrap text-[0.857rem] leading-[1.5] font-bold text-[#262b38] bg-linear-to-b from-white to-[#d8dbe2] shadow-[0px_0.143rem_0px_#0000008c,inset_0px_-0.143rem_0px_#0000002e] rounded-[0.286rem] data-ready:bg-none data-ready:bg-[#55e39a] data-ready:text-[#011e0f]";
-const TAG = "flex-none max-w-full self-center py-0 px-1 text-[0.857rem] leading-[1.5] font-bold tracking-[0.14em] uppercase text-center text-fg bg-[#1b1f29e0] shadow-[inset_0px_1px_0px_0px_rgb(255_255_255/0.22)] rounded-tl-[0.286rem]";
-const CELL = "flex-col gap-y-0.5 pb-2 bg-linear-to-b from-[#2b3141e6] to-[#1a1e29f0] shadow-[inset_0px_0px_0px_1px_rgb(255_255_255/0.16)] rounded-tl-[0.714rem] hover:shadow-[inset_0px_0px_0px_1px_rgb(255_255_255/0.45)] data-selected:bg-none data-selected:bg-[#38e8ff26] data-selected:shadow-[inset_0px_0px_0px_2px_#38e8ff,inset_0px_3px_0px_0px_rgb(255_255_255/0.5),0px_0px_1.143rem_rgb(56_232_255/0.4)] data-disabled:text-white/66 data-disabled:bg-linear-to-b data-disabled:from-[#2b3141e6] data-disabled:to-[#1a1e29f0] data-disabled:shadow-[inset_0px_0px_0px_1px_rgb(255_255_255/0.16)]";
+const TAG = `flex-none max-w-full self-center py-0 px-1 text-[0.857rem] leading-[1.5] font-bold tracking-[0.14em] uppercase text-center text-fg nine-chip-cut bg-[#1b1f29e0] ${packClass("Chip", "frame")}`;
+const CELL = "flex-col gap-y-0.5 pb-2 nine-panel-cut bg-[#2b3141e6] hover:bg-[#3a4152e6] data-selected:bg-[#38e8ff26] data-disabled:text-white/66 data-disabled:bg-[#2b3141e6]";
 
 export function ArenaRoster(props: ArenaRosterProps) {
   const heading = () => (props.title ?? "") != "" ? props.title : t("arena.roster.title");
@@ -127,7 +127,7 @@ export function ArenaRoster(props: ArenaRosterProps) {
           </View>
         </Scroll>
         <Show when={(props.selected ?? "") != "" && chosen()}>
-          <View class="flex-none flex-row flex-wrap items-center gap-x-1 gap-y-0.5 py-2 px-3 bg-linear-to-b from-[#282e3cd6] to-[#1a1e29e0] shadow-[inset_0px_0px_0px_1px_rgb(56_232_255/0.45),inset_0px_2px_0px_0px_#38e8ff] rounded-tl-[0.429rem] data-compact:gap-y-1 data-compact:py-1 px-2" role="status">
+          <View class="flex-none flex-row flex-wrap items-center gap-x-1 gap-y-0.5 py-2 px-3 nine-plate-cut bg-[#282e3cd6] data-compact:gap-y-1 data-compact:py-1 px-2" role="status">
             <Text class={`${TAG} bg-[#38e8ff] text-[#15181f] shadow-none`}>{t("arena.roster.chosen")}</Text>
             <Text class="min-w-0 text-[1.857rem] leading-[1.1] font-bold uppercase text-fg data-compact:text-[1.429rem]">{chosen()?.name}</Text>
             <Text class="shrink min-w-0 max-w-full text-[0.857rem] leading-[1.3] font-semibold tracking-[0.14em] uppercase text-white/78">{chosen()?.roleLabel}</Text>

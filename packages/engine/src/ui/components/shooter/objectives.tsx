@@ -1,4 +1,4 @@
-import { For, Show, Text, View, t } from "@origingame/engine/ui";
+import { For, Show, Text, View, packClass, t } from "@origingame/engine/ui";
 import "./shooter.en.ogt";
 
 export interface ShooterGoal {
@@ -52,7 +52,7 @@ export function ShooterObjectives(props: ShooterObjectivesProps) {
                 {g().text}
               </Text>
               <Show when={g().tag}>
-                <Text class={`shrink-0 py-0 px-1 text-[0.857rem] font-bold tabular-nums whitespace-nowrap text-fg bg-[#1b1f29e0] shadow-[inset_0px_0px_0px_1px_#ffffff38] rounded-tl-[0.286rem]`}>
+                <Text class={`shrink-0 py-0 px-1 text-[0.857rem] font-bold tabular-nums whitespace-nowrap text-fg nine-chip-cut bg-[#1b1f29e0] ${packClass("Chip", "frame")}`}>
                   {g().tag}
                 </Text>
               </Show>

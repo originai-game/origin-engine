@@ -33,8 +33,9 @@ export interface StatusGridProps {
  * buffs and debuffs in their own rows, a debuff rimmed by its type, each
  * with its stacks and the time left, expiring ones pulsing and a tile's
  * time sweeping as it runs out. The style wipes the time round the tile
- * (an SVG ring); here it is a top-down veil until the wipe surface is
- * usable, and the type notch is dropped (the rim carries the type).
+ * (an SVG ring); here it is the pack's tile sweep, the time already run
+ * darkened clockwise. The type notch is dropped (the rim carries the
+ * type).
  */
 const EDGES: Record<string, string> = {
   magic: "#5cc8ff",
@@ -70,7 +71,7 @@ function EffectTile(props: { effect: StatusGridEffect; debuff: boolean }) {
       >
         <Icon class="size-6 text-white text-shadow-2xs data-expiring:animate-pulse" name={props.effect.icon} />
         <Show when={duration() > 0 && remaining() < duration()}>
-          <View class="absolute inset-x-0 top-0 bg-[#191b21ad]" style={{ height: `${(1 - remaining() / duration()) * 100}%` }} />
+          <View class="absolute inset-0 nine-tile bg-black/55" wipe={1 - remaining() / duration()} />
         </Show>
       </View>
       <Show when={stacks() > 1 || remaining() > 0}>

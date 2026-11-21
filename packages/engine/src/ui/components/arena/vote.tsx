@@ -1,4 +1,4 @@
-import { For, Icon, Scroll, Show, Text, View, formatNumber, t, type UiEvent } from "@origingame/engine/ui";
+import { For, Icon, Scroll, Show, Text, View, formatNumber, packClass, t, type UiEvent } from "@origingame/engine/ui";
 import "./vote.en.ogt";
 
 export interface VoteOption {
@@ -45,11 +45,10 @@ export interface ArenaVoteProps {
  * of dark glass with its tally at the end, the player's own ringed in the
  * accent and washed in it. The game counts votes and decides winners;
  * choose reports the option's stable id and changes nothing locally.
- * Approximations: the card's and tiles' cut corners are rounded, the
- * chosen tile's wash is flat, and the scroll fade at the list's foot is
- * dropped.
+ * Approximations: the chosen tile's wash is flat and keeps no rim (a cut
+ * takes one fill), and the scroll fade at the list's foot is dropped.
  */
-const CARD = "w-full max-h-full p-4 rounded-tl-[0.714rem] bg-linear-to-b from-[#232837ed] to-[#1a1e29f2] shadow-[inset_0px_0px_0px_1px_rgb(255_255_255/0.14),inset_0px_1px_0px_0px_rgb(255_255_255/0.5)] compact:p-2";
+const CARD = `w-full max-h-full p-4 nine-panel-cut bg-[#232837ed] compact:p-2 ${packClass("Panel", "frame")}`;
 
 export function ArenaVote(props: ArenaVoteProps) {
   const heading = () => (props.title ?? "") != "" ? props.title : t("vote.title");
@@ -73,7 +72,7 @@ export function ArenaVote(props: ArenaVoteProps) {
               <For each={props.options ?? []} key={(o) => o.id}>
                 {(o) => (
                   <View
-                    class={`group/vote flex-row flex-wrap items-center gap-x-2 gap-y-1 w-full min-h-11 py-2 px-3 text-start rounded-tl-[0.429rem] bg-linear-to-b from-[#2b3141e6] to-[#1a1e29f0] shadow-[inset_0px_0px_0px_1px_rgb(255_255_255/0.16)] hover:shadow-[inset_0px_0px_0px_1px_rgb(255_255_255/0.45)] data-selected:bg-[#38e8ff26] data-selected:shadow-[inset_0px_0px_0px_0.286rem_#38e8ff,inset_0px_0.429rem_0px_0px_rgb(255_255_255/0.5)] disabled:text-white/66 transition duration-317 compact:py-1 compact:px-2`}
+                    class={`group/vote flex-row flex-wrap items-center gap-x-2 gap-y-1 w-full min-h-11 py-2 px-3 text-start nine-plate-cut bg-[#2b3141e6] hover:bg-[#3a4152e6] data-selected:bg-[#38e8ff26] disabled:text-white/66 transition duration-317 compact:py-1 compact:px-2`}
                     role="button"
                     label={o().name}
                     pressed={props.selected == o().id}

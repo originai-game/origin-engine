@@ -1,4 +1,4 @@
-import { For, Icon, Image, Show, Text, View, formatNumber, t } from "@origingame/engine/ui";
+import { For, Icon, Image, Show, Text, View, formatNumber, packClass, t } from "@origingame/engine/ui";
 import type { Texture } from "@origingame/engine";
 import "./shooter.en.ogt";
 
@@ -112,7 +112,7 @@ export function ShooterAbilities(props: ShooterAbilitiesProps) {
               </View>
               <Show when={(s().count ?? 0) > 0}>
                 <Text
-                  class={`absolute -top-[0.429rem] -right-[0.429rem] max-w-[4.457rem] py-0 px-[0.357rem] text-[0.857rem] font-bold tabular-nums whitespace-nowrap truncate text-fg bg-[#1b1f29e0] shadow-[inset_0px_0px_0px_1px_#ffffff38] rounded-tl-[0.286rem]`}
+                  class={`absolute -top-[0.429rem] -right-[0.429rem] max-w-[4.457rem] py-0 px-[0.357rem] text-[0.857rem] font-bold tabular-nums whitespace-nowrap truncate text-fg nine-chip-cut bg-[#1b1f29e0] ${packClass("Chip", "frame")}`}
                 >
                   {t("shooter.abilities.count", { count: formatNumber(s().count ?? 0) })}
                 </Text>

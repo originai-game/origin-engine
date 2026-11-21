@@ -1,4 +1,4 @@
-import { For, Scroll, Show, Text, View, t, type UiEvent } from "@origingame/engine/ui";
+import { For, Scroll, Show, Text, View, packClass, t, type UiEvent } from "@origingame/engine/ui";
 import "./spectator.en.ogt";
 
 export interface SpectatorTarget {
@@ -52,14 +52,14 @@ export interface ArenaSpectatorProps {
  * is flat, the scroll fade at the list's foot is dropped, and the ghost
  * Leave wears the standard button look.
  */
-const BUTTON = "flex-1 basis-40 flex-row items-center justify-center gap-x-1 min-h-11 px-3 text-[0.929rem] font-bold tracking-[0.14em] uppercase text-fg bg-linear-to-b from-[#2c3140eb] to-[#1b1f29f2] shadow-[inset_0px_0px_0px_1px_rgb(255_255_255/0.24),inset_0px_1px_0px_0px_rgb(255_255_255/0.6)] rounded-tl-[0.429rem] hover:bg-none hover:bg-linear-to-b hover:from-[#373d4ff2] hover:to-[#232837f5] disabled:opacity-45 data-selected:shadow-[inset_0px_0px_0px_0.286rem_#38e8ff,inset_0px_0.429rem_0px_0px_rgb(255_255_255/0.5)]";
+const BUTTON = `flex-1 basis-40 flex-row items-center justify-center gap-x-1 min-h-11 px-3 text-[0.929rem] font-bold tracking-[0.14em] uppercase text-fg nine-plate-cut bg-[#2c3140eb] hover:bg-[#373d4ff2] disabled:opacity-45 ${packClass("Button", "plate")}`;
 
 export function ArenaSpectator(props: ArenaSpectatorProps) {
   const heading = () => (props.title ?? "") != "" ? props.title : t("spectator.title");
   const followed = (id: string) => !props.freeCamera && props.selected == id;
   return (
     <View
-      class={`flex-col gap-y-2 w-full max-h-full p-3 rounded-tl-[0.714rem] bg-linear-to-b from-[#1e2637e5] to-plate-lo shadow-[inset_0px_0px_0px_1px_rgb(255_255_255/0.18),inset_0px_1px_0px_0px_rgb(255_255_255/0.55)] text-fg`}
+      class={`flex-col gap-y-2 w-full max-h-full p-3 nine-panel-cut bg-[#1e2637e5] text-fg ${packClass("Panel", "frame")}`}
       label={heading()}
       busy={props.loading}
     >

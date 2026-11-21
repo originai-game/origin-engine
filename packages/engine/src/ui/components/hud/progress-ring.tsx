@@ -17,8 +17,8 @@ export interface ProgressRingProps {
 /**
  * A ring that fills with its value, its percent (or the label's words) in
  * the middle; with no known value the ring turns instead. The style's SVG
- * arc has no TSX surface: the ring is a View stand-in that fills from its
- * foot, and the spinning ring turns as a lit rim. Read only.
+ * arc is the pack's ring art here, and the spinning ring turns as a lit
+ * rim. Read only.
  */
 export function ProgressRing(props: ProgressRingProps) {
   const share = () => Math.min(Math.max(props.value, 0), 1);
@@ -38,10 +38,10 @@ export function ProgressRing(props: ProgressRingProps) {
     >
       <Show when={props.spinning} fallback={
         <>
-          <View class="absolute inset-0 rounded-full overflow-hidden border-[3px] border-white/22 bg-[#151820]">
+          <View class="absolute inset-0 rounded-full bg-[#151820]">
             <View
-              class={`absolute inset-x-0 bottom-0 bg-accent group-data-tone-success/ring:bg-success group-data-tone-warn/ring:bg-warn group-data-tone-danger/ring:bg-danger group-data-tone-info/ring:bg-info transition-layout duration-300 ease-out`}
-              style={{ height: `${share() * 100}%` }}
+              class={`absolute inset-0 nine-ring bg-accent group-data-tone-success/ring:bg-success group-data-tone-warn/ring:bg-warn group-data-tone-danger/ring:bg-danger group-data-tone-info/ring:bg-info transition-layout duration-300 ease-out`}
+              wipe={share()}
             />
           </View>
           <View class="absolute inset-0 flex-row items-center justify-center pointer-events-none">

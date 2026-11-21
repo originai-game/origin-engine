@@ -1,4 +1,4 @@
-import { Show, Text, View, createSignal, type UiEvent, t } from "@origingame/engine/ui";
+import { Show, Text, View, createSignal, packClass, type UiEvent, t } from "@origingame/engine/ui";
 import "./qte-prompt.en.ogt";
 
 export interface QtePromptProps {
@@ -41,7 +41,7 @@ export function QtePrompt(props: QtePromptProps) {
   const held = () => holdFill() > 0;
   return (
     <View
-      class={`flex-col max-w-full gap-y-2 border-rim bg-linear-to-b from-[#1e2637e5] to-plate-lo shadow-plate rounded-block border p-2`}
+      class={`flex-col max-w-full gap-y-2 border-rim bg-linear-to-b from-[#1e2637e5] to-plate-lo shadow-plate rounded-block border p-2 ${packClass("Plate", "frame")}`}
       label={(props.label ?? "") !== "" ? props.label : t("hud.qte-prompt.respond")}
       busy={state === "waiting"}
       data-state-success={state === "success"}

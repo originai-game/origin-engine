@@ -1,4 +1,4 @@
-import { Icon, Image, Show, Text, View, t } from "@origingame/engine/ui";
+import { Icon, Image, Show, Text, View, packClass, t } from "@origingame/engine/ui";
 import type { Texture } from "@origingame/engine";
 import "./effect.en.ogt";
 
@@ -20,10 +20,10 @@ export interface HudEffectProps {
 /**
  * One buff or debuff of a HUD, a block an effects row is built from: a
  * small tile whose edge is its fill (green for a boon, red for a harm),
- * its art inset inside it, the time still to run darkened over the art
+ * its art inset inside it, the time already run darkened round the art
  * and its time or stacks on a tag under it. The game owns every timer;
- * read only. The conic sweep and the tile's cut corner have no TSX
- * surface: the sweep is a top-down overlay and the corner a rounded one.
+ * read only. The tile's cut corner has no TSX surface: it is a rounded
+ * one.
  */
 export function HudEffect(props: HudEffectProps) {
   const timed = () => (props.remaining ?? -1) >= 0;
@@ -45,11 +45,11 @@ export function HudEffect(props: HudEffectProps) {
           <Image class="absolute inset-[0.143rem] rounded-tl-[0.357rem]" src={props.icon} />
         </Show>
         <Show when={timed()}>
-          <View class="absolute left-[0.143rem] right-[0.143rem] top-[0.143rem] rounded-tl-[0.357rem] bg-[#151820ad]" style={{ height: `${Math.min(Math.max(props.remaining ?? 0, 0), 1) * 100}%` }} />
+          <View class="absolute inset-0 nine-tile bg-black/55" wipe={1 - Math.min(Math.max(props.remaining ?? 0, 0), 1)} wipeCcw />
         </Show>
       </View>
       <Show when={props.label}>
-        <Text class="max-w-[4.571rem] py-0 px-[0.357rem] text-[0.857rem] font-bold tabular-nums whitespace-nowrap truncate text-fg text-shadow-2xs bg-[#1b1f29e0] shadow-[inset_0px_0px_0px_1px_#ffffff38] rounded-tl-[0.286rem] compact:px-[0.214rem] data-harmful:text-[#ff4d5e]">
+        <Text class={`max-w-[4.571rem] py-0 px-[0.357rem] text-[0.857rem] font-bold tabular-nums whitespace-nowrap truncate text-fg text-shadow-2xs nine-chip-cut bg-[#1b1f29e0] compact:px-[0.214rem] data-harmful:text-[#ff4d5e] ${packClass("Chip", "frame")}`}>
           {props.label}
         </Text>
       </Show>

@@ -1,4 +1,4 @@
-import { Show, Text, View, formatNumber, t } from "@origingame/engine/ui";
+import { Show, Text, View, formatNumber, packClass, t } from "@origingame/engine/ui";
 import "./shooter.en.ogt";
 
 export interface ShooterRoundProps {
@@ -17,8 +17,8 @@ export interface ShooterRoundProps {
 /**
  * The round on a plate lit along its top, its time left beside it, and the
  * score with the player's side in its blue against the other's red. The
- * game owns the clock and the score; read only. The plate's cut corners
- * have no TSX surface: they are rounded.
+ * game owns the clock and the score; read only. The plate wears the
+ * pack's cut and keeps no rim or urgent glow (a cut takes one fill).
  */
 export function ShooterRound(props: ShooterRoundProps) {
   const score = () => (props.theirs ?? -1) >= 0;
@@ -31,7 +31,7 @@ export function ShooterRound(props: ShooterRoundProps) {
     >
       <Show when={(props.round ?? 0) > 0 || (props.clock ?? "") != ""}>
         <View
-          class={`shrink basis-auto min-w-0 flex-row items-baseline gap-1 py-[0.214rem] px-2 bg-linear-to-b from-[#1e2637e5] to-plate-lo rounded-tl-[0.429rem] shadow-[inset_0px_0px_0px_1px_rgb(56_232_255/0.45),inset_0px_0.143rem_0px_0px_#38e8ff] compact:flex-wrap group-data-urgent/round:shadow-[0px_0px_0px_1px_#ff4d5e,0px_0px_0.857rem_rgb(255_77_94/0.7)]`}
+          class={`shrink basis-auto min-w-0 flex-row items-baseline gap-1 py-[0.214rem] px-2 nine-plate-cut bg-[#1e2637e5] compact:flex-wrap ${packClass("Plate", "frame")}`}
         >
           <Show when={(props.round ?? 0) > 0}>
             <Text class="min-w-0 text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap truncate text-white/78">

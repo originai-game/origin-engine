@@ -44,7 +44,7 @@ export function ShooterPickups(props: ShooterPickupsProps) {
             data-rarity={p().rarity}
             data-later={i() >= 1}
           >
-            <View class="shrink-0 my-[0.143rem] size-[1.571rem] compact:size-[1.286rem] rounded-tl-[0.286rem] overflow-hidden bg-[#2a2d38]">
+            <View class="shrink-0 my-[0.143rem] size-[1.571rem] compact:size-[1.286rem] nine-chip-cut overflow-hidden bg-[#2a2d38]">
               <Show when={p().icon} fallback={
                 <Show when={p().glyph}>
                   <Icon class="size-full text-fg" name={p().glyph} />

@@ -1,4 +1,4 @@
-import { For, Image, Line, Show, Text, View, t } from "@origingame/engine/ui";
+import { For, Image, Line, Show, Text, View, packClass, t } from "@origingame/engine/ui";
 import type { Texture } from "@origingame/engine";
 import "./shooter.en.ogt";
 
@@ -96,7 +96,7 @@ export function ShooterRadar(props: ShooterRadarProps) {
         <View class="absolute left-0 top-0 right-0 h-[30%] bg-linear-to-b from-[rgb(255_255_255/0.16)] to-transparent" />
       </View>
       <Text
-        class={`absolute top-0 left-1/2 -translate-x-1/2 py-0 px-1 text-[0.857rem] font-bold whitespace-nowrap text-fg bg-[#1b1f29e0] shadow-[inset_0px_0px_0px_1px_#ffffff38] rounded-tl-[0.286rem]`}
+        class={`absolute top-0 left-1/2 -translate-x-1/2 py-0 px-1 text-[0.857rem] font-bold whitespace-nowrap text-fg nine-chip-cut bg-[#1b1f29e0] ${packClass("Chip", "frame")}`}
       >
         {t("shooter.radar.north")}
       </Text>

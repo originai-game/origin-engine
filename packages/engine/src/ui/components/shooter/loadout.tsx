@@ -1,4 +1,4 @@
-import { For, Icon, Scroll, Show, Text, View, t, type UiEvent } from "@origingame/engine/ui";
+import { For, Icon, Scroll, Show, Text, View, packClass, t, type UiEvent } from "@origingame/engine/ui";
 import "./shooter.en.ogt";
 
 export interface LoadoutCategory {
@@ -47,17 +47,16 @@ export interface LoadoutProps {
  * a category's name over a rule, each item a cut plate of smoked glass
  * (the chosen one ringed in the accent and washed in it), Equipped on a
  * green tag, the price in gold; names wrap on whole words. Approximations:
- * the chosen wash is flat, the Equipped tag's sheen and the plates' and
- * buttons' cut corners are rounded, the scroll fade at the list's foot is
- * dropped, and the safe-area padding and short-screen reflow are the
- * caller's.
+ * the chosen wash is flat and keeps no rim, the Equipped tag's sheen is
+ * dropped, the scroll fade at the list's foot is dropped, and the
+ * safe-area padding and short-screen reflow are the caller's.
  */
 export function Loadout(props: LoadoutProps) {
   const heading = () => (props.title ?? "") != "" ? props.title : t("shooter.loadout.title");
   const selected = () => (props.slots ?? []).find((s) => s.id == props.selected);
   const categoryLabel = (c: LoadoutCategory) => (c.label ?? "") != "" ? c.label : t(`shooter.loadout.category.${c.id}`);
   const KEY = "shrink-0 size-6 min-w-6 text-center text-[0.929rem] leading-[1.6] font-bold text-[#262b38] bg-linear-to-b from-white to-[#d8dbe2] rounded-[0.286rem] shadow-[0px_0.143rem_0px_#0000008c,inset_0px_-0.143rem_0px_#0000002e] text-shadow-none pointer-coarse:hidden";
-  const BUTTON = "flex-row items-center justify-center gap-x-1 min-h-11 px-4 min-w-[7.5rem] text-[0.929rem] font-bold tracking-[0.14em] uppercase text-fg bg-linear-to-b from-[#2c3140eb] to-[#1b1f29f2] shadow-[inset_0px_0px_0px_1px_rgb(255_255_255/0.24),inset_0px_1px_0px_0px_rgb(255_255_255/0.6)] rounded-tl-[0.429rem] hover:bg-none hover:bg-linear-to-b hover:from-[#373d4ff2] hover:to-[#232837f5] disabled:opacity-45 compact:flex-1";
+  const BUTTON = `flex-row items-center justify-center gap-x-1 min-h-11 px-4 min-w-[7.5rem] text-[0.929rem] font-bold tracking-[0.14em] uppercase text-fg nine-plate-cut bg-[#2c3140eb] hover:bg-[#373d4ff2] disabled:opacity-45 compact:flex-1 ${packClass("Button", "plate")}`;
   return (
     <View class="flex-col w-full h-full max-w-full gap-y-4 text-fg" role="group" label={heading()}>
       <Text class="max-w-full text-[3.286rem] leading-none font-bold uppercase tracking-[0.04em] text-fg shadow-[0px_0.143rem_0.571rem_rgb(0_0_0/0.6)] compact:text-[2rem]">{heading()}</Text>
@@ -72,7 +71,7 @@ export function Loadout(props: LoadoutProps) {
                   <For each={(props.slots ?? []).filter((s) => s.category == c().id)} key={(s) => s.id}>
                     {(s) => (
                       <View
-                        class={`group/item flex-row items-center gap-x-3 w-full min-h-11 py-2 px-3 rounded-tl-[0.429rem] bg-linear-to-b from-[#232837ed] to-[#1a1e29f2] shadow-[inset_0px_0px_0px_1px_rgb(255_255_255/0.16)] hover:shadow-[inset_0px_0px_0px_1px_rgb(255_255_255/0.45)] data-selected:bg-[#38e8ff26] data-selected:shadow-[inset_0px_0px_0px_0.286rem_#38e8ff,inset_0px_0.429rem_0px_0px_rgb(255_255_255/0.5)] disabled:opacity-100 disabled:text-white/66 transition duration-317`}
+                        class={`group/item flex-row items-center gap-x-3 w-full min-h-11 py-2 px-3 nine-plate-cut bg-[#232837ed] hover:bg-[#323848ed] data-selected:bg-[#38e8ff26] disabled:opacity-100 disabled:text-white/66 transition duration-317`}
                         role="button"
                         label={s().name}
                         pressed={s().id == props.selected}
@@ -90,7 +89,7 @@ export function Loadout(props: LoadoutProps) {
                                 <Text class="text-start text-[0.929rem] font-semibold whitespace-nowrap text-white/66">{s().detail}</Text>
                               </Show>
                               <Show when={s().equipped}>
-                                <Text class="shrink py-0 px-1 text-[0.857rem] leading-[1.5] font-bold tracking-[0.14em] uppercase text-[#0f2c1d] bg-[#9becca] rounded-tl-[0.286rem]">
+                                <Text class={`shrink py-0 px-1 text-[0.857rem] leading-[1.5] font-bold tracking-[0.14em] uppercase text-[#0f2c1d] nine-chip-cut bg-[#9becca] ${packClass("Chip", "frame")}`}>
                                   {t("shooter.loadout.equipped")}
                                 </Text>
                               </Show>
@@ -122,7 +121,7 @@ export function Loadout(props: LoadoutProps) {
           </View>
           <Show when={selected()}>
             <View
-              class={`flex-row items-center justify-center gap-x-1 min-h-11 px-4 min-w-[7.5rem] text-[0.929rem] font-bold tracking-[0.14em] uppercase text-[#011e0f] bg-linear-to-b from-accent-hover/42 to-transparent to-48% bg-[#55e39a] rounded-tl-[0.429rem] disabled:opacity-45 compact:flex-1`}
+              class={`flex-row items-center justify-center gap-x-1 min-h-11 px-4 min-w-[7.5rem] text-[0.929rem] font-bold tracking-[0.14em] uppercase text-[#011e0f] nine-plate-cut bg-[#55e39a] disabled:opacity-45 compact:flex-1 ${packClass("Button", "plate", "primary")}`}
               role="button"
               label={t("shooter.loadout.equip")}
               disabled={selected()?.locked || selected()?.equipped}

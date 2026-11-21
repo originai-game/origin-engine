@@ -19,9 +19,7 @@ export interface ActionButtonProps {
  * A touch disc: an action a finger holds, the primary one larger, an
  * optional charge ring round its rim. The engine's touch wiring reads the
  * disc's data-og-touch action while it is held; the disc has no press
- * handler of its own. The charge's arc has no TSX surface: a View
- * stand-in fills what is charged from the bottom, as ability-slot's
- * ultimate does, and the face's radial sheen is a linear one.
+ * handler of its own. The face's radial sheen is a linear one.
  */
 export function ActionButton(props: ActionButtonProps) {
   return (
@@ -35,9 +33,7 @@ export function ActionButton(props: ActionButtonProps) {
     >
       <View class="size-full flex-row items-center justify-center absolute inset-0 bg-linear-to-b from-white/12 to-black/30 data-primary:from-white/55 data-primary:to-black/10 rounded-capsule" />
       <Show when={(props.charge ?? -1) >= 0}>
-        <View class="absolute inset-0 overflow-hidden rounded-full" data-charged={(props.charge ?? 0) >= 1}>
-          <View class="absolute inset-x-0 bottom-0 h-full bg-gold/50 transition-layout duration-180 ease-out" style={{ height: `${Math.min(Math.max(props.charge ?? 0, 0), 1) * 100}%` }} />
-        </View>
+        <View class="absolute inset-0 nine-ring bg-gold/50" wipe={Math.min(Math.max(props.charge ?? 0, 0), 1)} data-charged={(props.charge ?? 0) >= 1} />
       </Show>
       <Show when={props.icon} fallback={
         <Text class="text-sm whitespace-nowrap text-fg data-primary:text-[#1a1a1e]">{props.label}</Text>

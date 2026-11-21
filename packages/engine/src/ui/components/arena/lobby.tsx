@@ -1,4 +1,4 @@
-import { For, Icon, Image, Scroll, Show, Text, View, t, type UiEvent } from "@origingame/engine/ui";
+import { For, Icon, Image, Scroll, Show, Text, View, packClass, t, type UiEvent } from "@origingame/engine/ui";
 import type { Texture } from "@origingame/engine";
 import "./arena.en.ogt";
 
@@ -55,18 +55,17 @@ export interface ArenaLobbyProps {
  * and the local player's actions: Ready up (ready; also the details
  * action, X or pad Y) or Cancel ready (unready), and for the host Start
  * match (start), disabled until the game allows it. The game owns seats,
- * readiness and when a match may start. Approximations: the seat's and
- * frame's cut corners are rounded, the portraits' octagon edge is
- * rounded, the scroll fade at the list's foot is dropped, and a long
- * word wraps without breaking.
+ * readiness and when a match may start. Approximations: the portraits'
+ * octagon edge is rounded, the scroll fade at the list's foot is
+ * dropped, and a long word wraps without breaking.
  */
-const CARD = "w-full max-h-full p-4 flex-col gap-y-3 text-fg bg-linear-to-b from-[#232837ed] to-[#1a1e29f2] shadow-[inset_0px_0px_0px_1px_rgb(255_255_255/0.14),inset_0px_1px_0px_0px_rgb(255_255_255/0.5)] rounded-tl-[0.714rem] compact:p-2";
-const BUTTON = "flex-row items-center justify-center gap-x-1 min-h-11 px-4 min-w-[8.571rem] text-[0.929rem] font-bold tracking-[0.14em] uppercase text-fg bg-linear-to-b from-[#2c3140eb] to-[#1b1f29f2] shadow-[inset_0px_0px_0px_1px_rgb(255_255_255/0.24),inset_0px_1px_0px_0px_rgb(255_255_255/0.6)] rounded-tl-[0.429rem] hover:bg-none hover:bg-linear-to-b hover:from-[#373d4ff2] hover:to-[#232837f5] disabled:opacity-45 compact:flex-1";
+const CARD = `w-full max-h-full p-4 flex-col gap-y-3 text-fg nine-panel-cut bg-[#232837ed] compact:p-2 ${packClass("Panel", "frame")}`;
+const BUTTON = `flex-row items-center justify-center gap-x-1 min-h-11 px-4 min-w-[8.571rem] text-[0.929rem] font-bold tracking-[0.14em] uppercase text-fg nine-plate-cut bg-[#2c3140eb] hover:bg-[#373d4ff2] disabled:opacity-45 compact:flex-1 ${packClass("Button", "plate")}`;
 const KEYCAP = "shrink-0 size-6 min-w-6 text-center text-[0.929rem] leading-[1.6] font-bold text-[#262b38] bg-linear-to-b from-white to-[#d8dbe2] rounded-[0.286rem] shadow-[0px_0.143rem_0px_#0000008c,inset_0px_-0.143rem_0px_#0000002e] text-shadow-none pointer-coarse:hidden";
-const TAG = "shrink-0 py-0 px-1 text-[0.857rem] leading-[1.5] font-bold tracking-[0.14em] uppercase whitespace-nowrap rounded-tl-[0.286rem]";
+const TAG = `shrink-0 py-0 px-1 text-[0.857rem] leading-[1.5] font-bold tracking-[0.14em] uppercase whitespace-nowrap nine-chip-cut ${packClass("Chip", "frame")}`;
 const PORTRAIT = "shrink-0 size-[3.714rem] p-[3px] rounded-[0.857rem] bg-linear-to-b from-white/75 via-white/22 via-45% to-white/14 compact:size-[2.857rem]";
 const PORTRAIT_OPEN = "data-open:p-px data-open:bg-none data-open:bg-[#ffffff47]";
-const SEAT = "flex-row flex-wrap items-center gap-x-1 gap-y-0.5 min-h-11 py-1 px-2 bg-linear-to-r from-[#282e3cc7] to-[#1c202bd1] shadow-[inset_0px_0px_0px_1px_rgb(255_255_255/0.1)] rounded-tl-[0.429rem] compact:min-h-9 compact:py-0.5 compact:px-1 compact:gap-x-1";
+const SEAT = "flex-row flex-wrap items-center gap-x-1 gap-y-0.5 min-h-11 py-1 px-2 nine-plate-cut bg-[#282e3cc7] compact:min-h-9 compact:py-0.5 compact:px-1 compact:gap-x-1";
 
 export function ArenaLobby(props: ArenaLobbyProps) {
   const heading = () => (props.title ?? "") != "" ? props.title : t("arena.lobby.title");
@@ -107,7 +106,7 @@ export function ArenaLobby(props: ArenaLobbyProps) {
                     <Show when={s().host || s().local}>
                       <View class="flex-row flex-wrap gap-x-0.5 gap-y-0.5">
                         <Show when={s().host}>
-                          <Text class={`${TAG} text-[#5a3d05] bg-linear-to-b from-[#ffe9bd] to-[#ffcf5a]`}>{t("arena.lobby.host")}</Text>
+                          <Text class={`${TAG} text-[#5a3d05] bg-[#ffcf5a]`}>{t("arena.lobby.host")}</Text>
                         </Show>
                         <Show when={s().local}>
                           <Text class={`${TAG} text-[#15181f] bg-[#38e8ff]`}>{t("arena.you")}</Text>
@@ -154,7 +153,7 @@ export function ArenaLobby(props: ArenaLobbyProps) {
         </Show>
         <Show when={props.isHost}>
           <View
-            class="flex-row items-center justify-center gap-x-1 min-h-11 px-4 min-w-[8.571rem] text-[0.929rem] font-bold tracking-[0.14em] uppercase text-[#15181f] bg-[#38e8ff] hover:bg-[#5defff] rounded-tl-[0.429rem] disabled:opacity-45 compact:flex-1"
+            class={`flex-row items-center justify-center gap-x-1 min-h-11 px-4 min-w-[8.571rem] text-[0.929rem] font-bold tracking-[0.14em] uppercase text-[#15181f] nine-plate-cut bg-[#38e8ff] hover:bg-[#5defff] disabled:opacity-45 compact:flex-1 ${packClass("Button", "plate", "primary")}`}
             role="button"
             label={t("arena.lobby.start")}
             disabled={!(props.canStart ?? false)}
