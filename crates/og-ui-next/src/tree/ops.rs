@@ -672,6 +672,13 @@ impl Tree {
                         "glyph" => {
                             self.input.per[e as usize].glyph = value.into();
                             self.input.glyphs_wanted = true;
+                            // The glyph is the node's text: it lays out in
+                            // a text leaf of its own, as an `Input`'s does.
+                            if self.els[e as usize].leaf.is_none() {
+                                let node = self.els[e as usize].node;
+                                self.els[e as usize].leaf = Some(self.arena.text(node, "", 16.0));
+                                self.inherit(e);
+                            }
                         }
                         // A `<Line>`'s points, numbers split by commas or
                         // spaces, read into its own buffer; `viewBox` the
@@ -2005,20 +2012,53 @@ mod tests {
     }
 
     /// A `<Glyph action>` shows the host's binding glyph, and asks for it
-    /// again when one comes.
+    /// again when one comes; the pack's art for the binding draws in its
+    /// text's place, and follows the device: a pad's art replaces the
+    /// key's, and a binding without art shows its text again.
     #[test]
     fn a_glyph_shows_its_actions_binding() {
         let mut t = stated();
         let mut b = Batch::default();
-        b.op(2).u32(1).str("");
+        // A `<Text glyph>` host element, with no text child of its own.
+        b.op(1).u32(1).u8(0);
         b.op(6).u32(1).str("glyph").str("use");
         b.op(8).u32(0).u32(1).u32(u32::MAX);
         t.apply(&b.bytes()).unwrap();
         assert!(t.glyphs_wanted());
-        t.set_glyphs(&|a| (a == "use").then(|| "E".to_string()));
+        t.set_glyphs(&|a| (a == "use").then(|| ("E".to_string(), 0)));
         assert!(!t.glyphs_wanted());
         let e = t.op(1).unwrap();
         assert_eq!(t.els[e as usize].text, "E");
+        frame(&mut t);
+        let leaf = t.els[e as usize].leaf.expect("the glyph lays out as text");
+        assert!(t.arena.box_of(leaf).w > 0.0, "the binding's text has width");
+        let art = |t: &mut Tree| -> Vec<u32> {
+            frame(t);
+            t.drawn
+                .quads
+                .iter()
+                .filter(|q| q.kind == PaintKind::Image as u32)
+                .map(|q| {
+                    assert_eq!(q.uv, [0.0, 0.0, 1.0, 1.0], "the whole texture");
+                    q.a
+                })
+                .collect()
+        };
+        let bits = |slot: u32| og_draw::TextureHandle::from_slot(slot).unwrap().to_bits();
+        assert!(art(&mut t).is_empty(), "no art: the text");
+        // The keyboard's art, then a pad's in its place.
+        t.set_glyphs(&|_| Some(("E".to_string(), 7)));
+        assert_eq!(art(&mut t), [bits(7)]);
+        assert_eq!(
+            t.els[e as usize].text, "\u{2003}",
+            "an em space under the art"
+        );
+        t.set_glyphs(&|_| Some(("A".to_string(), 5)));
+        assert_eq!(art(&mut t), [bits(5)], "the pad's art, not the key's");
+        // A binding without art shows its text again.
+        t.set_glyphs(&|_| Some(("X".to_string(), 0)));
+        assert!(art(&mut t).is_empty());
+        assert_eq!(t.els[e as usize].text, "X");
     }
 
     /// Arrows and the d-pad move the focus to the nearest stop that way,

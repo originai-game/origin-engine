@@ -6,7 +6,7 @@
 
 import { A11yMirror } from "../a11y.ts";
 import type { InjectedInput } from "../input.ts";
-import { LayoutLearner, readLayoutMap, type KeyLabel } from "../keyboard-layout.ts";
+import { LayoutLearner, readLayoutMap, withPlatformKeys, type KeyLabel } from "../keyboard-layout.ts";
 import { TextEntry } from "../text-input.ts";
 import type { Presentation } from "./presentation.ts";
 import { PAGE_PREFERENCES, pagePreferences, watchPixelRatio } from "./viewport.ts";
@@ -50,7 +50,8 @@ export function wireInput(canvas: HTMLCanvasElement, sink: InputSink): { text: T
   const pointers = new Map<number, number>();
   /** The keyboard layout's printed keys, sent when they change (og.input.setKeyboardLayout). */
   let layoutSent = "";
-  const sendLayout = (labels: readonly KeyLabel[]) => {
+  const sendLayout = (printed: readonly KeyLabel[]) => {
+    const labels = withPlatformKeys(printed);
     const text = JSON.stringify(labels);
     if (text === layoutSent) return;
     layoutSent = text;
@@ -100,6 +101,8 @@ export function wireInput(canvas: HTMLCanvasElement, sink: InputSink): { text: T
       mapped = true;
       sendLayout(labels);
     });
+  // The platform key's glyph (⌘ on a Mac) before any layout arrives.
+  sendLayout([]);
   readLayout();
   listen(globalThis as unknown as EventTarget, "focus", readLayout);
   const keyboard = (globalThis.navigator as { keyboard?: EventTarget } | undefined)?.keyboard;

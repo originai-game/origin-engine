@@ -31,6 +31,19 @@ export async function readLayoutMap(nav: LayoutNavigator | undefined = globalThi
   }
 }
 
+interface PlatformNavigator {
+  readonly platform?: string;
+  readonly userAgentData?: { readonly platform?: string };
+}
+
+/** `labels` with the platform key's: `⌘` on Meta where the page runs on Apple's systems (the Windows key's glyph elsewhere), sorted by code. */
+export function withPlatformKeys(labels: readonly KeyLabel[], nav: PlatformNavigator | undefined = globalThis.navigator as PlatformNavigator | undefined): KeyLabel[] {
+  const platform = nav?.userAgentData?.platform || nav?.platform || "";
+  const out = labels.filter((l) => l.code !== "MetaLeft" && l.code !== "MetaRight");
+  if (/^(mac|iphone|ipad|ipod)/i.test(platform)) out.push({ code: "MetaLeft", label: "⌘" }, { code: "MetaRight", label: "⌘" });
+  return out.sort((a, b) => (a.code < b.code ? -1 : a.code > b.code ? 1 : 0));
+}
+
 /** A keydown as the learner reads it. */
 export interface KeyEventLike {
   readonly code: string;

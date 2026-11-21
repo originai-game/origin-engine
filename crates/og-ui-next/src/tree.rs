@@ -1807,6 +1807,37 @@ impl Tree {
                     None => {}
                 }
             }
+            // A glyph with the pack's art for its binding draws it in its
+            // text's place: an ink mask one em square, centred on the leaf
+            // (which holds an em space, so it lays out as one).
+            if let Some(t) = self
+                .input
+                .per(e as u32)
+                .and_then(|g| og_draw::TextureHandle::from_slot(g.art))
+                && let Some(leaf) = el.leaf
+            {
+                let lb = self.arena.box_of(leaf);
+                let size = el.eff.size;
+                let square = [
+                    x + lb.x + (lb.w - size) / 2.0,
+                    y + lb.y + (lb.h - size) / 2.0,
+                    size,
+                    size,
+                ];
+                p.quads.push(PaintQuad {
+                    uv: [0.0, 0.0, 1.0, 1.0],
+                    ..quad(
+                        PaintKind::Image,
+                        square,
+                        clip,
+                        ink,
+                        [0.0; 4],
+                        [0.0; 4],
+                        t.to_bits(),
+                        og_draw::paint::IMAGE_FILL,
+                    )
+                });
+            }
             // An `Input` showing its placeholder draws it at half its ink.
             let field = self.input.per(e as u32).filter(|f| f.input);
             let mut text_ink = ink;

@@ -164,6 +164,14 @@ pub fn pad_glyph(device: Device, button: &str) -> Glyph {
     }
 }
 
+/// The Mac's Command key: `key.command`, `⌘`.
+fn command() -> Glyph {
+    Glyph {
+        icon: "key.command".into(),
+        text: "⌘".into(),
+    }
+}
+
 /// The keyboard layout's printed keys, by `KeyboardEvent.code`: what the
 /// host read from the player's layout (the web shell's
 /// `navigator.keyboard.getLayoutMap()`, or the characters its keys typed
@@ -225,6 +233,9 @@ fn printed(code: &str) -> Option<Glyph> {
     if c.is_whitespace() || c.is_control() {
         return None;
     }
+    if c == '⌘' {
+        return Some(command());
+    }
     let icon = match crate::keys::key_for_char(c) {
         Some((us, false)) => format!("key.{}", us.to_ascii_lowercase()),
         _ => format!("key.{}", code.to_ascii_lowercase()),
@@ -242,6 +253,18 @@ fn printed(code: &str) -> Option<Glyph> {
 pub fn key_glyph(code: &str) -> Glyph {
     if let Some(g) = printed(code) {
         return g;
+    }
+    // The platform key: Command on Apple's systems, the Windows key
+    // elsewhere. A web shell on a Mac says so with its printed `⌘`.
+    if matches!(code, "MetaLeft" | "MetaRight") {
+        return if cfg!(any(target_os = "macos", target_os = "ios")) {
+            command()
+        } else {
+            Glyph {
+                icon: format!("key.{}", code.to_ascii_lowercase()),
+                text: "Win".into(),
+            }
+        };
     }
     let text = match code {
         "Enter" | "NumpadEnter" => "Enter".to_string(),

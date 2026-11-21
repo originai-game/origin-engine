@@ -89,7 +89,7 @@ export interface HostProps {
     onAction?: Record<string, Handler> | undefined;
     disabled?: boolean | undefined;
     tabIndex?: number | undefined;
-    /** The binding glyph of this input action (a Text's content). */
+    /** The binding glyph of this input action (a Text's content): the pack's icon for it on the last-used device, an ink mask one em square, else its name (`E`, `LB`). */
     glyph?: string | undefined;
     /** crates/og-ui-next/CONVENTIONS.md §Accessibility. */
     role?: string | undefined;

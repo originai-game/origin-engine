@@ -68,7 +68,13 @@ export function AbilitySlot(props: { icon: string; cooldown: number; ready: bool
   `onAction={{ confirm, details }}` (wire: `setProp(id, "actions",
   "confirm details")` and event 10 `action` with the action in `key`). A
   `Text` with `glyph="use"` shows that action's binding glyph (input
-  fills it). `autofocus` takes focus when the node appears.
+  fills it): the pack's `icons` art for the binding on the last-used
+  device (og-input's glyph names: `key.keye`, `xbox.a`, `ps.cross`,
+  `mouse.left`, `key.command` for the Mac's ⌘), drawn one em square in
+  the text colour, else the binding's name as text. It switches on the
+  next input from another device. The default pack's art is
+  `templates/styles/shared/glyphs/` (single-colour masks); a pack's own
+  `icons` replace it by name. `autofocus` takes focus when the node appears.
 - **Mounting**: `mount(world, Component, props, { layer })` from
   `@origingame/engine/ui` returns the unmount; layers are `hud`, `menu`,
   `modal`, `popover`, `toast`, `tooltip`, `system` (the mount's root

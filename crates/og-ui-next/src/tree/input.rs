@@ -66,8 +66,11 @@ pub(super) struct Per {
     pub modal: bool,
     /// The input actions it answers (`onAction`), space separated.
     pub actions: Box<str>,
-    /// The action whose binding its text shows (`<Glyph action>`).
+    /// The action whose binding its text shows (`<Glyph action>`), and the
+    /// texture slot of the pack's art for that binding on the current
+    /// device (0: none, the text shows).
     pub glyph: Box<str>,
+    pub art: u32,
     /// Its interaction states ([`crate::classes::state`] bits).
     pub states: u16,
     /// A `Scroll`: its children move by `scroll` (x, y), within what
@@ -1784,20 +1787,28 @@ impl Tree {
         self.input.glyphs_wanted
     }
 
-    /// Writes each `<Glyph action>`'s text: the action's binding on the
-    /// current device, as `glyph` answers it (empty for none). The host
-    /// calls it when the device or the bindings change, or
+    /// Writes each `<Glyph action>`: the action's binding on the current
+    /// device, as `glyph` answers it: its text, and the texture slot of
+    /// the pack's art for it (0 none). Art shows in the text's place, an
+    /// ink mask one em square (the text leaf holds an em space for it);
+    /// without art the text shows; with neither, nothing. The host calls
+    /// it when the device, the bindings or the pack's art change, or
     /// [`Tree::glyphs_wanted`].
-    pub fn set_glyphs(&mut self, glyph: &dyn Fn(&str) -> Option<String>) {
+    pub fn set_glyphs(&mut self, glyph: &dyn Fn(&str) -> Option<(String, u32)>) {
         self.input.glyphs_wanted = false;
         for e in 0..self.els.len() as u32 {
             let Some(p) = self.input.per(e) else { continue };
             if p.glyph.is_empty() || self.els[e as usize].dead {
                 continue;
             }
-            let text = glyph(&p.glyph).unwrap_or_default();
+            let (text, art) = glyph(&p.glyph).unwrap_or_default();
+            let text = if art != 0 { "\u{2003}" } else { text.as_str() };
+            if art != p.art {
+                self.input.per[e as usize].art = art;
+                self.paint = true;
+            }
             if text != self.els[e as usize].text {
-                self.set_text(e, &text);
+                self.set_text(e, text);
             }
         }
     }

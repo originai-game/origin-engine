@@ -1,0 +1,15 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {
+      "member": "og.ui glyph",
+      "summary": "A `Text` with `glyph=\"<action>\"` now draws the binding's icon art in the text colour, one em square, instead of its name: a keycap for every key og.input binds, Xbox, PlayStation, Switch and generic pad buttons, sticks and d-pad directions, the mouse's buttons and touch's tap. It follows the last-used device, switching on the next input from another one. The Meta key shows ⌘ on Apple systems and WIN elsewhere. A style pack's `icons` replace any of them by glyph name (`xbox.a`, `key.keye`); a binding without art shows its name as before."
+    }
+  ],
+  "fixed": [
+    {
+      "member": "og.ui glyph",
+      "summary": "A `Text` with `glyph` and no text of its own (`<Text glyph=\"details\" />`) now lays out and draws its binding; before, its key cap drew empty."
+    }
+  ]
+}

@@ -76,6 +76,9 @@ pub(crate) struct Next {
     /// loaded for ([`pack_images`]).
     images: BTreeMap<String, u32>,
     images_for: Option<Option<String>>,
+    /// The pack's glyph art (its `icons`), texture slots by og-input's
+    /// glyph name (`xbox.a`, `key.keye`), loaded with its images.
+    icons: BTreeMap<String, u32>,
     /// The pack's sounds with their clips loaded, by scope and event,
     /// loaded with its images ([`pack_images`]).
     sounds: Rc<og_ui_next::tree::SoundTable>,
@@ -195,6 +198,22 @@ pub(crate) fn pack_images(engine: u32) {
             slots.insert(image.src.clone(), slot);
         }
     }
+    // Its glyph art: the input prompts' icons, by glyph name.
+    let mut icons = BTreeMap::new();
+    for (name, src) in &all.icons {
+        let slot = *slots.entry(src.clone()).or_insert_with(|| {
+            match crate::world::assets::load_texture(&eng, src) {
+                Ok(i) => eng.render.borrow().textures.get(i).map_or(0, |t| t.slot()),
+                Err(e) => {
+                    warnings.push(format!("og.ui: the pack's icon {name} ({src}): {e}"));
+                    0
+                }
+            }
+        });
+        if slot != 0 {
+            icons.insert(name.clone(), slot);
+        }
+    }
     // Its sounds' clips, each loaded once, as sound handles.
     let mut clips: BTreeMap<String, u64> = BTreeMap::new();
     let mut sounds = og_ui_next::tree::SoundTable::new();
@@ -239,6 +258,9 @@ pub(crate) fn pack_images(engine: u32) {
         }
         next.sounds = sounds;
         next.images = slots;
+        next.icons = icons;
+        // The glyphs draw the new pack's art.
+        next.device = None;
         next.images_for = Some(pack);
         next.resolved = None;
         next.held.extend(warnings);
@@ -381,6 +403,7 @@ impl Next {
             widths: Vec::new(),
             images: BTreeMap::new(),
             images_for: None,
+            icons: BTreeMap::new(),
             sounds: Rc::default(),
             signals: BTreeMap::new(),
             rows: BTreeMap::new(),
@@ -965,7 +988,11 @@ impl Next {
             tree.input_done(ui.action_down("confirm"));
             if tree.glyphs_wanted() || self.device != Some(device) {
                 self.device = Some(device);
-                tree.set_glyphs(&|action| ui.glyph(action).map(|g| g.text));
+                let icons = &self.icons;
+                tree.set_glyphs(&|action| {
+                    ui.glyph(action)
+                        .map(|g| (g.text, icons.get(&g.icon).copied().unwrap_or(0)))
+                });
             }
         }
         // Looked up per event, so a frame without one allocates nothing.
