@@ -7,7 +7,6 @@ use std::sync::OnceLock;
 struct Icon {
     name: &'static str,
     svg: &'static str,
-    paths: OnceLock<Vec<ShapeKind>>,
 }
 
 macro_rules! icons {
@@ -17,7 +16,6 @@ macro_rules! icons {
         static ICONS: [Icon; DEFAULT_ICON_NAMES.len()] = [$(Icon {
             name: $name,
             svg: include_str!(concat!("../../../third_party/lucide/icons/", $name, ".svg")),
-            paths: OnceLock::new(),
         }),+];
     };
 }
@@ -80,11 +78,14 @@ pub(crate) fn find(name: &str) -> Option<&'static str> {
 /// The draw commands of built-in icon `name` in `rect`: what an icon
 /// that no atlas names draws, for a host that paints its own elements.
 pub fn commands(name: &str, rect: Rect, clip: Rect, color: Srgba, theme: &Theme) -> Vec<DrawCmd> {
-    let Some(icon) = ICONS.iter().find(|icon| icon.name == name) else {
+    static PATHS: [OnceLock<Vec<ShapeKind>>; DEFAULT_ICON_NAMES.len()] =
+        [const { OnceLock::new() }; DEFAULT_ICON_NAMES.len()];
+    let Some(at) = DEFAULT_ICON_NAMES.iter().position(|&n| n == name) else {
         return Vec::new();
     };
-    let paths = icon.paths.get_or_init(|| {
-        let svg = crate::svg::parse_xml(icon.svg).expect("bundled Lucide SVG");
+    let paths = PATHS[at].get_or_init(|| {
+        let svg =
+            crate::svg::parse_xml(svg(name).expect("a built-in icon")).expect("bundled Lucide SVG");
         svg.children
             .iter()
             .flat_map(|el| {
