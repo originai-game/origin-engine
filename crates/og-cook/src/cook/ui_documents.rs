@@ -272,7 +272,13 @@ fn plan_document<'a>(
         surfaces: og_ui_next::look::DEFAULT_SURFACES,
     }];
     let looks = ["dark", "light"].map(|s| og_ui_next::look::Look::key_of(&layers, s).to_le_bytes());
-    let st = stamp(&[b"svelte document 2", &hash, dependencies.as_bytes(), &looks[0], &looks[1]]);
+    let st = stamp(&[
+        b"svelte document 2",
+        &hash,
+        dependencies.as_bytes(),
+        &looks[0],
+        &looks[1],
+    ]);
     outs.push((
         s.rel.clone(),
         format::Document::NAME,
@@ -317,8 +323,7 @@ impl Job for DocumentJob<'_> {
         // look in each scheme (og_ui_next::cooked): the runtime maps them.
         with_next_looks(|looks| {
             for (scheme, look) in looks {
-                let style =
-                    og_ui_next::doc::DocStyle::compile(doc, look.tokens(), look.surfaces());
+                let style = og_ui_next::doc::DocStyle::compile(doc, look.tokens(), look.surfaces());
                 if let Some(bytes) = og_ui_next::cooked::encode(&style, doc.nodes.len(), look) {
                     w.raw(&format!("next-{scheme}"), bytes, 16);
                 }

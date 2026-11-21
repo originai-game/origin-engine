@@ -439,7 +439,13 @@ impl Tree {
                 }
                 chain.pop();
                 let r = reads(&e, scope, self.screen);
-                queue::bind(self.id, Target::Shown { node: b }, Rc::new(e), r, self.env.clone());
+                queue::bind(
+                    self.id,
+                    Target::Shown { node: b },
+                    Rc::new(e),
+                    r,
+                    self.env.clone(),
+                );
             }
             NodeKind::For {
                 var,
@@ -642,7 +648,13 @@ impl Tree {
             Some(PropValue::Lit(l)) => self.set_text(e, &queue::text_of(&lit(&l))),
             Some(PropValue::Bind(x, _)) => {
                 let r = reads(&x, scope, self.screen);
-                queue::bind(self.id, Target::Text { node: e }, Rc::new(x), r, self.env.clone());
+                queue::bind(
+                    self.id,
+                    Target::Text { node: e },
+                    Rc::new(x),
+                    r,
+                    self.env.clone(),
+                );
             }
             _ => {}
         }
@@ -1068,11 +1080,25 @@ impl Tree {
                             Rect::new(x + (b.w - size) / 2.0, y + (b.h - size) / 2.0, size, size);
                         let color = og_ui::Srgba::from_linear(ink);
                         let key = [
-                            rect.x, rect.y, rect.width, rect.height, clip.x, clip.y, clip.width,
-                            clip.height, ink[0], ink[1], ink[2], ink[3],
+                            rect.x,
+                            rect.y,
+                            rect.width,
+                            rect.height,
+                            clip.x,
+                            clip.y,
+                            clip.width,
+                            clip.height,
+                            ink[0],
+                            ink[1],
+                            ink[2],
+                            ink[3],
                         ]
                         .map(f32::to_bits);
-                        let at = match self.icons.iter().position(|(n, k, _)| *n == name && *k == key) {
+                        let at = match self
+                            .icons
+                            .iter()
+                            .position(|(n, k, _)| *n == name && *k == key)
+                        {
                             Some(at) => at,
                             None => {
                                 let cmds = og_ui::builtin_icon(

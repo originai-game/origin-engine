@@ -31,7 +31,12 @@ const STATES: [I; 13] = [
     I::ActiveViewTransition,
     I::Invalid,
 ];
-const SCREENS: [Screen; 4] = [Screen::Narrow, Screen::Short, Screen::Compact, Screen::Touch];
+const SCREENS: [Screen; 4] = [
+    Screen::Narrow,
+    Screen::Short,
+    Screen::Compact,
+    Screen::Touch,
+];
 const ATTR_OPS: [AttrOp; 6] = [
     AttrOp::Equals,
     AttrOp::Includes,
@@ -340,8 +345,14 @@ mod tests {
         assert_eq!(back.conditions, style.conditions);
         assert_eq!(root(&bytes, look.key).unwrap(), look.root_steps);
         let light = Look::key_of(&layers, "light");
-        assert!(decode(&bytes, doc.nodes.len(), light).is_none(), "another look");
-        assert!(decode(&bytes, doc.nodes.len() + 1, look.key).is_none(), "another parse");
+        assert!(
+            decode(&bytes, doc.nodes.len(), light).is_none(),
+            "another look"
+        );
+        assert!(
+            decode(&bytes, doc.nodes.len() + 1, look.key).is_none(),
+            "another parse"
+        );
         let cooked = Look::cooked(&layers, "dark", root(&bytes, look.key).unwrap());
         assert_eq!(cooked.root, look.root);
         assert!(!cooked.was_read(), "a cooked look reads no CSS");
