@@ -27,6 +27,7 @@ mod publish;
 mod relay;
 mod style_check;
 mod trace;
+mod ui_grounds;
 mod vfx_catalogue;
 
 use std::path::{Path, PathBuf};

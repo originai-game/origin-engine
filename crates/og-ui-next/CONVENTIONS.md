@@ -564,13 +564,46 @@ Every look has these images, white masks coloured by the element's fill
 | `panel-cut` | the same corners cut 12 | a HUD panel |
 | `chip-cut` | the trailing top corner cut 6 | a tag, badge or chip |
 
-The slots a pack dresses, each declared empty in the default pack so a
+The slots a pack dresses, each declared in the default pack so a
 component's `packClass` on it resolves under every pack:
 `Button.plate` (a button's body; `primary` its main action), `Panel.frame`
-(a window or panel), `Plate.frame` (a HUD plate over the scene),
-`Slot.frame` (an ability or item slot), `Chip.frame` (a tag or badge) and
-`Field.frame` (a text field's box). A new slot is added here and to
+(a window or panel), `Plate.frame` (a HUD plate over the scene: `bg-glass
+text-fg`), `Slot.frame` (an ability or item slot), `Chip.frame` (a tag or
+badge), `Field.frame` (a text field's box), `Row.frame` (a row of a list,
+table or feed: `bg-raised-lo text-fg`; `selected` the chosen or local
+player's row, `bg-surface-hover` with a `hud-accent` leading edge; `muted`
+a row out of play, in `text-fg-muted`) and `Head.frame` (a table or list's
+head row: `bg-surface text-fg-muted`). A new slot is added here and to
 `design::SLOTS` before a component writes it.
+
+### Grounds and inks
+
+Text reads over any scene and in every pack because its ground and ink
+are a pair the theme chose, never a component's tuning:
+
+- Text sits on a pack slot (`packClass`) or on an opaque theme ground role
+  (`surface`, `surface-raised`, `surface-hover`, `raised-hi`, `raised-lo`,
+  `raised-pressed`, `tile`, `glass`, `glass-hi`, `plate-hi`, a state colour
+  such as `hud-accent` or `gold`), and its ink is that ground's pair
+  (`text-fg` on the neutral grounds, `text-<role>-fg` on a state colour).
+  A ground under text is at least 85% opaque in both schemes, with no
+  opacity modifier taking it below that.
+- Text straight over the scene sits on `Plate.frame`, or carries the
+  text-stroke halo (paint draws it).
+- Muted text is `text-fg-muted` (4.5:1 on the neutral grounds), never
+  `text-fg/<n>`; `text-fg-subtle` holds only 3:1 and is for a disabled
+  line. An ink is never thinned.
+- No `white` or `black` and no hand-written colour (`bg-[#…]`) in a
+  ground or an ink: a highlight or shadow away from text is `lit`,
+  `lit-soft`, `sheen`, `shade`, `shade-deep` or `scrim`; a rim is `rim`,
+  `rim-soft` or `rim-strong`; a team's edge is `border-team<n>`.
+
+`og check` reports each break as warning OG9108 at the class, naming the
+slot or role that fixes it (`crates/og-cli/src/ui_grounds.rs`). An
+element's ground counts as under text when the element is a `<Text>` or
+`<Input>`, or holds one (or literal text) that no nearer element with its
+own ground covers; classes reach an element through its `class` literals,
+templates, conditionals and the constants and arrow functions they name.
 
 `spacing` stays Tailwind's 4 pt step. The cook compiles the merged theme
 into the theme the runtime loads and every variant string into records,

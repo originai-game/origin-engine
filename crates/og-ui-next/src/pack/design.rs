@@ -209,8 +209,10 @@ pub(crate) fn join(light: &Value, dark: &Value) -> Value {
 /// component's `packClass` on one resolves under every pack; a slot no
 /// layer names stays an unknown class. A HUD plate's default is a nearly
 /// opaque ground with its ink, so its text reads over any scene: a
-/// component's translucent or cleared fill under it is overruled.
-pub const SLOTS: [(&str, &str, &str); 6] = [
+/// component's translucent or cleared fill under it is overruled. A row
+/// and a table head are opaque grounds with their inks for the same
+/// reason: the lists, tables and feeds that sit over the scene.
+pub const SLOTS: [(&str, &str, &str); 10] = [
     ("Button.plate", "a button's body", ""),
     ("Panel.frame", "a window or panel's frame", ""),
     (
@@ -221,6 +223,26 @@ pub const SLOTS: [(&str, &str, &str); 6] = [
     ("Slot.frame", "an ability or item slot", ""),
     ("Chip.frame", "a tag, badge or chip", ""),
     ("Field.frame", "a text field or input's box", ""),
+    (
+        "Row.frame",
+        "a row of a list, table or feed",
+        "bg-raised-lo text-fg",
+    ),
+    (
+        "Row.frame.selected",
+        "the chosen row, or the local player's",
+        "bg-surface-hover text-fg border-l-3 border-hud-accent",
+    ),
+    (
+        "Row.frame.muted",
+        "a row out of play (disconnected, locked, spent)",
+        "bg-raised-lo text-fg-muted",
+    ),
+    (
+        "Head.frame",
+        "a table or list's head row",
+        "bg-surface text-fg-muted",
+    ),
 ];
 
 /// The shapes every look has (`templates/styles/shared/shapes/`, white

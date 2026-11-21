@@ -885,8 +885,12 @@
     "Button.plate": "",
     "Chip.frame": "",
     "Field.frame": "",
+    "Head.frame": "bg-surface text-fg-muted",
     "Panel.frame": "",
     "Plate.frame": "bg-glass text-fg",
+    "Row.frame": "bg-raised-lo text-fg",
+    "Row.frame.muted": "bg-raised-lo text-fg-muted",
+    "Row.frame.selected": "bg-surface-hover text-fg border-l-3 border-hud-accent",
     "Slot.frame": ""
   }
 }

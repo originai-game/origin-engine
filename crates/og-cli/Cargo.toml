@@ -43,6 +43,7 @@ og-probe = { path = "../og-probe", default-features = false }
 # `og check`'s module-scope state check (src/module_state.rs), at og-cook's versions.
 oxc_allocator = "=0.157.0"
 oxc_ast = "=0.157.0"
+oxc_ast_visit = "=0.157.0"
 oxc_parser = "=0.157.0"
 oxc_semantic = "=0.157.0"
 oxc_span = "=0.157.0"

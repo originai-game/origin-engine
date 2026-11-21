@@ -1019,6 +1019,51 @@ fn lockstep_lint(p: &Project, json: bool, to_stderr: bool) {
     }
 }
 
+/// The grounds and inks the TSX under `dirs` writes by hand
+/// (`ui_grounds`), against the default pack under the game's own: printed
+/// as warnings (`<file>(<line>,<col>): warning OG9108:`) or, with `json`,
+/// as one `ui-grounds` event. Never fails a check.
+fn ui_grounds_lint(root: &Path, dirs: &[&Path], game: Option<&Path>, json: bool) {
+    use og_ui_next::pack::{Layer, Pack, Scheme};
+    let mut layers = vec![Layer::default_pack()];
+    if let Some(layer) = game
+        .and_then(|g| std::fs::read_to_string(g).ok())
+        .and_then(|t| Layer::parse(&t).ok())
+    {
+        layers.push(layer);
+    }
+    let pack = Pack::new(&layers);
+    let colors = crate::ui_grounds::colors(&Scheme::ALL.map(|s| pack.theme_json(s)));
+    let found = crate::ui_grounds::lint(root, dirs, &colors);
+    if found.is_empty() {
+        return;
+    }
+    let code = crate::ui_grounds::CODE;
+    if json {
+        let event = serde_json::json!({
+            "event": "ui-grounds",
+            "warnings": found.iter().map(|(file, f)| serde_json::json!({
+                "file": file, "line": f.line, "col": f.col, "code": code, "class": f.class, "message": f.message,
+            })).collect::<Vec<_>>(),
+        });
+        println!("{event}");
+        return;
+    }
+    let mut files: Vec<&str> = found.iter().map(|(f, _)| f.as_str()).collect();
+    files.dedup();
+    for (file, f) in &found {
+        println!(
+            "{file}({},{}): warning OG{code}: {}",
+            f.line, f.col, f.message
+        );
+    }
+    println!(
+        "og check: {} ground or ink warning(s) in {} file(s): text sits on a pack slot or an opaque theme ground, in that ground's ink (crates/og-ui-next/CONVENTIONS.md §Theme and packs, Grounds and inks)",
+        found.len(),
+        files.len()
+    );
+}
+
 /// `og check`'s code for a material shader whose surface does not take
 /// some of what a scene can ask of it (`shader_capabilities_lint`).
 pub const SHADER_CAPABILITY_CODE: u32 = 9103;
@@ -1473,6 +1518,14 @@ pub fn run(args: &[&str]) -> ExitCode {
         lockstep_lint(p, json, false);
         locale_fonts_lint(p, json, false);
         shader_capabilities_lint(p, json, false);
+        let game = p.root.join("assets/styles/game/pack.json");
+        let dirs = [
+            p.entry.parent().unwrap_or(&p.root),
+            &p.root.join("assets/ui"),
+        ];
+        ui_grounds_lint(&p.root, &dirs, Some(&game), json);
+    } else {
+        ui_grounds_lint(&target.root, &[&target.root], None, json);
     }
     if report.ok() {
         ExitCode::SUCCESS
