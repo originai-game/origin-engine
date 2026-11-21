@@ -211,7 +211,7 @@ fn chords(a: &Bez, ta: (f64, f64), b: &Bez, tb: (f64, f64), out: &mut Vec<Crossi
 
 /// The nonzero union of `shape`'s contours (font units), or `shape` itself
 /// when nothing in it overlaps or the union cannot be formed.
-pub(super) fn remove_overlaps(shape: Shape<Contour>) -> Shape<Contour> {
+pub fn remove_overlaps(shape: Shape<Contour>) -> Shape<Contour> {
     resolve(&shape).unwrap_or(shape)
 }
 
