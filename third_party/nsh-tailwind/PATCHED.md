@@ -23,5 +23,11 @@ the changes after it are only these:
 - `style.rs`'s font-family test drops its `CanvasFont` round trip (canvas is
   not part of this set).
 
+- `tailwind/mod.rs` adds Origin Engine's variants, each marked in place:
+  `narrow:` (the UI's box under 600 wide), `short:` (under 500 tall) and
+  `compact:` (either), read from `Context.window`, and the states
+  `starting:` and `exit:` (bits `STARTING` and `EXIT`) that the motion
+  system sets.
+
 Its own tests (`tailwind/tests.rs`, `geometry/tests.rs`, `style.rs`) run
 unchanged otherwise.

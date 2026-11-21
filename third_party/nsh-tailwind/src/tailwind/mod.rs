@@ -89,6 +89,13 @@ pub mod state {
     /// (`aria-invalid:`): its `accessibilityState.invalid`. Set by the
     /// core, never reported by the platform.
     pub const INVALID: u16 = 4096;
+    /// Origin Engine: the element was just inserted and enters from this
+    /// record (`starting:`, CSS's `@starting-style`). Set by the motion
+    /// system for the element's first frame.
+    pub const STARTING: u16 = 8192;
+    /// Origin Engine: the element was removed and animates to this record
+    /// (`exit:`) while it is kept drawn. Set by the motion system.
+    pub const EXIT: u16 = 16384;
     /// States that style a pointer or focus interaction.
     pub(super) const INTERACTION: u16 = PRESSED | HOVERED | FOCUSED | FOCUS_WITHIN | FOCUS_VISIBLE;
     /// The states the core sets from the accessibility state, which the
@@ -237,6 +244,10 @@ pub(crate) struct Condition {
     min_width: Option<f32>,
     max_width: Option<f32>,
     landscape: Option<bool>,
+    /// Origin Engine's size classes: the UI's box under 500 tall
+    /// (`short:`), and under 600 wide or 500 tall (`compact:`).
+    short: Option<bool>,
+    compact: Option<bool>,
     platform: Option<Platform>,
     rtl: Option<bool>,
     reduce_motion: Option<bool>,
@@ -276,6 +287,10 @@ impl Condition {
             || self
                 .landscape
                 .is_some_and(|l| l != (cx.window.width > cx.window.height))
+            || self.short.is_some_and(|v| v != (cx.window.height.0 < 500.0))
+            || self.compact.is_some_and(|v| {
+                v != (cx.window.width.0 < 600.0 || cx.window.height.0 < 500.0)
+            })
             || cx.states & self.states != self.states
             || cx.states & self.not_states != 0
         {
@@ -332,7 +347,7 @@ impl Condition {
         if self.min_width.is_some() || self.max_width.is_some() {
             d |= deps::WIDTH;
         }
-        if self.landscape.is_some() {
+        if self.landscape.is_some() || self.short.is_some() || self.compact.is_some() {
             d |= deps::WIDTH | deps::HEIGHT;
         }
         if self.rtl.is_some() {
@@ -487,6 +502,12 @@ pub(crate) mod rank {
     pub(crate) const MIN: u16 = 51;
     pub(crate) const PORTRAIT: Key = Key::new(60);
     pub(crate) const LANDSCAPE: Key = Key::new(61);
+    // Origin Engine's size classes and motion states.
+    pub(crate) const NARROW: Key = Key::new(56);
+    pub(crate) const SHORT: Key = Key::new(57);
+    pub(crate) const COMPACT: Key = Key::new(58);
+    pub(crate) const STARTING: Key = Key::new(52);
+    pub(crate) const EXIT: Key = Key::new(53);
     pub(crate) const LTR: Key = Key::new(62);
     pub(crate) const RTL: Key = Key::new(63);
     pub(crate) const DARK: Key = Key::new(64);
@@ -1279,6 +1300,27 @@ fn variant(theme: &Theme, v: &str, cond: &mut Condition) -> Option<Key> {
         "landscape" => {
             cond.landscape = Some(true);
             rank::LANDSCAPE
+        }
+        // Origin Engine: the UI's size classes (docs: og-ui CONVENTIONS.md).
+        "narrow" => {
+            cond.max_width = Some(600.0);
+            rank::NARROW
+        }
+        "short" => {
+            cond.short = Some(true);
+            rank::SHORT
+        }
+        "compact" => {
+            cond.compact = Some(true);
+            rank::COMPACT
+        }
+        "starting" => {
+            states(cond, STARTING);
+            rank::STARTING
+        }
+        "exit" => {
+            states(cond, EXIT);
+            rank::EXIT
         }
         "ltr" => {
             cond.rtl = Some(false);

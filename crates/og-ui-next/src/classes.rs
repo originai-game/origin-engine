@@ -338,5 +338,43 @@ mod tests {
         assert_eq!((r.text.weight, r.text.transform, r.text.align), (700, 1, 1));
         assert_eq!(r.font_size, 18.0);
         assert_eq!(c.unknown("p-4 not-a-class"), ["not-a-class"]);
+        // The UI's size classes: narrow is under 600 wide, short under 500
+        // tall, compact either; 844x390 is short and compact, not narrow.
+        let size = "narrow:p-1 short:m-1 compact:gap-1";
+        let side = Env {
+            window: [844.0, 390.0],
+            ..env
+        };
+        let r = c.record(size, &side);
+        let px = |v: f32| taffy::LengthPercentage::length(v);
+        assert_eq!(r.layout.padding().top, px(0.0));
+        assert_eq!(r.layout.gap().width, px(4.0));
+        let up = Env {
+            window: [390.0, 844.0],
+            ..env
+        };
+        let r = c.record(size, &up);
+        assert_eq!(
+            (r.layout.padding().top, r.layout.gap().width),
+            (px(4.0), px(4.0))
+        );
+        let wide = Env {
+            window: [600.0, 500.0],
+            ..env
+        };
+        assert_eq!(c.record(size, &wide).layout.gap().width, px(0.0));
+        // Motion's states.
+        let enter = "opacity-100 starting:opacity-0 exit:opacity-25";
+        assert_eq!(c.record(enter, &env).skin.opacity, 1.0);
+        let starting = Env {
+            states: state::STARTING,
+            ..env
+        };
+        assert_eq!(c.record(enter, &starting).skin.opacity, 0.0);
+        let exit = Env {
+            states: state::EXIT,
+            ..env
+        };
+        assert_eq!(c.record(enter, &exit).skin.opacity, 0.25);
     }
 }
