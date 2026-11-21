@@ -219,13 +219,9 @@ impl f32x8 {
     }
 
     pub fn recip_fast(self) -> Self {
-        cfg_if::cfg_if! {
-            if #[cfg(all(feature = "simd", target_feature = "avx"))] {
-                Self(unsafe { _mm256_rcp_ps(self.0) })
-            } else {
-                Self(self.0.recip_fast(), self.1.recip_fast())
-            }
-        }
+        // og (PATCHED.md): an exact reciprocal on every target, as
+        // `f32x4::recip_fast`; AVX's `_mm256_rcp_ps` is approximate.
+        Self::splat(1.0) / self
     }
 
     pub fn recip_sqrt(self) -> Self {
