@@ -145,8 +145,10 @@ pub fn tick_step(
     }
 }
 
-/// The ticks a system's state must step through to reach `sys.tick`, and
-/// whether it restarts from empty.
+/// The ticks a system's state must step through to reach `sys.tick`,
+/// written over `steps` (a buffer the caller keeps, so a system stepped
+/// every tick plans without allocating), and whether it restarts from
+/// empty.
 ///
 /// With `history` holding the tick before `sys.tick`, every tick before
 /// `sys.tick` steps as recorded (its transform, start, stop, scale and
@@ -165,7 +167,9 @@ pub fn plan_ticks(
     tick_rate: f32,
     clock: &mut ParticleClock,
     history: Option<&ParticleHistory>,
-) -> (bool, Vec<TickStep>) {
+    steps: &mut Vec<TickStep>,
+) -> bool {
+    steps.clear();
     let scale = time_scale(sys);
     let window = window(e, scale, tick_rate);
     let dt = 1.0 / tick_rate.max(1e-3) as f64;
@@ -180,8 +184,8 @@ pub fn plan_ticks(
         };
         *clock = next_clock(prev.clock, sys.tick, scale, dt);
         let now = *clock;
-        let steps = (from..=sys.tick)
-            .map(|t| match h.at(t).filter(|_| t < sys.tick) {
+        steps.extend(
+            (from..=sys.tick).map(|t| match h.at(t).filter(|_| t < sys.tick) {
                 Some(r) => {
                     let at = ParticleSystem {
                         transform: r.transform,
@@ -194,9 +198,9 @@ pub fn plan_ticks(
                     tick_step(e, &at, t, tick_rate, r.transform, &r.clock)
                 }
                 None => tick_step(e, sys, t, tick_rate, sys.transform, &now),
-            })
-            .collect();
-        return (reset, steps);
+            }),
+        );
+        return reset;
     }
     let (reset, from) = match last_tick {
         Some(last) if sys.tick >= last && sys.tick - last <= window => (false, last + 1),
@@ -219,33 +223,28 @@ pub fn plan_ticks(
         };
     }
     let clock = *clock;
-    let ticks: Vec<u64> = (from..=sys.tick).collect();
-    let n = ticks.len();
+    let n = (from..=sys.tick).count();
     let velocity = match (reset, prev_transform) {
         (false, Some(prev)) if n > 0 => {
             (sys.transform.w_axis - prev.w_axis).truncate() * (tick_rate / n as f32)
         }
         _ => Vec3::ZERO,
     };
-    let steps = ticks
-        .into_iter()
-        .enumerate()
-        .map(|(i, t)| {
-            // Moving emitters spawn along the path between the frames.
-            let transform = match (reset, prev_transform) {
-                (false, Some(prev)) if n > 1 => {
-                    let f = (i + 1) as f32 / n as f32;
-                    let mut m = sys.transform;
-                    m.w_axis = prev.w_axis.lerp(sys.transform.w_axis, f);
-                    m
-                }
-                _ => sys.transform,
-            };
-            TickStep {
-                velocity,
-                ..tick_step(e, sys, t, tick_rate, transform, &clock)
+    steps.extend((from..=sys.tick).enumerate().map(|(i, t)| {
+        // Moving emitters spawn along the path between the frames.
+        let transform = match (reset, prev_transform) {
+            (false, Some(prev)) if n > 1 => {
+                let f = (i + 1) as f32 / n as f32;
+                let mut m = sys.transform;
+                m.w_axis = prev.w_axis.lerp(sys.transform.w_axis, f);
+                m
             }
-        })
-        .collect();
-    (reset, steps)
+            _ => sys.transform,
+        };
+        TickStep {
+            velocity,
+            ..tick_step(e, sys, t, tick_rate, transform, &clock)
+        }
+    }));
+    reset
 }

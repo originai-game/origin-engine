@@ -434,7 +434,8 @@ impl ParticleRenderer {
                         clock: Default::default(),
                     }
                 });
-                let (reset, steps) = plan_ticks(
+                let mut steps = Vec::new();
+                let reset = plan_ticks(
                     e,
                     sys,
                     g.last_tick,
@@ -442,6 +443,7 @@ impl ParticleRenderer {
                     tick_rate,
                     &mut g.clock,
                     history,
+                    &mut steps,
                 );
                 g.last_tick = Some(sys.tick);
                 g.prev_transform = Some(sys.transform);

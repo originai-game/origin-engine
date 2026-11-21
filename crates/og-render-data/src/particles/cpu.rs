@@ -645,6 +645,9 @@ pub struct CpuParticles {
     pub trail: Vec<[f32; 4]>,
     /// The system's time at its last step (seconds since it started).
     pub time: f32,
+    /// The ticks of the last [`Self::advance`], kept for the next one's
+    /// plan: a system stepped every tick allocates nothing.
+    pub steps: Vec<TickStep>,
 }
 
 /// The ring index a trail's sample goes to in a tick that ends at `time`
@@ -778,7 +781,8 @@ impl CpuParticles {
                 c.born = 0;
             }
         }
-        let (reset, steps) = plan_ticks(
+        let mut steps = std::mem::take(&mut self.steps);
+        let reset = plan_ticks(
             e,
             sys,
             self.last_tick,
@@ -786,6 +790,7 @@ impl CpuParticles {
             tick_rate,
             &mut self.clock,
             history,
+            &mut steps,
         );
         if reset {
             self.slots.fill(ParticleState::default());
@@ -957,7 +962,9 @@ impl CpuParticles {
         }
         self.last_tick = Some(sys.tick);
         self.prev_transform = Some(sys.transform);
-        steps.len() as u32
+        let stepped = steps.len() as u32;
+        self.steps = steps;
+        stepped
     }
 
     pub fn alive(&self) -> usize {
