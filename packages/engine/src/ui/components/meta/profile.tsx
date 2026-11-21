@@ -110,7 +110,7 @@ export function Profile(props: ProfileProps) {
                       <For each={props.actions}>
                         {(a) => (
                         <View class="grow shrink basis-0 gap-1">
-                          <View class={`min-h-11 text-caption font-bold tracking-[0.14em] uppercase text-fg bg-raised-lo/92 border border-white/24 nine-plate-cut text-center py-1 px-4 gap-1 hover:bg-raised-hi/95 hover:bg-transparent disabled:opacity-45`} role="button" disabled={a().disabled || a().pending} busy={a().pending} onPress={(e) => props.onAction?.(e, a().id)}>
+                          <View class={`flex-row items-center justify-center min-h-11 text-caption font-bold tracking-[0.14em] uppercase text-fg bg-raised-lo/92 border border-white/24 nine-plate-cut text-center py-1 px-4 gap-1 hover:bg-raised-hi/95 hover:bg-transparent disabled:opacity-45`} role="button" disabled={a().disabled || a().pending} busy={a().pending} onPress={(e) => props.onAction?.(e, a().id)}>
                             <Text class="whitespace-normal">{a().pending ? t("profile.sending") : a().label}</Text>
                           </View>
                           <Show when={a().reason}>
@@ -133,7 +133,7 @@ export function Profile(props: ProfileProps) {
             <Text class={`text-center text-base text-fg/66 m-0`} role="status">
               {props.error}
             </Text>
-            <View class={`min-h-11 text-caption font-bold tracking-[0.14em] uppercase text-fg bg-raised-lo/92 border border-white/24 nine-plate-cut text-center py-1 px-4 gap-1 hover:bg-raised-hi/95 hover:bg-transparent`} role="button" onPress={(e) => props.onRetry?.(e)}>
+            <View class={`flex-row items-center justify-center min-h-11 text-caption font-bold tracking-[0.14em] uppercase text-fg bg-raised-lo/92 border border-white/24 nine-plate-cut text-center py-1 px-4 gap-1 hover:bg-raised-hi/95 hover:bg-transparent`} role="button" onPress={(e) => props.onRetry?.(e)}>
               <Text class="whitespace-normal">{t("profile.retry")}</Text>
             </View>
           </Show>

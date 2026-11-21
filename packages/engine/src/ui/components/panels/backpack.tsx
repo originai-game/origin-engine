@@ -86,7 +86,7 @@ export function RpgBackpack(props: RpgBackpackProps) {
             <View class="flex-row items-center pr-12 gap-0">
               <For each={props.tabs} key={(c) => c.id}>
                 {(c) => (
-                <View class={`group/tab text-fg-muted transition duration-317 min-h-11 py-0 px-2 gap-1 data-selected:text-fg`} role="tab" selected={c().id === props.tab} onPress={(e) => props.onChoosetab?.(e, c().id)} data-selected={c().id === props.tab}>
+                <View class={`flex-row items-center justify-center group/tab text-fg-muted transition duration-317 min-h-11 py-0 px-2 gap-1 data-selected:text-fg`} role="tab" selected={c().id === props.tab} onPress={(e) => props.onChoosetab?.(e, c().id)} data-selected={c().id === props.tab}>
                   <Text class="whitespace-nowrap">{c().label}</Text>
                   <Show when={c().count > 0}>
                     <Text class={`text-[0.857rem] font-bold bg-material-edge text-fg-subtle py-0 px-1 nine-chip-cut group-data-selected/tab:bg-none group-data-selected/tab:bg-hud-accent group-data-selected/tab:text-hud-accent-fg ${packClass("Chip", "frame")}`}>

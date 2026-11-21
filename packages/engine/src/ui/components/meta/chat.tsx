@@ -44,7 +44,7 @@ export function Chat(props: ChatProps) {
             <View class="flex-row items-center gap-0.5">
               <For each={props.channels}>
                 {(c) => (
-                <View class={`text-fg-muted transition duration-317 min-h-11 nine-plate-cut py-0 px-3 data-selected:text-fg data-selected:bg-hud-accent/20 data-selected:bg-transparent hover:bg-none hover:bg-fill/48`} role="tab" selected={c().id === props.channel} label={c().unread > 0 ? t("general.chat.unread", { channel: c().label, count: c().unread }) : c().label} onPress={(e) => props.onChooseTab?.(e, c().id)} data-selected={c().id === props.channel}>
+                <View class={`flex-row items-center justify-center gap-1 text-fg-muted transition duration-317 min-h-11 nine-plate-cut py-0 px-3 data-selected:text-fg data-selected:bg-hud-accent/20 data-selected:bg-transparent hover:bg-none hover:bg-fill/48`} role="tab" selected={c().id === props.channel} label={c().unread > 0 ? t("general.chat.unread", { channel: c().label, count: c().unread }) : c().label} onPress={(e) => props.onChooseTab?.(e, c().id)} data-selected={c().id === props.channel}>
                   <View class="flex-row items-center gap-1">
                     <Text class="whitespace-nowrap max-w-60 text-ellipsis font-bold overflow-hidden shrink">
                       {c().label}

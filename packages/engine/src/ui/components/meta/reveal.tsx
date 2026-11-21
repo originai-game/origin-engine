@@ -78,7 +78,7 @@ export function Reveal(props: RevealProps) {
                     <Show when={((props.rewards ?? []))?.length ?? 0} fallback={<View class="grow shrink basis-0"><EmptyState title={t("meta.reveal.empty")} icon="bag" /></View>}><For each={(props.rewards ?? [])}>
                       {(reward) => (
                       <View class="shrink basis-[8.571rem]">
-                        <View class={`group/reward w-full p-0 hover:bg-transparent hover:bg-none hover:shadow-none`} role="button" disabled={(props.disabled ?? false)} label={t("meta.reveal.reward", { name: reward().name, rarity: reward().rarity === 'mythic' ? t("meta.rarity.mythic") : reward().rarity === 'legendary' ? t("meta.rarity.legendary") : reward().rarity === 'epic' ? t("meta.rarity.epic") : reward().rarity === 'rare' ? t("meta.rarity.rare") : reward().rarity === 'uncommon' ? t("meta.rarity.uncommon") : t("meta.rarity.common") })} onPress={(e) => props.onInspect?.(e, reward().id)} data-tier-common={(reward().rarity || 'common') === "common"}>
+                        <View class={`flex-row items-center justify-center gap-1 group/reward w-full p-0 hover:bg-transparent hover:bg-none hover:shadow-none`} role="button" disabled={(props.disabled ?? false)} label={t("meta.reveal.reward", { name: reward().name, rarity: reward().rarity === 'mythic' ? t("meta.rarity.mythic") : reward().rarity === 'legendary' ? t("meta.rarity.legendary") : reward().rarity === 'epic' ? t("meta.rarity.epic") : reward().rarity === 'rare' ? t("meta.rarity.rare") : reward().rarity === 'uncommon' ? t("meta.rarity.uncommon") : t("meta.rarity.common") })} onPress={(e) => props.onInspect?.(e, reward().id)} data-tier-common={(reward().rarity || 'common') === "common"}>
                           <View class="w-full items-center text-center gap-1">
                             <View class={`grow shrink basis-0 justify-center items-center w-[8.571rem] max-w-full aspect-square bg-tile border-[1.5px] border-border-strong nine-plate-cut gap-2 compact:w-[6.857rem] ${packClass("Slot", "frame")}`}>
                               <Icon class="size-[70%]" name={reward().icon} />
@@ -120,17 +120,17 @@ export function Reveal(props: RevealProps) {
           <Show when={(props.state ?? "sealed") === 'sealed'} fallback={
               <Show when={(props.state ?? "sealed") === 'revealing' && (props.canSkip ?? true)} fallback={
                   <Show when={(props.state ?? "sealed") === 'revealed'}>
-                    <View class={`text-accent shrink basis-[18.571rem] min-h-[50.6px] gap-1 compact:grow compact:shrink compact:basis-auto`} role="button" disabled={(props.disabled ?? false)} label={props.continueLabel || t("meta.continue")} onPress={(e) => props.onContinue?.(e)}>
+                    <View class={`flex-row items-center justify-center text-accent shrink basis-[18.571rem] min-h-[50.6px] gap-1 compact:grow compact:shrink compact:basis-auto`} role="button" disabled={(props.disabled ?? false)} label={props.continueLabel || t("meta.continue")} onPress={(e) => props.onContinue?.(e)}>
                       <Text class="whitespace-normal">{props.continueLabel || t("meta.continue")}</Text>
                     </View>
                   </Show>
               }>
-                <View class={`shrink basis-[18.571rem] min-h-[50.6px] gap-1 compact:grow compact:shrink compact:basis-auto`} role="button" disabled={(props.disabled ?? false)} label={t("meta.reveal.skip")} onPress={(e) => props.onSkip?.(e)}>
+                <View class={`flex-row items-center justify-center shrink basis-[18.571rem] min-h-[50.6px] gap-1 compact:grow compact:shrink compact:basis-auto`} role="button" disabled={(props.disabled ?? false)} label={t("meta.reveal.skip")} onPress={(e) => props.onSkip?.(e)}>
                   <Text class="whitespace-normal">{t("meta.reveal.skip")}</Text>
                 </View>
               </Show>
           }>
-            <View class={`text-accent shrink basis-[18.571rem] min-h-[50.6px] gap-1 compact:grow compact:shrink compact:basis-auto`} role="button" disabled={(props.disabled ?? false)} label={t("meta.reveal.open")} onPress={(e) => props.onOpen?.(e)}>
+            <View class={`flex-row items-center justify-center text-accent shrink basis-[18.571rem] min-h-[50.6px] gap-1 compact:grow compact:shrink compact:basis-auto`} role="button" disabled={(props.disabled ?? false)} label={t("meta.reveal.open")} onPress={(e) => props.onOpen?.(e)}>
               <Text class="whitespace-normal">{t("meta.reveal.open")}</Text>
             </View>
           </Show>

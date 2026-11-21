@@ -23,7 +23,7 @@ export function Cooldown(props: CooldownProps) {
   const cooling = () => props.remaining > 0;
   return (
     <View
-      class={`group/cooldown size-12 overflow-hidden rounded-button border-rim-strong bg-linear-to-b from-plate-hi to-plate-lo shadow-[0px_0px_0px_1px_#00000073,inset_0px_1px_0px_0px_#ffffff14,0px_6px_18px_-6px_#00000099] active:bg-none active:bg-tile-pressed active:scale-96 data-ready:animate-pop ${packClass("Slot", "frame")}`}
+      class={`flex-row items-center justify-center gap-1 group/cooldown size-12 overflow-hidden rounded-button border-rim-strong bg-linear-to-b from-plate-hi to-plate-lo shadow-[0px_0px_0px_1px_#00000073,inset_0px_1px_0px_0px_#ffffff14,0px_6px_18px_-6px_#00000099] active:bg-none active:bg-tile-pressed active:scale-96 data-ready:animate-pop ${packClass("Slot", "frame")}`}
       role="button"
       onPress={(e) => props.onUse?.(e)}
       label={props.label}

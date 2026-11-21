@@ -23,7 +23,7 @@ export function CardPiles(props: CardPilesProps) {
     <View class={`flex-row items-end text-fg w-full justify-between p-0 gap-2 disabled:text-fg-subtle`} label={props.label || t("card.piles.name")}>
       <For each={props.piles}>
         {(p) => (
-        <View class={`group/pile shrink min-w-11 min-h-11 items-center justify-center p-1`} role="button" disabled={!p().enabled} label={t("card.piles.count", { label: p().label, count: p().count })} onPress={(e) => props.onOpen?.(e, p().id)} data-kind-discard={(p().kind) === 'discard'} data-empty={p().count === 0}>
+        <View class={`flex-row gap-1 group/pile shrink min-w-11 min-h-11 items-center justify-center p-1`} role="button" disabled={!p().enabled} label={t("card.piles.count", { label: p().label, count: p().count })} onPress={(e) => props.onOpen?.(e, p().id)} data-kind-discard={(p().kind) === 'discard'} data-empty={p().count === 0}>
           <View class="items-center gap-0.5">
             <View class={`group/stack w-12 h-[67.2px] mr-1 mt-1`}>
               <Show when={p().count > 1}>

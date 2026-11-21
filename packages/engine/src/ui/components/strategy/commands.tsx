@@ -83,7 +83,7 @@ export function StrategyCommands(props: StrategyCommandsProps) {
           <Show when={c().name} fallback={
               <View class={`nine-plate-cut bg-sheen`} />
           }>
-            <View class={`group/cmd flex p-[0.143rem] nine-plate-cut bg-white/75 data-active:bg-hud-accent disabled:opacity-45 ${packClass("Button", "plate")}`} role="button" label={c().name} description={c().reason ? c().reason : c().readyText ? c().readyText : c().detail} pressed={c().active} disabled={!c().enabled || !c().affordable} data-cooling={c().cooldown > 0} data-active={c().active} onPress={(e) => props.onCommand?.(e, c().id)}>
+            <View class={`flex-row items-center justify-center gap-1 group/cmd flex p-[0.143rem] nine-plate-cut bg-white/75 data-active:bg-hud-accent disabled:opacity-45 ${packClass("Button", "plate")}`} role="button" label={c().name} description={c().reason ? c().reason : c().readyText ? c().readyText : c().detail} pressed={c().active} disabled={!c().enabled || !c().affordable} data-cooling={c().cooldown > 0} data-active={c().active} onPress={(e) => props.onCommand?.(e, c().id)}>
               <View class="relative size-full overflow-hidden">
                 <Show when={c().icon} fallback={
                     <View class="absolute inset-0 flex-row items-center justify-center bg-linear-to-b from-plate-hi to-plate-lo">

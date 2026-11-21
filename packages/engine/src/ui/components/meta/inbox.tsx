@@ -50,7 +50,7 @@ export function Inbox(props: InboxProps) {
                       <For each={(props.messages ?? [])}>
                         {(message) => (
                         <View>
-                          <View class={`group/row nine-plate-cut text-fg transition duration-317 border border-rim w-full text-start py-2 px-3 data-selected:bg-transparent data-selected:text-fg disabled:text-fg-subtle data-done:text-fg-subtle data-down:opacity-45`} role="button" pressed={message().id === props.selected} disabled={(props.busy ?? false)} onPress={(e) => props.onChoose?.(e, message().id)} data-not-unread={!(message().unread)} data-unread={message().unread} data-selected={message().id === props.selected}>
+                          <View class={`flex-row items-center justify-center gap-1 group/row nine-plate-cut text-fg transition duration-317 border border-rim w-full text-start py-2 px-3 data-selected:bg-transparent data-selected:text-fg disabled:text-fg-subtle data-done:text-fg-subtle data-down:opacity-45`} role="button" pressed={message().id === props.selected} disabled={(props.busy ?? false)} onPress={(e) => props.onChoose?.(e, message().id)} data-not-unread={!(message().unread)} data-unread={message().unread} data-selected={message().id === props.selected}>
                             <View class="items-start w-full gap-2">
                               <Text class={`text-caption text-fg-muted`}>
                                 {message().sender}
@@ -131,12 +131,12 @@ export function Inbox(props: InboxProps) {
                             </Show>
                             <View class={`flex-row flex-wrap items-center gap-2`}>
                               <Show when={message().hasAttachments}>
-                                <View class={`text-accent min-h-11 shrink`} role="button" disabled={(props.busy ?? false) || !message().claimable || message().claimed || message().expired} onPress={(e) => props.onClaim?.(e, message().id)}>
+                                <View class={`flex-row items-center justify-center gap-1 text-accent min-h-11 shrink`} role="button" disabled={(props.busy ?? false) || !message().claimable || message().claimed || message().expired} onPress={(e) => props.onClaim?.(e, message().id)}>
                                   <Text class="whitespace-normal">{t("meta.inbox.claim")}</Text>
                                 </View>
                               </Show>
                               <Show when={message().canDelete}>
-                                <View class={`min-h-11 shrink`} role="button" disabled={(props.busy ?? false)} onPress={(e) => props.onDelete?.(e, message().id)}>
+                                <View class={`flex-row items-center justify-center gap-1 min-h-11 shrink`} role="button" disabled={(props.busy ?? false)} onPress={(e) => props.onDelete?.(e, message().id)}>
                                   <Text class="whitespace-normal">{t("meta.inbox.delete")}</Text>
                                 </View>
                               </Show>

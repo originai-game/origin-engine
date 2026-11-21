@@ -102,14 +102,14 @@ export function PuzzleSummary(props: PuzzleSummaryProps) {
         </View>
       </Show>
       <View class={`flex-row flex-wrap items-center justify-center gap-1 compact:gap-0.5`}>
-        <View class={`grow shrink basis-0 min-h-11`} role="button" label={t("puzzle.summary.menu")} onPress={(e) => props.onMenu?.(e)}>
+        <View class={`flex-row items-center justify-center gap-1 grow shrink basis-0 min-h-11`} role="button" label={t("puzzle.summary.menu")} onPress={(e) => props.onMenu?.(e)}>
           <Text>{t("puzzle.summary.menu")}</Text>
         </View>
-        <View class={`grow shrink basis-0 min-h-11`} role="button" label={t("puzzle.summary.retry")} onPress={(e) => props.onRetry?.(e)} data-primary={!props.canNext}>
+        <View class={`flex-row items-center justify-center gap-1 grow shrink basis-0 min-h-11`} role="button" label={t("puzzle.summary.retry")} onPress={(e) => props.onRetry?.(e)} data-primary={!props.canNext}>
           <Text>{t("puzzle.summary.retry")}</Text>
         </View>
         <Show when={props.canNext}>
-          <View class={`grow shrink basis-0 min-h-11 text-accent`} role="button" label={t("puzzle.summary.next")} onPress={(e) => props.onNext?.(e)}>
+          <View class={`flex-row items-center justify-center gap-1 grow shrink basis-0 min-h-11 text-accent`} role="button" label={t("puzzle.summary.next")} onPress={(e) => props.onNext?.(e)}>
             <Text>{t("puzzle.summary.next")}</Text>
           </View>
         </Show>

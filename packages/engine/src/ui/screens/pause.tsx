@@ -51,7 +51,7 @@ export function PauseScreen(props: PauseScreenProps) {
           </Text>
         </View>
         <View class="gap-y-0.5 mt-auto -ml-4 pt-6 short:grid short:pt-2 short:grid-cols-[1fr_1fr] short:gap-x-3 compact:-mx-4" focus-group="wrap">
-          <View class={`group/resume w-full min-h-11 text-fg/74 py-1 px-4 hover:bg-transparent hover:bg-hud-accent/24 hover:text-fg active:bg-transparent active:bg-linear-to-r active:from-hud-accent/34 active:via-hud-accent/12 active:via-55% active:to-transparent active:text-fg disabled:bg-transparent disabled:bg-none disabled:text-fg/32 compact:pr-4 compact:pl-6`} role="button" onPress={(e) => props.onResume?.(e)}>
+          <View class={`flex-row items-center justify-center gap-1 group/resume w-full min-h-11 text-fg/74 py-1 px-4 hover:bg-transparent hover:bg-hud-accent/24 hover:text-fg active:bg-transparent active:bg-linear-to-r active:from-hud-accent/34 active:via-hud-accent/12 active:via-55% active:to-transparent active:text-fg disabled:bg-transparent disabled:bg-none disabled:text-fg/32 compact:pr-4 compact:pl-6`} role="button" onPress={(e) => props.onResume?.(e)}>
             <View class="flex-row items-center gap-x-3 w-full">
               <Text class="grow shrink text-start text-[1.714rem] leading-tight font-semibold text-shadow-xs text-shadow-bg/60 compact:text-[1.429rem]">
                 {t("screen.pause.resume")}
@@ -59,7 +59,7 @@ export function PauseScreen(props: PauseScreenProps) {
               <Icon class="text-hud-accent opacity-0 size-4 group-hover/resume:opacity-100 rtl:-scale-x-100 rtl:scale-y-100" name="chevronRight" />
             </View>
           </View>
-          <View class={`group/settings w-full min-h-11 text-fg/74 py-1 px-4 hover:bg-transparent hover:bg-hud-accent/24 hover:text-fg active:bg-transparent active:bg-linear-to-r active:from-hud-accent/34 active:via-hud-accent/12 active:via-55% active:to-transparent active:text-fg disabled:bg-transparent disabled:bg-none disabled:text-fg/32 compact:pr-4 compact:pl-6`} role="button" onPress={(e) => props.onSettings?.(e)}>
+          <View class={`flex-row items-center justify-center gap-1 group/settings w-full min-h-11 text-fg/74 py-1 px-4 hover:bg-transparent hover:bg-hud-accent/24 hover:text-fg active:bg-transparent active:bg-linear-to-r active:from-hud-accent/34 active:via-hud-accent/12 active:via-55% active:to-transparent active:text-fg disabled:bg-transparent disabled:bg-none disabled:text-fg/32 compact:pr-4 compact:pl-6`} role="button" onPress={(e) => props.onSettings?.(e)}>
             <View class="flex-row items-center gap-x-3 w-full">
               <Text class="grow shrink text-start text-[1.714rem] leading-tight font-semibold text-shadow-xs text-shadow-bg/60 compact:text-[1.429rem]">
                 {t("screen.pause.settings")}
@@ -67,7 +67,7 @@ export function PauseScreen(props: PauseScreenProps) {
               <Icon class="text-hud-accent opacity-0 size-4 group-hover/settings:opacity-100 rtl:-scale-x-100 rtl:scale-y-100" name="chevronRight" />
             </View>
           </View>
-          <View class={`group/controls w-full min-h-11 text-fg/74 py-1 px-4 hover:bg-transparent hover:bg-hud-accent/24 hover:text-fg active:bg-transparent active:bg-linear-to-r active:from-hud-accent/34 active:via-hud-accent/12 active:via-55% active:to-transparent active:text-fg disabled:bg-transparent disabled:bg-none disabled:text-fg/32 compact:pr-4 compact:pl-6`} role="button" onPress={(e) => props.onControls?.(e)}>
+          <View class={`flex-row items-center justify-center gap-1 group/controls w-full min-h-11 text-fg/74 py-1 px-4 hover:bg-transparent hover:bg-hud-accent/24 hover:text-fg active:bg-transparent active:bg-linear-to-r active:from-hud-accent/34 active:via-hud-accent/12 active:via-55% active:to-transparent active:text-fg disabled:bg-transparent disabled:bg-none disabled:text-fg/32 compact:pr-4 compact:pl-6`} role="button" onPress={(e) => props.onControls?.(e)}>
             <View class="flex-row items-center gap-x-3 w-full">
               <Text class="grow shrink text-start text-[1.714rem] leading-tight font-semibold text-shadow-xs text-shadow-bg/60 compact:text-[1.429rem]">
                 {t("screen.pause.controls")}
@@ -75,7 +75,7 @@ export function PauseScreen(props: PauseScreenProps) {
               <Icon class="text-hud-accent opacity-0 size-4 group-hover/controls:opacity-100 rtl:-scale-x-100 rtl:scale-y-100" name="chevronRight" />
             </View>
           </View>
-          <View class={`group/save w-full min-h-11 text-fg/74 py-1 px-4 hover:bg-transparent hover:bg-hud-accent/24 hover:text-fg active:bg-transparent active:bg-linear-to-r active:from-hud-accent/34 active:via-hud-accent/12 active:via-55% active:to-transparent active:text-fg disabled:bg-transparent disabled:bg-none disabled:text-fg/32 compact:pr-4 compact:pl-6`} role="button" disabled={!props.canSave} onPress={(e) => props.onSave?.(e)}>
+          <View class={`flex-row items-center justify-center gap-1 group/save w-full min-h-11 text-fg/74 py-1 px-4 hover:bg-transparent hover:bg-hud-accent/24 hover:text-fg active:bg-transparent active:bg-linear-to-r active:from-hud-accent/34 active:via-hud-accent/12 active:via-55% active:to-transparent active:text-fg disabled:bg-transparent disabled:bg-none disabled:text-fg/32 compact:pr-4 compact:pl-6`} role="button" disabled={!props.canSave} onPress={(e) => props.onSave?.(e)}>
             <View class="flex-row items-center gap-x-3 w-full">
               <Text class="grow shrink text-start text-[1.714rem] leading-tight font-semibold text-shadow-xs text-shadow-bg/60 compact:text-[1.429rem]">
                 {t("screen.pause.save")}
@@ -83,7 +83,7 @@ export function PauseScreen(props: PauseScreenProps) {
               <Icon class="text-hud-accent opacity-0 size-4 group-hover/save:opacity-100 rtl:-scale-x-100 rtl:scale-y-100" name="chevronRight" />
             </View>
           </View>
-          <View class={`group/load w-full min-h-11 text-fg/74 py-1 px-4 hover:bg-transparent hover:bg-hud-accent/24 hover:text-fg active:bg-transparent active:bg-linear-to-r active:from-hud-accent/34 active:via-hud-accent/12 active:via-55% active:to-transparent active:text-fg disabled:bg-transparent disabled:bg-none disabled:text-fg/32 compact:pr-4 compact:pl-6`} role="button" onPress={(e) => props.onLoad?.(e)}>
+          <View class={`flex-row items-center justify-center gap-1 group/load w-full min-h-11 text-fg/74 py-1 px-4 hover:bg-transparent hover:bg-hud-accent/24 hover:text-fg active:bg-transparent active:bg-linear-to-r active:from-hud-accent/34 active:via-hud-accent/12 active:via-55% active:to-transparent active:text-fg disabled:bg-transparent disabled:bg-none disabled:text-fg/32 compact:pr-4 compact:pl-6`} role="button" onPress={(e) => props.onLoad?.(e)}>
             <View class="flex-row items-center gap-x-3 w-full">
               <Text class="grow shrink text-start text-[1.714rem] leading-tight font-semibold text-shadow-xs text-shadow-bg/60 compact:text-[1.429rem]">
                 {t("screen.pause.load")}
@@ -92,14 +92,14 @@ export function PauseScreen(props: PauseScreenProps) {
             </View>
           </View>
           <View class="h-px mt-2 mr-0 mb-1 ml-4 bg-linear-to-r from-white/28 to-transparent to-80% compact:ml-6 short:hidden" />
-          <View class={`w-full min-h-11 text-fg/56 py-1 px-4 hover:bg-transparent hover:bg-hud-accent/24 active:bg-transparent active:bg-linear-to-r active:from-hud-accent/34 active:via-hud-accent/12 active:via-55% active:to-transparent disabled:bg-transparent disabled:bg-none compact:pr-4 compact:pl-6`} role="button" onPress={(e) => props.onQuitToMenu?.(e)}>
+          <View class={`flex-row items-center justify-center gap-1 w-full min-h-11 text-fg/56 py-1 px-4 hover:bg-transparent hover:bg-hud-accent/24 active:bg-transparent active:bg-linear-to-r active:from-hud-accent/34 active:via-hud-accent/12 active:via-55% active:to-transparent disabled:bg-transparent disabled:bg-none compact:pr-4 compact:pl-6`} role="button" onPress={(e) => props.onQuitToMenu?.(e)}>
             <View class="flex-row items-center gap-x-3 w-full">
               <Text class="grow shrink text-start text-[1.714rem] leading-tight font-semibold text-shadow-xs text-shadow-bg/60 compact:text-[1.429rem]">
                 {t("screen.pause.quitToMenu")}
               </Text>
             </View>
           </View>
-          <View class={`w-full min-h-11 text-fg/56 py-1 px-4 hover:bg-transparent hover:bg-hud-accent/24 hover:text-danger active:bg-transparent active:bg-linear-to-r active:from-hud-accent/34 active:via-hud-accent/12 active:via-55% active:to-transparent disabled:bg-transparent disabled:bg-none compact:pr-4 compact:pl-6`} role="button" onPress={(e) => props.onQuit?.(e)}>
+          <View class={`flex-row items-center justify-center gap-1 w-full min-h-11 text-fg/56 py-1 px-4 hover:bg-transparent hover:bg-hud-accent/24 hover:text-danger active:bg-transparent active:bg-linear-to-r active:from-hud-accent/34 active:via-hud-accent/12 active:via-55% active:to-transparent disabled:bg-transparent disabled:bg-none compact:pr-4 compact:pl-6`} role="button" onPress={(e) => props.onQuit?.(e)}>
             <View class="flex-row items-center gap-x-3 w-full">
               <Text class="grow shrink text-start text-[1.714rem] leading-tight font-semibold text-shadow-xs text-shadow-bg/60 compact:text-[1.429rem]">
                 {t("screen.pause.quit")}

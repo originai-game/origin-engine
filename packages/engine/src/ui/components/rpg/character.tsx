@@ -88,7 +88,7 @@ export function RpgCharacter(props: RpgCharacterProps) {
             {(s) => (
             <Show when={s().side === "start"}>
               <View
-                class={`group/cell flex size-[5.429rem] p-1 nine-plate-cut bg-tile text-fg data-empty:bg-tile data-empty:text-fg-muted compact:size-[3.857rem] compact:p-[0.143rem] data-dense:size-[3.429rem] data-dense:p-[0.143rem] ${packClass("Button", "plate")}`}
+                class={`flex-row items-center justify-center gap-1 group/cell flex size-[5.429rem] p-1 nine-plate-cut bg-tile text-fg data-empty:bg-tile data-empty:text-fg-muted compact:size-[3.857rem] compact:p-[0.143rem] data-dense:size-[3.429rem] data-dense:p-[0.143rem] ${packClass("Button", "plate")}`}
                 role="button"
                 label={s().label}
                 selected={s().id === props.selected}
@@ -119,7 +119,7 @@ export function RpgCharacter(props: RpgCharacterProps) {
             {(s) => (
             <Show when={s().side === "end"}>
               <View
-                class={`group/cell flex size-[5.429rem] p-1 nine-plate-cut bg-tile text-fg data-empty:bg-tile data-empty:text-fg-muted compact:size-[3.857rem] compact:p-[0.143rem] data-dense:size-[3.429rem] data-dense:p-[0.143rem] ${packClass("Button", "plate")}`}
+                class={`flex-row items-center justify-center gap-1 group/cell flex size-[5.429rem] p-1 nine-plate-cut bg-tile text-fg data-empty:bg-tile data-empty:text-fg-muted compact:size-[3.857rem] compact:p-[0.143rem] data-dense:size-[3.429rem] data-dense:p-[0.143rem] ${packClass("Button", "plate")}`}
                 role="button"
                 label={s().label}
                 selected={s().id === props.selected}

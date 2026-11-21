@@ -57,7 +57,7 @@ export function FilmChoices(props: FilmChoicesProps) {
           <For each={now().spots} key={(s) => s.index}>
             {(s) => (
               <View
-                class="absolute min-w-11 min-h-11 rounded-control ring-2 ring-gold bg-gold/12 hover:bg-gold/24 disabled:opacity-45 disabled:ring-rim"
+                class="flex-row items-center justify-center gap-1 absolute min-w-11 min-h-11 rounded-control ring-2 ring-gold bg-gold/12 hover:bg-gold/24 disabled:opacity-45 disabled:ring-rim"
                 role="button"
                 label={s().label}
                 disabled={now().locked}
@@ -83,7 +83,7 @@ export function FilmChoices(props: FilmChoicesProps) {
                   >
                     <Text class="text-lg font-semibold leading-snug text-center">{c().text}</Text>
                     <Show when={c().progress >= 0}>
-                      <Progress value={c().progress} label={t("screen.film-choices.qte")} class="h-1.5 rounded-none" />
+                      <Progress value={c().progress} label={t("screen.film-choices.qte")} class="w-full h-1.5 rounded-none" />
                     </Show>
                   </View>
                 )}

@@ -122,7 +122,7 @@ export function StrategySelection(props: StrategySelectionProps) {
               <For each={props.units ?? []} key={(u) => u.id}>
                 {(u, i) => (
                 <View
-                  class={`shrink p-[0.143rem] size-[2.143rem] compact:size-[2.286rem] nine-chip-cut bg-white/75 data-selected:bg-hud-accent compact:data-past:hidden ${packClass("Button", "plate")}`}
+                  class={`flex-row items-center justify-center gap-1 shrink p-[0.143rem] size-[2.143rem] compact:size-[2.286rem] nine-chip-cut bg-white/75 data-selected:bg-hud-accent compact:data-past:hidden ${packClass("Button", "plate")}`}
                   role="option"
                   label={u().name}
                   description={t("strategy.selection.unitValue", { count: u().count, now: u().health, max: u().healthMax })}

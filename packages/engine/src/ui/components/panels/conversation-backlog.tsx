@@ -41,7 +41,7 @@ export function RpgConversationBacklog(props: RpgConversationBacklogProps) {
         <Text class={`grow shrink font-display text-base font-bold leading-tight tracking-[-0.01em] text-fg m-0`}>
           {props.title || t("rpg.talk.history")}
         </Text>
-        <View class={`min-h-11 shrink px-4 items-center justify-center ${packClass("Button", "plate")}`} role="button" onPress={(e) => props.onClose?.(e)}>
+        <View class={`flex-row gap-1 min-h-11 shrink px-4 items-center justify-center ${packClass("Button", "plate")}`} role="button" onPress={(e) => props.onClose?.(e)}>
           <Text>{t("rpg.talk.close")}</Text>
         </View>
       </View>
@@ -53,7 +53,7 @@ export function RpgConversationBacklog(props: RpgConversationBacklogProps) {
       </Show>
       <View class={`grow shrink basis-0 gap-3 overflow-auto`} role="log" label={t("rpg.talk.history")}>
         <Show when={(props.hasOlder ?? false)}>
-          <View class={`min-h-11 self-center px-4 items-center justify-center ${packClass("Button", "plate")}`} role="button" disabled={(props.loading ?? false)} onPress={(e) => props.onOlder?.(e)}>
+          <View class={`flex-row gap-1 min-h-11 self-center px-4 items-center justify-center ${packClass("Button", "plate")}`} role="button" disabled={(props.loading ?? false)} onPress={(e) => props.onOlder?.(e)}>
             <Text>{t("rpg.talk.older")}</Text>
           </View>
         </Show>
@@ -69,12 +69,12 @@ export function RpgConversationBacklog(props: RpgConversationBacklogProps) {
             </Text>
             <Show when={entry().id === props.playing} fallback={
                 <Show when={entry().canReplay}>
-                  <View class={`min-h-11 self-start px-4 items-center justify-center ${packClass("Button", "plate")}`} role="button" disabled={(props.loading ?? false)} onPress={(e) => props.onReplay?.(e, entry().id)}>
+                  <View class={`flex-row gap-1 min-h-11 self-start px-4 items-center justify-center ${packClass("Button", "plate")}`} role="button" disabled={(props.loading ?? false)} onPress={(e) => props.onReplay?.(e, entry().id)}>
                     <Text>{t("rpg.talk.replay", { speaker: entry().speaker || t("rpg.talk.narration") })}</Text>
                   </View>
                 </Show>
             }>
-              <View class={`min-h-11 self-start px-4 items-center justify-center ${packClass("Button", "plate")}`} role="button" onPress={(e) => props.onStop?.(e, entry().id)}>
+              <View class={`flex-row gap-1 min-h-11 self-start px-4 items-center justify-center ${packClass("Button", "plate")}`} role="button" onPress={(e) => props.onStop?.(e, entry().id)}>
                 <Text>{t("rpg.talk.stop")}</Text>
               </View>
             </Show>

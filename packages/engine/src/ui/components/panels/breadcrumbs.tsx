@@ -30,7 +30,7 @@ export function Breadcrumbs(props: BreadcrumbsProps) {
             </Show>
             <Show when={crumb().current} fallback={
                 <>
-                  <View class={`font-semibold text-[1.071rem] leading-snug text-fg-muted hover:text-fg focus-visible:text-fg shrink-0 min-w-0`} role="link" onPress={(e) => props.onChoose?.(e, crumb().id)}>
+                  <View class={`flex-row items-center justify-center gap-1 font-semibold text-[1.071rem] leading-snug text-fg-muted hover:text-fg focus-visible:text-fg shrink-0 min-w-0`} role="link" onPress={(e) => props.onChoose?.(e, crumb().id)}>
                     <Text class="min-w-0">{crumb().label}</Text>
                   </View>
                   <Line class={`text-fg-subtle w-2 h-3 shrink-0 rtl:-scale-x-100`} points={[2, 1, 6, 6, 2, 11]} viewBox="0 0 8 12" />

@@ -62,7 +62,7 @@ export function LoadingScreen(props: LoadingScreenProps) {
               <Text class={`tracking-[0.14em] uppercase text-hud-accent text-[0.857rem] font-bold bg-tile nine-plate-cut py-[0.143rem] px-[0.571rem] m-0 ${packClass("Chip", "frame")}`}>
                 {t("screen.loading.tip")}
               </Text>
-              <View class={`shrink ml-auto gap-x-1 text-[0.857rem] font-semibold tracking-[0.14em] px-1 pointer-coarse:min-h-11`} role="button" onPress={(e) => props.onNextTip?.(e)}>
+              <View class={`flex-row items-center justify-center shrink ml-auto gap-x-1 text-[0.857rem] font-semibold tracking-[0.14em] px-1 pointer-coarse:min-h-11`} role="button" onPress={(e) => props.onNextTip?.(e)}>
                 <Text class="min-w-[1.571rem] text-[0.857rem] leading-[1.6] font-bold text-center text-hud-accent-fg bg-linear-to-b from-white to-key-lo shadow-[0px_2.288px_0px_#0000008c,inset_0px_-2.288px_0px_#0000002e] py-0 px-1 rounded-[4.576px] pointer-coarse:hidden">
                   {t("screen.loading.nextKey")}
                 </Text>

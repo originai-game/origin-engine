@@ -111,7 +111,7 @@ export function StrategyWave(props: StrategyWaveProps) {
       </Show>
       <Show when={props.canCallEarly && props.phase !== "done"}>
         <View
-          class={`min-h-[3.143rem] min-w-0 max-w-full py-[0.286rem] px-[0.857rem] nine-plate-cut bg-plate-hi ${packClass("Button", "plate", "primary")}`}
+          class={`flex-row items-center justify-center gap-1 min-h-[3.143rem] min-w-0 max-w-full py-[0.286rem] px-[0.857rem] nine-plate-cut bg-plate-hi ${packClass("Button", "plate", "primary")}`}
           role="button"
           label={t("strategy.wave.callEarly")}
           onPress={(e) => props.onCallEarly?.(e)}

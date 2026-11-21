@@ -36,7 +36,7 @@ export function StrategyQueue(props: StrategyQueueProps) {
         <For each={props.items ?? []} key={(q) => q.id}>
           {(q, i) => (
           <View
-            class={`shrink size-[1.914rem] compact:size-[1.783rem] p-[0.143rem] nine-chip-cut bg-white/75 data-state-blocked:bg-danger data-first:size-[2.514rem] compact:data-first:size-[2.286rem] ${packClass("Button", "plate")}`}
+            class={`flex-row items-center justify-center gap-1 shrink size-[1.914rem] compact:size-[1.783rem] p-[0.143rem] nine-chip-cut bg-white/75 data-state-blocked:bg-danger data-first:size-[2.514rem] compact:data-first:size-[2.286rem] ${packClass("Button", "plate")}`}
             role="button"
             label={t("strategy.queue.cancel", { name: q().name })}
             description={q().reason !== "" ? q().reason : q().timeText}

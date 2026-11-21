@@ -57,7 +57,7 @@ export function Carousel(props: CarouselProps) {
         </For>
       </View>
       <View class="flex-row items-center w-full mt-2 gap-3">
-        <View class={`p-0 size-11 shrink-0 items-center justify-center ${packClass("Button", "plate")}`} role="button" label={t("component.carousel.prev")} disabled={props.pages.length < 2} onPress={(e) => props.onPrev?.(e)}>
+        <View class={`flex-row gap-1 p-0 size-11 shrink-0 items-center justify-center ${packClass("Button", "plate")}`} role="button" label={t("component.carousel.prev")} disabled={props.pages.length < 2} onPress={(e) => props.onPrev?.(e)}>
           <Icon class="size-4" name="back" />
         </View>
         <View class="relative flex-row items-center grow shrink justify-center gap-1">
@@ -70,7 +70,7 @@ export function Carousel(props: CarouselProps) {
             <View class={`bg-hud-accent absolute top-0 w-4 h-0.5 shadow-[0px_0px_6.864px_#38e8ff] transition-colors duration-200`} style={{ left: `calc(50% + ${(props.index * 20 - props.pages.length * 10 + 2).toFixed(1)}px)` }} />
           </Show>
         </View>
-        <View class={`p-0 size-11 shrink-0 items-center justify-center ${packClass("Button", "plate")}`} role="button" label={t("component.carousel.next")} disabled={props.pages.length < 2} onPress={(e) => props.onNext?.(e)}>
+        <View class={`flex-row gap-1 p-0 size-11 shrink-0 items-center justify-center ${packClass("Button", "plate")}`} role="button" label={t("component.carousel.next")} disabled={props.pages.length < 2} onPress={(e) => props.onNext?.(e)}>
           <Icon class="rotate-180" name="back" />
         </View>
       </View>

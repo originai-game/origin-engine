@@ -60,7 +60,7 @@ export function News(props: NewsProps) {
                               </Show>
                             </View>
                             <View class={`tracking-xs text-fg-muted w-full`} role="heading" level={3}>
-                              <View class={`w-full min-h-11 text-start px-0`} role="button" expanded={entry().id === props.selected} label={entry().title} disabled={(props.disabled ?? false)} onPress={(e) => props.onChoose?.(e, entry().id)}>
+                              <View class={`flex-row items-center justify-center gap-1 w-full min-h-11 text-start px-0`} role="button" expanded={entry().id === props.selected} label={entry().title} disabled={(props.disabled ?? false)} onPress={(e) => props.onChoose?.(e, entry().id)}>
                                 <Text class={`font-bold text-xl leading-6.5 text-fg w-full whitespace-normal`}>
                                   {entry().title}
                                 </Text>
@@ -81,7 +81,7 @@ export function News(props: NewsProps) {
                                 </Text>
                               </Show>
                               <Show when={entry().actionLabel}>
-                                <View class={`max-w-full min-h-11`} role="button" disabled={(props.disabled ?? false)} onPress={(e) => props.onOpen?.(e, entry().id)}>
+                                <View class={`flex-row items-center justify-center gap-1 max-w-full min-h-11`} role="button" disabled={(props.disabled ?? false)} onPress={(e) => props.onOpen?.(e, entry().id)}>
                                   <Text class="whitespace-normal">{entry().actionLabel}</Text>
                                 </View>
                               </Show>

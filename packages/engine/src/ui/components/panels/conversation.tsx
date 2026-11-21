@@ -92,13 +92,13 @@ export function RpgConversation(props: RpgConversationProps) {
         </Text>
         <Show when={(props.showControls ?? false)}>
           <View class={`flex-row flex-wrap items-center gap-1`}>
-            <View class={`min-h-11 shrink px-4 items-center justify-center ${packClass("Button", "plate")}`} role="button" disabled={!(props.canBacklog ?? true)} onPress={(e) => props.onBacklog?.(e)}>
+            <View class={`flex-row gap-1 min-h-11 shrink px-4 items-center justify-center ${packClass("Button", "plate")}`} role="button" disabled={!(props.canBacklog ?? true)} onPress={(e) => props.onBacklog?.(e)}>
               <Text>{t("rpg.talk.backlog")}</Text>
             </View>
-            <View class={`min-h-11 shrink px-4 items-center justify-center ${packClass("Button", "plate")}`} role="button" disabled={!(props.canSkip ?? false)} onPress={(e) => props.onSkip?.(e)}>
+            <View class={`flex-row gap-1 min-h-11 shrink px-4 items-center justify-center ${packClass("Button", "plate")}`} role="button" disabled={!(props.canSkip ?? false)} onPress={(e) => props.onSkip?.(e)}>
               <Text>{t("rpg.talk.skip")}</Text>
             </View>
-            <View class={`group/auto relative min-h-11 shrink px-4 items-center justify-center data-selected:text-gold ${packClass("Button", "plate")}`} role="button" pressed={(props.auto ?? false)} disabled={!(props.canAuto ?? true)} onPress={(e) => props.onToggleAuto?.(e)} data-selected={(props.auto ?? false)}>
+            <View class={`flex-row gap-1 group/auto relative min-h-11 shrink px-4 items-center justify-center data-selected:text-gold ${packClass("Button", "plate")}`} role="button" pressed={(props.auto ?? false)} disabled={!(props.canAuto ?? true)} onPress={(e) => props.onToggleAuto?.(e)} data-selected={(props.auto ?? false)}>
               <View class="absolute left-0 inset-y-0 w-[3.424px] bg-gold hidden group-data-selected/auto:block" />
               <Text>{t("rpg.talk.auto")}</Text>
             </View>
@@ -116,7 +116,7 @@ export function RpgConversation(props: RpgConversationProps) {
           <For each={props.replies} key={(r) => r.id}>
             {(r) => (
             <View class="w-full">
-              <View class={`group/row relative nine-plate-cut bg-entry-hi border border-rim text-fg transition duration-317 w-full min-h-9 pointer-coarse:min-h-11 py-1 px-3 hover:bg-none hover:bg-entry-hi data-selected:bg-transparent data-selected:bg-hud-accent/20 data-selected:text-fg disabled:text-fg-subtle data-used:text-fg-subtle data-down:opacity-45`} role="option" selected={r().id === props.selected} onPress={(e) => props.onReply?.(e, r().id)} data-used={r().used} data-selected={r().id === props.selected}>
+              <View class={`flex-row items-center justify-start gap-1 group/row relative nine-plate-cut bg-entry-hi border border-rim text-fg transition duration-317 w-full min-h-9 pointer-coarse:min-h-11 py-1 px-3 hover:bg-none hover:bg-entry-hi data-selected:bg-transparent data-selected:bg-hud-accent/20 data-selected:text-fg disabled:text-fg-subtle data-used:text-fg-subtle data-down:opacity-45`} role="option" selected={r().id === props.selected} onPress={(e) => props.onReply?.(e, r().id)} data-used={r().used} data-selected={r().id === props.selected}>
                 <View class="absolute left-0 inset-y-0 w-[3.424px] bg-hud-accent hidden group-data-selected/row:block" />
                 <View class="flex-row items-center w-full gap-3">
                   <Text class={`tabular-nums text-gold min-w-6 text-center font-bold bg-well/82 py-0 px-0.5 nine-chip-cut group-data-selected/row:text-gold-fg group-data-selected/row:bg-none group-data-selected/row:bg-gold group-data-used/row:text-fg-subtle ${packClass("Chip", "frame")}`}>

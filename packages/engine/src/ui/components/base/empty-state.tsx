@@ -44,7 +44,7 @@ export function EmptyState(props: EmptyStateProps) {
         </Show>
       </View>
       <Show when={props.actionLabel}>
-        <View class={`text-accent max-w-full min-h-11`} role="button" disabled={(props.disabled ?? false)} onPress={(e) => props.onActivate?.(e)}>
+        <View class={`flex-row items-center justify-center gap-1 text-accent max-w-full min-h-11`} role="button" disabled={(props.disabled ?? false)} onPress={(e) => props.onActivate?.(e)}>
           <Text class="whitespace-normal">{props.actionLabel}</Text>
         </View>
       </Show>

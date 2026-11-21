@@ -90,7 +90,7 @@ export function SettingsScreen(props: SettingsScreenProps) {
                 <Show when={entry().page === props.page}>
                   <View class={`group/row bg-linear-to-r from-entry-lo to-entry-lo/50 text-fg transition duration-317 hover:bg-transparent hover:bg-hud-accent/24 data-selected:text-fg disabled:text-fg-subtle data-done:text-fg-subtle data-down:opacity-45`} label={entry().description}>
                     <Show when={entry().kind === "toggle"}>
-                      <View class="group/switch min-h-16 text-[1.286rem] grow shrink text-fg/74 py-1 px-4 compact:text-[1.143rem] compact:gap-y-1 compact:py-2 compact:px-3 group-hover/row:text-fg" role="switch" tabIndex={0} checked={entry().value === true} label={entry().name} data-checked={entry().value === true} onPress={(e) => props.onChange?.(e, entry().id, !(entry().value === true))}>
+                      <View class="flex-row items-center group/switch min-h-16 text-[1.286rem] grow shrink text-fg/74 py-1 px-4 compact:text-[1.143rem] compact:gap-y-1 compact:py-2 compact:px-3 group-hover/row:text-fg" role="switch" tabIndex={0} checked={entry().value === true} label={entry().name} data-checked={entry().value === true} onPress={(e) => props.onChange?.(e, entry().id, !(entry().value === true))}>
                         <Text>{entry().name}</Text>
                         <View class="ml-auto relative h-4 w-7 rounded-capsule bg-track shadow-[inset_0px_0px_0px_1px_#4e586c]">
                           <View class="absolute top-0.5 left-0.5 size-3 rounded-capsule bg-fg-muted transition-transform duration-200 ease-out group-data-checked/switch:translate-x-3 group-data-checked/switch:bg-accent" />

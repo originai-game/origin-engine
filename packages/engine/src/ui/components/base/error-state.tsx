@@ -51,7 +51,7 @@ export function ErrorState(props: ErrorStateProps) {
       <Show when={(props.canRetry ?? true) || props.dismissLabel}>
         <View class={`flex-row flex-wrap items-center justify-center gap-4`}>
           <Show when={(props.canRetry ?? true)}>
-            <View class={`text-accent min-h-11 max-w-full shrink`} role="button" disabled={(props.busy ?? false)} onPress={(e) => props.onRetry?.(e)}>
+            <View class={`flex-row items-center justify-center gap-1 text-accent min-h-11 max-w-full shrink`} role="button" disabled={(props.busy ?? false)} onPress={(e) => props.onRetry?.(e)}>
               <Show when={(props.busy ?? false)}>
                 <Spinner size={16} name={t("base.error.busy")} />
               </Show>
@@ -61,7 +61,7 @@ export function ErrorState(props: ErrorStateProps) {
             </View>
           </Show>
           <Show when={props.dismissLabel}>
-            <View class={`min-h-11 max-w-full shrink`} role="button" disabled={(props.busy ?? false)} onPress={(e) => props.onDismiss?.(e)}>
+            <View class={`flex-row items-center justify-center gap-1 min-h-11 max-w-full shrink`} role="button" disabled={(props.busy ?? false)} onPress={(e) => props.onDismiss?.(e)}>
               <Text class="whitespace-normal">{props.dismissLabel}</Text>
             </View>
           </Show>

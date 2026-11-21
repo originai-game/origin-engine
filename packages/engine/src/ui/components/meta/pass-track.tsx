@@ -63,7 +63,7 @@ export function PassTrack(props: PassTrackProps) {
           </Text>
         </View>
         <Show when={!(props.premiumUnlocked ?? false) && props.upgradeLabel}>
-          <View class={`text-accent max-w-full min-h-11 compact:w-full`} role="button" disabled={(props.disabled ?? false) || (props.loading ?? false) || !!props.error} onPress={(e) => props.onUpgrade?.(e)}>
+          <View class={`flex-row items-center justify-center gap-1 text-accent max-w-full min-h-11 compact:w-full`} role="button" disabled={(props.disabled ?? false) || (props.loading ?? false) || !!props.error} onPress={(e) => props.onUpgrade?.(e)}>
             <Text class="whitespace-normal">{props.upgradeLabel}</Text>
           </View>
         </Show>
@@ -129,7 +129,7 @@ export function PassTrack(props: PassTrackProps) {
                                         <Text class="whitespace-nowrap">{t("meta.locked")}</Text>
                                       </View>
                                   }>
-                                    <View class={`text-accent mt-auto w-full min-h-11`} role="button" disabled={(props.disabled ?? false)} onPress={(e) => props.onClaim?.(e, r().id)}>
+                                    <View class={`flex-row items-center justify-center gap-1 text-accent mt-auto w-full min-h-11`} role="button" disabled={(props.disabled ?? false)} onPress={(e) => props.onClaim?.(e, r().id)}>
                                       <Text class="whitespace-normal">{t("meta.claim")}</Text>
                                     </View>
                                   </Show>
@@ -175,7 +175,7 @@ export function PassTrack(props: PassTrackProps) {
                                         <Text class="whitespace-nowrap">{t("meta.locked")}</Text>
                                       </View>
                                   }>
-                                    <View class={`text-accent mt-auto w-full min-h-11`} role="button" disabled={(props.disabled ?? false)} onPress={(e) => props.onClaim?.(e, r().id)}>
+                                    <View class={`flex-row items-center justify-center gap-1 text-accent mt-auto w-full min-h-11`} role="button" disabled={(props.disabled ?? false)} onPress={(e) => props.onClaim?.(e, r().id)}>
                                       <Text class="whitespace-normal">{t("meta.claim")}</Text>
                                     </View>
                                   </Show>

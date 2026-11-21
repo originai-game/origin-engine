@@ -108,7 +108,7 @@ export function MinimapView(props: MinimapViewProps) {
         data-square={props.square === true}
       >
         <View
-          class={`relative size-48 overflow-hidden rounded-full data-square:rounded-[0.714rem] bg-raised-lo pointer-events-auto`}
+          class={`flex-row items-center justify-center gap-1 relative size-48 overflow-hidden rounded-full data-square:rounded-[0.714rem] bg-raised-lo pointer-events-auto`}
           role="button"
           label={t("component.minimap-view.name")}
           onPress={(e) => props.onPick?.(e)}

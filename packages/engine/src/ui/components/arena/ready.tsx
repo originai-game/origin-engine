@@ -94,7 +94,7 @@ export function ArenaReady(props: ArenaReadyProps) {
       </Show>
       <View class="flex-row flex-wrap gap-x-1 gap-y-1">
         <View
-          class={`${BUTTON} text-boon-fg bg-none bg-success hover:bg-success ${packClass("Button", "plate", "primary")}`}
+          class={`flex-row items-center justify-center gap-1 ${BUTTON} text-boon-fg bg-none bg-success hover:bg-success ${packClass("Button", "plate", "primary")}`}
           role="button"
           label={t("ready.accept")}
           pressed={props.response == "ready"}

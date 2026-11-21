@@ -33,7 +33,7 @@ export function RpgCommands(props: RpgCommandsProps) {
         <For each={props.commands ?? []} key={(c) => c.id}>
           {(c) => (
           <View
-            class={`group/cmd flex h-[5.486rem] min-w-0 p-0 bg-tile bg-linear-to-b from-shade to-transparent to-55% rounded-[6px] shadow-[inset_0px_0px_0px_1px_#343d4f] hover:shadow-[inset_0px_0px_0px_1px_#8892a8] data-selected:shadow-[inset_0px_0px_0px_2px_#e8e8ed,inset_0px_3px_0px_#ffffff80] disabled:text-fg-subtle ${packClass("Button", "plate", c().id === props.selected ? "primary" : undefined)}`}
+            class={`flex-row items-center justify-center gap-1 group/cmd flex h-[5.486rem] min-w-0 p-0 bg-tile bg-linear-to-b from-shade to-transparent to-55% rounded-[6px] shadow-[inset_0px_0px_0px_1px_#343d4f] hover:shadow-[inset_0px_0px_0px_1px_#8892a8] data-selected:shadow-[inset_0px_0px_0px_2px_#e8e8ed,inset_0px_3px_0px_#ffffff80] disabled:text-fg-subtle ${packClass("Button", "plate", c().id === props.selected ? "primary" : undefined)}`}
             role="button"
             label={c().label}
             selected={c().id === props.selected}

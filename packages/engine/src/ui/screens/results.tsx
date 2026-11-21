@@ -96,7 +96,7 @@ export function ResultsScreen(props: ResultsScreenProps) {
           <View class="flex-row w-full" role="tablist" label={t("screen.results.grade")}>
             <For each={[{ value: "summary", label: "Summary" }, { value: "graphs", label: "Graphs" }, { value: "board", label: "Scoreboard" }] as const}>
               {(tab) => (
-                <View class={`justify-center items-center grow min-h-11 border-b-2 border-transparent data-selected:border-accent data-selected:text-accent text-fg-muted`} role="tab" tabIndex={0} selected={props.tab === tab().value} label={tab().label} onPress={(e) => props.onTab?.(e, tab().value)}>
+                <View class={`flex-row gap-1 justify-center items-center grow min-h-11 border-b-2 border-transparent data-selected:border-accent data-selected:text-accent text-fg-muted`} role="tab" tabIndex={0} selected={props.tab === tab().value} label={tab().label} onPress={(e) => props.onTab?.(e, tab().value)}>
                   <Text>{tab().label}</Text>
                 </View>
               )}

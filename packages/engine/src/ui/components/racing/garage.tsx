@@ -149,7 +149,7 @@ export function RacingGarage(props: RacingGarageProps) {
             <For each={vehicles()} key={(v) => v.id}>
               {(v) => (
                 <View
-                  class={`shrink-0 w-[12.143rem] min-h-16 px-2 py-1 bg-glass nine-plate-cut data-selected:bg-raised-pressed data-locked:text-fg-muted compact:w-[8.857rem]`}
+                  class={`flex-row items-center justify-center gap-1 shrink-0 w-[12.143rem] min-h-16 px-2 py-1 bg-glass nine-plate-cut data-selected:bg-raised-pressed data-locked:text-fg-muted compact:w-[8.857rem]`}
                   role="option"
                   selected={v().id === props.shown}
                   label={v().title}

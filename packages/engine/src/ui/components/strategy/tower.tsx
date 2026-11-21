@@ -107,7 +107,7 @@ export function StrategyTower(props: StrategyTowerProps) {
                   </Text>
                 </Show>
               </View>
-              <View class={`shrink min-h-[3.143rem] min-w-[8.829rem] max-w-[40%] py-[0.143rem] px-3 nine-plate-cut bg-plate-hi compact:col-start-2 compact:min-w-0 compact:max-w-none compact:py-1 compact:px-2 ${packClass("Button", "plate", p().state === "affordable" ? "primary" : undefined)}`} role="button" label={t("strategy.tower.upgrade", { name: p().name })} description={p().state === "locked" ? p().reason : p().cost} disabled={p().state !== "affordable"} data-affordable={p().state === "affordable"} data-locked={p().state === "locked"} data-maxed={p().state === "maxed"} data-unaffordable={p().state === "unaffordable"} onPress={(e) => props.onUpgrade?.(e, p().id)}>
+              <View class={`flex-row items-center justify-center gap-1 shrink min-h-[3.143rem] min-w-[8.829rem] max-w-[40%] py-[0.143rem] px-3 nine-plate-cut bg-plate-hi compact:col-start-2 compact:min-w-0 compact:max-w-none compact:py-1 compact:px-2 ${packClass("Button", "plate", p().state === "affordable" ? "primary" : undefined)}`} role="button" label={t("strategy.tower.upgrade", { name: p().name })} description={p().state === "locked" ? p().reason : p().cost} disabled={p().state !== "affordable"} data-affordable={p().state === "affordable"} data-locked={p().state === "locked"} data-maxed={p().state === "maxed"} data-unaffordable={p().state === "unaffordable"} onPress={(e) => props.onUpgrade?.(e, p().id)}>
                 <View class="flex-col items-center gap-y-0.5">
                   <Show when={p().state !== "affordable"}>
                     <Text class={`max-w-full whitespace-nowrap py-0 px-[0.143rem] leading-[1.6] text-xs font-bold tabular-nums nine-chip-cut bg-well text-danger data-maxed:text-gold ${packClass("Chip", "frame")}`} data-maxed={p().state === "maxed"}>
@@ -127,7 +127,7 @@ export function StrategyTower(props: StrategyTowerProps) {
         </Scroll>
       </Show>
       <View class="flex-row justify-end compact:justify-stretch">
-        <View class={`flex-row items-center gap-x-1 min-h-[3.143rem] py-[0.143rem] px-3 nine-plate-cut bg-plate-hi text-xs font-bold tracking-[0.14em] uppercase compact:w-full ${packClass("Button", "plate")}`} role="button" label={t("strategy.tower.sell")} disabled={!(props.canSell ?? false)} onPress={(e) => props.onSell?.(e)}>
+        <View class={`flex-row justify-center items-center gap-x-1 min-h-[3.143rem] py-[0.143rem] px-3 nine-plate-cut bg-plate-hi text-xs font-bold tracking-[0.14em] uppercase compact:w-full ${packClass("Button", "plate")}`} role="button" label={t("strategy.tower.sell")} disabled={!(props.canSell ?? false)} onPress={(e) => props.onSell?.(e)}>
           <Text>{t("strategy.tower.sell")}</Text>
           <Show when={props.sellText !== ""}>
             <Text class={`min-w-0 whitespace-nowrap overflow-hidden text-gold tracking-normal normal-case`}>
