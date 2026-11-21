@@ -143,7 +143,7 @@ for (const c of cases) {
   try {
     const tab = await browser.open("about:blank", log);
     await tab.send("Emulation.setDeviceMetricsOverride", { width: c.width, height: c.height, deviceScaleFactor: 1, mobile: false });
-    await tab.send("Page.navigate", { url: `http://127.0.0.1:${server.port}/fork.html?profile=${settingsOf(project).profile}` });
+    await tab.send("Page.navigate", { url: `http://127.0.0.1:${server.port}/fork.html?project=${encodeURIComponent(readFileSync(join(project, "project.ogt"), "utf8"))}` });
     await tab.until("globalThis.__og_shell__ || globalThis.__og_shell_error__", 90_000);
     const failed = await tab.eval<string | undefined>("globalThis.__og_shell_error__");
     if (failed) throw new Error(`the engine did not start: ${failed}`);

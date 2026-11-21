@@ -30,7 +30,7 @@ pub fn render_options(id: u32) -> Value {
 /// `base` with the game's RenderOptions applied (GameDesc.render):
 /// antialias, shadowMapSize, pointShadows, taaHistory, taaSharpen,
 /// planarReflections, transparency, transparencyLayers and without; antialias left
-/// out (or tier) is 4x MSAA in a 2D project (options.profile). Both hosts
+/// out (or tier) is 4x MSAA in a 2D project (`create { form "2d" }`). Both hosts
 /// create their renderer from it, so the options mean the same on each.
 pub fn render_desc(id: u32, base: og_render::RenderDesc) -> og_render::RenderDesc {
     use crate::host::wire::{

@@ -9,11 +9,6 @@
       "codemod": { "kind": "profile-form" }
     },
     {
-      "member": "CreateOptions.profile",
-      "change": "With `project`, the engine takes the profile from project.ogt's creation form; `profile` is for an engine without a project, and one that disagrees with the project's form refuses the engine. The web shell's `profile` option is the same, and the play page's config no longer carries `profile`: the page passes project.ogt's text, which carries the form.",
-      "fix": "Leave `profile` out of createEngine and shell options when you pass `project`; pass `profile: \"2d\"` only to an engine with no project."
-    },
-    {
       "member": "resolveCreationChoices",
       "change": "`resolveCreationChoices(premise, input?, catalogue?)` takes no `profile` argument: the form chooses the profile the look is picked for (`profileOf(form)`, exported by the art brief and @origingame/create-game).",
       "fix": "Drop the third argument; pass `{ form: \"2d\" }` in `input` for a 2D look. A call that passed a catalogue fourth passes it third.",

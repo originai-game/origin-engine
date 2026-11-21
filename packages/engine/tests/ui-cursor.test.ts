@@ -27,11 +27,11 @@ version 1
 name "UI cursor"
 id "ui-cursor"
 entry "src/main.ts"
+tick 60
+seed 1
 create {
   form "2d"
 }
-tick 60
-seed 1
 `;
 
 const MAIN = `import { defineSystem, og } from "@origingame/engine";

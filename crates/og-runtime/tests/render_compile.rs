@@ -111,7 +111,7 @@ fn compile_makes_every_pipeline_before_play_and_counts_them() {
     set_hooks(Rc::new(NoAssets));
     og_host_begin_bundle();
     let game = og_game_game(Some(r#"{"seed":1}"#.into()));
-    let engine = value(og_engine_create(game, r#"{"profile":"3d"}"#.into()))
+    let engine = value(og_engine_create(game, r#"{}"#.into()))
         .as_u64()
         .unwrap() as u32;
     let desc = render_desc(

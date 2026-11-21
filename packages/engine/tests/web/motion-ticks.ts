@@ -26,7 +26,7 @@
 // (bun ../../scripts/assets.ts ensure .). Writes dist/test-motion-ticks/motion-ticks.json;
 // exits 1 on a mismatch.
 
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { dirname } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -98,7 +98,7 @@ async function start(delay: number, log: string[]) {
   const tab = await browser.open("about:blank", log);
   await tab.send("Emulation.setDeviceMetricsOverride", { width: WIDTH, height: HEIGHT, deviceScaleFactor: 1, mobile: false });
   const worker = delay > 0 ? `&worker=${delayedWorker(delay)}` : "";
-  await tab.send("Page.navigate", { url: `http://127.0.0.1:${server.port}/motion.html?profile=${settingsOf(project).profile}${worker}` });
+  await tab.send("Page.navigate", { url: `http://127.0.0.1:${server.port}/motion.html?project=${encodeURIComponent(readFileSync(join(project, "project.ogt"), "utf8"))}${worker}` });
   await tab.until("globalThis.__og_shell__ || globalThis.__og_shell_error__", 90_000);
   const failed = await tab.eval<string | undefined>("globalThis.__og_shell_error__");
   if (failed) throw new Error(`the engine did not start: ${failed}\n${(await tab.eval<string[]>("globalThis.__og_log__ ?? []")).slice(-20).join("\n")}`);

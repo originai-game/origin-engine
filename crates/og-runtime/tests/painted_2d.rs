@@ -104,12 +104,11 @@ fn project(name: &str, profile: &str, art: &str) -> (PathBuf, String, og_cook::R
 }
 
 /// The paint the renderer is handed for the project's first frame.
-fn frame_paint(root: &Path, text: &str, profile: &str) -> Option<og_render::Paint> {
+fn frame_paint(root: &Path, text: &str) -> Option<og_render::Paint> {
     set_hooks(Rc::new(Disk));
     og_host_begin_bundle();
     let game = og_game_game(Some(json!({ "seed": 1 }).to_string()));
-    let options =
-        json!({ "root": root.to_str().unwrap(), "project": text, "profile": profile }).to_string();
+    let options = json!({ "root": root.to_str().unwrap(), "project": text }).to_string();
     let a: Value = serde_json::from_str(&og_engine_create(game, options)).unwrap();
     assert_eq!(a["ok"], json!(true), "{a}");
     let engine = a["value"].as_u64().unwrap() as u32;
@@ -137,7 +136,7 @@ fn a_painted_2d_sprite_is_painted_by_the_cook_alone() {
     let art = "ArtPalette {\n  maxColors 8\n}\n";
     let (root, text, report) = project("2d", "create {\n  form \"2d\"\n}\n", art);
     assert!(painted(&report).is_some(), "{:?}", report.conform);
-    let paint = frame_paint(&root, &text, "2d");
+    let paint = frame_paint(&root, &text);
     assert_eq!(paint, None, "the frame paints the painted sprites again");
 }
 
@@ -147,6 +146,6 @@ fn without_the_contracts_switch_a_2d_frame_paints_on_screen() {
     // sprite as drawn, so the frame is the one place it is painted.
     let (root, text, report) = project("2d-frame", "create {\n  form \"2d\"\n}\n", "");
     assert_eq!(painted(&report), None, "{:?}", report.conform);
-    let paint = frame_paint(&root, &text, "2d").expect("the frame's paint");
+    let paint = frame_paint(&root, &text).expect("the frame's paint");
     assert!(paint.paints() && paint.watercolor.active(), "{paint:?}");
 }

@@ -21,7 +21,8 @@ try {
     basis: { js: at("basis/basis_transcoder.js"), wasm: at("basis/basis_transcoder.wasm") },
     autoplay: false,
     prime: false,
-    profile: params.get("profile") === "2d" ? "2d" : "3d",
+    // ?project=: project.ogt's text, as the export's config passes it.
+    ...(params.has("project") ? { project: params.get("project")! } : {}),
     dprCap: 1,
     onLog: (l) => lines.push(...l),
     onCrash: (m) => lines.push(`crash: ${m}`),

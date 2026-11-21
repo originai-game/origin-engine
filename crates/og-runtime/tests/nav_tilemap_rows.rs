@@ -66,7 +66,7 @@ fn world(name: &str) -> (u32, f64, f64) {
     let game = og_game_game(Some(json!({ "seed": 3 }).to_string()));
     let engine = value(og_engine_create(
         game,
-        json!({ "root": root, "profile": "2d" }).to_string(),
+        json!({ "root": root, "project": "type project\nversion 1\n---\ncreate {\n  form \"2d\"\n}\n" }).to_string(),
     ))
     .as_u64()
     .unwrap() as u32;
@@ -183,7 +183,8 @@ fn a_grid_made_with_og_nav_grid_keeps_its_rows_running_up() {
     let game = og_game_game(Some("{}".into()));
     let engine = value(og_engine_create(
         game,
-        json!({ "profile": "2d" }).to_string(),
+        json!({ "project": "type project\nversion 1\n---\ncreate {\n  form \"2d\"\n}\n" })
+            .to_string(),
     ))
     .as_u64()
     .unwrap() as u32;

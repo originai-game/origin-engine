@@ -23,7 +23,6 @@ try {
     basis: { js: at("basis/basis_transcoder.js"), wasm: at("basis/basis_transcoder.wasm") },
     autoplay: false,
     prime: false,
-    profile: "3d",
     dprCap: 1,
     onLog: (l) => lines.push(...l),
     onCrash: (m) => lines.push(`crash: ${m}`),

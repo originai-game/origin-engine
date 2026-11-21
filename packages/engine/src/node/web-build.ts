@@ -745,7 +745,7 @@ async function probeOfUncached(glue: string, wasm: string, profile: "2d" | "3d")
     const { readFileSync } = await import("node:fs");
     const { fileModuleHost } = await import(${JSON.stringify(pathToFileURL(join(here, "modules.ts")).href)});
     await loadWebHost(glue, readFileSync(${JSON.stringify(wasm)}), undefined, fileModuleHost(${JSON.stringify(dirname(wasm))}));
-    const e = createEngine(og.game({}), { profile: ${JSON.stringify(profile)} });
+    const e = createEngine(og.game({}), ${profile === "2d" ? `{ project: ${JSON.stringify('type project\nversion 1\n---\ncreate {\n  form "2d"\n}\n')} }` : "{}"});
     if (!e.ok) throw new Error(e.reason);
     const hello = JSON.parse(e.value.call(JSON.stringify({ jsonrpc: "2.0", id: 1, method: "hello", params: {} }))).result;
     console.log(JSON.stringify({ build: hello.build, members: hello.members }));

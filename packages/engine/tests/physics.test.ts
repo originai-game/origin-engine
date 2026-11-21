@@ -64,6 +64,9 @@ function world3d(world: World): void {
   world.insert(crate, og.Collider, { shape: "box", size: { x: 0.8, y: 0.8, z: 0.8 } });
 }
 
+/** A project of the creation form `form` (a 2D one is a 2D engine). */
+const formed = (form: "2d" | "3d"): CreateOptions => ({ project: `type project\nversion 1\n---\ncreate {\n  form "${form}"\n}\n` });
+
 /** A 2D world with a platformer, a fluid and a water line. */
 function world2d(world: World): void {
   box(world, "ground", { x: 0, y: -0.5, z: 0 }, { x: 40, y: 1, z: 1 });
@@ -167,7 +170,7 @@ test("every physics component is adopted and steps in 3D", () => {
 });
 
 test("a platformer jumps on a held button and its fluid and water line are read back (2D)", () => {
-  const engine = start(og.game({ resources: [Jumps], systems: [Jumper], start: world2d }), { profile: "2d" });
+  const engine = start(og.game({ resources: [Jumps], systems: [Jumper], start: world2d }), formed("2d"));
   expect(engine.advance(90).ok).toBeTrue();
   const w = engine.world;
   expect(must(w.resource(Jumps)).jumped).toBe(1);
@@ -182,7 +185,7 @@ test("a platformer jumps on a held button and its fluid and water line are read 
 
 test("a world with every feature hashes the same twice and after a restore", () => {
   const run = (profile: "2d" | "3d") => {
-    const engine = start(og.game({ resources: [Jumps], systems: [Jumper], start: profile === "2d" ? world2d : world3d }), { profile });
+    const engine = start(og.game({ resources: [Jumps], systems: [Jumper], start: profile === "2d" ? world2d : world3d }), formed(profile));
     expect(engine.advance(150).ok).toBeTrue();
     const snap = engine.probe.snapshot() as { id: string; hash: string };
     const at = engine.hash();

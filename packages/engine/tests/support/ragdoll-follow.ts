@@ -45,7 +45,7 @@ const Limp = defineSystem("RdLimp", { writes: [og.Ragdoll] }, (_q, time, world) 
 });
 
 const game = og.game({ tick: 60, seed: 1, systems: [Limp], start }) as unknown as GameToken;
-const created = createEngine(game, { root: project, profile: "3d" });
+const created = createEngine(game, { root: project });
 if (!created.ok) throw new Error(created.reason);
 const engine = created.value;
 const pose = () => {

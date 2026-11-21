@@ -385,8 +385,8 @@ view tables. Both hosts depend on it; `og-cli` does not.
   `og.physics.castRay` answers inside systems), `og.ui.begin`, the game's
   systems, `og.ui.end`, `og.physics`, `og.audio`; the `og.ui` state block
   carries the UI's interaction state. The physics profile is project.ogt's
-  creation form's (`create { form "2d" }` is 2D; options.project), or
-  `profile: "2d" | "3d"` for an engine without a project. The options may defer
+  creation form's (`create { form "2d" }` is 2D; options.project); an
+  engine without a project is 3D. The options may defer
   `GameDesc.start` to the first tick boundary (`deferStart`: the web Worker
   attaches its canvas first); the web host reports the CSS viewport
   (`og_web_set_viewport`), native hosts use the render target. The UI, the

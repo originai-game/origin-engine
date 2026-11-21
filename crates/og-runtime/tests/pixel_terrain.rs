@@ -50,7 +50,8 @@ fn world() -> (u32, f64) {
     let game = og_game_game(Some(json!({ "seed": 7 }).to_string()));
     let e = value(og_engine_create(
         game,
-        json!({ "profile": "2d" }).to_string(),
+        json!({ "project": "type project\nversion 1\n---\ncreate {\n  form \"2d\"\n}\n" })
+            .to_string(),
     ))
     .as_u64()
     .unwrap() as u32;
@@ -308,7 +309,8 @@ fn a_system_carves_and_blows_up_the_terrain_in_its_tick() {
         let game = og_game_game(Some(json!({ "seed": 7, "systems": [system] }).to_string()));
         let e = value(og_engine_create(
             game,
-            json!({ "profile": "2d" }).to_string(),
+            json!({ "project": "type project\nversion 1\n---\ncreate {\n  form \"2d\"\n}\n" })
+                .to_string(),
         ))
         .as_u64()
         .unwrap() as u32;

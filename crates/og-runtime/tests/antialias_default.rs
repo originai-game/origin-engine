@@ -16,7 +16,7 @@ fn resolved(profile: &str, render: Value) -> Antialias {
     let game = og_game_game(Some(json!({ "seed": 1, "render": render }).to_string()));
     let v: Value = serde_json::from_str(&og_engine_create(
         game,
-        json!({ "profile": profile }).to_string(),
+        json!({ "project": format!("type project\nversion 1\n---\ncreate {{\n  form \"{profile}\"\n}}\n") }).to_string(),
     ))
     .unwrap();
     let e = v["value"].as_u64().unwrap_or_else(|| panic!("{v}")) as u32;

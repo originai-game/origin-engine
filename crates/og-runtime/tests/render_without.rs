@@ -22,11 +22,7 @@ use serde_json::{Value, json};
 fn engine(render: Value) -> u32 {
     og_host_begin_bundle();
     let game = og_game_game(Some(json!({ "seed": 1, "render": render }).to_string()));
-    let v: Value = serde_json::from_str(&og_engine_create(
-        game,
-        json!({ "profile": "3d" }).to_string(),
-    ))
-    .unwrap();
+    let v: Value = serde_json::from_str(&og_engine_create(game, json!({}).to_string())).unwrap();
     v["value"].as_u64().unwrap_or_else(|| panic!("{v}")) as u32
 }
 

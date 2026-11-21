@@ -54,7 +54,7 @@ impl Hooks for Watch {
 fn engine(game: u32, profile: &str) -> (u32, f64, f64) {
     let e = value(og_engine_create(
         game,
-        json!({ "profile": profile }).to_string(),
+        json!({ "project": format!("type project\nversion 1\n---\ncreate {{\n  form \"{profile}\"\n}}\n") }).to_string(),
     ))
     .as_u64()
     .unwrap() as u32;

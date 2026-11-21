@@ -135,8 +135,6 @@ export interface CreateOptions {
   readonly content?: string;
   /** The host names the content base after the engine starts (og_engine_set_content: a page waiting for its Player's hello); og.load.data loads wait for it. */
   readonly contentLater?: boolean;
-  /** The profile of an engine without `project`: `3d` (the default) or `2d`. A project's is its creation form's (`create { form "2d" }` is 2D), which this may only repeat. */
-  readonly profile?: "2d" | "3d";
   /**
    * project.ogt's text (`og run`, `og test`, `og dev` and `og build` pass
    * it): its `tick`, `seed`, `scenes` and `scene` fill the

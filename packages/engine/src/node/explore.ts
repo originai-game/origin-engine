@@ -103,8 +103,7 @@ async function boot(): Promise<{ engine: Engine; game: GameToken }> {
   const mod = (await import(pathToFileURL(resolve(entry)).href)) as { default?: GameToken };
   if (!mod.default) fail(`${entry} has no default export: export default og.game({ ... })`);
   const project = root && existsSync(join(root, "project.ogt")) ? readFileSync(join(root, "project.ogt"), "utf8") : undefined;
-  const profile = project === undefined ? undefined : (/^\s*profile\s+"(2d|3d)"/m.exec(project)?.[1] as "2d" | "3d" | undefined);
-  const created = createEngine(mod.default!, { ...(root ? { root } : {}), ...(project === undefined ? {} : { project }), ...(profile ? { profile } : {}) });
+  const created = createEngine(mod.default!, { ...(root ? { root } : {}), ...(project === undefined ? {} : { project }) });
   if (!created.ok) fail(`${entry}: ${created.reason}`);
   const engine = created.value;
   // As og run and runPlaytest: the playtest clock, a local platform in memory.

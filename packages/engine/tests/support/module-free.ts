@@ -48,7 +48,7 @@ const game = og.game({
     });
   },
 }) as unknown as GameToken;
-const engine = must(createEngine(game, { profile }));
+const engine = must(createEngine(game, profile === "2d" ? { project: 'type project\nversion 1\n---\ncreate {\n  form "2d"\n}\n' } : {}));
 must(engine.advance(30));
 for (let i = 0; i < 30; i++) engine.frame(1000 / 60);
 const snapshot = must(engine.world.snapshot());

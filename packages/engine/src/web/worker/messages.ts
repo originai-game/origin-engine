@@ -57,8 +57,6 @@ export interface Start {
    * from a `blob:` copy of its source.
    */
   decoders?: { audio?: string; av1?: string };
-  /** CreateOptions.profile: the profile of an engine without `project`. */
-  profile?: "2d" | "3d";
   /** project.ogt's text (CreateOptions.project). */
   project?: string;
   /** The locale og.i18n is asked for (the page's `navigator.language`). */

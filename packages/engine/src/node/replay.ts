@@ -201,7 +201,6 @@ const mod = (await import(pathToFileURL(resolve(entry)).href)) as { default?: Ga
 if (!mod.default) fail(`${entry} has no default export: export default og.game({ ... })`);
 
 const projectText = root && existsSync(join(root, "project.ogt")) ? readFileSync(join(root, "project.ogt"), "utf8") : undefined;
-const profile = projectText === undefined ? undefined : (/^\s*profile\s+"(2d|3d)"/m.exec(projectText)?.[1] as "2d" | "3d" | undefined);
 const projectId = projectText === undefined ? null : (/^\s*id\s+"([^"]*)"/m.exec(projectText)?.[1] ?? null);
 
 const created = createEngine(mod.default!, {
@@ -209,7 +208,6 @@ const created = createEngine(mod.default!, {
   ...(root ? { root } : {}),
   ...(content ? { content } : {}),
   ...(projectText === undefined ? {} : { project: projectText }),
-  ...(profile ? { profile } : {}),
   ...(locale ? { locale } : {}),
 });
 if (!created.ok) fail(`${entry}: ${created.reason}`);
