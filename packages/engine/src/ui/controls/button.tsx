@@ -1,4 +1,4 @@
-import { View, type UiEvent } from "@origingame/engine/ui";
+import { Text, View, type UiEvent } from "@origingame/engine/ui";
 
 export interface ButtonProps {
   /** The look: a plain button, the primary action, a destructive one, a ghost (rim only) or quiet (no ground). */
@@ -56,11 +56,11 @@ export function Button(props: ButtonProps) {
 }
 
 export const fixtures: Record<string, Partial<ButtonProps>> = {
-  default: { children: "Continue" },
-  primary: { variant: "primary", children: "Start" },
-  danger: { variant: "danger", children: "Delete save" },
-  ghost: { variant: "ghost", children: "Cancel" },
-  quiet: { variant: "quiet", small: true, children: "Skip" },
-  pressed: { pressed: true, children: "Auto" },
-  disabled: { disabled: true, children: "Locked" },
+  default: { children: () => <Text>Continue</Text> },
+  primary: { variant: "primary", children: () => <Text>Start</Text> },
+  danger: { variant: "danger", children: () => <Text>Delete save</Text> },
+  ghost: { variant: "ghost", children: () => <Text>Cancel</Text> },
+  quiet: { variant: "quiet", small: true, children: () => <Text>Skip</Text> },
+  pressed: { pressed: true, children: () => <Text>Auto</Text> },
+  disabled: { disabled: true, children: () => <Text>Locked</Text> },
 };

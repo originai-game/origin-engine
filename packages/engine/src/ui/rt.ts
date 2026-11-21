@@ -81,6 +81,8 @@ export class Renderer {
   /** Each node's children as the renderer put them, to free their ids with it. */
   private readonly kids = new Map<number, Set<number>>();
   private readonly parents = new Map<number, number>();
+  /** Each node's host tag (`#text` for a text run), so a text run outside a <Text> is refused. */
+  private readonly tags = new Map<number, string>();
   /** Nodes taken out of their parent this batch: released at the flush unless put back. */
   private readonly orphans = new Set<number>();
   private flushing = false;
@@ -124,11 +126,13 @@ export class Renderer {
     const code = TAGS[tag];
     if (code === undefined) throw new Error(`og.ui: no host element <${tag}>`);
     const node = this.alloc();
+    this.tags.set(node.id, tag);
     this.op(1); this.u32(node.id); this.u8(code);
     return node;
   }
   text(value: string): UiNode {
     const node = this.alloc();
+    this.tags.set(node.id, "#text");
     this.op(2); this.u32(node.id); this.str(value);
     return node;
   }
@@ -150,6 +154,11 @@ export class Renderer {
     if (had !== Boolean(handler)) { this.op(7); this.u32(node.id); this.u8(code); this.u8(handler ? 1 : 0); }
   }
   insert(parent: number, child: UiNode, before: UiNode | null): void {
+    // Text draws only in a <Text>: a bare string child of a View, an Image… is an error, never wrapped.
+    const into = this.tags.get(parent);
+    if (into !== undefined && into !== "text" && this.tags.get(child.id) === "#text") {
+      throw new Error(`og.ui: the text "${child.text ?? ""}" is a bare child of <${into}>: put it in a <Text>`);
+    }
     this.op(8); this.u32(parent); this.u32(child.id); this.u32(before ? before.id : APPEND);
     const old = this.parents.get(child.id);
     if (old !== undefined) this.kids.get(old)?.delete(child.id);
@@ -169,6 +178,7 @@ export class Renderer {
     for (const kid of this.kids.get(id) ?? []) this.forget(kid);
     this.kids.delete(id);
     this.parents.delete(id);
+    this.tags.delete(id);
     this.handlers.delete(id);
     this.owners.delete(id);
     this.free.push(id);
@@ -290,8 +300,13 @@ export function bindProp(node: UiNode, name: string, read: () => unknown): void 
   createRenderEffect(() => prop(node, name, read()));
 }
 
-/** Sets every prop of `props`, followed; a prop that goes is unset. */
-export function spread(node: UiNode, props: Record<string, unknown>): void {
+/**
+ * Sets every prop of `props`, followed; a prop that goes is unset. Its
+ * `children` go in `node` unless the element has children of its own
+ * (`skipChildren`, which the compile passes).
+ */
+export function spread(node: UiNode, props: Record<string, unknown>, skipChildren = false): void {
+  if (!skipChildren) insert(node, () => props.children);
   let keys: string[] = [];
   createRenderEffect(() => {
     const next = Object.keys(props).filter((k) => k !== "children");

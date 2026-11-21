@@ -801,7 +801,8 @@ impl<'a> Compiler<'a, '_> {
                     let mut e = s.unbox().argument;
                     self.visit_expression(&mut e);
                     let spread = self.use_helper("spread");
-                    body.push_str(&format!("{spread}({v}, {});", g.hole(e)));
+                    // The element's own children win over a spread's `children`.
+                    body.push_str(&format!("{spread}({v}, {}, {has_children});", g.hole(e)));
                 }
             }
         }
@@ -1637,6 +1638,18 @@ mod tests {
             .unwrap(),
         );
         assert!(code.contains("get children() { return s(); }"), "{code}");
+    }
+
+    #[test]
+    fn host_spreads_say_whether_the_element_has_children() {
+        let code = flat(&compile(
+            r#"import { View, Text } from "@origingame/engine/ui";
+            declare const p: object;
+            export const a = <View {...p} />; export const b = <View {...p}><Text>x</Text></View>;"#,
+        )
+        .unwrap());
+        assert!(code.contains("_$spread(__nsh_hv0, p, false);"), "{code}");
+        assert!(code.contains("_$spread(__nsh_hv1, p, true);"), "{code}");
     }
 
     #[test]

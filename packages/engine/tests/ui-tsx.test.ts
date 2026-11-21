@@ -134,6 +134,43 @@ test("a TSX component's ops, its updates and its events", async () => {
   }
 });
 
+test("a spread's children go in its element, and bare text in a View is refused", async () => {
+  const source = `import { View, Text } from "@origingame/engine/ui";
+export function Plate(props: { children?: unknown; class?: string }) { return <View {...props} role="button" />; }
+export function Own(props: { children?: unknown }) { return <View {...props}><Text>own</Text></View>; }
+export function Labelled() { return <Plate class="p-2"><Text>Go</Text></Plate>; }
+export function Shadowed() { return <Own><Text>lost</Text></Own>; }
+export function Bare(props: { label: string }) { return <View>{props.label}</View>; }`;
+  const compiled = compileJsx("Plate.tsx", source);
+  if (!compiled.ok) throw new Error(compiled.reason);
+  const dir = mkdtempSync(join(tmpdir(), "og-tsx-spread-"));
+  try {
+    const rt = fileURLToPath(new URL("../src/ui/rt.ts", import.meta.url));
+    const ui = fileURLToPath(new URL("../src/ui/index.ts", import.meta.url));
+    writeFileSync(join(dir, "Plate.js"), compiled.code.replace('"@origingame/engine/ui/rt"', JSON.stringify(rt)).replace('"@origingame/engine/ui"', JSON.stringify(ui)));
+    const { Labelled, Shadowed, Bare } = await import(join(dir, "Plate.js"));
+    const world = { id: 9002 } as unknown as World;
+    const texts = (C: unknown, props: object = {}) => {
+      const batches: Op[][] = [];
+      renderers.set(9002, new Renderer((bytes) => { batches.push(decode(bytes)); return reply([]); }, world));
+      try {
+        mount(world, C as never, props, { layer: "hud" });
+        return batches.flat().filter((op) => op[0] === "createText").map((op) => op[2]);
+      } finally {
+        renderers.delete(9002);
+      }
+    };
+    // A wrapper spreading its props into a View still draws what it was given.
+    expect(texts(Labelled)).toEqual(["Go"]);
+    // The element's own children win over the spread's.
+    expect(texts(Shadowed)).toEqual(["own"]);
+    // Dynamic text has no <Text>: an error naming the text, never a wrap.
+    expect(() => texts(Bare, { label: "Continue" })).toThrow('og.ui: the text "Continue" is a bare child of <view>: put it in a <Text>');
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 test("a native bundle compiles the engine's TSX components with the game's", async () => {
   const dir = mkdtempSync(join(tmpdir(), "og-tsx-native-"));
   try {

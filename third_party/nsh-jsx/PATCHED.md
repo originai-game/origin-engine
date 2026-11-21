@@ -29,3 +29,7 @@ directory has them unchanged; the changes after it are only these:
   `Text` (`<View> <Text>x</Text></View>`) is no text node and no error, and
   `trimmed_span` gives such whitespace an empty span (NSH's subtracted past
   its start, which aborts in oxc_span).
+- `jsx.rs`: a host element's spread passes whether the element has children
+  of its own (`spread(node, props, hasChildren)`), so the renderer puts a
+  spread's `children` in the element only when it has none (Solid's
+  `skipChildren`).
