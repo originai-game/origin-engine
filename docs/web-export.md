@@ -298,11 +298,11 @@ game's physics profile (project.ogt `profile`), single-threaded and lanes:
 
 | Variant | Where | Built with (og-host-web) | Physics |
 |---|---|---|---|
-| 3D publish | `dist/web-publish/origin-engine*` | `--no-default-features --features publish,physics3d,shaping,story,video,film,destruction,motion,nav,ai` | rapier3d |
-| 3D lanes | `dist/web-publish/origin-engine-lanes*`, `snippets/` | `--no-default-features --features publish,physics3d,shaping,story,video,film,destruction,motion,nav,ai`, wasm atomics (§Lanes) | rapier3d (`parallel`) |
-| 2D publish | `dist/web-publish-2d/origin-engine*` | `--no-default-features --features publish,physics2d,profile2d,shaping,story,video,film,destruction,motion,nav,ai` | rapier2d |
-| 2D lanes | `dist/web-publish-2d/origin-engine-lanes*`, `snippets/` | `--no-default-features --features publish,physics2d,profile2d,shaping,story,video,film,destruction,motion,nav,ai`, wasm atomics | rapier2d (`parallel`) |
-| 3D or 2D, with remote frames | `dist/web-publish-frames/`, `dist/web-publish-2d-frames/` (each with its lanes module) | `--no-default-features --features publish,physics3d,shaping,story,video,film,destruction,motion,nav,ai,frames` and `--no-default-features --features publish,physics2d,profile2d,shaping,story,video,film,destruction,motion,nav,ai,frames` | each twin's |
+| 3D publish | `dist/web-publish/origin-engine*` | `--no-default-features --features publish,physics3d,shaping` | rapier3d |
+| 3D lanes | `dist/web-publish/origin-engine-lanes*`, `snippets/` | `--no-default-features --features publish,physics3d,shaping`, wasm atomics (§Lanes) | rapier3d (`parallel`) |
+| 2D publish | `dist/web-publish-2d/origin-engine*` | `--no-default-features --features publish,physics2d,profile2d,shaping` | rapier2d |
+| 2D lanes | `dist/web-publish-2d/origin-engine-lanes*`, `snippets/` | `--no-default-features --features publish,physics2d,profile2d,shaping`, wasm atomics | rapier2d (`parallel`) |
+| 3D or 2D, with remote frames | `dist/web-publish-frames/`, `dist/web-publish-2d-frames/` (each with its lanes module) | `--no-default-features --features publish,physics3d,shaping,frames` and `--no-default-features --features publish,physics2d,profile2d,shaping,frames` | each twin's |
 | dev | `dist/web/origin-engine*` | default features (both profiles) | both, not shipped |
 
 The feature sets are scripts/wasm-crates.txt's, the gate's own build list

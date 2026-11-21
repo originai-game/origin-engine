@@ -12,30 +12,21 @@
 //! at the start of the next tick, as a scripted command would.
 
 use crate::engine::Mount;
-#[cfg(feature = "nav")]
 use og_ai::nav::{NavSystem, Plane, SharedNavs};
-#[cfg(feature = "ai")]
 use og_ai::{AiSystem, Behaviours};
 use og_ecs::{Entity, World};
 use og_physics::{PhysicsSystem, QueryFilter, RaycastDesc};
 use std::cell::RefCell;
 use std::sync::Arc;
-#[cfg(feature = "ai")]
 use std::sync::Mutex;
 
 #[derive(Default)]
 pub(crate) struct Modules {
-    #[cfg(feature = "nav")]
     pub navs: SharedNavs,
-    #[cfg(feature = "ai")]
     pub behaviours: Arc<Mutex<Behaviours>>,
-    #[cfg(feature = "nav")]
     pub nav: Option<NavSystem>,
-    #[cfg(feature = "ai")]
     pub ai: Option<AiSystem>,
-    #[cfg(feature = "nav")]
     pending_nav: Option<NavSystem>,
-    #[cfg(feature = "ai")]
     pending_ai: Option<AiSystem>,
     pub inbox: Option<og_probe::Inbox>,
     pub profile: u32,
@@ -50,7 +41,6 @@ pub(crate) fn with<T>(engine: u32, f: impl FnOnce(&mut Modules) -> T) -> Option<
     Some(f(&mut eng.modules.agents.borrow_mut()))
 }
 
-#[cfg(feature = "nav")]
 pub(crate) fn plane_of(profile: u32) -> Plane {
     if profile == og_physics::PROFILE_2D {
         Plane::Xy
@@ -126,7 +116,6 @@ pub(crate) fn mount_ai(
 
 /// What og.ai hears of og.audio: the spatial sources that started this
 /// tick, each as loud as its volume. The one place AI and audio meet.
-#[cfg(feature = "ai")]
 pub(crate) fn hearing() -> og_ai::Hearing {
     use og_audio::{AudioSource, schema::SoundStarted};
     use og_core::Reflect;
@@ -151,7 +140,6 @@ pub(crate) fn hearing() -> og_ai::Hearing {
 }
 
 /// og.ai over og-ai.
-#[cfg(feature = "ai")]
 fn ai_system(
     world: &mut World,
     mount: Mount<'_>,
@@ -186,34 +174,7 @@ fn ai_system(
     Ok(())
 }
 
-/// og.ai idle (src/bind/agents_idle.rs): the system and block of a world that never
-/// thinks.
-#[cfg(not(feature = "ai"))]
-fn ai_system(
-    world: &mut World,
-    _mount: Mount<'_>,
-    _profile: u32,
-    _physics: &PhysicsSystem,
-    records: &[String],
-) -> Result<(), String> {
-    crate::bind::agents_idle::mount_ai(world, records, crate::bind::ai::ABSENT)
-        .map_err(|e| e.reason().to_string())
-}
-
-/// og.nav idle (src/bind/agents_idle.rs), before physics.
-#[cfg(not(feature = "nav"))]
-pub(crate) fn mount_nav(
-    world: &mut World,
-    _mount: Mount<'_>,
-    _profile: u32,
-    _physics: &PhysicsSystem,
-) -> Result<(), String> {
-    crate::bind::agents_idle::mount_nav(world, crate::bind::nav::ABSENT)
-        .map_err(|e| e.reason().to_string())
-}
-
 /// og.nav, before physics.
-#[cfg(feature = "nav")]
 pub(crate) fn mount_nav(
     world: &mut World,
     mount: Mount<'_>,
@@ -242,53 +203,29 @@ pub(crate) fn mount_nav(
 /// The world assembled last is the one that runs: its systems become the
 /// engine's, and its probe's inbox takes og.ai's commands.
 pub(crate) fn commit(eng: &crate::engine::Engine, inbox: og_probe::Inbox) {
-    {
-        let m = &mut *eng.modules.agents.borrow_mut();
-        #[cfg(feature = "nav")]
-        {
-            m.nav = m.pending_nav.take().or(m.nav.take());
-        }
-        #[cfg(feature = "ai")]
-        {
-            m.ai = m.pending_ai.take().or(m.ai.take());
-        }
-        m.inbox = Some(inbox);
-    }
+    let m = &mut *eng.modules.agents.borrow_mut();
+    m.nav = m.pending_nav.take().or(m.nav.take());
+    m.ai = m.pending_ai.take().or(m.ai.take());
+    m.inbox = Some(inbox);
 }
 
 /// After a reload: the rebuilt world's systems when it was swapped in.
 pub(crate) fn after_reload(engine: u32, swapped: bool) {
-    with(engine, |_m| {
-        #[cfg(feature = "nav")]
-        {
-            let nav = _m.pending_nav.take();
-            if swapped {
-                _m.nav = nav.or(_m.nav.take());
-            }
+    with(engine, |m| {
+        let (nav, ai) = (m.pending_nav.take(), m.pending_ai.take());
+        if swapped {
+            m.nav = nav.or(m.nav.take());
+            m.ai = ai.or(m.ai.take());
         }
-        #[cfg(feature = "ai")]
-        {
-            let ai = _m.pending_ai.take();
-            if swapped {
-                _m.ai = ai.or(_m.ai.take());
-            }
-        }
-        let _ = swapped;
     });
 }
 
 /// og.ai's warnings since the last call (each once per engine).
 pub(crate) fn take_warnings(engine: u32) -> Vec<String> {
-    #[cfg(feature = "ai")]
-    return with(engine, |m| {
+    with(engine, |m| {
         m.ai.as_ref().map(|a| a.take_warnings()).unwrap_or_default()
     })
-    .unwrap_or_default();
-    #[cfg(not(feature = "ai"))]
-    {
-        let _ = engine;
-        Vec::new()
-    }
+    .unwrap_or_default()
 }
 
 /// The dump actions (`dump_ai:<entity>[:path]`, `dump_nav:<entity>[:path]`),

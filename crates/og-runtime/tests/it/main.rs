@@ -32,7 +32,6 @@ mod contact_hit;
 mod cookie_cap;
 #[path = "../crowd.rs"]
 mod crowd;
-#[cfg(feature = "destruction")]
 #[path = "../destruction.rs"]
 mod destruction;
 #[path = "../display.rs"]
@@ -84,7 +83,6 @@ mod model_reload;
 mod motion_goals;
 #[path = "../motion_performance.rs"]
 mod motion_performance;
-#[cfg(feature = "nav")]
 #[path = "../nav_profiles.rs"]
 mod nav_profiles;
 #[path = "../nav_tilemap_rows.rs"]
@@ -96,7 +94,6 @@ mod no_renderer;
 mod observability;
 #[path = "../painted_2d.rs"]
 mod painted_2d;
-#[cfg(feature = "destruction")]
 #[path = "../path_follower.rs"]
 mod path_follower;
 #[path = "../pixel_terrain.rs"]
@@ -209,6 +206,5 @@ mod world_origin;
 mod world_ui;
 #[path = "../world_wind.rs"]
 mod world_wind;
-#[cfg(feature = "story")]
 #[path = "../yarn.rs"]
 mod yarn;

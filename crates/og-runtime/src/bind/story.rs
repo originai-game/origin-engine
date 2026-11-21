@@ -329,7 +329,6 @@ fn log(eng: &crate::engine::Engine, warnings: Vec<String>) {
 }
 
 /// Dialogue `name`'s graph (og.film), if it is loaded.
-#[cfg(feature = "film")]
 pub(crate) fn graph_of(engine_id: u32, name: &str) -> Option<Vec<og_story::graph::GraphNode>> {
     with(engine_id, |rt| {
         rt.lib.dialogues.get(name).map(|d| d.graph())
@@ -337,7 +336,6 @@ pub(crate) fn graph_of(engine_id: u32, name: &str) -> Option<Vec<og_story::graph
 }
 
 /// A loaded dialogue's start node (og.film's chart).
-#[cfg(feature = "film")]
 pub(crate) fn start_of(engine_id: u32, name: &str) -> Option<String> {
     with(engine_id, |rt| {
         rt.lib.dialogues.get(name).map(|d| d.start.clone())
@@ -345,7 +343,6 @@ pub(crate) fn start_of(engine_id: u32, name: &str) -> Option<String> {
 }
 
 /// The dialogue conversation `conv` plays (og.film), while it exists.
-#[cfg(feature = "film")]
 pub(crate) fn dialogue_of(engine_id: u32, conv: u32) -> Option<String> {
     with(engine_id, |rt| {
         rt.story

@@ -91,17 +91,22 @@ beyond the platform SDK's rooms.
   other is wired in `og-runtime`, one binding file per domain and no
   domain algorithm. `crates/og-core/tests/layers.rs` holds the table and
   the edges that still break it.
-- **A runtime module is optional.** `og-runtime` is the core (declarations,
-  engines, the tick, assets, saves, the probe) plus modules, one per IDL
-  module that binds a feature crate (navigation, AI, story, destruction,
-  video, the motion model, terrain, the physics profiles). Each module is a
-  Cargo feature of `og-runtime` passed through by both hosts, on by default.
-  A build without one keeps its binding symbols, its records and its state
-  blocks, so a world is the same bytes and the API is the same surface; its
-  calls answer a refusal naming the module (`bind/absent/terrain.rs` is the
-  pattern). The core never names a module's crate outside that module's
-  files and its mount point. This is what a separately loaded artifact, a
-  mini-game subpackage and a native package cut along.
+- **A runtime module is loaded when it is used.** `og-runtime` is the core
+  (declarations, engines, the tick, assets, saves, the probe) plus modules,
+  one per IDL module that binds a feature crate (physics, story with
+  og.film, navigation with og.ai, the motion model, destruction, video).
+  Every engine carries every module: natively they are linked, and the
+  web's publish modules split each into its own wasm part that the engine
+  loads on a game's first call into it, so a game that uses none loads
+  none (`packages/engine/scripts/wasm-modules.json` assigns the functions;
+  docs/web-export.md §Modules). There is no build without a module and no
+  stand-in for one. The probe's `hello` names the set (`modules`). The
+  core never names a module's crate outside that module's files and its
+  mount point, which is where the split cuts. A game's physics profile and
+  the 2D profile's renderer are variants, not modules (docs/web-export.md
+  §Variants): the 2D variants leave the 3D world out, and its terrain
+  answers a refusal naming `RenderCapabilities.world3d`
+  (`bind/absent/terrain.rs`).
 - **One host implementation.** A host supplies what differs: its wire types
   (arrays, views, bytes, functions), how the dispatcher is called, the
   surface and the audio sink. Every binding whose body is the host-neutral

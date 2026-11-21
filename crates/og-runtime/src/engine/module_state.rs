@@ -14,20 +14,9 @@ use crate::{
     world::scenes, world::stream,
 };
 
-/// Each module's state on one engine (an optional module left out of the
-/// build keeps an empty one).
+/// Each module's state on one engine.
 #[derive(Default)]
-#[cfg_attr(
-    not(all(
-        feature = "destruction",
-        feature = "motion",
-        feature = "video",
-        feature = "story",
-        feature = "film",
-        not(feature = "profile2d")
-    )),
-    allow(dead_code)
-)]
+#[cfg_attr(feature = "profile2d", allow(dead_code))]
 pub(crate) struct Modules {
     pub atmosphere: atmosphere::ModuleState,
     pub destruction: destruction::ModuleState,

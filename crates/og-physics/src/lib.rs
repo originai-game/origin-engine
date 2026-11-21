@@ -40,7 +40,7 @@
 //! | `soft/` | Verlet ropes and cloth, PBD soft volumes, garments |
 //! | `fluid/` | the 2D and 3D particle fluids |
 //! | `water/` | og.Water's bodies, height-field surfaces and lines, wakes, buoyancy |
-//! | `destruction/` | bond health, Blast's stress solver, islands, the 2D pixel terrain (feature `destruction`; no rapier) |
+//! | `destruction/` | bond health, Blast's stress solver, islands, the 2D pixel terrain (no rapier) |
 //!
 //! At the top: the system (`tick.rs`), reading the world (`gather.rs`),
 //! the state block (`persist.rs`), the lanes and the stats.
@@ -111,7 +111,6 @@ use std::any::Any;
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::{Arc, Mutex, MutexGuard};
 mod desc;
-#[cfg(feature = "destruction")]
 pub mod destruction;
 mod persist;
 #[path = "rigid/query.rs"]

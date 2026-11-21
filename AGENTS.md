@@ -82,10 +82,11 @@ status `docs/roadmap.md`. Platform contracts implemented here:
   scene text and the wiki. `.ogt` text cooks into `.ogb` blobs.
 - **The API is for a reader who has never seen it.** Zero-value desc structs,
   no hidden state, errors as values, the three.js vocabulary where it fits.
-- **Structure rules** (`docs/design.md` §2.1): a runtime module is an
-  optional feature with an absent stand-in; a binding is written once for
-  every host; cooked formats sit below feature crates; a tier is a
-  capability set (§2.6 Tiers).
+- **Structure rules** (`docs/design.md` §2.1): a runtime module is built
+  into every engine and split out of the web module, loaded on its first
+  call (`wasm-modules.json`); a binding is written once for every host;
+  cooked formats sit below feature crates; a tier is a capability set
+  (§2.6 Tiers).
 - **wgpu as published**, never vendored or patched.
 - **The web engine runs in a Worker** with an OffscreenCanvas; the main
   thread owns input and the shell.

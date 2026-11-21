@@ -11,16 +11,8 @@ crate-type = ["cdylib", "rlib"]
 doctest = false
 
 [features]
-default = ["story", "video", "film", "destruction", "motion", "nav", "ai", "window"]
+default = ["window"]
 publish = ["og-runtime/publish"]
-# og-runtime's optional modules, as og-host-node passes them through.
-story = ["og-runtime/story"]
-video = ["og-runtime/video"]
-film = ["og-runtime/film"]
-destruction = ["og-runtime/destruction"]
-motion = ["og-runtime/motion"]
-nav = ["og-runtime/nav"]
-ai = ["og-runtime/ai"]
 # The desktop window a store shell draws in (src/window.rs).
 window = ["dep:winit", "dep:og-render", "dep:pollster", "dep:og-audio", "og-audio/device", "dep:gilrs", "dep:og-input"]
 

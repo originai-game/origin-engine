@@ -25,9 +25,9 @@
 # (dist/web-publish), `publish2d` and `lanes2d` the 2D ones
 # (dist/web-publish-2d); `og build --publish` copies the pair of the game's
 # profile, so a page downloads one of them. All keep og-ui's `shaping`
-# (rustybuzz: Arabic, Indic) and every optional runtime module (og-runtime's
-# Cargo.toml: story, video, film, destruction, motion, nav, ai). The size gate holds
-# each download to the budget.
+# (rustybuzz: Arabic, Indic); every engine module is in each, split into
+# the parts the web loads on first use (packages/engine/scripts/
+# wasm-modules.json). The size gate holds each download to the budget.
 # Remote <iframe>s (og-host-web's `frames`) are only for a game whose
 # project.ogt lists `frames`: each module above has a twin with them, its
 # NAME ending in `frames` (dist/web-publish-frames, dist/web-publish-2d-frames),
@@ -35,11 +35,11 @@
 # reference variants (OG_WASM_VARIANTS=reference) leave the twins out.
 og-render   required
 og-host-web required publish lanes
-variant publish         og-host-web publish,physics3d,shaping,story,video,film,destruction,motion,nav,ai
-variant publish2d       og-host-web publish,physics2d,profile2d,shaping,story,video,film,destruction,motion,nav,ai
-variant publishframes   og-host-web publish,physics3d,shaping,story,video,film,destruction,motion,nav,ai,frames
-variant publish2dframes og-host-web publish,physics2d,profile2d,shaping,story,video,film,destruction,motion,nav,ai,frames
-lanes   lanes2dframes   og-host-web publish,physics2d,profile2d,shaping,story,video,film,destruction,motion,nav,ai,frames
-lanes   lanesframes     og-host-web publish,physics3d,shaping,story,video,film,destruction,motion,nav,ai,frames
-lanes   lanes2d         og-host-web publish,physics2d,profile2d,shaping,story,video,film,destruction,motion,nav,ai
-lanes   lanes           og-host-web publish,physics3d,shaping,story,video,film,destruction,motion,nav,ai
+variant publish         og-host-web publish,physics3d,shaping
+variant publish2d       og-host-web publish,physics2d,profile2d,shaping
+variant publishframes   og-host-web publish,physics3d,shaping,frames
+variant publish2dframes og-host-web publish,physics2d,profile2d,shaping,frames
+lanes   lanes2dframes   og-host-web publish,physics2d,profile2d,shaping,frames
+lanes   lanesframes     og-host-web publish,physics3d,shaping,frames
+lanes   lanes2d         og-host-web publish,physics2d,profile2d,shaping
+lanes   lanes           og-host-web publish,physics3d,shaping

@@ -15,22 +15,13 @@ test = false
 doctest = false
 
 [features]
-default = ["story", "video", "film", "destruction", "motion", "nav", "ai", "frames"]
+default = ["frames"]
 # A published game: the commands module and the probe's non-player members are not exported.
 publish = ["og-runtime/publish"]
 # Audio on the default output device through cpal (og-audio); without it the sinks are null and capture.
 native-audio = ["og-audio/device"]
-# og-runtime's optional modules (its Cargo.toml), each on by default; a
-# build without one answers that module's calls with the refusal naming
-# the feature. og-runtime's other defaults (shaping, both physics
-# profiles, fetch) are always on in the addon.
-story = ["og-runtime/story"]
-video = ["og-runtime/video"]
-film = ["og-runtime/film"]
-destruction = ["og-runtime/destruction"]
-motion = ["og-runtime/motion"]
-nav = ["og-runtime/nav"]
-ai = ["og-runtime/ai"]
+# og-runtime's defaults (shaping, both physics profiles, fetch) are always
+# on in the addon.
 # Remote <iframe>s (og-runtime's `frames`). The addon has them; a game
 # whose project.ogt lists no `frames` never reaches them (the cook refuses
 # a remote src) and og.ui.remoteFrames answers false, as on the web.

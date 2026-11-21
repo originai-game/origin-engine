@@ -179,9 +179,7 @@ pub(crate) struct RenderState {
     /// Texture arrays by TextureArray handle index (`og.load.textureArray`).
     pub texture_arrays: Vec<crate::world::assets::LoadedArray>,
     /// Videos by Video handle index (`og.load.video`), and og.VideoPlayer's layout.
-    #[cfg(feature = "video")]
     pub videos: Vec<crate::bind::video::LoadedVideo>,
-    #[cfg(feature = "video")]
     pub video_player: Option<Layout>,
     /// A video player with `wait` is playing and its frame is not shown
     /// yet (set by extraction): the next display frame runs no tick, so the
@@ -246,7 +244,6 @@ pub(crate) struct RenderState {
     /// The effect materials loaded (`crate::present::effect`).
     pub effects: crate::present::effect::EffectState,
     /// The pixel terrains' and pieces' textures (`crate::bind::destruction2d`).
-    #[cfg(feature = "destruction")]
     pub pixel: crate::bind::destruction2d::PixelRender,
     /// The environment maps loaded (`crate::present::environment`).
     pub env: crate::present::environment::EnvState,
@@ -314,9 +311,7 @@ impl RenderState {
             fx: crate::present::fx::FxState::default(),
             textures: Vec::new(),
             texture_arrays: Vec::new(),
-            #[cfg(feature = "video")]
             videos: Vec::new(),
-            #[cfg(feature = "video")]
             video_player: None,
             video_stalled: false,
             camera: None,
@@ -342,7 +337,6 @@ impl RenderState {
             feel: Default::default(),
             atmo: Default::default(),
             effects: Default::default(),
-            #[cfg(feature = "destruction")]
             pixel: Default::default(),
             env: Default::default(),
             terrain: Default::default(),

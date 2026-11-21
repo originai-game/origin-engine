@@ -524,7 +524,6 @@ pub(crate) fn owns_camera(engine: u32) -> bool {
 
 /// Loaded timeline `h` as og.film's segment, with its video's handle and
 /// `from` in place of its id.
-#[cfg(feature = "film")]
 pub(crate) fn segment(
     engine: u32,
     h: u64,
@@ -544,7 +543,6 @@ pub(crate) fn segment(
 
 /// A timeline's handle by asset path, loaded (and granted) as
 /// og.load.timeline does.
-#[cfg(feature = "film")]
 pub(crate) fn load_granted(
     eng: &Engine,
     path: &str,

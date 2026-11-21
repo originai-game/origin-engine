@@ -120,7 +120,6 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy, vp
     rs.scene.effects.lines.extend(draws);
     match VIEWS[rs.geo.view_index(&rs.options)] {
         "physics" => physics_view(rs),
-        #[cfg(feature = "nav")]
         "nav" => nav_view(rs),
         "bounds" => bounds_view(rs),
         _ => {}

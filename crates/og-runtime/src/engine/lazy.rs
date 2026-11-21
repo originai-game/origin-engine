@@ -314,21 +314,17 @@ pub(crate) const LAZY: &[Lazy] = &[
     // whatever the player's layout becomes.
     Lazy {
         name: crate::bind::video::PLAYER,
-        #[cfg(feature = "video")]
         enable: |w, _| {
             w.grant(
                 crate::bind::video::VIDEO_SYSTEM,
                 &[crate::bind::video::PLAYER],
             )
         },
-        #[cfg(not(feature = "video"))]
-        enable: crate::bind::video::refuse_lazy,
     },
     // A document's <video> or <audio> asks its player through it, once a
     // document with one loads (crate::bind::modules::docs::load_document).
     Lazy {
         name: crate::bind::video::MEDIA_INTENT,
-        #[cfg(feature = "video")]
         enable: |w, _| {
             w.grant(
                 crate::bind::video::VIDEO_SYSTEM,
@@ -339,8 +335,6 @@ pub(crate) const LAZY: &[Lazy] = &[
                 &[crate::bind::video::MEDIA_INTENT],
             )
         },
-        #[cfg(not(feature = "video"))]
-        enable: crate::bind::video::refuse_lazy,
     },
     // 3D VFX: og.vfx plays composed effects, sends og.VfxEvent and
     // despawns them, once a game names og.Vfx or og.VfxEvent.

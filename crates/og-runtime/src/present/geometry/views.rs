@@ -126,8 +126,6 @@ pub(super) fn physics_view(rs: &mut RenderState) {
     }
     rs.scene.effects.lines.push(set);
 }
-
-#[cfg(feature = "nav")]
 pub(super) fn nav_view(rs: &mut RenderState) {
     let engine_id = rs.draw.engine;
     let Some((navs, nav, profile)) =
