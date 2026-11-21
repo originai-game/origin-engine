@@ -35,7 +35,8 @@ use std::path::{Path, PathBuf};
 pub const IDL_PATH: &str = "crates/og-api/api";
 
 /// Directories whose every file is generated from the IDL, relative to the
-/// repository root. A file in them that the generator does not write is drift.
+/// repository root. A file in them that the generator does not write is drift,
+/// unless it is named in [`AUTHORED`].
 pub const OUTPUT_DIRS: &[&str] = &[
     "packages/engine/types",
     "packages/engine/schema",
@@ -47,6 +48,19 @@ pub const OUTPUT_DIRS: &[&str] = &[
     "crates/og-host-c/src/generated",
     "crates/og-runtime/src/host/generated",
     "packages/knowledge/wiki",
+];
+
+/// Authored files living in an [`OUTPUT_DIRS`] directory, relative to the
+/// repository root. The drift check holds them to existence only: what they
+/// declare is written by hand where the IDL cannot say it, and held by
+/// another check. `packages/engine/types/ui.d.ts` declares
+/// `@origingame/engine/ui` (package.json's `./ui` types), held to the UI's
+/// TSX sources by `packages/engine/src/ui/declared.ts`;
+/// `packages/engine/types/assets.d.ts` declares `*.ogt` modules to a game's
+/// type check.
+pub const AUTHORED: &[&str] = &[
+    "packages/engine/types/assets.d.ts",
+    "packages/engine/types/ui.d.ts",
 ];
 
 /// One problem in an IDL, with the 1-based line it was found on.
@@ -451,7 +465,7 @@ fn compare(fresh: &Path, root: &Path, files: &[Generated]) -> Vec<Drift> {
                 .unwrap_or(&path)
                 .to_string_lossy()
                 .replace('\\', "/");
-            if !files.iter().any(|f| f.path == rel) {
+            if !files.iter().any(|f| f.path == rel) && !AUTHORED.contains(&rel.as_str()) {
                 drift.push(Drift::Unexpected(rel));
             }
         }
