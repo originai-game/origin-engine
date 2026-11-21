@@ -3839,6 +3839,7 @@ dependencies = [
  "og-reactive",
  "og-text",
  "og-ui",
+ "rune-motion",
  "rune-taffy",
  "rustc-hash 2.1.3",
  "serde_json",
@@ -4962,6 +4963,10 @@ dependencies = [
  "num-traits",
  "smallvec",
 ]
+
+[[package]]
+name = "rune-motion"
+version = "0.1.0"
 
 [[package]]
 name = "rune-taffy"

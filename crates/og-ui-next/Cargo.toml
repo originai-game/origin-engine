@@ -20,6 +20,8 @@ nsh-reactive = { path = "../../third_party/nsh-reactive" }
 # Tailwind classes resolved to styles (NSH's resolver).
 nsh-tailwind = { path = "../../third_party/nsh-tailwind" }
 rune-taffy = { path = "../../third_party/rune-taffy" }
+# UI motion: transitions, presence and layout animation (src/motion.rs).
+rune-motion = { path = "../../third_party/rune-motion" }
 taffy = { version = "=0.15.1", default-features = false, features = ["std", "taffy_tree", "flexbox", "grid", "block_layout", "content_size"] }
 # The accessibility tree (a11y.rs), as og-ui pins it.
 accesskit = "=0.25.2"

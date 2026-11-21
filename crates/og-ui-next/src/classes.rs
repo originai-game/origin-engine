@@ -5,8 +5,9 @@
 //! record the arena lays out and paint draws. There is no cascade: later
 //! utilities win, variants after plain utilities.
 
+use crate::motion;
 use crate::style::{GRADIENT_STOPS, Gradient, Record, Rgba, SHADOWS, Shadow, Text};
-use nsh_tailwind::effects::{Filter, GradientKind};
+use nsh_tailwind::effects::{Filter, GradientKind, Keyframes};
 use nsh_tailwind::geometry::{DefiniteLength, Points, Size};
 use nsh_tailwind::style::{Color, Style, TextAlign, TextTransform};
 use nsh_tailwind::tailwind::{self, ClassEnvironment, ClassList, ClassProps, Context, Theme};
@@ -265,6 +266,7 @@ fn record_of(style: &Style, props: &ClassProps) -> Record {
         };
         t.set |= Text::TRANSFORM;
     }
+    r.motion = motion_of(style);
     if let Some(nowrap) = props.no_wrap {
         t.nowrap = nowrap;
         t.set |= Text::NOWRAP;
@@ -274,6 +276,44 @@ fn record_of(style: &Style, props: &ClassProps) -> Record {
         t.set |= Text::OVERFLOW;
     }
     r
+}
+
+/// What `transition-*`, `duration-*`, `delay-*`, `ease-*` and `animate-*`
+/// ask of motion; NSH's milliseconds become seconds.
+fn motion_of(style: &Style) -> motion::Spec {
+    let mut m = motion::Spec::default();
+    if let Some(t) = &style.view.transition {
+        // NSH's groups are motion's bits one to one, `LAYOUT` (ours) too.
+        m.props = t.properties.0;
+        m.duration = t.duration / 1000.0;
+        m.delay = t.delay / 1000.0;
+        m.ease = match t.spring {
+            Some(s) => motion::Ease::Spring {
+                stiffness: s.stiffness,
+                damping: s.damping,
+                mass: s.mass,
+            },
+            None => motion::Ease::Bezier(t.easing),
+        };
+    }
+    m.animate = style.view.animation.map(|a| motion::Loop {
+        keyframes: match a.keyframes {
+            Keyframes::Spin => motion::Keyframes::Spin,
+            Keyframes::Ping => motion::Keyframes::Ping,
+            Keyframes::Pulse => motion::Keyframes::Pulse,
+            Keyframes::Bounce => motion::Keyframes::Bounce,
+            Keyframes::Pop => motion::Keyframes::Pop,
+            Keyframes::Stamp => motion::Keyframes::Stamp,
+            Keyframes::Beat => motion::Keyframes::Beat,
+            Keyframes::Float => motion::Keyframes::Float,
+            Keyframes::Shimmer => motion::Keyframes::Shimmer,
+        },
+        duration: a.duration / 1000.0,
+        delay: a.delay / 1000.0,
+        ease: a.easing,
+        iterations: a.iterations,
+    });
+    m
 }
 
 #[cfg(test)]
@@ -376,5 +416,73 @@ mod tests {
             ..env
         };
         assert_eq!(c.record(enter, &exit).skin.opacity, 0.25);
+    }
+
+    #[test]
+    fn motion_classes_resolve_to_the_motion_spec_and_presence_states() {
+        let (mut c, _) = Classes::new(None).unwrap();
+        let env = Env::default();
+        let r = c.record(
+            "transition-colors transition-layout duration-300 delay-75 ease-in",
+            &env,
+        );
+        let m = r.motion;
+        assert_eq!(
+            m.props,
+            motion::COLORS | motion::LAYOUT,
+            "layout stays beside colours"
+        );
+        assert_eq!((m.duration, m.delay), (0.3, 0.075));
+        assert_eq!(m.ease, motion::Ease::Bezier([0.4, 0.0, 1.0, 1.0]));
+        assert_eq!(
+            c.record("transition-all", &env).motion.props & motion::LAYOUT,
+            0
+        );
+        assert_eq!(
+            c.record("transition duration-200 transition-none", &env)
+                .motion
+                .props,
+            0
+        );
+        let beat = c.record("animate-beat", &env).motion.animate.unwrap();
+        assert_eq!(
+            (beat.keyframes, beat.duration, beat.iterations),
+            (motion::Keyframes::Beat, 0.4, Some(1))
+        );
+        assert_eq!(
+            c.record("animate-shimmer", &env)
+                .motion
+                .animate
+                .unwrap()
+                .iterations,
+            None
+        );
+        assert!(
+            c.unknown("animate-pop animate-stamp animate-float animate-wobble")
+                == ["animate-wobble"]
+        );
+        // `starting:` and `exit:` give the entering and leaving records.
+        let s = "opacity-100 starting:opacity-0 exit:opacity-0 exit:translate-y-2";
+        assert_eq!(
+            c.tracked(s) & (state::STARTING | state::EXIT),
+            state::STARTING | state::EXIT
+        );
+        assert_eq!(c.record(s, &env).skin.opacity, 1.0);
+        let start = Env {
+            states: state::STARTING,
+            ..env
+        };
+        assert_eq!(c.record(s, &start).skin.opacity, 0.0);
+        let exit = c.record(
+            s,
+            &Env {
+                states: state::EXIT,
+                ..env
+            },
+        );
+        assert_eq!(
+            (exit.skin.opacity, exit.skin.transform.translate[1]),
+            (0.0, 8.0)
+        );
     }
 }

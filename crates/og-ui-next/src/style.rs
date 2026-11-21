@@ -419,6 +419,9 @@ pub struct Record {
     pub inked: bool,
     /// `position: fixed`: placed against the viewport.
     pub fixed: bool,
+    /// Its `transition-*`, `duration-*`, `ease-*`, `delay-*` and
+    /// `animate-*`.
+    pub motion: crate::motion::Spec,
 }
 
 impl Record {
@@ -468,6 +471,7 @@ impl Default for Record {
             text: Text::default(),
             inked: false,
             fixed: false,
+            motion: crate::motion::Spec::default(),
         }
     }
 }

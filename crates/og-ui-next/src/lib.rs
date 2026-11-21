@@ -11,6 +11,7 @@ pub mod cooked;
 pub mod doc;
 pub mod icons;
 pub mod look;
+pub mod motion;
 pub mod pack;
 pub mod prim;
 pub mod queue;
@@ -227,7 +228,7 @@ mod tests {
             "t.svelte",
             "<meta name=\"component\" content=\"t\">\n<meta name=\"prop:on\" content=\"bool\">\n\
              <div id=\"Box\" class=\"card\" class:lit={on} layout=\"row\" gap=\"tight\" \
-             part=\"frame\" variant=\"hud\" state:done={on}><span class=\"label\" tone=\"danger\" play=\"pulse\" tier={on}>Hi</span>\
+             part=\"frame\" variant=\"hud\" state:done={on}><span class=\"label\" tone=\"danger\" tier={on}>Hi</span>\
              <svg viewBox=\"0 0 4 4\"><circle cx=\"2\" cy=\"2\" r=\"2\" fill=\"none\"/></svg></div>\n\
              <style>\n.card { --slot: 48px; padding: 2px; }\n.card .label { width: var(--slot); }\n\
              .label:dir(rtl) { padding: 4px; }\n\
