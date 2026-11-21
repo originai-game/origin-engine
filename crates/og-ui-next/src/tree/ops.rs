@@ -2197,13 +2197,24 @@ mod tests {
                         s.size = taffy::Size::from_lengths(50.0, 20.0);
                         s.flex_shrink = 0.0;
                     }
+                    "wb" => {
+                        s.size = taffy::Size::from_lengths(80.0, 20.0);
+                        s.flex_shrink = 0.0;
+                    }
+                    "oy" => s.overflow.y = taffy::Overflow::Scroll,
+                    "bd" => s.border = taffy::Rect::length(2.0),
                     _ => {}
                 }
             }
-            Record {
+            let mut r = Record {
                 layout: rune_taffy::CompactStyle::from(&s),
                 ..Record::default()
+            };
+            // `bd`: a 2 px border, laid out and drawn.
+            if class.split_whitespace().any(|c| c == "bd") {
+                r.skin.border = [2.0; 4];
             }
+            r
         }));
         t
     }
@@ -2232,6 +2243,102 @@ mod tests {
         at(&mut t, 10.0, 50.0, true, false);
         at(&mut t, 10.0, 50.0, false, true);
         assert!(t.events.is_empty());
+    }
+
+    /// A `View` whose overflow is `auto` along an axis scrolls along it
+    /// as a `Scroll` does, and along that axis only; one whose overflow
+    /// is visible does not scroll. What it clips is cut at its padding
+    /// box, inside its border.
+    #[test]
+    fn an_overflow_auto_view_scrolls_along_its_axis() {
+        for (class, down) in [("col s", 0.0), ("col s oy bd", 30.0)] {
+            let mut t = scrolling();
+            let mut b = Batch::default();
+            b.op(1).u32(10).u8(0);
+            b.op(4).u32(10).str(class);
+            b.op(8).u32(0).u32(10).u32(u32::MAX);
+            for id in 1..=4 {
+                b.op(1).u32(id).u8(0);
+                // 80 wide in 50: they run past its right side too.
+                b.op(4).u32(id).str("wb");
+                b.op(8).u32(10).u32(id).u32(u32::MAX);
+            }
+            t.apply(&b.bytes()).unwrap();
+            frame(&mut t);
+            t.wheel(10.0, 10.0, 0.0, 30.0);
+            t.wheel(10.0, 10.0, 30.0, 0.0);
+            frame(&mut t);
+            let e = t.op(10).unwrap();
+            assert_eq!(t.scroll_of(e), [0.0, down], "{class}");
+            // Inside a 2 px border when it scrolls.
+            let border = if down > 0.0 { 2.0 } else { 0.0 };
+            assert_eq!(
+                t.op_box(2).unwrap()[1],
+                border + 20.0 - down,
+                "{class}: its rows move"
+            );
+            if down > 0.0 {
+                assert_eq!(
+                    t.abs[e as usize].3,
+                    [2.0, 2.0, 48.0, 38.0],
+                    "inside the border"
+                );
+            }
+        }
+    }
+
+    /// `order-*` places a flex or grid item among its siblings for layout,
+    /// as CSS's `order`: the flex row and the grid's auto-placement take
+    /// order-modified document order. Real classes, end to end.
+    #[test]
+    fn order_classes_reorder_flex_and_grid_items() {
+        let mut t = tree();
+        let classes = std::cell::RefCell::new(crate::classes::Classes::new(None).unwrap().0);
+        t.set_resolver(Box::new(move |class, _, _, _| {
+            classes
+                .borrow_mut()
+                .record(class, &crate::classes::Env::default())
+        }));
+        let cell = "w-[10px] h-[10px]";
+        let mut b = Batch::default();
+        for (parent, class, kids) in [
+            (1, "flex flex-row w-[100px]", [2, 3, 4]),
+            (5, "grid grid-cols-[10px_10px_10px] w-[100px]", [6, 7, 8]),
+        ] {
+            b.op(1).u32(parent).u8(0);
+            b.op(4).u32(parent).str(class);
+            b.op(8).u32(0).u32(parent).u32(u32::MAX);
+            for k in kids {
+                b.op(1).u32(k).u8(0);
+                b.op(8).u32(parent).u32(k).u32(u32::MAX);
+            }
+        }
+        // The row: 2, then 3 first, then 4.
+        b.op(4).u32(2).str(cell);
+        b.op(4).u32(3).str(&format!("{cell} -order-1"));
+        b.op(4).u32(4).str(cell);
+        // The grid: 8 placed first.
+        b.op(4).u32(6).str(cell);
+        b.op(4).u32(7).str(cell);
+        b.op(4).u32(8).str(&format!("{cell} order-first"));
+        t.apply(&b.bytes()).unwrap();
+        frame(&mut t);
+        // Each from its container's corner.
+        let at = |t: &Tree, id: u32, of: u32| {
+            let (b, c) = (t.op_box(id).unwrap(), t.op_box(of).unwrap());
+            [b[0] - c[0], b[1] - c[1], b[2], b[3]]
+        };
+        let x = |t: &Tree, id: u32, of: u32| at(t, id, of)[0];
+        assert_eq!(
+            [x(&t, 3, 1), x(&t, 2, 1), x(&t, 4, 1)],
+            [0.0, 10.0, 20.0],
+            "the row"
+        );
+        assert_eq!(
+            [x(&t, 8, 5), x(&t, 6, 5), x(&t, 7, 5)],
+            [0.0, 10.0, 20.0],
+            "the grid"
+        );
     }
 
     /// A finger past the 8 px slop pans the scroller and lets the press
