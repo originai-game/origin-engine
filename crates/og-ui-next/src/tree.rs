@@ -13,7 +13,7 @@ use crate::queue::{self, Op, Reads, Target};
 use crate::style::{Record, Rgba, Text};
 use og_draw::paint::{Paint, PaintKind, PaintQuad};
 use og_reactive::bind::{Env, Expr, Scope, Screen};
-use og_ui::doc::{Lit, NodeKind, PropValue, UiDocument, schema::Kind};
+use og_ui::doc::{Act, Lit, NodeKind, PropValue, UiDocument, When, schema::Kind};
 use og_ui::{IconAtlas, IconCell};
 use rustc_hash::FxHashMap;
 use serde_json::Value;
@@ -77,6 +77,8 @@ struct Compiled {
 /// One instance of a document.
 struct Inst {
     doc: u32,
+    /// The mount it is part of, in mounting order.
+    mount: u32,
     /// Its scrollers (document nodes) whose content runs past their end.
     more: Vec<u32>,
 }
@@ -92,6 +94,14 @@ struct Inherit {
 
 struct El {
     node: Id,
+    /// Its document node.
+    at: u32,
+    /// The key of the innermost `{#each}` row it is in; empty outside one.
+    row: Rc<str>,
+    /// Its `disabled` attribute as a signal; NONE when it has none.
+    disabled: u32,
+    /// It answers a press: a button, or an element with a click handler.
+    clickable: bool,
     /// The element its arena node is a child of (a fixed one: none).
     arena_parent: u32,
     /// The element it inherits from.
@@ -127,6 +137,20 @@ struct EachBlock {
     chain: Vec<u32>,
     list: u32,
     rows: Vec<(u32, Vec<u32>)>,
+}
+
+/// Something an element did that its document reports to the game
+/// (`og.ui.docEvents`): `click` with its id, or `emit` with the handler
+/// an `on:` attribute names.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Event {
+    /// The mount, in mounting order.
+    pub mount: u32,
+    /// The element's document id.
+    pub path: Box<str>,
+    pub row_key: Rc<str>,
+    pub kind: &'static str,
+    pub name: Box<str>,
 }
 
 /// What a frame did: whether it laid out and painted, and its ops.
@@ -169,6 +193,11 @@ pub struct Tree {
     /// Each element's text laid out as glyph quads from its leaf's top
     /// left, kept while its text, width and run stay.
     glyphs: Vec<Glyphs>,
+    /// The mount being made and the key of the row being made.
+    mounting: u32,
+    row: Rc<str>,
+    /// The element the pointer went down on, while it is held.
+    pressed: u32,
 }
 
 /// An element's text as glyph quads (from its leaf's top left; colour and
@@ -321,6 +350,9 @@ impl Tree {
             drawn: Paint::default(),
             abs: Vec::new(),
             glyphs: Vec::new(),
+            mounting: 0,
+            row: "".into(),
+            pressed: NONE,
         }
     }
 
@@ -387,8 +419,10 @@ impl Tree {
             scope.push(((*n).into(), *s));
             scope.push((format!("${n}").into(), *s));
         }
+        self.row = "".into();
         self.instance(name, NONE, 0, scope, &mut Vec::new())
             .ok_or_else(|| format!("og-ui-next: no document {name}"))?;
+        self.mounting += 1;
         Ok(())
     }
 
@@ -404,6 +438,7 @@ impl Tree {
         let inst = self.insts.len() as u32;
         self.insts.push(Inst {
             doc: d,
+            mount: self.mounting,
             more: Vec::new(),
         });
         // The document's own derived values, in order.
@@ -545,6 +580,8 @@ impl Tree {
         let e = &self.eaches[b as usize];
         let (d, inst, node, parent, arena_parent, list) =
             (e.doc, e.inst, e.node, e.parent, e.arena_parent, e.list);
+        let (mounting, outer_row) = (self.mounting, self.row.clone());
+        self.mounting = self.insts[inst as usize].mount;
         let scope = e.scope.clone();
         let mut chain = e.chain.clone();
         let Value::Array(items) = queue::get(list) else {
@@ -558,6 +595,7 @@ impl Tree {
                 env: &*self.env,
             });
             let first = self.els.len() as u32;
+            self.row = queue::text_of(&k).into();
             let mut row_scope = scope.clone();
             let root = queue::owned(|| {
                 let (var2, key2, env) = (var.to_string(), key.clone(), self.env.clone());
@@ -596,6 +634,8 @@ impl Tree {
                 .collect();
             self.eaches[b as usize].rows.push((root, tops));
         }
+        self.mounting = mounting;
+        self.row = outer_row;
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -633,8 +673,24 @@ impl Tree {
         };
         let leaf = (text.is_some() && kind != Kind::Icon).then(|| self.arena.text(node, "", 16.0));
         let children = n.children.clone();
+        let clickable = kind == Kind::Button
+            || n.triggers
+                .iter()
+                .any(|t| matches!(t.when, When::Click | When::Tap));
+        let disabled = match prop("disabled") {
+            Some(PropValue::Bind(x, _)) => {
+                let r = reads(&x, scope, self.screen);
+                derive(x, r, self.env.clone())
+            }
+            Some(PropValue::Lit(l)) => queue::signal(lit(&l)),
+            _ => NONE,
+        };
         self.els.push(El {
             node,
+            at: i as u32,
+            row: self.row.clone(),
+            disabled,
+            clickable,
             arena_parent: arena_parent_el,
             parent,
             inst,
@@ -1139,6 +1195,72 @@ impl Tree {
         Some((x, y, b.w, b.h))
     }
 
+    /// The element a press at (x, y) reaches: of the shown, enabled
+    /// elements that answer a press and whose box, inside the clip their
+    /// parent paints them in, holds the point, the last made (a descendant
+    /// comes after its ancestors and paints over them); NONE for none.
+    fn hit(&self, x: f32, y: f32) -> u32 {
+        for (e, el) in self.els.iter().enumerate().rev() {
+            if el.dead || !el.clickable {
+                continue;
+            }
+            let Some(&(bx, by, shown, _)) = self.abs.get(e) else {
+                continue;
+            };
+            let all = [f32::MIN, f32::MIN, f32::MAX, f32::MAX];
+            let [cx0, cy0, cx1, cy1] = match el.arena_parent {
+                NONE => all,
+                p => self.abs.get(p as usize).map_or(all, |a| a.3),
+            };
+            let b = self.arena.box_of(el.node);
+            let inside = x >= bx.max(cx0)
+                && x < (bx + b.w).min(cx1)
+                && y >= by.max(cy0)
+                && y < (by + b.h).min(cy1);
+            if !shown || !inside {
+                continue;
+            }
+            if el.disabled != NONE && og_reactive::bind::truthy(&queue::get(el.disabled)) {
+                continue;
+            }
+            return e as u32;
+        }
+        NONE
+    }
+
+    /// The pointer this frame, at (x, y) on the tree's surface: a press
+    /// takes the element under it, and a release over that same element
+    /// clicks it. A click reports `click` with its id, then `emit` for each
+    /// handler its `onclick` or `ontap` names, to `out`.
+    pub fn pointer(&mut self, x: f32, y: f32, pressed: bool, released: bool, out: &mut Vec<Event>) {
+        if pressed {
+            self.pressed = self.hit(x, y);
+        }
+        if !released {
+            return;
+        }
+        let held = std::mem::replace(&mut self.pressed, NONE);
+        if held == NONE || self.hit(x, y) != held {
+            return;
+        }
+        let el = &self.els[held as usize];
+        let inst = &self.insts[el.inst as usize];
+        let n = &self.docs[inst.doc as usize].doc.nodes[el.at as usize];
+        let event = |kind, name: &str| Event {
+            mount: inst.mount,
+            path: n.id.as_str().into(),
+            row_key: el.row.clone(),
+            kind,
+            name: name.into(),
+        };
+        out.push(event("click", &n.id));
+        for t in &n.triggers {
+            if let (When::Click | When::Tap, Act::Emit(name)) = (&t.when, &t.act) {
+                out.push(event("emit", name));
+            }
+        }
+    }
+
     /// Each live element with a document id: its id, its box on screen
     /// (x, y, width, height), whether it shows, and its text.
     pub fn dump(&self) -> Vec<(&str, [f32; 4], bool, &str)> {
@@ -1436,6 +1558,64 @@ mod tests {
 
     /// Each row of an `{#each}` holds its own state: one row's `state:done`
     /// is not another's.
+    /// A press and release over one button clicks it, with its row's key
+    /// and the handler its onclick names; a disabled one, or a release
+    /// over another, clicks nothing.
+    #[test]
+    fn a_release_over_the_pressed_button_clicks_it() {
+        let doc = UiDocument::parse(
+            "b.svelte",
+            "<meta name=\"component\" content=\"b\">\n\
+             <div class=\"col\">{#each rows as r (r.id)}<button id=\"B\" class=\"b\" disabled={r.off} onclick={use}>go</button>{/each}</div>\n\
+             <style>\n.col { display: flex; flex-direction: column; }\n.b { width: 100px; height: 30px; }\n</style>",
+        )
+        .unwrap();
+        let look = Rc::new(Look::load(
+            &[Layer {
+                tokens: crate::look::default_tokens(),
+                surfaces: crate::look::DEFAULT_SURFACES,
+            }],
+            "dark",
+        ));
+        let mut tree = Tree::new(look, [Arc::new(doc)]);
+        tree.resize(400.0, 400.0);
+        let rows = serde_json::json!([
+            {"id": "a", "off": false},
+            {"id": "b", "off": false},
+            {"id": "c", "off": true},
+        ]);
+        tree.mount("b", &[("rows", queue::signal(rows))]).unwrap();
+        tree.frame(&og_ui::Fonts::default(), &IconAtlas::default());
+        let centres: Vec<(f32, f32)> = tree
+            .dump()
+            .iter()
+            .filter(|(id, ..)| *id == "B")
+            .map(|(_, [x, y, w, h], ..)| (x + w / 2.0, y + h / 2.0))
+            .collect();
+        assert_eq!(centres.len(), 3);
+        assert!(centres[1].1 > centres[0].1, "the rows stack: {centres:?}");
+        let click = |tree: &mut Tree, from: (f32, f32), to: (f32, f32)| {
+            let mut out = Vec::new();
+            tree.pointer(from.0, from.1, true, false, &mut out);
+            tree.pointer(to.0, to.1, false, true, &mut out);
+            out
+        };
+        let out = click(&mut tree, centres[1], centres[1]);
+        let seen: Vec<_> = out
+            .iter()
+            .map(|e| (e.kind, &*e.name, &*e.row_key))
+            .collect();
+        assert_eq!(seen, [("click", "B", "b"), ("emit", "use", "b")]);
+        assert!(
+            click(&mut tree, centres[2], centres[2]).is_empty(),
+            "disabled"
+        );
+        assert!(
+            click(&mut tree, centres[0], centres[1]).is_empty(),
+            "moved off"
+        );
+    }
+
     #[test]
     fn each_row_holds_its_own_state() {
         let doc = UiDocument::parse(

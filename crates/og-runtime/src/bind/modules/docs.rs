@@ -842,8 +842,18 @@ pub fn og_ui_screen_vm(world: u32, screen: String) -> Option<Value> {
 }
 
 pub fn og_ui_doc_events(world: u32) -> Vec<wire::UiDocEvent> {
+    // The new core's documents' events after og-ui's own.
+    let next = crate::engine::engine(world)
+        .ok()
+        .and_then(|e| {
+            let mut rs = e.render.borrow_mut();
+            rs.ui_next.as_mut().map(|n| std::mem::take(&mut n.events))
+        })
+        .unwrap_or_default();
     on_ui(world, |ui| {
-        ui.take_doc_events()
+        let mut events = ui.take_doc_events();
+        events.extend(next);
+        events
             .into_iter()
             .map(|e| wire::UiDocEvent {
                 mount: e.mount,

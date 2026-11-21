@@ -70,6 +70,9 @@ pub(crate) struct Next {
     /// Mounted documents: mount id to (document, inputs).
     mounts: BTreeMap<(String, String), Mount>,
     built: bool,
+    /// What the new core's documents did since the game last took them
+    /// (`og.ui.docEvents`).
+    pub(crate) events: Vec<og_ui::DocEvent>,
     /// The game's stores: their values, reads and checkpoints.
     pub(crate) store: Session,
     /// What the tree last painted (og-draw's arena), swapped into the
@@ -131,6 +134,7 @@ impl Next {
             mounts: BTreeMap::new(),
             built: false,
             store: Session::default(),
+            events: Vec::new(),
             paint: og_render::paint::Paint::default(),
             spans: Spans::default(),
             font: false,
@@ -436,6 +440,30 @@ impl Next {
         let unit = ui.frame().unit.max(1.0);
         tree.resize(v.width * unit, v.height * unit);
         let commit = tree.commit();
+        // The pointer, in the units og-ui's input is in, on the tree's
+        // surface: a press and a release over one element click it.
+        let input = ui.input();
+        let mut done = Vec::new();
+        tree.pointer(
+            input.pointer.x * unit,
+            input.pointer.y * unit,
+            input.pressed,
+            input.released,
+            &mut done,
+        );
+        let mounts: Vec<&(String, String)> = self.mounts.keys().collect();
+        self.events.extend(done.into_iter().map(|e| {
+            og_ui::DocEvent {
+                mount: mounts
+                    .get(e.mount as usize)
+                    .map_or_else(String::new, |m| m.1.clone()),
+                path: e.path.into(),
+                row_key: e.row_key.to_string(),
+                kind: e.kind.into(),
+                name: e.name.into(),
+                value: Value::Null,
+            }
+        }));
         let t1 = now();
         self.font = ui.fonts().body.handle.is_some();
         let (_, painted) = tree.present(ui.fonts(), ui.icons());
