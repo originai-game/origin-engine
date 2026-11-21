@@ -2181,11 +2181,11 @@ static PREFIXES: &[(&str, Handler)] = &[
         ))
     }),
     // Tailwind CSS has no negative grid templates, spans or auto tracks.
-    ("grid-cols", |_, v, n| {
-        one(Decl::Set(K::GridTemplateColumns, grid_template(v, n)?))
+    ("grid-cols", |t, v, n| {
+        one(Decl::Set(K::GridTemplateColumns, grid_template(t, v, n)?))
     }),
-    ("grid-rows", |_, v, n| {
-        one(Decl::Set(K::GridTemplateRows, grid_template(v, n)?))
+    ("grid-rows", |t, v, n| {
+        one(Decl::Set(K::GridTemplateRows, grid_template(t, v, n)?))
     }),
     ("col-span", |_, v, n| {
         let c = count(v, n)?;
@@ -2878,9 +2878,21 @@ fn line_index(v: &str, neg: bool) -> Option<taffy::GridPlacement<String>> {
     (n != 0).then(|| crate::grid::line_number(if neg { -n } else { n }))
 }
 
-fn grid_template(v: &str, neg: bool) -> Option<PropertyValue> {
+fn grid_template(theme: &Theme, v: &str, neg: bool) -> Option<PropertyValue> {
     if neg {
         return None;
+    }
+    // Origin Engine: `grid-cols-fill-<steps>` and `grid-cols-fit-<steps>`
+    // are as many equal tracks as fit, each at least that many spacing
+    // steps wide (`repeat(auto-fill, minmax(<length>, 1fr))`), so a grid of
+    // tiles names its tile's least width on the spacing scale.
+    for (prefix, repeat) in [("fill-", "auto-fill"), ("fit-", "auto-fit")] {
+        if let Some(n) = v.strip_prefix(prefix).and_then(steps) {
+            let tracks = format!("repeat({repeat},minmax({}px,1fr))", n * theme.spacing);
+            return Some(PropertyValue::grid_template(crate::grid::template(
+                &tracks,
+            )?));
+        }
     }
     if let Some(n) = int(v) {
         return (n > 0.0)

@@ -827,6 +827,33 @@ mod tests {
         assert_eq!(s.padding.right, taffy::LengthPercentage::length(16.0));
     }
 
+    /// `grid-cols-fill-<steps>` is the written `repeat(auto-fill, …)` with
+    /// its least track on the spacing scale.
+    #[test]
+    fn a_grid_of_tiles_names_its_tile_width_in_steps() {
+        let (mut c, _) = Classes::new(None).unwrap();
+        let env = Env::default();
+        let mut grid = |class: &str| format!("{:?}", c.record(class, &env).layout);
+        for (step, written) in [
+            (
+                "grid grid-cols-fill-33",
+                "grid grid-cols-[repeat(auto-fill,minmax(132px,1fr))]",
+            ),
+            (
+                "grid grid-cols-fit-48.5",
+                "grid grid-cols-[repeat(auto-fit,minmax(194px,1fr))]",
+            ),
+        ] {
+            assert_eq!(grid(step), grid(written), "{step}");
+            assert_ne!(grid(step), grid("grid"), "{step}");
+        }
+        assert_eq!(
+            c.unknown("grid-cols-fill-33 grid-rows-fit-10"),
+            Vec::<String>::new()
+        );
+        assert_eq!(c.unknown("grid-cols-fill-x"), ["grid-cols-fill-x"]);
+    }
+
     #[test]
     fn an_inline_style_folds_over_its_classes() {
         let (mut c, _) = Classes::new(None).unwrap();

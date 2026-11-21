@@ -58,6 +58,11 @@ the changes after it are only these:
   `flex_and_grid_longhands_override_their_shorthands_in_any_order` expect
   the `0%`.
 
+- `tailwind/utilities.rs` adds `grid-cols-fill-<steps>`, `grid-cols-fit-<steps>`
+  and the same for `grid-rows` (`grid_template`, marked in place):
+  `repeat(auto-fill | auto-fit, minmax(<steps>, 1fr))` with the length on
+  the spacing scale.
+
 - `tailwind/theme.rs` adds `Theme::rem_lengths` (and `tailwind/utilities.rs`
   makes its `rem_lengths` crate-visible): a style prop's value with its
   `rem` lengths in px at the theme's rem, which og-ui-next applies before
