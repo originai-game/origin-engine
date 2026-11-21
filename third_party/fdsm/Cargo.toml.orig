@@ -1,0 +1,25 @@
+[package]
+name = "fdsm"
+version = "0.8.0"
+edition = "2021"
+authors = ["+merlan #flirora"]
+license = "MIT"
+repository = "https://gitlab.com/Kyarei/fdsm"
+keywords = ["msdf", "distance-fields"]
+categories = ["graphics"]
+description = "A pure-Rust implementation of multi-channel signed distance field generation"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+image = { workspace = true }
+nalgebra = { workspace = true }
+num-traits = { workspace = true }
+oklab = { workspace = true, optional = true }
+
+[features]
+visualize = ["dep:oklab"]
+
+[dev-dependencies]
+approx = { workspace = true }
+ttf-parser = { workspace = true }

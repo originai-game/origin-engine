@@ -1005,8 +1005,6 @@ dependencies = [
 [[package]]
 name = "fdsm"
 version = "0.8.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f43e408596ca74d9c9a44f5d4fd110628c54f38c22e03edef7f112e935c15e41"
 dependencies = [
  "image",
  "nalgebra 0.34.2",
