@@ -1,6 +1,6 @@
 import { For, Text, formatNumber } from "@origingame/engine/ui";
 import type { Entity } from "@origingame/engine";
-import "./world.en.ogt";
+import "../world/world.en.ogt";
 
 export interface DamageHit {
   id: string;
