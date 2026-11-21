@@ -39,6 +39,8 @@ font-rs = "=0.1.3"
 # A glyph's outline stroke (`-webkit-text-stroke`): kurbo's stroker, with
 # libm's maths so native and wasm stroke alike (as og-draw takes it).
 kurbo = { version = "0.13.1", default-features = false, features = ["libm"] }
+# A shadow's Gaussian (src/raster.rs `blur`): the same exp on both hosts.
+libm = "0.2.16"
 # The bidirectional algorithm (UAX #9): a line's runs in visual order.
 unicode-bidi = "0.3.18"
 # A cooked font's file (`runtime true`): metrics and outlines of characters
