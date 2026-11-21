@@ -11,6 +11,7 @@ pub mod cooked;
 pub mod doc;
 pub mod icons;
 pub mod look;
+pub mod pack;
 pub mod prim;
 pub mod queue;
 pub mod sheet;

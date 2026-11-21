@@ -158,32 +158,97 @@ not dropped silently.
 
 ## Theme and packs
 
-The theme is NSH's Tailwind theme (Tailwind's defaults, then
-`Theme::from_json`'s keys: `colors`, `spacing`, `breakpoints`,
-`fontFamily`, `fontSize`, `fontWeight`, `radius`, `shadow`, `tracking`,
-`leading`, `blur`, `aspect`, `ease`, `container`), extended in this order:
+Owner: the looks thread. The theme is NSH's Tailwind theme: Tailwind
+v4.1's defaults extended by `Theme::from_json` once per scheme. What
+extends it is a stack of **packs**, each one `pack.json`, laid in order:
 
-1. the engine's design tokens (`packages/design/tokens/*.css`), built into
-   theme JSON by the cook: semantic colours (`surface-1..3`, `edge`, `ink`,
-   `ink-muted`, `accent`, `danger`, `warn`, `success`, `reward`, the tier
-   colours `common`…`mythic`), radii, shadows and type;
-2. the game's style pack;
-3. the game's own `theme.json`.
+1. the engine's default pack, `crates/og-ui-next/default/pack.json`,
+   generated from `packages/design/tokens/*.css` by
+   `crates/og-ui-next/scripts/gen-pack.sh` (never edited by hand; a test
+   holds it equal to the generator);
+2. the pack the game's look names (`ui "<name>"`: `assets/styles/<name>/`
+   over `@styles/<name>/`);
+3. the game's own pack, `assets/styles/game/pack.json`, when it has one.
 
-A **style pack** is a directory with `theme.json` (the keys above; a
-colour may be `{ "light": …, "dark": … }`) and an optional `variants`
-object: named class strings a component appends after its own, keyed
-`Component.slot` or `Component.slot.variant`:
+A later layer replaces an earlier one's entry of the same name: a theme
+entry, a variant, an icon, an event's sound. Fonts add faces.
 
 ```json
 {
-  "colors": { "accent": "#e0a33a", "surface-2": { "dark": "#1b1d24", "light": "#f3efe6" } },
-  "radius": { "card": 10 },
-  "variants": { "Panel.frame": "border-2 border-edge shadow-card", "Panel.frame.hud": "bg-black/40 backdrop-blur-md" }
+  "scheme": "dark",
+  "seeds": { "primary": "#ffc71f", "neutral": "#232a73" },
+  "theme": {
+    "colors": { "gold": "#ffd23f", "surface": { "light": "#f3efe6", "dark": "#1b1d24" } },
+    "radius": { "card": 14 },
+    "fontFamily": { "display": "Cartoon Display, Cartoon Fallback" },
+    "shadow": { "plate": { "light": "0 4px 0 #2a1a10", "dark": "0 4px 0 #000" } }
+  },
+  "variants": {
+    "Panel.frame": "border-2 border-border-strong shadow-panel",
+    "Panel.frame.hud": "bg-plate-hi/80 backdrop-blur-md"
+  },
+  "fonts": [{ "family": "Cartoon Display", "src": "LilitaOne-Regular.ttf", "weight": 400 }],
+  "icons": { "star": "art/star.svg" },
+  "sounds": {
+    "press": { "clips": ["@styles/shared/sfx-tap.ogt"], "volume": [0.24, 0.3], "pitch": [1.04, 1.16] },
+    "Button.base": { "hover": { "clips": ["@styles/shared/sfx-tap2.ogt"], "volume": 0.08 } }
+  }
 }
 ```
 
-A component asks for its slot's pack classes with `packClass("Panel",
-"frame", variant)` and puts them last in its `class`. The cook compiles a
-pack's `theme.json` into the theme the runtime loads, and its variant
-strings into records like any literal class string.
+Every key is optional and every key and form is checked (an unknown key
+is an error naming where it is, never ignored):
+
+- **`scheme`**: `light` or `dark`, the scheme the pack is drawn in unless
+  the game asks for the other.
+- **`theme`**: `Theme::from_json`'s keys (`colors`, `spacing`, `rem`,
+  `breakpoints`, `container`, `fontSize`, `fontWeight`, `fontFamily`,
+  `tracking`, `leading`, `radius`, `shadow`, `insetShadow`, `dropShadow`,
+  `blur`, `perspective`, `aspect`, `ease`). **Any leaf may be
+  `{ "light": …, "dark": … }`**; the pack layer splits it before NSH reads
+  the theme, so each scheme's theme is plain theme JSON and switching
+  scheme switches record tables. `light` and `dark` are never shade names.
+  A `fontFamily` is a CSS family list.
+- **`seeds`**: `primary`, `accent`, `neutral`, `danger`, `warn`, `success`,
+  `info`, `team`, `hud` (seed.css), each a CSS colour or a scheme pair.
+  When any layer sets one, the cook derives the design palette again from
+  the seeds the way the default pack is generated, keeping the design's
+  4.5:1 and 3:1 pairs, and the layers' written `colors` lie over it.
+- **`variants`**: class strings a component appends after its own, keyed
+  `Component.slot` or `Component.slot.variant` (PascalCase, then
+  lower-case names). A component writes `packClass("Panel", "frame",
+  variant)` last in its `class`; with literal arguments the cook folds it.
+  `og check` checks the strings against the merged theme.
+- **`fonts`**: faces `{ family, src, weight?, style?, unicodeRange? }`, `src`
+  relative to the pack or `@styles/shared/…` / `@styles/cjk/…`.
+- **`icons`**: `name → art file`, over the default set, for `<Icon name>`.
+- **`sounds`**: by event (`press`, `hover`, `select`, `confirm`, `cancel`,
+  `back`, `open`, `close`, `error`, `reward`) for the whole pack, or under a
+  `Component.slot[.variant]` key for one slot: `{ clips, volume?, pitch? }`,
+  a number or a `[low, high]` range. Input (head 4) plays them.
+
+Motion is classes in `variants` until the motion thread's ease form lands.
+
+### The default pack's names
+
+The theme speaks the design language's words: a name is the token's
+without its family prefix. Values are resolved per scheme (seeds and
+relative colours evaluated) to `#rrggbb[aa]` and points.
+
+| Section | Names | From |
+|---|---|---|
+| `colors` | every `--color-*`: `bg`, `bg-subtle`, `surface`, `surface-raised`, `surface-hover`, `card`, `fg`, `fg-muted`, `fg-subtle`, `fg-inverse`, `border`, `border-strong`, `well-rim`, `fill`, `fill-strong`, `accent`, `accent-hover`, `accent-active`, `accent-fg`, `accent-soft`, `accent-ink`, `focus`, `danger`, `warn`, `success`, `info`, `gold`, `health`, `mana`, `xp`, `hud`, `scrim`, `glass`, `glass-hi`, `glass-lo`, `plate-hi`, `plate-lo`, `rim`, `rim-soft`, `rim-strong`, `lit`, `lit-soft`, `shade`, `shade-deep`, `tile`, `tile-pressed`, `raised-*`, `glow`, `glow-soft`, `select-hi`, `select-lo`, `entry-*`, `stage*`, `material-*`, `team1`…`team8`, `common`…`mythic` | `--color-<name>` (color.css) |
+| `radius` | `control` `field` `block` `card` `panel` `sheet` `button` `capsule` | `--radius-<name>` (space.css) |
+| `fontSize` | `xs` `sm` `base` `lg` `xl`…`8xl` (over Tailwind's), `meta` `caption` `body` `reading` `display-sm`…`display-2xl`; `[size, line height ÷ size]` | `--font-scale-<name>-size` and `-line-height` |
+| `tracking` | `xs`…`xl` `wide` (`--font-tracking-*`), and the letter spacing of the scale steps `2xl`…`8xl` and `display-*` (`xl` is `--font-tracking-xl`) | type.css, in em |
+| `leading` | `flat` `tight` `snug` `normal` | `--font-leading-<name>` |
+| `fontWeight` | `regular` `medium` `semibold` `bold` `body` | `--font-weight-<name>` |
+| `fontFamily` | `sans` `display` `mono` `rounded` | `--font-<name>` |
+| `shadow` | every `--shadow-*`: `edge` `raised` `float` `overlay` `lift` `rim` `panel` `plate` `raise` `raise-hover` `sunk` `held` `focus-tile` `minimap` `slot-selected` `tab-selected` `lens` | `--shadow-<name>` (effect.css), per scheme |
+| `ease` | `out` `exit` `in-out` (the `linear()` springs stay with motion) | `--motion-easing-<name>` |
+| `container` | `xs` `sm` `md` `lg` `xl` `xxl` `3xl` | `--measure-<name>` |
+| `blur` | `thin` `regular` `thick` `lens` | `--vars-material-blur[-<name>]` |
+
+`spacing` stays Tailwind's 4 pt step. The cook compiles the merged theme
+into the theme the runtime loads and every variant string into records,
+like any literal class string.

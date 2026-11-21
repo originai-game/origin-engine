@@ -1,0 +1,572 @@
+{
+  "about": "The engine's default pack, generated from packages/design/tokens/*.css by crates/og-ui-next/scripts/gen-pack.sh; never edit it by hand. Theme names are the tokens' without their prefix: --color-fg-muted is the colour fg-muted, --radius-card the radius card, --font-scale-body-size the font size body.",
+  "theme": {
+    "blur": {
+      "lens": 8.0,
+      "regular": 22.0,
+      "thick": 32.0,
+      "thin": 10.0
+    },
+    "colors": {
+      "accent": {
+        "dark": "#e8e8ed",
+        "light": "#1c1c1e"
+      },
+      "accent-active": {
+        "dark": "#c7c7cc",
+        "light": "#070708"
+      },
+      "accent-fg": {
+        "dark": "#000000",
+        "light": "#ffffff"
+      },
+      "accent-hover": {
+        "dark": "#ffffff",
+        "light": "#39393c"
+      },
+      "accent-ink": {
+        "dark": "#f5f5fa",
+        "light": "#171719"
+      },
+      "accent-soft": {
+        "dark": "#e8e8ed1f",
+        "light": "#1c1c1e0f"
+      },
+      "accent-tone": {
+        "dark": "#e8e8ed",
+        "light": "#1c1c1e"
+      },
+      "bg": {
+        "dark": "#000000",
+        "light": "#e7f3ff"
+      },
+      "bg-subtle": {
+        "dark": "#0a1120",
+        "light": "#deeaff"
+      },
+      "border": {
+        "dark": "#2f384a",
+        "light": "#d1ddf4"
+      },
+      "border-strong": {
+        "dark": "#4b5568",
+        "light": "#bac5dc"
+      },
+      "card": {
+        "dark": "#343d4f6b",
+        "light": "#ffffffb8"
+      },
+      "common": {
+        "dark": "#4b5568",
+        "light": "#bac5dc"
+      },
+      "danger": {
+        "dark": "#ff9599",
+        "light": "#ac0010"
+      },
+      "entry-grain": {
+        "dark": "#2830428c",
+        "light": "#d4def380"
+      },
+      "entry-hi": {
+        "dark": "#1d2536e0",
+        "light": "#ffffffd1"
+      },
+      "entry-lo": {
+        "dark": "#0f1727bd",
+        "light": "#f0f7ffa8"
+      },
+      "epic": {
+        "dark": "#c86ff5",
+        "light": "#7d3fc4"
+      },
+      "fg": {
+        "dark": "#edf6ff",
+        "light": "#121824"
+      },
+      "fg-inverse": {
+        "dark": "#121824",
+        "light": "#f2faff"
+      },
+      "fg-muted": {
+        "dark": "#c3cbdc",
+        "light": "#404754"
+      },
+      "fg-subtle": {
+        "dark": "#979faf",
+        "light": "#565e6c"
+      },
+      "fill": {
+        "dark": "#7379853d",
+        "light": "#7379851f"
+      },
+      "fill-strong": {
+        "dark": "#7379855c",
+        "light": "#73798533"
+      },
+      "focus": {
+        "dark": "#f5f5fa",
+        "light": "#39393c"
+      },
+      "glass": {
+        "dark": "#141b2cf7",
+        "light": "#f3fafff7"
+      },
+      "glass-hi": {
+        "dark": "#283042f7",
+        "light": "#fffffff7"
+      },
+      "glass-lo": {
+        "dark": "#060d1cfa",
+        "light": "#e6f1fff7"
+      },
+      "glow": {
+        "dark": "#e8e8ed29",
+        "light": "#1c1c1e4d"
+      },
+      "glow-soft": {
+        "dark": "#e8e8ed14",
+        "light": "#1c1c1e24"
+      },
+      "gold": {
+        "dark": "#ffcf5a",
+        "light": "#8a5a00"
+      },
+      "health": {
+        "dark": "#30d158",
+        "light": "#1b7a38"
+      },
+      "hud": {
+        "dark": "#0e1626cc",
+        "light": "#f1fbffdb"
+      },
+      "info": {
+        "dark": "#5cc8ff",
+        "light": "#0052a6"
+      },
+      "knob": {
+        "dark": "#eaf6ff",
+        "light": "#ffffff"
+      },
+      "legendary": {
+        "dark": "#ffa53d",
+        "light": "#973107"
+      },
+      "lit": {
+        "dark": "#ffffff1a",
+        "light": "#fffffff2"
+      },
+      "lit-soft": {
+        "dark": "#ffffff09",
+        "light": "#ffffff99"
+      },
+      "mana": {
+        "dark": "#409cff",
+        "light": "#0062c4"
+      },
+      "material-control": {
+        "dark": "#ffffff21",
+        "light": "#73798529"
+      },
+      "material-control-hover": {
+        "dark": "#ffffff12",
+        "light": "#73798517"
+      },
+      "material-edge": {
+        "dark": "#ffffff14",
+        "light": "#00000012"
+      },
+      "material-regular": {
+        "dark": "#1e1e22a3",
+        "light": "#fafafc94"
+      },
+      "material-thick": {
+        "dark": "#1c1c1ec7",
+        "light": "#f6f6f8cc"
+      },
+      "material-thin": {
+        "dark": "#2c2c3047",
+        "light": "#ffffff5c"
+      },
+      "minimap": "#0e162699",
+      "minimap-edge": "#ffffff14",
+      "mythic": {
+        "dark": "#ff9599",
+        "light": "#ac0010"
+      },
+      "plate-hi": {
+        "dark": "#1e2637e6",
+        "light": "#ffffffe6"
+      },
+      "plate-lo": {
+        "dark": "#050b19eb",
+        "light": "#e8f2ffdb"
+      },
+      "raised-hi": {
+        "dark": "#3e485a",
+        "light": "#ffffff"
+      },
+      "raised-hover-hi": {
+        "dark": "#515b6e",
+        "light": "#ffffff"
+      },
+      "raised-hover-lo": {
+        "dark": "#313b4d",
+        "light": "#ebf6ff"
+      },
+      "raised-lo": {
+        "dark": "#252e3f",
+        "light": "#e3edff"
+      },
+      "raised-pressed": {
+        "dark": "#192132",
+        "light": "#d4def3"
+      },
+      "rare": {
+        "dark": "#5cc8ff",
+        "light": "#0052a6"
+      },
+      "rim": {
+        "dark": "#4e586c",
+        "light": "#b3bed4"
+      },
+      "rim-soft": {
+        "dark": "#343d4f",
+        "light": "#ccd8ef"
+      },
+      "rim-strong": {
+        "dark": "#8892a8",
+        "light": "#7c869b"
+      },
+      "scrim": {
+        "dark": "#0000006b",
+        "light": "#00000038"
+      },
+      "select-hi": {
+        "dark": "#343d4f",
+        "light": "#1c1c1e29"
+      },
+      "select-lo": {
+        "dark": "#343d4f00",
+        "light": "#1c1c1e0a"
+      },
+      "shade": {
+        "dark": "#00000038",
+        "light": "#0a10200d"
+      },
+      "shade-deep": {
+        "dark": "#00000080",
+        "light": "#0a102024"
+      },
+      "shadow": "#000000",
+      "sheen": {
+        "dark": "#ffffff1f",
+        "light": "#ffffff80"
+      },
+      "slot-selected-edge": "#ffffff8c",
+      "stage": "#000000",
+      "stage-border": "#242c3e",
+      "stage-danger": {
+        "dark": "#ff7a80",
+        "light": "#c78384"
+      },
+      "stage-fg": "#eaf6ff",
+      "stage-muted": "#97a2b8",
+      "stage-raised": "#141c2c",
+      "stage-surface": "#0c1424",
+      "success": {
+        "dark": "#45e08f",
+        "light": "#13612a"
+      },
+      "surface": {
+        "dark": "#141c2c",
+        "light": "#ffffff"
+      },
+      "surface-hover": {
+        "dark": "#313a4c",
+        "light": "#dae6fd"
+      },
+      "surface-raised": {
+        "dark": "#242c3e",
+        "light": "#ffffff"
+      },
+      "team1": {
+        "dark": "#00e9ff",
+        "light": "#0041fd"
+      },
+      "team2": {
+        "dark": "#ffc87e",
+        "light": "#680000"
+      },
+      "team3": {
+        "dark": "#99ffd9",
+        "light": "#005551"
+      },
+      "team4": {
+        "dark": "#eeff00",
+        "light": "#645f00"
+      },
+      "team5": {
+        "dark": "#ff92a8",
+        "light": "#a9009b"
+      },
+      "team6": {
+        "dark": "#81b4ff",
+        "light": "#480081"
+      },
+      "team7": {
+        "dark": "#d2ad6d",
+        "light": "#6e3700"
+      },
+      "team8": {
+        "dark": "#a9dfc1",
+        "light": "#32674c"
+      },
+      "thumb": {
+        "dark": "#5a6477",
+        "light": "#ffffff"
+      },
+      "tile": {
+        "dark": "#070e1d",
+        "light": "#dce7fb"
+      },
+      "tile-pressed": {
+        "dark": "#020512",
+        "light": "#ced8ec"
+      },
+      "track": "#677185",
+      "uncommon": {
+        "dark": "#45e08f",
+        "light": "#13612a"
+      },
+      "warn": {
+        "dark": "#ffa53d",
+        "light": "#973107"
+      },
+      "well-rim": {
+        "dark": "#707b8f",
+        "light": "#8892a8"
+      },
+      "xp": {
+        "dark": "#c86ff5",
+        "light": "#7d3fc4"
+      }
+    },
+    "container": {
+      "3xl": 960.0,
+      "lg": 420.0,
+      "md": 360.0,
+      "sm": 280.0,
+      "xl": 560.0,
+      "xs": 200.0,
+      "xxl": 720.0
+    },
+    "ease": {
+      "exit": [
+        0.4,
+        0.0,
+        1.0,
+        1.0
+      ],
+      "in-out": [
+        0.42,
+        0.0,
+        0.58,
+        1.0
+      ],
+      "out": [
+        0.23,
+        1.0,
+        0.32,
+        1.0
+      ]
+    },
+    "fontFamily": {
+      "display": "\"Instrument Sans\", \"Inter Variable\", \"Inter\", \"SF Pro Display\", -apple-system, BlinkMacSystemFont, \"Segoe UI Variable Display\", \"Segoe UI\", system-ui, Roboto, \"PingFang SC\", \"HarmonyOS Sans SC\", \"MiSans\", \"Noto Sans SC\", \"Microsoft YaHei\", sans-serif",
+      "mono": "\"Geist Mono Variable\", \"Geist Mono\", ui-monospace, \"SF Mono\", Menlo, monospace",
+      "rounded": "ui-rounded, \"SF Pro Rounded\", \"Nunito Variable\", \"Nunito\", \"PingFang SC\", \"HarmonyOS Sans SC\", \"MiSans\", \"Noto Sans SC\", \"Microsoft YaHei\", system-ui, sans-serif",
+      "sans": "\"Instrument Sans\", -apple-system, BlinkMacSystemFont, \"SF Pro Text\", \"Segoe UI Variable Text\", \"Segoe UI\", system-ui, Roboto, \"PingFang SC\", \"HarmonyOS Sans SC\", \"MiSans\", \"Noto Sans SC\", \"Microsoft YaHei\", \"Helvetica Neue\", Arial, sans-serif"
+    },
+    "fontSize": {
+      "2xl": [
+        22.0,
+        1.2727
+      ],
+      "3xl": [
+        26.0,
+        1.2308
+      ],
+      "4xl": [
+        30.0,
+        1.2
+      ],
+      "5xl": [
+        36.0,
+        1.1111
+      ],
+      "6xl": [
+        44.0,
+        1.0909
+      ],
+      "7xl": [
+        52.0,
+        1.0769
+      ],
+      "8xl": [
+        64.0,
+        1.0
+      ],
+      "base": [
+        16.0,
+        1.5
+      ],
+      "body": [
+        14.0,
+        1.4286
+      ],
+      "caption": [
+        13.0,
+        1.3846
+      ],
+      "display-2xl": [
+        56.0,
+        1.0714
+      ],
+      "display-lg": [
+        40.0,
+        1.1
+      ],
+      "display-md": [
+        34.0,
+        1.1176
+      ],
+      "display-sm": [
+        28.0,
+        1.1429
+      ],
+      "display-xl": [
+        48.0,
+        1.0833
+      ],
+      "lg": [
+        18.0,
+        1.4444
+      ],
+      "meta": [
+        13.0,
+        1.3846
+      ],
+      "reading": [
+        15.0,
+        1.6
+      ],
+      "sm": [
+        14.0,
+        1.4286
+      ],
+      "xl": [
+        20.0,
+        1.4
+      ],
+      "xs": [
+        12.0,
+        1.3333
+      ]
+    },
+    "fontWeight": {
+      "body": 400,
+      "bold": 700,
+      "medium": 500,
+      "regular": 400,
+      "semibold": 600
+    },
+    "leading": {
+      "flat": 1.0,
+      "normal": 1.45,
+      "snug": 1.3,
+      "tight": 1.12
+    },
+    "radius": {
+      "block": 8.0,
+      "button": 6.0,
+      "capsule": 9999.0,
+      "card": 10.0,
+      "control": 4.0,
+      "field": 6.0,
+      "panel": 12.0,
+      "sheet": 16.0
+    },
+    "shadow": {
+      "edge": {
+        "dark": "inset 0 0 0 0.5px rgb(255 255 255 / 0.08)",
+        "light": "inset 0 0 0 0.5px rgb(0 0 0 / 0.08)"
+      },
+      "float": {
+        "dark": "inset 0 0 0 0.5px rgb(255 255 255 / 0.08), 0 8px 24px -8px rgb(0 0 0 / 0.6)",
+        "light": "0 0 0 0.5px rgb(0 0 0 / 0.06), 0 6px 20px -8px rgb(0 0 0 / 0.16)"
+      },
+      "focus-tile": "0 12px 32px -10px rgb(0 0 0 / 0.55)",
+      "held": {
+        "dark": "inset 0 2px 5px 0 rgb(0 0 0 / 0.6)",
+        "light": "inset 0 2px 4px 0 rgb(10 16 32 / 0.22)"
+      },
+      "lens": "0 0 0 rgb(0 0 0 / 0)",
+      "lift": {
+        "dark": "0 10px 24px -8px rgb(0 0 0 / 0.6), 0 32px 64px -16px rgb(0 0 0 / 0.8)",
+        "light": "0 10px 24px -8px rgb(0 0 0 / 0.25), 0 32px 64px -16px rgb(0 0 0 / 0.4)"
+      },
+      "minimap": "0 6px 16px 0 #00000073",
+      "overlay": "0 16px 40px -12px rgb(0 0 0 / 0.35), 0 2px 6px -2px rgb(0 0 0 / 0.2)",
+      "panel": {
+        "dark": "inset 0 1px 0 0 rgb(255 255 255 / 0.1), 0 1px 0 0 rgb(0 0 0 / 0.5), 0 22px 48px -16px rgb(0 0 0 / 0.8)",
+        "light": "inset 0 1px 0 0 rgb(255 255 255 / 0.95), 0 1px 2px 0 rgb(10 16 32 / 0.1), 0 18px 44px -18px rgb(10 16 32 / 0.32)"
+      },
+      "plate": {
+        "dark": "inset 0 1px 0 0 rgb(255 255 255 / 0.08), 0 6px 18px -6px rgb(0 0 0 / 0.6)",
+        "light": "inset 0 1px 0 0 rgb(255 255 255 / 0.8), 0 4px 14px -6px rgb(10 16 32 / 0.3)"
+      },
+      "raise": {
+        "dark": "inset 0 1px 0 0 rgb(255 255 255 / 0.12), 0 1px 2px 0 rgb(0 0 0 / 0.5)",
+        "light": "inset 0 1px 0 0 rgb(255 255 255 / 0.95), 0 1px 2px 0 rgb(10 16 32 / 0.16)"
+      },
+      "raise-hover": {
+        "dark": "inset 0 1px 0 0 rgb(255 255 255 / 0.16), 0 6px 14px -4px rgb(0 0 0 / 0.6)",
+        "light": "inset 0 1px 0 0 rgb(255 255 255 / 0.95), 0 4px 12px -4px rgb(10 16 32 / 0.28)"
+      },
+      "raised": {
+        "dark": "inset 0 0 0 0.5px rgb(255 255 255 / 0.08)",
+        "light": "0 0 0 0.5px rgb(0 0 0 / 0.08)"
+      },
+      "rim": {
+        "dark": "inset 0 0 0 0.5px rgb(255 255 255 / 0.08)",
+        "light": "inset 0 0 0 0.5px rgb(0 0 0 / 0.06)"
+      },
+      "slot-selected": "0 0 8px 0 #ffffff1f, 0 6px 14px 0 #00000066",
+      "sunk": {
+        "dark": "inset 0 1px 3px 0 rgb(0 0 0 / 0.6), 0 1px 0 0 rgb(255 255 255 / 0.04)",
+        "light": "inset 0 1px 2px 0 rgb(10 16 32 / 0.16), 0 1px 0 0 rgb(255 255 255 / 0.8)"
+      },
+      "tab-selected": "0 2px 4px 0 #00000073, inset 0 1px 0 0 #ffffff26"
+    },
+    "tracking": {
+      "2xl": -0.015,
+      "3xl": -0.02,
+      "4xl": -0.022,
+      "5xl": -0.025,
+      "6xl": -0.03,
+      "7xl": -0.032,
+      "8xl": -0.035,
+      "display-2xl": -0.025,
+      "display-lg": -0.02,
+      "display-md": -0.016,
+      "display-sm": -0.012,
+      "display-xl": -0.022,
+      "lg": 0.08,
+      "md": 0.06,
+      "sm": 0.04,
+      "wide": 0.12,
+      "xl": 0.1,
+      "xs": 0.02
+    }
+  }
+}
