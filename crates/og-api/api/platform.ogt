@@ -114,7 +114,7 @@ module platform {
   struct PlatformInfo {
     doc "What answers platform calls here."
     field host String "`player` (a Player frames the game), `local` (the native host's JSON store or the browser's own storage) or `none`."
-    field capabilities List.String "The methods it answers: store.get, store.set, store.list, leaderboard.submit, leaderboard.top, leaderboard.around, telemetry, point, ai.mark, purchase.products, purchase.buy, purchase.entitlements, purchase.consume, ad.ready, ad.show, achievement.unlock, achievement.progress, achievement.list, player.get, friends.list, invite.send, invite.list, share, catalog.head (og.platform.supports asks for one)." {
+    field capabilities List.String "The methods it answers, by name (`purchase.buy`, `ad.show`): og.platform.supports asks for one." {
       guide "saves §7"
     }
     field pending u32 "Calls not answered yet."

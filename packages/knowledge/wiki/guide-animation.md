@@ -258,8 +258,13 @@ are not retroactive on seek unless authored that way.
 
 - og.FootLock keeps a planted foot still through blends and root motion.
   A foot counts as planted within 5 mm of its lowest in each clip (the
-  notion retargeting uses), weighed across blends and cross-fades. Put each
-  lock on its own entity, one per foot.
+  notion retargeting uses), weighed across blends and cross-fades: it is
+  planted while the planting clips hold at least half the pose. Put each
+  lock on its own entity, one per foot; locks apply in query order, and
+  og.JointLimit clamps the leg.
+- A lock point is in the skeleton Transform's frame: the world without a
+  parent, parent-local otherwise. It resists the skeleton's own motion
+  but follows the parent's translation, rotation and scale.
 - og.SpringBone swings a tail, an ear, a strand of hair or a single
   jiggling node after the body's motion; put each chain on its own entity.
   It is deterministic under the fixed tick, and a restore continues a

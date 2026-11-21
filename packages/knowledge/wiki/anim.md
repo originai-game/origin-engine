@@ -52,7 +52,7 @@ module anim {
 | [`og.IkChain`](anim/record-IkChain.md) | component |  | An inverse-kinematics constraint on a skeleton, applied after its clips and graph: the chain of `bones` bones ending at joint `tip` turns so the tip reaches `target`. |
 | [`og.LookAt`](anim/record-LookAt.md) | component |  | An aim constraint on a skeleton, applied after its clips, graph and IK chains: `joint` turns so its `axis` points at `target` and its `upAxis` leans towards `up` (three.js Object3D.lookAt: +Z at the … |
 | [`og.JointLimit`](anim/record-JointLimit.md) | component |  | How far a joint may turn from its rest rotation when og.anim's solvers (og.IkChain, og.LookAt, og.FootLock) turn it: a swing of `axis` within a cone and a twist about it within a range. |
-| [`og.FootLock`](anim/record-FootLock.md) | component |  | Foot locking: while the playing clips plant `foot` (within 5 mm of its lowest in each clip; planted when the planting clips hold at least half the pose), it stays where it touched the ground through … |
+| [`og.FootLock`](anim/record-FootLock.md) | component |  | Foot locking: while the playing clips plant `foot`, it stays where it touched the ground through blends and root motion, its leg bent by two-bone IK, keeping its animated orientation; when the clips … |
 | [`SpringSpace`](anim/type-SpringSpace.md) | enum |  | Where a spring bone's tails move. |
 | [`SpringSpace()`](#column-SpringSpace) | column kind |  | A SpringSpace field: the variant's index. |
 | [`og.SpringBone`](anim/record-SpringBone.md) | component |  | A spring (jiggle) bone chain, three-vrm's VRMSpringBone: `joint` and its `bones` - 1 parents swing after their parents' motion. |
@@ -201,7 +201,7 @@ column SpringSpace {
 }
 ```
 
-<sub>Module `anim` line 451</sub>
+<sub>Module `anim` line 450</sub>
 
 ```ogt
 column SpringColliderShape {
@@ -212,7 +212,7 @@ column SpringColliderShape {
 }
 ```
 
-<sub>Module `anim` line 525</sub>
+<sub>Module `anim` line 524</sub>
 
 ```ogt
 column Rig {
@@ -223,7 +223,7 @@ column Rig {
 }
 ```
 
-<sub>Module `anim` line 614</sub>
+<sub>Module `anim` line 613</sub>
 
 ```ogt
 column FlipbookSheet {
@@ -234,7 +234,7 @@ column FlipbookSheet {
 }
 ```
 
-<sub>Module `anim` line 685</sub>
+<sub>Module `anim` line 684</sub>
 
 ```ogt
 column Rig2D {
@@ -245,4 +245,4 @@ column Rig2D {
 }
 ```
 
-<sub>Module `anim` line 788</sub>
+<sub>Module `anim` line 787</sub>

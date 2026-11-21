@@ -18460,7 +18460,8 @@ export interface Water {
    */
   size: Vector2;
   /**
-   * Draw the water over this mesh (its vertices in the entity's frame) instead of the size × size grid: a stream, channel or pool of any outline, with the same colour by depth, refraction, foam and reflections. 0: the grid. A mesh surface has no wave heights: it is still water standing over the mesh's triangles alone, at their height, for og.physics.water, waterHeight, og.Buoyancy and og.Splash (a lake of any outline, not a square that covers the low ground around it).
+   * Draw the water over this mesh (its vertices in the entity's frame) instead of the size × size grid: a stream, channel or pool of any outline. Still water, with no wave heights. 0: the grid.
+   * See `render §8`.
    */
   geometry: Geometry;
   /**
@@ -19512,8 +19513,7 @@ export interface JointLimit {
 }
 
 /**
- * Foot locking: while the playing clips plant `foot` (within 5 mm of its lowest in each clip; planted when the planting clips hold at least half the pose), it stays where it touched the ground through blends and root motion, its leg bent by two-bone IK, keeping its animated orientation; when the clips lift it, it rejoins its animation over `release`. One entity per foot; locks apply after root motion and before og.IkChain, in query order, and og.JointLimit clamps the leg. World state (the `og.anim` state block).
- * Lock points use the skeleton Transform's frame: true world without a parent, parent-local otherwise. They resist the skeleton's motion but follow the parent's translation, rotation and scale.
+ * Foot locking: while the playing clips plant `foot`, it stays where it touched the ground through blends and root motion, its leg bent by two-bone IK, keeping its animated orientation; when the clips lift it, it rejoins its animation over `release`. One entity per foot. World state (the `og.anim` state block).
  * See `animation §8`.
  *
  * The value of the `FootLock` component (token `og.FootLock`).
@@ -24801,7 +24801,7 @@ export interface PlatformInfo {
    */
   readonly host: string;
   /**
-   * The methods it answers: store.get, store.set, store.list, leaderboard.submit, leaderboard.top, leaderboard.around, telemetry, point, ai.mark, purchase.products, purchase.buy, purchase.entitlements, purchase.consume, ad.ready, ad.show, achievement.unlock, achievement.progress, achievement.list, player.get, friends.list, invite.send, invite.list, share, catalog.head (og.platform.supports asks for one).
+   * The methods it answers, by name (`purchase.buy`, `ad.show`): og.platform.supports asks for one.
    * See `saves §7`.
    */
   readonly capabilities: readonly string[];
@@ -35449,8 +35449,7 @@ export declare namespace og {
    */
   const JointLimit: ComponentType<{ readonly skeleton: FieldSpec<"Entity">; readonly joint: FieldSpec<"u32">; readonly axis: FieldSpec<"Vector3">; readonly swing: FieldSpec<"f32">; readonly twistMin: FieldSpec<"f32">; readonly twistMax: FieldSpec<"f32"> }, JointLimit>;
   /**
-   * Foot locking: while the playing clips plant `foot` (within 5 mm of its lowest in each clip; planted when the planting clips hold at least half the pose), it stays where it touched the ground through blends and root motion, its leg bent by two-bone IK, keeping its animated orientation; when the clips lift it, it rejoins its animation over `release`. One entity per foot; locks apply after root motion and before og.IkChain, in query order, and og.JointLimit clamps the leg. World state (the `og.anim` state block).
-   * Lock points use the skeleton Transform's frame: true world without a parent, parent-local otherwise. They resist the skeleton's motion but follow the parent's translation, rotation and scale.
+   * Foot locking: while the playing clips plant `foot`, it stays where it touched the ground through blends and root motion, its leg bent by two-bone IK, keeping its animated orientation; when the clips lift it, it rejoins its animation over `release`. One entity per foot. World state (the `og.anim` state block).
    * See `animation §8`.
    */
   const FootLock: ComponentType<{ readonly skeleton: FieldSpec<"Entity">; readonly foot: FieldSpec<"u32">; readonly weight: FieldSpec<"f32">; readonly release: FieldSpec<"f32">; readonly maxDistance: FieldSpec<"f32">; readonly planted: FieldSpec<"bool">; readonly locked: FieldSpec<"bool"> }, FootLock>;

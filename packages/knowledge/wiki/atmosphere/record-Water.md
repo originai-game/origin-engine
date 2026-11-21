@@ -17,7 +17,7 @@ Token `og.Water`, registered under the schema name `og.Water`; its value type is
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
 | `size` | `Vector2` | `{ x: 16, y: 16 }` | — | `m` | tunable | The extent along the entity's x and z. |
-| `geometry` | `Geometry` | `0` | — | — | — | Draw the water over this mesh (its vertices in the entity's frame) instead of the size × size grid: a stream, channel or pool of any outline, with the same colour by depth, refraction, foam and reflections. 0: the grid. A mesh surface has no wave heights: it is still water standing over the mesh's triangles alone, at their height, for og.physics.water, waterHeight, og.Buoyancy and og.Splash (a lake of any outline, not a square that covers the low ground around it). |
+| `geometry` | `Geometry` | `0` | — | — | — | Draw the water over this mesh (its vertices in the entity's frame) instead of the size × size grid: a stream, channel or pool of any outline. Still water, with no wave heights. 0: the grid. See `render §8`. |
 | `river` | `Path` | `0` | — | — | — | A river along this path (og.path; its heights the water's level): a ribbon riverWidth across in place of the grid, its current riverSpeed mid-stream, slowing to nothing at the banks; og.Buoyancy bodies drift with it in the tick. Where it drops steeper than 45 degrees it falls. 0: none. See `render §8`. |
 | `riverWidth` | `number` | `6` | ≥ 0 | `m` | tunable | The river's width across. |
 | `riverSpeed` | `number` | `1.5` | ≥ 0 | `mps` | tunable | The river's current mid-stream; it slows to nothing at the banks. |
@@ -125,7 +125,9 @@ component Water {
     unit m
     tunable true
   }
-  field geometry Geometry "Draw the water over this mesh (its vertices in the entity's frame) instead of the size × size grid: a stream, channel or pool of any outline, with the same colour by depth, refraction, foam and reflections. 0: the grid. A mesh surface has no wave heights: it is still water standing over the mesh's triangles alone, at their height, for og.physics.water, waterHeight, og.Buoyancy and og.Splash (a lake of any outline, not a square that covers the low ground around it)."
+  field geometry Geometry "Draw the water over this mesh (its vertices in the entity's frame) instead of the size × size grid: a stream, channel or pool of any outline. Still water, with no wave heights. 0: the grid." {
+    guide "render §8"
+  }
   field river Path "A river along this path (og.path; its heights the water's level): a ribbon riverWidth across in place of the grid, its current riverSpeed mid-stream, slowing to nothing at the banks; og.Buoyancy bodies drift with it in the tick. Where it drops steeper than 45 degrees it falls. 0: none." {
     guide "render §8"
   }

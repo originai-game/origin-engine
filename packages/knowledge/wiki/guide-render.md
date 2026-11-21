@@ -498,6 +498,12 @@ depth-normal prepass: the first one pays for it.
   inside Snell's window (48.6 degrees from straight up), bent as the
   surface bends them, the horizon at its rim and broken by the ripples;
   outside it the surface mirrors the water.
+- Mesh water (og.Water's `geometry`): the same colour by depth,
+  refraction, foam and reflections as the grid, over the mesh's triangles
+  alone and at their height. It has no wave heights: it is still water
+  for og.physics.water, waterHeight, og.Buoyancy and og.Splash. Use it for
+  a lake of any outline, not a square that covers the low ground around
+  it.
 - Rivers: a waterfall's pool churns white for about three widths. Use
   `flowMap` for a stream that bends round rocks.
 - Normal maps: the lake mode is three.js Water's getNoise. The flow mode

@@ -266,8 +266,12 @@ world.
   time play (that is og.Time). Its `clock` is `browser` while the framing
   page sends no time of its own.
 
-The methods a host may answer are PlatformInfo.capabilities' (`og api
-show PlatformInfo`).
+The methods a host may answer, as PlatformInfo.capabilities names them:
+store.get, store.set, store.list, leaderboard.submit, leaderboard.top,
+leaderboard.around, telemetry, point, ai.mark, purchase.products,
+purchase.buy, purchase.entitlements, purchase.consume, ad.ready, ad.show,
+achievement.unlock, achievement.progress, achievement.list, player.get,
+friends.list, invite.send, invite.list, share and catalog.head.
 
 A service the host lacks:
 

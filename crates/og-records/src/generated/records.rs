@@ -21888,7 +21888,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 unit: "",
                 worldspace: "",
                 label: "",
-                doc: doc!("Draw the water over this mesh (its vertices in the entity's frame) instead of the size × size grid: a stream, channel or pool of any outline, with the same colour by depth, refraction, foam and reflections. 0: the grid. A mesh surface has no wave heights: it is still water standing over the mesh's triangles alone, at their height, for og.physics.water, waterHeight, og.Buoyancy and og.Splash (a lake of any outline, not a square that covers the low ground around it)."),
+                doc: doc!("Draw the water over this mesh (its vertices in the entity's frame) instead of the size × size grid: a stream, channel or pool of any outline. Still water, with no wave heights. 0: the grid. See `render §8`."),
                 variants: &[],
                 capacity: 0,
                 list: 0,
