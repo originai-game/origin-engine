@@ -1,13 +1,14 @@
 // The UI gallery: every built-in component (src/ui/components, screens, controls) in every
 // fixture it exports, under every style pack, generated from the components themselves.
 //
-//   bun packages/engine/src/node/gallery.ts [--out DIR] [--packs a,b] [--only TEXT] [--size WxH] [--og <og>]
+//   bun packages/engine/src/node/gallery.ts [--out DIR] [--packs a,b] [--schemes dark,light] [--only TEXT] [--size WxH] [--og <og>]
 //
 // It writes one project (target/ui-gallery/project), cooks it once and runs it headless once per
-// pack: the project mounts one fixture per page on a two-tone stage (a screen stretched to the
+// pack and scheme: the project mounts one fixture per page on a two-tone stage (a screen stretched to the
 // stage, as mount() gives a game's screen the surface; a component at its own size), the run switches the pack
-// with og.ui.configure and screenshots every page. The frames land in <out>/<pack>/ (default
-// target/ui-gallery/out) with index.html, one row per fixture and one column per pack. A run
+// and the scheme with og.ui.configure and screenshots every page. The frames land in <out>/<pack>/
+// (default target/ui-gallery/out; the light scheme's in <out>/<pack>-light/) with index.html, one
+// row per fixture and one column per pack and scheme. `--schemes` is dark alone unless given. A run
 // draws on the GPU og finds; without one, run it on a GPU host. `--only` keeps the fixtures
 // whose `<dir>/<file> · <fixture>` contains TEXT (or any of TEXT,TEXT,…).
 
@@ -353,6 +354,10 @@ async function main(): Promise<number> {
   const all = packs();
   const packNames = arg("--packs")?.split(",") ?? all;
   for (const p of packNames) if (!all.includes(p)) throw new Error(`no pack ${p} (${all.join(", ")})`);
+  const schemes = arg("--schemes")?.split(",") ?? ["dark"];
+  for (const s of schemes) if (s !== "dark" && s !== "light") throw new Error(`no scheme ${s} (dark, light)`);
+  /** One run each: a pack in a scheme, and the directory and column it is (`cartoon`, `cartoon-light`). */
+  const columns = packNames.flatMap((pack) => schemes.map((scheme) => ({ pack, scheme, key: scheme === "dark" ? pack : `${pack}-${scheme}` })));
   const work = join(repo, "target", "ui-gallery");
   const project = join(work, "project");
   const out = resolve(arg("--out") ?? join(work, "out"));
@@ -379,20 +384,20 @@ async function main(): Promise<number> {
   // A pack loads its look and fonts over a few frames; a page settles in 12 ticks.
   const STEP = 15, SETTLE = 12, LEAD = 30;
   const at = (tick: number) => (tick / 60).toFixed(4);
-  for (const pack of packNames) {
-    const shots = join(out, pack);
+  for (const { pack, scheme, key } of columns) {
+    const shots = join(out, key);
     rmSync(shots, { recursive: true, force: true });
     mkdirSync(shots, { recursive: true });
-    const steps = [`${at(1)}:pack:${pack}`];
+    const steps = [`${at(1)}:pack:${pack}`, `${at(2)}:scheme:${scheme}`];
     list.forEach((_, n) => {
       const t = LEAD + n * STEP;
       steps.push(`${at(t)}:page:${n}`, `${at(t + SETTLE)}:screenshot`, `${at(t + SETTLE + 1)}:dump_ui`);
     });
     steps.push(`${at(LEAD + list.length * STEP + 1)}:quit`);
-    console.log(`${pack}: ${list.length} fixtures`);
+    console.log(`${key}: ${list.length} fixtures`);
     const r = await run(["run", ".", "--headless", "--no-check", "--size", size, "--out", shots, "--commands", steps.join(";")]);
     if (!r.ok) return 1;
-    const where = (n: number) => `${pack} ${list[n]!.name} · ${list[n]!.fixture}`;
+    const where = (n: number) => `${key} ${list[n]!.name} · ${list[n]!.fixture}`;
     const threw = new Set<number>();
     for (const m of r.log.matchAll(/gallery page (\d+): ([^\n]*)/g)) {
       const n = Number(m[1]);
@@ -417,13 +422,13 @@ async function main(): Promise<number> {
     });
     const frames = frameFiles;
     if (frames.length !== list.length) {
-      console.error(`${pack}: ${frames.length} frames for ${list.length} fixtures`);
+      console.error(`${key}: ${frames.length} frames for ${list.length} fixtures`);
       return 1;
     }
     frames.forEach((f, n) => renameSync(join(shots, f), join(shots, `${String(n).padStart(4, "0")}.png`)));
   }
-  writeFileSync(join(out, "index.html"), index(list, packNames, (k, n) => `${k}/${String(n).padStart(4, "0")}.png`));
-  console.log(`${join(out, "index.html")}: ${list.length} fixtures × ${packNames.length} packs`);
+  writeFileSync(join(out, "index.html"), index(list, columns.map((c) => c.key), (k, n) => `${k}/${String(n).padStart(4, "0")}.png`));
+  console.log(`${join(out, "index.html")}: ${list.length} fixtures × ${packNames.length} packs × ${schemes.length} scheme${schemes.length === 1 ? "" : "s"}`);
   writeFileSync(join(out, "defects.txt"), defects.join("\n") + (defects.length ? "\n" : ""));
   if (defects.length) {
     console.error(`${defects.length} defect(s) (${join(out, "defects.txt")}):\n${defects.join("\n")}`);

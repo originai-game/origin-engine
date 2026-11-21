@@ -2876,16 +2876,17 @@ states, what moves, what plays and whether it is leaving.
 
 ### 6.5 UI gallery
 
-`bun packages/engine/src/node/gallery.ts [--out DIR] [--packs a,b] [--only
-TEXT] [--size WxH] [--og <og>]` renders, in a checkout, every fixture of
+`bun packages/engine/src/node/gallery.ts [--out DIR] [--packs a,b] [--schemes
+dark,light] [--only TEXT] [--size WxH] [--og <og>]` renders, in a checkout, every fixture of
 every built-in component (`src/ui/components`, `controls`, `screens`)
 under every pack: it reads each `.tsx`'s component and `fixtures`, writes
 one project (`target/ui-gallery/project`) that mounts one fixture per page
 on a two-tone stage (a bright sky over a dark floor, captioned with the
-component and fixture), cooks it once, and runs it headless once per pack,
-switching the pack with `og.ui.configure` and capturing every page. The
-frames land in `<out>/<pack>/` (default `target/ui-gallery/out`) with
-`index.html`, a row per fixture and a column per pack. `--only` keeps the
+component and fixture), cooks it once, and runs it headless once per pack and scheme,
+switching both with `og.ui.configure` and capturing every page. The
+frames land in `<out>/<pack>/` (default `target/ui-gallery/out`; the light
+scheme's in `<out>/<pack>-light/`) with `index.html`, a row per fixture and
+a column per pack and scheme. `--schemes` is `dark` alone unless given. `--only` keeps the
 fixtures whose `<dir>/<file> · <fixture>` contains the text. A component
 without fixtures has no page. The run draws on the GPU og finds; a frame
 is judged for what it shows, as any other.
