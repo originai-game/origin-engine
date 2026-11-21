@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "UI gallery (src/node/gallery.ts)",
+      "summary": "The gallery exits non-zero and writes defects.txt listing each fixture that threw at mount or drew a string table's key instead of its words. A fixture other than `default` is laid over `default`, as the component tests mount it, so a state fixture names only what it changes."
+    }
+  ]
+}

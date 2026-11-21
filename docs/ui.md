@@ -2808,7 +2808,9 @@ for each applicable case; an inapplicable case needs a reason.
 
 A component's fixtures are its `fixtures` export, beside it in its
 `.tsx`: one named prop set per state it has (empty, filled, selected,
-disabled, overflow, as the component does). The gallery (§6.5) renders
+disabled, overflow, as the component does). A fixture other than
+`default` is laid over `default`: it names only what its state changes.
+The gallery (§6.5) renders
 every one of them; the group's behaviour tests
 (`packages/engine/tests/<group>.test.ts`) mount the same components.
 

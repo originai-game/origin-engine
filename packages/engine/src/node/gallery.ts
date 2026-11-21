@@ -14,7 +14,7 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, w
 import { dirname, join, relative, resolve, sep } from "node:path";
 
 declare const Bun: {
-  spawn(cmd: string[], o: { cwd: string; stdout: "inherit"; stderr: "inherit"; env: Record<string, string | undefined> }): { exited: Promise<number> };
+  spawn(cmd: string[], o: { cwd: string; stdout: "pipe"; stderr: "pipe"; env: Record<string, string | undefined> }): { exited: Promise<number>; stdout: ReadableStream<Uint8Array>; stderr: ReadableStream<Uint8Array> };
 };
 
 const here = dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "$1"));
@@ -57,6 +57,28 @@ export function packs(): string[] {
   return ["default", ...readdirSync(dir).filter((d) => existsSync(join(dir, d, "pack.json"))).sort()];
 }
 
+/** Every key the built-in components' string tables hold. */
+export function tableKeys(): Set<string> {
+  const keys = new Set<string>();
+  const walk = (dir: string): void => {
+    for (const e of readdirSync(dir, { withFileTypes: true })) {
+      if (e.isDirectory()) walk(join(dir, e.name));
+      else if (e.name.endsWith(".ogt")) for (const m of readFileSync(join(dir, e.name), "utf8").matchAll(/^string\s+"([^"]+)"/gm)) keys.add(m[1]!);
+    }
+  };
+  walk(ui);
+  return keys;
+}
+
+/** The string keys a UI dump's drawn text or names show as written: the table's key, not its words. */
+export function rawKeys(dump: { elements?: Array<{ text?: string; name?: string }> }, keys: Set<string>): string[] {
+  const found = new Set<string>();
+  for (const e of dump.elements ?? []) {
+    for (const s of [e.text ?? "", e.name ?? ""]) for (const m of s.matchAll(/[a-z][\w-]*(?:\.[\w-]+)+/g)) if (keys.has(m[0])) found.add(m[0]);
+  }
+  return [...found].sort();
+}
+
 const PROJECT = `type project
 version 1
 ---
@@ -97,14 +119,19 @@ function page(world: World, n: number): void {
   shown?.();
   const [m, name, fixture] = PAGES[n] ?? PAGES[0]!;
   const [Component, fixtures] = MODULES[m]!;
-  shown = mount(world, () => (
-    <View class="absolute inset-0">
-      <View class="absolute inset-x-0 top-0 h-1/2 bg-[#9fb4c8]" />
-      <View class="absolute inset-x-0 bottom-0 h-1/2 bg-[#141a22]" />
-      <View class="absolute inset-0 p-6">{Component(fixtures[fixture] ?? {})}</View>
-      <Text class="absolute left-2 bottom-1 text-xs text-white/70 font-mono">{\`\${name} · \${fixture}\`}</Text>
-    </View>
-  ), {}, { layer: "hud" });
+  // The marker names the page, so the gallery lists the fixture that threw.
+  try {
+    shown = mount(world, () => (
+      <View class="absolute inset-0">
+        <View class="absolute inset-x-0 top-0 h-1/2 bg-[#9fb4c8]" />
+        <View class="absolute inset-x-0 bottom-0 h-1/2 bg-[#141a22]" />
+        <View class="absolute inset-0 p-6">{Component({ ...fixtures.default, ...fixtures[fixture] })}</View>
+        <Text class="absolute left-2 bottom-1 text-xs text-white/70 font-mono">{\`\${name} · \${fixture}\`}</Text>
+      </View>
+    ), {}, { layer: "hud" });
+  } catch (e) {
+    throw new Error(\`gallery page \${n}: \${e instanceof Error ? e.message : String(e)}\`);
+  }
 }
 
 function pack(world: World, name: string): void {
@@ -117,7 +144,8 @@ function pack(world: World, name: string): void {
 export default og.game({
   tick: 60,
   seed: 1,
-  ui: (world) => page(world, 0),
+  // Pages mount by command only, so one that throws is a listed defect, not a failed start.
+  ui: () => {},
   commands: {
     page: (world, args) => page(world, Number(args[0] ?? 0)),
     pack: (world, args) => pack(world, args[0] ?? "default"),
@@ -172,8 +200,22 @@ async function main(): Promise<number> {
   const out = resolve(arg("--out") ?? join(work, "out"));
   generate(project, list, all);
   const env = { ...process.env, OG_ENGINE_PACKAGE: pkg };
-  const run = async (args: string[]) => (await Bun.spawn([og, ...args], { cwd: project, stdout: "inherit", stderr: "inherit", env }).exited) === 0;
-  if (!(await run(["cook", "."]))) return 1;
+  /** Runs og, its output passed through and kept. */
+  const run = async (args: string[]): Promise<{ ok: boolean; log: string }> => {
+    const p = Bun.spawn([og, ...args], { cwd: project, stdout: "pipe", stderr: "pipe", env });
+    const keep = async (from: ReadableStream<Uint8Array>, to: { write(s: string): unknown }) => {
+      let all = "";
+      const d = new TextDecoder();
+      for await (const c of from as unknown as AsyncIterable<Uint8Array>) { const t = d.decode(c, { stream: true }); all += t; to.write(t); }
+      return all;
+    };
+    const [o, e] = await Promise.all([keep(p.stdout, process.stdout), keep(p.stderr, process.stderr)]);
+    return { ok: (await p.exited) === 0, log: o + e };
+  };
+  const keys = tableKeys();
+  /** The hard defects, by fixture: a mount that threw, a raw string key drawn. */
+  const defects: string[] = [];
+  if (!(await run(["cook", "."])).ok) return 1;
   // A pack loads its look and fonts over a few frames; a page settles in 12 ticks.
   const STEP = 15, SETTLE = 12, LEAD = 30;
   const at = (tick: number) => (tick / 60).toFixed(4);
@@ -184,11 +226,28 @@ async function main(): Promise<number> {
     const steps = [`${at(1)}:pack:${pack}`];
     list.forEach((_, n) => {
       const t = LEAD + n * STEP;
-      steps.push(`${at(t)}:page:${n}`, `${at(t + SETTLE)}:screenshot`);
+      steps.push(`${at(t)}:page:${n}`, `${at(t + SETTLE)}:screenshot`, `${at(t + SETTLE + 1)}:dump_ui`);
     });
     steps.push(`${at(LEAD + list.length * STEP + 1)}:quit`);
     console.log(`${pack}: ${list.length} fixtures`);
-    if (!(await run(["run", ".", "--headless", "--no-check", "--size", arg("--size") ?? "1280x720", "--out", shots, "--commands", steps.join(";")]))) return 1;
+    const r = await run(["run", ".", "--headless", "--no-check", "--size", arg("--size") ?? "1280x720", "--out", shots, "--commands", steps.join(";")]);
+    if (!r.ok) return 1;
+    const where = (n: number) => `${pack} ${list[n]!.name} · ${list[n]!.fixture}`;
+    const threw = new Set<number>();
+    for (const m of r.log.matchAll(/gallery page (\d+): ([^\n]*)/g)) {
+      const n = Number(m[1]);
+      if (threw.has(n)) continue;
+      threw.add(n);
+      defects.push(`${where(n)}: threw at mount: ${m[2]}`);
+    }
+    const dumps = readdirSync(shots).filter((f) => /^dump_ui-\d+\.json$/.test(f)).sort();
+    dumps.forEach((f, n) => {
+      if (n < list.length && !threw.has(n)) {
+        const raw = rawKeys(JSON.parse(readFileSync(join(shots, f), "utf8")), keys);
+        if (raw.length) defects.push(`${where(n)}: draws raw string keys ${raw.join(", ")}`);
+      }
+      rmSync(join(shots, f));
+    });
     const frames = readdirSync(shots).filter((f) => /^screenshot-\d+\.png$/.test(f)).sort();
     if (frames.length !== list.length) {
       console.error(`${pack}: ${frames.length} frames for ${list.length} fixtures`);
@@ -198,6 +257,11 @@ async function main(): Promise<number> {
   }
   writeFileSync(join(out, "index.html"), index(list, packNames, (k, n) => `${k}/${String(n).padStart(4, "0")}.png`));
   console.log(`${join(out, "index.html")}: ${list.length} fixtures × ${packNames.length} packs`);
+  writeFileSync(join(out, "defects.txt"), defects.join("\n") + (defects.length ? "\n" : ""));
+  if (defects.length) {
+    console.error(`${defects.length} defect(s) (${join(out, "defects.txt")}):\n${defects.join("\n")}`);
+    return 1;
+  }
   return 0;
 }
 
