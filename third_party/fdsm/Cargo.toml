@@ -45,6 +45,10 @@ default-features = false
 [dependencies.nalgebra]
 version = "0.34.1"
 
+# og (PATCHED.md): the cubic solver's maths.
+[dependencies.libm]
+version = "0.2.16"
+
 [dependencies.num-traits]
 version = "0.2.15"
 
