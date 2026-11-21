@@ -251,6 +251,95 @@ impl Rasterizer {
     }
 }
 
+/// A coverage mask blurred as CSS blurs a shadow (`text-shadow`, glow):
+/// a Gaussian of standard deviation half the blur `radius` (CSS Backgrounds
+/// 3 §7.1), wide enough to hold three of them each side.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct Blurred {
+    /// How far the blurred mask reaches past the source's every side, px.
+    pub pad: u32,
+    pub width: u32,
+    pub height: u32,
+}
+
+/// Blurs mask `src`, `width` × `height` bytes, into `out` (replaced) with a
+/// separable Gaussian, `scratch` holding the pass between. Every step is
+/// IEEE `f32` and libm's `expf`, so both hosts blur to the same bytes. A
+/// shadow is blurred once per glyph and radius and cached, so the kernel
+/// and the column pass allocate.
+pub fn blur(
+    src: &[u8],
+    width: u32,
+    height: u32,
+    radius: f32,
+    scratch: &mut Vec<f32>,
+    out: &mut Vec<u8>,
+) -> Blurred {
+    let sigma = radius / 2.0;
+    let pad = if sigma > 0.0 {
+        (3.0 * sigma).ceil() as u32
+    } else {
+        0
+    };
+    let (w, h) = (width as usize, height as usize);
+    let (bw, bh, p) = (w + 2 * pad as usize, h + 2 * pad as usize, pad as usize);
+    out.clear();
+    if pad == 0 {
+        out.extend_from_slice(src);
+        return Blurred { pad, width, height };
+    }
+    // The kernel, normalized so a mask's ink is kept.
+    let mut kernel = vec![0.0f32; 2 * p + 1];
+    let k = &mut kernel[..];
+    let mut sum = 0.0;
+    for (i, v) in k.iter_mut().enumerate() {
+        let d = i as f32 - p as f32;
+        *v = libm::expf(-(d * d) / (2.0 * sigma * sigma));
+        sum += *v;
+    }
+    for v in k.iter_mut() {
+        *v /= sum;
+    }
+    let half = p;
+    // Rows: source width to padded width, into `scratch`.
+    scratch.clear();
+    scratch.resize(bw * h, 0.0);
+    for y in 0..h {
+        let row = &src[y * w..(y + 1) * w];
+        let dst = &mut scratch[y * bw..(y + 1) * bw];
+        for (x, &c) in row.iter().enumerate() {
+            if c == 0 {
+                continue;
+            }
+            let c = f32::from(c) / 255.0;
+            let at = x + p - half;
+            for (t, kv) in k.iter().enumerate() {
+                dst[at + t] += c * kv;
+            }
+        }
+    }
+    // Columns: into the padded mask.
+    let mut col = vec![0.0f32; bw * bh];
+    for y in 0..h {
+        let at = y + p - half;
+        for x in 0..bw {
+            let c = scratch[y * bw + x];
+            if c == 0.0 {
+                continue;
+            }
+            for (t, kv) in k.iter().enumerate() {
+                col[(at + t) * bw + x] += c * kv;
+            }
+        }
+    }
+    out.extend(col.iter().map(|&c| (c.clamp(0.0, 1.0) * 255.0 + 0.5) as u8));
+    Blurred {
+        pad,
+        width: bw as u32,
+        height: bh as u32,
+    }
+}
+
 /// An outline pen that collects the outline as a kurbo path, shifted `dx`.
 struct PathPen {
     path: kurbo::BezPath,
@@ -679,6 +768,44 @@ mod tests {
                 assert!(
                     (ink - want).abs() < 0.01 * want,
                     "{c}, width {w}: ink {ink}, band {want}"
+                );
+            }
+        }
+    }
+
+    /// A blur keeps a mask's ink, and across a long straight edge its
+    /// profile is CSS's: the Gaussian of sigma radius / 2 integrated, so
+    /// at d px from the edge the coverage is ½ (1 + erf(d / (σ √2))).
+    #[test]
+    fn a_blur_is_csss_gaussian() {
+        let (w, h) = (40u32, 60u32);
+        // Columns 0..20 full, the rest empty: an edge at x = 20.
+        let src: Vec<u8> = (0..w * h)
+            .map(|i| if i % w < 20 { 255 } else { 0 })
+            .collect();
+        let (mut scratch, mut out) = (Vec::new(), Vec::new());
+        for radius in [2.0f32, 5.0, 9.0] {
+            let b = blur(&src, w, h, radius, &mut scratch, &mut out);
+            assert_eq!(b.pad, (1.5 * radius).ceil() as u32);
+            assert_eq!(out.len(), (b.width * b.height) as usize);
+            let ink: u64 = out.iter().map(|&c| u64::from(c)).sum();
+            let want: u64 = src.iter().map(|&c| u64::from(c)).sum();
+            let off = (ink as f64 - want as f64).abs() / want as f64;
+            assert!(off < 0.005, "radius {radius}: ink off by {off}");
+            // The middle row, away from the mask's top and bottom.
+            let y = (b.height / 2) as usize;
+            let sigma = radius / 2.0;
+            for x in 0..b.width as usize {
+                let d = 20.0 + b.pad as f32 - (x as f32 + 0.5);
+                let want = 0.5 * (1.0 + libm::erff(d / (sigma * std::f32::consts::SQRT_2)));
+                // Left of the mask the source's own edge at x = 0 blurs too.
+                if (x as f32) < 2.0 * b.pad as f32 + 4.0 {
+                    continue;
+                }
+                let got = out[y * b.width as usize + x] as f32 / 255.0;
+                assert!(
+                    (got - want).abs() < 0.02,
+                    "radius {radius}, {d} px from the edge: {got}, CSS {want}"
                 );
             }
         }

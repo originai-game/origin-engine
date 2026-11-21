@@ -3706,6 +3706,7 @@ dependencies = [
  "font-rs",
  "harfrust",
  "kurbo",
+ "libm",
  "og-core",
  "og-css",
  "og-draw",
