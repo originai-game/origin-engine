@@ -1,54 +1,87 @@
-# Component documents
+# Built-in components
 
-Component documents built from og-ui's public elements and built into the
-engine, filed by what they do: `base/` (small building blocks: slots,
-avatars, currency, spinners), `hud/` (bars, meters, buttons, timers, feeds
-drawn over play), `world/` (tags, ground marks and maps anchored in the
-world), `panels/` (data, menus, inventories, quest logs, conversation),
-`meta/` (shop, social, rewards and progression, with its README), and a
-genre's own screens in its kit (`rpg/`, `shooter/`, `strategy/` and the
-rest, each with its README). A piece any genre uses is filed by function,
-not under the genre that first needed it. A game's document
-uses any of them by its declared name (`<AbilityBar slots={$slots} />`,
-`<RpgBackpack items={$items} />`) without a copy: the cook bundles it as
-`@ui/components/<path>` and the screen that uses it loads it. Copy one with
-`og ui eject <component>` (`og ui eject panels/backpack` in a folder) and edit
-it in `assets/ui/<component>.svelte`; the game's copy then replaces the
-built-in one of its name.
+The engine's UI components, TSX functions styled with Tailwind classes
+(`crates/og-ui-next/CONVENTIONS.md`), filed by what they do: `base/` (small
+building blocks: slots, avatars, currency, spinners), `hud/` (bars, meters,
+buttons, timers and feeds drawn over play), `world/` (tags anchored on
+entities and maps), `panels/` (data, menus, inventories, quest logs,
+conversation, charts and graphs), `meta/` (shop, social, rewards and
+progression), and a genre's own pieces in its kit (`rpg/`, `shooter/`,
+`strategy/`, `racing/`, `card/`, `puzzle/`, `idle/`, `rhythm/`, `arena/`).
+A piece any genre uses is filed by function, not under the genre that first
+needed it.
 
-They follow the screen conventions (`../screens/README.md`): each declares
-`<meta name="component">`, its props and actions, and a
-`<meta name="fixture:default">` JSON fixture. Every prop has a default, so
-`<StatBar />` draws an empty health bar and a game passes only what it
-shows; structure is scriptless markup,
-look comes from role parts and tokens, rings and bars are inline SVG, world tags are
-`<anchor>`, ground marks `<ground>`, and overhead bars and damage numbers are
-`<anchor mass>` rows drawn on the GPU. Visible words come from the companion
-string table (`<meta name="strings" content="./<component>.en.ogt">`), which
-eject copies too.
+A game imports one by name from `@origingame/engine/ui/components`
+(`index.tsx` exports them all) or by path
+(`@origingame/engine/ui/components/hud/stat-bar`), and mounts it or calls it
+inside its own component. To change one, copy its `.tsx` (and its string
+table) into the game and import the copy.
 
-HTML elements own layout through scoped CSS: component roots use `:host`,
-optional pieces use `{#if}`, and positioned layers measure against their
-own positioned well or track. Filled surfaces and typography use shared
-default-style tokens; style packs restyle meaningful pieces through parts.
-The virtualised `<list>` and `<cells>` elements remain until their separate
-list conversion. World anchors, ground marks and mass rows remain primitives.
+## A component file
 
-Expressions compute no geometry, so the game hands in what geometry a
-component needs: a chart's line and a path line's route as SVG path data, a radial
-menu's slice positions (`at`, `span`), a split view's ratio from its
-divider's pointer events, a ground mark's world centre.
+`<dir>/<name>.tsx` holds one component and what describes it:
 
-`og ui eject --list` prints these with the screens. The component document
-test cooks every one from its fixture at desktop and phone sizes.
+- `export interface <Name>Props`: every prop with a doc comment saying what
+  it is, its values and its default. A prop the game may leave out is
+  optional and has its default in the body, so a component draws something
+  sensible from `fixtures.default` alone.
+- `export function <Name>(props)`: built from the primitives (`View`,
+  `Text`, `Image`, `Icon`, `Scroll`, `Input`, `Line`) and `Show`, `For`,
+  `Switch`. Its doc comment says what it draws and what it reports.
+- `export const fixtures`: `default` and a named case for each state worth
+  seeing (empty, overflow, locked, compact). The gallery and the tests draw
+  every fixture, merged over `default`.
+- `export const actions` (when it answers input actions): each action and
+  the label a hint shows for it.
+- Visible words come from its string table, imported beside it
+  (`import "./stat-bar.en.ogt"`), through `t(key, params)` and the
+  `format*` helpers; text is never concatenated from translated pieces.
+
+It draws what the game hands it and reports intents through `on*` props
+(`onChoose(e, id)`, `onPick(e, id)`) with stable row keys. It never decides
+costs, legality, rewards or rules.
+
+## Look
+
+- **Classes only, theme roles only.** Colours, radii, shadows, type and
+  spacing are Tailwind classes over the theme
+  (CONVENTIONS.md §Theme and packs, "The default pack's names"). A literal
+  colour class (`bg-[#…]`) is refused by `bun run typecheck`: name its role,
+  or add the role to `packages/design/tokens/color.css`. An inline `style`
+  carries only what a prop computes (a fill's width, a node's position).
+- **Packs dress slots.** The surface a pack restyles ends its class with
+  `packClass("Panel", "frame", variant)` (slots: `Button.plate`,
+  `Panel.frame`, `Plate.frame`, `Slot.frame`, `Chip.frame`,
+  `Field.frame`). A slot that paints its own fill also owns the ink on it.
+- **Shapes and art are images.** Cut corners, sockets and frames are a
+  pack's nine-slice art as `nine-<name>` classes: `plate-cut`, `panel-cut`,
+  `chip-cut`, `tile`, `disc`, `ring` (tinted by `bg-*`), and every look's
+  generated `socket`, `socket-rim` (tinted), `glow` (tinted), `sheen` and
+  `card-frame`. Cooldown sweeps and rings are the `wipe` prop on such a box.
+- **States are `data-*` booleans.** `data-done={…}` is on unless false or
+  empty, read by `data-done:` on the element and
+  `group-data-done/<group>:` below a `group/<group>`. A value is not
+  matched: give each value its own attribute (`data-rarity-rare`,
+  `data-rarity-epic`), never `data-rarity={"rare"}`.
+- **Geometry comes from the game** as numbers: a `Line`'s `points` (x, y
+  pairs, with `viewBox` for a space of its own), a chart's values, a graph's
+  node positions, a radial menu's slice angles. Nothing parses SVG path
+  data.
+- **Compact** layouts are `compact:` classes (under 600 px wide or 500 px
+  tall).
+
+World markers on the ground (selection rings, telegraphs, placement
+ghosts, paths) are not UI: they are og.Decal and og.render.lines
+(`og api show effects`). Tags over entities are UI, with the `anchor` prop.
 
 ## Catalogue
 
 `bun packages/engine/src/node/gallery.ts` renders every fixture of every
-component below under every pack (docs/ui.md §6.5); `--only hud/` keeps
-one directory.
+component under every pack; `--only hud/` keeps one directory, `--packs`
+some packs. It exits non-zero and writes `defects.txt` for a fixture that
+throws at mount, a raw string key drawn, or a word broken inside.
 
-| Purpose | Documents |
+| Purpose | Components |
 |---|---|
 | Item slots (rarity, count, cooldown and selection) | `base/item-slot` |
 | Player portraits (fallback, level and presence) | `base/avatar` |
@@ -77,7 +110,6 @@ one directory.
 | Buttons and badges (hero button, touch action, hold to confirm, action bar, ribbon) | `hud/hero-button`, `hud/action-button`, `hud/hold-button`, `hud/action-hints`, `base/ribbon` |
 | Touch controls (a stick or d-pad and the action buttons, shown under a finger) | `hud/touch-controls` |
 | World tags over units and items (`world/README.md`) | `world/nameplate`, `world/waypoint`, `world/loot-label`, `world/speech-bubble`, `world/interaction-prompt` |
-| Ground marks (selection, telegraphs, paths, placement) | `world/selection-ring`, `world/telegraph`, `world/path-line`, `world/placement-ghost` |
 | Mass world elements (overhead bars, damage numbers) | `world/overhead-bars`, `hud/damage-numbers` |
 | RPG inventory, character and equipment (`rpg/README.md`) | `panels/backpack`, `panels/item-card`, `rpg/character`, `rpg/stats`, `rpg/menu-bar` |
 | RPG quests, world map and conversation | `panels/quest-log`, `rpg/quest-detail`, `hud/quest-tracker`, `rpg/world-map`, `rpg/place-card`, `panels/conversation` |
@@ -89,7 +121,7 @@ one directory.
 | Shooter loadout | `shooter/loadout` |
 | Strategy resources, clock, waves, alerts, control groups, minimap, selection, production queue, commands, tower upgrades (`strategy/README.md`) | `strategy/resources`, `strategy/clock`, `strategy/wave`, `strategy/alerts`, `strategy/groups`, `strategy/minimap`, `strategy/selection`, `strategy/queue`, `strategy/commands`, `strategy/tower` |
 | Racing telemetry, laps, standings, banner, track map, boost, pedals, car, bonus, garage, results (`racing/README.md`) | `racing/telemetry`, `racing/lap-hud`, `racing/standings`, `racing/banner`, `racing/track-map`, `racing/boost`, `racing/pedals`, `racing/car`, `racing/bonus`, `racing/garage`, `racing/results` |
-| Card hand, piles, collection, deck, rewards, run map (`card/README.md`) | `card/face`, `card/hand`, `card/piles`, `card/collection`, `card/deck-list`, `card/reward`, `card/run-map` |
+| Card hand, piles, collection, deck, rewards (`card/README.md`) | `card/face`, `card/hand`, `card/piles`, `card/collection`, `card/deck-list`, `card/reward` |
 | Puzzle goals, boosters, level path, summary (`puzzle/README.md`) | `puzzle/goals`, `puzzle/boosters`, `puzzle/level-path`, `puzzle/summary` |
 | Idle resources, generators, purchases, prestige, offline summary (`idle/README.md`) | `idle/resources`, `idle/generators`, `idle/purchases`, `idle/prestige`, `idle/offline` |
 | Rhythm song and difficulty selection, score HUD, judgement, results (`rhythm/README.md`) | `rhythm/song-select`, `rhythm/difficulty`, `rhythm/song-plate`, `rhythm/song-progress`, `rhythm/chain`, `rhythm/score-hud`, `rhythm/gauge`, `rhythm/judgement`, `rhythm/timing`, `rhythm/lane-keys`, `rhythm/results` |
@@ -99,121 +131,15 @@ one directory.
 | Arena spectator controls | `arena/spectator` |
 | Shop, achievements, daily quests and rewards, chat, friends (`meta/README.md`) | `meta/shop`, `meta/shop-confirm`, `meta/achievements`, `meta/daily-quests`, `meta/daily-rewards`, `meta/chat`, `meta/friends` |
 
-A chip, a tag or a filter toggle has no component: it is a
-`<button aria-pressed={on}>`. The attribute carries its state to a screen
-reader and qualifies its part for a pack (`Shop::filter:checked`). The
-default style dresses a button that is on with `--button-selected-fill`
-and `--button-selected-ink` whatever its variant; a pack sets those tokens
-or dresses `button[aria-pressed=true]::part(base)`.
+A chip, a tag or a filter toggle has no component: it is a `View` with
+`role="button"`, `pressed={on}` and `packClass("Chip", "frame")`, with a
+`data-*` state for its look when on.
 
-`hud/touch-controls` is the whole on-screen pad: a `<joystick>` or `<dpad>` at
-the start side, `hud/action-button`s at the end side and an optional second
-stick, each an input source of the og-input action it names. It reports no
-events and shows only where the primary pointer is a finger (`always`
-shows it under a mouse too). Its parts are `frame`, `stick`, `actions` and
-`look`.
+`hud/touch-controls` is the whole on-screen pad: a stick or d-pad at the
+start side (`touchStick`, `touchPad`), action buttons at the end side
+(`touchButton`) and an optional second stick, each feeding the og-input
+action it names, so the game reads the same actions as from a pad. It
+reports no events and shows only where the primary pointer is a finger.
 
-## A component's own CSS lays it out; roles dress and move it
-
-A component's `<style>` holds layout only: `display`, grid and flex, gaps
-from the space tokens, sizing, positions, overflow. Its look (fills, rims,
-radii, shadows, ink, type, filters) and its motion come from naming each
-part for its
-role (`News.card`, `Steps.dot`, `StatBar.fill`), which the default style
-dresses from that role's tokens (docs/ui.md §3.1 Role parts), so a style
-pack's tokens restyle every component at once. A part named for what it
-shows takes a role as the last name of a part list (`part="News.date
-News.caption"`). What only a component needs it sets as a role's token on
-itself (`--fill-color: var(--mana)`), never as a look property. A
-genre-wide or per-state colour is a `data-tone` (`success`, `danger`,
-`warn`, `info`) on the part. A part that moves asks for a shared motion
-with `data-motion` (`enter`, `exit`, `pop`, `stamp`, `beat`, `pulse`,
-`spin`, `ping`, `shimmer`, `float`, `change`; `<svg part="Spinner.ring" data-motion="spin">`)
-and defines no `@keyframes` of its own: the keyframes and their timing are
-the style's. A look or motion property in a component's `<style>`
-may read only a role token or reset (`none`, `0`, `inherit`); og-ui's
-`component_styles_lay_out_and_roles_dress` test checks this, and the
-documents written before the rule carry their remaining count in
-`crates/og-ui/tests/component_look_backlog.tsv`, which only shrinks.
-
-Its layout comes from the style too where a shared shape fits: an element
-asks for a primitive with `data-layout` (`stack`, `row`, `cluster`,
-`sidebar`, `switcher`, `grid`, `strip`, `cover`, `center`, `ratio`, `shell`,
-`scroll`, `overlay`) and spaces its children by a step, `data-gap`
-(`none`, `hair`, `tight`, `loose`, `wide`; the default between tight and
-loose), never by a size (docs/ui.md §3.1 Role parts). A child marks its
-place with `data-side` (a sidebar's side), `data-fill` (takes the rest; a
-sidebar's main part, a switcher's shared children), `data-fit` (a strip's
-blocks, each the strip's item size and shrinking alike),
-`data-principal` (a cover's middle) or `data-anchor` (an overlay's
-corner, edge, centre or `fill`). The primitives wrap by their container's
-width, so a component works in a sidebar and full width; a `shell` root is
-the container its own `@container` rules read. What stays in the
-component's `<style>` is only its own: a grid template, positions, sizes
-in tokens. Its own `@container` rules that change only layout (a direction, a
-template, wrapping) stay. A primitive goes on an HTML box, not on a
-`<button>`: put it on the button's face `div`.
-
-Adding, renaming or removing a component file, or changing what one
-includes (its strings tables, shared pieces), changes the generated
-`packages/engine/src/ui/manifest.json`: run `og api gen` and commit it in
-the same head.
-
-## Parts
-
-The `base/`, `hud/`, `world/` and `panels/` components' parts, as each declares them in its
-`<meta name="parts">` (`AbilityBar.cell` in a selector). A part's role
-name (`frame`, `band`, `title`, `row`, `cell`…) takes the default style's
-role dressing (docs/ui.md §3.1). Each part's state qualifiers are listed after it: a class
-(`.cooling`), an attribute (`[data-rarity]`, `[aria-selected]`) or
-`:disabled`. A part that is a button also has the control's own hover,
-pressed, focus-visible and disabled states (docs/ui.md §3.2).
-
-| Component (document) | Parts |
-| --- | --- |
-| `AbilityBar` (`hud/ability-bar.svelte`) | `frame` (a strip of `AbilitySlot`, whose parts dress each slot) |
-| `AbilitySlot` (`hud/ability-slot.svelte`) | `frame` (`.ultimate`), `cell` (a button: `.active` `.cooling` `.full` `.locked` `.off` `.tinted` `:disabled`), `well`, `icon`, `ultimate`, `figure`, `percent`, `badge` (`.short`), `track`, `fill`, `label` |
-| `ActionButton` (`hud/action-button.svelte`) | `disc` (a button: `.primary` `:disabled`), `charge`, `icon`, `text` |
-| `ActionHints` (`hud/action-hints.svelte`) | `frame`, `row` (a button), `cap`, `label` |
-| `Avatar` (`base/avatar.svelte`) | `frame`, `well`, `clip`, `portrait`, `fallback`, `spinner`, `ring`, `mark` (the presence dot on the rim), `level`, `headline` (the name), `status`, `loading` |
-| `Breadcrumbs` (`panels/breadcrumbs.svelte`) | `frame`, `crumb` (`.current`), `icon`, `link`, `current` (`[aria-current=page]`), `separator` |
-| `Carousel` (`panels/carousel.svelte`) | `frame`, `cell`, `art`, `picture`, `well`, `title`, `body`, `prev` (a button: `:disabled` with fewer than two pages), `next` (a button: `:disabled` with fewer than two pages), `dot`, `lit` |
-| `Celebration` (`hud/celebration.svelte`) | `ring`, `shell`, `stage`, `rays`, `halo`, `title`, `value` |
-| `Chart` (`panels/chart.svelte`) | `frame`, `title`, `subtitle`, `tick`, `grid`, `plate`, `bar` (`.tinted`), `area`, `line`, `label` |
-| `Compass` (`world/compass.svelte`) | `frame`, `window`, `poi` (`.ally` `.enemy` `.loot` `.objective` `.ping`), `distance`, `notch`, `badge`, `readout` |
-| `Cooldown` (`hud/cooldown.svelte`) | `cell` (a button: `.ready` `:disabled`), `icon`, `figure` |
-| `DamageNumbers` (`hud/damage-numbers.svelte`) | `figure` (`.tinted`) |
-| `DataGrid` (`panels/data-grid.svelte`) | `frame`, `band`, `heading` (`.numeric`), `row` (a button: `[aria-selected]`), `value` (`.numeric`), `ghost`, `error`, `empty`, `mark`, `message`, `hint`, `retry` (a button) |
-| `HeroButton` (`hud/hero-button.svelte`) | `base` (a button: `[variant]` primary, secondary or danger, `.danger` `.premium` `.secondary` `:disabled`), `label`, `key` |
-| `HoldButton` (`hud/hold-button.svelte`) | `base` (a button: `.primary` `.secondary` `:disabled`), `icon`, `label`, `hint` |
-| `HudTimer` (`hud/hud-timer.svelte`) | `frame` (`.critical` `.paused` `.warn`), `label`, `ring`, `figure` |
-| `InteractionPrompt` (`world/interaction-prompt.svelte`) | `frame` (`.disabled` `:disabled`), `key`, `verb`, `name`, `reason` (`:disabled`) |
-| `ItemSlot` (`base/item-slot.svelte`) | `frame`, `cell` (a button: `[aria-pressed]` `:disabled`), `icon`, `plus` (an empty slot's mark), `loading`, `count`, `cooldown`, `remaining`, `key`, `state`, `caption` (the name) |
-| `LootLabel` (`world/loot-label.svelte`) | `tag` (a button: `.epic` `.legendary` `.rare` `.uncommon`), `name`, `count` |
-| `Menu` (`panels/menu.svelte`) | `frame`, `row` (a button: `.danger` `[aria-checked]` `:disabled`), `heading`, `separator`, `icon`, `check`, `dot`, `shortcut`, `chevron` |
-| `MinimapView` (`world/minimap-view.svelte`) | `bezel`, `glass` (a button), `grid`, `marker` (`.ally` `.enemy` `.loot` `.objective` `.ping`), `player` (`.turning`), `north`, `badge` |
-| `Minimap` (`world/minimap.svelte`) | `frame`, `marker` (`.accent` `.danger` `.info` `.player` `.success` `.warn`), `label`, `cell`, `grid` (only without a texture) |
-| `Nameplate` (`world/nameplate.svelte`) | `frame` (`.boss` `.friendly` `.hostile` `.player` `.targeted`), `icon`, `badge`, `name`, `subtitle`, `well`, `fill`, `shield`, `cast`, `spell` |
-| `NodeGraph` (`panels/node-graph.svelte`) | `well`, `link` (`.active`), `node` (a button: `.active` `.ally` `.current` `.diamond` `.done` `.enemy` `.hex` `.locked` `.selected` `.square` `[aria-disabled]` `:disabled`), `icon`, `label` |
-| `OrbMeter` (`hud/orb-meter.svelte`) | `orb`, `bezel`, `socket`, `glass`, `ornament`, `fill`, `value`, `label`; each layer is set through `--orb-meter-*` (docs/ui.md §3.1 Role parts) |
-| `OverheadBars` (`world/overhead-bars.svelte`) | `bar` (`.tinted`) |
-| `OverlayBar` (`hud/overlay-bar.svelte`) | `frame`, `title`, `ramp`, `label`, `bar`, `option` (a button: `[aria-pressed]`), `art`, `well`, `icon`, `name` |
-| `PathLine` (`world/path-line.svelte`) | `line` (`.invalid`), `badge` |
-| `PlacementGhost` (`world/placement-ghost.svelte`) | `reach`, `footprint`, `badge` |
-| `ProgressBar` (`hud/progress-bar.svelte`) | `label`, `figure`, `track`, `buffer`, `fill` |
-| `ProgressRing` (`hud/progress-ring.svelte`) | `ring`, `figure` |
-| `RadialMenu` (`hud/radial-menu.svelte`) | `disc`, `slice` (`.chosen` `.disabled`), `item` / `cell` (one menuitem button: `[aria-current=true]` `:disabled`), `label`, `centre` / `well` (filled centre; empty `detail` shows the chosen label) |
-| `RadialMeter` (`hud/radial-meter.svelte`) | `wheels` |
-| `Ribbon` (`base/ribbon.svelte`) | `frame` (`.bottomLeft` `.bottomRight` `.center` `.danger` `.info` `.success` `.topLeft` `.warn`), `ribbon`, `text` |
-| `SelectionRing` (`world/selection-ring.svelte`) | `ring` (`.hostile` `.hover` `.neutral` `.segmented`) |
-| `SkeletonGroup` (`base/skeleton-group.svelte`) | `art`, `line` |
-| `SpeechBubble` (`world/speech-bubble.svelte`) | `frame`, `label`, `line`, `tail` |
-| `Spinner` (`base/spinner.svelte`) | `ring` |
-| `SplitView` (`panels/split-view.svelte`) | `frame`, `start`, `divider`, `grip`, `end` |
-| `StarBar` (`hud/star-bar.svelte`) | `label`, `figure`, `track`, `well`, `fill`, `star` (`.lit`) |
-| `StatBar` (`hud/stat-bar.svelte`) | `shield`, `frame` (`.bare` `.hud`), `label`, `track`, `fill`, `inside`, `figure` |
-| `StatusGrid` (`hud/status-grid.svelte`) | `cell`, `badge`, `figure` |
-| `Telegraph` (`world/telegraph.svelte`) | `area` (`.friendly`) |
-| `TooltipCard` (`panels/tooltip-card.svelte`) | `frame` (`.common` `.epic` `.legendary` `.mythic` `.rare` `.uncommon`), `title`, `label`, `row` (`[data-change=added]` `[data-change=removed]`), `figure` (removed value muted), `well`, `badge`, `change` (translated Added/Removed), `delta`, `mark` (signed direction) |
-| `TouchControls` (`hud/touch-controls.svelte`) | `frame` (`.always`), `stick` (`:disabled`), `actions`, `look` (`:disabled`) |
-| `Waypoint` (`world/waypoint.svelte`) | `pin`, `label`, `figure` |
+Adding, renaming or removing a component adds or removes its line in
+`index.tsx` in the same head.
