@@ -309,3 +309,14 @@ pub fn auto_unit(viewport: &Viewport) -> f32 {
         1.0
     }
 }
+
+/// The og-ui unit for a frame on the CSS `viewport`: the game's `pin`
+/// (UiDesc.unitScale; 0 for none), else the surface's ([`auto_unit`]).
+pub fn surface_unit(pin: f32, viewport: &Viewport) -> f32 {
+    let u = if pin > 0.0 { pin } else { auto_unit(viewport) };
+    if u.is_finite() {
+        u.clamp(1.0, 2.0)
+    } else {
+        1.0
+    }
+}

@@ -231,7 +231,7 @@ impl Ui {
     /// The og-ui unit a frame on the CSS `viewport` would lay out in (the
     /// game's pin, else the surface's: docs/ui.md §6.1).
     pub fn unit_for(&self, viewport: &Viewport) -> f32 {
-        surface_unit(&self.env.configured, viewport)
+        og_ui_model::surface_unit(self.env.configured.unit_pin, viewport)
     }
 
     /// Frames begun so far: the UI's clock.
@@ -585,7 +585,7 @@ impl Ui {
         // it on the surface's size over it and draws it times larger
         // (`end`), so every length grows with the surface; input comes in
         // in units too.
-        let unit = surface_unit(&self.env.configured, &viewport);
+        let unit = og_ui_model::surface_unit(self.env.configured.unit_pin, &viewport);
         let viewport = viewport.zoomed(unit);
         let mut input = input.zoomed(unit);
         self.env.unit = unit;

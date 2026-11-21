@@ -536,21 +536,6 @@ fn effective_theme(theme: Theme, viewport: &Viewport) -> Theme {
     t.to_text_scale()
 }
 
-/// The og-ui unit for a frame on the CSS `viewport`: the game's pin, else
-/// the surface's ([`og_ui_model::auto_unit`]).
-pub(crate) fn surface_unit(theme: &Theme, viewport: &Viewport) -> f32 {
-    let u = if theme.unit_pin > 0.0 {
-        theme.unit_pin
-    } else {
-        og_ui_model::auto_unit(viewport)
-    };
-    if u.is_finite() {
-        u.clamp(1.0, 2.0)
-    } else {
-        1.0
-    }
-}
-
 /// A style's `textGlow` size is how far the old four offset copies reached;
 /// the distance-field glow fades to nothing over this many times it.
 const TEXT_GLOW_REACH: f32 = 2.0;
