@@ -1,0 +1,6 @@
+type look
+version 1
+---
+# Names @styles/fantasy so the cook bundles it; the gallery switches packs itself.
+name "gallery fantasy"
+ui "fantasy"

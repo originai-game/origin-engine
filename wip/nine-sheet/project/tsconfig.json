@@ -1,0 +1,6 @@
+{
+  "extends": "@origingame/engine/tsconfig.json",
+  "include": [
+    "src"
+  ]
+}
