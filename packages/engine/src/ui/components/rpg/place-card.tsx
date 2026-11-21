@@ -46,11 +46,11 @@ export function RpgPlaceCard(props: RpgPlaceCardProps) {
           </Text>
         </Show>
         <View class="flex-row w-full shrink-0 gap-1 pt-1">
-          <View class={`flex-1 min-w-0 min-h-11 flex-row items-center justify-center gap-1 px-2 compact:px-1 text-[0.929rem] font-bold tracking-[0.14em] uppercase rounded-tl-[6.858px] rounded-tr-none rounded-br-[6.858px] rounded-bl-none text-fg bg-[#1e2637e5] shadow-[inset_0px_0px_0px_1px_#38e8ff80,inset_0px_2px_0px_#38e8ff] data-marked:text-gold focus-visible:shadow-[inset_0px_0px_0px_3px_#ffffff]`} role="button" label={props.marked ? t("rpg.place.unmark") : t("rpg.place.mark")} pressed={props.marked} selected={props.marked} data-marked={props.marked} onPress={(e) => props.onMark?.(e)}>
+          <View class={`transition duration-160 flex-1 min-w-0 min-h-11 flex-row items-center justify-center gap-1 px-2 compact:px-1 text-[0.929rem] font-bold tracking-[0.14em] uppercase rounded-tl-[6.858px] rounded-tr-none rounded-br-[6.858px] rounded-bl-none text-fg bg-[#1e2637e5] shadow-[inset_0px_0px_0px_1px_#38e8ff80,inset_0px_2px_0px_#38e8ff] data-marked:text-gold focus-visible:shadow-[inset_0px_0px_0px_3px_#ffffff]`} role="button" label={props.marked ? t("rpg.place.unmark") : t("rpg.place.mark")} pressed={props.marked} selected={props.marked} data-marked={props.marked} onPress={(e) => props.onMark?.(e)}>
             <Icon class="shrink-0 size-[1.071rem] compact:hidden" name="flag" />
             <Text class="whitespace-nowrap">{props.marked ? t("rpg.place.unmark") : t("rpg.place.mark")}</Text>
           </View>
-          <View class={`flex-1 min-w-0 min-h-11 flex-row items-center justify-center gap-1 px-2 compact:px-1 text-[0.929rem] font-bold tracking-[0.14em] uppercase rounded-tl-[6.858px] rounded-tr-none rounded-br-[6.858px] rounded-bl-none text-[#141a02] bg-gold shadow-[0px_0px_20px_#38e8ff73] disabled:opacity-45`} role="button" label={t("rpg.place.travel")} disabled={!props.canTravel} onPress={(e) => props.onTravel?.(e)}>
+          <View class={`transition duration-160 flex-1 min-w-0 min-h-11 flex-row items-center justify-center gap-1 px-2 compact:px-1 text-[0.929rem] font-bold tracking-[0.14em] uppercase rounded-tl-[6.858px] rounded-tr-none rounded-br-[6.858px] rounded-bl-none text-[#141a02] bg-gold shadow-[0px_0px_20px_#38e8ff73] disabled:opacity-45`} role="button" label={t("rpg.place.travel")} disabled={!props.canTravel} onPress={(e) => props.onTravel?.(e)}>
             <Icon class="shrink-0 size-[1.071rem] compact:hidden" name="map" />
             <Text class="whitespace-nowrap">{t("rpg.place.travel")}</Text>
           </View>

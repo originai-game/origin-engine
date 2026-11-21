@@ -19,7 +19,7 @@ export function RpgLootFeed(props: RpgLootFeedProps) {
       <For each={props.items ?? []} key={(p) => p.id}>
         {(p, i) => (
         <View class={`max-w-full min-w-0 shrink-0 compact:data-later:hidden`} data-later={i() >= 1}>
-          <View class={`group/loot flex-row items-center max-w-full min-w-0 pr-3 bg-linear-to-r from-[#0d1526db] to-[#0d152659] data-fading:opacity-55`} role="group"
+          <View class={`group/loot flex-row items-center max-w-full min-w-0 pr-3 bg-linear-to-r from-[#0d1526db] to-[#0d152659] data-fading:opacity-55 transition duration-240 ease-out starting:opacity-0 starting:translate-y-2 exit:opacity-0`} role="group"
             label={p().quantity > 0 ? t("hud.loot-entry.row", { name: p().name, quantity: p().currency ? t("hud.loot-entry.gain", { quantity: formatNumber(p().quantity) }) : t("hud.loot-entry.count", { quantity: formatNumber(p().quantity) }) }) : p().name}
             data-fading={p().fading} data-rarity={p().rarity}
             data-uncommon={p().rarity === "uncommon"} data-rare={p().rarity === "rare"} data-epic={p().rarity === "epic"} data-legendary={p().rarity === "legendary"}>

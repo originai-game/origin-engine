@@ -20,8 +20,6 @@ export interface RpgWorldMapProps {
   here: string;
   /** The wheel zooms: the game reads the wheel's delta and keeps the zoom within its limits. */
   onZoom?: (e: UiEvent) => void;
-  /** Two touches pinch: the game reads the scale. (The renderer has no pinch event; the game reaches it through its own pointer tracking.) */
-  onPinch?: (e: UiEvent) => void;
   /** A press on the map begins a grab. */
   onGrab?: (e: UiEvent) => void;
   /** A grabbed map's moves pan it, each with x and y in the map's box. */

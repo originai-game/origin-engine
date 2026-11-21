@@ -26,7 +26,7 @@ export function RpgCombo(props: RpgComboProps) {
     >
       <Show when={props.count > 0}>
         <View class={`flex-row items-baseline justify-end max-w-full min-w-0 gap-1`}>
-          <Text class={`shrink-0 text-[4.429rem] leading-[0.9] font-bold italic tabular-nums whitespace-nowrap compact:text-[2.143rem]`}>
+          <Text class={`shrink-0 text-[4.429rem] leading-[0.9] font-bold italic tabular-nums whitespace-nowrap compact:text-[2.143rem] animate-pop`}>
             {formatNumber(props.count)}
           </Text>
           <Text

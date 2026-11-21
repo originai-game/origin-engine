@@ -17,7 +17,7 @@ export function RpgHits(props: RpgHitsProps) {
     <View class={`flex-col items-start max-w-full pointer-events-none text-fg text-shadow-xs text-shadow-bg/55`} role="log" label={t("rpg.hits.name")}>
       <For each={props.hits ?? []} key={(h) => h.id}>
         {(h, i) => (
-        <View class={`flex-col items-start max-w-full min-w-0 data-later:mt-[2rem] data-later:opacity-85 data-third:ml-[15.714rem] data-third:mt-0 data-third:opacity-70 data-lead:ml-[10.714rem] compact:data-lead:ml-0 compact:data-later:hidden`}
+        <View class={`flex-col items-start max-w-full min-w-0 animate-pop transition duration-180 exit:opacity-0 data-later:mt-[2rem] data-later:opacity-85 data-third:ml-[15.714rem] data-third:mt-0 data-third:opacity-70 data-lead:ml-[10.714rem] compact:data-lead:ml-0 compact:data-later:hidden`}
           data-lead={i() === 0 && (props.hits ?? []).length > 1}
           data-later={i() >= 1}
           data-third={i() >= 2}

@@ -17,7 +17,7 @@ export function RpgLockOn(props: RpgLockOnProps) {
       <Show when={props.target !== ""}>
         {/* The ring: the conic arcs cut from a disc by a mask stand in as
             one lit band with the accent glow. */}
-        <View class="absolute inset-0 rounded-full shadow-[inset_0px_0px_0px_2.288px_#ffffff,0px_0px_6px_1px_#38e8ffb3]" />
+        <View class="absolute inset-0 rounded-full shadow-[inset_0px_0px_0px_2.288px_#ffffff,0px_0px_6px_1px_#38e8ffb3] animate-pop" />
       </Show>
     </View>
   );
