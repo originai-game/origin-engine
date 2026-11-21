@@ -62,7 +62,7 @@ export function CardReward(props: CardRewardProps) {
             }>
               <View class={`flex-row items-stretch gap-1 group/relic shrink basis-48 min-w-26.5 aspect-7/10 justify-stretch p-0 compact:grow-0 compact:shrink-0 compact:min-w-0`} role="option" disabled={!c().enabled} selected={c().id === props.selected} label={c().name} description={c().text} onPress={(e) => props.onPick?.(e, c().id)}>
                 <View class="grow w-full">
-                  <View class={`grow w-full items-center justify-center text-center border-[1.5px] border-gold nine-plate-cut p-2 gap-1 overflow-hidden text-fg ${packClass("Plate", "frame")}`}>
+                  <View class={`grow w-full items-center justify-center text-center border-2 border-gold nine-plate-cut p-2 gap-1 overflow-hidden text-fg ${packClass("Plate", "frame")}`}>
                     <View class={`flex-row items-center w-21/50 aspect-square justify-center bg-tile-pressed gap-0`}>
                       <Icon class="text-gold size-29/50 shrink" name={c().icon} />
                     </View>
@@ -72,7 +72,7 @@ export function CardReward(props: CardRewardProps) {
                     <Text class={`w-full line-clamp-2 text-base font-bold overflow-hidden`}>
                       {c().name}
                     </Text>
-                    <Text class={`w-full line-clamp-5 text-[0.893rem] overflow-hidden`}>
+                    <Text class={`w-full line-clamp-5 text-caption overflow-hidden`}>
                       {c().text}
                     </Text>
                   </View>

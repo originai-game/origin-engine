@@ -46,7 +46,7 @@ export function CardFace(props: CardFaceProps) {
           <Image class="absolute object-cover inset-0 size-full" src={props.art} />
         </Show>
       </View>
-      <Text class={`text-fg text-center line-clamp-2 text-base font-bold leading-[1.15] ${packClass("Plate", "frame")} py-0.5 px-1 m-0 overflow-hidden group-data-medium/cardface:line-clamp-1`}>
+      <Text class={`text-fg text-center line-clamp-2 text-base font-bold leading-tight ${packClass("Plate", "frame")} py-0.5 px-1 m-0 overflow-hidden group-data-medium/cardface:line-clamp-1`}>
         {props.name}
       </Text>
       <Show when={props.typeLabel}>
@@ -55,7 +55,7 @@ export function CardFace(props: CardFaceProps) {
         </Text>
       </Show>
       <Show when={props.text}>
-        <Text class={`text-center line-clamp-4 text-[0.893rem] leading-snug text-fg bg-tile-pressed py-0.5 px-1 m-0 overflow-hidden group-data-medium/cardface:line-clamp-3 group-data-small/cardface:line-clamp-2 group-data-tiny/cardface:line-clamp-1`}>
+        <Text class={`text-center line-clamp-4 text-caption leading-snug text-fg bg-tile-pressed py-0.5 px-1 m-0 overflow-hidden group-data-medium/cardface:line-clamp-3 group-data-small/cardface:line-clamp-2 group-data-tiny/cardface:line-clamp-1`}>
           {props.text}
         </Text>
       </Show>

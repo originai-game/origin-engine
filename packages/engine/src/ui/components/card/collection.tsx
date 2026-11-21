@@ -63,7 +63,7 @@ export function CardCollection(props: CardCollectionProps) {
                       {formatNumber(f().count ?? 0)}
                     </Text>
                   </Show>
-                  <View class="absolute bottom-0 h-0.75 bg-hud-accent shadow-[0px_0px_11.424px_#38e8ff] opacity-0 inset-x-1 group-data-selected/filter:opacity-100" />
+                  <View class="absolute bottom-0 h-0.75 bg-hud-accent shadow-glow opacity-0 inset-x-1 group-data-selected/filter:opacity-100" />
                 </View>
                 )}
               </For>

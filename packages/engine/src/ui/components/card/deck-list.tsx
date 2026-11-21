@@ -51,7 +51,7 @@ export function CardDeckList(props: CardDeckListProps) {
           <Text class="text-xs font-semibold tracking-kicker uppercase text-fg-muted">
             {t("card.deck.size")}
           </Text>
-          <Text class="whitespace-nowrap text-[18.24px] font-bold text-fg group-data-over/size:text-danger">
+          <Text class="whitespace-nowrap text-lg font-bold text-fg group-data-over/size:text-danger">
             {t("card.deck.count", { count: props.total, limit: props.limit })}
           </Text>
           <View class="col-span-full h-2 bg-track shadow-sunk overflow-hidden" role="meter" label={t("card.deck.size")} valueText={t("card.deck.count", { count: props.total, limit: props.limit })}>
@@ -82,10 +82,10 @@ export function CardDeckList(props: CardDeckListProps) {
                     </Text>
                   </View>
                 </Button>
-                <View class={`flex-row gap-1 w-11 min-h-11 items-center justify-center bg-raised-lo shadow-[inset_0px_0px_0px_1px_#4e586c] text-fg p-0 disabled:text-fg-muted`} role="button" disabled={!e().canRemove} label={t("card.deck.remove", { name: e().name })} onPress={(ev) => props.onRemove?.(ev, e().id)} onAction={{ details: (ev) => props.onRemove?.(ev, e().id) }}>
+                <View class={`flex-row gap-1 w-11 min-h-11 items-center justify-center bg-raised-lo inset-ring-1 inset-ring-rim text-fg p-0 disabled:text-fg-muted`} role="button" disabled={!e().canRemove} label={t("card.deck.remove", { name: e().name })} onPress={(ev) => props.onRemove?.(ev, e().id)} onAction={{ details: (ev) => props.onRemove?.(ev, e().id) }}>
                   <Text class="text-center">{t("card.deck.less")}</Text>
                 </View>
-                <View class={`flex-row gap-1 w-11 min-h-11 items-center justify-center bg-raised-lo shadow-[inset_0px_0px_0px_1px_#4e586c] text-fg p-0 disabled:text-fg-muted`} role="button" disabled={!e().canAdd} label={t("card.deck.add", { name: e().name })} onPress={(ev) => props.onAdd?.(ev, e().id)}>
+                <View class={`flex-row gap-1 w-11 min-h-11 items-center justify-center bg-raised-lo inset-ring-1 inset-ring-rim text-fg p-0 disabled:text-fg-muted`} role="button" disabled={!e().canAdd} label={t("card.deck.add", { name: e().name })} onPress={(ev) => props.onAdd?.(ev, e().id)}>
                   <Text class="text-center">{t("card.deck.more")}</Text>
                 </View>
               </View>
