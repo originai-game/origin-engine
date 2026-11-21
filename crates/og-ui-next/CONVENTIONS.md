@@ -119,7 +119,8 @@ spaces); there are no others. What can be an image is an `Image` (an
 `.svg` file too: the cook makes it a texture). A line paints one
 `PaintKind::Line` quad over its box (og-draw paint.rs): its points in
 `Paint.points`, box-relative, width `p.x`, closed `p.y`. Events: 0 press, 1 tap, 2 pointerdown,
-3 pointermove, 4 pointerup, 5 wheel, 6 focus, 7 blur, 8 key, 9 change.
+3 pointermove, 4 pointerup, 5 wheel, 6 focus, 7 blur, 8 key, 9 change,
+10 action.
 
 The reply is `OGEV`, a u32 count and the events since the last batch, each
 an id (u32), event (u8), x and y on the UI's surface (f32), then key and
@@ -127,6 +128,45 @@ value (strings; empty unless `key` or `change`), which the renderer
 dispatches to handlers by id. A refused op stops the batch (the ops before
 it stay applied) and the reply is `OGER` and the reason. `data-*` props are
 the states a class variant reads (`data-ready:` …).
+
+## Input (head 4)
+
+`og-ui-next/src/tree/input.rs` answers the pointer, the keys and the UI's
+input actions on op nodes. It decides as NSH's `input.rs` does (vendored
+verbatim as `third_party/nsh-input`) and as Rune's focus, modal and press
+machines do (ported as logic).
+
+- **Hit testing**: boxes in paint order, inside the clip their parent
+  paints in; the last match wins. A node on its way out, or behind an open
+  `modal`, is never hit.
+- **States** that classes read: `hover:` (the node under the pointer and
+  those around it), `active:` (held, while the pointer is on the node or
+  within 8 px of it: NSH's press retention), `focus:`, `focus-visible:`
+  (focus the keys moved: Tab, Enter or Space, an action or a screen
+  reader; a press's focus shows no ring), `focus-within:` and `disabled:`.
+  Records resolve once per class entry and the states it reads.
+- **Events**: `press` and `tap` on a release within the retention (`value`
+  is `"2"` on the second press of a double press: 0.5 s, 4 px);
+  `pointerdown`, `pointermove`, `pointerup` and `wheel` (x and y carry the
+  wheel's deltas) go to the innermost node under the pointer that listens;
+  `focus` and `blur` as focus moves; `key` (`key` is the
+  `KeyboardEvent.code`) to the focused node or the nearest around it that
+  listens; `action` to the focused node or the nearest around it whose
+  `actions` list the action, with its name in `key`.
+- **Focus**: a press focuses the nearest focusable node around what it
+  hits, and a press on anything else blurs. Focusable means a press or tap
+  listener, an `Input`, or a `tabIndex`. Tab and Shift+Tab go to positive
+  `tabIndex` first, then tree order, and wrap; `-1` is focused only by a
+  press. Enter or Space presses the focused control; so does `confirm`
+  when no node around it lists `confirm`, but not twice in one frame.
+- **Modals**: when a `modal` node shows, focus moves to its first Tab stop
+  (else itself) and stays inside it. When it goes, focus returns to the
+  node that had it before.
+
+| Prop | Value | Means |
+|---|---|---|
+| `actions` | names, space separated | the input actions it answers (`onAction={{ confirm, details }}`) |
+| `glyph` | an action's name | a `Text` node showing that action's binding on the current device (`<Glyph action>`) |
 
 ## Accessibility
 

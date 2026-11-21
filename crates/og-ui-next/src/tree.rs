@@ -236,6 +236,12 @@ pub struct Tree {
     /// released too (true); `gone` is the settled exits' scratch list.
     leaving: Vec<(u32, bool)>,
     gone: Vec<Id>,
+    /// Op nodes' hover, press, focus and modals ([`input`]), and where
+    /// the pointer was in the last frame and how many frames had painted
+    /// then (`paints` counts them).
+    input: input::Input,
+    last_pointer: (f32, f32, u64),
+    paints: u64,
 }
 
 /// What an element passes down in a frame, as motion shows it: its
@@ -259,6 +265,7 @@ struct Glyphs {
     lines: Vec<[f32; 3]>,
 }
 
+mod input;
 mod ops;
 pub use ops::{EVENTS, Event as OpEvent, Fired, MAGIC, REFUSED, Resolve};
 
@@ -420,6 +427,9 @@ impl Tree {
             shown: Vec::new(),
             leaving: Vec::new(),
             gone: Vec::new(),
+            input: input::Input::new(),
+            last_pointer: (f32::NAN, f32::NAN, 0),
+            paints: 0,
         }
     }
 
@@ -1061,6 +1071,7 @@ impl Tree {
         if painted {
             self.repaint(fonts, icons);
             self.paint = false;
+            self.paints += 1;
         }
         (laid_out, painted)
     }
@@ -1597,10 +1608,16 @@ impl Tree {
     /// parent paints them in, holds the point, the last made (a descendant
     /// comes after its ancestors and paints over them); NONE for none.
     fn hit(&self, x: f32, y: f32) -> u32 {
+        self.hit_where(x, y, |el| el.clickable)
+    }
+
+    /// [`Tree::hit`] over the elements `want` accepts; a press needs them
+    /// enabled too. Behind an open modal, nothing answers.
+    fn hit_where(&self, x: f32, y: f32, want: impl Fn(&El) -> bool) -> u32 {
         for &e in self.order.iter().rev() {
             let (e, el) = (e as usize, &self.els[e as usize]);
             // An element on its way out, or in one, answers nothing.
-            if el.dead || !el.clickable || self.shown.get(e).is_some_and(|s| s.out) {
+            if el.dead || !want(el) || self.shown.get(e).is_some_and(|s| s.out) {
                 continue;
             }
             let Some(&(bx, by, shown, _)) = self.abs.get(e) else {
@@ -1619,10 +1636,13 @@ impl Tree {
                 && x < (bx + b.w).min(cx1)
                 && y >= by.max(cy0)
                 && y < (by + b.h).min(cy1);
-            if !shown || !inside {
+            if !shown || !inside || !self.reachable(e as u32) {
                 continue;
             }
-            if el.disabled != NONE && og_reactive::bind::truthy(&queue::get(el.disabled)) {
+            if el.clickable
+                && el.disabled != NONE
+                && og_reactive::bind::truthy(&queue::get(el.disabled))
+            {
                 continue;
             }
             return e as u32;
@@ -1635,8 +1655,19 @@ impl Tree {
     /// clicks it. A click reports `click` with its id, then `emit` for each
     /// handler its `onclick` or `ontap` names, to `out`.
     pub fn pointer(&mut self, x: f32, y: f32, pressed: bool, released: bool, out: &mut Vec<Event>) {
+        // Op nodes take the pointer when it moved, a frame painted since
+        // (a box may have come under it), or a button changed.
+        let was = std::mem::replace(&mut self.last_pointer, (x, y, self.paints));
+        if self.has_ops() && (was != self.last_pointer || pressed || released) {
+            self.pointer_ops(x, y, (was.0, was.1) != (x, y), pressed, released);
+        }
         if pressed {
-            self.pressed = self.hit(x, y);
+            let e = self.hit(x, y);
+            self.pressed = if e != NONE && self.els[e as usize].js == NONE {
+                e
+            } else {
+                NONE
+            };
         }
         if !released {
             return;
@@ -1646,14 +1677,6 @@ impl Tree {
             return;
         }
         let el = &self.els[held as usize];
-        if el.js != NONE {
-            for ev in [OpEvent::Press, OpEvent::Tap] {
-                if el.listens & ev.bit() != 0 {
-                    self.events.push(Fired::at(el.js, ev, x, y));
-                }
-            }
-            return;
-        }
         let inst = &self.insts[el.inst as usize];
         let n = &self.docs[inst.doc as usize].doc.nodes[el.at as usize];
         let event = |kind, name: &str| Event {

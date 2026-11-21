@@ -100,6 +100,8 @@ pub(crate) struct Next {
     /// (`glyphs::generate`): a fresh tree painted, so its text arrives
     /// with its panels.
     pub(crate) settle_glyphs: bool,
+    /// The device whose bindings the `<Glyph>` nodes show.
+    device: Option<og_ui::Device>,
 }
 
 fn source(v: &Value) -> Option<(String, String)> {
@@ -233,6 +235,7 @@ impl Next {
             paint: og_render::paint::Paint::default(),
             spans: Spans::default(),
             font: false,
+            device: None,
             language: String::new(),
             a11y: og_ui_next::a11y::Tree::new(),
             fresh: false,
@@ -628,6 +631,36 @@ impl Next {
             input.released,
             &mut done,
         );
+        // Op nodes take the wheel, the keys, the UI's input actions and an
+        // assistive technology's requests; the `<Glyph>` nodes follow the
+        // device.
+        if tree.has_ops() {
+            let (x, y) = (input.pointer.x * unit, input.pointer.y * unit);
+            tree.wheel(x, y, input.wheel.x * unit, input.wheel.y * unit);
+            for code in &input.keys_pressed {
+                tree.key(code, input.shift, input.ctrl, input.alt, input.meta);
+            }
+            for name in ui.fired_actions() {
+                tree.action(name);
+            }
+            for (act, path) in &input.a11y {
+                let Some(node) = og_ui_next::a11y::target(path) else {
+                    continue;
+                };
+                match act {
+                    og_input::A11yAct::Focus => tree.a11y_focus(node),
+                    og_input::A11yAct::Activate => _ = tree.a11y_act(node, None),
+                    og_input::A11yAct::Increment => _ = tree.a11y_act(node, Some(true)),
+                    og_input::A11yAct::Decrement => _ = tree.a11y_act(node, Some(false)),
+                }
+            }
+            tree.input_done();
+            let device = ui.device();
+            if tree.glyphs_wanted() || self.device != Some(device) {
+                self.device = Some(device);
+                tree.set_glyphs(&|action| ui.glyph(action).map(|g| g.text));
+            }
+        }
         // Looked up per event, so a frame without one allocates nothing.
         let mounts = &self.mounts;
         self.events.extend(done.into_iter().map(|e| {
@@ -671,7 +704,7 @@ impl Next {
     /// last one; in CSS px, as the tree lays out.
     pub(crate) fn a11y(&mut self) -> Option<Value> {
         let tree = self.tree.as_ref()?;
-        let update = tree.a11y(&mut self.a11y, None, 1.0)?;
+        let update = tree.a11y(&mut self.a11y, tree.focused(), 1.0)?;
         Some(og_ui_next::a11y::web(&update))
     }
 

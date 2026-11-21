@@ -129,6 +129,11 @@ impl ActionHint {
 }
 
 impl Ui {
+    /// The UI actions fired this tick, in order.
+    pub fn fired_actions(&self) -> &[String] {
+        &self.interaction.actions.fired
+    }
+
     /// Defines (or redefines) a UI action.
     pub fn define_action(&mut self, desc: ActionDesc) {
         self.interaction.ensure_actions();

@@ -29,10 +29,13 @@ pub enum Event {
     Blur,
     Key,
     Change,
+    /// An input action its `actions` prop lists (`onAction`), by name in
+    /// the event's `key`.
+    Action,
 }
 
 impl Event {
-    const ALL: [Event; 10] = [
+    const ALL: [Event; 11] = [
         Event::Press,
         Event::Tap,
         Event::PointerDown,
@@ -43,6 +46,7 @@ impl Event {
         Event::Blur,
         Event::Key,
         Event::Change,
+        Event::Action,
     ];
 
     pub fn bit(self) -> u16 {
@@ -81,7 +85,19 @@ impl Fired {
 /// records motion enters from and leaves to.
 pub type Resolve = Box<dyn Fn(&str, &str, u16) -> Record>;
 
-use crate::classes::state::{EXIT, STARTING};
+use crate::classes::state::{
+    DISABLED, EXIT, FOCUS_VISIBLE, FOCUS_WITHIN, FOCUSED, HOVERED, PRESSED, STARTING,
+};
+
+/// The states input sets on op nodes, which their classes may read.
+const INTERACTION: [u16; 6] = [
+    PRESSED,
+    HOVERED,
+    FOCUSED,
+    DISABLED,
+    FOCUS_WITHIN,
+    FOCUS_VISIBLE,
+];
 
 /// The records of the class and style pairs the op nodes use, each
 /// resolved once; an entry's key is `class\0style`. `presence` holds an
@@ -92,8 +108,32 @@ pub struct Classes {
     keys: Vec<Box<str>>,
     records: Vec<Record>,
     presence: Vec<[Option<Box<Record>>; 2]>,
+    /// Each entry's interaction states its record reads, and its records
+    /// under the ones it reads, made the first time they are met.
+    tracked: Vec<u16>,
+    stated: FxHashMap<(u32, u16), Record>,
     buf: String,
     resolve: Option<Resolve>,
+}
+
+/// The interaction states an entry's record reads: each one that changes
+/// it alone, or all of them when only a combination (`hover:focus:`)
+/// does.
+fn tracks(resolve: Option<&Resolve>, c: &str, s: &str, base: &Record) -> u16 {
+    let Some(f) = resolve else {
+        return 0;
+    };
+    let mut t = 0;
+    for bit in INTERACTION {
+        if f(c, s, bit) != *base {
+            t |= bit;
+        }
+    }
+    let all = INTERACTION.iter().fold(0, |a, b| a | b);
+    if t != all && f(c, s, all) != f(c, s, t) {
+        t = all;
+    }
+    t
 }
 
 /// An entry's record, and its `starting:` and `exit:` ones where they
@@ -109,6 +149,25 @@ fn resolved(resolve: Option<&Resolve>, c: &str, s: &str) -> (Record, [Option<Box
 }
 
 impl Classes {
+    /// The interaction states entry `i` reads.
+    pub(super) fn tracked(&self, i: u32) -> u16 {
+        self.tracked.get(i as usize).copied().unwrap_or(0)
+    }
+
+    /// Entry `i`'s record under interaction states `states`.
+    pub(super) fn record(&mut self, i: u32, states: u16) -> &Record {
+        let st = states & self.tracked(i);
+        if st == 0 {
+            return &self.records[i as usize];
+        }
+        let resolve = self.resolve.as_ref();
+        let key = &self.keys[i as usize];
+        self.stated.entry((i, st)).or_insert_with(|| {
+            let (c, s) = Self::split(key);
+            resolve.map_or_else(Record::default, |f| f(c, s, st))
+        })
+    }
+
     /// Entry `i`'s `starting:` (0) or `exit:` (1) record.
     pub(super) fn presence(&self, i: u32, k: usize) -> Option<&Record> {
         self.presence[i as usize][k].as_deref()
@@ -146,6 +205,8 @@ impl Classes {
         }
         let (c, s) = Self::split(&self.buf);
         let (record, presence) = resolved(self.resolve.as_ref(), c, s);
+        self.tracked
+            .push(tracks(self.resolve.as_ref(), c, s, &record));
         let i = self.keys.len() as u32;
         self.records.push(record);
         self.presence.push(presence);
@@ -155,9 +216,11 @@ impl Classes {
     }
 
     fn reresolve(&mut self) {
+        self.stated.clear();
         for (i, k) in self.keys.iter().enumerate() {
             let (c, s) = Self::split(k);
             (self.records[i], self.presence[i]) = resolved(self.resolve.as_ref(), c, s);
+            self.tracked[i] = tracks(self.resolve.as_ref(), c, s, &self.records[i]);
         }
     }
 }
@@ -237,9 +300,10 @@ impl Tree {
         }
     }
 
-    fn restyle(&mut self, e: u32) {
+    pub(super) fn restyle(&mut self, e: u32) {
         let class = self.els[e as usize].class;
-        let record = &self.classes.records[class as usize];
+        let states = self.input.per(e).map_or(0, |p| p.states);
+        let record = self.classes.record(class, states);
         if self.els[e as usize].record != *record {
             // The new record's transition runs the change.
             let old = std::mem::replace(&mut self.els[e as usize].record, record.clone());
@@ -295,6 +359,8 @@ impl Tree {
             self.by_js.resize(id as usize + 1, NONE);
         }
         self.by_js[id as usize] = e;
+        self.input.per.resize(e as usize + 1, input::Per::default());
+        self.input.per[e as usize].tab = input::NO_TAB;
         self.inherit(e);
         Ok(e)
     }
@@ -348,6 +414,7 @@ impl Tree {
         self.arena.detach(node);
         self.motion.forget(node);
         self.sem.release(node);
+        self.input.modal_els.retain(|&m| m != e);
         self.leaving.retain(|l| l.0 != e);
         if let Some(slot) = self.by_js.get_mut(js as usize).filter(|s| **s == e) {
             *slot = NONE;
@@ -420,6 +487,7 @@ impl Tree {
                     if tag == 6 {
                         self.els[e as usize].line = Some((Vec::new(), false));
                     }
+                    self.input.per[e as usize].input = tag == 4;
                     self.sem
                         .create(self.els[e as usize].node, a11y::Kind::of(tag));
                 }
@@ -457,6 +525,24 @@ impl Tree {
                                 NONE => self.els[e as usize].disabled = queue::signal(on.into()),
                                 s => queue::set(s, on.into()),
                             }
+                            self.set_state(e, DISABLED, on);
+                        }
+                        "tabIndex" => {
+                            self.input.per[e as usize].tab =
+                                value.trim().parse().unwrap_or(input::NO_TAB);
+                        }
+                        "modal" => {
+                            let on = !matches!(value, "" | "false" | "0" | "null");
+                            self.input.per[e as usize].modal = on;
+                            self.input.modal_els.retain(|&m| m != e);
+                            if on {
+                                self.input.modal_els.push(e);
+                            }
+                        }
+                        "actions" => self.input.per[e as usize].actions = value.into(),
+                        "glyph" => {
+                            self.input.per[e as usize].glyph = value.into();
+                            self.input.glyphs_wanted = true;
                         }
                         // A `<Line>`'s points, numbers split by commas or
                         // spaces, read into its own buffer.
@@ -1034,5 +1120,217 @@ mod tests {
             root.children().iter().map(|c| c.0).collect::<Vec<_>>(),
             [four]
         );
+    }
+
+    /// A tree whose classes read input states: `b` is 50 by 20, and
+    /// `hover:` makes `hw` 80 wide, `active:` makes `aw` 60, and
+    /// `focus-visible:` makes `fw` 90.
+    fn stated() -> Tree {
+        let mut t = tree();
+        t.set_resolver(Box::new(|class, _, state| {
+            let mut s = taffy::Style::default();
+            for c in class.split_whitespace() {
+                let w = match c {
+                    "row" => {
+                        s.flex_direction = taffy::FlexDirection::Row;
+                        continue;
+                    }
+                    "b" => 50.0,
+                    "hw" if state & HOVERED != 0 => 80.0,
+                    "aw" if state & PRESSED != 0 => 60.0,
+                    "fw" if state & FOCUS_VISIBLE != 0 => 90.0,
+                    _ => continue,
+                };
+                s.size = taffy::Size::from_lengths(w, 20.0);
+            }
+            Record {
+                layout: rune_taffy::CompactStyle::from(&s),
+                ..Record::default()
+            }
+        }));
+        t
+    }
+
+    /// Ids 1..=n as `class` views under a row at the root, each listening
+    /// to `press`, `focus` and `blur`.
+    fn buttons(t: &mut Tree, classes: &[&str]) {
+        let mut b = Batch::default();
+        b.op(1).u32(100).u8(0);
+        b.op(4).u32(100).str("row");
+        b.op(8).u32(0).u32(100).u32(u32::MAX);
+        for (i, c) in classes.iter().enumerate() {
+            let id = i as u32 + 1;
+            b.op(1).u32(id).u8(0);
+            b.op(4).u32(id).str(c);
+            for ev in [Event::Press, Event::Focus, Event::Blur] {
+                b.op(7).u32(id).u8(ev as u8).u8(1);
+            }
+            b.op(8).u32(100).u32(id).u32(u32::MAX);
+        }
+        t.apply(&b.bytes()).unwrap();
+        frame(t);
+    }
+
+    fn at(t: &mut Tree, x: f32, y: f32, pressed: bool, released: bool) {
+        t.pointer(x, y, pressed, released, &mut Vec::new());
+        frame(t);
+    }
+
+    /// `hover:` follows the pointer on and off; `active:` holds while the
+    /// press is on its node or within NSH's press retention (8 px) around
+    /// it, where a release still clicks; further off, a release does not.
+    #[test]
+    fn hover_and_active_follow_the_pointer_and_its_retention() {
+        let mut t = stated();
+        buttons(&mut t, &["b hw", "b aw"]);
+        at(&mut t, 10.0, 10.0, false, false);
+        assert_eq!(t.op_box(1).unwrap()[2], 80.0, "hovered");
+        at(&mut t, 10.0, 200.0, false, false);
+        assert_eq!(t.op_box(1).unwrap()[2], 50.0, "left");
+        // 2 sits at x 50..100 now.
+        at(&mut t, 60.0, 10.0, true, false);
+        assert_eq!(t.op_box(2).unwrap()[2], 60.0, "pressed");
+        // 25 px below its 20 px box is past the retention: not active.
+        at(&mut t, 60.0, 45.0, false, false);
+        assert_eq!(t.op_box(2).unwrap()[2], 50.0, "dragged off");
+        at(&mut t, 60.0, 45.0, false, true);
+        let pressed = t.events.iter().any(|f| f.event == Event::Press);
+        assert!(!pressed, "a release off it clicks nothing");
+        at(&mut t, 60.0, 10.0, true, false);
+        t.events.clear();
+        // 5 px below the box: inside the retention, a click.
+        at(&mut t, 60.0, 25.0, false, true);
+        let presses: Vec<_> = t
+            .events
+            .iter()
+            .filter(|f| f.event == Event::Press)
+            .collect();
+        assert_eq!(presses, [&Fired::at(2, Event::Press, 60.0, 25.0)]);
+        assert_eq!(t.op_box(2).unwrap()[2], 50.0, "released");
+    }
+
+    /// Tab goes to positive `tabIndex` first, then tree order, skipping a
+    /// negative one, and wraps; Shift+Tab goes back. Focus moved by the
+    /// keys shows `focus-visible:`, a press's does not; each move fires
+    /// `blur` then `focus`.
+    #[test]
+    fn tab_order_focus_events_and_focus_visible() {
+        let mut t = stated();
+        buttons(&mut t, &["b fw", "b fw", "b fw", "b fw"]);
+        let mut b = Batch::default();
+        b.op(6).u32(3).str("tabIndex").str("2");
+        b.op(6).u32(4).str("tabIndex").str("-1");
+        t.apply(&b.bytes()).unwrap();
+        let mut order = Vec::new();
+        for _ in 0..4 {
+            t.key("Tab", false, false, false, false);
+            order.push(t.focused_id().unwrap());
+        }
+        assert_eq!(order, [3, 1, 2, 3]);
+        t.key("Tab", true, false, false, false);
+        assert_eq!(t.focused_id(), Some(2));
+        frame(&mut t);
+        assert_eq!(t.op_box(2).unwrap()[2], 90.0, "keys show focus");
+        t.events.clear();
+        // 1 sits at 0..50: a press there focuses it without the ring.
+        at(&mut t, 10.0, 10.0, true, false);
+        assert_eq!(t.focused_id(), Some(1));
+        let fired: Vec<_> = t.events.iter().map(|f| (f.id, f.event)).collect();
+        assert_eq!(fired, [(2, Event::Blur), (1, Event::Focus)]);
+        assert_eq!(t.op_box(1).unwrap()[2], 50.0, "a press shows no ring");
+        assert_eq!(t.op_box(2).unwrap()[2], 50.0, "blurred");
+        // 4 is focused by a press though Tab passes it.
+        at(&mut t, 10.0, 10.0, false, true);
+        let x4 = t.op_box(4).unwrap()[0] + 5.0;
+        at(&mut t, x4, 10.0, true, false);
+        assert_eq!(t.focused_id(), Some(4));
+    }
+
+    /// While a `modal` view shows, focus goes into it, Tab stays in
+    /// it and a press outside reaches nothing; when it goes, focus
+    /// returns to what had it before.
+    #[test]
+    fn a_modal_traps_focus_and_returns_it() {
+        let mut t = stated();
+        buttons(&mut t, &["b", "b"]);
+        t.key("Tab", false, false, false, false);
+        t.key("Tab", false, false, false, false);
+        assert_eq!(t.focused_id(), Some(2));
+        let mut b = Batch::default();
+        b.op(1).u32(50).u8(0);
+        b.op(6).u32(50).str("modal").str("true");
+        for id in [51, 52] {
+            b.op(1).u32(id).u8(0);
+            b.op(4).u32(id).str("b");
+            b.op(7).u32(id).u8(Event::Press as u8).u8(1);
+            b.op(8).u32(50).u32(id).u32(u32::MAX);
+        }
+        b.op(8).u32(0).u32(50).u32(u32::MAX);
+        t.apply(&b.bytes()).unwrap();
+        frame(&mut t);
+        t.key("Tab", false, false, false, false);
+        assert_eq!(t.focused_id(), Some(52), "opened on 51, Tab moved on");
+        t.key("Tab", false, false, false, false);
+        assert_eq!(t.focused_id(), Some(51), "Tab wraps inside the modal");
+        t.events.clear();
+        at(&mut t, 10.0, 10.0, true, false);
+        at(&mut t, 10.0, 10.0, false, true);
+        assert!(
+            !t.events.iter().any(|f| f.id == 1),
+            "the page behind answers no press"
+        );
+        let mut b = Batch::default();
+        b.op(9).u32(0).u32(50);
+        t.apply(&b.bytes()).unwrap();
+        frame(&mut t);
+        t.action("noop");
+        assert_eq!(t.focused_id(), Some(2), "focus returned");
+    }
+
+    /// An input action goes to the focused node or the nearest around it
+    /// that lists it; `confirm` presses a focused control no one lists it
+    /// on, once, though Enter is bound to it too.
+    #[test]
+    fn actions_go_to_the_focus_and_its_ancestors() {
+        let mut t = stated();
+        buttons(&mut t, &["b", "b"]);
+        let mut b = Batch::default();
+        b.op(6).u32(100).str("actions").str("details back");
+        t.apply(&b.bytes()).unwrap();
+        assert!(!t.action("details"), "nothing focused, no modal");
+        t.key("Tab", false, false, false, false);
+        t.events.clear();
+        assert!(t.action("details"));
+        assert!(!t.action("rotate"));
+        let ev = &t.events[0];
+        assert_eq!((ev.id, ev.event, &*ev.key), (100, Event::Action, "details"));
+        t.events.clear();
+        // Enter presses the focused control, and its `confirm` does not
+        // again.
+        assert!(t.key("Enter", false, false, false, false));
+        t.action("confirm");
+        t.input_done();
+        let presses: Vec<_> = t.events.iter().map(|f| (f.id, f.event)).collect();
+        assert_eq!(presses, [(1, Event::Press)]);
+        t.events.clear();
+        t.action("confirm");
+        assert_eq!(t.events.len(), 1, "a pad's confirm presses it");
+    }
+
+    /// A `<Glyph action>` shows the host's binding glyph, and asks for it
+    /// again when one comes.
+    #[test]
+    fn a_glyph_shows_its_actions_binding() {
+        let mut t = stated();
+        let mut b = Batch::default();
+        b.op(2).u32(1).str("");
+        b.op(6).u32(1).str("glyph").str("use");
+        b.op(8).u32(0).u32(1).u32(u32::MAX);
+        t.apply(&b.bytes()).unwrap();
+        assert!(t.glyphs_wanted());
+        t.set_glyphs(&|a| (a == "use").then(|| "E".to_string()));
+        assert!(!t.glyphs_wanted());
+        let e = t.op(1).unwrap();
+        assert_eq!(t.els[e as usize].text, "E");
     }
 }

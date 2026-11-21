@@ -1,6 +1,8 @@
 //! A HUD of op nodes as the TS renderer makes it, headless: the batch that
-//! builds it (applied and its first frame), an unchanged frame, and one
-//! text changed (a clock), each the median of N runs with its allocations.
+//! builds it (applied and its first frame), an unchanged frame, one text
+//! changed (a clock), and the pointer coming over a panel whose `hover:`
+//! fill shows and leaving it, each the median of N runs with its
+//! allocations.
 //!
 //!     cargo run --release -p og-ui-next --example op_costs [N]
 
@@ -57,7 +59,9 @@ fn hud() -> Batch {
     for k in 0..30u32 {
         let (p, l, v, i) = (10 + k * 4, 11 + k * 4, 12 + k * 4, 13 + k * 4);
         b.op(1).u32(p).u8(0);
-        b.op(4).u32(p).str("row gap-1 rounded-lg bg-surface");
+        b.op(4)
+            .u32(p)
+            .str("row gap-1 rounded-lg bg-surface hover:bg-accent");
         b.op(2).u32(l).str("Gold");
         b.op(2).u32(v).str("06:54");
         b.op(1).u32(i).u8(5);
@@ -81,17 +85,23 @@ fn tree() -> Tree {
     ));
     let mut t = Tree::new(look, []);
     t.resize(1280.0, 720.0);
-    t.set_resolver(Box::new(|class, _, _| {
+    t.set_resolver(Box::new(|class, _, states| {
         let mut s = taffy::Style::default();
         for c in class.split_whitespace() {
             if c == "row" {
                 s.flex_direction = taffy::FlexDirection::Row;
             }
         }
-        Record {
+        let hover =
+            class.contains("hover:bg-accent") && states & og_ui_next::classes::state::HOVERED != 0;
+        let mut r = Record {
             layout: rune_taffy::CompactStyle::from(&s),
             ..Record::default()
+        };
+        if hover {
+            r.skin.fill = [0.2, 0.4, 0.9, 1.0];
         }
+        r
     }));
     t
 }
@@ -110,6 +120,7 @@ fn main() {
     let icons = IconAtlas::default();
     let build = hud().bytes();
     let (mut builds, mut idle, mut changed) = (Vec::new(), Vec::new(), Vec::new());
+    let mut hovered = Vec::new();
     for _ in 0..n {
         let mut t = tree();
         let a = allocations();
@@ -131,12 +142,27 @@ fn main() {
             t.frame(&fonts, &icons);
             changed.push((s.elapsed().as_secs_f64() * 1e3, allocations() - a));
         }
+        // Over panel 10 and off it; the first round meets its hover
+        // record, the others measure.
+        let [x, y, _, h] = t.op_box(10).unwrap();
+        for round in 0..4 {
+            for (px, py) in [(x + 2.0, y + h / 2.0), (1270.0, 710.0)] {
+                let a = allocations();
+                let s = Instant::now();
+                t.pointer(px, py, false, false, &mut Vec::new());
+                t.frame(&fonts, &icons);
+                if round > 0 {
+                    hovered.push((s.elapsed().as_secs_f64() * 1e3, allocations() - a));
+                }
+            }
+        }
     }
     assert_eq!(&MAGIC[..], b"OGOP");
     for (what, v) in [
         ("build", builds),
         ("unchanged", idle),
         ("one text", changed),
+        ("hover", hovered),
     ] {
         let (ms, allocs) = median(v);
         println!("{what:>10}: {ms:.4} ms, {allocs} allocations");
