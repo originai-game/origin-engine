@@ -423,6 +423,17 @@ impl std::fmt::Display for ThemeError {
 impl std::error::Error for ThemeError {}
 
 impl Theme {
+    /// Origin Engine: a style prop's value with each `rem` length written in
+    /// px at this theme's rem, as an arbitrary class value's is, so the
+    /// shared CSS parsers (16 px to the rem) read one rem everywhere.
+    pub fn rem_lengths<'v>(&self, value: &'v str) -> std::borrow::Cow<'v, str> {
+        if self.rem != crate::geometry::REM_SIZE.0 && value.contains("rem") {
+            super::utilities::rem_lengths(value, self.rem).into()
+        } else {
+            value.into()
+        }
+    }
+
     /// The default theme extended by `config`, the `"tailwind"` object of
     /// `nsh.json` (JSON). Entries with an existing name replace the default:
     ///

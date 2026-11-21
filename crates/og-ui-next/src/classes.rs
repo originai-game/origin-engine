@@ -266,9 +266,10 @@ impl Classes {
         let mut props = ClassProps::default();
         list.apply_data(&cx, &has, &self.theme, &mut out, &mut props, |_| {});
         for (name, value) in declarations(style) {
+            let value = self.theme.rem_lengths(value);
             let value = match value.parse::<f32>() {
                 Ok(n) => StyleValue::Number(n),
-                Err(_) => StyleValue::Str(value),
+                Err(_) => StyleValue::Str(&value),
             };
             let _ = out.set(&camel(name), value);
         }

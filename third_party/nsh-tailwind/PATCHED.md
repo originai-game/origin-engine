@@ -58,5 +58,10 @@ the changes after it are only these:
   `flex_and_grid_longhands_override_their_shorthands_in_any_order` expect
   the `0%`.
 
+- `tailwind/theme.rs` adds `Theme::rem_lengths` (and `tailwind/utilities.rs`
+  makes its `rem_lengths` crate-visible): a style prop's value with its
+  `rem` lengths in px at the theme's rem, which og-ui-next applies before
+  `Style::set`, so a style prop and a bracketed class read the same rem.
+
 Its own tests (`tailwind/tests.rs`, `geometry/tests.rs`, `style.rs`) run
 unchanged otherwise.

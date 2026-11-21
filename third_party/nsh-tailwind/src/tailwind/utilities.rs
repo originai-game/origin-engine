@@ -1351,7 +1351,7 @@ fn valid(decls: Vec<Decl>) -> Option<Vec<Decl>> {
 
 /// Normalize arbitrary CSS lengths before shared CSS parsers consume them.
 /// Quoted font names and strings retain their literal contents.
-fn rem_lengths(value: &str, rem: f32) -> String {
+pub(crate) fn rem_lengths(value: &str, rem: f32) -> String {
     let bytes = value.as_bytes();
     let mut out = String::with_capacity(value.len());
     let mut at = 0;

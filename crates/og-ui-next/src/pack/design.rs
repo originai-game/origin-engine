@@ -197,6 +197,11 @@ fn theme(t: &Tokens, names: &[String]) -> Map<String, Value> {
             }
         }
     }
+    // One rem is the body type step (docs/ui.md, Units), not NSH's 16:
+    // a bracketed `[1.143rem]` is 16 px of the design, as `p-4` is.
+    if let Some(body) = t.get("--font-scale-body-size").and_then(px) {
+        sections.insert("rem".to_owned(), json!(body));
+    }
     sections
 }
 
@@ -473,6 +478,34 @@ mod tests {
             default_pack_json() == DEFAULT_PACK,
             "crates/og-ui-next/default/pack.json is stale: run crates/og-ui-next/scripts/gen-pack.sh"
         );
+    }
+
+    /// One rem is the design's body step, 14 px, in the default pack's
+    /// theme as the class resolver reads it: a bracketed rem and the step
+    /// the design names for the same length agree (NSH's own rem is 16).
+    #[test]
+    fn a_rem_is_the_body_type_step() {
+        use crate::classes::{Classes, Env};
+        let pack = crate::pack::Pack::new(&[crate::pack::Layer::default_pack()]);
+        let (mut c, _) = Classes::new(Some(&pack.theme_json(Scheme::Dark))).unwrap();
+        let env = Env::default();
+        let mut width = |class: &str| {
+            taffy::CoreStyle::size(&c.record(class, &env).layout)
+                .width
+                .value()
+        };
+        // --size-6xl is 240 px: 17.143 rem of 14, and 60 steps of 4.
+        assert!((width("w-[17.143rem]") - 240.0).abs() < 0.01);
+        assert_eq!(width("w-60"), 240.0);
+        // A style prop's rem is the same one.
+        let styled = c.record_styled("", "width: 17.143rem", &env);
+        let w = taffy::CoreStyle::size(&styled.layout).width.value();
+        assert!((w - 240.0).abs() < 0.01, "{w}");
+        // --font-scale-xs-size is 12 px: 0.857 rem of 14.
+        let (mut c, _) = Classes::new(Some(&pack.theme_json(Scheme::Dark))).unwrap();
+        let bracket = c.record("text-[0.857rem]", &env).font_size;
+        assert!((bracket - 12.0).abs() < 0.01, "{bracket}");
+        assert_eq!(c.record("text-xs", &env).font_size, 12.0);
     }
 
     /// Every glyph og-input names has the default pack's art: each key it

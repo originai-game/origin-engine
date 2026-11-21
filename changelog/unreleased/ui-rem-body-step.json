@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "Default style pack theme rem",
+      "summary": "One rem in a class string is the body type step, 14 px, as the UI documentation says; the default theme left it at 16. A bracketed rem length (`w-[17.143rem]`, `text-[0.857rem]`) now draws at the documented size, the same as the theme step for that length (`w-60`, `text-xs`), where it drew 14% larger. The engine's components written with bracketed rems draw at their designed sizes; a game's own `[\u2026rem]` classes do too. A game's pack sets its own with the theme's `rem`."
+    }
+  ]
+}

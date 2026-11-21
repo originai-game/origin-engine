@@ -473,7 +473,9 @@ is an error naming where it is, never ignored):
   `{ "light": …, "dark": … }`**; the pack layer splits it before NSH reads
   the theme, so each scheme's theme is plain theme JSON and switching
   scheme switches record tables. `light` and `dark` are never shade names.
-  A `fontFamily` is a CSS family list.
+  A `fontFamily` is a CSS family list. `rem` is the px to one rem in a
+  bracketed class value and a style prop; the default pack's is the body
+  type step, 14, so `w-[17.143rem]` is the 240 px `w-60` is.
 - **`seeds`**: `primary`, `accent`, `neutral`, `danger`, `warn`, `success`,
   `info`, `team`, `hud` (seed.css), each a CSS colour or a scheme pair.
   When any layer sets one, the cook derives the design palette again from

@@ -823,6 +823,7 @@
       "panel": 12.0,
       "sheet": 16.0
     },
+    "rem": 14.0,
     "shadow": {
       "edge": {
         "dark": "inset 0 0 0 0.5px rgb(255 255 255 / 0.08)",
