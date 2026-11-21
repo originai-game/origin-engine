@@ -2688,8 +2688,12 @@ fn opt_number(v: StyleValue<'_>) -> Result<Option<f32>, StyleError> {
     }
 }
 
+/// A length in points or none, from a number or a string (`"2px"`).
 fn opt_points(v: StyleValue<'_>) -> Result<Option<Points>, StyleError> {
-    Ok(opt_number(v)?.map(px))
+    match v {
+        StyleValue::Null => Ok(None),
+        v => length_value(v, 0.0).map(|l| Some(px(l))),
+    }
 }
 
 fn color(v: StyleValue<'_>) -> Result<Option<Color>, StyleError> {
@@ -3198,7 +3202,7 @@ impl StyleKey {
             | K::BorderTopWidth
             | K::BorderRightWidth
             | K::BorderBottomWidth
-            | K::BorderLeftWidth => PropertyValue::Points(px(number(value, 0.0)?.max(0.0))),
+            | K::BorderLeftWidth => PropertyValue::Points(px(length_value(value, 0.0)?.max(0.0))),
             K::VerticalAlign => PropertyValue::VerticalAlign(match keyword(value)? {
                 None => VerticalAlign::Baseline,
                 Some(k) => VerticalAlign::parse(k).ok_or(StyleError::InvalidValue)?,
@@ -3246,7 +3250,7 @@ impl StyleKey {
                 let (points, em) = font_size(value)?;
                 PropertyValue::FontSize(points, em.map(of))
             }
-            K::BorderRadius => PropertyValue::Points(px(number(value, 0.0)?)),
+            K::BorderRadius => PropertyValue::Points(px(length_value(value, 0.0)?)),
             K::BorderStyle | K::OutlineStyle => {
                 // `none` (and `hidden`) draws and lays out no line whatever
                 // the width, set before or after it (CSS).
@@ -4887,6 +4891,27 @@ mod tests {
             .set(&mut s, "borderTopWidth", Null)
             .unwrap();
         assert_eq!(s.view.borders.widths.top, Points::ZERO);
+        // Inline CSS gives its lengths as strings, which every border
+        // width and radius takes as a number does.
+        let mut s = Style::default();
+        for (k, v) in [
+            ("borderTopWidth", "4px"),
+            ("borderRightWidth", "0.25rem"),
+            ("borderBottomWidth", "3pt"),
+            ("borderLeftWidth", "1"),
+        ] {
+            s.set(k, Str(v)).unwrap();
+        }
+        assert_eq!(
+            s.view.borders.widths.to_array().map(|w| w.0),
+            [4.0, 4.0, 4.0, 1.0]
+        );
+        s.set("borderRadius", Str("8px")).unwrap();
+        s.set("borderTopLeftRadius", Str("6px")).unwrap();
+        assert_eq!(
+            s.set("borderTopWidth", Str("thick")),
+            Err(StyleError::InvalidValue)
+        );
     }
 
     #[test]
