@@ -1592,13 +1592,17 @@ impl Next {
             .collect();
         let elements = ops
             .iter()
-            .filter(|n| n.shown)
+            // What a scroller or a cut box hides entirely is not on screen.
+            .filter(|n| n.shown && n.visible[2] > n.visible[0] && n.visible[3] > n.visible[1])
             .map(|n| {
                 let f = facts.get(&n.node);
                 let control = f
                     .is_some_and(|f| CONTROLS.contains(&f.role) || f.states.contains(&"focusable"));
                 // In the surface's CSS px, as og-ui's elements are.
-                let [x, y, width, height] = n.rect.map(|v| v * unit);
+                // The part that shows; clipped when that is not all of it.
+                let [x0, y0, x1, y1] = n.visible;
+                let clipped = [x0, y0, x1 - x0, y1 - y0] != n.rect;
+                let [x, y, width, height] = [x0, y0, x1 - x0, y1 - y0].map(|v| v * unit);
                 og_probe::UiElement {
                     id: n.id.to_string(),
                     parent: if n.parent == 0 {
@@ -1623,6 +1627,7 @@ impl Next {
                         s
                     }),
                     disabled: f.is_some_and(|f| f.states.contains(&"disabled")),
+                    clipped,
                     x,
                     y,
                     width,

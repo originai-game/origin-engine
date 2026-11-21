@@ -1031,6 +1031,10 @@ pub struct OpNode<'a> {
     pub parent: u32,
     pub node: Id,
     pub rect: [f32; 4],
+    /// The part of `rect` a scroller or a box cutting its overflow lets
+    /// show (x0, y0, x1, y1); `rect`'s own corners when nothing cuts it,
+    /// and for a node under a transform, which `rect` does not place.
+    pub visible: [f32; 4],
     pub shown: bool,
     pub text: &'a str,
     /// Where its laid-out lines cut a word with no UAX #14 break there,
@@ -1082,6 +1086,18 @@ impl Tree {
             .filter_map(|(e, el)| {
                 let &(x, y, shown, _) = self.abs.get(e)?;
                 let b = self.arena.box_of(el.node);
+                let own = [x, y, x + b.w, y + b.h];
+                let cut = match el.arena_parent {
+                    _ if el.anchor.is_some() || self.xfs.get(e).is_some_and(|&xf| xf != 0) => own,
+                    NONE => own,
+                    p => self.abs.get(p as usize).map_or(own, |a| a.3),
+                };
+                let visible = [
+                    own[0].max(cut[0]),
+                    own[1].max(cut[1]),
+                    own[2].min(cut[2]).max(own[0].max(cut[0])),
+                    own[3].min(cut[3]).max(own[1].max(cut[1])),
+                ];
                 let glyphs = (!el.text.is_empty())
                     .then(|| self.glyphs.get(e))
                     .flatten()
@@ -1095,6 +1111,7 @@ impl Tree {
                     parent,
                     node: el.node,
                     rect: [x, y, b.w, b.h],
+                    visible,
                     shown,
                     text: &el.text,
                     broken: self.glyphs.get(e).map_or(Vec::new(), |g| {
@@ -1208,6 +1225,7 @@ mod tests {
                     "b" => s.size = taffy::Size::from_lengths(50.0, 20.0),
                     "big" => s.size = taffy::Size::from_lengths(400.0, 300.0),
                     "col" => s.flex_direction = taffy::FlexDirection::Column,
+                    "fixed" => s.flex_shrink = 0.0,
                     _ => {}
                 }
             }
@@ -1873,6 +1891,29 @@ mod tests {
             .bounds()
             .unwrap();
         assert_eq!((r.x0, r.y0, r.x1, r.y1), (12.5, 5.0, 37.5, 15.0));
+    }
+
+    /// The probe lists the part of a node its clipping ancestors let show:
+    /// a row below a 20 px box that cuts its overflow shows none of it.
+    #[test]
+    fn the_probe_lists_what_a_cut_box_lets_show() {
+        let mut t = tree();
+        let mut b = Batch::default();
+        b.op(1).u32(1).u8(0);
+        b.op(4).u32(1).str("b clip col");
+        for k in 2..4 {
+            b.op(1).u32(k).u8(0);
+            b.op(4).u32(k).str("b fixed");
+            b.op(8).u32(1).u32(k).u32(u32::MAX);
+        }
+        b.op(8).u32(0).u32(1).u32(u32::MAX);
+        t.apply(&b.bytes()).unwrap();
+        frame(&mut t);
+        let ops = t.dump_ops();
+        let at = |id: u32| ops.iter().find(|n| n.id == id).unwrap().visible;
+        assert_eq!(at(2), [0.0, 0.0, 50.0, 20.0]);
+        let [_, y0, _, y1] = at(3);
+        assert_eq!(y0, y1, "the second row is cut away whole");
     }
 
     /// What a box under a transform clips is cut where that box is drawn,
