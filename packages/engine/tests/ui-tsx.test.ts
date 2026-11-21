@@ -5,11 +5,11 @@
 
 import { expect, test } from "bun:test";
 import type { World } from "@origingame/engine";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { compileJsx } from "../src/node/build.ts";
+import { bundleGame, compileJsx } from "../src/node/build.ts";
 import { mount, renderers } from "../src/ui/index.ts";
 import { Renderer } from "../src/ui/rt.ts";
 import { createSignal } from "../src/ui/signals.ts";
@@ -98,6 +98,8 @@ test("a TSX component's ops, its updates and its events", async () => {
     expect(first).toContainEqual(["createText", 4, "HP "]);
     expect(first).toContainEqual(["createText", 5, "3"]);
     expect(first.at(-1)).toEqual(["insert", 0, 1, -1]);
+    // The mount's root fills the surface, so a component's `absolute inset-0` covers the screen.
+    expect(first).toContainEqual(["setClass", 1, "absolute inset-0 flex-col"]);
     expect(first.some((op) => op[0] === "createText" && op[2] === "on")).toBe(false);
     expect(first.filter((op) => op[0] === "createText" && (op[2] === "low" || op[2] === "high")).map((op) => op[2])).toEqual(["low"]);
 
@@ -125,5 +127,23 @@ test("a TSX component's ops, its updates and its events", async () => {
   } finally {
     rmSync(dir, { recursive: true, force: true });
     renderers.delete(9001);
+  }
+});
+
+test("a native bundle compiles the engine's TSX components with the game's", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "og-tsx-native-"));
+  try {
+    writeFileSync(join(dir, "project.ogt"), "type project\nversion 1\n---\n");
+    writeFileSync(join(dir, "main.ts"), `export { Spinner } from "@origingame/engine/ui/components";\n`);
+    const out = join(dir, "game.js");
+    const b = await bundleGame(join(dir, "main.ts"), out, "native");
+    if (!b.ok) throw new Error(b.reason);
+    const code = readFileSync(out, "utf8");
+    // Loaded as an external module, Bun's own JSX transform would have kept
+    // the compile-time Show/For imports, which the engine does not export.
+    expect(code).not.toContain("@origingame/engine/ui/components");
+    expect(code).toMatch(/from ["'][^"']*ui\/rt(\.ts)?["']/);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
   }
 });

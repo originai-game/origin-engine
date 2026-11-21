@@ -188,7 +188,9 @@ export async function bundleGame(entry: string, out: string, target: "native" | 
         const fromGame = a.namespace !== "og" && importer.startsWith(gameRoot + sep) && !importer.includes(`${sep}node_modules${sep}`);
         if (fromGame && target === "web-live") return { path: a.path, namespace: "og-pub" };
         if (fromGame && target === "web-code") return { path: a.path, namespace: "og-ext" };
-        return { path: file, external: target === "native" };
+        // Engine TSX (the components) is bundled even natively, so nsh-jsx
+        // compiles it; the renderer it imports stays external and shared.
+        return { path: file, external: target === "native" && !/\.[jt]sx$/.test(file) };
       });
       build.onLoad({ filter: /.*/, namespace: "og-pub" }, (a) => {
         const file = JSON.stringify(engineFile(a.path));
