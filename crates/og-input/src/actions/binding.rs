@@ -23,8 +23,6 @@ pub struct Binding {
     pub deadzone: f32,
     /// Where touches must start (fractions of the surface; empty: all).
     pub zone: Zone,
-    /// A touch stick's full deflection, CSS px (0: 64).
-    pub radius: f32,
 }
 
 impl Default for Binding {
@@ -41,7 +39,6 @@ impl Default for Binding {
             invert_y: false,
             deadzone: 0.0,
             zone: Zone::default(),
-            radius: 0.0,
         }
     }
 }
@@ -152,7 +149,7 @@ impl Binding {
     }
 
     /// A single analog control (the mouse's movement, the wheel, a stick,
-    /// a trigger, a touch stick): what a player's sensitivity scales. Keys,
+    /// a trigger): what a player's sensitivity scales. Keys,
     /// buttons, the d-pad and composites read whole.
     pub fn is_analog(&self) -> bool {
         !self.is_composite()
@@ -160,7 +157,7 @@ impl Binding {
                 Control::parse(&self.control),
                 Some(Control::Axis(..))
                     | Some(Control::Axis2(
-                        Axis2::Mouse | Axis2::Touch | Axis2::PadLeft | Axis2::PadRight
+                        Axis2::Mouse | Axis2::PadLeft | Axis2::PadRight
                     ))
             )
     }
@@ -184,7 +181,6 @@ impl Binding {
         ReadOptions {
             deadzone: self.deadzone,
             zone: self.zone,
-            radius: self.radius,
         }
     }
 
@@ -195,9 +191,6 @@ impl Binding {
         }
         if !(0.0..=0.95).contains(&self.deadzone) {
             return Err("deadzone is 0 to 0.95".into());
-        }
-        if !(self.radius >= 0.0 && self.radius.is_finite()) {
-            return Err("radius is 0 or more".into());
         }
         let z = self.zone;
         if ![z.x, z.y, z.width, z.height]
@@ -250,7 +243,7 @@ impl Binding {
                 (ActionKind::Axis2, Shape::Plane) => {}
                 (ActionKind::Axis2, _) => {
                     return Err(format!(
-                        "'{}' is one axis: a two-axis action binds pad.leftXY, pad.rightXY, pad.dpad, mouse.xy, touch.xy, or a composite (up, down, left, right)",
+                        "'{}' is one axis: a two-axis action binds pad.leftXY, pad.rightXY, pad.dpad, mouse.xy, or a composite (up, down, left, right)",
                         self.control
                     ));
                 }
@@ -291,7 +284,6 @@ impl Binding {
             invert_y: bool_of(v, "invertY", false)?,
             deadzone: f32_of(v, "deadzone", 0.0)?,
             zone,
-            radius: f32_of(v, "radius", 0.0)?,
         })
     }
 
@@ -326,9 +318,6 @@ impl Binding {
                 "zone".into(),
                 json!({ "x": z.x, "y": z.y, "width": z.width, "height": z.height }),
             );
-        }
-        if self.radius != 0.0 {
-            m.insert("radius".into(), json!(self.radius));
         }
         Value::Object(m)
     }
@@ -418,13 +407,12 @@ pub fn overlaps(a: Control, b: Control) -> bool {
                 Axis::Pad(GamepadAxis::RightX),
                 Axis::Pad(GamepadAxis::RightY),
             ],
-            Axis2::Dpad | Axis2::Touch => &[],
+            Axis2::Dpad => &[],
         }
     };
     match (a, b) {
         // Touch zones may lie apart: touches never conflict.
-        (Control::Touch | Control::Axis2(Axis2::Touch), _)
-        | (_, Control::Touch | Control::Axis2(Axis2::Touch)) => false,
+        (Control::Touch, _) | (_, Control::Touch) => false,
         (Control::Axis(x, hx), Control::Axis(y, hy)) => {
             x == y && (hx == hy || hx == Half::Full || hy == Half::Full)
         }

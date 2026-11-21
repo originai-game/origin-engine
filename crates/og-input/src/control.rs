@@ -13,10 +13,12 @@
 //! | `pad.leftXY`, `pad.rightXY` | a stick, two axes with a radial dead zone |
 //! | `pad.dpad` | the d-pad's four buttons as two axes |
 //! | `touch` | a touch held that started in the binding's zone: 0 or 1 |
-//! | `touch.xy` | a touch stick: the drag of the touch that started in the zone, over the binding's radius |
+//!
+//! Touch sticks, d-pads and buttons are on-screen controls the UI lays
+//! out ([`ControlZone`]), not bindings.
 //!
 //! Every y is up-positive (W, the stick pushed up, the mouse moved up,
-//! the wheel scrolled up, a touch dragged up: +1), so 2D actions read as
+//! the wheel scrolled up: +1), so 2D actions read as
 //! a plane; og.Gamepad's raw sticks stay y down. A one-axis control
 //! takes a `+` or `-` suffix for its half (`pad.leftX+`, `wheel.y-`):
 //! 0..1, a direction as a button.
@@ -55,7 +57,6 @@ pub enum Axis2 {
     PadLeft,
     PadRight,
     Dpad,
-    Touch,
 }
 
 /// One physical input, as a binding names it.
@@ -97,12 +98,11 @@ const AXIS_NAMES: [(&str, Axis); 10] = [
     ("pad.rightTrigger", Axis::Pad(GamepadAxis::RightTrigger)),
 ];
 
-const AXIS2_NAMES: [(&str, Axis2); 5] = [
+const AXIS2_NAMES: [(&str, Axis2); 4] = [
     ("mouse.xy", Axis2::Mouse),
     ("pad.leftXY", Axis2::PadLeft),
     ("pad.rightXY", Axis2::PadRight),
     ("pad.dpad", Axis2::Dpad),
-    ("touch.xy", Axis2::Touch),
 ];
 
 /// The pad buttons that are read as axes instead (the analog triggers).
@@ -191,7 +191,7 @@ impl Control {
             | Control::Mouse(_)
             | Control::Axis(Axis::MouseX | Axis::MouseY | Axis::WheelX | Axis::WheelY, _)
             | Control::Axis2(Axis2::Mouse) => Device::KeyboardMouse,
-            Control::Touch | Control::Axis2(Axis2::Touch) => Device::Touch,
+            Control::Touch => Device::Touch,
             _ => Device::Gamepad,
         }
     }
@@ -261,7 +261,6 @@ impl Control {
             Control::Axis2(Axis2::PadLeft) => g(format!("{prefix}.stickL"), "L Stick"),
             Control::Axis2(Axis2::PadRight) => g(format!("{prefix}.stickR"), "R Stick"),
             Control::Axis2(Axis2::Dpad) => g(format!("{prefix}.dpad"), "D-pad"),
-            Control::Axis2(Axis2::Touch) => g("touch.stick".into(), "Stick"),
         }
     }
 }
@@ -336,7 +335,8 @@ pub enum ZoneKind {
     #[default]
     Stick,
     /// A d-pad: the nearest of eight directions from the centre, each
-    /// part -1, 0 or 1 (a diagonal holds both), nothing in its middle.
+    /// part -1, 0 or 1 (a diagonal holds both), nothing inside its dead
+    /// zone.
     Pad,
     /// A button: 1 while a press that started on it is held.
     Button,
@@ -355,9 +355,30 @@ pub struct ControlZone {
     pub y: f32,
     pub width: f32,
     pub height: f32,
-    /// A stick's dead zone as a ratio of its radius; 0: 0.15. Past it the
-    /// value is rescaled to rise from 0 (as a document's `<joystick>` answers).
+    /// The dead zone as a ratio of its radius (half its smaller side). 0:
+    /// a stick's 0.15, past which the value is rescaled to rise from 0; a
+    /// d-pad's 0.4, the circle in the built-in pad's hub.
     pub dead_zone: f32,
+    /// A stick whose centre is where its finger landed, not the zone's
+    /// middle: a floating stick over a part of the screen.
+    pub floating: bool,
+}
+
+/// What an on-screen control shows this tick: what the UI draws it from
+/// ([`crate::ActionMap::zone_states`], in the order of the zones set).
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct ZoneState {
+    /// The pointer holding it (`None`: it is up).
+    pub pointer: Option<u32>,
+    /// The stick's centre, surface CSS px: the zone's middle, or where a
+    /// floating stick's finger landed.
+    pub centre: Vec2,
+    /// Where the knob sits from the centre, CSS px, y down: the finger,
+    /// held inside the radius.
+    pub knob: Vec2,
+    /// The reading it gives its action (y up): a stick's value past the
+    /// dead zone, a d-pad's direction, a button's 1.
+    pub value: Vec2,
 }
 
 impl ControlZone {
@@ -367,6 +388,11 @@ impl ControlZone {
 
     fn centre(&self) -> Vec2 {
         Vec2::new(self.x + self.width / 2.0, self.y + self.height / 2.0)
+    }
+
+    /// Half its smaller side, CSS px.
+    pub fn radius(&self) -> f32 {
+        (self.width.min(self.height) / 2.0).max(1.0)
     }
 }
 
@@ -410,8 +436,6 @@ pub struct ReadOptions {
     /// Overrides the pad's dead zone when above 0.
     pub deadzone: f32,
     pub zone: Zone,
-    /// A touch stick's full deflection, CSS px (0: 64).
-    pub radius: f32,
 }
 
 impl Reader<'_> {
@@ -424,27 +448,39 @@ impl Reader<'_> {
         first..MAX_POINTERS as u32
     }
 
-    /// An on-screen control's reading: the first held press that started
-    /// on it (the mouse's too on a fine pointer, so it works at a desk).
-    pub fn read_zone(&self, z: &ControlZone) -> Reading {
+    /// An on-screen control's reading and what it shows: the first held
+    /// press that started on it (the mouse's too on a fine pointer, so it
+    /// works at a desk). Every pointer is read, so a stick and a button
+    /// are held by two fingers at once.
+    pub fn read_zone(&self, z: &ControlZone) -> (Reading, ZoneState) {
         let mut r = Reading::default();
+        let mut state = ZoneState {
+            centre: z.centre(),
+            ..ZoneState::default()
+        };
         let Some(id) = (0..MAX_POINTERS as u32)
             .find(|&id| self.pointers.down(id) && z.contains(self.pointers.start(id)))
         else {
-            return r;
+            return (r, state);
         };
-        let radius = (z.width.min(z.height) / 2.0).max(1.0);
-        let d = self.pointers.position(id) - z.centre();
-        let d = Vec2::new(d.x, -d.y) / radius;
+        let radius = z.radius();
+        if z.floating && z.kind == ZoneKind::Stick {
+            state.centre = self.pointers.start(id);
+        }
+        let off = self.pointers.position(id) - state.centre;
+        let d = Vec2::new(off.x, -off.y) / radius;
+        let dz = |default: f32| {
+            if z.dead_zone > 0.0 {
+                z.dead_zone.min(0.95)
+            } else {
+                default
+            }
+        };
         r.value = match z.kind {
             ZoneKind::Button => Vec2::new(1.0, 0.0),
             ZoneKind::Stick => {
                 let len = d.length();
-                let dz = if z.dead_zone > 0.0 {
-                    z.dead_zone.min(0.95)
-                } else {
-                    0.15
-                };
+                let dz = dz(0.15);
                 if len <= dz {
                     Vec2::ZERO
                 } else {
@@ -452,9 +488,7 @@ impl Reader<'_> {
                 }
             }
             ZoneKind::Pad => {
-                // The middle is no direction (the UI's pad: 0.35 of an arm,
-                // a third of the pad); outside it, the nearest of eight.
-                if d.length() <= 0.35 / 1.5 {
+                if d.length() <= dz(0.4) {
                     Vec2::ZERO
                 } else {
                     // An axis counts past tan 22.5° of the other: the
@@ -477,7 +511,14 @@ impl Reader<'_> {
         } else {
             Device::Touch
         });
-        r
+        state.pointer = Some(id);
+        state.knob = if off.length() > radius {
+            off.normalize() * radius
+        } else {
+            off
+        };
+        state.value = r.value;
+        (r, state)
     }
 
     /// The analog value of a pad axis on `pad`, past its dead zone, y up.
@@ -625,20 +666,6 @@ impl Reader<'_> {
                     let (up, down, left, right) = (part(12), part(13), part(14), part(15));
                     r.value = Vec2::new(right.value.x - left.value.x, up.value.x - down.value.x);
                     r.device = [up, down, left, right].iter().find_map(|p| p.device);
-                }
-                Axis2::Touch => {
-                    let radius = if o.radius > 0.0 { o.radius } else { 64.0 };
-                    for id in self.touch_ids() {
-                        let start = self.pointers.start(id);
-                        if !self.pointers.down(id) || !o.zone.contains(start, self.surface) {
-                            continue;
-                        }
-                        let d = self.pointers.position(id) - start;
-                        let v = Vec2::new(d.x, -d.y) / radius;
-                        r.value = if v.length() > 1.0 { v.normalize() } else { v };
-                        r.device = Some(Device::Touch);
-                        break;
-                    }
                 }
             },
         }

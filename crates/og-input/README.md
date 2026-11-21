@@ -16,7 +16,7 @@ ring. It depends on `og-core` and `og-ecs` only and reads no clock.
 | `PointerLock` (`og.PointerLock`, version 1) | `wanted` (the game's), `locked` (the host's, from `InjectedInput::PointerLock`) |
 | `Gamepad` (`og.Gamepad`, version 3) | `masks(pad) -> (held, pressed, released)`, `is_connected(pad)`, `device(pad) -> Option<Device>`, `down(button, pad)`, `pressed`, `released`, `axis(GamepadAxis, pad)`; `GAMEPAD_BUTTONS` (17 standard-mapping names, bit order), `gamepad_button(name)`, `MAX_GAMEPADS = 8`, `MAX_POINTERS = 5` |
 | `ActionMap` (`og.input.*`) | `define(ActionDesc)`, `state(name) -> ActionState`, `infos`, `bindings`, `set_contexts`, `set_deadzone`, `set_toggle`, `rebind(RebindDesc) -> RebindAnswer`, `conflicts`, `reset`, `save_bindings`/`load_bindings`, `start_capture(CaptureDesc)`/`capture()`/`cancel_capture`/`apply_capture(ConflictPolicy)`, `glyphs(action, device)`, `device()`, `rumble`/`take_rumble`, `sample(input, pointers, pads, tick, dt)`, `feed()`; `install(world, shared, surface)` adds the `og.input.actions` system and state block |
-| controls | `Control::parse("pad.leftXY")`, `name`, `shape`, `class`, `glyph(device)`; `Binding` (a control or a composite: `negative`/`positive`, `up`/`down`/`left`/`right`; `scale`, `invert_y`, `deadzone`, `zone`, `radius`); `PadDeadzone`, `Zone`, `Surface` |
+| controls | `Control::parse("pad.leftXY")`, `name`, `shape`, `class`, `glyph(device)`; `Binding` (a control or a composite: `negative`/`positive`, `up`/`down`/`left`/`right`; `scale`, `invert_y`, `deadzone`, `zone`); `PadDeadzone`, `Zone`, `Surface`, `ControlZone`, `ZoneState` |
 | glyphs | `Device` (`keyboardMouse xbox playstation switch gamepad touch`), `Glyph { icon, text }`, `key_glyph`, `pad_glyph`, `binding_glyphs`, `combined_glyph`: og-ui's UI actions draw from the same tables |
 | events | `KeyDown { key: Str64, repeat }`, `KeyUp { key }`, `PointerDown { x, y, button, id }`, `PointerUp { x, y, button, id }`, `PointerMove { x, y, id, movementX, movementY }`, `Wheel { deltaX, deltaY }` as `og.KeyDown` ... `og.Wheel`; `InputEvent` (one of them) `.send(world)`; `register(world)` |
 | injected input | `InjectedInput::{Key, Pointer { .., id, movement_x, movement_y }, PointerLock { locked }, Wheel, Gamepad(GamepadState { pad, connected, buttons, axes, triggers })}` with `from_json`/`to_json` (protocol 5), `KeyAction`, `PointerAction`, `PointerButton` (`bit`, `index`, `name`, `from_index`, `from_name`), `Modifiers` |
@@ -138,9 +138,10 @@ actions of kind `button`, `axis` (one value) or `axis2` (two, x right and
 y up), each with default bindings over controls (`src/control.rs`): key
 codes, `mouse.left`/`middle`/`right`, `mouse.x`/`y`/`xy` (the movement,
 CSS px), `wheel.x`/`y` (notches of 100 px), `pad.<button>` (any pad),
-`pad.leftX`… `pad.rightTrigger`, `pad.leftXY`/`rightXY`/`dpad`, `touch` and
-`touch.xy` (a touch stick, its drag over `radius`), a one-axis control's
-half with `+`/`-`. A binding is one control or a composite (`negative` and
+`pad.leftX`… `pad.rightTrigger`, `pad.leftXY`/`rightXY`/`dpad`, `touch`,
+a one-axis control's half with `+`/`-`. Touch sticks, d-pads and buttons
+are on-screen controls (`ControlZone`, `set_zones`), not bindings; what
+each shows reads back through `zone_states`. A binding is one control or a composite (`negative` and
 `positive`; `up`, `down`, `left`, `right` for WASD), with its own `scale`
 (sensitivity), `invert_y`, `deadzone` and touch `zone`. Every y is up.
 

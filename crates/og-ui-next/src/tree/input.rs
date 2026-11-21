@@ -644,6 +644,7 @@ impl Tree {
                 width: b.w,
                 height: b.h,
                 dead_zone: p.dead_zone,
+                floating: false,
             };
             match self.input.zones.get_mut(k) {
                 Some(z) if same(z) => {}

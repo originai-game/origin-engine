@@ -10,7 +10,7 @@ A control's glyph, for prompts and a controls screen.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `icon` | `string` | `""` | — | — | — | The icon a style's set draws: `key.space`, `mouse.left`, `xbox.a`, `ps.cross`, `switch.b`, `pad.south`, `xbox.stickL`, `key.wasd`, `touch.stick`. |
+| `icon` | `string` | `""` | — | — | — | The icon a style's set draws: `key.space`, `mouse.left`, `xbox.a`, `ps.cross`, `switch.b`, `pad.south`, `xbox.stickL`, `key.wasd`, `touch.tap`. |
 | `text` | `string` | `""` | — | — | — | The text that names it: `Space`, `LMB`, `A`, `×`, `L Stick`, `W A S D`. |
 | `device` | `InputDevice` | `"keyboardMouse"` | — | — | — | The device it is drawn for. |
 | `control` | `string` | `""` | — | — | — | The control it names (a composite's: its parts', space-separated). |
@@ -18,11 +18,11 @@ A control's glyph, for prompts and a controls screen.
 ```ogt
 struct InputGlyph {
   doc "A control's glyph, for prompts and a controls screen."
-  field icon String "The icon a style's set draws: `key.space`, `mouse.left`, `xbox.a`, `ps.cross`, `switch.b`, `pad.south`, `xbox.stickL`, `key.wasd`, `touch.stick`."
+  field icon String "The icon a style's set draws: `key.space`, `mouse.left`, `xbox.a`, `ps.cross`, `switch.b`, `pad.south`, `xbox.stickL`, `key.wasd`, `touch.tap`."
   field text String "The text that names it: `Space`, `LMB`, `A`, `×`, `L Stick`, `W A S D`."
   field device InputDevice "The device it is drawn for."
   field control String "The control it names (a composite's: its parts', space-separated)."
 }
 ```
 
-<sub>Module `input` line 238</sub>
+<sub>Module `input` line 234</sub>

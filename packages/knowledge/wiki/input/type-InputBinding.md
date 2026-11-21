@@ -8,7 +8,7 @@ Module [`input`](../input.md) · [index](../index.md)
 
 One binding of an action: a control, or a composite of parts. A binding with neither a control nor parts is an unbound slot.
 
-Controls are strings: a key code (`KeyW`, `Space`); `mouse.left`, `mouse.middle`, `mouse.right`, `mouse.x`, `mouse.y`, `mouse.xy`; `wheel.x`, `wheel.y`; `pad.a` to `pad.home` (GamepadButton's names); `pad.leftX`, `pad.leftY`, `pad.rightX`, `pad.rightY`, `pad.leftTrigger`, `pad.rightTrigger`, `pad.leftXY`, `pad.rightXY`, `pad.dpad`; `touch` and `touch.xy`. A one-axis control takes `+` or `-` for its half (`pad.leftX+`). Every y is up-positive.
+Controls are strings: a key code (`KeyW`, `Space`); `mouse.left`, `mouse.middle`, `mouse.right`, `mouse.x`, `mouse.y`, `mouse.xy`; `wheel.x`, `wheel.y`; `pad.a` to `pad.home` (GamepadButton's names); `pad.leftX`, `pad.leftY`, `pad.rightX`, `pad.rightY`, `pad.leftTrigger`, `pad.rightTrigger`, `pad.leftXY`, `pad.rightXY`, `pad.dpad`; `touch`. A one-axis control takes `+` or `-` for its half (`pad.leftX+`). Every y is up-positive.
 
 See `input §1`.
 
@@ -26,13 +26,12 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `scale` | `number` | `1` | — | — | — | Multiplies the value: the binding's sensitivity (a mouse look's 0.1, a stick's 2); negative inverts it. |
 | `invertY` | `boolean` | `false` | — | — | — | A two-axis value's y is turned over (inverted look). |
 | `deadzone` | `number` | `0` | 0 … 0.95 | — | — | A pad axis's dead zone for this binding, over the pad's (og.input.setDeadzones) when above 0: values inside it read 0 and the rest is rescaled to reach 1. |
-| `zone` | `TouchZone` | `{}` | — | — | — | `touch`, `touch.xy`: where a touch must start to count (empty: anywhere). |
-| `radius` | `number` | `0` | ≥ 0 | `cssPx` | — | `touch.xy`: how far a touch drags for a full deflection (0: 64). |
+| `zone` | `TouchZone` | `{}` | — | — | — | `touch`: where a touch must start to count (empty: anywhere). |
 
 ```ogt
 struct InputBinding {
   doc "One binding of an action: a control, or a composite of parts. A binding with neither a control nor parts is an unbound slot."
-  doc "Controls are strings: a key code (`KeyW`, `Space`); `mouse.left`, `mouse.middle`, `mouse.right`, `mouse.x`, `mouse.y`, `mouse.xy`; `wheel.x`, `wheel.y`; `pad.a` to `pad.home` (GamepadButton's names); `pad.leftX`, `pad.leftY`, `pad.rightX`, `pad.rightY`, `pad.leftTrigger`, `pad.rightTrigger`, `pad.leftXY`, `pad.rightXY`, `pad.dpad`; `touch` and `touch.xy`. A one-axis control takes `+` or `-` for its half (`pad.leftX+`). Every y is up-positive."
+  doc "Controls are strings: a key code (`KeyW`, `Space`); `mouse.left`, `mouse.middle`, `mouse.right`, `mouse.x`, `mouse.y`, `mouse.xy`; `wheel.x`, `wheel.y`; `pad.a` to `pad.home` (GamepadButton's names); `pad.leftX`, `pad.leftY`, `pad.rightX`, `pad.rightY`, `pad.leftTrigger`, `pad.rightTrigger`, `pad.leftXY`, `pad.rightXY`, `pad.dpad`; `touch`. A one-axis control takes `+` or `-` for its half (`pad.leftX+`). Every y is up-positive."
   guide "input §1"
   desc true
   field control String "The control; empty for a composite or an unbound slot."
@@ -50,11 +49,7 @@ struct InputBinding {
     min 0
     max 0.95
   }
-  field zone TouchZone "`touch`, `touch.xy`: where a touch must start to count (empty: anywhere)."
-  field radius f32 "`touch.xy`: how far a touch drags for a full deflection (0: 64)." {
-    min 0
-    unit cssPx
-  }
+  field zone TouchZone "`touch`: where a touch must start to count (empty: anywhere)."
 }
 ```
 

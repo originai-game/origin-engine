@@ -20,7 +20,7 @@
 
 use crate::control::{
     Axis, Axis2, Control, ControlZone, Half, PadDeadzone, ReadOptions, Reader, Reading, Shape,
-    Surface, Zone, ZoneKind, deadzone, deadzone2,
+    Surface, Zone, ZoneKind, ZoneState, deadzone, deadzone2,
 };
 use crate::event::{GAMEPAD_BUTTONS, MAX_GAMEPADS};
 use crate::glyph::{Device, Glyph};
@@ -47,7 +47,7 @@ pub const DEFAULT_CONTEXT: &str = "gameplay";
 /// The version of the text [`ActionMap::save_bindings`] writes.
 pub const BINDINGS_VERSION: u64 = 1;
 
-const NO_CONTROL: &str = "write a key code (KeyW, Space), mouse.left, mouse.xy, wheel.y, pad.a, pad.leftX, pad.leftXY, pad.dpad, touch or touch.xy; a one-axis control takes + or - for its half (pad.leftX+)";
+const NO_CONTROL: &str = "write a key code (KeyW, Space), mouse.left, mouse.xy, wheel.y, pad.a, pad.leftX, pad.leftXY, pad.dpad or touch; a one-axis control takes + or - for its half (pad.leftX+)";
 
 /// What an action gives.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -440,8 +440,10 @@ pub struct ActionMap {
     /// Session output and settings: never saved.
     rumble: Vec<Rumble>,
     surface: Surface,
-    /// The on-screen controls the UI lays out, input sources of actions.
+    /// The on-screen controls the UI lays out, input sources of actions,
+    /// and what each showed at the last sample.
     zones: Vec<ControlZone>,
+    zone_states: Vec<(Reading, ZoneState)>,
 }
 
 /// An [`ActionMap`] shared between its system, its state block and the API.
@@ -588,7 +590,16 @@ impl ActionMap {
     pub fn set_zones(&mut self, zones: Vec<ControlZone>) {
         if self.zones != zones {
             self.zones = zones;
+            self.zone_states.clear();
         }
+    }
+
+    /// What each on-screen control showed at the last sample, in the
+    /// order [`ActionMap::set_zones`] gave them: the knob, the press and
+    /// the pointer holding it, for the UI to draw. Empty until a sample
+    /// after the zones changed.
+    pub fn zone_states(&self) -> impl ExactSizeIterator<Item = &ZoneState> {
+        self.zone_states.iter().map(|(_, s)| s)
     }
 
     /// The play surface touch zones are fractions of (the host's viewport).
@@ -748,7 +759,11 @@ impl ActionMap {
         }
         let claims = self.claims();
         let contexts = self.contexts.clone();
+        self.zone_states.clear();
+        self.zone_states
+            .extend(self.zones.iter().map(|z| reader.read_zone(z)));
         let zones = &self.zones;
+        let zone_states = &self.zone_states;
         let senses = &self.senses;
         for a in &mut self.actions {
             let sense = senses.get(&a.desc.name);
@@ -765,8 +780,11 @@ impl ActionMap {
             let mut best_len = 0.0f32;
             let mut any_pressed = false;
             if rank.is_some() && !capturing {
-                for z in zones.iter().filter(|z| z.action == a.desc.name) {
-                    let mut r = reader.read_zone(z);
+                for (z, (r, _)) in zones.iter().zip(zone_states) {
+                    if z.action != a.desc.name {
+                        continue;
+                    }
+                    let mut r = *r;
                     if a.desc.kind == ActionKind::Axis && z.kind == ZoneKind::Button {
                         r.value.x = r.value.length();
                     }

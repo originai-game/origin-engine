@@ -68,7 +68,6 @@ fn input_binding(b: &og_input::Binding) -> crate::host::wire::InputBinding {
             width: b.zone.width,
             height: b.zone.height,
         },
-        radius: b.radius,
     }
 }
 

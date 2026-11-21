@@ -27,4 +27,4 @@ event KeyUp {
 }
 ```
 
-<sub>Module `input` line 1230</sub>
+<sub>Module `input` line 1226</sub>

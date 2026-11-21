@@ -3325,7 +3325,7 @@ export interface TouchZone {
 
 /**
  * One binding of an action: a control, or a composite of parts. A binding with neither a control nor parts is an unbound slot.
- * Controls are strings: a key code (`KeyW`, `Space`); `mouse.left`, `mouse.middle`, `mouse.right`, `mouse.x`, `mouse.y`, `mouse.xy`; `wheel.x`, `wheel.y`; `pad.a` to `pad.home` (GamepadButton's names); `pad.leftX`, `pad.leftY`, `pad.rightX`, `pad.rightY`, `pad.leftTrigger`, `pad.rightTrigger`, `pad.leftXY`, `pad.rightXY`, `pad.dpad`; `touch` and `touch.xy`. A one-axis control takes `+` or `-` for its half (`pad.leftX+`). Every y is up-positive.
+ * Controls are strings: a key code (`KeyW`, `Space`); `mouse.left`, `mouse.middle`, `mouse.right`, `mouse.x`, `mouse.y`, `mouse.xy`; `wheel.x`, `wheel.y`; `pad.a` to `pad.home` (GamepadButton's names); `pad.leftX`, `pad.leftY`, `pad.rightX`, `pad.rightY`, `pad.leftTrigger`, `pad.rightTrigger`, `pad.leftXY`, `pad.rightXY`, `pad.dpad`; `touch`. A one-axis control takes `+` or `-` for its half (`pad.leftX+`). Every y is up-positive.
  * See `input §1`.
  *
  * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
@@ -3393,19 +3393,11 @@ export interface InputBinding {
    */
   readonly deadzone?: number;
   /**
-   * `touch`, `touch.xy`: where a touch must start to count (empty: anywhere).
+   * `touch`: where a touch must start to count (empty: anywhere).
    *
    * @default {}
    */
   readonly zone?: TouchZone;
-  /**
-   * `touch.xy`: how far a touch drags for a full deflection (0: 64).
-   *
-   * @default 0
-   * @range 0..
-   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
-   */
-  readonly radius?: number;
 }
 
 /**
@@ -3671,7 +3663,7 @@ export interface CaptureState {
 /** A control's glyph, for prompts and a controls screen. */
 export interface InputGlyph {
   /**
-   * The icon a style's set draws: `key.space`, `mouse.left`, `xbox.a`, `ps.cross`, `switch.b`, `pad.south`, `xbox.stickL`, `key.wasd`, `touch.stick`.
+   * The icon a style's set draws: `key.space`, `mouse.left`, `xbox.a`, `ps.cross`, `switch.b`, `pad.south`, `xbox.stickL`, `key.wasd`, `touch.tap`.
    */
   readonly icon: string;
   /** The text that names it: `Space`, `LMB`, `A`, `×`, `L Stick`, `W A S D`. */

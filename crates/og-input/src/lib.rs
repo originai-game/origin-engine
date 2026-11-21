@@ -7,7 +7,7 @@
 //! | [`keys`] | [`KEY_CODES`] (`KeyboardEvent.code`, the key-set bit order), [`key_index`], [`key_for_char`] |
 //! | [`sink`] | [`InputSink`] (the probe's seam) and [`InputLayer`], the engine's sink |
 //! | [`ring`] | the web shell's SharedArrayBuffer input ring: layout, decoder, writer |
-//! | [`control`] | [`Control`]: the physical inputs a binding names (`KeyW`, `mouse.left`, `pad.leftXY`, `touch.xy`), how each reads, dead zones |
+//! | [`control`] | [`Control`]: the physical inputs a binding names (`KeyW`, `mouse.left`, `pad.leftXY`, `touch`), how each reads, dead zones |
 //! | [`actions`] | [`ActionMap`]: gameplay actions over bindings, contexts, rebinding with conflicts, capture, saved bindings, glyphs, rumble; [`ActionsBlock`] (its state block) and [`install`] |
 //! | [`glyph`] | [`Device`] (keyboard and mouse, Xbox, PlayStation, Switch, generic pads, touch) and the glyph tables og-ui's UI actions share; the keyboard layout's printed keys ([`set_key_labels`]) |
 //!
@@ -31,7 +31,7 @@ pub use actions::{
     ConflictPolicy, RebindAnswer, RebindDesc, Rumble, Sensitivity, SharedActions, binding_glyphs,
     combined_glyph, install, overlaps,
 };
-pub use control::{Control, ControlZone, PadDeadzone, Surface, Zone, ZoneKind};
+pub use control::{Control, ControlZone, PadDeadzone, Surface, Zone, ZoneKind, ZoneState};
 pub use event::{
     A11yAct, GAMEPAD_BUTTONS, GamepadState, InjectedInput, KeyAction, MAX_GAMEPADS, MAX_POINTERS,
     Modifiers, PointerAction, PointerButton, gamepad_button,

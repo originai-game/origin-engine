@@ -16,7 +16,6 @@ they are this peer's own and cross the room only through og.net.submit.
 og.input.defineAction(world, { name: "move", kind: "axis2", bindings: [
   { up: "KeyW", left: "KeyA", down: "KeyS", right: "KeyD" },
   { control: "pad.leftXY" },
-  { control: "touch.xy", zone: { width: 0.5 } },
 ] });
 og.input.defineAction(world, { name: "jump", kind: "button", bindings: [{ control: "Space" }, { control: "pad.a" }] });
 
@@ -39,7 +38,6 @@ Controls are named by strings:
 | `pad.leftTrigger`, `pad.rightTrigger` | a trigger, 0 to 1 |
 | `pad.leftXY`, `pad.rightXY`, `pad.dpad` | a stick or the d-pad as two axes |
 | `touch` | a touch that is down |
-| `touch.xy` | a touch stick: a drag from where the touch started |
 | any one-axis control plus `+` or `-` | its half, 0 to 1 (`pad.leftX+`): a direction as a button |
 
 - Every y is up-positive in actions: W, the stick pushed up, the mouse
@@ -109,10 +107,17 @@ yaw -= m.x * 0.0025;
 - A touch control claims the pointers that started on it: read
   where the pointer started (og.Pointers' `start`), not the position now, to decide which control a
   finger belongs to.
-- `touch` and `touch.xy` bindings take a zone, fractions of the play
-  surface from the top left; a zone of no size is all of it. A
-  `touch.xy` stick reaches full deflection after its radius (64 CSS px
-  when 0).
+- A `touch` binding takes a zone, fractions of the play surface from the
+  top left; a zone of no size is all of it.
+- Touch sticks, d-pads and buttons are on-screen controls the UI lays out
+  (TouchControls, or a View with `touchStick`, `touchPad` or
+  `touchButton`), not bindings. Each is a virtual device control that
+  feeds its action as one more binding would, from the press that started
+  on it, so a stick and a button are held by two fingers at once. A stick
+  reads from its centre over half its smaller side, y up, past its dead
+  zone (0.15 of the radius by default); a d-pad gives the nearest of eight
+  directions outside its dead middle (0.4 of the radius, the built-in
+  pad's hub).
 - The document controls of `screens §4` (a joystick, a d-pad, a touch
   button) press actions directly; game code reads the same actions as for
   keys and pads.

@@ -1768,7 +1768,6 @@ pub struct InputBinding {
     pub invert_y: bool,
     pub deadzone: f32,
     pub zone: TouchZone,
-    pub radius: f32,
 }
 
 impl Default for InputBinding {
@@ -1785,7 +1784,6 @@ impl Default for InputBinding {
             invert_y: Default::default(),
             deadzone: Default::default(),
             zone: Default::default(),
-            radius: Default::default(),
         }
     }
 }
@@ -1808,7 +1806,6 @@ impl FromJson for InputBinding {
             invert_y: field(o, "invertY", d.invert_y)?,
             deadzone: field(o, "deadzone", d.deadzone)?,
             zone: field(o, "zone", d.zone)?,
-            radius: field(o, "radius", d.radius)?,
         })
     }
 }
@@ -1827,7 +1824,6 @@ impl ToJson for InputBinding {
         o.insert("invertY".into(), self.invert_y.to_json());
         o.insert("deadzone".into(), self.deadzone.to_json());
         o.insert("zone".into(), self.zone.to_json());
-        o.insert("radius".into(), self.radius.to_json());
         Value::Object(o)
     }
 }

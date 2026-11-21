@@ -105,7 +105,8 @@ fn stick_shot(font: &FontFiles, push: Option<Vec2>) -> (Shot, Stick) {
             coarse: true,
         },
     }
-    .read_zone(zone);
+    .read_zone(zone)
+    .0;
     let out = Stick {
         x: reading.value.x,
         y: reading.value.y,
