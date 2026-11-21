@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "TerrainScatter",
+      "summary": "An impostor card in a shadow map that reads its atlases at a coarse level (a far cascade's card, a few texels across) samples its frames where its point projects, without their parallax steps, which move the sample by less than that level's texel. First Light 2560x1440 (M4 Pro): cascade.2 7.38 -> 6.86 ms alone; the frame is the same."
+    }
+  ]
+}

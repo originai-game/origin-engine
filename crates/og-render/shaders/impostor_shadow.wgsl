@@ -69,7 +69,14 @@ fn fs_impostor_shadow(in: ImpostorShadowOut, @builtin(front_facing) front: bool)
   var dd: ImpDepths;
   dd.pd = in.pd;
   dd.vd = in.vd;
-  let uvs = imp_uvs(in.uv01, in.uv2, in.par01, in.par2, in.frames, dd, in.weights, false);
+  // A card read at a coarse level of its atlases (a far cascade's, where it
+  // covers a few texels) takes its frames where its point projects: their
+  // parallax moves the sample by less than the level's texel. A finer one
+  // takes each frame's parallax step (imp_parallax).
+  var uvs = ImpUvs(in.uv01, in.uv2, in.weights);
+  if (imp_level < IMP_MARCH_LEVEL) {
+    uvs = imp_uvs(in.uv01, in.uv2, in.par01, in.par2, in.frames, dd, in.weights, false);
+  }
   let cover = imp_coverage(uvs.uv01, uvs.uv2, in.frames, uvs.weights);
   let surface = in.world + in.toward * imp_blended_step(cover, dd) * in.extent;
   if (cover.alpha < imp_cutoff() || imp_dropped(in.clip.xy, in.fade.x, in.fade.y)) {
