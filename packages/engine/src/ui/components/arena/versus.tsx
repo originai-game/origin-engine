@@ -48,7 +48,7 @@ export interface ArenaVersusProps {
  * the condensed stretch and the fit-down of a too-long team name are
  * dropped, and a phone stacks the sides with the seal between them.
  */
-const PORTRAIT = "shrink-0 size-[4.571rem] p-[3px] rounded-[0.857rem] bg-linear-to-b from-white/75 via-white/22 via-45% to-white/14 data-compact:size-[2.857rem]";
+const PORTRAIT = "shrink-0 size-[4.571rem] p-[3px] rounded-[0.857rem] bg-linear-to-b from-white/75 via-white/22 via-45% to-white/14 group-data-compact/versus:size-[2.857rem]";
 const NAME = "min-w-0 text-start text-lg leading-[1.15] font-bold text-fg";
 const CAPTION = "min-w-0 text-start text-caption leading-[1.3] font-semibold text-fg/66";
 const YOU = `flex-none self-start py-0 px-1 text-xs leading-[1.5] font-bold tracking-[0.14em] uppercase text-fg nine-chip-cut bg-raised-pressed/88 whitespace-nowrap ${packClass("Chip", "frame")}`;
@@ -78,7 +78,7 @@ function Side(props: { name?: string; team: "a" | "b"; fighters?: ReadonlyArray<
                 <View class={PORTRAIT}>
                   <View class="size-full rounded-[0.714rem] flex-row items-center justify-center overflow-hidden">
                     <Show when={(f().portrait ?? 0) != 0} fallback={
-                      <Icon class="size-8 text-fg" glyph={f().icon ?? ""} />
+                      <Icon class="size-8 text-fg" name={f().icon ?? ""} />
                     }>
                       <Image class="size-full" src={f().portrait ?? 0} />
                     </Show>
@@ -87,10 +87,10 @@ function Side(props: { name?: string; team: "a" | "b"; fighters?: ReadonlyArray<
                 <View class="flex-1 min-w-0 flex-col gap-y-0.5">
                   <Text class={`${NAME} ${props.team == "b" ? "text-end" : ""}`}>{f().name}</Text>
                   <Show when={(f().character ?? "") != ""}>
-                    <Text class={`${CAPTION} ${props.team == "b" ? "text-end" : ""} group-data-local/fighter:text-fg/78`}>{f().character}</Text>
+                    <Text class={`${CAPTION} ${props.team == "b" ? "text-end" : ""} group-data-local/fighter:text-fg`}>{f().character}</Text>
                   </Show>
                   <Show when={(f().rank ?? "") != ""}>
-                    <Text class={`min-w-0 text-start text-caption leading-[1.3] font-semibold text-gold ${props.team == "b" ? "text-end" : ""} group-data-local/fighter:text-fg/78`}>{f().rank}</Text>
+                    <Text class={`min-w-0 text-start text-caption leading-[1.3] font-semibold text-gold ${props.team == "b" ? "text-end" : ""} group-data-local/fighter:text-fg`}>{f().rank}</Text>
                   </Show>
                   <Show when={f().local}>
                     <Text class={`${YOU} ${props.team == "b" ? "self-end" : ""}`}>{t("arena.you")}</Text>
@@ -107,7 +107,7 @@ function Side(props: { name?: string; team: "a" | "b"; fighters?: ReadonlyArray<
 
 export function ArenaVersus(props: ArenaVersusProps) {
   return (
-    <View class="group/versus w-full max-h-full flex-row items-stretch text-fg compact:flex-col" label={t("arena.versus.name")} data-compact={props.compact === true}>
+    <View class={`group/versus w-full max-h-full flex-row items-stretch p-4 text-fg bg-glass nine-panel-cut compact:flex-col compact:p-2 ${packClass("Panel", "frame")}`} label={t("arena.versus.name")} data-compact={props.compact === true}>
       <View class="w-full min-w-0 flex-row items-stretch gap-x-4 compact:flex-col compact:items-stretch compact:gap-x-0 compact:gap-y-1">
         <Side {...(props.nameA ? { name: props.nameA } : {})} team="a" fighters={props.sideA ?? []} />
         <View class="flex-none self-center w-[6.286rem] p-[3px] rounded-[0.857rem] bg-gold shadow-[0px_0px_1.857rem_rgb(255_207_90/0.5)] compact:w-[3.714rem] compact:self-center" aria-hidden="true">

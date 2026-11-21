@@ -93,7 +93,7 @@ export function ArenaRoster(props: ArenaRosterProps) {
                   <View class="relative w-full h-[2.714rem] overflow-hidden group-data-compact/roster:h-[2.286rem]">
                     <Show when={(c().portrait ?? 0) != 0} fallback={
                       <View class="size-full flex-row items-center justify-center">
-                        <Icon class={`size-12 text-fg data-disabled:text-fg/66 group-data-compact/roster:size-8`} glyph={c().icon ?? ""} data-disabled={c().locked || (c().takenBy ?? "") != ""} />
+                        <Icon class={`size-12 text-fg data-disabled:text-fg/66 group-data-compact/roster:size-8`} name={c().icon ?? ""} data-disabled={c().locked || (c().takenBy ?? "") != ""} />
                       </View>
                     }>
                       <Image class="size-full data-disabled:opacity-40" src={c().portrait ?? 0} data-disabled={c().locked || (c().takenBy ?? "") != ""} />
@@ -109,7 +109,7 @@ export function ArenaRoster(props: ArenaRosterProps) {
                             >
                               <Text class="text-xs leading-[1.5] font-bold">{t("arena.roster.slot", { slot: p().slot ?? 0 })}</Text>
                               <Show when={p().ready}>
-                                <Icon class="size-4" glyph="check" />
+                                <Icon class="size-4" name="check" />
                               </Show>
                             </View>
                           )}

@@ -95,7 +95,7 @@ export function ArenaLobby(props: ArenaLobbyProps) {
                   <View class={`${PORTRAIT} ${s().open ? "p-px bg-none bg-white/28" : ""}`}>
                     <View class="size-full rounded-[0.714rem] bg-raised-pressed flex-row items-center justify-center overflow-hidden">
                       <Show when={(s().portrait ?? 0) != 0 && !s().open} fallback={
-                        <Icon class={s().open ? "size-6 text-fg/66" : "size-6 text-fg"} glyph={s().open ? "plus" : (s().icon ?? "")} />
+                        <Icon class={s().open ? "size-6 text-fg/66" : "size-6 text-fg"} name={s().open ? "plus" : (s().icon ?? "")} />
                       }>
                         <Image class="size-full" src={s().portrait ?? 0} />
                       </Show>
@@ -118,7 +118,7 @@ export function ArenaLobby(props: ArenaLobbyProps) {
                     <View
                       class={`flex-row items-center gap-x-1 whitespace-nowrap text-caption font-bold tracking-[0.14em] uppercase compact:ml-auto ${s().ready ? "text-success shadow-[0px_0px_0.571rem_rgb(85_227_154/0.7)]" : "text-fg/66"}`}
                     >
-                      <Icon class="size-4" glyph={s().ready ? "check" : "clock"} />
+                      <Icon class="size-4" name={s().ready ? "check" : "clock"} />
                       <Text class="whitespace-nowrap">{s().ready ? t("arena.lobby.ready") : t("arena.lobby.notReady")}</Text>
                     </View>
                   </Show>
@@ -129,7 +129,7 @@ export function ArenaLobby(props: ArenaLobbyProps) {
                       label={t("arena.lobby.invite")}
                       onPress={(e) => props.onInvite?.(e, s().id)}
                     >
-                      <Icon class="size-4" glyph="plus" />
+                      <Icon class="size-4" name="plus" />
                       <Text class="text-caption font-bold tracking-[0.14em] uppercase text-fg">{t("arena.lobby.invite")}</Text>
                     </View>
                   </Show>
