@@ -33,9 +33,9 @@ export interface IdleOfflineProps {
 export function IdleOffline(props: IdleOfflineProps) {
   return (
     <View class={`border-rim nine-panel-cut bg-glass-hi text-fg w-full max-w-105 max-h-full p-4 gap-3 border disabled:text-fg-subtle ${packClass("Panel", "frame")}`} label={props.title !== '' ? props.title : t("idle.offline.name")}>
-      <View class="absolute left-4 right-[30%] top-0 h-px bg-linear-to-r from-white/55 to-transparent to-70% pointer-events-none" />
+      <View class="absolute left-4 right-[30%] top-0 h-px bg-linear-to-r from-sheen to-transparent to-70% pointer-events-none" />
       <View class={`min-h-12 border-b border-rim-soft w-full items-start py-1 px-4 gap-0`}>
-        <Text class={`whitespace-nowrap text-ellipsis text-[0.857rem] font-semibold tracking-[0.18em] uppercase text-fg/78 overflow-hidden`}>
+        <Text class={`whitespace-nowrap text-ellipsis text-[0.857rem] font-semibold tracking-[0.18em] uppercase text-fg-muted overflow-hidden`}>
           {t("idle.offline.kicker")}
         </Text>
         <Text class={`font-display text-base font-bold leading-tight tracking-[-0.01em] text-fg text-start m-0`}>
@@ -46,7 +46,7 @@ export function IdleOffline(props: IdleOfflineProps) {
         <Text class={`tabular-nums text-fg text-[2.286rem] font-bold shrink`}>
           {props.away !== '' ? props.away : formatDuration(props.seconds)}
         </Text>
-        <Text class={`tracking-xs text-fg/78 text-[0.857rem] font-semibold shrink`}>
+        <Text class={`tracking-xs text-fg-muted text-[0.857rem] font-semibold shrink`}>
           {t("idle.offline.awayLabel")}
         </Text>
       </View>
@@ -66,7 +66,7 @@ export function IdleOffline(props: IdleOfflineProps) {
                 <Text class={`max-w-full whitespace-nowrap text-ellipsis text-[1.286rem] font-bold tabular-nums text-fg overflow-hidden`}>
                   {e().amount}
                 </Text>
-                <Text class={`text-fg/78 max-w-full whitespace-nowrap text-ellipsis text-[0.857rem] font-semibold overflow-hidden`}>
+                <Text class={`text-fg-muted max-w-full whitespace-nowrap text-ellipsis text-[0.857rem] font-semibold overflow-hidden`}>
                   {e().name}
                 </Text>
               </View>

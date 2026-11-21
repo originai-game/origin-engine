@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "Idle components",
+      "summary": "IdleGenerators, IdleOffline, IdlePrestige, IdlePurchases and IdleResources draw their rows on pack slots in those rows' inks, their tags on the chip slot, and their panel hairline on the sheen role, so their text reads over a bright scene in every pack (the generator list's selected row, the amount radio's checked chip and the upgrades' Not enough tag)."
+    }
+  ]
+}

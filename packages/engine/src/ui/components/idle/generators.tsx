@@ -25,9 +25,9 @@ export interface IdleGeneratorsProps {
 export function IdleGenerators(props: IdleGeneratorsProps) {
   return (
     <View class={`grow shrink basis-0 border-rim nine-panel-cut bg-glass-hi text-fg w-full p-4 gap-3 border disabled:text-fg-subtle ${packClass("Panel", "frame")}`} label={props.title !== '' ? props.title : t("idle.generators.name")}>
-      <View class="absolute left-4 right-[30%] top-0 h-px bg-linear-to-r from-white/55 to-transparent to-70% pointer-events-none" />
+      <View class="absolute left-4 right-[30%] top-0 h-px bg-linear-to-r from-sheen to-transparent to-70% pointer-events-none" />
       <View class={`min-h-12 border-b border-rim-soft w-full items-start py-1 px-4 gap-0`}>
-        <Text class={`whitespace-nowrap text-ellipsis text-[0.857rem] font-semibold tracking-[0.18em] uppercase text-fg/78 overflow-hidden`}>
+        <Text class={`whitespace-nowrap text-ellipsis text-[0.857rem] font-semibold tracking-[0.18em] uppercase text-fg-muted overflow-hidden`}>
           {t("idle.generators.kicker")}
         </Text>
         <Text class={`font-display text-base font-bold leading-tight tracking-[-0.01em] text-fg max-w-full whitespace-nowrap text-ellipsis m-0 overflow-hidden`}>
@@ -44,7 +44,7 @@ export function IdleGenerators(props: IdleGeneratorsProps) {
             <View class="pt-0.5 pb-4 px-0.5 gap-1" role="listbox" label={props.title !== '' ? props.title : t("idle.generators.name")}>
               <For each={props.generators}>
                 {(g) => (
-                <View class={`flex-row items-center justify-center gap-1 nine-plate-cut bg-entry-lo text-fg transition duration-317 border border-rim-soft w-full min-h-11 py-1 px-2 data-selected:bg-transparent data-selected:bg-hud-accent/24 data-locked:text-fg data-down:opacity-45 compact:p-1`} role="option" selected={g().id === props.selected} label={g().locked ? t("idle.generators.lockedName", { name: g().name, what: g().rate }) : g().level > 0 ? t("idle.generators.levelName", { name: g().name, level: formatNumber(g().level) }) : g().name} disabled={g().locked} data-auto={g().auto} data-boosted={!!g().boost} onPress={(e) => props.onChoose?.(e, g().id)} data-selected={g().id === props.selected} data-locked={g().locked}>
+                <View class={`flex-row items-center justify-center gap-1 nine-plate-cut text-fg transition duration-317 border border-rim-soft w-full min-h-11 py-1 px-2 data-locked:text-fg data-down:opacity-45 compact:p-1 ${g().id === props.selected ? packClass("Row", "frame", "selected") : packClass("Row", "frame")}`} role="option" selected={g().id === props.selected} label={g().locked ? t("idle.generators.lockedName", { name: g().name, what: g().rate }) : g().level > 0 ? t("idle.generators.levelName", { name: g().name, level: formatNumber(g().level) }) : g().name} disabled={g().locked} data-auto={g().auto} data-boosted={!!g().boost} onPress={(e) => props.onChoose?.(e, g().id)} data-selected={g().id === props.selected} data-locked={g().locked}>
                   <View class="group/face flex-row items-center w-full gap-3 compact:gap-1">
                     <View class="size-12 group-data-locked/face:opacity-45 compact:size-8">
                       <View class={`group/socket grow shrink basis-0 justify-center items-center absolute bg-tile border-[1.5px] border-border-strong nine-plate-cut inset-0 gap-2 ${packClass("Slot", "frame")}`}>
@@ -62,7 +62,7 @@ export function IdleGenerators(props: IdleGeneratorsProps) {
                           {g().name}
                         </Text>
                         <Show when={!g().locked && g().owned > 0}>
-                          <Text class={`whitespace-nowrap text-[0.857rem] font-bold tabular-nums text-fg/78`}>
+                          <Text class={`whitespace-nowrap text-[0.857rem] font-bold tabular-nums text-fg-muted`}>
                             {t("idle.generators.owned", { owned: formatCompact(g().owned) })}
                           </Text>
                         </Show>
@@ -80,22 +80,22 @@ export function IdleGenerators(props: IdleGeneratorsProps) {
                           <View class={`grow shrink basis-0 min-w-12 bg-track shadow-sunk h-[0.571rem] rounded-capsule overflow-hidden`} role="progressbar" label={t("idle.generators.cycle")} valueMin={0} valueMax={100} valueNow={g().cycle * 100} valueText={g().cycleText ? g().cycleText : `${formatNumber((g().cycle) * 100, { decimals: 0 })}%`}>
                             <View class={`bg-hud-accent h-full`} style={{ width: `${(100 * (g().cycle > 1 ? 1 : g().cycle))}%` }} />
                           </View>
-                          <Text class={`whitespace-nowrap text-[0.857rem] font-bold tabular-nums text-fg/78`}>
+                          <Text class={`whitespace-nowrap text-[0.857rem] font-bold tabular-nums text-fg-muted`}>
                             {g().cycleText ? g().cycleText : `${formatNumber((g().cycle) * 100, { decimals: 0 })}%`}
                           </Text>
                         </Show>
                         <Show when={!g().locked && g().boost}>
-                          <Text class={`text-shadow-2xs bg-tile nine-chip-cut whitespace-nowrap text-[0.857rem] font-semibold tracking-[0.14em] uppercase text-fg/78 py-0 px-1 data-tag-boost:bg-gold data-tag-boost:bg-none data-tag-boost:text-gold-fg ${packClass("Chip", "frame")}`} data-tag-boost={true}>
+                          <Text class={`text-shadow-2xs bg-tile nine-chip-cut whitespace-nowrap text-[0.857rem] font-semibold tracking-[0.14em] uppercase text-fg-muted py-0 px-1 data-tag-boost:bg-gold data-tag-boost:bg-none data-tag-boost:text-gold-fg ${packClass("Chip", "frame")}`} data-tag-boost={true}>
                             {g().boost}
                           </Text>
                         </Show>
                         <Show when={!g().locked && g().auto}>
-                          <Text class={`text-shadow-2xs bg-tile nine-chip-cut whitespace-nowrap text-[0.857rem] font-semibold tracking-[0.14em] uppercase text-fg/78 py-0 px-1 data-tag-auto:bg-success data-tag-auto:bg-none data-tag-auto:text-bg ${packClass("Chip", "frame")}`} data-tag-auto={true}>
+                          <Text class={`text-shadow-2xs bg-tile nine-chip-cut whitespace-nowrap text-[0.857rem] font-semibold tracking-[0.14em] uppercase text-fg-muted py-0 px-1 data-tag-auto:bg-success data-tag-auto:bg-none data-tag-auto:text-bg ${packClass("Chip", "frame")}`} data-tag-auto={true}>
                             {t("idle.generators.auto")}
                           </Text>
                         </Show>
                         <Show when={g().locked}>
-                          <View class={`flex-row items-center bg-tile nine-chip-cut text-[0.857rem] font-semibold tracking-[0.14em] uppercase text-fg/78 py-0 px-1 gap-0.5 data-tag-locked:items-center data-tag-locked:min-w-0 data-tag-locked:max-w-full ${packClass("Chip", "frame")}`} data-tag-locked={true}>
+                          <View class={`flex-row items-center bg-tile nine-chip-cut text-[0.857rem] font-semibold tracking-[0.14em] uppercase text-fg-muted py-0 px-1 gap-0.5 data-tag-locked:items-center data-tag-locked:min-w-0 data-tag-locked:max-w-full ${packClass("Chip", "frame")}`} data-tag-locked={true}>
                             <Text class="whitespace-nowrap text-shadow-2xs shrink">
                               {t("idle.generators.locked")}
                             </Text>
