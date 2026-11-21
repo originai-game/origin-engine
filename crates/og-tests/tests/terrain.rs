@@ -308,6 +308,28 @@ fn layers_follow_slope_altitude_and_the_control_map() {
     assert_eq!(dominant(at(Vec3::new(0.0, 52.0, 8.0))), "white");
 }
 
+/// A lake's planar reflection is drawn only while the lake is in view: from
+/// its shore 40 m past its edge (inside the sphere round its 360 m square)
+/// looking away, the frame draws no reflection pass, which always draws the
+/// sky when it runs.
+#[test]
+#[ignore = "requires GPU"]
+fn a_planar_reflection_is_drawn_only_while_its_water_is_in_view() {
+    let mut scene = ts::water_planar_scene();
+    let (_, toward) = render(&scene);
+    assert!(
+        toward.reflection_draws > 0,
+        "the lake in view mirrors the scene"
+    );
+    let eye = Vec3::new(ts::LAKE.x, ts::LAKE_LEVEL + 3.0, ts::LAKE.y + 220.0);
+    scene.frame.camera = ts::camera_at(eye, eye + Vec3::new(0.0, 0.0, 300.0));
+    let (_, away) = render(&scene);
+    assert_eq!(
+        away.reflection_draws, 0,
+        "the lake behind the camera draws no reflection pass"
+    );
+}
+
 /// From below the surface: the water's fog swallows a post 30 m away that
 /// is clear from above, the surface overhead shows the sky inside Snell's
 /// window, and caustics light the bed in a pattern only when asked.

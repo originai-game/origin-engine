@@ -124,7 +124,9 @@ impl Renderer {
         // Up to `planar_reflections` surfaces mirror the scene, each in its own pass: slot 0 a grid surface first,
         // such as a lake, else the first that asks (with two, the one material shaders read: `planar_reflection`),
         // slot 1 a second surface, only while it is in view (only it reads its mirror). With one, a second surface
-        // that asks reflects as without it (RenderDesc::planar_reflections), never in the first's mirror.
+        // that asks reflects as without it (RenderDesc::planar_reflections), never in the first's mirror. With one,
+        // only the surface reads slot 0 (material shaders read the stub), so it too mirrors only while in view:
+        // a lake behind the camera costs no pass, and leaves the slot to a surface in view.
         let planar: Vec<usize> = match (under, cam.orthographic) {
             (None, false) => {
                 let asks: Vec<(usize, bool, bool)> = scene_water
@@ -132,14 +134,26 @@ impl Renderer {
                     .enumerate()
                     .filter_map(|(i, w)| {
                         let (n, at, lo, hi) = water::surface(w, w.mesh.and_then(|m| scene.mesh(m)));
-                        let c = Vec3::new((lo.x + hi.x) * 0.5, at.y, (lo.y + hi.y) * 0.5);
-                        let seen =
-                            view_frustum.intersects_sphere(c, (hi - lo).length() * 0.5 + 0.5);
+                        // In view: its bounds, a box flat but for its tilt and half a metre, meet the frustum. A sphere
+                        // round a lake kilometres wide holds a camera on its shore whichever way it looks.
+                        let rise =
+                            0.5 + (hi - lo).length() * 0.5 * (1.0 - n.y * n.y).max(0.0).sqrt();
+                        let seen = view_frustum.intersects_box(
+                            Vec3::new(lo.x, at.y - rise, lo.y),
+                            Vec3::new(hi.x, at.y + rise, hi.y),
+                        );
                         (w.planar_reflection > 0.0 && (camera.position - at).dot(n) > 0.0)
                             .then_some((i, w.mesh.is_none(), seen))
                     })
                     .collect();
-                let first = asks.iter().find(|a| a.1).or(asks.first()).map(|a| a.0);
+                let shaders_read_first = self.info.planar_reflections >= 2;
+                let candidates: Vec<_> =
+                    asks.iter().filter(|a| a.2 || shaders_read_first).collect();
+                let first = candidates
+                    .iter()
+                    .find(|a| a.1)
+                    .or(candidates.first())
+                    .map(|a| a.0);
                 let second = asks.iter().find(|a| Some(a.0) != first && a.2).map(|a| a.0);
                 if second.is_some()
                     && self.info.planar_reflections < 2
