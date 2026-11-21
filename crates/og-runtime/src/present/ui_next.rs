@@ -103,7 +103,7 @@ pub(crate) struct Next {
     /// The device whose bindings the `<Glyph>` nodes show.
     device: Option<og_ui::Device>,
     /// The left stick's held direction and when it moves the focus again.
-    stick: Option<(og_ui::Nav, f64)>,
+    stick: Option<(og_ui_next::nav::Nav, f64)>,
 }
 
 fn source(v: &Value) -> Option<(String, String)> {
@@ -661,7 +661,8 @@ impl Next {
             // half-way on its dominant axis once, then after og-ui's slow
             // duration every fast one while held, as og-ui's navigation.
             let g = &input.gamepad;
-            use og_ui::{GamepadFrame as Pad, Nav};
+            use og_ui::GamepadFrame as Pad;
+            use og_ui_next::nav::Nav;
             for (bit, nav) in [
                 (Pad::UP, Nav::Up),
                 (Pad::DOWN, Nav::Down),

@@ -1,10 +1,19 @@
 //! Directional focus: the control nearest the focus in a direction, by
 //! Android's FocusFinder (moved from og-ui's `interaction/nav.rs`).
 
-use og_ui::{Nav, Rect};
+pub use og_ui_model::Rect;
+
+/// A direction focus moves in: an arrow, the d-pad, the stick.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Nav {
+    Up,
+    Down,
+    Left,
+    Right,
+}
 
 /// The control nearest `from` in direction `dir` among `cands`, wrapping
-/// (also the new core's, `og_ui::nav_neighbour`).
+/// (og-ui-next's arrows, d-pad and stick: `Tree::nav`).
 pub fn neighbour(from: &Rect, cands: &[(u64, Rect)], dir: Nav) -> Option<u64> {
     neighbour_in(from, cands, dir, false).or_else(|| neighbour_in(from, cands, dir, true))
 }

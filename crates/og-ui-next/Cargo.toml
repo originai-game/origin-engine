@@ -7,6 +7,7 @@ publish = false
 description = "og-ui's new core: a flat element arena, styles compiled to typed records, rune-taffy layout and quad paint."
 
 [dependencies]
+og-ui-model = { path = "../og-ui-model" }
 og-css = { path = "../og-css" }
 # Text measure: the engine's one text stack (Parley, HarfRust, cooked metrics).
 og-text = { path = "../og-text" }

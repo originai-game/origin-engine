@@ -3913,6 +3913,7 @@ dependencies = [
  "og-reactive",
  "og-text",
  "og-ui",
+ "og-ui-model",
  "rune-motion",
  "rune-taffy",
  "rustc-hash 2.1.3",

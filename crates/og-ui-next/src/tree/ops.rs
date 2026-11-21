@@ -1388,7 +1388,7 @@ mod tests {
         t.key("ArrowDown", false, false, false, false);
         assert_eq!(t.focused_id(), Some(2), "it took the arrow");
         assert_eq!((t.events[0].id, &*t.events[0].key), (2, "ArrowDown"));
-        assert!(t.nav(og_ui::Nav::Down), "the d-pad still moves it");
+        assert!(t.nav(crate::nav::Nav::Down), "the d-pad still moves it");
         assert_eq!(t.focused_id(), Some(4));
     }
 

@@ -91,7 +91,7 @@ pub struct Input {
     pub(super) modal_els: Vec<u32>,
     /// Tab stops, made on a Tab or a move, and a move's candidates.
     stops: Vec<u32>,
-    cands: Vec<(u64, og_ui::Rect)>,
+    cands: Vec<(u64, crate::nav::Rect)>,
     /// An Enter or Space pressed the focused control this frame: the
     /// `confirm` it is bound to does not press it again.
     keyed: bool,
@@ -456,10 +456,10 @@ impl Tree {
     }
 
     /// The element's box on screen, as og-ui's navigation reads it.
-    fn rect(&self, e: u32) -> og_ui::Rect {
+    fn rect(&self, e: u32) -> crate::nav::Rect {
         let (x, y, _, _) = self.abs[e as usize];
         let b = self.arena.box_of(self.els[e as usize].node);
-        og_ui::Rect {
+        crate::nav::Rect {
             x,
             y,
             width: b.w,
@@ -472,7 +472,7 @@ impl Tree {
     /// end of its row or column (og-ui's FocusFinder rule), and shows.
     /// With nothing focused it lands on the first stop. Whether a stop
     /// took it.
-    pub fn nav(&mut self, dir: og_ui::Nav) -> bool {
+    pub fn nav(&mut self, dir: crate::nav::Nav) -> bool {
         self.sync_modals();
         self.tab_stops();
         let Some(&first) = self.input.stops.first() else {
@@ -491,7 +491,7 @@ impl Tree {
                 cands.push((u64::from(e), self.rect(e)));
             }
         }
-        let to = og_ui::nav_neighbour(&self.rect(f), &cands, dir);
+        let to = crate::nav::neighbour(&self.rect(f), &cands, dir);
         self.input.cands = cands;
         match to {
             Some(e) => self.focus(e as u32),
@@ -512,10 +512,10 @@ impl Tree {
             return true;
         }
         let dir = match code {
-            "ArrowUp" => Some(og_ui::Nav::Up),
-            "ArrowDown" => Some(og_ui::Nav::Down),
-            "ArrowLeft" => Some(og_ui::Nav::Left),
-            "ArrowRight" => Some(og_ui::Nav::Right),
+            "ArrowUp" => Some(crate::nav::Nav::Up),
+            "ArrowDown" => Some(crate::nav::Nav::Down),
+            "ArrowLeft" => Some(crate::nav::Nav::Left),
+            "ArrowRight" => Some(crate::nav::Nav::Right),
             _ => None,
         };
         // An arrow moves the focus, unless the focused node takes keys
