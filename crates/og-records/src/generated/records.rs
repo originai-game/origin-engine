@@ -32507,7 +32507,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 unit: "",
                 worldspace: "",
                 label: "",
-                doc: doc!("Prepare without showing: while stopped and holding nothing, the timeline is not evaluated; the entity's og.VideoPlayer holds the frame its own video track starts with, paused, and the engine modules it needs are fetched. Playing or seeking evaluates it as always. og.flow sets it on a warming deck."),
+                doc: doc!("Prepare without showing: while stopped and holding nothing, the timeline is not evaluated; the entity's og.VideoPlayer holds the frame its own video track starts with, paused, its scene tracks' scenes are loaded, and the engine modules it needs are fetched. Playing or seeking evaluates it as always."),
                 variants: &[],
                 capacity: 0,
                 list: 0,

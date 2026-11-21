@@ -618,7 +618,9 @@ pub(crate) fn install(eng: &Rc<Engine>, facts: Option<u32>) -> Result<(), String
     // is held (G3-3); then og.net's lockstep holds it until every player's
     // input for it is in. A rollback's rewind moves the clock back, so the
     // cells the re-simulated tick loads are asked after again. Last,
-    // og.motion steps with the world the tick before left, and holds the
+    // a timeline's scene track holds it while the scene it places has a file
+    // on its way (bind/timeline/stage.rs), and og.motion steps with the
+    // world the tick before left, and holds the
     // tick while a GPU batch it takes has not landed (the web, which cannot
     // wait for one; a native host waits in place).
     probe.set_gate(Box::new(move |world| {
@@ -630,6 +632,11 @@ pub(crate) fn install(eng: &Rc<Engine>, facts: Option<u32>) -> Result<(), String
             return false;
         }
         if world.time().tick != tick && !crate::world::stream::cell_groups::gate(id, world) {
+            return false;
+        }
+        // A scene a timeline's scene track places as this tick starts,
+        // while a file of it is still on its way.
+        if engine(id).is_ok_and(|eng| !crate::bind::timeline::gate(&eng)) {
             return false;
         }
         engine(id).map_or(true, |eng| crate::bind::motion::present::step(&eng))
@@ -661,6 +668,8 @@ pub(crate) fn install(eng: &Rc<Engine>, facts: Option<u32>) -> Result<(), String
             // A scene change asked for puts its scene in place, before
             // the cells it places are seen.
             crate::world::scenes::before_tick(&eng, world);
+            // The scenes timelines' scene tracks cut to and from.
+            crate::bind::timeline::before_tick(&eng, world);
             // World cells load and unload as the tick starts (G3-3).
             crate::world::stream::cells::before_tick(&eng, world);
             crate::present::geometry::before_tick(&eng, world);

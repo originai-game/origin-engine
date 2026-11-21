@@ -28,7 +28,10 @@ mod sound;
 mod spawn;
 mod textures;
 
-pub(crate) use closure::{Closure, presented, ready as closure_ready};
+pub(crate) use closure::{
+    Closure, Prepared, load as load_closure, prepared as closure_prepared, presented,
+    ready as closure_ready,
+};
 pub(crate) use models::*;
 pub(crate) use recovery::release_uploaded_textures;
 pub(crate) use release::release_bundle;

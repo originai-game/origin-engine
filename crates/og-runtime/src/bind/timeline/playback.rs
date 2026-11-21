@@ -44,6 +44,13 @@ pub(super) struct Run {
     /// While a shot track holds og.CameraBrain.solo: the solo it found
     /// (handed back) and the one it wrote, as entity bits.
     pub(super) solo: Option<(u64, u64)>,
+    /// The scenes its `scene` tracks have in the world: (track, key, the
+    /// root their entities are under as entity bits; 0: it was refused).
+    pub(super) scenes: Vec<(u32, u32, u64)>,
+    /// What they have from the next tick's start, when that is not what
+    /// `scenes` holds: (track, key, scene asset id). `super::stage` puts
+    /// it in place as that tick starts.
+    pub(super) due: Option<Vec<(u32, u32, String)>>,
 }
 
 #[derive(Default)]
@@ -56,6 +63,21 @@ pub(super) struct Shared {
     /// modules it needs once, as its pre-roll begins. Not saved: a restored
     /// world asks again.
     prerolled: BTreeSet<u64>,
+    /// Scene roots of runs that stopped or went: despawned, with what is
+    /// under them, as the next tick starts (`super::stage`). Saved.
+    pub(super) leaving: Vec<u64>,
+    /// The scenes og.timeline asked `crate::world::scenes` to prepare: those
+    /// its timelines in pre-roll or playing name. Not saved, as `prerolled`.
+    preparing: BTreeSet<String>,
+}
+
+impl Shared {
+    /// `run` lets go of the scenes it has in the world and of those due.
+    fn leave(&mut self, run: &mut Run) {
+        let roots = run.scenes.drain(..).map(|s| s.2).filter(|b| *b != 0);
+        self.leaving.extend(roots);
+        run.due = None;
+    }
 }
 
 /// Engine `engine`'s runs (fresh ones for an engine that is gone).
@@ -197,7 +219,8 @@ fn save(sh: &Shared, out: &mut Vec<u8>) {
             | u32::from(r.release) << 4
             | u32::from(r.camera.is_some()) << 5
             | u32::from(r.focus.is_some()) << 6
-            | u32::from(r.solo.is_some()) << 7;
+            | u32::from(r.solo.is_some()) << 7
+            | u32::from(!r.scenes.is_empty() || r.due.is_some()) << 8;
         u32_(out, flags);
         for v in r.camera.unwrap_or_default() {
             out.extend_from_slice(&v.to_le_bytes());
@@ -222,6 +245,32 @@ fn save(sh: &Shared, out: &mut Vec<u8>) {
             u32_(out, *t);
             u32_(out, *k);
             u64_(out, *v);
+        }
+        // Only with a scene track's scene in the world or due, likewise.
+        if flags & 256 != 0 {
+            u32_(out, r.scenes.len() as u32);
+            for (t, k, root) in &r.scenes {
+                u32_(out, *t);
+                u32_(out, *k);
+                u64_(out, *root);
+            }
+            u32_(out, u32::from(r.due.is_some()));
+            if let Some(due) = &r.due {
+                u32_(out, due.len() as u32);
+                for (t, k, scene) in due {
+                    u32_(out, *t);
+                    u32_(out, *k);
+                    u32_(out, scene.len() as u32);
+                    out.extend_from_slice(scene.as_bytes());
+                }
+            }
+        }
+    }
+    // Only while a stopped run's scenes wait for the tick to start.
+    if !sh.leaving.is_empty() {
+        u32_(out, sh.leaving.len() as u32);
+        for root in &sh.leaving {
+            u64_(out, *root);
         }
     }
 }
@@ -275,7 +324,24 @@ fn load_state(bytes: &[u8]) -> og_core::Result<Shared> {
         for _ in 0..b.u32()? {
             r.voices.push((b.u32()?, b.u32()?, b.u64()?));
         }
+        if flags & 256 != 0 {
+            for _ in 0..b.u32()? {
+                r.scenes.push((b.u32()?, b.u32()?, b.u64()?));
+            }
+            if b.u32()? != 0 {
+                let mut due = Vec::new();
+                for _ in 0..b.u32()? {
+                    due.push((b.u32()?, b.u32()?, b.string()?));
+                }
+                r.due = Some(due);
+            }
+        }
         sh.runs.insert(e, r);
+    }
+    if !b.is_done() {
+        for _ in 0..b.u32()? {
+            sh.leaving.push(b.u64()?);
+        }
     }
     if !b.is_done() {
         return Err(invalid("the og.timeline state has bytes left over"));
@@ -293,11 +359,16 @@ impl StateBlock for TimelineBlock {
         Ok(Box::new(load_state(bytes)?))
     }
     fn apply(&mut self, decoded: Option<Box<dyn Any + Send>>) {
-        let next = decoded
+        let mut next = decoded
             .and_then(|d| d.downcast::<Shared>().ok())
             .map(|b| *b)
             .unwrap_or_default();
-        *lock(&self.0) = next;
+        let mut now = lock(&self.0);
+        // What is being prepared is the engine's, not the world's: kept,
+        // so the next tick lets go of what the restored world no longer
+        // names.
+        next.preparing = std::mem::take(&mut now.preparing);
+        *now = next;
     }
 
     /// The camera a run hands back is a place in the world.
@@ -537,6 +608,7 @@ fn timeline_system(
         let run = lock(state).runs.remove(&k);
         if let Some(mut run) = run {
             release(ctx, r, &mut run)?;
+            lock(state).leave(&mut run);
         }
     }
     let reg = registry(engine_id);
@@ -546,6 +618,8 @@ fn timeline_system(
     let was = std::mem::take(&mut lock(state).prerolled);
     let mut prerolled = BTreeSet::new();
     let mut wanted: Vec<String> = Vec::new();
+    // The scenes the timelines in pre-roll or playing name.
+    let mut scenes: BTreeSet<String> = BTreeSet::new();
     for e in rows {
         let key = e.to_bits();
         let cb = ctx.get_bytes(e, r.timeline.0)?;
@@ -559,6 +633,7 @@ fn timeline_system(
         let field_time = row.time;
         if run.asset != asset {
             release(ctx, r, &mut run)?;
+            lock(state).leave(&mut run);
             run = Run {
                 asset,
                 written: field_time,
@@ -601,6 +676,7 @@ fn timeline_system(
         let dur = (f64::from(duration) * den as f64).round() as i64;
         if stop {
             release(ctx, r, &mut run)?;
+            lock(state).leave(&mut run);
             run = Run {
                 asset,
                 ..Run::default()
@@ -737,14 +813,28 @@ fn timeline_system(
                 }
             }
         }
+        // What its scene tracks have in the world at this time, put in
+        // place as the next tick starts when it is not there already.
+        if run.active && !(lt.scenes.is_empty() && run.scenes.is_empty()) {
+            let mut at = Vec::new();
+            super::evaluate::scenes_at(&lt, t, 0, 0, &mut at);
+            let placed =
+                |a: &(u32, u32, String)| run.scenes.iter().any(|s| (s.0, s.1) == (a.0, a.1));
+            let same = at.len() == run.scenes.len() && at.iter().all(placed);
+            run.due = (!same).then_some(at);
+        }
         // Pre-roll: stopped and holding nothing, it prepares what its time
         // starts with instead of showing it.
-        if row.preroll && !playing && !run.active {
+        let prerolling = row.preroll && !playing && !run.active;
+        if prerolling {
             preroll(ctx, r, &lt, e, t)?;
             prerolled.insert(key);
             if !was.contains(&key) {
                 wanted.push(lt.id.clone());
             }
+        }
+        if prerolling || playing || run.active || !run.scenes.is_empty() || run.due.is_some() {
+            scenes.extend(lt.scenes.iter().cloned());
         }
         for (a, b) in &spans {
             markers(ctx, key, asset, &lt, *a, *b, "", 0)?;
@@ -784,6 +874,23 @@ fn timeline_system(
     {
         for id in wanted {
             crate::world::needs::asset(&eng, &id, None);
+        }
+    }
+    // The scenes those timelines name are prepared from the tick one
+    // starts to name them until none does: loaded with what they spawn
+    // with, never placed here (`super::stage` places them).
+    let before = std::mem::replace(&mut lock(state).preparing, scenes.clone());
+    if before != scenes
+        && let Ok(eng) = crate::engine::engine(engine_id)
+    {
+        use crate::world::scenes::{By, prepare, release};
+        for id in scenes.difference(&before) {
+            if let Err(e) = prepare(&eng, id, By::Timeline) {
+                note(engine_id, format!("og.timeline: scene {id}: {e}"));
+            }
+        }
+        for id in before.difference(&scenes) {
+            let _ = release(&eng, id, By::Timeline);
         }
     }
     Ok(())

@@ -6,6 +6,13 @@
 //! of them has arrived. Both are presentation: which groups are resident
 //! never reaches a tick (their assets draw stand-ins until then, world §4).
 //!
+//! Preloading also loads what the scene spawns with, ahead of placing it
+//! ([`assets::load_closure`]): its models into the renderer with their
+//! pipelines started, its sub-scenes and prefabs. A scene so prepared is
+//! drawn whole the frame it is placed (`ScenePreload.prepared`,
+//! [`prepared`]). og.timeline prepares the scenes its timelines' `scene`
+//! tracks name the same way ([`prepare`], [`release`]).
+//!
 //! og.scene.change is world state: it writes `og.SceneState.pending`, and
 //! [`before_tick`] (the probe's before-tick hook, so a replay, a rollback's
 //! re-simulation and a restored world all run it) puts the scene in place
@@ -38,8 +45,32 @@ pub(crate) const RECORDS: [&str; 2] = [STATE, CHANGED];
 /// as this tick started, which og.scene.current answers while a system
 /// runs (the world is the step's then, and a system need not declare the
 /// resource; it changes only in [`before_tick`]).
+///
+/// Last, the scenes prepared ([`prepare`]), by asset id.
 #[derive(Default)]
-pub(crate) struct ModuleState(RefCell<BTreeMap<String, Vec<String>>>, RefCell<String>);
+pub(crate) struct ModuleState(
+    RefCell<BTreeMap<String, Vec<String>>>,
+    RefCell<String>,
+    RefCell<BTreeMap<String, Prepare>>,
+);
+
+/// Who asked for a scene to be prepared.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub(crate) enum By {
+    /// og.scene.preload, until og.scene.release.
+    Game,
+    /// og.timeline, while a timeline that names it is in pre-roll or plays.
+    Timeline,
+}
+
+/// A scene [`prepare`] was asked for.
+#[derive(Default)]
+pub(crate) struct Prepare {
+    game: bool,
+    timeline: bool,
+    /// Why part of what it spawns with did not load (empty: all of it did).
+    failed: String,
+}
 
 /// A scene's asset id from a GameDesc.scenes name or an asset id.
 fn resolve(eng: &Engine, scene: &str) -> Result<String, String> {
@@ -86,6 +117,124 @@ fn preload_id(eng: &Engine, id: &str) -> Result<u64, String> {
     Ok(handle(index))
 }
 
+/// [`preload_id`], and what scene `id` spawns with loaded ahead (see the
+/// module's head), for `by`. Asked again, it only notes who asks.
+pub(crate) fn prepare(eng: &Engine, id: &str, by: By) -> Result<u64, String> {
+    let h = preload_id(eng, id)?;
+    let known = eng.modules.scenes.2.borrow().contains_key(id);
+    let failed = match known {
+        true => None,
+        false => assets::index_of(h as f64).map(|i| assets::load_closure(eng, i).join("; ")),
+    };
+    let mut all = eng.modules.scenes.2.borrow_mut();
+    let p = all.entry(id.to_string()).or_default();
+    match by {
+        By::Game => p.game = true,
+        By::Timeline => p.timeline = true,
+    }
+    if let Some(failed) = failed {
+        p.failed = failed;
+    }
+    Ok(h)
+}
+
+/// How far scene `id` is from being drawn whole the frame it is placed
+/// (`ScenePreload.prepared`). Presentation only.
+pub(crate) fn prepared(eng: &Engine, id: &str) -> assets::Prepared {
+    use assets::Prepared;
+    match eng.modules.scenes.2.borrow().get(id) {
+        None => return Prepared::No("og.scene.preload was not asked for it".into()),
+        Some(p) if !p.failed.is_empty() => return Prepared::No(p.failed.clone()),
+        Some(_) => {}
+    }
+    let a = eng.assets.borrow();
+    let Some(entry) = a
+        .index_of_kind("scene", id, None)
+        .and_then(|i| a.entries.get(i))
+    else {
+        return Prepared::No(format!("{id} is not loaded"));
+    };
+    match (&entry.status, &entry.payload) {
+        (assets::Status::Failed(e), _) => Prepared::No(e.clone()),
+        (_, Payload::Scene(s)) => {
+            // The groups it declares, as its models' are judged.
+            let own = a
+                .stream
+                .names_of_scene(id)
+                .into_iter()
+                .filter(|g| !a.stream.upgraded(g))
+                .map(|g| match a.stream.arriving(&g) {
+                    true => Prepared::Busy,
+                    false => Prepared::No(format!("streaming group '{g}' is not loaded")),
+                })
+                .max_by_key(|p| matches!(p, Prepared::No(_)));
+            match (own, assets::closure_prepared(&a, &eng.render.borrow(), s)) {
+                (Some(no @ Prepared::No(_)), _) | (_, no @ Prepared::No(_)) => no,
+                (Some(_), _) | (_, Prepared::Busy) => Prepared::Busy,
+                (None, Prepared::Yes) => Prepared::Yes,
+            }
+        }
+        // A cell's sub-scene waits for its group's pack, which a cell asks for.
+        (_, Payload::SceneWaiting { group }) => Prepared::No(format!(
+            "it is a cell's sub-scene, in streaming group '{group}'"
+        )),
+        // Its blob is on its way.
+        _ => Prepared::Busy,
+    }
+}
+
+/// Whether scene `id` can be placed now: its blob decoded and no file of
+/// what it spawns with still on its way (asking starts those fetches). A
+/// scene that never loads can: placing it reports why.
+pub(crate) fn placeable(eng: &Engine, id: &str) -> bool {
+    let Ok(index) = assets::load_scene(eng, id) else {
+        return true;
+    };
+    let a = eng.assets.borrow();
+    match (&a.entries[index].status, &a.entries[index].payload) {
+        (assets::Status::Pending, Payload::ScenePending) => false,
+        (_, Payload::Scene(s)) => !a.closure_fetching(s),
+        _ => true,
+    }
+}
+
+/// `by` stops asking for scene `id` to be prepared; with no one left, its
+/// groups are let go as og.scene.release lets them go.
+pub(crate) fn release(eng: &Engine, id: &str, by: By) -> Result<(), String> {
+    {
+        let mut all = eng.modules.scenes.2.borrow_mut();
+        let Some(p) = all.get_mut(id) else {
+            drop(all);
+            // og.scene.change's own preload, never prepared.
+            return match by {
+                By::Game => unpreload(eng, id),
+                By::Timeline => Ok(()),
+            };
+        };
+        match by {
+            By::Game => p.game = false,
+            By::Timeline => p.timeline = false,
+        }
+        if p.game || p.timeline {
+            return Ok(());
+        }
+        all.remove(id);
+    }
+    unpreload(eng, id)
+}
+
+/// Stops asking for the groups scene `id`'s preload asked for; the scene
+/// in place keeps its own.
+fn unpreload(eng: &Engine, id: &str) -> Result<(), String> {
+    let current = current_id(eng);
+    if current.as_deref() == Some(id) {
+        // The scene in place keeps its groups; forget the preload alone.
+        eng.modules.scenes.0.borrow_mut().remove(id);
+        return Ok(());
+    }
+    release_id(eng, id, current.as_deref())
+}
+
 /// At a tick boundary, before the stream update: the groups of the scene
 /// og.scene.change put in place and of one it asked for are requested (and
 /// recorded, so changing away releases them). The world names both; the
@@ -108,7 +257,7 @@ pub(crate) fn before_boundary(eng: &Engine) {
 pub fn og_scene_preload(world: u32, scene: String) -> Result<f64, String> {
     let eng = engine(world)?;
     let id = resolve(&eng, &scene)?;
-    preload_id(&eng, &id).map(|h| h as f64)
+    prepare(&eng, &id, By::Game).map(|h| h as f64)
 }
 
 /// `og.scene.progress`.
@@ -126,9 +275,11 @@ pub fn og_scene_progress(world: u32, scene: String) -> Result<ScenePreload, Stri
         .map(|g| format!("streaming group '{}': {}", g.name, g.reason))
         .unwrap_or_default();
     let ready = groups.iter().all(resident);
+    let prepared = prepared(&eng, &id) == assets::Prepared::Yes;
     Ok(ScenePreload {
         scene: id,
         ready,
+        prepared,
         fraction: if ready {
             1.0
         } else if bytes > 0.0 {
@@ -171,13 +322,7 @@ fn release_id(eng: &Engine, id: &str, keep: Option<&str>) -> Result<(), String> 
 pub fn og_scene_release(world: u32, scene: String) -> Result<(), String> {
     let eng = engine(world)?;
     let id = resolve(&eng, &scene)?;
-    let current = current_id(&eng);
-    if current.as_deref() == Some(id.as_str()) {
-        // The scene in place keeps its groups; forget the preload alone.
-        eng.modules.scenes.0.borrow_mut().remove(&id);
-        return Ok(());
-    }
-    release_id(&eng, &id, current.as_deref())
+    release(&eng, &id, By::Game)
 }
 
 fn layout(eng: &Engine, name: &str) -> Result<Layout, String> {
@@ -242,7 +387,10 @@ fn ask(eng: &Engine, world: &mut World, id: &str) -> Result<(), String> {
 
 /// Scene `id` loaded, with its handle: `None` for a cell's sub-scene (its
 /// blob is in a streaming group's pack, which a cell loads).
-fn loaded(eng: &Engine, id: &str) -> Result<Option<(u64, Box<assets::LoadedScene>)>, String> {
+pub(crate) fn loaded(
+    eng: &Engine,
+    id: &str,
+) -> Result<Option<(u64, Box<assets::LoadedScene>)>, String> {
     let i = assets::load_scene(eng, id)?;
     Ok(match &eng.assets.borrow().entries[i].payload {
         Payload::Scene(d) => Some((handle(i), d.clone())),

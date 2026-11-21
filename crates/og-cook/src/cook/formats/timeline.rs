@@ -1,8 +1,10 @@
 //! `type timeline` → timeline blobs (depth S2): the file parsed by
 //! og-timeline, its caption files (`captions "narration.srt"`, or a
-//! word-timestamp `.json`) imported as caption keys, the sounds and models
-//! it names checked against the bundle, and the canonical text stored for
-//! the runtime to parse again.
+//! word-timestamp `.json`) imported as caption keys, the sounds, models,
+//! videos, effects, timelines and scenes it names checked against the
+//! bundle (and recorded as what it refers to, so it needs the engine
+//! modules they need: `pipeline/needs.rs`), and the canonical text stored
+//! for the runtime to parse again.
 //!
 //! A caption file is found beside the timeline, else from `assets/`; it is
 //! part of the timeline (not an asset of its own) and in its stamp.
@@ -148,6 +150,30 @@ fn nested_files(text: &str) -> Vec<String> {
     out
 }
 
+/// The assets a timeline's tracks name, as written (asset ids): its sounds
+/// and music, models, effects, videos, scenes and nested timelines. None
+/// for a text that does not parse: the cook reports that.
+fn named_assets(s: &Source) -> Vec<String> {
+    let Ok(t) = parse(s) else {
+        return Vec::new();
+    };
+    let mut out = Vec::new();
+    for tr in t.tracks {
+        match tr {
+            Track::Audio(keys) => out.extend(keys.into_iter().map(|k| k.sound)),
+            Track::Music(keys) => out.extend(keys.into_iter().map(|k| k.sound)),
+            Track::Animation(a) => out.push(a.model),
+            Track::Timeline(keys) => out.extend(keys.into_iter().map(|k| k.play)),
+            Track::Vfx(keys) => out.extend(keys.into_iter().map(|k| k.effect)),
+            Track::Video(v) => out.extend(v.keys.into_iter().map(|k| k.video)),
+            Track::Scene(keys) => out.extend(keys.into_iter().map(|k| k.scene)),
+            _ => {}
+        }
+    }
+    out.retain(|id| !id.is_empty());
+    out
+}
+
 /// The stamp's dependencies: each caption file with its hash, and every
 /// timeline it nests, to any depth (a cycle made by editing a child is
 /// found by cooking the parent again).
@@ -199,7 +225,7 @@ pub(crate) fn cook_timeline(
 ) -> Result<(Vec<u8>, Vec<String>), CookError> {
     let t = parse(s)?;
     let root = assets_root(s);
-    // Every sound, model, timeline and video it names is a cooked asset.
+    // Every sound, model, timeline, video and scene it names is a cooked asset.
     let mut missing = Vec::new();
     let mut need = |id: &str, what: &str| {
         if !known(id) {
@@ -217,6 +243,10 @@ pub(crate) fn cook_timeline(
             Track::Timeline(keys) => keys.iter().for_each(|k| need(&k.play, "timeline")),
             Track::Vfx(keys) => keys.iter().for_each(|k| need(&k.effect, "vfx")),
             Track::Video(v) => v.keys.iter().for_each(|k| need(&k.video, "video")),
+            Track::Scene(keys) => keys
+                .iter()
+                .filter(|k| !k.scene.is_empty())
+                .for_each(|k| need(&k.scene, "scene")),
             _ => {}
         }
     }
@@ -471,6 +501,12 @@ fn plan_timeline<'a>(
     // The stamp covers every caption file it imports.
     let deps = dependencies(s);
     assets::record_dependencies(parsed_refs, &s.rel, &deps);
+    // What its tracks name is what it refers to: a timeline needs the
+    // engine modules its videos and scenes need.
+    parsed_refs
+        .entry(s.rel.clone())
+        .or_default()
+        .extend(named_assets(s));
     let st = stamp(&[b"timeline 1", &hash, deps.as_bytes()]);
     outs.push((
         s.rel.clone(),

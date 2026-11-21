@@ -17,7 +17,7 @@ Token `og.Timeline`, registered under the schema name `og.Timeline`; its value t
 | `time` | `number` | `0` | ≥ 0 | `s` | — | Where it is, in seconds; written every tick it plays, set it to seek. |
 | `speed` | `number` | `1` | 0 … 16 | — | tunable | Playback rate: 1 as authored, 0.5 half speed (0 holds the time while playing). |
 | `loop` | `boolean` | `false` | — | — | — | Start over at the end; otherwise stop playing there, hand the camera back and send og.TimelineEnded. |
-| `preroll` | `boolean` | `false` | — | — | — | Prepare without showing: while stopped and holding nothing, the timeline is not evaluated; the entity's og.VideoPlayer holds the frame its own video track starts with, paused, and the engine modules it needs are fetched. Playing or seeking evaluates it as always. og.flow sets it on a warming deck. |
+| `preroll` | `boolean` | `false` | — | — | — | Prepare without showing: while stopped and holding nothing, the timeline is not evaluated; the entity's og.VideoPlayer holds the frame its own video track starts with, paused, its scene tracks' scenes are loaded, and the engine modules it needs are fetched. Playing or seeking evaluates it as always. |
 
 ```ogt
 component Timeline {
@@ -35,7 +35,7 @@ component Timeline {
     tunable true
   }
   field loop bool "Start over at the end; otherwise stop playing there, hand the camera back and send og.TimelineEnded."
-  field preroll bool "Prepare without showing: while stopped and holding nothing, the timeline is not evaluated; the entity's og.VideoPlayer holds the frame its own video track starts with, paused, and the engine modules it needs are fetched. Playing or seeking evaluates it as always. og.flow sets it on a warming deck."
+  field preroll bool "Prepare without showing: while stopped and holding nothing, the timeline is not evaluated; the entity's og.VideoPlayer holds the frame its own video track starts with, paused, its scene tracks' scenes are loaded, and the engine modules it needs are fetched. Playing or seeking evaluates it as always."
 }
 ```
 

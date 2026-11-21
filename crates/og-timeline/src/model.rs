@@ -462,6 +462,16 @@ pub struct VideoTrack {
     pub keys: Vec<VideoKey>,
 }
 
+/// A key of a `scene` track: from its time until the track's next key,
+/// `scene` (a `type scene` asset id) is in the world, its entities under
+/// the og.Timeline's entity. An empty `scene` (`scene none`) is a key
+/// with no scene: the one before it goes.
+#[derive(Clone, Debug, PartialEq)]
+pub struct SceneKey {
+    pub time: f32,
+    pub scene: String,
+}
+
 /// A key of a `hotspot` track: from its time, hotspot `id` covers `rect`
 /// (x, y, width, height in fractions of the video frame, from its top
 /// left), moving linearly to the same id's next key and held after its
@@ -503,10 +513,12 @@ pub enum Track {
     Video(VideoTrack),
     /// Places on the picture to click.
     Hotspot(Vec<HotspotKey>),
+    /// Scenes in the world under the og.Timeline's entity.
+    Scene(Vec<SceneKey>),
 }
 
 /// Every track kind the file may name, for the refusal of another.
-pub const TRACK_KINDS: &str = "camera, transform, animation, audio, music, caption, event, transition, marker, property, light, visibility, post, blendshape, material, timeline, shot, vfx, video or hotspot";
+pub const TRACK_KINDS: &str = "camera, transform, animation, audio, music, caption, event, transition, marker, property, light, visibility, post, blendshape, material, timeline, shot, vfx, video, hotspot or scene";
 
 impl Track {
     /// The track's kind as the file names it.
@@ -527,6 +539,7 @@ impl Track {
             Track::Vfx(_) => "vfx",
             Track::Video(_) => "video",
             Track::Hotspot(_) => "hotspot",
+            Track::Scene(_) => "scene",
         }
     }
 
@@ -548,6 +561,7 @@ impl Track {
             Track::Vfx(c) => c.iter().map(|k| k.time).collect(),
             Track::Video(c) => c.keys.iter().map(|k| k.time).collect(),
             Track::Hotspot(c) => c.iter().map(|k| k.time).collect(),
+            Track::Scene(c) => c.iter().map(|k| k.time).collect(),
         }
     }
 
@@ -584,6 +598,7 @@ impl Track {
             Track::Vfx(k) => k.len(),
             Track::Video(v) => v.keys.len(),
             Track::Hotspot(k) => k.len(),
+            Track::Scene(k) => k.len(),
         }
     }
 }

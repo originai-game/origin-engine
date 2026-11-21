@@ -251,6 +251,14 @@ pub fn video_at(track: &VideoTrack, t: f32) -> Option<(usize, f32)> {
     Some((i, k.from + (t - k.time) * k.speed))
 }
 
+/// The key of a `scene` track whose scene is in the world at `t`: the last
+/// at or before it, unless that one names none (`None` before the first
+/// key too).
+pub fn scene_at(keys: &[SceneKey], t: f32) -> Option<usize> {
+    let i = keys.iter().rposition(|k| k.time <= t)?;
+    (!keys[i].scene.is_empty()).then_some(i)
+}
+
 /// A hotspot at a time: its id and where it is, x, y, width and height in
 /// fractions of the video frame.
 #[derive(Clone, Debug, PartialEq)]

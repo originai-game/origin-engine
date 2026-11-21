@@ -24,7 +24,9 @@
 mod evaluate;
 mod playback;
 mod present;
+mod stage;
 pub(crate) use present::present;
+pub(crate) use stage::{before_tick, gate, waiting};
 
 use crate::{present::feel, world::assets};
 use evaluate::{Evaluated, NESTED, NESTED_TRACKS, Step, drop_ended_voices, evaluate, preroll};
@@ -127,6 +129,9 @@ pub(crate) struct Loaded {
     /// The videos its `video` tracks play: their og.VideoPlayer.video
     /// handles, by the id they name.
     pub videos: BTreeMap<String, u64>,
+    /// The scenes its `scene` tracks, and those of the timelines it
+    /// nests, name (asset ids).
+    pub scenes: Vec<String>,
 }
 
 #[derive(Default)]
@@ -395,7 +400,12 @@ fn decode(eng: &Engine, id: &str, chain: &mut Vec<String>) -> Result<Loaded, Str
     let mut nested = BTreeMap::new();
     let mut effects = BTreeMap::new();
     let mut videos = BTreeMap::new();
+    let mut scenes: Vec<String> = Vec::new();
     for tr in &timeline.tracks {
+        if let Track::Scene(keys) = tr {
+            let ids = keys.iter().map(|k| og_bundle::runtime::asset_id(&k.scene));
+            scenes.extend(ids.map(str::to_string));
+        }
         if let Track::Vfx(keys) = tr {
             for k in keys {
                 if !effects.contains_key(&k.effect) {
@@ -423,6 +433,7 @@ fn decode(eng: &Engine, id: &str, chain: &mut Vec<String>) -> Result<Loaded, Str
                 let child = lock(&registry(eng.id))
                     .timeline(h)
                     .ok_or_else(|| format!("{id}: {} did not load", k.play))?;
+                scenes.extend(lock(&child).scenes.iter().cloned());
                 nested.insert(k.play.clone(), child);
             }
         }
@@ -449,7 +460,11 @@ fn decode(eng: &Engine, id: &str, chain: &mut Vec<String>) -> Result<Loaded, Str
             sounds.insert(s.to_string(), (a.sound_handles[i], seconds));
         }
     }
+    scenes.retain(|s| !s.is_empty());
+    scenes.sort();
+    scenes.dedup();
     Ok(Loaded {
+        scenes,
         id: id.to_string(),
         hash,
         timeline,

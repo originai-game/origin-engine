@@ -389,6 +389,40 @@ pub(super) fn evaluate(
     Ok(())
 }
 
+/// The scenes the `scene` tracks of `lt`, and of the timelines it nests,
+/// have in the world at `t`: each `(track id, key, scene asset id)`, the
+/// ids as [`evaluate`] numbers the tracks from `base`.
+pub(super) fn scenes_at(
+    lt: &Loaded,
+    t: f32,
+    base: u32,
+    depth: usize,
+    out: &mut Vec<(u32, u32, String)>,
+) {
+    for (ti, tr) in lt.timeline.tracks.iter().enumerate() {
+        let id = base | ti as u32;
+        match tr {
+            Track::Scene(keys) => {
+                if let Some(k) = eval::scene_at(keys, t) {
+                    let scene = og_bundle::runtime::asset_id(&keys[k].scene);
+                    out.push((id, k as u32, scene.to_string()));
+                }
+            }
+            Track::Timeline(keys) if depth < og_timeline::NEST_DEPTH => {
+                let at = eval::nested_at(keys, t, lt.timeline.duration, |_| 0.0);
+                let Some((ki, _, _)) = at else { continue };
+                let Some(child) = lt.nested.get(&keys[ki].play) else {
+                    continue;
+                };
+                let cl = lock(child);
+                let ct = eval::child_time(&keys[ki], t, cl.timeline.duration);
+                scenes_at(&cl, ct, nest_id(id, ki), depth + 1, out);
+            }
+            _ => {}
+        }
+    }
+}
+
 /// A `vfx` track at time `t`: each key's effect is an og.Vfx the run owns
 /// (with its voices) while `t` is inside it. Playback past a key starts
 /// it; a start or a seek into one joins it at `t`, its startTick that many

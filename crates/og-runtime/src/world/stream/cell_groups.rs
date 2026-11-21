@@ -116,6 +116,26 @@ impl Streams {
         })
     }
 
+    /// The groups scene `scene` (an asset id) declares, by name.
+    pub(crate) fn names_of_scene(&self, scene: &str) -> Vec<String> {
+        self.groups
+            .iter()
+            .filter(|g| og_bundle::runtime::asset_id(&g.desc.scene) == scene)
+            .map(|g| g.desc.name.clone())
+            .collect()
+    }
+
+    /// Whether group `name` is on its way to being so: its pack is being
+    /// read, or is resident with its assets still being put in place.
+    pub(crate) fn arriving(&self, name: &str) -> bool {
+        self.find(name).is_some_and(|i| {
+            matches!(
+                self.groups[i].state,
+                super::State::Loading | super::State::Resident
+            )
+        })
+    }
+
     /// Whether a tick is held now for a cell's files.
     pub(crate) fn holding(&self) -> bool {
         self.holds.now.is_some()

@@ -27,7 +27,7 @@ module timeline {
       tunable true
     }
     field loop bool "Start over at the end; otherwise stop playing there, hand the camera back and send og.TimelineEnded."
-    field preroll bool "Prepare without showing: while stopped and holding nothing, the timeline is not evaluated; the entity's og.VideoPlayer holds the frame its own video track starts with, paused, and the engine modules it needs are fetched. Playing or seeking evaluates it as always. og.flow sets it on a warming deck."
+    field preroll bool "Prepare without showing: while stopped and holding nothing, the timeline is not evaluated; the entity's og.VideoPlayer holds the frame its own video track starts with, paused, its scene tracks' scenes are loaded, and the engine modules it needs are fetched. Playing or seeking evaluates it as always."
   }
 
   event TimelineStarted {
@@ -55,7 +55,7 @@ module timeline {
 
   struct TimelineTrackInfo {
     doc "One track of a loaded timeline."
-    field kind String "camera, transform, animation, audio, music, caption, event, transition, marker, property, light, visibility, post, blendshape, material, timeline, shot, vfx, video or hotspot."
+    field kind String "camera, transform, animation, audio, music, caption, event, transition, marker, property, light, visibility, post, blendshape, material, timeline, shot, vfx, video, hotspot or scene."
     field target String "The entity a transform, animation, property, light, visibility, blendshape or material track drives, the path a rail rides, the entity a camera follows; empty otherwise."
     field keys u32 "Its keys."
   }

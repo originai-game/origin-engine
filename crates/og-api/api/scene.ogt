@@ -29,9 +29,10 @@ module scene {
   }
 
   struct ScenePreload {
-    doc "How far a scene's streaming groups have arrived (og.scene.progress). Presentation, for a loading screen: never decide a tick's outcome on it in a networked game."
+    doc "How far a scene's streaming groups have arrived and whether it is prepared (og.scene.progress). Presentation, for a loading screen: never decide a tick's outcome on it in a networked game."
     field scene String "The scene's asset id."
     field ready bool "Every group it declares is resident (true for a scene without groups)."
+    field prepared bool "Placed now, the scene is drawn whole: every group is resident and, after og.scene.preload, everything it spawns with is loaded (its models and their textures in the renderer, its sub-scenes and prefabs) with no pipeline of it still compiling. False for a scene og.scene.preload was not asked for."
     field fraction f32 "The bytes received over the bytes of its groups' packs, 0 to 1 (1 without groups)." {
       min 0
       max 1
@@ -48,7 +49,7 @@ module scene {
   }
 
   fn preload {
-    doc "Load a scene and ask for every streaming group it declares (og.stream.request) until og.scene.release, so its packs are fetched while the current scene plays. Calling it again does nothing more. Systems may call it."
+    doc "Load a scene and what it spawns with (its models, their textures and pipelines, its sub-scenes and prefabs) without placing it, and ask for every streaming group it declares (og.stream.request) until og.scene.release, so it is fetched and prepared while the current scene plays and is drawn whole the frame it is placed. Calling it again does nothing more. Systems may call it."
     guide "loading §12"
     aliases "preload level, load the next scene in the background, async scene load, Unity LoadSceneAsync, Godot ResourceLoader.load_threaded_request"
     param world World "The world."
@@ -57,7 +58,7 @@ module scene {
   }
 
   fn progress {
-    doc "How far the scene's streaming groups have arrived: answered at once from what the host has received, for a loading screen's bar. Natively a group is read at the tick boundary it is admitted, so it goes from 0 to 1."
+    doc "How far the scene's streaming groups have arrived and whether it is prepared: answered at once from what the host has received, for a loading screen's bar. Natively a group is read at the tick boundary it is admitted, so it goes from 0 to 1."
     guide "loading §12"
     param world World "The world."
     param scene String "A GameDesc.scenes name or the scene's asset id."

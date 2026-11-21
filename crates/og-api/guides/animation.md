@@ -442,6 +442,7 @@ loads it. An og.Timeline component plays it on its entity.
 | `vfx` | `effect "<vfx>"` (a composed effect, `type vfx`), `at "<entity>"` (played as its child; none: in the world), `position` (offset), `scale`, `seed`: from its key the effect plays its length (a looping one until the timeline stops) at the world's tick; a seek into it joins it there without the events, shakes and sounds already passed; a seek out of it, a stop and the end take it |
 | `video ["<entity>"]` | `video` (a `type video` asset), `from` (seconds into it, 0) and `speed` (0 to 4, 1): from its key until the next, the og.VideoPlayer of the entity (without a name: the og.Timeline's own) plays that video at `from + (t − key) · speed`, paused while the timeline is; loading the timeline loads its videos |
 | `hotspot` | `id` (1 to 63 bytes) and `rect x y width height` (fractions of the video frame from its top left), or `off true`: from its key the hotspot covers the rect, moving linearly to the same id's next key and held after its last until a key `off`. Nothing draws it: og.flow offers a choice tagged `#hotspot:<id>` there (`flow §3`) |
+| `scene` | `scene "<scene>"` (a `type scene` asset) or `scene none`: from its key until the next, that scene is in the world, its entities under a root that is a child of the og.Timeline's entity |
 
 - The cook checks every field against the engine's records (a field the
   record lacks, one a timeline cannot drive, a value of the wrong shape),
@@ -464,10 +465,33 @@ loads it. An og.Timeline component plays it on its entity.
   decoder already has it. Set `preroll` on the og.Timeline while it is
   stopped, some ticks before you play it: nothing of it is shown, heard or
   taken (no camera, caption, sound or event), the entity's og.VideoPlayer
-  holds the frame its own video track starts with, and the engine modules
-  it needs are fetched. Then play it; `preroll` does nothing to a timeline
+  holds the frame its own video track starts with, the scenes its scene
+  tracks name are loaded, and the engine modules it needs are fetched.
+  Then play it; `preroll` does nothing to a timeline
   that plays, is paused or was sought. og.flow pre-rolls the segments a
   choice may lead to this way (`flow` §6).
+- A `scene` track is how a cutscene, a level or a minigame brings its
+  own world: the scene is placed when the timeline's time enters its key
+  and goes when it leaves it (the next key, `scene none`, a seek out) or
+  the timeline stops. A seek inside a key keeps the scene that is there,
+  with whatever the game did to it; og.timeline.stop then play places it
+  anew. A timeline that ends keeps its last scene, as footage holds its
+  last frame, until it is stopped or its entity goes. Move the
+  og.Timeline's entity to move the scene. Entity names are unique in the
+  world, so two timelines cannot have the same scene in at once.
+- The cut happens between ticks: the tick whose time reaches the key
+  decides, and the next tick starts with the old scene gone and the new
+  one in place, on every host and in a replay, so no frame shows neither
+  or both. The decision is saved with the world.
+- The scenes a timeline names are loaded with what they spawn with (their
+  models, textures and pipelines, their sub-scenes and prefabs) from the
+  tick it plays or enters pre-roll, as og.scene.preload does
+  (`loading` §12), and never placed before their key: a hidden scene
+  would still be seen by physics and the game's systems. Give a timeline
+  `preroll` a second or two before its cut and the cut costs only the
+  spawn. If a scene is still being read or prepared at its cut, the clock
+  holds and the world before the cut stays on screen until it is, as
+  og.VideoPlayer.wait holds it for footage; no tick is lost.
 - Loading a timeline (og.load.timeline, outside a system) grants
   og.timeline the records its tracks write. Values it wrote stay when it
   stops; the camera, its depth of field and the materials go back. A

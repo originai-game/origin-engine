@@ -15,14 +15,19 @@
 //! id resolves as the spawn resolves it ([`Assets::source`] from the
 //! placing scene's bundle).
 //!
-//! One walk ([`walk`]) answers both questions:
+//! One walk ([`walk`]) answers the questions asked of it:
 //!
 //! - [`Assets::closure_fetching`]: whether a file of it is still on its
 //!   way (the hold gate's question, `crate::world::stream::cells::waiting`);
 //! - [`ready`]: whether all of it is decoded, prepared, shown and done
-//!   fading (`StreamStatus.ready`'s, `crate::world::stream::cell_groups`).
+//!   fading (`StreamStatus.ready`'s, `crate::world::stream::cell_groups`);
+//! - [`prepared`]: whether a scene not in the world yet would be drawn
+//!   whole the frame it is placed (`ScenePreload.prepared`'s), after
+//!   [`load`] loaded it ahead (og.scene.preload, a timeline's `scene`
+//!   track: `crate::world::scenes`).
 
-use super::{Assets, LoadedScene, Payload, handle};
+use super::{Assets, LoadedScene, Payload, Status, handle};
+use crate::engine::Engine;
 use crate::present::extract::RenderState;
 use og_bundle::runtime::SceneDesc;
 use std::collections::BTreeSet;
@@ -209,4 +214,153 @@ pub(crate) fn ready(a: &Assets, rs: &RenderState, scene: &LoadedScene, now: f64)
         }
         Part::Waiting { .. } => false,
     })
+}
+
+/// What [`prepared`] finds of a scene not in the world yet.
+#[derive(Clone, Debug, PartialEq)]
+pub(crate) enum Prepared {
+    /// Placed now, it is drawn whole.
+    Yes,
+    /// Work on it is under way and ends by itself: a file fetched, a
+    /// streaming group read or put in place of its stand-ins, textures
+    /// prepared, a pipeline compiled.
+    Busy,
+    /// It is not, and nothing under way changes that (why).
+    No(String),
+}
+
+/// Loads what the closure of the scene at load index `root` spawns with,
+/// as its spawn would and in its order: each model (its meshes, materials
+/// and textures join the renderer, and its pipelines start on the compile
+/// workers without a frame drawing it, `og_render::SceneObjects::prepare`),
+/// each nested scene and prefab, and theirs in turn. Nothing spawns.
+///
+/// Only what the boot bundle holds is loaded: its files are on every host
+/// when this is called, so the asset handles made here are the same on
+/// every host. A runtime bundle's files are asked for instead (the web
+/// reads them on demand) and load when the scene is placed, at a tick
+/// every host holds for them. Answers the loads refused (a missing or
+/// broken file), which placing the scene reports too.
+pub(crate) fn load(eng: &Engine, root: usize) -> Vec<String> {
+    let mut failed = Vec::new();
+    let mut tried = BTreeSet::new();
+    loop {
+        let (models, scenes) = {
+            let a = eng.assets.borrow();
+            let Some(Payload::Scene(scene)) = a.entries.get(root).map(|e| &e.payload) else {
+                return failed;
+            };
+            // Asking starts the fetch of every file still on its way.
+            a.closure_fetching(scene);
+            let boot = |owner: usize, id: &str| a.source(id, Some(owner)).ok() == a.default_bundle;
+            let (mut models, mut scenes) = (Vec::new(), Vec::new());
+            walk(&a, scene, |part| {
+                match part {
+                    Part::Scene(_) => {}
+                    Part::Model { owner, id } => {
+                        if boot(owner, id) && a.index_of_kind("gltf", id, Some(owner)).is_none() {
+                            models.push((owner, id.to_string()));
+                        }
+                    }
+                    Part::Waiting { owner, id } => {
+                        if boot(owner, id) {
+                            scenes.push((owner, id.to_string()));
+                        }
+                    }
+                }
+                true
+            });
+            (models, scenes)
+        };
+        // A nested scene decoded now names models of its own: walk again.
+        let mut again = false;
+        for (owner, id) in scenes {
+            if !tried.insert(("scene", owner, id.clone())) {
+                continue;
+            }
+            let loaded = super::load_scene_from(eng, &id, Some(owner));
+            let status = loaded.map(|i| eng.assets.borrow().entries[i].status.clone());
+            match status {
+                Ok(Status::Failed(e)) | Err(e) => failed.push(format!("{id}: {e}")),
+                Ok(_) => again = true,
+            }
+        }
+        for (owner, id) in models {
+            if !tried.insert(("gltf", owner, id.clone())) {
+                continue;
+            }
+            match super::load_gltf_from(eng, &id, Some(owner)) {
+                Ok(i) => {
+                    // A streamed model's pipelines started as it decoded.
+                    if eng.assets.borrow().group_from(&id, Some(owner)).is_some() {
+                        continue;
+                    }
+                    let mut rs = eng.render.borrow_mut();
+                    let RenderState { models, scene, .. } = &mut *rs;
+                    if let Some(parts) = models.get(&handle(i)) {
+                        let pairs = parts.iter().map(|&(mesh, material, _)| (mesh, material));
+                        scene.objects.prepare.extend(pairs);
+                    }
+                }
+                Err(e) => failed.push(format!("{id}: {e}")),
+            }
+        }
+        if !again {
+            return failed;
+        }
+    }
+}
+
+/// Whether `scene`, not in the world yet, would be drawn whole the frame
+/// it is placed, after [`load`]: every scene and prefab of its closure
+/// decoded, every model loaded with its textures in and its streaming
+/// group in place of its stand-ins, and no pipeline started ahead of it
+/// still to be made. A runtime bundle's part is prepared once its file has
+/// arrived (it loads when the scene is placed). Presentation only, never
+/// what a tick does.
+pub(crate) fn prepared(a: &Assets, rs: &RenderState, scene: &LoadedScene) -> Prepared {
+    // Pipelines: the pairs loaded ahead stay listed until a frame finds
+    // them made (`crate::engine::tick`). No frame is drawn where only
+    // captures are, and a capture waits for what it draws: none waits there.
+    let compiling = !rs.scene.objects.prepare.is_empty() && !rs.display.capture_only;
+    let mut busy = a.closure_fetching(scene) || (rs.backend.is_some() && compiling);
+    let mut no = None;
+    let boot = |owner: usize, id: &str| a.source(id, Some(owner)).ok() == a.default_bundle;
+    walk(a, scene, |part| {
+        match part {
+            Part::Scene(_) => {}
+            Part::Model { owner, id } => {
+                let group = a
+                    .group_from(id, Some(owner))
+                    .filter(|g| !a.stream.upgraded(g));
+                if let Some(g) = &group {
+                    match a.stream.arriving(g) {
+                        true => busy = true,
+                        false => no = Some(format!("streaming group '{g}' is not loaded")),
+                    }
+                }
+                match a.index_of_kind("gltf", id, Some(owner)) {
+                    // Hidden for its group's maps (above), or for textures
+                    // being prepared for this device.
+                    Some(i) => {
+                        busy |=
+                            group.is_none() && rs.decoded.hidden_models.contains_key(&handle(i));
+                    }
+                    None if boot(owner, id) => no = Some(format!("{id} is not loaded")),
+                    None => {}
+                }
+            }
+            Part::Waiting { owner, id } => {
+                if boot(owner, id) {
+                    no = Some(format!("{id} is not loaded"));
+                }
+            }
+        }
+        no.is_none()
+    });
+    match (no, busy) {
+        (Some(why), _) => Prepared::No(why),
+        (None, true) => Prepared::Busy,
+        (None, false) => Prepared::Yes,
+    }
 }

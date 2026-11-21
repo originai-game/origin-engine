@@ -137,8 +137,14 @@ pub(crate) fn frame_value(id: u32, elapsed_ms: f64, interval_ms: Option<f64>) ->
     if let Err(e) = pump().and_then(|()| tick_boundary(&eng)) {
         return refused(e);
     }
+    // A scene a timeline's scene track places as the next tick starts
+    // holds the clock as that footage does while it is still being
+    // prepared (asked after the boundary, which starts its groups' reads):
+    // the world before the cut stays on screen, and the frames drawn
+    // meanwhile make its pipelines.
+    let scene_waits = crate::bind::timeline::waiting(&eng);
     // No tick before GameDesc.start has run, and no time owed for the wait.
-    if start_waiting(&eng) {
+    if start_waiting(&eng) || scene_waits {
         eng.state.borrow_mut().accumulator_ms = before;
         due = 0;
     }
@@ -308,9 +314,10 @@ pub(crate) fn frame_value(id: u32, elapsed_ms: f64, interval_ms: Option<f64>) ->
         answer["copy"] = json!(c);
     }
     // `buffering`: a playing video player with `wait` could not show its
-    // frame, so the clock holds (no tick runs) until it can: the web shell
+    // frame, or a scene a timeline cuts to is still being prepared, so the
+    // clock holds (no tick runs) until it can: the web shell
     // tells its page (ShellOptions.onBuffering) to show it is loading.
-    if eng.render.try_borrow().is_ok_and(|rs| rs.video_stalled) {
+    if scene_waits || eng.render.try_borrow().is_ok_and(|rs| rs.video_stalled) {
         answer["buffering"] = json!(true);
     }
     if let Some(image) = cursor_image {
@@ -457,11 +464,16 @@ fn render(
             {
                 cull_asked = b.cull_asked();
             }
-            // The decoded models' pairs were started by this frame.
-            rs.scene.objects.prepare.clear();
             passes = b.pass_timings();
             gpu = b.gpu_timings(false);
             frame = b.frame_stats();
+            // The decoded models' pairs were started by this frame, and
+            // stay asked for until a frame finds their pipelines made: a
+            // scene loaded ahead is prepared once the list is empty
+            // (world/assets/closure.rs `prepared`).
+            if !frame.compiling_ahead {
+                rs.scene.objects.prepare.clear();
+            }
             crate::author::perf::stages(eng.id, &**b);
             // The fades held for pipelines this frame made ahead.
             rs.reveal.drawn(frame.compiling_ahead);

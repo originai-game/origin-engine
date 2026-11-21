@@ -201,3 +201,55 @@ fn a_shot_track_cooks_to_its_pinned_text_and_a_key_without_a_camera_is_refused()
     let e = bad("  key 0 {\n    camera \"wide\"\n    blend -1\n  }\n");
     assert!(e.contains("blend is 0"), "{e}");
 }
+
+/// A scene track's scenes must be in the bundle, and a timeline needs the
+/// engine modules of what its tracks name (the manifest's `modules`): its
+/// scenes', also through a timeline it nests.
+///
+/// Ways this could fail: a timeline naming a scene that was never cooked
+/// cooks and places nothing when it plays; `scene none` is looked up as an
+/// asset; a timeline's pre-roll asks for no module, so the first tick of
+/// its scene loads physics where it stands.
+#[test]
+fn a_scene_track_names_cooked_scenes_and_the_timeline_needs_their_modules() {
+    let head = "type timeline\nversion 1\n---\nduration 4\n";
+    let level = format!(
+        "{head}track scene {{\n  key 0 {{\n    scene \"scenes/arena.ogt\"\n  }}\n  key 3 {{\n    scene none\n  }}\n}}\n"
+    );
+    let files = [
+        (
+            "scenes/arena.ogt",
+            "type scene\nversion 1\n---\nname \"Arena\"\nentity \"ball\" {\n  RigidBody {\n    mass 2\n  }\n}\n",
+        ),
+        ("timelines/level.ogt", level.as_str()),
+        (
+            "timelines/outer.ogt",
+            &format!(
+                "{head}track timeline {{\n  key 0 {{\n    play \"timelines/level.ogt\"\n  }}\n}}\n"
+            ),
+        ),
+        (
+            "timelines/plain.ogt",
+            &format!("{head}track marker {{\n  key 1 {{\n    name \"a\"\n  }}\n}}\n"),
+        ),
+    ];
+    let root = project("scenes", &files);
+    let report = cook_project(&root, &CookOptions::default()).unwrap();
+    assert!(report.ok(), "{:?}", report.errors());
+    let bundle = og_cook::runtime::Bundle::open(&root.join("cooked")).unwrap();
+    let modules = |id: &str| bundle.asset(id).unwrap().modules.clone();
+    assert_eq!(modules("timelines/level.ogt"), ["physics"]);
+    assert_eq!(modules("timelines/outer.ogt"), ["physics"]);
+    assert!(modules("timelines/plain.ogt").is_empty());
+
+    let root = project(
+        "scenes-missing",
+        &[(
+            "timelines/t.ogt",
+            &format!("{head}track scene {{\n  key 0 {{\n    scene \"scenes/gone.ogt\"\n  }}\n}}\n"),
+        )],
+    );
+    let report = cook_project(&root, &CookOptions::default()).unwrap();
+    let e = format!("{:?}", report.errors());
+    assert!(!report.ok() && e.contains("scene 'scenes/gone.ogt'"), "{e}");
+}

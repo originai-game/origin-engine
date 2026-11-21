@@ -313,8 +313,9 @@ pub struct SceneObjects {
     /// draw with: a model decoded now, before any entity draws it. The
     /// frame starts their pipelines (lit, prepass and shadow, whole and
     /// fading in) on the compile workers without drawing them, so the
-    /// frame that first draws one waits for none. The host clears it once
-    /// a frame has been drawn with it.
+    /// frame that first draws one waits for none. The host keeps them
+    /// listed until a frame's stats say none of them is still being made
+    /// ([`crate::FrameStats::compiling_ahead`]), then clears it.
     pub prepare: Vec<(MeshHandle, MaterialHandle)>,
     /// Three.js layer masks of the instances, by index in `instances`
     /// (bit `n` set: on layer `n`): an index past the end is on layer 0

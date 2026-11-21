@@ -6,7 +6,7 @@ Module [`scene`](../scene.md) · [index](../index.md)
 
 ### `og.scene.progress`
 
-How far the scene's streaming groups have arrived: answered at once from what the host has received, for a loading screen's bar. Natively a group is read at the tick boundary it is admitted, so it goes from 0 to 1.
+How far the scene's streaming groups have arrived and whether it is prepared: answered at once from what the host has received, for a loading screen's bar. Natively a group is read at the tick boundary it is admitted, so it goes from 0 to 1.
 
 See `loading §12`.
 
@@ -25,7 +25,7 @@ Binding symbol `og_scene_progress` · publish builds: kept
 
 ```ogt
 fn progress {
-  doc "How far the scene's streaming groups have arrived: answered at once from what the host has received, for a loading screen's bar. Natively a group is read at the tick boundary it is admitted, so it goes from 0 to 1."
+  doc "How far the scene's streaming groups have arrived and whether it is prepared: answered at once from what the host has received, for a loading screen's bar. Natively a group is read at the tick boundary it is admitted, so it goes from 0 to 1."
   guide "loading §12"
   param world World "The world."
   param scene String "A GameDesc.scenes name or the scene's asset id."
@@ -33,4 +33,4 @@ fn progress {
 }
 ```
 
-<sub>Module `scene` line 59</sub>
+<sub>Module `scene` line 60</sub>

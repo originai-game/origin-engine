@@ -29920,7 +29920,7 @@ export interface Timeline {
    */
   loop: boolean;
   /**
-   * Prepare without showing: while stopped and holding nothing, the timeline is not evaluated; the entity's og.VideoPlayer holds the frame its own video track starts with, paused, and the engine modules it needs are fetched. Playing or seeking evaluates it as always. og.flow sets it on a warming deck.
+   * Prepare without showing: while stopped and holding nothing, the timeline is not evaluated; the entity's og.VideoPlayer holds the frame its own video track starts with, paused, its scene tracks' scenes are loaded, and the engine modules it needs are fetched. Playing or seeking evaluates it as always.
    */
   preroll: boolean;
 }
@@ -29972,7 +29972,7 @@ export interface TimelineEnded {
 /** One track of a loaded timeline. */
 export interface TimelineTrackInfo {
   /**
-   * camera, transform, animation, audio, music, caption, event, transition, marker, property, light, visibility, post, blendshape, material, timeline, shot, vfx, video or hotspot.
+   * camera, transform, animation, audio, music, caption, event, transition, marker, property, light, visibility, post, blendshape, material, timeline, shot, vfx, video, hotspot or scene.
    */
   readonly kind: string;
   /**
@@ -33180,13 +33180,17 @@ export interface SceneChanged {
 }
 
 /**
- * How far a scene's streaming groups have arrived (og.scene.progress). Presentation, for a loading screen: never decide a tick's outcome on it in a networked game.
+ * How far a scene's streaming groups have arrived and whether it is prepared (og.scene.progress). Presentation, for a loading screen: never decide a tick's outcome on it in a networked game.
  */
 export interface ScenePreload {
   /** The scene's asset id. */
   readonly scene: string;
   /** Every group it declares is resident (true for a scene without groups). */
   readonly ready: boolean;
+  /**
+   * Placed now, the scene is drawn whole: every group is resident and, after og.scene.preload, everything it spawns with is loaded (its models and their textures in the renderer, its sub-scenes and prefabs) with no pipeline of it still compiling. False for a scene og.scene.preload was not asked for.
+   */
+  readonly prepared: boolean;
   /**
    * The bytes received over the bytes of its groups' packs, 0 to 1 (1 without groups).
    *
@@ -38198,7 +38202,7 @@ export declare namespace og {
    */
   namespace scene {
     /**
-     * Load a scene and ask for every streaming group it declares (og.stream.request) until og.scene.release, so its packs are fetched while the current scene plays. Calling it again does nothing more. Systems may call it.
+     * Load a scene and what it spawns with (its models, their textures and pipelines, its sub-scenes and prefabs) without placing it, and ask for every streaming group it declares (og.stream.request) until og.scene.release, so it is fetched and prepared while the current scene plays and is drawn whole the frame it is placed. Calling it again does nothing more. Systems may call it.
      * See `loading §12`.
      *
      * @param world The world.
@@ -38207,7 +38211,7 @@ export declare namespace og {
      */
     function preload(world: World, scene: string): Result<Asset>;
     /**
-     * How far the scene's streaming groups have arrived: answered at once from what the host has received, for a loading screen's bar. Natively a group is read at the tick boundary it is admitted, so it goes from 0 to 1.
+     * How far the scene's streaming groups have arrived and whether it is prepared: answered at once from what the host has received, for a loading screen's bar. Natively a group is read at the tick boundary it is admitted, so it goes from 0 to 1.
      * See `loading §12`.
      *
      * @param world The world.

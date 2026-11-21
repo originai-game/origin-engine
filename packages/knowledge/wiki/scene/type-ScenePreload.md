@@ -6,12 +6,13 @@ Module [`scene`](../scene.md) · [index](../index.md)
 
 ### `ScenePreload` (struct)
 
-How far a scene's streaming groups have arrived (og.scene.progress). Presentation, for a loading screen: never decide a tick's outcome on it in a networked game.
+How far a scene's streaming groups have arrived and whether it is prepared (og.scene.progress). Presentation, for a loading screen: never decide a tick's outcome on it in a networked game.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
 | `scene` | `string` | `""` | — | — | — | The scene's asset id. |
 | `ready` | `boolean` | `false` | — | — | — | Every group it declares is resident (true for a scene without groups). |
+| `prepared` | `boolean` | `false` | — | — | — | Placed now, the scene is drawn whole: every group is resident and, after og.scene.preload, everything it spawns with is loaded (its models and their textures in the renderer, its sub-scenes and prefabs) with no pipeline of it still compiling. False for a scene og.scene.preload was not asked for. |
 | `fraction` | `number` | `0` | 0 … 1 | — | — | The bytes received over the bytes of its groups' packs, 0 to 1 (1 without groups). |
 | `received` | `number` | `0` | — | `bytes` | — | Bytes of its packs received so far. |
 | `bytes` | `number` | `0` | — | `bytes` | — | Bytes of its packs in all. |
@@ -21,9 +22,10 @@ How far a scene's streaming groups have arrived (og.scene.progress). Presentatio
 
 ```ogt
 struct ScenePreload {
-  doc "How far a scene's streaming groups have arrived (og.scene.progress). Presentation, for a loading screen: never decide a tick's outcome on it in a networked game."
+  doc "How far a scene's streaming groups have arrived and whether it is prepared (og.scene.progress). Presentation, for a loading screen: never decide a tick's outcome on it in a networked game."
   field scene String "The scene's asset id."
   field ready bool "Every group it declares is resident (true for a scene without groups)."
+  field prepared bool "Placed now, the scene is drawn whole: every group is resident and, after og.scene.preload, everything it spawns with is loaded (its models and their textures in the renderer, its sub-scenes and prefabs) with no pipeline of it still compiling. False for a scene og.scene.preload was not asked for."
   field fraction f32 "The bytes received over the bytes of its groups' packs, 0 to 1 (1 without groups)." {
     min 0
     max 1

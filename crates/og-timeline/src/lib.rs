@@ -8,7 +8,8 @@
 //!   and searched for the point nearest another.
 //! - [`Timeline`]: the asset (`type timeline` text), parsed and written back
 //!   canonically; its tracks (camera, transform, animation, audio, music,
-//!   caption, event, transition, marker) hold keys at times.
+//!   caption, event, transition, marker, scene and the rest) hold keys at
+//!   times.
 //! - [`eval`]: every value a track sets as a function of the time alone, so
 //!   seeking is exact.
 //! - [`captions`]: `.srt` cues and word-timestamp `.json` (the cook's import).

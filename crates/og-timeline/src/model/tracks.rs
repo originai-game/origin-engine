@@ -55,6 +55,7 @@ pub(super) fn track(e: &Entry, read: &mut Read<'_>) -> Result<Track, String> {
         "vfx" => Track::Vfx(effects(block)?),
         "video" => Track::Video(video(block, target)?),
         "hotspot" => Track::Hotspot(hotspots(block)?),
+        "scene" => Track::Scene(scenes(block)?),
         k => match FieldsKind::from_name(k) {
             Some(kind) => Track::Fields(fields(block, kind, target)?),
             None => {
@@ -867,6 +868,36 @@ fn video(block: &Block, entity: String) -> Result<VideoTrack, String> {
         entity,
         keys: sorted(out, |k| k.time),
     })
+}
+
+fn scenes(block: &Block) -> Result<Vec<SceneKey>, String> {
+    let mut out = Vec::new();
+    for e in only_keys(block, "scene")? {
+        let time = key_time(e)?;
+        let mut scene = None;
+        for f in key_block(e)? {
+            no_block(f)?;
+            match (f.key.as_str(), f.values.as_slice()) {
+                ("scene", [Value::String(s)]) if !s.is_empty() => scene = Some(s.clone()),
+                ("scene", [Value::Word(w)]) if w == "none" => scene = Some(String::new()),
+                ("scene", _) => {
+                    return Err(at(
+                        f,
+                        "`scene` takes a scene's asset id, or none: `scene \"scenes/kitchen.ogt\"`",
+                    ));
+                }
+                _ => return Err(unknown(f, "scene key entry", "scene")),
+            }
+        }
+        let scene = scene.ok_or_else(|| {
+            at(
+                e,
+                "a scene key names its scene, or none: `scene \"scenes/kitchen.ogt\"`",
+            )
+        })?;
+        out.push(SceneKey { time, scene });
+    }
+    Ok(sorted(out, |k| k.time))
 }
 
 fn hotspots(block: &Block) -> Result<Vec<HotspotKey>, String> {

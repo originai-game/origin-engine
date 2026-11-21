@@ -187,6 +187,7 @@ fn track_end(t: &Track) -> f32 {
         Track::Shot(c) => max(&mut c.iter().map(|k| k.time)),
         Track::Video(c) => max(&mut c.keys.iter().map(|k| k.time)),
         Track::Hotspot(c) => max(&mut c.iter().map(|k| k.time)),
+        Track::Scene(c) => max(&mut c.iter().map(|k| k.time)),
     }
 }
 
@@ -478,6 +479,17 @@ fn write_track(tr: &Track) -> Entry {
                     }
                     kb.push(e);
                 }
+                b.push(key_entry(k.time, kb));
+            }
+        }
+        Track::Scene(ks) => {
+            for k in ks {
+                let scene = match k.scene.is_empty() {
+                    true => Value::Word("none".into()),
+                    false => Value::String(k.scene.clone()),
+                };
+                let mut kb = Block::new();
+                kb.push(Entry::new("scene").with(scene));
                 b.push(key_entry(k.time, kb));
             }
         }
@@ -839,5 +851,50 @@ track vfx {
         );
         let e = Timeline::parse("type timeline\nversion 1\n---\nduration 1\ntrack visibility \"a\" {\n  key 0 {\n    visible 2\n  }\n}\n", &mut no).unwrap_err();
         assert!(e.contains("visible takes true or false"), "{e}");
+    }
+    /// A scene track's keys are sorted, `scene none` is a key with no
+    /// scene, the text reads back the same, and what a key may not hold is
+    /// refused naming the fix.
+    #[test]
+    fn scene_tracks_round_trip() {
+        let mut no = |_: &str| -> Result<String, String> { Err("none".into()) };
+        let head = "type timeline\nversion 1\n---\nduration 6\n";
+        let text = format!(
+            "{head}track scene {{\n  key 4 {{\n    scene none\n  }}\n  key 1 {{\n    scene \"scenes/kitchen.ogt\"\n  }}\n}}\n"
+        );
+        let t = Timeline::parse(&text, &mut no).unwrap();
+        let Track::Scene(keys) = &t.tracks[0] else {
+            panic!()
+        };
+        assert_eq!(
+            keys.iter()
+                .map(|k| (k.time, k.scene.as_str()))
+                .collect::<Vec<_>>(),
+            [(1.0, "scenes/kitchen.ogt"), (4.0, "")]
+        );
+        assert_eq!(t.tracks[0].kind(), "scene");
+        assert_eq!(Timeline::parse(&t.to_text(), &mut no).unwrap(), t);
+        // Before the first key and from `none` on, no scene is in the world.
+        let at = |s: f32| crate::eval::scene_at(keys, s);
+        assert_eq!(
+            [at(0.5), at(1.0), at(3.9), at(4.0), at(6.0)],
+            [None, Some(0), Some(0), None, None]
+        );
+        for (body, want) in [
+            ("key 0 {\n  }", "names its scene, or none"),
+            ("key 0 {\n    scene \"\"\n  }", "takes a scene's asset id"),
+            ("key 0 {\n    scene off\n  }", "takes a scene's asset id"),
+            (
+                "key 0 {\n    scene \"a.ogt\"\n    at \"x\"\n  }",
+                "unknown scene key entry 'at'",
+            ),
+        ] {
+            let e = Timeline::parse(&format!("{head}track scene {{\n  {body}\n}}\n"), &mut no)
+                .unwrap_err();
+            assert!(e.contains(want), "{body}: {e}");
+        }
+        let e =
+            Timeline::parse(&format!("{head}track scene \"door\" {{\n}}\n"), &mut no).unwrap_err();
+        assert!(e.contains("a scene track names no entity"), "{e}");
     }
 }

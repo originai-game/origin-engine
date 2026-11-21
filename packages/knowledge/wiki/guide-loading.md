@@ -547,6 +547,12 @@ og.scene.change(world, "level2");
   them requested until og.scene.release. Request groups a few seconds
   before they are needed: a pack of a few megabytes arrives in that on
   a normal connection.
+- It also loads what the scene spawns with, without placing it: its
+  models and their textures into the renderer, their pipelines started,
+  its sub-scenes and prefabs. og.scene.progress answers `prepared` once
+  all of that is done and every group is in: a scene changed to then is
+  drawn whole in its first frame, with nothing left to compile. `ready`
+  is the groups alone.
 - og.scene.change puts the scene in place as the next tick starts,
   whatever has arrived: the current scene's root and everything under
   it go (the boot scene's own entities for the first change), the new

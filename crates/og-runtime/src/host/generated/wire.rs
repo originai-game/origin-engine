@@ -25416,6 +25416,7 @@ impl ToJson for FlowChart {
 pub struct ScenePreload {
     pub scene: String,
     pub ready: bool,
+    pub prepared: bool,
     pub fraction: f32,
     pub received: f64,
     pub bytes: f64,
@@ -25429,6 +25430,7 @@ impl Default for ScenePreload {
         Self {
             scene: Default::default(),
             ready: Default::default(),
+            prepared: Default::default(),
             fraction: Default::default(),
             received: Default::default(),
             bytes: Default::default(),
@@ -25448,6 +25450,7 @@ impl FromJson for ScenePreload {
         Ok(Self {
             scene: field(o, "scene", d.scene)?,
             ready: field(o, "ready", d.ready)?,
+            prepared: field(o, "prepared", d.prepared)?,
             fraction: field(o, "fraction", d.fraction)?,
             received: field(o, "received", d.received)?,
             bytes: field(o, "bytes", d.bytes)?,
@@ -25463,6 +25466,7 @@ impl ToJson for ScenePreload {
         let mut o = Map::new();
         o.insert("scene".into(), self.scene.to_json());
         o.insert("ready".into(), self.ready.to_json());
+        o.insert("prepared".into(), self.prepared.to_json());
         o.insert("fraction".into(), self.fraction.to_json());
         o.insert("received".into(), self.received.to_json());
         o.insert("bytes".into(), self.bytes.to_json());

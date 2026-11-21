@@ -16503,7 +16503,7 @@
       "functions": [
         {
           "name": "preload",
-          "doc": "Load a scene and ask for every streaming group it declares (og.stream.request) until og.scene.release, so its packs are fetched while the current scene plays. Calling it again does nothing more. Systems may call it.\nSee `loading §12`.",
+          "doc": "Load a scene and what it spawns with (its models, their textures and pipelines, its sub-scenes and prefabs) without placing it, and ask for every streaming group it declares (og.stream.request) until og.scene.release, so it is fetched and prepared while the current scene plays and is drawn whole the frame it is placed. Calling it again does nothing more. Systems may call it.\nSee `loading §12`.",
           "params": [
             {
               "name": "world",
@@ -16524,7 +16524,7 @@
         },
         {
           "name": "progress",
-          "doc": "How far the scene's streaming groups have arrived: answered at once from what the host has received, for a loading screen's bar. Natively a group is read at the tick boundary it is admitted, so it goes from 0 to 1.\nSee `loading §12`.",
+          "doc": "How far the scene's streaming groups have arrived and whether it is prepared: answered at once from what the host has received, for a loading screen's bar. Natively a group is read at the tick boundary it is admitted, so it goes from 0 to 1.\nSee `loading §12`.",
           "params": [
             {
               "name": "world",
@@ -52431,7 +52431,7 @@
         },
         "preroll": {
           "type": "boolean",
-          "description": "Prepare without showing: while stopped and holding nothing, the timeline is not evaluated; the entity's og.VideoPlayer holds the frame its own video track starts with, paused, and the engine modules it needs are fetched. Playing or seeking evaluates it as always. og.flow sets it on a warming deck.",
+          "description": "Prepare without showing: while stopped and holding nothing, the timeline is not evaluated; the entity's og.VideoPlayer holds the frame its own video track starts with, paused, its scene tracks' scenes are loaded, and the engine modules it needs are fetched. Playing or seeking evaluates it as always.",
           "default": false
         }
       },
@@ -52519,7 +52519,7 @@
       "properties": {
         "kind": {
           "type": "string",
-          "description": "camera, transform, animation, audio, music, caption, event, transition, marker, property, light, visibility, post, blendshape, material, timeline, shot, vfx, video or hotspot."
+          "description": "camera, transform, animation, audio, music, caption, event, transition, marker, property, light, visibility, post, blendshape, material, timeline, shot, vfx, video, hotspot or scene."
         },
         "target": {
           "type": "string",
@@ -56792,7 +56792,7 @@
     "ScenePreload": {
       "x-og-kind": "struct",
       "x-og-module": "scene",
-      "description": "How far a scene's streaming groups have arrived (og.scene.progress). Presentation, for a loading screen: never decide a tick's outcome on it in a networked game.",
+      "description": "How far a scene's streaming groups have arrived and whether it is prepared (og.scene.progress). Presentation, for a loading screen: never decide a tick's outcome on it in a networked game.",
       "type": "object",
       "properties": {
         "scene": {
@@ -56802,6 +56802,10 @@
         "ready": {
           "type": "boolean",
           "description": "Every group it declares is resident (true for a scene without groups)."
+        },
+        "prepared": {
+          "type": "boolean",
+          "description": "Placed now, the scene is drawn whole: every group is resident and, after og.scene.preload, everything it spawns with is loaded (its models and their textures in the renderer, its sub-scenes and prefabs) with no pipeline of it still compiling. False for a scene og.scene.preload was not asked for."
         },
         "fraction": {
           "type": "number",
@@ -56841,6 +56845,7 @@
       "required": [
         "scene",
         "ready",
+        "prepared",
         "fraction",
         "received",
         "bytes",
