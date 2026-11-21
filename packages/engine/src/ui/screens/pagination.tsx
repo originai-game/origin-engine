@@ -25,7 +25,7 @@ export function Pagination(props: PaginationProps) {
   return (
     <View class={`flex-row items-center text-fg max-w-full p-0 gap-1 disabled:text-fg-subtle`} label={props.label}>
       <Button class={`min-w-11 min-h-11 p-0 rounded-[4.576px] ${packClass("Button", "plate")}`} disabled={props.atStart} onPress={(e) => props.onPrevious?.(e)} label={props.label}>
-        <Icon name="chevronLeft" />
+        <Icon class="size-4" name="chevronLeft" />
       </Button>
       <View class="flex-row flex-wrap items-center shrink justify-center p-0 m-0 gap-1">
         <For each={props.pages}>
@@ -46,7 +46,7 @@ export function Pagination(props: PaginationProps) {
         </For>
       </View>
       <Button class={`min-w-11 min-h-11 p-0 rounded-[4.576px] ${packClass("Button", "plate")}`} disabled={props.atEnd} onPress={(e) => props.onNext?.(e)} label={props.label}>
-        <Icon name="chevronRight" />
+        <Icon class="size-4" name="chevronRight" />
       </Button>
     </View>
   );

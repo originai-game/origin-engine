@@ -58,7 +58,7 @@ export function Carousel(props: CarouselProps) {
       </View>
       <View class="flex-row items-center w-full mt-2 gap-3">
         <View class={`p-0 size-11 shrink-0 items-center justify-center ${packClass("Button", "plate")}`} role="button" label={t("component.carousel.prev")} disabled={props.pages.length < 2} onPress={(e) => props.onPrev?.(e)}>
-          <Icon name="back" />
+          <Icon class="size-4" name="back" />
         </View>
         <View class="relative flex-row items-center grow shrink justify-center gap-1">
           <For each={props.pages} key={(page) => page.id}>

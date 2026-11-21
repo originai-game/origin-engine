@@ -64,7 +64,7 @@ export function Reveal(props: RevealProps) {
               <Show when={(props.state ?? "sealed") === 'revealed'} fallback={
                 <>
                   <View class={`grow shrink basis-0 justify-center items-center w-full gap-2`}>
-                    <Icon name={props.icon || 'bag'} />
+                    <Icon class="size-4" name={props.icon || 'bag'} />
                   </View>
                   <Show when={props.body}>
                     <Text class={`text-caption text-fg-muted self-center max-w-105 text-center m-0`}>

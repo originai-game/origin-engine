@@ -78,7 +78,7 @@ export function DataGrid(props: DataGridProps) {
               }>
                 <View class={`w-full items-center p-6 gap-3`} role="status">
                   <View class={`grow shrink basis-0 bg-[#04060c9e] shadow-[inset_0px_0px_0px_1px_#ffffff1a] justify-center items-center gap-3 size-16 rounded-capsule`}>
-                    <Icon name="bag" />
+                    <Icon class="size-4" name="bag" />
                   </View>
                   <Text class={`font-semibold text-lg text-fg text-center w-full m-0`}>
                     {props.empty || t("component.data-grid.empty")}

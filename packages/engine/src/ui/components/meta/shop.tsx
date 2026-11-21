@@ -121,7 +121,7 @@ export function Shop(props: ShopProps) {
                             <View class="w-full gap-1">
                               <View class={`justify-center items-center w-full text-border-strong bg-[#04060c80] nine-plate-cut gap-2`}>
                                 <View class="absolute opacity-26 inset-0" />
-                                <Icon name={o().icon} />
+                                <Icon class="size-4" name={o().icon} />
                               </View>
                               <Show when={o().featured}>
                                 <Text class={`absolute top-2 text-xs font-bold tracking-[0.14em] uppercase leading-[1.2] whitespace-nowrap text-ellipsis nine-plate-cut py-0.5 px-1 overflow-hidden`}>
@@ -188,7 +188,7 @@ export function Shop(props: ShopProps) {
                           <View class="w-full gap-1">
                             <View class={`justify-center items-center w-full text-border-strong bg-[#04060c80] nine-plate-cut gap-2`}>
                               <View class="absolute opacity-26 inset-0" />
-                              <Icon name={o().icon} />
+                              <Icon class="size-4" name={o().icon} />
                             </View>
                             <Show when={o().featured}>
                               <Text class={`absolute top-2 text-xs font-bold tracking-[0.14em] uppercase leading-[1.2] whitespace-nowrap text-ellipsis nine-plate-cut py-0.5 px-1 overflow-hidden`}>
