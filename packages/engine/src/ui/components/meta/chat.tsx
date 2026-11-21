@@ -9,7 +9,7 @@ export interface ChatProps {
   channel: string;
   /** The shown channel's messages, oldest first: keyed rows of { id, kind, sender, time, text }: kind player, own (the player's) or system; time as the game formats it; text wraps, and a long word breaks. */
   messages: ReadonlyArray<{ id: string; kind: string; sender: string; time: string; text: string }>;
-  /** The message being written, two-way: bind a writable store (bind:draft={$draft}) and the field writes what is typed back to it; the game clears it after a send. */
+  /** The message being written, two-way: value={draft} shows it; the field reports every change through onDraft with the text trimmed to maxLength, and the game clears it after a send. */
   draft: string;
   /** The longest message the game takes, in characters. */
   maxLength: number;
@@ -17,8 +17,10 @@ export interface ChatProps {
   canSend?: boolean;
   /** A line over the field as the game words it (Slow mode: 3 s, You are muted); empty hides it. */
   notice: string;
+  /** The field's text changed (onDraft), trimmed to maxLength. */
+  onDraft?: (e: UiEvent, text: string) => void;
   /** The choosetab event, with the row's key where it comes from a row. */
-  onChoosetab?: (e: UiEvent, key?: string) => void;
+  onChooseTab?: (e: UiEvent, key?: string) => void;
   /** The send event, with the row's key where it comes from a row. */
   onSend?: (e: UiEvent, key?: string) => void;
 }
@@ -28,8 +30,8 @@ export interface ChatProps {
  * lines, the player's own messages and others' with sender and time, long
  * text wrapping and long words breaking) and an input row. The game owns
  * the channels, the messages, moderation and the clock; the panel reports
- * choosetab (a channel's key) and send
- * (the Send button), and writes the draft back to its store.
+ * choosetab (a channel's key), send
+ * (the Send button) and onDraft (the field's text, trimmed to maxLength).
  * The log fills the height it is given and scrolls inside it, newest at
  * the foot.
  */
@@ -42,7 +44,7 @@ export function Chat(props: ChatProps) {
             <View class="flex-row items-center gap-0.5">
               <For each={props.channels}>
                 {(c) => (
-                <View class={`text-fg-muted transition duration-317 min-h-11 rounded-tl-[6.864px] rounded-tr-none rounded-br-[6.864px] rounded-bl-none py-0 px-3 data-selected:text-fg data-selected:bg-linear-to-t data-selected:from-[#38e8ff33] data-selected:to-transparent data-selected:bg-transparent data-selected:shadow-[inset_0px_-2.288px_0px_#38e8ff] hover:bg-none hover:bg-[#7379851d]`} role="tab" selected={c().id === props.channel} label={c().unread > 0 ? t("general.chat.unread", { channel: c().label, count: c().unread }) : c().label} onPress={(e) => props.onChoosetab?.(e, c().id)} data-selected={c().id === props.channel}>
+                <View class={`text-fg-muted transition duration-317 min-h-11 rounded-tl-[6.864px] rounded-tr-none rounded-br-[6.864px] rounded-bl-none py-0 px-3 data-selected:text-fg data-selected:bg-linear-to-t data-selected:from-[#38e8ff33] data-selected:to-transparent data-selected:bg-transparent data-selected:shadow-[inset_0px_-2.288px_0px_#38e8ff] hover:bg-none hover:bg-[#7379851d]`} role="tab" selected={c().id === props.channel} label={c().unread > 0 ? t("general.chat.unread", { channel: c().label, count: c().unread }) : c().label} onPress={(e) => props.onChooseTab?.(e, c().id)} data-selected={c().id === props.channel}>
                   <View class="flex-row items-center gap-1">
                     <Text class="whitespace-nowrap max-w-60 text-ellipsis font-bold overflow-hidden shrink">
                       {c().label}
@@ -105,7 +107,7 @@ export function Chat(props: ChatProps) {
         </Text>
       </Show>
       <View class={`flex-row w-full gap-1`} onAction={{ submit: (e) => props.onSend?.(e) }}>
-        <Input class="grow shrink basis-0 min-h-11" label={t("general.chat.placeholder")} placeholder={t("general.chat.placeholder")} disabled={!props.canSend} />
+        <Input class="grow shrink basis-0 min-h-11" label={t("general.chat.placeholder")} placeholder={t("general.chat.placeholder")} disabled={!props.canSend} value={props.draft} onChange={(e) => props.onDraft?.(e, e.value.slice(0, props.maxLength))} />
         <Button class="text-accent min-h-11 min-w-11" label={t("general.chat.send")} disabled={!props.canSend}>
           <View class="flex-row items-center gap-1">
             <Icon class="size-4 shrink" name="play" />
