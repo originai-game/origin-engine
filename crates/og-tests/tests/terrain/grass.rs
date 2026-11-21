@@ -180,6 +180,119 @@ fn grass_whose_generate_pipelines_arrive_late_draws_no_blade_until_they_do() {
     );
 }
 
+/// A meadow and a scatter placed on the GPU make their pipelines the first
+/// frame they are in the scene, out of the camera's reach, not in the
+/// frame the camera reaches them: a cold driver compiled the grass's for
+/// 1.5 s, the placement's for 0.7 s and the cull's for 0.14 s there, one
+/// 2.4 s frame when a camera jumped into a wood (NVIDIA L4). Fails if the
+/// grass's or the placement's are made when its first blades or chunk come
+/// in reach, or if those frames wait for the cull's compile. Reads the
+/// process's pipeline counts (gpu/traffic.rs), as the gate runs each test
+/// alone.
+#[test]
+#[ignore = "requires GPU"]
+fn grass_and_gpu_scatter_make_their_pipelines_before_the_camera_reaches_them() {
+    use og_render::{Grass, GrassDraw, ScatterDraw};
+    const MADE_AHEAD: [&str; 4] = ["grass", "grass prepass", "grass shadow", "scatter place"];
+    let made = || {
+        let mut n = [0u64; 4];
+        og_render::traffic::each_site(|s| {
+            if s.kind == og_render::traffic::Kind::Pipeline
+                && let Some(i) = MADE_AHEAD.iter().position(|m| *m == s.name())
+            {
+                n[i] += s.count;
+            }
+        });
+        n
+    };
+    let mut scene = RenderScene::new();
+    let h = scene.add_terrain(TerrainData::flat(Vec2::splat(256.0), 65, 65));
+    scene.world.terrains.push(Terrain {
+        layers: vec![TerrainLayer {
+            color: Vec3::splat(0.2),
+            ..Default::default()
+        }],
+        fade_in: false,
+        ..Terrain::new(h)
+    });
+    let cube = scene.add_mesh(shapes::cuboid(Vec3::new(0.5, 2.0, 0.5)));
+    let white = scene.add_material(Material::default());
+    scene.world.scatters.push(ScatterDraw {
+        id: 0,
+        terrain: 0,
+        mesh: cube,
+        material: white,
+        scatter: TerrainScatter {
+            density: 0.2,
+            distance: 30.0,
+            scale: [1.0, 1.0],
+            seed: 7,
+            gpu: true,
+            ..TerrainScatter::default()
+        },
+        cast_shadows: true,
+        impostor: None,
+        impostor_distance: 0.0,
+        with: None,
+        lods: [None; 2],
+        lod_materials: [None; 2],
+    });
+    scene.world.grass.push(GrassDraw {
+        terrain: 0,
+        grass: Grass {
+            distance: 20.0,
+            ..Default::default()
+        },
+    });
+    scene.lighting.light.cast_shadows = true;
+    // 1.5 km off, looking back at the terrain: out of both reaches.
+    let far = Camera {
+        position: Vec3::new(1500.0, 20.0, 0.0),
+        target: Vec3::ZERO,
+        far: 4000.0,
+        ..Default::default()
+    };
+    scene.frame.camera = far;
+    let mut r = Renderer::new_blocking(&scenes::base_desc()).expect("renderer");
+    og_render::traffic::set_clock(Some(|| 0.0));
+    for tick in 0..3 {
+        scene.frame.tick = tick;
+        r.render(&scene, &RenderTarget::Offscreen).expect("render");
+    }
+    let ahead = made();
+    scene.frame.camera = Camera {
+        position: Vec3::new(0.0, 2.0, 0.0),
+        target: Vec3::new(30.0, 0.0, 0.0),
+        ..far
+    };
+    let mut reached = FrameStats::default();
+    let mut waited = 0;
+    for tick in 3..6 {
+        scene.frame.tick = tick;
+        reached = r.render(&scene, &RenderTarget::Offscreen).expect("render");
+        waited += reached.compile_wait_us;
+    }
+    let after = made();
+    og_render::traffic::set_clock(None);
+    println!("{MADE_AHEAD:?} made out of reach {ahead:?}, after the camera reached them {after:?}");
+    assert!(
+        reached.scatter_draws > 0,
+        "the camera in reach draws the scatter's chunks"
+    );
+    assert!(
+        ahead.iter().all(|&n| n > 0),
+        "made before the camera reached them: {ahead:?} of {MADE_AHEAD:?}"
+    );
+    assert_eq!(
+        after, ahead,
+        "pipelines of {MADE_AHEAD:?} made once the camera reached them"
+    );
+    assert_eq!(
+        waited, 0,
+        "the frames reaching them waited {waited} µs for a compile"
+    );
+}
+
 /// G5: under a sun 10 degrees up, a dense meadow (one colour root to tip,
 /// no sky light) is more than twice as bright at its tips as at its roots:
 /// the canopy between a blade's foot and the sun, and the blades' own

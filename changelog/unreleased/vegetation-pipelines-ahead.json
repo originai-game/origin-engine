@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "og.Grass, og.TerrainScatter",
+      "summary": "A grass field's draw pipelines, a GPU-placed scatter's placement pipelines and the scatter cull's pipeline are made the first frame they are in the scene, as their other pipelines were, instead of in the frame the camera first reaches them. A camera jumping or walking into a wood no longer stalls that frame while a cold driver compiles them (NVIDIA L4, 1920x1080, a teleport into a 4-species wood with grass: the frame after the jump took 2.37 s with an empty driver cache; now the worst frame in the 2 s after it is 32.2 ms cold and 31.1 ms warm). Drawing is unchanged."
+    }
+  ]
+}

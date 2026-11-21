@@ -199,6 +199,13 @@ impl GrassRenderer {
                 crate::gpu::ready::hold();
                 continue;
             }
+            // Its draw pipelines are made the first frame it is in the
+            // scene, as its generate pipelines are, not when its first
+            // blades come in reach: a cold driver compiles them for over a
+            // second, a stall in the frame the camera reaches the field.
+            if self.pipelines.is_none() {
+                self.pipelines = Some(self.make_pipelines(device));
+            }
             let cast = g.cast_shadows && scene.lighting.light.cast_shadows && sun_on;
             // With its shadow: the box swept along the sun's reach.
             let shadow = reach * g.tallest() * f32::from(u8::from(cast));
@@ -375,9 +382,6 @@ impl GrassRenderer {
                     d - lod.band * 0.5 - blade - shadow.length()
                 }),
             });
-        }
-        if !frame.fields.is_empty() && self.pipelines.is_none() {
-            self.pipelines = Some(self.make_pipelines(device));
         }
         frame
     }

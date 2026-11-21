@@ -836,6 +836,13 @@ impl ScatterCull {
         self.pipeline.compiled()
     }
 
+    /// Starts making its pipeline ahead of the first chunk it culls: on a
+    /// compile worker natively, asked of the web host on the web.
+    pub(crate) fn start(&self) {
+        crate::deferred::Start::start(&self.pipeline);
+        self.pipeline.compiled();
+    }
+
     /// A free slot of the pool for a chunk's copies, a page added when
     /// every one is taken.
     pub(crate) fn alloc(&mut self, device: &wgpu::Device) -> Slot {
@@ -903,10 +910,10 @@ impl ScatterCull {
         if n == 0 {
             return Vec::new();
         }
-        // Compiled once a frame has copies to cull, on the workers while
-        // the frame is prepared: made with every renderer, it took a
-        // compile worker for 0.2 to 0.35 s of every first frame (lavapipe),
-        // scattered copies or not.
+        // Started once a scene has a scatter (`Self::start`), here at the
+        // latest: made with every renderer, it took a compile worker for
+        // 0.2 to 0.35 s of every first frame (lavapipe), scattered copies
+        // or not.
         crate::deferred::Start::start(&self.pipeline);
         if let Some(own) = &mut self.per_draw {
             own.ensure(device, 8 * n as usize);

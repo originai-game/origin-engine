@@ -254,6 +254,12 @@ impl ScatterRenderer {
                 cards,
             };
         }
+        // The cull's pipeline is started the first frame a scatter is in
+        // the scene, not when its first chunk comes in reach: a cold driver
+        // compiled it for 0.14 s in the frame the camera reached a wood.
+        if let Some(cull) = &self.cull {
+            cull.start();
+        }
         let (sources, revisions) = scene.terrain_sources();
         let mut budget = CHUNKS_PER_FRAME;
         let mut gpu_budget = GPU_CHUNKS_PER_FRAME;
@@ -415,6 +421,14 @@ impl ScatterRenderer {
                     let arrayed = terrain_draws[k].arrayed();
                     Some((k, arrayed, terrain.group_layout(arrayed)?))
                 });
+            // Its placement pipelines are made the first frame it is in the
+            // scene, as its draw pipelines are, not when its first chunk
+            // comes in reach: a cold driver compiles them for most of a
+            // second, a stall in the frame the camera reaches the scatter.
+            if let Some((_, arrayed, terrain_layout)) = gpu {
+                let place = self.place.as_mut().expect("planned with it");
+                place.ready(device, terrain_layout, arrayed);
+            }
             let frame_waters: Vec<(Mat4, Vec2)> = match gpu {
                 Some(_) => scene
                     .world
