@@ -189,6 +189,7 @@ export { CreditsScreen } from "../screens/credits";
 export { DataList } from "../screens/data-list";
 export { FilmChaptersScreen } from "../screens/film-chapters";
 export { FilmChoices } from "../screens/film-choices";
+export { FilmFlowchartScreen } from "../screens/film-flowchart";
 export { FilmGalleryScreen } from "../screens/film-gallery";
 export { GameOverScreen } from "../screens/game-over";
 export { HudEditorScreen } from "../screens/hud-editor";

@@ -187,10 +187,14 @@ a save slot with the chapter's name and the segment's poster
 
 The built-in `film-chapters` screen lists og.film.load's `chapters`, each
 `{ id, title, thumb, locked }` from a chapter's save; `select` plays from
-it. `film-gallery` lists its `endings`, locked until reached. `film-flowchart`
-draws `og.film.chart` (a dialogue's film nodes by depth, through logic nodes)
-as the built-in NodeGraph: pass its `nodes` and `links` as NodeGraph's,
-marking `done` the segments the player has seen, `current` the one playing.
+it. `film-gallery` lists its `endings`, locked until reached.
+`FilmFlowchartScreen` draws `og.film.chart` (a dialogue's film nodes by
+depth, through logic nodes) through the built-in NodeGraph: pass its nodes
+as `{ id, x, y, label, icon, state, shape, team }`, marking `done` the
+segments the player has seen and `current` the one playing, its links with
+their `points`, and `view` as `[0, 0, chart.width, chart.height]`. It
+reports `onPick(e, id)` for a node, `onPlay` for Play from here (only while
+`canPlay`), and `onZoom` and `onPan` for the zoom and pan the game keeps.
 
 What lasts across playthroughs (segments seen, endings reached) is the
 game's, kept outside the world. Count it from og.FilmSegment and

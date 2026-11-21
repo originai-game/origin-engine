@@ -462,3 +462,67 @@ test("a glyph prompt shows the player's rebinding on the next frame", () => {
     engine.destroy();
   }
 });
+
+// FilmFlowchartScreen draws og.film.chart through NodeGraph. Ways this could
+// fail: a pressed node reporting nothing or another node's id (the graph's
+// pick not passed through); Play from here firing for a node the player
+// cannot play from; the chart's nodes not reaching the graph at all.
+test("FilmFlowchartScreen passes a picked node's id through and plays only where it can", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "og-tsx-flowchart-"));
+  try {
+    writeFileSync(join(dir, "project.ogt"), "type project\nversion 1\n---\n");
+    const screen = fileURLToPath(new URL("../src/ui/screens/film-flowchart.tsx", import.meta.url));
+    writeFileSync(join(dir, "main.ts"), `export { FilmFlowchartScreen, fixtures } from ${JSON.stringify(screen)};\n`);
+    const out = join(dir, "game.js");
+    const b = await bundleGame(join(dir, "main.ts"), out, "native");
+    if (!b.ok) throw new Error(b.reason);
+    const rt = fileURLToPath(new URL("../src/ui/rt.ts", import.meta.url));
+    const ui = fileURLToPath(new URL("../src/ui/index.ts", import.meta.url));
+    writeFileSync(out, readFileSync(out, "utf8").replace(/(["'])[^"']*\/ui\/rt(\.ts)?\1/g, JSON.stringify(rt)).replace(/(["'])@origingame\/engine\/ui\1/g, JSON.stringify(ui)));
+    const { FilmFlowchartScreen, fixtures } = await import(out);
+    const { loadNativeHost } = await import("../src/node/index.ts");
+    loadNativeHost();
+
+    const batches: Op[][] = [];
+    let next: Uint8Array = reply([]);
+    const world = { id: 9004 } as unknown as World;
+    renderers.set(9004, new Renderer((bytes) => { batches.push(decode(bytes)); const r = next; next = reply([]); return r; }, world));
+    const canPlay = createSignal(false);
+    const picked: string[] = [];
+    let played = 0;
+    mount(world, FilmFlowchartScreen, { ...fixtures.default, get canPlay() { return canPlay(); }, onPick: (_e: unknown, id: string) => picked.push(id), onPlay: () => played++ });
+    const ops = () => batches.flat();
+    const texts = ops().filter((op) => op[0] === "createText").map((op) => op[2]);
+    for (const label of ["Kitchen", "Cellar", "Dawn"]) expect(texts).toContain(label);
+    const parent = (id: number) => ops().find((op) => op[0] === "insert" && op[2] === id)![1] as number;
+    const pressable = new Set(ops().filter((op) => op[0] === "listen" && op[2] === 0 && op[3] === 1).map((op) => op[1] as number));
+    const around = (text: string) => {
+      let id = ops().find((op) => op[0] === "createText" && op[2] === text)![1] as number;
+      while (!pressable.has(id)) id = parent(id);
+      return id;
+    };
+    const play = around(texts.find((t) => /play/i.test(String(t))) as string);
+
+    // NodeGraph captions a node beside its plate: the plates are the pressable views
+    // other than Back and Play, in the chart's node order.
+    const back = around("screen.common.back");
+    const plates = [...pressable].filter((id) => id !== back && id !== play).sort((x, y) => x - y);
+    const node = (id: string) => plates[(fixtures.default.nodes as { id: string }[]).findIndex((n) => n.id === id)]!;
+    expect(plates).toHaveLength(6);
+    next = reply([[node("shy"), 0], [node("hall"), 0], [play, 0]]);
+    renderers.get(9004)!.flush();
+    renderers.get(9004)!.flush();
+    expect(picked).toEqual(["shy", "hall"]);
+    expect(played).toBe(0);
+
+    canPlay.set(true);
+    renderers.get(9004)!.flush();
+    next = reply([[play, 0]]);
+    renderers.get(9004)!.flush();
+    renderers.get(9004)!.flush();
+    expect(played).toBe(1);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+    renderers.delete(9004);
+  }
+});
