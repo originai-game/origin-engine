@@ -279,7 +279,13 @@ pub(crate) fn mount_back(
             // The new core's controls play their pack slot's sounds.
             let next = engine(engine_id)
                 .ok()
-                .and_then(|eng| eng.render.borrow_mut().ui_next.as_mut().map(|n| n.take_sounds()))
+                .and_then(|eng| {
+                    eng.render
+                        .borrow_mut()
+                        .ui_next
+                        .as_mut()
+                        .map(|n| n.take_sounds())
+                })
                 .unwrap_or_default();
             let Some(link) = og_audio::link(engine_id) else {
                 return Ok(());
@@ -292,8 +298,7 @@ pub(crate) fn mount_back(
                 if sound == 0 {
                     continue;
                 }
-                if let Err(reason) = link.play_feedback(ctx.time().tick, sound, volume, pitch)
-                {
+                if let Err(reason) = link.play_feedback(ctx.time().tick, sound, volume, pitch) {
                     note_warnings(engine_id, vec![reason]);
                 }
             }

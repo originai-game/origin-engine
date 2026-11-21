@@ -990,7 +990,8 @@ mod tests {
                 let args = &args[..end];
                 let mut parts = args.splitn(3, ',').map(str::trim);
                 let literal = |a: Option<&str>| {
-                    a.and_then(|a| a.strip_prefix('"')?.strip_suffix('"')).map(str::to_owned)
+                    a.and_then(|a| a.strip_prefix('"')?.strip_suffix('"'))
+                        .map(str::to_owned)
                 };
                 let (Some(component), Some(slot)) = (literal(parts.next()), literal(parts.next()))
                 else {
@@ -998,7 +999,9 @@ mod tests {
                 };
                 let base = format!("{component}.{slot}");
                 let variants = parts.next().unwrap_or("").split('"').skip(1).step_by(2);
-                for key in std::iter::once(base.clone()).chain(variants.map(|v| format!("{base}.{v}"))) {
+                for key in
+                    std::iter::once(base.clone()).chain(variants.map(|v| format!("{base}.{v}")))
+                {
                     if !variant_key(&key) {
                         bad.push(format!("{}: packClass {key}", path.display()));
                     }
@@ -1031,7 +1034,13 @@ mod tests {
             };
             let layer = Layer::parse(&text).unwrap();
             let keys = layer.variants.keys().map(|k| ("variants", k));
-            let keys = keys.chain(layer.sounds.keys().filter(|k| !k.is_empty()).map(|k| ("sounds", k)));
+            let keys = keys.chain(
+                layer
+                    .sounds
+                    .keys()
+                    .filter(|k| !k.is_empty())
+                    .map(|k| ("sounds", k)),
+            );
             for (what, key) in keys {
                 if !declared.contains(key) {
                     stray.push(format!("{}: {what}.{key}", file.display()));

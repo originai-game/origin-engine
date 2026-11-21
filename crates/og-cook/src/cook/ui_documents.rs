@@ -171,8 +171,10 @@ pub(crate) fn is_pack(rel: &str) -> bool {
 
 /// A `pack.json` read and its asset paths resolved against its directory.
 fn pack_layer(s: &Source) -> Result<og_ui_next::pack::Layer, CookError> {
-    let text = std::str::from_utf8(&s.bytes).map_err(|_| CookError(format!("{}: not UTF-8", s.rel)))?;
-    let mut layer = og_ui_next::pack::Layer::parse(text).map_err(|e| CookError(format!("{}: {e}", s.rel)))?;
+    let text =
+        std::str::from_utf8(&s.bytes).map_err(|_| CookError(format!("{}: not UTF-8", s.rel)))?;
+    let mut layer =
+        og_ui_next::pack::Layer::parse(text).map_err(|e| CookError(format!("{}: {e}", s.rel)))?;
     layer.resolve(s.rel.rsplit_once('/').map_or("", |(dir, _)| dir));
     Ok(layer)
 }
@@ -188,7 +190,11 @@ fn plan_pack<'a>(
         .map(|l| l.assets().into_iter().map(str::to_owned).collect())
         .unwrap_or_default();
     for r in &refs {
-        state.parsed_refs.entry(s.rel.clone()).or_default().insert(r.clone());
+        state
+            .parsed_refs
+            .entry(s.rel.clone())
+            .or_default()
+            .insert(r.clone());
     }
     let refs: Vec<String> = refs
         .iter()
@@ -226,11 +232,13 @@ impl Job for PackJob<'_> {
                 missing.join(", ")
             )));
         }
-        let pack = og_ui_next::pack::Pack::new(&[og_ui_next::pack::Layer::default_pack(), layer.clone()]);
+        let pack =
+            og_ui_next::pack::Pack::new(&[og_ui_next::pack::Layer::default_pack(), layer.clone()]);
         let mut errors = Vec::new();
         for scheme in og_ui_next::pack::Scheme::ALL {
             let (mut classes, ignored) =
-                og_ui_next::classes::Classes::new(Some(&pack.theme_json(scheme))).map_err(CookError)?;
+                og_ui_next::classes::Classes::new(Some(&pack.theme_json(scheme)))
+                    .map_err(CookError)?;
             for e in ignored {
                 errors.push(format!("theme ({}): {e}", scheme.name()));
             }
@@ -239,11 +247,17 @@ impl Job for PackJob<'_> {
                 let (images, class) = og_ui_next::pack::split_nine(class);
                 for name in images {
                     if !pack.images(scheme).contains_key(name) {
-                        errors.push(format!("variants.{key}: `nine-{name}` names no image in `images` ({})", scheme.name()));
+                        errors.push(format!(
+                            "variants.{key}: `nine-{name}` names no image in `images` ({})",
+                            scheme.name()
+                        ));
                     }
                 }
                 for u in classes.unknown(&class) {
-                    errors.push(format!("variants.{key}: `{u}` is not a class ({})", scheme.name()));
+                    errors.push(format!(
+                        "variants.{key}: `{u}` is not a class ({})",
+                        scheme.name()
+                    ));
                 }
             }
         }
@@ -252,10 +266,16 @@ impl Job for PackJob<'_> {
             return Err(CookError(format!("{}: {}", s.rel, errors.join("; "))));
         }
         let text = layer.to_json().into_bytes();
-        let mut w = og_blob::BlobWriter::new(format::Pack::type_hash(), format::Pack::schema_version(), p.stamp);
+        let mut w = og_blob::BlobWriter::new(
+            format::Pack::type_hash(),
+            format::Pack::schema_version(),
+            p.stamp,
+        );
         w.table(
             "meta",
-            &[format::PackMeta { text_bytes: text.len() as u32 }],
+            &[format::PackMeta {
+                text_bytes: text.len() as u32,
+            }],
             format::row_hash::<format::PackMeta>(),
         )
         .raw("text", text, 16);
