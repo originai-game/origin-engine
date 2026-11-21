@@ -145,15 +145,16 @@ fn answered<T>(f: impl FnOnce(Option<&mut UiAnswers>) -> T) -> T {
 pub fn og_ui_frame_cursor() -> String {
     // The last completed frame's: the one the host shows now.
     // The style draws a pad's virtual cursor: the system's hides.
-    if ui_engine()
-        .and_then(crate::present::ui_next::virtual_cursor)
-        .is_some_and(|(_, shown)| shown)
-    {
-        return og_ui::Cursor::None.name().into();
+    use og_ui_next::Cursor;
+    let Some(engine) = ui_engine() else {
+        return Cursor::Default.name().into();
+    };
+    if crate::present::ui_next::virtual_cursor(engine).is_some_and(|(_, shown)| shown) {
+        return Cursor::None.name().into();
     }
-    let c = with_ui("og.ui.frameCursor", |ui| ui.frame().cursor).unwrap_or_default();
-    match c {
-        og_ui::Cursor::Auto => og_ui::Cursor::Default,
+    // The TSX element under the pointer's `cursor-*`; `auto` is the arrow.
+    match crate::present::ui_next::cursor(engine).unwrap_or_default() {
+        Cursor::Auto => Cursor::Default,
         c => c,
     }
     .name()

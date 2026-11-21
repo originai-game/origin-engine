@@ -6,7 +6,7 @@ Module [`ui`](../ui.md) · [index](../index.md)
 
 ### `og.ui.frameCursor`
 
-The pointer's shape the last frame resolved (never auto): the cursor set on what the press holds or the pointer is over, or around it, else its kind's. The web shell sets the canvas's CSS cursor from each frame's answer (`cursor`); a native host that draws its own window (og dev, Origin Desktop's shared frames) reads the same answer.
+The pointer's shape the last frame resolved (never auto): the `cursor-*` class of the TSX element the pointer is over, or of its nearest ancestor that names one, else default; none while the virtual cursor shows. The web shell sets the canvas's CSS cursor from each frame's answer (`cursor`); a native host that draws its own window (og dev, Origin Desktop's shared frames) reads the same answer.
 
 ```ts
 og.ui.frameCursor(): Cursor
@@ -18,7 +18,7 @@ Binding symbol `og_ui_frame_cursor` · publish builds: kept
 
 ```ogt
 fn frameCursor {
-  doc "The pointer's shape the last frame resolved (never auto): the cursor set on what the press holds or the pointer is over, or around it, else its kind's. The web shell sets the canvas's CSS cursor from each frame's answer (`cursor`); a native host that draws its own window (og dev, Origin Desktop's shared frames) reads the same answer."
+  doc "The pointer's shape the last frame resolved (never auto): the `cursor-*` class of the TSX element the pointer is over, or of its nearest ancestor that names one, else default; none while the virtual cursor shows. The web shell sets the canvas's CSS cursor from each frame's answer (`cursor`); a native host that draws its own window (og dev, Origin Desktop's shared frames) reads the same answer."
   returns Cursor
 }
 ```

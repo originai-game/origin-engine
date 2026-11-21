@@ -4,6 +4,8 @@
 //! dense store; a frame with nothing dirty does no style, layout or paint
 //! work. There is no CSS cascade per element.
 
+/// NSH's cursor, which a record's `cursor-*` names.
+pub use nsh_tailwind::effects::Cursor;
 pub mod a11y;
 pub mod arena;
 pub mod classes;

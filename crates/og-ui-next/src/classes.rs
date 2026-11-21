@@ -363,6 +363,7 @@ fn record_of(style: &Style, props: &ClassProps) -> Record {
     if let Some(w) = style.paint.stroke_width {
         r.stroke_width = w.0;
     }
+    r.cursor = style.view.cursor;
     let (view, text, skin) = (&style.view, &style.text, &mut r.skin);
     skin.fill = linear(view.background_color);
     skin.opacity = view.opacity;

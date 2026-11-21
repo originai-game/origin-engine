@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "og.ui.frameCursor",
+      "summary": "Answers the cursor-* class of the TSX element under the pointer, or of its nearest ancestor that names one (a cursor-pointer button shows the hand, over its label too), instead of always \"default\": it read og-ui's frame, which a TSX game never fills. The web shell's canvas cursor follows it."
+    }
+  ]
+}

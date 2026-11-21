@@ -2059,6 +2059,12 @@ impl Tree {
     /// [`Tree::hit`] over the elements `want` accepts; a press needs them
     /// enabled too. Behind an open modal, nothing answers.
     fn hit_where(&self, x: f32, y: f32, want: impl Fn(&El) -> bool) -> u32 {
+        self.topmost(x, y, want, true)
+    }
+
+    /// The topmost shown element at (x, y) that `want` accepts; a disabled
+    /// control counts only when `enabled` is false (its cursor shows).
+    fn topmost(&self, x: f32, y: f32, want: impl Fn(&El) -> bool, enabled: bool) -> u32 {
         for &e in self.order.iter().rev() {
             let (e, el) = (e as usize, &self.els[e as usize]);
             // An element on its way out, or in one, answers nothing.
@@ -2085,7 +2091,8 @@ impl Tree {
             if !shown || !inside || !self.reachable(e as u32) {
                 continue;
             }
-            if el.clickable
+            if enabled
+                && el.clickable
                 && el.disabled != NONE
                 && og_reactive::bind::truthy(&queue::get(el.disabled))
             {

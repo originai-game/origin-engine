@@ -367,6 +367,14 @@ pub(crate) fn virtual_cursor(engine: u32) -> Option<([f32; 2], bool)> {
     Some((p.map(|v| v * next.unit), shown))
 }
 
+/// The cursor the TSX element under the pointer names (`cursor-*`), as
+/// the last tick left it; `None` without a tree.
+pub(crate) fn cursor(engine: u32) -> Option<og_ui_next::Cursor> {
+    let eng = crate::engine::engine(engine).ok()?;
+    let rs = eng.render.borrow();
+    Some(rs.ui_next.as_ref()?.tree.as_ref()?.cursor())
+}
+
 /// Style `id`'s pack (its `pack.json`, cooked as an `og.UiPack`), if it
 /// has one.
 fn pack_layer(engine: u32, id: &str) -> Option<og_ui_next::pack::Layer> {

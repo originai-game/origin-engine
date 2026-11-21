@@ -514,6 +514,8 @@ pub struct Record {
     /// (`currentColor`, the default), and its width in CSS px.
     pub stroke: Option<Rgba>,
     pub stroke_width: f32,
+    /// The pointer over it (`cursor-*`); `Auto` takes its parent's.
+    pub cursor: nsh_tailwind::effects::Cursor,
 }
 
 impl Record {
@@ -566,6 +568,7 @@ impl Default for Record {
             motion: crate::motion::Spec::default(),
             stroke: None,
             stroke_width: 1.0,
+            cursor: nsh_tailwind::effects::Cursor::Auto,
         }
     }
 }

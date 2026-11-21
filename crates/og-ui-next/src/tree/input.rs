@@ -228,6 +228,8 @@ pub struct Input {
     pub(super) per: Vec<Per>,
     /// The elements under the pointer, innermost first, and this move's.
     hover: Vec<u32>,
+    /// The cursor the element under the pointer asks for.
+    cursor: nsh_tailwind::effects::Cursor,
     next: Vec<u32>,
     held: Option<Held>,
     /// The element that heard `pointerdown`: the pointer's moves and its
@@ -745,6 +747,18 @@ impl Tree {
     /// the move. A held press is inside its element while the pointer is
     /// within NSH's press retention around it.
     fn hover_to(&mut self, x: f32, y: f32) {
+        // CSS's `cursor`: the innermost element under the pointer that
+        // names one, listening or not.
+        let mut e = self.topmost(x, y, |_| true, false);
+        self.input.cursor = nsh_tailwind::effects::Cursor::Auto;
+        while e != NONE {
+            let c = self.els[e as usize].record.cursor;
+            if c != nsh_tailwind::effects::Cursor::Auto {
+                self.input.cursor = c;
+                break;
+            }
+            e = self.els[e as usize].parent;
+        }
         let top = self.hit_where(x, y, |el| el.js != NONE);
         let mut next = std::mem::take(&mut self.input.next);
         next.clear();
@@ -1805,6 +1819,13 @@ impl Tree {
                 self.focus(first);
             }
         }
+    }
+
+    /// The cursor the element under the pointer names (`cursor-*`, its
+    /// own or its nearest ancestor's), as of the last pointer frame;
+    /// `Auto` when none does.
+    pub fn cursor(&self) -> nsh_tailwind::effects::Cursor {
+        self.input.cursor
     }
 
     /// The actions the `<Glyph>` nodes show, when one came or changed
