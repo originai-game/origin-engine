@@ -20,7 +20,9 @@
 //! audio stream (its resources).
 
 mod ui_config;
-pub(crate) use ui_config::{LoadedStyle, UiSettings, load_style, new_ui, settings, ui_font, unit_of};
+pub(crate) use ui_config::{
+    LoadedStyle, UiSettings, load_style, new_ui, settings, ui_font, unit_of,
+};
 pub use ui_config::{og_load_style, og_ui_configure};
 mod ui_desc;
 use ui_desc::paint;
