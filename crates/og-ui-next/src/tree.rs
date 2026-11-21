@@ -148,6 +148,9 @@ pub struct Tree {
     arena: Arena,
     root: Inherit,
     ops: Vec<Op>,
+    /// The size class as a signal ([`Screen`] bits), which the bindings
+    /// that read `:size()` or `:touch` track.
+    screen: u32,
     dirty: Vec<u32>,
     paint: bool,
     pub items: Vec<DrawItem>,
@@ -169,8 +172,21 @@ fn lit(l: &Lit) -> Value {
     }
 }
 
-/// The signals of `scope` an expression reads, by their root name.
-fn reads(e: &Expr, scope: &[(Box<str>, u32)]) -> Reads {
+/// Whether `e` reads the UI's box or input (`:size()`, `:touch`).
+fn reads_screen(e: &Expr) -> bool {
+    match e {
+        Expr::Screen(_) => true,
+        Expr::Not(a) | Expr::Neg(a) | Expr::Format(_, a) | Expr::Numbers(a) => reads_screen(a),
+        Expr::Bin(_, a, b) | Expr::Index(a, b) => reads_screen(a) || reads_screen(b),
+        Expr::If(a, b, c) => reads_screen(a) || reads_screen(b) || reads_screen(c),
+        _ => false,
+    }
+}
+
+/// The signals of `scope` an expression reads, by their root name, and
+/// `screen` (the size class) when it reads the UI's box: a binding of
+/// `.step:state(current):size(compact)` runs again when the class moves.
+fn reads(e: &Expr, scope: &[(Box<str>, u32)], screen: u32) -> Reads {
     let mut paths = Vec::new();
     e.paths(&mut paths);
     let mut out: Reads = Vec::new();
@@ -182,6 +198,10 @@ fn reads(e: &Expr, scope: &[(Box<str>, u32)]) -> Reads {
         if let Some((n, s)) = scope.iter().rev().find(|(n, _)| &**n == root) {
             out.push((n.clone(), *s));
         }
+    }
+    if reads_screen(e) {
+        // A name no path takes: the value is read only to be tracked.
+        out.push(("\u{0}screen".into(), screen));
     }
     out
 }
@@ -285,6 +305,7 @@ impl Tree {
             eaches: Vec::new(),
             arena: Arena::new(),
             ops: Vec::new(),
+            screen: queue::signal(0.into()),
             dirty: Vec::new(),
             paint: true,
             items: Vec::new(),
@@ -369,7 +390,7 @@ impl Tree {
         // The document's own derived values, in order.
         let derived = self.docs[d as usize].doc.derived.clone();
         for (n, e) in derived {
-            let r = reads(&e, &scope);
+            let r = reads(&e, &scope, self.screen);
             let s = derive(e, r, self.env.clone());
             scope.push((n.into(), s));
         }
@@ -407,7 +428,7 @@ impl Tree {
                     self.node(d, inst, c, parent, arena_parent, scope, chain);
                 }
                 chain.pop();
-                let r = reads(&e, scope);
+                let r = reads(&e, scope, self.screen);
                 queue::bind(self.id, Target::Shown { node: b }, e, r, self.env.clone());
             }
             NodeKind::For {
@@ -417,7 +438,7 @@ impl Tree {
                 key,
                 ..
             } => {
-                let r = reads(&list, scope);
+                let r = reads(&list, scope, self.screen);
                 let list_sig = derive(list, r, self.env.clone());
                 let b = self.eaches.len() as u32;
                 self.eaches.push(EachBlock {
@@ -455,7 +476,7 @@ impl Tree {
                         .map(|(_, v, _)| v);
                     let s = match arg {
                         Some(PropValue::Bind(e, _)) => {
-                            let r = reads(e, scope);
+                            let r = reads(e, scope, self.screen);
                             derive(e.clone(), r, self.env.clone())
                         }
                         Some(PropValue::Lit(l)) => queue::signal(lit(l)),
@@ -605,7 +626,7 @@ impl Tree {
         match text {
             Some(PropValue::Lit(l)) => self.set_text(e, &queue::text_of(&lit(&l))),
             Some(PropValue::Bind(x, _)) => {
-                let r = reads(&x, scope);
+                let r = reads(&x, scope, self.screen);
                 queue::bind(self.id, Target::Text { node: e }, x, r, self.env.clone());
             }
             _ => {}
@@ -625,7 +646,7 @@ impl Tree {
                 })
                 .collect();
             for (cond, x) in conds {
-                let r = reads(&x, scope);
+                let r = reads(&x, scope, self.screen);
                 queue::bind(
                     self.id,
                     Target::Holds { node: e, cond },
@@ -737,6 +758,14 @@ impl Tree {
         let moved = classes
             .iter()
             .any(|c| c.holds(old.0, old.1, false) != c.holds(width, height, false));
+        if moved {
+            let bits = classes
+                .iter()
+                .enumerate()
+                .filter(|(_, c)| c.holds(width, height, false))
+                .fold(0u32, |b, (k, _)| b | 1 << k);
+            queue::set(self.screen, bits.into());
+        }
         if moved || self.els.is_empty() {
             for e in 0..self.els.len() as u32 {
                 self.queue(e);
@@ -1224,6 +1253,44 @@ mod tests {
                 .unwrap()
         };
         assert!(level(true) > level(false), "the text over its panel");
+    }
+
+    /// A condition that reads both a store and the size class holds again
+    /// when only the size class moves (a quest's current step on a phone).
+    #[test]
+    fn a_store_condition_on_the_size_class_follows_a_resize() {
+        let doc = UiDocument::parse(
+            "c.svelte",
+            "<meta name=\"component\" content=\"c\">\n\
+             <div><span id=\"S\" state:current={on}>x</span></div>\n\
+             <style>\n#S { opacity: 0.25; }\n#S:state(current):size(compact) { opacity: 1; }\n</style>",
+        )
+        .unwrap();
+        let look = Rc::new(Look::load(
+            &[Layer {
+                tokens: &crate::look::default_tokens(),
+                surfaces: crate::look::DEFAULT_SURFACES,
+            }],
+            "dark",
+        ));
+        let mut tree = Tree::new(look, [doc]);
+        tree.resize(1280.0, 720.0);
+        tree.mount("c", &[("on", queue::signal(true.into()))])
+            .unwrap();
+        let (fonts, icons) = (og_ui::Fonts::default(), IconAtlas::default());
+        let opacity = |t: &Tree| {
+            let e = t.els.iter().position(|el| {
+                let c = &t.docs[t.insts[el.inst as usize].doc as usize];
+                el.style != NONE
+                    && c.doc.nodes[c.style.nodes[el.style as usize].node as usize].id == "S"
+            });
+            t.els[e.unwrap()].record.opacity
+        };
+        tree.frame(&fonts, &icons);
+        assert_eq!(opacity(&tree), 0.25, "wide");
+        tree.resize(844.0, 390.0);
+        tree.frame(&fonts, &icons);
+        assert_eq!(opacity(&tree), 1.0, "a phone on its side is compact");
     }
 
     /// `t()` reads the host's string tables; a key they lack shows as is.
