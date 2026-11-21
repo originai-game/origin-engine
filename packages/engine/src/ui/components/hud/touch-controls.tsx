@@ -32,8 +32,11 @@ export interface TouchControlsProps {
   /**
    * The stick's or d-pad's axis per move, each way -1 to 1 (the d-pad's
    * -1, 0 or 1) and (0, 0) once it lets go, for the og-input action it
-   * names. In a document UI the control feeds the action itself; the
-   * TSX stick has no zone surface, so the game reads the axis here.
+   * names. Temporary stand-in: in a document UI the control feeds the
+   * action itself (touch.rs registers the node's rect as the action's
+   * source), and the TSX stick has no zone surface yet, so the game
+   * reads the axis here; when a View can be an action's zone, onMove
+   * goes and the controls feed the actions again.
    */
   onMove?: (e: UiEvent, action: string, x: number, y: number) => void;
 }

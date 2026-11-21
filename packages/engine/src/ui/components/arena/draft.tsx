@@ -168,7 +168,7 @@ export function ArenaDraft(props: ArenaDraftProps) {
         <View class="flex-1 min-w-0 flex-row flex-wrap items-center gap-x-3 gap-y-1">
           <Text class="min-w-0 text-[1.714rem] leading-[1.1] font-bold tracking-[0.04em] uppercase text-fg">{heading()}</Text>
           <Show when={props.phase == "ban" || props.phase == "pick" || props.phase == "done"}>
-            <Text class="shrink-0 py-0 px-1 text-[0.857rem] leading-[1.5] font-bold tracking-[0.14em] uppercase whitespace-nowrap nine-chip-cut bg-linear-to-b from-[#fff2c4] to-gold text-[#1e1604]">
+            <Text class="shrink-0 py-0 px-1 text-[0.857rem] leading-[1.5] font-bold tracking-[0.14em] uppercase whitespace-nowrap nine-chip-cut bg-gold text-[#1e1604]">
               {props.phase == "ban" ? t("arena.draft.ban") : props.phase == "pick" ? t("arena.draft.pick") : t("arena.draft.done")}
             </Text>
           </Show>
