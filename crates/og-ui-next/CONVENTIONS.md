@@ -440,7 +440,14 @@ is an error naming where it is, never ignored):
   pack's slot string and then the variant's (an absent variant adds
   nothing; an absent slot stays an unknown class), so a pack switch
   restyles it. Nothing is folded at cook time.
-  `og check` checks the strings against the merged theme.
+  `og check` checks the strings against the merged theme. A variant that
+  paints the ground under the text (a fill, or art with a centre drawn in
+  its own colours, `fill` and no `tint`) sets the ink for that ground too,
+  in its base state and through hover, press and disabled: the
+  component's ink was chosen for the component's own ground. `og check`
+  reports one that does not (OG9107, `pack::grounds_without_ink`). Art keeps its colours in both schemes, so its
+  ink is a colour the pack writes the same in both (the built-in packs'
+  `art-fg` and `art-primary-fg`), not a scheme role such as `fg`.
 - **`images`**: nine-slice art by name (lower-case words joined by `-`):
   `{ src, slice, width?, fill?, repeat? }`. `slice` is the insets into the
   image in its pixels (one number, or `[top, right, bottom, left]`);

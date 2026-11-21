@@ -204,17 +204,23 @@ pub(crate) fn join(light: &Value, dark: &Value) -> Value {
     }
 }
 
-/// The slots a pack dresses (`variants` keys), each with what it is. The
-/// default pack declares each with an empty string, so a component's
-/// `packClass` on one resolves under every pack, and adds nothing until a
-/// pack dresses it; a slot no layer names stays an unknown class.
-pub const SLOTS: [(&str, &str); 6] = [
-    ("Button.plate", "a button's body"),
-    ("Panel.frame", "a window or panel's frame"),
-    ("Plate.frame", "a HUD plate over the scene"),
-    ("Slot.frame", "an ability or item slot"),
-    ("Chip.frame", "a tag, badge or chip"),
-    ("Field.frame", "a text field or input's box"),
+/// The slots a pack dresses (`variants` keys), each with what it is and
+/// the default pack's own dressing. The default pack declares each, so a
+/// component's `packClass` on one resolves under every pack; a slot no
+/// layer names stays an unknown class. A HUD plate's default is a nearly
+/// opaque ground with its ink, so its text reads over any scene: a
+/// component's translucent or cleared fill under it is overruled.
+pub const SLOTS: [(&str, &str, &str); 6] = [
+    ("Button.plate", "a button's body", ""),
+    ("Panel.frame", "a window or panel's frame", ""),
+    (
+        "Plate.frame",
+        "a HUD plate over the scene",
+        "bg-glass text-fg",
+    ),
+    ("Slot.frame", "an ability or item slot", ""),
+    ("Chip.frame", "a tag, badge or chip", ""),
+    ("Field.frame", "a text field or input's box", ""),
 ];
 
 /// The shapes every look has (`templates/styles/shared/shapes/`, white
@@ -401,7 +407,7 @@ pub fn default_pack_json() -> String {
         "about": "The engine's default pack, generated from packages/design/tokens/*.css by crates/og-ui-next/scripts/gen-pack.sh; never edit it by hand. Theme names are the tokens' without their prefix: --color-fg-muted is the colour fg-muted, --radius-card the radius card, --font-scale-body-size the font size body.",
         "theme": join(&light, &dark),
         "contrast": join(&more_light, &more_dark),
-        "variants": SLOTS.iter().map(|(slot, _)| (slot.to_string(), json!(""))).collect::<Map<_, _>>(),
+        "variants": SLOTS.iter().map(|(slot, _, dress)| (slot.to_string(), json!(dress))).collect::<Map<_, _>>(),
         "images": shapes(),
         "icons": icons(),
     });

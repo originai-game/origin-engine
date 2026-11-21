@@ -943,6 +943,7 @@ pub fn gate(p: &Project, package: &Path, json: bool) -> Result<Report, String> {
     untyped_documents(&target, &mut report);
     module_state(p, &mut report);
     unknown_classes(p, &mut report);
+    pack_grounds(p, &mut report);
     missing_tables(&p.root, &project_dirs(p), &mut report);
     fields::check(p, &mut report);
     if json {
@@ -1345,6 +1346,47 @@ fn unknown_classes(p: &Project, report: &mut Report) {
     }
 }
 
+/// Each of the game's style packs (`assets/styles/<name>/pack.json`) whose
+/// variants paint the ground under the text without its ink
+/// (`og_ui_next::pack::grounds_without_ink`), laid over the default pack.
+fn pack_grounds(p: &Project, report: &mut Report) {
+    use og_ui_next::pack::{Layer, grounds_without_ink};
+    let Ok(dirs) = std::fs::read_dir(p.root.join("assets/styles")) else {
+        return;
+    };
+    let mut packs: Vec<_> = dirs
+        .flatten()
+        .map(|d| d.path().join("pack.json"))
+        .filter(|f| f.is_file())
+        .collect();
+    packs.sort();
+    for path in packs {
+        // One that does not parse is the cook's error.
+        let Some(layer) = std::fs::read_to_string(&path)
+            .ok()
+            .and_then(|t| Layer::parse(&t).ok())
+        else {
+            continue;
+        };
+        let file = typescript_path(path.strip_prefix(&p.root).unwrap_or(&path));
+        for message in grounds_without_ink(&[Layer::default_pack()], &layer) {
+            report
+                .raw
+                .push_str(&format!("{file}: error OG{PACK_GROUND_INK}: {message}\n"));
+            report.diagnostics.push(Diagnostic {
+                file: Some(file.clone()),
+                line: None,
+                col: None,
+                code: PACK_GROUND_INK,
+                message,
+            });
+        }
+    }
+}
+
+/// The diagnostic code of a pack variant painting a ground without its ink.
+const PACK_GROUND_INK: u32 = 9107;
+
 /// The diagnostic code of an unknown class in a game's TSX.
 const UNKNOWN_CLASS: u32 = 9105;
 
@@ -1530,6 +1572,7 @@ pub fn run(args: &[&str]) -> ExitCode {
     if let Some(p) = &project {
         module_state(p, &mut report);
         unknown_classes(p, &mut report);
+        pack_grounds(p, &mut report);
         missing_tables(&p.root, &project_dirs(p), &mut report);
         fields::check(p, &mut report);
     } else {

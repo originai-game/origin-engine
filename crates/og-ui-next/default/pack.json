@@ -886,7 +886,7 @@
     "Chip.frame": "",
     "Field.frame": "",
     "Panel.frame": "",
-    "Plate.frame": "",
+    "Plate.frame": "bg-glass text-fg",
     "Slot.frame": ""
   }
 }

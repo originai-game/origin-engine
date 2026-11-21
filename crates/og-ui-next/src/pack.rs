@@ -618,6 +618,53 @@ pub fn split_nine(classes: &str) -> (Vec<&str>, String) {
     (names, rest.join(" "))
 }
 
+/// The variants of `layer`, laid over `base` (the packs under it), that
+/// paint the ground under the text, a fill or art with a centre drawn in
+/// its own colours (`fill` and no `tint`), but set no ink for it in their
+/// base, hover, pressed or disabled state: one message per variant and
+/// scheme. A component's ink was chosen for the component's own ground, so
+/// a variant that replaces the ground names the ink too.
+pub fn grounds_without_ink(base: &[Layer], layer: &Layer) -> Vec<String> {
+    use crate::classes::{Classes, Env, state};
+    let mut layers = base.to_vec();
+    layers.push(layer.clone());
+    let pack = Pack::new(&layers);
+    let mut out = Vec::new();
+    for scheme in Scheme::ALL {
+        let Ok((mut classes, _)) = Classes::new(Some(&pack.theme_json(scheme))) else {
+            continue;
+        };
+        for (key, class) in &layer.variants {
+            let (images, class) = split_nine(class);
+            let art = images.iter().any(|n| {
+                pack.images(scheme)
+                    .get(*n)
+                    .is_some_and(|i| i.fill && !i.tint)
+            });
+            for states in [0, state::HOVERED, state::PRESSED, state::DISABLED] {
+                let env = Env {
+                    window: [1280.0, 720.0],
+                    dark: scheme == Scheme::Dark,
+                    rtl: false,
+                    touch: false,
+                    states,
+                };
+                let r = classes.record(&class, &env);
+                let fill = r.skin.fill[3] > 0.0 || r.skin.gradient.is_some();
+                if (art || fill) && !r.inked {
+                    out.push(format!(
+                        "variants.{key}: paints {} but sets no ink (a `text-*` colour for that ground) ({})",
+                        if art { "art in its own colours" } else { "a fill" },
+                        scheme.name()
+                    ));
+                    break;
+                }
+            }
+        }
+    }
+    out
+}
+
 /// Four insets: one number for all, or `[top, right, bottom, left]`.
 fn insets(v: &Value, what: &str) -> Result<[f32; 4], String> {
     let n = |v: &Value| v.as_f64().filter(|n| *n >= 0.0).map(|n| n as f32);
@@ -850,6 +897,35 @@ mod tests {
                 "{s:?}: {:?}",
                 c.rgb
             );
+        }
+    }
+
+    #[test]
+    fn a_variant_painting_a_ground_sets_its_ink() {
+        let base = [Layer::default_pack()];
+        let l = Layer::parse(r##"{ "images": { "plate": { "src": "p.png", "slice": 8 }, "cut": { "src": "c.svg", "slice": 8, "tint": true } },
+            "variants": { "Chip.frame": "nine-plate", "Plate.frame": "bg-gold", "Slot.frame": "nine-cut",
+              "Button.plate": "nine-plate text-fg", "Field.frame": "bg-gold text-gold-fg hover:bg-fg" } }"##).unwrap();
+        let mut found = grounds_without_ink(&base, &l);
+        found.dedup_by(|a, b| a.split(':').next() == b.split(':').next());
+        assert_eq!(
+            found
+                .iter()
+                .map(|m| m.split(':').next().unwrap())
+                .collect::<Vec<_>>(),
+            [
+                "variants.Chip.frame",
+                "variants.Plate.frame",
+                "variants.Chip.frame",
+                "variants.Plate.frame"
+            ]
+        );
+        // The built-in packs give every ground its ink.
+        let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../templates/styles");
+        for p in ["cartoon", "fantasy", "scifi"] {
+            let text = std::fs::read_to_string(format!("{root}/{p}/pack.json")).unwrap();
+            let l = Layer::parse(&text).unwrap();
+            assert_eq!(grounds_without_ink(&base, &l), Vec::<String>::new(), "{p}");
         }
     }
 

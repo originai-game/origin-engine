@@ -161,10 +161,10 @@ export function RhythmResults(props: RhythmResultsProps) {
           onPress={(e) => props.onNext?.(e)}
           onKey={(e) => { if (e.key === "Escape") props.onNext?.(e); }}
           onAction={{ back: (e) => props.onNext?.(e) }}
-          class={`min-h-[3.143rem] min-w-[8.571rem] compact:flex-1 compact:min-w-0 flex-row items-center justify-center gap-1 px-3 rounded-[4.576px] bg-hud-accent shadow-[inset_0px_2px_0px_#ffffff59] ${packClass("Button", "plate", "primary")}`}
+          class={`min-h-[3.143rem] min-w-[8.571rem] compact:flex-1 compact:min-w-0 flex-row items-center justify-center gap-1 px-3 rounded-[4.576px] bg-hud-accent text-gold-fg shadow-[inset_0px_2px_0px_#ffffff59] ${packClass("Button", "plate", "primary")}`}
         >
-          <Text class={`shrink-0 pointer-coarse:hidden text-[1.75rem] leading-none text-gold-fg`} glyph="back" />
-          <Text class={`text-[0.929rem] font-bold tracking-[0.14em] uppercase text-gold-fg`}>{t("rhythm.results.next")}</Text>
+          <Text class={`shrink-0 pointer-coarse:hidden text-[1.75rem] leading-none`} glyph="back" />
+          <Text class={`text-[0.929rem] font-bold tracking-[0.14em] uppercase`}>{t("rhythm.results.next")}</Text>
         </View>
       </View>
     </View>

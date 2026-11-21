@@ -250,6 +250,8 @@
         "dark": "#ffdf50",
         "light": "#5b4500"
       },
+      "art-fg": "#ffffff",
+      "art-primary-fg": "#151a4a",
       "bg": {
         "dark": "#1d4ac4",
         "light": "#7fd3ff"
@@ -376,11 +378,11 @@
     }
   },
   "variants": {
-    "Button.plate": "nine-button hover:nine-button-hover active:nine-button-pressed disabled:nine-button-disabled bg-transparent hover:bg-transparent active:bg-transparent border-transparent outline-0 shadow-none",
-    "Button.plate.primary": "nine-button-primary hover:nine-button-primary-hover active:nine-button-primary-pressed disabled:nine-button-disabled text-fg-inverse bg-transparent hover:bg-transparent active:bg-transparent border-transparent outline-0 shadow-none",
-    "Panel.frame": "nine-panel bg-transparent hover:bg-transparent active:bg-transparent border-transparent outline-0 shadow-none",
-    "Plate.frame": "nine-plate bg-transparent hover:bg-transparent active:bg-transparent border-transparent outline-0 shadow-none",
-    "Chip.frame": "nine-chip bg-transparent hover:bg-transparent active:bg-transparent border-transparent outline-0 shadow-none"
+    "Button.plate": "nine-button hover:nine-button-hover active:nine-button-pressed disabled:nine-button-disabled bg-transparent hover:bg-transparent active:bg-transparent border-transparent outline-0 shadow-none text-art-fg data-pressed:text-art-fg data-pressed:hover:text-art-fg disabled:text-art-fg/55",
+    "Button.plate.primary": "nine-button-primary hover:nine-button-primary-hover active:nine-button-primary-pressed disabled:nine-button-disabled bg-transparent hover:bg-transparent active:bg-transparent border-transparent outline-0 shadow-none text-art-primary-fg data-pressed:text-art-primary-fg data-pressed:hover:text-art-primary-fg disabled:text-art-fg/55",
+    "Panel.frame": "nine-panel bg-transparent hover:bg-transparent active:bg-transparent border-transparent outline-0 shadow-none text-art-fg",
+    "Plate.frame": "nine-plate bg-transparent hover:bg-transparent active:bg-transparent border-transparent outline-0 shadow-none text-art-fg",
+    "Chip.frame": "nine-chip bg-transparent hover:bg-transparent active:bg-transparent border-transparent outline-0 shadow-none text-art-fg"
   },
   "images": {
     "button": {
