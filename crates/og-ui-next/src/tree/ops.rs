@@ -1779,7 +1779,7 @@ mod tests {
     /// A scroll view whose class sets a fixed 50 by 40 box (`s`).
     fn scrolling() -> Tree {
         let mut t = tree();
-        t.set_resolver(Box::new(|class, _, _| {
+        t.set_resolver(Box::new(|class, _, _, _| {
             let mut s = taffy::Style::default();
             for c in class.split_whitespace() {
                 match c {
