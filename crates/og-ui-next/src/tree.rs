@@ -125,6 +125,11 @@ struct El {
     /// The store conditions it holds, bits by condition index: its own, as
     /// each row of an `{#each}` sets its own of the same rule.
     holds: Box<[u64]>,
+    /// Not drawn since it was made or inserted: `Some(true)` inserted into
+    /// a parent on screen. Its style is not drawn yet, so a restyle enters
+    /// it again instead of running a transition (CSS never transitions an
+    /// element's first style).
+    entering: Option<bool>,
     eff: Inherit,
     /// A `<Line>`'s points and how they map onto its box; `None` for any
     /// other node.
@@ -369,6 +374,8 @@ pub struct Tree {
     /// Op nodes kept drawn while their exit runs: removed (false) or
     /// released too (true); `gone` is the settled exits' scratch list.
     leaving: Vec<(u32, bool)>,
+    /// The elements whose `entering` is set, cleared by [`Tree::present`].
+    entering: Vec<u32>,
     gone: Vec<Id>,
     /// Op nodes' hover, press, focus and modals ([`input`]), and where
     /// the pointer was in the last frame and how many frames had painted
@@ -589,6 +596,7 @@ impl Tree {
             time: 0.0,
             shown: Vec::new(),
             leaving: Vec::new(),
+            entering: Vec::new(),
             gone: Vec::new(),
             input: input::Input::new(),
             last_pointer: (f32::NAN, f32::NAN, 0),
@@ -960,6 +968,7 @@ impl Tree {
             attrs: Vec::new(),
             data: 0,
             image: None,
+            entering: None,
             eff: self.root,
         });
         self.ordered = false;
@@ -1339,6 +1348,9 @@ impl Tree {
     /// again when anything changed or moves: whether it laid out, and
     /// whether it painted.
     pub fn present(&mut self, fonts: &og_ui::Fonts, icons: &IconAtlas) -> (bool, bool) {
+        for e in self.entering.drain(..) {
+            self.els[e as usize].entering = None;
+        }
         let moving = self.motion.tick_at(self.time);
         self.settle_exits();
         let (w, h) = self.env.size.get();

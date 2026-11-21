@@ -378,10 +378,17 @@ impl Tree {
         let data = self.els[e as usize].data;
         let record = self.classes.record(class, states, data);
         if self.els[e as usize].record != *record {
-            // The new record's transition runs the change.
+            // The new record's transition runs the change; a node not
+            // drawn since it was made or inserted enters again with it.
             let old = std::mem::replace(&mut self.els[e as usize].record, record.clone());
             let el = &self.els[e as usize];
-            self.motion.restyle(el.node, &old, &el.record);
+            match el.entering {
+                Some(shown) => {
+                    let from = self.classes.presence(el.class, 0).filter(|_| shown);
+                    self.motion.enter(el.node, &el.record, from);
+                }
+                None => self.motion.restyle(el.node, &old, &el.record),
+            }
             self.reapply(e);
             self.paint = true;
         }
@@ -430,6 +437,7 @@ impl Tree {
             attrs: Vec::new(),
             data: 0,
             image: None,
+            entering: Some(false),
             eff: self.root,
         });
         if self.by_js.len() <= id as usize {
@@ -438,6 +446,7 @@ impl Tree {
         self.by_js[id as usize] = e;
         self.input.per.resize(e as usize + 1, input::Per::default());
         self.input.per[e as usize].tab = input::NO_TAB;
+        self.entering.push(e);
         self.inherit(e);
         Ok(e)
     }
@@ -891,6 +900,15 @@ impl Tree {
                     };
                     let el = &self.els[child as usize];
                     let from = self.classes.presence(el.class, 0).filter(|_| shown);
+                    // One put back while it exits turns back from where it
+                    // is, and restyles as a drawn node does.
+                    if !self.motion.exiting(el.node) {
+                        let el = &mut self.els[child as usize];
+                        if el.entering.replace(shown).is_none() {
+                            self.entering.push(child);
+                        }
+                    }
+                    let el = &self.els[child as usize];
                     self.motion.enter(el.node, &el.record, from);
                 }
                 // remove
@@ -1746,7 +1764,9 @@ mod tests {
     }
 
     /// A tree whose class `fade` is a red 50 by 20 box that fades over
-    /// 0.2 s, linearly, in from and out to transparent.
+    /// 0.2 s, linearly, in from and out to transparent; `slow` fades
+    /// over 0.2 s with no `starting:` or `exit:` record; `dim` is half
+    /// opaque.
     fn fading() -> Tree {
         let mut t = tree();
         t.set_resolver(Box::new(|class, _, state, _| {
@@ -1769,6 +1789,18 @@ mod tests {
                 if state & (STARTING | EXIT) != 0 {
                     r.skin.opacity = 0.0;
                 }
+            }
+            if class.contains("slow") {
+                r.motion = crate::motion::Spec {
+                    props: crate::motion::OPACITY,
+                    duration: 0.2,
+                    ease: crate::motion::Ease::Bezier([0.0, 0.0, 1.0, 1.0]),
+                    ..Default::default()
+                };
+            }
+            if class.contains("dim") && !(class.contains("fade") && state & (STARTING | EXIT) != 0)
+            {
+                r.skin.opacity = 0.5;
             }
             r
         }));
@@ -1857,6 +1889,83 @@ mod tests {
         t.set_time(1.8, false);
         let (_, painted) = t.present(&og_ui::Fonts::default(), &IconAtlas::default());
         assert!(!painted);
+    }
+
+    /// A node classed before it is first drawn, while detached or after
+    /// its insert, takes that class as its first style, as CSS does: it shows at once where nothing enters it, and enters from
+    /// that class's `starting:` record into a parent on screen, never
+    /// transitioning from the bare record. Once drawn, a class change
+    /// transitions.
+    #[test]
+    fn a_class_set_before_the_first_draw_is_the_first_style() {
+        let mut t = fading();
+        // The 50 px box at `x` (the row's own quad starts at 0 too).
+        let alpha_at = |t: &Tree, x: f32| {
+            t.drawn
+                .quads
+                .iter()
+                .find(|q| q.kind == PaintKind::Solid as u32 && q.rect[0] == x && q.rect[2] == 50.0)
+                .map(|q| q.color[3])
+        };
+        let mut b = Batch::default();
+        b.op(1).u32(1).u8(0);
+        b.op(4).u32(1).str("row");
+        b.op(8).u32(0).u32(1).u32(u32::MAX);
+        t.set_time(1.0, false);
+        t.apply(&b.bytes()).unwrap();
+        frame(&mut t);
+        // Into the row on screen, classed after the insert.
+        let mut b = Batch::default();
+        b.op(1).u32(2).u8(0);
+        b.op(8).u32(1).u32(2).u32(u32::MAX);
+        b.op(4).u32(2).str("fade dim");
+        b.op(1).u32(3).u8(0);
+        b.op(8).u32(1).u32(3).u32(u32::MAX);
+        b.op(4).u32(3).str("fade");
+        t.apply(&b.bytes()).unwrap();
+        t.set_time(1.05, false);
+        frame(&mut t);
+        let dim = alpha_at(&t, 0.0).unwrap();
+        assert!(
+            (dim - 0.125).abs() < 0.01,
+            "enters from starting: to its class's 0.5: {dim}"
+        );
+        let a = alpha_at(&t, 50.0).unwrap();
+        assert!(
+            (a - 0.25).abs() < 0.01,
+            "enters from starting:, a quarter in: {a}"
+        );
+        t.set_time(1.3, false);
+        frame(&mut t);
+        assert_eq!(alpha_at(&t, 0.0), Some(0.5));
+        // Drawn now: dimming the second transitions.
+        let mut b = Batch::default();
+        b.op(4).u32(3).str("fade dim");
+        t.apply(&b.bytes()).unwrap();
+        t.set_time(1.4, false);
+        frame(&mut t);
+        let a = alpha_at(&t, 50.0).unwrap();
+        assert!((a - 0.75).abs() < 0.01, "half way from 1 to 0.5: {a}");
+        // A node that transitions but has no `starting:` record, classed
+        // after its insert, shows its class at once.
+        let mut b = Batch::default();
+        b.op(1).u32(4).u8(0);
+        b.op(8).u32(1).u32(4).u32(u32::MAX);
+        b.op(4).u32(4).str("slow dim");
+        t.apply(&b.bytes()).unwrap();
+        t.set_time(1.45, false);
+        frame(&mut t);
+        assert_eq!(alpha_at(&t, 100.0), Some(0.5));
+        // The TS renderer's usual order: classed while detached, then
+        // inserted (a second page mounted into the same tree).
+        let mut b = Batch::default();
+        b.op(1).u32(5).u8(0);
+        b.op(4).u32(5).str("slow dim");
+        b.op(8).u32(1).u32(5).u32(u32::MAX);
+        t.apply(&b.bytes()).unwrap();
+        t.set_time(1.5, false);
+        frame(&mut t);
+        assert_eq!(alpha_at(&t, 150.0), Some(0.5), "classed before its insert");
     }
 
     /// The ops' tags, a11y props and listeners reach the accessibility
