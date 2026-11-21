@@ -4,7 +4,7 @@
     "module": "ESNext",
     "moduleResolution": "Bundler",
     "lib": ["ES2022"],
-    "types": [],
+    "types": ["@origingame/engine/bun-test"],
     "strict": true,
     "exactOptionalPropertyTypes": true,
     "noFallthroughCasesInSwitch": true,
@@ -12,15 +12,7 @@
     "verbatimModuleSyntax": true,
     "allowImportingTsExtensions": true,
     "noEmit": true,
-    "jsx": "preserve",
-    "paths": {
-      "@origingame/engine": ["./.og/engine/types/index.d.ts"],
-      "@origingame/engine/ui": ["./.og/engine/types/ui.d.ts"],
-      "@origingame/engine/ui/components": ["./.og/engine/src/ui/components/index.tsx"],
-      "@origingame/engine/playtest": ["./.og/engine/src/playtest.ts"],
-      "bun:test": ["./.og/engine/vendor/bun-types/test.d.ts"],
-      "@origingame/engine/ui-check": ["./.og/engine/src/node/ui-check.ts"]
-    }
+    "jsx": "preserve"
   },
   "include": ["src/**/*.ts", "src/**/*.tsx", "assets/ui/**/*.tsx", "tests/**/*.ts", ".og/types/**/*.d.ts"]
 }
