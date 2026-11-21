@@ -1,154 +1,144 @@
-# og-ui-next conventions
+# og-ui contracts (TSX)
 
-The new core's own primitives. Nothing here accepts an old convention:
-sheets, components and packs are rewritten to these. Old forms and their
-replacements are listed in the last section.
+Game UI is TSX components styled with Tailwind classes, the way NSH
+(longbridge/nsh) does it: JSX compiled to Solid-style renderer calls, class
+strings resolved to typed records in Rust. There are no `.svelte`
+documents, no style sheets, no cascade and no compatibility with the old
+forms. This file is the contract between the threads that build it; change
+it only together with the owners named below.
 
-## Layout: typed element fields
-
-The compiler reads these attributes of a native element into typed fields;
-they are not CSS-visible, and no selector matches them.
-
-| Attribute | Values | Lays out as |
+| Contract | Owner | Readers |
 |---|---|---|
-| `layout` | `row` | flex row, children centred on the cross axis |
-| | `stack` | flex column |
-| | `wrap` | flex row that wraps, children centred on the cross axis |
-| | `overlay` | flex column; its `anchor` children lie over it |
-| | `scroll` | flex column that scrolls and may shrink to 0 |
-| | `center` | flex column, children centred, at most `--layout-measure` wide, centred in its parent |
-| `gap` | `none` `hair` `tight` `base` (default) `loose` `wide` | the gap between children: `0`, `--layout-gap-hair`, `-tight`, `--layout-gap`, `-loose`, `-wide` |
-| `anchor` | `fill` `top-start` `top-end` `bottom-start` `bottom-end` `top-edge` `bottom-edge` | out of flow, at that corner or edge, `--layout-anchor-inset` in (`fill` and the edges: 0) |
-| `fill` | (present) | takes the room its parent has left: `flex: 1 1 0`, min size 0 |
-| `reverse` | (present) | lays its children out from the end (`row-reverse`, `column-reverse`, `wrap-reverse`) |
-| `play` | `enter` `exit` `pop` `stamp` `beat` `pulse` `spin` `ping` `shimmer` `float` `change` | the named motion it plays (read now, animated by the motion head); replaces `data-motion` (`motion` stays the transition prop) |
+| Component shape, primitives | og-ui coordinator (this thread) | the port of the engine's components, every game |
+| JSX compile | coordinator, head 2 | `og build`, `og check` |
+| Ops and events | coordinator and the UI thread | the TS renderer (head 2), the arena applier (head 3), input (head 4) |
+| Class vocabulary, Record | coordinator, head 1 | paint (head 5), motion, a11y |
+| Theme and packs | coordinator and the looks thread | the cook, the platform's looks |
 
-The field is the element's lowest style: its sheet's rules override it.
-Anything else (alignment, a fixed size, a grid) is an ordinary declaration
-on a class.
+## Components
 
-## Surfaces: typed per-part records
+A component is a function from props to an element, in a `.tsx` file of
+the game or of the engine (`packages/engine/src/ui/`):
 
-`part` names the element's surface: `frame`, `band`, `title`, `row`,
-`cell`, `card`, `badge`, `well`, `figure`, `tab`, `dot`, `fade` and so on,
-unqualified (`part="frame"`, not `part="AbilitySlot.frame"`). No `parts`
-meta line. Six more attributes name the surface's variants, all in one
-namespace of surface names:
+```tsx
+import { View, Text, Icon } from "@origingame/engine/ui";
 
-- `variant`: `hud`, `bare`, `lead`, `small`, … (was a class on the part).
-- `tier`: `common`, `uncommon`, `rare`, `epic`, `legendary`, `mythic` (was
-  `data-rarity`).
-- `tone`: `danger`, `warn`, `success`, `reward`, … (was `data-tone`).
-- `shape`: `round`, `square`, `hex`, `diamond`, … (was `data-shape`).
-- `team`, `trend` (were `data-team`, `data-trend`).
-
-Each may be literal or bound (`tier={rarity}`, `variant={bare ? 'bare' :
-'hud'}`): a bound one compiles to conditional spans, one per surface rule
-whose name it could give. A rule may name a tone or shape without a part
-(`.danger { … }`), which dresses any element with that tone. Specificity
-is the number of names plus one for a state, then sheet order.
-
-A surface's record comes from the style's surfaces sheet, written as
-compound class selectors over the part, variant and tier names:
-
-```css
-.frame { padding: var(--frame-pad); background: var(--frame-fill); }
-.frame.hud { background: var(--plate-fill); }
-.frame.bare { padding: 0; background: none; }
-.cell:hover { background: var(--cell-hover-fill); }
-.cell.rare { background: var(--cell-rare-fill); }
+export function AbilitySlot(props: { icon: string; cooldown: number; ready: boolean }) {
+  return (
+    <View class="relative size-14 rounded-lg bg-surface-2 ring-1 ring-edge" data-ready={props.ready}>
+      <Icon name={props.icon} class="size-8 text-ink" />
+      <Text class="absolute bottom-1 right-1 text-xs tabular-nums">{props.cooldown}</Text>
+    </View>
+  );
+}
 ```
 
-A selector is one compound of `.name`s and at most one state; no
-combinators, attributes, `:where`/`:is`/`:not`/`:has`. The record lies
-under the element's own sheet rules and over its layout field. The default
-surfaces sheet is `crates/og-ui-next/default/surfaces.css`.
+- **Primitives**, imported from `@origingame/engine/ui` (NSH's rule: tags
+  are PascalCase imports; a lowercase tag is an error): `View`, `Text`,
+  `Image`, `Icon`, `Scroll`, `Input`, `Svg` with its shapes, and the
+  control flow `Show`, `For`, `Switch`/`Match`. Every other tag is a
+  component call.
+- **Props** keep camelCase names. Reading `props.x` inside JSX is
+  reactive; a component body runs once (Solid's model), so derived values
+  are functions or `createMemo`.
+- **State** comes from the engine's stores (`og.ui.scope`, `UiReactor`) as
+  signals; a component never reads the simulation directly.
+- **Events** are `onPress`, `onTap`, `onPointerDown`/`Move`/`Up`, `onWheel`,
+  `onFocus`, `onBlur`, `onKey`, `onChange`: JS functions, called by id.
+- **Mounting**: `og.ui.mount(Component, props, { layer })` on a scope;
+  layers are `hud`, `menu`, `modal`, `popover`, `toast`, `tooltip`,
+  `system`, as before.
+- **Strings** go through `t(key, params)`; text in JSX is literal or bound,
+  never concatenated from translated pieces.
 
-## Document sheets
+## JSX compile (head 2)
 
-A `.svelte` document's `<style>` may use:
+`og build` bundles game.js with Bun.build; a plugin runs NSH's JSX
+transform (`nsh-bundler` `jsx.rs`/`compile.rs`, oxc) on `.tsx`. A host
+element becomes one function that makes it; a static value is set once,
+a changing one (an expression that calls or reads a member) is followed.
+`og check` runs NSH's class check (`classes.rs`): an unknown class is an
+error with its line and column. Class strings the compile sees as
+literals are listed for the cook, which resolves them into records ahead
+of time; only bound class strings go through the runtime cache.
 
-- `.class`, `#id`, `tag`, and compounds of them;
-- the descendant combinator between the document's own elements;
-- states: `:hover`, `:active`, `:focus` / `:focus-visible`, `:disabled`;
-- dynamic classes through `class:name={expr}`, and `style:--x={expr}` for a
-  value a binding writes.
+## Ops (TS renderer → Rust)
 
-Not taken: attribute selectors (`[data-…]`, `[aria-…]`), `:where`, `:is`,
-`:not` (except around `:size()`), `:has`, `:host`, `::part`, `:global`, `@media`, `@container`,
-sibling combinators and structural pseudo-classes. `:dir(rtl)` is taken. Every `var()` resolves
-at cook time; only the tokens a `style:--x` binding reads ship to runtime.
+One batch per tick, sent through `og_engine_ui_patch` (the same call and
+wire codec as the store commands: an array of maps tagged by `op`),
+applied in order before the UI's commit. NSH's `ops.rs` subset:
 
-## States
+| `op` | Fields | Effect |
+|---|---|---|
+| `create` | `id`, `tag` (`view` `text` `image` `icon` `scroll` `input` `svg`…) | a node, detached |
+| `createText` | `id`, `text` | a text run |
+| `placeholder` | `id` | an empty anchor (`Show`/`For` insert before it) |
+| `setText` | `id`, `text` | |
+| `setClass` | `id`, `class` | the class string; resolved once per distinct string |
+| `setStyle` | `id`, `style` | inline declarations as text, over the class record |
+| `setProp` | `id`, `name`, `value` (JSON scalar) | `src`, `name` (icon), `disabled`, `tabIndex`, `value`, `role`, `label`, `data-*` |
+| `listen` | `id`, `event`, `enabled` | which events the node wants |
+| `insert` | `parent`, `child`, `before` (id or null) | |
+| `remove` | `parent`, `child` | detaches |
+| `release` | `id` | frees it and its subtree |
 
-A state a binding decides is a CSS custom state: the element writes
-`state:selected={…}`, and a sheet matches `:state(selected)`, in a document
-sheet and in a surfaces sheet alike (`.row:state(selected)`,
-`.cell:state(empty)`). The state holds while the binding's value is set
-and not `false`. It replaces `aria-selected`, `aria-current`,
-`aria-pressed`, `data-selected`, `data-done`, `data-current`, `data-locked`,
-`data-empty`, `data-active` and the like. Accessibility attributes stay on
-the element for what they mean, never for styling.
+Ids are u32 the renderer allocates; a mount's root is the id `mount`
+answers. `data-*` props are the states a class variant reads
+(`data-ready:` …). The reply to a batch carries the events since the last
+one: `[{ id, event, payload }]`, which the renderer dispatches to handlers
+by id.
 
-## SVG
+## Classes and the Record (head 1)
 
-On `<svg>` and its shapes, `fill` and `stroke` are paint, as attributes or
-in a sheet (`fill: none`, `stroke: currentColor`, `stroke-width`). SVG
-shapes carry no `part`.
+Classes are Tailwind v4.1's vocabulary as NSH resolves it
+(`third_party/nsh-tailwind`, vendored): later utilities win, variants
+(`hover:`, `active:`, `focus-visible:`, `disabled:`, `data-*:`, `group-*:`,
+`dark:`, breakpoints) apply after plain utilities, inline style last.
+There is no cascade: only `group` states and `focus-within` cross nodes.
+Breakpoints read the UI's own box; `touch:` reads the input.
 
-## Size classes and input
+A class list writes one `style::Record`: layout into the node's
+rune-taffy style, and these paint fields (fixed size, no allocation):
 
-The UI's own box and input are classes a selector reads, in document and
-surfaces sheets alike, and they replace every `@media` and `@container`
-rule:
+- `fill`; `gradient` (linear, `corner` aim, up to 8 stops); `radius`
+  (tl tr br bl); `border` (t r b l, also layout) and `border_color`;
+  `shadows` (4 layers, `ring-*` a spread layer, `inset-shadow-*` inset);
+  `outline` (width, offset, colour); `opacity`; `transform` (translate,
+  scale, rotate, origin; paint only); `backdrop_blur`;
+- text: `ink`, font size, weight, family, line height, tracking, align,
+  case, `truncate`/`line-clamp`, `text_shadow`, `decoration`.
 
-| Selector | Holds when |
-|---|---|
-| `:size(narrow)` | the UI's box is under 600 px wide |
-| `:size(short)` | it is under 500 px tall (a phone on its side) |
-| `:size(compact)` | narrow or short: the usual compact form |
-| `:touch` | the player touches the screen |
+A class the record has no field for is reported by `og check` as unknown,
+not dropped silently.
 
-844×390 is short and compact; 390×844 is narrow and compact. Write
-`.x:size(compact) { … }` where a sheet had `@media (width < 600px) { .x { …
-} }`. A custom property set under one (`.bar:size(compact) { --pip: 9px }`)
-is in force over the element's subtree while it holds. Rules for reduced
-motion are gone: the motion system honours the setting itself.
+## Theme and packs
 
-`env(-og-hud-inset-top|right|bottom|left)` is the HUD's safe-area inset, in
-`inset`, `top`/`right`/`bottom`/`left` and `padding*` only.
+The theme is NSH's Tailwind theme (Tailwind's defaults, then
+`Theme::from_json`'s keys: `colors`, `spacing`, `breakpoints`,
+`fontFamily`, `fontSize`, `fontWeight`, `radius`, `shadow`, `tracking`,
+`leading`, `blur`, `aspect`, `ease`, `container`), extended in this order:
 
-## Packs
+1. the engine's design tokens (`packages/design/tokens/*.css`), built into
+   theme JSON by the cook: semantic colours (`surface-1..3`, `edge`, `ink`,
+   `ink-muted`, `accent`, `danger`, `warn`, `success`, `reward`, the tier
+   colours `common`…`mythic`), radii, shadows and type;
+2. the game's style pack;
+3. the game's own `theme.json`.
 
-A pack is a directory with `tokens.css` (`:root { --token: value; }`, and
-`:root.light { … }` for the light scheme) and `surfaces.css` (the same
-syntax as the default surfaces sheet, over it). The cook compiles each
-pack into its own token table and surface records; swapping a pack at
-runtime switches tables. No `::part`, no global rules.
+A **style pack** is a directory with `theme.json` (the keys above; a
+colour may be `{ "light": …, "dark": … }`) and an optional `variants`
+object: named class strings a component appends after its own, keyed
+`Component.slot` or `Component.slot.variant`:
 
-## Old forms and their replacements
+```json
+{
+  "colors": { "accent": "#e0a33a", "surface-2": { "dark": "#1b1d24", "light": "#f3efe6" } },
+  "radius": { "card": 10 },
+  "variants": { "Panel.frame": "border-2 border-edge shadow-card", "Panel.frame.hud": "bg-black/40 backdrop-blur-md" }
+}
+```
 
-| Old | New |
-|---|---|
-| `data-layout="row\|stack\|overlay\|scroll\|center"` | `layout="…"` |
-| `data-layout="cluster"`, `"switcher"` | `layout="wrap"` |
-| `data-layout="cover"` | `layout="stack" fill` plus `justify-content: center; align-items: center` on a class |
-| `data-layout="shell"` | `layout="stack" fill` |
-| `data-layout="ratio"`, `"grid"`, `"sidebar"`, `"strip"` | a class with `aspect-ratio` / `display: grid` declarations |
-| `data-gap="…"` | `gap="…"` |
-| `data-anchor="…"` | `anchor="…"` (`top`, `bottom` and `center` become a class) |
-| `data-fill` | `fill` |
-| `data-from="end"` | `reverse` |
-| `part="Comp.frame"` + `parts` meta line | `part="frame"` |
-| `class="hud"` / `"bare"` / `"lead"` / `"small"` on a part | `variant="…"` |
-| `data-rarity="rare"` | `tier="rare"` |
-| `data-tone`, `data-shape`, `data-team`, `data-trend` | `tone`, `shape`, `team`, `trend` |
-| `data-motion="pulse"` | `play="pulse"` |
-| `:dir(rtl)` | unchanged: a condition on the direction |
-| `@media (width < 600px)`, `@container (width < …)` | `:size(compact)` on each rule |
-| `@media (height < 500px)` | `:size(short)` |
-| `@media (pointer: coarse)` | `:touch` |
-| `@media (prefers-reduced-motion)` | deleted |
-| `[aria-selected=true]`, `[data-done=true]`, … | `state:selected={…}` and `:state(selected)` |
-| `:where([part$=".frame"]…)` rules in default.css | `.frame…` in `default/surfaces.css` |
-| `::part(…)` in a pack | the pack's `surfaces.css` |
+A component asks for its slot's pack classes with `packClass("Panel",
+"frame", variant)` and puts them last in its `class`. The cook compiles a
+pack's `theme.json` into the theme the runtime loads, and its variant
+strings into records like any literal class string.
