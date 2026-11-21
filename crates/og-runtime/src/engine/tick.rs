@@ -120,7 +120,10 @@ pub fn frame(id: u32, elapsed_ms: f64) -> String {
         }
     };
     let t0 = rprobe::now_ms();
-    if let Err(e) = tick_boundary(&eng) {
+    // The host's pump at each boundary, as an advance has it: host answers
+    // and the TSX UI's ops since the last boundary.
+    let pump = || hooks().map_or(Ok(()), |host| host.pump_platform(id));
+    if let Err(e) = pump().and_then(|()| tick_boundary(&eng)) {
         return refuse(e);
     }
     // No tick before GameDesc.start has run, and no time owed for the wait.
@@ -148,6 +151,7 @@ pub fn frame(id: u32, elapsed_ms: f64) -> String {
                 return Ok(Ok(taken));
             }
             super::modules::end_of_ticks();
+            pump()?;
             tick_boundary(&eng)?;
         }
     })();
@@ -155,6 +159,7 @@ pub fn frame(id: u32, elapsed_ms: f64) -> String {
     let frame_t0 = t0;
     super::modules::end_of_ticks();
     super::stream::sound_chunks(&eng);
+    let stepped = stepped.and_then(|r| pump().map(|()| r));
     let ticks = match stepped {
         Ok(Ok(n)) => n,
         // A system failed: the world's clock stays on the tick it threw in

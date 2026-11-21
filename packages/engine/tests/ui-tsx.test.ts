@@ -4,13 +4,15 @@
 // what changed, and an OGEV reply calls the node's handler with the world.
 
 import { expect, test } from "bun:test";
-import type { World } from "@origingame/engine";
+import { defineSystem, og, type World } from "@origingame/engine";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { bundleGame, compileJsx } from "../src/node/build.ts";
-import { mount, renderers } from "../src/ui/index.ts";
+import { loadNativeHost } from "../src/node/index.ts";
+import { createEngine, type GameToken } from "../src/runtime.ts";
+import { Text, mount, renderers, useStore } from "../src/ui/index.ts";
 import { Renderer } from "../src/ui/rt.ts";
 import { createSignal } from "../src/ui/signals.ts";
 
@@ -146,4 +148,37 @@ test("a native bundle compiles the engine's TSX components with the game's", asy
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
+});
+
+// A display frame flushes the TSX UI at each tick boundary, as an advance
+// does: what a system wrote reaches the tree while the game plays, not only
+// at the mount (the platform pump that flushes it ran in advance alone).
+test("a display frame sends the UI's changes at each tick boundary", () => {
+  loadNativeHost();
+  const Count = defineSystem("UiCount", { reads: [] }, (_q, _time, world) => {
+    const n = og.ui.scope(world, "count").writable("n", 0);
+    n.update((v) => v + 1);
+  });
+  const game = og.game({
+    tick: 60,
+    systems: [Count],
+    ui(world) {
+      const n = useStore<number>(og.ui.scope(world, "count").writable("n", 0));
+      mount(world, () => Text({ children: () => String(n()) }), {});
+    },
+  });
+  const created = createEngine(game as unknown as GameToken);
+  if (!created.ok) throw new Error(created.reason);
+  const engine = created.value;
+  const id = (engine.world as unknown as { id: number }).id;
+  const ui = renderers.get(id);
+  if (!ui) throw new Error("the mount made no renderer");
+  let flushes = 0;
+  const flush = ui.flush.bind(ui);
+  ui.flush = () => { flushes++; flush(); };
+  let ticks = 0;
+  for (let i = 0; i < 6; i++) ticks += engine.frame(1000 / 60).ticks ?? 0;
+  expect(ticks).toBeGreaterThan(2);
+  expect(flushes).toBeGreaterThanOrEqual(ticks);
+  renderers.delete(id);
 });
