@@ -1,7 +1,8 @@
 //! Light volumes: a grid of probes over a box, each the light arriving from
-//! the scene in every direction (bounced light, the sky, emissive surfaces;
-//! not the lights' direct term, which the renderer draws) projected onto
-//! first-order spherical harmonics, ready for the shader's irradiance.
+//! the scene in every direction (bounced light, the sky, emissive surfaces,
+//! static lights' direct light; not a stationary light's direct term, which
+//! the renderer draws) projected onto first-order spherical harmonics,
+//! ready for the shader's irradiance.
 //!
 //! A probe stores, per colour channel, `(c1, c0)` such that the irradiance
 //! over π for a normal n is `c0 + c1 · n` (Ramamoorthi and Hanrahan's
@@ -42,6 +43,9 @@ impl VolumeDesc {
     }
 }
 
+/// Points of each static light a probe's direct light is the mean of.
+const STATIC_SAMPLES: u32 = 16;
+
 /// The most probes a volume may have (64 per axis bounds it too).
 pub const MAX_PROBES: usize = 65_536;
 
@@ -67,6 +71,7 @@ pub fn bake(
     threads: usize,
 ) -> Volume {
     let tracer = Tracer::new(scene, bounces);
+    let statics = tracer.has_static();
     let counts = desc.counts();
     let n = (counts[0] * counts[1] * counts[2]) as usize;
     let step = (desc.max - desc.min)
@@ -113,7 +118,22 @@ pub fn bake(
                         sh[3] += l * (Y1 * d.x);
                     }
                     let w = 4.0 * std::f32::consts::PI / samples as f32;
-                    *probe = (sh.map(|c| c * w), back * 10 > samples * 3);
+                    let mut sh = sh.map(|c| c * w);
+                    // The static lights' direct light: each a lobe of
+                    // irradiance from its direction (rect lights sampled
+                    // at STATIC_SAMPLES points).
+                    if statics {
+                        let k = 1.0 / STATIC_SAMPLES as f32;
+                        for _ in 0..STATIC_SAMPLES {
+                            tracer.arriving(p, None, true, &mut rng, &mut |e, l| {
+                                sh[0] += e * (Y0 * k);
+                                sh[1] += e * (Y1 * l.y * k);
+                                sh[2] += e * (Y1 * l.z * k);
+                                sh[3] += e * (Y1 * l.x * k);
+                            });
+                        }
+                    }
+                    *probe = (sh, back * 10 > samples * 3);
                 }
             });
         }
@@ -272,6 +292,42 @@ mod tests {
         // so E/π = 1/2 ∓ 1/2: 1 facing it (the exact answer), 0 facing away.
         assert!(down > 0.9 && down < 1.05, "down {down}");
         assert!((0.0..0.08).contains(&up), "up {up}");
+    }
+
+    /// A static light's direct light is in the probes (three quarters of
+    /// its irradiance over π facing it: L1 smooths the clamped cosine); a
+    /// stationary one's is the renderer's, so its probes hold none.
+    #[test]
+    fn a_static_lights_direct_light_is_baked_and_a_stationary_ones_is_not() {
+        use og_render_data::light::{LightDesc, LightMobility};
+        let light = |mobility| LightDesc {
+            position: Vec3::new(4.0, 0.0, 0.0),
+            intensity: 40.0,
+            range: 100.0,
+            radius: 0.5,
+            mobility,
+            ..Default::default()
+        };
+        let probe = |mobility| {
+            let scene = Scene {
+                lights: vec![light(mobility)],
+                ..Default::default()
+            };
+            let desc = VolumeDesc {
+                min: Vec3::ZERO,
+                max: Vec3::ONE,
+                spacing: 1.0,
+            };
+            bake(&scene, &desc, 64, 1, 1, 1).probes[0]
+        };
+        let baked = irradiance(&probe(LightMobility::Static), Vec3::X).x;
+        let l = light(LightMobility::Static);
+        let want = 0.75 * l.intensity * l.falloff(16.0) / std::f32::consts::PI;
+        assert!((baked - want).abs() < 1e-3 * want, "{baked} vs {want}");
+        assert_eq!(
+            irradiance(&probe(LightMobility::Stationary), Vec3::X),
+            Vec3::ZERO
+        );
     }
 
     /// A closed cube of side `size` about `c`, its faces outwards.

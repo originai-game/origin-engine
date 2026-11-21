@@ -368,6 +368,7 @@ fn xyz(v: Vec3) -> Value {
 pub(crate) fn derive(
     world: &World,
     layouts: &BTreeMap<String, Layout>,
+    baked: &crate::present::baked::BakedState,
     entity: Option<Entity>,
     name: &str,
     fields: &mut serde_json::Map<String, Value>,
@@ -411,6 +412,7 @@ pub(crate) fn derive(
         stage,
         &mut |e| h.world_of(e),
         og_render::DirectionalLight::default(),
+        baked,
     ) else {
         return;
     };

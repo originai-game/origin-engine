@@ -517,6 +517,21 @@ module render {
     }
   }
 
+  enum LightMobility {
+    doc "How a light may change while the game runs, as Unreal's light mobility: which of its light og bake lightmaps bakes into its scene's lightmaps and light volumes, and which the renderer draws every frame."
+    guide "render §4"
+    variant movable "Moves or changes in any way: drawn whole every frame, and none of its light is baked."
+    variant stationary "Stays where it is; its colour and intensity may change. Drawn every frame, the light it bounces baked; past RenderSettings.staticLightReach its diffuse light may come from probes (render §3). The default."
+    variant static "Never moves or changes: its direct light is baked too, and while its scene's bake is drawn the renderer leaves it out (render §3). Unbaked, it draws as stationary. Under a running og.DayNight a DirectionalLight is movable."
+  }
+
+  column LightMobility {
+    doc "A LightMobility field: the variant's index."
+    array Uint32Array
+    stride 1
+    value LightMobility
+  }
+
   component DirectionalLight {
     doc "The sun, as three.js DirectionalLight: parallel light along the entity's local -Z (aim it with transform.lookAt, as a camera). One is drawn, the brightest, with RenderSettings.shadowCascades shadow cascades (3 by default); the sky's sun, clouds and weather follow it. Two within 1.5x of each other hand over smoothly, so a sun can rise as a moon fades (render §3)."
     doc "Without one, the renderer's default sun (from above and to the side, intensity 3) lights the scene."
@@ -529,6 +544,10 @@ module render {
       default 3
       min 0
       tunable true
+    }
+    field mobility LightMobility "How the light may change while the game runs: what og bake lightmaps bakes of it and what is drawn every frame (stationary, the default; movable; static)." {
+      default stationary
+      guide "render §4"
     }
     field castShadow bool "Cast shadows through the cascades (RenderSettings.shadowCascades), as three.js Light.castShadow." {
       default true
@@ -603,8 +622,9 @@ module render {
     field cookie Texture "A light cookie projected all around the light: six square faces stacked top to bottom as +X, -X, +Y, -Y, +Z, -Z, six times as tall as wide (a KTX2 cube's face order, a cube map's orientation, world axes). The light's colour is multiplied by the texel its direction meets. 0 is none." {
       guide "render §3"
     }
-    field static bool "The light never moves or changes. While RenderSettings.staticLightReach is above 0, its diffuse light past the reach comes from a grid of probes round the camera; glossy surfaces keep its highlights. Never cached when it casts a shadow or has a cookie." {
-      guide "render §3"
+    field mobility LightMobility "How the light may change while the game runs: what og bake lightmaps bakes of it and what is drawn every frame (stationary, the default; movable; static)." {
+      default stationary
+      guide "render §4"
     }
   }
 
@@ -646,8 +666,9 @@ module render {
     field cookie Texture "A light cookie, as three.js SpotLight.map: the texture projected along the cone (its centre on the axis, its edges at the outer angle, its top towards world up), multiplying the light's colour. 0 is none. A shadowed spot keeps its shadow over the pattern." {
       guide "render §3"
     }
-    field static bool "The light never moves or changes. While RenderSettings.staticLightReach is above 0, its diffuse light past the reach comes from a grid of probes round the camera; glossy surfaces keep its highlights. Never cached when it casts a shadow or has a cookie." {
-      guide "render §3"
+    field mobility LightMobility "How the light may change while the game runs: what og bake lightmaps bakes of it and what is drawn every frame (stationary, the default; movable; static)." {
+      default stationary
+      guide "render §4"
     }
   }
 
@@ -794,7 +815,7 @@ module render {
       default true
       guide "render §4"
     }
-    field staticLightReach f32 "How far from itself a light marked static has its diffuse light shaded per pixel; past it, that light comes from a grid of probes round the camera and a static rect light skips rough surfaces. Glossy surfaces keep the highlights. 0 shades every light whole." {
+    field staticLightReach f32 "How far from itself a stationary or static light (LightMobility) has its diffuse light shaded per pixel; past it, that light comes from a grid of probes round the camera and such a rect light skips rough surfaces. Glossy surfaces keep the highlights. 0 shades every light whole." {
       default 0
       min 0
       unit m

@@ -30,6 +30,7 @@ export { MAX_POINTERS, MAX_GAMEPADS } from "./consts.ts";
 export const Geometry = ((value = 0 as Api.Geometry, options) => spec("Geometry", value, options)) as typeof Api.Geometry;
 export const Material = ((value = 0 as Api.Material, options) => spec("Material", value, options)) as typeof Api.Material;
 export const Upscaler = ((value = "taau" as Api.Upscaler, options) => spec("Upscaler", value, options)) as typeof Api.Upscaler;
+export const LightMobility = ((value = "movable" as Api.LightMobility, options) => spec("LightMobility", value, options)) as typeof Api.LightMobility;
 export const ToneMapping = ((value = "aces" as Api.ToneMapping, options) => spec("ToneMapping", value, options)) as typeof Api.ToneMapping;
 export const AoResolutionSetting = ((value = "postEffects" as Api.AoResolutionSetting, options) => spec("AoResolutionSetting", value, options)) as typeof Api.AoResolutionSetting;
 export const QualityPreset = ((value = "none" as Api.QualityPreset, options) => spec("QualityPreset", value, options)) as typeof Api.QualityPreset;

@@ -13,7 +13,7 @@
 use crate::kit;
 use crate::sky_scenes::physical_light_under;
 use glam::{Mat4, Quat, Vec2, Vec3};
-use og_render::{Camera, Exposure, LensFlare, Light, LightKind, RenderScene, shapes};
+use og_render::{Camera, Exposure, LensFlare, LightDesc, LightKind, RenderScene, shapes};
 
 /// A street lamp's lantern: where its glass glows and its light hangs.
 #[derive(Clone, Copy, Debug)]
@@ -126,7 +126,7 @@ pub(crate) fn light_lanterns(
             glow,
             Mat4::from_scale_rotation_translation(Vec3::splat(0.16), Quat::IDENTITY, l.glass),
         );
-        scene.lighting.lights.push(Light {
+        scene.lighting.lights.push(LightDesc {
             kind: LightKind::Point,
             position: l.glass - Vec3::new(l.side * 0.3, 0.25, 0.0),
             color: Vec3::new(1.0, 0.72, 0.45),
@@ -134,6 +134,7 @@ pub(crate) fn light_lanterns(
             range: 16.0,
             radius: 0.0,
             cast_shadows: i < shadowed,
+            mobility: og_render::LightMobility::Movable,
         });
     }
 }
@@ -405,7 +406,7 @@ pub(crate) fn car_with_headlights(
             glow,
             Mat4::from_scale_rotation_translation(Vec3::new(0.16, 0.1, 0.16), Quat::IDENTITY, p),
         );
-        scene.lighting.lights.push(Light {
+        scene.lighting.lights.push(LightDesc {
             kind: LightKind::Spot {
                 direction: (ahead - Vec3::Y * 0.12).normalize(),
                 angle_degrees: 30.0,
@@ -417,6 +418,7 @@ pub(crate) fn car_with_headlights(
             range: 30.0,
             radius: 0.0,
             cast_shadows: false,
+            mobility: og_render::LightMobility::Movable,
         });
     }
     lights
@@ -440,7 +442,7 @@ pub fn point_spot_scene() -> RenderScene {
         Vec2::new(-0.18, 1.0),
         120.0,
     );
-    scene.lighting.lights.push(Light {
+    scene.lighting.lights.push(LightDesc {
         kind: LightKind::Spot {
             direction: Vec3::new(-0.35, -1.0, 0.1).normalize(),
             angle_degrees: 40.0,
@@ -452,6 +454,7 @@ pub fn point_spot_scene() -> RenderScene {
         range: 10.0,
         radius: 0.0,
         cast_shadows: false,
+        mobility: og_render::LightMobility::Movable,
     });
     scene.frame.camera = Camera {
         position: Vec3::new(0.6, 2.2, 7.5),
@@ -516,7 +519,7 @@ pub fn flare_lights_scene() -> RenderScene {
         glow,
         Mat4::from_scale_rotation_translation(Vec3::splat(0.22), Quat::IDENTITY, lamp),
     );
-    scene.lighting.lights.push(Light {
+    scene.lighting.lights.push(LightDesc {
         kind: LightKind::Spot {
             direction: (eye0 - lamp).normalize(),
             angle_degrees: 28.0,
@@ -528,6 +531,7 @@ pub fn flare_lights_scene() -> RenderScene {
         range: 70.0,
         radius: 0.0,
         cast_shadows: false,
+        mobility: og_render::LightMobility::Movable,
     });
     // The eye slid sideways so the near gate's left post (x = -2.0 at
     // z = -3, 0.12 m in radius) hides the left half of the third left
@@ -604,7 +608,7 @@ pub fn festival_scene() -> RenderScene {
                 glows[pick.min(paper.len() - 1)],
                 Mat4::from_scale_rotation_translation(Vec3::new(0.3, 0.36, 0.3), Quat::IDENTITY, p),
             );
-            lights.push(Light {
+            lights.push(LightDesc {
                 kind: LightKind::Point,
                 position: p - Vec3::Y * 0.25,
                 color: c,
@@ -612,6 +616,7 @@ pub fn festival_scene() -> RenderScene {
                 range: 8.0,
                 radius: 0.0,
                 cast_shadows: false,
+                mobility: og_render::LightMobility::Movable,
             });
         }
     }
@@ -629,7 +634,7 @@ pub fn festival_scene() -> RenderScene {
                 Vec3::new(0.35, 1.0, 0.0),
             )
         };
-        lights.push(Light {
+        lights.push(LightDesc {
             kind: LightKind::Spot {
                 direction: direction.normalize(),
                 angle_degrees: 34.0,
@@ -641,6 +646,7 @@ pub fn festival_scene() -> RenderScene {
             range: 14.0,
             radius: 0.0,
             cast_shadows: false,
+            mobility: og_render::LightMobility::Movable,
         });
     }
     scene.lighting.lights = lights;
@@ -708,7 +714,7 @@ pub fn cellar_scene() -> RenderScene {
         ),
     );
     let position = Vec3::new(-2.0, 3.0, 1.6);
-    scene.lighting.lights.push(Light {
+    scene.lighting.lights.push(LightDesc {
         kind: LightKind::Spot {
             direction: (Vec3::new(0.3, 0.0, -0.2) - position).normalize(),
             angle_degrees: 40.0,
@@ -720,6 +726,7 @@ pub fn cellar_scene() -> RenderScene {
         range: 12.0,
         radius: 0.0,
         cast_shadows: true,
+        mobility: og_render::LightMobility::Movable,
     });
     scene.lighting.light.intensity = 0.0;
     scene.lighting.light.cast_shadows = false;

@@ -112,7 +112,7 @@ fn a_source_radius_keeps_nearby_lit_smoke_from_burning_white() {
                 .effects
                 .particles
                 .push(ParticleSystem::new(1, emitter, Mat4::IDENTITY, 7, 0));
-            scene.lighting.lights.push(og_render::Light {
+            scene.lighting.lights.push(og_render::LightDesc {
                 position: Vec3::new(0.0, 0.0, 0.03),
                 intensity: 2.0,
                 color: Vec3::new(1.0, 0.35, 0.08),

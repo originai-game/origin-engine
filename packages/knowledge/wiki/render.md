@@ -6,7 +6,7 @@ What is drawn: meshes with materials. Draws are instanced by (geometry, material
 
 - **TypeScript**: functions are the namespace `og.render`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
-- **Core** (what most games use): `RenderOptions`, `StandardMaterialDesc`, `og.Mesh`, `og.DirectionalLight`, `og.SpotLight`, `og.RenderSettings`, `og.PostEffects`, `og.Lighting2D`, `og.Light2D`, `og.Occluder2D`, `og.LightMask2D`, `og.Decal`, `og.ParticleSystem`, `og.Sprite`, `BoxGeometryDesc`, `PlaneGeometryDesc`, `SphereGeometryDesc`, `og.render.boxGeometry`, `og.render.planeGeometry`, `og.render.sphereGeometry`, `og.render.standardMaterial`, `CylinderGeometryDesc`, `og.render.cylinderGeometry`; 199 more are advanced (`og api show render --all`).
+- **Core** (what most games use): `RenderOptions`, `StandardMaterialDesc`, `og.Mesh`, `og.DirectionalLight`, `og.SpotLight`, `og.RenderSettings`, `og.PostEffects`, `og.Lighting2D`, `og.Light2D`, `og.Occluder2D`, `og.LightMask2D`, `og.Decal`, `og.ParticleSystem`, `og.Sprite`, `BoxGeometryDesc`, `PlaneGeometryDesc`, `SphereGeometryDesc`, `og.render.boxGeometry`, `og.render.planeGeometry`, `og.render.sphereGeometry`, `og.render.standardMaterial`, `CylinderGeometryDesc`, `og.render.cylinderGeometry`; 201 more are advanced (`og api show render --all`).
 - **Index**: [every module and guide](index.md).
 
 ```ogt
@@ -43,6 +43,8 @@ module render {
 | [`FoliageDesc`](render/type-FoliageDesc.md) | desc struct |  | Leaf lighting. Zero keeps ordinary opaque-surface lighting; this does not enable glass transmission or change alpha coverage. |
 | [`StandardMaterialDesc`](render/type-StandardMaterialDesc.md) | desc struct |  | A physically based metallic-roughness material with three.js MeshStandardMaterial parameter names. |
 | [`og.Mesh`](render/record-Mesh.md) | component |  | Draws a geometry with a material at the entity's MatrixWorld, as a three.js Mesh. |
+| [`LightMobility`](render/type-LightMobility.md) | enum |  | How a light may change while the game runs, as Unreal's light mobility: which of its light og bake lightmaps bakes into its scene's lightmaps and light volumes, and which the renderer draws every fra… |
+| [`LightMobility()`](#column-LightMobility) | column kind |  | A LightMobility field: the variant's index. |
 | [`og.DirectionalLight`](render/record-DirectionalLight.md) | component |  | The sun, as three.js DirectionalLight: parallel light along the entity's local -Z (aim it with transform.lookAt, as a camera). |
 | [`og.PointLight`](render/record-PointLight.md) | component |  | A light shining in every direction from the entity's position, as three.js PointLight. |
 | [`og.SpotLight`](render/record-SpotLight.md) | component |  | A cone of light along the entity's local -Z, as three.js SpotLight. |
@@ -253,6 +255,7 @@ Each is a factory, `Geometry(value?, options?)`, that makes one field of a compo
 | <a id="column-Geometry"></a>`Geometry` | `Geometry` | `Uint32Array` | 2 | A Geometry handle field. |
 | <a id="column-Material"></a>`Material` | `Material` | `Uint32Array` | 2 | A Material handle field. |
 | <a id="column-Upscaler"></a>`Upscaler` | `Upscaler` | `Uint32Array` | 1 | An Upscaler field: the variant's index. |
+| <a id="column-LightMobility"></a>`LightMobility` | `LightMobility` | `Uint32Array` | 1 | A LightMobility field: the variant's index. |
 | <a id="column-ToneMapping"></a>`ToneMapping` | `ToneMapping` | `Uint32Array` | 1 | A ToneMapping field: the variant's index. |
 | <a id="column-AoResolutionSetting"></a>`AoResolutionSetting` | `AoResolutionSetting` | `Uint32Array` | 1 | An AoResolutionSetting field: the variant's index. |
 | <a id="column-QualityPreset"></a>`QualityPreset` | `QualityPreset` | `Uint32Array` | 1 | A QualityPreset field: the variant's index. |
@@ -319,6 +322,17 @@ column Upscaler {
 <sub>Module `render` line 101</sub>
 
 ```ogt
+column LightMobility {
+  doc "A LightMobility field: the variant's index."
+  array Uint32Array
+  stride 1
+  value LightMobility
+}
+```
+
+<sub>Module `render` line 528</sub>
+
+```ogt
 column ToneMapping {
   doc "A ToneMapping field: the variant's index."
   array Uint32Array
@@ -327,7 +341,7 @@ column ToneMapping {
 }
 ```
 
-<sub>Module `render` line 662</sub>
+<sub>Module `render` line 683</sub>
 
 ```ogt
 column AoResolutionSetting {
@@ -338,7 +352,7 @@ column AoResolutionSetting {
 }
 ```
 
-<sub>Module `render` line 684</sub>
+<sub>Module `render` line 705</sub>
 
 ```ogt
 column QualityPreset {
@@ -349,7 +363,7 @@ column QualityPreset {
 }
 ```
 
-<sub>Module `render` line 699</sub>
+<sub>Module `render` line 720</sub>
 
 ```ogt
 column Texture {
@@ -360,7 +374,7 @@ column Texture {
 }
 ```
 
-<sub>Module `render` line 927</sub>
+<sub>Module `render` line 948</sub>
 
 ```ogt
 column Lut {
@@ -371,7 +385,7 @@ column Lut {
 }
 ```
 
-<sub>Module `render` line 934</sub>
+<sub>Module `render` line 955</sub>
 
 ```ogt
 column EnvironmentMap {
@@ -382,7 +396,7 @@ column EnvironmentMap {
 }
 ```
 
-<sub>Module `render` line 941</sub>
+<sub>Module `render` line 962</sub>
 
 ```ogt
 column ParticleEmitter {
@@ -393,7 +407,7 @@ column ParticleEmitter {
 }
 ```
 
-<sub>Module `render` line 1014</sub>
+<sub>Module `render` line 1035</sub>
 
 ```ogt
 column EffectMaterial {
@@ -404,7 +418,7 @@ column EffectMaterial {
 }
 ```
 
-<sub>Module `render` line 1021</sub>
+<sub>Module `render` line 1042</sub>
 
 ```ogt
 column AoMethod {
@@ -415,7 +429,7 @@ column AoMethod {
 }
 ```
 
-<sub>Module `render` line 1037</sub>
+<sub>Module `render` line 1058</sub>
 
 ```ogt
 column AoResolution {
@@ -426,7 +440,7 @@ column AoResolution {
 }
 ```
 
-<sub>Module `render` line 1050</sub>
+<sub>Module `render` line 1071</sub>
 
 ```ogt
 column DofQuality {
@@ -437,7 +451,7 @@ column DofQuality {
 }
 ```
 
-<sub>Module `render` line 1063</sub>
+<sub>Module `render` line 1084</sub>
 
 ```ogt
 column ScreenBlur {
@@ -448,7 +462,7 @@ column ScreenBlur {
 }
 ```
 
-<sub>Module `render` line 1078</sub>
+<sub>Module `render` line 1099</sub>
 
 ```ogt
 column Blend {
@@ -459,7 +473,7 @@ column Blend {
 }
 ```
 
-<sub>Module `render` line 1091</sub>
+<sub>Module `render` line 1112</sub>
 
 ```ogt
 column SpriteFacing {
@@ -470,7 +484,7 @@ column SpriteFacing {
 }
 ```
 
-<sub>Module `render` line 1106</sub>
+<sub>Module `render` line 1127</sub>
 
 ```ogt
 column GiMethod {
@@ -481,7 +495,7 @@ column GiMethod {
 }
 ```
 
-<sub>Module `render` line 1541</sub>
+<sub>Module `render` line 1562</sub>
 
 ```ogt
 column Palette {
@@ -492,7 +506,7 @@ column Palette {
 }
 ```
 
-<sub>Module `render` line 1613</sub>
+<sub>Module `render` line 1634</sub>
 
 ```ogt
 column Look {
@@ -503,7 +517,7 @@ column Look {
 }
 ```
 
-<sub>Module `render` line 1620</sub>
+<sub>Module `render` line 1641</sub>
 
 ```ogt
 column DitherPattern {
@@ -514,7 +528,7 @@ column DitherPattern {
 }
 ```
 
-<sub>Module `render` line 1637</sub>
+<sub>Module `render` line 1658</sub>
 
 ```ogt
 column MaterialSurface {
@@ -525,7 +539,7 @@ column MaterialSurface {
 }
 ```
 
-<sub>Module `render` line 1652</sub>
+<sub>Module `render` line 1673</sub>
 
 ```ogt
 column OutlinePlace {
@@ -536,7 +550,7 @@ column OutlinePlace {
 }
 ```
 
-<sub>Module `render` line 1666</sub>
+<sub>Module `render` line 1687</sub>
 
 ```ogt
 column StyliseSpace {
@@ -547,7 +561,7 @@ column StyliseSpace {
 }
 ```
 
-<sub>Module `render` line 1681</sub>
+<sub>Module `render` line 1702</sub>
 
 ```ogt
 column PosterizeMode {
@@ -558,7 +572,7 @@ column PosterizeMode {
 }
 ```
 
-<sub>Module `render` line 1694</sub>
+<sub>Module `render` line 1715</sub>
 
 ```ogt
 column HalftoneMode {
@@ -569,7 +583,7 @@ column HalftoneMode {
 }
 ```
 
-<sub>Module `render` line 1708</sub>
+<sub>Module `render` line 1729</sub>
 
 ```ogt
 column HalftoneRegion {
@@ -580,7 +594,7 @@ column HalftoneRegion {
 }
 ```
 
-<sub>Module `render` line 1722</sub>
+<sub>Module `render` line 1743</sub>
 
 ```ogt
 column Light2DKind {
@@ -591,7 +605,7 @@ column Light2DKind {
 }
 ```
 
-<sub>Module `render` line 2173</sub>
+<sub>Module `render` line 2194</sub>
 
 ```ogt
 column ReflectionProbeMode {
@@ -602,7 +616,7 @@ column ReflectionProbeMode {
 }
 ```
 
-<sub>Module `render` line 3050</sub>
+<sub>Module `render` line 3071</sub>
 
 ```ogt
 column Shader {
@@ -613,7 +627,7 @@ column Shader {
 }
 ```
 
-<sub>Module `render` line 3100</sub>
+<sub>Module `render` line 3121</sub>
 
 ```ogt
 column LineMode {
@@ -624,7 +638,7 @@ column LineMode {
 }
 ```
 
-<sub>Module `render` line 3911</sub>
+<sub>Module `render` line 3932</sub>
 
 ```ogt
 column RenderTargetFormat {
@@ -635,7 +649,7 @@ column RenderTargetFormat {
 }
 ```
 
-<sub>Module `render` line 4122</sub>
+<sub>Module `render` line 4143</sub>
 
 ```ogt
 column RenderTarget {
@@ -646,7 +660,7 @@ column RenderTarget {
 }
 ```
 
-<sub>Module `render` line 4131</sub>
+<sub>Module `render` line 4152</sub>
 
 ```ogt
 column Post {
@@ -657,7 +671,7 @@ column Post {
 }
 ```
 
-<sub>Module `render` line 4271</sub>
+<sub>Module `render` line 4292</sub>
 
 ## Constants
 
@@ -673,28 +687,28 @@ column Post {
 const PARTICLES_ARMED u32 4294967295 "ParticleSystem.startTick's default: never written. A looping emitter emits as if started at tick 0; a one-shot (`looping false`) emits nothing until its startTick is written, so a burst spawned in `start` waits for its first use. Write it back to re-arm a one-shot without firing it."
 ```
 
-<sub>Module `render` line 2303</sub>
+<sub>Module `render` line 2324</sub>
 
 ```ogt
 const MAX_LIGHTS u32 256 "The most point and spot lights one frame draws, among those in view; past it the ones brightest at the camera are kept."
 ```
 
-<sub>Module `render` line 2967</sub>
+<sub>Module `render` line 2988</sub>
 
 ```ogt
 const MAX_CLUSTER_LIGHTS u32 64 "The most point and spot lights that shade one screen cluster (a 1/16 by 1/9 tile of the view and one of 24 depth slices); past it the ones brightest at the camera are kept there."
 ```
 
-<sub>Module `render` line 2968</sub>
+<sub>Module `render` line 2989</sub>
 
 ```ogt
 const UI_LAYER i32 1000 "The UI's layer among screen sprites and screen text (SpriteDesc and TextDesc with screen): those at or below it draw under every og.ui element, those above it over every one, modals, toasts and the screen transition included, in their layers' order either way."
 ```
 
-<sub>Module `render` line 2969</sub>
+<sub>Module `render` line 2990</sub>
 
 ```ogt
 const MAX_REFLECTION_PROBES u32 8 "The most og.ReflectionProbe components one frame samples, nearest the camera first; the rest are skipped."
 ```
 
-<sub>Module `render` line 3042</sub>
+<sub>Module `render` line 3063</sub>

@@ -1288,17 +1288,23 @@ lockstep §2.8 and §2.10, the semantic frame and diagnostics §3.4.
 
 - **Baked lighting** (`og bake lightmaps`, og-bake): a native CPU path tracer
   with a fixed seed, so a bake with given samples is repeatable. Static
-  entities get xatlas lightmap UVs storing indirect light only; each
+  entities get xatlas lightmap UVs storing indirect light (and static
+  lights' direct light); each
   `og.LightVolume` gets L1 spherical-harmonic probes. The runtime uses a bake
   only while its scene and model hashes match; otherwise the scene renders
   unbaked, `og.render.bakedLighting` gives the reason and `og doctor
   --project` warns `unbaked`.
-- **Static lights** (`PointLight.static`, `SpotLight.static`,
-  `RectLight.static`; `RenderSettings.staticLightReach`): past the reach a
-  static light's diffuse light comes from a grid of L1 probes round the
-  camera, recomputed on the CPU when the grid moves a cell or a light
-  changes; its highlights stay per pixel on glossy surfaces, and a static
-  rect light skips rough surfaces there (UE's stationary lights). Off at 0.
+- **Light mobility** (`mobility` on every light; UE's): one light
+  description, `og_render_data::light::LightDesc` and `DirectionalLight`,
+  is read by the frame and the bake, falloff (`radius`, the range window)
+  and spot cone included. Movable lights are the frame's alone;
+  stationary ones are drawn every frame and their bounce baked; a static
+  light's direct light is baked too, and the frame leaves it out while its
+  scene's bake is drawn. `RenderSettings.staticLightReach`: past the reach
+  a stationary or static light's diffuse light comes from a grid of L1
+  probes round the camera, recomputed on the CPU when the grid moves a
+  cell or a light changes; its highlights stay per pixel on glossy
+  surfaces, and such a rect light skips rough surfaces there. Off at 0.
 - **Projection painting** (`og bake projection`): a native CPU tool that
   textures a gray level glb from views (the trompe workflow, Apache-2.0). The
   image model stays outside the engine; the agent runs the steps and calls it

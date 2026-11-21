@@ -201,7 +201,7 @@ pub fn decals_stage_scene() -> RenderScene {
     let toro = kit::prop(&mut scene, "toro");
     let fire = crate::shadow_scenes::toro(&mut scene, &toro, Vec3::new(-3.9, 0.0, -1.6), 0.4, 1.7);
     // The lantern lit for the evening: the puddle mirrors it.
-    scene.lighting.lights.push(Light {
+    scene.lighting.lights.push(LightDesc {
         position: fire,
         color: Vec3::new(1.0, 0.6, 0.3),
         intensity: 4.0,
@@ -273,7 +273,7 @@ pub fn decals_stage_scene() -> RenderScene {
         },
     ];
     // The rune's own light, a hand's breadth over it.
-    scene.lighting.lights.push(Light {
+    scene.lighting.lights.push(LightDesc {
         position: rune_at + Vec3::Y * 0.35,
         color: Vec3::new(0.35, 0.7, 1.0),
         intensity: 4.0,

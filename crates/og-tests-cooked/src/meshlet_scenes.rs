@@ -54,7 +54,7 @@
 use glam::{Mat4, Quat, Vec3};
 use og_cook::runtime::Bundle;
 use og_render::{
-    Camera, DirectionalLight, Exposure, Light, LightKind, MaterialHandle, MeshHandle,
+    Camera, DirectionalLight, Exposure, LightDesc, LightKind, MaterialHandle, MeshHandle,
     ReflectionProbe, RenderScene, StandardMaterial, View, ViewTarget, shapes,
 };
 
@@ -343,7 +343,7 @@ pub fn shadow_scene(meshlets: bool) -> Result<RenderScene, String> {
         place(&mut scene, &parts, at);
     }
     // A spot over the middle tree, its shadow cast forward on the ground.
-    scene.lighting.lights.push(Light {
+    scene.lighting.lights.push(LightDesc {
         kind: LightKind::Spot {
             direction: Vec3::new(0.0, -1.0, 0.35).normalize(),
             angle_degrees: 40.0,
@@ -355,6 +355,7 @@ pub fn shadow_scene(meshlets: bool) -> Result<RenderScene, String> {
         range: 25.0,
         radius: 0.0,
         cast_shadows: true,
+        mobility: og_render::LightMobility::Movable,
     });
     scene.frame.camera.position = Vec3::new(0.0, 9.0, 2.0);
     scene.frame.camera.target = Vec3::new(0.0, 0.0, -18.0);

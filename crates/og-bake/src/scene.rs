@@ -1,13 +1,15 @@
 //! What the tracer sees: the static geometry in world space with its
 //! materials, the lights, and the sky.
 //!
-//! Units are the renderer's (docs/design.md §2.6): a light's `radiance` is
-//! its colour times its intensity, a surface lit with irradiance E sends out
-//! `albedo / π × E`, a point or spot light gives `radiance × window² / d²`
-//! (window = clamp(1 − (d / range)⁴), UE4's falloff, as pbr.wgsl), a
-//! directional light `radiance` over the plane facing it.
+//! Units and lights are the renderer's (docs/design.md §2.6,
+//! `og_render_data::light`): a light's radiance is its colour times its
+//! intensity, a surface lit with irradiance E sends out `albedo / π × E`,
+//! a point or spot light gives `radiance × window / (d² + radius²)` in its
+//! cone ([`LightDesc::falloff`], [`LightDesc::cone`]), a directional light
+//! its radiance over the plane facing it.
 
 use glam::{Vec2, Vec3};
+use og_render_data::light::{DirectionalLight, LightDesc};
 
 /// An RGBA8 image a material samples (rows top to bottom, uv (0, 0) at its
 /// top left, repeat addressing, bilinear).
@@ -95,44 +97,19 @@ pub struct Mesh {
     pub lightmapped: bool,
 }
 
-/// A light the bake traces towards from every path vertex past the first.
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub enum Light {
-    /// Parallel light travelling along `-towards`.
-    Directional { towards: Vec3, radiance: Vec3 },
-    Point {
-        position: Vec3,
-        radiance: Vec3,
-        range: f32,
-    },
-    /// A cone along `direction`: cos of its outer and inner half-angles.
-    Spot {
-        position: Vec3,
-        direction: Vec3,
-        radiance: Vec3,
-        range: f32,
-        cos_outer: f32,
-        cos_inner: f32,
-    },
-    /// A rectangle centred at `position` spanning ±`half_x` and ±`half_y`,
-    /// emitting `radiance` from its front (`half_x × half_y`'s direction
-    /// reversed: along the entity's -Z) or both faces.
-    Rect {
-        position: Vec3,
-        half_x: Vec3,
-        half_y: Vec3,
-        radiance: Vec3,
-        two_sided: bool,
-    },
-}
-
 /// Everything the bake lights and traces.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct Scene {
     pub meshes: Vec<Mesh>,
     pub materials: Vec<Material>,
     pub images: Vec<Image>,
-    pub lights: Vec<Light>,
+    /// The point, spot and rect lights whose light is baked (none movable,
+    /// [`og_render_data::light::LightMobility`]): every one's bounce, a
+    /// static one's direct light too.
+    pub lights: Vec<LightDesc>,
+    /// The directional light the frame keys (`og_render::key_light`), when
+    /// its light is baked.
+    pub sun: Option<DirectionalLight>,
     /// The radiance of every ray that leaves the scene.
     pub sky: Vec3,
 }

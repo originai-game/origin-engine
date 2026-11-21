@@ -20,6 +20,7 @@ Token `og.DirectionalLight`, registered under the schema name `og.DirectionalLig
 |---|---|---|---|---|---|---|
 | `color` | `Color` | `{ r: 1, g: 1, b: 1 }` | — | — | — | The light's linear colour. |
 | `intensity` | `number` | `3` | ≥ 0 | — | tunable | The radiance multiplier, as three.js DirectionalLight.intensity. |
+| `mobility` | `LightMobility` | `"stationary"` | — | — | — | How the light may change while the game runs: what og bake lightmaps bakes of it and what is drawn every frame (stationary, the default; movable; static). See `render §4`. |
 | `castShadow` | `boolean` | `true` | — | — | — | Cast shadows through the cascades (RenderSettings.shadowCascades), as three.js Light.castShadow. |
 | `shadowDistance` | `number` | `200` | ≥ 1 | `m` | — | How far from the camera shadows reach; they fade over the last tenth. Smaller is sharper. |
 | `shadowSoftness` | `number` | `0` | 0 … 0.2 | — | tunable | Soft shadows (PCSS): the penumbra's width per metre between caster and receiver, the tangent of the sun's apparent radius (the real sun's is 0.005). 0 keeps the hard one-texel edge; 0.01 to 0.05 is a soft sun, sharp at contact and blurring with distance. |
@@ -43,6 +44,10 @@ component DirectionalLight {
     default 3
     min 0
     tunable true
+  }
+  field mobility LightMobility "How the light may change while the game runs: what og bake lightmaps bakes of it and what is drawn every frame (stationary, the default; movable; static)." {
+    default stationary
+    guide "render §4"
   }
   field castShadow bool "Cast shadows through the cascades (RenderSettings.shadowCascades), as three.js Light.castShadow." {
     default true
@@ -89,4 +94,4 @@ component DirectionalLight {
 }
 ```
 
-<sub>Module `render` line 520</sub>
+<sub>Module `render` line 535</sub>

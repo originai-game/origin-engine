@@ -172,7 +172,7 @@ module load {
       max 2
       tunable true
     }
-    field static bool "Part of its scene's baked lighting: og bake lightmaps traces the light arriving at it into the scene's lightmap, and while the bake matches the scene it takes its ambient light from there (its lights' direct light, shadows and highlights still drawn every frame). Unbaked, it draws as any model." {
+    field static bool "Part of its scene's baked lighting: og bake lightmaps traces the light arriving at it into the scene's lightmap, and while the bake matches the scene it takes its ambient light from there (its lights' direct light still drawn every frame, a static one's excepted). Unbaked, it draws as any model." {
       guide "loading §2"
     }
     field variant i32 "The glTF material variant this instance draws (KHR_materials_variants), an index into GltfInfo.variants: every mesh the variant maps takes its material, the others keep theirs, on this instance only. -1 draws the glTF's own materials; an index past the model's variants does too." {

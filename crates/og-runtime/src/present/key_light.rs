@@ -3,10 +3,12 @@
 //! and, while og.DayNight runs, its sun and moon: the cycle drives the
 //! DirectionalLight the lights alone would draw, so its sun and moon take
 //! that light's place and its shadow settings. `og_render::key_light`
-//! draws the brightest, two handing over. The frame's extraction, the
-//! probe's `get` and the warnings all read this stage, so what is answered
-//! is what is drawn; `og bake lightmaps` keys its scene's lights with the
-//! same `og_render::key_light`.
+//! draws the brightest, two handing over. A static light whose light its
+//! scene's drawn bake holds is no candidate, unless og.DayNight runs (the
+//! cycle moves the light, so it is movable whatever it says). The frame's
+//! extraction, the probe's `get` and the warnings all read this stage, so
+//! what is answered is what is drawn; `og bake lightmaps` keys its scene's
+//! lights with the same `og_render::key_light`.
 
 use crate::host::codec::Layout;
 use crate::host::wire::{FromJson, record};
@@ -78,18 +80,23 @@ impl Key {
 
 /// The world's og.DirectionalLights as the renderer's, their direction
 /// from `world_of` (towards the light, against the entity's -Z) and every
-/// setting not on the record from `base`, in spawn order.
+/// setting not on the record from `base`, in spawn order; those `left_out`
+/// names are not.
 fn directional_lights(
     world: &World,
     layout: Option<&Layout>,
     world_of: &mut dyn FnMut(u64) -> Mat4,
     base: DirectionalLight,
+    left_out: &dyn Fn(u64) -> bool,
 ) -> Vec<(u64, DirectionalLight)> {
     let mut found = Vec::new();
     for (e, v) in crate::present::fx::rows(world, layout) {
         let Ok(v) = record::DirectionalLight::from_json(&v) else {
             continue;
         };
+        if left_out(e) {
+            continue;
+        }
         let dir = world_of(e)
             .transform_vector3(og_core::facing::CAMERA_FORWARD)
             .normalize_or_zero();
@@ -99,6 +106,7 @@ fn directional_lights(
                 direction_to_light: if dir == Vec3::ZERO { Vec3::Y } else { -dir },
                 color: Vec3::new(v.color.r, v.color.g, v.color.b),
                 intensity: v.intensity,
+                mobility: crate::present::baked::mobility(v.mobility),
                 cast_shadows: v.cast_shadow,
                 max_shadow_distance: v.shadow_distance,
                 shadow_box: v.shadow_box,
@@ -119,20 +127,25 @@ fn directional_lights(
 
 /// The key light of `world` at its tick: `None` without a directional
 /// light or a running og.DayNight. `base` gives the settings the records
-/// leave out (and the cycle's shadow settings while it drives no light).
+/// leave out (and the cycle's shadow settings while it drives no light);
+/// `baked` the static lights the drawn bakes hold.
 pub(crate) fn key(
     world: &World,
     layouts: Layouts<'_>,
     world_of: &mut dyn FnMut(u64) -> Mat4,
     base: DirectionalLight,
+    baked: &crate::present::baked::BakedState,
 ) -> Option<Key> {
-    let found = directional_lights(world, layouts.directional, world_of, base);
     let cycle = crate::present::atmosphere::day_night_look(
         world,
         layouts.day_night,
         layouts.physical_sky,
         layouts.season,
     );
+    let running = cycle.is_some();
+    let found = directional_lights(world, layouts.directional, world_of, base, &|e| {
+        !running && baked.baked_light(e)
+    });
     let mut candidates: Vec<(Source, DirectionalLight)> =
         found.iter().map(|&(e, l)| (Source::Entity(e), l)).collect();
     let mut driven = None;

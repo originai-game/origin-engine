@@ -7,7 +7,7 @@
 
 use glam::Vec3;
 use og_render::{
-    Camera, Light, MAX_LIGHTS, Projection, RenderDesc, RenderScene, RenderTarget, Renderer,
+    Camera, LightDesc, MAX_LIGHTS, Projection, RenderDesc, RenderScene, RenderTarget, Renderer,
     RgbaImage,
 };
 use og_tests::compare::{Tolerance, compare};
@@ -69,7 +69,7 @@ fn a_spherical_source_widens_specular_without_changing_roughness() {
         material,
         glam::Mat4::from_rotation_x(std::f32::consts::FRAC_PI_2),
     );
-    scene.lighting.lights.push(Light {
+    scene.lighting.lights.push(LightDesc {
         position: Vec3::new(0.3, 0.0, 2.0),
         intensity: 2.0,
         ..Default::default()
@@ -162,7 +162,7 @@ fn past_max_lights_the_faint_far_ones_are_dropped() {
     let (alone, alone_stats) = frame(&desc, &scene);
     assert_eq!(alone_stats.lights, 256);
     // Faint lights at the far edge, interleaved with the bright ones.
-    let faint = Light {
+    let faint = LightDesc {
         position: Vec3::new(0.0, 0.5, -26.0),
         color: Vec3::new(0.0, 1.0, 0.0),
         intensity: 0.01,
@@ -208,7 +208,7 @@ fn a_light_turned_on_mid_run_waits_for_no_compile() {
     let mut scene = scenes::build("materials").expect("materials").scene;
     scene.lighting.lights.clear();
     scene.effects.decals.clear();
-    let light = Light {
+    let light = LightDesc {
         position: Vec3::new(0.0, 1.5, 1.0),
         color: Vec3::new(1.0, 0.4, 0.2),
         intensity: 40.0,
@@ -255,7 +255,7 @@ fn a_capture_draws_with_the_full_lit_pipelines() {
     let mut scene = scenes::build("materials").expect("materials").scene;
     scene.lighting.lights.clear();
     scene.effects.decals.clear();
-    let light = Light {
+    let light = LightDesc {
         position: Vec3::new(0.0, 1.5, 1.0),
         color: Vec3::new(1.0, 0.4, 0.2),
         intensity: 40.0,

@@ -120,7 +120,7 @@ fn a_skinned_instance_takes_the_probe_of_its_pose() {
 #[ignore = "requires GPU"]
 fn local_lights_reach_terrain_and_fluids_in_a_capture() {
     let desc = scenes::base_desc();
-    let blue = |position| og_render::Light {
+    let blue = |position| og_render::LightDesc {
         position,
         color: glam::Vec3::new(0.1, 0.3, 1.0),
         intensity: 6.0,

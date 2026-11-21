@@ -65,7 +65,7 @@ pub(super) fn showcase() -> Result<RenderScene, String> {
         );
     }
     scene.lighting.lights = vec![
-        Light {
+        LightDesc {
             kind: LightKind::Spot {
                 direction: Vec3::new(0.2, -1.0, -0.3),
                 angle_degrees: 30.0,
@@ -77,8 +77,9 @@ pub(super) fn showcase() -> Result<RenderScene, String> {
             range: 20.0,
             radius: 0.0,
             cast_shadows: true,
+            mobility: og_render::LightMobility::Movable,
         },
-        Light {
+        LightDesc {
             position: Vec3::new(4.0, 1.5, -1.5),
             color: Vec3::new(0.3, 0.6, 1.0),
             intensity: 10.0,
@@ -86,7 +87,7 @@ pub(super) fn showcase() -> Result<RenderScene, String> {
             cast_shadows: true,
             ..Default::default()
         },
-        Light {
+        LightDesc {
             position: Vec3::new(-4.5, 1.0, 0.5),
             color: Vec3::new(1.0, 0.3, 0.1),
             intensity: 6.0,

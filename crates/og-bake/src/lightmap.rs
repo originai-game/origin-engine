@@ -7,7 +7,8 @@
 //!
 //! A texel stores the irradiance from the scene over π (the renderer
 //! multiplies it by the albedo, as it does the environment's irradiance),
-//! in linear RGB, with alpha 1 where a surface was traced.
+//! its static lights' direct light included, in linear RGB, with alpha 1
+//! where a surface was traced.
 
 use crate::atlas::Atlas;
 use crate::scene::Scene;
@@ -176,6 +177,7 @@ pub fn bake(
 ) -> Lightmap {
     let started = Instant::now();
     let tracer = Tracer::new(scene, settings.bounces);
+    let statics = tracer.has_static();
     let texels = rasterise(scene, atlas, meshes);
     let n = texels.len();
     let threads = if settings.threads == 0 {
@@ -218,6 +220,12 @@ pub fn bake(
                             let (l, back) = tracer.radiance(origin, d, &mut rng);
                             *sum += l;
                             *ins += back as u32;
+                            // A static light's direct light is the bake's
+                            // too (one sample of each rect light a pass).
+                            if statics {
+                                *sum += tracer.direct(t.position, t.normal, t.face, &mut rng, true)
+                                    / std::f32::consts::PI;
+                            }
                         }
                     }
                 });
@@ -487,14 +495,17 @@ mod tests {
         let scene = Scene {
             meshes: room(2.0, [0, 0, 1, 2, 0, 0]),
             materials: mats,
-            lights: vec![Light::Rect {
-                position: Vec3::new(0.0, 0.99, 0.0),
-                // half_x × half_y = +y: it shines down, from its -Z.
-                half_x: Vec3::X * 0.3,
-                half_y: Vec3::NEG_Z * 0.3,
-                radiance: Vec3::splat(20.0),
-                two_sided: false,
-            }],
+            // half_width × half_height = +y: it shines down, from its -Z.
+            lights: vec![LightDesc::rect(
+                Vec3::new(0.0, 0.99, 0.0),
+                Vec3::X * 0.3,
+                Vec3::NEG_Z * 0.3,
+                false,
+                Vec3::ONE,
+                20.0,
+                false,
+                LightMobility::Stationary,
+            )],
             ..Default::default()
         };
         let (atlas, picked) = atlas_of(&scene);
@@ -555,5 +566,5 @@ mod tests {
         assert_eq!(page[4], [1.0, 2.0, 3.0, 1.0]);
     }
 
-    use crate::scene::Light;
+    use og_render_data::light::{LightDesc, LightMobility};
 }

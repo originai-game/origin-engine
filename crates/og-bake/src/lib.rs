@@ -9,10 +9,12 @@
 //! scene and writes what comes back.
 //!
 //! What is baked is the light that arrives from the scene: light bounced
-//! off its surfaces, the sky, emissive surfaces. The lights' direct term
-//! stays the renderer's, drawn every frame with its shadows and specular
-//! highlights, so a baked scene keeps its moving shadows and its lights can
-//! still be switched off (their bounce stays until the next bake).
+//! off its surfaces, the sky, emissive surfaces, and the direct light of
+//! its static lights (`og_render_data::light::LightMobility`). A stationary
+//! light's direct term stays the renderer's, drawn every frame with its
+//! shadows and specular highlights, so a baked scene keeps its moving
+//! shadows and such a light can still be dimmed or switched off (its
+//! bounce stays until the next bake); a movable light is not baked at all.
 
 pub mod atlas;
 pub mod bvh;
@@ -25,5 +27,5 @@ pub mod volume;
 
 pub use atlas::{Atlas, AtlasMesh, AtlasVertex, PackSettings, UnwrapMesh, unwrap};
 pub use lightmap::{Lightmap, TraceSettings};
-pub use scene::{Image, Light, Material, Mesh, Scene};
+pub use scene::{Image, Material, Mesh, Scene};
 pub use volume::{Volume, VolumeDesc};

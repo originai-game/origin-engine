@@ -261,7 +261,7 @@ impl ProbeContent {
             h.write_u32(4);
             let l = match at_zero {
                 true => *l,
-                false => crate::Light {
+                false => crate::LightDesc {
                     position: l.position + scene.frame.origin,
                     ..*l
                 },

@@ -10,6 +10,8 @@ description = "Origin Engine light baking: lightmap UVs from xatlas, a progressi
 [dependencies]
 # The triangle BVH's build and ray tests.
 og-core = { path = "../og-core" }
+# The lights, as the renderer draws them (og_render_data::light).
+og-render-data = { path = "../og-render-data" }
 glam = { workspace = true }
 
 [build-dependencies]

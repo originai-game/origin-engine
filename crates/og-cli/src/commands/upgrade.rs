@@ -300,6 +300,17 @@ fn upgrade(dir: &Path, to: Option<&str>, dry: bool) -> Value {
                 }
                 continue;
             }
+            if b["codemod"]["kind"] == "light-mobility" {
+                for (file, text, touched) in &mut texts {
+                    let Some((upgraded, n)) = light_mobility(text) else {
+                        continue;
+                    };
+                    codemods.push(json!({ "version": version, "member": member, "file": rel(file), "from": "static", "to": "mobility", "count": n }));
+                    *touched = true;
+                    *text = upgraded;
+                }
+                continue;
+            }
             if b["codemod"]["kind"] == "ui-kits" {
                 review.push(json!({
                     "version": version, "member": member,
@@ -476,6 +487,62 @@ fn vfx_glow(text: &str) -> Option<(String, usize)> {
         out.push_str(l);
     }
     // A version 1 file without a flash reads the same at version 1.
+    (n > 0).then_some((out, n))
+}
+
+/// A light's `static` mark moved to its mobility: in a scene's
+/// og.PointLight, og.SpotLight or og.RectLight block, `static true`
+/// becomes `mobility stationary` (and `static false` `mobility movable`);
+/// in code, on a line inserting or setting one of them, `static: true`
+/// becomes `mobility: "stationary"` (`static: false`, `"movable"`). A
+/// static light was one the far field (RenderSettings.staticLightReach)
+/// may cache: a stationary one now.
+fn light_mobility(text: &str) -> Option<(String, usize)> {
+    const LIGHTS: [&str; 3] = ["PointLight", "SpotLight", "RectLight"];
+    let (mut out, mut n) = (String::with_capacity(text.len()), 0);
+    // The scene text's open blocks, innermost last.
+    let mut blocks: Vec<String> = Vec::new();
+    for l in text.split_inclusive('\n') {
+        let code = l.split('#').next().unwrap_or("").trim();
+        let in_light = blocks
+            .last()
+            .is_some_and(|b| LIGHTS.contains(&b.trim_start_matches("og.")));
+        let mut line = l.to_string();
+        if in_light && let Some(rest) = code.strip_prefix("static ") {
+            let to = match rest.trim() {
+                "true" | "1" => Some("stationary"),
+                "false" | "0" => Some("movable"),
+                _ => None,
+            };
+            if let Some(to) = to {
+                let at = l.find("static").expect("the word");
+                let end = at + l[at..].find(rest.trim()).expect("its value") + rest.trim().len();
+                line = format!("{}mobility {to}{}", &l[..at], &l[end..]);
+                n += 1;
+            }
+        } else if LIGHTS.iter().any(|k| l.contains(&format!("og.{k}"))) {
+            for (from, to) in [
+                ("static: true", "mobility: \"stationary\""),
+                ("static: false", "mobility: \"movable\""),
+            ] {
+                let k = line.matches(from).count();
+                if k > 0 {
+                    line = line.replace(from, to);
+                    n += k;
+                }
+            }
+        }
+        for c in code.chars() {
+            match c {
+                '{' => blocks.push(code.split('{').next().unwrap_or("").trim().to_string()),
+                '}' => {
+                    blocks.pop();
+                }
+                _ => {}
+            }
+        }
+        out.push_str(&line);
+    }
     (n > 0).then_some((out, n))
 }
 
@@ -1102,6 +1169,23 @@ mod tests {
         serde_json::from_str::<Value>(&kept).unwrap();
         let packed = old.replace("],\n      \"bun:test\"", "], \"bun:test\"");
         assert_eq!(engine_package_tsconfig(&packed), Some(Err(7)));
+    }
+
+    #[test]
+    fn light_mobility_moves_a_lights_static_mark_and_leaves_a_models() {
+        let scene = "entity lamp {\n  PointLight {\n    intensity 7\n    static true\n  }\n  Model {\n    static true\n  }\n}\n";
+        let (out, n) = light_mobility(scene).expect("rewritten");
+        assert_eq!(n, 1);
+        assert!(out.contains("    mobility stationary\n"), "{out}");
+        assert!(out.contains("  Model {\n    static true\n"), "{out}");
+        let code = "world.insert(l, og.RectLight, { width: 2, static: true });\nworld.insert(m, og.Model, { static: true });\n";
+        let (out, n) = light_mobility(code).expect("rewritten");
+        assert_eq!(n, 1);
+        assert!(
+            out.contains("og.RectLight, { width: 2, mobility: \"stationary\" }"),
+            "{out}"
+        );
+        assert!(out.contains("og.Model, { static: true }"), "{out}");
     }
 
     #[test]

@@ -89,7 +89,7 @@ pub fn engine_schemas() -> Vec<og_core::Schema> {
             "Vector2" => FieldType::Vec2,
             "Vector3" | "Color" => FieldType::Vec3,
             "Quaternion" => FieldType::Quat,
-            "Entity" | "Geometry" | "Material" | "Asset" => FieldType::U64,
+            "Entity" | "Geometry" | "Material" | "Asset" | "Texture" => FieldType::U64,
             other => {
                 return serde_json::from_value(serde_json::Value::String(
                     match other {
@@ -104,6 +104,10 @@ pub fn engine_schemas() -> Vec<og_core::Schema> {
         })
     };
     let ty = |f: &og_api::host::FieldDecl| -> Option<FieldType> {
+        if !f.variants.is_empty() {
+            // An enum column (`ColliderShape`, `LightMobility`): its index.
+            return Some(FieldType::Enum);
+        }
         if f.capacity > 0 {
             // A text field (`str.48` in the IDL).
             return FieldType::string(f.capacity as usize).ok();
@@ -124,6 +128,7 @@ pub fn engine_schemas() -> Vec<og_core::Schema> {
                 .map(|f| {
                     ty(f).map(|t| {
                         let mut fs = FieldSchema::new(f.name.to_string(), t);
+                        fs.variants = f.variants.iter().map(|v| v.to_string()).collect();
                         // A list starts empty: it declares no default.
                         fs.default = (!t.is_list())
                             .then(|| default_lanes(f, t.lanes()))

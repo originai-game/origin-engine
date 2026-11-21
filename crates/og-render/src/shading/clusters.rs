@@ -28,7 +28,7 @@
 //!   rest there only (`cluster_lights_dropped`).
 
 use crate::frame::{CameraFrame, Frustum};
-use crate::scene::{Light, LightKind};
+use crate::scene::{LightDesc, LightKind};
 use glam::{Vec3, Vec4};
 pub use og_render_data::clusters::*;
 
@@ -125,14 +125,14 @@ pub(crate) struct ClusterBuilder {
 }
 
 /// The light's weight when lights must be dropped.
-pub(crate) fn importance(light: &Light, eye: Vec3) -> f32 {
+pub(crate) fn importance(light: &LightDesc, eye: Vec3) -> f32 {
     let d2 = (light.position - eye).length_squared().max(1.0);
     light.color.max_element().max(0.0) * light.intensity.max(0.0) / d2
 }
 
 impl ClusterBuilder {
     /// Assigns the lights to clusters.
-    pub fn build(&mut self, lights: &[Light], view: &ClusterView) {
+    pub fn build(&mut self, lights: &[LightDesc], view: &ClusterView) {
         self.stats = ClusterStats::default();
         self.select(lights, view);
         self.assign(lights, view);
@@ -141,7 +141,7 @@ impl ClusterBuilder {
     /// Assigns `kept` (another view's [`ClusterBuilder::kept`], whose light
     /// records are shared) to this view's clusters: the planar reflection's
     /// mirrored camera shades the main view's lights.
-    pub fn build_kept(&mut self, lights: &[Light], kept: &[usize], view: &ClusterView) {
+    pub fn build_kept(&mut self, lights: &[LightDesc], kept: &[usize], view: &ClusterView) {
         self.stats = ClusterStats::default();
         self.kept.clear();
         self.kept.extend_from_slice(kept);
@@ -149,7 +149,7 @@ impl ClusterBuilder {
     }
 
     /// The visible lights, then the most important [`MAX_LIGHTS`] of them.
-    fn select(&mut self, lights: &[Light], view: &ClusterView) {
+    fn select(&mut self, lights: &[LightDesc], view: &ClusterView) {
         self.kept.clear();
         for (i, l) in lights.iter().enumerate() {
             if self.skip_rects && matches!(l.kind, LightKind::Rect { .. }) {
@@ -189,7 +189,7 @@ impl ClusterBuilder {
     }
 
     /// The kept lights' clusters, capped, in the tables.
-    fn assign(&mut self, lights: &[Light], view: &ClusterView) {
+    fn assign(&mut self, lights: &[LightDesc], view: &ClusterView) {
         let near = view.near.max(1e-4);
         let far = view.far.max(near * 1.0001);
         self.planes = (near, far);

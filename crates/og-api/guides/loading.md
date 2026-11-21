@@ -146,8 +146,9 @@ cook (HLOD): the world guide, §5.
   lightmap UVs (xatlas, over its world-space triangles) and traces the
   light arriving at its surfaces into `<scene>.lightmap.ogt` and
   `.ktx2` beside the scene. A baked model takes its ambient light from
-  the lightmap, while direct light, shadows and highlights are still
-  drawn every frame. A scene entity says `static true` beside its
+  the lightmap, while the direct light, shadows and highlights of its
+  movable and stationary lights are still drawn every frame (a static
+  light's direct light is in the lightmap: render §3). A scene entity says `static true` beside its
   `model` line. An unbaked or stale static model draws as any model, and
   `og doctor --project` names the scene.
 

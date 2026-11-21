@@ -276,7 +276,9 @@ impl Camera {
     }
 }
 
-pub use og_render_data::light::{DirectionalLight, Light, LightKind, ShadowBounds};
+pub use og_render_data::light::{
+    DirectionalLight, LightDesc, LightKind, LightMobility, ShadowBounds,
+};
 
 /// The directional light a frame draws from several ([`key_light`]).
 #[derive(Clone, Debug, PartialEq)]

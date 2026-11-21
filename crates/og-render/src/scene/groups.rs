@@ -99,16 +99,14 @@ pub struct SceneAtmosphere {
 pub struct SceneLighting {
     pub light: DirectionalLight,
     /// Point and spot lights; the first [`MAX_LIGHTS`] are drawn.
-    pub lights: Vec<Light>,
+    pub lights: Vec<LightDesc>,
     /// Light cookies of point and spot lights, by index into
     /// [`RenderScene::lights`] (`area.rs`).
     pub light_cookies: Vec<crate::LightCookie>,
-    /// Lights that never move, by index into [`SceneLighting::lights`]:
-    /// past [`SceneLighting::static_reach`] from each, its diffuse light
-    /// comes from a grid of probes round the camera (`static_far.rs`).
-    pub static_lights: Vec<usize>,
-    /// How far from itself a static light is shaded per pixel (m; 0: every
-    /// light over its whole range).
+    /// How far from itself a light that never moves (stationary or static,
+    /// [`crate::LightDesc::mobility`]) is shaded per pixel: past it, its
+    /// diffuse light comes from a grid of probes round the camera
+    /// (`static_far.rs`; m, 0: every light over its whole range).
     pub static_reach: f32,
     /// Baked lighting: lightmap pages, the lightmap uvs of the meshes drawn
     /// with them, light volumes (`lightmap.rs`). Empty by default.

@@ -6,10 +6,12 @@
 //! parts (the runtime's own `CookedModel::add_to_with`, so the parts and
 //! their vertices are the ones it draws) become og-bake meshes, those of
 //! entities with `static true` lightmapped; the scene's directional, point,
-//! spot and rect lights become the tracer's. xatlas charts the lightmapped
+//! spot and rect lights that are not movable (`og_render_data::light`, as
+//! the frame draws them) become the tracer's. xatlas charts the lightmapped
 //! meshes in world space (one texel density across the scene), og-bake
-//! traces the light arriving at each texel (bounces, sky, emissive; not the
-//! lights' direct term, which the renderer draws) and at each LightVolume's
+//! traces the light arriving at each texel (bounces, sky, emissive and the
+//! static lights' direct light; not a stationary light's direct term,
+//! which the renderer draws) and at each LightVolume's
 //! probes, and the result is written beside the scene source:
 //! `<scene>.lightmap.ogt` and `<scene>.lightmap.ktx2`. The project is cooked
 //! again so the bundle holds them.
@@ -21,9 +23,10 @@
 //! (a cooker revision, the raycast BVH, a texture option) keeps the bake.
 
 use glam::{Mat4, Quat, Vec2, Vec3};
-use og_bake::{Light, Material, Mesh, PackSettings, Scene, TraceSettings, UnwrapMesh, VolumeDesc};
+use og_bake::{Material, Mesh, PackSettings, Scene, TraceSettings, UnwrapMesh, VolumeDesc};
 use og_cook::lightmap::{BakedModel, BakedPart, BakedVolume, LightmapFile};
 use og_cook::runtime::{Bundle, ComponentTable, SceneDesc};
+use og_render_data::light::{DirectionalLight, LightDesc, LightKind, LightMobility};
 use std::path::Path;
 use std::process::ExitCode;
 use std::time::Instant;
@@ -202,62 +205,95 @@ fn world_transforms(s: &SceneDesc) -> Vec<Mat4> {
     out
 }
 
-/// The scene's lights as the tracer's: its directional lights keyed as a
-/// frame draws them (`og_render::key_light`: the brightest, two handing
-/// over), so the bake bounces the one light the game is lit by.
-fn lights(s: &SceneDesc, world: &[Mat4]) -> Vec<Light> {
+/// A light row's mobility (`og.LightMobility`, the cooked variant index).
+fn mobility(t: &ComponentTable, e: usize) -> LightMobility {
+    match num(t, e, "mobility", 1.0) as u32 {
+        0 => LightMobility::Movable,
+        2 => LightMobility::Static,
+        _ => LightMobility::Stationary,
+    }
+}
+
+/// Whether the scene runs og.DayNight (`resource DayNight { enabled true }`):
+/// the cycle moves the directional light, so none is baked.
+fn day_night(s: &SceneDesc) -> bool {
+    s.resources.iter().any(|r| {
+        r.name.trim_start_matches("og.") == "DayNight"
+            && r.schema
+                .fields
+                .iter()
+                .position(|f| f.name == "enabled")
+                .is_some_and(|i| {
+                    let range = og_core::reflect::Layout::of(&r.schema).range(i);
+                    r.bytes.get(range).is_some_and(|b| b.first() == Some(&1))
+                })
+    })
+}
+
+/// The scene's lights as the renderer's (`og_render_data::light`, read
+/// from the cooked rows with the record's defaults), those whose light is
+/// baked: no movable one. The directional lights are keyed as a frame
+/// draws them (`og_render::key_light`: the brightest, two handing over);
+/// under og.DayNight none is.
+fn lights(s: &SceneDesc, world: &[Mat4]) -> (Vec<LightDesc>, Option<DirectionalLight>) {
     let mut out = Vec::new();
     let mut directional = Vec::new();
     let forward = |m: &Mat4| m.transform_vector3(Vec3::NEG_Z).normalize_or(Vec3::NEG_Y);
-    let radiance = |t: &ComponentTable, e: usize, intensity: f32| {
-        vec3(t, e, "color", Vec3::ONE) * num(t, e, "intensity", intensity)
-    };
+    let color = |t: &ComponentTable, e: usize| vec3(t, e, "color", Vec3::ONE);
+    let defaults = LightDesc::default();
     for (e, m) in world.iter().enumerate() {
         let at = m.transform_point3(Vec3::ZERO);
         if let Some(t) = table(s, "DirectionalLight").filter(|t| t.get(e).is_some()) {
-            directional.push(og_render::DirectionalLight {
+            directional.push(DirectionalLight {
                 direction_to_light: -forward(m),
-                color: vec3(t, e, "color", Vec3::ONE),
-                intensity: num(t, e, "intensity", 3.0),
+                color: color(t, e),
+                intensity: num(t, e, "intensity", DirectionalLight::default().intensity),
+                mobility: mobility(t, e),
                 ..Default::default()
             });
         }
-        if let Some(t) = table(s, "PointLight").filter(|t| t.get(e).is_some()) {
-            out.push(Light::Point {
+        for (name, spot) in [("PointLight", false), ("SpotLight", true)] {
+            let Some(t) = table(s, name).filter(|t| t.get(e).is_some()) else {
+                continue;
+            };
+            let kind = if spot {
+                LightKind::Spot {
+                    direction: forward(m),
+                    angle_degrees: num(t, e, "angle", std::f32::consts::FRAC_PI_6).to_degrees(),
+                    penumbra: num(t, e, "penumbra", 0.0),
+                }
+            } else {
+                LightKind::Point
+            };
+            out.push(LightDesc {
+                kind,
                 position: at,
-                radiance: radiance(t, e, 10.0),
-                range: num(t, e, "distance", 10.0),
-            });
-        }
-        if let Some(t) = table(s, "SpotLight").filter(|t| t.get(e).is_some()) {
-            let angle = num(t, e, "angle", std::f32::consts::FRAC_PI_6);
-            let penumbra = num(t, e, "penumbra", 0.0).clamp(0.0, 1.0);
-            out.push(Light::Spot {
-                position: at,
-                direction: forward(m),
-                radiance: radiance(t, e, 10.0),
-                range: num(t, e, "distance", 10.0),
-                cos_outer: angle.cos(),
-                cos_inner: (angle * (1.0 - penumbra)).cos(),
+                color: color(t, e),
+                intensity: num(t, e, "intensity", defaults.intensity),
+                range: num(t, e, "distance", defaults.range),
+                radius: num(t, e, "radius", 0.0),
+                cast_shadows: num(t, e, "castShadow", 0.0) != 0.0,
+                mobility: mobility(t, e),
             });
         }
         if let Some(t) = table(s, "RectLight").filter(|t| t.get(e).is_some()) {
-            out.push(Light::Rect {
-                position: at,
-                half_x: m.transform_vector3(Vec3::X) * num(t, e, "width", 10.0) * 0.5,
-                half_y: m.transform_vector3(Vec3::Y) * num(t, e, "height", 10.0) * 0.5,
-                radiance: radiance(t, e, 1.0),
-                two_sided: num(t, e, "twoSided", 0.0) != 0.0,
-            });
+            out.push(LightDesc::rect(
+                at,
+                m.transform_vector3(Vec3::X) * num(t, e, "width", 10.0).max(0.0) * 0.5,
+                m.transform_vector3(Vec3::Y) * num(t, e, "height", 10.0).max(0.0) * 0.5,
+                num(t, e, "twoSided", 0.0) != 0.0,
+                color(t, e),
+                num(t, e, "intensity", 1.0),
+                num(t, e, "castShadow", 0.0) != 0.0,
+                mobility(t, e),
+            ));
         }
     }
-    if let Some(key) = og_render::key_light(&directional) {
-        out.push(Light::Directional {
-            towards: key.light.direction_to_light.normalize_or(Vec3::Y),
-            radiance: key.light.color * key.light.intensity,
-        });
-    }
-    out
+    out.retain(|l| l.mobility.baked());
+    let sun = og_render::key_light(&directional)
+        .map(|k| k.light)
+        .filter(|l| l.mobility.baked() && !day_night(s));
+    (out, sun)
 }
 
 /// A model's parts as the runtime makes them, and their meshes.
@@ -362,8 +398,10 @@ fn bake_scene(
     let started = Instant::now();
     let world = world_transforms(s);
     let statics = statics(s);
+    let (lights, sun) = lights(s, &world);
     let mut scene = Scene {
-        lights: lights(s, &world),
+        lights,
+        sun,
         sky: o.sky,
         ..Default::default()
     };

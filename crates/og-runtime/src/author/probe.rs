@@ -720,8 +720,9 @@ pub(crate) fn install(eng: &Rc<Engine>, facts: Option<u32>) -> Result<(), String
     probe.set_derive(Box::new(move |world, entity, name, fields| {
         if let Ok(eng) = engine(id)
             && let Ok(st) = eng.state.try_borrow()
+            && let Ok(rs) = eng.render.try_borrow()
         {
-            crate::present::atmosphere::derive(world, &st.layouts, entity, name, fields);
+            crate::present::atmosphere::derive(world, &st.layouts, &rs.baked, entity, name, fields);
         }
     }));
     // `set` of a lazy record's field names it (crate::engine::lazy).

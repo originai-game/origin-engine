@@ -4400,6 +4400,45 @@ impl ToJson for StandardMaterialDesc {
     }
 }
 
+/// `LightMobility`: packages/knowledge/wiki/render.md.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum LightMobility {
+    #[default]
+    Movable,
+    Stationary,
+    Static,
+}
+
+impl LightMobility {
+    /// The variants' IDL names, in index order.
+    pub const NAMES: &'static [&'static str] = &["movable", "stationary", "static"];
+    /// Every variant, in index order.
+    pub const ALL: &'static [Self] = &[Self::Movable, Self::Stationary, Self::Static];
+    /// The IDL name.
+    pub fn as_str(self) -> &'static str {
+        Self::NAMES[self as usize]
+    }
+    /// The variant named `s`, or a refusal naming them all.
+    pub fn parse(s: &str) -> Result<Self, String> {
+        match Self::NAMES.iter().position(|n| *n == s) {
+            Some(i) => Ok(Self::ALL[i]),
+            None => Err(unknown_variant("LightMobility", s, Self::NAMES)),
+        }
+    }
+}
+
+impl FromJson for LightMobility {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::parse(variant(v, "LightMobility", Self::NAMES)?)
+    }
+}
+
+impl ToJson for LightMobility {
+    fn to_json(&self) -> Value {
+        Value::String(self.as_str().into())
+    }
+}
+
 /// `ToneMapping`: packages/knowledge/wiki/render.md.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum ToneMapping {
@@ -27211,6 +27250,7 @@ pub mod record {
     pub struct DirectionalLight {
         pub color: Color,
         pub intensity: f32,
+        pub mobility: LightMobility,
         pub cast_shadow: bool,
         pub shadow_distance: f32,
         pub shadow_softness: f32,
@@ -27227,6 +27267,7 @@ pub mod record {
             Self {
                 color: Color { r: 1.0_f32, g: 1.0_f32, b: 1.0_f32 },
                 intensity: 3.0_f32,
+                mobility: LightMobility::Stationary,
                 cast_shadow: true,
                 shadow_distance: 200.0_f32,
                 shadow_softness: Default::default(),
@@ -27249,6 +27290,7 @@ pub mod record {
             Ok(Self {
                 color: field(o, "color", d.color)?,
                 intensity: field(o, "intensity", d.intensity)?,
+                mobility: field(o, "mobility", d.mobility)?,
                 cast_shadow: field(o, "castShadow", d.cast_shadow)?,
                 shadow_distance: field(o, "shadowDistance", d.shadow_distance)?,
                 shadow_softness: field(o, "shadowSoftness", d.shadow_softness)?,
@@ -27271,7 +27313,7 @@ pub mod record {
         pub radius: f32,
         pub cast_shadow: bool,
         pub cookie: u64,
-        pub r#static: bool,
+        pub mobility: LightMobility,
     }
 
     impl Default for PointLight {
@@ -27283,7 +27325,7 @@ pub mod record {
                 radius: 0.0_f32,
                 cast_shadow: Default::default(),
                 cookie: Default::default(),
-                r#static: Default::default(),
+                mobility: LightMobility::Stationary,
             }
         }
     }
@@ -27301,7 +27343,7 @@ pub mod record {
                 radius: field(o, "radius", d.radius)?,
                 cast_shadow: field(o, "castShadow", d.cast_shadow)?,
                 cookie: field(o, "cookie", d.cookie)?,
-                r#static: field(o, "static", d.r#static)?,
+                mobility: field(o, "mobility", d.mobility)?,
             })
         }
     }
@@ -27317,7 +27359,7 @@ pub mod record {
         pub penumbra: f32,
         pub cast_shadow: bool,
         pub cookie: u64,
-        pub r#static: bool,
+        pub mobility: LightMobility,
     }
 
     impl Default for SpotLight {
@@ -27331,7 +27373,7 @@ pub mod record {
                 penumbra: Default::default(),
                 cast_shadow: Default::default(),
                 cookie: Default::default(),
-                r#static: Default::default(),
+                mobility: LightMobility::Stationary,
             }
         }
     }
@@ -27351,7 +27393,7 @@ pub mod record {
                 penumbra: field(o, "penumbra", d.penumbra)?,
                 cast_shadow: field(o, "castShadow", d.cast_shadow)?,
                 cookie: field(o, "cookie", d.cookie)?,
-                r#static: field(o, "static", d.r#static)?,
+                mobility: field(o, "mobility", d.mobility)?,
             })
         }
     }
@@ -29191,7 +29233,7 @@ pub mod record {
         pub height: f32,
         pub two_sided: bool,
         pub cast_shadow: bool,
-        pub r#static: bool,
+        pub mobility: LightMobility,
     }
 
     impl Default for RectLight {
@@ -29203,7 +29245,7 @@ pub mod record {
                 height: 10.0_f32,
                 two_sided: Default::default(),
                 cast_shadow: Default::default(),
-                r#static: Default::default(),
+                mobility: LightMobility::Stationary,
             }
         }
     }
@@ -29221,7 +29263,7 @@ pub mod record {
                 height: field(o, "height", d.height)?,
                 two_sided: field(o, "twoSided", d.two_sided)?,
                 cast_shadow: field(o, "castShadow", d.cast_shadow)?,
-                r#static: field(o, "static", d.r#static)?,
+                mobility: field(o, "mobility", d.mobility)?,
             })
         }
     }

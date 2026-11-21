@@ -4,13 +4,18 @@
 //!
 //! What a lightmap texel or a light volume probe stores is the light that
 //! arrives from the scene (bounced light, the sky, emissive surfaces); the
-//! direct light of the scene's lights is the renderer's, every frame, with
+//! direct light of a stationary light is the renderer's, every frame, with
 //! its shadows. So [`Tracer::radiance`] never adds a light's direct term at
-//! the point it starts from, only at the points its rays meet.
+//! the point it starts from, only at the points its rays meet; a static
+//! light's direct term at that point is added by the lightmap and the
+//! volumes themselves ([`Tracer::direct`], [`Tracer::arriving`]). The
+//! lights are the renderer's own (`og_render_data::light`), falloff and
+//! cone included.
 
 use crate::bvh::{Bvh, Hit};
-use crate::scene::{Light, Scene};
+use crate::scene::Scene;
 use glam::{Vec2, Vec3};
+use og_render_data::light::{LightKind, LightMobility, range_window};
 use std::f32::consts::PI;
 
 /// The bake's generator, seeded per texel and per probe so a bake is the
@@ -178,95 +183,97 @@ impl<'a> Tracer<'a> {
         }
     }
 
-    /// The irradiance every light gives at `p` with normal `n` (shadow rays
-    /// from `p` lifted along `face`), one sample of each area light.
-    pub fn direct(&self, p: Vec3, n: Vec3, face: Vec3, rng: &mut Rng) -> Vec3 {
+    /// The irradiance the scene's lights give at `p` with normal `n`
+    /// (shadow rays from `p` lifted along `face`), one sample of each rect
+    /// light: every light, or with `static_only` those whose mobility is
+    /// static (whose direct light the bake holds).
+    pub fn direct(&self, p: Vec3, n: Vec3, face: Vec3, rng: &mut Rng, static_only: bool) -> Vec3 {
         let origin = p + face * self.epsilon * 4.0;
         let mut e = Vec3::ZERO;
-        for light in &self.scene.lights {
-            match *light {
-                Light::Directional { towards, radiance } => {
-                    let l = towards.normalize_or(Vec3::Y);
-                    let cos = n.dot(l);
-                    if cos > 0.0 && !self.occluded(origin, l, f32::MAX) {
-                        e += radiance * cos;
-                    }
-                }
-                Light::Point {
-                    position,
-                    radiance,
-                    range,
-                } => {
-                    e += radiance * self.local(origin, n, position, range, None);
-                }
-                Light::Spot {
-                    position,
-                    direction,
-                    radiance,
-                    range,
-                    cos_outer,
-                    cos_inner,
-                } => {
-                    let cone = (direction.normalize_or(Vec3::NEG_Y), cos_outer, cos_inner);
-                    e += radiance * self.local(origin, n, position, range, Some(cone));
-                }
-                Light::Rect {
-                    position,
-                    half_x,
-                    half_y,
-                    radiance,
+        self.arriving(origin, Some(n), static_only, rng, &mut |light, l| {
+            e += light * n.dot(l);
+        });
+        e
+    }
+
+    /// Whether a light's direct light is baked (its mobility static).
+    pub fn has_static(&self) -> bool {
+        let s = |m: LightMobility| m == LightMobility::Static;
+        self.scene.sun.is_some_and(|l| s(l.mobility))
+            || self.scene.lights.iter().any(|l| s(l.mobility))
+    }
+
+    /// Calls `f` with the irradiance each light sends `origin` on a surface
+    /// facing it and the unit direction towards it, unshadowed (the renderer's
+    /// falloff and cone, `LightDesc::falloff` and `LightDesc::cone`; one
+    /// point of each rect light). With `facing`, a light behind that normal
+    /// is skipped; with `static_only`, every light but the static ones.
+    pub fn arriving(
+        &self,
+        origin: Vec3,
+        facing: Option<Vec3>,
+        static_only: bool,
+        rng: &mut Rng,
+        f: &mut dyn FnMut(Vec3, Vec3),
+    ) {
+        let keep = |m: LightMobility| !static_only || m == LightMobility::Static;
+        let front = |l: Vec3| facing.is_none_or(|n| n.dot(l) > 0.0);
+        if let Some(sun) = self.scene.sun.filter(|s| keep(s.mobility)) {
+            let l = sun.direction_to_light.normalize_or(Vec3::Y);
+            if front(l) && !self.occluded(origin, l, f32::MAX) {
+                f(sun.color * sun.intensity, l);
+            }
+        }
+        for light in self.scene.lights.iter().filter(|l| keep(l.mobility)) {
+            let (to, area_term) = match light.kind {
+                LightKind::Rect {
+                    half_width,
+                    half_height,
                     two_sided,
                 } => {
-                    let cross = half_x.cross(half_y);
+                    let cross = half_width.cross(half_height);
                     let area = 4.0 * cross.length();
                     if area <= 0.0 {
                         continue;
                     }
                     let nl = -cross / (area / 4.0);
-                    let q = position
-                        + half_x * (2.0 * rng.next_f32() - 1.0)
-                        + half_y * (2.0 * rng.next_f32() - 1.0);
+                    let q = light.position
+                        + half_width * (2.0 * rng.next_f32() - 1.0)
+                        + half_height * (2.0 * rng.next_f32() - 1.0);
                     let w = q - origin;
                     let d2 = w.length_squared().max(1e-8);
-                    let d = d2.sqrt();
-                    let l = w / d;
-                    let cos_s = n.dot(l);
-                    let mut cos_l = nl.dot(-l);
+                    let mut cos_l = nl.dot(-w / d2.sqrt());
                     if two_sided {
                         cos_l = cos_l.abs();
                     }
-                    if cos_s > 0.0
-                        && cos_l > 0.0
-                        && !self.occluded(origin, l, d - self.epsilon * 8.0)
-                    {
-                        e += radiance * (area * cos_s * cos_l / d2);
+                    if cos_l <= 0.0 {
+                        continue;
                     }
+                    // Faded to nothing at its range from its centre, as
+                    // area.wgsl does.
+                    let window =
+                        range_window((light.position - origin).length_squared(), light.range);
+                    (w, area * cos_l / d2 * window)
                 }
+                LightKind::Point | LightKind::Spot { .. } => {
+                    let to = light.position - origin;
+                    let d2 = to.length_squared().max(1e-4);
+                    (to, light.falloff(d2) * light.cone(to / d2.sqrt()))
+                }
+            };
+            let d = to.length().max(1e-4);
+            let l = to / d;
+            if area_term <= 0.0 || !front(l) {
+                continue;
+            }
+            let reach = match light.kind {
+                LightKind::Rect { .. } => d - self.epsilon * 8.0,
+                _ => d,
+            };
+            if !self.occluded(origin, l, reach) {
+                f(light.radiance() * area_term, l);
             }
         }
-        e
-    }
-
-    /// A point or spot light's falloff times n·l at `p` (0 when shadowed),
-    /// as pbr.wgsl's `local_light`.
-    fn local(&self, p: Vec3, n: Vec3, at: Vec3, range: f32, cone: Option<(Vec3, f32, f32)>) -> f32 {
-        let to = at - p;
-        let d2 = to.length_squared().max(1e-4);
-        let ratio = d2 / (range * range).max(1e-8);
-        let window = (1.0 - ratio * ratio).clamp(0.0, 1.0);
-        let mut atten = window * window / d2;
-        let d = d2.sqrt();
-        let l = to / d;
-        if let Some((axis, cos_outer, cos_inner)) = cone {
-            let t = ((-l).dot(axis) - cos_outer) / (cos_inner - cos_outer).max(1e-4);
-            let t = t.clamp(0.0, 1.0);
-            atten *= t * t;
-        }
-        let cos = n.dot(l);
-        if atten <= 0.0 || cos <= 0.0 || self.occluded(p, l, d) {
-            return 0.0;
-        }
-        atten * cos
     }
 
     /// The radiance arriving at `origin` from `dir`: what the ray meets
@@ -290,7 +297,8 @@ impl<'a> Tracer<'a> {
             if bounce == self.bounces {
                 break;
             }
-            out += throughput * s.albedo / PI * self.direct(s.position, s.normal, s.face, rng);
+            out +=
+                throughput * s.albedo / PI * self.direct(s.position, s.normal, s.face, rng, false);
             // The next direction is cosine-weighted, so the estimator of the
             // diffuse integral is the albedo alone.
             throughput *= s.albedo;
@@ -315,6 +323,7 @@ impl<'a> Tracer<'a> {
 mod tests {
     use super::*;
     use crate::scene::{Material, Mesh};
+    use og_render_data::light::LightDesc;
 
     fn quad(center: Vec3, half_x: Vec3, half_y: Vec3, material: usize) -> Mesh {
         let n = half_x.cross(half_y).normalize();
@@ -356,10 +365,11 @@ mod tests {
                 base_color: Vec3::splat(0.5),
                 ..Default::default()
             }],
-            lights: vec![Light::Directional {
-                towards: Vec3::new(0.0, 1.0, 1.0).normalize(),
-                radiance: Vec3::splat(3.0),
-            }],
+            sun: Some(og_render_data::light::DirectionalLight {
+                direction_to_light: Vec3::new(0.0, 1.0, 1.0).normalize(),
+                intensity: 3.0,
+                ..Default::default()
+            }),
             ..Default::default()
         };
         let t = Tracer {
@@ -372,27 +382,29 @@ mod tests {
         assert!((l.x - want).abs() < 1e-4, "{l} vs {want}");
     }
 
-    /// A point light's falloff is pbr.wgsl's: window² / d² with the window
-    /// clamp(1 - (d / range)^4), times n·l.
+    /// A point light's falloff is frame.wgsl's `local_falloff`: the window
+    /// clamp(1 - (d / range)^4)² over d² + radius², times n·l.
     #[test]
     fn a_point_light_falls_off_as_the_renderer_draws_it() {
         let scene = Scene {
             meshes: vec![],
             materials: vec![Material::default()],
-            lights: vec![Light::Point {
+            lights: vec![LightDesc {
                 position: Vec3::new(0.0, 2.0, 0.0),
-                radiance: Vec3::splat(10.0),
+                intensity: 10.0,
                 range: 4.0,
+                radius: 1.0,
+                ..Default::default()
             }],
             ..Default::default()
         };
         let t = Tracer::new(&scene, 1);
         let mut rng = Rng::new(3);
-        let e = t.direct(Vec3::ZERO, Vec3::Y, Vec3::Y, &mut rng);
+        let e = t.direct(Vec3::ZERO, Vec3::Y, Vec3::Y, &mut rng, false);
         let d2: f32 = 4.0;
         let ratio = d2 / 16.0;
         let window = 1.0 - ratio * ratio;
-        let want = 10.0 * window * window / d2;
+        let want = 10.0 * window * window / (d2 + 1.0);
         assert!((e.x - want).abs() < 1e-3 * want, "{e} vs {want}");
     }
 
@@ -400,13 +412,17 @@ mod tests {
     /// it lights only below its front (its -Z: half_x × half_y reversed).
     #[test]
     fn a_rect_light_lights_its_front_only() {
-        let rect = |two_sided| Light::Rect {
+        // half_width × half_height = +y, so it emits downwards.
+        let rect = |two_sided| LightDesc {
+            kind: LightKind::Rect {
+                half_width: Vec3::new(0.05, 0.0, 0.0),
+                half_height: Vec3::new(0.0, 0.0, -0.05),
+                two_sided,
+            },
             position: Vec3::new(0.0, 1.0, 0.0),
-            // half_x × half_y = +y, so it emits downwards.
-            half_x: Vec3::new(0.05, 0.0, 0.0),
-            half_y: Vec3::new(0.0, 0.0, -0.05),
-            radiance: Vec3::splat(100.0),
-            two_sided,
+            intensity: 100.0,
+            range: 1000.0,
+            ..Default::default()
         };
         let scene = Scene {
             materials: vec![Material::default()],
@@ -418,9 +434,15 @@ mod tests {
         let mut below = 0.0;
         let mut above = 0.0;
         for _ in 0..256 {
-            below += t.direct(Vec3::ZERO, Vec3::Y, Vec3::Y, &mut rng).x;
+            below += t.direct(Vec3::ZERO, Vec3::Y, Vec3::Y, &mut rng, false).x;
             above += t
-                .direct(Vec3::new(0.0, 2.0, 0.0), Vec3::NEG_Y, Vec3::NEG_Y, &mut rng)
+                .direct(
+                    Vec3::new(0.0, 2.0, 0.0),
+                    Vec3::NEG_Y,
+                    Vec3::NEG_Y,
+                    &mut rng,
+                    false,
+                )
                 .x;
         }
         // A small rect: E ≈ L × A / d² = 100 × 0.01 / 1.
@@ -432,7 +454,13 @@ mod tests {
         };
         let t2 = Tracer::new(&scene2, 1);
         let up = t2
-            .direct(Vec3::new(0.0, 2.0, 0.0), Vec3::NEG_Y, Vec3::NEG_Y, &mut rng)
+            .direct(
+                Vec3::new(0.0, 2.0, 0.0),
+                Vec3::NEG_Y,
+                Vec3::NEG_Y,
+                &mut rng,
+                false,
+            )
             .x;
         assert!(up > 0.9, "two-sided lights its back too ({up})");
     }

@@ -10,7 +10,7 @@
 use crate::sky_scenes::physical_light;
 use glam::{Mat4, Quat, Vec3};
 use og_render::{
-    Camera, Clouds, ColorSpace, Exposure, Light, LightKind, MeshData, Mips, PhysicalAtmosphere,
+    Camera, Clouds, ColorSpace, Exposure, LightDesc, LightKind, MeshData, Mips, PhysicalAtmosphere,
     RenderScene, ScreenSpaceReflections, StandardMaterial, SurfaceWeather, TextureData, Vertex,
     shapes,
 };
@@ -206,7 +206,7 @@ fn street() -> RenderScene {
                 glow,
                 Mat4::from_scale_rotation_translation(Vec3::splat(0.16), Quat::IDENTITY, at),
             );
-            scene.lighting.lights.push(Light {
+            scene.lighting.lights.push(LightDesc {
                 kind: LightKind::Point,
                 position: at - Vec3::new(side * 0.3, 0.2, 0.0),
                 color: Vec3::new(1.0, 0.72, 0.45),
@@ -214,6 +214,7 @@ fn street() -> RenderScene {
                 range: 18.0,
                 radius: 0.0,
                 cast_shadows: false,
+                mobility: og_render::LightMobility::Movable,
             });
         }
     }

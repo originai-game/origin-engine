@@ -87,6 +87,14 @@ fn lanes(values: &[Value], line: usize, comp: &str, field: &str) -> Result<Given
     if let [Value::String(text)] = values {
         return Ok(Given::Text(text.clone()));
     }
+    // An enum field's variant by name (`mobility static`): read against
+    // the field's variants when packed.
+    if let [Value::Word(w)] = values
+        && w != "true"
+        && w != "false"
+    {
+        return Ok(Given::Text(w.clone()));
+    }
     values
         .iter()
         .map(|v| match v {
@@ -227,6 +235,18 @@ fn pack(schema: &Schema, row: &Pending, out: &mut Vec<u8>) -> Result<(), CookErr
             continue;
         }
         let values: Vec<f64> = match given {
+            Some((_, Given::Text(name), line)) if fs.ty == FieldType::Enum => {
+                match fs.variants.iter().position(|v| v == name) {
+                    Some(i) => vec![i as f64],
+                    None => {
+                        return Err(CookError(format!(
+                            "line {line}: {comp}.{} is one of {}, not '{name}'",
+                            fs.name,
+                            fs.variants.join(", ")
+                        )));
+                    }
+                }
+            }
             Some((_, Given::Text(_), line)) => {
                 return Err(CookError(format!(
                     "line {line}: {comp}.{} is a {}, not a string: give it {} number(s)",

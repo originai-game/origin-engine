@@ -325,7 +325,7 @@ pub fn particles_scene() -> RenderScene {
         0,
     ));
     scene.lighting.lights = vec![
-        Light {
+        LightDesc {
             position: Vec3::new(0.0, 0.7, 0.0),
             color: Vec3::new(1.0, 0.55, 0.25),
             intensity: 9.0,
@@ -333,7 +333,7 @@ pub fn particles_scene() -> RenderScene {
             cast_shadows: true,
             ..Default::default()
         },
-        Light {
+        LightDesc {
             position: Vec3::new(-2.6, 2.2, -1.4),
             color: Vec3::new(0.3, 0.5, 1.0),
             intensity: 3.0,

@@ -28,7 +28,7 @@ use crate::fx_scenes::{bend_palette, skinned_cylinder};
 use crate::terrain_scenes::{grass_scatter, grass_tuft, island_layers};
 use glam::{Mat4, Quat, Vec2, Vec3};
 use og_render::{
-    Background, Camera, DirectionalLight, Environment, Exposure, Light, LightKind, Material,
+    Background, Camera, DirectionalLight, Environment, Exposure, LightDesc, LightKind, Material,
     ProbeMode, ProceduralSky, ReflectionProbe, RenderScene, ScatterDraw, SkinnedInstance,
     StandardMaterial, Terrain, TerrainControl, TerrainData, shapes,
 };
@@ -205,7 +205,7 @@ pub fn two_rooms_scene(probes: bool) -> RenderScene {
                 at(0.0, SPHERE.1, 0.0),
             ),
         );
-        scene.lighting.lights.push(Light {
+        scene.lighting.lights.push(LightDesc {
             kind: LightKind::Point,
             position: at(0.0, 3.3, 1.0),
             color: Vec3::new(1.0, 0.95, 0.85),
@@ -213,6 +213,7 @@ pub fn two_rooms_scene(probes: bool) -> RenderScene {
             range: 9.0,
             radius: 0.0,
             cast_shadows: false,
+            mobility: og_render::LightMobility::Movable,
         });
         if probes {
             let mut p =
@@ -322,7 +323,7 @@ pub fn two_shops_scene() -> RenderScene {
                 at(0.0, SPHERE.1, 0.0),
             ),
         );
-        scene.lighting.lights.push(Light {
+        scene.lighting.lights.push(LightDesc {
             kind: LightKind::Point,
             position: at(0.0, 3.3, 1.0),
             color: Vec3::new(1.0, 0.85, 0.65),
@@ -330,6 +331,7 @@ pub fn two_shops_scene() -> RenderScene {
             range: 9.0,
             radius: 0.0,
             cast_shadows: false,
+            mobility: og_render::LightMobility::Movable,
         });
         let mut p = ReflectionProbe::new(1 + k as u64, at(0.0, 1.6, 0.0), Vec3::new(6.0, 4.2, 6.0));
         p.mode = ProbeMode::Baked;

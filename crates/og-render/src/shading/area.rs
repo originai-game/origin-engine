@@ -433,7 +433,7 @@ mod tests {
     /// cookie is one face, a point's six), and fits only before the cap.
     #[test]
     fn cookies_past_the_cap_are_counted_and_named() {
-        use crate::scene::{Light, TextureData};
+        use crate::scene::{LightDesc, TextureData};
         let mut scene = RenderScene::new();
         let texture = |scene: &mut RenderScene| {
             scene.add_texture(TextureData {
@@ -443,7 +443,7 @@ mod tests {
                 ..Default::default()
             })
         };
-        let light = |kind| Light {
+        let light = |kind| LightDesc {
             kind,
             position: glam::Vec3::ZERO,
             color: glam::Vec3::ONE,
@@ -451,6 +451,7 @@ mod tests {
             range: 5.0,
             radius: 0.0,
             cast_shadows: false,
+            mobility: crate::LightMobility::Movable,
         };
         let point = || light(LightKind::Point);
         let spot = || {

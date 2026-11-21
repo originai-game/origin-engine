@@ -145,7 +145,6 @@ impl RenderScene {
                 light: DirectionalLight::default(),
                 lights: Vec::new(),
                 light_cookies: Vec::new(),
-                static_lights: Vec::new(),
                 static_reach: 0.0,
                 baked: crate::BakedLighting::default(),
                 light_volumes: Vec::new(),

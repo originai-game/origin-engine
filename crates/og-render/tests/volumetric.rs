@@ -2,7 +2,7 @@
 
 use glam::Vec3;
 use og_render::{
-    Background, Camera, Light, LightKind, Projection, RenderDesc, RenderScene, VolumetricFog,
+    Background, Camera, LightDesc, LightKind, Projection, RenderDesc, RenderScene, VolumetricFog,
     VolumetricMethod, render_to_rgba,
 };
 
@@ -32,7 +32,7 @@ fn a_subfroxel_spot_beam_does_not_disappear_between_columns() {
     // At z=-10 the adjacent centre rays lie at y=±0.06415 m.
     // This beam is between them, visible at 640x360 (up to 1.75 pixels
     // across), but no centre ray intersects its cone before its range.
-    scene.lighting.lights.push(Light {
+    scene.lighting.lights.push(LightDesc {
         kind: LightKind::Spot {
             direction: Vec3::X,
             angle_degrees: 0.007f32.to_degrees(),

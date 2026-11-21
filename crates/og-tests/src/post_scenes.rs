@@ -11,7 +11,7 @@ use crate::lighting_scenes::{high_street, light_lanterns, market_square, night, 
 use crate::sky_scenes::physical_light_under;
 use glam::{Mat4, Quat, Vec2, Vec3};
 use og_render::{
-    Camera, DepthOfField, DofQuality, Exposure, Light, LightKind, Material, MotionBlur,
+    Camera, DepthOfField, DofQuality, Exposure, LightDesc, LightKind, Material, MotionBlur,
     RenderScene, shapes,
 };
 
@@ -213,7 +213,7 @@ pub fn lantern_night_scene() -> RenderScene {
                 * Mat4::from_scale(Vec3::new(0.6, 1.0, 1.0)),
         );
         let c = Vec3::from(*c);
-        scene.lighting.lights.push(Light {
+        scene.lighting.lights.push(LightDesc {
             kind: LightKind::Point,
             position: p - Vec3::Y * 0.5,
             color: c / c.max_element(),
@@ -221,6 +221,7 @@ pub fn lantern_night_scene() -> RenderScene {
             range: 10.0,
             radius: 0.0,
             cast_shadows: false,
+            mobility: og_render::LightMobility::Movable,
         });
     }
     let line = scene.add_mesh(kit::block(

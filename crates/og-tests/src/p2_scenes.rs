@@ -3,7 +3,7 @@
 
 use glam::{Mat4, Vec3};
 use og_render::{
-    Background, Camera, Environment, Exposure, Light, LightKind, Material, RenderScene, shapes,
+    Background, Camera, Environment, Exposure, LightDesc, LightKind, Material, RenderScene, shapes,
 };
 
 /// A small integer hash to [0, 1) (deterministic colours and placements).
@@ -28,7 +28,7 @@ fn hue(h: f32) -> Vec3 {
 
 /// The lights of [`many_lights`]: `count` of them over a 48 m square, every
 /// eighth a spot pointing down, the rest points, hues and heights hashed.
-pub fn many_lights_list(count: u32) -> Vec<Light> {
+pub fn many_lights_list(count: u32) -> Vec<LightDesc> {
     let side = (count as f32).sqrt().ceil() as u32;
     let spacing = 48.0 / side as f32;
     (0..count)
@@ -38,7 +38,7 @@ pub fn many_lights_list(count: u32) -> Vec<Light> {
             let z = -24.0 + (gz as f32 + 0.5 + (hash01(i, 2) - 0.5) * 0.6) * spacing;
             let color = hue(hash01(i, 3)).lerp(Vec3::ONE, 0.25);
             if i % 8 == 7 {
-                Light {
+                LightDesc {
                     kind: LightKind::Spot {
                         direction: Vec3::new(hash01(i, 4) - 0.5, -1.0, hash01(i, 5) - 0.5),
                         angle_degrees: 28.0,
@@ -50,9 +50,10 @@ pub fn many_lights_list(count: u32) -> Vec<Light> {
                     range: 6.0,
                     radius: 0.0,
                     cast_shadows: false,
+                    mobility: og_render::LightMobility::Movable,
                 }
             } else {
-                Light {
+                LightDesc {
                     position: Vec3::new(x, 0.35 + hash01(i, 6) * 0.9, z),
                     color,
                     intensity: 2.2 + hash01(i, 7) * 1.6,
@@ -558,7 +559,7 @@ pub fn fluid_3d_scene() -> RenderScene {
         volume: spacing.powi(3),
         ..Default::default()
     });
-    scene.lighting.lights.push(Light {
+    scene.lighting.lights.push(LightDesc {
         position: Vec3::new(-1.0, 1.0, 0.9),
         color: Vec3::new(1.0, 0.6, 0.3),
         intensity: 6.0,

@@ -588,7 +588,7 @@ pub fn light_volume_scene(realtime: bool, colour: Vec3, mirror: Option<f32>) -> 
         intensity: 0.0,
         ..Default::default()
     };
-    scene.lighting.lights.push(Light {
+    scene.lighting.lights.push(LightDesc {
         kind: LightKind::Point,
         position: Vec3::new(0.0, 2.7, -0.4),
         color: colour,
@@ -596,6 +596,7 @@ pub fn light_volume_scene(realtime: bool, colour: Vec3, mirror: Option<f32>) -> 
         range: 9.0,
         radius: 0.0,
         cast_shadows: true,
+        mobility: og_render::LightMobility::Movable,
     });
     scene.lighting.environment = Environment {
         intensity: 0.05,

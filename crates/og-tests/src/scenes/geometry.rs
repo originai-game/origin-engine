@@ -214,7 +214,7 @@ pub fn point_spot_lights() -> RenderScene {
     }
     scene.lighting.lights = vec![
         // Shadowed: a spot from above-left, and a point light among the pillars.
-        Light {
+        LightDesc {
             kind: LightKind::Spot {
                 direction: Vec3::new(0.5, -1.0, 0.2),
                 angle_degrees: 35.0,
@@ -226,8 +226,9 @@ pub fn point_spot_lights() -> RenderScene {
             range: 20.0,
             radius: 0.0,
             cast_shadows: true,
+            mobility: og_render::LightMobility::Movable,
         },
-        Light {
+        LightDesc {
             position: Vec3::new(0.3, 1.2, 0.0),
             color: Vec3::new(1.0, 0.7, 0.4),
             intensity: 12.0,
@@ -235,35 +236,35 @@ pub fn point_spot_lights() -> RenderScene {
             cast_shadows: true,
             ..Default::default()
         },
-        Light {
+        LightDesc {
             position: Vec3::new(-5.0, 0.8, -5.0),
             color: Vec3::new(1.0, 0.1, 0.1),
             intensity: 8.0,
             range: 7.0,
             ..Default::default()
         },
-        Light {
+        LightDesc {
             position: Vec3::new(5.0, 0.8, -5.0),
             color: Vec3::new(0.1, 1.0, 0.2),
             intensity: 8.0,
             range: 7.0,
             ..Default::default()
         },
-        Light {
+        LightDesc {
             position: Vec3::new(5.0, 0.8, 5.0),
             color: Vec3::new(0.2, 0.3, 1.0),
             intensity: 8.0,
             range: 7.0,
             ..Default::default()
         },
-        Light {
+        LightDesc {
             position: Vec3::new(-6.0, 0.6, 5.0),
             color: Vec3::new(1.0, 0.5, 1.0),
             intensity: 6.0,
             range: 6.0,
             ..Default::default()
         },
-        Light {
+        LightDesc {
             kind: LightKind::Spot {
                 direction: Vec3::new(-1.0, -0.6, -0.2),
                 angle_degrees: 20.0,
@@ -275,6 +276,7 @@ pub fn point_spot_lights() -> RenderScene {
             range: 18.0,
             radius: 0.0,
             cast_shadows: false,
+            mobility: og_render::LightMobility::Movable,
         },
     ];
     scene.lighting.light.intensity = 0.0;

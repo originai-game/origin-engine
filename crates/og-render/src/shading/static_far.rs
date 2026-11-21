@@ -34,8 +34,9 @@
 //!   the probe GI's region, described by [`HEADER_ROWS`] rows after the
 //!   probe GI's header; none when the reach is 0.
 
-use crate::scene::{Light, LightKind, RenderScene};
+use crate::scene::{LightDesc, LightKind, RenderScene};
 use glam::{IVec3, Vec3};
+use og_render_data::light::{LightMobility, range_window};
 use std::f32::consts::PI;
 
 /// The grid's probes along x, y and z (`FAR_COUNTS`).
@@ -59,30 +60,26 @@ const PATCHES: u32 = 4;
 /// The header of no far field.
 pub(crate) const OFF: [[f32; 4]; HEADER_ROWS] = [[0.0, 0.0, 0.0, -1.0], [0.0; 4]];
 
-/// The lights that take the far field: those `static_lights` names that
-/// cast no shadow and have no cookie (their per-pixel light is what a
-/// field cannot hold), of a kind the renderer draws. None while the reach
-/// is 0.
+/// The lights that take the far field: those that never move (stationary
+/// or static, [`og_render_data::light::LightMobility`]), cast no shadow and
+/// have no cookie (their per-pixel light is what a field cannot hold), of
+/// a kind the renderer draws. None while the reach is 0.
 pub(crate) fn far_lights(scene: &RenderScene, skip_rects: bool) -> Vec<usize> {
     let l = &scene.lighting;
     if l.static_reach <= 0.0 {
         return Vec::new();
     }
-    let mut out: Vec<usize> = l
-        .static_lights
+    l.lights
         .iter()
-        .copied()
-        .filter(|&i| {
-            l.lights.get(i).is_some_and(|light| {
-                !light.cast_shadows
-                    && !(skip_rects && matches!(light.kind, LightKind::Rect { .. }))
-                    && !l.light_cookies.iter().any(|c| c.light == i)
-            })
+        .enumerate()
+        .filter(|&(i, light)| {
+            light.mobility != LightMobility::Movable
+                && !light.cast_shadows
+                && !(skip_rects && matches!(light.kind, LightKind::Rect { .. }))
+                && !l.light_cookies.iter().any(|c| c.light == i)
         })
-        .collect();
-    out.sort_unstable();
-    out.dedup();
-    out
+        .map(|(i, _)| i)
+        .collect()
 }
 
 /// The share of a static light shaded per pixel `d` metres from it
@@ -104,13 +101,6 @@ fn first_cell(eye: Vec3, spacing: f32) -> IVec3 {
     c - IVec3::new(COUNTS[0] as i32 / 2, BELOW, COUNTS[2] as i32 / 2)
 }
 
-/// frame.wgsl `range_window`: Karis's window to zero at `range`.
-fn window(d2: f32, range: f32) -> f32 {
-    let ratio = d2 / (range * range).max(1e-8);
-    let w = (1.0 - ratio * ratio).clamp(0.0, 1.0);
-    w * w
-}
-
 /// Adds irradiance `e` (on a surface facing it) arriving from `l` (unit,
 /// towards the light) to a probe's harmonics: a clamped cosine's L1
 /// projection, E (1/4 + 1/2 n·l), over π.
@@ -126,7 +116,7 @@ fn add(probe: &mut [[f32; 4]], e: Vec3, l: Vec3) {
 
 /// What the lights `far` send the point `p` past their near field, into
 /// `probe` (three vec4, as the shader reads them).
-fn light_at(light: &Light, reach: f32, p: Vec3, probe: &mut [[f32; 4]]) {
+fn light_at(light: &LightDesc, reach: f32, p: Vec3, probe: &mut [[f32; 4]]) {
     let to_p = p - light.position;
     let d2 = to_p.length_squared().max(1e-4);
     let range = light.range.max(1e-3);
@@ -137,7 +127,7 @@ fn light_at(light: &Light, reach: f32, p: Vec3, probe: &mut [[f32; 4]]) {
     if far <= 0.0 {
         return;
     }
-    let radiance = light.color * light.intensity.max(0.0) * window(d2, range) * far;
+    let radiance = light.color * light.intensity.max(0.0) * range_window(d2, range) * far;
     match light.kind {
         LightKind::Rect {
             half_width,
@@ -172,20 +162,7 @@ fn light_at(light: &Light, reach: f32, p: Vec3, probe: &mut [[f32; 4]]) {
         }
         LightKind::Point | LightKind::Spot { .. } => {
             let l = -to_p / d2.sqrt();
-            let mut atten = 1.0 / (d2 + light.radius * light.radius);
-            if let LightKind::Spot {
-                direction,
-                angle_degrees,
-                penumbra,
-            } = light.kind
-            {
-                let (cos_outer, cos_inner) =
-                    og_render_data::light::spot_cone(angle_degrees, penumbra);
-                let axis = direction.normalize_or(Vec3::NEG_Y);
-                let t = ((-l).dot(axis) - cos_outer) / (cos_inner - cos_outer).max(1e-4);
-                let t = t.clamp(0.0, 1.0);
-                atten *= t * t;
-            }
+            let atten = light.cone(l) / (d2 + light.radius * light.radius);
             if atten > 0.0 {
                 add(probe, radiance * atten, l);
             }
@@ -196,7 +173,7 @@ fn light_at(light: &Light, reach: f32, p: Vec3, probe: &mut [[f32; 4]]) {
 /// The grid's probes from its first probe at `min`, `spacing` apart: per
 /// probe its red, green and blue harmonics.
 pub(crate) fn field(
-    lights: &[Light],
+    lights: &[LightDesc],
     far: &[usize],
     reach: f32,
     min: Vec3,
@@ -281,7 +258,7 @@ impl StaticFar {
 }
 
 /// What the far field depends on of its lights.
-fn lights_hash(lights: &[Light], far: &[usize], reach: f32) -> u64 {
+fn lights_hash(lights: &[LightDesc], far: &[usize], reach: f32) -> u64 {
     let mut words = vec![u64::from(reach.to_bits())];
     let eat = |words: &mut Vec<u64>, x: f32| words.push(u64::from(x.to_bits()));
     eat(&mut words, reach);
@@ -346,7 +323,7 @@ mod tests {
     /// the two shares sum to the light.
     #[test]
     fn the_field_holds_what_the_near_light_leaves() {
-        let light = Light {
+        let light = LightDesc {
             kind: LightKind::Point,
             position: Vec3::ZERO,
             color: Vec3::new(1.0, 0.5, 0.25),
@@ -354,6 +331,7 @@ mod tests {
             range: 1000.0,
             radius: 0.0,
             cast_shadows: false,
+            mobility: LightMobility::Stationary,
         };
         let reach = 8.0;
         let at = |d: f32| {
@@ -361,7 +339,7 @@ mod tests {
             light_at(&light, reach, Vec3::new(d, 0.0, 0.0), &mut probe);
             probe
         };
-        let e = |d: f32| light.color * light.intensity * window(d * d, light.range) / (d * d);
+        let e = |d: f32| light.color * light.intensity * range_window(d * d, light.range) / (d * d);
         // Facing the light (its normal along -x) and turned away.
         let far = at(20.0);
         let facing = eval(&far, Vec3::NEG_X);
@@ -383,7 +361,7 @@ mod tests {
     /// one from both faces alike.
     #[test]
     fn a_rect_lights_its_front_only() {
-        let rect = |two_sided| Light {
+        let rect = |two_sided| LightDesc {
             kind: LightKind::Rect {
                 half_width: Vec3::X,
                 half_height: Vec3::Y,
@@ -396,8 +374,9 @@ mod tests {
             range: 100.0,
             radius: 0.0,
             cast_shadows: false,
+            mobility: LightMobility::Stationary,
         };
-        let sample = |light: &Light, z: f32| {
+        let sample = |light: &LightDesc, z: f32| {
             let mut probe = [[0.0f32; 4]; 3];
             light_at(light, 4.0, Vec3::new(0.0, 0.0, z), &mut probe);
             eval(&probe, Vec3::Z * z.signum() * -1.0).x

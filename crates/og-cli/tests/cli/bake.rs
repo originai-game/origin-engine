@@ -218,3 +218,77 @@ fn a_bake_lights_the_proxies_as_it_lights_their_houses() {
         }
     }
 }
+
+/// A static and a movable point light, alike, each 1 m over a static
+/// floor of its own, under a black sky (scene text: `mobility static`,
+/// `mobility movable`).
+///
+/// Ways this could fail: the cook packs the lights without their record
+/// (an enum named by its variant then fails to cook); the bake drops a
+/// static light's direct light (its floor as dark as the other) or bakes a
+/// movable one (that floor lit too, though the renderer draws the light
+/// every frame).
+#[test]
+fn a_bake_carries_a_static_lights_direct_light_and_none_of_a_movable_ones() {
+    let dir = TempDir::new("og-bake-mobility");
+    std::fs::write(
+        dir.join("project.ogt"),
+        "type project\nversion 1\n---\nname \"Mobility\"\nentry \"main.ts\"\n",
+    )
+    .unwrap();
+    std::fs::write(dir.join("main.ts"), "export default {};").unwrap();
+    let floor = "type model\nversion 1\n---\nmaterial \"floor\" {\n  color 0.8 0.8 0.8\n}\npart \"floor\" {\n  material \"floor\"\n  quaternion -0.7071068 0 0 0.7071068\n  planeGeometry {\n    width 4\n    height 4\n  }\n}\n";
+    let lit_floor = |name: &str, x: i32, mobility: &str| {
+        format!(
+            "entity \"{name}-floor\" {{\n  model \"models/floor.ogt\"\n  static true\n  Transform {{\n    position {x} 0 0\n  }}\n}}\nentity \"{name}\" {{\n  Transform {{\n    position {x} 1 0\n  }}\n  PointLight {{\n    intensity 4\n    distance 6\n    mobility {mobility}\n  }}\n}}\n"
+        )
+    };
+    let scene = format!(
+        "type scene\nversion 1\n---\nname \"Mobility\"\n{}{}",
+        lit_floor("fixed", -5, "static"),
+        lit_floor("torch", 5, "movable"),
+    );
+    for (id, text) in [("models/floor.ogt", floor), ("scenes/mobility.ogt", &scene)] {
+        let p = dir.join("assets").join(id);
+        std::fs::create_dir_all(p.parent().unwrap()).unwrap();
+        std::fs::write(p, text).unwrap();
+    }
+    let out = og()
+        .args(["bake", "lightmaps", dir.to_str().unwrap()])
+        .args(["--samples", "64", "--bounces", "1", "--sky", "0,0,0"])
+        .args(["--texels-per-metre", "4", "--max-size", "256"])
+        .output()
+        .unwrap();
+    assert!(out.status.success(), "{}", text(&out));
+    let bundle = og_cook::runtime::Bundle::open(&dir.join("cooked")).unwrap();
+    let lm = bundle
+        .load_lightmap(&og_cook::lightmap::lightmap_id("scenes/mobility.ogt"))
+        .unwrap();
+    let model = bundle.load_model("models/floor.ogt").unwrap();
+    let positions: Vec<Vec3> = model.primitives[0]
+        .mesh(0)
+        .vertices
+        .iter()
+        .map(|v| Vec3::from(v.position))
+        .collect();
+    // The mean light of a floor's triangles.
+    let floor_light = |entity: &str| {
+        let m = lm
+            .file
+            .models
+            .iter()
+            .find(|m| m.entity == entity)
+            .unwrap_or_else(|| panic!("no bake for {entity}"));
+        let v = lit(&m.parts[0], &positions, &lm);
+        v.iter().map(|t| t.1).sum::<f32>() / v.len() as f32
+    };
+    let (fixed, torch) = (floor_light("fixed-floor"), floor_light("torch-floor"));
+    assert!(
+        fixed > 0.2,
+        "the floor under the static light takes {fixed}"
+    );
+    assert!(
+        torch < fixed * 0.02,
+        "the floor under the movable light takes {torch}, under the static one {fixed}"
+    );
+}

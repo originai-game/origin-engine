@@ -403,7 +403,7 @@ fn a_lamp_over_the_water_lights_it() {
     };
     let mut scene = ocean_scene("water-ocean-night");
     let dark = red_share(&frame(&scene));
-    scene.lighting.lights.push(og_render::Light {
+    scene.lighting.lights.push(og_render::LightDesc {
         position: Vec3::new(0.0, 3.0, -12.0),
         color: Vec3::new(1.0, 0.05, 0.02),
         intensity: 60.0,

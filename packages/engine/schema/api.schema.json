@@ -4731,6 +4731,8 @@
         "FoliageDesc",
         "StandardMaterialDesc",
         "Mesh",
+        "LightMobility",
+        "LightMobility",
         "DirectionalLight",
         "PointLight",
         "SpotLight",
@@ -23469,6 +23471,22 @@
       },
       "additionalProperties": false
     },
+    "LightMobility": {
+      "x-og-kind": "enum",
+      "x-og-module": "render",
+      "description": "How a light may change while the game runs, as Unreal's light mobility: which of its light og bake lightmaps bakes into its scene's lightmaps and light volumes, and which the renderer draws every frame.\nSee `render §4`.",
+      "type": "string",
+      "enum": [
+        "movable",
+        "stationary",
+        "static"
+      ],
+      "x-og-variants": {
+        "movable": "Moves or changes in any way: drawn whole every frame, and none of its light is baked.",
+        "stationary": "Stays where it is; its colour and intensity may change. Drawn every frame, the light it bounces baked; past RenderSettings.staticLightReach its diffuse light may come from probes (render §3). The default.",
+        "static": "Never moves or changes: its direct light is baked too, and while its scene's bake is drawn the renderer leaves it out (render §3). Unbaked, it draws as stationary. Under a running og.DayNight a DirectionalLight is movable."
+      }
+    },
     "DirectionalLight": {
       "x-og-kind": "component",
       "x-og-module": "render",
@@ -23490,6 +23508,11 @@
           "default": 3,
           "minimum": 0,
           "x-og-tunable": true
+        },
+        "mobility": {
+          "$ref": "#/$defs/LightMobility",
+          "description": "How the light may change while the game runs: what og bake lightmaps bakes of it and what is drawn every frame (stationary, the default; movable; static).\nSee `render §4`.",
+          "default": "stationary"
         },
         "castShadow": {
           "type": "boolean",
@@ -23609,10 +23632,10 @@
           "description": "A light cookie projected all around the light: six square faces stacked top to bottom as +X, -X, +Y, -Y, +Z, -Z, six times as tall as wide (a KTX2 cube's face order, a cube map's orientation, world axes). The light's colour is multiplied by the texel its direction meets. 0 is none.\nSee `render §3`.",
           "default": 0
         },
-        "static": {
-          "type": "boolean",
-          "description": "The light never moves or changes. While RenderSettings.staticLightReach is above 0, its diffuse light past the reach comes from a grid of probes round the camera; glossy surfaces keep its highlights. Never cached when it casts a shadow or has a cookie.\nSee `render §3`.",
-          "default": false
+        "mobility": {
+          "$ref": "#/$defs/LightMobility",
+          "description": "How the light may change while the game runs: what og bake lightmaps bakes of it and what is drawn every frame (stationary, the default; movable; static).\nSee `render §4`.",
+          "default": "stationary"
         }
       },
       "additionalProperties": false
@@ -23682,10 +23705,10 @@
           "description": "A light cookie, as three.js SpotLight.map: the texture projected along the cone (its centre on the axis, its edges at the outer angle, its top towards world up), multiplying the light's colour. 0 is none. A shadowed spot keeps its shadow over the pattern.\nSee `render §3`.",
           "default": 0
         },
-        "static": {
-          "type": "boolean",
-          "description": "The light never moves or changes. While RenderSettings.staticLightReach is above 0, its diffuse light past the reach comes from a grid of probes round the camera; glossy surfaces keep its highlights. Never cached when it casts a shadow or has a cookie.\nSee `render §3`.",
-          "default": false
+        "mobility": {
+          "$ref": "#/$defs/LightMobility",
+          "description": "How the light may change while the game runs: what og bake lightmaps bakes of it and what is drawn every frame (stationary, the default; movable; static).\nSee `render §4`.",
+          "default": "stationary"
         }
       },
       "additionalProperties": false
@@ -23892,7 +23915,7 @@
         },
         "staticLightReach": {
           "type": "number",
-          "description": "How far from itself a light marked static has its diffuse light shaded per pixel; past it, that light comes from a grid of probes round the camera and a static rect light skips rough surfaces. Glossy surfaces keep the highlights. 0 shades every light whole.\nSee `render §3`.",
+          "description": "How far from itself a stationary or static light (LightMobility) has its diffuse light shaded per pixel; past it, that light comes from a grid of probes round the camera and such a rect light skips rough surfaces. Glossy surfaces keep the highlights. 0 shades every light whole.\nSee `render §3`.",
           "default": 0,
           "minimum": 0,
           "x-og-unit": "m",
@@ -30206,10 +30229,10 @@
           "description": "Cast a soft shadow: a shadow map from the rectangle's centre (two when twoSided, counted in the shadowed lights' budget) read with percentage-closer soft shadows, sharp at contact and widening with the rectangle's size away from it.\nSee `render §3`.",
           "default": false
         },
-        "static": {
-          "type": "boolean",
-          "description": "The light never moves or changes. While RenderSettings.staticLightReach is above 0, its diffuse light past the reach comes from a grid of probes round the camera; glossy surfaces keep its highlights. Never cached when it casts a shadow or has a cookie.\nSee `render §3`.",
-          "default": false
+        "mobility": {
+          "$ref": "#/$defs/LightMobility",
+          "description": "How the light may change while the game runs: what og bake lightmaps bakes of it and what is drawn every frame (stationary, the default; movable; static).\nSee `render §4`.",
+          "default": "stationary"
         }
       },
       "additionalProperties": false
@@ -30750,7 +30773,7 @@
         },
         "static": {
           "type": "boolean",
-          "description": "Part of its scene's baked lighting: og bake lightmaps traces the light arriving at it into the scene's lightmap, and while the bake matches the scene it takes its ambient light from there (its lights' direct light, shadows and highlights still drawn every frame). Unbaked, it draws as any model.\nSee `loading §2`.",
+          "description": "Part of its scene's baked lighting: og bake lightmaps traces the light arriving at it into the scene's lightmap, and while the bake matches the scene it takes its ambient light from there (its lights' direct light still drawn every frame, a static one's excepted). Unbaked, it draws as any model.\nSee `loading §2`.",
           "default": false
         },
         "variant": {

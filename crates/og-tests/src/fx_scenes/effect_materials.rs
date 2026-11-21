@@ -140,7 +140,7 @@ pub fn effect_materials_scene() -> RenderScene {
         (Vec3::new(0.0, 1.9, -1.6), Vec3::new(0.55, 0.25, 1.0), 10.0),
         (LANTERN + Vec3::Y * 0.9, Vec3::new(0.3, 0.75, 1.0), 6.0),
     ] {
-        scene.lighting.lights.push(Light {
+        scene.lighting.lights.push(LightDesc {
             position: at,
             color,
             intensity,

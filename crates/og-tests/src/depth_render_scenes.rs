@@ -18,8 +18,8 @@
 
 use glam::{Mat4, Quat, Vec3};
 use og_render::{
-    Background, Camera, DirectionalLight, Exposure, Light, LightKind, ProbeMode, ReflectionProbe,
-    RenderScene, ScreenSpaceReflections, StandardMaterial, shapes,
+    Background, Camera, DirectionalLight, Exposure, LightDesc, LightKind, ProbeMode,
+    ReflectionProbe, RenderScene, ScreenSpaceReflections, StandardMaterial, shapes,
 };
 
 fn mat(color: Vec3, metalness: f32, roughness: f32) -> StandardMaterial {
@@ -165,7 +165,7 @@ pub fn probe_scene(probe: bool) -> RenderScene {
         (Vec3::new(-3.3, 0.8, -4.0), Vec3::new(1.0, 0.55, 0.25), 40.0),
         (Vec3::new(3.0, 3.2, 2.0), Vec3::new(1.0, 0.8, 0.55), 30.0),
     ] {
-        scene.lighting.lights.push(Light {
+        scene.lighting.lights.push(LightDesc {
             kind: LightKind::Point,
             position: at,
             color: c,
@@ -173,6 +173,7 @@ pub fn probe_scene(probe: bool) -> RenderScene {
             range: 12.0,
             radius: 0.0,
             cast_shadows: false,
+            mobility: og_render::LightMobility::Movable,
         });
     }
     if probe {

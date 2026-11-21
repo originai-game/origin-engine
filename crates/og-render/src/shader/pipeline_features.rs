@@ -202,7 +202,12 @@ impl Features {
             )
             .with(
                 Features::STATIC_FAR,
-                scene.lighting.static_reach > 0.0 && !scene.lighting.static_lights.is_empty(),
+                scene.lighting.static_reach > 0.0
+                    && scene
+                        .lighting
+                        .lights
+                        .iter()
+                        .any(|l| l.mobility != crate::LightMobility::Movable),
             )
     }
 

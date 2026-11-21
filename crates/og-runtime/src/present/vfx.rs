@@ -11,8 +11,8 @@ use glam::{Mat4, Vec3};
 use og_bundle::vfx::{VfxDrawKind, VfxInstance};
 use og_ecs::World;
 use og_render::{
-    Beam, ColorCurve, Curve, Decal, EffectMesh, Light, LightKind, ParticleBlend, ParticleSystem,
-    RibbonUv, Trail, TrailStyle,
+    Beam, ColorCurve, Curve, Decal, EffectMesh, LightDesc, LightKind, ParticleBlend,
+    ParticleSystem, RibbonUv, Trail, TrailStyle,
 };
 
 /// A playing og.Vfx expanded for the frame: its asset, start, look and
@@ -252,7 +252,7 @@ pub(crate) fn extract(
                     },
                     _,
                 ) => {
-                    rs.scene.lighting.lights.push(Light {
+                    rs.scene.lighting.lights.push(LightDesc {
                         kind: LightKind::Point,
                         position,
                         color,
@@ -260,6 +260,7 @@ pub(crate) fn extract(
                         range,
                         radius: 0.0,
                         cast_shadows: false,
+                        mobility: og_render::LightMobility::Movable,
                     });
                 }
                 (

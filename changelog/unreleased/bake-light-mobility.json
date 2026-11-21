@@ -1,0 +1,28 @@
+{
+  "simulation": "changed",
+  "breaking": [
+    {
+      "member": "render.PointLight.static, render.SpotLight.static, render.RectLight.static",
+      "change": "Removed: every light has a mobility instead (render.LightMobility: movable, stationary, static), which both the renderer and og bake lightmaps read. A light marked static before (one RenderSettings.staticLightReach may cache past its reach) is a stationary light now; stationary is the default, so an unmarked light may be cached too while the reach is above 0, unless it is movable.",
+      "fix": "Write mobility: \"stationary\" for static: true (or leave it out: it is the default), mobility: \"movable\" for a light that moves; in scene text, mobility stationary.",
+      "find": ["static"],
+      "codemod": { "kind": "light-mobility" }
+    }
+  ],
+  "added": [
+    {
+      "member": "render.LightMobility, render.DirectionalLight.mobility, render.PointLight.mobility, render.SpotLight.mobility, render.RectLight.mobility",
+      "summary": "How a light may change while the game runs, as Unreal's light mobility. Movable: drawn every frame, never baked. Stationary (the default): drawn every frame, its bounce baked by og bake lightmaps. Static: og bake lightmaps bakes its direct light too, and while its scene's bake is drawn the renderer leaves it out. The light components grow a field, so a world with any of them hashes differently."
+    }
+  ],
+  "fixed": [
+    {
+      "member": "og bake lightmaps",
+      "summary": "The bake reads the lights the renderer draws: a point or spot light's radius softens its baked falloff (color * intensity / (d^2 + radius^2)), a spot's cone is clamped as drawn (89 degrees at most), the defaults are the records', and movable lights are no longer baked. Under a running og.DayNight no directional light is baked (the cycle moves it): a day-night scene bakes the sky and its local lights, not its stored noon sun. Scenes bake differently; bake them again."
+    },
+    {
+      "member": "og cook scene text",
+      "summary": "An enum field of an engine component (og.Collider.shape, og.PointLight.mobility) takes its variant by name in scene text (mobility static), and such components are packed with their record's layout instead of one inferred from the text."
+    }
+  ]
+}

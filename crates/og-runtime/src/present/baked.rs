@@ -44,6 +44,9 @@ pub(crate) struct DrawnBake {
     pub entities: Vec<u64>,
     pub meshes: std::collections::HashMap<usize, BakedMesh>,
     pub volumes: Vec<ProbeVolume>,
+    /// Its scene's lights whose mobility is static (their direct light is
+    /// in the bake), by entity bits.
+    pub lights: Vec<u64>,
     /// Whether one of its static models is alive (a bake without static
     /// models, only light volumes, always is).
     pub live: bool,
@@ -57,6 +60,9 @@ pub(crate) struct BakedState {
     pub overrides: IdMap<u64, Parts>,
     /// What the renderer draws: every drawn bake's meshes and volumes.
     pub lighting: BakedLighting,
+    /// The static lights of every live drawn bake: the frame leaves them
+    /// out while baked lighting is on (their light is in the bake).
+    pub lights: std::collections::BTreeSet<u64>,
     /// Whether RenderSettings.bakedLighting was on in the last frame.
     pub enabled: bool,
     /// Counts the gathers: the models' lightmapped parts (`overrides`)
@@ -65,12 +71,19 @@ pub(crate) struct BakedState {
 }
 
 impl BakedState {
+    /// Whether the frame leaves the light on `entity` out: a static light
+    /// of a drawn bake while baked lighting is on.
+    pub(crate) fn baked_light(&self, entity: u64) -> bool {
+        self.enabled && self.lights.contains(&entity)
+    }
+
     /// The renderer's [`BakedLighting`] again from the live drawn bakes, in
     /// the order their scenes were instantiated (their volumes in that
     /// order).
     fn gather(&mut self) {
         self.serial += 1;
         let mut lighting = BakedLighting::default();
+        self.lights.clear();
         for d in self
             .scenes
             .iter()
@@ -81,36 +94,65 @@ impl BakedState {
                 .meshes
                 .extend(d.meshes.iter().map(|(&k, v)| (k, v.clone())));
             lighting.volumes.extend(d.volumes.iter().cloned());
+            self.lights.extend(d.lights.iter().copied());
         }
         self.lighting = lighting;
     }
 }
 
 /// og.RectLight at world transform `m`: width and height along its local
-/// x and y, emitting along its local -Z; its range where it would light a
-/// white surface facing it at one hundredth of one.
-pub(crate) fn rect_light(m: Mat4, v: &crate::host::wire::record::RectLight) -> og_render::Light {
-    let half_width = m.transform_vector3(Vec3::X) * v.width.max(0.0) * 0.5;
-    let half_height = m.transform_vector3(Vec3::Y) * v.height.max(0.0) * 0.5;
-    let c = Vec3::new(v.color.r, v.color.g, v.color.b);
-    let intensity = v.intensity.max(0.0);
-    let area = 4.0 * half_width.cross(half_height).length();
-    let reach = (c.max_element().max(0.0) * intensity * area / 0.01).sqrt();
-    og_render::Light {
-        kind: og_render::LightKind::Rect {
-            half_width,
-            half_height,
-            two_sided: v.two_sided,
-        },
-        position: m.transform_point3(Vec3::ZERO),
-        color: c,
-        intensity,
-        range: reach
-            .max((half_width + half_height).length() * 2.0)
-            .max(0.1),
-        radius: 0.0,
-        cast_shadows: v.cast_shadow,
+/// x and y, emitting along its local -Z (`og_render::LightDesc::rect`).
+pub(crate) fn rect_light(
+    m: Mat4,
+    v: &crate::host::wire::record::RectLight,
+) -> og_render::LightDesc {
+    og_render::LightDesc::rect(
+        m.transform_point3(Vec3::ZERO),
+        m.transform_vector3(Vec3::X) * v.width.max(0.0) * 0.5,
+        m.transform_vector3(Vec3::Y) * v.height.max(0.0) * 0.5,
+        v.two_sided,
+        Vec3::new(v.color.r, v.color.g, v.color.b),
+        v.intensity,
+        v.cast_shadow,
+        mobility(v.mobility),
+    )
+}
+
+/// A light record's mobility as the renderer's.
+pub(crate) fn mobility(m: crate::host::wire::LightMobility) -> og_render::LightMobility {
+    use crate::host::wire::LightMobility as W;
+    match m {
+        W::Movable => og_render::LightMobility::Movable,
+        W::Stationary => og_render::LightMobility::Stationary,
+        W::Static => og_render::LightMobility::Static,
     }
+}
+
+/// The entities of `scene` (indices) with a light whose mobility is
+/// static: og bake lightmaps baked their direct light.
+fn static_lights(scene: &SceneDesc) -> Vec<usize> {
+    let static_ = crate::host::wire::LightMobility::Static as u32;
+    let mut out: Vec<usize> = scene
+        .components
+        .iter()
+        .filter(|t| {
+            matches!(
+                t.name.trim_start_matches("og."),
+                "PointLight" | "SpotLight" | "RectLight" | "DirectionalLight"
+            )
+        })
+        .flat_map(|t| {
+            let at = t.schema.fields.iter().position(|f| f.name == "mobility");
+            let range = at.map(|i| og_core::reflect::Layout::of(&t.schema).range(i));
+            t.rows.iter().filter_map(move |(e, row)| {
+                let b = row.get(range.clone()?)?;
+                (u32::from_le_bytes(b.try_into().ok()?) == static_).then_some(*e)
+            })
+        })
+        .collect();
+    out.sort_unstable();
+    out.dedup();
+    out
 }
 
 /// Whether a scene has something to bake: a Model row with `static` set,
@@ -323,6 +365,10 @@ pub(crate) fn scene_spawned(
             })
             .collect(),
         volumes,
+        lights: static_lights(scene)
+            .into_iter()
+            .filter_map(|i| spawned.get(i).map(|e| e.to_bits()))
+            .collect(),
         live: true,
     });
     let state = &mut rs.baked;

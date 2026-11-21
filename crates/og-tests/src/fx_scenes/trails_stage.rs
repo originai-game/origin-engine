@@ -55,7 +55,7 @@ pub fn trails_stage_scene() -> RenderScene {
         ..Default::default()
     });
     // The ward's glow on the posts and the flags.
-    scene.lighting.lights.push(Light {
+    scene.lighting.lights.push(LightDesc {
         position: Vec3::new(0.0, 2.3, -1.8),
         color: Vec3::new(0.35, 0.7, 1.0),
         intensity: 14.0,
@@ -88,7 +88,7 @@ pub fn trails_stage_scene() -> RenderScene {
         effect: None,
     });
     // The lantern's own flame.
-    scene.lighting.lights.push(Light {
+    scene.lighting.lights.push(LightDesc {
         position: fire,
         color: Vec3::new(1.0, 0.6, 0.3),
         intensity: 6.0,
@@ -123,7 +123,7 @@ pub fn trails_stage_scene() -> RenderScene {
             ..Default::default()
         });
         scene.add_instance(orb, m, Mat4::IDENTITY);
-        scene.lighting.lights.push(Light {
+        scene.lighting.lights.push(LightDesc {
             position: wisp(i, 0),
             color: Vec3::from(*c),
             intensity: 5.0,

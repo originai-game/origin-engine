@@ -42,7 +42,7 @@ pub fn particles_lit_stage_scene() -> RenderScene {
     });
     let bed = scene.add_mesh(shapes::cuboid(Vec3::new(0.6, 0.06, 0.6)));
     scene.add_instance(bed, coals, Mat4::from_translation(BRAZIER + Vec3::Y * 0.52));
-    scene.lighting.lights.push(Light {
+    scene.lighting.lights.push(LightDesc {
         position: BRAZIER + Vec3::Y * 0.9,
         color: Vec3::new(1.0, 0.5, 0.15),
         intensity: 4.0,

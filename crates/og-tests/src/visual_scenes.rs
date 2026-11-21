@@ -748,7 +748,7 @@ pub const SPARK_TICKS: u32 = 90;
 /// every surface a collider and none read from the depth prepass.
 pub fn visual_particles_scene() -> RenderScene {
     use og_render::{
-        Background, CollisionTarget, ColorCurve, Curve, EmitterShape, Light, ParticleAlign,
+        Background, CollisionTarget, ColorCurve, Curve, EmitterShape, LightDesc, ParticleAlign,
         ParticleBlend, ParticleCollision, ParticleEmitter, ParticleSystem,
     };
     let mut scene = RenderScene::new();
@@ -927,7 +927,7 @@ pub fn visual_particles_scene() -> RenderScene {
     ));
     // The sparks' glow: above and in front of the grind, so the wheel is
     // not lit flat; no shadows (it would throw the wheel across the wall).
-    scene.lighting.lights = vec![Light {
+    scene.lighting.lights = vec![LightDesc {
         position: grind + Vec3::new(-0.35, 0.3, 0.7),
         color: Vec3::new(1.0, 0.55, 0.22),
         intensity: 1.6,

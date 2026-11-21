@@ -83,7 +83,7 @@ pub fn fluid_stage_scene() -> RenderScene {
     // A stone lantern at the basin's corner, its light on the drop.
     let toro = kit::prop(&mut scene, "toro");
     let fire = crate::shadow_scenes::toro(&mut scene, &toro, Vec3::new(-2.6, 0.0, 0.6), 0.6, 1.6);
-    scene.lighting.lights.push(Light {
+    scene.lighting.lights.push(LightDesc {
         position: fire,
         color: Vec3::new(1.0, 0.6, 0.3),
         intensity: 5.0,

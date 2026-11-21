@@ -17,7 +17,7 @@
 //! the effect layout are unchanged.
 
 use super::*;
-use crate::{Light, LightKind};
+use crate::{LightDesc, LightKind};
 use glam::{Mat4, Vec2, Vec3};
 
 /// The light sources a frame's flare draws (`lens_flare.wgsl`
@@ -151,7 +151,7 @@ pub(crate) fn flare_sources(
     camera: &FlareCamera,
     aspect: f32,
     sun: Option<FlareSun>,
-    lights: &[Light],
+    lights: &[LightDesc],
     fog: &dyn Fn(Vec3) -> f32,
 ) -> FlareSources {
     let mut out = FlareSources::default();
@@ -356,8 +356,8 @@ mod tests {
         }
     }
 
-    fn point(position: Vec3, intensity: f32) -> Light {
-        Light {
+    fn point(position: Vec3, intensity: f32) -> LightDesc {
+        LightDesc {
             position,
             intensity,
             ..Default::default()
@@ -428,7 +428,7 @@ mod tests {
     fn lights_take_the_slots_by_importance_with_ties_in_scene_order() {
         let cam = camera();
         let flare = crate::LensFlare::default();
-        let mut lights: Vec<Light> = (0..10)
+        let mut lights: Vec<LightDesc> = (0..10)
             .map(|i| point(Vec3::new(i as f32 * 0.2 - 1.0, 1.0, -8.0), 10.0 + i as f32))
             .collect();
         // Light 9 mirrored: as important, and later in the scene, so after it.
@@ -436,7 +436,7 @@ mod tests {
         lights.push(point(Vec3::new(0.0, 1.0, 5.0), 1000.0)); // behind
         lights.push(point(Vec3::new(80.0, 1.0, -8.0), 1000.0)); // off screen
         lights.push(point(Vec3::new(0.0, 1.0, -8.0), 0.0)); // dark
-        lights.push(Light {
+        lights.push(LightDesc {
             kind: LightKind::Spot {
                 direction: Vec3::Z,
                 angle_degrees: 30.0,
@@ -444,7 +444,7 @@ mod tests {
             },
             ..point(Vec3::new(0.0, 0.0, -6.0), 1000.0)
         });
-        lights.push(Light {
+        lights.push(LightDesc {
             kind: LightKind::Spot {
                 direction: Vec3::NEG_Z,
                 angle_degrees: 30.0,

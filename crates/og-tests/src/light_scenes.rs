@@ -8,7 +8,7 @@
 
 use glam::{Mat3, Mat4, Quat, Vec3};
 use og_render::{
-    Background, Camera, ColorSpace, Environment, Exposure, Light, LightCookie, LightKind,
+    Background, Camera, ColorSpace, Environment, Exposure, LightCookie, LightDesc, LightKind,
     MaterialShader, MeshData, Mips, RenderScene, ShaderMode, StandardMaterial, TextureData,
     VolumetricFog, shapes,
 };
@@ -80,8 +80,8 @@ fn rect(
     color: Vec3,
     intensity: f32,
     two_sided: bool,
-) -> Light {
-    Light {
+) -> LightDesc {
+    LightDesc {
         kind: LightKind::Rect {
             half_width: right.normalize() * size.0 * 0.5,
             half_height: up.normalize() * size.1 * 0.5,
@@ -93,11 +93,12 @@ fn rect(
         range: 12.0,
         radius: 0.0,
         cast_shadows: false,
+        mobility: og_render::LightMobility::Movable,
     }
 }
 
 /// The emissive slab drawn where a rect light is.
-fn fixture(scene: &mut RenderScene, light: &Light) {
+fn fixture(scene: &mut RenderScene, light: &LightDesc) {
     let LightKind::Rect {
         half_width,
         half_height,
@@ -335,7 +336,7 @@ pub fn light_cookies_scene() -> RenderScene {
     );
     let lamp = Vec3::new(1.9, 0.45, 1.9);
     scene.lighting.lights = vec![
-        Light {
+        LightDesc {
             kind: LightKind::Spot {
                 direction: Vec3::new(-0.45, -0.7, -0.75).normalize(),
                 angle_degrees: 26.0,
@@ -347,8 +348,9 @@ pub fn light_cookies_scene() -> RenderScene {
             range: 14.0,
             radius: 0.0,
             cast_shadows: false,
+            mobility: og_render::LightMobility::Movable,
         },
-        Light {
+        LightDesc {
             kind: LightKind::Point,
             position: lamp,
             color: Vec3::new(1.0, 0.75, 0.45),
@@ -356,6 +358,7 @@ pub fn light_cookies_scene() -> RenderScene {
             range: 8.0,
             radius: 0.0,
             cast_shadows: false,
+            mobility: og_render::LightMobility::Movable,
         },
     ];
     scene.lighting.light_cookies = vec![
@@ -426,7 +429,7 @@ pub fn volumetric_fog_scene() -> RenderScene {
     let sun = Vec3::new(-0.12, 0.22, -1.0).normalize();
     crate::sky_scenes::physical_light_under(&mut scene, sun);
     scene.lighting.light.max_shadow_distance = 80.0;
-    scene.lighting.lights = vec![Light {
+    scene.lighting.lights = vec![LightDesc {
         kind: LightKind::Spot {
             direction: Vec3::new(-0.35, -1.0, 0.25).normalize(),
             angle_degrees: 26.0,
@@ -438,6 +441,7 @@ pub fn volumetric_fog_scene() -> RenderScene {
         range: 10.0,
         radius: 0.0,
         cast_shadows: true,
+        mobility: og_render::LightMobility::Movable,
     }];
     put(
         &mut scene,
@@ -671,7 +675,7 @@ pub fn baked_cellar_scene(batches: bool) -> Result<RenderScene, String> {
         ),
     ];
     let lantern = Vec3::new(0.0, 2.75, 0.0);
-    let spot = Light {
+    let spot = LightDesc {
         kind: LightKind::Spot {
             direction: Vec3::NEG_Y,
             angle_degrees: 62.0,
@@ -683,6 +687,7 @@ pub fn baked_cellar_scene(batches: bool) -> Result<RenderScene, String> {
         range: 8.0,
         radius: 0.0,
         cast_shadows: true,
+        mobility: og_render::LightMobility::Stationary,
     };
     scene.lighting.lights.push(spot);
     put(
@@ -704,22 +709,7 @@ pub fn baked_cellar_scene(batches: bool) -> Result<RenderScene, String> {
     let crate_ = kit::prop(&mut scene, "crate");
     crate_.place(&mut scene, Vec3::new(1.3, 0.0, -1.5), 0.2, 0.6);
     crate_.place(&mut scene, Vec3::new(1.35, 0.6, -1.55), -0.15, 0.55);
-    let LightKind::Spot {
-        direction,
-        angle_degrees,
-        penumbra,
-    } = spot.kind
-    else {
-        unreachable!("the lantern's light is a spot");
-    };
-    let lights = [og_bake::Light::Spot {
-        position: spot.position,
-        direction,
-        radiance: spot.color * spot.intensity,
-        range: spot.range,
-        cos_outer: angle_degrees.to_radians().cos(),
-        cos_inner: (angle_degrees * (1.0 - penumbra)).to_radians().cos(),
-    }];
+    let lights = [spot];
     let (meshes, materials): (Vec<_>, Vec<_>) = parts
         .into_iter()
         .map(|(m, albedo, draw)| ((m, albedo), draw))
@@ -889,7 +879,7 @@ fn cornell_box(
         ),
         (block(Vec3::splat(0.6), p(0.38, 0.3, 0.3), -18.0), white),
     ];
-    let spot = Light {
+    let spot = LightDesc {
         kind: LightKind::Spot {
             direction: Vec3::NEG_Y,
             angle_degrees: 62.0,
@@ -901,6 +891,7 @@ fn cornell_box(
         range: 5.0,
         radius: 0.0,
         cast_shadows: true,
+        mobility: og_render::LightMobility::Stationary,
     };
     // Centre and radius: resting on the floor.
     let ball = (p(-0.55, 0.22, 0.55), 0.22);
@@ -920,22 +911,7 @@ fn cornell_box(
         let material = part_material(scene, i, matte(color, 0.9), batches);
         scene.add_instance(mesh, material, Mat4::IDENTITY);
     };
-    let LightKind::Spot {
-        direction,
-        angle_degrees,
-        penumbra,
-    } = spot.kind
-    else {
-        unreachable!("the box's light is a spot");
-    };
-    let lights = [og_bake::Light::Spot {
-        position: spot.position,
-        direction,
-        radiance: spot.color * spot.intensity,
-        range: spot.range,
-        cos_outer: angle_degrees.to_radians().cos(),
-        cos_inner: (angle_degrees * (1.0 - penumbra)).to_radians().cos(),
-    }];
+    let lights = [spot];
     let volume = og_bake::VolumeDesc {
         min: p(-0.95, 0.05, -0.95),
         max: p(0.95, 1.95, 0.95),
@@ -958,7 +934,7 @@ fn cornell_box(
 #[cfg(not(target_arch = "wasm32"))]
 struct BakeLight<'a> {
     sky: Vec3,
-    lights: &'a [og_bake::Light],
+    lights: &'a [LightDesc],
     volume: og_bake::VolumeDesc,
 }
 

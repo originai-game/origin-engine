@@ -87,7 +87,7 @@ impl Renderer {
 
     /// Whether `light`'s kind is drawn: a renderer made without rect lights
     /// (RenderDesc::without) keeps none ([`clusters::ClusterBuilder::skip_rects`]).
-    pub(crate) fn kept_kind(&self, light: &Light) -> bool {
+    pub(crate) fn kept_kind(&self, light: &LightDesc) -> bool {
         !(self.lights.clusters.skip_rects && matches!(light.kind, LightKind::Rect { .. }))
     }
 

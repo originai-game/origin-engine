@@ -12,7 +12,7 @@ pub(crate) mod quality;
 pub(crate) mod timing;
 pub(crate) mod views;
 
-use crate::scene::{Camera, Light, LightKind, Projection};
+use crate::scene::{Camera, LightDesc, LightKind, Projection};
 use crate::shadows::{LOCAL_SHADOW_LAYERS, PARABOLOID_SCALE, PointShadows};
 use glam::{Mat4, Vec2, Vec3, Vec4};
 
@@ -351,7 +351,7 @@ pub(crate) const CONTACT_LIGHTS: usize = 3;
 /// map alone (its shadow is `rect_shadow`, not `local_shadow`).
 pub(crate) fn contact_lights<'a>(
     shadows: &'a [LocalShadow],
-    lights: &[Light],
+    lights: &[LightDesc],
     eye: Vec3,
 ) -> Vec<&'a LocalShadow> {
     let mut picked: Vec<&LocalShadow> = shadows
@@ -389,7 +389,7 @@ pub(crate) struct LocalShadowBudget {
 /// the clusters drop lights; ties in scene order) get layers, handed out in
 /// scene order; the rest are counted in the third answer.
 pub(crate) fn local_lights(
-    lights: &[Light],
+    lights: &[LightDesc],
     kept: &[usize],
     eye: Vec3,
     budget: LocalShadowBudget,
@@ -666,7 +666,7 @@ mod tests {
     /// can outrank a far, bright one.
     #[test]
     fn contact_shadows_go_to_the_brightest_shadowed_lights() {
-        let at = |x: f32, intensity: f32, kind: LightKind| Light {
+        let at = |x: f32, intensity: f32, kind: LightKind| LightDesc {
             kind,
             position: Vec3::new(x, 2.0, 0.0),
             intensity,

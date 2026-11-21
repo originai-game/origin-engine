@@ -53,7 +53,9 @@
 //! driver's shader cache first for cold times (NVIDIA:
 //! `__GL_SHADER_DISK_CACHE=0`; Mesa: `MESA_SHADER_CACHE_DISABLE=true`).
 
-use og_render::{Antialias, Bloom, Exposure, FrameStats, Light, LightKind, RenderTarget, Renderer};
+use og_render::{
+    Antialias, Bloom, Exposure, FrameStats, LightDesc, LightKind, RenderTarget, Renderer,
+};
 use og_tests::scenes::GfxScene;
 use og_tests::{compare, gfx};
 use og_tests_cooked::scenes;
@@ -543,7 +545,7 @@ fn local_lights(g: &mut GfxScene, shadowed: bool) {
     let c = g.scene.frame.camera.target;
     for i in 0..4 {
         let a = i as f32 * std::f32::consts::FRAC_PI_2;
-        g.scene.lighting.lights.push(Light {
+        g.scene.lighting.lights.push(LightDesc {
             kind: if i % 2 == 0 {
                 LightKind::Point
             } else {
@@ -559,6 +561,7 @@ fn local_lights(g: &mut GfxScene, shadowed: bool) {
             range: 12.0,
             radius: 0.0,
             cast_shadows: shadowed && i < 2,
+            mobility: og_render::LightMobility::Movable,
         });
     }
 }

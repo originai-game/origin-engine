@@ -105,6 +105,12 @@
       "value": "Upscaler"
     },
     {
+      "name": "LightMobility",
+      "array": "Uint32Array",
+      "stride": 1,
+      "value": "LightMobility"
+    },
+    {
       "name": "ToneMapping",
       "array": "Uint32Array",
       "stride": 1,
@@ -1313,6 +1319,11 @@
           "tunable": true
         },
         {
+          "name": "mobility",
+          "column": "LightMobility",
+          "default": "stationary"
+        },
+        {
           "name": "castShadow",
           "column": "bool",
           "default": true
@@ -1410,9 +1421,9 @@
           "default": 0
         },
         {
-          "name": "static",
-          "column": "bool",
-          "default": false
+          "name": "mobility",
+          "column": "LightMobility",
+          "default": "stationary"
         }
       ]
     },
@@ -1471,9 +1482,9 @@
           "default": 0
         },
         {
-          "name": "static",
-          "column": "bool",
-          "default": false
+          "name": "mobility",
+          "column": "LightMobility",
+          "default": "stationary"
         }
       ]
     },
@@ -2573,9 +2584,9 @@
           "default": false
         },
         {
-          "name": "static",
-          "column": "bool",
-          "default": false
+          "name": "mobility",
+          "column": "LightMobility",
+          "default": "stationary"
         }
       ]
     },

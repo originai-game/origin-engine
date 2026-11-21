@@ -28,7 +28,7 @@
 use glam::{Mat4, Quat, Vec3};
 use og_cook::runtime::{Bundle, CookedModel, ModelParts};
 use og_render::{
-    Background, Camera, DirectionalLight, Exposure, Light, LightKind, RenderScene, RgbaImage,
+    Background, Camera, DirectionalLight, Exposure, LightDesc, LightKind, RenderScene, RgbaImage,
     StandardMaterial, shapes,
 };
 use serde_json::{Value, json};
@@ -565,7 +565,7 @@ pub fn model_lights(model: &CookedModel, scene: &mut RenderScene) {
             }
             _ => LightKind::Point,
         };
-        scene.lighting.lights.push(Light {
+        scene.lighting.lights.push(LightDesc {
             kind,
             position,
             color,
@@ -573,6 +573,7 @@ pub fn model_lights(model: &CookedModel, scene: &mut RenderScene) {
             range,
             radius: 0.0,
             cast_shadows: false,
+            mobility: og_render::LightMobility::Movable,
         });
     }
 }

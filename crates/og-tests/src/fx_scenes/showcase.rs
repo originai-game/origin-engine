@@ -17,7 +17,7 @@ pub fn showcase_effects(scene: &mut RenderScene) {
     let fire = campfire(scene);
     logs(scene, Vec3::new(1.4, 0.0, 1.4));
     light_campfire(scene, &fire, Vec3::new(1.4, 0.0, 1.4), 100);
-    scene.lighting.lights.push(Light {
+    scene.lighting.lights.push(LightDesc {
         kind: LightKind::Point,
         position: Vec3::new(1.4, 0.6, 1.4),
         color: Vec3::new(1.0, 0.55, 0.25),
@@ -25,6 +25,7 @@ pub fn showcase_effects(scene: &mut RenderScene) {
         range: 7.0,
         radius: 0.0,
         cast_shadows: false,
+        mobility: og_render::LightMobility::Movable,
     });
     let atlas = decal_atlas(scene);
     scene.effects.decal_atlas = Some(atlas);

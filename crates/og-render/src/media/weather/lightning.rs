@@ -142,7 +142,7 @@ pub fn add_lightning(
         scene.lighting.light.color = Vec3::new(0.78, 0.85, 1.0).lerp(scene.lighting.light.color, k);
         scene.lighting.light.intensity = bolt_light + own * k;
     }
-    scene.lighting.lights.push(crate::Light {
+    scene.lighting.lights.push(crate::LightDesc {
         kind: crate::LightKind::Point,
         position: at + Vec3::Y * 100.0,
         color: Vec3::new(0.75, 0.82, 1.0),
@@ -150,6 +150,7 @@ pub fn add_lightning(
         range: 600.0,
         radius: 0.0,
         cast_shadows: false,
+        mobility: crate::LightMobility::Movable,
     });
     if seconds < 0.35 {
         // The core's least width at each point: BOLT_CORE of the view's

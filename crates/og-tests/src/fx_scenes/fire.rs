@@ -110,7 +110,7 @@ pub fn fire_scene() -> Result<RenderScene, String> {
         0x5eed + 13,
         0,
     ));
-    scene.lighting.lights.push(Light {
+    scene.lighting.lights.push(LightDesc {
         position: Vec3::new(0.0, 0.95, 0.0),
         color: Vec3::new(1.0, 0.55, 0.22),
         intensity: 22.0,
@@ -223,7 +223,7 @@ fn orb(scene: &mut RenderScene) {
             ..Default::default()
         });
     }
-    scene.lighting.lights.push(Light {
+    scene.lighting.lights.push(LightDesc {
         position: ORB,
         color: Vec3::new(0.45, 0.4, 1.0),
         intensity: 4.0,

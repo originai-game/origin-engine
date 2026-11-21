@@ -1,5 +1,13 @@
 //! The lights the renderer draws and `og bake lightmaps` traces, as data:
-//! the directional light and the local lights (point, spot, rect).
+//! the directional light and the local lights (point, spot, rect), each
+//! with its [`LightMobility`], and the falloff both evaluate (frame.wgsl's
+//! `range_window`, `local_falloff` and `spot_cone` on the CPU).
+//!
+//! One description serves both: the frame draws what is not baked, and the
+//! bake traces what the frame leaves to it (Unreal's light mobility). A
+//! movable light is the frame's alone; a stationary one's bounce is
+//! baked; a static one's direct light is baked too, and the frame leaves
+//! it out while its scene's bake is drawn.
 
 use glam::Vec3;
 
@@ -16,6 +24,32 @@ pub enum ShadowBounds {
     Sphere { center: Vec3, radius: f32 },
 }
 
+/// How a light may change while the game runs, as Unreal's light
+/// mobility: which of its light `og bake lightmaps` bakes and which the
+/// frame draws.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum LightMobility {
+    /// Moves or changes in any way: drawn whole every frame, never baked.
+    Movable,
+    /// Stays where it is (its colour and intensity may change): drawn every
+    /// frame, the light it bounces baked; past the frame's static reach
+    /// (`og_render::SceneLighting::static_reach`) its diffuse light may
+    /// come from a probe field (`static_far.rs`).
+    #[default]
+    Stationary,
+    /// Never moves or changes: its direct light is baked with its bounce,
+    /// and while its scene's bake is drawn the frame leaves it out
+    /// (unbaked, it draws as a stationary light).
+    Static,
+}
+
+impl LightMobility {
+    /// Whether `og bake lightmaps` bakes any of its light.
+    pub fn baked(self) -> bool {
+        self != LightMobility::Movable
+    }
+}
+
 /// The sun: one directional light with three cascaded shadow maps. A scene
 /// with several (a sun and a moon) draws the one `og_render::key_light` picks.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -25,6 +59,7 @@ pub struct DirectionalLight {
     /// Linear colour; the radiance is `color * intensity`.
     pub color: Vec3,
     pub intensity: f32,
+    pub mobility: LightMobility,
     pub cast_shadows: bool,
     pub shadow_bounds: ShadowBounds,
     /// How far from the camera shadows reach (they fade out over the last
@@ -98,6 +133,7 @@ impl Default for DirectionalLight {
             direction_to_light: Vec3::new(0.45, 0.8, 0.35),
             color: Vec3::ONE,
             intensity: 3.0,
+            mobility: LightMobility::Stationary,
             cast_shadows: true,
             shadow_bounds: ShadowBounds::Auto,
             max_shadow_distance: 200.0,
@@ -142,10 +178,12 @@ pub enum LightKind {
     },
 }
 
-/// A point or spot light. Its radiance at distance `d` is
-/// `color * intensity / (d² + radius²)`, faded smoothly to zero at `range`.
+/// A point, spot or rect light. A point or spot light's radiance at
+/// distance `d` is `color * intensity / (d² + radius²)` ([`Self::falloff`])
+/// within its cone ([`Self::cone`]); every kind fades smoothly to zero at
+/// `range` ([`range_window`]).
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub struct Light {
+pub struct LightDesc {
     pub kind: LightKind,
     pub position: Vec3,
     /// Linear colour.
@@ -164,11 +202,12 @@ pub struct Light {
     /// counted in
     /// `og_render::FrameStats::shadowed_lights_dropped`.
     pub cast_shadows: bool,
+    pub mobility: LightMobility,
 }
 
-impl Default for Light {
+impl Default for LightDesc {
     fn default() -> Self {
-        Light {
+        LightDesc {
             kind: LightKind::Point,
             position: Vec3::new(0.0, 2.0, 0.0),
             color: Vec3::ONE,
@@ -176,8 +215,85 @@ impl Default for Light {
             range: 10.0,
             radius: 0.0,
             cast_shadows: false,
+            mobility: LightMobility::Stationary,
         }
     }
+}
+
+impl LightDesc {
+    /// A rect light (og.RectLight) centred on `position`, spanning
+    /// `±half_width` and `±half_height`: its range is where it would light
+    /// a white surface facing it at one hundredth of one (at least twice
+    /// its diagonal, and 0.1 m).
+    #[allow(clippy::too_many_arguments)]
+    pub fn rect(
+        position: Vec3,
+        half_width: Vec3,
+        half_height: Vec3,
+        two_sided: bool,
+        color: Vec3,
+        intensity: f32,
+        cast_shadows: bool,
+        mobility: LightMobility,
+    ) -> LightDesc {
+        let intensity = intensity.max(0.0);
+        let area = 4.0 * half_width.cross(half_height).length();
+        let reach = (color.max_element().max(0.0) * intensity * area / 0.01).sqrt();
+        LightDesc {
+            kind: LightKind::Rect {
+                half_width,
+                half_height,
+                two_sided,
+            },
+            position,
+            color,
+            intensity,
+            range: reach
+                .max((half_width + half_height).length() * 2.0)
+                .max(0.1),
+            radius: 0.0,
+            cast_shadows,
+            mobility,
+        }
+    }
+
+    /// Its radiance: colour times intensity.
+    pub fn radiance(&self) -> Vec3 {
+        self.color * self.intensity
+    }
+
+    /// A point or spot light's falloff at squared distance `d2` (frame.wgsl
+    /// `local_falloff`): [`range_window`] over `d2 + radius²`.
+    pub fn falloff(&self, d2: f32) -> f32 {
+        range_window(d2, self.range) / (d2 + self.radius * self.radius)
+    }
+
+    /// The share of a spot light's cone along `l`, the unit direction
+    /// towards the light (frame.wgsl `spot_cone`): 1 inside the inner cone,
+    /// falling to 0 at the outer; 1 for the other kinds.
+    pub fn cone(&self, l: Vec3) -> f32 {
+        let LightKind::Spot {
+            direction,
+            angle_degrees,
+            penumbra,
+        } = self.kind
+        else {
+            return 1.0;
+        };
+        let (cos_outer, cos_inner) = spot_cone(angle_degrees, penumbra);
+        let axis = direction.normalize_or(Vec3::NEG_Y);
+        let t = (((-l).dot(axis) - cos_outer) / (cos_inner - cos_outer).max(1e-4)).clamp(0.0, 1.0);
+        t * t
+    }
+}
+
+/// How much of a local light reaches squared distance `d2` from it before
+/// the inverse square (frame.wgsl `range_window`): Karis's window (UE4,
+/// 2013), falling smoothly to 0 at `range`.
+pub fn range_window(d2: f32, range: f32) -> f32 {
+    let ratio = d2 / (range * range).max(1e-8);
+    let w = (1.0 - ratio * ratio).clamp(0.0, 1.0);
+    w * w
 }
 
 /// A spot light's cone (`angle_degrees` its outer half-angle, `penumbra`

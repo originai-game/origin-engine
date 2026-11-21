@@ -187,6 +187,8 @@ export interface ColumnKinds {
   Material: { readonly array: Uint32Array; readonly stride: 2; readonly value: Material };
   /** An Upscaler field: the variant's index. */
   Upscaler: { readonly array: Uint32Array; readonly stride: 1; readonly value: Upscaler };
+  /** A LightMobility field: the variant's index. */
+  LightMobility: { readonly array: Uint32Array; readonly stride: 1; readonly value: LightMobility };
   /** A ToneMapping field: the variant's index. */
   ToneMapping: { readonly array: Uint32Array; readonly stride: 1; readonly value: ToneMapping };
   /** An AoResolutionSetting field: the variant's index. */
@@ -6908,6 +6910,24 @@ export interface Mesh {
 }
 
 /**
+ * How a light may change while the game runs, as Unreal's light mobility: which of its light og bake lightmaps bakes into its scene's lightmaps and light volumes, and which the renderer draws every frame.
+ * See `render §4`.
+ * - `"movable"`: Moves or changes in any way: drawn whole every frame, and none of its light is baked.
+ * - `"stationary"`: Stays where it is; its colour and intensity may change. Drawn every frame, the light it bounces baked; past RenderSettings.staticLightReach its diffuse light may come from probes (render §3). The default.
+ * - `"static"`: Never moves or changes: its direct light is baked too, and while its scene's bake is drawn the renderer leaves it out (render §3). Unbaked, it draws as stationary. Under a running og.DayNight a DirectionalLight is movable.
+ */
+export type LightMobility = "movable" | "stationary" | "static";
+
+/**
+ * A LightMobility field: the variant's index.
+ *
+ * A `LightMobility` field: stored in a `Uint32Array` with stride 1.
+ * @param value The field's default; omitted, the column's zero value.
+ * @param options Range, unit, label, docs and the tunable flag.
+ */
+export declare function LightMobility(value?: LightMobility, options?: FieldOptions): FieldSpec<"LightMobility">;
+
+/**
  * The sun, as three.js DirectionalLight: parallel light along the entity's local -Z (aim it with transform.lookAt, as a camera). One is drawn, the brightest, with RenderSettings.shadowCascades shadow cascades (3 by default); the sky's sun, clouds and weather follow it. Two within 1.5x of each other hand over smoothly, so a sun can rise as a moon fades (render §3).
  * Without one, the renderer's default sun (from above and to the side, intensity 3) lights the scene.
  * See `render §3`.
@@ -6929,6 +6949,13 @@ export interface DirectionalLight {
    * @tunable
    */
   intensity: number;
+  /**
+   * How the light may change while the game runs: what og bake lightmaps bakes of it and what is drawn every frame (stationary, the default; movable; static).
+   * See `render §4`.
+   *
+   * @default "stationary"
+   */
+  mobility: LightMobility;
   /**
    * Cast shadows through the cascades (RenderSettings.shadowCascades), as three.js Light.castShadow.
    *
@@ -7048,10 +7075,12 @@ export interface PointLight {
    */
   cookie: Texture;
   /**
-   * The light never moves or changes. While RenderSettings.staticLightReach is above 0, its diffuse light past the reach comes from a grid of probes round the camera; glossy surfaces keep its highlights. Never cached when it casts a shadow or has a cookie.
-   * See `render §3`.
+   * How the light may change while the game runs: what og bake lightmaps bakes of it and what is drawn every frame (stationary, the default; movable; static).
+   * See `render §4`.
+   *
+   * @default "stationary"
    */
-  static: boolean;
+  mobility: LightMobility;
 }
 
 /**
@@ -7116,10 +7145,12 @@ export interface SpotLight {
    */
   cookie: Texture;
   /**
-   * The light never moves or changes. While RenderSettings.staticLightReach is above 0, its diffuse light past the reach comes from a grid of probes round the camera; glossy surfaces keep its highlights. Never cached when it casts a shadow or has a cookie.
-   * See `render §3`.
+   * How the light may change while the game runs: what og bake lightmaps bakes of it and what is drawn every frame (stationary, the default; movable; static).
+   * See `render §4`.
+   *
+   * @default "stationary"
    */
-  static: boolean;
+  mobility: LightMobility;
 }
 
 /**
@@ -7326,7 +7357,7 @@ export interface RenderSettings {
    */
   bakedLighting: boolean;
   /**
-   * How far from itself a light marked static has its diffuse light shaded per pixel; past it, that light comes from a grid of probes round the camera and a static rect light skips rough surfaces. Glossy surfaces keep the highlights. 0 shades every light whole.
+   * How far from itself a stationary or static light (LightMobility) has its diffuse light shaded per pixel; past it, that light comes from a grid of probes round the camera and such a rect light skips rough surfaces. Glossy surfaces keep the highlights. 0 shades every light whole.
    * See `render §3`.
    *
    * @default 0
@@ -12894,10 +12925,12 @@ export interface RectLight {
    */
   castShadow: boolean;
   /**
-   * The light never moves or changes. While RenderSettings.staticLightReach is above 0, its diffuse light past the reach comes from a grid of probes round the camera; glossy surfaces keep its highlights. Never cached when it casts a shadow or has a cookie.
-   * See `render §3`.
+   * How the light may change while the game runs: what og bake lightmaps bakes of it and what is drawn every frame (stationary, the default; movable; static).
+   * See `render §4`.
+   *
+   * @default "stationary"
    */
-  static: boolean;
+  mobility: LightMobility;
 }
 
 /**
@@ -13437,7 +13470,7 @@ export interface Model {
    */
   sway: number;
   /**
-   * Part of its scene's baked lighting: og bake lightmaps traces the light arriving at it into the scene's lightmap, and while the bake matches the scene it takes its ambient light from there (its lights' direct light, shadows and highlights still drawn every frame). Unbaked, it draws as any model.
+   * Part of its scene's baked lighting: og bake lightmaps traces the light arriving at it into the scene's lightmap, and while the bake matches the scene it takes its ambient light from there (its lights' direct light still drawn every frame, a static one's excepted). Unbaked, it draws as any model.
    * See `loading §2`.
    */
   static: boolean;
@@ -33953,15 +33986,15 @@ export declare namespace og {
    * Without one, the renderer's default sun (from above and to the side, intensity 3) lights the scene.
    * See `render §3`.
    */
-  const DirectionalLight: ComponentType<{ readonly color: FieldSpec<"Color">; readonly intensity: FieldSpec<"f32">; readonly castShadow: FieldSpec<"bool">; readonly shadowDistance: FieldSpec<"f32">; readonly shadowSoftness: FieldSpec<"f32">; readonly shadowBox: FieldSpec<"f32">; readonly shadowFocus: FieldSpec<"f32">; readonly shadowFocusDrop: FieldSpec<"f32">; readonly shadowBias: FieldSpec<"f32">; readonly shadowNormalBias: FieldSpec<"f32">; readonly cascadeBlend: FieldSpec<"f32"> }, DirectionalLight>;
+  const DirectionalLight: ComponentType<{ readonly color: FieldSpec<"Color">; readonly intensity: FieldSpec<"f32">; readonly mobility: FieldSpec<"LightMobility">; readonly castShadow: FieldSpec<"bool">; readonly shadowDistance: FieldSpec<"f32">; readonly shadowSoftness: FieldSpec<"f32">; readonly shadowBox: FieldSpec<"f32">; readonly shadowFocus: FieldSpec<"f32">; readonly shadowFocusDrop: FieldSpec<"f32">; readonly shadowBias: FieldSpec<"f32">; readonly shadowNormalBias: FieldSpec<"f32">; readonly cascadeBlend: FieldSpec<"f32"> }, DirectionalLight>;
   /**
    * A light shining in every direction from the entity's position, as three.js PointLight. Its radiance at distance d is color * intensity / (d^2 + radius^2), faded smoothly to zero at distance.
    * Lights are clustered (Forward+): each pixel shades only the lights whose distance reaches it. Up to MAX_LIGHTS in view are drawn (MAX_CLUSTER_LIGHTS a screen cluster), the brightest at the camera kept; RenderSettings.shadowedLights chooses how many with castShadow get shadows, the brightest first.
    * See `render §3`.
    */
-  const PointLight: ComponentType<{ readonly color: FieldSpec<"Color">; readonly intensity: FieldSpec<"f32">; readonly distance: FieldSpec<"f32">; readonly radius: FieldSpec<"f32">; readonly castShadow: FieldSpec<"bool">; readonly cookie: FieldSpec<"Texture">; readonly static: FieldSpec<"bool"> }, PointLight>;
+  const PointLight: ComponentType<{ readonly color: FieldSpec<"Color">; readonly intensity: FieldSpec<"f32">; readonly distance: FieldSpec<"f32">; readonly radius: FieldSpec<"f32">; readonly castShadow: FieldSpec<"bool">; readonly cookie: FieldSpec<"Texture">; readonly mobility: FieldSpec<"LightMobility"> }, PointLight>;
   /** A cone of light along the entity's local -Z, as three.js SpotLight. */
-  const SpotLight: ComponentType<{ readonly color: FieldSpec<"Color">; readonly intensity: FieldSpec<"f32">; readonly distance: FieldSpec<"f32">; readonly radius: FieldSpec<"f32">; readonly angle: FieldSpec<"f32">; readonly penumbra: FieldSpec<"f32">; readonly castShadow: FieldSpec<"bool">; readonly cookie: FieldSpec<"Texture">; readonly static: FieldSpec<"bool"> }, SpotLight>;
+  const SpotLight: ComponentType<{ readonly color: FieldSpec<"Color">; readonly intensity: FieldSpec<"f32">; readonly distance: FieldSpec<"f32">; readonly radius: FieldSpec<"f32">; readonly angle: FieldSpec<"f32">; readonly penumbra: FieldSpec<"f32">; readonly castShadow: FieldSpec<"bool">; readonly cookie: FieldSpec<"Texture">; readonly mobility: FieldSpec<"LightMobility"> }, SpotLight>;
   /**
    * The frame's look after lighting: environment light, sky, bloom, exposure metering and tone mapping, and what the frame may cost: the quality fields (rectShadows to upscaler) that og.render.applyQuality sets from a graphics preset. Read after each tick; it never feeds back into the simulation. Camera.exposure is the manual exposure.
    * See `render §5`.
@@ -34083,7 +34116,7 @@ export declare namespace og {
    * Rect lights are clustered with the point and spot lights and share their MAX_LIGHTS budget; each reaches where it would light a white surface facing it at one hundredth of one, fading smoothly to zero there.
    * See `render §3`.
    */
-  const RectLight: ComponentType<{ readonly color: FieldSpec<"Color">; readonly intensity: FieldSpec<"f32">; readonly width: FieldSpec<"f32">; readonly height: FieldSpec<"f32">; readonly twoSided: FieldSpec<"bool">; readonly castShadow: FieldSpec<"bool">; readonly static: FieldSpec<"bool"> }, RectLight>;
+  const RectLight: ComponentType<{ readonly color: FieldSpec<"Color">; readonly intensity: FieldSpec<"f32">; readonly width: FieldSpec<"f32">; readonly height: FieldSpec<"f32">; readonly twoSided: FieldSpec<"bool">; readonly castShadow: FieldSpec<"bool">; readonly mobility: FieldSpec<"LightMobility"> }, RectLight>;
   /**
    * A box of baked light probes (an irradiance volume): og bake lightmaps traces the light arriving from the scene at a grid of points spacing metres apart inside it. Every surface drawn inside it without a lightmap takes its ambient light from the probes instead of the sky's, fading out over og.Volume.fade past the box's faces.
    * The box is the og.Volume on its entity, as the world's axes bound it; without one it has no box and nothing is baked. Unbaked, it lights nothing and og doctor --project names the scene.

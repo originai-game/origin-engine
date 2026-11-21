@@ -26,9 +26,13 @@ pub(super) fn lights(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
         physical_sky: layouts.atmo.physical_sky(),
         season: layouts.atmo.season(),
     };
-    if let Some(key) =
-        crate::present::key_light::key(world, stage, &mut |e| h.world_of(e), scene.lighting.light)
-    {
+    if let Some(key) = crate::present::key_light::key(
+        world,
+        stage,
+        &mut |e| h.world_of(e),
+        scene.lighting.light,
+        &rs.baked,
+    ) {
         scene.lighting.light = key.light;
         scene.lighting.environment.sky.sun_direction =
             key.light.direction_to_light.normalize_or_zero();
@@ -52,23 +56,24 @@ pub(super) fn lights(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
     let textures = &rs.textures;
     let cookie = |h: u64| super::assets::index_of(h as f64).and_then(|i| textures.get(i).copied());
     let rgb = |c: &crate::host::wire::Color| Vec3::new(c.r, c.g, c.b);
-    // Each with its cookie and whether it is static (PointLight.static).
-    let mut locals: Vec<(
-        u64,
-        og_render::Light,
-        Option<og_render::TextureHandle>,
-        bool,
-    )> = Vec::new();
+    // Each with its cookie; a static light whose light its scene's drawn
+    // bake holds is left out (LightMobility).
+    let baked = &rs.baked;
+    let mobility = crate::present::baked::mobility;
+    let mut locals: Vec<(u64, og_render::LightDesc, Option<og_render::TextureHandle>)> = Vec::new();
     if let Some(pl) = &layouts.point {
         for (e, v) in rows(world, pl) {
             let Ok(v) = crate::host::wire::record::PointLight::from_json(&v) else {
                 continue;
             };
+            if baked.baked_light(e) {
+                continue;
+            }
             let m = h.world_of(e);
             let c = cookie(v.cookie);
             locals.push((
                 e,
-                og_render::Light {
+                og_render::LightDesc {
                     kind: og_render::LightKind::Point,
                     position: m.transform_point3(Vec3::ZERO),
                     color: rgb(&v.color),
@@ -76,9 +81,9 @@ pub(super) fn lights(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
                     range: v.distance,
                     radius: v.radius,
                     cast_shadows: v.cast_shadow,
+                    mobility: mobility(v.mobility),
                 },
                 c,
-                v.r#static,
             ));
         }
     }
@@ -87,11 +92,14 @@ pub(super) fn lights(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
             let Ok(v) = crate::host::wire::record::SpotLight::from_json(&v) else {
                 continue;
             };
+            if baked.baked_light(e) {
+                continue;
+            }
             let m = h.world_of(e);
             let c = cookie(v.cookie);
             locals.push((
                 e,
-                og_render::Light {
+                og_render::LightDesc {
                     kind: og_render::LightKind::Spot {
                         direction: forward(m),
                         angle_degrees: v.angle.to_degrees(),
@@ -103,9 +111,9 @@ pub(super) fn lights(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
                     range: v.distance,
                     radius: v.radius,
                     cast_shadows: v.cast_shadow,
+                    mobility: mobility(v.mobility),
                 },
                 c,
-                v.r#static,
             ));
         }
     }
@@ -114,9 +122,12 @@ pub(super) fn lights(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
             let Ok(v) = crate::host::wire::record::RectLight::from_json(&v) else {
                 continue;
             };
+            if baked.baked_light(e) {
+                continue;
+            }
             let m = h.world_of(e);
-            let light = super::baked::rect_light(m, &v);
-            locals.push((e, light, None, v.r#static));
+            let light = crate::present::baked::rect_light(m, &v);
+            locals.push((e, light, None));
         }
     }
     // A light a cell spawned shines up with its fade (`crate::present::reveal`).
@@ -127,14 +138,7 @@ pub(super) fn lights(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
     scene.lighting.light_cookies = locals
         .iter()
         .enumerate()
-        .filter_map(|(i, (_, _, c, _))| {
-            c.map(|texture| og_render::LightCookie { light: i, texture })
-        })
-        .collect();
-    scene.lighting.static_lights = locals
-        .iter()
-        .enumerate()
-        .filter_map(|(i, l)| l.3.then_some(i))
+        .filter_map(|(i, (_, _, c))| c.map(|texture| og_render::LightCookie { light: i, texture }))
         .collect();
     scene.lighting.lights = locals.iter().map(|(_, l, ..)| *l).collect();
     // Cookies past RenderCapabilities.maxLightCookies layers are not drawn:

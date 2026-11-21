@@ -6,7 +6,7 @@
 
 use glam::{Mat4, Vec3};
 use og_render::{
-    Background, Camera, DirectionalLight, Environment, Exposure, Light, LightKind, Material,
+    Background, Camera, DirectionalLight, Environment, Exposure, LightDesc, LightKind, Material,
     MaterialHandle, RenderScene, shapes,
 };
 
@@ -92,7 +92,7 @@ pub(crate) fn light_toro(scene: &mut RenderScene, fire: Vec3, intensity: f32, sh
         receive_shadows: false,
         sway: 0.0,
     });
-    scene.lighting.lights.push(Light {
+    scene.lighting.lights.push(LightDesc {
         position: fire,
         color: Vec3::new(1.0, 0.62, 0.32),
         intensity,
@@ -228,7 +228,7 @@ pub fn many_shadowed_lights(extra: bool) -> RenderScene {
     for (k, x) in [-1.1f32, 1.1].into_iter().enumerate() {
         scene.lighting.lights.insert(
             3 + k,
-            Light {
+            LightDesc {
                 kind: LightKind::Spot {
                     direction: Vec3::new(0.0, -1.0, 0.45).normalize(),
                     angle_degrees: 46.0,
@@ -240,6 +240,7 @@ pub fn many_shadowed_lights(extra: bool) -> RenderScene {
                 range: 9.0,
                 radius: 0.0,
                 cast_shadows: true,
+                mobility: og_render::LightMobility::Movable,
             },
         );
     }
@@ -397,7 +398,7 @@ pub fn crypt_scene() -> RenderScene {
         receive_shadows: true,
         sway: 0.0,
     });
-    scene.lighting.lights = vec![Light {
+    scene.lighting.lights = vec![LightDesc {
         position: lamp,
         color: Vec3::new(1.0, 0.62, 0.3),
         intensity: 22.0,
@@ -626,7 +627,7 @@ fn contact_room(point: bool, shadows: bool) -> RenderScene {
         Mat4::from_translation(Vec3::new(0.0, 3.0, -2.0)),
     );
     let position = CONTACT_LIGHT;
-    scene.lighting.lights.push(Light {
+    scene.lighting.lights.push(LightDesc {
         kind: if point {
             LightKind::Point
         } else {
@@ -642,6 +643,7 @@ fn contact_room(point: bool, shadows: bool) -> RenderScene {
         range: 12.0,
         radius: 0.0,
         cast_shadows: shadows,
+        mobility: og_render::LightMobility::Movable,
     });
     scene.lighting.light = DirectionalLight {
         intensity: 0.0,

@@ -24,7 +24,7 @@ Token `og.Model`, registered under the schema name `og.Model`; its value type is
 | `lodBias` | `number` | `1` | 0 … 16 | — | tunable | This instance's level of detail bias, multiplied with RenderSettings.lodBias: the renderer draws the coarsest cooked level whose error covers less than a pixel at the model's distance. Above 1 keeps detail farther, below 1 drops it sooner; 0 always draws the full mesh. See `loading §2`. |
 | `layers` | `number` | `1` | — | — | — | Three.js layers of every mesh of the model, as Mesh.layers. |
 | `sway` | `number` | `0` | 0 … 2 | — | tunable | How much og.Wind sways this instance, as it sways og.TerrainScatter copies: 0 still (the default), 1 as it blows. Each vertex above the model's origin moves downwind by its height; its shadow and depth move with it. Visual only: the simulation never reads it, and a tick sways the same on every run. See `loading §2`. |
-| `static` | `boolean` | `false` | — | — | — | Part of its scene's baked lighting: og bake lightmaps traces the light arriving at it into the scene's lightmap, and while the bake matches the scene it takes its ambient light from there (its lights' direct light, shadows and highlights still drawn every frame). Unbaked, it draws as any model. See `loading §2`. |
+| `static` | `boolean` | `false` | — | — | — | Part of its scene's baked lighting: og bake lightmaps traces the light arriving at it into the scene's lightmap, and while the bake matches the scene it takes its ambient light from there (its lights' direct light still drawn every frame, a static one's excepted). Unbaked, it draws as any model. See `loading §2`. |
 | `variant` | `number` | `-1` | ≥ -1 | — | tunable | The glTF material variant this instance draws (KHR_materials_variants), an index into GltfInfo.variants: every mesh the variant maps takes its material, the others keep theirs, on this instance only. -1 draws the glTF's own materials; an index past the model's variants does too. See `loading §2`. |
 
 ```ogt
@@ -69,7 +69,7 @@ component Model {
     max 2
     tunable true
   }
-  field static bool "Part of its scene's baked lighting: og bake lightmaps traces the light arriving at it into the scene's lightmap, and while the bake matches the scene it takes its ambient light from there (its lights' direct light, shadows and highlights still drawn every frame). Unbaked, it draws as any model." {
+  field static bool "Part of its scene's baked lighting: og bake lightmaps traces the light arriving at it into the scene's lightmap, and while the bake matches the scene it takes its ambient light from there (its lights' direct light still drawn every frame, a static one's excepted). Unbaked, it draws as any model." {
     guide "loading §2"
   }
   field variant i32 "The glTF material variant this instance draws (KHR_materials_variants), an index into GltfInfo.variants: every mesh the variant maps takes its material, the others keep theirs, on this instance only. -1 draws the glTF's own materials; an index past the model's variants does too." {
