@@ -75,41 +75,6 @@ export function unrelated(str: (capacity: number) => unknown) { return str(8192)
     std::fs::remove_dir_all(dir).unwrap();
 }
 
-/// The engine's specifiers resolve to what this engine ships even when the
-/// game's tsconfig maps them itself: one from an older template mapped
-/// `@origingame/engine/ui` to the engine's sources, which then checked under
-/// the game's lib (no DOM: 42 TS2304s in First Light). Its own paths stay.
-#[test]
-fn check_resolves_the_engines_specifiers_over_a_projects_own() {
-    let (dir, game) = check_project();
-    let template = include_str!("../../../../packages/create/template/tsconfig.json");
-    let old = template.replace(
-        "\"./.og/engine/types/ui.d.ts\"",
-        "\"./.og/engine/src/ui/index.ts\"",
-    );
-    assert_ne!(old, template, "the template maps @origingame/engine/ui");
-    let old = old.replace(
-        "\"paths\": {",
-        "\"paths\": {\n      \"~/*\": [\"./src/*\"],",
-    );
-    std::fs::write(game.join("tsconfig.json"), old).unwrap();
-    std::fs::write(game.join("src/hp.ts"), "export const hp: number = 3;\n").unwrap();
-    std::fs::write(
-        game.join("src/main.ts"),
-        "import { View } from \"@origingame/engine/ui\";\nimport { hp } from \"~/hp.ts\";\nexport const hud = () => View({ class: `w-${hp}` });\nexport default 0;\n",
-    )
-    .unwrap();
-    let out = og()
-        .args(["check", "--json"])
-        .arg(&game)
-        .env("OG_SESSION", "0")
-        .env("OG_ENGINE_PACKAGE", repo().join("packages/engine"))
-        .output()
-        .unwrap();
-    assert!(out.status.success(), "{}", text(&out));
-    std::fs::remove_dir_all(dir).unwrap();
-}
-
 #[test]
 fn warm_checks_match_cold_after_dependency_and_resolution_changes() {
     let (dir, game) = check_project();

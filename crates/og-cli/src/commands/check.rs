@@ -18,12 +18,8 @@
 //! checked with the template's options, written to
 //! `.og/tsconfig.check.json` (a temporary directory for a bare entry); a
 //! project whose engine package is not in its `node_modules` (one inside an
-//! engine checkout, run with `OG_ENGINE_PACKAGE`, or through `.og/engine`)
-//! gets the same file extending its own with `paths` to the engine package
-//! `og` resolved. The engine's specifiers are the engine's: its entries win
-//! over a project's (a tsconfig from an older template that mapped
-//! `@origingame/engine/ui` to the engine's sources checked those under the
-//! game's lib); the project's other paths survive.
+//! engine checkout, run with `OG_ENGINE_PACKAGE`) gets the same file
+//! extending its own with `paths` to the engine package `og` resolved.
 //!
 //! The run is `-p <config> --noEmit --pretty false --checkers N` in the
 //! project directory, with compiler-owned incremental state under `.og/check`
@@ -791,19 +787,17 @@ impl Target {
             let text =
                 std::fs::read_to_string(&own).map_err(|e| format!("{}: {e}", own.display()))?;
             match engine_paths {
-                Some(paths) if !engine_in_node_modules => {
+                Some(paths)
+                    if !engine_in_node_modules && !text.contains("\"@origingame/engine\"") =>
+                {
                     let mut paths = paths;
                     // Its own paths survive the override (compilerOptions
-                    // merge per option), made absolute, except the engine's
-                    // specifiers, which name what this engine ships.
+                    // merge per option), made absolute.
                     if let Some(theirs) = serde_json::from_str::<serde_json::Value>(&text)
                         .ok()
                         .and_then(|v| v["compilerOptions"]["paths"].as_object().cloned())
                     {
                         for (k, v) in theirs {
-                            if paths.get(&k).is_some() {
-                                continue;
-                            }
                             let abs: Vec<String> = v
                                 .as_array()
                                 .into_iter()

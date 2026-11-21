@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {
-      "member": "og check",
-      "summary": "og check resolves the engine's specifiers (@origingame/engine, /ui, /ui/components, /playtest, /ui-check, bun:test) to what the engine og resolved ships, even when the game's tsconfig maps them itself; the game's other paths stay. A tsconfig from an older template mapped @origingame/engine/ui to the engine's sources, which then type-checked under the game's ES2022 lib (First Light: 42 TS2304s for TextEncoder, atob and DOM types); it now checks clean without an edit."
-    }
-  ]
-}
