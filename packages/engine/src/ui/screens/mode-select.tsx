@@ -28,9 +28,9 @@ export function ModeSelectScreen(props: ModeSelectScreenProps) {
         <Art class="absolute object-cover inset-0 size-full" kind="keyArt" src={props.keyArt} />
       </Show>
       <View class={`absolute bg-linear-to-b from-black/86 via-black/70 via-40% to-black/92 inset-0`} />
-      <View class={`min-h-12 border-b border-rim-soft items-center gap-x-4 py-1 px-4 narrow:flex-wrap narrow:gap-y-1`}>
+      <View class={`flex-row min-h-12 border-b border-rim-soft items-center gap-x-4 py-1 px-4 narrow:flex-wrap narrow:gap-y-1`}>
         <Button class={`narrow:-ml-2 shrink ${packClass("Button", "plate")}`} onPress={(e) => props.onBack?.(e)}>
-          <View class="items-center gap-x-1">
+          <View class="flex-row items-center gap-x-1">
             <Icon class="size-4 rtl:-scale-x-100 rtl:scale-y-100 shrink" name="chevronLeft" />
             <Text class="shrink">{t("screen.common.back")}</Text>
           </View>
@@ -61,7 +61,7 @@ export function ModeSelectScreen(props: ModeSelectScreenProps) {
                     {mode().line}
                   </Text>
                   <Show when={mode().locked}>
-                    <View class={`items-center gap-x-1 text-base font-semibold text-warn`}>
+                    <View class={`flex-row items-center gap-x-1 text-base font-semibold text-warn`}>
                       <Icon class="size-4" name="lock" />
                       <Text class="shrink">{mode().reason}</Text>
                     </View>
@@ -75,7 +75,7 @@ export function ModeSelectScreen(props: ModeSelectScreenProps) {
         </View>
       </Scroll>
       <View>{props.detail?.()}</View>
-      <View class="justify-end">
+      <View class="flex-row justify-end">
         <Button class={`text-accent min-w-[17.143rem] h-9 compact:min-w-0 compact:grow compact:shrink compact:basis-0 ${packClass("Button", "plate", "primary")}`} disabled={props.modes.length === 0} onPress={(e) => props.onPlay?.(e)} onAction={{ confirm: (e) => props.onPlay?.(e) }}>
           <Text>{t("screen.mode-select.play")}</Text>
         </Button>

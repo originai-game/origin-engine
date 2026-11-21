@@ -43,7 +43,7 @@ export function GameOverScreen(props: GameOverScreenProps) {
         <View class="w-full h-[1.5px]">
           <Text class="absolute left-1/2 top-1/2 translate-x-[-50%] translate-y-[-50%] rotate-45 bg-white shadow-[0px_0px_11.424px_#ff4d5e] size-[0.643rem]" />
         </View>
-        <View class="flex-wrap justify-center gap-y-1 gap-x-6 items-end">
+        <View class="flex-row flex-wrap justify-center gap-y-1 gap-x-6 items-end">
           <View class="items-center shrink">
             <Text class={`tracking-[0.14em] uppercase text-fg/78 text-[0.857rem] font-semibold m-0`}>
               {t("screen.game-over.score")}

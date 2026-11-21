@@ -62,7 +62,7 @@ function StepCard(props: TutorialScreenProps) {
         {props.text}
       </Text>
       {props.hint?.()}
-      <View class="flex-wrap items-center justify-between gap-y-2 gap-x-2 mt-1">
+      <View class="flex-row flex-wrap items-center justify-between gap-y-2 gap-x-2 mt-1">
         <Button class={`text-fg-muted compact:-ml-2 shrink ${packClass("Button", "plate")}`} onPress={(e) => props.onSkip?.(e)}>
           <Text>{t("screen.tutorial.skip")}</Text>
         </Button>

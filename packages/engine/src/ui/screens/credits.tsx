@@ -32,7 +32,7 @@ export function CreditsScreen(props: CreditsScreenProps) {
       <View class={`absolute inset-0 compact:bg-linear-to-b compact:from-black/86 compact:via-black/70 compact:via-40% compact:to-black/92 compact:bg-transparent`} />
       <View class="flex-row items-center py-4 px-8 gap-2 compact:py-2 compact:px-3">
         <Button class={`shrink ${packClass("Button", "plate")}`} onPress={(e) => props.onBack?.(e)}>
-          <View class="items-center gap-x-1">
+          <View class="flex-row items-center gap-x-1">
             <Icon class="size-4 rtl:-scale-x-100 rtl:scale-y-100 shrink" name="chevronLeft" />
             <Text class="shrink">{t("screen.common.back")}</Text>
           </View>
@@ -44,7 +44,7 @@ export function CreditsScreen(props: CreditsScreenProps) {
           <For each={props.sections}>
             {(s) => (
             <View class="w-full max-w-140 items-center text-center gap-y-4">
-              <View class="items-center justify-center gap-x-3 w-full">
+              <View class="flex-row items-center justify-center gap-x-3 w-full">
                 <Text class={`shrink basis-[2.857rem] min-w-2 h-px bg-linear-to-r from-transparent to-[#38e8ffe5]`} />
                 <Text class={`tracking-[0.24em] uppercase text-[#38e8ff] shrink text-[0.929rem] font-bold m-0 compact:tracking-[0.14em]`}>
                   {s().title}
@@ -72,7 +72,7 @@ export function CreditsScreen(props: CreditsScreenProps) {
           <View class="w-full max-w-140">{props.licences?.()}</View>
         </View>
       </View>
-      <View class="absolute right-6 bottom-4 items-center gap-x-2 text-[0.929rem] text-fg/74 pointer-coarse:hidden compact:hidden">
+      <View class="flex-row absolute right-6 bottom-4 items-center gap-x-2 text-[0.929rem] text-fg/74 pointer-coarse:hidden compact:hidden">
         <Text class="text-[0.857rem] leading-[1.6] font-bold text-[#0b0f18] bg-linear-to-b from-white to-[#c9d1e2] shadow-[0px_2.288px_0px_#0000008c,inset_0px_-2.288px_0px_#0000002e] py-0 px-1 rounded-[4.576px] shrink">
           {t("screen.credits.fasterKey")}
         </Text>

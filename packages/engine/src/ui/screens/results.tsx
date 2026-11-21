@@ -67,7 +67,7 @@ export function ResultsScreen(props: ResultsScreenProps) {
                   {props.level}
                 </Text>
                 <View class="grow shrink basis-0 gap-1">
-                  <View class="flex-wrap items-baseline justify-between gap-x-3">
+                  <View class="flex-row flex-wrap items-baseline justify-between gap-x-3">
                     <Text class="text-[0.857rem] font-semibold tracking-[0.14em] uppercase text-fg/78 m-0 compact:hidden shrink">
                       {t("screen.results.LevelValue", { level: props.level })}
                     </Text>
@@ -116,7 +116,7 @@ export function ResultsScreen(props: ResultsScreenProps) {
                 <For each={props.stats}>
                   {(s) => (
                   <View class={`nine-plate-cut bg-plate-hi text-fg transition duration-317 border border-white/18 justify-between py-3 px-4 gap-2 data-selected:text-fg disabled:text-fg-subtle data-done:text-fg-subtle data-down:opacity-45 compact:flex-row compact:min-h-0 compact:items-center compact:py-2 compact:px-3 short:flex-row short:min-h-0 short:items-center short:py-1 short:px-3`} data-best={s().best}>
-                    <View class="flex-wrap items-center justify-between gap-1 compact:justify-start compact:grow compact:shrink compact:basis-0 short:justify-start short:grow short:shrink short:basis-0">
+                    <View class="flex-row flex-wrap items-center justify-between gap-1 compact:justify-start compact:grow compact:shrink compact:basis-0 short:justify-start short:grow short:shrink short:basis-0">
                       <Text class={`tracking-[0.14em] uppercase text-fg/78 text-[0.857rem] font-semibold m-0 shrink`}>
                         {s().name}
                       </Text>
@@ -142,7 +142,7 @@ export function ResultsScreen(props: ResultsScreenProps) {
                   <Text class="text-[0.857rem] font-semibold tracking-[0.14em] uppercase text-fg/78 m-0">
                     {t("screen.results.rewards")}
                   </Text>
-                  <View class="flex-wrap gap-3">
+                  <View class="flex-row flex-wrap gap-3">
                     <For each={props.rewards}>
                       {(r) => (
                       <View class={`text-fg transition duration-317 items-center w-[8.286rem] rounded-button data-selected:border-accent data-done:border-success data-active:border-accent disabled:text-fg-subtle disabled:scale-100 active:scale-96 data-locked:scale-100 data-down:opacity-45 compact:w-24 shrink`}>
@@ -164,7 +164,7 @@ export function ResultsScreen(props: ResultsScreenProps) {
             </View>
           </Show>
         </Scroll>
-        <View class="flex-wrap justify-end gap-2 compact:grid compact:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] short:flex-nowrap short:justify-end short:flex-col">
+        <View class="flex-row flex-wrap justify-end gap-2 compact:grid compact:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] short:flex-nowrap short:justify-end short:flex-col">
           <Button class={`min-h-11 min-w-36 compact:min-w-0 compact:col-span-full compact:row-[2] shrink ${packClass("Button", "plate")}`} onPress={(e) => props.onReplay?.(e)}>
             <Text>{t("screen.results.replay")}</Text>
           </Button>

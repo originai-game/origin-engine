@@ -36,7 +36,7 @@ export function TitleScreen(props: TitleScreenProps) {
             {props.name}
           </Text>
         </Show>
-        <View class="row-[4] items-center gap-x-4 compact:gap-x-2">
+        <View class="flex-row row-[4] items-center gap-x-4 compact:gap-x-2">
           <Text class={`basis-[8.571rem] h-px bg-linear-to-r from-transparent to-[#38e8ffe5] shadow-[0px_0px_11.424px_#38e8ff] compact:basis-[2.286rem]`} />
           <View class={`grow shrink basis-0 text-[1.286rem] font-semibold tracking-[0.28em] uppercase text-center compact:text-base compact:tracking-wide`}>
             <Text class="text-shadow-sm text-shadow-bg/80 m-0 pointer-coarse:hidden">{t("screen.title.press")}</Text>

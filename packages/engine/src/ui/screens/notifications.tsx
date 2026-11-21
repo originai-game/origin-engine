@@ -26,10 +26,10 @@ export function NotificationsScreen(props: NotificationsScreenProps) {
     <View class="items-end gap-2" role="log" live="polite">
       <For each={props.items}>
         {(n) => (
-        <View class={`group/frame pr-1 pl-[16.571px] border-rim nine-plate-cut border border-white/12 text-fg items-center w-90 max-w-full py-2 gap-3 border data-tone-success:bg-transparent data-tone-warn:bg-transparent data-tone-danger:bg-transparent disabled:text-fg-subtle compact:w-full ${packClass("Plate", "frame")}`} data-tone-danger={(n().tone) === 'danger'} data-tone-success={(n().tone) === 'success'} data-tone-warn={(n().tone) === 'warn'}>
+        <View class={`group/frame flex-row pr-1 pl-[16.571px] border-rim nine-plate-cut border border-white/12 text-fg items-center w-90 max-w-full py-2 gap-3 border data-tone-success:bg-transparent data-tone-warn:bg-transparent data-tone-danger:bg-transparent disabled:text-fg-subtle compact:w-full ${packClass("Plate", "frame")}`} data-tone-danger={(n().tone) === 'danger'} data-tone-success={(n().tone) === 'success'} data-tone-warn={(n().tone) === 'warn'}>
           <View class="absolute left-0 w-[0.286rem] bg-info inset-y-0 group-data-tone-success/frame:bg-none group-data-tone-success/frame:bg-success group-data-tone-warn/frame:bg-none group-data-tone-warn/frame:bg-warn group-data-tone-danger/frame:bg-none group-data-tone-danger/frame:bg-danger" />
-          <View class={`bg-linear-to-b from-white/50 via-white/12 via-50% to-white/6 p-[1.5px] size-12`}>
-            <View class="items-center justify-center w-full text-info group-data-tone-success/frame:text-success group-data-tone-warn/frame:text-warn group-data-tone-danger/frame:text-danger shrink">
+          <View class={`flex-row bg-linear-to-b from-white/50 via-white/12 via-50% to-white/6 p-[1.5px] size-12`}>
+            <View class="flex-row items-center justify-center w-full text-info group-data-tone-success/frame:text-success group-data-tone-warn/frame:text-warn group-data-tone-danger/frame:text-danger shrink">
               <Icon class="size-4 shrink" name={n().tone === 'success' ? 'check' : n().tone === 'warn' ? 'bolt' : n().tone === 'danger' ? 'close' : 'star'} />
             </View>
           </View>
@@ -47,7 +47,7 @@ export function NotificationsScreen(props: NotificationsScreenProps) {
       </For>
       <For each={props.toasts}>
         {(t) => (
-        <View class={`group/frame pr-0 pl-[0.286rem] border-rim nine-plate-cut border border-white/12 text-fg items-center w-auto max-w-full py-0 gap-3 border transition duration-240 ease-in data-leaving:translate-x-8 data-leaving:opacity-0 data-tone-success:bg-transparent data-tone-warn:bg-transparent data-tone-danger:bg-transparent disabled:text-fg-subtle compact:w-auto ${packClass("Plate", "frame")}`} data-leaving={t().leaving === true} data-tone-danger={(t().tone) === 'danger'} data-tone-success={(t().tone) === 'success'} data-tone-warn={(t().tone) === 'warn'}>
+        <View class={`group/frame flex-row pr-0 pl-[0.286rem] border-rim nine-plate-cut border border-white/12 text-fg items-center w-auto max-w-full py-0 gap-3 border transition duration-240 ease-in data-leaving:translate-x-8 data-leaving:opacity-0 data-tone-success:bg-transparent data-tone-warn:bg-transparent data-tone-danger:bg-transparent disabled:text-fg-subtle compact:w-auto ${packClass("Plate", "frame")}`} data-leaving={t().leaving === true} data-tone-danger={(t().tone) === 'danger'} data-tone-success={(t().tone) === 'success'} data-tone-warn={(t().tone) === 'warn'}>
           <View class="absolute left-0 w-[0.286rem] bg-info inset-y-0 group-data-tone-success/frame:bg-none group-data-tone-success/frame:bg-success group-data-tone-warn/frame:bg-none group-data-tone-warn/frame:bg-warn group-data-tone-danger/frame:bg-none group-data-tone-danger/frame:bg-danger" />
           <Button class={`w-full text-start gap-1 shrink ${packClass("Button", "plate")}`} onPress={(e) => props.onDismissToast?.(e, t().id)}>
             <Icon class="text-info size-4 group-data-tone-success/frame:text-success group-data-tone-warn/frame:text-warn group-data-tone-danger/frame:text-danger" name={t().tone === 'success' ? 'check' : t().tone === 'warn' ? 'bolt' : t().tone === 'danger' ? 'close' : 'star'} />

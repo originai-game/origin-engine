@@ -40,7 +40,7 @@ export interface CreatorToolsScreenProps {
 export function CreatorToolsScreen(props: CreatorToolsScreenProps) {
   return (
     <View class="text-fg">
-      <View class={`border-rim bg-linear-to-b from-plate-hi to-plate-lo shadow-[inset_0px_0px_0px_1px_#ffffff2e,inset_0px_1px_0px_#ffffff8c] text-fg flex-wrap items-center p-2 gap-2 border disabled:text-fg-subtle ${packClass("Panel", "frame")}`} role="toolbar">
+      <View class={`flex-row border-rim bg-linear-to-b from-plate-hi to-plate-lo shadow-[inset_0px_0px_0px_1px_#ffffff2e,inset_0px_1px_0px_#ffffff8c] text-fg flex-wrap items-center p-2 gap-2 border disabled:text-fg-subtle ${packClass("Panel", "frame")}`} role="toolbar">
         <Button class={`bg-tile shadow-[inset_0px_0px_0px_1px_#ffffff1a] h-7 font-semibold tracking-[0.14em] uppercase px-2.75 narrow:h-8 narrow:py-0 narrow:px-3.75 data-selection-on:bg-none data-selection-on:bg-[#38e8ff33] data-selection-on:border-transparent data-selection-on:shadow-[inset_0px_-2px_0px_#38e8ff,inset_0px_0px_0px_1px_#ffffff1a] data-selection-off:border-transparent shrink ${packClass("Button", "plate")}`} data-selection-off={props.tool !== "select"} data-selection-on={props.tool === "select"}>
           <Text>{t("screen.creator-tools.select")}</Text>
         </Button>

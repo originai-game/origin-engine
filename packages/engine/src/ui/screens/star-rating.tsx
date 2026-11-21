@@ -17,7 +17,7 @@ export interface StarRatingProps {
  */
 export function StarRating(props: StarRatingProps) {
   return (
-    <View class={`text-fg p-0 gap-1 disabled:text-fg-subtle`} role="image" label={props.label}>
+    <View class={`flex-row text-fg p-0 gap-1 disabled:text-fg-subtle`} role="image" label={props.label}>
       <For each={props.stars}>
         {(s) => (
         <View class={`size-8 shrink ${s().lit ? "data-lit:animate-pop" : ""}`} data-lit={s().lit} style={{ animationDelay: `${(120 * (s().index))}ms` }}>

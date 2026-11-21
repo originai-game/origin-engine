@@ -37,7 +37,7 @@ export function SplashScreen(props: SplashScreenProps) {
           )}
         </For>
         <Show when={props.marks.length > 1}>
-          <View class={`gap-x-1`}>
+          <View class={`flex-row gap-x-1`}>
             <For each={props.marks}>
               {(m) => (
               <Text class={`bg-white/20 text-fg w-[1.286rem] h-[1.5px] transition-colors duration-317 rounded-capsule data-on:bg-none data-on:bg-white shrink`} data-on={m().id === props.mark} />
@@ -49,7 +49,7 @@ export function SplashScreen(props: SplashScreenProps) {
       <View class="mb-auto">{props.custom?.()}</View>
       <Show when={props.progress >= 0}>
         <View class={`gap-y-2 w-full max-w-120`} role="progressbar" valueMin={0} valueMax={1} valueNow={props.progress > 1 ? 1 : props.progress} label={props.status}>
-          <View class="items-baseline gap-x-3">
+          <View class="flex-row items-baseline gap-x-3">
             <Text class="grow shrink text-[0.857rem] font-semibold tracking-[0.14em] uppercase text-fg/56 whitespace-nowrap m-0 overflow-hidden">
               {props.status}
             </Text>
@@ -60,7 +60,7 @@ export function SplashScreen(props: SplashScreenProps) {
           </View>
         </View>
       </Show>
-      <View class={`absolute right-6 bottom-4 items-center gap-x-2 text-[0.929rem] text-fg/74 compact:bottom-4 compact:justify-center compact:inset-x-4`}>
+      <View class={`flex-row absolute right-6 bottom-4 items-center gap-x-2 text-[0.929rem] text-fg/74 compact:bottom-4 compact:justify-center compact:inset-x-4`}>
         <Text class="text-[0.857rem] leading-[1.6] font-bold text-[#0b0f18] bg-linear-to-b from-white to-[#c9d1e2] shadow-[0px_2.288px_0px_#0000008c,inset_0px_-2.288px_0px_#0000002e] py-0 px-1 rounded-[4.576px] pointer-coarse:hidden shrink">
           {t("screen.splash.skipKey")}
         </Text>

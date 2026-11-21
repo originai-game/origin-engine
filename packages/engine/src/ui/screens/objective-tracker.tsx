@@ -24,7 +24,7 @@ export function ObjectiveTracker(props: ObjectiveTrackerProps) {
         <For each={props.objectives}>
           {(o, i) => (
           <View class={`group/row text-fg transition duration-317 opacity-72 gap-[0.286rem] rounded-control hover:bg-fill hover:bg-none active:bg-fill-strong active:bg-none data-selected:bg-rim-soft data-selected:bg-none data-selected:text-fg data-selected:shadow-[inset_3px_0px_0px_#e8e8ed] disabled:bg-transparent disabled:bg-none disabled:text-fg-subtle data-done:text-fg-subtle data-done:opacity-55 data-current:opacity-100 compact:hidden compact:data-current:flex compact:data-closing:flex`} data-closing={i() === props.objectives.length - 1 && o().done} data-current={!o().done && (i() === 0 || props.objectives[i() - 1]['done'])} data-done={o().done}>
-            <View class="items-baseline gap-[0.571rem]">
+            <View class="flex-row items-baseline gap-[0.571rem]">
               <View class="rotate-45 shadow-[inset_0px_0px_0px_2.288px_#ffcf5a] mx-[0.143rem] size-[0.571rem] group-data-current/row:shadow-[0px_0px_11.424px_#ffcf5acc] group-data-current/row:bg-none group-data-current/row:bg-gold group-data-done/row:bg-none group-data-done/row:bg-gold" />
               <Text class="text-[1.071rem] font-semibold text-stroke-3 text-stroke-bg text-shadow-xs text-shadow-bg/55 m-0 group-data-done/row:line-through shrink">
                 {o().label}

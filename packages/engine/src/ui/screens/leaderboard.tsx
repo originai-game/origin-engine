@@ -37,7 +37,7 @@ export interface LeaderboardScreenProps {
 export function LeaderboardScreen(props: LeaderboardScreenProps) {
   return (
     <View class={`bg-linear-to-r from-black/90 via-black/62 via-55% to-black/81 text-fg grow shrink basis-0 p-8 gap-3 compact:p-3 compact:gap-2 disabled:text-fg-subtle`}>
-      <View class={`w-full max-w-264 flex-wrap items-center gap-y-2 gap-x-3 p-0 mx-auto`}>
+      <View class={`w-full max-w-264 flex-row flex-wrap items-center gap-y-2 gap-x-3 p-0 mx-auto`}>
         <Button class={`shrink ${packClass("Button", "plate")}`} onPress={(e) => props.onBack?.(e)}><Text>{t("screen.common.back")}</Text></Button>
         <Text class={`font-display text-[3.286rem] font-bold leading-flat tracking-sm uppercase text-fg grow shrink m-0 compact:text-[2rem]`}>
           {t("screen.leaderboard.title")}
@@ -58,7 +58,7 @@ export function LeaderboardScreen(props: LeaderboardScreenProps) {
         </Button>
       </View>
       <Show when={props.tab === "league"}>
-        <View class={`w-full max-w-264 items-center nine-panel-cut flex-wrap bg-plate-hi border border-white/18 py-2 px-3 mx-auto gap-3 ${packClass("Panel", "frame")}`}>
+        <View class={`w-full max-w-264 flex-row items-center nine-panel-cut flex-wrap bg-plate-hi border border-white/18 py-2 px-3 mx-auto gap-3 ${packClass("Panel", "frame")}`}>
           <Text class="text-[1.714rem] font-bold tracking-sm uppercase text-gold m-0 shrink">
             {props.league.name}
           </Text>
@@ -98,7 +98,7 @@ export function LeaderboardScreen(props: LeaderboardScreenProps) {
           </For>
         </View>
       </Scroll>
-      <View class={`w-full max-w-264 items-center pr-3 pl-1 nine-plate-cut text-fg py-2 mx-auto gap-3`}>
+      <View class={`w-full max-w-264 flex-row items-center pr-3 pl-1 nine-plate-cut text-fg py-2 mx-auto gap-3`}>
         <Text class={`text-center min-w-[3.714rem] leading-[2.714rem] whitespace-nowrap text-[1.143rem] font-bold tabular-nums bg-white/14 nine-plate-cut py-0 px-1 m-0 compact:min-w-[2.714rem] compact:leading-[2.286rem] shrink ${packClass("Chip", "frame")}`}>
           {t("screen.leaderboard.MeRank", { value: ordinal(props.me.rank) })}
         </Text>
