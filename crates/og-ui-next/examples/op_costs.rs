@@ -263,7 +263,7 @@ fn main() {
         for k in 0..8 {
             let a = allocations();
             let s = Instant::now();
-            t.nav(og_ui::Nav::Down);
+            t.nav(og_input::frame::Nav::Down);
             t.frame(&fonts, &icons);
             // The first move meets the stops' capacity.
             if k > 0 {

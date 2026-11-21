@@ -24,7 +24,7 @@ use crate::ui::{HIT_ADJUST, HIT_MULTILINE, HIT_NAV, HIT_TEXT, Hit, Ui};
 use og_input::frame::{GamepadFrame, InputFrame, Nav, UiKey};
 
 /// The control nearest `from` in direction `dir` among `cands`, wrapping
-/// (also the new core's, `og_ui::nav_neighbour`).
+/// (also og-ui-next's, `og_ui_next::nav::neighbour`).
 pub fn neighbour(from: &Rect, cands: &[(u64, Rect)], dir: Nav) -> Option<u64> {
     neighbour_in(from, cands, dir, false).or_else(|| neighbour_in(from, cands, dir, true))
 }

@@ -2528,7 +2528,7 @@ mod tests {
         t.key("ArrowDown", false, false, false, false);
         assert_eq!(t.focused_id(), Some(2), "it took the arrow");
         assert_eq!((t.events[0].id, &*t.events[0].key), (2, "ArrowDown"));
-        assert!(t.nav(og_ui::Nav::Down), "the d-pad still moves it");
+        assert!(t.nav(og_input::frame::Nav::Down), "the d-pad still moves it");
         assert_eq!(t.focused_id(), Some(4));
     }
 
@@ -3149,7 +3149,7 @@ mod tests {
     /// on the member it last had.
     #[test]
     fn focus_groups_stop_wrap_and_remember() {
-        use og_ui::Nav;
+        use og_input::frame::Nav;
         // `dir`: the root's direction; 10 is a row group of 2 and 3, then 4.
         let build = |dir: &str, group: &str, memory: bool| {
             let mut t = stated();

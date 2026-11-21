@@ -292,7 +292,7 @@ pub struct Input {
     pub(super) modal_els: Vec<u32>,
     /// Tab stops, made on a Tab or a move, and a move's candidates.
     stops: Vec<u32>,
-    cands: Vec<(u64, og_ui::Rect)>,
+    cands: Vec<(u64, og_ui_model::Rect)>,
     /// An Enter or Space pressed the focused control this frame: the
     /// `confirm` it is bound to does not press it again.
     keyed: bool,
@@ -1609,10 +1609,10 @@ impl Tree {
     }
 
     /// The element's box on screen, as og-ui's navigation reads it.
-    fn rect(&self, e: u32) -> og_ui::Rect {
+    fn rect(&self, e: u32) -> og_ui_model::Rect {
         let (x, y, _, _) = self.abs[e as usize];
         let b = self.arena.box_of(self.els[e as usize].node);
-        og_ui::Rect {
+        og_ui_model::Rect {
             x,
             y,
             width: b.w,
@@ -1625,7 +1625,7 @@ impl Tree {
     /// end of its row or column (og-ui's FocusFinder rule), and shows.
     /// With nothing focused it lands on the first stop. Whether a stop
     /// took it.
-    pub fn nav(&mut self, dir: og_ui::Nav) -> bool {
+    pub fn nav(&mut self, dir: og_input::frame::Nav) -> bool {
         self.sync_modals();
         self.tab_stops();
         let Some(&first) = self.input.stops.first() else {
@@ -1664,16 +1664,16 @@ impl Tree {
     /// whole surface last, which does not wrap). Outside any group the
     /// move wraps to the far end of its row or column. Coming into a group
     /// that remembers lands on its last member.
-    fn step(&mut self, f: u32, dir: og_ui::Nav) -> Option<u32> {
+    fn step(&mut self, f: u32, dir: og_input::frame::Nav) -> Option<u32> {
         let from = self.rect(f);
         let (fx, fy) = from.center();
         // A move that went back the other way is a wrap.
-        let ahead = |r: &og_ui::Rect| {
+        let ahead = |r: &og_ui_model::Rect| {
             let (cx, cy) = r.center();
             match dir {
-                og_ui::Nav::Down => cy > fy,
-                og_ui::Nav::Up => cy < fy,
-                og_ui::Nav::Right => cx > fx,
+                og_input::frame::Nav::Down => cy > fy,
+                og_input::frame::Nav::Up => cy < fy,
+                og_input::frame::Nav::Right => cx > fx,
                 _ => cx < fx,
             }
         };
@@ -1687,7 +1687,7 @@ impl Tree {
                     cands.push((u64::from(e), self.rect(e)));
                 }
             }
-            let hit = og_ui::nav_neighbour(&from, &cands, dir).map(|k| k as u32);
+            let hit = crate::nav::neighbour(&from, &cands, dir).map(|k| k as u32);
             let rect = |e: u32| cands.iter().find(|c| c.0 == u64::from(e)).map(|c| c.1);
             match hit {
                 Some(e) if rect(e).is_some_and(|r| ahead(&r)) => break Some(e),
@@ -1746,10 +1746,10 @@ impl Tree {
             return true;
         }
         let dir = match code {
-            "ArrowUp" => Some(og_ui::Nav::Up),
-            "ArrowDown" => Some(og_ui::Nav::Down),
-            "ArrowLeft" => Some(og_ui::Nav::Left),
-            "ArrowRight" => Some(og_ui::Nav::Right),
+            "ArrowUp" => Some(og_input::frame::Nav::Up),
+            "ArrowDown" => Some(og_input::frame::Nav::Down),
+            "ArrowLeft" => Some(og_input::frame::Nav::Left),
+            "ArrowRight" => Some(og_input::frame::Nav::Right),
             _ => None,
         };
         // An arrow moves the focus, unless the focused node takes keys

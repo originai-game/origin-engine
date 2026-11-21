@@ -197,7 +197,7 @@ machines do (ported as logic).
   press. The arrows, the d-pad and the left stick (once past half-way, then
   repeating after 400 ms every 180 ms) move the focus to the nearest stop
   that way, in its row or column first, wrapping to the far end of it
-  (og-ui's FocusFinder rule, `og_ui::nav_neighbour`); with nothing focused
+  (og-ui's FocusFinder rule, `crate::nav::neighbour`); with nothing focused
   they land on the first stop. A focused node that listens to `key` hears
   the arrows instead (a slider), and the d-pad still moves it. Enter or
   Space presses the focused control; so does `confirm`

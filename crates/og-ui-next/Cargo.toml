@@ -22,6 +22,8 @@ nsh-tailwind = { path = "../../third_party/nsh-tailwind" }
 nsh-input = { path = "../../third_party/nsh-input" }
 # On-screen controls feed og-input actions as its control zones.
 og-input = { path = "../og-input" }
+# Rectangles (the focus rule's, `nav`).
+og-ui-model = { path = "../og-ui-model" }
 # An `Input`'s caret steps by grapheme cluster (UAX #29).
 og-i18n = { path = "../og-i18n" }
 rune-taffy = { path = "../../third_party/rune-taffy" }
