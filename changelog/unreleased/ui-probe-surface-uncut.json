@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "og probe dump_ui: TSX elements past the screen",
+      "summary": "A TSX element that runs past the screen is listed at its whole box with clipped false again; only a Scroll or a box cutting its overflow cuts its bounds and sets clipped. Since the visible-part change the surface cut it too, so og ui check's safe-area rule, which skips clipped elements, missed a button off the screen."
+    }
+  ]
+}

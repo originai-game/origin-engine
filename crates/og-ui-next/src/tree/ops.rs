@@ -1095,7 +1095,7 @@ impl Tree {
                 let cut = match el.arena_parent {
                     _ if el.anchor.is_some() || self.xfs.get(e).is_some_and(|&xf| xf != 0) => own,
                     NONE => own,
-                    p => self.abs.get(p as usize).map_or(own, |a| a.3),
+                    p => self.cuts.get(p as usize).copied().unwrap_or(own),
                 };
                 let visible = [
                     own[0].max(cut[0]),
@@ -1223,6 +1223,7 @@ mod tests {
                     "big" => s.size = taffy::Size::from_lengths(400.0, 300.0),
                     "col" => s.flex_direction = taffy::FlexDirection::Column,
                     "fixed" => s.flex_shrink = 0.0,
+                    "wide" => s.size = taffy::Size::from_lengths(600.0, 20.0),
                     _ => {}
                 }
             }
@@ -1999,6 +2000,20 @@ mod tests {
         assert_eq!(at(2), [0.0, 0.0, 50.0, 20.0]);
         let [_, y0, _, y1] = at(3);
         assert_eq!(y0, y1, "the second row is cut away whole");
+        // The surface (400 px wide) cuts nothing: what runs past the
+        // screen is listed whole, so the safe-area check sees it.
+        let mut b = Batch::default();
+        b.op(1).u32(8).u8(0);
+        b.op(4).u32(8).str("row");
+        b.op(1).u32(9).u8(0);
+        b.op(4).u32(9).str("wide fixed");
+        b.op(8).u32(0).u32(8).u32(u32::MAX);
+        b.op(8).u32(8).u32(9).u32(u32::MAX);
+        t.apply(&b.bytes()).unwrap();
+        frame(&mut t);
+        let n = t.dump_ops().into_iter().find(|n| n.id == 9).unwrap();
+        let [x, y, w, h] = n.rect;
+        assert_eq!((w, n.visible), (600.0, [x, y, x + w, y + h]));
     }
 
     /// What a box under a transform clips is cut where that box is drawn,

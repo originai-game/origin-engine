@@ -192,6 +192,10 @@ pub struct Tree {
     /// Each element's place on screen, whether it shows, and the clip its
     /// children paint in (x0, y0, x1, y1).
     abs: Vec<(f32, f32, bool, [f32; 4])>,
+    /// The part of the screen each element's children show in as its
+    /// scrollers and overflow boxes cut it (x0, y0, x1, y1), the surface
+    /// not counted: what the probe calls clipped.
+    cuts: Vec<[f32; 4]>,
     /// The elements with an anchor, in no order (a dead or unanchored one
     /// leaves at the next [`Tree::place_anchors`]).
     anchored: Vec<u32>,
@@ -337,6 +341,7 @@ impl Tree {
             drawn: Paint::default(),
             sem: crate::a11y::Semantics::default(),
             abs: Vec::new(),
+            cuts: Vec::new(),
             anchored: Vec::new(),
             glyphs: Vec::new(),
             xfs: Vec::new(),
@@ -729,6 +734,9 @@ impl Tree {
         self.order();
         self.abs.clear();
         self.abs.resize(self.els.len(), (0.0, 0.0, false, [0.0; 4]));
+        const ALL: [f32; 4] = [f32::MIN, f32::MIN, f32::MAX, f32::MAX];
+        self.cuts.clear();
+        self.cuts.resize(self.els.len(), ALL);
         self.shown.clear();
         let top = Shown {
             alpha: 1.0,
@@ -799,24 +807,26 @@ impl Tree {
                 && r.layout.display() != taffy::Display::None;
             let (x, y) = (px + b.x, py + b.y);
             let clip = pclip;
+            let pcut = match el.arena_parent {
+                _ if el.anchor.is_some() => ALL,
+                NONE => ALL,
+                p => self.cuts[p as usize],
+            };
             // What overflows a box that does not show it is cut to it.
             let o = taffy::CoreStyle::overflow(&r.layout);
             let scroller = self.scroll_axes(e as u32) != [false; 2];
             // CSS clips overflow at the padding box: what scrolls or runs
             // over never covers the box's own border.
             let [bt, br, bb, bl] = s.border;
-            let inner =
-                if scroller || o.x != taffy::Overflow::Visible || o.y != taffy::Overflow::Visible {
-                    [
-                        clip[0].max(x + bl),
-                        clip[1].max(y + bt),
-                        clip[2].min(x + b.w - br),
-                        clip[3].min(y + b.h - bb),
-                    ]
-                } else {
-                    clip
-                };
+            let cuts =
+                scroller || o.x != taffy::Overflow::Visible || o.y != taffy::Overflow::Visible;
+            let cut_to = |c: [f32; 4], [x0, y0, x1, y1]: [f32; 4]| {
+                [c[0].max(x0), c[1].max(y0), c[2].min(x1), c[3].min(y1)]
+            };
+            let padding = [x + bl, y + bt, x + b.w - br, y + b.h - bb];
+            let inner = if cuts { cut_to(clip, padding) } else { clip };
             self.abs[e] = (x, y, visible, inner);
+            self.cuts[e] = if cuts { cut_to(pcut, padding) } else { pcut };
             let pxf = if el.arena_parent == NONE {
                 0
             } else {
@@ -837,9 +847,9 @@ impl Tree {
             // The clip it sets for what it holds is drawn through its
             // transform (an ancestor's or its own): the box that bounds its
             // padding box there, against the clip it is drawn in.
-            if xf != 0 && inner != clip {
+            if xf != 0 && cuts {
                 let [ma, mb, mc, md, me, mf, _, _] = p.transforms[xf as usize];
-                let (x0, y0, x1, y1) = (x + bl, y + bt, x + b.w - br, y + b.h - bb);
+                let [x0, y0, x1, y1] = padding;
                 let mut bound = [f32::MAX, f32::MAX, f32::MIN, f32::MIN];
                 for [cx, cy] in [[x0, y0], [x1, y0], [x0, y1], [x1, y1]] {
                     let (sx, sy) = (ma * cx + mc * cy + me, mb * cx + md * cy + mf);
@@ -850,12 +860,8 @@ impl Tree {
                         bound[3].max(sy),
                     ];
                 }
-                self.abs[e].3 = [
-                    clip[0].max(bound[0]),
-                    clip[1].max(bound[1]),
-                    clip[2].min(bound[2]),
-                    clip[3].min(bound[3]),
-                ];
+                self.abs[e].3 = cut_to(clip, bound);
+                self.cuts[e] = cut_to(pcut, bound);
             }
             let rect = [x, y, b.w, b.h];
             let radius = radii(s.radius, b.w, b.h);
