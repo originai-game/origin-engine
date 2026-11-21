@@ -576,7 +576,16 @@ const LIFECYCLE: &[LifecycleMember] = &[
         "og_engine_perf_report",
         &[("engine", "u32", "number"), ("budgets", "String", "string")],
         "String",
-        "The performance record's report so far, as JSON `{ json, text }`: each line's median, p95 and max, flagged against `budgets` (a JSON object of line to milliseconds), and the hitches with their causes.",
+        "The performance record's report so far, as JSON `{ json, text }`: each line's mean, median, p95, p99 and max, flagged against `budgets` (a JSON object of line to milliseconds), and the hitches with their causes.",
+    ),
+];
+
+/// The host traits written beside the modules': name, doc and members.
+const HOST_TRAITS: &[(&str, &str, &[LifecycleMember])] = &[
+    (
+        "Lifecycle",
+        "Engine lifecycle: what the TypeScript loaders drive.",
+        LIFECYCLE,
     ),
 ];
 
@@ -612,25 +621,29 @@ pub fn host_rs(ix: &Index<'_>) -> String {
          \x20   type Shared;\n\
          }\n\n",
     );
-    out.push_str(
-        "/// Engine lifecycle: what the TypeScript loaders drive.\npub trait Lifecycle: Wire {\n",
-    );
-    for (name, params, ret, doc) in LIFECYCLE {
-        out.push_str(&format!("    /// {doc}\n"));
-        let ps: Vec<String> = std::iter::once("&self".to_string())
-            .chain(params.iter().map(|(n, t, _)| format!("{n}: {t}")))
-            .collect();
-        let r = if *ret == "()" {
-            String::new()
-        } else {
-            format!(" -> {ret}")
-        };
-        out.push_str(&format!("    fn {name}({}){r};\n", ps.join(", ")));
+    let mut traits = Vec::new();
+    for (i, (tname, tdoc, members)) in HOST_TRAITS.iter().enumerate() {
+        if i > 0 {
+            out.push('\n');
+        }
+        out.push_str(&format!("/// {tdoc}\npub trait {tname}: Wire {{\n"));
+        for (name, params, ret, doc) in *members {
+            out.push_str(&format!("    /// {doc}\n"));
+            let ps: Vec<String> = std::iter::once("&self".to_string())
+                .chain(params.iter().map(|(n, t, _)| format!("{n}: {t}")))
+                .collect();
+            let r = if *ret == "()" {
+                String::new()
+            } else {
+                format!(" -> {ret}")
+            };
+            out.push_str(&format!("    fn {name}({}){r};\n", ps.join(", ")));
+        }
+        out.push_str("}\n");
+        traits.push(tname.to_string());
     }
-    out.push_str("}\n");
 
     let all = bindings(ix);
-    let mut traits = vec!["Lifecycle".to_string()];
     for m in &ix.api.modules {
         let members: Vec<&Binding<'_>> = all.iter().filter(|b| b.module.name == m.name).collect();
         if members.is_empty() {
@@ -942,13 +955,15 @@ pub fn glue(ix: &Index<'_>, target: Target) -> String {
     }
     // (symbol, arity, publish) of each entry, for C's table.
     let mut table: Vec<(String, usize, bool)> = Vec::new();
-    for (name, params, ret, _) in LIFECYCLE {
-        table.push((name.to_string(), params.len(), true));
-        let ps: Vec<(String, String)> = params
-            .iter()
-            .map(|(n, t, _)| (n.to_string(), t.to_string()))
-            .collect();
-        glue_fn(target, &mut out, "Lifecycle", name, &ps, ret, true);
+    for (tname, _, members) in HOST_TRAITS {
+        for (name, params, ret, _) in *members {
+            table.push((name.to_string(), params.len(), true));
+            let ps: Vec<(String, String)> = params
+                .iter()
+                .map(|(n, t, _)| (n.to_string(), t.to_string()))
+                .collect();
+            glue_fn(target, &mut out, tname, name, &ps, ret, true);
+        }
     }
     for b in bindings(ix) {
         let (params, ret) = signature(ix, &b);
@@ -1007,7 +1022,7 @@ pub fn abi_ts(ix: &Index<'_>) -> String {
     );
     abi_consts_ts(&mut out);
     out.push_str("\nexport interface HostAbi<A, V> {\n");
-    for (name, params, ret, doc) in LIFECYCLE {
+    for (name, params, ret, doc) in HOST_TRAITS.iter().flat_map(|t| t.2.iter()) {
         out.push_str(&format!("  /** {doc} */\n"));
         let ps: Vec<String> = params.iter().map(|(n, _, t)| format!("{n}: {t}")).collect();
         let r = match *ret {
@@ -1046,7 +1061,7 @@ pub fn abi_ts(ix: &Index<'_>) -> String {
     for b in &all {
         out.push_str(&format!("  \"{}\",\n", b.symbol));
     }
-    for (name, ..) in LIFECYCLE {
+    for (name, ..) in HOST_TRAITS.iter().flat_map(|t| t.2.iter()) {
         out.push_str(&format!("  \"{name}\",\n"));
     }
     out.push_str("];\n");
