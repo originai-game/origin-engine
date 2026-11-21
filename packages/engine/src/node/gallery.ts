@@ -4,7 +4,8 @@
 //   bun packages/engine/src/node/gallery.ts [--out DIR] [--packs a,b] [--only TEXT] [--size WxH] [--og <og>]
 //
 // It writes one project (target/ui-gallery/project), cooks it once and runs it headless once per
-// pack: the project mounts one fixture per page on a two-tone stage, the run switches the pack
+// pack: the project mounts one fixture per page on a two-tone stage (a screen stretched to the
+// stage, as mount() gives a game's screen the surface; a component at its own size), the run switches the pack
 // with og.ui.configure and screenshots every page. The frames land in <out>/<pack>/ (default
 // target/ui-gallery/out) with index.html, one row per fixture and one column per pack. A run
 // draws on the GPU og finds; without one, run it on a GPU host. `--only` keeps the fixtures
@@ -118,12 +119,12 @@ ${[...new Set(list.map((p) => p.module))].map((m, i) => `import { ${list.find((p
 
 type Any = (props: any) => UiChild;
 const MODULES: [Any, Record<string, object>][] = [${[...new Set(list.map((p) => p.module))].map((_, i) => `[C${i}, F${i}]`).join(", ")}];
-const PAGES: [number, string, string][] = ${JSON.stringify(list.map((p) => [[...new Set(list.map((q) => q.module))].indexOf(p.module), p.name, p.fixture]))};
+const PAGES: [number, string, string, boolean][] = ${JSON.stringify(list.map((p) => [[...new Set(list.map((q) => q.module))].indexOf(p.module), p.name, p.fixture, p.module.startsWith("ui/screens/")]))};
 
 let shown: (() => void) | null = null;
 function page(world: World, n: number): void {
   shown?.();
-  const [m, name, fixture] = PAGES[n] ?? PAGES[0]!;
+  const [m, name, fixture, screen] = PAGES[n] ?? PAGES[0]!;
   const [Component, fixtures] = MODULES[m]!;
   // The marker names the page, so the gallery lists the fixture that threw.
   try {
@@ -131,7 +132,7 @@ function page(world: World, n: number): void {
       <View class="absolute inset-0">
         <View class="absolute inset-x-0 top-0 h-1/2 bg-[#9fb4c8]" />
         <View class="absolute inset-x-0 bottom-0 h-1/2 bg-[#141a22]" />
-        <View class="absolute inset-0 p-6">{Component({ ...fixtures.default, ...fixtures[fixture] })}</View>
+        <View class={screen ? "absolute inset-0 p-6 grid" : "absolute inset-0 p-6"}>{Component({ ...fixtures.default, ...fixtures[fixture] })}</View>
         <Text class="absolute left-2 bottom-1 text-xs text-white/70 font-mono">{\`\${name} · \${fixture}\`}</Text>
       </View>
     ), {}, { layer: "hud" });

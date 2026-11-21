@@ -146,9 +146,10 @@ export function mount<P>(world: World, Component: (props: P) => UiChild, props: 
     dispose = d;
     return provide(RendererContext, ui, () => provide(WorldContext, world, () => {
       const node = element("view");
-      // The mount fills the UI's surface: a component's root lays out in it
-      // as in a full-screen column, and `absolute inset-0` covers the screen.
-      ui.setClass(node, "absolute inset-0 flex-col");
+      // The mount is the UI's surface, one grid cell: a component's root is
+      // stretched to the surface's size (definite, so its `flex-1` and `h-full`
+      // children fill it) unless it sizes or places itself.
+      ui.setClass(node, "absolute inset-0 grid");
       ui.setProp(node, "layer", options?.layer ?? "hud");
       insert(node, component(Component, props));
       return node;
