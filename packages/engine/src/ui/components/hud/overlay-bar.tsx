@@ -1,4 +1,5 @@
 import { For, Icon, Image, Show, Text, View, type UiEvent, t } from "@origingame/engine/ui";
+import type { Texture } from "@origingame/engine";
 import "./overlay-bar.en.ogt";
 
 export interface OverlayBarOverlay {
@@ -8,7 +9,7 @@ export interface OverlayBarOverlay {
   /** An icon name shown when there is no image. */
   icon?: string;
   /** A texture handle (0: none). */
-  image?: number;
+  image?: Texture | 0;
   /** The legend's gradient stops low to high (#2b6cb0, #f6e05e, #e53e3e). */
   ramp?: string;
   /** The word at the ramp's low end. */
@@ -73,7 +74,7 @@ export function OverlayBar(props: OverlayBarProps) {
                   </Show>
                 </View>
               }>
-                <Image class="size-12 rounded-[0.286rem]" src={String(o().image)} />
+                <Image class="size-12 rounded-[0.286rem]" src={o().image} />
               </Show>
               <Text class="text-[0.929rem] font-semibold whitespace-nowrap text-fg text-shadow-xs">{o().name}</Text>
             </View>

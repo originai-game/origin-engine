@@ -1,11 +1,12 @@
 import { Icon, Image, Show, Text, View, formatNumber, t } from "@origingame/engine/ui";
+import type { Texture } from "@origingame/engine";
 import "./loot-entry.en.ogt";
 
 export interface HudLootEntryProps {
   /** The item's name (Ember Blade). */
   name: string;
   /** Its art, a texture (og.load.texture); 0 draws the glyph in its place. */
-  icon?: number;
+  icon?: Texture | 0;
   /** An icon of the atlas, drawn when there is no art; empty is none. */
   glyph?: string;
   /** common, uncommon, rare, epic or legendary: the edge's colour (on data-rarity); an epic or legendary item's name is inked too. */
@@ -44,7 +45,7 @@ export function HudLootEntry(props: HudLootEntryProps) {
             <Icon class="absolute inset-0 size-full text-fg" name={props.glyph} />
           </Show>
         }>
-          <Image class="absolute inset-0 size-full" src={String(props.icon)} />
+          <Image class="absolute inset-0 size-full" src={props.icon} />
         </Show>
       </View>
       <Text class={`min-w-0 text-[1rem] font-semibold whitespace-nowrap truncate text-fg text-shadow-2xs data-epic:text-[#dcb8ff] data-legendary:text-[#ffcf5a]`} data-epic={rarity() === "epic"} data-legendary={rarity() === "legendary"}>

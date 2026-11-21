@@ -1,11 +1,12 @@
 import { Icon, Image, Show, Text, View, t } from "@origingame/engine/ui";
+import type { Texture } from "@origingame/engine";
 import "./effect.en.ogt";
 
 export interface HudEffectProps {
   /** What a reader calls it (Haste). */
   name: string;
   /** Its art, a texture (og.load.texture); 0 draws the glyph in its place. */
-  icon?: number;
+  icon?: Texture | 0;
   /** An icon of the atlas, drawn when there is no art; empty is none. */
   glyph?: string;
   /** The share of its time still to run, 0 to 1: a dark radial sweep over the art; negative is no timer. */
@@ -41,7 +42,7 @@ export function HudEffect(props: HudEffectProps) {
             </Show>
           </View>
         }>
-          <Image class="absolute inset-[0.143rem] rounded-tl-[0.357rem]" src={String(props.icon)} />
+          <Image class="absolute inset-[0.143rem] rounded-tl-[0.357rem]" src={props.icon} />
         </Show>
         <Show when={timed()}>
           <View class="absolute left-[0.143rem] right-[0.143rem] top-[0.143rem] rounded-tl-[0.357rem] bg-[#151820ad]" style={{ height: `${Math.min(Math.max(props.remaining ?? 0, 0), 1) * 100}%` }} />

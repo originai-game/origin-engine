@@ -1,4 +1,5 @@
 import { For, Icon, Image, Show, Text, View, formatNumber, t } from "@origingame/engine/ui";
+import type { Texture } from "@origingame/engine";
 import { Spinner } from "../base/spinner";
 import "./boss-bar.en.ogt";
 
@@ -13,7 +14,7 @@ export interface BossBarWeakness {
   /** For a reader. */
   name?: string;
   /** A texture (og.load.texture); 0 draws the glyph in its place. */
-  icon?: number;
+  icon?: Texture | 0;
   /** An icon name, in art's place. */
   glyph?: string;
 }
@@ -154,7 +155,7 @@ export function BossBar(props: BossBarProps) {
                         </Show>
                       </View>
                     }>
-                      <Image class="absolute inset-[0.143rem] rounded-tl-[0.286rem]" src={String(w().icon)} />
+                      <Image class="absolute inset-[0.143rem] rounded-tl-[0.286rem]" src={w().icon} />
                     </Show>
                   </View>
                 )}

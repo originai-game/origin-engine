@@ -20,6 +20,12 @@
     }
   },
   "include": [
+    "types/assets.d.ts",
+    "src/ui/components/**/*.tsx",
+    "src/ui/controls/*.tsx",
+    "src/ui/screens/*.tsx",
+    "tests/fixtures/*/assets/ui/*.tsx",
+    "../../showcase/*/assets/ui/*.tsx",
     "../create/template/src/**/*.ts",
     "../../tests/fixtures/*/src/**/*.ts",
     "tests/fixtures/*/src/**/*.ts",
