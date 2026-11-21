@@ -1007,6 +1007,7 @@ name = "fdsm"
 version = "0.8.0"
 dependencies = [
  "image",
+ "libm",
  "nalgebra 0.34.2",
  "num-traits",
 ]

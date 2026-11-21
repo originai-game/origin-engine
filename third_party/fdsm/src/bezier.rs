@@ -484,16 +484,19 @@ fn solve_cubic_normed(a: f64, b: f64, c: f64) -> [f64; 3] {
     if r2 < q3 {
         let t = r / q3.sqrt();
         let t = t.clamp(-1.0, 1.0);
-        let t = t.acos();
+        // og (PATCHED.md): libm's acos, not the host's.
+        let t = libm::acos(t);
         let q = -2.0 * q.sqrt();
-        let (sin_t_over_3, cos_t_over_3) = (t * (1.0 / 3.0)).sin_cos();
+        // og (PATCHED.md): libm's sin and cos, not the host's.
+        let (sin_t_over_3, cos_t_over_3) = libm::sincos(t * (1.0 / 3.0));
         [
             q * cos_t_over_3 - a,
             q * (-0.5 * cos_t_over_3 - SQRT_3_OVER_2 * sin_t_over_3) - a,
             q * (-0.5 * cos_t_over_3 + SQRT_3_OVER_2 * sin_t_over_3) - a,
         ]
     } else {
-        let u = (if r < 0.0 { 1.0 } else { -1.0 }) * (r.abs() + (r2 - q3).sqrt()).cbrt();
+        // og (PATCHED.md): libm's cbrt, not the host's.
+        let u = (if r < 0.0 { 1.0 } else { -1.0 }) * libm::cbrt(r.abs() + (r2 - q3).sqrt());
         let v = if u == 0.0 { 0.0 } else { q / u };
         let x0 = (u + v) - a;
         if u == v || (u - v).abs() < 1e-12 * (u + v).abs() {
