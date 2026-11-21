@@ -34,6 +34,10 @@ class Landing(unittest.TestCase):
         for name in ('land.sh', 'lock.sh', 'assets.ts'):
             shutil.copyfile(ROOT / name, self.a / 'scripts' / name)
         shutil.copyfile(ROOT / 'rebase-generated.py', self.a / 'scripts/landing_impl.py')
+        # landing_impl (rebase-generated.py) reads og_idl::OUTPUT_DIRS out of
+        # crates/og-idl/src/lib.rs.
+        (self.a / 'crates/og-idl/src').mkdir(parents=True)
+        shutil.copyfile(ROOT.parent / 'crates/og-idl/src/lib.rs', self.a / 'crates/og-idl/src/lib.rs')
         (self.a / 'scripts/rebase-generated.py').write_text('''
 import landing_impl as impl
 from pathlib import Path

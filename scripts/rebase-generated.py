@@ -4,19 +4,22 @@ import ast
 import difflib
 import os
 from pathlib import Path
+import re
 import subprocess
 import sys
 import tempfile
 
 
-# Exactly og_idl::OUTPUT_DIRS, not arbitrary .d.ts or generated-looking paths.
-OUTPUTS = (
-    'packages/engine/types', 'packages/engine/schema',
-    'packages/engine/src/generated', 'crates/og-api/src/generated',
-    'crates/og-records/src/generated', 'crates/og-host-web/src/generated',
-    'crates/og-host-node/src/generated', 'crates/og-host-c/src/generated',
-    'packages/knowledge/wiki',
-)
+def output_dirs():
+    """og_idl::OUTPUT_DIRS, read from crates/og-idl/src/lib.rs: the one list
+    of generated directories, which a rebase cannot ask og-idl for (a
+    conflicted host crate cannot build og-cli, so nothing here runs cargo)."""
+    source = Path('crates/og-idl/src/lib.rs').read_text()
+    block = re.search(r'pub const OUTPUT_DIRS: &\[&str\] = &\[(.*?)\];', source, re.S).group(1)
+    return tuple(re.findall(r'"([^"]+)"', block))
+
+
+OUTPUTS = output_dirs()
 THEME = 'crates/og-ui/src/theme.rs'
 # docs/css-coverage.md is wholly generated from scripts/css-coverage.py's
 # proof lists. It was once a region of docs/ui.md between MARKERS; a branch
