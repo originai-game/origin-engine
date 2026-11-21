@@ -25,7 +25,7 @@ fn read(p: &str) -> String {
     std::fs::read_to_string(p).unwrap_or_else(|e| panic!("{p}: {e}"))
 }
 
-fn library() -> Vec<UiDocument> {
+fn library() -> Vec<std::sync::Arc<UiDocument>> {
     let mut docs = vec![
         UiDocument::parse(
             "ui/hud.svelte",
@@ -47,7 +47,7 @@ fn library() -> Vec<UiDocument> {
             }
         }
     }
-    docs
+    docs.into_iter().map(std::sync::Arc::new).collect()
 }
 
 fn look() -> Look {

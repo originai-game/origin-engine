@@ -156,7 +156,7 @@ pub type Reads = Vec<(Box<str>, u32)>;
 /// A binding of `tree`: `expr` over the signals it reads, run now and again
 /// whenever one of them changes; it queues `target`'s op when its value
 /// changed (and on its first run). Answers its effect's id, to dispose.
-pub fn bind(tree: u32, target: Target, expr: Expr, reads: Reads, env: Rc<dyn Env>) -> u32 {
+pub fn bind(tree: u32, target: Target, expr: Rc<Expr>, reads: Reads, env: Rc<dyn Env>) -> u32 {
     // Its last value: an effect is not handed back what it returned.
     let last: std::cell::RefCell<Option<Value>> = Default::default();
     let func: Func = Rc::new(move |_| {
@@ -294,21 +294,21 @@ mod tests {
         bind(
             7,
             Target::Text { node: 3 },
-            path("$clock"),
+            path("$clock").into(),
             vec![("$clock".into(), clock)],
             env.clone(),
         );
         bind(
             7,
             Target::Text { node: 5 },
-            path("$sky"),
+            path("$sky").into(),
             vec![("$sky".into(), sky)],
             env.clone(),
         );
         bind(
             8,
             Target::Shown { node: 1 },
-            path("$sky"),
+            path("$sky").into(),
             vec![("$sky".into(), sky)],
             env,
         );

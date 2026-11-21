@@ -271,10 +271,10 @@ mod tests {
         );
         assert_eq!(base.fill, [0.0; 4]);
         let hover = og_ui::bind::Expr::Interaction(og_ui::bind::InteractionState::Hover);
-        let hovered = s.record(card, |c| s.conditions[c as usize] == hover);
+        let hovered = s.record(card, |c| *s.conditions[c as usize] == hover);
         assert_eq!(hovered.fill[0], 1.0, ".frame.hud:hover while hovered");
         assert_eq!(hovered.opacity, 1.0);
-        let done = s.record(card, |c| s.conditions[c as usize] != hover);
+        let done = s.record(card, |c| *s.conditions[c as usize] != hover);
         assert_eq!(done.opacity, 0.5, ".frame:state(done) under state:done");
         assert!(
             !s.skipped.iter().any(|k| matches!(k, doc::Skip::Field(_))),
@@ -297,7 +297,7 @@ mod tests {
             "tone=danger picks the .danger surface"
         );
         let rtl = s.record(label, |c| {
-            matches!(s.conditions[c as usize], og_ui::bind::Expr::Dir(_, true))
+            matches!(*s.conditions[c as usize], og_ui::bind::Expr::Dir(_, true))
         });
         assert_eq!(
             taffy::Style::from(&rtl.layout).padding.top,
@@ -305,7 +305,7 @@ mod tests {
             ":dir(rtl) is a condition on the direction"
         );
         let rare = s.record(label, |c| {
-            matches!(&s.conditions[c as usize],
+            matches!(&*s.conditions[c as usize],
                 og_ui::bind::Expr::Bin(og_ui::bind::Op::Eq, _, v) if **v == og_ui::bind::Expr::Lit("rare".into()))
         });
         assert_eq!(
@@ -314,7 +314,7 @@ mod tests {
             "a bound tier picks its surface"
         );
         // 844×390: short, not narrow; the condition is the size class.
-        let landscape = s.record(label, |c| match &s.conditions[c as usize] {
+        let landscape = s.record(label, |c| match &*s.conditions[c as usize] {
             og_ui::bind::Expr::Screen(k) => k.holds(844.0, 390.0, true),
             _ => false,
         });

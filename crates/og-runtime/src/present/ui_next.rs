@@ -328,7 +328,7 @@ impl Next {
             let library = ui
                 .documents()
                 .into_iter()
-                .filter_map(|n| ui.document(&n).cloned());
+                .filter_map(|n| ui.shared_document(&n));
             let look = self.look.clone().expect("loaded above");
             let mut tree = Tree::new(look, library);
             tree.set_strings(

@@ -226,6 +226,11 @@ impl Ui {
         self.docs.library.documents.get(name).map(|d| &**d)
     }
 
+    /// A document by name, shared rather than copied.
+    pub fn shared_document(&self, name: &str) -> Option<std::sync::Arc<UiDocument>> {
+        self.docs.library.documents.get(name).cloned()
+    }
+
     /// Every document's name.
     pub fn documents(&self) -> Vec<String> {
         self.docs.library.documents.keys().cloned().collect()

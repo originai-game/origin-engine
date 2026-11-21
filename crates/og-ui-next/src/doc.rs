@@ -58,7 +58,7 @@ pub struct DocStyle {
     pub steps: Vec<Step>,
     /// The rules' conditions, as the document's nodes give them: the
     /// bindings evaluate them and set an element's bits.
-    pub conditions: Vec<og_ui::bind::Expr>,
+    pub conditions: Vec<std::rc::Rc<og_ui::bind::Expr>>,
     pub skipped: Vec<Skip>,
 }
 
@@ -224,7 +224,7 @@ impl DocStyle {
                     _ => self.span(ALWAYS, from),
                 },
                 Some(c) => {
-                    self.conditions.push(c);
+                    self.conditions.push(c.into());
                     self.span(self.conditions.len() as u32 - 1, from);
                 }
             }
@@ -310,7 +310,7 @@ impl DocStyle {
                 }
                 local.pop();
                 if self.steps.len() as u32 > from {
-                    self.conditions.push(o.condition.clone());
+                    self.conditions.push(o.condition.clone().into());
                     self.span(self.conditions.len() as u32 - 1, from);
                 }
             }
@@ -319,7 +319,7 @@ impl DocStyle {
                 if !self.rule(rule, tokens, local) {
                     continue;
                 }
-                self.conditions.push(rule.condition.clone().unwrap());
+                self.conditions.push(rule.condition.clone().unwrap().into());
                 self.spans.push(Span {
                     condition: self.conditions.len() as u32 - 1,
                     steps: [from, self.steps.len() as u32 - from],

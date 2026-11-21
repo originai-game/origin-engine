@@ -18,6 +18,7 @@ use rustc_hash::FxHashMap;
 use serde_json::Value;
 use std::cell::Cell;
 use std::rc::Rc;
+use std::sync::Arc;
 
 const NONE: u32 = u32::MAX;
 
@@ -60,7 +61,7 @@ impl Env for Surface {
 
 /// A document compiled against the look.
 struct Compiled {
-    doc: UiDocument,
+    doc: Arc<UiDocument>,
     style: DocStyle,
     /// A document node's index in `style.nodes`.
     style_of: Vec<u32>,
@@ -142,7 +143,7 @@ pub struct Tree {
     env: Rc<Surface>,
     docs: Vec<Compiled>,
     by_name: FxHashMap<Box<str>, u32>,
-    library: FxHashMap<Box<str>, UiDocument>,
+    library: FxHashMap<Box<str>, Arc<UiDocument>>,
     insts: Vec<Inst>,
     els: Vec<El>,
     ifs: Vec<IfBlock>,
@@ -282,7 +283,7 @@ impl Tree {
     }
 
     /// An empty tree over `look`, with the documents it may use.
-    pub fn new(look: Rc<Look>, library: impl IntoIterator<Item = UiDocument>) -> Tree {
+    pub fn new(look: Rc<Look>, library: impl IntoIterator<Item = Arc<UiDocument>>) -> Tree {
         let mut root = look.root.clone();
         root.text.set = 0;
         Tree {
@@ -429,7 +430,7 @@ impl Tree {
                 }
                 chain.pop();
                 let r = reads(&e, scope, self.screen);
-                queue::bind(self.id, Target::Shown { node: b }, e, r, self.env.clone());
+                queue::bind(self.id, Target::Shown { node: b }, Rc::new(e), r, self.env.clone());
             }
             NodeKind::For {
                 var,
@@ -457,7 +458,7 @@ impl Tree {
                 queue::bind(
                     self.id,
                     Target::Rebuild { node: b },
-                    Expr::Path("keys".into()),
+                    Rc::new(Expr::Path("keys".into())),
                     vec![("keys".into(), keys)],
                     self.env.clone(),
                 );
@@ -628,7 +629,7 @@ impl Tree {
             Some(PropValue::Lit(l)) => self.set_text(e, &queue::text_of(&lit(&l))),
             Some(PropValue::Bind(x, _)) => {
                 let r = reads(&x, scope, self.screen);
-                queue::bind(self.id, Target::Text { node: e }, x, r, self.env.clone());
+                queue::bind(self.id, Target::Text { node: e }, Rc::new(x), r, self.env.clone());
             }
             _ => {}
         }
@@ -636,7 +637,7 @@ impl Tree {
         if style != NONE {
             let c = &self.docs[d as usize];
             let [at, len] = c.style.nodes[style as usize].spans;
-            let conds: Vec<(u32, Expr)> = c.style.spans[at as usize..(at + len) as usize]
+            let conds: Vec<(u32, Rc<Expr>)> = c.style.spans[at as usize..(at + len) as usize]
                 .iter()
                 .filter(|s| s.condition != u32::MAX && !c.fixed[s.condition as usize])
                 .map(|s| {
@@ -1213,7 +1214,7 @@ mod tests {
             }],
             "dark",
         ));
-        let mut tree = Tree::new(look, [doc]);
+        let mut tree = Tree::new(look, [Arc::new(doc)]);
         tree.resize(1280.0, 720.0);
         tree.mount("o", &[]).unwrap();
         tree.frame(&og_ui::Fonts::default(), &IconAtlas::default());
@@ -1240,7 +1241,7 @@ mod tests {
             }],
             "dark",
         ));
-        let mut tree = Tree::new(look, [doc]);
+        let mut tree = Tree::new(look, [Arc::new(doc)]);
         tree.resize(200.0, 200.0);
         tree.mount("p", &[]).unwrap();
         let fonts = og_ui::Fonts {
@@ -1280,7 +1281,7 @@ mod tests {
             }],
             "dark",
         ));
-        let mut tree = Tree::new(look, [doc]);
+        let mut tree = Tree::new(look, [Arc::new(doc)]);
         tree.resize(400.0, 400.0);
         tree.mount("m", &[]).unwrap();
         tree.frame(&og_ui::Fonts::default(), &IconAtlas::default());
@@ -1305,7 +1306,7 @@ mod tests {
             }],
             "dark",
         ));
-        let mut tree = Tree::new(look, [doc]);
+        let mut tree = Tree::new(look, [Arc::new(doc)]);
         tree.resize(400.0, 400.0);
         let rows = serde_json::json!([
             {"id": "a", "done": true},
@@ -1348,7 +1349,7 @@ mod tests {
             }],
             "dark",
         ));
-        let mut tree = Tree::new(look, [doc]);
+        let mut tree = Tree::new(look, [Arc::new(doc)]);
         tree.resize(1280.0, 720.0);
         tree.mount("c", &[("on", queue::signal(true.into()))])
             .unwrap();
@@ -1384,7 +1385,7 @@ mod tests {
             }],
             "dark",
         ));
-        let mut tree = Tree::new(look, [doc]);
+        let mut tree = Tree::new(look, [Arc::new(doc)]);
         tree.set_strings(
             "en",
             Box::new(|k| (k == "quests.main").then(|| "Main quest".to_string())),
@@ -1413,7 +1414,7 @@ mod tests {
             }],
             "dark",
         ));
-        let mut tree = Tree::new(look, [doc]);
+        let mut tree = Tree::new(look, [Arc::new(doc)]);
         tree.resize(200.0, 200.0);
         tree.mount("i", &[]).unwrap();
         tree.frame(&og_ui::Fonts::default(), &IconAtlas::default());
@@ -1439,7 +1440,7 @@ mod tests {
             }],
             "dark",
         ));
-        let mut tree = Tree::new(look, [doc]);
+        let mut tree = Tree::new(look, [Arc::new(doc)]);
         tree.resize(200.0, 200.0);
         let long = queue::signal(true.into());
         tree.mount("s", &[("long", long)]).unwrap();
