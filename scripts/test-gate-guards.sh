@@ -9,6 +9,9 @@
 # Each case runs the gate command against scratch outputs, so it builds nothing,
 # touches no real target/ and waits on no running gate. A few seconds.
 set -u -o pipefail
+# A landing's quick runs this with its settings exported (scripts/land.sh);
+# the cases model a plain run, and OG_GATE_LANDING refuses their skips.
+unset OG_GATE_LANDING OG_LANDING_RECHECK
 root="$(cd "$(dirname "$0")/.." && pwd)"
 scratch="$(mktemp -d)"
 trap 'rm -rf "$scratch"' EXIT
