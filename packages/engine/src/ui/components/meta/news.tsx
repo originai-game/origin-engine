@@ -42,7 +42,7 @@ export function News(props: NewsProps) {
                         <View>
                           <View class={`border-rim-soft nine-plate-cut border border-rim transition duration-317 items-start py-3 px-4 gap-2 border data-selected:border-accent data-down:opacity-45`} data-unread={entry().unread} data-pinned={entry().pinned}>
                             <View class="flex-row flex-wrap items-center w-full gap-2">
-                              <Text class={`font-bold text-caption text-info tracking-[0.14em] uppercase bg-well/62 py-0 px-1 rounded-capsule shrink`}>
+                              <Text class={`font-bold text-caption text-info tracking-[0.14em] uppercase bg-well py-0 px-1 rounded-capsule shrink`}>
                                 {entry().kind}
                               </Text>
                               <Text class={`text-caption text-fg-subtle shrink`}>

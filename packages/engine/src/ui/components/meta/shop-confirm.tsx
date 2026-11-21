@@ -50,7 +50,7 @@ export interface ShopConfirmProps {
 export function ShopConfirm(props: ShopConfirmProps) {
   return (
     <View class={`grow shrink basis-0 border-rim nine-panel-cut bg-glass-hi text-fg w-full max-w-105 max-h-full p-4 gap-2 border compact:nine-panel-cut disabled:text-fg-subtle ${packClass("Panel", "frame")}`} label={props.title !== '' ? props.title : t("general.confirm.name")} busy={props.busy} onAction={{ back: (e) => props.onCancel?.(e) }} data-tier-common={(props.rarity || 'common') === "common"}>
-      <View class="absolute left-4 right-[30%] top-0 h-px bg-linear-to-r from-white/55 to-transparent to-70% pointer-events-none" />
+      <View class="absolute left-4 right-[30%] top-0 h-px bg-linear-to-r from-sheen to-transparent to-70% pointer-events-none" />
       <View class={`min-h-12 border-b border-rim-soft w-full items-start text-start py-1 px-4 gap-0.5`}>
         <Text class={`font-display text-xs font-semibold leading-tight tracking-[0.18em] uppercase text-fg-subtle m-0`}>
           {props.title !== '' ? props.title : t("general.confirm.name")}
@@ -70,7 +70,7 @@ export function ShopConfirm(props: ShopConfirmProps) {
             </Text>
           </Show>
         </View>
-        <View class={`w-full bg-well/57 shadow-[inset_0px_0px_0px_1px_#ffffff12] py-1 px-2 m-0`} label={t("general.confirm.cost")}>
+        <View class={`w-full bg-well shadow-[inset_0px_0px_0px_1px_#ffffff12] py-1 px-2 m-0`} label={t("general.confirm.cost")}>
           <For each={props.prices}>
             {(p, i) => (
             <View class="group/entry w-full py-1 gap-1 data-later:border-t data-later:border-material-control-hover" data-later={i() >= 1} data-short={p().short}>
@@ -117,7 +117,7 @@ export function ShopConfirm(props: ShopConfirmProps) {
         </View>
       </Scroll>
       <Show when={props.error}>
-        <Text class={`w-full bg-danger/12 shadow-[inset_3px_0px_0px_#ff9599] py-1 px-2 m-0`} role="alert">
+        <Text class={`w-full bg-danger text-bg shadow-[inset_3px_0px_0px_#ff9599] py-1 px-2 m-0`} role="alert">
           {props.error}
         </Text>
       </Show>

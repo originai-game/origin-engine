@@ -39,7 +39,7 @@ export interface ProfileProps {
 
 export function Profile(props: ProfileProps) {
   return (
-    <View class={`nine-panel-cut bg-glass/96 border border-white/14 text-fg w-full p-4 gap-3 compact:p-2`} label={t("profile.title")} busy={props.loading}>
+    <View class={`nine-panel-cut bg-glass border border-rim text-fg w-full p-4 gap-3 compact:p-2`} label={t("profile.title")} busy={props.loading}>
       <Show when={props.loading} fallback={
           <Show when={props.error} fallback={
               <Show when={props.empty} fallback={
@@ -55,7 +55,7 @@ export function Profile(props: ProfileProps) {
                             {props.name || t("profile.player")}
                           </Text>
                           <Show when={props.handle}>
-                            <View class={`text-caption leading-4.5 text-fg/66 max-w-full`}>
+                            <View class={`text-caption leading-4.5 text-fg-muted max-w-full`}>
                               <Text>{props.handle}</Text>
                             </View>
                           </Show>
@@ -73,22 +73,22 @@ export function Profile(props: ProfileProps) {
                       </Show>
                       <Show when={props.privateStats} fallback={
                           <Show when={props.stats.length} fallback={
-                              <Text class={`text-center text-base text-fg/66 m-0`}>
+                              <Text class={`text-center text-base text-fg-muted m-0`}>
                                 {t("profile.noStats")}
                               </Text>
                           }>
                             <View class={`grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] compact:grid-cols-[minmax(0,1fr)]`} role="list" label={t("profile.stats")}>
                               <For each={props.stats}>
                                 {(s) => (
-                                <View class={`nine-plate-cut bg-plate-hi border border-white/18 text-fg transition duration-317 py-2 px-3 gap-1 data-selected:border-accent data-done:border-success active:border-accent active:scale-96 data-locked:scale-100 disabled:scale-100 data-down:opacity-45 compact:py-1 compact:px-3`} role="listitem">
-                                  <View class={`font-semibold text-xs leading-snug text-fg/78 tracking-[0.14em] uppercase`}>
+                                <View class={`nine-plate-cut bg-plate-hi border border-rim text-fg transition duration-317 py-2 px-3 gap-1 data-selected:border-accent data-done:border-success active:border-accent active:scale-96 data-locked:scale-100 disabled:scale-100 data-down:opacity-45 compact:py-1 compact:px-3`} role="listitem">
+                                  <View class={`font-semibold text-xs leading-snug text-fg-muted tracking-[0.14em] uppercase`}>
                                     <Text>{s().label}</Text>
                                   </View>
                                   <View class={`text-fg leading-[1.05] font-bold compact:text-3xl`}>
                                     <Text class="tabular-nums">{s().value}</Text>
                                   </View>
                                   <Show when={s().detail}>
-                                    <View class={`text-caption leading-4.5 text-fg/66`}>
+                                    <View class={`text-caption leading-4.5 text-fg-muted`}>
                                       <Text>{s().detail}</Text>
                                     </View>
                                   </Show>
@@ -98,7 +98,7 @@ export function Profile(props: ProfileProps) {
                             </View>
                           </Show>
                       }>
-                        <Text class={`text-center text-base text-fg/66 m-0`}>
+                        <Text class={`text-center text-base text-fg-muted m-0`}>
                           {t("profile.private")}
                         </Text>
                       </Show>
@@ -110,11 +110,11 @@ export function Profile(props: ProfileProps) {
                       <For each={props.actions}>
                         {(a) => (
                         <View class="grow shrink basis-0 gap-1">
-                          <View class={`flex-row items-center justify-center min-h-11 text-caption font-bold tracking-[0.14em] uppercase text-fg bg-raised-lo/92 border border-white/24 nine-plate-cut text-center py-1 px-4 gap-1 hover:bg-raised-hi/95 hover:bg-transparent disabled:opacity-45`} role="button" disabled={a().disabled || a().pending} busy={a().pending} onPress={(e) => props.onAction?.(e, a().id)}>
+                          <View class={`flex-row items-center justify-center min-h-11 text-caption font-bold tracking-[0.14em] uppercase text-fg bg-raised-lo border border-rim nine-plate-cut text-center py-1 px-4 gap-1 hover:bg-raised-hi hover:bg-transparent disabled:opacity-45`} role="button" disabled={a().disabled || a().pending} busy={a().pending} onPress={(e) => props.onAction?.(e, a().id)}>
                             <Text class="whitespace-normal">{a().pending ? t("profile.sending") : a().label}</Text>
                           </View>
                           <Show when={a().reason}>
-                            <View class={`text-caption leading-4.5 text-fg/66 text-center`}>
+                            <View class={`text-caption leading-4.5 text-fg-muted text-center`}>
                               <Text>{a().reason}</Text>
                             </View>
                           </Show>
@@ -125,15 +125,15 @@ export function Profile(props: ProfileProps) {
                   </Show>
                 </>
               }>
-                <Text class={`text-center text-base text-fg/66 m-0`} role="status">
+                <Text class={`text-center text-base text-fg-muted m-0`} role="status">
                   {t("profile.empty")}
                 </Text>
               </Show>
           }>
-            <Text class={`text-center text-base text-fg/66 m-0`} role="status">
+            <Text class={`text-center text-base text-fg-muted m-0`} role="status">
               {props.error}
             </Text>
-            <View class={`flex-row items-center justify-center min-h-11 text-caption font-bold tracking-[0.14em] uppercase text-fg bg-raised-lo/92 border border-white/24 nine-plate-cut text-center py-1 px-4 gap-1 hover:bg-raised-hi/95 hover:bg-transparent`} role="button" onPress={(e) => props.onRetry?.(e)}>
+            <View class={`flex-row items-center justify-center min-h-11 text-caption font-bold tracking-[0.14em] uppercase text-fg bg-raised-lo border border-rim nine-plate-cut text-center py-1 px-4 gap-1 hover:bg-raised-hi hover:bg-transparent`} role="button" onPress={(e) => props.onRetry?.(e)}>
               <Text class="whitespace-normal">{t("profile.retry")}</Text>
             </View>
           </Show>
@@ -141,7 +141,7 @@ export function Profile(props: ProfileProps) {
         <View class={`flex-row items-center justify-center gap-2`}>
           <Spinner name={t("profile.loading")} />
         </View>
-        <Text class={`text-center text-base text-fg/66 m-0`} role="status">
+        <Text class={`text-center text-base text-fg-muted m-0`} role="status">
           {t("profile.loading")}
         </Text>
       </Show>

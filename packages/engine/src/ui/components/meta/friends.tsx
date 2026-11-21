@@ -53,7 +53,7 @@ export function Friends(props: FriendsProps) {
             <View class="w-full p-0 m-0 gap-0.5">
               <For each={props.requests}>
                 {(r) => (
-                <View class={`flex-row flex-wrap items-center nine-plate-cut text-fg transition duration-317 border border-gold/45 w-full py-1 px-2 gap-2 data-selected:text-fg disabled:text-fg-subtle data-done:text-fg-subtle data-down:opacity-45`} label={r().name}>
+                <View class={`flex-row flex-wrap items-center nine-plate-cut text-fg transition duration-317 border border-gold w-full py-1 px-2 gap-2 data-selected:text-fg disabled:text-fg-subtle data-done:text-fg-subtle data-down:opacity-45 ${packClass("Row", "frame")}`} label={r().name}>
                   <View class={`flex-row items-center shadow-[inset_0px_0px_0px_1px_#ffcf5a99] justify-center text-gold gap-0 size-12 rounded-capsule`}>
                     <Icon class="size-6 shrink" name={r().avatar} />
                   </View>
@@ -99,7 +99,7 @@ export function Friends(props: FriendsProps) {
               <For each={props.friends}>
                 {(f) => (
                 <View class="flex-row items-center w-full gap-2">
-                  <View class={`flex-row items-center justify-start gap-1 grow shrink basis-0 min-h-11 nine-plate-cut text-fg transition duration-317 py-1 px-2 hover:bg-transparent data-selected:bg-transparent data-selected:bg-hud-accent/24 data-selected:text-fg disabled:text-fg-subtle data-done:text-fg-subtle data-down:opacity-45`} role="button" current={f().id === props.selected} label={f().name} onPress={(e) => props.onChoose?.(e, f().id)} data-status-away={(f().status) === 'away'} data-status-ingame={(f().status) === 'ingame'} data-status-offline={(f().status) === 'offline'} data-status-online={(f().status) === 'online'} data-selected={f().id === props.selected}>
+                  <View class={`flex-row items-center justify-start gap-1 grow shrink basis-0 min-h-11 nine-plate-cut text-fg transition duration-317 py-1 px-2 hover:bg-transparent data-selected:text-fg disabled:text-fg-subtle data-done:text-fg-subtle data-down:opacity-45 ${f().id === props.selected ? packClass("Row", "frame", "selected") : packClass("Row", "frame")}`} role="button" current={f().id === props.selected} label={f().name} onPress={(e) => props.onChoose?.(e, f().id)} data-status-away={(f().status) === 'away'} data-status-ingame={(f().status) === 'ingame'} data-status-offline={(f().status) === 'offline'} data-status-online={(f().status) === 'online'} data-selected={f().id === props.selected}>
                     <View class="flex-row items-center w-full gap-2">
                       <View class="group/avatar-wrap" data-status-away={(f().status) === 'away'} data-status-ingame={(f().status) === 'ingame'} data-status-offline={(f().status) === 'offline'} data-status-online={(f().status) === 'online'}>
                         <View class={`flex-row items-center shadow-[inset_0px_0px_0px_1px_#ffffff14,inset_0px_1px_0px_#ffffff1f] justify-center text-fg gap-0 size-12 rounded-capsule group-data-status-away/avatar-wrap:opacity-45`} data-status-away={(f().status) === 'away'} data-status-ingame={(f().status) === 'ingame'} data-status-offline={(f().status) === 'offline'} data-status-online={(f().status) === 'online'}>
