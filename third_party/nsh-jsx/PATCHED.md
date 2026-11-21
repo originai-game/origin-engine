@@ -12,7 +12,7 @@ directory has them unchanged; the changes after it are only these:
 - oxc 0.153 to 0.157 (the workspace's pin): a string literal's value is a
   `JSStr`, read with `display()`/`as_str()`; `oxc_sourcemap` 9.
 - The primitives are Origin Engine's (`crates/og-ui-next/CONVENTIONS.md`
-  §Components): `View`, `Text`, `Image`, `Icon`, `Scroll`, `Input`, `Svg`
+  §Components): `View`, `Text`, `Image`, `Icon`, `Scroll`, `Input`
   host elements and the control flow `Show` (`when`, `fallback`, `keyed`,
   compiled to `cond`) and `For` (`each`, `key`, compiled to `each`), all
   imported from `@origingame/engine/ui`. NSH's global `If`/`Each`, its

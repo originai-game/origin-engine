@@ -36,7 +36,7 @@ export function AbilitySlot(props: { icon: string; cooldown: number; ready: bool
 
 - **Primitives**, imported from `@origingame/engine/ui` (NSH's rule: tags
   are PascalCase imports; a lowercase tag is an error): `View`, `Text`,
-  `Image`, `Icon`, `Scroll`, `Input`, `Svg` with its shapes, and the
+  `Image`, `Icon`, `Scroll`, `Input`, and the
   control flow `<Show when fallback keyed>` and `<For each key>{(item,
   index) => …}</For>` (`item` and `index` are accessors), and
   `<Switch fallback><Match when>…</Match></Switch>` (components). Every other tag
@@ -111,8 +111,9 @@ node); strings are a u32 byte length and UTF-8; numbers are little-endian.
 | 10 | `release` | id | frees it and its subtree |
 | 11 | `placeholder` | id | an empty anchor that takes no room (`Show`/`For` insert before it) |
 
-Tags: 0 `View`, 1 `Text`, 2 `Image`, 3 `Scroll`, 4 `Input`, 5 `Icon`, 6
-`Svg` (its shapes 7 and up). Events: 0 press, 1 tap, 2 pointerdown,
+Tags: 0 `View`, 1 `Text`, 2 `Image`, 3 `Scroll`, 4 `Input`, 5 `Icon`; there
+are no others. What can be an image is an `Image` (an `.svg` file too: the
+cook makes it a texture); the engine draws no vector shapes. Events: 0 press, 1 tap, 2 pointerdown,
 3 pointermove, 4 pointerup, 5 wheel, 6 focus, 7 blur, 8 key, 9 change.
 
 The reply is `OGEV`, a u32 count and the events since the last batch, each
@@ -158,7 +159,7 @@ Roles: `button` `link` `heading` `image` `text` `checkbox` `radio`
 join its parent). Another name is a group.
 
 Without `role`: a `text` node is static text, an `input` a text box, a
-`scroll` a scroll view, an `image`/`icon`/`svg` an image when labelled. A
+`scroll` a scroll view, an `image`/`icon` an image when labelled. A
 `view` listening to `press` or `tap` is a button, a modal one a dialog,
 one the keyboard reaches or that is labelled a group; any other view is a
 plain container, left out with its children joining its parent. Inside a

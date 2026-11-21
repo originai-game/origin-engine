@@ -90,7 +90,6 @@ export const Image = host<HostProps & { src?: string | undefined }>("image");
 export const Icon = host<HostProps & { name?: string | undefined }>("icon");
 export const Scroll = host<HostProps>("scroll");
 export const Input = host<HostProps & { value?: string | undefined; placeholder?: string | undefined }>("input");
-export const Svg = host<HostProps & { viewBox?: string | undefined }>("svg");
 
 /** `<Show when={c} fallback={…} keyed>`: compiled to the renderer's `cond`. */
 export declare function Show<T>(props: { when: T | undefined | null | false; fallback?: UiChild; keyed?: boolean; children: UiChild | ((value: () => NonNullable<T>) => UiChild) }): UiChild;
