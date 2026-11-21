@@ -134,26 +134,26 @@ struct El {
     image: Option<Box<ImageProps>>,
 }
 
-/// What an op node's props set of its box image (CONVENTIONS.md §Images):
-/// `src`'s texture (a handle, its slot once resolved), and the radial
-/// wipe bound per tick, so a moving share never makes a class string.
+/// What an element's props set of its box image (CONVENTIONS.md §Images):
+/// its source (TSX `src`, .svelte `<img texture>`) and the radial wipe
+/// bound per tick, so a moving share never makes a class string.
 #[derive(Clone, Copy, Debug, Default)]
 pub(crate) struct ImageProps {
-    /// `src`: the texture handle as the game holds it; NaN none.
+    /// The source: the texture handle as the game holds it, which
+    /// [`Tree::set_textures`] resolves as it paints; NaN none.
     pub(crate) handle: f64,
-    /// Its slot (`og_draw::TextureHandle::slot`); 0 none or unresolved.
-    pub(crate) texture: u32,
     pub(crate) wipe: Option<f32>,
     pub(crate) wipe_start: Option<f32>,
     pub(crate) wipe_ccw: Option<bool>,
 }
 
 impl ImageProps {
-    /// The box image `base` (its classes') with these props over it.
-    fn over(&self, base: &crate::style::Slice) -> crate::style::Slice {
+    /// The box image `base` (its classes') with these props over it, the
+    /// source's slot from `textures` (none: 0).
+    fn over(&self, base: &crate::style::Slice, textures: Option<&Textures>) -> crate::style::Slice {
         let mut im = *base;
         if !self.handle.is_nan() {
-            im.texture = self.texture;
+            im.texture = textures.map_or(0, |f| f(self.handle));
         }
         im.wipe = self.wipe.unwrap_or(im.wipe);
         im.wipe_start = self.wipe_start.unwrap_or(im.wipe_start);
@@ -239,8 +239,8 @@ pub struct Tree {
     /// Each element's transform in `drawn.transforms` (its own composed
     /// with its ancestors'; 0 none), what its children compose onto.
     xfs: Vec<u32>,
-    /// The host's: an image's source (a texture handle's number, as text)
-    /// as the texture it draws.
+    /// The host's: an image's source (a texture handle) as the slot it
+    /// draws, read as the tree paints, so a replaced texture follows.
     textures: Option<Textures>,
     /// The mount being made and the key of the row being made.
     mounting: u32,
@@ -260,9 +260,6 @@ pub struct Tree {
     by_js: Vec<u32>,
     classes: ops::Classes,
     pub events: Vec<ops::Fired>,
-    /// Op nodes whose `src` changed since the host last resolved it
-    /// ([`Tree::resolve_sources`]).
-    sources: Vec<u32>,
     /// What moves, keyed by arena node ([`crate::motion`]), at the UI
     /// tick's `time`; `shown` is what each element passes down this frame
     /// as motion shows it ([`Shown`]).
@@ -306,8 +303,10 @@ mod input;
 mod ops;
 pub use ops::{EVENTS, Event as OpEvent, Fired, MAGIC, REFUSED, Resolve};
 
-/// An image's source as its texture ([`Tree::set_textures`]).
-pub type Textures = Box<dyn Fn(&str) -> Option<og_draw::TextureHandle>>;
+/// An image's source, a texture handle as the game holds it, as its
+/// texture's slot (`og_draw::TextureHandle::slot`; 0 none)
+/// ([`Tree::set_textures`]).
+pub type Textures = Box<dyn Fn(f64) -> u32>;
 
 static NEXT_TREE: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(1);
 
@@ -475,7 +474,6 @@ impl Tree {
             by_js: Vec::new(),
             classes: ops::Classes::default(),
             events: Vec::new(),
-            sources: Vec::new(),
             motion: crate::motion::Motion::new(),
             time: 0.0,
             shown: Vec::new(),
@@ -800,7 +798,7 @@ impl Tree {
         let text = match kind {
             Kind::Label | Kind::Kbd | Kind::Button => prop("text"),
             Kind::Icon => prop("icon"),
-            // An image's source, held as its text (an icon's name is too).
+            // An image's source: its box image's ([`Tree::set_text`]).
             Kind::Image => prop("texture"),
             _ => None,
         };
@@ -921,7 +919,11 @@ impl Tree {
         })
     }
 
+    /// `e`'s text; an image's is its source.
     fn set_text(&mut self, e: u32, text: &str) {
+        if self.els[e as usize].kind == Kind::Image {
+            return self.set_src(e, text);
+        }
         let el = &mut self.els[e as usize];
         if &*el.text == text {
             return;
@@ -931,6 +933,18 @@ impl Tree {
         if let Some(leaf) = el.leaf {
             self.arena.set_text(leaf, text);
         }
+        self.paint = true;
+    }
+
+    /// `e`'s box image's source: a texture handle's number ("" none).
+    fn set_src(&mut self, e: u32, src: &str) {
+        let props = self.els[e as usize].image.get_or_insert_with(|| {
+            Box::new(ImageProps {
+                handle: f64::NAN,
+                ..Default::default()
+            })
+        });
+        props.handle = src.trim().parse::<f64>().unwrap_or(f64::NAN);
         self.paint = true;
     }
 
@@ -1369,7 +1383,7 @@ impl Tree {
                 ));
             }
             let im = &match &el.image {
-                Some(props) => props.over(&s.image),
+                Some(props) => props.over(&s.image, self.textures.as_ref()),
                 None => s.image,
             };
             let image = og_draw::TextureHandle::from_slot(im.texture).filter(|_| im.wipe > 0.0);
@@ -1502,24 +1516,6 @@ impl Tree {
                         n as u32,
                     ));
                 }
-            }
-            // An image: its texture over its box.
-            if el.kind == Kind::Image
-                && let Some(t) = self.textures.as_ref().and_then(|f| f(&el.text))
-            {
-                p.quads.push(PaintQuad {
-                    uv: [0.0, 0.0, 1.0, 1.0],
-                    ..quad(
-                        PaintKind::Image,
-                        rect,
-                        clip,
-                        [1.0, 1.0, 1.0, alpha],
-                        [0.0; 4],
-                        [0.0; 4],
-                        t.to_bits(),
-                        og_draw::paint::IMAGE_FILL,
-                    )
-                });
             }
             if el.kind == Kind::Icon && !el.text.is_empty() {
                 let size = b.w.min(b.h).max(1.0);
@@ -2298,9 +2294,7 @@ mod tests {
         tree.frame(&og_ui::Fonts::default(), &IconAtlas::default());
         assert!(images(&tree).is_empty(), "no resolver yet");
         let handle = og_draw::TextureHandle::from_index(3);
-        tree.set_textures(Box::new(move |src| {
-            (src.parse::<f64>().ok()? == 7.0).then_some(handle)
-        }));
+        tree.set_textures(Box::new(move |h| if h == 7.0 { handle.slot() } else { 0 }));
         tree.frame(&og_ui::Fonts::default(), &IconAtlas::default());
         let (x, y, w, h) = tree.find("I").unwrap();
         assert_eq!(images(&tree), [(handle.to_bits(), [x, y, w, h])]);

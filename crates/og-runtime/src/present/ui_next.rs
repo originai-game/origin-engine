@@ -609,9 +609,10 @@ impl Next {
         // An image's source is a Texture handle (`og.load.texture`, a
         // video player's texture).
         let textures = self.textures.clone();
-        tree.set_textures(Box::new(move |src| {
-            let i = crate::world::assets::index_of(src.trim().parse().ok()?)?;
-            textures.borrow().get(i).copied()
+        tree.set_textures(Box::new(move |handle| {
+            crate::world::assets::index_of(handle)
+                .and_then(|i| textures.borrow().get(i).map(|t| t.slot()))
+                .unwrap_or(0)
         }));
         for (doc, inputs, _) in self.mounts.values() {
             let inputs: Vec<(&str, u32)> = inputs.iter().map(|(n, s)| (n.as_str(), *s)).collect();
@@ -637,26 +638,12 @@ impl Next {
     /// build while the game loads and the first frame only commits and
     /// paints. The reply is the events since the last batch, or the
     /// refusal of an op.
-    /// `textures` are the render state's, which an `Image`'s `src` handle
-    /// indexes.
-    pub(crate) fn ops(
-        &mut self,
-        engine: u32,
-        ui: &og_ui::Ui,
-        bytes: &[u8],
-        textures: &[og_render::TextureHandle],
-    ) -> Vec<u8> {
+    pub(crate) fn ops(&mut self, engine: u32, ui: &og_ui::Ui, bytes: &[u8]) -> Vec<u8> {
         self.scheme = ui.theme().scheme;
         self.build(engine, ui, &crate::author::probe::now_ms);
         let tree = self.tree.as_mut().expect("built above");
         let mut out = Vec::new();
-        let applied = tree.apply(bytes);
-        tree.resolve_sources(&|handle| {
-            crate::world::assets::index_of(handle)
-                .and_then(|i| textures.get(i))
-                .map_or(0, |t| t.slot())
-        });
-        match applied {
+        match tree.apply(bytes) {
             Ok(()) => tree.take_events(&mut out),
             Err(e) => {
                 out.extend_from_slice(og_ui_next::tree::REFUSED);

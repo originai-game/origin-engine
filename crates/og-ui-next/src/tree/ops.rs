@@ -314,23 +314,6 @@ impl Tree {
         }
     }
 
-    /// Gives the op nodes whose `src` changed their textures' slots:
-    /// `slot` maps a texture handle as the game holds it to its slot (0
-    /// when it names none). The host calls it after each batch, where it
-    /// holds its textures.
-    pub fn resolve_sources(&mut self, slot: &dyn Fn(f64) -> u32) {
-        for e in std::mem::take(&mut self.sources) {
-            if let Some(props) = self.els[e as usize].image.as_deref_mut() {
-                props.texture = if props.handle.is_nan() {
-                    0
-                } else {
-                    slot(props.handle)
-                };
-                self.paint = true;
-            }
-        }
-    }
-
     /// The element op node `id` is.
     fn op(&self, id: u32) -> Result<u32, String> {
         match self.by_js.get(id as usize) {
@@ -583,9 +566,9 @@ impl Tree {
                             self.paint = true;
                         }
                         // The box image's own props over its classes':
-                        // `src` a texture handle the host resolves after
-                        // the batch, the wipe a number per tick.
-                        "src" | "wipe" | "wipeStart" | "wipeCcw" => {
+                        // `src` a texture handle, the wipe a number per tick.
+                        "src" => self.set_src(e, value),
+                        "wipe" | "wipeStart" | "wipeCcw" => {
                             let props = self.els[e as usize].image.get_or_insert_with(|| {
                                 Box::new(super::ImageProps {
                                     handle: f64::NAN,
@@ -594,11 +577,6 @@ impl Tree {
                             });
                             let number = value.parse::<f32>().ok().filter(|n| n.is_finite());
                             match name {
-                                "src" => {
-                                    props.handle = value.parse::<f64>().unwrap_or(f64::NAN);
-                                    props.texture = 0;
-                                    self.sources.push(e);
-                                }
                                 "wipe" => props.wipe = number.map(|w| w.clamp(0.0, 1.0)),
                                 "wipeStart" => props.wipe_start = number,
                                 _ => {
@@ -609,9 +587,6 @@ impl Tree {
                             self.paint = true;
                         }
                         "name" if self.els[e as usize].kind == Kind::Icon => {
-                            self.set_text(e, value);
-                        }
-                        "src" if self.els[e as usize].kind == Kind::Image => {
                             self.set_text(e, value);
                         }
                         // The rest are read by their own heads: `data-*`
@@ -1044,7 +1019,7 @@ mod tests {
         };
         frame(&mut t);
         assert_eq!(images(&t).len(), 1, "an unresolved src draws nothing yet");
-        t.resolve_sources(&|h| if h == 4294967298.0 { 8 } else { 0 });
+        t.set_textures(Box::new(|h| if h == 4294967298.0 { 8 } else { 0 }));
         frame(&mut t);
         let tex = |slot: u32| og_draw::TextureHandle::from_slot(slot).unwrap().to_bits();
         let got = images(&t);

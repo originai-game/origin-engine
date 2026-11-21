@@ -390,7 +390,7 @@ pub fn og_engine_ui_patch(world: u32, bytes: &[u8]) -> Vec<u8> {
                 .get_or_insert_with(|| Box::new(present::ui_next::Next::new()));
             // The TS renderer's op batches, beside the store's commands.
             match ops {
-                Some(ops) => next.ops(world, &ui.lock(), ops, &rs.textures),
+                Some(ops) => next.ops(world, &ui.lock(), ops),
                 None => next.patch(bytes),
             }
         }
