@@ -79,6 +79,27 @@ interface Slot {
   ticket: number;
   made: unknown;
   refused: boolean;
+  /** Its entry in `compiles`. */
+  compile: Compile;
+}
+
+/**
+ * A pipeline asked for asynchronously: its label, when it was asked for and when it was made
+ * (ms on the Worker's clock; null while it compiles), and how. perf's report lists them
+ * (worker/calls.ts), so a UI or overlay pipeline that finished after Play shows by name.
+ */
+export interface Compile {
+  label: string;
+  asked: number;
+  made: number | null;
+  /** made: the browser's promise; fallback: made at a use that could not wait; refused. */
+  how: "async" | "fallback" | "refused" | null;
+}
+const compiles: Compile[] = [];
+
+/** Every pipeline asked for asynchronously so far, in the order asked. */
+export function compiled(): readonly Compile[] {
+  return compiles;
 }
 interface LateModule {
   device: Device;
@@ -321,13 +342,17 @@ function made(slot: Slot): unknown {
     const make = slot.compute ? native!.createComputePipeline : native!.createRenderPipeline;
     slot.made = make.call(slot.device, bindModules(slot.desc));
     waiting.delete(slot.ticket);
+    slot.compile.made = performance.now();
+    slot.compile.how = "fallback";
   }
   return slot.made;
 }
 
 /** A stand-in for `desc`, asked for asynchronously in a later task. */
 function standIn(device: Device, desc: Descriptor, compute: boolean): Js {
-  const slot: Slot = { device, desc, compute, ticket: ++tickets, made: undefined, refused: false };
+  const compile: Compile = { label: (desc as { label?: string }).label ?? "", asked: performance.now(), made: null, how: null };
+  compiles.push(compile);
+  const slot: Slot = { device, desc, compute, ticket: ++tickets, made: undefined, refused: false, compile };
   waiting.set(slot.ticket, slot);
   pending++;
   queue.push(slot);
@@ -365,12 +390,18 @@ async function drain(): Promise<void> {
         promise.then(
           (p) => {
             pending--;
-            slot.made ??= p;
+            if (!slot.made) {
+              slot.made = p;
+              slot.compile.made = performance.now();
+              slot.compile.how = "async";
+            }
             waiting.delete(slot.ticket);
           },
           () => {
             pending--;
             slot.refused = true;
+            slot.compile.made = performance.now();
+            slot.compile.how = "refused";
           },
         );
       }

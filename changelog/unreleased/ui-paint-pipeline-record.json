@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {
+      "member": "probe.perf",
+      "summary": "On the web, perf's report lists every pipeline asked for asynchronously with when it was asked for and made (json `pipelines`), and the UI's and the overlay's by name in its text, so one still compiling at Play shows."
+    }
+  ]
+}

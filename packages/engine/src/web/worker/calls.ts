@@ -98,7 +98,18 @@ export function callsOf(run: Run): Calls {
         abi.og_engine_perf(run.engine.id, a === "start");
         return true;
       }
-      return JSON.parse(abi.og_engine_perf_report(run.engine.id, JSON.stringify(budgets ?? {})));
+      const report = JSON.parse(abi.og_engine_perf_report(run.engine.id, JSON.stringify(budgets ?? {}))) as { json: Record<string, unknown>; text: string };
+      // The pipelines asked for asynchronously and when each was made (pipelines.ts `compiled`):
+      // the UI's and the overlay's by name, so one still compiling at Play shows.
+      const all = pipelines.compiled();
+      report.json["pipelines"] = all;
+      const ui = all.filter((c) => /^(ui|overlay)\b/.test(c.label));
+      if (ui.length) {
+        const ms = (v: number | null) => (v === null ? "compiling" : `${Math.round(v)} ms`);
+        report.text += `\nui and overlay pipelines asked for asynchronously (${ui.length} of ${all.length})\n`;
+        for (const c of ui) report.text += `  ${c.label.padEnd(32)} asked ${ms(c.asked).padStart(9)}  made ${ms(c.made).padStart(9)}  ${c.how ?? ""}\n`;
+      }
+      return report;
     },
     /**
      * A development build's live edit (the UI gallery): the cooked files a re-cook changed
