@@ -296,8 +296,8 @@
   --color-stage-muted: oklch(from var(--seed-neutral) 0.971 min(c, 0.04) h);
   --color-fill: oklch(from var(--seed-neutral) 0.575 min(c, 0.02) h / 0.2);
   --color-fill-strong: oklch(from var(--seed-neutral) 0.822 min(c, 0.04) h);
-  --color-border: oklch(from var(--seed-neutral) 0.822 min(c, 0.04) h);
-  --color-tile: oklch(from var(--seed-neutral) 0.822 min(c, 0.04) h);
+  --color-border: oklch(from var(--seed-neutral) 0.62 min(c, 0.04) h);
+  --color-tile: oklch(from var(--seed-neutral) 0.62 min(c, 0.04) h);
 }
 
 :root[data-scheme=dark][data-contrast=more] {
@@ -305,6 +305,6 @@
   --color-fg-subtle: oklch(from var(--seed-neutral) 0.842 min(c, 0.025) h);
   --color-fill: oklch(from var(--seed-neutral) 0.575 min(c, 0.02) h / 0.36);
   --color-fill-strong: oklch(from var(--seed-neutral) 0.447 min(c, 0.04) h);
-  --color-border: oklch(from var(--seed-neutral) 0.447 min(c, 0.04) h);
-  --color-tile: oklch(from var(--seed-neutral) 0.447 min(c, 0.04) h);
+  --color-border: oklch(from var(--seed-neutral) 0.53 min(c, 0.04) h);
+  --color-tile: oklch(from var(--seed-neutral) 0.53 min(c, 0.04) h);
 }

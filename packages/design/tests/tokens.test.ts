@@ -122,3 +122,52 @@ test("the chrome has no hue: the primary, its states, the highlight and focus ar
   }
   expect(hued).toEqual([]);
 });
+
+// High contrast (color.css `[data-contrast=more]`) as the engine resolves it:
+// og-ui-next's default pack, each scheme's theme with its `contrast` layer
+// over it. Text reads 7:1 on the theme's grounds and a control's edge, a track
+// and a tile 3:1 on the surface and page they sit on (WCAG 1.4.6 and 1.4.11).
+import pack from "../../../crates/og-ui-next/default/pack.json";
+
+const MORE_TEXT = ["fg", "fg-muted", "fg-subtle"].flatMap((ink) =>
+  ["bg", "bg-subtle", "surface", "surface-raised"].map((on) => [ink, on]),
+);
+const MORE_NON_TEXT = ["border", "track", "tile"].flatMap((edge) => ["bg", "surface"].map((on) => [edge, on]));
+// A tile is also a chip's ground. Its 3:1 edge and 7:1 text on it would
+// need 21:1 from page to ink (black to white), so text on a tile holds AA.
+const MORE_ON_TILE = ["fg", "fg-muted"].map((ink) => [ink, "tile"]);
+
+test("high contrast reads 7:1 for text and 3:1 for edges, tracks and tiles, in both themes", () => {
+  type Entry = string | { light: string; dark: string };
+  const theme = pack.theme.colors as Record<string, Entry>;
+  const more = pack.contrast.colors as Record<string, Entry>;
+  const pick = (e: Entry | undefined, s: Scheme) => (e === undefined ? undefined : typeof e === "string" ? e : e[s]);
+  const hex = (v: string): Rgba => {
+    const m = /^#([0-9a-f]{6})([0-9a-f]{2})?$/i.exec(v);
+    if (!m) throw new Error(`not a colour: ${v}`);
+    const n = parseInt(m[1]!, 16);
+    return [n >> 16, (n >> 8) & 255, n & 255, m[2] ? parseInt(m[2], 16) / 255 : 1];
+  };
+  const get = (n: string, s: Scheme) => {
+    const v = pick(more[n], s) ?? pick(theme[n], s);
+    if (!v) throw new Error(`no colour ${n}`);
+    const c = hex(v);
+    return c[3] < 1 ? css(c, get("bg", s)) : c;
+  };
+  const low: string[] = [];
+  for (const s of SCHEMES) {
+    for (const [ink, on] of MORE_TEXT) {
+      const r = ratio(get(ink!, s), get(on!, s));
+      if (r < 7) low.push(`${s}: ${ink} on ${on} ${r.toFixed(2)}`);
+    }
+    for (const [edge, on] of MORE_NON_TEXT) {
+      const r = ratio(get(edge!, s), get(on!, s));
+      if (r < 3) low.push(`${s}: ${edge} on ${on} ${r.toFixed(2)} (non-text)`);
+    }
+    for (const [ink, on] of MORE_ON_TILE) {
+      const r = ratio(get(ink!, s), get(on!, s));
+      if (r < 4.5) low.push(`${s}: ${ink} on ${on} ${r.toFixed(2)}`);
+    }
+  }
+  expect(low).toEqual([]);
+});

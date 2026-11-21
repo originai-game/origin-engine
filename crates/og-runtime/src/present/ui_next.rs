@@ -1261,7 +1261,7 @@ mod tests {
         }
         let light = pack.theme(Scheme::Light)["colors"]["surface"].clone();
         assert_ne!(light, pack.theme(Scheme::Dark)["colors"]["surface"]);
-        // High contrast: a tile ground takes the strong border's colour.
+        // High contrast: a tile ground takes the pack's high-contrast tile.
         let (high, _) = resolver(
             u32::MAX,
             None,
@@ -1270,12 +1270,12 @@ mod tests {
             [1280.0, 720.0],
             &BTreeMap::new(),
         );
-        let strong = pack.theme(Scheme::Dark)["colors"]["border-strong"]
-            .as_str()
-            .unwrap();
+        let theme: serde_json::Value =
+            serde_json::from_str(&pack.theme_json_high_contrast(Scheme::Dark)).unwrap();
+        let tile = theme["colors"]["tile"].as_str().unwrap();
         assert_eq!(
             high("bg-tile", "", 0, "").skin.fill,
-            high(&format!("bg-[{strong}]"), "", 0, "").skin.fill
+            high(&format!("bg-[{tile}]"), "", 0, "").skin.fill
         );
         let (resolve, _) = resolver(
             u32::MAX,

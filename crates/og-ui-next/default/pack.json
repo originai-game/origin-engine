@@ -3,8 +3,8 @@
   "contrast": {
     "colors": {
       "border": {
-        "dark": "#4b5568",
-        "light": "#bac5dc"
+        "dark": "#626c80",
+        "light": "#7c869b"
       },
       "fg-muted": {
         "dark": "#edf6ff",
@@ -24,8 +24,8 @@
       },
       "stage-muted": "#eaf6ff",
       "tile": {
-        "dark": "#4b5568",
-        "light": "#bac5dc"
+        "dark": "#626c80",
+        "light": "#7c869b"
       }
     }
   },

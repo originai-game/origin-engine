@@ -753,7 +753,8 @@ mod tests {
             high["fg-muted"], plain["fg"],
             "muted ink reads as the body ink"
         );
-        assert_eq!(high["tile"], plain["border-strong"]);
+        assert_ne!(high["tile"], plain["tile"]);
+        assert_eq!(high["tile"], high["border"], "a tile's ground is an edge");
         assert_eq!(high["accent"], plain["accent"], "the rest stays");
         let own = super::Layer::parse(r##"{ "contrast": { "colors": { "tile": "#ffffff" } } }"##)
             .unwrap();
