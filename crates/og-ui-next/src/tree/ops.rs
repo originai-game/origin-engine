@@ -2196,4 +2196,41 @@ mod tests {
             .unwrap();
         assert_eq!((down.id, &*down.value), (2, "50 0 90 20"));
     }
+
+    /// A character the body face lacks draws from the face its mixed font
+    /// falls back to (a CJK pack), in that face's own paint slot, which
+    /// the paint lists with the face's handle; the body's stay in slot 0.
+    #[test]
+    fn a_character_the_body_lacks_draws_from_its_fallback_face() {
+        use og_text::text::{FontMetrics, UiFont};
+        let face = |h: usize, m: FontMetrics| UiFont {
+            handle: Some(og_draw::FontHandle::from_index(h)),
+            metrics: m,
+        };
+        let body = face(0, FontMetrics::fixed(0.5).with_range(&[(0, 0x7f)]));
+        let cjk = face(5, FontMetrics::fixed(1.0));
+        let mut mixed = body.clone();
+        mixed.metrics.runs = Some(vec![cjk].into());
+        let mut fonts = og_ui::Fonts {
+            body,
+            ..Default::default()
+        };
+        fonts.body.metrics.mixed = Some(std::sync::Arc::new(mixed));
+        let mut t = tree();
+        let mut b = Batch::default();
+        b.op(2).u32(1).str("A中");
+        b.op(8).u32(0).u32(1).u32(u32::MAX);
+        t.apply(&b.bytes()).unwrap();
+        t.frame(&fonts, &IconAtlas::default());
+        let glyphs: Vec<_> = t
+            .drawn
+            .quads
+            .iter()
+            .filter(|q| q.kind == og_draw::paint::PaintKind::Glyph as u32)
+            .map(|q| (char::from_u32(q.a).unwrap(), q.b))
+            .collect();
+        assert_eq!(glyphs, [('A', 0), ('中', 2)]);
+        let five = og_draw::FontHandle::from_index(5);
+        assert_eq!(t.drawn.fonts[2].first(), Some(&five));
+    }
 }

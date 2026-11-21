@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "og-ui text (TSX)",
+      "summary": "TSX text draws characters its font lacks from the fonts the UI falls back to: the style's Chinese companion, the locale's fonts (a Chinese, Japanese or Korean font pack), the game's `fallbackFonts` and the fallback face, as the documents' text did. Before, the new core drew TSX text in the body face alone and left out every character it had no glyph for, so Chinese text showed blank."
+    }
+  ]
+}

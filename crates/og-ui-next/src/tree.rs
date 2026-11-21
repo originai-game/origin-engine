@@ -1245,7 +1245,7 @@ impl Tree {
         let moving = self.motion.tick_at(self.time);
         self.settle_exits();
         let (w, h) = self.env.size.get();
-        let m = &fonts.body.metrics;
+        let m = &text_font(fonts).metrics;
         let laid_out = self.arena.layout(w, h, &mut |t, run, width| {
             crate::text::measure(m, t, run, width)
         });
@@ -1382,14 +1382,24 @@ impl Tree {
         let p = &mut self.drawn;
         p.clear();
         (p.width, p.height) = (vw, vh);
-        // Font slots: the body's (0) and the icon set's (1); the host adds
-        // each one's other pages.
-        let body = fonts.body.handle;
+        // Font slots: the body's (0), the icon set's (1), then the faces
+        // a character the body lacks falls back to (its mixed font's runs:
+        // the CJK companion, the locale's, the game's, the fallback), one
+        // each from 2; the host adds each one's other pages.
+        let tf = text_font(fonts);
         let icon_font = icons.font.as_ref().and_then(|f| f.handle);
-        let firsts = [body, icon_font];
-        if p.fonts.len() != 2 || (0..2).any(|k| p.fonts[k].first().copied() != firsts[k]) {
-            p.fonts = firsts.iter().map(|h| h.iter().copied().collect()).collect();
+        let runs = tf.metrics.runs.as_deref().unwrap_or(&[]);
+        let firsts = || {
+            [tf.handle, icon_font]
+                .into_iter()
+                .chain(runs.iter().map(|f| f.handle))
+        };
+        if p.fonts.len() != 2 + runs.len()
+            || firsts().zip(&p.fonts).any(|(h, slot)| slot.first().copied() != h)
+        {
+            p.fonts = firsts().map(|h| h.iter().copied().collect()).collect();
         }
+        let body = tf.handle;
         self.order();
         self.abs.clear();
         self.abs.resize(self.els.len(), (0.0, 0.0, false, [0.0; 4]));
@@ -1407,7 +1417,7 @@ impl Tree {
         self.shown.resize(self.els.len(), unseen);
         self.glyphs.resize_with(self.els.len(), Glyphs::default);
         self.xfs.resize(self.els.len(), 0);
-        let m = &fonts.body.metrics;
+        let m = &tf.metrics;
         for k in 0..self.order.len() {
             let e = self.order[k] as usize;
             let el = &self.els[e];
@@ -2011,9 +2021,26 @@ fn radii(r: [f32; 4], w: f32, h: f32) -> [f32; 4] {
     [tl * f, tr * f, br * f, bl * f]
 }
 
-/// Lays `text` out as glyph quads of font slot 0 from its leaf's top left
-/// (a quad's x the pen, y the baseline, w the size), when it, the width
-/// or the run changed since `g` was laid out.
+/// The font a text draws in: the body's mixed font (the body face, then
+/// the faces it falls back to for what it lacks: `og_ui::Fonts::link`),
+/// else the body alone.
+fn text_font(fonts: &og_ui::Fonts) -> &og_ui::UiFont {
+    fonts.body.metrics.mixed.as_deref().unwrap_or(&fonts.body)
+}
+
+/// The paint font slot of face `k` of a text's mixed font: the body's 0,
+/// a fallback face's from 2 (1 is the icons').
+fn slot_of(k: u8) -> u32 {
+    match k {
+        0 => 0,
+        k => u32::from(k) + 1,
+    }
+}
+
+/// Lays `text` out as glyph quads from its leaf's top left (a quad's x the
+/// pen, y the baseline, w the size; `b` the font slot of the face that
+/// has the character, [`slot_of`]), when it, the width, the run or the
+/// faces changed since `g` was laid out.
 fn lay_out(g: &mut Glyphs, text: &str, eff: &Inherit, width: f32, m: &og_text::text::FontMetrics) {
     let t = &eff.text;
     let size = eff.size;
@@ -2025,7 +2052,10 @@ fn lay_out(g: &mut Glyphs, text: &str, eff: &Inherit, width: f32, m: &og_text::t
         size.to_bits(),
         tracking.to_bits(),
         line.to_bits(),
-        u32::from(t.align) | u32::from(t.nowrap) << 2 | u32::from(bold) << 3,
+        u32::from(t.align)
+            | u32::from(t.nowrap) << 2
+            | u32::from(bold) << 3
+            | (m.runs.as_ref().map_or(0, |r| r.len() as u32) << 4),
     ];
     if g.key == key && *g.text == *text {
         return;
@@ -2062,15 +2092,18 @@ fn lay_out(g: &mut Glyphs, text: &str, eff: &Inherit, width: f32, m: &og_text::t
                     pen += m.kern(p, ch);
                 }
                 if !ch.is_whitespace() {
+                    // The face that has it, drawn at its own scale.
+                    let k = m.face_of(ch.encode_utf8(&mut [0; 4]));
+                    let scale = m.part(usize::from(k)).map_or(1.0, |f| f.scale);
                     quads.push(quad(
                         PaintKind::Glyph,
-                        [dx + pen * size, baseline, size, 0.0],
+                        [dx + pen * size, baseline, size * scale, 0.0],
                         [0.0; 4],
                         [0.0; 4],
                         [0.0; 4],
                         [weight, 0.0, 0.0, 0.0],
                         ch as u32,
-                        0,
+                        slot_of(k),
                     ));
                 }
                 pen += m.advance(ch) + track;
