@@ -37,7 +37,7 @@ export interface LoadingScreenProps {
  */
 export function LoadingScreen(props: LoadingScreenProps) {
   return (
-    <View class="text-accent-hover overflow-hidden" onPress={(e) => props.onNextTip?.(e)}>
+    <View class="text-fg overflow-hidden" onPress={(e) => props.onNextTip?.(e)}>
       <Show when={props.keyArt}>
         <Art class="absolute object-cover inset-0" kind="tutorial" src={props.keyArt} />
       </Show>
@@ -53,7 +53,7 @@ export function LoadingScreen(props: LoadingScreenProps) {
               <View class="w-8 h-[0.143rem] bg-[#38e8ff] shadow-[0px_0px_6.864px_#38e8ff]" />
               <Text class="shrink">{t("screen.loading.entering")}</Text>
             </View>
-            <Text class={`font-display font-bold leading-[1.04] tracking-[-0.01em] text-accent-hover text-stroke-3 text-stroke-bg text-shadow-xs text-shadow-bg/55 m-0 transition duration-240 ease-out starting:opacity-0 starting:translate-y-2`}>
+            <Text class={`font-display font-bold leading-[1.04] tracking-[-0.01em] text-fg text-stroke-3 text-stroke-bg text-shadow-xs text-shadow-bg/55 m-0 transition duration-240 ease-out starting:opacity-0 starting:translate-y-2`}>
               {props.place}
             </Text>
           </View>
@@ -63,14 +63,14 @@ export function LoadingScreen(props: LoadingScreenProps) {
                 {t("screen.loading.tip")}
               </Text>
               <View class={`shrink ml-auto gap-x-1 text-[0.857rem] font-semibold tracking-[0.14em] px-1 pointer-coarse:min-h-11`} role="button" onPress={(e) => props.onNextTip?.(e)}>
-                <Text class="min-w-[1.571rem] text-[0.857rem] leading-[1.6] font-bold text-center text-[#0b0f18] bg-linear-to-b from-accent-hover to-[#c9d1e2] shadow-[0px_2.288px_0px_#0000008c,inset_0px_-2.288px_0px_#0000002e] py-0 px-1 rounded-[4.576px] pointer-coarse:hidden">
+                <Text class="min-w-[1.571rem] text-[0.857rem] leading-[1.6] font-bold text-center text-[#0b0f18] bg-linear-to-b from-white to-[#c9d1e2] shadow-[0px_2.288px_0px_#0000008c,inset_0px_-2.288px_0px_#0000002e] py-0 px-1 rounded-[4.576px] pointer-coarse:hidden">
                   {t("screen.loading.nextKey")}
                 </Text>
                 <Text>{t("screen.loading.next")}</Text>
               </View>
             </View>
-            <Text class="text-body tracking-[0em] text-accent-hover m-0">{props.tip}</Text>
-            <View class="text-caption text-accent-hover/66 short:hidden">{props.lore?.()}</View>
+            <Text class="text-body tracking-[0em] text-fg m-0">{props.tip}</Text>
+            <View class="text-caption text-fg/66 short:hidden">{props.lore?.()}</View>
           </View>
         </View>
         <View class="items-center gap-[1.286rem] compact:items-stretch compact:flex-col-reverse compact:gap-[0.857rem]">
@@ -82,7 +82,7 @@ export function LoadingScreen(props: LoadingScreenProps) {
               <Spinner size={22} name={t("screen.loading.busy")} />
             </Show>
             <Show when={!props.ready && props.status}>
-              <Text class={`text-[0.857rem] font-semibold tracking-[0.14em] uppercase text-accent-hover/78 m-0 shrink`}>
+              <Text class={`text-[0.857rem] font-semibold tracking-[0.14em] uppercase text-fg/78 m-0 shrink`}>
                 {props.status}
               </Text>
             </Show>
@@ -93,7 +93,7 @@ export function LoadingScreen(props: LoadingScreenProps) {
             </Show>
             <Show when={props.ready && props.waits}>
               <Button class="text-accent gap-x-2 min-h-11 font-bold px-[1.571rem] compact:grow compact:shrink compact:basis-auto animate-pop" onPress={(e) => props.onContinue?.(e)} onAction={{ confirm: (e) => props.onContinue?.(e) }}>
-                <Text class="min-w-[1.571rem] text-[0.857rem] leading-[1.6] font-bold text-center text-accent-hover bg-[#0b0f18] uppercase tracking-[0.14em] whitespace-normal py-0 px-1 rounded-[4.576px] pointer-coarse:hidden">
+                <Text class="min-w-[1.571rem] text-[0.857rem] leading-[1.6] font-bold text-center text-fg bg-[#0b0f18] uppercase tracking-[0.14em] whitespace-normal py-0 px-1 rounded-[4.576px] pointer-coarse:hidden">
                   {t("screen.loading.continueKey")}
                 </Text>
                 <Text class="uppercase tracking-[0.14em] whitespace-normal pointer-coarse:hidden">

@@ -133,7 +133,7 @@ export function RpgQuestDetail(props: RpgQuestDetailProps) {
           </Show>
           <Show when={props.canTrack && props.tracked} fallback={
             <Show when={props.canTrack}>
-              <View class={`min-h-11 flex-row items-center justify-center gap-1 px-3 rounded-[4.576px] bg-accent text-accent-ink shadow-[inset_0px_2px_0px_#ffffff59] hover:bg-accent-hover`} role="button" label={t("rpg.quest.track")} onPress={(e) => props.onTrack?.(e)}>
+              <View class={`min-h-11 flex-row items-center justify-center gap-1 px-3 rounded-[4.576px] bg-accent text-accent-ink shadow-[inset_0px_2px_0px_#ffffff59] hover:bg-white`} role="button" label={t("rpg.quest.track")} onPress={(e) => props.onTrack?.(e)}>
                 <Text class={`text-[0.929rem] font-bold tracking-[0.14em] uppercase`}>{t("rpg.quest.track")}</Text>
               </View>
             </Show>

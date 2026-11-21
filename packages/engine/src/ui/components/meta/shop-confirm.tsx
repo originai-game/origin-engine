@@ -50,7 +50,7 @@ export interface ShopConfirmProps {
 export function ShopConfirm(props: ShopConfirmProps) {
   return (
     <View class={`grow shrink basis-0 border-rim rounded-tl-sheet rounded-tr-none rounded-br-sheet rounded-bl-none bg-linear-to-b from-glass-hi to-glass-lo shadow-panel text-fg w-full max-w-105 max-h-full p-4 gap-2 border compact:rounded-tl-sheet compact:rounded-tr-none compact:rounded-b-none disabled:text-fg-subtle`} label={props.title !== '' ? props.title : t("general.confirm.name")} busy={props.busy} onAction={{ back: (e) => props.onCancel?.(e) }} data-tier-common={(props.rarity || 'common') === "common"}>
-      <View class="absolute left-4 right-[30%] top-0 h-px bg-linear-to-r from-slot-selected-edge to-transparent to-70% pointer-events-none" />
+      <View class="absolute left-4 right-[30%] top-0 h-px bg-linear-to-r from-white/55 to-transparent to-70% pointer-events-none" />
       <View class={`min-h-12 border-b border-rim-soft w-full items-start text-start py-1 px-4 gap-0.5`}>
         <Text class={`font-display text-[0.857rem] font-semibold leading-tight tracking-[0.18em] uppercase text-fg-subtle m-0`}>
           {props.title !== '' ? props.title : t("general.confirm.name")}

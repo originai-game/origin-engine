@@ -16,7 +16,7 @@ export interface ObjectiveTrackerProps {
  */
 export function ObjectiveTracker(props: ObjectiveTrackerProps) {
   return (
-    <View class={`text-accent-hover w-[21.429rem] max-w-full mb-0 p-0 gap-[0.429rem] compact:w-full`} role="status" label={props.title}>
+    <View class={`text-fg w-[21.429rem] max-w-full mb-0 p-0 gap-[0.429rem] compact:w-full`} role="status" label={props.title}>
       <Text class={`font-display text-[0.857rem] font-semibold leading-tight tracking-[0.14em] uppercase text-gold whitespace-nowrap m-0 overflow-hidden`}>
         {props.title}
       </Text>

@@ -56,7 +56,7 @@ export function AbilitySlot(props: AbilitySlotProps) {
             <View class="absolute inset-x-0 bottom-0 bg-gold/35 rounded-b-capsule" style={{ height: `${Math.min(1, props.ultimate ?? 0) * 100}%` }} />
           </Show>
           <Show when={props.cooldown > 0}>
-            <View class="absolute inset-x-0 top-0 bg-bg/70" style={{ height: `${Math.min(1, props.cooldown / (props.cooldownMax ?? 1)) * 100}%` }} />
+            <View class="absolute inset-x-0 top-0 bg-black/70" style={{ height: `${Math.min(1, props.cooldown / (props.cooldownMax ?? 1)) * 100}%` }} />
             <View class="items-center justify-center max-w-105 absolute mx-auto inset-0 gap-2">
               <Text class={`tabular-nums text-fg text-shadow-2xs text-[20.64px]`}>
                 {props.cooldown < 10 ? formatNumber(props.cooldown) : formatDuration(props.cooldown)}
@@ -65,7 +65,7 @@ export function AbilitySlot(props: AbilitySlotProps) {
           </Show>
           <Show when={(props.ultimate ?? -1) >= 0 && (props.ultimate ?? -1) < 1}>
             <View class="flex-row items-center absolute bottom-0 justify-center inset-x-0 gap-2">
-              <Text class={`text-caption tabular-nums bg-bg/69 shadow-[inset_0px_0px_0px_1px_#4e586c] text-gold transition duration-317 text-shadow-2xs py-0 px-2 rounded-capsule shrink`}>
+              <Text class={`text-caption tabular-nums bg-black/69 shadow-[inset_0px_0px_0px_1px_#4e586c] text-gold transition duration-317 text-shadow-2xs py-0 px-2 rounded-capsule shrink`}>
                 {`${formatNumber((props.ultimate ?? 0) * 100, { decimals: 0 })}%`}
               </Text>
             </View>

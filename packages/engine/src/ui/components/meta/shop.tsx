@@ -56,7 +56,7 @@ export interface ShopProps {
 export function Shop(props: ShopProps) {
   return (
     <View class={`grow shrink basis-0 border-rim rounded-tl-sheet rounded-tr-none rounded-br-sheet rounded-bl-none bg-linear-to-b from-glass-hi to-glass-lo shadow-panel text-fg p-4 gap-2 border disabled:text-fg-subtle`} label={props.title !== '' ? props.title : t("general.shop.name")} busy={props.loading}>
-      <View class="absolute left-4 right-[30%] top-0 h-px bg-linear-to-r from-slot-selected-edge to-transparent to-70% pointer-events-none" />
+      <View class="absolute left-4 right-[30%] top-0 h-px bg-linear-to-r from-white/55 to-transparent to-70% pointer-events-none" />
       <View class={`flex-row flex-wrap items-end min-h-12 border-b border-rim-soft w-full py-1 px-4 gap-3`}>
         <View class="grow shrink basis-[8.571rem] gap-0.5 compact:basis-full">
           <Show when={props.kicker}>
@@ -92,7 +92,7 @@ export function Shop(props: ShopProps) {
                 <View class={`group/tab text-fg-muted transition duration-317 min-h-11 min-w-11 py-0 px-2 gap-1 data-selected:text-fg`} role="tab" selected={c().id === props.tab} label={c().label} onPress={(e) => props.onChoosetab?.(e, c().id)} data-selected={c().id === props.tab}>
                   <Text class="whitespace-nowrap">{c().label}</Text>
                   <Show when={c().count > 0}>
-                    <Text class={`text-[0.857rem] font-bold bg-material-edge text-fg-subtle py-0 px-1 rounded-capsule group-data-selected/tab:bg-none group-data-selected/tab:bg-[#38e8ff] group-data-selected/tab:text-[#041016]`}>
+                    <Text class={`text-[0.857rem] font-bold bg-white/8 text-fg-subtle py-0 px-1 rounded-capsule group-data-selected/tab:bg-none group-data-selected/tab:bg-[#38e8ff] group-data-selected/tab:text-[#041016]`}>
                       {formatNumber(c().count)}
                     </Text>
                   </Show>
@@ -143,7 +143,7 @@ export function Shop(props: ShopProps) {
                                   </Text>
                                 </Show>
                               </View>
-                              <View class={`flex-row flex-wrap items-center w-full mt-auto pt-1 border-t border-material-control-hover gap-1`} label={t("general.shop.price")}>
+                              <View class={`flex-row flex-wrap items-center w-full mt-auto pt-1 border-t border-white/7 gap-1`} label={t("general.shop.price")}>
                                 <For each={props.prices}>
                                   {(p) => (
                                   <Show when={p().offer === o().id}>
@@ -162,18 +162,18 @@ export function Shop(props: ShopProps) {
                                   )}
                                 </For>
                                 <Show when={o().soldOut}>
-                                  <View class={`flex-row items-center ml-auto text-[0.857rem] font-bold tracking-[0.14em] uppercase text-fg-muted bg-material-edge rounded-tl-[4.576px] rounded-tr-none rounded-br-[4.576px] rounded-bl-none py-0.5 px-1 gap-0.5`}>
+                                  <View class={`flex-row items-center ml-auto text-[0.857rem] font-bold tracking-[0.14em] uppercase text-fg-muted bg-white/8 rounded-tl-[4.576px] rounded-tr-none rounded-br-[4.576px] rounded-bl-none py-0.5 px-1 gap-0.5`}>
                                     <Text class="whitespace-nowrap shrink">{t("general.shop.soldOut")}</Text>
                                   </View>
                                 </Show>
                                 <Show when={o().owned && !o().soldOut}>
-                                  <View class={`flex-row items-center ml-auto text-[0.857rem] font-bold tracking-[0.14em] uppercase text-fg-muted bg-material-edge rounded-tl-[4.576px] rounded-tr-none rounded-br-[4.576px] rounded-bl-none py-0.5 px-1 gap-0.5 data-kind-owned:text-success data-kind-owned:bg-none data-kind-owned:bg-success/12`} data-kind-owned={true}>
+                                  <View class={`flex-row items-center ml-auto text-[0.857rem] font-bold tracking-[0.14em] uppercase text-fg-muted bg-white/8 rounded-tl-[4.576px] rounded-tr-none rounded-br-[4.576px] rounded-bl-none py-0.5 px-1 gap-0.5 data-kind-owned:text-success data-kind-owned:bg-none data-kind-owned:bg-success/12`} data-kind-owned={true}>
                                     <Icon class="size-[0.857rem]" name="check" />
                                     <Text class="whitespace-nowrap shrink">{t("general.shop.owned")}</Text>
                                   </View>
                                 </Show>
                                 <Show when={!o().affordable && !o().soldOut && !o().owned}>
-                                  <View class={`flex-row items-center ml-auto text-[0.857rem] font-bold tracking-[0.14em] uppercase text-fg-muted bg-material-edge rounded-tl-[4.576px] rounded-tr-none rounded-br-[4.576px] rounded-bl-none py-0.5 px-1 gap-0.5 data-kind-short:text-danger data-kind-short:bg-none data-kind-short:bg-danger/12`} data-kind-short={true}>
+                                  <View class={`flex-row items-center ml-auto text-[0.857rem] font-bold tracking-[0.14em] uppercase text-fg-muted bg-white/8 rounded-tl-[4.576px] rounded-tr-none rounded-br-[4.576px] rounded-bl-none py-0.5 px-1 gap-0.5 data-kind-short:text-danger data-kind-short:bg-none data-kind-short:bg-danger/12`} data-kind-short={true}>
                                     <Text class="whitespace-nowrap shrink">{t("general.shop.short")}</Text>
                                   </View>
                                 </Show>
@@ -210,7 +210,7 @@ export function Shop(props: ShopProps) {
                                 </Text>
                               </Show>
                             </View>
-                            <View class={`flex-row flex-wrap items-center w-full mt-auto pt-1 border-t border-material-control-hover gap-1`} label={t("general.shop.price")}>
+                            <View class={`flex-row flex-wrap items-center w-full mt-auto pt-1 border-t border-white/7 gap-1`} label={t("general.shop.price")}>
                               <For each={props.prices}>
                                 {(p) => (
                                 <Show when={p().offer === o().id}>

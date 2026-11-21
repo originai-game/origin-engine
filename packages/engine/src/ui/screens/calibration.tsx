@@ -69,11 +69,11 @@ export interface CalibrationScreenProps {
 
 export function CalibrationScreen(props: CalibrationScreenProps) {
   return (
-    <View class="grow shrink basis-0 justify-center items-center text-accent-hover w-full p-8 gap-2 compact:p-3">
+    <View class="grow shrink basis-0 justify-center items-center text-fg w-full p-8 gap-2 compact:p-3">
       <View class="absolute inset-0" />
       <View class={`rounded-tl-[18.288px] rounded-tr-none rounded-br-[18.288px] rounded-bl-none bg-linear-to-b from-[#171f30d6] to-[#080c16e0] shadow-[inset_0px_0px_0px_1px_#ffffff2e,inset_0px_1px_0px_#ffffff8c] text-fg gap-y-4 w-full max-w-[54.286rem] py-6 px-8 compact:gap-y-3 compact:p-4 disabled:text-fg-subtle`}>
         <View class="items-center gap-x-2 p-0 m-0 compact:gap-x-1">
-          <View class={`group/brightness items-center gap-x-2 text-[0.929rem] font-semibold tracking-[0.14em] uppercase text-accent-hover/56 compact:gap-x-1 compact:tracking-md data-done:text-accent-hover/74 data-on:text-accent-hover compact:data-on:grow-0 compact:data-on:shrink compact:data-on:basis-auto compact:data-on:min-w-0`} data-on={props.step === "brightness"} data-done={props.step !== "brightness"}>
+          <View class={`group/brightness items-center gap-x-2 text-[0.929rem] font-semibold tracking-[0.14em] uppercase text-fg/56 compact:gap-x-1 compact:tracking-md data-done:text-fg/74 data-on:text-fg compact:data-on:grow-0 compact:data-on:shrink compact:data-on:basis-auto compact:data-on:min-w-0`} data-on={props.step === "brightness"} data-done={props.step !== "brightness"}>
             <View class="grid items-center justify-items-center shadow-[inset_0px_0px_0px_1px_#ffffff4d] text-[0.929rem] size-[1.857rem] rounded-full group-data-on/brightness:shadow-[0px_0px_11.424px_#38e8ff] group-data-on/brightness:bg-none group-data-on/brightness:bg-[#38e8ff] group-data-on/brightness:text-[#0a0f19] group-data-done/brightness:bg-none group-data-done/brightness:bg-[#465064] shrink">
               <Text class="tabular-nums whitespace-nowrap">{1}</Text>
             </View>
@@ -81,8 +81,8 @@ export function CalibrationScreen(props: CalibrationScreenProps) {
               {t("screen.calibration.brightness")}
             </Text>
           </View>
-          <View class="grow shrink basis-0 min-w-2 h-px bg-accent-hover/30 compact:min-w-1" role="separator" />
-          <View class={`group/offset items-center gap-x-2 text-[0.929rem] font-semibold tracking-[0.14em] uppercase text-accent-hover/56 compact:gap-x-1 compact:tracking-md data-done:text-accent-hover/74 data-on:text-accent-hover compact:data-on:grow-0 compact:data-on:shrink compact:data-on:basis-auto compact:data-on:min-w-0`} data-on={props.step === "offset"} data-done={props.step === "controller"}>
+          <View class="grow shrink basis-0 min-w-2 h-px bg-white/30 compact:min-w-1" role="separator" />
+          <View class={`group/offset items-center gap-x-2 text-[0.929rem] font-semibold tracking-[0.14em] uppercase text-fg/56 compact:gap-x-1 compact:tracking-md data-done:text-fg/74 data-on:text-fg compact:data-on:grow-0 compact:data-on:shrink compact:data-on:basis-auto compact:data-on:min-w-0`} data-on={props.step === "offset"} data-done={props.step === "controller"}>
             <View class="grid items-center justify-items-center shadow-[inset_0px_0px_0px_1px_#ffffff4d] text-[0.929rem] size-[1.857rem] rounded-full group-data-on/offset:shadow-[0px_0px_11.424px_#38e8ff] group-data-on/offset:bg-none group-data-on/offset:bg-[#38e8ff] group-data-on/offset:text-[#0a0f19] group-data-done/offset:bg-none group-data-done/offset:bg-[#465064] shrink">
               <Text class="tabular-nums whitespace-nowrap">{2}</Text>
             </View>
@@ -90,8 +90,8 @@ export function CalibrationScreen(props: CalibrationScreenProps) {
               {t("screen.calibration.offset")}
             </Text>
           </View>
-          <View class="grow shrink basis-0 min-w-2 h-px bg-accent-hover/30 compact:min-w-1" role="separator" />
-          <View class={`group/controller items-center gap-x-2 text-[0.929rem] font-semibold tracking-[0.14em] uppercase text-accent-hover/56 compact:gap-x-1 compact:tracking-md data-on:text-accent-hover compact:data-on:grow-0 compact:data-on:shrink compact:data-on:basis-auto compact:data-on:min-w-0`} data-on={props.step === "controller"}>
+          <View class="grow shrink basis-0 min-w-2 h-px bg-white/30 compact:min-w-1" role="separator" />
+          <View class={`group/controller items-center gap-x-2 text-[0.929rem] font-semibold tracking-[0.14em] uppercase text-fg/56 compact:gap-x-1 compact:tracking-md data-on:text-fg compact:data-on:grow-0 compact:data-on:shrink compact:data-on:basis-auto compact:data-on:min-w-0`} data-on={props.step === "controller"}>
             <View class="grid items-center justify-items-center shadow-[inset_0px_0px_0px_1px_#ffffff4d] text-[0.929rem] size-[1.857rem] rounded-full group-data-on/controller:shadow-[0px_0px_11.424px_#38e8ff] group-data-on/controller:bg-none group-data-on/controller:bg-[#38e8ff] group-data-on/controller:text-[#0a0f19] shrink">
               <Text class="tabular-nums whitespace-nowrap">{3}</Text>
             </View>
@@ -107,11 +107,11 @@ export function CalibrationScreen(props: CalibrationScreenProps) {
             <Show when={props.step === "offset"} fallback={
                 <Show when={props.step === "controller"}>
                   <View class="gap-y-3">
-                    <Text class="text-[1.143rem] leading-normal text-accent-hover/74 line-clamp-3 m-0 compact:text-base">
+                    <Text class="text-[1.143rem] leading-normal text-fg/74 line-clamp-3 m-0 compact:text-base">
                       {t("screen.calibration.controllerHint")}
                     </Text>
                     <View class="flex-wrap items-center gap-y-2 gap-x-3">
-                      <Text class={`tracking-xs text-accent-hover/74 text-[1.143rem] leading-normal line-clamp-3 font-semibold m-0 compact:text-base shrink`}>
+                      <Text class={`tracking-xs text-fg/74 text-[1.143rem] leading-normal line-clamp-3 font-semibold m-0 compact:text-base shrink`}>
                         {t("screen.calibration.deadZone")}
                       </Text>
                       <Slider label={t("screen.calibration.deadZone")} value={props.deadZone} min={0} max={0.5} step={0.01} onChange={(e, v) => props.onDeadZone?.(e, v)} />
@@ -120,17 +120,17 @@ export function CalibrationScreen(props: CalibrationScreenProps) {
                 </Show>
             }>
               <View class="gap-y-3">
-                <Text class="text-[1.143rem] leading-normal text-accent-hover/74 line-clamp-3 m-0 compact:text-base">
+                <Text class="text-[1.143rem] leading-normal text-fg/74 line-clamp-3 m-0 compact:text-base">
                   {t("screen.calibration.offsetHint")}
                 </Text>
                 <View class="flex-row flex-wrap items-center gap-y-2 gap-x-3">
-                  <Button class="text-accent-hover bg-linear-to-b from-[#171f30d6] to-[#080c16e0] shadow-[inset_0px_1px_0px_#ffffff73] rounded-tl-[18.288px] rounded-tr-none rounded-br-[18.288px] rounded-bl-none min-w-40 h-9 disabled:border-transparent active:border-transparent hover:bg-linear-to-b hover:from-[#171f30d6] hover:to-[#080c16e0] hover:bg-transparent hover:border-transparent compact:min-w-0 compact:grow compact:shrink compact:basis-full data-pressed:hover:border-transparent" onPress={(e) => props.onMeasure?.(e)}>
+                  <Button class="text-fg bg-linear-to-b from-[#171f30d6] to-[#080c16e0] shadow-[inset_0px_1px_0px_#ffffff73] rounded-tl-[18.288px] rounded-tr-none rounded-br-[18.288px] rounded-bl-none min-w-40 h-9 disabled:border-transparent active:border-transparent hover:bg-linear-to-b hover:from-[#171f30d6] hover:to-[#080c16e0] hover:bg-transparent hover:border-transparent compact:min-w-0 compact:grow compact:shrink compact:basis-full data-pressed:hover:border-transparent" onPress={(e) => props.onMeasure?.(e)}>
                     <Text>{t("screen.calibration.start")}</Text>
                   </Button>
                   <Button class="text-accent rounded-tl-[18.288px] rounded-tr-none rounded-br-[18.288px] rounded-bl-none min-w-40 h-9 compact:min-w-0 compact:grow compact:shrink compact:basis-0" onPress={(e) => props.onTap?.(e)}>
                     <Text>{t("screen.calibration.tap")}</Text>
                   </Button>
-                  <Text class="text-base leading-normal text-accent-hover/74 line-clamp-3 tabular-nums m-0 compact:text-base shrink">
+                  <Text class="text-base leading-normal text-fg/74 line-clamp-3 tabular-nums m-0 compact:text-base shrink">
                     {t("screen.calibration.Taps", { taps: props.taps })}
                   </Text>
                 </View>
@@ -144,14 +144,14 @@ export function CalibrationScreen(props: CalibrationScreenProps) {
             </Show>
         }>
           <View class="gap-y-3">
-            <Text class="text-[1.143rem] leading-normal text-accent-hover/74 line-clamp-3 m-0 compact:text-base">
+            <Text class="text-[1.143rem] leading-normal text-fg/74 line-clamp-3 m-0 compact:text-base">
               {t("screen.calibration.brightnessHint")}
             </Text>
             <Slider label={t("screen.calibration.brightness")} value={props.brightness} min={0} max={1} step={0.01} onChange={(e, v) => props.onBrightness?.(e, v)} />
           </View>
         </Show>
         <View class="flex-row flex-wrap items-center justify-between gap-2">
-          <Button class="text-accent-hover bg-linear-to-b from-[#171f30d6] to-[#080c16e0] shadow-[inset_0px_1px_0px_#ffffff73] rounded-tl-[18.288px] rounded-tr-none rounded-br-[18.288px] rounded-bl-none min-w-40 h-9 disabled:border-transparent active:border-transparent hover:bg-linear-to-b hover:from-[#171f30d6] hover:to-[#080c16e0] hover:bg-transparent hover:border-transparent hover:shadow-[inset_0px_2px_0px_#38e8ff] compact:min-w-0 compact:grow compact:shrink compact:basis-0 data-pressed:hover:border-transparent" onPress={(e) => props.onBack?.(e)}>
+          <Button class="text-fg bg-linear-to-b from-[#171f30d6] to-[#080c16e0] shadow-[inset_0px_1px_0px_#ffffff73] rounded-tl-[18.288px] rounded-tr-none rounded-br-[18.288px] rounded-bl-none min-w-40 h-9 disabled:border-transparent active:border-transparent hover:bg-linear-to-b hover:from-[#171f30d6] hover:to-[#080c16e0] hover:bg-transparent hover:border-transparent hover:shadow-[inset_0px_2px_0px_#38e8ff] compact:min-w-0 compact:grow compact:shrink compact:basis-0 data-pressed:hover:border-transparent" onPress={(e) => props.onBack?.(e)}>
             <Text>{t("screen.common.back")}</Text>
           </Button>
           <Show when={props.step === "controller"} fallback={

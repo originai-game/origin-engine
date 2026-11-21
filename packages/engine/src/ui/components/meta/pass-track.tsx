@@ -50,7 +50,7 @@ export interface PassTrackProps {
 export function PassTrack(props: PassTrackProps) {
   return (
     <View class={`grow shrink basis-0 border-rim rounded-tl-sheet rounded-tr-none rounded-br-sheet rounded-bl-none bg-linear-to-b from-glass-hi to-glass-lo shadow-panel text-fg w-full p-4 gap-3 border disabled:text-fg-subtle`} label={props.title || t("meta.pass.title")} busy={(props.loading ?? false)}>
-      <View class="absolute left-4 right-[30%] top-0 h-px bg-linear-to-r from-slot-selected-edge to-transparent to-70% pointer-events-none" />
+      <View class="absolute left-4 right-[30%] top-0 h-px bg-linear-to-r from-white/55 to-transparent to-70% pointer-events-none" />
       <View class={`flex-row flex-wrap items-end min-h-12 border-b border-rim-soft w-full py-1 px-4 gap-3`}>
         <View class="grow shrink basis-[11.429rem] gap-0.5 compact:basis-full">
           <Show when={props.season || props.refresh}>
@@ -125,7 +125,7 @@ export function PassTrack(props: PassTrackProps) {
                               </Show>
                               <Show when={r().state === 'claimed'} fallback={
                                   <Show when={r().state === 'available' && (props.premiumUnlocked ?? false)} fallback={
-                                      <View class={`flex-row items-center mt-auto text-[0.857rem] font-bold tracking-[0.14em] uppercase text-fg-muted bg-material-edge rounded-tl-[4.576px] rounded-tr-none rounded-br-[4.576px] rounded-bl-none py-0.5 px-1 gap-0.5`}>
+                                      <View class={`flex-row items-center mt-auto text-[0.857rem] font-bold tracking-[0.14em] uppercase text-fg-muted bg-white/8 rounded-tl-[4.576px] rounded-tr-none rounded-br-[4.576px] rounded-bl-none py-0.5 px-1 gap-0.5`}>
                                         <Text class="whitespace-nowrap">{t("meta.locked")}</Text>
                                       </View>
                                   }>
@@ -134,7 +134,7 @@ export function PassTrack(props: PassTrackProps) {
                                     </View>
                                   </Show>
                               }>
-                                <View class={`flex-row items-center mt-auto text-[0.857rem] font-bold tracking-[0.14em] uppercase text-fg-muted bg-material-edge rounded-tl-[4.576px] rounded-tr-none rounded-br-[4.576px] rounded-bl-none py-0.5 px-1 gap-0.5 data-kind-claimed:text-success data-kind-claimed:bg-none data-kind-claimed:bg-success/12`} data-kind-claimed={true}>
+                                <View class={`flex-row items-center mt-auto text-[0.857rem] font-bold tracking-[0.14em] uppercase text-fg-muted bg-white/8 rounded-tl-[4.576px] rounded-tr-none rounded-br-[4.576px] rounded-bl-none py-0.5 px-1 gap-0.5 data-kind-claimed:text-success data-kind-claimed:bg-none data-kind-claimed:bg-success/12`} data-kind-claimed={true}>
                                   <Icon class="size-[0.857rem]" name="check" />
                                   <Text class="whitespace-nowrap">{t("meta.claimed")}</Text>
                                 </View>
@@ -171,7 +171,7 @@ export function PassTrack(props: PassTrackProps) {
                               </Show>
                               <Show when={r().state === 'claimed'} fallback={
                                   <Show when={r().state === 'available'} fallback={
-                                      <View class={`flex-row items-center mt-auto text-[0.857rem] font-bold tracking-[0.14em] uppercase text-fg-muted bg-material-edge rounded-tl-[4.576px] rounded-tr-none rounded-br-[4.576px] rounded-bl-none py-0.5 px-1 gap-0.5`}>
+                                      <View class={`flex-row items-center mt-auto text-[0.857rem] font-bold tracking-[0.14em] uppercase text-fg-muted bg-white/8 rounded-tl-[4.576px] rounded-tr-none rounded-br-[4.576px] rounded-bl-none py-0.5 px-1 gap-0.5`}>
                                         <Text class="whitespace-nowrap">{t("meta.locked")}</Text>
                                       </View>
                                   }>
@@ -180,7 +180,7 @@ export function PassTrack(props: PassTrackProps) {
                                     </View>
                                   </Show>
                               }>
-                                <View class={`flex-row items-center mt-auto text-[0.857rem] font-bold tracking-[0.14em] uppercase text-fg-muted bg-material-edge rounded-tl-[4.576px] rounded-tr-none rounded-br-[4.576px] rounded-bl-none py-0.5 px-1 gap-0.5 data-kind-claimed:text-success data-kind-claimed:bg-none data-kind-claimed:bg-success/12`} data-kind-claimed={true}>
+                                <View class={`flex-row items-center mt-auto text-[0.857rem] font-bold tracking-[0.14em] uppercase text-fg-muted bg-white/8 rounded-tl-[4.576px] rounded-tr-none rounded-br-[4.576px] rounded-bl-none py-0.5 px-1 gap-0.5 data-kind-claimed:text-success data-kind-claimed:bg-none data-kind-claimed:bg-success/12`} data-kind-claimed={true}>
                                   <Icon class="size-[0.857rem]" name="check" />
                                   <Text class="whitespace-nowrap">{t("meta.claimed")}</Text>
                                 </View>

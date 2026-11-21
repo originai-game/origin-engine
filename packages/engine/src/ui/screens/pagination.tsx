@@ -32,7 +32,7 @@ export function Pagination(props: PaginationProps) {
           {(p) => (
           <View class="shrink">
             <Show when={p().gap}>
-              <Text class={`text-[0.857rem] font-semibold tracking-[0.14em] uppercase text-accent-hover/50 py-0 px-1`}>
+              <Text class={`text-[0.857rem] font-semibold tracking-[0.14em] uppercase text-fg/50 py-0 px-1`}>
                 {p().label}
               </Text>
             </Show>

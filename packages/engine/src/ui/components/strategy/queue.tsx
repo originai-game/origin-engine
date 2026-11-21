@@ -54,7 +54,7 @@ export function StrategyQueue(props: StrategyQueueProps) {
                 <Image class="absolute inset-0 size-full" src={q().picture} />
               </Show>
               <Show when={q().state === "blocked"}>
-                <View class="absolute inset-0 bg-bg/55" />
+                <View class="absolute inset-0 bg-black/55" />
               </Show>
               <Show when={q().state !== "waiting"}>
                 <View class="absolute inset-x-0 top-0 bg-[#060910ad]" style={{ height: `${Math.min(1, Math.max(0, q().progress)) * 100}%` }} />

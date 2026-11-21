@@ -53,7 +53,7 @@ export function ItemSlot(props: ItemSlotProps) {
           </View>
         </Show>
         <Show when={(props.cooldown ?? 0) > 0 && !(props.empty ?? false) && !(props.loading ?? false)}>
-          <View class={`bg-bg/69 absolute bottom-0 pointer-events-none inset-x-0`} style={{ height: `${Math.min(Math.max((props.cooldownMax ?? 1) > 0 ? (props.cooldown ?? 0) / (props.cooldownMax ?? 1) : 0, 0), 1) * 100}%` }} />
+          <View class={`bg-black/69 absolute bottom-0 pointer-events-none inset-x-0`} style={{ height: `${Math.min(Math.max((props.cooldownMax ?? 1) > 0 ? (props.cooldown ?? 0) / (props.cooldownMax ?? 1) : 0, 0), 1) * 100}%` }} />
           <View class={`items-center justify-center max-w-105 absolute text-lg font-bold text-fg mx-auto inset-0 gap-2`}>
             <Text class="tabular-nums">{formatDuration((props.cooldown ?? 0))}</Text>
           </View>

@@ -50,7 +50,7 @@ export function RhythmGauge(props: RhythmGaugeProps) {
           style={{ height: `${full * 100}%` }}
         />
         <For each={Array.from({ length: 9 }, (_, i) => i)}>
-          {(i) => <View class={`absolute left-0 right-0 h-[3px] bg-bg/85`} style={{ top: `${(i() + 1) * 10}%`, marginTop: "-1.5px" }} />}
+          {(i) => <View class={`absolute left-0 right-0 h-[3px] bg-black/85`} style={{ top: `${(i() + 1) * 10}%`, marginTop: "-1.5px" }} />}
         </For>
       </View>
       <Text class={`text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap text-[#ffffffc7] text-stroke-3 text-stroke-bg group-data-kind-fever/gauge:text-[#ff3d8a]`}>

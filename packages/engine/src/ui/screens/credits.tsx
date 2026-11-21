@@ -25,7 +25,7 @@ export interface CreditsScreenProps {
 
 export function CreditsScreen(props: CreditsScreenProps) {
   return (
-    <View class={`grow shrink basis-0 text-accent-hover p-0 gap-0 overflow-hidden`} onPress={(e) => props.onFaster?.(e)} onAction={{ confirm: (e) => props.onFaster?.(e) }}>
+    <View class={`grow shrink basis-0 text-fg p-0 gap-0 overflow-hidden`} onPress={(e) => props.onFaster?.(e)} onAction={{ confirm: (e) => props.onFaster?.(e) }}>
       <Show when={props.keyArt !== 0}>
         <Art class="absolute object-cover inset-0 size-full" kind="keyArt" src={props.keyArt} />
       </Show>
@@ -58,7 +58,7 @@ export function CreditsScreen(props: CreditsScreenProps) {
                     {n().name}
                   </Text>
                   <Show when={n().role}>
-                    <Text class={`text-[0.929rem] font-semibold tracking-xl uppercase text-accent-hover/56 m-0`}>
+                    <Text class={`text-[0.929rem] font-semibold tracking-xl uppercase text-fg/56 m-0`}>
                       {n().role}
                     </Text>
                   </Show>
@@ -72,8 +72,8 @@ export function CreditsScreen(props: CreditsScreenProps) {
           <View class="w-full max-w-140">{props.licences?.()}</View>
         </View>
       </View>
-      <View class="absolute right-6 bottom-4 items-center gap-x-2 text-[0.929rem] text-accent-hover/74 pointer-coarse:hidden compact:hidden">
-        <Text class="text-[0.857rem] leading-[1.6] font-bold text-[#0b0f18] bg-linear-to-b from-accent-hover to-[#c9d1e2] shadow-[0px_2.288px_0px_#0000008c,inset_0px_-2.288px_0px_#0000002e] py-0 px-1 rounded-[4.576px] shrink">
+      <View class="absolute right-6 bottom-4 items-center gap-x-2 text-[0.929rem] text-fg/74 pointer-coarse:hidden compact:hidden">
+        <Text class="text-[0.857rem] leading-[1.6] font-bold text-[#0b0f18] bg-linear-to-b from-white to-[#c9d1e2] shadow-[0px_2.288px_0px_#0000008c,inset_0px_-2.288px_0px_#0000002e] py-0 px-1 rounded-[4.576px] shrink">
           {t("screen.credits.fasterKey")}
         </Text>
         <Text class="shrink">{t("screen.credits.faster")}</Text>

@@ -47,7 +47,7 @@ export function Avatar(props: AvatarProps) {
           </Show>
         </View>
         <Show when={props.frame}>
-          <View class={`absolute border-accent-ink pointer-events-none inset-0 rounded-capsule border-3 data-muted:opacity-45`} data-frame={props.frame} />
+          <View class={`absolute border-focus pointer-events-none inset-0 rounded-capsule border-3 data-muted:opacity-45`} data-frame={props.frame} />
         </Show>
         <Show when={props.status && !(props.loading ?? false)}>
           <View class={`absolute top-[2%] right-[2%] border-tile bg-accent text-fg size-4 rounded-capsule border-2 data-tone-success:bg-none data-tone-success:bg-success data-tone-success:text-bg data-tone-danger:bg-none data-tone-danger:bg-danger data-tone-danger:text-bg data-tone-warn:bg-none data-tone-warn:bg-warn data-tone-warn:text-bg`} data-tone-success={(props.status === 'online' ? 'success' : props.status === 'away' ? 'warn' : props.status === 'busy' ? 'danger' : null) === "success"} data-tone-warn={(props.status === 'online' ? 'success' : props.status === 'away' ? 'warn' : props.status === 'busy' ? 'danger' : null) === "warn"} data-tone-danger={(props.status === 'online' ? 'success' : props.status === 'away' ? 'warn' : props.status === 'busy' ? 'danger' : null) === "danger"} />

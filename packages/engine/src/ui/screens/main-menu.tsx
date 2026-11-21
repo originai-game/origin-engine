@@ -40,7 +40,7 @@ export interface MainMenuScreenProps {
 
 export function MainMenuScreen(props: MainMenuScreenProps) {
   return (
-    <View class="text-accent-hover overflow-hidden">
+    <View class="text-fg overflow-hidden">
       <Show when={props.keyArt !== 0}>
         <Art class="absolute object-cover inset-0 size-full" kind="keyArt" src={props.keyArt} />
       </Show>
@@ -64,18 +64,18 @@ export function MainMenuScreen(props: MainMenuScreenProps) {
                 {props.news}
               </Text>
             </View>
-            <Icon class="text-accent-hover/74 size-4 rtl:-scale-x-100 rtl:scale-y-100" name="chevronRight" />
+            <Icon class="text-fg/74 size-4 rtl:-scale-x-100 rtl:scale-y-100" name="chevronRight" />
           </View>
         </Show>
         <View class="gap-y-0.5 w-[31.429rem] max-w-full mt-auto -ml-4 short:gap-y-0 compact:w-auto compact:max-w-none compact:-mx-4 compact:data-after-news:mt-0" data-after-news={props.news !== ""}>
           <Show when={props.canContinue}>
-            <View class={`group/continue w-full min-h-11 text-accent-hover/74 py-2 px-4 hover:bg-transparent hover:bg-linear-to-r hover:from-[#38e8ff3d] hover:via-[#38e8ff14] hover:via-55% hover:to-[#38e8ff08] hover:shadow-[inset_3.424px_0px_0px_#38e8ff,inset_0px_1px_0px_#ffffff2e] hover:text-accent-hover active:bg-transparent active:bg-linear-to-r active:from-[#38e8ff57] active:via-[#38e8ff1f] active:via-55% active:to-transparent active:shadow-[inset_3.424px_0px_0px_#38e8ff,inset_0px_1px_0px_#ffffff2e] active:text-accent-hover compact:pr-4 compact:pl-6`} role="button" onPress={(e) => props.onContinue?.(e)}>
+            <View class={`group/continue w-full min-h-11 text-fg/74 py-2 px-4 hover:bg-transparent hover:bg-linear-to-r hover:from-[#38e8ff3d] hover:via-[#38e8ff14] hover:via-55% hover:to-[#38e8ff08] hover:shadow-[inset_3.424px_0px_0px_#38e8ff,inset_0px_1px_0px_#ffffff2e] hover:text-fg active:bg-transparent active:bg-linear-to-r active:from-[#38e8ff57] active:via-[#38e8ff1f] active:via-55% active:to-transparent active:shadow-[inset_3.424px_0px_0px_#38e8ff,inset_0px_1px_0px_#ffffff2e] active:text-fg compact:pr-4 compact:pl-6`} role="button" onPress={(e) => props.onContinue?.(e)}>
               <View class="items-center gap-x-3 w-full">
                 <View class="grow shrink">
                   <Text class="grow shrink text-start text-[1.857rem] leading-tight font-semibold text-shadow-xs text-shadow-bg/60">
                     {t("screen.main-menu.continue")}
                   </Text>
-                  <Text class="text-start text-base font-medium text-accent-hover/56 whitespace-nowrap overflow-hidden group-hover/continue:text-accent-hover/74">
+                  <Text class="text-start text-base font-medium text-fg/56 whitespace-nowrap overflow-hidden group-hover/continue:text-fg/74">
                     {props.saveLine}
                   </Text>
                 </View>
@@ -83,7 +83,7 @@ export function MainMenuScreen(props: MainMenuScreenProps) {
               </View>
             </View>
           </Show>
-          <View class={`group/newgame w-full min-h-11 text-accent-hover/74 py-2 px-4 hover:bg-transparent hover:bg-linear-to-r hover:from-[#38e8ff3d] hover:via-[#38e8ff14] hover:via-55% hover:to-[#38e8ff08] hover:shadow-[inset_3.424px_0px_0px_#38e8ff,inset_0px_1px_0px_#ffffff2e] hover:text-accent-hover active:bg-transparent active:bg-linear-to-r active:from-[#38e8ff57] active:via-[#38e8ff1f] active:via-55% active:to-transparent active:shadow-[inset_3.424px_0px_0px_#38e8ff,inset_0px_1px_0px_#ffffff2e] active:text-accent-hover compact:pr-4 compact:pl-6`} role="button" onPress={(e) => props.onNewGame?.(e)}>
+          <View class={`group/newgame w-full min-h-11 text-fg/74 py-2 px-4 hover:bg-transparent hover:bg-linear-to-r hover:from-[#38e8ff3d] hover:via-[#38e8ff14] hover:via-55% hover:to-[#38e8ff08] hover:shadow-[inset_3.424px_0px_0px_#38e8ff,inset_0px_1px_0px_#ffffff2e] hover:text-fg active:bg-transparent active:bg-linear-to-r active:from-[#38e8ff57] active:via-[#38e8ff1f] active:via-55% active:to-transparent active:shadow-[inset_3.424px_0px_0px_#38e8ff,inset_0px_1px_0px_#ffffff2e] active:text-fg compact:pr-4 compact:pl-6`} role="button" onPress={(e) => props.onNewGame?.(e)}>
             <View class="items-center gap-x-3 w-full">
               <Text class="grow shrink text-start text-[1.857rem] leading-tight font-semibold text-shadow-xs text-shadow-bg/60">
                 {t("screen.main-menu.newGame")}
@@ -91,7 +91,7 @@ export function MainMenuScreen(props: MainMenuScreenProps) {
               <Icon class="text-[#38e8ff] opacity-0 size-4 group-hover/newgame:opacity-100 rtl:-scale-x-100 rtl:scale-y-100" name="chevronRight" />
             </View>
           </View>
-          <View class={`group/modes w-full min-h-11 text-accent-hover/74 py-2 px-4 hover:bg-transparent hover:bg-linear-to-r hover:from-[#38e8ff3d] hover:via-[#38e8ff14] hover:via-55% hover:to-[#38e8ff08] hover:shadow-[inset_3.424px_0px_0px_#38e8ff,inset_0px_1px_0px_#ffffff2e] hover:text-accent-hover active:bg-transparent active:bg-linear-to-r active:from-[#38e8ff57] active:via-[#38e8ff1f] active:via-55% active:to-transparent active:shadow-[inset_3.424px_0px_0px_#38e8ff,inset_0px_1px_0px_#ffffff2e] active:text-accent-hover compact:pr-4 compact:pl-6`} role="button" onPress={(e) => props.onModes?.(e)}>
+          <View class={`group/modes w-full min-h-11 text-fg/74 py-2 px-4 hover:bg-transparent hover:bg-linear-to-r hover:from-[#38e8ff3d] hover:via-[#38e8ff14] hover:via-55% hover:to-[#38e8ff08] hover:shadow-[inset_3.424px_0px_0px_#38e8ff,inset_0px_1px_0px_#ffffff2e] hover:text-fg active:bg-transparent active:bg-linear-to-r active:from-[#38e8ff57] active:via-[#38e8ff1f] active:via-55% active:to-transparent active:shadow-[inset_3.424px_0px_0px_#38e8ff,inset_0px_1px_0px_#ffffff2e] active:text-fg compact:pr-4 compact:pl-6`} role="button" onPress={(e) => props.onModes?.(e)}>
             <View class="items-center gap-x-3 w-full">
               <Text class="grow shrink text-start text-[1.857rem] leading-tight font-semibold text-shadow-xs text-shadow-bg/60">
                 {t("screen.main-menu.modes")}
@@ -99,7 +99,7 @@ export function MainMenuScreen(props: MainMenuScreenProps) {
               <Icon class="text-[#38e8ff] opacity-0 size-4 group-hover/modes:opacity-100 rtl:-scale-x-100 rtl:scale-y-100" name="chevronRight" />
             </View>
           </View>
-          <View class={`group/settings w-full min-h-11 text-accent-hover/74 py-2 px-4 hover:bg-transparent hover:bg-linear-to-r hover:from-[#38e8ff3d] hover:via-[#38e8ff14] hover:via-55% hover:to-[#38e8ff08] hover:shadow-[inset_3.424px_0px_0px_#38e8ff,inset_0px_1px_0px_#ffffff2e] hover:text-accent-hover active:bg-transparent active:bg-linear-to-r active:from-[#38e8ff57] active:via-[#38e8ff1f] active:via-55% active:to-transparent active:shadow-[inset_3.424px_0px_0px_#38e8ff,inset_0px_1px_0px_#ffffff2e] active:text-accent-hover compact:pr-4 compact:pl-6`} role="button" onPress={(e) => props.onSettings?.(e)}>
+          <View class={`group/settings w-full min-h-11 text-fg/74 py-2 px-4 hover:bg-transparent hover:bg-linear-to-r hover:from-[#38e8ff3d] hover:via-[#38e8ff14] hover:via-55% hover:to-[#38e8ff08] hover:shadow-[inset_3.424px_0px_0px_#38e8ff,inset_0px_1px_0px_#ffffff2e] hover:text-fg active:bg-transparent active:bg-linear-to-r active:from-[#38e8ff57] active:via-[#38e8ff1f] active:via-55% active:to-transparent active:shadow-[inset_3.424px_0px_0px_#38e8ff,inset_0px_1px_0px_#ffffff2e] active:text-fg compact:pr-4 compact:pl-6`} role="button" onPress={(e) => props.onSettings?.(e)}>
             <View class="items-center gap-x-3 w-full">
               <Text class="grow shrink text-start text-[1.857rem] leading-tight font-semibold text-shadow-xs text-shadow-bg/60">
                 {t("screen.main-menu.settings")}
@@ -107,15 +107,15 @@ export function MainMenuScreen(props: MainMenuScreenProps) {
               <Icon class="text-[#38e8ff] opacity-0 size-4 group-hover/settings:opacity-100 rtl:-scale-x-100 rtl:scale-y-100" name="chevronRight" />
             </View>
           </View>
-          <View class="h-px mt-2 mr-0 mb-1 ml-4 bg-linear-to-r from-accent-hover/28 to-transparent to-80% compact:ml-6" />
-          <View class={`w-full min-h-11 text-accent-hover/56 py-1 px-4 hover:bg-transparent hover:bg-linear-to-r hover:from-[#38e8ff3d] hover:via-[#38e8ff14] hover:via-55% hover:to-[#38e8ff08] hover:shadow-[inset_3.424px_0px_0px_#38e8ff,inset_0px_1px_0px_#ffffff2e] active:bg-transparent active:bg-linear-to-r active:from-[#38e8ff57] active:via-[#38e8ff1f] active:via-55% active:to-transparent active:shadow-[inset_3.424px_0px_0px_#38e8ff,inset_0px_1px_0px_#ffffff2e] compact:pr-4 compact:pl-6`} role="button" onPress={(e) => props.onCredits?.(e)}>
+          <View class="h-px mt-2 mr-0 mb-1 ml-4 bg-linear-to-r from-white/28 to-transparent to-80% compact:ml-6" />
+          <View class={`w-full min-h-11 text-fg/56 py-1 px-4 hover:bg-transparent hover:bg-linear-to-r hover:from-[#38e8ff3d] hover:via-[#38e8ff14] hover:via-55% hover:to-[#38e8ff08] hover:shadow-[inset_3.424px_0px_0px_#38e8ff,inset_0px_1px_0px_#ffffff2e] active:bg-transparent active:bg-linear-to-r active:from-[#38e8ff57] active:via-[#38e8ff1f] active:via-55% active:to-transparent active:shadow-[inset_3.424px_0px_0px_#38e8ff,inset_0px_1px_0px_#ffffff2e] compact:pr-4 compact:pl-6`} role="button" onPress={(e) => props.onCredits?.(e)}>
             <View class="items-center gap-x-3 w-full">
               <Text class="grow shrink text-start text-[1.857rem] leading-tight font-semibold text-shadow-xs text-shadow-bg/60">
                 {t("screen.main-menu.credits")}
               </Text>
             </View>
           </View>
-          <View class={`w-full min-h-11 text-accent-hover/56 py-1 px-4 hover:bg-transparent hover:bg-linear-to-r hover:from-[#38e8ff3d] hover:via-[#38e8ff14] hover:via-55% hover:to-[#38e8ff08] hover:shadow-[inset_3.424px_0px_0px_#38e8ff,inset_0px_1px_0px_#ffffff2e] active:bg-transparent active:bg-linear-to-r active:from-[#38e8ff57] active:via-[#38e8ff1f] active:via-55% active:to-transparent active:shadow-[inset_3.424px_0px_0px_#38e8ff,inset_0px_1px_0px_#ffffff2e] compact:pr-4 compact:pl-6`} role="button" onPress={(e) => props.onQuit?.(e)}>
+          <View class={`w-full min-h-11 text-fg/56 py-1 px-4 hover:bg-transparent hover:bg-linear-to-r hover:from-[#38e8ff3d] hover:via-[#38e8ff14] hover:via-55% hover:to-[#38e8ff08] hover:shadow-[inset_3.424px_0px_0px_#38e8ff,inset_0px_1px_0px_#ffffff2e] active:bg-transparent active:bg-linear-to-r active:from-[#38e8ff57] active:via-[#38e8ff1f] active:via-55% active:to-transparent active:shadow-[inset_3.424px_0px_0px_#38e8ff,inset_0px_1px_0px_#ffffff2e] compact:pr-4 compact:pl-6`} role="button" onPress={(e) => props.onQuit?.(e)}>
             <View class="items-center gap-x-3 w-full">
               <Text class="grow shrink text-start text-[1.857rem] leading-tight font-semibold text-shadow-xs text-shadow-bg/60">
                 {t("screen.main-menu.quit")}
@@ -125,7 +125,7 @@ export function MainMenuScreen(props: MainMenuScreenProps) {
           <View>{props.extra?.()}</View>
         </View>
       </Scroll>
-      <Text class={`absolute right-4 bottom-3 text-[0.857rem] tabular-nums text-accent-hover/56 m-0 compact:right-3 compact:bottom-1`}>
+      <Text class={`absolute right-4 bottom-3 text-[0.857rem] tabular-nums text-fg/56 m-0 compact:right-3 compact:bottom-1`}>
         {props.version}
       </Text>
     </View>

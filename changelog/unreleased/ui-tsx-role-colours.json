@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "@origingame/engine/ui/components",
+      "summary": "The ported components name their colours by what the role means, not by a default-pack colour that happened to share its value. White HUD and front ink (and its dim, label and faint alphas) is the theme's fg, white sheens, wells, ticks and edges are white, black veils and scrims are black, and the on-primary, focus, raised-panel and selected-row roles use accent-fg, focus, surface-raised and select-hi. Under cartoon, fantasy, scifi or a game's own pack, labels and highlights no longer take the accent colour (fantasy's dark red), and veils no longer turn light in a light scheme. The default look is unchanged but for ink at #edf6ff where it was pure white."
+    }
+  ]
+}

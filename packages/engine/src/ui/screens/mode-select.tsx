@@ -23,7 +23,7 @@ export interface ModeSelectScreenProps {
 
 export function ModeSelectScreen(props: ModeSelectScreenProps) {
   return (
-    <View class={`pt-8 pb-6 text-accent-hover gap-y-6 px-12 overflow-hidden compact:pt-4 compact:pb-3 compact:gap-y-3 compact:px-4`}>
+    <View class={`pt-8 pb-6 text-fg gap-y-6 px-12 overflow-hidden compact:pt-4 compact:pb-3 compact:gap-y-3 compact:px-4`}>
       <Show when={props.keyArt !== 0}>
         <Art class="absolute object-cover inset-0 size-full" kind="keyArt" src={props.keyArt} />
       </Show>
@@ -38,7 +38,7 @@ export function ModeSelectScreen(props: ModeSelectScreenProps) {
         <Text class={`font-display text-[2.857rem] font-bold leading-tight tracking-xs text-fg text-shadow-xs text-shadow-bg/60 shrink m-0 narrow:text-[1.857rem] narrow:grow narrow:shrink-0 narrow:basis-full`}>
           {t("screen.mode-select.title")}
         </Text>
-        <View class="grow shrink basis-0 h-px bg-linear-to-r from-accent-hover/28 to-transparent to-80% m-0 compact:hidden" />
+        <View class="grow shrink basis-0 h-px bg-linear-to-r from-white/28 to-transparent to-80% m-0 compact:hidden" />
       </View>
       <Scroll class="grow shrink basis-0 p-4 -m-4 narrow:pb-6">
         <View class="grid grid-cols-3 auto-rows-[minmax(calc(320_*_calc(1rem_/_14)),1fr)] h-full gap-6 narrow:grid-cols-[minmax(0,1fr)] narrow:auto-rows-[minmax(calc(170_*_calc(1rem_/_14)),auto)] narrow:h-auto narrow:gap-3" focus-group="wrap">
@@ -49,7 +49,7 @@ export function ModeSelectScreen(props: ModeSelectScreenProps) {
                 <Art class="absolute object-cover inset-0 size-full" kind="levelThumb" src={mode().texture} />
                 <View class={`absolute bg-linear-to-b from-transparent from-35% via-[#03060e8c] via-60% to-[#03060ef5] inset-0`} />
                 <Show when={mode().tag}>
-                  <Text class={`text-shadow-2xs bg-[#060910e0] rounded-tl-[4.576px] rounded-tr-none rounded-br-[4.576px] rounded-bl-none absolute top-4 right-4 text-[0.857rem] font-bold tracking-[0.14em] uppercase text-accent-hover shadow-[inset_0px_1px_0px_#ffffff38] whitespace-nowrap text-ellipsis py-0.5 px-2 overflow-hidden data-fresh:bg-[#38e8ff] data-fresh:bg-none data-fresh:text-[#0a0f19] compact:top-2 compact:right-2`} data-fresh={mode().locked}>
+                  <Text class={`text-shadow-2xs bg-[#060910e0] rounded-tl-[4.576px] rounded-tr-none rounded-br-[4.576px] rounded-bl-none absolute top-4 right-4 text-[0.857rem] font-bold tracking-[0.14em] uppercase text-fg shadow-[inset_0px_1px_0px_#ffffff38] whitespace-nowrap text-ellipsis py-0.5 px-2 overflow-hidden data-fresh:bg-[#38e8ff] data-fresh:bg-none data-fresh:text-[#0a0f19] compact:top-2 compact:right-2`} data-fresh={mode().locked}>
                     {mode().tag}
                   </Text>
                 </Show>
@@ -57,7 +57,7 @@ export function ModeSelectScreen(props: ModeSelectScreenProps) {
                   <Text class={`tracking-xs text-shadow-xs text-shadow-bg/60 text-[3.143rem] leading-tight font-bold m-0 compact:text-[2rem]`}>
                     {mode().name}
                   </Text>
-                  <Text class="text-[1.214rem] leading-snug text-accent-hover/74 line-clamp-2 m-0 compact:text-base">
+                  <Text class="text-[1.214rem] leading-snug text-fg/74 line-clamp-2 m-0 compact:text-base">
                     {mode().line}
                   </Text>
                   <Show when={mode().locked}>

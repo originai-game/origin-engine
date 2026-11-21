@@ -17,16 +17,16 @@ export interface FilmGalleryScreenProps {
 
 export function FilmGalleryScreen(props: FilmGalleryScreenProps) {
   return (
-    <View class={`pt-8 pb-6 text-accent-hover gap-y-4 px-12 overflow-hidden compact:pt-4 compact:gap-y-3`}>
+    <View class={`pt-8 pb-6 text-fg gap-y-4 px-12 overflow-hidden compact:pt-4 compact:gap-y-3`}>
       <View class={`absolute bg-linear-to-b from-[#03060ee5] via-[#03060ed1] via-40% to-[#03060ef0] inset-0`} />
       <View class={`items-baseline gap-x-4 p-0 compact:flex-wrap compact:gap-y-1`}>
-        <Button class="text-accent-hover/74 compact:-ml-2" onPress={(e) => props.onBack?.(e)}>
+        <Button class="text-fg/74 compact:-ml-2" onPress={(e) => props.onBack?.(e)}>
           <View class="items-center gap-x-1">
             <Icon class="size-4 rtl:-scale-x-100 rtl:scale-y-100 shrink" name="chevronLeft" />
             <Text class="shrink">{t("screen.common.back")}</Text>
           </View>
         </Button>
-        <Text class={`font-display text-[2.857rem] font-bold leading-tight tracking-xs text-accent-hover text-shadow-xs text-shadow-bg/60 grow shrink m-0 compact:text-[1.857rem] compact:grow compact:shrink-0 compact:basis-full`}>
+        <Text class={`font-display text-[2.857rem] font-bold leading-tight tracking-xs text-fg text-shadow-xs text-shadow-bg/60 grow shrink m-0 compact:text-[1.857rem] compact:grow compact:shrink-0 compact:basis-full`}>
           {t("screen.film-gallery.title")}
         </Text>
       </View>
@@ -49,7 +49,7 @@ export function FilmGalleryScreen(props: FilmGalleryScreenProps) {
                 <Show when={!c().locked}>
                   <Text class={`self-center rotate-45 bg-gold shadow-[0px_0px_9.136px_#ffcf5a] size-[0.571rem]`} />
                 </Show>
-                <Text class={`text-accent-hover/74 grow shrink basis-0 text-[1.214rem] leading-snug font-semibold m-0 group-data-selected/card:text-accent-hover group-data-locked/card:text-accent-hover/56 compact:text-[1.071rem]`}>
+                <Text class={`text-fg/74 grow shrink basis-0 text-[1.214rem] leading-snug font-semibold m-0 group-data-selected/card:text-fg group-data-locked/card:text-fg/56 compact:text-[1.071rem]`}>
                   {c().locked ? t("screen.film-gallery.locked") : c().title}
                 </Text>
               </View>

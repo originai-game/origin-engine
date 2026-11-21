@@ -31,10 +31,10 @@ export interface PuzzleLevelPathProps {
  */
 export function PuzzleLevelPath(props: PuzzleLevelPathProps) {
   return (
-    <View class={`grow shrink basis-0 border-rim bg-linear-to-b from-[#1e2637e5] to-plate-lo shadow-plate text-accent-hover w-full p-2 gap-2 rounded-block border`} label={t("puzzle.path.name")}>
+    <View class={`grow shrink basis-0 border-rim bg-linear-to-b from-[#1e2637e5] to-plate-lo shadow-plate text-fg w-full p-2 gap-2 rounded-block border`} label={t("puzzle.path.name")}>
       <Show when={(props.levels ?? []).length && (props.chapters ?? []).length} fallback={
           <View class={`grow shrink basis-0 justify-center items-center p-6 gap-2`} role="status">
-            <Text class={`text-[1.143rem] leading-4.5 text-accent-hover text-center bg-[#060910e0] py-2 px-3 m-0`}>
+            <Text class={`text-[1.143rem] leading-4.5 text-fg text-center bg-[#060910e0] py-2 px-3 m-0`}>
               {t("puzzle.path.empty")}
             </Text>
           </View>
@@ -45,7 +45,7 @@ export function PuzzleLevelPath(props: PuzzleLevelPathProps) {
             <View class="mb-4 gap-0" label={c().label}>
               <View class={`sticky top-0 z-1 w-full pt-2 pb-3 bg-linear-to-b from-[#171f30d6] to-[#080c16e0] shadow-[inset_0px_0px_0px_1px_#ffffff2e,inset_0px_1px_0px_#ffffff8c] rounded-tl-[11.424px] rounded-tr-none rounded-br-[11.424px] rounded-bl-none px-3 gap-1`}>
                 <View class="flex-row items-center w-full gap-1">
-                  <Text class={`grow shrink basis-0 font-display text-[1.857rem] font-bold leading-[1.15] tracking-[-0.01em] text-accent-hover text-start whitespace-nowrap m-0 overflow-hidden compact:text-[1.429rem]`}>
+                  <Text class={`grow shrink basis-0 font-display text-[1.857rem] font-bold leading-[1.15] tracking-[-0.01em] text-fg text-start whitespace-nowrap m-0 overflow-hidden compact:text-[1.429rem]`}>
                     {c().label}
                   </Text>
                   <View class={`flex-row items-center text-caption bg-[#060910e0] shadow-[inset_0px_1px_0px_#ffffff38] text-fg transition duration-317 py-[0.143rem] px-2 gap-0.5 rounded-capsule`} label={t("puzzle.path.chapterStarsName", { earned: c().earned, total: c().total })}>
@@ -55,7 +55,7 @@ export function PuzzleLevelPath(props: PuzzleLevelPathProps) {
                     </Text>
                   </View>
                 </View>
-                <View class={`w-full h-[0.357rem] bg-accent-hover/14 gap-2`}>
+                <View class={`w-full h-[0.357rem] bg-white/14 gap-2`}>
                   <View class="absolute top-1 left-1 h-full bg-linear-to-r from-gold to-[#fff38a] shadow-[0px_0px_11.424px_#ffcf5ab2]" style={{ width: `${(100 * (c().total > 0 ? (c().earned >= c().total ? 1 : c().earned / c().total) : 0))}%` }} />
                 </View>
               </View>
@@ -73,7 +73,7 @@ export function PuzzleLevelPath(props: PuzzleLevelPathProps) {
                       </Show>
                       <View class="shrink basis-0" style={{ flexGrow: String(String(l().x)) }} />
                       <View class="items-center max-w-105 w-36 h-24 mx-auto gap-2 compact:h-[4.8rem]">
-                        <View class={`group/node min-h-11 min-w-11 text-accent-hover shadow-[inset_0px_0px_0px_2.288px_#ffffff59,inset_0px_3.424px_0px_#ffffff80,0px_9.136px_18.288px_#00000080] transition duration-317 p-0 size-[4.571rem] rounded-capsule compact:size-[3.657rem] data-state-current:text-[#070c16] data-state-current:bg-transparent data-state-current:shadow-[inset_0px_0px_0px_3.424px_#ffffff,0px_0px_0px_9.136px_#38e8ff4d,0px_0px_0px_18.288px_#38e8ff24,0px_0px_41.136px_#38e8ffcc] data-state-current:size-24 data-state-locked:text-slot-selected-edge data-state-locked:bg-transparent data-state-locked:shadow-[inset_0px_0px_0px_2.288px_#ffffff29,0px_6.864px_13.712px_#00000073] data-state-open:bg-transparent data-state-open:shadow-[inset_0px_0px_0px_3.424px_#38e8ff,inset_0px_4.576px_0px_#ffffff80,0px_9.136px_18.288px_#00000080] hover:shadow-[inset_0px_0px_0px_2.288px_#ffffffb2,inset_0px_3.424px_0px_#ffffff99,0px_11.424px_22.864px_#0000008c] data-selected:shadow-[inset_0px_0px_0px_2.288px_#ffffff59,inset_0px_3.424px_0px_#ffffff80,0px_0px_0px_4.576px_#ffffff,0px_0px_0px_9.136px_#38e8ff] focus-visible:shadow-[inset_0px_0px_0px_2.288px_#ffffff59,0px_0px_0px_4.576px_#fffffff2] compact:data-state-current:size-[4.8rem]`} role="option" selected={l().id === props.selected} disabled={l().state === 'locked'} label={l().state === 'locked' ? t("puzzle.path.levelLocked", { number: l().number }) : l().state === 'done' ? t("puzzle.path.levelDone", { number: l().number, stars: l().stars, max: l().maxStars }) : l().state === 'current' ? t("puzzle.path.levelCurrent", { number: l().number }) : t("puzzle.path.levelOpen", { number: l().number })} onPress={(e) => props.onChoose?.(e, l().id)} onAction={{ details: (e) => props.onDetails?.(e, l().id) }} data-state-current={(l().state) === 'current'} data-state-locked={(l().state) === 'locked'} data-state-open={(l().state) === 'open'} data-selected={l().id === props.selected}>
+                        <View class={`group/node min-h-11 min-w-11 text-fg shadow-[inset_0px_0px_0px_2.288px_#ffffff59,inset_0px_3.424px_0px_#ffffff80,0px_9.136px_18.288px_#00000080] transition duration-317 p-0 size-[4.571rem] rounded-capsule compact:size-[3.657rem] data-state-current:text-[#070c16] data-state-current:bg-transparent data-state-current:shadow-[inset_0px_0px_0px_3.424px_#ffffff,0px_0px_0px_9.136px_#38e8ff4d,0px_0px_0px_18.288px_#38e8ff24,0px_0px_41.136px_#38e8ffcc] data-state-current:size-24 data-state-locked:text-fg/55 data-state-locked:bg-transparent data-state-locked:shadow-[inset_0px_0px_0px_2.288px_#ffffff29,0px_6.864px_13.712px_#00000073] data-state-open:bg-transparent data-state-open:shadow-[inset_0px_0px_0px_3.424px_#38e8ff,inset_0px_4.576px_0px_#ffffff80,0px_9.136px_18.288px_#00000080] hover:shadow-[inset_0px_0px_0px_2.288px_#ffffffb2,inset_0px_3.424px_0px_#ffffff99,0px_11.424px_22.864px_#0000008c] data-selected:shadow-[inset_0px_0px_0px_2.288px_#ffffff59,inset_0px_3.424px_0px_#ffffff80,0px_0px_0px_4.576px_#ffffff,0px_0px_0px_9.136px_#38e8ff] focus-visible:shadow-[inset_0px_0px_0px_2.288px_#ffffff59,0px_0px_0px_4.576px_#fffffff2] compact:data-state-current:size-[4.8rem]`} role="option" selected={l().id === props.selected} disabled={l().state === 'locked'} label={l().state === 'locked' ? t("puzzle.path.levelLocked", { number: l().number }) : l().state === 'done' ? t("puzzle.path.levelDone", { number: l().number, stars: l().stars, max: l().maxStars }) : l().state === 'current' ? t("puzzle.path.levelCurrent", { number: l().number }) : t("puzzle.path.levelOpen", { number: l().number })} onPress={(e) => props.onChoose?.(e, l().id)} onAction={{ details: (e) => props.onDetails?.(e, l().id) }} data-state-current={(l().state) === 'current'} data-state-locked={(l().state) === 'locked'} data-state-open={(l().state) === 'open'} data-selected={l().id === props.selected}>
                           <View class="items-center max-w-105 mx-auto gap-2 size-full">
                             <Show when={l().state === 'locked'} fallback={
                                 <Text class={`text-[2.143rem] leading-flat font-bold tabular-nums whitespace-nowrap text-shadow-xs text-shadow-bg/55 group-data-state-current/node:text-[2.857rem] group-data-state-current/node:text-shadow-none`} data-length-long={(l().number >= 10000 ? 'longer' : l().number >= 1000 ? 'long' : null) === 'long'} data-length-longer={(l().number >= 10000 ? 'longer' : l().number >= 1000 ? 'long' : null) === 'longer'}>
@@ -86,24 +86,24 @@ export function PuzzleLevelPath(props: PuzzleLevelPathProps) {
                         </View>
                         <Show when={l().state === 'done'}>
                           <View class={`flex-row items-end absolute left-1/2 translate-x-[-50%] bg-linear-to-b from-[#171f30] to-[#080c16] shadow-[inset_0px_1px_0px_#ffffff59,0px_3.424px_9.136px_#00000080] py-[0.143rem] px-1 gap-0 rounded-capsule`} data-state-current={(l().state) === 'current'} data-state-locked={(l().state) === 'locked'} data-state-open={(l().state) === 'open'}>
-                            <Icon class="text-accent-hover/40 size-[1.189rem] compact:size-[0.951rem] data-lit:text-gold shrink" name="star" data-lit={l().stars >= 1} />
+                            <Icon class="text-white/40 size-[1.189rem] compact:size-[0.951rem] data-lit:text-gold shrink" name="star" data-lit={l().stars >= 1} />
                             <Show when={l().maxStars >= 2}>
-                              <Icon class="text-accent-hover/40 size-[1.463rem] compact:size-[1.17rem] data-lit:text-gold shrink" name="star" data-lit={l().stars >= 2} />
+                              <Icon class="text-white/40 size-[1.463rem] compact:size-[1.17rem] data-lit:text-gold shrink" name="star" data-lit={l().stars >= 2} />
                             </Show>
                             <Show when={l().maxStars >= 3}>
-                              <Icon class="text-accent-hover/40 size-[1.189rem] compact:size-[0.951rem] data-lit:text-gold shrink" name="star" data-lit={l().stars >= 3} />
+                              <Icon class="text-white/40 size-[1.189rem] compact:size-[0.951rem] data-lit:text-gold shrink" name="star" data-lit={l().stars >= 3} />
                             </Show>
                           </View>
                         </Show>
                         <Show when={l().state === 'current'} fallback={
                             <Show when={l().id === props.selected} fallback={
                                 <Show when={l().state === 'open'}>
-                                  <Text class={`font-bold text-[0.857rem] leading-[1.6] text-accent-hover absolute left-1/2 translate-x-[-50%] whitespace-nowrap tracking-[0.14em] uppercase bg-[#060910e0] py-0 px-1`}>
+                                  <Text class={`font-bold text-[0.857rem] leading-[1.6] text-fg absolute left-1/2 translate-x-[-50%] whitespace-nowrap tracking-[0.14em] uppercase bg-[#060910e0] py-0 px-1`}>
                                     {t("puzzle.path.open")}
                                   </Text>
                                 </Show>
                             }>
-                              <Text class={`font-bold text-[0.857rem] leading-[1.6] text-accent-hover absolute left-1/2 translate-x-[-50%] whitespace-nowrap tracking-[0.14em] uppercase bg-[#060910e0] py-0 px-1`}>
+                              <Text class={`font-bold text-[0.857rem] leading-[1.6] text-fg absolute left-1/2 translate-x-[-50%] whitespace-nowrap tracking-[0.14em] uppercase bg-[#060910e0] py-0 px-1`}>
                                 {t("puzzle.path.selected")}
                               </Text>
                             </Show>

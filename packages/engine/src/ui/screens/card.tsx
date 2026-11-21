@@ -20,18 +20,18 @@ export interface CardProps {
 export function Card(props: CardProps) {
   return (
     <View class={`text-fg w-70 max-w-full p-0 gap-2 disabled:text-fg-subtle`}>
-      <Button class="text-accent-hover bg-linear-to-b from-[#171f30d6] to-[#080c16e0] shadow-[inset_0px_0px_0px_1px_#ffffff2e,inset_0px_1px_0px_#ffffff8c] rounded-tl-[13.712px] rounded-tr-none rounded-br-[13.712px] rounded-bl-none w-full text-start p-3" onPress={(e) => props.onOpen?.(e)} label={props.title}>
+      <Button class="text-fg bg-linear-to-b from-[#171f30d6] to-[#080c16e0] shadow-[inset_0px_0px_0px_1px_#ffffff2e,inset_0px_1px_0px_#ffffff8c] rounded-tl-[13.712px] rounded-tr-none rounded-br-[13.712px] rounded-bl-none w-full text-start p-3" onPress={(e) => props.onOpen?.(e)} label={props.title}>
         <View class="w-full gap-2">
           <Image class={`w-full aspect-[16/9] rounded-tl-[6.864px] rounded-tr-none rounded-br-[6.864px] rounded-bl-none data-hidden:hidden`} src={props.image} data-hidden={props.image === 0} />
           <View class="flex-wrap items-start gap-y-1 gap-x-2">
-            <Text class={`font-display text-[1.143rem] font-bold leading-tight tracking-[-0.01em] text-accent-hover grow shrink basis-30 text-start whitespace-normal m-0`}>
+            <Text class={`font-display text-[1.143rem] font-bold leading-tight tracking-[-0.01em] text-fg grow shrink basis-30 text-start whitespace-normal m-0`}>
               {props.title}
             </Text>
             <View class="text-[0.857rem] font-bold tracking-[0.14em] uppercase data-hidden:hidden" data-hidden={props.badge === ""}>
               <Text class="whitespace-normal">{props.badge}</Text>
             </View>
           </View>
-          <Text class={`text-accent-hover/66 text-start whitespace-normal m-0 data-hidden:hidden`} data-hidden={props.body === ""}>
+          <Text class={`text-fg/66 text-start whitespace-normal m-0 data-hidden:hidden`} data-hidden={props.body === ""}>
             {props.body}
           </Text>
         </View>

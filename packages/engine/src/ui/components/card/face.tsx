@@ -46,7 +46,7 @@ export function CardFace(props: CardFaceProps) {
           <Image class="absolute object-cover inset-0 size-full" src={props.art} />
         </Show>
       </View>
-      <Text class={`text-fg text-center line-clamp-2 text-base font-bold leading-[1.15] bg-material-control-hover py-0.5 px-1 m-0 overflow-hidden group-data-medium/cardface:line-clamp-1`}>
+      <Text class={`text-fg text-center line-clamp-2 text-base font-bold leading-[1.15] bg-white/7 py-0.5 px-1 m-0 overflow-hidden group-data-medium/cardface:line-clamp-1`}>
         {props.name}
       </Text>
       <Show when={props.typeLabel}>

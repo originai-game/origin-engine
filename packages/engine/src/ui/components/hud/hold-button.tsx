@@ -22,7 +22,7 @@ export interface HoldButtonProps {
 /** Each variant's look, from the old core's built-in button (default.css). */
 const LOOK: Record<string, string> = {
   danger: "text-danger bg-[#2c2837] shadow-[inset_0px_0px_0px_1px_#ff959973,inset_0px_1px_0px_0px_#ffffff1f,0px_1px_2px_0px_#00000080] active:bg-none active:bg-[#372e3d]",
-  primary: "text-[#011e0f] bg-linear-to-b from-accent-hover/42 to-transparent to-48% bg-[#55e39a] active:bg-linear-to-b active:from-bg/16 active:to-transparent active:to-60% active:bg-[#55e39a] active:border-transparent",
+  primary: "text-[#011e0f] bg-linear-to-b from-white/42 to-transparent to-48% bg-[#55e39a] active:bg-linear-to-b active:from-black/16 active:to-transparent active:to-60% active:bg-[#55e39a] active:border-transparent",
   secondary: "text-fg bg-raised-lo shadow-[inset_0px_0px_0px_1px_#4e586c,inset_0px_-12px_12px_-8px_#00000038,inset_0px_1px_0px_0px_#ffffff1f,0px_1px_2px_0px_#00000080] active:bg-none active:bg-raised-pressed",
 };
 

@@ -161,7 +161,7 @@ export function RhythmSongSelect(props: RhythmSongSelectProps) {
                             }>
                               <Image class={`size-full rounded-[1rem] object-cover`} src={s().jacket} />
                             </Show>
-                            <View class={`absolute inset-0 rounded-[1rem] bg-bg/55 opacity-0 group-data-locked/detail:opacity-100`} />
+                            <View class={`absolute inset-0 rounded-[1rem] bg-black/55 opacity-0 group-data-locked/detail:opacity-100`} />
                           </View>
                         </View>
                         <View class={`flex-col items-start gap-1 min-w-0 grow`}>

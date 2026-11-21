@@ -44,11 +44,11 @@ export function PuzzleSummary(props: PuzzleSummaryProps) {
   return (
     <View class={`pt-6 pb-4 border-rim-soft rounded-tl-sheet rounded-tr-none rounded-br-sheet rounded-bl-none bg-linear-to-b from-[#0f1522ed] to-[#080c16f2] shadow-[inset_0px_0px_0px_1px_#ffffff2e,inset_0px_1px_0px_#ffffff8c] transition duration-317 w-full max-w-115.5 px-6 gap-3 border compact:pt-4 compact:pb-3 compact:px-3 compact:gap-1 data-selected:border-accent data-down:opacity-45`} label={props.result === 'win' ? t("puzzle.summary.win") : t("puzzle.summary.lose")} onAction={{ back: (e) => props.onMenu?.(e) }} data-result-lose={(props.result) === 'lose'}>
       <View class={`group/band items-center p-0 gap-0.5`} data-result-lose={(props.result) === 'lose'}>
-        <Text class={`font-display text-[2rem] font-bold leading-tight tracking-sm uppercase text-transparent text-center bg-linear-to-b from-accent-hover from-18% via-[#ffecaa] via-52% to-[#ffb547] m-0 group-data-result-lose/band:bg-linear-to-b group-data-result-lose/band:from-accent-hover group-data-result-lose/band:from-10% group-data-result-lose/band:via-[#ffa0a6] group-data-result-lose/band:via-48% group-data-result-lose/band:to-[#de2634] group-data-result-lose/band:bg-transparent`}>
+        <Text class={`font-display text-[2rem] font-bold leading-tight tracking-sm uppercase text-transparent text-center bg-linear-to-b from-white from-18% via-[#ffecaa] via-52% to-[#ffb547] m-0 group-data-result-lose/band:bg-linear-to-b group-data-result-lose/band:from-white group-data-result-lose/band:from-10% group-data-result-lose/band:via-[#ffa0a6] group-data-result-lose/band:via-48% group-data-result-lose/band:to-[#de2634] group-data-result-lose/band:bg-transparent`}>
           {props.result === 'win' ? t("puzzle.summary.win") : t("puzzle.summary.lose")}
         </Text>
         <Show when={props.level}>
-          <Text class={`font-semibold text-[0.857rem] leading-4.5 text-accent-hover/78 self-stretch text-center line-clamp-2 tracking-[0.14em] uppercase m-0`}>
+          <Text class={`font-semibold text-[0.857rem] leading-4.5 text-fg/78 self-stretch text-center line-clamp-2 tracking-[0.14em] uppercase m-0`}>
             {props.level}
           </Text>
         </Show>
@@ -58,13 +58,13 @@ export function PuzzleSummary(props: PuzzleSummaryProps) {
           <View class="items-end justify-center gap-2">
             <For each={props.thresholds}>
               {(th, i) => (
-              <Icon class="text-material-edge size-[5.571rem] data-centre:mb-3 data-centre:size-[7.143rem] compact:size-[3.714rem] data-lit:text-gold compact:data-centre:mb-2 compact:data-centre:size-[4.857rem] shrink" name="star" data-lit={i() < props.stars} data-centre={i() === 1 && (props.thresholds ?? []).length === 3} />
+              <Icon class="text-white/8 size-[5.571rem] data-centre:mb-3 data-centre:size-[7.143rem] compact:size-[3.714rem] data-lit:text-gold compact:data-centre:mb-2 compact:data-centre:size-[4.857rem] shrink" name="star" data-lit={i() < props.stars} data-centre={i() === 1 && (props.thresholds ?? []).length === 3} />
               )}
             </For>
           </View>
         </Show>
         <StarBar value={props.score} max={(props.scoreMax ?? 1)} stars={props.thresholds ?? []} label="" valueText="" />
-        <Text class={`font-semibold text-[0.857rem] leading-4.5 text-accent-hover/78 whitespace-nowrap tracking-[0.14em] uppercase`}>
+        <Text class={`font-semibold text-[0.857rem] leading-4.5 text-fg/78 whitespace-nowrap tracking-[0.14em] uppercase`}>
           {t("puzzle.summary.stars", { stars: props.stars, max: (props.maxStars ?? 3) })}
         </Text>
         <Show when={props.record}>
@@ -79,18 +79,18 @@ export function PuzzleSummary(props: PuzzleSummaryProps) {
             <For each={props.rows}>
               {(r) => (
               <View class={`flex-row items-baseline text-fg transition duration-317 py-1 px-0 gap-3 rounded-control compact:gap-1 hover:bg-transparent hover:bg-none data-selected:text-fg data-selected:shadow-[inset_3px_0px_0px_#e8e8ed] disabled:text-fg-subtle data-done:text-fg-subtle data-down:opacity-45`} role="row">
-                <Text class={`grow shrink basis-0 text-start text-accent-hover`} role="rowheader">
+                <Text class={`grow shrink basis-0 text-start text-fg`} role="rowheader">
                   {r().label}
                 </Text>
-                <Text class={`tabular-nums text-accent-hover text-end whitespace-nowrap text-[1.143rem] font-bold`} role="cell">
+                <Text class={`tabular-nums text-fg text-end whitespace-nowrap text-[1.143rem] font-bold`} role="cell">
                   {r().value}
                 </Text>
               </View>
               )}
             </For>
             <Show when={props.total}>
-              <View class={`flex-row items-baseline text-fg transition duration-317 mt-1 border-t border-accent-hover/16 py-1 px-0 gap-3 rounded-control compact:gap-1 hover:bg-transparent hover:bg-none data-selected:text-fg data-selected:shadow-[inset_3px_0px_0px_#e8e8ed] disabled:text-fg-subtle data-done:text-fg-subtle data-down:opacity-45`} role="row">
-                <Text class="grow shrink basis-0 text-start text-accent-hover font-bold" role="rowheader">
+              <View class={`flex-row items-baseline text-fg transition duration-317 mt-1 border-t border-white/16 py-1 px-0 gap-3 rounded-control compact:gap-1 hover:bg-transparent hover:bg-none data-selected:text-fg data-selected:shadow-[inset_3px_0px_0px_#e8e8ed] disabled:text-fg-subtle data-done:text-fg-subtle data-down:opacity-45`} role="row">
+                <Text class="grow shrink basis-0 text-start text-fg font-bold" role="rowheader">
                   {t("puzzle.summary.total")}
                 </Text>
                 <Text class={`tabular-nums text-gold text-end whitespace-nowrap text-[1.714rem] font-bold`} role="cell">

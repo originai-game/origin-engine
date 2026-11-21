@@ -29,7 +29,7 @@ export interface IdlePurchasesProps {
 export function IdlePurchases(props: IdlePurchasesProps) {
   return (
     <View class={`grow shrink basis-0 border-rim rounded-tl-sheet rounded-tr-none rounded-br-sheet rounded-bl-none bg-linear-to-b from-glass-hi to-glass-lo shadow-panel text-fg w-full p-4 gap-3 border disabled:text-fg-subtle`} label={props.title !== '' ? props.title : t("idle.purchases.name")}>
-      <View class="absolute left-4 right-[30%] top-0 h-px bg-linear-to-r from-slot-selected-edge to-transparent to-70% pointer-events-none" />
+      <View class="absolute left-4 right-[30%] top-0 h-px bg-linear-to-r from-white/55 to-transparent to-70% pointer-events-none" />
       <View class={`flex-row flex-wrap items-end min-h-12 border-b border-rim-soft w-full py-1 px-4 gap-3`}>
         <Text class={`grow shrink basis-0 font-display text-base font-bold leading-tight tracking-[-0.01em] text-fg whitespace-nowrap text-ellipsis m-0 overflow-hidden`}>
           {props.title !== '' ? props.title : t("idle.purchases.name")}
@@ -38,7 +38,7 @@ export function IdlePurchases(props: IdlePurchasesProps) {
           <View class="flex-row items-center bg-[#04060c8c] shadow-[inset_0px_0px_0px_1px_#4e586c] p-0.5 gap-0.5 rounded-control compact:grow compact:shrink-0 compact:basis-full" role="radiogroup" label={t("idle.purchases.amount")}>
             <For each={props.amounts}>
               {(a) => (
-              <View class={`min-h-11 min-w-11 text-fg-muted py-0 px-2 rounded-control compact:min-w-0 compact:grow compact:shrink compact:basis-0 data-checked:bg-material-edge data-checked:bg-none data-checked:shadow-[inset_0px_1px_0px_#ffffff33] data-checked:text-fg`} role="radio" data-amount={a().id} onPress={(e) => props.onChooseamount?.(e, a().id)} data-checked={a().id === props.amount}>
+              <View class={`min-h-11 min-w-11 text-fg-muted py-0 px-2 rounded-control compact:min-w-0 compact:grow compact:shrink compact:basis-0 data-checked:bg-white/8 data-checked:bg-none data-checked:shadow-[inset_0px_1px_0px_#ffffff33] data-checked:text-fg`} role="radio" data-amount={a().id} onPress={(e) => props.onChooseamount?.(e, a().id)} data-checked={a().id === props.amount}>
                 <Text>{a().label ? a().label : a().id === 'max' ? t("idle.purchases.max") : t("idle.purchases.times", { count: a().id })}</Text>
               </View>
               )}
@@ -66,7 +66,7 @@ export function IdlePurchases(props: IdlePurchasesProps) {
                         {u().name}
                       </Text>
                       <Show when={u().level > 0}>
-                        <Text class={`font-bold text-[0.857rem] leading-4.5 tabular-nums bg-material-edge text-fg-muted transition duration-317 whitespace-nowrap py-0 px-1 rounded-capsule`} data-tag-level={true}>
+                        <Text class={`font-bold text-[0.857rem] leading-4.5 tabular-nums bg-white/8 text-fg-muted transition duration-317 whitespace-nowrap py-0 px-1 rounded-capsule`} data-tag-level={true}>
                           {t("idle.purchases.level", { level: formatNumber(u().level) })}
                         </Text>
                       </Show>
@@ -77,17 +77,17 @@ export function IdlePurchases(props: IdlePurchasesProps) {
                   </View>
                   <View class="items-end max-w-1/2 gap-1 compact:flex-row compact:grow compact:shrink-0 compact:basis-full compact:items-center compact:max-w-full compact:justify-end">
                     <Show when={u().maxed}>
-                      <Text class={`font-bold text-[0.857rem] leading-4.5 tabular-nums rounded-tl-[4.576px] rounded-tr-none rounded-br-[4.576px] rounded-bl-none bg-material-edge text-fg-muted transition duration-317 whitespace-nowrap tracking-[0.14em] uppercase py-0 px-1`}>
+                      <Text class={`font-bold text-[0.857rem] leading-4.5 tabular-nums rounded-tl-[4.576px] rounded-tr-none rounded-br-[4.576px] rounded-bl-none bg-white/8 text-fg-muted transition duration-317 whitespace-nowrap tracking-[0.14em] uppercase py-0 px-1`}>
                         {t("idle.purchases.maxed")}
                       </Text>
                     </Show>
                     <Show when={!u().maxed && u().locked}>
-                      <Text class={`font-bold text-[0.857rem] leading-4.5 tabular-nums rounded-tl-[4.576px] rounded-tr-none rounded-br-[4.576px] rounded-bl-none bg-material-edge text-fg-muted transition duration-317 whitespace-nowrap tracking-[0.14em] uppercase py-0 px-1`}>
+                      <Text class={`font-bold text-[0.857rem] leading-4.5 tabular-nums rounded-tl-[4.576px] rounded-tr-none rounded-br-[4.576px] rounded-bl-none bg-white/8 text-fg-muted transition duration-317 whitespace-nowrap tracking-[0.14em] uppercase py-0 px-1`}>
                         {t("idle.purchases.locked")}
                       </Text>
                     </Show>
                     <Show when={!u().maxed && !u().locked && !u().affordable}>
-                      <Text class={`font-bold text-[0.857rem] leading-4.5 tabular-nums rounded-tl-[4.576px] rounded-tr-none rounded-br-[4.576px] rounded-bl-none bg-material-edge text-fg-muted transition duration-317 whitespace-nowrap tracking-[0.14em] uppercase py-0 px-1 data-tag-short:bg-none data-tag-short:bg-danger/12 data-tag-short:text-danger`} data-tag-short={true}>
+                      <Text class={`font-bold text-[0.857rem] leading-4.5 tabular-nums rounded-tl-[4.576px] rounded-tr-none rounded-br-[4.576px] rounded-bl-none bg-white/8 text-fg-muted transition duration-317 whitespace-nowrap tracking-[0.14em] uppercase py-0 px-1 data-tag-short:bg-none data-tag-short:bg-danger/12 data-tag-short:text-danger`} data-tag-short={true}>
                         {t("idle.purchases.short")}
                       </Text>
                     </Show>

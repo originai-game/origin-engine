@@ -37,22 +37,22 @@ export function GameOverScreen(props: GameOverScreenProps) {
   return (
     <View class="grow shrink basis-0 justify-center items-center w-full p-8 gap-2 compact:p-4">
       <View class={`text-fg items-center w-full max-w-105 p-0 gap-4 disabled:text-fg-subtle short:grid short:items-center short:gap-y-2 short:gap-x-6 short:max-w-210 short:grid-cols-[1fr_1fr] short:grid-rows-[1fr_auto_auto_auto_auto_1fr] short:justify-items-center`}>
-        <Text class={`font-display font-bold leading-[0.95] tracking-md uppercase text-transparent max-w-full text-center bg-linear-to-b from-accent-hover from-10% via-[#ffa0a6] via-48% to-[#de2634] m-0 short:text-[4.429rem]`}>
+        <Text class={`font-display font-bold leading-[0.95] tracking-md uppercase text-transparent max-w-full text-center bg-linear-to-b from-white from-10% via-[#ffa0a6] via-48% to-[#de2634] m-0 short:text-[4.429rem]`}>
           {props.title}
         </Text>
         <View class="w-full h-[1.5px]">
-          <Text class="absolute left-1/2 top-1/2 translate-x-[-50%] translate-y-[-50%] rotate-45 bg-accent-hover shadow-[0px_0px_11.424px_#ff4d5e] size-[0.643rem]" />
+          <Text class="absolute left-1/2 top-1/2 translate-x-[-50%] translate-y-[-50%] rotate-45 bg-white shadow-[0px_0px_11.424px_#ff4d5e] size-[0.643rem]" />
         </View>
         <View class="flex-wrap justify-center gap-y-1 gap-x-6 items-end">
           <View class="items-center shrink">
-            <Text class={`tracking-[0.14em] uppercase text-accent-hover/78 text-[0.857rem] font-semibold m-0`}>
+            <Text class={`tracking-[0.14em] uppercase text-fg/78 text-[0.857rem] font-semibold m-0`}>
               {t("screen.game-over.score")}
             </Text>
-            <Text class={`tabular-nums text-accent-hover text-[2.714rem] leading-flat font-bold m-0`}>
+            <Text class={`tabular-nums text-fg text-[2.714rem] leading-flat font-bold m-0`}>
               {t("screen.game-over.Value", { value: props.score })}
             </Text>
           </View>
-          <Text class={`text-accent-hover/66 text-[1.714rem] font-bold tabular-nums m-0 shrink`}>
+          <Text class={`text-fg/66 text-[1.714rem] font-bold tabular-nums m-0 shrink`}>
             {t("screen.game-over.Best", { best: props.best })}
           </Text>
         </View>
@@ -71,10 +71,10 @@ export function GameOverScreen(props: GameOverScreenProps) {
             </View>
         }>
           <View class={`grid justify-items-stretch self-stretch text-center bg-linear-to-b from-[#171f30d6] to-[#080c16e0] shadow-[inset_0px_0px_0px_1px_#ffffff2e,inset_0px_1px_0px_#ffffff8c] rounded-tl-[6.864px] rounded-tr-none rounded-br-[6.864px] rounded-bl-none p-4 gap-2 short:justify-self-stretch`}>
-            <Text class="justify-self-center text-center leading-[6.286rem] text-[2.429rem] font-bold tabular-nums text-accent-hover shadow-[inset_0px_0px_0px_5.712px_#ffcf5a,inset_0px_0px_0px_8px_#060910cc] m-0 size-[6.286rem] rounded-full short:leading-[4.571rem] short:size-[4.571rem]">
+            <Text class="justify-self-center text-center leading-[6.286rem] text-[2.429rem] font-bold tabular-nums text-fg shadow-[inset_0px_0px_0px_5.712px_#ffcf5a,inset_0px_0px_0px_8px_#060910cc] m-0 size-[6.286rem] rounded-full short:leading-[4.571rem] short:size-[4.571rem]">
               {t("screen.game-over.Left", { value: formatDuration(props.left) })}
             </Text>
-            <Text class="text-[1.714rem] font-bold tracking-md uppercase text-accent-hover m-0">
+            <Text class="text-[1.714rem] font-bold tracking-md uppercase text-fg m-0">
               {t("screen.game-over.revive")}
             </Text>
             <View class="self-stretch">{props.offerArt?.()}</View>

@@ -25,9 +25,9 @@ export interface IdleGeneratorsProps {
 export function IdleGenerators(props: IdleGeneratorsProps) {
   return (
     <View class={`grow shrink basis-0 border-rim rounded-tl-sheet rounded-tr-none rounded-br-sheet rounded-bl-none bg-linear-to-b from-glass-hi to-glass-lo shadow-panel text-fg w-full p-4 gap-3 border disabled:text-fg-subtle`} label={props.title !== '' ? props.title : t("idle.generators.name")}>
-      <View class="absolute left-4 right-[30%] top-0 h-px bg-linear-to-r from-slot-selected-edge to-transparent to-70% pointer-events-none" />
+      <View class="absolute left-4 right-[30%] top-0 h-px bg-linear-to-r from-white/55 to-transparent to-70% pointer-events-none" />
       <View class={`min-h-12 border-b border-rim-soft w-full items-start py-1 px-4 gap-0`}>
-        <Text class={`whitespace-nowrap text-ellipsis text-[0.857rem] font-semibold tracking-[0.18em] uppercase text-accent-hover/78 overflow-hidden`}>
+        <Text class={`whitespace-nowrap text-ellipsis text-[0.857rem] font-semibold tracking-[0.18em] uppercase text-fg/78 overflow-hidden`}>
           {t("idle.generators.kicker")}
         </Text>
         <Text class={`font-display text-base font-bold leading-tight tracking-[-0.01em] text-fg max-w-full whitespace-nowrap text-ellipsis m-0 overflow-hidden`}>
@@ -62,7 +62,7 @@ export function IdleGenerators(props: IdleGeneratorsProps) {
                           {g().name}
                         </Text>
                         <Show when={!g().locked && g().owned > 0}>
-                          <Text class={`whitespace-nowrap text-[0.857rem] font-bold tabular-nums text-accent-hover/78`}>
+                          <Text class={`whitespace-nowrap text-[0.857rem] font-bold tabular-nums text-fg/78`}>
                             {t("idle.generators.owned", { owned: formatCompact(g().owned) })}
                           </Text>
                         </Show>
@@ -80,22 +80,22 @@ export function IdleGenerators(props: IdleGeneratorsProps) {
                           <View class={`grow shrink basis-0 min-w-12 bg-tile shadow-sunk h-[0.571rem] rounded-capsule overflow-hidden`} role="progressbar" label={t("idle.generators.cycle")} valueMin={0} valueMax={100} valueNow={g().cycle * 100} valueText={g().cycleText ? g().cycleText : `${formatNumber((g().cycle) * 100, { decimals: 0 })}%`}>
                             <View class={`bg-[#38e8ff] h-full`} style={{ width: `${(100 * (g().cycle > 1 ? 1 : g().cycle))}%` }} />
                           </View>
-                          <Text class={`whitespace-nowrap text-[0.857rem] font-bold tabular-nums text-accent-hover/78`}>
+                          <Text class={`whitespace-nowrap text-[0.857rem] font-bold tabular-nums text-fg/78`}>
                             {g().cycleText ? g().cycleText : `${formatNumber((g().cycle) * 100, { decimals: 0 })}%`}
                           </Text>
                         </Show>
                         <Show when={!g().locked && g().boost}>
-                          <Text class={`text-shadow-2xs bg-[#060910e0] rounded-tl-[4.576px] rounded-tr-none rounded-br-[4.576px] rounded-bl-none whitespace-nowrap text-[0.857rem] font-semibold tracking-[0.14em] uppercase text-accent-hover/78 py-0 px-1 data-tag-boost:bg-gold data-tag-boost:bg-none data-tag-boost:text-[#2a1400]`} data-tag-boost={true}>
+                          <Text class={`text-shadow-2xs bg-[#060910e0] rounded-tl-[4.576px] rounded-tr-none rounded-br-[4.576px] rounded-bl-none whitespace-nowrap text-[0.857rem] font-semibold tracking-[0.14em] uppercase text-fg/78 py-0 px-1 data-tag-boost:bg-gold data-tag-boost:bg-none data-tag-boost:text-[#2a1400]`} data-tag-boost={true}>
                             {g().boost}
                           </Text>
                         </Show>
                         <Show when={!g().locked && g().auto}>
-                          <Text class={`text-shadow-2xs bg-[#060910e0] rounded-tl-[4.576px] rounded-tr-none rounded-br-[4.576px] rounded-bl-none whitespace-nowrap text-[0.857rem] font-semibold tracking-[0.14em] uppercase text-accent-hover/78 py-0 px-1 data-tag-auto:bg-success data-tag-auto:bg-none data-tag-auto:text-[#041016]`} data-tag-auto={true}>
+                          <Text class={`text-shadow-2xs bg-[#060910e0] rounded-tl-[4.576px] rounded-tr-none rounded-br-[4.576px] rounded-bl-none whitespace-nowrap text-[0.857rem] font-semibold tracking-[0.14em] uppercase text-fg/78 py-0 px-1 data-tag-auto:bg-success data-tag-auto:bg-none data-tag-auto:text-[#041016]`} data-tag-auto={true}>
                             {t("idle.generators.auto")}
                           </Text>
                         </Show>
                         <Show when={g().locked}>
-                          <View class={`flex-row items-center bg-[#060910e0] rounded-tl-[4.576px] rounded-tr-none rounded-br-[4.576px] rounded-bl-none text-[0.857rem] font-semibold tracking-[0.14em] uppercase text-accent-hover/78 py-0 px-1 gap-0.5 data-tag-locked:items-center data-tag-locked:min-w-0 data-tag-locked:max-w-full`} data-tag-locked={true}>
+                          <View class={`flex-row items-center bg-[#060910e0] rounded-tl-[4.576px] rounded-tr-none rounded-br-[4.576px] rounded-bl-none text-[0.857rem] font-semibold tracking-[0.14em] uppercase text-fg/78 py-0 px-1 gap-0.5 data-tag-locked:items-center data-tag-locked:min-w-0 data-tag-locked:max-w-full`} data-tag-locked={true}>
                             <Text class="whitespace-nowrap text-shadow-2xs shrink">
                               {t("idle.generators.locked")}
                             </Text>

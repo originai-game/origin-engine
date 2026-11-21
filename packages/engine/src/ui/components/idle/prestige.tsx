@@ -46,9 +46,9 @@ export interface IdlePrestigeProps {
 export function IdlePrestige(props: IdlePrestigeProps) {
   return (
     <View class={`grow shrink basis-0 border-rim rounded-tl-sheet rounded-tr-none rounded-br-sheet rounded-bl-none bg-linear-to-b from-glass-hi to-glass-lo shadow-panel text-fg w-full h-auto max-h-full p-4 gap-3 border disabled:text-fg-subtle`} label={props.title !== '' ? props.title : t("idle.prestige.name")} data-confirming={props.confirming} data-met={props.met}>
-      <View class="absolute left-4 right-[30%] top-0 h-px bg-linear-to-r from-slot-selected-edge to-transparent to-70% pointer-events-none" />
+      <View class="absolute left-4 right-[30%] top-0 h-px bg-linear-to-r from-white/55 to-transparent to-70% pointer-events-none" />
       <View class={`min-h-12 border-b border-rim-soft w-full items-start py-1 px-4 gap-0`}>
-        <Text class={`whitespace-nowrap text-ellipsis text-[0.857rem] font-semibold tracking-[0.18em] uppercase text-accent-hover/78 overflow-hidden`}>
+        <Text class={`whitespace-nowrap text-ellipsis text-[0.857rem] font-semibold tracking-[0.18em] uppercase text-fg/78 overflow-hidden`}>
           {t("idle.prestige.kicker")}
         </Text>
         <Text class={`font-display text-base font-bold leading-tight tracking-[-0.01em] text-fg max-w-full m-0`}>
@@ -62,7 +62,7 @@ export function IdlePrestige(props: IdlePrestigeProps) {
               <Icon class="size-[70%]" name={props.icon} />
             </View>
             <View class="grow shrink basis-0 gap-0">
-              <Text class={`tracking-xs text-accent-hover/78 max-w-full text-[0.857rem] font-semibold`}>
+              <Text class={`tracking-xs text-fg/78 max-w-full text-[0.857rem] font-semibold`}>
                 {t("idle.prestige.held", { currency: props.currency })}
               </Text>
               <Text class={`tabular-nums text-fg max-w-full text-[2.286rem] font-bold`}>
@@ -70,7 +70,7 @@ export function IdlePrestige(props: IdlePrestigeProps) {
               </Text>
             </View>
             <View class="items-end max-w-1/2 gap-0 shrink">
-              <Text class={`tracking-xs text-accent-hover/78 max-w-full text-[0.857rem] font-semibold`}>
+              <Text class={`tracking-xs text-fg/78 max-w-full text-[0.857rem] font-semibold`}>
                 {t("idle.prestige.gain")}
               </Text>
               <Text class={`tabular-nums text-fg max-w-full text-[2.286rem] font-bold data-tag-gain:text-xp data-tag-gain:text-end`} data-tag-gain={true}>
@@ -88,11 +88,11 @@ export function IdlePrestige(props: IdlePrestigeProps) {
                     {r().label}
                   </Text>
                   <View class="flex-row items-center justify-end gap-1 compact:grow compact:shrink-0 compact:basis-full">
-                    <Text class={`whitespace-nowrap font-bold tabular-nums text-accent-hover/78 shrink`}>
+                    <Text class={`whitespace-nowrap font-bold tabular-nums text-fg/78 shrink`}>
                       {r().now}
                     </Text>
-                    <Icon class="text-accent-hover/78 size-4 rtl:-scale-x-100 rtl:scale-y-100" name="play" />
-                    <Text class={`whitespace-nowrap font-bold tabular-nums text-accent-hover/78 data-tag-after:text-xp data-tag-after:text-[1.286rem] shrink`} data-tag-after={true}>
+                    <Icon class="text-fg/78 size-4 rtl:-scale-x-100 rtl:scale-y-100" name="play" />
+                    <Text class={`whitespace-nowrap font-bold tabular-nums text-fg/78 data-tag-after:text-xp data-tag-after:text-[1.286rem] shrink`} data-tag-after={true}>
                       {r().after}
                     </Text>
                   </View>
@@ -105,7 +105,7 @@ export function IdlePrestige(props: IdlePrestigeProps) {
             <View class={`bg-[#04060c8c] shadow-[inset_0px_0px_0px_1px_#ffffff24] p-2 gap-1`} data-met={props.met}>
               <View class="flex-row items-center w-full gap-1">
                 <Text class="grow shrink basis-0 text-start text-fg">{props.requirement}</Text>
-                <View class={`flex-row items-center bg-[#060910e0] rounded-tl-[4.576px] rounded-tr-none rounded-br-[4.576px] rounded-bl-none text-[0.857rem] font-semibold tracking-[0.14em] uppercase text-accent-hover/78 py-0 px-1 gap-0.5 data-met:bg-success data-met:bg-none data-met:text-[#041016]`} data-met={props.met}>
+                <View class={`flex-row items-center bg-[#060910e0] rounded-tl-[4.576px] rounded-tr-none rounded-br-[4.576px] rounded-bl-none text-[0.857rem] font-semibold tracking-[0.14em] uppercase text-fg/78 py-0 px-1 gap-0.5 data-met:bg-success data-met:bg-none data-met:text-[#041016]`} data-met={props.met}>
                   <Icon class="text-shadow-2xs size-3" name={props.met ? 'check' : 'lock'} />
                   <Text class="whitespace-nowrap text-shadow-2xs shrink">
                     {props.met ? t("idle.prestige.met") : t("idle.prestige.notMet")}
@@ -117,7 +117,7 @@ export function IdlePrestige(props: IdlePrestigeProps) {
                   <View class={`grow shrink basis-0 min-w-12 bg-tile shadow-sunk h-[0.714rem] rounded-capsule overflow-hidden`} role="progressbar" label={t("idle.prestige.progress")} valueMin={0} valueMax={100} valueNow={(props.progress ?? -1) * 100} valueText={props.progressText !== '' ? props.progressText : `${formatNumber((props.progress ?? -1) * 100, { decimals: 0 })}%`}>
                     <View class={`bg-[#38e8ff] h-full data-met:bg-none data-met:bg-success`} data-met={props.met} style={{ width: `${(100 * ((props.progress ?? -1) > 1 ? 1 : (props.progress ?? -1)))}%` }} />
                   </View>
-                  <Text class="max-w-1/2 whitespace-nowrap text-ellipsis text-[0.857rem] font-bold tabular-nums text-accent-hover/78 overflow-hidden">
+                  <Text class="max-w-1/2 whitespace-nowrap text-ellipsis text-[0.857rem] font-bold tabular-nums text-fg/78 overflow-hidden">
                     {props.progressText !== '' ? props.progressText : `${formatNumber((props.progress ?? -1) * 100, { decimals: 0 })}%`}
                   </Text>
                 </View>

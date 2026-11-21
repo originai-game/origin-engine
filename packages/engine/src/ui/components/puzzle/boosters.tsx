@@ -37,7 +37,7 @@ export function PuzzleBoosters(props: PuzzleBoostersProps) {
                   <Show when={!b().available || b().id === props.armed} fallback={
                       <View class="h-[1.243rem] mb-0.5" />
                   }>
-                    <Text class={`h-[1.243rem] mb-0.5 whitespace-nowrap leading-normal text-[0.857rem] font-semibold tracking-[0.14em] uppercase text-accent-hover/78 bg-[#060910e0] shadow-[inset_0px_1px_0px_#ffffff38] text-shadow-2xs py-0 px-0.5 group-data-armed/booster:text-[#041016] group-data-armed/booster:bg-none group-data-armed/booster:bg-[#38e8ff]`} data-armed={b().available && b().id === props.armed}>
+                    <Text class={`h-[1.243rem] mb-0.5 whitespace-nowrap leading-normal text-[0.857rem] font-semibold tracking-[0.14em] uppercase text-fg/78 bg-[#060910e0] shadow-[inset_0px_1px_0px_#ffffff38] text-shadow-2xs py-0 px-0.5 group-data-armed/booster:text-[#041016] group-data-armed/booster:bg-none group-data-armed/booster:bg-[#38e8ff]`} data-armed={b().available && b().id === props.armed}>
                       {b().available ? t("puzzle.boosters.armed") : t("puzzle.boosters.locked")}
                     </Text>
                   </Show>
@@ -49,7 +49,7 @@ export function PuzzleBoosters(props: PuzzleBoostersProps) {
                       {b().count === 0 ? '+' : t("puzzle.boosters.times", { count: formatNumber(b().count) })}
                     </Text>
                   </View>
-                  <Text class={`text-fg max-w-32 text-center line-clamp-2 text-[0.857rem] font-semibold overflow-hidden group-data-armed/booster:text-[#38e8ff] group-data-not-available/booster:text-accent-hover/78 compact:max-w-[91.2px]`}>
+                  <Text class={`text-fg max-w-32 text-center line-clamp-2 text-[0.857rem] font-semibold overflow-hidden group-data-armed/booster:text-[#38e8ff] group-data-not-available/booster:text-fg/78 compact:max-w-[91.2px]`}>
                     {b().name}
                   </Text>
                 </View>

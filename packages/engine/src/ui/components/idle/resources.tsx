@@ -35,7 +35,7 @@ export function IdleResources(props: IdleResourcesProps) {
                 <Icon class="text-shadow-2xs size-[72%]" name={c().icon} />
               </View>
               <View class="gap-0 shrink">
-                <Text class={`text-accent-hover/78 whitespace-nowrap text-ellipsis text-start text-[0.857rem] font-semibold overflow-hidden`}>
+                <Text class={`text-fg/78 whitespace-nowrap text-ellipsis text-start text-[0.857rem] font-semibold overflow-hidden`}>
                   {c().name}
                 </Text>
                 <Show when={!props.loading} fallback={
@@ -56,7 +56,7 @@ export function IdleResources(props: IdleResourcesProps) {
                     </Show>
                   </View>
                   <Show when={c().rate || c().perSecond !== 0}>
-                    <Text class={`text-accent-hover/78 whitespace-nowrap text-ellipsis text-[0.857rem] font-bold tabular-nums text-shadow-2xs overflow-hidden data-trend-up:text-success data-trend-down:text-[#ffb547]`} data-trend-down={((c().perSecond < 0 ? 'down' : c().perSecond > 0 ? 'up' : 'flat') === 'down') || ((c().perSecond < 0 ? 'down' : c().perSecond > 0 ? 'up' : 'flat') === "down")} data-trend-up={((c().perSecond < 0 ? 'down' : c().perSecond > 0 ? 'up' : 'flat') === 'up') || ((c().perSecond < 0 ? 'down' : c().perSecond > 0 ? 'up' : 'flat') === "up")} data-trend-flat={(c().perSecond < 0 ? 'down' : c().perSecond > 0 ? 'up' : 'flat') === "flat"}>
+                    <Text class={`text-fg/78 whitespace-nowrap text-ellipsis text-[0.857rem] font-bold tabular-nums text-shadow-2xs overflow-hidden data-trend-up:text-success data-trend-down:text-[#ffb547]`} data-trend-down={((c().perSecond < 0 ? 'down' : c().perSecond > 0 ? 'up' : 'flat') === 'down') || ((c().perSecond < 0 ? 'down' : c().perSecond > 0 ? 'up' : 'flat') === "down")} data-trend-up={((c().perSecond < 0 ? 'down' : c().perSecond > 0 ? 'up' : 'flat') === 'up') || ((c().perSecond < 0 ? 'down' : c().perSecond > 0 ? 'up' : 'flat') === "up")} data-trend-flat={(c().perSecond < 0 ? 'down' : c().perSecond > 0 ? 'up' : 'flat') === "flat"}>
                       {c().rate ? c().rate : c().perSecond > 0 ? t("idle.resources.perSecond", { rate: formatCompact(c().perSecond) }) : t("idle.resources.perSecondDown", { rate: formatCompact(c().perSecond) })}
                     </Text>
                   </Show>
