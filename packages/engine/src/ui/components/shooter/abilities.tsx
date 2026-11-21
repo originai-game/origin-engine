@@ -58,7 +58,7 @@ export function ShooterAbilities(props: ShooterAbilitiesProps) {
             <View class="relative size-13 compact:size-9 group-data-ultimate/ability:size-21 compact:group-data-ultimate/ability:size-11">
               <Show when={s().ultimate}>
                 <View
-                  class="absolute inset-0 rounded-full overflow-hidden border-3 border-white/14 bg-tile"
+                  class="absolute inset-0 rounded-full overflow-hidden border-3 border-rim bg-tile"
                   role="meter"
                   label={t("shooter.abilities.charge")}
                   valueMin={0}
@@ -75,7 +75,7 @@ export function ShooterAbilities(props: ShooterAbilitiesProps) {
                 class={`absolute inset-0 flex-row items-center justify-center group-data-ultimate/ability:inset-11/100`}
               >
                 <View
-                  class={`relative size-full rounded-card bg-linear-to-b from-white/75 via-white/22 to-white/14 group-data-ready/ability:from-white group-data-ready/ability:to-hud-accent group-data-ready/ability:shadow-[0px_0px_0.714rem_rgb(56_232_255/0.55)] group-data-disabled/ability:opacity-45 group-data-ultimate/ability:rounded-tl-[0.357rem] group-data-ultimate/ability:rounded-tr-[0.357rem]`}
+                  class={`relative size-full rounded-card bg-linear-to-b from-rim-strong via-rim to-rim-soft group-data-ready/ability:from-hud-accent-hi group-data-ready/ability:to-hud-accent group-data-ready/ability:shadow-glow group-data-disabled/ability:opacity-45 group-data-ultimate/ability:rounded-tl-control group-data-ultimate/ability:rounded-tr-control`}
                 >
                   <View class="absolute inset-0.5 rounded-block overflow-hidden bg-plate-hi">
                     <Show when={s().icon} fallback={
@@ -89,7 +89,7 @@ export function ShooterAbilities(props: ShooterAbilitiesProps) {
                     </Show>
                     <Show when={(s().cooldown ?? 0) > 0}>
                       <View
-                        class="absolute left-0 right-0 top-0 bg-black/68"
+                        class="absolute left-0 right-0 top-0 bg-shade-deep"
                         style={{ height: `${Math.min(s().cooldown ?? 0, 1) * 100}%` }}
                       />
                     </Show>
@@ -120,7 +120,7 @@ export function ShooterAbilities(props: ShooterAbilitiesProps) {
             </View>
             <Show when={(s().key ?? "") != ""}>
               <Text
-                class={`shrink basis-auto max-w-full min-w-5.5 py-0 px-1 text-xs leading-[1.5] font-bold text-center text-key-fg bg-linear-to-b from-white to-key-hi rounded-control shadow-[0px_0.143rem_0px_#0000008c,inset_0px_-0.143rem_0px_#0000002e] whitespace-nowrap truncate pointer-coarse:hidden`}
+                class={`shrink basis-auto max-w-full min-w-5.5 py-0 px-1 text-xs leading-normal font-bold text-center text-key-fg bg-linear-to-b from-key-hi to-key-lo rounded-control shadow-key whitespace-nowrap truncate pointer-coarse:hidden`}
               >
                 {s().key}
               </Text>

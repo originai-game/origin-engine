@@ -1,4 +1,4 @@
-import { Show, View, t } from "@origingame/engine/ui";
+import { Show, View, packClass, t } from "@origingame/engine/ui";
 import { Crosshair } from "../hud/crosshair";
 import { DamageDirection, type DamageDirectionHit } from "../hud/damage-direction";
 import { Killfeed, type KillfeedRow } from "../hud/killfeed";
@@ -72,7 +72,7 @@ export function CombatHud(props: CombatHudProps) {
         <Killfeed rows={props.feed ?? []} />
       </View>
       <View
-        class={`absolute left-4 bottom-4 py-2 px-3 w-70 max-w-full border-rim bg-linear-to-b from-plate-hi to-plate-lo shadow-plate compact:left-3 compact:right-3 compact:bottom-3 compact:w-auto`}
+        class={`absolute left-4 bottom-4 py-2 px-3 w-70 max-w-full border-rim bg-linear-to-b from-plate-hi to-plate-lo shadow-plate compact:left-3 compact:right-3 compact:bottom-3 compact:w-auto ${packClass("Plate", "frame")}`}
       >
         <StatBar
           value={props.health ?? 0}

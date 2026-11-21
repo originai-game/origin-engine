@@ -40,7 +40,7 @@ export function ShooterRound(props: ShooterRoundProps) {
           </Show>
           <Show when={(props.clock ?? "") != ""}>
             <Text
-              class={`shrink-0 text-base leading-[1.1] font-bold tabular-nums whitespace-nowrap data-urgent:text-danger compact:text-caption`}
+              class={`shrink-0 text-base leading-tight font-bold tabular-nums whitespace-nowrap data-urgent:text-danger compact:text-caption`}
               role="timer"
               data-urgent={props.urgent}
             >
@@ -55,7 +55,7 @@ export function ShooterRound(props: ShooterRoundProps) {
           <Text class="text-title leading-none font-bold tabular-nums whitespace-nowrap text-ally text-shadow-2xs text-stroke-3 text-stroke-bg compact:text-base">
             {formatNumber(props.ours ?? 0)}
           </Text>
-          <View class="self-center w-2.5 h-0.5 bg-white/66" />
+          <View class="self-center w-2.5 h-0.5 bg-fg" />
           <Text class="text-title leading-none font-bold tabular-nums whitespace-nowrap text-danger text-shadow-2xs text-stroke-3 text-stroke-bg compact:text-base">
             {formatNumber(props.theirs ?? 0)}
           </Text>

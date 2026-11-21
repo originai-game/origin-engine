@@ -1,4 +1,4 @@
-import { For, Icon, Image, Show, Text, View, formatNumber, t } from "@origingame/engine/ui";
+import { For, Icon, Image, Show, Text, View, formatNumber, packClass, t } from "@origingame/engine/ui";
 import type { Texture } from "@origingame/engine";
 import "./shooter.en.ogt";
 
@@ -39,7 +39,7 @@ export function ShooterPickups(props: ShooterPickupsProps) {
       <For each={props.items ?? []} key={(p) => p.id}>
         {(p, i) => (
           <View
-            class={`group/pickup relative flex-row items-center min-w-0 max-w-full pl-2 bg-linear-to-l from-black/86 to-black/35 compact:data-later:hidden transition duration-240 ease-out starting:opacity-0 starting:translate-x-4 exit:opacity-0`}
+            class={`group/pickup relative flex-row items-center min-w-0 max-w-full pl-2 bg-glass compact:data-later:hidden transition duration-240 ease-out starting:opacity-0 starting:translate-x-4 exit:opacity-0 ${packClass("Plate", "frame")}`}
             label={t("shooter.pickups.row", { name: p().name, quantity: p().quantity ?? 0 })}
             data-rarity-rare={p().rarity === "rare"}
             data-rarity-epic={p().rarity === "epic"}
@@ -57,12 +57,12 @@ export function ShooterPickups(props: ShooterPickupsProps) {
             </View>
             <Text class="min-w-0 text-sm font-semibold whitespace-nowrap truncate text-shadow-2xs text-stroke-3 text-stroke-bg compact:text-caption">{p().name}</Text>
             <Text
-              class={`shrink-0 text-sm font-bold tabular-nums whitespace-nowrap text-fg/66 text-shadow-2xs text-stroke-3 text-stroke-bg compact:text-caption group-data-rarity-rare/pickup:text-rare group-data-rarity-epic/pickup:text-epic group-data-rarity-legendary/pickup:text-gold`}
+              class={`shrink-0 text-sm font-bold tabular-nums whitespace-nowrap text-fg-muted text-shadow-2xs text-stroke-3 text-stroke-bg compact:text-caption group-data-rarity-rare/pickup:text-rare group-data-rarity-epic/pickup:text-epic group-data-rarity-legendary/pickup:text-gold`}
             >
               {t("shooter.pickups.count", { quantity: formatNumber(p().quantity ?? 0) })}
             </Text>
             <View
-              class={`shrink-0 self-stretch w-0.75 ml-1 bg-white/60 group-data-rarity-rare/pickup:bg-rare group-data-rarity-epic/pickup:bg-epic group-data-rarity-legendary/pickup:bg-gold`}
+              class={`shrink-0 self-stretch w-0.75 ml-1 bg-fg group-data-rarity-rare/pickup:bg-rare group-data-rarity-epic/pickup:bg-epic group-data-rarity-legendary/pickup:bg-gold`}
             />
           </View>
         )}

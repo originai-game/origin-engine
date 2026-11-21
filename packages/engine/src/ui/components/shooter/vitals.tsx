@@ -41,7 +41,7 @@ export function ShooterVitals(props: ShooterVitalsProps) {
   const shieldShare = () => ((props.shield ?? 0) <= 0 ? 0 : (props.shield ?? 0) >= shieldMax() ? 1 : (props.shield ?? 0) / shieldMax());
   const cells = () => ((props.segment ?? 25) > 0 ? Math.floor(shieldMax() / (props.segment ?? 25)) : 1);
   const low = () => props.health <= healthMax() * (props.low ?? 0.3);
-  const rim = "shadow-[0px_0px_0px_1px_rgb(255_255_255/0.22),inset_0px_1px_0px_0px_rgb(255_255_255/0.14),0px_0.143rem_0.286rem_rgb(0_0_0/0.45)]";
+  const rim = "shadow-plate ring ring-rim";
   return (
     <View
       class={`group/vitals flex-row items-end gap-x-3.5 w-82.5 max-w-full compact:w-full compact:gap-x-2 text-fg`}
@@ -49,11 +49,11 @@ export function ShooterVitals(props: ShooterVitalsProps) {
       label={t("shooter.vitals.name")}
       data-low={low()}
     >
-      <View class="shrink-0 size-16 compact:size-10 rounded-[1rem] bg-linear-to-b from-white/75 via-white/22 to-white/14">
+      <View class="shrink-0 size-16 compact:size-10 rounded-panel bg-linear-to-b from-rim-strong via-rim to-rim-soft">
         <View class="absolute inset-0.5 rounded-panel overflow-hidden bg-linear-to-b from-plate-hi to-plate-lo">
           <Show when={(props.portrait ?? 0) > 0} fallback={
             <View class="size-full flex-row items-center justify-center">
-              <Icon class="size-1/2 text-fg/66" name="person" />
+              <Icon class="size-1/2 text-fg-muted" name="person" />
             </View>
           }>
             <Image class="size-full" src={props.portrait ?? 0} />
@@ -76,7 +76,7 @@ export function ShooterVitals(props: ShooterVitalsProps) {
             <Text class="text-title leading-none font-bold tabular-nums whitespace-nowrap text-fg text-shadow-2xs text-stroke-3 text-stroke-bg group-data-low/vitals:text-danger compact:text-base">
               {formatNumber(props.health)}
             </Text>
-            <Text class="text-caption font-bold tabular-nums whitespace-nowrap text-fg/66 text-shadow-2xs text-stroke-3 text-stroke-bg">
+            <Text class="text-caption font-bold tabular-nums whitespace-nowrap text-fg-muted text-shadow-2xs text-stroke-3 text-stroke-bg">
               {t("shooter.vitals.max", { max: formatNumber(healthMax()) })}
             </Text>
           </View>
@@ -90,8 +90,8 @@ export function ShooterVitals(props: ShooterVitalsProps) {
             valueMax={shieldMax()}
             valueNow={props.shield ?? 0}
           >
-            <View class="absolute left-0 top-0 h-full bg-ally shadow-[0.143rem_0px_0.714rem_rgb(79_216_255/0.8)]" style={{ width: `${shieldShare() * 100}%` }}>
-              <View class="absolute left-0 right-0 top-0 h-21/50 bg-linear-to-b from-white/55 to-transparent" />
+            <View class="absolute left-0 top-0 h-full bg-ally shadow-glow shadow-ally" style={{ width: `${shieldShare() * 100}%` }}>
+              <View class="absolute left-0 right-0 top-0 h-21/50 bg-linear-to-b from-sheen to-transparent to-42%" />
             </View>
             <View class="absolute inset-0 pointer-events-none">
               <For each={Array.from({ length: Math.max(cells() - 1, 0) }, (_, k) => k)} key={(k) => `c${k}`}>
@@ -101,19 +101,19 @@ export function ShooterVitals(props: ShooterVitalsProps) {
           </View>
         </Show>
         <View
-          class={`relative w-full h-4 compact:h-2.75 overflow-hidden -skew-x-22 bg-track ${rim} group-data-low/vitals:shadow-[0px_0px_0px_1px_#ff4d5e,0px_0px_0.857rem_rgb(255_77_94/0.7)] group-data-low/vitals:animate-pulse`}
+          class={`relative w-full h-4 compact:h-2.75 overflow-hidden -skew-x-22 bg-track ${rim} group-data-low/vitals:shadow-glow group-data-low/vitals:shadow-foe group-data-low/vitals:ring group-data-low/vitals:ring-foe group-data-low/vitals:animate-pulse`}
           role="meter"
           label={t("shooter.vitals.health")}
           valueMin={0}
           valueMax={healthMax()}
           valueNow={props.health}
         >
-          <View class="absolute left-0 top-0 h-full bg-[linear-gradient(90deg,rgb(255_207_90/0.15),rgb(255_207_90/0.85))]" style={{ width: `${ghostShare() * 100}%` }} />
+          <View class="absolute left-0 top-0 h-full bg-gold" style={{ width: `${ghostShare() * 100}%` }} />
           <View
-            class={`absolute left-0 top-0 h-full bg-[rgb(244_246_251)] shadow-[0.143rem_0px_0.714rem_rgb(244_246_251/0.55)] group-data-low/vitals:bg-danger group-data-low/vitals:shadow-[0.143rem_0px_0.714rem_rgb(255_77_94/0.8)]`}
+            class={`absolute left-0 top-0 h-full bg-material-regular shadow-glow shadow-material-regular group-data-low/vitals:bg-danger group-data-low/vitals:shadow-glow group-data-low/vitals:shadow-foe`}
             style={{ width: `${healthShare() * 100}%` }}
           >
-            <View class="absolute left-0 right-0 top-0 h-21/50 bg-linear-to-b from-white/55 to-transparent" />
+            <View class="absolute left-0 right-0 top-0 h-21/50 bg-linear-to-b from-sheen to-transparent to-42%" />
           </View>
         </View>
       </View>

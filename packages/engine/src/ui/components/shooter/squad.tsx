@@ -57,11 +57,11 @@ export function ShooterSquad(props: ShooterSquadProps) {
               data-down={down()}
             >
               <View class="flex-row items-baseline gap-x-2.5 min-w-0">
-                <View class="shrink-0 self-center size-10 compact:size-7 rounded-card bg-linear-to-b from-white/75 via-white/22 to-white/14">
+                <View class="shrink-0 self-center size-10 compact:size-7 rounded-card bg-linear-to-b from-rim-strong via-rim to-rim-soft">
                   <View class="absolute inset-0.5 rounded-block overflow-hidden bg-plate-hi">
                     <Show when={(m().portrait ?? 0) > 0} fallback={
                       <View class="size-full flex-row items-center justify-center">
-                        <Icon class="size-1/2 text-fg/66" name="person" />
+                        <Icon class="size-1/2 text-fg-muted" name="person" />
                       </View>
                     }>
                       <Image class="size-full data-out:opacity-45" src={m().portrait ?? 0} data-out={m().state == "out"} />
@@ -72,7 +72,7 @@ export function ShooterSquad(props: ShooterSquadProps) {
                   <Text class="min-w-0 text-reading font-semibold whitespace-nowrap truncate text-fg text-shadow-2xs text-stroke-3 text-stroke-bg compact:text-caption">{m().name}</Text>
                   <Show when={(m().status ?? "") != ""}>
                     <Text
-                      class={`shrink-0 max-w-full min-w-0 text-xs font-semibold tracking-label uppercase whitespace-nowrap truncate text-fg/78 text-shadow-2xs text-stroke-3 text-stroke-bg data-reviving:text-ally data-down:text-danger`}
+                      class={`shrink-0 max-w-full min-w-0 text-xs font-semibold tracking-label uppercase whitespace-nowrap truncate text-fg-muted text-shadow-2xs text-stroke-3 text-stroke-bg data-reviving:text-ally data-down:text-danger`}
                       data-reviving={m().state == "reviving"}
                       data-down={down()}
                     >
@@ -82,9 +82,9 @@ export function ShooterSquad(props: ShooterSquadProps) {
                 </View>
               </View>
               <Show when={(m().shieldMax ?? 0) > 0}>
-                <View class="relative self-center w-full h-1.5 compact:h-1 overflow-hidden -skew-x-22 bg-track shadow-[0px_0px_0px_1px_rgb(255_255_255/0.22),inset_0px_1px_0px_0px_rgb(255_255_255/0.14),0px_0.143rem_0.286rem_rgb(0_0_0/0.45)]">
-                  <View class="absolute left-0 top-0 h-full bg-[rgb(79_216_255)] shadow-[0.143rem_0px_0.714rem_rgb(79_216_255/0.8)]" style={{ width: `${shieldShare() * 100}%` }}>
-                    <View class="absolute left-0 right-0 top-0 h-21/50 bg-linear-to-b from-white/55 to-transparent" />
+                <View class="relative self-center w-full h-1.5 compact:h-1 overflow-hidden -skew-x-22 bg-track shadow-plate ring ring-rim">
+                  <View class="absolute left-0 top-0 h-full bg-ally shadow-glow shadow-ally" style={{ width: `${shieldShare() * 100}%` }}>
+                    <View class="absolute left-0 right-0 top-0 h-21/50 bg-linear-to-b from-sheen to-transparent to-42%" />
                   </View>
                   <View class="absolute inset-0 pointer-events-none">
                     <For each={Array.from({ length: Math.max(cells() - 1, 0) }, (_, k) => k)} key={(k) => `c${k}`}>
@@ -94,16 +94,16 @@ export function ShooterSquad(props: ShooterSquadProps) {
                 </View>
               </Show>
               <View
-                class="relative self-center w-full h-1.5 compact:h-1 overflow-hidden -skew-x-22 bg-track shadow-[0px_0px_0px_1px_rgb(255_255_255/0.22),inset_0px_1px_0px_0px_rgb(255_255_255/0.14),0px_0.143rem_0.286rem_rgb(0_0_0/0.45)]"
+                class="relative self-center w-full h-1.5 compact:h-1 overflow-hidden -skew-x-22 bg-track shadow-plate ring ring-rim"
                 role="meter"
                 label={t("shooter.vitals.health")}
                 valueMin={0}
                 valueMax={m().healthMax ?? 0}
                 valueNow={m().health ?? 0}
               >
-                <View class="absolute left-0 top-0 h-full bg-[linear-gradient(90deg,rgb(255_207_90/0.15),rgb(255_207_90/0.85))]" style={{ width: `${ghostShare() * 100}%` }} />
-                <View class="absolute left-0 top-0 h-full bg-[rgb(244_246_251)]" style={{ width: `${healthShare() * 100}%` }}>
-                  <View class="absolute left-0 right-0 top-0 h-21/50 bg-linear-to-b from-white/55 to-transparent" />
+                <View class="absolute left-0 top-0 h-full bg-gold" style={{ width: `${ghostShare() * 100}%` }} />
+                <View class="absolute left-0 top-0 h-full bg-material-regular" style={{ width: `${healthShare() * 100}%` }}>
+                  <View class="absolute left-0 right-0 top-0 h-21/50 bg-linear-to-b from-sheen to-transparent to-42%" />
                 </View>
               </View>
             </View>

@@ -28,7 +28,7 @@ export function ShooterPrompt(props: ShooterPromptProps) {
       <Show when={props.text != ""}>
         <Show when={props.key != ""}>
           <Text
-            class={`shrink basis-auto max-w-2/5 min-w-5.5 py-0 px-1 text-xs leading-[1.5] font-bold text-center text-key-fg bg-linear-to-b from-white to-key-hi rounded-control shadow-[0px_0.143rem_0px_#0000008c,inset_0px_-0.143rem_0px_#0000002e] whitespace-nowrap truncate`}
+            class={`shrink basis-auto max-w-2/5 min-w-5.5 py-0 px-1 text-xs leading-normal font-bold text-center text-key-fg bg-linear-to-b from-key-hi to-key-lo rounded-control shadow-key whitespace-nowrap truncate`}
           >
             {props.key}
           </Text>

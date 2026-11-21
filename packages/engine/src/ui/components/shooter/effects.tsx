@@ -40,15 +40,15 @@ export function ShooterEffects(props: ShooterEffectsProps) {
             label={e().label ? t("shooter.effects.effect", { name: e().name, label: e().label }) : e().name}
             data-harmful={e().harmful}
           >
-            <View class="relative size-8 compact:size-6 rounded-tl-[0.357rem] bg-success group-data-harmful/effects:bg-danger">
+            <View class="relative size-8 compact:size-6 rounded-tl-control bg-success group-data-harmful/effects:bg-danger">
               <Show when={e().icon} fallback={
-                <View class="absolute inset-0.5 rounded-tl-[0.357rem] flex-row items-center justify-center bg-plate-hi">
+                <View class="absolute inset-0.5 rounded-tl-control flex-row items-center justify-center bg-plate-hi">
                   <Show when={e().glyph}>
                     <Icon class="size-3/5 text-fg" name={e().glyph} />
                   </Show>
                 </View>
               }>
-                <Image class="absolute inset-0.5 rounded-tl-[0.357rem]" src={e().icon ?? 0} />
+                <Image class="absolute inset-0.5 rounded-tl-control" src={e().icon ?? 0} />
               </Show>
               <Show when={(e().remaining ?? -1) >= 0}>
                 <View class="absolute inset-0 nine-tile bg-scrim" wipe={1 - Math.min(Math.max(e().remaining ?? 0, 0), 1)} wipeCcw />
