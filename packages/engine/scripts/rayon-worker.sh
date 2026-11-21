@@ -101,6 +101,7 @@ for f in "$dir"/snippets/wasm-bindgen-rayon-*/src/workerHelpers.no-bundler.js; d
   # shim's URL, which a Worker started from a blob: copy cannot resolve
   # relatively.
   cp "$(dirname "$0")/og-pool-split.js" "$(dirname "$f")/og-pool-split.js"
+  cp "$(dirname "$0")/../src/web/split-protocol.js" "$(dirname "$f")/split-protocol.js"
   init='  const pkg = await import(data.mainJS);'
   install='  if (data.split) (await import(data.poolSplitJS)).installPoolSplit(data.split);'
   handed='    split: globalThis.__ogPoolSplit ?? null, poolSplitJS: new URL("./og-pool-split.js", import.meta.url).href,'

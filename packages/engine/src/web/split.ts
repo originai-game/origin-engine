@@ -10,6 +10,9 @@
 // loads the module there and then (the tick waits for it) and calls the
 // function it stood for, so a module that loads late changes no result: the
 // split moves code, never what it does.
+//
+// The placeholder protocol itself is src/web/split-protocol.js, shared with
+// the lanes pool Workers' installer (scripts/og-pool-split.js).
 
 /** How a host fetches and instantiates one split module. */
 export interface ModuleHost {
@@ -44,17 +47,7 @@ declare global {
   var __ogPoolSplit: PoolSplit | null | undefined;
 }
 
-/** The primary's export of the placeholders' table (wasm-split's name, with scripts/wasm-split.ts's export prefix `%`). */
-const PLACEHOLDERS = /^%table_\d+$/;
-const NAMESPACE = "placeholder.";
-
-/** The placeholder table of a split primary's exports, or null for an unsplit wasm. */
-function placeholderTable(exports: WebAssembly.Exports): WebAssembly.Table | null {
-  for (const [k, v] of Object.entries(exports)) if (PLACEHOLDERS.test(k) && v instanceof WebAssembly.Table) return v;
-  return null;
-}
-
-type Fn = (...args: unknown[]) => unknown;
+import { moduleUrl, placeholderNamespace, placeholderTable, withPlaceholderNamespaces } from "./split-protocol.js";
 
 /** The loaded engine's split modules: one per process, as the binding is. */
 interface Split {
@@ -81,40 +74,16 @@ function loadNow(name: string): void {
   s.loads.set(name, true);
 }
 
-/** The placeholder namespace of module `name`: each field (a slot) loads the module and calls the slot's function. */
-function namespace(name: string): Record<string, Fn> {
-  const fns = new Map<string, Fn>();
-  return new Proxy({} as Record<string, Fn>, {
-    get(_t, slot) {
-      if (typeof slot !== "string") return undefined;
-      let f = fns.get(slot);
-      if (!f) {
-        const index = Number(slot);
-        f = (...args: unknown[]) => {
-          loadNow(name);
-          return (placeholderTable(split!.exports!)!.get(index) as Fn)(...args);
-        };
-        fns.set(slot, f);
-      }
-      return f;
-    },
-  });
+/** The split table of the engine's loaded primary, or null for an unsplit wasm. */
+function table(): WebAssembly.Table | null {
+  return split?.exports ? placeholderTable(split.exports) : null;
 }
 
-/** `imports` with the placeholder namespaces a split primary asks for added; everything else as given. */
-function withPlaceholders(given: WebAssembly.Imports | undefined): WebAssembly.Imports {
-  const base = (given ?? {}) as Record<string, unknown>;
-  const spaces = new Map<string, Record<string, Fn>>();
-  return new Proxy(base, {
-    get(t, key) {
-      if (typeof key === "string" && !(key in t) && key.startsWith(NAMESPACE)) {
-        let ns = spaces.get(key);
-        if (!ns) spaces.set(key, (ns = namespace(key.slice(NAMESPACE.length))));
-        return ns;
-      }
-      return Reflect.get(t, key);
-    },
-  }) as WebAssembly.Imports;
+/** The split table, refusing to run without it (a placeholder call in an unsplit wasm). */
+function splitTable(): WebAssembly.Table {
+  const t = table();
+  if (!t) throw new Error("the engine wasm has no placeholder table");
+  return t;
 }
 
 /**
@@ -126,7 +95,7 @@ function withPlaceholders(given: WebAssembly.Imports | undefined): WebAssembly.I
 export async function instantiateSplit<T>(host: ModuleHost | null, init: () => Promise<T>): Promise<T> {
   split = { host, exports: null, loads: new Map() };
   globalThis.__ogPoolSplit = host?.pool ?? null;
-  const wa = WebAssembly as unknown as Record<string, Fn | undefined>;
+  const wa = WebAssembly as unknown as Record<string, ((...args: unknown[]) => unknown) | undefined>;
   const saved = { instantiate: wa.instantiate, instantiateStreaming: wa.instantiateStreaming };
   const keep = (r: unknown) => {
     const instance = r instanceof WebAssembly.Instance ? r : (r as { instance: WebAssembly.Instance }).instance;
@@ -137,7 +106,7 @@ export async function instantiateSplit<T>(host: ModuleHost | null, init: () => P
     const original = saved[k];
     if (!original) continue;
     wa[k] = (source: unknown, given?: unknown) =>
-      Promise.resolve(original.call(WebAssembly, source, withPlaceholders(given as WebAssembly.Imports | undefined))).then(keep);
+      Promise.resolve(original.call(WebAssembly, source, withPlaceholderNamespaces(given as WebAssembly.Imports | undefined, loadNow, splitTable))).then(keep);
   }
   try {
     return await init();
@@ -191,7 +160,7 @@ export interface EngineModules {
  * `start` are fetched at once, so they download beside the primary.
  */
 export function fetchModuleHost(base: string | URL, files: Readonly<Record<string, string>> = {}, start: readonly string[] = []): ModuleHost {
-  const url = (name: string) => new URL(files[name] ?? `modules/${name}.wasm`, base).href;
+  const url = (name: string) => moduleUrl(name, files, base).href;
   const get = async (name: string) => {
     const r = await fetch(url(name), { mode: "cors", credentials: "omit" });
     if (!r.ok) throw new Error(`cannot fetch engine module ${name} from ${url(name)} (HTTP ${r.status})`);
