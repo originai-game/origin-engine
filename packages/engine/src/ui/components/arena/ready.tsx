@@ -41,23 +41,23 @@ export interface ArenaReadyProps {
  * list's foot is dropped.
  */
 const CARD = `w-full max-h-full p-4 nine-panel-cut bg-plate-hi ${packClass("Panel", "frame")}`;
-const BUTTON = `flex-1 basis-44 flex-row items-center justify-center gap-x-1 min-h-11 px-4 text-caption font-bold tracking-[0.14em] uppercase text-fg nine-plate-cut bg-glass-hi/95 hover:bg-raised-hi/95 disabled:opacity-45 ${packClass("Button", "plate")}`;
+const BUTTON = `flex-1 basis-44 flex-row items-center justify-center gap-x-1 min-h-11 px-4 text-caption font-bold tracking-label uppercase text-fg nine-plate-cut bg-glass-hi hover:bg-raised-hi disabled:opacity-45 ${packClass("Button", "plate")}`;
 
 export function ArenaReady(props: ArenaReadyProps) {
   const heading = () => (props.title ?? "") != "" ? props.title : t("ready.title");
   const canAct = () => (props.canRespond ?? true) && !props.closed && !props.loading && (props.players ?? []).length > 0;
   return (
     <View class={`flex-col gap-y-2 text-fg ${CARD}`} label={heading()} busy={props.loading}>
-      <Text class="text-[1.714rem] leading-[1.1] font-bold uppercase tracking-[0.04em] text-fg text-center">{heading()}</Text>
+      <Text class="text-title leading-tight font-bold uppercase tracking-sm text-fg text-center">{heading()}</Text>
       <Show when={(props.detail ?? "") != ""}>
         <Text class="text-caption font-semibold text-fg-muted text-center">{props.detail}</Text>
       </Show>
       <Show when={props.closed} fallback={
         <Show when={(props.timeText ?? "") != ""}>
-          <Text class="text-[3.857rem] leading-none font-bold tabular-nums text-gold text-center">{props.timeText}</Text>
+          <Text class="text-7xl leading-none font-bold tabular-nums text-gold text-center">{props.timeText}</Text>
         </Show>
       }>
-        <Text class="text-caption font-bold tracking-[0.14em] uppercase text-fg-muted text-center" role="status">{t("ready.closed")}</Text>
+        <Text class="text-caption font-bold tracking-label uppercase text-fg-muted text-center" role="status">{t("ready.closed")}</Text>
       </Show>
       <Show when={props.loading} fallback={
         <Show when={(props.players ?? []).length}>
@@ -73,7 +73,7 @@ export function ArenaReady(props: ArenaReadyProps) {
                   >
                     <Text class={`flex-1 basis-16 min-w-0 text-reading font-semibold text-fg data-offline:text-fg-muted`} data-offline={p().state == "offline"}>{p().name}</Text>
                     <Text
-                      class={`ml-auto text-caption leading-[1.3] font-bold tracking-[0.14em] uppercase text-fg-muted text-center data-ready:text-success data-declined:text-danger`}
+                      class={`ml-auto text-caption leading-snug font-bold tracking-label uppercase text-fg-muted text-center data-ready:text-success data-declined:text-danger`}
                       data-ready={p().state == "ready"}
                       data-declined={p().state == "declined"}
                     >

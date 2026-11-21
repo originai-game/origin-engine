@@ -150,11 +150,8 @@ export function MinimapView(props: MinimapViewProps) {
             <View class="absolute inset-0 rounded-full border border-white/8 pointer-events-none" />
           </Show>
           <View
-            class="absolute left-1/2 top-1/2 w-[5.76rem] h-[5.76rem] bg-[conic-gradient(from_-30deg_at_50%_100%,var(--color-hud-accent),transparent_60deg)]"
-            style={{
-              transform: `translate(-50%, -100%) ${props.rotate ? "" : `rotate(${heading()}deg)`}`,
-              transformOrigin: "50% 100%",
-            }}
+            class="absolute left-1/2 top-1/2 w-20 h-40 -bg-conic-30 from-hud-accent to-transparent to-17%"
+            style={{ transform: `translate(-50%, -50%) ${props.rotate ? "" : `rotate(${heading()}deg)`}` }}
           />
           <View
             class="absolute"

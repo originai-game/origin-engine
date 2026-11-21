@@ -60,12 +60,12 @@ export interface ArenaLobbyProps {
  * dropped, and a long word wraps without breaking.
  */
 const CARD = `w-full max-h-full p-4 flex-col gap-y-3 text-fg nine-panel-cut bg-plate-hi compact:p-2 ${packClass("Panel", "frame")}`;
-const BUTTON = `flex-row items-center justify-center gap-x-1 min-h-11 px-4 min-w-[8.571rem] text-caption font-bold tracking-[0.14em] uppercase text-fg nine-plate-cut bg-glass-hi hover:bg-raised-hi disabled:opacity-45 compact:flex-1 ${packClass("Button", "plate")}`;
-const KEYCAP = "shrink-0 pointer-coarse:hidden text-[1.5rem] leading-none";
+const BUTTON = `flex-row items-center justify-center gap-x-1 min-h-11 px-4 min-w-30 text-caption font-bold tracking-label uppercase text-fg nine-plate-cut bg-glass-hi hover:bg-raised-hi disabled:opacity-45 compact:flex-1 ${packClass("Button", "plate")}`;
+const KEYCAP = "shrink-0 pointer-coarse:hidden text-xl leading-none";
 /** A tag in a state's own colour (an accent or gold fill and its ink): the pack's neutral chip does not dress it. */
-const ACCENT_TAG = `shrink-0 py-0 px-1 text-xs leading-[1.5] font-bold tracking-[0.14em] uppercase whitespace-nowrap nine-chip-cut`;
+const ACCENT_TAG = `shrink-0 py-0 px-1 text-xs leading-normal font-bold tracking-label uppercase whitespace-nowrap nine-chip-cut`;
 const TAG = `${ACCENT_TAG} ${packClass("Chip", "frame")}`;
-const PORTRAIT = "shrink-0 size-[3.714rem] p-[3px] rounded-[0.857rem] bg-linear-to-b from-rim-strong via-rim via-45% to-rim-soft compact:size-[2.857rem]";
+const PORTRAIT = "shrink-0 size-13 p-0.75 rounded-panel bg-linear-to-b from-rim-strong via-rim via-45% to-rim-soft compact:size-10";
 const SEAT = "flex-row flex-wrap items-center gap-x-1 gap-y-0.5 min-h-11 py-1 px-2 nine-plate-cut compact:min-h-9 compact:py-0.5 compact:px-1 compact:gap-x-1";
 
 export function ArenaLobby(props: ArenaLobbyProps) {
@@ -74,7 +74,7 @@ export function ArenaLobby(props: ArenaLobbyProps) {
   return (
     <View class={CARD} label={heading()}>
       <View class="flex-row flex-wrap items-baseline gap-x-3 gap-y-1">
-        <Text class="min-w-0 text-[1.714rem] leading-[1.1] font-bold uppercase tracking-[0.04em] text-fg">{heading()}</Text>
+        <Text class="min-w-0 text-title leading-tight font-bold uppercase tracking-sm text-fg">{heading()}</Text>
         <Show when={(props.detail ?? "") != ""}>
           <Text class="min-w-0 text-caption font-semibold text-fg-muted">{props.detail}</Text>
         </Show>
@@ -94,7 +94,7 @@ export function ArenaLobby(props: ArenaLobbyProps) {
                   data-open={s().open === true}
                 >
                   <View class={`${PORTRAIT} ${s().open ? "p-px bg-none bg-rim" : ""}`}>
-                    <View class="size-full rounded-[0.714rem] bg-raised-pressed flex-row items-center justify-center overflow-hidden">
+                    <View class="size-full rounded-card bg-raised-pressed flex-row items-center justify-center overflow-hidden">
                       <Show when={(s().portrait ?? 0) != 0 && !s().open} fallback={
                         <Icon class={s().open ? "size-6 text-fg-muted" : "size-6 text-fg"} name={s().open ? "plus" : (s().icon ?? "")} />
                       }>
@@ -102,8 +102,8 @@ export function ArenaLobby(props: ArenaLobbyProps) {
                       </Show>
                     </View>
                   </View>
-                  <View class="flex-1 min-w-0 flex-col gap-y-0.5 compact:basis-[6.857rem]">
-                    <Text class={`text-start text-reading leading-[1.15] font-bold text-fg ${s().open ? "text-fg-muted" : ""}`}>{s().open ? t("arena.lobby.open") : s().name}</Text>
+                  <View class="flex-1 min-w-0 flex-col gap-y-0.5 compact:basis-24">
+                    <Text class={`text-start text-reading leading-tight font-bold text-fg ${s().open ? "text-fg-muted" : ""}`}>{s().open ? t("arena.lobby.open") : s().name}</Text>
                     <Show when={s().host || s().local}>
                       <View class="flex-row flex-wrap gap-x-0.5 gap-y-0.5">
                         <Show when={s().host}>
@@ -117,7 +117,7 @@ export function ArenaLobby(props: ArenaLobbyProps) {
                   </View>
                   <Show when={!s().open}>
                     <View
-                      class={`flex-row items-center gap-x-1 whitespace-nowrap text-caption font-bold tracking-[0.14em] uppercase compact:ml-auto ${s().ready ? "text-success shadow-[0px_0px_0.571rem_rgb(85_227_154/0.7)]" : "text-fg-muted"}`}
+                      class={`flex-row items-center gap-x-1 whitespace-nowrap text-caption font-bold tracking-label uppercase compact:ml-auto ${s().ready ? "text-success shadow-glow-sm shadow-boon" : "text-fg-muted"}`}
                     >
                       <Icon class="size-4" name={s().ready ? "check" : "clock"} />
                       <Text class="whitespace-nowrap">{s().ready ? t("arena.lobby.ready") : t("arena.lobby.notReady")}</Text>
@@ -125,13 +125,13 @@ export function ArenaLobby(props: ArenaLobbyProps) {
                   </Show>
                   <Show when={s().open && props.canInvite}>
                     <View
-                      class="flex-none flex-row items-center gap-x-0.5 min-h-8 px-4 text-caption font-bold tracking-[0.14em] uppercase text-fg bg-linear-to-b from-glass-hi/95 to-raised-pressed/95 shadow-[inset_0px_0px_0px_1px_rgb(255_255_255/0.24),inset_0px_1px_0px_0px_rgb(255_255_255/0.6)] rounded-tl-[0.429rem] hover:bg-none hover:bg-linear-to-b hover:from-raised-hi/95 hover:to-raised-lo/96 compact:ml-auto"
+                      class="flex-none flex-row items-center gap-x-0.5 min-h-8 px-4 text-caption font-bold tracking-label uppercase text-fg bg-linear-to-b from-glass-hi to-raised-pressed inset-shadow-lit inset-ring-1 inset-ring-rim rounded-tl-field hover:bg-none hover:bg-linear-to-b hover:from-raised-hi hover:to-raised-lo compact:ml-auto"
                       role="button"
                       label={t("arena.lobby.invite")}
                       onPress={(e) => props.onInvite?.(e, s().id)}
                     >
                       <Icon class="size-4" name="plus" />
-                      <Text class="text-caption font-bold tracking-[0.14em] uppercase text-fg">{t("arena.lobby.invite")}</Text>
+                      <Text class="text-caption font-bold tracking-label uppercase text-fg">{t("arena.lobby.invite")}</Text>
                     </View>
                   </Show>
                 </View>
@@ -144,23 +144,23 @@ export function ArenaLobby(props: ArenaLobbyProps) {
         <Show when={props.isReady} fallback={
           <View class={BUTTON} role="button" label={t("arena.lobby.readyUp")} disabled={!(props.canReady ?? false)} onPress={(e) => props.onReady?.(e)}>
             <Text class={KEYCAP} glyph="details" />
-            <Text class="text-caption font-bold tracking-[0.14em] uppercase text-fg">{t("arena.lobby.readyUp")}</Text>
+            <Text class="text-caption font-bold tracking-label uppercase text-fg">{t("arena.lobby.readyUp")}</Text>
           </View>
         }>
           <View class={BUTTON} role="button" label={t("arena.lobby.unready")} disabled={!(props.canReady ?? false)} onPress={(e) => props.onUnready?.(e)}>
             <Text class={KEYCAP} glyph="details" />
-            <Text class="text-caption font-bold tracking-[0.14em] uppercase text-fg">{t("arena.lobby.unready")}</Text>
+            <Text class="text-caption font-bold tracking-label uppercase text-fg">{t("arena.lobby.unready")}</Text>
           </View>
         </Show>
         <Show when={props.isHost}>
           <View
-            class={`flex-row items-center justify-center gap-x-1 min-h-11 px-4 min-w-[8.571rem] text-caption font-bold tracking-[0.14em] uppercase text-hud-accent-fg nine-plate-cut bg-hud-accent hover:bg-hud-accent disabled:opacity-45 compact:flex-1 ${packClass("Button", "plate", "primary")}`}
+            class={`flex-row items-center justify-center gap-x-1 min-h-11 px-4 min-w-30 text-caption font-bold tracking-label uppercase text-hud-accent-fg nine-plate-cut bg-hud-accent hover:bg-hud-accent disabled:opacity-45 compact:flex-1 ${packClass("Button", "plate", "primary")}`}
             role="button"
             label={t("arena.lobby.start")}
             disabled={!(props.canStart ?? false)}
             onPress={(e) => props.onStart?.(e)}
           >
-            <Text class="text-caption font-bold tracking-[0.14em] uppercase">{t("arena.lobby.start")}</Text>
+            <Text class="text-caption font-bold tracking-label uppercase">{t("arena.lobby.start")}</Text>
           </View>
         </Show>
       </View>

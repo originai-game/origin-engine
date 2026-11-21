@@ -52,7 +52,7 @@ export interface ArenaSpectatorProps {
  * is flat, the scroll fade at the list's foot is dropped, and the ghost
  * Leave wears the standard button look.
  */
-const BUTTON = `flex-1 basis-40 flex-row items-center justify-center gap-x-1 min-h-11 px-3 text-caption font-bold tracking-[0.14em] uppercase text-fg nine-plate-cut bg-glass-hi hover:bg-raised-hi disabled:opacity-45 ${packClass("Button", "plate")}`;
+const BUTTON = `flex-1 basis-40 flex-row items-center justify-center gap-x-1 min-h-11 px-3 text-caption font-bold tracking-label uppercase text-fg nine-plate-cut bg-glass-hi hover:bg-raised-hi disabled:opacity-45 ${packClass("Button", "plate")}`;
 
 export function ArenaSpectator(props: ArenaSpectatorProps) {
   const heading = () => (props.title ?? "") != "" ? props.title : t("spectator.title");
@@ -63,11 +63,11 @@ export function ArenaSpectator(props: ArenaSpectatorProps) {
       label={heading()}
       busy={props.loading}
     >
-      <Text class="text-xs leading-[1.3] font-semibold tracking-[0.14em] uppercase text-fg-muted">{heading()}</Text>
+      <Text class="text-xs leading-snug font-semibold tracking-label uppercase text-fg-muted">{heading()}</Text>
       <Show when={(props.detail ?? "") != ""}>
         <Text class="text-caption font-semibold text-fg-muted">{props.detail}</Text>
       </Show>
-      <Text class="text-[1.714rem] leading-[1.1] font-bold uppercase tracking-[0.04em] text-fg" role="status">
+      <Text class="text-title leading-tight font-bold uppercase tracking-sm text-fg" role="status">
         {props.freeCamera ? t("spectator.free") : props.selected ? t("spectator.following") : t("spectator.choose")}
       </Text>
       <Show when={props.loading} fallback={
@@ -77,7 +77,7 @@ export function ArenaSpectator(props: ArenaSpectatorProps) {
               <For each={props.targets ?? []} key={(p) => p.id}>
                 {(p) => (
                   <View
-                    class={`flex-col gap-y-[0.071rem] w-full min-h-11 py-1 px-3 text-start hover:bg-surface-hover ${followed(p().id) ? packClass("Row", "frame", "selected") : packClass("Row", "frame")} disabled:text-fg-muted transition duration-317`}
+                    class={`flex-col gap-y-0.25 w-full min-h-11 py-1 px-3 text-start hover:bg-surface-hover ${followed(p().id) ? packClass("Row", "frame", "selected") : packClass("Row", "frame")} disabled:text-fg-muted transition duration-317`}
                     role="button"
                     label={p().name}
                     pressed={followed(p().id)}
@@ -85,9 +85,9 @@ export function ArenaSpectator(props: ArenaSpectatorProps) {
                     onPress={(e) => props.onFollow?.(e, p().id)}
                     data-selected={followed(p().id)}
                   >
-                    <Text class="text-reading leading-[1.15] font-bold text-fg">{p().name}</Text>
+                    <Text class="text-reading leading-tight font-bold text-fg">{p().name}</Text>
                     <Show when={(p().team ?? "") != ""}>
-                      <Text class="text-xs leading-[1.3] font-semibold tracking-[0.14em] uppercase text-fg-muted">{p().team}</Text>
+                      <Text class="text-xs leading-snug font-semibold tracking-label uppercase text-fg-muted">{p().team}</Text>
                     </Show>
                     <Show when={(p().detail ?? "") != ""}>
                       <Text class="text-caption text-fg-muted">{p().detail}</Text>
