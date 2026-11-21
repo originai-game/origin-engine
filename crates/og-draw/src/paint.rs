@@ -42,9 +42,13 @@ pub enum PaintKind {
     /// An inset shadow, inside the box only: the box less its hole (the box
     /// moved by `p`'s x and y, shrunk by its spread, blurred by its blur).
     InsetShadow = 6,
-    /// Region `p` (u0, v0, u1, v1) of texture `a` ([`crate::TextureHandle`]'s
-    /// bits) over `rect`, its colour times `color` (white for a picture,
-    /// the ink for a mask).
+    /// Region `uv` of texture `a` ([`crate::TextureHandle`]'s bits) over
+    /// `rect`, its colour times `color` (white for a picture, the ink for
+    /// a mask), nine-sliced: `p` the slice insets in texture pixels (top,
+    /// right, bottom, left) drawn `radius` CSS px wide on screen, the
+    /// edges and centre stretched or tiled ([`IMAGE_TILE`]), the centre
+    /// drawn with [`IMAGE_FILL`] (flags in `b`; no insets and the fill:
+    /// the plain image). `wipe` cuts it radially ([`PaintQuad::wipe`]).
     Image = 7,
 }
 
@@ -69,7 +73,17 @@ pub struct PaintQuad {
     pub b: u32,
     /// Its transform, of [`Paint::transforms`]; 0 none.
     pub xf: u32,
+    /// An image's texture region, u0 v0 u1 v1.
+    pub uv: [f32; 4],
+    /// An image's radial wipe: the fraction hidden (0 none), the angle it
+    /// starts at (radians, 0 up, clockwise), 1 to sweep counter-clockwise.
+    pub wipe: [f32; 4],
 }
+
+/// [`PaintKind::Image`]'s flags: draw the centre slice.
+pub const IMAGE_FILL: u32 = 1;
+/// Tile the edges and the centre (CSS's `round`) instead of stretching.
+pub const IMAGE_TILE: u32 = 2;
 
 /// A linear gradient: `stops` of [`Paint::stops`] from `first`, along the
 /// CSS angle `angle` (radians, 0 up, clockwise).

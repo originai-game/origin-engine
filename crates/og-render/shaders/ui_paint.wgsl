@@ -31,8 +31,11 @@ struct PaintGpu {
   p: vec4<f32>,
   // x: the kind (0 solid, 1 gradient, 2 glyph, 3 icon, 4 border, 5 shadow,
   // 6 inset shadow, 7 image), y and z its gradient, or its first segment and their
-  // count, w its transform (0 none).
+  // count, or an image's flags (1 fill, 2 tile), w its transform (0 none).
   k: vec4<u32>,
+  // An image's radial wipe: the fraction hidden, the start angle, 1 for
+  // counter-clockwise.
+  w: vec4<f32>,
 };
 @group(0) @binding(1) var<storage, read> quads: array<PaintGpu>;
 // x: the angle (radians, CSS: 0 up, clockwise), y: its first stop, z: stops.
@@ -175,6 +178,34 @@ fn gradient_at(gi: u32, p: vec2<f32>, half: vec2<f32>) -> vec4<f32> {
   return vec4<f32>(srgb_decode(m.rgb / m.a), m.a);
 }
 
+// One axis of a nine-slice: `x` CSS px into a box `w` wide whose start and
+// end slices are `a` and `b` CSS px wide on screen and `sa` and `sb` texture
+// pixels in a region `n` pixels long. The texture pixel it samples, kept
+// half a texel inside its own slice so filtering never bleeds a neighbour
+// in, and 1 in the centre.
+fn slice_axis(x: f32, w: f32, a: f32, b: f32, sa: f32, sb: f32, n: f32, tile: bool) -> vec2<f32> {
+  if (x < a) {
+    return vec2<f32>(inside(x / max(a, 1e-4) * sa, 0.0, sa), 0.0);
+  }
+  if (x > w - b) {
+    return vec2<f32>(inside(n - (w - x) / max(b, 1e-4) * sb, n - sb, n), 0.0);
+  }
+  let centre = max(n - sa - sb, 1e-4);
+  let span = max(w - a - b, 1e-4);
+  var t = (x - a) / span;
+  if (tile) {
+    // Whole tiles, the source's scale along the slices (CSS's round).
+    let k = select(1.0, a / sa, sa > 0.0 && a > 0.0);
+    t = fract(t * max(round(span / (centre * k)), 1.0));
+  }
+  return vec2<f32>(inside(sa + t * centre, sa, n - sb), 1.0);
+}
+
+// `v` kept half a texel inside `lo..hi` (the middle of a slice too thin).
+fn inside(v: f32, lo: f32, hi: f32) -> f32 {
+  return clamp(v, min(lo + 0.5, 0.5 * (lo + hi)), max(hi - 0.5, 0.5 * (lo + hi)));
+}
+
 fn median(r: f32, g: f32, b: f32) -> f32 {
   return max(min(r, g), min(max(r, g), b));
 }
@@ -197,6 +228,8 @@ fn fs_paint(in: PaintOut) -> @location(0) vec4<f32> {
   // Sampled before any branch: derivatives need uniform control flow.
   let m = textureSample(page, page_sampler, in.uv);
   let screen_tex = vec2<f32>(1.0) / fwidthFine(in.uv);
+  let uv_dx = dpdx(in.uv);
+  let uv_dy = dpdy(in.uv);
   let q = quads[in.index];
   let css = in.position.xy / frame.output.z;
   if (css.x < q.clip.x || css.y < q.clip.y || css.x >= q.clip.z || css.y >= q.clip.w) {
@@ -265,10 +298,32 @@ fn fs_paint(in: PaintOut) -> @location(0) vec4<f32> {
       a *= edge(sd_round_box(in.local, half, q.r), scale) * (1.0 - hole);
     }
     case 7u: {
-      // A texture's region: its colour times the quad's (the ink tints a
-      // mask; a picture's is white).
-      rgb *= m.rgb;
-      a *= m.a;
+      // A texture's region, nine-sliced: its colour times the quad's (the
+      // ink tints a mask; a picture's is white).
+      let size = vec2<f32>(textureDimensions(page));
+      let region = (q.uv.zw - q.uv.xy) * size;
+      let tile = (q.k.z & 2u) != 0u;
+      let fill = (q.k.z & 1u) != 0u;
+      let at = in.local + half;
+      let x = slice_axis(at.x, 2.0 * half.x, q.r.w, q.r.y, q.p.w, q.p.y, region.x, tile);
+      let y = slice_axis(at.y, 2.0 * half.y, q.r.x, q.r.z, q.p.x, q.p.z, region.y, tile);
+      let s = textureSampleGrad(page, page_sampler, q.uv.xy + vec2<f32>(x.x, y.x) / size, uv_dx, uv_dy);
+      rgb *= s.rgb;
+      a *= s.a;
+      if (!fill && x.y > 0.5 && y.y > 0.5) {
+        a = 0.0;
+      }
+      if (q.w.x > 0.0) {
+        // The radial wipe: shown from the start angle round to the amount
+        // left, its two edges antialiased by their distance in pixels.
+        let turn = 6.2831853;
+        var t = (atan2(in.local.x, -in.local.y) - q.w.y) / turn;
+        t = select(t, -t, q.w.z > 0.5);
+        t = fract(t);
+        let shown = 1.0 - q.w.x;
+        let r = length(in.local) * scale * turn;
+        a *= clamp(min(t, shown - t) * r + 0.5, 0.0, 1.0) * select(0.0, 1.0, shown > 0.0);
+      }
     }
     default: {
       a *= edge(sd_round_box(in.local, half, q.r), scale);

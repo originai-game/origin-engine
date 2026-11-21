@@ -1319,6 +1319,39 @@ impl Tree {
                     0,
                 ));
             }
+            // Its image over the fill, nine-sliced, radially wiped.
+            let im = &s.image;
+            if let Some(t) = og_draw::TextureHandle::from_slot(im.texture)
+                && im.wipe > 0.0
+            {
+                let width = if im.width == [0.0; 4] {
+                    im.slice
+                } else {
+                    im.width
+                };
+                let color = if im.mask {
+                    faded(own_ink)
+                } else {
+                    [1.0, 1.0, 1.0, alpha]
+                };
+                let flags = u32::from(im.fill) * og_draw::paint::IMAGE_FILL
+                    | u32::from(im.tile) * og_draw::paint::IMAGE_TILE;
+                let cut = if im.wipe < 1.0 { 1.0 - im.wipe } else { 0.0 };
+                p.quads.push(PaintQuad {
+                    uv: im.uv,
+                    wipe: [cut, im.wipe_start, f32::from(u8::from(im.wipe_ccw)), 0.0],
+                    ..quad(
+                        PaintKind::Image,
+                        rect,
+                        clip,
+                        color,
+                        width,
+                        im.slice,
+                        t.to_bits(),
+                        flags,
+                    )
+                });
+            }
             for sh in shadows
                 .iter()
                 .rev()
@@ -1393,16 +1426,19 @@ impl Tree {
                     // mask in the ink.
                     Some((IconCell::Image(t, uv), picture)) => {
                         let color = if picture { [1.0, 1.0, 1.0, alpha] } else { ink };
-                        p.quads.push(quad(
-                            PaintKind::Image,
-                            square,
-                            clip,
-                            color,
-                            [0.0; 4],
+                        p.quads.push(PaintQuad {
                             uv,
-                            t.to_bits(),
-                            0,
-                        ));
+                            ..quad(
+                                PaintKind::Image,
+                                square,
+                                clip,
+                                color,
+                                [0.0; 4],
+                                [0.0; 4],
+                                t.to_bits(),
+                                og_draw::paint::IMAGE_FILL,
+                            )
+                        });
                     }
                     Some((IconCell::Builtin(name), _)) => {
                         let set = crate::icons::icons();
@@ -1649,6 +1685,8 @@ fn quad(
         a,
         b,
         xf: 0,
+        uv: [0.0; 4],
+        wipe: [0.0; 4],
     }
 }
 

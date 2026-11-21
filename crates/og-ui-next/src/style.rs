@@ -351,6 +351,50 @@ impl Decoration {
     pub const LINE_THROUGH: u8 = 4;
 }
 
+/// A box's image (generated panel, button, frame and slot art): a texture
+/// region, nine-sliced, over the fill and under the border. Its texture is
+/// a handle resolved at run time, so the TSX applier writes it; no sheet
+/// does.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Slice {
+    /// The texture's slot (`og_draw::TextureHandle::slot`); 0 none.
+    pub texture: u32,
+    /// Its region, u0 v0 u1 v1.
+    pub uv: [f32; 4],
+    /// Slice insets in texture pixels, top, right, bottom, left; 0 none.
+    pub slice: [f32; 4],
+    /// How wide each slice draws, CSS px; all 0: the slices' own sizes.
+    pub width: [f32; 4],
+    /// Draw the centre slice.
+    pub fill: bool,
+    /// Tile edges and centre in whole tiles instead of stretching.
+    pub tile: bool,
+    /// Tinted by the ink (a mask) instead of drawn in its own colours.
+    pub mask: bool,
+    /// A radial wipe: the fraction shown, 0..1 (1 whole), from `wipe_start`
+    /// (radians, 0 up, clockwise), counter-clockwise with `wipe_ccw`.
+    pub wipe: f32,
+    pub wipe_start: f32,
+    pub wipe_ccw: bool,
+}
+
+impl Default for Slice {
+    fn default() -> Self {
+        Slice {
+            texture: 0,
+            uv: [0.0, 0.0, 1.0, 1.0],
+            slice: [0.0; 4],
+            width: [0.0; 4],
+            fill: true,
+            tile: false,
+            mask: false,
+            wipe: 1.0,
+            wipe_start: 0.0,
+            wipe_ccw: false,
+        }
+    }
+}
+
 /// An element's paint: every field the paint pass reads, `Copy`, so motion
 /// holds an animated copy of it per node and repaint reads either.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -378,6 +422,7 @@ pub struct Skin {
     pub paint: Rgba,
     pub stroke: Rgba,
     pub stroke_width: f32,
+    pub image: Slice,
 }
 
 impl Default for Skin {
@@ -400,6 +445,7 @@ impl Default for Skin {
             paint: [0.0, 0.0, 0.0, 1.0],
             stroke: [0.0; 4],
             stroke_width: 1.0,
+            image: Slice::default(),
         }
     }
 }

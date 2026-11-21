@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {
+      "member": "UI images",
+      "summary": "og-ui's new core paints a box's image: a texture region nine-sliced (four slice insets, edges and centre stretched or tiled in whole tiles, the centre optional, each slice sampled without bleeding into its neighbours), in its own colours or tinted as a mask, and cut by a radial wipe (the share shown, its start angle and direction) for cooldowns and progress rings. Its texture is a run-time handle the UI renderer sets."
+    }
+  ]
+}

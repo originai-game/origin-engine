@@ -25,6 +25,7 @@ pub(crate) struct PaintGpu {
     r: [f32; 4],
     p: [f32; 4],
     k: [u32; 4],
+    w: [f32; 4],
 }
 
 /// What a run binds as group 1: the white sprite (nothing samples it), a
@@ -388,7 +389,8 @@ impl PaintRenderer {
                     self.missing += 1;
                     continue;
                 }
-                g.uv = q.p;
+                g.uv = q.uv;
+                g.w = q.wipe;
                 wants = Some(PaintBind::Texture(t));
             }
             if let Some(w) = wants
