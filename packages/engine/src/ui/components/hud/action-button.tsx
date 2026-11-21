@@ -34,7 +34,7 @@ export function ActionButton(props: ActionButtonProps) {
     >
       <View class="size-full flex-row items-center justify-center absolute inset-0 bg-linear-to-b from-lit to-shade group-data-primary/disc:from-sheen group-data-primary/disc:to-shade rounded-capsule" />
       <Show when={(props.charge ?? -1) >= 0}>
-        <View class="absolute inset-0 nine-ring bg-gold/50" wipe={Math.min(Math.max(props.charge ?? 0, 0), 1)} data-charged={(props.charge ?? 0) >= 1} />
+        <View class="absolute inset-0 nine-ring bg-gold" wipe={Math.min(Math.max(props.charge ?? 0, 0), 1)} data-charged={(props.charge ?? 0) >= 1} />
       </Show>
       <Show when={props.icon} fallback={
         <Text class="text-sm whitespace-nowrap">{props.label}</Text>

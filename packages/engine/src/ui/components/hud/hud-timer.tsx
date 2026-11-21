@@ -48,7 +48,7 @@ export function HudTimer(props: HudTimerProps) {
           </View>
         </Show>
         <Text
-          class={`text-[22.88px] tabular-nums whitespace-nowrap text-shadow-2xs data-warn:text-warn data-critical:text-danger data-paused:animate-pulse data-critical:animate-beat`}
+          class={`text-2xl tabular-nums whitespace-nowrap text-shadow-2xs data-warn:text-warn data-critical:text-danger data-paused:animate-pulse data-critical:animate-beat`}
           data-warn={warn()}
           data-critical={critical()}
           data-paused={props.paused}

@@ -49,7 +49,7 @@ export function OverlayBar(props: OverlayBarProps) {
               label={`${o().name}: ${o().low ?? ""} – ${o().high ?? ""}`}
             >
               <Text class="text-sm font-semibold whitespace-nowrap text-fg text-shadow-xs">{o().name}</Text>
-              <View class="h-2 w-full rounded-[0.143rem]" style={{ background: `linear-gradient(90deg, ${o().ramp ?? ""})` }} />
+              <View class="h-2 w-full rounded-control" style={{ background: `linear-gradient(90deg, ${o().ramp ?? ""})` }} />
               <View class="flex-row w-full gap-x-3">
                 <Text class="min-w-0 text-xs font-semibold tracking-label uppercase text-fg-muted text-shadow-xs">{o().low ?? ""}</Text>
                 <Text class="min-w-0 flex-1 text-end text-xs font-semibold tracking-label uppercase text-fg-muted text-shadow-xs">{o().high ?? ""}</Text>
@@ -63,7 +63,7 @@ export function OverlayBar(props: OverlayBarProps) {
           <For each={props.overlays ?? []} key={(o) => o.id}>
             {(o) => (
               <View
-                class={`shrink-0 flex-row items-center h-14 py-1 pr-3 pl-1 gap-x-2 border-rim-strong bg-linear-to-b from-plate-hi to-plate-lo shadow-[0px_0px_0px_1px_#00000073,inset_0px_1px_0px_0px_#ffffff14,0px_6px_18px_-6px_#00000099] rounded-button border active:bg-none active:bg-tile-pressed active:scale-96`}
+                class={`shrink-0 flex-row items-center h-14 py-1 pr-3 pl-1 gap-x-2 border-rim-strong bg-linear-to-b from-plate-hi to-plate-lo shadow-float ring ring-shade-deep rounded-button border active:bg-none active:bg-tile-pressed active:scale-96`}
                 role="button"
                 label={o().name}
                 pressed={o().id === (props.selected ?? "")}

@@ -81,7 +81,7 @@ export function BossBar(props: BossBarProps) {
           <View class={`shrink-0 size-1.5 rotate-45 bg-foe`} />
           <Text class={`text-xs font-semibold tracking-label uppercase whitespace-nowrap text-foe text-shadow-2xs`}>{t("hud.boss-bar.tag")}</Text>
         </View>
-        <Text class={`shrink min-w-0 text-2xl leading-[1.1] font-bold tracking-label uppercase whitespace-nowrap truncate text-fg text-shadow-2xs compact:text-reading`}>
+        <Text class={`shrink min-w-0 text-2xl leading-tight font-bold tracking-label uppercase whitespace-nowrap truncate text-fg text-shadow-2xs compact:text-reading`}>
           {(props.name ?? "") !== "" ? props.name : t("hud.boss-bar.name")}
         </Text>
         <Show when={(props.epithet ?? "") !== ""}>
@@ -93,7 +93,7 @@ export function BossBar(props: BossBarProps) {
       <Show when={props.loading} fallback={
         <>
           <View
-            class={`group/health relative w-full h-3.5 overflow-hidden bg-track shadow-[0px_0px_0px_1px_#ffffff38,inset_0px_1px_0px_0px_#ffffff24,0px_0.143rem_0.286rem_#00000073] data-critical:shadow-[0px_0px_0px_1px_#ff9599,0px_0px_0.857rem_#ff9599b3] data-critical:animate-pulse compact:h-2.25`}
+            class={`group/health relative w-full h-3.5 overflow-hidden bg-track shadow-plate ring ring-rim data-critical:shadow-glow data-critical:shadow-danger data-critical:ring data-critical:ring-danger data-critical:animate-pulse compact:h-2.25`}
             role="meter"
             label={t("hud.boss-bar.health")}
             valueMin={0}
@@ -103,9 +103,9 @@ export function BossBar(props: BossBarProps) {
             data-inv={invulnerable()}
             data-critical={critical()}
           >
-            <View class="absolute left-0 top-0 h-full bg-linear-to-r from-gold/15 to-gold/85 transition-layout duration-350 delay-450 ease-out" style={{ width: `${ghost() * 100}%` }} />
+            <View class="absolute left-0 top-0 h-full bg-linear-to-r from-gold to-gold transition-layout duration-350 delay-450 ease-out" style={{ width: `${ghost() * 100}%` }} />
             <View
-              class={`absolute left-0 top-0 h-full bg-linear-to-r from-legendary to-legendary shadow-[0.143rem_0px_0.857rem_#ff8a3dcc] transition-layout duration-350 ease-out group-data-inv/health:bg-none group-data-inv/health:bg-fg-subtle group-data-inv/health:shadow-none`}
+              class={`absolute left-0 top-0 h-full bg-linear-to-r from-legendary to-legendary shadow-glow shadow-late transition-layout duration-350 ease-out group-data-inv/health:bg-none group-data-inv/health:bg-fg-subtle group-data-inv/health:shadow-none`}
               style={{ width: `${share() * 100}%` }}
             >
               <View class="absolute inset-0 bg-linear-to-b from-sheen to-transparent to-42% group-data-inv/health:hidden" />
@@ -113,7 +113,7 @@ export function BossBar(props: BossBarProps) {
             <For each={(props.phases ?? []).slice(1)} key={(p) => p.id}>
               {(p, i) => (
                 <View
-                  class={`absolute size-2.25 rotate-45 bg-sheen shadow-[0px_0px_0px_0.143rem_#1a1e28d9] compact:size-1.75 data-passed:opacity-50`}
+                  class={`absolute size-2.25 rotate-45 bg-sheen ring-2 ring-entry-hi compact:size-1.75 data-passed:opacity-50`}
                   data-passed={max() > 0 && (props.value ?? 0) / max() <= ((props.phases ?? []).length - (i() + 1)) / (props.phases ?? []).length}
                   style={{ left: `calc(${(((props.phases ?? []).length - (i() + 1)) / (props.phases ?? []).length) * 100}% - 0.321rem)`, top: "calc(50% - 0.321rem)" }}
                 />
@@ -125,16 +125,16 @@ export function BossBar(props: BossBarProps) {
               <View class={`shrink min-w-0 flex-row items-center gap-x-1`}>
                 <Text class={`shrink-0 text-xs font-semibold tracking-label uppercase whitespace-nowrap text-fg-muted text-shadow-2xs`}>{t("hud.boss-bar.stagger")}</Text>
                 <View
-                  class={`relative w-42.5 min-w-10 h-2 overflow-hidden bg-track shadow-[0px_0px_0px_1px_#ffffff38,inset_0px_1px_0px_0px_#ffffff24,0px_0.143rem_0.286rem_#00000073] compact:h-1.25`}
+                  class={`relative w-42.5 min-w-10 h-2 overflow-hidden bg-track shadow-plate ring ring-rim compact:h-1.25`}
                   role="meter"
                   label={t("hud.boss-bar.stagger")}
                   valueMin={0}
                   valueMax={100}
                   valueNow={(props.stagger ?? 0) >= 1 ? 100 : (props.stagger ?? 0) * 100}
                 >
-                  <View class="absolute left-0 top-0 h-full bg-linear-to-b from-sheen to-transparent to-42% bg-gold shadow-[0.143rem_0px_0.714rem_#ffcf5ab3]" style={{ width: `${Math.min(Math.max(props.stagger ?? 0, 0), 1) * 100}%` }} />
+                  <View class="absolute left-0 top-0 h-full bg-linear-to-b from-sheen to-transparent to-42% bg-gold shadow-glow shadow-gold" style={{ width: `${Math.min(Math.max(props.stagger ?? 0, 0), 1) * 100}%` }} />
                   <For each={Array.from({ length: Math.max(staggerCells() - 1, 0) }, (_, n) => n)}>
-                    {(n) => <View class="absolute top-0 bottom-0 w-0.75 bg-glass/95 -translate-x-full" style={{ left: `${((n() + 1) / staggerCells()) * 100}%` }} />}
+                    {(n) => <View class="absolute top-0 bottom-0 w-0.75 bg-glass -translate-x-full" style={{ left: `${((n() + 1) / staggerCells()) * 100}%` }} />}
                   </For>
                 </View>
               </View>

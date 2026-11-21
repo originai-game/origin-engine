@@ -23,7 +23,7 @@ export function Cooldown(props: CooldownProps) {
   const cooling = () => props.remaining > 0;
   return (
     <View
-      class={`flex-row items-center justify-center gap-1 group/cooldown size-12 overflow-hidden rounded-button border-rim-strong bg-linear-to-b from-plate-hi to-plate-lo shadow-[0px_0px_0px_1px_#00000073,inset_0px_1px_0px_0px_#ffffff14,0px_6px_18px_-6px_#00000099] active:bg-none active:bg-tile-pressed active:scale-96 data-ready:animate-pop ${packClass("Slot", "frame")}`}
+      class={`flex-row items-center justify-center gap-1 group/cooldown size-12 overflow-hidden rounded-button border-rim-strong bg-linear-to-b from-plate-hi to-plate-lo shadow-float ring ring-shade-deep active:bg-none active:bg-tile-pressed active:scale-96 data-ready:animate-pop ${packClass("Slot", "frame")}`}
       role="button"
       onPress={(e) => props.onUse?.(e)}
       label={props.label}
@@ -38,7 +38,7 @@ export function Cooldown(props: CooldownProps) {
         <Show when={cooling()}>
           <View class="absolute inset-0 nine-disc bg-shade-deep" wipe={Math.min(props.remaining / (props.total ?? 1), 1)} wipeCcw />
           <View class="absolute inset-0 flex-row items-center justify-center">
-            <Text class="text-[20.64px] tabular-nums text-center text-fg text-shadow-xs">
+            <Text class="text-xl tabular-nums text-center text-fg text-shadow-xs">
               {props.remaining < 10 ? formatNumber(props.remaining) : formatDuration(props.remaining)}
             </Text>
           </View>

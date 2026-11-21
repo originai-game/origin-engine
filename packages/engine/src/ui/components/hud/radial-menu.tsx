@@ -60,7 +60,7 @@ export function RadialMenu(props: RadialMenuProps) {
   const chosen = () => props.chosen ?? "";
   return (
     <View class="relative size-70 pointer-events-auto" role="menu" label={t("component.radial-menu.name")} onPointerMove={(e) => props.onAim?.(e)}>
-      <View class="absolute inset-0 rounded-full bg-hud shadow-[0px_0px_0px_1px_#00000073]" />
+      <View class="absolute inset-0 rounded-full bg-hud ring ring-shade-deep" />
       <For each={props.items ?? []} key={(item) => item.id}>
         {(item) => (
           <View class="group/radialmenu absolute inset-0" data-chosen={item().id === chosen()}>

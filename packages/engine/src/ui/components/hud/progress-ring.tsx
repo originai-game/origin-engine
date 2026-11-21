@@ -51,7 +51,7 @@ export function ProgressRing(props: ProgressRingProps) {
           </View>
         </>
       }>
-        <View class={`absolute inset-0 rounded-full border-4 border-white/22 border-t-accent group-data-tone-success/ring:border-t-success group-data-tone-warn/ring:border-t-warn group-data-tone-danger/ring:border-t-danger group-data-tone-info/ring:border-t-info animate-spin`}>
+        <View class={`absolute inset-0 rounded-full border-4 border-rim border-t-accent group-data-tone-success/ring:border-t-success group-data-tone-warn/ring:border-t-warn group-data-tone-danger/ring:border-t-danger group-data-tone-info/ring:border-t-info animate-spin`}>
           <Show when={(props.label ?? "") !== ""}>
             <View class="absolute inset-0 flex-row items-center justify-center">
               <Text class="text-reading whitespace-nowrap text-fg text-shadow-xs">{props.label}</Text>

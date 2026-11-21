@@ -66,7 +66,7 @@ function EffectTile(props: { effect: StatusGridEffect; debuff: boolean }) {
       data-type-bleed={props.effect.type === "bleed"}
     >
       <View
-        class={`relative size-8 overflow-hidden rounded-control bg-linear-to-b from-raised-lo to-surface shadow-[0px_0px_0px_1px_#00000073] flex-col items-center justify-center border`}
+        class={`relative size-8 overflow-hidden rounded-control bg-linear-to-b from-raised-lo to-surface ring ring-shade-deep flex-col items-center justify-center border`}
         style={{ borderColor: edge() }}
       >
         <Icon class="size-6 text-fg text-shadow-2xs group-data-expiring/statusgrid:animate-pulse" name={props.effect.icon} />
@@ -77,12 +77,12 @@ function EffectTile(props: { effect: StatusGridEffect; debuff: boolean }) {
       <Show when={stacks() > 1 || remaining() > 0}>
         <View class="flex-row items-center gap-x-1">
           <Show when={stacks() > 1}>
-            <Text class="bg-raised-pressed/88 shadow-[inset_0px_0px_0px_1px_#4e586c] rounded px-0.5 text-reading font-bold tabular-nums whitespace-nowrap text-fg text-shadow-xs">
+            <Text class="bg-raised-pressed inset-ring-1 inset-ring-rim rounded px-0.5 text-reading font-bold tabular-nums whitespace-nowrap text-fg text-shadow-xs">
               {t("component.status-grid.stacks", { count: stacks() })}
             </Text>
           </Show>
           <Show when={remaining() > 0}>
-            <Text class="bg-raised-pressed/88 shadow-[inset_0px_0px_0px_1px_#4e586c] rounded px-0.5 text-reading font-bold tabular-nums whitespace-nowrap text-fg text-shadow-xs">
+            <Text class="bg-raised-pressed inset-ring-1 inset-ring-rim rounded px-0.5 text-reading font-bold tabular-nums whitespace-nowrap text-fg text-shadow-xs">
               {effectTime(remaining())}
             </Text>
           </Show>
@@ -103,7 +103,7 @@ export function StatusGrid(props: StatusGridProps) {
         </For>
         <Show when={(props.more ?? 0) > 0}>
           <View class="flex-col items-center gap-y-0.5 min-w-9">
-            <View class="relative size-8 overflow-hidden rounded-control bg-linear-to-b from-raised-lo to-surface shadow-[0px_0px_0px_1px_#00000073] border border-rim-strong flex-row items-center justify-center">
+            <View class="relative size-8 overflow-hidden rounded-control bg-linear-to-b from-raised-lo to-surface ring ring-shade-deep border border-rim-strong flex-row items-center justify-center">
               <Text class="text-reading font-bold tabular-nums whitespace-nowrap text-fg text-shadow-xs">{`+${formatNumber(props.more ?? 0)}`}</Text>
             </View>
           </View>

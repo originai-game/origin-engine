@@ -43,7 +43,7 @@ function HintRow(props: { hold?: boolean; hint: string; action: string; onPress?
   const held = () => progress() > 0;
   return (
     <View
-      class={`relative flex-row items-center gap-2 min-h-10 max-w-full py-0.5 px-2 overflow-hidden transition duration-317 text-fg bg-raised-lo shadow-[inset_0px_0px_0px_1px_#4e586c,inset_0px_-12px_12px_-8px_#00000038,inset_0px_1px_0px_0px_#ffffff1f,0px_1px_2px_0px_#00000080] active:bg-none active:bg-raised-pressed pointer-coarse:min-h-11 pointer-coarse:px-3`}
+      class={`relative flex-row items-center gap-2 min-h-10 max-w-full py-0.5 px-2 overflow-hidden transition duration-317 text-fg bg-raised-lo shadow-raise inset-shadow-sunk inset-ring-1 inset-ring-rim active:bg-none active:bg-raised-pressed pointer-coarse:min-h-11 pointer-coarse:px-3`}
       role="button"
       label={props.hint}
       {...(props.hold
@@ -55,7 +55,7 @@ function HintRow(props: { hold?: boolean; hint: string; action: string; onPress?
       }}
       data-action={props.action}
     >
-      <Text class={`shrink-0 text-[1.5rem] leading-none`} glyph={props.action} />
+      <Text class={`shrink-0 text-xl leading-none`} glyph={props.action} />
       <Text class="min-w-0 text-start text-xs font-semibold tracking-label uppercase text-fg-muted whitespace-nowrap truncate">{props.hint}</Text>
       <Show when={held()}>
         <View class="absolute bottom-0 left-0 h-0.5 bg-fg" style={{ width: `${progress() * 100}%` }} />

@@ -52,7 +52,7 @@ export function HudLootEntry(props: HudLootEntryProps) {
         {props.name}
       </Text>
       <Show when={props.label}>
-        <Text class={`shrink min-w-0 py-0 px-1.25 text-xs font-bold whitespace-nowrap truncate text-fg nine-chip-cut bg-raised-pressed/88 ${packClass("Chip", "frame")}`}>
+        <Text class={`shrink min-w-0 py-0 px-1.25 text-xs font-bold whitespace-nowrap truncate text-fg nine-chip-cut bg-raised-pressed ${packClass("Chip", "frame")}`}>
           {props.label}
         </Text>
       </Show>

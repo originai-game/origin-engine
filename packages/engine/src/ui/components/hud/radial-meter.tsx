@@ -30,7 +30,7 @@ function RadialMeterWheel(props: { size: string; inset: string; fill: number; ex
   const ink = () => (props.exhausted ? "bg-foe" : "bg-success");
   return (
     <View class={`absolute ${props.size}`}>
-      <View class="absolute inset-0 rounded-full border border-rim shadow-[0px_0px_0px_1px_#00000073] bg-lit" />
+      <View class="absolute inset-0 rounded-full border border-rim ring ring-shade-deep bg-lit" />
       <View class={`absolute nine-ring ${ink()} transition-layout duration-180 ease-out`} style={{ inset: props.inset }} wipe={props.fill} />
       <View class="absolute inset-0 rounded-full bg-linear-to-b from-sheen to-transparent to-42%" />
     </View>

@@ -78,9 +78,9 @@ export function HudSlot(props: HudSlotProps) {
         >
           <For each={Array.from({ length: chargesMax() }, (_, i) => i)} key={(i) => i}>
             {(i) => (
-              <View class="relative w-3 h-1.25 rounded-[0.071rem] bg-white/22 overflow-hidden">
+              <View class="relative w-3 h-1.25 rounded-control bg-sheen overflow-hidden">
                 <View
-                  class="absolute inset-y-0 left-0 bg-hud-accent shadow-[0px_0px_0.429rem_#38e8ff]"
+                  class="absolute inset-y-0 left-0 bg-hud-accent shadow-glow-sm"
                   style={{ width: `${Math.min(Math.max(charges() - i(), 0), 1) * 100}%` }}
                 />
               </View>
@@ -89,11 +89,11 @@ export function HudSlot(props: HudSlotProps) {
         </View>
       </Show>
       <View
-        class={`relative ${SIDE} ${SIDE} ${ready() ? "shadow-[0px_0px_0.714rem_#38e8ff]" : ""} ${ready() && ultimate() ? "shadow-[0px_0px_0.714rem_#ffcf5a]" : ""} ${packClass("Slot", "frame")}`}
+        class={`relative ${SIDE} ${SIDE} ${ready() ? "shadow-glow" : ""} ${ready() && ultimate() ? "shadow-glow shadow-gold" : ""} ${packClass("Slot", "frame")}`}
       >
         <Show when={ultimate()}>
           <View
-            class="absolute inset-0 rounded-full border-3 border-white/14 overflow-hidden"
+            class="absolute inset-0 rounded-full border-3 border-rim overflow-hidden"
             role="meter"
             label={t("hud.slot.charge")}
             valueMin={0}
@@ -104,7 +104,7 @@ export function HudSlot(props: HudSlotProps) {
           </View>
         </Show>
         <View
-          class={`absolute inset-0.5 rounded-field data-ultimate:inset-1.5 data-ultimate:rounded-capsule overflow-hidden ${ready() ? "bg-linear-to-b from-white to-hud-accent" : "bg-linear-to-b from-white/75 via-white/22 via-45% to-white/14"}`}
+          class={`absolute inset-0.5 rounded-field data-ultimate:inset-1.5 data-ultimate:rounded-capsule overflow-hidden ${ready() ? "bg-linear-to-b from-sheen to-hud-accent" : "bg-linear-to-b from-sheen via-sheen via-45% to-lit"}`}
           data-ultimate={ultimate()}
         >
           <Show when={(props.icon ?? 0) > 0} fallback={
@@ -117,10 +117,10 @@ export function HudSlot(props: HudSlotProps) {
             <Image class={`absolute inset-0 size-full ${cooling() || unaffordable() ? "opacity-45" : ""}`} src={props.icon ?? 0} />
           </Show>
           <Show when={unaffordable()}>
-            <View class="absolute inset-0 bg-surface/50" />
+            <View class="absolute inset-0 bg-surface" />
           </Show>
           <Show when={cooling() && !unaffordable()}>
-            <View class="absolute inset-0 nine-disc bg-black/55" wipe={Math.min(cooldown(), 1)} wipeCcw />
+            <View class="absolute inset-0 nine-disc bg-scrim" wipe={Math.min(cooldown(), 1)} wipeCcw />
           </Show>
           <Show when={cooling() && (props.time ?? "") !== ""}>
             <View class="absolute inset-0 flex-row items-center justify-center">
@@ -139,7 +139,7 @@ export function HudSlot(props: HudSlotProps) {
           </Show>
           <Show when={(props.count ?? 0) > 0}>
             <View class="absolute top-0 right-0">
-              <Text class="max-w-15.25 -mt-1.5 -mr-1 bg-surface/88 shadow-[inset_0px_0.071rem_0px_0px_#ffffff38] px-1.25 text-xs font-bold tabular-nums whitespace-nowrap leading-[1.4] text-fg rounded-bl-control overflow-hidden">
+              <Text class="max-w-15.25 -mt-1.5 -mr-1 bg-surface inset-shadow-lit px-1.25 text-xs font-bold tabular-nums whitespace-nowrap leading-normal text-fg rounded-bl-control overflow-hidden">
                 {t("hud.slot.count", { count: formatNumber(props.count ?? 0) })}
               </Text>
             </View>
@@ -148,7 +148,7 @@ export function HudSlot(props: HudSlotProps) {
       </View>
       <Show when={(props.key ?? "") !== ""}>
         <Text
-          class={`min-w-6 max-w-16.75 px-1 pointer-coarse:hidden text-xs leading-loose font-bold text-center rounded-control shadow-[0px_0.143rem_0px_#0000008c,inset_0px_-0.143rem_0px_#0000002e] text-shadow-none whitespace-nowrap overflow-hidden ${ultimate() ? "text-gold-fg bg-linear-to-b from-gold-hi to-gold" : "text-key-fg bg-linear-to-b from-white to-key-hi"}`}
+          class={`min-w-6 max-w-16.75 px-1 pointer-coarse:hidden text-xs leading-loose font-bold text-center rounded-control shadow-key text-shadow-none whitespace-nowrap overflow-hidden ${ultimate() ? "text-gold-fg bg-linear-to-b from-gold-hi to-gold" : "text-key-fg bg-linear-to-b from-key-hi to-key-lo"}`}
         >
           {props.key}
         </Text>

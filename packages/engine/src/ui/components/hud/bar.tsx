@@ -42,7 +42,7 @@ export function HudBar(props: HudBarProps) {
   };
   return (
     <View
-      class={`group/bar relative w-full h-1.5 overflow-hidden bg-track shadow-[0px_0px_0px_1px_#ffffff38,inset_0px_1px_0px_0px_#ffffff24,0px_0.143rem_0.286rem_#00000073] data-low:shadow-[0px_0px_0px_1px_#de2634,0px_0px_0.857rem_#de2634b3] data-low:animate-pulse`}
+      class={`group/bar relative w-full h-1.5 overflow-hidden bg-track shadow-plate ring ring-rim data-low:shadow-glow data-low:shadow-critical data-low:ring data-low:ring-critical data-low:animate-pulse`}
       role="meter"
       label={props.name != "" && props.name != undefined ? props.name : (props.kind ?? "health") == "mana" ? t("hud.bar.mana") : (props.kind ?? "health") == "stamina" ? t("hud.bar.stamina") : (props.kind ?? "health") == "shield" ? t("hud.bar.shield") : (props.kind ?? "health") == "xp" ? t("hud.bar.xp") : t("hud.bar.health")}
       valueMin={0}
@@ -54,11 +54,11 @@ export function HudBar(props: HudBarProps) {
       data-xp={(props.kind ?? "health") == "xp"}
       data-low={props.low}
     >
-      <View class="absolute left-0 top-0 h-full bg-linear-to-r from-gold/15 to-gold/85 transition-layout duration-350 delay-450 ease-out" style={{ width: `${ghost() * 100}%` }} />
-      <View class="absolute left-0 top-0 h-full bg-linear-to-b from-sheen to-transparent to-42% bg-foe shadow-[0.143rem_0px_0.714rem_#ff4d5ebf] group-data-mana/bar:bg-mana group-data-mana/bar:shadow-[0.143rem_0px_0.714rem_#5b9dffbf] group-data-stamina/bar:bg-linear-to-b group-data-stamina/bar:from-sheen group-data-stamina/bar:to-transparent group-data-stamina/bar:to-42% group-data-stamina/bar:bg-gold group-data-stamina/bar:shadow-[0.143rem_0px_0.714rem_#ffd23fb3] group-data-shield/bar:bg-ally group-data-shield/bar:shadow-[0.143rem_0px_0.714rem_#4fd8ffcc] group-data-xp/bar:bg-linear-to-r group-data-xp/bar:from-xp group-data-xp/bar:to-xp group-data-xp/bar:shadow-[0px_0px_0.714rem_#a98bff] group-data-low/bar:bg-linear-to-b group-data-low/bar:from-sheen group-data-low/bar:to-transparent group-data-low/bar:to-42% group-data-low/bar:bg-critical group-data-low/bar:shadow-[0.143rem_0px_0.714rem_#de2634cc]" style={{ width: `${value() * 100}%` }} />
+      <View class="absolute left-0 top-0 h-full bg-linear-to-r from-gold to-gold transition-layout duration-350 delay-450 ease-out" style={{ width: `${ghost() * 100}%` }} />
+      <View class="absolute left-0 top-0 h-full bg-linear-to-b from-sheen to-transparent to-42% bg-foe shadow-glow shadow-foe group-data-mana/bar:bg-mana group-data-mana/bar:shadow-glow group-data-mana/bar:shadow-mana group-data-stamina/bar:bg-linear-to-b group-data-stamina/bar:from-sheen group-data-stamina/bar:to-transparent group-data-stamina/bar:to-42% group-data-stamina/bar:bg-gold group-data-stamina/bar:shadow-glow group-data-stamina/bar:shadow-gold group-data-shield/bar:bg-ally group-data-shield/bar:shadow-glow group-data-shield/bar:shadow-ally group-data-xp/bar:bg-linear-to-r group-data-xp/bar:from-xp group-data-xp/bar:to-xp group-data-xp/bar:shadow-glow group-data-xp/bar:shadow-xp group-data-low/bar:bg-linear-to-b group-data-low/bar:from-sheen group-data-low/bar:to-transparent group-data-low/bar:to-42% group-data-low/bar:bg-critical group-data-low/bar:shadow-glow group-data-low/bar:shadow-critical" style={{ width: `${value() * 100}%` }} />
       <Show when={(props.segment ?? 0) > 0 && (props.max ?? 1) > 0}>
         <For each={Array.from({ length: Math.max(Math.ceil(cells()) - 1, 0) }, (_, i) => i)}>
-          {(i) => <View class="absolute top-0 bottom-0 w-0.75 bg-glass/95 -translate-x-full" style={{ left: `${((i() + 1) / cells()) * 100}%` }} />}
+          {(i) => <View class="absolute top-0 bottom-0 w-0.75 bg-glass -translate-x-full" style={{ left: `${((i() + 1) / cells()) * 100}%` }} />}
         </For>
       </Show>
       <Show when={props.showValue}>

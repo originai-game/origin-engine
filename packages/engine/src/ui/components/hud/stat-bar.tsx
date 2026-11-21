@@ -77,23 +77,23 @@ export function StatBar(props: StatBarProps) {
           <Icon class="size-4 shrink-0" name={props.icon} />
         </Show>
         <Show when={props.label}>
-          <View class="bg-raised-pressed/88 shadow-[inset_0px_0px_0px_1px_#ffffff38] rounded-control py-0 px-1 shrink-0">
+          <View class="bg-raised-pressed inset-ring-1 inset-ring-rim rounded-control py-0 px-1 shrink-0">
             <Text class="text-xs font-semibold tracking-label uppercase whitespace-nowrap text-fg-muted text-shadow-2xs">{props.label}</Text>
           </View>
         </Show>
-        <View class="relative min-w-0 flex-1 h-4.5 overflow-hidden bg-track shadow-[0px_0px_0px_1px_#ffffff38,inset_0px_1px_0px_0px_#ffffff24,0px_0.143rem_0.286rem_#00000073] group-data-critical/stat:shadow-[0px_0px_0px_1px_#de2634,0px_0px_0.857rem_#de2634b3] group-data-critical/stat:animate-pulse">
-          <View class="absolute left-0 top-0 h-full bg-fg-muted/80" style={{ width: `${Math.min(Math.max((props.recoverable ?? 0) / max(), fraction()), 1) * 100}%` }} />
-          <View class="absolute left-0 top-0 h-full bg-linear-to-r from-gold/15 to-gold/85" style={{ width: `${fraction() * 100}%` }} />
+        <View class="relative min-w-0 flex-1 h-4.5 overflow-hidden bg-track shadow-plate ring ring-rim group-data-critical/stat:shadow-glow group-data-critical/stat:shadow-critical group-data-critical/stat:ring group-data-critical/stat:ring-critical group-data-critical/stat:animate-pulse">
+          <View class="absolute left-0 top-0 h-full bg-fg-muted" style={{ width: `${Math.min(Math.max((props.recoverable ?? 0) / max(), fraction()), 1) * 100}%` }} />
+          <View class="absolute left-0 top-0 h-full bg-linear-to-r from-gold to-gold" style={{ width: `${fraction() * 100}%` }} />
           <Show when={(props.heal ?? 0) > 0}>
-            <View class="absolute left-0 top-0 h-full bg-success/50" style={{ width: `${Math.min((props.value + (props.heal ?? 0)) / max(), 1) * 100}%` }} />
+            <View class="absolute left-0 top-0 h-full bg-success" style={{ width: `${Math.min((props.value + (props.heal ?? 0)) / max(), 1) * 100}%` }} />
           </Show>
-          <View class="absolute left-0 top-0 h-full bg-health shadow-[inset_0px_1px_0px_0px_#ffffff6b] transition-layout duration-180 ease-out group-data-mana/stat:bg-mana group-data-stamina/stat:bg-success group-data-xp/stat:bg-xp group-data-low/stat:bg-warn group-data-critical/stat:bg-critical" style={{ width: `${fraction() * 100}%` }} />
+          <View class="absolute left-0 top-0 h-full bg-health inset-shadow-lit transition-layout duration-180 ease-out group-data-mana/stat:bg-mana group-data-stamina/stat:bg-success group-data-xp/stat:bg-xp group-data-low/stat:bg-warn group-data-critical/stat:bg-critical" style={{ width: `${fraction() * 100}%` }} />
           <Show when={(props.shieldMax ?? 0) > 0 && (props.shield ?? 0) > 0}>
             <View class="absolute left-0 top-0 w-full h-17/50 bg-info" style={{ width: `${Math.min((props.shield ?? 0) / (props.shieldMax ?? 1), 1) * 100}%` }} />
           </Show>
           <Show when={cells() > 0}>
             <For each={Array.from({ length: cells() }, (_, i) => i)}>
-              {(i) => <View class="absolute top-0 bottom-0 w-[0.8%] bg-glass/95 -translate-x-full" style={{ left: `${(i() + 1) * block() * 100}%` }} />}
+              {(i) => <View class="absolute top-0 bottom-0 w-1/100 bg-glass -translate-x-full" style={{ left: `${(i() + 1) * block() * 100}%` }} />}
             </For>
           </Show>
           <Show when={props.showValue && props.valueInside}>
@@ -103,7 +103,7 @@ export function StatBar(props: StatBarProps) {
           </Show>
         </View>
         <Show when={props.showValue && !props.valueInside}>
-          <View class="bg-raised-pressed/88 shadow-[inset_0px_0px_0px_1px_#ffffff38] rounded-control py-0 px-1 shrink-0">
+          <View class="bg-raised-pressed inset-ring-1 inset-ring-rim rounded-control py-0 px-1 shrink-0">
             <Text class="text-reading font-bold tabular-nums whitespace-nowrap text-fg text-shadow-2xs group-data-critical/stat:text-danger">{text()}</Text>
           </View>
         </Show>

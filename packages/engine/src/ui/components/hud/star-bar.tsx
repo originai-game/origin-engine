@@ -48,7 +48,7 @@ export function StarBar(props: StarBarProps) {
         <Show when={(props.label ?? "") !== "" && !props.compact}>
           <Text class="text-caption text-fg-muted text-shadow-xs">{props.label}</Text>
         </Show>
-        <Text class="text-[27.36px] font-bold tabular-nums whitespace-nowrap text-fg text-shadow-xs group-data-compact/starbar:text-[20.64px]">{props.valueText || formatNumber(props.value ?? 0)}</Text>
+        <Text class="text-display-sm font-bold tabular-nums whitespace-nowrap text-fg text-shadow-xs group-data-compact/starbar:text-xl">{props.valueText || formatNumber(props.value ?? 0)}</Text>
       </View>
       <View class={`relative group-data-compact/starbar:w-35 w-50 group-data-compact/starbar:h-6 h-8`}>
         <View class="absolute inset-x-4 top-3 h-2 overflow-hidden rounded-capsule bg-bg-subtle group-data-compact/starbar:inset-x-3 group-data-compact/starbar:top-2.5 group-data-compact/starbar:h-1">
@@ -57,7 +57,7 @@ export function StarBar(props: StarBarProps) {
         <For each={stars()} key={(star) => star.id}>
           {(star) => (
             <View
-              class={`absolute top-0 size-8 rounded-full border bg-gold-fg flex-row items-center justify-center group-data-compact/starbar:size-6 ${lit(star().at) ? "border-gold data-lit:animate-beat" : "border-white/42"}`}
+              class={`absolute top-0 size-8 rounded-full border bg-gold-fg flex-row items-center justify-center group-data-compact/starbar:size-6 ${lit(star().at) ? "border-gold data-lit:animate-beat" : "border-rim-strong"}`}
               data-lit={lit(star().at)}
               style={{ left: `calc(${star().at} * (100% - ${props.compact ? "1.5rem" : "2rem"}))` }}
             >

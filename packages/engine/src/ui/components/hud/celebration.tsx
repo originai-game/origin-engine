@@ -30,17 +30,17 @@ export function Celebration(props: CelebrationProps) {
           <View class="absolute inset-0 flex-col items-center justify-center" data-level={level()} data-burst={(props.kind ?? "") == "burst"} data-fireworks={(props.kind ?? "") == "fireworks"}>
             <Show when={level()}>
               <View class="relative w-105 max-w-full min-h-72 flex-col items-center justify-center">
-                <View class="absolute size-66 rounded-full border-4 border-gold shadow-[0px_0px_1.143rem_#ffd23f,inset_0px_0px_1.143rem_#ffd23f] bg-gold-fg/31 animate-stamp compact:size-23.75" />
+                <View class="absolute size-66 rounded-full border-4 border-gold shadow-glow-lg shadow-gold inset-shadow-glow inset-shadow-gold bg-gold-fg animate-stamp compact:size-23.75" />
                 <Text class="relative max-w-full mb-3 text-title font-bold tracking-label uppercase text-center text-gold animate-stamp">
                   {props.title || t("component.celebration.level-up")}
                 </Text>
                 <Show when={props.value}>
-                  <Text class="relative text-[8.571rem] font-bold tabular-nums leading-flat whitespace-nowrap text-fg shadow-none animate-pop compact:text-display-md">{props.value}</Text>
+                  <Text class="relative text-8xl font-bold tabular-nums leading-flat whitespace-nowrap text-fg shadow-none animate-pop compact:text-display-md">{props.value}</Text>
                 </Show>
               </View>
             </Show>
             <Show when={(props.kind ?? "") == "burst"}>
-              <View class="size-16 rounded-full border-4 border-white shadow-[0px_0px_0.571rem_#ffffff] animate-ping" />
+              <View class="size-16 rounded-full border-4 border-rim-strong shadow-glow-sm shadow-knob animate-ping" />
             </Show>
             <Show when={(props.kind ?? "") == "fireworks"}>
               <View class="absolute top-0 inset-x-0 h-60 flex-row justify-between py-0 px-12">

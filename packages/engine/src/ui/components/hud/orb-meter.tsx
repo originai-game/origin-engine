@@ -40,20 +40,20 @@ export function OrbMeter(props: OrbMeterProps) {
       data-mana={(props.kind ?? "") === "mana"}
     >
       <View class="relative size-28">
-        <View class="absolute inset-0 rounded-full bg-rim-strong shadow-[0px_0px_0px_1px_#292c32,0px_0.143rem_0.286rem_#00000073]">
+        <View class="absolute inset-0 rounded-full bg-rim-strong shadow-plate ring ring-key-fg">
           <View class="absolute inset-0 rounded-full bg-linear-to-b from-sheen to-transparent to-45%" />
           <View class="absolute inset-0 rounded-full bg-linear-to-t from-shade-deep to-transparent to-45%" />
         </View>
         <View class="absolute inset-1.5 rounded-full bg-surface" />
-        <View class="absolute inset-2.25 rounded-full overflow-hidden bg-boon-fg shadow-[inset_0px_0px_1.429rem_#0000009e] group-data-mana/orb:bg-raised-pressed">
-          <View class="absolute inset-x-0 bottom-0 border-t-[1.4px] border-t-boon bg-health group-data-mana/orb:border-t-mana group-data-mana/orb:bg-mana" style={{ height: `${share() * 100}%` }} />
-          <View class="absolute left-[13.4%] size-[73.2%] rounded-full bg-sheen" style={{ top: `${Math.max(0, Math.min(1, 1.049 - share())) * 100}%` }} />
+        <View class="absolute inset-2.25 rounded-full overflow-hidden bg-boon-fg inset-shadow-sunk group-data-mana/orb:bg-raised-pressed">
+          <View class="absolute inset-x-0 bottom-0 border-t border-t-boon bg-health group-data-mana/orb:border-t-mana group-data-mana/orb:bg-mana" style={{ height: `${share() * 100}%` }} />
+          <View class="absolute left-13/100 size-73/100 rounded-full bg-sheen" style={{ top: `${Math.max(0, Math.min(1, 1.049 - share())) * 100}%` }} />
           <View class="absolute inset-0 bg-linear-to-b from-transparent from-35% to-shade-deep" />
         </View>
-        <View class="absolute inset-2.25 rounded-full shadow-[inset_0px_0px_0px_1px_#ffffff47] pointer-events-none" />
+        <View class="absolute inset-2.25 rounded-full inset-ring-1 inset-ring-rim pointer-events-none" />
         <Show when={props.showValue}>
           <View class="absolute inset-0 flex-row items-center justify-center">
-            <Text class="text-[27.36px] font-bold tabular-nums whitespace-nowrap text-fg text-shadow-xs">{formatNumber(props.value)}</Text>
+            <Text class="text-display-sm font-bold tabular-nums whitespace-nowrap text-fg text-shadow-xs">{formatNumber(props.value)}</Text>
           </View>
         </Show>
       </View>
