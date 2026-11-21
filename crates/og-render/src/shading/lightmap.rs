@@ -651,7 +651,14 @@ impl Lightmaps {
                 buffers: &buffers,
                 cull: faces.cull(),
                 depth_write: !blend,
-                depth_compare: wgpu::CompareFunction::Less,
+                // As the unbaked lit pipelines: an opaque surface passes at
+                // the depth the prepass wrote for it (a one-sample frame
+                // shares that depth, post/plan.rs `shares_prepass_depth`).
+                depth_compare: if blend {
+                    wgpu::CompareFunction::Less
+                } else {
+                    crate::LIT_DEPTH_COMPARE
+                },
                 blend: blend.then_some(wgpu::BlendState::ALPHA_BLENDING),
                 samples,
             },

@@ -53,6 +53,14 @@ fn every_batch_kind_draws_its_lightmap() {
         "baked-batches",
         og_tests::light_scenes::baked_batches_scene(true).expect("scene"),
     );
+    // The standard box draws at all: its back wall is lit, not the clear
+    // colour behind it (lightmapped surfaces once failed the depth the
+    // prepass wrote for them, so both frames were empty alike).
+    let wall = mean(&standard, 660, 150, 840, 280);
+    assert!(
+        wall.iter().all(|&c| c > 40.0),
+        "the baked box's back wall {wall:?} is not drawn"
+    );
     let tolerance = og_tests::scenes::build("baked-batches")
         .expect("scene")
         .tolerance;
