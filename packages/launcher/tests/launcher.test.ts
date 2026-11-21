@@ -168,7 +168,7 @@ describe.if(unix)("og", () => {
   const run = (ch: ReturnType<typeof channel>, args: string[], cwd: string) =>
     spawnSync("bun", [og, ...args], { cwd, encoding: "utf8", env: { ...process.env, ORIGIN_ENGINE_CACHE: ch.cache, ORIGIN_ENGINE_DOWNLOADS: ch.dir, ORIGIN_ENGINE_PUBKEY: ch.pubkey, OG_ENGINE_VERSION: "" } });
 
-  test("installs and runs a pinned dev build's og with OG_ENGINE_PACKAGE and keeps .og/engine on it; outside a project the latest release", () => {
+  test("installs and runs a pinned dev build's og with OG_ENGINE_PACKAGE and keeps node_modules/@origingame/engine on it; outside a project the latest release", () => {
     const ch = channel();
     ch.publish("dev.20261119.1", { base: "0.7.8" });
     ch.publish("0.7.8");
@@ -180,8 +180,8 @@ describe.if(unix)("og", () => {
     // Not a terminal: the install's events are JSON Lines on stderr.
     expect(r.stderr.split("\n").filter((l) => l.startsWith("{")).map((l) => JSON.parse(l).event)).toEqual(["resolve", "download", "verify", "unpack", "installed"]);
     expect(r.stdout.trim()).toBe(`engine dev.20261119.1 ${join(dist, "engine")} test .`);
-    expect(lstatSync(join(game, ".og/engine")).isSymbolicLink()).toBe(true);
-    expect(readlinkSync(join(game, ".og/engine"))).toBe(join(dist, "engine"));
+    expect(lstatSync(join(game, "node_modules/@origingame/engine")).isSymbolicLink()).toBe(true);
+    expect(readlinkSync(join(game, "node_modules/@origingame/engine"))).toBe(join(dist, "engine"));
     expect(run(ch, ["--version"], tmpdir()).stdout).toStartWith("engine 0.7.8 ");
   });
 

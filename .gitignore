@@ -13,3 +13,6 @@ templates/styles/*/art/sheet.png
 # install-tools.sh: og-sccache-wrap as cargo's wrapper on Windows (.cargo/config.toml)
 /scripts/rustc-wrapper.exe
 
+# A game's link to the engine package (og keeps it; crates/og-cli/src/project.rs LINK).
+# The checkout's own, /node_modules/@origingame/engine, is tracked.
+node_modules/

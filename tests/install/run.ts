@@ -23,7 +23,8 @@
 //      archive's sha256 and unpacks it into an empty cache
 //      (engines/<v>/<target>/); its layout and origin-engine.json's build record
 //   2. `og new demo --engine <v>` scaffolds from the dist's create/: the pin,
-//      no node_modules, `.og/engine` pointing at the dist's engine/
+//      nothing installed, `node_modules/@origingame/engine` the one link,
+//      pointing at the dist's engine/
 //   3. `og --version` prints the version; `og doctor` passes (the renderer
 //      line may be `none`: then 4b's og style check-project must refuse, naming it)
 //   4. `og check`, `og test` (frames unchecked without a renderer), `og build
@@ -168,9 +169,11 @@ function scaffold(step: Step, work: string, name: string, ...args: string[]): st
   const game = join(work, name);
   const pinned = /^engine\s+"([^"]+)"/m.exec(readFileSync(join(game, "project.ogt"), "utf8"))?.[1];
   if (pinned !== VERSION) step.fail(`${name}/project.ogt pins engine "${pinned}", expected "${VERSION}"`);
-  if (existsSync(join(game, "node_modules"))) step.fail(`${name} has a node_modules/: nothing is installed into a game`);
-  if (!lstatSync(join(game, ".og", "engine")).isSymbolicLink() && process.platform !== "win32") step.fail(`${name}/.og/engine is not a link`);
-  if (realpathSync(join(game, ".og", "engine")) !== realpathSync(enginePkg)) step.fail(`${name}/.og/engine points at ${realpathSync(join(game, ".og", "engine"))}`);
+  const link = join(game, "node_modules", "@origingame", "engine");
+  if (readdirSync(join(game, "node_modules")).join() !== "@origingame" || readdirSync(join(game, "node_modules", "@origingame")).join() !== "engine")
+    step.fail(`${name}/node_modules holds more than the engine's link: nothing is installed into a game`);
+  if (!lstatSync(link).isSymbolicLink() && process.platform !== "win32") step.fail(`${name}/node_modules/@origingame/engine is not a link`);
+  if (realpathSync(link) !== realpathSync(enginePkg)) step.fail(`${name}/node_modules/@origingame/engine points at ${realpathSync(link)}`);
   return game;
 }
 

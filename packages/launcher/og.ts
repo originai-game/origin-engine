@@ -506,13 +506,14 @@ export function projectOf(args: string[], cwd = process.cwd()): string | undefin
 }
 
 /**
- * Points `<project>/.og/engine` at a dist's engine/ (a symlink; a junction on
- * Windows): what the project's tsconfig paths and an editor read. The
- * version's own og keeps it too (from 0.7.8); this covers the versions
- * before.
+ * Points `<project>/node_modules/@origingame/engine` at a dist's engine/ (a
+ * symlink; a junction on Windows): the engine as a package, which the
+ * project's type check, the bundler and an editor resolve by its `exports`.
+ * The version's own og keeps it too; this makes it before the first run
+ * (`og new`, `og upgrade`).
  */
 export function linkEngine(root: string, dist: string) {
-  const link = join(root, ".og", "engine");
+  const link = join(root, "node_modules", "@origingame", "engine");
   const target = join(dist, "engine");
   try {
     if (lstatSync(link).isSymbolicLink() && resolve(dirname(link), readlinkSync(link)) === resolve(target)) return;

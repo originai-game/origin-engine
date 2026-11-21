@@ -14,12 +14,12 @@
 //! (`tsgo_install`) or read from tsgo's panic, never a Go stack trace.
 //!
 //! The project's `tsconfig.json` is the configuration. A project without
-//! one (a bare entry, a project.ogt project that never wrote one) is
-//! checked with the template's options, written to
-//! `.og/tsconfig.check.json` (a temporary directory for a bare entry); a
-//! project whose engine package is not in its `node_modules` (one inside an
-//! engine checkout, run with `OG_ENGINE_PACKAGE`) gets the same file
-//! extending its own with `paths` to the engine package `og` resolved.
+//! one (a project.ogt project that never wrote one) is checked with the
+//! template's options, written to `.og/tsconfig.check.json`. The engine
+//! resolves as a package either way: through the link `og` keeps in the
+//! project's `node_modules` (project::LINK), by the package's `exports`
+//! (`moduleResolution "bundler"`), so no configuration names an engine
+//! file. A bare entry (no project.ogt) has no link and is not checked.
 //!
 //! The run is `-p <config> --noEmit --pretty false --checkers N` in the
 //! project directory, with compiler-owned incremental state under `.og/check`
@@ -744,7 +744,7 @@ impl Target {
     }
 
     /// The configuration of a project (see the module doc).
-    pub fn of(p: &Project, package: Option<&Path>) -> Result<Target, String> {
+    pub fn of(p: &Project) -> Result<Target, String> {
         // Its documents' types first, so a viewmodel is checked against
         // the documents as they are now (`og ui types`).
         let untyped = if p.manifest {
@@ -766,105 +766,37 @@ impl Target {
             &p.root.canonicalize().unwrap_or_else(|_| p.root.clone()),
         ));
         let own = root.join("tsconfig.json");
-        let engine_in_node_modules = root
-            .ancestors()
-            .any(|d| d.join("node_modules/@origingame/engine").is_dir());
-        let engine_paths = package.map(|pkg| {
-            let pkg = pkg.canonicalize().unwrap_or_else(|_| pkg.to_path_buf());
-            serde_json::json!({
-                "@origingame/engine": [typescript_path(&pkg.join("types/index.d.ts"))],
-                "@origingame/engine/playtest": [typescript_path(&pkg.join("src/playtest.ts"))],
-                // The TSX UI: its primitives and the engine's components.
-                "@origingame/engine/ui": [typescript_path(&pkg.join("types/ui.d.ts"))],
-                "@origingame/engine/ui/components": [typescript_path(&pkg.join("src/ui/components/index.tsx"))],
-                // A playtest file's describe/test/expect (bun:test's own declarations, vendored).
-                "bun:test": [typescript_path(&pkg.join("vendor/bun-types/test.d.ts"))],
-                // og ui check's rules over a playtest's frames (docs/ui.md §6).
-                "@origingame/engine/ui-check": [typescript_path(&pkg.join("src/node/ui-check.ts"))],
-            })
-        });
-        let config = if own.is_file() {
-            let text =
-                std::fs::read_to_string(&own).map_err(|e| format!("{}: {e}", own.display()))?;
-            match engine_paths {
-                Some(paths)
-                    if !engine_in_node_modules && !text.contains("\"@origingame/engine\"") =>
-                {
-                    let mut paths = paths;
-                    // Its own paths survive the override (compilerOptions
-                    // merge per option), made absolute.
-                    if let Some(theirs) = serde_json::from_str::<serde_json::Value>(&text)
-                        .ok()
-                        .and_then(|v| v["compilerOptions"]["paths"].as_object().cloned())
-                    {
-                        for (k, v) in theirs {
-                            let abs: Vec<String> = v
-                                .as_array()
-                                .into_iter()
-                                .flatten()
-                                .filter_map(|s| s.as_str())
-                                .map(|s| typescript_path(&root.join(s)))
-                                .collect();
-                            paths[k] = serde_json::json!(abs);
-                        }
-                    }
-                    serde_json::json!({
-                        "extends": typescript_path(&own),
-                        "compilerOptions": { "paths": paths },
-                    })
-                }
-                _ => {
-                    return Ok(Target {
-                        root,
-                        config: own,
-                        untyped,
-                    });
-                }
-            }
-        } else {
-            let template: serde_json::Value = serde_json::from_str(TEMPLATE_TSCONFIG)
-                .expect("packages/create/template/tsconfig.json");
-            let mut options = template["compilerOptions"].clone();
-            // The template's paths name `.og/engine` relative to a game's
-            // own tsconfig, not to this generated one.
-            if let Some(o) = options.as_object_mut() {
-                o.remove("paths");
-            }
-            match (engine_paths, package) {
-                (Some(paths), _) if !engine_in_node_modules => options["paths"] = paths,
-                // The engine resolves through node_modules; a playtest file's
-                // bun:test still resolves to the package's vendored declarations.
-                (_, Some(pkg)) => {
-                    let pkg = pkg.canonicalize().unwrap_or_else(|_| pkg.to_path_buf());
-                    options["paths"] = serde_json::json!({
-                        "bun:test": [typescript_path(&pkg.join("vendor/bun-types/test.d.ts"))],
-                    });
-                }
-                _ => {}
-            }
-            let include: Vec<String> = if p.manifest {
-                template["include"]
-                    .as_array()
-                    .into_iter()
-                    .flatten()
-                    .filter_map(|s| s.as_str())
-                    .map(|s| typescript_path(&root.join(s)))
-                    .collect()
-            } else {
-                let entry = p.entry.canonicalize().unwrap_or_else(|_| p.entry.clone());
-                vec![typescript_path(&entry)]
-            };
-            serde_json::json!({ "compilerOptions": options, "include": include })
-        };
-        let dir = if p.manifest {
-            p.work_dir()
-        } else {
-            std::env::temp_dir().join(format!("og-check-{}", std::process::id()))
-        };
+        if own.is_file() {
+            return Ok(Target {
+                root,
+                config: own,
+                untyped,
+            });
+        }
+        // The engine resolves as a package, through the project's link
+        // (project::LINK), which a bare entry does not have.
+        if !p.manifest {
+            return Err(format!(
+                "{} is in no project (no project.ogt above it): the engine resolves for a type check through a project's {}; check it in a project (og new), or pass --no-check",
+                p.entry.display(),
+                project::LINK
+            ));
+        }
+        let template: serde_json::Value = serde_json::from_str(TEMPLATE_TSCONFIG)
+            .expect("packages/create/template/tsconfig.json");
+        let include: Vec<String> = template["include"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .filter_map(|s| s.as_str())
+            .map(|s| typescript_path(&root.join(s)))
+            .collect();
+        let config = serde_json::json!({ "compilerOptions": template["compilerOptions"], "include": include });
+        let dir = p.work_dir();
         std::fs::create_dir_all(&dir).map_err(|e| format!("{}: {e}", dir.display()))?;
         let path = dir.join("tsconfig.check.json");
         let text = format!(
-            "// Written by og check (crates/og-cli/src/check.rs): the project's type-check\n// configuration with the engine package og resolved. Do not edit; it is rewritten.\n{}\n",
+            "// Written by og check (crates/og-cli/src/check.rs): the type-check configuration\n// of a project without a tsconfig.json, the template's. Do not edit; it is rewritten.\n{}\n",
             serde_json::to_string_pretty(&config).expect("json")
         );
         if std::fs::read_to_string(&path).ok().as_deref() != Some(text.as_str()) {
@@ -938,7 +870,7 @@ pub fn gate(p: &Project, package: &Path, json: bool) -> Result<Report, String> {
     if let Some(n) = note {
         eprintln!("og check: {n}");
     }
-    let target = Target::of(p, Some(package))?;
+    let target = Target::of(p)?;
     let mut report = checker.check(&target, default_checkers())?;
     untyped_documents(&target, &mut report);
     module_state(p, &mut report);
@@ -1550,7 +1482,7 @@ pub fn run(args: &[&str]) -> ExitCode {
             Err(e) => return fail(e),
         };
         let package = project::engine_package(Some(&p.root));
-        let target = match Target::of(&p, package.as_deref()) {
+        let target = match Target::of(&p) {
             Ok(t) => t,
             Err(e) => return fail(e),
         };

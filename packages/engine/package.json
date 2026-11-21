@@ -31,6 +31,7 @@
     "./runtime": "./src/runtime.ts",
     "./sourcemap": "./src/sourcemap.ts",
     "./ui": {
+      "og-source": "./src/ui/index.ts",
       "types": "./types/ui.d.ts",
       "default": "./src/ui/index.ts"
     },
@@ -48,6 +49,9 @@
     "./bindings.json": "./types/bindings.json",
     "./schema.json": "./schema/api.schema.json",
     "./playtest": "./src/playtest.ts",
+    "./bun-test": {
+      "types": "./vendor/bun-types/test.d.ts"
+    },
     "./ui-check": "./src/node/ui-check.ts"
   },
   "bin": {

@@ -169,10 +169,11 @@ impl Project {
 
 /// The engine package that runs games: `OG_ENGINE_PACKAGE` (what the `og`
 /// launcher and the platform's runner set: a dist's `engine/`), the
-/// project's `.og/engine` link, its `node_modules/@origingame/engine` (an
-/// npm install of a version before 0.7.8), or `packages/engine` of the
-/// origin-engine checkout `og` runs in or from. A game found with a package
-/// gets its `.og/engine` pointed at it ([`link_engine`]).
+/// project's link to it ([`LINK`]) or one in a `node_modules` above it
+/// (an engine checkout's own), or `packages/engine` of the origin-engine
+/// checkout `og` runs in or from. A game found with a package that no
+/// `node_modules` above it resolves gets its link pointed at it
+/// ([`link_engine`]).
 pub fn engine_package(project: Option<&Path>) -> Option<PathBuf> {
     let ok = |p: &Path| p.join("src/node/run.ts").is_file();
     let found = |p: PathBuf| {
@@ -191,10 +192,13 @@ pub fn engine_package(project: Option<&Path>) -> Option<PathBuf> {
         {
             return Some(p);
         }
+        // A `node_modules` above the project already resolves it (an
+        // engine checkout's own link): no link of the game's.
         for dir in root.ancestors() {
-            let p = dir.join("node_modules/@origingame/engine");
-            if ok(&p) {
-                return found(p);
+            if let Ok(p) = dir.join(LINK).canonicalize()
+                && ok(&p)
+            {
+                return Some(p);
             }
         }
         if let Some(repo) = crate::find_root(root) {
@@ -213,16 +217,20 @@ pub fn engine_package(project: Option<&Path>) -> Option<PathBuf> {
     ok(&p).then_some(p)
 }
 
-/// The link beside a game to the engine package og runs it with: what its
-/// `tsconfig.json` paths and an editor read (docs/release.md §1), ignored by
-/// Git with the rest of `.og/`.
-pub const LINK: &str = ".og/engine";
+/// The link beside a game to the engine package og runs it with, where a
+/// package manager would install it: TypeScript (`moduleResolution
+/// "bundler"`), the bundler and an editor resolve `@origingame/engine` and
+/// its subpaths through it, by the package's `exports`, so package.json is
+/// the one map from specifier to file (docs/release.md §1). Ignored by Git
+/// as `node_modules/`.
+pub const LINK: &str = "node_modules/@origingame/engine";
 
-/// Points `<root>/.og/engine` at `package` when `root` is a game
-/// (`project.ogt`) and the link is missing or points elsewhere: a symlink,
+/// Points `<root>/node_modules/@origingame/engine` at `package` when `root`
+/// is a game (`project.ogt`), no `node_modules` above it resolves that
+/// package, and the link is missing or points elsewhere: a symlink,
 /// a junction on Windows. A directory there (not a link) is left alone.
-/// Best effort: a game without the link still runs; only its tsconfig paths
-/// need it.
+/// Best effort: a game without the link still runs (the bundler resolves
+/// the engine from inside the package); its type check needs it.
 pub fn link_engine(root: &Path, package: &Path) {
     if !root.join("project.ogt").is_file() {
         return;
@@ -231,6 +239,15 @@ pub fn link_engine(root: &Path, package: &Path) {
     let Ok(target) = package.canonicalize() else {
         return;
     };
+    // A `node_modules` above the game that resolves this package already
+    // serves it (an engine checkout's own link).
+    if root
+        .ancestors()
+        .skip(1)
+        .any(|d| d.join(LINK).canonicalize().ok().as_deref() == Some(target.as_path()))
+    {
+        return;
+    }
     match std::fs::symlink_metadata(&link) {
         Ok(m) if m.file_type().is_symlink() || is_junction(&link) => {
             if link.canonicalize().ok().as_deref() == Some(target.as_path()) {

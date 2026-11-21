@@ -154,9 +154,12 @@ https://origingame.ai/downloads/engine/install.sh | sh`, or `irm
 and runs that version's `og` with `OG_ENGINE_PACKAGE` set; `og new`
 scaffolds a game (the latest release, or `--engine <v>`), `og upgrade`
 moves the pin, and `og engine install <v> | list | path | prune` manages
-the cache. A game has no `node_modules`: `og` keeps `.og/engine` (ignored
-by Git) pointing at the engine it runs with, and the templates'
-`tsconfig.json` maps `@origingame/engine` there for editors.
+the cache. Nothing is installed into a game: `og` keeps one link,
+`node_modules/@origingame/engine` (ignored by Git), pointing at the engine
+it runs with, so TypeScript (`moduleResolution "bundler"`), the bundler and
+an editor resolve `@origingame/engine` and its subpaths as a package, by
+its `exports`: the engine's package.json is the one map from specifier to
+file, and the templates' `tsconfig.json` names no engine path.
 
 **The launcher's events.** An install reports its progress, and a tool
 (a sandbox that installs the pinned engine on first use) reads it:

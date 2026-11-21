@@ -2,12 +2,7 @@
   "extends": "./tsconfig.json",
   "compilerOptions": {
     "allowImportingTsExtensions": true,
-    "jsx": "preserve",
-    "paths": {
-      "@origingame/engine": ["./types/index.d.ts"],
-      "@origingame/engine/ui": ["./types/ui.d.ts"],
-      "@origingame/engine/ui/components": ["./src/ui/components/index.tsx"]
-    }
+    "jsx": "preserve"
   },
   "include": [
     "types/ui/ogt.d.ts",

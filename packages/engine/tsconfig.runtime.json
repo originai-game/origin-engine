@@ -6,10 +6,8 @@
     "allowImportingTsExtensions": true,
     "resolveJsonModule": true,
     "erasableSyntaxOnly": true,
-    "paths": {
-      "bun:test": ["./vendor/bun-types/test.d.ts"],
-      "@origingame/engine/ui": ["./src/ui/index.ts"]
-    }
+    "types": ["@origingame/engine/bun-test"],
+    "customConditions": ["og-source"]
   },
   "include": [
     "src/**/*.ts",

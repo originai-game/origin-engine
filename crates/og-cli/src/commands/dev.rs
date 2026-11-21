@@ -252,7 +252,6 @@ impl EngineLoop {
                     package.display()
                 )
             })?;
-        // Not `.og/engine`: that is the link to the engine package (project::LINK).
         let dir = project.work_dir().join("dev-engine");
         std::fs::create_dir_all(&dir).map_err(|e| format!("{}: {e}", dir.display()))?;
         eprintln!(
@@ -571,7 +570,7 @@ pub fn run(args: &[&str]) -> ExitCode {
         }
     };
     let mut checks = match Checker::find(Some(&package), None)
-        .and_then(|(c, note)| Ok((c, note, crate::check::Target::of(&p, Some(&package))?)))
+        .and_then(|(c, note)| Ok((c, note, crate::check::Target::of(&p)?)))
     {
         Ok((checker, note, target)) => {
             if let Some(n) = note {

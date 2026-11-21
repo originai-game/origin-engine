@@ -4,9 +4,9 @@
 first line names, pinned beside bun in docs/ci.md §Toolchain; `vendor/
 expect-type/` is upstream's, unchanged (Apache-2.0, its licence in
 `index.d.ts`'s header). A playtest file (`tests/*.og.ts`) imports
-`describe`, `test` and `expect` from it: a game's tsconfig maps `bun:test`
-here (`.og/engine/vendor/bun-types/test.d.ts`), so it type-checks without
-bun-types' globals or node's declarations.
+`describe`, `test` and `expect` from it: a game's tsconfig names it in
+`types` by the package's export (`"types": ["@origingame/engine/bun-test"]`),
+so it type-checks without bun-types' globals or node's declarations.
 
 The file's header lists every local patch and why a game's tsconfig needs
 it. To move bun: copy the new version's `test.d.ts` and

@@ -196,6 +196,8 @@ fn upgrade(dir: &Path, to: Option<&str>, dry: bool) -> Value {
     let mut drop_ui_core = false;
     // project.ogt's `profile` line becomes the creation form.
     let mut profile_form: Option<(&str, &Value)> = None;
+    // The game's tsconfig.json, when a codemod rewrote it.
+    let mut tsconfig: Option<(PathBuf, String)> = None;
     for e in &crossed {
         let version = e["version"].as_str().unwrap_or("");
         for b in e["breaking"].as_array().into_iter().flatten() {
@@ -280,6 +282,24 @@ fn upgrade(dir: &Path, to: Option<&str>, dry: bool) -> Value {
                 profile_form = Some((version, b));
                 continue;
             }
+            if b["codemod"]["kind"] == "engine-package" {
+                let file = p.root.join("tsconfig.json");
+                let Ok(text) = std::fs::read_to_string(&file) else {
+                    continue;
+                };
+                match engine_package_tsconfig(&text) {
+                    None => {}
+                    Some(Ok(upgraded)) => {
+                        codemods.push(json!({ "version": version, "member": member, "file": "tsconfig.json", "from": "paths into .og/engine", "to": "the engine package", "count": 1 }));
+                        tsconfig = Some((file, upgraded));
+                    }
+                    Some(Err(line)) => manual.push(json!({
+                        "version": version, "member": member, "change": b["change"], "fix": b["fix"],
+                        "file": "tsconfig.json", "line": line, "text": text.lines().nth(line - 1).unwrap_or("").trim(),
+                    })),
+                }
+                continue;
+            }
             if b["codemod"]["kind"] == "ui-kits" {
                 review.push(json!({
                     "version": version, "member": member,
@@ -359,6 +379,7 @@ fn upgrade(dir: &Path, to: Option<&str>, dry: bool) -> Value {
             Err(e) => return failed(format!("project.ogt: {e}"), base),
         }
     }
+    writes.extend(tsconfig);
     writes.extend(
         texts
             .into_iter()
@@ -819,6 +840,93 @@ fn game_sources(root: &Path) -> Vec<PathBuf> {
     out
 }
 
+/// A game's tsconfig.json with the engine resolved as a package: the
+/// `paths` entries into the old `.og/engine` link (`@origingame/engine`
+/// and its subpaths, `bun:test`) dropped, a `paths` block left empty with
+/// them, and `bun:test`'s declarations named by `types`
+/// (`@origingame/engine/bun-test`). Line by line, as og new writes it (one
+/// entry a line), so the rest of the file stays as the author keeps it.
+/// `None`: it names no `.og/engine`; `Err(line)`: a line the rewrite could
+/// not take (the first that still names `.og/engine`, or 1 when the
+/// result would not parse), for the author to edit.
+fn engine_package_tsconfig(text: &str) -> Option<Result<String, usize>> {
+    const LINK: &str = ".og/engine";
+    if !text.contains(LINK) {
+        return None;
+    }
+    let mut bun = false;
+    let mut lines: Vec<String> = Vec::new();
+    for l in text.lines() {
+        let t = l.trim_start();
+        if (t.starts_with("\"@origingame/engine") || t.starts_with("\"bun:test\""))
+            && t.matches(LINK).count() == 1
+            && t.matches('[').count() == 1
+            && t.trim_end().trim_end_matches(',').ends_with(']')
+        {
+            bun |= t.starts_with("\"bun:test\"");
+            continue;
+        }
+        lines.push(l.to_string());
+    }
+    if let Some(at) = lines.iter().position(|l| l.contains(LINK)) {
+        return Some(Err(text
+            .lines()
+            .position(|l| l == lines[at])
+            .map_or(1, |n| n + 1)));
+    }
+    // An empty `paths` block goes.
+    if let Some(at) = lines
+        .windows(2)
+        .position(|w| w[0].trim() == "\"paths\": {" && w[1].trim().trim_end_matches(',') == "}")
+    {
+        lines.drain(at..at + 2);
+    }
+    if bun {
+        const TYPES: &str = "\"@origingame/engine/bun-test\"";
+        match lines
+            .iter()
+            .position(|l| l.trim_start().starts_with("\"types\":"))
+        {
+            Some(at) if lines[at].contains(TYPES) => {}
+            Some(at) if lines[at].contains("[]") => {
+                lines[at] = lines[at].replacen("[]", &format!("[{TYPES}]"), 1)
+            }
+            Some(at) if lines[at].contains('[') => {
+                lines[at] = lines[at].replacen('[', &format!("[{TYPES}, "), 1)
+            }
+            Some(at) => return Some(Err(at + 1)),
+            None => {
+                let at = lines
+                    .iter()
+                    .position(|l| l.trim() == "\"compilerOptions\": {")?;
+                let indent = lines[at].len() - lines[at].trim_start().len() + 2;
+                lines.insert(
+                    at + 1,
+                    format!("{}\"types\": [{TYPES}],", " ".repeat(indent)),
+                );
+            }
+        }
+    }
+    // A trailing comma before a block's close goes.
+    for i in 0..lines.len() {
+        let next = lines[i + 1..].iter().find(|l| !l.trim().is_empty());
+        if lines[i].trim_end().ends_with(',')
+            && next.is_some_and(|n| n.trim_start().starts_with(['}', ']']))
+        {
+            let end = lines[i].trim_end().len() - 1;
+            lines[i].truncate(end);
+        }
+    }
+    let mut out = lines.join("\n");
+    if text.ends_with('\n') {
+        out.push('\n');
+    }
+    if serde_json::from_str::<Value>(text).is_ok() && serde_json::from_str::<Value>(&out).is_err() {
+        return Some(Err(1));
+    }
+    Some(Ok(out))
+}
+
 /// project.ogt without its `uiCore` line.
 fn without_ui_core(text: &str) -> String {
     text.split_inclusive('\n')
@@ -962,6 +1070,39 @@ fn print_text(r: &Value, dry: bool) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// og new's tsconfig.json before the engine resolved as a package
+    /// comes out as og new writes it now, and an entry the rewrite cannot
+    /// take (two on one line) is left for the author, with its line.
+    #[test]
+    fn engine_package_drops_the_link_paths() {
+        let old = concat!(
+            "{\n  \"compilerOptions\": {\n    \"strict\": true,\n    \"types\": [],\n    \"jsx\": \"preserve\",\n",
+            "    \"paths\": {\n      \"@origingame/engine\": [\"./.og/engine/types/index.d.ts\"],\n",
+            "      \"bun:test\": [\"./.og/engine/vendor/bun-types/test.d.ts\"],\n",
+            "      \"@origingame/engine/ui-check\": [\"./.og/engine/src/node/ui-check.ts\"]\n    }\n  },\n",
+            "  \"include\": [\"src/**/*.ts\"]\n}\n"
+        );
+        let new = concat!(
+            "{\n  \"compilerOptions\": {\n    \"strict\": true,\n    \"types\": [\"@origingame/engine/bun-test\"],\n",
+            "    \"jsx\": \"preserve\"\n  },\n  \"include\": [\"src/**/*.ts\"]\n}\n"
+        );
+        assert_eq!(engine_package_tsconfig(old), Some(Ok(new.to_string())));
+        assert_eq!(engine_package_tsconfig(new), None);
+        // A game's own path stays, and so does its block.
+        let own = old.replace(
+            "      \"@origingame/engine/ui-check\"",
+            "      \"~/*\": [\"./src/*\"],\n      \"@origingame/engine/ui-check\"",
+        );
+        let kept = engine_package_tsconfig(&own).unwrap().unwrap();
+        assert!(
+            kept.contains("\"paths\": {\n      \"~/*\": [\"./src/*\"]\n    }"),
+            "{kept}"
+        );
+        serde_json::from_str::<Value>(&kept).unwrap();
+        let packed = old.replace("],\n      \"bun:test\"", "], \"bun:test\"");
+        assert_eq!(engine_package_tsconfig(&packed), Some(Err(7)));
+    }
 
     #[test]
     fn raw_pads_moves_gamepad_events_to_raw_values() {

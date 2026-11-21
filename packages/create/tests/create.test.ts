@@ -204,14 +204,14 @@ test("the packed package creates the same skeleton, and briefs with the engine's
   expect(manifest.files).not.toContain("archetypes");
   expect(manifest.files).not.toContain("template-2d");
   for (const part of [...manifest.files, "package.json"]) cpSync(join(pkg, part), join(installed, part), { recursive: true });
-  mkdirSync(join(installed, "template/.og"), { recursive: true });
-  symlinkSync("..", join(installed, "template/.og/engine"), "dir");
+  mkdirSync(join(installed, "template/node_modules/@origingame"), { recursive: true });
+  symlinkSync("../../..", join(installed, "template/node_modules/@origingame/engine"), "dir");
   symlinkSync(".", join(installed, "template/loop"), "dir");
   // A file left in template/ that the manifest does not list (a checkout's untracked file) is not part of the skeleton.
   writeFileSync(join(installed, "template/stray.png"), "left behind");
   mkdirSync(join(installed, "template/tests/references"), { recursive: true });
   writeFileSync(join(installed, "template/tests/references/frame.png"), "left behind");
-  expect(files(join(installed, "template"))).not.toContain(".og/engine");
+  expect(files(join(installed, "template"))).not.toContain("node_modules/@origingame/engine");
   const packed = Bun.spawnSync(["bun", "pm", "pack", "--dry-run", "--ignore-scripts"], { cwd: installed });
   expect(packed.exitCode, new TextDecoder().decode(packed.stderr)).toBe(0);
   const listing = new TextDecoder().decode(packed.stdout);
