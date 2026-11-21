@@ -710,6 +710,7 @@ impl Renderer {
             shadow_bind_layout,
             frame_features: crate::pipeline_features::Features::ALL,
             capturing: false,
+            uploads_whole: false,
             prepass: PrepassState::new(),
             world: WorldRenderers::new(sims, ground, crowd_indirect),
             gi_probes: None,

@@ -456,4 +456,10 @@ pub struct SceneFrame {
     /// The output's height in CSS pixels, which line widths and point sizes
     /// are measured in (0: one CSS pixel per device pixel).
     pub css_height: f32,
+    /// A capture drawn as a reference ([`crate::Renderer::capture_frame`]): a
+    /// pure function of the scene, its frame history started afresh and
+    /// converged ([`crate::Renderer::render_capture`]). Otherwise a capture
+    /// is drawn as the next frame after the display's, with its history.
+    /// False by default; display frames never read it.
+    pub reference: bool,
 }

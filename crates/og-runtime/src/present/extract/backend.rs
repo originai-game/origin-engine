@@ -115,10 +115,13 @@ pub trait RenderBackend {
     fn scatter_counts(&self) -> Option<og_render::ScatterCounts> {
         None
     }
-    /// Draw the scene offscreen at `width`×`height` (0×0: the target's size)
-    /// and read it back. Native hosts block on the readback; the web host
-    /// answers a frame it requested earlier (request on tick N, answer on
-    /// N + 1) and `None` while the copy is in flight.
+    /// The probe's capture: og-render's `Renderer::capture_frame` of the scene at
+    /// `width`×`height` (0×0: the target's size), read back. Native hosts
+    /// block on the readback; the web host answers a frame it requested
+    /// earlier (request on tick N, answer on N + 1) and `None` while the
+    /// copy is in flight. The runtime made a lost device again before
+    /// (`RenderBackend::recover`) and decides whether it is a reference
+    /// (`SceneFrame::reference`); the host only draws and reads.
     fn capture(
         &mut self,
         scene: &RenderScene,

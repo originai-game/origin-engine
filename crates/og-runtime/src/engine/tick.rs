@@ -372,6 +372,36 @@ fn text_entry(eng: &Engine) -> (Value, Option<String>) {
     (text, copy)
 }
 
+/// The scene at the world's tick as a frame draws it: between the last two
+/// ticks at `alpha` (`None`: at the tick), its baked probes loaded and the
+/// display's scale and quality applied. `display`: a frame that goes on
+/// from the one before (per-object motion blur moves from it, and the
+/// streamed mips count it); a reference capture is a still. The one
+/// extraction a display frame and a probe capture share.
+pub(crate) fn extract_frame(
+    eng: &Engine,
+    world: &og_ecs::World,
+    alpha: Option<f32>,
+    display: bool,
+) -> Result<(), String> {
+    world.parent_frames().map_err(err)?;
+    let texel_paint = super::art::texel_paint(eng);
+    let mut rs = eng.render.borrow_mut();
+    rs.art.contract = super::art::contract(eng);
+    rs.art.texel_paint = texel_paint;
+    rs.interp.alpha = alpha;
+    rs.interp.display = display;
+    super::extract::extract(world, &mut rs);
+    if display {
+        super::stream::mips::frame(eng, &mut rs);
+    }
+    rs.interp.alpha = None;
+    rs.interp.display = false;
+    super::probes::load_bakes(eng, &mut rs);
+    crate::present::display::before_render(&mut rs);
+    Ok(())
+}
+
 /// Draws the frame, between the last two ticks at `alpha`
 /// (`super::interpolate`) or at the tick (`None`); `interval_ms` is the
 /// host's time since the last frame (the perf record's).
@@ -395,20 +425,8 @@ fn render(eng: &Engine, alpha: Option<f32>, interval_ms: f64) -> Result<bool, St
     let mut gpu = Vec::new();
     let mut frame = og_render::FrameStats::default();
     let notes = {
-        let world = eng.world()?;
-        world.parent_frames().map_err(err)?;
-        let texel_paint = super::art::texel_paint(eng);
+        extract_frame(eng, eng.world()?, alpha, true)?;
         let mut rs = eng.render.borrow_mut();
-        rs.art.contract = super::art::contract(eng);
-        rs.art.texel_paint = texel_paint;
-        rs.interp.alpha = alpha;
-        rs.interp.display = true;
-        super::extract::extract(world, &mut rs);
-        super::stream::mips::frame(eng, &mut rs);
-        rs.interp.alpha = None;
-        rs.interp.display = false;
-        super::probes::load_bakes(eng, &mut rs);
-        crate::present::display::before_render(&mut rs);
         let rs = &mut *rs;
         if let Some(b) = rs.backend.as_mut() {
             b.set_clock(Some(rprobe::now_ms));

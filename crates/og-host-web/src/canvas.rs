@@ -287,29 +287,13 @@ impl RenderBackend for CanvasBackend {
                 _ => {}
             }
         }
-        // A lost device is made again here too: a capture waiting for its
-        // readback draws no display frame, which would.
-        if self.recover_device().unwrap_or(true) {
-            return None;
-        }
-        if size != target {
-            self.renderer.resize(size.0, size.1);
-        }
-        // A capture is the frame at its own size and scale 1, whatever
-        // the display draws at (automatic quality, og.render.setDisplay).
-        let scale = self.renderer.render_scale();
-        self.renderer.set_render_scale(1.0);
-        // The scene's alone, not the frames drawn before it
-        // (og-render's `render_capture`).
+        // og-render's `capture_frame`; the runtime made a lost device again
+        // before asking.
         let started = self
             .renderer
-            .render_capture(scene, &RenderTarget::Offscreen)
+            .capture_frame(scene, size.0, size.1)
             .ok()
-            .and_then(|_| self.renderer.begin_capture().ok());
-        self.renderer.set_render_scale(scale);
-        if size != target {
-            self.renderer.resize(target.0, target.1);
-        }
+            .map(|(_, req)| req);
         if let Some(req) = started {
             if self.pending.len() >= MAX_CAPTURES {
                 self.pending.remove(0);

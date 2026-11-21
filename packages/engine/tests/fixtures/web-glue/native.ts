@@ -42,3 +42,6 @@ export function og_web_fail_texture(_key: string, _reason: string): void {}
 export function og_web_prepare_textures(_engine: number): string {
   return JSON.stringify({ total: 0, pending: 0, formats: "" });
 }
+// The frame kind (src/web/worker/calls.ts `frame`, `probe`): nothing to set,
+// the engine here is the native host's, which keeps its own.
+export function og_web_frame_kind(_engine: number, _kind: "display" | "scripted" | "recorded"): void {}

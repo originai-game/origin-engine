@@ -409,9 +409,27 @@ impl Renderer {
     pub async fn capture(&self) -> Result<RgbaImage, RenderError> {
         #[cfg(not(target_arch = "wasm32"))]
         {
-            let (copy, frames) = capture_timeouts();
-            // The frames first, on their own bound: the copy's bound is
-            // for the copy, not for a cold GPU's first draw of a pass.
+            self.wait_frames()?;
+            self.begin_capture()?.wait(self, capture_timeouts().0)
+        }
+        #[cfg(target_arch = "wasm32")]
+        {
+            let request = self.begin_capture()?;
+            self.poll();
+            request.finish().await
+        }
+    }
+}
+
+impl Renderer {
+    /// Natively, until the GPU finished the frames submitted so far (at
+    /// most [`BACKLOG_TIMEOUT`]; [`capture_timeouts`]), before a capture's
+    /// copy is asked for: the copy's bound is for the copy, not for a cold
+    /// GPU's first draw of a pass. Nothing on the web, which polls.
+    pub(crate) fn wait_frames(&self) -> Result<(), RenderError> {
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            let frames = capture_timeouts().1;
             crate::traffic::poll(
                 &self.device,
                 wgpu::PollType::Wait {
@@ -426,14 +444,8 @@ impl Renderer {
                 )),
                 other => RenderError::Readback(other.to_string()),
             })?;
-            self.begin_capture()?.wait(self, copy)
         }
-        #[cfg(target_arch = "wasm32")]
-        {
-            let request = self.begin_capture()?;
-            self.poll();
-            request.finish().await
-        }
+        Ok(())
     }
 }
 

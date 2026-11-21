@@ -213,30 +213,16 @@ impl RenderBackend for OffscreenBackend {
         width: u32,
         height: u32,
     ) -> Option<og_render::RgbaImage> {
-        let target = self.renderer.size();
-        let size = if width == 0 || height == 0 {
-            target
-        } else {
-            (width, height)
-        };
-        if size != target {
-            self.renderer.resize(size.0, size.1);
-        }
-        // The capture is the scene's alone, not the frames drawn before it
-        // (og-render's `render_capture`).
+        // og-render's `capture_frame`, waited for.
         let image = self
-            .recreate()
-            .and_then(|()| {
-                self.renderer
-                    .render_capture(scene, &og_render::RenderTarget::Offscreen)
-                    .map(|s| self.stats = s)
-                    .map_err(|e| e.to_string())
+            .renderer
+            .capture_frame(scene, width, height)
+            .and_then(|(stats, req)| {
+                self.stats = stats;
+                req.wait(&self.renderer, og_render::capture_timeouts().0)
             })
-            .and_then(|_| self.renderer.read_offscreen().map_err(|e| e.to_string()));
+            .map_err(|e| e.to_string());
         self.capture_error = image.as_ref().err().cloned();
-        if size != target {
-            self.renderer.resize(target.0, target.1);
-        }
         image.ok()
     }
     fn capture_error(&self) -> Option<String> {

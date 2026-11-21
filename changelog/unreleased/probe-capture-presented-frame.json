@@ -1,0 +1,13 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "probe capture",
+      "summary": "While the game plays on a page or a desktop window, `capture`, `capture_views` and `screenshot` show the frame the player sees next: drawn with the frame history (TAA, GI and reflection accumulation, exposure) at the display's render scale and graphics preset, so a TAA ghost or an automatic-quality blur shows in the capture. Where nothing is presented (`og run`, `og test`, `og render`) or a harness steps the frames (a web harness stepping `frame`, `og run --capture-only`) a capture is still a reference, a function of the scene alone at render scale 1, the same on every host. Every host now takes one capture path: the desktop window no longer captures at the automatic-quality scale in a script, and a capture also gets the frame's player graphics preset and loaded probe bakes."
+    },
+    {
+      "member": "probe capture",
+      "summary": "A capture draws every texture in its frame, past the web's per-frame upload budget. A page whose GPU device was lost and made again captured its first frames' 1×1 stand-ins instead: a style pack's art (Button, Chip, Plate and Panel frames, a plain `<Image>`) was missing from the capture while the backdrop drew."
+    }
+  ]
+}

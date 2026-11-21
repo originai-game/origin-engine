@@ -138,6 +138,7 @@ impl RenderScene {
                 quality: crate::RenderQuality::default(),
                 shake: CameraShake::default(),
                 css_height: 0.0,
+                reference: false,
             },
             lighting: SceneLighting {
                 light: DirectionalLight::default(),

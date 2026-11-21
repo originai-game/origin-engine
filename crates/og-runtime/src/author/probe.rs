@@ -16,7 +16,7 @@
 #[cfg(not(feature = "publish"))]
 use crate::engine::{DECL, assemble};
 use crate::engine::{Engine, call, engine, extract_layouts, hooks, invalidate};
-use crate::present::extract::{RenderState, extract};
+use crate::present::extract::RenderState;
 use og_api::host::{DISPATCH_COMMAND, DISPATCH_FACTS};
 use og_core::base64;
 use og_ecs::{Entity, World};
@@ -142,19 +142,68 @@ impl Capture for RuntimeCapture {
         width: u32,
         height: u32,
     ) -> Option<Frame> {
-        // Every stage's work due by the captured tick (the presentation
-        // barrier), as a recorded frame settles it.
-        if !engine(self.engine).is_ok_and(|eng| crate::present::barrier::settle(&eng)) {
-            return None;
-        }
-        let mut rs = self.render.try_borrow_mut().ok()?;
-        extract(world, &mut rs);
-        crate::present::probes::apply_bakes(&mut rs);
-        let rs = &mut *rs;
-        rs.backend.as_ref()?;
+        shoot(self.engine, world, Some(view), width, height)
+    }
+
+    fn capture_error(&self) -> Option<String> {
+        let rs = self.render.try_borrow().ok()?;
+        rs.backend.as_ref()?.capture_error()
+    }
+
+    fn capture(&mut self, world: &World, width: u32, height: u32) -> Option<Frame> {
+        shoot(self.engine, world, None, width, height)
+    }
+}
+
+/// The probe's capture of the world's tick, from `view` (`None`: og.Camera)
+/// at `width`×`height` (0×0: the target's size), drawn as the next frame
+/// (`og_render::Renderer::capture_frame`). Every host takes it the same way:
+///
+/// - a lost device is made again first, as before a frame (natively at
+///   once; the web asks for one and answers none until it lands), and what
+///   it takes in other encodings is decoded again;
+/// - every stage's work due by the tick is settled (the presentation
+///   barrier), and no frame while og.motion has not come back (the web,
+///   which cannot wait): the probe asks again;
+/// - the scene is extracted as a frame extracts it.
+///
+/// On a host that presents to a display (the web canvas, the desktop
+/// window), stepping display frames, it is the frame the player sees next,
+/// with its history and the display's render scale (a TAA ghost or an
+/// automatic quality blur shows in it). Everywhere else it is a reference,
+/// a function of the scene alone, so it reproduces run to run: a host that
+/// presents nothing (`og run`, `og test`, the engine's tests), and one
+/// stepping frames for a script (`FrameKind` other than display, or
+/// capture-only).
+fn shoot(
+    id: u32,
+    world: &World,
+    view: Option<&og_probe::Viewpoint>,
+    width: u32,
+    height: u32,
+) -> Option<Frame> {
+    let eng = engine(id).ok()?;
+    let lost = eng.render.borrow_mut().backend.as_mut()?.recover();
+    if !matches!(lost, Ok(false)) {
+        return None;
+    }
+    crate::world::assets::retranscode(&eng);
+    if !crate::present::barrier::settle(&eng) {
+        return None;
+    }
+    let reference = {
+        let rs = eng.render.borrow();
+        let presents = rs.backend.as_ref().is_some_and(|b| b.presents());
+        !presents || !rs.display.kind.displayed() || rs.display.capture_only
+    };
+    crate::engine::extract_frame(&eng, world, None, !reference).ok()?;
+    let mut rs = eng.render.borrow_mut();
+    let rs = &mut *rs;
+    rs.scene.frame.reference = reference;
+    let main = rs.scene.frame.camera;
+    if let Some(view) = view {
         // The frame is drawn from its render origin: the view moves with it.
         let back = rs.scene.frame.origin - rs.zero;
-        let main = rs.scene.frame.camera;
         let v = |p: [f32; 3]| glam::Vec3::from(p) - back;
         rs.scene.frame.camera = og_render::Camera {
             position: v(view.position),
@@ -170,55 +219,19 @@ impl Capture for RuntimeCapture {
             far: view.far.unwrap_or(main.far),
             ..main
         };
-        let t0 = now_ms();
-        let image = rs
-            .backend
-            .as_mut()
-            .and_then(|b| b.capture(&rs.scene, width, height));
-        rs.scene.frame.camera = main;
-        if let Ok(eng) = engine(self.engine) {
-            crate::world::assets::release_uploaded_textures(&eng, rs);
-        }
-        rs.capture_ms += now_ms() - t0;
-        image.map(|image| Frame {
-            width: image.width,
-            height: image.height,
-            png: og_render::png(&image),
-        })
     }
-
-    fn capture_error(&self) -> Option<String> {
-        let rs = self.render.try_borrow().ok()?;
-        rs.backend.as_ref()?.capture_error()
-    }
-
-    fn capture(&mut self, world: &World, width: u32, height: u32) -> Option<Frame> {
-        // Every stage's work due by the captured tick (the presentation
-        // barrier: textures, og.motion, terrain tiles, glyphs), so the
-        // frame reproduces run to run; no frame while og.motion has not
-        // come back (the web, which cannot wait), so the probe asks again.
-        if !engine(self.engine).is_ok_and(|eng| crate::present::barrier::settle(&eng)) {
-            return None;
-        }
-        let mut rs = self.render.try_borrow_mut().ok()?;
-        extract(world, &mut rs);
-        // Baked probes sample the bakes the frames loaded.
-        crate::present::probes::apply_bakes(&mut rs);
-        let rs = &mut *rs;
-        let t0 = now_ms();
-        let image = rs.backend.as_mut()?.capture(&rs.scene, width, height);
-        if let Ok(eng) = engine(self.engine) {
-            crate::world::assets::release_uploaded_textures(&eng, rs);
-        }
-        let frame = image.map(|image| Frame {
-            width: image.width,
-            height: image.height,
-            png: og_render::png(&image),
-        });
-        // The probe's work, not the game's: the tick's step time leaves it out.
-        rs.capture_ms += now_ms() - t0;
-        frame
-    }
+    let t0 = now_ms();
+    let image = rs.backend.as_mut()?.capture(&rs.scene, width, height);
+    rs.scene.frame.camera = main;
+    rs.scene.frame.reference = false;
+    crate::world::assets::release_uploaded_textures(&eng, rs);
+    // The probe's work, not the game's: the tick's step time leaves it out.
+    rs.capture_ms += now_ms() - t0;
+    image.map(|image| Frame {
+        width: image.width,
+        height: image.height,
+        png: og_render::png(&image),
+    })
 }
 
 /// dump_render's `scatter`: the frame's chunk draws and chunks built, and

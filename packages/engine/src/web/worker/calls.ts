@@ -48,11 +48,11 @@ export function callsOf(run: Run): Calls {
       // Its time is the harness's and the machine's, not the display's: automatic quality must not read it
       // (a loaded machine stepped the same script down a render-scale rung at a different tick each run).
       const answered = pipelines.drawnWhole(() => {
-        run.glue?.og_web_frame_kind?.(e.id, "scripted");
+        run.glue!.og_web_frame_kind(e.id, "scripted");
         try {
           return e.frame(Number(ms));
         } finally {
-          run.glue?.og_web_frame_kind?.(e.id, "display");
+          run.glue!.og_web_frame_kind(e.id, "display");
         }
       });
       run.relay(answered);
@@ -149,7 +149,16 @@ export function callsOf(run: Run): Calls {
     probe: (e, [member, ...rest]) => {
       const f = (e.probe as unknown as Record<string, unknown>)[String(member)];
       if (typeof f !== "function") throw new TypeError(`probe has no member '${String(member)}'`);
-      return (f as (...a: unknown[]) => unknown)(...rest);
+      const call = () => (f as (...a: unknown[]) => unknown)(...rest);
+      // While the game plays, a capture is the frame the player sees next (its history, the display's render scale).
+      // While a harness steps the frames (`frame`), the probe's calls are the script's too: a capture is a reference.
+      if (run.playing) return call();
+      run.glue!.og_web_frame_kind(e.id, "scripted");
+      try {
+        return call();
+      } finally {
+        run.glue!.og_web_frame_kind(e.id, "display");
+      }
     },
   };
 }

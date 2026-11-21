@@ -458,24 +458,11 @@ impl RenderBackend for WindowBackend {
         width: u32,
         height: u32,
     ) -> Option<og_render::RgbaImage> {
-        let target = self.renderer.size();
-        let size = if width == 0 || height == 0 {
-            target
-        } else {
-            (width, height)
-        };
-        if size != target {
-            self.renderer.resize(size.0, size.1);
-        }
-        let image = self
-            .renderer
-            .render_capture(scene, &RenderTarget::Offscreen)
+        // og-render's `capture_frame`, waited for.
+        self.renderer
+            .capture_frame(scene, width, height)
+            .and_then(|(_, req)| req.wait(&self.renderer, og_render::capture_timeouts().0))
             .ok()
-            .and_then(|_| self.renderer.read_offscreen().ok());
-        if size != target {
-            self.renderer.resize(target.0, target.1);
-        }
-        image
     }
     /// The last presented frame, kept offscreen once the shell asked
     /// (`OG_SHELL_CAPTURE`).

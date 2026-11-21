@@ -100,3 +100,7 @@ wasm-bindgen = "=0.2.129"
 [[test]]
 name = "tests"
 path = "tests/it/main.rs"
+
+[[test]]
+name = "upload_budget"
+path = "tests/upload_budget.rs"

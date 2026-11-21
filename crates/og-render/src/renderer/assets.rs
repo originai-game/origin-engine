@@ -337,7 +337,11 @@ impl Renderer {
                 self.cache.lut_revisions[i] = revision;
             }
         }
-        let upload_budget = UPLOAD_BUDGET.load(std::sync::atomic::Ordering::Relaxed);
+        let upload_budget = if self.uploads_whole {
+            0
+        } else {
+            UPLOAD_BUDGET.load(std::sync::atomic::Ordering::Relaxed)
+        };
         let mut uploaded = 0u64;
         if self.cache.textures.len() < scene.texture_count() {
             // Every texture is checked before any is recorded: an error

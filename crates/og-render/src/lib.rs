@@ -691,6 +691,11 @@ pub struct Renderer {
     /// are the full variants, waited for, so its bytes never depend on
     /// which variants a compile worker has finished.
     capturing: bool,
+    /// Drawing the probe's capture ([`Renderer::capture_frame`]): every
+    /// texture the frame draws is uploaded, whatever the per-frame budget
+    /// ([`set_upload_budget`]), so a capture never shows a stand-in that a
+    /// later frame replaces.
+    uploads_whole: bool,
     /// The depth prepass's pipelines: the standard and the lean ones by key,
     /// and stylise's object pass.
     prepass: renderer::PrepassState,

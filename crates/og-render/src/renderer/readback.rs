@@ -332,6 +332,53 @@ impl Renderer {
         stats
     }
 
+    /// The probe's capture of `scene` at `width`×`height` (0×0: the
+    /// output's size), drawn offscreen and its readback started: as the
+    /// next frame after the display's, with its history and at the render
+    /// scale the frames draw at, or as a reference
+    /// ([`crate::SceneFrame::reference`]: [`Renderer::render_capture`] at
+    /// scale 1). The output's size and the render scale are put back
+    /// before it returns. Every texture it draws is uploaded, past the
+    /// per-frame budget ([`crate::set_upload_budget`]): a renderer made
+    /// again after a lost device would otherwise capture its first frames'
+    /// stand-ins. The one capture every host takes: natively the
+    /// host waits for the request ([`crate::CaptureRequest::wait`]), the
+    /// web polls it on later calls ([`crate::CaptureRequest::try_finish`]).
+    pub fn capture_frame(
+        &mut self,
+        scene: &RenderScene,
+        width: u32,
+        height: u32,
+    ) -> Result<(FrameStats, crate::CaptureRequest), RenderError> {
+        let target = (self.out_width, self.out_height);
+        let size = if width == 0 || height == 0 {
+            target
+        } else {
+            (width, height)
+        };
+        if size != target {
+            self.resize(size.0, size.1);
+        }
+        let scale = self.render_scale;
+        self.uploads_whole = true;
+        let drawn = if scene.frame.reference {
+            self.render_scale = 1.0;
+            self.render_capture(scene, &RenderTarget::Offscreen)
+        } else {
+            self.render(scene, &RenderTarget::Offscreen)
+        };
+        self.render_scale = scale;
+        self.uploads_whole = false;
+        let captured = drawn.and_then(|stats| {
+            self.wait_frames()?;
+            Ok((stats, self.begin_capture()?))
+        });
+        if size != target {
+            self.resize(target.0, target.1);
+        }
+        captured
+    }
+
     /// The frames drawn since the last capture: what turns the TAA jitter,
     /// the shadow filters' spiral and the screen-space effects' noise from
     /// frame to frame. `frame_index` itself only grows (readbacks are
