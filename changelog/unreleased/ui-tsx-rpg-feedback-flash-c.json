@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {
+      "member": "RpgHits, RpgLeader, RpgLockOn, RpgLootFeed, RpgMenuBar, RpgMinimap, RpgParty, RpgPlaceCard",
+      "summary": "The character HUD's feedback components ship as TSX beside their component documents: same props, states, strings and accessibility, styled with Tailwind classes and the new UI's primitives. HudBar, HudPortrait and HudLootEntry have no TSX ports yet, so leader, party and loot-feed carry faithful local stand-ins to swap when they land; the lock-on's conic arcs stand in as one lit ring, the minimap draws its player arrow as a Line, and octagon clip-paths and container queries are approximated or dropped."
+    }
+  ]
+}
