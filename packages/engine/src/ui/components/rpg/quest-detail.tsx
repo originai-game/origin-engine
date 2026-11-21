@@ -75,7 +75,7 @@ export function RpgQuestDetail(props: RpgQuestDetailProps) {
                   <For each={props.objectives ?? []} key={(o) => o.id}>
                     {(o, i) => (
                       <View class={`group/obj flex-row items-start gap-3 py-0.5 min-w-0 data-step1:ml-1 data-step1:pl-4 data-step1:border-l data-step1:border-rim`} role="listitem" data-optional={o().optional} data-step1={o().step === 1} data-current={o().step === 0 && !o().done && (i() === 0 || (props.objectives ?? [])[i() - 1].done)} data-done={o().done}>
-                        <View class={`shrink-0 rotate-45 size-2 mx-[0.143rem] mt-1 data-step1:size-1 shadow-[inset_0px_0px_0px_2.288px_#ffcf5a] data-current:bg-gold data-current:shadow-[inset_0px_0px_0px_2.288px_#ffcf5a,0px_0px_10px_#ffcf5acc] data-done:bg-success data-done:shadow-[inset_0px_0px_0px_2.288px_#30d158,0px_0px_6px_#30d15899]`} />
+                        <View class={`shrink-0 rotate-45 size-2 mx-[0.143rem] mt-1 group-data-step1/obj:size-1 shadow-[inset_0px_0px_0px_2.288px_#ffcf5a] group-data-current/obj:bg-gold group-data-current/obj:shadow-[inset_0px_0px_0px_2.288px_#ffcf5a,0px_0px_10px_#ffcf5acc] data-done:bg-success data-done:shadow-[inset_0px_0px_0px_2.288px_#30d158,0px_0px_6px_#30d15899]`} />
                         <Text class={`grow min-w-0 group-data-step1/obj:text-fg-muted group-data-step1/obj:font-semibold group-data-done/obj:text-fg-subtle group-data-done/obj:line-through`}>
                           {o().text}
                         </Text>

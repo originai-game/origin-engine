@@ -38,7 +38,7 @@ export function RhythmDifficulty(props: RhythmDifficultyProps) {
             <For each={props.levels ?? []} key={(l) => l.id}>
               {(l) => (
                 <View
-                  class={`relative grow shrink basis-[10.714rem] min-w-0 min-h-[6.286rem] compact:min-h-[3.143rem] flex-col items-stretch justify-start pt-[13px] compact:pt-[7px] px-[18px] compact:px-[10px] pb-2 compact:pb-1 transition duration-317 bg-tile/90 hover:bg-glass shadow-none rounded-none data-selected:bg-linear-to-r data-selected:from-hud-accent/24 data-selected:via-hud-accent/8 data-selected:to-hud-accent/3 data-selected:shadow-[inset_3px_0px_0px_#38e8ff,inset_0px_1px_0px_#ffffff2e] data-selected:-translate-y-[6px] compact:data-selected:translate-y-0 disabled:opacity-55 disabled:bg-tile/90 disabled:shadow-none`}
+                  class={`group/difficulty relative grow shrink basis-[10.714rem] min-w-0 min-h-[6.286rem] compact:min-h-[3.143rem] flex-col items-stretch justify-start pt-[13px] compact:pt-[7px] px-[18px] compact:px-[10px] pb-2 compact:pb-1 transition duration-317 bg-tile/90 hover:bg-glass shadow-none rounded-none data-selected:bg-linear-to-r data-selected:from-hud-accent/24 data-selected:via-hud-accent/8 data-selected:to-hud-accent/3 data-selected:shadow-[inset_3px_0px_0px_#38e8ff,inset_0px_1px_0px_#ffffff2e] data-selected:-translate-y-[6px] compact:data-selected:translate-y-0 disabled:opacity-55 disabled:bg-tile/90 disabled:shadow-none`}
                   role="option"
                   label={t("rhythm.difficulty.ratingName", { label: l().label, rating: l().rating })}
                   selected={l().id === props.selected}
@@ -53,10 +53,10 @@ export function RhythmDifficulty(props: RhythmDifficultyProps) {
                   data-tier-special={l().tier === "special"}
                   data-selected={l().id === props.selected}
                 >
-                  <View class={`absolute left-0 right-0 top-0 h-[5px] bg-chart-normal data-tier-easy:bg-chart-easy data-tier-hard:bg-chart-hard data-tier-expert:bg-chart-expert data-tier-master:bg-chart-master data-tier-special:bg-fever`} />
+                  <View class={`absolute left-0 right-0 top-0 h-[5px] bg-chart-normal group-data-tier-easy/difficulty:bg-chart-easy group-data-tier-hard/difficulty:bg-chart-hard group-data-tier-expert/difficulty:bg-chart-expert group-data-tier-master/difficulty:bg-chart-master group-data-tier-special/difficulty:bg-fever`} />
                   <View class={`flex-col items-start grow gap-0.5 compact:flex-row compact:flex-wrap compact:items-center compact:gap-x-1`}>
                     <View class={`flex-row items-center flex-wrap gap-y-0.5 gap-x-1 max-w-full min-w-0 compact:flex-1 compact:basis-full`}>
-                      <Text class={`text-[0.857rem] font-bold tracking-[0.14em] uppercase min-w-0 max-w-full whitespace-nowrap text-ellipsis overflow-hidden text-chart-normal data-tier-easy:text-chart-easy data-tier-hard:text-chart-hard data-tier-expert:text-chart-expert data-tier-master:text-chart-master data-tier-special:text-fever data-selected:text-fg`}>
+                      <Text class={`text-[0.857rem] font-bold tracking-[0.14em] uppercase min-w-0 max-w-full whitespace-nowrap text-ellipsis overflow-hidden text-chart-normal group-data-tier-easy/difficulty:text-chart-easy group-data-tier-hard/difficulty:text-chart-hard group-data-tier-expert/difficulty:text-chart-expert group-data-tier-master/difficulty:text-chart-master group-data-tier-special/difficulty:text-fever data-selected:text-fg`}>
                         {l().label}
                       </Text>
                       <Show when={l().locked}>

@@ -145,7 +145,7 @@ export function ResultsScreen(props: ResultsScreenProps) {
                   <View class="flex-row flex-wrap gap-3">
                     <For each={props.rewards}>
                       {(r) => (
-                      <View class={`text-fg transition duration-317 items-center w-[8.286rem] rounded-button data-selected:border-accent data-done:border-success data-active:border-accent disabled:text-fg-subtle disabled:scale-100 active:scale-96 data-locked:scale-100 data-down:opacity-45 compact:w-24 shrink`}>
+                      <View class={`text-fg transition duration-317 items-center w-[8.286rem] rounded-button data-selected:border-accent data-done:border-success active:border-accent disabled:text-fg-subtle disabled:scale-100 active:scale-96 data-locked:scale-100 data-down:opacity-45 compact:w-24 shrink`}>
                         <View class="bg-linear-to-b from-white/75 via-white/22 via-45% to-white/14 p-0.75 gap-2 size-[7.429rem] compact:size-[4.857rem]">
                           <Art class="absolute bg-linear-to-b from-plate-hi to-plate-lo object-cover inset-0" kind="itemIcon" src={r().texture} />
                         </View>

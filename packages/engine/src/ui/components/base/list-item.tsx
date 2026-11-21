@@ -44,7 +44,7 @@ export function ListItem(props: ListItemProps) {
               <Show when={(props.image ?? 0)} fallback={
                   <Icon class={`size-6`} name={props.icon ?? ""} />
               }>
-                <Image class={`object-cover size-full data-muted:opacity-45`} src={props.image} />
+                <Image class={`object-cover size-full`} src={props.image} />
               </Show>
             </View>
           </Show>

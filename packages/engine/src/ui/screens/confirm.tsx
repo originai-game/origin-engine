@@ -24,7 +24,7 @@ export interface ConfirmProps {
 export function Confirm(props: ConfirmProps) {
   return (
     <Show when={props.open}>
-      <View class="grow shrink basis-0 w-[32.857rem] max-w-full h-auto pt-6 pb-4 text-fg px-6 gap-2 short:min-w-105 short:w-fit short:max-w-180 compact:p-4" modal={true} label={props.title} data-danger={props.danger === true} onAction={{ back: (e) => props.onCancel?.(e) }}>
+      <View class="group/confirm grow shrink basis-0 w-[32.857rem] max-w-full h-auto pt-6 pb-4 text-fg px-6 gap-2 short:min-w-105 short:w-fit short:max-w-180 compact:p-4" modal={true} label={props.title} data-danger={props.danger === true} onAction={{ back: (e) => props.onCancel?.(e) }}>
       <Show when={props.danger}>
         <View class={`items-center gap-x-2 text-[0.857rem] font-bold tracking-[0.14em] uppercase text-danger`}>
           <Text class="rotate-45 bg-danger size-[0.571rem]" />
@@ -43,7 +43,7 @@ export function Confirm(props: ConfirmProps) {
         <Button class={`text-fg nine-plate-cut grow shrink max-w-full min-h-11 py-2 disabled:border-transparent active:bg-transparent active:border-transparent hover:bg-transparent hover:border-transparent data-pressed:hover:border-transparent ${packClass("Button", "plate")}`} onPress={(e) => props.onCancel?.(e)} autofocus>
           <Text class="whitespace-normal">{props.cancel}</Text>
         </Button>
-        <Button class={`nine-plate-cut grow shrink max-w-full min-h-11 py-2 text-accent data-danger:text-danger ${packClass("Button", "plate", "primary")}`} onPress={(e) => props.onConfirm?.(e)}>
+        <Button class={`nine-plate-cut grow shrink max-w-full min-h-11 py-2 text-accent group-data-danger/confirm:text-danger ${packClass("Button", "plate", "primary")}`} onPress={(e) => props.onConfirm?.(e)}>
           <Text class="whitespace-normal">{props.confirm}</Text>
         </Button>
       </View>

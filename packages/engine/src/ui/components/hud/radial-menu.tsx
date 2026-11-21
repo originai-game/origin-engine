@@ -63,10 +63,10 @@ export function RadialMenu(props: RadialMenuProps) {
       <View class="absolute inset-0 rounded-full bg-hud shadow-[0px_0px_0px_1px_#00000073]" />
       <For each={props.items ?? []} key={(item) => item.id}>
         {(item) => (
-          <View class="absolute inset-0" data-chosen={item().id === chosen()}>
+          <View class="group/radialmenu absolute inset-0" data-chosen={item().id === chosen()}>
             <View class="absolute inset-0 flex-row items-center justify-center">
               <View class="relative size-[20rem]">
-                <Line points={wedgePoints(item().at, span())} class="stroke-rim-soft data-chosen:stroke-accent stroke-[86px]" />
+                <Line points={wedgePoints(item().at, span())} class="stroke-rim-soft group-data-chosen/radialmenu:stroke-accent stroke-[86px]" />
               </View>
             </View>
             <View
@@ -78,7 +78,7 @@ export function RadialMenu(props: RadialMenuProps) {
                 style={{ transform: `rotate(${item().at * -360}deg)` }}
               >
                 <View
-                  class="flex-col items-center justify-center size-full"
+                  class="group/radialitem flex-col items-center justify-center size-full"
                   role="menuitem"
                   label={item().label}
                   current={item().id === chosen()}
@@ -88,9 +88,9 @@ export function RadialMenu(props: RadialMenuProps) {
                   data-disabled={item().disabled === true}
                 >
                   <Show when={(item().icon ?? "") !== ""}>
-                    <Icon class="size-6 text-fg data-chosen:text-accent-fg data-chosen:scale-110 data-disabled:opacity-50" name={item().icon} />
+                    <Icon class="size-6 text-fg group-data-chosen/radialitem:text-accent-fg group-data-chosen/radialitem:scale-110 group-data-disabled/radialitem:opacity-50" name={item().icon} />
                   </Show>
-                  <Text class="max-w-full text-[0.929rem] whitespace-nowrap text-fg text-shadow-xs data-chosen:text-accent-fg data-disabled:opacity-50">{item().label}</Text>
+                  <Text class="max-w-full text-[0.929rem] whitespace-nowrap text-fg text-shadow-xs group-data-chosen/radialitem:text-accent-fg group-data-disabled/radialitem:opacity-50">{item().label}</Text>
                   <Show when={(item().cost ?? "") !== ""}>
                     <View class="flex-row items-center gap-x-[0.143rem]">
                       <Icon class="size-4 text-fg" name="coin" />

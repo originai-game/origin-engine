@@ -34,7 +34,7 @@ export function RacingStandings(props: RacingStandingsProps) {
   };
   return (
     <View
-      class={`flex-col w-[17.857rem] max-w-full max-h-full text-fg compact:w-full`}
+      class={`group/standings flex-col w-[17.857rem] max-w-full max-h-full text-fg compact:w-full`}
       label={name()}
       data-near={props.room === "short" || props.room === "shorter"}
       data-only={props.room === "shorter"}
@@ -48,7 +48,7 @@ export function RacingStandings(props: RacingStandingsProps) {
             <For each={rows()} key={(r) => r.id}>
               {(r, i) => (
                 <View
-                  class={`group/srow flex-row items-center gap-x-[0.571rem] w-full min-w-0 pr-[0.857rem] bg-glass/89 nine-plate-cut data-off:hidden data-retired:opacity-60 data-player:bg-hud-accent compact:gap-x-[0.429rem] compact:pr-[0.571rem] compact:hidden compact:data-on:flex compact:data-fallback:data-top:flex`}
+                  class={`group/srow flex-row items-center gap-x-[0.571rem] w-full min-w-0 pr-[0.857rem] bg-glass/89 nine-plate-cut data-off:hidden data-retired:opacity-60 data-player:bg-hud-accent compact:gap-x-[0.429rem] compact:pr-[0.571rem] compact:hidden compact:data-on:flex compact:group-data-fallback/standings:data-top:flex`}
                   role="listitem"
                   label={r().name}
                   current={r().player}

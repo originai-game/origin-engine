@@ -55,7 +55,7 @@ export function ShooterAbilities(props: ShooterAbilitiesProps) {
             data-ready={s().ready || (s().ultimate && (s().charge ?? 0) >= 1)}
             data-disabled={s().disabled === true}
           >
-            <View class="relative size-[3.714rem] compact:size-[2.571rem] data-ultimate:size-[6rem] compact:data-ultimate:size-[3.143rem]">
+            <View class="relative size-[3.714rem] compact:size-[2.571rem] group-data-ultimate/ability:size-[6rem] compact:group-data-ultimate/ability:size-[3.143rem]">
               <Show when={s().ultimate}>
                 <View
                   class="absolute inset-0 rounded-full overflow-hidden border-[3px] border-white/14 bg-tile"
@@ -72,10 +72,10 @@ export function ShooterAbilities(props: ShooterAbilitiesProps) {
                 </View>
               </Show>
               <View
-                class={`absolute inset-0 flex-row items-center justify-center data-ultimate:inset-[11%]`}
+                class={`absolute inset-0 flex-row items-center justify-center group-data-ultimate/ability:inset-[11%]`}
               >
                 <View
-                  class={`relative size-full rounded-[0.714rem] bg-linear-to-b from-white/75 via-white/22 to-white/14 data-ready:from-white data-ready:to-hud-accent data-ready:shadow-[0px_0px_0.714rem_rgb(56_232_255/0.55)] data-disabled:opacity-45 group-data-ultimate/ability:rounded-tl-[0.357rem] group-data-ultimate/ability:rounded-tr-[0.357rem]`}
+                  class={`relative size-full rounded-[0.714rem] bg-linear-to-b from-white/75 via-white/22 to-white/14 group-data-ready/ability:from-white group-data-ready/ability:to-hud-accent group-data-ready/ability:shadow-[0px_0px_0.714rem_rgb(56_232_255/0.55)] group-data-disabled/ability:opacity-45 group-data-ultimate/ability:rounded-tl-[0.357rem] group-data-ultimate/ability:rounded-tr-[0.357rem]`}
                 >
                   <View class="absolute inset-[0.143rem] rounded-[0.571rem] overflow-hidden bg-plate-hi">
                     <Show when={s().icon} fallback={
@@ -96,14 +96,14 @@ export function ShooterAbilities(props: ShooterAbilitiesProps) {
                   </View>
                   <Show when={(s().cooldown ?? 0) > 0 && (s().time ?? "") != ""}>
                     <View class="absolute inset-0 flex-row items-center justify-center pointer-events-none">
-                      <Text class="text-[1.714rem] leading-none font-bold tabular-nums whitespace-nowrap text-fg text-shadow-2xs text-stroke-3 text-stroke-bg compact:text-[1.143rem] data-ultimate:text-[1.143rem] compact:data-ultimate:text-[0.929rem]">
+                      <Text class="text-[1.714rem] leading-none font-bold tabular-nums whitespace-nowrap text-fg text-shadow-2xs text-stroke-3 text-stroke-bg compact:text-[1.143rem] group-data-ultimate/ability:text-[1.143rem] compact:group-data-ultimate/ability:text-[0.929rem]">
                         {s().time}
                       </Text>
                     </View>
                   </Show>
                   <Show when={s().ultimate && (s().charge ?? 0) < 1}>
                     <View class="absolute inset-0 flex-row items-center justify-center pointer-events-none">
-                      <Text class="text-[1.714rem] leading-none font-bold tabular-nums whitespace-nowrap text-fg text-shadow-2xs text-stroke-3 text-stroke-bg compact:text-[1.143rem] data-ultimate:text-[1.143rem] compact:data-ultimate:text-[0.929rem]">
+                      <Text class="text-[1.714rem] leading-none font-bold tabular-nums whitespace-nowrap text-fg text-shadow-2xs text-stroke-3 text-stroke-bg compact:text-[1.143rem] group-data-ultimate/ability:text-[1.143rem] compact:group-data-ultimate/ability:text-[0.929rem]">
                         {`${formatNumber(Math.max(s().charge ?? 0, 0) * 100, { decimals: 0 })}%`}
                       </Text>
                     </View>

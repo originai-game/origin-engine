@@ -25,7 +25,7 @@ export function Combo(props: ComboProps) {
   const state = props.state ?? "idle";
   return (
     <View
-      class="flex-col gap-y-1 border-rim bg-linear-to-b from-plate-hi to-plate-lo shadow-plate max-w-full p-2 rounded-block"
+      class="group/combo flex-col gap-y-1 border-rim bg-linear-to-b from-plate-hi to-plate-lo shadow-plate max-w-full p-2 rounded-block"
       role="status"
       data-active={state == "active"}
       data-broken={state == "broken"}
@@ -36,7 +36,7 @@ export function Combo(props: ComboProps) {
         <Text class="text-[22.88px] font-bold tabular-nums text-fg text-shadow-2xs">{formatNumber(Math.max(props.count ?? 0, 0))}</Text>
         <Text class="text-[18.24px] font-bold tabular-nums text-fg text-shadow-2xs">{t("hud.combo.multiplier", { value: props.multiplier ?? 1 })}</Text>
       </View>
-      <Text class="text-caption text-fg-muted data-active:text-success data-broken:text-danger text-shadow-2xs">
+      <Text class="text-caption text-fg-muted group-data-active/combo:text-success group-data-broken/combo:text-danger text-shadow-2xs">
         {state == "broken" ? t("hud.combo.broken") : state == "active" ? t("hud.combo.active") : t("hud.combo.idle")}
       </Text>
       <Show when={(props.remaining ?? -1) >= 0}>

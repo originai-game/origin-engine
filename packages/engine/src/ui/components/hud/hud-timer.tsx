@@ -40,9 +40,9 @@ export function HudTimer(props: HudTimerProps) {
       </Show>
       <View class="flex-row items-center gap-1">
         <Show when={(props.countdown ?? false) && (props.total ?? 0) > 0}>
-          <View class="relative size-6" data-warn={warn()} data-critical={critical()}>
+          <View class="group/hudtimer relative size-6" data-warn={warn()} data-critical={critical()}>
             <View
-              class="absolute inset-0 nine-ring bg-gold data-warn:bg-warn data-critical:bg-danger transition-layout duration-180 ease-out"
+              class="absolute inset-0 nine-ring bg-gold group-data-warn/hudtimer:bg-warn group-data-critical/hudtimer:bg-danger transition-layout duration-180 ease-out"
               wipe={Math.min(Math.max(props.seconds / (props.total ?? 1), 0), 1)}
             />
           </View>

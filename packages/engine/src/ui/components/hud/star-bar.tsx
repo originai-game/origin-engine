@@ -36,7 +36,7 @@ export function StarBar(props: StarBarProps) {
   const lit = (at: number) => (props.value ?? 0) >= at * max();
   return (
     <View
-      class="flex-col items-center gap-y-1 data-compact:flex-row"
+      class="group/starbar flex-col items-center gap-y-1 data-compact:flex-row"
       data-compact={props.compact === true}
       role="meter"
       label={props.label || t("component.star-bar.name")}
@@ -48,16 +48,16 @@ export function StarBar(props: StarBarProps) {
         <Show when={(props.label ?? "") !== "" && !props.compact}>
           <Text class="text-caption text-fg-muted text-shadow-xs">{props.label}</Text>
         </Show>
-        <Text class="text-[27.36px] font-bold tabular-nums whitespace-nowrap text-fg text-shadow-xs data-compact:text-[20.64px]">{props.valueText || formatNumber(props.value ?? 0)}</Text>
+        <Text class="text-[27.36px] font-bold tabular-nums whitespace-nowrap text-fg text-shadow-xs group-data-compact/starbar:text-[20.64px]">{props.valueText || formatNumber(props.value ?? 0)}</Text>
       </View>
-      <View class={`relative data-compact:w-[10rem] w-[14.286rem] data-compact:h-6 h-8`}>
-        <View class="absolute inset-x-4 top-3 h-2 overflow-hidden rounded-capsule bg-bg-subtle data-compact:inset-x-3 data-compact:top-[10px] data-compact:h-1">
+      <View class={`relative group-data-compact/starbar:w-[10rem] w-[14.286rem] group-data-compact/starbar:h-6 h-8`}>
+        <View class="absolute inset-x-4 top-3 h-2 overflow-hidden rounded-capsule bg-bg-subtle group-data-compact/starbar:inset-x-3 group-data-compact/starbar:top-[10px] group-data-compact/starbar:h-1">
           <View class="h-full bg-gold" style={{ width: `${((props.value ?? 0) / max()) * 100}%` }} />
         </View>
         <For each={stars()} key={(star) => star.id}>
           {(star) => (
             <View
-              class={`absolute top-0 size-8 rounded-full border bg-gold-fg flex-row items-center justify-center data-compact:size-6 ${lit(star().at) ? "border-gold data-lit:animate-beat" : "border-white/42"}`}
+              class={`absolute top-0 size-8 rounded-full border bg-gold-fg flex-row items-center justify-center group-data-compact/starbar:size-6 ${lit(star().at) ? "border-gold data-lit:animate-beat" : "border-white/42"}`}
               data-lit={lit(star().at)}
               style={{ left: `calc(${star().at} * (100% - ${props.compact ? "1.5rem" : "2rem"}))` }}
             >

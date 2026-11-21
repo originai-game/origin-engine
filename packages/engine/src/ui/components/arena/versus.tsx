@@ -63,7 +63,7 @@ function Side(props: { name?: string; team: "a" | "b"; fighters?: ReadonlyArray<
     : "flex-row-reverse bg-linear-to-l from-team2/16 to-entry-lo to-40% shadow-[inset_-3px_0px_0px_0px_#ff6a5e]";
   return (
     <View class="flex-1 min-w-0 flex-col gap-y-1 compact:flex-none compact:gap-y-1" role="group" label={heading()}>
-      <Text class={`pb-1 max-w-full ${props.team == "b" ? "text-end " : "text-start "}${ink()} ${glow()} text-[3.286rem] leading-none font-bold uppercase tracking-[0.04em] data-compact:text-display-sm whitespace-normal`}>{heading()}</Text>
+      <Text class={`pb-1 max-w-full ${props.team == "b" ? "text-end " : "text-start "}${ink()} ${glow()} text-[3.286rem] leading-none font-bold uppercase tracking-[0.04em] group-data-compact/versus:text-display-sm whitespace-normal`}>{heading()}</Text>
       <Show when={fighters().length} fallback={
         <Text class="p-4 text-center text-base text-fg/66 text-shadow-2xs" role="status">{t("arena.versus.waiting")}</Text>
       }>
@@ -71,7 +71,7 @@ function Side(props: { name?: string; team: "a" | "b"; fighters?: ReadonlyArray<
           <For each={fighters()} key={(f) => f.id}>
             {(f) => (
               <View
-                class={`flex-row items-center justify-start gap-x-3 py-1 px-3 ${row()} data-local:bg-none data-local:bg-hud-accent/15 compact:gap-x-1 compact:py-0.5 compact:px-1`}
+                class={`group/fighter flex-row items-center justify-start gap-x-3 py-1 px-3 ${row()} data-local:bg-none data-local:bg-hud-accent/15 compact:gap-x-1 compact:py-0.5 compact:px-1`}
                 role="listitem"
                 data-local={f().local === true}
               >
@@ -87,10 +87,10 @@ function Side(props: { name?: string; team: "a" | "b"; fighters?: ReadonlyArray<
                 <View class="flex-1 min-w-0 flex-col gap-y-0.5">
                   <Text class={`${NAME} ${props.team == "b" ? "text-end" : ""}`}>{f().name}</Text>
                   <Show when={(f().character ?? "") != ""}>
-                    <Text class={`${CAPTION} ${props.team == "b" ? "text-end" : ""} data-local:text-fg/78`}>{f().character}</Text>
+                    <Text class={`${CAPTION} ${props.team == "b" ? "text-end" : ""} group-data-local/fighter:text-fg/78`}>{f().character}</Text>
                   </Show>
                   <Show when={(f().rank ?? "") != ""}>
-                    <Text class={`min-w-0 text-start text-caption leading-[1.3] font-semibold text-gold ${props.team == "b" ? "text-end" : ""} data-local:text-fg/78`}>{f().rank}</Text>
+                    <Text class={`min-w-0 text-start text-caption leading-[1.3] font-semibold text-gold ${props.team == "b" ? "text-end" : ""} group-data-local/fighter:text-fg/78`}>{f().rank}</Text>
                   </Show>
                   <Show when={f().local}>
                     <Text class={`${YOU} ${props.team == "b" ? "self-end" : ""}`}>{t("arena.you")}</Text>
@@ -107,7 +107,7 @@ function Side(props: { name?: string; team: "a" | "b"; fighters?: ReadonlyArray<
 
 export function ArenaVersus(props: ArenaVersusProps) {
   return (
-    <View class="w-full max-h-full flex-row items-stretch text-fg compact:flex-col" label={t("arena.versus.name")} data-compact={props.compact === true}>
+    <View class="group/versus w-full max-h-full flex-row items-stretch text-fg compact:flex-col" label={t("arena.versus.name")} data-compact={props.compact === true}>
       <View class="w-full min-w-0 flex-row items-stretch gap-x-4 compact:flex-col compact:items-stretch compact:gap-x-0 compact:gap-y-1">
         <Side {...(props.nameA ? { name: props.nameA } : {})} team="a" fighters={props.sideA ?? []} />
         <View class="flex-none self-center w-[6.286rem] p-[3px] rounded-[0.857rem] bg-gold shadow-[0px_0px_1.857rem_rgb(255_207_90/0.5)] compact:w-[3.714rem] compact:self-center" aria-hidden="true">

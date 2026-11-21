@@ -80,7 +80,7 @@ export function Profile(props: ProfileProps) {
                             <View class={`grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] compact:grid-cols-[minmax(0,1fr)]`} role="list" label={t("profile.stats")}>
                               <For each={props.stats}>
                                 {(s) => (
-                                <View class={`nine-plate-cut bg-plate-hi border border-white/18 text-fg transition duration-317 py-2 px-3 gap-1 data-selected:border-accent data-done:border-success data-active:border-accent active:scale-96 data-locked:scale-100 disabled:scale-100 data-down:opacity-45 compact:py-1 compact:px-3`} role="listitem">
+                                <View class={`nine-plate-cut bg-plate-hi border border-white/18 text-fg transition duration-317 py-2 px-3 gap-1 data-selected:border-accent data-done:border-success active:border-accent active:scale-96 data-locked:scale-100 disabled:scale-100 data-down:opacity-45 compact:py-1 compact:px-3`} role="listitem">
                                   <View class={`font-semibold text-xs leading-snug text-fg/78 tracking-[0.14em] uppercase`}>
                                     <Text>{s().label}</Text>
                                   </View>

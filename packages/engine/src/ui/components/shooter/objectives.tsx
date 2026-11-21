@@ -42,12 +42,12 @@ export function ShooterObjectives(props: ShooterObjectivesProps) {
         <Text class={`min-w-0 text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap truncate text-hud-accent text-shadow-2xs text-stroke-3 text-stroke-bg compact:hidden`}>{heading()}</Text>
         <For each={props.goals ?? []} key={(g) => g.id}>
           {(g) => (
-            <View class={`flex-row items-center gap-1 min-w-0 opacity-66 data-current:opacity-100 compact:hidden data-current:compact:flex`}>
+            <View class={`group/goal flex-row items-center gap-1 min-w-0 opacity-66 data-current:opacity-100 compact:hidden data-current:compact:flex`} data-current={g().current === true}>
               <View
-                class={`shrink-0 size-[0.571rem] mx-[0.143rem] rotate-45 bg-white/66 shadow-[0px_0px_0px_0.143rem_#1a1e28d9] data-current:size-[0.714rem] data-current:mx-[0.071rem] data-current:bg-gold`}
+                class={`shrink-0 size-[0.571rem] mx-[0.143rem] rotate-45 bg-white/66 shadow-[0px_0px_0px_0.143rem_#1a1e28d9] group-data-current/goal:size-[0.714rem] group-data-current/goal:mx-[0.071rem] group-data-current/goal:bg-gold`}
               />
               <Text
-                class={`shrink basis-auto min-w-0 text-[1.071rem] font-semibold whitespace-nowrap truncate text-fg text-shadow-2xs text-stroke-3 text-stroke-bg data-current:text-[1.143rem]`}
+                class={`shrink basis-auto min-w-0 text-[1.071rem] font-semibold whitespace-nowrap truncate text-fg text-shadow-2xs text-stroke-3 text-stroke-bg group-data-current/goal:text-[1.143rem]`}
               >
                 {g().text}
               </Text>

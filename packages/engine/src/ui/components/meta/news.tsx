@@ -73,7 +73,7 @@ export function News(props: NewsProps) {
                             </Show>
                             <Show when={entry().id === props.selected}>
                               <Show when={entry().image}>
-                                <Image class={`w-full max-h-60 aspect-[2/1] object-cover nine-plate-cut data-muted:opacity-45`} src={entry().image} />
+                                <Image class={`w-full max-h-60 aspect-[2/1] object-cover nine-plate-cut`} src={entry().image} />
                               </Show>
                               <Show when={entry().body}>
                                 <Text class={`text-fg-muted m-0`}>

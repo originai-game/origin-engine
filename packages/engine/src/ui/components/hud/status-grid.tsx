@@ -56,7 +56,7 @@ function EffectTile(props: { effect: StatusGridEffect; debuff: boolean }) {
   const edge = () => (props.debuff ? EDGES[props.effect.type ?? ""] ?? "#ff9599" : "#8892a8");
   return (
     <View
-      class="flex-col items-center gap-y-[0.143rem] min-w-[2.571rem]"
+      class="group/statusgrid flex-col items-center gap-y-[0.143rem] min-w-[2.571rem]"
       label={props.effect.name}
       data-expiring={props.effect.expiring === true}
       data-type-magic={props.effect.type === "magic"}
@@ -69,7 +69,7 @@ function EffectTile(props: { effect: StatusGridEffect; debuff: boolean }) {
         class={`relative size-8 overflow-hidden rounded-[0.286rem] bg-linear-to-b from-raised-lo to-surface shadow-[0px_0px_0px_1px_#00000073] flex-col items-center justify-center border`}
         style={{ borderColor: edge() }}
       >
-        <Icon class="size-6 text-fg text-shadow-2xs data-expiring:animate-pulse" name={props.effect.icon} />
+        <Icon class="size-6 text-fg text-shadow-2xs group-data-expiring/statusgrid:animate-pulse" name={props.effect.icon} />
         <Show when={duration() > 0 && remaining() < duration()}>
           <View class="absolute inset-0 nine-tile bg-black/55" wipe={1 - remaining() / duration()} />
         </Show>

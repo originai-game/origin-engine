@@ -84,7 +84,7 @@ export function RacingResults(props: RacingResultsProps) {
                 <For each={rows()} key={(r) => r.id}>
                   {(r, i) => (
                     <View
-                      class={`flex-row items-center gap-4 min-h-11 py-[0.143rem] pr-3 bg-glass/89 nine-plate-cut text-fg data-dnf:opacity-60 data-dsq:opacity-60 data-player:bg-hud-accent data-player:text-gold-fg compact:gap-[0.571rem] compact:py-[0.143rem] compact:pr-[0.286rem]`}
+                      class={`group/results flex-row items-center gap-4 min-h-11 py-[0.143rem] pr-3 bg-glass/89 nine-plate-cut text-fg data-dnf:opacity-60 data-dsq:opacity-60 data-player:bg-hud-accent data-player:text-gold-fg compact:gap-[0.571rem] compact:py-[0.143rem] compact:pr-[0.286rem]`}
                       role="listitem"
                       label={r().name}
                       current={r().player}
@@ -95,7 +95,7 @@ export function RacingResults(props: RacingResultsProps) {
                       data-dnf={r().state === "dnf"}
                       data-dsq={r().state === "dsq"}
                     >
-                      <Text class={`shrink-0 self-stretch w-[2.286rem] text-center leading-[3.143rem] text-[1.143rem] font-bold tabular-nums tracking-normal text-fg bg-white/14 data-leader:bg-gold data-leader:text-gold-fg data-player:bg-black/20 data-player:text-gold-fg compact:text-[0.929rem]`}>
+                      <Text class={`shrink-0 self-stretch w-[2.286rem] text-center leading-[3.143rem] text-[1.143rem] font-bold tabular-nums tracking-normal text-fg bg-white/14 group-data-leader/results:bg-gold group-data-leader/results:text-gold-fg group-data-player/results:bg-black/20 group-data-player/results:text-gold-fg compact:text-[0.929rem]`}>
                         {r().state === "dnf" || r().state === "dsq" ? t("racing.results.unplaced") : formatNumber(r().position)}
                       </Text>
                       <View class="flex-1 min-w-0 flex-row flex-wrap items-center gap-x-0.5 gap-y-0.5">

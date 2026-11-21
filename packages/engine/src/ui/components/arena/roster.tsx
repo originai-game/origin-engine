@@ -70,13 +70,13 @@ export function ArenaRoster(props: ArenaRosterProps) {
   const players = () => props.players ?? [];
   const chosen = () => characters().find((c) => c.id == props.selected);
   return (
-    <View class={CARD} label={heading()} data-compact={props.compact === true}>
+    <View class={`group/roster ${CARD}`} label={heading()} data-compact={props.compact === true}>
       <Text class="text-[1.714rem] leading-[1.1] font-bold uppercase tracking-[0.04em] text-fg">{heading()}</Text>
       <Show when={characters().length} fallback={
         <Text class="p-4 text-center text-base text-fg/66" role="status">{t("arena.roster.empty")}</Text>
       }>
         <Scroll class="min-h-0">
-          <View class="grid grid-cols-[repeat(auto-fill,minmax(132px,1fr))] gap-1 p-0.5 pb-4 data-compact:grid-cols-[repeat(auto-fill,minmax(100px,1fr))] data-compact:gap-1" role="listbox" label={t("arena.roster.characters")}>
+          <View class="grid grid-cols-[repeat(auto-fill,minmax(132px,1fr))] gap-1 p-0.5 pb-4 group-data-compact/roster:grid-cols-[repeat(auto-fill,minmax(100px,1fr))] group-data-compact/roster:gap-1" role="listbox" label={t("arena.roster.characters")}>
             <For each={characters()} key={(c) => c.id}>
               {(c) => (
                 <View
@@ -90,10 +90,10 @@ export function ArenaRoster(props: ArenaRosterProps) {
                   data-taken={(c().takenBy ?? "") != ""}
                   onPress={(e) => props.onChoose?.(e, c().id)}
                 >
-                  <View class="relative w-full h-[2.714rem] overflow-hidden data-compact:h-[2.286rem]">
+                  <View class="relative w-full h-[2.714rem] overflow-hidden group-data-compact/roster:h-[2.286rem]">
                     <Show when={(c().portrait ?? 0) != 0} fallback={
                       <View class="size-full flex-row items-center justify-center">
-                        <Icon class={`size-12 text-fg data-disabled:text-fg/66 data-compact:size-8`} glyph={c().icon ?? ""} data-disabled={c().locked || (c().takenBy ?? "") != ""} />
+                        <Icon class={`size-12 text-fg data-disabled:text-fg/66 group-data-compact/roster:size-8`} glyph={c().icon ?? ""} data-disabled={c().locked || (c().takenBy ?? "") != ""} />
                       </View>
                     }>
                       <Image class="size-full data-disabled:opacity-40" src={c().portrait ?? 0} data-disabled={c().locked || (c().takenBy ?? "") != ""} />
@@ -127,9 +127,9 @@ export function ArenaRoster(props: ArenaRosterProps) {
           </View>
         </Scroll>
         <Show when={(props.selected ?? "") != "" && chosen()}>
-          <View class="flex-none flex-row flex-wrap items-center gap-x-1 gap-y-0.5 py-2 px-3 nine-plate-cut bg-entry-hi data-compact:gap-y-1 data-compact:py-1 px-2" role="status">
+          <View class="flex-none flex-row flex-wrap items-center gap-x-1 gap-y-0.5 py-2 px-3 nine-plate-cut bg-entry-hi group-data-compact/roster:gap-y-1 group-data-compact/roster:py-1 px-2" role="status">
             <Text class={`${TAG} bg-hud-accent text-glass shadow-none`}>{t("arena.roster.chosen")}</Text>
-            <Text class="min-w-0 text-3xl leading-[1.1] font-bold uppercase text-fg data-compact:text-xl">{chosen()?.name}</Text>
+            <Text class="min-w-0 text-3xl leading-[1.1] font-bold uppercase text-fg group-data-compact/roster:text-xl">{chosen()?.name}</Text>
             <Text class="shrink min-w-0 max-w-full text-xs leading-[1.3] font-semibold tracking-[0.14em] uppercase text-fg/78">{chosen()?.roleLabel}</Text>
           </View>
         </Show>
