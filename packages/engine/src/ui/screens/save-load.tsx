@@ -39,47 +39,47 @@ export function SaveLoadScreen(props: SaveLoadScreenProps) {
           </View>
         </Button>
         <Show when={props.mode === "save"} fallback={
-            <Text class={`font-display text-[2.857rem] font-bold leading-tight tracking-xs text-fg text-shadow-xs text-shadow-bg/60 shrink m-0 compact:text-[1.857rem] narrow:grow narrow:shrink-0 narrow:basis-full`}>
+            <Text class={`font-display text-display-lg font-bold leading-tight tracking-xs text-fg text-shadow-xs text-shadow-bg/60 shrink m-0 compact:text-3xl narrow:grow narrow:shrink-0 narrow:basis-full`}>
               {t("screen.save-load.loadTitle")}
             </Text>
         }>
-          <Text class={`font-display text-[2.857rem] font-bold leading-tight tracking-xs text-fg text-shadow-xs text-shadow-bg/60 shrink m-0 compact:text-[1.857rem] narrow:grow narrow:shrink-0 narrow:basis-full`}>
+          <Text class={`font-display text-display-lg font-bold leading-tight tracking-xs text-fg text-shadow-xs text-shadow-bg/60 shrink m-0 compact:text-3xl narrow:grow narrow:shrink-0 narrow:basis-full`}>
             {t("screen.save-load.saveTitle")}
           </Text>
         </Show>
         <View class="grow shrink basis-0 h-px bg-linear-to-r from-sheen to-transparent to-80% m-0 narrow:hidden" />
       </View>
-      <View class="grow shrink basis-0 grid grid-cols-[minmax(0,3fr)_minmax(0,2fr)] grid-rows-[minmax(0,1fr)] gap-x-12 narrow:grid-cols-[minmax(0,1fr)] narrow:grid-rows-[minmax(0,1fr)_auto] narrow:gap-y-3">
+      <View class="grow shrink basis-0 grid grid-cols-[minmax(0,3fr)_minmax(0,2fr)] grid-rows-1 gap-x-12 narrow:grid-cols-1 narrow:grid-rows-[minmax(0,1fr)_auto] narrow:gap-y-3">
         <Scroll class="p-1 -m-1">
           <View class="gap-y-2" focus-group="stop">
             <For each={props.slots}>
               {(s) => (
-              <View class={`flex-row group/slot nine-plate-cut text-fg transition duration-317 border border-white/7 items-center gap-x-4 p-2 hover:bg-surface-hover data-empty-slot:justify-center data-empty-slot:min-h-[7.429rem] data-selected:text-fg disabled:text-fg-subtle data-done:text-fg-subtle data-down:opacity-45 ${s().id === props.selected ? packClass("Row", "frame", "selected") : packClass("Row", "frame")}`} onPress={(e) => props.onSelect?.(e, s().id)} tabIndex={0} data-selection-off={s().id !== props.selected} data-selection-on={s().id === props.selected} data-empty-slot={s().empty}>
-                <Art class={`w-[10.714rem] aspect-[89/50] h-auto object-cover compact:w-[6.857rem] group-data-empty-slot/slot:hidden`} kind="saveThumb" src={s().thumb} />
+              <View class={`flex-row group/slot nine-plate-cut text-fg transition duration-317 border border-white/7 items-center gap-x-4 p-2 hover:bg-surface-hover data-empty-slot:justify-center data-empty-slot:min-h-26 data-selected:text-fg disabled:text-fg-subtle data-done:text-fg-subtle data-down:opacity-45 ${s().id === props.selected ? packClass("Row", "frame", "selected") : packClass("Row", "frame")}`} onPress={(e) => props.onSelect?.(e, s().id)} tabIndex={0} data-selection-off={s().id !== props.selected} data-selection-on={s().id === props.selected} data-empty-slot={s().empty}>
+                <Art class={`w-37.5 aspect-89/50 h-auto object-cover compact:w-24 group-data-empty-slot/slot:hidden`} kind="saveThumb" src={s().thumb} />
                 <View class="grow shrink basis-0 gap-y-0.5 pr-12 group-data-empty-slot/slot:pr-0 compact:pr-0">
                   <Show when={s().empty} fallback={
                     <>
-                      <Text class={`text-[1.429rem] leading-tight font-bold line-clamp-1 text-ellipsis m-0 compact:text-[1.214rem]`}>
+                      <Text class={`text-xl leading-tight font-bold line-clamp-1 text-ellipsis m-0 compact:text-[1.214rem]`}>
                         {s().title}
                       </Text>
                       <Text class="line-clamp-1 text-ellipsis text-base text-fg-muted m-0">{s().place}</Text>
                       <View class="flex-row flex-wrap gap-x-3">
-                        <Text class="text-[0.929rem] tabular-nums text-fg-muted m-0 compact:whitespace-nowrap shrink">
+                        <Text class="text-caption tabular-nums text-fg-muted m-0 compact:whitespace-nowrap shrink">
                           {t("screen.save-load.Played", { s_played: formatDuration(s().played) })}
                         </Text>
-                        <Text class="text-[0.929rem] tabular-nums text-fg-muted m-0 compact:whitespace-nowrap shrink">
+                        <Text class="text-caption tabular-nums text-fg-muted m-0 compact:whitespace-nowrap shrink">
                           {s().date}
                         </Text>
                       </View>
                     </>
                   }>
-                    <Text class="text-[1.143rem] text-fg-muted text-center m-0">
+                    <Text class="text-base text-fg-muted text-center m-0">
                       {t("screen.save-load.empty")}
                     </Text>
                   </Show>
                 </View>
                 <Show when={s().auto}>
-                  <Text class={`text-shadow-2xs bg-tile absolute top-2 right-3 text-[0.857rem] font-bold tracking-[0.14em] uppercase shadow-[inset_0px_1px_0px_#ffffff38] py-0.5 px-2 rounded-control compact:right-auto compact:left-2`}>
+                  <Text class={`text-shadow-2xs bg-tile absolute top-2 right-3 text-xs font-bold tracking-label uppercase shadow-[inset_0px_1px_0px_#ffffff38] py-0.5 px-2 rounded-control compact:right-auto compact:left-2`}>
                     {t("screen.save-load.auto")}
                   </Text>
                 </Show>
@@ -92,10 +92,10 @@ export function SaveLoadScreen(props: SaveLoadScreenProps) {
           <For each={props.slots}>
             {(s) => (
             <Show when={s().id === props.selected}>
-              <Art class={`w-full aspect-[89/50] h-auto object-cover mb-1 shadow-[inset_0px_0px_0px_1px_#ffffff1f] narrow:hidden`} kind="saveThumb" src={s().thumb} />
+              <Art class={`w-full aspect-89/50 h-auto object-cover mb-1 shadow-[inset_0px_0px_0px_1px_#ffffff1f] narrow:hidden`} kind="saveThumb" src={s().thumb} />
               <Show when={s().empty} fallback={
                 <>
-                  <Text class="text-[1.714rem] leading-tight font-bold line-clamp-2 m-0 narrow:hidden">
+                  <Text class="text-title leading-tight font-bold line-clamp-2 m-0 narrow:hidden">
                     {s().title}
                   </Text>
                   <View class="flex-row flex-wrap gap-x-3 gap-y-0.5 narrow:hidden">
@@ -109,7 +109,7 @@ export function SaveLoadScreen(props: SaveLoadScreenProps) {
                   </View>
                 </>
               }>
-                <Text class="text-[1.286rem] text-fg-muted m-0 narrow:hidden">
+                <Text class="text-lg text-fg-muted m-0 narrow:hidden">
                   {t("screen.save-load.empty")}
                 </Text>
               </Show>
@@ -118,20 +118,20 @@ export function SaveLoadScreen(props: SaveLoadScreenProps) {
           </For>
           <View class={`shrink narrow:hidden`}>{props.preview?.()}</View>
           <View class={`flex-row flex-wrap justify-end mt-auto pt-3 gap-2 narrow:pt-0`}>
-            <Button class={`text-danger nine-plate-cut grow shrink basis-[8.571rem] h-9 narrow:basis-[7.143rem] ${packClass("Button", "plate")}`} onPress={(e) => props.onDelete?.(e)} onAction={{ details: (e) => props.onDelete?.(e) }}>
+            <Button class={`text-danger nine-plate-cut grow shrink basis-30 h-9 narrow:basis-25 ${packClass("Button", "plate")}`} onPress={(e) => props.onDelete?.(e)} onAction={{ details: (e) => props.onDelete?.(e) }}>
               <Text>{t("screen.save-load.delete")}</Text>
             </Button>
             <Show when={props.mode === "save"} fallback={
                 <Show when={props.slots.length > 0}>
-                  <Button class={`text-accent nine-plate-cut grow shrink basis-[8.571rem] h-9 narrow:basis-[7.143rem] ${packClass("Button", "plate", "primary")}`} onPress={(e) => props.onLoad?.(e)}>
+                  <Button class={`text-accent nine-plate-cut grow shrink basis-30 h-9 narrow:basis-25 ${packClass("Button", "plate", "primary")}`} onPress={(e) => props.onLoad?.(e)}>
                     <Text>{t("screen.save-load.load")}</Text>
                   </Button>
                 </Show>
             }>
-              <Button class={`text-fg bg-plate-hi nine-plate-cut grow shrink basis-[8.571rem] h-9 disabled:border-transparent active:border-transparent hover:bg-plate-hi hover:bg-transparent hover:border-transparent narrow:basis-[7.143rem] data-pressed:hover:border-transparent ${packClass("Button", "plate")}`} onPress={(e) => props.onNewSlot?.(e)}>
+              <Button class={`text-fg bg-plate-hi nine-plate-cut grow shrink basis-30 h-9 disabled:border-transparent active:border-transparent hover:bg-plate-hi hover:bg-transparent hover:border-transparent narrow:basis-25 data-pressed:hover:border-transparent ${packClass("Button", "plate")}`} onPress={(e) => props.onNewSlot?.(e)}>
                 <Text>{t("screen.save-load.new")}</Text>
               </Button>
-              <Button class={`text-accent nine-plate-cut grow shrink basis-[8.571rem] h-9 narrow:basis-[7.143rem] ${packClass("Button", "plate", "primary")}`} onPress={(e) => props.onSave?.(e)}>
+              <Button class={`text-accent nine-plate-cut grow shrink basis-30 h-9 narrow:basis-25 ${packClass("Button", "plate", "primary")}`} onPress={(e) => props.onSave?.(e)}>
                 <Text>{t("screen.save-load.save")}</Text>
               </Button>
             </Show>

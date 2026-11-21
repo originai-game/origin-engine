@@ -26,16 +26,16 @@ export function FlowChaptersScreen(props: FlowChaptersScreenProps) {
             <Text class="shrink">{t("screen.common.back")}</Text>
           </View>
         </Button>
-        <Text class={`font-display text-[2.857rem] font-bold leading-tight tracking-xs text-fg text-shadow-xs text-shadow-bg/60 grow shrink m-0 compact:text-[1.857rem] compact:grow compact:shrink-0 compact:basis-full`}>
+        <Text class={`font-display text-display-lg font-bold leading-tight tracking-xs text-fg text-shadow-xs text-shadow-bg/60 grow shrink m-0 compact:text-3xl compact:grow compact:shrink-0 compact:basis-full`}>
           {t("screen.flow-chapters.title")}
         </Text>
       </View>
       <Scroll class="grow shrink basis-0 p-4 -m-4">
-        <View class="grid grid-cols-[repeat(auto-fill,minmax(190px,1fr))] items-start gap-4 compact:grid-cols-[repeat(auto-fill,minmax(150px,1fr))] compact:gap-3" focus-group="wrap">
+        <View class="grid grid-cols-fill-47.5 items-start gap-4 compact:grid-cols-fill-37.5 compact:gap-3" focus-group="wrap">
           <For each={props.chapters}>
             {(c) => (
             <View class={`group/card transition duration-317 gap-y-2 p-0 data-selected:border-accent data-down:opacity-45`} onPress={(e) => props.onSelect?.(e, c().id)} disabled={c().locked} tabIndex={0} data-locked={c().locked} data-selected={c().id === props.selected}>
-              <View class={`aspect-[16/9] nine-plate-cut overflow-hidden`}>
+              <View class={`aspect-16/9 nine-plate-cut overflow-hidden`}>
                 <Show when={c().locked} fallback={
                     <Art class={`absolute object-cover inset-0 size-full`} kind="saveThumb" src={c().thumb} />
                 }>
@@ -46,7 +46,7 @@ export function FlowChaptersScreen(props: FlowChaptersScreenProps) {
                 <View class="absolute shadow-[inset_0px_0px_0px_1px_#ffffff29,inset_0px_1px_0px_#ffffff8c] inset-0 group-data-locked/card:shadow-[inset_0px_0px_0px_1px_#ffffff1f] group-data-selected/card:shadow-[inset_0px_0px_0px_2.288px_#38e8ff,inset_0px_3.424px_0px_#ffffff80]" />
               </View>
               <View class="flex-row items-baseline gap-x-2 px-0.5">
-                <Text class={`text-fg-muted grow shrink basis-0 text-[1.214rem] leading-snug font-semibold m-0 group-data-selected/card:text-fg group-data-locked/card:text-fg-muted compact:text-[1.071rem]`}>
+                <Text class={`text-fg-muted grow shrink basis-0 text-[1.214rem] leading-snug font-semibold m-0 group-data-selected/card:text-fg group-data-locked/card:text-fg-muted compact:text-reading`}>
                   {c().locked ? t("screen.flow-chapters.locked") : c().title}
                 </Text>
               </View>

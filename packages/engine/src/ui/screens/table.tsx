@@ -20,7 +20,7 @@ export function Table(props: TableProps) {
       <View class={`min-h-12 border-b border-material-edge grid grid-cols-[2fr_1fr_1fr] w-full p-2`} role="row">
         <For each={props.columns}>
           {(c, i) => (
-          <Text class={`tracking-[0.14em] uppercase text-fg-muted text-[0.857rem] font-semibold px-2 m-0 data-end:text-end`} role="columnheader" data-end={i() > 0}>
+          <Text class={`tracking-label uppercase text-fg-muted text-xs font-semibold px-2 m-0 data-end:text-end`} role="columnheader" data-end={i() > 0}>
             {c().label}
           </Text>
           )}

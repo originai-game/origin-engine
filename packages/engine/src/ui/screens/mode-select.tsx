@@ -35,13 +35,13 @@ export function ModeSelectScreen(props: ModeSelectScreenProps) {
             <Text class="shrink">{t("screen.common.back")}</Text>
           </View>
         </Button>
-        <Text class={`font-display text-[2.857rem] font-bold leading-tight tracking-xs text-fg text-shadow-xs text-shadow-bg/60 shrink m-0 narrow:text-[1.857rem] narrow:grow narrow:shrink-0 narrow:basis-full`}>
+        <Text class={`font-display text-display-lg font-bold leading-tight tracking-xs text-fg text-shadow-xs text-shadow-bg/60 shrink m-0 narrow:text-3xl narrow:grow narrow:shrink-0 narrow:basis-full`}>
           {t("screen.mode-select.title")}
         </Text>
         <View class="grow shrink basis-0 h-px bg-linear-to-r from-sheen to-transparent to-80% m-0 compact:hidden" />
       </View>
       <Scroll class="grow shrink basis-0 p-4 -m-4 narrow:pb-6">
-        <View class="grid grid-cols-3 auto-rows-[minmax(calc(320_*_calc(1rem_/_14)),1fr)] h-full gap-6 narrow:grid-cols-[minmax(0,1fr)] narrow:auto-rows-[minmax(calc(170_*_calc(1rem_/_14)),auto)] narrow:h-auto narrow:gap-3" focus-group="wrap">
+        <View class="grid grid-cols-3 auto-rows-[minmax(calc(320_*_calc(1rem_/_14)),1fr)] h-full gap-6 narrow:grid-cols-1 narrow:auto-rows-[minmax(calc(170_*_calc(1rem_/_14)),auto)] narrow:h-auto narrow:gap-3" focus-group="wrap">
           <For each={props.modes}>
             {(mode) => (
             <View class={`group/mode text-fg transition duration-317 data-selected:border-accent data-done:border-success active:border-accent disabled:text-fg-subtle disabled:scale-100 active:scale-96 active:translate-x-0 active:translate-y-0 data-locked:scale-100 data-down:opacity-45 hover:translate-x-0 hover:-translate-y-0.25`} onPress={(e) => props.onSelect?.(e, mode().id)} tabIndex={0} data-selection-off={mode().id !== props.selected} data-selection-on={mode().id === props.selected} data-lock-open={!mode().locked} data-lock-locked={mode().locked}>
@@ -49,12 +49,12 @@ export function ModeSelectScreen(props: ModeSelectScreenProps) {
                 <Art class="absolute object-cover inset-0 size-full" kind="levelThumb" src={mode().texture} />
                 <View class={`absolute bg-linear-to-b from-transparent from-35% via-scrim via-60% to-shade-deep inset-0`} />
                 <Show when={mode().tag}>
-                  <Text class={`text-shadow-2xs bg-tile nine-chip-cut absolute top-4 right-4 text-[0.857rem] font-bold tracking-[0.14em] uppercase text-fg whitespace-nowrap text-ellipsis py-0.5 px-2 overflow-hidden data-fresh:bg-hud-accent data-fresh:bg-none data-fresh:text-hud-accent-fg compact:top-2 compact:right-2 ${packClass("Chip", "frame")}`} data-fresh={mode().locked}>
+                  <Text class={`text-shadow-2xs bg-tile nine-chip-cut absolute top-4 right-4 text-xs font-bold tracking-label uppercase text-fg whitespace-nowrap text-ellipsis py-0.5 px-2 overflow-hidden data-fresh:bg-hud-accent data-fresh:bg-none data-fresh:text-hud-accent-fg compact:top-2 compact:right-2 ${packClass("Chip", "frame")}`} data-fresh={mode().locked}>
                     {mode().tag}
                   </Text>
                 </Show>
                 <View class="gap-y-1 p-6 compact:gap-y-0.5 compact:p-3">
-                  <Text class={`tracking-xs text-shadow-xs text-shadow-bg/60 text-[3.143rem] leading-tight font-bold m-0 compact:text-[2rem]`}>
+                  <Text class={`tracking-xs text-shadow-xs text-shadow-bg/60 text-6xl leading-tight font-bold m-0 compact:text-display-sm`}>
                     {mode().name}
                   </Text>
                   <Text class="text-[1.214rem] leading-snug text-fg-muted line-clamp-2 m-0 compact:text-base">
@@ -76,7 +76,7 @@ export function ModeSelectScreen(props: ModeSelectScreenProps) {
       </Scroll>
       <View>{props.detail?.()}</View>
       <View class="flex-row justify-end">
-        <Button class={`text-accent min-w-[17.143rem] h-9 compact:min-w-0 compact:grow compact:shrink compact:basis-0 ${packClass("Button", "plate", "primary")}`} disabled={props.modes.length === 0} onPress={(e) => props.onPlay?.(e)} onAction={{ confirm: (e) => props.onPlay?.(e) }}>
+        <Button class={`text-accent min-w-60 h-9 compact:min-w-0 compact:grow compact:shrink compact:basis-0 ${packClass("Button", "plate", "primary")}`} disabled={props.modes.length === 0} onPress={(e) => props.onPlay?.(e)} onAction={{ confirm: (e) => props.onPlay?.(e) }}>
           <Text>{t("screen.mode-select.play")}</Text>
         </Button>
       </View>

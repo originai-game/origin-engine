@@ -16,11 +16,11 @@ export interface BannerProps {
 export function Banner(props: BannerProps) {
   return (
     <View class={`text-fg items-center text-center py-0 px-4 gap-1 transition duration-420 ease-out starting:scale-80 starting:opacity-0 ${packClass("Plate", "frame")}`} role="status">
-      <Text class={`font-display text-[3.857rem] font-bold leading-tight tracking-[-0.01em] text-stroke-3 text-stroke-bg text-shadow-xs text-shadow-bg/55 max-w-140 text-balance m-0 compact:text-[2.429rem]`}>
+      <Text class={`font-display text-[3.857rem] font-bold leading-tight tracking-tight text-stroke-3 text-stroke-bg text-shadow-xs text-shadow-bg/55 max-w-140 text-balance m-0 compact:text-display-md`}>
         {props.title}
       </Text>
       <View class={`h-0.75`} />
-      <Text class={`text-[1.071rem] font-semibold tracking-[0.14em] uppercase text-gold text-balance text-stroke-3 text-stroke-bg text-shadow-xs text-shadow-bg/55 m-0 data-hidden:hidden`} data-hidden={props.subtitle === ""}>
+      <Text class={`text-reading font-semibold tracking-label uppercase text-gold text-balance text-stroke-3 text-stroke-bg text-shadow-xs text-shadow-bg/55 m-0 data-hidden:hidden`} data-hidden={props.subtitle === ""}>
         {props.subtitle}
       </Text>
     </View>

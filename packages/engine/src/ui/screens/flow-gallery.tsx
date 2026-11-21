@@ -26,16 +26,16 @@ export function FlowGalleryScreen(props: FlowGalleryScreenProps) {
             <Text class="shrink">{t("screen.common.back")}</Text>
           </View>
         </Button>
-        <Text class={`font-display text-[2.857rem] font-bold leading-tight tracking-xs text-fg text-shadow-xs text-shadow-bg/60 grow shrink m-0 compact:text-[1.857rem] compact:grow compact:shrink-0 compact:basis-full`}>
+        <Text class={`font-display text-display-lg font-bold leading-tight tracking-xs text-fg text-shadow-xs text-shadow-bg/60 grow shrink m-0 compact:text-3xl compact:grow compact:shrink-0 compact:basis-full`}>
           {t("screen.flow-gallery.title")}
         </Text>
       </View>
       <Scroll class="grow shrink basis-0 p-4 -m-4">
-        <View class="grid grid-cols-[repeat(auto-fill,minmax(190px,1fr))] items-start gap-4 compact:grid-cols-[repeat(auto-fill,minmax(150px,1fr))] compact:gap-3" focus-group="wrap">
+        <View class="grid grid-cols-fill-47.5 items-start gap-4 compact:grid-cols-fill-37.5 compact:gap-3" focus-group="wrap">
           <For each={props.endings}>
             {(c) => (
             <View class={`group/card transition duration-317 gap-y-2 p-0 data-selected:border-accent data-down:opacity-45`} onPress={(e) => props.onSelect?.(e, c().id)} disabled={c().locked} tabIndex={0} data-locked={c().locked} data-selected={c().id === props.selected}>
-              <View class={`aspect-[16/9] nine-plate-cut overflow-hidden`}>
+              <View class={`aspect-16/9 nine-plate-cut overflow-hidden`}>
                 <Show when={c().locked} fallback={
                     <Art class={`absolute object-cover inset-0 size-full`} kind="keyArt" src={c().thumb} />
                 }>
@@ -47,9 +47,9 @@ export function FlowGalleryScreen(props: FlowGalleryScreenProps) {
               </View>
               <View class="flex-row items-baseline gap-x-2 px-0.5">
                 <Show when={!c().locked}>
-                  <Text class={`self-center rotate-45 bg-gold shadow-[0px_0px_9.136px_#ffcf5a] size-[0.571rem]`} />
+                  <Text class={`self-center rotate-45 bg-gold shadow-[0px_0px_9.136px_#ffcf5a] size-2`} />
                 </Show>
-                <Text class={`text-fg-muted grow shrink basis-0 text-[1.214rem] leading-snug font-semibold m-0 group-data-selected/card:text-fg group-data-locked/card:text-fg-muted compact:text-[1.071rem]`}>
+                <Text class={`text-fg-muted grow shrink basis-0 text-[1.214rem] leading-snug font-semibold m-0 group-data-selected/card:text-fg group-data-locked/card:text-fg-muted compact:text-reading`}>
                   {c().locked ? t("screen.flow-gallery.locked") : c().title}
                 </Text>
               </View>

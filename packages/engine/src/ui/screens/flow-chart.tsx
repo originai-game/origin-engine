@@ -50,7 +50,7 @@ export function FlowChartScreen(props: FlowChartScreenProps) {
             <Text class="shrink">{t("screen.common.back")}</Text>
           </View>
         </Button>
-        <Text class="font-display text-[2.857rem] font-bold leading-tight tracking-xs text-accent-hover text-shadow-xs text-shadow-bg/60 grow shrink m-0 compact:text-[1.857rem] compact:basis-full">
+        <Text class="font-display text-display-lg font-bold leading-tight tracking-xs text-accent-hover text-shadow-xs text-shadow-bg/60 grow shrink m-0 compact:text-3xl compact:basis-full">
           {t("screen.flow-chart.title")}
         </Text>
       </View>

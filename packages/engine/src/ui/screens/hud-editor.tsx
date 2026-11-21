@@ -12,8 +12,8 @@ export function HudEditorScreen(props: HudEditorScreenProps) {
   return (
     <View>
       <Show when={props.showHint}>
-        <View class={`absolute w-max top-6 bg-plate-hi border border-white/18 backdrop-blur-[22px] nine-panel-cut py-3 px-6 mx-auto inset-x-0 compact:top-12 ${packClass("Panel", "frame")}`}>
-          <Text class={`text-center line-clamp-2 text-[1.071rem] font-semibold text-fg m-0`}>
+        <View class={`absolute w-max top-6 bg-plate-hi border border-white/18 backdrop-blur-regular nine-panel-cut py-3 px-6 mx-auto inset-x-0 compact:top-12 ${packClass("Panel", "frame")}`}>
+          <Text class={`text-center line-clamp-2 text-reading font-semibold text-fg m-0`}>
             {t("screen.hud-editor.hint")}
           </Text>
         </View>

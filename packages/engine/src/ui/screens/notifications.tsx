@@ -26,8 +26,8 @@ export function NotificationsScreen(props: NotificationsScreenProps) {
     <View class="items-end gap-2" role="log" live="polite">
       <For each={props.items}>
         {(n) => (
-        <View class={`group/frame flex-row pr-1 pl-[16.571px] border-rim nine-plate-cut border border-white/12 text-fg items-center w-90 max-w-full py-2 gap-3 border disabled:text-fg-subtle compact:w-full ${packClass("Plate", "frame")}`} data-tone-danger={(n().tone) === 'danger'} data-tone-success={(n().tone) === 'success'} data-tone-warn={(n().tone) === 'warn'}>
-          <View class="absolute left-0 w-[0.286rem] bg-info inset-y-0 group-data-tone-success/frame:bg-none group-data-tone-success/frame:bg-success group-data-tone-warn/frame:bg-none group-data-tone-warn/frame:bg-warn group-data-tone-danger/frame:bg-none group-data-tone-danger/frame:bg-danger" />
+        <View class={`group/frame flex-row pr-1 pl-4.25 border-rim nine-plate-cut border border-white/12 text-fg items-center w-90 max-w-full py-2 gap-3 border disabled:text-fg-subtle compact:w-full ${packClass("Plate", "frame")}`} data-tone-danger={(n().tone) === 'danger'} data-tone-success={(n().tone) === 'success'} data-tone-warn={(n().tone) === 'warn'}>
+          <View class="absolute left-0 w-1 bg-info inset-y-0 group-data-tone-success/frame:bg-none group-data-tone-success/frame:bg-success group-data-tone-warn/frame:bg-none group-data-tone-warn/frame:bg-warn group-data-tone-danger/frame:bg-none group-data-tone-danger/frame:bg-danger" />
           <View class={`relative shrink-0 flex-row size-12 nine-socket`}>
             <View class="absolute inset-0 nine-socket-rim bg-info group-data-tone-success/frame:bg-success group-data-tone-warn/frame:bg-warn group-data-tone-danger/frame:bg-danger" />
             <View class="flex-row items-center justify-center w-full text-info group-data-tone-success/frame:text-success group-data-tone-warn/frame:text-warn group-data-tone-danger/frame:text-danger shrink">
@@ -35,7 +35,7 @@ export function NotificationsScreen(props: NotificationsScreenProps) {
             </View>
           </View>
           <View class="grow shrink basis-0 gap-0.5">
-            <Text class={`text-caption font-bold tracking-[0.14em] uppercase text-info m-0 group-data-tone-success/frame:text-success group-data-tone-warn/frame:text-warn group-data-tone-danger/frame:text-danger`}>
+            <Text class={`text-caption font-bold tracking-label uppercase text-info m-0 group-data-tone-success/frame:text-success group-data-tone-warn/frame:text-warn group-data-tone-danger/frame:text-danger`}>
               {n().title}
             </Text>
             <Text class={`font-semibold m-0`}>{n().body}</Text>
@@ -48,8 +48,8 @@ export function NotificationsScreen(props: NotificationsScreenProps) {
       </For>
       <For each={props.toasts}>
         {(t) => (
-        <View class={`group/frame flex-row pr-0 pl-[0.286rem] border-rim nine-plate-cut border border-white/12 text-fg items-center w-auto max-w-full py-0 gap-3 border transition duration-240 ease-in data-leaving:translate-x-8 data-leaving:opacity-0 disabled:text-fg-subtle compact:w-auto ${packClass("Plate", "frame")}`} data-leaving={t().leaving === true} data-tone-danger={(t().tone) === 'danger'} data-tone-success={(t().tone) === 'success'} data-tone-warn={(t().tone) === 'warn'}>
-          <View class="absolute left-0 w-[0.286rem] bg-info inset-y-0 group-data-tone-success/frame:bg-none group-data-tone-success/frame:bg-success group-data-tone-warn/frame:bg-none group-data-tone-warn/frame:bg-warn group-data-tone-danger/frame:bg-none group-data-tone-danger/frame:bg-danger" />
+        <View class={`group/frame flex-row pr-0 pl-1 border-rim nine-plate-cut border border-white/12 text-fg items-center w-auto max-w-full py-0 gap-3 border transition duration-240 ease-in data-leaving:translate-x-8 data-leaving:opacity-0 disabled:text-fg-subtle compact:w-auto ${packClass("Plate", "frame")}`} data-leaving={t().leaving === true} data-tone-danger={(t().tone) === 'danger'} data-tone-success={(t().tone) === 'success'} data-tone-warn={(t().tone) === 'warn'}>
+          <View class="absolute left-0 w-1 bg-info inset-y-0 group-data-tone-success/frame:bg-none group-data-tone-success/frame:bg-success group-data-tone-warn/frame:bg-none group-data-tone-warn/frame:bg-warn group-data-tone-danger/frame:bg-none group-data-tone-danger/frame:bg-danger" />
           <Button class={`w-full text-start gap-1 shrink text-fg ${packClass("Button", "plate")}`} onPress={(e) => props.onDismissToast?.(e, t().id)}>
             <Icon class="text-info size-4 group-data-tone-success/frame:text-success group-data-tone-warn/frame:text-warn group-data-tone-danger/frame:text-danger" name={t().tone === 'success' ? 'check' : t().tone === 'warn' ? 'bolt' : t().tone === 'danger' ? 'close' : 'star'} />
             <Text>{t().text}</Text>

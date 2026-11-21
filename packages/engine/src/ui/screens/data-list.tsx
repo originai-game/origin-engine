@@ -31,7 +31,7 @@ export function DataList(props: DataListProps) {
                   <Text class={`font-semibold text-start m-0`}>{r().title}</Text>
                   <Text class={`opacity-60 text-start m-0 shrink`}>{r().detail}</Text>
                 </View>
-                <Text class={`text-[0.929rem] font-bold tabular-nums whitespace-nowrap shrink`}>{r().value}</Text>
+                <Text class={`text-caption font-bold tabular-nums whitespace-nowrap shrink`}>{r().value}</Text>
               </Button>
             )}
           </For>

@@ -43,9 +43,9 @@ export interface TutorialScreenProps {
  */
 function StepCard(props: TutorialScreenProps) {
   return (
-    <View class={`bg-linear-to-b from-glass-hi to-glass-lo shadow-[inset_0px_0px_0px_1px_#38e8ff73,inset_0px_2px_0px_#38e8ff,0px_20.576px_45.712px_#00000099] text-fg w-full max-w-[28.571rem] transition duration-240 ease-out absolute py-4 px-6 gap-2 narrow:w-auto narrow:max-w-none narrow:inset-x-3 starting:opacity-0 starting:scale-60 ${packClass("Panel", "frame")}`} style={{ left: `${props.x}px`, top: `${props.y}px` }}>
+    <View class={`bg-linear-to-b from-glass-hi to-glass-lo shadow-[inset_0px_0px_0px_1px_#38e8ff73,inset_0px_2px_0px_#38e8ff,0px_20.576px_45.712px_#00000099] text-fg w-full max-w-100 transition duration-240 ease-out absolute py-4 px-6 gap-2 narrow:w-auto narrow:max-w-none narrow:inset-x-3 starting:opacity-0 starting:scale-60 ${packClass("Panel", "frame")}`} style={{ left: `${props.x}px`, top: `${props.y}px` }}>
       <View class="flex-row items-center gap-x-3">
-        <Text class={`text-[0.857rem] font-bold tracking-[0.14em] uppercase tabular-nums text-fg m-0 shrink`}>
+        <Text class={`text-xs font-bold tracking-label uppercase tabular-nums text-fg m-0 shrink`}>
           {t("screen.tutorial.Step", { step: props.step, steps: props.steps })}
         </Text>
         <View class="grow shrink basis-0 min-w-0 h-0.5 bg-raised-hi">
@@ -55,7 +55,7 @@ function StepCard(props: TutorialScreenProps) {
       <Show when={props.texture !== 0}>
         <Art kind="tutorial" src={props.texture} />
       </Show>
-      <Text class={`text-[1.714rem] leading-tight font-bold tracking-xs text-fg m-0`}>
+      <Text class={`text-title leading-tight font-bold tracking-xs text-fg m-0`}>
         {props.title}
       </Text>
       <Text class={`leading-normal text-fg-muted m-0`}>
@@ -67,7 +67,7 @@ function StepCard(props: TutorialScreenProps) {
           <Text>{t("screen.tutorial.skip")}</Text>
         </Button>
         <Show when={!props.waits}>
-          <Button class={`text-accent nine-plate-cut ml-auto min-w-[8.571rem] h-9 shrink ${packClass("Button", "plate", "primary")}`} onPress={(e) => props.onNext?.(e)}>
+          <Button class={`text-accent nine-plate-cut ml-auto min-w-30 h-9 shrink ${packClass("Button", "plate", "primary")}`} onPress={(e) => props.onNext?.(e)}>
             <Text>{t("screen.tutorial.next")}</Text>
           </Button>
         </Show>

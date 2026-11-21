@@ -40,7 +40,7 @@ export function LeaderboardScreen(props: LeaderboardScreenProps) {
       <View class={`absolute bg-linear-to-r from-shade-deep via-shade-deep via-55% to-shade-deep inset-0`} />
       <View class={`w-full max-w-264 flex-row flex-wrap items-center gap-y-2 gap-x-3 p-0 mx-auto`}>
         <Button class={`shrink ${packClass("Button", "plate")}`} onPress={(e) => props.onBack?.(e)}><Text>{t("screen.common.back")}</Text></Button>
-        <Text class={`font-display text-[3.286rem] font-bold leading-flat tracking-sm uppercase text-fg grow shrink m-0 compact:text-[2rem]`}>
+        <Text class={`font-display text-[3.286rem] font-bold leading-flat tracking-sm uppercase text-fg grow shrink m-0 compact:text-display-sm`}>
           {t("screen.leaderboard.title")}
         </Text>
         <Button class={`h-7 px-3 compact:h-8 shrink ${packClass("Button", "plate")}`} onPress={(e) => props.onPeriod?.(e)}>
@@ -60,13 +60,13 @@ export function LeaderboardScreen(props: LeaderboardScreenProps) {
       </View>
       <Show when={props.tab === "league"}>
         <View class={`w-full max-w-264 flex-row items-center nine-panel-cut flex-wrap bg-plate-hi border border-white/18 py-2 px-3 mx-auto gap-3 ${packClass("Panel", "frame")}`}>
-          <Text class="text-[1.714rem] font-bold tracking-sm uppercase text-gold m-0 shrink">
+          <Text class="text-title font-bold tracking-sm uppercase text-gold m-0 shrink">
             {props.league.name}
           </Text>
           <Text class="grow shrink text-caption text-fg-muted m-0">
             {t("screen.leaderboard.Lines", { league_demote: props.league.demote, league_promote: props.league.promote })}
           </Text>
-          <Text class="text-[0.857rem] font-bold tracking-[0.14em] uppercase text-fg bg-tile shadow-[inset_0px_1px_0px_#ffffff38] whitespace-nowrap py-0 px-1 m-0 shrink">
+          <Text class="text-xs font-bold tracking-label uppercase text-fg bg-tile shadow-[inset_0px_1px_0px_#ffffff38] whitespace-nowrap py-0 px-1 m-0 shrink">
             {t("screen.leaderboard.Ends", { league_ends: formatDuration(props.league.ends) })}
           </Text>
         </View>
@@ -77,21 +77,21 @@ export function LeaderboardScreen(props: LeaderboardScreenProps) {
           <For each={props.rows}>
             {(r) => (
             <View class={`group/row nine-plate-cut text-fg transition duration-317 grid grid-cols-[auto_auto_minmax(0,1fr)_auto] items-center gap-x-3 pr-3 pl-1 py-1 hover:bg-surface-hover data-mine-you:text-fg data-down:opacity-45 narrow:grid-cols-[auto_auto_minmax(0,1fr)] narrow:gap-y-0 compact:gap-x-2 active:scale-99 ${r().you ? packClass("Row", "frame", "selected") : packClass("Row", "frame")}`} onPress={(e) => props.onRow?.(e, r().id)} tabIndex={0} data-mine-other={!r().you} data-mine-you={r().you} data-promote={props.tab === "league" && r().rank <= props.league.promote} data-place-1={(r().rank <= 3 ? r().rank : 0) === 1} data-place-2={(r().rank <= 3 ? r().rank : 0) === 2} data-place-3={(r().rank <= 3 ? r().rank : 0) === 3}>
-              <Text class={`text-center min-w-[3.714rem] leading-[2.714rem] whitespace-nowrap text-[1.143rem] font-bold tabular-nums nine-chip-cut py-0 px-1 m-0 compact:min-w-[2.714rem] compact:leading-[2.286rem] group-data-place-1/row:bg-none group-data-place-1/row:bg-gold group-data-place-1/row:text-gold-fg group-data-place-2/row:bg-none group-data-place-2/row:bg-fg group-data-place-2/row:text-gold-fg group-data-place-3/row:bg-none group-data-place-3/row:bg-legendary group-data-place-3/row:text-gold-fg ${packClass("Chip", "frame")}`}>
+              <Text class={`text-center min-w-13 leading-9.5 whitespace-nowrap text-base font-bold tabular-nums nine-chip-cut py-0 px-1 m-0 compact:min-w-9.5 compact:leading-8 group-data-place-1/row:bg-none group-data-place-1/row:bg-gold group-data-place-1/row:text-gold-fg group-data-place-2/row:bg-none group-data-place-2/row:bg-fg group-data-place-2/row:text-gold-fg group-data-place-3/row:bg-none group-data-place-3/row:bg-legendary group-data-place-3/row:text-gold-fg ${packClass("Chip", "frame")}`}>
                 {t("screen.leaderboard.RowRank", { value: ordinal(r().rank) })}
               </Text>
               <Art class="size-8 compact:size-6" kind="emblem" src={r().texture} />
               <View class="flex-row items-center gap-1">
-                <Text class="text-[1.143rem] font-semibold whitespace-nowrap m-0 overflow-hidden shrink">
+                <Text class="text-base font-semibold whitespace-nowrap m-0 overflow-hidden shrink">
                   {r().name}
                 </Text>
                 <Show when={r().you}>
-                  <Text class="text-[0.857rem] font-bold tracking-[0.14em] uppercase text-hud-accent bg-tile shadow-[inset_0px_0px_0px_1px_#38e8ff73,inset_0px_2px_0px_#38e8ff] whitespace-nowrap py-0 px-1">
+                  <Text class="text-xs font-bold tracking-label uppercase text-hud-accent bg-tile shadow-[inset_0px_0px_0px_1px_#38e8ff73,inset_0px_2px_0px_#38e8ff] whitespace-nowrap py-0 px-1">
                     {t("screen.leaderboard.you")}
                   </Text>
                 </Show>
               </View>
-              <Text class={`tabular-nums text-fg text-[1.714rem] font-bold whitespace-nowrap text-end m-0 group-data-place-1/row:text-gold group-data-mine-you/row:text-fg compact:text-[1.143rem] narrow:text-start`}>
+              <Text class={`tabular-nums text-fg text-title font-bold whitespace-nowrap text-end m-0 group-data-place-1/row:text-gold group-data-mine-you/row:text-fg compact:text-base narrow:text-start`}>
                 {t("screen.leaderboard.RowScore", { value: r().score })}
               </Text>
             </View>
@@ -100,16 +100,16 @@ export function LeaderboardScreen(props: LeaderboardScreenProps) {
         </View>
       </Scroll>
       <View class={`w-full max-w-264 flex-row items-center pr-3 pl-1 nine-plate-cut text-fg py-2 mx-auto gap-3`}>
-        <Text class={`text-center min-w-[3.714rem] leading-[2.714rem] whitespace-nowrap text-[1.143rem] font-bold tabular-nums nine-plate-cut py-0 px-1 m-0 compact:min-w-[2.714rem] compact:leading-[2.286rem] shrink ${packClass("Chip", "frame")}`}>
+        <Text class={`text-center min-w-13 leading-9.5 whitespace-nowrap text-base font-bold tabular-nums nine-plate-cut py-0 px-1 m-0 compact:min-w-9.5 compact:leading-8 shrink ${packClass("Chip", "frame")}`}>
           {t("screen.leaderboard.MeRank", { value: ordinal(props.me.rank) })}
         </Text>
-        <Text class="text-[1.143rem] font-semibold whitespace-nowrap shrink m-0 overflow-hidden">
+        <Text class="text-base font-semibold whitespace-nowrap shrink m-0 overflow-hidden">
           {props.me.name}
         </Text>
-        <Text class="text-[0.857rem] font-bold tracking-[0.14em] uppercase text-hud-accent bg-tile shadow-[inset_0px_0px_0px_1px_#38e8ff73,inset_0px_2px_0px_#38e8ff] whitespace-nowrap mr-auto py-0 px-1">
+        <Text class="text-xs font-bold tracking-label uppercase text-hud-accent bg-tile shadow-[inset_0px_0px_0px_1px_#38e8ff73,inset_0px_2px_0px_#38e8ff] whitespace-nowrap mr-auto py-0 px-1">
           {t("screen.leaderboard.you")}
         </Text>
-        <Text class={`tabular-nums text-fg text-[2.429rem] font-bold whitespace-nowrap text-end m-0 compact:text-[1.714rem] shrink`}>
+        <Text class={`tabular-nums text-fg text-display-md font-bold whitespace-nowrap text-end m-0 compact:text-title shrink`}>
           {t("screen.leaderboard.MeScore", { value: props.me.score })}
         </Text>
       </View>

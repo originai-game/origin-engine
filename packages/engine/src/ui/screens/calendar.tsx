@@ -27,7 +27,7 @@ export function Calendar(props: CalendarProps) {
         <Button class={`bg-tile shadow-[inset_0px_0px_0px_1px_#ffffff1a] min-w-11 min-h-11 p-0 rounded-[4.576px] ${packClass("Button", "plate")}`} onPress={(e) => props.onPrevious?.(e)} label={props.month}>
           <Icon class="size-4" name="chevronLeft" />
         </Button>
-        <Text class={`font-display text-[1.143rem] font-bold leading-tight tracking-[-0.01em] text-fg grow shrink basis-0 text-center m-0`}>
+        <Text class={`font-display text-base font-bold leading-tight tracking-tight text-fg grow shrink basis-0 text-center m-0`}>
           {props.month}
         </Text>
         <Button class={`bg-tile shadow-[inset_0px_0px_0px_1px_#ffffff1a] min-w-11 min-h-11 p-0 rounded-[4.576px] ${packClass("Button", "plate")}`} onPress={(e) => props.onNext?.(e)} label={props.month}>
@@ -37,7 +37,7 @@ export function Calendar(props: CalendarProps) {
       <View class="grid grid-cols-7 gap-0.5" role="grid">
         <For each={props.weekdays}>
           {(w) => (
-          <Text class={`tracking-[0.14em] uppercase text-fg-muted text-center text-[0.857rem] font-semibold pb-0.5`}>
+          <Text class={`tracking-label uppercase text-fg-muted text-center text-xs font-semibold pb-0.5`}>
             {w().label}
           </Text>
           )}

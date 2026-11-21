@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "Screens",
+      "summary": "The screens write the theme's steps where they wrote the same value in brackets: type sizes, tracking, leading, lengths and sizes on the spacing scale, shares as fractions, and radii, so a pack's scale moves them. A type size that set no leading class now takes its step's line height. The values that match no step exactly are unchanged here."
+    }
+  ]
+}

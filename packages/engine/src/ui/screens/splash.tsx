@@ -31,7 +31,7 @@ export function SplashScreen(props: SplashScreenProps) {
                   {m().name}
                 </Text>
             }>
-              <Art class="aspect-[2/1] h-auto object-contain compact:w-4/5" kind="logo" src={m().texture} />
+              <Art class="aspect-2/1 h-auto object-contain compact:w-4/5" kind="logo" src={m().texture} />
             </Show>
           </View>
           )}
@@ -40,7 +40,7 @@ export function SplashScreen(props: SplashScreenProps) {
           <View class={`flex-row gap-x-1`}>
             <For each={props.marks}>
               {(m) => (
-              <View class={`bg-sheen w-[1.286rem] h-[1.5px] transition-colors duration-317 rounded-capsule data-on:bg-none data-on:bg-sheen shrink`} data-on={m().id === props.mark} />
+              <View class={`bg-sheen w-4.5 h-0.5 transition-colors duration-317 rounded-capsule data-on:bg-none data-on:bg-sheen shrink`} data-on={m().id === props.mark} />
               )}
             </For>
           </View>
@@ -50,18 +50,18 @@ export function SplashScreen(props: SplashScreenProps) {
       <Show when={props.progress >= 0}>
         <View class={`gap-y-2 w-full max-w-120`} role="progressbar" valueMin={0} valueMax={1} valueNow={props.progress > 1 ? 1 : props.progress} label={props.status}>
           <View class="flex-row items-baseline gap-x-3">
-            <Text class="grow shrink text-[0.857rem] font-semibold tracking-[0.14em] uppercase text-fg-muted whitespace-nowrap m-0 overflow-hidden">
+            <Text class="grow shrink text-xs font-semibold tracking-label uppercase text-fg-muted whitespace-nowrap m-0 overflow-hidden">
               {props.status}
             </Text>
-            <Counter class="text-[0.929rem] font-bold text-fg-muted" value={props.progress > 1 ? 1 : props.progress} format="percent" decimals={0} />
+            <Counter class="text-caption font-bold text-fg-muted" value={props.progress > 1 ? 1 : props.progress} format="percent" decimals={0} />
           </View>
-          <View class={`bg-lit shadow-sunk h-[0.286rem] rounded-capsule overflow-hidden`}>
+          <View class={`bg-lit shadow-sunk h-1 rounded-capsule overflow-hidden`}>
             <View class={`bg-linear-to-r from-hud-accent/60 to-sheen h-full shadow-[0px_0px_13.712px_#38e8ff] duration-317`} style={{ width: `${(100 * (props.progress > 1 ? 1 : props.progress))}%` }} />
           </View>
         </View>
       </Show>
-      <View class={`flex-row absolute right-6 bottom-4 items-center gap-x-2 text-[0.929rem] text-fg-muted compact:bottom-4 compact:justify-center compact:inset-x-4`}>
-        <Text class="text-[0.857rem] leading-[1.6] font-bold text-hud-accent-fg bg-linear-to-b from-key-hi to-key-lo shadow-[0px_2.288px_0px_#0000008c,inset_0px_-2.288px_0px_#0000002e] py-0 px-1 rounded-[4.576px] pointer-coarse:hidden shrink">
+      <View class={`flex-row absolute right-6 bottom-4 items-center gap-x-2 text-caption text-fg-muted compact:bottom-4 compact:justify-center compact:inset-x-4`}>
+        <Text class="text-xs leading-loose font-bold text-hud-accent-fg bg-linear-to-b from-key-hi to-key-lo shadow-[0px_2.288px_0px_#0000008c,inset_0px_-2.288px_0px_#0000002e] py-0 px-1 rounded-[4.576px] pointer-coarse:hidden shrink">
           {t("screen.splash.skipKey")}
         </Text>
         <Text class="pointer-coarse:hidden shrink">{t("screen.splash.skip")}</Text>

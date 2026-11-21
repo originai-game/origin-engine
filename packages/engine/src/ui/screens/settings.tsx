@@ -45,11 +45,11 @@ export function SettingsScreen(props: SettingsScreenProps) {
           </View>
         </Button>
         <View class="flex-row grow shrink basis-0 items-baseline flex-wrap gap-x-4 gap-y-0.5 compact:grow compact:shrink-0 compact:basis-full compact:items-start compact:flex-col">
-          <Text class={`font-display text-[2.857rem] font-bold leading-tight tracking-xs text-fg text-shadow-xs text-shadow-bg/60 m-0 compact:text-[1.857rem] shrink`}>
+          <Text class={`font-display text-display-lg font-bold leading-tight tracking-xs text-fg text-shadow-xs text-shadow-bg/60 m-0 compact:text-3xl shrink`}>
             {t("screen.settings.title")}
           </Text>
           <Show when={props.note !== ""}>
-            <Text class="mr-0 ml-auto text-base text-warn line-clamp-2 my-0 compact:ml-0 compact:text-[0.929rem] shrink">
+            <Text class="mr-0 ml-auto text-base text-warn line-clamp-2 my-0 compact:ml-0 compact:text-caption shrink">
               {props.note}
             </Text>
           </Show>
@@ -70,7 +70,7 @@ export function SettingsScreen(props: SettingsScreenProps) {
             </Scroll>
             <Text class="flex-none pointer-coarse:hidden" glyph="tabNext" />
           </View>
-          <View class="grow shrink basis-0 grid grid-cols-[minmax(0,3fr)_minmax(0,2fr)] grid-rows-[minmax(0,1fr)] gap-x-12 compact:grid-cols-[minmax(0,1fr)]">
+          <View class="grow shrink basis-0 grid grid-cols-[minmax(0,3fr)_minmax(0,2fr)] grid-rows-1 gap-x-12 compact:grid-cols-1">
             <Scroll class="grow shrink basis-0 gap-y-0.5 p-0 m-0">
               <For each={props.entries}>
                 {(entry) => {
@@ -90,7 +90,7 @@ export function SettingsScreen(props: SettingsScreenProps) {
                 <Show when={entry().page === props.page}>
                   <View class={`group/row text-fg transition duration-317 hover:bg-surface-hover data-selected:text-fg disabled:text-fg-subtle data-done:text-fg-subtle data-down:opacity-45 ${packClass("Row", "frame")}`} label={entry().description}>
                     <Show when={entry().kind === "toggle"}>
-                      <View class="flex-row items-center group/switch min-h-16 text-[1.286rem] grow shrink text-fg-muted py-1 px-4 compact:text-[1.143rem] compact:gap-y-1 compact:py-2 compact:px-3 group-hover/row:text-fg" role="switch" tabIndex={0} checked={entry().value === true} label={entry().name} data-checked={entry().value === true} onPress={(e) => props.onChange?.(e, entry().id, !(entry().value === true))}>
+                      <View class="flex-row items-center group/switch min-h-16 text-lg grow shrink text-fg-muted py-1 px-4 compact:text-base compact:gap-y-1 compact:py-2 compact:px-3 group-hover/row:text-fg" role="switch" tabIndex={0} checked={entry().value === true} label={entry().name} data-checked={entry().value === true} onPress={(e) => props.onChange?.(e, entry().id, !(entry().value === true))}>
                         <Text>{entry().name}</Text>
                         <View class="ml-auto relative h-4 w-7 rounded-capsule bg-track shadow-[inset_0px_0px_0px_1px_#4e586c]">
                           <View class="absolute top-0.5 left-0.5 size-3 rounded-capsule bg-fg-muted transition-transform duration-200 ease-out group-data-checked/switch:translate-x-3 group-data-checked/switch:bg-accent" />
@@ -98,7 +98,7 @@ export function SettingsScreen(props: SettingsScreenProps) {
                       </View>
                     </Show>
                     <Show when={entry().kind === "range"}>
-                      <View class="grid grid-cols-[minmax(182.9px,1fr)_minmax(0,365.7px)] items-center gap-x-6 min-h-16 text-[1.286rem] py-1 px-4 compact:grid-cols-[minmax(0,1fr)] compact:items-stretch compact:text-[1.143rem] compact:gap-y-1 compact:py-2 compact:px-3">
+                      <View class="grid grid-cols-[minmax(182.9px,1fr)_minmax(0,365.7px)] items-center gap-x-6 min-h-16 text-lg py-1 px-4 compact:grid-cols-1 compact:items-stretch compact:text-base compact:gap-y-1 compact:py-2 compact:px-3">
                         <Text class="grow shrink text-fg-muted m-0 group-hover/row:text-fg">
                           {entry().name}
                         </Text>
@@ -125,7 +125,7 @@ export function SettingsScreen(props: SettingsScreenProps) {
                       </View>
                     </Show>
                     <Show when={entry().kind === "select"}>
-                      <View class="grid grid-cols-[minmax(182.9px,1fr)_minmax(0,365.7px)] items-center gap-x-6 min-h-16 text-[1.286rem] py-1 px-4 compact:grid-cols-[minmax(0,1fr)] compact:items-stretch compact:text-[1.143rem] compact:gap-y-1 compact:py-2 compact:px-3">
+                      <View class="grid grid-cols-[minmax(182.9px,1fr)_minmax(0,365.7px)] items-center gap-x-6 min-h-16 text-lg py-1 px-4 compact:grid-cols-1 compact:items-stretch compact:text-base compact:gap-y-1 compact:py-2 compact:px-3">
                         <Text class="grow shrink text-fg-muted m-0 group-hover/row:text-fg">
                           {entry().name}
                         </Text>
@@ -165,7 +165,7 @@ export function SettingsScreen(props: SettingsScreenProps) {
                       </View>
                     </Show>
                     <Show when={entry().kind === "binding"}>
-                      <View class={`grid grid-cols-[minmax(182.9px,1fr)_minmax(0,365.7px)] items-center gap-x-6 min-h-16 text-[1.286rem] py-1 px-4 compact:grid-cols-[minmax(0,1fr)_auto] compact:items-center compact:text-[1.143rem] compact:gap-y-1 compact:py-2 compact:px-3 group-hover/row:text-fg data-listening:bg-hud-accent data-listening:text-hud-accent-fg`} role="button" tabIndex={0} label={entry().name} data-listening={listening() === entry().id} onPress={() => listening.set(listening() === entry().id ? "" : entry().id)} onKey={(e) => {
+                      <View class={`grid grid-cols-[minmax(182.9px,1fr)_minmax(0,365.7px)] items-center gap-x-6 min-h-16 text-lg py-1 px-4 compact:grid-cols-[minmax(0,1fr)_auto] compact:items-center compact:text-base compact:gap-y-1 compact:py-2 compact:px-3 group-hover/row:text-fg data-listening:bg-hud-accent data-listening:text-hud-accent-fg`} role="button" tabIndex={0} label={entry().name} data-listening={listening() === entry().id} onPress={() => listening.set(listening() === entry().id ? "" : entry().id)} onKey={(e) => {
                         if (listening() !== entry().id) return;
                         if (e.key === "Escape") {
                           listening.set("");
@@ -196,10 +196,10 @@ export function SettingsScreen(props: SettingsScreenProps) {
             <Button class={`mr-auto compact:mr-0 compact:col-span-full compact:justify-self-start compact:-ml-2 shrink ${packClass("Button", "plate")}`} onPress={(e) => props.onDefaults?.(e)}>
               <Text>{t("screen.settings.defaults")}</Text>
             </Button>
-            <Button class={`text-fg bg-plate-hi nine-plate-cut min-w-[11.429rem] h-9 disabled:border-transparent active:border-transparent hover:bg-plate-hi hover:bg-transparent hover:border-transparent compact:min-w-0 data-pressed:hover:border-transparent shrink ${packClass("Button", "plate")}`} onPress={(e) => props.onRevert?.(e)} disabled={!props.pending}>
+            <Button class={`text-fg bg-plate-hi nine-plate-cut min-w-40 h-9 disabled:border-transparent active:border-transparent hover:bg-plate-hi hover:bg-transparent hover:border-transparent compact:min-w-0 data-pressed:hover:border-transparent shrink ${packClass("Button", "plate")}`} onPress={(e) => props.onRevert?.(e)} disabled={!props.pending}>
               <Text>{t("screen.settings.revert")}</Text>
             </Button>
-            <Button class={`text-accent nine-plate-cut min-w-[11.429rem] h-9 compact:min-w-0 shrink ${packClass("Button", "plate", "primary")}`} disabled={!props.pending} onPress={(e) => props.onApply?.(e)}>
+            <Button class={`text-accent nine-plate-cut min-w-40 h-9 compact:min-w-0 shrink ${packClass("Button", "plate", "primary")}`} disabled={!props.pending} onPress={(e) => props.onApply?.(e)}>
               <Text>{t("screen.settings.apply")}</Text>
             </Button>
           </View>
