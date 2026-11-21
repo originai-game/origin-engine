@@ -24,7 +24,7 @@ pub(crate) use ui_config::{LoadedStyle, UiSettings, load_style, new_ui, settings
 pub use ui_config::{og_load_style, og_ui_configure};
 mod ui_desc;
 use ui_desc::paint;
-pub(crate) use ui_desc::{UiAnswers, texture_of, ui_engine, with_ui};
+pub(crate) use ui_desc::{UiAnswers, srgb8, texture_of, ui_engine, with_ui};
 pub use ui_desc::{
     og_ui_frame_cursor, og_ui_frame_direction, og_ui_frame_pointer, og_ui_frame_theme,
     og_ui_frame_viewport, og_ui_has_icon, og_ui_scroll_into_view, og_ui_seconds, og_ui_set_focus,

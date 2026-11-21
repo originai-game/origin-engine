@@ -7,7 +7,7 @@ use std::collections::BTreeMap;
 /// to 1: the API's `Color` is linear RGB (the `conventions` guide §6) and
 /// og-ui's [`Srgba`] is a colour as a style authors it. `color.fromHex` of
 /// an 8-bit channel comes back as that channel.
-pub(super) fn srgb8(linear: f32) -> u8 {
+pub(crate) fn srgb8(linear: f32) -> u8 {
     let c = linear.clamp(0.0, 1.0);
     let s = if c <= 0.003_130_8 {
         c * 12.92
@@ -143,7 +143,7 @@ pub fn og_ui_frame_viewport() -> String {
 #[derive(Default)]
 pub(crate) struct UiAnswers {
     viewport: Option<(Viewport, f32, String)>,
-    theme: Option<(super::UiSettings, String)>,
+    theme: Option<(super::UiSettings, String, String)>,
 }
 
 /// Runs `f` on the kept answers of the engine whose UI frame is open (else
@@ -258,18 +258,20 @@ pub fn og_ui_frame_theme() -> String {
         },
     );
     // The UI kit asks once a tick and the theme rarely changes: the last
-    // answer is kept with the settings (the style among them) it was made
-    // from.
+    // answer is kept with the settings (the style among them) and the seeds
+    // it was made from.
+    let seeds = crate::present::ui_next::configured_seeds(id.unwrap_or(u32::MAX));
     answered(|a| {
         let last = a.map(|a| &mut a.theme);
-        if let Some(Some((s, text))) = last.as_deref()
+        if let Some(Some((s, k, text))) = last.as_deref()
             && *s == settings
+            && *k == seeds
         {
             return text.clone();
         }
         let text = wire::text_of(&theme_wire(id.unwrap_or(u32::MAX), &settings));
         if let Some(last) = last {
-            *last = Some((settings, text.clone()));
+            *last = Some((settings, seeds, text.clone()));
         }
         text
     })

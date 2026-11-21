@@ -305,26 +305,15 @@ fn configure_keeps_the_fields_a_call_leaves_out() {
 
 /// og.ui.theme answers the style pack's theme by the design tokens' names:
 /// the default pack's in the configured scheme, the game's pack over it,
-/// and the motion tokens' durations. Ways this could fail: the colours
-/// come from one scheme whatever is configured; the game's pack is not
-/// laid over the default; a name is og-ui's old role (`ink`, `control`).
+/// configured seeds over both, and the motion tokens' durations. Ways this
+/// could fail: the colours come from one scheme whatever is configured;
+/// the game's pack is not laid over the default; run-time seeds reach only
+/// old og-ui; a name is og-ui's old role (`ink`, `control`).
 #[test]
 fn the_theme_is_the_packs_by_its_token_names() {
     let e = engine();
     let default = og_ui_next::pack::Pack::new(&[og_ui_next::pack::Layer::default_pack()]);
-    let fg = |s| {
-        let hex = default.theme(s)["colors"]["fg"]
-            .as_str()
-            .unwrap()
-            .to_owned();
-        let c = og_css::parse_color(&hex).unwrap();
-        og_core::color::hex_string([
-            c.rgb[0],
-            c.rgb[1],
-            c.rgb[2],
-            (c.alpha * 255.0).round() as u8,
-        ])
-    };
+    let fg = |s| colour(&default, s, "fg");
     let t = theme(e);
     assert_eq!(t["scheme"], json!("dark"));
     assert_eq!(
@@ -369,7 +358,37 @@ fn the_theme_is_the_packs_by_its_token_names() {
         t["colors"]["bg"].is_string(),
         "the default's colours under it"
     );
+    // Seeds given at run time (a look's, a faction's) derive the palette
+    // over the pack, as a pack's own seeds would: #c8102e is linear
+    // 0.578, 0.00518, 0.0273.
+    configure(e, json!({ "style": null, "scheme": "dark" }));
+    let plain = theme(e)["colors"]["accent"].clone();
+    configure(
+        e,
+        json!({ "seeds": { "primary": { "r": 0.578, "g": 0.00518, "b": 0.0273 } } }),
+    );
+    let seeded = og_ui_next::pack::Pack::new(&[
+        og_ui_next::pack::Layer::default_pack(),
+        og_ui_next::pack::Layer::parse(r##"{ "seeds": { "primary": "#c8102e" } }"##).unwrap(),
+    ]);
+    let want = colour(&seeded, og_ui_next::pack::Scheme::Dark, "accent");
+    let t = theme(e);
+    assert_ne!(t["colors"]["accent"], plain, "the seed recolours");
+    assert_eq!(t["colors"]["accent"].as_str(), Some(want.as_str()));
+    configure(e, json!({ "seeds": null }));
+    assert_eq!(theme(e)["colors"]["accent"], plain, "null clears the seeds");
     assert!(og_runtime::og_engine_destroy(e));
+}
+
+/// `pack`'s colour `name` in `scheme`, as og.ui.theme writes a colour.
+fn colour(pack: &og_ui_next::pack::Pack, scheme: og_ui_next::pack::Scheme, name: &str) -> String {
+    let c = og_css::parse_color(pack.theme(scheme)["colors"][name].as_str().unwrap()).unwrap();
+    og_core::color::hex_string([
+        c.rgb[0],
+        c.rgb[1],
+        c.rgb[2],
+        (c.alpha * 255.0).round() as u8,
+    ])
 }
 
 #[test]

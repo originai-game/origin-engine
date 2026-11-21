@@ -8,6 +8,7 @@
 //! changed, lays out and paints into its arena, which the render scene's
 //! paint pass draws at the UI's layer (`widgets::emit`).
 
+use crate::host::wire;
 use og_reactive::reactive::session::{Command, Session};
 use og_ui_next::look::{Layer, Look};
 use og_ui_next::pack::{Pack, Scheme};
@@ -68,19 +69,21 @@ pub(crate) struct Next {
     /// The cooked section of the look's documents ([`og_ui_next::look::section`]).
     section: String,
     tree: Option<Tree>,
-    /// What the tree's class resolver was made for: the pack, the scheme
-    /// (dark), high contrast and the UI box's size class.
-    /// What the class resolver was made for ([`Next::sized`]).
+    /// What the tree's class resolver was made for ([`Next::sized`]): the
+    /// pack, the seeds ([`configured_seeds`]), the scheme (dark), high
+    /// contrast, the UI box's size class and its exact size when a class
+    /// reads it.
     resolved: Option<Resolved>,
     /// Whether a class the resolver resolved reads the window's exact size
     /// (`w-screen`, `h-[16vh]`): then every resize resolves again.
     sized: Rc<std::cell::Cell<bool>>,
     /// The widths the resolver's theme breaks at (CSS px).
     widths: Vec<f32>,
-    /// The pack images' texture slots by `src`, and the style they were
+    /// The pack images' texture slots by `src`, and the style and
+    /// configured sounds (UiDesc.sounds) they and the sound table were
     /// loaded for ([`pack_images`]).
     images: BTreeMap<String, u32>,
-    images_for: Option<Option<String>>,
+    images_for: Option<(Option<String>, Value)>,
     /// The pack's glyph art (its `icons`), texture slots by og-input's
     /// glyph name (`xbox.a`, `key.keye`), loaded with its images.
     icons: BTreeMap<String, u32>,
@@ -196,10 +199,26 @@ pub(crate) fn pack_images(engine: u32) {
         return;
     };
     let pack = style_id(engine);
-    match &eng.render.borrow().ui_next {
-        Some(next) if next.draws && next.images_for.as_ref() != Some(&pack) => {}
-        _ => return,
+    {
+        let st = eng.state.borrow();
+        let given = st.ui_desc.get("sounds").unwrap_or(&Value::Null);
+        match &eng.render.borrow().ui_next {
+            Some(next)
+                if next.draws
+                    && next
+                        .images_for
+                        .as_ref()
+                        .is_none_or(|(p, s)| *p != pack || s != given) => {}
+            _ => return,
+        }
     }
+    let given = eng
+        .state
+        .borrow()
+        .ui_desc
+        .get("sounds")
+        .cloned()
+        .unwrap_or(Value::Null);
     let mut layers = vec![og_ui_next::pack::Layer::default_pack()];
     layers.extend(pack.as_deref().and_then(|id| pack_layer(engine, id)));
     let all = Pack::new(&layers);
@@ -273,6 +292,27 @@ pub(crate) fn pack_images(engine: u32) {
                 .insert(event.clone(), cue);
         }
     }
+    // og.ui.configure's sounds win over the pack's own for their events.
+    let configured: wire::UiSounds = wire::value(&given, "sounds").unwrap_or_default();
+    for (event, handle) in [
+        ("hover", configured.hover),
+        ("press", configured.press),
+        ("open", configured.open),
+        ("close", configured.close),
+        ("error", configured.error),
+    ] {
+        if let Some(h) = handle.filter(|&h| h != 0) {
+            let cue = og_ui_next::tree::Cue {
+                clips: vec![h],
+                volume: [1.0, 1.0],
+                pitch: [1.0, 1.0],
+            };
+            sounds
+                .entry(String::new())
+                .or_default()
+                .insert(event.into(), cue);
+        }
+    }
     let sounds = Rc::new(sounds);
     if let Some(next) = &mut eng.render.borrow_mut().ui_next {
         if let Some(tree) = &mut next.tree {
@@ -283,7 +323,7 @@ pub(crate) fn pack_images(engine: u32) {
         next.icons = icons;
         // The glyphs draw the new pack's art.
         next.device = None;
-        next.images_for = Some(pack);
+        next.images_for = Some((pack, given));
         next.resolved = None;
         next.held.extend(warnings);
     }
@@ -343,9 +383,7 @@ pub(crate) fn pack_theme(
     dark: bool,
     high_contrast: bool,
 ) -> serde_json::Map<String, Value> {
-    let mut layers = vec![og_ui_next::pack::Layer::default_pack()];
-    layers.extend(style_id(engine).and_then(|id| pack_layer(engine, &id)));
-    let pack = Pack::new(&layers);
+    let pack = Pack::new(&layers(engine, style_id(engine).as_deref()));
     let scheme = if dark { Scheme::Dark } else { Scheme::Light };
     let text = if high_contrast {
         pack.theme_json_high_contrast(scheme)
@@ -405,6 +443,51 @@ pub(crate) fn durations(engine: u32) -> Rc<BTreeMap<String, f32>> {
     })
 }
 
+/// The pack layers the UI styles with: the default pack, style `id`'s
+/// pack over it, and the seeds og.ui.configure was given (a look's, a
+/// faction's) over both, so the palette derives from them.
+fn layers(engine: u32, id: Option<&str>) -> Vec<og_ui_next::pack::Layer> {
+    let mut layers = vec![og_ui_next::pack::Layer::default_pack()];
+    layers.extend(id.and_then(|id| pack_layer(engine, id)));
+    let seeds = configured_seeds(engine);
+    if !seeds.is_empty()
+        && let Ok(layer) = og_ui_next::pack::Layer::parse(&seeds)
+    {
+        layers.push(layer);
+    }
+    layers
+}
+
+/// og.ui.configure's seeds as a pack layer (`{ "seeds": { … } }`, each
+/// seed `#rrggbb`); empty when it gave none.
+pub(crate) fn configured_seeds(engine: u32) -> String {
+    let Ok(eng) = crate::engine::engine(engine) else {
+        return String::new();
+    };
+    let st = eng.state.borrow();
+    let Some(Value::Object(given)) = st.ui_desc.get("seeds") else {
+        return String::new();
+    };
+    let channel = |c: &Value, k: &str| {
+        crate::bind::modules::srgb8(c.get(k).and_then(Value::as_f64).unwrap_or(0.0) as f32)
+    };
+    let seeds: Map<String, Value> = given
+        .iter()
+        .filter(|(name, c)| og_ui_next::pack::SEEDS.contains(&name.as_str()) && c.is_object())
+        .map(|(name, c)| {
+            let rgb = [channel(c, "r"), channel(c, "g"), channel(c, "b")];
+            (
+                name.clone(),
+                json!(og_core::color::hex_string([rgb[0], rgb[1], rgb[2], 255])),
+            )
+        })
+        .collect();
+    if seeds.is_empty() {
+        return String::new();
+    }
+    json!({ "seeds": seeds }).to_string()
+}
+
 /// Where a UI box falls among what classes read of it: how many of the
 /// theme's widths it reaches, and whether it is under 500 px tall and
 /// wider than tall. A box that stays in one resolves every class alike
@@ -414,7 +497,14 @@ type SizeClass = (u8, bool, bool);
 /// What a class resolver was made for: the pack, the dark scheme, high
 /// contrast, the size class, and the window when a class it resolved
 /// reads the window's exact size.
-type Resolved = (Option<String>, bool, bool, SizeClass, Option<[f32; 2]>);
+type Resolved = (
+    Option<String>,
+    String,
+    bool,
+    bool,
+    SizeClass,
+    Option<[f32; 2]>,
+);
 
 fn size_class(widths: &[f32], [w, h]: [f32; 2]) -> SizeClass {
     (
@@ -425,8 +515,9 @@ fn size_class(widths: &[f32], [w, h]: [f32; 2]) -> SizeClass {
 }
 
 /// The op nodes' class resolver: the default pack with style `pack`'s
-/// over it, its theme in the scheme, for a UI box of `window` CSS px; and
-/// the widths that theme breaks at.
+/// and the configured seeds over it ([`layers`]), its theme in the
+/// scheme, for a UI box of `window` CSS px; and the widths that theme
+/// breaks at.
 fn resolver(
     engine: u32,
     pack: Option<&str>,
@@ -436,10 +527,8 @@ fn resolver(
     slots: &BTreeMap<String, u32>,
     sized: Rc<std::cell::Cell<bool>>,
 ) -> (Resolve, Vec<f32>) {
-    let mut layers = vec![og_ui_next::pack::Layer::default_pack()];
-    layers.extend(pack.and_then(|id| pack_layer(engine, id)));
     let scheme = if dark { Scheme::Dark } else { Scheme::Light };
-    let pack = Pack::new(&layers);
+    let pack = Pack::new(&layers(engine, pack));
     // Tailwind's breakpoints (1rem = 16 px), the size classes' 600 and a
     // pack's own.
     let mut widths = vec![600.0, 640.0, 768.0, 1024.0, 1280.0, 1536.0];
@@ -503,8 +592,9 @@ impl Next {
         let high = v.high_contrast;
         let at = size_class(&self.widths, window);
         let exact = self.sized.get().then_some(window);
-        if self.resolved.as_ref().is_some_and(|(p, d, h, c, w)| {
-            *p == self.pack && *d == dark && *h == high && *c == at && *w == exact
+        let seeds = configured_seeds(engine);
+        if self.resolved.as_ref().is_some_and(|(p, s, d, h, c, w)| {
+            *p == self.pack && *s == seeds && *d == dark && *h == high && *c == at && *w == exact
         }) {
             return;
         }
@@ -522,6 +612,7 @@ impl Next {
         self.sized = sized;
         self.resolved = Some((
             self.pack.clone(),
+            seeds,
             dark,
             high,
             size_class(&widths, window),
