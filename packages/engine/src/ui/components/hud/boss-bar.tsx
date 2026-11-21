@@ -1,0 +1,187 @@
+import { For, Icon, Image, Show, Text, View, formatNumber, t } from "@origingame/engine/ui";
+import { Spinner } from "../base/spinner";
+import "./boss-bar.en.ogt";
+
+export interface BossBarPhase {
+  id: string;
+  label?: string;
+  complete?: boolean;
+}
+
+export interface BossBarWeakness {
+  id: string;
+  /** For a reader. */
+  name?: string;
+  /** A texture (og.load.texture); 0 draws the glyph in its place. */
+  icon?: number;
+  /** An icon name, in art's place. */
+  glyph?: string;
+}
+
+export interface BossBarProps {
+  /** The boss name; empty uses Boss. */
+  name?: string;
+  /** The boss's title as the game words it (Warden of the Ninefold Gate), beside the name; empty hides it. */
+  epithet?: string;
+  /** Health, clamped to the supplied range for display; its share of max stands in figures at the bar's end. */
+  value?: number;
+  /** Full health; a nonpositive capacity shows no health instead of dividing by zero. */
+  max?: number;
+  /** Health before the latest loss: a warm ghost behind the fill that drains after it (at or under value: none). */
+  ghost?: number;
+  /** Keyed phases in the fight's order; the game owns phase progression. A diamond on the bar marks each boundary between phases (the first phase is the bar's right end), dimmed once health has passed it. */
+  phases?: ReadonlyArray<BossBarPhase>;
+  /** The current phase's stable id; read out with the health. */
+  phase?: string;
+  /** The stagger gauge's fill, 0 to 1 (the boss breaks at 1); negative hides the gauge. */
+  stagger?: number;
+  /** Cells the stagger gauge is cut into (10). */
+  staggerCells?: number;
+  /** The elements the boss is weak to, keyed rows. */
+  weaknesses?: ReadonlyArray<BossBarWeakness>;
+  /** Health remains visible, greyed, and a worded invulnerability state is shown. */
+  invulnerable?: boolean;
+  /** The game has confirmed defeat; this does not follow automatically from zero health. */
+  defeated?: boolean;
+  /** Waiting for boss data; hides stale health and phases. */
+  loading?: boolean;
+}
+
+/**
+ * A boss's bar across the top of the screen: a Boss tag, the name and its
+ * epithet; a long health bar with a warm ghost behind the fill and a
+ * diamond at each phase boundary; under it the stagger gauge cut into
+ * cells, the elements the boss is weak to and its health's share. The
+ * game owns every value; read only. The style's lean (skewX), the gauge's
+ * cut mask (notch marks stand in) and the weakness tiles' cut corners
+ * (rounded ones stand in) have no TSX surface; the invulnerable fill is
+ * greyed in kind (a grey fill, since the greying filter is dropped).
+ */
+export function BossBar(props: BossBarProps) {
+  const max = () => props.max ?? 1;
+  const share = () => (max() <= 0 || (props.value ?? 0) <= 0 ? 0 : (props.value ?? 0) >= max() ? 1 : (props.value ?? 0) / max());
+  const ghost = () => {
+    const g = props.ghost ?? 0;
+    return max() <= 0 || g <= (props.value ?? 0) ? 0 : g >= max() ? 1 : g / max();
+  };
+  const shown = () => Math.min(Math.max(props.value ?? 0, 0), Math.max(max(), 0));
+  const critical = () => !(props.loading ?? false) && !(props.defeated ?? false) && max() > 0 && (props.value ?? 0) / max() <= 0.25;
+  const invulnerable = () => (props.invulnerable ?? false) && !(props.defeated ?? false);
+  const staggerCells = () => (props.staggerCells ?? 10) > 0 ? (props.staggerCells ?? 1) : 1;
+  return (
+    <View
+      class={`flex-col items-center w-full max-w-[42.857rem] gap-y-[0.429rem] text-fg compact:gap-y-[0.286rem]`}
+      role="region"
+      label={(props.name ?? "") !== "" ? props.name : t("hud.boss-bar.name")}
+      busy={props.loading}
+    >
+      <View class={`flex-row items-baseline justify-center w-full min-w-0 gap-x-[0.714rem]`}>
+        <View class={`flex-row items-center shrink-0 gap-x-[0.357rem]`}>
+          <View class={`shrink-0 size-[0.429rem] rotate-45 bg-[#ff4d5e]`} />
+          <Text class={`text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap text-[#ff4d5e] text-shadow-2xs`}>{t("hud.boss-bar.tag")}</Text>
+        </View>
+        <Text class={`shrink min-w-0 text-[1.571rem] leading-[1.1] font-bold tracking-[0.14em] uppercase whitespace-nowrap truncate text-fg text-shadow-2xs compact:text-[1.071rem]`}>
+          {(props.name ?? "") !== "" ? props.name : t("hud.boss-bar.name")}
+        </Text>
+        <Show when={(props.epithet ?? "") !== ""}>
+          <Text class={`shrink min-w-0 text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap truncate text-white/78 text-shadow-2xs compact:hidden`}>
+            {props.epithet}
+          </Text>
+        </Show>
+      </View>
+      <Show when={props.loading} fallback={
+        <>
+          <View
+            class={`group/health relative w-full h-[1rem] overflow-hidden bg-tile shadow-[0px_0px_0px_1px_#ffffff38,inset_0px_1px_0px_0px_#ffffff24,0px_0.143rem_0.286rem_#00000073] data-critical:shadow-[0px_0px_0px_1px_#ff9599,0px_0px_0.857rem_#ff9599b3] data-critical:animate-pulse compact:h-[0.643rem]`}
+            role="meter"
+            label={t("hud.boss-bar.health")}
+            valueMin={0}
+            valueMax={max() > 0 ? max() : 1}
+            valueNow={shown()}
+            valueText={t("hud.boss-bar.value", { value: shown(), max: max() > 0 ? max() : 0 })}
+            data-inv={invulnerable()}
+            data-critical={critical()}
+          >
+            <View class="absolute left-0 top-0 h-full bg-linear-to-r from-gold/15 to-gold/85 transition-layout duration-[350ms] delay-[450ms] ease-out" style={{ width: `${ghost() * 100}%` }} />
+            <View
+              class={`absolute left-0 top-0 h-full bg-linear-to-r from-[#ff6e28] to-[#ff9a48] shadow-[0.143rem_0px_0.857rem_#ff8a3dcc] transition-layout duration-[350ms] ease-out group-data-inv/health:bg-none group-data-inv/health:bg-[#7e879a] group-data-inv/health:shadow-none`}
+              style={{ width: `${share() * 100}%` }}
+            >
+              <View class="absolute inset-0 bg-linear-to-b from-white/50 to-transparent to-42% group-data-inv/health:hidden" />
+            </View>
+            <For each={(props.phases ?? []).slice(1)} key={(p) => p.id}>
+              {(p, i) => (
+                <View
+                  class={`absolute size-[0.643rem] rotate-45 bg-white shadow-[0px_0px_0px_0.143rem_#1a1e28d9] compact:size-[0.5rem] data-passed:opacity-50`}
+                  data-passed={max() > 0 && (props.value ?? 0) / max() <= ((props.phases ?? []).length - (i() + 1)) / (props.phases ?? []).length}
+                  style={{ left: `calc(${(((props.phases ?? []).length - (i() + 1)) / (props.phases ?? []).length) * 100}% - 0.321rem)`, top: "calc(50% - 0.321rem)" }}
+                />
+              )}
+            </For>
+          </View>
+          <View class={`flex-row items-center justify-between w-full min-w-0 gap-x-3`}>
+            <Show when={(props.stagger ?? -1) >= 0}>
+              <View class={`shrink min-w-0 flex-row items-center gap-x-[0.286rem]`}>
+                <Text class={`shrink-0 text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap text-white/78 text-shadow-2xs`}>{t("hud.boss-bar.stagger")}</Text>
+                <View
+                  class={`relative w-[12.143rem] min-w-[2.857rem] h-[0.571rem] overflow-hidden bg-tile shadow-[0px_0px_0px_1px_#ffffff38,inset_0px_1px_0px_0px_#ffffff24,0px_0.143rem_0.286rem_#00000073] compact:h-[0.357rem]`}
+                  role="meter"
+                  label={t("hud.boss-bar.stagger")}
+                  valueMin={0}
+                  valueMax={100}
+                  valueNow={(props.stagger ?? 0) >= 1 ? 100 : (props.stagger ?? 0) * 100}
+                >
+                  <View class="absolute left-0 top-0 h-full bg-linear-to-b from-white/50 to-transparent to-42% bg-gold shadow-[0.143rem_0px_0.714rem_#ffcf5ab3]" style={{ width: `${Math.min(Math.max(props.stagger ?? 0, 0), 1) * 100}%` }} />
+                  <For each={Array.from({ length: Math.max(staggerCells() - 1, 0) }, (_, n) => n)}>
+                    {(n) => <View class="absolute top-0 bottom-0 w-[0.214rem] bg-[#151820eb] -translate-x-full" style={{ left: `${((n() + 1) / staggerCells()) * 100}%` }} />}
+                  </For>
+                </View>
+              </View>
+            </Show>
+            <View class={`flex-row items-center ml-auto min-w-0 gap-x-[0.286rem]`}>
+              <Show when={(props.defeated ?? false) || invulnerable()}>
+                <Text class={`shrink-0 text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap text-white/78 text-shadow-2xs data-defeated:text-[#55e39a]`} role="status" data-defeated={props.defeated}>
+                  {(props.defeated ?? false) ? t("hud.boss-bar.defeated") : t("hud.boss-bar.invulnerable")}
+                </Text>
+              </Show>
+              <For each={props.weaknesses ?? []} key={(w) => w.id}>
+                {(w) => (
+                  <View class={`relative shrink-0 size-[1.571rem] rounded-tl-[0.286rem] bg-[#ff4d5e] compact:size-[1.143rem]`} role="image" label={t("hud.boss-bar.weak", { name: w().name ?? "" })}>
+                    <Show when={w().icon} fallback={
+                      <View class="absolute inset-[0.143rem] rounded-tl-[0.286rem] flex-row items-center justify-center bg-[#2a2d38]">
+                        <Show when={w().glyph}>
+                          <Icon class="size-[64%] text-fg" name={w().glyph} />
+                        </Show>
+                      </View>
+                    }>
+                      <Image class="absolute inset-[0.143rem] rounded-tl-[0.286rem]" src={String(w().icon)} />
+                    </Show>
+                  </View>
+                )}
+              </For>
+              <Text class={`shrink-0 text-[1.143rem] leading-none font-bold tabular-nums whitespace-nowrap text-fg text-shadow-2xs compact:text-[0.929rem]`}>
+                {`${formatNumber(share() * 100, { decimals: 0 })}%`}
+              </Text>
+            </View>
+          </View>
+        </>
+      }>
+        <View class={`flex-row items-center gap-x-[0.286rem]`}>
+          <Spinner size={18} name={t("hud.boss-bar.loading")} />
+          <Text class={`text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap text-white/78 text-shadow-2xs`} role="status">
+            {t("hud.boss-bar.loading")}
+          </Text>
+        </View>
+      </Show>
+    </View>
+  );
+}
+
+export const fixtures: Record<string, Partial<BossBarProps>> = {
+  default: {"name":"Ashen Colossus","epithet":"Warden of the Ninefold Gate","value":5800,"max":10000,"ghost":7100,"phases":[{"id":"shell","label":"Shell","complete":true},{"id":"storm","label":"Storm","complete":false},{"id":"core","label":"Core","complete":false}],"phase":"storm","stagger":0.7,"staggerCells":10,"weaknesses":[{"id":"fire","name":"Fire","icon":0,"glyph":"fire"},{"id":"frost","name":"Frost","icon":0,"glyph":"drop"}],"invulnerable":false,"defeated":false,"loading":false},
+  critical: {"name":"Ashen Colossus","epithet":"","value":900,"max":10000,"ghost":1600,"phases":[],"phase":"","stagger":0,"staggerCells":10,"weaknesses":[],"invulnerable":false,"defeated":false,"loading":false},
+  invulnerable: {"name":"The Glass Warden","value":4000,"max":10000,"invulnerable":true,"defeated":false,"loading":false},
+  defeated: {"name":"The Glass Warden","value":0,"max":10000,"defeated":true,"invulnerable":false,"loading":false},
+  loading: {"name":"Unknown presence","loading":true,"defeated":false,"invulnerable":false},
+  overflow: {"name":"The Warden of the Far Northern Observatory and the Drowned Abbey","epithet":"Keeper of the Seventh Bell beneath the Mere, Last of the Tidebound Choir","value":1,"max":10,"ghost":9,"phases":[{"id":"a","label":"A","complete":true},{"id":"b","label":"B","complete":true},{"id":"c","label":"C","complete":true},{"id":"last","label":"The final defence of the observatory","complete":false}],"phase":"last","stagger":1,"staggerCells":40,"weaknesses":[{"id":"a","name":"A","icon":0,"glyph":"fire"},{"id":"b","name":"B","icon":0,"glyph":"drop"},{"id":"c","name":"C","icon":0,"glyph":"bolt"},{"id":"d","name":"D","icon":0,"glyph":"star"},{"id":"e","name":"E","icon":0,"glyph":"skull"}],"invulnerable":false,"defeated":false,"loading":false},
+};
