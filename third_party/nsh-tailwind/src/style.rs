@@ -1876,6 +1876,7 @@ style_keys! {
     BorderBottomWidth = "borderBottomWidth": View "number",
     BorderLeftWidth = "borderLeftWidth": View "number",
     ZIndex = "zIndex": Layout "number" "Order among siblings (stable); also the native stacking order.",
+    Order = "order": Layout "number" "CSS's `order`: a flex or grid item's place among its siblings for layout (stable: equal values keep document order), not for focus or reading order. Default 0.",
     BoxShadow = "boxShadow": View "string | BoxShadowLayer[]" "CSS `box-shadow`: offsets, blur, spread and color, several separated by commas, `inset` for inner shadows; or its layers (`[{ x: 0, y: 6, blur: 18, color: \"#0000004d\" }]`), which take numbers, not strings. A layer without a color is the text color (CSS's `currentColor`).",
     BackgroundImage = "backgroundImage": View "string" "CSS gradients drawn over the background color: `linear-gradient(...)`, `radial-gradient(...)`, `conic-gradient(...)`, several separated by commas.",
     Filter = "filter": View "string" "CSS filters of the view and its content: `brightness()`, `contrast()`, `grayscale()`, `hue-rotate()`, `invert()`, `saturate()`, `sepia()`, `opacity()`, `blur()`, `drop-shadow()`.",
@@ -1955,7 +1956,9 @@ style_keys! {
     Transform = "transform": View "string | TransformStep[]" "CSS's `transform`: `\"translateX(10px) rotate(45deg) scale(1.5)\"` (`translate()`, `scale()`, `rotate()` on any axis, `skew()` and `perspective()` functions), or `\"none\"`; or a list of steps whose amounts may be animated values (`[{ perspective: 800 }, { rotateY: angle }]`, a motion's `transform`). Applies after `translate`, `rotate` and `scale`, as in CSS.",
     TransformOrigin = "transformOrigin": View "string | (number | string)[]" "The point `transform` acts around: keywords, percentages and lengths (\"top left\", \"50% 0\", `[10, 20]`). Default the center.",
     Opacity = "opacity": View "number | AnimatedNode",
-    Overflow = "overflow": View "\"visible\" | \"hidden\"",
+    Overflow = "overflow": View "string" "CSS's `overflow`: `\"visible\"`, `\"clip\"`, `\"hidden\"`, `\"auto\"` or `\"scroll\"`, or one for x then one for y (`\"hidden auto\"`). `auto` and `scroll` make a scroll container.",
+    OverflowX = "overflowX": View "\"visible\" | \"clip\" | \"hidden\" | \"auto\" | \"scroll\"" "CSS's `overflow-x`.",
+    OverflowY = "overflowY": View "\"visible\" | \"clip\" | \"hidden\" | \"auto\" | \"scroll\"" "CSS's `overflow-y`.",
     Color = "color": Text "ColorValue | AnimatedNode",
     FontSize = "fontSize": Text "number | `${number}em` | `${number}%`" "Points, or relative to the inherited font size as CSS's `em` and percentages (`\"0.875em\"`, `\"87.5%\"`), so a span scales with its paragraph.",
     FontWeight = "fontWeight": Text "\"normal\" | \"bold\" | number | `${number}`" "`\"normal\"` (400), `\"bold\"` (700) or 100–900.",
@@ -2047,6 +2050,8 @@ pub enum PropertyValue {
     Display(Display),
     /// `boxSizing`.
     BoxSizing(taffy::BoxSizing),
+    /// `overflow` (x, y), `overflowX` and `overflowY` (the one axis).
+    Overflow(taffy::Overflow, taffy::Overflow),
     /// `position`: Taffy's, then whether it is `fixed` and `sticky`.
     Position(Position, bool, bool),
     /// `flexDirection`.
@@ -2488,6 +2493,7 @@ impl StyleKey {
                 K::MarginLeft,
             ],
             K::MarginHorizontal => &[K::MarginLeft, K::MarginRight],
+            K::Overflow => &[K::OverflowX, K::OverflowY],
             K::MarginVertical => &[K::MarginTop, K::MarginBottom],
             K::Padding => &[
                 K::PaddingHorizontal,
@@ -3152,7 +3158,7 @@ impl StyleKey {
                 };
                 PropertyValue::Flex(of(grow), of(shrink), basis)
             }
-            K::FlexGrow | K::FlexShrink | K::ZIndex => {
+            K::FlexGrow | K::FlexShrink | K::ZIndex | K::Order => {
                 PropertyValue::Number(of(number(value, 0.0)?))
             }
             K::Opacity => PropertyValue::Number(of(number(value, 1.0)?.clamp(0.0, 1.0))),
@@ -3264,7 +3270,28 @@ impl StyleKey {
                 Some("continuous") => true,
                 Some(_) => return Err(StyleError::InvalidValue),
             }),
-            K::BackfaceVisibility | K::Overflow => PropertyValue::Bool(match keyword(value)? {
+            K::Overflow | K::OverflowX | K::OverflowY => {
+                let axis = |w: &str| match w {
+                    "visible" => Some(taffy::Overflow::Visible),
+                    "clip" => Some(taffy::Overflow::Clip),
+                    "hidden" => Some(taffy::Overflow::Hidden),
+                    "auto" | "scroll" => Some(taffy::Overflow::Scroll),
+                    _ => None,
+                };
+                let s = keyword(value)?.unwrap_or("visible");
+                let mut words = s.split_ascii_whitespace();
+                let x = words.next().and_then(axis).ok_or(StyleError::InvalidValue)?;
+                let y = match words.next() {
+                    Some(w) if self == K::Overflow => axis(w).ok_or(StyleError::InvalidValue)?,
+                    Some(_) => return Err(StyleError::InvalidValue),
+                    None => x,
+                };
+                if words.next().is_some() {
+                    return Err(StyleError::InvalidValue);
+                }
+                PropertyValue::Overflow(x, y)
+            }
+            K::BackfaceVisibility => PropertyValue::Bool(match keyword(value)? {
                 None | Some("visible") => false,
                 Some("hidden") => true,
                 Some(_) => return Err(StyleError::InvalidValue),
@@ -3980,6 +4007,7 @@ impl Style {
             (K::BorderBottomWidth, V::Points(w)) => self.set_border_width(&[2], *w),
             (K::BorderLeftWidth, V::Points(w)) => self.set_border_width(&[3], *w),
             (K::ZIndex, V::Number(n)) => self.z_index = n.0 as i32,
+            (K::Order, V::Number(n)) => self.layout.order = n.0 as i32,
             (K::VerticalAlign, V::VerticalAlign(v)) => self.vertical_align = *v,
             (K::Direction, V::OptBool(v)) => self.direction = *v,
             (K::MarginStart, V::OptLpa(v)) => self.logical.margin[0] = *v,
@@ -4059,7 +4087,17 @@ impl Style {
             }
             (K::TransformOrigin, V::TransformOrigin(v)) => self.view.transform_origin = *v,
             (K::Opacity, V::Number(n)) => self.view.opacity = n.0.clamp(0.0, 1.0),
-            (K::Overflow, V::Bool(v)) => self.view.overflow_hidden = *v,
+            (K::Overflow | K::OverflowX | K::OverflowY, V::Overflow(x, y)) => {
+                let o = &mut self.layout.overflow;
+                if key != K::OverflowY {
+                    o.x = *x;
+                }
+                if key != K::OverflowX {
+                    o.y = *y;
+                }
+                self.view.overflow_hidden =
+                    o.x != taffy::Overflow::Visible || o.y != taffy::Overflow::Visible;
+            }
 
             // Text
             (K::Color, V::Color(c)) => self.text.color = *c,

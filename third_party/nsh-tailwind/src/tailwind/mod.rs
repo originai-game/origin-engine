@@ -23,6 +23,7 @@
 //! `nsh:tailwind-theme` and pushed as a root prop at startup.
 
 pub(crate) mod palette;
+mod math;
 mod theme;
 mod utilities;
 
@@ -151,6 +152,10 @@ pub mod deps {
     /// The pointer's precision and the terminal (`pointer-fine:`,
     /// `pointer-coarse:`, `terminal:`).
     pub const DEVICE: u16 = 4096;
+    /// The window's exact width or height (`w-screen`, `h-[16vh]`,
+    /// `size-[max(4rem,16vh)]`), not only a breakpoint: a resize resolves
+    /// it again.
+    pub const SIZE: u16 = 8192;
 }
 
 /// CSS's `ch` where no font is known ([`ClassList::apply`]): half a `rem`,
@@ -855,6 +860,7 @@ impl ClassList {
             parts.touched = 0;
             parts.transform_parts = 0;
             parts.screen.clear();
+            parts.math.clear();
             for rule in self
                 .rules
                 .iter()

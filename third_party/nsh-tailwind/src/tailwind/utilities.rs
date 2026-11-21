@@ -162,6 +162,8 @@ pub(crate) enum Decl {
     /// A length relative to the window (`w-screen`): `(key, fraction of
     /// width, fraction of height)`.
     Screen(StyleKey, f32, f32),
+    /// A length of CSS math that reads the window (`size-[max(4rem,16vh)]`).
+    Math(StyleKey, Arc<super::math::Calc>),
     /// One value in light appearance, another in dark (a theme color of a
     /// Rust component): one declaration, so a later plain one still wins.
     Adaptive(StyleKey, [PropertyValue; 2]),
@@ -249,6 +251,10 @@ impl Decl {
                 parts.screen.push((*key, *fw, *fh));
                 parts.touched |= touched::SCREEN;
             }
+            Decl::Math(key, calc) => {
+                parts.math.push((*key, calc.clone()));
+                parts.touched |= touched::SCREEN;
+            }
             Decl::Ch(key, n) => {
                 let _ = style.set_key(*key, StyleValue::Number(n * parts.ch));
             }
@@ -326,8 +332,13 @@ impl Decl {
     pub(crate) fn deps(&self) -> u16 {
         match self {
             Decl::Screen(_, w, h) => {
-                (if *w != 0.0 { deps::WIDTH } else { 0 })
+                deps::SIZE
+                    | (if *w != 0.0 { deps::WIDTH } else { 0 })
                     | (if *h != 0.0 { deps::HEIGHT } else { 0 })
+            }
+            Decl::Math(_, calc) => {
+                let (w, h) = calc.reads();
+                deps::SIZE | (if w { deps::WIDTH } else { 0 }) | (if h { deps::HEIGHT } else { 0 })
             }
             Decl::Adaptive(..) | Decl::AdaptivePart(_) => deps::DARK,
             Decl::CurrentColor(_)
@@ -428,6 +439,8 @@ pub(crate) struct Parts {
     text_shadow_alpha: Option<f32>,
     /// `w-screen` and friends, resolved against the window.
     pub(crate) screen: Vec<(StyleKey, f32, f32)>,
+    /// Lengths of CSS math that read the window.
+    pub(crate) math: Vec<(StyleKey, Arc<super::math::Calc>)>,
     /// CSS's `currentColor`: the ring's color when no class sets one.
     pub(crate) current: Color,
     /// The advance of the node font's `0`.
@@ -594,6 +607,10 @@ impl Parts {
                 key,
                 crate::style::StyleValue::Number(fw * window.width.0 + fh * window.height.0),
             );
+        }
+        for (key, calc) in self.math.iter().filter(|_| has(touched::SCREEN)) {
+            let v = calc.eval(window.width.0, window.height.0);
+            let _ = style.set_key(*key, crate::style::StyleValue::Number(v));
         }
         if self.transform_set && has(touched::TRANSFORM) {
             // CSS: `translate`, `rotate`, `scale`, then `transform`
@@ -1411,6 +1428,7 @@ static NEGATIVE: &[&str] = &[
     "start",
     "end",
     "z",
+    "order",
     "col-start",
     "col-end",
     "row-start",
@@ -1473,10 +1491,22 @@ fn keyword(u: &str) -> Option<Vec<Decl>> {
         "sticky" => sets(K::Position, "sticky"),
         "visible" => sets(K::Visibility, "visible"),
         "invisible" | "collapse" => sets(K::Visibility, "hidden"),
-        "overflow-hidden" | "overflow-clip" | "overflow-x-hidden" | "overflow-y-hidden" => {
-            sets(K::Overflow, "hidden")
-        }
+        // CSS's overflow: `auto` and `scroll` make a scroll container.
         "overflow-visible" => sets(K::Overflow, "visible"),
+        "overflow-clip" => sets(K::Overflow, "clip"),
+        "overflow-hidden" => sets(K::Overflow, "hidden"),
+        "overflow-auto" => sets(K::Overflow, "auto"),
+        "overflow-scroll" => sets(K::Overflow, "scroll"),
+        "overflow-x-visible" => sets(K::OverflowX, "visible"),
+        "overflow-x-clip" => sets(K::OverflowX, "clip"),
+        "overflow-x-hidden" => sets(K::OverflowX, "hidden"),
+        "overflow-x-auto" => sets(K::OverflowX, "auto"),
+        "overflow-x-scroll" => sets(K::OverflowX, "scroll"),
+        "overflow-y-visible" => sets(K::OverflowY, "visible"),
+        "overflow-y-clip" => sets(K::OverflowY, "clip"),
+        "overflow-y-hidden" => sets(K::OverflowY, "hidden"),
+        "overflow-y-auto" => sets(K::OverflowY, "auto"),
+        "overflow-y-scroll" => sets(K::OverflowY, "scroll"),
         // Corner shapes: the names of `corner-shape`'s keywords.
         "corner-squircle" => sets(K::BorderCurve, "continuous"),
         "corner-round" => sets(K::BorderCurve, "circular"),
@@ -2064,6 +2094,20 @@ static PREFIXES: &[(&str, Handler)] = &[
             },
         };
         one(setn(K::ZIndex, if n { -z } else { z }))
+    }),
+    ("order", |_, v, n| {
+        // CSS's `order`: integers, `first` and `last` (Tailwind's
+        // ±9999), `none` (0); bare positive ones, any arbitrary one.
+        let o = match v {
+            "first" if !n => -9999.0,
+            "last" if !n => 9999.0,
+            "none" if !n => 0.0,
+            v => match arbitrary(v) {
+                Some(a) => unhinted(&a).trim().parse::<i32>().ok()? as f32,
+                None => int(v)?,
+            },
+        };
+        one(setn(K::Order, if n { -o } else { o }))
     }),
     // Sizing.
     ("min-w", |t, v, _| size(t, v, K::MinWidth, true)),
@@ -2927,6 +2971,14 @@ fn size(theme: &Theme, v: &str, key: StyleKey, width: bool) -> Option<Vec<Decl>>
         if v == "prose" && key == K::MaxWidth {
             return one(Decl::Ch(key, 65.0));
         }
+    }
+    // CSS math and the viewport units (`w-[calc(2rem+4px)]`, `h-[16vh]`):
+    // a length now, or one the window resolves.
+    if let Some(calc) = arbitrary(v).and_then(|a| super::math::parse(&a, theme.rem)) {
+        return one(match calc.constant() {
+            Some(n) => setn(key, n),
+            None => Decl::Math(key, Arc::new(calc)),
+        });
     }
     let auto = matches!(key, K::Width | K::Height | K::MinWidth | K::MinHeight);
     one(set(key, length_value(theme, v, false, auto)?))
