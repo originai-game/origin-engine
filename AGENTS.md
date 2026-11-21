@@ -109,10 +109,12 @@ status `docs/roadmap.md`. Platform contracts implemented here:
   tests `tests/support/og-bin.ts`.
 - **A test is kept only when it fails on a plausible regression.** A missing
   GPU makes a test skipped or unchecked, never passed.
-- **One GPU host.** References are recorded on the L4 (Vulkan, `gcp-l4`
-  orb; `docs/ci.md` §The GPU host, §Reference frames). Metal, DX12 and WebGPU
-  are compatibility checks against that set; Metal keeps no set of its own
-  (a `references/metal/` frame exists only until the L4 records it).
+- **One GPU host: Colab.** GPU results and references come from a Colab
+  NVIDIA GPU (L4 by default, Vulkan) through the workspace plugin
+  `colab-gpu` (`docs/ci.md` §The GPU host, §Reference frames); the `gcp-l4`
+  orb is retired. Metal, DX12 and WebGPU are compatibility checks against
+  that set; Metal keeps no set of its own (a `references/metal/` frame
+  exists only until Colab records it).
   macrunner and studio-win are development and packing hosts
   (`docs/release.md` §3); their failures are never a landing gate, and
   Windows-only gate failures are not worth a stream's time.
@@ -151,10 +153,9 @@ status `docs/roadmap.md`. Platform contracts implemented here:
   also runs `scripts/check.sh full --only fixtures` and `--only bun-test`
   (which builds only the development wasm). A head whose tree passed
   `full --all` lands without land.sh's opening quick.
-  A head that changes rendering or a look goes to the L4 integrator, which
-  looks at its frames for quality (a new feature's look needs the owner's
-  approval), fixes any failure at the root itself, and lands it. Every
-  other head is landed by its own thread.
+  A head that changes rendering or a look has its frames captured on Colab
+  and looked at for quality before it lands (a new feature's look needs
+  the owner's approval). Every other head is landed by its own thread.
 - A file move is its own verbatim commit, reviewed with
   `git diff --color-moved`.
 - Every change a game sees is one fragment in `changelog/unreleased/` in the

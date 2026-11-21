@@ -120,15 +120,17 @@ driver (`OG_GFX_BACKEND=vulkan` for Vulkan), never WARP.
 
 ## The GPU host
 
-The GPU host is an NVIDIA L4 (proprietary Vulkan driver) behind the
-personal orb provider `gcp-l4`: one GCP VM running one exclusive orb at a
-time, directly on the VM. Pin
-`VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/nvidia_icd.json` so llvmpipe is
-never picked. The owner starts and stops the VM; a stopped orb keeps its
-disk, not its processes. One thread, the GPU integrator, holds that orb
-and runs the GPU steps for the heads queued to it, in order (AGENTS.md
-§Streams and landing). The compatibility hosts are listed in AGENTS.md
-§Building and testing.
+The GPU host is a Colab NVIDIA GPU (L4 by default, A100 on request,
+proprietary Vulkan driver), reached through the workspace plugin
+`colab-gpu` (`colab_gpu_start`, `colab_gpu_sync`, `colab_gpu_run`,
+`colab_gpu_jobs`, `colab_gpu_download`; skill `colab-gpu:gpu-check`). Its
+results are authoritative, references included. It runs `og` with
+`OG_GFX_BACKEND=vulkan` and the ICD
+`/usr/share/vulkan/icd.d/nvidia_icd.json`, so llvmpipe is never picked. It
+runs GPU measurements and captures, not `.agents/setup` or the full gate,
+and stops itself after 30 idle minutes. The former `gcp-l4` orb is retired;
+the sections below that name it describe the same steps, now run on Colab.
+The compatibility hosts are listed in AGENTS.md §Building and testing.
 
 ### L4 milestone runner
 
