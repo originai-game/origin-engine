@@ -12,7 +12,7 @@ use crate::look::Look;
 use crate::queue::{self, Op, Reads, Target};
 use crate::style::{Record, Rgba, Text};
 use og_draw::paint::{Paint, PaintKind, PaintQuad};
-use og_ui::bind::{Env, Expr, Scope, Screen};
+use og_reactive::bind::{Env, Expr, Scope, Screen};
 use og_ui::doc::{Lit, NodeKind, PropValue, UiDocument, schema::Kind};
 use og_ui::{IconAtlas, IconCell};
 use rustc_hash::FxHashMap;
@@ -238,20 +238,20 @@ struct Fixed<'a> {
     more: &'a [u32],
 }
 
-impl og_ui::bind::Env for Fixed<'_> {
+impl og_reactive::bind::Env for Fixed<'_> {
     fn screen(&self, class: Screen) -> bool {
         self.surface.screen(class)
     }
     fn language(&self) -> &str {
         &self.surface.language
     }
-    fn interaction_at(&self, node: usize, state: og_ui::bind::InteractionState) -> bool {
-        state == og_ui::bind::InteractionState::More && self.more.contains(&(node as u32))
+    fn interaction_at(&self, node: usize, state: og_reactive::bind::InteractionState) -> bool {
+        state == og_reactive::bind::InteractionState::More && self.more.contains(&(node as u32))
     }
 }
 
 fn eval_static(e: &Expr, env: &Fixed) -> bool {
-    og_ui::bind::truthy(&e.eval(&Scope {
+    og_reactive::bind::truthy(&e.eval(&Scope {
         vm: &Value::Null,
         locals: Vec::new(),
         env,
@@ -263,7 +263,7 @@ fn more_of(e: &Expr, out: &mut Vec<u32>) {
     match e {
         Expr::InteractionAt {
             node,
-            state: og_ui::bind::InteractionState::More,
+            state: og_reactive::bind::InteractionState::More,
         } => out.push(*node as u32),
         Expr::Not(a) | Expr::Neg(a) => more_of(a, out),
         Expr::Bin(_, a, b) => {

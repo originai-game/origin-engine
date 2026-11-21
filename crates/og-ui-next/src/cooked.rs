@@ -8,7 +8,7 @@
 use crate::doc::{DocStyle, NodeStyle, Span};
 use crate::style::Step;
 use bytemuck::Pod;
-use og_ui::bind::{AttrOp, AttrTest, Expr, InteractionState as I, Op, Screen};
+use og_reactive::bind::{AttrOp, AttrTest, Expr, InteractionState as I, Op, Screen};
 use std::rc::Rc;
 
 /// The format's version, part of every key: a reader never takes another

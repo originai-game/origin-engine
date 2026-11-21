@@ -272,7 +272,8 @@ mod tests {
             "the frame surface over the layout field, without the other variant's rule"
         );
         assert_eq!(base.fill, [0.0; 4]);
-        let hover = og_ui::bind::Expr::Interaction(og_ui::bind::InteractionState::Hover);
+        let hover =
+            og_reactive::bind::Expr::Interaction(og_reactive::bind::InteractionState::Hover);
         let hovered = s.record(card, |c| *s.conditions[c as usize] == hover);
         assert_eq!(hovered.fill[0], 1.0, ".frame.hud:hover while hovered");
         assert_eq!(hovered.opacity, 1.0);
@@ -299,7 +300,10 @@ mod tests {
             "tone=danger picks the .danger surface"
         );
         let rtl = s.record(label, |c| {
-            matches!(*s.conditions[c as usize], og_ui::bind::Expr::Dir(_, true))
+            matches!(
+                *s.conditions[c as usize],
+                og_reactive::bind::Expr::Dir(_, true)
+            )
         });
         assert_eq!(
             taffy::Style::from(&rtl.layout).padding.top,
@@ -308,7 +312,7 @@ mod tests {
         );
         let rare = s.record(label, |c| {
             matches!(&*s.conditions[c as usize],
-                og_ui::bind::Expr::Bin(og_ui::bind::Op::Eq, _, v) if **v == og_ui::bind::Expr::Lit("rare".into()))
+                og_reactive::bind::Expr::Bin(og_reactive::bind::Op::Eq, _, v) if **v == og_reactive::bind::Expr::Lit("rare".into()))
         });
         assert_eq!(
             (label_rec.opacity, rare.opacity),
@@ -317,7 +321,7 @@ mod tests {
         );
         // 844×390: short, not narrow; the condition is the size class.
         let landscape = s.record(label, |c| match &*s.conditions[c as usize] {
-            og_ui::bind::Expr::Screen(k) => k.holds(844.0, 390.0, true),
+            og_reactive::bind::Expr::Screen(k) => k.holds(844.0, 390.0, true),
             _ => false,
         });
         assert_eq!(
@@ -336,8 +340,8 @@ mod tests {
             ),
             "the card's --slot under :size(compact) reaches the label's width"
         );
-        assert!(!og_ui::bind::Screen::Narrow.holds(844.0, 390.0, true));
-        assert!(og_ui::bind::Screen::Compact.holds(390.0, 844.0, true));
+        assert!(!og_reactive::bind::Screen::Narrow.holds(844.0, 390.0, true));
+        assert!(og_reactive::bind::Screen::Compact.holds(390.0, 844.0, true));
     }
 
     #[test]

@@ -6,7 +6,7 @@
 //! empty queue, so it allocates nothing.
 
 use nsh_reactive::{Equals, Graph, Host, Kind};
-use og_ui::bind::{Env, Expr, Scope};
+use og_reactive::bind::{Env, Expr, Scope};
 use serde_json::Value;
 use std::cell::UnsafeCell;
 use std::rc::Rc;
@@ -114,7 +114,7 @@ unsafe impl Host for Ui {
         a == b
     }
     fn truthy(self, v: &Value) -> bool {
-        og_ui::bind::truthy(v)
+        og_reactive::bind::truthy(v)
     }
     fn custom_changed(self, e: &Self::Equals, prev: Value, next: &Value) -> bool {
         !e(&prev, next)
@@ -164,13 +164,13 @@ pub fn bind(tree: u32, target: Target, expr: Rc<Expr>, reads: Reads, env: Rc<dyn
         let changed = match (&*last.borrow(), target) {
             (None, _) => true,
             (Some(prev), Target::Holds { .. } | Target::Shown { .. }) => {
-                og_ui::bind::truthy(&next) != og_ui::bind::truthy(prev)
+                og_reactive::bind::truthy(&next) != og_reactive::bind::truthy(prev)
             }
             (Some(prev), Target::Text { .. } | Target::Rebuild { .. }) => next != *prev,
         };
         let first = last.borrow().is_none();
         if changed && !(first && matches!(target, Target::Rebuild { .. })) {
-            let on = og_ui::bind::truthy(&next);
+            let on = og_reactive::bind::truthy(&next);
             data().ops.push(match target {
                 Target::Text { node } => Op::Text {
                     tree,
@@ -232,10 +232,10 @@ struct Stores<'a> {
 }
 
 impl Env for Stores<'_> {
-    fn interaction(&self, state: og_ui::bind::InteractionState) -> bool {
+    fn interaction(&self, state: og_reactive::bind::InteractionState) -> bool {
         self.env.interaction(state)
     }
-    fn interaction_at(&self, node: usize, state: og_ui::bind::InteractionState) -> bool {
+    fn interaction_at(&self, node: usize, state: og_reactive::bind::InteractionState) -> bool {
         self.env.interaction_at(node, state)
     }
     fn lookup(&self, root: &str) -> Option<Value> {
@@ -245,12 +245,12 @@ impl Env for Stores<'_> {
         let (root, rest) = path.split_once('.').unwrap_or((path, ""));
         match self.reads.iter().find(|(n, _)| &**n == root) {
             Some((_, s)) => Some(nsh_reactive::read_with(Ui, *s, |v| {
-                og_ui::bind::get_path(v, rest).map_or(Value::Null, |c| c.into_owned())
+                og_reactive::bind::get_path(v, rest).map_or(Value::Null, |c| c.into_owned())
             })),
             None => self.env.lookup_path(path),
         }
     }
-    fn screen(&self, class: og_ui::bind::Screen) -> bool {
+    fn screen(&self, class: og_reactive::bind::Screen) -> bool {
         self.env.screen(class)
     }
     fn language(&self) -> &str {
@@ -265,7 +265,7 @@ impl Env for Stores<'_> {
     fn texture(&self, handle: f64) -> Option<og_draw::TextureHandle> {
         self.env.texture(handle)
     }
-    fn media(&self, player: f64) -> Option<og_ui::bind::MediaState> {
+    fn media(&self, player: f64) -> Option<og_reactive::bind::MediaState> {
         self.env.media(player)
     }
 }
@@ -338,7 +338,7 @@ pub fn ran_away() -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use og_ui::bind::NoEnv;
+    use og_reactive::bind::NoEnv;
 
     fn path(p: &str) -> Expr {
         Expr::Path(p.into())

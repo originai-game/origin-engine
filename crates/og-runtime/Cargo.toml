@@ -25,6 +25,8 @@ zmij = "1"
 og-physics = { path = "../og-physics", default-features = false }
 og-audio = { path = "../og-audio" }
 og-ui = { path = "../og-ui", default-features = false }
+# The reactive session and its wire format, which the new core's stores use.
+og-reactive = { path = "../og-reactive" }
 # og-ui's new core: every document runs on it.
 og-ui-next = { path = "../og-ui-next" }
 og-input = { path = "../og-input" }

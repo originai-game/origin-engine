@@ -58,7 +58,7 @@ pub struct DocStyle {
     pub steps: Vec<Step>,
     /// The rules' conditions, as the document's nodes give them: the
     /// bindings evaluate them and set an element's bits.
-    pub conditions: Vec<std::rc::Rc<og_ui::bind::Expr>>,
+    pub conditions: Vec<std::rc::Rc<og_reactive::bind::Expr>>,
     pub skipped: Vec<Skip>,
 }
 
@@ -70,7 +70,7 @@ const SURFACE_NAMES: [&str; 7] = ["part", "variant", "tier", "tone", "shape", "t
 /// A custom property set under a condition, over the subtree of the
 /// element that sets it.
 struct Override {
-    condition: og_ui::bind::Expr,
+    condition: og_reactive::bind::Expr,
     name: Box<str>,
     value: Box<str>,
 }
@@ -110,7 +110,7 @@ impl DocStyle {
 
     /// The element's layout fields and surface record.
     fn own(&mut self, n: &og_ui::doc::DocNode, cx: &Cx) {
-        use og_ui::bind::{Expr, InteractionState as I, Op};
+        use og_reactive::bind::{Expr, InteractionState as I, Op};
         let mut fields = prim::Fields::default();
         // Its surface names written as literals, and the bindings that
         // pick one (`variant={bare ? 'bare' : 'hud'}`, `tier={rarity}`).

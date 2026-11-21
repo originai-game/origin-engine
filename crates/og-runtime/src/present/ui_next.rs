@@ -8,7 +8,7 @@
 //! changed, lays out and paints into its arena, which the render scene's
 //! paint pass draws at the UI's layer (`widgets::emit`).
 
-use og_ui::reactive::session::{Command, Session};
+use og_reactive::reactive::session::{Command, Session};
 use og_ui_next::look::{Layer, Look};
 use og_ui_next::queue;
 use og_ui_next::tree::Tree;
@@ -271,8 +271,8 @@ impl Next {
     /// The UI patch batch `bytes`: the mounts taken here, every other
     /// command applied to the store (and mirrored); the replies in order.
     pub(crate) fn patch(&mut self, bytes: &[u8]) -> Vec<u8> {
-        let wire = og_ui::reactive::wire::encode;
-        let Ok(Value::Array(commands)) = og_ui::reactive::wire::decode(bytes) else {
+        let wire = og_reactive::reactive::wire::encode;
+        let Ok(Value::Array(commands)) = og_reactive::reactive::wire::decode(bytes) else {
             return self.store.apply(bytes);
         };
         let mut replies: Vec<Option<Value>> = Vec::with_capacity(commands.len());
@@ -287,7 +287,7 @@ impl Next {
         let mut answered = match forward.is_empty() {
             true => Vec::new(),
             false => match wire(&Value::Array(forward))
-                .map(|b| og_ui::reactive::wire::decode(&self.answer(&b)))
+                .map(|b| og_reactive::reactive::wire::decode(&self.answer(&b)))
             {
                 Ok(Ok(Value::Array(a))) => a,
                 Ok(Ok(whole)) => return wire(&whole).unwrap_or_default(),
@@ -535,8 +535,8 @@ mod tests {
     use crate::present::presentation::UiCheckpoint;
 
     fn patch(next: &mut Next, commands: Value) -> Value {
-        let bytes = og_ui::reactive::wire::encode(&commands).unwrap();
-        og_ui::reactive::wire::decode(&next.patch(&bytes)).unwrap()
+        let bytes = og_reactive::reactive::wire::encode(&commands).unwrap();
+        og_reactive::reactive::wire::decode(&next.patch(&bytes)).unwrap()
     }
 
     fn read(next: &mut Next) -> Value {
