@@ -304,6 +304,8 @@ export interface BuildManifest {
    * by (`"game.js": "game.3f2a9c1e04b7.js"`); empty for a dev build.
    */
   readonly names: Readonly<Record<string, string>>;
+  /** Font-pack faces explicitly fetched before start, with their raw byte sizes. Absent in older builds. */
+  readonly fontPreloads?: readonly BuildFile[];
   readonly probe: { readonly protocol: 5; readonly wire: 1; readonly build: string; readonly members: readonly string[] };
   readonly crossOriginIsolation: "required" | "preferred" | "off";
   /**
@@ -411,6 +413,11 @@ export function streamGroupsOf(manifest: string): { groups: Array<{ name: string
   return { groups, grouped: [...new Set(grouped)].filter((file) => !standalone.has(file)) };
 }
 
+/** Explicit font-pack faces the cook placed in the boot (paths under the export). */
+function preloadsOf(manifest: string): ReadonlySet<string> {
+  return new Set([...manifest.matchAll(/^preload ("(?:[^"\\]|\\.)*")$/gm)].map((m) => `cooked/${JSON.parse(m[1]!) as string}`));
+}
+
 /** Files, raw bytes and compressed bytes (the size table's codec). */
 export interface DownloadSum {
   readonly files: number;
@@ -463,7 +470,7 @@ export interface DownloadBoot extends DownloadSum {
 }
 
 /** What each page of a build downloads (Downloads), from its size table. */
-export function downloadsOf(files: readonly SizeRow[]): Downloads {
+export function downloadsOf(files: readonly SizeRow[], preloads: ReadonlySet<string> = new Set()): Downloads {
   // A content-hashed file counts under its plain name.
   const rows = files.map((f) => {
     const path = f.path.split("\\").join("/");
@@ -474,7 +481,7 @@ export function downloadsOf(files: readonly SizeRow[]): Downloads {
   const add = (...parts: DownloadSum[]): DownloadSum => parts.reduce((a, b) => ({ files: a.files + b.files, bytes: a.bytes + b.bytes, compressed: a.compressed + b.compressed }), { files: 0, bytes: 0, compressed: 0 });
   const isPack = (p: string) => /^cooked\/stream\/[^/]+\.ogb$/.test(p) || p === MOTION_MODEL;
   const isVideo = (p: string) => p.startsWith("cooked/") && VIDEO_STREAM.test(p);
-  const cooked = sum((p) => p.startsWith("cooked/") && !isPack(p) && !SOUND_CHUNK.test(p) && !TEXTURE_MIPS.test(p) && !FONT_FACE.test(p) && !isVideo(p));
+  const cooked = sum((p) => p.startsWith("cooked/") && !isPack(p) && !SOUND_CHUNK.test(p) && !TEXTURE_MIPS.test(p) && (!FONT_FACE.test(p) || preloads.has(p)) && !isVideo(p));
   const shell = sum((p) => /^(index\.html|shell\.css|install\.js|play\.js|game\.js)$/.test(p));
   const basis = sum((p) => /^basis\/basis_transcoder\.(js|wasm)$/.test(p));
   const page = (engine: DownloadSum): DownloadBoot => ({ ...add(engine, cooked, shell, basis), engine, cooked, shell, basis });
@@ -485,7 +492,7 @@ export function downloadsOf(files: readonly SizeRow[]): Downloads {
       packs: sum(isPack),
       chunks: sum((p) => SOUND_CHUNK.test(p)),
       mips: sum((p) => TEXTURE_MIPS.test(p)),
-      fonts: sum((p) => FONT_FACE.test(p)),
+      fonts: sum((p) => FONT_FACE.test(p) && !preloads.has(p)),
       worklet: sum((p) => p === "audio-worklet.js" || p === "audio-decoder.js"),
       videos: sum(isVideo),
       av1: sum((p) => p.startsWith("av1/")),
@@ -505,8 +512,8 @@ export function downloadsOf(files: readonly SizeRow[]): Downloads {
  * it only the chunks its players reach) and the
  * fallback decoder.
  */
-export function serviceWorkerLists(paths: readonly string[], packs: ReadonlySet<string>): { files: string[]; lazy: string[]; single: string[]; lanes: string[] } {
-  const onDemand = (f: string) => packs.has(f) || SOUND_CHUNK.test(f) || TEXTURE_MIPS.test(f) || FONT_FACE.test(f) || (f.startsWith("cooked/") && VIDEO_STREAM.test(f)) || f.startsWith("av1/");
+export function serviceWorkerLists(paths: readonly string[], packs: ReadonlySet<string>, preloads: ReadonlySet<string> = new Set()): { files: string[]; lazy: string[]; single: string[]; lanes: string[] } {
+  const onDemand = (f: string) => packs.has(f) || SOUND_CHUNK.test(f) || TEXTURE_MIPS.test(f) || (FONT_FACE.test(f) && !preloads.has(f)) || (f.startsWith("cooked/") && VIDEO_STREAM.test(f)) || f.startsWith("av1/");
   const precache = paths.filter((f) => !NOT_PRECACHED.test(f) && !onDemand(f));
   return {
     files: ["./", ...precache.filter((f) => !SINGLE_ENGINE.test(f) && !LANES_ENGINE.test(f))],
@@ -1075,6 +1082,7 @@ export async function webBuild(project: string, entry: string, out: string, publ
   }
   // Streaming groups: a grouped output is read from its group's pack, so its own file is not shipped.
   const split = streamGroupsOf(assets?.manifest ?? cookedManifest);
+  const preloads = preloadsOf(assets?.manifest ?? cookedManifest);
   for (const f of split.grouped) rmSync(join(out, "cooked", f), { force: true });
   const packs = new Set(split.groups.map((g) => `cooked/${g.file}`));
   if (existsSync(join(out, MOTION_MODEL))) packs.add(MOTION_MODEL);
@@ -1116,7 +1124,7 @@ export async function webBuild(project: string, entry: string, out: string, publ
   const wasmBytes = statSync(join(out, served("origin-engine_bg.wasm"))).size;
   const firstGroup = walk(join(out, "cooked")).filter((f) => {
     const path = relative(out, f).split("\\").join("/");
-    return !packs.has(path) && !SOUND_CHUNK.test(path) && !TEXTURE_MIPS.test(path) && !FONT_FACE.test(path) && !VIDEO_STREAM.test(path);
+    return !packs.has(path) && !SOUND_CHUNK.test(path) && !TEXTURE_MIPS.test(path) && (!FONT_FACE.test(path) || preloads.has(path)) && !VIDEO_STREAM.test(path);
   });
   const cookedBytes = firstGroup.filter((f) => !f.endsWith(".cook.ogt")).reduce((n, f) => n + statSync(f).size, 0);
   // The build id a crash report names: the bundles whose stacks the maps resolve.
@@ -1189,7 +1197,7 @@ export async function webBuild(project: string, entry: string, out: string, publ
     // The first group is precached; a streaming group's pack is cached when the engine fetches it.
     // So is a long sound's chunk (cooked/<sound>.chunk<n>.ogb), and a streamed texture's whole chain (cooked/<texture>.mips.ogb).
     const rows = fileRows();
-    const lists = serviceWorkerLists(rows.map((f) => f.path), packs);
+    const lists = serviceWorkerLists(rows.map((f) => f.path), packs, preloads);
     // Each file's content, so a new build's worker carries what did not change over from the old cache.
     const known = new Set([...lists.files, ...lists.single, ...lists.lanes, ...lists.lazy]);
     const hashes = Object.fromEntries(rows.filter((f) => known.has(f.path)).map((f) => [f.path, f.sha256.slice(0, 16)]));
@@ -1211,6 +1219,7 @@ export async function webBuild(project: string, entry: string, out: string, publ
     variant,
     lanes: lanes ? { glue: served("origin-engine-lanes.js"), wasm: served("origin-engine-lanes_bg.wasm") } : null,
     names,
+    fontPreloads: rows.filter((f) => preloads.has(f.path)),
     probe: { protocol: 5, wire: 1, build: probe?.build ?? (publish ? "publish" : "release"), members: probe?.members ?? [] },
     crossOriginIsolation: p.isolation,
     assets: p.assets ? { base: p.assets, origin: new URL(p.assets).origin } : null,
@@ -1252,6 +1261,8 @@ export async function webBuild(project: string, entry: string, out: string, publ
 export interface BuildSizes {
   readonly files: SizeRow[];
   readonly total: { bytes: number; compressed: number };
+  /** Each explicitly prefetched font, including its compressed transfer size. */
+  readonly fontPreloads?: readonly SizeRow[];
   /** What each page downloads (boot and later); `total` is every file of the directory. */
   readonly downloads: Downloads;
 }
@@ -1270,7 +1281,8 @@ export async function sizesOf(out: string, publish: boolean): Promise<BuildSizes
   const sizes = await sizesOfFiles(paths, publish);
   const files: SizeRow[] = paths.map((path, i) => ({ path: relative(out, path), bytes: sizes[i]!.bytes, compressed: sizes[i]!.size, codec: sizes[i]!.codec }));
   const total = files.reduce((t, f) => ({ bytes: t.bytes + f.bytes, compressed: t.compressed + f.compressed }), { bytes: 0, compressed: 0 });
-  return { files, total, downloads: downloadsOf(files) };
+  const preloads = preloadsOf(readFileSync(join(out, "cooked", ".cook.ogt"), "utf8"));
+  return { files, total, fontPreloads: files.filter((f) => preloads.has(f.path)), downloads: downloadsOf(files, preloads) };
 }
 
 function table(b: BuildSizes): string {
@@ -1319,6 +1331,7 @@ if (import.meta.main) {
   else {
     process.stdout.write(table(sizes));
     process.stdout.write(downloadLines(sizes.downloads, sizes.files[0]?.codec ?? "brotli-11"));
+    for (const f of sizes.fontPreloads ?? []) process.stdout.write(`  preload font ${f.path}: ${f.bytes} bytes, ${f.compressed} B compressed\n`);
     if (b.probe) process.stdout.write(`probe: ${b.probe.build} build, ${b.probe.members.length} members: ${b.probe.members.join(", ")}\n`);
     process.stdout.write(`${BUILD_MANIFEST}: ${b.manifest!.build} build of ${b.manifest!.game.name}, engine ${b.manifest!.engine.version}, isolation ${b.manifest!.crossOriginIsolation}, version ${b.manifest!.version.slice(0, 16)}\n`);
   }

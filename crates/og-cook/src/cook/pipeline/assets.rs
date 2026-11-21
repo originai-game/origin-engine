@@ -237,6 +237,30 @@ impl Index {
         seen
     }
 
+    /// Explicit font loads must be synchronous on both hosts. Pack-index
+    /// edges describe i18n's optional coverage, not an explicit load; leave
+    /// those faces lazy unless another path reaches them. Computed paths
+    /// and escaped loaders already contribute conservative roots.
+    pub(crate) fn font_preloads(&self) -> Vec<String> {
+        let mut graph = self.clone();
+        for asset in &mut graph.assets {
+            if asset.kind == "fontpack" {
+                asset.refs.clear();
+            }
+        }
+        let explicit = graph.reachable();
+        self.assets
+            .iter()
+            .filter(|a| {
+                a.kind == "font"
+                    && a.group.is_none()
+                    && a.file.ends_with(crate::runtime::FONT_PACK_FACE)
+                    && explicit.contains(&a.id)
+            })
+            .map(|a| a.file.clone())
+            .collect()
+    }
+
     pub fn publish_plan(&self, manifest: &Manifest) -> PublishPlan {
         let mut graph = self.clone();
         let reachable = loop {
@@ -288,6 +312,8 @@ impl Index {
                 .chain(m.streams.iter().map(|g| g.file.clone()))
                 .collect()
         };
+        let kept_files = files(&kept);
+        kept.preload.retain(|file| kept_files.contains(file));
         let removed_files = files(manifest).difference(&files(&kept)).cloned().collect();
         omitted.sort_by(|a, b| a.id.cmp(&b.id));
         PublishPlan {

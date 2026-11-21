@@ -224,7 +224,7 @@ impl Index {
         // holds changing is a change to code alone.
         options.code.files.clear();
         let options = cache::key(
-            "index-v2",
+            "index-v3-font-preloads",
             &[format!(
                 "{options:?} {:?} {}",
                 super::texture::encoder_name(&options.texture),

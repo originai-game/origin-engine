@@ -402,7 +402,8 @@ use og_runtime::host_impl::json_string;
 /// The cooked outputs a bundle's manifest lists, for the Worker's preload:
 /// JSON `[{ "id", "file", "type" }]` in manifest order, with `"group"` on an
 /// output of a streaming group (it is read from the group's pack, not from
-/// its own file), or `{ "error": reason }` for a manifest that does not
+/// its own file), and `"preload":true` for an explicitly used font-pack
+/// face, or `{ "error": reason }` for a manifest that does not
 /// parse.
 #[wasm_bindgen]
 pub fn og_web_bundle_files(manifest: String) -> String {
@@ -419,8 +420,13 @@ pub fn og_web_bundle_files(manifest: String) -> String {
                         .as_deref()
                         .map(|g| format!(",\"group\":{}", json_string(g)))
                         .unwrap_or_default();
+                    let preload = if bundle.manifest().preload.contains(&o.file) {
+                        ",\"preload\":true"
+                    } else {
+                        ""
+                    };
                     format!(
-                        "{{\"id\":{},\"file\":{},\"type\":{}{group}}}",
+                        "{{\"id\":{},\"file\":{},\"type\":{}{group}{preload}}}",
                         json_string(&o.id),
                         json_string(&o.file),
                         json_string(&o.ty)

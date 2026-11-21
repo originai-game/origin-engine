@@ -306,6 +306,60 @@ fn a_font_pack_indexes_its_faces_and_leaves_other_fonts_alone() {
         face.bytes
     );
     assert!(out.bytes <= 2 * 1024, "index {} bytes", out.bytes);
+
+    // A code-only cook promotes explicit loads, including conservative
+    // computed paths and escaped loaders, without changing a font's bytes.
+    // A file the bundle never imports must not make a face boot-resident.
+    std::fs::write(
+        root.join("scratch.ts"),
+        format!("og.load.font(world, {face_id:?});"),
+    )
+    .unwrap();
+    let preload = |code: &str| {
+        std::fs::write(root.join("main.ts"), code).unwrap();
+        let mut options = CookOptions::default();
+        options.code.files.push(root.join("main.ts"));
+        let report = cook_project(&root, &options).unwrap();
+        assert!(report.ok(), "{:?}", report.errors());
+        let bundle = Bundle::open(&root.join("cooked")).unwrap();
+        assert_eq!(bundle.output(face_id).unwrap().hash, face.hash);
+        bundle.manifest().preload.clone()
+    };
+    assert_eq!(
+        preload(&format!("og.load.font(world, '{face_id}');")),
+        vec![face.file.clone()]
+    );
+    assert_eq!(
+        preload("og.load.font(world, `fonts/arabic/${name}.ttf`);"),
+        vec![face.file.clone()]
+    );
+    assert_eq!(
+        preload("const loadFont = og.load.font; loadFont(world, name);"),
+        vec![face.file.clone()]
+    );
+    assert_eq!(
+        preload("og.load.font(world, data.path);"),
+        vec![face.file.clone()],
+        "a path entirely from runtime data retains every candidate"
+    );
+    assert!(
+        preload("og.load.font(world, `fonts/latin/${name}.ttf`);").is_empty(),
+        "a computed prefix must not pull in unrelated packs"
+    );
+    assert!(
+        preload("const pack = 'fonts/arabic/extension.json';").is_empty(),
+        "the pack index alone leaves its faces on demand"
+    );
+    std::fs::write(
+        root.join("project.ogt"),
+        format!("type project\nversion 1\n---\npublish {{\n  keep {face_id:?}\n}}\n"),
+    )
+    .unwrap();
+    assert_eq!(
+        preload("externalLoader(world, data.path);"),
+        vec![face.file.clone()],
+        "publish.keep declares paths hidden from the code analyser"
+    );
 }
 
 /// docs/ui.md §3.4: a font pack's hyphenation dictionaries ship in its

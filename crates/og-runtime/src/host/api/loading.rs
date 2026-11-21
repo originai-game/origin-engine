@@ -195,7 +195,24 @@ pub fn og_load_effect(world: u32, path: String) -> Result<serde_json::Value, Str
 }
 
 pub fn og_load_font(world: u32, path: String) -> Result<serde_json::Value, String> {
-    engine(world).and_then(|eng| assets::load_font(&eng, &path).map(asset_value))
+    let eng = engine(world)?;
+    {
+        // A synchronous public load cannot depend on a host fetch, even if
+        // the native disk or i18n happens to have made the face resident.
+        // Internal i18n loads still use load_font after their readiness gate.
+        let a = eng.assets.borrow();
+        let (bundle, _) = a.bundle_for(&path)?;
+        let output = bundle.output(&path).map_err(|e| e.to_string())?;
+        if output.group.is_none()
+            && output.file.ends_with(".face.ogb")
+            && !bundle.manifest().preload.contains(&output.file)
+        {
+            return Err(format!(
+                "{path}: not declared for synchronous font loading; the web cannot prefetch this font. Reference its path in game TypeScript or add it to project.ogt publish.keep, then run `og cook`. Optional font-pack coverage is loaded through og.i18n, not og.load.font"
+            ));
+        }
+    }
+    assets::load_font(&eng, &path).map(asset_value)
 }
 
 pub fn og_load_font_info(world: u32, font: f64) -> Result<serde_json::Value, String> {

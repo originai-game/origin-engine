@@ -217,6 +217,12 @@ pub struct Manifest {
     /// uses og.motion: not an output, so the boot bundle never loads it;
     /// the runtime reads it in the background once the bundle is open.
     pub motion: Option<ManifestFile>,
+    /// Font-pack face files explicitly reachable outside the pack's index.
+    /// Optional in older manifests; the web fetches these before start.
+    /// These are cooked output paths (bytes and integrity in `assets`),
+    /// not engine module names in `modules`: they must already be resident
+    /// when a synchronous loader runs, not best-effort code prefetch hints.
+    pub preload: Vec<String>,
 }
 
 /// A file of the bundle outside its outputs and groups.
@@ -299,6 +305,10 @@ impl Manifest {
                     e.string(0).map_err(|e| bad(e.to_string()))?.to_string(),
                 );
             }
+        }
+        for e in doc.body.get_all("preload") {
+            m.preload
+                .push(e.string(0).map_err(|e| bad(e.to_string()))?.to_string());
         }
         let field = |b: &Block, key: &str, line: usize| -> Result<String, LoadError> {
             let e = b
@@ -481,6 +491,9 @@ impl Manifest {
             options.push(Entry::new(k.clone()).with(s(v)));
         }
         doc.body.push(Entry::new("options").with_block(options));
+        for file in &self.preload {
+            doc.body.push(Entry::new("preload").with(s(file)));
+        }
         for a in &self.assets {
             let mut b = Block::new()
                 .with(Entry::new("kind").with(w(&a.kind)))

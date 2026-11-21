@@ -7,9 +7,34 @@ Asset queries, publish pruning and the cook cache are in assets.
 
 ## 1. The bundle
 
-- The game's bundle (`cooked`) is open before the first tick, and
-  GameDesc.scene is spawned then. The web host fetches its files before
-  the engine starts.
+- The game's bundle (`cooked`) is open and GameDesc.scene is spawned
+  before GameDesc.start and the first tick. The web host fetches the
+  ungrouped boot files before start; streaming packs, sound and video
+  chunks, texture mip chains and optional font-pack faces remain on demand.
+- Fonts explicitly referenced by game code or its asset dependencies are
+  boot files, even when they belong to a font pack: og.load.font in
+  GameDesc.start returns a ready font on both hosts. The cook conservatively
+  includes every font under a computed load's static prefix; an escaped
+  loader or a path with no static prefix includes every candidate font.
+  This is the publish-pruning reference graph, not a second analyser:
+  string literals in the TypeScript/JavaScript the bundle reaches outside
+  the engine, and resolved asset dependencies, are roots, as are
+  project.ogt's publish.keep patterns. An unimported scratch script is not.
+  `og.load.font(world, data.path)` includes all candidates;
+  `og.load.font(world, "fonts/latin/" + name)` includes that prefix.
+  Aliased og.load functions/namespaces also include all candidates. There
+  is no silent byte cap: a broad candidate set can include whole CJK packs.
+  og build reports each boot font's path, bytes and compressed bytes; narrow
+  the prefix or use explicit paths to reduce it. Recook after changing code.
+  Paths hidden from the graph (for example a loader supplied as runtime
+  code, with its path read from remote data) are not
+  automatically declared. Name each required font in publish.keep and
+  recook. An ungrouped pack face absent from the boot set is refused by
+  og.load.font on both hosts, even when its bytes are resident, so og test
+  catches a missed declaration before a browser does. Faces reachable
+  only through a font-pack index remain on demand: og.i18n fetches the locale's chain and additional
+  script coverage as needed. The existing first-frame readiness gate waits
+  for the faces and glyphs that frame needs; no tick is chosen by a font fetch.
 - A runtime bundle's manifest or scene blob can still be fetching.
   og.load.scene answers a stable pending handle once its bundle is open;
   keep that handle and query og.load.status before instantiating. Pending
@@ -20,7 +45,9 @@ Asset queries, publish pruning and the cook cache are in assets.
   journals its tick (`kind` `bundle`), and a replay opens it at the same
   tick, so a system may act on its og.load.status.
 - Every cooked loader answers the same handle for the same path. Load
-  once in GameDesc.start and keep the handle.
+  boot assets once in GameDesc.start and keep the handle. Other bundles
+  and streaming groups must have the requested asset's bytes resident
+  before calling a synchronous loader such as og.load.font.
 - An asset in a streaming group's pack loads once its group is
   resident, and the refusal before then names the group. Texture
   arrays, flipbook sheets and environment maps come back under the same

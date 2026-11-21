@@ -288,6 +288,26 @@ fn show(text: &str) {
 }
 
 #[test]
+fn an_undeclared_direct_font_load_is_refused_even_with_native_disk_bytes() {
+    let (engine, step) = start("ja-JP");
+    let path = "fonts/arabic/NotoSansArabic-Regular.ttf";
+    let refused = || {
+        let reason = og_load_font(engine, path.into()).unwrap_err();
+        assert!(reason.contains(path), "{reason}");
+        assert!(reason.contains("the web cannot prefetch"), "{reason}");
+        assert!(reason.contains("publish.keep"), "{reason}");
+    };
+    refused();
+    // i18n may load the same face on demand; that must not make the
+    // synchronous public contract depend on which host fetched it first.
+    og_runtime::host_impl::json(og_i18n_set_locale(engine, "ar".into()));
+    show("Start");
+    step();
+    assert_eq!(chain(engine), vec!["arabic"]);
+    refused();
+}
+
+#[test]
 fn the_locale_pack_is_in_the_chain_and_others_load_on_demand() {
     let (engine, step) = start("ja-JP");
     show("Start");

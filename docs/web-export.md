@@ -194,6 +194,28 @@ fragment (`crates/og-cli/src/publish.rs` `asset_base`).
   faces) against the manifest's; the browser refuses bytes that differ,
   and the file fails once, without retries, its load failure naming its
   integrity. A changed manifest fails the boot.
+- The cook's optional top-level `preload "<file>"` entries put explicitly
+  reachable font-pack faces in the boot, before GameDesc.start. The resource
+  graph follows code and asset dependencies but not a font-pack index's
+  optional coverage edges; computed paths conservatively include their
+  prefix (or every candidate when no prefix is known). These faces count
+  in boot bytes and the service-worker precache. Other faces remain lazy
+  for og.i18n; the existing glyph readiness gate and drawing are unchanged.
+  This is the same index and roots as publish pruning, with only font-pack
+  coverage edges stopped for the boot. No size threshold silently drops
+  candidates: `og-build.json`'s optional `fontPreloads` lists each path and
+  raw bytes; `og build`'s text and JSON size reports also give its compressed
+  bytes. A loader supplied as runtime code needs explicit
+  publish.keep declarations; undeclared synchronous pack-face loads are
+  refused on native as well as web, independent of residency.
+  These are cooked output paths with the outputs' bytes and integrity,
+  added to the existing `preloadBundle` download queue and awaited before
+  engine creation. They are not the `modules` engine-code hints (§Modules):
+  `world::needs` requests module names after a bundle opens or a scene
+  loads, through a best-effort callback that does not wait. A missed hint
+  can load code at its first call; a synchronous font load cannot wait for
+  missing bytes. The two typed lists therefore remain separate; there is
+  no second font fetcher, readiness gate or completion mechanism.
 - Natively (`og run`, `og test`) the package is the project's `cooked/`;
   the asset base is the web export's.
 

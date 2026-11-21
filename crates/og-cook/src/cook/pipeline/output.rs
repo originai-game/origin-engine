@@ -272,6 +272,7 @@ pub(crate) fn write(
         assets: Vec::new(),
         streams: Vec::new(),
         motion: None,
+        preload: Vec::new(),
     };
     let mut keep: BTreeSet<String> = BTreeSet::new();
     for (si, outs) in new_outputs {
@@ -455,6 +456,12 @@ pub(crate) fn finish(
         computed: index.computed.clone(),
     };
     assets::add_code(root, &manifest, &mut index, &cx.options.code.files)?;
+    let preload = index.font_preloads();
+    if manifest.preload != preload {
+        manifest.preload = preload;
+        std::fs::write(&manifest_path, manifest.to_text())
+            .map_err(|e| CookError(format!("{}: {e}", manifest_path.display())))?;
+    }
     index.write(cooked_dir)?;
     index.write_publish_plan(root, &manifest)?;
     // Each asset's cook time: this run's (its outputs' summed) when it
@@ -525,7 +532,7 @@ pub(crate) fn cook_code(
     code: &CodeGraph,
 ) -> Result<bool, CookError> {
     let cooked_dir = root.join("cooked");
-    let (Some(manifest), Ok(last)) = (
+    let (Some(mut manifest), Ok(last)) = (
         std::fs::read_to_string(cooked_dir.join(MANIFEST))
             .ok()
             .and_then(|t| Manifest::parse(&t).ok()),
@@ -543,6 +550,13 @@ pub(crate) fn cook_code(
         computed: before.computed.clone(),
     };
     assets::add_code(root, &manifest, &mut index, &code.files)?;
+    let preload = index.font_preloads();
+    if manifest.preload != preload {
+        manifest.preload = preload;
+        let path = cooked_dir.join(MANIFEST);
+        std::fs::write(&path, manifest.to_text())
+            .map_err(|e| CookError(format!("{}: {e}", path.display())))?;
+    }
     index.write(&cooked_dir)?;
     index.write_publish_plan(root, &manifest)?;
     Ok(true)

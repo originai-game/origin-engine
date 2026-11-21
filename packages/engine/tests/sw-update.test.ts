@@ -20,7 +20,7 @@ test("publish keeps a shared file needed outside a streaming pack", () => {
   }
 });
 
-test("bundle preload fetches a shared file once but retains every texture id, and leaves font-pack faces for later", async () => {
+test("bundle preload fetches a shared file once and explicit font faces, leaving optional faces for later", async () => {
   const fetchBefore = globalThis.fetch;
   const fetched: string[] = [];
   const stored: string[] = [];
@@ -37,6 +37,7 @@ test("bundle preload fetches a shared file once but retains every texture id, an
         { id: "a.png#mips", file: "a.png.mips.ogb", type: "og.Texture" },
         { id: "fonts/japanese/extension.json", file: "fonts/japanese/extension.json.ogb", type: "og.FontPack" },
         { id: "fonts/japanese/NotoSansJP-Regular.ttf", file: "fonts/japanese/NotoSansJP-Regular.ttf.face.ogb", type: "og.Font" },
+        { id: "fonts/latin/NotoSans-Latin.ttf", file: "fonts/latin/NotoSans-Latin.ttf.face.ogb", type: "og.Font", preload: true },
         // A streamed video's index and chunks: its players fetch them.
         { id: "clips/intro.ogt#stream", file: "clips/intro.ogt.stream.ogb", type: "og.VideoStream" },
         { id: "clips/intro.ogt#stream.0", file: "clips/intro.ogt.stream.0.ogb", type: "og.VideoChunk" },
@@ -47,10 +48,10 @@ test("bundle preload fetches a shared file once but retains every texture id, an
       og_web_fail_file: (path, reason) => { throw new Error(`${path}: ${reason}`); },
     }, "https://play.example", () => {});
     expect(result.integrity).toBeNull();
-    // The pack's index boots (it is a few hundred bytes); its face is fetched when the locale's chain needs it.
-    expect(fetched).toEqual(["https://play.example/cooked/.cook.ogt", "https://play.example/cooked/a.png.ogb", "https://play.example/cooked/fonts/japanese/extension.json.ogb"]);
+    // Explicit loads boot; the optional face still waits for the locale's chain.
+    expect(fetched).toEqual(["https://play.example/cooked/.cook.ogt", "https://play.example/cooked/a.png.ogb", "https://play.example/cooked/fonts/japanese/extension.json.ogb", "https://play.example/cooked/fonts/latin/NotoSans-Latin.ttf.face.ogb"]);
     expect(stored).toEqual(fetched);
-    expect(result.files).toBe(2);
+    expect(result.files).toBe(3);
     expect(result.failed).toBe(0);
     expect(result.streamed).toBe(6);
   } finally {
@@ -197,6 +198,12 @@ test("a font pack's faces are cached when fetched, never precached nor counted i
   const d = downloadsOf([row(ui, 40_000), row(index, 300), row(face, 900_000)]);
   expect(d.boot.single.cooked.bytes).toBe(40_300);
   expect(d.later.fonts).toEqual({ files: 1, bytes: 900_000, compressed: 900_000 });
+  const preloads = new Set([face]);
+  expect(serviceWorkerLists(["cooked/.cook.ogt", ui, index, face], new Set(), preloads).files).toContain(face);
+  expect(serviceWorkerLists([face], new Set(), preloads).lazy).toEqual([]);
+  const explicit = downloadsOf([row(ui, 40_000), row(index, 300), row(face, 900_000)], preloads);
+  expect(explicit.boot.single.cooked.bytes).toBe(940_300);
+  expect(explicit.later.fonts.files).toBe(0);
 });
 
 test("a streamed video's units and every rendition are cached when fetched, never precached nor counted in the boot", () => {

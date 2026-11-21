@@ -254,7 +254,8 @@ export interface Fetched {
  * through the fetcher ahead of the playheads, nor a streamed video's index
  * (og.VideoStream) and chunks (og.VideoChunk), which its players ask the
  * fetcher for ahead of their playheads, nor a
- * font pack's faces, which the locale's chain asks the fetcher for, nor a
+ * font pack's faces not explicitly referenced by the game, which the
+ * locale's chain asks the fetcher for, nor a
  * streamed texture's whole chain (`<id>#mips`, `texture { stream true }`):
  * the bundle carries its mip tail as `<id>`, and the engine reads `#mips`
  * through the fetcher when the texture is big on screen. The engine asks for at most
@@ -287,13 +288,14 @@ export async function preloadBundle(
     if (typeof listed["error"] === "string") throw new Error(`${manifestPath}: ${listed["error"]}`);
     integrity = listed;
   }
-  const all = JSON.parse(glue.og_web_bundle_files(manifest)) as Array<{ id: string; file: string; type: string; group?: string }> | { error: string };
+  const all = JSON.parse(glue.og_web_bundle_files(manifest)) as Array<{ id: string; file: string; type: string; group?: string; preload?: boolean }> | { error: string };
   if (!Array.isArray(all)) throw new Error(`${manifestPath}: ${all.error}`);
   // A long sound's chunks (og.SoundChunk) are fetched as its playheads near
   // them, a streamed texture's whole chain (`#mips`) when it is big on screen.
   // A font pack's faces (`<id>.face.ogb`, docs/ui.md §3.4) when the
-  // locale's chain or a frame's text first needs them.
-  const listed = all.filter((o) => o.group === undefined && o.type !== "og.SoundChunk" && o.type !== "og.VideoStream" && o.type !== "og.VideoChunk" && !o.id.endsWith("#mips") && !o.file.endsWith(".face.ogb"));
+  // locale's chain or a frame's text first needs them, unless the cook's
+  // reference graph says the game may explicitly load them (before start).
+  const listed = all.filter((o) => o.group === undefined && o.type !== "og.SoundChunk" && o.type !== "og.VideoStream" && o.type !== "og.VideoChunk" && !o.id.endsWith("#mips") && (!o.file.endsWith(".face.ogb") || o.preload === true));
   const files = [...new Set(listed.map((o) => o.file))];
   let fetched = 0;
   let failed = 0;
