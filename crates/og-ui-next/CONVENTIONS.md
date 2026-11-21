@@ -223,6 +223,7 @@ entry, a variant, an icon, an event's sound. Fonts add faces.
     "Panel.frame.hud": "bg-plate-hi/80 backdrop-blur-md"
   },
   "fonts": [{ "family": "Cartoon Display", "src": "LilitaOne-Regular.ttf", "weight": 400 }],
+  "images": { "plate": { "src": "art/plate.png", "slice": [12, 16, 12, 16], "width": 8 } },
   "icons": { "star": "art/star.svg" },
   "sounds": {
     "press": { "clips": ["@styles/shared/sfx-tap.ogt"], "volume": [0.24, 0.3], "pitch": [1.04, 1.16] },
@@ -258,6 +259,18 @@ is an error naming where it is, never ignored):
   nothing; an absent slot stays an unknown class), so a pack switch
   restyles it. Nothing is folded at cook time.
   `og check` checks the strings against the merged theme.
+- **`images`**: nine-slice art by name (lower-case words joined by `-`):
+  `{ src, slice, width?, fill?, repeat? }`. `slice` is the insets into the
+  image in its pixels (one number, or `[top, right, bottom, left]`);
+  `width` the insets as drawn, in points (the slice's when unset); `fill`
+  whether the centre is drawn (default true); `repeat` `stretch` (default)
+  or `tile` for the edges. An entry may be a scheme pair. The class
+  `nine-<name>` gives an element that art, under any variant
+  (`hover:nine-plate-lit`), in `variants` or in a component's own class.
+  A look's distinctive shapes (cut corners, ornate frames, slot rims) are
+  this art, never paint features: if it can be an image, the engine does
+  not draw it. The cook checks every `nine-<name>` names an image and
+  every image is in the bundle.
 - **`fonts`**: faces `{ family, src, weight?, style?, unicodeRange? }`, `src`
   relative to the pack or `@styles/shared/…` / `@styles/cjk/…`.
 - **`icons`**: `name → art file`, over the default set, for `<Icon name>`.

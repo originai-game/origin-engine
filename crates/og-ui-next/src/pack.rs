@@ -90,6 +90,24 @@ pub struct Sound {
     pub pitch: [f32; 2],
 }
 
+/// Nine-slice art: an image cut by four insets into corners that keep
+/// their size, edges that stretch or tile along their side, and a centre
+/// drawn or left out. A class `nine-<name>` gives an element it.
+#[derive(Clone, Debug, PartialEq)]
+pub struct NineSlice {
+    /// The image, relative to the pack or an asset id (`@styles/…`).
+    pub src: String,
+    /// The insets into the image, in its pixels: top, right, bottom, left.
+    pub slice: [f32; 4],
+    /// The insets as drawn on the element, in points; the slice's when
+    /// unset.
+    pub width: Option<[f32; 4]>,
+    /// Whether the centre is drawn.
+    pub fill: bool,
+    /// Whether the edges tile (`true`) or stretch along their side.
+    pub tile: bool,
+}
+
 /// The sounds of one scope, by event.
 pub type Sounds = BTreeMap<String, Sound>;
 
@@ -105,6 +123,8 @@ pub struct Layer {
     pub variants: BTreeMap<String, String>,
     pub fonts: Vec<Face>,
     pub icons: BTreeMap<String, String>,
+    /// Nine-slice art by name, per scheme ([`Scheme::ALL`] order).
+    pub images: [BTreeMap<String, NineSlice>; 2],
     /// The pack-wide sounds under `""`, a slot's under its key.
     pub sounds: BTreeMap<String, Sounds>,
 }
@@ -117,6 +137,7 @@ pub struct Pack {
     variants: BTreeMap<String, String>,
     pub fonts: Vec<Face>,
     pub icons: BTreeMap<String, String>,
+    images: [BTreeMap<String, NineSlice>; 2],
     pub sounds: BTreeMap<String, Sounds>,
 }
 
@@ -184,6 +205,18 @@ impl Layer {
                         layer.fonts.push(face(f).map_err(|e| format!("fonts[{i}]: {e}"))?);
                     }
                 }
+                "images" => {
+                    for (name, v) in object(v, "images")? {
+                        let at = format!("images.{name}");
+                        if !kebab(name) {
+                            return Err(format!("{at}: a name is lower-case words joined by `-`"));
+                        }
+                        for (i, s) in Scheme::ALL.into_iter().enumerate() {
+                            let image = nine(&split(v, s, &at)?).map_err(|e| format!("{at}: {e}"))?;
+                            layer.images[i].insert(name.clone(), image);
+                        }
+                    }
+                }
                 "icons" => {
                     for (name, src) in object(v, "icons")? {
                         let src = src.as_str().ok_or_else(|| format!("icons.{name}: a path"))?;
@@ -211,7 +244,7 @@ impl Layer {
                 }
                 other => {
                     return Err(format!(
-                        "{other}: not a pack key; one of about, scheme, seeds, theme, variants, fonts, icons, sounds"
+                        "{other}: not a pack key; one of about, scheme, seeds, theme, variants, images, fonts, icons, sounds"
                     ));
                 }
             }
@@ -225,6 +258,7 @@ impl Layer {
     pub fn assets(&self) -> Vec<&str> {
         let mut out: Vec<&str> = self.fonts.iter().map(|f| f.src.as_str()).collect();
         out.extend(self.icons.values().map(String::as_str));
+        out.extend(self.images.iter().flat_map(|m| m.values().map(|n| n.src.as_str())));
         for sounds in self.sounds.values() {
             out.extend(sounds.values().flat_map(|s| s.clips.iter().map(String::as_str)));
         }
@@ -246,6 +280,9 @@ impl Layer {
         };
         self.fonts.iter_mut().for_each(|f| at(&mut f.src));
         self.icons.values_mut().for_each(at);
+        for m in &mut self.images {
+            m.values_mut().for_each(|n| at(&mut n.src));
+        }
         for sounds in self.sounds.values_mut() {
             sounds.values_mut().flat_map(|s| s.clips.iter_mut()).for_each(at);
         }
@@ -295,6 +332,18 @@ impl Layer {
         if !self.icons.is_empty() {
             root.insert("icons".into(), json!(self.icons));
         }
+        let [light, dark] = &self.images;
+        if !light.is_empty() || !dark.is_empty() {
+            let one = |n: &NineSlice| {
+                let mut m = json!({ "src": n.src, "slice": n.slice, "fill": n.fill, "repeat": if n.tile { "tile" } else { "stretch" } });
+                if let Some(w) = n.width {
+                    m["width"] = json!(w);
+                }
+                m
+            };
+            let side = |m: &BTreeMap<String, NineSlice>| Value::Object(m.iter().map(|(k, n)| (k.clone(), one(n))).collect());
+            root.insert("images".into(), design::join(&side(light), &side(dark)));
+        }
         if !self.sounds.is_empty() {
             let sound = |s: &Sound| json!({ "clips": s.clips, "volume": s.volume, "pitch": s.pitch });
             let mut m = Map::new();
@@ -327,6 +376,7 @@ impl Pack {
             variants: BTreeMap::new(),
             fonts: Vec::new(),
             icons: BTreeMap::new(),
+            images: Default::default(),
             sounds: BTreeMap::new(),
         };
         let seeds: Vec<_> = layers.iter().flat_map(|l| &l.seeds).collect();
@@ -363,6 +413,9 @@ impl Pack {
             pack.variants.extend(layer.variants.clone());
             pack.fonts.extend(layer.fonts.iter().cloned());
             pack.icons.extend(layer.icons.clone());
+            for (have, over) in pack.images.iter_mut().zip(&layer.images) {
+                have.extend(over.clone());
+            }
             for (scope, sounds) in &layer.sounds {
                 pack.sounds.entry(scope.clone()).or_default().extend(sounds.clone());
             }
@@ -380,6 +433,11 @@ impl Pack {
     /// The theme in `scheme`, as a JSON object.
     pub fn theme(&self, scheme: Scheme) -> &Map<String, Value> {
         &self.themes[scheme as usize]
+    }
+
+    /// The nine-slice art in `scheme`, by the name `nine-<name>` gives.
+    pub fn images(&self, scheme: Scheme) -> &BTreeMap<String, NineSlice> {
+        &self.images[scheme as usize]
     }
 
     /// The class strings each `Component.slot[.variant]` appends.
@@ -428,6 +486,63 @@ fn variant_key(k: &str) -> bool {
         && parts[0].starts_with(|c: char| c.is_ascii_uppercase())
         && parts[0].chars().all(|c| c.is_ascii_alphanumeric())
         && parts[1..].iter().all(|p| name(p))
+}
+
+fn kebab(name: &str) -> bool {
+    !name.is_empty()
+        && name.split('-').all(|w| !w.is_empty() && w.chars().all(|c| c.is_ascii_lowercase() || c.is_ascii_digit()))
+}
+
+/// The names of the nine-slice art `classes` gives (`nine-<name>`, under
+/// any variant: `hover:nine-plate-lit`), and the classes without them.
+pub fn split_nine(classes: &str) -> (Vec<&str>, String) {
+    let mut names = Vec::new();
+    let mut rest = Vec::new();
+    for class in classes.split_whitespace() {
+        let utility = class.rsplit(':').next().unwrap_or(class);
+        match utility.strip_prefix("nine-") {
+            Some(name) => names.push(name),
+            None => rest.push(class),
+        }
+    }
+    (names, rest.join(" "))
+}
+
+/// Four insets: one number for all, or `[top, right, bottom, left]`.
+fn insets(v: &Value, what: &str) -> Result<[f32; 4], String> {
+    let n = |v: &Value| v.as_f64().filter(|n| *n >= 0.0).map(|n| n as f32);
+    match v {
+        Value::Number(_) => n(v).map(|x| [x; 4]),
+        Value::Array(a) if a.len() == 4 => {
+            let s: Option<Vec<f32>> = a.iter().map(n).collect();
+            s.map(|s| [s[0], s[1], s[2], s[3]])
+        }
+        _ => None,
+    }
+    .ok_or_else(|| format!("{what}: a number of 0 or more, or [top, right, bottom, left]"))
+}
+
+fn nine(v: &Value) -> Result<NineSlice, String> {
+    let m = object(v, "nine-slice art")?;
+    for k in m.keys() {
+        if !["src", "slice", "width", "fill", "repeat"].contains(&k.as_str()) {
+            return Err(format!("{k}: one of src, slice, width, fill, repeat"));
+        }
+    }
+    let src = m.get("src").and_then(Value::as_str).ok_or("src: an image")?.to_owned();
+    let slice = insets(m.get("slice").ok_or("slice: the insets into the image, in its pixels")?, "slice")?;
+    let width = m.get("width").map(|w| insets(w, "width")).transpose()?;
+    let fill = match m.get("fill") {
+        None => true,
+        Some(Value::Bool(b)) => *b,
+        Some(_) => return Err("fill: true or false".into()),
+    };
+    let tile = match m.get("repeat").map(|r| r.as_str()) {
+        None | Some(Some("stretch")) => false,
+        Some(Some("tile")) => true,
+        _ => return Err("repeat: \"stretch\" or \"tile\"".into()),
+    };
+    Ok(NineSlice { src, slice, width, fill, tile })
 }
 
 fn face(v: &Value) -> Result<Face, String> {
@@ -579,6 +694,32 @@ mod tests {
         assert_eq!(again.fonts, l.fonts);
         assert_eq!(again.sounds, l.sounds);
         assert_eq!(again.scheme, Some(Scheme::Light));
+    }
+
+    #[test]
+    fn nine_slice_art_reads_per_scheme_and_a_class_names_it() {
+        let mut l = Layer::parse(r##"{ "images": {
+            "plate": { "src": "art/plate.png", "slice": [12, 16, 12, 16], "width": 8, "repeat": "tile" },
+            "frame": { "light": { "src": "art/frame-light.png", "slice": 20 }, "dark": { "src": "art/frame.png", "slice": 20, "fill": false } } },
+            "variants": { "Panel.frame": "p-4 nine-frame hover:nine-plate" } }"##).unwrap();
+        l.resolve("styles/x");
+        let p = Pack::new(&[Layer::default_pack(), l.clone()]);
+        let plate = &p.images(Scheme::Dark)["plate"];
+        assert_eq!((plate.slice, plate.width, plate.tile, plate.fill), ([12.0, 16.0, 12.0, 16.0], Some([8.0; 4]), true, true));
+        assert_eq!(p.images(Scheme::Light)["frame"].src, "styles/x/art/frame-light.png");
+        assert!(!p.images(Scheme::Dark)["frame"].fill);
+        assert!(l.assets().contains(&"styles/x/art/frame.png"));
+        assert_eq!(Layer::parse(&l.to_json()).unwrap().images, l.images);
+        assert_eq!(split_nine("p-4 nine-frame hover:nine-plate"), (vec!["frame", "plate"], "p-4".to_owned()));
+        for (text, wants) in [
+            (r#"{ "images": { "a": { "src": "a.png" } } }"#, "images.a: slice"),
+            (r#"{ "images": { "a": { "src": "a.png", "slice": [1, 2] } } }"#, "images.a: slice"),
+            (r#"{ "images": { "A": { "src": "a.png", "slice": 1 } } }"#, "images.A"),
+            (r#"{ "images": { "a": { "src": "a.png", "slice": 1, "repeat": "round" } } }"#, "images.a: repeat"),
+        ] {
+            let e = Layer::parse(text).unwrap_err();
+            assert!(e.starts_with(wants), "{text}: {e}");
+        }
     }
 
     #[test]

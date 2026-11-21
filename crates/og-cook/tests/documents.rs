@@ -614,10 +614,28 @@ fn a_pack_with_an_unknown_class_or_a_missing_asset_is_refused() {
         ("pack-class", r#"{ "variants": { "Panel.frame": "rounded-card bg-surfcae" } }"#, "variants.Panel.frame: `bg-surfcae`"),
         ("pack-asset", r#"{ "icons": { "star": "art/star.svg" } }"#, "styles/mine/art/star.svg"),
         ("pack-form", r#"{ "theme": { "colours": {} } }"#, "theme.colours"),
+        ("pack-nine-name", r#"{ "variants": { "Panel.frame": "p-2 nine-frame" } }"#, "`nine-frame` names no image"),
+        ("pack-nine-asset", r#"{ "images": { "frame": { "src": "art/frame.png", "slice": 12 } }, "variants": { "Panel.frame": "nine-frame" } }"#, "styles/mine/art/frame.png"),
     ] {
         let root = project(name, &[("styles/mine/pack.json", pack)]);
         let report = cook_project(&root, &CookOptions::default()).unwrap();
         let errors = format!("{:?}", report.errors());
         assert!(!report.ok() && errors.contains(wants), "{name}: {errors}");
     }
+}
+
+/// A variant naming the pack's nine-slice art cooks, its image resolved
+/// beside pack.json.
+#[test]
+fn a_variant_names_nine_slice_art() {
+    let svg = r##"<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48"><rect width="48" height="48" rx="8" fill="#336699"/></svg>"##;
+    let pack = r#"{ "images": { "frame": { "src": "art/frame.svg", "slice": 12 } }, "variants": { "Panel.frame": "p-4 nine-frame" } }"#;
+    let root = project("pack-nine", &[("styles/mine/pack.json", pack), ("styles/mine/art/frame.svg", svg)]);
+    let report = cook_project(&root, &CookOptions::default()).unwrap();
+    assert!(report.ok(), "{:?}", report.errors());
+    let bundle = Bundle::open(&root.join("cooked")).unwrap();
+    let id = "styles/mine/pack.json";
+    let layer = og_ui_next::pack::Layer::parse(&bundle.pack_text(id, &bundle.read(id).unwrap()).unwrap()).unwrap();
+    assert_eq!(layer.images[1]["frame"].src, "styles/mine/art/frame.svg");
+    assert!(bundle.output("styles/mine/art/frame.svg").is_ok());
 }

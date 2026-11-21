@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "Style pack images",
+      "summary": "A pack.json may name nine-slice art in `images` (`{ src, slice, width?, fill?, repeat? }`, per scheme if it differs), and the class `nine-<name>` gives an element that art, in a variant or a component's own class. The cook refuses a `nine-<name>` that names no image and an image that is not in the bundle."
+    }
+  ]
+}

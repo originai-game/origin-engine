@@ -197,7 +197,7 @@ fn plan_pack<'a>(
     // The default pack is in the stamp: a token change cooks every pack's
     // class check again.
     let st = stamp(&[
-        b"style pack 1",
+        b"style pack 2",
         &hash,
         refs.join("\n").as_bytes(),
         og_ui_next::pack::design::DEFAULT_PACK.as_bytes(),
@@ -235,7 +235,14 @@ impl Job for PackJob<'_> {
                 errors.push(format!("theme ({}): {e}", scheme.name()));
             }
             for (key, class) in &layer.variants {
-                for u in classes.unknown(class) {
+                // `nine-<name>` names the pack's nine-slice art, not a utility.
+                let (images, class) = og_ui_next::pack::split_nine(class);
+                for name in images {
+                    if !pack.images(scheme).contains_key(name) {
+                        errors.push(format!("variants.{key}: `nine-{name}` names no image in `images` ({})", scheme.name()));
+                    }
+                }
+                for u in classes.unknown(&class) {
                     errors.push(format!("variants.{key}: `{u}` is not a class ({})", scheme.name()));
                 }
             }
@@ -255,8 +262,9 @@ impl Job for PackJob<'_> {
         Ok((
             w.finish(),
             vec![format!(
-                "style pack: {} variant(s), {} face(s), {} asset(s)",
+                "style pack: {} variant(s), {} image(s), {} face(s), {} asset(s)",
                 layer.variants.len(),
+                layer.images[0].len().max(layer.images[1].len()),
                 layer.fonts.len(),
                 layer.assets().len()
             )],
