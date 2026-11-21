@@ -2062,6 +2062,14 @@ fn determine_hypothetical_cross_size(
             )
             .size
             .get_abs(constants.dir.cross_axis())
+            // The used main size is transferred through the item's aspect-ratio (its automatic
+            // size in the ratio-dependent axis) and floors the measured content size, which may
+            // still make it taller (min-height: auto), as the intrinsic main size step does
+            // https://drafts.csswg.org/css-sizing-4/#aspect-ratio-automatic
+            .maybe_max(child.aspect_ratio.map(|ratio| {
+                let main = child.target_size.main(constants.dir);
+                if constants.is_row { main / ratio } else { main * ratio }
+            }))
             .maybe_clamp(transferred_min_cross, transferred_max_cross)
             .max(padding_border_sum)
         });

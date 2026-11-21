@@ -1452,6 +1452,55 @@ mod tests {
         assert_eq!(got[1].2, [3.0; 4], "its slices are the classes'");
     }
 
+    /// An `aspect-[7/10]` flex item in an `items-center` row takes its
+    /// height from its used width through the ratio, as CSS does, while
+    /// content taller than that still grows it: a reward screen's card
+    /// offers, which were their text's height.
+    #[test]
+    fn a_flex_item_takes_its_cross_size_from_its_aspect_ratio() {
+        use taffy::prelude::*;
+        let mut t = tree();
+        t.set_resolver(Box::new(|class, _, _, _| {
+            let mut s = taffy::Style::default();
+            match class {
+                "row" => {
+                    s.flex_direction = FlexDirection::Row;
+                    s.align_items = AlignItems::CENTER;
+                    s.size.width = length(600.0);
+                }
+                "card" => {
+                    s.flex_direction = FlexDirection::Row;
+                    s.aspect_ratio = Some(0.7);
+                }
+                "wide" => s.size = Size::from_lengths(210.0, 80.0),
+                "tall" => s.size = Size::from_lengths(50.0, 100.0),
+                _ => {}
+            }
+            Record {
+                layout: rune_taffy::CompactStyle::from(&s),
+                ..Record::default()
+            }
+        }));
+        let mut b = Batch::default();
+        for (id, class, parent) in [
+            (1, "row", 0),
+            (2, "card", 1),
+            (3, "wide", 2),
+            (4, "card", 1),
+            (5, "tall", 4),
+        ] {
+            b.op(1).u32(id).u8(0);
+            b.op(4).u32(id).str(class);
+            b.op(8).u32(parent).u32(id).u32(u32::MAX);
+        }
+        t.apply(&b.bytes()).unwrap();
+        frame(&mut t);
+        let wide = t.op_box(2).unwrap();
+        assert_eq!([wide[2], wide[3]], [210.0, 300.0], "210 wide at 7:10");
+        let tall = t.op_box(4).unwrap();
+        assert_eq!([tall[2], tall[3]], [50.0, 100.0], "its content, past 7:10");
+    }
+
     /// A row sized to its content (a `justify-items-center` grid item)
     /// counts a `grow basis-0` item at its max-content width, as CSS does,
     /// not at its zero basis: the title screen's prompt between two rules.
