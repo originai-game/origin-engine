@@ -89,6 +89,30 @@ pub(super) struct Per {
     pub value: String,
     pub placeholder: Box<str>,
     pub caret: usize,
+    /// The pack slot its class names (`@Component.slot[.variant]`, from
+    /// `packClass`, without the `@`): the scope of its sounds.
+    pub slot: Box<str>,
+}
+
+/// A sound the pack gives an event: one of `clips` (sound handles) at
+/// random, at a volume and pitch from their ranges.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct Cue {
+    pub clips: Vec<u64>,
+    pub volume: [f32; 2],
+    pub pitch: [f32; 2],
+}
+
+/// The pack's sounds with their clips loaded: by scope (`""` the pack's
+/// generic ones, else `Component.slot[.variant]`), then by event.
+pub type SoundTable = std::collections::BTreeMap<String, std::collections::BTreeMap<String, Cue>>;
+
+/// One sound to play ([`Tree::take_sounds`]).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Play {
+    pub sound: u64,
+    pub volume: f32,
+    pub pitch: f32,
 }
 
 /// The grapheme cluster edge before (`back`) or after byte `at` in `text`
@@ -216,6 +240,14 @@ pub struct Input {
     /// handed out ([`Tree::take_zones`]).
     pub(super) zone_els: Vec<u32>,
     zones: Vec<og_input::ControlZone>,
+    /// The pack's sounds, what this frame plays, and the stream that
+    /// picks a clip and its volume and pitch (seeded: a replay plays the
+    /// same).
+    sounds: std::rc::Rc<SoundTable>,
+    plays: Vec<Play>,
+    sound_rng: u64,
+    /// A press `confirm` made: it sounds `confirm`, not `press`.
+    confirming: bool,
 }
 
 impl Input {
@@ -238,6 +270,65 @@ impl Input {
 }
 
 impl Tree {
+    /// The pack's sounds, their clips loaded (the host's).
+    pub fn set_sounds(&mut self, sounds: std::rc::Rc<SoundTable>) {
+        self.input.sounds = sounds;
+    }
+
+    /// The sounds this frame's events played, oldest first.
+    pub fn take_sounds(&mut self) -> Vec<Play> {
+        std::mem::take(&mut self.input.plays)
+    }
+
+    /// `e` plays `event`: its slot's sound (with its variant, then
+    /// without), else the pack's generic one; `confirm` and `back` fall
+    /// back to `press`. Nothing when the pack has none.
+    fn sound(&mut self, e: u32, event: &str) {
+        let table = &self.input.sounds;
+        if table.is_empty() {
+            return;
+        }
+        let slot = self.input.per(e).map_or("", |p| &*p.slot);
+        let bare = slot
+            .rsplit_once('.')
+            .map(|x| x.0)
+            .filter(|b| b.contains('.'));
+        let scopes = [Some(slot).filter(|s| !s.is_empty()), bare, Some("")];
+        let fallback = matches!(event, "confirm" | "back").then_some("press");
+        let cue = [Some(event), fallback]
+            .into_iter()
+            .flatten()
+            .find_map(|ev| scopes.iter().flatten().find_map(|s| table.get(*s)?.get(ev)))
+            .filter(|c| !c.clips.is_empty());
+        let Some(cue) = cue else {
+            return;
+        };
+        let mut next = || {
+            // xorshift64*, as og-ui's feedback.
+            let mut x = self.input.sound_rng;
+            if x == 0 {
+                x = 0x9e37_79b9_7f4a_7c15;
+            }
+            x ^= x >> 12;
+            x ^= x << 25;
+            x ^= x >> 27;
+            self.input.sound_rng = x;
+            (x.wrapping_mul(0x2545_f491_4f6c_dd1d) >> 40) as f32 / (1u64 << 24) as f32
+        };
+        let n = cue.clips.len();
+        let sound = cue.clips[((next() * n as f32) as usize).min(n - 1)];
+        let range = |r: [f32; 2], t: f32| r[0] + (r[1] - r[0]) * t;
+        let volume = range(cue.volume, next());
+        let pitch = range(cue.pitch, next());
+        if sound != 0 {
+            self.input.plays.push(Play {
+                sound,
+                volume,
+                pitch,
+            });
+        }
+    }
+
     /// Shows an `Input`'s text, or its placeholder while it is empty, and
     /// paints its caret again.
     pub(super) fn show_value(&mut self, e: u32) {
@@ -464,8 +555,17 @@ impl Tree {
         for &e in left {
             self.set_state(e, HOVERED, false);
         }
+        // The innermost control the pointer came over (they come from the
+        // outside in) sounds `hover`; a finger has no hover.
+        let mut control = NONE;
         for &e in came {
             self.set_state(e, HOVERED, true);
+            if self.els[e as usize].clickable && !self.disabled(e) {
+                control = e;
+            }
+        }
+        if control != NONE && !self.input.touch {
+            self.sound(control, "hover");
         }
         self.input.hover = next;
         self.input.next = hover;
@@ -618,6 +718,12 @@ impl Tree {
     }
 
     fn click(&mut self, e: u32, x: f32, y: f32, second: bool) {
+        let event = if std::mem::take(&mut self.input.confirming) {
+            "confirm"
+        } else {
+            "press"
+        };
+        self.sound(e, event);
         let js = self.els[e as usize].js;
         let listens = self.els[e as usize].listens;
         for ev in [OpEvent::Press, OpEvent::Tap] {
@@ -1100,6 +1206,9 @@ impl Tree {
                 let mut ev = Fired::at(el.js, OpEvent::Action, 0.0, 0.0);
                 ev.key = name.into();
                 self.events.push(ev);
+                if matches!(name, "confirm" | "back") {
+                    self.sound(e, name);
+                }
                 return true;
             }
             e = el.parent;
@@ -1109,6 +1218,7 @@ impl Tree {
             if !self.input.keyed {
                 self.input.modality = Modality::Keyboard;
                 self.set_state(f, FOCUS_VISIBLE, true);
+                self.input.confirming = self.input.per(f).is_none_or(|p| p.hold <= 0.0);
                 self.press_or_hold(f, true);
             }
             return true;

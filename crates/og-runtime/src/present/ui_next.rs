@@ -76,6 +76,9 @@ pub(crate) struct Next {
     /// loaded for ([`pack_images`]).
     images: BTreeMap<String, u32>,
     images_for: Option<Option<String>>,
+    /// The pack's sounds with their clips loaded, by scope and event,
+    /// loaded with its images ([`pack_images`]).
+    sounds: Rc<og_ui_next::tree::SoundTable>,
     signals: BTreeMap<(String, String), u32>,
     rows: BTreeMap<(String, String), Rows>,
     /// Mounted documents: mount id to (document, inputs).
@@ -192,7 +195,40 @@ pub(crate) fn pack_images(engine: u32) {
             slots.insert(image.src.clone(), slot);
         }
     }
+    // Its sounds' clips, each loaded once, as sound handles.
+    let mut clips: BTreeMap<String, u64> = BTreeMap::new();
+    let mut sounds = og_ui_next::tree::SoundTable::new();
+    for (scope, events) in &all.sounds {
+        for (event, s) in events {
+            let mut handles = Vec::new();
+            for clip in &s.clips {
+                let h = *clips.entry(clip.clone()).or_insert_with(|| {
+                    match crate::world::assets::load_sound(&eng, clip) {
+                        Ok(i) => eng.assets.borrow().sound_handles.get(i).copied().unwrap_or(0),
+                        Err(e) => {
+                            warnings.push(format!("og.ui: the pack's sound {clip}: {e}"));
+                            0
+                        }
+                    }
+                });
+                if h != 0 {
+                    handles.push(h);
+                }
+            }
+            let cue = og_ui_next::tree::Cue {
+                clips: handles,
+                volume: s.volume,
+                pitch: s.pitch,
+            };
+            sounds.entry(scope.clone()).or_default().insert(event.clone(), cue);
+        }
+    }
+    let sounds = Rc::new(sounds);
     if let Some(next) = &mut eng.render.borrow_mut().ui_next {
+        if let Some(tree) = &mut next.tree {
+            tree.set_sounds(sounds.clone());
+        }
+        next.sounds = sounds;
         next.images = slots;
         next.images_for = Some(pack);
         next.resolved = None;
@@ -321,6 +357,7 @@ impl Next {
             widths: Vec::new(),
             images: BTreeMap::new(),
             images_for: None,
+            sounds: Rc::default(),
             signals: BTreeMap::new(),
             rows: BTreeMap::new(),
             mounts: BTreeMap::new(),
@@ -604,6 +641,7 @@ impl Next {
         let look = self.look.clone().expect("loaded above");
         let library: Vec<_> = library.collect();
         let mut tree = Tree::new(look, library.iter().cloned());
+        tree.set_sounds(self.sounds.clone());
         for doc in &library {
             if let Some(bytes) = cooked_style(engine, &doc.source, &self.section) {
                 tree.set_cooked(&doc.source, bytes);
@@ -704,6 +742,11 @@ impl Next {
             self.zones = own;
         }
         Some(self.doc_zones.iter().chain(&self.zones).cloned().collect())
+    }
+
+    /// The sounds the tree's controls played this frame (the pack's).
+    pub(crate) fn take_sounds(&mut self) -> Vec<og_ui_next::tree::Play> {
+        self.tree.as_mut().map(|t| t.take_sounds()).unwrap_or_default()
     }
 
     pub(crate) fn take_strings(&mut self) -> Vec<String> {

@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {
+      "member": "og.UiPack sounds",
+      "summary": "TSX controls play the style pack's `sounds`: `hover` as the mouse comes over a control, `press` when it is clicked, `confirm` when the confirm action presses it, and `confirm`/`back` when its `onAction` takes them. A component slot's sounds (`\"Button.plate\": { \"press\": … }`, the slot `packClass(\"Button\", \"plate\")` names, its variant before it) come before the pack-wide ones; `confirm` and `back` fall back to `press`. Before, the new core played no pack sounds."
+    }
+  ]
+}

@@ -384,6 +384,7 @@ struct Glyphs {
 mod input;
 mod ops;
 pub use ops::{EVENTS, Event as OpEvent, Fired, MAGIC, REFUSED, Resolve};
+pub use input::{Cue, Play, SoundTable};
 
 /// An image's source, a texture handle as the game holds it, as its
 /// texture's slot (`og_draw::TextureHandle::slot`; 0 none)

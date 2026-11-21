@@ -432,7 +432,14 @@ is an error naming where it is, never ignored):
 - **`sounds`**: by event (`press`, `hover`, `select`, `confirm`, `cancel`,
   `back`, `open`, `close`, `error`, `reward`) for the whole pack, or under a
   `Component.slot[.variant]` key for one slot: `{ clips, volume?, pitch? }`,
-  a number or a `[low, high]` range. Input (head 4) plays them.
+  a number or a `[low, high]` range. A node's slot is the `@Component.slot[.variant]`
+  token `packClass` puts in its class: a control plays `hover` as a mouse
+  comes over it, `press` when clicked, `confirm` when that action presses
+  it, and `confirm`/`back` when its `onAction` takes them. The sound is the
+  slot's with its variant, then the bare slot's, then the pack-wide one;
+  `confirm` and `back` fall back to `press`. One clip at random, at a
+  volume and pitch from their ranges, from a seeded stream (a replay plays
+  the same).
 
 Motion is classes in `variants` until the motion thread's ease form lands.
 

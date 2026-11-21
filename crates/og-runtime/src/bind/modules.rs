@@ -276,15 +276,23 @@ pub(crate) fn mount_back(
     world
         .add_system(SystemDesc::new(UI_SOUND), move |ctx| {
             let plays = shared.lock().take_feedback();
+            // The new core's controls play their pack slot's sounds.
+            let next = engine(engine_id)
+                .ok()
+                .and_then(|eng| eng.render.borrow_mut().ui_next.as_mut().map(|n| n.take_sounds()))
+                .unwrap_or_default();
             let Some(link) = og_audio::link(engine_id) else {
                 return Ok(());
             };
-            for play in plays {
-                if play.sound == 0 {
+            let plays = plays
+                .iter()
+                .map(|p| (p.sound, p.volume, p.pitch))
+                .chain(next.iter().map(|p| (p.sound, p.volume, p.pitch)));
+            for (sound, volume, pitch) in plays {
+                if sound == 0 {
                     continue;
                 }
-                if let Err(reason) =
-                    link.play_feedback(ctx.time().tick, play.sound, play.volume, play.pitch)
+                if let Err(reason) = link.play_feedback(ctx.time().tick, sound, volume, pitch)
                 {
                     note_warnings(engine_id, vec![reason]);
                 }

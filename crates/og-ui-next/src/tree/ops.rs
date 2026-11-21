@@ -557,6 +557,13 @@ impl Tree {
                     let text = r.str()?;
                     let old = self.els[e as usize].class;
                     self.els[e as usize].class = self.classes.with(old, code == 4, text);
+                    if code == 4 {
+                        let slot = text.split_whitespace().find_map(|c| c.strip_prefix('@'));
+                        let per = &mut self.input.per[e as usize];
+                        if *per.slot != *slot.unwrap_or("") {
+                            per.slot = slot.unwrap_or("").into();
+                        }
+                    }
                     self.data_dirty = true;
                     self.restyle(e);
                 }
@@ -2316,6 +2323,58 @@ mod tests {
         assert_eq!(t.focused_id(), Some(2));
         assert_eq!(caret(&mut t), None, "no caret without the focus");
         assert!(!t.type_text("x"));
+    }
+
+    /// A control sounds the pack's sound for its slot (`@Component.slot`
+    /// in its class; a variant falls back to its bare slot), else the
+    /// pack's generic one: hover as the pointer comes over it, press on a
+    /// click, `confirm` when that action presses it.
+    #[test]
+    fn controls_sound_their_slots_sounds_else_the_packs() {
+        let cue = |h: u64| Cue {
+            clips: vec![h],
+            volume: [0.5, 0.5],
+            pitch: [1.0, 1.0],
+        };
+        let mut table = SoundTable::new();
+        table.insert(
+            String::new(),
+            [("press", 10), ("hover", 30), ("confirm", 40)]
+                .map(|(e, h)| (e.to_string(), cue(h)))
+                .into(),
+        );
+        table.insert(
+            "Button.plate".into(),
+            [("press".to_string(), cue(20))].into(),
+        );
+        let mut t = stated();
+        t.set_sounds(std::rc::Rc::new(table));
+        buttons(&mut t, &["b @Button.plate.gold", "b @Chip.frame", "b"]);
+        let heard = |t: &mut Tree| -> Vec<u64> {
+            let p = t.take_sounds();
+            assert!(p.iter().all(|p| p.volume == 0.5 && p.pitch == 1.0));
+            p.iter().map(|p| p.sound).collect()
+        };
+        at(&mut t, 25.0, 5.0, false, false);
+        assert_eq!(heard(&mut t), [30], "hover: the pack's");
+        at(&mut t, 25.0, 5.0, true, false);
+        at(&mut t, 25.0, 5.0, false, true);
+        assert_eq!(heard(&mut t), [20], "the variant's slot has a press");
+        at(&mut t, 75.0, 5.0, false, false);
+        at(&mut t, 75.0, 5.0, true, false);
+        at(&mut t, 75.0, 5.0, false, true);
+        assert_eq!(
+            heard(&mut t),
+            [30, 10],
+            "a slot without sounds plays the pack's"
+        );
+        t.input_done(false);
+        t.key("Tab", false, false, false, false);
+        let f = t.focused_id().unwrap();
+        t.input_done(false);
+        heard(&mut t);
+        assert!(t.action("confirm"));
+        assert_eq!(heard(&mut t), [40], "node {f} pressed by confirm");
     }
 
     /// An on-screen control's box is a zone of the action it names, in
