@@ -264,6 +264,21 @@ pub(crate) fn scan_with(
         for f in look::styles().iter().filter(|f| srcs.contains(f.id())) {
             builtins.insert(f.id().to_string(), f.bytes());
         }
+        // An engine whose styles predate an image would cook without it and
+        // every `nine-<name>` naming it would draw nothing at run time.
+        for src in pack.assets() {
+            if !builtins.contains_key(src) {
+                let dir = look::styles_dir().map_or_else(
+                    || "no built-in styles directory was found".to_owned(),
+                    |d| format!("not in the built-in styles at {}", d.display()),
+                );
+                early_errors.push((
+                    src.to_owned(),
+                    "image",
+                    format!("the default pack's image is {dir}: the engine's styles are older than og (OG_STYLES_DIR or the engine package's styles/)"),
+                ));
+            }
+        }
     }
     // A development cook from a checkout: the default style as the source
     // tree has it, when that is not the compiled one (a token or

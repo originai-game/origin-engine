@@ -346,8 +346,14 @@ fn code_drawing_a_tsx_ui_carries_the_default_face() {
     let shapes = ["disc", "ring", "tile", "plate-cut", "panel-cut", "chip-cut"]
         .map(|s| format!("@styles/shared/shapes/{s}.svg"));
     let bundle = cook();
-    assert!(bundle.output(og_ui::DEFAULT_FONT_ASSET).is_err(), "no UI, no face");
-    assert!(shapes.iter().all(|id| bundle.output(id).is_err()), "no UI, no shapes");
+    assert!(
+        bundle.output(og_ui::DEFAULT_FONT_ASSET).is_err(),
+        "no UI, no face"
+    );
+    assert!(
+        shapes.iter().all(|id| bundle.output(id).is_err()),
+        "no UI, no shapes"
+    );
     std::fs::write(
         root.join("src/main.ts"),
         "import { mount } from \"@origingame/engine/ui\";\nexport default mount;\n",
@@ -358,6 +364,56 @@ fn code_drawing_a_tsx_ui_carries_the_default_face() {
     for id in &shapes {
         assert!(bundle.output(id).is_ok(), "{id}");
     }
+}
+
+/// An engine whose styles directory predates the default pack's shapes
+/// fails the cook of a TSX UI naming the missing image, instead of cooking
+/// without it so every `nine-<name>` draws nothing at run time. The styles
+/// table is process-wide, so the cook runs in a child of this test.
+#[test]
+fn styles_missing_a_default_image_fail_the_cook() {
+    if std::env::var_os("OG_TEST_STALE_STYLES").is_none() {
+        let styles = PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join("og-cook-stale-styles");
+        let _ = std::fs::remove_dir_all(&styles);
+        std::fs::create_dir_all(styles.join("shared")).unwrap();
+        std::fs::write(styles.join("shared/LICENSES.md"), "").unwrap();
+        let out = std::process::Command::new(std::env::current_exe().unwrap())
+            .args([
+                "--exact",
+                "documents::styles_missing_a_default_image_fail_the_cook",
+                "--nocapture",
+            ])
+            .env("OG_TEST_STALE_STYLES", "1")
+            .env("OG_STYLES_DIR", &styles)
+            .output()
+            .unwrap();
+        let log = String::from_utf8_lossy(&out.stdout);
+        assert!(
+            out.status.success() && log.contains("1 passed"),
+            "{log}\n{}",
+            String::from_utf8_lossy(&out.stderr)
+        );
+        return;
+    }
+    let root = project("stale-styles", &[]);
+    std::fs::create_dir_all(root.join("assets")).unwrap();
+    std::fs::create_dir_all(root.join("src")).unwrap();
+    std::fs::write(
+        root.join("project.ogt"),
+        "type project\nversion 1\n---\nname \"p\"\n",
+    )
+    .unwrap();
+    std::fs::write(
+        root.join("src/main.ts"),
+        "import { mount } from \"@origingame/engine/ui\";\nexport default mount;\n",
+    )
+    .unwrap();
+    let report = cook_project(&root, &CookOptions::default()).unwrap();
+    let errors = report.errors().join("\n");
+    assert!(
+        errors.contains("@styles/shared/shapes/disc.svg"),
+        "{errors}"
+    );
 }
 
 #[test]
@@ -629,9 +685,17 @@ fn imported_stylesheets_ride_in_the_document_blob() {
 #[test]
 fn the_built_in_style_packs_cook_to_pack_blobs() {
     let looks: Vec<(String, String)> = ["cartoon", "fantasy", "scifi"]
-        .map(|p| (format!("looks/{p}.ogt"), format!("type look\nversion 1\n---\nui \"@styles/{p}\"\n")))
+        .map(|p| {
+            (
+                format!("looks/{p}.ogt"),
+                format!("type look\nversion 1\n---\nui \"@styles/{p}\"\n"),
+            )
+        })
         .into();
-    let files: Vec<(&str, &str)> = looks.iter().map(|(a, b)| (a.as_str(), b.as_str())).collect();
+    let files: Vec<(&str, &str)> = looks
+        .iter()
+        .map(|(a, b)| (a.as_str(), b.as_str()))
+        .collect();
     let root = project("built-in-packs", &files);
     let report = cook_project(&root, &CookOptions::default()).unwrap();
     assert!(report.ok(), "{:?}", report.errors());
@@ -653,11 +717,31 @@ fn the_built_in_style_packs_cook_to_pack_blobs() {
 #[test]
 fn a_pack_with_an_unknown_class_or_a_missing_asset_is_refused() {
     for (name, pack, wants) in [
-        ("pack-class", r#"{ "variants": { "Panel.frame": "rounded-card bg-surfcae" } }"#, "variants.Panel.frame: `bg-surfcae`"),
-        ("pack-asset", r#"{ "icons": { "star": "art/star.svg" } }"#, "styles/mine/art/star.svg"),
-        ("pack-form", r#"{ "theme": { "colours": {} } }"#, "theme.colours"),
-        ("pack-nine-name", r#"{ "variants": { "Panel.frame": "p-2 nine-frame" } }"#, "`nine-frame` names no image"),
-        ("pack-nine-asset", r#"{ "images": { "frame": { "src": "art/frame.png", "slice": 12 } }, "variants": { "Panel.frame": "nine-frame" } }"#, "styles/mine/art/frame.png"),
+        (
+            "pack-class",
+            r#"{ "variants": { "Panel.frame": "rounded-card bg-surfcae" } }"#,
+            "variants.Panel.frame: `bg-surfcae`",
+        ),
+        (
+            "pack-asset",
+            r#"{ "icons": { "star": "art/star.svg" } }"#,
+            "styles/mine/art/star.svg",
+        ),
+        (
+            "pack-form",
+            r#"{ "theme": { "colours": {} } }"#,
+            "theme.colours",
+        ),
+        (
+            "pack-nine-name",
+            r#"{ "variants": { "Panel.frame": "p-2 nine-frame" } }"#,
+            "`nine-frame` names no image",
+        ),
+        (
+            "pack-nine-asset",
+            r#"{ "images": { "frame": { "src": "art/frame.png", "slice": 12 } }, "variants": { "Panel.frame": "nine-frame" } }"#,
+            "styles/mine/art/frame.png",
+        ),
     ] {
         let root = project(name, &[("styles/mine/pack.json", pack)]);
         let report = cook_project(&root, &CookOptions::default()).unwrap();
@@ -672,12 +756,20 @@ fn a_pack_with_an_unknown_class_or_a_missing_asset_is_refused() {
 fn a_variant_names_nine_slice_art() {
     let svg = r##"<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48"><rect width="48" height="48" rx="8" fill="#336699"/></svg>"##;
     let pack = r#"{ "images": { "frame": { "src": "art/frame.svg", "slice": 12 } }, "variants": { "Panel.frame": "p-4 nine-frame" } }"#;
-    let root = project("pack-nine", &[("styles/mine/pack.json", pack), ("styles/mine/art/frame.svg", svg)]);
+    let root = project(
+        "pack-nine",
+        &[
+            ("styles/mine/pack.json", pack),
+            ("styles/mine/art/frame.svg", svg),
+        ],
+    );
     let report = cook_project(&root, &CookOptions::default()).unwrap();
     assert!(report.ok(), "{:?}", report.errors());
     let bundle = Bundle::open(&root.join("cooked")).unwrap();
     let id = "styles/mine/pack.json";
-    let layer = og_ui_next::pack::Layer::parse(&bundle.pack_text(id, &bundle.read(id).unwrap()).unwrap()).unwrap();
+    let layer =
+        og_ui_next::pack::Layer::parse(&bundle.pack_text(id, &bundle.read(id).unwrap()).unwrap())
+            .unwrap();
     assert_eq!(layer.images[1]["frame"].src, "styles/mine/art/frame.svg");
     assert!(bundle.output("styles/mine/art/frame.svg").is_ok());
 }
