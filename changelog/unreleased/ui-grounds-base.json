@@ -1,1 +1,9 @@
-{"simulation":"unchanged","fixed":[{"member":"Base components","summary":"item slots, list rows and step rails draw on pack slots and opaque theme grounds in those grounds' inks, so their text reads over a bright scene in every pack."}]}
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "Base components",
+      "summary": "ErrorState fills its error mark in danger whole with the ground's ink, so its mark reads over a bright scene in every pack."
+    }
+  ]
+}
