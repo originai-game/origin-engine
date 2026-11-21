@@ -174,10 +174,11 @@ fn resolver(engine: u32, pack: Option<&str>, dark: bool, window: [f32; 2]) -> (R
         ..Default::default()
     };
     // The tree asks for an entry's state records (motion's `starting:`
-    // and `exit:`; the input's); an inline style waits for
-    // Classes::record_styled.
-    let resolve: Resolve = Box::new(move |class, _style, states| {
-        classes.borrow_mut().record(class, &og_ui_next::classes::Env { states, ..env })
+    // and `exit:`; the input's); the inline style lies over the classes.
+    let resolve: Resolve = Box::new(move |class, style, states| {
+        classes
+            .borrow_mut()
+            .record_styled(class, style, &og_ui_next::classes::Env { states, ..env })
     });
     (resolve, widths)
 }
@@ -772,5 +773,7 @@ mod tests {
         let starting = og_ui_next::classes::state::STARTING;
         assert_eq!(resolve("opacity-50 starting:opacity-0", "", 0).skin.opacity, 0.5);
         assert_eq!(resolve("opacity-50 starting:opacity-0", "", starting).skin.opacity, 0.0);
+        // The op's inline style is over its classes.
+        assert_eq!(resolve("opacity-50", "opacity: 0.25", 0).skin.opacity, 0.25);
     }
 }

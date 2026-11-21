@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "TSX UI inline style",
+      "summary": "An element's `style` (inline declarations) now applies over its classes, last."
+    }
+  ]
+}
