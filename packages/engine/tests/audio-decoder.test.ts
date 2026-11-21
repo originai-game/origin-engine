@@ -18,8 +18,8 @@ declare const Bun: {
 
 const here = dirname(fileURLToPath(import.meta.url));
 const fixture = new Uint8Array(readFileSync(join(here, "fixtures", "qoa", "frames.qoa")));
-/** og-audio tests/decode.rs FIXTURE_HASH. */
-const FIXTURE_HASH = 0x080bf5513188bc60n;
+/** The pinned hash, read from the file beside the fixture (og-audio's decode.rs reads it too). */
+const FIXTURE_HASH = BigInt(`0x${readFileSync(join(here, "fixtures", "qoa", "frames.fnv"), "utf8").trim()}`);
 
 /** FNV-1a over the samples' little-endian bytes. */
 function fnv(samples: Int16Array): bigint {
