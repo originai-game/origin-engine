@@ -2527,18 +2527,10 @@ mod tests {
         for id in [1, 2, 3] {
             b.op(1).u32(id).u8(0);
             b.op(4).u32(id).str("b");
-            // Only the item takes presses: the targets are focus stops
-            // only while it is carried.
-            for ev in [
-                Event::Press,
-                Event::DragStart,
-                Event::DragMove,
-                Event::DragEnd,
-                Event::Drop,
-            ] {
-                if ev != Event::Press || id == 1 {
-                    b.op(7).u32(id).u8(ev as u8).u8(1);
-                }
+            // Nothing takes presses yet: a `draggable` drags without
+            // one, and the targets are focus stops only while it is carried.
+            for ev in [Event::DragStart, Event::DragMove, Event::DragEnd, Event::Drop] {
+                b.op(7).u32(id).u8(ev as u8).u8(1);
             }
             b.op(8).u32(100).u32(id).u32(u32::MAX);
         }
@@ -2574,7 +2566,11 @@ mod tests {
             ],
             "no press on release"
         );
-        // A click without a move still presses.
+        // On an item that answers a press, a click without a move still
+        // presses.
+        let mut b = Batch::default();
+        b.op(7).u32(1).u8(Event::Press as u8).u8(1);
+        t.apply(&b.bytes()).unwrap();
         at(&mut t, 10.0, 5.0, true, false);
         at(&mut t, 10.0, 5.0, false, true);
         assert_eq!(seen(&mut t), [ev(1, Event::Press, "", "")]);

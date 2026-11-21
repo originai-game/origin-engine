@@ -850,15 +850,6 @@ impl Tree {
                     second,
                 });
                 self.set_state(e, PRESSED, true);
-                let src = self.drag_up(e);
-                if src != NONE && self.input.drag.is_none() {
-                    self.input.drag = Some(Drag {
-                        src,
-                        from: (x, y),
-                        live: false,
-                        keys: false,
-                    });
-                }
                 if self.input.per(e).is_some_and(|p| p.hold > 0.0) {
                     self.input.holding = Some(Holding {
                         e,
@@ -867,6 +858,18 @@ impl Tree {
                         done: false,
                     });
                 }
+            }
+            // A `draggable` takes the press whether or not it answers one:
+            // from the pressed element, else from what is under the pointer.
+            let src = self.drag_up(if took { e } else { under });
+            if src != NONE && self.input.drag.is_none() {
+                took = true;
+                self.input.drag = Some(Drag {
+                    src,
+                    from: (x, y),
+                    live: false,
+                    keys: false,
+                });
             }
             // A finger stops a fling under it, and may pan or long-press.
             if self.input.touch {
