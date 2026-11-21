@@ -1,0 +1,9 @@
+{
+  "simulation": "changed",
+  "fixed": [
+    {
+      "member": "World.restore",
+      "summary": "A restore called in a command (a script step, a probe command) now applies before the next tick moves anything, not when that tick ends, so the world no longer loses that tick: a save a command takes and restores at once leaves the world's tick and hash as they were (film guide §8). A restore in a system still applies as its tick ends."
+    }
+  ]
+}

@@ -1964,7 +1964,7 @@ export interface World {
    */
   openSave(save: string): Result<SaveEdit>;
   /**
-   * Replace the world with a world.snapshot save (a selection replaces only its tagged entities and resources). The engine's migrations, then GameDesc.migrations from the save's version to saveVersion, run on the save; a step that refuses or throws refuses the restore. It then hashes as the saved world did; the session (input, audio volumes, bindings, UI focus, platform, assets) stays. In a system or command it applies when the tick ends, elsewhere at once; the tick after delivers og.WorldRestored. A mid-tick save's next step completes its tick. The meshes its colliders name must be loaded first.
+   * Replace the world with a world.snapshot save (a selection replaces only its tagged entities and resources). The engine's migrations, then GameDesc.migrations from the save's version to saveVersion, run on the save; a step that refuses or throws refuses the restore. It then hashes as the saved world did; the session stays (saves §4). In a system it applies when the tick ends, in a command before the next tick, elsewhere at once (saves §1); the tick after delivers og.WorldRestored. A mid-tick save's next step completes its tick. The meshes its colliders name must be loaded first.
    * See `saves`.
    *
    * @param save The text world.snapshot returned.

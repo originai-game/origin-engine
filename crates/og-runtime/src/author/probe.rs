@@ -587,12 +587,12 @@ pub(crate) fn install(eng: &Rc<Engine>, facts: Option<u32>) -> Result<(), String
         read_counts(&eng);
         eng.state.try_borrow().ok().map(|st| st.frame.triangles)
     });
-    // A world.restore asked for during a tick applies as the tick ends.
+    // A world.restore a system asked for applies as its tick ends.
     probe.set_after_tick(Box::new(move |world| {
         crate::author::trace::after_tick(id, world);
         crate::author::perf::after_tick(id, world);
         if let Ok(eng) = engine(id) {
-            crate::world::save::after_tick(&eng, world);
+            crate::world::save::apply_pending(&eng, world);
         }
         // og.net's lockstep: this peer's input and the world's hash.
         crate::bind::net::after_tick(id, world);
@@ -629,6 +629,9 @@ pub(crate) fn install(eng: &Rc<Engine>, facts: Option<u32>) -> Result<(), String
         crate::author::trace::before_tick(id);
         crate::author::perf::before_tick(id);
         if let Ok(eng) = engine(id) {
+            // A world.restore a command asked for (its step ran before this
+            // tick) applies before the tick moves anything.
+            crate::world::save::apply_pending(&eng, world);
             // The world the last tick left, before this one moves anything.
             if let Ok(mut rs) = eng.render.try_borrow_mut() {
                 crate::present::presentation::before_tick(&mut rs, world);

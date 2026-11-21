@@ -920,7 +920,12 @@ impl Probe {
     fn tick_once(&mut self, world: &mut World) -> og_core::Result<()> {
         let replaying = self.clock.replaying(world);
         if let Some(before) = self.clock.before_tick.as_mut() {
+            // A restore a command asked for lands here: the script's steps
+            // keep their remaining delays, as after the tick's end.
+            let was = world.time().tick;
             before(world);
+            let now = world.time().tick;
+            self.shift_schedule(was, now);
         }
         let counting = !self.checks.events.is_empty();
         if counting {

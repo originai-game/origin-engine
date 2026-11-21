@@ -32,10 +32,12 @@
 //! host's input (`og.Input`, `og.Pointers`, `og.Gamepad`, `og.PointerLock`) and the player's
 //! bus volumes (`og.Audio`), and moves what lives outside the world on the clock with
 //! `og.Time`'s jump: the probe's scheduled steps keep their remaining
-//! delays, `og.platform.now` its time. Inside a system or a command (the
-//! probe is mid-tick) the restore waits for the tick's end
-//! ([`after_tick`]); elsewhere it applies at once. Either way the next
-//! tick delivers og.WorldRestored ([`before_tick`]).
+//! delays, `og.platform.now` its time. Inside a system the restore waits
+//! for its tick's end; inside a command (the script's steps run before the
+//! tick) for the tick's start, so a snapshot a command takes and restores
+//! leaves the world as it was ([`apply_pending`]); elsewhere it applies at
+//! once. Either way the next tick delivers og.WorldRestored
+//! ([`before_tick`]).
 
 use crate::engine::{Engine, HANDLES, engine, running};
 use crate::host::wire::{SaveRecord, SaveType};
@@ -389,7 +391,8 @@ pub fn og_world_restore(
         Ok(session_differs) => migrate || session_differs,
         Err(e) => return Err(refusal(e, migrate)),
     };
-    // A command runs inside the probe's tick: the restore waits for its end.
+    // A command runs while the probe is busy: the restore waits for the
+    // tick's start (apply_pending).
     let Ok(mut probe) = eng.probe.try_borrow_mut() else {
         eng.state.borrow_mut().pending_restore = Some(Pending {
             snapshot,

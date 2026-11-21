@@ -1,6 +1,7 @@
-// Two command actions over an empty world: `print_save` writes
+// Three command actions over an empty world: `print_save` writes
 // world.snapshot() to stdout on a line of its own, `load:<save>` restores it
-// (the save's own colons rejoined from the action's arguments).
+// (the save's own colons rejoined from the action's arguments), and
+// `roundtrip` takes a snapshot and restores it at once.
 import { og } from "@origingame/engine";
 import type { World } from "@origingame/engine";
 
@@ -18,6 +19,12 @@ export default og.game({
     },
     load: (world: World, args: readonly string[]) => {
       const r = world.restore(args.join(":"));
+      if (!r.ok) throw new Error(r.reason);
+    },
+    roundtrip: (world: World) => {
+      const save = world.snapshot();
+      if (!save.ok) throw new Error(save.reason);
+      const r = world.restore(save.value);
       if (!r.ok) throw new Error(r.reason);
     },
   },

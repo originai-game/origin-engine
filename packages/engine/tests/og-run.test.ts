@@ -78,18 +78,28 @@ test("a restore that moves og.Time past the script's last scheduled tick still r
   if (!save) throw new Error(`no save printed: ${first.stdout}`);
   const out = mkdtempSync(join(tmpdir(), "og-restore-forward-"));
   try {
-    // Tick 3 restores the save of tick 150 as it ends, so tick 150 follows in place of tick 4: the
-    // get (due at 15) and the quit (due at 18) keep the 11 and 14 ticks they had left.
+    // The command at tick 3 restores the save of tick 150 before tick 3 moves anything, so tick 150
+    // runs in its place: the get (due at 15) and the quit (due at 18) keep the 12 and 15 ticks they had left.
     const r = spawn([ogBin(), "run", "--headless", game, "--no-render", "--out", out, "--json", "--commands", `0.1:load:${save};0.5:get:og.Time.tick:tick.json;0.6:quit`], repo);
     if (r.exitCode !== 0) throw new Error(`og run exited ${r.exitCode}: ${r.stderr}${r.stdout}`);
     const summary = JSON.parse(r.stdout.trim().split("\n").pop()!) as { tick: number; quit: boolean };
     expect(summary.quit).toBeTrue();
     expect(existsSync(join(out, "tick.json"))).toBeTrue();
-    expect((JSON.parse(readFileSync(join(out, "tick.json"), "utf8")) as { value: number }).value).toBe(150 + 11);
-    expect(summary.tick).toBe(150 + 14);
+    expect((JSON.parse(readFileSync(join(out, "tick.json"), "utf8")) as { value: number }).value).toBe(150 + 12);
+    expect(summary.tick).toBe(150 + 15);
   } finally {
     rmSync(out, { recursive: true, force: true });
   }
+}, 120_000);
+
+test("a save a command takes and restores at once leaves the world's tick and hash as they were", () => {
+  // A command runs between ticks, so its restore applies before the next tick moves anything; one
+  // applied as that tick ended undid it, leaving the run a tick behind (film guide §8).
+  const game = "packages/engine/tests/fixtures/restore-forward";
+  const plain = run([ogBin(), "run", "--headless", game, "--no-render", "--json", "--commands", "1:quit"], repo);
+  const restored = run([ogBin(), "run", "--headless", game, "--no-render", "--json", "--commands", "0.5:roundtrip;1:quit"], repo);
+  expect(restored.tick).toBe(plain.tick);
+  expect(restored.hash).toBe(plain.hash);
 }, 120_000);
 
 test("og run --profile writes the CPU profile at the path named, its locations in the game's source", () => {

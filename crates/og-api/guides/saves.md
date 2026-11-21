@@ -40,9 +40,11 @@ if (answer?.ok && answer.data.text) world.restore(answer.data.text);
   that save, never a mix of the two.
 - `meta` is what a title screen shows (`{ place, hour }`); it lives in the
   manifest, so `metaOnly` reads it without the parts.
-- The restore applies when the tick ends if it is called in a system or a
-  command, and at once in GameDesc.start or between ticks. The tick after
-  it delivers og.WorldRestored (§4).
+- The restore applies when the tick ends if it is called in a system,
+  before the next tick moves anything if it is called in a command, and at
+  once in GameDesc.start or between ticks. A command is between ticks, so
+  a save it takes and restores leaves the world, its tick and its hash as
+  they were. The tick after it delivers og.WorldRestored (§4).
 - Small settings (volume, controls, language) do not need a slot:
   og.platform.saveSettings and loadSettings keep one object, with a local
   fallback where the host has no store or is offline.

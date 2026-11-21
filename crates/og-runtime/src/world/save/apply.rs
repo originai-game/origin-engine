@@ -2,8 +2,12 @@
 
 use super::*;
 
-/// The probe's end-of-tick hook: a restore asked for during the tick.
-pub(crate) fn after_tick(eng: &Engine, world: &mut World) {
+/// A restore asked for while the probe was busy, applied between ticks:
+/// one a system asked for, as its tick ends; one a command asked for (the
+/// script's steps run before the tick), as the next tick begins, before it
+/// moves anything, so the world steps on from the save as it does after a
+/// restore between ticks.
+pub(crate) fn apply_pending(eng: &Engine, world: &mut World) {
     let Some(pending) = eng.state.borrow_mut().pending_restore.take() else {
         return;
     };
