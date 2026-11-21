@@ -24,12 +24,12 @@ export function RacingCar(props: RacingCarProps) {
   return (
     <View class={`group/car flex-col gap-y-1.5 w-fit max-w-full items-start text-fg compact:gap-y-0.75`} role="group" label={t("racing.car.name")} data-pit={props.pit} data-low={props.fuelLow}>
       <Show when={(props.tyres ?? []).length}>
-        <Text class={`max-w-full text-xs font-semibold tracking-label uppercase whitespace-nowrap text-fg/78 text-stroke-3 text-stroke-bg compact:hidden compact:tracking-normal`}>{t("racing.car.tyres")}</Text>
+        <Text class={`max-w-full text-xs font-semibold tracking-label uppercase whitespace-nowrap text-fg-muted text-stroke-3 text-stroke-bg compact:hidden compact:tracking-normal`}>{t("racing.car.tyres")}</Text>
         <View class={`grid grid-cols-2 gap-1.25 max-w-full compact:gap-0.75`} role="list" label={t("racing.car.tyres")}>
           <For each={props.tyres ?? []} key={(y) => y.id}>
             {(y) => (
               <Text
-                class={`min-w-0 py-0 px-1.5 text-xs leading-[1.5] font-bold tabular-nums whitespace-nowrap overflow-hidden text-fg bg-well nine-chip-cut data-good:text-boon data-worn:text-gold data-bad:text-foe ${packClass("Chip", "frame")}`}
+                class={`min-w-0 py-0 px-1.5 text-xs leading-normal font-bold tabular-nums whitespace-nowrap overflow-hidden text-fg bg-well nine-chip-cut data-good:text-boon data-worn:text-gold data-bad:text-foe ${packClass("Chip", "frame")}`}
                 role="listitem"
                 data-good={y().state === "good"}
                 data-worn={y().state === "worn"}
@@ -49,11 +49,11 @@ export function RacingCar(props: RacingCarProps) {
           valueNow={(props.fuel ?? 0) >= 1 ? 100 : (props.fuel ?? 0) * 100}
           valueText={props.fuelText}
         >
-          <Text class={`shrink-0 text-xs font-semibold tracking-label uppercase whitespace-nowrap text-fg/78 text-stroke-3 text-stroke-bg group-data-low/car:text-foe compact:tracking-normal`}>
+          <Text class={`shrink-0 text-xs font-semibold tracking-label uppercase whitespace-nowrap text-fg-muted text-stroke-3 text-stroke-bg group-data-low/car:text-foe compact:tracking-normal`}>
             {props.fuelLow ? t("racing.car.fuelLow") : t("racing.car.fuel")}
           </Text>
-          <View class={`shrink-0 relative w-17.5 h-1.5 overflow-hidden bg-well/82 shadow-[0px_0px_0px_1px_#ffffff38,inset_0px_1px_0px_#ffffff24,0px_2px_5.714px_#00000073] group-data-low/car:shadow-[0px_0px_0px_1px_#ff4d5e,0px_0px_12.714px_#ff4d5eb3] compact:w-11`}>
-            <View class="absolute left-0 top-0 h-full bg-fg group-data-low/car:bg-foe group-data-low/car:shadow-[2.288px_0px_10px_#ff4d5ecc]" style={{ width: `${Math.min(props.fuel ?? 0, 1) * 100}%` }} />
+          <View class={`shrink-0 relative w-17.5 h-1.5 overflow-hidden bg-well shadow-plate ring ring-rim group-data-low/car:shadow-glow group-data-low/car:shadow-foe group-data-low/car:ring group-data-low/car:ring-foe compact:w-11`}>
+            <View class="absolute left-0 top-0 h-full bg-fg group-data-low/car:bg-foe group-data-low/car:shadow-glow group-data-low/car:shadow-foe" style={{ width: `${Math.min(props.fuel ?? 0, 1) * 100}%` }} />
           </View>
           <Show when={props.fuelText !== ""}>
             <Text class={`shrink min-w-0 text-xs font-bold tabular-nums whitespace-nowrap overflow-hidden text-fg text-stroke-3 text-stroke-bg`}>{props.fuelText}</Text>

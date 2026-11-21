@@ -28,7 +28,7 @@ function ordinal(n: number): string {
 }
 
 const hudLabel = `text-xs font-semibold tracking-label uppercase whitespace-nowrap text-fg-muted`;
-const actionButton = `min-h-11 min-w-30 flex-row items-center justify-center gap-1 py-0.5 px-4 text-caption font-bold tracking-label uppercase text-fg bg-plate-hi shadow-[inset_0px_0px_0px_1px_#ffffff3d] hover:bg-glass-hi disabled:opacity-45 compact:flex-1 compact:min-w-0 ${packClass("Button", "plate")}`;
+const actionButton = `min-h-11 min-w-30 flex-row items-center justify-center gap-1 py-0.5 px-4 text-caption font-bold tracking-label uppercase text-fg bg-plate-hi inset-ring-1 inset-ring-rim hover:bg-glass-hi disabled:opacity-45 compact:flex-1 compact:min-w-0 ${packClass("Button", "plate")}`;
 const keyCap = `shrink-0 pointer-coarse:hidden text-lg leading-none`;
 
 /**
@@ -45,7 +45,7 @@ export function RacingResults(props: RacingResultsProps) {
   return (
     <View class={`flex-col gap-3 w-full h-full p-4 text-fg bg-glass nine-panel-cut ${packClass("Panel", "frame")}`} label={heading()}>
       <View class="flex-row w-full shrink-0">
-        <Text class={`flex-1 min-w-0 text-[3.286rem] leading-[1.05] font-bold tracking-sm uppercase text-fg compact:text-display-sm`}>{heading()}</Text>
+        <Text class={`flex-1 min-w-0 text-display-xl leading-flat font-bold tracking-sm uppercase text-fg compact:text-display-sm`}>{heading()}</Text>
       </View>
       <Show when={rows().length} fallback={
         <Text class={`flex-1 min-h-0 text-center`} role="status">{t("racing.results.empty")}</Text>
@@ -55,7 +55,7 @@ export function RacingResults(props: RacingResultsProps) {
             <Show when={playerRow()} keyed>
               {(r) => (
                 <>
-                  <Text class={`text-[6rem] leading-none font-bold italic whitespace-nowrap text-hud-accent text-stroke-3 text-stroke-bg compact:text-6xl`}>
+                  <Text class={`text-8xl leading-none font-bold italic whitespace-nowrap text-hud-accent text-stroke-3 text-stroke-bg compact:text-6xl`}>
                     {r().state === "dnf" || r().state === "dsq" ? (r().state === "dsq" ? t("racing.results.dsq") : t("racing.results.dnf")) : ordinal(r().position)}
                   </Text>
                   <View class={`flex-row flex-wrap items-baseline justify-between gap-x-3 py-2 px-3 bg-plate-hi nine-plate-cut text-fg ${packClass("Plate", "frame")}`}>
@@ -136,7 +136,7 @@ export function RacingResults(props: RacingResultsProps) {
           <Text glyph="details" class={keyCap} />
           <Text>{t("racing.results.retry")}</Text>
         </View>
-        <View class={`min-h-11 min-w-30 flex-row items-center justify-center gap-1 py-0.5 px-4 text-caption font-bold tracking-label uppercase text-fg bg-plate-hi shadow-[inset_0px_0px_0px_1px_#ffffff3d] hover:bg-glass-hi disabled:opacity-45 compact:flex-1 compact:min-w-0 bg-hud-accent text-gold-fg shadow-none ${packClass("Button", "plate", "primary")}`} role="button" label={t("racing.results.continue")} onPress={(e) => props.onContinue?.(e)}>
+        <View class={`min-h-11 min-w-30 flex-row items-center justify-center gap-1 py-0.5 px-4 text-caption font-bold tracking-label uppercase text-fg bg-plate-hi inset-ring-1 inset-ring-rim hover:bg-glass-hi disabled:opacity-45 compact:flex-1 compact:min-w-0 bg-hud-accent text-gold-fg shadow-none ${packClass("Button", "plate", "primary")}`} role="button" label={t("racing.results.continue")} onPress={(e) => props.onContinue?.(e)}>
           <Text>{t("racing.results.continue")}</Text>
         </View>
       </View>

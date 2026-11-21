@@ -55,10 +55,10 @@ export function RacingLapHud(props: RacingLapHudProps) {
             role="group"
             label={props.position > 0 ? t("racing.lap.positionValue", { position: props.position, racers: props.racers }) : t("racing.lap.position")}
           >
-            <Text class={`text-[6rem] leading-[0.8] italic font-bold tabular-nums whitespace-nowrap text-fg text-stroke-3 text-stroke-bg compact:text-6xl`}>
+            <Text class={`text-8xl leading-flat italic font-bold tabular-nums whitespace-nowrap text-fg text-stroke-3 text-stroke-bg compact:text-6xl`}>
               {props.position > 0 ? formatNumber(props.position) : t("racing.lap.pending")}
             </Text>
-            <Text class={`text-4xl leading-[0.8] italic font-bold whitespace-nowrap text-fg-muted compact:text-title`}>{t("racing.lap.of", { total: props.racers })}</Text>
+            <Text class={`text-4xl leading-flat italic font-bold whitespace-nowrap text-fg-muted compact:text-title`}>{t("racing.lap.of", { total: props.racers })}</Text>
           </View>
         </Show>
         <View class="flex min-w-0 flex-col items-start gap-y-2 pb-1 compact:gap-y-1 compact:pb-0">
@@ -94,7 +94,7 @@ export function RacingLapHud(props: RacingLapHudProps) {
       <View class={`flex-col gap-y-1 compact:gap-y-0.5 py-2 px-3 compact:py-1 compact:px-2 bg-glass nine-plate-cut ${packClass("Plate", "frame")}`} role="list" label={t("racing.lap.times")}>
         <View class="flex-row items-baseline justify-between gap-x-2 min-w-0" role="listitem">
           <Text class={`min-w-0 text-xs font-semibold tracking-label uppercase whitespace-nowrap overflow-hidden text-fg-muted compact:tracking-normal`}>{t("racing.lap.current")}</Text>
-          <Text class={`text-title leading-[1.05] font-bold tabular-nums whitespace-nowrap text-fg`}>{props.current !== "" ? props.current : t("racing.lap.none")}</Text>
+          <Text class={`text-title leading-flat font-bold tabular-nums whitespace-nowrap text-fg`}>{props.current !== "" ? props.current : t("racing.lap.none")}</Text>
         </View>
         <View class="group/lastrow flex-row items-baseline justify-between gap-x-2 min-w-0 compact:hidden" role="listitem" data-fresh={props.freshBest}>
           <Text class={`min-w-0 text-xs font-semibold tracking-label uppercase whitespace-nowrap overflow-hidden text-fg-muted compact:tracking-normal`}>{t("racing.lap.last")}</Text>

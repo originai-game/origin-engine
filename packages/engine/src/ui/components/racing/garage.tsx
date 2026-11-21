@@ -54,7 +54,7 @@ export function RacingGarage(props: RacingGarageProps) {
       <Show when={shownVehicle()?.image} keyed>
         {(img) => <Image src={img()} class="absolute inset-0 size-full" />}
       </Show>
-      <View class="absolute inset-0 pointer-events-none bg-linear-to-b from-well/80 via-transparent to-plate-lo compact:bottom-auto compact:h-19/50" />
+      <View class="absolute inset-0 pointer-events-none bg-linear-to-b from-well via-transparent to-plate-lo compact:bottom-auto compact:h-19/50" />
       <View class="relative flex-row w-full shrink-0">
         <Text class={`flex-1 min-w-0 text-xs leading-snug font-semibold tracking-label uppercase text-fg text-stroke-3 text-stroke-bg`}>{heading()}</Text>
       </View>
@@ -76,10 +76,10 @@ export function RacingGarage(props: RacingGarageProps) {
               {(v) => (
                 <View class="flex-col gap-1 w-full" label={v().title} data-owned={v().owned} data-chosen={v().id === props.chosen} data-locked={v().locked}>
                   <Show when={!v().image}>
-                    <View class={`w-full aspect-[3.2] bg-lit-soft nine-panel-cut`} />
+                    <View class={`w-full aspect-3.2 bg-lit-soft nine-panel-cut`} />
                   </Show>
                   <Text class={`w-full text-left text-xs leading-snug font-semibold tracking-label uppercase text-hud-accent text-stroke-3 text-stroke-bg`}>{v().body}</Text>
-                  <Text class={`w-full text-left text-[4.714rem] leading-none font-bold italic uppercase text-fg text-stroke-3 text-stroke-bg line-clamp-3 overflow-hidden`}>{v().title}</Text>
+                  <Text class={`w-full text-left text-8xl leading-none font-bold italic uppercase text-fg text-stroke-3 text-stroke-bg line-clamp-3 overflow-hidden`}>{v().title}</Text>
                 </View>
               )}
             </Show>
@@ -159,9 +159,9 @@ export function RacingGarage(props: RacingGarageProps) {
                   data-locked={v().locked}
                 >
                   <View class="flex-col gap-1 w-full items-start">
-                    <Text class={`w-full text-left text-caption leading-[1.15] font-bold text-fg`}>{v().title}</Text>
+                    <Text class={`w-full text-left text-caption leading-tight font-bold text-fg`}>{v().title}</Text>
                     <Text
-                      class={`max-w-full py-0 px-1 text-xs leading-[1.5] font-bold tracking-label uppercase bg-well nine-chip-cut text-fg data-driving:text-hud-accent-fg data-driving:bg-hud-accent data-locked:text-fg-muted data-price:text-gold ${packClass("Chip", "frame")}`}
+                      class={`max-w-full py-0 px-1 text-xs leading-normal font-bold tracking-label uppercase bg-well nine-chip-cut text-fg data-driving:text-hud-accent-fg data-driving:bg-hud-accent data-locked:text-fg-muted data-price:text-gold ${packClass("Chip", "frame")}`}
                       data-driving={v().id === props.chosen}
                       data-locked={v().locked && v().id !== props.chosen}
                       data-price={!v().locked && v().id !== props.chosen && !v().owned}

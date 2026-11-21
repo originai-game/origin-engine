@@ -89,7 +89,7 @@ export function RacingTrackMap(props: RacingTrackMapProps) {
               points stay in the path's 260 by 220 box and the tree maps
               them onto the plate, which already has the box's aspect. */}
           <Line class="absolute inset-0 size-full stroke-well stroke-14" points={track().points} closed={track().closed} viewBox={[260, 220]} fit="fill" />
-          <Line class="absolute inset-0 size-full stroke-white/85 stroke-4" points={track().points} closed={track().closed} viewBox={[260, 220]} fit="fill" />
+          <Line class="absolute inset-0 size-full stroke-rim-strong stroke-4" points={track().points} closed={track().closed} viewBox={[260, 220]} fit="fill" />
         </Show>
         <Show when={props.driven !== ""}>
           <Line class="absolute inset-0 size-full stroke-hud-accent stroke-4" points={driven().points} viewBox={[260, 220]} fit="fill" />

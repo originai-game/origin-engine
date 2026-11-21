@@ -18,7 +18,7 @@ export function RacingPedals(props: RacingPedalsProps) {
     <View class={`flex-row items-end gap-x-3 text-fg compact:gap-x-2`} role="group" label={t("racing.pedals.name")}>
       <View class="flex-col items-center gap-y-1.25">
         <View
-          class={`relative w-3 h-14.5 overflow-hidden bg-well/82 shadow-[0px_0px_0px_1px_#ffffff38] compact:w-2.25 compact:h-10`}
+          class={`relative w-3 h-14.5 overflow-hidden bg-well ring ring-rim compact:w-2.25 compact:h-10`}
           role="meter"
           label={t("racing.pedals.throttleName")}
           valueMin={0}
@@ -31,7 +31,7 @@ export function RacingPedals(props: RacingPedalsProps) {
       </View>
       <View class="flex-col items-center gap-y-1.25">
         <View
-          class={`relative w-3 h-14.5 overflow-hidden bg-well/82 shadow-[0px_0px_0px_1px_#ffffff38] compact:w-2.25 compact:h-10`}
+          class={`relative w-3 h-14.5 overflow-hidden bg-well ring ring-rim compact:w-2.25 compact:h-10`}
           role="meter"
           label={t("racing.pedals.brakeName")}
           valueMin={0}

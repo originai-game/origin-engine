@@ -26,9 +26,9 @@ export function RacingBonus(props: RacingBonusProps) {
     <View class={`flex-col items-center gap-y-5.5 w-fit max-w-full text-fg compact:flex-row compact:justify-center compact:gap-x-3`} role="group" label={t("racing.bonus.name")}>
       <Show when={props.meter !== ""}>
         <View class={`flex-col items-center gap-y-1.5 max-w-full compact:flex-[0_1_auto] compact:min-w-0`} role="meter" label={props.meter} valueMin={0} valueMax={100} valueNow={share() * 100}>
-          <Text class={`max-w-full min-w-0 text-xs font-semibold tracking-[0.22em] uppercase whitespace-nowrap overflow-hidden text-hud-accent text-stroke-3 text-stroke-bg compact:tracking-normal`}>{props.meter}</Text>
-          <View class={`relative w-45 max-w-full h-1.75 overflow-hidden bg-well/82 shadow-[0px_0px_0px_1px_#ffffff38,inset_0px_1px_0px_#ffffff24,0px_2px_5.714px_#00000073] compact:w-25 compact:h-1.25`}>
-            <View class="absolute left-0 top-0 h-full bg-hud-accent shadow-[2.288px_0px_10px_#38e8ffbf]" style={{ width: `${share() * 100}%` }} />
+          <Text class={`max-w-full min-w-0 text-xs font-semibold tracking-kicker uppercase whitespace-nowrap overflow-hidden text-hud-accent text-stroke-3 text-stroke-bg compact:tracking-normal`}>{props.meter}</Text>
+          <View class={`relative w-45 max-w-full h-1.75 overflow-hidden bg-well shadow-plate ring ring-rim compact:w-25 compact:h-1.25`}>
+            <View class="absolute left-0 top-0 h-full bg-hud-accent shadow-glow" style={{ width: `${share() * 100}%` }} />
           </View>
         </View>
       </Show>

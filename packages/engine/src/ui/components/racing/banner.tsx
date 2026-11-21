@@ -37,7 +37,7 @@ export function RacingBanner(props: RacingBannerProps) {
   const plateInner = () => (
     <>
       <View class="flex-row items-baseline justify-center gap-x-2 max-w-full min-w-0">
-        <Text class={`min-w-0 text-title leading-[1.1] font-bold tabular-nums tracking-[0.22em] uppercase whitespace-nowrap overflow-hidden text-fg text-stroke-3 text-stroke-bg compact:text-base group-data-kind-countdown/plate:text-display-md group-data-kind-countdown/plate:tracking-normal`}>
+        <Text class={`min-w-0 text-title leading-tight font-bold tabular-nums tracking-kicker uppercase whitespace-nowrap overflow-hidden text-fg text-stroke-3 text-stroke-bg compact:text-base group-data-kind-countdown/plate:text-display-md group-data-kind-countdown/plate:tracking-normal`}>
           {kind() === "countdown" ? formatNumber(props.figure) : kind() === "go" ? t("racing.banner.go") : kind() === "finalLap" ? t("racing.banner.finalLap") : kind() === "finish" ? t("racing.banner.finish") : props.text}
         </Text>
         <Show when={kind() === "finish" && props.place > 0}>

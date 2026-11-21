@@ -48,16 +48,16 @@ export function RacingBoost(props: RacingBoostProps) {
         <View class="flex-row items-center gap-x-2 min-w-0">
           <Text class={`shrink min-w-0 text-xs font-semibold tracking-label uppercase whitespace-nowrap overflow-hidden text-ally text-stroke-3 text-stroke-bg compact:tracking-normal`}>{label()}</Text>
           <Show when={(props.key ?? "") !== ""}>
-            <Text class={`shrink min-w-5.5 max-w-3/5 pointer-coarse:hidden bg-linear-to-b from-key-hi to-key-lo text-hud-accent-fg rounded-[4.576px] shadow-[0px_2.288px_0px_#0000008c,inset_0px_-2.288px_0px_#0000002e] text-xs leading-[1.5] font-bold tabular-nums text-center whitespace-nowrap overflow-hidden py-0 px-1`}>{props.key}</Text>
+            <Text class={`shrink min-w-5.5 max-w-3/5 pointer-coarse:hidden bg-linear-to-b from-key-hi to-key-lo text-hud-accent-fg rounded-control shadow-key text-xs leading-normal font-bold tabular-nums text-center whitespace-nowrap overflow-hidden py-0 px-1`}>{props.key}</Text>
           </Show>
         </View>
-        <View class={`relative w-full h-3 overflow-hidden bg-well/82 shadow-[0px_0px_0px_1px_#ffffff38,inset_0px_1px_0px_#ffffff24,0px_2px_5.714px_#00000073] compact:h-2`}>
-          <View class="absolute left-0 top-0 h-full bg-ally group-data-firing/boost:shadow-[2.288px_0px_10px_#4fd8ffcc]" style={{ width: `${frac() * 100}%` }} />
+        <View class={`relative w-full h-3 overflow-hidden bg-well shadow-plate ring ring-rim compact:h-2`}>
+          <View class="absolute left-0 top-0 h-full bg-ally group-data-firing/boost:shadow-glow group-data-firing/boost:shadow-ally" style={{ width: `${frac() * 100}%` }} />
           {/* The cell cuts (a repeating-gradient mask in the svelte): one separator per cell. */}
           <For each={Array.from({ length: Math.max(1, Math.floor(props.cells ?? 5)) - 1 })}>
             {(_, i) => (
               <View
-                class="absolute h-full w-0.75 bg-tile/92 pointer-events-none"
+                class="absolute h-full w-0.75 bg-tile pointer-events-none"
                 style={{ left: `${((i() + 1) / Math.max(1, Math.floor(props.cells ?? 5))) * 100}%` }}
               />
             )}
