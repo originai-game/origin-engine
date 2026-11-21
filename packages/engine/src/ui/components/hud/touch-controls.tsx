@@ -1,4 +1,4 @@
-import { For, Show, View, createSignal, type UiEvent, t } from "@origingame/engine/ui";
+import { For, Show, View, t } from "@origingame/engine/ui";
 import { ActionButton } from "./action-button";
 import "./touch-controls.en.ogt";
 
@@ -29,63 +29,26 @@ export interface TouchControlsProps {
   always?: boolean;
   /** Every control feeds nothing and shows faded (a cutscene, a menu over the HUD). */
   disabled?: boolean;
-  /**
-   * The stick's or d-pad's axis per move, each way -1 to 1 (the d-pad's
-   * -1, 0 or 1) and (0, 0) once it lets go, for the og-input action it
-   * names. Temporary stand-in: in a document UI the control feeds the
-   * action itself (touch.rs registers the node's rect as the action's
-   * source), and the TSX stick has no zone surface yet, so the game
-   * reads the axis here; when a View can be an action's zone, onMove
-   * goes and the controls feed the actions again.
-   */
-  onMove?: (e: UiEvent, action: string, x: number, y: number) => void;
 }
 
 /**
  * The on-screen controls of a game played with thumbs: a stick or a d-pad
  * at the start side, the action buttons at the end side with the first
  * nearest the corner (a row of three, the rest in rows above), and a
- * second stick beside them when the game looks with one. The buttons feed
- * their og-input actions through the engine's touch wiring; the stick and
- * the d-pad report their axis to onMove (the document widgets' stick
- * zones have no TSX surface, and the d-pad's four arms give its eight
- * ways only when two fingers hold two arms). It shows only where the
- * primary pointer is a finger, unless always is set, and a control that
- * is not shown or is disabled feeds nothing. The page places it: it is
- * as wide as its box and stands on its bottom edge.
+ * second stick beside them when the game looks with one. Each control is
+ * an input source of the og-input action it names (its box is a control
+ * zone: touchStick, touchPad or touchButton), so the game reads the same
+ * actions as from keys or a pad and handles no event; the component
+ * reports none. It shows only where the primary pointer is a finger,
+ * unless always is set, and a control that is not shown or is disabled
+ * feeds nothing. The page places it: it is as wide as its box and stands
+ * on its bottom edge.
  */
 
 const ENGINE_DEAD_ZONE = 0.15;
 
-/** The axis a pointer at the box's `e` gives: the offset from the centre, clamped to the ring, dead-zoned, each way -1 to 1. */
-function axis(e: UiEvent, deadZone: number): [number, number] {
-  const [bx, by, bw, bh] = e.value.split(" ").map(Number);
-  let dx = (e.x - bx) / bw - 0.5;
-  let dy = (e.y - by) / bh - 0.5;
-  const len = Math.hypot(dx, dy);
-  if (len > 0.5) {
-    dx /= len;
-    dy /= len;
-  } else {
-    dx *= 2;
-    dy *= 2;
-  }
-  const reach = Math.hypot(dx, dy);
-  if (reach <= deadZone) {
-    return [0, 0];
-  }
-  const scale = (reach - deadZone) / (1 - deadZone) / reach;
-  return [dx * scale, dy * scale];
-}
-
-/** A touch stick: its ring and knob, its axis reported per move and re-centred on release. */
-function Stick(props: { action: string; deadZone: number; disabled: boolean; label: string; onMove?: TouchControlsProps["onMove"] }) {
-  const knob = createSignal({ x: 0, y: 0 });
-  const report = (e: UiEvent, x: number, y: number) => {
-    knob.set({ x, y });
-    props.onMove?.(e, props.action, x, y);
-  };
-  const held = () => knob().x !== 0 || knob().y !== 0;
+/** A touch stick: its ring and its knob, whose box is the action's stick zone. */
+function Stick(props: { action: string; deadZone: number; disabled: boolean; label: string }) {
   return (
     <View
       class="relative size-40 compact:size-28 rounded-full border-rim bg-tile shadow-plate disabled:opacity-45"
@@ -95,43 +58,23 @@ function Stick(props: { action: string; deadZone: number; disabled: boolean; lab
       valueMax={1}
       valueText={props.label}
       disabled={props.disabled}
-      onPointerDown={(e) => report(e, ...axis(e, props.deadZone))}
-      onPointerMove={(e) => {
-        if (held()) report(e, ...axis(e, props.deadZone));
-      }}
-      onPointerUp={(e) => report(e, 0, 0)}
+      touchStick={props.action}
+      deadZone={props.deadZone}
     >
-      <View
-        class="absolute size-[40%] nine-disc bg-fg/45 shadow-float -translate-x-1/2 -translate-y-1/2"
-        style={{ left: `${50 + knob().x * 50}%`, top: `${50 + knob().y * 50}%` }}
-      />
+      <View class="absolute size-[40%] nine-disc bg-fg/45 shadow-float -translate-x-1/2 -translate-y-1/2 left-1/2 top-1/2" />
     </View>
   );
 }
 
-/** A touch d-pad: four arms, each held by a finger, its axis their sum. */
-function Pad(props: { action: string; disabled: boolean; label: string; onMove?: TouchControlsProps["onMove"] }) {
-  type Arm = "up" | "down" | "left" | "right";
-  const down = createSignal({ up: false, down: false, left: false, right: false });
-  const report = (e: UiEvent, arm: Arm) => {
-    const next = { ...down(), [arm]: !down()[arm] };
-    down.set(next);
-    props.onMove?.(e, props.action, (next.right ? 1 : 0) - (next.left ? 1 : 0), (next.down ? 1 : 0) - (next.up ? 1 : 0));
-  };
-  const arm = "flex-row items-center justify-center absolute rounded-[0.286rem] bg-tile border border-rim-soft active:bg-tile-pressed";
-  const armProps = (a: Arm) => ({
-    role: "button" as const,
-    label: props.label,
-    disabled: props.disabled,
-    onPointerDown: (e: UiEvent) => report(e, a),
-    onPointerUp: (e: UiEvent) => report(e, a),
-  });
+/** A touch d-pad: its cross and its box, which is the action's d-pad zone. */
+function Pad(props: { action: string; disabled: boolean; label: string }) {
+  const arm = "absolute rounded-[0.286rem] bg-tile border border-rim-soft";
   return (
-    <View class="relative size-40 compact:size-28 disabled:opacity-45" role="group" label={props.label} disabled={props.disabled}>
-      <View class={`${arm} bottom-[38%] left-[30%] right-[30%] top-0`} {...armProps("up")} />
-      <View class={`${arm} top-[38%] left-[30%] right-[30%] bottom-0`} {...armProps("down")} />
-      <View class={`${arm} right-[38%] top-[30%] bottom-[30%] left-0`} {...armProps("left")} />
-      <View class={`${arm} left-[38%] top-[30%] bottom-[30%] right-0`} {...armProps("right")} />
+    <View class="relative size-40 compact:size-28 disabled:opacity-45" role="group" label={props.label} disabled={props.disabled} touchPad={props.action}>
+      <View class={`${arm} bottom-[38%] left-[30%] right-[30%] top-0`} />
+      <View class={`${arm} top-[38%] left-[30%] right-[30%] bottom-0`} />
+      <View class={`${arm} right-[38%] top-[30%] bottom-[30%] left-0`} />
+      <View class={`${arm} left-[38%] top-[30%] bottom-[30%] right-0`} />
     </View>
   );
 }
@@ -147,9 +90,9 @@ export function TouchControls(props: TouchControlsProps) {
     >
       <Show when={(props.move ?? "") !== ""}>
         <Show when={props.pad === true} fallback={
-          <Stick action={props.move ?? ""} deadZone={dz()} disabled={props.disabled === true} label={t("component.touch-controls.move")} onMove={props.onMove} />
+          <Stick action={props.move ?? ""} deadZone={dz()} disabled={props.disabled === true} label={t("component.touch-controls.move")} />
         }>
-          <Pad action={props.move ?? ""} disabled={props.disabled === true} label={t("component.touch-controls.move")} onMove={props.onMove} />
+          <Pad action={props.move ?? ""} disabled={props.disabled === true} label={t("component.touch-controls.move")} />
         </Show>
       </Show>
       <View class="flex-row items-end justify-end gap-4 min-w-0">
@@ -170,7 +113,7 @@ export function TouchControls(props: TouchControlsProps) {
           </View>
         </Show>
         <Show when={(props.look ?? "") !== ""}>
-          <Stick action={props.look ?? ""} deadZone={dz()} disabled={props.disabled === true} label={t("component.touch-controls.look")} onMove={props.onMove} />
+          <Stick action={props.look ?? ""} deadZone={dz()} disabled={props.disabled === true} label={t("component.touch-controls.look")} />
         </Show>
       </View>
     </View>

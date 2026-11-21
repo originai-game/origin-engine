@@ -1,4 +1,5 @@
 import { Icon, Show, Text, View, createSignal, type UiEvent } from "@origingame/engine/ui";
+import { Button } from "../../controls/button";
 
 export interface HoldButtonProps {
   /** Its words and accessible name (Delete save). */
@@ -19,11 +20,11 @@ export interface HoldButtonProps {
   onConfirm?: (e: UiEvent) => void;
 }
 
-/** Each variant's look, from the old core's built-in button (default.css). */
-const LOOK: Record<string, string> = {
-  danger: "text-danger bg-[#2c2837] shadow-[inset_0px_0px_0px_1px_#ff959973,inset_0px_1px_0px_0px_#ffffff1f,0px_1px_2px_0px_#00000080] active:bg-none active:bg-[#372e3d]",
-  primary: "text-[#011e0f] bg-linear-to-b from-white/42 to-transparent to-48% bg-[#55e39a] active:bg-linear-to-b active:from-black/16 active:to-transparent active:to-60% active:bg-[#55e39a] active:border-transparent",
-  secondary: "text-fg bg-raised-lo shadow-[inset_0px_0px_0px_1px_#4e586c,inset_0px_-12px_12px_-8px_#00000038,inset_0px_1px_0px_0px_#ffffff1f,0px_1px_2px_0px_#00000080] active:bg-none active:bg-raised-pressed",
+/** HoldButton's roles in Button's variants; secondary is Button's default look. */
+const VARIANT: Record<string, "danger" | "primary" | undefined> = {
+  danger: "danger",
+  primary: "primary",
+  secondary: undefined,
 };
 
 /** The hold's progress fill, in the variant's ink. */
@@ -45,9 +46,8 @@ export function HoldButton(props: HoldButtonProps) {
   const held = () => progress() > 0;
   return (
     <View class="flex-col items-center max-w-full">
-      <View
-        class={`relative flex-row items-center justify-center gap-2 min-h-11 max-w-full py-1 px-4 overflow-hidden transition duration-317 disabled:text-fg-subtle disabled:bg-none disabled:bg-[#7379851d] disabled:border-border disabled:shadow-[inset_0px_0px_0px_1px_#343d4f] ${LOOK[variant] ?? LOOK.secondary}`}
-        role="button"
+      <Button
+        variant={VARIANT[variant] ?? undefined}
         hold={1.2}
         onHold={(e) => progress.set(e.value === "0" ? 0 : Math.min(Number(e.value), 1))}
         onPress={(e) => {
@@ -55,9 +55,9 @@ export function HoldButton(props: HoldButtonProps) {
           props.onConfirm?.(e);
         }}
         onAction={props.action ? { confirm: (e) => props.onConfirm?.(e) } : undefined}
-        data-action={props.action}
         label={props.label}
         disabled={props.disabled}
+        class="relative overflow-hidden max-w-full"
       >
         <Show when={props.icon}>
           <Icon class="size-4 shrink-0" name={props.icon} />
@@ -68,7 +68,7 @@ export function HoldButton(props: HoldButtonProps) {
         <Show when={held()}>
           <View class={`absolute bottom-0 left-0 h-[2px] ${FILL[variant] ?? FILL.secondary}`} style={{ width: `${progress() * 100}%` }} />
         </Show>
-      </View>
+      </Button>
       <Show when={props.hint}>
         <Text class="text-center text-caption text-fg-muted">{props.hint}</Text>
       </Show>

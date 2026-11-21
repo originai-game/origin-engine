@@ -17,15 +17,16 @@ export interface ActionButtonProps {
 
 /**
  * A touch disc: an action a finger holds, the primary one larger, an
- * optional charge ring round its rim. The engine's touch wiring reads the
- * disc's data-og-touch action while it is held; the disc has no press
- * handler of its own. The face's radial sheen is a linear one.
+ * optional charge ring round its rim. The disc's box is a control zone of
+ * its og-input action (touchButton), so the action is 1 while a touch
+ * that started on it is held; the disc has no press handler of its own.
+ * The face's radial sheen is a linear one.
  */
 export function ActionButton(props: ActionButtonProps) {
   return (
     <View
       class={`relative rounded-capsule border-2 border-[#8892a8] bg-[#444c5e] shadow-float active:scale-97 disabled:opacity-45 duration-160 data-primary:size-20 data-primary:border-transparent data-primary:bg-[#e8e8ed] size-16`}
-      data-og-touch={props.action}
+      touchButton={props.action}
       data-primary={props.primary}
       disabled={props.disabled}
       label={props.label}
