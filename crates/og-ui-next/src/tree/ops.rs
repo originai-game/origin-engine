@@ -3503,4 +3503,206 @@ mod tests {
         let five = og_draw::FontHandle::from_index(5);
         assert_eq!(t.drawn.fonts[2].first(), Some(&five));
     }
+
+    /// A tree whose classes resolve with NSH's default theme, as a game's do.
+    fn real() -> Tree {
+        let mut t = tree();
+        let classes = std::cell::RefCell::new(crate::classes::Classes::new(None).unwrap().0);
+        t.set_resolver(Box::new(move |class, _, _, _| {
+            classes
+                .borrow_mut()
+                .record(class, &crate::classes::Env::default())
+        }));
+        t
+    }
+
+    /// Op nodes `(id, tag, class, parent)` in order (`tag` as op 1's).
+    fn nodes(t: &mut Tree, list: &[(u32, u8, &str, u32)]) {
+        let mut b = Batch::default();
+        for &(id, tag, class, parent) in list {
+            b.op(1).u32(id).u8(tag);
+            b.op(4).u32(id).str(class);
+            b.op(8).u32(parent).u32(id).u32(u32::MAX);
+        }
+        t.apply(&b.bytes()).unwrap();
+    }
+
+    fn fixed_fonts() -> og_ui::Fonts {
+        og_ui::Fonts {
+            body: og_ui::UiFont {
+                handle: Some(og_draw::FontHandle::from_index(0)),
+                metrics: og_text::text::FontMetrics::fixed(0.5),
+            },
+            ..Default::default()
+        }
+    }
+
+    /// A box paints its outer shadows under it, then its fill and
+    /// gradient, its inset shadows, its border and its outline, with CSS's
+    /// radii (scaled down together when they overlap) and a corner
+    /// gradient's angle. Real classes, end to end.
+    #[test]
+    fn a_box_paints_shadows_fill_border_and_outline_in_order() {
+        let mut t = real();
+        nodes(
+            &mut t,
+            &[(
+                1,
+                0,
+                "w-[200px] h-[100px] bg-[#102030] bg-linear-to-tr from-black to-white \
+            border border-[#ff0000] border-t-1 border-r-2 border-b-3 border-l-4 rounded-[80px] rounded-bl-none \
+            shadow-[0_4px_8px_#000] inset-shadow-[0_0_2px_#fff] outline-2 outline-[#00ff00] outline-offset-3",
+                0,
+            )],
+        );
+        frame(&mut t);
+        let q = &t.drawn.quads;
+        use PaintKind as K;
+        let kinds: Vec<u32> = q.iter().map(|q| q.kind).collect();
+        assert_eq!(
+            kinds,
+            [
+                K::Shadow,
+                K::Solid,
+                K::Gradient,
+                K::InsetShadow,
+                K::Border,
+                K::Border
+            ]
+            .map(|k| k as u32)
+        );
+        // 80 + 80 on the 100px sides: all four scale by 100 / 160.
+        assert_eq!(q[1].radius, [50.0, 50.0, 50.0, 0.0]);
+        assert_eq!(q[0].p, [0.0, 4.0, 8.0, 0.0], "offset, blur, spread");
+        assert_eq!(q[4].p, [1.0, 2.0, 3.0, 4.0], "the border's widths");
+        let [x, y, w, h] = t.op_box(1).unwrap();
+        assert_eq!(
+            q[5].rect,
+            [x - 5.0, y - 5.0, w + 10.0, h + 10.0],
+            "outline 3px out, 2px wide"
+        );
+        assert_eq!(q[5].p, [2.0; 4]);
+        assert_eq!(
+            q[5].radius,
+            [55.0, 55.0, 55.0, 0.0],
+            "a square corner stays square"
+        );
+        // To the top right of a 2:1 box: perpendicular to the other diagonal.
+        let angle = t.drawn.gradients[0].angle;
+        assert!(
+            (angle - og_core::math::atan2(1.0, 2.0)).abs() < 1e-3,
+            "{angle}"
+        );
+    }
+
+    /// A transform moves a box and everything under it at paint, about its
+    /// origin, composed down the tree; its layout stays. A text's shadow
+    /// paints under its glyphs and its underline after them, and the text
+    /// paints over the panel it sits on.
+    #[test]
+    fn a_transform_composes_down_the_tree_and_text_paints_its_shadow_and_lines() {
+        let mut t = real();
+        nodes(
+            &mut t,
+            &[
+                (1, 0, "w-[100px] h-[40px] bg-[#102030] rotate-90", 0),
+                (2, 0, "w-[20px] h-[10px] bg-white translate-x-[30px]", 1),
+            ],
+        );
+        let mut b = Batch::default();
+        b.op(2).u32(3).str("ab");
+        b.op(4).u32(3).str("text-shadow-md underline");
+        b.op(8).u32(2).u32(3).u32(u32::MAX);
+        t.apply(&b.bytes()).unwrap();
+        t.frame(&fixed_fonts(), &IconAtlas::default());
+        let [px, py, pw, ph] = t.op_box(1).unwrap();
+        let [cx, cy, _, _] = t.op_box(2).unwrap();
+        assert_eq!((cx, cy), (px, py), "layout does not move");
+        let d = &t.drawn;
+        let at = |q: &PaintQuad, x: f32, y: f32| {
+            let [a, b, c, dd, e, f, _, _] = d.transforms[q.xf as usize];
+            [a * x + c * y + e, b * x + dd * y + f]
+        };
+        let near =
+            |u: [f32; 2], v: [f32; 2]| (u[0] - v[0]).abs() < 1e-3 && (u[1] - v[1]).abs() < 1e-3;
+        // The parent turns a quarter clockwise about its centre: its top
+        // left goes to the top right of the turned box.
+        let (mx, my) = (px + pw / 2.0, py + ph / 2.0);
+        let pq = &d.quads[0];
+        assert!(pq.xf != 0);
+        assert!(
+            near(at(pq, px, py), [mx + ph / 2.0, my - pw / 2.0]),
+            "{:?}",
+            at(pq, px, py)
+        );
+        // The child moves 30px along the turned x axis: down the screen.
+        let cq = &d.quads[1];
+        assert!(cq.xf != pq.xf);
+        assert!(
+            near(at(cq, cx, cy), [mx + ph / 2.0, my - pw / 2.0 + 30.0]),
+            "{:?}",
+            at(cq, cx, cy)
+        );
+        let kinds: Vec<u32> = d.quads[2..].iter().map(|q| q.kind).collect();
+        let g = PaintKind::Glyph as u32;
+        assert_eq!(
+            kinds,
+            [g, g, g, g, PaintKind::Solid as u32],
+            "shadow, glyphs, underline"
+        );
+        // `text-shadow-md` is offset down, not across.
+        assert_eq!(
+            d.quads[2].rect[0], d.quads[4].rect[0],
+            "the shadow under its glyph"
+        );
+        assert!(
+            d.quads[2].rect[1] > d.quads[4].rect[1],
+            "the shadow's offset"
+        );
+        assert!(
+            d.quads[2..].iter().all(|q| q.xf == cq.xf),
+            "the text rides its parents"
+        );
+    }
+
+    /// A hidden node and everything under it paint nothing and take no
+    /// room; showing it again paints it.
+    #[test]
+    fn a_hidden_node_paints_nothing() {
+        let mut t = real();
+        nodes(
+            &mut t,
+            &[
+                (1, 0, "hidden w-[40px] h-[40px] bg-white", 0),
+                (2, 0, "w-[10px] h-[10px] bg-black", 1),
+            ],
+        );
+        frame(&mut t);
+        assert!(t.drawn.quads.is_empty(), "{:?}", t.drawn.quads);
+        let mut b = Batch::default();
+        b.op(4).u32(1).str("w-[40px] h-[40px] bg-white");
+        t.apply(&b.bytes()).unwrap();
+        frame(&mut t);
+        assert_eq!(t.drawn.quads.len(), 2);
+    }
+
+    /// An `Icon` draws its built-in icon's segments in its box.
+    #[test]
+    fn a_built_in_icon_draws() {
+        let mut t = real();
+        nodes(&mut t, &[(1, 5, "w-[24px] h-[24px] text-white", 0)]);
+        let mut b = Batch::default();
+        b.op(6).u32(1).str("name").str("clock");
+        t.apply(&b.bytes()).unwrap();
+        t.frame(&og_ui::Fonts::default(), &IconAtlas::default());
+        let (first, count) = crate::icons::icons().find("clock").unwrap();
+        let q = t
+            .drawn
+            .quads
+            .iter()
+            .find(|q| q.kind == PaintKind::Icon as u32)
+            .expect("an icon quad");
+        assert_eq!((q.a, q.b), (first, count));
+        assert_eq!(q.rect, [0.0, 0.0, 24.0, 24.0]);
+    }
 }
