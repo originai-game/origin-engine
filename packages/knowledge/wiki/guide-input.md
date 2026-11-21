@@ -130,13 +130,16 @@ yaw -= m.x * 0.0025;
 <a id="guide-input-4"></a>
 ### `input §4` Gamepads
 
-- Up to eight pads, in the W3C standard layout. On the web the shell polls
-  them each display frame and sends their state through the input ring, so
-  a pad is world state and replays. A pad the browser does not map
-  (Firefox, Linux, many third-party pads) is mapped through the shell's
-  table; the shell also maps pads to keys for games that read only keys.
-- og.Gamepad's sticks and triggers are raw, y down. Dead zones belong to
-  the actions:
+- Up to eight pads, in the W3C standard layout. A host sends each pad raw
+  when it changes (its buttons, axes and hat in its driver's order, with
+  its SDL GUID) through the input ring, so a pad is world state and
+  replays; a pad keeps its slot while it is connected. og-input alone maps
+  it to the standard layout, through SDL_GameControllerDB's mappings for
+  desktop drivers and og's own for a pad the browser does not map
+  (Firefox, Linux, many third-party pads); a pad no mapping names reads its
+  raw order as the standard one. Pads press no keys: bind `pad.*` controls.
+- og.Gamepad's sticks and triggers are past no dead zone, y down. Dead
+  zones belong to the actions:
 
 | Dead zone | Default | Applies |
 |---|---|---|
@@ -148,9 +151,9 @@ yaw -= m.x * 0.0025;
   Inside a dead zone a value reads 0; the rest is rescaled to reach 1.
   Every dead zone stops at 0.95. The pads' are the player's (a settings
   slider), kept by og.input.saveBindings.
-- og.input.padDevice gives a pad's family as the host told it from the
-  pad's id (Xbox, PlayStation, Switch or generic); glyphs follow it. A pad
-  whose family the host could not tell is drawn as an Xbox pad. A Switch
+- og.input.padDevice gives a pad's family (Xbox, PlayStation, Switch or
+  generic), from its vendor id, else the name its mapping gives; glyphs
+  follow it. A generic pad is drawn as an Xbox pad. A Switch
   pad's south button is B.
 - og.input.rumble is output for the host, never world state: a replay does
   not repeat it, and a native run records it in the frame answer's

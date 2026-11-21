@@ -9,9 +9,11 @@
 //! Windows and Linux alike). The surface presents with vsync: the frame
 //! call waits for the display. The engine's audio plays on the default
 //! output device (og_audio::device, the napi host's `device` sink); a
-//! machine without one runs silent. Gamepads (gilrs) are polled each pump
-//! and sent whole when they change, as the web shell's `gamepad` events
-//! (pads 0 to 7, the W3C standard layout, the family from the vendor).
+//! machine without one runs silent. Gamepads (gilrs-core) are polled each
+//! pump and sent raw and whole when they change, as the web shell's
+//! `gamepad` events: their buttons, axes and hat in the driver's order with
+//! their SDL GUID, which og-input maps. A pad keeps its slot (0 to 7) while
+//! it is connected: another one going does not renumber it.
 
 use og_render::{RenderDesc, RenderError, RenderScene, RenderTarget, Renderer};
 use og_runtime::RenderBackend;
@@ -35,146 +37,141 @@ struct Shell {
     /// The default output device playing the engine's audio, if there is one.
     audio: Option<og_audio::device::DeviceSink>,
     /// The gamepads, if the platform's input library opened.
-    pads: Option<gilrs::Gilrs>,
-    /// Each pad's last event sent, by its slot (0 to 7).
-    sent: [Option<Value>; og_input::MAX_GAMEPADS],
+    pads: Option<gilrs_core::Gilrs>,
+    /// The pad in each slot (0 to 7).
+    slots: [Option<PadSlot>; og_input::MAX_GAMEPADS],
 }
 
-/// A pad's family from its USB vendor and name, as the web shell reads it
-/// from the browser's id (`padDevice` in packages/engine/src/web/gamepad.ts).
-fn pad_device(vendor: Option<u16>, name: &str) -> &'static str {
-    match vendor {
-        Some(0x045e) => return "xbox",
-        Some(0x054c) => return "playstation",
-        Some(0x057e) => return "switch",
-        _ => {}
-    }
-    let name = name.to_lowercase();
-    if ["xbox", "xinput", "x-box"].iter().any(|n| name.contains(n)) {
-        "xbox"
-    } else if [
-        "playstation",
-        "dualshock",
-        "dualsense",
-        "wireless controller",
-    ]
-    .iter()
-    .any(|n| name.contains(n))
-    {
-        "playstation"
-    } else if ["switch", "pro controller", "joy-con", "nintendo"]
-        .iter()
-        .any(|n| name.contains(n))
-    {
-        "switch"
-    } else {
-        "gamepad"
-    }
-}
-
-/// gilrs's buttons in the W3C standard layout's order (og-input's GAMEPAD_BUTTONS).
-const PAD_BUTTONS: [gilrs::Button; 17] = {
-    use gilrs::Button::*;
-    [
-        South,
-        East,
-        West,
-        North,
-        LeftTrigger,
-        RightTrigger,
-        LeftTrigger2,
-        RightTrigger2,
-        Select,
-        Start,
-        LeftThumb,
-        RightThumb,
-        DPadUp,
-        DPadDown,
-        DPadLeft,
-        DPadRight,
-        Mode,
-    ]
+/// The order this platform's driver lists a pad's inputs in.
+const PAD_LAYOUT: og_input::PadLayout = if cfg!(target_os = "linux") {
+    og_input::PadLayout::Linux
+} else if cfg!(target_os = "macos") {
+    og_input::PadLayout::Mac
+} else {
+    og_input::PadLayout::XInput
 };
 
-/// One pad's state as the web shell's `gamepad` event: held buttons by
-/// name, sticks with y down, analog triggers 0 to 1.
-fn pad_event(
-    slot: usize,
-    connected: bool,
-    device: &str,
-    held: &[bool; 17],
-    sticks: [f32; 4],
-    triggers: [f32; 2],
-) -> Value {
-    let buttons: Vec<&str> = og_input::GAMEPAD_BUTTONS
-        .iter()
-        .zip(held)
-        .filter(|(_, h)| **h)
-        .map(|(n, _)| *n)
-        .collect();
-    json!({
-        "kind": "gamepad",
-        "pad": slot,
-        "connected": connected,
-        "buttons": buttons,
-        "axes": [sticks[0], -sticks[1], sticks[2], -sticks[3]],
-        "triggers": triggers,
-        "device": device,
-    })
+/// A connected pad in its slot: its driver's id, its inputs' codes in the
+/// driver's order (hat 0 apart from the axes), and its raw state.
+struct PadSlot {
+    id: usize,
+    buttons: Vec<u32>,
+    /// Each axis's code and range.
+    axes: Vec<(u32, i32, i32)>,
+    raw: og_input::RawPad,
+    sent: Option<og_input::RawPad>,
+}
+
+impl PadSlot {
+    fn new(slot: usize, id: usize, pad: &gilrs_core::Gamepad) -> PadSlot {
+        use gilrs_core::native_ev_codes::{AXIS_DPADX, AXIS_DPADY};
+        let axes = pad
+            .axes()
+            .iter()
+            .filter(|c| **c != AXIS_DPADX && **c != AXIS_DPADY)
+            .map(|c| {
+                let (min, max) = pad
+                    .axis_info(*c)
+                    .map_or((-32768, 32767), |i| (i.min, i.max));
+                (c.into_u32(), min, max)
+            })
+            .collect();
+        PadSlot {
+            id,
+            buttons: pad.buttons().iter().map(|c| c.into_u32()).collect(),
+            axes,
+            raw: og_input::RawPad {
+                pad: slot as u32,
+                connected: true,
+                layout: PAD_LAYOUT,
+                guid: pad.uuid(),
+                ..og_input::RawPad::default()
+            },
+            sent: None,
+        }
+    }
+
+    /// One driver event into the raw state.
+    fn take(&mut self, event: gilrs_core::EventType) {
+        use gilrs_core::EventType::*;
+        use gilrs_core::native_ev_codes::{AXIS_DPADX, AXIS_DPADY};
+        match event {
+            ButtonPressed(c) | ButtonReleased(c) => {
+                let on = matches!(event, ButtonPressed(_));
+                if let Some(i) = self.buttons.iter().position(|b| *b == c.into_u32())
+                    && let Some(v) = self.raw.buttons.get_mut(i)
+                {
+                    *v = f32::from(u8::from(on));
+                }
+            }
+            AxisValueChanged(v, c) if c == AXIS_DPADX || c == AXIS_DPADY => {
+                let (neg, pos) = if c == AXIS_DPADX { (8, 2) } else { (1, 4) };
+                self.raw.hat &= !(neg | pos);
+                self.raw.hat |= match v.signum() {
+                    -1 => neg,
+                    1 => pos,
+                    _ => 0,
+                };
+            }
+            AxisValueChanged(v, c) => {
+                if let Some(i) = self.axes.iter().position(|a| a.0 == c.into_u32())
+                    && let Some(a) = self.raw.axes.get_mut(i)
+                {
+                    let (_, min, max) = self.axes[i];
+                    let span = (max as f32 - min as f32).max(1.0);
+                    *a = ((v as f32 - min as f32) / span * 2.0 - 1.0).clamp(-1.0, 1.0);
+                }
+            }
+            _ => {}
+        }
+    }
 }
 
 impl Shell {
-    /// The pads' events since the last pump: each connected pad's state when
-    /// it changed, and a disconnect for a slot whose pad went.
+    /// The pads' events since the last pump: a pad's raw state when it
+    /// changed, and a disconnect for a slot whose pad went.
     fn poll_pads(&mut self) -> Vec<Value> {
         let Some(g) = self.pads.as_mut() else {
             return Vec::new();
         };
-        while g.next_event().is_some() {}
-        let mut now: [Option<Value>; og_input::MAX_GAMEPADS] = Default::default();
-        for (slot, (_, pad)) in g
-            .gamepads()
-            .filter(|(_, p)| p.is_connected())
-            .take(og_input::MAX_GAMEPADS)
-            .enumerate()
-        {
-            let held = PAD_BUTTONS.map(|b| pad.is_pressed(b));
-            let value = |a| pad.value(a);
-            let trigger = |b| pad.button_data(b).map_or(0.0, |d| d.value());
-            use gilrs::Axis::*;
-            now[slot] = Some(pad_event(
-                slot,
-                true,
-                pad_device(pad.vendor_id(), pad.name()),
-                &held,
-                [
-                    value(LeftStickX),
-                    value(LeftStickY),
-                    value(RightStickX),
-                    value(RightStickY),
-                ],
-                [
-                    trigger(gilrs::Button::LeftTrigger2),
-                    trigger(gilrs::Button::RightTrigger2),
-                ],
-            ));
-        }
         let mut out = Vec::new();
-        for (slot, (was, is)) in self.sent.iter_mut().zip(now).enumerate() {
-            match (&*was, is) {
-                (_, Some(v)) if was.as_ref() != Some(&v) => {
-                    if was.is_none() {
-                        eprintln!("og-host-c: gamepad {slot} connected ({})", v["device"]);
-                    }
-                    out.push(v.clone());
-                    *was = Some(v);
+        while let Some(e) = g.next_event() {
+            let at = self
+                .slots
+                .iter()
+                .position(|s| s.as_ref().is_some_and(|s| s.id == e.id));
+            match (e.event, at) {
+                (gilrs_core::EventType::Connected, None) => {
+                    let (Some(free), Some(pad)) =
+                        (self.slots.iter().position(Option::is_none), g.gamepad(e.id))
+                    else {
+                        continue;
+                    };
+                    eprintln!("og-host-c: gamepad {free} connected ({})", pad.name());
+                    self.slots[free] = Some(PadSlot::new(free, e.id, pad));
                 }
-                (Some(_), None) => {
-                    eprintln!("og-host-c: gamepad {slot} disconnected");
-                    out.push(json!({ "kind": "gamepad", "pad": slot, "connected": false, "buttons": [], "axes": [0, 0, 0, 0], "triggers": [0, 0] }));
-                    *was = None;
+                (gilrs_core::EventType::Disconnected, Some(at)) => {
+                    eprintln!("og-host-c: gamepad {at} disconnected");
+                    self.slots[at] = None;
+                    let gone = og_input::RawPad {
+                        pad: at as u32,
+                        connected: false,
+                        ..og_input::RawPad::default()
+                    };
+                    out.push(og_input::InjectedInput::Gamepad(gone).to_json());
+                }
+                (event, Some(at)) => {
+                    if let Some(s) = self.slots[at].as_mut() {
+                        s.take(event);
+                    }
                 }
                 _ => {}
+            }
+        }
+        for s in self.slots.iter_mut().flatten() {
+            if s.sent != Some(s.raw) {
+                s.sent = Some(s.raw);
+                out.push(og_input::InjectedInput::Gamepad(s.raw).to_json());
             }
         }
         out
@@ -609,7 +606,7 @@ fn open(engine: u32, width: u32, height: u32, title: String, keep: bool) -> Resu
         }
         None => None,
     };
-    let pads = match gilrs::Gilrs::new() {
+    let pads = match gilrs_core::Gilrs::new() {
         Ok(g) => Some(g),
         Err(e) => {
             eprintln!("og-host-c: no gamepads: {e}");
@@ -623,7 +620,7 @@ fn open(engine: u32, width: u32, height: u32, title: String, keep: bool) -> Resu
             app,
             audio,
             pads,
-            sent: Default::default(),
+            slots: Default::default(),
         })
     });
     Ok(tier)
@@ -842,42 +839,5 @@ mod tests {
             vec![json!({ "kind": "key", "key": "KeyW", "action": "up" })]
         );
         assert!(a.held.is_empty() && a.closed);
-    }
-
-    /// A pad reaches the engine as the web shell's `gamepad` event: the
-    /// standard layout's buttons, sticks with y down, the family from the
-    /// vendor, read back by og-input as the state it was.
-    #[test]
-    fn pads_are_the_web_shells() {
-        assert_eq!(
-            pad_device(Some(0x054c), "Wireless Controller"),
-            "playstation"
-        );
-        assert_eq!(pad_device(None, "Xbox Wireless Controller"), "xbox");
-        assert_eq!(pad_device(Some(0x1234), "8BitDo SN30"), "gamepad");
-
-        let mut held = [false; 17];
-        held[1] = true; // East: `b`
-        held[12] = true; // DPadUp: `up`
-        // gilrs's sticks are y up: pushed up and to the right.
-        let event = pad_event(
-            3,
-            true,
-            "playstation",
-            &held,
-            [0.5, 0.75, 0.0, -1.0],
-            [0.25, 0.0],
-        );
-        let Some(og_input::InjectedInput::Gamepad(state)) =
-            og_input::InjectedInput::from_json(&event)
-        else {
-            panic!("og-input refused {event}");
-        };
-        assert_eq!(state.pad, 3);
-        assert!(state.connected);
-        assert_eq!(state.buttons, (1 << 1) | (1 << 12));
-        assert_eq!(state.axes, [0.5, -0.75, 0.0, 1.0]);
-        assert_eq!(state.triggers, [0.25, 0.0]);
-        assert_eq!(state.device, Some(og_input::Device::PlayStation));
     }
 }

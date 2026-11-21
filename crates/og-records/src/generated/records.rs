@@ -1465,7 +1465,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 unit: "",
                 worldspace: "",
                 label: "",
-                doc: doc!("Each pad's family, four bits per pad (pad p at bit 4p): an InputDevice index (1 xbox, 2 playstation, 3 switch, 4 gamepad), 0 when the host did not say."),
+                doc: doc!("Each pad's family, four bits per pad (pad p at bit 4p): an InputDevice index (1 xbox, 2 playstation, 3 switch, 4 gamepad), 0 for a pad not connected."),
                 variants: &[],
                 capacity: 0,
                 list: 0,

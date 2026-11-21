@@ -31,9 +31,12 @@ const events = [
   { kind: "key", key: "NumpadSubtract", action: "up" },
   { kind: "pointer", action: "move", x: 0.1, y: 0.2, button: "none" },
   { kind: "pointer", action: "down", x: 900, y: 600, button: "left", id: 2 },
-  { kind: "gamepad", pad: 1, connected: true, buttons: ["a", "leftBumper", "up"], axes: [0.5, -1, 0, 0.25], triggers: [0, 0.75], device: "playstation" },
-  { kind: "gamepad", pad: 7, connected: true, buttons: ["b"], axes: [0, 0, 0, 0], triggers: [0, 0], device: "switch" },
-  { kind: "gamepad", pad: 1, connected: false, buttons: [], axes: [0, 0, 0, 0], triggers: [0, 0] },
+  // Raw pads (og-input maps them): a standard PlayStation pad holding A, LB
+  // and up, a Switch Pro pad on the browser's own order holding B, then pad
+  // 1 gone.
+  { kind: "gamepad", pad: 1, connected: true, layout: "standard", guid: "030000004c050000cc09000000000000", buttons: [1, 0, 0, 0, 1, 0, 0, 0.25, 0, 0, 0, 0, 1], axes: [0.5, -1, 0, 0.25], hat: 0 },
+  { kind: "gamepad", pad: 7, connected: true, layout: "web", guid: "030000007e0500000920000000000000", buttons: [0, 1], axes: [], hat: 0 },
+  { kind: "gamepad", pad: 1, connected: false, layout: "standard", guid: "00000000000000000000000000000000", buttons: [], axes: [], hat: 0 },
   { kind: "text", text: "a" },
   { kind: "text", text: "にほんご", composing: true },
   // Past one slot's 48 bytes: split between characters, joined by the drain.

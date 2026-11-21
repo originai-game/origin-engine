@@ -255,6 +255,25 @@ fn upgrade(dir: &Path, to: Option<&str>, dry: bool) -> Value {
                 }
                 continue;
             }
+            if b["codemod"]["kind"] == "raw-pads" {
+                for (file, text, touched) in &mut texts {
+                    let Some((upgraded, n, left)) = raw_pads(text) else {
+                        continue;
+                    };
+                    if n > 0 {
+                        codemods.push(json!({ "version": version, "member": member, "file": rel(file), "from": "gamepad buttons by name", "to": "raw button values", "count": n }));
+                    }
+                    for line in left {
+                        manual.push(json!({
+                            "version": version, "member": member, "change": b["change"], "fix": b["fix"],
+                            "file": rel(file), "line": line, "text": upgraded.lines().nth(line - 1).unwrap_or("").trim(),
+                        }));
+                    }
+                    *touched |= upgraded != *text;
+                    *text = upgraded;
+                }
+                continue;
+            }
             if b["codemod"]["kind"] == "ui-kits" {
                 review.push(json!({
                     "version": version, "member": member,
@@ -415,6 +434,158 @@ fn vfx_glow(text: &str) -> Option<(String, usize)> {
     }
     // A version 1 file without a flash reads the same at version 1.
     (n > 0).then_some((out, n))
+}
+
+/// The `gamepad` events a game's code sends, moved to the raw form: on a
+/// line naming `kind: "gamepad"`, `buttons: ["a", …]` becomes the values
+/// by GamepadButton index, `triggers: [lt, rt]` folds into buttons 6 and
+/// 7, and `device: "playstation"` becomes that vendor's `guid`. Lines of
+/// an event spread over several lines (or built from variables) are left
+/// for the author: their numbers come back.
+fn raw_pads(text: &str) -> Option<(String, usize, Vec<usize>)> {
+    const BUTTONS: [&str; 17] = [
+        "a",
+        "b",
+        "x",
+        "y",
+        "leftBumper",
+        "rightBumper",
+        "leftTrigger",
+        "rightTrigger",
+        "back",
+        "start",
+        "leftStick",
+        "rightStick",
+        "up",
+        "down",
+        "left",
+        "right",
+        "home",
+    ];
+    // `key: [ … ]` or `"key": [ … ]` (or a string for `device`): the span
+    // of the whole field (with a comma after it) and the value's text.
+    fn field(line: &str, key: &str) -> Option<(usize, usize, String)> {
+        let at = [format!("\"{key}\":"), format!("{key}:")]
+            .iter()
+            .find_map(|k| line.find(k.as_str()).map(|i| (i, i + k.len())))?;
+        let rest = &line[at.1..];
+        let lead = rest.len() - rest.trim_start().len();
+        let v = &rest[lead..];
+        let len = if v.starts_with('[') {
+            v.find(']')? + 1
+        } else {
+            v.strip_prefix('"')?.find('"')? + 2
+        };
+        let mut end = at.1 + lead + len;
+        let tail = &line[end..];
+        if let Some(t) = tail.trim_start().strip_prefix(',') {
+            end = line.len() - t.trim_start().len();
+        }
+        Some((at.0, end, v[..len].to_string()))
+    }
+    let is_pad = |l: &str| l.contains("kind: \"gamepad\"") || l.contains("\"kind\": \"gamepad\"");
+    if !text.lines().any(is_pad) {
+        return None;
+    }
+    let (mut out, mut n, mut left) = (String::with_capacity(text.len()), 0, Vec::new());
+    for (i, l) in text.split_inclusive('\n').enumerate() {
+        if !is_pad(l) {
+            out.push_str(l);
+            continue;
+        }
+        let quoted = l.contains("\"kind\"");
+        let names = field(l, "buttons");
+        let parsed: Option<Vec<usize>> = names.as_ref().and_then(|(_, _, v)| {
+            let inner = v.trim_start_matches('[').trim_end_matches(']');
+            inner
+                .split(',')
+                .map(str::trim)
+                .filter(|x| !x.is_empty())
+                .map(|x| {
+                    BUTTONS
+                        .iter()
+                        .position(|b| x.trim_matches('"') == *b && x.starts_with('"'))
+                })
+                .collect()
+        });
+        let triggers = field(l, "triggers");
+        let device = field(l, "device");
+        if names.is_some() && parsed.is_none()
+            || (names.is_none() && triggers.is_none() && device.is_none())
+        {
+            // Raw already, or built from variables: the author's.
+            if triggers.is_some()
+                || device.is_some()
+                || names.as_ref().is_some_and(|f| f.2.contains('"'))
+            {
+                left.push(i + 1);
+            }
+            out.push_str(l);
+            continue;
+        }
+        let mut values = [0.0f32; 17];
+        for b in parsed.unwrap_or_default() {
+            values[b] = 1.0;
+        }
+        if let Some((_, _, t)) = &triggers {
+            let t: Vec<f32> = t
+                .trim_matches(['[', ']'])
+                .split(',')
+                .filter_map(|x| x.trim().parse().ok())
+                .collect();
+            for (k, v) in t.iter().take(2).enumerate() {
+                values[6 + k] = values[6 + k].max(*v);
+            }
+        }
+        let count = values.iter().rposition(|v| *v != 0.0).map_or(0, |k| k + 1);
+        let list = values[..count]
+            .iter()
+            .map(|v| v.to_string())
+            .collect::<Vec<_>>()
+            .join(", ");
+        let guid = device
+            .as_ref()
+            .and_then(|(_, _, d)| match d.trim_matches('"') {
+                "xbox" => Some("030000005e0400000000000000000000"),
+                "playstation" => Some("030000004c0500000000000000000000"),
+                "switch" => Some("030000007e0500000000000000000000"),
+                _ => None,
+            });
+        let key = |k: &str| {
+            if quoted {
+                format!("\"{k}\": ")
+            } else {
+                format!("{k}: ")
+            }
+        };
+        // Cut the fields right to left so earlier spans stay valid.
+        let mut cuts: Vec<(usize, usize, String)> = Vec::new();
+        if let Some((s, e, _)) = &names {
+            cuts.push((*s, *e, format!("{}[{list}], ", key("buttons"))));
+        }
+        if let Some((s, e, _)) = &triggers {
+            let put = if names.is_none() {
+                format!("{}[{list}], ", key("buttons"))
+            } else {
+                String::new()
+            };
+            cuts.push((*s, *e, put));
+        }
+        if let Some((s, e, _)) = &device {
+            let put = guid.map_or(String::new(), |g| format!("{}\"{g}\", ", key("guid")));
+            cuts.push((*s, *e, put));
+        }
+        cuts.sort_by_key(|c| std::cmp::Reverse(c.0));
+        let mut line = l.to_string();
+        for (s, e, put) in cuts {
+            line.replace_range(s..e, &put);
+        }
+        // A field that ended the object leaves ", }": close it up.
+        let line = line.replace(", }", " }").replace(",  }", " }");
+        n += 1;
+        out.push_str(&line);
+    }
+    Some((out, n, left))
 }
 
 /// One attribute's text before and after a codemod.
@@ -722,6 +893,33 @@ fn print_text(r: &Value, dry: bool) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn raw_pads_moves_gamepad_events_to_raw_values() {
+        let src = concat!(
+            "engine.probe.input({ kind: \"gamepad\", pad: 5, buttons: [\"a\", \"up\"], triggers: [0, 0.5], device: \"playstation\" });\n",
+            "send({ \"kind\": \"gamepad\", \"pad\": 1, \"buttons\": [] });\n",
+            "send({ kind: \"gamepad\", pad: 2, buttons: held });\n",
+            "const x = { buttons: [\"a\"] };\n",
+        );
+        let (out, n, left) = raw_pads(src).unwrap();
+        let lines: Vec<&str> = out.lines().collect();
+        assert_eq!(
+            lines[0],
+            "engine.probe.input({ kind: \"gamepad\", pad: 5, buttons: [1, 0, 0, 0, 0, 0, 0, 0.5, 0, 0, 0, 0, 1], guid: \"030000004c0500000000000000000000\" });"
+        );
+        assert_eq!(
+            lines[1],
+            "send({ \"kind\": \"gamepad\", \"pad\": 1, \"buttons\": [] });"
+        );
+        assert_eq!(
+            &lines[2..],
+            &src.lines().collect::<Vec<_>>()[2..],
+            "not an event's names: untouched"
+        );
+        assert_eq!((n, left), (2, vec![]));
+        assert!(raw_pads("no pads here\n").is_none());
+    }
 
     #[test]
     fn the_pin_is_rewritten_in_place() {

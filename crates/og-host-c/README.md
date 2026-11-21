@@ -12,8 +12,9 @@ winit): the engine's renderer presents to its surface, and its keys,
 pointer and wheel reach the engine as the web shell's `InjectedInput`. The
 game's bundle (`packages/engine/src/hermes/shell.ts`) opens it; the shell
 runs the display loop. The engine's audio plays on the default output
-device, and gamepads (gilrs) arrive as the web shell's `gamepad` events;
-each is logged when it connects. On Linux the build needs libudev's
+device, and gamepads (gilrs-core) arrive raw as the web shell's `gamepad`
+events, each in a slot it keeps while connected, for og-input to map; each
+is logged when it connects. On Linux the build needs libudev's
 headers (`libudev-dev`).
 
 og.platform is the local document, saved as `<data>/<title>/platform.json`

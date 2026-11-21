@@ -14,7 +14,7 @@ doctest = false
 default = ["window"]
 publish = ["og-runtime/publish"]
 # The desktop window a store shell draws in (src/window.rs).
-window = ["dep:winit", "dep:og-render", "dep:pollster", "dep:og-audio", "og-audio/device", "dep:gilrs", "dep:og-input"]
+window = ["dep:winit", "dep:og-render", "dep:pollster", "dep:og-audio", "og-audio/device", "dep:gilrs-core", "dep:og-input"]
 
 [dependencies]
 og-api = { path = "../og-api" }
@@ -29,5 +29,5 @@ serde_json = "1"
 libloading = "0.8"
 winit = { version = "0.30.12", default-features = false, features = ["rwh_06", "x11"], optional = true }
 og-audio = { path = "../og-audio", optional = true }
-gilrs = { version = "0.11.2", optional = true }
+gilrs-core = { version = "0.6.8", optional = true }
 og-input = { path = "../og-input", optional = true }

@@ -4008,27 +4008,48 @@ export interface PointerLockReport {
 }
 
 /**
- * A gamepad's whole state (an engine extension of protocol 5): the shell sends one whenever a pad changes, and a playtest can send its own.
+ * The order a raw pad's buttons and axes follow: who listed them, so og-input knows which mapping reads it.
+ * - `"standard"`: The W3C standard layout already (a browser's `mapping: "standard"`).
+ * - `"web"`: A browser's own order for a pad it does not map (its hat as two axes).
+ * - `"linux"`: Linux evdev, as SDL numbers it.
+ * - `"windows"`: DirectInput or raw HID on Windows, as SDL numbers it.
+ * - `"macos"`: IOKit HID on macOS, as SDL numbers it.
+ * - `"xinput"`: Windows.Gaming.Input's Gamepad: West, South, East, North, the bumpers, View, Menu, the stick presses, the d-pad up, right, down, left; left x, y, right x, the triggers, right y.
+ */
+export type GamepadLayout = "standard" | "web" | "linux" | "windows" | "macos" | "xinput";
+
+/**
+ * A gamepad's raw state, whole (an engine extension of protocol 5): the host sends one whenever a pad changes, and a playtest can send its own. og-input maps it to og.Gamepad's standard layout through SDL_GameControllerDB mappings (input §4).
  */
 export interface GamepadInput {
   /**
-   * Which pad, 0 to 7; omitted is 0.
+   * Which pad, 0 to 7; omitted is 0. A host keeps a pad's slot while it is connected.
    *
    * @range ..7
    */
   readonly pad?: number;
   /** Whether the pad is connected (omitted is true); a disconnected pad holds nothing. */
   readonly connected?: boolean;
-  /** The buttons held (omitted is none). */
-  readonly buttons?: readonly GamepadButton[];
-  /** Left stick x, y, right stick x, y; each -1 to 1, y down. Missing values are 0. */
-  readonly axes?: readonly number[];
-  /** The left and right analog triggers, 0 to 1. Missing values are 0. */
-  readonly triggers?: readonly number[];
+  /** The order its buttons and axes follow (omitted is standard). */
+  readonly layout?: GamepadLayout;
   /**
-   * The pad's family as the host tells it from the pad's id (xbox, playstation, switch, or gamepad for a pad it cannot place); omitted keeps what was said. Glyphs follow it.
+   * Its SDL GUID, 32 hex digits (bus, CRC, vendor, product and version, little-endian): which mapping reads it and its family. Omitted is none.
    */
-  readonly device?: InputDevice;
+  readonly guid?: string;
+  /**
+   * Each raw button's value, 0 to 1, up to 24 (omitted is none). In the standard layout these are GamepadButton's, the triggers' analog values at 6 and 7.
+   */
+  readonly buttons?: readonly number[];
+  /**
+   * Each raw axis, -1 to 1, up to 8; missing values are 0. In the standard layout: left stick x, y, right stick x, y, y down.
+   */
+  readonly axes?: readonly number[];
+  /**
+   * Hat 0's held directions: 1 up, 2 right, 4 down, 8 left (omitted is none).
+   *
+   * @range ..15
+   */
+  readonly hat?: number;
 }
 
 /** A wheel or trackpad scroll at a point. */
@@ -4489,7 +4510,7 @@ export interface PointerLock {
 
 /**
  * Up to eight gamepads at the start of this tick (og-input's og.Gamepad, version 3), in the W3C standard layout. A pad is world state and replays.
- * Button masks are bit `GamepadButton` index per pad; edges last exactly one tick, and a press and a release between two ticks leave both edges set. Read them through the methods. Sticks and triggers are raw: dead zones are the actions' (og.input.setDeadzones). `devices` holds each pad's family as the host told it (og.input.padDevice).
+ * Button masks are bit `GamepadButton` index per pad; edges last exactly one tick, and a press and a release between two ticks leave both edges set. Read them through the methods. Pads are in the W3C standard layout, mapped from what the host sent (input §4); sticks and triggers are past no dead zone: dead zones are the actions' (og.input.setDeadzones). `devices` holds each pad's family (og.input.padDevice).
  * See `input §4`.
  *
  * The `Gamepad` resource (token `og.Gamepad`).
@@ -4503,7 +4524,7 @@ export interface Gamepad {
    */
   readonly connectedMask: number;
   /**
-   * Each pad's family, four bits per pad (pad p at bit 4p): an InputDevice index (1 xbox, 2 playstation, 3 switch, 4 gamepad), 0 when the host did not say.
+   * Each pad's family, four bits per pad (pad p at bit 4p): an InputDevice index (1 xbox, 2 playstation, 3 switch, 4 gamepad), 0 for a pad not connected.
    *
    * @readonly written by the engine
    */
@@ -35242,7 +35263,7 @@ export declare namespace og {
   const PointerLock: ResourceType<{ readonly wanted: FieldSpec<"bool">; readonly locked: FieldSpec<"bool"> }, PointerLock>;
   /**
    * Up to eight gamepads at the start of this tick (og-input's og.Gamepad, version 3), in the W3C standard layout. A pad is world state and replays.
-   * Button masks are bit `GamepadButton` index per pad; edges last exactly one tick, and a press and a release between two ticks leave both edges set. Read them through the methods. Sticks and triggers are raw: dead zones are the actions' (og.input.setDeadzones). `devices` holds each pad's family as the host told it (og.input.padDevice).
+   * Button masks are bit `GamepadButton` index per pad; edges last exactly one tick, and a press and a release between two ticks leave both edges set. Read them through the methods. Pads are in the W3C standard layout, mapped from what the host sent (input §4); sticks and triggers are past no dead zone: dead zones are the actions' (og.input.setDeadzones). `devices` holds each pad's family (og.input.padDevice).
    * See `input §4`.
    */
   const Gamepad: ResourceType<{ readonly connectedMask: FieldSpec<"u32">; readonly devices: FieldSpec<"u32">; readonly buttons0: FieldSpec<"u32">; readonly buttons1: FieldSpec<"u32">; readonly buttons2: FieldSpec<"u32">; readonly buttons3: FieldSpec<"u32">; readonly buttons4: FieldSpec<"u32">; readonly buttons5: FieldSpec<"u32">; readonly buttons6: FieldSpec<"u32">; readonly buttons7: FieldSpec<"u32">; readonly justPressed0: FieldSpec<"u32">; readonly justPressed1: FieldSpec<"u32">; readonly justPressed2: FieldSpec<"u32">; readonly justPressed3: FieldSpec<"u32">; readonly justPressed4: FieldSpec<"u32">; readonly justPressed5: FieldSpec<"u32">; readonly justPressed6: FieldSpec<"u32">; readonly justPressed7: FieldSpec<"u32">; readonly justReleased0: FieldSpec<"u32">; readonly justReleased1: FieldSpec<"u32">; readonly justReleased2: FieldSpec<"u32">; readonly justReleased3: FieldSpec<"u32">; readonly justReleased4: FieldSpec<"u32">; readonly justReleased5: FieldSpec<"u32">; readonly justReleased6: FieldSpec<"u32">; readonly justReleased7: FieldSpec<"u32">; readonly leftStick0: FieldSpec<"Vector2">; readonly leftStick1: FieldSpec<"Vector2">; readonly leftStick2: FieldSpec<"Vector2">; readonly leftStick3: FieldSpec<"Vector2">; readonly leftStick4: FieldSpec<"Vector2">; readonly leftStick5: FieldSpec<"Vector2">; readonly leftStick6: FieldSpec<"Vector2">; readonly leftStick7: FieldSpec<"Vector2">; readonly rightStick0: FieldSpec<"Vector2">; readonly rightStick1: FieldSpec<"Vector2">; readonly rightStick2: FieldSpec<"Vector2">; readonly rightStick3: FieldSpec<"Vector2">; readonly rightStick4: FieldSpec<"Vector2">; readonly rightStick5: FieldSpec<"Vector2">; readonly rightStick6: FieldSpec<"Vector2">; readonly rightStick7: FieldSpec<"Vector2">; readonly triggers0: FieldSpec<"Vector2">; readonly triggers1: FieldSpec<"Vector2">; readonly triggers2: FieldSpec<"Vector2">; readonly triggers3: FieldSpec<"Vector2">; readonly triggers4: FieldSpec<"Vector2">; readonly triggers5: FieldSpec<"Vector2">; readonly triggers6: FieldSpec<"Vector2">; readonly triggers7: FieldSpec<"Vector2"> }, Gamepad>;
@@ -35477,13 +35498,13 @@ export declare namespace og {
      */
     function controlGlyph(control: string, device?: InputDevice): InputGlyph | null;
     /**
-     * The device the player used last: a key or the mouse, a pad (its family as the host told it, else xbox), or a touch. Prompts follow it live.
+     * The device the player used last: a key or the mouse, a pad (its family), or a touch. Prompts follow it live.
      *
      * @param world The world.
      */
     function device(world: World): InputDevice;
     /**
-     * A pad's family as the host told it from the pad's id (Xbox, PlayStation, Switch or a generic pad). Null for a pad that is not connected or that the host did not name.
+     * A pad's family (Xbox, PlayStation, Switch or a generic pad), from its vendor id, else the name its mapping gives. Null for a pad that is not connected.
      *
      * @param world The world.
      * @param pad The pad, 0 to 7.

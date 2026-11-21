@@ -17,8 +17,8 @@ const PadFollow = defineSystem("PadFollow", { reads: [og.Gamepad], writes: [PadR
 export const game = og.game({ tick: 60, seed: 5, systems: [PadFollow], resources: [PadRun] });
 
 /** Pad 1's input on tick `t` of the script: A tapped every 10 ticks, the stick pushed right after tick 20. */
-export function padAt(t: number): { kind: "gamepad"; pad: number; buttons: string[]; axes: number[] } {
-  return { kind: "gamepad", pad: 1, buttons: t % 10 === 0 ? ["a"] : [], axes: [t >= 20 ? 0.5 : 0, 0, 0, 0] };
+export function padAt(t: number): { kind: "gamepad"; pad: number; buttons: number[]; axes: number[] } {
+  return { kind: "gamepad", pad: 1, buttons: t % 10 === 0 ? [1] : [], axes: [t >= 20 ? 0.5 : 0, 0, 0, 0] };
 }
 
 /** The ticks the save is taken at, and that the world goes on for after it. */

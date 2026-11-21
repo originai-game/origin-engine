@@ -19,7 +19,7 @@ ring. It depends on `og-core` and `og-ecs` only and reads no clock.
 | controls | `Control::parse("pad.leftXY")`, `name`, `shape`, `class`, `glyph(device)`; `Binding` (a control or a composite: `negative`/`positive`, `up`/`down`/`left`/`right`; `scale`, `invert_y`, `deadzone`, `zone`); `PadDeadzone`, `Zone`, `Surface`, `ControlZone`, `ZoneState` |
 | glyphs | `Device` (`keyboardMouse xbox playstation switch gamepad touch`), `Glyph { icon, text }`, `key_glyph`, `pad_glyph`, `binding_glyphs`, `combined_glyph`: og-ui's UI actions draw from the same tables |
 | events | `KeyDown { key: Str64, repeat }`, `KeyUp { key }`, `PointerDown { x, y, button, id }`, `PointerUp { x, y, button, id }`, `PointerMove { x, y, id, movementX, movementY }`, `Wheel { deltaX, deltaY }` as `og.KeyDown` ... `og.Wheel`; `InputEvent` (one of them) `.send(world)`; `register(world)` |
-| injected input | `InjectedInput::{Key, Pointer { .., id, movement_x, movement_y }, PointerLock { locked }, Wheel, Gamepad(GamepadState { pad, connected, buttons, axes, triggers })}` with `from_json`/`to_json` (protocol 5), `KeyAction`, `PointerAction`, `PointerButton` (`bit`, `index`, `name`, `from_index`, `from_name`), `Modifiers` |
+| injected input | `InjectedInput::{Key, Pointer { .., id, movement_x, movement_y }, PointerLock { locked }, Wheel, Gamepad(RawPad { pad, connected, layout, guid, buttons, axes, hat })}` with `from_json`/`to_json` (protocol 5), `KeyAction`, `PointerAction`, `PointerButton` (`bit`, `index`, `name`, `from_index`, `from_name`), `Modifiers` |
 | keys | `KEY_CODES` (106 `KeyboardEvent.code` names, the key-set bit order), `KEY_SET_BITS = 128`, `key_index`, `key_for_char` (US layout) |
 | sink | `InputSink { attach, inject, end_tick, accepted }`, `InputLayer` (alias `WorldInput`), `InputLayer::drain_ring(world, ring) -> RingReport` |
 | ring | `ring::{drain, drain_mut, decode_slot, encode_slot, write, new_ring}`, `HEADER_WORDS`, `SLOT_WORDS`, `SLOTS`, `KEY_BYTES`, `BYTE_LEN`, `KINDS`, `ACTIONS`, `BUTTONS` |
@@ -54,19 +54,20 @@ of 5 or more is refused.
 `og.Gamepad` holds up to eight pads: connected bits, each pad's family (`devices`, four bits a pad), held/pressed/released
 button masks over `GAMEPAD_BUTTONS` (A, B, X, Y, LB, RB, LT, RT, Back,
 Start, LS, RS, d-pad up/down/left/right, Home), both sticks (y down, as the
-Gamepad API reports) and both analog triggers. A pad's whole state arrives
-as one `InjectedInput::Gamepad` whenever the shell sees it change (protocol
-5 JSON `{ "kind": "gamepad", "pad", "connected", "buttons", "axes",
-"triggers", "device" }`, the command channel's `gamepad:` action; ring word
-11 carries the family); edges are
+Gamepad API reports) and both analog triggers. A pad arrives raw as one
+`InjectedInput::Gamepad(RawPad)` whenever its host sees it change (protocol
+5 JSON `{ "kind": "gamepad", "pad", "connected", "layout", "guid",
+"buttons", "axes", "hat" }`; the command channel's `gamepad:` action sends
+the standard layout), and `padmap` maps it: SDL_GameControllerDB's lines
+(third_party/SDL_GameControllerDB, desktop builds only) and og's own for
+the browser's non-standard pads and Windows.Gaming.Input, by GUID, then
+without CRC and version, then by vendor; its family comes from the vendor,
+else the mapping's name (`tests/padmap.rs`); edges are
 computed against the previous state, so a press and a release between two
 ticks leave both edges, and a disconnected pad holds nothing and forgets
 its family. Pad 8 or more is refused. Both resources are world state: snapshots carry them and replays
-are exact (`tests/pads.rs`). The web shell also keeps mapping pad buttons
-to keys (`gamepad.ts`), the fallback for games that read only `og.Input`,
-and reads a pad the browser does not map to the standard layout (Firefox,
-Linux, third-party pads) through its table (`PAD_MAPPINGS`, by vendor and
-product id, else the standard indices), so no connected pad is dropped.
+are exact (`tests/pads.rs`). Hosts map nothing: the web shell
+(`gamepad.ts`) and og-host-c send what their drivers give.
 
 ## Mouse-look
 

@@ -779,7 +779,11 @@ impl state::Inject {
             };
             state.triggers = [lt, rt];
         }
-        if self.deliver(world, &mut *host.input, &InjectedInput::Gamepad(state)) {
+        let raw = og_input::RawPad {
+            connected: state.connected,
+            ..og_input::RawPad::standard(state.pad, state.buttons, state.axes, state.triggers)
+        };
+        if self.deliver(world, &mut *host.input, &InjectedInput::Gamepad(raw)) {
             Ok(())
         } else {
             Err("the input layer refused the gamepad state".into())

@@ -8,3 +8,5 @@ mod mouselook;
 mod pads;
 #[path = "../ring.rs"]
 mod ring;
+#[path = "../padmap.rs"]
+mod padmap;

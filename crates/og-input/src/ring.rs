@@ -17,11 +17,11 @@
 //! left, 2 middle, 3 right), the key's UTF-8 length (≤ 32), then `x`, `y`,
 //! `deltaX`, `deltaY` as f32 bits, then 32 bytes of the key code (words
 //! 8–15); a pointer slot carries its pointer id (0 to 4) in word 8 instead.
-//! A gamepad slot is the pad's whole state: word 2 the pad, word 3
-//! connected (0 or 1), words 4–7 the axes (left x, y, right x, y), word 8
-//! the button mask, words 9–10 the triggers, word 11 the pad's family
-//! ([`crate::Device`] index: 1 Xbox, 2 PlayStation, 3 Switch, 4 a generic
-//! pad; 0 when the host did not say). A text slot (kind 4, an
+//! A gamepad slot is the pad's raw state ([`crate::RawPad`]): word 1 the
+//! pad (bits 0–3), connected (bit 4), the [`crate::PadLayout`] index (bits
+//! 5–7) and hat 0 (bits 8–11); words 2–5 its SDL GUID; bytes 24–47 the
+//! raw buttons, 0 to 255 for 0 to 1; bytes 48–63 the raw axes, i16
+//! little-endian for -1 to 1. A text slot (kind 4, an
 //! engine extension) carries word 1 0 for committed text or 1 for an input
 //! method's composition, word 2 1 when it continues the text of the slot
 //! before it (a text longer than [`TEXT_BYTES`] is split between characters
@@ -46,8 +46,7 @@
 //! first 2^31 events of a page.
 
 use crate::event::{
-    A11yAct, GamepadState, InjectedInput, KeyAction, MAX_GAMEPADS, Modifiers, PointerAction,
-    PointerButton,
+    A11yAct, InjectedInput, KeyAction, MAX_GAMEPADS, Modifiers, PointerAction, PointerButton,
 };
 
 /// Header words (write index, read index).
@@ -121,6 +120,30 @@ pub fn decode_slot(slot: &[u8]) -> Result<InjectedInput, String> {
             }),
             a => Err(format!("text action {}", a as i32)),
         };
+    }
+    if w(0) == 3 {
+        let pad = w(1) & 0xF;
+        if pad as usize >= MAX_GAMEPADS {
+            return Err(format!("pad {pad}"));
+        }
+        let layout = crate::PadLayout::from_index(w(1) >> 5 & 7)
+            .ok_or_else(|| format!("pad layout {}", w(1) >> 5 & 7))?;
+        let mut raw = crate::RawPad {
+            pad,
+            connected: w(1) >> 4 & 1 != 0,
+            layout,
+            hat: (w(1) >> 8 & 0xF) as u8,
+            ..crate::RawPad::default()
+        };
+        raw.guid.copy_from_slice(&slot[8..24]);
+        for (i, v) in raw.buttons.iter_mut().enumerate() {
+            *v = f32::from(slot[24 + i]) / 255.0;
+        }
+        for (i, v) in raw.axes.iter_mut().enumerate() {
+            let q = i16::from_le_bytes([slot[48 + 2 * i], slot[49 + 2 * i]]);
+            *v = (f32::from(q) / 32767.0).max(-1.0);
+        }
+        return Ok(InjectedInput::Gamepad(raw));
     }
     if w(0) == 6 {
         return match w(1) {
@@ -206,28 +229,6 @@ pub fn decode_slot(slot: &[u8]) -> Result<InjectedInput, String> {
                 delta_y,
             })
         }
-        3 => {
-            let state = GamepadState {
-                pad: w(2),
-                connected: w(3) != 0,
-                buttons: w(8),
-                axes: [f(4), f(5), f(6), f(7)],
-                triggers: [f(9), f(10)],
-                device: crate::Device::from_index(w(11)).filter(|d| d.is_pad()),
-            };
-            if state.pad as usize >= MAX_GAMEPADS {
-                return Err(format!("pad {}", w(2) as i32));
-            }
-            if !state
-                .axes
-                .iter()
-                .chain(&state.triggers)
-                .all(|v| v.is_finite())
-            {
-                return Err("a non-finite gamepad value".into());
-            }
-            Ok(InjectedInput::Gamepad(state))
-        }
         k => Err(format!("kind {}", k as i32)),
     }
 }
@@ -288,12 +289,21 @@ pub fn encode_slot(event: &InjectedInput) -> [u8; SLOT_WORDS * 4] {
             delta_y,
         } => (2, 0, 0, (*x, *y), (*delta_x, *delta_y)),
         InjectedInput::Gamepad(g) => {
-            set_word(&mut slot, 3, g.connected as u32);
-            set_word(&mut slot, 8, g.buttons);
-            set_word(&mut slot, 9, g.triggers[0].to_bits());
-            set_word(&mut slot, 10, g.triggers[1].to_bits());
-            set_word(&mut slot, 11, g.device.map_or(0, |d| d.index()));
-            (3, 0, g.pad, (g.axes[0], g.axes[1]), (g.axes[2], g.axes[3]))
+            set_word(&mut slot, 0, 3);
+            set_word(
+                &mut slot,
+                1,
+                g.pad | u32::from(g.connected) << 4 | g.layout.index() << 5 | u32::from(g.hat) << 8,
+            );
+            slot[8..24].copy_from_slice(&g.guid);
+            for (i, v) in g.buttons.iter().enumerate() {
+                slot[24 + i] = (v.clamp(0.0, 1.0) * 255.0).round() as u8;
+            }
+            for (i, v) in g.axes.iter().enumerate() {
+                let q = (v.clamp(-1.0, 1.0) * 32767.0).round() as i16;
+                slot[48 + 2 * i..50 + 2 * i].copy_from_slice(&q.to_le_bytes());
+            }
+            return slot;
         }
         InjectedInput::PointerLock { locked } => {
             set_word(&mut slot, 0, 6);

@@ -12,7 +12,7 @@ See `input`.
 
 - **TypeScript**: functions are the namespace `og.input`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
-- **Core** (what most games use): `og.Input`; 89 more are advanced (`og api show input --all`).
+- **Core** (what most games use): `og.Input`; 90 more are advanced (`og api show input --all`).
 - **Index**: [every module and guide](index.md).
 
 ```ogt
@@ -82,8 +82,8 @@ module input {
 | [`og.input.glyph`](input/fn-glyph.md) | function | `(world: World, action: string, device?: InputDevice): InputGlyph \| null` | An action's prompt glyph: its first binding on the device (the device used last when omitted); a composite's in one (`W A S D`, `key.wasd`). |
 | [`og.input.glyphs`](input/fn-glyphs.md) | function | `(world: World, action: string, device?: InputDevice): readonly InputGlyph[]` | An action's first binding on the device, one glyph per control (a composite's parts in prompt order: up, left, down, right; negative, positive). |
 | [`og.input.controlGlyph`](input/fn-controlGlyph.md) | function | `(control: string, device?: InputDevice): InputGlyph \| null` | A control's glyph (what a capture took, before it is applied). |
-| [`og.input.device`](input/fn-device.md) | function | `(world: World): InputDevice` | The device the player used last: a key or the mouse, a pad (its family as the host told it, else xbox), or a touch. |
-| [`og.input.padDevice`](input/fn-padDevice.md) | function | `(world: World, pad: number): InputDevice \| null` | A pad's family as the host told it from the pad's id (Xbox, PlayStation, Switch or a generic pad). |
+| [`og.input.device`](input/fn-device.md) | function | `(world: World): InputDevice` | The device the player used last: a key or the mouse, a pad (its family), or a touch. |
+| [`og.input.padDevice`](input/fn-padDevice.md) | function | `(world: World, pad: number): InputDevice \| null` | A pad's family (Xbox, PlayStation, Switch or a generic pad), from its vendor id, else the name its mapping gives. |
 | [`og.input.setDeadzones`](input/fn-setDeadzones.md) | function | `(world: World, desc?: DeadzoneDesc): Result<void>` | A pad's dead zones (or every pad's): the player's setting, kept by og.input.saveBindings. |
 | [`og.input.setSensitivity`](input/fn-setSensitivity.md) | function | `(world: World, desc?: SensitivityDesc): Result<void>` | Set the player's sensitivity and inversion of an axis action on a device class (SensitivityDesc): applied from the next tick's actions, kept by og.input.saveBindings. |
 | [`og.input.sensitivity`](input/fn-sensitivity.md) | function | `(world: World, action: string, device?: InputDevice): SensitivityDesc` | An action's sensitivity on a device class (the device used last when omitted): the player's, else scale 1 and nothing inverted. |
@@ -101,7 +101,8 @@ module input {
 | [`KeyInput`](input/type-KeyInput.md) | struct |  | A key event. `key` names the physical key as KeyboardEvent.code does: ArrowRight, Space, KeyA. |
 | [`PointerInput`](input/type-PointerInput.md) | struct |  | A pointer event at a point in CSS pixels of the play surface. |
 | [`PointerLockReport`](input/type-PointerLockReport.md) | struct |  | The host reports whether the pointer is locked to the play surface now (an engine extension of protocol 5): the web shell sends one from the page's pointerlockchange, and a playtest can send its own;… |
-| [`GamepadInput`](input/type-GamepadInput.md) | struct |  | A gamepad's whole state (an engine extension of protocol 5): the shell sends one whenever a pad changes, and a playtest can send its own. |
+| [`GamepadLayout`](input/type-GamepadLayout.md) | enum |  | The order a raw pad's buttons and axes follow: who listed them, so og-input knows which mapping reads it. |
+| [`GamepadInput`](input/type-GamepadInput.md) | struct |  | A gamepad's raw state, whole (an engine extension of protocol 5): the host sends one whenever a pad changes, and a playtest can send its own. |
 | [`WheelInput`](input/type-WheelInput.md) | struct |  | A wheel or trackpad scroll at a point. |
 | [`TextEntry`](input/type-TextEntry.md) | struct |  | Typed or composed text (an engine extension of protocol 5): what the page's `beforeinput` inserted (a key's character, a paste, an input method's commit), or with `composing` an input method's compos… |
 | [`A11yActionKind`](input/type-A11yActionKind.md) | enum |  | What an assistive technology asks of a UI control. |

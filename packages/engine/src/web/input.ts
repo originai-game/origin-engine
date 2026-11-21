@@ -3,10 +3,11 @@
 // 16 int32: kind, action, button, key length, x, y, deltaX, deltaY (as f32
 // bits), then up to 32 bytes of the key code; a pointer slot carries its
 // engine pointer id (0 the primary, 1 to 4 further touches) in word 8
-// instead. A gamepad slot (kind 3) is a pad's whole state: word 2 the pad,
-// word 3 connected, words 4-7 the axes, word 8 the button mask, words 9-10
-// the triggers, word 11 the pad's family (PAD_DEVICES index: 1 xbox, 2
-// playstation, 3 switch, 4 gamepad; 0 unsaid). A text slot (kind 4) carries typed or composed text: word 1
+// instead. A gamepad slot (kind 3) is a pad's raw state: word 1 the pad
+// (bits 0-3), connected (bit 4), the PAD_LAYOUTS index (bits 5-7) and hat 0
+// (bits 8-11); words 2-5 its SDL GUID (16 bytes); bytes 24-47 the raw
+// buttons (0 to 255 for 0 to 1); bytes 48-63 the raw axes (i16 LE for -1 to
+// 1). og-input maps it to the standard layout. A text slot (kind 4) carries typed or composed text: word 1
 // 0 committed or 1 composing, word 2 1 when it continues the slot before it
 // (text past 48 bytes is split between characters over several slots,
 // joined again by drainRing), word 3 the UTF-8 length, the text in words
@@ -55,14 +56,16 @@ export type InjectedInput =
       kind: "gamepad";
       pad: number;
       connected: boolean;
-      /** Held standard-mapping buttons by name (GAMEPAD_BUTTONS). */
-      buttons: GamepadButtonName[];
-      /** Left x, y, right x, y; -1..1, y down. */
+      /** The order its buttons and axes follow (PAD_LAYOUTS): `standard` for a pad the browser maps, `web` for one it does not. */
+      layout: PadLayout;
+      /** Its SDL GUID, 32 hex digits (gamepad.ts padGuid). */
+      guid: string;
+      /** Each raw button's value, 0 to 1 (up to 24). */
+      buttons: number[];
+      /** Each raw axis, -1 to 1 (up to 8). */
       axes: number[];
-      /** Left and right analog triggers, 0..1. */
-      triggers: number[];
-      /** The pad's family from its id (gamepad.ts padDevice); omitted keeps what was said. */
-      device?: PadDevice;
+      /** Hat 0's held directions (1 up, 2 right, 4 down, 8 left); a browser reports none. */
+      hat: number;
     }
   | {
       kind: "text";
@@ -83,17 +86,13 @@ export type A11yActionName = (typeof A11Y_ACTIONS)[number];
 /** og-input's A11yAct, by index. */
 export const A11Y_ACTIONS = ["focus", "activate", "increment", "decrement"] as const;
 
-export type GamepadButtonName = (typeof GAMEPAD_BUTTONS)[number];
+/** og-input's PadLayout, by index (IDL GamepadLayout). */
+export const PAD_LAYOUTS = ["standard", "web", "linux", "windows", "macos", "xinput"] as const;
+export type PadLayout = (typeof PAD_LAYOUTS)[number];
 
-/** og-input's Device, by index (IDL InputDevice): a pad's family is one of xbox to gamepad. */
-export const PAD_DEVICES = ["keyboardMouse", "xbox", "playstation", "switch", "gamepad", "touch"] as const;
-export type PadDevice = "xbox" | "playstation" | "switch" | "gamepad";
-
-/** The W3C standard mapping's buttons, by index (og-input's GAMEPAD_BUTTONS). */
-export const GAMEPAD_BUTTONS = [
-  "a", "b", "x", "y", "leftBumper", "rightBumper", "leftTrigger", "rightTrigger",
-  "back", "start", "leftStick", "rightStick", "up", "down", "left", "right", "home",
-] as const;
+/** The raw buttons and axes a gamepad slot carries. */
+export const RAW_BUTTONS = 24;
+export const RAW_AXES = 8;
 
 const SLOT = 16;
 const HEADER = 2; // write index, read index (monotonic)
@@ -157,13 +156,12 @@ export function writeRing(buffer: SharedArrayBuffer, event: InjectedInput): bool
     return true;
   }
   if (event.kind === "gamepad") {
-    ints[at + 2] = event.pad;
-    ints[at + 3] = event.connected ? 1 : 0;
-    for (let i = 0; i < 4; i++) floats[at + 4 + i] = event.axes[i] ?? 0;
-    ints[at + 8] = event.buttons.reduce((m, b) => m | (1 << GAMEPAD_BUTTONS.indexOf(b)), 0);
-    floats[at + 9] = event.triggers[0] ?? 0;
-    floats[at + 10] = event.triggers[1] ?? 0;
-    ints[at + 11] = event.device ? PAD_DEVICES.indexOf(event.device) : 0;
+    ints[at + 1] = event.pad | (event.connected ? 1 << 4 : 0) | (PAD_LAYOUTS.indexOf(event.layout) << 5) | ((event.hat & 15) << 8);
+    const bytes = new Uint8Array(buffer, at * 4, SLOT * 4);
+    for (let i = 0; i < 16; i++) bytes[8 + i] = parseInt(event.guid.slice(2 * i, 2 * i + 2), 16) || 0;
+    for (let i = 0; i < RAW_BUTTONS; i++) bytes[24 + i] = Math.round(Math.min(1, Math.max(0, event.buttons[i] ?? 0)) * 255);
+    const view = new DataView(buffer, (at + 12) * 4, 16);
+    for (let i = 0; i < RAW_AXES; i++) view.setInt16(2 * i, Math.round(Math.min(1, Math.max(-1, event.axes[i] ?? 0)) * 32767), true);
     Atomics.store(ints, 0, write + 1);
     return true;
   }
@@ -217,16 +215,18 @@ export function drainRing(buffer: SharedArrayBuffer): InjectedInput[] {
       continue;
     }
     if (kind === "gamepad") {
-      const mask = ints[at + 8]!;
-      const device = PAD_DEVICES[ints[at + 11]!];
+      const w = ints[at + 1]!;
+      const bytes = new Uint8Array(buffer, at * 4, SLOT * 4);
+      const view = new DataView(buffer, (at + 12) * 4, 16);
       out.push({
         kind,
-        pad: ints[at + 2]!,
-        connected: ints[at + 3]! !== 0,
-        buttons: GAMEPAD_BUTTONS.filter((_, i) => mask & (1 << i)),
-        axes: [floats[at + 4]!, floats[at + 5]!, floats[at + 6]!, floats[at + 7]!],
-        triggers: [floats[at + 9]!, floats[at + 10]!],
-        ...(device && device !== "keyboardMouse" && device !== "touch" ? { device } : {}),
+        pad: w & 15,
+        connected: (w >> 4) & 1 ? true : false,
+        layout: PAD_LAYOUTS[(w >> 5) & 7] ?? "standard",
+        guid: [...bytes.subarray(8, 24)].map((b) => b.toString(16).padStart(2, "0")).join(""),
+        buttons: [...bytes.subarray(24, 24 + RAW_BUTTONS)].map((b) => b / 255),
+        axes: Array.from({ length: RAW_AXES }, (_, i) => Math.max(-1, view.getInt16(2 * i, true) / 32767)),
+        hat: (w >> 8) & 15,
       });
       continue;
     }

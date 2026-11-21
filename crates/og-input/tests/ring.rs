@@ -33,13 +33,12 @@ fn the_writer_and_the_decoder_agree_and_a_full_ring_refuses() {
             movement_x: 0.0,
             movement_y: 0.0,
         },
-        InjectedInput::Gamepad(og_input::GamepadState {
-            pad: 2,
-            connected: true,
-            buttons: 0b1_0000_0000_0001,
-            axes: [0.25, -0.5, 1.0, 0.0],
-            triggers: [0.5, 1.0],
-            device: Some(og_input::Device::PlayStation),
+        // A raw pad: its values cross at the slot's precision (these exactly).
+        InjectedInput::Gamepad(og_input::RawPad {
+            layout: og_input::PadLayout::Linux,
+            guid: og_input::RawPad::usb_guid(0x054c, 0x09cc),
+            hat: 9,
+            ..og_input::RawPad::standard(2, 0b1_0000_0000_0001, [1.0, -1.0, 0.0, 1.0], [0.0, 1.0])
         }),
         InjectedInput::from_json(
             &serde_json::json!({"kind": "key", "key": "Space", "action": "press"}),

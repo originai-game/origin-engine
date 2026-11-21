@@ -11,8 +11,8 @@
 
 use og_ecs::{World, WorldDesc};
 use og_input::{
-    ActionDesc, ActionKind, ActionMap, ActionState, Binding, ConflictPolicy, Device, GamepadState,
-    InjectedInput, InputLayer, InputSink, KeyAction, Modifiers, RebindDesc, SharedActions,
+    ActionDesc, ActionKind, ActionMap, ActionState, Binding, ConflictPolicy, Device, InjectedInput,
+    InputLayer, InputSink, KeyAction, Modifiers, RebindDesc, SharedActions,
 };
 use std::sync::{Arc, Mutex};
 
@@ -65,24 +65,12 @@ fn up(code: &str) -> InjectedInput {
     key(code, KeyAction::Up)
 }
 
-fn pad(
-    pad: u32,
-    buttons: &[&str],
-    axes: [f32; 4],
-    triggers: [f32; 2],
-    device: Option<Device>,
-) -> InjectedInput {
-    InjectedInput::Gamepad(GamepadState {
-        pad,
-        connected: true,
-        buttons: buttons
-            .iter()
-            .map(|b| 1 << og_input::gamepad_button(b).expect("a standard button"))
-            .sum(),
-        axes,
-        triggers,
-        device,
-    })
+fn pad(pad: u32, buttons: &[&str], axes: [f32; 4], triggers: [f32; 2]) -> InjectedInput {
+    let mask = buttons
+        .iter()
+        .map(|b| 1 << og_input::gamepad_button(b).expect("a standard button"))
+        .sum();
+    InjectedInput::Gamepad(og_input::RawPad::standard(pad, mask, axes, triggers))
 }
 
 fn action(name: &str, kind: ActionKind, bindings: Vec<Binding>) -> ActionDesc {
@@ -336,11 +324,11 @@ fn sensitivity_and_inversion_are_per_action_and_device_class() {
     assert!(close(v.x, 8.0) && close(v.y, -6.0), "mouse: {v:?}");
     // The right stick pushed right: past the pad's 0.15 dead zone,
     // rescaled to reach 1, then half (not twice), and not inverted.
-    rig.tick(&[pad(0, &[], [0.0, 0.0, 0.8, 0.0], [0.0, 0.0], None)]);
+    rig.tick(&[pad(0, &[], [0.0, 0.0, 0.8, 0.0], [0.0, 0.0])]);
     let v = rig.state("look").vector;
     let expected = 0.5 * (0.8 - 0.15) / (1.0 - 0.15);
     assert!(close(v.x, expected) && close(v.y, 0.0), "stick: {v:?}");
-    rig.tick(&[pad(0, &[], [0.0; 4], [0.0, 0.0], None)]);
+    rig.tick(&[pad(0, &[], [0.0; 4], [0.0, 0.0])]);
     // The up arrow: keyboard and mouse's inversion, no scale (a whole press).
     rig.tick(&[down("ArrowUp")]);
     let v = rig.state("look").vector;

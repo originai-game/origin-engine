@@ -9,7 +9,7 @@
 
 use og_ecs::{SystemDesc, World, WorldDesc};
 use og_input::{
-    Gamepad, GamepadAxis, GamepadState, InjectedInput, Input, InputLayer, InputSink, PointerAction,
+    Gamepad, GamepadAxis, InjectedInput, Input, InputLayer, InputSink, PointerAction,
     PointerButton, PointerDown, PointerUp, Pointers,
 };
 use serde_json::{Value, json};
@@ -32,17 +32,16 @@ fn touch(action: PointerAction, id: u32, x: f32, y: f32) -> InjectedInput {
 }
 
 fn pad(pad: u32, buttons: &[&str], lx: f32, rt: f32) -> InjectedInput {
-    InjectedInput::Gamepad(GamepadState {
+    let mask = buttons
+        .iter()
+        .map(|b| 1 << og_input::gamepad_button(b).expect("a standard button"))
+        .sum();
+    InjectedInput::Gamepad(og_input::RawPad::standard(
         pad,
-        connected: true,
-        buttons: buttons
-            .iter()
-            .map(|b| 1 << og_input::gamepad_button(b).expect("a standard button"))
-            .sum(),
-        axes: [lx, 0.0, 0.0, 0.0],
-        triggers: [0.0, rt],
-        device: None,
-    })
+        mask,
+        [lx, 0.0, 0.0, 0.0],
+        [0.0, rt],
+    ))
 }
 
 fn world() -> (World, InputLayer, Arc<Mutex<Vec<Value>>>) {
@@ -107,15 +106,13 @@ fn script() -> Vec<Vec<InjectedInput>> {
         // 5: an id past the five pointers and pad 8 are refused; the pad disconnects.
         vec![
             touch(Down, 5, 1.0, 1.0),
-            InjectedInput::Gamepad(GamepadState {
+            InjectedInput::Gamepad(og_input::RawPad {
                 pad: 8,
                 ..Default::default()
             }),
-            InjectedInput::Gamepad(GamepadState {
-                pad: 0,
+            InjectedInput::Gamepad(og_input::RawPad {
                 connected: false,
-                buttons: 1,
-                ..Default::default()
+                ..og_input::RawPad::standard(0, 1, [0.0; 4], [0.0; 2])
             }),
         ],
         // 6: the primary lifts.

@@ -200,11 +200,11 @@ impl InputSink for InputLayer {
                 };
                 lock.locked = *locked;
             }
-            InjectedInput::Gamepad(state) => {
+            InjectedInput::Gamepad(raw) => {
                 let Ok(pad) = world.resource_mut::<Gamepad>() else {
                     return false;
                 };
-                if !pad.apply(state) {
+                if !raw.is_valid() || !pad.apply(&crate::padmap::map(raw)) {
                     return false;
                 }
             }

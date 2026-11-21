@@ -8,6 +8,7 @@
 //! | [`sink`] | [`InputSink`] (the probe's seam) and [`InputLayer`], the engine's sink |
 //! | [`ring`] | the web shell's SharedArrayBuffer input ring: layout, decoder, writer |
 //! | [`control`] | [`Control`]: the physical inputs a binding names (`KeyW`, `mouse.left`, `pad.leftXY`, `touch`), how each reads, dead zones |
+//! | [`padmap`] | [`RawPad`] (a pad as its host reads it) and the mappings, in SDL_GameControllerDB's syntax, that turn it into the standard layout |
 //! | [`actions`] | [`ActionMap`]: gameplay actions over bindings, contexts, rebinding with conflicts, capture, saved bindings, glyphs, rumble; [`ActionsBlock`] (its state block) and [`install`] |
 //! | [`glyph`] | [`Device`] (keyboard and mouse, Xbox, PlayStation, Switch, generic pads, touch) and the glyph tables og-ui's UI actions share; the keyboard layout's printed keys ([`set_key_labels`]) |
 //!
@@ -21,6 +22,7 @@ pub mod control;
 pub mod event;
 pub mod glyph;
 pub mod keys;
+pub mod padmap;
 pub mod resource;
 pub mod ring;
 pub mod sink;
@@ -38,6 +40,7 @@ pub use event::{
 };
 pub use glyph::{Device, Glyph, key_glyph, key_labels, pad_glyph, set_key_labels};
 pub use keys::{KEY_CODES, KEY_SET_BITS, key_for_char, key_index};
+pub use padmap::{PadLayout, RawPad};
 pub use resource::{
     A11yAction, Gamepad, GamepadAxis, Input, InputEvent, KeyDown, KeySet, KeyUp, PauseIntent,
     PointerDown, PointerLock, PointerMove, PointerUp, Pointers, TextInput, Wheel, register,

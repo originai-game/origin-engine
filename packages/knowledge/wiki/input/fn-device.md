@@ -6,7 +6,7 @@ Module [`input`](../input.md) · [index](../index.md)
 
 ### `og.input.device`
 
-The device the player used last: a key or the mouse, a pad (its family as the host told it, else xbox), or a touch. Prompts follow it live.
+The device the player used last: a key or the mouse, a pad (its family), or a touch. Prompts follow it live.
 
 ```ts
 og.input.device(world: World): InputDevice
@@ -22,7 +22,7 @@ Binding symbol `og_input_device` · publish builds: kept
 
 ```ogt
 fn device {
-  doc "The device the player used last: a key or the mouse, a pad (its family as the host told it, else xbox), or a touch. Prompts follow it live."
+  doc "The device the player used last: a key or the mouse, a pad (its family), or a touch. Prompts follow it live."
   param world World "The world."
   returns InputDevice
 }

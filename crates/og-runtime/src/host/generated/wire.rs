@@ -3067,15 +3067,58 @@ impl ToJson for PointerLockReport {
     }
 }
 
+/// `GamepadLayout`: packages/knowledge/wiki/input.md.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum GamepadLayout {
+    #[default]
+    Standard,
+    Web,
+    Linux,
+    Windows,
+    Macos,
+    Xinput,
+}
+
+impl GamepadLayout {
+    /// The variants' IDL names, in index order.
+    pub const NAMES: &'static [&'static str] = &["standard", "web", "linux", "windows", "macos", "xinput"];
+    /// Every variant, in index order.
+    pub const ALL: &'static [Self] = &[Self::Standard, Self::Web, Self::Linux, Self::Windows, Self::Macos, Self::Xinput];
+    /// The IDL name.
+    pub fn as_str(self) -> &'static str {
+        Self::NAMES[self as usize]
+    }
+    /// The variant named `s`, or a refusal naming them all.
+    pub fn parse(s: &str) -> Result<Self, String> {
+        match Self::NAMES.iter().position(|n| *n == s) {
+            Some(i) => Ok(Self::ALL[i]),
+            None => Err(unknown_variant("GamepadLayout", s, Self::NAMES)),
+        }
+    }
+}
+
+impl FromJson for GamepadLayout {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::parse(variant(v, "GamepadLayout", Self::NAMES)?)
+    }
+}
+
+impl ToJson for GamepadLayout {
+    fn to_json(&self) -> Value {
+        Value::String(self.as_str().into())
+    }
+}
+
 /// `GamepadInput`: packages/knowledge/wiki/input.md.
 #[derive(Clone, Debug, PartialEq)]
 pub struct GamepadInput {
     pub pad: Option<u32>,
     pub connected: Option<bool>,
-    pub buttons: Option<Vec<GamepadButton>>,
+    pub layout: Option<GamepadLayout>,
+    pub guid: Option<String>,
+    pub buttons: Option<Vec<f32>>,
     pub axes: Option<Vec<f32>>,
-    pub triggers: Option<Vec<f32>>,
-    pub device: Option<InputDevice>,
+    pub hat: Option<u32>,
 }
 
 impl Default for GamepadInput {
@@ -3083,10 +3126,11 @@ impl Default for GamepadInput {
         Self {
             pad: Default::default(),
             connected: Default::default(),
+            layout: Default::default(),
+            guid: Default::default(),
             buttons: Default::default(),
             axes: Default::default(),
-            triggers: Default::default(),
-            device: Default::default(),
+            hat: Default::default(),
         }
     }
 }
@@ -3100,10 +3144,11 @@ impl FromJson for GamepadInput {
         Ok(Self {
             pad: field(o, "pad", d.pad)?,
             connected: field(o, "connected", d.connected)?,
+            layout: field(o, "layout", d.layout)?,
+            guid: field(o, "guid", d.guid)?,
             buttons: field(o, "buttons", d.buttons)?,
             axes: field(o, "axes", d.axes)?,
-            triggers: field(o, "triggers", d.triggers)?,
-            device: field(o, "device", d.device)?,
+            hat: field(o, "hat", d.hat)?,
         })
     }
 }
@@ -3117,17 +3162,20 @@ impl ToJson for GamepadInput {
         if let Some(x) = &self.connected {
             o.insert("connected".into(), x.to_json());
         }
+        if let Some(x) = &self.layout {
+            o.insert("layout".into(), x.to_json());
+        }
+        if let Some(x) = &self.guid {
+            o.insert("guid".into(), x.to_json());
+        }
         if let Some(x) = &self.buttons {
             o.insert("buttons".into(), x.to_json());
         }
         if let Some(x) = &self.axes {
             o.insert("axes".into(), x.to_json());
         }
-        if let Some(x) = &self.triggers {
-            o.insert("triggers".into(), x.to_json());
-        }
-        if let Some(x) = &self.device {
-            o.insert("device".into(), x.to_json());
+        if let Some(x) = &self.hat {
+            o.insert("hat".into(), x.to_json());
         }
         Value::Object(o)
     }

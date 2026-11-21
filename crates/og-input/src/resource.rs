@@ -1292,14 +1292,14 @@ impl Gamepad {
             *p.triggers = Vec2::ZERO;
             self.connected &= !(1 << pad);
         }
-        // The family stays while the pad is connected and is forgotten
-        // when it goes; a state that does not say keeps what was said.
+        // The family is the connected pad's, forgotten when it goes.
         let shift = 4 * pad as u32;
-        if !state.connected {
-            self.devices &= !(0xF << shift);
-        } else if let Some(d) = state.device {
-            self.devices = (self.devices & !(0xF << shift)) | (d.index() << shift);
-        }
+        let family = if state.connected {
+            state.device.index()
+        } else {
+            0
+        };
+        self.devices = (self.devices & !(0xF << shift)) | (family << shift);
         true
     }
 

@@ -126,7 +126,8 @@ pub fn gamepad_button(name: &str) -> Option<usize> {
     GAMEPAD_BUTTONS.iter().position(|n| *n == name)
 }
 
-/// One pad's whole state, as the shell polls it on the display frame.
+/// One pad's whole state in the standard layout: what og.Gamepad takes,
+/// mapped from the host's raw pad ([`crate::padmap::map`]).
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct GamepadState {
     /// Which pad (0 to [`MAX_GAMEPADS`] - 1).
@@ -138,10 +139,9 @@ pub struct GamepadState {
     pub axes: [f32; 4],
     /// The analog left and right triggers, 0..1.
     pub triggers: [f32; 2],
-    /// The pad's family as the host told it from the pad's id (Xbox,
-    /// PlayStation, Switch, or a generic pad); `None` when it did not say.
-    /// Glyphs follow it ([`crate::Gamepad::device`]).
-    pub device: Option<crate::Device>,
+    /// The pad's family (Xbox, PlayStation, Switch, or a generic pad):
+    /// glyphs follow it ([`crate::Gamepad::device`]).
+    pub device: crate::Device,
 }
 
 /// What an assistive technology asks of one UI control (the `a11y` kind):
@@ -235,8 +235,9 @@ pub enum InjectedInput {
         delta_x: f32,
         delta_y: f32,
     },
-    /// A pad's state, whole (the shell sends one when it changes).
-    Gamepad(GamepadState),
+    /// A pad's raw state, whole (the host sends one when it changes);
+    /// og-input maps it to the standard layout.
+    Gamepad(crate::RawPad),
     /// Typed text (an engine extension): what the page's `beforeinput`
     /// inserted (a key's character, a paste, an IME's committed text), or,
     /// with `composing`, an input method's composition so far (the
@@ -330,7 +331,7 @@ impl InjectedInput {
                 locked: value.get("locked")?.as_bool()?,
             }),
             "gamepad" => {
-                let mut state = GamepadState {
+                let mut raw = crate::RawPad {
                     pad: match value.get("pad") {
                         None | Some(Value::Null) => 0,
                         Some(v) => u32::try_from(v.as_u64()?).ok()?,
@@ -339,15 +340,24 @@ impl InjectedInput {
                         None | Some(Value::Null) => true,
                         Some(v) => v.as_bool()?,
                     },
-                    ..GamepadState::default()
+                    layout: match value.get("layout") {
+                        None | Some(Value::Null) => crate::PadLayout::Standard,
+                        Some(v) => crate::PadLayout::from_name(v.as_str()?)?,
+                    },
+                    hat: match value.get("hat") {
+                        None | Some(Value::Null) => 0,
+                        Some(v) => u8::try_from(v.as_u64()?).ok().filter(|h| *h < 16)?,
+                    },
+                    ..crate::RawPad::default()
                 };
-                for b in value
-                    .get("buttons")
-                    .and_then(Value::as_array)
-                    .into_iter()
-                    .flatten()
-                {
-                    state.buttons |= 1 << gamepad_button(b.as_str()?)?;
+                if let Some(g) = value.get("guid").filter(|g| !g.is_null()) {
+                    let g = g.as_str()?;
+                    if g.len() != 32 {
+                        return None;
+                    }
+                    for (i, b) in raw.guid.iter_mut().enumerate() {
+                        *b = u8::from_str_radix(g.get(2 * i..2 * i + 2)?, 16).ok()?;
+                    }
                 }
                 let floats = |key: &str, out: &mut [f32]| -> Option<()> {
                     if let Some(list) = value.get(key).and_then(Value::as_array) {
@@ -364,13 +374,9 @@ impl InjectedInput {
                     }
                     Some(())
                 };
-                floats("axes", &mut state.axes)?;
-                floats("triggers", &mut state.triggers)?;
-                state.device = match value.get("device") {
-                    None | Some(Value::Null) => None,
-                    Some(v) => Some(crate::Device::from_name(v.as_str()?).filter(|d| d.is_pad())?),
-                };
-                Some(InjectedInput::Gamepad(state))
+                floats("buttons", &mut raw.buttons)?;
+                floats("axes", &mut raw.axes)?;
+                Some(InjectedInput::Gamepad(raw))
             }
             "text" => Some(InjectedInput::Text {
                 text: value.get("text")?.as_str()?.to_owned(),
@@ -447,18 +453,21 @@ impl InjectedInput {
                 json!({"kind": "pointerLock", "locked": locked})
             }
             InjectedInput::Gamepad(g) => {
-                let mut v = json!({
+                // Trailing zeros left out: what the host did not send.
+                let trim = |v: &[f32]| {
+                    let n = v.iter().rposition(|x| *x != 0.0).map_or(0, |i| i + 1);
+                    v[..n].to_vec()
+                };
+                json!({
                     "kind": "gamepad",
                     "pad": g.pad,
                     "connected": g.connected,
-                    "buttons": GAMEPAD_BUTTONS.iter().enumerate().filter(|(i, _)| g.buttons & (1 << i) != 0).map(|(_, n)| *n).collect::<Vec<_>>(),
-                    "axes": g.axes,
-                    "triggers": g.triggers,
-                });
-                if let Some(d) = g.device {
-                    v["device"] = json!(d.name());
-                }
-                v
+                    "layout": g.layout.name(),
+                    "guid": g.guid.iter().map(|b| format!("{b:02x}")).collect::<String>(),
+                    "buttons": trim(&g.buttons),
+                    "axes": trim(&g.axes),
+                    "hat": g.hat,
+                })
             }
             InjectedInput::Wheel {
                 x,

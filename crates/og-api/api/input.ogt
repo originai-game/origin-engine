@@ -512,13 +512,13 @@ module input {
   }
 
   fn device {
-    doc "The device the player used last: a key or the mouse, a pad (its family as the host told it, else xbox), or a touch. Prompts follow it live."
+    doc "The device the player used last: a key or the mouse, a pad (its family), or a touch. Prompts follow it live."
     param world World "The world."
     returns InputDevice
   }
 
   fn padDevice {
-    doc "A pad's family as the host told it from the pad's id (Xbox, PlayStation, Switch or a generic pad). Null for a pad that is not connected or that the host did not name."
+    doc "A pad's family (Xbox, PlayStation, Switch or a generic pad), from its vendor id, else the name its mapping gives. Null for a pad that is not connected."
     param world World "The world."
     param pad u32 "The pad, 0 to 7."
     returns Option.InputDevice
@@ -693,25 +693,39 @@ module input {
     field locked bool "Locked now (true) or unlocked (false)."
   }
 
+  enum GamepadLayout {
+    doc "The order a raw pad's buttons and axes follow: who listed them, so og-input knows which mapping reads it."
+    variant standard "The W3C standard layout already (a browser's `mapping: \"standard\"`)."
+    variant web "A browser's own order for a pad it does not map (its hat as two axes)."
+    variant linux "Linux evdev, as SDL numbers it."
+    variant windows "DirectInput or raw HID on Windows, as SDL numbers it."
+    variant macos "IOKit HID on macOS, as SDL numbers it."
+    variant xinput "Windows.Gaming.Input's Gamepad: West, South, East, North, the bumpers, View, Menu, the stick presses, the d-pad up, right, down, left; left x, y, right x, the triggers, right y."
+  }
+
   struct GamepadInput {
-    doc "A gamepad's whole state (an engine extension of protocol 5): the shell sends one whenever a pad changes, and a playtest can send its own."
-    field pad u32 "Which pad, 0 to 7; omitted is 0." {
+    doc "A gamepad's raw state, whole (an engine extension of protocol 5): the host sends one whenever a pad changes, and a playtest can send its own. og-input maps it to og.Gamepad's standard layout through SDL_GameControllerDB mappings (input §4)."
+    field pad u32 "Which pad, 0 to 7; omitted is 0. A host keeps a pad's slot while it is connected." {
       max 7
       optional true
     }
     field connected bool "Whether the pad is connected (omitted is true); a disconnected pad holds nothing." {
       optional true
     }
-    field buttons List.GamepadButton "The buttons held (omitted is none)." {
+    field layout GamepadLayout "The order its buttons and axes follow (omitted is standard)." {
       optional true
     }
-    field axes List.f32 "Left stick x, y, right stick x, y; each -1 to 1, y down. Missing values are 0." {
+    field guid String "Its SDL GUID, 32 hex digits (bus, CRC, vendor, product and version, little-endian): which mapping reads it and its family. Omitted is none." {
       optional true
     }
-    field triggers List.f32 "The left and right analog triggers, 0 to 1. Missing values are 0." {
+    field buttons List.f32 "Each raw button's value, 0 to 1, up to 24 (omitted is none). In the standard layout these are GamepadButton's, the triggers' analog values at 6 and 7." {
       optional true
     }
-    field device InputDevice "The pad's family as the host tells it from the pad's id (xbox, playstation, switch, or gamepad for a pad it cannot place); omitted keeps what was said. Glyphs follow it." {
+    field axes List.f32 "Each raw axis, -1 to 1, up to 8; missing values are 0. In the standard layout: left stick x, y, right stick x, y, y down." {
+      optional true
+    }
+    field hat u32 "Hat 0's held directions: 1 up, 2 right, 4 down, 8 left (omitted is none)." {
+      max 15
       optional true
     }
   }
@@ -1005,13 +1019,13 @@ module input {
 
   resource Gamepad {
     doc "Up to eight gamepads at the start of this tick (og-input's og.Gamepad, version 3), in the W3C standard layout. A pad is world state and replays."
-    doc "Button masks are bit `GamepadButton` index per pad; edges last exactly one tick, and a press and a release between two ticks leave both edges set. Read them through the methods. Sticks and triggers are raw: dead zones are the actions' (og.input.setDeadzones). `devices` holds each pad's family as the host told it (og.input.padDevice)."
+    doc "Button masks are bit `GamepadButton` index per pad; edges last exactly one tick, and a press and a release between two ticks leave both edges set. Read them through the methods. Pads are in the W3C standard layout, mapped from what the host sent (input §4); sticks and triggers are past no dead zone: dead zones are the actions' (og.input.setDeadzones). `devices` holds each pad's family (og.input.padDevice)."
     guide "input §4"
     group "Pads"
     field connectedMask u32 "Connected pads: bit `pad`." {
       readonly true
     }
-    field devices u32 "Each pad's family, four bits per pad (pad p at bit 4p): an InputDevice index (1 xbox, 2 playstation, 3 switch, 4 gamepad), 0 when the host did not say." {
+    field devices u32 "Each pad's family, four bits per pad (pad p at bit 4p): an InputDevice index (1 xbox, 2 playstation, 3 switch, 4 gamepad), 0 for a pad not connected." {
       readonly true
     }
     group "Buttons held"

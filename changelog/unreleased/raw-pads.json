@@ -1,0 +1,34 @@
+{
+  "breaking": [
+    {
+      "member": "InjectedInput gamepad (GamepadInput)",
+      "change": "A `gamepad` event is now the pad's raw state, which og-input maps to the standard layout: `layout`, `guid`, `buttons` as raw values (numbers, not names), `axes` and `hat`. `triggers` and `device` are gone: the triggers are buttons 6 and 7 of the standard layout, and the family comes from the GUID's vendor or the mapping's name.",
+      "fix": "`og upgrade` rewrites a one-line `gamepad` event: `buttons` by name become values by index (`[\"a\"]` becomes `[1]`), `triggers` fold into buttons 6 and 7, and `device` becomes its vendor's `guid` (030000004c0500000000000000000000 for playstation). It lists any event spread over lines or built from variables for you to rewrite the same way. The `gamepad:` probe command is unchanged.",
+      "find": [
+        "kind: \"gamepad\"",
+        "\"kind\": \"gamepad\"",
+        "triggers:",
+        "device: \""
+      ],
+      "codemod": {
+        "kind": "raw-pads"
+      }
+    },
+    {
+      "member": "web shell gamepad keys",
+      "change": "The web shell no longer presses keys for pad buttons (A Space, B Escape, the d-pad and left stick the arrows, Start Enter…). No replacement keeps it: pads press only pad controls, so a game that read only keys does not answer a pad.",
+      "fix": "No replacement: the shell's key fallback is the loss. Bind pad controls beside the keys: `og.input.defineAction(world, { name: \"jump\", kind: \"button\", bindings: [{ control: \"Space\" }, { control: \"pad.a\" }] })`; a TSX UI's confirm, back and navigation already read the pad.",
+      "find": [
+        "og.input.isKeyDown",
+        "ArrowUp",
+        "Escape"
+      ]
+    }
+  ],
+  "fixed": [
+    {
+      "member": "og.Gamepad",
+      "summary": "A desktop pad keeps its slot while connected: unplugging pad 0 no longer renumbers pad 1 as 0. Desktop and web pads are mapped once, by og-input, so a d-pad press on the web moves focus one step, not two."
+    }
+  ]
+}

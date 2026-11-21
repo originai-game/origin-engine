@@ -57,7 +57,7 @@ test("a pad save restores and replays as the build that saved it did", () => {
   }
   expect(run(engine)).toEqual(fixture.after);
   // Pads past the fourth work in the restored world.
-  engine.probe.input({ kind: "gamepad", pad: 6, buttons: ["a"] } as never);
+  engine.probe.input({ kind: "gamepad", pad: 6, buttons: [1] } as never);
   engine.advance(1);
   const pads = engine.world.resource(og.Gamepad);
   expect(pads.ok && pads.value.down("a", 6)).toBe(true);

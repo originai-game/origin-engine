@@ -58,14 +58,14 @@ test("actions over keys and a pad, rebound by a capture, saved, and glyphed", ()
   engine.advance(1);
 
   // A PlayStation pad's A (cross) drives the same action; the prompt follows it.
-  engine.probe.input({ kind: "gamepad", pad: 5, buttons: ["a"], device: "playstation" } as never);
+  engine.probe.input({ kind: "gamepad", pad: 5, guid: "030000004c050000cc09000000000000", buttons: [1] } as never);
   seen.length = 0;
   engine.advance(1);
   expect(seen[0]!.jump).toBe(true);
   expect(og.input.device(world)).toBe("playstation");
   expect(og.input.glyph(world, "jump")).toMatchObject({ icon: "ps.cross", device: "playstation", control: "pad.a" });
   expect(og.input.padDevice(world, 5)).toBe("playstation");
-  engine.probe.input({ kind: "gamepad", pad: 5, buttons: [] } as never);
+  engine.probe.input({ kind: "gamepad", pad: 5, guid: "030000004c050000cc09000000000000", buttons: [] } as never);
 
   // A controls screen: capture jump's key, press C, see crouch's conflict, swap.
   expect(og.input.startCapture(world, { action: "jump", slot: 0 }).ok).toBe(true);

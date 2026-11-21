@@ -8,7 +8,7 @@ Module [`input`](../input.md) · [index](../index.md)
 
 Up to eight gamepads at the start of this tick (og-input's og.Gamepad, version 3), in the W3C standard layout. A pad is world state and replays.
 
-Button masks are bit `GamepadButton` index per pad; edges last exactly one tick, and a press and a release between two ticks leave both edges set. Read them through the methods. Sticks and triggers are raw: dead zones are the actions' (og.input.setDeadzones). `devices` holds each pad's family as the host told it (og.input.padDevice).
+Button masks are bit `GamepadButton` index per pad; edges last exactly one tick, and a press and a release between two ticks leave both edges set. Read them through the methods. Pads are in the W3C standard layout, mapped from what the host sent (input §4); sticks and triggers are past no dead zone: dead zones are the actions' (og.input.setDeadzones). `devices` holds each pad's family (og.input.padDevice).
 
 See `input §4`.
 
@@ -19,7 +19,7 @@ Token `og.Gamepad`, registered under the schema name `og.Gamepad`; its value typ
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
 | `connectedMask` | `number` | `0` | — | — | read only | Connected pads: bit `pad`. |
-| `devices` | `number` | `0` | — | — | read only | Each pad's family, four bits per pad (pad p at bit 4p): an InputDevice index (1 xbox, 2 playstation, 3 switch, 4 gamepad), 0 when the host did not say. |
+| `devices` | `number` | `0` | — | — | read only | Each pad's family, four bits per pad (pad p at bit 4p): an InputDevice index (1 xbox, 2 playstation, 3 switch, 4 gamepad), 0 for a pad not connected. |
 
 #### Buttons held
 
@@ -102,13 +102,13 @@ Token `og.Gamepad`, registered under the schema name `og.Gamepad`; its value typ
 ```ogt
 resource Gamepad {
   doc "Up to eight gamepads at the start of this tick (og-input's og.Gamepad, version 3), in the W3C standard layout. A pad is world state and replays."
-  doc "Button masks are bit `GamepadButton` index per pad; edges last exactly one tick, and a press and a release between two ticks leave both edges set. Read them through the methods. Sticks and triggers are raw: dead zones are the actions' (og.input.setDeadzones). `devices` holds each pad's family as the host told it (og.input.padDevice)."
+  doc "Button masks are bit `GamepadButton` index per pad; edges last exactly one tick, and a press and a release between two ticks leave both edges set. Read them through the methods. Pads are in the W3C standard layout, mapped from what the host sent (input §4); sticks and triggers are past no dead zone: dead zones are the actions' (og.input.setDeadzones). `devices` holds each pad's family (og.input.padDevice)."
   guide "input §4"
   group "Pads"
   field connectedMask u32 "Connected pads: bit `pad`." {
     readonly true
   }
-  field devices u32 "Each pad's family, four bits per pad (pad p at bit 4p): an InputDevice index (1 xbox, 2 playstation, 3 switch, 4 gamepad), 0 when the host did not say." {
+  field devices u32 "Each pad's family, four bits per pad (pad p at bit 4p): an InputDevice index (1 xbox, 2 playstation, 3 switch, 4 gamepad), 0 for a pad not connected." {
     readonly true
   }
   group "Buttons held"
@@ -303,7 +303,7 @@ resource Gamepad {
 }
 ```
 
-<sub>Module `input` line 1006</sub>
+<sub>Module `input` line 1020</sub>
 
 <a id="member-Gamepad-connected"></a>
 
@@ -333,7 +333,7 @@ fn connected {
 }
 ```
 
-<sub>Module `input` line 1167</sub>
+<sub>Module `input` line 1181</sub>
 
 <a id="member-Gamepad-down"></a>
 
@@ -365,7 +365,7 @@ fn down {
 }
 ```
 
-<sub>Module `input` line 1174</sub>
+<sub>Module `input` line 1188</sub>
 
 <a id="member-Gamepad-justPressed"></a>
 
@@ -397,7 +397,7 @@ fn justPressed {
 }
 ```
 
-<sub>Module `input` line 1182</sub>
+<sub>Module `input` line 1196</sub>
 
 <a id="member-Gamepad-justReleased"></a>
 
@@ -429,7 +429,7 @@ fn justReleased {
 }
 ```
 
-<sub>Module `input` line 1190</sub>
+<sub>Module `input` line 1204</sub>
 
 <a id="member-Gamepad-axis"></a>
 
@@ -461,4 +461,4 @@ fn axis {
 }
 ```
 
-<sub>Module `input` line 1198</sub>
+<sub>Module `input` line 1212</sub>

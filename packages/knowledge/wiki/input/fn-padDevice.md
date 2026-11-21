@@ -6,7 +6,7 @@ Module [`input`](../input.md) · [index](../index.md)
 
 ### `og.input.padDevice`
 
-A pad's family as the host told it from the pad's id (Xbox, PlayStation, Switch or a generic pad). Null for a pad that is not connected or that the host did not name.
+A pad's family (Xbox, PlayStation, Switch or a generic pad), from its vendor id, else the name its mapping gives. Null for a pad that is not connected.
 
 ```ts
 og.input.padDevice(world: World, pad: number): InputDevice | null
@@ -23,7 +23,7 @@ Binding symbol `og_input_pad_device` · publish builds: kept
 
 ```ogt
 fn padDevice {
-  doc "A pad's family as the host told it from the pad's id (Xbox, PlayStation, Switch or a generic pad). Null for a pad that is not connected or that the host did not name."
+  doc "A pad's family (Xbox, PlayStation, Switch or a generic pad), from its vendor id, else the name its mapping gives. Null for a pad that is not connected."
   param world World "The world."
   param pad u32 "The pad, 0 to 7."
   returns Option.InputDevice
