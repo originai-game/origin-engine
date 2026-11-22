@@ -34427,12 +34427,12 @@ export interface Ability {
    */
   rechargeTicks: number;
   /**
-   * Written: ticks into the charge returning (0 when full).
+   * Written: ticks the next charge has recharged so far (0 when full).
    *
    * @unit ticks (fixed simulation steps)
    * @readonly written by the engine
    */
-  readonly recharge: number;
+  readonly rechargedTicks: number;
   /**
    * Ticks after a use before it can be used again, whatever its charges; 0 locks nothing.
    *
@@ -34447,7 +34447,7 @@ export interface Ability {
    * @unit ticks (fixed simulation steps)
    * @readonly written by the engine
    */
-  readonly lock: number;
+  readonly lockLeftTicks: number;
   /** The og.Stat a use takes `cost` from (its base: mana, stamina, ammo); 0 costs nothing. */
   pool: Entity;
   /**
@@ -39918,7 +39918,7 @@ export declare namespace og {
    * Something its owner uses: on a press of `action` (og.input.consume, taken only when it can be used, so an early press waits in the buffer) or by og.abilities.use, it spends a charge and its cost and starts its lock, and og.AbilityUsed is sent. Below maxCharges a charge returns every rechargeTicks. Charges and locks count the ticks time moves (none in a hit stop).
    * See `abilities §1`.
    */
-  const Ability: ComponentType<{ readonly owner: FieldSpec<"Entity">; readonly action: FieldSpec<"str">; readonly maxCharges: FieldSpec<"u32">; readonly charges: FieldSpec<"u32">; readonly rechargeTicks: FieldSpec<"u32">; readonly recharge: FieldSpec<"u32">; readonly lockTicks: FieldSpec<"u32">; readonly lock: FieldSpec<"u32">; readonly pool: FieldSpec<"Entity">; readonly cost: FieldSpec<"f32"> }, Ability>;
+  const Ability: ComponentType<{ readonly owner: FieldSpec<"Entity">; readonly action: FieldSpec<"str">; readonly maxCharges: FieldSpec<"u32">; readonly charges: FieldSpec<"u32">; readonly rechargeTicks: FieldSpec<"u32">; readonly rechargedTicks: FieldSpec<"u32">; readonly lockTicks: FieldSpec<"u32">; readonly lockLeftTicks: FieldSpec<"u32">; readonly pool: FieldSpec<"Entity">; readonly cost: FieldSpec<"f32"> }, Ability>;
   /**
    * An og.Ability was used: sent the tick it was.
    * See `abilities §1`.

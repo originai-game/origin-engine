@@ -21,9 +21,9 @@ Token `og.Ability`, registered under the schema name `og.Ability`; its value typ
 | `maxCharges` | `number` | `0` | ≥ 0 | — | tunable | The charges it holds at most; 0 is never used. |
 | `charges` | `number` | `0` | — | — | — | The charges it has: give its first ones when it is inserted; written as it is used and recharged. |
 | `rechargeTicks` | `number` | `0` | ≥ 0 | `ticks` | tunable | Ticks for one charge to return while below maxCharges; 0 returns none. |
-| `recharge` | `number` | `0` | — | `ticks` | read only | Written: ticks into the charge returning (0 when full). |
+| `rechargedTicks` | `number` | `0` | — | `ticks` | read only | Written: ticks the next charge has recharged so far (0 when full). |
 | `lockTicks` | `number` | `0` | ≥ 0 | `ticks` | tunable | Ticks after a use before it can be used again, whatever its charges; 0 locks nothing. |
-| `lock` | `number` | `0` | — | `ticks` | read only | Written: ticks of its lock left. |
+| `lockLeftTicks` | `number` | `0` | — | `ticks` | read only | Written: ticks of its lock left. |
 | `pool` | `Entity` | `0` | — | — | — | The og.Stat a use takes `cost` from (its base: mana, stamina, ammo); 0 costs nothing. |
 | `cost` | `number` | `0` | ≥ 0 | — | tunable | What a use takes from the pool's base; a pool whose value is under it refuses the use. |
 
@@ -44,7 +44,7 @@ component Ability {
     unit ticks
     tunable true
   }
-  field recharge u32 "Written: ticks into the charge returning (0 when full)." {
+  field rechargedTicks u32 "Written: ticks the next charge has recharged so far (0 when full)." {
     readonly true
     unit ticks
   }
@@ -53,7 +53,7 @@ component Ability {
     unit ticks
     tunable true
   }
-  field lock u32 "Written: ticks of its lock left." {
+  field lockLeftTicks u32 "Written: ticks of its lock left." {
     readonly true
     unit ticks
   }

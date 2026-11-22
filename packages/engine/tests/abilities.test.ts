@@ -55,17 +55,17 @@ test("a charge is back R ticks after its use, the next R after that, and a hit s
   const used = og.abilities.use(world, dash);
   expect(used.ok ? "" : used.reason).toContain("no charge");
   step(47); // 59 ticks since the first use
-  expect(ability("dash")).toMatchObject({ charges: 0, recharge: 59 });
+  expect(ability("dash")).toMatchObject({ charges: 0, rechargedTicks: 59 });
   step();
-  expect(ability("dash")).toMatchObject({ charges: 1, recharge: 0 });
+  expect(ability("dash")).toMatchObject({ charges: 1, rechargedTicks: 0 });
   // A hit stop of 30 ticks: nothing counts while it lasts.
   must(og.time.hitStop(world, 30));
   step(30);
-  expect(ability("dash")).toMatchObject({ charges: 1, recharge: 0 });
+  expect(ability("dash")).toMatchObject({ charges: 1, rechargedTicks: 0 });
   step(59);
   expect(ability("dash").charges).toBe(1);
   step();
-  expect(ability("dash")).toMatchObject({ charges: 2, recharge: 0 });
+  expect(ability("dash")).toMatchObject({ charges: 2, rechargedTicks: 0 });
   expect(og.abilities.ready(world, dash)).toBe(true);
   engine.destroy();
 });

@@ -9494,7 +9494,7 @@
           "tunable": true
         },
         {
-          "name": "recharge",
+          "name": "rechargedTicks",
           "column": "u32",
           "default": 0,
           "readonly": true
@@ -9506,7 +9506,7 @@
           "tunable": true
         },
         {
-          "name": "lock",
+          "name": "lockLeftTicks",
           "column": "u32",
           "default": 0,
           "readonly": true

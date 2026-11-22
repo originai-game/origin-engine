@@ -46,7 +46,7 @@ module abilities {
       unit ticks
       tunable true
     }
-    field recharge u32 "Written: ticks into the charge returning (0 when full)." {
+    field rechargedTicks u32 "Written: ticks the next charge has recharged so far (0 when full)." {
       readonly true
       unit ticks
     }
@@ -55,7 +55,7 @@ module abilities {
       unit ticks
       tunable true
     }
-    field lock u32 "Written: ticks of its lock left." {
+    field lockLeftTicks u32 "Written: ticks of its lock left." {
       readonly true
       unit ticks
     }

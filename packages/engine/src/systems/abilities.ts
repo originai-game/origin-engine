@@ -40,9 +40,9 @@ interface AbilityValue {
   maxCharges: number;
   charges: number;
   rechargeTicks: number;
-  recharge: number;
+  rechargedTicks: number;
   lockTicks: number;
-  lock: number;
+  lockLeftTicks: number;
   pool: Entity;
   cost: number;
 }
@@ -85,7 +85,7 @@ function set(world: World, e: Entity, token: Token, value: object): void {
 /** Why an ability cannot be used now, or null when it can. */
 function blocked(world: World, a: AbilityValue): string | null {
   if (a.charges === 0) return "it has no charge";
-  if (a.lock > 0) return `it is locked for ${a.lock} more ticks`;
+  if (a.lockLeftTicks > 0) return `it is locked for ${a.lockLeftTicks} more ticks`;
   if (a.pool && a.cost > 0) {
     const pool = get<StatValue>(world, a.pool, Stat);
     if (!pool) return `its pool ${a.pool} has no og.Stat`;
@@ -109,7 +109,7 @@ export function use(world: World, ability: Entity): Done {
     // The value is the base with modifiers: take the cost from both, so a second use this tick sees it.
     set(world, a.pool, Stat, { base: pool.base - a.cost, value: pool.value - a.cost });
   }
-  set(world, ability, Ability, { charges: a.charges - 1, lock: a.lockTicks });
+  set(world, ability, Ability, { charges: a.charges - 1, lockLeftTicks: a.lockTicks });
   (world.emit as (t: Token, v: object) => Got<unknown>)(AbilityUsed, { ability, owner: a.owner });
   return { ok: true, value: undefined };
 }
@@ -118,7 +118,7 @@ export function use(world: World, ability: Entity): Done {
 function stepAbility(world: World, e: Entity, moving: boolean): void {
   const a = get<AbilityValue>(world, e, Ability);
   if (!a) return;
-  let { charges, recharge, lock } = a;
+  let { charges, rechargedTicks: recharge, lockLeftTicks: lock } = a;
   if (moving) {
     if (lock > 0) lock -= 1;
     if (charges < a.maxCharges && a.rechargeTicks > 0) {
@@ -130,8 +130,8 @@ function stepAbility(world: World, e: Entity, moving: boolean): void {
     }
   }
   if (charges >= a.maxCharges) recharge = 0;
-  if (charges !== a.charges || recharge !== a.recharge || lock !== a.lock) set(world, e, Ability, { charges, recharge, lock });
-  if (a.action && a.maxCharges > 0 && blocked(world, { ...a, charges, lock }) === null && calls.input.consume(world as unknown as W, a.action)) {
+  if (charges !== a.charges || recharge !== a.rechargedTicks || lock !== a.lockLeftTicks) set(world, e, Ability, { charges, rechargedTicks: recharge, lockLeftTicks: lock });
+  if (a.action && a.maxCharges > 0 && blocked(world, { ...a, charges, lockLeftTicks: lock }) === null && calls.input.consume(world as unknown as W, a.action)) {
     const r = use(world, e);
     if (!r.ok) throw new Error(r.reason);
   }

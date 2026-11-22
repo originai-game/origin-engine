@@ -59244,11 +59244,11 @@
           "x-og-unit": "ticks",
           "x-og-tunable": true
         },
-        "recharge": {
+        "rechargedTicks": {
           "type": "integer",
           "minimum": 0,
           "maximum": 4294967295,
-          "description": "Written: ticks into the charge returning (0 when full).",
+          "description": "Written: ticks the next charge has recharged so far (0 when full).",
           "default": 0,
           "x-og-unit": "ticks",
           "readOnly": true
@@ -59263,7 +59263,7 @@
           "x-og-unit": "ticks",
           "x-og-tunable": true
         },
-        "lock": {
+        "lockLeftTicks": {
           "type": "integer",
           "minimum": 0,
           "maximum": 4294967295,

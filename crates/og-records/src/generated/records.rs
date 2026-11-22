@@ -39123,7 +39123,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 list: 0,
             },
             FieldDecl {
-                name: "recharge",
+                name: "rechargedTicks",
                 column: "u32",
                 default: "0",
                 readonly: true,
@@ -39134,7 +39134,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 unit: "ticks",
                 worldspace: "",
                 label: "",
-                doc: doc!("Written: ticks into the charge returning (0 when full)."),
+                doc: doc!("Written: ticks the next charge has recharged so far (0 when full)."),
                 variants: &[],
                 capacity: 0,
                 list: 0,
@@ -39157,7 +39157,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 list: 0,
             },
             FieldDecl {
-                name: "lock",
+                name: "lockLeftTicks",
                 column: "u32",
                 default: "0",
                 readonly: true,
