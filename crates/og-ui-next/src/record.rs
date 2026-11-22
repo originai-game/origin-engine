@@ -412,6 +412,10 @@ pub struct Record {
     /// a press, a hover or the cursor reaches it and the subtree that sets
     /// none; `None` follows its parent, as CSS's inherits.
     pub touch: Option<bool>,
+    /// Its `fill-*`, the paint of the icons in it: `Some(None)` the ink
+    /// (`fill-current`), `Some(Some(transparent))` none (`fill-none`);
+    /// `None` follows its parent, as CSS's `fill` inherits.
+    pub fill: Option<Option<Rgba>>,
 }
 
 impl Record {
@@ -471,6 +475,7 @@ impl Default for Record {
             mask: None,
             hidden: false,
             touch: None,
+            fill: None,
             scheme: None,
             dark: false,
         }

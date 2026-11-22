@@ -406,6 +406,8 @@ struct Shown {
     out: bool,
     /// A press, a hover and the cursor reach it (`pointer-events-*`).
     touch: bool,
+    /// Its icons' paint (`fill-*`); `None` the ink.
+    fill: Option<Rgba>,
 }
 
 /// An element's text as glyph quads (from its leaf's top left; colour and
@@ -1027,6 +1029,7 @@ impl Tree {
             text_stroke: self.root.text_stroke,
             out: false,
             touch: true,
+            fill: None,
         };
         // NaN: not reached yet this frame.
         let unseen = Shown {
@@ -1076,6 +1079,7 @@ impl Tree {
                         text_stroke: eff.text_stroke,
                         out: false,
                         touch: true,
+                        fill: None,
                     }
                 }
             };
@@ -1102,6 +1106,7 @@ impl Tree {
                 text_stroke,
                 out: from.out || self.motion.exiting(el.node),
                 touch: r.touch.unwrap_or(from.touch),
+                fill: r.fill.unwrap_or(from.fill),
             };
             let visible = pv
                 && !el.dead
@@ -1326,6 +1331,8 @@ impl Tree {
             }
             let mut ink = own_ink;
             ink[3] *= alpha;
+            // An icon is painted in its fill, the ink unless `fill-*` says.
+            let icon_ink = self.shown[e].fill.map_or(ink, faded);
             if let Some(line) = &el.line {
                 let stroke = s_line_color(&r.stroke, ink, alpha);
                 let n = line.points.len() / 2;
@@ -1358,7 +1365,7 @@ impl Tree {
                             PaintKind::Glyph,
                             [square[0], top + asc * size, size, 0.0],
                             clip,
-                            ink,
+                            icon_ink,
                             [0.0; 4],
                             [0.0; 4],
                             ch as u32,
@@ -1368,7 +1375,11 @@ impl Tree {
                     // A texture grid's cell: a picture in its own colours, a
                     // mask in the ink.
                     Some((IconCell::Image(t, uv), picture)) => {
-                        let color = if picture { [1.0, 1.0, 1.0, alpha] } else { ink };
+                        let color = if picture {
+                            [1.0, 1.0, 1.0, alpha]
+                        } else {
+                            icon_ink
+                        };
                         p.quads.push(PaintQuad {
                             uv,
                             ..quad(
@@ -1393,7 +1404,7 @@ impl Tree {
                                 PaintKind::Icon,
                                 square,
                                 clip,
-                                ink,
+                                icon_ink,
                                 [0.0; 4],
                                 [0.0; 4],
                                 first,

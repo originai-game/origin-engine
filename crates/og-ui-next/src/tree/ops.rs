@@ -4364,15 +4364,37 @@ mod tests {
         assert_eq!(t.drawn.quads.len(), 2);
     }
 
-    /// An `Icon` draws its built-in icon's segments in its box.
+    /// An `Icon` draws its built-in icon's segments in its box, in its
+    /// ink, or in the `fill-*` it or an ancestor sets (`fill-current`: the
+    /// ink again). Ways this could fail: fill read only on the icon itself,
+    /// or `fill-current` taken for black.
     #[test]
     fn a_built_in_icon_draws() {
         let mut t = real();
-        nodes(&mut t, &[(1, 5, "w-[24px] h-[24px] text-white", 0)]);
+        nodes(
+            &mut t,
+            &[
+                (1, 5, "w-[24px] h-[24px] text-white", 0),
+                (2, 0, "fill-[#ff0000] text-white", 0),
+                (3, 5, "w-[24px] h-[24px]", 2),
+                (4, 5, "w-[24px] h-[24px] fill-current", 2),
+            ],
+        );
         let mut b = Batch::default();
-        b.op(6).u32(1).str("name").str("clock");
+        for id in [1, 3, 4] {
+            b.op(6).u32(id).str("name").str("clock");
+        }
         t.apply(&b.bytes()).unwrap();
         t.frame(&crate::fonts::Fonts::default(), &IconAtlas::default());
+        let colors: Vec<Rgba> = t
+            .drawn
+            .quads
+            .iter()
+            .filter(|q| q.kind == PaintKind::Icon as u32)
+            .map(|q| q.color)
+            .collect();
+        let white = [1.0; 4];
+        assert_eq!(colors, [white, [1.0, 0.0, 0.0, 1.0], white]);
         let (first, count) = crate::icons::icons().find("clock").unwrap();
         let q = t
             .drawn

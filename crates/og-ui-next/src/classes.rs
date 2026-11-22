@@ -461,6 +461,11 @@ fn record_of(style: &Style, props: &ClassProps) -> Record {
         Some(SvgPaint::None) => r.stroke = Some([0.0; 4]),
         Some(SvgPaint::CurrentColor) | None => {}
     }
+    r.fill = style.paint.fill.as_ref().map(|f| match f {
+        SvgPaint::Color(c) => Some(linear(*c)),
+        SvgPaint::None => Some([0.0; 4]),
+        SvgPaint::CurrentColor => None,
+    });
     if let Some(w) = style.paint.stroke_width {
         r.stroke_width = w.0;
     }
@@ -1237,9 +1242,9 @@ mod tests {
                   "writing_direction", "align_vertical", "placeholder_color",
                   "selection_color", "caret_color"]),
             ("PaintStyle", format!("{:#?}", PaintStyle::default()),
-                &["stroke", "stroke_width"],
-                // Not drawn yet: an SVG's `fill-*` and dashes.
-                &["fill", "stroke_dasharray"]),
+                &["stroke", "stroke_width", "fill"],
+                // Not drawn: a `<Line>`'s dashes.
+                &["stroke_dasharray"]),
             ("Effects", format!("{:#?}", Effects::default()),
                 &["box_shadows", "background_images", "backdrop_filters", "mask_images"],
                 // Not drawn yet: `blur-*`, `brightness-*` and the other filters.
