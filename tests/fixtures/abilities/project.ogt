@@ -1,0 +1,11 @@
+type project
+version 1
+---
+# A test fixture, not a template (tests/fixtures/README.md): og.systems.abilities
+# with a dash of two charges, a fireball that costs mana and three statuses.
+name "Abilities"
+id "abilities"
+engine "0.9.0"
+entry "src/main.ts"
+tick 60
+seed 3
