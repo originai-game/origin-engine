@@ -768,9 +768,11 @@ fn check(look: &mut LookFile, known: &dyn Fn(&str) -> bool) -> Result<(), String
         look.ui = None;
     }
     if let Some(name) = &look.ui {
-        // The blob names the style by its bundle id, resolved here.
-        let id = resolve_style(name, known)?;
-        if !known(&id) {
+        // The blob names the style by its bundle id, resolved here: its
+        // directory, which the bundle holds as that directory's pack.json.
+        let has = |dir: &str| known(&format!("{dir}/pack.json"));
+        let id = resolve_style(name, &has)?;
+        if !has(&id) {
             missing.push(id.clone());
         }
         look.ui = Some(id);

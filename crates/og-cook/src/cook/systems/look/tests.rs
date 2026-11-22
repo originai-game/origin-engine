@@ -207,8 +207,16 @@ fn checks_fields_against_the_records() {
     );
     let l = one("ui \"default\"\n", &[]).unwrap();
     assert_eq!(l.ui, None, "core default requires no style asset");
-    let l = one("ui \"pixel\"\n", &["styles/pixel", "@styles/pixel"]).unwrap();
+    // A style is known by its directory's pack.json, the bundle's one
+    // asset for it; the look names the directory.
+    let l = one(
+        "ui \"pixel\"\n",
+        &["styles/pixel/pack.json", "@styles/pixel/pack.json"],
+    )
+    .unwrap();
     assert_eq!(l.ui.as_deref(), Some("styles/pixel"), "the game's own wins");
+    let e = one("ui \"styles/gone\"\n", &[]).unwrap_err();
+    assert!(e.contains("not under assets/: styles/gone"), "{e}");
     let e = one("ui \"velvet\"\n", &[]).unwrap_err();
     assert!(e.contains("velvet") && e.contains("neither assets/"), "{e}");
     assert!(
