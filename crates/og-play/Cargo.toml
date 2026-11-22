@@ -6,3 +6,6 @@ license.workspace = true
 rust-version.workspace = true
 description = "Origin Engine mechanisms that span domains: volumes on bones that hit colliders, candidates by range and line of sight. A domain of its own: poses, shapes and query answers come in as data."
 autotests = false
+
+[dependencies]
+og-core = { path = "../og-core" }

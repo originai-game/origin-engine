@@ -3453,6 +3453,9 @@ dependencies = [
 [[package]]
 name = "og-play"
 version = "0.9.0"
+dependencies = [
+ "og-core",
+]
 
 [[package]]
 name = "og-probe"
