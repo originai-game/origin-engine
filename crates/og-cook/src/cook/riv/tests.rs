@@ -5,6 +5,7 @@ use super::convert::artboards;
 use super::read::*;
 use og_draw::ui::UiPaint;
 use og_rive::{Artboard, Player};
+use og_text::fonts::Collection;
 use std::path::PathBuf;
 use std::sync::Arc;
 
@@ -23,10 +24,11 @@ fn convert(name: &str) -> Result<Vec<Artboard>, String> {
 fn a_shape_draws_where_its_transforms_put_it() {
     let a = convert("shapetest.riv").expect("converts");
     let p = Player::new(Arc::new(a[0].clone()), None);
+    let mut fonts = Collection::new();
     // The shape at (139.2, 31.7), its path at (65.9, 65.9) through four
     // cubic vertices 65.9 from it: a circle of radius 65.9 about
     // (205.1, 97.7) in a 400 × 200 artboard drawn at its own size.
-    let e = p.elements([0.0, 0.0, 400.0, 200.0]);
+    let e = p.elements(&mut fonts, [0.0, 0.0, 400.0, 200.0]);
     assert_eq!(e.len(), 1, "{e:?}");
     assert_eq!(e[0].id, "New Artboard/Ellipse");
     let [x, y, w, h] = e[0].bounds;
@@ -40,7 +42,7 @@ fn a_shape_draws_where_its_transforms_put_it() {
     }
     // Under it, the artboard's background (0xFF313131); the circle's fill
     // has no colour of its own, so Rive's default grey (0xFF747474).
-    let shapes = drawn_shapes(&p, [0.0, 0.0, 400.0, 200.0], 1.0);
+    let shapes = drawn_shapes(&p, &mut fonts, [0.0, 0.0, 400.0, 200.0], 1.0);
     let solid = |s: &og_draw::ui::UiShape| match &s.paint {
         UiPaint::Solid(c) => *c,
         _ => panic!("solid"),
@@ -62,7 +64,8 @@ fn a_shape_draws_where_its_transforms_put_it() {
 fn a_nested_artboard_draws_at_its_node_with_its_opacity() {
     let a = convert("nested_artboard_opacity.riv").expect("converts");
     let p = Player::new(Arc::new(a[0].clone()), None);
-    let shapes = drawn_shapes(&p, [0.0, 0.0, 500.0, 500.0], 1.0);
+    let mut fonts = Collection::new();
+    let shapes = drawn_shapes(&p, &mut fonts, [0.0, 0.0, 500.0, 500.0], 1.0);
     // The nested 250 px artboard's red background at (125, 125), at the
     // container's opacity 0.3275, over the parent's own background.
     let red = shapes
@@ -76,7 +79,7 @@ fn a_nested_artboard_draws_at_its_node_with_its_opacity() {
     assert!((red.center - og_core::glam::Vec2::splat(250.0)).length() < 0.01);
     assert!((red.half - og_core::glam::Vec2::splat(125.0)).length() < 0.01);
     let ids: Vec<String> = p
-        .elements([0.0, 0.0, 500.0, 500.0])
+        .elements(&mut fonts, [0.0, 0.0, 500.0, 500.0])
         .into_iter()
         .map(|e| e.id)
         .collect();
@@ -177,8 +180,9 @@ fn an_image_draws_at_its_pixel_size_about_its_origin() {
     });
     a.bind_images(&mut |id| (id == "#image0").then_some(texture));
     let p = Player::new(Arc::new(a), None);
+    let mut fonts = Collection::new();
     // Drawn at its own size: the artboard (500 px) in a 500 px box.
-    let shapes = drawn_shapes(&p, [0.0, 0.0, 500.0, 500.0], 0.5);
+    let shapes = drawn_shapes(&p, &mut fonts, [0.0, 0.0, 500.0, 500.0], 0.5);
     let img = shapes
         .iter()
         .find(|s| matches!(s.paint, UiPaint::Image(_)))
@@ -191,13 +195,13 @@ fn an_image_draws_at_its_pixel_size_about_its_origin() {
     assert_eq!(img.center, og_core::glam::Vec2::ZERO);
     assert_eq!(img.half, og_core::glam::Vec2::splat(7.5));
     // Drawn at half size the map scales it; its pixels stay its size.
-    let half = drawn_shapes(&p, [0.0, 0.0, 250.0, 250.0], 1.0);
+    let half = drawn_shapes(&p, &mut fonts, [0.0, 0.0, 250.0, 250.0], 1.0);
     let img = half
         .iter()
         .find(|s| matches!(s.paint, UiPaint::Image(_)))
         .expect("image");
     assert_eq!(img.transform, [0.5, 0.0, 0.0, 0.5]);
-    let e = p.elements([0.0, 0.0, 500.0, 500.0]);
+    let e = p.elements(&mut fonts, [0.0, 0.0, 500.0, 500.0]);
     assert_eq!(e.last().map(|e| e.bounds), Some([-7.5, -7.5, 15.0, 15.0]));
 }
 
@@ -208,8 +212,13 @@ fn a_hosted_image_is_an_error_naming_it() {
 }
 
 /// The shapes a player draws (its texts and cuts left out).
-fn drawn_shapes(p: &og_rive::Player, rect: [f32; 4], opacity: f32) -> Vec<og_draw::ui::UiShape> {
-    p.draw(rect, opacity)
+fn drawn_shapes(
+    p: &og_rive::Player,
+    fonts: &mut Collection,
+    rect: [f32; 4],
+    opacity: f32,
+) -> Vec<og_draw::ui::UiShape> {
+    p.draw(fonts, rect, opacity)
         .into_iter()
         .filter_map(|d| match d {
             og_rive::Drawn::Shape(s) => Some(*s),

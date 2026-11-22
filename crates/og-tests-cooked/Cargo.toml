@@ -19,6 +19,8 @@ og-anim = { path = "../og-anim" }
 og-env = { path = "../og-env" }
 # ui-rive plays its converted artboards with og-rive's player.
 og-rive = { path = "../og-rive" }
+# Its texts lay out in og-text's collection of faces.
+og-text = { path = "../og-text", default-features = false }
 glam = { workspace = true }
 # gltf_scenes writes its glTFs' JSON.
 serde_json = "1"

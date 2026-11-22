@@ -3558,6 +3558,8 @@ dependencies = [
  "og-i18n",
  "og-text",
  "og-ui-model",
+ "parley",
+ "parley_engine",
 ]
 
 [[package]]
@@ -3682,6 +3684,7 @@ dependencies = [
  "og-render",
  "og-rive",
  "og-tests",
+ "og-text",
  "pollster",
  "serde_json",
 ]
