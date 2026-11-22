@@ -5,7 +5,7 @@ edition.workspace = true
 license.workspace = true
 rust-version.workspace = true
 autotests = false
-description = "og-shape's file formats: glTF, OBJ, FBX, STL, USD, URDF, Draco, meshopt, KTX2 (UASTC, ETC1S), Zstandard, PNG, JPEG and WebP, read and written deterministically. Linked by the cook and the og tool only, never the runtime"
+description = "og-shape's file formats: glTF, OBJ, STL, USD, URDF, Draco, meshopt, KTX2 (UASTC, ETC1S), Zstandard, PNG, JPEG and WebP, read and written deterministically. Linked by the cook and the og tool only, never the runtime"
 
 [dependencies]
 og-core = { path = "../og-core" }

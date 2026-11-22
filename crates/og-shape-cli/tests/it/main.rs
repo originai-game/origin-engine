@@ -3,4 +3,6 @@
 //! formats and the commands).
 
 mod cli;
+#[cfg(not(target_arch = "wasm32"))]
+mod fbx;
 mod golden;

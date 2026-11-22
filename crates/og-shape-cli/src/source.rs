@@ -180,7 +180,16 @@ fn program(
 }
 
 fn mesh_file(files: &dyn Files, path: &Path, d: &Import) -> Result<Mesh, Failure> {
-    let bytes = files.read(path)?;
+    #[cfg_attr(target_arch = "wasm32", expect(unused_mut))]
+    let mut bytes = files.read(path)?;
+    #[cfg(not(target_arch = "wasm32"))]
+    if extension(path) == "fbx" {
+        // FBX has one reader, the cook's ufbx import: as glTF from here
+        // on (Y up, metres; the file's own axes and unit applied).
+        bytes = og_cook::cook::fbx::to_glb(&bytes, path, "fbx")
+            .map_err(Failure::Failed)?
+            .glb;
+    }
     let dir = path.parent().map(Path::to_path_buf).unwrap_or_default();
     let resolve = |uri: &str| -> Result<Vec<u8>, String> {
         files.read(&dir.join(uri)).map_err(|e| e.to_string())

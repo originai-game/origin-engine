@@ -25,6 +25,12 @@ og-shape = { path = "../og-shape" }
 og-shape-formats = { path = "../og-shape-formats" }
 serde_json = { version = "1.0.154", default-features = false, features = ["std"] }
 
+
+# FBX is read by the cook's ufbx import (C, native only): the commands
+# read it natively; the wasm32 golden lane builds the kernel's cases.
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+og-cook = { path = "../og-cook" }
+
 [dev-dependencies]
 # Compresses the arrays of the hand-written binary FBX golden case.
 miniz_oxide = { version = "0.9.1", default-features = false, features = ["with-alloc"] }

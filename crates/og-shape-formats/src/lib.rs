@@ -1,4 +1,4 @@
-//! The file formats og-shape's tools read and write: glTF, OBJ, FBX, STL,
+//! The file formats og-shape's tools read and write: glTF, OBJ, STL,
 //! USD and URDF; Draco and meshopt; KTX2 (UASTC, ETC1S) with Zstandard;
 //! PNG, JPEG and WebP. A different link set from the kernel: only the cook
 //! and the `og` tool depend on this crate, never the runtime
@@ -6,7 +6,6 @@
 //! values; [`texture::CODEC`] is what the kernel's preview and bake take.
 
 pub mod draco;
-pub mod fbx;
 pub mod gltf;
 pub mod import;
 pub mod jpeg;

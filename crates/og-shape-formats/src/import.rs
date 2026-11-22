@@ -1,6 +1,6 @@
 //! A mesh file read by its content: GLB by its magic, glTF JSON by a
-//! leading `{`, binary FBX by its magic and ASCII FBX by its header,
-//! otherwise OBJ text.
+//! leading `{`, otherwise OBJ text. FBX is not read here: the cook's
+//! ufbx import writes it as glTF first.
 
 use std::collections::BTreeMap;
 
@@ -11,8 +11,8 @@ use crate::gltf::read::import_gltf;
 use crate::obj::read::import_obj;
 
 /// Imports a file by its content: GLB by its magic, glTF JSON by a
-/// leading `{`, binary FBX by its magic and ASCII FBX by its header,
-/// otherwise OBJ text.
+/// leading `{`, otherwise OBJ text. An FBX (by its magic or ASCII
+/// header) is refused: the cook's ufbx import writes it as glTF first.
 pub fn import(bytes: &[u8], d: &Import, resolve: Resolve) -> Result<Imported, ImportError> {
     let first = bytes
         .iter()
@@ -32,13 +32,9 @@ pub fn import(bytes: &[u8], d: &Import, resolve: Resolve) -> Result<Imported, Im
         }
         Ok(m)
     } else if bytes.starts_with(b"Kaydara FBX Binary") || ascii_fbx {
-        if d.turns() {
-            return Err(ImportError::Unsupported(
-                "up, front or z_up for FBX: its GlobalSettings say its axes; turn it with `place`"
-                    .into(),
-            ));
-        }
-        crate::fbx::read::import_fbx(bytes, resolve)
+        Err(ImportError::Unsupported(
+            "FBX: convert it to glTF with the cook's FBX import first".into(),
+        ))
     } else {
         import_obj(bytes, d, resolve)
     }

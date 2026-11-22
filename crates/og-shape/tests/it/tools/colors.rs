@@ -383,56 +383,6 @@ fn baseline_jpeg_decodes_as_a_reference_decoder_does() {
 }
 
 #[test]
-fn an_fbx_materials_colours_are_read_as_srgb() {
-    // A triangle on a model with a material: diffuse × factor, emissive,
-    // opacity; and a texture on its specular, which is not read.
-    let fbx = r#"; FBX 7.5.0 project file
-FBXHeaderExtension:  {
-	FBXVersion: 7500
-}
-Objects:  {
-	Geometry: 1, "Geometry::Tri", "Mesh" {
-		Vertices: *9 {
-			a: 0,0,0,1,0,0,0,1,0
-		}
-		PolygonVertexIndex: *3 {
-			a: 0,1,-3
-		}
-	}
-	Model: 2, "Model::Tri", "Mesh" {
-	}
-	Material: 3, "Material::Clay", "" {
-		Properties70:  {
-			P: "DiffuseColor", "Color", "", "A",0.8,0.4,0.2
-			P: "DiffuseFactor", "Number", "", "A",0.5
-			P: "EmissiveColor", "Color", "", "A",0.1,0.2,0.3
-			P: "Opacity", "double", "Number", "",0.25
-		}
-	}
-	Texture: 4, "Texture::Spec", "" {
-	}
-}
-Connections:  {
-	C: "OO",2,0
-	C: "OO",1,2
-	C: "OO",3,2
-	C: "OP",4,3, "SpecularColor"
-}
-"#;
-    let im = import(fbx.as_bytes(), &Import::default(), &no_files).unwrap();
-    let m = &im.parts[0].material;
-    assert_eq!(m.name, "Clay");
-    assert_eq!(m.color_space, ColorSpace::Srgb);
-    assert_eq!(m.color, Some([0.4, 0.2, 0.1]));
-    assert_eq!(m.emissive, [0.1, 0.2, 0.3]);
-    assert_eq!(m.opacity, Some(0.25));
-    assert_eq!(
-        im.skipped,
-        ["Tri: its material's textures on SpecularColor are not read"]
-    );
-}
-
-#[test]
 fn fusing_makes_no_colour_border_where_the_colour_is_continuous() {
     // Two overlapping boxes with one affine colour: the union's cut
     // vertices are interpolated in each triangle around them and round

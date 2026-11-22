@@ -6,7 +6,7 @@ pub mod anim;
 pub mod audio;
 pub mod bc6h;
 pub mod cube_source;
-pub(super) mod fbx;
+pub mod fbx;
 pub(super) mod font;
 pub(super) mod font_pack;
 pub mod icons;
