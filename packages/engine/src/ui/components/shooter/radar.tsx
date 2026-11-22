@@ -30,18 +30,14 @@ export interface ShooterRadarProps {
 }
 
 /**
- * The radar at the screen's top corner: the map in a dark round well with
+ * The radar at the screen's top corner: the map in a round well with
  * a lit ring, a sweep and range rings over it, the squad and the enemies
  * the game reveals as blips, the objective as a gold diamond, the player's
  * arrow at the centre turned to the heading, and N on the ring's top. Read
- * only. Approximations: the sweep's radial mask has no TSX surface, so the
- * sweep fills the whole well; the glass's hairline range rings are dropped
- * (its vignette and top sheen stay); the objective's diamond clip is a
- * rotate-45 square; the player's arrow is stroked, its fill having no TSX
- * surface.
+ * only. The sweep is a conic fan masked to the inner range ring; the glass
+ * is a vignette and a top sheen. The objective's diamond is a rotate-45
+ * square; the player's arrow is stroked, its fill having no TSX surface.
  */
-const SIDE = 10.971; // rem: the radar's side, size-5xl * 0.8.
-
 /**
  * A round radar: the map turned so north stays up around the player's
  * point, the player's arrow by its heading and the blips the game hands it,
@@ -51,33 +47,34 @@ export function ShooterRadar(props: ShooterRadarProps) {
   const cx = () => props.centerX ?? 0.5;
   const cy = () => props.centerY ?? 0.5;
   const zoom = () => ((props.zoom ?? 0.4) > 0 ? props.zoom ?? 0.4 : 1);
-  const mapLeft = () => `calc(${SIDE / 2}rem - ${cx() * (SIDE / zoom())}rem)`;
-  const mapTop = () => `calc(${SIDE / 2}rem - ${cy() * (SIDE / zoom())}rem)`;
+  // Percentages of the radar's side, so the large and compact radars
+  // place the map and the blips alike.
+  const at = (v: number, c: number) => `${(0.5 + (v - c) / zoom()) * 100}%`;
   return (
     <View
       class="relative size-38.5 compact:size-20 max-w-full text-fg"
       role="image"
       label={t("shooter.radar.name")}
     >
-      <View class="absolute inset-0 overflow-hidden rounded-full bg-tile shadow-[0px_0px_0px_0.143rem_#12151ce6,0px_0px_0px_0.214rem_rgb(255_255_255/0.35),0px_0.714rem_2rem_rgb(0_0_0/0.6)]">
+      <View class="absolute inset-0 overflow-hidden rounded-full bg-tile ring-2 ring-plate-lo shadow-float">
         <Show when={(props.map ?? 0) > 0}>
           <Image
             class="absolute"
             src={props.map ?? 0}
-            style={{ width: `${SIDE / zoom()}rem`, height: `${SIDE / zoom()}rem`, left: mapLeft(), top: mapTop() }}
+            style={{ width: `${100 / zoom()}%`, height: `${100 / zoom()}%`, left: at(0, cx()), top: at(0, cy()) }}
           />
         </Show>
-        <View class="absolute inset-0 bg-[conic-gradient(from_-32deg,rgb(255_255_255/0.28),rgb(255_255_255/0.04)_64deg,transparent_64deg)]" />
-        <View class="absolute left-1/2 top-1/2 size-9/20 -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/14" />
-        <View class="absolute left-1/2 top-1/2 size-23/25 -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/14" />
+        <View class="absolute inset-0 -bg-conic-32 from-sheen to-transparent to-18% mask-[radial-gradient(circle,black_48%,transparent_49%)]" />
+        <View class="absolute left-1/2 top-1/2 size-9/20 -translate-x-1/2 -translate-y-1/2 rounded-full border border-rim" />
+        <View class="absolute left-1/2 top-1/2 size-23/25 -translate-x-1/2 -translate-y-1/2 rounded-full border border-rim" />
         <For each={props.blips ?? []} key={(b) => b.id}>
           {(b) => (
             <View
-              class={`absolute size-2.25 compact:size-1.75 -translate-x-1/2 -translate-y-1/2 data-ally:rounded-full data-ally:bg-ally data-ally:shadow-[0px_0px_0px_0.143rem_#1b1f29cc] data-foe:rotate-45 data-foe:bg-danger data-foe:shadow-[0px_0px_0.571rem_#ff4d5ee6] data-objective:size-3.25 data-objective:rotate-45 data-objective:bg-gold`}
+              class={`absolute size-2.25 compact:size-1.75 -translate-x-1/2 -translate-y-1/2 data-ally:rounded-full data-ally:bg-ally data-ally:ring-2 data-ally:ring-material-thick data-foe:rotate-45 data-foe:bg-danger data-foe:shadow-glow-sm data-foe:shadow-foe data-objective:size-3.25 data-objective:rotate-45 data-objective:bg-gold`}
               label={b().label}
               style={{
-                left: `calc(${SIDE / 2}rem + ${(b().x - cx()) * (SIDE / zoom())}rem)`,
-                top: `calc(${SIDE / 2}rem + ${(b().y - cy()) * (SIDE / zoom())}rem)`,
+                left: at(b().x, cx()),
+                top: at(b().y, cy()),
               }}
               data-ally={b().kind == "ally"}
               data-foe={b().kind == "foe"}
@@ -85,20 +82,13 @@ export function ShooterRadar(props: ShooterRadarProps) {
             />
           )}
         </For>
-        <View
-          class="absolute"
-          style={{
-            width: "1rem",
-            height: "1rem",
-            left: "calc(50% - 0.5rem)",
-            top: "calc(50% - 0.5rem)",
-            transform: `rotate(${props.heading ?? 0}deg)`,
-          }}
-        >
-          <Line points={[8, 0, 15, 16, 8, 12, 1, 16]} closed class="stroke-white stroke-[1.5]" />
+        <View class="absolute inset-0 items-center justify-center">
+          <View class="size-4" style={{ transform: `rotate(${props.heading ?? 0}deg)` }}>
+            <Line points={[8, 0, 15, 16, 8, 12, 1, 16]} closed class="stroke-fg stroke-[1.5]" />
+          </View>
         </View>
-        <View class="absolute inset-0 rounded-full bg-[radial-gradient(circle,transparent_50%,rgb(0_0_0/0.55)_72%)]" />
-        <View class="absolute left-0 top-0 right-0 h-3/10 bg-linear-to-b from-[rgb(255_255_255/0.16)] to-transparent" />
+        <View class="absolute inset-0 rounded-full bg-radial from-transparent from-50% to-shade-deep to-72%" />
+        <View class="absolute inset-0 rounded-full bg-linear-to-b from-sheen to-transparent to-30%" />
       </View>
       <Text
         class={`absolute top-0 left-1/2 -translate-x-1/2 py-0 px-1 text-xs font-bold whitespace-nowrap text-fg nine-chip-cut bg-tile ${packClass("Chip", "frame")}`}
