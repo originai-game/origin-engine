@@ -25401,6 +25401,7 @@ export type DurationStyle = "clock" | "short";
 // ── ui ──────────────────────────────────────────────────────────
 // The engine's UI: TSX components (@origingame/engine/ui's mount) styled by Tailwind classes and the style pack, laid out and drawn over the frame, and answered to the probe (dump_ui, touch_move_to). These calls configure it and read it back.
 // Lengths are CSS pixels of the play surface (origin top left, y down), the unit of og.Input and the probe. Input is decided against the previous tick's boxes, so a scripted touch_move_to and a click agree.
+// See `components`.
 
 /**
  * How the lines of a label align.
@@ -36893,6 +36894,7 @@ export declare namespace og {
   /**
    * The engine's UI: TSX components (@origingame/engine/ui's mount) styled by Tailwind classes and the style pack, laid out and drawn over the frame, and answered to the probe (dump_ui, touch_move_to). These calls configure it and read it back.
    * Lengths are CSS pixels of the play surface (origin top left, y down), the unit of og.Input and the probe. Input is decided against the previous tick's boxes, so a scripted touch_move_to and a click agree.
+   * See `components`.
    */
   namespace ui {
     /**

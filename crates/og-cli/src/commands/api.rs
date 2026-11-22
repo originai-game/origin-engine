@@ -105,8 +105,8 @@ fn api_gen(root: &Path, wiki: bool) -> ExitCode {
             println!("removed {path}");
         }
     }
-    // The written guides (the component catalogue from og-ui's schema, the
-    // effect packs from their manifests); the wiki reads them with the others.
+    // The written guides (the component catalogue from the components' TSX,
+    // the effect packs from their manifests, the cook grammar); the wiki reads them with the others.
     for (path, text) in written_guides(root) {
         let file = root.join(path);
         if std::fs::read_to_string(&file).ok().as_deref() != Some(text.as_str()) {
@@ -243,8 +243,12 @@ fn presets(root: &Path) -> Result<Presets, String> {
 }
 
 /// The guides `og api gen` writes from other sources than the IDL, as (path, text).
-fn written_guides(root: &Path) -> [(&'static str, String); 2] {
+fn written_guides(root: &Path) -> [(&'static str, String); 3] {
     [
+        (
+            crate::ui_components::PATH,
+            crate::ui_components::markdown(root),
+        ),
         (
             crate::vfx_catalogue::PATH,
             crate::vfx_catalogue::markdown(root),
