@@ -17,7 +17,7 @@ Token `og.Environment`, registered under the schema name `og.Environment`; its v
 | `rotation` | `number` | `0` | — | `rad` | tunable | Turns the map about +Y, as three.js scene.environmentRotation.y: positive turns what was at +X towards -Z. The light and the background turn together. |
 | `background` | `boolean` | `false` | — | — | — | Draw the map behind the scene, as three.js scene.background = the environment (Camera.background, og.Sky and RenderSettings.sky give way); false leaves the background as they set it. |
 | `backgroundIntensity` | `number` | `1` | ≥ 0 | — | tunable | Multiplies the map where it is drawn behind the scene, as three.js scene.backgroundIntensity; the light is not changed. |
-| `backgroundBlurriness` | `number` | `0` | 0 … 1 | — | tunable | Blurs the sky where it is drawn behind the scene, as three.js scene.backgroundBlurriness: 0 sharp to 1 the roughest of the prefiltered (GGX) levels the light already reads, so it costs nothing extra; the light is not changed. Applies to the sky background with or without a map. |
+| `backgroundBlurriness` | `number` | `0` | 0 … 1 | — | tunable | Blurs only the background, as three.js scene.backgroundBlurriness: 0 sharp to 1 the coarsest mip. HDR and physical skies use GGX levels; authored LDR skies use their own source-resolution box mips. The light is not changed. |
 | `groundHeight` | `number` | `0` | ≥ 0 | `m` | tunable | Draws the sky on a dome with a flat ground under it, as three.js GroundedSkybox: how far above the ground the map was photographed (metres). Objects stand on the map's ground, and the environment's reflections show it too. 0 (the default) draws the sky at infinity. See `render §4`. |
 | `groundRadius` | `number` | `100` | ≥ 0 | `m` | tunable | The grounded dome's radius (metres, larger than groundHeight), as GroundedSkybox's radius: the ground looks flat out to about this distance. |
 | `groundCenter` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | worldspace `world` | The ground point under where the map was photographed: the dome's centre is groundHeight above it. |
@@ -47,7 +47,7 @@ resource Environment {
     min 0
     tunable true
   }
-  field backgroundBlurriness f32 "Blurs the sky where it is drawn behind the scene, as three.js scene.backgroundBlurriness: 0 sharp to 1 the roughest of the prefiltered (GGX) levels the light already reads, so it costs nothing extra; the light is not changed. Applies to the sky background with or without a map." {
+  field backgroundBlurriness f32 "Blurs only the background, as three.js scene.backgroundBlurriness: 0 sharp to 1 the coarsest mip. HDR and physical skies use GGX levels; authored LDR skies use their own source-resolution box mips. The light is not changed." {
     default 0
     min 0
     max 1

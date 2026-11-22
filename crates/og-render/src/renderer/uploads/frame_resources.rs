@@ -144,6 +144,12 @@ impl Renderer {
                 let first = tone(m.map.index());
                 blend.map_or(first, |(i, w)| first + (tone(i) - first) * w)
             },
+            background_levels: {
+                let levels = |i: usize| {
+                    u32::BITS - scene.environment_maps()[i].background_size.leading_zeros()
+                };
+                [levels(m.map.index()), blend.map_or(0, |(i, _)| levels(i))]
+            },
         });
         let params = SkyParams::new(&scene.lighting.environment, crate::ibl::PREFILTER_MIPS, map);
         crate::traffic::write_buffer(

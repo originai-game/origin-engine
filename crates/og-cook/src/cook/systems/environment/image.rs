@@ -79,7 +79,7 @@ pub(super) fn panorama(
     }))
 }
 
-pub(super) fn facts(img: &Rgb32FImage) -> serde_json::Value {
+pub(super) fn facts(img: &Rgb32FImage, upper: bool) -> serde_json::Value {
     let (w, h) = img.dimensions();
     let (mut sum, mut max) = (0.0, 0.0f32);
     for y in 0..h {
@@ -94,6 +94,16 @@ pub(super) fn facts(img: &Rgb32FImage) -> serde_json::Value {
         .filter(|p| p.0.iter().any(|c| *c >= 1.0))
         .count() as f32
         / (w * h) as f32;
+    let mut facts = serde_json::json!({
+        "space": "linear RGB", "width": w, "height": h,
+        "wrapMean": sum / (3*h) as f32, "wrapMax": max,
+        "clippedFraction": clipped, "lowerMirrorMean": null,
+        "lowerBlueFraction": null,
+        "lowerHemisphere": "hemisphere upper: the source has no lower hemisphere; ground is filled by the cook"
+    });
+    if upper {
+        return facts;
+    }
     // A reproducible cue, not a semantic classifier: mirror error and blue
     // fraction are exposed so the platform can decide whether it is sky.
     let mut mirror = 0.0;
@@ -107,13 +117,12 @@ pub(super) fn facts(img: &Rgb32FImage) -> serde_json::Value {
         }
     }
     let lower = (w * (h - h / 2)) as f32;
-    serde_json::json!({
-        "space": "linear RGB", "width": w, "height": h,
-        "wrapMean": sum / (3*h) as f32, "wrapMax": max,
-        "clippedFraction": clipped, "lowerMirrorMean": mirror/lower,
-        "lowerBlueFraction": blue as f32/lower,
-        "lowerHemisphere": "mirror error and blue fraction are cues, not a sky/ground classification"
-    })
+    facts["lowerMirrorMean"] = serde_json::json!(mirror / lower);
+    facts["lowerBlueFraction"] = serde_json::json!(blue as f32 / lower);
+    facts["lowerHemisphere"] = serde_json::json!(
+        "mirror error and blue fraction are cues, not a sky/ground classification"
+    );
+    facts
 }
 
 /// Resample faces to a panorama for the same solar estimation as a source

@@ -481,6 +481,9 @@ pub(crate) struct SkyParams {
     pub look: [f32; 4],
     /// (cos, sin) of the map's turn about +y; zw unused.
     pub turn: [f32; 4],
+    /// xy: box-mip blur biases for the two authored backgrounds;
+    /// zw: whether each map has authored box mips instead of GGX levels.
+    pub authored: [f32; 4],
 }
 
 /// The map the sky pass draws as the background: its turn, its
@@ -492,6 +495,8 @@ pub(crate) struct SkyMap {
     pub blend: f32,
     /// Tone-mapped share of the background (0 for an authored LDR sky).
     pub tone_mapped: f32,
+    /// Each map's authored box-mip count, or 0 for an HDR/lighting cube.
+    pub background_levels: [u32; 2],
 }
 
 impl SkyParams {
@@ -509,10 +514,17 @@ impl SkyParams {
             Some(m) => SkyParams {
                 look: [1.0, level, m.scale, m.blend],
                 turn: [m.rotation.cos(), m.rotation.sin(), m.tone_mapped, 0.0],
+                authored: [
+                    blur * m.background_levels[0].saturating_sub(1) as f32,
+                    blur * m.background_levels[1].saturating_sub(1) as f32,
+                    u32::from(m.background_levels[0] > 0) as f32,
+                    u32::from(m.background_levels[1] > 0) as f32,
+                ],
             },
             None => SkyParams {
                 look: [0.0, level, 1.0, 0.0],
                 turn: [1.0, 0.0, 0.0, 0.0],
+                authored: [0.0; 4],
             },
         }
     }
@@ -743,7 +755,8 @@ mod sky_params_tests {
             SkyParams::new(&env(0.0), 5, None),
             SkyParams {
                 look: [0.0, 0.0, 1.0, 0.0],
-                turn: [1.0, 0.0, 0.0, 0.0]
+                turn: [1.0, 0.0, 0.0, 0.0],
+                authored: [0.0; 4],
             }
         );
         assert_eq!(SkyParams::new(&env(1.0), 5, None).look[1], 4.0);
@@ -755,10 +768,15 @@ mod sky_params_tests {
             scale: 0.5,
             blend: 0.25,
             tone_mapped: 1.0,
+            background_levels: [10, 8],
         };
         let p = SkyParams::new(&env(0.0), 5, Some(m));
         assert_eq!(p.look, [1.0, 0.0, 0.5, 0.25]);
         assert!(p.turn[0].abs() < 1e-6 && (p.turn[1] - 1.0).abs() < 1e-6);
+        assert_eq!(
+            SkyParams::new(&env(0.5), 5, Some(m)).authored,
+            [4.5, 3.5, 1.0, 1.0]
+        );
     }
 
     /// A dome draws only with a positive height and a finite radius past

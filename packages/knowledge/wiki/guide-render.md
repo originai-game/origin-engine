@@ -177,8 +177,10 @@ sunBoost 1
 - A lone LDR image has an authored background: the image's own colours,
   without exposure or the tone curve, like a camera background texture,
   but spherical and camera-relative. `backgroundIntensity` still scales
-  it; `intensity` scales only lighting. Blur uses the authored colour chain,
-  not the expanded light. HDR backgrounds use normal HDR exposure.
+  it; `intensity` scales only lighting. Its cube face size is the power of
+  two nearest source width / 4 (ties round up), capped at 2048, independent
+  of lighting `size`. Ordinary box mips handle minification and blur, not
+  GGX filtering or the expanded light. HDR backgrounds use normal HDR exposure.
 - `expand` is the bounded inverse-Reinhard amount for LDR lighting only,
   default 0.25, range 0..0.9 (0 disables). It preserves RGB ratios and
   mildly opens highlights rather than trying to recover the sun with a
@@ -204,7 +206,10 @@ sunBoost 1
 `environment.facts`: wrap edge-column mean/max absolute channel difference
 in linear RGB, clipped pixel fraction (any channel at white), lower-half
 mirror error and blue fraction (observable sky/ground cues, not a semantic
-classification). `environment.sun` holds the extracted sun and whether it
+classification). With `hemisphere upper`, `lowerMirrorMean` and
+`lowerBlueFraction` are null: the source has no lower hemisphere to measure,
+as `lowerHemisphere` explains. Wrap and clipping still measure the source.
+`environment.sun` holds the extracted sun and whether it
 is estimated. Facts persist in the blob, so an incremental report retains
 them. Six faces report cues on their spherical projection; KTX2 chains have
 no source-image cues. No threshold scores the image and no seam is repaired:

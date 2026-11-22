@@ -1,3 +1,4 @@
 # og-assets: the files og-assets.json pins, installed by `bun scripts/assets.ts ensure` (written by the tool)
+/ai-afternoon.png
 /ai-coast.png
 # og-assets end

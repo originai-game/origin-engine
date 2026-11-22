@@ -45,8 +45,12 @@ pub struct EnvironmentMapData {
     /// The sun the bake took out of the image ([`bake::BakeDesc::sun`]);
     /// intensity 0: none.
     pub sun: EnvironmentSun,
-    /// Authored, linearised display colours for an LDR background, with
-    /// the same cube layout and levels as `texels`. Empty for HDR sources.
+    /// An authored LDR background's face size, independent of `size`.
+    /// Power of two up to 2048; 0 for HDR sources without this chain.
+    pub background_size: u32,
+    /// Authored, linearised display colours in the same face order as
+    /// `texels`, but with box-filtered mips down to 1×1, not GGX levels.
+    /// Empty when `background_size` is 0.
     pub background: Vec<u32>,
 }
 
@@ -77,6 +81,13 @@ impl EnvironmentMapData {
             .sum()
     }
 
+    /// Texels in an authored background's complete box mip chain (0: none).
+    pub fn background_texel_count(size: u32) -> usize {
+        (0..u32::BITS - size.leading_zeros())
+            .map(|m| 6 * ((size >> m) as usize).pow(2))
+            .sum()
+    }
+
     /// Checks the size and the texel count.
     pub fn validate(&self) -> Result<(), String> {
         if !self.size.is_power_of_two()
@@ -95,8 +106,19 @@ impl EnvironmentMapData {
                 self.texels.len()
             ));
         }
-        if !self.background.is_empty() && self.background.len() != want {
-            return Err("an LDR background has the same texel count as its environment".into());
+        if self.background_size != 0
+            && (!self.background_size.is_power_of_two()
+                || self.background_size > ENVIRONMENT_MAP_MAX_SIZE)
+        {
+            return Err("an LDR background's size is 0 or a power of two up to 2048".into());
+        }
+        let want = Self::background_texel_count(self.background_size);
+        if self.background.len() != want {
+            return Err(format!(
+                "a {}² LDR background holds {want} texels, not {}",
+                self.background_size,
+                self.background.len()
+            ));
         }
         if self.irradiance.iter().flatten().any(|v| !v.is_finite()) {
             return Err("an environment map's irradiance is not finite".into());
@@ -814,6 +836,35 @@ pub mod bake {
         bake_from(&|d| src.sample(d), per_axis.max(2), desc)
     }
 
+    /// Resamples authored display colours at their own face size (power
+    /// of two, 1..=2048), with box mips to 1×1. No GGX or light expansion.
+    pub fn background(
+        src: &Equirect,
+        size: u32,
+        rotation_degrees: f32,
+    ) -> Result<Vec<u32>, String> {
+        if src.width < 2 || src.height < 1 || src.rgb.len() != (src.width * src.height * 3) as usize
+        {
+            return Err("the background image's pixels do not match its size".into());
+        }
+        if !size.is_power_of_two() || size > ENVIRONMENT_MAP_MAX_SIZE {
+            return Err("a background's face size must be a power of two up to 2048".into());
+        }
+        let base = radiance_cube(
+            &|d| src.sample(d),
+            size,
+            1,
+            rotation_degrees.to_radians(),
+            1.0,
+        );
+        let texels = mips(size, base)
+            .levels
+            .into_iter()
+            .flat_map(|(_, pixels)| pixels.into_iter().map(|c| rgb9e5(c.to_array())))
+            .collect();
+        Ok(texels)
+    }
+
     /// [`bake`] from a cube map: the same radiance cube (2x2 samples per
     /// texel, from the source level of at most twice its face size, so a
     /// larger source is box-filtered first), prefiltered levels and
@@ -905,6 +956,7 @@ pub mod bake {
             texels,
             irradiance: irradiance_of(desc.size, &out[0]),
             sun: Default::default(),
+            background_size: 0,
             background: Vec::new(),
         };
         map.validate()?;
@@ -974,6 +1026,7 @@ pub mod bake {
             texels,
             irradiance: irradiance_of(*n, base),
             sun,
+            background_size: 0,
             background: Vec::new(),
         };
         map.validate()?;

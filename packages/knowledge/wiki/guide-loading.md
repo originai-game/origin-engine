@@ -248,11 +248,20 @@ point that is over sixteen times the rest's mean for HDR; a detected disc
 and fitted daylight estimate for LDR) and stores it:
 
 ```ts
-const map = og.load.environment(world, "env/day.ogt").value;
+const map = og.load.environment(world, "env/day.ogt");
+if (!map.ok) throw new Error(map.reason);
 const rotation = 0.4, intensity = 1.2; // the same values as og.Environment
-const sun = og.load.environmentSun(world, map, rotation, intensity).value;
+const result = og.load.environmentSun(world, map.value, rotation, intensity);
+if (!result.ok) throw new Error(result.reason);
+const sun = result.value;
 // sun.direction points towards the sun; a light shines along its -Z.
-light.set(og.DirectionalLight, { color: sun.color, intensity: sun.intensity });
+const light = world.spawn({ name: "sun" });
+if (!light.ok) throw new Error(light.reason);
+world.insert(light.value, og.DirectionalLight, { color: sun.color, intensity: sun.intensity });
+world.set(light.value, og.Transform, { quaternion: og.transform.lookAt(
+  { x: 0, y: 0, z: 0 },
+  { x: -sun.direction.x, y: -sun.direction.y, z: -sun.direction.z },
+) });
 ```
 
 Aim the light's entity so its -Z points along `-sun.direction`: the answer

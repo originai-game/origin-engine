@@ -807,14 +807,90 @@ fn ldr_panorama_and_faces_light_in_linear_space() {
     }
 }
 
-/// Ground fill is independent of a sky's blue zenith.
+/// Source detail and ordinary minification survive a small lighting bake.
+#[test]
+fn authored_background_has_its_own_resolution_and_box_mips() {
+    for (width, size, count) in [
+        (95, 16usize, 2046),
+        (97, 32, 8190),
+        (600, 128, 131070),
+        (800, 256, 524286),
+    ] {
+        let sky = ldr_image(
+            width,
+            width / 2,
+            |x, y| [if (x / 8 + y / 8) % 2 == 0 { 240 } else { 16 }, 70, 40],
+            image::ImageFormat::Png,
+        );
+        let env = |size| {
+            format!(
+                "type environment\nversion 1\n---\nsource \"sky.png\"\nsun keep\nsize {size}\nsamples 16\n"
+            )
+        };
+        let root = project(
+            &format!("ldr-detail-{width}"),
+            &[
+                ("sky.png", &sky),
+                ("low.ogt", env(16).as_bytes()),
+                ("high.ogt", env(32).as_bytes()),
+            ],
+        );
+        cook(&root);
+        let bundle = Bundle::open(&root.join("cooked")).unwrap();
+        let low = bundle.load_environment("low.ogt").unwrap();
+        let high = bundle.load_environment("high.ogt").unwrap();
+        assert_eq!((low.size, high.size), (16, 32));
+        assert_eq!(
+            low.background_size, size as u32,
+            "round to nearest, not up or down unconditionally"
+        );
+        assert_eq!(
+            low.background.len(),
+            count,
+            "complete box chain through 1×1"
+        );
+        assert_eq!(
+            low.background, high.background,
+            "lighting size cannot soften the background"
+        );
+        let rgb = |i| og_render::rgb9e5_decode(low.background[i]);
+        let base = &low.background[..6 * size * size];
+        assert!(base.iter().any(|&p| og_render::rgb9e5_decode(p)[0] > 0.85));
+        assert!(base.iter().any(|&p| og_render::rgb9e5_decode(p)[0] < 0.01));
+        // A mip texel averages its four parents in linear light, not a
+        // GGX lobe over unrelated directions. Asymmetric samples cross
+        // the source's fine checker at different places on every face.
+        for face in 0..6 {
+            for (x, y) in [(3, 5), (size / 4 - 3, size / 4 + 1)] {
+                let parent = |dx, dy| rgb((face * size + 2 * y + dy) * size + 2 * x + dx);
+                let got = rgb(6 * size * size + (face * (size / 2) + y) * (size / 2) + x);
+                for c in 0..3 {
+                    let expected =
+                        (parent(0, 0)[c] + parent(1, 0)[c] + parent(0, 1)[c] + parent(1, 1)[c])
+                            * 0.25;
+                    assert!(
+                        (got[c] - expected).abs() < 0.004,
+                        "face {face} ({x},{y}) {got:?} vs {expected}"
+                    );
+                }
+            }
+        }
+    }
+}
+
+/// Ground fill is independent of a sky's blue zenith. A sky-only source
+/// has no measured lower-half cues, including in incremental reports.
 #[test]
 fn upper_hemisphere_fills_ground() {
     let sky = ldr_image(
         64,
         16,
-        |_, y| {
-            if y < 12 {
+        |x, y| {
+            if y < 12 && x == 0 {
+                [0, 0, 0]
+            } else if y < 12 && x == 63 {
+                [255, 255, 255]
+            } else if y < 12 {
                 [40, 80, 160]
             } else {
                 [128, 100, 60]
@@ -841,7 +917,7 @@ fn upper_hemisphere_fills_ground() {
             ),
         ],
     );
-    cook(&root);
+    let report = cook(&root);
     let bundle = Bundle::open(&root.join("cooked")).unwrap();
     let down = |name: &str| {
         let map = bundle.load_environment(name).unwrap();
@@ -859,6 +935,37 @@ fn upper_hemisphere_fills_ground() {
         (ground[0] - 0.21586).abs() < 0.004 && ground[0] > ground[2] * 3.0,
         "horizon, not zenith: {ground:?}"
     );
+    let incremental = cook(&root);
+    for report in [&report, &incremental] {
+        let stats = og_cook::cook::stats::cook_report_json(
+            report,
+            &root.join("cooked"),
+            &Default::default(),
+        );
+        for name in ["upper.ogt", "horizon.ogt"] {
+            let asset = stats["assets"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .find(|a| a["source"] == name)
+                .unwrap();
+            let facts = &asset["environment"]["facts"];
+            assert!(facts.get("lowerMirrorMean").unwrap().is_null());
+            assert!(facts.get("lowerBlueFraction").unwrap().is_null());
+            assert!(
+                facts["lowerHemisphere"]
+                    .as_str()
+                    .unwrap()
+                    .contains("no lower hemisphere")
+            );
+            assert_eq!(
+                facts["clippedFraction"],
+                12.0 / 1024.0,
+                "measure the original source, not the filled sphere"
+            );
+            assert_eq!(facts["wrapMean"], 0.75);
+        }
+    }
 }
 
 #[test]
@@ -940,6 +1047,8 @@ fn ldr_sun_is_removed_from_lighting_not_the_authored_background() {
         .find(|a| a["source"] == "sun.ogt")
         .unwrap();
     assert_eq!(entry["environment"]["facts"]["width"], 512);
+    assert!(entry["environment"]["facts"]["lowerMirrorMean"].is_number());
+    assert!(entry["environment"]["facts"]["lowerBlueFraction"].is_number());
     assert!(
         entry["environment"]["facts"]["clippedFraction"]
             .as_f64()

@@ -387,6 +387,7 @@ pub(crate) fn environment_dependencies(s: &Source) -> String {
 /// Both LDR layouts share solar estimation, range expansion and the bake.
 fn bake_image(
     mut img: image::Rgb32FImage,
+    source_width: u32,
     ldr: bool,
     doc: &EnvironmentDoc,
     desc: &og_render_data::bake::BakeDesc,
@@ -426,15 +427,23 @@ fn bake_image(
         map.sun = sun;
     }
     if let Some(img) = background {
-        map.background = bake(
-            &img,
-            og_render_data::bake::BakeDesc {
-                intensity: 1.0,
-                sun: false,
-                ..*desc
+        // Use the original width, not an odd panorama's rounded 2:1 width.
+        let upper = source_width.div_ceil(4).clamp(1, 2048).next_power_of_two();
+        map.background_size = if upper > 1 && source_width < 3 * upper {
+            upper / 2
+        } else {
+            upper
+        };
+        map.background = og_render_data::bake::background(
+            &og_render_data::bake::Equirect {
+                width,
+                height,
+                rgb: img.as_raw(),
             },
-        )?
-        .texels;
+            map.background_size,
+            doc.rotation,
+        )
+        .map_err(CookError)?;
     }
     Ok(map)
 }
@@ -469,12 +478,13 @@ pub(crate) fn cook_environment(
         EnvironmentSource::Equirect(source) => {
             let img = decode_image(source, &read(source)?)?;
             finite(source, img.as_raw())?;
-            diagnostics = prepare::facts(&img);
+            diagnostics = prepare::facts(&img, doc.upper);
             facts.push(format!("environment facts: {diagnostics}"));
             let ldr = !hdr_image(source);
+            let source_width = img.width();
             let img = prepare::panorama(source, img, &doc)?;
             let (width, height) = img.dimensions();
-            let map = bake_image(img, ldr, &doc, &desc)?;
+            let map = bake_image(img, source_width, ldr, &doc, &desc)?;
             (map, width, height, format!("{source} {width} × {height}"))
         }
         EnvironmentSource::Ktx2(source) if doc.prefiltered => {
@@ -556,12 +566,12 @@ pub(crate) fn cook_environment(
                 rgb.extend(face_rgb.into_iter().map(|v| v.max(0.0)));
             }
             let panorama = prepare::cube_panorama(size, &rgb);
-            diagnostics = prepare::facts(&panorama);
+            diagnostics = prepare::facts(&panorama, false);
             facts.push(format!(
                 "environment facts (faces projected to panorama): {diagnostics}"
             ));
             let map = if faces.iter().all(|f| !hdr_image(f)) {
-                bake_image(panorama, true, &doc, &desc)?
+                bake_image(panorama, 4 * size, true, &doc, &desc)?
             } else {
                 og_render_data::bake::bake_cube(
                     &og_render_data::bake::CubeFaces { size, rgb: &rgb },
@@ -660,7 +670,7 @@ pub(crate) fn environment_blob(
         sun_b: map.sun.color[2],
         sun_intensity: map.sun.intensity,
         sun_angular_size: map.sun.angular_size,
-        ldr_background: u32::from(!map.background.is_empty()),
+        background_size: map.background_size,
     };
     let sh: Vec<format::EnvironmentShRow> = map
         .irradiance
@@ -730,7 +740,7 @@ fn plan_environment<'a>(
     let PlanState { parsed_refs, .. } = state;
     let deps = environment_dependencies(s);
     assets::record_dependencies(parsed_refs, &s.rel, &deps);
-    let st = stamp(&[b"environment 2", &hash, deps.as_bytes()]);
+    let st = stamp(&[b"environment 3", &hash, deps.as_bytes()]);
     outs.push((
         s.rel.clone(),
         format::EnvironmentMap::NAME,

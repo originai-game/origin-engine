@@ -78,21 +78,30 @@ pub(crate) fn env_params(
     out
 }
 
-/// Uploads a map as a cube texture of [`ENVIRONMENT_MAP_LEVELS`] levels.
+/// Uploads lighting's GGX cube or the authored background's own box mips.
 pub(crate) fn upload(
     device: &wgpu::Device,
     queue: &wgpu::Queue,
     map: &EnvironmentMapData,
     background: bool,
 ) -> (wgpu::Texture, wgpu::TextureView) {
+    let (size, levels, texels) = if background {
+        (
+            map.background_size,
+            map.background_size.ilog2() + 1,
+            &map.background,
+        )
+    } else {
+        (map.size, ENVIRONMENT_MAP_LEVELS, &map.texels)
+    };
     let texture = device.create_texture(&wgpu::TextureDescriptor {
         label: Some("environment map"),
         size: wgpu::Extent3d {
-            width: map.size,
-            height: map.size,
+            width: size,
+            height: size,
             depth_or_array_layers: 6,
         },
-        mip_level_count: ENVIRONMENT_MAP_LEVELS,
+        mip_level_count: levels,
         sample_count: 1,
         dimension: wgpu::TextureDimension::D2,
         format: wgpu::TextureFormat::Rgb9e5Ufloat,
@@ -102,8 +111,8 @@ pub(crate) fn upload(
         texture_binding_view_dimension: Some(wgpu::TextureViewDimension::Cube),
     });
     let mut at = 0;
-    for level in 0..ENVIRONMENT_MAP_LEVELS {
-        let n = map.size >> level;
+    for level in 0..levels {
+        let n = size >> level;
         let count = 6 * (n * n) as usize;
         crate::traffic::write_texture(
             queue,
@@ -113,13 +122,7 @@ pub(crate) fn upload(
                 origin: wgpu::Origin3d::ZERO,
                 aspect: wgpu::TextureAspect::All,
             },
-            bytemuck::cast_slice(
-                &if background {
-                    &map.background
-                } else {
-                    &map.texels
-                }[at..at + count],
-            ),
+            bytemuck::cast_slice(&texels[at..at + count]),
             wgpu::TexelCopyBufferLayout {
                 offset: 0,
                 bytes_per_row: Some(4 * n),

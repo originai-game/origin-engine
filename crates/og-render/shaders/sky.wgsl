@@ -9,6 +9,7 @@
 struct SkyParams {
   look: vec4<f32>,  // x: 1 when an environment map is drawn from map_cube, y: the blurriness's prefiltered level (0: sharp), z: the map's scale, w: the blended map's weight
   turn: vec4<f32>,  // xy: (cos, sin) of the map's turn about +y
+  authored: vec4<f32>, // xy: box-mip blur biases, zw: authored flags, for map and blend
 };
 @group(1) @binding(3) var<uniform> sky_params: SkyParams;
 // An environment map behind the scene, drawn from its own cube at its full
@@ -83,18 +84,29 @@ fn sky_tone_fraction() -> f32 {
 }
 
 // The background along a view ray (through the grounded dome when there
-// is one, frame.wgsl dome_lookup): with a blurriness the prefiltered (GGX)
-// level it names, scaled as the map; otherwise an environment map from its
-// own cube, turned, scaled and blended, or the sky cube.
+// is one, frame.wgsl dome_lookup). HDR uses its GGX blur level. Authored
+// LDR colours use ordinary minification and a blur bias on their own box
+// mips. Each blended map has its own size and range.
 fn sky_background(eye: vec3<f32>, dir: vec3<f32>) -> vec3<f32> {
   let d = dome_lookup(eye, dir);
   if (sky_params.look.x > 0.5) {
     let c = sky_params.turn.x;
     let s = sky_params.turn.y;
     let m = vec3<f32>(c * d.x - s * d.z, d.y, s * d.x + c * d.z);
-    var col = textureSampleLevel(map_cube, ibl_sampler, m, sky_params.look.y).rgb;
+    var col: vec3<f32>;
+    if (sky_params.authored.z > 0.5) {
+      col = textureSampleBias(map_cube, ibl_sampler, m, sky_params.authored.x).rgb;
+    } else {
+      col = textureSampleLevel(map_cube, ibl_sampler, m, sky_params.look.y).rgb;
+    }
     if (sky_params.look.w > 0.0) {
-      col = mix(col, textureSampleLevel(blend_cube, ibl_sampler, m, sky_params.look.y).rgb, sky_params.look.w);
+      var other: vec3<f32>;
+      if (sky_params.authored.w > 0.5) {
+        other = textureSampleBias(blend_cube, ibl_sampler, m, sky_params.authored.y).rgb;
+      } else {
+        other = textureSampleLevel(blend_cube, ibl_sampler, m, sky_params.look.y).rgb;
+      }
+      col = mix(col, other, sky_params.look.w);
     }
     return col * sky_params.look.z;
   }

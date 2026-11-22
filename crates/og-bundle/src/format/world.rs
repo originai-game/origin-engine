@@ -757,7 +757,7 @@ impl BlobKind for Terrain {
 row!(
     /// The root of an environment map blob (an `.ogt` of `type environment`):
     /// og-render's `EnvironmentMapData` and what it was baked from.
-    EnvironmentMeta, "og.EnvironmentMap", 3 {
+    EnvironmentMeta, "og.EnvironmentMap", 4 {
         /// Level 0's face size (a power of two) and the level count
         /// (og-render's `ENVIRONMENT_MAP_LEVELS`; level m is roughness
         /// m / (levels - 1)).
@@ -785,8 +785,9 @@ row!(
         sun_b: f32,
         sun_intensity: f32,
         sun_angular_size: f32,
-        /// 1: an authored LDR background chain is stored in `background`.
-        ldr_background: u32,
+        /// Authored LDR background face size, independent of lighting,
+        /// with box mips down to 1×1 in `background`; 0: no authored chain.
+        background_size: u32,
     }
 );
 

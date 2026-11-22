@@ -2,6 +2,12 @@
   "version": 1,
   "files": [
     {
+      "path": "ai-afternoon.png",
+      "sha256": "9863864382ce55f5686db698954f27652c6269f05d36463d9d9a56600e24c1ad",
+      "size": 5153613,
+      "visibility": "public"
+    },
+    {
       "path": "ai-coast.png",
       "sha256": "ccc7d331e962bb8d5df407b0ae343d256131d55f3ba7a5afff09c0ae299fbce1",
       "size": 1973149,

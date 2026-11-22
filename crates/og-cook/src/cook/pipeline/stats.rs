@@ -720,9 +720,9 @@ fn other_stats(bundle: &Bundle, id: &str, ty: &str) -> Result<Option<(String, Va
                     "sourceWidth": m.source_width,
                     "sourceHeight": m.source_height,
                     "samples": m.samples,
-                    "authoredBackground": m.ldr_background != 0,
+                    "authoredBackground": m.background_size != 0,
                     "facts": facts,
-                    "sun": { "direction": [m.sun_x,m.sun_y,m.sun_z], "color": [m.sun_r,m.sun_g,m.sun_b], "intensity": m.sun_intensity, "angularSize": m.sun_angular_size, "estimated": m.ldr_background != 0 },
+                    "sun": { "direction": [m.sun_x,m.sun_y,m.sun_z], "color": [m.sun_r,m.sun_g,m.sun_b], "intensity": m.sun_intensity, "angularSize": m.sun_angular_size, "estimated": m.background_size != 0 },
                 }),
             )
         }

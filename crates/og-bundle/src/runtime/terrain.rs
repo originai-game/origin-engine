@@ -473,6 +473,15 @@ impl Bundle {
                 format!("{} irradiance rows, not 9", sh.len()),
             ));
         }
+        if meta.background_size != 0
+            && (!meta.background_size.is_power_of_two()
+                || meta.background_size > og_render_data::ENVIRONMENT_MAP_MAX_SIZE)
+        {
+            return Err(invalid(
+                &blob,
+                "background size must be 0 or a power of two up to 2048",
+            ));
+        }
         let map = og_render_data::EnvironmentMapData {
             size: meta.size,
             texels,
@@ -483,7 +492,11 @@ impl Bundle {
                 intensity: meta.sun_intensity,
                 angular_size: meta.sun_angular_size,
             },
-            background: if meta.ldr_background != 0 {
+            background_size: meta.background_size,
+            background: if meta.background_size != 0 {
+                let want = og_render_data::EnvironmentMapData::background_texel_count(
+                    meta.background_size,
+                );
                 let bytes = miniz_oxide::inflate::decompress_to_vec_zlib_with_limit(
                     blob.raw("background")?,
                     want * 4,
