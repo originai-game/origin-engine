@@ -1,6 +1,7 @@
-// `og run --device chrome` end to end: the og binary cooks and exports
-// the former test sample's publish build, serves it with COOP/COEP on 127.0.0.1, opens
-// it in headless Chrome over the DevTools protocol, taps the play gate and
+// `og run --device chrome` end to end: the og binary cooks and exports a
+// project's publish build (tests/fixtures/sprite-2d by default), serves it
+// with COOP/COEP on 127.0.0.1, opens it in headless Chrome over the
+// DevTools protocol, taps the play gate and
 // times the first frame and the played frames. Checked: the report and
 // device.json exist; the first frame is after navigation; the display
 // interval and engine work percentiles are positive and ordered; the device
@@ -15,8 +16,11 @@
 //   bun tests/web/device.ts [--project <dir>] [--out <dir>] [--chrome <path> | --safari] [--seconds N]
 //
 // --project (relative to the repository) runs another project's publish
-// build instead of the former test sample's (tests/fixtures/vehicle-terrain, say),
-// whose default output is dist/test-device/<project's name>.
+// build instead (tests/fixtures/vehicle-terrain on a GPU host, say), whose
+// default output is dist/test-device/<project's name>. The default is light
+// because the test checks the tool's report, not a scene's cost: SwiftShader,
+// headless Chrome's WebGPU on Linux, draws vehicle-terrain at about 2-3 s a
+// frame (real since 326710182), so a GPU-less host plays no frame in 3 s.
 //
 // Writes <out>/webgpu/{report.md,device.json} and
 // <out>/device-result.json (default dist/test-device). Exits 1 when a check
@@ -43,7 +47,7 @@ const safari = args.includes("--safari");
 const target = safari ? "safari" : "chrome";
 const chrome = safari ? "" : chromePath(args);
 const og = ogBin();
-const project = join(repo, projectRel ?? join("tests", "fixtures", "vehicle-terrain"));
+const project = join(repo, projectRel ?? join("tests", "fixtures", "sprite-2d"));
 
 let failures = 0;
 const checks: Array<{ check: string; ok: boolean; detail?: unknown }> = [];
