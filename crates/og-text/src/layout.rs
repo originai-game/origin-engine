@@ -142,8 +142,9 @@ pub struct Text {
     width: Option<f32>,
     /// What trim takes off the top and the bottom, CSS px.
     trimmed: [f32; 2],
-    /// Whether the layout holds the ellipsized text.
-    cut: bool,
+    /// The ellipsized text, when the layout holds it and not the text
+    /// it was shaped from.
+    cut: Option<String>,
     /// Scratch for paint's glyphs and a run's location.
     glyphs: Vec<parley::layout::Glyph>,
     coords: Vec<i16>,
@@ -158,7 +159,7 @@ impl Text {
     /// [`Text::break_at`].
     pub fn shape(&mut self, fonts: &mut Collection, text: &str, style: &Style) {
         build(fonts, &mut self.layout, text, style);
-        self.cut = false;
+        self.cut = None;
         self.width = None;
         self.layout.break_all_lines(None);
         self.trimmed = trim(fonts, style, &self.layout);
@@ -175,9 +176,8 @@ impl Text {
         style: &Style,
         width: Option<f32>,
     ) {
-        if self.cut {
+        if self.cut.take().is_some() {
             build(fonts, &mut self.layout, text, style);
-            self.cut = false;
         }
         self.width = width;
         self.layout.break_all_lines(width);
@@ -185,11 +185,18 @@ impl Text {
             && let Some(cut) = ellipsized(fonts, &self.layout, text, style, w)
         {
             build(fonts, &mut self.layout, &cut, style);
-            self.cut = true;
+            self.cut = Some(cut);
             self.layout.break_all_lines(width);
         }
         self.layout.align(style.align, AlignmentOptions::default());
         self.trimmed = trim(fonts, style, &self.layout);
+    }
+
+    /// The text the layout holds, which [`Text::lines`], [`Text::caret`]
+    /// and [`Text::missing`] index: `text` (what it was shaped from), or
+    /// its ellipsized form when a line was cut.
+    pub fn laid<'a>(&'a self, text: &'a str) -> &'a str {
+        self.cut.as_deref().unwrap_or(text)
     }
 
     /// Its widest line, CSS px.
@@ -408,6 +415,52 @@ fn ellipsized(
         }
     }
     Some(out)
+}
+
+/// Where a text's decoration lines lie, from its primary font (CSS Text
+/// Decoration 4 §2): CSS px, offsets above the baseline.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct Decorations {
+    /// The underline's centre (negative: below the baseline) and its
+    /// thickness.
+    pub underline: [f32; 2],
+    /// The line-through's.
+    pub through: [f32; 2],
+    /// The primary font's ascent, where an overline lies.
+    pub ascent: f32,
+}
+
+/// The decoration lines of a text in `style`: its primary font's `post`
+/// underline and OS/2 strikeout, or a fifteenth of the size a ninth below
+/// the baseline and a third of the size above it for a font without them.
+pub fn decorations(fonts: &mut Collection, style: &Style) -> Decorations {
+    let size = style.size;
+    let fallback = Decorations {
+        underline: [-size / 9.0, size / 15.0],
+        through: [size / 3.0, size / 15.0],
+        ascent: size * 0.8,
+    };
+    let Some((face, index)) = fonts.primary(style.family, style.weight, style.italic) else {
+        return fallback;
+    };
+    let Ok(font) = FontRef::from_index(fonts.file(face), index) else {
+        return fallback;
+    };
+    let location = font.axes().location([("wght", style.weight)]);
+    let m = font.metrics(
+        skrifa::instance::Size::new(size),
+        LocationRef::from(&location),
+    );
+    Decorations {
+        // skrifa gives a line's top; CSS centres its thickness on it.
+        underline: m.underline.map_or(fallback.underline, |d| {
+            [d.offset - d.thickness / 2.0, d.thickness]
+        }),
+        through: m.strikeout.map_or(fallback.through, |d| {
+            [d.offset - d.thickness / 2.0, d.thickness]
+        }),
+        ascent: m.ascent,
+    }
 }
 
 /// What `style.trim` takes off the top and bottom of `layout`, CSS px: the

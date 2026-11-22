@@ -77,6 +77,8 @@ pub struct GlyphKey {
     pub hinted: bool,
     /// Bold the face lacks, as an outline grown this much, 1/64 px.
     pub embolden: u16,
+    /// A slant the face lacks: the angle's tangent in 1/256 (0 upright).
+    pub skew: i16,
     /// The outline's stroke of this width, 1/64 px, instead of its fill
     /// (`-webkit-text-stroke`); 0 the fill.
     pub stroke: u16,
@@ -102,6 +104,7 @@ impl GlyphKey {
             bin: 0,
             hinted: false,
             embolden: 0,
+            skew: 0,
             stroke: 0,
             blur: 0,
             palette: 0,

@@ -12,9 +12,9 @@
 //! ([`Collection::set_fallback`]). Nothing is declared over a file: no
 //! alias family, weight range or `unicode-range`.
 
+pub use parley::fontique::GenericFamily;
 use parley::fontique::{
-    Blob, FallbackKey, FamilyId, FontStyle, FontWeight, FontWidth, GenericFamily, Language, Script,
-    ScriptExt,
+    Blob, FallbackKey, FamilyId, FontStyle, FontWeight, FontWidth, Language, Script, ScriptExt,
 };
 use parley::style::FontFamilyName;
 use parley::{FontContext, FontData, LayoutContext};
@@ -38,6 +38,9 @@ pub struct Collection {
     families: Vec<Vec<FamilyId>>,
     /// The file of each registered blob.
     blobs: BTreeMap<u64, FaceId>,
+    /// Moves when a file is added or a generic family or a fallback list
+    /// is set: a text laid out before may now take other faces.
+    revision: u64,
 }
 
 impl Default for Collection {
@@ -56,6 +59,7 @@ impl Default for Collection {
             files: Vec::new(),
             families: Vec::new(),
             blobs: BTreeMap::new(),
+            revision: 0,
         }
     }
 }
@@ -90,6 +94,7 @@ impl Collection {
         self.families
             .push(registered.iter().map(|(family, _)| *family).collect());
         self.blobs.insert(blob.id(), id);
+        self.revision += 1;
         Ok(id)
     }
 
@@ -115,6 +120,7 @@ impl Collection {
         self.context
             .collection
             .set_generic_families(generic, ids.into_iter());
+        self.revision += 1;
     }
 
     /// The faces a text in `locale` (BCP 47) takes a character from when
@@ -157,6 +163,13 @@ impl Collection {
                 ids.iter().copied(),
             );
         }
+        self.revision += 1;
+    }
+
+    /// Moves whenever the faces a text may take change: a file added, a
+    /// generic family or a fallback list set.
+    pub fn revision(&self) -> u64 {
+        self.revision
     }
 
     /// The file a laid-out run's font was registered from.
