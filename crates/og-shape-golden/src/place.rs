@@ -6,13 +6,15 @@
 use std::cell::RefCell;
 use std::path::{Path, PathBuf};
 
+use og_shape::generators::solids::{BoxDesc, cuboid, torus};
+use og_shape::math::{DVec3, HashError, OutputHash};
+use og_shape::mesh::Solid;
+use og_shape::tools::{
+    Axis, Floaters, Import, Pivot, Place, Repair, Size, import, no_files, place,
+};
 use og_shape_cli::place::{PlaceDesc, place as place_command};
 use og_shape_cli::process::{ProcessDesc, process};
 use og_shape_cli::{Failure, Files, Input};
-use og_shape::math::{DVec3, HashError, OutputHash};
-use og_shape::generators::solids::{BoxDesc, cuboid, torus};
-use og_shape::mesh::Solid;
-use og_shape::tools::{Axis, Floaters, Import, Pivot, Place, Repair, Size, import, no_files, place};
 
 use crate::cases::Case;
 

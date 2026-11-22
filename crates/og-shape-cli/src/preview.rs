@@ -55,7 +55,10 @@ pub struct PreviewDesc {
 /// The picture at `path` as the light all round a scene: an
 /// equirectangular Radiance `.hdr`, or a PNG, JPEG, WebP or KTX2 image
 /// taken as sRGB.
-pub fn environment(files: &dyn Files, path: &Path) -> Result<og_shape::tools::Environment, Failure> {
+pub fn environment(
+    files: &dyn Files,
+    path: &Path,
+) -> Result<og_shape::tools::Environment, Failure> {
     let bytes = files.read(path)?;
     let why = |e: String| Failure::Usage(format!("{}: {e}", path.display()));
     if bytes.starts_with(b"#?") {
@@ -380,7 +383,8 @@ fn render_pose(
                 undrawn: array(&undrawn),
             });
         }
-        let v = og_shape::tools::views_in(scene, &d.preview, d.environment.as_ref()).map_err(failed)?;
+        let v =
+            og_shape::tools::views_in(scene, &d.preview, d.environment.as_ref()).map_err(failed)?;
         let undrawn = array(
             &v.undrawn
                 .iter()

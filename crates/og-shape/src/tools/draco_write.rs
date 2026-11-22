@@ -1170,7 +1170,8 @@ mod tests {
             ];
             let (bytes, walked) = encode(&faces, points, &attributes, true);
             assert!(walked, "{name}");
-            let back = crate::tools::draco::decode(&bytes).unwrap_or_else(|e| panic!("{name}: {e}"));
+            let back =
+                crate::tools::draco::decode(&bytes).unwrap_or_else(|e| panic!("{name}: {e}"));
             assert_eq!(
                 (back.points, back.faces.len()),
                 (points, faces.len()),

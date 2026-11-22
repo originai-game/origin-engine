@@ -1,8 +1,8 @@
 //! Morph targets ride a bevel.
 
 use og_shape::bevel::{Fillet, fillet};
-use og_shape::math::DVec3;
 use og_shape::generators::solids::{BoxDesc, cuboid};
+use og_shape::math::DVec3;
 use og_shape::mesh::{Morph, Morphs};
 
 /// A filleted morphing box: every vertex has an offset. For a target

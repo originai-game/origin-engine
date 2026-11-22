@@ -109,11 +109,8 @@
 
 use std::collections::BTreeMap;
 
-use serde_json::{Map, Value, json};
-use crate::profile::Profile;
 use crate::bevel::{Chamfer, Fillet, Soften};
 use crate::boolean::BoolOp;
-use crate::math::{DVec2, DVec3, Frame};
 use crate::edit::{Dent, Hole, Keep, Pocket, Shell, Subdivide};
 use crate::generators::body::{Body, View};
 use crate::generators::loft::LoftCurve;
@@ -125,7 +122,10 @@ use crate::generators::solids::{
     TubeDesc,
 };
 use crate::generators::wire::Wire;
+use crate::math::{DVec2, DVec3, Frame};
+use crate::profile::Profile;
 use crate::tools::{JointKind, Material, Mimic};
+use serde_json::{Map, Value, json};
 
 use crate::model::error::ModelError;
 use crate::model::model::{Combine, Id, JointDesc, Model, Unit};
@@ -1417,7 +1417,9 @@ fn extrude_until(
     // With UVs, the tilted top (the split's cut) is planar in its own
     // plane's x and y (`crate::edit::split`).
     let s = if uvs {
-        crate::generators::solids::textured(&crate::generators::solids::Generator::Extrude(&prof, d))?
+        crate::generators::solids::textured(&crate::generators::solids::Generator::Extrude(
+            &prof, d,
+        ))?
     } else {
         crate::generators::solids::extrude(&prof, &d)?
     };

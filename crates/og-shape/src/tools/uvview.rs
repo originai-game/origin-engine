@@ -334,9 +334,9 @@ fn line(size: u32, a: (i64, i64), b: (i64, i64), rgb: &mut [[u8; 3]], colour: [u
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::tools::export::Part;
     use crate::math::DVec3;
     use crate::mesh::Solid;
+    use crate::tools::export::Part;
 
     #[test]
     fn a_seam_is_an_outline_and_a_shared_edge_is_not() {

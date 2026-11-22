@@ -16,11 +16,11 @@ use std::fmt::Write as _;
 
 use og_shape::bevel::{BevelError, Chamfer, Fillet, chamfer, fillet};
 use og_shape::boolean::{BoolOp, Boolean, boolean};
-use og_shape::math::{DVec2, DVec3};
 use og_shape::generators::solids::{
     Axis, BoxDesc, CylinderDesc, DomeDesc, Extrude, Revolve, TubeDesc, cone, cuboid, cylinder,
     dome_desc, extrude, revolve, tube_desc, wedge,
 };
+use og_shape::math::{DVec2, DVec3};
 use og_shape::mesh::Solid;
 
 type Error = Box<dyn std::error::Error>;
@@ -31,7 +31,12 @@ fn profile(points: &[(f64, f64)]) -> og_shape::profile::Profile {
     ))
 }
 
-fn prism(p: &og_shape::profile::Profile, height: f64, twist: f64, taper: f64) -> Result<Solid, Error> {
+fn prism(
+    p: &og_shape::profile::Profile,
+    height: f64,
+    twist: f64,
+    taper: f64,
+) -> Result<Solid, Error> {
     Ok(extrude(
         p,
         &Extrude {
@@ -352,7 +357,9 @@ fn outcome(r: Result<Solid, BevelError>) -> (String, String) {
             };
             let o = if !(m.closed && m.degenerate_triangles == 0) {
                 "open"
-            } else if og_shape::boolean::selfcheck::self_crossings(&s.positions, &s.triangles).is_empty() {
+            } else if og_shape::boolean::selfcheck::self_crossings(&s.positions, &s.triangles)
+                .is_empty()
+            {
                 "ok"
             } else {
                 "crossing"

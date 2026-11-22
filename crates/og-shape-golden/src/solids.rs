@@ -1,17 +1,17 @@
 //! Golden cases for profiles (shape-2d) and named solids (shape-gen).
 
-use og_shape::profile::{
-    Circle, Gear, Join, Outline, Path, Poly, PolyPoint, Profile, Rect, Slot, StrokeDesc,
-    Superellipse, circle, gear, outline_profile, poly, rect, slot, stroke, superellipse,
-};
 use og_shape::boolean::{BoolOp, Boolean, boolean};
-use og_shape::math::{DVec2, HashError, OutputHash, trig};
 use og_shape::generators::paths::{Helix, Loft, Sweep, Thread, helix, loft, sweep, thread};
 use og_shape::generators::solids::{
     BoxDesc, CylinderDesc, Extrude, Revolve, cone, cuboid, cylinder, dome, extrude, revolve,
     sphere, torus, tube, wedge,
 };
+use og_shape::math::{DVec2, HashError, OutputHash, trig};
 use og_shape::mesh::Solid;
+use og_shape::profile::{
+    Circle, Gear, Join, Outline, Path, Poly, PolyPoint, Profile, Rect, Slot, StrokeDesc,
+    Superellipse, circle, gear, outline_profile, poly, rect, slot, stroke, superellipse,
+};
 
 use crate::cases::Case;
 
@@ -377,7 +377,10 @@ pub fn cases() -> Vec<Case> {
                     origin: og_shape::math::DVec3::new(0.0, 0.0, 7.0),
                     ..og_shape::math::Frame::IDENTITY
                 };
-                solid(h, og_shape::edit::split(&b, &f, og_shape::edit::Keep::Below))?;
+                solid(
+                    h,
+                    og_shape::edit::split(&b, &f, og_shape::edit::Keep::Below),
+                )?;
                 let spots = vec![
                     og_shape::math::DVec3::new(-10.0, 0.0, 20.0),
                     og_shape::math::DVec3::new(10.0, 0.0, 20.0),

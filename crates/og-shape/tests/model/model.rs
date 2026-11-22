@@ -2,8 +2,8 @@
 //! from the GLB with an independent reader (the `gltf` crate), and the
 //! JSON program replayed to the same bytes.
 
-use og_shape::math::{DVec3, Frame, trig};
 use og_shape::generators::solids::{BoxDesc, CylinderDesc, cuboid, cylinder};
+use og_shape::math::{DVec3, Frame, trig};
 use og_shape::model::program::{Session, run};
 use og_shape::model::{Id, JointDesc, JointKind, Material, Mimic, Model, ModelError, Unit};
 

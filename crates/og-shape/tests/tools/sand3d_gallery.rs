@@ -7,8 +7,8 @@
 #[path = "phase1/mod.rs"]
 mod phase1;
 
-use phase1::programs;
 use og_shape::tools::{Preview, glb, preview};
+use phase1::programs;
 
 #[test]
 fn every_program_builds_exports_and_previews() {

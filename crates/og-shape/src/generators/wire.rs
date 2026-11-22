@@ -18,9 +18,9 @@
 //! Straight runs meeting at a mitre are separate surfaces, so the mitre
 //! is a real edge, `seam`; bends are smooth.
 
-use crate::profile::{Contour, Profile};
 use crate::math::{DVec2, DVec3, trig};
 use crate::mesh::Solid;
+use crate::profile::{Contour, Profile};
 
 use crate::generators::solids::{GenError, RingUvs, count, finish, positive, push, segments_field};
 

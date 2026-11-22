@@ -2,10 +2,10 @@
 //! pieces end square to the path's tangent, not to the first and last
 //! chord (`eval/phase6/Z/repro/sweep_end_tangent.json`).
 
-use og_shape::math::DVec3;
 use og_shape::generators::path3::{Path3, Piece, flatten};
 use og_shape::generators::paths::{Sweep, sweep};
 use og_shape::generators::wire::{Wire, wire};
+use og_shape::math::DVec3;
 
 #[test]
 fn a_quarter_arcs_tube_ends_on_the_arcs_end_planes() {

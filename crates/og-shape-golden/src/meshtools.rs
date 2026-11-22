@@ -1,8 +1,8 @@
 //! Golden cases for the mesh tools (shape-tools, phase 5): import, repair,
 //! decimate and LODs, UV unwrap, measure and the plain GLB.
 
-use og_shape::math::{DVec2, DVec3, Frame, HashError, OutputHash};
 use og_shape::generators::solids::{BoxDesc, cuboid, sphere, torus};
+use og_shape::math::{DVec2, DVec3, Frame, HashError, OutputHash};
 use og_shape::mesh::Solid;
 use og_shape::tools::{
     Affine, Decimate, Floaters, Import, ImportedPart, Joint, JointKind, Measure, Part, PlainGlb,
@@ -628,7 +628,8 @@ fn compress_case(h: &mut OutputHash) -> Result<(), HashError> {
     h.bytes(&bytes);
     // A plain mesh quantized, then under meshopt.
     let ball = og_shape::generators::solids::sphere(10.0).map_err(fail)?;
-    let plain = og_shape::tools::glb_plain(&ball, &og_shape::tools::PlainGlb::default()).map_err(fail)?;
+    let plain =
+        og_shape::tools::glb_plain(&ball, &og_shape::tools::PlainGlb::default()).map_err(fail)?;
     let (small, report) = og_shape::tools::quantize(&plain, 0).map_err(fail)?;
     h.u64(report.accessors as u64);
     h.bytes(&og_shape::tools::compress(&small).map_err(fail)?.0);

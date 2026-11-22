@@ -1,8 +1,8 @@
 //! Holes that meet.
 
-use og_shape::math::{DVec3, Frame};
 use og_shape::edit::{Hole, hole};
 use og_shape::generators::solids::{BoxDesc, cuboid};
+use og_shape::math::{DVec3, Frame};
 
 /// Three holes of one diameter along the three axes, through one point.
 /// The third's wall runs through the edges the first two already meet

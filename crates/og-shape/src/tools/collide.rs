@@ -34,8 +34,8 @@
 
 use std::collections::BTreeSet;
 
-use crate::math::DVec3;
 use crate::generators::hull::convex_hull;
+use crate::math::DVec3;
 use crate::mesh::Solid;
 
 use crate::tools::json::Json;

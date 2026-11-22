@@ -29,12 +29,12 @@ mod model;
 pub mod place;
 pub mod program;
 
+pub use crate::boolean::{BoolOp, BoolReport};
+pub use crate::math::Frame;
+pub use crate::tools::{Interfering, JointKind, Material, Mimic, Placement, Preview};
 pub use checked::loft;
 pub use error::ModelError;
 pub use model::{
     AtlasExport, BoolRecord, Built, Combine, Id, JointDesc, Key, Model, PartMeasures, Seating, Unit,
 };
 pub use place::Path;
-pub use crate::boolean::{BoolOp, BoolReport};
-pub use crate::math::Frame;
-pub use crate::tools::{Interfering, JointKind, Material, Mimic, Placement, Preview};

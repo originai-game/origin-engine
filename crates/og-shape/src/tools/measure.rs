@@ -731,8 +731,8 @@ pub(crate) fn weld_exact(s: &Solid) -> (Vec<DVec3>, Vec<[u32; 3]>) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::tools::{Unwrap, unwrap};
     use crate::generators::solids::sphere;
+    use crate::tools::{Unwrap, unwrap};
 
     #[test]
     fn split_vertices_are_not_self_intersections() {

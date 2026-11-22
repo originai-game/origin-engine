@@ -480,8 +480,8 @@ fn fill(ring: &[DVec3]) -> Option<Vec<[usize; 3]>> {
     // holds no other point, inside or on its sides (so points in a line
     // along the rim never make a triangle without area). Sides decided
     // exactly.
-    use core::cmp::Ordering::{Greater, Less};
     use crate::math::predicates::orient2d;
+    use core::cmp::Ordering::{Greater, Less};
     if pts.len() > MAX_RIM {
         return None;
     }

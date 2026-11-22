@@ -3,14 +3,15 @@
 //! refused, and the interference report of the washing machine at rest,
 //! as recorded, and with the door and drawer fully open.
 
-use og_shape::profile::{Circle, Polygon, Profile, Rect, circle, polygon, rect};
-use og_shape::math::{HashError, OutputHash, trig};
 use og_shape::generators::paths::{Loft, LoftCurve, loft};
+use og_shape::math::{HashError, OutputHash, trig};
 use og_shape::model::program;
+use og_shape::profile::{Circle, Polygon, Profile, Rect, circle, polygon, rect};
 
 use crate::cases::Case;
 
-const WASHING_MACHINE: &str = include_str!("../../og-shape/tests/data/programs/washing_machine.json");
+const WASHING_MACHINE: &str =
+    include_str!("../../og-shape/tests/data/programs/washing_machine.json");
 
 pub fn cases() -> Vec<Case> {
     vec![

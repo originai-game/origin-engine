@@ -1488,9 +1488,11 @@ pub fn import_fbx(bytes: &[u8], resolve: Resolve) -> Result<Imported, ImportErro
         let in_world = scaled.is_some();
         let mut unlink = Vec::with_capacity(order.len());
         for (i, (_, bone_bind)) in binds.iter().enumerate() {
-            unlink.push(crate::tools::import::affine_inverse(bone_bind).ok_or_else(|| {
-                unsupported(format!("bone {:?}'s bind transform is singular", names[i]))
-            })?);
+            unlink.push(
+                crate::tools::import::affine_inverse(bone_bind).ok_or_else(|| {
+                    unsupported(format!("bone {:?}'s bind transform is singular", names[i]))
+                })?,
+            );
         }
         let space = FbxSpace {
             ids: order.iter().map(|&k| clusters[k].0).collect(),
@@ -2718,8 +2720,9 @@ Connections:  {
     /// clip drives the two weights as Maya evaluates them.
     #[test]
     fn blend_shapes_are_morph_targets_with_maya_s_weights() {
-        let bytes =
-            include_bytes!("../../../../third_party/ufbx/data/maya_blend_shape_cube_7700_binary.fbx");
+        let bytes = include_bytes!(
+            "../../../../third_party/ufbx/data/maya_blend_shape_cube_7700_binary.fbx"
+        );
         let imported = import_fbx(bytes, &no_files).unwrap();
         assert!(imported.skipped.is_empty(), "{:?}", imported.skipped);
         let part = &imported.parts[0];
@@ -2822,8 +2825,9 @@ Connections:  {
     /// does.
     #[test]
     fn in_between_shapes_are_targets_of_their_own() {
-        let bytes =
-            include_bytes!("../../../../third_party/ufbx/data/maya_blend_inbetween_7500_binary.fbx");
+        let bytes = include_bytes!(
+            "../../../../third_party/ufbx/data/maya_blend_inbetween_7500_binary.fbx"
+        );
         let imported = import_fbx(bytes, &no_files).unwrap();
         assert!(imported.skipped.is_empty(), "{:?}", imported.skipped);
         let part = &imported.parts[0];

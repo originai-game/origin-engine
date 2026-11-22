@@ -3,10 +3,12 @@
 //! every target, so a JPEG decoded, a mip chain filtered and a texel
 //! sampled must come out the same on each.
 
-use og_shape::math::{DVec3, HashError, OutputHash};
 use og_shape::generators::solids::{BoxDesc, CylinderDesc, Generator, sphere, textured};
+use og_shape::math::{DVec3, HashError, OutputHash};
 use og_shape::mesh::Solid;
-use og_shape::tools::{Material, Part, Preview, Scene, Texture, UvView, png, sheet, uv_view, views};
+use og_shape::tools::{
+    Material, Part, Preview, Scene, Texture, UvView, png, sheet, uv_view, views,
+};
 
 use crate::cases::Case;
 

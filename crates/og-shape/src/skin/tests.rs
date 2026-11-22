@@ -1,6 +1,6 @@
 use crate::boolean::{Boolean, boolean};
-use crate::math::{DVec3, Frame, trig};
 use crate::generators::solids::{CylinderDesc, cylinder};
+use crate::math::{DVec3, Frame, trig};
 use crate::mesh::Solid;
 
 use crate::skin::{Pose, Rig, RigBone, RigError, Turn, measure_pose, pose, skin};
@@ -575,7 +575,8 @@ fn a_clip_moves_onto_another_skeleton() {
         ],
         ..clip.clone()
     };
-    let (moved, r) = crate::skin::retarget(&side, &side_clip, &a_pose, &Default::default()).unwrap();
+    let (moved, r) =
+        crate::skin::retarget(&side, &side_clip, &a_pose, &Default::default()).unwrap();
     assert_eq!(r.turn, 270);
     let place = |key: usize, bone: usize| {
         crate::skin::apply(&moved.poses[key][bone], a_pose.bones[bone].rest.origin)

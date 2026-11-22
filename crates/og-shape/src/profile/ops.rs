@@ -3,15 +3,15 @@
 
 use std::collections::BTreeMap;
 
+use crate::math::order::cmp_dvec2;
+use crate::math::predicates::orient2d;
+use crate::math::{DVec2, trig};
 use i_overlay::core::fill_rule::FillRule;
 use i_overlay::core::overlay_rule::OverlayRule;
 use i_overlay::float::single::SingleFloatOverlay;
 use i_overlay::mesh::float::outline::offset::OutlineOffset;
 use i_overlay::mesh::float::stroke::offset::StrokeOffset;
 use i_overlay::mesh::float::style::{LineCap, LineJoin, OutlineStyle, StrokeStyle};
-use crate::math::order::cmp_dvec2;
-use crate::math::predicates::orient2d;
-use crate::math::{DVec2, trig};
 
 use crate::profile::curve::segments;
 use crate::profile::{Contour, Fill, Profile, ProfileError, Region};

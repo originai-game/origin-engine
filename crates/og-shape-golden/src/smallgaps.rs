@@ -11,15 +11,16 @@
 //! Each case hashes the solid, the model's GLB, or the error.
 
 use og_shape::boolean::{BoolOp, Boolean, boolean};
-use og_shape::math::{DVec3, Frame, HashError, OutputHash, trig};
 use og_shape::generators::solids::{BoxDesc, Extrude, cuboid, extrude};
+use og_shape::math::{DVec3, Frame, HashError, OutputHash, trig};
 use og_shape::mesh::Solid;
 use og_shape::model::program;
 
 use crate::cases::Case;
 
 const KNOB: &str = include_str!("../../og-shape/tests/data/programs/smallgaps_knob.json");
-const THROUGH: &str = include_str!("../../og-shape/tests/data/programs/smallgaps_through_hole.json");
+const THROUGH: &str =
+    include_str!("../../og-shape/tests/data/programs/smallgaps_through_hole.json");
 
 pub fn cases() -> Vec<Case> {
     vec![

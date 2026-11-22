@@ -131,7 +131,11 @@ fn the_glb_reads_back_with_its_skin_and_poses_like_the_kernel() {
         .enumerate()
         .map(|(i, &p)| (key(gltf_space(p)), i))
         .collect();
-    for pose_ in [og_shape::skin::Pose::default(), figure::bend(), figure::wave()] {
+    for pose_ in [
+        og_shape::skin::Pose::default(),
+        figure::bend(),
+        figure::wave(),
+    ] {
         let posed = pose(&s, &pose_).unwrap();
         // Bone node locals with the pose's turns: a kernel turn about a
         // bone-local axis a is a turn about y_up(a) in the node's frame.

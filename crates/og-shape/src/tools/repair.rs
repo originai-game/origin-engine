@@ -2295,8 +2295,9 @@ fn fuse_shells(s: &Solid, floaters: &Floaters, r: &mut RepairReport) -> Result<S
         }
         rest.canonicalize().map_err(|e| e.to_string())?;
         let rest = crate::boolean::fuse(&rest).map_err(|e| e.to_string())?;
-        let joined = crate::boolean::boolean(&shells[big], &rest, &crate::boolean::Boolean::default())
-            .map_err(|e| e.to_string())?;
+        let joined =
+            crate::boolean::boolean(&shells[big], &rest, &crate::boolean::Boolean::default())
+                .map_err(|e| e.to_string())?;
         out.append(&joined);
     }
     out.canonicalize().map_err(|e| e.to_string())?;
@@ -2530,12 +2531,12 @@ mod tests {
     fn fuse_keeps_the_files_uvs_on_the_vertices_it_keeps() {
         // Two textured balls apart: the union cuts nothing, so every
         // corner is an input corner and the seams are the generator's.
-        let ball = crate::generators::solids::textured(&crate::generators::solids::Generator::Sphere(
-            crate::generators::solids::SphereDesc {
+        let ball = crate::generators::solids::textured(
+            &crate::generators::solids::Generator::Sphere(crate::generators::solids::SphereDesc {
                 radius: 7.3,
                 ..Default::default()
-            },
-        ))
+            }),
+        )
         .unwrap();
         let mut two = ball.clone();
         let mut other = ball.clone();
@@ -2657,12 +2658,12 @@ mod tests {
 
     #[test]
     fn a_fill_across_a_uv_seam_covers_no_texture() {
-        let ball = crate::generators::solids::textured(&crate::generators::solids::Generator::Sphere(
-            crate::generators::solids::SphereDesc {
+        let ball = crate::generators::solids::textured(
+            &crate::generators::solids::Generator::Sphere(crate::generators::solids::SphereDesc {
                 radius: 7.3,
                 ..Default::default()
-            },
-        ))
+            }),
+        )
         .unwrap();
         // A vertex on the seam (two UVs), away from the poles: its fan
         // removed leaves a hole whose rim crosses the seam.

@@ -5,11 +5,11 @@
 //!
 //! `cargo run --release -p shape-edit --example edit_sweep > sweep.txt`
 
-use og_shape::profile::{Circle, Polygon, Rect, circle, polygon, rect};
-use og_shape::math::{DVec3, trig};
 use og_shape::edit::{Dent, Hole, Pocket, above, dent, hole, pocket, seat};
 use og_shape::generators::solids::{BoxDesc, CylinderDesc, cuboid, cylinder, sphere};
+use og_shape::math::{DVec3, trig};
 use og_shape::mesh::Solid;
+use og_shape::profile::{Circle, Polygon, Rect, circle, polygon, rect};
 
 fn line(key: &str, r: Result<Solid, og_shape::edit::EditError>) {
     match r {

@@ -1,8 +1,8 @@
 use super::*;
 use crate::bevel::bevel;
-use crate::math::DVec2;
 use crate::edit::{Hole, above, hole};
 use crate::generators::solids::{BoxDesc, CylinderDesc, Extrude, cuboid, cylinder, extrude};
+use crate::math::DVec2;
 
 fn block() -> Solid {
     cuboid(&BoxDesc {

@@ -4,7 +4,9 @@
 //! among them, and two overlapping copies of one shell.
 
 use glam::DVec3;
-use og_shape::boolean::{BoolError, BoolOp, Boolean, boolean, check_operands, crossing_pairs, self_union};
+use og_shape::boolean::{
+    BoolError, BoolOp, Boolean, boolean, check_operands, crossing_pairs, self_union,
+};
 use og_shape::generators::solids::sphere;
 use og_shape::mesh::Solid;
 

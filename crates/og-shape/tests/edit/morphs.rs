@@ -1,8 +1,8 @@
 //! Morph targets ride what the kernel makes of a solid.
 
-use og_shape::math::{DVec3, Frame};
 use og_shape::edit::{Hole, Keep, Subdivide, hole, split, subdivide};
 use og_shape::generators::solids::{BoxDesc, cuboid};
+use og_shape::math::{DVec3, Frame};
 use og_shape::mesh::{Morph, Morphs, Solid};
 
 /// A 40 × 30 × 20 box whose target `lean` moves each point by a field

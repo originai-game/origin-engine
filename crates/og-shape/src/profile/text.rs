@@ -1,10 +1,10 @@
 //! Text outlines from a font the caller supplies (TrueType or OpenType,
 //! read with ttf-parser). No font ships with the kernel.
 
+use crate::math::DVec2;
 use i_overlay::core::fill_rule::FillRule;
 use i_overlay::core::overlay_rule::OverlayRule;
 use i_overlay::float::single::SingleFloatOverlay;
-use crate::math::DVec2;
 
 use crate::profile::curve::{bezier_segments, cubic, quadratic};
 use crate::profile::{Contour, Profile, ProfileError};

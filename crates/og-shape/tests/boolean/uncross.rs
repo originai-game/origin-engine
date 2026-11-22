@@ -7,8 +7,8 @@ use og_shape::boolean::{
     BoolOp, Boolean, CsgOp, CsgOutput, boolean, components, crossing_pairs, csg_points_traced,
     selfcheck, uncross_output,
 };
-use og_shape::math::DVec3;
 use og_shape::generators::solids::{BoxDesc, CylinderDesc, cuboid, cylinder, torus};
+use og_shape::math::DVec3;
 use og_shape::mesh::Solid;
 use std::collections::BTreeMap;
 

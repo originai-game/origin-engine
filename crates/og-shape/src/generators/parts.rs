@@ -9,10 +9,10 @@
 //! Neither needs a boolean: every cap is a region whose holes are given
 //! directly, so the walls and the caps share their points exactly.
 
-use crate::profile::curve::segments;
-use crate::profile::{Contour, Gear, Profile, Region, gear};
 use crate::math::{DVec2, DVec3, trig};
 use crate::mesh::Solid;
+use crate::profile::curve::segments;
+use crate::profile::{Contour, Gear, Profile, Region, gear};
 
 use crate::generators::solids::{GenError, arc_end, arc_lengths, finish, positive, push, runs};
 

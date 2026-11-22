@@ -525,7 +525,8 @@ fn a_skinned_solid_is_written_with_its_skin() {
         ],
     });
     let bytes =
-        og_shape_cli::export::encode_solid("tet", &s, None, std::path::Path::new("tet.glb")).unwrap();
+        og_shape_cli::export::encode_solid("tet", &s, None, std::path::Path::new("tet.glb"))
+            .unwrap();
     let back = og_shape::tools::import(&bytes, &og_shape::tools::Import::default(), &|_: &str| {
         Err(String::new())
     })

@@ -7,9 +7,11 @@ mod uverror;
 
 use core::cmp::Ordering;
 
+use og_shape::generators::solids::{
+    Axis, BoxDesc, CylinderDesc, Generator, SphereDesc, cylinder, textured,
+};
 use og_shape::math::predicates::orient2d;
 use og_shape::math::{DVec2, DVec3};
-use og_shape::generators::solids::{Axis, BoxDesc, CylinderDesc, Generator, SphereDesc, cylinder, textured};
 use og_shape::mesh::Solid;
 use og_shape::tools::{
     Decimate, Import, Part, Repair, Scene, Texture, decimate, glb, import, no_files, repair,

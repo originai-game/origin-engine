@@ -3,11 +3,11 @@
 
 use std::fmt;
 
-use crate::profile::ProfileError;
 use crate::bevel::BevelError;
 use crate::boolean::BoolError;
 use crate::edit::EditError;
 use crate::generators::solids::GenError;
+use crate::profile::ProfileError;
 use crate::tools::ExportError;
 
 /// Why a model operation could not be honoured. Nothing is changed when

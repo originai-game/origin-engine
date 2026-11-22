@@ -34,9 +34,9 @@
 //! (points overshooting through each other on a curve); `shape-model`
 //! does, with `shape-bool`'s exact check.
 
-use crate::profile::{Contour, Profile, ProfileError, Region};
 use crate::math::{DVec2, DVec3, Frame};
 use crate::mesh::Solid;
+use crate::profile::{Contour, Profile, ProfileError, Region};
 
 use crate::generators::solids::{GenError, RingUvs, finish, push};
 use crate::generators::spline;

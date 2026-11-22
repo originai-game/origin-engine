@@ -6,10 +6,10 @@
 use std::cell::RefCell;
 use std::path::{Path, PathBuf};
 
-use og_shape_cli::process::{ProcessDesc, process};
-use og_shape_cli::{Failure, Files, Input};
 use og_shape::math::{HashError, OutputHash};
 use og_shape::tools::{Floaters, Repair};
+use og_shape_cli::process::{ProcessDesc, process};
+use og_shape_cli::{Failure, Files, Input};
 
 use crate::cases::Case;
 

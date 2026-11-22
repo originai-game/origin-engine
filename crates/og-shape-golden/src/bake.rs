@@ -1,8 +1,8 @@
 //! Golden cases for atlas packing and baking (`docs/research.md` §34):
 //! the packer's placements and measures, and the PNG bytes of a bake.
 
-use og_shape::math::{DVec2, DVec3, HashError, OutputHash};
 use og_shape::generators::solids::{BoxDesc, cuboid, sphere, torus};
+use og_shape::math::{DVec2, DVec3, HashError, OutputHash};
 use og_shape::mesh::Solid;
 use og_shape::tools::{
     Atlas, Bake, BakeSource, ChartPlace, Image, Material, Packing, PlainGlb, Texture, Unwrap, bake,
@@ -167,9 +167,9 @@ fn bake_case(h: &mut OutputHash) -> Result<(), HashError> {
                 src.push_triangle(t, 0, &[]);
                 let p = t.map(|v| src.positions[v as usize]);
                 uvs.push(p.map(|q| DVec2::new(q.x / 40.0, q.y / 40.0)));
-                cols.push(
-                    p.map(|q| og_shape::mesh::stored([0.25 + q.x / 80.0, 1.0, 0.5 + q.y / 80.0, 1.0])),
-                );
+                cols.push(p.map(|q| {
+                    og_shape::mesh::stored([0.25 + q.x / 80.0, 1.0, 0.5 + q.y / 80.0, 1.0])
+                }));
             }
         }
     }

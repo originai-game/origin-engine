@@ -46,11 +46,11 @@
 //! closed wall has one seam where its contour starts (and a full turn one
 //! where its angle does).
 
-use crate::profile::curve::segments;
-use crate::profile::{Circle, Contour, Profile, ProfileError, Rect, circle, rect};
 use crate::math::predicates::orient2d;
 use crate::math::{DVec2, DVec3, trig};
 use crate::mesh::{CornerUvs, Solid};
+use crate::profile::curve::segments;
+use crate::profile::{Circle, Contour, Profile, ProfileError, Rect, circle, rect};
 
 /// Why a generator could not build its solid.
 #[derive(Clone, Debug, PartialEq)]

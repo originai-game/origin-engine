@@ -4,8 +4,8 @@
 //! and must still close (`docs/research.md` §5.4, follow-up 4).
 
 use og_shape::boolean::{BoolOp, Boolean, CsgOp, boolean, csg_points};
-use og_shape::math::DVec3;
 use og_shape::generators::solids::{BoxDesc, CylinderDesc, cuboid, cylinder};
+use og_shape::math::DVec3;
 use og_shape::mesh::Solid;
 use std::collections::BTreeMap;
 

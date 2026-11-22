@@ -5,15 +5,16 @@
 //! binding through wasm). The binding's test hashes the GLB and PNG it
 //! makes in wasm32 the same way and compares with these lines.
 
-use og_shape::math::{DVec3, Frame, HashError, OutputHash, trig};
 use og_shape::generators::solids::{BoxDesc, CylinderDesc, cuboid, cylinder};
+use og_shape::math::{DVec3, Frame, HashError, OutputHash, trig};
 use og_shape::model::{
     JointDesc, JointKind, Material, Mimic, Model, Path, Preview, Unit, place, program,
 };
 
 use crate::cases::Case;
 
-const WASHING_MACHINE: &str = include_str!("../../og-shape/tests/data/programs/washing_machine.json");
+const WASHING_MACHINE: &str =
+    include_str!("../../og-shape/tests/data/programs/washing_machine.json");
 const WASHING_MACHINE_CLIPS: &str =
     include_str!("../../og-shape/tests/data/programs/washing_machine_clips.json");
 const PLACED_SLOT: &str = include_str!("../../og-shape/tests/data/programs/placed_slot.json");
@@ -328,8 +329,12 @@ fn jointed() -> Result<Model, og_shape::model::ModelError> {
 /// joints through copies (`docs/research.md` §20).
 fn copies(m: &Model) -> Result<Model, og_shape::model::ModelError> {
     let mut m = m.clone();
-    let door = m.find("door").ok_or(og_shape::model::ModelError::EmptyName)?;
-    let knob = m.find("knob").ok_or(og_shape::model::ModelError::EmptyName)?;
+    let door = m
+        .find("door")
+        .ok_or(og_shape::model::ModelError::EmptyName)?;
+    let knob = m
+        .find("knob")
+        .ok_or(og_shape::model::ModelError::EmptyName)?;
     let twin = m.copy(door, "twin")?;
     m.transform(twin, &Frame::IDENTITY.translate(0.0, 0.0, 60.0))?;
     m.pose("hinge.001", 0.4)?;

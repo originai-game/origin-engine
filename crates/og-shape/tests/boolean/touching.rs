@@ -7,9 +7,9 @@
 //! V(A ∪ B) + V(A ∩ B) = V(A) + V(B) and V(A − B) = V(A) − V(A ∩ B).
 
 use og_shape::boolean::{BoolError, BoolOp, BoolReport, Boolean, boolean, boolean_report};
-use og_shape::math::DVec3;
 use og_shape::generators::loft::{Loft, loft};
 use og_shape::generators::solids::{BoxDesc, cuboid, torus, tube};
+use og_shape::math::DVec3;
 use og_shape::mesh::Solid;
 
 fn moved(mut s: Solid, d: DVec3) -> Solid {

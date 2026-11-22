@@ -6,11 +6,11 @@
 //! kernel wrote it, never parsed and printed again. The other functions
 //! write one kernel report each, in `shape-tools`' snake_case.
 
-use serde_json::{Value, json};
 use og_shape::tools::{
     Blocked, ColorSpace, DecimateReport, ImageInfo, Imported, Material, NonManifold, RepairReport,
     Uvs,
 };
+use serde_json::{Value, json};
 
 /// `{"k": v, …}` from keys and values that are JSON text already.
 pub fn object(fields: &[(&str, String)]) -> String {

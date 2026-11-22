@@ -1147,7 +1147,8 @@ fn input(s: &Solid, spec: &Spec) -> Result<Option<(Solid, Vec<EdgeKey>)>, BevelE
     let largest = info.values().flat_map(|e| e.off).fold(0.0f64, f64::max);
     let (w, edges) =
         wide::weld(s, &spec.edges, 1e-9 * largest).ok_or(BevelError::SelfCrossing(at))?;
-    if let Some(&(i, _)) = crate::boolean::selfcheck::self_crossings(&w.positions, &w.triangles).first()
+    if let Some(&(i, _)) =
+        crate::boolean::selfcheck::self_crossings(&w.positions, &w.triangles).first()
     {
         return Err(BevelError::SelfCrossing(
             w.positions[w.triangles[i as usize][0] as usize],

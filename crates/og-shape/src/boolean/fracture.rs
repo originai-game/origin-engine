@@ -19,8 +19,8 @@
 //! Every number is f64 with `+ - * /` and `sqrt`: the same on every host.
 
 use crate::boolean::csg::{CsgOp, csg_traced};
-use glam::DVec3;
 use crate::generators::{Mesh, Placement};
+use glam::DVec3;
 use std::collections::BTreeMap;
 
 /// A cut face's tag in [`Piece::faces`]: the bounds of the cells (a cell

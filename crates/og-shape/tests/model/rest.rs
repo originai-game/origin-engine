@@ -2,9 +2,9 @@
 //! from paths, `until`, paths of pieces, `merge`, `delete`, boolean
 //! reports and fonts.
 
-use serde_json::{Value, json};
 use og_shape::math::trig;
 use og_shape::model::program::{Session, fonts_named, run};
+use serde_json::{Value, json};
 
 fn err(program: Value) -> String {
     run(&program.to_string()).unwrap_err().to_string()

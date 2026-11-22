@@ -1,8 +1,8 @@
 //! Joints through copies and mirrors, reads off rest, the model's pose in
 //! OBJ, STL and measures, and how joints hold (`docs/research.md` §20).
 
-use og_shape::math::{DVec3, Frame, trig};
 use og_shape::generators::solids::{BoxDesc, CylinderDesc, cuboid, cylinder};
+use og_shape::math::{DVec3, Frame, trig};
 use og_shape::model::{Id, JointDesc, JointKind, Mimic, Model, ModelError, Placement};
 
 fn block(w: f64, d: f64, h: f64) -> og_shape::mesh::Solid {

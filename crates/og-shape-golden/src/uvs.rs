@@ -2,11 +2,11 @@
 //! the generators' UVs, the mesh tools carrying them, a boolean
 //! interpolating them, and GLB with a texture written and read back.
 
-use og_shape::math::{DVec3, HashError, OutputHash};
 use og_shape::generators::solids::{
     Axis, BoxDesc, CylinderDesc, DomeDesc, Extrude, Generator, SphereDesc, TorusDesc, cylinder,
     textured,
 };
+use og_shape::math::{DVec3, HashError, OutputHash};
 use og_shape::mesh::Solid;
 use og_shape::tools::{
     Decimate, Import, Part, PlainGlb, Repair, Scene, Texture, decimate, glb, glb_plain, import,
@@ -445,7 +445,9 @@ fn program_preview(h: &mut OutputHash) -> Result<(), HashError> {
     };
     let v = og_shape::tools::views(&scene, &d).map_err(fail)?;
     h.bytes(&og_shape::tools::png(&og_shape::tools::sheet(&v.images, 2)));
-    for l in og_shape::tools::uv_view(&scene, &og_shape::tools::UvView { size: 128 }).map_err(fail)? {
+    for l in
+        og_shape::tools::uv_view(&scene, &og_shape::tools::UvView { size: 128 }).map_err(fail)?
+    {
         h.u64(u64::from(l.tiles));
         h.f64s(&l.uv_min)?;
         h.bytes(&og_shape::tools::png(&l.image));

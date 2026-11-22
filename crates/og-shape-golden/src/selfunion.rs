@@ -4,8 +4,8 @@
 //! copies, and repair's fuse step on the folded sphere.
 
 use og_shape::boolean::{Boolean, boolean, check_operands, crossing_pairs, self_union};
-use og_shape::math::{DVec3, HashError, OutputHash};
 use og_shape::generators::solids::sphere;
+use og_shape::math::{DVec3, HashError, OutputHash};
 use og_shape::mesh::Solid;
 
 use crate::cases::Case;

@@ -5,11 +5,11 @@
 //!
 //! `cargo run --release -p shape-edit --example shell_sweep > sweep.txt`
 
-use og_shape::profile::{Circle, Polygon, Rect, circle, polygon, rect};
 use og_shape::bevel::{Chamfer, Fillet, chamfer, fillet};
 use og_shape::edit::{Shell, shell_report};
 use og_shape::generators::solids::{Extrude, extrude};
 use og_shape::mesh::Solid;
+use og_shape::profile::{Circle, Polygon, Rect, circle, polygon, rect};
 
 fn main() {
     let mut profiles: Vec<(String, og_shape::profile::Profile)> = Vec::new();

@@ -42,7 +42,9 @@ use std::collections::BTreeMap;
 use crate::math::{DVec2, DVec3};
 use crate::mesh::{EdgeKey, Solid, edge_key};
 
-use crate::boolean::csg::{CsgOp, OperandError, csg_points_repaired, csg_points_traced, self_union_points};
+use crate::boolean::csg::{
+    CsgOp, OperandError, csg_points_repaired, csg_points_traced, self_union_points,
+};
 use crate::boolean::selfcheck;
 
 /// The operation.
@@ -851,8 +853,8 @@ fn on_segment(p: DVec3, q: DVec3, x: DVec3) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::math::trig;
     use crate::generators::solids::{BoxDesc, CylinderDesc, cuboid, cylinder};
+    use crate::math::trig;
 
     fn plate() -> Solid {
         cuboid(&BoxDesc {

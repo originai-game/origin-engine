@@ -1,9 +1,9 @@
 //! The authoring surface: unknown fields refused, errors located, and the
 //! generators the program gained (`docs/research.md` §14).
 
-use serde_json::{Value, json};
 use og_shape::model::ModelError;
 use og_shape::model::program::{Session, run};
+use serde_json::{Value, json};
 
 fn apply(s: &mut Session, op: Value) -> Result<Value, ModelError> {
     s.apply_value(&op)

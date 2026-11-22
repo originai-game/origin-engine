@@ -16,7 +16,9 @@ use std::collections::BTreeSet;
 use crate::mesh::SkinClip;
 use crate::mesh::skin::{Mat4, affine_inverse, frame_inverse_matrix, frame_matrix, mat_mul};
 
-use crate::tools::export::{ColorSpace, ExportError, Material, Scene, check_joints, decompose, linear};
+use crate::tools::export::{
+    ColorSpace, ExportError, Material, Scene, check_joints, decompose, linear,
+};
 use crate::tools::preview::{CREASE_DEGREES, corner_normals};
 
 /// A scene as USD.

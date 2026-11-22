@@ -1101,7 +1101,8 @@ mod tests {
         assert_eq!(r.hits, r.covered, "{r:?}");
         assert_eq!(r.empty, 0);
         let base = crate::tools::texture::decode(&b.material.map.as_ref().unwrap().bytes).unwrap();
-        let nrm = crate::tools::texture::decode(&b.material.normal_map.as_ref().unwrap().bytes).unwrap();
+        let nrm =
+            crate::tools::texture::decode(&b.material.normal_map.as_ref().unwrap().bytes).unwrap();
         let (owner, at) = rasterize(lo.uvs.as_ref().unwrap(), 64);
         let frames = corner_frames(&lo);
         let lin = linear_table();

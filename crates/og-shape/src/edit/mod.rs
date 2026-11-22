@@ -15,15 +15,15 @@
 
 use std::collections::BTreeMap;
 
-use robust::{Coord3D, orient3d};
-use crate::profile::Profile;
 use crate::boolean::{
     BoolError, BoolOp, BoolReport, Boolean, boolean, boolean_report, crossing_pairs, self_union,
 };
+use crate::generators::solids::{Extrude, GenError, Generator, extrude, textured};
 use crate::math::DVec2;
 use crate::math::{DVec3, Frame};
-use crate::generators::solids::{Extrude, GenError, Generator, extrude, textured};
 use crate::mesh::{CornerUvs, Solid, edge_key};
+use crate::profile::Profile;
+use robust::{Coord3D, orient3d};
 
 /// Why an edit could not be honoured.
 #[derive(Clone, Debug, PartialEq)]
@@ -223,7 +223,11 @@ pub fn cut_tool_uvs(tool: &Solid) -> Solid {
 }
 
 /// An extrusion for a tool, with UVs when the solid it cuts has them.
-fn tool_extrude(profile: &crate::profile::Profile, d: &Extrude, uvs: bool) -> Result<Solid, GenError> {
+fn tool_extrude(
+    profile: &crate::profile::Profile,
+    d: &Extrude,
+    uvs: bool,
+) -> Result<Solid, GenError> {
     if uvs {
         textured(&Generator::Extrude(profile, *d))
     } else {
@@ -641,8 +645,11 @@ pub fn seat_report(
 ) -> Result<(Solid, EditReport), EditError> {
     if crate::mesh::rides(host) || crate::mesh::rides(part) {
         crate::mesh::one_skin(&[host, part]).map_err(|_| EditError::TwoSkins)?;
-        let (mut out, report) =
-            seat_report(&crate::mesh::bare(host), &crate::mesh::bare(part), part_name)?;
+        let (mut out, report) = seat_report(
+            &crate::mesh::bare(host),
+            &crate::mesh::bare(part),
+            part_name,
+        )?;
         let _ = crate::mesh::carry(&[host, part], &mut out);
         return Ok((out, report));
     }

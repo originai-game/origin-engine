@@ -1,10 +1,10 @@
 //! sand3d's edit cases (`tests/cases.py` at 84c980a), rebuilt: the names
 //! must land on the same faces and edges, the walls measure as asked.
 
-use crate::profile::{Rect, Slot, rect, slot};
-use crate::math::{DVec3, Frame, trig};
 use crate::generators::solids::{BoxDesc, cuboid, sphere};
+use crate::math::{DVec3, Frame, trig};
 use crate::mesh::Solid;
+use crate::profile::{Rect, Slot, rect, slot};
 
 use super::*;
 

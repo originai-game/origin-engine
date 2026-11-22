@@ -1,10 +1,10 @@
 //! Golden cases for export and the preview (shape-tools): the bytes of
 //! each file and of the preview's framebuffer.
 
-use og_shape::profile::{Circle, Rect, circle, rect};
-use og_shape::math::{DVec3, Frame, HashError, OutputHash};
 use og_shape::generators::solids::{CylinderDesc, Extrude, cylinder, extrude, sphere};
+use og_shape::math::{DVec3, Frame, HashError, OutputHash};
 use og_shape::mesh::Solid;
+use og_shape::profile::{Circle, Rect, circle, rect};
 use og_shape::tools::{
     Joint, JointKind, Material, Mimic, Part, Preview, Scene, glb, obj, png, preview, sheet, stl,
 };
@@ -66,8 +66,8 @@ pub fn cases() -> Vec<Case> {
 /// both, three views of 96²: the preview's crease and blending rules
 /// (`docs/research.md` §20).
 fn facets(h: &mut OutputHash) -> Result<(), HashError> {
-    use og_shape::profile::{Polygon, polygon};
     use og_shape::generators::paths::{Loft, loft};
+    use og_shape::profile::{Polygon, polygon};
     let built = (|| -> Result<(Solid, Solid, Solid), String> {
         let hex = |r: f64| {
             polygon(&Polygon {
@@ -90,12 +90,13 @@ fn facets(h: &mut OutputHash) -> Result<(), HashError> {
         })
         .map_err(|e| e.to_string())?;
         drum.map_positions(|p| p + DVec3::new(28.0, 6.0, 0.0), false);
-        let mut pane = og_shape::generators::solids::cuboid(&og_shape::generators::solids::BoxDesc {
-            width: 60.0,
-            depth: 2.0,
-            height: 26.0,
-        })
-        .map_err(|e| e.to_string())?;
+        let mut pane =
+            og_shape::generators::solids::cuboid(&og_shape::generators::solids::BoxDesc {
+                width: 60.0,
+                depth: 2.0,
+                height: 26.0,
+            })
+            .map_err(|e| e.to_string())?;
         pane.map_positions(|p| p + DVec3::new(14.0, -20.0, 2.0), false);
         Ok((tower, drum, pane))
     })();

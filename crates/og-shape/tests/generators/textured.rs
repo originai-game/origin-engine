@@ -3,15 +3,15 @@
 //! corner, every face with area reading counter-clockwise from outside,
 //! and walls in millimetres of arc length (`docs/research.md` §21).
 
-use og_shape::profile::{Circle, Rect, circle, rect};
-use og_shape::math::predicates::orient2d;
-use og_shape::math::{DVec2, DVec3};
 use og_shape::generators::body::{Body, View, body};
 use og_shape::generators::parts::{GearDesc, Knurl, gear_solid, knurl};
 use og_shape::generators::paths::{Loft, Sweep, Thread, loft, sweep, thread};
 use og_shape::generators::solids::{Generator, textured, wedge};
 use og_shape::generators::wire::{Wire, wire};
+use og_shape::math::predicates::orient2d;
+use og_shape::math::{DVec2, DVec3};
 use og_shape::mesh::Solid;
+use og_shape::profile::{Circle, Rect, circle, rect};
 
 fn check(name: &str, t: &Solid, plain: &Solid) {
     let mut bare = t.clone();

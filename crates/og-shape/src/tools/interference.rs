@@ -359,9 +359,9 @@ fn on_triangle(p: DVec3, t: [DVec3; 3]) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::tools::export::{Joint, JointKind, Part};
     use crate::math::Frame;
     use crate::mesh::Solid;
+    use crate::tools::export::{Joint, JointKind, Part};
 
     fn cube(lo: DVec3, size: f64) -> Solid {
         let mut s = Solid::default();

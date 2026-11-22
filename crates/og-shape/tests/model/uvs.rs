@@ -2,9 +2,9 @@
 //! parts ask for them, every edit carries them or refuses, a material
 //! names a texture the caller supplies, and the GLB carries both.
 
-use serde_json::{Value, json};
 use og_shape::math::predicates::orient2d;
 use og_shape::model::program::{Fonts, Session, run_files, textures_named};
+use serde_json::{Value, json};
 
 /// A 64×64 checker, eight squares a side.
 fn checker() -> Vec<u8> {
@@ -233,7 +233,10 @@ fn every_edit_carries_uvs() {
             .map(|p| p["uv"].clone())
             .unwrap()
     };
-    check(&s.model().world_solid(og_shape::model::Id(0)).unwrap(), "seat");
+    check(
+        &s.model().world_solid(og_shape::model::Id(0)).unwrap(),
+        "seat",
+    );
     assert_eq!(uv("c"), uv("a"));
     // The mirror image's UVs read mirrored: every triangle that read
     // the right way is turned over, and the other way round.

@@ -15,8 +15,8 @@
 use core::cmp::Ordering;
 use std::collections::BTreeMap;
 
-use crate::math::{DVec2, DVec3};
 use crate::generators::hull::convex_hull;
+use crate::math::{DVec2, DVec3};
 use crate::mesh::Solid;
 
 /// More triangles than this and the solid is left to the caller's other

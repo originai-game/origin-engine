@@ -723,9 +723,9 @@ impl AtlasReport {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use core::cmp::Ordering;
-    use crate::math::predicates::orient2d;
     use crate::generators::solids::{CylinderDesc, cylinder, sphere};
+    use crate::math::predicates::orient2d;
+    use core::cmp::Ordering;
 
     #[test]
     fn skyline_places_bottom_left_and_raises() {

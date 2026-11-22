@@ -5,8 +5,8 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use crate::bevel::{Chamfer, Fillet, Soften};
 use crate::boolean::{BoolOp, BoolReport, Boolean};
-use crate::math::{DVec3, Frame};
 use crate::edit::{Dent, EditReport, Hole, Keep, Pocket, Shell, Subdivide};
+use crate::math::{DVec3, Frame};
 use crate::mesh::{Measures, Solid};
 use crate::tools::{
     Image, Interfering, JointKind, Material, Mimic, Part, Placement, Preview, Scene,

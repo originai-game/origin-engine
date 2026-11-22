@@ -21,9 +21,9 @@
 //! Entry: [`drop_slivers`] on a solid; the boolean calls [`flip`] on its
 //! output.
 
+use crate::mesh::Solid;
 use glam::DVec3;
 use robust::{Coord, orient2d};
-use crate::mesh::Solid;
 use std::collections::BTreeMap;
 
 /// Whether three positions lie on one line, exactly: their signed area

@@ -1,8 +1,8 @@
 //! The exports read back with independent readers: the `gltf` crate for
 //! GLB, and byte layouts for OBJ and STL.
 
-use og_shape::math::{DVec3, Frame};
 use og_shape::generators::solids::{BoxDesc, CylinderDesc, cuboid, cylinder};
+use og_shape::math::{DVec3, Frame};
 use og_shape::mesh::Solid;
 use og_shape::tools::{
     Clip, ClipKey, ExportError, Joint, JointKind, Material, Mimic, Part, Placement, Scene, glb,

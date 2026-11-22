@@ -172,7 +172,8 @@ fn etc1s(b: &[u8], h: &Header) -> Result<Image, String> {
             .ok_or_else(short)?;
         from += len;
     }
-    let books = crate::tools::etc1s::Codebooks::read(endpoints, selectors, parts[0], parts[1], parts[2])?;
+    let books =
+        crate::tools::etc1s::Codebooks::read(endpoints, selectors, parts[0], parts[1], parts[2])?;
     let (level_at, level_len, _) = h.level;
     let level = level_at
         .checked_add(level_len)
@@ -485,7 +486,10 @@ mod tests {
             .0
             .iter_mut()
             .for_each(|p| p[3] = 255);
-        let d = crate::tools::texture::to_ktx2(&Texture::from_bytes("n.png", crate::tools::png(&opaque)), false);
+        let d = crate::tools::texture::to_ktx2(
+            &Texture::from_bytes("n.png", crate::tools::png(&opaque)),
+            false,
+        );
         let d = d.unwrap().unwrap();
         assert!(!header(&d.bytes).unwrap().srgb);
         assert_eq!(d.bytes[80 + 24 * 6 + 4 + 24 + 3], 0);
@@ -496,7 +500,10 @@ mod tests {
     #[test]
     fn what_is_not_read_says_why() {
         let t = Texture::from_bytes("map.png", crate::tools::png(&image()));
-        let k = crate::tools::texture::to_ktx2(&t, true).unwrap().unwrap().bytes;
+        let k = crate::tools::texture::to_ktx2(&t, true)
+            .unwrap()
+            .unwrap()
+            .bytes;
         for cut in 0..k.len() {
             assert!(decode(&k[..cut]).is_err(), "cut at {cut}");
         }
@@ -520,7 +527,9 @@ mod tests {
     fn an_etc1s_file_reads_back() {
         let im = image();
         let t = Texture::from_bytes("map.png", crate::tools::png(&im));
-        let k = crate::tools::texture::to_ktx2_etc1s(&t, true).unwrap().unwrap();
+        let k = crate::tools::texture::to_ktx2_etc1s(&t, true)
+            .unwrap()
+            .unwrap();
         let h = header(&k.bytes).unwrap();
         assert_eq!((h.width, h.height, h.levels, h.scheme), (37, 22, 6, 1));
         assert!(h.srgb && h.model == MODEL_ETC1S);
@@ -591,6 +600,9 @@ mod tests {
             .map(|(a, b)| a.abs_diff(*b))
             .max();
         assert!(worst <= Some(6), "{worst:?}");
-        assert_eq!(crate::tools::texture::to_ktx2_rdo(&t, false, 0.0), Ok(Some(plain)));
+        assert_eq!(
+            crate::tools::texture::to_ktx2_rdo(&t, false, 0.0),
+            Ok(Some(plain))
+        );
     }
 }

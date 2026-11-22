@@ -1,12 +1,12 @@
 //! Golden cases for fillet, chamfer and soften (shape-bevel).
 
 use og_shape::bevel::{Chamfer, Fillet, Miter, Soften, chamfer, fillet, soften};
-use og_shape::math::{DVec2, DVec3};
-use og_shape::math::{HashError, OutputHash, trig};
 use og_shape::edit::{Hole, above, hole};
 use og_shape::generators::solids::{
     Axis, BoxDesc, CylinderDesc, Extrude, Revolve, cuboid, cylinder, extrude, revolve,
 };
+use og_shape::math::{DVec2, DVec3};
+use og_shape::math::{HashError, OutputHash, trig};
 use og_shape::mesh::Solid;
 
 use crate::cases::Case;
@@ -505,8 +505,8 @@ fn slivers(h: &mut OutputHash) -> Result<(), HashError> {
     })
     .unwrap_or_default();
     small.map_positions(|p| p + DVec3::new(3.0, 2.0, 8.0), false);
-    let joined =
-        og_shape::boolean::boolean(&big, &small, &og_shape::boolean::Boolean::default()).unwrap_or_default();
+    let joined = og_shape::boolean::boolean(&big, &small, &og_shape::boolean::Boolean::default())
+        .unwrap_or_default();
     solid(h, fillet(&joined, &round(1.0, &[], 4)))?;
     solid(
         h,
@@ -518,12 +518,13 @@ fn slivers(h: &mut OutputHash) -> Result<(), HashError> {
             },
         ),
     )?;
-    let section = og_shape::profile::Profile::from_contour(og_shape::profile::Contour::corners(vec![
-        DVec2::new(5.0, 0.0),
-        DVec2::new(10.0, 0.0),
-        DVec2::new(10.0, 8.0),
-        DVec2::new(5.0, 8.0),
-    ]));
+    let section =
+        og_shape::profile::Profile::from_contour(og_shape::profile::Contour::corners(vec![
+            DVec2::new(5.0, 0.0),
+            DVec2::new(10.0, 0.0),
+            DVec2::new(10.0, 8.0),
+            DVec2::new(5.0, 8.0),
+        ]));
     let ring = |angle| {
         revolve(
             &section,
@@ -571,7 +572,8 @@ fn cones(h: &mut OutputHash) -> Result<(), HashError> {
     .unwrap_or_default();
     let mut b = a.clone();
     b.map_positions(|p| p + DVec3::new(20.0, 20.0, 10.0), false);
-    let j = og_shape::boolean::boolean(&a, &b, &og_shape::boolean::Boolean::default()).unwrap_or_default();
+    let j = og_shape::boolean::boolean(&a, &b, &og_shape::boolean::Boolean::default())
+        .unwrap_or_default();
     solid(h, fillet(&j, &round(2.0, &[], 4)))?;
     let low = tag(&j, "low", |p| p.x <= 10.0 && p.y <= 10.0 && p.z <= 10.0);
     solid(

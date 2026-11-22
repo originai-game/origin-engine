@@ -4,8 +4,8 @@
 //! figure rigged from its mesh alone (joints found, bone heat).
 
 use og_shape::boolean::{Boolean, boolean};
-use og_shape::math::{DVec3, Frame, HashError, OutputHash, trig};
 use og_shape::generators::solids::{BoxDesc, CylinderDesc, cuboid, cylinder, sphere};
+use og_shape::math::{DVec3, Frame, HashError, OutputHash, trig};
 use og_shape::mesh::{Bone, Skin, Solid, Weights};
 use og_shape::skin::{
     Pose, Rig, RigBone, Turn, bind, humanoid, measure_pose, pose, retarget, skin, skin_matrices,

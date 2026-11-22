@@ -9,8 +9,8 @@
 //! `crate::profile::curve::bezier_segments` sizes a 2D one. The counts depend
 //! only on the arguments.
 
-use crate::profile::curve::segments;
 use crate::math::{DVec3, trig};
+use crate::profile::curve::segments;
 
 use crate::generators::solids::GenError;
 

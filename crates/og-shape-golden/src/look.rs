@@ -4,8 +4,10 @@
 //! MTL), the chain (repair, decimation, a cut) on a coloured solid, the
 //! plain GLB with a material, and the texture decoder and box filter.
 
+use og_shape::generators::solids::{
+    BoxDesc, CylinderDesc, Generator, SphereDesc, cuboid, cylinder, textured,
+};
 use og_shape::math::{DVec3, HashError, OutputHash};
-use og_shape::generators::solids::{BoxDesc, CylinderDesc, Generator, SphereDesc, cuboid, cylinder, textured};
 use og_shape::mesh::Solid;
 use og_shape::tools::{
     ColorSpace, Decimate, Downsize, Floaters, Import, Material, Part, PlainGlb, Repair, Scene,

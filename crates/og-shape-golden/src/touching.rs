@@ -9,9 +9,9 @@
 //! Each case hashes the solid and its report, or the error.
 
 use og_shape::boolean::{BoolOp, BoolReport, Boolean, boolean_report};
-use og_shape::math::{DVec3, HashError, OutputHash};
 use og_shape::generators::loft::{Loft, loft};
 use og_shape::generators::solids::{BoxDesc, cuboid, torus, tube};
+use og_shape::math::{DVec3, HashError, OutputHash};
 use og_shape::mesh::Solid;
 use og_shape::model::program;
 
@@ -19,7 +19,8 @@ use crate::cases::Case;
 
 const RIM: &str = include_str!("../../og-shape/tests/data/programs/touching_rim.json");
 const ELBOWS: &str = include_str!("../../og-shape/tests/data/programs/touching_elbows.json");
-const ELBOWS_TURNED: &str = include_str!("../../og-shape/tests/data/programs/touching_elbows_turned.json");
+const ELBOWS_TURNED: &str =
+    include_str!("../../og-shape/tests/data/programs/touching_elbows_turned.json");
 
 pub fn cases() -> Vec<Case> {
     vec![

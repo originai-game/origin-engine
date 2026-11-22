@@ -4,13 +4,13 @@
 //! chart does (no triangle turned over or flattened in UV); and every new
 //! face is continuous with the chart it takes along their shared edges.
 
-use og_shape::profile::{Rect, rect};
 use og_shape::bevel::{Chamfer, Fillet, Soften, chamfer, fillet, soften};
-use og_shape::math::DVec2;
-use og_shape::math::predicates::orient2d;
 use og_shape::edit::{Hole, above, hole};
 use og_shape::generators::solids::{BoxDesc, CylinderDesc, Extrude, Generator, textured};
+use og_shape::math::DVec2;
+use og_shape::math::predicates::orient2d;
 use og_shape::mesh::Solid;
+use og_shape::profile::{Rect, rect};
 
 fn bare(s: &Solid) -> Solid {
     let mut b = s.clone();

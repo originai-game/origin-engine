@@ -38,9 +38,9 @@
 //! vertex are snapped onto it and both passes run again (faces a few ulps
 //! apart, placed by different rounded motions; `docs/research.md` §18).
 
+use crate::generators::{Mesh, Placement, normalize, place};
 use glam::{DVec2, DVec3};
 use robust::{Coord, Coord3D, orient2d, orient3d};
-use crate::generators::{Mesh, Placement, normalize, place};
 use spade::{ConstrainedDelaunayTriangulation, Point2, Triangulation};
 use std::collections::{BTreeMap, BTreeSet};
 

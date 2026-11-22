@@ -6,8 +6,8 @@
 
 use std::collections::BTreeMap;
 
-use og_shape::math::DVec3;
 use og_shape::generators::solids::{BoxDesc, CylinderDesc, cuboid, cylinder, sphere};
+use og_shape::math::DVec3;
 use og_shape::mesh::{Solid, edge_key};
 use og_shape::tools::{
     ColorSpace, Decimate, Import, Material, Part, PlainGlb, Repair, Scene, Texture, decimate, glb,
@@ -253,13 +253,14 @@ fn png(seed: u8) -> Texture {
 
 #[test]
 fn a_material_and_colours_survive_both_glb_writers() {
-    let mut s = og_shape::generators::solids::textured(&og_shape::generators::solids::Generator::Sphere(
-        og_shape::generators::solids::SphereDesc {
-            radius: 20.0,
-            ..Default::default()
-        },
-    ))
-    .unwrap();
+    let mut s =
+        og_shape::generators::solids::textured(&og_shape::generators::solids::Generator::Sphere(
+            og_shape::generators::solids::SphereDesc {
+                radius: 20.0,
+                ..Default::default()
+            },
+        ))
+        .unwrap();
     paint(&mut s, |_, p| affine(p));
     let m = Material {
         name: "painted".into(),
@@ -474,13 +475,14 @@ fn a_ktx2_map_is_written_as_it_came() {
     bytes.extend([0u8; 64]);
     let map = Texture::from_bytes("skin.ktx2", bytes.clone());
     assert_eq!(map.mime, "image/ktx2");
-    let s = og_shape::generators::solids::textured(&og_shape::generators::solids::Generator::Sphere(
-        og_shape::generators::solids::SphereDesc {
-            radius: 20.0,
-            ..Default::default()
-        },
-    ))
-    .unwrap();
+    let s =
+        og_shape::generators::solids::textured(&og_shape::generators::solids::Generator::Sphere(
+            og_shape::generators::solids::SphereDesc {
+                radius: 20.0,
+                ..Default::default()
+            },
+        ))
+        .unwrap();
     let material = Material {
         map: Some(map),
         ..Default::default()

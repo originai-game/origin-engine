@@ -7,10 +7,10 @@
 //! | [`loft_along`] | `start`, `end` (none in a loop), `side` | `start`, `end` |
 //! | [`thread`] | as [`sweep`], also `thread` | as [`sweep`] |
 
-use crate::profile::curve::segments;
-use crate::profile::{Contour, Profile, ProfileError};
 use crate::math::{DVec2, DVec3, trig};
 use crate::mesh::Solid;
+use crate::profile::curve::segments;
+use crate::profile::{Contour, Profile, ProfileError};
 
 use crate::generators::solids::{GenError, RingUvs, finish, push};
 

@@ -7,10 +7,10 @@
 
 use og_shape::bevel::{Chamfer, Fillet, Miter, chamfer, fillet, quad_pairs};
 use og_shape::boolean::{BoolOp, Boolean, boolean};
-use og_shape::math::{DVec2, DVec3};
 use og_shape::generators::solids::{
     Axis, BoxDesc, CylinderDesc, Extrude, Revolve, cuboid, cylinder, extrude, revolve,
 };
+use og_shape::math::{DVec2, DVec3};
 use og_shape::mesh::Solid;
 use og_shape::tools::{Part, Preview, Scene, png, preview, sheet};
 
@@ -239,12 +239,13 @@ fn cases() -> Result<Vec<Case>, Error> {
         focus: None,
         azimuth: -0.6,
     });
-    let section = og_shape::profile::Profile::from_contour(og_shape::profile::Contour::corners(vec![
-        DVec2::new(5.0, 0.0),
-        DVec2::new(10.0, 0.0),
-        DVec2::new(10.0, 8.0),
-        DVec2::new(5.0, 8.0),
-    ]));
+    let section =
+        og_shape::profile::Profile::from_contour(og_shape::profile::Contour::corners(vec![
+            DVec2::new(5.0, 0.0),
+            DVec2::new(10.0, 0.0),
+            DVec2::new(10.0, 8.0),
+            DVec2::new(5.0, 8.0),
+        ]));
     let ring = revolve(
         &section,
         &Revolve {

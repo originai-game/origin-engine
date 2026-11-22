@@ -24,8 +24,8 @@
 //! the direct sum where none does. Every decision is the direct sum's, so
 //! output does not change.
 
-use glam::DVec3;
 use crate::generators::trig;
+use glam::DVec3;
 
 /// One triangle's solid angle seen from `p`, doubled as `atan2` gives it
 /// (Van Oosterom and Strackee): the direct sum's term.

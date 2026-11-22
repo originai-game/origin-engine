@@ -2,17 +2,19 @@
 //! (`docs/research.md` §6.4, §10): loft through holes and by spline, the
 //! +z axis, body, wire, knurl and the gear solid.
 
-use og_shape::profile::{Circle, Rect, circle, rect};
-use og_shape::math::{DVec3, HashError, OutputHash, trig};
 use og_shape::generators::body::{Body, View, body};
 use og_shape::generators::parts::{GearDesc, Knurl, gear_solid, knurl};
 use og_shape::generators::path3::{Path3, Piece, flatten};
-use og_shape::generators::paths::{Helix, Loft, LoftAlong, LoftCurve, Sweep, loft, loft_along, sweep};
+use og_shape::generators::paths::{
+    Helix, Loft, LoftAlong, LoftCurve, Sweep, loft, loft_along, sweep,
+};
 use og_shape::generators::solids::{
     Axis, DomeDesc, Revolve, SphereDesc, TorusDesc, dome_desc, revolve, sphere_desc, torus_desc,
 };
 use og_shape::generators::wire::{Wire, wire};
+use og_shape::math::{DVec3, HashError, OutputHash, trig};
 use og_shape::mesh::Solid;
+use og_shape::profile::{Circle, Rect, circle, rect};
 
 use crate::cases::Case;
 
@@ -456,7 +458,9 @@ fn lofts_along(h: &mut OutputHash) -> Result<(), HashError> {
     solid(h, loft_along(&bend))?;
     solid(
         h,
-        og_shape::generators::solids::textured(&og_shape::generators::solids::Generator::LoftAlong(&bend)),
+        og_shape::generators::solids::textured(
+            &og_shape::generators::solids::Generator::LoftAlong(&bend),
+        ),
     )
 }
 

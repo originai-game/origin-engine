@@ -6,12 +6,12 @@
 
 #![allow(dead_code)]
 
-use og_shape::profile::{Circle, Ellipse, circle, ellipse};
 use og_shape::boolean::{Boolean, boolean};
-use og_shape::math::{DVec3, Frame, trig};
 use og_shape::generators::paths::{Loft, Sweep, loft, sweep};
 use og_shape::generators::solids::{BoxDesc, cuboid, sphere};
+use og_shape::math::{DVec3, Frame, trig};
 use og_shape::mesh::Solid;
+use og_shape::profile::{Circle, Ellipse, circle, ellipse};
 use og_shape::skin::{Pose, Rig, RigBone, Turn};
 
 /// The width of the blend across each seam: about four limb radii.

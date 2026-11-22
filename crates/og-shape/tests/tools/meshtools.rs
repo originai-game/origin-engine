@@ -11,8 +11,8 @@ mod skinned;
 #[path = "support/fbx.rs"]
 mod support;
 
-use og_shape::math::{DVec2, DVec3, Frame};
 use og_shape::generators::solids::{BoxDesc, cuboid, sphere};
+use og_shape::math::{DVec2, DVec3, Frame};
 use og_shape::mesh::Solid;
 use og_shape::tools::{
     Decimate, Floaters, Import, Joint, JointKind, Measure, Part, PlainGlb, Preview, Repair, Scene,
@@ -871,7 +871,8 @@ fn a_clip_is_written_back_and_read_as_the_same_motion() {
         // The same corners, by where they stand at rest, at each time.
         for time in [0.0, 0.3, 0.5, 0.9, 1.0] {
             let a = og_shape::skin::pose_by(&placed, &clip.at(time).unwrap()).unwrap();
-            let b = og_shape::skin::pose_by(&again.solid, &again.clips[0].at(time).unwrap()).unwrap();
+            let b =
+                og_shape::skin::pose_by(&again.solid, &again.clips[0].at(time).unwrap()).unwrap();
             for (i, rest) in placed.positions.iter().enumerate() {
                 let j = again
                     .solid
@@ -1219,8 +1220,9 @@ fn morph_targets_are_read_carried_and_written() {
 /// with UVs inside the image.
 #[test]
 fn a_draco_primitive_is_read() {
-    let packed =
-        include_bytes!("../../../../third_party/draco/testdata/cube_att.obj.edgebreaker.cl4.2.2.drc");
+    let packed = include_bytes!(
+        "../../../../third_party/draco/testdata/cube_att.obj.edgebreaker.cl4.2.2.drc"
+    );
     let json = format!(
         r#"{{"asset":{{"version":"2.0"}},"extensionsRequired":["KHR_draco_mesh_compression"],
         "scene":0,"scenes":[{{"nodes":[0]}}],"nodes":[{{"name":"cube","mesh":0}}],
@@ -1558,7 +1560,8 @@ fn a_quantized_glb_reads_back_to_the_bits_kept() {
     assert_eq!(report.accessors, 2);
     assert_eq!(report.bytes_after * 2, report.bytes_before);
     let read = |b: &[u8]| import(b, &Import::default(), &no_files).unwrap();
-    let place = |i: &og_shape::tools::Imported| og_shape::tools::apply_transform(&i.parts[0]).unwrap();
+    let place =
+        |i: &og_shape::tools::Imported| og_shape::tools::apply_transform(&i.parts[0]).unwrap();
     let (a, b) = (place(&read(&plain)), place(&read(&small)));
     assert_eq!(a.triangles, b.triangles);
     let step = 20.0 / 16383.0;

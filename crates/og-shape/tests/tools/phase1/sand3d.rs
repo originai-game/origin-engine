@@ -17,14 +17,14 @@
 //! - A joint's axis is a world direction (or the frame's normal); ranges
 //!   are degrees for turns, millimetres for slides.
 
-use og_shape::profile::{Circle, Contour, Gear, Profile, Rect, circle, gear, rect};
-use og_shape::math::{DVec2, DVec3, Frame, trig};
 use og_shape::generators::paths::{Loft, loft as gen_loft};
 use og_shape::generators::solids::{
     BoxDesc, CylinderDesc, Extrude, Revolve, cuboid, cylinder as gen_cylinder,
     extrude as gen_extrude, revolve as gen_revolve, sphere as gen_sphere, torus as gen_torus,
 };
+use og_shape::math::{DVec2, DVec3, Frame, trig};
 use og_shape::mesh::Solid;
+use og_shape::profile::{Circle, Contour, Gear, Profile, Rect, circle, gear, rect};
 use og_shape::tools::{Joint, JointKind, Material, Part, Scene};
 
 pub type Id = usize;

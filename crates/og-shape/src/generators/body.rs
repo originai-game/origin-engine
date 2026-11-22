@@ -16,10 +16,10 @@
 //! the second, 0.05 mm later. An end where both views close is a point;
 //! any other end is a flat cap.
 
-use crate::profile::curve::segments;
-use crate::profile::{Contour, Profile, Superellipse, superellipse};
 use crate::math::{DVec2, DVec3, trig};
 use crate::mesh::Solid;
+use crate::profile::curve::segments;
+use crate::profile::{Contour, Profile, Superellipse, superellipse};
 
 use crate::generators::solids::{GenError, RingUvs, finish, push};
 use crate::generators::spline;
