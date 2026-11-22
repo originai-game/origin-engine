@@ -295,7 +295,12 @@ impl Renderer {
                     view: self.graph.view(post::prepass_depth(self.samples)),
                     depth_ops: Some(wgpu::Operations {
                         load: wgpu::LoadOp::Load,
-                        store: kept_depth,
+                        // The water's front-depth pass below tests against it.
+                        store: if front_depth.is_some() {
+                            wgpu::StoreOp::Store
+                        } else {
+                            kept_depth
+                        },
                     }),
                     stencil_ops: None,
                 }),
