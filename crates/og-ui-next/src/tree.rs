@@ -1284,6 +1284,9 @@ impl Tree {
         // The groups open while their subtrees paint, innermost last, and
         // the layers the paint may still draw.
         let mut open: Vec<Open> = Vec::new();
+        // The boxes of what the last filter group listed holds, each a
+        // group it merged (`close_group`).
+        let mut members: Vec<[f32; 4]> = Vec::new();
         let mut room = Room {
             layers: 0,
             area: 0.0,
@@ -1297,7 +1300,12 @@ impl Tree {
                 .is_some_and(|o| !descends(&self.els, e as u32, o.e))
             {
                 let o = open.pop().expect("open");
-                close_group(&mut self.drawn, &o, screen);
+                close_group(
+                    &mut self.drawn,
+                    &o,
+                    screen,
+                    (!self.stacking.reorders()).then_some(&mut members),
+                );
             }
             let el = &self.els[e];
             // What motion shows: the box a layout transition slides, the
@@ -2100,7 +2108,12 @@ impl Tree {
             self.stacking.painted(e, start..self.drawn.quads.len());
         }
         while let Some(o) = open.pop() {
-            close_group(&mut self.drawn, &o, screen);
+            close_group(
+                &mut self.drawn,
+                &o,
+                screen,
+                (!self.stacking.reorders()).then_some(&mut members),
+            );
         }
         self.stacking
             .reorder(&mut self.drawn.quads, &mut self.drawn.groups);
@@ -2282,8 +2295,14 @@ fn descends(els: &[El], e: u32, a: u32) -> bool {
 /// covers the screen box of what it holds (each quad's reach, through its
 /// transform, inside its clip) grown by its effects' reach (through its
 /// element's transform), on what of `screen` it shows in grown as much,
-/// and the group is listed.
-fn close_group(p: &mut Paint, o: &Open, screen: [f32; 4]) {
+/// and the group is listed. With `members` (no stacking reorder moves its
+/// quads: the boxes of the groups the last one listed holds), a group
+/// right after the last one listed, with the same effects, transform and
+/// composite, and whose box meets none of those, joins it: one layer and
+/// one filter run draw them all, as they would alone, since none's
+/// effects reach another's box (a row of shadowed icons is one layer, not
+/// one each).
+fn close_group(p: &mut Paint, o: &Open, screen: [f32; 4], members: Option<&mut Vec<[f32; 4]>>) {
     let mut bounds = [f32::MAX, f32::MAX, f32::MIN, f32::MIN];
     for q in &p.quads[o.quad + 1..] {
         let [x, y, w, h] = q.rect;
@@ -2351,16 +2370,74 @@ fn close_group(p: &mut Paint, o: &Open, screen: [f32; 4]) {
     let y0 = (bounds[1] - r).max(shown[1]);
     let x1 = (bounds[2] + r).min(shown[2]);
     let y1 = (bounds[3] + r).min(shown[3]);
+    let rect = [x0, y0, (x1 - x0).max(0.0), (y1 - y0).max(0.0)];
+    let end = p.quads.len() as u32;
+    let mut members = members;
+    if let Some(&last) = p.groups.last()
+        && let Some(members) = members.as_deref_mut()
+        && !last.backdrop
+        && last.end == o.quad as u32
+        && last.xf == o.xf
+        && p.effects[last.first as usize..(last.first + last.count) as usize] == *effects
+    {
+        let at = last.quad as usize;
+        let was = p.quads[at];
+        let [ax, ay, aw, ah] = was.rect;
+        // Apart when the boxes overlap by no more than a pixel: each box's
+        // last pixel is its effects' last tap (3 deviations out, under 1%
+        // of the middle's weight) on its content's anti-aliased edge. A
+        // blur alone blurs its content too, so one layer differs from two
+        // laid over each other by the product of their tails: under half
+        // a code value (1/512) while the gap between their contents is 3.5
+        // deviations (each tail under 0.044 at its middle), so each box
+        // may reach 1.25 deviations into the other's.
+        let overlap = 1.0
+            + match *effects {
+                [PaintEffect::Blur(sigma)] => 2.0 * 1.25 * sigma * scale,
+                _ => 0.0,
+            };
+        let apart = members.iter().all(|&[mx, my, mw, mh]| {
+            x1 <= mx + overlap
+                || mx + mw <= x0 + overlap
+                || y1 <= my + overlap
+                || my + mh <= y0 + overlap
+        });
+        let same = PaintQuad {
+            rect: was.rect,
+            a: was.a,
+            ..o.composite
+        } == was;
+        if apart && same {
+            members.push(rect);
+            let (ux, uy) = (ax.min(x0), ay.min(y0));
+            p.quads[at].rect = [ux, uy, (ax + aw).max(x1) - ux, (ay + ah).max(y1) - uy];
+            // Its own composite draws nothing in the layer they share.
+            p.quads[o.quad] = PaintQuad {
+                rect: [0.0; 4],
+                color: [0.0; 4],
+                kind: PaintKind::Solid as u32,
+                ..o.composite
+            };
+            if let Some(g) = p.groups.last_mut() {
+                g.end = end;
+            }
+            return;
+        }
+    }
+    if let Some(members) = members {
+        members.clear();
+        members.push(rect);
+    }
     p.groups.push(PaintGroup {
         quad: o.quad as u32,
-        end: p.quads.len() as u32,
+        end,
         first: o.first,
         count: o.count,
         xf: o.xf,
         backdrop: false,
     });
     p.quads[o.quad] = PaintQuad {
-        rect: [x0, y0, (x1 - x0).max(0.0), (y1 - y0).max(0.0)],
+        rect,
         a: p.groups.len() as u32 - 1,
         ..o.composite
     };

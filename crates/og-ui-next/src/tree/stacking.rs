@@ -74,6 +74,11 @@ impl Stacking {
             .extend(self.members[start..end].iter().rev().map(|m| m.3));
     }
 
+    /// Whether the paint order moves quads ([`Self::reorder`] runs).
+    pub fn reorders(&self) -> bool {
+        self.changed
+    }
+
     pub fn painted(&mut self, e: usize, range: Range<usize>) {
         if self.changed {
             self.ranges[e] = range;

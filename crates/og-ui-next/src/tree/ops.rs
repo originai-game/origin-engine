@@ -5177,6 +5177,85 @@ mod tests {
         assert_eq!(at(5), backdrop.quad + 1, "the backdrop right under its box");
     }
 
+    /// Siblings with the same filter whose reach does not meet share one
+    /// group (one layer, one filter run), its composite over them all;
+    /// ones that meet, or that filter differently, keep their own; blurs
+    /// alone meet only closer than 3.5 deviations. Ways this could fail:
+    /// overlapping shadows merged (one would shadow the other), a
+    /// different blur merged into a neighbour's, close blurs merged, or a
+    /// merged sibling's quads left outside the group.
+    #[test]
+    fn apart_siblings_with_one_filter_share_a_group() {
+        let mut t = real();
+        let icon = "w-[20px] h-[20px] shrink-0 bg-white drop-shadow-[0_2px_2px_#000]";
+        let card = "w-[40px] h-[40px] shrink-0 bg-white blur-[8px]";
+        nodes(
+            &mut t,
+            &[
+                (20, 0, "flex flex-col", 0),
+                (1, 0, "flex flex-row gap-[40px]", 20),
+                (2, 0, icon, 1),
+                (3, 0, icon, 1),
+                (4, 0, icon, 1),
+                (5, 0, "w-[20px] h-[20px] shrink-0 bg-white blur-[2px]", 1),
+                (6, 0, "flex flex-row gap-[2px]", 20),
+                (7, 0, icon, 6),
+                (8, 0, icon, 6),
+                (9, 0, "flex flex-row gap-[30px]", 20),
+                (10, 0, card, 9),
+                (11, 0, card, 9),
+                (12, 0, "flex flex-row gap-[20px]", 20),
+                (13, 0, card, 12),
+                (14, 0, card, 12),
+                (15, 0, "flex flex-row flex-wrap w-[110px] gap-[30px]", 20),
+                (16, 0, card, 15),
+                (17, 0, card, 15),
+                (18, 0, card, 15),
+                (19, 0, card, 15),
+            ],
+        );
+        frame(&mut t);
+        let d = &t.drawn;
+        let at = |id: u32| {
+            let r = t.op_box(id).unwrap();
+            d.quads
+                .iter()
+                .position(|q| q.kind == PaintKind::Solid as u32 && q.rect == r)
+                .unwrap() as u32
+        };
+        let group_of = |id: u32| {
+            let k = at(id);
+            d.groups
+                .iter()
+                .position(|g| (g.quad + 1..g.end).contains(&k))
+                .unwrap()
+        };
+        assert_eq!(d.groups.len(), 8, "{:?}", d.groups);
+        assert_eq!(group_of(2), group_of(3));
+        assert_eq!(group_of(2), group_of(4));
+        assert_ne!(group_of(4), group_of(5), "another filter");
+        assert_ne!(group_of(7), group_of(8), "shadows that meet");
+        // A blur alone: 3.5 deviations apart (and the edge's pixel) is far
+        // enough, closer is not.
+        assert_eq!(group_of(10), group_of(11), "blurs 30 px apart");
+        assert_ne!(group_of(13), group_of(14), "blurs 20 px apart");
+        // A grid: the last is apart from each of the others, though in
+        // the box around them.
+        for id in [17, 18, 19] {
+            assert_eq!(group_of(16), group_of(id), "{id} of the grid");
+        }
+        // The shared composite covers all three and their shadows' reach
+        // (3 deviations of 1 px and the 2 px offset).
+        let c = d.quads[d.groups[group_of(2)].quad as usize];
+        let (first, last) = (t.op_box(2).unwrap(), t.op_box(4).unwrap());
+        assert!(c.rect[0] <= first[0] - 5.0, "{:?}", c.rect);
+        assert!(
+            c.rect[0] + c.rect[2] >= last[0] + last[2] + 5.0,
+            "{:?}",
+            c.rect
+        );
+    }
+
     /// A box paints its outer shadows under it, then its fill and
     /// gradient, its inset shadows, its border and its outline, with CSS's
     /// radii (scaled down together when they overlap) and a corner
