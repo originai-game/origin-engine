@@ -21,16 +21,19 @@ export function webGpuAbsent(): string | null {
  * refuses is the engine Worker's start failure (`og_web_attach_canvas`).
  * It asks for the adapter the renderer will ask for: its power preference,
  * `low-power` where the player chose it (`lowPower`), else `high-performance`
- * (og-render `power_preference`). Chrome on a Linux host with an NVIDIA GPU
- * answers a request without one null and that one the GPU. It asks for an
- * adapter: call it off the page's main thread.
+ * (og-render `power_preference`), at the `compatibility` feature level
+ * (og-render `FEATURE_LEVEL`), so a GPU that runs only WebGPU's
+ * compatibility mode (GLES, D3D11) is supported: the browser still hands a
+ * core adapter wherever it has one. Chrome on a Linux host with an NVIDIA GPU
+ * answers a request without a power preference null and one with it the GPU.
+ * It asks for an adapter: call it off the page's main thread.
  */
 export async function webGpuMissing(lowPower: boolean): Promise<string | null> {
   const absent = webGpuAbsent();
   if (absent) return absent;
-  const gpu = (globalThis.navigator as { gpu: { requestAdapter(options: { powerPreference: string }): Promise<unknown> } }).gpu;
+  const gpu = (globalThis.navigator as { gpu: { requestAdapter(options: { powerPreference: string; featureLevel: string }): Promise<unknown> } }).gpu;
   try {
-    return (await gpu.requestAdapter({ powerPreference: lowPower ? "low-power" : "high-performance" })) ? null : "the browser found no WebGPU adapter";
+    return (await gpu.requestAdapter({ powerPreference: lowPower ? "low-power" : "high-performance", featureLevel: "compatibility" })) ? null : "the browser found no WebGPU adapter";
   } catch (e) {
     return `the browser's WebGPU did not start: ${e instanceof Error ? e.message : String(e)}`;
   }

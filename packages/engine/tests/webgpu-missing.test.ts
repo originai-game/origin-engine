@@ -48,6 +48,16 @@ test("it asks for the renderer's adapter: high-performance, or low-power where t
   }
 });
 
+test("it asks at the compatibility feature level, so a GPU with only WebGPU's compatibility mode is supported", async () => {
+  try {
+    // A GLES or D3D11 GPU: no adapter at the default (core) level, one at the compatibility level.
+    withGpu({ requestAdapter: async (o?: { featureLevel?: string }) => (o?.featureLevel === "compatibility" ? {} : null) });
+    expect(await webGpuMissing(false)).toBeNull();
+  } finally {
+    restore();
+  }
+});
+
 test("a timing's adapter: vendor/architecture, software on a CPU rasterizer however it is told", () => {
   expect(adapterName({ vendor: "nvidia", architecture: "lovelace", isFallbackAdapter: false })).toBe("nvidia/lovelace");
   // Chrome's SwiftShader is the fallback adapter; Dawn on llvmpipe is not, and is known by name; the renderer's own flag counts too.

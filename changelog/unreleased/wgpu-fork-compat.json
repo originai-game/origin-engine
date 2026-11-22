@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "web player",
+      "summary": "A browser whose GPU runs only WebGPU's compatibility mode (an OpenGL ES or Direct3D 11 GPU) now runs the engine instead of reporting WebGPU unsupported: the engine asks for a compatibility adapter, the browser still gives a core adapter wherever it has one, and on a compatibility device the renderer runs its compat tier (no MSAA, no storage in the vertex stage outside the UI, the mode's limits and shader rules). The engine builds on origin-engine's wgpu fork (v30.0.2 with the upstream compatibility-mode patches) until wgpu releases them."
+    }
+  ]
+}

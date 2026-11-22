@@ -232,6 +232,23 @@ impl Tier {
         }
     }
 
+    /// The tier a renderer asked for `asked` is made for on this adapter:
+    /// [`Tier::Compat`] for [`Tier::Full`] on a WebGPU adapter without
+    /// `core-features-and-limits`, a compatibility-mode device (the browser
+    /// validates by that mode's rules); `asked` everywhere else. A lower
+    /// tier keeps its own ceiling there, under the adapter's capabilities,
+    /// which wgpu reports as the mode allows them. The native backends
+    /// enforce no compatibility rules: a native adapter keeps `asked`.
+    pub fn for_device(asked: Tier, info: &wgpu::AdapterInfo, features: wgpu::Features) -> Tier {
+        let compat_device = info.backend == wgpu::Backend::BrowserWebGpu
+            && !features.contains(wgpu::Features::CORE_FEATURES_AND_LIMITS);
+        if asked == Tier::Full && compat_device {
+            Tier::Compat
+        } else {
+            asked
+        }
+    }
+
     /// The capabilities a device may have on this tier.
     pub const fn ceiling(self) -> Caps {
         let mini_game = Caps::FULL.without(Caps(
@@ -256,28 +273,43 @@ impl Tier {
     }
 
     /// `limits` at most the tier's: compatibility mode's defaults on
-    /// [`Tier::Compat`] (gpuweb's compatibility-mode proposal §10: 2D and
-    /// 1D textures of 4096, four colour attachments, 16 KiB uniform
-    /// bindings, 15 inter-stage variables, compute workgroups of 128
-    /// invocations and 128 along x and y), `limits` itself on the others.
-    /// The mode's storage per stage (four in the fragment stage, none in
-    /// the vertex stage) has no wgpu limit yet: the tier's ceiling takes
-    /// [`Caps::VERTEX_STORAGE`] away instead.
+    /// [`Tier::Compat`] (`wgpu::Limits::compatibility_defaults`: 2D and 1D
+    /// textures of 4096, four colour attachments, 16 KiB uniform bindings,
+    /// 15 inter-stage variables, compute workgroups of 128 invocations and
+    /// 128 along x and y), `limits` itself on the others. The storage a
+    /// stage may bind stays `limits`' (the mode's defaults, none in the
+    /// vertex stage, are what every compatibility device has, not a
+    /// ceiling: the UI's paint reads its quads from storage in the vertex
+    /// stage, and the adapter says how many it has). The tier's ceiling
+    /// takes [`Caps::VERTEX_STORAGE`] away from the GPU-driven paths.
     pub fn compat_limits(self, limits: wgpu::Limits) -> wgpu::Limits {
         if self != Tier::Compat {
             return limits;
         }
+        let mode = wgpu::Limits::compatibility_defaults();
         wgpu::Limits {
-            max_texture_dimension_1d: limits.max_texture_dimension_1d.min(4096),
-            max_texture_dimension_2d: limits.max_texture_dimension_2d.min(4096),
-            max_color_attachments: limits.max_color_attachments.min(4),
-            max_uniform_buffer_binding_size: limits.max_uniform_buffer_binding_size.min(16 << 10),
-            max_inter_stage_shader_variables: limits.max_inter_stage_shader_variables.min(15),
+            max_texture_dimension_1d: limits
+                .max_texture_dimension_1d
+                .min(mode.max_texture_dimension_1d),
+            max_texture_dimension_2d: limits
+                .max_texture_dimension_2d
+                .min(mode.max_texture_dimension_2d),
+            max_color_attachments: limits.max_color_attachments.min(mode.max_color_attachments),
+            max_uniform_buffer_binding_size: limits
+                .max_uniform_buffer_binding_size
+                .min(mode.max_uniform_buffer_binding_size),
+            max_inter_stage_shader_variables: limits
+                .max_inter_stage_shader_variables
+                .min(mode.max_inter_stage_shader_variables),
             max_compute_invocations_per_workgroup: limits
                 .max_compute_invocations_per_workgroup
-                .min(128),
-            max_compute_workgroup_size_x: limits.max_compute_workgroup_size_x.min(128),
-            max_compute_workgroup_size_y: limits.max_compute_workgroup_size_y.min(128),
+                .min(mode.max_compute_invocations_per_workgroup),
+            max_compute_workgroup_size_x: limits
+                .max_compute_workgroup_size_x
+                .min(mode.max_compute_workgroup_size_x),
+            max_compute_workgroup_size_y: limits
+                .max_compute_workgroup_size_y
+                .min(mode.max_compute_workgroup_size_y),
             ..limits
         }
     }
@@ -363,6 +395,11 @@ mod tests {
         assert_eq!(compat.max_compute_invocations_per_workgroup, 128);
         assert_eq!(compat.max_compute_workgroup_size_x, 128);
         assert_eq!(compat.max_uniform_buffer_binding_size, 16 << 10);
+        // Storage per stage is the adapter's: the UI reads storage in the vertex stage.
+        assert_eq!(
+            compat.max_storage_buffers_in_vertex_stage,
+            full.max_storage_buffers_in_vertex_stage
+        );
         // Never raised past what was asked.
         assert_eq!(
             compat.max_texture_dimension_3d,
@@ -376,6 +413,20 @@ mod tests {
             2048
         );
         assert_eq!(Tier::MiniGame.compat_limits(full.clone()), full);
+    }
+
+    #[test]
+    fn a_browser_adapter_without_core_features_is_the_compat_tier() {
+        let web = wgpu::AdapterInfo::new(wgpu::DeviceType::Cpu, wgpu::Backend::BrowserWebGpu);
+        let native = wgpu::AdapterInfo::new(wgpu::DeviceType::Cpu, wgpu::Backend::Gl);
+        let core = wgpu::Features::CORE_FEATURES_AND_LIMITS;
+        let none = wgpu::Features::empty();
+        assert_eq!(Tier::for_device(Tier::Full, &web, none), Tier::Compat);
+        assert_eq!(Tier::for_device(Tier::Full, &web, core), Tier::Full);
+        // Native backends enforce no compatibility rules.
+        assert_eq!(Tier::for_device(Tier::Full, &native, none), Tier::Full);
+        // A lower tier keeps its own ceiling.
+        assert_eq!(Tier::for_device(Tier::MiniGame, &web, none), Tier::MiniGame);
     }
 
     #[test]

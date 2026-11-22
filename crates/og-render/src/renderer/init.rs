@@ -24,6 +24,14 @@ mod shaders;
 
 mod state;
 use shaders::{ShadersAndLayoutsInputs, ShadersAndLayoutsOutputs};
+/// The feature level the adapter is asked for: compatibility, so a browser
+/// whose GPU runs only WebGPU's compatibility mode (GLES, D3D11) still gives
+/// one. A browser hands a core adapter wherever it has one, and wgpu gives the
+/// device `core-features-and-limits` whenever the adapter has it; without
+/// it the renderer is made for [`Tier::Compat`] (`init/adapter.rs`). The
+/// native backends ignore the feature level.
+const FEATURE_LEVEL: wgpu::FeatureLevel = wgpu::FeatureLevel::Compatibility;
+
 impl Renderer {
     /// Times each render-graph pass's CPU encoding with `clock` (ms) and,
     /// where the device has timestamp queries, its GPU time
@@ -129,6 +137,7 @@ impl Renderer {
         let instance = desc.backend.instance();
         let adapter = instance
             .request_adapter(&wgpu::RequestAdapterOptions {
+                feature_level: FEATURE_LEVEL,
                 power_preference: power_preference(desc),
                 force_fallback_adapter: false,
                 compatible_surface: None,
@@ -193,6 +202,7 @@ impl Renderer {
         }
         let adapter = instance
             .request_adapter(&wgpu::RequestAdapterOptions {
+                feature_level: FEATURE_LEVEL,
                 power_preference: power_preference(desc),
                 force_fallback_adapter: false,
                 compatible_surface: Some(&surface),

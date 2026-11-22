@@ -400,7 +400,9 @@ tier lacks some: the mini-game WebGPU tier has no MRT, asynchronous
 pipelines or timestamps; the GL tier has no compute either; the
 compatibility tier (WebGPU's compatibility mode on GLES and D3D11 devices)
 has no storage in the vertex stage, colour targets blended each their own
-way or `rg32float` storage, and runs at that mode's limits. Every shader
+way or `rg32float` storage, and runs at that mode's limits; the web host
+asks for a `compatibility` feature-level adapter and runs this tier when the
+browser's device lacks `core-features-and-limits`. Every shader
 keeps compatibility mode's WGSL rules on every tier (og-render's
 `tests/wgsl_rules.rs`). Three rules follow:
 

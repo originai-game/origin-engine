@@ -38,6 +38,7 @@ impl Renderer {
         }: AdapterPlanInputs<'_>,
     ) -> AdapterPlanOutputs {
         let adapter_info = adapter.get_info();
+        let tier = Tier::for_device(desc.tier, &adapter_info, adapter.features());
         // What the adapter has, less what the caller treats as absent,
         // under the tier's ceiling (caps.rs): every decision below about
         // the device reads these.
@@ -51,14 +52,14 @@ impl Renderer {
         {
             caps = caps.without(Caps::RG32_STORAGE);
         }
-        let caps = caps & desc.tier.ceiling();
+        let caps = caps & tier.ceiling();
         let adapter_features = caps.features(adapter_features);
         let flags = caps.downlevel(adapter_flags);
         // GPU culling and the meshlet path: compute dispatches and indirect draws.
         let indirect = caps.contains(Caps::INDIRECT | Caps::COMPUTE);
         // Compatibility mode multisamples no rgba16float target (the HDR
         // target, gpuweb's compatibility-mode proposal §22).
-        let msaa_ok = supports_msaa(adapter) && desc.tier != Tier::Compat;
+        let msaa_ok = supports_msaa(adapter) && tier != Tier::Compat;
         let antialias = match desc.antialias {
             Antialias::Off => Antialias::Off,
             Antialias::Taa => Antialias::Taa,
@@ -85,7 +86,25 @@ impl Renderer {
             .max_storage_buffers_per_shader_stage
             .max(8)
             .min(adapter.limits().max_storage_buffers_per_shader_stage);
-        let limits = desc.tier.compat_limits(limits);
+        // The same counts in the vertex and fragment stages, under what the
+        // adapter has there: a core device (wgpu-core, a browser's core
+        // device) sets them from the per-stage ones itself, a compatibility
+        // device keeps what is asked for, its defaults allow none in the
+        // vertex stage, and the UI's paint reads five there.
+        let per_stage = adapter.limits();
+        limits.max_storage_buffers_in_vertex_stage = limits
+            .max_storage_buffers_per_shader_stage
+            .min(per_stage.max_storage_buffers_in_vertex_stage);
+        limits.max_storage_buffers_in_fragment_stage = limits
+            .max_storage_buffers_per_shader_stage
+            .min(per_stage.max_storage_buffers_in_fragment_stage);
+        limits.max_storage_textures_in_vertex_stage = limits
+            .max_storage_textures_per_shader_stage
+            .min(per_stage.max_storage_textures_in_vertex_stage);
+        limits.max_storage_textures_in_fragment_stage = limits
+            .max_storage_textures_per_shader_stage
+            .min(per_stage.max_storage_textures_in_fragment_stage);
+        let limits = tier.compat_limits(limits);
         let shadow_size = desc
             .shadow_map_size
             .clamp(64, limits.max_texture_dimension_2d.max(64));
@@ -150,7 +169,7 @@ impl Renderer {
             visual_simulation: caps.contains(Caps::COMPUTE),
             indirect_per_draw: desc.indirect_per_draw || webkit(),
             caps,
-            tier: desc.tier,
+            tier,
         };
         info.volumetric_lights = volumetric::lights(info.volumetric);
         log::info!(
