@@ -1193,9 +1193,10 @@ impl Next {
                 let control = f
                     .is_some_and(|f| CONTROLS.contains(&f.role) || f.states.contains(&"focusable"));
                 // In the surface's CSS px, as og-ui's elements are.
-                // The part that shows; clipped when that is not all of it.
+                // The part that shows on screen; clipped when its
+                // ancestors' cuts take some of it.
                 let [x0, y0, x1, y1] = n.visible;
-                let clipped = [x0, y0, x1 - x0, y1 - y0] != n.rect;
+                let clipped = n.clipped;
                 let [x, y, width, height] = [x0, y0, x1 - x0, y1 - y0].map(|v| v * unit);
                 og_probe::UiElement {
                     id: n.id.to_string(),
@@ -1231,6 +1232,15 @@ impl Next {
                         // A word its lines cut where UAX #14 has no break.
                         if !n.broken.is_empty() {
                             d.insert("brokenWords".into(), json!(n.broken));
+                        }
+                        // The screen rectangle its ancestors' scrollers and
+                        // overflow cut it to (x, y, width, height): of its
+                        // textLines, only what lies inside is drawn.
+                        if let Some([cx0, cy0, cx1, cy1]) = n.clip {
+                            d.insert(
+                                "clip".into(),
+                                json!([cx0, cy0, cx1 - cx0, cy1 - cy0].map(|v| v * unit)),
+                            );
                         }
                         // Its text as drawn, for reading its ground in a
                         // frame: the ink as sRGB 0-255 with alpha 0-1, the

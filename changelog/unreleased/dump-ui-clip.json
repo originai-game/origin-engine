@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "dump_ui and og ui check (TSX elements)",
+      "summary": "An element under a transform, or under a moved ancestor (a scrolling strip such as the compass's tape), is now cut by its ancestors' scrollers and overflow where it is drawn: one moved entirely outside its clipping box is no longer listed, one moved partly outside is `clipped`, and its box is where it shows on screen instead of where it was laid out. Each element inside a clipping ancestor carries `clip`, the screen rectangle (x, y, width, height) it is drawn cut to, so a reader can skip the parts of its `textLines` that are not drawn."
+    }
+  ]
+}

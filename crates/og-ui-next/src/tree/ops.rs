@@ -1111,10 +1111,15 @@ pub struct OpNode<'a> {
     pub parent: u32,
     pub node: Id,
     pub rect: [f32; 4],
-    /// The part of `rect` a scroller or a box cutting its overflow lets
-    /// show (x0, y0, x1, y1); `rect`'s own corners when nothing cuts it,
-    /// and for a node under a transform, which `rect` does not place.
+    /// The part of it a scroller or a box cutting its overflow lets show
+    /// on screen (x0, y0, x1, y1): `rect`, or under a transform the box
+    /// bounding `rect` drawn through it, cut to `clip`.
     pub visible: [f32; 4],
+    /// The rectangle on screen it is drawn cut to (x0, y0, x1, y1), by
+    /// its ancestors' scrollers and overflow; `None` when nothing cuts it.
+    pub clip: Option<[f32; 4]>,
+    /// Whether `clip` cuts any of it.
+    pub clipped: bool,
     pub shown: bool,
     pub text: &'a str,
     /// Where its laid-out lines cut a word with no UAX #14 break there,
@@ -1166,20 +1171,42 @@ impl Tree {
             .filter_map(|(e, el)| {
                 let &(x, y, shown, _) = self.abs.get(e)?;
                 let b = self.arena.box_of(el.node);
-                let own = [x, y, x + b.w, y + b.h];
-                let cut = match el.arena_parent {
-                    _ if el.anchored().is_some() || self.xfs.get(e).is_some_and(|&xf| xf != 0) => {
-                        own
+                let transform = self
+                    .xfs
+                    .get(e)
+                    .copied()
+                    .filter(|&xf| xf != 0)
+                    .and_then(|xf| self.painted_transforms.get(xf as usize))
+                    .map(|&[a, b, c, d, tx, ty, _, _]| [a, b, c, d, tx, ty]);
+                // Its box on screen: through its transform, the box that
+                // bounds it there, where the cuts (screen space) apply.
+                let own = match transform {
+                    None => [x, y, x + b.w, y + b.h],
+                    Some([ma, mb, mc, md, me, mf]) => {
+                        let mut o = [f32::MAX, f32::MAX, f32::MIN, f32::MIN];
+                        for [cx, cy] in [[x, y], [x + b.w, y], [x, y + b.h], [x + b.w, y + b.h]] {
+                            let (sx, sy) = (ma * cx + mc * cy + me, mb * cx + md * cy + mf);
+                            o = [o[0].min(sx), o[1].min(sy), o[2].max(sx), o[3].max(sy)];
+                        }
+                        o
                     }
-                    NONE => own,
-                    p => self.cuts.get(p as usize).copied().unwrap_or(own),
                 };
+                // An anchored node escapes its ancestors' clips.
+                let clip = match el.arena_parent {
+                    _ if el.anchored().is_some() => None,
+                    NONE => None,
+                    p => self.cuts.get(p as usize).copied().filter(|c| {
+                        c[0] > f32::MIN || c[1] > f32::MIN || c[2] < f32::MAX || c[3] < f32::MAX
+                    }),
+                };
+                let cut = clip.unwrap_or(own);
                 let visible = [
                     own[0].max(cut[0]),
                     own[1].max(cut[1]),
                     own[2].min(cut[2]).max(own[0].max(cut[0])),
                     own[3].min(cut[3]).max(own[1].max(cut[1])),
                 ];
+                let clipped = visible != own;
                 let glyphs = (!el.text.is_empty())
                     .then(|| self.glyphs.get(e))
                     .flatten()
@@ -1194,6 +1221,8 @@ impl Tree {
                     node: el.node,
                     rect: [x, y, b.w, b.h],
                     visible,
+                    clip,
+                    clipped,
                     shown,
                     text: &el.text,
                     broken: self.glyphs.get(e).map_or(Vec::new(), |g| {
@@ -1213,13 +1242,7 @@ impl Tree {
                             })
                             .collect()
                     }),
-                    transform: self
-                        .xfs
-                        .get(e)
-                        .copied()
-                        .filter(|&xf| xf != 0)
-                        .and_then(|xf| self.painted_transforms.get(xf as usize))
-                        .map(|&[a, b, c, d, tx, ty, _, _]| [a, b, c, d, tx, ty]),
+                    transform,
                 })
             })
             .collect()
@@ -1312,11 +1335,13 @@ mod tests {
             if class.split_whitespace().any(|c| c == "half") {
                 r.skin.transform.scale = [0.5, 0.5];
             }
-            // `up`: drawn 40 px higher; `clip`: cuts what overflows it;
+            // `up`: drawn 40 px higher; `left`: 30 px to the left; `clip`:
+            // cuts what overflows it;
             // `ink`: a white fill.
             for c in class.split_whitespace() {
                 match c {
                     "up" => r.skin.transform.translate = [0.0, -40.0],
+                    "left" => r.skin.transform.translate = [-30.0, 0.0],
                     "clip" => {
                         let mut l = taffy::Style::from(&r.layout);
                         l.overflow = taffy::Point {
@@ -2463,6 +2488,40 @@ mod tests {
         let n = t.dump_ops().into_iter().find(|n| n.id == 9).unwrap();
         let [x, y, w, h] = n.rect;
         assert_eq!((w, n.visible), (600.0, [x, y, x + w, y + h]));
+    }
+
+    /// A moved node is cut where it is drawn, as the probe lists it: one
+    /// moved out of its clipping box shows none of it (the compass's
+    /// letters off its strip), one moved partly out shows the rest, cut.
+    #[test]
+    fn the_probe_cuts_a_moved_node_where_it_is_drawn() {
+        let mut t = tree();
+        let mut b = Batch::default();
+        b.op(1).u32(1).u8(0);
+        b.op(4).u32(1).str("big col");
+        for (clip, moved, class) in [(2, 3, "b up"), (4, 5, "b left")] {
+            b.op(1).u32(clip).u8(0);
+            b.op(4).u32(clip).str("b clip fixed");
+            b.op(1).u32(moved).u8(0);
+            b.op(4).u32(moved).str(class);
+            b.op(8).u32(1).u32(clip).u32(u32::MAX);
+            b.op(8).u32(clip).u32(moved).u32(u32::MAX);
+        }
+        b.op(8).u32(0).u32(1).u32(u32::MAX);
+        t.apply(&b.bytes()).unwrap();
+        frame(&mut t);
+        let ops = t.dump_ops();
+        let at = |id: u32| ops.iter().find(|n| n.id == id).unwrap();
+        let [_, y0, _, y1] = at(3).visible;
+        assert_eq!(y0, y1, "drawn above its box, cut away whole");
+        let n = at(5);
+        assert_eq!(n.visible, [0.0, 20.0, 20.0, 40.0]);
+        assert_eq!((n.clip, n.clipped), (Some([0.0, 20.0, 50.0, 40.0]), true));
+        assert_eq!(
+            (at(2).clip, at(2).clipped),
+            (None, false),
+            "nothing cuts the boxes"
+        );
     }
 
     /// What a box under a transform clips is cut where that box is drawn,
