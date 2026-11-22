@@ -490,3 +490,63 @@ fn ratios_levels_and_frames_are_taken_and_bounded() {
         assert!(String::from_utf8_lossy(&o.stderr).contains("too large"));
     }
 }
+
+/// `preview --views` writes cut-outs named by view, and `compare` reads
+/// them back: the model against its own front view fits exactly, against
+/// its left view (another silhouette) it does not, and the aspect says by
+/// how much. A failure under --json is `{"error"}` on stdout.
+#[test]
+fn compare_fits_the_view_it_was_drawn_in() {
+    let dir = std::env::temp_dir().join(format!("og-model-views-{}", std::process::id()));
+    let out = shape(&[
+        "preview",
+        PROGRAM,
+        "--views",
+        "front,left",
+        "--out",
+        dir.to_str().unwrap(),
+        "--width",
+        "200",
+        "--json",
+    ]);
+    assert!(
+        out.status.success(),
+        "{}",
+        String::from_utf8_lossy(&out.stdout)
+    );
+    let fit = |image: &str| -> serde_json::Value {
+        let path = dir.join(image);
+        let out = shape(&[
+            "compare",
+            PROGRAM,
+            "--image",
+            path.to_str().unwrap(),
+            "--view",
+            "front",
+            "--json",
+        ]);
+        assert!(
+            out.status.success(),
+            "{}",
+            String::from_utf8_lossy(&out.stdout)
+        );
+        serde_json::from_slice(&out.stdout).unwrap()
+    };
+    let same = fit("front.png");
+    assert!(same["iou"].as_f64().unwrap() > 0.999, "{same}");
+    assert!(
+        (same["aspect"]["ratio"].as_f64().unwrap() - 1.0).abs() < 1e-9,
+        "{same}"
+    );
+    let other = fit("left.png");
+    assert!(other["iou"].as_f64().unwrap() < 0.8, "{other}");
+    assert!(
+        (other["aspect"]["ratio"].as_f64().unwrap() - 1.0).abs() > 0.2,
+        "{other}"
+    );
+    let missing = shape(&["compare", PROGRAM, "--image", "/no/such.png", "--json"]);
+    assert_eq!(missing.status.code(), Some(1));
+    let e: serde_json::Value = serde_json::from_slice(&missing.stdout).unwrap();
+    assert!(e["error"].as_str().unwrap().contains("such.png"), "{e}");
+    let _ = std::fs::remove_dir_all(&dir);
+}

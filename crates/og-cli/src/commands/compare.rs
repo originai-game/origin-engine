@@ -382,7 +382,7 @@ fn background(img: &RgbaImage) -> [u8; 3] {
 }
 
 /// Which pixels are the object (row-major), and the background colour.
-fn silhouette(img: &RgbaImage, key: f64) -> (Vec<bool>, [u8; 3]) {
+pub(crate) fn silhouette(img: &RgbaImage, key: f64) -> (Vec<bool>, [u8; 3]) {
     let bg = background(img);
     if img.pixels().any(|p| p[3] < 255) {
         return (img.pixels().map(|p| p[3] >= 128).collect(), bg);
@@ -397,7 +397,7 @@ fn silhouette(img: &RgbaImage, key: f64) -> (Vec<bool>, [u8; 3]) {
 }
 
 /// The box (x0, y0, x1, y1), exclusive ends, of the set pixels.
-fn bbox(mask: &[bool], w: u32) -> Option<(f64, f64, f64, f64)> {
+pub(crate) fn bbox(mask: &[bool], w: u32) -> Option<(f64, f64, f64, f64)> {
     let mut b: Option<(u32, u32, u32, u32)> = None;
     for (i, _) in mask.iter().enumerate().filter(|(_, m)| **m) {
         let (x, y) = (i as u32 % w, i as u32 / w);
@@ -453,6 +453,24 @@ fn warp(
     out
 }
 
+/// `--align`'s map from a reference pixel to the render's: the render's
+/// silhouette box scaled uniformly to the reference's box area and
+/// centred on it. `None` when either mask is empty.
+pub(crate) fn aligned(
+    ref_mask: &[bool],
+    w: u32,
+    mask: &[bool],
+    rw: u32,
+) -> Option<impl Fn(f64, f64) -> (f64, f64) + use<>> {
+    let (a, b) = (bbox(ref_mask, w)?, bbox(mask, rw)?);
+    let s = (((a.2 - a.0) * (a.3 - a.1)) / ((b.2 - b.0) * (b.3 - b.1))).sqrt();
+    let (ca, cb) = (
+        ((a.0 + a.2) / 2.0, (a.1 + a.3) / 2.0),
+        ((b.0 + b.2) / 2.0, (b.1 + b.3) / 2.0),
+    );
+    Some(move |x: f64, y: f64| ((x - ca.0) / s + cb.0, (y - ca.1) / s + cb.1))
+}
+
 /// The render in the reference's frame (see the module doc).
 fn in_frame(
     reference: &RgbaImage,
@@ -475,17 +493,10 @@ fn in_frame(
                 255
             },
         ]);
-        let (Some(a), Some(b)) = (bbox(ref_mask, w), bbox(&mask, rw)) else {
+        let Some(to_render) = aligned(ref_mask, w, &mask, rw) else {
             return Err("--align needs an object in both images; one of them is all background (raise or lower --key)".into());
         };
-        let s = (((a.2 - a.0) * (a.3 - a.1)) / ((b.2 - b.0) * (b.3 - b.1))).sqrt();
-        let (ca, cb) = (
-            ((a.0 + a.2) / 2.0, (a.1 + a.3) / 2.0),
-            ((b.0 + b.2) / 2.0, (b.1 + b.3) / 2.0),
-        );
-        return Ok(warp(render, w, h, fill, |x, y| {
-            ((x - ca.0) / s + cb.0, (y - ca.1) / s + cb.1)
-        }));
+        return Ok(warp(render, w, h, fill, to_render));
     }
     if (rw, rh) == (w, h) {
         return Ok(render.clone());

@@ -254,7 +254,7 @@ fn named(source: &Source, list: &[views::View], size: u32, dir: &Path) -> Result
             views::render(
                 scene,
                 v,
-                size,
+                (size, size),
                 views::Look {
                     unlit: false,
                     edges: true,

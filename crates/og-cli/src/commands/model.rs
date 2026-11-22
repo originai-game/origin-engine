@@ -25,6 +25,7 @@ use std::process::ExitCode;
 pub mod args;
 pub mod build;
 pub mod collide;
+pub mod compare;
 pub mod compress;
 pub mod decimate;
 pub mod export;
@@ -147,6 +148,7 @@ pub fn run(argv: &[&str]) -> ExitCode {
                 "unwrap" => unwrap::run(&a),
                 "place" => place::run(&a),
                 "collide" => collide::run(&a),
+                "compare" => compare::run(&a),
                 "compress" => compress::run(&a),
                 "process" => process::run(&a),
                 "rig" => rig::run(&a),

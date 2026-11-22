@@ -79,11 +79,12 @@ impl View {
         }
     }
 
-    /// The kernel's preview of this one view, `size` pixels square.
-    pub fn preview(&self, size: u32) -> Preview {
+    /// The kernel's preview of this one view, `size` pixels (width,
+    /// height).
+    pub fn preview(&self, size: (u32, u32)) -> Preview {
         let one = |azimuth: f64, elevation: f64| Preview {
-            width: size,
-            height: size,
+            width: size.0,
+            height: size.1,
             views: 1,
             azimuth,
             elevation: Some(elevation),
@@ -106,8 +107,8 @@ impl View {
                 up,
                 fov,
             } => Preview {
-                width: size,
-                height: size,
+                width: size.0,
+                height: size.1,
                 views: 1,
                 fov: *fov,
                 aim: Some(Aim {
@@ -212,7 +213,7 @@ pub struct Look {
 pub fn render(
     scene: &Scene,
     view: &View,
-    size: u32,
+    size: (u32, u32),
     look: Look,
 ) -> Result<(Image, ViewCamera), Failure> {
     let d = Preview {
