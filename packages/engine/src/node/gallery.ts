@@ -300,7 +300,7 @@ export function bareStage(frame: { width: number; height: number; rgba: Uint8Arr
   return flat(0, half - 1) && flat(half + 1, end);
 }
 
-interface TextElement { id?: string; parent?: string; text?: string; disabled?: boolean; ink?: number[]; fontSize?: number; textLines?: number[][]; textTransform?: number[] }
+interface TextElement { id?: string; parent?: string; text?: string; disabled?: boolean; ink?: number[]; fontSize?: number; textLines?: number[][]; textTransform?: number[]; clip?: number[] }
 
 /**
  * The texts of a UI dump that read under the screens guide's contrast bar (crates/og-api/guides/screens.md
@@ -309,7 +309,9 @@ interface TextElement { id?: string; parent?: string; text?: string; disabled?: 
  * least like the ink (the glyphs are the rest: bold figures fill more than half the bare box), so
  * art, a translucent plate over the stage and a halo all count as drawn; the worse fifth
  * of them is what is read. A transformed text (a card fanned in a hand) is read inside each line's
- * quad, its box through `textTransform`, not the upright box round it. `scale`: frame px per CSS px.
+ * quad, its box through `textTransform`, not the upright box round it. Only what its ancestors' overflow
+ * leaves on screen is read (`clip`, the screen box a scroller or overflow cuts it to): a line cut away
+ * entirely is not drawn and not read. `scale`: frame px per CSS px.
  */
 export function lowContrast(dump: { elements?: TextElement[] }, frame: { width: number; height: number; rgba: Uint8Array }, scale: number): string[] {
   const els = dump.elements ?? [];
@@ -330,8 +332,13 @@ export function lowContrast(dump: { elements?: TextElement[] }, frame: { width: 
       const pad = bh! * 0.2;
       const [lx, ly, lw, lh] = [bx! - pad, by! - pad, bw! + 2 * pad, bh! + 2 * pad];
       const corners = [[lx!, ly!], [lx! + lw!, ly!], [lx!, ly! + lh!], [lx! + lw!, ly! + lh!]].map(([x, y]) => [a! * x! + c! * y! + tx!, b! * x! + d! * y! + ty!]);
-      const x0 = Math.max(0, Math.floor(Math.min(...corners.map((p) => p[0]!)) * scale)), y0 = Math.max(0, Math.floor(Math.min(...corners.map((p) => p[1]!)) * scale));
-      const x1 = Math.min(frame.width, Math.ceil(Math.max(...corners.map((p) => p[0]!)) * scale)), y1 = Math.min(frame.height, Math.ceil(Math.max(...corners.map((p) => p[1]!)) * scale));
+      // The screen box round the line, cut to what its ancestors leave on screen; a line whose
+      // glyphs lie wholly outside that cut is not drawn.
+      const [cx, cy, cw, ch] = e.clip ?? [0, 0, Infinity, Infinity];
+      const glyphs = [[bx!, by!], [bx! + bw!, by!], [bx!, by! + bh!], [bx! + bw!, by! + bh!]].map(([x, y]) => [a! * x! + c! * y! + tx!, b! * x! + d! * y! + ty!]);
+      if (Math.max(...glyphs.map((p) => p[0]!)) <= cx! || Math.min(...glyphs.map((p) => p[0]!)) >= cx! + cw! || Math.max(...glyphs.map((p) => p[1]!)) <= cy! || Math.min(...glyphs.map((p) => p[1]!)) >= cy! + ch!) continue;
+      const x0 = Math.max(0, Math.floor(Math.max(cx!, Math.min(...corners.map((p) => p[0]!))) * scale)), y0 = Math.max(0, Math.floor(Math.max(cy!, Math.min(...corners.map((p) => p[1]!))) * scale));
+      const x1 = Math.min(frame.width, Math.ceil(Math.min(cx! + cw!, Math.max(...corners.map((p) => p[0]!))) * scale)), y1 = Math.min(frame.height, Math.ceil(Math.min(cy! + ch!, Math.max(...corners.map((p) => p[1]!))) * scale));
       const px: number[][] = [];
       for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) {
         const [u, v] = local((x + 0.5) / scale, (y + 0.5) / scale);
