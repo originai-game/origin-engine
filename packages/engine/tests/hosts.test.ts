@@ -78,7 +78,7 @@ function physics(host: string, ...extra: string[]) {
   const out = new TextDecoder().decode(r.stdout);
   if (r.exitCode !== 0) throw new Error(`${host} host: ${new TextDecoder().decode(r.stderr)}${out}`);
   return JSON.parse(out.trim().split("\n").pop()!) as {
-    tick: number; hash: string; hashAtLoad: string; body63: { y: number } | null; tally: { entered: number; started: number } | null;
+    tick: number; hash: string; hashAtLoad: string; body63: { y: number } | null; tally: { entered: number; started: number; inside: number } | null;
     snapshot?: string; refused?: string; restored?: { tick: number; hash: string };
     lanes?: { threads: number; pool: string; parallelCalls: number; sites: Record<string, { calls: number }> };
     modules?: string[];
@@ -143,13 +143,15 @@ for (const profile of ["3d", "2d"]) {
     expect(node.tick).toBe(600);
     expect(web.hash).toBe(node.hash);
     expect(web.body63).toEqual(node.body63);
-    // The simulation ran: bodies fell and settled above the floor, and the
-    // collision and sensor events reached a system.
+    expect(web.tally).toEqual(node.tally);
+    // The simulation ran: bodies fell and settled above the floor, the
+    // collision and sensor events reached a system, and bodies stayed in the sensor.
     expect(node.hash).not.toBe(node.hashAtLoad);
     expect(node.body63!.y).toBeGreaterThan(0);
     expect(node.body63!.y).toBeLessThan(6);
     expect(node.tally!.started).toBeGreaterThan(0);
     expect(node.tally!.entered).toBeGreaterThan(0);
+    expect(node.tally!.inside).toBeGreaterThan(node.tally!.entered);
   }, 180_000);
 }
 

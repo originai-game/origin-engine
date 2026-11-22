@@ -1,6 +1,6 @@
 // One host per process: a physics scene (a static floor, a ramp, 64 boxes and
 // spheres dropped from Rng-chosen poses, a kinematic paddle moved by a
-// system, a sensor counting entries) advanced --ticks fixed steps on the host
+// system, a sensor counting entries and what is inside it) advanced --ticks fixed steps on the host
 // named by --host. Prints JSON { host, tick, hash, ... } for hosts.test.ts.
 //
 //   bun tests/support/physics-hash.ts --host node|web|lanes [--ticks 600] [--profile 3d|2d]
@@ -23,7 +23,7 @@
 import { fileURLToPath } from "node:url";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { og, defineComponent, defineResource, defineSystem, u32 } from "@origingame/engine";
+import { Entity, og, defineComponent, defineResource, defineSystem, u32 } from "@origingame/engine";
 import type { World } from "@origingame/engine";
 import { createEngine, type GameToken } from "../../src/runtime.ts";
 
@@ -64,7 +64,7 @@ if (which === "node") {
   if (argv.includes("--modules")) await loadEngineModules(opt("--modules", "").split(","));
 }
 
-const Tally = defineResource("PhTally", { entered: u32(), started: u32() });
+const Tally = defineResource("PhTally", { entered: u32(), started: u32(), inside: u32(), sensor: Entity() });
 const PaddleTag = defineComponent("PhPaddle", { lane: u32() });
 
 /** The paddle sweeps back and forth along x: velocity only, no trigonometry. */
@@ -76,10 +76,13 @@ const Paddle = defineSystem("PhPaddleMove", { reads: [PaddleTag], writes: [og.Ve
   }
 });
 
-/** Counts the events physics sent last tick, read inside a system. */
-const Count = defineSystem("PhCount", { reads: [og.SensorEntered, og.CollisionStarted], writes: [Tally] }, (_q, _t, world) => {
+/** Counts the events physics sent last tick, read inside a system, and adds up the sensor's contents every tick. */
+const Count = defineSystem("PhCount", { reads: [og.SensorEntered, og.CollisionStarted, og.Contact], writes: [Tally] }, (_q, _t, world) => {
   const t = world.resource(Tally);
   if (!t.ok) return;
+  const inside = og.physics.sensorContents(world, t.value.sensor);
+  if (!inside.ok) throw new Error(inside.reason);
+  t.value.inside += inside.value.length;
   const entered = world.events(og.SensorEntered).length;
   const started = world.events(og.CollisionStarted).length;
   if (entered) t.value.entered += entered;
@@ -105,6 +108,9 @@ function scene(world: World): void {
   const sensor = world.spawn({ name: "sensor", position: { x: 3, y: 0.5, z: 0 } });
   if (!sensor.ok) throw new Error(sensor.reason);
   world.insert(sensor.value, og.Collider, { shape: "box", size: { x: 2, y: 1, z: 6 }, sensor: true });
+  const tally = world.resource(Tally);
+  if (!tally.ok) throw new Error(tally.reason);
+  tally.value.sensor = sensor.value;
   const rng = world.resource(og.Rng);
   if (!rng.ok) throw new Error(rng.reason);
   for (let i = 0; i < bodies; i++) {
@@ -154,7 +160,7 @@ console.log(
     hashAtLoad,
     entities: dump.entities,
     body63: body.ok ? body.value.position : null,
-    tally: tally.ok ? { entered: tally.value.entered, started: tally.value.started } : null,
+    tally: tally.ok ? { entered: tally.value.entered, started: tally.value.started, inside: tally.value.inside } : null,
     advanceMs: +ms.toFixed(2),
     ...(snapshot ? { snapshot: snapshot.value } : {}),
     ...(lanesReport ? { lanes: JSON.parse(lanesReport()) } : {}),

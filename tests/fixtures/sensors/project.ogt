@@ -1,0 +1,11 @@
+type project
+version 1
+---
+# A test fixture, not a template (tests/fixtures/README.md): a pressure
+# plate's contents (og.physics.sensorContents) as crates cross it.
+name "Sensors"
+id "sensors"
+engine "0.9.0"
+entry "src/main.ts"
+tick 60
+seed 1

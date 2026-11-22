@@ -34,6 +34,7 @@ gate's evidence directory and runs its smoke test. That check includes
 | [terrain-stream](terrain-stream/README.md) | resident/streamed height samples agree | engine terrain-stream test | og-runtime, packages/engine | owning test |
 | [browser-host](browser-host/README.md) | Player store and reflected probe contracts | web player/wire/export tests | packages/engine, og-runtime | owning tests |
 | [vfx-release](vfx-release/README.md) | downloadable effect packs: a pack, its release archive, signed (not a project) | og-cli `vfx_add_downloads_a_signed_pack_and_refuses_anything_else`; `scripts/release-dist.test.ts`; install test step 10 | og-cli, packages/engine, scripts/release-dist.ts | owning tests |
+| [sensors](sensors/README.md) | og.physics.sensorContents: a pressure plate's contents every tick against the crates over it and its events | its `tests/plate.og.ts`; og-physics `tests/sensors.rs`; `packages/engine/tests/hosts.test.ts` (the physics scene's sensor) | og-physics, og-runtime, packages/engine | 0.5 s |
 
 The inputs of a fixture, as the `fixtures` step keys its cache: the
 fixture's own directory, the native closure of `og` (`og_crate_dirs -p
