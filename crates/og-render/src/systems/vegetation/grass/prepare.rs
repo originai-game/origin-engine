@@ -41,47 +41,34 @@ impl GrassRenderer {
             slice_cap as u64 * 12,
             wgpu::BufferUsages::STORAGE,
         );
-        let instances = make(
+        let instances = crate::gpu::data_texture::DataTexture::new(
+            device,
             "grass blades",
-            (blade_cap as u64 + 1) * 16,
-            wgpu::BufferUsages::STORAGE,
+            wgpu::TextureFormat::Rgba32Uint,
+            blade_cap + 1,
+            wgpu::TextureUsages::STORAGE_BINDING,
         );
         let draws = make(
             "grass draws",
             60,
             wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::INDIRECT,
         );
-        let group = |label, layout, buffers: &[&wgpu::Buffer]| {
-            let entries: Vec<_> = buffers
-                .iter()
-                .enumerate()
-                .map(|(i, b)| wgpu::BindGroupEntry {
-                    binding: i as u32,
-                    resource: b.as_entire_binding(),
-                })
-                .collect();
-            device.create_bind_group(&wgpu::BindGroupDescriptor {
-                label: Some(label),
-                layout,
-                entries: &entries,
+        let mut gen_entries: Vec<_> = [&generator, &self.tile, &slices_buf, &scratch, &counts]
+            .iter()
+            .enumerate()
+            .map(|(i, b)| wgpu::BindGroupEntry {
+                binding: i as u32,
+                resource: b.as_entire_binding(),
             })
-        };
-        let mut gen_entries: Vec<_> = [
-            &generator,
-            &self.tile,
-            &slices_buf,
-            &scratch,
-            &counts,
-            &instances,
-            &draws,
-        ]
-        .iter()
-        .enumerate()
-        .map(|(i, b)| wgpu::BindGroupEntry {
-            binding: i as u32,
-            resource: b.as_entire_binding(),
-        })
-        .collect();
+            .collect();
+        gen_entries.push(wgpu::BindGroupEntry {
+            binding: 5,
+            resource: wgpu::BindingResource::TextureView(&instances.view),
+        });
+        gen_entries.push(wgpu::BindGroupEntry {
+            binding: 6,
+            resource: draws.as_entire_binding(),
+        });
         gen_entries.push(wgpu::BindGroupEntry {
             binding: 7,
             resource: wgpu::BindingResource::TextureView(&self.wind_field),
@@ -95,7 +82,20 @@ impl GrassRenderer {
             layout: &self.gen_layout,
             entries: &gen_entries,
         });
-        let draw_group = group("grass", &self.draw_layout, &[&draw, &instances]);
+        let draw_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("grass"),
+            layout: &self.draw_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: draw.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: wgpu::BindingResource::TextureView(&instances.view),
+                },
+            ],
+        });
         let f = FieldGpu {
             generator,
             draw,

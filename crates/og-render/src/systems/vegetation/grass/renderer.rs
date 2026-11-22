@@ -103,7 +103,15 @@ impl GrassRenderer {
                 ),
                 entry(3, cs, buffer(rw)),
                 entry(4, cs, buffer(rw)),
-                entry(5, cs, buffer(rw)),
+                entry(
+                    5,
+                    cs,
+                    wgpu::BindingType::StorageTexture {
+                        access: wgpu::StorageTextureAccess::WriteOnly,
+                        format: wgpu::TextureFormat::Rgba32Uint,
+                        view_dimension: wgpu::TextureViewDimension::D2,
+                    },
+                ),
                 entry(6, cs, buffer(rw)),
                 entry(
                     7,
@@ -179,11 +187,7 @@ impl GrassRenderer {
                     wgpu::ShaderStages::VERTEX_FRAGMENT,
                     buffer(wgpu::BufferBindingType::Uniform),
                 ),
-                entry(
-                    1,
-                    wgpu::ShaderStages::VERTEX,
-                    buffer(wgpu::BufferBindingType::Storage { read_only: true }),
-                ),
+                crate::gpu::data_texture::data_entry(1, wgpu::ShaderStages::VERTEX, true),
             ],
         });
         let pl = |label, layouts: &[&wgpu::BindGroupLayout]| {

@@ -63,8 +63,9 @@ struct GrassGen {
 @group(0) @binding(3) var<storage, read_write> scratch: array<vec4<u32>>;
 // Per slice: its blades per level, then (after `scan`) the blades before them in their level.
 @group(0) @binding(4) var<storage, read_write> counts: array<u32>;
-// [0]: xyz each level's first instance, w the blades; then the blades.
-@group(0) @binding(5) var<storage, read_write> instances: array<vec4<u32>>;
+// A data texture (data_texture.rs), which the vertex stage reads: [0] xyz
+// each level's first instance, w the blades; then the blades.
+@group(0) @binding(5) var instances: texture_storage_2d<rgba32uint, write>;
 // Three indexed indirect draws, one per level (index count, instances, first index, base vertex, first instance).
 @group(0) @binding(6) var<storage, read_write> draws: array<u32, 15>;
 // The simulated wind field's lean (wind_field.rs; wind_common.wgsl wind_lean).
@@ -352,7 +353,7 @@ fn scan(@builtin(local_invocation_index) lane: u32) {
     let c0 = min(totals.x, cap);
     let c1 = min(totals.y, cap - c0);
     let c2 = min(totals.z, cap - c0 - c1);
-    instances[0] = vec4<u32>(1u, 1u + c0, 1u + c0 + c1, c0 + c1 + c2);
+    textureStore(instances, data_at(0u), vec4<u32>(1u, 1u + c0, 1u + c0 + c1, c0 + c1 + c2));
     let kept = array<u32, 3>(c0, c1, c2);
     let rows = array<u32, 3>(gen.counts.z, gen.counts.w & 0xffu, (gen.counts.w >> 8u) & 0xffu);
     var first_index = 0u;
@@ -375,7 +376,9 @@ var<workgroup> placed: array<u32, 3>;
 fn compact(@builtin(workgroup_id) group: vec3<u32>, @builtin(local_invocation_index) lane: u32) {
   let w = group.x;
   if (lane < 3u) { placed[lane] = counts[w * 3u + lane]; }
-  let header = instances[0];
+  // Each level's first instance (scan's header): after the blades the
+  // nearer levels keep.
+  let header = vec3<u32>(1u, 1u + draws[1], 1u + draws[1] + draws[6]);
   for (var round = 0u; round < GRASS_SLICE / 64u; round++) {
     let words = scratch[w * GRASS_SLICE + round * 64u + lane];
     let lod = (words.z >> 24u) & 3u;
@@ -387,7 +390,7 @@ fn compact(@builtin(workgroup_id) group: vec3<u32>, @builtin(local_invocation_in
         rank += select(0u, 1u, lane_lods[j] == lod);
       }
       let at = placed[lod] + rank;
-      if (at < draws[lod * 5u + 1u]) { instances[header[lod] + at] = words; }
+      if (at < draws[lod * 5u + 1u]) { textureStore(instances, data_at(header[lod] + at), words); }
     }
     workgroupBarrier();
     if (lane < 3u) {
