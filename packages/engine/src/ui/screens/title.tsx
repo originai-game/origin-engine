@@ -8,7 +8,7 @@ export interface TitleScreenProps {
   version: string;
   /** The legal line at the foot (copyright, trademarks). */
   legal: string;
-  /** The key art's texture under the title (og.load.texture; 0: the style's dark ground). */
+  /** The key art's texture under the title (og.load.texture; 0: the style's dark ground). The screen sits over a picture, so it resolves in the dark scheme in both: its veils darken the art instead of washing it pale. */
   keyArt: Texture | 0;
   /** The game's logo texture (og.load.texture; 0: the name set as a wordmark). */
   logo: Texture | 0;
@@ -22,7 +22,7 @@ export interface TitleScreenProps {
 
 export function TitleScreen(props: TitleScreenProps) {
   return (
-    <View class={`text-fg p-0 overflow-hidden`} onPress={(e) => props.onStart?.(e)} onAction={{ confirm: (e) => props.onStart?.(e) }}>
+    <View class={`scheme-dark text-fg p-0 overflow-hidden`} onPress={(e) => props.onStart?.(e)} onAction={{ confirm: (e) => props.onStart?.(e) }}>
       <Show when={props.keyArt !== 0}>
         <Art class="absolute object-cover inset-0 size-full" kind="keyArt" src={props.keyArt} />
       </Show>

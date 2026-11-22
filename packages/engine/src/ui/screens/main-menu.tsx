@@ -12,7 +12,7 @@ export interface MainMenuScreenProps {
   version: string;
   /** A line for the news card (empty: no card). */
   news: string;
-  /** The key art's texture behind the menu (og.load.texture; 0: the style's dark ground). */
+  /** The key art's texture behind the menu (og.load.texture; 0: the style's dark ground). The screen sits over a picture, so it resolves in the dark scheme in both: its veils darken the art instead of washing it pale. */
   keyArt: Texture | 0;
   /** The game's logo texture (og.load.texture; 0: the name set as a wordmark). */
   logo: Texture | 0;
@@ -40,7 +40,7 @@ export interface MainMenuScreenProps {
 
 export function MainMenuScreen(props: MainMenuScreenProps) {
   return (
-    <View class="text-fg overflow-hidden">
+    <View class="scheme-dark text-fg overflow-hidden">
       <Show when={props.keyArt !== 0}>
         <Art class="absolute object-cover inset-0 size-full" kind="keyArt" src={props.keyArt} />
       </Show>
