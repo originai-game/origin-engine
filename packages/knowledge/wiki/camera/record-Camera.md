@@ -35,6 +35,7 @@ Token `og.Camera`, registered under the schema name `og.Camera`; its value type 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
 | `background` | `Color` | `{ r: 0.00699, g: 0.00803, b: 0.01096 }` | — | — | — | The clear colour, as three.js Scene.background. The default is the brand ink #14161b in linear RGB. |
+| `backgroundTexture` | `Texture` | `0` | — | — | — | A texture behind the scene in background's place, cropped to cover the view, as three.js Scene.background with a texture: a video plate (og.VideoPlayer.texture, or a video track's `layer under`). Drawn as it is: no exposure, bloom or tone curve touches it, and auto exposure ignores it. 0: none. See `flow §3`. |
 | `exposure` | `number` | `1` | 0 … 16 | — | tunable | Exposure before tone mapping, as three.js toneMappingExposure. |
 
 #### Shake
@@ -118,6 +119,9 @@ resource Camera {
   group "Output"
   field background Color "The clear colour, as three.js Scene.background. The default is the brand ink #14161b in linear RGB." {
     default 0.00699 0.00803 0.01096
+  }
+  field backgroundTexture Texture "A texture behind the scene in background's place, cropped to cover the view, as three.js Scene.background with a texture: a video plate (og.VideoPlayer.texture, or a video track's `layer under`). Drawn as it is: no exposure, bloom or tone curve touches it, and auto exposure ignores it. 0: none." {
+    guide "flow §3"
   }
   field exposure f32 "Exposure before tone mapping, as three.js toneMappingExposure." {
     default 1
@@ -251,7 +255,7 @@ fn lookAt {
 }
 ```
 
-<sub>Module `camera` line 132</sub>
+<sub>Module `camera` line 135</sub>
 
 <a id="member-Camera-worldToScreen"></a>
 
@@ -282,7 +286,7 @@ fn worldToScreen {
 }
 ```
 
-<sub>Module `camera` line 136</sub>
+<sub>Module `camera` line 139</sub>
 
 <a id="member-Camera-screenToRay"></a>
 
@@ -312,4 +316,4 @@ fn screenToRay {
 }
 ```
 
-<sub>Module `camera` line 142</sub>
+<sub>Module `camera` line 145</sub>

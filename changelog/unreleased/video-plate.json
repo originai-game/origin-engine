@@ -1,0 +1,13 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {
+      "member": "Camera.backgroundTexture",
+      "summary": "og.Camera.backgroundTexture draws a texture behind the scene in the background's place, cropped to cover the view, as three.js Scene.background with a texture: a video plate (og.VideoPlayer.texture). It is drawn as given: exposure, the tone curve, bloom, depth of field, motion blur and fog leave it alone, auto exposure meters only the scene, and the frame's grading (LUT, grain, vignette) covers it as it covers the scene. It takes the drawn sky's place only: the scene's sky still lights the scene and is what reflections show. 0: none."
+    },
+    {
+      "member": "type timeline",
+      "summary": "A timeline's own video track takes `layer under`: its footage plays behind the scene as og.Camera.backgroundTexture while the timeline plays (and is cleared after), so a live scene is drawn over it. The default, `layer over`, leaves the picture to the game's UI. og.flow.view's `texture` is 0 for a segment whose footage plays under. The flow guide §3."
+    }
+  ]
+}

@@ -8,6 +8,10 @@ pub(super) struct WriteFramePostUniformsInputs<'a> {
     pub(super) camera: &'a Camera,
     pub(super) post_fx: &'a PostEffects,
     pub(super) scene: &'a RenderScene,
+    /// The lit image's alpha is the fraction of each pixel to tone map
+    /// (untonemapped sprites, a camera's background texture): depth of
+    /// field and motion blur leave the rest as drawn.
+    pub(super) untonemapped: bool,
     pub(super) ao: Option<AmbientOcclusion>,
     pub(super) gi: Option<ScreenSpaceGlobalIllumination>,
     pub(super) ssr: Option<&'a ssr::ScreenSpaceReflections>,
@@ -48,6 +52,7 @@ impl Renderer {
             camera,
             post_fx,
             scene,
+            untonemapped,
             ao,
             gi,
             dof,
@@ -159,7 +164,7 @@ impl Renderer {
                     _ => 16.0,
                 },
                 dof.map_or(0.0, |d| d.tilt_shift.clamp(0.0, 0.5)),
-                0.0,
+                untonemapped as u32 as f32,
                 0.0,
             ],
             mb: motion_blur.map_or([0.0; 4], |m| {
@@ -167,7 +172,7 @@ impl Renderer {
                     m.shutter.max(0.0),
                     m.samples.clamp(4, 32) as f32,
                     m.max_pixels.max(1.0),
-                    0.0,
+                    untonemapped as u32 as f32,
                 ]
             }),
             god: [

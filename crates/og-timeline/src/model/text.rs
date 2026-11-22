@@ -464,6 +464,9 @@ fn write_track(tr: &Track) -> Entry {
             if !v.entity.is_empty() {
                 head = head.with(Value::String(v.entity.clone()));
             }
+            if v.layer == VideoLayer::Under {
+                b.push(Entry::new("layer").with(Value::Word("under".into())));
+            }
             for k in &v.keys {
                 let mut kb = Block::new();
                 kb.push(Entry::new("video").with(Value::String(k.video.clone())));

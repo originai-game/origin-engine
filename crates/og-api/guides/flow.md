@@ -123,6 +123,15 @@ track hotspot {
   deck so the cut never waits. Give it a `camera` or `shot` track to frame
   it. With a video track too, the footage plays over the scene. A segment
   has footage, a scene, or both.
+- `layer under` in the video track plays the footage behind the scene
+  instead: a plate the live scene is drawn over, shown as
+  og.Camera.backgroundTexture while the segment plays (and 0 again after),
+  and og.flow.view's `texture` is 0 for it. A plate is drawn as given:
+  exposure, the tone curve, bloom, depth of field and fog leave it alone,
+  and the frame's grading (LUT, grain, vignette) covers it as it covers the
+  scene, so the same clip over or under shows the same colours. The plate
+  takes the drawn sky's place only: the scene's sky still lights it and is
+  what its reflections show.
 - `flow.open` shows the choices, `flow.lock` ends choosing, and the cut is
   `flow.cut` if the segment has one, else its end. Keep
   `flow.open < flow.lock ≤ cut`.
@@ -358,7 +367,7 @@ one, and any flow can stop for a game.
   names the branch, so the chart and `og flow routes` show it.
 - **A live scene between clips.** A segment with a `scene` track and no
   video shows the real-time world; with both, the footage plays over
-  it. The decks warm
+  it, or under it with `layer under` (§3). The decks warm
   its scene before the cut as they warm footage, so it never hitches.
   Give a live scene its own light: a `resource Sky { ... }` and its lights
   in the scene file. Without a Sky it is lit and reflected by the look's

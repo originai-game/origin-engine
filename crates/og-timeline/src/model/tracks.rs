@@ -848,7 +848,28 @@ fn nested(block: &Block) -> Result<Vec<NestedKey>, String> {
 
 fn video(block: &Block, entity: String) -> Result<VideoTrack, String> {
     let mut out = Vec::new();
-    for e in only_keys(block, "video")? {
+    let mut layer = VideoLayer::Over;
+    for e in &block.entries {
+        match e.key.as_str() {
+            "key" => {}
+            "layer" => {
+                no_block(e)?;
+                layer = match word(e)? {
+                    "over" => VideoLayer::Over,
+                    "under" => VideoLayer::Under,
+                    _ => return Err(at(e, "layer is over (the default) or under")),
+                };
+                if !entity.is_empty() {
+                    return Err(at(
+                        e,
+                        "only the timeline's own video track has a layer: an entity's player shows its texture where the game puts it",
+                    ));
+                }
+            }
+            _ => return Err(unknown(e, "video track entry", "layer or key")),
+        }
+    }
+    for e in keys(block) {
         let mut k = VideoKey {
             time: key_time(e)?,
             video: String::new(),
@@ -884,6 +905,7 @@ fn video(block: &Block, entity: String) -> Result<VideoTrack, String> {
     }
     Ok(VideoTrack {
         entity,
+        layer,
         keys: sorted(out, |k| k.time),
     })
 }

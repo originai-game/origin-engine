@@ -80,6 +80,9 @@ struct Node {
     qte: Vec<Option<Qte>>,
     /// `flow.hold`: where its segment stops for og.flow.advance.
     hold: Option<f32>,
+    /// Its footage plays under the scene (`layer under`): og.timeline puts
+    /// it on the camera, and the view's picture is 0.
+    under: bool,
     /// Its `#outcome:<name>` choices: (ChoiceView.index, name).
     outcomes: Vec<(u32, String)>,
     /// Per choice (by index): the flow nodes it may lead to, through logic
@@ -284,6 +287,7 @@ fn prepare(eng: &Engine, world: &mut World, name: &str) -> Result<(Prepared, Flo
                 hotspots: s.hotspots,
                 qte,
                 hold: s.hold,
+                under: s.under,
                 outcomes,
                 choices: n.choices.iter().map(|c| reach(&c.to)).collect(),
                 next: reach(&n.to),
@@ -1270,7 +1274,19 @@ fn tick(
     }
     let node = prep.nodes.get(&flow.node);
     let time = shows(ctx, &flow, advancing)?;
-    let texture = deck_state(ctx, r, current(&flow))?.2;
+    // A segment whose footage plays under the scene shows no picture over it.
+    let picture = |deck: Entity| -> og_core::Result<u64> {
+        let held = r
+            .deck
+            .1
+            .read::<record::FlowDeck>(&ctx.get_bytes(deck, r.deck.0)?)
+            .map_err(bad)?;
+        if prep.nodes.get(&held.node).is_some_and(|n| n.under) {
+            return Ok(0);
+        }
+        Ok(deck_state(ctx, r, deck)?.2)
+    };
+    let texture = picture(current(&flow))?;
     let (hotspots, qtes) = match node {
         Some(n) if flow.window > 0 && !flow.ended => {
             let choices = og_story_view(eng.id, conv)
@@ -1281,7 +1297,7 @@ fn tick(
         _ => (Vec::new(), Vec::new()),
     };
     let previous_texture = match previous(&flow) {
-        Some(p) => deck_state(ctx, r, p)?.2,
+        Some(p) => picture(p)?,
         None => 0,
     };
     let mix = if flow.dissolve_left > 0 && flow.dissolve > 0 {

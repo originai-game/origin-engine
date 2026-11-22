@@ -7,6 +7,8 @@ use super::*;
 pub(super) struct SpritePipelinesInputs<'a> {
     pub device: &'a wgpu::Device,
     pub sprite_pl: &'a wgpu::PipelineLayout,
+    /// The frame's and a texture's sprite group: the plate's.
+    pub plate_pl: &'a wgpu::PipelineLayout,
     pub sprite_shader: &'a deferred::Module,
     pub samples: u32,
 }
@@ -17,6 +19,7 @@ pub(super) struct SpritePipelinesOutputs {
     pub sprite_additive_pipeline: Sampled<wgpu::RenderPipeline>,
     pub sprite_untonemapped_pipeline: Sampled<wgpu::RenderPipeline>,
     pub sprite_cover_pipeline: Sampled<wgpu::RenderPipeline>,
+    pub plate_pipeline: Sampled<wgpu::RenderPipeline>,
     pub msdf_pipeline: Sampled<wgpu::RenderPipeline>,
     pub sprite_glow_pipeline: Deferred<wgpu::RenderPipeline>,
 }
@@ -28,6 +31,7 @@ impl Renderer {
         SpritePipelinesInputs {
             device,
             sprite_pl,
+            plate_pl,
             sprite_shader,
             samples,
         }: SpritePipelinesInputs<'_>,
@@ -104,6 +108,28 @@ impl Renderer {
                 samples,
             },
         );
+        // A camera's background texture (sprite.wgsl `fs_plate`): at the
+        // far plane as the sky, its HDR alpha replaced.
+        let plate_pipeline = deferred_hdr(
+            device,
+            plate_pl,
+            sprite_shader.clone(),
+            samples,
+            move |layout, module| HdrPipeline {
+                alpha_to_coverage: false,
+                label: "plate",
+                layout,
+                module,
+                vs: "vs_plate",
+                fs: "fs_plate",
+                buffers: &[],
+                cull: None,
+                depth_write: false,
+                depth_compare: wgpu::CompareFunction::LessEqual,
+                blend: None,
+                samples,
+            },
+        );
         let msdf_pipeline = sprite_state("msdf text", "fs_msdf", wgpu::BlendState::ALPHA_BLENDING);
         // The glow buffer: no depth, one sample, added.
         let sprite_glow_pipeline = {
@@ -153,6 +179,7 @@ impl Renderer {
             sprite_additive_pipeline,
             sprite_untonemapped_pipeline,
             sprite_cover_pipeline,
+            plate_pipeline,
             msdf_pipeline,
             sprite_glow_pipeline,
         }

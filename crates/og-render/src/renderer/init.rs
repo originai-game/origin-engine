@@ -173,6 +173,7 @@ impl Renderer {
             fresh.sprite.sprite_additive_pipeline = self.sprite.sprite_additive_pipeline;
             fresh.sprite.sprite_untonemapped_pipeline = self.sprite.sprite_untonemapped_pipeline;
             fresh.sprite.sprite_cover_pipeline = self.sprite.sprite_cover_pipeline;
+            fresh.sprite.plate_pipeline = self.sprite.plate_pipeline;
             fresh.sprite.sprite_glow_pipeline = self.sprite.sprite_glow_pipeline;
             fresh.sprite.msdf_pipeline = self.sprite.msdf_pipeline;
             fresh.strips.ribbon_pipelines = self.strips.ribbon_pipelines;
@@ -473,6 +474,11 @@ impl Renderer {
         let sprite_pipelines = Self::sprite_pipelines(SpritePipelinesInputs {
             device: &device,
             sprite_pl: &sprite_pl,
+            plate_pl: &device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some("plate"),
+                bind_group_layouts: &[Some(&frame_layout), Some(&sprite_layout)],
+                immediate_size: 0,
+            }),
             sprite_shader: &sprite_shader,
             samples,
         });

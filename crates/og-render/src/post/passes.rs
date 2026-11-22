@@ -29,6 +29,7 @@ impl PostPasses {
         let mut items: Vec<&dyn crate::deferred::Warm> = vec![
             &self.tonemap,
             &self.meter,
+            &self.meter_tonemapped,
             &self.reduce,
             &self.adapt,
             &self.prefilter,
@@ -213,6 +214,15 @@ impl PostPasses {
             "meter",
             &luminance_shader,
             "fs_meter",
+            &source_pl,
+            LUMINANCE_FORMAT,
+            None,
+        );
+        let meter_tonemapped = deferred_fullscreen(
+            device,
+            "meter tonemapped",
+            &luminance_shader,
+            "fs_meter_tonemapped",
             &source_pl,
             LUMINANCE_FORMAT,
             None,
@@ -502,6 +512,8 @@ impl PostPasses {
             post_layout,
             taa_layout,
             meter,
+            meter_tonemapped,
+            untonemapped: Default::default(),
             reduce,
             adapt_layout,
             adapt,

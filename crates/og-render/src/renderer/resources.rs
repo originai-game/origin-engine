@@ -917,6 +917,8 @@ pub(crate) struct SpriteState {
     /// ([`UNTONEMAPPED_BLEND`]).
     pub(crate) sprite_untonemapped_pipeline: Sampled<wgpu::RenderPipeline>,
     pub(crate) sprite_cover_pipeline: Sampled<wgpu::RenderPipeline>,
+    /// A camera's background texture ([`crate::Background::Plate`]).
+    pub(crate) plate_pipeline: Sampled<wgpu::RenderPipeline>,
     pub(crate) sprite_glow_pipeline: Deferred<wgpu::RenderPipeline>,
     pub(crate) msdf_pipeline: Sampled<wgpu::RenderPipeline>,
     pub(crate) sprite_fx_layout: wgpu::BindGroupLayout,

@@ -57,7 +57,14 @@ impl Exposure {
                 "meter",
                 cx.graph.view("luminance.0"),
                 CLEAR,
-                passes.meter.get(),
+                if passes
+                    .untonemapped
+                    .load(std::sync::atomic::Ordering::Relaxed)
+                {
+                    passes.meter_tonemapped.get()
+                } else {
+                    passes.meter.get()
+                },
                 &self.meter.as_ref().expect("metering bound")[cx.slot],
             ),
             FramePass::Reduce(i) => fullscreen_pass(

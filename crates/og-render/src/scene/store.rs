@@ -132,6 +132,7 @@ impl RenderScene {
                 camera: Camera::default(),
                 camera_cut: false,
                 camera_layers: 1,
+                plate: None,
                 views: Vec::new(),
                 origin: glam::Vec3::ZERO,
                 debug: DebugView::None,

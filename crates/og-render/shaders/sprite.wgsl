@@ -445,6 +445,38 @@ fn fs_cover() -> @location(0) vec4<f32> {
   return vec4<f32>(0.0, 0.0, 0.0, 1.0);
 }
 
+// A camera's background texture (Background::Plate, a video plate), at the
+// far plane after the opaque batches as the sky is, so only pixels nothing
+// covers take it: the texture filling the view, cropped to cover it (CSS
+// object-fit cover), its colour as it is and the HDR alpha 0, so the
+// tonemap shows it unexposed and uncurved (post.wgsl `tonemapped`) and
+// the meter leaves it out. The cover pass set every other pixel's alpha
+// to 1 just before. Group 1 is the texture's sprite group.
+struct PlateOut {
+  @builtin(position) pos: vec4<f32>,
+  @location(0) ndc: vec2<f32>,
+};
+
+@vertex
+fn vs_plate(@builtin(vertex_index) vi: u32) -> PlateOut {
+  var o: PlateOut;
+  o.ndc = fullscreen_clip(vi).xy;
+  o.pos = vec4<f32>(o.ndc, 1.0, 1.0);
+  return o;
+}
+
+@fragment
+fn fs_plate(in: PlateOut) -> @location(0) vec4<f32> {
+  // The view's width over its height: the clip x and y run 2 across each.
+  let view = abs(dpdy(in.ndc.y)) / max(abs(dpdx(in.ndc.x)), 1e-9);
+  let size = vec2<f32>(textureDimensions(sprite_tex));
+  let image = size.x / max(size.y, 1.0);
+  var uv = vec2<f32>(in.ndc.x * 0.5 + 0.5, 0.5 - in.ndc.y * 0.5) - 0.5;
+  if (image > view) { uv.x *= view / image; } else { uv.y *= image / view; }
+  let c = textureSampleLevel(sprite_tex, sprite_sampler, uv + 0.5, 0.0);
+  return vec4<f32>(c.rgb, 0.0);
+}
+
 // Into the glow buffer: the sprite's light, whatever covers it.
 @fragment
 fn fs_glow(in: SpriteOut) -> @location(0) vec4<f32> {

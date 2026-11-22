@@ -21280,6 +21280,11 @@
             "b": 0.01096
           }
         },
+        "backgroundTexture": {
+          "$ref": "#/$defs/Texture",
+          "description": "A texture behind the scene in background's place, cropped to cover the view, as three.js Scene.background with a texture: a video plate (og.VideoPlayer.texture, or a video track's `layer under`). Drawn as it is: no exposure, bloom or tone curve touches it, and auto exposure ignores it. 0: none.\nSee `flow §3`.",
+          "default": 0
+        },
         "exposure": {
           "type": "number",
           "description": "Exposure before tone mapping, as three.js toneMappingExposure.",
@@ -56462,7 +56467,7 @@
         },
         "texture": {
           "$ref": "#/$defs/Texture",
-          "description": "The current deck's picture (its og.VideoPlayer.texture): put it on a full-screen sprite or image."
+          "description": "The current deck's picture (its og.VideoPlayer.texture): put it on a full-screen sprite or image. 0 while its footage plays under the scene (a video track's `layer under`), which og.Camera.backgroundTexture shows."
         },
         "time": {
           "type": "number",

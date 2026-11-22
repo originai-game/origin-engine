@@ -94,7 +94,7 @@ pub(crate) const FAR_DEPTH: f32 = 1.0e9;
 
 /// The metering grid of auto exposure (reduced to 1x1 by 8x8 averages).
 const METER_SIZE: u32 = 64;
-const LUMINANCE_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::R16Float;
+const LUMINANCE_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rg16Float;
 /// The adapted exposure (EV) of temporal adaptation: full precision, so a
 /// step of a fraction of a stop per tick is not lost to rounding.
 const EXPOSURE_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::R32Float;
@@ -427,6 +427,13 @@ pub(crate) struct PostPasses {
     post_layout: wgpu::BindGroupLayout,
     taa_layout: wgpu::BindGroupLayout,
     meter: Deferred<wgpu::RenderPipeline>,
+    /// The meter weighing each tap by the lit image's alpha
+    /// (`fs_meter_tonemapped`), for a frame with untonemapped pixels.
+    meter_tonemapped: Deferred<wgpu::RenderPipeline>,
+    /// Whether this frame's lit image has untonemapped pixels (its alpha
+    /// is the fraction to tone map), as the last `write_uniform` said: the
+    /// meter then weighs by it.
+    untonemapped: std::sync::atomic::AtomicBool,
     reduce: Deferred<wgpu::RenderPipeline>,
     adapt_layout: wgpu::BindGroupLayout,
     adapt: Deferred<wgpu::RenderPipeline>,

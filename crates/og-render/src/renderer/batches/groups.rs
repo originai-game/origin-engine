@@ -104,6 +104,13 @@ impl Renderer {
         self.sprite.sprite_normals.as_ref()?.group(t.index())
     }
 
+    /// The camera's background texture's sprite group, when the scene has
+    /// one and it is made (`prepare_sprite_groups`): the main pass draws it.
+    pub(crate) fn plate_group(&self, scene: &RenderScene) -> Option<&wgpu::BindGroup> {
+        let t = scene.frame.plate?;
+        self.cache.sprite_groups.get(t.index())?.as_ref()
+    }
+
     pub(crate) fn sprite_group(&mut self, texture: Option<TextureHandle>) -> &wgpu::BindGroup {
         let Some(t) = texture else {
             return &self.sprite.white_sprite_group;

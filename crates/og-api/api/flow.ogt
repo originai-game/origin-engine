@@ -124,7 +124,7 @@ module flow {
     field flow Entity "The flow."
     field node String "The flow node playing."
     field segment String "Its segment's asset id."
-    field texture Texture "The current deck's picture (its og.VideoPlayer.texture): put it on a full-screen sprite or image."
+    field texture Texture "The current deck's picture (its og.VideoPlayer.texture): put it on a full-screen sprite or image. 0 while its footage plays under the scene (a video track's `layer under`), which og.Camera.backgroundTexture shows."
     field time f32 "Seconds into the segment." {
       unit s
     }

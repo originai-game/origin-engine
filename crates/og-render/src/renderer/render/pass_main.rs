@@ -353,8 +353,27 @@ impl Renderer {
             Background::Procedural { .. } if clouds_low.is_some() => self.sky.clouds_low.sky.get(),
             Background::Procedural { .. } => self.sky.sky_look_pipeline.get(),
             Background::Color(_) => None,
-        };
+        }
+        .filter(|_| scene.frame.plate.is_none());
         part!("main: sky");
+        // A camera's background texture in the sky's place: the cover sets
+        // every pixel's HDR alpha to 1, then the plate, at the far plane,
+        // writes 0 where nothing covers it (sprite.wgsl `fs_plate`), so
+        // the sprites after it draw no cover of their own
+        // (`frame_draw_sprites`).
+        if let Some(group) = self.plate_group(scene)
+            && let (Some(cover), Some(plate)) = (
+                self.sprite.sprite_cover_pipeline.get(),
+                self.sprite.plate_pipeline.get(),
+            )
+        {
+            pass.set_pipeline(cover);
+            pass.draw(0..3, 0..1);
+            pass.set_pipeline(plate);
+            pass.set_bind_group(1, group, &[]);
+            pass.draw(0..3, 0..1);
+            stats.draw_calls += 2;
+        }
         if let Some(sky) = sky {
             pass.set_pipeline(sky);
             pass.set_bind_group(1, sky_group, &[]);

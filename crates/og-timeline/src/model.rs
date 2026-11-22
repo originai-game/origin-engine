@@ -460,11 +460,24 @@ pub struct VideoKey {
     pub speed: f32,
 }
 
+/// Where the footage of a timeline's own video track is shown.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum VideoLayer {
+    /// Over the frame, drawn by the game's UI (FlowPicture): the default.
+    #[default]
+    Over,
+    /// Behind the scene, as og.Camera.backgroundTexture while it plays: a
+    /// plate the live scene is drawn over (`layer under`).
+    Under,
+}
+
 /// A track that plays footage on an entity's og.VideoPlayer.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct VideoTrack {
     /// The entity by name; empty: the og.Timeline's own.
     pub entity: String,
+    /// Where it is shown (the og.Timeline's own track only).
+    pub layer: VideoLayer,
     pub keys: Vec<VideoKey>,
 }
 

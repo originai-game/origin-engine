@@ -34,6 +34,9 @@ pub struct Segment {
     pub hold: Option<f32>,
     /// Every hotspot track's keys, by time (`eval::hotspots_at`).
     pub hotspots: Vec<HotspotKey>,
+    /// Its footage plays under the scene (`layer under`), as the camera's
+    /// background texture, not over it.
+    pub under: bool,
 }
 
 /// A quick-time event: a choice taken by an action's input in the window
@@ -219,6 +222,9 @@ impl Timeline {
             cut,
             hold,
             hotspots,
+            under: own
+                .first()
+                .is_some_and(|v| v.layer == crate::VideoLayer::Under),
         })
     }
 }
@@ -271,6 +277,34 @@ mod tests {
     }
 
     const SCENE: &str = "track scene {\n  key 0 {\n    scene \"scenes/room.ogt\"\n  }\n}\n";
+
+    #[test]
+    fn a_video_track_under_the_scene_is_the_segments_plate() {
+        assert!(!parse(VIDEO).segment().unwrap().under);
+        let under = VIDEO.replace("{\n  key", "{\n  layer under\n  key");
+        let t = parse(&format!("{under}{SCENE}"));
+        assert!(t.segment().unwrap().under);
+        // It writes back as it reads.
+        assert_eq!(
+            Timeline::parse(&t.to_text(), &mut |f: &str| Err(f.to_string())).unwrap(),
+            t
+        );
+        // Only the timeline's own track has a layer, and only over or under.
+        let err = |body: &str| {
+            Timeline::parse(
+                &format!("type timeline\nversion 1\n---\nduration 10\n{body}"),
+                &mut |f: &str| Err(f.to_string()),
+            )
+            .unwrap_err()
+        };
+        let named = under.replace("track video {", "track video \"tv\" {");
+        assert!(
+            err(&named).contains("only the timeline's own"),
+            "{}",
+            err(&named)
+        );
+        assert!(err(&under.replace("under", "behind")).contains("over (the default) or under"));
+    }
 
     #[test]
     fn a_live_or_mixed_segment_plays_and_a_hold_is_its_lock_and_cut() {

@@ -121,6 +121,7 @@ impl SpriteState {
             sprite_additive_pipeline,
             sprite_untonemapped_pipeline,
             sprite_cover_pipeline,
+            plate_pipeline,
             msdf_pipeline,
             sprite_glow_pipeline,
         } = pipelines;
@@ -132,6 +133,7 @@ impl SpriteState {
             sprite_additive_pipeline,
             sprite_untonemapped_pipeline,
             sprite_cover_pipeline,
+            plate_pipeline,
             sprite_glow_pipeline,
             msdf_pipeline,
             sprite_fx_layout,

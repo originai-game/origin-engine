@@ -9694,6 +9694,11 @@
           }
         },
         {
+          "name": "backgroundTexture",
+          "column": "Texture",
+          "default": 0
+        },
+        {
           "name": "exposure",
           "column": "f32",
           "default": 1,

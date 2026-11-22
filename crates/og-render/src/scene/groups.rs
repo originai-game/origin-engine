@@ -438,6 +438,14 @@ pub struct SceneFrame {
     /// water, trails, text, tile layers and sprite meshes) draws on every
     /// camera.
     pub camera_layers: u32,
+    /// A texture behind the scene in the background's place
+    /// (og.Camera.backgroundTexture: a video plate), filling the view,
+    /// cropped to cover it, drawn as it is: display-referred, outside
+    /// exposure, bloom and the tone curve (the main pass writes its HDR
+    /// alpha 0, post.wgsl `tonemapped`), and out of the auto exposure's
+    /// meter. It replaces the drawn sky only: reflections, probes, views
+    /// and the image-based light keep the environment's.
+    pub plate: Option<TextureHandle>,
     /// Secondary cameras drawn into render targets or viewports of the
     /// frame, before it in [`crate::View::order`] (`views.rs`).
     pub views: Vec<crate::View>,

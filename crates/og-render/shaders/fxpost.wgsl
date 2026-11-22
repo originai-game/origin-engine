@@ -852,7 +852,9 @@ fn fs_dof_blur(in: VsOut) -> @location(0) vec4<f32> {
 fn fs_dof_composite(in: VsOut) -> @location(0) vec4<f32> {
   let sharp = textureLoad(tex_a, vec2<i32>(in.pos.xy), 0);
   let b = sample_exact(tex_b, fx_linear, in.uv);
-  return vec4<f32>(mix(sharp.rgb, b.rgb, b.a), sharp.a);
+  // A pixel drawn as given (a camera's background texture, an
+  // untonemapped sprite: its alpha below 1) is no part of the lens's scene.
+  return vec4<f32>(mix(sharp.rgb, b.rgb, b.a * select(1.0, clamp(sharp.a, 0.0, 1.0), fxp.dof2.z > 0.5)), sharp.a);
 }
 
 // Taps along the fastest velocity around this pixel (a cheap dilation, so a
@@ -881,7 +883,8 @@ fn fs_motion_blur(in: VsOut) -> @location(0) vec4<f32> {
     let t = (f32(i) + 0.5) / f32(n) - 0.5;
     sum += textureSampleLevel(tex_a, fx_linear, in.uv + v * t, 0.0).rgb;
   }
-  return vec4<f32>(sum / f32(n + 1u), c.a);
+  // Drawn as given (alpha below 1): no camera moved it.
+  return vec4<f32>(mix(c.rgb, sum / f32(n + 1u), select(1.0, clamp(c.a, 0.0, 1.0), fxp.mb.w > 0.5)), c.a);
 }
 
 // Three eight-tap radial stages cover 8^3 positions using 24 reads. In logarithmic radius

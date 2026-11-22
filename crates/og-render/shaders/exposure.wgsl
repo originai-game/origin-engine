@@ -14,7 +14,7 @@ struct Adapt {
 
 @fragment
 fn fs_adapt(in: VsOut) -> @location(0) vec4<f32> {
-  let avg = textureLoad(metered, vec2<i32>(0), 0).r;
+  let avg = metered_log(textureLoad(metered, vec2<i32>(0), 0));
   let goal = metered_ev(avg, adapt.meter.x, adapt.meter.y, adapt.meter.z);
   if (adapt.speed.w > 0.5) { return vec4<f32>(goal, 0.0, 0.0, 1.0); }
   let prev = textureLoad(previous, vec2<i32>(0), 0).r;

@@ -156,5 +156,11 @@ impl Renderer {
         for s in &particle_frame.systems {
             self.sprite_group(s.texture);
         }
+        // The camera's background texture's (pass_main.rs draws it).
+        if let Some(t) = scene.frame.plate
+            && t.index() < self.cache.textures.len()
+        {
+            self.sprite_group(Some(t));
+        }
     }
 }

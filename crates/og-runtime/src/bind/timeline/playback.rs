@@ -633,6 +633,11 @@ fn timeline_system(
     // The caption keys showing this tick, in the timelines' order: the
     // UI's `$captions` (docs/ui.md §2). Nothing here draws them.
     let mut captions: Vec<(String, String)> = Vec::new();
+    // The plate a `layer under` video shows, and every timeline's own
+    // player's texture (what a plate may have left on the camera).
+    let mut plate: Option<u64> = None;
+    let mut owned: BTreeSet<u64> = BTreeSet::new();
+    let player = ctx.id_by_name(crate::bind::video::PLAYER).ok();
     let was = std::mem::take(&mut lock(state).prerolled);
     let mut prerolled = BTreeSet::new();
     let mut wanted: Vec<String> = Vec::new();
@@ -640,6 +645,13 @@ fn timeline_system(
     let mut scenes: BTreeSet<String> = BTreeSet::new();
     for e in rows {
         let key = e.to_bits();
+        if let (Some(id), Some(l)) = (player, &r.video)
+            && let Ok(b) = ctx.get_bytes(e, id)
+            && let Ok(p) = l.read::<record::VideoPlayer>(&b)
+            && p.texture != 0
+        {
+            owned.insert(p.texture);
+        }
         let cb = ctx.get_bytes(e, r.timeline.0)?;
         let mut comp = r.timeline.1.decode(&cb);
         let row = record::Timeline::from_json(&comp).map_err(invalid)?;
@@ -809,7 +821,13 @@ fn timeline_system(
             let Evaluated {
                 touched,
                 captions: showing,
+                plate: shown,
             } = out;
+            // A held or paused segment keeps its plate; a warming deck
+            // shows none.
+            if !row.preroll {
+                plate = plate.or(shown);
+            }
             captions.extend(
                 showing
                     .into_iter()
@@ -880,6 +898,7 @@ fn timeline_system(
         ctx.set_bytes(e, r.timeline.0, &out)?;
         lock(state).runs.insert(key, run);
     }
+    super::evaluate::plate(ctx, r, plate, &owned)?;
     {
         let mut sh = lock(state);
         sh.captions = captions;

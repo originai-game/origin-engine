@@ -57,6 +57,9 @@ pub(super) struct Evaluated {
     pub touched: Vec<u32>,
     /// The caption keys showing, each `(track id, key index, text)`.
     pub captions: Vec<(u32, usize, String)>,
+    /// The texture a `layer under` video track shows behind the scene now
+    /// (its player's; og.Camera.backgroundTexture).
+    pub plate: Option<u64>,
 }
 
 /// What a tick's evaluation of one timeline is given.
@@ -105,7 +108,11 @@ pub(super) fn evaluate(
             Track::Vfx(keys) if playing => {
                 effects(ctx, engine_id, r, lt, run, (ti32, keys), t, spans)?;
             }
-            Track::Video(v) => video(ctx, engine_id, r, lt, v, step)?,
+            Track::Video(v) => {
+                if let Some(t) = video(ctx, engine_id, r, lt, v, step)? {
+                    out.plate.get_or_insert(t);
+                }
+            }
             Track::Fields(f) if f.kind != og_timeline::FieldsKind::Material => {
                 fields(ctx, engine_id, &lt.id, f, t)?;
             }
@@ -617,13 +624,13 @@ fn video(
     lt: &Loaded,
     v: &og_timeline::VideoTrack,
     step: &Step<'_>,
-) -> og_core::Result<()> {
+) -> og_core::Result<Option<u64>> {
     let speed = step.playing.then_some(step.speed);
     let Some((ki, vt)) = eval::video_at(v, step.t) else {
-        return Ok(());
+        return Ok(None);
     };
     let (Ok(id), Some(l)) = (ctx.id_by_name(crate::bind::video::PLAYER), &r.video) else {
-        return Ok(());
+        return Ok(None);
     };
     let found = if v.entity.is_empty() {
         Some(step.owner)
@@ -638,11 +645,11 @@ fn video(
                 lt.id, v.entity
             ),
         );
-        return Ok(());
+        return Ok(None);
     };
     let key = &v.keys[ki];
     let Some(&handle) = lt.videos.get(&key.video) else {
-        return Ok(());
+        return Ok(None);
     };
     show(
         ctx,
@@ -652,7 +659,56 @@ fn video(
         vt,
         speed.is_some(),
         key.speed * speed.unwrap_or(1.0),
-    )
+    )?;
+    // Under the scene: the texture og.video gave the player (0 until its
+    // first frame).
+    if v.layer != og_timeline::VideoLayer::Under {
+        return Ok(None);
+    }
+    let texture = l
+        .read::<record::VideoPlayer>(&ctx.get_bytes(e, id)?)
+        .map_err(invalid)?
+        .texture;
+    Ok((texture != 0).then_some(texture))
+}
+
+/// og.Camera.backgroundTexture after the timelines of a tick: the plate the
+/// first of them showing one wants, else 0 where it still names a
+/// timeline's own player's texture (`owned`: the plate its track left
+/// there). A game's own background texture is left alone.
+pub(super) fn plate(
+    ctx: &mut SystemContext<'_>,
+    r: &Rec,
+    want: Option<u64>,
+    owned: &std::collections::BTreeSet<u64>,
+) -> og_core::Result<()> {
+    if !ctx.has_resource_id(r.camera.0)? {
+        return Ok(());
+    }
+    let bytes = ctx.resource_bytes(r.camera.0)?;
+    let now = r
+        .camera
+        .1
+        .read::<record::Camera>(&bytes)
+        .map_err(invalid)?
+        .background_texture;
+    let next = match want {
+        Some(t) => t,
+        None if owned.contains(&now) => 0,
+        None => now,
+    };
+    if next != now {
+        let out = r
+            .camera
+            .1
+            .encode(
+                Some(&bytes),
+                Some(&json!({ "backgroundTexture": next as f64 })),
+            )
+            .map_err(invalid)?;
+        ctx.set_resource_bytes(r.camera.0, &out)?;
+    }
+    Ok(())
 }
 
 /// Sets `e`'s og.VideoPlayer to `video` at `time` and `speed`, playing or

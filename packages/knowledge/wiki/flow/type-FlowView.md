@@ -13,7 +13,7 @@ What a flow shows now.
 | `flow` | `Entity` | `0` | — | — | — | The flow. |
 | `node` | `string` | `""` | — | — | — | The flow node playing. |
 | `segment` | `string` | `""` | — | — | — | Its segment's asset id. |
-| `texture` | `Texture` | `0` | — | — | — | The current deck's picture (its og.VideoPlayer.texture): put it on a full-screen sprite or image. |
+| `texture` | `Texture` | `0` | — | — | — | The current deck's picture (its og.VideoPlayer.texture): put it on a full-screen sprite or image. 0 while its footage plays under the scene (a video track's `layer under`), which og.Camera.backgroundTexture shows. |
 | `time` | `number` | `0` | — | `s` | — | Seconds into the segment. |
 | `cut` | `number` | `0` | — | `s` | — | When it cuts to the next: its flow.cut marker, else its duration. |
 | `choices` | `readonly ChoiceView[]` | `[]` | — | — | — | The node's choices while its window is open or locked (og.story's), without its `#outcome` choices, which the game takes. |
@@ -34,7 +34,7 @@ struct FlowView {
   field flow Entity "The flow."
   field node String "The flow node playing."
   field segment String "Its segment's asset id."
-  field texture Texture "The current deck's picture (its og.VideoPlayer.texture): put it on a full-screen sprite or image."
+  field texture Texture "The current deck's picture (its og.VideoPlayer.texture): put it on a full-screen sprite or image. 0 while its footage plays under the scene (a video track's `layer under`), which og.Camera.backgroundTexture shows."
   field time f32 "Seconds into the segment." {
     unit s
   }

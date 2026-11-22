@@ -204,6 +204,7 @@ impl Renderer {
             &self.sprite.sprite_additive_pipeline,
             &self.sprite.sprite_untonemapped_pipeline,
             &self.sprite.sprite_cover_pipeline,
+            &self.sprite.plate_pipeline,
             &self.sprite.msdf_pipeline,
         ]
         .into_iter()

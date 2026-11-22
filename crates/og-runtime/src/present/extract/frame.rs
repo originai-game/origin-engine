@@ -175,10 +175,17 @@ fn camera(rs: &mut RenderState, b: &Begun) -> View {
         .camera
         .as_deref()
         .and_then(|c| crate::host::wire::record::Camera::from_json_over(c, base).ok());
+    // Camera.backgroundTexture: the renderer's texture it names, once loaded.
+    let plate = camera
+        .as_ref()
+        .and_then(|c| crate::world::assets::index_of(c.background_texture as f64))
+        .and_then(|i| rs.textures.get(i).copied());
     let scene = &mut rs.scene;
     // Camera.
     let mut exposure = 1.0f32;
     scene.frame.camera_layers = camera.as_ref().map_or(1, |c| c.layers);
+    // In the drawn sky's place, whatever the scene's sky or background.
+    scene.frame.plate = plate;
     scene.frame.camera_cut = false;
     let (mut origin, mut look_along) = (Vec3::ZERO, None);
     if let Some(c) = &camera {

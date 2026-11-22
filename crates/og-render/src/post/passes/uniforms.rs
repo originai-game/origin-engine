@@ -67,6 +67,8 @@ impl PostPasses {
         hdr: [f32; 4],
     ) {
         let (exposure, compensation) = Self::exposure_rows(exposure);
+        self.untonemapped
+            .store(untonemapped, std::sync::atomic::Ordering::Relaxed);
         let lit_bloom = post.bloom.filter(|b| b.intensity > 0.0);
         let bloom = match (lit_bloom, post.glow.filter(|_| glow)) {
             // UnrealBloomPass: the mips are stored weighted, so the top

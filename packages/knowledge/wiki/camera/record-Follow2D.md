@@ -85,4 +85,4 @@ component Follow2D {
 }
 ```
 
-<sub>Module `camera` line 250</sub>
+<sub>Module `camera` line 253</sub>

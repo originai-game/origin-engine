@@ -32,13 +32,19 @@ fn metered_ev(avg: f32, compensation: f32, lo: f32, hi: f32) -> f32 {
   return clamp(log2(0.18) - avg + compensation, lo, hi);
 }
 
+// The mean log2 luminance a meter texel holds (luminance.wgsl): its
+// weighted sum over its weight.
+fn metered_log(t: vec4<f32>) -> f32 {
+  return t.r / max(t.g, 1e-6);
+}
+
 // The exposure multiplier of a pass's Post rows: `e` is post.exposure (x:
 // manual EV, y: 0 manual, 1 metered, 2 adapted, zw: the EV range),
 // `compensation` its EV compensation, `luminance` the 1x1 meter (metered:
 // the mean log2 luminance; adapted: the adapted EV, exposure.wgsl).
 fn exposure_from(e: vec4<f32>, compensation: f32, luminance: texture_2d<f32>) -> f32 {
-  let l = textureLoad(luminance, vec2<i32>(0), 0).r;
-  if (e.y > 1.5) { return exp2(l); }
-  if (e.y > 0.5) { return exp2(metered_ev(l, compensation, e.z, e.w)); }
+  let l = textureLoad(luminance, vec2<i32>(0), 0);
+  if (e.y > 1.5) { return exp2(l.r); }
+  if (e.y > 0.5) { return exp2(metered_ev(metered_log(l), compensation, e.z, e.w)); }
   return exp2(e.x);
 }

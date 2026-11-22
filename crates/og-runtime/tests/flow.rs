@@ -59,9 +59,9 @@ const LATE: &str = "type timeline\nversion 1\n---\nduration 1\ntrack video {\n  
 
 const DUEL: &str = "track marker {\n  key 0.2 {\n    name \"flow.open\"\n  }\n  key 0.8 {\n    name \"flow.lock\"\n  }\n  key 0.9 {\n    name \"flow.cut\"\n  }\n}\ntrack hotspot {\n  key 0.2 {\n    id \"knife\"\n    rect 0.1 0.1 0.2 0.2\n  }\n  key 0.6 {\n    id \"knife\"\n    rect 0.5 0.1 0.2 0.2\n  }\n}\n";
 
-/// A playable segment: the room live under footage, the camera blended in,
-/// the window from 0.1 s, held at 0.3 s.
-const LEVEL: &str = "type timeline\nversion 1\n---\nduration 1\ntrack video {\n  key 0 {\n    video \"clips/a.ogt\"\n  }\n}\ntrack scene {\n  key 0 {\n    scene \"scenes/room.ogt\"\n  }\n}\ntrack camera {\n  blendIn 0.2\n  key 0 {\n    position 0 2 8\n    target 0 0 0\n  }\n}\ntrack marker {\n  key 0.1 {\n    name \"flow.open\"\n  }\n  key 0.3 {\n    name \"flow.hold\"\n  }\n}\n";
+/// A playable segment: the room live over its footage (a plate, `layer
+/// under`), the camera blended in, the window from 0.1 s, held at 0.3 s.
+const LEVEL: &str = "type timeline\nversion 1\n---\nduration 1\ntrack video {\n  layer under\n  key 0 {\n    video \"clips/a.ogt\"\n  }\n}\ntrack scene {\n  key 0 {\n    scene \"scenes/room.ogt\"\n  }\n}\ntrack camera {\n  blendIn 0.2\n  key 0 {\n    position 0 2 8\n    target 0 0 0\n  }\n}\ntrack marker {\n  key 0.1 {\n    name \"flow.open\"\n  }\n  key 0.3 {\n    name \"flow.hold\"\n  }\n}\n";
 
 const ROOM: &str = "type scene\nversion 1\n---\nname \"Room\"\nentity \"lamp\" {\n}\n";
 
@@ -1023,6 +1023,17 @@ fn a_held_segment_waits_for_advance_and_takes_its_outcome() {
         .collect();
     assert_eq!(shown, ["Retry"], "{v}");
     assert_eq!(route(&r), ["level"], "it holds, far past its 1 s");
+    // Its footage is the camera's plate while it holds, not a picture over
+    // the scene.
+    let texture = player_of(&r, current(&r))["texture"].as_f64().unwrap();
+    assert!(texture > 0.0, "{}", player_of(&r, current(&r)));
+    assert_eq!(v["texture"], json!(0), "{v}");
+    let camera = ok(og_runtime::og_world_resource(r.engine, "og.Camera".into()));
+    assert_eq!(
+        camera["backgroundTexture"].as_f64(),
+        Some(texture),
+        "{camera}"
+    );
     let flow = ok(og_world_get(r.engine, r.flow, "og.Flow".into()));
     assert_eq!(flow["held"], json!(true), "{flow}");
     // The live scene is in the world while the level plays.
@@ -1065,7 +1076,10 @@ fn a_held_segment_waits_for_advance_and_takes_its_outcome() {
         "{c}"
     );
     assert_eq!(view(&r)["held"], json!(false));
+    // `lost` plays over the scene: the plate is gone, its picture is the view's.
+    assert_ne!(view(&r)["texture"], json!(0));
     let after = ok(og_runtime::og_world_resource(r.engine, "og.Camera".into()));
+    assert_eq!(after["backgroundTexture"], json!(0), "{after}");
     assert_eq!(
         after["position"], before["position"],
         "the level hands the camera back"

@@ -315,6 +315,9 @@ impl Renderer {
                 Background::Procedural { .. } => self.sky.sky_look_pipeline.start(),
                 Background::Color(_) => {}
             }
+            if scene.frame.plate.is_some() {
+                self.sprite.plate_pipeline.start();
+            }
         }
         self.post.start(self.history.taa_history.is_some());
         if let Some(w) = self.world.water.get_mut() {
@@ -850,6 +853,7 @@ impl Renderer {
                 camera: &camera,
                 post_fx,
                 scene,
+                untonemapped: arenas.sprite_frame.untonemapped || self.plate_group(scene).is_some(),
                 ao: effects.ao,
                 gi: effects.gi,
                 dof: effects.dof,
