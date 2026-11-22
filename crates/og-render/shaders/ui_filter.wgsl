@@ -29,8 +29,12 @@ struct FilterParams {
   m: array<vec4<f32>, 5>,
   // Component transfer tables: 16 values per channel.
   table: array<vec4<f32>, 16>,
-  // Used pixels: in1/in2 (xy), an element-layer auxiliary input (zw).
+  // Used pixels: in1 (xy), an element-layer auxiliary input (zw).
   extent: vec4<f32>,
+  // x: in1 px per px of this pass's target (a blur's halvings and the
+  // read that scales it back, src/ui/filter.rs); y: the pass's level (the
+  // CPU's); zw: in2's used pixels (in2 is at the layer's size).
+  res: vec4<f32>,
 };
 
 @group(0) @binding(0) var in1_tex: texture_2d<f32>;
@@ -44,6 +48,7 @@ const FLAG_IN2_ALPHA: u32 = 4u;
 const FLAG_STITCH: u32 = 16u;
 const FLAG_FRACTAL: u32 = 32u;
 const FLAG_CLAMP: u32 = 64u;
+const FLAG_MATRIX: u32 = 128u;
 
 @vertex
 fn vs_filter(@builtin(vertex_index) i: u32) -> @builtin(position) vec4<f32> {
@@ -107,15 +112,27 @@ fn bilinear(t: texture_2d<f32>, p: vec2<f32>, extent: vec2<f32>) -> vec4<f32> {
 }
 
 fn in1_at(p: vec2<f32>) -> vec4<f32> {
-  var c = bilinear(in1_tex, p, f.extent.xy);
+  var c = bilinear(in1_tex, p * f.res.x, f.extent.xy);
   if ((f.op.y & FLAG_IN1_ALPHA) != 0u) {
     c = vec4<f32>(0.0, 0.0, 0.0, c.a);
   }
   return space_in(c);
 }
 
+// The colour matrix in m (rows) and table[0] (offsets) on premultiplied
+// `c`, applied to its unpremultiplied values.
+fn color_matrix(c: vec4<f32>) -> vec4<f32> {
+  let v = unpremul(c);
+  var o: vec4<f32>;
+  for (var i = 0; i < 4; i++) {
+    o[i] = dot(f.m[i], v) + f.table[0][i];
+  }
+  o = clamp(o, vec4<f32>(0.0), vec4<f32>(1.0));
+  return vec4<f32>(o.rgb * o.a, o.a);
+}
+
 fn in2_at(p: vec2<f32>) -> vec4<f32> {
-  var c = bilinear(in2_tex, p, f.extent.xy);
+  var c = bilinear(in2_tex, p, f.res.zw);
   if ((f.op.y & FLAG_IN2_ALPHA) != 0u) {
     c = vec4<f32>(0.0, 0.0, 0.0, c.a);
   }
@@ -370,28 +387,45 @@ fn fs_filter(@builtin(position) at: vec4<f32>) -> @location(0) vec4<f32> {
   switch f.op.x {
     case 0u: {
       // Blur: one axis of a Gaussian, a.xy the image of the space's axis
-      // scaled by the standard deviation (device px), every device px
-      // within 3σ (at most 128 a side: a wider blur is split into
-      // passes, src/ui/filter.rs).
+      // scaled by the standard deviation (px of this pass's target),
+      // every px within 3σ (σ is at most 4 here: a wider blur runs on its
+      // input halved, src/ui/filter.rs).
       let sigma = length(f.a.xy);
       let dir = f.a.xy / max(sigma, 1e-6);
       if (sigma <= 1e-4) {
         out = in1_at(p);
       } else {
-        let reach = min(ceil(3.0 * sigma), 128.0);
+        let reach = min(ceil(3.0 * sigma), 12.0);
         var sum = vec4<f32>(0.0);
         var total = 0.0;
+        // Along a target's axis (every blur of an unturned space), each
+        // tap is a texel of in1 (which is at this pass's level): one read.
+        let axis = abs(dir.x) > 0.9999 || abs(dir.y) > 0.9999;
+        let c = vec2<i32>(floor(p));
+        let step = vec2<i32>(round(dir));
         for (var i = -reach; i <= reach; i += 1.0) {
           let w = exp(-0.5 * i * i / (sigma * sigma));
-          sum += w * in1_at(p + dir * i);
+          if (axis) {
+            sum += w * in1_texel(c + step * i32(i));
+          } else {
+            sum += w * in1_at(p + dir * i);
+          }
           total += w;
         }
         out = sum / total;
       }
     }
     case 1u: {
-      // Offset by a.xy device px (the space's offset on the screen).
+      // Offset by a.xy device px (the space's offset on the screen); by
+      // none, a blur's halving or its scale back up (in1 at another size).
       out = in1_at(p - f.a.xy);
+    }
+    case 18u: {
+      // A drop shadow (feDropShadow): in1 the blur of in's alpha (at its
+      // level), moved a.xy device px and flooded with b (premultiplied),
+      // under in2 (in).
+      let g = in2_at(p);
+      out = g + space_in(f.b) * in1_at(p - f.a.xy).a * (1.0 - g.a);
     }
     case 2u: {
       // Flood: a premultiplied colour, in the primitive's space.
@@ -439,16 +473,7 @@ fn fs_filter(@builtin(position) at: vec4<f32>) -> @location(0) vec4<f32> {
       out = vec4<f32>(rgb, s.a + b.a - s.a * b.a);
     }
     case 5u: {
-      // Colour matrix on unpremultiplied values.
-      let c = unpremul(in1_at(p));
-      let v = vec4<f32>(c.rgb, c.a);
-      var o: vec4<f32>;
-      for (var i = 0; i < 4; i++) {
-        let row0 = f.m[i];
-        o[i] = dot(row0, v) + f.table[0][i];
-      }
-      o = clamp(o, vec4<f32>(0.0), vec4<f32>(1.0));
-      out = vec4<f32>(o.rgb * o.a, o.a);
+      out = color_matrix(in1_at(p));
     }
     case 6u: {
       // Component transfer on unpremultiplied values.
@@ -495,7 +520,7 @@ fn fs_filter(@builtin(position) at: vec4<f32>) -> @location(0) vec4<f32> {
     case 8u: {
       // Displacement of in1 by in2's channels (unpremultiplied), a.x
       // units of the space per unit.
-      let m = unpremul(bilinear(in2_tex, p, f.extent.xy));
+      let m = unpremul(bilinear(in2_tex, p, f.res.zw));
       let d = vec2<f32>(m[f.op.z], m[f.op.w]) - 0.5;
       out = in1_at(p + device_vec(f.a.x * d));
     }
@@ -541,8 +566,18 @@ fn fs_filter(@builtin(position) at: vec4<f32>) -> @location(0) vec4<f32> {
       // A backdrop's capture: in1 is the target under the layer, its top
       // left a.xy (CSS px) and a.z device px per CSS px; premultiplied out,
       // linear from sRGB-encoded when a.w is 1, sRGB-encoded from linear
-      // when it is 2 (the paint pass's filters, on encoded values).
-      var c = bilinear(in1_tex, (q - f.a.xy) * f.a.z, f.extent.xy);
+      // when it is 2 (the paint pass's filters, on encoded values). At a
+      // level below the layer's size, each texel the box under it: b.x
+      // bilinear reads a side, each the mean of the 2×2 at its centre.
+      let k = max(f.b.x, 1.0);
+      var c = vec4<f32>(0.0);
+      for (var j = 0.0; j < k; j += 1.0) {
+        for (var i = 0.0; i < k; i += 1.0) {
+          let off = (vec2<f32>(i, j) + 0.5 - 0.5 * k) / (f.origin.z * k);
+          c += bilinear(in1_tex, (q + off - f.a.xy) * f.a.z, f.extent.xy);
+        }
+      }
+      c /= k * k;
       if (f.a.w > 1.5) {
         let u = unpremul(c);
         c = vec4<f32>(to_srgb(u.rgb) * u.a, u.a);
@@ -597,6 +632,10 @@ fn fs_filter(@builtin(position) at: vec4<f32>) -> @location(0) vec4<f32> {
       let a = in1_at(p);
       out = a + in2_at(p) * (1.0 - a.a);
     }
+  }
+  // A colour matrix the next primitive would run on this result alone.
+  if ((f.op.y & FLAG_MATRIX) != 0u) {
+    out = color_matrix(out);
   }
   return space_out(out);
 }

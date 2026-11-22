@@ -395,7 +395,7 @@ impl UiRenderer {
                     },
                 )),
                 (None, Some(t)) if !backdrop_of => {
-                    Some(super::super::filter::Source::Drawn(&t.sampled))
+                    Some(super::super::filter::Source::Drawn(&t.sampled, 0))
                 }
                 _ => None,
             };
@@ -409,6 +409,7 @@ impl UiRenderer {
                     plan.origin,
                     plan.scale,
                     &inputs,
+                    false,
                 )
             {
                 groups.filters.insert(plan.index, p);

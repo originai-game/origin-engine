@@ -2,7 +2,8 @@
 //! [`UiFilter`] on a [`super::UiLayer`] runs its primitives over what the
 //! layer drew (SourceGraphic) once it is drawn, or over what lies under it
 //! for a backdrop layer ([`super::UiLayer::backdrop`]), each a full-target
-//! pass into a result of the layer's size (`shaders/ui_filter.wgsl`), and
+//! pass into a result of the layer's size (`shaders/ui_filter.wgsl`; a
+//! wide blur's inner passes run on its input halved), and
 //! the layer composites the last result instead of what it drew. The
 //! layer's rect is the filter region on the screen. Results are
 //! premultiplied linear light, as the layers are
@@ -39,8 +40,13 @@ struct FilterParams {
     c: [f32; 4],
     m: [[f32; 4]; 5],
     table: [[f32; 4]; 16],
-    /// Used pixels: in1/in2 (xy), an element-layer auxiliary input (zw).
+    /// Used pixels: in1 (xy), an element-layer auxiliary input (zw).
     extent: [f32; 4],
+    /// x: in1 px per px of the pass's target; y: the pass's level, its
+    /// target the layer's size halved that many times (read by
+    /// `prepare`, which writes x); zw: in2's used pixels (in2 is at the
+    /// layer's size).
+    res: [f32; 4],
 }
 
 const FLAG_SRGB: u32 = 1;
@@ -51,9 +57,31 @@ const FLAG_FRACTAL: u32 = 32;
 /// Reads past an input's edge take its edge (a backdrop: what is under
 /// the element goes on past what was captured of it).
 const FLAG_CLAMP: u32 = 64;
+/// The pass then runs the colour matrix in `m` on its result (a blur's
+/// last pass, for the matrix after it).
+const FLAG_MATRIX: u32 = 128;
 
-/// The most texels a blur pass reads a side (ui_filter.wgsl's case 0).
-const BLUR_REACH: f32 = 128.0;
+/// The widest deviation a blur pass runs at (device px of its level): a
+/// wider one runs on its input halved until it is this or less, as Skia
+/// blurs (ui_filter.wgsl's case 0 reads 3 deviations a side).
+const BLUR_SIGMA: f32 = 4.0;
+/// The most times a blur halves its input.
+const BLUR_LEVELS: f32 = 8.0;
+/// The widest deviation a drop shadow's alpha is blurred at: its soft
+/// edge halved sooner than a picture.
+const SHADOW_SIGMA: f32 = 2.0;
+/// The most times a filter's source is halved as it is drawn or captured
+/// ([`source_level`]).
+const SOURCE_LEVELS: u32 = 2;
+
+/// A layer of `size` device px halved `level` times.
+fn shrink(size: (u32, u32), level: u32) -> (u32, u32) {
+    let k = (1u32 << level) - 1;
+    (
+        ((size.0 + k) >> level).max(1),
+        ((size.1 + k) >> level).max(1),
+    )
+}
 
 /// The ops' codes in ui_filter.wgsl beyond a primitive's.
 const OP_LAYER: u32 = 16;
@@ -113,10 +141,181 @@ fn invert(m: [f32; 6]) -> Option<[f32; 6]> {
     Some([ia, ib, ic, id, -(ia * e + ic * f), -(ib * e + id * f)])
 }
 
+/// A pass of a primitive at `level` (its target the layer's size halved
+/// that many times): op `op` with `a` its first two parameters, its input
+/// read with `flags` only by the primitive's first pass, and drawn
+/// everywhere (the caller cuts its last pass to the subregion).
+fn step(f: FilterParams, flags: u32, op: u32, a: [f32; 2], level: u32) -> FilterParams {
+    let mut pass = f;
+    pass.op = [op, flags, 0, 0];
+    pass.a = [a[0], a[1], 0.0, 0.0];
+    pass.origin[2] = f.origin[2] / (1u32 << level) as f32;
+    pass.res[1] = level as f32;
+    pass.subregion = [-1.0e9, -1.0e9, 2.0e9, 2.0e9];
+    pass
+}
+
+/// How many times a blur of deviations `std_dev` (the space's units)
+/// halves its input in `frame`: until the wider is `most` device px or
+/// less (BLUR_SIGMA, or SHADOW_SIGMA for a drop shadow's alpha).
+fn blur_levels(frame: &Frame, std_dev: [f32; 2], most: f32) -> u32 {
+    let x = frame.device([std_dev[0].max(0.0), 0.0]);
+    let y = frame.device([0.0, std_dev[1].max(0.0)]);
+    let wide = x[0].hypot(x[1]).max(y[0].hypot(y[1]));
+    (wide / most).log2().ceil().clamp(0.0, BLUR_LEVELS) as u32
+}
+
+/// The level a filter's source may be drawn or captured at (the layer's
+/// size halved that many times, at most SOURCE_LEVELS): its blur's first
+/// halvings, when a wide blur is the one primitive that reads it; drawn
+/// with its edges' coverage there, or captured as each texel's box, it is
+/// what those halvings would make. 0 otherwise.
+pub(crate) fn source_level(filter: &super::UiFilter, scale: f32) -> u32 {
+    let p = &filter.primitives;
+    let frame = Frame {
+        origin: [0.0; 2],
+        scale,
+        space: filter.space,
+    };
+    match p.first() {
+        Some(UiFilterPrimitive {
+            op: UiFilterOp::Blur { std_dev },
+            inputs: [UiFilterInput::Source, _],
+            ..
+        }) if !p[1..].iter().any(|p| {
+            p.inputs[0] == UiFilterInput::Source
+                || (reads_in2(p) && p.inputs[1] == UiFilterInput::Source)
+        }) =>
+        {
+            blur_levels(&frame, *std_dev, BLUR_SIGMA).min(SOURCE_LEVELS)
+        }
+        _ => 0,
+    }
+}
+
+/// Whether `p` works per pixel on its `in` only (it runs at the level its
+/// input is at).
+fn pointwise(p: &UiFilterPrimitive) -> bool {
+    matches!(
+        p.op,
+        UiFilterOp::ColorMatrix(_) | UiFilterOp::ComponentTransfer(_)
+    )
+}
+
+/// Writes colour matrix `m` (rows R, G, B, A of 5) where a pass reads it.
+fn matrix(f: &mut FilterParams, m: &[f32; 20]) {
+    for r in 0..4 {
+        f.m[r] = [m[r * 5], m[r * 5 + 1], m[r * 5 + 2], m[r * 5 + 3]];
+        f.table[0][r] = m[r * 5 + 4];
+    }
+}
+
+/// Whether `p` reads its `in2`.
+fn reads_in2(p: &UiFilterPrimitive) -> bool {
+    matches!(
+        p.op,
+        UiFilterOp::Composite { .. }
+            | UiFilterOp::Blend(_)
+            | UiFilterOp::Displacement { .. }
+            | UiFilterOp::DropShadow { .. }
+            | UiFilterOp::Merge
+    )
+}
+
+/// Whether blur `i` of `primitives` leaves its result at the level it ran
+/// at, for a reader that scales it back bilinearly as it reads: the
+/// filter's last primitive, or the one before a last that works per pixel
+/// on it alone (which runs at that level too).
+fn kept(primitives: &[UiFilterPrimitive], i: usize) -> bool {
+    let n = primitives.len();
+    matches!(primitives[i].op, UiFilterOp::Blur { .. })
+        && (i + 1 == n
+            || (i + 2 == n
+                && pointwise(&primitives[n - 1])
+                && primitives[n - 1].inputs[0] == UiFilterInput::Result(i as u32)))
+}
+
+/// The level of `filter`'s result in a frame at `scale` device px per CSS
+/// px when its reader takes one below the layer's size
+/// ([`FilterRunner::prepare`] with `low`): the layer's size halved that
+/// many times.
+pub(crate) fn result_level(filter: &super::UiFilter, scale: f32) -> u32 {
+    let frame = Frame {
+        origin: [0.0; 2],
+        scale,
+        space: filter.space,
+    };
+    let p = &filter.primitives;
+    let blur = |i: usize| match p[i].op {
+        UiFilterOp::Blur { std_dev } if kept(p, i) => blur_levels(&frame, std_dev, BLUR_SIGMA),
+        _ => 0,
+    };
+    match p.len() {
+        0 => 0,
+        n if n > 1 && pointwise(&p[n - 1]) => blur(n - 2),
+        n => blur(n - 1),
+    }
+}
+
+/// A Gaussian of deviations `std_dev` (the space's units) along the
+/// space's axes, as Skia blurs: the input halved until the wider
+/// deviation is BLUR_SIGMA or less (each half a 2×2 box, one bilinear read
+/// a texel), then the Gaussian's two passes there, its result at that
+/// level for the next pass to read bilinearly. The boxes and that read
+/// blur too: their variance (a box of two texels s px apart s²/4, a
+/// bilinear scale by k k²/6) comes off the Gaussian's, so the whole is
+/// the deviation asked for. The first pass reads the input with `flags`;
+/// an input already at level `from` (a backdrop captured halved) is not
+/// halved again to it.
+fn blur(
+    f: FilterParams,
+    flags: u32,
+    frame: &Frame,
+    std_dev: [f32; 2],
+    (from, most): (u32, f32),
+) -> Vec<FilterParams> {
+    let x = frame.device([std_dev[0].max(0.0), 0.0]);
+    let y = frame.device([0.0, std_dev[1].max(0.0)]);
+    let len = |v: [f32; 2]| v[0].hypot(v[1]);
+    let levels = blur_levels(frame, std_dev, most).max(from);
+    let k = (1u32 << levels) as f32;
+    let extra = if levels == 0 {
+        0.0
+    } else {
+        (1..=levels)
+            .map(|l| (1u32 << (2 * (l - 1))) as f32 / 4.0)
+            .sum::<f32>()
+            + k * k / 6.0
+    };
+    let narrowed = |v: [f32; 2]| {
+        let l = len(v);
+        let r = if l > 0.0 {
+            (l * l - extra).max(0.0).sqrt() / l / k
+        } else {
+            0.0
+        };
+        [v[0] * r, v[1] * r]
+    };
+    let rest = flags & (FLAG_SRGB | FLAG_CLAMP);
+    let mut out: Vec<FilterParams> = (from + 1..=levels)
+        .map(|l| step(f, rest, 1, [0.0; 2], l))
+        .collect();
+    out.push(step(f, rest, 0, narrowed(x), levels));
+    out.push(step(f, rest, 0, narrowed(y), levels));
+    out[0].op[1] = flags;
+    out
+}
+
 /// The parameters of each pass of a primitive (two for a blur or a
 /// morphology, one axis of the space each) in `frame`, every read past
 /// an input's edge taking the edge when `clamp`.
-fn passes(p: &UiFilterPrimitive, frame: &Frame, clamp: bool) -> Vec<FilterParams> {
+fn passes(
+    p: &UiFilterPrimitive,
+    frame: &Frame,
+    clamp: bool,
+    keep: bool,
+    from: u32,
+) -> Vec<FilterParams> {
     let scale = frame.scale;
     let space = frame.space;
     let inverse = invert(space).unwrap_or([0.0; 6]);
@@ -156,35 +355,33 @@ fn passes(p: &UiFilterPrimitive, frame: &Frame, clamp: bool) -> Vec<FilterParams
     };
     match &p.op {
         UiFilterOp::Blur { std_dev } => {
-            code(&mut f, 0);
-            let x = frame.device([std_dev[0].max(0.0), 0.0]);
-            let y = frame.device([0.0, std_dev[1].max(0.0)]);
-            // A pass takes every texel within 3σ, up to BLUR_REACH a side;
-            // a wider Gaussian is n passes of σ/√n (Gaussians convolve to
-            // the Gaussian whose variance is their sum), each exact.
-            let split = |v: [f32; 2]| {
-                let n = (v[0].hypot(v[1]) * 3.0 / BLUR_REACH)
-                    .powi(2)
-                    .ceil()
-                    .max(1.0);
-                let k = n.sqrt().recip();
-                (n as usize, [v[0] * k, v[1] * k])
-            };
-            let ((nx, x), (ny, y)) = (split(x), split(y));
-            let mut out = Vec::with_capacity(nx + ny);
-            for (k, v) in std::iter::repeat_n(x, nx)
-                .chain(std::iter::repeat_n(y, ny))
-                .enumerate()
-            {
-                let mut pass = f;
-                pass.a[0] = v[0];
-                pass.a[1] = v[1];
-                // Only the first reads the input; the rest read a result.
-                if k > 0 {
-                    pass.op[1] = flags & (FLAG_SRGB | FLAG_CLAMP);
-                }
-                out.push(pass);
+            let mut out = blur(f, flags, frame, *std_dev, (from, BLUR_SIGMA));
+            let level = out.last().map_or(0.0, |s| s.res[1]);
+            if level > 0.0 && !keep {
+                // Back to the layer's size: an offset of none.
+                out.push(step(f, flags & (FLAG_SRGB | FLAG_CLAMP), 1, [0.0; 2], 0));
             }
+            if let Some(last) = out.last_mut() {
+                last.subregion = p.subregion;
+            }
+            return out;
+        }
+        UiFilterOp::DropShadow { std_dev, d, color } => {
+            // The blur of in's alpha where it ran, then one pass: that
+            // moved, flooded and under in2 (in), its read the scale back.
+            let mut out = blur(
+                f,
+                flags | FLAG_IN1_ALPHA,
+                frame,
+                *std_dev,
+                (0, SHADOW_SIGMA),
+            );
+            let [x, y] = frame.device(*d);
+            let [r, g, b, a] = *color;
+            let mut last = step(f, flags & !FLAG_IN1_ALPHA, 18, [x, y], 0);
+            last.b = [r * a, g * a, b * a, a];
+            last.subregion = p.subregion;
+            out.push(last);
             return out;
         }
         UiFilterOp::Morphology { radius, dilate } => {
@@ -215,10 +412,7 @@ fn passes(p: &UiFilterPrimitive, frame: &Frame, clamp: bool) -> Vec<FilterParams
         }
         UiFilterOp::ColorMatrix(m) => {
             code(&mut f, 5);
-            for r in 0..4 {
-                f.m[r] = [m[r * 5], m[r * 5 + 1], m[r * 5 + 2], m[r * 5 + 3]];
-                f.table[0][r] = m[r * 5 + 4];
-            }
+            matrix(&mut f, m);
         }
         UiFilterOp::ComponentTransfer(funcs) => {
             code(&mut f, 6);
@@ -521,8 +715,9 @@ impl Prepared {
 
 /// What a layer's filter reads as its source.
 pub(crate) enum Source<'a> {
-    /// What the layer drew.
-    Drawn(&'a wgpu::TextureView),
+    /// What the layer drew, at a level ([`source_level`]: the layer's
+    /// size halved that many times).
+    Drawn(&'a wgpu::TextureView, u32),
     /// What is under a backdrop layer.
     Capture(Capture<'a>),
 }
@@ -792,20 +987,38 @@ impl FilterRunner {
         origin: [f32; 2],
         scale: f32,
         inputs: &Inputs<'_>,
+        low: bool,
     ) -> Option<Prepared> {
         let mut passes = Vec::new();
         let clamp = matches!(source, Source::Capture(_));
+        let primitives = filter.map_or(&[][..], |f| &f.primitives);
+        let frame = Frame {
+            origin,
+            scale,
+            space: filter.map_or(super::UiFilter::CSS, |f| f.space),
+        };
+        // A capture only a wide blur reads is taken at that blur's level
+        // (each texel the box under it, `source_level`); what a layer drew
+        // is at the level it was drawn at.
+        let cap = match (&source, filter) {
+            (Source::Capture(_), Some(filter)) => source_level(filter, scale),
+            (Source::Drawn(_, level), _) => *level,
+            _ => 0,
+        };
         let source = match source {
-            Source::Drawn(v) if filter.is_some_and(|f| !f.primitives.is_empty()) => v.clone(),
-            Source::Drawn(_) => return None,
+            Source::Drawn(v, _) if filter.is_some_and(|f| !f.primitives.is_empty()) => v.clone(),
+            Source::Drawn(..) => return None,
             Source::Capture(c) => {
                 let params = FilterParams {
                     op: [OP_CAPTURE, FLAG_CLAMP, 0, 0],
-                    origin: [origin[0], origin[1], scale, 0.0],
+                    origin: [origin[0], origin[1], scale / (1u32 << cap) as f32, 0.0],
                     subregion: [-1.0e9, -1.0e9, 2.0e9, 2.0e9],
                     space: [1.0, 0.0, 0.0, 1.0],
                     inverse: [1.0, 0.0, 0.0, 1.0],
                     extent: [c.size.0 as f32, c.size.1 as f32, 0.0, 0.0],
+                    res: [1.0, cap as f32, size.0 as f32, size.1 as f32],
+                    // Bilinear reads a side, each the 2×2 under it.
+                    b: [(1u32 << cap.max(1)) as f32 / 2.0, 0.0, 0.0, 0.0],
                     a: [
                         c.origin[0],
                         c.origin[1],
@@ -818,7 +1031,7 @@ impl FilterRunner {
                     ],
                     ..Default::default()
                 };
-                let out = self.take(device, size);
+                let out = self.take(device, shrink(size, cap));
                 let u = self.uniform(device, queue, &params);
                 let group = crate::bind_group(
                     device,
@@ -835,23 +1048,50 @@ impl FilterRunner {
                 self.pool[out].view.clone()
             }
         };
-        let primitives = filter.map_or(&[][..], |f| &f.primitives);
-        let frame = Frame {
-            origin,
-            scale,
-            space: filter.map_or(super::UiFilter::CSS, |f| f.space),
-        };
         // A space that cannot be inverted draws nothing.
         let draws = invert(frame.space).is_some();
         let mut results: Vec<usize> = Vec::new();
-        for p in primitives.iter().filter(|_| draws) {
+        // Each result's level (the layer's size halved that many times).
+        let mut levels: Vec<u32> = Vec::new();
+        let mut folded = false;
+        for (i, p) in primitives.iter().enumerate().filter(|_| draws) {
             let input = |i: UiFilterInput, results: &[usize], pool: &Pool<Pooled>| match i {
                 UiFilterInput::Result(k) if (k as usize) < results.len() => {
                     pool[results[k as usize]].view.clone()
                 }
                 _ => source.clone(),
             };
-            let mut steps = self::passes(p, &frame, clamp);
+            // The level its in1 is at.
+            let at = match p.inputs[0] {
+                UiFilterInput::Result(k) => levels.get(k as usize).copied().unwrap_or(0),
+                UiFilterInput::Source => cap,
+                _ => 0,
+            };
+            // A colour matrix on this blur's result alone, run by its
+            // last pass.
+            if folded {
+                folded = false;
+                results.push(*results.last().expect("the blur's"));
+                levels.push(*levels.last().expect("the blur's"));
+                continue;
+            }
+            let keep = low && kept(primitives, i);
+            let mut steps = self::passes(p, &frame, clamp, keep, at);
+            if keep
+                && let Some(UiFilterOp::ColorMatrix(m)) = primitives.get(i + 1).map(|p| &p.op)
+                && let Some(last) = steps.last_mut()
+            {
+                matrix(last, m);
+                last.op[1] |= FLAG_MATRIX;
+                folded = true;
+            }
+            // Per pixel on a result below the layer's size: at its level.
+            if pointwise(p) && at > 0 {
+                for s in &mut steps {
+                    s.res[1] = at as f32;
+                    s.origin[2] = scale / (1u32 << at) as f32;
+                }
+            }
             let aux = match &p.op {
                 UiFilterOp::Turbulence { seed, .. } => self.lattice(device, queue, *seed),
                 UiFilterOp::Image { texture, .. } => {
@@ -873,10 +1113,18 @@ impl FilterRunner {
             let in2 = input(p.inputs[1], &results, &self.pool);
             let last = steps.len() - 1;
             let mut out = 0;
+            // The level in1 is at.
+            let mut from = at;
             for (n, mut params) in steps.into_iter().enumerate() {
-                params.extent[0] = size.0 as f32;
-                params.extent[1] = size.1 as f32;
-                out = self.take(device, size);
+                let to = params.res[1] as u32;
+                let read = shrink(size, from);
+                params.extent[0] = read.0 as f32;
+                params.extent[1] = read.1 as f32;
+                params.res[0] = (to as f32 - from as f32).exp2();
+                params.res[2] = size.0 as f32;
+                params.res[3] = size.1 as f32;
+                from = to;
+                out = self.take(device, shrink(size, to));
                 let u = self.uniform(device, queue, &params);
                 let group = crate::bind_group(
                     device,
@@ -895,6 +1143,7 @@ impl FilterRunner {
                 }
             }
             results.push(out);
+            levels.push(from);
         }
         let target = match (results.last(), passes.last()) {
             (Some(&r), _) => r,
@@ -906,6 +1155,7 @@ impl FilterRunner {
                 let params = FilterParams {
                     op: [2, 0, 0, 0],
                     origin: [origin[0], origin[1], scale, 0.0],
+                    res: [1.0, 0.0, size.0 as f32, size.1 as f32],
                     ..Default::default()
                 };
                 let u = self.uniform(device, queue, &params);

@@ -548,6 +548,49 @@ fn a_group_blurs_what_it_holds_and_a_drop_shadow_lands_below_it() {
     near(at(&px, 96, 36), BLACK, "between them");
 }
 
+/// A wide blur runs on its layer halved (twice for a deviation of 12
+/// px) and is scaled back: it must still be the Gaussian asked for, where
+/// it was. Ways this could fail: the halved image read at the wrong scale
+/// or shifted by a texel of a level, the deviation left at its full-size
+/// value or not divided by the halving, or the scale back skipped.
+#[test]
+#[ignore = "requires GPU"]
+fn a_wide_blur_runs_halved_and_lands_as_the_gaussian_asked_for() {
+    use og_render::paint::{PaintEffect, PaintGroup};
+    // A white half plane from x = 64 (the layer's right edge 64 px, five
+    // deviations, past it), blurred by a deviation of 12 px.
+    let px = render(|scene| {
+        let p = &mut scene.ui.paint;
+        p.effects = vec![PaintEffect::Blur(12.0)];
+        p.groups = vec![PaintGroup {
+            quad: 0,
+            end: 2,
+            first: 0,
+            count: 1,
+            xf: 0,
+            backdrop: false,
+        }];
+        vec![
+            composite(0, [0.0, 0.0, W as f32, W as f32]),
+            solid([64.0, -64.0, 256.0, 256.0], WHITE, 1.0),
+        ]
+    });
+    // In encoded values, as CSS blurs: half at the edge, 0.5 erfc(1/√2)
+    // a deviation either side, 0.023 two out.
+    let close = |x: u32, want: u8, what: &str| {
+        let got = at(&px, x, 64)[0];
+        assert!(
+            got.abs_diff(want) <= 8,
+            "{what} (x {x}): {got}, expected {want}"
+        );
+    };
+    close(64, 128, "the edge");
+    close(52, 41, "a deviation out");
+    close(76, 214, "a deviation in");
+    close(40, 6, "two deviations out");
+    close(30, 0, "three deviations out");
+}
+
 #[test]
 #[ignore = "requires GPU"]
 fn a_colour_matrix_filters_the_encoded_colour() {
@@ -690,6 +733,60 @@ fn a_backdrop_filters_what_is_under_it_on_every_target() {
         near(at(&px, 64, 64), grey(57), &what("across the edge, blurred"));
         near(at(&px, 16, 64), WHITE, &what("beside it"));
         near(at(&px, 34, 34), WHITE, &what("its corner, outside the arc"));
+    }
+}
+
+/// A wide backdrop blur (a deviation of 12 px) captures what is under it
+/// at a quarter of its size, each texel the box under it, blurs there and
+/// is read back bilinearly: it must still be the Gaussian asked for, then
+/// its colour matrix. Ways this could fail: the capture's boxes off by a
+/// texel or reading one texel each, the blur not told its input is
+/// already halved, or the matrix run at the wrong level's size.
+#[test]
+#[ignore = "requires GPU"]
+fn a_wide_backdrop_blur_captures_halved_and_lands_as_asked() {
+    use og_render::paint::{GROUP_SHAPED, PaintEffect, PaintGroup};
+    for to in [To::Offscreen, To::Plain] {
+        let px = render_to(to, |scene| {
+            let p = &mut scene.ui.paint;
+            p.filters.push([
+                [0.5, 0.0, 0.0, 0.0],
+                [0.0, 0.5, 0.0, 0.0],
+                [0.0, 0.0, 0.5, 0.0],
+                [0.0, 0.0, 0.0, 1.0],
+                [0.0; 4],
+            ]);
+            p.effects = vec![PaintEffect::Blur(12.0), PaintEffect::Matrix(0)];
+            p.groups = vec![PaintGroup {
+                quad: 1,
+                end: 2,
+                first: 0,
+                count: 2,
+                xf: 0,
+                backdrop: true,
+            }];
+            vec![
+                solid([0.0, 0.0, 64.0, 128.0], WHITE, 1.0),
+                PaintQuad {
+                    radius: [16.0; 4],
+                    b: GROUP_SHAPED,
+                    ..composite(0, [8.0, 8.0, 112.0, 112.0])
+                },
+            ]
+        });
+        // In encoded values, halved: a quarter at the edge, 0.5 erfc of
+        // ∓1/√2 of a half a deviation either side.
+        let close = |x: u32, want: u8, what: &str| {
+            let got = at(&px, x, 64)[0];
+            assert!(
+                got.abs_diff(want) <= 8,
+                "{to:?}: {what} (x {x}): {got}, expected {want}"
+            );
+        };
+        close(64, 64, "the edge");
+        close(52, 107, "a deviation into the white");
+        close(76, 20, "a deviation into the black");
+        close(28, 127, "deep in the white");
     }
 }
 

@@ -92,6 +92,9 @@ enum Step {
 struct GroupLayer {
     backdrop: bool,
     rect: [i32; 4],
+    /// The level a filter group's layer is drawn at: its rect halved that
+    /// many times ([`super::filter::source_level`]).
+    level: u32,
     steps: Vec<Step>,
     /// Its filter over what it filters; a backdrop's also over the pass's
     /// own layer drawn over the copy of the output under it.
@@ -414,42 +417,16 @@ fn filter_of(
                 sigma,
                 color,
             } => {
-                let blurred = push(
-                    &mut primitives,
-                    UiFilterOp::Blur {
-                        std_dev: [sigma; 2],
-                    },
-                    [input, source],
-                );
-                let moved = push(
-                    &mut primitives,
-                    UiFilterOp::Offset { d: offset },
-                    [blurred, source],
-                );
                 let [r, g, b, a] = color;
                 let encoded = [r, g, b].map(og_core::color::linear_to_srgb);
-                let flood = push(
-                    &mut primitives,
-                    UiFilterOp::Flood {
-                        color: [encoded[0], encoded[1], encoded[2], a],
-                    },
-                    [source, source],
-                );
-                let shadow = push(
-                    &mut primitives,
-                    UiFilterOp::Composite {
-                        op: UiFilterComposite::In,
-                        k: [0.0; 4],
-                    },
-                    [flood, moved],
-                );
                 push(
                     &mut primitives,
-                    UiFilterOp::Composite {
-                        op: UiFilterComposite::Over,
-                        k: [0.0; 4],
+                    UiFilterOp::DropShadow {
+                        std_dev: [sigma; 2],
+                        d: offset,
+                        color: [encoded[0], encoded[1], encoded[2], a],
                     },
-                    [input, shadow],
+                    [input, input],
                 )
             }
             PaintEffect::Matrix(k) => {
@@ -863,8 +840,11 @@ impl PaintRenderer {
                 self.layer_groups.push(None);
                 continue;
             }
+            // At its level: its rect's size and top left, and the scale,
+            // halved that many times.
+            let half = (1u32 << l.level) as f32;
             let [x, y, w, h] = l.rect;
-            let size = (w as u32, h as u32);
+            let size = (w as u32 >> l.level, h as u32 >> l.level);
             if self.targets[k].as_ref().is_none_or(|t| t.size != size) {
                 let view = crate::target_texture(
                     device,
@@ -891,14 +871,14 @@ impl PaintRenderer {
                 self.frames.push(b);
             }
             let u: [f32; 8] = [
-                w as f32,
-                h as f32,
-                scale,
+                size.0 as f32,
+                size.1 as f32,
+                scale / half,
                 0.0,
                 crate::overlay::dither_step(self.format),
                 0.0,
-                x as f32,
-                y as f32,
+                x as f32 / half,
+                y as f32 / half,
             ];
             crate::traffic::write_buffer(queue, &self.frames[k], 0, bytemuck::cast_slice(&u));
             self.layer_groups
@@ -1032,7 +1012,7 @@ impl PaintRenderer {
         self.layer_of.resize(paint.groups.len(), None);
         self.order.clear();
         self.missing = 0;
-        for q in &paint.quads {
+        for (i, q) in paint.quads.iter().enumerate() {
             self.at.push(self.gpu.len() as u32);
             let mut g = PaintGpu {
                 // A border's other sides' colour (an image sets its own).
@@ -1154,9 +1134,30 @@ impl PaintRenderer {
                         UiFilterInput::Result(1),
                     )
                 });
+                // A group a wide blur filters first draws at that blur's
+                // level (one holding another group's composite at the
+                // layer's size: that composite reads its result by the
+                // output's px). A wide blur's result stays below the
+                // layer's size, which its composite reads bilinearly. The
+                // layer is a whole number of either level's texels, so they
+                // cover it exactly.
+                let nested = paint.quads[i + 1..(group.end as usize).min(paint.quads.len())]
+                    .iter()
+                    .any(|q| q.kind == PaintKind::Group as u32);
+                let level = if group.backdrop || nested {
+                    0
+                } else {
+                    super::filter::source_level(&filter, scale)
+                };
+                let unit = 1i32 << super::filter::result_level(&filter, scale).max(level);
+                let mut rect = rect;
+                for side in &mut rect[2..] {
+                    *side = (*side + unit - 1) / unit * unit;
+                }
                 self.layers.push(GroupLayer {
                     backdrop: group.backdrop,
                     rect,
+                    level,
                     steps: Vec::new(),
                     filter,
                     filter_over,
@@ -1472,7 +1473,7 @@ impl PaintRenderer {
                 cx,
                 k,
                 &l.filter,
-                Source::Drawn(&target.view),
+                Source::Drawn(&target.view, l.level),
             );
         }
         draws
@@ -1640,6 +1641,7 @@ impl PaintRenderer {
             origin,
             scale,
             &inputs,
+            true,
         ) else {
             return 0;
         };

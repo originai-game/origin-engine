@@ -115,6 +115,14 @@ pub enum UiFilterOp {
     Blur { std_dev: [f32; 2] },
     /// `feOffset`.
     Offset { d: [f32; 2] },
+    /// `feDropShadow` of `in` (`in2` the same input): its alpha blurred
+    /// by `std_dev` along the space's x and y, moved by `d`, flooded with
+    /// `color` (straight linear RGBA) and drawn under it.
+    DropShadow {
+        std_dev: [f32; 2],
+        d: [f32; 2],
+        color: [f32; 4],
+    },
     /// `feFlood`: straight linear RGBA.
     Flood { color: [f32; 4] },
     /// `feComposite` of `in` over `in2` by `op`, `k` for arithmetic.
