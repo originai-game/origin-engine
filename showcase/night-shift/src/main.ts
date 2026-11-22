@@ -34,9 +34,18 @@ function start(world: World): void {
 /** Steps the weather, the season and the time of day on their keys, and hides the HUD on its. */
 const Switches = defineSystem("Switches", { writes: [Air] }, (_q, _time, world) => {
   const air = must(world.resource(Air));
-  if (og.input.isActionJustPressed(world, "weather")) air.weather = (air.weather + 1) % WEATHERS.length;
-  if (og.input.isActionJustPressed(world, "season")) air.season = (air.season + 1) % SEASONS.length;
-  if (og.input.isActionJustPressed(world, "time")) air.time = (air.time + 1) % TIMES.length;
+  if (og.input.isActionJustPressed(world, "weather")) {
+    air.weather = (air.weather + 1) % WEATHERS.length;
+    og.assert.reachable("a key switched the weather", {});
+  }
+  if (og.input.isActionJustPressed(world, "season")) {
+    air.season = (air.season + 1) % SEASONS.length;
+    og.assert.reachable("a key turned the season", {});
+  }
+  if (og.input.isActionJustPressed(world, "time")) {
+    air.time = (air.time + 1) % TIMES.length;
+    og.assert.reachable("a key changed the time of day", {});
+  }
   if (og.input.isActionJustPressed(world, "hud")) toggleHud(world);
 });
 

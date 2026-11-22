@@ -69,6 +69,8 @@ export const Choose = defineSystem("Choose", { reads: [og.Input, Pick], writes: 
   if (picked[1] || og.input.isActionJustPressed(world, "season")) { s.season = (s.season + 1) % SEASONS.length; s.seen |= 2; }
   if (picked[2] || og.input.isActionJustPressed(world, "time")) s.time = (s.time + 1) % TIMES.length;
   if (s.time === 3) s.seen |= 4;
+  // The HUD's tasks (hud.ts): a weather, a season and the night seen.
+  if (s.seen === 7) og.assert.reachable("every task of the day done", {});
   if (og.input.isActionJustPressed(world, "hud")) s.hud = 1 - s.hud;
 });
 

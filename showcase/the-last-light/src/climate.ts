@@ -122,9 +122,18 @@ export const Seasons = defineSystem("Seasons", {
   writes: [Climate, og.Clouds, og.Fog, og.Wind, og.Weather, og.WeatherState, og.DayNight, og.RenderSettings, og.PostEffects, og.Water, og.Grass, og.TerrainScatter, og.Model],
 }, (_q, time, world) => {
   const climate = must(world.resource(Climate));
-  if (og.input.isActionJustPressed(world, "weather")) climate.weather = (climate.weather + 1) % WEATHERS.length;
-  if (og.input.isActionJustPressed(world, "season")) climate.season = (climate.season + 1) % SEASONS.length;
-  if (og.input.isActionJustPressed(world, "time")) climate.time = (climate.time + 1) % TIMES.length;
+  if (og.input.isActionJustPressed(world, "weather")) {
+    climate.weather = (climate.weather + 1) % WEATHERS.length;
+    og.assert.reachable("a key switched the weather", {});
+  }
+  if (og.input.isActionJustPressed(world, "season")) {
+    climate.season = (climate.season + 1) % SEASONS.length;
+    og.assert.reachable("a key turned the season", {});
+  }
+  if (og.input.isActionJustPressed(world, "time")) {
+    climate.time = (climate.time + 1) % TIMES.length;
+    og.assert.reachable("a key changed the time of day", {});
+  }
 
   const weights = climate as unknown as Weights;
   step(weights, WEATHERS, climate.weather, time.dt / WEATHER_SECONDS);

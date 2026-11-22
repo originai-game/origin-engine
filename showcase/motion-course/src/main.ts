@@ -97,6 +97,8 @@ const Follow = defineSystem("Follow", { reads: [og.Transform], writes: [og.Camer
   const r = world.find("runner");
   if (r === null) return;
   const t = must(world.get(r, og.Transform));
+  // Up the step onto the terrace and along it: the course's last leg.
+  if (t.position.x > TERRACE_X + 1 && t.position.y > TERRACE_TOP - 0.05) og.assert.reachable("the runner is up on the terrace", {});
   const want = Math.min(CAMERA.to, Math.max(CAMERA.from, t.position.x + CAMERA.lead));
   // Where it stands now is the camera's own (snapshotted with the world).
   const now = must(world.resource(og.Camera)).position.x + CAMERA.back;
