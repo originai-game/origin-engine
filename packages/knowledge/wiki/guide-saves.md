@@ -97,13 +97,17 @@ Keeping state savable:
 - A handle (an og.load answer, a texture, a sound, a geometry, a material,
   an entity) is a 64-bit number. Keep it in a field of its own kind
   (`Asset()`, `Texture()`, `Sound()`, `Font()`, `Style()`, `Geometry()`,
-  `Material()`, `Entity()`: every handle type has its factory, named as the
-  type), never cast to another kind. A `u32` field refuses one (handles pass
+  `Material()`, `Entity()`, `TableRow()`: every handle type has its factory,
+  named as the type), never cast to another kind. A `u32` field refuses one (handles pass
   2^32: `4294967298 is not a u32`); an `f64` holds the number but loses its
   type.
 - Asset and material handles are saved as their numbers. Load what a saved
   entity uses in the same order on every launch, in GameDesc.start, before
   restoring.
+- A table row (`TableRow()`) is saved as a hash of its table and id, so a
+  save outlives an edited table: rows added or reordered since still read,
+  and og.table.missing lists the fields holding a row deleted since (data
+  §3).
 - Physics saves mesh, convex-hull and height-field colliders by their
   geometry's handle and scale, not their triangles (og.physics.setMesh).
   The meshes and height fields a save's colliders name must be loaded or

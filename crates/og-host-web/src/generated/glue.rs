@@ -3320,3 +3320,38 @@ pub fn og_loading_status(world: u32) -> String {
 pub fn og_play_candidates(world: u32, desc: Option<String>) -> String {
     <Host as PlayApi>::og_play_candidates(&Host, world, desc)
 }
+
+#[wasm_bindgen]
+pub fn og_table_load(world: u32, path: String, schema: String) -> String {
+    <Host as TableApi>::og_table_load(&Host, world, path, schema)
+}
+
+#[wasm_bindgen]
+pub fn og_table_parse(world: u32, path: String, text: String, schema: String) -> String {
+    <Host as TableApi>::og_table_parse(&Host, world, path, text, schema)
+}
+
+#[wasm_bindgen]
+pub fn og_table_row(world: u32, table: String, id: String) -> String {
+    <Host as TableApi>::og_table_row(&Host, world, table, id)
+}
+
+#[wasm_bindgen]
+pub fn og_table_rows(world: u32, table: String) -> String {
+    <Host as TableApi>::og_table_rows(&Host, world, table)
+}
+
+#[wasm_bindgen]
+pub fn og_table_get(world: u32, row: f64, schema: String) -> String {
+    <Host as TableApi>::og_table_get(&Host, world, row, schema)
+}
+
+#[wasm_bindgen]
+pub fn og_table_name(world: u32, row: f64) -> String {
+    <Host as TableApi>::og_table_name(&Host, world, row)
+}
+
+#[wasm_bindgen]
+pub fn og_table_missing(world: u32) -> String {
+    <Host as TableApi>::og_table_missing(&Host, world)
+}

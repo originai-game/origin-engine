@@ -362,6 +362,10 @@ export interface ColumnKinds {
   AttackPhase: { readonly array: Uint32Array; readonly stride: 1; readonly value: AttackPhase };
   /** An InteractRule field: the variant's index. */
   InteractRule: { readonly array: Uint32Array; readonly stride: 1; readonly value: InteractRule };
+  /**
+   * A TableRow handle field: a row of a table, written in a table as `row "id"` or `row "table" "id"`.
+   */
+  TableRow: { readonly array: Uint32Array; readonly stride: 2; readonly value: TableRow };
 }
 
 // ── math ────────────────────────────────────────────────────────
@@ -34123,6 +34127,67 @@ export interface InteractEntities {
   doors: readonly Entity[];
 }
 
+// ── table ───────────────────────────────────────────────────────
+// A game's data as rows keyed by id: items, abilities, recipes, loot, waves, levels. A table is an `.ogt` of `type table` that og cook checks (every id once, every `asset` path there, every row a `row` field names in its table); og.table.load reads it against one of the game's components, field by field, and answers each row by a handle that names the same row in every load, hot reload and save. The values are the game's: nothing here picks, sums or balances them.
+// See `data`.
+
+/**
+ * A row of a loaded table: a hash of its table's asset id and its own id (52 bits, so exact as a number), never 0. It names the same row after a reload or in a save; a row a table no longer has answers no values (og.table.missing lists who still holds one).
+ *
+ * A generational handle: a number the engine hands out. A dead handle is an error value, never a crash.
+ */
+export type TableRow = number & { readonly [handleType]: "TableRow" };
+
+/**
+ * A TableRow handle field: a row of a table, written in a table as `row "id"` or `row "table" "id"`.
+ *
+ * A `TableRow` field: stored in a `Uint32Array` with stride 2.
+ * @param value The field's default; omitted, the column's zero value.
+ * @param options Range, unit, label, docs and the tunable flag.
+ */
+export declare function TableRow(value?: TableRow, options?: FieldOptions): FieldSpec<"TableRow">;
+
+/** A loaded table. */
+export interface TableInfo {
+  /** Its asset id, which og.table.row and og.table.rows take. */
+  readonly path: string;
+  /** The component its rows are read as. */
+  readonly schema: string;
+  /** The language of its `text` fields' base text. */
+  readonly locale: string;
+  /** Its row ids, in file order. */
+  readonly rows: readonly string[];
+}
+
+/** Which row a handle names. */
+export interface TableRowName {
+  /** The table's asset id. */
+  readonly table: string;
+  /** The row's id. */
+  readonly id: string;
+}
+
+/**
+ * A field that holds a TableRow handle no loaded table has (og.table.missing): a row deleted since a save, or a table not loaded yet.
+ */
+export interface MissingRow {
+  /** The entity whose component holds it; null for a resource. */
+  readonly entity: Entity;
+  /** The component or resource. */
+  readonly record: string;
+  /** The field. */
+  readonly field: string;
+  /** The handle it holds. */
+  readonly row: TableRow;
+}
+
+
+
+
+
+
+
+
 // ── og ──────────────────────────────────────────────────────────
 
 /**
@@ -39252,4 +39317,70 @@ export declare namespace og {
    * Every og.Interactor, og.Toggle and og.Door in entity order, written by og.systems.interact's first systems each tick for its last, which reads the others' records entity by entity.
    */
   const InteractEntities: ResourceType<{ readonly interactors: ListSpec<"Entity">; readonly toggles: ListSpec<"Entity">; readonly doors: ListSpec<"Entity"> }, InteractEntities>;
+  /**
+   * A game's data as rows keyed by id: items, abilities, recipes, loot, waves, levels. A table is an `.ogt` of `type table` that og cook checks (every id once, every `asset` path there, every row a `row` field names in its table); og.table.load reads it against one of the game's components, field by field, and answers each row by a handle that names the same row in every load, hot reload and save. The values are the game's: nothing here picks, sums or balances them.
+   * See `data`.
+   */
+  namespace table {
+    /**
+     * Read a cooked table as `schema`'s rows: each field of a row is checked against the component's field of that name (its kind, a str's capacity, an enum's variants, a list's length), a field left out takes its default, and a row field holds a TableRow. All or nothing: a table with one bad field is refused, and one loaded before stays as it was. Loading a path again replaces its rows; handles stay valid for the ids it still has. Its `text` fields' base text joins og.i18n. Load tables in setup: a hot reload runs setup again.
+     *
+     * @param world The world.
+     * @param path The table's path.
+     * @param schema The game component each row is read as.
+     * @returns Refused for a path that is not a cooked table, a component never declared, two loaded rows with one handle, or a field that does not fit, naming the table, the line, the row and the field.
+     */
+    function load<C extends AnyComponent>(world: World, path: string, schema: C): Result<TableInfo>;
+    /**
+     * A table from text, now, under the asset id `path` (tests and generated content; files go through og cook, which also checks assets and the rows named): the same reader and checks as og.table.load.
+     *
+     * @param world The world.
+     * @param path The asset id it is loaded under, which its own `row "id"` fields name.
+     * @param text A `type table` .ogt.
+     * @param schema The game component each row is read as.
+     * @returns Refused as og.table.load is.
+     */
+    function parse<C extends AnyComponent>(world: World, path: string, text: string, schema: C): Result<TableInfo>;
+    /**
+     * The handle of a row by its table and id.
+     *
+     * @param world The world.
+     * @param table The table's path.
+     * @param id The row's id.
+     * @returns Refused for a table not loaded or an id it lacks.
+     */
+    function row(world: World, table: string, id: string): Result<TableRow>;
+    /**
+     * Every row of a loaded table, in file order.
+     *
+     * @param world The world.
+     * @param table The table's path.
+     * @returns Refused for a table not loaded.
+     */
+    function rows(world: World, table: string): Result<readonly TableRow[]>;
+    /**
+     * A row's values, as the component its table was loaded as.
+     *
+     * @param world The world.
+     * @param row The row.
+     * @param schema The component its table was loaded as.
+     * @returns Refused for a row no loaded table has, or a table loaded as another component.
+     */
+    function get<C extends AnyComponent>(world: World, row: TableRow, schema: C): Result<Value<C>>;
+    /**
+     * Which table and id a row's handle names.
+     *
+     * @param world The world.
+     * @param row The row.
+     * @returns Refused for a row no loaded table has.
+     */
+    function name(world: World, row: TableRow): Result<TableRowName>;
+    /**
+     * Every component and resource field holding a TableRow that no loaded table has, by entity then record and field: what a save from before a row was deleted still refers to. Ask after og.WorldRestored.
+     *
+     * @param world The world.
+     * @returns Empty when every row held is loaded.
+     */
+    function missing(world: World): readonly MissingRow[];
+  }
 }

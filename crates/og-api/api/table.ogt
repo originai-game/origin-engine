@@ -1,0 +1,92 @@
+module table {
+  doc "A game's data as rows keyed by id: items, abilities, recipes, loot, waves, levels. A table is an `.ogt` of `type table` that og cook checks (every id once, every `asset` path there, every row a `row` field names in its table); og.table.load reads it against one of the game's components, field by field, and answers each row by a handle that names the same row in every load, hot reload and save. The values are the game's: nothing here picks, sums or balances them."
+  guide "data"
+
+  handle TableRow "A row of a loaded table: a hash of its table's asset id and its own id (52 bits, so exact as a number), never 0. It names the same row after a reload or in a save; a row a table no longer has answers no values (og.table.missing lists who still holds one)."
+
+  column TableRow {
+    doc "A TableRow handle field: a row of a table, written in a table as `row \"id\"` or `row \"table\" \"id\"`."
+    array Uint32Array
+    stride 2
+    value TableRow
+  }
+
+  struct TableInfo {
+    doc "A loaded table."
+    field path String "Its asset id, which og.table.row and og.table.rows take."
+    field schema String "The component its rows are read as."
+    field locale String "The language of its `text` fields' base text."
+    field rows List.String "Its row ids, in file order."
+  }
+
+  struct TableRowName {
+    doc "Which row a handle names."
+    field table String "The table's asset id."
+    field id String "The row's id."
+  }
+
+  struct MissingRow {
+    doc "A field that holds a TableRow handle no loaded table has (og.table.missing): a row deleted since a save, or a table not loaded yet."
+    field entity Entity "The entity whose component holds it; null for a resource."
+    field record String "The component or resource."
+    field field String "The field."
+    field row TableRow "The handle it holds."
+  }
+
+  fn load {
+    doc "Read a cooked table as `schema`'s rows: each field of a row is checked against the component's field of that name (its kind, a str's capacity, an enum's variants, a list's length), a field left out takes its default, and a row field holds a TableRow. All or nothing: a table with one bad field is refused, and one loaded before stays as it was. Loading a path again replaces its rows; handles stay valid for the ids it still has. Its `text` fields' base text joins og.i18n. Load tables in setup: a hot reload runs setup again."
+    aliases "data table, item database, spreadsheet, ScriptableObject, DataTable, CSV rows, game data, load items, json data"
+    generic C AnyComponent
+    param world World "The world."
+    param path String "The table's path."
+    param schema C "The game component each row is read as."
+    returns Result.TableInfo "Refused for a path that is not a cooked table, a component never declared, two loaded rows with one handle, or a field that does not fit, naming the table, the line, the row and the field."
+  }
+
+  fn parse {
+    doc "A table from text, now, under the asset id `path` (tests and generated content; files go through og cook, which also checks assets and the rows named): the same reader and checks as og.table.load."
+    generic C AnyComponent
+    param world World "The world."
+    param path String "The asset id it is loaded under, which its own `row \"id\"` fields name."
+    param text String "A `type table` .ogt."
+    param schema C "The game component each row is read as."
+    returns Result.TableInfo "Refused as og.table.load is."
+  }
+
+  fn row {
+    doc "The handle of a row by its table and id."
+    param world World "The world."
+    param table String "The table's path."
+    param id String "The row's id."
+    returns Result.TableRow "Refused for a table not loaded or an id it lacks."
+  }
+
+  fn rows {
+    doc "Every row of a loaded table, in file order."
+    param world World "The world."
+    param table String "The table's path."
+    returns Result.List.TableRow "Refused for a table not loaded."
+  }
+
+  fn get {
+    doc "A row's values, as the component its table was loaded as."
+    generic C AnyComponent
+    param world World "The world."
+    param row TableRow "The row."
+    param schema C "The component its table was loaded as."
+    returns Result.Value.C "Refused for a row no loaded table has, or a table loaded as another component."
+  }
+
+  fn name {
+    doc "Which table and id a row's handle names."
+    param world World "The world."
+    param row TableRow "The row."
+    returns Result.TableRowName "Refused for a row no loaded table has."
+  }
+
+  fn missing {
+    doc "Every component and resource field holding a TableRow that no loaded table has, by entity then record and field: what a save from before a row was deleted still refers to. Ask after og.WorldRestored."
+    param world World "The world."
+    returns List.MissingRow "Empty when every row held is loaded."
+  }
+}

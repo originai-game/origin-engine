@@ -27,6 +27,7 @@ pub(crate) mod shared;
 pub(crate) mod sight;
 pub(crate) mod skeleton2d;
 pub(crate) mod story;
+pub(crate) mod table;
 pub(crate) mod terrain;
 pub(crate) mod terrain_stream;
 pub(crate) mod timeline;
@@ -117,6 +118,10 @@ pub mod exports {
         og_story_parse, og_story_progress, og_story_quest, og_story_quests, og_story_reset,
         og_story_set, og_story_set_saliency, og_story_set_stage, og_story_start,
         og_story_start_quest, og_story_stop, og_story_track, og_story_view,
+    };
+    pub use super::table::{
+        og_table_get, og_table_load, og_table_missing, og_table_name, og_table_parse, og_table_row,
+        og_table_rows,
     };
     pub use super::terrain::{
         og_terrain_bounds, og_terrain_edit, og_terrain_layer, og_terrain_load, og_terrain_sample,

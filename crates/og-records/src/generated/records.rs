@@ -38863,4 +38863,5 @@ pub const COLUMNS: &[ColumnDecl] = &[
     ColumnDecl { name: "VolumeShape", variants: &["sphere", "capsule", "box"] },
     ColumnDecl { name: "AttackPhase", variants: &["idle", "startup", "active", "recovery"] },
     ColumnDecl { name: "InteractRule", variants: &["nearest", "centred", "priority"] },
+    ColumnDecl { name: "TableRow", variants: &[] },
 ];

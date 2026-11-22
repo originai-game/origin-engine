@@ -25871,6 +25871,136 @@ impl ToJson for InteractRule {
     }
 }
 
+/// `TableInfo`: packages/knowledge/wiki/table.md.
+#[derive(Clone, Debug, PartialEq)]
+pub struct TableInfo {
+    pub path: String,
+    pub schema: String,
+    pub locale: String,
+    pub rows: Vec<String>,
+}
+
+impl Default for TableInfo {
+    fn default() -> Self {
+        Self {
+            path: Default::default(),
+            schema: Default::default(),
+            locale: Default::default(),
+            rows: Default::default(),
+        }
+    }
+}
+
+impl FromJson for TableInfo {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::from_json_over(v, Self::default())
+    }
+    fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+        let o = object(v)?;
+        Ok(Self {
+            path: field(o, "path", d.path)?,
+            schema: field(o, "schema", d.schema)?,
+            locale: field(o, "locale", d.locale)?,
+            rows: field(o, "rows", d.rows)?,
+        })
+    }
+}
+
+impl ToJson for TableInfo {
+    fn to_json(&self) -> Value {
+        let mut o = Map::new();
+        o.insert("path".into(), self.path.to_json());
+        o.insert("schema".into(), self.schema.to_json());
+        o.insert("locale".into(), self.locale.to_json());
+        o.insert("rows".into(), self.rows.to_json());
+        Value::Object(o)
+    }
+}
+
+/// `TableRowName`: packages/knowledge/wiki/table.md.
+#[derive(Clone, Debug, PartialEq)]
+pub struct TableRowName {
+    pub table: String,
+    pub id: String,
+}
+
+impl Default for TableRowName {
+    fn default() -> Self {
+        Self {
+            table: Default::default(),
+            id: Default::default(),
+        }
+    }
+}
+
+impl FromJson for TableRowName {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::from_json_over(v, Self::default())
+    }
+    fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+        let o = object(v)?;
+        Ok(Self {
+            table: field(o, "table", d.table)?,
+            id: field(o, "id", d.id)?,
+        })
+    }
+}
+
+impl ToJson for TableRowName {
+    fn to_json(&self) -> Value {
+        let mut o = Map::new();
+        o.insert("table".into(), self.table.to_json());
+        o.insert("id".into(), self.id.to_json());
+        Value::Object(o)
+    }
+}
+
+/// `MissingRow`: packages/knowledge/wiki/table.md.
+#[derive(Clone, Debug, PartialEq)]
+pub struct MissingRow {
+    pub entity: u64,
+    pub record: String,
+    pub field: String,
+    pub row: u64,
+}
+
+impl Default for MissingRow {
+    fn default() -> Self {
+        Self {
+            entity: Default::default(),
+            record: Default::default(),
+            field: Default::default(),
+            row: Default::default(),
+        }
+    }
+}
+
+impl FromJson for MissingRow {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::from_json_over(v, Self::default())
+    }
+    fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+        let o = object(v)?;
+        Ok(Self {
+            entity: field(o, "entity", d.entity)?,
+            record: field(o, "record", d.record)?,
+            field: field(o, "field", d.field)?,
+            row: field(o, "row", d.row)?,
+        })
+    }
+}
+
+impl ToJson for MissingRow {
+    fn to_json(&self) -> Value {
+        let mut o = Map::new();
+        o.insert("entity".into(), self.entity.to_json());
+        o.insert("record".into(), self.record.to_json());
+        o.insert("field".into(), self.field.to_json());
+        o.insert("row".into(), self.row.to_json());
+        Value::Object(o)
+    }
+}
+
 /// The rows of the engine's records (IDL `component`, `resource` and
 /// `event`), as their layouts decode them: every field, with its IDL
 /// default, read through the same rules as the wire types.

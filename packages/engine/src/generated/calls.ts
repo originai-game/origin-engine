@@ -1005,6 +1005,15 @@ export const og = Object.freeze({
   play: Object.freeze({
     candidates: (world: { readonly id: number }, desc?: unknown): unknown => JSON.parse(abi().og_play_candidates(world.id, json(desc))) as unknown,
   }),
+  table: Object.freeze({
+    load: (world: { readonly id: number }, path: string, schema: { readonly name: string }): unknown => JSON.parse(abi().og_table_load(world.id, path, schema.name)) as unknown,
+    parse: (world: { readonly id: number }, path: string, text: string, schema: { readonly name: string }): unknown => JSON.parse(abi().og_table_parse(world.id, path, text, schema.name)) as unknown,
+    row: (world: { readonly id: number }, table: string, id: string): unknown => JSON.parse(abi().og_table_row(world.id, table, id)) as unknown,
+    rows: (world: { readonly id: number }, table: string): unknown => JSON.parse(abi().og_table_rows(world.id, table)) as unknown,
+    get: (world: { readonly id: number }, row: number, schema: { readonly name: string }): unknown => JSON.parse(abi().og_table_get(world.id, row, schema.name)) as unknown,
+    name: (world: { readonly id: number }, row: number): unknown => JSON.parse(abi().og_table_name(world.id, row)) as unknown,
+    missing: (world: { readonly id: number }): unknown => JSON.parse(abi().og_table_missing(world.id)) as unknown,
+  }),
 });
 
 /** The members the IDL marks `custom`, by module or owner: src/runtime/custom.ts implements each. */

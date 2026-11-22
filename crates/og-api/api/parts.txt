@@ -67,3 +67,4 @@ loading.ogt
 play.ogt
 systems-combat.ogt
 systems-interact.ogt
+table.ogt

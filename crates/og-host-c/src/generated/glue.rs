@@ -3322,6 +3322,41 @@ unsafe extern "C" fn og_play_candidates(args: *const crate::OgValue, out: *mut c
     unsafe { crate::IntoC::into_c(r, out) }
 }
 
+unsafe extern "C" fn og_table_load(args: *const crate::OgValue, out: *mut crate::OgValue) {
+    let r = <Host as TableApi>::og_table_load(&Host, unsafe { crate::arg(args, 0) }, unsafe { crate::arg(args, 1) }, unsafe { crate::arg(args, 2) });
+    unsafe { crate::IntoC::into_c(r, out) }
+}
+
+unsafe extern "C" fn og_table_parse(args: *const crate::OgValue, out: *mut crate::OgValue) {
+    let r = <Host as TableApi>::og_table_parse(&Host, unsafe { crate::arg(args, 0) }, unsafe { crate::arg(args, 1) }, unsafe { crate::arg(args, 2) }, unsafe { crate::arg(args, 3) });
+    unsafe { crate::IntoC::into_c(r, out) }
+}
+
+unsafe extern "C" fn og_table_row(args: *const crate::OgValue, out: *mut crate::OgValue) {
+    let r = <Host as TableApi>::og_table_row(&Host, unsafe { crate::arg(args, 0) }, unsafe { crate::arg(args, 1) }, unsafe { crate::arg(args, 2) });
+    unsafe { crate::IntoC::into_c(r, out) }
+}
+
+unsafe extern "C" fn og_table_rows(args: *const crate::OgValue, out: *mut crate::OgValue) {
+    let r = <Host as TableApi>::og_table_rows(&Host, unsafe { crate::arg(args, 0) }, unsafe { crate::arg(args, 1) });
+    unsafe { crate::IntoC::into_c(r, out) }
+}
+
+unsafe extern "C" fn og_table_get(args: *const crate::OgValue, out: *mut crate::OgValue) {
+    let r = <Host as TableApi>::og_table_get(&Host, unsafe { crate::arg(args, 0) }, unsafe { crate::arg(args, 1) }, unsafe { crate::arg(args, 2) });
+    unsafe { crate::IntoC::into_c(r, out) }
+}
+
+unsafe extern "C" fn og_table_name(args: *const crate::OgValue, out: *mut crate::OgValue) {
+    let r = <Host as TableApi>::og_table_name(&Host, unsafe { crate::arg(args, 0) }, unsafe { crate::arg(args, 1) });
+    unsafe { crate::IntoC::into_c(r, out) }
+}
+
+unsafe extern "C" fn og_table_missing(args: *const crate::OgValue, out: *mut crate::OgValue) {
+    let r = <Host as TableApi>::og_table_missing(&Host, unsafe { crate::arg(args, 0) });
+    unsafe { crate::IntoC::into_c(r, out) }
+}
+
 /// Every entry, in the order of `packages/engine/src/generated/abi.ts`.
 pub static SYMBOLS: &[crate::Symbol] = &[
     crate::Symbol { name: c"og_host_set_dispatcher", arity: 1, call: og_host_set_dispatcher },
@@ -4021,4 +4056,11 @@ pub static SYMBOLS: &[crate::Symbol] = &[
     crate::Symbol { name: c"og_loading_idle", arity: 1, call: og_loading_idle },
     crate::Symbol { name: c"og_loading_status", arity: 1, call: og_loading_status },
     crate::Symbol { name: c"og_play_candidates", arity: 2, call: og_play_candidates },
+    crate::Symbol { name: c"og_table_load", arity: 3, call: og_table_load },
+    crate::Symbol { name: c"og_table_parse", arity: 4, call: og_table_parse },
+    crate::Symbol { name: c"og_table_row", arity: 3, call: og_table_row },
+    crate::Symbol { name: c"og_table_rows", arity: 2, call: og_table_rows },
+    crate::Symbol { name: c"og_table_get", arity: 3, call: og_table_get },
+    crate::Symbol { name: c"og_table_name", arity: 2, call: og_table_name },
+    crate::Symbol { name: c"og_table_missing", arity: 1, call: og_table_missing },
 ];

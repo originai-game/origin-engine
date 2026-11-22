@@ -3975,3 +3975,45 @@ pub fn og_play_candidates(env: Env, world: u32, desc: Option<String>) -> String 
     let _env = crate::EnvScope::enter(&env);
     <Host as PlayApi>::og_play_candidates(&Host, world, desc)
 }
+
+#[napi(js_name = "og_table_load")]
+pub fn og_table_load(env: Env, world: u32, path: String, schema: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as TableApi>::og_table_load(&Host, world, path, schema)
+}
+
+#[napi(js_name = "og_table_parse")]
+pub fn og_table_parse(env: Env, world: u32, path: String, text: String, schema: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as TableApi>::og_table_parse(&Host, world, path, text, schema)
+}
+
+#[napi(js_name = "og_table_row")]
+pub fn og_table_row(env: Env, world: u32, table: String, id: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as TableApi>::og_table_row(&Host, world, table, id)
+}
+
+#[napi(js_name = "og_table_rows")]
+pub fn og_table_rows(env: Env, world: u32, table: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as TableApi>::og_table_rows(&Host, world, table)
+}
+
+#[napi(js_name = "og_table_get")]
+pub fn og_table_get(env: Env, world: u32, row: f64, schema: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as TableApi>::og_table_get(&Host, world, row, schema)
+}
+
+#[napi(js_name = "og_table_name")]
+pub fn og_table_name(env: Env, world: u32, row: f64) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as TableApi>::og_table_name(&Host, world, row)
+}
+
+#[napi(js_name = "og_table_missing")]
+pub fn og_table_missing(env: Env, world: u32) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as TableApi>::og_table_missing(&Host, world)
+}

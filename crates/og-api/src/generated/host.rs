@@ -1513,10 +1513,28 @@ pub trait PlayApi: Wire {
     fn og_play_candidates(&self, world: u32, desc: Option<String>) -> String;
 }
 
-/// Every trait: a host is a type that implements all of them.
-pub trait Host: Lifecycle + Present + ReflectApi + WorldApi + SystemApi + GameApi + TransformApi + TimeApi + RngApi + ProcgenApi + InputApi + CameraApi + RenderApi + LoadApi + PhysicsApi + AtmosphereApi + AnimApi + TweenApi + TilemapApi + AudioApi + NavApi + AiApi + StoryApi + PlatformApi + I18nApi + UiApi + CommandsApi + ProbeApi + TerrainApi + StreamApi + VideoApi + DebugApi + AssertApi + PathApi + TimelineApi + NetApi + SharedApi + MotionApi + DestructionApi + VfxApi + SightApi + FlowApi + SceneApi + LoadingApi + PlayApi {}
+/// `table`: packages/knowledge/wiki/table.md.
+pub trait TableApi: Wire {
+    /// `og.table.load`
+    fn og_table_load(&self, world: u32, path: String, schema: String) -> String;
+    /// `og.table.parse`
+    fn og_table_parse(&self, world: u32, path: String, text: String, schema: String) -> String;
+    /// `og.table.row`
+    fn og_table_row(&self, world: u32, table: String, id: String) -> String;
+    /// `og.table.rows`
+    fn og_table_rows(&self, world: u32, table: String) -> String;
+    /// `og.table.get`
+    fn og_table_get(&self, world: u32, row: f64, schema: String) -> String;
+    /// `og.table.name`
+    fn og_table_name(&self, world: u32, row: f64) -> String;
+    /// `og.table.missing`
+    fn og_table_missing(&self, world: u32) -> String;
+}
 
-impl<T: Lifecycle + Present + ReflectApi + WorldApi + SystemApi + GameApi + TransformApi + TimeApi + RngApi + ProcgenApi + InputApi + CameraApi + RenderApi + LoadApi + PhysicsApi + AtmosphereApi + AnimApi + TweenApi + TilemapApi + AudioApi + NavApi + AiApi + StoryApi + PlatformApi + I18nApi + UiApi + CommandsApi + ProbeApi + TerrainApi + StreamApi + VideoApi + DebugApi + AssertApi + PathApi + TimelineApi + NetApi + SharedApi + MotionApi + DestructionApi + VfxApi + SightApi + FlowApi + SceneApi + LoadingApi + PlayApi> Host for T {}
+/// Every trait: a host is a type that implements all of them.
+pub trait Host: Lifecycle + Present + ReflectApi + WorldApi + SystemApi + GameApi + TransformApi + TimeApi + RngApi + ProcgenApi + InputApi + CameraApi + RenderApi + LoadApi + PhysicsApi + AtmosphereApi + AnimApi + TweenApi + TilemapApi + AudioApi + NavApi + AiApi + StoryApi + PlatformApi + I18nApi + UiApi + CommandsApi + ProbeApi + TerrainApi + StreamApi + VideoApi + DebugApi + AssertApi + PathApi + TimelineApi + NetApi + SharedApi + MotionApi + DestructionApi + VfxApi + SightApi + FlowApi + SceneApi + LoadingApi + PlayApi + TableApi {}
+
+impl<T: Lifecycle + Present + ReflectApi + WorldApi + SystemApi + GameApi + TransformApi + TimeApi + RngApi + ProcgenApi + InputApi + CameraApi + RenderApi + LoadApi + PhysicsApi + AtmosphereApi + AnimApi + TweenApi + TilemapApi + AudioApi + NavApi + AiApi + StoryApi + PlatformApi + I18nApi + UiApi + CommandsApi + ProbeApi + TerrainApi + StreamApi + VideoApi + DebugApi + AssertApi + PathApi + TimelineApi + NetApi + SharedApi + MotionApi + DestructionApi + VfxApi + SightApi + FlowApi + SceneApi + LoadingApi + PlayApi + TableApi> Host for T {}
 
 /// Every binding symbol, in binding-table order (`bindings.json` ids).
 pub const SYMBOLS: &[&str] = &[
@@ -2130,6 +2148,13 @@ pub const SYMBOLS: &[&str] = &[
     "og_loading_idle",
     "og_loading_status",
     "og_play_candidates",
+    "og_table_load",
+    "og_table_parse",
+    "og_table_row",
+    "og_table_rows",
+    "og_table_get",
+    "og_table_name",
+    "og_table_missing",
 ];
 
 pub use og_records::{COLUMNS, ColumnDecl, FieldDecl, RECORDS, RecordDecl};

@@ -677,6 +677,12 @@
       "array": "Uint32Array",
       "stride": 1,
       "value": "InteractRule"
+    },
+    {
+      "name": "TableRow",
+      "array": "Uint32Array",
+      "stride": 2,
+      "value": "TableRow"
     }
   ],
   "components": [
@@ -28928,6 +28934,198 @@
         }
       ],
       "returns": "Result<List<Candidate>>",
+      "publish": true
+    },
+    {
+      "id": 610,
+      "kind": "fn",
+      "path": "og.table.load",
+      "symbol": "og_table_load",
+      "module": "table",
+      "name": "load",
+      "generics": [
+        {
+          "name": "C",
+          "bound": "AnyComponent"
+        }
+      ],
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        },
+        {
+          "name": "path",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "schema",
+          "type": "C",
+          "optional": false
+        }
+      ],
+      "returns": "Result<TableInfo>",
+      "publish": true
+    },
+    {
+      "id": 611,
+      "kind": "fn",
+      "path": "og.table.parse",
+      "symbol": "og_table_parse",
+      "module": "table",
+      "name": "parse",
+      "generics": [
+        {
+          "name": "C",
+          "bound": "AnyComponent"
+        }
+      ],
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        },
+        {
+          "name": "path",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "text",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "schema",
+          "type": "C",
+          "optional": false
+        }
+      ],
+      "returns": "Result<TableInfo>",
+      "publish": true
+    },
+    {
+      "id": 612,
+      "kind": "fn",
+      "path": "og.table.row",
+      "symbol": "og_table_row",
+      "module": "table",
+      "name": "row",
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        },
+        {
+          "name": "table",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "id",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<TableRow>",
+      "publish": true
+    },
+    {
+      "id": 613,
+      "kind": "fn",
+      "path": "og.table.rows",
+      "symbol": "og_table_rows",
+      "module": "table",
+      "name": "rows",
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        },
+        {
+          "name": "table",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<List<TableRow>>",
+      "publish": true
+    },
+    {
+      "id": 614,
+      "kind": "fn",
+      "path": "og.table.get",
+      "symbol": "og_table_get",
+      "module": "table",
+      "name": "get",
+      "generics": [
+        {
+          "name": "C",
+          "bound": "AnyComponent"
+        }
+      ],
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        },
+        {
+          "name": "row",
+          "type": "TableRow",
+          "optional": false
+        },
+        {
+          "name": "schema",
+          "type": "C",
+          "optional": false
+        }
+      ],
+      "returns": "Result<Value<C>>",
+      "publish": true
+    },
+    {
+      "id": 615,
+      "kind": "fn",
+      "path": "og.table.name",
+      "symbol": "og_table_name",
+      "module": "table",
+      "name": "name",
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        },
+        {
+          "name": "row",
+          "type": "TableRow",
+          "optional": false
+        }
+      ],
+      "returns": "Result<TableRowName>",
+      "publish": true
+    },
+    {
+      "id": 616,
+      "kind": "fn",
+      "path": "og.table.missing",
+      "symbol": "og_table_missing",
+      "module": "table",
+      "name": "missing",
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        }
+      ],
+      "returns": "List<MissingRow>",
       "publish": true
     }
   ],

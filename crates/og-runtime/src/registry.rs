@@ -15,7 +15,7 @@ use crate::host::codec::Layout;
 use crate::{
     bind::agents, bind::destruction, bind::destruction2d, bind::flow, bind::forces, bind::i18n,
     bind::modules, bind::motion, bind::net, bind::particles, bind::shared, bind::sight,
-    bind::story, bind::terrain, bind::timeline, bind::vfx, bind::video, bind::wind,
+    bind::story, bind::table, bind::terrain, bind::timeline, bind::vfx, bind::video, bind::wind,
     engine::invariants, host::platform, present::atmosphere, present::loading, world::origin,
     world::scenes, world::stream,
 };
@@ -55,6 +55,7 @@ pub(crate) struct Modules {
     pub shared: shared::ModuleState,
     pub scenes: scenes::ModuleState,
     pub loading: loading::ModuleState,
+    pub table: table::ModuleState,
 }
 
 /// Every lazily registered engine record.

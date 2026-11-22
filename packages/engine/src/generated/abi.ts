@@ -1335,6 +1335,20 @@ export interface HostAbi<A, V> {
   og_loading_status(world: number): string;
   /** `og.play.candidates` */
   og_play_candidates(world: number, desc: string | undefined): string;
+  /** `og.table.load` */
+  og_table_load(world: number, path: string, schema: string): string;
+  /** `og.table.parse` */
+  og_table_parse(world: number, path: string, text: string, schema: string): string;
+  /** `og.table.row` */
+  og_table_row(world: number, table: string, id: string): string;
+  /** `og.table.rows` */
+  og_table_rows(world: number, table: string): string;
+  /** `og.table.get` */
+  og_table_get(world: number, row: number, schema: string): string;
+  /** `og.table.name` */
+  og_table_name(world: number, row: number): string;
+  /** `og.table.missing` */
+  og_table_missing(world: number): string;
 }
 
 /** Every binding symbol, in binding-table order, then the lifecycle and present members. */
@@ -1949,6 +1963,13 @@ export const SYMBOLS: readonly string[] = [
   "og_loading_idle",
   "og_loading_status",
   "og_play_candidates",
+  "og_table_load",
+  "og_table_parse",
+  "og_table_row",
+  "og_table_rows",
+  "og_table_get",
+  "og_table_name",
+  "og_table_missing",
   "og_host_set_dispatcher",
   "og_host_shared",
   "og_engine_create",

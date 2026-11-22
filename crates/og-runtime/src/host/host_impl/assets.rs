@@ -290,5 +290,35 @@ macro_rules! __og_host_bindings_assets {
                 $crate::host_impl::answer($crate::og_procgen_wfc(desc))
             }
         }
+
+        impl $crate::host_impl::api::TableApi for $host {
+            fn og_table_load(&self, world: u32, path: String, schema: String) -> String {
+                $crate::host_impl::answer($crate::og_table_load(world, path, schema))
+            }
+            fn og_table_parse(
+                &self,
+                world: u32,
+                path: String,
+                text: String,
+                schema: String,
+            ) -> String {
+                $crate::host_impl::answer($crate::og_table_parse(world, path, text, schema))
+            }
+            fn og_table_row(&self, world: u32, table: String, id: String) -> String {
+                $crate::host_impl::answer($crate::og_table_row(world, table, id))
+            }
+            fn og_table_rows(&self, world: u32, table: String) -> String {
+                $crate::host_impl::answer($crate::og_table_rows(world, table))
+            }
+            fn og_table_get(&self, world: u32, row: f64, schema: String) -> String {
+                $crate::host_impl::answer($crate::og_table_get(world, row, schema))
+            }
+            fn og_table_name(&self, world: u32, row: f64) -> String {
+                $crate::host_impl::answer($crate::og_table_name(world, row))
+            }
+            fn og_table_missing(&self, world: u32) -> String {
+                $crate::host_impl::json($crate::og_table_missing(world))
+            }
+        }
     };
 }

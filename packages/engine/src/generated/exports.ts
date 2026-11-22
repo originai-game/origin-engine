@@ -181,3 +181,6 @@ export const AttackPhase = ((value = "idle" as Api.AttackPhase, options) => spec
 
 // interact
 export const InteractRule = ((value = "nearest" as Api.InteractRule, options) => spec("InteractRule", value, options)) as typeof Api.InteractRule;
+
+// table
+export const TableRow = ((value = 0 as Api.TableRow, options) => spec("TableRow", value, options)) as typeof Api.TableRow;

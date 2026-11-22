@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "og.table",
+      "summary": "Data tables: an `.ogt` of `type table` holds a game's items, abilities, recipes, loot or waves as `row \"id\" { ... }`, read as one of the game's components with og.table.load (cooked) or og.table.parse (text), field by field, all or nothing, a refusal naming the table, line, row and field. og cook checks every id is there once, every `asset \"path\"` exists and every `row \"table\" \"id\"` names a row; `text \"key\" \"Base\"` fields join og.i18n and `og i18n extract`. A row is held in the world as a TableRow field (a 52-bit handle of its table and id) that names the same row after a reload or in a save; og.table.get reads its values, og.table.name its id and og.table.missing every field still holding a deleted row. Guide: `og api show data`."
+    }
+  ]
+}

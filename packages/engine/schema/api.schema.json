@@ -16859,6 +16859,213 @@
       "functions": [],
       "interfaces": [],
       "callbacks": []
+    },
+    {
+      "name": "table",
+      "doc": "A game's data as rows keyed by id: items, abilities, recipes, loot, waves, levels. A table is an `.ogt` of `type table` that og cook checks (every id once, every `asset` path there, every row a `row` field names in its table); og.table.load reads it against one of the game's components, field by field, and answers each row by a handle that names the same row in every load, hot reload and save. The values are the game's: nothing here picks, sums or balances them.\nSee `data`.",
+      "place": "namespace",
+      "publish": true,
+      "types": [
+        "TableRow",
+        "TableRow",
+        "TableInfo",
+        "TableRowName",
+        "MissingRow"
+      ],
+      "consts": [],
+      "functions": [
+        {
+          "name": "load",
+          "doc": "Read a cooked table as `schema`'s rows: each field of a row is checked against the component's field of that name (its kind, a str's capacity, an enum's variants, a list's length), a field left out takes its default, and a row field holds a TableRow. All or nothing: a table with one bad field is refused, and one loaded before stays as it was. Loading a path again replaces its rows; handles stay valid for the ids it still has. Its `text` fields' base text joins og.i18n. Load tables in setup: a hot reload runs setup again.",
+          "generics": [
+            {
+              "name": "C",
+              "bound": "AnyComponent"
+            }
+          ],
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "path",
+              "type": "String",
+              "optional": false,
+              "doc": "The table's path."
+            },
+            {
+              "name": "schema",
+              "type": "C",
+              "optional": false,
+              "doc": "The game component each row is read as."
+            }
+          ],
+          "returns": "Result<TableInfo>",
+          "returnsDoc": "Refused for a path that is not a cooked table, a component never declared, two loaded rows with one handle, or a field that does not fit, naming the table, the line, the row and the field.",
+          "publish": true
+        },
+        {
+          "name": "parse",
+          "doc": "A table from text, now, under the asset id `path` (tests and generated content; files go through og cook, which also checks assets and the rows named): the same reader and checks as og.table.load.",
+          "generics": [
+            {
+              "name": "C",
+              "bound": "AnyComponent"
+            }
+          ],
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "path",
+              "type": "String",
+              "optional": false,
+              "doc": "The asset id it is loaded under, which its own `row \"id\"` fields name."
+            },
+            {
+              "name": "text",
+              "type": "String",
+              "optional": false,
+              "doc": "A `type table` .ogt."
+            },
+            {
+              "name": "schema",
+              "type": "C",
+              "optional": false,
+              "doc": "The game component each row is read as."
+            }
+          ],
+          "returns": "Result<TableInfo>",
+          "returnsDoc": "Refused as og.table.load is.",
+          "publish": true
+        },
+        {
+          "name": "row",
+          "doc": "The handle of a row by its table and id.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "table",
+              "type": "String",
+              "optional": false,
+              "doc": "The table's path."
+            },
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "The row's id."
+            }
+          ],
+          "returns": "Result<TableRow>",
+          "returnsDoc": "Refused for a table not loaded or an id it lacks.",
+          "publish": true
+        },
+        {
+          "name": "rows",
+          "doc": "Every row of a loaded table, in file order.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "table",
+              "type": "String",
+              "optional": false,
+              "doc": "The table's path."
+            }
+          ],
+          "returns": "Result<List<TableRow>>",
+          "returnsDoc": "Refused for a table not loaded.",
+          "publish": true
+        },
+        {
+          "name": "get",
+          "doc": "A row's values, as the component its table was loaded as.",
+          "generics": [
+            {
+              "name": "C",
+              "bound": "AnyComponent"
+            }
+          ],
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "row",
+              "type": "TableRow",
+              "optional": false,
+              "doc": "The row."
+            },
+            {
+              "name": "schema",
+              "type": "C",
+              "optional": false,
+              "doc": "The component its table was loaded as."
+            }
+          ],
+          "returns": "Result<Value<C>>",
+          "returnsDoc": "Refused for a row no loaded table has, or a table loaded as another component.",
+          "publish": true
+        },
+        {
+          "name": "name",
+          "doc": "Which table and id a row's handle names.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "row",
+              "type": "TableRow",
+              "optional": false,
+              "doc": "The row."
+            }
+          ],
+          "returns": "Result<TableRowName>",
+          "returnsDoc": "Refused for a row no loaded table has.",
+          "publish": true
+        },
+        {
+          "name": "missing",
+          "doc": "Every component and resource field holding a TableRow that no loaded table has, by entity then record and field: what a save from before a row was deleted still refers to. Ask after og.WorldRestored.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            }
+          ],
+          "returns": "List<MissingRow>",
+          "returnsDoc": "Empty when every row held is loaded.",
+          "publish": true
+        }
+      ],
+      "interfaces": [],
+      "callbacks": []
     }
   ],
   "$defs": {
@@ -58195,6 +58402,99 @@
           "default": []
         }
       },
+      "additionalProperties": false
+    },
+    "TableRow": {
+      "x-og-kind": "handle",
+      "x-og-module": "table",
+      "description": "A row of a loaded table: a hash of its table's asset id and its own id (52 bits, so exact as a number), never 0. It names the same row after a reload or in a save; a row a table no longer has answers no values (og.table.missing lists who still holds one).",
+      "type": "integer",
+      "minimum": 0
+    },
+    "TableInfo": {
+      "x-og-kind": "struct",
+      "x-og-module": "table",
+      "description": "A loaded table.",
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string",
+          "description": "Its asset id, which og.table.row and og.table.rows take."
+        },
+        "schema": {
+          "type": "string",
+          "description": "The component its rows are read as."
+        },
+        "locale": {
+          "type": "string",
+          "description": "The language of its `text` fields' base text."
+        },
+        "rows": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Its row ids, in file order."
+        }
+      },
+      "required": [
+        "path",
+        "schema",
+        "locale",
+        "rows"
+      ],
+      "additionalProperties": false
+    },
+    "TableRowName": {
+      "x-og-kind": "struct",
+      "x-og-module": "table",
+      "description": "Which row a handle names.",
+      "type": "object",
+      "properties": {
+        "table": {
+          "type": "string",
+          "description": "The table's asset id."
+        },
+        "id": {
+          "type": "string",
+          "description": "The row's id."
+        }
+      },
+      "required": [
+        "table",
+        "id"
+      ],
+      "additionalProperties": false
+    },
+    "MissingRow": {
+      "x-og-kind": "struct",
+      "x-og-module": "table",
+      "description": "A field that holds a TableRow handle no loaded table has (og.table.missing): a row deleted since a save, or a table not loaded yet.",
+      "type": "object",
+      "properties": {
+        "entity": {
+          "$ref": "#/$defs/Entity",
+          "description": "The entity whose component holds it; null for a resource."
+        },
+        "record": {
+          "type": "string",
+          "description": "The component or resource."
+        },
+        "field": {
+          "type": "string",
+          "description": "The field."
+        },
+        "row": {
+          "$ref": "#/$defs/TableRow",
+          "description": "The handle it holds."
+        }
+      },
+      "required": [
+        "entity",
+        "record",
+        "field",
+        "row"
+      ],
       "additionalProperties": false
     }
   }
