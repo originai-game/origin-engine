@@ -33,14 +33,14 @@ export function StrategyResources(props: StrategyResourcesProps) {
                 {r().amount}
               </Text>
               <Show when={r().cap}>
-                <Text class={`shrink text-caption leading-tight font-bold tabular-nums whitespace-nowrap opacity-80 compact:text-xs`}>
+                <Text class={`shrink text-caption leading-tight font-bold tabular-nums whitespace-nowrap text-fg-muted compact:text-xs`}>
                   {t("strategy.resources.cap", { cap: r().cap })}
                 </Text>
               </Show>
             </View>
             <Show when={r().note} fallback={
                 <Show when={r().rate}>
-                  <Text class={`min-w-0 leading-tight text-xs font-semibold tabular-nums whitespace-nowrap overflow-hidden opacity-80 data-gain:text-success data-loss:text-danger data-note:text-gold compact:text-xs`} data-gain={r().trend === "gain"} data-loss={r().trend === "loss"} data-note={r().trend === "note"}>
+                  <Text class={`min-w-0 leading-tight text-xs font-semibold tabular-nums whitespace-nowrap overflow-hidden text-fg-muted data-gain:text-success data-loss:text-danger data-note:text-gold compact:text-xs`} data-gain={r().trend === "gain"} data-loss={r().trend === "loss"} data-note={r().trend === "note"}>
                     {r().rate}
                   </Text>
                 </Show>
@@ -59,7 +59,7 @@ export function StrategyResources(props: StrategyResourcesProps) {
         </Text>
       </Show>
       <Show when={!(props.resources ?? []).length && props.tier === ""}>
-        <View class={`text-xs font-semibold tracking-label uppercase whitespace-nowrap opacity-78`} role="status">
+        <View class={`text-xs font-semibold tracking-label uppercase whitespace-nowrap text-fg-muted`} role="status">
           <Text>{t("strategy.resources.empty")}</Text>
         </View>
       </Show>

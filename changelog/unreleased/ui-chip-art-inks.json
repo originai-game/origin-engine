@@ -1,0 +1,21 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "IdleResources",
+      "summary": "A store at its cap is a tile with a gold rim and the Full tag, as it was before the TSX port; the tile had taken the tag's gold fill and caps, which left its name, amount and rate unreadable on gold in every pack."
+    },
+    {
+      "member": "RacingGarage",
+      "summary": "The Driving tag is the accent chip only where the pack draws no chip art; on a pack's chip art it takes the art's ink like the other tags, so it reads (it was dark text on dark art)."
+    },
+    {
+      "member": "RacingCar",
+      "summary": "A worn-out tyre's figure is in the theme's danger ink, which reads on the packs' chip art; the foe ink it used fell under 4.5:1 there."
+    },
+    {
+      "member": "StrategyResources",
+      "summary": "A resource's cap, its rate without a trend and the empty line are in the theme's muted ink instead of the body ink at 80% opacity, so they keep 4.5:1 in the light scheme."
+    }
+  ]
+}

@@ -29,7 +29,7 @@ export function RacingCar(props: RacingCarProps) {
           <For each={props.tyres ?? []} key={(y) => y.id}>
             {(y) => (
               <Text
-                class={`min-w-0 py-0 px-1.5 text-xs leading-normal font-bold tabular-nums whitespace-nowrap overflow-hidden text-fg bg-well nine-chip-cut data-good:text-boon-ink data-worn:text-gold data-bad:text-foe-ink ${packClass("Chip", "frame")}`}
+                class={`min-w-0 py-0 px-1.5 text-xs leading-normal font-bold tabular-nums whitespace-nowrap overflow-hidden text-fg bg-well nine-chip-cut data-good:text-boon-ink data-worn:text-gold data-bad:text-danger ${packClass("Chip", "frame")}`}
                 role="listitem"
                 data-good={y().state === "good"}
                 data-worn={y().state === "worn"}

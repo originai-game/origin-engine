@@ -161,8 +161,7 @@ export function RacingGarage(props: RacingGarageProps) {
                   <View class="flex-col gap-1 w-full items-start">
                     <Text class={`w-full text-left text-caption leading-tight font-bold text-fg`}>{v().title}</Text>
                     <Text
-                      class={`max-w-full py-0 px-1 text-xs leading-normal font-bold tracking-label uppercase bg-well nine-chip-cut text-fg data-driving:text-hud-accent-fg data-driving:bg-hud-accent data-locked:text-fg-muted data-price:text-gold ${packClass("Chip", "frame")}`}
-                      data-driving={v().id === props.chosen}
+                      class={`max-w-full py-0 px-1 text-xs leading-normal font-bold tracking-label uppercase nine-chip-cut data-locked:text-fg-muted data-price:text-gold ${v().id === props.chosen ? "bg-hud-accent text-hud-accent-fg" : "bg-well text-fg"} ${packClass("Chip", "frame")}`}
                       data-locked={v().locked && v().id !== props.chosen}
                       data-price={!v().locked && v().id !== props.chosen && !v().owned}
                     >
