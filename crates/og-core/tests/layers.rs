@@ -58,6 +58,7 @@ const LAYERS: &[(&str, &[&str])] = &[
             "og-input",
             "og-net",
             "og-physics",
+            "og-play",
             "og-probe",
             "og-reactive",
             "og-render",

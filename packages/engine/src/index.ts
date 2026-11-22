@@ -5,7 +5,7 @@
 
 import type * as Api from "@origingame/engine";
 import { BUILTINS, calls, clip, fieldSpec, top, ui } from "./runtime.ts";
-import { cameras } from "./systems/cameras.ts";
+import * as systems from "./systems/index.ts";
 import { assertModule } from "./assert.ts";
 import { Path2, Shape } from "./geom.ts";
 import { uiKit } from "./ui-kit/index.ts";
@@ -40,5 +40,5 @@ export const og: typeof Api.og = Object.freeze({
   anim: Object.freeze({ ...calls.anim, clip }),
   assert: Object.freeze({ ...calls.assert, ...assertModule }),
   ui: Object.freeze({ ...ui, ...uiKit, formatNumber: formatNotation }),
-  systems: Object.freeze({ cameras }),
+  systems: Object.freeze({ ...systems }),
 }) as unknown as typeof Api.og;

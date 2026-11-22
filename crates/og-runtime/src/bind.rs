@@ -19,6 +19,7 @@ pub(crate) mod nav;
 pub(crate) mod net;
 pub(crate) mod particles;
 pub(crate) mod physics_ext;
+pub(crate) mod play;
 pub(crate) mod procgen;
 pub(crate) mod seabed;
 pub(crate) mod season;

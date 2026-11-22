@@ -675,6 +675,8 @@ pub(crate) const BACK: &[MountFn] = &[
         destruction::set_physics(&a.mount.modules.destruction, a.physics);
         Ok(())
     },
+    // og-play, with the poses og-anim left this tick.
+    crate::bind::play::mount,
 ];
 
 /// Run as each tick starts, after a pending restore and the save's own
