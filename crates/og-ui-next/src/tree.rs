@@ -1305,6 +1305,13 @@ impl Tree {
                 } else {
                     im.width
                 };
+                // CSS border-image: insets that together overrun the box
+                // shrink in proportion until they fit, so a frame's
+                // corners never cross on a box smaller than its art.
+                let fit = (b.w / (width[1] + width[3]))
+                    .min(b.h / (width[0] + width[2]))
+                    .min(1.0);
+                let width = width.map(|w| w * fit);
                 let color = match im.tint {
                     crate::record::Tint::Own => [1.0, 1.0, 1.0, alpha],
                     crate::record::Tint::Ink => faded(own_ink),

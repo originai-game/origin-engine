@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "Style packs (nine-slice art)",
+      "summary": "A `nine-<name>` frame on a box smaller than its insets draws them shrunk in proportion until they fit, as CSS border-image does, so its corners no longer cross: fantasy's filigree on a tooltip or a small tile."
+    }
+  ]
+}
