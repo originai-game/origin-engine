@@ -23,6 +23,10 @@ function isLow(props: RpgCompanionsProps, m: { fallen: boolean; health: number; 
   return !m.fallen && m.healthMax > 0 && m.health <= m.healthMax * (props.low ?? 0.25);
 }
 
+/**
+ * The leader's companions as small portraits with health bars, a companion
+ * under the low share turning to danger. Read only.
+ */
 export function RpgCompanions(props: RpgCompanionsProps) {
   return (
     <View

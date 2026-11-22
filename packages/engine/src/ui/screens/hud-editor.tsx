@@ -8,6 +8,10 @@ export interface HudEditorScreenProps {
   editorEditor?: (() => JSX.Element) | undefined;
 }
 
+/**
+ * The HUD editor's frame: a hint at the top until the player moves
+ * something, over the editor the caller supplies.
+ */
 export function HudEditorScreen(props: HudEditorScreenProps) {
   return (
     <View>

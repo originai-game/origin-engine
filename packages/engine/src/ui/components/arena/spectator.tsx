@@ -54,6 +54,11 @@ export interface ArenaSpectatorProps {
  */
 const BUTTON = `flex-1 basis-40 flex-row items-center justify-center gap-x-1 min-h-11 px-3 text-caption font-bold tracking-label uppercase text-fg nine-plate-cut bg-glass-hi hover:bg-raised-hi disabled:opacity-45 ${packClass("Button", "plate")}`;
 
+/**
+ * A spectator's controls: the subjects the game offers to follow, the one
+ * followed, previous and next, free camera and Leave. It reports intents;
+ * the game moves the camera.
+ */
 export function ArenaSpectator(props: ArenaSpectatorProps) {
   const heading = () => (props.title ?? "") != "" ? props.title : t("spectator.title");
   const followed = (id: string) => !props.freeCamera && props.selected == id;

@@ -27,6 +27,12 @@ export interface SaveLoadScreenProps {
   onSelect?: (e: UiEvent, key?: string) => void;
 }
 
+/**
+ * Saving or loading: the slots with their title, place, time played, date
+ * and thumbnail (autosaves marked, empty slots offered for a new save), the
+ * selected one's preview, and Save or Load and Delete. The game writes the
+ * saves.
+ */
 export function SaveLoadScreen(props: SaveLoadScreenProps) {
   return (
     <View class={`pt-8 pb-6 text-fg gap-y-6 px-12 overflow-hidden compact:pt-4 compact:pb-3 compact:gap-y-3 compact:px-4`}>

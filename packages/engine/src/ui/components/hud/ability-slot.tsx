@@ -44,6 +44,12 @@ export interface AbilitySlotProps {
   onUse?: (e: UiEvent) => void;
 }
 
+/**
+ * One ability or quick item: its icon on a gradient, the hotkey's cap, a
+ * cooldown sweep, charges, a count, its cost, ranks as pips and its states
+ * (unaffordable, out of range, active, locked, disabled, an ultimate's
+ * charge ring). It reports onUse; the game decides whether it fires.
+ */
 export function AbilitySlot(props: AbilitySlotProps) {
   return (
     <View class={`group/abilityslot w-12 max-w-full items-center p-0 gap-0.5 data-fit:w-full`} data-ultimate={(props.ultimate ?? -1) >= 0} data-fit={props.fit}>

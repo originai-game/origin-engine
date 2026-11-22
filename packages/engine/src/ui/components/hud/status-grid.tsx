@@ -92,6 +92,11 @@ function EffectTile(props: { effect: StatusGridEffect; debuff: boolean }) {
   );
 }
 
+/**
+ * Buffs and debuffs as a grid of tiles, the debuffs in their own row
+ * bordered by type, and the effects past the shown ones folded into a +n
+ * tile. Read only.
+ */
 export function StatusGrid(props: StatusGridProps) {
   const buffs = () => props.buffs ?? [];
   const debuffs = () => props.debuffs ?? [];

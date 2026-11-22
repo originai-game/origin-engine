@@ -31,6 +31,11 @@ export interface SettingsScreenProps {
   onRevert?: (e: UiEvent, key?: string) => void;
 }
 
+/**
+ * Settings: a tab per page and its entries (toggles, ranges, choices and
+ * key bindings), Apply and Revert while changes wait, and Defaults. The
+ * game owns every value and writes back what the events report.
+ */
 export function SettingsScreen(props: SettingsScreenProps) {
   const listening = createSignal("");
   const openChoice = createSignal("");

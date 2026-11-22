@@ -21,6 +21,11 @@ export interface ConfirmProps {
   onConfirm?: (e: UiEvent, key?: string) => void;
 }
 
+/**
+ * A confirmation dialog on its own panel: the question as its heading, what
+ * follows from it, and Cancel and Confirm (the danger variant when
+ * confirming destroys something). The game closes it.
+ */
 export function Confirm(props: ConfirmProps) {
   return (
     <Show when={props.open}>

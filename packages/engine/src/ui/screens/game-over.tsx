@@ -33,6 +33,12 @@ export interface GameOverScreenProps {
   onRevive?: (e: UiEvent, key?: string) => void;
 }
 
+/**
+ * Game over: the defeat's line, the run's score and the best, an optional
+ * revive offer with its price and the seconds it stays, and Retry,
+ * Checkpoint and Quit. The game decides the offer and what each choice
+ * costs.
+ */
 export function GameOverScreen(props: GameOverScreenProps) {
   return (
     <View class="grow shrink basis-0 justify-center items-center w-full p-8 gap-2 compact:p-4">

@@ -29,6 +29,12 @@ export interface InboxProps {
   onDelete?: (e: UiEvent, key?: string) => void;
 }
 
+/**
+ * A mail inbox: the messages with their sender, date and unread state, the
+ * selected message's body and its attachments to claim, and Claim and
+ * Delete. Loading, a pending claim and an error each have their state. The
+ * game owns the messages and what a claim grants.
+ */
 export function Inbox(props: InboxProps) {
   return (
     <View class={`grow shrink basis-0 border-rim bg-linear-to-b from-glass-hi to-glass-lo shadow-panel text-fg h-auto p-4 gap-3 rounded-panel border disabled:text-fg-subtle ${packClass("Panel", "frame")}`} label={props.title || t("meta.inbox.title")} busy={(props.loading ?? false) || (props.busy ?? false)}>

@@ -21,6 +21,11 @@ export interface ModeSelectScreenProps {
   onSelect?: (e: UiEvent, key?: string) => void;
 }
 
+/**
+ * A mode select: the modes as cards with their line, tag and picture, a
+ * locked mode's reason, the selected one's detail, and Play. It reports
+ * onSelect and onPlay; the game decides what is locked.
+ */
 export function ModeSelectScreen(props: ModeSelectScreenProps) {
   return (
     <View class={`pt-8 pb-6 text-fg gap-y-6 px-12 overflow-hidden compact:pt-4 compact:pb-3 compact:gap-y-3 compact:px-4`}>

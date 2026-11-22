@@ -68,6 +68,12 @@ const TAG = `${ACCENT_TAG} ${packClass("Chip", "frame")}`;
 const PORTRAIT = "shrink-0 size-13 p-0.75 rounded-panel bg-linear-to-b from-rim-strong via-rim via-45% to-rim-soft compact:size-10";
 const SEAT = "flex-row flex-wrap items-center gap-x-1 gap-y-0.5 min-h-11 py-1 px-2 nine-plate-cut compact:min-h-9 compact:py-0.5 compact:px-1 compact:gap-x-1";
 
+/**
+ * A match lobby: its heading and detail line, the seats in the game's order
+ * (open seats offer Invite), the local player's Ready up or Cancel ready,
+ * and Start match for the host. The game decides who is ready and when the
+ * match can start.
+ */
 export function ArenaLobby(props: ArenaLobbyProps) {
   const heading = () => (props.title ?? "") != "" ? props.title : t("arena.lobby.title");
   const slots = () => props.slots ?? [];

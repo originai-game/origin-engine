@@ -5,6 +5,10 @@ export interface KeyValuesProps {
   rows: ReadonlyArray<{ id: string; key: string; value: string; delta: string }>;
 }
 
+/**
+ * A table of key and value rows, each with an optional change (a stat
+ * comparison). Read only.
+ */
 export function KeyValues(props: KeyValuesProps) {
   return (
     <View class={`text-fg w-full p-0 m-0 disabled:text-fg-subtle`}>

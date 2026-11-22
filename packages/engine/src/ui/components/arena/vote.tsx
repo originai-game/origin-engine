@@ -50,6 +50,11 @@ export interface ArenaVoteProps {
  */
 const CARD = `w-full max-h-full p-4 nine-panel-cut bg-plate-hi compact:p-2 ${packClass("Panel", "frame")}`;
 
+/**
+ * A map or mode vote: the options, the local vote, the time left and, once
+ * closed, the winner the game names. It reports onChoose with the option's
+ * id; the game counts the votes.
+ */
 export function ArenaVote(props: ArenaVoteProps) {
   const heading = () => (props.title ?? "") != "" ? props.title : t("vote.title");
   return (

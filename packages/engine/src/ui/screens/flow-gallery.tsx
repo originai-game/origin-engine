@@ -15,6 +15,11 @@ export interface FlowGalleryScreenProps {
   onSelect?: (e: UiEvent, key?: string) => void;
 }
 
+/**
+ * An endings gallery: the endings reached and locked, with their
+ * thumbnails, the selected one shown, and Back. It reports onSelect with
+ * the ending's key.
+ */
 export function FlowGalleryScreen(props: FlowGalleryScreenProps) {
   return (
     <View class={`pt-8 pb-6 text-fg gap-y-4 px-12 overflow-hidden compact:pt-4 compact:gap-y-3`}>

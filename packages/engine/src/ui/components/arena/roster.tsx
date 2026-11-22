@@ -66,6 +66,11 @@ const ACCENT_TAG = `flex-none max-w-full self-center py-0 px-1 text-xs leading-n
 const TAG = `${ACCENT_TAG} ${packClass("Chip", "frame")}`;
 const CELL = "flex-col gap-y-0.5 pb-2 nine-panel-cut bg-glass-hi hover:bg-raised-hi data-selected:bg-surface-hover data-selected:border-l-3 data-selected:border-hud-accent data-disabled:text-fg-muted data-disabled:bg-glass-hi";
 
+/**
+ * A character select: the roster as a grid of tiles, the local player's
+ * choice selected and named under it, and who is choosing. It reports
+ * onChoose; the game decides what may be chosen.
+ */
 export function ArenaRoster(props: ArenaRosterProps) {
   const heading = () => (props.title ?? "") != "" ? props.title : t("arena.roster.title");
   const characters = () => props.characters ?? [];

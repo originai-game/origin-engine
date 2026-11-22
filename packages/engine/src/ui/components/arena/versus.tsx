@@ -105,6 +105,11 @@ function Side(props: { name?: string; team: "a" | "b"; fighters?: ReadonlyArray<
   );
 }
 
+/**
+ * A versus reveal: each side's team name and fighters facing each other,
+ * replayed when its id changes. An empty side reads Waiting for opponents.
+ * Read only.
+ */
 export function ArenaVersus(props: ArenaVersusProps) {
   return (
     <View class={`group/versus w-full max-h-full flex-row items-stretch p-4 text-fg bg-glass nine-panel-cut compact:flex-col compact:p-2 ${packClass("Panel", "frame")}`} label={t("arena.versus.name")} data-compact={props.compact === true}>

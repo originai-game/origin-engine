@@ -157,6 +157,12 @@ function DraftTeam(props: { team: "a" | "b"; name: string; active: boolean; slot
   );
 }
 
+/**
+ * A ban-and-pick draft: both teams' ban and pick slots in columns, the team
+ * choosing now marked current, the phase named in a band, the turn's timer
+ * and Lock in. The game owns the order, the turn and when the local player
+ * may lock in; it reports onConfirm.
+ */
 export function ArenaDraft(props: ArenaDraftProps) {
   const heading = () => (props.title ?? "") != "" ? props.title : t("arena.draft.title");
   const slots = () => props.slots ?? [];

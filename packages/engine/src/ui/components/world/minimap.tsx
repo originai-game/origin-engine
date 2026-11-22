@@ -51,6 +51,10 @@ function markerTone(m: MinimapMarker): string {
   return m.player ? "#38e8ff" : TONES[m.tone ?? ""] ?? "#e8e8ed";
 }
 
+/**
+ * A square minimap: a region of the map texture (or a grid without one),
+ * markers over it and a zone name under it on a plate. Read only.
+ */
 export function Minimap(props: MinimapProps) {
   const size = () => props.size ?? 160;
   return (

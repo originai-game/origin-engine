@@ -20,6 +20,12 @@ export interface TitleScreenProps {
   onStart?: (e: UiEvent, key?: string) => void;
 }
 
+/**
+ * The title screen over the key art: the logo or the name as a wordmark,
+ * Press any button (Tap on a touch screen), the legal line and the version.
+ * Any press reports onStart. It resolves in the dark scheme in both
+ * schemes.
+ */
 export function TitleScreen(props: TitleScreenProps) {
   return (
     <View class={`scheme-dark text-fg p-0 overflow-hidden`} onPress={(e) => props.onStart?.(e)} onAction={{ confirm: (e) => props.onStart?.(e) }}>

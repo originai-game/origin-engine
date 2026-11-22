@@ -17,6 +17,11 @@ export interface CardProps {
   onOpen?: (e: UiEvent, key?: string) => void;
 }
 
+/**
+ * A card: a picture across its top, a heading, a line or two under it, a
+ * badge at its top end and the actions the caller supplies. It reports
+ * onOpen.
+ */
 export function Card(props: CardProps) {
   return (
     <View class={`text-fg w-70 max-w-full p-0 gap-2 disabled:text-fg-subtle ${packClass("Panel", "frame")}`}>

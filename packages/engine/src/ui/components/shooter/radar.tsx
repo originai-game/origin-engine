@@ -42,6 +42,11 @@ export interface ShooterRadarProps {
  */
 const SIDE = 10.971; // rem: the radar's side, size-5xl * 0.8.
 
+/**
+ * A round radar: the map turned so north stays up around the player's
+ * point, the player's arrow by its heading and the blips the game hands it,
+ * clipped at the edge. Read only.
+ */
 export function ShooterRadar(props: ShooterRadarProps) {
   const cx = () => props.centerX ?? 0.5;
   const cy = () => props.centerY ?? 0.5;

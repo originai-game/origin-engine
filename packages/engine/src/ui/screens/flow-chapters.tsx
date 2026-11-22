@@ -15,6 +15,11 @@ export interface FlowChaptersScreenProps {
   onSelect?: (e: UiEvent, key?: string) => void;
 }
 
+/**
+ * A chapter select: the story's chapters in order with their thumbnails,
+ * the selected one shown, and Back. It reports onSelect with the chapter's
+ * key.
+ */
 export function FlowChaptersScreen(props: FlowChaptersScreenProps) {
   return (
     <View class={`pt-8 pb-6 text-fg gap-y-4 px-12 overflow-hidden compact:pt-4 compact:gap-y-3`}>

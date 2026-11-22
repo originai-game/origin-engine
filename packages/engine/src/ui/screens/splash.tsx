@@ -19,6 +19,11 @@ export interface SplashScreenProps {
   onSkip?: (e: UiEvent, key?: string) => void;
 }
 
+/**
+ * The boot splash: the studio marks one after another (a texture, or the
+ * name set as type), boot progress and what is loading, and Skip. The game
+ * moves through the marks.
+ */
 export function SplashScreen(props: SplashScreenProps) {
   return (
     <View class={`text-fg items-center gap-y-6 p-12 compact:pt-8 compact:pb-15 compact:px-6`} onPress={(e) => props.onSkip?.(e)} onAction={{ confirm: (e) => props.onSkip?.(e) }}>

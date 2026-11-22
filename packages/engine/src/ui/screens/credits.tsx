@@ -23,6 +23,11 @@ export interface CreditsScreenProps {
   onFaster?: (e: UiEvent, key?: string) => void;
 }
 
+/**
+ * The credits: the sections' titles and names rolling over the key art's
+ * veil, the logo at the head, and the end and licences the caller supplies.
+ * The game moves the roll (offset); it reports onBack and onFaster.
+ */
 export function CreditsScreen(props: CreditsScreenProps) {
   return (
     <View class={`grow shrink basis-0 text-fg p-0 gap-0 overflow-hidden`} onPress={(e) => props.onFaster?.(e)} onAction={{ confirm: (e) => props.onFaster?.(e) }}>

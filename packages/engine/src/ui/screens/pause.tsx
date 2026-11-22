@@ -26,6 +26,11 @@ export interface PauseScreenProps {
   onSettings?: (e: UiEvent, key?: string) => void;
 }
 
+/**
+ * The pause menu: Resume, Save (when allowed), Load, Settings, Controls,
+ * Quit to menu and Quit game, with the current objective and the time
+ * played beside it. Each reports its event.
+ */
 export function PauseScreen(props: PauseScreenProps) {
   return (
     <View class="flex-row text-fg overflow-hidden">

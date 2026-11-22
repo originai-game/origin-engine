@@ -94,6 +94,11 @@ function Marker(props: { marker: () => MinimapViewMarker; cx: () => number; cy: 
 
 const ARROW_BOX = 29; // px: the player arrow's box (an objective pip and a half).
 
+/**
+ * A minimap: the map texture zoomed round the player's point, player-up or
+ * north-up, round or square, with its markers and the zone's name under it.
+ * It reports onPick for a tap on the glass.
+ */
 export function MinimapView(props: MinimapViewProps) {
   const zoom = () => Math.min(Math.max(props.zoom ?? 0.3, 0.01), 1);
   const cx = () => props.centerX ?? 0.5;

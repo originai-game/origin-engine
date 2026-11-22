@@ -37,6 +37,12 @@ export interface ProfileProps {
   onRetry?: (e: UiEvent, key?: string) => void;
 }
 
+/**
+ * A player profile: the avatar with level and presence, the name, handle,
+ * rank and bio, the stats the game formats and the actions it offers
+ * (friend, invite, report). Private stats, loading, an error and no profile
+ * each have their state.
+ */
 export function Profile(props: ProfileProps) {
   return (
     <View class={`nine-panel-cut bg-glass border border-rim text-fg w-full p-4 gap-3 compact:p-2`} label={t("profile.title")} busy={props.loading}>

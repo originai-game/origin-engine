@@ -34,6 +34,11 @@ export interface LeaderboardScreenProps {
   onRow?: (e: UiEvent, key?: string) => void;
 }
 
+/**
+ * A leaderboard: global, friends and league tabs, the period, the top rows
+ * with the player's own marked, the player's row pinned, and the league's
+ * promotion and demotion lines. The game owns the rows.
+ */
 export function LeaderboardScreen(props: LeaderboardScreenProps) {
   return (
     <View class={`text-fg grow shrink basis-0 p-8 gap-3 compact:p-3 compact:gap-2 disabled:text-fg-subtle`}>

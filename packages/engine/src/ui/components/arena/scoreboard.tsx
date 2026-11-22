@@ -116,6 +116,11 @@ function TeamTable(props: { team: "a" | "b"; name: string; score: string; column
   );
 }
 
+/**
+ * A two-team scoreboard: each team's name and score and its players' rows,
+ * kills, deaths, assists and score or score alone, side by side or one
+ * above the other. Read only; the game orders the rows.
+ */
 export function ArenaScoreboard(props: ArenaScoreboardProps) {
   const heading = () => (props.title ?? "") != "" ? props.title : t("arena.score.title");
   const rows = () => props.rows ?? [];

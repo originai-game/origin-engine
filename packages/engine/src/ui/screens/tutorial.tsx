@@ -76,6 +76,11 @@ function StepCard(props: TutorialScreenProps) {
   );
 }
 
+/**
+ * A tutorial step: a card with the step's title, what to do, its art and
+ * the step count, placed where the game puts it, pointing at an element by
+ * its id; Next (hidden while the step waits for the player) and Skip.
+ */
 export function TutorialScreen(props: TutorialScreenProps) {
   return (
     <View class="relative h-full">

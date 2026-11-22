@@ -73,6 +73,11 @@ export interface CalibrationScreenProps {
   onTap?: (e: UiEvent, key?: string) => void;
 }
 
+/**
+ * Calibration in three steps: brightness (gamma), the audio offset measured
+ * from taps, and the controller's dead zone, each with its slider and test.
+ * The game owns the values and writes them back from the events.
+ */
 export function CalibrationScreen(props: CalibrationScreenProps) {
   return (
     <View class="grow shrink basis-0 justify-center items-center text-fg w-full p-8 gap-2 compact:p-3">

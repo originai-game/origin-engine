@@ -39,9 +39,6 @@ export interface StrategySelectionProps {
  * the focused one lit. Reports choose (a card's key: show that unit or
  * subgroup). The game owns every figure and what the panel shows.
  */
-/** Where it belongs: a piece of the strategy HUD's bottom panel, drawn on the panel's ground and never straight over the scene; the gallery mounts it inside a panel's frame. */
-export const ground = "panel" as const;
-
 export function StrategySelection(props: StrategySelectionProps) {
   return (
     <View class={`flex-row items-start gap-x-4 w-full min-w-0 text-fg compact:gap-x-2`} label={props.name !== "" ? props.name : t("strategy.selection.title")} data-kind-unit={props.kind === "unit"} data-kind-building={props.kind === "building"}>
@@ -172,6 +169,9 @@ export function StrategySelection(props: StrategySelectionProps) {
     </View>
   );
 }
+
+/** Where it belongs: a piece of the strategy HUD's bottom panel, drawn on the panel's ground and never straight over the scene; the gallery mounts it inside a panel's frame. */
+export const ground = "panel" as const;
 
 export const fixtures: Record<string, Partial<StrategySelectionProps>> = {
   default: {"name":"Men-at-Arms","count":12,"kind":"unit","line":"Heavy infantry · Veteran II","status":"","portrait":0,"icon":"sword","health":1476,"healthMax":1800,"stats":[{"id":"atk","label":"ATK","value":"12"},{"id":"arm","label":"ARM","value":"4"},{"id":"spd","label":"SPD","value":"3.2"}],"focused":"m1","units":[{"id":"m1","name":"Man-at-Arms","kind":"unit","portrait":0,"icon":"sword","count":1,"health":90,"healthMax":100},{"id":"m2","name":"Man-at-Arms","kind":"unit","portrait":0,"icon":"sword","count":1,"health":55,"healthMax":100},{"id":"m3","name":"Man-at-Arms","kind":"unit","portrait":0,"icon":"sword","count":1,"health":100,"healthMax":100},{"id":"m4","name":"Man-at-Arms","kind":"unit","portrait":0,"icon":"sword","count":1,"health":25,"healthMax":100},{"id":"m5","name":"Man-at-Arms","kind":"unit","portrait":0,"icon":"sword","count":1,"health":80,"healthMax":100},{"id":"m6","name":"Man-at-Arms","kind":"unit","portrait":0,"icon":"sword","count":1,"health":100,"healthMax":100},{"id":"m7","name":"Man-at-Arms","kind":"unit","portrait":0,"icon":"sword","count":1,"health":100,"healthMax":100},{"id":"a1","name":"Archer","kind":"unit","portrait":0,"icon":"bolt","count":1,"health":70,"healthMax":100},{"id":"a2","name":"Archer","kind":"unit","portrait":0,"icon":"bolt","count":1,"health":100,"healthMax":100},{"id":"a3","name":"Archer","kind":"unit","portrait":0,"icon":"bolt","count":1,"health":45,"healthMax":100},{"id":"a4","name":"Archer","kind":"unit","portrait":0,"icon":"bolt","count":1,"health":100,"healthMax":100},{"id":"a5","name":"Archer","kind":"unit","portrait":0,"icon":"bolt","count":1,"health":95,"healthMax":100}]},

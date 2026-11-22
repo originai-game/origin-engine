@@ -57,6 +57,11 @@ const SCORE_B = "shrink-0 min-w-8 text-center text-display-lg leading-none font-
 const YOU = `shrink-0 py-0 px-1 text-xs leading-normal font-bold tracking-label uppercase text-hud-accent-fg nine-chip-cut bg-hud-accent whitespace-nowrap`;
 const ROUND_PLATE = `flex-col items-center justify-center gap-y-0.5 py-0.5 px-4 bg-raised-pressed ${PLATE_RIM} ${packClass("Plate", "frame")}`;
 
+/**
+ * The round's HUD for two teams: each team's name and score on a plate (the
+ * local team's marked You), the round and its total, the round's timer, and
+ * a banner when the game decides the round's outcome. Read only.
+ */
 export function ArenaRoundHud(props: ArenaRoundHudProps) {
   const nameA = () => (props.nameA ?? "") != "" ? props.nameA : t("arena.team.a");
   const nameB = () => (props.nameB ?? "") != "" ? props.nameB : t("arena.team.b");

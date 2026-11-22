@@ -24,6 +24,11 @@ export interface NewsProps {
   onOpen?: (e: UiEvent, key?: string) => void;
 }
 
+/**
+ * News and updates: articles with their date, kind, picture and summary,
+ * one expanded at a time with its body and action. Loading and an error
+ * each have their state; the game owns the articles.
+ */
 export function News(props: NewsProps) {
   return (
     <View class={`border-rim bg-linear-to-b from-glass-hi to-glass-lo shadow-panel text-fg w-full max-h-full p-4 gap-3 rounded-panel border disabled:text-fg-subtle ${packClass("Panel", "frame")}`} label={props.title || t("meta.news.title")} busy={(props.loading ?? false)}>

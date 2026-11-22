@@ -38,6 +38,12 @@ export interface MainMenuScreenProps {
   onSettings?: (e: UiEvent, key?: string) => void;
 }
 
+/**
+ * The main menu over the key art: the logo or the name as a wordmark,
+ * Continue with the last save's line when a save exists, New game, Modes,
+ * Settings, Credits and Quit, a news card and the version. It resolves in
+ * the dark scheme in both schemes.
+ */
 export function MainMenuScreen(props: MainMenuScreenProps) {
   return (
     <View class="scheme-dark text-fg overflow-hidden">

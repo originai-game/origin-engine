@@ -55,6 +55,11 @@ function wedgePoints(at: number, span: number): readonly number[] {
   return points;
 }
 
+/**
+ * A radial menu: slices clockwise from the top, the one the pointer or
+ * stick aims at lit, and its detail in the centre. It reports onAim and
+ * onChoose; the game decides what a slice does.
+ */
 export function RadialMenu(props: RadialMenuProps) {
   const span = () => props.span ?? 0;
   const chosen = () => props.chosen ?? "";

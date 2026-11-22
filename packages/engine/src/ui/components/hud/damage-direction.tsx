@@ -38,6 +38,10 @@ function arcPoints(angle: number, strength: number): readonly number[] {
   return points;
 }
 
+/**
+ * Where recent hits came from: a mark at the screen's edge toward each hit.
+ * The game adds a hit and removes it when its mark should go. Read only.
+ */
 export function DamageDirection(props: DamageDirectionProps) {
   return (
     <View class="relative w-full h-full min-w-24 min-h-24 pointer-events-none" role="image" label={t("shooter.damage.name")}>

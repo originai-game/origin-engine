@@ -87,6 +87,12 @@ function Pad(props: { action: string; disabled: boolean; label: string }) {
   );
 }
 
+/**
+ * On-screen controls for touch: a stick (or a d-pad) at the start side
+ * feeding a move action, an optional look stick and the action buttons at
+ * the end side. They feed og.input's actions and show only where touch is
+ * the last input, unless always is set.
+ */
 export function TouchControls(props: TouchControlsProps) {
   const dz = () => Math.min(Math.max(props.deadZone ?? 0, 0), 0.95) || ENGINE_DEAD_ZONE;
   const actions = () => props.actions ?? [];

@@ -80,6 +80,11 @@ function PoiCopy(props: { poi: CompassPoi; wrap: number; units: string }) {
   );
 }
 
+/**
+ * A compass strip: the cardinal and intercardinal points and ticks sliding
+ * under the heading, the heading in degrees on a tab, and the points of
+ * interest with their distances. Read only.
+ */
 export function Compass(props: CompassProps) {
   const heading = () => Math.min(Math.max(props.heading ?? 0, 0), Math.PI * 2);
   const degrees = () => (heading() * 57.29578);

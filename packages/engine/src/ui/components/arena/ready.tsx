@@ -43,6 +43,11 @@ export interface ArenaReadyProps {
 const CARD = `w-full max-h-full p-4 nine-panel-cut bg-plate-hi ${packClass("Panel", "frame")}`;
 const BUTTON = `flex-1 basis-44 flex-row items-center justify-center gap-x-1 min-h-11 px-4 text-caption font-bold tracking-label uppercase text-fg nine-plate-cut bg-glass-hi hover:bg-raised-hi disabled:opacity-45 ${packClass("Button", "plate")}`;
 
+/**
+ * A ready check: the players asked and their answers, the time left as the
+ * game words it, and Accept and Decline for the local player. It never
+ * starts or expires a timer; the game closes the check.
+ */
 export function ArenaReady(props: ArenaReadyProps) {
   const heading = () => (props.title ?? "") != "" ? props.title : t("ready.title");
   const canAct = () => (props.canRespond ?? true) && !props.closed && !props.loading && (props.players ?? []).length > 0;

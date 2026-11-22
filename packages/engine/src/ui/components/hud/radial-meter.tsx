@@ -37,6 +37,10 @@ function RadialMeterWheel(props: { size: string; inset: string; fill: number; ex
   );
 }
 
+/**
+ * A stamina wheel: up to three rings that drain and fill, red once
+ * exhausted until full again, faded out when the game hides it. Read only.
+ */
 export function RadialMeter(props: RadialMeterProps) {
   const value = () => props.value ?? 0;
   const wheels = () => Math.min(Math.max(props.wheels ?? 1, 1), 3);
