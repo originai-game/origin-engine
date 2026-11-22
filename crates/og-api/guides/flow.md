@@ -360,3 +360,7 @@ one, and any flow can stop for a game.
   video shows the real-time world; with both, the footage plays over
   it. The decks warm
   its scene before the cut as they warm footage, so it never hitches.
+  Give a live scene its own light: a `resource Sky { ... }` and its lights
+  in the scene file. Without a Sky it is lit and reflected by the look's
+  daylight sky even where the camera's dark background shows, so a night
+  set comes out flat and pale.

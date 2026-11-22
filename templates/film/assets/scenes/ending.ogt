@@ -2,8 +2,45 @@ type scene
 version 1
 ---
 # The live ending: segments/live.ogt places it with its scene track and
-# moves the camera over it.
+# moves the camera over it. A night stage: its own sky, drawn behind it and
+# the only ambient light and reflection it has, a dim cool moon from
+# behind and the lamp's warm light. Without its sky the set would be lit
+# and mirrored by the look's daylight sky behind a dark background.
 name "Ending"
+resource Sky {
+  enabled true
+  zenith 0.004 0.006 0.016
+  horizon 0.02 0.024 0.036
+  ground 0.006 0.005 0.004
+  sunSize 0
+  sunIntensity 0
+  glow 0
+  stars 0.8
+  moonSize 1.2
+  moonDirection -0.42 0.7 0.56
+}
 entity "set" {
   model "models/set.ogt"
+}
+entity "moon" {
+  Transform {
+    position -3 5 4
+    quaternion -0.399593 -0.239756 0 0.884784
+  }
+  DirectionalLight {
+    color 0.55 0.65 0.9
+    intensity 0.8
+    shadowSoftness 0.02
+  }
+}
+entity "lamp-light" {
+  Transform {
+    position 1 0.95 0.4
+  }
+  PointLight {
+    color 1 0.72 0.42
+    intensity 2.5
+    distance 8
+    radius 0.25
+  }
 }

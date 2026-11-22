@@ -15,7 +15,7 @@
     },
     {
       "member": "og create --genre interactive-film",
-      "summary": "The skeleton's `leave` ending is a live segment: `segments/live.ogt` places `scenes/ending.ogt`, a set of built-in geometry (`models/set.ogt`), with a scene track and a camera track pushing in, warmed on a deck before the cut. The flow guide §9 covers cutscenes and minigames in any game."
+      "summary": "The skeleton's `leave` ending is a live segment: `segments/live.ogt` places `scenes/ending.ogt`, a night set of built-in geometry (`models/set.ogt`) under its own sky, moon and lamp light, with a scene track and a camera track pushing in, warmed on a deck before the cut. The flow guide §9 covers cutscenes and minigames in any game."
     }
   ]
 }
