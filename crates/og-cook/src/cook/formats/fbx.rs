@@ -178,6 +178,18 @@ fn load_error(what: &str, e: &ufbx::Error) -> String {
     )
 }
 
+/// Where a blend channel's shapes land in the glTF.
+struct MorphSlot {
+    /// The node showing the channel's mesh.
+    node: usize,
+    /// The index of the channel's first target.
+    first: usize,
+    /// The weights its shapes are whole at, rising: one target each.
+    shapes: Vec<f64>,
+    /// The mesh's target count.
+    count: usize,
+}
+
 /// Reads an FBX or OBJ (`ext`) and writes it as a glTF binary (module docs).
 /// `path` is the source file, whose folder holds what it names.
 pub fn to_glb(bytes: &[u8], path: &Path, ext: &str) -> Result<Imported, String> {
@@ -336,9 +348,8 @@ struct Writer<'a> {
     materials: material::Materials,
     skins: Vec<Value>,
     lights: Vec<Value>,
-    /// A blend channel's element id → (the glTF node showing its mesh,
-    /// the target's index, the mesh's target count).
-    morph_of: HashMap<u32, Vec<(usize, usize, usize)>>,
+    /// A blend channel's element id → where its shapes land.
+    morph_of: HashMap<u32, Vec<MorphSlot>>,
     read: Vec<(String, Vec<u8>)>,
     notes: &'a mut Vec<String>,
 }
@@ -538,16 +549,41 @@ impl Writer<'_> {
             let Some(prop) = el.props.iter().find(|p| &*p.name == "DeformPercent") else {
                 continue;
             };
-            let keys: Vec<(f64, f64)> = prop
-                .keys
-                .iter()
-                .map(|k| (k.time, k.value.x / 100.0))
-                .collect();
-            for &(node, target, count) in targets {
+            for MorphSlot {
+                node,
+                first,
+                shapes,
+                count,
+            } in targets
+            {
                 let e = per_node
-                    .entry(node)
-                    .or_insert_with(|| (count, vec![Vec::new(); count]));
-                e.1[target] = keys.clone();
+                    .entry(*node)
+                    .or_insert_with(|| (*count, vec![Vec::new(); *count]));
+                // The channel's percent, spread over its shapes: an
+                // in-between and the full shape share it. A share bends
+                // where the percent crosses a shape's weight, so a key
+                // goes there too and the shares run straight between keys
+                // as the percent does.
+                let mut keys: Vec<(f64, f64)> = Vec::new();
+                for k in prop.keys.iter() {
+                    let (t1, p1) = (k.time, k.value.x / 100.0);
+                    if let Some(&(t0, p0)) = keys.last() {
+                        let mut cross: Vec<(f64, f64)> = shapes
+                            .iter()
+                            .filter(|&&w| (p0 < w && w < p1) || (p1 < w && w < p0))
+                            .map(|&w| (t0 + (w - p0) / (p1 - p0) * (t1 - t0), w))
+                            .collect();
+                        cross.sort_by(|a, b| a.0.total_cmp(&b.0));
+                        keys.extend(cross);
+                    }
+                    keys.push((t1, p1));
+                }
+                for (t, p) in keys {
+                    let parts = mesh::shape_weights(p, shapes);
+                    for (i, w) in parts.into_iter().enumerate() {
+                        e.1[first + i].push((t, w));
+                    }
+                }
             }
         }
         for (node, (count, tracks)) in per_node {

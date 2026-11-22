@@ -412,3 +412,159 @@ fn a_skinned_fbx_keeps_its_joints_morphs_and_clips() {
         "{w:?}"
     );
 }
+
+/// A file of ufbx's corpus (`third_party/ufbx/data`).
+fn ufbx_data(name: &str) -> Imported {
+    let p = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../third_party/ufbx/data")
+        .join(name);
+    to_glb(&std::fs::read(&p).unwrap(), &p, "fbx").unwrap()
+}
+
+/// The first mesh's node in world space: its vertices posed by the
+/// first clip's morph weights at `t` (linear between keys, held past
+/// the ends), its target names and its rest weights.
+fn morphed_at(glb: &[u8], t: f32) -> (Vec<Vec3>, Vec<String>, Vec<f32>) {
+    let g = gltf::Gltf::from_slice(glb).unwrap();
+    let blob = g.blob.as_deref().unwrap();
+    let (_, worlds) = world_points(glb);
+    let node = g.nodes().find(|n| n.mesh().is_some()).unwrap();
+    let w = worlds[node.index()].1;
+    let mesh = node.mesh().unwrap();
+    let j = json_of(glb);
+    let names: Vec<String> = j["meshes"][mesh.index()]["extras"]["targetNames"]
+        .as_array()
+        .map(|a| a.iter().map(|n| n.as_str().unwrap().to_string()).collect())
+        .unwrap_or_default();
+    let rest: Vec<f32> = mesh.weights().map(<[f32]>::to_vec).unwrap_or_default();
+    let mut weights = rest.clone();
+    if let Some(a) = g.animations().next() {
+        for c in a.channels() {
+            if c.target().node().index() != node.index()
+                || c.target().property() != gltf::animation::Property::MorphTargetWeights
+            {
+                continue;
+            }
+            let r = c.reader(|_| Some(blob));
+            let times: Vec<f32> = r.read_inputs().unwrap().collect();
+            let values: Vec<f32> = match r.read_outputs().unwrap() {
+                gltf::animation::util::ReadOutputs::MorphTargetWeights(v) => v.into_f32().collect(),
+                _ => unreachable!(),
+            };
+            let n = weights.len();
+            let k = times.iter().position(|x| *x >= t);
+            for (i, w) in weights.iter_mut().enumerate() {
+                let v = |f: usize| values[f * n + i];
+                *w = match k {
+                    None => v(times.len() - 1),
+                    Some(0) => v(0),
+                    Some(f) => {
+                        let s = (t - times[f - 1]) / (times[f] - times[f - 1]);
+                        v(f - 1) + (v(f) - v(f - 1)) * s
+                    }
+                };
+            }
+        }
+    }
+    let mut pts = Vec::new();
+    for p in mesh.primitives() {
+        let r = p.reader(|_| Some(blob));
+        let mut pos: Vec<Vec3> = r.read_positions().unwrap().map(Vec3::from).collect();
+        for (k, target) in r.read_morph_targets().enumerate() {
+            if let Some(d) = target.0 {
+                for (p, d) in pos.iter_mut().zip(d) {
+                    *p += Vec3::from(d) * weights[k];
+                }
+            }
+        }
+        pts.extend(pos.iter().map(|p| w.transform_point3(*p)));
+    }
+    (pts, names, rest)
+}
+
+/// Maya's blend-shape cube (ufbx's file and its expected values): each
+/// channel a morph target with Maya's rest weight, and the clip drives
+/// the two weights as Maya evaluates them at frames 16 and 53.
+#[test]
+fn blend_shapes_are_morph_targets_with_maya_s_weights() {
+    let i = ufbx_data("maya_blend_shape_cube_7700_binary.fbx");
+    let (_, names, rest) = morphed_at(&i.glb, 0.0);
+    assert_eq!(names, ["Squish.TopH", "Squish.TopV"]);
+    assert!(rest.iter().all(|w| (w - 1.0).abs() < 1e-6), "{rest:?}");
+    let g = gltf::Gltf::from_slice(&i.glb).unwrap();
+    let blob = g.blob.as_deref().unwrap();
+    let c = g.animations().next().unwrap().channels().next().unwrap();
+    let r = c.reader(|_| Some(blob));
+    let times: Vec<f32> = r.read_inputs().unwrap().collect();
+    let gltf::animation::util::ReadOutputs::MorphTargetWeights(v) = r.read_outputs().unwrap()
+    else {
+        panic!("weights")
+    };
+    let values: Vec<f32> = v.into_f32().collect();
+    for (frame, want) in [(16.0f32, [0.279f32, 0.670]), (53.0, [0.901, 0.168])] {
+        let t = (frame - 1.0) / 24.0;
+        let k = times.iter().position(|x| *x >= t).unwrap();
+        let f = (t - times[k - 1]) / (times[k] - times[k - 1]);
+        let got = [0, 1].map(|n| values[(k - 1) * 2 + n] * (1.0 - f) + values[k * 2 + n] * f);
+        for n in 0..2 {
+            assert!((got[n] - want[n]).abs() < 2e-3, "frame {frame}: {got:?}");
+        }
+    }
+}
+
+/// A channel with shapes on the way to its full one (ufbx's file, and
+/// three frames of it as Maya wrote them out): each shape is a target,
+/// the clip gives each its part, and the mesh stands where Maya's does.
+#[test]
+fn in_between_shapes_are_targets_of_their_own() {
+    let i = ufbx_data("maya_blend_inbetween_7500_binary.fbx");
+    let (_, names, _) = morphed_at(&i.glb, 0.0);
+    assert_eq!(
+        names,
+        [
+            "KeyBlend.LiftTop@50",
+            "KeyBlend.LiftTop",
+            "KeyBlend.MoveToSide@-49.9",
+            "KeyBlend.MoveToSide@-24.9",
+            "KeyBlend.MoveToSide"
+        ]
+    );
+    for frame in [30, 65, 89] {
+        let p = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(format!(
+            "../../third_party/ufbx/data/maya_blend_inbetween_{frame}.obj"
+        ));
+        // Maya's corners, in its centimetres with Y up.
+        let want: Vec<Vec3> = std::fs::read_to_string(p)
+            .unwrap()
+            .lines()
+            .filter_map(|l| l.strip_prefix("v "))
+            .map(|l| {
+                let v: Vec<f32> = l.split_whitespace().map(|x| x.parse().unwrap()).collect();
+                Vec3::new(v[0], v[1], v[2]) * 0.01
+            })
+            .collect();
+        let (got, _, _) = morphed_at(&i.glb, (frame as f32 - 1.0) / 24.0);
+        // The cook welds corners into vertices: each Maya corner has one
+        // within 0.05 mm, and each vertex a corner. The shapes and their
+        // shares are exact; what is left is ufbx's evaluation of Maya's
+        // eased curve (its weights up to 0.004 from Maya's at frame 89,
+        // 0.031 mm, at any bake rate).
+        for w in &want {
+            let d = got
+                .iter()
+                .map(|p| (*p - *w).length())
+                .fold(f32::MAX, f32::min);
+            assert!(
+                d < 5e-5,
+                "frame {frame}: {w:?} is {d} m from the nearest vertex"
+            );
+        }
+        for p in &got {
+            let d = want
+                .iter()
+                .map(|w| (*p - *w).length())
+                .fold(f32::MAX, f32::min);
+            assert!(d < 5e-5, "frame {frame}: {p:?} is {d} m from Maya's");
+        }
+    }
+}

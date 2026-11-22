@@ -115,15 +115,29 @@ impl Writer<'_> {
         Ok(())
     }
 
-    /// Where each of the mesh's blend channels lands: the node and target index.
+    /// Where each of the mesh's blend channels lands: the node, its first
+    /// target and the weights its shapes are whole at.
     fn record_morphs(&mut self, m: &ufbx::Mesh, node: usize) {
-        let channels: Vec<u32> = morph_channels(m)
+        let channels: Vec<(u32, Vec<f64>)> = morph_channels(m)
             .iter()
-            .map(|c| c.element.element_id)
+            .map(|c| {
+                (
+                    c.element.element_id,
+                    shapes(c).into_iter().map(|s| s.0).collect(),
+                )
+            })
             .collect();
-        let count = channels.len();
-        for (i, c) in channels.into_iter().enumerate() {
-            self.morph_of.entry(c).or_default().push((node, i, count));
+        let count = channels.iter().map(|c| c.1.len()).sum();
+        let mut first = 0;
+        for (c, keys) in channels {
+            let n = keys.len();
+            self.morph_of.entry(c).or_default().push(MorphSlot {
+                node,
+                first,
+                shapes: keys,
+                count,
+            });
+            first += n;
         }
     }
 
@@ -229,35 +243,39 @@ impl Writer<'_> {
         let channels = morph_channels(m);
         let mut targets: Vec<Target> = Vec::new();
         for c in &channels {
-            let Some(shape) = &c.target_shape else {
-                continue;
-            };
-            if c.keyframes.len() > 1 {
-                self.notes.push(format!(
-                    "{}: blend shape '{}' has {} in-between shapes; its full shape is kept",
-                    self.what,
-                    c.element.name,
-                    c.keyframes.len() - 1
-                ));
-            }
-            let mut pos = vec![DVec3::ZERO; m.num_vertices];
-            let mut nrm =
-                (!shape.normal_offsets.is_empty()).then(|| vec![DVec3::ZERO; m.num_vertices]);
-            for k in 0..shape.num_offsets {
-                let v = shape.offset_vertices[k] as usize;
-                if v < pos.len() {
-                    pos[v] = to_node.transform_vector3(vec3(shape.position_offsets[k]));
-                    if let Some(nrm) = &mut nrm {
-                        nrm[v] = normal_m * vec3(shape.normal_offsets[k]);
+            // Each shape is a target: the full one (the largest weight)
+            // bears the channel's name, an in-between `name@<percent>`;
+            // the channel's weight is spread over them as the DCC does.
+            let shapes = shapes(c);
+            let keys: Vec<f64> = shapes.iter().map(|s| s.0).collect();
+            let rest = shape_weights(c.weight, &keys);
+            let top = keys.iter().copied().fold(f64::NEG_INFINITY, f64::max);
+            for (k, (at, shape)) in shapes.iter().enumerate() {
+                let mut pos = vec![DVec3::ZERO; m.num_vertices];
+                let mut nrm =
+                    (!shape.normal_offsets.is_empty()).then(|| vec![DVec3::ZERO; m.num_vertices]);
+                for i in 0..shape.num_offsets {
+                    let v = shape.offset_vertices[i] as usize;
+                    if v < pos.len() {
+                        pos[v] = to_node.transform_vector3(vec3(shape.position_offsets[i]));
+                        if let Some(nrm) = &mut nrm {
+                            nrm[v] = normal_m * vec3(shape.normal_offsets[i]);
+                        }
                     }
                 }
+                let name = c.element.name.to_string();
+                targets.push(Target {
+                    name: if *at == top {
+                        name
+                    } else {
+                        // In percent, to a thousandth.
+                        format!("{name}@{}", (at * 100_000.0).round() / 1000.0)
+                    },
+                    positions: pos,
+                    normals: nrm,
+                    weight: rest[k],
+                });
             }
-            targets.push(Target {
-                name: c.element.name.to_string(),
-                positions: pos,
-                normals: nrm,
-                weight: c.weight,
-            });
         }
         let mut primitives = Vec::new();
         for (mat, prim) in &prims {
@@ -493,6 +511,72 @@ fn morph_channels(m: &ufbx::Mesh) -> Vec<&ufbx::BlendChannel> {
         .flat_map(|d| d.channels.iter().map(|c| &**c))
         .filter(|c| c.target_shape.is_some())
         .collect()
+}
+
+/// A blend channel's shapes with the weight each is whole at, rising:
+/// its keyframes (an in-between before the full shape), or its target
+/// shape alone at 1.
+fn shapes(c: &ufbx::BlendChannel) -> Vec<(f64, &ufbx::BlendShape)> {
+    let mut out: Vec<(f64, &ufbx::BlendShape)> = c
+        .keyframes
+        .iter()
+        .map(|k| (k.target_weight, &*k.shape))
+        .filter(|(w, _)| w.is_finite() && *w != 0.0)
+        .collect();
+    if out.is_empty()
+        && let Some(s) = &c.target_shape
+    {
+        out.push((1.0, &**s));
+    }
+    out.sort_by(|a, b| a.0.total_cmp(&b.0));
+    out
+}
+
+/// How much of each of a blend channel's shapes there is at the
+/// channel's `weight`: the shapes are whole at `keys` (rising), and
+/// between two of them, or between none and the first, the channel is
+/// part one and part the other; past the last it runs on as between
+/// the last two.
+pub(super) fn shape_weights(weight: f64, keys: &[f64]) -> Vec<f64> {
+    let n = keys.len();
+    let mut out = vec![0.0; n];
+    // The shapes below none (negative weights) end here.
+    let below = keys.iter().take_while(|k| **k < 0.0).count();
+    // `None` is no shape at all, at weight 0.
+    let (mut prev, mut next): (Option<usize>, Option<usize>) = (None, None);
+    if weight > 0.0 {
+        prev = below.checked_sub(1);
+        for (i, key) in keys.iter().enumerate().skip(below) {
+            prev = next;
+            next = Some(i);
+            if *key > weight {
+                break;
+            }
+        }
+    } else {
+        if below < n {
+            prev = Some(below);
+        }
+        for i in (0..below).rev() {
+            prev = next;
+            next = Some(i);
+            if keys[i] < weight {
+                break;
+            }
+        }
+    }
+    let at = |k: Option<usize>| k.map_or(0.0, |i| keys[i]);
+    let span = at(next) - at(prev);
+    if span != 0.0 {
+        let t = (weight - at(prev)) / span;
+        if let Some(i) = prev {
+            out[i] = 1.0 - t;
+        }
+        if let Some(i) = next {
+            out[i] = t;
+        }
+    }
+    out
 }
 
 fn dmat4(m: &ufbx::Matrix) -> DMat4 {
