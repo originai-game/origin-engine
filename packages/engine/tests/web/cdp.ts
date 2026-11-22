@@ -149,7 +149,7 @@ export class Browser {
           "--lang=en-US", "--accept-lang=en-US",
           `--window-size=${o.width ?? 1280},${o.height ?? 720}`, "--hide-scrollbars",
           ...(process.platform === "darwin" ? ["--use-angle=metal"] : []),
-          ...(o.webgpu === false ? [] : ["--enable-unsafe-webgpu", ...webGpuSwitches()]),
+          ...(o.webgpu === false ? [] : ["--enable-unsafe-webgpu", ...webGpuSwitches(true)]),
           "--ignore-gpu-blocklist", "--disable-gpu-vsync",
           "--autoplay-policy=user-gesture-required", "--remote-debugging-port=0",
           ...(o.flags ?? []),
