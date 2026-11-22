@@ -23,6 +23,10 @@
 //! refused: `og model process` or `og model unwrap` gives it some), and
 //! is rewritten with the textures as its materials' base-colour maps.
 //!
+//! A variant of a baked program (`og model bake tall.ogt --from
+//! chair.ogt`) is not painted from images: [`super::transfer`] carries the
+//! base's maps onto it part by part.
+//!
 //! The report: `views` (each view's image, its fitted scale, and
 //! `written`), `coverage` per material (`texels` in its charts, `covered`
 //! the share a view painted, `filled` the share filled from neighbours)
@@ -63,15 +67,17 @@ pub struct BakeDesc {
 /// The model's triangles as og-bake's level, every corner its own vertex
 /// (so each material's texture sees its triangles alone), with each
 /// triangle's material: the level, and the materials in label order.
-struct Surface {
-    positions: Vec<Vec3>,
-    uvs: Vec<Vec2>,
-    labels: Vec<u16>,
-    materials: Vec<(String, Material)>,
+pub(super) struct Surface {
+    pub(super) positions: Vec<Vec3>,
+    pub(super) uvs: Vec<Vec2>,
+    pub(super) labels: Vec<u16>,
+    pub(super) materials: Vec<(String, Material)>,
+    /// Per triangle, its part's index in the scene.
+    pub(super) parts: Vec<u32>,
 }
 
 /// A part's material key: its material's name, else the part's.
-fn key(p: &Part) -> String {
+pub(super) fn key(p: &Part) -> String {
     if p.material.name.is_empty() {
         p.name.clone()
     } else {
@@ -80,14 +86,15 @@ fn key(p: &Part) -> String {
 }
 
 /// The scene as a [`Surface`]; a part without UVs fails.
-fn surface(scene: &Scene) -> Result<Surface, Failure> {
+pub(super) fn surface(scene: &Scene) -> Result<Surface, Failure> {
     let mut s = Surface {
         positions: Vec::new(),
         uvs: Vec::new(),
         labels: Vec::new(),
         materials: Vec::new(),
+        parts: Vec::new(),
     };
-    for p in &scene.parts {
+    for (part, p) in scene.parts.iter().enumerate() {
         if p.solid.triangles.is_empty() {
             continue;
         }
@@ -118,6 +125,7 @@ fn surface(scene: &Scene) -> Result<Surface, Failure> {
                 s.uvs.push(Vec2::new(uv.x as f32, (1.0 - uv.y) as f32));
             }
             s.labels.push(label as u16);
+            s.parts.push(part as u32);
         }
     }
     if s.labels.is_empty() {
@@ -129,7 +137,7 @@ fn surface(scene: &Scene) -> Result<Surface, Failure> {
 impl Surface {
     /// The level, with the UVs of material `only`'s triangles (the others'
     /// collapsed to a point, which the rasteriser skips), or of all.
-    fn level(&self, only: Option<u16>) -> Level {
+    pub(super) fn level(&self, only: Option<u16>) -> Level {
         let uvs = match only {
             None => self.uvs.clone(),
             Some(m) => self
@@ -301,7 +309,7 @@ pub fn bake(files: &dyn Files, d: &BakeDesc) -> Result<String, Failure> {
 
 /// What a mesh's rewrite needs of the scene: each part's name, solid and
 /// material.
-type Parts = Vec<(String, og_shape::mesh::Solid, Material)>;
+pub(super) type Parts = Vec<(String, og_shape::mesh::Solid, Material)>;
 
 fn scene_parts(scene: &Scene) -> Parts {
     scene
@@ -372,7 +380,7 @@ fn paint(scene: &Scene, d: &BakeDesc, images: &[RgbaImage], size: u32) -> Result
 }
 
 /// An RGB texture as PNG.
-fn encode(rgb: &[[u8; 3]], size: u32) -> Result<Vec<u8>, Failure> {
+pub(super) fn encode(rgb: &[[u8; 3]], size: u32) -> Result<Vec<u8>, Failure> {
     let img = image::RgbImage::from_raw(size, size, rgb.concat())
         .ok_or_else(|| Failure::Failed("the texture has the wrong size".into()))?;
     let mut out = std::io::Cursor::new(Vec::new());
@@ -393,7 +401,7 @@ fn name_of(input: &Path) -> String {
 
 /// Writes each material's texture as `<name>.<material>.basecolor.png`,
 /// then the program's `<name>.ogt` or the mesh file with the maps.
-fn write(
+pub(super) fn write(
     files: &dyn Files,
     input: &Path,
     program: Option<&Program>,
@@ -535,17 +543,41 @@ fn projections(a: &Args) -> Result<Vec<(View, PathBuf)>, Failure> {
 
 /// The command line.
 pub fn run(a: &Args) -> Result<String, Failure> {
-    a.only(&["--project", "--size", "--view-size", "-o", "--out"])?;
+    a.only(&[
+        "--project",
+        "--from",
+        "--size",
+        "--view-size",
+        "-o",
+        "--out",
+    ])?;
     let out = a.out_opt()?;
     if let Some(dir) = &out {
         std::fs::create_dir_all(dir)
             .map_err(|e| Failure::Failed(format!("{}: {e}", dir.display())))?;
     }
+    let project = projections(a)?;
+    if let Some(base) = a.value(&["--from"])? {
+        if !project.is_empty() {
+            return Err(Failure::Usage(
+                "give --project images or --from a baked base, not both".into(),
+            ));
+        }
+        return super::transfer::transfer(
+            &Local,
+            &super::transfer::TransferDesc {
+                input: a.input()?,
+                base: PathBuf::from(base),
+                size: a.number("--size")?.unwrap_or(0),
+                out,
+            },
+        );
+    }
     bake(
         &Local,
         &BakeDesc {
             input: a.input()?,
-            project: projections(a)?,
+            project,
             size: a.number("--size")?.unwrap_or(0),
             view_size: a.number("--view-size")?.unwrap_or(0),
             out,

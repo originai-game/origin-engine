@@ -858,3 +858,103 @@ fn the_model_guides_programs_build() {
     }
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+/// `bake <variant> --from <base>` carries a baked base's maps to a variant
+/// without images: parts that kept their size are transferred whole, the
+/// grown back is part transferred and part extended (in proportion to how
+/// much it grew: 500 of 900 mm is the base's), and the variant's `.ogt`
+/// names its own maps on its own atlas.
+#[test]
+fn a_variant_takes_its_bases_maps_part_by_part() {
+    let dir = std::env::temp_dir().join(format!("shape-variant-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    std::fs::write(
+        dir.join("chair.shape.json"),
+        r#"{"name":"chair","params":{"back":500,"seat":450},"ops":[
+  {"op":"box","name":"seat","width":450,"depth":420,"height":40,"on":{"origin":[0,0,"$seat"],"x":[1,0,0],"y":[0,1,0],"z":[0,0,1]}},
+  {"op":"box","name":"back","width":450,"depth":40,"height":"$back","on":{"origin":[0,190,"$seat + 40"],"x":[1,0,0],"y":[0,1,0],"z":[0,0,1]}},
+  {"op":"material","ids":[0,1],"name":"wood","color":"a07040"}]}"#
+            .replace("\"a07040\"", "\"#a07040\""),
+    )
+    .unwrap();
+    let ogt = |name: &str, extra: &str| {
+        std::fs::write(
+            dir.join(name),
+            format!("type model\nversion 1\n---\nprogram \"chair.shape.json\"\n{extra}"),
+        )
+        .unwrap();
+        dir.join(name)
+    };
+    let base = ogt("chair.ogt", "");
+    let tall = ogt("tall.ogt", "params {\n  back 900\n}\n");
+    let views = dir.join("views");
+    report(&[
+        "preview",
+        base.to_str().unwrap(),
+        "--views",
+        "front",
+        "--width",
+        "256",
+        "--out",
+        views.to_str().unwrap(),
+        "--json",
+    ]);
+    let project = format!("front={}", views.join("front.png").display());
+    report(&[
+        "bake",
+        base.to_str().unwrap(),
+        "--project",
+        &project,
+        "--size",
+        "256",
+        "--view-size",
+        "256",
+        "--json",
+    ]);
+    let r = report(&[
+        "bake",
+        tall.to_str().unwrap(),
+        "--from",
+        base.to_str().unwrap(),
+        "--json",
+    ]);
+    let part = |n: &str| {
+        r["parts"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|p| p["part"] == n)
+            .unwrap()
+            .clone()
+    };
+    assert_eq!(part("seat")["transferred"].as_f64().unwrap(), 1.0, "{r}");
+    let back = part("back");
+    let (moved, grown) = (
+        back["transferred"].as_f64().unwrap(),
+        back["extended"].as_f64().unwrap(),
+    );
+    assert!(
+        (moved + grown - 1.0).abs() < 1e-9 && grown > 0.3 && grown < 0.5,
+        "{back}"
+    );
+    let text = std::fs::read_to_string(&tall).unwrap();
+    assert!(
+        text.contains("back 900")
+            && text.contains("atlas 256")
+            && text.contains("map \"tall.wood.basecolor.png\""),
+        "{text}"
+    );
+    assert!(dir.join("tall.wood.basecolor.png").is_file());
+    // Not baked: an error that says so.
+    let plain = ogt("plain.ogt", "");
+    let e = shape(&[
+        "bake",
+        tall.to_str().unwrap(),
+        "--from",
+        plain.to_str().unwrap(),
+        "--json",
+    ]);
+    assert_eq!(e.status.code(), Some(1));
+    let _ = std::fs::remove_dir_all(&dir);
+}

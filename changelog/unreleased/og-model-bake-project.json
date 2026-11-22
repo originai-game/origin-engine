@@ -3,6 +3,10 @@
     {
       "member": "og model bake --project <view>=<image>",
       "summary": "Paints a model's base colour from concept images (front, back, left, right, top, three_quarter or a camera, framed as og model preview frames them): each texel takes the view that sees it most squarely, a texel no view sees takes the nearest painted colour on the model, and the report gives each material's coverage. Writes <name>.<material>.basecolor.png beside the model, and the program's <name>.ogt or the mesh file with the maps. A program (.shape.json, or a type model naming one) is painted on its parts packed into one atlas of the texture's size, which the .ogt records as `atlas <px>` for og cook; images that paint no texel are an error. og model measure, preview and compare take a type model naming a program as the model og cook builds."
+    },
+    {
+      "member": "og model bake <variant> --from <base>",
+      "summary": "A variant of a baked program takes the base's maps part by part, in each part's own metric frame: no new concept images, the same texel density, and where a part grew past the base it reads the nearest region of the same part. The report gives each part's transferred and extended fractions; the variant keeps its own atlas."
     }
   ]
 }

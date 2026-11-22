@@ -155,6 +155,10 @@ are the game's.
 - `bake model --project front=a.png --project left=b.png`: the base colour
   painted from concept images onto the UVs, one texture per material
   beside the model, with each material's coverage.
+- `bake tall.ogt --from chair.ogt`: a variant takes its baked base's maps
+  part by part, with no new images. Parts that grew read the nearest
+  region of the same part, at the same texel density; the report gives
+  each part's `transferred` and `extended` share.
 - `repair`, `decimate`, `unwrap`, `collide`, `place`, `export`, `rig`:
   each step on its own.
 

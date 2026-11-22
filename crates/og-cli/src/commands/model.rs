@@ -40,6 +40,7 @@ pub mod repair;
 pub mod report;
 pub mod rig;
 pub mod source;
+pub mod transfer;
 pub mod unwrap;
 pub mod views;
 
@@ -130,6 +131,7 @@ const USAGE: &str = "usage: og model <command> <input> [options]
   bake     <input> --project VIEW=IMAGE.png … [--size PX] [--view-size PX] [--out DIR]
                                                 base colour from concept images (views as
                                                 preview's), per material beside the model
+           <variant.ogt> --from <base.ogt>      a variant's maps carried from its baked base
   rig      <mesh> [-o out.glb] [--skeleton joints.json] [--check-clip]
                                                 a skin by bone heat: for the joints given,
                                                 or a humanoid's found from the mesh (up +Z,
