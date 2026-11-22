@@ -135,6 +135,74 @@ feeds back into the simulation.
 
 ## 4. Global illumination and reflection
 
+### Environment images
+
+An environment is both a camera-relative spherical background and image-based
+lighting, not a flat camera plate. Cook a `type environment` file and use
+`og.load.environment` with `og.Environment`. Rotation, intensity, blurriness,
+grounded projection (`groundHeight`, `groundRadius`) and blending are the same
+for HDR and LDR sources. `loading §4` covers loading and aiming a DirectionalLight.
+
+```text
+type environment
+version 1
+---
+source "ai-sky.png"
+size 256
+samples 256
+expand 0.25
+sunBoost 1
+```
+
+- `source` accepts a full equirectangular `.hdr`/`.exr` (linear), sRGB
+  `.png`/`.jpg`/`.jpeg`/`.webp`, or a KTX2 cube. `faces` accepts six square
+  HDR or LDR images in +X -X +Y -Y +Z -Z order. Keep all six in one range.
+  LDR uses the texture decoder, then the sRGB transfer function into linear
+  float RGB before the usual GGX prefilter and diffuse harmonics.
+- A full panorama must be within 5% of 2:1. The cook resamples in linear
+  light to exact 2:1, without cropping; a distant aspect ratio is refused
+  with its dimensions. 1774 × 887 is already exactly 2:1 and needs no repair.
+- `hemisphere upper` instead means the image runs from zenith at its top to
+  horizon at its bottom, across the full 360° width. Its aspect ratio need
+  not be 2:1. The lower half is filled with the mean linear colour of the
+  last four resampled horizon rows; `ground 0.12 0.10 0.08` overrides it
+  with linear RGB in 0..1. This supplies a ground to the existing dome; it
+  cannot turn a full-sphere image's mirrored lower half into terrain.
+- A lone LDR image has an authored background: the image's own colours,
+  without exposure or the tone curve, like a camera background texture,
+  but spherical and camera-relative. `backgroundIntensity` still scales
+  it; `intensity` scales only lighting. Blur uses the authored colour chain,
+  not the expanded light. HDR backgrounds use normal HDR exposure.
+- `expand` is the bounded inverse-Reinhard amount for LDR lighting only,
+  default 0.25, range 0..0.9 (0 disables). It preserves RGB ratios and
+  mildly opens highlights rather than trying to recover the sun with a
+  steep curve. It has no effect on HDR.
+- LDR defaults to `sun extract`; `sun keep` opts out. The cook finds a
+  compact bright disc above the horizon, measures its solid-angle-equivalent
+  diameter, and fits the unclipped upper sky's luminance gradient to the
+  Perez/Preetham daylight model (turbidity and exposure), following the
+  analytic sky-fitting approach of Lalonde and Hold-Geoffroy. Atmospheric
+  transmittance gives relative sun intensity and colour. `sunBoost` scales
+  that estimate (default 1, range 0..100). These are estimated facts, not
+  measured lux: clipped colours and arbitrary generated skies are ambiguous.
+  Overcast images may yield no compact disc; insufficient sky samples use
+  the clipping lower bound rather than a fabricated fit. The original disc
+  remains visible in the authored background, but is replaced with its
+  surrounding sky before the lighting prefilter. `og.load.environmentSun`
+  reports direction, colour, intensity and `angularSize` (radians). Give
+  those to a DirectionalLight and aim its -Z away from that direction for
+  actual shadows; the engine never adds a second light for you.
+
+`og cook --report` stores each environment's source facts under
+`environment.facts`: wrap edge-column mean/max absolute channel difference
+in linear RGB, clipped pixel fraction (any channel at white), lower-half
+mirror error and blue fraction (observable sky/ground cues, not a semantic
+classification). `environment.sun` holds the extracted sun and whether it
+is estimated. Facts persist in the blob, so an incremental report retains
+them. Six faces report cues on their spherical projection; KTX2 chains have
+no source-image cues. No threshold scores the image and no seam is repaired:
+fix a visible wrap in the source, for example with a masked image edit.
+
 | Need | Use | Cost |
 |---|---|---|
 | static level, best quality | `og bake lightmaps` + LightVolume | CPU bake; free at run time |

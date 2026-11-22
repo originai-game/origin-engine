@@ -15,8 +15,9 @@ impl Renderer {
         let mut draws = 0;
         pass.set_bind_group(2, fx, &[]);
         let mut current: Option<(bool, SpriteBlend, bool)> = None;
-        // The main pass's plate set the HDR alpha already (pass_main.rs).
-        let mut covered = !view && self.plate_group(scene).is_some();
+        // The main pass's plate or authored sky set the HDR alpha already.
+        let mut covered =
+            !view && (self.plate_group(scene).is_some() || self.authored_environment(scene));
         for run in runs {
             // A 2D particle system simulated in compute draws its range of
             // its own buffer as its source draws.

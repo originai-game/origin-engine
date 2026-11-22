@@ -703,6 +703,15 @@ fn other_stats(bundle: &Bundle, id: &str, ty: &str) -> Result<Option<(String, Va
         }
         "og.EnvironmentMap" => {
             let m = meta::<format::EnvironmentMap, format::EnvironmentMeta>(bundle, id)?;
+            let bytes = bytes()?;
+            let blob = bundle
+                .blob::<format::EnvironmentMap>(id, &bytes)
+                .map_err(e)?;
+            let facts: Value = blob
+                .raw("diagnostics")
+                .ok()
+                .and_then(|data| serde_json::from_slice(data).ok())
+                .unwrap_or(Value::Null);
             (
                 "environment",
                 json!({
@@ -711,6 +720,9 @@ fn other_stats(bundle: &Bundle, id: &str, ty: &str) -> Result<Option<(String, Va
                     "sourceWidth": m.source_width,
                     "sourceHeight": m.source_height,
                     "samples": m.samples,
+                    "authoredBackground": m.ldr_background != 0,
+                    "facts": facts,
+                    "sun": { "direction": [m.sun_x,m.sun_y,m.sun_z], "color": [m.sun_r,m.sun_g,m.sun_b], "intensity": m.sun_intensity, "angularSize": m.sun_angular_size, "estimated": m.ldr_background != 0 },
                 }),
             )
         }

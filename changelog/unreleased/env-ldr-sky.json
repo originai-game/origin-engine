@@ -3,7 +3,7 @@
   "added": [
     {
       "member": "EnvironmentMap",
-      "summary": "The environment cook accepts sRGB PNG, JPG and WebP panoramas or six faces through the existing prefilter, keeps authored LDR background colours apart from lighting, supports upper-hemisphere ground fill and exposure brackets, and reports seam/clipping/lower-hemisphere cues and an estimated extracted sun. EnvironmentSun includes its angularSize. Recook environment assets for the extended blob format."
+      "summary": "The environment cook accepts sRGB PNG, JPG and WebP panoramas or six faces through the existing prefilter, keeps authored LDR background colours apart from lighting, supports upper-hemisphere ground fill, and reports seam/clipping/lower-hemisphere cues and an estimated extracted sun. EnvironmentSun includes its angularSize. Recook environment assets for the extended blob format."
     }
   ]
 }

@@ -59,7 +59,7 @@ mod prepare;
 
 pub(crate) const ENVIRONMENT_TYPE: &str = "environment";
 
-const KEYS: [&str; 13] = [
+const KEYS: [&str; 12] = [
     "source",
     "faces",
     "size",
@@ -70,7 +70,6 @@ const KEYS: [&str; 13] = [
     "sun",
     "hemisphere",
     "ground",
-    "exposures",
     "expand",
     "sunBoost",
 ];
@@ -117,7 +116,9 @@ fn decode_image(name: &str, bytes: &[u8]) -> Result<image::Rgb32FImage, CookErro
     let img = super::decode_image(bytes).map_err(|e| CookError(format!("{name}: {e}")))?;
     let rgb = img
         .rgba
-        .chunks_exact(4)
+        .as_chunks::<4>()
+        .0
+        .iter()
         .flat_map(|p| {
             [p[0], p[1], p[2]].map(|v| {
                 let v = v as f32 / 255.0;
@@ -146,7 +147,6 @@ pub(crate) struct EnvironmentDoc {
     pub sun: bool,
     pub upper: bool,
     pub ground: Option<glam::Vec3>,
-    pub exposures: Vec<(String, f32)>,
     pub expand: f32,
     pub sun_boost: f32,
 }
@@ -318,31 +318,8 @@ pub(crate) fn parse(rel: &str, root: &Path, text: &str) -> Result<EnvironmentDoc
             Some(glam::Vec3::from_slice(&values))
         }
     };
-    let mut exposures = Vec::new();
-    if let Some(e) = doc.body.get("exposures") {
-        if e.values.is_empty() || e.values.len() % 2 != 0 {
-            return Err("exposures takes pairs of filename and EV relative to source: exposures \"dark.png\" -3".into());
-        }
-        for pair in e.values.chunks_exact(2) {
-            let name = pair[0]
-                .as_str()
-                .filter(|n| environment_image(n) && !hdr_image(n))
-                .ok_or("exposures names PNG, JPG or WebP images")?;
-            let ev = pair[1]
-                .as_number()
-                .map(|n| n.as_f32())
-                .filter(|v| v.is_finite() && (-24.0..0.0).contains(v))
-                .ok_or("an exposure EV must be negative, at least -24")?;
-            exposures.push((super::terrain::resolve(rel, root, name), ev));
-        }
-    }
-    if (upper || !exposures.is_empty()) && !matches!(&source, EnvironmentSource::Equirect(_)) {
-        return Err(
-            "hemisphere and exposures take an equirectangular source, not faces or KTX2".into(),
-        );
-    }
-    if !exposures.is_empty() && matches!(&source, EnvironmentSource::Equirect(s) if hdr_image(s)) {
-        return Err("exposures takes an LDR source (PNG, JPG or WebP) at EV 0".into());
+    if upper && !matches!(&source, EnvironmentSource::Equirect(_)) {
+        return Err("hemisphere takes an equirectangular source, not faces or KTX2".into());
     }
     let expand = number(&doc, "expand", 0.25)?;
     if !(0.0..=0.9).contains(&expand) {
@@ -369,7 +346,6 @@ pub(crate) fn parse(rel: &str, root: &Path, text: &str) -> Result<EnvironmentDoc
         sun,
         upper,
         ground,
-        exposures,
         expand,
         sun_boost,
     })
@@ -379,11 +355,7 @@ pub(crate) fn parse(rel: &str, root: &Path, text: &str) -> Result<EnvironmentDoc
 /// the walk does not list them.
 pub(crate) fn environment_files(rel: &str, root: &Path, text: &str) -> Vec<String> {
     parse(rel, root, text)
-        .map(|d| {
-            let mut files = d.source.files();
-            files.extend(d.exposures.into_iter().map(|(f, _)| f));
-            files
-        })
+        .map(|d| d.source.files())
         .unwrap_or_default()
 }
 
@@ -402,6 +374,61 @@ pub(crate) fn environment_dependencies(s: &Source) -> String {
         })
         .collect::<Vec<_>>()
         .join("\n")
+}
+
+/// Both LDR layouts share solar estimation, range expansion and the bake.
+fn bake_image(
+    mut img: image::Rgb32FImage,
+    ldr: bool,
+    doc: &EnvironmentDoc,
+    desc: &og_render_data::bake::BakeDesc,
+) -> Result<og_render_data::EnvironmentMapData, CookError> {
+    let (width, height) = img.dimensions();
+    let background = ldr.then(|| img.clone());
+    let mut sun = Default::default();
+    if ldr {
+        if doc.sun {
+            sun = prepare::take_sun(&mut img, doc.sun_boost);
+        }
+        prepare::expand(img.as_mut(), doc.expand);
+    }
+    let bake = |img: &image::Rgb32FImage, settings| {
+        og_render_data::bake::bake(
+            &og_render_data::bake::Equirect {
+                width,
+                height,
+                rgb: img.as_raw(),
+            },
+            &settings,
+        )
+        .map_err(CookError)
+    };
+    let mut map = bake(
+        &img,
+        og_render_data::bake::BakeDesc {
+            sun: doc.sun && !ldr,
+            ..*desc
+        },
+    )?;
+    if ldr {
+        sun.direction = (glam::Quat::from_rotation_y(doc.rotation.to_radians())
+            * glam::Vec3::from_array(sun.direction))
+        .to_array();
+        sun.intensity *= doc.intensity;
+        map.sun = sun;
+    }
+    if let Some(img) = background {
+        map.background = bake(
+            &img,
+            og_render_data::bake::BakeDesc {
+                intensity: 1.0,
+                sun: false,
+                ..*desc
+            },
+        )?
+        .texels;
+    }
+    Ok(map)
 }
 
 /// Cooks one `type environment` file.
@@ -429,67 +456,17 @@ pub(crate) fn cook_environment(
         sun: doc.sun,
     };
     let mut facts = Vec::new();
+    let mut diagnostics = serde_json::Value::Null;
     let (map, width, height, what) = match &doc.source {
         EnvironmentSource::Equirect(source) => {
             let img = decode_image(source, &read(source)?)?;
             finite(source, img.as_raw())?;
-            facts.push(prepare::facts(&img));
-            let ldr = !hdr_image(source) && doc.exposures.is_empty();
-            let img = if doc.exposures.is_empty() {
-                img
-            } else {
-                let mut bracket = vec![(img, 0.0)];
-                for (name, ev) in &doc.exposures {
-                    bracket.push((decode_image(name, &read(name)?)?, *ev));
-                }
-                prepare::merge(&bracket)?
-            };
-            let mut img = prepare::panorama(source, img, &doc)?;
+            diagnostics = prepare::facts(&img);
+            facts.push(format!("environment facts: {diagnostics}"));
+            let ldr = !hdr_image(source);
+            let img = prepare::panorama(source, img, &doc)?;
             let (width, height) = img.dimensions();
-            let background = ldr.then(|| img.clone());
-            let mut sun = Default::default();
-            if ldr {
-                if doc.sun {
-                    sun = prepare::take_sun(&mut img, doc.sun_boost);
-                }
-                prepare::expand(img.as_mut(), doc.expand);
-            }
-            let rgb = img.into_raw();
-            let mut map = og_render_data::bake::bake(
-                &og_render_data::bake::Equirect {
-                    width,
-                    height,
-                    rgb: &rgb,
-                },
-                &og_render_data::bake::BakeDesc {
-                    sun: doc.sun && !ldr,
-                    ..desc
-                },
-            )
-            .map_err(|e| CookError(format!("{source}: {e}")))?;
-            if ldr {
-                sun.direction = (glam::Quat::from_rotation_y(doc.rotation.to_radians())
-                    * glam::Vec3::from_array(sun.direction))
-                .to_array();
-                sun.intensity *= doc.intensity;
-                map.sun = sun;
-            }
-            if let Some(background) = background {
-                map.background = og_render_data::bake::bake(
-                    &og_render_data::bake::Equirect {
-                        width,
-                        height,
-                        rgb: background.as_raw(),
-                    },
-                    &og_render_data::bake::BakeDesc {
-                        intensity: 1.0,
-                        sun: false,
-                        ..desc
-                    },
-                )
-                .map_err(CookError)?
-                .texels;
-            }
+            let map = bake_image(img, ldr, &doc, &desc)?;
             (map, width, height, format!("{source} {width} × {height}"))
         }
         EnvironmentSource::Ktx2(source) if doc.prefiltered => {
@@ -570,27 +547,20 @@ pub(crate) fn cook_environment(
                 finite(face, &face_rgb)?;
                 rgb.extend(face_rgb.into_iter().map(|v| v.max(0.0)));
             }
-            let background = faces.iter().all(|f| !hdr_image(f)).then(|| rgb.clone());
-            if background.is_some() {
-                prepare::expand(&mut rgb, doc.expand);
-            }
-            let mut map = og_render_data::bake::bake_cube(
-                &og_render_data::bake::CubeFaces { size, rgb: &rgb },
-                &desc,
-            )
-            .map_err(|e| CookError(format!("{}: {e}", faces[0])))?;
-            if let Some(rgb) = background {
-                map.background = og_render_data::bake::bake_cube(
+            let panorama = prepare::cube_panorama(size, &rgb);
+            diagnostics = prepare::facts(&panorama);
+            facts.push(format!(
+                "environment facts (faces projected to panorama): {diagnostics}"
+            ));
+            let map = if faces.iter().all(|f| !hdr_image(f)) {
+                bake_image(panorama, true, &doc, &desc)?
+            } else {
+                og_render_data::bake::bake_cube(
                     &og_render_data::bake::CubeFaces { size, rgb: &rgb },
-                    &og_render_data::bake::BakeDesc {
-                        intensity: 1.0,
-                        sun: false,
-                        ..desc
-                    },
+                    &desc,
                 )
-                .map_err(CookError)?
-                .texels;
-            }
+                .map_err(|e| CookError(format!("{}: {e}", faces[0])))?
+            };
             (
                 map,
                 size,
@@ -607,6 +577,7 @@ pub(crate) fn cook_environment(
         doc.rotation,
         samples,
         stamp,
+        Some(&diagnostics),
     );
     let sun = match (doc.sun, map.sun) {
         (false, _) => String::new(),
@@ -663,6 +634,7 @@ pub(crate) fn environment_blob(
     rotation: f32,
     samples: u32,
     stamp: u64,
+    diagnostics: Option<&serde_json::Value>,
 ) -> (Vec<u8>, usize, usize) {
     let meta = format::EnvironmentMeta {
         size: map.size,
@@ -711,6 +683,9 @@ pub(crate) fn environment_blob(
         format::row_hash::<format::EnvironmentShRow>(),
     )
     .raw("texels", packed, 16);
+    if let Some(facts) = diagnostics {
+        w.raw("diagnostics", facts.to_string().into_bytes(), 1);
+    }
     if !map.background.is_empty() {
         let bytes: Vec<u8> = map
             .background

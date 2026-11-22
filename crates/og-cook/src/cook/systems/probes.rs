@@ -176,7 +176,7 @@ pub fn write_probe(
     )
     .map_err(|e| CookError(format!("{id}: {e}")))?;
     let st = stamp(&[b"probe", key.as_bytes()]);
-    let (blob, _, _) = environment_blob(&map, (size, size), 1.0, 0.0, 0, st);
+    let (blob, _, _) = environment_blob(&map, (size, size), 1.0, 0.0, 0, st, None);
     let cooked = root.join("cooked");
     let file = format!("probes/{key}.ogb");
     let path = cooked.join(&file);

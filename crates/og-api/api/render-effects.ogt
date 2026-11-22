@@ -1,7 +1,7 @@
   # ── effects (og-render's E1 effects, declared as data) ────────────────
 
   handle Lut "A colour lookup table for PostEffects.lut, from og.load.lut (a `.cube` file)."
-  handle EnvironmentMap "A prefiltered environment map for Environment.map, from og.load.environment (an `.ogt` of `type environment` naming an equirectangular HDR/EXR or sRGB PNG/JPG/WebP, a KTX2 cube map, or six face images). LDR sources keep authored background colours apart from linear lighting; hemisphere upper fills the ground, exposures merges darker brackets, and og.load.environmentSun reports the extracted sun for a DirectionalLight."
+  handle EnvironmentMap "A prefiltered environment map for Environment.map, from og.load.environment (an `.ogt` of `type environment` naming an equirectangular HDR/EXR or sRGB PNG/JPG/WebP, a KTX2 cube map, or six face images). LDR sources keep authored background colours apart from linear lighting; hemisphere upper fills the ground, and og.load.environmentSun reports the extracted sun for a DirectionalLight."
   handle ParticleEmitter "A particle emitter asset for ParticleSystem.emitter, from og.load.emitter (an `.ogt` of `type particles`)."
   handle EffectMaterial "An effect material for og.Trail.effect and og.Beam.effect, from og.load.effect (an `.ogt` of `type effect`)."
 

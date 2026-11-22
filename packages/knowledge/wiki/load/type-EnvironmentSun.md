@@ -6,7 +6,7 @@ Module [`load`](../load.md) · [index](../index.md)
 
 ### `EnvironmentSun` (struct)
 
-The sun a cooked environment took out of its lighting image, for the DirectionalLight that puts it back. LDR panoramas extract by default; their intensity is a relative-radiance estimate from the clipped disc and circumsolar gradient, not measured lux. HDR/bracketed sources integrate measured radiance.
+The sun a cooked environment took out of its lighting image, for the DirectionalLight that puts it back. LDR panoramas extract by default; their intensity is a relative-radiance estimate from the clipped disc and circumsolar gradient, not measured lux. HDR sources integrate measured radiance.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
@@ -17,7 +17,7 @@ The sun a cooked environment took out of its lighting image, for the Directional
 
 ```ogt
 struct EnvironmentSun {
-  doc "The sun a cooked environment took out of its lighting image, for the DirectionalLight that puts it back. LDR panoramas extract by default; their intensity is a relative-radiance estimate from the clipped disc and circumsolar gradient, not measured lux. HDR/bracketed sources integrate measured radiance."
+  doc "The sun a cooked environment took out of its lighting image, for the DirectionalLight that puts it back. LDR panoramas extract by default; their intensity is a relative-radiance estimate from the clipped disc and circumsolar gradient, not measured lux. HDR sources integrate measured radiance."
   field direction Vector3 "The unit direction towards the sun, in the map's own frame: the cook's `rotation` is applied, Environment.rotation is not (turn it about +Y by the same angle)."
   field color Color "Its linear colour, the largest channel 1: DirectionalLight.color."
   field intensity f32 "The light it gave a surface facing it: DirectionalLight.intensity. 0 when the environment has no sun to give (`sun keep`, an image with no sun, or an uncooked map)."

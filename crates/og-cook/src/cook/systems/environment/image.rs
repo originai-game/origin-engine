@@ -14,9 +14,6 @@
 //! Daylight" (SIGGRAPH 1999), Perez luminance distribution and atmospheric
 //! attenuation. Fit turbidity and exposure to unclipped sky (the panorama
 //! fitting stage of Lalonde/Hold-Geoffroy, without their image priors/CNN).
-//! Brackets: Debevec & Malik, "Recovering High Dynamic Range Radiance Maps
-//! from Photographs" (SIGGRAPH 1997), weighted log-radiance merge, with the
-//! known sRGB response instead of estimating a camera response curve.
 
 use super::{CookError, EnvironmentDoc};
 use glam::Vec3;
@@ -26,7 +23,7 @@ use std::f32::consts::{PI, TAU};
 const LUMA: Vec3 = Vec3::new(0.2126, 0.7152, 0.0722);
 
 pub(super) fn expand(rgb: &mut [f32], amount: f32) {
-    for p in rgb.chunks_exact_mut(3) {
+    for p in rgb.as_chunks_mut::<3>().0 {
         let y = Vec3::from_slice(p).dot(LUMA);
         // Bounded inverse Reinhard; one scale preserves chromaticity.
         let gain = 1.0 / (1.0 - amount * y.clamp(0.0, 1.0));
@@ -82,48 +79,7 @@ pub(super) fn panorama(
     }))
 }
 
-/// Log merge excludes clipped and black channels. If every bracket is at
-/// an endpoint, use the shortest clipped exposure (a lower bound), or black.
-pub(super) fn merge(images: &[(Rgb32FImage, f32)]) -> Result<Rgb32FImage, CookError> {
-    let (w, h) = images[0].0.dimensions();
-    if images.iter().any(|(i, _)| i.dimensions() != (w, h)) {
-        return Err(CookError(
-            "exposures must have exactly the source's dimensions and registration".into(),
-        ));
-    }
-    Ok(Rgb32FImage::from_fn(w, h, |x, y| {
-        image::Rgb(std::array::from_fn(|c| {
-            let (mut sum, mut weights) = (0.0, 0.0);
-            let mut fallback: f32 = 0.0;
-            for (img, ev) in images {
-                let linear = img.get_pixel(x, y)[c];
-                let encoded = if linear <= 0.0031308 {
-                    12.92 * linear
-                } else {
-                    1.055 * linear.powf(1.0 / 2.4) - 0.055
-                };
-                let weight = if encoded <= 1.0 / 255.0 || encoded >= 254.0 / 255.0 {
-                    0.0
-                } else {
-                    encoded.min(1.0 - encoded)
-                };
-                let radiance = linear / ev.exp2();
-                fallback = fallback.max(radiance);
-                if weight > 0.0 {
-                    sum += weight * radiance.ln();
-                    weights += weight;
-                }
-            }
-            if weights > 0.0 {
-                (sum / weights).exp()
-            } else {
-                fallback
-            }
-        }))
-    }))
-}
-
-pub(super) fn facts(img: &Rgb32FImage) -> String {
+pub(super) fn facts(img: &Rgb32FImage) -> serde_json::Value {
     let (w, h) = img.dimensions();
     let (mut sum, mut max) = (0.0, 0.0f32);
     for y in 0..h {
@@ -151,14 +107,59 @@ pub(super) fn facts(img: &Rgb32FImage) -> String {
         }
     }
     let lower = (w * (h - h / 2)) as f32;
-    format!(
-        "environment facts (linear RGB): wrapMean {:.6}, wrapMax {:.6}, clippedFraction {:.6}, lowerMirrorMean {:.6}, lowerBlueFraction {:.6} (sky/ground cues, not a classification)",
-        sum / (3 * h) as f32,
-        max,
-        clipped,
-        mirror / lower,
-        blue as f32 / lower
-    )
+    serde_json::json!({
+        "space": "linear RGB", "width": w, "height": h,
+        "wrapMean": sum / (3*h) as f32, "wrapMax": max,
+        "clippedFraction": clipped, "lowerMirrorMean": mirror/lower,
+        "lowerBlueFraction": blue as f32/lower,
+        "lowerHemisphere": "mirror error and blue fraction are cues, not a sky/ground classification"
+    })
+}
+
+/// Resample faces to a panorama for the same solar estimation as a source
+/// panorama. Mapping is the inverse of render-data's `face_direction`.
+pub(super) fn cube_panorama(size: u32, rgb: &[f32]) -> Rgb32FImage {
+    let (w, h) = (4 * size, 2 * size);
+    Rgb32FImage::from_fn(w, h, |x, y| {
+        let d = direction(w, h, (y * w + x) as usize);
+        let a = d.abs();
+        let (face, u, v) = if a.x >= a.y && a.x >= a.z {
+            if d.x > 0.0 {
+                (0, -d.z / a.x, d.y / a.x)
+            } else {
+                (1, d.z / a.x, d.y / a.x)
+            }
+        } else if a.y >= a.z {
+            if d.y > 0.0 {
+                (2, d.x / a.y, -d.z / a.y)
+            } else {
+                (3, d.x / a.y, d.z / a.y)
+            }
+        } else if d.z > 0.0 {
+            (4, d.x / a.z, d.y / a.z)
+        } else {
+            (5, -d.x / a.z, d.y / a.z)
+        };
+        let px = ((u + 1.0) * 0.5 * size as f32 - 0.5).clamp(0.0, (size - 1) as f32);
+        let py = ((1.0 - v) * 0.5 * size as f32 - 0.5).clamp(0.0, (size - 1) as f32);
+        let (x0, y0) = (px.floor() as u32, py.floor() as u32);
+        let sample = |x, y| {
+            let at = ((face * size + y) * size + x) as usize * 3;
+            Vec3::from_slice(&rgb[at..at + 3])
+        };
+        image::Rgb(
+            sample(x0, y0)
+                .lerp(sample((x0 + 1).min(size - 1), y0), px.fract())
+                .lerp(
+                    sample(x0, (y0 + 1).min(size - 1)).lerp(
+                        sample((x0 + 1).min(size - 1), (y0 + 1).min(size - 1)),
+                        px.fract(),
+                    ),
+                    py.fract(),
+                )
+                .to_array(),
+        )
+    })
 }
 
 fn direction(w: u32, h: u32, k: usize) -> Vec3 {
@@ -175,41 +176,62 @@ fn daylight(img: &Rgb32FImage, sun: Vec3) -> Option<Vec3> {
     let (w, h) = img.dimensions();
     let zenith = sun.y.clamp(0.01, 1.0).acos();
     let mut samples = Vec::new();
-    for y in (0..h/2).step_by((h/32).max(1) as usize) {
-        for x in (0..w).step_by((w/64).max(1) as usize) {
-            let d = direction(w,h,(y*w+x) as usize);
-            let p = Vec3::from_array(img.get_pixel(x,y).0);
+    for y in (0..h / 2).step_by((h / 32).max(1) as usize) {
+        for x in (0..w).step_by((w / 64).max(1) as usize) {
+            let d = direction(w, h, (y * w + x) as usize);
+            let p = Vec3::from_array(img.get_pixel(x, y).0);
             if d.y > 0.08 && p.max_element() < 0.95 && p.dot(LUMA) > 0.005 {
                 samples.push((d, p.dot(LUMA)));
             }
         }
     }
-    if samples.len() < 16 { return None; }
+    if samples.len() < 16 {
+        return None;
+    }
     let mut best = (f32::INFINITY, 0.0, 2.0);
     for step in 0..=36 {
         let t = 1.0 + step as f32 * 0.25;
-        let a = 0.1787*t - 1.4630;
-        let b = -0.3554*t + 0.4275;
-        let c = -0.0227*t + 5.3251;
-        let d = 0.1206*t - 2.5771;
-        let e = -0.0670*t + 0.3703;
-        let perez = |mu: f32, gamma: f32| (1.0+a*(b/mu.max(0.01)).exp()) * (1.0+c*(d*gamma).exp()+e*gamma.cos().powi(2));
-        let yz = ((4.0453*t-4.9710)*((4.0/9.0-t/120.0)*(PI-2.0*zenith)).tan()-0.2155*t+2.4192).max(0.01)*1000.0;
-        let model = |dir: Vec3| yz * perez(dir.y, dir.dot(sun).clamp(-1.0,1.0).acos()) / perez(1.0,zenith);
+        let a = 0.1787 * t - 1.4630;
+        let b = -0.3554 * t + 0.4275;
+        let c = -0.0227 * t + 5.3251;
+        let d = 0.1206 * t - 2.5771;
+        let e = -0.0670 * t + 0.3703;
+        let perez = |mu: f32, gamma: f32| {
+            (1.0 + a * (b / mu.max(0.01)).exp())
+                * (1.0 + c * (d * gamma).exp() + e * gamma.cos().powi(2))
+        };
+        let yz = ((4.0453 * t - 4.9710) * ((4.0 / 9.0 - t / 120.0) * (PI - 2.0 * zenith)).tan()
+            - 0.2155 * t
+            + 2.4192)
+            .max(0.01)
+            * 1000.0;
+        let model = |dir: Vec3| {
+            yz * perez(dir.y, dir.dot(sun).clamp(-1.0, 1.0).acos()) / perez(1.0, zenith)
+        };
         let (mut xy, mut xx) = (0.0, 0.0);
-        for &(dir, value) in &samples { let m = model(dir); xy += m*value; xx += m*m; }
-        let scale = xy/xx.max(1e-12);
-        let error = samples.iter().map(|&(dir,value)| (model(dir)*scale-value).powi(2)).sum::<f32>();
-        if error < best.0 { best = (error,scale,t); }
+        for &(dir, value) in &samples {
+            let m = model(dir);
+            xy += m * value;
+            xx += m * m;
+        }
+        let scale = xy / xx.max(1e-12);
+        let error = samples
+            .iter()
+            .map(|&(dir, value)| (model(dir) * scale - value).powi(2))
+            .sum::<f32>();
+        if error < best.0 {
+            best = (error, scale, t);
+        }
     }
-    let (_,scale,t) = best;
+    let (_, scale, t) = best;
     // Preetham's optical air mass and wavelength-dependent Rayleigh and
     // aerosol transmittance; 127.5 klux extraterrestrial direct illuminance.
     let degrees = zenith.to_degrees();
-    let mass = 1.0/(sun.y.max(0.0)+0.15*(93.885-degrees).powf(-1.253));
-    let beta = 0.04608*t-0.04586;
-    let attenuation = |lambda: f32| (-mass*(0.008735*lambda.powf(-4.08)+beta*lambda.powf(-1.3))).exp();
-    let color = Vec3::new(attenuation(0.68),attenuation(0.55),attenuation(0.44));
+    let mass = 1.0 / (sun.y.max(0.0) + 0.15 * (93.885 - degrees).powf(-1.253));
+    let beta = 0.04608 * t - 0.04586;
+    let attenuation =
+        |lambda: f32| (-mass * (0.008735 * lambda.powf(-4.08) + beta * lambda.powf(-1.3))).exp();
+    let color = Vec3::new(attenuation(0.68), attenuation(0.55), attenuation(0.44));
     Some(color / color.dot(LUMA).max(1e-6) * (127_500.0 * attenuation(0.55) * scale))
 }
 
@@ -289,7 +311,8 @@ pub(super) fn take_sun(img: &mut Rgb32FImage, strength: f32) -> og_render_data::
     // Fit the unclipped sky while the disc is still present, then remove
     // it from IBL. If fitting has insufficient samples, only the clipping
     // lower bound is knowable; do not invent a daylight fit.
-    let lower_bound = (peak_rgb / (1.0 - 0.98 * peak_rgb.dot(LUMA)).max(0.02) - outer).max(Vec3::ZERO) * area;
+    let lower_bound =
+        (peak_rgb / (1.0 - 0.98 * peak_rgb.dot(LUMA)).max(0.02) - outer).max(Vec3::ZERO) * area;
     let light = daylight(img, aim).unwrap_or(lower_bound) * strength;
     for k in disc {
         img.as_mut()[3 * k..3 * k + 3].copy_from_slice(&ring.to_array());

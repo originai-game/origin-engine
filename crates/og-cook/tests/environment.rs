@@ -769,12 +769,9 @@ fn ldr_panorama_and_faces_light_in_linear_space() {
     }
 }
 
-/// The darker bracket contains highlight information absent from the
-/// clipped source. Ground fill is independent of a sky's blue zenith.
+/// Ground fill is independent of a sky's blue zenith.
 #[test]
-fn brackets_restore_highlights_and_upper_hemisphere_fills_ground() {
-    let bright = ldr_image(64, 32, |_, _| [255, 255, 255], image::ImageFormat::Png);
-    let dark = ldr_image(64, 32, |_, _| [188, 188, 188], image::ImageFormat::Png); // 0.503 linear at -3 EV → 4.024
+fn upper_hemisphere_fills_ground() {
     let sky = ldr_image(
         64,
         16,
@@ -793,15 +790,9 @@ fn brackets_restore_highlights_and_upper_hemisphere_fills_ground() {
         )
     };
     let root = project(
-        "ldr-brackets-upper",
+        "ldr-upper",
         &[
-            ("bright.png", &bright),
-            ("dark.png", &dark),
             ("sky.png", &sky),
-            (
-                "bracket.ogt",
-                env("source \"bright.png\"\nexposures \"dark.png\" -3").as_bytes(),
-            ),
             (
                 "upper.ogt",
                 env("source \"sky.png\"\nhemisphere upper\nground 0.1 0.2 0.03").as_bytes(),
@@ -814,16 +805,6 @@ fn brackets_restore_highlights_and_upper_hemisphere_fills_ground() {
     );
     cook(&root);
     let bundle = Bundle::open(&root.join("cooked")).unwrap();
-    let bracket = bundle.load_environment("bracket.ogt").unwrap();
-    assert!(
-        bracket.background.is_empty(),
-        "brackets are HDR, not a display plate"
-    );
-    let light = og_render::bake::irradiance(&bracket, glam::Vec3::Y);
-    assert!(
-        (light.x - 4.024).abs() < 0.03,
-        "dark exposure must restore radiance: {light}"
-    );
     let down = |name: &str| {
         let map = bundle.load_environment(name).unwrap();
         og_render::rgb9e5_decode(map.background[3 * 16 * 16 + 8 * 16 + 8])
@@ -839,16 +820,6 @@ fn brackets_restore_highlights_and_upper_hemisphere_fills_ground() {
     assert!(
         (ground[0] - 0.21586).abs() < 0.004 && ground[0] > ground[2] * 3.0,
         "horizon, not zenith: {ground:?}"
-    );
-    // A darker source edit is a dependency: the bracket must recook.
-    let darker = ldr_image(64, 32, |_, _| [160, 160, 160], image::ImageFormat::Png);
-    std::fs::write(root.join("assets/dark.png"), darker).unwrap();
-    let report = cook(&root);
-    assert!(
-        report
-            .cooked_outputs()
-            .iter()
-            .any(|o| o.id == "bracket.ogt" && o.cooked)
     );
 }
 

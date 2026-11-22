@@ -219,14 +219,18 @@ sound {
 
 An `.ogt` of `type environment` names its source:
 
-- `source`: an equirectangular Radiance `.hdr` or OpenEXR `.exr` (the
+- `source`: an equirectangular sRGB PNG, JPG or WebP, Radiance `.hdr` or OpenEXR `.exr` (the
   centre column faces +X, as three.js maps it), or a KTX2 cube map (six
   square faces +X -X +Y -Y +Z -Z, rows from the top; RGBA16F, RGB9E5,
   BC6H and the other HDR formats, decoded at cook time).
-- `faces`: six `.hdr` or `.exr` images in that order.
+- `faces`: six HDR/EXR or PNG/JPG/WebP images in that order.
 - `size`: level 0's face size, a power of two from 16 to 2048, default
   128. Also `intensity`, `rotation` (degrees about +Y) and `samples`.
-- `sun`: `extract` or `keep` (the default), below.
+- `sun`: `extract` (the LDR default) or `keep` (the HDR default), below.
+
+`render §4` documents LDR skies, upper-hemisphere ground fill, expansion,
+sun estimation and source diagnostics. They all produce
+the same EnvironmentMap; `environmentData` remains an uncooked HDR loader.
 
 The cook prefilters it into a cube of five GGX levels (roughness 0 to 1)
 in RGB9E5, plus the diffuse irradiance as nine harmonics, so loading
@@ -240,7 +244,8 @@ map, a sun lights without casting a shadow and leaves bright speckles in
 rough reflections; an `og.DirectionalLight` added beside it lights the
 scene with the sun a second time. With `sun extract` the cook takes the
 sun's light out of the image (everything within 5° of the brightest
-point that is over sixteen times the rest's mean) and stores it:
+point that is over sixteen times the rest's mean for HDR; a detected disc
+and fitted daylight estimate for LDR) and stores it:
 
 ```ts
 const map = og.load.environment(world, "env/day.ogt").value;
@@ -251,7 +256,7 @@ light.set(og.DirectionalLight, { color: sun.color, intensity: sun.intensity });
 
 Aim the light's entity so its -Z points along `-sun.direction`, turned
 about +Y by `Environment.rotation` when that is not 0. The sun's disc
-stays in the background, no brighter than the cap. `intensity` 0 means
+stays as authored in an LDR background (HDR keeps the extraction cap). `intensity` 0 means
 the image had no sun; the cook's report says what it took. A scene lit
 by a map alone (a studio, or an image whose sun is kept) sets a
 DirectionalLight of intensity 0: without one the default sun still
