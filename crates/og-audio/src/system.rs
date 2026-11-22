@@ -24,8 +24,8 @@ use std::sync::{Arc, Mutex};
 /// The system's name in the schedule.
 pub const SYSTEM_NAME: &str = "og.audio";
 
-/// Packets an attached sink may leave undrained before the oldest are
-/// dropped (about 17 s at 60 Hz).
+/// Packets a non-capture sink may leave undrained before the oldest are
+/// dropped (about 17 s at 60 Hz). Capture retains every packet.
 pub const MAX_QUEUED_PACKETS: usize = 1024;
 
 /// Whether something solid stands between a source and the listener (the
@@ -58,6 +58,7 @@ impl std::fmt::Debug for AudioDesc {
 #[derive(Default)]
 struct LinkState {
     attached: bool,
+    capture: bool,
     resync: bool,
     last_tick: Option<u64>,
     last_live: Vec<u32>,
@@ -170,8 +171,15 @@ impl AudioLink {
     /// such as an AudioContext unlocked at the first gesture, hears the
     /// music already playing.
     pub fn attach(&self) {
+        self.attach_sink(false);
+    }
+
+    /// Capture must retain all commands between pumps, including the first
+    /// packet that anchors the driven mixer's clock.
+    pub(crate) fn attach_sink(&self, capture: bool) {
         let mut s = self.state.lock().expect("audio link");
         s.attached = true;
+        s.capture = capture;
         s.resync = true;
         s.packets.clear();
     }
@@ -317,7 +325,7 @@ impl AudioLink {
         if packet.commands.is_empty() && packet.live.is_none() {
             return;
         }
-        if s.packets.len() >= MAX_QUEUED_PACKETS {
+        if !s.capture && s.packets.len() >= MAX_QUEUED_PACKETS {
             s.packets.pop_front();
             s.dropped += 1;
             s.resync = true;

@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "og run --audio, og render --jobs --audio",
+      "summary": "Retain every audio packet in capture mode, even across thousands of ticks between pumps. The live sink's bounded queue could discard the capture clock's first packet, shortening a headless run's WAV and causing ffmpeg to truncate a parallel render's video despite frames.json listing every frame. Realtime and null sinks remain bounded."
+    }
+  ]
+}

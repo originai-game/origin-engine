@@ -43,11 +43,11 @@ pub struct HeadlessSink {
 impl HeadlessSink {
     /// Attaches to `link` (so the next tick resyncs).
     pub fn new(link: &AudioLink, mode: HeadlessMode) -> HeadlessSink {
-        link.attach();
         let (rate, capture) = match mode {
             HeadlessMode::Null => (48_000, false),
             HeadlessMode::Capture { sample_rate } => (sample_rate, true),
         };
+        link.attach_sink(capture);
         HeadlessSink {
             link: link.clone(),
             mixer: Some(Mixer::for_link(link, rate, Clock::Driven)),
@@ -75,7 +75,8 @@ impl HeadlessSink {
     }
 
     /// Drains the link and (capture) renders up to the world's next tick.
-    /// Call after every `World::step` (or after each frame's ticks).
+    /// Capture retains every packet across any number of ticks between
+    /// pumps; a null sink should be pumped after each frame's ticks.
     pub fn pump(&mut self) {
         for p in self.link.drain() {
             self.note(&p);

@@ -79,6 +79,53 @@ fn run(world: &mut World, sink: &mut HeadlessSink, ticks: u64) {
     }
 }
 
+#[test]
+fn capture_retains_every_tick_between_pumps() {
+    let bank = SoundBank::new();
+    let sound = insert(&bank, "tone", 1, &synth(4800, 1, sine(731.0, 0.2)));
+    let mut expected = Vec::new();
+    for bulk in [false, true] {
+        let (mut world, link) = world_with(&bank, |_| {});
+        world
+            .spawn((AudioSource {
+                looping: true,
+                ..AudioSource::new(sound)
+            },))
+            .unwrap();
+        let mut sink = HeadlessSink::new(&link, HeadlessMode::Capture { sample_rate: RATE });
+        for tick in 0..1100 {
+            world.resource_mut::<og_audio::Audio>().unwrap().master =
+                if tick % 2 == 0 { 0.25 } else { 0.75 };
+            world.step().unwrap();
+            if !bulk {
+                sink.pump();
+            }
+        }
+        sink.pump();
+        assert_eq!(sink.pcm().len(), 1100 * (RATE as usize / 60) * 2);
+        assert_eq!(link.dropped(), 0);
+        if bulk {
+            assert_eq!(
+                sink.pcm(),
+                expected,
+                "capture is independent of pump cadence"
+            );
+            // A live sink attached after capture must regain its bounded queue.
+            drop(sink);
+            link.attach();
+            for tick in 0..1100 {
+                world.resource_mut::<og_audio::Audio>().unwrap().master =
+                    if tick % 2 == 0 { 0.25 } else { 0.75 };
+                world.step().unwrap();
+            }
+            assert_eq!(link.dropped(), 76);
+        } else {
+            expected = sink.take_pcm();
+            assert!(expected.iter().any(|sample| sample.abs() > 0.01));
+        }
+    }
+}
+
 #[derive(Debug, PartialEq)]
 struct Trace {
     stream_hash: u64,

@@ -89,6 +89,28 @@ test("run and replay read command files larger than a process argument, relative
   }
 }, 120_000);
 
+test("og run captures the full WAV when advancing thousands of ticks before pumping audio", () => {
+  const out = mkdtempSync(join(tmpdir(), "og-run-audio-"));
+  try {
+    writeFileSync(join(out, "main.ts"), `
+import { og, defineSystem } from "@origingame/engine";
+const Volume = defineSystem("Volume", { writes: [og.Audio] }, (_q, time, world) => {
+  const audio = world.resource(og.Audio);
+  if (audio.ok) audio.value.master = time.tick % 2 ? 0.5 : 1;
+});
+export default og.game({ tick: 60, systems: [Volume] });
+`);
+    const result = run([ogBin(), "run", "main.ts", "--no-check", "--headless", "--ticks", "4920", "--audio", "out.wav", "--json"], out);
+    expect(result.tick).toBe(4920);
+    const probe = spawn(["ffprobe", "-v", "error", "-show_entries", "stream=duration_ts,duration", "-of", "json", "out.wav"], out);
+    expect(probe.exitCode, probe.stderr).toBe(0);
+    const wav = JSON.parse(probe.stdout).streams[0];
+    expect({ frames: Number(wav.duration_ts), seconds: Number(wav.duration) }).toEqual({ frames: 3_936_000, seconds: 82 });
+  } finally {
+    rmSync(out, { recursive: true, force: true });
+  }
+}, 120_000);
+
 test("a restore that moves og.Time past the script's last scheduled tick still runs the steps after it, and quit ends the run", () => {
   // brasswick FINDINGS #13: the run ended at the first tick past the tick
   // its last step was scheduled for, so a Continue restoring a later save

@@ -574,8 +574,9 @@ Both hosts' stats carry `decodedAhead` (frames the helper decoded),
 
 Rules: one sink per engine; the sink attaches the link (the next tick
 resyncs); pump after every `advance`/`frame`; a headless run opens `null`
-(or `capture`) so the queue never grows (an unpumped attached link keeps
-1024 packets, then drops the oldest and resyncs). `device` needs the addon
+(or `capture`). Capture retains every packet between pumps so a bulk
+advance never loses the clock anchor or any audio commands. Other attached
+sinks keep 1024 packets, then drop the oldest and resync. `device` needs the addon
 built with `--features native-audio` (cpal; ALSA headers on Linux), else it
 is refused with that reason.
 
