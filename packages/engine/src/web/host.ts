@@ -219,7 +219,7 @@ export interface WebExtras {
   /** Each cooked file's integrity, `{ "<file>": "sha384-…" }` (or `{ error }`), for a package from an asset base. */
   og_web_bundle_integrity(manifest: string): string;
   /** `highDynamicRange`: the page's `(dynamic-range: high)`, which the Worker cannot ask (undefined: unknown). */
-  og_web_attach_canvas(engine: number, canvas: OffscreenCanvas, lowPower: boolean, highDynamicRange?: boolean, cpuPassTimingOnly?: boolean): Promise<string>;
+  og_web_attach_canvas(engine: number, canvas: OffscreenCanvas, lowPower: boolean, highDynamicRange?: boolean, cpuPassTimingOnly?: boolean, renderTier?: "compat"): Promise<string>;
   /** What the browser granted the pointer lock: raw movement now, and whether it refused unadjustedMovement (og.input.mouse). */
   og_web_mouse_report?(engine: number, active: boolean, unsupported: boolean): void;
   og_web_set_viewport(engine: number, viewport: string): string;

@@ -358,7 +358,9 @@ impl RenderBackend for CanvasBackend {
 /// preference, kept by the shell from the last load) and its display
 /// at standard range where `high_dynamic_range` (the page's
 /// `(dynamic-range: high)`) is false. `cpu_pass_timing_only` disables
-/// GPU pass profiling without changing the device's features. Resolves to the
+/// GPU pass profiling without changing the device's features. `render_tier`
+/// `"compat"` (a harness's) makes it for `Tier::Compat` whatever the adapter
+/// is. Resolves to the
 /// tier (`webgpu`), or rejects with the reason: no WebGPU adapter in
 /// this browser, or the canvas or device refused.
 #[wasm_bindgen]
@@ -368,6 +370,7 @@ pub async fn og_web_attach_canvas(
     low_power: bool,
     high_dynamic_range: Option<bool>,
     cpu_pass_timing_only: Option<bool>,
+    render_tier: Option<String>,
 ) -> Result<String, JsValue> {
     if !wgpu::util::is_browser_webgpu_supported().await {
         return Err(JsValue::from_str(
@@ -375,7 +378,7 @@ pub async fn og_web_attach_canvas(
         ));
     }
     let backend = Backend::WebGpu;
-    let desc = og_runtime::render_desc(
+    let mut desc = og_runtime::render_desc(
         engine,
         RenderDesc {
             width: canvas.width().max(1),
@@ -387,6 +390,12 @@ pub async fn og_web_attach_canvas(
             ..RenderDesc::default()
         },
     );
+    // A harness's ask (the shell's `renderTier`): the same renderer made for
+    // the compatibility tier on any adapter, so its frames are judged where
+    // the browser offers no compatibility device that presents.
+    if render_tier.as_deref() == Some("compat") {
+        desc.tier = og_render::Tier::Compat;
+    }
     let instance = backend.instance();
     let canvas_kept = canvas.clone();
     let surface = instance

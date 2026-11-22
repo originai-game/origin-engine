@@ -56,6 +56,9 @@
 // reference-<tier>.json's `frameMs`.
 //
 // --record writes the frames as references/<tier>/ instead of comparing.
+// --tier compat makes the renderer for its compatibility tier (og-render
+// Tier::Compat, compatibility mode's limits and ceiling) on whatever adapter
+// the browser gives, judged against the same references.
 // Writes <out>/<tier>/<station>.png, <station>.diff.rgba on a mismatch (raw
 // RGBA, differences x4, outliers red) and reference-<tier>.json (default
 // dist/test-reference/out; on an error, with the engine's last log lines).
@@ -226,7 +229,7 @@ let tab: Awaited<ReturnType<typeof browser.open>> | undefined;
 try {
   tab = await browser.open("about:blank", log);
   await tab.send("Emulation.setDeviceMetricsOverride", { width: WIDTH, height: HEIGHT, deviceScaleFactor: 1, mobile: false });
-  await tab.send("Page.navigate", { url: `http://127.0.0.1:${server.port}/reference.html?project=${encodeURIComponent(readFileSync(join(project, "project.ogt"), "utf8"))}` });
+  await tab.send("Page.navigate", { url: `http://127.0.0.1:${server.port}/reference.html?project=${encodeURIComponent(readFileSync(join(project, "project.ogt"), "utf8"))}${opt("--tier") === "compat" ? "&tier=compat" : ""}` });
   await tab.until("globalThis.__og_shell__ || globalThis.__og_shell_error__", 90_000);
   const failed = await tab.eval<string | undefined>("globalThis.__og_shell_error__");
   if (failed) throw new Error(`the engine did not start: ${failed}\n${(await tab.eval<string[]>("globalThis.__og_log__ ?? []")).slice(-20).join("\n")}`);

@@ -81,6 +81,8 @@ export interface Start {
    * display for HDR and its sky clips white. Omitted where the page cannot ask either.
    */
   highDynamicRange?: boolean;
+  /** A harness's: the renderer made for its compatibility tier on any adapter (ShellOptions `renderTier`). */
+  renderTier?: "compat";
 }
 
 export type Viewport = { width: number; height: number; dpr: number; safeArea?: Record<string, number>; smallWidth?: number; smallHeight?: number; largeWidth?: number; largeHeight?: number; covered?: Record<string, number>; coarsePointer?: boolean; reducedMotion?: boolean; highContrast?: boolean };

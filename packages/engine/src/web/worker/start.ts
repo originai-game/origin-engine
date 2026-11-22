@@ -188,7 +188,7 @@ export async function start(game: GameToken, data: Start, run: Run, gate: Gate, 
       const ua = navigator.userAgent;
       const cpuPassTimingOnly = /AppleWebKit\//.test(ua) && !/Chrome\/|Chromium\//.test(ua);
       // WebGPU only: a rejection is the reason the renderer did not start (no fallback).
-      tier = await glue.og_web_attach_canvas(engine.id, data.canvas, data.lowPower === true, data.highDynamicRange, cpuPassTimingOnly).catch((e: unknown) => {
+      tier = await glue.og_web_attach_canvas(engine.id, data.canvas, data.lowPower === true, data.highDynamicRange, cpuPassTimingOnly, data.renderTier).catch((e: unknown) => {
         throw new Error(`WebGPU did not start: ${e instanceof Error ? e.message : String(e)}`);
       });
       run.rendering = true;

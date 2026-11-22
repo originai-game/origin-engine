@@ -140,6 +140,7 @@ export async function bootWorker(options: ShellOptions): Promise<Booted> {
     {
       type: "start",
       lowPower,
+      ...(options.renderTier ? { renderTier: options.renderTier } : {}),
       ...(globalThis.matchMedia ? { highDynamicRange: globalThis.matchMedia("(dynamic-range: high)").matches } : {}),
       glue: options.glue,
       wasm: options.wasm,
