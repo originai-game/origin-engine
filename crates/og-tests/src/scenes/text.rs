@@ -1,6 +1,8 @@
 //! The test font and the text scene.
 
 use super::*;
+use og_render::TextGlyph;
+use og_render::ui::mass::{NUMBER_SYMBOLS, UiMassGlyph, UiMassString};
 use og_text::fonts::Collection;
 use og_text::layout::{Style, Text as Layout};
 use og_text::strike::Strikes;
@@ -59,6 +61,19 @@ impl TestFont {
     /// width (0.5 centred on the position).
     pub fn aligned(&self, s: &str, shift: f32) -> Text {
         let mut glyphs = Vec::new();
+        self.laid(s, shift, &mut glyphs);
+        Text {
+            glyphs,
+            size: 1.0,
+            color: [1.0; 4],
+            ..Default::default()
+        }
+    }
+
+    /// Lays `s` out in the test faces at the field em size (one line,
+    /// aligned by `shift` of its width) and puts its glyphs into the
+    /// scene's glyph atlas.
+    fn laid(&self, s: &str, shift: f32, out: &mut Vec<TextGlyph>) {
         LAYOUTS.with(|l| {
             let mut l = l.borrow_mut();
             let l = l.as_mut().expect("loaded by load_font");
@@ -74,24 +89,127 @@ impl TestFont {
                 ..Default::default()
             };
             let mut atlas = self.atlas.lock().unwrap();
-            og_text::strike::text_glyphs(
-                &mut l.strikes,
-                &mut l.fonts,
-                &mut atlas,
-                &mut l.layout,
-                s,
-                &style,
-                shift,
-                [1.0; 3],
-                &mut glyphs,
-            );
+            for _ in 0..8 {
+                if og_text::strike::text_glyphs(
+                    &mut l.strikes,
+                    &mut l.fonts,
+                    &mut atlas,
+                    &mut l.layout,
+                    s,
+                    &style,
+                    shift,
+                    [1.0; 3],
+                    out,
+                ) {
+                    return;
+                }
+            }
+            panic!("the glyph atlas never made room for {s:?}");
         });
-        Text {
-            glyphs,
-            size: 1.0,
-            color: [1.0; 4],
-            ..Default::default()
-        }
+    }
+
+    /// A mass template's string: laid out and rastered into the atlas, its
+    /// pen in each glyph's quad, and its width (em) for the template's
+    /// pivot to divide.
+    pub fn mass_string(&self, s: &str) -> Result<UiMassString, String> {
+        let mut glyphs = Vec::new();
+        let mut width = 0.0;
+        LAYOUTS.with(|l| {
+            let mut l = l.borrow_mut();
+            let l = l.as_mut().expect("loaded by load_font");
+            let style = Style {
+                family: FAMILY,
+                size: og_render::glyphs::FIELD_EM_PX,
+                wrap: false,
+                align: og_text::layout::Alignment::Start,
+                ..Default::default()
+            };
+            let mut atlas = self.atlas.lock().unwrap();
+            for _ in 0..8 {
+                if og_text::strike::text_glyphs(
+                    &mut l.strikes,
+                    &mut l.fonts,
+                    &mut atlas,
+                    &mut l.layout,
+                    s,
+                    &style,
+                    0.0,
+                    [1.0; 3],
+                    &mut glyphs,
+                ) {
+                    break;
+                }
+            }
+            // The glyphs' advances, in the laid-out order. The layout of a
+            // one-line string is what the whole call laid.
+            let mut advances = Vec::new();
+            l.layout.runs(&l.fonts, |run| {
+                advances
+                    .extend(run.glyphs.iter().filter(|g| g.id != 0).map(|g| g.advance));
+            });
+            let em = style.size.max(1e-3);
+            width = l.layout.width() / em;
+            if glyphs.len() != advances.len() {
+                return Err(format!("mass string {s:?}: the glyph atlas has no room"));
+            }
+            Ok(UiMassString {
+                glyphs: glyphs
+                    .iter()
+                    .zip(advances)
+                    .map(|(g, a)| UiMassGlyph {
+                        glyph: *g,
+                        advance: a / em,
+                    })
+                    .collect(),
+                width,
+            })
+        })
+    }
+
+    /// A mass template's number symbols: one per shader symbol code
+    /// ([`og_draw::ui::mass::NUMBER_SYMBOLS`]), each laid alone (its quad
+    /// from its own origin, the shader places it by its advance) and
+    /// rastered into the atlas.
+    pub fn mass_symbols(&self) -> Result<Vec<UiMassGlyph>, String> {
+        LAYOUTS.with(|l| {
+            let mut l = l.borrow_mut();
+            let l = l.as_mut().expect("loaded by load_font");
+            let style = Style {
+                family: FAMILY,
+                size: og_render::glyphs::FIELD_EM_PX,
+                wrap: false,
+                align: og_text::layout::Alignment::Start,
+                ..Default::default()
+            };
+            let mut atlas = self.atlas.lock().unwrap();
+            NUMBER_SYMBOLS
+                .iter()
+                .map(|ch| {
+                    let mut glyphs = Vec::new();
+                    for _ in 0..8 {
+                        if og_text::strike::text_glyphs(
+                            &mut l.strikes,
+                            &mut l.fonts,
+                            &mut atlas,
+                            &mut l.layout,
+                            &ch.to_string(),
+                            &style,
+                            0.0,
+                            [1.0; 3],
+                            &mut glyphs,
+                        ) {
+                            break;
+                        }
+                    }
+                    // The pen's move past the one glyph: its string's width.
+                    let advance = l.layout.width() / style.size;
+                    Ok(UiMassGlyph {
+                        glyph: glyphs.first().cloned().unwrap_or_default(),
+                        advance,
+                    })
+                })
+                .collect()
+        })
     }
 }
 
@@ -115,70 +233,6 @@ pub fn load_font(scene: &mut RenderScene) -> Result<TestFont, String> {
     Ok(TestFont {
         atlas: scene.ui.glyphs.clone(),
     })
-}
-
-/// The mass HUD's font until it draws from the glyph atlas: the
-/// committed MSDF test atlas (`assets/fonts/noto-sans-sc-msdf.*`, see
-/// `crates/og-render/README.md` §Testing): the atlas PNG plus the glyph CSV
-/// and metrics JSON `msdf-atlas-gen` wrote with `-yorigin top`.
-pub fn load_msdf_font(scene: &mut RenderScene) -> Result<og_render::FontHandle, String> {
-    let png = "fonts/noto-sans-sc-msdf.png";
-    let img = image::load_from_memory(&asset(png)?)
-        .map_err(|e| format!("{png}: {e}"))?
-        .to_rgba8();
-    let (width, height) = img.dimensions();
-    let atlas = scene.add_texture(TextureData {
-        width,
-        height,
-        rgba: img.into_raw(),
-        color_space: ColorSpace::Linear,
-        mips: Mips::None,
-    });
-    let json_path = "fonts/noto-sans-sc-msdf.json";
-    let json = asset_text(json_path)?;
-    let number = |key: &str| -> Result<f32, String> {
-        let at = json
-            .find(&format!("\"{key}\":"))
-            .ok_or_else(|| format!("{json_path}: no {key}"))?;
-        let rest = &json[at + key.len() + 3..];
-        let end = rest.find([',', '}']).unwrap_or(rest.len());
-        rest[..end]
-            .trim()
-            .parse()
-            .map_err(|e| format!("{json_path}: {key}: {e}"))
-    };
-    let csv_path = "fonts/noto-sans-sc-msdf.csv";
-    let csv = asset_text(csv_path)?;
-    let mut glyphs = Vec::new();
-    for line in csv.lines().filter(|l| !l.trim().is_empty()) {
-        let f: Vec<f32> = line
-            .split(',')
-            .map(|v| v.trim().parse::<f32>())
-            .collect::<Result<_, _>>()
-            .map_err(|e| format!("{csv_path}: {line}: {e}"))?;
-        if f.len() != 10 {
-            return Err(format!("{csv_path}: {line}: 10 columns expected"));
-        }
-        let codepoint = char::from_u32(f[0] as u32)
-            .ok_or_else(|| format!("{csv_path}: bad codepoint {}", f[0]))?;
-        // msdf-atlas-gen with -yorigin top: plane bounds left, top, right,
-        // bottom with y down; atlas bounds left, top, right, bottom in pixels.
-        glyphs.push(Glyph {
-            key: codepoint.into(),
-            advance: f[1],
-            plane_bounds: [f[2], -f[5], f[4], -f[3]],
-            atlas_bounds: [f[6], f[7], f[8], f[9]],
-        });
-    }
-    Ok(scene.add_font(MsdfFont {
-        atlas,
-        distance_range: number("distanceRange")?,
-        foreground: false,
-        silhouette: false,
-        line_height: number("lineHeight")?,
-        glyphs,
-        kerning: Vec::new(),
-    }))
 }
 
 /// The non-whitespace characters of the text scene, for glyph counts.

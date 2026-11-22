@@ -22,7 +22,7 @@ use super::*;
 /// - Confetti: 120 cyan particles from (300, 200), 20 ticks into a 40-tick
 ///   life, flung 60 to 180 px with drag, gravity and spin.
 pub fn world(
-    font: impl FnOnce(&mut RenderScene) -> Result<FontHandle, String>,
+    font: impl FnOnce(&mut RenderScene) -> Result<crate::scenes::TestFont, String>,
     atlas: impl FnOnce(&mut RenderScene) -> TextureHandle,
 ) -> Result<RenderScene, String> {
     use og_render::{
@@ -67,8 +67,8 @@ pub fn world(
             decimals: 0,
             plus: false,
             compact: false,
+            glyphs: font.mass_symbols()?,
         },
-        font: Some(font),
         size: Vec2::new(22.0, 22.0),
         pivot: Vec2::new(0.5, 1.0),
         lifetime: 48,
@@ -138,9 +138,12 @@ pub fn world(
     // Nameplates.
     let names = Arc::new(UiMassTemplate {
         kind: UiMassKind::Text {
-            strings: vec!["Aldric".into(), "Brenna".into(), "Corin".into()],
+            strings: vec![
+                font.mass_string("Aldric")?,
+                font.mass_string("Brenna")?,
+                font.mass_string("Corin")?,
+            ],
         },
-        font: Some(font),
         size: Vec2::new(28.0, 28.0),
         pivot: Vec2::new(0.5, 0.5),
         occlusion: UiOcclusion::Fade { alpha: 0.25 },
@@ -234,8 +237,8 @@ pub fn world(
             decimals: 0,
             plus: true,
             compact: true,
+            glyphs: font.mass_symbols()?,
         },
-        font: Some(font),
         size: Vec2::new(40.0, 40.0),
         pivot: Vec2::new(0.5, 0.0),
         outline,

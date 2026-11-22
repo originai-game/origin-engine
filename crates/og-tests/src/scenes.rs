@@ -9,7 +9,7 @@ use glam::{Mat4, Quat, Vec2, Vec3};
 use og_render::gltf::{GltfModel, load_glb};
 use og_render::{
     Antialias, Background, Bloom, Camera, ColorSpace, DirectionalLight, Environment, Exposure,
-    Glyph, LightDesc, LightKind, Material, Mips, MsdfFont, ProceduralSky, Projection, RenderDesc,
+    LightDesc, LightKind, Material, Mips, ProceduralSky, Projection, RenderDesc,
     RenderScene, ShadowBounds, Sprite, Text, TextureData, Tonemap, shapes,
 };
 use std::path::PathBuf;
@@ -294,9 +294,6 @@ pub fn asset(rel: &str) -> Result<std::borrow::Cow<'static, [u8]>, String> {
     let bytes: &'static [u8] = match rel {
         "trickster.glb" => include_bytes!("../assets/trickster.glb"),
         "dropship.glb" => include_bytes!("../assets/dropship.glb"),
-        "fonts/noto-sans-sc-msdf.png" => include_bytes!("../assets/fonts/noto-sans-sc-msdf.png"),
-        "fonts/noto-sans-sc-msdf.json" => include_bytes!("../assets/fonts/noto-sans-sc-msdf.json"),
-        "fonts/noto-sans-sc-msdf.csv" => include_bytes!("../assets/fonts/noto-sans-sc-msdf.csv"),
         "env/studio.hdr" => include_bytes!("../assets/env/studio.hdr"),
         "env/kloofendal.hdr" => include_bytes!("../assets/env/kloofendal.hdr"),
         "env/spruit.hdr" => include_bytes!("../assets/env/spruit.hdr"),
@@ -359,10 +356,6 @@ pub fn asset(rel: &str) -> Result<std::borrow::Cow<'static, [u8]>, String> {
         }
     };
     Ok(bytes.into())
-}
-
-fn asset_text(rel: &str) -> Result<String, String> {
-    String::from_utf8(asset(rel)?.into_owned()).map_err(|e| format!("{rel}: {e}"))
 }
 
 /// The renderer description every scene starts from: 1280x720 on the
@@ -1916,7 +1909,7 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         // World-space UI (docs/ui.md §1, src/ui_scenes.rs): mass elements
         // (numbers, nameplates, bars, icons) and occluders over a 3D scene.
         "ui-world" => |g, _| {
-            g.scene = crate::ui_scenes::world(load_msdf_font, |s| sprite_textures(s)[1])?;
+            g.scene = crate::ui_scenes::world(load_font, |s| sprite_textures(s)[1])?;
             Ok(())
         },
         // A world panel (docs/ui.md §1): a UI layer drawn into a render
