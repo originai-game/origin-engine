@@ -139,12 +139,14 @@ An `Ease` field occupies 20 reflected bytes: a tag plus four payload words,
 including all Bézier controls or the step count and jump position. Its
 parameters are world state: hashed, snapshotted and restored on both hosts.
 
-UI tween transitions and eased keyframes use the same `Ease` names and
-sampler. Replace the old UI `linear` with `none`. The old `out`, `exit`
-and `inOut` were custom cubic Béziers, not GSAP curves: preserve them with
-`bezier: [0.23, 1, 0.32, 1]`, `[0.4, 0, 1, 1]` and
-`[0.65, 0, 0.35, 1]`, respectively. An omitted UI tween curve keeps the
-arrival Bézier. Style roles such as `enter` and `exit` select curves; they
+UI transitions take their curve from the element's `ease-*` class:
+`ease-linear`, `ease-in`, `ease-out`, `ease-in-out`,
+`ease-[cubic-bezier(x1,y1,x2,y2)]` or `ease-spring-[stiffness,damping]`.
+An element without one runs on CSS's `ease`. The old UI curves `out`,
+`exit` and `inOut` were custom cubic Béziers, not GSAP curves: preserve
+them with `ease-[cubic-bezier(0.23,1,0.32,1)]`,
+`ease-[cubic-bezier(0.4,0,1,1)]` and `ease-[cubic-bezier(0.65,0,0.35,1)]`,
+respectively. Style roles such as `enter` and `exit` select curves; they
 are not alternative curve names. A style's steps stay stepped in UI motion.
 CSS accepts CSS keywords and timing functions, not GSAP strings. Its
 keywords use the exact standard Béziers, not similarly named GSAP eases.
@@ -427,7 +429,7 @@ loads it. An og.Timeline component plays it on its entity.
 | `animation "<entity>"` | clip, speed, blendIn, loop; `model` names the glTF whose clips they are, else the entity's og.Model |
 | `audio` | sound, volume, playbackRate, bus |
 | `music` | sound, volume, fadeIn, fadeOut, end, loop, bus |
-| `caption` | text from `key` to `end`; `captions "narration.srt" [offset]` imports a SubRip file or word timestamps `.json`, and its translations beside it (`narration.zh.srt`, `narration.pt-BR.srt`, each with its own times) cook with it: the track says the one of the locale the player asked for (og.i18n.setLocale), its language's for a regional tag, else its own; `locale "zh" { captions "…" }` names one elsewhere. A caption track draws nothing: the keys showing are the UI's `$captions` store, each `{ id, text }`, which the built-in `subtitles` screen shows after the game's own lines (`og.load.document(world, "@ui/screens/subtitles.svelte")`, then `og.ui.push(world, "subtitles", { lines: [] })`) and any document can iterate; where and how they are drawn is that screen's and the style pack's |
+| `caption` | text from `key` to `end`; `captions "narration.srt" [offset]` imports a SubRip file or word timestamps `.json`, and its translations beside it (`narration.zh.srt`, `narration.pt-BR.srt`, each with its own times) cook with it: the track says the one of the locale the player asked for (og.i18n.setLocale), its language's for a regional tag, else its own; `locale "zh" { captions "…" }` names one elsewhere. A caption track draws nothing: og.timeline.captions(world) returns the keys showing, each `{ id, text }`, which the built-in `Subtitles` screen shows after the game's own lines (mount it from `@origingame/engine/ui/screens/subtitles.tsx` and pass that list as its `captions` each tick) and any screen can iterate; where and how they are drawn is that screen's and the style pack's |
 | `event` | `do "<command-channel action>"`: teleport, set, a game's registered command; `retroactive true` runs it when a seek passes it |
 | `transition` | kind cut, fade, wipe, dissolve, iris or slide; mode through, in or out; duration, color, from; over og.ui's screen cover |
 | `marker` | `name`, sending og.TimelineMarker when played past |

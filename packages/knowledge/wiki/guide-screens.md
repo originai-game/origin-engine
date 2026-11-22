@@ -43,7 +43,7 @@ Nothing is installed or copied to use them.
   Its header (`<meta name="prop:…">`) names its
   props, and its group's README its intents and parts. The cook bundles
   every built-in component the game's documents use, with the components
-  those use, and `og.load.document` of the screen loads them with it.
+  those use, and they load with the screen that uses them.
 - A built-in screen is a TSX component, mounted on a layer:
 
   ```tsx
@@ -391,8 +391,7 @@ screen can wait for it.
 - A link `<a href="#rules">` makes `#rules` `:target` and scrolls it to
   the start of its scroller (its `scroll-margin` above it, inside the
   scroller's `scroll-padding`). To point at a passage, put an id on its
-  element and mark the words with `og.ui.setHighlight` and a
-  `::highlight(<name>)` rule.
+  element and link to it.
 - Use `<meta name="screen" content="pause" data-layer="menu"
   data-focus="Menu/Resume" data-pause="true">` for a screen.
   Components use `name="component"`. Props use `name="prop:volume"`,
@@ -677,24 +676,15 @@ line's route as SVG path data, a radial menu's slice positions and a split
 view's ratio.
 
 <a id="guide-screens-8"></a>
-### `screens §8` Element-scoped view transitions
+### `screens §8` Moving elements between layouts
 
-Call `og.ui.startViewTransition("<element path>")` and change the state
-shown there in the same tick. The subtree's last rendered shared elements
-(`view-transition-name`) form the old view; its new state forms the new
-view. Use this for a reordered inventory or a card opening its detail.
+Give an element `transition-layout` (with `duration-*` and `ease-*`) and
+change the state that places it: when its box moves or resizes between
+frames, it slides from the old box to the new one instead of jumping. Use
+this for a reordered inventory or a card opening its detail. Render lists
+with a keyed `<For>` so a reordered item stays the same element and
+moves; an item without a stable key is replaced, not moved.
 
-Each name morphs in a `::view-transition-group(name)` drawn just after the
-host element, over its children and outside its clip. The host document's
-`::view-transition-*` rules style it; without them, the default is a
-0.25-second cross-fade and move. Screen transitions use the same styling
-described in §4.
-
-Different elements can transition concurrently, alongside a screen's
-transition. Starting another on the same element replaces its transition.
-A descendant with `view-transition-scope: all` keeps its names for its own
-transitions; an ancestor's transition leaves those names out.
-
-Under reduced motion, or when the last frame drew nothing at the path,
-the call returns false and starts no transition. Apply the state change
-regardless, so the new view does not depend on animation being enabled.
+A change that arrives mid-move retargets from where the box is. Under
+reduced motion the box jumps to its new place, so the new layout does not
+depend on animation being enabled.

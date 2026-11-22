@@ -67,8 +67,7 @@ property, so a store drives it through `style:`:
 </style>
 ```
 
-The element and its children are drawn offscreen and composited through it;
-`og.load.document` loads the materials its declarations name.
+The element and its children are drawn offscreen and composited through it.
 `<og-overlay effect="material …">` composites the whole frame under it
 through one the same way.
 
