@@ -14,7 +14,7 @@
 //!   (`PixelTerrain::detach`) into dynamic pieces, then rebuilds the
 //!   collider of every chunk a change touched: its outline
 //!   (`PixelTerrain::chunk_chains`), closed along the chunk's border and
-//!   triangulated with og_geom's earcut, registered with physics under a
+//!   triangulated with og_shape's earcut, registered with physics under a
 //!   generated handle ([`og_physics::GENERATED_MESH`], so a save carries
 //!   the shape) and named by a static SHAPE_TRIMESH og.Collider, which
 //!   collides as the outline in 2D. A piece collides as the convex hull of

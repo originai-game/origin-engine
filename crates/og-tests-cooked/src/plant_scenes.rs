@@ -1,4 +1,4 @@
-//! Plants the cook grows (a `plant` block in a `type model`, og-geom's
+//! Plants the cook grows (a `plant` block in a `type model`, og-shape's
 //! `plant`) and a wood scattered from them: og-tests' assets/plants, the
 //! models guide's kinds (each asset a `kind` and nothing else, two with a
 //! colour of their own), cooked in a project of their own, the oak, the

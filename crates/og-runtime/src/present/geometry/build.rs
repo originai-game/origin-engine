@@ -290,11 +290,11 @@ pub fn og_render_tube_geometry(
     })
 }
 
-// ── procedural modelling (og-geom) ──────────────────────────────────────────
+// ── procedural modelling (og-shape) ─────────────────────────────────────────
 
-/// An og-geom mesh as the renderer holds one (tangents left to the
+/// An og-shape mesh as the renderer holds one (tangents left to the
 /// renderer, which generates them where a normal map needs them).
-pub(crate) fn mesh_data(m: og_geom::Mesh) -> og_render::MeshData {
+pub(crate) fn mesh_data(m: og_shape::generators::Mesh) -> og_render::MeshData {
     let vertices = (0..m.positions.len())
         .map(|i| og_render::Vertex {
             position: m.positions[i],
@@ -310,9 +310,9 @@ pub(crate) fn mesh_data(m: og_geom::Mesh) -> og_render::MeshData {
     }
 }
 
-/// A live geometry's mesh, as og-geom reads one (colours only when some
+/// A live geometry's mesh, as og-shape reads one (colours only when some
 /// vertex is not white).
-fn geom_of(world: u32, geometry: f64, what: &str) -> Result<og_geom::Mesh, String> {
+fn geom_of(world: u32, geometry: f64, what: &str) -> Result<og_shape::generators::Mesh, String> {
     let eng = engine(world)?;
     let index = index_of(geometry).ok_or_else(|| format!("{what} {geometry} is not a geometry"))?;
     let rs = eng.render.borrow();
@@ -323,7 +323,7 @@ fn geom_of(world: u32, geometry: f64, what: &str) -> Result<og_geom::Mesh, Strin
         .ok_or_else(|| format!("{what} {geometry} is not alive"))?;
     let v = &mesh.vertices;
     let colored = v.iter().any(|x| x.color != [1.0; 4]);
-    Ok(og_geom::Mesh {
+    Ok(og_shape::generators::Mesh {
         positions: v.iter().map(|x| x.position).collect(),
         normals: v.iter().map(|x| x.normal).collect(),
         uvs: v.iter().map(|x| x.uv).collect(),
@@ -368,7 +368,7 @@ made!(
 fn generated<D: wire::FromJson + Default + Made>(
     world: u32,
     desc: Option<String>,
-    build: impl FnOnce(&D) -> Result<og_geom::Mesh, String>,
+    build: impl FnOnce(&D) -> Result<og_shape::generators::Mesh, String>,
 ) -> Result<serde_json::Value, String> {
     (|| {
         let d: D = wire::arg(desc.as_deref(), "desc")?;
@@ -389,7 +389,7 @@ fn generated<D: wire::FromJson + Default + Made>(
     })()
 }
 
-/// Points as og-geom reads them, refused when one is not finite.
+/// Points as og-shape reads them, refused when one is not finite.
 fn dvec2s(points: &[Vec2], what: &str) -> Result<Vec<DVec2>, String> {
     if let Some(i) = points.iter().position(|p| !p.is_finite()) {
         return Err(format!("{what}[{i}] is not a finite point"));
@@ -397,9 +397,12 @@ fn dvec2s(points: &[Vec2], what: &str) -> Result<Vec<DVec2>, String> {
     Ok(points.iter().map(|p| p.as_dvec2()).collect())
 }
 
-/// A ShapePoints as og-geom reads one.
-fn shape_points(s: &wire::ShapePoints, what: &str) -> Result<og_geom::ShapePoints, String> {
-    Ok(og_geom::ShapePoints {
+/// A ShapePoints as og-shape reads one.
+fn shape_points(
+    s: &wire::ShapePoints,
+    what: &str,
+) -> Result<og_shape::generators::ShapePoints, String> {
+    Ok(og_shape::generators::ShapePoints {
         points: dvec2s(&s.shape, &format!("{what}.shape"))?,
         holes: s
             .holes
@@ -426,17 +429,17 @@ type Shapes =
 fn shapes_of(
     shapes: &Option<Shapes>,
     default: &[[f64; 2]],
-) -> Result<Vec<og_geom::ShapePoints>, String> {
+) -> Result<Vec<og_shape::generators::ShapePoints>, String> {
     use wire::OneOf::{A, B};
     match shapes {
-        None => Ok(vec![og_geom::ShapePoints {
+        None => Ok(vec![og_shape::generators::ShapePoints {
             points: default.iter().map(|p| DVec2::new(p[0], p[1])).collect(),
             holes: Vec::new(),
         }]),
         Some(A(_)) => Err(unflattened("desc.shapes")),
         Some(B(A(list))) if list.is_empty() => Ok(Vec::new()),
         Some(B(A(_))) => Err(unflattened("desc.shapes")),
-        Some(B(B(A(points)))) => Ok(vec![og_geom::ShapePoints {
+        Some(B(B(A(points)))) => Ok(vec![og_shape::generators::ShapePoints {
             points: dvec2s(points, "desc.shapes")?,
             holes: Vec::new(),
         }]),
@@ -448,7 +451,7 @@ fn shapes_of(
     }
 }
 
-/// A live og.path as og-geom samples one: its point and unit tangent at a
+/// A live og.path as og-shape samples one: its point and unit tangent at a
 /// fraction of its length.
 fn path_sampler(world: u32, h: u64, what: &str) -> Result<Option<Arc<og_timeline::Path>>, String> {
     if h == 0 {
@@ -481,7 +484,7 @@ pub fn og_render_shape_geometry(
 ) -> Result<serde_json::Value, String> {
     generated(world, desc, |d: &wire::ShapeGeometryDesc| {
         let shapes = shapes_of(&d.shapes, &[[0.0, 0.5], [-0.5, -0.5], [0.5, -0.5]])?;
-        Ok(og_geom::shape_geometry(&shapes))
+        Ok(og_shape::generators::shape_geometry(&shapes))
     })
 }
 
@@ -495,7 +498,7 @@ pub fn og_render_extrude_geometry(
             &[[0.5, 0.5], [-0.5, 0.5], [-0.5, -0.5], [0.5, -0.5]],
         )?;
         let thickness = fsize(d.bevel_thickness, "bevelThickness")?;
-        let o = og_geom::Extrude {
+        let o = og_shape::generators::Extrude {
             depth: fsize(d.depth, "depth")?,
             steps: segments(d.steps, 1),
             bevel_enabled: d.bevel_enabled,
@@ -506,11 +509,13 @@ pub fn og_render_extrude_geometry(
         };
         let path = path_sampler(world, d.extrude_path, "desc.extrudePath")?;
         let sample = |t: f64| sample_path(path.as_deref().expect("a path"), t);
-        let along = path.as_ref().map(|p| og_geom::extrude::ExtrudePath {
-            sample: &sample,
-            closed: p.desc().closed,
-        });
-        Ok(og_geom::extrude(&shapes, &o, along.as_ref()))
+        let along = path
+            .as_ref()
+            .map(|p| og_shape::generators::extrude::ExtrudePath {
+                sample: &sample,
+                closed: p.desc().closed,
+            });
+        Ok(og_shape::generators::extrude(&shapes, &o, along.as_ref()))
     })
 }
 
@@ -520,7 +525,7 @@ pub fn og_render_lathe_geometry(
 ) -> Result<serde_json::Value, String> {
     let given = parse(desc.as_deref()).is_ok_and(|v| !v["points"].is_null());
     generated(world, desc, |d: &wire::LatheGeometryDesc| {
-        let mut l = og_geom::Lathe::default();
+        let mut l = og_shape::generators::Lathe::default();
         // Unset or null, three.js's default profile (the IDL's doc); an
         // empty list is refused below.
         if given {
@@ -538,7 +543,7 @@ pub fn og_render_lathe_geometry(
         l.segments = segments(d.segments, 1);
         l.phi_start = fnum(f64::from(d.phi_start), "phiStart")?;
         l.phi_length = fnum(f64::from(d.phi_length), "phiLength")?;
-        Ok(og_geom::lathe(&l))
+        Ok(og_shape::generators::lathe(&l))
     })
 }
 
@@ -553,7 +558,7 @@ pub fn og_render_polyhedron_geometry(
         if d.indices.is_empty() {
             return Err("a polyhedron needs at least one face (indices)".into());
         }
-        og_geom::polyhedron(&og_geom::Polyhedron {
+        og_shape::generators::polyhedron(&og_shape::generators::Polyhedron {
             vertices: d.vertices.iter().map(|&v| f64::from(v)).collect(),
             indices: d.indices.clone(),
             radius: fsize(d.radius, "radius")?,
@@ -565,7 +570,7 @@ pub fn og_render_polyhedron_geometry(
 fn solid(
     world: u32,
     desc: Option<String>,
-    make: fn(f64, u32) -> og_geom::Mesh,
+    make: fn(f64, u32) -> og_shape::generators::Mesh,
 ) -> Result<serde_json::Value, String> {
     generated(world, desc, |d: &wire::SolidGeometryDesc| {
         Ok(make(fsize(d.radius, "radius")?, d.detail.min(64)))
@@ -576,33 +581,33 @@ pub fn og_render_icosahedron_geometry(
     world: u32,
     desc: Option<String>,
 ) -> Result<serde_json::Value, String> {
-    solid(world, desc, og_geom::icosahedron)
+    solid(world, desc, og_shape::generators::icosahedron)
 }
 
 pub fn og_render_dodecahedron_geometry(
     world: u32,
     desc: Option<String>,
 ) -> Result<serde_json::Value, String> {
-    solid(world, desc, og_geom::dodecahedron)
+    solid(world, desc, og_shape::generators::dodecahedron)
 }
 
 pub fn og_render_octahedron_geometry(
     world: u32,
     desc: Option<String>,
 ) -> Result<serde_json::Value, String> {
-    solid(world, desc, og_geom::octahedron)
+    solid(world, desc, og_shape::generators::octahedron)
 }
 
 pub fn og_render_tetrahedron_geometry(
     world: u32,
     desc: Option<String>,
 ) -> Result<serde_json::Value, String> {
-    solid(world, desc, og_geom::tetrahedron)
+    solid(world, desc, og_shape::generators::tetrahedron)
 }
 
-fn keys(list: &[wire::SweepKey]) -> Vec<og_geom::Key> {
+fn keys(list: &[wire::SweepKey]) -> Vec<og_shape::generators::Key> {
     list.iter()
-        .map(|x| og_geom::Key {
+        .map(|x| og_shape::generators::Key {
             t: f64::from(x.t),
             value: f64::from(x.value),
         })
@@ -624,7 +629,7 @@ pub fn og_render_sweep_geometry(
             Some(B(A(points))) => dvec2s(points, "desc.section")?,
             Some(B(B(s))) => dvec2s(&s.shape, "desc.section.shape")?,
         };
-        let s = og_geom::Sweep {
+        let s = og_shape::generators::Sweep {
             section,
             steps: segments(d.steps, 1),
             scale: keys(&d.scale),
@@ -632,9 +637,9 @@ pub fn og_render_sweep_geometry(
             caps: d.caps,
         };
         let sample = |t: f64| sample_path(&path, t);
-        og_geom::sweep(
+        og_shape::generators::sweep(
             &s,
-            &og_geom::extrude::ExtrudePath {
+            &og_shape::generators::extrude::ExtrudePath {
                 sample: &sample,
                 closed: path.desc().closed,
             },
@@ -647,7 +652,14 @@ fn part_of(
     world: u32,
     v: &wire::GeometryPart,
     what: &str,
-) -> Result<(og_geom::Mesh, og_geom::Placement, og_geom::Mirror), String> {
+) -> Result<
+    (
+        og_shape::generators::Mesh,
+        og_shape::generators::Placement,
+        og_shape::generators::Mirror,
+    ),
+    String,
+> {
     let mesh = geom_of(world, v.geometry as f64, &format!("{what}.geometry"))?;
     let (p, scale) = (v.position, v.scale);
     if !p.is_finite() || !scale.is_finite() {
@@ -657,12 +669,12 @@ fn part_of(
     let mirror = v.mirror;
     Ok((
         mesh,
-        og_geom::Placement {
+        og_shape::generators::Placement {
             position: p.as_dvec3(),
             quaternion: q.as_dquat(),
             scale: scale.as_dvec3(),
         },
-        og_geom::Mirror {
+        og_shape::generators::Mirror {
             x: mirror == wire::MirrorAxis::X,
             y: mirror == wire::MirrorAxis::Y,
             z: mirror == wire::MirrorAxis::Z,
@@ -672,10 +684,14 @@ fn part_of(
 
 /// A part placed and mirrored, as one mesh.
 fn placed(
-    part: &(og_geom::Mesh, og_geom::Placement, og_geom::Mirror),
+    part: &(
+        og_shape::generators::Mesh,
+        og_shape::generators::Placement,
+        og_shape::generators::Mirror,
+    ),
     what: &str,
-) -> Result<og_geom::Mesh, String> {
-    og_geom::merge(&[og_geom::Part {
+) -> Result<og_shape::generators::Mesh, String> {
+    og_shape::generators::merge(&[og_shape::generators::Part {
         mesh: &part.0,
         placement: part.1,
         mirror: part.2,
@@ -689,14 +705,14 @@ pub fn og_render_csg_geometry(
 ) -> Result<serde_json::Value, String> {
     generated(world, desc, |d: &wire::CsgGeometryDesc| {
         let op = match d.op {
-            wire::CsgOp::Union => og_geom::CsgOp::Union,
-            wire::CsgOp::Subtract => og_geom::CsgOp::Subtract,
-            wire::CsgOp::Intersect => og_geom::CsgOp::Intersect,
+            wire::CsgOp::Union => og_shape::boolean::CsgOp::Union,
+            wire::CsgOp::Subtract => og_shape::boolean::CsgOp::Subtract,
+            wire::CsgOp::Intersect => og_shape::boolean::CsgOp::Intersect,
         };
         let a = placed(&part_of(world, &d.a, "desc.a")?, "desc.a")?;
         let b = placed(&part_of(world, &d.b, "desc.b")?, "desc.b")?;
-        let none = og_geom::Placement::default();
-        og_geom::csg(&a, none, &b, none, op)
+        let none = og_shape::generators::Placement::default();
+        og_shape::boolean::csg(&a, none, &b, none, op)
     })
 }
 
@@ -714,15 +730,15 @@ pub fn og_render_merge_geometries(
             .enumerate()
             .map(|(i, p)| part_of(world, p, &format!("desc.parts[{i}]")))
             .collect::<Result<Vec<_>, _>>()?;
-        let refs: Vec<og_geom::Part> = parts
+        let refs: Vec<og_shape::generators::Part> = parts
             .iter()
-            .map(|(mesh, placement, mirror)| og_geom::Part {
+            .map(|(mesh, placement, mirror)| og_shape::generators::Part {
                 mesh,
                 placement: *placement,
                 mirror: *mirror,
             })
             .collect();
-        og_geom::merge(&refs)
+        og_shape::generators::merge(&refs)
             .map_err(|e| e.replacen("part ", "desc.parts[", 1).replacen(':', "]:", 1))
     })
 }

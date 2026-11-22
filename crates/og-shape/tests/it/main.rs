@@ -5,8 +5,8 @@ mod bevel {
     mod uvs;
 }
 mod boolean {
+    mod contracts;
     mod edge_on_edge;
-    mod og_geom_contracts;
     mod self_union;
     mod slivers;
     mod touching;

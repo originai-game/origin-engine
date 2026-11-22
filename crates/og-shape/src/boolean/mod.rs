@@ -1,9 +1,7 @@
 //! Mesh booleans and split.
 //!
-//! [`csg`] and [`fracture`] are copied from origin-engine's og-geom
-//! (`third_party/og-geom/SOURCE`): exact-predicate CSG with winding
-//! numbers per region. Phase 0 decides whether this engine or
-//! manifold-rust stays (`docs/plan.md`). [`selfcheck`] finds triangles of
+//! [`csg`] is exact-predicate CSG with winding numbers per region;
+//! [`fracture`] cuts a mesh into cells with it. [`selfcheck`] finds triangles of
 //! one surface that cross, for the operand check and the self-union.
 //! [`drop_slivers`] removes zero-area triangles on one line, exactly, as
 //! booleans and moves can round them (`docs/research.md` §15.4).

@@ -19,7 +19,7 @@
 //! flutters. A limb and everything growing from it share one pivot and
 //! one stiffness, so they bend as one piece and stay joined.
 
-use crate::{Mesh, trig};
+use crate::generators::{Mesh, trig};
 use glam::{DQuat, DVec3};
 use og_core::rng::Rng;
 

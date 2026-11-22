@@ -1,4 +1,4 @@
-  # ── round 3: procedural modelling (og-geom) ──────────────────────────────
+  # ── round 3: procedural modelling (og-shape) ─────────────────────────────
 
   struct ShapePoints {
     doc "A shape as points, what og.Shape.extractPoints returns and what shapeGeometry, extrudeGeometry and sweepGeometry read: the outline, then each hole. A repeated closing point is dropped, as three.js drops it."

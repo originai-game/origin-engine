@@ -17,7 +17,7 @@ og-render = { path = "../og-render", features = ["gltf", "bake"] }
 og-core = { path = "../og-core" }
 og-env = { path = "../og-env" }
 og-tween = { path = "../og-tween" }
-og-geom = { path = "../og-geom" }
+og-shape = { path = "../og-shape" }
 og-tilemap = { path = "../og-tilemap" }
 # The text scenes' glyphs, laid out and rastered into each scene's atlas.
 og-text = { path = "../og-text", default-features = false }

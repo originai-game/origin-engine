@@ -278,7 +278,7 @@ fn rank(o: &CsgOutput, op: CsgOp) -> (usize, usize) {
 
 /// [`csg_points`], with where the operands touch.
 ///
-/// The first pass is og-geom's arrangement. When its result is open
+/// The first pass is the plain arrangement. When its result is open
 /// (operands that touch: faces on faces, a vertex an ulp off a face), the
 /// arrangement is built again by a second pass, and its result is taken
 /// if it has fewer unmatched edges. The second pass keeps crossings that

@@ -20,4 +20,4 @@ is a static node per anchor, mirrored through the anchor face, so an anchor
 bond has a length for its bending as a chunk-to-chunk bond has.
 
 No Blast authoring code is used: the cook's Voronoi fracture is
-`crates/og-geom/src/fracture.rs` (see `../three-pinata/`).
+`crates/og-shape/src/boolean/fracture.rs` (see `../three-pinata/`).

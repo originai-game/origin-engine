@@ -1,4 +1,4 @@
-//! `type model`: a model written as text (og-geom's generators and
+//! `type model`: a model written as text (og-shape's generators and
 //! og-render's primitives by their og.render names, placed as
 //! mergeGeometries places parts, a material per part, pivots as nodes),
 //! cooked into the model blob a glTF cooks to.

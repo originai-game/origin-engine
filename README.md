@@ -93,7 +93,7 @@ What is on main, grouped by area, with the API module (`og.<module>`, from
 - Large worlds: camera-relative rendering and a floating origin
   (`og.WorldOrigin`, in `og.transform`).
 - Procedural geometry: three.js shapes, extrude, lathe, sweeps, CSG
-  (`og.shapes`; og-geom).
+  (`og.shapes`; og-shape).
 - Video: `type video` clips as texture arrays, or AV1 streams decoded by
   rav1d natively and by WebCodecs (rav1d in a Worker as a fallback) on the web
   (`og.video`; og-video, og-video-wasm).
@@ -247,7 +247,7 @@ crates/            Rust workspace
   og-i18n          string tables, MessageFormat, plural rules
   og-story         dialogue and quests
   og-tilemap       tilesets, layered maps, auto-tiling
-  og-geom          procedural geometry and CSG
+  og-shape         the modelling kernel: generators, exact booleans, edits, bevels, skins, model programs and the mesh tools; og-shape-formats: its codecs (tools only)
   og-net           room protocol, lockstep, the native relay
   og-shared        shared worlds: their protocol, a client's view, `og world-server` and its load bots
   og-lanes         deterministic data-parallel work

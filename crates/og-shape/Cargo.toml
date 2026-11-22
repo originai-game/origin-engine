@@ -10,6 +10,8 @@ autoexamples = false
 
 [dependencies]
 glam = { workspace = true }
+# plant's seeded randomness and f32 angles (og_core::rng, og_core::math).
+og-core = { path = "../og-core" }
 libm = "0.2.16"
 robust = "1.2.0"
 sha2 = "0.11"

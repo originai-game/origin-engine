@@ -98,7 +98,7 @@ Two defaults differ from three.js: `Mesh.receiveShadow` is on (three.js's
 is off) and `DirectionalLight.castShadow` is on. Set them where the port
 depends on the old value.
 
-## 4. Geometry: og.render and og-geom
+## 4. Geometry: og.render and og-shape
 
 The geometry classes keep their parameters, names and defaults; the
 positional arguments become a desc object of the same names, and the

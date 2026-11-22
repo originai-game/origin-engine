@@ -39,7 +39,6 @@ const LAYERS: &[(&str, &[&str])] = &[
             "og-css",
             "og-draw",
             "og-env",
-            "og-geom",
             "og-i18n",
             "og-idl",
             "og-physics-data",

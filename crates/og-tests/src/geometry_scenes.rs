@@ -500,10 +500,10 @@ pub fn debug_scene() -> Result<RenderScene, String> {
     Ok(scene)
 }
 
-// ── geometry-shapes: og-geom's generators (round 3, geom-1) ─────────────────
+// ── geometry-shapes: og-shape's generators (round 3, geom-1) ────────────────
 
-/// An og-geom mesh as the renderer holds one (as og-runtime converts it).
-pub fn from_geom(m: og_geom::Mesh) -> MeshData {
+/// An og-shape mesh as the renderer holds one (as og-runtime converts it).
+pub fn from_geom(m: og_shape::generators::Mesh) -> MeshData {
     let vertices = (0..m.positions.len())
         .map(|i| og_render::Vertex {
             position: m.positions[i],
@@ -519,8 +519,8 @@ pub fn from_geom(m: og_geom::Mesh) -> MeshData {
     }
 }
 
-fn to_geom(m: &MeshData) -> og_geom::Mesh {
-    og_geom::Mesh {
+fn to_geom(m: &MeshData) -> og_shape::generators::Mesh {
+    og_shape::generators::Mesh {
         positions: m.vertices.iter().map(|v| v.position).collect(),
         normals: m.vertices.iter().map(|v| v.normal).collect(),
         uvs: m.vertices.iter().map(|v| v.uv).collect(),
@@ -531,9 +531,9 @@ fn to_geom(m: &MeshData) -> og_geom::Mesh {
 
 /// A gear of `teeth` trapezoid teeth with a round hole, as an og.Shape
 /// flattens one.
-pub fn gear_shape(teeth: usize) -> og_geom::ShapePoints {
+pub fn gear_shape(teeth: usize) -> og_shape::generators::ShapePoints {
     use glam::DVec2;
-    use og_geom::trig::{TAU, sincos};
+    use og_shape::generators::trig::{TAU, sincos};
     let mut points = Vec::new();
     for i in 0..teeth {
         for (f, r) in [(0.0, 0.62), (0.18, 0.8), (0.42, 0.8), (0.6, 0.62)] {
@@ -549,7 +549,7 @@ pub fn gear_shape(teeth: usize) -> og_geom::ShapePoints {
             })
             .collect()
     };
-    og_geom::ShapePoints {
+    og_shape::generators::ShapePoints {
         points,
         holes: vec![
             hole(0.0, 0.0, 0.16, 24),
@@ -560,8 +560,8 @@ pub fn gear_shape(teeth: usize) -> og_geom::ShapePoints {
 }
 
 /// A sphere as a lathe of a half circle (closed exactly, for CSG).
-fn ball(r: f64, segments: u32, rows: u32) -> og_geom::Mesh {
-    use og_geom::trig::{PI, sincos};
+fn ball(r: f64, segments: u32, rows: u32) -> og_shape::generators::Mesh {
+    use og_shape::generators::trig::{PI, sincos};
     let points = (0..=rows)
         .map(|j| {
             let (s, c) = sincos(j as f64 / rows as f64 * PI);
@@ -569,7 +569,7 @@ fn ball(r: f64, segments: u32, rows: u32) -> og_geom::Mesh {
             glam::DVec2::new(x, -r * c)
         })
         .collect();
-    og_geom::lathe(&og_geom::Lathe {
+    og_shape::generators::lathe(&og_shape::generators::Lathe {
         points,
         segments,
         ..Default::default()
@@ -578,7 +578,7 @@ fn ball(r: f64, segments: u32, rows: u32) -> og_geom::Mesh {
 
 /// A die: a unit cube with its 21 pips subtracted, one sphere at a time;
 /// the spheres are black, so the pits they leave are.
-pub fn dice() -> og_geom::Mesh {
+pub fn dice() -> og_shape::generators::Mesh {
     use glam::DVec3;
     let mut body = to_geom(&shapes::cuboid(Vec3::ONE));
     let mut pip = ball(0.11, 20, 10);
@@ -606,16 +606,16 @@ pub fn dice() -> og_geom::Mesh {
     ];
     for (n, u, v, count) in faces {
         for (a, b) in layout(count) {
-            let at = og_geom::Placement {
+            let at = og_shape::generators::Placement {
                 position: n * 0.54 + u * a + v * b,
                 ..Default::default()
             };
-            body = og_geom::csg(
+            body = og_shape::boolean::csg(
                 &body,
-                og_geom::Placement::default(),
+                og_shape::generators::Placement::default(),
                 &pip,
                 at,
-                og_geom::CsgOp::Subtract,
+                og_shape::boolean::CsgOp::Subtract,
             )
             .expect("a pip");
         }
@@ -625,9 +625,9 @@ pub fn dice() -> og_geom::Mesh {
 
 /// A ribbed horn: a ten-lobed section swept along a curve, tapering from 1
 /// to 0.08 and twisting a turn and a half.
-pub fn horn() -> og_geom::Mesh {
+pub fn horn() -> og_shape::generators::Mesh {
     use glam::{DVec2, DVec3};
-    use og_geom::trig::{TAU, sincos};
+    use og_shape::generators::trig::{TAU, sincos};
     let section: Vec<DVec2> = (0..40)
         .map(|k| {
             let (s, c) = sincos(k as f64 / 40.0 * TAU);
@@ -647,24 +647,24 @@ pub fn horn() -> og_geom::Mesh {
         let d = (p1 - p0) * (2.0 * k) + (p2 - p1) * (2.0 * t);
         (p, d.normalize())
     };
-    og_geom::sweep(
-        &og_geom::Sweep {
+    og_shape::generators::sweep(
+        &og_shape::generators::Sweep {
             section,
             steps: 64,
             scale: vec![
-                og_geom::Key { t: 0.0, value: 1.0 },
-                og_geom::Key {
+                og_shape::generators::Key { t: 0.0, value: 1.0 },
+                og_shape::generators::Key {
                     t: 1.0,
                     value: 0.08,
                 },
             ],
             twist: vec![
-                og_geom::Key { t: 0.0, value: 0.0 },
-                og_geom::Key { t: 1.0, value: 3.0 },
+                og_shape::generators::Key { t: 0.0, value: 0.0 },
+                og_shape::generators::Key { t: 1.0, value: 3.0 },
             ],
             caps: true,
         },
-        &og_geom::extrude::ExtrudePath {
+        &og_shape::generators::extrude::ExtrudePath {
             sample: &sample,
             closed: false,
         },
@@ -673,7 +673,7 @@ pub fn horn() -> og_geom::Mesh {
 }
 
 /// A vase: a profile from the axis at its foot out to a lip, turned.
-pub fn vase() -> og_geom::Mesh {
+pub fn vase() -> og_shape::generators::Mesh {
     use glam::DVec2;
     let profile = [
         (0.0, 0.0),
@@ -687,14 +687,14 @@ pub fn vase() -> og_geom::Mesh {
         (0.24, 1.4),
         (0.3, 1.48),
     ];
-    og_geom::lathe(&og_geom::Lathe {
+    og_shape::generators::lathe(&og_shape::generators::Lathe {
         points: profile.iter().map(|&(x, y)| DVec2::new(x, y)).collect(),
         segments: 48,
         ..Default::default()
     })
 }
 
-/// `geometry-shapes`: og-geom's generators in a row on a lit floor: an
+/// `geometry-shapes`: og-shape's generators in a row on a lit floor: an
 /// extruded, bevelled gear with three holes standing on edge, a lathed vase
 /// (double-sided: its mouth shows its inside), a swept horn tapering and
 /// twisting along a curve, and a dice made by CSG, a cube less 21 black
@@ -702,9 +702,9 @@ pub fn vase() -> og_geom::Mesh {
 pub fn shapes_scene() -> RenderScene {
     let mut scene = RenderScene::new();
     crate::physical_scenes::showroom(&mut scene, 0.0);
-    let gear = og_geom::extrude(
+    let gear = og_shape::generators::extrude(
         &[gear_shape(14)],
-        &og_geom::Extrude {
+        &og_shape::generators::Extrude {
             depth: 0.22,
             bevel_thickness: 0.05,
             bevel_size: 0.04,

@@ -1,6 +1,5 @@
 #![allow(missing_docs, clippy::disallowed_types)]
-//! og-geom's contract tests (copied, `third_party/og-geom/SOURCE`):
-//! og-geom against three.js's counts, closed-manifold topology, analytic
+//! The generators' and CSG's contract tests: three.js's counts, closed-manifold topology, analytic
 //! volumes and determinism.
 
 use glam::{DQuat, DVec2, DVec3};

@@ -1,7 +1,7 @@
 //! The prefractured asset ([`FractureAsset`]): its chunks, a hierarchy of
 //! two levels and the bonds of its support graph (Blast's model,
 //! `docs/design.md` 2.7). The cook writes it (og-cook `cook/fracture.rs`,
-//! the pieces from `og_geom::fracture`); og-physics' `destruction` breaks
+//! the pieces from `og_shape::boolean::fracture`); og-physics' `destruction` breaks
 //! it.
 
 use glam::Vec3;

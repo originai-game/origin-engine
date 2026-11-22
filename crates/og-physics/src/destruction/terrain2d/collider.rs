@@ -171,7 +171,7 @@ pub fn chunk_mesh(grid: &PixelTerrain, k: u32, tolerance: f32, cell: f32) -> Opt
             .iter()
             .map(|&h| holes[h].iter().map(|&p| d(p)).collect())
             .collect();
-        let tris = og_geom::shape::triangulate_shape(&mut contour, &mut hs);
+        let tris = og_shape::generators::shape::triangulate_shape(&mut contour, &mut hs);
         let base = positions.len() as u32;
         for p in contour.iter().chain(hs.iter().flatten()) {
             positions.push(Vec3::new(

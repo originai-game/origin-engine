@@ -13,7 +13,7 @@ og-core = { path = "../og-core" }
 og-env = { path = "../og-env" }
 og-ecs = { path = "../og-ecs" }
 og-render = { path = "../og-render" }
-og-geom = { path = "../og-geom" }
+og-shape = { path = "../og-shape" }
 og-probe = { path = "../og-probe", default-features = false }
 og-bundle = { path = "../og-bundle" }
 miniz_oxide = "0.8"

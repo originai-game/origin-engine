@@ -57,9 +57,9 @@ use super::vox::Bin;
 use glam::{DMat4, DVec3};
 use og_core::Rng;
 use og_core::ogt::{Block, Document};
-use og_geom::Mesh;
-use og_geom::fracture::{self, Piece};
 use og_physics_data::fracture::{Bond, Chunk, FractureAsset, NONE};
+use og_shape::boolean::fracture::{self, Piece};
+use og_shape::generators::Mesh;
 use std::collections::BTreeMap;
 use std::path::Path;
 

@@ -1,6 +1,5 @@
-//! Golden cases for the generators and booleans copied from og-geom. The
-//! inputs are og-geom's own determinism fixtures, so the engine and this
-//! repository can be compared directly.
+//! Golden cases for the generators and booleans, on the inputs of the
+//! generators' determinism fixtures.
 
 use og_shape::boolean::{CsgOp, csg};
 use og_shape::generators::extrude::ExtrudePath;

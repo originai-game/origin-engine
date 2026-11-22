@@ -1251,10 +1251,10 @@ lockstep §2.8 and §2.10, the semantic frame and diagnostics §3.4.
   rewritten in place with `updateGeometry`) and from three.js's primitives,
   with three.js's parameters, counts, vertex orders and uvs. A made geometry
   is also a physics mesh under its handle.
-- Procedural modelling (`crates/og-geom`: shape, extrude, lathe, sweep,
+- Procedural modelling (`crates/og-shape`: shape, extrude, lathe, sweep,
   merge, CSG) gives the same result on every host: CSG decides with exact
   predicates and generators take trigonometry from series, never libm.
-  og-geom never depends on og-render. A `type model` `.ogt` builds a model
+  og-shape never depends on og-render. A `type model` `.ogt` builds a model
   from the same parts in the cook.
 - Lines and points are one screen-space pass, so widths and dashes behave the
   same on every backend; it draws in the scene or as an overlay after post
@@ -1263,7 +1263,7 @@ lockstep §2.8 and §2.10, the semantic frame and diagnostics §3.4.
 - `og.render.raycast` tests what is drawn, not colliders, through a BVH per
   geometry; inside a system it reads the meshes as recorded at the tick's
   start.
-- Code: og-render `lines.rs`, `points.rs`, `debug.rs`, `geometry/`; og-geom;
+- Code: og-render `lines.rs`, `points.rs`, `debug.rs`, `geometry/`; og-shape;
   the `render` and `debug` IDL modules.
 
 ### 10.2 Paths and the timeline

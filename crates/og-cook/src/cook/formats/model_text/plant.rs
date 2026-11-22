@@ -1,10 +1,11 @@
-//! A `plant` block of a model text: an og-geom plant generator's levels,
+//! A `plant` block of a model text: an og-shape plant generator's levels,
 //! leaves and look, or one of the built-in kinds (`plants/<kind>.ogt`).
 
 use super::*;
 
 /// A `plant` block's levels of branches, by their block's name.
-const PLANT_LEVELS: [&str; og_geom::plant::LEVELS] = ["trunk", "branch1", "branch2", "branch3"];
+const PLANT_LEVELS: [&str; og_shape::generators::plant::LEVELS] =
+    ["trunk", "branch1", "branch2", "branch3"];
 
 /// What a `plant` block draws with, beside its meshes.
 pub(super) struct PlantLook {
@@ -93,7 +94,7 @@ const PLANT_KINDS: [(&str, &str); 12] = [
 ];
 
 /// A kind's plant and look: its own block, read from the defaults.
-fn plant_kind(kind: &str) -> Result<(og_geom::Plant, PlantLook), String> {
+fn plant_kind(kind: &str) -> Result<(og_shape::generators::Plant, PlantLook), String> {
     let text = PLANT_KINDS
         .iter()
         .find(|(k, _)| *k == kind)
@@ -108,12 +109,12 @@ fn plant_kind(kind: &str) -> Result<(og_geom::Plant, PlantLook), String> {
     plant_desc(block).map_err(|e| format!("kind {kind}: {e}"))
 }
 
-/// A `plant` block as og-geom's [`og_geom::Plant`] (its fields by their
+/// A `plant` block as og-shape's [`og_shape::generators::Plant`] (its fields by their
 /// names, a level a block: `trunk`, `branch1` to `branch3`) and its look.
 /// What it leaves out is its `kind`'s; without one the defaults', with
 /// `leaves` and `flowers` only when their block is there.
-pub(super) fn plant_desc(b: &Block) -> Result<(og_geom::Plant, PlantLook), String> {
-    use og_geom::plant::{Flowers, Growth, LeafShape, Leaves, Level, Plant};
+pub(super) fn plant_desc(b: &Block) -> Result<(og_shape::generators::Plant, PlantLook), String> {
+    use og_shape::generators::plant::{Flowers, Growth, LeafShape, Leaves, Level, Plant};
     let mut keys = vec![
         "kind",
         "seed",
@@ -317,7 +318,12 @@ pub(super) fn plant_desc(b: &Block) -> Result<(og_geom::Plant, PlantLook), Strin
             Some(_) => Growth::Deciduous,
             None => d.growth,
         },
-        levels: f.uint("levels", d.levels, 0, og_geom::plant::LEVELS as u32 - 1)?,
+        levels: f.uint(
+            "levels",
+            d.levels,
+            0,
+            og_shape::generators::plant::LEVELS as u32 - 1,
+        )?,
         level,
         force_direction,
         force_strength,

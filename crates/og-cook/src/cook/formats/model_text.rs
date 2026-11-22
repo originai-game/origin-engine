@@ -1,4 +1,4 @@
-//! `type model`: a model written as text, from og-geom's generators and
+//! `type model`: a model written as text, from og-shape's generators and
 //! og-render's primitives (the runtime's own geometry descs, by the name
 //! of their `og.render` call and with their fields' names and defaults),
 //! placed as `og.render.mergeGeometries` places parts, a material per
@@ -61,7 +61,7 @@
 //! `lineTo`, `quadraticCurveTo`, `bezierCurveTo`, `splineThru`, `arc`,
 //! `absarc`, `ellipse`, `absellipse`, `closePath`, `points` for
 //! setFromPoints) with `hole { }` blocks, flattened as og.Shape flattens
-//! them ([`og_geom::path2`]); paths (`extrudePath`, a sweep's `path`) are
+//! them ([`og_shape::generators::path2`]); paths (`extrudePath`, a sweep's `path`) are
 //! og.path's `kind`, `closed`, `tension` and `point` lines.
 //!
 //! A placement (`position`, `quaternion`, `scale`, `mirror`) is the part's
@@ -71,7 +71,7 @@
 //! with its triangles turned, as mergeGeometries bakes one.
 //!
 //! A `plant` block grows a tree, a shrub or a flower from numbers and a
-//! seed ([`og_geom::plant`]) instead of parts: its wood, and its leaves
+//! seed ([`og_shape::generators::plant`]) instead of parts: its wood, and its leaves
 //! and petals in vertex colours, as two primitives of one mesh, each
 //! vertex with the wind's pivot and anchor (`_OG_PIVOT`, `_OG_ANCHOR`), so
 //! `og.Model.sway` bends it under `og.Wind`. A model grows one plant, at
@@ -146,7 +146,7 @@ mod plant;
 use super::vox::Bin;
 use glam::{DQuat, DVec2, DVec3};
 use og_core::ogt::{Block, Document, Entry};
-use og_geom::{Mesh, Mirror, Path2, Placement, Shape, ShapePoints};
+use og_shape::generators::{Mesh, Mirror, Path2, Placement, Shape, ShapePoints};
 use plant::plant_desc;
 use std::collections::BTreeMap;
 
@@ -523,7 +523,7 @@ fn sample(p: &og_timeline::Path, t: f64) -> (DVec3, DVec3) {
 
 // ── geometries ──────────────────────────────────────────────────────────────
 
-/// An og-render primitive as og-geom's mesh (no colours).
+/// An og-render primitive as og-shape's mesh (no colours).
 fn from_render(m: og_render_data::MeshData) -> Mesh {
     Mesh {
         positions: m.vertices.iter().map(|v| v.position).collect(),
@@ -567,7 +567,7 @@ fn geometry(e: &Entry, detail: f64) -> Result<Mesh, String> {
     let empty = Block::new();
     let b = e.block.as_ref().unwrap_or(&empty);
     let name = e.key.as_str();
-    let tau = og_geom::trig::TAU;
+    let tau = og_shape::generators::trig::TAU;
     let f32s = |x: f64| x as f32;
     let mut mesh = match name {
         "boxGeometry" => {
@@ -688,7 +688,11 @@ fn geometry(e: &Entry, detail: f64) -> Result<Mesh, String> {
         "shapeGeometry" => {
             let f = Fields::new(b, name, &keys(&["shape", "curveSegments"]))?;
             let d = f.segments("curveSegments", (12, 1, 1 << 12), 2, detail)?;
-            og_geom::shape_geometry(&shapes(&f, d, &[[0.0, 0.5], [-0.5, -0.5], [0.5, -0.5]])?)
+            og_shape::generators::shape_geometry(&shapes(
+                &f,
+                d,
+                &[[0.0, 0.5], [-0.5, -0.5], [0.5, -0.5]],
+            )?)
         }
         "extrudeGeometry" => {
             let f = Fields::new(
@@ -710,7 +714,7 @@ fn geometry(e: &Entry, detail: f64) -> Result<Mesh, String> {
             let d = f.segments("curveSegments", (12, 1, 1 << 12), 2, detail)?;
             let s = shapes(&f, d, &[[0.5, 0.5], [-0.5, 0.5], [-0.5, -0.5], [0.5, -0.5]])?;
             let thickness = f.size("bevelThickness", 0.2)?;
-            let o = og_geom::Extrude {
+            let o = og_shape::generators::Extrude {
                 depth: f.size("depth", 1.0)?,
                 steps: f.uint("steps", 1, 1, 1 << 16)?,
                 bevel_enabled: f.flag("bevelEnabled", true)?,
@@ -724,13 +728,13 @@ fn geometry(e: &Entry, detail: f64) -> Result<Mesh, String> {
                 Some(pb) => {
                     let p = path(pb).map_err(|x| format!("{name}.extrudePath: {x}"))?;
                     let s_at = |t: f64| sample(&p, t);
-                    let along = og_geom::extrude::ExtrudePath {
+                    let along = og_shape::generators::extrude::ExtrudePath {
                         sample: &s_at,
                         closed: p.desc().closed,
                     };
-                    og_geom::extrude(&s, &o, Some(&along))
+                    og_shape::generators::extrude(&s, &o, Some(&along))
                 }
-                None => og_geom::extrude(&s, &o, None),
+                None => og_shape::generators::extrude(&s, &o, None),
             }
         }
         "latheGeometry" => {
@@ -739,7 +743,7 @@ fn geometry(e: &Entry, detail: f64) -> Result<Mesh, String> {
                 name,
                 &keys(&["points", "segments", "phiStart", "phiLength"]),
             )?;
-            let mut l = og_geom::Lathe::default();
+            let mut l = og_shape::generators::Lathe::default();
             if let Some(e) = f.get("points") {
                 let a = numbers(e)?;
                 if a.len() < 4 || a.len() % 2 != 0 {
@@ -750,7 +754,7 @@ fn geometry(e: &Entry, detail: f64) -> Result<Mesh, String> {
             l.segments = f.segments("segments", (12, 1, 1 << 16), 5, detail)?;
             l.phi_start = f.num("phiStart", 0.0)?;
             l.phi_length = f.num("phiLength", tau)?;
-            og_geom::lathe(&l)
+            og_shape::generators::lathe(&l)
         }
         "polyhedronGeometry" => {
             let f = Fields::new(b, name, &keys(&["vertices", "indices", "radius", "detail"]))?;
@@ -776,7 +780,7 @@ fn geometry(e: &Entry, detail: f64) -> Result<Mesh, String> {
             if indices.is_empty() {
                 return Err(format!("{name} needs at least one face (indices)"));
             }
-            og_geom::polyhedron(&og_geom::Polyhedron {
+            og_shape::generators::polyhedron(&og_shape::generators::Polyhedron {
                 vertices,
                 indices,
                 radius: f.size("radius", 1.0)?,
@@ -789,10 +793,10 @@ fn geometry(e: &Entry, detail: f64) -> Result<Mesh, String> {
         | "tetrahedronGeometry" => {
             let f = Fields::new(b, name, &keys(&["radius", "detail"]))?;
             let make = match name {
-                "icosahedronGeometry" => og_geom::icosahedron,
-                "dodecahedronGeometry" => og_geom::dodecahedron,
-                "octahedronGeometry" => og_geom::octahedron,
-                _ => og_geom::tetrahedron,
+                "icosahedronGeometry" => og_shape::generators::icosahedron,
+                "dodecahedronGeometry" => og_shape::generators::dodecahedron,
+                "octahedronGeometry" => og_shape::generators::octahedron,
+                _ => og_shape::generators::tetrahedron,
             };
             make(
                 f.size("radius", 1.0)?,
@@ -826,18 +830,18 @@ fn geometry(e: &Entry, detail: f64) -> Result<Mesh, String> {
                 .block("path")?
                 .ok_or_else(|| format!("{name} needs a path (kind, closed, point lines)"))?;
             let p = path(pb).map_err(|x| format!("{name}.path: {x}"))?;
-            let keys_of = |k: &str| -> Result<Vec<og_geom::Key>, String> {
+            let keys_of = |k: &str| -> Result<Vec<og_shape::generators::Key>, String> {
                 b.get_all(k)
                     .map(|e| {
                         let v = exactly(e, 2)?;
-                        Ok(og_geom::Key {
+                        Ok(og_shape::generators::Key {
                             t: v[0],
                             value: v[1],
                         })
                     })
                     .collect()
             };
-            let s = og_geom::Sweep {
+            let s = og_shape::generators::Sweep {
                 section,
                 steps: f.segments("steps", (64, 1, 1 << 16), 6, detail)?,
                 scale: keys_of("scale")?,
@@ -845,9 +849,9 @@ fn geometry(e: &Entry, detail: f64) -> Result<Mesh, String> {
                 caps: f.flag("caps", true)?,
             };
             let s_at = |t: f64| sample(&p, t);
-            og_geom::sweep(
+            og_shape::generators::sweep(
                 &s,
-                &og_geom::extrude::ExtrudePath {
+                &og_shape::generators::extrude::ExtrudePath {
                     sample: &s_at,
                     closed: p.desc().closed,
                 },
@@ -856,11 +860,11 @@ fn geometry(e: &Entry, detail: f64) -> Result<Mesh, String> {
         "csgGeometry" => {
             let f = Fields::new(b, name, &keys(&["op", "a", "b"]))?;
             let op = match f.get("op") {
-                None => og_geom::CsgOp::Union,
+                None => og_shape::boolean::CsgOp::Union,
                 Some(e) => match e.word(0).map_err(|x| at(e, x))? {
-                    "union" => og_geom::CsgOp::Union,
-                    "subtract" => og_geom::CsgOp::Subtract,
-                    "intersect" => og_geom::CsgOp::Intersect,
+                    "union" => og_shape::boolean::CsgOp::Union,
+                    "subtract" => og_shape::boolean::CsgOp::Subtract,
+                    "intersect" => og_shape::boolean::CsgOp::Intersect,
                     w => return Err(at(e, format!("'{w}' is not union, subtract or intersect"))),
                 },
             };
@@ -875,7 +879,7 @@ fn geometry(e: &Entry, detail: f64) -> Result<Mesh, String> {
                 placed_geometry(ob, &format!("{name}.{k}"), e.line, detail)
             };
             let none = Placement::default();
-            og_geom::csg(&operand("a")?, none, &operand("b")?, none, op)?
+            og_shape::boolean::csg(&operand("a")?, none, &operand("b")?, none, op)?
         }
         MERGE => {
             let f = Fields::new(b, name, &keys(&["part"]))?;
@@ -894,15 +898,15 @@ fn geometry(e: &Entry, detail: f64) -> Result<Mesh, String> {
             if parts.is_empty() {
                 return Err(format!("{name} needs at least one part"));
             }
-            let refs: Vec<og_geom::Part> = parts
+            let refs: Vec<og_shape::generators::Part> = parts
                 .iter()
-                .map(|m| og_geom::Part {
+                .map(|m| og_shape::generators::Part {
                     mesh: m,
                     placement: Placement::default(),
                     mirror: Mirror::default(),
                 })
                 .collect();
-            og_geom::merge(&refs)?
+            og_shape::generators::merge(&refs)?
         }
         _ => unreachable!("geometry_entry names only geometries"),
     };
@@ -979,7 +983,7 @@ fn placed_geometry(block: &Block, what: &str, line: usize, detail: f64) -> Resul
     let f = Fields::new(block, what, &allowed)?;
     let (p, m) = placement(&f)?;
     let mesh = geometry(g, detail).map_err(|e| format!("{what}: {e}"))?;
-    og_geom::merge(&[og_geom::Part {
+    og_shape::generators::merge(&[og_shape::generators::Part {
         mesh: &mesh,
         placement: p,
         mirror: m,
@@ -1431,7 +1435,7 @@ fn build_at(text: &str, detail: f64) -> Result<Built, String> {
                     // its triangles their winding); the rest is the node's.
                     let mirrors = m.x || m.y || m.z || p.scale.min_element() < 0.0;
                     let (geo, local) = if mirrors {
-                        let baked = og_geom::merge(&[og_geom::Part {
+                        let baked = og_shape::generators::merge(&[og_shape::generators::Part {
                             mesh: &mesh,
                             placement: *p,
                             mirror: *m,
@@ -1465,7 +1469,7 @@ fn build_at(text: &str, detail: f64) -> Result<Built, String> {
                     add_node(n, pivot, &mut nodes, &mut children, &mut roots);
                 }
             }
-            // A plant grown from its numbers (og-geom's `plant`): its wood
+            // A plant grown from its numbers (og-shape's `plant`): its wood
             // and its leaves and flowers as two primitives of one mesh,
             // each vertex with its foliage, in the model's own space (the
             // wind bends a model's foliage about its root and top), so
@@ -1481,8 +1485,8 @@ fn build_at(text: &str, detail: f64) -> Result<Built, String> {
                 }
                 planted = true;
                 let (desc, look) = plant_desc(b).map_err(|x| format!("plant '{name}': {x}"))?;
-                let grown =
-                    og_geom::plant(&desc, detail).map_err(|x| format!("plant '{name}': {x}"))?;
+                let grown = og_shape::generators::plant(&desc, detail)
+                    .map_err(|x| format!("plant '{name}': {x}"))?;
                 let mut named = |m: Option<(String, usize)>,
                                  own: serde_json::Value|
                  -> Result<usize, String> {
@@ -1550,7 +1554,7 @@ fn build_at(text: &str, detail: f64) -> Result<Built, String> {
                 // an edge collapse cannot thin a blade without merging
                 // blades, and a level that drops leaves must grow the rest
                 // (a tuft of few long blades changes height). The level is
-                // every blade as its kite (og-geom's `plant_level`), whose
+                // every blade as its kite (og-shape's `plant_level`), whose
                 // corners are the full blade's, and the full wood: both weld
                 // to the full mesh's vertices, so the level adds none. The
                 // wood stays whole: a collapse along a thin open stem costs
@@ -1558,7 +1562,7 @@ fn build_at(text: &str, detail: f64) -> Result<Built, String> {
                 // shortens and bends the stems (a reed's moved half a metre,
                 // 0.19 m with their ends locked).
                 let mut ids = Vec::new();
-                let kites = og_geom::plant_level(&desc, detail)
+                let kites = og_shape::generators::plant_level(&desc, detail)
                     .map_err(|x| format!("plant '{name}': {x}"))?;
                 if let Some(material) = leaf
                     && kites.leaves.triangle_count() < grown.leaves.triangle_count()

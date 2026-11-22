@@ -1,6 +1,4 @@
 #![allow(missing_docs)]
-//! Copied from origin-engine's og-geom (`third_party/og-geom/SOURCE`).
-//!
 //! Procedural geometry for Origin Engine, with no renderer dependency
 //! (`docs/design.md` §2.6): three.js's generators with three.js's
 //! parameter names, defaults, vertex orders and counts ([`shape_geometry`],
@@ -33,6 +31,7 @@ pub mod parts;
 pub mod path2;
 pub mod path3;
 pub mod paths;
+pub mod plant;
 pub mod polyhedron;
 pub mod shape;
 pub mod solids;
@@ -46,6 +45,7 @@ pub use frames::{Frame, frenet_frames};
 pub use lathe::{Lathe, lathe};
 pub use merge::{Mirror, Part, merge};
 pub use path2::{Path2, Shape};
+pub use plant::{Flowers, Growth, LeafShape, Leaves, Level, Plant, PlantMesh, plant, plant_level};
 pub use polyhedron::{Polyhedron, dodecahedron, icosahedron, octahedron, polyhedron, tetrahedron};
 pub use shape::{ShapePoints, shape_geometry};
 pub use sweep::{Key, Sweep, sweep};

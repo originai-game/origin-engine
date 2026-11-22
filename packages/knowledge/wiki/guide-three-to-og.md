@@ -104,7 +104,7 @@ is off) and `DirectionalLight.castShadow` is on. Set them where the port
 depends on the old value.
 
 <a id="guide-three-to-og-4"></a>
-### `three-to-og §4` Geometry: og.render and og-geom
+### `three-to-og §4` Geometry: og.render and og-shape
 
 The geometry classes keep their parameters, names and defaults; the
 positional arguments become a desc object of the same names, and the
