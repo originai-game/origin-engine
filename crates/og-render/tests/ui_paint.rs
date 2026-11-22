@@ -15,7 +15,11 @@
 //!   values as CSS blends, on any of the pass's three targets (the output,
 //!   its plain view, its own layer), or a layer meeting a float output (a
 //!   wide-gamut display's) in linear light
+//! - a glyph's raster read from the wrong place in the glyph atlas, or its
+//!   coverage drawn as anything but the text's alpha (each test below says
+//!   more)
 use glam::Vec3;
+use og_render::glyphs::{GlyphKey, GlyphSlot, GlyphTier, UNUSED_FRAMES};
 use og_render::paint::{
     GRADIENT_CONIC, GRADIENT_RADIAL, IMAGE_FILL, PaintGradient, PaintKind, PaintQuad,
 };
@@ -528,4 +532,194 @@ fn a_translucent_fill_blends_in_encoded_srgb_as_css_does() {
             exact(64, 96, grey(64), "white over the frame");
         }
     }
+}
+
+fn raster(
+    tier: GlyphTier,
+    slot: GlyphSlot,
+    at: [f32; 2],
+    color: [f32; 4],
+    p: [f32; 4],
+) -> PaintQuad {
+    let (x, y) = (f32::from(slot.x), f32::from(slot.y));
+    let (w, h) = (f32::from(slot.width), f32::from(slot.height));
+    PaintQuad {
+        rect: [at[0], at[1], w, h],
+        clip: [0.0, 0.0, W as f32, W as f32],
+        color,
+        radius: [0.0; 4],
+        p,
+        kind: PaintKind::Raster as u32,
+        a: tier as u32,
+        b: u32::from(slot.page),
+        xf: 0,
+        uv: [x, y, x + w, y + h],
+        wipe: [0.0; 4],
+        mask: 0,
+        filter: 0,
+    }
+}
+
+/// A 4×4 mask, each pixel its own coverage: 15, 31, … 255 row by row.
+fn ramp() -> Vec<u8> {
+    (0..16u32).map(|i| (15 + 16 * i) as u8).collect()
+}
+
+fn close(got: [u8; 3], want: [u8; 3], what: &str) {
+    let off = got.iter().zip(want).map(|(&g, w)| g.abs_diff(w)).max();
+    assert!(off.unwrap() <= 2, "{what}: {got:?}, expected {want:?}");
+}
+
+/// What would break:
+/// - a coverage glyph read from the wrong place in its page (a plot past
+///   the first uploaded at the page's origin, a texel off, or filtered
+///   with its neighbour)
+/// - coverage remapped on its way to alpha, or blended with the ground in
+///   linear light (dark text on white reads thin there: half coverage of
+///   40 over 255 is 189, and CSS's 148), on any of the pass's targets
+#[test]
+#[ignore = "requires GPU"]
+fn a_coverage_glyph_is_its_colours_alpha_blended_as_css_blends() {
+    let ink = linear(40);
+    let key = |g| GlyphKey::new(GlyphTier::Coverage, 0, 0, g, 16 * 64);
+    for to in [To::Offscreen, To::Plain, To::View] {
+        let px = render_to(to, |scene| {
+            let mut atlas = scene.ui.glyphs.lock().unwrap();
+            // The first fills plot 0, so the ramp lies in plot 1.
+            atlas
+                .insert(key(1), (0, 0), (255, 255), &[255; 255 * 255])
+                .unwrap();
+            let slot = atlas.insert(key(2), (0, 0), (4, 4), &ramp()).unwrap();
+            assert_eq!((slot.x, slot.y), (256, 0));
+            vec![
+                solid([0.0, 0.0, W as f32, W as f32], WHITE, 1.0),
+                raster(
+                    GlyphTier::Coverage,
+                    slot,
+                    [10.0, 20.0],
+                    [ink, ink, ink, 1.0],
+                    [0.0; 4],
+                ),
+            ]
+        });
+        for i in 0..16u32 {
+            let a = (15 + 16 * i) as f32 / 255.0;
+            let want = (40.0 * a + 255.0 * (1.0 - a)).round() as u8;
+            let (x, y) = (10 + i % 4, 20 + i / 4);
+            close(at(&px, x, y), [want; 3], &format!("{to:?}, pixel {i}"));
+        }
+        // Its neighbours in the plot are clear: nothing past its edge.
+        for (x, y) in [(9, 20), (14, 20), (10, 19), (10, 24)] {
+            close(at(&px, x, y), [255; 3], "beside the glyph");
+        }
+    }
+}
+
+/// What would break:
+/// - a colour glyph tinted by the text colour, or its premultiplied
+///   colour drawn as straight (a half-clear pixel half as bright again)
+/// - a distance field's edge at the wrong value, or its range not scaled
+///   to the screen
+#[test]
+#[ignore = "requires GPU"]
+fn colour_glyphs_keep_their_colours_and_a_field_draws_its_inside() {
+    let px = render(|scene| {
+        let mut atlas = scene.ui.glyphs.lock().unwrap();
+        // Opaque, then the same colour half clear (premultiplied).
+        let color = atlas
+            .insert(
+                GlyphKey::new(GlyphTier::Color, 0, 0, 1, 16 * 64),
+                (0, 0),
+                (2, 1),
+                &[200, 100, 50, 255, 100, 50, 25, 128],
+            )
+            .unwrap();
+        // Inside (every channel full) on the left, outside on the right.
+        let field: Vec<u8> = (0..8 * 8 * 4)
+            .map(|i| if (i / 4) % 8 < 4 { 255 } else { 0 })
+            .collect();
+        let field = atlas
+            .insert(
+                GlyphKey::new(GlyphTier::Field, 0, 0, 1, 0),
+                (0, 0),
+                (8, 8),
+                &field,
+            )
+            .unwrap();
+        vec![
+            // Green ink: a colour glyph draws in its own colours.
+            raster(
+                GlyphTier::Color,
+                color,
+                [10.0, 10.0],
+                [0.0, 1.0, 0.0, 1.0],
+                [0.0; 4],
+            ),
+            raster(
+                GlyphTier::Field,
+                field,
+                [40.0, 40.0],
+                [1.0, 1.0, 1.0, 1.0],
+                [0.0, 0.0, 12.0, 0.0],
+            ),
+        ]
+    });
+    close(at(&px, 10, 10), [200, 100, 50], "an opaque colour pixel");
+    // Half of it over black, blended as encoded: its premultiplied colour.
+    close(at(&px, 11, 10), [100, 50, 25], "a half-clear colour pixel");
+    for y in [40, 47] {
+        close(at(&px, 41, y), [255; 3], "inside the field");
+        close(at(&px, 46, y), [0; 3], "outside the field");
+    }
+}
+
+/// What would break: a plot emptied and filled again keeping the pixels
+/// it was first uploaded with.
+#[test]
+#[ignore = "requires GPU"]
+fn a_refilled_plot_draws_its_new_glyph() {
+    let mut scene = RenderScene::new();
+    scene.ui.overlay = Some(Overlay::new(W as f32, W as f32, 1.0));
+    scene.lighting.environment.background = Background::Color(Vec3::ZERO);
+    scene.look.post.tonemap = Tonemap::None;
+    scene.ui.paint.clear();
+    (scene.ui.paint.width, scene.ui.paint.height) = (W as f32, W as f32);
+    let mut renderer = Renderer::new_blocking(&RenderDesc {
+        width: W,
+        height: W,
+        ..Default::default()
+    })
+    .expect("renderer");
+    let key = |g| GlyphKey::new(GlyphTier::Coverage, 0, 0, g, 16 * 64);
+    let mut draw = |scene: &mut RenderScene, glyph: u32, mask: [u8; 4]| {
+        let slot = scene
+            .ui
+            .glyphs
+            .lock()
+            .unwrap()
+            .insert(key(glyph), (0, 0), (2, 2), &mask)
+            .unwrap();
+        assert_eq!((slot.x, slot.y), (0, 0));
+        scene.ui.paint.quads = vec![raster(
+            GlyphTier::Coverage,
+            slot,
+            [8.0, 8.0],
+            [1.0; 4],
+            [0.0; 4],
+        )];
+        scene.ui.paint.generation += 1;
+        renderer
+            .render(scene, &RenderTarget::Offscreen)
+            .expect("render");
+        let px = renderer.read_offscreen().expect("capture").pixels;
+        [(8, 8), (9, 8), (8, 9), (9, 9)].map(|(x, y)| at(&px, x, y)[0])
+    };
+    assert_eq!(draw(&mut scene, 1, [255, 0, 0, 255]), [255, 0, 0, 255]);
+    // Unused for 64 frames, its plot is emptied; the next glyph takes
+    // the same place.
+    for _ in 0..UNUSED_FRAMES {
+        scene.ui.glyphs.lock().unwrap().advance();
+    }
+    assert_eq!(scene.ui.glyphs.lock().unwrap().stats().evicted, 1);
+    assert_eq!(draw(&mut scene, 2, [0, 255, 255, 0]), [0, 255, 255, 0]);
 }

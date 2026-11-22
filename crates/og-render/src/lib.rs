@@ -163,6 +163,8 @@ pub use visibility::lod;
 use visibility::meshlet_gpu;
 pub mod particles;
 use gpu::pipeline_cache;
+/// The glyph atlas the paint arena's raster quads read.
+pub use og_draw::glyphs;
 pub use og_draw::kurbo;
 /// og-ui's paint arena, drawn by the paint pass (`ui/paint.rs`).
 pub use og_draw::paint;

@@ -41,6 +41,10 @@ pub struct SceneUi {
     /// (`ui/paint.rs`); kept across frames, uploaded when its generation
     /// moves.
     pub paint: og_draw::paint::Paint,
+    /// The glyph atlas the paint's [`og_draw::paint::PaintKind::Raster`]
+    /// quads read: whoever paints fills it, the paint pass uploads the
+    /// plots whose pixels changed.
+    pub glyphs: og_draw::glyphs::SharedAtlas,
     /// Cooked vectors the overlay's UI draws ([`RenderScene::add_ui_vector`]).
     pub ui_vectors: Vec<crate::ui::UiVectorData>,
     /// Custom materials UI layers composite through
