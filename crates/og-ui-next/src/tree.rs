@@ -311,6 +311,10 @@ pub struct Tree {
     /// scrollers and overflow boxes cut it (x0, y0, x1, y1), the surface
     /// not counted: what the probe calls clipped.
     cuts: Vec<[f32; 4]>,
+    /// The rounded overflow clip each element's children paint in, its
+    /// own or its nearest clipping ancestor's: its padding box (x0, y0,
+    /// x1, y1), inner corner radii and transform ([`round_to`]).
+    rounds: Vec<Option<Round>>,
     /// The elements with an anchor, in no order (a dead or unanchored one
     /// leaves at the next [`Tree::place_anchors`]).
     anchored: Vec<u32>,
@@ -481,6 +485,7 @@ impl Tree {
             sem: crate::a11y::Semantics::default(),
             abs: Vec::new(),
             cuts: Vec::new(),
+            rounds: Vec::new(),
             anchored: Vec::new(),
             anchor_order: Vec::new(),
             anchor_placed: Vec::new(),
@@ -1027,6 +1032,8 @@ impl Tree {
         const ALL: [f32; 4] = [f32::MIN, f32::MIN, f32::MAX, f32::MAX];
         self.cuts.clear();
         self.cuts.resize(self.els.len(), ALL);
+        self.rounds.clear();
+        self.rounds.resize(self.els.len(), None);
         self.shown.clear();
         let top = Shown {
             alpha: 1.0,
@@ -1144,6 +1151,13 @@ impl Tree {
             let inner = if cuts { cut_to(clip, padding) } else { clip };
             self.abs[e] = (x, y, visible, inner);
             self.cuts[e] = if cuts { cut_to(pcut, padding) } else { pcut };
+            // The rounded clip it is drawn in, and the one it sets: CSS
+            // clips overflow to the padding box with the inner radii.
+            let pround = match el.arena_parent {
+                _ if el.anchor.is_some() => None,
+                NONE => None,
+                p => self.rounds[p as usize],
+            };
             let pxf = if el.arena_parent == NONE {
                 0
             } else {
@@ -1187,6 +1201,24 @@ impl Tree {
             }
             let xf = transformed(p, pxf, &t, [x, y, b.w, b.h]);
             self.xfs[e] = xf;
+            self.rounds[e] = pround;
+            if cuts {
+                let outer = radii(s.radius, b.w, b.h);
+                let inner = [
+                    outer[0] - bt.max(bl),
+                    outer[1] - bt.max(br),
+                    outer[2] - bb.max(br),
+                    outer[3] - bb.max(bl),
+                ]
+                .map(|k| k.max(0.0));
+                if inner.iter().any(|&k| k > 0.0) {
+                    self.rounds[e] = Some(Round {
+                        bounds: padding,
+                        radius: inner,
+                        xf,
+                    });
+                }
+            }
             // The clip it sets for what it holds is drawn through its
             // transform (an ancestor's or its own): the box that bounds its
             // padding box there, against the clip it is drawn in.
@@ -1621,6 +1653,11 @@ impl Tree {
             if self.els[e].particles.is_some() {
                 self.paint_particles(e, rect, ink, clip, xf);
             }
+            if let Some(round) = pround {
+                for q in &mut self.drawn.quads[start..] {
+                    round_to(q, &round);
+                }
+            }
             let (mask, filter) = (self.masks[e], self.filters[e]);
             if mask != 0 || filter != 0 {
                 for q in &mut self.drawn.quads[start..] {
@@ -1955,6 +1992,55 @@ fn radii(r: [f32; 4], w: f32, h: f32) -> [f32; 4] {
         .min(fit(h, tl + bl))
         .min(fit(h, tr + br));
     [tl * f, tr * f, br * f, bl * f]
+}
+
+/// A rounded overflow clip: a box (x0, y0, x1, y1), its corner radii (top
+/// left, top right, bottom right, bottom left) and the transform it is
+/// drawn through.
+#[derive(Clone, Copy, Debug, PartialEq)]
+struct Round {
+    bounds: [f32; 4],
+    radius: [f32; 4],
+    xf: u32,
+}
+
+/// Rounds box quad `q` where it fills a corner of `round`: the rectangle
+/// clip cuts it square there, so its corner takes the clip's radius (a
+/// ground inside a round ring). A quad short of the corner, a glyph, an
+/// image or one under another transform keeps its shape.
+fn round_to(q: &mut PaintQuad, round: &Round) {
+    let box_kind = [
+        PaintKind::Solid,
+        PaintKind::Gradient,
+        PaintKind::InsetShadow,
+        PaintKind::Border,
+    ]
+    .iter()
+    .any(|&k| q.kind == k as u32);
+    if !box_kind || q.xf != round.xf {
+        return;
+    }
+    let [x0, y0, x1, y1] = round.bounds;
+    let [x, y, w, h] = q.rect;
+    let (left, top, right, bottom) = (
+        x <= x0 + 0.5,
+        y <= y0 + 0.5,
+        x + w >= x1 - 0.5,
+        y + h >= y1 - 0.5,
+    );
+    let corners = [left && top, right && top, right && bottom, left && bottom];
+    if !corners.iter().zip(round.radius).any(|(&c, r)| c && r > 0.0) {
+        return;
+    }
+    // Its part inside the clip, so the corner it rounds is the clip's.
+    let nx0 = x.max(x0);
+    let ny0 = y.max(y0);
+    q.rect = [nx0, ny0, (x + w).min(x1) - nx0, (y + h).min(y1) - ny0];
+    for k in 0..4 {
+        if corners[k] {
+            q.radius[k] = q.radius[k].max(round.radius[k]);
+        }
+    }
 }
 
 /// The font a text draws in: the body's mixed font (the body face, then
