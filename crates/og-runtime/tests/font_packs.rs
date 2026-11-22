@@ -315,15 +315,17 @@ fn the_locale_pack_is_in_the_chain_and_others_load_on_demand() {
     assert!(w.iter().all(|w| !w.contains("U+0644")), "{w:?}");
     assert_eq!(chain(engine), vec!["japanese", "arabic"]);
 
-    // Thai: no pack installed covers it, so it is still named.
-    show("สวัสดี");
+    // Hebrew: no face has it (the display face ships whole, so its Thai
+    // draws) and no pack installed covers it, so it is still named.
+    show("สวัสดี שלום");
     step();
     let w = warnings(engine);
-    assert!(w.iter().any(|w| w.contains("U+0E2A")), "{w:?}");
+    assert!(w.iter().any(|w| w.contains("U+05E9")), "{w:?}");
+    assert!(w.iter().all(|w| !w.contains("U+0E2A")), "{w:?}");
     assert_eq!(
         chain(engine),
         vec!["japanese", "arabic"],
-        "no pack for Thai"
+        "no pack for Hebrew"
     );
 }
 
@@ -718,7 +720,7 @@ fn settle(engine: u32, frame: &impl Fn() -> Cost, packs: usize) {
 /// drawn as its parts; the pack never loaded, so they are warned of and
 /// boxed; a colour page's glyphs blank (an atlas never uploaded).
 #[test]
-#[ignore = "TSX core paints no COLR colour emoji yet; owner Text+UI T-01a20000-8956"]
+#[ignore = "requires GPU"]
 fn colour_emoji_draw_from_the_emoji_pack_in_colour() {
     for (width, height) in [(1280u32, 720u32), (390, 844)] {
         let (engine, frame, seen, info) = rig(project(), width, height, true);

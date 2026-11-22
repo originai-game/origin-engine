@@ -143,6 +143,9 @@ pub(crate) struct LoadedFont {
     /// true`): og-ui shapes with it and measures characters outside the
     /// atlas, which `crate::present::glyphs` renders.
     pub file: Option<std::sync::Arc<og_text::shape::FontFile>>,
+    /// The font file's bytes: what TSX text is laid out and rastered
+    /// from (`crate::present::faces`).
+    pub bytes: Option<std::sync::Arc<Vec<u8>>>,
     /// An icon set's names (glyph U+E000 + i is icon i); empty for a text font.
     pub icons: Vec<String>,
     /// A pixel font's grid (`font { pixel <grid> }`); 0 for an outline font.
@@ -807,10 +810,15 @@ pub(crate) fn load_font(eng: &Engine, path: &str) -> Result<usize, String> {
     let pages = add_font(&mut rs.scene, &font);
     rs.fonts.push(pages);
     let render = rs.fonts.len() - 1;
-    let file = font
+    let bytes = font
         .ttf
         .clone()
-        .and_then(|t| og_text::shape::FontFile::new(std::sync::Arc::new(t)))
+        .or_else(|| font.file.clone())
+        .map(std::sync::Arc::new);
+    let file = bytes
+        .clone()
+        .filter(|_| font.ttf.is_some())
+        .and_then(og_text::shape::FontFile::new)
         .or_else(|| {
             font.shaping
                 .clone()
@@ -836,6 +844,7 @@ pub(crate) fn load_font(eng: &Engine, path: &str) -> Result<usize, String> {
         info,
         render,
         file,
+        bytes,
         icons: font.names.clone(),
         pixel: font.pixel,
     });

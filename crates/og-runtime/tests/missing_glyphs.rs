@@ -255,13 +255,13 @@ fn a_missing_glyph_is_named_once_on_the_tick_it_is_first_drawn() {
     );
 }
 
-/// og-ui's text: a label the UI draws in a face that lacks some of its
-/// characters is named on the tick the label is built, with no renderer;
-/// once per (face, character), so the same arrow in a second face is named
-/// again for that face, and a floating text in the UI's face that draws a
-/// character the UI already named stays quiet.
+/// The TSX UI's text, with no renderer. A face ships whole, so a
+/// character outside its import's `charset` draws and is not named. A
+/// character no font of the UI has is named on the tick the label is
+/// built, once. A queued or floating text still reads its face's atlas:
+/// the arrow the UI drew from the file is named there, per face.
 #[test]
-fn ui_text_warns_per_face_with_no_renderer() {
+fn ui_text_names_what_no_font_has_with_no_renderer() {
     set_hooks(Rc::new(Disk));
     og_host_begin_bundle();
     let system = og_system_define_system(
@@ -289,36 +289,39 @@ fn ui_text_warns_per_face_with_no_renderer() {
     step();
     let _ = warnings(engine);
 
-    LABEL.with(|l| *l.borrow_mut() = Some("Lap 1/3 – 0:31".into()));
+    LABEL.with(|l| *l.borrow_mut() = Some("Lap 1/3 – 0:31 ↑".into()));
     step();
-    assert_eq!(warnings(engine), vec![], "every character is in the atlas");
+    assert_eq!(warnings(engine), vec![], "the face's file has them all");
 
-    LABEL.with(|l| *l.borrow_mut() = Some("Lap 2/3 ↑".into()));
+    LABEL.with(|l| *l.borrow_mut() = Some("Lap 2/3 국".into()));
     step();
     let tick = BUILT.with(|b| b.get().1);
     let w = warnings(engine);
     assert_eq!(w.len(), 1, "{w:?}");
     assert_eq!(w[0].0, tick, "the tick that built it: {w:?}");
-    for part in [
-        "\"↑\" U+2191",
-        "font fonts/ChakraPetch-BoldItalic.ttf",
-        "charset latin punct",
-    ] {
+    for part in ["\"국\" U+AD6D", "no font of the UI has", "fallbackFonts"] {
         assert!(w[0].1.contains(part), "names {part}: {}", w[0].1);
     }
     for _ in 0..3 {
         step();
     }
-    assert_eq!(warnings(engine), vec![], "each (face, character) once");
+    assert_eq!(warnings(engine), vec![], "each character once");
 
-    // A floating text in the UI's face: the arrow was named for it already.
+    // A floating text in the UI's face reads its atlas, which lacks the
+    // arrow: named for that face.
     let float = json!({ "text": "↑ 12", "position": { "x": 0, "y": 0, "z": 0 } });
     value(og_runtime::host_impl::answer(og_render_floating_text(
         engine,
         Some(float.to_string()),
     )));
     step();
-    assert_eq!(warnings(engine), vec![], "named for this face already");
+    let w = warnings(engine);
+    assert_eq!(w.len(), 1, "{w:?}");
+    assert!(
+        w[0].1.contains("U+2191") && w[0].1.contains("font fonts/ChakraPetch-BoldItalic.ttf"),
+        "{}",
+        w[0].1
+    );
 
     // The same arrow and a dash in the Latin face: named again, for it.
     show(engine, &latin, "– ↑");

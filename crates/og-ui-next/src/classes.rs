@@ -692,9 +692,11 @@ fn record_of(style: &Style, props: &ClassProps) -> Record {
     }
     if let Some(a) = text.text_align {
         t.align = match a {
+            TextAlign::Auto => 0,
             TextAlign::Center => 1,
             TextAlign::Right => 2,
-            _ => 0,
+            TextAlign::Left => 3,
+            TextAlign::Justify => 4,
         };
         t.set |= Text::ALIGN;
     }
@@ -711,6 +713,24 @@ fn record_of(style: &Style, props: &ClassProps) -> Record {
         t.hyphens = h;
         t.set |= Text::HYPHENS;
     }
+    // NSH's family list, slant and variant forms go to the text's layout
+    // as they are (text.rs): no copy of their meaning here.
+    if let Some(f) = text.font_family {
+        t.family = Some(f);
+        t.set |= Text::FAMILY;
+    }
+    if let Some(i) = text.italic {
+        t.italic = i;
+        t.set |= Text::ITALIC;
+    }
+    if let Some(v) = text.font_variant {
+        t.variant = v.0;
+        t.set |= Text::VARIANT;
+    }
+    if let Some(w) = props.overflow_wrap {
+        t.wrap = w;
+        t.set |= Text::WRAP;
+    }
     r.motion = motion_of(style);
     if let Some(nowrap) = props.no_wrap {
         t.nowrap = nowrap;
@@ -720,8 +740,10 @@ fn record_of(style: &Style, props: &ClassProps) -> Record {
         t.clamp = n.min(u32::from(u16::MAX)) as u16;
         t.set |= Text::CLAMP;
     }
-    if props.ellipsize.is_some() {
-        t.overflow = 1;
+    if let Some(mode) = props.ellipsize {
+        // `text-clip` cuts with no ellipsis; Parley places one at a
+        // line's end only, so every other mode is the tail's.
+        t.overflow = u8::from(mode != nsh_tailwind::style::EllipsizeMode::Clip);
         t.set |= Text::OVERFLOW;
     }
     r
@@ -1338,12 +1360,12 @@ mod tests {
                   "letter_spacing", "letter_spacing_em", "line_height_em",
                   "line_height_multiple", "decoration", "decoration_color",
                   "decoration_thickness", "stroke_width", "stroke_color", "transform",
-                  "hyphens", "shadow_color", "shadow_offset", "shadow_radius"],
-                &[// Not drawn yet: faces (`font-*` families, `italic`,
-                  // variants), `em` sizes, decoration styles and offsets,
-                  // `text-start` kept physical, `dir`, vertical alignment
-                  // and the input colours.
-                  "font_family", "italic", "font_variant", "font_size_em",
+                  "hyphens", "shadow_color", "shadow_offset", "shadow_radius",
+                  "font_family", "italic", "font_variant"],
+                &[// Not drawn yet: `em` sizes, decoration styles and
+                  // offsets, `text-start` kept physical, `dir`, vertical
+                  // alignment and the input colours.
+                  "font_size_em",
                   "decoration_style", "underline_offset", "text_align_physical",
                   "writing_direction", "align_vertical", "placeholder_color",
                   "selection_color", "caret_color"]),
@@ -1360,7 +1382,7 @@ mod tests {
                 &[]),
             ("ClassProps", format!("{:#?}", ClassProps::default()),
                 &["ellipsize", "no_wrap", "text_shadows", "pointer_events",
-                  "number_of_lines", "space"],
+                  "number_of_lines", "space", "overflow_wrap"],
                 // Not drawn yet: `line-clamp-*`, `pointer-events-*`,
                 // `select-*`, `space-x-*` and the input colours.
                 &["selectable",

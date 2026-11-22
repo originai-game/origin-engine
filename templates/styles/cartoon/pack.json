@@ -1,65 +1,11 @@
 {
   "about": "The cartoon pack: its seeds, theme, faces, art, sounds and the slots it dresses so far; more slots follow.",
   "fonts": [
-    {
-      "family": "Cartoon Display",
-      "src": "LilitaOne-Regular.ttf",
-      "weight": [
-        400,
-        700
-      ]
-    },
-    {
-      "family": "Cartoon Display",
-      "src": "@styles/cjk/ZCOOLKuaiLe-Regular.ttf",
-      "weight": [
-        400,
-        700
-      ],
-      "unicodeRange": "U+2E80-2FDF, U+3000-303F, U+3400-4DBF, U+4E00-9FFF, U+FF00-FFEF"
-    },
-    {
-      "family": "Cartoon Text",
-      "src": "Fredoka[wdth,wght].ttf",
-      "weight": [
-        300,
-        700
-      ]
-    },
-    {
-      "family": "Cartoon Text",
-      "src": "@styles/cjk/NotoSansSC[wght].ttf",
-      "weight": [
-        100,
-        900
-      ],
-      "unicodeRange": "U+2E80-2FDF, U+3000-303F, U+3400-4DBF, U+4E00-9FFF, U+FF00-FFEF"
-    },
-    {
-      "family": "Cartoon Label",
-      "src": "Fredoka[wdth,wght].ttf",
-      "weight": [
-        600,
-        700
-      ]
-    },
-    {
-      "family": "Cartoon Label",
-      "src": "@styles/cjk/NotoSansSC[wght].ttf",
-      "weight": [
-        100,
-        900
-      ],
-      "unicodeRange": "U+2E80-2FDF, U+3000-303F, U+3400-4DBF, U+4E00-9FFF, U+FF00-FFEF"
-    },
-    {
-      "family": "Cartoon Fallback",
-      "src": "@styles/shared/InstrumentSans[wdth,wght].ttf",
-      "weight": [
-        400,
-        700
-      ]
-    }
+    "LilitaOne-Regular.ttf",
+    "@styles/cjk/ZCOOLKuaiLe-Regular.ttf",
+    "Fredoka[wdth,wght].ttf",
+    "@styles/cjk/NotoSansSC[wght].ttf",
+    "@styles/shared/InstrumentSans[wdth,wght].ttf"
   ],
   "icons": {
     "check": "art/check.svg",
@@ -362,10 +308,10 @@
       }
     },
     "fontFamily": {
-      "display": "\"Cartoon Display\", \"Cartoon Fallback\"",
-      "mono": "\"Cartoon Text\", \"Cartoon Fallback\"",
-      "rounded": "\"Cartoon Text\", \"Cartoon Fallback\"",
-      "sans": "\"Cartoon Text\", \"Cartoon Fallback\""
+      "display": "\"Lilita One\", \"ZCOOL KuaiLe\", \"Instrument Sans\"",
+      "mono": "\"Fredoka\", \"Noto Sans SC\", \"Instrument Sans\"",
+      "rounded": "\"Fredoka\", \"Noto Sans SC\", \"Instrument Sans\"",
+      "sans": "\"Fredoka\", \"Noto Sans SC\", \"Instrument Sans\""
     },
     "radius": {
       "block": 14.0,

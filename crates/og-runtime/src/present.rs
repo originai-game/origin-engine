@@ -11,6 +11,7 @@ pub(crate) mod display;
 pub(crate) mod effect;
 pub(crate) mod environment;
 pub(crate) mod extract;
+pub(crate) mod faces;
 pub(crate) mod feel;
 pub(crate) mod fx;
 pub(crate) mod geometry;

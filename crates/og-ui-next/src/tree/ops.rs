@@ -1207,10 +1207,12 @@ impl Tree {
                     own[3].min(cut[3]).max(own[1].max(cut[1])),
                 ];
                 let clipped = visible != own;
-                let glyphs = (!el.text.is_empty())
-                    .then(|| self.glyphs.get(e))
-                    .flatten()
-                    .filter(|g| !g.quads.is_empty());
+                // Its text as the last paint laid it out.
+                let glyphs = el
+                    .leaf
+                    .filter(|_| !el.text.is_empty())
+                    .and_then(|leaf| self.texts.leaf(leaf))
+                    .filter(|g| !g.fill.is_empty() && *g.text == *el.text);
                 let parent = match el.parent {
                     NONE => 0,
                     p => self.els[p as usize].js,
@@ -1225,16 +1227,16 @@ impl Tree {
                     clipped,
                     shown,
                     text: &el.text,
-                    broken: self.glyphs.get(e).map_or(Vec::new(), |g| {
+                    broken: glyphs.map_or(Vec::new(), |g| {
                         crate::text::broken_words(&g.text, &g.line_text)
                     }),
                     ink: self.shown.get(e).map_or([0.0; 4], |s| {
                         [s.ink[0], s.ink[1], s.ink[2], s.ink[3] * s.alpha]
                     }),
-                    size: glyphs.map_or(0.0, |g| f32::from_bits(g.key[1])),
+                    size: glyphs.map_or(0.0, |g| g.size()),
                     lines: glyphs.zip(el.leaf).map_or(Vec::new(), |(g, leaf)| {
                         let lb = self.arena.box_of(leaf);
-                        let size = f32::from_bits(g.key[1]);
+                        let size = g.size();
                         g.lines
                             .iter()
                             .map(|&[dx, baseline, w]| {
@@ -1359,8 +1361,19 @@ mod tests {
         t
     }
 
+    thread_local! {
+        /// The default Latin face as the sans, and a glyph atlas: what a
+        /// test's frames lay text out from and raster into.
+        static TEXT: std::cell::RefCell<(og_text::fonts::Collection, og_draw::glyphs::Atlas)> =
+            std::cell::RefCell::new((crate::text::tests::latin(), Default::default()));
+    }
+
+    fn present(t: &mut Tree) -> (bool, bool) {
+        TEXT.with_borrow_mut(|(fonts, atlas)| t.present(fonts, atlas, &IconAtlas::default()))
+    }
+
     fn frame(t: &mut Tree) {
-        t.frame(&crate::fonts::Fonts::default(), &IconAtlas::default());
+        present(t);
     }
 
     /// Nodes a batch makes lay out where their inserts put them (`before`
@@ -2338,7 +2351,7 @@ mod tests {
         assert!(t.leaving.is_empty() && t.els.iter().filter(|e| e.js == 4).all(|e| e.dead));
         // Nothing moves: the next frame paints nothing.
         t.set_time(1.8, false);
-        let (_, painted) = t.present(&crate::fonts::Fonts::default(), &IconAtlas::default());
+        let (_, painted) = present(&mut t);
         assert!(!painted);
     }
 
@@ -3711,14 +3724,6 @@ mod tests {
     /// `value` set from outside replaces the text.
     #[test]
     fn an_input_edits_at_its_caret_and_hears_change() {
-        use og_text::text::{FontMetrics, UiFont};
-        let fonts = crate::fonts::Fonts {
-            body: UiFont {
-                handle: Some(og_draw::FontHandle::from_index(0)),
-                metrics: FontMetrics::fixed(0.5),
-            },
-            ..Default::default()
-        };
         let mut t = stated();
         let mut b = Batch::default();
         b.op(1).u32(1).u8(4);
@@ -3729,7 +3734,7 @@ mod tests {
         b.op(7).u32(2).u8(Event::Press as u8).u8(1);
         b.op(8).u32(0).u32(2).u32(u32::MAX);
         t.apply(&b.bytes()).unwrap();
-        t.frame(&fonts, &IconAtlas::default());
+        frame(&mut t);
         assert!(!t.type_text("x"), "no focus, no edit");
         t.key("Tab", false, false, false, false);
         assert_eq!(t.focused_id(), Some(1));
@@ -3758,10 +3763,19 @@ mod tests {
             changes(&mut t),
             ["abXe\u{301}", "abe\u{301}", "ae\u{301}", "a"]
         );
-        // The caret is after "a": half an em (the root's 16 px: the test's
-        // resolver gives no text size) in, at the fixed face's advance.
+        // The caret is after "a": its advance in (at the root's 16 px: the
+        // test's resolver gives no text size), on a whole pixel.
+        let advance = |text: &str| {
+            let run = crate::arena::Run::sized(16.0);
+            TEXT.with_borrow_mut(|(fonts, _)| {
+                crate::text::Texts::default()
+                    .measure(fonts, 0, text, &run, crate::arena::Avail::Max)
+                    .0
+                    .round()
+            })
+        };
         let caret = |t: &mut Tree| {
-            t.frame(&fonts, &IconAtlas::default());
+            frame(t);
             let x0 = t.op_box(1).unwrap()[0];
             t.drawn
                 .quads
@@ -3769,7 +3783,7 @@ mod tests {
                 .find(|q| q.kind == og_draw::paint::PaintKind::Solid as u32 && q.rect[2] <= 2.0)
                 .map(|q| q.rect[0] - x0)
         };
-        assert_eq!(caret(&mut t), Some(8.0));
+        assert_eq!(caret(&mut t), Some(advance("a")));
         t.key("Home", false, false, false, false);
         assert_eq!(caret(&mut t), Some(0.0));
         let mut b = Batch::default();
@@ -3777,7 +3791,7 @@ mod tests {
         t.apply(&b.bytes()).unwrap();
         assert_eq!(
             caret(&mut t),
-            Some(24.0),
+            Some(advance("Zed")),
             "a new value puts the caret at its end"
         );
         assert!(
@@ -4261,49 +4275,41 @@ mod tests {
         }
     }
 
-    /// A character the body face lacks draws from the face its mixed font
-    /// falls back to (a CJK pack), in that face's own paint slot, which
-    /// the paint lists with the face's handle; the body's stay in slot 0.
+    /// A character no face of the text's family draws is reported once,
+    /// for the host to load a font pack; once a face that has it is among
+    /// the collection's fallbacks, with nothing in the tree changed, the
+    /// text is measured and drawn again with it.
     #[test]
-    fn a_character_the_body_lacks_draws_from_the_fallback_face_linked_for_it() {
-        use og_text::text::{FontMetrics, UiFont};
-        let face = |h: usize, m: FontMetrics| UiFont {
-            handle: Some(og_draw::FontHandle::from_index(h)),
-            metrics: m,
-        };
-        let body = face(0, FontMetrics::fixed(0.5).with_range(&[(0, 0x7f)]));
-        let cjk = face(5, FontMetrics::fixed(1.0));
-        let mut mixed = body.clone();
-        mixed.metrics.runs = Some(vec![cjk].into());
-        let mut fonts = crate::fonts::Fonts {
-            body,
-            ..Default::default()
-        };
+    fn a_character_the_family_lacks_draws_from_a_fallback_face_once_it_loads() {
+        let mut fonts = crate::text::tests::latin();
+        let mut atlas = og_draw::glyphs::Atlas::default();
         let mut t = tree();
         let mut b = Batch::default();
         b.op(2).u32(1).str("A中");
         b.op(8).u32(0).u32(1).u32(u32::MAX);
         t.apply(&b.bytes()).unwrap();
-        let glyphs = |t: &Tree| -> Vec<_> {
-            t.drawn
-                .quads
-                .iter()
-                .filter(|q| q.kind == og_draw::paint::PaintKind::Glyph as u32)
-                .map(|q| (char::from_u32(q.a).unwrap(), q.b))
-                .collect()
+        let glyphs = |t: &Tree| -> usize {
+            let raster = og_draw::paint::PaintKind::Raster as u32;
+            t.drawn.quads.iter().filter(|q| q.kind == raster).count()
         };
-        t.frame(&fonts, &IconAtlas::default());
-        assert_eq!(glyphs(&t), [('A', 0)]);
-        // No face has it yet: reported once, for the host to load a pack.
+        t.frame(&mut fonts, &mut atlas, &IconAtlas::default());
+        assert_eq!(glyphs(&t), 1);
+        let narrow = t.op_box(1).unwrap()[2];
         assert_eq!(t.take_missing(), ['中']);
-        // A locale links the face later, with nothing in the tree changed:
-        // the text is measured and drawn again in it.
-        fonts.body.metrics.mixed = Some(std::sync::Arc::new(mixed));
-        t.frame(&fonts, &IconAtlas::default());
-        assert_eq!(glyphs(&t), [('A', 0), ('中', 2)]);
+        let frame = t.frame(&mut fonts, &mut atlas, &IconAtlas::default());
+        assert!(!frame.painted && t.take_missing().is_empty(), "once");
+        let path = concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../templates/styles/cjk/NotoSansSC[wght].ttf"
+        );
+        let cjk = fonts
+            .add(std::sync::Arc::new(std::fs::read(path).unwrap()))
+            .unwrap();
+        fonts.set_fallback(None, &[og_text::fonts::FaceId(0), cjk]);
+        t.frame(&mut fonts, &mut atlas, &IconAtlas::default());
+        assert_eq!(glyphs(&t), 2);
+        assert!(t.op_box(1).unwrap()[2] > narrow, "measured again");
         assert!(t.take_missing().is_empty());
-        let five = og_draw::FontHandle::from_index(5);
-        assert_eq!(t.drawn.fonts[2].first(), Some(&five));
     }
 
     /// A tree whose classes resolve with NSH's default theme, as a game's do.
@@ -4327,16 +4333,6 @@ mod tests {
             b.op(8).u32(parent).u32(id).u32(u32::MAX);
         }
         t.apply(&b.bytes()).unwrap();
-    }
-
-    fn fixed_fonts() -> crate::fonts::Fonts {
-        crate::fonts::Fonts {
-            body: og_text::text::UiFont {
-                handle: Some(og_draw::FontHandle::from_index(0)),
-                metrics: og_text::text::FontMetrics::fixed(0.5),
-            },
-            ..Default::default()
-        }
     }
 
     /// `space-x-4` gives each child but the last a 16 px right margin, under
@@ -4382,35 +4378,33 @@ mod tests {
         assert_eq!(ys, [8.0, 18.0], "the top margin, on 7 only");
     }
 
-    /// `line-clamp-2` shows a long text's first two lines, the second cut
-    /// to end in an ellipsis, and its box is two lines tall; `truncate`
-    /// cuts one line the same way. Ways this could fail: the clamp on the
-    /// element never reaching its text child, the measure still sizing
-    /// every line, or the ellipsis pushed past the box.
+    /// `line-clamp-2` on an element shows its text's first two lines, the
+    /// second ending in "…" inside the box, and the text is two lines
+    /// tall. Ways this could fail: the clamp on the element never reaching
+    /// its text child, the measure still sizing every line, or the
+    /// ellipsis pushed past the box.
     #[test]
-    fn line_clamp_and_truncate_cut_the_text_with_an_ellipsis() {
+    fn line_clamp_cuts_the_text_to_its_lines_with_an_ellipsis() {
         let mut t = real();
         nodes(
             &mut t,
-            &[
-                (1, 0, "w-[40px] text-[10px] leading-[10px] line-clamp-2", 0),
-                (3, 0, "w-[40px] text-[10px] truncate", 0),
-            ],
+            &[(1, 0, "w-[60px] text-[10px] leading-[10px] line-clamp-2", 0)],
         );
         let mut b = Batch::default();
-        for (id, parent) in [(2, 1), (4, 3)] {
-            b.op(2).u32(id).str("aaaa bbbb cccc dddd");
-            b.op(8).u32(parent).u32(id).u32(u32::MAX);
-        }
+        b.op(2).u32(2).str("aaaa bbbb cccc dddd eeee ffff gggg");
+        b.op(8).u32(1).u32(2).u32(u32::MAX);
         t.apply(&b.bytes()).unwrap();
-        t.frame(&fixed_fonts(), &IconAtlas::default());
-        let lines = |id: usize| t.glyphs[t.by_js[id] as usize].line_text.clone();
-        // 5 px a character: eight fit in 40 px.
-        assert_eq!(lines(2), "aaaa\nbbbb\u{2026}\n");
+        frame(&mut t);
+        let e = t.by_js[2] as usize;
+        let leaf = t.texts.leaf(t.els[e].leaf.unwrap()).unwrap();
+        let lines: Vec<&str> = leaf.line_text.lines().collect();
+        assert_eq!(lines.len(), 2, "{lines:?}");
+        assert!(lines[0].starts_with("aaaa"), "{lines:?}");
+        assert!(lines[1].ends_with('\u{2026}'), "{lines:?}");
         assert_eq!(t.op_box(2).unwrap()[3], 20.0, "two lines tall");
-        assert_eq!(lines(4), "aaaa bb\u{2026}\n");
-        let x1 = t.glyphs[t.by_js[4] as usize].lines[0];
-        assert!(x1[2] <= 40.5, "{x1:?}");
+        for l in &leaf.lines {
+            assert!(l[0] + l[2] <= 60.5, "{l:?}");
+        }
     }
 
     /// A text shadow and outline inherit, as CSS's do: a `<Text>`'s classes
@@ -4421,7 +4415,12 @@ mod tests {
         let mut t = real();
         nodes(
             &mut t,
-            &[(1, 0, "text-shadow-md text-stroke-2 text-stroke-black", 0)],
+            &[(
+                1,
+                0,
+                "text-white text-shadow-md text-stroke-2 text-stroke-black",
+                0,
+            )],
         );
         let mut b = Batch::default();
         b.op(2).u32(2).str("ab");
@@ -4430,31 +4429,79 @@ mod tests {
         b.op(4).u32(3).str("text-stroke-0");
         b.op(8).u32(1).u32(3).u32(u32::MAX);
         t.apply(&b.bytes()).unwrap();
-        t.frame(&fixed_fonts(), &IconAtlas::default());
+        frame(&mut t);
         let black = [0.0, 0.0, 0.0, 1.0];
-        let glyphs: Vec<(char, f32, bool)> = t
+        let glyphs: Vec<&PaintQuad> = t
             .drawn
             .quads
             .iter()
-            .filter(|q| q.kind == PaintKind::Glyph as u32)
-            .map(|q| (char::from_u32(q.a).unwrap(), q.p[0], q.color == black))
+            .filter(|q| q.kind == PaintKind::Raster as u32)
             .collect();
-        // Each glyph: its shadow, its outline thickened by half the
-        // stroke, then its fill; "c" has the shadow and no outline.
-        assert_eq!(
-            glyphs.iter().map(|g| (g.0, g.1)).collect::<Vec<_>>(),
-            [
-                ('a', 0.0),
-                ('b', 0.0),
-                ('a', 1.0),
-                ('b', 1.0),
-                ('a', 0.0),
-                ('b', 0.0),
-                ('c', 0.0),
-                ('c', 0.0),
-            ]
+        // "ab": its glyphs' shadows, their outlines (the band the stroke's
+        // 2 px wide, a pixel past the fill each side), then their fills;
+        // "c" has the shadow and no outline.
+        let [sa, sb, oa, ob, a, b, sc, c] = glyphs[..] else {
+            panic!("{} glyph quads", glyphs.len());
+        };
+        for (shadow, outline, fill) in [(sa, Some(oa), a), (sb, Some(ob), b), (sc, None, c)] {
+            assert!(shadow.rect[2] > fill.rect[2] + 2.0, "a blurred shadow");
+            assert!(shadow.rect[1] > fill.rect[1] - 0.5 * (shadow.rect[3] - fill.rect[3]));
+            assert_ne!(fill.color, black);
+            if let Some(o) = outline {
+                assert_eq!(o.color, black, "the outline is black");
+                assert_eq!(o.rect[2], fill.rect[2] + 2.0);
+                assert_eq!(o.rect[0], fill.rect[0] - 1.0);
+            }
+        }
+    }
+
+    /// `truncate` on an element ends its text in "…" at the element's
+    /// content box and lets the element shrink below its text; `break-words`
+    /// breaks a word wider than its box at the box.
+    #[test]
+    fn truncate_ends_in_an_ellipsis_and_break_words_breaks_a_long_word() {
+        let mut t = real();
+        nodes(
+            &mut t,
+            &[
+                (1, 0, "flex flex-row w-[120px]", 0),
+                (2, 0, "truncate px-[4px]", 1),
+                (8, 0, "flex flex-col", 0),
+                (4, 0, "w-[60px] break-words", 8),
+                (6, 0, "w-[60px]", 8),
+            ],
         );
-        assert!(glyphs[2].2 && glyphs[3].2, "the outline is black");
+        let mut b = Batch::default();
+        for (id, parent, text) in [
+            (3, 2, "The Warden of the Far Northern Observatory"),
+            (5, 4, "Supercalifragilistic"),
+            (7, 6, "Supercalifragilistic"),
+        ] {
+            b.op(2).u32(id).str(text);
+            b.op(8).u32(parent).u32(id).u32(u32::MAX);
+        }
+        t.apply(&b.bytes()).unwrap();
+        frame(&mut t);
+        fn leaf(t: &Tree, id: u32) -> &crate::text::Leaf {
+            let e = t.by_js[id as usize] as usize;
+            t.texts.leaf(t.els[e].leaf.unwrap()).unwrap()
+        }
+        assert_eq!(t.op_box(2).unwrap()[2], 120.0, "it shrinks to its row");
+        let name = leaf(&t, 3);
+        assert!(
+            name.line_text.ends_with("\u{2026}\n"),
+            "{:?}",
+            name.line_text
+        );
+        assert!(
+            name.lines[0][2] <= 112.0,
+            "inside the padding: {:?}",
+            name.lines
+        );
+        assert!(leaf(&t, 5).lines.len() > 1, "broken at the box");
+        assert!(leaf(&t, 5).lines.iter().all(|l| l[2] <= 60.0));
+        assert_eq!(leaf(&t, 7).lines.len(), 1, "whole, past its box");
+        assert!(t.op_box(4).unwrap()[3] > t.op_box(6).unwrap()[3]);
     }
 
     /// A rounded `overflow-hidden` box rounds the corners of a child's
@@ -4704,7 +4751,7 @@ mod tests {
         b.op(4).u32(3).str("text-shadow-md underline");
         b.op(8).u32(2).u32(3).u32(u32::MAX);
         t.apply(&b.bytes()).unwrap();
-        t.frame(&fixed_fonts(), &IconAtlas::default());
+        frame(&mut t);
         let [px, py, pw, ph] = t.op_box(1).unwrap();
         let [cx, cy, _, _] = t.op_box(2).unwrap();
         assert_eq!((cx, cy), (px, py), "layout does not move");
@@ -4734,7 +4781,7 @@ mod tests {
             at(cq, cx, cy)
         );
         let kinds: Vec<u32> = d.quads[2..].iter().map(|q| q.kind).collect();
-        let g = PaintKind::Glyph as u32;
+        let g = PaintKind::Raster as u32;
         assert_eq!(
             kinds,
             [g, g, g, g, PaintKind::Solid as u32],
@@ -4797,7 +4844,7 @@ mod tests {
             b.op(6).u32(id).str("name").str("clock");
         }
         t.apply(&b.bytes()).unwrap();
-        t.frame(&crate::fonts::Fonts::default(), &IconAtlas::default());
+        frame(&mut t);
         let colors: Vec<Rgba> = t
             .drawn
             .quads

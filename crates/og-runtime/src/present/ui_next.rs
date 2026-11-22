@@ -317,7 +317,7 @@ pub(crate) fn cursor(engine: u32) -> Option<og_ui_next::Cursor> {
 
 /// Style `id`'s pack (its `pack.json`, cooked as an `og.UiPack`), if it
 /// has one.
-fn pack_layer(engine: u32, id: &str) -> Option<og_ui_next::pack::Layer> {
+pub(crate) fn pack_layer(engine: u32, id: &str) -> Option<og_ui_next::pack::Layer> {
     let eng = crate::engine::engine(engine).ok()?;
     let assets = eng.assets.borrow();
     let blob = format!("{}/pack.json", id.trim_end_matches('/'));
@@ -412,6 +412,7 @@ type SizeClass = (u8, bool, bool);
 /// reads the window's exact size, and the locale's direction.
 type Resolved = (
     Option<String>,
+    [String; 4],
     String,
     bool,
     bool,
@@ -458,6 +459,8 @@ fn resolver(
         } else {
             pack.theme_json(scheme)
         };
+        // The text roles' families as the UI's fonts are configured.
+        let theme = super::faces::themed(engine, theme);
         let mut classes = og_ui_next::classes::Classes::new(Some(&theme))
             .or_else(|_| og_ui_next::classes::Classes::new(None))
             .expect("the default theme reads")
@@ -520,15 +523,21 @@ impl Next {
         let exact = self.sized.get().then_some(window);
         let seeds = configured_seeds(engine);
         let rtl = crate::bind::i18n::rtl(engine);
-        if self.resolved.as_ref().is_some_and(|(p, s, d, h, c, w, r)| {
-            *p == self.pack
-                && *s == seeds
-                && *d == dark
-                && *h == high
-                && *c == at
-                && *w == exact
-                && *r == rtl
-        }) {
+        let roles = super::faces::roles(engine);
+        if self
+            .resolved
+            .as_ref()
+            .is_some_and(|(p, r, s, d, h, c, w, l)| {
+                *p == self.pack
+                    && *r == roles
+                    && *s == seeds
+                    && *d == dark
+                    && *h == high
+                    && *c == at
+                    && *w == exact
+                    && *l == rtl
+            })
+        {
             return;
         }
         let sized = Rc::new(std::cell::Cell::new(false));
@@ -545,6 +554,7 @@ impl Next {
         self.sized = sized;
         self.resolved = Some((
             self.pack.clone(),
+            roles,
             seeds,
             dark,
             high,
@@ -703,15 +713,13 @@ impl Next {
         out
     }
 
-    /// The characters the tree's texts drew that no face has, with the
-    /// body's handle, so an installed font pack that covers them loads.
-    pub(crate) fn take_missing(
-        &mut self,
-        fonts: &og_ui_next::fonts::Fonts,
-    ) -> Option<(og_render::FontHandle, Vec<char>)> {
-        let chars = self.tree.as_mut()?.take_missing();
-        let body = fonts.body.handle?;
-        (!chars.is_empty()).then_some((body, chars))
+    /// The characters the tree's texts drew that no face has, so an
+    /// installed font pack that covers them loads.
+    pub(crate) fn take_missing(&mut self) -> Vec<char> {
+        self.tree
+            .as_mut()
+            .map(Tree::take_missing)
+            .unwrap_or_default()
     }
 
     /// The action map's control zones, the tree's on-screen controls:
@@ -803,7 +811,11 @@ impl Next {
     pub(crate) fn end<'e>(
         &mut self,
         engine: u32,
-        (fonts, icons): (&og_ui_next::fonts::Fonts, &og_ui_next::icons::IconAtlas),
+        (faces, atlas, icons): (
+            &mut super::faces::Faces,
+            &mut og_render::glyphs::Atlas,
+            &og_ui_next::icons::IconAtlas,
+        ),
         view: Option<og_ui_next::view::WorldView>,
         (textures, size_of): (&[og_render::TextureHandle], &TextureSize<'_>),
         (time, tick): (f64, u64),
@@ -868,6 +880,20 @@ impl Next {
             }
         }
         tree.set_cover(cover, settings.reduced_motion);
+        // Glyphs raster at the size they are drawn: the surface's device
+        // pixels to one of the tree's units. Texts take the player's text
+        // size, and the locale's direction and forms.
+        let dpr = if frame.css.dpr > 0.0 {
+            frame.css.dpr
+        } else {
+            1.0
+        };
+        tree.set_scale(dpr * self.unit);
+        tree.set_text_scale(settings.text_scale);
+        tree.set_writing(
+            crate::bind::i18n::direction(engine),
+            &crate::bind::i18n::language(engine),
+        );
         // Anchored nodes where the tick's camera sees their entity or point
         // (CONVENTIONS.md §World), and whether drawn geometry stands in
         // front of the ones that ask; none without a camera or a world.
@@ -1031,8 +1057,10 @@ impl Next {
             }
         }
         let t1 = now();
-        self.font = fonts.body.handle.is_some();
-        let (_, painted) = tree.present(fonts, icons);
+        self.font = faces.any();
+        let (_, painted) = tree.present(&mut faces.collection, atlas, icons);
+        // The atlas's frame: a plot no text read for long enough empties.
+        atlas.advance();
         let t2 = now();
         if painted {
             // The tree paints its items afresh each time: the overlay takes
@@ -1059,7 +1087,11 @@ impl Next {
     /// (CONVENTIONS.md §World). The next tick's end places them again.
     pub(crate) fn follow_anchors(
         &mut self,
-        (fonts, icons): (&og_ui_next::fonts::Fonts, &og_ui_next::icons::IconAtlas),
+        (faces, atlas, icons): (
+            &mut super::faces::Faces,
+            &mut og_render::glyphs::Atlas,
+            &og_ui_next::icons::IconAtlas,
+        ),
         project: impl FnMut(
             og_ui_next::tree::AnchorTarget,
             [f32; 3],
@@ -1073,7 +1105,7 @@ impl Next {
             return;
         }
         tree.follow_anchors(project);
-        let (_, painted) = tree.present(fonts, icons);
+        let (_, painted) = tree.present(&mut faces.collection, atlas, icons);
         if painted {
             self.generation += 1;
             std::mem::swap(&mut self.paint, &mut tree.drawn);
@@ -1308,12 +1340,14 @@ impl Next {
         let glyphs: Vec<Value> = p
             .quads
             .iter()
-            .filter(|q| q.kind == og_render::paint::PaintKind::Glyph as u32)
+            .filter(|q| q.kind == og_render::paint::PaintKind::Raster as u32)
             .take(4)
-            .map(|q| json!({
-                "char": char::from_u32(q.a).map(String::from), "x": q.rect[0], "baseline": q.rect[1],
-                "size": q.rect[2], "color": q.color, "clip": q.clip, "font": q.b,
-            }))
+            .map(|q| {
+                json!({
+                    "x": q.rect[0], "y": q.rect[1], "width": q.rect[2], "height": q.rect[3],
+                    "color": q.color, "clip": q.clip, "tier": q.a, "page": q.b,
+                })
+            })
             .collect();
         let kinds =
             json!({ "solid": kinds[0], "gradient": kinds[1], "glyph": kinds[2], "icon": kinds[3] });

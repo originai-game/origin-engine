@@ -54,8 +54,7 @@ component part. Review every component under it with
   pack.json names for wght 300–700. Fredoka declares no reserved font
   name.
 - Arrows and any other glyph the two faces lack come from Instrument Sans
-  (`@styles/shared`, the `Cartoon Fallback` family after them in every
-  font list) and Chinese from ZCOOL KuaiLe for display and Noto Sans SC
+  (`@styles/shared`, the last family in every font list) and Chinese from ZCOOL KuaiLe for display and Noto Sans SC
   (variable, wght 100–900) for text and labels (`@styles/cjk`), each under
   its own licence there.
 - No face here carries Arabic, so the `ar` locale warns of missing glyphs

@@ -68,52 +68,6 @@ pub const SOUND_EVENTS: [&str; 10] = [
     "press", "hover", "select", "confirm", "cancel", "back", "open", "close", "error", "reward",
 ];
 
-/// One font face a pack ships. `src` is relative to the pack's directory
-/// or names a shared asset (`@styles/shared/…`).
-#[derive(Clone, Debug, PartialEq)]
-pub struct Face {
-    pub family: String,
-    pub src: String,
-    /// The weights this file draws, as CSS `font-weight: 400 700`: on a
-    /// variable face the part of its `wght` axis, on a static face the
-    /// weights it draws unsynthesised. `None` is 400 for a static face and
-    /// the whole axis for a variable one.
-    pub weight: Option<[u16; 2]>,
-    pub italic: bool,
-    /// A CSS `unicode-range` (`U+4E00-9FFF, U+3000-303F`): the face draws
-    /// only these characters, so a fallback face covers a script.
-    pub unicode_range: Option<String>,
-}
-
-impl Face {
-    /// Its `unicode-range` as inclusive code point ranges (`U+4E00-9FFF`,
-    /// `U+0041`, `U+4??`); empty when it has none (every character).
-    pub fn ranges(&self) -> Result<Vec<(u32, u32)>, String> {
-        let Some(text) = &self.unicode_range else {
-            return Ok(Vec::new());
-        };
-        text.split(',')
-            .map(|range| {
-                let r = range
-                    .trim()
-                    .trim_start_matches(['U', 'u'])
-                    .trim_start_matches('+');
-                let hex = |s: &str| {
-                    u32::from_str_radix(s, 16)
-                        .map_err(|_| format!("unicodeRange: {} is not hexadecimal", range.trim()))
-                };
-                Ok(if let Some((a, b)) = r.split_once('-') {
-                    (hex(a)?, hex(b)?)
-                } else if r.contains('?') {
-                    (hex(&r.replace('?', "0"))?, hex(&r.replace('?', "F"))?)
-                } else {
-                    (hex(r)?, hex(r)?)
-                })
-            })
-            .collect()
-    }
-}
-
 /// A sound an event plays: one of `clips` at random, at a volume and
 /// pitch drawn from their ranges.
 #[derive(Clone, Debug, PartialEq)]
@@ -160,7 +114,11 @@ pub struct Layer {
     /// per scheme: entries over the theme's, as `theme` writes them.
     contrast: [Map<String, Value>; 2],
     pub variants: BTreeMap<String, String>,
-    pub fonts: Vec<Face>,
+    /// The font files it ships, each relative to the pack's directory or
+    /// a shared asset (`@styles/shared/…`). A file's family, weight, style
+    /// and width are its own: the theme's `fontFamily` lists name the
+    /// families as the files do.
+    pub fonts: Vec<String>,
     pub icons: BTreeMap<String, String>,
     /// Nine-slice art by name, per scheme ([`Scheme::ALL`] order).
     pub images: [BTreeMap<String, NineSlice>; 2],
@@ -176,7 +134,7 @@ pub struct Pack {
     /// The high-contrast entries over each scheme's theme, merged.
     contrast: [Map<String, Value>; 2],
     variants: BTreeMap<String, String>,
-    pub fonts: Vec<Face>,
+    pub fonts: Vec<String>,
     pub icons: BTreeMap<String, String>,
     images: [BTreeMap<String, NineSlice>; 2],
     pub sounds: BTreeMap<String, Sounds>,
@@ -258,13 +216,14 @@ impl Layer {
                     }
                 }
                 "fonts" => {
-                    let Value::Array(faces) = v else {
-                        return Err("fonts: an array of faces".into());
+                    let Value::Array(files) = v else {
+                        return Err("fonts: an array of font files".into());
                     };
-                    for (i, f) in faces.iter().enumerate() {
-                        layer
-                            .fonts
-                            .push(face(f).map_err(|e| format!("fonts[{i}]: {e}"))?);
+                    for (i, f) in files.iter().enumerate() {
+                        let src = f.as_str().ok_or_else(|| {
+                            format!("fonts[{i}]: a font file's path; its family, weight and style are the file's own, and the theme's fontFamily names its family")
+                        })?;
+                        layer.fonts.push(src.to_owned());
                     }
                 }
                 "images" => {
@@ -350,9 +309,17 @@ impl Layer {
         ["sans", "display", "mono", "rounded"].map(list)
     }
 
-    /// Every asset the layer names: its faces, icons and sound clips.
+    /// Its theme's `fontFamily` list for `key` (`sans`, `display`, `mono`,
+    /// `rounded`, `serif`), as CSS writes a `font-family` (the light
+    /// scheme's; a pack's fonts do not change with the scheme).
+    pub fn font_family(&self, key: &str) -> Option<String> {
+        let list = self.theme[0].get("fontFamily")?.get(key)?.as_str()?;
+        (!list.trim().is_empty()).then(|| list.trim().to_owned())
+    }
+
+    /// Every asset the layer names: its fonts, icons and sound clips.
     pub fn assets(&self) -> Vec<&str> {
-        let mut out: Vec<&str> = self.fonts.iter().map(|f| f.src.as_str()).collect();
+        let mut out: Vec<&str> = self.fonts.iter().map(String::as_str).collect();
         out.extend(self.icons.values().map(String::as_str));
         out.extend(
             self.images
@@ -382,7 +349,7 @@ impl Layer {
                 *p = format!("{}/{p}", dir.trim_end_matches('/'));
             }
         };
-        self.fonts.iter_mut().for_each(|f| at(&mut f.src));
+        self.fonts.iter_mut().for_each(at);
         self.icons.values_mut().for_each(at);
         for m in &mut self.images {
             m.values_mut().for_each(|n| at(&mut n.src));
@@ -426,26 +393,7 @@ impl Layer {
             root.insert("variants".into(), json!(self.variants));
         }
         if !self.fonts.is_empty() {
-            let faces: Vec<Value> = self
-                .fonts
-                .iter()
-                .map(|f| {
-                    let mut m = json!({ "family": f.family, "src": f.src });
-                    match f.weight {
-                        Some([a, b]) if a == b => m["weight"] = json!(a),
-                        Some(w) => m["weight"] = json!(w),
-                        None => {}
-                    }
-                    if f.italic {
-                        m["style"] = json!("italic");
-                    }
-                    if let Some(r) = &f.unicode_range {
-                        m["unicodeRange"] = json!(r);
-                    }
-                    m
-                })
-                .collect();
-            root.insert("fonts".into(), Value::Array(faces));
+            root.insert("fonts".into(), json!(self.fonts));
         }
         if !self.icons.is_empty() {
             root.insert("icons".into(), json!(self.icons));
@@ -772,49 +720,6 @@ fn nine(v: &Value) -> Result<NineSlice, String> {
     })
 }
 
-fn face(v: &Value) -> Result<Face, String> {
-    let m = object(v, "a face")?;
-    let text = |k: &str| m.get(k).and_then(Value::as_str).map(str::to_owned);
-    for k in m.keys() {
-        if !["family", "src", "weight", "style", "unicodeRange"].contains(&k.as_str()) {
-            return Err(format!(
-                "{k}: one of family, src, weight, style, unicodeRange"
-            ));
-        }
-    }
-    let one = |w: &Value| {
-        w.as_u64()
-            .filter(|w| (1..=1000).contains(w))
-            .map(|w| w as u16)
-    };
-    let bad = "weight: 1 to 1000, or [min, max]";
-    let weight = match m.get("weight") {
-        None => None,
-        Some(Value::Array(r)) => match r.as_slice() {
-            [a, b] => match (one(a), one(b)) {
-                (Some(a), Some(b)) if a <= b => Some([a, b]),
-                _ => return Err(bad.into()),
-            },
-            _ => return Err(bad.into()),
-        },
-        Some(w) => Some(one(w).map(|w| [w, w]).ok_or(bad)?),
-    };
-    let italic = match text("style").as_deref() {
-        None | Some("normal") => false,
-        Some("italic") => true,
-        Some(_) => return Err("style: \"normal\" or \"italic\"".into()),
-    };
-    let face = Face {
-        family: text("family").ok_or("family: a name")?,
-        src: text("src").ok_or("src: a font file")?,
-        weight,
-        italic,
-        unicode_range: text("unicodeRange"),
-    };
-    face.ranges()?;
-    Ok(face)
-}
-
 fn sound(v: &Value) -> Result<Sound, String> {
     let m = object(v, "a sound")?;
     for k in m.keys() {
@@ -1002,14 +907,9 @@ mod tests {
                 r##"{ "sounds": { "Button.base": { "tap": { "clips": ["a"] } } } }"##,
                 "sounds.Button.base.tap",
             ),
-            (r##"{ "fonts": [{ "src": "a.ttf" }] }"##, "fonts[0]: family"),
             (
-                r##"{ "fonts": [{ "family": "A", "src": "a.ttf", "weight": [700, 400] }] }"##,
-                "fonts[0]: weight",
-            ),
-            (
-                r##"{ "fonts": [{ "family": "A", "src": "a.ttf", "unicodeRange": "U+4E00-9FZF" }] }"##,
-                "fonts[0]: unicodeRange",
+                r##"{ "fonts": [{ "family": "A", "src": "a.ttf" }] }"##,
+                "fonts[0]: a font file's path",
             ),
             (r##"{ "surfaces": {} }"##, "surfaces"),
         ] {
@@ -1023,7 +923,7 @@ mod tests {
         let mut l = Layer::parse(r##"{ "scheme": "light", "seeds": { "primary": { "light": "#111111", "dark": "#eeeeee" } },
             "theme": { "colors": { "gold": "#ffd23f", "surface": { "light": "#ffffff", "dark": "#000000" } } },
             "variants": { "Panel.frame": "p-2" },
-            "fonts": [{ "family": "A", "src": "a.ttf", "weight": 700, "unicodeRange": "U+4E00-9FFF" }, { "family": "B", "src": "@styles/shared/b.ttf" }, { "family": "B", "src": "v.ttf", "weight": [300, 700] }],
+            "fonts": ["a.ttf", "@styles/shared/b.ttf", "v.ttf"],
             "icons": { "star": "art/star.svg" },
             "sounds": { "press": { "clips": ["/sfx/tap.ogt"], "volume": [0.2, 0.3] }, "Button.base": { "hover": { "clips": ["t.ogt"] } } } }"##).unwrap();
         l.resolve("styles/cartoon");
@@ -1038,8 +938,6 @@ mod tests {
                 "styles/cartoon/v.ttf"
             ]
         );
-        let weights: Vec<_> = l.fonts.iter().map(|f| f.weight).collect();
-        assert_eq!(weights, [Some([700, 700]), None, Some([300, 700])]);
         let again = Layer::parse(&l.to_json()).unwrap();
         assert_eq!(again.to_json(), l.to_json());
         assert_eq!(again.theme, l.theme);

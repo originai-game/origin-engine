@@ -34,7 +34,7 @@ mod tests {
     use rune_taffy::CompactStyle;
 
     /// Fixed metrics: half the size a character, one line.
-    fn measure(text: &str, run: &arena::Run, _: Option<f32>) -> (f32, f32) {
+    fn measure(_: arena::Id, text: &str, run: &arena::Run, _: arena::Avail) -> (f32, f32) {
         let size = run.size;
         (text.chars().count() as f32 * size * 0.5, size)
     }
@@ -77,9 +77,14 @@ mod tests {
     /// Words of half the size a character, broken greedily at spaces
     /// to `width` (a word wider than it overflows whole, as CSS's
     /// `overflow-wrap: normal`).
-    fn wrapped(text: &str, run: &arena::Run, width: Option<f32>) -> (f32, f32) {
+    fn wrapped(_: arena::Id, text: &str, run: &arena::Run, avail: arena::Avail) -> (f32, f32) {
         let ch = run.size * 0.5;
-        let width = width.filter(|_| !run.nowrap);
+        let width = match avail {
+            arena::Avail::Width(w) => Some(w),
+            arena::Avail::Min => Some(0.0),
+            arena::Avail::Max => None,
+        }
+        .filter(|_| !run.nowrap);
         let (mut widest, mut line, mut lines) = (0.0f32, 0.0f32, 1.0f32);
         for word in text.split(' ') {
             let w = word.chars().count() as f32 * ch;

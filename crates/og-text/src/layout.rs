@@ -86,6 +86,9 @@ pub struct Style<'a> {
     pub align: Alignment,
     /// `text-overflow: ellipsis`.
     pub ellipsis: bool,
+    /// `line-clamp`: the most lines shown, the last ending in "…" when
+    /// more follow; 0 all.
+    pub max_lines: u16,
     pub trim: Trim,
 }
 
@@ -107,6 +110,7 @@ impl Default for Style<'_> {
             overflow_wrap: OverflowWrap::Normal,
             align: Alignment::Start,
             ellipsis: false,
+            max_lines: 0,
             trim: Trim::default(),
         }
     }
@@ -145,6 +149,9 @@ pub struct Text {
     /// The ellipsized text, when the layout holds it and not the text
     /// it was shaped from.
     cut: Option<String>,
+    /// The content widths of the text it was shaped from, kept while the
+    /// layout holds the ellipsized one.
+    content: Option<(f32, f32)>,
     /// Scratch for paint's glyphs and a run's location.
     glyphs: Vec<parley::layout::Glyph>,
     coords: Vec<i16>,
@@ -160,6 +167,7 @@ impl Text {
     pub fn shape(&mut self, fonts: &mut Collection, text: &str, style: &Style) {
         build(fonts, &mut self.layout, text, style);
         self.cut = None;
+        self.content = None;
         self.width = None;
         self.layout.break_all_lines(None);
         self.trimmed = trim(fonts, style, &self.layout);
@@ -167,8 +175,9 @@ impl Text {
 
     /// Breaks the lines at `width` (none: only at hard breaks), aligned in
     /// it. With `style.ellipsis`, a line wider than `width` ends at the last
-    /// whole cluster that fits beside "…"; `text` and `style` must be the
-    /// ones [`Text::shape`] took.
+    /// whole cluster that fits beside "…"; with `style.max_lines`, the last
+    /// line shown does when more follow it, and those are not laid out.
+    /// `text` and `style` must be the ones [`Text::shape`] took.
     pub fn break_at(
         &mut self,
         fonts: &mut Collection,
@@ -181,9 +190,8 @@ impl Text {
         }
         self.width = width;
         self.layout.break_all_lines(width);
-        if let (true, Some(w)) = (style.ellipsis, width)
-            && let Some(cut) = ellipsized(fonts, &self.layout, text, style, w)
-        {
+        if let Some(cut) = ellipsized(fonts, &self.layout, text, style, width) {
+            self.content = Some(self.content_widths());
             build(fonts, &mut self.layout, &cut, style);
             self.cut = Some(cut);
             self.layout.break_all_lines(width);
@@ -214,8 +222,10 @@ impl Text {
     /// `break-word`, a grapheme under `anywhere`, the whole line under
     /// `nowrap`).
     pub fn content_widths(&self) -> (f32, f32) {
-        let w = self.layout.calculate_content_widths();
-        (w.min, w.max)
+        self.content.unwrap_or_else(|| {
+            let w = self.layout.calculate_content_widths();
+            (w.min, w.max)
+        })
     }
 
     /// The first line's baseline, CSS px below the box's top.
@@ -368,29 +378,41 @@ fn build(fonts: &mut Collection, layout: &mut parley::Layout<()>, text: &str, st
     b.build_into(layout, text);
 }
 
-/// `text` with each line of `layout` wider than `width` cut at the last
-/// cluster boundary that leaves room for "…", and "…" added; `None` when
-/// every line fits.
+/// `text` as `style` cuts it: under `text-overflow: ellipsis`, each line
+/// of `layout` wider than `width` cut at the last cluster boundary that
+/// leaves room for "…", and "…" added; under `line-clamp`, the lines
+/// after its last dropped and that line cut the same way. `None` when
+/// nothing is cut.
 fn ellipsized(
     fonts: &mut Collection,
     layout: &parley::Layout<()>,
     text: &str,
     style: &Style,
-    width: f32,
+    width: Option<f32>,
 ) -> Option<String> {
-    if layout.lines().all(|l| l.metrics().advance <= width + 0.01) {
+    let shown = match style.max_lines {
+        0 => usize::MAX,
+        n => usize::from(n),
+    };
+    let clamped = layout.len() > shown;
+    let over = |advance: f32| match width {
+        Some(w) => style.ellipsis && advance > w + 0.01,
+        None => false,
+    };
+    if !clamped && layout.lines().all(|l| !over(l.metrics().advance)) {
         return None;
     }
     // "…" as this text would draw it.
     let mut mark = parley::Layout::new();
     build(fonts, &mut mark, "\u{2026}", style);
     mark.break_all_lines(None);
-    let room = (width - mark.width()).max(0.0);
+    let room = width.map(|w| (w - mark.width()).max(0.0));
     let mut out = String::with_capacity(text.len() + 3);
     let mut clusters: Vec<(std::ops::Range<usize>, f32)> = Vec::new();
-    for line in layout.lines() {
+    for (k, line) in layout.lines().take(shown).enumerate() {
         let range = line.text_range();
-        if line.metrics().advance <= width + 0.01 {
+        let last = clamped && k + 1 == shown;
+        if !last && !over(line.metrics().advance) {
             out.push_str(&text[range]);
             continue;
         }
@@ -402,15 +424,15 @@ fn ellipsized(
         let (mut end, mut pen) = (range.start, 0.0);
         for (r, advance) in &clusters {
             pen += advance;
-            if pen > room + 0.01 {
+            if room.is_some_and(|room| pen > room + 0.01) {
                 break;
             }
             end = r.end;
         }
         out.push_str(text[range.start..end].trim_end());
         out.push('\u{2026}');
-        // A hard break that ended the line stays.
-        if text[..range.end].ends_with('\n') {
+        // A hard break that ended the line stays, unless the text ends here.
+        if !last && text[..range.end].ends_with('\n') {
             out.push('\n');
         }
     }
@@ -692,6 +714,54 @@ mod tests {
         let fits = laid(&mut fonts, name, &style, Some(whole + 1.0));
         assert_eq!(drawn(&fits, name.len()), name.len());
         assert!((fits.width() - whole).abs() < 1e-3);
+    }
+
+    /// `line-clamp: 2` lays out a long text's first two lines, the second
+    /// ending in "…" inside the box, and sizes the text by them; a text of
+    /// fewer lines is left whole, and its min-content stays the uncut
+    /// text's. Ways this could fail: the lines after the clamp still laid
+    /// out, the last line left whole, or "…" pushed past the box.
+    #[test]
+    fn a_clamped_text_shows_its_first_lines_and_an_ellipsis() {
+        let mut fonts = fonts();
+        let style = Style {
+            family: FAMILY,
+            max_lines: 2,
+            ..Default::default()
+        };
+        let words = "alpha bravo charlie delta echo foxtrot golf hotel";
+        let free = Style {
+            max_lines: 0,
+            ..style.clone()
+        };
+        let width = laid(&mut fonts, "alpha bravo char", &free, None).width();
+        let all = laid(&mut fonts, words, &free, Some(width));
+        assert!(all.layout().len() > 2, "{} lines", all.layout().len());
+        let min = all.content_widths().0;
+        let t = laid(&mut fonts, words, &style, Some(width));
+        assert_eq!(t.layout().len(), 2);
+        assert!(t.width() <= width + 0.01, "{} > {width}", t.width());
+        let shown = t.laid(words);
+        assert!(shown.ends_with('\u{2026}'), "{shown:?}");
+        assert!(
+            words.starts_with(shown.trim_end_matches('\u{2026}')),
+            "{shown:?}"
+        );
+        // As tall as the uncut text's first two lines.
+        let two: f32 = all
+            .layout()
+            .lines()
+            .take(2)
+            .map(|l| l.metrics().line_height)
+            .sum();
+        assert!((t.height() - two).abs() < 1e-3, "{} vs {two}", t.height());
+        assert_eq!(t.content_widths().0, min);
+        // Two lines of it fit: nothing is cut.
+        let short = laid(&mut fonts, "alpha bravo charlie", &style, Some(width));
+        assert_eq!(short.laid("alpha bravo charlie"), "alpha bravo charlie");
+        // No width: only hard breaks, the second line marked.
+        let hard = laid(&mut fonts, "one\ntwo\nthree", &style, None);
+        assert_eq!(hard.laid("one\ntwo\nthree"), "one\ntwo\u{2026}");
     }
 
     /// `overflow-wrap`: under `normal` a word wider than the box overflows

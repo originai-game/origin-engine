@@ -31,25 +31,30 @@ fn hash_of(eng: &Engine, id: &str) -> u64 {
         .unwrap_or(0)
 }
 
-/// A pack's font faces (its `pack.json` `fonts`), each file loaded as the
-/// family face its weight, style and `unicodeRange` declare (CSS Fonts 4
-/// §4); a weight or width left out is the variable face's axis range, else
-/// the normal value.
+/// A pack's font files (its `pack.json` `fonts`), each loaded: their
+/// indices among the engine's fonts, which TSX text is laid out from
+/// (`crate::present::faces`), and each as a family face under the family
+/// its file names, for the text still drawn from cooked atlases.
 pub(super) fn pack_faces(
     eng: &Engine,
-    faces: &[og_ui_next::pack::Face],
+    files: &[String],
     source: &str,
     owner: &str,
-) -> Result<Vec<og_ui_next::fonts::FamilyFace>, String> {
-    let mut out = Vec::new();
-    for face in faces {
-        let i = crate::world::assets::load_font(eng, &face.src)
-            .map_err(|e| format!("{source}: fonts {}: {}: {e}", face.family, face.src))?;
-        let mut font = super::ui_config::ui_font(eng, crate::world::assets::handle(i) as f64)?;
-        let ranges = face
-            .ranges()
-            .map_err(|e| format!("{source}: fonts {}: {e}", face.family))?;
-        font.metrics = font.metrics.with_range(&ranges);
+) -> Result<(Vec<og_ui_next::fonts::FamilyFace>, Vec<usize>), String> {
+    let (mut out, mut loaded) = (Vec::new(), Vec::new());
+    for src in files {
+        let i = crate::world::assets::load_font(eng, src)
+            .map_err(|e| format!("{source}: fonts: {src}: {e}"))?;
+        loaded.push(i);
+        let font = super::ui_config::ui_font(eng, crate::world::assets::handle(i) as f64)?;
+        let family = {
+            let mut rs = eng.render.borrow_mut();
+            let faces = &mut rs.ui_faces;
+            faces
+                .face(eng, i)
+                .and_then(|id| faces.collection.family_name(id).map(str::to_owned))
+        };
+        let Some(family) = family else { continue };
         let axis = |tag: &[u8; 4], normal: f32| {
             font.metrics
                 .file
@@ -63,32 +68,21 @@ pub(super) fn pack_faces(
                 .unwrap_or((normal, normal))
         };
         let weight = |w: f32| w.round().clamp(1.0, 1000.0) as u16;
-        let (w0, w1) = match face.weight {
-            Some([a, b]) => (a, b),
-            None => {
-                let (a, b) = axis(b"wght", 400.0);
-                (weight(a), weight(b))
-            }
-        };
+        let (w0, w1) = axis(b"wght", 400.0);
         let (s0, s1) = axis(b"wdth", 100.0);
         out.push(og_ui_next::fonts::FamilyFace {
-            family: face.family.clone(),
+            family,
             document: owner.to_owned(),
-            weight: (w0, w1),
+            weight: (weight(w0), weight(w1)),
             stretch: (
                 og_ui_next::fonts::FontQuery::width_tenths(s0),
                 og_ui_next::fonts::FontQuery::width_tenths(s1),
             ),
-            style: if face.italic {
-                og_ui_next::fonts::FaceStyle::Italic
-            } else {
-                og_ui_next::fonts::FaceStyle::Normal
-            },
             font,
             ..og_ui_next::fonts::FamilyFace::default()
         });
     }
-    Ok(out)
+    Ok((out, loaded))
 }
 
 /// After a hot reload (`og dev`): every style the UI is configured with

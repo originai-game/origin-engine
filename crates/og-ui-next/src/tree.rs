@@ -8,7 +8,10 @@
 use crate::arena::{Arena, Id, Run};
 use crate::icons::{IconAtlas, IconCell};
 use crate::record::{Record, Rgba, Shadow, Text, TextStroke};
+use og_draw::glyphs::Atlas;
 use og_draw::paint::{Paint, PaintKind, PaintQuad};
+use og_i18n::Direction;
+use og_text::fonts::Collection;
 
 const NONE: u32 = u32::MAX;
 
@@ -321,18 +324,23 @@ pub struct Tree {
     /// [`Tree::settle_anchors`]'s order and the boxes it placed, kept.
     anchor_order: Vec<u32>,
     anchor_placed: Vec<[f32; 4]>,
-    /// Each element's text laid out as glyph quads from its leaf's top
-    /// left, kept while its text, width and run stay.
-    glyphs: Vec<Glyphs>,
-    /// The faces text was measured and laid out in (the body's, then its
-    /// fallbacks'): when a locale links others, every text is again.
-    faces: Vec<Option<og_draw::FontHandle>>,
+    /// Each text leaf's layout and glyph quads ([`crate::text`]).
+    texts: crate::text::Texts,
+    /// The collection's revision texts were last measured at: when it
+    /// moves (a pack or a locale's font loaded), every text is again.
+    faces: Option<u64>,
+    /// The atlas plots the last paint's glyph quads read: marked used on
+    /// each frame that keeps that paint, so they are not emptied under it.
+    plots: Vec<u32>,
+    /// Device pixels a CSS px of the surface ([`Tree::set_scale`]) and
+    /// the player's text size ([`Tree::set_text_scale`]).
+    scale: f32,
+    text_scale: f32,
     /// Characters text was laid out with that no face has, each once,
     /// until [`Tree::take_missing`]: the host loads a font pack that
-    /// covers them (docs/ui.md §3.4), and the text draws in it once linked.
+    /// covers them (docs/ui.md §3.4), and the text draws in it once it is
+    /// in the collection.
     missing: Vec<char>,
-    /// The lines [`lay_out`] breaks a text into, kept between texts.
-    breaks: Vec<(std::ops::Range<usize>, f32)>,
     /// The screen transition cover [`Tree::set_cover`] gave this frame.
     cover: Option<(crate::cover::Cover, bool)>,
     /// The pad's virtual cursor ([`Tree::virtual_cursor`]), and its
@@ -417,20 +425,6 @@ struct Shown {
     fill: Option<Rgba>,
 }
 
-/// An element's text as glyph quads (from its leaf's top left; colour and
-/// clip set as they are copied), and what they were laid out from.
-#[derive(Default)]
-struct Glyphs {
-    text: String,
-    key: [u32; 5],
-    quads: Vec<PaintQuad>,
-    /// Each line's start x, baseline and width, for its decoration.
-    lines: Vec<[f32; 3]>,
-    /// The lines' texts as laid out, each ended by `\n`: what the probe's
-    /// dump checks for a word broken where UAX #14 has no break.
-    line_text: String,
-}
-
 mod input;
 mod ops;
 mod particles;
@@ -489,7 +483,11 @@ impl Tree {
             anchored: Vec::new(),
             anchor_order: Vec::new(),
             anchor_placed: Vec::new(),
-            glyphs: Vec::new(),
+            texts: Default::default(),
+            faces: None,
+            plots: Vec::new(),
+            scale: 1.0,
+            text_scale: 1.0,
             xfs: Vec::new(),
             masks: Vec::new(),
             filters: Vec::new(),
@@ -515,9 +513,7 @@ impl Tree {
             last_pointer: (f32::NAN, f32::NAN, 0),
             paints: 0,
             particles: Default::default(),
-            faces: Vec::new(),
             missing: Vec::new(),
-            breaks: Vec::new(),
             cover: None,
             vcursor: Default::default(),
             cursor_colors: [[0.0, 0.0, 0.0, 0.45], [1.0; 4], [0.9, 0.9, 0.95, 1.0]],
@@ -798,15 +794,24 @@ impl Tree {
         self.arena.set_style(node, layout);
         self.arena.set_space(node, space);
         if let Some(leaf) = leaf {
+            // The player's text size scales the size and what is a
+            // length with it, before the text is laid out.
+            let k = self.text_scale;
             self.arena.set_run(
                 leaf,
                 Run {
-                    size: eff.size,
-                    tracking: eff.text.tracking(eff.size),
-                    line: eff.text.line_height(eff.size),
+                    size: eff.size * k,
+                    tracking: eff.text.tracking(eff.size) * k,
+                    line: eff.text.line_height(eff.size) * k,
                     weight: eff.text.weight,
                     nowrap: eff.text.nowrap,
                     clamp: eff.text.clamp,
+                    family: eff.text.family,
+                    italic: eff.text.italic,
+                    variant: eff.text.variant,
+                    wrap: eff.text.wrap,
+                    ellipsis: eff.text.overflow == 1,
+                    align: eff.text.align,
                 },
             );
         }
@@ -868,10 +873,50 @@ impl Tree {
         std::mem::take(&mut self.missing)
     }
 
-    /// Lays out what changed and paints. The
-    /// fonts measure text; `icons` draws icons.
-    pub fn frame(&mut self, fonts: &crate::fonts::Fonts, icons: &IconAtlas) -> Frame {
-        let (laid_out, painted) = self.present(fonts, icons);
+    /// Device pixels a CSS px of the surface: glyphs raster at their
+    /// drawn size, on its pixels.
+    pub fn set_scale(&mut self, scale: f32) {
+        let scale = if scale.is_finite() && scale > 0.0 {
+            scale
+        } else {
+            1.0
+        };
+        if self.scale != scale {
+            self.scale = scale;
+            self.paint = true;
+        }
+    }
+
+    /// The player's text size (`UiDesc.textScale`): every text's font
+    /// size, and its line height and spacing with it, times `scale`. A
+    /// change lays every text out again.
+    pub fn set_text_scale(&mut self, scale: f32) {
+        if self.text_scale == scale {
+            return;
+        }
+        self.text_scale = scale;
+        for e in 0..self.els.len() as u32 {
+            if !self.els[e as usize].dead && self.els[e as usize].leaf.is_some() {
+                self.inherit(e);
+            }
+        }
+        self.paint = true;
+    }
+
+    /// The paragraph direction and the locale (BCP 47) texts are laid out
+    /// in: the base direction of each, its `locl` forms and the faces its
+    /// characters fall back to. A change lays every text out again.
+    pub fn set_writing(&mut self, direction: Direction, locale: &str) {
+        if self.texts.set_writing(direction, locale) {
+            self.arena.remeasure();
+            self.paint = true;
+        }
+    }
+
+    /// Lays out what changed and paints. Texts are laid out from `fonts`
+    /// and their glyphs rastered into `atlas`; `icons` draws icons.
+    pub fn frame(&mut self, fonts: &mut Collection, atlas: &mut Atlas, icons: &IconAtlas) -> Frame {
+        let (laid_out, painted) = self.present(fonts, atlas, icons);
         Frame { laid_out, painted }
     }
 
@@ -887,33 +932,26 @@ impl Tree {
     /// Samples motion at the tick's time, lays out what is dirty and paints
     /// again when anything changed or moves: whether it laid out, and
     /// whether it painted.
-    pub fn present(&mut self, fonts: &crate::fonts::Fonts, icons: &IconAtlas) -> (bool, bool) {
+    pub fn present(
+        &mut self,
+        fonts: &mut Collection,
+        atlas: &mut Atlas,
+        icons: &IconAtlas,
+    ) -> (bool, bool) {
         for e in self.entering.drain(..) {
             self.els[e as usize].entering = None;
         }
         let moving = self.motion.tick_at(self.time);
         self.settle_exits();
         let (w, h) = self.size;
-        let tf = text_font(fonts);
-        let faces = || {
-            std::iter::once(tf.handle).chain(
-                tf.metrics
-                    .runs
-                    .iter()
-                    .flat_map(|r| r.iter().map(|f| f.handle)),
-            )
-        };
-        if !faces().eq(self.faces.iter().copied()) {
-            self.faces = faces().collect();
+        if self.faces != Some(fonts.revision()) {
+            self.faces = Some(fonts.revision());
             self.arena.remeasure();
-            for g in &mut self.glyphs {
-                g.key = [u32::MAX; 5];
-            }
             self.paint = true;
         }
-        let m = &tf.metrics;
-        let laid_out = self.arena.layout(w, h, &mut |t, run, width| {
-            crate::text::measure(m, t, run, width)
+        let texts = &mut self.texts;
+        let laid_out = self.arena.layout(w, h, &mut |id, t, run, avail| {
+            texts.measure(fonts, id, t, run, avail)
         });
         if laid_out {
             self.clamp_scrolls();
@@ -928,11 +966,15 @@ impl Tree {
         let painted = laid_out || self.paint || moving || self.particles.live;
         if painted {
             self.particles.live = false;
-            self.repaint(fonts, icons);
             self.paint = false;
+            self.repaint(fonts, atlas, icons);
             self.paints += 1;
             let drawn = self.drawn_boxes();
             self.sem.set_drawn(drawn);
+        } else {
+            for &plot in &self.plots {
+                atlas.touch(plot);
+            }
         }
         (laid_out, painted)
     }
@@ -1000,7 +1042,7 @@ impl Tree {
         }
     }
 
-    fn repaint(&mut self, fonts: &crate::fonts::Fonts, icons: &IconAtlas) {
+    fn repaint(&mut self, fonts: &mut Collection, atlas: &mut Atlas, icons: &IconAtlas) {
         /// A line's stroke: its own colour faded, else the ink (already faded).
         fn s_line_color(stroke: &Option<Rgba>, ink: Rgba, alpha: f32) -> Rgba {
             stroke.map_or(ink, |mut c| {
@@ -1013,26 +1055,14 @@ impl Tree {
         let p = &mut self.drawn;
         p.clear();
         (p.width, p.height) = (vw, vh);
-        // Font slots: the body's (0), the icon set's (1), then the faces
-        // a character the body lacks falls back to (its mixed font's runs:
-        // the CJK companion, the locale's, the game's, the fallback), one
-        // each from 2; the host adds each one's other pages.
-        let tf = text_font(fonts);
+        // Font slot 1 is an icon set's cooked font, which the host adds
+        // the other pages of; texts draw from the glyph atlas.
         let icon_font = icons.font.as_ref().and_then(|f| f.handle);
-        let runs = tf.metrics.runs.as_deref().unwrap_or(&[]);
-        let firsts = || {
-            [tf.handle, icon_font]
-                .into_iter()
-                .chain(runs.iter().map(|f| f.handle))
-        };
-        if p.fonts.len() != 2 + runs.len()
-            || firsts()
-                .zip(&p.fonts)
-                .any(|(h, slot)| slot.first().copied() != h)
-        {
-            p.fonts = firsts().map(|h| h.iter().copied().collect()).collect();
+        if p.fonts.len() != 2 || p.fonts[1].first().copied() != icon_font {
+            p.fonts = vec![Vec::new(), icon_font.into_iter().collect()];
         }
-        let body = tf.handle;
+        self.plots.clear();
+        let scale = self.scale;
         self.order();
         self.abs.clear();
         self.abs.resize(self.els.len(), (0.0, 0.0, false, [0.0; 4]));
@@ -1057,13 +1087,11 @@ impl Tree {
             ..top
         };
         self.shown.resize(self.els.len(), unseen);
-        self.glyphs.resize_with(self.els.len(), Glyphs::default);
         self.xfs.resize(self.els.len(), 0);
         self.masks.clear();
         self.masks.resize(self.els.len(), 0);
         self.filters.clear();
         self.filters.resize(self.els.len(), 0);
-        let m = &tf.metrics;
         // The nodes painting for the first time with a `sound` to play.
         let mut sounding: Vec<u32> = Vec::new();
         for k in 0..self.order.len() {
@@ -1533,79 +1561,126 @@ impl Tree {
             if field.is_some_and(|f| f.value.is_empty()) {
                 text_ink[3] *= 0.5;
             }
-            if let (Some(leaf), Some(_)) = (el.leaf, body)
+            if let Some(leaf) = el.leaf
                 && !el.text.is_empty()
+                && let Some(&(_, run)) = self.arena.text_run(leaf).as_ref()
             {
                 let lb = self.arena.box_of(leaf);
-                let g = &mut self.glyphs[e];
-                lay_out(
-                    g,
-                    &el.text,
-                    &el.eff,
-                    lb.w,
-                    m,
-                    &mut self.missing,
-                    &mut self.breaks,
-                );
-                let (lx, ly) = (x + lb.x, y + lb.y);
+                // A transform that is more than a move draws distance
+                // fields; any other text sits on whole device pixels,
+                // where a move puts it.
+                let [ma, mb, mc, md, tx, ty, _, _] = match xf {
+                    0 => og_draw::paint::IDENTITY,
+                    xf => p.transforms[xf as usize],
+                };
+                let sdf = [ma, mb, mc, md] != [1.0, 0.0, 0.0, 1.0];
+                let snap = |v: f32, t: f32| match sdf {
+                    true => v,
+                    false => ((v + t) * scale).round() / scale - t,
+                };
+                let (lx, ly) = (snap(x + lb.x, tx), snap(y + lb.y, ty));
+                // `text-overflow` cuts at the box that set it.
+                let mut width = lb.w;
+                if run.ellipsis
+                    && let Some(right) =
+                        overflow_edge(&self.els, &self.abs, &self.motion, &self.arena, e as u32)
+                {
+                    width = width.min(right - (x + lb.x)).max(0.0);
+                }
                 let sh = text_shadow;
-                if sh.color[3] > 0.0 {
+                let st = text_stroke;
+                let look = crate::text::Look {
+                    scale,
+                    field: sdf,
+                    shadow: (sh.color[3] > 0.0).then_some(sh.blur),
+                    stroke: if st.color[3] > 0.0 {
+                        st.width.max(0.0)
+                    } else {
+                        0.0
+                    },
+                    ink: [text_ink[0], text_ink[1], text_ink[2]]
+                        .map(og_core::color::linear_to_srgb),
+                };
+                let g = self.texts.paint(
+                    fonts,
+                    atlas,
+                    leaf,
+                    &el.text,
+                    &run,
+                    width,
+                    &look,
+                    &mut self.missing,
+                );
+                // A glyph the atlas had no room for draws next frame.
+                self.paint |= g.incomplete;
+                for &plot in self.texts.plots(leaf) {
+                    if !self.plots.contains(&plot) {
+                        self.plots.push(plot);
+                    }
+                }
+                let g = self.texts.leaf(leaf).expect("painted");
+                let placed = |q: &PaintQuad, dx: f32, dy: f32, color: Rgba| PaintQuad {
+                    rect: [
+                        q.rect[0] + lx + dx,
+                        q.rect[1] + ly + dy,
+                        q.rect[2],
+                        q.rect[3],
+                    ],
+                    clip,
+                    color,
+                    ..*q
+                };
+                // The shadow lowest, a whole number of device pixels off.
+                if look.shadow.is_some() {
                     let mut c = sh.color;
                     c[3] *= alpha;
-                    let [dx, dy] = sh.offset;
-                    p.quads.extend(g.quads.iter().map(|q| PaintQuad {
-                        rect: [
-                            q.rect[0] + lx + dx,
-                            q.rect[1] + ly + dy,
-                            q.rect[2],
-                            q.rect[3],
-                        ],
-                        clip,
-                        color: c,
-                        p: [q.p[0], sh.blur, 0.0, 0.0],
-                        ..*q
-                    }));
+                    let [dx, dy] = sh.offset.map(|d| match sdf {
+                        true => d,
+                        false => (d * scale).round() / scale,
+                    });
+                    p.quads
+                        .extend(g.shadow.iter().map(|q| placed(q, dx, dy, c)));
                 }
-                // The outline under the fill: each glyph thickened by half
-                // the stroke (its field's reach bounds it, in the shader).
-                let st = text_stroke;
-                if st.width > 0.0 && st.color[3] > 0.0 {
+                // The outline under the fill: the band the stroke's width
+                // wide on each glyph's outline (`-webkit-text-stroke`).
+                if look.stroke > 0.0 {
                     let mut c = st.color;
                     c[3] *= alpha;
-                    p.quads.extend(g.quads.iter().map(|q| PaintQuad {
-                        rect: [q.rect[0] + lx, q.rect[1] + ly, q.rect[2], q.rect[3]],
-                        clip,
-                        color: c,
-                        p: [q.p[0] + 0.5 * st.width, 0.0, 0.0, 0.0],
-                        ..*q
-                    }));
+                    p.quads
+                        .extend(g.stroke.iter().map(|q| placed(q, 0.0, 0.0, c)));
                 }
-                p.quads.extend(g.quads.iter().map(|q| PaintQuad {
-                    rect: [q.rect[0] + lx, q.rect[1] + ly, q.rect[2], q.rect[3]],
-                    clip,
-                    color: text_ink,
-                    ..*q
-                }));
+                p.quads
+                    .extend(g.fill.iter().map(|q| placed(q, 0.0, 0.0, text_ink)));
                 let d = s.decoration;
                 if d.line != 0 {
                     let mut c = if d.color[3] > 0.0 { d.color } else { own_ink };
                     c[3] *= alpha;
-                    let size = el.eff.size;
-                    let th = if d.thickness > 0.0 {
-                        d.thickness
-                    } else {
-                        (size / 14.0).max(1.0)
-                    };
+                    // The lines the primary font gives, each a whole
+                    // number of device pixels thick, on one.
+                    let face = self.texts.decorations(fonts, leaf);
+                    let px = |v: f32| (v * scale).round().max(1.0) / scale;
                     use crate::record::Decoration as D;
+                    let g = self.texts.leaf(leaf).expect("painted");
                     for &[x0, base, w] in &g.lines {
                         let at = [
-                            (D::UNDERLINE, base + 0.12 * size),
-                            (D::OVERLINE, base - m.ascender * size),
-                            (D::LINE_THROUGH, base - 0.3 * size),
+                            (D::UNDERLINE, face.underline),
+                            (D::OVERLINE, [face.ascent, face.underline[1]]),
+                            (D::LINE_THROUGH, face.through),
                         ];
-                        for (bit, cy) in at {
+                        for (bit, [above, thick]) in at {
                             if d.line & bit != 0 {
-                                let rect = [lx + x0, ly + cy - th / 2.0, w, th];
+                                let th = px(if d.thickness > 0.0 {
+                                    d.thickness
+                                } else {
+                                    thick
+                                });
+                                let top = if bit == D::OVERLINE {
+                                    base - above
+                                } else {
+                                    base - above - th / 2.0
+                                };
+                                let top = (top * scale).round() / scale;
+                                let rect = [lx + x0, ly + top, w, th];
                                 p.quads.push(quad(
                                     PaintKind::Solid,
                                     rect,
@@ -1621,36 +1696,24 @@ impl Tree {
                     }
                 }
             }
-            // The focused `Input`'s caret: a bar the text's height before
+            // The focused `Input`'s caret: a bar its line's height before
             // the character it stands at, in the text's ink.
             if let (Some(leaf), Some(f)) = (el.leaf, field)
                 && self.input.focus_el() == e as u32
             {
-                let t = &el.eff.text;
-                let size = el.eff.size;
-                let typed = !f.value.is_empty();
-                let before = if typed {
-                    &f.value[..f.caret.min(f.value.len())]
-                } else {
-                    ""
-                };
-                let features = og_text::shape::Features::NONE;
-                let track = t.tracking(size) / size.max(f32::MIN_POSITIVE);
-                let pen = og_text::text::widest_line(before, m, size, track, features);
-                let dx = if typed {
-                    self.glyphs[e].lines.first().map_or(0.0, |l| l[0])
-                } else {
-                    0.0
-                };
-                let glyph = (m.ascender - m.descender) * size;
-                let top = (t.line_height(size) - glyph) / 2.0;
+                let size = el.eff.size * self.text_scale;
+                let line = el.eff.text.line_height(el.eff.size) * self.text_scale;
+                // The placeholder shows: the caret stands before it.
+                let at = if f.value.is_empty() { 0 } else { f.caret };
+                let [cx, top, height] = match el.text.is_empty() {
+                    true => None,
+                    false => self.texts.caret(leaf, at),
+                }
+                .unwrap_or([0.0, 0.0, line]);
                 let lb = self.arena.box_of(leaf);
-                let rect = [
-                    x + lb.x + dx + pen,
-                    y + lb.y + top,
-                    (size / 14.0).max(1.0),
-                    glyph,
-                ];
+                let bar = (size / 14.0 * scale).round().max(1.0) / scale;
+                let snap = |v: f32| (v * scale).round() / scale;
+                let rect = [snap(x + lb.x + cx), snap(y + lb.y + top), bar, height];
                 p.quads.push(quad(
                     PaintKind::Solid,
                     rect,
@@ -2066,167 +2129,25 @@ fn round_to(q: &mut PaintQuad, round: &Round) {
     }
 }
 
-/// The font a text draws in: the body's mixed font (the body face, then
-/// the faces it falls back to for what it lacks: `crate::fonts::Fonts::link`),
-/// else the body alone.
-fn text_font(fonts: &crate::fonts::Fonts) -> &og_text::text::UiFont {
-    fonts.body.metrics.mixed.as_deref().unwrap_or(&fonts.body)
-}
-
-/// The paint font slot of face `k` of a text's mixed font: the body's 0,
-/// a fallback face's from 2 (1 is the icons').
-fn slot_of(k: u8) -> u32 {
-    match k {
-        0 => 0,
-        k => u32::from(k) + 1,
-    }
-}
-
-/// Lays `text` out as glyph quads from its leaf's top left (a quad's x the
-/// pen, y the baseline, w the size; `b` the font slot of the face that
-/// has the character, [`slot_of`]), when it, the width or the run changed
-/// since `g` was laid out (a change of faces clears `g.key`: `present`).
-fn lay_out(
-    g: &mut Glyphs,
-    text: &str,
-    eff: &Inherit,
-    width: f32,
-    m: &og_text::text::FontMetrics,
-    missing: &mut Vec<char>,
-    breaks: &mut Vec<(std::ops::Range<usize>, f32)>,
-) {
-    let t = &eff.text;
-    let size = eff.size;
-    let tracking = t.tracking(size);
-    let line = t.line_height(size);
-    let bold = t.weight >= 600;
-    let key = [
-        width.to_bits(),
-        size.to_bits(),
-        tracking.to_bits(),
-        line.to_bits(),
-        u32::from(t.align)
-            | u32::from(t.nowrap) << 2
-            | u32::from(bold) << 3
-            | u32::from(t.overflow) << 4
-            | u32::from(t.clamp) << 8,
-    ];
-    if g.key == key && *g.text == *text {
-        return;
-    }
-    g.key = key;
-    if *g.text != *text {
-        g.text.clear();
-        g.text.push_str(text);
-    }
-    g.quads.clear();
-    g.lines.clear();
-    g.line_text.clear();
-    let glyph = (m.ascender - m.descender) * size;
-    let weight = if bold { size * 0.03 } else { 0.0 };
-    let track = if size > 0.0 { tracking / size } else { 0.0 };
-    let features = og_text::shape::Features::NONE;
-    let mut place =
-        |k: usize, l: &str, w: f32, quads: &mut Vec<PaintQuad>, lines: &mut Vec<[f32; 3]>| {
-            let top = k as f32 * line + (line - glyph) / 2.0;
-            let dx = match t.align {
-                1 => (width - w) / 2.0,
-                2 => width - w,
-                _ => 0.0,
-            };
-            let baseline = top + m.ascender * size;
-            lines.push([dx, baseline, w]);
-            let mut pen = 0.0f32;
-            let mut prev: Option<char> = None;
-            for ch in l.chars() {
-                if !m.has(ch) {
-                    if !ch.is_whitespace()
-                        && !ch.is_control()
-                        && !og_text::text::invisible(ch)
-                        && !missing.contains(&ch)
-                    {
-                        missing.push(ch);
-                    }
-                    prev = None;
-                    continue;
-                }
-                if let Some(p) = prev {
-                    pen += m.kern(p, ch);
-                }
-                if !ch.is_whitespace() {
-                    // The face that has it, drawn at its own scale.
-                    let k = m.face_of(ch.encode_utf8(&mut [0; 4]));
-                    let scale = m.part(usize::from(k)).map_or(1.0, |f| f.scale);
-                    quads.push(quad(
-                        PaintKind::Glyph,
-                        [dx + pen * size, baseline, size * scale, 0.0],
-                        [0.0; 4],
-                        [0.0; 4],
-                        [0.0; 4],
-                        [weight, 0.0, 0.0, 0.0],
-                        ch as u32,
-                        slot_of(k),
-                    ));
-                }
-                pen += m.advance(ch) + track;
-                prev = Some(ch);
-            }
-        };
-    // `line-clamp-*` shows its first lines, the last cut to fit an ellipsis
-    // when more follow; `truncate` (one line, `text-ellipsis`) cuts a line
-    // wider than the box the same way.
-    let shown = |n: usize| match t.clamp {
-        0 => n,
-        c => n.min(usize::from(c)),
-    };
-    let ellipsis = if m.has('\u{2026}') { "\u{2026}" } else { "..." };
-    let wide = |l: &str| og_text::text::widest_line(l, m, size, track, features);
-    let cut = |l: &str, w: f32, more: bool| -> Option<(String, f32)> {
-        if !more && (t.overflow != 1 || w <= width + 0.5) {
+/// The right edge of the content box that set `e`'s `text-overflow`
+/// (itself or the ancestor it inherits it from), where its text is cut;
+/// `None` when that box was not placed this frame.
+fn overflow_edge(
+    els: &[El],
+    abs: &[(f32, f32, bool, [f32; 4])],
+    motion: &crate::motion::Motion,
+    arena: &Arena,
+    e: u32,
+) -> Option<f32> {
+    let mut a = e;
+    while els[a as usize].record.text.set & Text::OVERFLOW == 0 {
+        a = els[a as usize].parent;
+        if a == NONE {
             return None;
         }
-        let mut s = l.trim_end().to_string();
-        loop {
-            let with = format!("{s}{ellipsis}");
-            let w = wide(&with);
-            if w <= width + 0.5 || s.is_empty() {
-                return Some((with, w));
-            }
-            s.pop();
-            s.truncate(s.trim_end().len());
-        }
-    };
-    let mut lines: Vec<(std::borrow::Cow<str>, f32)> = Vec::new();
-    // Broken as the measure broke it (text.rs), by the same shaped layout
-    // at the same width, so a text never breaks inside the box it sized.
-    let wrap = (!t.nowrap && size > 0.0).then_some((width + 0.5) / size);
-    if og_text::text::paragraph::lines_into(m, text, track, features, wrap, breaks) {
-        lines.extend(breaks.iter().map(|(r, w)| {
-            let l = text[r.clone()].trim_end_matches(['\n', '\r']);
-            (l.into(), w * size)
-        }));
-    } else if t.nowrap || (wide(text) <= width + 0.5 && !text.contains('\n')) {
-        lines.extend(text.split('\n').map(|l| (l.into(), wide(l))));
-    } else {
-        let broken = og_text::text::break_lines_with_overflow(
-            text,
-            m,
-            size,
-            track,
-            features,
-            Some(width + 0.5),
-            false,
-        );
-        lines.extend(broken.into_iter().map(|l| (l.text.into(), l.width)));
     }
-    let n = shown(lines.len());
-    for (k, (l, w)) in lines.iter().take(n).enumerate() {
-        let (l, w) = match cut(l, *w, k + 1 == n && n < lines.len()) {
-            Some((l, w)) => (l.into(), w),
-            None => (std::borrow::Cow::Borrowed(&**l), *w),
-        };
-        place(k, &l, w, &mut g.quads, &mut g.lines);
-        g.line_text.push_str(&l);
-        g.line_text.push('\n');
-    }
+    let &(x, _, shown, _) = abs.get(a as usize)?;
+    let node = els[a as usize].node;
+    let b = motion.box_of(node).unwrap_or_else(|| arena.box_of(node));
+    shown.then_some(x + b.w - arena.box_of(node).inset[2])
 }

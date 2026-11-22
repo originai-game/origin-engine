@@ -165,6 +165,10 @@ pub(crate) struct State {
     /// The last UiDesc given to og.ui.configure, which applying a look's
     /// style keeps.
     pub ui_desc: Value,
+    /// The text roles' CSS family lists (sans, display, mono, rounded),
+    /// as `present::faces::configure` left them: the theme fonts the UI's
+    /// class resolver reads.
+    pub ui_font_roles: [String; 4],
     pub step_ms: f64,
     pub render_ms: f64,
     /// The last frame's render-graph passes and their encoding (start, ms).

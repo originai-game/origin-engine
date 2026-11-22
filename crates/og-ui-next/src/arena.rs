@@ -22,9 +22,10 @@ struct Node {
     space: crate::record::Spacing,
     /// A text leaf's text and how it runs.
     text: Option<(String, Run)>,
-    /// A text leaf's last two measures, by the width given (`u32::MAX`:
-    /// none, `EMPTY`: unused): layout asks the same sizes many times, and
-    /// a measure shapes. Cleared when its text or run changes.
+    /// A text leaf's last two measures, by the width given
+    /// ([`Avail::key`]; `EMPTY`: unused): layout asks the same sizes many
+    /// times, and a measure breaks lines. Cleared when its text or run
+    /// changes.
     memo: std::cell::Cell<[(u32, f32, f32); 2]>,
     slot: SlotId,
 }
@@ -32,21 +33,34 @@ struct Node {
 const EMPTY: u32 = u32::MAX - 1;
 const NO_MEMO: [(u32, f32, f32); 2] = [(EMPTY, 0.0, 0.0); 2];
 
-/// How a text leaf's text runs: what its measure reads, resolved from its
-/// element's record ([`crate::record::Text`]).
+/// How a text leaf's text runs: what its layout is made from, resolved
+/// from its element's record ([`crate::record::Text`]).
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Run {
     /// Font size, CSS px.
     pub size: f32,
     /// Letter spacing, CSS px.
     pub tracking: f32,
-    /// Line height, CSS px.
+    /// Line height, CSS px; negative is CSS `normal`: the ascent and
+    /// descent of the fonts drawn on the line.
     pub line: f32,
     pub weight: u16,
     /// Stays on one line.
     pub nowrap: bool,
     /// The most lines it takes (`line-clamp-*`); 0 all.
     pub clamp: u16,
+    /// Its `font-family` list (a CSS list, interned); `None`: the theme's
+    /// sans.
+    pub family: Option<nsh_tailwind::style::FontFamily>,
+    pub italic: bool,
+    /// `font-variant-*` (NSH's `FontVariant` bits).
+    pub variant: u8,
+    /// `overflow-wrap`: 0 normal, 1 break-word, 2 anywhere.
+    pub wrap: u8,
+    /// `text-overflow: ellipsis`.
+    pub ellipsis: bool,
+    /// `text-align`: 0 start, 1 center, 2 right, 3 left, 4 justify.
+    pub align: u8,
 }
 
 impl Run {
@@ -59,12 +73,59 @@ impl Run {
             weight: 400,
             nowrap: false,
             clamp: 0,
+            family: None,
+            italic: false,
+            variant: 0,
+            wrap: 0,
+            ellipsis: false,
+            align: 0,
+        }
+    }
+
+    /// Hashes everything a layout is made from.
+    fn hash(&self, h: &mut impl std::hash::Hasher) {
+        use std::hash::Hash;
+        [self.size, self.tracking, self.line]
+            .map(f32::to_bits)
+            .hash(h);
+        (self.weight, self.nowrap, self.family, self.italic).hash(h);
+        (self.variant, self.wrap, self.ellipsis, self.align).hash(h);
+        self.clamp.hash(h);
+    }
+}
+
+/// The width a text leaf is measured at (CSS Sizing 3 §4).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum Avail {
+    /// Its min-content size: broken at every opportunity.
+    Min,
+    /// Its max-content size: broken only where its text says.
+    Max,
+    /// Broken at this width, CSS px.
+    Width(f32),
+}
+
+impl Avail {
+    pub(crate) fn key(self) -> u32 {
+        match self {
+            Avail::Max => u32::MAX,
+            Avail::Min => EMPTY - 1,
+            Avail::Width(w) => w.to_bits().min(EMPTY - 2),
+        }
+    }
+
+    fn of(key: u32) -> Avail {
+        match key {
+            u32::MAX => Avail::Max,
+            k if k == EMPTY - 1 => Avail::Min,
+            k => Avail::Width(f32::from_bits(k)),
         }
     }
 }
 
-/// Measures a text leaf: its size given the width it may take.
-pub type Measure<'a> = dyn FnMut(&str, &Run, Option<f32>) -> (f32, f32) + 'a;
+/// Measures a text leaf (its id, its text and run): its size at the width
+/// it may take.
+pub type Measure<'a> = dyn FnMut(Id, &str, &Run, Avail) -> (f32, f32) + 'a;
 
 #[derive(Clone, Debug)]
 pub struct Arena {
@@ -188,6 +249,11 @@ impl Arena {
         &self.nodes[id as usize].children
     }
 
+    /// A text leaf's text and how it runs.
+    pub fn text_run(&self, id: Id) -> &Option<(String, Run)> {
+        &self.nodes[id as usize].text
+    }
+
     /// A text leaf's text.
     pub fn text_of(&self, id: Id) -> Option<&str> {
         self.nodes[id as usize].text.as_ref().map(|(t, _)| &**t)
@@ -252,10 +318,9 @@ impl Arena {
             let same = !self.structure
                 && memo[0].0 != EMPTY
                 && n.text.as_ref().is_some_and(|(t, run)| {
-                    memo.iter().filter(|m| m.0 != EMPTY).all(|&(key, w, h)| {
-                        let avail = (key != u32::MAX).then(|| f32::from_bits(key));
-                        measure(t, run, avail) == (w, h)
-                    })
+                    memo.iter()
+                        .filter(|m| m.0 != EMPTY)
+                        .all(|&(key, w, h)| measure(id, t, run, Avail::of(key)) == (w, h))
                 });
             if !same {
                 self.nodes[id as usize].memo.set(NO_MEMO);
@@ -379,21 +444,21 @@ impl Arena {
                         let Some((i, (text, run))) = text else {
                             return Size::ZERO;
                         };
-                        // CSS intrinsic sizes: min-content breaks at every
-                        // opportunity (width 0: the longest word, a nowrap
-                        // line whole), max-content never.
-                        let avail = known.width.or(match avail.width {
-                            AvailableSpace::Definite(w) => Some(w),
-                            AvailableSpace::MinContent => Some(0.0),
-                            AvailableSpace::MaxContent => None,
-                        });
+                        // CSS intrinsic sizes: min-content is the widest
+                        // piece that cannot break, max-content the text
+                        // broken only where it says.
+                        let avail = match (known.width, avail.width) {
+                            (Some(w), _) | (None, AvailableSpace::Definite(w)) => Avail::Width(w),
+                            (None, AvailableSpace::MinContent) => Avail::Min,
+                            (None, AvailableSpace::MaxContent) => Avail::Max,
+                        };
                         let n = &nodes[i];
-                        let key = avail.map_or(u32::MAX, |w| w.to_bits().min(EMPTY - 1));
+                        let key = avail.key();
                         let mut memo = n.memo.get();
                         let (w, h) = match memo.iter().find(|m| m.0 == key) {
                             Some(&(_, w, h)) => (w, h),
                             None => {
-                                let (w, h) = measure(text, run, avail);
+                                let (w, h) = measure(i as Id, text, run, avail);
                                 memo = [(key, w, h), memo[0]];
                                 n.memo.set(memo);
                                 (w, h)
@@ -487,10 +552,7 @@ fn sync(store: &mut LayoutStore, nodes: &mut [Node], i: Id) -> (SlotId, bool) {
         use std::hash::{Hash, Hasher};
         let mut h = rustc_hash::FxHasher::default();
         t.hash(&mut h);
-        [run.size, run.tracking, run.line]
-            .map(f32::to_bits)
-            .hash(&mut h);
-        (run.weight, run.nowrap, run.clamp).hash(&mut h);
+        run.hash(&mut h);
         h.finish()
     });
     let (slot, dirty) = store.sync_node(
