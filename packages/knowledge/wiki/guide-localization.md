@@ -47,6 +47,16 @@ string "coins" "{n, plural, =0 {コインなし} other {# コイン}}"
 - The active locale sets the UI's font chain: its own `fonts` first, then
   the locale's installed font pack, then packs a frame needed for
   characters only they cover, then the other tables' fonts.
+- A font the game ships itself (`runtime true`, a style pack's faces
+  included) keeps only the Chinese, Japanese and Korean characters the
+  game's text holds: every text asset under `assets/` (string tables,
+  stories, documents, a locale's included) and every file under `src/`,
+  plus the font's `chars` line. Its other characters all ship. CJK text
+  that exists only at run time (a player's name, chat, a server's text)
+  needs its characters in `chars`, or the locale's font pack
+  (`og font add`), whose faces ship whole and load when the script first
+  shows. A character the cut dropped falls back and the missing-glyph
+  warning names it.
 - Chinese, Japanese, Thai, Lao, Khmer and Burmese are written without
   spaces, so their words and line breaks come from ICU's dictionaries.
   The cook ships a dictionary in the font pack of a locale that needs one
