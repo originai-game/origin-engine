@@ -1156,7 +1156,7 @@ mod tests {
     use crate::arena::Run;
     use rune_taffy::CompactStyle;
 
-    fn measure(text: &str, run: &Run, _: Option<f32>) -> (f32, f32) {
+    fn measure(_: Id, text: &str, run: &Run, _: crate::arena::Avail) -> (f32, f32) {
         (text.chars().count() as f32 * run.size * 0.5, run.size)
     }
 

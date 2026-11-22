@@ -119,6 +119,7 @@ fn create_inner(game: u32, options: &str) -> Result<u32, String> {
         boot_flow,
         save_version: a.game.save_version,
         ui_desc: Value::Null,
+        ui_font_roles: Default::default(),
         step_ms: 0.0,
         render_ms: 0.0,
         pass_ms: Vec::new(),

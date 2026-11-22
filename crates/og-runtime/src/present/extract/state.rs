@@ -213,6 +213,9 @@ pub(crate) struct RenderState {
     /// paints with.
     pub ui_fonts: og_ui_next::fonts::Fonts,
     pub ui_icons: og_ui_next::icons::IconAtlas,
+    /// The font files TSX text is laid out from and rastered
+    /// (`crate::present::faces`).
+    pub ui_faces: crate::present::faces::Faces,
     /// The documents, on og-ui's new core.
     pub ui_next: Option<Box<crate::present::ui_next::Next>>,
     /// A UI font's first atlas page → every page, so text is drawn per page.
@@ -341,6 +344,7 @@ impl RenderState {
             color_filter: None,
             ui_fonts: Default::default(),
             ui_icons: Default::default(),
+            ui_faces: Default::default(),
             ui_next: None,
             ui_pages: BTreeMap::new(),
             runtime_fonts: IdMap::new(),

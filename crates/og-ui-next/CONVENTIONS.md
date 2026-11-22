@@ -512,7 +512,7 @@ entry, a variant, an icon, an event's sound. Fonts add faces.
     "Panel.frame": "border-2 border-border-strong shadow-panel",
     "Panel.frame.hud": "bg-plate-hi/80 backdrop-blur-md"
   },
-  "fonts": [{ "family": "Cartoon Display", "src": "LilitaOne-Regular.ttf", "weight": 400 }],
+  "fonts": ["LilitaOne-Regular.ttf", "@styles/cjk/ZCOOLKuaiLe-Regular.ttf"],
   "images": { "plate": { "src": "art/plate.png", "slice": [12, 16, 12, 16], "width": 8 } },
   "icons": { "star": "art/star.svg" },
   "sounds": {
@@ -574,15 +574,15 @@ is an error naming where it is, never ignored):
   this art, never paint features: if it can be an image, the engine does
   not draw it. The cook checks every `nine-<name>` names an image and
   every image is in the bundle.
-- **`fonts`**: faces `{ family, src, weight?, style?, unicodeRange? }`, `src`
-  relative to the pack or `@styles/shared/…` / `@styles/cjk/…`, with CSS
-  `@font-face` meaning. `weight` is a number or a range `[min, max]`: on a
-  variable face the part of its `wght` axis the entry serves, on a static
-  face the weights it draws unsynthesised; omitted is 400 for a static
-  face and the whole axis for a variable one. One file per entry; within a
-  family entries are tried in declaration order, an entry skipped for a
-  character outside its `unicodeRange`, then the locale chain. Each role
-  has its own family, its CJK face last in it with a `unicodeRange`.
+- **`fonts`**: the font files the pack ships, each a path relative to the
+  pack or `@styles/shared/…` / `@styles/cjk/…`. A file's family, weight,
+  style and width are its own; nothing is declared over them. The theme's
+  `fontFamily` lists name the families as the files do
+  (`"sans": "\"Fredoka\", \"Noto Sans SC\""`), in order: a character takes
+  the first family of its text's list that has it, at the weight nearest
+  the one asked (a variable file at the weight itself), then the game's
+  `fallbackFonts`, the pack's other files, the locale's fonts and the
+  default face. A role's Chinese face is the next family in its list.
 - **`icons`**: `name → art file`, over the default set, for `<Icon name>`.
 - **`sounds`**: by event (`press`, `hover`, `select`, `confirm`, `cancel`,
   `back`, `open`, `close`, `error`, `reward`) for the whole pack, or under a

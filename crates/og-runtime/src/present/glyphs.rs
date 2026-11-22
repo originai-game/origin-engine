@@ -682,6 +682,38 @@ pub(crate) fn warn_missing(
     }
 }
 
+/// Warns of the characters a frame's TSX texts drew that no font of the
+/// UI's collection has, once each: the text's family list, the game's
+/// `fallbackFonts`, the locale's fonts and font packs and the default
+/// face were all asked.
+pub(crate) fn warn_undrawn(eng: &crate::engine::Engine, tick: u64, chars: &[char]) {
+    let mut st = eng.state.borrow_mut();
+    let fresh: Vec<char> = chars
+        .iter()
+        .copied()
+        .filter(|c| st.ui_warned.insert(format!("undrawn U+{:04X}", *c as u32)))
+        .collect();
+    if fresh.is_empty() {
+        return;
+    }
+    let which = fresh
+        .iter()
+        .take(8)
+        .map(|c| format!("\"{c}\" U+{:04X}", *c as u32))
+        .collect::<Vec<_>>()
+        .join(", ");
+    let more = if fresh.len() > 8 {
+        format!(" and {} more", fresh.len() - 8)
+    } else {
+        String::new()
+    };
+    let text = format!(
+        "a frame drew {which}{more}, which no font of the UI has, so nothing is drawn for them: load a font that has them and give it to og.ui.configure (`fallbackFonts`, or the role's font), add it to the style pack's `fonts`, or draw characters the UI's fonts have"
+    );
+    st.log
+        .push(serde_json::json!({ "tick": tick, "warning": true, "text": text }));
+}
+
 /// Of what og-ui's frame found missing (the UI frame's missing glyphs),
 /// the (font, character) pairs no queued text has judged yet, judged now.
 pub(crate) fn unjudged(

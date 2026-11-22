@@ -28,9 +28,9 @@ pub struct Text {
     pub line: f32,
     pub line_px: bool,
     pub nowrap: bool,
-    /// 0 start, 1 center, 2 end.
+    /// `text-align`: 0 start, 1 center, 2 right, 3 left, 4 justify.
     pub align: u8,
-    /// 0 clip, 1 ellipsis, 2 scroll.
+    /// `text-overflow`: 1 an ellipsis where a line is cut, 0 none.
     pub overflow: u8,
     /// `-og-scroll`'s cycle and pause, ms.
     pub scroll: [f32; 2],
@@ -42,6 +42,14 @@ pub struct Text {
     /// The most lines it shows (`line-clamp-*`), the last ending in an
     /// ellipsis when more follow; 0 all. Its text children take it.
     pub clamp: u16,
+    /// Its `font-family` list (CSS, interned by NSH); `None`: the theme's
+    /// sans.
+    pub family: Option<nsh_tailwind::style::FontFamily>,
+    pub italic: bool,
+    /// `font-variant-*`: NSH's `FontVariant` bits.
+    pub variant: u8,
+    /// `overflow-wrap`: 0 normal, 1 break-word, 2 anywhere.
+    pub wrap: u8,
     /// Which fields its own rules set: bit k for [`Text::WEIGHT`] and on.
     pub set: u16,
     /// Its font size was set by its own rules.
@@ -58,13 +66,18 @@ impl Text {
     pub const TRANSFORM: u16 = 64;
     pub const HYPHENS: u16 = 128;
     pub const CLAMP: u16 = 256;
+    pub const FAMILY: u16 = 512;
+    pub const ITALIC: u16 = 1024;
+    pub const VARIANT: u16 = 2048;
+    pub const WRAP: u16 = 4096;
 
     /// Its letter spacing at `size`, CSS px.
     pub fn tracking(&self, size: f32) -> f32 {
         self.tracking_px + self.tracking_em * size
     }
 
-    /// Its line height at `size`, CSS px.
+    /// Its line height at `size`, CSS px; negative for CSS `normal`, the
+    /// height the line's own fonts give it.
     pub fn line_height(&self, size: f32) -> f32 {
         if self.line_px {
             self.line
@@ -105,6 +118,18 @@ impl Text {
         if own(Text::CLAMP) {
             t.clamp = self.clamp;
         }
+        if own(Text::FAMILY) {
+            t.family = self.family;
+        }
+        if own(Text::ITALIC) {
+            t.italic = self.italic;
+        }
+        if own(Text::VARIANT) {
+            t.variant = self.variant;
+        }
+        if own(Text::WRAP) {
+            t.wrap = self.wrap;
+        }
         t.set = parent.set | self.set;
         t.sized = self.sized;
         t
@@ -117,7 +142,8 @@ impl Default for Text {
             weight: 400,
             tracking_px: 0.0,
             tracking_em: 0.0,
-            line: 1.2,
+            // CSS's initial `normal`.
+            line: -1.0,
             line_px: false,
             nowrap: false,
             align: 0,
@@ -126,6 +152,10 @@ impl Default for Text {
             transform: 0,
             hyphens: nsh_tailwind::Hyphens::Manual,
             clamp: 0,
+            family: None,
+            italic: false,
+            variant: 0,
+            wrap: 0,
             set: 0,
             sized: false,
         }

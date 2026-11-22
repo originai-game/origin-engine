@@ -377,14 +377,17 @@ pub(crate) fn ui_anchors(rs: &mut RenderState, h: &mut Hierarchy, camera: Option
     };
     let RenderState {
         ui_next: Some(next),
-        ui_fonts,
+        ui_faces,
         ui_icons,
+        scene,
         ..
     } = rs
     else {
         return;
     };
-    next.follow_anchors((ui_fonts, ui_icons), |target, lift, _| {
+    let glyphs = scene.ui.glyphs.clone();
+    let mut atlas = glyphs.lock().unwrap_or_else(|e| e.into_inner());
+    next.follow_anchors((ui_faces, &mut atlas, ui_icons), |target, lift, _| {
         let p = match target {
             og_ui_next::tree::AnchorTarget::Entity(bits) => h.world_of(bits).w_axis.truncate(),
             og_ui_next::tree::AnchorTarget::Point(p) => p.into(),

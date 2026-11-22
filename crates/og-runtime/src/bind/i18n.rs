@@ -216,6 +216,10 @@ pub(crate) fn apply(eng: &Engine) -> Result<(), String> {
         paths.insert(0, og_ui_next::fonts::DEFAULT_FONT_ASSET.to_string());
     }
     let mut default_font = None;
+    // The same fonts for TSX text (present::faces): the locale's in
+    // order, then the default face whenever the bundle has it, so a
+    // family no file backs and a character no family has still draw.
+    let mut faces = Vec::with_capacity(paths.len() + 1);
     let mut chain = Vec::with_capacity(paths.len());
     let mut pending = Vec::new();
     let mut drawn = Vec::with_capacity(paths.len());
@@ -232,6 +236,28 @@ pub(crate) fn apply(eng: &Engine) -> Result<(), String> {
             default_font = Some(font);
         } else {
             chain.push(font);
+            faces.push(i);
+        }
+    }
+    let default = og_ui_next::fonts::DEFAULT_FONT_ASSET;
+    let has_default = eng
+        .assets
+        .borrow()
+        .bundle_for(default)
+        .is_ok_and(|(bundle, _)| bundle.output(default).is_ok());
+    if has_default {
+        if eng
+            .assets
+            .borrow()
+            .pending(og_bundle::runtime::asset_id(default))
+        {
+            if !pending.iter().any(|p| p == default) {
+                pending.push(default.to_string());
+            }
+        } else {
+            let i = crate::world::assets::load_font(eng, default)
+                .map_err(|e| format!("font '{default}': {e}"))?;
+            faces.push(i);
         }
     }
     {
@@ -269,6 +295,7 @@ pub(crate) fn apply(eng: &Engine) -> Result<(), String> {
         s.fonts = drawn;
         s.pending = pending;
     });
+    crate::present::faces::configure(eng, &faces);
     Ok(())
 }
 
@@ -398,6 +425,16 @@ pub(crate) fn resolve_missing(
         note(eng.id, format!("font packs: {e}"));
     }
     out
+}
+
+/// [`resolve_missing`] for characters no face of the TSX UI's collection
+/// draws: what is left when the packs that cover the others load.
+pub(crate) fn resolve_missing_chars(eng: &Engine, missing: Vec<char>) -> Vec<char> {
+    let any = og_render::FontHandle::from_index(0);
+    resolve_missing(eng, vec![(any, missing)])
+        .into_iter()
+        .flat_map(|(_, chars)| chars)
+        .collect()
 }
 
 /// Whether the locale's chain still waits for a font-pack face being

@@ -287,6 +287,25 @@ pub fn set_physics_clock(clock: fn() -> f64) {
     og_physics::set_clock(clock);
 }
 
+/// The family TSX text in CSS family list `css` (`sans-serif`,
+/// `"Cinzel", serif`) is laid out in first, as its font file names it:
+/// the first of the list's families engine `engine`'s UI has a face for.
+pub fn ui_text_family(engine: u32, css: &str) -> Option<String> {
+    let eng = engine::engine(engine).ok()?;
+    let mut rs = eng.render.borrow_mut();
+    let c = &mut rs.ui_faces.collection;
+    let (face, _) = c.primary(css, 400.0, false)?;
+    c.family_name(face).map(str::to_owned)
+}
+
+/// The CSS family lists of engine `engine`'s text roles (sans, display,
+/// mono, rounded), as og.ui.configure, its style pack and its locale left
+/// them: what `font-sans`, `font-display`, `font-mono` and `font-rounded`
+/// give a text.
+pub fn ui_font_roles(engine: u32) -> [String; 4] {
+    present::faces::roles(engine)
+}
+
 /// The fonts an engine's UI lays out and draws with, as og.ui.configure,
 /// the locale and the style left them; `None` for no engine.
 pub fn ui_fonts(engine: u32) -> Option<og_ui_next::fonts::Fonts> {

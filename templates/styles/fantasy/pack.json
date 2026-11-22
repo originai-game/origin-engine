@@ -61,9 +61,9 @@
       }
     },
     "fontFamily": {
-      "display": "\"Fantasy Display\"",
-      "mono": "\"Fantasy Serif\"",
-      "sans": "\"Fantasy Text\", \"Fantasy Serif\""
+      "display": "\"Cinzel\", \"Noto Serif SC\"",
+      "mono": "\"Spectral\", \"Noto Serif SC\"",
+      "sans": "\"Newsreader\", \"Spectral\", \"Noto Serif SC\""
     },
     "radius": {
       "button": 4.0,
@@ -74,83 +74,11 @@
     }
   },
   "fonts": [
-    {
-      "family": "Fantasy Display",
-      "src": "@styles/shared/Cinzel[wght].ttf",
-      "weight": [
-        400,
-        900
-      ]
-    },
-    {
-      "family": "Fantasy Display",
-      "src": "@styles/cjk/NotoSerifSC[wght].ttf",
-      "weight": [
-        200,
-        900
-      ],
-      "unicodeRange": "U+2E80-2FDF, U+3000-303F, U+3400-4DBF, U+4E00-9FFF, U+FF00-FFEF"
-    },
-    {
-      "family": "Fantasy Text",
-      "src": "@styles/shared/Newsreader[opsz,wght].ttf",
-      "weight": [
-        200,
-        800
-      ]
-    },
-    {
-      "family": "Fantasy Text",
-      "src": "@styles/shared/Spectral-SemiBold.ttf",
-      "weight": [
-        200,
-        800
-      ],
-      "unicodeRange": "U+2190-21FF"
-    },
-    {
-      "family": "Fantasy Text",
-      "src": "@styles/cjk/NotoSerifSC[wght].ttf",
-      "weight": [
-        200,
-        900
-      ],
-      "unicodeRange": "U+2E80-2FDF, U+3000-303F, U+3400-4DBF, U+4E00-9FFF, U+FF00-FFEF"
-    },
-    {
-      "family": "Fantasy Serif",
-      "src": "@styles/shared/Spectral-SemiBold.ttf",
-      "weight": [
-        400,
-        700
-      ]
-    },
-    {
-      "family": "Fantasy Serif",
-      "src": "@styles/cjk/NotoSerifSC[wght].ttf",
-      "weight": [
-        200,
-        900
-      ],
-      "unicodeRange": "U+2E80-2FDF, U+3000-303F, U+3400-4DBF, U+4E00-9FFF, U+FF00-FFEF"
-    },
-    {
-      "family": "Fantasy Caps",
-      "src": "@styles/shared/SpectralSC-SemiBold.ttf",
-      "weight": [
-        400,
-        700
-      ]
-    },
-    {
-      "family": "Fantasy Caps",
-      "src": "@styles/cjk/NotoSerifSC[wght].ttf",
-      "weight": [
-        200,
-        900
-      ],
-      "unicodeRange": "U+2E80-2FDF, U+3000-303F, U+3400-4DBF, U+4E00-9FFF, U+FF00-FFEF"
-    }
+    "@styles/shared/Cinzel[wght].ttf",
+    "@styles/cjk/NotoSerifSC[wght].ttf",
+    "@styles/shared/Newsreader[opsz,wght].ttf",
+    "@styles/shared/Spectral-SemiBold.ttf",
+    "@styles/shared/SpectralSC-SemiBold.ttf"
   ],
   "icons": {
     "check": "art/check.svg",

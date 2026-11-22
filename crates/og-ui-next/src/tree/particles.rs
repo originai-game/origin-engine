@@ -655,14 +655,15 @@ mod tests {
             t.apply(&b).unwrap();
             let emitter = burst();
             t.resolve_emitters(&|_| Some(&emitter));
-            let (fonts, icons) = (
-                crate::fonts::Fonts::default(),
+            let (mut fonts, mut atlas, icons) = (
+                og_text::fonts::Collection::default(),
+                og_draw::glyphs::Atlas::default(),
                 crate::icons::IconAtlas::default(),
             );
             for tick in 0..=10u64 {
                 t.set_time(tick as f64 / 60.0, reduced);
                 t.set_tick(tick, 60);
-                t.frame(&fonts, &icons);
+                t.frame(&mut fonts, &mut atlas, &icons);
             }
             t.drawn.quads.len()
         };

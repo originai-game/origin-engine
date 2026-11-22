@@ -47,7 +47,7 @@ fn project() -> &'static Path {
         );
         write(
             "styles/mini/pack.json",
-            br##"{ "fonts": [{ "family": "Mini", "src": "Body.ttf" }], "theme": { "fontFamily": { "sans": "\"Mini\"" } } }"##,
+            br##"{ "fonts": ["Body.ttf"], "theme": { "fontFamily": { "sans": "\"Newsreader\"" } } }"##,
         );
         write(
             "styles/tinted/pack.json",
@@ -63,7 +63,7 @@ fn project() -> &'static Path {
         );
         write(
             "styles/faced/pack.json",
-            br##"{ "fonts": [{ "family": "Faced", "src": "Body.ttf", "weight": [400, 700] }], "theme": { "fontFamily": { "sans": "\"Faced\", \"Nowhere\"", "display": "\"Faced\"" } } }"##,
+            br##"{ "fonts": ["Body.ttf"], "theme": { "fontFamily": { "sans": "\"Nowhere\", \"Newsreader\"", "display": "\"Newsreader\"" } } }"##,
         );
         write(
             "styles/faceless/pack.json",
@@ -84,11 +84,8 @@ fn project() -> &'static Path {
         );
         write(
             "styles/copied/pack.json",
-            br##"{ "fonts": [
-                { "family": "Copied", "src": "Body.ttf" },
-                { "family": "Numeric", "src": "nested/Numeric.ttf" },
-                { "family": "Mini", "src": "/styles/mini/Body.ttf" }
-            ], "theme": { "fontFamily": { "sans": "\"Copied\", \"Mini\"" } } }"##,
+            br##"{ "fonts": ["Body.ttf", "nested/Numeric.ttf", "/styles/mini/Body.ttf"],
+                "theme": { "fontFamily": { "sans": "\"Cinzel\", \"Newsreader\"" } } }"##,
         );
         std::fs::write(
             root.join("project.ogt"),
@@ -325,32 +322,33 @@ fn a_packs_fonts_draw_its_text_and_a_faceless_family_falls_back() {
         "styles/faced".into(),
     )));
     configure(e, json!({ "style": style }));
-    let fonts = og_runtime::ui_fonts(e).unwrap();
-    let faced: Vec<_> = fonts
-        .families
-        .iter()
-        .filter(|f| f.family == "Faced")
-        .collect();
-    assert_eq!(faced.len(), 1, "pack.json's face is registered");
-    assert!(faced[0].font.handle.is_some());
-    assert_eq!(
-        fonts.body.handle, faced[0].font.handle,
-        "body takes the pack's face"
+    // The pack's file is registered under the family it names itself, and
+    // each role's list reaches it: body skips the family no file backs,
+    // rounded falls back to display.
+    for role in ["sans-serif", "monospace", "ui-rounded"] {
+        assert_eq!(
+            og_runtime::ui_text_family(e, role).as_deref(),
+            Some("Newsreader"),
+            "{role} takes the pack's face"
+        );
+    }
+    let roles = og_runtime::ui_font_roles(e);
+    assert!(
+        roles[0].starts_with("\"Nowhere\", \"Newsreader\""),
+        "{roles:?}"
     );
-    assert_eq!(
-        fonts.display.as_ref().and_then(|f| f.handle),
-        faced[0].font.handle
-    );
-    assert!(fonts.body.metrics.has('a'), "the label's glyphs draw");
+    assert!(roles[1].starts_with("\"Newsreader\""), "{roles:?}");
 
     let style = value(og_runtime::host_impl::answer(og_load_style(
         e,
         "styles/faceless".into(),
     )));
     configure(e, json!({ "style": style }));
-    let fonts = og_runtime::ui_fonts(e).unwrap();
-    assert!(fonts.body.handle.is_some(), "the default face draws it");
-    assert!(fonts.body.metrics.has('a'));
+    assert_eq!(
+        og_runtime::ui_text_family(e, "sans-serif").as_deref(),
+        Some("Instrument Sans"),
+        "the default face draws it"
+    );
     assert!(warnings(e).iter().all(|w| !w.contains("no font")));
 }
 
@@ -363,14 +361,19 @@ fn a_style_names_its_assets_relative_to_itself_or_from_assets() {
     )));
     configure(e, json!({ "style": style }));
     assert_eq!(theme(e)["style"].as_str(), Some("copied"));
-    let fonts = og_runtime::ui_fonts(e).unwrap();
-    let own: Vec<_> = fonts
-        .families
-        .iter()
-        .filter(|f| f.document.starts_with("@pack:"))
-        .collect();
-    assert_eq!(own.len(), 3);
-    assert!(own.iter().all(|f| f.font.handle.is_some()));
+    // The files beside the pack and in its directory are Cinzel, the one
+    // named from assets/ Newsreader: each is registered under its family.
+    for (list, family) in [
+        ("sans-serif", "Cinzel"),
+        ("\"Cinzel\"", "Cinzel"),
+        ("\"Newsreader\"", "Newsreader"),
+    ] {
+        assert_eq!(
+            og_runtime::ui_text_family(e, list).as_deref(),
+            Some(family),
+            "{list}"
+        );
+    }
     assert!(
         warnings(e).iter().all(|w| !w.contains("no font")),
         "its body font, beside it, loaded"

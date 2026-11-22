@@ -170,30 +170,20 @@ fn expire(b: &mut Batch, k: u32) {
     b.op(10).u32(p);
 }
 
-/// A face with its file: every glyph laid out and painted.
-fn face() -> og_ui_next::fonts::Fonts {
+/// The default Latin face as the sans: every glyph laid out and painted.
+fn face() -> og_text::fonts::Collection {
     let path = concat!(
         env!("CARGO_MANIFEST_DIR"),
         "/../../templates/fonts/latin/NotoSans-Latin.ttf"
     );
-    let file =
-        og_text::shape::FontFile::new(std::sync::Arc::new(std::fs::read(path).unwrap())).unwrap();
-    let atlas = og_draw::MsdfFont {
-        atlas: og_draw::TextureHandle::from_slot(1).unwrap(),
-        distance_range: 4.0,
-        foreground: false,
-        silhouette: false,
-        line_height: 1.2,
-        glyphs: Vec::new(),
-        kerning: Vec::new(),
-    };
-    og_ui_next::fonts::Fonts {
-        body: og_text::text::UiFont {
-            handle: Some(og_draw::FontHandle::from_index(0)),
-            metrics: og_text::text::FontMetrics::from_msdf(&atlas).with_file(Some(file)),
-        },
-        ..Default::default()
-    }
+    let mut fonts = og_text::fonts::Collection::new();
+    let face = fonts
+        .add(std::sync::Arc::new(std::fs::read(path).unwrap()))
+        .unwrap();
+    let family = format!("\"{}\"", fonts.family_name(face).unwrap());
+    fonts.set_generic(og_text::fonts::GenericFamily::SansSerif, &family);
+    fonts.set_fallback(None, &[face]);
+    fonts
 }
 
 fn median(mut v: Vec<(f64, usize)>) -> (f64, usize) {
@@ -206,7 +196,8 @@ fn main() {
         .nth(1)
         .and_then(|a| a.parse().ok())
         .unwrap_or(21);
-    let fonts = og_ui_next::fonts::Fonts::default();
+    let mut fonts = face();
+    let mut atlas = og_draw::glyphs::Atlas::default();
     let icons = IconAtlas::default();
     let build = hud().bytes();
     let (mut builds, mut idle, mut changed) = (Vec::new(), Vec::new(), Vec::new());
@@ -217,11 +208,11 @@ fn main() {
         let a = allocations();
         let s = Instant::now();
         t.apply(&build).unwrap();
-        t.frame(&fonts, &icons);
+        t.frame(&mut fonts, &mut atlas, &icons);
         builds.push((s.elapsed().as_secs_f64() * 1e3, allocations() - a));
         let a = allocations();
         let s = Instant::now();
-        t.frame(&fonts, &icons);
+        t.frame(&mut fonts, &mut atlas, &icons);
         idle.push((s.elapsed().as_secs_f64() * 1e3, allocations() - a));
         for minute in 0..3u32 {
             let mut b = Batch::default();
@@ -230,7 +221,7 @@ fn main() {
             let a = allocations();
             let s = Instant::now();
             t.apply(&bytes).unwrap();
-            t.frame(&fonts, &icons);
+            t.frame(&mut fonts, &mut atlas, &icons);
             changed.push((s.elapsed().as_secs_f64() * 1e3, allocations() - a));
         }
         // Over panel 10 and off it; the first round meets its hover
@@ -241,7 +232,7 @@ fn main() {
                 let a = allocations();
                 let s = Instant::now();
                 t.pointer(px, py, false, false);
-                t.frame(&fonts, &icons);
+                t.frame(&mut fonts, &mut atlas, &icons);
                 if round > 0 {
                     hovered.push((s.elapsed().as_secs_f64() * 1e3, allocations() - a));
                 }
@@ -251,12 +242,12 @@ fn main() {
     for _ in 0..n {
         let mut t = tree();
         t.apply(&build).unwrap();
-        t.frame(&fonts, &icons);
+        t.frame(&mut fonts, &mut atlas, &icons);
         for k in 0..8 {
             let a = allocations();
             let s = Instant::now();
             t.nav(og_input::frame::Nav::Down);
-            t.frame(&fonts, &icons);
+            t.frame(&mut fonts, &mut atlas, &icons);
             // The first move meets the stops' capacity.
             if k > 0 {
                 moved.push((s.elapsed().as_secs_f64() * 1e3, allocations() - a));
@@ -269,7 +260,7 @@ fn main() {
         let mut t = tree();
         t.apply(&build).unwrap();
         t.apply(&plates).unwrap();
-        t.frame(&fonts, &icons);
+        t.frame(&mut fonts, &mut atlas, &icons);
         // The camera pans a px a frame; every tenth plate is off screen.
         for f in 0..6 {
             let project = |target, _lift: [f32; 3], _occlusion: bool| {
@@ -288,7 +279,7 @@ fn main() {
             let s = Instant::now();
             t.place_anchors(project);
             let p = (s.elapsed().as_secs_f64() * 1e3, allocations() - a);
-            t.frame(&fonts, &icons);
+            t.frame(&mut fonts, &mut atlas, &icons);
             // The first frames meet the paint's capacity.
             if f > 1 {
                 placed.push(p);
@@ -302,7 +293,7 @@ fn main() {
     // no batch. The first 120 frames reach the steady state.
     let (mut damage, mut drift) = (Vec::new(), Vec::new());
     let mut paint_quads = 0;
-    let face = face();
+    let mut face = face();
     for _ in 0..n {
         let mut t = pack_tree();
         let mut b = Batch::default();
@@ -310,7 +301,7 @@ fn main() {
             spawn(&mut b, k);
         }
         t.apply(&b.bytes()).unwrap();
-        t.frame(&face, &icons);
+        t.frame(&mut face, &mut atlas, &icons);
         let mut next = 1000u32;
         for f in 0..180u32 {
             let project = |target, _lift: [f32; 3], _occlusion: bool| {
@@ -343,7 +334,7 @@ fn main() {
                 t.apply(&bytes).unwrap();
             }
             t.place_anchors(project);
-            t.frame(&face, &icons);
+            t.frame(&mut face, &mut atlas, &icons);
             let m = (s.elapsed().as_secs_f64() * 1e3, allocations() - a);
             if f >= 120 {
                 if moving_only {
@@ -388,7 +379,7 @@ fn main() {
             let a = allocations();
             let s = Instant::now();
             t.set_tick(f, 60);
-            t.frame(&fonts, &icons);
+            t.frame(&mut fonts, &mut atlas, &icons);
             if f >= 120 {
                 rain.push((s.elapsed().as_secs_f64() * 1e3, allocations() - a));
                 rain_quads = t.drawn.quads.len();

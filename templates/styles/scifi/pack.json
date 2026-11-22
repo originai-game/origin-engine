@@ -73,9 +73,9 @@
       }
     },
     "fontFamily": {
-      "display": "\"Scifi Display\"",
-      "mono": "\"Scifi Figure\"",
-      "sans": "\"Scifi Text\""
+      "display": "\"Chakra Petch\", \"Noto Sans SC\"",
+      "mono": "\"Rajdhani\", \"Chakra Petch\", \"Noto Sans SC\"",
+      "sans": "\"Barlow Semi Condensed\", \"Chakra Petch\", \"Noto Sans SC\""
     },
     "radius": {
       "button": 0.0,
@@ -86,109 +86,12 @@
     }
   },
   "fonts": [
-    {
-      "family": "Scifi Display",
-      "src": "@styles/shared/ChakraPetch-SemiBold.ttf",
-      "weight": [
-        400,
-        600
-      ]
-    },
-    {
-      "family": "Scifi Display",
-      "src": "@styles/shared/ChakraPetch-Bold.ttf",
-      "weight": [
-        700,
-        900
-      ]
-    },
-    {
-      "family": "Scifi Display",
-      "src": "@styles/cjk/NotoSansSC[wght].ttf",
-      "weight": [
-        100,
-        900
-      ],
-      "unicodeRange": "U+2E80-2FDF, U+3000-303F, U+3400-4DBF, U+4E00-9FFF, U+FF00-FFEF"
-    },
-    {
-      "family": "Scifi Text",
-      "src": "@styles/shared/BarlowSemiCondensed-SemiBold.ttf",
-      "weight": [
-        400,
-        700
-      ]
-    },
-    {
-      "family": "Scifi Text",
-      "src": "@styles/shared/ChakraPetch-SemiBold.ttf",
-      "weight": [
-        400,
-        700
-      ],
-      "unicodeRange": "U+2190-21FF"
-    },
-    {
-      "family": "Scifi Text",
-      "src": "@styles/cjk/NotoSansSC[wght].ttf",
-      "weight": [
-        100,
-        900
-      ],
-      "unicodeRange": "U+2E80-2FDF, U+3000-303F, U+3400-4DBF, U+4E00-9FFF, U+FF00-FFEF"
-    },
-    {
-      "family": "Scifi Label",
-      "src": "@styles/shared/BarlowCondensed-SemiBold.ttf",
-      "weight": [
-        400,
-        700
-      ]
-    },
-    {
-      "family": "Scifi Label",
-      "src": "@styles/shared/ChakraPetch-SemiBold.ttf",
-      "weight": [
-        400,
-        700
-      ],
-      "unicodeRange": "U+2190-21FF"
-    },
-    {
-      "family": "Scifi Label",
-      "src": "@styles/cjk/NotoSansSC[wght].ttf",
-      "weight": [
-        100,
-        900
-      ],
-      "unicodeRange": "U+2E80-2FDF, U+3000-303F, U+3400-4DBF, U+4E00-9FFF, U+FF00-FFEF"
-    },
-    {
-      "family": "Scifi Figure",
-      "src": "@styles/shared/Rajdhani-Bold.ttf",
-      "weight": [
-        400,
-        700
-      ]
-    },
-    {
-      "family": "Scifi Figure",
-      "src": "@styles/shared/ChakraPetch-Bold.ttf",
-      "weight": [
-        400,
-        700
-      ],
-      "unicodeRange": "U+2190-21FF"
-    },
-    {
-      "family": "Scifi Figure",
-      "src": "@styles/cjk/NotoSansSC[wght].ttf",
-      "weight": [
-        100,
-        900
-      ],
-      "unicodeRange": "U+2E80-2FDF, U+3000-303F, U+3400-4DBF, U+4E00-9FFF, U+FF00-FFEF"
-    }
+    "@styles/shared/ChakraPetch-SemiBold.ttf",
+    "@styles/shared/ChakraPetch-Bold.ttf",
+    "@styles/cjk/NotoSansSC[wght].ttf",
+    "@styles/shared/BarlowSemiCondensed-SemiBold.ttf",
+    "@styles/shared/BarlowCondensed-SemiBold.ttf",
+    "@styles/shared/Rajdhani-Bold.ttf"
   ],
   "icons": {
     "check": "art/check.svg",

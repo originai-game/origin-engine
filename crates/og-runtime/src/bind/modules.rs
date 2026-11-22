@@ -193,7 +193,7 @@ pub(crate) fn mount_back(
                     && let rs = &mut *eng.render.borrow_mut()
                     && let crate::present::extract::RenderState {
                         ui_next: Some(next),
-                        ui_fonts,
+                        ui_faces,
                         ui_icons,
                         textures,
                         geo,
@@ -208,9 +208,11 @@ pub(crate) fn mount_back(
                     next.zone_states(og_input::actions::lock(&zones_to).zone_states());
                     // The tick's camera and anchored entities (docs/ui.md §1).
                     let view = feed.view(ctx, &viewport_of(engine_id));
+                    let glyphs = scene.ui.glyphs.clone();
+                    let mut atlas = glyphs.lock().unwrap_or_else(|e| e.into_inner());
                     warnings = next.end(
                         engine_id,
-                        (ui_fonts, ui_icons),
+                        (ui_faces, &mut atlas, ui_icons),
                         view,
                         (textures, &|h| scene.texture_size(h)),
                         (ui_time, t.tick),
@@ -236,7 +238,7 @@ pub(crate) fn mount_back(
                             )
                         },
                     );
-                    missing.extend(next.take_missing(ui_fonts));
+                    missing = next.take_missing();
                     // The on-screen controls the core laid out feed their
                     // actions from the next tick's sample (docs/ui.md §3.3).
                     if let Some(zones) = next.control_zones() {
@@ -253,10 +255,8 @@ pub(crate) fn mount_back(
                 if !missing.is_empty()
                     && let Ok(eng) = engine(engine_id)
                 {
-                    let missing =
-                        crate::present::glyphs::unjudged(&mut eng.render.borrow_mut(), &missing);
-                    let missing = crate::bind::i18n::resolve_missing(&eng, missing);
-                    crate::present::glyphs::warn_missing(&eng, ctx.time().tick, missing);
+                    let missing = crate::bind::i18n::resolve_missing_chars(&eng, missing);
+                    crate::present::glyphs::warn_undrawn(&eng, ctx.time().tick, &missing);
                 }
                 Ok(())
             },
