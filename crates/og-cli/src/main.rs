@@ -10,9 +10,9 @@
 mod commands;
 use commands::{
     api, assets, bake_lightmaps, bake_probes, bake_projection, bundle, cache, check, compare, cook,
-    cost, create, dev, doctor, explore, export, flow, fmt, frame, i18n, mcp, migrate, prefab,
-    probe, render, replay, run, serve_relay, session, sfx, sprite, style, test, ui, upgrade,
-    vfx_import, vfx_preview, video, world_server,
+    cost, create, dev, doctor, explore, export, flow, fmt, frame, i18n, mcp, migrate, model,
+    prefab, probe, render, replay, run, serve_relay, session, sfx, sprite, style, test, ui,
+    upgrade, vfx_import, vfx_preview, video, world_server,
 };
 mod api_lookup;
 mod bundle_cache;
@@ -96,6 +96,10 @@ commands:
                       from the last key frame at least S seconds, default 0.5, after it) as
                       keyframes/<index>.png at 1280, keyframes.png and timeline.json (the captures
                       guide)
+  model <command> <program.json | mesh> [options]
+                      og-shape's model and mesh tools: build, export, measure, preview, import,
+                      repair, decimate, unwrap, place, collide, compress, process, rig
+                      (`og model help`)
   compare <reference.png> <render.png> [--mask <mask.png>] [--align] [--key <ΔE00>] [--sheet <out.png>]
       [--flip <out.png>] [--ppd P] [--regions N] [--json]
                       a model review's numbers: silhouette IoU and ΔE00 per mask region (or over the
@@ -448,6 +452,7 @@ fn main() -> ExitCode {
         ["explore", rest @ ..] => explore::run(rest),
         ["render", rest @ ..] => render::run(rest),
         ["compare", rest @ ..] => compare::run(rest),
+        ["model", rest @ ..] => model::run(rest),
         ["cost", rest @ ..] => cost::run(rest),
         ["migrate", rest @ ..] => migrate::run(rest),
         ["relay", rest @ ..] => serve_relay::run(rest),

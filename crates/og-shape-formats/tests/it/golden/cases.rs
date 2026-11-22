@@ -42,7 +42,6 @@ pub fn all() -> Vec<Case> {
     cases.extend(crate::golden::painted::cases());
     cases.extend(crate::golden::bevel::cases());
     cases.extend(crate::golden::gen2::cases());
-    cases.extend(crate::golden::mcp::cases());
     cases.extend(crate::golden::model::cases());
     cases.extend(crate::golden::meshtools::cases());
     cases.extend(crate::golden::meshrepair::cases());
@@ -54,7 +53,6 @@ pub fn all() -> Vec<Case> {
     cases.extend(crate::golden::rest::cases());
     cases.extend(crate::golden::smallgaps::cases());
     cases.extend(crate::golden::uvs::cases());
-    cases.extend(crate::golden::place::cases());
     cases.extend(crate::golden::bake::cases());
     cases
 }

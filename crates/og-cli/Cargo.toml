@@ -18,6 +18,9 @@ og-idl = { path = "../og-idl" }
 og-i18n = { path = "../og-i18n" }
 og-core = { path = "../og-core" }
 og-cook = { path = "../og-cook" }
+# `og model`: the kernel and its file formats.
+og-shape = { path = "../og-shape" }
+og-shape-formats = { path = "../og-shape-formats" }
 og-bake = { path = "../og-bake" }
 og-env = { path = "../og-env" }
 og-render = { path = "../og-render" }
@@ -53,6 +56,10 @@ libc = "0.2"
 # og run's Job object: the game process dies with og.
 [target.'cfg(windows)'.dependencies]
 windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_Security", "Win32_System_JobObjects", "Win32_System_Threading"] }
+
+[dev-dependencies]
+# Compresses the arrays of `og model`'s hand-written binary FBX test.
+miniz_oxide = { version = "0.9.1", default-features = false, features = ["with-alloc"] }
 
 [[test]]
 name = "tests"

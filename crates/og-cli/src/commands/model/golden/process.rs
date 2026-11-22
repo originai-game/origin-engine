@@ -6,12 +6,15 @@
 use std::cell::RefCell;
 use std::path::{Path, PathBuf};
 
+use crate::commands::model::process::{ProcessDesc, process};
+use crate::commands::model::{Failure, Files, Input};
 use og_shape::math::{HashError, OutputHash};
 use og_shape::tools::{Floaters, Repair};
-use og_shape_cli::process::{ProcessDesc, process};
-use og_shape_cli::{Failure, Files, Input};
 
-use crate::golden::cases::Case;
+use super::Case;
+
+#[path = "../../../../../og-shape-formats/tests/it/support/painted.rs"]
+mod painted;
 
 pub fn cases() -> Vec<Case> {
     vec![
@@ -65,7 +68,7 @@ fn process_case(h: &mut OutputHash) -> Result<(), HashError> {
     let files = Memory {
         input: (
             PathBuf::from("ball_defects.obj"),
-            include_bytes!("../../../../og-shape/tests/data/meshes/ball_defects.obj").to_vec(),
+            include_bytes!("../../../../../og-shape/tests/data/meshes/ball_defects.obj").to_vec(),
         ),
         written: RefCell::new(Vec::new()),
     };
@@ -102,9 +105,9 @@ fn process_case(h: &mut OutputHash) -> Result<(), HashError> {
 /// again with fresh UVs (every map dropped, and said so) to OBJ (colours,
 /// UVs and material not written, and said so).
 fn look_case(h: &mut OutputHash) -> Result<(), HashError> {
-    let s = crate::golden::look::painted_sphere()?;
+    let s = painted::painted_sphere()?;
     let mut part = og_shape::tools::Part::new("ball", &s);
-    part.material = crate::golden::look::material();
+    part.material = painted::material();
     let glb = og_shape_formats::gltf::write::glb(&og_shape::tools::Scene {
         name: "look".into(),
         parts: vec![part],
@@ -145,15 +148,15 @@ fn look_case(h: &mut OutputHash) -> Result<(), HashError> {
 /// committed mesh with defects (normals only); each report and GLB (the
 /// baked PNGs inside).
 fn bake_case(h: &mut OutputHash) -> Result<(), HashError> {
-    let s = crate::golden::look::painted_sphere()?;
+    let s = painted::painted_sphere()?;
     let mut part = og_shape::tools::Part::new("ball", &s);
-    part.material = crate::golden::look::material();
+    part.material = painted::material();
     let glb = og_shape_formats::gltf::write::glb(&og_shape::tools::Scene {
         name: "look".into(),
         parts: vec![part],
     })
     .map_err(fail)?;
-    let obj = include_bytes!("../../../../og-shape/tests/data/meshes/ball_defects.obj").to_vec();
+    let obj = include_bytes!("../../../../../og-shape/tests/data/meshes/ball_defects.obj").to_vec();
     for (name, bytes, budget) in [("ball.glb", glb, 300), ("ball_defects.obj", obj, 500)] {
         let files = Memory {
             input: (PathBuf::from(name), bytes),

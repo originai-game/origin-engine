@@ -8,11 +8,11 @@ use std::path::PathBuf;
 
 use og_shape::tools::Import;
 
-use crate::args::{Args, IMPORT_OPTIONS};
-use crate::export::export;
-use crate::report::{imported, object};
-use crate::source::{Input, Local, Source, load_mesh};
-use crate::{Failure, Files};
+use super::args::{Args, IMPORT_OPTIONS};
+use super::export::export;
+use super::report::{imported, object};
+use super::source::{Input, Local, Source, load_mesh};
+use super::{Failure, Files};
 
 /// What to import. The zero value has no input.
 #[derive(Clone, Debug, Default, PartialEq)]

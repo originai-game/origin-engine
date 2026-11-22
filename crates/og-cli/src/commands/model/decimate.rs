@@ -11,10 +11,10 @@ use std::path::{Path, PathBuf};
 
 use og_shape::tools::{Decimate, Import, Measure, lods};
 
-use crate::args::{Args, IMPORT_OPTIONS};
-use crate::report::{self, array, object};
-use crate::source::{Input, Local, extension, load_mesh};
-use crate::{Failure, Files, failed};
+use super::args::{Args, IMPORT_OPTIONS};
+use super::report::{self, array, object};
+use super::source::{Input, Local, extension, load_mesh};
+use super::{Failure, Files, failed};
 
 /// What to decimate. The zero value has no input.
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -109,7 +109,7 @@ pub fn decimate(files: &dyn Files, d: &DecimateDesc) -> Result<String, Failure> 
             ("measures", m.to_json()),
             (
                 "output",
-                crate::export::write_solid_clips(
+                super::export::write_solid_clips(
                     files,
                     &mesh.name,
                     s,

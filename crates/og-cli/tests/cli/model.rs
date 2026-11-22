@@ -1,4 +1,4 @@
-//! The `shape` binary on the committed washing-machine program and on a
+//! `og model` on the committed washing-machine program and on a
 //! committed mesh with defects: each subcommand runs, files match the
 //! library's bytes, reports say what the kernel did, and mistakes exit 2.
 
@@ -16,7 +16,8 @@ const MESH: &str = concat!(
 );
 
 fn shape(args: &[&str]) -> std::process::Output {
-    Command::new(env!("CARGO_BIN_EXE_shape"))
+    Command::new(env!("CARGO_BIN_EXE_og"))
+        .arg("model")
         .args(args)
         .output()
         .expect("the binary runs")
@@ -488,53 +489,4 @@ fn ratios_levels_and_frames_are_taken_and_bounded() {
         assert_eq!(o.status.code(), Some(1), "{all:?}");
         assert!(String::from_utf8_lossy(&o.stderr).contains("too large"));
     }
-}
-
-/// A skinned solid is written with its skin: a scene of one part, not a
-/// plain GLB (which holds none, and was a refusal). Read back, the bones
-/// and weights are there.
-#[test]
-fn a_skinned_solid_is_written_with_its_skin() {
-    use og_shape::math::{DVec3, Frame};
-    use og_shape::mesh::{Bone, Skin, Solid, Weights};
-    let mut s = Solid::default();
-    for p in [
-        [0.0, 0.0, 0.0],
-        [10.0, 0.0, 0.0],
-        [0.0, 10.0, 0.0],
-        [0.0, 0.0, 10.0],
-    ] {
-        s.push_vertex(DVec3::from_array(p));
-    }
-    for t in [[0, 2, 1], [0, 1, 3], [1, 2, 3], [0, 3, 2]] {
-        s.push_triangle(t, 0, &["tet"]);
-    }
-    let tip = Frame {
-        origin: DVec3::new(0.0, 0.0, 5.0),
-        ..Frame::IDENTITY
-    };
-    s.skin = Some(Skin {
-        bones: vec![
-            Bone::new("root", None, Frame::IDENTITY),
-            Bone::new("tip", Some(0), tip),
-        ],
-        weights: vec![
-            Weights::single(0),
-            Weights::single(0),
-            Weights::single(0),
-            Weights::single(1),
-        ],
-    });
-    let bytes =
-        og_shape_cli::export::encode_solid("tet", &s, None, std::path::Path::new("tet.glb"))
-            .unwrap();
-    let back = og_shape_formats::import(&bytes, &og_shape::tools::Import::default(), &|_: &str| {
-        Err(String::new())
-    })
-    .unwrap();
-    let skin = back.parts[0].solid.skin.as_ref().expect("a skin");
-    let names: Vec<&str> = skin.bones.iter().map(|b| b.name.as_str()).collect();
-    assert_eq!(names, ["root", "tip"]);
-    assert_eq!(skin.bones[1].parent, Some(0));
-    skin.check(back.parts[0].solid.positions.len()).unwrap();
 }

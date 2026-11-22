@@ -15,11 +15,11 @@ use std::path::{Path, PathBuf};
 
 use og_shape::tools::{Part, Preview, Scene, UvView, ViewCamera, uv_view};
 
-use crate::args::{Args, IMPORT_OPTIONS};
-use crate::export::written;
-use crate::report::{array, object, string};
-use crate::source::{Local, Source, load_uvs};
-use crate::{Failure, Files, failed};
+use super::args::{Args, IMPORT_OPTIONS};
+use super::export::written;
+use super::report::{array, object, string};
+use super::source::{Local, Source, load_uvs};
+use super::{Failure, Files, failed};
 
 /// The views and how to lay them out. The zero value is the kernel's
 /// default turntable (`og_shape::tools::Preview`) in one row.
@@ -260,7 +260,7 @@ pub fn morph_weights(text: &str) -> Result<Vec<(String, f64)>, Failure> {
         .collect()
 }
 
-fn clip_names(mesh: &crate::source::Mesh) -> Vec<String> {
+fn clip_names(mesh: &super::source::Mesh) -> Vec<String> {
     let mut names: Vec<String> = Vec::new();
     for c in mesh.imported.parts.iter().flat_map(|p| &p.clips) {
         if !names.contains(&c.name) {

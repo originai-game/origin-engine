@@ -24,6 +24,7 @@ pub(super) mod frame;
 pub(super) mod i18n;
 pub(super) mod mcp;
 pub(super) mod migrate;
+pub(super) mod model;
 pub(super) mod prefab;
 pub(super) mod probe;
 pub(super) mod render;

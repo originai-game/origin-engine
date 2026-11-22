@@ -6,20 +6,20 @@
 use std::cell::RefCell;
 use std::path::{Path, PathBuf};
 
+use crate::commands::model::place::{PlaceDesc, place as place_command};
+use crate::commands::model::process::{ProcessDesc, process};
+use crate::commands::model::{Failure, Files, Input};
 use og_shape::generators::solids::{BoxDesc, cuboid, torus};
 use og_shape::math::{DVec3, HashError, OutputHash};
 use og_shape::mesh::Solid;
 use og_shape::tools::{Axis, Floaters, Import, Pivot, Place, Repair, Size, no_files, place};
-use og_shape_cli::place::{PlaceDesc, place as place_command};
-use og_shape_cli::process::{ProcessDesc, process};
-use og_shape_cli::{Failure, Files, Input};
 use og_shape_formats::import;
 
-use crate::golden::cases::Case;
+use super::Case;
 
 // Also `meshtools`'s, whose copy is private to it.
 #[allow(dead_code, clippy::duplicate_mod)]
-#[path = "../../../../og-shape/tests/it/tools/support/skinned.rs"]
+#[path = "../../../../../og-shape/tests/it/tools/support/skinned.rs"]
 mod skinned_support;
 
 pub fn cases() -> Vec<Case> {
@@ -256,7 +256,7 @@ fn ball() -> Memory {
     Memory {
         input: (
             PathBuf::from("ball_defects.obj"),
-            include_bytes!("../../../../og-shape/tests/data/meshes/ball_defects.obj"),
+            include_bytes!("../../../../../og-shape/tests/data/meshes/ball_defects.obj"),
         ),
         written: RefCell::new(Vec::new()),
     }

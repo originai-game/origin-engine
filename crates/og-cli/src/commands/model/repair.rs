@@ -9,10 +9,10 @@ use std::path::PathBuf;
 
 use og_shape::tools::{Floaters, Import, Measure, Repair};
 
-use crate::args::{Args, IMPORT_OPTIONS};
-use crate::report::{self, object};
-use crate::source::{Input, Local, load_mesh};
-use crate::{Failure, Files, failed};
+use super::args::{Args, IMPORT_OPTIONS};
+use super::report::{self, object};
+use super::source::{Input, Local, load_mesh};
+use super::{Failure, Files, failed};
 
 /// What to repair. The zero value has no input.
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -36,7 +36,7 @@ pub fn repair(files: &dyn Files, d: &RepairDesc) -> Result<String, Failure> {
     let (fixed, r) = og_shape::tools::repair_owned(joined, &d.repair).map_err(failed)?;
     let m = og_shape::tools::measure(&fixed, &Measure::default());
     let (material, defaults, dropped) = mesh.material();
-    let output = crate::export::write_solid_clips(
+    let output = super::export::write_solid_clips(
         files,
         &mesh.name,
         &fixed,

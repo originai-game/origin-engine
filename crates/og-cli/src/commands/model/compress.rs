@@ -9,10 +9,10 @@
 
 use std::path::PathBuf;
 
-use crate::args::Args;
-use crate::report::object;
-use crate::source::{Input, Local};
-use crate::{Failure, Files, failed};
+use super::args::Args;
+use super::report::object;
+use super::source::{Input, Local};
+use super::{Failure, Files, failed};
 
 /// What to compress. The zero value has no input.
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -54,7 +54,7 @@ pub fn compress(files: &dyn Files, d: &CompressDesc) -> Result<String, Failure> 
             ("bytes_before", c.bytes_before.to_string()),
             ("bytes_after", c.bytes_after.to_string()),
             ("file_before", bytes.len().to_string()),
-            ("output", crate::export::written(&d.out, out.len())),
+            ("output", super::export::written(&d.out, out.len())),
         ]));
     }
     let pack = |from: &[u8]| -> Result<_, Failure> {
@@ -104,7 +104,7 @@ pub fn compress(files: &dyn Files, d: &CompressDesc) -> Result<String, Failure> 
         ("bytes_before", c.bytes_before.to_string()),
         ("bytes_after", c.bytes_after.to_string()),
         ("file_before", bytes.len().to_string()),
-        ("output", crate::export::written(&d.out, out.len())),
+        ("output", super::export::written(&d.out, out.len())),
     ]))
 }
 

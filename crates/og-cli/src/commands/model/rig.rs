@@ -22,10 +22,10 @@ use og_shape::skin::{
 use og_shape::tools::Import;
 use serde_json::{Value, json};
 
-use crate::args::{Args, IMPORT_OPTIONS};
-use crate::report::object;
-use crate::source::{Input, Local, load_mesh};
-use crate::{Failure, Files, failed};
+use super::args::{Args, IMPORT_OPTIONS};
+use super::report::object;
+use super::source::{Input, Local, load_mesh};
+use super::{Failure, Files, failed};
 
 /// What to rig. The zero value has no input.
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -247,7 +247,7 @@ pub fn rig(files: &dyn Files, d: &RigDesc) -> Result<String, Failure> {
         Vec::new()
     };
     let (material, _, _) = mesh.material();
-    let output = crate::export::write_solid_clips(
+    let output = super::export::write_solid_clips(
         files,
         &mesh.name,
         &rigged,

@@ -3180,6 +3180,7 @@ dependencies = [
  "gltf",
  "image",
  "libc",
+ "miniz_oxide 0.9.1",
  "nsh-jsx",
  "og-anim",
  "og-api",
@@ -3193,6 +3194,8 @@ dependencies = [
  "og-probe",
  "og-render",
  "og-render-data",
+ "og-shape",
+ "og-shape-formats",
  "og-shared",
  "og-ui-next",
  "oxc_allocator",
@@ -3651,18 +3654,6 @@ dependencies = [
  "sha2",
  "spade",
  "ttf-parser",
-]
-
-[[package]]
-name = "og-shape-cli"
-version = "0.9.0"
-dependencies = [
- "miniz_oxide 0.9.1",
- "og-cook",
- "og-core",
- "og-shape",
- "og-shape-formats",
- "serde_json",
 ]
 
 [[package]]

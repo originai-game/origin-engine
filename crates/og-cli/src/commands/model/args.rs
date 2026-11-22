@@ -7,7 +7,7 @@ use std::path::PathBuf;
 
 use og_shape::tools::{Axis, Import};
 
-use crate::{Failure, Input};
+use super::{Failure, Input};
 
 /// The arguments after the command name.
 pub struct Args {

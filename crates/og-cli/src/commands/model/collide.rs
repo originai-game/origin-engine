@@ -17,11 +17,11 @@ use og_shape_formats::gltf::write::glb;
 use og_shape_formats::obj::write::obj;
 use og_shape_formats::stl::write::stl;
 
-use crate::args::{Args, IMPORT_OPTIONS};
-use crate::export::written;
-use crate::report::{array, object, string};
-use crate::source::{Input, Local, Source, extension, load, scene};
-use crate::{Failure, Files, failed};
+use super::args::{Args, IMPORT_OPTIONS};
+use super::export::written;
+use super::report::{array, object, string};
+use super::source::{Input, Local, Source, extension, load, scene};
+use super::{Failure, Files, failed};
 
 /// What to cover. The zero value has no input; with an input, one hull
 /// a part.

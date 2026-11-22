@@ -1,58 +1,74 @@
-//! `shape`: the og-shape command line, for tests and for the platform
-//! before the merge (`docs/design.md` §5 and §7).
+//! `og model <command>`: og-shape's model and mesh commands. Every
+//! result is the kernel's; these modules only read inputs, call the
+//! kernel and write its outputs.
 //!
-//! ```text
-//! shape build    <program.json>
-//! shape export   <input> -o <out.glb|obj|stl|urdf|usda|usdz> [--atlas PX]
-//!                [--density KG_M3] [--effort E] [--velocity V]
-//! shape measure  <input> [--intersections]
-//! shape preview  <input> -o <out.png> [--views N] [--width PX]
-//!                [--height PX] [--columns N] [--elevation RAD]
-//!                [--azimuth RAD] [--no-edges] [--no-ground] [--fov RAD]
-//!                [--unlit] [--each] [--uv [--uv-size PX]] [--env PICTURE]
-//! shape import   <mesh> [-o out]
-//! shape repair   <mesh> [-o out] [--weld MM] [--weld-all] [--floaters F]
-//!                [--floater-size MM] [--non-manifold] [--holes N [--holes-through]]
-//!                [--thicken MM] [--fuse] [--min-edge MM] [--intersections]
-//! shape decimate <mesh> (--ratio R | --target N | --lod-ratios A,B,…)
-//!                [--max-error MM]
-//!                [--lock-border] [--merge-charts UV] [--cross-color-borders]
-//!                [--lods N] [-o out]
-//! shape unwrap   <mesh> [-o out.glb] [--angle DEG] [--resolution PX]
-//!                [--padding TEXELS] [--shared] [--conformal] [--seams]
-//! shape place    <mesh> [-o out] [--up AXIS] [--front AXIS] [--turn DEG]
-//!                [--longest L | --height L | --width L | --depth L | --scale F]
-//!                [--pivot base|center|X,Y,Z]
-//! shape compress <file.glb> -o out.glb [--quantize [--position-bits N]]
-//!                [--draco [--position-bits N] [--normal-bits N] [--uv-bits N]
-//!                [--color-bits N] [--weight-bits N] [--sequential]]
-//! shape collide  <input> [-o out] [--hulls N] [--concavity MM]
-//!                [--max-vertices N]
-//! shape process  <mesh> [--budget N | --ratio R] [--merge-charts UV]
-//!                [--cross-color-borders] [-o out.glb]
-//!                [repair, unwrap and place options] [--intersections]
-//!                [--unwrap] [--texture-max PX] [--ktx2 | --ktx2-rdo Q | --etc1s | --webp]
-//!                [--bake PX [--bake-distance MM]]
-//! shape rig      <mesh> [-o out.glb] [--skeleton joints.json] [--check-clip]
-//! ```
+//! Entry: [`source::load`] reads a [`Source`]: a model program
+//! (`og_shape::model::program`) or a mesh file (glb, gltf, obj, fbx), through
+//! a [`Files`] that does the I/O (plain files for the command line, a
+//! confined workspace for the server). Each command is one module:
 //!
-//! An input is a program (the JSON a binding records,
-//! `og_shape::model::program`) or a mesh file (`.glb`, `.gltf`, `.obj`,
-//! `.fbx`; OBJ with `--unit-mm MM`; OBJ and glTF with `--up AXIS` and
-//! `--front AXIS`, the file's axes that are the object's up and front,
-//! or `--z-up` for `--up +z --front -y`). `--uvs` on `build`,
-//! `export`, `measure` and `preview` replays a program as if it began
-//! with the `uvs` operation, so every part it makes has UVs. Reports go to stdout
-//! as JSON with no thresholds; errors go to stderr with exit status 1 (2
-//! for a usage error). Each subcommand is one module of the `og_shape_cli`
-//! library, which the MCP server (`shape-mcp`) calls too.
+//! - [`build`]: the built model's parts and joints.
+//! - [`measure`]: measures as JSON, with no thresholds.
+//! - [`preview`]: the CPU turntable as one PNG.
+//! - [`export`]: GLB, OBJ or STL.
+//! - [`import`]: what a mesh file holds, and what was skipped.
+//! - [`repair`], [`decimate`], [`unwrap`]: the mesh tools on a mesh file.
+//! - [`place`]: a mesh file turned, sized and moved to a base pivot.
+//! - [`process`]: the chain import → repair → decimate → unwrap →
+//!   measure → export under a triangle budget.
+//!
+//! Reports are JSON with keys in a fixed order ([`report`]); errors are
+//! [`Failure`] values. [`args`] reads the command line.
 
 use std::process::ExitCode;
 
-use og_shape_cli::Failure;
-use og_shape_cli::args::Args;
+pub mod args;
+pub mod build;
+pub mod collide;
+pub mod compress;
+pub mod decimate;
+pub mod export;
+pub mod import;
+pub mod measure;
+pub mod place;
+pub mod preview;
+pub mod process;
+pub mod repair;
+pub mod report;
+pub mod rig;
+pub mod source;
+pub mod unwrap;
 
-const USAGE: &str = "usage: shape <command> <input> [options]
+#[cfg(test)]
+mod golden;
+
+pub use source::{Files, Input, Local, Mesh, Source};
+
+/// Why a command did not run.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum Failure {
+    /// The command was asked wrongly (a missing or unknown option).
+    Usage(String),
+    /// The command ran and failed: the kernel's error, or an I/O error.
+    Failed(String),
+}
+
+impl std::fmt::Display for Failure {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Failure::Usage(w) | Failure::Failed(w) => f.write_str(w),
+        }
+    }
+}
+
+impl std::error::Error for Failure {}
+
+/// A kernel error as a failure.
+pub fn failed(e: impl std::fmt::Display) -> Failure {
+    Failure::Failed(e.to_string())
+}
+
+const USAGE: &str = "usage: og model <command> <input> [options]
   an input is a program (.json) or a mesh file (.glb .gltf .obj .fbx);
   OBJ takes --unit-mm MM (default metres); OBJ and glTF take --up AXIS and
   --front AXIS (+x -x +y -y +z -z: the file's axes that are the object's up and
@@ -112,25 +128,27 @@ const USAGE: &str = "usage: shape <command> <input> [options]
                                                 or a humanoid's found from the mesh (up +Z,
                                                 facing -Y, T or A pose)";
 
-fn main() -> ExitCode {
-    let argv: Vec<String> = std::env::args().skip(1).collect();
+/// Runs `og model <command> …`: the report on stdout, a usage error on
+/// stderr with exit status 2, a failure with 1.
+pub fn run(argv: &[&str]) -> ExitCode {
+    let argv: Vec<String> = argv.iter().map(|a| a.to_string()).collect();
     let result = match argv.split_first() {
         Some((cmd, rest)) => {
-            let a = Args::new(rest);
+            let a = args::Args::new(rest);
             match cmd.as_str() {
-                "build" => og_shape_cli::build::run(&a),
-                "export" => og_shape_cli::export::run(&a),
-                "measure" => og_shape_cli::measure::run(&a),
-                "preview" => og_shape_cli::preview::run(&a),
-                "import" => og_shape_cli::import::run(&a),
-                "repair" => og_shape_cli::repair::run(&a),
-                "decimate" => og_shape_cli::decimate::run(&a),
-                "unwrap" => og_shape_cli::unwrap::run(&a),
-                "place" => og_shape_cli::place::run(&a),
-                "collide" => og_shape_cli::collide::run(&a),
-                "compress" => og_shape_cli::compress::run(&a),
-                "process" => og_shape_cli::process::run(&a),
-                "rig" => og_shape_cli::rig::run(&a),
+                "build" => build::run(&a),
+                "export" => export::run(&a),
+                "measure" => measure::run(&a),
+                "preview" => preview::run(&a),
+                "import" => import::run(&a),
+                "repair" => repair::run(&a),
+                "decimate" => decimate::run(&a),
+                "unwrap" => unwrap::run(&a),
+                "place" => place::run(&a),
+                "collide" => collide::run(&a),
+                "compress" => compress::run(&a),
+                "process" => process::run(&a),
+                "rig" => rig::run(&a),
                 "help" | "-h" | "--help" => {
                     println!("{USAGE}");
                     return ExitCode::SUCCESS;
@@ -148,11 +166,11 @@ fn main() -> ExitCode {
             ExitCode::SUCCESS
         }
         Err(Failure::Usage(why)) => {
-            eprintln!("shape: {why}\n{USAGE}");
+            eprintln!("og model: {why}\n{USAGE}");
             ExitCode::from(2)
         }
         Err(Failure::Failed(why)) => {
-            eprintln!("shape: {why}");
+            eprintln!("og model: {why}");
             ExitCode::from(1)
         }
     }

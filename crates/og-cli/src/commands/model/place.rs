@@ -20,11 +20,11 @@ use og_shape_formats::gltf::write::glb;
 use og_shape_formats::obj::write::obj;
 use og_shape_formats::stl::write::stl;
 
-use crate::args::{Args, IMPORT_OPTIONS};
-use crate::export::written;
-use crate::report::{self, object};
-use crate::source::{Input, Local, Mesh, extension, load_mesh, scene};
-use crate::{Failure, Files, failed};
+use super::args::{Args, IMPORT_OPTIONS};
+use super::export::written;
+use super::report::{self, object};
+use super::source::{Input, Local, Mesh, extension, load_mesh, scene};
+use super::{Failure, Files, failed};
 
 /// What to place. The zero value has no input; with an input, it
 /// changes nothing.

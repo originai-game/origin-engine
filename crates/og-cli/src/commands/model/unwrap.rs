@@ -8,11 +8,11 @@ use std::path::PathBuf;
 
 use og_shape::tools::{Import, Measure, Unwrap};
 
-use crate::args::{Args, IMPORT_OPTIONS};
-use crate::export::write_solid;
-use crate::report::{self, object};
-use crate::source::{Input, Local, load_mesh};
-use crate::{Failure, Files, failed};
+use super::args::{Args, IMPORT_OPTIONS};
+use super::export::write_solid;
+use super::report::{self, object};
+use super::source::{Input, Local, load_mesh};
+use super::{Failure, Files, failed};
 
 /// What to unwrap. The zero value has no input.
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -44,7 +44,7 @@ pub fn unwrap(files: &dyn Files, d: &UnwrapDesc) -> Result<String, Failure> {
         },
     );
     let (mut material, defaults, mut dropped) = mesh.material();
-    dropped.extend(crate::process::drop_maps(&mut material));
+    dropped.extend(super::process::drop_maps(&mut material));
     let output = write_solid(files, &mesh.name, &s, Some(&material), d.out.as_deref())?;
     Ok(object(&[
         ("unwrap", report::unwrap(&uvs)),

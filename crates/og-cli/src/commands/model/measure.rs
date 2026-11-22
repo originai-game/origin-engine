@@ -10,10 +10,10 @@
 
 use og_shape::tools::Measure;
 
-use crate::args::{Args, IMPORT_OPTIONS};
-use crate::report::{array, object, string};
-use crate::source::{Local, Mesh, Source, load_uvs};
-use crate::{Failure, failed};
+use super::args::{Args, IMPORT_OPTIONS};
+use super::report::{array, object, string};
+use super::source::{Local, Mesh, Source, load_uvs};
+use super::{Failure, failed};
 
 /// What to measure besides the defaults. The zero value skips the exact
 /// self-intersection count.

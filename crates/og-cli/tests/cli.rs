@@ -73,6 +73,8 @@ mod cli {
     mod i18n;
     mod maintenance;
     mod mcp;
+    mod model;
+    mod model_fbx;
     mod probe;
     mod project;
     mod sprite;

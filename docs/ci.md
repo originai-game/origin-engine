@@ -321,10 +321,10 @@ despite its name.
 
 `shape-wasm32` (full) builds og-shape's golden test for wasm32-wasip1 and
 runs it under wasmtime (`CARGO_TARGET_WASM32_WASIP1_RUNNER`): every case
-must hash as `crates/og-shape-cli/tests/it/golden/hashes.txt` records, the
+must hash as `crates/og-shape-formats/tests/it/golden/hashes.txt` records, the
 same check rust-cpu makes natively, so the kernel's f64 arithmetic, own
 trig and exact predicates give the web target the native result. It reruns
-only when og-shape-cli's closure changed.
+only when og-shape-formats' closure changed.
 
 ### Test binaries
 
@@ -381,7 +381,7 @@ split, and the lowest such crate is its cause.
 | `safari` | Wire, player, export, device, and motion ticks in desktop Safari. Also plays publish builds of First Light and Side Scroller. | explicit, macOS |
 | `check-conformance` | `scripts/tsrs-diff.sh`: compare tsrs and pinned tsgo diagnostics over packages, templates, the test fixtures and the error corpus. | explicit |
 | perf | `scripts/perf.sh`: ignored `perf_*` assertions in og-tests, og-runtime and og-audio, release profile, serially under every GPU slot. An og-tests baseline holds the frame's milliseconds and, where the device has timestamp queries, each render-graph pass's GPU milliseconds (`passes_ms`): a pass over its own baseline by 15 % and 0.1 ms fails by name. | explicit |
-| `shape-wasm32` | `cargo test --release --target wasm32-wasip1 -p og-shape-cli --test tests golden` under wasmtime: og-shape's golden hashes on wasm32. | full |
+| `shape-wasm32` | `cargo test --release --target wasm32-wasip1 -p og-shape-formats --test tests golden` under wasmtime: og-shape's golden hashes on wasm32. | full |
 
 The gate requires nextest. Bun tests have a 30-second per-test timeout
 (`OG_BUN_TEST_TIMEOUT`). Refresh missing functional wasm with

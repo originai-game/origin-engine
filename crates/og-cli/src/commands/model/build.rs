@@ -8,10 +8,10 @@
 use og_shape::model::Model;
 use og_shape::tools::Import;
 
-use crate::args::Args;
-use crate::report::{array, object, string};
-use crate::source::{Local, Source, load_uvs};
-use crate::{Failure, failed};
+use super::args::Args;
+use super::report::{array, object, string};
+use super::source::{Local, Source, load_uvs};
+use super::{Failure, failed};
 
 /// The built model's name and parts: each part's name, parent, joint
 /// (or null) and triangle count; then `booleans`, in program order: `op`,

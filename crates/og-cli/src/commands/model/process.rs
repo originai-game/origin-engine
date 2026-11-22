@@ -45,10 +45,10 @@ use og_shape_formats::texture::Downsize;
 
 use og_shape_formats::texture::downsize;
 
-use crate::args::{Args, IMPORT_OPTIONS};
-use crate::report::{self, object};
-use crate::source::{Input, Local, load_mesh};
-use crate::{Failure, Files, failed};
+use super::args::{Args, IMPORT_OPTIONS};
+use super::report::{self, object};
+use super::source::{Input, Local, load_mesh};
+use super::{Failure, Files, failed};
 
 /// The chain. The zero value has no input and no budget (no
 /// decimation).
@@ -221,10 +221,10 @@ pub fn process_steps(
     let placing = d.place != Place::default();
     let (import, place) = if placing {
         let format = match &d.input {
-            Input::Path(p) => crate::source::extension(p),
+            Input::Path(p) => super::source::extension(p),
             _ => String::new(),
         };
-        crate::place::plain_and_place(&format, &d.import, &d.place)?
+        super::place::plain_and_place(&format, &d.import, &d.place)?
     } else {
         (d.import, d.place)
     };
@@ -332,7 +332,7 @@ pub fn process_steps(
     );
     step(6)?;
     let output = if baked.is_some() {
-        crate::export::write_solid_tangents(
+        super::export::write_solid_tangents(
             files,
             &mesh.name,
             &low,
@@ -341,7 +341,7 @@ pub fn process_steps(
             d.out.as_deref(),
         )?
     } else {
-        crate::export::write_solid_clips(
+        super::export::write_solid_clips(
             files,
             &mesh.name,
             &low,
@@ -375,7 +375,7 @@ pub fn process_steps(
 /// them, with the file's materials (per part, by the part's face name,
 /// when they differ).
 fn bake_onto(
-    mesh: &crate::source::Mesh,
+    mesh: &super::source::Mesh,
     src: &og_shape::mesh::Solid,
     low: &mut og_shape::mesh::Solid,
     d: &ProcessDesc,
@@ -463,24 +463,24 @@ pub fn run(a: &Args) -> Result<String, Failure> {
         "--bake-distance",
     ];
     known.extend(IMPORT_OPTIONS);
-    known.extend(crate::repair::OPTIONS);
-    known.extend(crate::unwrap::OPTIONS);
-    known.extend(crate::place::OPTIONS);
+    known.extend(super::repair::OPTIONS);
+    known.extend(super::unwrap::OPTIONS);
+    known.extend(super::place::OPTIONS);
     a.only(&known)?;
-    let mut repair = crate::repair::options(a)?;
+    let mut repair = super::repair::options(a)?;
     repair.check_intersections = false;
     process(
         &Local,
         &ProcessDesc {
             input: a.input()?,
             import: a.import()?,
-            place: crate::place::options(a)?,
+            place: super::place::options(a)?,
             repair,
             budget: a.number("--budget")?.unwrap_or(0),
             ratio: a.number("--ratio")?.unwrap_or(0.0),
             merge_charts: a.number("--merge-charts")?.unwrap_or(0.0),
             cross_color_borders: a.switch("--cross-color-borders"),
-            unwrap: crate::unwrap::options(a)?,
+            unwrap: super::unwrap::options(a)?,
             fresh_uvs: a.switch("--unwrap"),
             intersections: a.switch("--intersections"),
             texture_max: a.number("--texture-max")?.unwrap_or(0),

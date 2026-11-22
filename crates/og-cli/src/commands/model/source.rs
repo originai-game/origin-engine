@@ -17,7 +17,7 @@ use og_shape::model::Model;
 use og_shape::tools::{Import, Imported, Material, Part, Scene, apply_transform, join};
 use og_shape_formats::import;
 
-use crate::{Failure, failed};
+use super::{Failure, failed};
 
 /// File access for a command. The command line reads and writes plain
 /// files ([`Local`]); the MCP server confines both to its workspace.
