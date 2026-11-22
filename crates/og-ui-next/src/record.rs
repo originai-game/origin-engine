@@ -7,6 +7,15 @@ use taffy::LengthPercentageAuto;
 /// A linear RGBA colour.
 pub type Rgba = [f32; 4];
 
+/// The margins `space-x-*` and `space-y-*` give each of an element's
+/// children but the last, under a child's own margin on that side: the
+/// length and whether it is the left (x) or the top (y) one.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct Spacing {
+    pub x: Option<(LengthPercentageAuto, bool)>,
+    pub y: Option<(LengthPercentageAuto, bool)>,
+}
+
 /// An element's text properties. Text inherits: a field its own rules do
 /// not set (a bit clear in `set`) is its parent's, applied when the
 /// element's record is applied, never matched.
@@ -424,6 +433,8 @@ pub struct Record {
     /// (`fill-current`), `Some(Some(transparent))` none (`fill-none`);
     /// `None` follows its parent, as CSS's `fill` inherits.
     pub fill: Option<Option<Rgba>>,
+    /// Its `space-x-*` and `space-y-*`, for its children.
+    pub space: Spacing,
 }
 
 impl Record {
@@ -484,6 +495,7 @@ impl Default for Record {
             hidden: false,
             touch: None,
             fill: None,
+            space: Spacing::default(),
             scheme: None,
             dark: false,
         }

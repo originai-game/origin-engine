@@ -18,6 +18,8 @@ struct Node {
     children: Vec<Id>,
     key: u64,
     style: CompactStyle,
+    /// What its `space-*` gives its children ([`spaced`]).
+    space: crate::record::Spacing,
     /// A text leaf's text and how it runs.
     text: Option<(String, Run)>,
     /// A text leaf's last two measures, by the width given (`u32::MAX`:
@@ -119,6 +121,7 @@ impl Arena {
             children: Vec::new(),
             key: self.next_key,
             style: CompactStyle::default(),
+            space: crate::record::Spacing::default(),
             text: None,
             memo: std::cell::Cell::new(NO_MEMO),
             slot: SlotId(0),
@@ -207,6 +210,17 @@ impl Arena {
         if n.style != style {
             n.style = style;
             self.touch(id, true);
+        }
+    }
+
+    /// Sets the margins an element gives its children but the last
+    /// (`space-x-*`); its children lay out again when they change.
+    pub fn set_space(&mut self, id: Id, space: crate::record::Spacing) {
+        if self.nodes[id as usize].space != space {
+            self.nodes[id as usize].space = space;
+            for k in 0..self.nodes[id as usize].children.len() {
+                self.touch(self.nodes[id as usize].children[k], true);
+            }
         }
     }
 
@@ -338,11 +352,8 @@ impl Arena {
                 let up = std::iter::successors(parent(id), |&p| parent(p))
                     .map(|p| nodes[p as usize].slot);
                 if style {
-                    self.store.set_style_and_mark_ancestors(
-                        slot,
-                        nodes[id as usize].style.clone(),
-                        up,
-                    );
+                    self.store
+                        .set_style_and_mark_ancestors(slot, spaced(nodes, id), up);
                 } else {
                     self.store.mark_dirty_and_ancestors(slot, up);
                 }
@@ -431,6 +442,35 @@ impl Arena {
     }
 }
 
+/// `i`'s style with the margin its parent's `space-*` gives it: every
+/// child but the last, on a side its own margin leaves at 0.
+fn spaced(nodes: &[Node], i: Id) -> CompactStyle {
+    let n = &nodes[i as usize];
+    let Some(p) = nodes.get(n.parent as usize) else {
+        return n.style.clone();
+    };
+    let space = p.space;
+    if space == crate::record::Spacing::default() || p.children.last() == Some(&i) {
+        return n.style.clone();
+    }
+    let mut s = taffy::Style::from(&n.style);
+    let zero = taffy::LengthPercentageAuto::length(0.0);
+    let m = &mut s.margin;
+    if let Some((v, left)) = space.x {
+        let side = if left { &mut m.left } else { &mut m.right };
+        if *side == zero {
+            *side = v;
+        }
+    }
+    if let Some((v, top)) = space.y {
+        let side = if top { &mut m.top } else { &mut m.bottom };
+        if *side == zero {
+            *side = v;
+        }
+    }
+    CompactStyle::from(&s)
+}
+
 /// Reconciles `i`'s subtree into the store, post-order; its slot and
 /// whether anything in it changed.
 fn sync(store: &mut LayoutStore, nodes: &mut [Node], i: Id) -> (SlotId, bool) {
@@ -456,7 +496,7 @@ fn sync(store: &mut LayoutStore, nodes: &mut [Node], i: Id) -> (SlotId, bool) {
     let (slot, dirty) = store.sync_node(
         n.key,
         i,
-        n.style.clone(),
+        spaced(nodes, i),
         measure,
         false,
         mark,

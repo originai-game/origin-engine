@@ -4045,6 +4045,49 @@ mod tests {
         }
     }
 
+    /// `space-x-4` gives each child but the last a 16 px right margin, under
+    /// a child's own margin on that side; a child added after the last
+    /// gives the old last one its margin; `space-y-reverse` puts it on top.
+    /// Ways this could fail: the last child spaced too, a child's own
+    /// margin overwritten, or the old last one left unspaced.
+    #[test]
+    fn space_classes_margin_every_child_but_the_last() {
+        let mut t = real();
+        nodes(
+            &mut t,
+            &[
+                (1, 0, "flex flex-row space-x-4", 0),
+                (2, 0, "w-[10px] h-[10px] mr-[2px]", 1),
+                (3, 0, "w-[10px] h-[10px]", 1),
+                (4, 0, "w-[10px] h-[10px]", 1),
+            ],
+        );
+        frame(&mut t);
+        let xs = |t: &Tree, ids: &[u32]| -> Vec<f32> {
+            ids.iter().map(|&i| t.op_box(i).unwrap()[0]).collect()
+        };
+        assert_eq!(xs(&t, &[2, 3, 4]), [0.0, 12.0, 38.0]);
+        assert_eq!(t.op_box(1).unwrap()[2], 48.0, "the last unspaced");
+        nodes(&mut t, &[(5, 0, "w-[10px] h-[10px]", 1)]);
+        frame(&mut t);
+        assert_eq!(xs(&t, &[2, 3, 4, 5]), [0.0, 12.0, 38.0, 64.0]);
+        nodes(
+            &mut t,
+            &[
+                (6, 0, "flex flex-col space-y-2 space-y-reverse", 0),
+                (7, 0, "w-[10px] h-[10px]", 6),
+                (8, 0, "w-[10px] h-[10px]", 6),
+            ],
+        );
+        frame(&mut t);
+        let top = t.op_box(6).unwrap()[1];
+        let ys: Vec<f32> = [7, 8]
+            .iter()
+            .map(|&i| t.op_box(i).unwrap()[1] - top)
+            .collect();
+        assert_eq!(ys, [8.0, 18.0], "the top margin, on 7 only");
+    }
+
     /// `line-clamp-2` shows a long text's first two lines, the second cut
     /// to end in an ellipsis, and its box is two lines tall; `truncate`
     /// cuts one line the same way. Ways this could fail: the clamp on the

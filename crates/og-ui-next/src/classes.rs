@@ -317,6 +317,19 @@ impl Classes {
         nsh_tailwind::style::apply_direction(&mut out.layout, &mut out.view, &logical, env.rtl);
         out.layout.direction = direction;
         let mut record = record_of(&out, &props);
+        // `space-x-*` ends each child but the last with a margin, the
+        // start one with `space-x-reverse`: physical sides by direction.
+        if let Some(space) = &props.space {
+            let margin = |key, v: &Option<nsh_tailwind::style::PropertyValue>| {
+                let mut s = Style::default();
+                s.apply_value(key, v.as_ref()?).ok()?;
+                Some(s.layout.margin)
+            };
+            use nsh_tailwind::style::StyleKey as K;
+            let left = space.reverse_x != env.rtl;
+            record.space.x = margin(K::MarginRight, &space.x).map(|m| (m.right, left));
+            record.space.y = margin(K::MarginBottom, &space.y).map(|m| (m.bottom, space.reverse_y));
+        }
         record.scheme = scheme;
         record.dark = env.dark;
         // The `nine-<name>` that holds in `env`, the last one written.
@@ -1255,10 +1268,10 @@ mod tests {
                 &["filters"]),
             ("ClassProps", format!("{:#?}", ClassProps::default()),
                 &["ellipsize", "no_wrap", "text_shadows", "pointer_events",
-                  "number_of_lines"],
+                  "number_of_lines", "space"],
                 // Not drawn yet: `line-clamp-*`, `pointer-events-*`,
                 // `select-*`, `space-x-*` and the input colours.
-                &["selectable", "space",
+                &["selectable",
                   "placeholder_color", "selection_color", "caret_color"]),
         ];
         for (name, debug, read, not_drawn) in structs {

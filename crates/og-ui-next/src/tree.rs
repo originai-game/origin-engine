@@ -785,8 +785,9 @@ impl Tree {
             }
             layout = rune_taffy::CompactStyle::from(&s);
         }
-        let (node, leaf) = (el.node, el.leaf);
+        let (node, leaf, space) = (el.node, el.leaf, r.space);
         self.arena.set_style(node, layout);
+        self.arena.set_space(node, space);
         if let Some(leaf) = leaf {
             self.arena.set_run(
                 leaf,
