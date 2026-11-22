@@ -180,6 +180,26 @@ pub(crate) fn form(s: &Solid, d: &Unwrap) -> Formed {
 
 /// What [`form`] gives: each chart's triangles, each triangle's chart,
 /// and each triangle on its chart's plane (millimetres).
+/// Two measures (areas, distances, facings) closer than this, relative to
+/// the larger or to 1, are one: a symmetric surface has many that are
+/// equal in exact arithmetic and differ only in their last bits, and the
+/// lower index decides between them, so no chart depends on those bits.
+pub(crate) const TIE: f64 = 1e-9;
+
+/// Whether `a` is larger than `b` by more than a [`TIE`].
+pub(crate) fn exceeds(a: f64, b: f64) -> bool {
+    if !(a.is_finite() && b.is_finite()) {
+        return a > b;
+    }
+    a - b > TIE * a.abs().max(b.abs()).max(1.0)
+}
+
+/// `x` on a grid of [`TIE`]s of `top`, for sorting: measures that are one
+/// sort as equal, and then by index.
+pub(crate) fn level(x: f64, top: f64) -> i64 {
+    (x / (top.abs().max(f64::MIN_POSITIVE) * TIE)).round() as i64
+}
+
 pub(crate) type Formed = (Vec<Vec<u32>>, Vec<u32>, Vec<[DVec2; 3]>);
 
 pub(crate) fn form_as(s: &Solid, d: &Unwrap) -> Formed {
@@ -208,7 +228,8 @@ pub(crate) fn form_as(s: &Solid, d: &Unwrap) -> Formed {
         }
     }
     let mut seeds: Vec<usize> = (0..n).collect();
-    seeds.sort_by(|&a, &b| areas[b].total_cmp(&areas[a]).then(a.cmp(&b)));
+    let top = areas.iter().copied().fold(0.0, f64::max);
+    seeds.sort_by_key(|&a| (-level(areas[a], top), a));
     // With shared directions: each triangle's, by index, and the list.
     let shared = d
         .shared

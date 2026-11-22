@@ -234,7 +234,7 @@ pub(crate) fn seamed(c: &Cut, region: &[u32], spent: &mut usize) -> Seamed {
             let mut best = (0.0, from);
             for &v in &verts {
                 let d = (s.positions[v as usize] - s.positions[from as usize]).length_squared();
-                if d > best.0 {
+                if super::exceeds(d, best.0) {
                     best = (d, v);
                 }
             }
@@ -335,7 +335,8 @@ pub(crate) fn seamed(c: &Cut, region: &[u32], spent: &mut usize) -> Seamed {
                     .is_some_and(|l| l.iter().any(|e| cut.contains(e)))
         };
         let mut order: Vec<usize> = (0..bad.len()).collect();
-        order.sort_by(|&a, &b| bad[a].total_cmp(&bad[b]).then(a.cmp(&b)));
+        let top = bad.iter().copied().fold(0.0, |m: f64, x| m.max(x.abs()));
+        order.sort_by_key(|&a| (super::level(bad[a], top), a));
         let Some(from) = order.iter().find_map(|&k| {
             s.triangles[region[k] as usize]
                 .into_iter()
@@ -404,7 +405,7 @@ pub(crate) fn seamed(c: &Cut, region: &[u32], spent: &mut usize) -> Seamed {
                 stack.push(o);
             }
         }
-        if area > best.0 {
+        if super::exceeds(area, best.0) {
             best = (area, parts);
         }
         parts += 1;
@@ -469,7 +470,7 @@ pub(crate) fn directions(
                 continue;
             }
             let nearest = list.iter().map(|d| d.dot(normals[i])).fold(-1.0, f64::max);
-            if furthest.is_none_or(|(best, _)| nearest < best) {
+            if furthest.is_none_or(|(best, _)| super::exceeds(best, nearest)) {
                 furthest = Some((nearest, i));
             }
         }
@@ -483,7 +484,7 @@ pub(crate) fn directions(
             let mut best = (f64::NEG_INFINITY, 0u32);
             for (k, d) in list.iter().enumerate() {
                 let dot = d.dot(*n);
-                if dot > best.0 {
+                if super::exceeds(dot, best.0) {
                     best = (dot, k as u32);
                 }
             }

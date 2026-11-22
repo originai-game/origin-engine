@@ -87,7 +87,7 @@ impl Patch {
             let mut best = (0.0, from);
             for (i, p) in points.iter().enumerate() {
                 let d = (*p - points[from]).length_squared();
-                if d > best.0 {
+                if super::exceeds(d, best.0) {
                     best = (d, i);
                 }
             }

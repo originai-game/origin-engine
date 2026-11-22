@@ -189,7 +189,7 @@ pub(crate) fn best_axes(pts: &[DVec2]) -> (DVec2, DVec2) {
             b1 = b1.max(b);
         }
         let area = (a1 - a0) * (b1 - b0);
-        if area < best.0 {
+        if super::exceeds(best.0, area) {
             best = (area, e);
         }
     }
