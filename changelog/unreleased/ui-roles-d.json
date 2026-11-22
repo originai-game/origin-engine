@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "Group D components",
+      "summary": "The panels, shooter and RPG components write theme steps and roles only: type sizes, tracking, leading and radii on the theme's scale, and their rims, underlines, keycaps, glows and scrims as the named shadows, rings and inks in the roles they play, where they wrote brackets, literal colours and opacity modifiers a pack could not move. Groundless text rows (the panels' breadcrumbs, the shooter's pickups rows and combat HUD plate) sit on the pack's plate; the lock-on reticle, minimap marks and score dash take the foreground ink; the commands' grounded shade wash is gone."
+    }
+  ]
+}
