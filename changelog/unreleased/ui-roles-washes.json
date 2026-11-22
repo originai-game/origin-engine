@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "MainMenu, TitleScreen, FlowChoices, Compass, Telemetry, the inspector",
+      "summary": "Washes that pass 2 had made whole roles fade again, in roles that name their strength. MainMenu's and TitleScreen's veils over the key art run from `bg` through the `material-*` roles to transparent, where they covered the art with a solid band. FlowChoices' hotspots are a gold ring over `material-thin` (`material-regular` on hover), where they were solid gold squares over the art. Telemetry's redline arc is dim (`opacity-35`) until the engine is in it. The inspector's content box is seen through (`opacity-45`). Compass's strip stands on `bg-glass`, one ground in both schemes, where it was a gradient between two equal stops."
+    }
+  ]
+}

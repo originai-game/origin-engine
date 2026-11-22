@@ -27,7 +27,7 @@ export function TitleScreen(props: TitleScreenProps) {
         <Art class="absolute object-cover inset-0 size-full" kind="keyArt" src={props.keyArt} />
       </Show>
       <View class="absolute inset-0">{props.background?.()}</View>
-      <View class="absolute inset-0 bg-linear-to-b from-bg via-transparent via-30% to-bg" />
+      <View class="absolute inset-0 bg-linear-to-b from-material-thin via-transparent via-30% to-bg" />
       <View class="grid grid-cols-1 grid-rows-[1fr_auto_1fr_auto_auto_auto] justify-items-center gap-y-3 h-full pt-12 pb-6 px-12 compact:gap-y-2 compact:pt-8 compact:pb-4 compact:px-4">
         <Show when={props.logo === 0 && props.name !== ""} fallback={
             <Art class={`row-[2] aspect-12/5 h-auto object-contain compact:w-43/50`} kind="logo" src={props.logo} />

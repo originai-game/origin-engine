@@ -57,7 +57,7 @@ export function FlowChoices(props: FlowChoicesProps) {
           <For each={now().spots} key={(s) => s.index}>
             {(s) => (
               <View
-                class="flex-row items-center justify-center gap-1 absolute min-w-11 min-h-11 rounded-control ring-2 ring-gold bg-gold hover:bg-gold disabled:opacity-45 disabled:ring-rim"
+                class="flex-row items-center justify-center gap-1 absolute min-w-11 min-h-11 rounded-control ring-2 ring-gold bg-material-thin hover:bg-material-regular disabled:opacity-45 disabled:ring-rim"
                 role="button"
                 label={s().label}
                 disabled={now().locked}

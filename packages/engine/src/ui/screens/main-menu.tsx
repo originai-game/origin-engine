@@ -45,9 +45,9 @@ export function MainMenuScreen(props: MainMenuScreenProps) {
         <Art class="absolute object-cover inset-0 size-full" kind="keyArt" src={props.keyArt} />
       </Show>
       <View class="absolute inset-0">{props.background?.()}</View>
-      <View class="absolute inset-0 bg-linear-to-r from-bg via-bg via-26% to-transparent to-70% compact:hidden" />
+      <View class="absolute inset-0 bg-linear-to-r from-bg via-material-thick via-26% to-transparent to-70% compact:hidden" />
       <View class="absolute inset-0 bg-linear-to-b from-transparent from-60% to-bg compact:hidden" />
-      <View class="absolute inset-0 hidden compact:flex bg-linear-to-b from-bg via-bg via-48% to-bg to-70%" />
+      <View class="absolute inset-0 hidden compact:flex bg-linear-to-b from-material-regular via-material-regular via-48% to-bg to-70%" />
       <Scroll class={`pt-12 pr-8 pb-8 pl-12 text-fg size-full compact:pt-8 compact:pb-6 compact:w-auto compact:px-4 short:py-3 short:px-4 disabled:text-fg-subtle`}>
         <Show when={props.logo === 0 && props.name !== ""} fallback={
             <Art class={`self-start aspect-12/5 h-auto object-contain compact:self-center compact:w-39/50 short:hidden`} kind="logo" src={props.logo} />

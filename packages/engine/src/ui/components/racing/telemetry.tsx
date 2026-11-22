@@ -61,7 +61,7 @@ export function RacingTelemetry(props: RacingTelemetryProps) {
         <View class="absolute inset-0 nine-ring bg-fg" wipe={revFrac()} wipeStart={REV_START} />
         <Show when={props.redline > 0 && max() > 0 && props.redline < max()}>
           <View
-            class="absolute inset-0 nine-ring bg-critical group-data-redline/tel:bg-critical"
+            class="absolute inset-0 nine-ring bg-critical opacity-35 group-data-redline/tel:opacity-100"
             wipe={0.75 - 0.75 * at(props.redline)}
             wipeStart={REV_START + 1.5 * Math.PI * at(props.redline)}
           />

@@ -92,7 +92,7 @@ export function Compass(props: CompassProps) {
         </Text>
       </View>
       <View class="relative w-full h-12.5 overflow-hidden">
-        <View class="absolute inset-x-0 top-0 h-9 bg-linear-to-b from-surface to-surface" />
+        <View class="absolute inset-x-0 top-0 h-9 bg-glass" />
         <View
           class="absolute top-0 bottom-0 left-1/2 w-9/1"
           style={{ transform: `translateX(${(-(heading() * K + 3) / 9) * 100}%)` }}

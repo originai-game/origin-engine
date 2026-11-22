@@ -47,7 +47,7 @@ const BOX: Record<Box["kind"], string> = {
   margin: "border-warn",
   border: "border-gold",
   padding: "border-success",
-  content: "border-transparent bg-info",
+  content: "border-transparent bg-info opacity-45",
 };
 
 /** A toolbar button: quiet, or primary while `on`. */
