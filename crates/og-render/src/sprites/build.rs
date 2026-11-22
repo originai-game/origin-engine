@@ -498,8 +498,9 @@ pub(crate) fn build(
                     text.rotation,
                 ],
                 size_anchor: [size[0], size[1], 0.0, 0.0],
-                // The world's y is up, a page's rows down.
-                uv_rect: [ul / side, ub / side, ur / side, ut / side],
+                // v down, as every sprite's: the shader reads its quad's
+                // bottom at v1.
+                uv_rect: [ul / side, ut / side, ur / side, ub / side],
                 // A colour glyph keeps its colours, at the text's alpha.
                 color: if color {
                     [1.0, 1.0, 1.0, text.color[3]]

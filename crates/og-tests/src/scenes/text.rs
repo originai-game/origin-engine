@@ -6,23 +6,30 @@ use og_text::layout::{Style, Text as Layout};
 use og_text::strike::Strikes;
 use std::cell::RefCell;
 
-/// Noto Sans SC (templates/fonts/chinese-simplified), the face every text
-/// scene draws: Latin and Han in one file.
+/// The faces every text scene draws, as the default pack orders them:
+/// Instrument Sans for Latin, then Noto Sans SC (templates/fonts) for Han.
+const FAMILY: &str = r#""Instrument Sans", "Noto Sans SC""#;
+
 #[cfg(not(target_arch = "wasm32"))]
-fn face() -> Result<Vec<u8>, String> {
-    let path = concat!(
-        env!("CARGO_MANIFEST_DIR"),
-        "/../../templates/fonts/chinese-simplified/NotoSansSC-Regular.ttf"
-    );
-    std::fs::read(path).map_err(|e| format!("{path}: {e} (bun scripts/assets.ts ensure templates)"))
+fn faces() -> Result<[Vec<u8>; 2], String> {
+    let read = |rel: &str| {
+        let path = format!("{}/../../templates/{rel}", env!("CARGO_MANIFEST_DIR"));
+        std::fs::read(&path)
+            .map_err(|e| format!("{path}: {e} (bun scripts/assets.ts ensure templates)"))
+    };
+    Ok([
+        read("styles/shared/InstrumentSans-Regular.ttf")?,
+        read("fonts/chinese-simplified/NotoSansSC-Regular.ttf")?,
+    ])
 }
 
 #[cfg(target_arch = "wasm32")]
-fn face() -> Result<Vec<u8>, String> {
-    Ok(
+fn faces() -> Result<[Vec<u8>; 2], String> {
+    Ok([
+        include_bytes!("../../../../templates/styles/shared/InstrumentSans-Regular.ttf").to_vec(),
         include_bytes!("../../../../templates/fonts/chinese-simplified/NotoSansSC-Regular.ttf")
             .to_vec(),
-    )
+    ])
 }
 
 struct Layouts {
@@ -56,7 +63,7 @@ impl TestFont {
             let mut l = l.borrow_mut();
             let l = l.as_mut().expect("loaded by load_font");
             let style = Style {
-                family: "\"Noto Sans SC\"",
+                family: FAMILY,
                 size: og_render::glyphs::FIELD_EM_PX,
                 wrap: false,
                 align: match shift {
@@ -94,7 +101,9 @@ pub fn load_font(scene: &mut RenderScene) -> Result<TestFont, String> {
         let mut l = l.borrow_mut();
         if l.is_none() {
             let mut fonts = Collection::new();
-            fonts.add(std::sync::Arc::new(face()?))?;
+            for face in faces()? {
+                fonts.add(std::sync::Arc::new(face))?;
+            }
             *l = Some(Layouts {
                 fonts,
                 strikes: Strikes::new(),
