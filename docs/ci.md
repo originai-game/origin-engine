@@ -137,12 +137,17 @@ Colab host through the plugin, only on the coordinator's instruction.
 Reference movements are reported for quality review, not used as a
 pixel-difference landing gate (§Reference frames).
 
-On the L4, headless Chrome's WebGPU is SwiftShader: the NVIDIA 580 driver
-has no `VK_EXT_headless_surface`, so no Chrome launch both gives WebGPU the
-NVIDIA adapter and composites its canvas (`webGpuSwitches` in
-`packages/engine/src/node/device.ts`). Web frames are judged there; web GPU
-timings come from macrunner (Metal). Every web timing names its adapter,
-with `(software)` on a CPU rasterizer.
+Web frames and web GPU timings both come from Chrome on the L4. The
+engine's launch (`webGpuSwitches` in `packages/engine/src/node/device.ts`)
+puts headless Chrome's WebGPU on SwiftShader, which composites its canvas:
+frames are judged there. A timing run launches Chrome with
+`--use-angle=vulkan --enable-features=WebGPU,Vulkan
+--disable-vulkan-surface`, which gives WebGPU the NVIDIA adapter (the
+NVIDIA 580 driver has no `VK_EXT_headless_surface`) and composites by
+readback, so the page shows no canvas but its frames are timed on the GPU.
+Every web timing names its adapter; one marked `(software)` is not counted.
+These timings compare one build with another, not with a real display.
+Metal (macrunner) stays a compatibility check: its numbers are extra.
 
 ## Reference frames
 
