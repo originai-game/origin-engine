@@ -4008,6 +4008,77 @@ mod tests {
         );
     }
 
+    /// Radial and conic backgrounds paint as their own shapes: a radial
+    /// ellipse through the farthest corner (the CSS default), a circle off
+    /// the centre to its farthest corner, and a conic sweep from its start
+    /// angle with its stops in turns.
+    #[test]
+    fn radial_and_conic_backgrounds_paint_their_shapes() {
+        let mut t = real();
+        nodes(
+            &mut t,
+            &[
+                (
+                    1,
+                    0,
+                    "w-[200px] h-[100px] shrink-0 bg-radial from-black to-white",
+                    0,
+                ),
+                (
+                    2,
+                    0,
+                    "w-[200px] h-[100px] shrink-0 bg-[radial-gradient(circle_at_25%_75%,black,white)]",
+                    0,
+                ),
+                (
+                    3,
+                    0,
+                    "w-[200px] h-[100px] shrink-0 -bg-conic-30 from-black to-white to-17%",
+                    0,
+                ),
+                (
+                    4,
+                    0,
+                    "w-[200px] h-[100px] shrink-0 bg-linear-to-r from-black via-red-500 via-50% to-white",
+                    0,
+                ),
+            ],
+        );
+        frame(&mut t);
+        let g = &t.drawn.gradients;
+        assert_eq!(g.len(), 4, "{g:?}");
+        use og_draw::paint::{GRADIENT_CONIC, GRADIENT_RADIAL};
+        let near = |a: f32, b: f32| (a - b).abs() < 1e-2;
+        assert_eq!(g[0].shape, GRADIENT_RADIAL);
+        assert_eq!(g[0].center, [0.0, 0.0]);
+        // The ellipse of the half sides' 2:1, through the corner.
+        assert!(near(g[0].radii[0], 100.0 * 2f32.sqrt()), "{:?}", g[0].radii);
+        assert!(near(g[0].radii[1], 50.0 * 2f32.sqrt()), "{:?}", g[0].radii);
+        // At (50, 75) of 200 × 100: the farthest corner is the top right,
+        // 150 across and 75 up.
+        assert_eq!(g[1].shape, GRADIENT_RADIAL);
+        assert_eq!(g[1].center, [-50.0, 25.0]);
+        assert!(
+            near(g[1].radii[0], (150f32 * 150.0 + 75.0 * 75.0).sqrt()),
+            "{:?}",
+            g[1].radii
+        );
+        assert_eq!(g[1].radii[0], g[1].radii[1], "a circle");
+        assert_eq!(g[2].shape, GRADIENT_CONIC);
+        assert!(near(g[2].angle, (-30f32).to_radians()), "{}", g[2].angle);
+        let stops: Vec<f32> = t.drawn.stops[g[2].first as usize..][..g[2].count as usize]
+            .iter()
+            .map(|s| s.offset)
+            .collect();
+        assert!(near(*stops.last().unwrap(), 0.17), "{stops:?}");
+        // More Oklab stops than a record keeps: the last still ends it.
+        let last = g.len() - 1;
+        let stops = &t.drawn.stops[g[last].first as usize..][..g[last].count as usize];
+        assert!(stops.len() <= crate::record::GRADIENT_STOPS);
+        assert!(near(stops.last().unwrap().offset, 1.0), "{stops:?}");
+        assert!(stops.last().unwrap().color[0] > 0.9, "it ends white");
+    }
+
     /// A transform moves a box and everything under it at paint, about its
     /// origin, composed down the tree; its layout stays. A text's shadow
     /// paints under its glyphs and its underline after them, and the text

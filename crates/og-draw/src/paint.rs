@@ -91,16 +91,28 @@ pub const IMAGE_FILL: u32 = 1;
 /// Tile the edges and the centre (CSS's `round`) instead of stretching.
 pub const IMAGE_TILE: u32 = 2;
 
-/// A linear gradient: `stops` of [`Paint::stops`] from `first`, along the
-/// CSS angle `angle` (radians, 0 up, clockwise).
+/// A gradient: `stops` of [`Paint::stops`] from `first`. A
+/// [`GRADIENT_LINEAR`] one runs along the CSS angle `angle` (radians, 0 up,
+/// clockwise); a [`GRADIENT_RADIAL`] one out from `center` (CSS px from the
+/// box's centre) to the ellipse of `radii` (CSS px); a [`GRADIENT_CONIC`] one
+/// around `center` from `angle`, its offsets turns.
 #[derive(Clone, Copy, Debug, PartialEq, Pod, Zeroable)]
 #[repr(C)]
 pub struct PaintGradient {
     pub angle: f32,
     pub first: u32,
     pub count: u32,
-    pub _pad: u32,
+    pub shape: u32,
+    pub center: [f32; 2],
+    pub radii: [f32; 2],
 }
+
+/// [`PaintGradient::shape`]: along a line.
+pub const GRADIENT_LINEAR: u32 = 0;
+/// Out from a centre.
+pub const GRADIENT_RADIAL: u32 = 1;
+/// Around a centre.
+pub const GRADIENT_CONIC: u32 = 2;
 
 /// A gradient's stop: its offset (0..1) and its colour, linear RGBA.
 #[derive(Clone, Copy, Debug, PartialEq, Pod, Zeroable)]
@@ -156,11 +168,27 @@ impl Paint {
         self.transforms.push(IDENTITY);
     }
 
-    /// Adds a gradient of `stops` (offset, linear RGBA) at `angle`; its
-    /// index for [`PaintKind::Gradient`].
+    /// Adds a linear gradient of `stops` (offset, linear RGBA) at `angle`;
+    /// its index for [`PaintKind::Gradient`].
     pub fn gradient(
         &mut self,
         angle: f32,
+        stops: impl IntoIterator<Item = (f32, [f32; 4])>,
+    ) -> u32 {
+        self.shaped_gradient(
+            PaintGradient {
+                angle,
+                ..PaintGradient::zeroed()
+            },
+            stops,
+        )
+    }
+
+    /// Adds gradient `g` (its shape, angle, centre and radii) of `stops`;
+    /// its index for [`PaintKind::Gradient`].
+    pub fn shaped_gradient(
+        &mut self,
+        g: PaintGradient,
         stops: impl IntoIterator<Item = (f32, [f32; 4])>,
     ) -> u32 {
         let first = self.stops.len() as u32;
@@ -171,10 +199,9 @@ impl Paint {
                 _pad: [0.0; 3],
             }));
         self.gradients.push(PaintGradient {
-            angle,
             first,
             count: self.stops.len() as u32 - first,
-            _pad: 0,
+            ..g
         });
         self.gradients.len() as u32 - 1
     }

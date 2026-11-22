@@ -107,17 +107,40 @@ impl Default for Text {
     }
 }
 
-/// The most stops a background gradient keeps.
-pub const GRADIENT_STOPS: usize = 8;
+/// The most stops a background gradient keeps: a two-colour gradient mixed
+/// in Oklab (NSH's subdivided stops) fits whole; more are sampled evenly,
+/// the first and last kept.
+pub const GRADIENT_STOPS: usize = 16;
 
-/// A linear gradient background, over the fill colour.
+/// A gradient's geometry (CSS Images 3 and 4).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum Shape {
+    /// Along a line at its angle (`bg-linear-*`, `bg-gradient-to-*`).
+    Linear,
+    /// Out from its centre to an ending shape sized by `size`, a circle or
+    /// an ellipse with the box's proportions (`bg-radial-*`).
+    Radial {
+        circle: bool,
+        size: nsh_tailwind::effects::GradientSize,
+    },
+    /// Around its centre, starting at its angle, stops placed in turns
+    /// (`bg-conic-*`).
+    Conic,
+}
+
+/// A gradient background, over the fill colour.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Gradient {
-    /// Radians, CSS's: 0 up, clockwise.
+    pub shape: Shape,
+    /// Radians, CSS's: 0 up, clockwise: a linear gradient's direction, a
+    /// conic one's start.
     pub angle: f32,
     /// `to <corner>`: x and y, -1 or 1, aimed at the box's corner at paint
     /// time; `[0, 0]`: `angle`.
     pub corner: [i8; 2],
+    /// A radial or conic gradient's centre, fractions of the box from its
+    /// top left.
+    pub center: [f32; 2],
     pub count: u8,
     /// (offset 0..1, linear RGBA), `count` of them.
     pub stops: [(f32, Rgba); GRADIENT_STOPS],

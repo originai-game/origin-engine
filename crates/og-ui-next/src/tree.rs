@@ -1199,7 +1199,10 @@ impl Tree {
                     [0, _] | [_, 0] => g.angle,
                     [cx, cy] => og_core::math::atan2(f32::from(cx) * b.h, -f32::from(cy) * b.w),
                 };
-                let gi = p.gradient(angle, g.stops().iter().copied());
+                let gi = p.shaped_gradient(
+                    paint_gradient(g, angle, b.w, b.h),
+                    g.stops().iter().copied(),
+                );
                 p.quads.push(quad(
                     PaintKind::Gradient,
                     rect,
@@ -1774,6 +1777,53 @@ fn clamped(s: Sighting, drawn: [f32; 4], m: f32, w: f32, h: f32) -> [f32; 2] {
 /// Corner radii (top left, top right, bottom right, bottom left) on a
 /// `w`×`h` box, all scaled down by one factor when two on a side would
 /// overlap, as CSS scales them.
+/// Gradient `g` over a box `w` × `h` CSS px as the paint list's: a linear
+/// one at `angle` (its corner already aimed), a radial one's ending shape
+/// sized by CSS Images 3's keywords, a conic one from its angle; centres in
+/// CSS px from the box's centre.
+fn paint_gradient(
+    g: &crate::record::Gradient,
+    angle: f32,
+    w: f32,
+    h: f32,
+) -> og_draw::paint::PaintGradient {
+    use crate::record::Shape;
+    use nsh_tailwind::effects::GradientSize as Size;
+    let (cx, cy) = (g.center[0] * w, g.center[1] * h);
+    let center = [cx - w / 2.0, cy - h / 2.0];
+    // The distances from the centre to the nearer and the farther side.
+    let (near, far) = (
+        [cx.min(w - cx).abs(), cy.min(h - cy).abs()],
+        [cx.max(w - cx).abs(), cy.max(h - cy).abs()],
+    );
+    let (shape, radii) = match g.shape {
+        Shape::Linear => (og_draw::paint::GRADIENT_LINEAR, [0.0; 2]),
+        Shape::Conic => (og_draw::paint::GRADIENT_CONIC, [0.0; 2]),
+        Shape::Radial { circle, size } => {
+            let radii = match (circle, size) {
+                (true, Size::ClosestSide) => [near[0].min(near[1]); 2],
+                (true, Size::FarthestSide) => [far[0].max(far[1]); 2],
+                (true, Size::ClosestCorner) => [(near[0] * near[0] + near[1] * near[1]).sqrt(); 2],
+                (true, Size::FarthestCorner) => [(far[0] * far[0] + far[1] * far[1]).sqrt(); 2],
+                (false, Size::ClosestSide) => near,
+                (false, Size::FarthestSide) => far,
+                // The ellipse of the sides' proportions through the corner.
+                (false, Size::ClosestCorner) => near.map(|r| r * std::f32::consts::SQRT_2),
+                (false, Size::FarthestCorner) => far.map(|r| r * std::f32::consts::SQRT_2),
+            };
+            (og_draw::paint::GRADIENT_RADIAL, radii)
+        }
+    };
+    og_draw::paint::PaintGradient {
+        angle,
+        first: 0,
+        count: 0,
+        shape,
+        center,
+        radii,
+    }
+}
+
 fn radii(r: [f32; 4], w: f32, h: f32) -> [f32; 4] {
     let [tl, tr, br, bl] = r.map(|k| k.max(0.0));
     let fit = |side: f32, sum: f32| if sum > side { side / sum } else { 1.0 };

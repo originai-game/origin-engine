@@ -268,12 +268,14 @@ impl PaintRenderer {
         let mut grew = self.group.is_none();
         grew |= write(device, queue, &mut self.quads, "ui paint quads", &self.gpu);
         self.gradient_rows.clear();
-        self.gradient_rows.extend(
-            paint
-                .gradients
-                .iter()
-                .map(|g| [g.angle, g.first as f32, g.count as f32, 0.0]),
-        );
+        // Two rows a gradient: its angle, stops and shape, then its centre
+        // and radii (ui_paint.wgsl `gradients`).
+        for g in &paint.gradients {
+            self.gradient_rows.extend([
+                [g.angle, g.first as f32, g.count as f32, g.shape as f32],
+                [g.center[0], g.center[1], g.radii[0], g.radii[1]],
+            ]);
+        }
         grew |= write(
             device,
             queue,

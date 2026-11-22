@@ -8,8 +8,12 @@
 //! - a radial wipe showing the wrong quarter, or sweeping the wrong way
 //! - a polyline's join drawn by both its segments (twice the alpha), or a
 //!   closed one missing its closing side
+//! - a conic gradient sweeping counter-clockwise or from the wrong angle, or
+//!   a radial one drawn as a circle of its wider radius
 use glam::Vec3;
-use og_render::paint::{IMAGE_FILL, PaintKind, PaintQuad};
+use og_render::paint::{
+    GRADIENT_CONIC, GRADIENT_RADIAL, IMAGE_FILL, PaintGradient, PaintKind, PaintQuad,
+};
 use og_render::{
     Background, ColorSpace, Mips, Overlay, RenderDesc, RenderScene, RenderTarget, Renderer,
     TextureData, TextureHandle, Tonemap,
@@ -21,11 +25,9 @@ const W: u32 = 128;
 fn render(quads: impl FnOnce(&mut RenderScene) -> Vec<PaintQuad>) -> Vec<u8> {
     let mut scene = RenderScene::new();
     scene.ui.overlay = Some(Overlay::new(W as f32, W as f32, 1.0));
+    scene.ui.paint.clear();
     let made = quads(&mut scene);
     let p = &mut scene.ui.paint;
-    let points = std::mem::take(&mut p.points);
-    p.clear();
-    p.points = points;
     (p.width, p.height) = (W as f32, W as f32);
     p.quads = made;
     p.generation = 1;
@@ -235,4 +237,67 @@ fn a_polyline_draws_its_joins_once_and_closes_when_closed() {
     let closing = at(&px, 10, 80);
     assert!(closing[0] > 60, "the closing side: {closing:?}");
     near(at(&px, 30, 80), BLACK, "inside the square");
+}
+
+/// A box filled by gradient `g`, black to white.
+fn gradient_box(scene: &mut RenderScene, rect: [f32; 4], g: PaintGradient) -> PaintQuad {
+    let gi = scene
+        .ui
+        .paint
+        .shaped_gradient(g, [(0.0, [0.0, 0.0, 0.0, 1.0]), (1.0, [1.0; 4])]);
+    PaintQuad {
+        rect,
+        clip: [0.0, 0.0, W as f32, W as f32],
+        color: [1.0; 4],
+        radius: [0.0; 4],
+        p: [0.0; 4],
+        kind: PaintKind::Gradient as u32,
+        a: gi,
+        b: 0,
+        xf: 0,
+        uv: [0.0; 4],
+        wipe: [0.0; 4],
+    }
+}
+
+fn grey(v: u8) -> [u8; 3] {
+    [v; 3]
+}
+
+#[test]
+#[ignore = "requires GPU"]
+fn conic_and_radial_gradients_draw_their_shapes() {
+    // From 3 o'clock, clockwise: a quarter turn at 6, a half at 9, three
+    // quarters at 12 (mixed in sRGB, as CSS mixes).
+    let px = render(|scene| {
+        let g = PaintGradient {
+            angle: std::f32::consts::FRAC_PI_2,
+            shape: GRADIENT_CONIC,
+            center: [0.0, 0.0],
+            radii: [0.0; 2],
+            first: 0,
+            count: 0,
+        };
+        vec![gradient_box(scene, [0.0, 0.0, 128.0, 128.0], g)]
+    });
+    near(at(&px, 64, 104), grey(64), "a quarter turn, below");
+    near(at(&px, 24, 64), grey(128), "half a turn, left");
+    near(at(&px, 64, 24), grey(191), "three quarters, above");
+    // An ellipse twice as wide as tall about the box's centre: half way
+    // out is 45 px across and 22.5 px down.
+    let px = render(|scene| {
+        let r = 45.25 * 2.0;
+        let g = PaintGradient {
+            angle: 0.0,
+            shape: GRADIENT_RADIAL,
+            center: [0.0, 0.0],
+            radii: [r, r / 2.0],
+            first: 0,
+            count: 0,
+        };
+        vec![gradient_box(scene, [0.0, 32.0, 128.0, 64.0], g)]
+    });
+    near(at(&px, 64, 64), BLACK, "the centre");
+    near(at(&px, 109, 64), grey(128), "half way out, across");
+    near(at(&px, 64, 86), grey(128), "half way out, down");
 }

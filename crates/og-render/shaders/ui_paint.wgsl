@@ -39,7 +39,9 @@ struct PaintGpu {
   w: vec4<f32>,
 };
 @group(0) @binding(1) var<storage, read> quads: array<PaintGpu>;
-// x: the angle (radians, CSS: 0 up, clockwise), y: its first stop, z: stops.
+// Two entries a gradient: x the angle (radians, CSS: 0 up, clockwise), y its
+// first stop, z its stops, w its shape (0 linear, 1 radial, 2 conic); then
+// its centre (xy, CSS px from the box's centre) and a radial one's radii (zw).
 @group(0) @binding(2) var<storage, read> gradients: array<vec4<f32>>;
 // Two entries a stop: its colour (linear, straight), then its offset in x.
 @group(0) @binding(3) var<storage, read> stops: array<vec4<f32>>;
@@ -149,13 +151,25 @@ fn grown(r: vec4<f32>, by: f32) -> vec4<f32> {
   return select(vec4<f32>(0.0), max(r + vec4<f32>(by), vec4<f32>(0.0)), r > vec4<f32>(0.0));
 }
 
-// Gradient `gi` at `p` in a box of half size `half`: CSS's linear
-// gradient, mixed in premultiplied sRGB as CSS mixes it by default.
+// Gradient `gi` at `p` in a box of half size `half`: CSS's linear, radial
+// or conic gradient, mixed in premultiplied sRGB as CSS mixes it by default.
 fn gradient_at(gi: u32, p: vec2<f32>, half: vec2<f32>) -> vec4<f32> {
-  let g = gradients[gi];
-  let dir = vec2<f32>(sin(g.x), -cos(g.x));
-  let len = abs(2.0 * half.x * dir.x) + abs(2.0 * half.y * dir.y);
-  let t = dot(p, dir) / max(len, 1e-4) + 0.5;
+  let g = gradients[2u * gi];
+  let shape = gradients[2u * gi + 1u];
+  var t: f32;
+  if (g.w > 1.5) {
+    // Around the centre, in turns from the start angle (0 up, clockwise).
+    let d = p - shape.xy;
+    let a = atan2(d.x, -d.y) - g.x;
+    t = fract(a / 6.2831853);
+  } else if (g.w > 0.5) {
+    // Out from the centre: 1 on the ending ellipse.
+    t = length((p - shape.xy) / max(shape.zw, vec2<f32>(1e-4)));
+  } else {
+    let dir = vec2<f32>(sin(g.x), -cos(g.x));
+    let len = abs(2.0 * half.x * dir.x) + abs(2.0 * half.y * dir.y);
+    t = dot(p, dir) / max(len, 1e-4) + 0.5;
+  }
   let first = u32(g.y);
   let count = max(u32(g.z), 1u);
   var lo = 0u;

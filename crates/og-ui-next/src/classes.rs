@@ -7,7 +7,9 @@
 
 use crate::motion;
 use crate::pack::NineSlice;
-use crate::record::{GRADIENT_STOPS, Gradient, Record, Rgba, SHADOWS, Shadow, Slice, Text, Tint};
+use crate::record::{
+    GRADIENT_STOPS, Gradient, Record, Rgba, SHADOWS, Shadow, Shape, Slice, Text, Tint,
+};
 use nsh_tailwind::effects::{Filter, GradientKind, Keyframes};
 use nsh_tailwind::geometry::{DefiniteLength, Points, Size};
 use nsh_tailwind::style::{Color, Style, StyleValue, SvgPaint, TextAlign, TextTransform};
@@ -431,34 +433,57 @@ fn record_of(style: &Style, props: &ClassProps) -> Record {
             };
             skin.shadow_count = k as u8 + 1;
         }
-        skin.gradient = fx.background_images.iter().find_map(|g| {
-            let (angle, corner) = match g.kind {
-                GradientKind::Linear { angle } => (angle.0, [0, 0]),
-                GradientKind::LinearCorner { right, bottom } => (
-                    0.0,
-                    [if right { 1 } else { -1 }, if bottom { 1 } else { -1 }],
-                ),
-                _ => return None,
-            };
-            let n = g.stops.len().min(GRADIENT_STOPS);
-            let mut out = Gradient {
-                angle,
-                corner,
-                count: n as u8,
-                stops: [(0.0, [0.0; 4]); GRADIENT_STOPS],
-            };
-            for (k, s) in g.stops.iter().take(n).enumerate() {
-                // An unplaced stop spreads evenly between its neighbours.
-                let even = if n > 1 {
-                    k as f32 / (n - 1) as f32
-                } else {
-                    0.0
+        skin.gradient = fx
+            .background_images
+            .iter()
+            .map(|g| {
+                let mid = [0.5; 2];
+                let (shape, angle, corner, center) = match g.kind {
+                    GradientKind::Linear { angle } => (Shape::Linear, angle.0, [0, 0], mid),
+                    GradientKind::LinearCorner { right, bottom } => (
+                        Shape::Linear,
+                        0.0,
+                        [if right { 1 } else { -1 }, if bottom { 1 } else { -1 }],
+                        mid,
+                    ),
+                    GradientKind::Radial { circle, size, x, y } => {
+                        (Shape::Radial { circle, size }, 0.0, [0, 0], [x.0, y.0])
+                    }
+                    GradientKind::Conic { from, x, y } => {
+                        (Shape::Conic, from.0, [0, 0], [x.0, y.0])
+                    }
                 };
-                let at = s.position.as_ref().and_then(fraction).unwrap_or(even);
-                out.stops[k] = (at, linear(s.color));
-            }
-            Some(out)
-        });
+                let n = g.stops.len().min(GRADIENT_STOPS);
+                let mut out = Gradient {
+                    shape,
+                    angle,
+                    corner,
+                    center,
+                    count: n as u8,
+                    stops: [(0.0, [0.0; 4]); GRADIENT_STOPS],
+                };
+                let all = g.stops.len();
+                for (k, slot) in out.stops.iter_mut().take(n).enumerate() {
+                    // Past the cap, every stop's place is sampled evenly, so
+                    // the last stop is always kept.
+                    let i = if n > 1 {
+                        (k * (all - 1) + (n - 1) / 2) / (n - 1)
+                    } else {
+                        0
+                    };
+                    let s = &g.stops[i];
+                    // An unplaced stop spreads evenly between its neighbours.
+                    let even = if all > 1 {
+                        i as f32 / (all - 1) as f32
+                    } else {
+                        0.0
+                    };
+                    let at = s.position.as_ref().and_then(fraction).unwrap_or(even);
+                    *slot = (at, linear(s.color));
+                }
+                out
+            })
+            .next();
         skin.backdrop_blur = fx
             .backdrop_filters
             .iter()
