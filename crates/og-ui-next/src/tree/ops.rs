@@ -764,6 +764,12 @@ impl Tree {
                         {
                             self.set_particles(e, name, value);
                         }
+                        // `sound`: the pack event the node sounds when it
+                        // first paints (its slot's, else the pack's).
+                        "sound" => {
+                            self.input.per[e as usize].cue = value.into();
+                            self.paint = true;
+                        }
                         // `anchor` an entity's number or a world point
                         // `x,y,z` (empty: back in flow): the host places
                         // the node (§World).
@@ -3692,6 +3698,41 @@ mod tests {
         heard(&mut t);
         assert!(t.action("confirm"));
         assert_eq!(heard(&mut t), [40], "node {f} pressed by confirm");
+    }
+
+    /// `sound` names the pack event a node sounds when it first paints:
+    /// its slot's, else the pack's; once, and not again while it stays.
+    /// A node the pack has no such sound for is silent.
+    #[test]
+    fn a_node_sounds_its_sound_when_it_first_paints() {
+        let cue = |h: u64| Cue {
+            clips: vec![h],
+            volume: [0.5, 0.5],
+            pitch: [1.0, 1.0],
+        };
+        let mut table = SoundTable::new();
+        table.insert(String::new(), [("reward".to_string(), cue(50))].into());
+        table.insert(
+            "Banner.frame".into(),
+            [("reward".to_string(), cue(60))].into(),
+        );
+        let mut t = stated();
+        t.set_sounds(std::rc::Rc::new(table));
+        buttons(&mut t, &["b @Banner.frame", "b", "b"]);
+        let heard =
+            |t: &mut Tree| -> Vec<u64> { t.take_sounds().iter().map(|p| p.sound).collect() };
+        assert_eq!(heard(&mut t), [0u64; 0], "no node asks for a sound");
+        let mut b = Batch::default();
+        b.op(6).u32(1).str("sound").str("reward");
+        b.op(6).u32(2).str("sound").str("reward");
+        b.op(6).u32(3).str("sound").str("error");
+        t.apply(&b.bytes()).unwrap();
+        assert_eq!(heard(&mut t), [0u64; 0], "nothing sounds before it paints");
+        frame(&mut t);
+        assert_eq!(heard(&mut t), [60, 50], "the slot's, then the pack's");
+        frame(&mut t);
+        at(&mut t, 25.0, 5.0, false, false);
+        assert_eq!(heard(&mut t), [0u64; 0], "once");
     }
 
     /// The arrows move among a focus group's members first: at its edge

@@ -99,6 +99,14 @@ export interface HostProps {
     tabIndex?: number | undefined;
     /** The binding glyph of this input action (a Text's content): the pack's icon for it on the last-used device, an ink mask one em square, else its name (`E`, `LB`). */
     glyph?: string | undefined;
+    /**
+     * The pack event this node sounds when it first paints, once: the sound
+     * its pack slot has for it (the slot `packClass` names in its class),
+     * else the pack's own, and none when the pack has neither. These are
+     * the events no input fires; a control's hover, press, select, confirm,
+     * cancel and back sound by themselves.
+     */
+    sound?: "open" | "close" | "error" | "reward" | undefined;
     /** crates/og-ui-next/CONVENTIONS.md §Accessibility. */
     role?: string | undefined;
     label?: string | undefined;

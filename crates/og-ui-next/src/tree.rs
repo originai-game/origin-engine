@@ -1057,6 +1057,8 @@ impl Tree {
         self.filters.clear();
         self.filters.resize(self.els.len(), 0);
         let m = &tf.metrics;
+        // The nodes painting for the first time with a `sound` to play.
+        let mut sounding: Vec<u32> = Vec::new();
         for k in 0..self.order.len() {
             let e = self.order[k] as usize;
             let el = &self.els[e];
@@ -1176,6 +1178,9 @@ impl Tree {
             };
             if !visible {
                 continue;
+            }
+            if !self.input.per[e].cue.is_empty() {
+                sounding.push(e as u32);
             }
             // A `knob` node rides its on-screen control's knob.
             let [kx, ky] = self.knob_of(e as u32);
@@ -1671,6 +1676,10 @@ impl Tree {
                     (q.mask, q.filter) = (mask, filter);
                 }
             }
+        }
+        for e in sounding {
+            let cue = std::mem::take(&mut self.input.per[e as usize].cue);
+            self.sound(e, &cue);
         }
         self.painted_transforms.clone_from(&self.drawn.transforms);
         let mut quads = std::mem::take(&mut self.drawn.quads);

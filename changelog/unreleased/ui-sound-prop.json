@@ -1,0 +1,15 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {
+      "member": "@origingame/engine/ui",
+      "summary": "`sound=\"reward\"` on any node: the pack event it sounds when it first paints, once. `open`, `close`, `error` and `reward` are the events no input fires. The sound is the node's pack slot's (the slot `packClass` names in its class), else the pack's own; a pack without one is silent. A keyed row sounds once per key."
+    }
+  ],
+  "fixed": [
+    {
+      "member": "Celebration, Banner, GameOverScreen",
+      "summary": "A celebration's play and a banner sound the pack's `reward` again, and the game over title its `error`, as they did before the TSX port."
+    }
+  ]
+}

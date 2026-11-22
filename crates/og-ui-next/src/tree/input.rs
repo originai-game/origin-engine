@@ -106,6 +106,9 @@ pub(super) struct Per {
     /// The pack slot its class names (`@Component.slot[.variant]`, from
     /// `packClass`, without the `@`): the scope of its sounds.
     pub slot: Box<str>,
+    /// `sound`: the pack event the node sounds when it first paints
+    /// (empty: none, or sounded already).
+    pub cue: Box<str>,
     /// `draggable`: its data (non-empty: a drag source), and `dropTarget`:
     /// its id (non-empty: a drop target).
     pub drag: Box<str>,
@@ -566,7 +569,7 @@ impl Tree {
     /// `e` plays `event`: its slot's sound (with its variant, then
     /// without), else the pack's generic one; `confirm` and `back` fall
     /// back to `press`. Nothing when the pack has none.
-    fn sound(&mut self, e: u32, event: &str) {
+    pub(super) fn sound(&mut self, e: u32, event: &str) {
         let table = &self.input.sounds;
         if table.is_empty() {
             return;

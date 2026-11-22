@@ -36,9 +36,10 @@ const SHELLS = [
  * A reward over the HUD: confetti thrown from the top edge, a burst's ring
  * and sparks, a level-up's ring of light with its word in gold, its new
  * level and embers rising under it, or fireworks' five shells. Each play
- * runs once per shot. The particles are the engine's emitters drawn by
- * `Particles` (./fx/*.ogt), one node per ink, so a pack's roles colour
- * them; reduced motion draws none. The level-up's rays wait for pack art.
+ * runs once per shot, with the pack's reward sound. The particles are the
+ * engine's emitters drawn by `Particles` (./fx/*.ogt), one node per ink,
+ * so a pack's roles colour them; reduced motion draws none. The
+ * level-up's rays wait for pack art.
  */
 export function Celebration(props: CelebrationProps) {
   const kind = () => props.kind ?? "";
@@ -47,7 +48,7 @@ export function Celebration(props: CelebrationProps) {
     <View class="absolute inset-0 text-fg text-shadow-2xs">
       <For each={props.shots ?? []} key={(s) => s.id}>
         {() => (
-          <View class="absolute inset-0 flex-col items-center justify-center">
+          <View sound="reward" class="absolute inset-0 flex-col items-center justify-center">
             <Show when={kind() == "confetti"}>
               <View class="absolute top-0 inset-x-0 h-1">
                 <Particles class="absolute inset-0 text-hud-accent-ink" emitter={fx.confetti} seed={1} />

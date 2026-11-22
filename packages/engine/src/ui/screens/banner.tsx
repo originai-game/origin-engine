@@ -15,7 +15,7 @@ export interface BannerProps {
  */
 export function Banner(props: BannerProps) {
   return (
-    <View class={`text-fg items-center text-center py-0 px-4 gap-1 transition duration-420 ease-out starting:scale-80 starting:opacity-0 ${packClass("Plate", "frame")}`} role="status">
+    <View class={`text-fg items-center text-center py-0 px-4 gap-1 transition duration-420 ease-out starting:scale-80 starting:opacity-0 ${packClass("Plate", "frame")}`} role="status" sound="reward">
       <Text class={`font-display text-7xl font-bold leading-tight tracking-tight text-stroke-3 text-stroke-bg text-shadow-xs text-shadow-bg max-w-140 text-balance m-0 compact:text-display-md`}>
         {props.title}
       </Text>

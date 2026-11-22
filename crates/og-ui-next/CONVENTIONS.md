@@ -281,6 +281,7 @@ machines do (ported as logic).
 |---|---|---|
 | `actions` | names, space separated | the input actions it answers (`onAction={{ confirm, details }}`) |
 | `glyph` | an action's name | a `Text` node showing that action's binding on the current device (`<Glyph action>`) |
+| `sound` | `open`, `close`, `error` or `reward` | the pack event the node sounds when it first paints, once (§Theme and packs, `sounds`) |
 | `autofocus` | bool | it takes the focus once it shows |
 | `hold` | seconds | a press or `confirm` must be held this long to press it |
 | `value` | text | an `Input`'s text, set from outside |
@@ -576,9 +577,11 @@ is an error naming where it is, never ignored):
   comes over it, `press` when clicked, `confirm` when that action presses
   it, and `confirm`/`back` when its `onAction` takes them. The sound is the
   slot's with its variant, then the bare slot's, then the pack-wide one;
-  `confirm` and `back` fall back to `press`. One clip at random, at a
-  volume and pitch from their ranges, from a seeded stream (a replay plays
-  the same).
+  `confirm` and `back` fall back to `press`. The events no input fires
+  (`open`, `close`, `error`, `reward`) sound from a node's `sound` prop,
+  when the node first paints: a keyed row sounds once per key. One clip
+  at random, at a volume and pitch from their ranges, from a seeded
+  stream (a replay plays the same).
 
 Motion is classes in `variants` until the motion thread's ease form lands.
 
