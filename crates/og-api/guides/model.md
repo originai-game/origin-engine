@@ -49,6 +49,13 @@ a start point followed by pieces: a point (a straight line), `{"arc":
 {"through", "to"}}`, `{"tangentArc": {"to"}}`, `{"spline": {"points"}}`,
 or in 3D `{"helix": {...}}`.
 
+A `poly` point's `bulge` arches the edge from that point to the next, as
+in DXF: the arch's middle stands `bulge` half-chords from the straight
+edge, so 1 is a half circle and 0.3 on a 370 mm rail rises 55.5 mm.
+Positive bows out of the outline, negative into it. An arched chair rail
+is four points, not a sampled curve:
+`{"poly": {"points": [[-185, 0], [185, 0], {"x": 185, "y": 70, "bulge": 0.3}, [-185, 70]]}}`.
+
 Arranging parts: `copy`, `mirror` (`plane`: a frame, mirrored across its
 XY plane), `at` and `transform` (a new frame), `scale`, `group`,
 `assembly` and `attach`.

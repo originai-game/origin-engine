@@ -25,7 +25,7 @@ const PROGRAM: &str = r#"{"name": "surface", "ops": [
    "axis": "+Z", "segments": 24, "tubeSegments": 8,
    "on": {"origin": [24, 12, 0], "x": [1, 0, 0], "y": [0, 1, 0], "z": [0, 0, 1]}},
   {"op": "revolve", "name": "vase", "axis": "+Z", "segments": 20,
-   "profile": {"poly": {"points": [[0, 0], [4, 0], {"x": 4, "y": 8, "bulge": 1}, [0, 8]]}},
+   "profile": {"poly": {"points": [[0, 0], [4, 0], {"x": 4, "y": 8, "bulge": 0.5}, [0, 8]]}},
    "on": {"origin": [0, 24, 0], "x": [1, 0, 0], "y": [0, 1, 0], "z": [0, 0, 1]}},
   {"op": "loft", "name": "horn", "curve": "spline", "steps": 3, "sections": [
     {"profile": {"circle": {"radius": 3}}, "z": 0},

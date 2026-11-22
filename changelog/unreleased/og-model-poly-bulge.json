@@ -1,0 +1,12 @@
+{
+  "breaking": [
+    {
+      "member": "model program poly bulge",
+      "change": "A `poly` point's `bulge` is now in half-chords, as DXF and CAD polylines give it (1 is a half circle; 0.3 on a 370 mm edge rises 55.5 mm). It was the arch's rise in mm, so the fractions an author writes arched nothing visible.",
+      "fix": "Divide an old bulge by half its edge's length: an edge of length L with bulge s (mm) becomes s / (L / 2).",
+      "find": [
+        "\"bulge\""
+      ]
+    }
+  ]
+}

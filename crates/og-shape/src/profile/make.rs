@@ -200,9 +200,10 @@ pub struct PolyPoint {
     /// Corner radius; 0 for a sharp corner.
     pub radius: f64,
     /// The edge from this point to the next is a circular arc whose
-    /// middle stands `bulge` away from the straight edge (the sagitta):
-    /// positive bows out of the outline, negative into it; 0 is straight.
-    /// A bulge of half the edge's length is a half circle.
+    /// middle stands `bulge` half-chords away from the straight edge (the
+    /// polyline bulge of DXF and CAD, tan of a quarter of the arc's angle):
+    /// positive bows out of the outline, negative into it; 0 is straight,
+    /// 1 is a half circle, and 0.3 on a 370 mm edge rises 55.5 mm.
     pub bulge: f64,
 }
 
@@ -309,15 +310,17 @@ pub fn poly(d: &Poly) -> Result<Profile, ProfileError> {
 /// The points strictly inside an arc edge from `a` to `b` on a
 /// counter-clockwise outline, its middle `s` to the right of the chord
 /// (out of the outline) or, negative, to the left.
-fn arc_edge(c: &mut Contour, a: DVec2, b: DVec2, s: f64) -> Result<(), ProfileError> {
+fn arc_edge(c: &mut Contour, a: DVec2, b: DVec2, bulge: f64) -> Result<(), ProfileError> {
     let chord = b - a;
     let len = chord.length();
     if len <= 0.0 {
         return Err(ProfileError::NotPositive("the chord of an arc edge"));
     }
-    // Radius from the chord and the sagitta; the centre lies r − s from
-    // the chord's middle, into the outline (left of the travel).
+    // The sagitta is the bulge in half-chords. Radius from the chord and
+    // the sagitta; the centre lies r − s from the chord's middle, into the
+    // outline (left of the travel).
     let half = len / 2.0;
+    let s = bulge * half;
     let r = (half * half + s * s) / (2.0 * s.abs());
     let left = DVec2::new(-chord.y, chord.x) / len;
     let center = (a + b) / 2.0 + left * (r - s.abs()) * s.signum();
@@ -475,9 +478,9 @@ mod tests {
             bulge,
             ..Default::default()
         };
-        // A 10 × 10 square whose bottom edge bows out 5: a half circle.
+        // A 10 × 10 square whose bottom edge bows out by 1: a half circle.
         let ccw = vec![
-            p(0.0, 0.0, 5.0),
+            p(0.0, 0.0, 1.0),
             p(10.0, 0.0, 0.0),
             p(10.0, 10.0, 0.0),
             p(0.0, 10.0, 0.0),
@@ -494,13 +497,13 @@ mod tests {
         for q in &mut cw {
             q.bulge = 0.0;
         }
-        cw[2].bulge = 5.0; // the edge (10, 0) → (0, 0)
+        cw[2].bulge = 1.0; // the edge (10, 0) → (0, 0)
         let b = poly(&Poly { points: cw }).unwrap();
         assert!((a.area() - b.area()).abs() < 1e-9);
         // Bowing in takes the half circle out; the ends are corners.
         let inward = poly(&Poly {
             points: vec![
-                p(0.0, 0.0, -5.0),
+                p(0.0, 0.0, -1.0),
                 p(10.0, 0.0, 0.0),
                 p(10.0, 10.0, 0.0),
                 p(0.0, 10.0, 0.0),
@@ -518,6 +521,34 @@ mod tests {
             poly(&Poly { points: round }),
             Err(ProfileError::ArcCorner(1))
         );
+    }
+
+    #[test]
+    fn a_bulge_is_measured_in_half_chords_whatever_the_edges_length() {
+        // A chair's top rail: 370 mm wide, 70 mm tall, its top edge
+        // arched by 0.3. The arch rises 0.3 × 185 = 55.5 mm, not 0.3 mm.
+        let p = |x, y, bulge| PolyPoint {
+            x,
+            y,
+            bulge,
+            ..Default::default()
+        };
+        let rail = poly(&Poly {
+            points: vec![
+                p(-185.0, 0.0, 0.0),
+                p(185.0, 0.0, 0.0),
+                p(185.0, 70.0, 0.3),
+                p(-185.0, 70.0, 0.0),
+            ],
+        })
+        .unwrap();
+        let top = rail.regions[0]
+            .outer
+            .points
+            .iter()
+            .map(|q| q.y)
+            .fold(f64::MIN, f64::max);
+        assert!((top - 125.5).abs() < 1e-9, "the arch tops out at {top}");
     }
 
     #[test]

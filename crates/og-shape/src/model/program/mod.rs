@@ -85,7 +85,7 @@
 //! `count`?), `snap` (`ids`, `points`, `direction`?), `names` (`id`),
 //! `measure`. Profiles are objects with one key: `rect`, `circle`,
 //! `ellipse`, `slot`, `polygon` (`sides`, `radius` or `flats`), `poly`
-//! (`points`: `[x, y]` or `{x, y, radius, bulge}`), `gear`, `union` /
+//! (`points`: `[x, y]` or `{x, y, radius, bulge}`, bulge in half-chords), `gear`, `union` /
 //! `subtract` / `intersect` (a list, the first operated on by the rest),
 //! `offset` (`profile`, `distance`), `translate` (`profile`, `x`, `y`),
 //! `rotate` (`profile`, `angle`), `scale` (`profile`, `x`, `y`; 0 keeps 1),
