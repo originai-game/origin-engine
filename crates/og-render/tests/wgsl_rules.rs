@@ -791,3 +791,194 @@ fn every_module_parses_as_wgsl_writes_its_operators() {
         "refused by the browsers' WGSL parser (Tint), accepted by naga: {failures:#?}"
     );
 }
+
+/// WebGPU compatibility mode's WGSL rules (gpuweb's
+/// `proposals/compatibility-mode.md`), which Chrome enforces on a
+/// compatibility adapter (the GLES and D3D11 devices) and core never does:
+/// a module or pipeline that breaks one is refused there, and its pass
+/// draws nothing. Checked over every module after its overrides resolve:
+/// - `@interpolate(flat)` must say `either` (GLES has only the last
+///   vertex), and `linear` and `sample` interpolation are refused;
+/// - a compute workgroup has at most 128 invocations, and 128 along x and y;
+/// - no `textureLoad` of a `texture_depth_*` (bind the depth as an
+///   unfilterable `texture_2d<f32>`), and a depth texture is sampled only
+///   with a comparison sampler;
+/// - no two-component (`rg32*`) storage texture, but in the modules the
+///   renderer builds only with `Caps::RG32_STORAGE` (`RG32_MODULES`);
+/// - `sample_mask` and `sample_index` only in the entry points the renderer
+///   builds without the compatibility tier (`GATED`).
+mod compat {
+    use naga::{
+        Binding, BuiltIn, Expression as E, Function, ImageClass, Interpolation, Module, Sampling,
+        ShaderStage, StorageFormat, TypeInner,
+        valid::{FunctionInfo, ModuleInfo},
+    };
+
+    /// Entry points that may read `sample_mask` or `sample_index`: the
+    /// linked-list OIT's (`Transparency::LinkedList`, which needs
+    /// `Caps::INDEPENDENT_BLEND`) and the MSAA resolve (MSAA, which the
+    /// compatibility tier resolves to FXAA).
+    const GATED: [&str; 2] = ["oit_list", "fs_resolve"];
+
+    /// Modules made only with `Caps::RG32_STORAGE`: the scatter cards'
+    /// pass over the prepass's view depth (scatter/source.rs `kept`).
+    const RG32_MODULES: [&str; 1] = ["scatter (prepass depth)"];
+
+    fn io(
+        module: &Module,
+        ty: naga::Handle<naga::Type>,
+        b: Option<&Binding>,
+        out: &mut Vec<Binding>,
+    ) {
+        if let Some(b) = b {
+            out.push(b.clone());
+        } else if let TypeInner::Struct { members, .. } = &module.types[ty].inner {
+            for m in members {
+                io(module, m.ty, m.binding.as_ref(), out);
+            }
+        }
+    }
+
+    fn images(module: &Module, f: &Function, info: &FunctionInfo, at: &str, out: &mut Vec<String>) {
+        let class = |h: naga::Handle<naga::Expression>| match *info[h].ty.inner_with(&module.types)
+        {
+            TypeInner::Image { class, .. } => Some(class),
+            _ => None,
+        };
+        for (_, e) in f.expressions.iter() {
+            match *e {
+                E::ImageLoad { image, .. } => {
+                    if let Some(ImageClass::Depth { multi: false }) = class(image) {
+                        out.push(format!("{at}: textureLoad of a texture_depth"));
+                    }
+                }
+                E::ImageSample {
+                    image,
+                    depth_ref: None,
+                    ..
+                } => {
+                    if let Some(ImageClass::Depth { .. }) = class(image) {
+                        out.push(format!("{at}: a texture_depth sampled without comparison"));
+                    }
+                }
+                _ => {}
+            }
+        }
+    }
+
+    pub fn refused(label: &str, module: &Module, info: &ModuleInfo) -> Vec<String> {
+        let mut out = Vec::new();
+        let rg32 = RG32_MODULES.iter().any(|m| label.starts_with(m));
+        for (_, v) in module.global_variables.iter().filter(|_| !rg32) {
+            if let TypeInner::Image {
+                class: ImageClass::Storage { format, .. },
+                ..
+            } = module.types[v.ty].inner
+                && matches!(
+                    format,
+                    StorageFormat::Rg32Float | StorageFormat::Rg32Uint | StorageFormat::Rg32Sint
+                )
+            {
+                out.push(format!(
+                    "{}: a {format:?} storage texture",
+                    v.name.as_deref().unwrap_or("?")
+                ));
+            }
+        }
+        for (h, f) in module.functions.iter() {
+            let at = f.name.as_deref().unwrap_or("?");
+            images(module, f, &info[h], at, &mut out);
+        }
+        for (i, ep) in module.entry_points.iter().enumerate() {
+            let at = ep.name.as_str();
+            images(module, &ep.function, info.get_entry_point(i), at, &mut out);
+            let [x, y, z] = ep.workgroup_size;
+            if ep.stage == ShaderStage::Compute && (x * y * z > 128 || x > 128 || y > 128) {
+                out.push(format!("{at}: workgroup {x}×{y}×{z} (128 at most)"));
+            }
+            // The inter-stage values (a vertex stage's results, a fragment
+            // stage's arguments), and every builtin the stage reads or writes.
+            let (mut inter, mut builtins) = (Vec::new(), Vec::new());
+            let f = &ep.function;
+            match ep.stage {
+                ShaderStage::Vertex => {
+                    if let Some(r) = &f.result {
+                        io(module, r.ty, r.binding.as_ref(), &mut inter);
+                    }
+                }
+                ShaderStage::Fragment => {
+                    for a in &f.arguments {
+                        io(module, a.ty, a.binding.as_ref(), &mut inter);
+                    }
+                    if let Some(r) = &f.result {
+                        io(module, r.ty, r.binding.as_ref(), &mut builtins);
+                    }
+                }
+                _ => {}
+            }
+            builtins.extend(inter.iter().cloned());
+            for b in builtins {
+                if let Binding::BuiltIn(BuiltIn::SampleMask | BuiltIn::SampleIndex) = b
+                    && !GATED.iter().any(|g| at.contains(g))
+                {
+                    out.push(format!("{at}: {b:?} outside a gated entry point"));
+                }
+            }
+            for b in inter {
+                let Binding::Location {
+                    location,
+                    interpolation,
+                    sampling,
+                    ..
+                } = b
+                else {
+                    continue;
+                };
+                if interpolation == Some(Interpolation::Flat) && sampling != Some(Sampling::Either)
+                {
+                    out.push(format!("{at}: @location({location}) flat without either"));
+                }
+                if interpolation == Some(Interpolation::Linear)
+                    || sampling == Some(Sampling::Sample)
+                {
+                    out.push(format!(
+                        "{at}: @location({location}) {interpolation:?} {sampling:?}"
+                    ));
+                }
+            }
+        }
+        out.sort();
+        out.dedup();
+        out
+    }
+}
+
+/// [`compat`] over every module and variant: what a WebGPU compatibility
+/// adapter (Chrome 146+'s default on GLES and D3D11 devices) refuses.
+/// Broken by a `@interpolate(flat)` without `either`, a 256-wide
+/// workgroup or a `textureLoad` of a depth texture.
+#[test]
+fn every_module_keeps_the_compatibility_rules() {
+    let mut failures = Vec::new();
+    let mut checked = 0;
+    for s in og_render::shader_sources() {
+        let (module, info) = crate::shaders::checked(
+            &s.label,
+            &s.wgsl,
+            &s.constants,
+            crate::shaders::full_capabilities(),
+        )
+        .unwrap_or_else(|e| panic!("{e}"));
+        checked += 1;
+        failures.extend(
+            compat::refused(&s.label, &module, &info)
+                .into_iter()
+                .map(|e| format!("{}: {e}", s.label)),
+        );
+    }
+    assert!(checked >= 30, "{checked} modules");
+    assert!(
+        failures.is_empty(),
+        "refused by a WebGPU compatibility adapter: {failures:#?}"
+    );
+}
