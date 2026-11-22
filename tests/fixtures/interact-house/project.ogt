@@ -1,0 +1,11 @@
+type project
+version 1
+---
+# A test fixture, not a template (tests/fixtures/README.md): og.systems.interact
+# in two rooms joined by a door on a navmesh link.
+name "Interact house"
+id "interact-house"
+engine "0.9.0"
+entry "src/main.ts"
+tick 60
+seed 1
