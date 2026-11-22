@@ -59,6 +59,54 @@ export function sincos(x: number): [number, number] {
   }
 }
 
+// 1/n! for n = 0..18, as og-core builds them (one product, one division each).
+const INV_FACT: number[] = (() => {
+  const out: number[] = [];
+  let fact = 1;
+  for (let n = 0; n < 19; n++) {
+    if (n > 0) fact *= n;
+    out.push(1 / fact);
+  }
+  return out;
+})();
+const SIN_P = Array.from({ length: 8 }, (_, k) => (k % 2 === 0 ? -INV_FACT[2 * k + 3] : INV_FACT[2 * k + 3]));
+const COS_P = Array.from({ length: 9 }, (_, k) => (k % 2 === 0 ? -INV_FACT[2 * k + 2] : INV_FACT[2 * k + 2]));
+const horner = (c: number[], x: number) => c.reduceRight((acc, k) => acc * x + k, 0);
+// pi/2 in 33-bit pieces (fdlibm's split), exact times a quotient below 2^20.
+const P1 = 1.5707963267341256;
+const P2 = 6.077100506303966e-11;
+const P3 = 2.0222662487111665e-21;
+const P3T = 8.4784276603689e-32;
+
+/**
+ * sin and cos of `x`, the same bits as og-core's `math::double::sin_cos`,
+ * which the modelling kernel's generators read: og.Shape's arcs flattened
+ * here give the points the cook's do. Basic arithmetic, `Math.floor` and
+ * `%` (exact in IEEE 754) only.
+ */
+export function sinCos64(x: number): [number, number] {
+  if (!Number.isFinite(x)) return [NaN, NaN];
+  let a = Math.abs(x);
+  if (a >= 1647099) a = a % 6.283185307179586;
+  const k = Math.floor(a * 0.6366197723675814 + 0.5);
+  const r = a - k * P1 - k * P2 - k * P3 - k * P3T;
+  const z = r * r;
+  let s = r + r * z * horner(SIN_P, z);
+  let c = 1 + z * horner(COS_P, z);
+  switch (k % 4) {
+    case 1:
+      [s, c] = [c, -s];
+      break;
+    case 2:
+      [s, c] = [-s, -c];
+      break;
+    case 3:
+      [s, c] = [-c, s];
+      break;
+  }
+  return [x < 0 || Object.is(x, -0) ? -s : s, c];
+}
+
 // ── scalar helpers (deterministic) ─────────────────────────────────────────
 
 /** atan(x) for |x| <= tan(pi/8): its series to x^45 (below 1e-17 there). */

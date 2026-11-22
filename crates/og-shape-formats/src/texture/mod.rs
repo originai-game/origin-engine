@@ -10,7 +10,7 @@
 //! integer arithmetic: the JPEG's inverse DCT in fixed point, the box
 //! filter with integer area weights, so the output is the same bytes on
 //! every host. The one table computed in f64 (sRGB to linear, by
-//! `og_shape::math::trig::pow`) is rounded to integers before use.
+//! `og_core::math::double::pow`) is rounded to integers before use.
 //!
 //! The filter averages each output texel over the input area it covers
 //! (exact rational weights). Colour maps (base colour, emissive) are

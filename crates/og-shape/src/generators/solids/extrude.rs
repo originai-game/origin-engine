@@ -43,7 +43,7 @@ pub(crate) fn extrude_with(profile: &Profile, d: &Extrude, uvs: bool) -> Result<
     let z0 = if d.both_sides { -h / 2.0 } else { 0.0 };
     let at = |p: DVec2, layer: u32| {
         let t = layer as f64 / layers as f64;
-        let (s, c) = trig::sin_cos(twist * t);
+        let (s, c) = double::sin_cos(twist * t);
         let k = 1.0 - taper * t;
         DVec3::new((c * p.x - s * p.y) * k, (s * p.x + c * p.y) * k, z0 + h * t)
     };

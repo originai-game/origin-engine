@@ -17,8 +17,8 @@ fn a_box_s_top_fillet_meets_mitred_corners_at_the_analytic_volume() {
     .unwrap();
     check(&s, "fillet");
     // Four quarter-round edges, mitred: A·perimeter − 8·∫a dA.
-    let want = 24000.0 - (1.0 - trig::PI / 4.0) * r * r * 140.0
-        + 8.0 * r * r * r * (5.0 / 6.0 - trig::PI / 4.0);
+    let want = 24000.0 - (1.0 - double::PI / 4.0) * r * r * 140.0
+        + 8.0 * r * r * r * (5.0 / 6.0 - double::PI / 4.0);
     let v = s.measure().volume;
     assert!(v < want && want - v < deficit(r, 32) * 140.0, "{v} {want}");
     // New faces carry only `fillet`; the vertical edges keep `side`.
@@ -75,12 +75,12 @@ fn three_edge_corners_are_octants_and_soften_rounds_a_box() {
     )
     .unwrap();
     let q = check(&s, "fillet");
-    assert!(q.max_fold < trig::to_radians(2.0), "{q:?}");
+    assert!(q.max_fold < double::to_radians(2.0), "{q:?}");
     let (a, b, c) = (34.0, 24.0, 14.0);
     let want = a * b * c
         + 2.0 * r * (a * b + b * c + a * c)
-        + trig::PI * r * r * (a + b + c)
-        + 4.0 / 3.0 * trig::PI * r * r * r;
+        + double::PI * r * r * (a + b + c)
+        + 4.0 / 3.0 * double::PI * r * r * r;
     let v = s.measure().volume;
     assert!(v < want && want - v < 1.2 * deficit(r, 32) * 4.0 * (a + b + c));
     // The enclosure corner: bottom and vertical edges, three at a corner.
@@ -126,7 +126,7 @@ fn curved_neighbours_cylinder_rims_and_hole_rims() {
         &c,
         &Chamfer {
             distance: 2.0,
-            angle: trig::to_radians(30.0),
+            angle: double::to_radians(30.0),
             edges: names(&["top"]),
             ..Default::default()
         },
@@ -138,7 +138,7 @@ fn curved_neighbours_cylinder_rims_and_hole_rims() {
         .iter()
         .filter(|p| p.z < 20.0 && p.z > 0.0)
         .fold(20.0f64, |m, p| m.min(p.z));
-    assert!((20.0 - low - 2.0 * trig::tan(trig::to_radians(30.0))).abs() < 1e-9);
+    assert!((20.0 - low - 2.0 * double::tan(double::to_radians(30.0))).abs() < 1e-9);
     // sand3d's washer: a plate with a hole, its rims chamfered.
     let p = cuboid(&BoxDesc {
         width: 60.0,
@@ -169,7 +169,7 @@ fn curved_neighbours_cylinder_rims_and_hole_rims() {
     // Pappus on each 24-gon rim, near enough: ½·2π(5 + 1/3) each.
     let lost = before - w.measure().volume;
     assert!(
-        (lost - 2.0 * 0.5 * trig::TAU * (5.0 + 1.0 / 3.0)).abs() < 0.1,
+        (lost - 2.0 * 0.5 * double::TAU * (5.0 + 1.0 / 3.0)).abs() < 0.1,
         "{lost}"
     );
 }
@@ -212,8 +212,8 @@ fn sand3d_bracket_fillets_its_top_and_hole_rims() {
     assert!(!s.edges(&["bottom"]).unwrap().is_empty());
     let lost = plate.measure().volume - s.measure().volume;
     // (1 − π/4)·r² over the outer outline and two rims, ±3 %.
-    let length = 2.0 * (80.0 + 40.0) - 32.0 + trig::TAU * 4.0 + 2.0 * trig::TAU * 3.3;
-    let want = (1.0 - trig::PI / 4.0) * length;
+    let length = 2.0 * (80.0 + 40.0) - 32.0 + double::TAU * 4.0 + 2.0 * double::TAU * 3.3;
+    let want = (1.0 - double::PI / 4.0) * length;
     assert!((lost / want - 1.0).abs() < 0.03, "{lost} {want}");
 }
 
@@ -239,7 +239,7 @@ fn a_lone_edge_ends_on_its_end_faces() {
     )
     .unwrap();
     check(&s, "fillet");
-    let want = 24000.0 - (1.0 - trig::PI / 4.0) * 9.0 * 40.0;
+    let want = 24000.0 - (1.0 - double::PI / 4.0) * 9.0 * 40.0;
     let v = s.measure().volume;
     assert!(v < want && want - v < deficit(3.0, 32) * 40.0 * 1.01);
 }
@@ -334,7 +334,7 @@ fn concave_edges_fill_in() {
     check(&s, "fillet");
     // Five convex vertical edges lose (1 − π/4)·r², the concave one gains
     // it; every edge is 10 tall.
-    let want = 5000.0 - 4.0 * (1.0 - trig::PI / 4.0) * 4.0 * 10.0;
+    let want = 5000.0 - 4.0 * (1.0 - double::PI / 4.0) * 4.0 * 10.0;
     assert!((s.measure().volume - want).abs() < 4.0 * deficit(2.0, 16) * 10.0 * 1.01);
 }
 

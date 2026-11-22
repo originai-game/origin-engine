@@ -8,6 +8,7 @@ autotests = false
 description = "og-shape's file formats: glTF, OBJ, FBX, STL, USD, URDF, Draco, meshopt, KTX2 (UASTC, ETC1S), Zstandard, PNG, JPEG and WebP, read and written deterministically. Linked by the cook and the og tool only, never the runtime"
 
 [dependencies]
+og-core = { path = "../og-core" }
 og-shape = { path = "../og-shape" }
 miniz_oxide = { version = "0.9.1", default-features = false, features = ["with-alloc"] }
 ruzstd = { version = "0.9.1", default-features = false, features = ["std"] }

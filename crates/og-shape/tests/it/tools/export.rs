@@ -472,7 +472,7 @@ fn a_urdf_s_links_are_weighed() {
 /// (SI) and mimic of the scene's.
 #[test]
 fn a_urdf_s_links_stand_where_the_parts_were_built() {
-    use og_shape::math::trig;
+    use og_core::math::double;
     let (base, wheel) = solids();
     let mut s = scene(&base, &wheel);
     // A pivot tilted every way, and a part welded to the wheel.
@@ -512,9 +512,9 @@ fn a_urdf_s_links_stand_where_the_parts_were_built() {
         let origin = &joint[joint.find("<origin").unwrap()..];
         let (t, r) = (nums(&attr(origin, "xyz")), nums(&attr(origin, "rpy")));
         let ((sr, cr), (sp, cp), (sy, cy)) = (
-            trig::sin_cos(r[0]),
-            trig::sin_cos(r[1]),
-            trig::sin_cos(r[2]),
+            double::sin_cos(r[0]),
+            double::sin_cos(r[1]),
+            double::sin_cos(r[2]),
         );
         // Rz(yaw) Ry(pitch) Rx(roll), by columns.
         let local = [
@@ -642,7 +642,7 @@ fn a_usd_stage_holds_the_parts_as_built() {
         .map(|x| x.parse().unwrap())
         .collect();
     for (w, c) in written.iter().zip([0.2f64, 0.4, 0.8]) {
-        let linear = og_shape::math::trig::pow((c + 0.055) / 1.055, 2.4);
+        let linear = og_core::math::double::pow((c + 0.055) / 1.055, 2.4);
         assert!((w - linear).abs() < 1e-6, "{w} {linear}");
     }
     assert!(u.textures.is_empty());

@@ -8,7 +8,7 @@ use super::*;
 /// the eroded body's area by the midpoint rule).
 pub(crate) fn ring_rounded(rho: f64) -> f64 {
     let (a, b, h, ang) = (5.0 + rho, 10.0 - rho, 8.0 - 2.0 * rho, 2.0);
-    let al = |r: f64| trig::asin(rho / r);
+    let al = |r: f64| double::asin(rho / r);
     let ext = |r: f64| ang - 2.0 * al(r);
     let n = 20_000;
     let step = (b - a) / n as f64;
@@ -22,12 +22,12 @@ pub(crate) fn ring_rounded(rho: f64) -> f64 {
     let per = a * ext(a) + b * ext(b) + 2.0 * side;
     let mean = -ext(a) * h / 2.0
         + ext(b) * h / 2.0
-        + trig::PI / 2.0 * per
-        + h * (trig::PI + al(b) - al(a));
+        + double::PI / 2.0 * per
+        + h * (double::PI + al(b) - al(a));
     area * h
         + rho * (2.0 * area + h * per)
         + rho * rho * mean
-        + 4.0 * trig::PI / 3.0 * rho * rho * rho
+        + 4.0 * double::PI / 3.0 * rho * rho * rho
 }
 
 #[test]
@@ -108,7 +108,7 @@ pub(crate) fn plates() -> (Solid, Solid) {
     .unwrap();
     let mut ring: Vec<DVec2> = (0..24)
         .map(|k| {
-            let (sin, cos) = trig::sin_cos(trig::TAU * k as f64 / 24.0);
+            let (sin, cos) = double::sin_cos(double::TAU * k as f64 / 24.0);
             DVec2::new(3.0 * cos, 3.0 * sin)
         })
         .collect();
@@ -199,8 +199,8 @@ fn a_cylinder_s_top_rim_chamfered_over_several_segments() {
     .unwrap();
     check(&s, "chamfer");
     let n = 12.0;
-    let per = n * 2.0 * 3.0 * trig::sin(trig::PI / n);
-    let want = per * d * d / 2.0 - n * trig::tan(trig::PI / n) * d * d * d / 3.0;
+    let per = n * 2.0 * 3.0 * double::sin(double::PI / n);
+    let want = per * d * d / 2.0 - n * double::tan(double::PI / n) * d * d * d / 3.0;
     let removed = c.measure().volume - s.measure().volume;
     assert!((removed - want).abs() < 1e-9 * want, "{removed} {want}");
     // A slice of it, 2 radians: the cut faces' vertical edges are wider

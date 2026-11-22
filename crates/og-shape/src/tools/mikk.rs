@@ -20,7 +20,9 @@
 
 use std::collections::BTreeMap;
 
-use crate::math::{DVec2, DVec3, trig};
+use crate::math::{DVec2, DVec3};
+
+use og_core::math::double;
 
 /// A corner's tangent: the unit direction of +u in the plane of its
 /// normal (zero where the mesh gives none), and the side +v falls on
@@ -230,7 +232,7 @@ pub fn tangents(
                         let [before, here, after] =
                             [(i + 2) % 3, i, (i + 1) % 3].map(|k| positions[t as usize][k]);
                         let (v1, v2) = (in_plane(before - here, n), in_plane(after - here, n));
-                        let angle = trig::acos(v1.dot(v2).clamp(-1.0, 1.0));
+                        let angle = double::acos(v1.dot(v2).clamp(-1.0, 1.0));
                         sum += in_plane(tt.os, n) * angle;
                     }
                     let t = unit_or_same(sum);
@@ -277,7 +279,7 @@ mod tests {
     #[test]
     fn a_corner_s_tangent_is_weighted_by_angle() {
         let n = DVec3::Z;
-        let (s60, c60) = trig::sin_cos(trig::to_radians(60.0));
+        let (s60, c60) = double::sin_cos(double::to_radians(60.0));
         let o = DVec3::ZERO;
         let a = DVec3::new(10.0, 0.0, 0.0);
         let b = DVec3::new(c60, s60, 0.0);
@@ -301,7 +303,8 @@ mod tests {
         let t = tangents(&positions, &normals, &uvs);
         let (first, second) = (du(positions[0], uvs[0]), du(positions[1], uvs[1]));
         assert!(first.dot(second) < 0.9, "the UVs bend: {first} {second}");
-        let at_o = (first * trig::to_radians(60.0) + second * trig::to_radians(30.0)).normalize();
+        let at_o =
+            (first * double::to_radians(60.0) + second * double::to_radians(30.0)).normalize();
         for (f, k) in [(0, 0), (1, 0)] {
             assert!((t[f][k].0 - at_o).length() < 1e-9, "{:?} {at_o}", t[f][k]);
             assert_eq!(t[f][k].1, 1.0);

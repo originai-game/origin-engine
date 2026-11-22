@@ -1,8 +1,9 @@
 //! Joints through copies and mirrors, reads off rest, the model's pose in
 //! OBJ, STL and measures, and how joints hold (`docs/research.md` §20).
 
+use og_core::math::double;
 use og_shape::generators::solids::{BoxDesc, CylinderDesc, cuboid, cylinder};
-use og_shape::math::{DVec3, Frame, trig};
+use og_shape::math::{DVec3, Frame};
 use og_shape::model::{Id, JointDesc, JointKind, Mimic, Model, ModelError, Placement};
 use og_shape_formats::ModelFiles;
 
@@ -48,7 +49,7 @@ fn cabinet() -> (Model, Id, Id, Id) {
             name: "hinge".into(),
             on: front.translate(-190.0, 0.0, 0.0),
             axis: DVec3::NEG_Z,
-            range: Some((0.0, trig::to_radians(110.0))),
+            range: Some((0.0, double::to_radians(110.0))),
             ..Default::default()
         },
     )
@@ -160,7 +161,7 @@ fn a_mirrored_part_moves_as_the_image_of_the_motion() {
             .map(|q| DVec3::new(1000.0 - q.x, q.y, q.z))
             .collect()
     };
-    for (hinge, slide) in [(0.0, 0.0), (1.1, 180.0), (trig::to_radians(110.0), 250.0)] {
+    for (hinge, slide) in [(0.0, 0.0), (1.1, 180.0), (double::to_radians(110.0), 250.0)] {
         for (j, v) in [("hinge", hinge), ("slide", slide)] {
             m.pose(j, v).unwrap();
             // The same value poses the image: range, value and mimic kept.
@@ -293,7 +294,7 @@ fn shell_opens_along_the_parts_own_axes() {
     let mut m = Model::new("cup");
     let b = m.add("b", block(20.0, 20.0, 20.0)).unwrap();
     // Its own +Z turned onto the world's +X.
-    m.at(b, &Frame::IDENTITY.turn(0.0, trig::PI / 2.0, 0.0))
+    m.at(b, &Frame::IDENTITY.turn(0.0, double::PI / 2.0, 0.0))
         .unwrap();
     m.shell(
         b,

@@ -1,11 +1,12 @@
 //! Golden cases for the generators and booleans, on the inputs of the
 //! generators' determinism fixtures.
 
+use og_core::math::double;
 use og_shape::boolean::{CsgOp, csg};
 use og_shape::generators::extrude::ExtrudePath;
 use og_shape::generators::{
     Extrude, Key, Lathe, Mesh, Placement, ShapePoints, Sweep, dodecahedron, extrude, icosahedron,
-    lathe, sweep, trig,
+    lathe, sweep,
 };
 use og_shape::math::{DVec2, DVec3, HashError, OutputHash};
 
@@ -71,7 +72,7 @@ pub fn mesh(h: &mut OutputHash, m: &Mesh) -> Result<(), HashError> {
 fn circle(r: f64, n: usize) -> Vec<DVec2> {
     (0..n)
         .map(|i| {
-            let (s, c) = trig::sincos(i as f64 / n as f64 * trig::TAU);
+            let (s, c) = double::sin_cos(i as f64 / n as f64 * double::TAU);
             DVec2::new(r * c, r * s)
         })
         .collect()
@@ -82,7 +83,7 @@ fn gear_extrude() -> Mesh {
     let mut points = Vec::new();
     for i in 0..teeth {
         for (f, r) in [(0.0, 1.0), (0.2, 1.25), (0.45, 1.25), (0.65, 1.0)] {
-            let (s, c) = trig::sincos((i as f64 + f) / teeth as f64 * trig::TAU);
+            let (s, c) = double::sin_cos((i as f64 + f) / teeth as f64 * double::TAU);
             points.push(DVec2::new(r * c, r * s));
         }
     }
@@ -98,7 +99,12 @@ fn gear_extrude() -> Mesh {
 fn vase() -> Mesh {
     lathe(&Lathe {
         points: (0..12)
-            .map(|j| DVec2::new(0.3 + 0.2 * trig::sincos(j as f64 * 0.5).0, j as f64 * 0.1))
+            .map(|j| {
+                DVec2::new(
+                    0.3 + 0.2 * double::sin_cos(j as f64 * 0.5).0,
+                    j as f64 * 0.1,
+                )
+            })
             .collect(),
         segments: 24,
         ..Default::default()
@@ -107,7 +113,7 @@ fn vase() -> Mesh {
 
 fn horn() -> Mesh {
     let sample = |t: f64| {
-        let (s, c) = trig::sincos(t * 2.0);
+        let (s, c) = double::sin_cos(t * 2.0);
         (
             DVec3::new(c, t, s),
             DVec3::new(-2.0 * s, 1.0, 2.0 * c).normalize(),
@@ -158,7 +164,7 @@ fn sphere(r: f64) -> Mesh {
     let rows = 8;
     let points = (0..=rows)
         .map(|j| {
-            let (s, c) = trig::sincos(j as f64 / rows as f64 * trig::PI);
+            let (s, c) = double::sin_cos(j as f64 / rows as f64 * double::PI);
             DVec2::new(if j == 0 || j == rows { 0.0 } else { r * s }, -r * c)
         })
         .collect();

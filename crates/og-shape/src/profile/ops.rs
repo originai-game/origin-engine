@@ -3,15 +3,16 @@
 
 use std::collections::BTreeMap;
 
+use crate::math::DVec2;
 use crate::math::order::cmp_dvec2;
 use crate::math::predicates::orient2d;
-use crate::math::{DVec2, trig};
 use i_overlay::core::fill_rule::FillRule;
 use i_overlay::core::overlay_rule::OverlayRule;
 use i_overlay::float::single::SingleFloatOverlay;
 use i_overlay::mesh::float::outline::offset::OutlineOffset;
 use i_overlay::mesh::float::stroke::offset::StrokeOffset;
 use i_overlay::mesh::float::style::{LineCap, LineJoin, OutlineStyle, StrokeStyle};
+use og_core::math::double;
 
 use crate::profile::curve::segments;
 use crate::profile::{Contour, Fill, Profile, ProfileError, Region};
@@ -131,8 +132,8 @@ pub enum Join {
 
 fn line_join(join: Join, radius: f64) -> LineJoin<f64> {
     match join {
-        Join::Round => LineJoin::Round(trig::TAU / segments(radius.abs(), trig::TAU) as f64),
-        Join::Miter => LineJoin::Miter(trig::PI / 36.0),
+        Join::Round => LineJoin::Round(double::TAU / segments(radius.abs(), double::TAU) as f64),
+        Join::Miter => LineJoin::Miter(double::PI / 36.0),
         Join::Bevel => LineJoin::Bevel,
     }
 }
@@ -194,7 +195,7 @@ impl Profile {
 
     /// Rotated by `angle` radians about the origin.
     pub fn rotate(&self, angle: f64) -> Profile {
-        let (s, c) = trig::sin_cos(angle);
+        let (s, c) = double::sin_cos(angle);
         self.map(|p| DVec2::new(c * p.x - s * p.y, s * p.x + c * p.y), false)
     }
 
@@ -292,7 +293,7 @@ pub fn stroke(points: &[DVec2], d: &StrokeDesc) -> Result<Profile, ProfileError>
     }
     let r = d.width / 2.0;
     let cap = if d.round_caps {
-        LineCap::Round(trig::TAU / segments(r, trig::TAU) as f64)
+        LineCap::Round(double::TAU / segments(r, double::TAU) as f64)
     } else {
         LineCap::Butt
     };
@@ -514,7 +515,7 @@ mod tests {
         let grown = sq(10.0).offset(1.0, Join::Miter).unwrap();
         assert!((grown.area() - 144.0).abs() < 1e-6, "{}", grown.area());
         let rounded = sq(10.0).offset(1.0, Join::Round).unwrap();
-        let want = 100.0 + 40.0 + trig::PI;
+        let want = 100.0 + 40.0 + double::PI;
         assert!(
             (rounded.area() - want).abs() / want < 2e-3,
             "{}",
@@ -549,8 +550,8 @@ mod tests {
         // every contour edge used once.
         let corners: Vec<DVec2> = (0..6)
             .map(|k| {
-                let a = trig::TAU * f64::from(k) / 6.0;
-                DVec2::new(10.0 * trig::cos(a), 10.0 * trig::sin(a))
+                let a = double::TAU * f64::from(k) / 6.0;
+                DVec2::new(10.0 * double::cos(a), 10.0 * double::sin(a))
             })
             .collect();
         let mut pts = Vec::new();

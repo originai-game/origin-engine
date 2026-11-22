@@ -10,8 +10,10 @@
 
 use std::collections::BTreeMap;
 
-use crate::math::{DVec3, Frame, trig};
+use crate::math::{DVec3, Frame};
+
 use crate::mesh::Solid;
+use og_core::math::double;
 
 use crate::model::error::ModelError;
 
@@ -298,8 +300,8 @@ fn loop_order(mut pts: Vec<DVec3>) -> Vec<DVec3> {
     };
     let c = pts.iter().copied().sum::<DVec3>() / n as f64;
     let angle = |p: DVec3| {
-        let a = trig::atan2(p[v] - c[v], p[u] - c[u]);
-        let a = if a < 0.0 { a + trig::TAU } else { a };
+        let a = double::atan2(p[v] - c[v], p[u] - c[u]);
+        let a = if a < 0.0 { a + double::TAU } else { a };
         (a * 1e9).round()
     };
     let first = (0..n)
@@ -346,8 +348,8 @@ pub fn grid(nx: u32, ny: u32, px: f64, py: f64, stagger: bool, on: &Frame) -> Ve
 /// evenly round it; less: first to last inclusive). Each frame's X points
 /// outward and its normal is `on`'s.
 pub fn ring(n: u32, r: f64, start: f64, angle: f64, on: &Frame) -> Vec<Frame> {
-    let full = angle == 0.0 || (angle - trig::TAU).abs() < 1e-12;
-    let span = if angle == 0.0 { trig::TAU } else { angle };
+    let full = angle == 0.0 || (angle - double::TAU).abs() < 1e-12;
+    let span = if angle == 0.0 { double::TAU } else { angle };
     let step = if full {
         span / f64::from(n.max(1))
     } else if n > 1 {
@@ -357,7 +359,7 @@ pub fn ring(n: u32, r: f64, start: f64, angle: f64, on: &Frame) -> Vec<Frame> {
     };
     (0..n)
         .map(|k| {
-            let (s, c) = trig::sin_cos(start + step * f64::from(k));
+            let (s, c) = double::sin_cos(start + step * f64::from(k));
             let radial = on.x * c + on.y * s;
             Frame {
                 origin: on.origin + radial * r,

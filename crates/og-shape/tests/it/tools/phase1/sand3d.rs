@@ -17,12 +17,13 @@
 //! - A joint's axis is a world direction (or the frame's normal); ranges
 //!   are degrees for turns, millimetres for slides.
 
+use og_core::math::double;
 use og_shape::generators::paths::{Loft, loft as gen_loft};
 use og_shape::generators::solids::{
     BoxDesc, CylinderDesc, Extrude, Revolve, cuboid, cylinder as gen_cylinder,
     extrude as gen_extrude, revolve as gen_revolve, sphere as gen_sphere, torus as gen_torus,
 };
-use og_shape::math::{DVec2, DVec3, Frame, trig};
+use og_shape::math::{DVec2, DVec3, Frame};
 use og_shape::mesh::Solid;
 use og_shape::profile::{Circle, Contour, Gear, Profile, Rect, circle, gear, rect};
 use og_shape::tools::{Joint, JointKind, Material, Part, Scene};
@@ -68,7 +69,7 @@ fn sin_cos_deg(deg: f64) -> (f64, f64) {
         let r = v.round();
         if (v - r).abs() < 1e-12 { r } else { v }
     };
-    let (s, c) = trig::sin_cos(trig::to_radians(deg));
+    let (s, c) = double::sin_cos(double::to_radians(deg));
     (snap(s), snap(c))
 }
 
@@ -429,7 +430,7 @@ impl Model {
         };
         let range = range.map(|(lo, hi)| match kind {
             JointKind::Prismatic => (lo, hi),
-            _ => (trig::to_radians(lo), trig::to_radians(hi)),
+            _ => (double::to_radians(lo), double::to_radians(hi)),
         });
         let root = child[0];
         for &c in &child[1..] {
@@ -474,7 +475,7 @@ impl Model {
             {
                 j.value = match j.kind {
                     JointKind::Prismatic => value,
-                    _ => trig::to_radians(value),
+                    _ => double::to_radians(value),
                 };
                 return;
             }

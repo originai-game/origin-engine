@@ -9,10 +9,12 @@
 //! Neither needs a boolean: every cap is a region whose holes are given
 //! directly, so the walls and the caps share their points exactly.
 
-use crate::math::{DVec2, DVec3, trig};
+use crate::math::{DVec2, DVec3};
+
 use crate::mesh::Solid;
 use crate::profile::curve::segments;
 use crate::profile::{Contour, Gear, Profile, Region, gear};
+use og_core::math::double;
 
 use crate::generators::solids::{GenError, arc_end, arc_lengths, finish, positive, push, runs};
 
@@ -38,11 +40,11 @@ pub struct GearDesc {
 
 /// A ring of `n` points on a circle of radius `r`, counter-clockwise from +x.
 fn ring(r: f64) -> Contour {
-    let n = segments(r, trig::TAU);
+    let n = segments(r, double::TAU);
     Contour::smooth(
         (0..n)
             .map(|k| {
-                let (s, c) = trig::sin_cos(trig::TAU * (k as f64 / n as f64));
+                let (s, c) = double::sin_cos(double::TAU * (k as f64 / n as f64));
                 DVec2::new(r * c, r * s)
             })
             .collect(),
@@ -303,13 +305,13 @@ pub(crate) fn knurl_with(d: &Knurl, uvs: bool) -> Result<Solid, GenError> {
             "knurl: the pitch ({pitch}) must be smaller than the diameter ({dia})"
         )));
     }
-    let teeth = ((trig::PI * dia / pitch).round() as u32).max(6);
+    let teeth = ((double::PI * dia / pitch).round() as u32).max(6);
     let depth = 0.5 * pitch;
     let r = dia / 2.0;
     let tf = teeth as f64;
     let around = 4 * teeth;
     // Axial advance per tooth along a 30° helix.
-    let lead = trig::PI * dia / trig::tan(trig::PI / 6.0) / tf;
+    let lead = double::PI * dia / double::tan(double::PI / 6.0) / tf;
     let along = if d.straight {
         ((h / pitch).round() as u32).max(1)
     } else {
@@ -329,7 +331,7 @@ pub(crate) fn knurl_with(d: &Knurl, uvs: bool) -> Result<Solid, GenError> {
             let z = h * (j as f64 / along as f64);
             (0..around)
                 .map(|i| {
-                    let (sn, cs) = trig::sin_cos(trig::TAU * (i as f64 / around as f64));
+                    let (sn, cs) = double::sin_cos(double::TAU * (i as f64 / around as f64));
                     let rho = radius(i as f64 / 4.0, z);
                     s.push_vertex(DVec3::new(rho * cs, rho * sn, z))
                 })
@@ -340,7 +342,7 @@ pub(crate) fn knurl_with(d: &Knurl, uvs: bool) -> Result<Solid, GenError> {
     let z_of = |j: usize| h * (j as f64 / along as f64);
     for (j, w) in rings.windows(2).enumerate() {
         let uv = |x: usize, y: usize| {
-            DVec2::new(r * trig::TAU * (y as f64 / around as f64), z_of(j + x))
+            DVec2::new(r * double::TAU * (y as f64 / around as f64), z_of(j + x))
         };
         for i in 0..n {
             let i1 = (i + 1) % n;
@@ -475,7 +477,7 @@ mod tests {
         assert!(!s.faces(&["hub"]).unwrap().is_empty());
         // The hub's two rims, and the bore's at both ends.
         let hub_rims = s.edges(&["hub"]).unwrap().len();
-        assert_eq!(hub_rims, 2 * segments(10.0, trig::TAU) as usize);
+        assert_eq!(hub_rims, 2 * segments(10.0, double::TAU) as usize);
         assert_eq!(s.measure().bounds_max.z, 13.0);
         // No hub, no bore: the extruded outline.
         let plain = gear_solid(&GearDesc {
@@ -524,7 +526,7 @@ mod tests {
         let teeth = 31;
         let n = 4 * teeth;
         let rho = |i: usize| 5.0 - 0.5 * [1.0, 0.5, 0.0, 0.5][i % 4];
-        let (sn, _) = trig::sin_cos(trig::TAU / n as f64);
+        let (sn, _) = double::sin_cos(double::TAU / n as f64);
         let a: f64 = (0..n).map(|i| 0.5 * rho(i) * rho((i + 1) % n) * sn).sum();
         assert!(
             (closed(&s) - 6.0 * a).abs() < 1e-9 * a,
@@ -543,7 +545,7 @@ mod tests {
         })
         .unwrap();
         let v = closed(&s);
-        let (lo, hi) = (trig::PI * 5.5 * 5.5 * 10.0, trig::PI * 36.0 * 10.0);
+        let (lo, hi) = (double::PI * 5.5 * 5.5 * 10.0, double::PI * 36.0 * 10.0);
         assert!(lo < v && v < hi, "{v}");
         let m = s.measure();
         assert_eq!((m.bounds_min.z, m.bounds_max.z), (0.0, 10.0));

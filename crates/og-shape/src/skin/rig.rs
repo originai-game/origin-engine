@@ -3,9 +3,11 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
 
-use crate::math::{DVec3, Frame, trig};
+use crate::math::{DVec3, Frame};
+
 use crate::mesh::skin::{Mat4, frame_inverse_matrix, frame_matrix};
 use crate::mesh::{Bone, EdgeKey, Skin, SkinError, Solid, Weights, edge_key};
+use og_core::math::double;
 
 use crate::skin::mat::{apply, apply_vector, mul, turn};
 use crate::skin::refine::{adjacency, distances, split_edges};
@@ -551,9 +553,9 @@ pub fn measure_pose(s: &Solid, p: &Pose) -> Result<PoseMeasures, RigError> {
             continue;
         }
         let cos = (expected.dot(n1 / l1) / expected.length()).clamp(-1.0, 1.0);
-        let angle = trig::acos(cos);
+        let angle = double::acos(cos);
         out.max_turn = out.max_turn.max(angle);
-        if angle > trig::PI / 2.0 {
+        if angle > double::PI / 2.0 {
             out.inverted += 1;
             out.inverted_area += l0 / 2.0;
             let longest = [(b - a).length(), (c - b).length(), (a - c).length()]

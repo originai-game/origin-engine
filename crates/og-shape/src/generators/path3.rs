@@ -9,8 +9,10 @@
 //! `crate::profile::curve::bezier_segments` sizes a 2D one. The counts depend
 //! only on the arguments.
 
-use crate::math::{DVec3, trig};
+use crate::math::DVec3;
+
 use crate::profile::curve::segments;
+use og_core::math::double;
 
 use crate::generators::solids::GenError;
 
@@ -74,7 +76,7 @@ fn arc_points(o: DVec3, r: f64, e1: DVec3, e2: DVec3, sweep: f64, end: DVec3) ->
     let n = segments(r, sweep);
     let mut out: Vec<DVec3> = (1..=n)
         .map(|i| {
-            let (s, c) = trig::sin_cos(sweep * (i as f64 / n as f64));
+            let (s, c) = double::sin_cos(sweep * (i as f64 / n as f64));
             o + e1 * (r * c) + e2 * (r * s)
         })
         .collect();
@@ -86,9 +88,9 @@ fn arc_points(o: DVec3, r: f64, e1: DVec3, e2: DVec3, sweep: f64, end: DVec3) ->
 
 /// The angle from `e1` toward `e2` of `v`, in (0, 2π].
 fn turn(v: DVec3, e1: DVec3, e2: DVec3) -> f64 {
-    let mut a = trig::atan2(v.dot(e2), v.dot(e1));
+    let mut a = double::atan2(v.dot(e2), v.dot(e1));
     if a <= 0.0 {
-        a += trig::TAU;
+        a += double::TAU;
     }
     a
 }
@@ -96,7 +98,7 @@ fn turn(v: DVec3, e1: DVec3, e2: DVec3) -> f64 {
 /// A cubic Bézier, flattened like a 2D one; the first point left out.
 fn cubic(p0: DVec3, p1: DVec3, p2: DVec3, p3: DVec3) -> Vec<DVec3> {
     let length = (p1 - p0).length() + (p2 - p1).length() + (p3 - p2).length();
-    let n = segments(length * 2.0 / trig::PI, trig::PI / 2.0).max(4);
+    let n = segments(length * 2.0 / double::PI, double::PI / 2.0).max(4);
     (1..=n)
         .map(|i| {
             let t = i as f64 / n as f64;
@@ -247,7 +249,7 @@ mod tests {
             }],
         };
         let f = flatten(&d).unwrap();
-        assert_eq!(f.points.len() as u32 - 1, segments(5.0, trig::PI));
+        assert_eq!(f.points.len() as u32 - 1, segments(5.0, double::PI));
         for p in &f.points {
             assert!((p.length() - 5.0).abs() < 1e-12, "{p:?}");
             assert!(p.z >= -1e-12);

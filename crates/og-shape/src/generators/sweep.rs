@@ -11,8 +11,9 @@
 use crate::generators::extrude::ExtrudePath;
 use crate::generators::frames::frenet_frames;
 use crate::generators::shape::{area, triangulate_shape};
-use crate::generators::{Mesh, finish, normalize, trig};
+use crate::generators::{Mesh, finish, normalize};
 use glam::{DVec2, DVec3};
+use og_core::math::double;
 
 /// A value at a fraction `t` of the path's length; between keys it is
 /// linear, before the first and past the last it holds.
@@ -119,7 +120,7 @@ pub fn sweep(s: &Sweep, path: &ExtrudePath) -> Result<Mesh, String> {
     for j in 0..=steps {
         let t = j as f64 / steps as f64;
         let k = key_at(&scale, t, 1.0);
-        let (sn, cs) = trig::sincos(key_at(&twist, t, 0.0));
+        let (sn, cs) = double::sin_cos(key_at(&twist, t, 0.0));
         let f = &frames[j];
         for q in &section {
             let x = (q.x * cs - q.y * sn) * k;

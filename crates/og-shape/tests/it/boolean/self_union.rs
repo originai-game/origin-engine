@@ -53,9 +53,9 @@ fn sampled_volume(s: &Solid, n: usize) -> f64 {
                     let (la, lb, lc) = (a.length(), b.length(), c.length());
                     let det = a.dot(b.cross(c));
                     let den = la * lb * lc + a.dot(b) * lc + a.dot(c) * lb + b.dot(c) * la;
-                    w += 2.0 * og_shape::math::trig::atan2(det, den);
+                    w += 2.0 * og_core::math::double::atan2(det, den);
                 }
-                if w / (4.0 * og_shape::math::trig::PI) > 0.5 {
+                if w / (4.0 * og_core::math::double::PI) > 0.5 {
                     inside += 1;
                 }
             }

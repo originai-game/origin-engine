@@ -465,7 +465,7 @@ mod tests {
         assert_eq!(rest.len(), 1);
         assert_eq!((rest[0].b.as_str(), rest[0].crossings), ("pane", 0));
         if let Some(j) = scene.parts[1].joint.as_mut() {
-            j.value = crate::math::trig::PI / 2.0;
+            j.value = og_core::math::double::PI / 2.0;
         }
         let open = interference(&scene).unwrap();
         assert!(open[0].a == "post" && open[0].crossings > 0, "{open:?}");

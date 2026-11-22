@@ -18,9 +18,11 @@
 //! Straight runs meeting at a mitre are separate surfaces, so the mitre
 //! is a real edge, `seam`; bends are smooth.
 
-use crate::math::{DVec2, DVec3, trig};
+use crate::math::{DVec2, DVec3};
+
 use crate::mesh::Solid;
 use crate::profile::{Contour, Profile};
+use og_core::math::double;
 
 use crate::generators::solids::{GenError, RingUvs, count, finish, positive, push, segments_field};
 
@@ -54,13 +56,13 @@ const EPS: f64 = 1e-6;
 
 /// `v` turned by `angle` about the unit `axis` (Rodrigues).
 fn rotate(v: DVec3, axis: DVec3, angle: f64) -> DVec3 {
-    let (s, c) = trig::sin_cos(angle);
+    let (s, c) = double::sin_cos(angle);
     v * c + axis.cross(v) * s + axis * (axis.dot(v) * (1.0 - c))
 }
 
 /// The angle between two directions, 0 to π.
 fn turn(u: DVec3, v: DVec3) -> f64 {
-    trig::atan2(u.cross(v).length(), u.dot(v))
+    double::atan2(u.cross(v).length(), u.dot(v))
 }
 
 fn said(p: DVec3) -> String {
@@ -130,7 +132,7 @@ fn bent(d: &Wire, least: f64) -> Result<(Vec<DVec3>, Vec<bool>), GenError> {
         if t < 1e-6 {
             continue;
         }
-        if t >= trig::PI - 1e-4 {
+        if t >= double::PI - 1e-4 {
             return Err(GenError::Invalid(format!(
                 "wire: the path turns back on itself at {}: a bend turns less than 180°",
                 said(b)
@@ -148,7 +150,7 @@ fn bent(d: &Wire, least: f64) -> Result<(Vec<DVec3>, Vec<bool>), GenError> {
                 said(b)
             )));
         }
-        corners[i] = Some((r * trig::tan(t / 2.0), r, u, v, t));
+        corners[i] = Some((r * double::tan(t / 2.0), r, u, v, t));
     }
     let sides = if d.closed { m } else { m - 1 };
     for i in 0..sides {
@@ -248,15 +250,15 @@ pub(crate) fn wire_with(d: &Wire, uvs: bool) -> Result<Solid, GenError> {
     let gap = if d.closed {
         let back = carry(normals[sides - 1], dirs[sides - 1], dirs[0]);
         let r0 = normals[0];
-        trig::atan2(dirs[0].dot(back.cross(r0)), back.dot(r0))
+        double::atan2(dirs[0].dot(back.cross(r0)), back.dot(r0))
     } else {
         0.0
     };
     // The profile: a polygon in the run's (normal, binormal) plane.
-    let n = count(d.segments, radius, trig::TAU);
+    let n = count(d.segments, radius, double::TAU);
     let circle: Vec<DVec2> = (0..n)
         .map(|k| {
-            let (s, c) = trig::sin_cos(trig::TAU * (k as f64 / n as f64));
+            let (s, c) = double::sin_cos(double::TAU * (k as f64 / n as f64));
             DVec2::new(radius * c, radius * s)
         })
         .collect();
@@ -393,8 +395,8 @@ mod tests {
     /// The area of the wire's 24-to-64-gon.
     fn section(d: f64) -> f64 {
         let r = d / 2.0;
-        let n = segments(r, trig::TAU) as f64;
-        0.5 * n * r * r * trig::sin(trig::TAU / n)
+        let n = segments(r, double::TAU) as f64;
+        0.5 * n * r * r * double::sin(double::TAU / n)
     }
 
     #[test]
@@ -420,7 +422,7 @@ mod tests {
             s.measure().volume
         );
         // Two mitres, each a named ring; three straight runs.
-        let n = segments(3.0, trig::TAU) as usize;
+        let n = segments(3.0, double::TAU) as usize;
         assert_eq!(s.edges(&["seam"]).unwrap().len(), 2 * n);
         assert_eq!(s.edges(&["start"]).unwrap().len(), n);
         assert_eq!(s.real_edges().len(), 4 * n);
@@ -442,7 +444,7 @@ mod tests {
         .unwrap();
         // The centre line: two straights shortened by the setback 60, and a
         // quarter arc of 60 (Pappus, up to the polygon's chords).
-        let len = 590.0 + 190.0 + trig::PI / 2.0 * 60.0;
+        let len = 590.0 + 190.0 + double::PI / 2.0 * 60.0;
         let want = section(33.0) * len;
         let v = closed(&s);
         assert!((v - want).abs() / want < 1e-3, "{v} {want}");
@@ -484,7 +486,7 @@ mod tests {
         assert!((closed(&s) - want).abs() < 1e-9 * want);
         assert_eq!(
             s.edges(&["seam"]).unwrap().len(),
-            4 * segments(2.0, trig::TAU) as usize
+            4 * segments(2.0, double::TAU) as usize
         );
     }
 

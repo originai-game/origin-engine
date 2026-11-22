@@ -3,8 +3,9 @@
 //! refused, and the interference report of the washing machine at rest,
 //! as recorded, and with the door and drawer fully open.
 
+use og_core::math::double;
 use og_shape::generators::paths::{Loft, LoftCurve, loft};
-use og_shape::math::{HashError, OutputHash, trig};
+use og_shape::math::{HashError, OutputHash};
 use og_shape::model::program;
 use og_shape::profile::{Circle, Polygon, Profile, Rect, circle, polygon, rect};
 
@@ -69,7 +70,7 @@ fn corners(h: &mut OutputHash) -> Result<(), HashError> {
         loft(&Loft {
             sections: vec![
                 (hexagon(10.0), 0.0),
-                (hexagon(5.0).rotate(trig::to_radians(10.0)), 10.0),
+                (hexagon(5.0).rotate(double::to_radians(10.0)), 10.0),
             ],
             samples: 32,
             ..Default::default()

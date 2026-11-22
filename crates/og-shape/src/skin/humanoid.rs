@@ -819,7 +819,7 @@ pub fn humanoid(s: &Solid) -> Result<(Skeleton, FitReport), RigError> {
     let drop = |a: &[DVec3; 4]| {
         let d = a[2] - a[0];
         let flat = (d.x * d.x + d.y * d.y).sqrt();
-        crate::math::trig::atan2(-d.z, flat)
+        og_core::math::double::atan2(-d.z, flat)
     };
     let report = FitReport {
         voxel: h,

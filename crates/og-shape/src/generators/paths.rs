@@ -7,10 +7,12 @@
 //! | [`loft_along`] | `start`, `end` (none in a loop), `side` | `start`, `end` |
 //! | [`thread`] | as [`sweep`], also `thread` | as [`sweep`] |
 
-use crate::math::{DVec2, DVec3, trig};
+use crate::math::{DVec2, DVec3};
+
 use crate::mesh::Solid;
 use crate::profile::curve::segments;
 use crate::profile::{Contour, Profile, ProfileError};
+use og_core::math::double;
 
 use crate::generators::solids::{GenError, RingUvs, finish, push};
 
@@ -140,7 +142,7 @@ pub(crate) fn sweep_with(profile: &Profile, d: &Sweep, uvs: bool) -> Result<Soli
     let total = along[n - 1].max(f64::MIN_POSITIVE);
     let local = |p: DVec2, i: usize| {
         let f = along[i] / total;
-        let (s, c) = trig::sin_cos(d.twist * f);
+        let (s, c) = double::sin_cos(d.twist * f);
         let k = 1.0 + (end_scale - 1.0) * f;
         DVec2::new(c * p.x - s * p.y, s * p.x + c * p.y) * k
     };
@@ -297,14 +299,14 @@ pub fn helix(d: &Helix) -> Result<Vec<DVec3>, GenError> {
     if d.radius <= 0.0 || d.turns <= 0.0 {
         return Err(GenError::NotPositive("radius, turns"));
     }
-    let angle = trig::TAU * d.turns;
+    let angle = double::TAU * d.turns;
     // The chord rule's count for one turn, for every turn: `segments`
     // counts at most one turn.
-    let n = ((segments(d.radius, trig::TAU) as f64 * d.turns).ceil() as u32).max(1);
+    let n = ((segments(d.radius, double::TAU) as f64 * d.turns).ceil() as u32).max(1);
     Ok((0..=n)
         .map(|i| {
             let f = i as f64 / n as f64;
-            let (s, c) = trig::sin_cos(angle * f);
+            let (s, c) = double::sin_cos(angle * f);
             DVec3::new(d.radius * c, d.radius * s, d.pitch * d.turns * f)
         })
         .collect())
@@ -313,9 +315,9 @@ pub fn helix(d: &Helix) -> Result<Vec<DVec3>, GenError> {
 /// The helix's unit tangent at its start and its end (its derivative, not
 /// a chord).
 pub fn helix_tangents(d: &Helix) -> [DVec3; 2] {
-    let angle = trig::TAU * d.turns;
+    let angle = double::TAU * d.turns;
     let rise = d.pitch * d.turns;
-    let (s, c) = trig::sin_cos(angle);
+    let (s, c) = double::sin_cos(angle);
     let unit = |v: DVec3| v.try_normalize().unwrap_or(DVec3::ZERO);
     [
         unit(DVec3::new(0.0, d.radius * angle, rise)),
@@ -437,7 +439,7 @@ mod tests {
     fn a_bent_pipe_and_a_thread_are_closed() {
         let path: Vec<DVec3> = (0..=16)
             .map(|i| {
-                let (s, c) = trig::sin_cos(trig::PI / 2.0 * (i as f64 / 16.0));
+                let (s, c) = double::sin_cos(double::PI / 2.0 * (i as f64 / 16.0));
                 DVec3::new(20.0 * c, 20.0 * s, 0.0)
             })
             .collect();

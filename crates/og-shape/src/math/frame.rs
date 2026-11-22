@@ -189,7 +189,7 @@ fn sin_cos_snapped(a: f64) -> (f64, f64) {
         let r = v.round();
         if (v - r).abs() < 1e-12 { r + 0.0 } else { v }
     };
-    let (s, c) = crate::math::trig::sin_cos(a);
+    let (s, c) = og_core::math::double::sin_cos(a);
     (snap(s), snap(c))
 }
 
@@ -248,7 +248,7 @@ mod tests {
         );
         assert_eq!(f.offset(-10.0).origin, DVec3::new(290.0, 0.0, 0.0));
         // A quarter turn about own Z is exact.
-        let t = f.turn(0.0, 0.0, crate::math::trig::PI / 2.0);
+        let t = f.turn(0.0, 0.0, og_core::math::double::PI / 2.0);
         assert_eq!((t.x, t.y, t.z), (DVec3::Z, DVec3::NEG_Y, DVec3::X));
         assert!(t.is_rigid(1e-12));
         let g = f.turn(0.3, -1.1, 2.0).translate(1.0, 2.0, 3.0);

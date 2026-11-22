@@ -19,8 +19,10 @@
 //! flutters. A limb and everything growing from it share one pivot and
 //! one stiffness, so they bend as one piece and stay joined.
 
-use crate::generators::{Mesh, trig};
+use crate::generators::Mesh;
+
 use glam::{DQuat, DVec3};
+use og_core::math::double;
 use og_core::rng::Rng;
 
 /// The trunk and three levels of branches.
@@ -287,7 +289,7 @@ struct Leaf {
 
 /// A turn of `angle` round the unit `axis`.
 fn turn(axis: DVec3, angle: f64) -> DQuat {
-    let (s, c) = trig::sincos(0.5 * angle);
+    let (s, c) = double::sin_cos(0.5 * angle);
     DQuat::from_xyzw(axis.x * s, axis.y * s, axis.z * s, c)
 }
 
@@ -344,21 +346,21 @@ fn spread(
             let mut s = along(sections, at);
             let jitter = rng.range(-0.5, 0.5);
             let round = if rows == 0 {
-                trig::TAU * (offset + (slots[i] as f64 + jitter) / count as f64)
+                double::TAU * (offset + (slots[i] as f64 + jitter) / count as f64)
             } else {
                 // In rows, taken in turn along the branch: the first to
                 // its side, where the ground's level crosses it (anywhere
                 // round a branch that stands upright).
                 let side = (s.q * DVec3::Y).cross(DVec3::Y);
                 let first = if side.length_squared() < 1e-6 {
-                    trig::TAU * offset
+                    double::TAU * offset
                 } else {
                     let local = s.q.inverse() * side.normalize();
-                    trig::atan2(local.x, local.z)
+                    double::atan2(local.x, local.z)
                 };
-                first + trig::TAU * (i as u32 % rows) as f64 / f64::from(rows) + 0.3 * jitter
+                first + double::TAU * (i as u32 % rows) as f64 / f64::from(rows) + 0.3 * jitter
             };
-            s.q = (s.q * turn(DVec3::Y, round) * turn(DVec3::X, angle * trig::PI / 180.0))
+            s.q = (s.q * turn(DVec3::Y, round) * turn(DVec3::X, angle * double::PI / 180.0))
                 .normalize();
             (at, s)
         })
@@ -469,7 +471,7 @@ fn grow(p: &Plant, detail: f64, leafing: Leafing) -> Result<PlantMesh, String> {
             let axis = up.cross(target);
             let sin_full = axis.length();
             if sin_full > 1e-6 && p.force_strength != 0.0 {
-                let full = trig::atan2(sin_full, up.dot(target));
+                let full = double::atan2(sin_full, up.dot(target));
                 let by = (p.force_strength / units).clamp(-full, full);
                 q = turn(axis / sin_full, by) * q;
             }
@@ -615,7 +617,7 @@ fn grow(p: &Plant, detail: f64, leafing: Leafing) -> Result<PlantMesh, String> {
                 LeafShape::Card => card(&mut out, leaf.origin, q, len, width, c, wind),
                 LeafShape::Cross => {
                     card(&mut out, leaf.origin, leaf.q, len, width, c, wind);
-                    let q = leaf.q * turn(DVec3::Y, 0.5 * trig::PI);
+                    let q = leaf.q * turn(DVec3::Y, 0.5 * double::PI);
                     card(&mut out, leaf.origin, q, len, width, c, wind);
                 }
             }
@@ -624,14 +626,14 @@ fn grow(p: &Plant, detail: f64, leafing: Leafing) -> Result<PlantMesh, String> {
     }
     if let Some(f) = &p.flowers {
         let petals = f.petals.clamp(1, 32);
-        let lift = -(0.5 * trig::PI - f.cup.clamp(0.0, 90.0) * trig::PI / 180.0);
+        let lift = -(0.5 * double::PI - f.cup.clamp(0.0, 90.0) * double::PI / 180.0);
         for flower in &flower_list {
             let u = colour.next_f64() as f32;
             let c: [f32; 3] = std::array::from_fn(|k| f.color[k] + (f.color2[k] - f.color[k]) * u);
             let wind = wind_of(flower.sway, flower.origin, 0.6);
-            let offset = trig::TAU * colour.next_f64();
+            let offset = double::TAU * colour.next_f64();
             for k in 0..petals {
-                let round = offset + trig::TAU * f64::from(k) / f64::from(petals);
+                let round = offset + double::TAU * f64::from(k) / f64::from(petals);
                 let q = flower.q * turn(DVec3::Y, round) * turn(DVec3::X, lift);
                 blade(
                     &mut out,
@@ -669,7 +671,7 @@ fn skyward(q: DQuat, facing: f64, jitter: f64) -> DQuat {
         return q;
     }
     let flat = flat.normalize();
-    let roll = trig::atan2(z.cross(flat).dot(y), z.dot(flat));
+    let roll = double::atan2(z.cross(flat).dot(y), z.dot(flat));
     (turn(y, roll * facing + jitter * facing) * q).normalize()
 }
 
@@ -683,7 +685,7 @@ fn wind_of(sway: Sway, anchor: DVec3, flutter: f32) -> [f32; 8] {
 /// bark texture meets itself), v along it in metres.
 fn wood(out: &mut PlantMesh, limb: &Limb, stride: usize, detail: f64) {
     let segments = ((f64::from(limb.segments) * detail).round() as usize).max(3);
-    let wraps = (trig::TAU * limb.base_radius).round().max(1.0);
+    let wraps = (double::TAU * limb.base_radius).round().max(1.0);
     let last = limb.sections.len() - 1;
     let mut rings: Vec<usize> = (0..=last).step_by(stride).collect();
     if rings.last() != Some(&last) {
@@ -700,7 +702,7 @@ fn wood(out: &mut PlantMesh, limb: &Limb, stride: usize, detail: f64) {
             v += s.origin.distance(limb.sections[rings[k - 1]].origin);
         }
         for j in 0..=segments {
-            let (sin, cos) = trig::sincos(trig::TAU * (j % segments) as f64 / segments as f64);
+            let (sin, cos) = double::sin_cos(double::TAU * (j % segments) as f64 / segments as f64);
             let n = s.q * DVec3::new(cos, 0.0, sin);
             m.positions
                 .push((s.origin + n * s.radius).as_vec3().to_array());
@@ -839,7 +841,7 @@ fn centre(
     let mut verts = vec![(DVec3::new(0.0, lift * 1.5, 0.0), DVec3::Y, [0.5, 0.5], 1.0)];
     let mut tris = Vec::new();
     for k in 0..6u32 {
-        let (sin, cos) = trig::sincos(trig::TAU * f64::from(k) / 6.0);
+        let (sin, cos) = double::sin_cos(double::TAU * f64::from(k) / 6.0);
         verts.push((
             DVec3::new(cos * r, lift, sin * r),
             DVec3::new(0.4 * cos, 1.0, 0.4 * sin),

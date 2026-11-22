@@ -474,7 +474,7 @@ pub(crate) fn draw_triangle(t: &mut Target, look: &Look, p: &Drawn, k: usize) {
                         let power = (2.0 / alpha2 - 2.0).clamp(0.0, 2000.0);
                         let half = (look.light + view).try_normalize().unwrap_or(n);
                         let highlight = DIFFUSE
-                            * ((power + 2.0) / 8.0 * trig::pow(n.dot(half).max(0.0), power))
+                            * ((power + 2.0) / 8.0 * double::pow(n.dot(half).max(0.0), power))
                                 .min(8.0)
                             * towards
                             * (1.0 - r);
@@ -500,7 +500,7 @@ pub(crate) fn draw_triangle(t: &mut Target, look: &Look, p: &Drawn, k: usize) {
                     // blue light.
                     let film = [650.0, 510.0, 475.0].map(|wave: f64| {
                         let inside = (1.0 - (1.0 - facing_view * facing_view) / (1.3 * 1.3)).sqrt();
-                        0.5 + 0.5 * trig::cos(trig::TAU * 2.0 * 1.3 * 400.0 * inside / wave)
+                        0.5 + 0.5 * double::cos(double::TAU * 2.0 * 1.3 * 400.0 * inside / wave)
                     });
                     let coat_share = g.coat.0 * (0.04 + 0.96 * graze);
                     for (c, m) in mirror.iter_mut().enumerate() {
@@ -524,7 +524,7 @@ pub(crate) fn draw_triangle(t: &mut Target, look: &Look, p: &Drawn, k: usize) {
                     if g.sheen.0 != [0.0; 3] {
                         // Cloth's soft light towards the rim: wider the
                         // rougher the sheen.
-                        let rim = trig::pow(1.0 - facing_view, 1.0 + 4.0 * (1.0 - g.sheen.1));
+                        let rim = double::pow(1.0 - facing_view, 1.0 + 4.0 * (1.0 - g.sheen.1));
                         for (c, m) in mirror.iter_mut().enumerate() {
                             *m += g.sheen.0[c] * rim * to_linear(lights[c].clamp(0.0, 1.0));
                         }

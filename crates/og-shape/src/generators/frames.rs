@@ -3,10 +3,12 @@
 //! and spread evenly round a closed curve so its ends meet. The rotations
 //! take their cosine from the dot product and their sine from the square
 //! root of one less its square, so no transcendental function decides a
-//! frame; the closed curve's correction reads [`crate::generators::trig`].
+//! frame; the closed curve's correction reads [`og_core::math::double`].
 
-use crate::generators::{normalize, trig};
+use crate::generators::normalize;
+
 use glam::DVec3;
+use og_core::math::double;
 
 /// A frame: the tangent and the normal and binormal across it, as three.js
 /// returns them (`binormal = tangent × normal`).
@@ -63,12 +65,12 @@ pub fn frenet_frames(tangents: &[DVec3], closed: bool) -> Vec<Frame> {
     if closed && n > 1 {
         let segments = (n - 1) as f64;
         let c = normals[0].dot(normals[n - 1]).clamp(-1.0, 1.0);
-        let mut theta = trig::atan2((1.0 - c * c).max(0.0).sqrt(), c) / segments;
+        let mut theta = double::atan2((1.0 - c * c).max(0.0).sqrt(), c) / segments;
         if t0.dot(normals[0].cross(normals[n - 1])) > 0.0 {
             theta = -theta;
         }
         for i in 1..n {
-            let (s, c) = trig::sincos(theta * i as f64);
+            let (s, c) = double::sin_cos(theta * i as f64);
             normals[i] = rotate(normals[i], tangents[i], c, s);
             binormals[i] = tangents[i].cross(normals[i]);
         }
@@ -92,7 +94,7 @@ mod tests {
         assert!(f.iter().all(|x| x.normal == f[0].normal));
         let ts: Vec<DVec3> = (0..=16)
             .map(|i| {
-                let (s, c) = trig::sincos(i as f64 / 16.0 * trig::TAU);
+                let (s, c) = double::sin_cos(i as f64 / 16.0 * double::TAU);
                 DVec3::new(-s, 0.3, c).normalize()
             })
             .collect();

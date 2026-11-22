@@ -1,12 +1,13 @@
 //! Golden cases for profiles (shape-2d) and named solids (shape-gen).
 
+use og_core::math::double;
 use og_shape::boolean::{BoolOp, Boolean, boolean};
 use og_shape::generators::paths::{Helix, Loft, Sweep, Thread, helix, loft, sweep, thread};
 use og_shape::generators::solids::{
     BoxDesc, CylinderDesc, Extrude, Revolve, cone, cuboid, cylinder, dome, extrude, revolve,
     sphere, torus, tube, wedge,
 };
-use og_shape::math::{DVec2, HashError, OutputHash, trig};
+use og_shape::math::{DVec2, HashError, OutputHash};
 use og_shape::mesh::Solid;
 use og_shape::profile::{
     Circle, Gear, Join, Outline, Path, Poly, PolyPoint, Profile, Rect, Slot, StrokeDesc,
@@ -59,7 +60,7 @@ pub fn cases() -> Vec<Case> {
                         &plate(),
                         &Extrude {
                             height: 12.0,
-                            twist: trig::PI / 3.0,
+                            twist: double::PI / 3.0,
                             taper: 0.3,
                             both_sides: true,
                         },
@@ -332,7 +333,7 @@ pub fn cases() -> Vec<Case> {
                             diameter: 4.0,
                             at: vec![og_shape::edit::above(0.0, -5.0)],
                             depth: 6.0,
-                            countersink: (8.0, trig::PI / 2.0),
+                            countersink: (8.0, double::PI / 2.0),
                             ..Default::default()
                         },
                     )

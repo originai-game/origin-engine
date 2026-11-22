@@ -533,18 +533,18 @@ fn to_geom(m: &MeshData) -> og_shape::generators::Mesh {
 /// flattens one.
 pub fn gear_shape(teeth: usize) -> og_shape::generators::ShapePoints {
     use glam::DVec2;
-    use og_shape::generators::trig::{TAU, sincos};
+    use og_core::math::double::{TAU, sin_cos};
     let mut points = Vec::new();
     for i in 0..teeth {
         for (f, r) in [(0.0, 0.62), (0.18, 0.8), (0.42, 0.8), (0.6, 0.62)] {
-            let (s, c) = sincos((i as f64 + f) / teeth as f64 * TAU);
+            let (s, c) = sin_cos((i as f64 + f) / teeth as f64 * TAU);
             points.push(DVec2::new(r * c, r * s));
         }
     }
     let hole = |cx: f64, cy: f64, r: f64, n: usize| -> Vec<DVec2> {
         (0..n)
             .map(|k| {
-                let (s, c) = sincos(-(k as f64) / n as f64 * TAU);
+                let (s, c) = sin_cos(-(k as f64) / n as f64 * TAU);
                 DVec2::new(cx + r * c, cy + r * s)
             })
             .collect()
@@ -561,10 +561,10 @@ pub fn gear_shape(teeth: usize) -> og_shape::generators::ShapePoints {
 
 /// A sphere as a lathe of a half circle (closed exactly, for CSG).
 fn ball(r: f64, segments: u32, rows: u32) -> og_shape::generators::Mesh {
-    use og_shape::generators::trig::{PI, sincos};
+    use og_core::math::double::{PI, sin_cos};
     let points = (0..=rows)
         .map(|j| {
-            let (s, c) = sincos(j as f64 / rows as f64 * PI);
+            let (s, c) = sin_cos(j as f64 / rows as f64 * PI);
             let x = if j == 0 || j == rows { 0.0 } else { r * s };
             glam::DVec2::new(x, -r * c)
         })
@@ -627,11 +627,11 @@ pub fn dice() -> og_shape::generators::Mesh {
 /// to 0.08 and twisting a turn and a half.
 pub fn horn() -> og_shape::generators::Mesh {
     use glam::{DVec2, DVec3};
-    use og_shape::generators::trig::{TAU, sincos};
+    use og_core::math::double::{TAU, sin_cos};
     let section: Vec<DVec2> = (0..40)
         .map(|k| {
-            let (s, c) = sincos(k as f64 / 40.0 * TAU);
-            let r = 0.22 * (1.0 + 0.12 * sincos(k as f64 / 40.0 * TAU * 10.0).1);
+            let (s, c) = sin_cos(k as f64 / 40.0 * TAU);
+            let r = 0.22 * (1.0 + 0.12 * sin_cos(k as f64 / 40.0 * TAU * 10.0).1);
             DVec2::new(r * c, r * s)
         })
         .collect();

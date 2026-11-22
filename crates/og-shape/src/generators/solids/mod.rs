@@ -47,10 +47,11 @@
 //! where its angle does).
 
 use crate::math::predicates::orient2d;
-use crate::math::{DVec2, DVec3, trig};
+use crate::math::{DVec2, DVec3};
 use crate::mesh::{CornerUvs, Solid};
 use crate::profile::curve::segments;
 use crate::profile::{Circle, Contour, Profile, ProfileError, Rect, circle, rect};
+use og_core::math::double;
 
 mod extrude;
 mod primitives;
@@ -132,7 +133,7 @@ pub(crate) fn count(per_turn: u32, radius: f64, angle: f64) -> u32 {
     if per_turn == 0 {
         segments(radius, angle)
     } else {
-        let fraction = (angle.abs() / trig::TAU).min(1.0);
+        let fraction = (angle.abs() / double::TAU).min(1.0);
         ((per_turn as f64 * fraction).ceil() as u32).max(1)
     }
 }
@@ -293,12 +294,12 @@ pub(crate) fn runs(c: &Contour) -> Vec<(usize, usize)> {
 /// A spherical cap `a` in base radius and `h` high, about +y on y = 0.
 pub(crate) fn cap(a: f64, h: f64, per_turn: u32, uvs: bool) -> Result<Solid, GenError> {
     let r = (a * a + h * h) / (2.0 * h);
-    let from = trig::atan2(r - h, a);
-    let sweep = trig::PI / 2.0 - from;
+    let from = double::atan2(r - h, a);
+    let sweep = double::PI / 2.0 - from;
     let n = count(per_turn, r, sweep);
     let mut pts = vec![DVec2::ZERO];
     pts.extend((0..=n).map(|k| {
-        let (s, c) = trig::sin_cos(from + sweep * (k as f64 / n as f64));
+        let (s, c) = double::sin_cos(from + sweep * (k as f64 / n as f64));
         DVec2::new(r * c, h - r + r * s)
     }));
     pts[1] = DVec2::new(a, 0.0);

@@ -854,7 +854,7 @@ fn on_segment(p: DVec3, q: DVec3, x: DVec3) -> bool {
 mod tests {
     use super::*;
     use crate::generators::solids::{BoxDesc, CylinderDesc, cuboid, cylinder};
-    use crate::math::trig;
+    use og_core::math::double;
 
     fn plate() -> Solid {
         cuboid(&BoxDesc {
@@ -913,7 +913,7 @@ mod tests {
                 .count(),
             4
         );
-        let want = 80.0 * 40.0 * 6.0 - trig::PI * 3.3 * 3.3 * 6.0;
+        let want = 80.0 * 40.0 * 6.0 - double::PI * 3.3 * 3.3 * 6.0;
         assert!((m.volume - want).abs() / want < 1e-3);
     }
 

@@ -33,8 +33,9 @@ use std::collections::BTreeMap;
 use std::fmt;
 
 use crate::math::predicates::orient2d;
-use crate::math::{DVec2, DVec3, trig};
+use crate::math::{DVec2, DVec3};
 use crate::mesh::{Solid, edge_key};
+use og_core::math::double;
 
 use crate::tools::intersect::tris_overlap_2d;
 
@@ -205,7 +206,7 @@ pub(crate) type Formed = (Vec<Vec<u32>>, Vec<u32>, Vec<[DVec2; 3]>);
 pub(crate) fn form_as(s: &Solid, d: &Unwrap) -> Formed {
     let angle = if d.angle == 0.0 { 66.0 } else { d.angle };
     let n = s.triangles.len();
-    let cos_limit = trig::cos(trig::to_radians(angle));
+    let cos_limit = double::cos(double::to_radians(angle));
     let corner = |i: usize| s.triangles[i].map(|v| s.positions[v as usize]);
     let mut normals = Vec::with_capacity(n);
     let mut areas = Vec::with_capacity(n);
@@ -247,7 +248,7 @@ pub(crate) fn form_as(s: &Solid, d: &Unwrap) -> Formed {
         // first part of it is the flattest part and in one piece; where
         // the whole does not flatten, its first half is tried, then a
         // quarter, then an eighth.
-        let cos_wide = trig::cos(trig::to_radians((angle * 1.6).min(150.0)));
+        let cos_wide = double::cos(double::to_radians((angle * 1.6).min(150.0)));
         for &seed in &seeds {
             if work > SOLVE_WORK * n {
                 break;

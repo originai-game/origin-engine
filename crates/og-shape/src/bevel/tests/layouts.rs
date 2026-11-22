@@ -73,7 +73,7 @@ fn two_unbevelled_edges_between_bevelled_ones_cut_their_face_on_a_profile() {
     // Three sectors of 2 × 2 quads, and the strips' last rows.
     let q = quad_pairs(&s, &apex);
     assert_eq!((q.paired, q.triangles), (24, 24), "{q:?}");
-    assert!(q.max_fold < trig::to_radians(35.0), "{q:?}");
+    assert!(q.max_fold < double::to_radians(35.0), "{q:?}");
     check_closed(&s);
     inside(&s, &p);
     // The two unbevelled side edges still reach toward the apex, named.
@@ -164,7 +164,7 @@ fn a_lone_edge_whose_faces_meet_again_tapers_to_a_tip() {
         .iter()
         .map(|&(a, b)| (c.positions[a as usize] - c.positions[b as usize]).length())
         .sum();
-    let section = 2.25 * (1.0 - 2.0 * trig::sin(trig::PI / 8.0));
+    let section = 2.25 * (1.0 - 2.0 * double::sin(double::PI / 8.0));
     let lost = c.measure().volume - s.measure().volume;
     let want = section * length * 14.5 / 15.0;
     let end = section * length / arc.len() as f64;
@@ -679,8 +679,8 @@ fn an_edge_in_line_with_its_unbevelled_neighbour_across_a_curved_face() {
 pub(crate) fn ngon_prism(k: usize, taper: f64) -> Solid {
     let pts: Vec<DVec2> = (0..k)
         .map(|i| {
-            let a = trig::TAU * i as f64 / k as f64;
-            DVec2::new(10.0 * trig::cos(a), 10.0 * trig::sin(a))
+            let a = double::TAU * i as f64 / k as f64;
+            DVec2::new(10.0 * double::cos(a), 10.0 * double::sin(a))
         })
         .collect();
     extrude(
@@ -817,7 +817,7 @@ fn patches_of_seven_and_more_sides() {
             )
             .unwrap();
             let q = check(&s, "fillet");
-            assert!(q.max_fold < trig::to_radians(15.0), "{k} {n}: {q:?}");
+            assert!(q.max_fold < double::to_radians(15.0), "{k} {n}: {q:?}");
             inside(&s, &p);
             // The apex patch: k sectors of (n/2)² quads. Each strip runs
             // from the base (z = 0) to the patch in one row, so the patch

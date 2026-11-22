@@ -50,8 +50,10 @@ mod uvs;
 
 use std::collections::BTreeMap;
 
-use crate::math::{DVec3, trig};
+use crate::math::DVec3;
+
 use crate::mesh::{EdgeKey, Solid};
+use og_core::math::double;
 
 use layout::{Kind, Miters, Offsets, Spec};
 
@@ -278,7 +280,7 @@ pub fn fillet(s: &Solid, d: &Fillet) -> Result<Solid, BevelError> {
     if !(profile.is_finite() && profile > 0.0 && profile < 1.0) {
         return Err(BevelError::NotPositive("profile (between 0 and 1)"));
     }
-    let edges = select(s, &d.edges, trig::to_radians(10.0))?;
+    let edges = select(s, &d.edges, double::to_radians(10.0))?;
     run(
         s,
         &Spec {
@@ -305,7 +307,7 @@ pub fn chamfer(s: &Solid, d: &Chamfer) -> Result<Solid, BevelError> {
     let d1 = positive(d.distance, "distance")?;
     let offsets = if d.angle != 0.0 {
         let a = positive(d.angle, "angle")?;
-        if a >= trig::PI {
+        if a >= double::PI {
             return Err(BevelError::NotPositive("π - angle"));
         }
         Offsets::Angle(d1, a)
@@ -314,7 +316,7 @@ pub fn chamfer(s: &Solid, d: &Chamfer) -> Result<Solid, BevelError> {
     } else {
         Offsets::Equal(d1)
     };
-    let edges = select(s, &d.edges, trig::to_radians(10.0))?;
+    let edges = select(s, &d.edges, double::to_radians(10.0))?;
     run(
         s,
         &Spec {
@@ -341,7 +343,7 @@ pub fn soften(s: &Solid, d: &Soften) -> Result<Solid, BevelError> {
     }
     let r = positive(d.radius, "radius")?;
     let angle = if d.angle == 0.0 {
-        trig::to_radians(30.0)
+        double::to_radians(30.0)
     } else {
         positive(d.angle, "angle")?
     };
@@ -394,7 +396,7 @@ pub fn quad_pairs(s: &Solid, triangles: &[u32]) -> QuadPairs {
     let p = |v: u32| s.positions[v as usize];
     let normal = |a: u32, b: u32, c: u32| (p(b) - p(a)).cross(p(c) - p(a)).normalize_or_zero();
     let angle = |a: DVec3, b: DVec3| {
-        trig::acos(
+        double::acos(
             a.normalize_or_zero()
                 .dot(b.normalize_or_zero())
                 .clamp(-1.0, 1.0),
@@ -423,7 +425,7 @@ pub fn quad_pairs(s: &Solid, triangles: &[u32]) -> QuadPairs {
             let skew: f64 = (0..4)
                 .map(|c| {
                     let (a, b, d) = (ring[(c + 3) % 4], ring[c], ring[(c + 1) % 4]);
-                    (angle(p(a) - p(b), p(d) - p(b)) - trig::PI / 2.0).abs()
+                    (angle(p(a) - p(b), p(d) - p(b)) - double::PI / 2.0).abs()
                 })
                 .sum();
             cands.push((skew, angle(n1, n2), i, o));

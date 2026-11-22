@@ -7,7 +7,9 @@
 //! Samples are spaced at equal chord length in square space and are
 //! symmetric: sample `n - k` is sample `k` with x and y swapped.
 
-use crate::math::{DVec3, trig};
+use crate::math::DVec3;
+
+use og_core::math::double;
 
 /// Table resolution for the arc-length search.
 const TABLE: usize = 2048;
@@ -16,9 +18,9 @@ const TABLE: usize = 2048;
 pub(crate) fn samples(p: f64, n: u32) -> Vec<(f64, f64)> {
     let n = n.max(1) as usize;
     let at = |theta: f64| -> (f64, f64) {
-        let (s, c) = trig::sin_cos(theta);
+        let (s, c) = double::sin_cos(theta);
         let e = 2.0 / p;
-        (trig::pow(c.max(0.0), e), trig::pow(s.max(0.0), e))
+        (double::pow(c.max(0.0), e), double::pow(s.max(0.0), e))
     };
     // Cumulative chord length over a fine table in θ.
     let mut thetas = Vec::with_capacity(TABLE + 1);
@@ -26,7 +28,7 @@ pub(crate) fn samples(p: f64, n: u32) -> Vec<(f64, f64)> {
     let mut prev = (1.0, 0.0);
     let mut acc = 0.0;
     for i in 0..=TABLE {
-        let theta = trig::PI / 2.0 * (i as f64 / TABLE as f64);
+        let theta = double::PI / 2.0 * (i as f64 / TABLE as f64);
         let q = if i == 0 {
             (1.0, 0.0)
         } else if i == TABLE {

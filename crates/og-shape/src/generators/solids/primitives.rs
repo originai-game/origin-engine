@@ -96,7 +96,7 @@ pub(crate) fn cylinder_with(d: &CylinderDesc, uvs: bool) -> Result<Solid, GenErr
         segments: count(
             segments_field(d.segments, "segments")?,
             r.max(top),
-            trig::TAU,
+            double::TAU,
         ),
     })?;
     extrude_with(
@@ -186,7 +186,7 @@ pub(crate) fn tube_with(d: &TubeDesc, uvs: bool) -> Result<Solid, GenError> {
     if i >= positive(outer, "outer")? {
         return Err(GenError::NotPositive("outer - inner"));
     }
-    let n = count(segments_field(d.segments, "segments")?, outer, trig::TAU);
+    let n = count(segments_field(d.segments, "segments")?, outer, double::TAU);
     let p = circle(&Circle {
         radius: outer,
         segments: n,
@@ -214,10 +214,10 @@ pub fn sphere(radius: f64) -> Result<Solid, GenError> {
 /// as many from pole to pole.
 pub(crate) fn sphere_n(radius: f64, per_turn: u32, uvs: bool) -> Result<Solid, GenError> {
     let r = positive(radius, "radius")?;
-    let n = count(per_turn, r, trig::PI).max(2);
+    let n = count(per_turn, r, double::PI).max(2);
     let mut half: Vec<DVec2> = (0..=n)
         .map(|k| {
-            let (s, c) = trig::sin_cos(-trig::PI / 2.0 + trig::PI * (k as f64 / n as f64));
+            let (s, c) = double::sin_cos(-double::PI / 2.0 + double::PI * (k as f64 / n as f64));
             DVec2::new(r * c, r * s)
         })
         .collect();
@@ -241,10 +241,10 @@ pub fn dome(radius: f64) -> Result<Solid, GenError> {
 
 pub(crate) fn dome_n(radius: f64, per_turn: u32, uvs: bool) -> Result<Solid, GenError> {
     let r = positive(radius, "radius")?;
-    let n = count(per_turn, r, trig::PI / 2.0);
+    let n = count(per_turn, r, double::PI / 2.0);
     let mut pts: Vec<DVec2> = (0..=n)
         .map(|k| {
-            let (s, c) = trig::sin_cos(trig::PI / 2.0 * (k as f64 / n as f64));
+            let (s, c) = double::sin_cos(double::PI / 2.0 * (k as f64 / n as f64));
             DVec2::new(r * c, r * s)
         })
         .collect();

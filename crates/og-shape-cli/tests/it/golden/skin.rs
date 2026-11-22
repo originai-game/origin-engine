@@ -3,9 +3,10 @@
 //! refined blend bands, a posed mesh with its measures, the GLB, and a
 //! figure rigged from its mesh alone (joints found, bone heat).
 
+use og_core::math::double;
 use og_shape::boolean::{Boolean, boolean};
 use og_shape::generators::solids::{BoxDesc, CylinderDesc, cuboid, cylinder, sphere};
-use og_shape::math::{DVec3, Frame, HashError, OutputHash, trig};
+use og_shape::math::{DVec3, Frame, HashError, OutputHash};
 use og_shape::mesh::{Bone, Skin, Solid, Weights};
 use og_shape::skin::{
     Pose, Rig, RigBone, Turn, bind, humanoid, measure_pose, pose, retarget, skin, skin_matrices,
@@ -138,7 +139,7 @@ fn posed(h: &mut OutputHash) -> Result<(), HashError> {
             Turn {
                 bone: "forearm".into(),
                 axis: DVec3::X,
-                angle: trig::to_radians(90.0),
+                angle: double::to_radians(90.0),
             },
             Turn {
                 bone: "upper_arm".into(),

@@ -2,7 +2,7 @@
 //! from paths, `until`, paths of pieces, `merge`, `delete`, boolean
 //! reports and fonts.
 
-use og_shape::math::trig;
+use og_core::math::double;
 use og_shape::model::program::{Session, fonts_named, run};
 use og_shape_formats::ModelFiles;
 use serde_json::{Value, json};
@@ -74,7 +74,7 @@ fn path_profiles_follow_their_arcs_and_refuse_what_they_cannot_build() {
     let d = json!({"name": "t", "ops": [{"op": "extrude", "name": "d", "height": 1,
         "profile": {"path": [[0, -5], {"arc": {"through": [5, 0], "to": [0, 5]}}]}}]});
     let v = part(&d, "d").volume;
-    let half = trig::PI * 12.5;
+    let half = double::PI * 12.5;
     assert!((v - half).abs() / half < 2e-2, "{v}");
     assert!(v < half);
     for (path, want) in [
@@ -298,7 +298,7 @@ fn edits_answer_the_crossing_pairs_they_leave() {
     let hollow10 = 60.0 * 30.0 * 60.0 - 26.0 * 26.0 * 6.0;
     // Against the 3 mm shell of the same case (its hollow has corners of
     // radius 2: 74 × 44 less (4 − π)·2², 74 tall, less the pocket's wall).
-    let hollow3 = hollow3 - (4.0 - trig::PI) * 4.0 * 74.0;
+    let hollow3 = hollow3 - (4.0 - double::PI) * 4.0 * 74.0;
     let chord = 0.02 * hollow3;
     assert!(
         ((volume - solid) - (hollow3 - hollow10)).abs() < chord,
@@ -379,7 +379,10 @@ fn edits_answer_the_crossing_pairs_they_leave() {
         json!({"op": "shell", "id": 0, "thickness": 3}),
     ]);
     assert_eq!(answer, json!({"crossingPairs": 0}));
-    assert!(closed && (volume - 51_050.0).abs() < 5.0, "{volume}");
+    // Which way the nudge decides the tangent line is the rounding's: its
+    // volume lands within 0.02% (51 042 under og-core's trig, 51 05x under
+    // libm's).
+    assert!(closed && (volume - 51_050.0).abs() < 10.0, "{volume}");
     // A narrower blind hole reaching the far wall of the other: the cut
     // leaves triangles of no area, which have no plane to move.
     let (answer, closed, _) = build(vec![
@@ -500,7 +503,7 @@ fn loft_sections_placed_by_frames_bend_and_close_into_a_loop() {
     let ring = |r: f64, n: usize, radius: f64| -> Vec<Value> {
         (0..n)
             .map(|i| {
-                let (s, c) = trig::sin_cos(trig::TAU * i as f64 / n as f64);
+                let (s, c) = double::sin_cos(double::TAU * i as f64 / n as f64);
                 json!({"profile": {"circle": {"radius": radius}},
                     "at": {"origin": [r * c, r * s, 0], "x": [c, s, 0], "y": [0, 0, -1], "z": [-s, c, 0]}})
             })
@@ -513,7 +516,7 @@ fn loft_sections_placed_by_frames_bend_and_close_into_a_loop() {
     };
     // A loop of eight circles is a torus, near enough: closed, no ends.
     let m = part(&p(ring(20.0, 8, 3.0), true), "ring");
-    let torus = 2.0 * trig::PI * trig::PI * 20.0 * 9.0;
+    let torus = 2.0 * double::PI * double::PI * 20.0 * 9.0;
     assert!(
         m.closed && (m.volume - torus).abs() < 0.03 * torus,
         "{}",
@@ -620,7 +623,7 @@ fn a_shell_is_hollowed_piece_by_piece_where_its_hollow_pinches_off() {
         json!({"op": "join", "target": 0, "tool": 1}),
     ];
     let v = hollow(mug, 6.0, json!(["top"]));
-    let round = trig::PI * 14.0 * 14.0 * 44.0;
+    let round = double::PI * 14.0 * 14.0 * 44.0;
     assert!(v < round && v > 0.99 * round, "{v} {round}");
     // A can with a hole through its side (a hole in a curved wall), and
     // holes, blind and through, in an open face: clean.

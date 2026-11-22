@@ -1,6 +1,8 @@
 //! A path builder for outlines made of lines and curves.
 
-use crate::math::{DVec2, trig};
+use crate::math::DVec2;
+
+use og_core::math::double;
 
 use crate::profile::curve::{arc, bezier_segments, cubic, quadratic, segments};
 use crate::profile::{Contour, Profile, ProfileError};
@@ -63,15 +65,15 @@ impl Path {
             None => self.extend([c], false),
             Some(center) => {
                 let r = (a - center).length();
-                let ang = |p: DVec2| trig::atan2(p.y - center.y, p.x - center.x);
+                let ang = |p: DVec2| double::atan2(p.y - center.y, p.x - center.x);
                 let (a0, a1) = (ang(a), ang(c));
                 let ccw = (b - a).perp_dot(c - b) > 0.0;
                 let norm = |mut s: f64| {
                     while ccw && s < 0.0 {
-                        s += trig::TAU;
+                        s += double::TAU;
                     }
                     while !ccw && s > 0.0 {
-                        s -= trig::TAU;
+                        s -= double::TAU;
                     }
                     s
                 };
@@ -105,15 +107,15 @@ impl Path {
         let k = d.dot(d) / denom;
         let center = a + n * k;
         let r = k.abs();
-        let a0 = trig::atan2(a.y - center.y, a.x - center.x);
-        let a1 = trig::atan2(c.y - center.y, c.x - center.x);
+        let a0 = double::atan2(a.y - center.y, a.x - center.x);
+        let a1 = double::atan2(c.y - center.y, c.x - center.x);
         let ccw = k > 0.0;
         let mut sweep = a1 - a0;
         if ccw && sweep < 0.0 {
-            sweep += trig::TAU;
+            sweep += double::TAU;
         }
         if !ccw && sweep > 0.0 {
-            sweep -= trig::TAU;
+            sweep -= double::TAU;
         }
         let mut pts = arc(center, r, a0, sweep, segments(r, sweep));
         pts.remove(0);
@@ -222,7 +224,7 @@ mod tests {
             .unwrap();
         let c = &d.regions[0].outer;
         assert_eq!(c.sharp.iter().filter(|s| **s).count(), 2);
-        let want = trig::PI * 25.0 / 2.0;
+        let want = double::PI * 25.0 / 2.0;
         assert!((d.area() - want).abs() / want < 1.5e-2, "{}", d.area());
     }
 

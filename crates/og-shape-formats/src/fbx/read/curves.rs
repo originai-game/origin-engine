@@ -63,7 +63,7 @@ impl Layered {
             } else if e >= 1.0 {
                 v
             } else {
-                trig::pow(v.abs(), e) * if v < 0.0 { -1.0 } else { 1.0 }
+                double::pow(v.abs(), e) * if v < 0.0 { -1.0 } else { 1.0 }
             }
         };
         match (slot, mode) {

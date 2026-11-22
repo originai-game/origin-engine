@@ -12,7 +12,7 @@
 //!    coordinates with signs, so it rounds nothing. [`Place::turn`] then
 //!    turns about the new up, in degrees (counter-clockwise seen from
 //!    above); a multiple of 90 is exact too, any other angle goes through
-//!    `crate::math::trig`.
+//!    `og_core::math::double`.
 //! 2. **Size.** [`Size`]: the longest side, the height, the width or the
 //!    depth of the turned box to a length, or a factor. Always uniform.
 //! 3. **Pivot.** [`Pivot`]: the centre of the box's bottom face (after
@@ -34,10 +34,10 @@
 
 use core::fmt;
 
-use crate::math::trig;
 use crate::math::{DVec3, Frame};
 use crate::mesh::skin::Mat4;
 use crate::mesh::{Bone, Skin, Solid, edge_key};
+use og_core::math::double;
 use std::collections::BTreeMap;
 
 use crate::tools::import::Affine;
@@ -292,7 +292,7 @@ pub fn place(parts: &[Solid], d: &Place) -> Result<(Vec<Solid>, PlaceReport), Pl
         let n = quarters.round().rem_euclid(4.0) as u32;
         (AxisTurn::quarter(n).then(&axes), None)
     } else {
-        let (s, c) = trig::sin_cos(trig::to_radians(d.turn));
+        let (s, c) = double::sin_cos(double::to_radians(d.turn));
         (axes, Some((c, s)))
     };
     let mut m = Motion {

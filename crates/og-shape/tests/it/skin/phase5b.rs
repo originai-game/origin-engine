@@ -62,7 +62,7 @@ fn apply(m: &M4, p: [f64; 3]) -> [f64; 3] {
 
 /// A turn about a unit axis, as a column-major matrix.
 fn rotation(k: [f64; 3], angle: f64) -> M4 {
-    let (s, c) = og_shape::math::trig::sin_cos(angle);
+    let (s, c) = og_core::math::double::sin_cos(angle);
     let r = |v: [f64; 3]| {
         let d = k[0] * v[0] + k[1] * v[1] + k[2] * v[2];
         let x = [

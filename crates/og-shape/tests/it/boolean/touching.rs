@@ -137,7 +137,7 @@ fn a_box_face_tangent_to_a_tube_joins() {
     // vertex, the tube's facets cross it by rounding or not at all.
     for k in 1..8 {
         let a = std::f64::consts::PI * k as f64 / 37.0;
-        let (s, c) = (og_shape::math::trig::sin(a), og_shape::math::trig::cos(a));
+        let (s, c) = (og_core::math::double::sin(a), og_core::math::double::cos(a));
         let mut b = block(20.0, 20.0, 20.0);
         b.map_positions(|p| p + DVec3::new(20.0, 0.0, 5.0), false);
         b.map_positions(
@@ -265,7 +265,7 @@ fn elbows_turned_about_their_axis_join_closed() {
     // 10⁻¹⁶ angles. Refused as `OpenTouching` before the snap
     // (`docs/research.md` §18).
     let a = std::f64::consts::PI / 64.0;
-    let turn = (og_shape::math::trig::cos(a), og_shape::math::trig::sin(a));
+    let turn = (og_core::math::double::cos(a), og_core::math::double::sin(a));
     let elbow = |z: f64| {
         let t = torus(351.0, 127.0).unwrap();
         let q = turned(

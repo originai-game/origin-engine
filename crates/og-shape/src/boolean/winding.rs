@@ -24,8 +24,8 @@
 //! the direct sum where none does. Every decision is the direct sum's, so
 //! output does not change.
 
-use crate::generators::trig;
 use glam::DVec3;
+use og_core::math::double;
 
 /// One triangle's solid angle seen from `p`, doubled as `atan2` gives it
 /// (Van Oosterom and Strackee): the direct sum's term.
@@ -36,7 +36,7 @@ fn term(points: &[DVec3], t: [u32; 3], p: DVec3) -> f64 {
     let (la, lb, lc) = (a.length(), b.length(), c.length());
     let det = a.dot(b.cross(c));
     let den = la * lb * lc + a.dot(b) * lc + a.dot(c) * lb + b.dot(c) * la;
-    2.0 * trig::atan2(det, den)
+    2.0 * double::atan2(det, den)
 }
 
 /// The winding number of a closed mesh round `p`: 1 inside, 0 outside;
@@ -49,7 +49,7 @@ pub(crate) fn winding(points: &[DVec3], tris: &[[u32; 3]], skip: Option<usize>, 
         }
         sum += term(points, t, p);
     }
-    sum / (4.0 * trig::PI)
+    sum / (4.0 * double::PI)
 }
 
 /// Triangles per leaf.
@@ -245,10 +245,10 @@ impl<'a> Tree<'a> {
         // conditioned at that distance, to a few ulps of 2π; and the
         // rounding of either sum, in any order (n·ε of the terms' sizes).
         let count = self.tris.len() as f64;
-        let bound = err + far * 16.0 * eps * trig::PI + 4.0 * count * eps * (abs + 1.0);
+        let bound = err + far * 16.0 * eps * double::PI + 4.0 * count * eps * (abs + 1.0);
         (
-            sum / (4.0 * trig::PI),
-            bound / (4.0 * trig::PI) * 1.5 + 1e-12,
+            sum / (4.0 * double::PI),
+            bound / (4.0 * double::PI) * 1.5 + 1e-12,
         )
     }
 

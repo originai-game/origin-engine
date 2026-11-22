@@ -71,7 +71,9 @@
 //! `+ - * /`, `sqrt`, `floor` and `trig` in a fixed order, so the
 //! framebuffer's bytes are the same on every host.
 
-use crate::math::{DVec2, DVec3, trig};
+use crate::math::{DVec2, DVec3};
+
+use og_core::math::double;
 
 use crate::mesh::Solid;
 
@@ -257,18 +259,18 @@ pub fn views_in(
             "{views} views of {width} x {height} are {pixels} pixels; at most {MAX_PIXELS} in all"
         )));
     }
-    let elevation = d.elevation.unwrap_or(trig::to_radians(25.0));
-    if !(elevation > 0.0 && elevation <= trig::PI / 2.0) || !d.azimuth.is_finite() {
+    let elevation = d.elevation.unwrap_or(double::to_radians(25.0));
+    if !(elevation > 0.0 && elevation <= double::PI / 2.0) || !d.azimuth.is_finite() {
         return Err(ExportError::NotFinite("the preview's elevation".into()));
     }
     if let Some(f) = d.fov
-        && !(f > 0.0 && f <= trig::PI / 3.0)
+        && !(f > 0.0 && f <= double::PI / 3.0)
     {
         return Err(ExportError::NotFinite(
             "the preview's field of view (over 0, at most pi/3)".into(),
         ));
     }
-    let crease = trig::cos(trig::to_radians(CREASE_DEGREES));
+    let crease = double::cos(double::to_radians(CREASE_DEGREES));
     let mut maps = Maps::new(codec);
     let mut undrawn = Vec::new();
     let mut parts: Vec<Drawn> = Vec::with_capacity(scene.parts.len());
@@ -369,7 +371,7 @@ pub fn views_in(
     // the bounding sphere's silhouette fills 92 % of the smaller side:
     // tan(half-angle) = t, so radius / distance = t / √(1 + t²).
     let lens = d.fov.map(|f| {
-        let tan = trig::tan(f * 0.5);
+        let tan = double::tan(f * 0.5);
         let focal = f64::from(height) * 0.5 / tan;
         let t = 0.92 * tan * f64::from(width.min(height)) / f64::from(height);
         (focal, radius * (1.0 + t * t).sqrt() / t)
@@ -384,14 +386,14 @@ pub fn views_in(
         DVec3::new(centre.x + half, centre.y + half, ground_z),
         DVec3::new(centre.x - half, centre.y + half, ground_z),
     ];
-    let (se, ce) = trig::sin_cos(elevation);
+    let (se, ce) = double::sin_cos(elevation);
     let mut out = Views {
         undrawn,
         ..Default::default()
     };
     for k in 0..views {
-        let az = d.azimuth + trig::TAU * (f64::from(k) / f64::from(views));
-        let (sa, ca) = trig::sin_cos(az);
+        let az = d.azimuth + double::TAU * (f64::from(k) / f64::from(views));
+        let (sa, ca) = double::sin_cos(az);
         // At azimuth 0 the camera stands at −Y looking at +Y.
         let toward = DVec3::new(sa * ce, -ca * ce, se); // from the scene to the camera
         let right = DVec3::new(ca, sa, 0.0);

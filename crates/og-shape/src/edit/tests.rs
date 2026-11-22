@@ -2,9 +2,10 @@
 //! must land on the same faces and edges, the walls measure as asked.
 
 use crate::generators::solids::{BoxDesc, cuboid, sphere};
-use crate::math::{DVec3, Frame, trig};
+use crate::math::{DVec3, Frame};
 use crate::mesh::Solid;
 use crate::profile::{Rect, Slot, rect, slot};
+use og_core::math::double;
 
 use super::*;
 
@@ -77,8 +78,8 @@ fn holes_and_pockets() {
     }));
     // The plate keeps its own names.
     assert!(!s.faces(&["top"]).unwrap().is_empty() && s.edges(&["side"]).unwrap().len() >= 4);
-    let n = |r: f64| crate::profile::curve::segments(r, trig::TAU) as f64;
-    let disc = |r: f64| n(r) / 2.0 * r * r * trig::sin(trig::TAU / n(r));
+    let n = |r: f64| crate::profile::curve::segments(r, double::TAU) as f64;
+    let disc = |r: f64| n(r) / 2.0 * r * r * double::sin(double::TAU / n(r));
     let want = 80.0 * 50.0 * 10.0 - 4.0 * disc(3.3) * 10.0 - disc(2.5) * 6.0 - disc(4.5) * 4.0;
     assert!((v - want).abs() / want < 1e-9, "{v} {want}");
 
@@ -115,7 +116,7 @@ fn a_countersink_and_a_blind_hole() {
             diameter: 4.0,
             at: vec![above(0.0, 0.0)],
             depth: 6.0,
-            countersink: (8.0, trig::PI / 2.0),
+            countersink: (8.0, double::PI / 2.0),
             ..Default::default()
         },
     )
@@ -153,7 +154,7 @@ fn a_countersink_rim_does_not_cross_itself() {
                 diameter: 4.0,
                 at: vec![above(x, y)],
                 depth,
-                countersink: (8.0, trig::PI / 2.0),
+                countersink: (8.0, double::PI / 2.0),
                 ..Default::default()
             },
         )
@@ -277,7 +278,7 @@ fn a_chamfer_narrower_than_the_wall_does_not_fold_the_hollow() {
         ..Default::default()
     })
     .unwrap()
-    .rotate(trig::PI / 8.0);
+    .rotate(double::PI / 8.0);
     let cup = extrude(
         &octagon,
         &Extrude {
@@ -306,8 +307,8 @@ fn a_chamfer_narrower_than_the_wall_does_not_fold_the_hollow() {
     assert_eq!(r.crossing_pairs, 0);
     assert_eq!(crate::boolean::crossing_pairs(&o), 0);
     // The hollow: an octagon of apothem 96.5 − 20, from z = 20 to the top.
-    let apothem: f64 = 104.450847328216 * trig::cos(trig::PI / 8.0) - 20.0;
-    let hollow = 8.0 * apothem * apothem * trig::tan(trig::PI / 8.0) * (137.0 - 20.0);
+    let apothem: f64 = 104.450847328216 * double::cos(double::PI / 8.0) - 20.0;
+    let hollow = 8.0 * apothem * apothem * double::tan(double::PI / 8.0) * (137.0 - 20.0);
     let v = closed(&o);
     let expected = cup.measure().volume - hollow;
     assert!(
@@ -467,8 +468,8 @@ fn split_seat_merge_dent() {
 /// `orient3d` now.
 #[test]
 fn an_axis_through_a_face_diagonal_meets_the_solid() {
-    let (s, c) = trig::sin_cos(21.0 * 0.0137);
-    let (s2, c2) = trig::sin_cos(21.0 * 0.0137 * 1.7);
+    let (s, c) = double::sin_cos(21.0 * 0.0137);
+    let (s2, c2) = double::sin_cos(21.0 * 0.0137 * 1.7);
     let z = DVec3::new(s * c2, s * s2, c).normalize();
     let turned = Frame::from_normal(DVec3::new(0.3, -0.2, 0.1), z, DVec3::X).unwrap();
     let mut b = boxed(10.0, 10.0, 10.0);
@@ -586,6 +587,6 @@ fn a_ring_hollowed_thicker_than_its_tube_is_refused() {
     assert_eq!(r.crossing_pairs, 0);
     let v = ring.measure().volume - closed(&o);
     // A tube of radius 2 round the same ring, in chords.
-    let tube = 2.0 * trig::PI * trig::PI * 20.0 * 4.0;
+    let tube = 2.0 * double::PI * double::PI * 20.0 * 4.0;
     assert!(v < tube && v > 0.9 * tube, "{v} {tube}");
 }

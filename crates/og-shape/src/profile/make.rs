@@ -1,7 +1,9 @@
 //! Profile constructors. Each takes a zero-value desc struct; the shapes
 //! are centred on the origin unless their points say otherwise.
 
-use crate::math::{DVec2, trig};
+use crate::math::DVec2;
+
+use og_core::math::double;
 
 use crate::profile::curve::{arc, segments};
 use crate::profile::{Contour, Profile, ProfileError};
@@ -46,16 +48,16 @@ pub fn rect(d: &Rect) -> Result<Profile, ProfileError> {
     if r > w.min(h) {
         return Err(ProfileError::RadiusTooLarge(0));
     }
-    let n = segments(r, trig::PI / 2.0);
+    let n = segments(r, double::PI / 2.0);
     let mut points = Vec::new();
     let corners = [
-        (w - r, -h + r, -trig::PI / 2.0),
+        (w - r, -h + r, -double::PI / 2.0),
         (w - r, h - r, 0.0),
-        (-w + r, h - r, trig::PI / 2.0),
-        (-w + r, -h + r, trig::PI),
+        (-w + r, h - r, double::PI / 2.0),
+        (-w + r, -h + r, double::PI),
     ];
     for (cx, cy, start) in corners {
-        let mut a = arc(DVec2::new(cx, cy), r, start, trig::PI / 2.0, n);
+        let mut a = arc(DVec2::new(cx, cy), r, start, double::PI / 2.0, n);
         // Where two quarter arcs meet with no straight between, keep one.
         if let (Some(last), Some(first)) = (points.last(), a.first())
             && *last == *first
@@ -85,9 +87,9 @@ pub fn circle(d: &Circle) -> Result<Profile, ProfileError> {
     let n = if d.segments >= 3 {
         d.segments
     } else {
-        segments(r, trig::TAU)
+        segments(r, double::TAU)
     };
-    let mut p = arc(DVec2::ZERO, r, 0.0, trig::TAU, n);
+    let mut p = arc(DVec2::ZERO, r, 0.0, double::TAU, n);
     p.pop();
     Ok(Profile::from_contour(Contour::smooth(p)))
 }
@@ -109,11 +111,11 @@ pub fn ellipse(d: &Ellipse) -> Result<Profile, ProfileError> {
     let n = if d.segments >= 3 {
         d.segments
     } else {
-        segments(rx.max(ry), trig::TAU)
+        segments(rx.max(ry), double::TAU)
     };
     let p = (0..n)
         .map(|i| {
-            let (s, c) = trig::sin_cos(trig::TAU * (i as f64 / n as f64));
+            let (s, c) = double::sin_cos(double::TAU * (i as f64 / n as f64));
             DVec2::new(rx * c, ry * s)
         })
         .collect();
@@ -144,9 +146,15 @@ pub fn slot(d: &Slot) -> Result<Profile, ProfileError> {
             segments: 0,
         });
     }
-    let n = segments(r, trig::PI);
-    let mut p = arc(DVec2::new(half, 0.0), r, -trig::PI / 2.0, trig::PI, n);
-    p.extend(arc(DVec2::new(-half, 0.0), r, trig::PI / 2.0, trig::PI, n));
+    let n = segments(r, double::PI);
+    let mut p = arc(DVec2::new(half, 0.0), r, -double::PI / 2.0, double::PI, n);
+    p.extend(arc(
+        DVec2::new(-half, 0.0),
+        r,
+        double::PI / 2.0,
+        double::PI,
+        n,
+    ));
     Ok(Profile::from_contour(Contour::smooth(p)))
 }
 
@@ -175,9 +183,9 @@ pub fn polygon(d: &Polygon) -> Result<Profile, ProfileError> {
             return Err(ProfileError::Conflict("radius and flats"));
         }
         // The apothem is flats / 2 = r cos(π / n).
-        positive(d.flats, "flats")? / 2.0 / trig::cos(trig::PI / d.sides as f64)
+        positive(d.flats, "flats")? / 2.0 / double::cos(double::PI / d.sides as f64)
     };
-    let mut p = arc(DVec2::ZERO, r, 0.0, trig::TAU, d.sides);
+    let mut p = arc(DVec2::ZERO, r, 0.0, double::TAU, d.sides);
     p.pop();
     Ok(Profile::from_contour(Contour::corners(p)))
 }
@@ -248,11 +256,11 @@ pub fn poly(d: &Poly) -> Result<Profile, ProfileError> {
             (next - p).normalize_or_zero(),
         );
         let cos = u.dot(v).clamp(-1.0, 1.0);
-        let half = trig::acos(cos) / 2.0;
-        if half <= 0.0 || half >= trig::PI / 2.0 {
+        let half = double::acos(cos) / 2.0;
+        if half <= 0.0 || half >= double::PI / 2.0 {
             return Err(ProfileError::RadiusTooLarge(i));
         }
-        trim[i] = r / trig::tan(half);
+        trim[i] = r / double::tan(half);
     }
     for i in 0..n {
         let edge = (at(i + 1) - at(i)).length();
@@ -276,18 +284,18 @@ pub fn poly(d: &Poly) -> Result<Profile, ProfileError> {
         let r = pts[i].radius;
         // The centre lies along the bisector, r / sin(half) from the corner.
         let bis = (u + v).normalize();
-        let half = trig::acos(u.dot(v).clamp(-1.0, 1.0)) / 2.0;
-        let center = p + bis * (r / trig::sin(half));
-        let a0 = trig::atan2(t0.y - center.y, t0.x - center.x);
-        let a1 = trig::atan2(t1.y - center.y, t1.x - center.x);
+        let half = double::acos(u.dot(v).clamp(-1.0, 1.0)) / 2.0;
+        let center = p + bis * (r / double::sin(half));
+        let a0 = double::atan2(t0.y - center.y, t0.x - center.x);
+        let a1 = double::atan2(t1.y - center.y, t1.x - center.x);
         // A left turn (convex corner) sweeps counter-clockwise.
         let left = (p - prev).perp_dot(next - p) > 0.0;
         let mut sweep = a1 - a0;
         if left && sweep < 0.0 {
-            sweep += trig::TAU;
+            sweep += double::TAU;
         }
         if !left && sweep > 0.0 {
-            sweep -= trig::TAU;
+            sweep -= double::TAU;
         }
         let seg = segments(r, sweep);
         for q in arc(center, r, a0, sweep, seg) {
@@ -315,8 +323,8 @@ fn arc_edge(c: &mut Contour, a: DVec2, b: DVec2, s: f64) -> Result<(), ProfileEr
     let center = (a + b) / 2.0 + left * (r - s.abs()) * s.signum();
     // Seen from the centre the arc turns counter-clockwise when it bows
     // out of a counter-clockwise outline: 4 atan(2s / chord), signed.
-    let sweep = 4.0 * trig::atan2(s, half);
-    let a0 = trig::atan2(a.y - center.y, a.x - center.x);
+    let sweep = 4.0 * double::atan2(s, half);
+    let a0 = double::atan2(a.y - center.y, a.x - center.x);
     let mut pts = arc(center, r, a0, sweep, segments(r, sweep));
     pts.pop();
     for q in pts.into_iter().skip(1) {
@@ -346,12 +354,12 @@ pub fn superellipse(d: &Superellipse) -> Result<Profile, ProfileError> {
     let n = if d.segments >= 4 {
         d.segments
     } else {
-        segments(rx.max(ry), trig::TAU)
+        segments(rx.max(ry), double::TAU)
     };
     let p = (0..n)
         .map(|i| {
-            let (s, c) = trig::sin_cos(trig::TAU * (i as f64 / n as f64));
-            let f = |v: f64| v.signum() * trig::pow(v.abs(), 2.0 / e);
+            let (s, c) = double::sin_cos(double::TAU * (i as f64 / n as f64));
+            let f = |v: f64| v.signum() * double::pow(v.abs(), 2.0 / e);
             DVec2::new(rx * f(c), ry * f(s))
         })
         .collect();
@@ -415,7 +423,7 @@ mod tests {
             radius: 3.0,
         })
         .unwrap();
-        let want = 200.0 - (4.0 - trig::PI) * 9.0;
+        let want = 200.0 - (4.0 - double::PI) * 9.0;
         // 24 segments a turn lose about 1.1 % of a circle's area.
         assert!((r.area() - want).abs() / want < 2e-3, "{}", r.area());
         let s = slot(&Slot {
@@ -423,7 +431,7 @@ mod tests {
             width: 10.0,
         })
         .unwrap();
-        let want = 20.0 * 10.0 + trig::PI * 25.0;
+        let want = 20.0 * 10.0 + double::PI * 25.0;
         assert!((s.area() - want).abs() / want < 1e-2);
     }
 
@@ -446,7 +454,7 @@ mod tests {
         .unwrap();
         let c = &l.regions[0].outer;
         assert_eq!(c.sharp.iter().filter(|s| **s).count(), 3);
-        let want = 100.0 - (4.0 - trig::PI);
+        let want = 100.0 - (4.0 - double::PI);
         assert!((l.area() - want).abs() < 5e-2, "{}", l.area());
         let too_big = poly(&Poly {
             points: vec![
@@ -478,7 +486,7 @@ mod tests {
             points: ccw.clone(),
         })
         .unwrap();
-        let want = 100.0 + trig::PI * 25.0 / 2.0;
+        let want = 100.0 + double::PI * 25.0 / 2.0;
         // 12 chords on the half circle lose about 1.1 % of its area.
         assert!((a.area() - want).abs() / want < 5e-3, "{}", a.area());
         // The same outline listed clockwise: the bulge stays on its edge.
@@ -499,7 +507,7 @@ mod tests {
             ],
         })
         .unwrap();
-        let want = 100.0 - trig::PI * 25.0 / 2.0;
+        let want = 100.0 - double::PI * 25.0 / 2.0;
         assert!((inward.area() - want).abs() / want < 1e-2);
         let c = &inward.regions[0].outer;
         assert_eq!(c.sharp.iter().filter(|s| **s).count(), 4);

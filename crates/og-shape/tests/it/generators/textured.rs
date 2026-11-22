@@ -167,7 +167,7 @@ fn a_straight_wire_unrolls_to_its_length_by_its_perimeter() {
     }
     // u spans the polygon's perimeter (64 chords of a 5 mm circle), v the
     // length.
-    let perimeter = 64.0 * 2.0 * 5.0 * og_shape::math::trig::sin(og_shape::math::trig::PI / 64.0);
+    let perimeter = 64.0 * 2.0 * 5.0 * og_core::math::double::sin(og_core::math::double::PI / 64.0);
     assert!(((hi.x - lo.x) - perimeter).abs() < 1e-9, "{lo} {hi}");
     assert!(((hi.y - lo.y) - 50.0).abs() < 1e-9, "{lo} {hi}");
 }

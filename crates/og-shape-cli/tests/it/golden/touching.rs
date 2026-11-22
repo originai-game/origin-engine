@@ -269,7 +269,7 @@ fn strap() -> Result<(Solid, Solid), HashError> {
 /// faces a few ulps apart (`docs/research.md` §18).
 fn turned_elbows() -> Result<(Solid, Solid), HashError> {
     let a = std::f64::consts::PI / 64.0;
-    let (c, s) = (og_shape::math::trig::cos(a), og_shape::math::trig::sin(a));
+    let (c, s) = (og_core::math::double::cos(a), og_core::math::double::sin(a));
     let turn = |mut m: Solid, s: f64| -> Result<Solid, HashError> {
         m.map_positions(
             |p| DVec3::new(c * p.x + s * p.z, p.y, -s * p.x + c * p.z),

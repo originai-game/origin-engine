@@ -4,8 +4,9 @@
 //! is not one plane in f64, the tool's bottom cap triangulated another way
 //! or with a vertex at each edge's midpoint.
 
+use og_core::math::double;
 use og_shape::boolean::{BoolError, BoolOp, Boolean, boolean, boolean_report, crossing_pairs};
-use og_shape::math::{DVec3, trig};
+use og_shape::math::DVec3;
 use og_shape::mesh::Solid;
 
 /// A 32-gon prism of radius 10 from `z0` to `z1`, each cap fanned from
@@ -14,8 +15,8 @@ use og_shape::mesh::Solid;
 fn prism(z0: f64, z1: f64, fan: [usize; 2], midpoints: bool) -> Solid {
     const N: usize = 32;
     let corner = |k: usize, z: f64| {
-        let a = trig::TAU * (k % N) as f64 / N as f64;
-        DVec3::new(10.0 * trig::cos(a), 10.0 * trig::sin(a), z)
+        let a = double::TAU * (k % N) as f64 / N as f64;
+        DVec3::new(10.0 * double::cos(a), 10.0 * double::sin(a), z)
     };
     let mut s = Solid::default();
     // Bottom ring: corner k at 2k (and its edge's midpoint at 2k + 1).
@@ -62,8 +63,8 @@ fn prism(z0: f64, z1: f64, fan: [usize; 2], midpoints: bool) -> Solid {
 /// longer one plane in f64. Both prisms turn their shared ring's corners
 /// to the same f64 points.
 fn tilted(mut s: Solid) -> Solid {
-    let (c1, s1) = (trig::cos(0.3), trig::sin(0.3));
-    let (c2, s2) = (trig::cos(0.2), trig::sin(0.2));
+    let (c1, s1) = (double::cos(0.3), double::sin(0.3));
+    let (c2, s2) = (double::cos(0.2), double::sin(0.2));
     s.map_positions(
         |p| {
             let q = DVec3::new(p.x, c1 * p.y - s1 * p.z, s1 * p.y + c1 * p.z);

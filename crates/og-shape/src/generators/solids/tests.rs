@@ -30,7 +30,7 @@ fn a_box_has_its_volume_and_names() {
 fn a_tube_names_its_bore_and_is_closed() {
     let s = tube(10.0, 6.0, 5.0).unwrap();
     let v = closed(&s);
-    let want = trig::PI * (100.0 - 36.0) * 5.0;
+    let want = double::PI * (100.0 - 36.0) * 5.0;
     assert!((v - want).abs() / want < 2e-2, "{v}");
     assert!(!s.faces(&["inner"]).unwrap().is_empty());
     // A round wall has no vertical corner edges.
@@ -49,7 +49,7 @@ fn twisted_and_tapered_extrusions_are_closed() {
         &p,
         &Extrude {
             height: 10.0,
-            twist: trig::PI / 2.0,
+            twist: double::PI / 2.0,
             taper: 0.5,
             both_sides: true,
         },
@@ -76,7 +76,7 @@ fn twisted_and_tapered_extrusions_are_closed() {
 #[test]
 fn revolved_solids_are_closed() {
     let v = closed(&sphere(5.0).unwrap());
-    assert!((v - 4.0 / 3.0 * trig::PI * 125.0).abs() / v < 3e-2, "{v}");
+    assert!((v - 4.0 / 3.0 * double::PI * 125.0).abs() / v < 3e-2, "{v}");
     closed(&torus(5.0, 1.0).unwrap());
     closed(&dome(3.0).unwrap());
     closed(&cone(2.0, 4.0).unwrap());
@@ -100,7 +100,7 @@ fn revolved_solids_are_closed() {
     let part = revolve(
         &quarter,
         &Revolve {
-            angle: trig::PI / 2.0,
+            angle: double::PI / 2.0,
             ..Default::default()
         },
     )
@@ -178,7 +178,7 @@ fn a_spherical_cap_has_its_volume() {
         })
         .unwrap();
         let r = (a * a + h * h) / (2.0 * h);
-        let want = trig::PI * h * h * (3.0 * r - h) / 3.0;
+        let want = double::PI * h * h * (3.0 * r - h) / 3.0;
         let v = closed(&s);
         // The chord rule's deficit: 24 a turn around, 3 to 6 segments
         // along a shallow arc.
@@ -215,7 +215,7 @@ fn a_part_torus_is_its_share_of_the_ring() {
     };
     let whole = torus_desc(&d).unwrap().measure();
     let quarter = torus_desc(&TorusDesc {
-        angle: trig::PI / 2.0,
+        angle: double::PI / 2.0,
         ..d
     })
     .unwrap()
@@ -362,6 +362,6 @@ fn textured_generators_keep_their_geometry_and_read_unmirrored() {
         |(l, h), q| (l.min(q), h.max(q)),
     );
     let round = hi.x - lo.x;
-    assert!((round - trig::TAU * 5.0).abs() < 0.2, "{round}");
+    assert!((round - double::TAU * 5.0).abs() < 0.2, "{round}");
     assert_eq!(hi.y - lo.y, 8.0);
 }

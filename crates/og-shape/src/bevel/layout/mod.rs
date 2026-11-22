@@ -17,8 +17,10 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use crate::math::{DVec2, DVec3, predicates, trig};
+use crate::math::{DVec2, DVec3, predicates};
+
 use crate::mesh::{EdgeKey, Solid, edge_key};
+use og_core::math::double;
 
 use crate::bevel::patch::{self, Corner};
 use crate::bevel::profile;
@@ -291,8 +293,8 @@ pub(crate) fn edge_offsets(
             Offsets::Angle(d, angle) => {
                 // The faces meet at π − turn; the chamfer leaves the cap at
                 // `angle`: law of sines in the cross-section.
-                let inner = trig::PI - th;
-                (d, d * trig::sin(angle) / trig::sin(inner + angle))
+                let inner = double::PI - th;
+                (d, d * double::sin(angle) / double::sin(inner + angle))
             }
         };
         if !(d1.is_finite() && d2.is_finite() && d1 > 0.0 && d2 > 0.0) {

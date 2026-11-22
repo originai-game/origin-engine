@@ -10,9 +10,10 @@
 //!
 //! Each case hashes the solid, the model's GLB, or the error.
 
+use og_core::math::double;
 use og_shape::boolean::{BoolOp, Boolean, boolean};
 use og_shape::generators::solids::{BoxDesc, Extrude, cuboid, extrude};
-use og_shape::math::{DVec3, Frame, HashError, OutputHash, trig};
+use og_shape::math::{DVec3, Frame, HashError, OutputHash};
 use og_shape::mesh::Solid;
 use og_shape::model::program;
 
@@ -108,7 +109,7 @@ fn band(radius: f64, height: f64, taper: f64, z: f64) -> Solid {
         ..Default::default()
     })
     .expect("polygon")
-    .rotate(trig::PI / 2.0);
+    .rotate(double::PI / 2.0);
     let mut s = extrude(
         &p,
         &Extrude {
@@ -135,8 +136,8 @@ fn bands() -> (Solid, Solid) {
 /// A 10 mm box, turned, and a frame on its top face's diagonal looking
 /// down the face's normal.
 fn diagonal() -> (Solid, Frame) {
-    let (s, c) = trig::sin_cos(21.0 * 0.0137);
-    let (s2, c2) = trig::sin_cos(21.0 * 0.0137 * 1.7);
+    let (s, c) = double::sin_cos(21.0 * 0.0137);
+    let (s2, c2) = double::sin_cos(21.0 * 0.0137 * 1.7);
     let z = DVec3::new(s * c2, s * s2, c).normalize();
     let turned = Frame::from_normal(DVec3::new(0.3, -0.2, 0.1), z, DVec3::X).expect("frame");
     let mut b = cuboid(&BoxDesc {

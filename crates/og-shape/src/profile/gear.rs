@@ -1,6 +1,8 @@
 //! Involute spur gear outlines.
 
-use crate::math::{DVec2, trig};
+use crate::math::DVec2;
+
+use og_core::math::double;
 
 use crate::profile::curve::{arc, segments};
 use crate::profile::{Contour, Profile, ProfileError};
@@ -18,7 +20,7 @@ pub struct Gear {
 
 /// The involute function tan φ − φ.
 fn inv(phi: f64) -> f64 {
-    trig::tan(phi) - phi
+    double::tan(phi) - phi
 }
 
 /// A gear outline centred on the origin, a tooth centred on +x.
@@ -36,18 +38,19 @@ pub fn gear(d: &Gear) -> Result<Profile, ProfileError> {
         return Err(ProfileError::NotPositive("module"));
     }
     let alpha = if d.pressure_angle == 0.0 {
-        trig::to_radians(20.0)
+        double::to_radians(20.0)
     } else {
         d.pressure_angle
     };
     let z = d.teeth as f64;
     let m = d.module;
     let r = m * z / 2.0;
-    let rb = r * trig::cos(alpha);
+    let rb = r * double::cos(alpha);
     let ra = r + m;
     let rf = r - 1.25 * m;
     // Half the tooth's angular width at radius ρ (on or above the base circle).
-    let half = |rho: f64| trig::PI / (2.0 * z) + inv(alpha) - inv(trig::acos((rb / rho).min(1.0)));
+    let half =
+        |rho: f64| double::PI / (2.0 * z) + inv(alpha) - inv(double::acos((rb / rho).min(1.0)));
     let start = rb.max(rf);
     let flank_n = 8;
     let flank: Vec<(f64, f64)> = (0..=flank_n)
@@ -60,14 +63,14 @@ pub fn gear(d: &Gear) -> Result<Profile, ProfileError> {
     if tip_half <= 0.0 {
         return Err(ProfileError::RadiusTooLarge(0));
     }
-    let pitch = trig::TAU / z;
+    let pitch = double::TAU / z;
     let mut c = Contour::default();
     let mut push = |p: DVec2, sharp: bool| {
         c.points.push(p);
         c.sharp.push(sharp);
     };
     let polar = |rho: f64, a: f64| {
-        let (s, co) = trig::sin_cos(a);
+        let (s, co) = double::sin_cos(a);
         DVec2::new(rho * co, rho * s)
     };
     for k in 0..d.teeth {
@@ -124,8 +127,8 @@ mod tests {
         }
         // Roughly the pitch circle's area.
         let area = g.area();
-        assert!(area > trig::PI * rf * rf && area < trig::PI * ra * ra);
-        assert!((area - trig::PI * r * r).abs() / area < 0.05, "{area}");
+        assert!(area > double::PI * rf * rf && area < double::PI * ra * ra);
+        assert!((area - double::PI * r * r).abs() / area < 0.05, "{area}");
         assert_eq!(c.sharp.iter().filter(|s| **s).count(), 20 * 4);
     }
 }

@@ -1,12 +1,13 @@
 //! Golden cases for fillet, chamfer and soften (shape-bevel).
 
+use og_core::math::double;
 use og_shape::bevel::{Chamfer, Fillet, Miter, Soften, chamfer, fillet, soften};
 use og_shape::edit::{Hole, above, hole};
 use og_shape::generators::solids::{
     Axis, BoxDesc, CylinderDesc, Extrude, Revolve, cuboid, cylinder, extrude, revolve,
 };
 use og_shape::math::{DVec2, DVec3};
-use og_shape::math::{HashError, OutputHash, trig};
+use og_shape::math::{HashError, OutputHash};
 use og_shape::mesh::Solid;
 
 use crate::golden::cases::Case;
@@ -186,7 +187,7 @@ fn curved(h: &mut OutputHash) -> Result<(), HashError> {
             &c,
             &Chamfer {
                 distance: 2.0,
-                angle: trig::to_radians(30.0),
+                angle: double::to_radians(30.0),
                 edges: names(&["top"]),
                 ..Default::default()
             },
@@ -661,8 +662,8 @@ fn chamfers(h: &mut OutputHash) -> Result<(), HashError> {
     let ngon = |k: usize| -> Vec<(f64, f64)> {
         (0..k)
             .map(|i| {
-                let a = trig::TAU * i as f64 / k as f64;
-                (10.0 * trig::cos(a), 10.0 * trig::sin(a))
+                let a = double::TAU * i as f64 / k as f64;
+                (10.0 * double::cos(a), 10.0 * double::sin(a))
             })
             .collect()
     };
@@ -753,8 +754,8 @@ fn untested(h: &mut OutputHash) -> Result<(), HashError> {
     for k in [7usize, 12] {
         let ngon: Vec<(f64, f64)> = (0..k)
             .map(|i| {
-                let a = trig::TAU * i as f64 / k as f64;
-                (10.0 * trig::cos(a), 10.0 * trig::sin(a))
+                let a = double::TAU * i as f64 / k as f64;
+                (10.0 * double::cos(a), 10.0 * double::sin(a))
             })
             .collect();
         let pyr = prism(

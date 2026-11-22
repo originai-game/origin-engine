@@ -7,7 +7,7 @@
 //! over it), and [`merge`]. CSG lives in `shape-bool`.
 //!
 //! Everything is deterministic on every host: the generators use IEEE
-//! `+ - * /` and `sqrt` only (angles through [`trig`]), and CSG decides
+//! `+ - * /` and `sqrt` only (angles through `og_core::math::double`), and CSG decides
 //! every side of a plane with exact predicates. The runtime turns a
 //! [`Mesh`] into a renderer geometry (og-runtime's `geometry.rs`), the cook
 //! into a model (`type model`).
@@ -37,7 +37,6 @@ pub mod shape;
 pub mod solids;
 pub mod spline;
 pub mod sweep;
-pub mod trig;
 pub mod wire;
 
 pub use extrude::{Extrude, extrude};

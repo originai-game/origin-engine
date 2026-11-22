@@ -25,7 +25,7 @@
 //!    with the normals, uvs and colours of the triangles they came from.
 //!
 //! Crossing points and winding numbers are computed in f64 with `+ - * /`,
-//! `sqrt` and [`crate::generators::trig::atan2`]: the same on every host.
+//! `sqrt` and [`og_core::math::double::atan2`]: the same on every host.
 //!
 //! [`csg_points`] runs these steps twice when the first result is open
 //! (operands that touch: faces on faces, vertices within an ulp of a face).

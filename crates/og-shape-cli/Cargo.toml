@@ -20,6 +20,7 @@ name = "tests"
 path = "tests/it/main.rs"
 
 [dependencies]
+og-core = { path = "../og-core" }
 og-shape = { path = "../og-shape" }
 og-shape-formats = { path = "../og-shape-formats" }
 serde_json = { version = "1.0.154", default-features = false, features = ["std"] }

@@ -3,11 +3,13 @@
 //! +Y. three.js's vertex order, indices and smooth normals (the profile's
 //! normals averaged at each point, turned with it); uvs u round, v along
 //! the profile (flipped to run down the image). Sines and cosines come
-//! from [`crate::generators::trig`], and a whole turn's last column takes the first
+//! from [`og_core::math::double`], and a whole turn's last column takes the first
 //! column's, so the seam closes exactly.
 
-use crate::generators::{Mesh, finish, normalize, trig};
+use crate::generators::{Mesh, finish, normalize};
+
 use glam::{DVec2, DVec3};
+use og_core::math::double;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Lathe {
@@ -27,7 +29,7 @@ impl Default for Lathe {
             ],
             segments: 12,
             phi_start: 0.0,
-            phi_length: trig::TAU,
+            phi_length: double::TAU,
         }
     }
 }
@@ -36,8 +38,8 @@ pub fn lathe(l: &Lathe) -> Mesh {
     let points = &l.points;
     let n = points.len();
     let segments = l.segments.max(1) as usize;
-    let phi_length = l.phi_length.clamp(0.0, trig::TAU);
-    let whole = phi_length == trig::TAU;
+    let phi_length = l.phi_length.clamp(0.0, double::TAU);
+    let whole = phi_length == double::TAU;
     let mut init_normals = Vec::with_capacity(n);
     let mut prev = DVec3::ZERO;
     for j in 0..n {
@@ -61,7 +63,7 @@ pub fn lathe(l: &Lathe) -> Mesh {
     let mut uvs = Vec::with_capacity((segments + 1) * n);
     for i in 0..=segments {
         let k = if whole && i == segments { 0 } else { i };
-        let (sin, cos) = trig::sincos(l.phi_start + k as f64 * inverse * phi_length);
+        let (sin, cos) = double::sin_cos(l.phi_start + k as f64 * inverse * phi_length);
         for j in 0..n {
             let p = points[j];
             positions.push(DVec3::new(p.x * sin, p.y, p.x * cos));

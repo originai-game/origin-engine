@@ -1,6 +1,8 @@
 //! Baking a source's look into a low mesh's atlas, read back through the PNG codec.
 
 use og_shape::math::*;
+
+use og_core::math::double;
 use og_shape::mesh::tree::tri;
 use og_shape::mesh::*;
 use og_shape::tools::bake::*;
@@ -154,7 +156,7 @@ fn bakes_colour_and_bump_into_the_low_frame() {
         let c = [0, 1, 2].map(|k| f64::from(nrm.rgba[px + k]) * 2.0 / 255.0 - 1.0);
         let seen = unit(f.tangent * c[0] + bt * c[1] + f.normal * c[2]);
         let (_, want) = height(p.x, p.y);
-        let ang = trig::to_degrees(trig::acos(seen.dot(want).clamp(-1.0, 1.0)));
+        let ang = double::to_degrees(double::acos(seen.dot(want).clamp(-1.0, 1.0)));
         assert!(ang < 3.0, "{p} {seen} {want} {ang}");
     }
     assert!(checked > 500, "{checked}");

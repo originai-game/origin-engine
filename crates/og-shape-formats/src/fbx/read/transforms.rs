@@ -4,7 +4,7 @@ use super::*;
 
 /// A turn about one axis, by `degrees`.
 pub(crate) fn turn(axis: usize, degrees: f64) -> Affine {
-    let (s, c) = trig::sin_cos(trig::to_radians(degrees));
+    let (s, c) = double::sin_cos(double::to_radians(degrees));
     let mut m = Affine::IDENTITY;
     match axis {
         0 => {
@@ -155,7 +155,7 @@ pub(crate) fn part_turn(r: &Affine, w: f64) -> Affine {
         return *r;
     }
     let trace = r.x.x + r.y.y + r.z.z;
-    let angle = trig::acos(((trace - 1.0) * 0.5).clamp(-1.0, 1.0));
+    let angle = double::acos(((trace - 1.0) * 0.5).clamp(-1.0, 1.0));
     // The axis: the matrix's skew part, or by its diagonal at a half turn.
     let mut axis = DVec3::new(r.y.z - r.z.y, r.z.x - r.x.z, r.x.y - r.y.x);
     if axis.length() < 1e-9 {
@@ -178,7 +178,7 @@ pub(crate) fn part_turn(r: &Affine, w: f64) -> Affine {
         return Affine::IDENTITY;
     };
     // Rodrigues: each basis vector turned about the axis.
-    let (s, c) = trig::sin_cos(angle * w);
+    let (s, c) = double::sin_cos(angle * w);
     let turn = |v: DVec3| v * c + n.cross(v) * s + n * (n.dot(v) * (1.0 - c));
     Affine {
         x: turn(DVec3::X),

@@ -36,6 +36,8 @@
 //! renderer, og-ui, audio, the cook, the bake, the og tool, the engine tests).
 //! Render-only code in a simulation crate takes a scoped `#[allow]`.
 
+pub mod double;
+
 pub use glam::*;
 
 /// Split a height-field cell along h00--h11 when that diagonal's height

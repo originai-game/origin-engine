@@ -48,8 +48,10 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use crate::math::{DVec3, trig};
+use crate::math::DVec3;
+
 use crate::mesh::{EdgeKey, edge_key};
+use og_core::math::double;
 
 use super::{Build, Fan, PLANAR_DOT, fan, tri_normal};
 use crate::bevel::patch::{self, Corner};
@@ -96,8 +98,8 @@ impl Pipe {
         if !(cx >= 0.0 && cy >= 0.0 && cx + cy > 0.0) {
             return x;
         }
-        let norm = trig::pow(
-            trig::pow(cx, exponent) + trig::pow(cy, exponent),
+        let norm = double::pow(
+            double::pow(cx, exponent) + double::pow(cy, exponent),
             1.0 / exponent,
         );
         o + u * (cx / norm) + w * (cy / norm) + self.axis * t
@@ -153,11 +155,11 @@ impl Build<'_> {
         }
         let dir = |i: usize| (s.positions[f.spokes[i % k] as usize] - p).normalize_or_zero();
         let angle: f64 = (lo..hi)
-            .map(|i| trig::acos(dir(i).dot(dir(i + 1)).clamp(-1.0, 1.0)))
+            .map(|i| double::acos(dir(i).dot(dir(i + 1)).clamp(-1.0, 1.0)))
             .sum();
-        if angle > trig::PI + 1e-6 {
+        if angle > double::PI + 1e-6 {
             outer
-        } else if angle < trig::PI - 1e-6 {
+        } else if angle < double::PI - 1e-6 {
             inner
         } else {
             Miter::Sharp

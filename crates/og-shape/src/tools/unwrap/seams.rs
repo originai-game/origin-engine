@@ -440,8 +440,8 @@ pub(crate) fn directions(
     largest_first: &[usize],
     angle: f64,
 ) -> (Vec<DVec3>, Vec<u32>) {
-    let cos_half = trig::cos(trig::to_radians(angle / 2.0));
-    let cos_whole = trig::cos(trig::to_radians(angle));
+    let cos_half = double::cos(double::to_radians(angle / 2.0));
+    let cos_whole = double::cos(double::to_radians(angle));
     let faces: Vec<usize> = largest_first
         .iter()
         .copied()

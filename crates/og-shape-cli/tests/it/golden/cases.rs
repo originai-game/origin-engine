@@ -3,7 +3,9 @@
 
 use core::cmp::Ordering;
 
-use og_shape::math::{DVec2, DVec3, Frame, HashError, OutputHash, order, predicates, trig};
+use og_shape::math::{DVec2, DVec3, Frame, HashError, OutputHash, order, predicates};
+
+use og_core::math::double;
 
 /// One golden case.
 pub struct Case {
@@ -99,20 +101,20 @@ fn core_trig(h: &mut OutputHash) -> Result<(), HashError> {
         let u = rng.range(-1.0, 1.0);
         let p = rng.range(0.0, 50.0);
         h.f64s(&[
-            trig::sin(x),
-            trig::cos(x),
-            trig::tan(x),
-            trig::asin(u),
-            trig::acos(u),
-            trig::atan(x),
-            trig::atan2(x, u),
-            trig::exp(u * 700.0),
-            trig::ln(p),
-            trig::pow(p, u * 10.0),
-            trig::cbrt(x),
-            trig::hypot(x, u),
+            double::sin(x),
+            double::cos(x),
+            double::tan(x),
+            double::asin(u),
+            double::acos(u),
+            double::atan(x),
+            double::atan2(x, u),
+            double::exp(u * 700.0),
+            double::ln(p),
+            double::pow(p, u * 10.0),
+            double::cbrt(x),
+            double::hypot(x, u),
         ])?;
-        let (s, c) = trig::sin_cos(x);
+        let (s, c) = double::sin_cos(x);
         h.f64s(&[s, c])?;
     }
     Ok(())

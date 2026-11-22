@@ -1,7 +1,8 @@
 use crate::boolean::{Boolean, boolean};
 use crate::generators::solids::{CylinderDesc, cylinder};
-use crate::math::{DVec3, Frame, trig};
+use crate::math::{DVec3, Frame};
 use crate::mesh::Solid;
+use og_core::math::double;
 
 use crate::skin::{Pose, Rig, RigBone, RigError, Turn, measure_pose, pose, skin};
 
@@ -127,7 +128,7 @@ fn rest_pose_leaves_the_mesh_and_a_bend_turns_the_forearm() {
         turns: vec![Turn {
             bone: "forearm".into(),
             axis: DVec3::X,
-            angle: trig::to_radians(90.0),
+            angle: double::to_radians(90.0),
         }],
     };
     let posed = pose(&s, &bend).unwrap();
@@ -162,12 +163,12 @@ fn a_parent_turn_carries_its_children() {
         turns: vec![Turn {
             bone: "upper_arm".into(),
             axis: DVec3::Y,
-            angle: trig::to_radians(30.0),
+            angle: double::to_radians(30.0),
         }],
     };
     let posed = pose(&s, &swing).unwrap();
     // A rigid turn of the whole arm: every vertex turned about y.
-    let (sn, cs) = trig::sin_cos(trig::to_radians(30.0));
+    let (sn, cs) = double::sin_cos(double::to_radians(30.0));
     for (p, q) in s.positions.iter().zip(&posed.positions) {
         let e = DVec3::new(cs * p.x + sn * p.z, p.y, -sn * p.x + cs * p.z);
         assert!((*q - e).length() < 1e-9);
@@ -505,7 +506,7 @@ fn a_clip_moves_onto_another_skeleton() {
             turns: vec![Turn {
                 bone: "mixamorig:LeftForeArm".into(),
                 axis: -DVec3::Y,
-                angle: trig::to_radians(90.0),
+                angle: double::to_radians(90.0),
             }],
         },
     )
@@ -567,7 +568,7 @@ fn a_clip_moves_onto_another_skeleton() {
                     turns: vec![Turn {
                         bone: "LeftForeArm".into(),
                         axis: DVec3::X,
-                        angle: trig::to_radians(90.0),
+                        angle: double::to_radians(90.0),
                     }],
                 },
             )

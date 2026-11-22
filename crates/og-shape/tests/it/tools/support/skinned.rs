@@ -114,8 +114,9 @@ pub fn skinned_tube() -> og_shape::mesh::Solid {
     for i in 0..rings {
         let z = i as f64 * 2.0;
         for k in 0..around {
-            let (sn, cs) =
-                og_shape::math::trig::sin_cos(k as f64 / around as f64 * og_shape::math::trig::TAU);
+            let (sn, cs) = og_core::math::double::sin_cos(
+                k as f64 / around as f64 * og_core::math::double::TAU,
+            );
             s.push_vertex(DVec3::new(r * cs, r * sn, z));
             weights.push(weight(z));
         }

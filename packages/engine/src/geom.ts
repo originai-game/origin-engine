@@ -6,14 +6,14 @@
 // three.js would.
 //
 // Determinism: the points may end up in world state through the geometry
-// made from them, so the arcs read sincos (basic arithmetic, the camera
-// systems' series), never Math.sin or Math.cos.
+// made from them, so the arcs read sinCos64 (og-core's f64 sin and cos, which the
+// kernel's generators read), never Math.sin or Math.cos.
 
 import type * as Api from "@origingame/engine";
 import type { Custom } from "./generated/calls.ts";
 import { abi } from "./runtime/host.ts";
 import { json, parse } from "./runtime/result.ts";
-import { sincos } from "./math.ts";
+import { sinCos64 } from "./math.ts";
 
 type V2 = { x: number; y: number };
 
@@ -86,11 +86,11 @@ function ellipseCurve(x: number, y: number, rx: number, ry: number, start: numbe
       while (delta > TAU) delta -= TAU;
       if (delta < EPSILON) delta = same ? 0 : TAU;
       if (clockwise && !same) delta = delta === TAU ? -TAU : delta - TAU;
-      const [s, c] = sincos(start + t * delta);
+      const [s, c] = sinCos64(start + t * delta);
       let px = x + rx * c;
       let py = y + ry * s;
       if (rotation !== 0) {
-        const [rs, rc] = sincos(rotation);
+        const [rs, rc] = sinCos64(rotation);
         const tx = px - x;
         const ty = py - y;
         px = tx * rc - ty * rs + x;

@@ -35,7 +35,7 @@ pub(crate) fn check(s: &Solid, kind: &str) -> QuadPairs {
 /// What an n-segment arc loses against the true quarter circle, per unit
 /// length of a square edge of radius r.
 pub(crate) fn deficit(r: f64, n: u32) -> f64 {
-    r * r * (trig::PI / 4.0 - n as f64 * trig::sin(trig::PI / (2.0 * n as f64)) / 2.0)
+    r * r * (double::PI / 4.0 - n as f64 * double::sin(double::PI / (2.0 * n as f64)) / 2.0)
 }
 
 pub(crate) fn check_closed(s: &Solid) {

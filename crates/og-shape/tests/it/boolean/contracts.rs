@@ -3,6 +3,8 @@
 //! volumes and determinism.
 
 use glam::{DQuat, DVec2, DVec3};
+
+use og_core::math::double;
 use og_shape::boolean::*;
 use og_shape::generators::extrude::ExtrudePath;
 use og_shape::generators::*;
@@ -43,7 +45,7 @@ fn boxed(w: f32, h: f32, d: f32) -> Mesh {
 fn sphere(r: f64, segments: u32, rows: u32) -> Mesh {
     let points = (0..=rows)
         .map(|j| {
-            let (s, c) = trig::sincos(j as f64 / rows as f64 * trig::PI);
+            let (s, c) = double::sin_cos(j as f64 / rows as f64 * double::PI);
             DVec2::new(if j == 0 || j == rows { 0.0 } else { r * s }, -r * c)
         })
         .collect();
@@ -91,8 +93,8 @@ fn closed_manifold(m: &Mesh) -> i64 {
 fn circle(cx: f64, cy: f64, r: f64, n: usize, clockwise: bool) -> Vec<DVec2> {
     (0..n)
         .map(|i| {
-            let a = i as f64 / n as f64 * trig::TAU;
-            let (s, c) = trig::sincos(if clockwise { -a } else { a });
+            let a = i as f64 / n as f64 * double::TAU;
+            let (s, c) = double::sin_cos(if clockwise { -a } else { a });
             DVec2::new(cx + r * c, cy + r * s)
         })
         .collect()
@@ -103,8 +105,8 @@ fn gear(teeth: usize) -> ShapePoints {
     let mut points = Vec::new();
     for i in 0..teeth {
         for (f, r) in [(0.0, 1.0), (0.2, 1.25), (0.45, 1.25), (0.65, 1.0)] {
-            let a = (i as f64 + f) / teeth as f64 * trig::TAU;
-            let (s, c) = trig::sincos(a);
+            let a = (i as f64 + f) / teeth as f64 * double::TAU;
+            let (s, c) = double::sin_cos(a);
             points.push(DVec2::new(r * c, r * s));
         }
     }
@@ -232,7 +234,7 @@ fn extruding_a_square_makes_its_prism() {
 fn extrude_along_a_path_follows_it() {
     // A quarter circle in the xz plane; the section a small square.
     let sample = |t: f64| {
-        let (s, c) = trig::sincos(t * trig::PI / 2.0);
+        let (s, c) = double::sin_cos(t * double::PI / 2.0);
         (DVec3::new(2.0 * c, 0.0, 2.0 * s), DVec3::new(-s, 0.0, c))
     };
     let sq = ShapePoints {
@@ -265,7 +267,7 @@ fn a_lathed_circle_is_pappus_s_torus() {
     let n = 96;
     let points: Vec<DVec2> = (0..=n)
         .map(|j| {
-            let (s, c) = trig::sincos(j as f64 / n as f64 * trig::TAU);
+            let (s, c) = double::sin_cos(j as f64 / n as f64 * double::TAU);
             DVec2::new(big + small * c, small * s)
         })
         .collect();
@@ -274,7 +276,7 @@ fn a_lathed_circle_is_pappus_s_torus() {
         segments: 128,
         ..Default::default()
     });
-    let want = trig::TAU * big * trig::PI * small * small;
+    let want = double::TAU * big * double::PI * small * small;
     let v = m.volume().abs();
     assert!((v - want).abs() / want < 2e-3, "{v} against {want}");
 }
@@ -310,7 +312,7 @@ fn box_minus_box_is_its_analytic_volume_and_closed() {
 
 /// A turn of `angle` about a unit `axis`, from the kernel's trig.
 fn turn(axis: DVec3, angle: f64) -> DQuat {
-    let (s, c) = og_shape::math::trig::sin_cos(angle / 2.0);
+    let (s, c) = og_core::math::double::sin_cos(angle / 2.0);
     DQuat::from_xyzw(axis.x * s, axis.y * s, axis.z * s, c)
 }
 
@@ -439,13 +441,18 @@ fn everything() -> Vec<Mesh> {
     let bevelled = extrude(std::slice::from_ref(&g), &Extrude::default(), None);
     let vase = lathe(&Lathe {
         points: (0..12)
-            .map(|j| DVec2::new(0.3 + 0.2 * trig::sincos(j as f64 * 0.5).0, j as f64 * 0.1))
+            .map(|j| {
+                DVec2::new(
+                    0.3 + 0.2 * double::sin_cos(j as f64 * 0.5).0,
+                    j as f64 * 0.1,
+                )
+            })
             .collect(),
         segments: 24,
         ..Default::default()
     });
     let sample = |t: f64| {
-        let (s, c) = trig::sincos(t * 2.0);
+        let (s, c) = double::sin_cos(t * 2.0);
         (
             DVec3::new(c, t, s),
             DVec3::new(-2.0 * s, 1.0, 2.0 * c).normalize(),

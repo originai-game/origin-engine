@@ -49,7 +49,7 @@
 //! (`surface::corner_frames`): what Blender, Unity and Unreal compute.
 //! The GLB carries it as `TANGENT` ([`crate::tools::PlainGlb::tangents`]).
 //!
-//! f64 `+ − × /` and `sqrt` for positions, `trig::acos` for the angle
+//! f64 `+ − × /` and `sqrt` for positions, `double::acos` for the angle
 //! measures only, integer texel arithmetic and exact predicates for every
 //! side: the PNG bytes are the same on every host.
 
@@ -57,9 +57,10 @@ use core::cmp::Ordering;
 use std::fmt;
 
 use crate::math::predicates::orient2d;
-use crate::math::{DVec2, DVec3, trig};
+use crate::math::{DVec2, DVec3};
 use crate::mesh::Solid;
 use crate::mesh::tree::{Tree, closest_on_triangle, tri};
+use og_core::math::double;
 
 use crate::tools::export::{ColorSpace, Material};
 use crate::tools::image::{Codec, Texture};
@@ -516,7 +517,8 @@ pub fn bake(src: &BakeSource, low: &Solid, d: &Bake, codec: &Codec) -> Result<Ba
             // As a viewer decodes it, in the written frame.
             let dec = bytes.map(|v| f64::from(v) * 2.0 / 255.0 - 1.0);
             let seen = unit(lf.tangent * dec[0] + lb * dec[1] + lf.normal * dec[2]);
-            let ang = |a: DVec3, b: DVec3| trig::to_degrees(trig::acos(a.dot(b).clamp(-1.0, 1.0)));
+            let ang =
+                |a: DVec3, b: DVec3| double::to_degrees(double::acos(a.dot(b).clamp(-1.0, 1.0)));
             let (e, e0) = (ang(seen, shade), ang(lf.normal, shade));
             sum += e;
             sum_without += e0;

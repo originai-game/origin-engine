@@ -5,8 +5,9 @@
 //! binding through wasm). The binding's test hashes the GLB and PNG it
 //! makes in wasm32 the same way and compares with these lines.
 
+use og_core::math::double;
 use og_shape::generators::solids::{BoxDesc, CylinderDesc, cuboid, cylinder};
-use og_shape::math::{DVec3, Frame, HashError, OutputHash, trig};
+use og_shape::math::{DVec3, Frame, HashError, OutputHash};
 use og_shape::model::{
     JointDesc, JointKind, Material, Mimic, Model, Path, Preview, Unit, place, program,
 };
@@ -123,7 +124,7 @@ pub fn washing_machine_preview() -> Preview {
     Preview {
         width: 320,
         views: 4,
-        elevation: Some(20.0 * trig::PI / 180.0),
+        elevation: Some(20.0 * double::PI / 180.0),
         ..Default::default()
     }
 }
@@ -147,7 +148,7 @@ fn frame_ops(h: &mut OutputHash) -> Result<(), HashError> {
         f = match k % 5 {
             0 => f.offset(a - 40.0),
             1 => f.translate(a, -a * 0.5, 3.0),
-            2 => f.turn(trig::PI / 2.0, 0.0, -trig::PI),
+            2 => f.turn(double::PI / 2.0, 0.0, -double::PI),
             3 => f.turn(a * 0.1, -a * 0.03, a * 0.07),
             _ => f.compose(&f.inverse().turn(0.0, 0.2, 0.0)),
         };
@@ -173,7 +174,7 @@ fn placement(h: &mut OutputHash) -> Result<(), HashError> {
         .map_err(fail)?;
     let on = Frame::IDENTITY
         .translate(10.0, 20.0, 30.0)
-        .turn(0.0, 0.0, trig::PI / 2.0);
+        .turn(0.0, 0.0, double::PI / 2.0);
     m.at(cab, &on).map_err(fail)?;
     let ok = |r: Result<Frame, og_shape::model::ModelError>| r.map_err(fail);
     for which in ["+X", "-Y", "top", "bottom", "front"] {
@@ -189,7 +190,7 @@ fn placement(h: &mut OutputHash) -> Result<(), HashError> {
     for f in place::grid(3, 2, 50.0, 30.0, true, &top)
         .iter()
         .chain(&place::ring(6, 40.0, 0.25, 0.0, &top))
-        .chain(&place::ring(5, 40.0, 0.0, trig::PI, &top))
+        .chain(&place::ring(5, 40.0, 0.0, double::PI, &top))
         .chain(&place::along(&path, 0.0, 9).map_err(fail)?)
         .chain(&place::along(&path, 333.0, 0).map_err(fail)?)
     {
@@ -266,7 +267,7 @@ fn jointed() -> Result<Model, og_shape::model::ModelError> {
             name: "hinge".into(),
             on: front.translate(-19.0, 0.0, 0.0),
             axis: DVec3::NEG_Z,
-            range: Some((0.0, trig::to_radians(110.0))),
+            range: Some((0.0, double::to_radians(110.0))),
             ..Default::default()
         },
     )?;

@@ -474,7 +474,7 @@ impl Rigid {
 
     /// Turn by `angle` radians about the unit axis `k` through the origin.
     pub fn turn(k: DVec3, angle: f64) -> Rigid {
-        let (sn, cs) = trig::sin_cos(angle);
+        let (sn, cs) = double::sin_cos(angle);
         let r = |v: DVec3| v * cs + k.cross(v) * sn + k * (k.dot(v) * (1.0 - cs));
         Rigid {
             x: r(DVec3::X),

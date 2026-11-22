@@ -992,7 +992,7 @@ mod tests {
         // A hexagon turned by 10°: corner i runs to corner i, so every wall
         // triangle's bottom corner sits under a top corner turned 10°, and
         // the volume is the untwisted one's (no corner cut).
-        let turned = hexagon(5.0).rotate(crate::math::trig::to_radians(10.0));
+        let turned = hexagon(5.0).rotate(og_core::math::double::to_radians(10.0));
         let s = loft(&Loft {
             sections: vec![(hexagon(10.0), 0.0), (turned, 10.0)],
             samples: 32,
@@ -1005,7 +1005,7 @@ mod tests {
             .copied()
             .filter(|p| p.z == 10.0)
             .collect();
-        let c = crate::math::trig::cos(crate::math::trig::to_radians(10.0)) * 5.0;
+        let c = og_core::math::double::cos(og_core::math::double::to_radians(10.0)) * 5.0;
         assert!(tops.iter().any(|p| (p.x - c).abs() < 1e-12));
         closed(&s);
     }
@@ -1071,7 +1071,7 @@ mod tests {
     /// The frame of a section on a ring of radius `r` round z, at `turn`
     /// of a turn: x outward, z along the ring.
     fn on_ring(r: f64, turn: f64) -> Frame {
-        let (sin, cos) = crate::math::trig::sin_cos(crate::math::trig::TAU * turn);
+        let (sin, cos) = og_core::math::double::sin_cos(og_core::math::double::TAU * turn);
         Frame {
             origin: DVec3::new(r * cos, r * sin, 0.0),
             x: DVec3::new(cos, sin, 0.0),
@@ -1095,7 +1095,7 @@ mod tests {
             ..Default::default()
         };
         let s = loft_along(&d).unwrap();
-        let span = 20.0 * 4.0 * crate::math::trig::sin(crate::math::trig::TAU / n as f64);
+        let span = 20.0 * 4.0 * og_core::math::double::sin(og_core::math::double::TAU / n as f64);
         let v = closed(&s);
         assert!((v - n as f64 * 4.0 * span).abs() < 1e-9, "{v}");
         // No ends in a loop, and four walls' worth of quads.
@@ -1107,7 +1107,7 @@ mod tests {
             ..d.clone()
         })
         .unwrap();
-        let torus = 16.0 * crate::math::trig::TAU * 20.0;
+        let torus = 16.0 * og_core::math::double::TAU * 20.0;
         let v = closed(&round);
         assert!(
             v > closed(&s) && (v - torus).abs() < 0.01 * torus,
@@ -1128,7 +1128,7 @@ mod tests {
         };
         let s = loft_along(&d).unwrap();
         let v = closed(&s);
-        let quarter = 32.0 * crate::math::trig::TAU * 30.0 / 4.0;
+        let quarter = 32.0 * og_core::math::double::TAU * 30.0 / 4.0;
         assert!((v - quarter).abs() < 0.01 * quarter, "{v} {quarter}");
         // The start lies in y = 0 and the end in x = 0, both named, with
         // their rims; the hole's wall is `inner`.

@@ -422,7 +422,7 @@ pub fn usda_clips(
     // The stage's own scopes are not parts' names.
     let mut names: BTreeSet<String> = ["Materials".to_string(), "Joints".to_string()].into();
     let mut files = BTreeSet::new();
-    let crease = og_shape::math::trig::cos(og_shape::math::trig::to_radians(CREASE_DEGREES));
+    let crease = og_core::math::double::cos(og_core::math::double::to_radians(CREASE_DEGREES));
     for p in &scene.parts {
         let s = p.solid;
         if s.triangles.is_empty() {
@@ -716,7 +716,7 @@ pub fn usda_clips(
             let unit = if c.kind == "prismatic" {
                 1000.0
             } else {
-                180.0 / og_shape::math::trig::PI
+                180.0 / og_core::math::double::PI
             };
             body.push_str(&format!(
                 "            float physics:lowerLimit = {}\n            float physics:upperLimit = {}\n",

@@ -122,7 +122,7 @@ pub(crate) fn idct_table() -> [[i64; 8]; 8] {
             } else {
                 1.0
             };
-            let v = c / 2.0 * og_shape::math::trig::cos((2 * x + 1) as f64 * u as f64 * pi / 16.0);
+            let v = c / 2.0 * og_core::math::double::cos((2 * x + 1) as f64 * u as f64 * pi / 16.0);
             (v * 8192.0).round() as i64
         })
     })

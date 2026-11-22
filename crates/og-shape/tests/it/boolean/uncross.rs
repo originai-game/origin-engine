@@ -93,14 +93,15 @@ fn repaired(a: &Solid, b: &Solid, op: CsgOp) -> og_shape::boolean::Uncrossed {
 }
 
 /// A pin standing on a plate, its vertex column an ulp off the plate's
-/// diagonal (the post of `docs/research.md` §7.7): two points 3·10⁻¹⁵
-/// apart, merged.
+/// diagonal (the post of `docs/research.md` §7.7): two points an ulp
+/// apart, merged. Which radius lands a column an ulp off is the trig's
+/// rounding: 4 does under og-core's.
 #[test]
 fn the_post_s_points_an_ulp_apart_are_merged() {
     let plate = block(20.0, 20.0, 10.0);
     let pin = moved(
         cylinder(&CylinderDesc {
-            radius: 3.0,
+            radius: 4.0,
             height: 8.0,
             ..Default::default()
         })
@@ -112,20 +113,21 @@ fn the_post_s_points_an_ulp_apart_are_merged() {
 }
 
 /// A countersink whose narrow end is the bore's own polygon: needles
-/// along its ring edges, split across their long edge.
+/// along its ring edges, split across their long edge. Which radius
+/// leaves needles is the trig's rounding: 2.25 does under og-core's.
 #[test]
 fn the_countersink_ring_s_needles_are_split() {
     let plate = block(40.0, 40.0, 10.0);
     let bored = boolean(
         &plate,
-        &frustum(2.0, 2.0, -30.0, 40.06),
+        &frustum(2.25, 2.25, -30.0, 40.06),
         &Boolean {
             op: BoolOp::Cut,
             ..Default::default()
         },
     )
     .unwrap();
-    let r = repaired(&bored, &frustum(2.0, 4.06, 8.0, 2.06), CsgOp::Subtract);
+    let r = repaired(&bored, &frustum(2.25, 4.56, 7.75, 2.31), CsgOp::Subtract);
     assert!(r.split > 0, "{r:?}");
 }
 

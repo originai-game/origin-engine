@@ -17,7 +17,7 @@ pub(crate) fn tri_normal(s: &Solid, t: usize) -> DVec3 {
 /// The turn between the two faces of an edge, radians (0 flat, π/2 a box
 /// edge).
 pub(crate) fn turn(s: &Solid, ta: usize, tb: usize) -> f64 {
-    trig::acos(tri_normal(s, ta).dot(tri_normal(s, tb)).clamp(-1.0, 1.0))
+    double::acos(tri_normal(s, ta).dot(tri_normal(s, tb)).clamp(-1.0, 1.0))
 }
 
 /// Directed edge → triangle, and triangles per vertex.

@@ -5,10 +5,10 @@
 //! shape crosses the wire; a `type model` part names the same calls in its
 //! text, and the cook flattens them here. Both use the same formulas in
 //! f64 (JavaScript's numbers) and the same series for the arcs
-//! ([`crate::generators::trig::sincos`]), so a shape gives the same points either way.
+//! ([`og_core::math::double::sincos`]), so a shape gives the same points either way.
 
-use crate::generators::trig::{TAU, sincos};
 use glam::DVec2;
+use og_core::math::double::{TAU, sin_cos};
 
 /// three.js's `Number.EPSILON` (the ellipse's angle tests).
 const EPSILON: f64 = f64::EPSILON;
@@ -104,11 +104,11 @@ impl Curve {
                 if *clockwise && !same {
                     delta = if delta == TAU { -TAU } else { delta - TAU };
                 }
-                let (s, c) = sincos(start + t * delta);
+                let (s, c) = sin_cos(start + t * delta);
                 let mut px = centre.x + radius.x * c;
                 let mut py = centre.y + radius.y * s;
                 if *rotation != 0.0 {
-                    let (rs, rc) = sincos(*rotation);
+                    let (rs, rc) = sin_cos(*rotation);
                     let tx = px - centre.x;
                     let ty = py - centre.y;
                     px = tx * rc - ty * rs + centre.x;

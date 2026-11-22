@@ -182,8 +182,8 @@ pub(crate) fn finish(
                 .push(i);
         }
     }
-    let cos10 = trig::cos(trig::to_radians(10.0));
-    let cos40 = trig::cos(trig::to_radians(40.0));
+    let cos10 = double::cos(double::to_radians(10.0));
+    let cos40 = double::cos(double::to_radians(40.0));
     let mut new_names: BTreeMap<EdgeKey, Vec<String>> = BTreeMap::new();
     for (&e, ts) in &by_edge {
         if ts.len() != 2 {

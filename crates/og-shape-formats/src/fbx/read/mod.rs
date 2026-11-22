@@ -28,7 +28,9 @@
 
 use std::collections::BTreeMap;
 
-use og_shape::math::{DVec2, DVec3, Frame, trig};
+use og_shape::math::{DVec2, DVec3, Frame};
+
+use og_core::math::double;
 use og_shape::mesh::{Bone, Skin, Solid, Weights};
 
 use og_shape::tools::export::Material;

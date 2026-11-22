@@ -232,7 +232,7 @@ fn reads_a_skin_s_bones_where_they_stand_and_its_animation() {
     let near = |a: DVec3, b: DVec3| assert!((a - b).length() < 0.05, "{a:?} {b:?}");
     near(top(0.0), DVec3::new(0.0, 0.0, 500.0));
     // About +y, +z turns towards +x: 45° halfway, a quarter at the end.
-    let d = 250.0 * trig::sin(trig::PI / 4.0);
+    let d = 250.0 * double::sin(double::PI / 4.0);
     near(top(0.5), DVec3::new(d, 0.0, 250.0 + d));
     near(top(1.0), DVec3::new(250.0, 0.0, 250.0));
 }
@@ -292,7 +292,7 @@ fn an_animation_s_layers_lie_on_each_other() {
     for (time, degrees) in [(0.0, 0.0), (0.5, 45.0 + 15.0), (1.0, 120.0)] {
         let at = part.clips[0].at(time).unwrap();
         let top = og_shape::skin::pose_by(&part.solid, &at).unwrap().positions[i];
-        let (sin, cos) = trig::sin_cos(trig::to_radians(degrees));
+        let (sin, cos) = double::sin_cos(double::to_radians(degrees));
         let want = DVec3::new(250.0 * sin, 0.0, 250.0 + 250.0 * cos);
         assert!(
             (top - want).length() < 0.05,
@@ -317,7 +317,7 @@ fn an_animation_s_layers_lie_on_each_other() {
         let top = og_shape::skin::pose_by(&part.solid, &clip.at(1.0).unwrap())
             .unwrap()
             .positions[i];
-        let (sin, cos) = trig::sin_cos(trig::to_radians(degrees));
+        let (sin, cos) = double::sin_cos(double::to_radians(degrees));
         let want = DVec3::new(250.0 * sin, 0.0, 250.0 + 250.0 * cos);
         assert!(
             (top - want).length() < 0.05,

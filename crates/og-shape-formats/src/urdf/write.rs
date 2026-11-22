@@ -14,7 +14,9 @@
 
 use std::collections::BTreeMap;
 
-use og_shape::math::{DVec3, trig};
+use og_shape::math::DVec3;
+
+use og_core::math::double;
 
 use og_shape::tools::export::{ExportError, Rigid, Scene, check_joints};
 use og_shape::tools::surface::METRES;
@@ -130,12 +132,16 @@ fn rpy(r: &Rigid) -> DVec3 {
     let flat = (r.x.x * r.x.x + r.x.y * r.x.y).sqrt();
     if flat < 1e-12 {
         // Pitch at a quarter turn: yaw is taken as 0.
-        return DVec3::new(trig::atan2(-r.z.y, r.y.y), trig::atan2(-r.x.z, flat), 0.0);
+        return DVec3::new(
+            double::atan2(-r.z.y, r.y.y),
+            double::atan2(-r.x.z, flat),
+            0.0,
+        );
     }
     DVec3::new(
-        trig::atan2(r.y.z, r.z.z),
-        trig::atan2(-r.x.z, flat),
-        trig::atan2(r.x.y, r.x.x),
+        double::atan2(r.y.z, r.z.z),
+        double::atan2(-r.x.z, flat),
+        double::atan2(r.x.y, r.x.x),
     )
 }
 

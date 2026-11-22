@@ -94,7 +94,7 @@ pub fn hole_report(s: &Solid, d: &Hole) -> Result<(Solid, EditReport), EditError
         // One segment count for every tool of this hole, so a countersink's
         // narrow end is the bore's own polygon.
         let widest = r.max(d.counterbore.0 / 2.0).max(d.countersink.0 / 2.0);
-        let n = crate::profile::curve::segments(widest, crate::math::trig::TAU);
+        let n = crate::profile::curve::segments(widest, og_core::math::double::TAU);
         let uvs = s.uvs.is_some();
         // The tools turned by `turn` about the hole's axis.
         let tools_at = |turn: f64| -> Result<Vec<Solid>, EditError> {
@@ -122,12 +122,12 @@ pub fn hole_report(s: &Solid, d: &Hole) -> Result<(Solid, EditReport), EditError
                 // twice an ulp apart (column through cone, generator through
                 // wall), and the rim does not cross itself in either cut order
                 // (`docs/research.md` §18.5, §23).
-                let slope = crate::math::trig::tan(cs_angle / 2.0);
+                let slope = og_core::math::double::tan(cs_angle / 2.0);
                 let h = (cs_d / 2.0 - 0.9 * r) / slope;
                 tools.push(bore(
                     e,
                     &axis,
-                    turn + crate::math::trig::PI / n as f64,
+                    turn + og_core::math::double::PI / n as f64,
                     0.9 * r,
                     cs_d / 2.0 + over * slope,
                     h,
@@ -144,7 +144,7 @@ pub fn hole_report(s: &Solid, d: &Hole) -> Result<(Solid, EditReport), EditError
         // again with the tool turned a share of one of its segments
         // about its axis, which moves its corners off that edge and
         // changes no measure of the hole.
-        let step = crate::math::trig::TAU / n as f64;
+        let step = og_core::math::double::TAU / n as f64;
         let mut first: Option<EditError> = None;
         let mut cut = None;
         for share in [0.0, 1.0 / 7.0, 1.0 / 3.0, 3.0 / 5.0] {

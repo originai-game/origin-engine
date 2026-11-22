@@ -2,7 +2,9 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use og_shape::math::{DVec3, trig};
+use og_shape::math::DVec3;
+
+use og_core::math::double;
 use og_shape::mesh::skin::Mat4;
 use og_shape::tools::export::*;
 use og_shape::tools::image::Texture;
@@ -22,7 +24,7 @@ pub(crate) fn linear(c: f64) -> f64 {
     if c <= 0.04045 {
         c / 12.92
     } else {
-        trig::pow((c + 0.055) / 1.055, 2.4)
+        double::pow((c + 0.055) / 1.055, 2.4)
     }
 }
 

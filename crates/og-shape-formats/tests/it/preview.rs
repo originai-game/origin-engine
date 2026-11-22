@@ -1,6 +1,8 @@
 //! The preview's shading, maps, colours and environment, drawn from scenes with real image files.
 
 use og_shape::math::*;
+
+use og_core::math::double;
 use og_shape::mesh::*;
 use og_shape::tools::export::{Material, Part};
 use og_shape::tools::image::Texture;
@@ -15,7 +17,7 @@ fn prism(n: u32, at: DVec3) -> Solid {
     let mut s = Solid::default();
     for z in [0.0, 10.0] {
         for k in 0..n {
-            let (sn, cs) = trig::sin_cos(trig::TAU * f64::from(k) / f64::from(n));
+            let (sn, cs) = double::sin_cos(double::TAU * f64::from(k) / f64::from(n));
             s.push_vertex(at + DVec3::new(10.0 * cs, 10.0 * sn, z));
         }
     }
@@ -33,7 +35,7 @@ fn prism(n: u32, at: DVec3) -> Solid {
 
 fn sides_flat(n: u32) -> bool {
     let s = prism(n, DVec3::ZERO);
-    let crease = trig::cos(trig::to_radians(CREASE_DEGREES));
+    let crease = double::cos(double::to_radians(CREASE_DEGREES));
     let normals = corner_normals(&s, crease);
     s.triangles.iter().zip(&normals).all(|(t, c)| {
         let [a, b, d] = t.map(|v| s.positions[v as usize]);
@@ -82,7 +84,7 @@ fn centre(parts: Vec<Part>) -> [u8; 3] {
     let d = Preview {
         width: 32,
         views: 1,
-        elevation: Some(trig::PI / 2.0 - 1e-3),
+        elevation: Some(double::PI / 2.0 - 1e-3),
         no_edges: true,
         no_ground: true,
         ..Default::default()
@@ -338,7 +340,7 @@ fn a_map_is_sampled_the_right_way_up_and_perspective_correct() {
     let (im, c) = (&v.images[0], &v.cameras[0]);
     // Where the quad's 3D midpoint (y = 50) lands on screen.
     let fwd = (c.target - c.position).normalize();
-    let focal = 64.0 / trig::tan(0.5);
+    let focal = 64.0 / double::tan(0.5);
     let row = |p: DVec3| {
         let d = p - c.position;
         64.0 - d.dot(c.up) * focal / d.dot(fwd)
@@ -387,7 +389,7 @@ fn a_fine_map_far_off_is_its_average_not_noise() {
     };
     let d = Preview {
         width: 48,
-        elevation: Some(trig::PI / 2.0),
+        elevation: Some(double::PI / 2.0),
         unlit: true,
         ..Default::default()
     };

@@ -9,8 +9,9 @@
 
 use crate::generators::frames::{Frame, frenet_frames};
 use crate::generators::shape::{ShapePoints, is_clockwise, triangulate_shape};
-use crate::generators::{Mesh, finish, trig, vertex_normals};
+use crate::generators::{Mesh, finish, vertex_normals};
 use glam::{DVec2, DVec3};
+use og_core::math::double;
 
 /// three.js's extrude options (`curveSegments` is the TypeScript side's:
 /// it flattens the shapes before they cross).
@@ -210,7 +211,7 @@ fn add_shape(
 
     let mut placeholder: Vec<DVec3> = Vec::new();
     let bevel = |t: f64| {
-        let (s, c) = trig::sincos(t * trig::PI / 2.0);
+        let (s, c) = double::sin_cos(t * double::PI / 2.0);
         (bevel_thickness * c, bevel_size * s + bevel_offset)
     };
     let faces = if bevel_segments == 0 {

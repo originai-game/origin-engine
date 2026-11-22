@@ -5,9 +5,10 @@
 //!
 //! `cargo run --release -p shape-edit --example edit_sweep > sweep.txt`
 
+use og_core::math::double;
 use og_shape::edit::{Dent, Hole, Pocket, above, dent, hole, pocket, seat};
 use og_shape::generators::solids::{BoxDesc, CylinderDesc, cuboid, cylinder, sphere};
-use og_shape::math::{DVec3, trig};
+use og_shape::math::DVec3;
 use og_shape::mesh::Solid;
 use og_shape::profile::{Circle, Polygon, Rect, circle, polygon, rect};
 
@@ -156,7 +157,7 @@ fn main() {
         .iter()
         .map(|(n, s)| {
             let mut s = s.clone();
-            let (c, si) = (trig::cos(0.3), trig::sin(0.3));
+            let (c, si) = (double::cos(0.3), double::sin(0.3));
             s.map_positions(
                 |p| DVec3::new(c * p.x - si * p.y, si * p.x + c * p.y, p.z),
                 false,

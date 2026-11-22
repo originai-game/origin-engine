@@ -1098,8 +1098,8 @@ mod tests {
     /// and a sheet with squares gone from its sides. Each takes fewer bytes than in the file's order.
     #[test]
     fn a_walked_mesh_reads_back() {
-        use og_shape::math::trig::{cos, sin};
-        let tau = 2.0 * og_shape::math::trig::PI;
+        use og_core::math::double::{cos, sin};
+        let tau = 2.0 * og_core::math::double::PI;
         let sheet = |u: f32, v: f32| {
             let bump = sin(f64::from(u) * 9.0) * cos(f64::from(v) * 7.0) * 3.0;
             [u * 40.0, v * 30.0, bump as f32]

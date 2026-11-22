@@ -38,7 +38,7 @@ impl Environment {
             return None;
         }
         // The mean over the sphere: a row counts by its ring's size.
-        let ring = |y: usize, h: usize| trig::sin(trig::PI * (y as f64 + 0.5) / h as f64);
+        let ring = |y: usize, h: usize| double::sin(double::PI * (y as f64 + 0.5) / h as f64);
         let (mut sum, mut weight) = (0.0f64, 0.0f64);
         for y in 0..height {
             let w = ring(y, height);
@@ -216,16 +216,16 @@ impl Environment {
     /// The way texel (u, v) of the picture lies, both in 0..1: u a
     /// turn round +Z from −X through −Y, v from straight up down.
     pub(crate) fn direction(u: f64, v: f64) -> DVec3 {
-        let (st, ct) = trig::sin_cos(trig::PI * v);
-        let (sp, cp) = trig::sin_cos(trig::TAU * (u - 0.5));
+        let (st, ct) = double::sin_cos(double::PI * v);
+        let (sp, cp) = double::sin_cos(double::TAU * (u - 0.5));
         DVec3::new(st * cp, st * sp, ct)
     }
 
     /// Where direction `d` (a unit vector) is in the picture.
     pub(crate) fn place(d: DVec3) -> (f64, f64) {
         (
-            trig::atan2(d.y, d.x) / trig::TAU + 0.5,
-            trig::acos(d.z.clamp(-1.0, 1.0)) / trig::PI,
+            double::atan2(d.y, d.x) / double::TAU + 0.5,
+            double::acos(d.z.clamp(-1.0, 1.0)) / double::PI,
         )
     }
 

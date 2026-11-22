@@ -7,13 +7,13 @@
 // The sources' rounded constants (1.5708, 6.28319) are kept as written.
 #![allow(clippy::approx_constant)]
 
-use og_shape::math::trig;
+use og_core::math::double;
 use og_shape::tools::JointKind::{Continuous, Prismatic, Revolute};
 
 use super::sand3d::*;
 
 fn deg(rad: f64) -> f64 {
-    trig::to_degrees(rad)
+    double::to_degrees(rad)
 }
 
 fn rgb(r: f64, g: f64, b: f64) -> Option<[f64; 3]> {
@@ -1789,7 +1789,7 @@ pub fn bevel_transfer() -> Model {
                 .chain([(48.5, c + 10.0)])
                 .collect();
             for (r, t) in side {
-                let (s, co) = trig::sin_cos(trig::to_radians(t));
+                let (s, co) = double::sin_cos(double::to_radians(t));
                 pts.push([scale * r * co, scale * r * s]);
             }
         }

@@ -157,7 +157,7 @@ fn check_poses(skin: &Skin) -> Vec<(&'static str, Pose)> {
         match (at(arm), at(hand)) {
             (Some(a), Some(h)) => {
                 let d = h - a;
-                og_shape::math::trig::atan2(-d.z, (d.x * d.x + d.y * d.y).sqrt())
+                og_core::math::double::atan2(-d.z, (d.x * d.x + d.y * d.y).sqrt())
             }
             _ => 0.0,
         }

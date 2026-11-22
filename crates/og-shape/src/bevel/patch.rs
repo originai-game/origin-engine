@@ -18,7 +18,9 @@
 
 use std::collections::BTreeMap;
 
-use crate::math::{DVec3, trig};
+use crate::math::DVec3;
+
+use og_core::math::double;
 
 use crate::bevel::BevelError;
 use crate::bevel::profile;
@@ -179,8 +181,8 @@ fn octant(c: &Corner, p: f64, samples: Samples<'_>) -> Option<BTreeMap<Key, DVec
         })
         .collect();
     let at = |u: [f64; 3]| {
-        let norm = trig::pow(
-            trig::pow(u[0], p) + trig::pow(u[1], p) + trig::pow(u[2], p),
+        let norm = double::pow(
+            double::pow(u[0], p) + double::pow(u[1], p) + double::pow(u[2], p),
             1.0 / p,
         );
         c.o + (cols[0] * u[0] + cols[1] * u[1] + cols[2] * u[2]) / norm

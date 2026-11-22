@@ -330,10 +330,10 @@ fn stream_p(out: &mut Vec<Case>) -> Result<(), Error> {
     });
     let seven: Vec<(f64, f64)> = (0..7)
         .map(|i| {
-            let t = og_shape::math::trig::TAU * i as f64 / 7.0;
+            let t = og_core::math::double::TAU * i as f64 / 7.0;
             (
-                10.0 * og_shape::math::trig::cos(t),
-                10.0 * og_shape::math::trig::sin(t),
+                10.0 * og_core::math::double::cos(t),
+                10.0 * og_core::math::double::sin(t),
             )
         })
         .collect();

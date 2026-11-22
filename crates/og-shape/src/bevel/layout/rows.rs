@@ -285,7 +285,7 @@ fn gap_point(s: &mut Solid, g: &Gap, ends: &BTreeSet<u32>) -> Option<u32> {
         let tri = s.triangles[t];
         let r = (0..3).find(|&k| tri[k] == g.v)?;
         let (a, b) = (p(tri[(r + 1) % 3]) - pv, p(tri[(r + 2) % 3]) - pv);
-        angle += crate::math::trig::acos(
+        angle += og_core::math::double::acos(
             a.normalize_or_zero()
                 .dot(b.normalize_or_zero())
                 .clamp(-1.0, 1.0),
@@ -293,7 +293,7 @@ fn gap_point(s: &mut Solid, g: &Gap, ends: &BTreeSet<u32>) -> Option<u32> {
         normal += tri_normal(s, t);
         into += (a + b).normalize_or_zero();
     }
-    let half = crate::math::trig::sin(angle / 2.0);
+    let half = og_core::math::double::sin(angle / 2.0);
     if half.partial_cmp(&0.1) != Some(Ordering::Greater) {
         return None;
     }

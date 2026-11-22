@@ -2,8 +2,9 @@
 //! from the GLB with an independent reader (the `gltf` crate), and the
 //! JSON program replayed to the same bytes.
 
+use og_core::math::double;
 use og_shape::generators::solids::{BoxDesc, CylinderDesc, cuboid, cylinder};
-use og_shape::math::{DVec3, Frame, trig};
+use og_shape::math::{DVec3, Frame};
 use og_shape::model::program::{Session, run};
 use og_shape::model::{Id, JointDesc, JointKind, Material, Mimic, Model, ModelError, Unit};
 use og_shape_formats::ModelFiles;
@@ -55,7 +56,7 @@ fn cabinet() -> (Model, Id, Id, Id) {
             kind: JointKind::Revolute,
             on: hinge,
             axis: DVec3::NEG_Z,
-            range: Some((0.0, trig::to_radians(110.0))),
+            range: Some((0.0, double::to_radians(110.0))),
             ..Default::default()
         },
     )
@@ -103,7 +104,7 @@ fn children(n: &gltf::Node) -> Vec<String> {
 #[test]
 fn glb_nests_parts_under_their_joints() {
     let (mut m, ..) = cabinet();
-    m.pose("hinge", trig::to_radians(90.0)).unwrap();
+    m.pose("hinge", double::to_radians(90.0)).unwrap();
     m.pose("lift", 25.0).unwrap();
     let bytes = m.glb().unwrap();
     let doc = gltf::Gltf::from_slice(&bytes).expect("a valid GLB");
@@ -115,7 +116,7 @@ fn glb_nests_parts_under_their_joints() {
     assert_eq!(children(&hinge), ["door"]);
     let e = extras(&hinge)["s3d_joint"].clone();
     assert_eq!(e["type"], "revolute");
-    assert!((e["value"].as_f64().unwrap() - trig::to_radians(90.0)).abs() < 1e-12);
+    assert!((e["value"].as_f64().unwrap() - double::to_radians(90.0)).abs() < 1e-12);
     // The pivot faces +Y (the front face): its X is world −X, its Y world
     // +Z. World −Z is (0, −1, 0) in the pivot, (0, 0, 1) written Y up.
     assert_eq!(e["axis"], serde_json::json!([0, 0, 1]));

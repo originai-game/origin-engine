@@ -567,7 +567,7 @@ fn geometry(e: &Entry, detail: f64) -> Result<Mesh, String> {
     let empty = Block::new();
     let b = e.block.as_ref().unwrap_or(&empty);
     let name = e.key.as_str();
-    let tau = og_shape::generators::trig::TAU;
+    let tau = og_core::math::double::TAU;
     let f32s = |x: f64| x as f32;
     let mut mesh = match name {
         "boxGeometry" => {

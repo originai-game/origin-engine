@@ -11,9 +11,10 @@
 //! its f64 cross product rounds to zero, so `measure` counts it. Only a
 //! tolerance could remove it, so it is not tested here.
 
+use og_core::math::double;
 use og_shape::boolean::{BoolOp, Boolean, boolean};
 use og_shape::generators::solids::{Extrude, extrude};
-use og_shape::math::{DVec3, trig};
+use og_shape::math::DVec3;
 use og_shape::mesh::Solid;
 
 fn band(radius: f64, height: f64, taper: f64, z: f64) -> Solid {
@@ -23,7 +24,7 @@ fn band(radius: f64, height: f64, taper: f64, z: f64) -> Solid {
         ..Default::default()
     })
     .unwrap()
-    .rotate(trig::PI / 2.0);
+    .rotate(double::PI / 2.0);
     let mut s = extrude(
         &p,
         &Extrude {

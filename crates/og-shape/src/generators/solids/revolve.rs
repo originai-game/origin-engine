@@ -45,8 +45,8 @@ pub fn revolve(profile: &Profile, d: &Revolve) -> Result<Solid, GenError> {
 pub(crate) fn revolve_with(profile: &Profile, d: &Revolve, uvs: bool) -> Result<Solid, GenError> {
     let angle = finite(d.angle, "angle")?;
     let per_turn = segments_field(d.segments, "segments")?;
-    let full = angle == 0.0 || angle.abs() >= trig::TAU;
-    let sweep = if full { trig::TAU } else { angle };
+    let full = angle == 0.0 || angle.abs() >= double::TAU;
+    let sweep = if full { double::TAU } else { angle };
     if profile.regions.is_empty() {
         return Err(ProfileError::Empty.into());
     }
@@ -65,7 +65,7 @@ pub(crate) fn revolve_with(profile: &Profile, d: &Revolve, uvs: bool) -> Result<
     let at = |p: DVec2, k: u32| {
         // The last column of a full turn is the first, exactly.
         let k = if full && k == steps { 0 } else { k };
-        let (s, c) = trig::sin_cos(sweep * (k as f64 / steps as f64));
+        let (s, c) = double::sin_cos(sweep * (k as f64 / steps as f64));
         DVec3::new(p.x * c, p.y, -p.x * s)
     };
     let mut s = Solid::default();

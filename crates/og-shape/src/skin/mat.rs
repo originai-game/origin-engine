@@ -1,7 +1,9 @@
 //! 4×4 matrices, column-major (glTF's order), `+ - * /` only.
 
-use crate::math::{DVec3, trig};
+use crate::math::DVec3;
+
 use crate::mesh::skin::Mat4;
+use og_core::math::double;
 
 /// `a · b`: `b` first.
 pub fn mul(a: &Mat4, b: &Mat4) -> Mat4 {
@@ -39,7 +41,7 @@ pub fn apply_vector(m: &Mat4, v: DVec3) -> DVec3 {
 /// A turn of `angle` radians about the unit axis `k` through the origin
 /// (Rodrigues).
 pub fn turn(k: DVec3, angle: f64) -> Mat4 {
-    let (sn, cs) = trig::sin_cos(angle);
+    let (sn, cs) = double::sin_cos(angle);
     let r = |v: DVec3| v * cs + k.cross(v) * sn + k * (k.dot(v) * (1.0 - cs));
     let (x, y, z) = (r(DVec3::X), r(DVec3::Y), r(DVec3::Z));
     [

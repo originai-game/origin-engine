@@ -137,8 +137,8 @@ fn solids() -> Result<Vec<(String, Solid)>, Error> {
                         let a =
                             -std::f64::consts::FRAC_PI_2 + std::f64::consts::PI * k as f64 / 12.0;
                         DVec2::new(
-                            6.0 * og_shape::math::trig::cos(a),
-                            6.0 * og_shape::math::trig::sin(a),
+                            6.0 * og_core::math::double::cos(a),
+                            6.0 * og_core::math::double::sin(a),
                         )
                     })
                     .collect();

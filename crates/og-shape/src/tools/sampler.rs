@@ -4,7 +4,7 @@
 //! - **Colour space.** Texels are sRGB bytes. Filtering and every product
 //!   with a factor or a vertex colour happen in linear light:
 //!   [`LINEAR`] maps a byte to linear light in 0..=65535 (the sRGB curve,
-//!   from `trig::pow`, rounded), and [`encode`] maps back to the nearest
+//!   from `double::pow`, rounded), and [`encode`] maps back to the nearest
 //!   byte by an exact search of that table.
 //! - **Mip chain.** Level 0 is the image. Level k + 1 is level k halved,
 //!   each size rounded down and at least 1; texel (x, y) is the mean of
@@ -25,7 +25,9 @@
 //! Integer arithmetic except the position in the grid (f64 `*`, `-`,
 //! `floor`), so the result is the same on every host.
 
-use crate::math::{DVec2, trig};
+use crate::math::DVec2;
+
+use og_core::math::double;
 
 use crate::tools::preview::Image;
 
@@ -46,7 +48,7 @@ pub fn to_linear(c: f64) -> f64 {
     if c <= 0.04045 {
         c / 12.92
     } else {
-        trig::pow((c + 0.055) / 1.055, 2.4)
+        double::pow((c + 0.055) / 1.055, 2.4)
     }
 }
 
@@ -55,7 +57,7 @@ pub fn to_srgb(l: f64) -> f64 {
     if l <= 0.003_130_8 {
         l * 12.92
     } else {
-        1.055 * trig::pow(l, 1.0 / 2.4) - 0.055
+        1.055 * double::pow(l, 1.0 / 2.4) - 0.055
     }
 }
 

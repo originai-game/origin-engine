@@ -483,7 +483,7 @@ impl Model {
                 pivot_to_parent: nearest(&live(j.parent, Some(j.child)), j.desc.on.origin)?,
                 pivot_to_child: nearest(&live(j.child, None), j.desc.on.origin)?,
                 parent_moved: (now.origin - j.seat.origin).length(),
-                parent_turned: 2.0 * crate::math::trig::asin(half),
+                parent_turned: 2.0 * og_core::math::double::asin(half),
             });
         }
         Ok(out)

@@ -2,6 +2,7 @@
 //! (`docs/research.md` §6.4, §10): loft through holes and by spline, the
 //! +z axis, body, wire, knurl and the gear solid.
 
+use og_core::math::double;
 use og_shape::generators::body::{Body, View, body};
 use og_shape::generators::parts::{GearDesc, Knurl, gear_solid, knurl};
 use og_shape::generators::path3::{Path3, Piece, flatten};
@@ -12,7 +13,7 @@ use og_shape::generators::solids::{
     Axis, DomeDesc, Revolve, SphereDesc, TorusDesc, dome_desc, revolve, sphere_desc, torus_desc,
 };
 use og_shape::generators::wire::{Wire, wire};
-use og_shape::math::{DVec3, HashError, OutputHash, trig};
+use og_shape::math::{DVec3, HashError, OutputHash};
 use og_shape::mesh::Solid;
 use og_shape::profile::{Circle, Rect, circle, rect};
 
@@ -262,7 +263,7 @@ fn wires(h: &mut OutputHash) -> Result<(), HashError> {
         wire(&Wire {
             path: (0..5)
                 .map(|k| {
-                    let (s, c) = trig::sin_cos(trig::TAU * (k as f64 / 5.0));
+                    let (s, c) = double::sin_cos(double::TAU * (k as f64 / 5.0));
                     DVec3::new(30.0 * c, 30.0 * s, if k % 2 == 0 { 0.0 } else { 8.0 })
                 })
                 .collect(),
@@ -312,7 +313,7 @@ fn gears(h: &mut OutputHash) -> Result<(), HashError> {
         gear_solid(&GearDesc {
             teeth: 12,
             module: 2.0,
-            pressure_angle: trig::to_radians(14.5),
+            pressure_angle: double::to_radians(14.5),
             width: 4.0,
             bore: 4.0,
             ..Default::default()
@@ -406,7 +407,7 @@ fn sweep_ends(h: &mut OutputHash) -> Result<(), HashError> {
 fn lofts_along(h: &mut OutputHash) -> Result<(), HashError> {
     use og_shape::math::Frame;
     let on_ring = |r: f64, turn: f64| {
-        let (sin, cos) = trig::sin_cos(trig::TAU * turn);
+        let (sin, cos) = double::sin_cos(double::TAU * turn);
         Frame {
             origin: DVec3::new(r * cos, r * sin, 0.0),
             x: DVec3::new(cos, sin, 0.0),

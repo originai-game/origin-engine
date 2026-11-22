@@ -16,10 +16,12 @@
 //! the second, 0.05 mm later. An end where both views close is a point;
 //! any other end is a flat cap.
 
-use crate::math::{DVec2, DVec3, trig};
+use crate::math::{DVec2, DVec3};
+
 use crate::mesh::Solid;
 use crate::profile::curve::segments;
 use crate::profile::{Contour, Profile, Superellipse, superellipse};
+use og_core::math::double;
 
 use crate::generators::solids::{GenError, RingUvs, finish, push};
 use crate::generators::spline;
@@ -248,7 +250,7 @@ pub(crate) fn body_with(d: &Body, uvs: bool) -> Result<Solid, GenError> {
     let mut ys: Vec<f64> = if curved {
         (0..=SECTIONS)
             .map(|i| {
-                let c = trig::cos(trig::PI * (i as f64 / SECTIONS as f64));
+                let c = double::cos(double::PI * (i as f64 / SECTIONS as f64));
                 y0 + (y1 - y0) * (1.0 - c) / 2.0
             })
             .collect()
@@ -323,7 +325,7 @@ pub(crate) fn body_with(d: &Body, uvs: bool) -> Result<Solid, GenError> {
         .iter()
         .filter_map(|s| s.1)
         .fold(0.0f64, |m, (a, b)| m.max(a).max(b));
-    let count = segments(widest, trig::TAU).max(4);
+    let count = segments(widest, double::TAU).max(4);
     let mut s = Solid::default();
     let mut rings: Vec<Vec<u32>> = Vec::with_capacity(sections.len());
     let mut flats: Vec<Option<Vec<DVec2>>> = Vec::with_capacity(sections.len());
@@ -442,7 +444,7 @@ mod tests {
             ..Default::default()
         })
         .unwrap();
-        let count = segments(10.0, trig::TAU);
+        let count = segments(10.0, double::TAU);
         let want = polygon(10.0, 5.0, count) * 100.0;
         assert!((closed(&s) - want).abs() < 1e-9 * want);
         let m = s.measure();
@@ -463,7 +465,7 @@ mod tests {
             ..Default::default()
         })
         .unwrap();
-        let count = segments(10.0, trig::TAU);
+        let count = segments(10.0, double::TAU);
         let want = polygon(10.0, 6.0, count) * 60.0 / 3.0;
         assert!(
             (closed(&s) - want).abs() < 1e-9 * want,

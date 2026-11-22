@@ -4,10 +4,12 @@
 //! `detail` times, every vertex pushed onto the sphere of `radius`,
 //! unindexed as three.js (flat normals at detail 0, the sphere's normals
 //! above it) with three.js's spherical uvs and seam corrections; azimuth
-//! and inclination read [`crate::generators::trig::atan2`].
+//! and inclination read [`og_core::math::double::atan2`].
 
-use crate::generators::{Mesh, finish, normalize, trig, vertex_normals};
+use crate::generators::{Mesh, finish, normalize, vertex_normals};
+
 use glam::DVec3;
+use og_core::math::double;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Polyhedron {
@@ -18,11 +20,11 @@ pub struct Polyhedron {
 }
 
 fn azimuth(v: DVec3) -> f64 {
-    trig::atan2(v.z, -v.x)
+    double::atan2(v.z, -v.x)
 }
 
 fn inclination(v: DVec3) -> f64 {
-    trig::atan2(-v.y, (v.x * v.x + v.z * v.z).sqrt())
+    double::atan2(-v.y, (v.x * v.x + v.z * v.z).sqrt())
 }
 
 /// three.js's Vector3.lerp: `a + (b - a) * t`, component by component.
@@ -95,8 +97,8 @@ pub fn polyhedron(p: &Polyhedron) -> Result<Mesh, String> {
         // three.js stores 1 - v; the engine's v runs down, so v itself.
         .map(|&x| {
             [
-                azimuth(x) / 2.0 / trig::PI + 0.5,
-                inclination(x) / trig::PI + 0.5,
+                azimuth(x) / 2.0 / double::PI + 0.5,
+                inclination(x) / double::PI + 0.5,
             ]
         })
         .collect();
@@ -112,7 +114,7 @@ pub fn polyhedron(p: &Polyhedron) -> Result<Mesh, String> {
                 uv[0] = u0 - 1.0;
             }
             if x.x == 0.0 && x.z == 0.0 {
-                uv[0] = azi / 2.0 / trig::PI + 0.5;
+                uv[0] = azi / 2.0 / double::PI + 0.5;
             }
         }
     }

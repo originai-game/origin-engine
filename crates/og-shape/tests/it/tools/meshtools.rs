@@ -131,7 +131,7 @@ fn obj_round_trip_and_polygons() {
             .position(|&v| p.solid.positions[v as usize] == DVec3::ZERO)?;
         Some(c[k])
     });
-    let half = og_shape::math::trig::pow((0.5 + 0.055) / 1.055, 2.4);
+    let half = og_core::math::double::pow((0.5 + 0.055) / 1.055, 2.4);
     assert_eq!(first, Some([1.0, half as f32, 0.0, 1.0]));
     assert!(colors.iter().flatten().filter(|c| **c == [1.0; 4]).count() > 0);
     assert_eq!(p.name, "plate");
@@ -531,7 +531,7 @@ fn a_uniform_armature_scale_comes_out_of_the_bones() {
     // Posing the knee 0.7 rad about its own glTF z gives what the file's
     // own matrices give: S · T(knee) · R · T(knee)⁻¹ on the knee's
     // vertices (cm), the hip's still, then metres to kernel space.
-    let (sn, cs) = og_shape::math::trig::sin_cos(0.7);
+    let (sn, cs) = og_core::math::double::sin_cos(0.7);
     let file_posed: Vec<DVec3> = [(0.0, 0.0), (10.0, 0.0), (10.0, 50.0), (0.0, 50.0)]
         .iter()
         .map(|&(x, y): &(f64, f64)| {
@@ -795,7 +795,7 @@ fn a_file_s_animation_poses_its_skin() {
         // z (the kernel's −y axis... the turn takes +z to −x), and the hip
         // has stepped 100 along x, taking the knee with it.
         let (top, foot) = posed(0.5);
-        let d = 250.0 * og_shape::math::trig::sin(og_shape::math::trig::PI / 4.0);
+        let d = 250.0 * og_core::math::double::sin(og_core::math::double::PI / 4.0);
         near(top, DVec3::new(100.0 - d, 0.0, 250.0 + d));
         near(foot, DVec3::new(100.0, 0.0, 0.0));
         // At the end, and held after it: a quarter turn.
