@@ -406,6 +406,26 @@ pub const MINI_GAME_SCENES: &[&str] = &[
     "mini-game-ui-shapes",
 ];
 
+/// Scenes drawn at the WebGPU compatibility tier (`Tier::Compat`, what a
+/// GLES or D3D11 device's browser gives): each is the scene after
+/// `compat-`, made for that tier on whatever device runs it, so its
+/// device has compatibility mode's limits (128-invocation workgroups,
+/// 4096-texel textures) and its passes the tier's fallbacks. og-tests-
+/// cooked's `frames_at_the_compat_tier` holds them to the scene's own
+/// reference: a lit 3D set with shadows, the sky and TAA, physical
+/// materials, the sea and its foam, screen-space reflections, GPU-placed
+/// scatter with impostors, terrain with grass, culled crowds, and 2D lights.
+pub const COMPAT_SCENES: &[&str] = &[
+    "gltf-reference",
+    "materials-physical",
+    "water-ocean",
+    "ssr-wet-floor",
+    "plant-scatter",
+    "terrain-grass",
+    "crowd-lods",
+    "tilemap-lit",
+];
+
 /// Draws `g` as a game does, with the tier's antialiasing settled over
 /// eight frames: an outdoor set's thin edges (pine needles, blades of
 /// grass) alias without it, and the clouds' march is dithered for it.
@@ -419,6 +439,11 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
     if let Some(scene) = name.strip_prefix("mini-game-") {
         let mut g = build(scene)?;
         g.desc.tier = og_render::Tier::MiniGame;
+        return Ok(g);
+    }
+    if let Some(scene) = name.strip_prefix("compat-") {
+        let mut g = build(scene)?;
+        g.desc.tier = og_render::Tier::Compat;
         return Ok(g);
     }
     let mut g = GfxScene {

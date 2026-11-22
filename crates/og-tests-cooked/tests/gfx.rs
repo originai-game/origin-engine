@@ -84,6 +84,34 @@ references! {
     decals => "decals",
 }
 
+/// A frame at WebGPU's compatibility tier, on a full device: each of
+/// [`COMPAT_SCENES`](og_tests_cooked::scenes::COMPAT_SCENES) made with
+/// compatibility mode's limits and the tier's fallbacks matches the scene's
+/// own reference (a moved frame is reported, as every reference is), so a
+/// pass that leaves those limits fails validation here, and one whose
+/// fallback stops drawing moves a frame.
+#[test]
+#[ignore = "requires GPU"]
+fn frames_at_the_compat_tier() {
+    use og_render::{Caps, Tier};
+    for scene in og_tests_cooked::scenes::COMPAT_SCENES {
+        let mut built = og_tests_cooked::scenes::build(&format!("compat-{scene}"))
+            .unwrap_or_else(|e| panic!("{e}"));
+        let report = gfx::check_built(scene, &mut built, &out_dir("og-gfx"))
+            .unwrap_or_else(|e| panic!("{e}"));
+        println!("{report}");
+        assert_eq!(report.info.tier, Tier::Compat, "{scene}");
+        for lacking in [
+            Caps::VERTEX_STORAGE,
+            Caps::INDEPENDENT_BLEND,
+            Caps::RG32_STORAGE,
+        ] {
+            assert!(!report.info.caps.contains(lacking), "{scene}: {lacking:?}");
+        }
+        assert!(report.info.max_texture_size <= 4096, "{scene}");
+    }
+}
+
 /// A frame at a limited tier, on a full device: each of
 /// [`MINI_GAME_SCENES`](og_tests_cooked::scenes::MINI_GAME_SCENES) matches
 /// its own reference, drawn by a renderer whose capabilities the tier

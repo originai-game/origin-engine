@@ -51,6 +51,12 @@ pub const NATIVE_SCENES: &[&str] = &[
 /// Builds the scene called `name`: the scenes that cook here, every other
 /// one through og-tests' [`og_tests::scenes::build`].
 pub fn build(name: &str) -> Result<GfxScene, String> {
+    // A cooked scene at the compatibility tier (og_tests::scenes::COMPAT_SCENES).
+    if let Some(scene) = name.strip_prefix("compat-") {
+        let mut g = build(scene)?;
+        g.desc.tier = og_render::Tier::Compat;
+        return Ok(g);
+    }
     let mut g = GfxScene {
         desc: base_desc(),
         scene: RenderScene::new(),
