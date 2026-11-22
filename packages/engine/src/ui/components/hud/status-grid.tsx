@@ -37,12 +37,13 @@ export interface StatusGridProps {
  * darkened clockwise. The type notch is dropped (the rim carries the
  * type).
  */
+// A debuff's edge by its type: theme roles, paired per scheme by the pack.
 const EDGES: Record<string, string> = {
-  magic: "#5cc8ff",
-  curse: "#c86ff5",
-  poison: "#45e08f",
-  disease: "#ffa53d",
-  bleed: "#ff9599",
+  magic: "border-info",
+  curse: "border-epic",
+  poison: "border-success",
+  disease: "border-warn",
+  bleed: "border-danger",
 };
 
 function effectTime(remaining: number): string {
@@ -53,7 +54,7 @@ function EffectTile(props: { effect: StatusGridEffect; debuff: boolean }) {
   const remaining = () => props.effect.remaining ?? 0;
   const duration = () => props.effect.duration ?? 0;
   const stacks = () => props.effect.stacks ?? 0;
-  const edge = () => (props.debuff ? EDGES[props.effect.type ?? ""] ?? "#ff9599" : "#8892a8");
+  const edge = () => (props.debuff ? EDGES[props.effect.type ?? ""] ?? "border-danger" : "border-rim-strong");
   return (
     <View
       class="group/statusgrid flex-col items-center gap-y-0.5 min-w-9"
@@ -66,8 +67,7 @@ function EffectTile(props: { effect: StatusGridEffect; debuff: boolean }) {
       data-type-bleed={props.effect.type === "bleed"}
     >
       <View
-        class={`relative size-8 overflow-hidden rounded-control bg-linear-to-b from-raised-lo to-surface ring ring-shade-deep flex-col items-center justify-center border`}
-        style={{ borderColor: edge() }}
+        class={`relative size-8 overflow-hidden rounded-control bg-linear-to-b from-raised-lo to-surface ring ring-shade-deep flex-col items-center justify-center border ${edge()}`}
       >
         <Icon class="size-6 text-fg text-shadow-2xs group-data-expiring/statusgrid:animate-pulse" name={props.effect.icon} />
         <Show when={duration() > 0 && remaining() < duration()}>

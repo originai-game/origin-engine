@@ -49,7 +49,7 @@ export function OverlayBar(props: OverlayBarProps) {
               label={`${o().name}: ${o().low ?? ""} – ${o().high ?? ""}`}
             >
               <Text class="text-sm font-semibold whitespace-nowrap text-fg text-shadow-xs">{o().name}</Text>
-              <View class="h-2 w-full rounded-control" style={{ background: `linear-gradient(90deg, ${o().ramp ?? ""})` }} />
+              <View class="h-2 w-full rounded-control" style={{ backgroundImage: `linear-gradient(90deg, ${o().ramp ?? ""})` }} />
               <View class="flex-row w-full gap-x-3">
                 <Text class="min-w-0 text-xs font-semibold tracking-label uppercase text-fg-muted text-shadow-xs">{o().low ?? ""}</Text>
                 <Text class="min-w-0 flex-1 text-end text-xs font-semibold tracking-label uppercase text-fg-muted text-shadow-xs">{o().high ?? ""}</Text>

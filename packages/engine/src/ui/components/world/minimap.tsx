@@ -39,16 +39,17 @@ export interface MinimapProps {
  * crops by layout: the texture draws oversized and offset inside the
  * overflowing well. The grid's SVG is drawn as thin views on the tile.
  */
+// Each tone's ground, a theme role paired per scheme by the pack.
 const TONES: Record<string, string> = {
-  info: "#5cc8ff",
-  success: "#45e08f",
-  warn: "#ffa53d",
-  danger: "#ff4d5e",
-  accent: "#38e8ff",
+  info: "bg-info",
+  success: "bg-success",
+  warn: "bg-warn",
+  danger: "bg-foe",
+  accent: "bg-hud-accent",
 };
 
 function markerTone(m: MinimapMarker): string {
-  return m.player ? "#38e8ff" : TONES[m.tone ?? ""] ?? "#e8e8ed";
+  return m.player ? "bg-hud-accent" : TONES[m.tone ?? ""] ?? "bg-fg";
 }
 
 /**
@@ -84,9 +85,8 @@ export function Minimap(props: MinimapProps) {
         <For each={props.markers ?? []} key={(m) => m.id}>
           {(m) => (
             <View
-              class={`absolute rounded-full ${m().player ? "size-3 border-2 border-accent" : "size-2"}`}
+              class={`absolute rounded-full ${markerTone(m())} ${m().player ? "size-3 border-2 border-accent" : "size-2"}`}
               style={{
-                background: markerTone(m()),
                 left: `${m().x * 100}%`,
                 top: `${m().y * 100}%`,
                 transform: "translate(-50%, -50%)",

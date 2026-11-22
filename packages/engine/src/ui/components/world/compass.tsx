@@ -48,16 +48,18 @@ const POINTS: ReadonlyArray<{ at: number; cardinal: boolean; key: string }> = [
   { at: 2.625, cardinal: false, key: "component.compass.nw" },
 ];
 
-const POI_INKS: Record<string, string> = {
-  objective: "#ffcf5a",
-  ping: "#38e8ff",
-  enemy: "#ff4d5e",
-  ally: "#4fd8ff",
-  loot: "#c86ff5",
+// Each kind's ink as a ground (the pip) and as text (its icon): theme roles
+// paired per scheme by the pack.
+const POI_INKS: Record<string, [string, string]> = {
+  objective: ["bg-gold", "text-gold"],
+  ping: ["bg-hud-accent", "text-hud-accent"],
+  enemy: ["bg-foe-ink", "text-foe-ink"],
+  ally: ["bg-ally-ink", "text-ally-ink"],
+  loot: ["bg-epic", "text-epic"],
 };
 
-function poiInk(kind?: string): string {
-  return POI_INKS[kind ?? ""] ?? "#ffffff";
+function poiInk(kind?: string): [string, string] {
+  return POI_INKS[kind ?? ""] ?? ["bg-fg", "text-fg"];
 }
 
 function PoiCopy(props: { poi: CompassPoi; wrap: number; units: string }) {
@@ -69,9 +71,9 @@ function PoiCopy(props: { poi: CompassPoi; wrap: number; units: string }) {
       style={{ left: `calc(${((props.poi.bearing * K + props.wrap) / 9) * 100}% - 2.857rem)` }}
     >
       <Show when={(props.poi.icon ?? "") !== ""} fallback={
-        <View class="size-2.5 m-0.25 rotate-45 ring-2 ring-entry-hi" style={{ background: ink() }} />
+        <View class={`size-2.5 m-0.25 rotate-45 ring-2 ring-entry-hi ${ink()[0]}`} />
       }>
-        <Icon class="size-3" name={props.poi.icon} style={{ color: ink() }} />
+        <Icon class={`size-3 ${ink()[1]}`} name={props.poi.icon} />
       </Show>
       <Show when={(props.poi.distance ?? -1) >= 0}>
         <Text class="text-caption leading-tight font-bold tabular-nums whitespace-nowrap text-fg text-shadow-xs">{`${formatNumber(props.poi.distance ?? 0)}${props.units}`}</Text>

@@ -294,7 +294,7 @@ export function Inspector(props: InspectorProps) {
                           <Text class="grow min-w-0 truncate text-xs text-fg-subtle">{f().text}</Text>
                         </Show>
                         <Show when={f().swatch !== ""}>
-                          <View class="size-6 shrink-0 rounded-sm border border-border" style={{ background: f().swatch }} />
+                          <View class="size-6 shrink-0 rounded-sm border border-border" style={{ backgroundColor: f().swatch }} />
                         </Show>
                         <For each={f().parts} key={(p) => p.id}>
                           {(p) => (

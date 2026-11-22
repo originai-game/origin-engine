@@ -1,0 +1,13 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "Compass, Minimap, StatusGrid",
+      "summary": "Point-of-interest pips and icons, minimap markers and debuff edges take their kind's theme role (gold, hud-accent, foe-ink, ally-ink, epic; info, success, warn, foe; info, epic, success, warn, danger), paired per scheme by the pack, instead of a fixed colour. The compass's pips and the minimap's markers had been an inline `background` the UI never drew, so they did not show at all."
+    },
+    {
+      "member": "RadialMeter, OverlayBar",
+      "summary": "A radial meter's fill ring is inset to its arc again, and an overlay's colour ramp draws: both had been an inline shorthand (`inset`, `background`) the UI dropped."
+    }
+  ]
+}
