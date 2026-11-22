@@ -43,8 +43,14 @@ pub struct CodeGraph {
 const TABLE_PREFIX: &str = "@ui/";
 
 impl CodeGraph {
-    /// The graph the bundler wrote at `path`.
-    pub fn read(path: &Path) -> Result<CodeGraph, String> {
+    /// The graph the bundler wrote at `path` for the project at `project`.
+    ///
+    /// A file is the engine's when it sits under the engine package, unless
+    /// the project sits there too and the file is the project's: the deeper
+    /// root owns it. A game in the engine's checkout (its test fixtures)
+    /// keeps its code, and an installed engine
+    /// (`<project>/node_modules/@origingame/engine`) stays the engine's.
+    pub fn read(path: &Path, project: &Path) -> Result<CodeGraph, String> {
         #[derive(serde::Deserialize)]
         struct Reached {
             engine: PathBuf,
@@ -53,6 +59,16 @@ impl CodeGraph {
         let text = std::fs::read_to_string(path).map_err(|e| format!("{}: {e}", path.display()))?;
         let reached: Reached =
             serde_json::from_str(&text).map_err(|e| format!("{}: {e}", path.display()))?;
+        let canonical = |p: &Path| {
+            p.canonicalize()
+                .map_err(|e| format!("{}: {e}", p.display()))
+        };
+        let (root, engine) = (canonical(project)?, canonical(&reached.engine)?);
+        let in_project = root.starts_with(&engine);
+        let engine_code = |file: &Path| {
+            file.starts_with(&reached.engine)
+                && !(in_project && (file.starts_with(&root) || file.starts_with(project)))
+        };
         let ui = reached.engine.join("src").join("ui");
         let mut graph = CodeGraph::default();
         for file in reached.files {
@@ -71,7 +87,7 @@ impl CodeGraph {
                 }
                 continue;
             }
-            if file.starts_with(&reached.engine)
+            if engine_code(&file)
                 || !matches!(
                     file.extension().and_then(|e| e.to_str()),
                     Some("ts" | "tsx" | "js" | "jsx" | "mts" | "mjs" | "cts" | "cjs")
@@ -152,7 +168,7 @@ mod tests {
         let write = |files: &[&Path]| {
             let v = serde_json::json!({ "engine": engine, "files": files });
             std::fs::write(&graph, v.to_string()).unwrap();
-            CodeGraph::read(&graph).unwrap()
+            CodeGraph::read(&graph, &game).unwrap()
         };
         let none = write(&[&engine.join("src/index.ts"), &main]);
         assert_eq!(
@@ -183,6 +199,55 @@ mod tests {
         assert_eq!(
             all.tables.into_iter().collect::<Vec<_>>(),
             vec![("@ui/components/hud/bar.en.ogt".to_string(), table)]
+        );
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// The deeper root owns a file: a game inside the engine package (a
+    /// test fixture) keeps its code, whose loads the publish plan keeps,
+    /// and an engine installed inside the game stays the engine's.
+    #[test]
+    fn a_game_under_the_engine_keeps_its_code_and_an_installed_engine_stays_the_engines() {
+        let dir = std::env::temp_dir().join(format!("og-graph-nest-{}", std::process::id()));
+        let engine = dir.join("engine");
+        let fixture = engine.join("tests/fixtures/crowd");
+        let game = dir.join("game");
+        let installed = game.join("node_modules/@origingame/engine");
+        for d in [
+            engine.join("src"),
+            fixture.join("src"),
+            installed.join("src"),
+        ] {
+            std::fs::create_dir_all(d).unwrap();
+        }
+        let load =
+            "export const m = (og: any, w: any) => og.load.gltf(w, \"models/walker.glb\");\n";
+        let main = fixture.join("src/main.ts");
+        std::fs::write(&main, load).unwrap();
+        let game_main = game.join("src/main.ts");
+        std::fs::create_dir_all(game.join("src")).unwrap();
+        std::fs::write(&game_main, load).unwrap();
+        let engine_index = engine.join("src/index.ts");
+        let installed_index = installed.join("src/index.ts");
+        std::fs::write(&engine_index, "export const raycast = 1;\n").unwrap();
+        std::fs::write(&installed_index, "export const raycast = 1;\n").unwrap();
+        let graph = dir.join("graph.json");
+        let read = |engine: &Path, files: &[&Path], project: &Path| {
+            let v = serde_json::json!({ "engine": engine, "files": files });
+            std::fs::write(&graph, v.to_string()).unwrap();
+            CodeGraph::read(&graph, project).unwrap()
+        };
+        let nested = read(&engine, &[&engine_index, &main], &fixture);
+        assert_eq!(nested.files, std::slice::from_ref(&main));
+        assert!(
+            !nested.raycast,
+            "the engine's own modules are not the game's"
+        );
+        let shipped = read(&installed, &[&installed_index, &game_main], &game);
+        assert_eq!(shipped.files, std::slice::from_ref(&game_main));
+        assert!(
+            !shipped.raycast,
+            "an installed engine's modules are not the game's"
         );
         let _ = std::fs::remove_dir_all(&dir);
     }

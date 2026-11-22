@@ -13,21 +13,12 @@ fn main() -> ExitCode {
     let mut args = std::env::args().skip(1);
     let mut root = None;
     let mut options = CookOptions::default();
-    let (mut report, mut json) = (None, None);
+    let (mut report, mut json, mut graph) = (None, None, None);
     while let Some(a) = args.next() {
         match a.as_str() {
             "--threads" => options.threads = args.next().and_then(|v| v.parse().ok()).unwrap_or(0),
             "--report" => report = args.next(),
-            "--graph" => {
-                let path = args.next().unwrap_or_default();
-                match og_cook::cook::CodeGraph::read(std::path::Path::new(&path)) {
-                    Ok(g) => options.code = g,
-                    Err(e) => {
-                        eprintln!("{e}");
-                        return ExitCode::from(2);
-                    }
-                }
-            }
+            "--graph" => graph = args.next(),
             "--json" => json = args.next(),
             "--schemas" => {
                 let path = args.next().unwrap_or_default();
@@ -62,6 +53,19 @@ fn main() -> ExitCode {
         eprintln!("usage: og-cook <project> [--threads N] [--report out.md] [--json out.json]");
         return ExitCode::from(2);
     };
+    // The graph's game code is told from the engine's by the project's root.
+    if let Some(path) = graph {
+        match og_cook::cook::CodeGraph::read(
+            std::path::Path::new(&path),
+            std::path::Path::new(&root),
+        ) {
+            Ok(g) => options.code = g,
+            Err(e) => {
+                eprintln!("{e}");
+                return ExitCode::from(2);
+            }
+        }
+    }
     match cook_project(std::path::Path::new(&root), &options) {
         Ok(r) => {
             let md = r.to_markdown();

@@ -291,7 +291,7 @@ pub fn code_graph(root: &Path) -> Result<CodeGraph, String> {
         .ok_or_else(|| format!("og cook: {}", crate::project::NO_ENGINE))?;
     let bundle =
         crate::project::bundle_native(&p, &package).map_err(|e| format!("og cook: {e}"))?;
-    CodeGraph::read(&crate::project::graph_of(&bundle))
+    CodeGraph::read(&crate::project::graph_of(&bundle), &p.root)
 }
 
 /// [`cook_for`] with the code's graph given (`code_graph`, or the one the

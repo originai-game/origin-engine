@@ -299,7 +299,7 @@ pub fn prepare_traced(
     let bundle = project::bundle_native(p, package)?;
     let mut cook_spans = Vec::new();
     if p.has_assets() {
-        let code = og_cook::cook::CodeGraph::read(&project::graph_of(&bundle))?;
+        let code = og_cook::cook::CodeGraph::read(&project::graph_of(&bundle), &p.root)?;
         let report = crate::cook::cook_with(&p.root, 0, false, false, code)?;
         cook_spans = crate::trace::cook_events(&report, origin, origin);
         let cooked = report
