@@ -1114,6 +1114,12 @@
       "visibility": "public"
     },
     {
+      "path": "tests/fixtures/video/assets/clips/keyed.mov",
+      "sha256": "280448749e65f4a2b9003501fa8969899430998225c48ab68b6f1d0afe742638",
+      "size": 84248,
+      "visibility": "public"
+    },
+    {
       "path": "vendor/basis/basis_transcoder.wasm",
       "sha256": "f593e2722eb16014a3959e1a7a41ac09419bb4bd23e09e34c5c4f9e6c2b94c25",
       "size": 519781,

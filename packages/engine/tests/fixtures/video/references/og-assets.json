@@ -2,6 +2,12 @@
   "version": 1,
   "files": [
     {
+      "path": "vulkan/keyed.png",
+      "sha256": "ee4d767008fa7cbabbf222b70b082576feeb5b8157122443b7a9af0b89478e16",
+      "size": 29764,
+      "visibility": "public"
+    },
+    {
       "path": "vulkan/video-90.png",
       "sha256": "0e2dd8b07a8d4d6223c8438649ff671f1df8608555617ca224d9a3cb563e545a",
       "size": 132516,

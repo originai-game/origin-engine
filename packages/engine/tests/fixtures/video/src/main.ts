@@ -5,6 +5,9 @@
 // its sprite, so the two halves show different frames.
 // `stream` plays the streamed cook of the same source (count-stream.ogt:
 // AV1 decoded as it plays) on the screen from its current time.
+// `keyed` shows clips/keyed.ogt (white, its alpha a ramp, streamed with
+// `alpha true`) on the UI image over a black background, the sprite gone,
+// beside the host's own blend of the same alphas (Frame's swatches).
 // `surfaces` takes the sprite away and shows the player's texture twice:
 // as the map of an unlit og.Mesh plane on the left half of the view, and
 // on a UI image on the right half (Surfaces binds it every tick).
@@ -58,9 +61,11 @@ export default og.game({
   },
   ui(world) {
     const texture = og.ui.scope(world, "video").writable("texture", 0);
+    const swatches = og.ui.scope(world, "video").writable("swatches", false);
     mount(world, () => {
       const shown = useStore(texture);
-      return Frame({ get texture() { return shown() as Texture | 0; } });
+      const keyed = useStore(swatches);
+      return Frame({ get texture() { return shown() as Texture | 0; }, get swatches() { return keyed(); } });
     }, {}, { layer: "hud" });
   },
   commands: {
@@ -77,6 +82,16 @@ export default og.game({
       const second = must(world.spawn({ name: "screen2", position: { x: 4, y: 0, z: 0 } }));
       must(world.insert(second, og.Sprite, { width: 8, height: 4.5 }));
       must(world.insert(second, og.VideoPlayer, { video: playing, time: time + 0.5, loop }));
+    },
+    keyed: (world: World) => {
+      const screen = world.find("screen")!;
+      must(world.set(screen, og.Sprite, { width: 0, height: 0 }) as never);
+      must(world.resource(og.Camera)).background = { r: 0, g: 0, b: 0 };
+      const keyed = must(og.load.video(world, "clips/keyed.ogt"));
+      const player = must(world.spawn({ name: "keyed" }));
+      must(world.insert(player, og.VideoPlayer, { video: keyed.video, loop: true }));
+      must(og.ui.scope(world, "video").writable("texture", 0).set(keyed.texture as number));
+      must(og.ui.scope(world, "video").writable("swatches", false).set(true));
     },
     surfaces: (world: World) => {
       const screen = world.find("screen")!;

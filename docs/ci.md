@@ -512,12 +512,18 @@ passes. A tier gets its own reference only for a difference it makes by
 design; `--record` writes the tier's references. A missing Chrome is an
 error, never a skip.
 
-`web-reference` runs four groups (`WEB_GROUPS` in
+`web-reference` runs five groups (`WEB_GROUPS` in
 `scripts/gate/commands.sh`): **ui** (§The accessibility mirror in the
 browser), **gfx** (§og-tests' gfx scenes in the browser),
 **vehicle-terrain** (`tests/fixtures/vehicle-terrain`, its script and shots
 read from the playtest itself, so a retimed playtest moves its browser
-frames with it) and **lane-panic** (§The lanes wasm).
+frames with it), **lane-panic** (§The lanes wasm) and **video**
+(`tests/web/video-alpha.ts`: the video fixture's keyed stream, `alpha true`,
+decoded by the browser and folded on the GPU; its alpha ramp is read against
+white swatches at 25, 50 and 75 % opacity in the same frame, on the web
+frame and on `references/vulkan/keyed.png`, since the web's wide-gamut
+canvas blends translucent UI in linear light where an 8-bit sRGB output
+blends display values).
 
 ### og-tests' gfx scenes in the browser
 

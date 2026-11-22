@@ -1,0 +1,14 @@
+type video
+version 1
+---
+# keyed.mov: white whose alpha ramps from 0 at the left to 255 at the right
+# (QuickTime Animation, 1 s), streamed with its alpha packed below the
+# colour (`alpha true`). The `keyed` command shows it on a UI image over a
+# black background, so each column reads its alpha (video-alpha web check).
+source "keyed.mov"
+stream true
+fps 10
+size 192 108
+keyframe 1
+audio false
+alpha true

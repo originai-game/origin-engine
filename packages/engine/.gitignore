@@ -197,5 +197,6 @@ motion/
 /tests/fixtures/terrain/assets/terrain/hill.png
 /tests/fixtures/terrain/assets/textures/grass.png
 /tests/fixtures/video/assets/clips/count.mp4
+/tests/fixtures/video/assets/clips/keyed.mov
 /vendor/basis/basis_transcoder.wasm
 # og-assets end

@@ -584,7 +584,7 @@ step_fixtures() {
 # at the end; the step fails when any group does. Every run serves on its
 # own port and starts Chrome with its own profile directory (port 0,
 # mkdtemp: tests/web/serve.ts, cdp.ts).
-WEB_GROUPS="ui gfx vehicle-terrain lane-panic"
+WEB_GROUPS="ui gfx vehicle-terrain lane-panic video"
 WEB_JOBS_DEFAULT=3
 
 # Each web_<group> runs in packages/engine; non-zero when any of its runs failed.
@@ -610,6 +610,10 @@ web_vehicle_terrain() {
 # A panic inside a lane reaches the page as a crash within 5 s, not a hang
 # (docs/web-export.md §Errors), and the same fault single-threaded.
 web_lane_panic() { bun tests/web/lane-panic.ts; }
+# Keyed footage (`alpha true`): the video fixture's packed-alpha stream
+# through copyExternalImageToTexture and the fold, its ramp against the
+# host's own blend and the native frame's.
+web_video() { bun tests/web/video-alpha.ts; }
 
 # Safari on this Mac over WebDriver (docs/ci.md §Safari): the browser tests'
 # lanes with --safari, then `og run --device safari` on a publish build of a
