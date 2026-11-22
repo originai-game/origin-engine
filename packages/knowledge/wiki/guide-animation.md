@@ -437,7 +437,7 @@ loads it. An og.Timeline component plays it on its entity.
 
 | Track | Keys |
 |---|---|
-| `camera` | position and target, or `rail "<path>"` with `at` 0..1 along it, or `follow "<entity>"` with offsets; fov; `roll` (degrees about the view direction); `focus` (a distance) or `focusOn "<entity>"` and `focusRange`, which set og.PostEffects' depth of field while the track owns the camera; eased |
+| `camera` | position and target, or `rail "<path>"` with `at` 0..1 along it, or `follow "<entity>"` with offsets; fov; `roll` (degrees about the view direction); `focus` (a distance) or `focusOn "<entity>"` and `focusRange`, which set og.PostEffects' depth of field while the track owns the camera; eased. `blendIn` and `blendOut` (seconds, on the track) ease from the camera it took at the timeline's start and back to it before the end |
 | `transform "<entity>"` | position, rotation in degrees or a quaternion, scale; eased |
 | `animation "<entity>"` | clip, speed, blendIn, loop; `model` names the glTF whose clips they are, else the entity's og.Model |
 | `audio` | sound, volume, playbackRate, bus |

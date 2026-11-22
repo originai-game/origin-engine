@@ -59,6 +59,46 @@ const LATE: &str = "type timeline\nversion 1\n---\nduration 1\ntrack video {\n  
 
 const DUEL: &str = "track marker {\n  key 0.2 {\n    name \"flow.open\"\n  }\n  key 0.8 {\n    name \"flow.lock\"\n  }\n  key 0.9 {\n    name \"flow.cut\"\n  }\n}\ntrack hotspot {\n  key 0.2 {\n    id \"knife\"\n    rect 0.1 0.1 0.2 0.2\n  }\n  key 0.6 {\n    id \"knife\"\n    rect 0.5 0.1 0.2 0.2\n  }\n}\n";
 
+/// A playable segment: the room live under footage, the camera blended in,
+/// the window from 0.1 s, held at 0.3 s.
+const LEVEL: &str = "type timeline\nversion 1\n---\nduration 1\ntrack video {\n  key 0 {\n    video \"clips/a.ogt\"\n  }\n}\ntrack scene {\n  key 0 {\n    scene \"scenes/room.ogt\"\n  }\n}\ntrack camera {\n  blendIn 0.2\n  key 0 {\n    position 0 2 8\n    target 0 0 0\n  }\n}\ntrack marker {\n  key 0.1 {\n    name \"flow.open\"\n  }\n  key 0.3 {\n    name \"flow.hold\"\n  }\n}\n";
+
+const ROOM: &str = "type scene\nversion 1\n---\nname \"Room\"\nentity \"lamp\" {\n}\n";
+
+fn level() -> String {
+    format!(
+        r#"#og-profile:{}
+#og-name:level
+title: level
+og-flow: segments/level.ogt
+---
+-> Retry #line:retry
+    <<jump frozen>>
+-> won #line:won #outcome:won
+    <<jump won>>
+-> lost #line:lost #outcome:lost
+    <<jump lost>>
+===
+title: won
+og-flow: segments/brave.ogt
+og-flow-ending: won
+---
+===
+title: lost
+og-flow: segments/shy.ogt
+og-flow-ending: lost
+---
+===
+title: frozen
+og-flow: segments/wait.ogt
+og-flow-ending: frozen
+---
+===
+"#,
+        og_story::yarn::PROFILE
+    )
+}
+
 fn duel() -> String {
     format!(
         r#"#og-profile:{}
@@ -178,6 +218,9 @@ fn project() -> Option<&'static Path> {
             std::fs::write(segments.join(format!("{name}.ogt")), segment(markers)).unwrap();
         }
         std::fs::write(segments.join("late.ogt"), LATE).unwrap();
+        std::fs::write(segments.join("level.ogt"), LEVEL).unwrap();
+        std::fs::create_dir_all(root.join("assets/scenes")).unwrap();
+        std::fs::write(root.join("assets/scenes/room.ogt"), ROOM).unwrap();
         let report = og_cook::cook_project(&root, &og_cook::CookOptions::default()).unwrap();
         assert!(report.ok(), "{:?}", report.errors());
         Some(root)
@@ -257,6 +300,7 @@ fn start_in(root: &Path, decks: u32, dialogue: &str) -> Run {
     let engine = value(og_engine_create(game, options)).as_u64().unwrap() as u32;
     ok(og_story_parse(engine, script()));
     ok(og_story_parse(engine, duel()));
+    ok(og_story_parse(engine, level()));
     ok(og_input_define_action(
         engine,
         Some(
@@ -895,4 +939,80 @@ fn the_chart_lays_flow_nodes_out_by_depth_through_logic_nodes() {
     assert_eq!((p[0], p[1], p[32], p[33]), (60.0, 60.0, 260.0, 180.0));
     assert_eq!((p[8], p[9]), (119.375, 78.75));
     assert_eq!((p[16], p[17]), (160.0, 120.0));
+}
+
+/// A playable segment (footage over a live scene) stops at flow.hold and
+/// waits there, its window open, for og.flow.advance to take a hidden
+/// #outcome; the player sees only Retry, which cuts at once while it holds.
+/// Ways this fails: the hold ignored (the segment plays to its end and cuts
+/// to the default), the window locking at the hold, an outcome shown to
+/// the player or taken as the default, advance taking the wrong choice or
+/// a tick late, the camera kept by the level after the cut.
+#[test]
+fn a_held_segment_waits_for_advance_and_takes_its_outcome() {
+    let Some(root) = project() else {
+        eprintln!("skipped: no ffmpeg with an AV1 encoder");
+        return;
+    };
+    let r = start_in(root, 3, "level");
+    let before = ok(og_runtime::og_world_resource(r.engine, "og.Camera".into()));
+    frame(r.engine, 60);
+    let v = view(&r);
+    assert_eq!(v["held"], json!(true), "{v}");
+    assert!((v["time"].as_f64().unwrap() - 0.3).abs() < 1e-4, "{v}");
+    assert_eq!(v["window"]["locked"], json!(false), "{v}");
+    assert_eq!(v["window"]["held"], json!(true), "{v}");
+    let shown: Vec<&str> = v["choices"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|c| c["text"].as_str().unwrap_or_default())
+        .collect();
+    assert_eq!(shown, ["Retry"], "{v}");
+    assert_eq!(route(&r), ["level"], "it holds, far past its 1 s");
+    let flow = ok(og_world_get(r.engine, r.flow, "og.Flow".into()));
+    assert_eq!(flow["held"], json!(true), "{flow}");
+    // The live scene is in the world while the level plays.
+    assert!(og_runtime::og_world_find(r.engine, "lamp".into()).is_some());
+    let refused = |o: Option<&str>| {
+        og_runtime::host_impl::answer(og_runtime::og_flow_advance(
+            r.engine,
+            r.flow,
+            o.map(str::to_string),
+        ))
+    };
+    assert!(
+        refused(Some("draw")).contains("won, lost"),
+        "{}",
+        refused(Some("draw"))
+    );
+    let chose = og_runtime::host_impl::answer(og_flow_choose(r.engine, r.flow, 1));
+    assert!(chose.contains("#outcome"), "{chose}");
+    ok(og_runtime::og_flow_advance(
+        r.engine,
+        r.flow,
+        Some("lost".into()),
+    ));
+    frame(r.engine, 2);
+    assert_eq!(route(&r), ["level", "lost"]);
+    let c = &events(&r, "og.FlowChoice")[0];
+    assert_eq!(
+        (c["index"].clone(), c["timedOut"].clone()),
+        (json!(2), json!(false)),
+        "{c}"
+    );
+    assert_eq!(view(&r)["held"], json!(false));
+    let after = ok(og_runtime::og_world_resource(r.engine, "og.Camera".into()));
+    assert_eq!(
+        after["position"], before["position"],
+        "the level hands the camera back"
+    );
+
+    // The player's choice while it holds cuts at once.
+    let r = start_in(root, 3, "level");
+    frame(r.engine, 30);
+    assert_eq!(view(&r)["held"], json!(true));
+    ok(og_flow_choose(r.engine, r.flow, 0));
+    frame(r.engine, 2);
+    assert_eq!(route(&r), ["level", "frozen"]);
 }

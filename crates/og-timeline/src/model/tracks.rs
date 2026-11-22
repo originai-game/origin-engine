@@ -97,6 +97,18 @@ fn camera(block: &Block) -> Result<CameraTrack, String> {
                     CameraMode::Follow(s)
                 };
             }
+            "blendIn" | "blendOut" => {
+                no_block(e)?;
+                let v = one_number(e)?;
+                if !(v >= 0.0 && v.is_finite()) {
+                    return Err(at(e, "blendIn and blendOut are seconds, 0 or more"));
+                }
+                if e.key == "blendIn" {
+                    c.blend_in = v;
+                } else {
+                    c.blend_out = v;
+                }
+            }
             "key" => {
                 let mut k = CameraKey {
                     time: key_time(e)?,
@@ -143,7 +155,13 @@ fn camera(block: &Block) -> Result<CameraTrack, String> {
                 }
                 ks.push((e, k));
             }
-            _ => return Err(unknown(e, "camera track entry", "rail, follow or key")),
+            _ => {
+                return Err(unknown(
+                    e,
+                    "camera track entry",
+                    "rail, follow, blendIn, blendOut or key",
+                ));
+            }
         }
     }
     for (e, k) in &ks {

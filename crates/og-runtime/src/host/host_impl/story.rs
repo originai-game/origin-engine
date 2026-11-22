@@ -119,6 +119,9 @@ macro_rules! __og_host_bindings_story {
             fn og_flow_chart(&self, world: u32, dialogue: String) -> String {
                 $crate::host_impl::answer($crate::og_flow_chart(world, dialogue))
             }
+            fn og_flow_advance(&self, world: u32, flow: f64, outcome: Option<String>) -> String {
+                $crate::host_impl::answer($crate::og_flow_advance(world, flow, outcome))
+            }
             fn og_flow_stop(&self, world: u32, flow: f64) -> String {
                 $crate::host_impl::answer($crate::og_flow_stop(world, flow))
             }

@@ -1461,6 +1461,8 @@ pub trait FlowApi: Wire {
     fn og_flow_view(&self, world: u32, flow: f64) -> String;
     /// `og.flow.choose`
     fn og_flow_choose(&self, world: u32, flow: f64, index: u32) -> String;
+    /// `og.flow.advance`
+    fn og_flow_advance(&self, world: u32, flow: f64, outcome: Option<String>) -> String;
     /// `og.flow.play`
     fn og_flow_play(&self, world: u32, flow: f64) -> String;
     /// `og.flow.pause`
@@ -2097,6 +2099,7 @@ pub const SYMBOLS: &[&str] = &[
     "og_flow_start",
     "og_flow_view",
     "og_flow_choose",
+    "og_flow_advance",
     "og_flow_play",
     "og_flow_pause",
     "og_flow_skip",

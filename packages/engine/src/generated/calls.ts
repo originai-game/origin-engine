@@ -979,6 +979,7 @@ export const og = Object.freeze({
     start: (world: { readonly id: number }, desc?: unknown): unknown => JSON.parse(abi().og_flow_start(world.id, json(desc))) as unknown,
     view: (world: { readonly id: number }, flow: number): unknown => JSON.parse(abi().og_flow_view(world.id, flow)) as unknown,
     choose: (world: { readonly id: number }, flow: number, index: number): unknown => JSON.parse(abi().og_flow_choose(world.id, flow, index)) as unknown,
+    advance: (world: { readonly id: number }, flow: number, outcome?: string): unknown => JSON.parse(abi().og_flow_advance(world.id, flow, outcome)) as unknown,
     play: (world: { readonly id: number }, flow: number): unknown => JSON.parse(abi().og_flow_play(world.id, flow)) as unknown,
     pause: (world: { readonly id: number }, flow: number): unknown => JSON.parse(abi().og_flow_pause(world.id, flow)) as unknown,
     skip: (world: { readonly id: number }, flow: number): unknown => JSON.parse(abi().og_flow_skip(world.id, flow)) as unknown,

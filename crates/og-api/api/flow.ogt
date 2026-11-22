@@ -1,6 +1,6 @@
 module flow {
-  doc "Interactive film (FMV): a Yarn dialogue paced by its footage. A node with an `og-flow: <timeline>` header plays that segment (a timeline with a video track) on a deck; its choices open at the segment's `flow.open` marker, lock at `flow.lock` and are taken at its cut (`flow.cut`, else its end), the default (`#default`) when none was chosen."
-  doc "The story stays og.story's, the footage og.video's, the timing og.timeline's: og.flow moves the conversation between segments and warms those a choice may lead to on its other decks. All of it is world state."
+  doc "A game's flow as a Yarn dialogue of segments: film, cutscenes, levels and minigames. A node with an `og-flow: <timeline>` header plays that segment on a deck: footage, a live scene (a `scene` track) or both. Its choices open at `flow.open`, lock at `flow.lock` and are taken at the cut (`flow.cut`, else the end), else the `#default`. A playable segment stops at `flow.hold` until og.flow.advance takes a hidden `#outcome:<name>` choice (guide flow)."
+  doc "og.flow moves the conversation between segments and prepares those it may lead to on its other decks (og.Timeline.preroll). All of it is world state."
   guide "flow"
   split story video
 
@@ -53,6 +53,9 @@ module flow {
     field ended bool "The last segment played to its cut and the conversation ended." {
       readonly true
     }
+    field held bool "The segment playing stopped at its `flow.hold` marker: it waits for og.flow.advance (or a choice), its window open without time running out." {
+      readonly true
+    }
     field previous Entity "The deck dissolving out (`og-flow-dissolve`), playing on under the current one; 0: none." {
       readonly true
     }
@@ -84,6 +87,7 @@ module flow {
     field defaultChoice u32 "The ChoiceView.index taken when nothing was chosen (`#default`, else the first enabled)."
     field pending Option.u32 "The choice taken so far."
     field locked bool "Past flow.lock: choosing is over; the cut takes pending, else the default."
+    field held bool "The segment holds (flow.hold): the window never locks, and a choice cuts at once."
   }
 
   struct FlowHotspot {
@@ -127,7 +131,7 @@ module flow {
     field cut f32 "When it cuts to the next: its flow.cut marker, else its duration." {
       unit s
     }
-    field choices List.ChoiceView "The node's choices while its window is open or locked (og.story's)."
+    field choices List.ChoiceView "The node's choices while its window is open or locked (og.story's), without its `#outcome` choices, which the game takes."
     field window Option.WindowView "The window, while it is open or locked."
     field hotspots List.FlowHotspot "The hotspots that take a choice now: while the window is open, those of its enabled choices."
     field qtes List.QteView "The quick-time events of its enabled choices while the window is open or locked."
@@ -136,6 +140,7 @@ module flow {
       unit ratio
     }
     field paused bool "Held by og.flow.pause."
+    field held bool "Stopped at its flow.hold, waiting for og.flow.advance (og.Flow.held)."
     field chapter String "The last chapter entered."
     field ending String "The ending reached, once ended."
     field ended bool "It played to its end."
@@ -201,7 +206,7 @@ module flow {
     doc "Prepare a loaded dialogue's flow: every segment's timeline (and through it every video, which fetches nothing until it plays) and og.flow's records. Call it in setup, after og.story.load, in every process that restores a flow."
     param world World "The world."
     param dialogue String "The dialogue (StoryAsset.name)."
-    returns Result.FlowInfo "Refused for a dialogue not loaded, or a segment that is not a cooked timeline with a video track."
+    returns Result.FlowInfo "Refused for a dialogue not loaded, a segment that is not a cooked timeline with footage or a scene, or a node's `#outcome` choices without a `flow.hold`."
   }
 
   fn start {
@@ -223,7 +228,18 @@ module flow {
     param world World "The world."
     param flow Entity "The flow."
     param index u32 "ChoiceView.index."
-    returns Result.Void "Refused outside an open window, or for a choice that is hidden or disabled."
+    returns Result.Void "Refused outside an open window, or for a choice that is hidden, disabled or an `#outcome`."
+  }
+
+  fn advance {
+    doc "End the segment playing now, as its cut would: with `outcome`, the node's `#outcome:<name>` choice; without, the choice taken in the window, else the default (or its own way on, for a node without choices). What a playable segment's game calls when the level is won or lost; it stops at its `flow.hold` until then. Systems may call it; og.flow cuts this tick."
+    aliases "level complete, finish level, next segment, continue the story, Unreal Level Sequence end, Telltale playable section"
+    param world World "The world."
+    param flow Entity "The flow."
+    param outcome String "The `#outcome` to take, such as `won`; omitted for a node without outcomes." {
+      optional true
+    }
+    returns Result.Void "Refused for an entity that is no flow, one that has ended, an outcome its node has not, or none for a node that ends only by its outcomes."
   }
 
   fn play {

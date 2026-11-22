@@ -3862,6 +3862,12 @@ pub fn og_flow_choose(env: Env, world: u32, flow: f64, index: u32) -> String {
     <Host as FlowApi>::og_flow_choose(&Host, world, flow, index)
 }
 
+#[napi(js_name = "og_flow_advance")]
+pub fn og_flow_advance(env: Env, world: u32, flow: f64, outcome: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as FlowApi>::og_flow_advance(&Host, world, flow, outcome)
+}
+
 #[napi(js_name = "og_flow_play")]
 pub fn og_flow_play(env: Env, world: u32, flow: f64) -> String {
     let _env = crate::EnvScope::enter(&env);

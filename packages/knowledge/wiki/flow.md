@@ -2,9 +2,9 @@
 
 # The `flow` module
 
-Interactive film (FMV): a Yarn dialogue paced by its footage. A node with an `og-flow: <timeline>` header plays that segment (a timeline with a video track) on a deck; its choices open at the segment's `flow.open` marker, lock at `flow.lock` and are taken at its cut (`flow.cut`, else its end), the default (`#default`) when none was chosen.
+A game's flow as a Yarn dialogue of segments: film, cutscenes, levels and minigames. A node with an `og-flow: <timeline>` header plays that segment on a deck: footage, a live scene (a `scene` track) or both. Its choices open at `flow.open`, lock at `flow.lock` and are taken at the cut (`flow.cut`, else the end), else the `#default`. A playable segment stops at `flow.hold` until og.flow.advance takes a hidden `#outcome:<name>` choice (guide flow).
 
-The story stays og.story's, the footage og.video's, the timing og.timeline's: og.flow moves the conversation between segments and warms those a choice may lead to on its other decks. All of it is world state.
+og.flow moves the conversation between segments and prepares those it may lead to on its other decks (og.Timeline.preroll). All of it is world state.
 
 See `flow`.
 
@@ -14,8 +14,8 @@ See `flow`.
 
 ```ogt
 module flow {
-  doc "Interactive film (FMV): a Yarn dialogue paced by its footage. A node with an `og-flow: <timeline>` header plays that segment (a timeline with a video track) on a deck; its choices open at the segment's `flow.open` marker, lock at `flow.lock` and are taken at its cut (`flow.cut`, else its end), the default (`#default`) when none was chosen."
-  doc "The story stays og.story's, the footage og.video's, the timing og.timeline's: og.flow moves the conversation between segments and warms those a choice may lead to on its other decks. All of it is world state."
+  doc "A game's flow as a Yarn dialogue of segments: film, cutscenes, levels and minigames. A node with an `og-flow: <timeline>` header plays that segment on a deck: footage, a live scene (a `scene` track) or both. Its choices open at `flow.open`, lock at `flow.lock` and are taken at the cut (`flow.cut`, else the end), else the `#default`. A playable segment stops at `flow.hold` until og.flow.advance takes a hidden `#outcome:<name>` choice (guide flow)."
+  doc "og.flow moves the conversation between segments and prepares those it may lead to on its other decks (og.Timeline.preroll). All of it is world state."
   # declarations follow, each on its own page
 ```
 
@@ -44,6 +44,7 @@ module flow {
 | [`og.flow.start`](flow/fn-start.md) | function | `(world: World, desc?: FlowStartDesc): Result<Entity>` | Start a flow: its decks, and its conversation held at the first flow node, whose segment plays from the next tick. |
 | [`og.flow.view`](flow/fn-view.md) | function | `(world: World, flow: Entity): FlowView \| null` | What a flow shows now: its picture, segment time, choices and window. |
 | [`og.flow.choose`](flow/fn-choose.md) | function | `(world: World, flow: Entity, index: number): Result<void>` | Take a choice while the window is open: recorded now (FlowView.window.pending; a later call replaces it) and taken at the cut, so the footage plays on to it. |
+| [`og.flow.advance`](flow/fn-advance.md) | function | `(world: World, flow: Entity, outcome?: string): Result<void>` | End the segment playing now, as its cut would: with `outcome`, the node's `#outcome:<name>` choice; without, the choice taken in the window, else the default (or its own way on, for a node without ch… |
 | [`og.flow.play`](flow/fn-play.md) | function | `(world: World, flow: Entity): Result<void>` | Play a paused flow from where it is. |
 | [`og.flow.pause`](flow/fn-pause.md) | function | `(world: World, flow: Entity): Result<void>` | Hold a flow on its frame (a pause menu); its window's time holds too. |
 | [`og.flow.skip`](flow/fn-skip.md) | function | `(world: World, flow: Entity): Result<void>` | Skip ahead in the segment playing: to its window's open (flow.open) when that is ahead, else to its cut, which takes the pending choice, else the default. |

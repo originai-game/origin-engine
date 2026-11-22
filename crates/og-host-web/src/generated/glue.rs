@@ -3227,6 +3227,11 @@ pub fn og_flow_choose(world: u32, flow: f64, index: u32) -> String {
 }
 
 #[wasm_bindgen]
+pub fn og_flow_advance(world: u32, flow: f64, outcome: Option<String>) -> String {
+    <Host as FlowApi>::og_flow_advance(&Host, world, flow, outcome)
+}
+
+#[wasm_bindgen]
 pub fn og_flow_play(world: u32, flow: f64) -> String {
     <Host as FlowApi>::og_flow_play(&Host, world, flow)
 }

@@ -1,8 +1,10 @@
-//! A timeline as og.flow plays it, a segment: one video track without an
-//! entity (it plays on the deck's own og.VideoPlayer), and the markers
-//! `flow.open`, `flow.lock` and `flow.cut` that time its choice window.
-//! og-cook checks a dialogue's segments with it and og-runtime plays them
-//! by it, so the two never disagree; so are a choice's `#qte` tags.
+//! A timeline as og.flow plays it, a segment: footage (at most one video
+//! track without an entity, which plays on the deck's own og.VideoPlayer),
+//! a live scene (a `scene` track), or both; the markers `flow.open`,
+//! `flow.lock` and `flow.cut` that time its choice window, and
+//! `flow.hold`, where a playable segment stops for the game
+//! (og.flow.advance). og-cook checks a dialogue's segments and choices
+//! with it and og-runtime plays them by it, so the two never disagree.
 
 use crate::{HotspotKey, Timeline, Track};
 
@@ -12,18 +14,24 @@ pub const OPEN: &str = "flow.open";
 pub const LOCK: &str = "flow.lock";
 /// The marker that cuts to the next segment (else the end).
 pub const CUT: &str = "flow.cut";
+/// The marker where a playable segment stops until the game advances it.
+pub const HOLD: &str = "flow.hold";
 
 /// What og.flow reads of a segment.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Segment {
-    /// The first key of its video track: the video's asset id and its `from`.
+    /// The first key of its own video track: the video's asset id and its
+    /// `from`; `None` for a live segment (a `scene` track alone).
     pub video: Option<(String, f32)>,
     /// When the window opens (`flow.open`, else 0), locks (`flow.lock`,
     /// else the cut) and the segment cuts (`flow.cut`, else its duration;
-    /// never past it), in seconds.
+    /// never past it), in seconds. A held segment's lock and cut are its
+    /// hold: it never locks or cuts by time.
     pub open: f32,
     pub lock: f32,
     pub cut: f32,
+    /// `flow.hold`: where it stops until og.flow.advance (or a choice).
+    pub hold: Option<f32>,
     /// Every hotspot track's keys, by time (`eval::hotspots_at`).
     pub hotspots: Vec<HotspotKey>,
 }
@@ -97,9 +105,54 @@ impl Qte {
     }
 }
 
+/// A node's `#outcome:<name>` choices, by choice index (`None` for a
+/// choice the player sees), from each choice's index and tags: hidden from
+/// the player and taken by og.flow.advance. Refused when its segment does
+/// not hold (`held`: it has `flow.hold`), for a repeated or empty name, and
+/// for an outcome that is also `#default`, `#qte` or `#hotspot`.
+pub fn outcomes<'a>(
+    held: bool,
+    choices: impl IntoIterator<Item = (u32, &'a std::collections::BTreeMap<String, String>)>,
+) -> Result<Vec<Option<String>>, String> {
+    let mut out: Vec<Option<String>> = Vec::new();
+    for (index, tags) in choices {
+        let Some(name) = tags.get("outcome") else {
+            out.push(None);
+            continue;
+        };
+        if name.is_empty() || name.contains(char::is_whitespace) {
+            return Err(format!(
+                "choice {index}: #outcome names its result in one word (`#outcome:won`)"
+            ));
+        }
+        if !held {
+            return Err(format!(
+                "choice {index} is #outcome:{name}, but its segment has no `{HOLD}` marker: an outcome ends a playable segment, which holds there until the game calls og.flow.advance"
+            ));
+        }
+        if let Some(t) = ["default", "qte", "hotspot"]
+            .into_iter()
+            .find(|t| tags.contains_key(*t))
+        {
+            return Err(format!(
+                "choice {index} is #outcome:{name} and #{t}: the player never sees an outcome, the game takes it"
+            ));
+        }
+        if out.iter().flatten().any(|o| o == name) {
+            return Err(format!(
+                "two choices are #outcome:{name}; each outcome names one choice"
+            ));
+        }
+        out.push(Some(name.clone()));
+    }
+    Ok(out)
+}
+
 impl Timeline {
-    /// This timeline as a segment; refused unless it has exactly one video
-    /// track without an entity and `open ≤ lock ≤ cut`.
+    /// This timeline as a segment; refused unless it has at most one video
+    /// track without an entity and that or a `scene` track, and
+    /// `open ≤ lock ≤ cut` (a held one: `open ≤ hold`, without `flow.lock`
+    /// or `flow.cut`).
     pub fn segment(&self) -> Result<Segment, String> {
         let own: Vec<_> = self
             .tracks
@@ -109,11 +162,15 @@ impl Timeline {
                 _ => None,
             })
             .collect();
-        if own.len() != 1 {
+        if own.len() > 1 {
             return Err(format!(
-                "it has {} video tracks without an entity; a segment has exactly one (`track video {{ key 0 {{ video \"clips/<clip>.ogt\" }} }}`), which plays on its deck",
+                "it has {} video tracks without an entity; a segment has at most one, which plays on its deck (give the others an entity: `track video \"<screen>\"`)",
                 own.len()
             ));
+        }
+        let live = self.tracks.iter().any(|t| matches!(t, Track::Scene(_)));
+        if own.is_empty() && !live {
+            return Err("it has neither footage nor a scene: a segment has a video track without an entity (`track video { key 0 { video \"clips/<clip>.ogt\" } }`), a scene track (`track scene { key 0 { scene \"scenes/<scene>.ogt\" } }`), or both".into());
         }
         let marker = |name: &str| {
             self.tracks.iter().find_map(|t| match t {
@@ -121,9 +178,22 @@ impl Timeline {
                 _ => None,
             })
         };
-        let cut = marker(CUT).unwrap_or(self.duration).min(self.duration);
         let open = marker(OPEN).unwrap_or(0.0);
-        let lock = marker(LOCK).unwrap_or(cut);
+        let hold = marker(HOLD);
+        if let Some(h) = hold {
+            if let Some(m) = [LOCK, CUT].into_iter().find(|m| marker(m).is_some()) {
+                return Err(format!(
+                    "it has {HOLD} and {m}: a held segment's window stays open while it holds and it cuts when the game calls og.flow.advance, never by time"
+                ));
+            }
+            if open > h {
+                return Err(format!(
+                    "its {OPEN} ({open} s) is past its {HOLD} ({h} s): the window opens before it holds"
+                ));
+            }
+        }
+        let cut = hold.unwrap_or_else(|| marker(CUT).unwrap_or(self.duration).min(self.duration));
+        let lock = hold.unwrap_or_else(|| marker(LOCK).unwrap_or(cut));
         if !(open <= lock && lock <= cut) {
             return Err(format!(
                 "its markers are out of order: {OPEN} {open} s, {LOCK} {lock} s, cut {cut} s (open ≤ lock ≤ cut)"
@@ -140,10 +210,14 @@ impl Timeline {
             .collect();
         og_core::sort::sort_by(&mut hotspots, |a, b| a.time.total_cmp(&b.time));
         Ok(Segment {
-            video: own[0].keys.first().map(|k| (k.video.clone(), k.from)),
+            video: own
+                .first()
+                .and_then(|v| v.keys.first())
+                .map(|k| (k.video.clone(), k.from)),
             open,
             lock,
             cut,
+            hold,
             hotspots,
         })
     }
@@ -186,7 +260,7 @@ mod tests {
             parse(named)
                 .segment()
                 .unwrap_err()
-                .contains("0 video tracks")
+                .contains("neither footage nor a scene")
         );
         assert!(
             parse(&format!("{VIDEO}{VIDEO}"))
@@ -194,6 +268,75 @@ mod tests {
                 .unwrap_err()
                 .contains("2 video tracks")
         );
+    }
+
+    const SCENE: &str = "track scene {\n  key 0 {\n    scene \"scenes/room.ogt\"\n  }\n}\n";
+
+    #[test]
+    fn a_live_or_mixed_segment_plays_and_a_hold_is_its_lock_and_cut() {
+        // A scene alone is a live segment, without footage.
+        let s = parse(SCENE).segment().unwrap();
+        assert_eq!((s.video, s.hold, s.cut), (None, None, 10.0));
+        // Footage over a scene is one segment; a hold at 4 s with the window
+        // from 1 s: it locks and cuts only there.
+        let s = parse(&format!(
+            "{VIDEO}{SCENE}track marker {{\n  key 1 {{\n    name \"flow.open\"\n  }}\n  key 4 {{\n    name \"flow.hold\"\n  }}\n}}\n"
+        ))
+        .segment()
+        .unwrap();
+        assert_eq!(s.video, Some(("clips/a.ogt".into(), 4.0)));
+        assert_eq!((s.open, s.lock, s.cut, s.hold), (1.0, 4.0, 4.0, Some(4.0)));
+        // A hold never cuts or locks by time.
+        for m in ["flow.cut", "flow.lock"] {
+            let t = format!(
+                "{SCENE}track marker {{\n  key 2 {{\n    name \"flow.hold\"\n  }}\n  key 3 {{\n    name \"{m}\"\n  }}\n}}\n"
+            );
+            assert!(parse(&t).segment().unwrap_err().contains(m), "{m}");
+        }
+        let late = format!(
+            "{SCENE}track marker {{\n  key 5 {{\n    name \"flow.open\"\n  }}\n  key 2 {{\n    name \"flow.hold\"\n  }}\n}}\n"
+        );
+        assert!(
+            parse(&late)
+                .segment()
+                .unwrap_err()
+                .contains("past its flow.hold")
+        );
+    }
+
+    #[test]
+    fn outcomes_are_hidden_choices_of_a_held_node_named_once() {
+        let tags = |t: &[(&str, &str)]| -> std::collections::BTreeMap<String, String> {
+            t.iter()
+                .map(|(k, v)| (k.to_string(), v.to_string()))
+                .collect()
+        };
+        let (seen, won, lost) = (
+            tags(&[]),
+            tags(&[("outcome", "won")]),
+            tags(&[("outcome", "lost")]),
+        );
+        assert_eq!(
+            outcomes(true, [(0, &seen), (1, &won), (2, &lost)]),
+            Ok(vec![None, Some("won".into()), Some("lost".into())])
+        );
+        assert!(
+            outcomes(false, [(0, &won)])
+                .unwrap_err()
+                .contains("flow.hold")
+        );
+        assert!(
+            outcomes(true, [(0, &won), (1, &won)])
+                .unwrap_err()
+                .contains("two choices")
+        );
+        for t in ["default", "qte", "hotspot"] {
+            let both = tags(&[("outcome", "won"), (t, "x")]);
+            assert!(outcomes(true, [(0, &both)]).unwrap_err().contains(t), "{t}");
+        }
+        assert!(outcomes(true, [(0, &tags(&[("outcome", "")]))]).is_err());
+        // A node without outcomes needs no hold.
+        assert_eq!(outcomes(false, [(0, &seen)]), Ok(vec![None]));
     }
 
     #[test]

@@ -1,7 +1,7 @@
-//! Interactive film (IDL `flow`, guides/flow.md): a Yarn dialogue paced by
-//! its footage. `og.flow.load` prepares a loaded dialogue: each node with
-//! an `og-flow` header names its segment, a timeline whose own video track
-//! plays on a deck. `og.flow.start` spawns the flow (og.Flow) and its
+//! A game's flow (IDL `flow`, guides/flow.md): a Yarn dialogue of
+//! segments. `og.flow.load` prepares a loaded dialogue: each node with an
+//! `og-flow` header names its segment, a timeline of footage (its own video
+//! track, which plays on a deck), a live scene (a `scene` track), or both. `og.flow.start` spawns the flow (og.Flow) and its
 //! decks (og.FlowDeck, each with og.Timeline, og.VideoPlayer and
 //! og.AudioSource) and starts its conversation holding at each flow node
 //! (og.story's StartDesc.hold).
@@ -13,6 +13,10 @@
 //! taken, the conversation runs to its next hold, and that node's segment
 //! starts on a deck. The other decks hold the segments the current node
 //! may lead to, paused at their first frame, so their decoders have it.
+//! A playable segment stops at its `flow.hold` marker (og.Flow.held) until
+//! the game calls og.flow.advance, which takes one of the node's hidden
+//! `#outcome:<name>` choices; a choice the player takes while it holds cuts
+//! at once. Each cut snaps the camera (og.render.snapCamera).
 //!
 //! Every value is world state: og.Flow and og.FlowDeck, the decks'
 //! timelines and players, and the conversation (og.story's block). Only
@@ -74,6 +78,10 @@ struct Node {
     hotspots: Vec<HotspotKey>,
     /// Per choice (by index): its quick-time event (`#qte`).
     qte: Vec<Option<Qte>>,
+    /// `flow.hold`: where its segment stops for og.flow.advance.
+    hold: Option<f32>,
+    /// Its `#outcome:<name>` choices: (ChoiceView.index, name).
+    outcomes: Vec<(u32, String)>,
     /// Per choice (by index): the flow nodes it may lead to, through logic
     /// nodes.
     choices: Vec<Vec<u32>>,
@@ -91,13 +99,15 @@ struct Prepared {
     roots: Vec<u32>,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 enum Op {
     Choose(u32),
     Play,
     Pause,
     Skip,
     Stop,
+    /// og.flow.advance: cut now, by this outcome or the window's choice.
+    Advance(Option<String>),
 }
 
 /// What a flow showed at the end of the last tick (og.flow.view).
@@ -118,6 +128,9 @@ struct Shown {
     chapter: String,
     ending: String,
     ended: bool,
+    held: bool,
+    /// The node's `#outcome` names (og.flow.advance checks them).
+    outcomes: Vec<String>,
     hotspots: Vec<FlowHotspot>,
     qtes: Vec<QteView>,
     previous: u64,
@@ -262,6 +275,15 @@ fn prepare(eng: &Engine, world: &mut World, name: &str) -> Result<(Prepared, Flo
             };
             qte.push(q);
         }
+        let outcomes = og_timeline::segment::outcomes(
+            s.hold.is_some(),
+            n.choices.iter().map(|c| (c.index, &c.tags)),
+        )
+        .map_err(at)?
+        .into_iter()
+        .zip(&n.choices)
+        .filter_map(|(o, c)| Some((c.index, o?)))
+        .collect();
         p.nodes.insert(
             node_id(&n.title),
             Node {
@@ -277,6 +299,8 @@ fn prepare(eng: &Engine, world: &mut World, name: &str) -> Result<(Prepared, Flo
                 dissolve,
                 hotspots: s.hotspots,
                 qte,
+                hold: s.hold,
+                outcomes,
                 choices: n.choices.iter().map(|c| reach(&c.to)).collect(),
                 next: reach(&n.to),
             },
@@ -397,12 +421,23 @@ pub fn og_flow_start(world: u32, desc: Option<String>) -> Result<Value, String> 
 
 // ── og.flow.view and the ops ─────────────────────────────────────────────────
 
-/// The choice taken when nothing was: `#default`, else the first enabled.
+/// Whether a choice is an `#outcome`, which the game takes, never the player.
+fn outcome(c: &ChoiceView) -> bool {
+    c.tags.get("outcome").is_some()
+}
+
+/// The choices the player sees: a node's without its `#outcome`s.
+fn seen(choices: Vec<ChoiceView>) -> Vec<ChoiceView> {
+    choices.into_iter().filter(|c| !outcome(c)).collect()
+}
+
+/// The choice taken when nothing was: `#default`, else the first enabled
+/// one the player sees.
 fn default_choice(choices: &[ChoiceView]) -> Option<u32> {
-    choices
-        .iter()
-        .find(|c| c.enabled && c.tags.get("default").is_some())
-        .or_else(|| choices.iter().find(|c| c.enabled))
+    let shown = || choices.iter().filter(|c| c.enabled && !outcome(c));
+    shown()
+        .find(|c| c.tags.get("default").is_some())
+        .or_else(|| shown().next())
         .map(|c| c.index)
 }
 
@@ -411,7 +446,7 @@ pub fn og_flow_view(world: u32, flow: f64) -> Option<FlowView> {
     let s = lock(&st).views.get(&(flow as u64)).cloned()?;
     let choices = if s.window > 0 {
         og_story_view(world, s.conversation)
-            .map(|v| v.choices)
+            .map(|v| seen(v.choices))
             .unwrap_or_default()
     } else {
         Vec::new()
@@ -429,6 +464,7 @@ pub fn og_flow_view(world: u32, flow: f64) -> Option<FlowView> {
         default_choice: default_choice(&choices).unwrap_or(0),
         pending: u32::try_from(s.pending).ok(),
         locked: s.window == 2,
+        held: s.held,
     });
     Some(FlowView {
         flow: flow as u64,
@@ -444,6 +480,7 @@ pub fn og_flow_view(world: u32, flow: f64) -> Option<FlowView> {
         previous: s.previous,
         mix: s.mix,
         paused: s.paused,
+        held: s.held,
         chapter: s.chapter,
         ending: s.ending,
         ended: s.ended,
@@ -475,6 +512,47 @@ fn queue(world: u32, flow: f64, op: Op) -> Result<(), String> {
         if !c.enabled {
             return Err(format!("choice {i} is disabled: {}", c.reason));
         }
+        if outcome(c) {
+            return Err(format!(
+                "choice {i} is an #outcome: the game takes it with og.flow.advance(world, flow, \"{}\")",
+                c.tags
+                    .get("outcome")
+                    .and_then(Value::as_str)
+                    .unwrap_or_default()
+            ));
+        }
+    }
+    if let Op::Advance(o) = &op {
+        if s.ended {
+            return Err("the flow has ended: nothing is left to advance".into());
+        }
+        match o {
+            Some(o) if !s.outcomes.contains(o) => {
+                return Err(if s.outcomes.is_empty() {
+                    format!(
+                        "node '{}' has no #outcome choices: call og.flow.advance(world, flow) without one",
+                        s.node
+                    )
+                } else {
+                    format!(
+                        "node '{}' has no #outcome:{o}; its outcomes are {}",
+                        s.node,
+                        s.outcomes.join(", ")
+                    )
+                });
+            }
+            None if !s.outcomes.is_empty()
+                && og_story_view(world, s.conversation)
+                    .is_some_and(|v| seen(v.choices).is_empty()) =>
+            {
+                return Err(format!(
+                    "node '{}' ends only by its outcomes: name one ({})",
+                    s.node,
+                    s.outcomes.join(", ")
+                ));
+            }
+            _ => {}
+        }
     }
     if op == Op::Skip && s.ended {
         return Err("the flow has ended: nothing is left to skip".into());
@@ -497,6 +575,10 @@ pub fn og_flow_pause(world: u32, flow: f64) -> Result<(), String> {
 
 pub fn og_flow_skip(world: u32, flow: f64) -> Result<(), String> {
     queue(world, flow, Op::Skip)
+}
+
+pub fn og_flow_advance(world: u32, flow: f64, outcome: Option<String>) -> Result<(), String> {
+    queue(world, flow, Op::Advance(outcome.filter(|o| !o.is_empty())))
 }
 
 pub fn og_flow_stop(world: u32, flow: f64) -> Result<(), String> {
@@ -752,7 +834,7 @@ fn system(ctx: &mut SystemContext<'_>, engine_id: u32, st: &ModuleState) -> og_c
         let mine_ops: Vec<Op> = ops
             .iter()
             .filter(|(k, _)| *k == key)
-            .map(|(_, o)| *o)
+            .map(|(_, o)| o.clone())
             .collect();
         if let Some(shown) = tick(ctx, &eng, st, &r, f, mine, &mine_ops)? {
             views.insert(key, shown);
@@ -853,15 +935,19 @@ fn tick(
             let t = deck_state(ctx, r, current(flow))?.0;
             Ok(if advancing { t + dt } else { t })
         };
+    let mut advance: Option<Option<String>> = None;
     for op in ops {
-        match *op {
+        match op.clone() {
+            Op::Advance(o) => advance = Some(o),
             Op::Choose(i) if flow.window == 1 => flow.pending = i as i32,
             Op::Choose(_) => {}
             Op::Play | Op::Pause => {
                 flow.paused = *op == Op::Pause;
                 advancing &= !flow.paused;
                 if !flow.ended && flow.node != 0 {
-                    let playing = json!({ "playing": !flow.paused, "preroll": false });
+                    // A held segment stays stopped at its hold.
+                    let playing =
+                        json!({ "playing": !flow.paused && !flow.held, "preroll": false });
                     patch(ctx, &r.timeline, current(&flow), playing.clone())?;
                     if let Some(p) = previous(&flow) {
                         patch(ctx, &r.timeline, p, playing)?;
@@ -872,7 +958,7 @@ fn tick(
                 if let Some(node) = prep.nodes.get(&flow.node).filter(|_| !flow.ended) {
                     let t = shows(ctx, &flow, advancing)?;
                     let choosing =
-                        og_story_view(eng.id, conv).is_some_and(|v| !v.choices.is_empty());
+                        og_story_view(eng.id, conv).is_some_and(|v| !seen(v.choices).is_empty());
                     let to = if choosing && t + half < node.open {
                         node.open
                     } else {
@@ -985,6 +1071,10 @@ fn tick(
         flow.node = id;
         flow.pending = -1;
         flow.window = 0;
+        flow.held = false;
+        // A cut: the camera the new segment places is drawn where it is,
+        // never blended from the last one's.
+        crate::host::api::og_render_snap_camera(eng.id);
         flow.qte = vec![0; QTE_CHOICES];
         send(
             ctx,
@@ -1023,11 +1113,29 @@ fn tick(
                 _ => flow.ended = true,
             }
         } else if let Some(node) = prep.nodes.get(&flow.node) {
-            let t = shows(ctx, &flow, advancing)?;
-            let choosing = view.as_ref().is_some_and(|v| !v.choices.is_empty());
+            let mut t = shows(ctx, &flow, advancing)?;
+            // A playable segment stops at its hold, its time written there.
+            if let Some(h) = node.hold
+                && !flow.held
+                && !flow.paused
+                && t + half >= h
+            {
+                flow.held = true;
+                patch(
+                    ctx,
+                    &r.timeline,
+                    current(&flow),
+                    json!({ "time": h, "playing": false }),
+                )?;
+                advancing = false;
+                t = h;
+            }
+            let choosing = view
+                .as_ref()
+                .is_some_and(|v| v.choices.iter().any(|c| !outcome(c)));
             flow.window = if !choosing || t + half < node.open {
                 0
-            } else if t + half < node.lock {
+            } else if flow.held || t + half < node.lock {
                 1
             } else {
                 2
@@ -1038,21 +1146,31 @@ fn tick(
             {
                 qte_tick(eng, st, f, &mut flow, node, v, dt);
             }
-            if !flow.paused && t + half >= node.cut {
-                // The cut: the pending choice, else the default; then on to
-                // the next hold.
+            let timed = !flow.paused && node.hold.is_none() && t + half >= node.cut;
+            // A choice the player takes while it holds cuts at once.
+            let chosen_held = flow.held && flow.pending >= 0;
+            if timed || chosen_held || advance.is_some() {
+                // The cut: the outcome og.flow.advance named, else the
+                // pending choice, else the default; then on to the next hold.
                 let title = node.title.clone();
                 if let Some(v) = view.as_ref().filter(|v| !v.choices.is_empty()) {
-                    let pending = u32::try_from(flow.pending)
-                        .ok()
-                        .filter(|i| v.choices.iter().any(|c| c.index == *i && c.enabled));
-                    if let Some(i) = pending.or_else(|| default_choice(&v.choices)) {
+                    let by_outcome = advance
+                        .clone()
+                        .flatten()
+                        .and_then(|o| node.outcomes.iter().find(|(_, n)| *n == o).map(|(i, _)| *i));
+                    let pending = u32::try_from(flow.pending).ok().filter(|i| {
+                        v.choices
+                            .iter()
+                            .any(|c| c.index == *i && c.enabled && !outcome(c))
+                    });
+                    let taken = by_outcome.or(pending);
+                    if let Some(i) = taken.or_else(|| default_choice(&v.choices)) {
                         send(
                             ctx,
                             eng,
                             CHOICE,
                             json!({
-                                "flow": f.to_bits() as f64, "node": title, "index": i, "timedOut": pending.is_none(),
+                                "flow": f.to_bits() as f64, "node": title, "index": i, "timedOut": taken.is_none() && advance.is_none(),
                             }),
                         )?;
                         if let Err(e) = og_story_choose(eng.id, conv, i) {
@@ -1107,7 +1225,8 @@ fn tick(
         match &view {
             Some(v) if v.held => want.push(node_id(&v.node)),
             Some(v) if !v.choices.is_empty() => {
-                if t + half >= node.open {
+                // A playable segment's outcomes are known from its start.
+                if t + half >= node.open || node.hold.is_some() {
                     let mut order: Vec<u32> =
                         u32::try_from(flow.pending).ok().into_iter().collect();
                     order.extend(default_choice(&v.choices));
@@ -1156,7 +1275,7 @@ fn tick(
     let (hotspots, qtes) = match node {
         Some(n) if flow.window > 0 && !flow.ended => {
             let choices = og_story_view(eng.id, conv)
-                .map(|v| v.choices)
+                .map(|v| seen(v.choices))
                 .unwrap_or_default();
             offers(n, &flow, &choices, time, dt)
         }
@@ -1195,6 +1314,10 @@ fn tick(
             String::new()
         },
         ended: flow.ended,
+        held: flow.held,
+        outcomes: node
+            .map(|n| n.outcomes.iter().map(|(_, o)| o.clone()).collect())
+            .unwrap_or_default(),
         hotspots,
         qtes,
         previous: previous_texture,
@@ -1358,6 +1481,7 @@ fn flow_json(f: &record::Flow) -> Value {
         "paused": f.paused,
         "chapter": f.chapter,
         "ended": f.ended,
+        "held": f.held,
         "previous": f.previous as f64,
         "dissolve": f.dissolve,
         "dissolveLeft": f.dissolve_left,
@@ -1406,7 +1530,8 @@ pub(crate) fn register_commands(probe: &mut og_probe::Probe, engine_id: u32) {
 }
 
 fn command(engine_id: u32, args: &[String]) -> Result<(), String> {
-    const USAGE: &str = "write flow:choose:<index>, flow:play, flow:pause or flow:skip";
+    const USAGE: &str =
+        "write flow:choose:<index>, flow:play, flow:pause, flow:skip or flow:advance[:<outcome>]";
     let st = state(engine_id)?;
     let flows: Vec<u64> = lock(&st).views.keys().copied().collect();
     if flows.is_empty() {
@@ -1421,10 +1546,11 @@ fn command(engine_id: u32, args: &[String]) -> Result<(), String> {
         Some("play") => Op::Play,
         Some("pause") => Op::Pause,
         Some("skip") => Op::Skip,
+        Some("advance") => Op::Advance(args.get(1).filter(|o| !o.is_empty()).cloned()),
         _ => return Err(USAGE.into()),
     };
     for f in flows {
-        queue(engine_id, f as f64, op)?;
+        queue(engine_id, f as f64, op.clone())?;
     }
     Ok(())
 }

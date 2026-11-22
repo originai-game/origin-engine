@@ -78,6 +78,21 @@ pub fn camera_at(track: &CameraTrack, t: f32) -> CameraAt {
     }
 }
 
+/// How much of a camera track's own pose shows at `t` of a timeline of
+/// `duration`, from 0 (the camera it took, or hands back) to 1: its
+/// `blendIn` from the start and its `blendOut` before the end, cubic in and
+/// out (a Sequencer camera cut's blend).
+pub fn camera_weight(track: &CameraTrack, t: f32, duration: f32) -> f32 {
+    let part = |span: f32, into: f32| {
+        if span > 0.0 {
+            Ease::CubicInOut.apply((into / span).clamp(0.0, 1.0))
+        } else {
+            1.0
+        }
+    };
+    part(track.blend_in, t) * part(track.blend_out, duration - t)
+}
+
 /// The entity a camera keeps in focus at `t`: the last key at or before it
 /// that names one, unless a later such key sets a `focus` distance instead.
 pub fn focus_on_at(track: &CameraTrack, t: f32) -> Option<&str> {
@@ -379,6 +394,39 @@ pub fn crossed(time: f32, from: f64, to: f64) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_camera_track_blends_in_from_its_start_and_out_to_its_end_and_round_trips() {
+        let text = "type timeline\nversion 1\n---\nduration 10\ntrack camera {\n  blendIn 2\n  blendOut 4\n  key 0 {\n    position 0 1 5\n  }\n}\n";
+        let t = Timeline::parse(text, &mut |f: &str| Err(f.to_string())).unwrap();
+        let Track::Camera(c) = &t.tracks[0] else {
+            panic!("{:?}", t.tracks)
+        };
+        let w = |time: f32| (camera_weight(c, time, 10.0) * 1000.0).round() / 1000.0;
+        // In over 2 s (half way is half: cubic in-out is symmetric), whole
+        // from 2 s to 6 s, out over the last 4 s, asymmetric in time.
+        assert_eq!((w(0.0), w(1.0), w(2.0), w(6.0)), (0.0, 0.5, 1.0, 1.0));
+        assert_eq!((w(8.0), w(10.0)), (0.5, 0.0));
+        assert!(w(0.5) < 0.5 && w(9.0) < 0.5);
+        // A track without them cuts.
+        let cut = CameraTrack::default();
+        assert_eq!(
+            (
+                camera_weight(&cut, 0.0, 10.0),
+                camera_weight(&cut, 10.0, 10.0)
+            ),
+            (1.0, 1.0)
+        );
+        let again = Timeline::parse(&t.to_text(), &mut |f: &str| Err(f.to_string())).unwrap();
+        assert_eq!(again.tracks, t.tracks);
+        assert!(
+            Timeline::parse(
+                &text.replace("blendIn 2", "blendIn -1"),
+                &mut |f: &str| Err(f.to_string())
+            )
+            .is_err()
+        );
+    }
 
     #[test]
     fn a_hotspot_moves_between_its_keys_holds_after_the_last_and_ends_at_off() {

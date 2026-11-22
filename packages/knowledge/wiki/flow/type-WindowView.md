@@ -15,6 +15,7 @@ A segment's choice window.
 | `defaultChoice` | `number` | `0` | — | — | — | The ChoiceView.index taken when nothing was chosen (`#default`, else the first enabled). |
 | `pending` | `number \| null` | `null` | — | — | — | The choice taken so far. |
 | `locked` | `boolean` | `false` | — | — | — | Past flow.lock: choosing is over; the cut takes pending, else the default. |
+| `held` | `boolean` | `false` | — | — | — | The segment holds (flow.hold): the window never locks, and a choice cuts at once. |
 
 ```ogt
 struct WindowView {
@@ -24,7 +25,8 @@ struct WindowView {
   field defaultChoice u32 "The ChoiceView.index taken when nothing was chosen (`#default`, else the first enabled)."
   field pending Option.u32 "The choice taken so far."
   field locked bool "Past flow.lock: choosing is over; the cut takes pending, else the default."
+  field held bool "The segment holds (flow.hold): the window never locks, and a choice cuts at once."
 }
 ```
 
-<sub>Module `flow` line 80</sub>
+<sub>Module `flow` line 83</sub>

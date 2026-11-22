@@ -8745,6 +8745,12 @@
           "readonly": true
         },
         {
+          "name": "held",
+          "column": "bool",
+          "default": false,
+          "readonly": true
+        },
+        {
           "name": "previous",
           "column": "Entity",
           "default": 0,
@@ -27762,6 +27768,33 @@
     {
       "id": 591,
       "kind": "fn",
+      "path": "og.flow.advance",
+      "symbol": "og_flow_advance",
+      "module": "flow",
+      "name": "advance",
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        },
+        {
+          "name": "flow",
+          "type": "Entity",
+          "optional": false
+        },
+        {
+          "name": "outcome",
+          "type": "String",
+          "optional": true
+        }
+      ],
+      "returns": "Result<Void>",
+      "publish": true
+    },
+    {
+      "id": 592,
+      "kind": "fn",
       "path": "og.flow.play",
       "symbol": "og_flow_play",
       "module": "flow",
@@ -27782,7 +27815,7 @@
       "publish": true
     },
     {
-      "id": 592,
+      "id": 593,
       "kind": "fn",
       "path": "og.flow.pause",
       "symbol": "og_flow_pause",
@@ -27804,7 +27837,7 @@
       "publish": true
     },
     {
-      "id": 593,
+      "id": 594,
       "kind": "fn",
       "path": "og.flow.skip",
       "symbol": "og_flow_skip",
@@ -27826,7 +27859,7 @@
       "publish": true
     },
     {
-      "id": 594,
+      "id": 595,
       "kind": "fn",
       "path": "og.flow.chart",
       "symbol": "og_flow_chart",
@@ -27848,7 +27881,7 @@
       "publish": true
     },
     {
-      "id": 595,
+      "id": 596,
       "kind": "fn",
       "path": "og.flow.stop",
       "symbol": "og_flow_stop",
@@ -27870,7 +27903,7 @@
       "publish": true
     },
     {
-      "id": 596,
+      "id": 597,
       "kind": "fn",
       "path": "og.scene.preload",
       "symbol": "og_scene_preload",
@@ -27892,7 +27925,7 @@
       "publish": true
     },
     {
-      "id": 597,
+      "id": 598,
       "kind": "fn",
       "path": "og.scene.progress",
       "symbol": "og_scene_progress",
@@ -27914,7 +27947,7 @@
       "publish": true
     },
     {
-      "id": 598,
+      "id": 599,
       "kind": "fn",
       "path": "og.scene.release",
       "symbol": "og_scene_release",
@@ -27936,7 +27969,7 @@
       "publish": true
     },
     {
-      "id": 599,
+      "id": 600,
       "kind": "fn",
       "path": "og.scene.change",
       "symbol": "og_scene_change",
@@ -27958,7 +27991,7 @@
       "publish": true
     },
     {
-      "id": 600,
+      "id": 601,
       "kind": "fn",
       "path": "og.scene.current",
       "symbol": "og_scene_current",
@@ -27975,7 +28008,7 @@
       "publish": true
     },
     {
-      "id": 601,
+      "id": 602,
       "kind": "fn",
       "path": "og.loading.stage",
       "symbol": "og_loading_stage",
@@ -27997,7 +28030,7 @@
       "publish": true
     },
     {
-      "id": 602,
+      "id": 603,
       "kind": "fn",
       "path": "og.loading.done",
       "symbol": "og_loading_done",
@@ -28014,7 +28047,7 @@
       "publish": true
     },
     {
-      "id": 603,
+      "id": 604,
       "kind": "fn",
       "path": "og.loading.idle",
       "symbol": "og_loading_idle",
@@ -28031,7 +28064,7 @@
       "publish": true
     },
     {
-      "id": 604,
+      "id": 605,
       "kind": "fn",
       "path": "og.loading.status",
       "symbol": "og_loading_status",

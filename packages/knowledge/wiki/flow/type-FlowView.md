@@ -16,13 +16,14 @@ What a flow shows now.
 | `texture` | `Texture` | `0` | — | — | — | The current deck's picture (its og.VideoPlayer.texture): put it on a full-screen sprite or image. |
 | `time` | `number` | `0` | — | `s` | — | Seconds into the segment. |
 | `cut` | `number` | `0` | — | `s` | — | When it cuts to the next: its flow.cut marker, else its duration. |
-| `choices` | `readonly ChoiceView[]` | `[]` | — | — | — | The node's choices while its window is open or locked (og.story's). |
+| `choices` | `readonly ChoiceView[]` | `[]` | — | — | — | The node's choices while its window is open or locked (og.story's), without its `#outcome` choices, which the game takes. |
 | `window` | `WindowView \| null` | `null` | — | — | — | The window, while it is open or locked. |
 | `hotspots` | `readonly FlowHotspot[]` | `[]` | — | — | — | The hotspots that take a choice now: while the window is open, those of its enabled choices. |
 | `qtes` | `readonly QteView[]` | `[]` | — | — | — | The quick-time events of its enabled choices while the window is open or locked. |
 | `previous` | `Texture` | `0` | — | — | — | The picture dissolving out (`og-flow-dissolve`); 0: none. Draw it under `texture`, which shows at `mix`. |
 | `mix` | `number` | `0` | — | `ratio` | — | How far the dissolve is: `texture`'s opacity over `previous`, 1 without one. |
 | `paused` | `boolean` | `false` | — | — | — | Held by og.flow.pause. |
+| `held` | `boolean` | `false` | — | — | — | Stopped at its flow.hold, waiting for og.flow.advance (og.Flow.held). |
 | `chapter` | `string` | `""` | — | — | — | The last chapter entered. |
 | `ending` | `string` | `""` | — | — | — | The ending reached, once ended. |
 | `ended` | `boolean` | `false` | — | — | — | It played to its end. |
@@ -40,7 +41,7 @@ struct FlowView {
   field cut f32 "When it cuts to the next: its flow.cut marker, else its duration." {
     unit s
   }
-  field choices List.ChoiceView "The node's choices while its window is open or locked (og.story's)."
+  field choices List.ChoiceView "The node's choices while its window is open or locked (og.story's), without its `#outcome` choices, which the game takes."
   field window Option.WindowView "The window, while it is open or locked."
   field hotspots List.FlowHotspot "The hotspots that take a choice now: while the window is open, those of its enabled choices."
   field qtes List.QteView "The quick-time events of its enabled choices while the window is open or locked."
@@ -49,10 +50,11 @@ struct FlowView {
     unit ratio
   }
   field paused bool "Held by og.flow.pause."
+  field held bool "Stopped at its flow.hold, waiting for og.flow.advance (og.Flow.held)."
   field chapter String "The last chapter entered."
   field ending String "The ending reached, once ended."
   field ended bool "It played to its end."
 }
 ```
 
-<sub>Module `flow` line 118</sub>
+<sub>Module `flow` line 122</sub>

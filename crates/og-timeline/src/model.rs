@@ -106,6 +106,12 @@ pub struct CameraKey {
 pub struct CameraTrack {
     pub mode: CameraMode,
     pub keys: Vec<CameraKey>,
+    /// Seconds from the timeline's start over which it blends from the
+    /// camera it took to its own (0: a cut), cubic in and out.
+    pub blend_in: f32,
+    /// Seconds before the timeline's end over which it blends back to the
+    /// camera it hands back (0: a cut).
+    pub blend_out: f32,
 }
 
 #[derive(Clone, Debug, Default, PartialEq)]

@@ -25021,6 +25021,7 @@ pub struct WindowView {
     pub default_choice: u32,
     pub pending: Option<u32>,
     pub locked: bool,
+    pub held: bool,
 }
 
 impl Default for WindowView {
@@ -25031,6 +25032,7 @@ impl Default for WindowView {
             default_choice: Default::default(),
             pending: Default::default(),
             locked: Default::default(),
+            held: Default::default(),
         }
     }
 }
@@ -25047,6 +25049,7 @@ impl FromJson for WindowView {
             default_choice: field(o, "defaultChoice", d.default_choice)?,
             pending: field(o, "pending", d.pending)?,
             locked: field(o, "locked", d.locked)?,
+            held: field(o, "held", d.held)?,
         })
     }
 }
@@ -25059,6 +25062,7 @@ impl ToJson for WindowView {
         o.insert("defaultChoice".into(), self.default_choice.to_json());
         o.insert("pending".into(), self.pending.to_json());
         o.insert("locked".into(), self.locked.to_json());
+        o.insert("held".into(), self.held.to_json());
         Value::Object(o)
     }
 }
@@ -25183,6 +25187,7 @@ pub struct FlowView {
     pub previous: u64,
     pub mix: f32,
     pub paused: bool,
+    pub held: bool,
     pub chapter: String,
     pub ending: String,
     pub ended: bool,
@@ -25204,6 +25209,7 @@ impl Default for FlowView {
             previous: Default::default(),
             mix: Default::default(),
             paused: Default::default(),
+            held: Default::default(),
             chapter: Default::default(),
             ending: Default::default(),
             ended: Default::default(),
@@ -25231,6 +25237,7 @@ impl FromJson for FlowView {
             previous: field(o, "previous", d.previous)?,
             mix: field(o, "mix", d.mix)?,
             paused: field(o, "paused", d.paused)?,
+            held: field(o, "held", d.held)?,
             chapter: field(o, "chapter", d.chapter)?,
             ending: field(o, "ending", d.ending)?,
             ended: field(o, "ended", d.ended)?,
@@ -25254,6 +25261,7 @@ impl ToJson for FlowView {
         o.insert("previous".into(), self.previous.to_json());
         o.insert("mix".into(), self.mix.to_json());
         o.insert("paused".into(), self.paused.to_json());
+        o.insert("held".into(), self.held.to_json());
         o.insert("chapter".into(), self.chapter.to_json());
         o.insert("ending".into(), self.ending.to_json());
         o.insert("ended".into(), self.ended.to_json());
@@ -37002,6 +37010,7 @@ pub mod record {
         pub paused: bool,
         pub chapter: u32,
         pub ended: bool,
+        pub held: bool,
         pub previous: u64,
         pub dissolve: u32,
         pub dissolve_left: u32,
@@ -37020,6 +37029,7 @@ pub mod record {
                 paused: Default::default(),
                 chapter: Default::default(),
                 ended: Default::default(),
+                held: Default::default(),
                 previous: Default::default(),
                 dissolve: Default::default(),
                 dissolve_left: Default::default(),
@@ -37044,6 +37054,7 @@ pub mod record {
                 paused: field(o, "paused", d.paused)?,
                 chapter: field(o, "chapter", d.chapter)?,
                 ended: field(o, "ended", d.ended)?,
+                held: field(o, "held", d.held)?,
                 previous: field(o, "previous", d.previous)?,
                 dissolve: field(o, "dissolve", d.dissolve)?,
                 dissolve_left: field(o, "dissolveLeft", d.dissolve_left)?,

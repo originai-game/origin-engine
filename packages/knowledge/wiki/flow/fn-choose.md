@@ -18,7 +18,7 @@ og.flow.choose(world: World, flow: Entity, index: number): Result<void>
 | `flow` | `Entity` | no | The flow. |
 | `index` | `number` | no | ChoiceView.index. |
 
-**Returns** `Result<void>`: Refused outside an open window, or for a choice that is hidden or disabled.
+**Returns** `Result<void>`: Refused outside an open window, or for a choice that is hidden, disabled or an `#outcome`.
 
 Binding symbol `og_flow_choose` · publish builds: kept
 
@@ -28,8 +28,8 @@ fn choose {
   param world World "The world."
   param flow Entity "The flow."
   param index u32 "ChoiceView.index."
-  returns Result.Void "Refused outside an open window, or for a choice that is hidden or disabled."
+  returns Result.Void "Refused outside an open window, or for a choice that is hidden, disabled or an `#outcome`."
 }
 ```
 
-<sub>Module `flow` line 221</sub>
+<sub>Module `flow` line 226</sub>

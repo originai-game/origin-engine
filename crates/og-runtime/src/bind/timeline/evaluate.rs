@@ -848,6 +848,21 @@ fn camera(
     if let Some(f) = at.fov {
         cam["fov"] = json!(f);
     }
+    // blendIn and blendOut: part way between the camera it took (which it
+    // hands back at the end) and its own pose.
+    let w = eval::camera_weight(c, t, lt.timeline.duration);
+    if w < 1.0
+        && let Some(from) = run.camera
+    {
+        let own = record::Camera::from_json(&cam).map_err(invalid)?;
+        let (p, q) = (
+            Vec3::new(from[0], from[1], from[2]),
+            Quat::from_xyzw(from[3], from[4], from[5], from[6]),
+        );
+        cam["position"] = jv3(p.lerp(own.position, w));
+        cam["quaternion"] = jq(og_core::math::quat_slerp(q, own.quaternion, w).normalize());
+        cam["fov"] = json!(from[7] + (own.fov - from[7]) * w);
+    }
     let out = r
         .camera
         .1

@@ -1,10 +1,11 @@
 <!-- Generated from crates/og-api/api.ogt by `og api gen`. Do not edit: `og api check` fails on any difference; change api.ogt and regenerate. -->
 
-# The `flow` guide: Make an interactive film
+# The `flow` guide: Make an interactive film, or any game told in segments
 
-An interactive film is a Yarn dialogue whose nodes play footage. The story
-stays in Yarn (`yarn`), each segment is a timeline with a video track
-(`animation §13`), and the footage is a streamed video (`audio §8`).
+A flow is a Yarn dialogue whose nodes play segments: footage, a live
+scene, or both, and levels or minigames that wait for the game. The story
+stays in Yarn (`yarn`), each segment is a timeline (`animation §13`), and
+footage is a streamed video (`audio §8`).
 og.flow moves the conversation from segment to segment and warms the
 segments a choice may lead to. Nothing else is new: captions, markers,
 transitions and sound are the timeline's, saves are the world's.
@@ -101,7 +102,12 @@ track hotspot {
 
 - The video track names no entity: it plays on the og.Timeline's own
   player, and og.flow plays each segment on a deck, an entity with an
-  og.Timeline and an og.VideoPlayer. A segment has exactly one such track.
+  og.Timeline and an og.VideoPlayer. A segment has at most one such track.
+- A `scene` track makes a live segment (a cutscene in the engine, a
+  level): its scene is in the world from its key, prepared ahead on a warm
+  deck so the cut never waits. Give it a `camera` or `shot` track to frame
+  it. With a video track too, the footage plays over the scene. A segment
+  has footage, a scene, or both.
 - `flow.open` shows the choices, `flow.lock` ends choosing, and the cut is
   `flow.cut` if the segment has one, else its end. Keep
   `flow.open < flow.lock ≤ cut`.
@@ -121,6 +127,44 @@ Thresholds that read well:
 | Lock to cut | 0.5 to 1.5 s: the time the next segment has to start from a warm frame |
 | Key frame interval | at most 1 s at the cut (`keyframe`), so a cut never waits on a seek |
 | Chunk | the default 6 s; 2 to 4 s for flows that cut every few seconds |
+
+### Playable segments: `flow.hold` and outcomes
+
+A level or a minigame is a segment that stops at its `flow.hold` marker
+(it keeps its scene, footage frame and camera) until the game says how it
+went. Its results are the node's `#outcome:<name>` choices, which the
+player never sees:
+
+```yarn
+title: level1
+og-flow: segments/level1.ogt
+---
+-> Retry #line:retry
+    <<jump level1>>
+-> won #outcome:won
+    <<jump bridge>>
+-> lost #outcome:lost
+    <<jump level1>>
+===
+```
+
+```ts
+if (bossDown) og.flow.advance(world, flow, "won");
+```
+
+- The game calls `og.flow.advance(world, flow, "<outcome>")`; a node
+  without outcomes takes `og.flow.advance(world, flow)`. It cuts that tick,
+  from a system too.
+- A held segment has no `flow.lock` or `flow.cut`. Its window opens at
+  `flow.open` and stays open while it holds; a choice the player takes
+  then (Retry above) cuts at once.
+- Put the result in an outcome, never in an `<<if>>` in the node: the node
+  runs when its segment starts, before the level is played, and an outcome
+  shows on the chart, is prepared ahead and is walked by the route tests.
+- Jumping back to the same node plays the level again from its start.
+- Every cut snaps the camera (og.render.snapCamera). To ease from the
+  game's camera into a segment's and back, give its `camera` track
+  `blendIn` and `blendOut` seconds, or use a `shot` track's `blend`.
 
 <a id="guide-flow-4"></a>
 ### `flow §4` Show the flow

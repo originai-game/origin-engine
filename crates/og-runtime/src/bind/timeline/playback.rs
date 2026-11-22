@@ -611,6 +611,24 @@ fn timeline_system(
             lock(state).leave(&mut run);
         }
     }
+    // Runs whose asset changed hand back what they own before any run
+    // takes it: when og.flow cuts from one deck to another in a tick, the
+    // camera the new segment takes is the one the old one hands back, in
+    // whichever order their rows come.
+    for e in &rows {
+        let row =
+            record::Timeline::from_json(&r.timeline.1.decode(&ctx.get_bytes(*e, r.timeline.0)?))
+                .map_err(invalid)?;
+        let mut st = lock(state);
+        if let Some(run) = st.runs.get_mut(&e.to_bits())
+            && run.asset != row.asset
+        {
+            let mut run = std::mem::take(run);
+            drop(st);
+            release(ctx, r, &mut run)?;
+            lock(state).runs.insert(e.to_bits(), run);
+        }
+    }
     let reg = registry(engine_id);
     // The caption keys showing this tick, in the timelines' order: the
     // UI's `$captions` (docs/ui.md §2). Nothing here draws them.

@@ -16268,7 +16268,7 @@
     },
     {
       "name": "flow",
-      "doc": "Interactive film (FMV): a Yarn dialogue paced by its footage. A node with an `og-flow: <timeline>` header plays that segment (a timeline with a video track) on a deck; its choices open at the segment's `flow.open` marker, lock at `flow.lock` and are taken at its cut (`flow.cut`, else its end), the default (`#default`) when none was chosen.\nThe story stays og.story's, the footage og.video's, the timing og.timeline's: og.flow moves the conversation between segments and warms those a choice may lead to on its other decks. All of it is world state.\nSee `flow`.",
+      "doc": "A game's flow as a Yarn dialogue of segments: film, cutscenes, levels and minigames. A node with an `og-flow: <timeline>` header plays that segment on a deck: footage, a live scene (a `scene` track) or both. Its choices open at `flow.open`, lock at `flow.lock` and are taken at the cut (`flow.cut`, else the end), else the `#default`. A playable segment stops at `flow.hold` until og.flow.advance takes a hidden `#outcome:<name>` choice (guide flow).\nog.flow moves the conversation between segments and prepares those it may lead to on its other decks (og.Timeline.preroll). All of it is world state.\nSee `flow`.",
       "place": "namespace",
       "publish": true,
       "types": [
@@ -16308,7 +16308,7 @@
             }
           ],
           "returns": "Result<FlowInfo>",
-          "returnsDoc": "Refused for a dialogue not loaded, or a segment that is not a cooked timeline with a video track.",
+          "returnsDoc": "Refused for a dialogue not loaded, a segment that is not a cooked timeline with footage or a scene, or a node's `#outcome` choices without a `flow.hold`.",
           "publish": true
         },
         {
@@ -16377,7 +16377,34 @@
             }
           ],
           "returns": "Result<Void>",
-          "returnsDoc": "Refused outside an open window, or for a choice that is hidden or disabled.",
+          "returnsDoc": "Refused outside an open window, or for a choice that is hidden, disabled or an `#outcome`.",
+          "publish": true
+        },
+        {
+          "name": "advance",
+          "doc": "End the segment playing now, as its cut would: with `outcome`, the node's `#outcome:<name>` choice; without, the choice taken in the window, else the default (or its own way on, for a node without choices). What a playable segment's game calls when the level is won or lost; it stops at its `flow.hold` until then. Systems may call it; og.flow cuts this tick.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "flow",
+              "type": "Entity",
+              "optional": false,
+              "doc": "The flow."
+            },
+            {
+              "name": "outcome",
+              "type": "String",
+              "optional": true,
+              "doc": "The `#outcome` to take, such as `won`; omitted for a node without outcomes."
+            }
+          ],
+          "returns": "Result<Void>",
+          "returnsDoc": "Refused for an entity that is no flow, one that has ended, an outcome its node has not, or none for a node that ends only by its outcomes.",
           "publish": true
         },
         {
@@ -56180,6 +56207,12 @@
           "default": false,
           "readOnly": true
         },
+        "held": {
+          "type": "boolean",
+          "description": "The segment playing stopped at its `flow.hold` marker: it waits for og.flow.advance (or a choice), its window open without time running out.",
+          "default": false,
+          "readOnly": true
+        },
         "previous": {
           "$ref": "#/$defs/Entity",
           "description": "The deck dissolving out (`og-flow-dissolve`), playing on under the current one; 0: none.",
@@ -56280,6 +56313,10 @@
         "locked": {
           "type": "boolean",
           "description": "Past flow.lock: choosing is over; the cut takes pending, else the default."
+        },
+        "held": {
+          "type": "boolean",
+          "description": "The segment holds (flow.hold): the window never locks, and a choice cuts at once."
         }
       },
       "required": [
@@ -56287,7 +56324,8 @@
         "ticksTotal",
         "defaultChoice",
         "pending",
-        "locked"
+        "locked",
+        "held"
       ],
       "additionalProperties": false
     },
@@ -56414,7 +56452,7 @@
           "items": {
             "$ref": "#/$defs/ChoiceView"
           },
-          "description": "The node's choices while its window is open or locked (og.story's)."
+          "description": "The node's choices while its window is open or locked (og.story's), without its `#outcome` choices, which the game takes."
         },
         "window": {
           "anyOf": [
@@ -56454,6 +56492,10 @@
           "type": "boolean",
           "description": "Held by og.flow.pause."
         },
+        "held": {
+          "type": "boolean",
+          "description": "Stopped at its flow.hold, waiting for og.flow.advance (og.Flow.held)."
+        },
         "chapter": {
           "type": "string",
           "description": "The last chapter entered."
@@ -56481,6 +56523,7 @@
         "previous",
         "mix",
         "paused",
+        "held",
         "chapter",
         "ending",
         "ended"

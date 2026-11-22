@@ -244,6 +244,12 @@ fn write_track(tr: &Track) -> Entry {
                     b.push(Entry::new("follow").with(Value::String(p.clone())))
                 }
             }
+            if c.blend_in > 0.0 {
+                b.push(Entry::new("blendIn").with(num(c.blend_in)));
+            }
+            if c.blend_out > 0.0 {
+                b.push(Entry::new("blendOut").with(num(c.blend_out)));
+            }
             for k in &c.keys {
                 let mut kb = Block::new();
                 if let Some(p) = k.position {

@@ -32728,8 +32728,8 @@ export interface SightBlocker {
 
 
 // ── flow ────────────────────────────────────────────────────────
-// Interactive film (FMV): a Yarn dialogue paced by its footage. A node with an `og-flow: <timeline>` header plays that segment (a timeline with a video track) on a deck; its choices open at the segment's `flow.open` marker, lock at `flow.lock` and are taken at its cut (`flow.cut`, else its end), the default (`#default`) when none was chosen.
-// The story stays og.story's, the footage og.video's, the timing og.timeline's: og.flow moves the conversation between segments and warms those a choice may lead to on its other decks. All of it is world state.
+// A game's flow as a Yarn dialogue of segments: film, cutscenes, levels and minigames. A node with an `og-flow: <timeline>` header plays that segment on a deck: footage, a live scene (a `scene` track) or both. Its choices open at `flow.open`, lock at `flow.lock` and are taken at the cut (`flow.cut`, else the end), else the `#default`. A playable segment stops at `flow.hold` until og.flow.advance takes a hidden `#outcome:<name>` choice (guide flow).
+// og.flow moves the conversation between segments and prepares those it may lead to on its other decks (og.Timeline.preroll). All of it is world state.
 // See `flow`.
 
 /**
@@ -32839,6 +32839,12 @@ export interface Flow {
    */
   readonly ended: boolean;
   /**
+   * The segment playing stopped at its `flow.hold` marker: it waits for og.flow.advance (or a choice), its window open without time running out.
+   *
+   * @readonly written by the engine
+   */
+  readonly held: boolean;
+  /**
    * The deck dissolving out (`og-flow-dissolve`), playing on under the current one; 0: none.
    *
    * @readonly written by the engine
@@ -32899,6 +32905,8 @@ export interface WindowView {
   readonly pending: number | null;
   /** Past flow.lock: choosing is over; the cut takes pending, else the default. */
   readonly locked: boolean;
+  /** The segment holds (flow.hold): the window never locks, and a choice cuts at once. */
+  readonly held: boolean;
 }
 
 /**
@@ -32979,7 +32987,9 @@ export interface FlowView {
    * @unit s (seconds of simulation time)
    */
   readonly cut: number;
-  /** The node's choices while its window is open or locked (og.story's). */
+  /**
+   * The node's choices while its window is open or locked (og.story's), without its `#outcome` choices, which the game takes.
+   */
   readonly choices: readonly ChoiceView[];
   /** The window, while it is open or locked. */
   readonly window: WindowView | null;
@@ -33001,6 +33011,8 @@ export interface FlowView {
   readonly mix: number;
   /** Held by og.flow.pause. */
   readonly paused: boolean;
+  /** Stopped at its flow.hold, waiting for og.flow.advance (og.Flow.held). */
+  readonly held: boolean;
   /** The last chapter entered. */
   readonly chapter: string;
   /** The ending reached, once ended. */
@@ -33114,6 +33126,7 @@ export interface FlowEnded {
   /** Its `og-flow-ending`, empty without one (at most 63 bytes). */
   readonly ending: string;
 }
+
 
 
 
@@ -38094,7 +38107,7 @@ export declare namespace og {
   /**
    * A flow og.flow.start made: the conversation it paces and its decks. og.flow writes it; read og.flow.view.
    */
-  const Flow: ComponentType<{ readonly conversation: FieldSpec<"u32">; readonly decks: FieldSpec<"u32">; readonly current: FieldSpec<"Entity">; readonly node: FieldSpec<"u32">; readonly pending: FieldSpec<"i32">; readonly window: FieldSpec<"u32">; readonly paused: FieldSpec<"bool">; readonly chapter: FieldSpec<"u32">; readonly ended: FieldSpec<"bool">; readonly previous: FieldSpec<"Entity">; readonly dissolve: FieldSpec<"u32">; readonly dissolveLeft: FieldSpec<"u32">; readonly qte: ListSpec<"u32"> }, Flow>;
+  const Flow: ComponentType<{ readonly conversation: FieldSpec<"u32">; readonly decks: FieldSpec<"u32">; readonly current: FieldSpec<"Entity">; readonly node: FieldSpec<"u32">; readonly pending: FieldSpec<"i32">; readonly window: FieldSpec<"u32">; readonly paused: FieldSpec<"bool">; readonly chapter: FieldSpec<"u32">; readonly ended: FieldSpec<"bool">; readonly held: FieldSpec<"bool">; readonly previous: FieldSpec<"Entity">; readonly dissolve: FieldSpec<"u32">; readonly dissolveLeft: FieldSpec<"u32">; readonly qte: ListSpec<"u32"> }, Flow>;
   /**
    * An entity og.flow plays segments on, with an og.Timeline, an og.VideoPlayer (its `wait` set) and an og.AudioSource. The flow's current deck plays; the others hold a segment it may cut to, paused at its first frame.
    */
@@ -38108,8 +38121,8 @@ export declare namespace og {
   /** A flow's last segment reached its cut with the conversation ended. */
   const FlowEnded: EventType<FlowEnded>;
   /**
-   * Interactive film (FMV): a Yarn dialogue paced by its footage. A node with an `og-flow: <timeline>` header plays that segment (a timeline with a video track) on a deck; its choices open at the segment's `flow.open` marker, lock at `flow.lock` and are taken at its cut (`flow.cut`, else its end), the default (`#default`) when none was chosen.
-   * The story stays og.story's, the footage og.video's, the timing og.timeline's: og.flow moves the conversation between segments and warms those a choice may lead to on its other decks. All of it is world state.
+   * A game's flow as a Yarn dialogue of segments: film, cutscenes, levels and minigames. A node with an `og-flow: <timeline>` header plays that segment on a deck: footage, a live scene (a `scene` track) or both. Its choices open at `flow.open`, lock at `flow.lock` and are taken at the cut (`flow.cut`, else the end), else the `#default`. A playable segment stops at `flow.hold` until og.flow.advance takes a hidden `#outcome:<name>` choice (guide flow).
+   * og.flow moves the conversation between segments and prepares those it may lead to on its other decks (og.Timeline.preroll). All of it is world state.
    * See `flow`.
    */
   namespace flow {
@@ -38118,7 +38131,7 @@ export declare namespace og {
      *
      * @param world The world.
      * @param dialogue The dialogue (StoryAsset.name).
-     * @returns Refused for a dialogue not loaded, or a segment that is not a cooked timeline with a video track.
+     * @returns Refused for a dialogue not loaded, a segment that is not a cooked timeline with footage or a scene, or a node's `#outcome` choices without a `flow.hold`.
      */
     function load(world: World, dialogue: string): Result<FlowInfo>;
     /**
@@ -38143,9 +38156,18 @@ export declare namespace og {
      * @param world The world.
      * @param flow The flow.
      * @param index ChoiceView.index.
-     * @returns Refused outside an open window, or for a choice that is hidden or disabled.
+     * @returns Refused outside an open window, or for a choice that is hidden, disabled or an `#outcome`.
      */
     function choose(world: World, flow: Entity, index: number): Result<void>;
+    /**
+     * End the segment playing now, as its cut would: with `outcome`, the node's `#outcome:<name>` choice; without, the choice taken in the window, else the default (or its own way on, for a node without choices). What a playable segment's game calls when the level is won or lost; it stops at its `flow.hold` until then. Systems may call it; og.flow cuts this tick.
+     *
+     * @param world The world.
+     * @param flow The flow.
+     * @param outcome The `#outcome` to take, such as `won`; omitted for a node without outcomes.
+     * @returns Refused for an entity that is no flow, one that has ended, an outcome its node has not, or none for a node that ends only by its outcomes.
+     */
+    function advance(world: World, flow: Entity, outcome?: string): Result<void>;
     /**
      * Play a paused flow from where it is. Systems may call it.
      *

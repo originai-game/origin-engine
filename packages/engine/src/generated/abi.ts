@@ -1297,6 +1297,8 @@ export interface HostAbi<A, V> {
   og_flow_view(world: number, flow: number): string;
   /** `og.flow.choose` */
   og_flow_choose(world: number, flow: number, index: number): string;
+  /** `og.flow.advance` */
+  og_flow_advance(world: number, flow: number, outcome: string | undefined): string;
   /** `og.flow.play` */
   og_flow_play(world: number, flow: number): string;
   /** `og.flow.pause` */
@@ -1920,6 +1922,7 @@ export const SYMBOLS: readonly string[] = [
   "og_flow_start",
   "og_flow_view",
   "og_flow_choose",
+  "og_flow_advance",
   "og_flow_play",
   "og_flow_pause",
   "og_flow_skip",
@@ -2254,6 +2257,10 @@ export function checkEntities<A, V>(abi: HostAbi<A, V>): HostAbi<A, V> {
     og_flow_choose(world: number, flow: number, index: number) {
       if (typeof flow !== "number") notEntity("og.flow.choose", "flow", flow);
       return abi.og_flow_choose(world, flow, index);
+    },
+    og_flow_advance(world: number, flow: number, outcome: string | undefined) {
+      if (typeof flow !== "number") notEntity("og.flow.advance", "flow", flow);
+      return abi.og_flow_advance(world, flow, outcome);
     },
     og_flow_play(world: number, flow: number) {
       if (typeof flow !== "number") notEntity("og.flow.play", "flow", flow);

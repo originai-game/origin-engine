@@ -21,6 +21,7 @@ Token `og.Flow`, registered under the schema name `og.Flow`; its value type is `
 | `paused` | `boolean` | `false` | — | — | read only | Held by og.flow.pause (or FlowStartDesc.paused) until og.flow.play. |
 | `chapter` | `number` | `0` | — | — | read only | The node of the last chapter entered (its id, as `node`); 0: none. |
 | `ended` | `boolean` | `false` | — | — | read only | The last segment played to its cut and the conversation ended. |
+| `held` | `boolean` | `false` | — | — | read only | The segment playing stopped at its `flow.hold` marker: it waits for og.flow.advance (or a choice), its window open without time running out. |
 | `previous` | `Entity` | `0` | — | — | read only | The deck dissolving out (`og-flow-dissolve`), playing on under the current one; 0: none. |
 | `dissolve` | `number` | `0` | — | — | read only | The dissolve's length, ticks. |
 | `dissolveLeft` | `number` | `0` | — | — | read only | Ticks left of the dissolve; 0: none. |
@@ -55,6 +56,9 @@ component Flow {
     readonly true
   }
   field ended bool "The last segment played to its cut and the conversation ended." {
+    readonly true
+  }
+  field held bool "The segment playing stopped at its `flow.hold` marker: it waits for og.flow.advance (or a choice), its window open without time running out." {
     readonly true
   }
   field previous Entity "The deck dissolving out (`og-flow-dissolve`), playing on under the current one; 0: none." {

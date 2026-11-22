@@ -193,7 +193,15 @@ pub(crate) fn check_flows(
                     errors.push(format!("node '{}': segment {seg}: {e}", n.title));
                     None
                 }
-                Some(Ok(s)) => Some(s.hotspots.into_iter().map(|k| k.id).collect()),
+                Some(Ok(s)) => {
+                    if let Err(e) = og_timeline::segment::outcomes(
+                        s.hold.is_some(),
+                        n.choices.iter().map(|c| (c.index, &c.tags)),
+                    ) {
+                        errors.push(format!("node '{}': {e}", n.title));
+                    }
+                    Some(s.hotspots.into_iter().map(|k| k.id).collect())
+                }
             };
             if let Some(h) = n.headers.get("og-flow-dissolve")
                 && let Err(e) = og_timeline::segment::dissolve(h)
