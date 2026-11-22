@@ -59,7 +59,7 @@ export function TooltipCard(props: TooltipCardProps) {
           <Text class="font-semibold text-xs leading-snug text-fg-subtle tracking-label uppercase">
             {props.compareTitle}
           </Text>
-          <View class="w-full h-px bg-sheen m-0" role="separator" />
+          <View class="w-full h-px bg-rim m-0" role="separator" />
           <View class="gap-y-0 gap-x-0.5 w-full p-0 m-0">
             <For each={props.compareStats}>
               {(s, i) => (
@@ -135,7 +135,7 @@ export function TooltipCard(props: TooltipCardProps) {
             </Show>
           </View>
         </View>
-        <View class="w-full h-px bg-sheen m-0 relative" role="separator" />
+        <View class="w-full h-px bg-rim m-0 relative" role="separator" />
         <Show when={props.stats.length}>
           <View class="gap-y-0 gap-x-0.5 w-full p-0 m-0">
             <For each={props.stats}>

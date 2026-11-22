@@ -87,7 +87,7 @@ export function CalibrationScreen(props: CalibrationScreenProps) {
               {t("screen.calibration.brightness")}
             </Text>
           </View>
-          <View class="grow shrink basis-0 min-w-2 h-px bg-sheen compact:min-w-1" role="separator" />
+          <View class="grow shrink basis-0 min-w-2 h-px bg-rim compact:min-w-1" role="separator" />
           <View class={`group/offset flex-row items-center gap-x-2 text-caption font-semibold tracking-label uppercase text-fg-muted compact:gap-x-1 compact:tracking-md data-done:text-fg-muted data-on:text-fg compact:data-on:grow-0 compact:data-on:shrink compact:data-on:basis-auto compact:data-on:min-w-0`} data-on={props.step === "offset"} data-done={props.step === "controller"}>
             <View class="grid items-center justify-items-center inset-ring-1 inset-ring-rim text-caption size-6.5 rounded-full group-data-on/offset:shadow-glow group-data-on/offset:bg-none group-data-on/offset:bg-hud-accent group-data-on/offset:text-hud-accent-fg group-data-done/offset:bg-none group-data-done/offset:bg-raised-hi shrink">
               <Text class="tabular-nums whitespace-nowrap">{2}</Text>
@@ -96,7 +96,7 @@ export function CalibrationScreen(props: CalibrationScreenProps) {
               {t("screen.calibration.offset")}
             </Text>
           </View>
-          <View class="grow shrink basis-0 min-w-2 h-px bg-sheen compact:min-w-1" role="separator" />
+          <View class="grow shrink basis-0 min-w-2 h-px bg-rim compact:min-w-1" role="separator" />
           <View class={`group/controller flex-row items-center gap-x-2 text-caption font-semibold tracking-label uppercase text-fg-muted compact:gap-x-1 compact:tracking-md data-on:text-fg compact:data-on:grow-0 compact:data-on:shrink compact:data-on:basis-auto compact:data-on:min-w-0`} data-on={props.step === "controller"}>
             <View class="grid items-center justify-items-center inset-ring-1 inset-ring-rim text-caption size-6.5 rounded-full group-data-on/controller:shadow-glow group-data-on/controller:bg-none group-data-on/controller:bg-hud-accent group-data-on/controller:text-hud-accent-fg shrink">
               <Text class="tabular-nums whitespace-nowrap">{3}</Text>

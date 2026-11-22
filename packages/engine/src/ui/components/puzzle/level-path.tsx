@@ -55,7 +55,7 @@ export function PuzzleLevelPath(props: PuzzleLevelPathProps) {
                     </Text>
                   </View>
                 </View>
-                <View class={`w-full h-1.25 bg-lit gap-2`}>
+                <View class={`w-full h-1.25 bg-track gap-2`}>
                   <View class="absolute top-1 left-1 h-full bg-linear-to-r from-gold to-gold-hi shadow-glow shadow-gold" style={{ width: `${(100 * (c().total > 0 ? (c().earned >= c().total ? 1 : c().earned / c().total) : 0))}%` }} />
                 </View>
               </View>

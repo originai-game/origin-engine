@@ -42,7 +42,7 @@ export function Menu(props: MenuProps) {
             </Text>
           </View>
         </View>
-        <View class="w-auto self-stretch h-px bg-sheen my-1 mx-4" role="separator" />
+        <View class="w-auto self-stretch h-px bg-rim my-1 mx-4" role="separator" />
       </Show>
       <For each={props.entries}>
         {(e) => (
@@ -89,7 +89,7 @@ export function Menu(props: MenuProps) {
                 </Text>
               </Show>
             }>
-              <View class="w-auto self-stretch h-px bg-sheen my-1 mx-4" role="separator" />
+              <View class="w-auto self-stretch h-px bg-rim my-1 mx-4" role="separator" />
             </Show>
           </Show>
         )}

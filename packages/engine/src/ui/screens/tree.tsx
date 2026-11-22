@@ -26,7 +26,7 @@ export function Tree(props: TreeProps) {
         {(r) => (
           <View class={`group/row relative flex-row items-start gap-0.5 py-0.5 pr-3 w-full text-fg-muted hover:bg-surface-hover data-selected:text-fg data-selected:bg-surface-hover data-selected:inset-shadow-bar data-selected:inset-shadow-hud-accent`} role="treeitem" level={r().depth + 1} selected={r().selected} expanded={r().open ?? undefined} data-selected={r().selected} data-leaf={r().open == null} style={{ paddingLeft: `calc(${r().depth * 1.143}rem + 0.571rem)` }}>
             <Show when={r().depth > 0}>
-          <View class={`absolute top-0 bottom-0 w-px bg-lit-soft`} style={{ left: `calc(${(r().depth - 0.5) * 1.143}rem + 0.571rem)` }} />
+          <View class={`absolute top-0 bottom-0 w-px bg-rim-soft`} style={{ left: `calc(${(r().depth - 0.5) * 1.143}rem + 0.571rem)` }} />
             </Show>
             <Button class={`size-6 p-0 justify-center items-center shrink-0 ${r().open == null ? "invisible" : ""} ${packClass("Button", "plate")}`} label={r().label} onPress={(e) => props.onToggle?.(e, r().id)}>
               <Icon class={`size-3 ${r().open ? "rotate-90" : ""}`} name="play" />

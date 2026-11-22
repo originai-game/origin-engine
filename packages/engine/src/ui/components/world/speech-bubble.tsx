@@ -58,7 +58,7 @@ export function SpeechBubble(props: SpeechBubbleProps) {
         </Show>
         <Text class="min-w-0 group-data-shout:font-bold">{props.text}</Text>
         <Show when={left() >= 0}>
-          <View class="absolute left-2.5 right-2.5 bottom-0.75 h-0.5 bg-lit">
+          <View class="absolute left-2.5 right-2.5 bottom-0.75 h-0.5 bg-track">
             <View class="h-full bg-sheen" style={{ width: `${Math.min(Math.max(left(), 0), 1) * 100}%` }} />
           </View>
         </Show>

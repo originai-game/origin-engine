@@ -124,10 +124,10 @@ export function MinimapView(props: MinimapViewProps) {
             <Show when={(props.texture ?? 0) > 0} fallback={
               <View class="absolute inset-0">
                 <For each={Array.from({ length: 9 }, (_, k) => k)} key={(k) => `h${k}`}>
-                  {(k) => <View class="absolute bg-lit" style={{ left: `${((k() + 1) / 10) * 100}%`, top: 0, width: "0.071rem", height: "100%" }} />}
+                  {(k) => <View class="absolute bg-rim" style={{ left: `${((k() + 1) / 10) * 100}%`, top: 0, width: "0.071rem", height: "100%" }} />}
                 </For>
                 <For each={Array.from({ length: 9 }, (_, k) => k)} key={(k) => `v${k}`}>
-                  {(k) => <View class="absolute bg-lit" style={{ top: `${((k() + 1) / 10) * 100}%`, left: 0, height: "0.071rem", width: "100%" }} />}
+                  {(k) => <View class="absolute bg-rim" style={{ top: `${((k() + 1) / 10) * 100}%`, left: 0, height: "0.071rem", width: "100%" }} />}
                 </For>
               </View>
             }>

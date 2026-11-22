@@ -114,7 +114,7 @@ export function Compass(props: CompassProps) {
           <For each={Array.from({ length: 72 }, (_, k) => k)} key={(k) => k}>
             {(k) => (
               <View
-                class="absolute top-6.5 w-0.5 h-1.5 bg-lit"
+                class="absolute top-6.5 w-0.5 h-1.5 bg-rim-soft"
                 style={{ left: `${((k() * 0.125) / 9) * 100}%` }}
               />
             )}
@@ -122,7 +122,7 @@ export function Compass(props: CompassProps) {
           <For each={Array.from({ length: 24 }, (_, k) => k)} key={(k) => k}>
             {(k) => (
               <View
-                class="absolute top-5.5 w-0.5 h-2.5 bg-sheen"
+                class="absolute top-5.5 w-0.5 h-2.5 bg-rim"
                 style={{ left: `${((k() * 0.375) / 9) * 100}%` }}
               />
             )}

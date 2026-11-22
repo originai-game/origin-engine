@@ -55,7 +55,7 @@ export function SplashScreen(props: SplashScreenProps) {
             </Text>
             <Counter class="text-caption font-bold text-fg-muted" value={props.progress > 1 ? 1 : props.progress} format="percent" decimals={0} />
           </View>
-          <View class={`bg-lit shadow-sunk h-1 rounded-capsule overflow-hidden`}>
+          <View class={`bg-track shadow-sunk h-1 rounded-capsule overflow-hidden`}>
             <View class={`bg-linear-to-r from-hud-accent to-sheen h-full shadow-glow-lg duration-317`} style={{ width: `${(100 * (props.progress > 1 ? 1 : props.progress))}%` }} />
           </View>
         </View>

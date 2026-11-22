@@ -76,7 +76,7 @@ export function RacingGarage(props: RacingGarageProps) {
               {(v) => (
                 <View class="flex-col gap-1 w-full" label={v().title} data-owned={v().owned} data-chosen={v().id === props.chosen} data-locked={v().locked}>
                   <Show when={!v().image}>
-                    <View class={`w-full aspect-3.2 bg-lit-soft nine-panel-cut`} />
+                    <View class={`w-full aspect-3.2 bg-tile nine-panel-cut`} />
                   </Show>
                   <Text class={`w-full text-left text-xs leading-snug font-semibold tracking-label uppercase text-hud-accent-ink text-stroke-3 text-stroke-bg`}>{v().body}</Text>
                   <Text class={`w-full text-left text-8xl leading-none font-bold italic uppercase text-fg text-stroke-3 text-stroke-bg line-clamp-3 overflow-hidden`}>{v().title}</Text>

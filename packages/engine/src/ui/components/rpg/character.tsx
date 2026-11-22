@@ -63,7 +63,7 @@ export function RpgCharacter(props: RpgCharacterProps) {
               >
                 {props.line}
               </Text>
-              <View class={`w-full h-px bg-lit`} role="separator" />
+              <View class={`w-full h-px bg-rim`} role="separator" />
             </View>
           </View>
       }>

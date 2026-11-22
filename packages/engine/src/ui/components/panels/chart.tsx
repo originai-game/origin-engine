@@ -45,7 +45,7 @@ export function Chart(props: ChartProps) {
         <View class="relative grow min-w-0 border-l border-rim">
           <For each={props.ticks ?? []} key={(k) => k.id}>
             {(k) => (
-              <View class="absolute inset-x-0 h-px bg-lit" style={{ bottom: `${k().at * 100}%` }} />
+              <View class="absolute inset-x-0 h-px bg-rim" style={{ bottom: `${k().at * 100}%` }} />
             )}
           </For>
           <View class="absolute inset-0 flex-row items-end">

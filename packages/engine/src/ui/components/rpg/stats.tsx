@@ -46,7 +46,7 @@ export function RpgStats(props: RpgStatsProps) {
       <Scroll class={`grow min-h-0 w-full`}>
         <View class={`flex-row flex-wrap items-stretch gap-3 w-full px-1`}>
           {column("a")}
-          <View class={`shrink-0 w-px self-stretch bg-lit compact:hidden`} />
+          <View class={`shrink-0 w-px self-stretch bg-rim compact:hidden`} />
           {column("b")}
         </View>
       </Scroll>
