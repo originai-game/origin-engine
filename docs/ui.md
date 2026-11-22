@@ -1689,6 +1689,19 @@ Both are drift-checked by og-ui-next's tests; neither is edited by hand.
 When the theme lacks a role a component needs, the role is added to the
 token sources, not written in the component.
 
+The token families of those sources, which the default pack is generated
+from and a pack's `theme` overrides:
+
+| Token family | What it controls |
+|---|---|
+| `--seed-*` | The seed colours every colour is derived from (`seed.css`; a pack's `seeds`) |
+| `--color-*` | Colours per scheme: grounds, inks and their `-fg` pairs, status, HUD and team colours (`text-*`, `bg-*`, `border-*`) |
+| `--space-*`, `--size-*`, `--radius-*`, `--stroke-*` | Spacing steps, icon and art sizes, corners, line widths |
+| `--font-*` | The type ramp: families, sizes, weights, line heights, tracking |
+| `--shadow-*`, `--inset-*`, `--elevation-*`, `--glass-*`, `--opacity-*` | Shadows and inset shadows per scheme, drop elevations, glass blur, opacity steps |
+| `--motion-*` | Durations, easings and named animations |
+| `--density-*`, `--state-*` | Each input's control and row heights; hover, press and disabled states |
+
 ### 3.2 Packs, slots and schemes
 
 A style pack is one `pack.json` (with its fonts, art and sounds beside
