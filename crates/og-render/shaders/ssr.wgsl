@@ -47,10 +47,12 @@ struct Ssr {
 
 // The pyramid's four levels a dispatch writes (hiz_down), and the level it
 // reads (the second dispatch's).
-@group(1) @binding(0) var hiz_out0: texture_storage_2d<rg32float, write>;
-@group(1) @binding(19) var hiz_out1: texture_storage_2d<rg32float, write>;
-@group(1) @binding(20) var hiz_out2: texture_storage_2d<rg32float, write>;
-@group(1) @binding(21) var hiz_out3: texture_storage_2d<rg32float, write>;
+// rgba32float, not rg32float: compatibility mode has no two-channel
+// storage textures. The (min, max) pair is in rg.
+@group(1) @binding(0) var hiz_out0: texture_storage_2d<rgba32float, write>;
+@group(1) @binding(19) var hiz_out1: texture_storage_2d<rgba32float, write>;
+@group(1) @binding(20) var hiz_out2: texture_storage_2d<rgba32float, write>;
+@group(1) @binding(21) var hiz_out3: texture_storage_2d<rgba32float, write>;
 @group(1) @binding(1) var hiz_in: texture_2d<f32>;
 // Levels 1 to 8 of the pyramid as mips 0 to 7, r the nearest view depth
 // under each texel and g the farthest; level 0 is the prepass's view depth

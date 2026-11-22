@@ -158,6 +158,9 @@ fn block_offset(frame: u64) -> [f32; 2] {
 /// (level 0): two dispatches of four (`ssr.wgsl` `hiz_down`), the coarsest
 /// a cell of 256 pixels.
 const PYRAMID_LEVELS: u32 = 8;
+/// The pyramid's (min, max) depths, in rg: rgba32float, as compatibility
+/// mode stores no two-channel format (ssr.wgsl `hiz_out0`).
+const PYRAMID_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba32Float;
 
 /// The pyramid's level 1 for a `width` x `height` screen: half the screen
 /// padded to 256 pixels, so that every level halves exactly.
@@ -260,7 +263,7 @@ impl Targets {
             device,
             "ssr depth pyramid",
             pyramid_size(size.0, size.1),
-            wgpu::TextureFormat::Rg32Float,
+            PYRAMID_FORMAT,
             PYRAMID_LEVELS,
         );
         let hiz_levels = crate::mips::level_views(&hiz, "ssr depth pyramid level");
@@ -694,24 +697,24 @@ impl Pipelines {
             "ssr",
             &[uniform, texture(1, false), texture(2, false), sampler],
         );
-        let rg32 = wgpu::TextureFormat::Rg32Float;
+        let pyramid = PYRAMID_FORMAT;
         let layouts = [
             layout(
                 "ssr hiz base",
                 &[
-                    storage(0, rg32),
-                    storage(19, rg32),
-                    storage(20, rg32),
-                    storage(21, rg32),
+                    storage(0, pyramid),
+                    storage(19, pyramid),
+                    storage(20, pyramid),
+                    storage(21, pyramid),
                 ],
             ),
             layout(
                 "ssr hiz reduce",
                 &[
-                    storage(0, rg32),
-                    storage(19, rg32),
-                    storage(20, rg32),
-                    storage(21, rg32),
+                    storage(0, pyramid),
+                    storage(19, pyramid),
+                    storage(20, pyramid),
+                    storage(21, pyramid),
                     texture(1, false),
                 ],
             ),

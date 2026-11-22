@@ -127,7 +127,7 @@ const PREPARE_INPUTS: &[B] = &[
     B::Tex(false),
     B::Tex(false),
     B::Storage(F::R32Float),
-    B::Storage(F::Rg32Float),
+    B::Storage(F::Rgba32Float),
     B::Storage(F::R32Float),
     B::Storage(F::R32Float),
     B::Rw,
@@ -332,7 +332,9 @@ impl State {
                 device,
                 "fsr dilated motion",
                 upscale,
-                F::Rg32Float,
+                // The motion in rg (no two-channel storage in
+                // compatibility mode).
+                F::Rgba32Float,
                 1,
             )),
             farthest_depth: view(&texture(

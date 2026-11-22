@@ -16,7 +16,9 @@
 @group(0) @binding(3) var velocity_tex: texture_2d<f32>;
 @group(0) @binding(4) var view_depth_tex: texture_2d<f32>;
 @group(0) @binding(5) var dilated_depth_out: texture_storage_2d<r32float, write>;
-@group(0) @binding(6) var dilated_motion_out: texture_storage_2d<rg32float, write>;
+// rgba32float, the motion in rg: compatibility mode stores no
+// two-channel format.
+@group(0) @binding(6) var dilated_motion_out: texture_storage_2d<rgba32float, write>;
 @group(0) @binding(7) var farthest_depth_out: texture_storage_2d<r32float, write>;
 @group(0) @binding(8) var current_luma_out: texture_storage_2d<r32float, write>;
 @group(0) @binding(9) var<storage, read_write> reconstructed_depth: array<atomic<u32>>;
