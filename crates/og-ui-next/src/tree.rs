@@ -374,13 +374,15 @@ pub struct Tree {
     /// The host's: an image's source (a texture handle) as the slot it
     /// draws, read as the tree paints, so a replaced texture follows.
     textures: Option<Textures>,
-    /// The live elements depth first, a parent before its children (in
-    /// paint order), made again when the structure changes; `el_of` maps
+    /// The live elements depth first, a parent before its children, made
+    /// again when the structure changes; `el_of` maps
     /// an arena node to its element, `walk` is its stack.
     order: Vec<u32>,
     ordered: bool,
     el_of: Vec<u32>,
     walk: Vec<Id>,
+    /// Compositing and hit order, with the reusable quad reorder buffer.
+    stacking: stacking::Stacking,
     /// The op nodes: renderer id to element (NONE: free), their classes'
     /// records once per distinct class and style, and the events since the
     /// renderer last took them ([`ops`]).
@@ -438,6 +440,7 @@ struct Shown {
 mod input;
 mod ops;
 mod particles;
+mod stacking;
 mod vcursor;
 pub use input::{Cue, Play, SoundTable};
 pub use ops::{EVENTS, Event as OpEvent, Fired, MAGIC, REFUSED, Resolve};
@@ -510,6 +513,7 @@ impl Tree {
             ordered: false,
             el_of: Vec::new(),
             walk: Vec::new(),
+            stacking: Default::default(),
             by_js: Vec::new(),
             classes: ops::Classes::default(),
             events: Vec::new(),
@@ -1218,6 +1222,7 @@ impl Tree {
         self.plots.clear();
         let scale = self.scale;
         self.order();
+        self.stacking.begin(&self.els, &self.order);
         self.abs.clear();
         self.abs.resize(self.els.len(), (0.0, 0.0, false, [0.0; 4]));
         const ALL: [f32; 4] = [f32::MIN, f32::MIN, f32::MAX, f32::MAX];
@@ -1942,7 +1947,9 @@ impl Tree {
                     (q.mask, q.filter) = (mask, filter);
                 }
             }
+            self.stacking.painted(e, start..self.drawn.quads.len());
         }
+        self.stacking.reorder(&mut self.drawn.quads);
         for e in sounding {
             let cue = std::mem::take(&mut self.input.per[e as usize].cue);
             self.sound(e, &cue);
@@ -1970,8 +1977,8 @@ impl Tree {
 
     /// The element a press at (x, y) reaches: of the shown, enabled
     /// elements that answer a press and whose box, inside the clip their
-    /// parent paints them in, holds the point, the last made (a descendant
-    /// comes after its ancestors and paints over them); NONE for none.
+    /// parent paints them in, holds the point, the last painted in its
+    /// stacking context; NONE for none.
     fn hit(&self, x: f32, y: f32) -> u32 {
         self.hit_where(x, y, |el| el.clickable)
     }
@@ -1985,7 +1992,7 @@ impl Tree {
     /// The topmost shown element at (x, y) that `want` accepts; a disabled
     /// control counts only when `enabled` is false (its cursor shows).
     fn topmost(&self, x: f32, y: f32, want: impl Fn(&El) -> bool, enabled: bool) -> u32 {
-        for &e in self.order.iter().rev() {
+        for &e in self.stacking.order.iter().rev() {
             let (e, el) = (e as usize, &self.els[e as usize]);
             // An element on its way out, or in one, answers nothing.
             if el.dead || self.shown.get(e).is_some_and(|s| s.out || !s.touch) {

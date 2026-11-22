@@ -1,0 +1,6 @@
+{
+  "fixed": [{
+    "member": "UI z-index",
+    "summary": "Paint and hit-test z-* in stacking-context order: z-auto descendants participate in the nearest explicit context, z-0 isolates its children, and negative and equal levels retain their background and document ordering. Layout, clips and transforms stay parent-first."
+  }]
+}

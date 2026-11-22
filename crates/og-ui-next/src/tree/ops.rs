@@ -3666,6 +3666,119 @@ mod tests {
         );
     }
 
+    /// Real z classes affect both quad compositing and which overlapping
+    /// button hears a press. Auto descendants may escape their parent;
+    /// explicit zero isolates them. Negative children stay above their
+    /// context's background, and equal levels follow document order.
+    #[test]
+    fn z_index_paints_and_hits_in_isolated_contexts() {
+        let mut t = tree();
+        let classes = std::cell::RefCell::new(crate::classes::Classes::new(None).unwrap().0);
+        t.set_resolver(Box::new(move |class, _, _, _| {
+            classes
+                .borrow_mut()
+                .record(class, &crate::classes::Env::default())
+        }));
+        let box_class = "absolute left-0 top-0 w-[100px] h-[80px]";
+        let mut b = Batch::default();
+        for (id, parent, class) in [
+            (
+                1,
+                0,
+                "relative w-[200px] h-[160px] z-0 bg-[#000000]".to_string(),
+            ),
+            (2, 1, format!("{box_class} bg-[#00ff00]")),
+            (3, 2, format!("{box_class} z-20 bg-[#ff0000]")),
+            (4, 1, format!("{box_class} z-10 bg-[#0000ff]")),
+        ] {
+            b.op(1).u32(id).u8(0);
+            b.op(4).u32(id).str(&class);
+            b.op(8).u32(parent).u32(id).u32(u32::MAX);
+            b.op(7).u32(id).u8(Event::Press as u8).u8(1);
+        }
+        t.apply(&b.bytes()).unwrap();
+        let check = |t: &mut Tree, colors: &[[f32; 4]], button: u32| {
+            frame(t);
+            assert_eq!(
+                t.drawn
+                    .quads
+                    .iter()
+                    .filter(|q| q.kind == PaintKind::Solid as u32)
+                    .map(|q| q.color)
+                    .collect::<Vec<_>>(),
+                colors
+            );
+            t.pointer(25.0, 25.0, true, false);
+            t.pointer(25.0, 25.0, false, true);
+            let fired = std::mem::take(&mut t.events);
+            assert_eq!(
+                fired
+                    .iter()
+                    .filter(|f| f.event == Event::Press)
+                    .map(|f| f.id)
+                    .collect::<Vec<_>>(),
+                [button]
+            );
+            assert_eq!(
+                t.op_box(3).unwrap(),
+                [0.0, 0.0, 100.0, 80.0],
+                "stacking never changes layout"
+            );
+        };
+        let (black, green, red, blue) = (
+            [0., 0., 0., 1.],
+            [0., 1., 0., 1.],
+            [1., 0., 0., 1.],
+            [0., 0., 1., 1.],
+        );
+        check(&mut t, &[black, green, blue, red], 3);
+        let mut b = Batch::default();
+        b.op(4).u32(2).str(&format!("{box_class} z-0 bg-[#00ff00]"));
+        t.apply(&b.bytes()).unwrap();
+        check(&mut t, &[black, green, red, blue], 4);
+        let mut b = Batch::default();
+        b.op(4)
+            .u32(3)
+            .str(&format!("{box_class} -z-10 bg-[#ff0000]"));
+        t.apply(&b.bytes()).unwrap();
+        check(&mut t, &[black, green, red, blue], 4);
+        let mut b = Batch::default();
+        b.op(4)
+            .u32(2)
+            .str(&format!("{box_class} z-auto bg-[#00ff00]"));
+        b.op(4).u32(4).str(&format!("{box_class} z-0 bg-[#0000ff]"));
+        t.apply(&b.bytes()).unwrap();
+        check(&mut t, &[black, red, green, blue], 4);
+        // Move the auto container after the equal-level sibling. Its
+        // negative child still precedes it, but the green box now wins.
+        let mut b = Batch::default();
+        b.op(8).u32(1).u32(2).u32(u32::MAX);
+        t.apply(&b.bytes()).unwrap();
+        check(&mut t, &[black, red, blue, green], 2);
+
+        // A negative child paints before its auto parent's own box, but
+        // still receives that parent's current geometry and clip.
+        let mut b = Batch::default();
+        b.op(4)
+            .u32(2)
+            .str("absolute left-[10px] top-[15px] w-[60px] h-[40px] overflow-hidden bg-[#00ff00]");
+        t.apply(&b.bytes()).unwrap();
+        frame(&mut t);
+        let q = t.drawn.quads.iter().find(|q| q.color == red).unwrap();
+        assert_eq!(q.rect, [10., 15., 100., 80.]);
+        assert_eq!(q.clip, [10., 15., 70., 55.]);
+        t.pointer(90., 30., true, false);
+        t.pointer(90., 30., false, true);
+        assert_eq!(
+            t.events
+                .iter()
+                .filter(|f| f.event == Event::Press)
+                .map(|f| f.id)
+                .collect::<Vec<_>>(),
+            [4]
+        );
+    }
+
     /// `order-*` places a flex or grid item among its siblings for layout,
     /// as CSS's `order`: the flex row and the grid's auto-placement take
     /// order-modified document order. Real classes, end to end.
