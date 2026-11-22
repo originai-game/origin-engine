@@ -90,18 +90,18 @@ export function AmmoCounter(props: AmmoCounterProps) {
         </View>
         <Text class="min-w-0 text-xs font-semibold tracking-label uppercase text-fg whitespace-nowrap truncate text-shadow-2xs text-stroke-3 text-stroke-bg">{props.weapon}</Text>
         <Show when={(props.mode ?? "auto") == "auto"}>
-          <Text class="shrink-0 text-xs font-semibold tracking-label uppercase text-fg-muted text-shadow-2xs text-stroke-3 text-stroke-bg">{t("shooter.ammo.auto")}</Text>
+          <Text class="shrink-0 text-xs font-semibold tracking-label uppercase text-fg text-shadow-2xs text-stroke-3 text-stroke-bg">{t("shooter.ammo.auto")}</Text>
         </Show>
         <Show when={(props.mode ?? "auto") == "burst"}>
-          <Text class="shrink-0 text-xs font-semibold tracking-label uppercase text-fg-muted text-shadow-2xs text-stroke-3 text-stroke-bg">{t("shooter.ammo.burst")}</Text>
+          <Text class="shrink-0 text-xs font-semibold tracking-label uppercase text-fg text-shadow-2xs text-stroke-3 text-stroke-bg">{t("shooter.ammo.burst")}</Text>
         </Show>
         <Show when={(props.mode ?? "auto") == "single"}>
-          <Text class="shrink-0 text-xs font-semibold tracking-label uppercase text-fg-muted text-shadow-2xs text-stroke-3 text-stroke-bg">{t("shooter.ammo.single")}</Text>
+          <Text class="shrink-0 text-xs font-semibold tracking-label uppercase text-fg text-shadow-2xs text-stroke-3 text-stroke-bg">{t("shooter.ammo.single")}</Text>
         </Show>
       </View>
       <Show when={(props.reloading ?? -1) >= 0}>
         <View class="flex-row items-center gap-1 w-full">
-          <Text class="text-xs font-semibold tracking-label uppercase text-fg-muted whitespace-nowrap text-shadow-2xs text-stroke-3 text-stroke-bg">{t("shooter.ammo.reloading")}</Text>
+          <Text class="text-xs font-semibold tracking-label uppercase text-fg whitespace-nowrap text-shadow-2xs text-stroke-3 text-stroke-bg">{t("shooter.ammo.reloading")}</Text>
           <View class="flex-1 h-1 overflow-hidden bg-track inset-shadow-lit ring ring-rim">
             <View class="h-full bg-hud transition-layout duration-180 ease-out" style={{ width: `${Math.min(props.reloading ?? 0, 1) * 100}%` }} />
           </View>
