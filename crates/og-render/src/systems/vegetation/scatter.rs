@@ -771,6 +771,9 @@ pub(crate) struct ScatterPipelines<'a> {
     pub trample: wgpu::TextureView,
     /// Whether compute runs: the main camera's copies are culled on the GPU.
     pub compute: bool,
+    /// [`crate::Caps::RG32_STORAGE`]: the cards' lit stage may read the
+    /// prepass's view depth (`lit_wgsl` has impostor_kept.wgsl).
+    pub kept_depth: bool,
     /// [`crate::RenderInfo::indirect_per_draw`]: the cull's draws read
     /// args of their own (`indirect_own.rs`).
     pub indirect_per_draw: bool,

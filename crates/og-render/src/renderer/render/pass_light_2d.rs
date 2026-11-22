@@ -63,11 +63,12 @@ impl Pass for Light2dPass {
             .map_or(0.5, |l| l.resolution.clamp(0.25, 1.0));
         // The lights' directions beside the light map, for normal-mapped
         // receivers (sprite_normals.rs).
-        // A second target beside the light map (without MRT, normal-mapped
-        // receivers are lit as flat ones).
+        // A second target beside the light map, blended its own way
+        // (without MRT or independent blending, normal-mapped receivers
+        // are lit as flat ones).
         let lightdir_on = scene.sprite.lighting_2d.is_some()
             && scene.has_texture_normals()
-            && r.info.caps.contains(Caps::MRT);
+            && r.info.caps.contains(Caps::MRT | Caps::INDEPENDENT_BLEND);
         // The light map: its strips side by side (light2d.rs).
         let lightmap_size = light2d::strips_size(
             (
@@ -119,9 +120,13 @@ impl Pass for Light2dPass {
         })
     }
 
-    /// The light directions are a second colour target.
+    /// The light directions are a second colour target, blended its own way.
     fn needs(plan: &Light2dPlan) -> Caps {
-        if plan.lightdir { Caps::MRT } else { Caps::NONE }
+        if plan.lightdir {
+            Caps::MRT | Caps::INDEPENDENT_BLEND
+        } else {
+            Caps::NONE
+        }
     }
 
     fn encode<'f>(st: &Self::State, plan: &Light2dPlan, _: FramePass, cx: &mut EncodeCx<'_, 'f>) {

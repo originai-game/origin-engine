@@ -3457,13 +3457,14 @@ pub enum RenderTier {
     Full,
     MiniGame,
     Gl,
+    Compat,
 }
 
 impl RenderTier {
     /// The variants' IDL names, in index order.
-    pub const NAMES: &'static [&'static str] = &["full", "miniGame", "gl"];
+    pub const NAMES: &'static [&'static str] = &["full", "miniGame", "gl", "compat"];
     /// Every variant, in index order.
-    pub const ALL: &'static [Self] = &[Self::Full, Self::MiniGame, Self::Gl];
+    pub const ALL: &'static [Self] = &[Self::Full, Self::MiniGame, Self::Gl, Self::Compat];
     /// The IDL name.
     pub fn as_str(self) -> &'static str {
         Self::NAMES[self as usize]
@@ -3500,6 +3501,8 @@ pub struct RenderCaps {
     pub indirect_first_instance: bool,
     pub fragment_storage: bool,
     pub vertex_storage: bool,
+    pub independent_blend: bool,
+    pub rg32_storage: bool,
 }
 
 impl Default for RenderCaps {
@@ -3513,6 +3516,8 @@ impl Default for RenderCaps {
             indirect_first_instance: Default::default(),
             fragment_storage: Default::default(),
             vertex_storage: Default::default(),
+            independent_blend: Default::default(),
+            rg32_storage: Default::default(),
         }
     }
 }
@@ -3532,6 +3537,8 @@ impl FromJson for RenderCaps {
             indirect_first_instance: field(o, "indirectFirstInstance", d.indirect_first_instance)?,
             fragment_storage: field(o, "fragmentStorage", d.fragment_storage)?,
             vertex_storage: field(o, "vertexStorage", d.vertex_storage)?,
+            independent_blend: field(o, "independentBlend", d.independent_blend)?,
+            rg32_storage: field(o, "rg32Storage", d.rg32_storage)?,
         })
     }
 }
@@ -3547,6 +3554,8 @@ impl ToJson for RenderCaps {
         o.insert("indirectFirstInstance".into(), self.indirect_first_instance.to_json());
         o.insert("fragmentStorage".into(), self.fragment_storage.to_json());
         o.insert("vertexStorage".into(), self.vertex_storage.to_json());
+        o.insert("independentBlend".into(), self.independent_blend.to_json());
+        o.insert("rg32Storage".into(), self.rg32_storage.to_json());
         Value::Object(o)
     }
 }

@@ -101,9 +101,8 @@ impl Renderer {
         // redraws the camera list's instances. Its cluster pools
         // (meshlet_gpu.rs) are kept by the mesh uploads (uploads.rs
         // `sync_meshlet_pool`).
-        let meshlet_on = self.gpu_culls()
+        let meshlet_on = self.meshlets(scene)
             && !object_space
-            && scene.objects.meshlets
             && scene.mesh_clusters_all().iter().any(Option::is_some);
         let mut meshlet_taken: Vec<u32> = match self.visibility.meshlet.as_ref() {
             Some(m) if meshlet_on => batches

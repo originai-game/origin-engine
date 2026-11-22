@@ -144,10 +144,14 @@ fn frame(g: &mut RenderGraph, cx: &PlanCx) {
                     LINDEPTH_FORMAT,
                     1,
                     // STORAGE_BINDING: the main pass's cards read it
-                    // (impostor.wgsl `imp_view_depth`).
+                    // (impostor_kept.wgsl `imp_view_depth`).
                     ATTACH_BIND
                         | wgpu::TextureUsages::COPY_SRC
-                        | wgpu::TextureUsages::STORAGE_BINDING,
+                        | if cfg.lindepth_storage {
+                            wgpu::TextureUsages::STORAGE_BINDING
+                        } else {
+                            wgpu::TextureUsages::empty()
+                        },
                 ),
             )
             .transient("outline-id", desc(w, h, OUTLINE_FORMAT, 1, ATTACH_BIND));

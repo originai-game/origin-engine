@@ -397,8 +397,12 @@ lowered to meet it. Implementation details of each pass are in
 setting. The full tier (WebGPU, Vulkan, Metal, DX12) has compute, multiple
 render targets, asynchronous pipeline creation and timestamps. A limited
 tier lacks some: the mini-game WebGPU tier has no MRT, asynchronous
-pipelines or timestamps; the GL tier has no compute either. Three rules
-follow:
+pipelines or timestamps; the GL tier has no compute either; the
+compatibility tier (WebGPU's compatibility mode on GLES and D3D11 devices)
+has no storage in the vertex stage, colour targets blended each their own
+way or `rg32float` storage, and runs at that mode's limits. Every shader
+keeps compatibility mode's WGSL rules on every tier (og-render's
+`tests/wgsl_rules.rs`). Three rules follow:
 
 - Within a tier nothing is reduced for a budget (§7).
 - A feature states the capabilities it needs; on a tier without them it is

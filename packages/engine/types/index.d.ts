@@ -5943,8 +5943,9 @@ export type RenderBackend = "webgpu" | "vulkan" | "vulkan-cpu" | "metal" | "dx12
  * - `"full"`: Whatever the device can do (WebGPU, Vulkan, Metal, DX12). Also without a renderer.
  * - `"miniGame"`: The mini-game WebGPU set: no multiple render targets, asynchronous pipelines or timestamps.
  * - `"gl"`: The GL tier: as miniGame, and no compute, nor the storage and indirect execution WebGL2 lacks with it.
+ * - `"compat"`: WebGPU's compatibility mode (GLES and D3D11 devices): no vertex-stage storage, per-target blending or rg32 storage; 4096-texel textures, 128-invocation workgroups, no MSAA (msaa4 resolves to fxaa) and no order-independent transparency (blended surfaces sorted back to front).
  */
-export type RenderTier = "full" | "miniGame" | "gl";
+export type RenderTier = "full" | "miniGame" | "gl" | "compat";
 
 /**
  * What the device can do under RenderCapabilities.tier, as og-render's Caps: every decision the renderer makes about the device reads this set. All false without a renderer.
@@ -5970,6 +5971,14 @@ export interface RenderCaps {
   readonly fragmentStorage: boolean;
   /** Storage read in the vertex stage. */
   readonly vertexStorage: boolean;
+  /**
+   * Colour targets of one pipeline blended each their own way: order-independent transparency's targets and the 2D lights' directions need it.
+   */
+  readonly independentBlend: boolean;
+  /**
+   * Storage bindings of two-channel 32-bit textures: scattered impostor cards take the depth prepass's surface with it, and search their frames again without it.
+   */
+  readonly rg32Storage: boolean;
 }
 
 /**

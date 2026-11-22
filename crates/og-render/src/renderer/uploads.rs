@@ -423,11 +423,10 @@ impl Renderer {
     }
 
     /// Whether mesh `i`'s f32 vertices live in the meshlet vertex pool
-    /// alone: a clustered mesh no surface simulates, on a device that culls
-    /// on the GPU, in a scene that draws meshlets.
+    /// alone: a clustered mesh no surface simulates, in a scene that draws
+    /// meshlets ([`Self::meshlets`]).
     pub(crate) fn pools_vertices(&self, scene: &RenderScene, i: usize) -> bool {
-        self.gpu_culls()
-            && scene.objects.meshlets
+        self.meshlets(scene)
             && scene
                 .mesh_clusters_all()
                 .get(i)
@@ -440,10 +439,7 @@ impl Renderer {
     /// takes is written into the vertex pool from the CPU, never into a
     /// buffer of its own first.
     pub(crate) fn sync_meshlet_pool(&mut self, scene: &RenderScene) {
-        if !(self.gpu_culls()
-            && scene.objects.meshlets
-            && scene.mesh_clusters_all().iter().any(Option::is_some))
-        {
+        if !(self.meshlets(scene) && scene.mesh_clusters_all().iter().any(Option::is_some)) {
             return;
         }
         let limits = self.device.limits();

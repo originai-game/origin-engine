@@ -1,0 +1,16 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {
+      "member": "RenderTier.compat",
+      "summary": "WebGPU's compatibility mode (Chrome 146+ on GLES and D3D11 devices) as a tier: the renderer made at that mode's limits (4096-texel textures, compute workgroups of 128), no MSAA (`msaa4` resolves to `fxaa`), blended surfaces sorted back to front instead of order-independent transparency, normal-mapped 2D receivers lit as flat ones, and clustered meshes drawn without the meshlet path (`visibilityBufferRefused` says why). No host picks it yet: the web host can once wgpu asks for the mode."
+    },
+    {
+      "member": "RenderCaps { independentBlend, rg32Storage }",
+      "summary": "Two capabilities `og.render.capabilities().caps` reports: colour targets blended each their own way (order-independent transparency and the 2D lights' directions need it) and two-channel 32-bit storage textures (scattered impostor cards take the depth prepass's surface with it and search their frames again without it). Both are true on every core device."
+    }
+  ],
+  "fixed": [
+    "The renderer's shaders keep WebGPU compatibility mode's rules on every tier, so a compatibility adapter no longer refuses them: flat inter-stage values take either vertex, compute workgroups have at most 128 invocations, depth is read as an unfilterable float texture, the screen-space reflections' depth pyramid and FSR's dilated motion are stored as rgba32float, and the sea's foam passes write textures of their own. Frames look the same."
+  ]
+}

@@ -681,10 +681,11 @@ impl Pass for MainPass {
         Some(plan)
     }
 
-    /// Order-independent transparency: its accumulation targets.
+    /// Order-independent transparency: its accumulation targets, each
+    /// blended its own way.
     fn needs(plan: &MainPlan<'_>) -> Caps {
         if plan.oit.is_some() {
-            Caps::MRT
+            Caps::MRT | Caps::INDEPENDENT_BLEND
         } else {
             Caps::NONE
         }

@@ -18,6 +18,8 @@ What the device can do under RenderCapabilities.tier, as og-render's Caps: every
 | `indirectFirstInstance` | `boolean` | `false` | — | — | — | Indirect draws with a first instance. |
 | `fragmentStorage` | `boolean` | `false` | — | — | — | Storage written from fragment shaders. |
 | `vertexStorage` | `boolean` | `false` | — | — | — | Storage read in the vertex stage. |
+| `independentBlend` | `boolean` | `false` | — | — | — | Colour targets of one pipeline blended each their own way: order-independent transparency's targets and the 2D lights' directions need it. |
+| `rg32Storage` | `boolean` | `false` | — | — | — | Storage bindings of two-channel 32-bit textures: scattered impostor cards take the depth prepass's surface with it, and search their frames again without it. |
 
 ```ogt
 struct RenderCaps {
@@ -30,7 +32,9 @@ struct RenderCaps {
   field indirectFirstInstance bool "Indirect draws with a first instance."
   field fragmentStorage bool "Storage written from fragment shaders."
   field vertexStorage bool "Storage read in the vertex stage."
+  field independentBlend bool "Colour targets of one pipeline blended each their own way: order-independent transparency's targets and the 2D lights' directions need it."
+  field rg32Storage bool "Storage bindings of two-channel 32-bit textures: scattered impostor cards take the depth prepass's surface with it, and search their frames again without it."
 }
 ```
 
-<sub>Module `render` line 47</sub>
+<sub>Module `render` line 48</sub>

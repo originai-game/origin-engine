@@ -14,7 +14,7 @@ What the renderer can do on this device. Backend limits are reported here, never
 |---|---|---|---|---|---|---|
 | `backend` | `RenderBackend` | `"webgpu"` | — | — | — | The backend (none without a renderer). |
 | `tier` | `RenderTier` | `"full"` | — | — | — | The feature set the renderer was made for (full without a renderer). |
-| `caps` | `RenderCaps` | `{ compute: false, mrt: false, asyncPipelines: false, timestamps: false, indirect: false, indirectFirstInstance: false, fragmentStorage: false, vertexStorage: false }` | — | — | — | What the device can do under tier. |
+| `caps` | `RenderCaps` | `{ compute: false, mrt: false, asyncPipelines: false, timestamps: false, indirect: false, indirectFirstInstance: false, fragmentStorage: false, vertexStorage: false, independentBlend: false, rg32Storage: false }` | — | — | — | What the device can do under tier. |
 | `compute` | `boolean` | `false` | — | — | — | Whether compute passes run (GPU culling, GPU particles). |
 | `antialias` | `Antialias` | `"tier"` | — | — | — | The antialiasing the device resolved RenderOptions.antialias to. |
 | `hdrSupported` | `boolean` | `false` | — | — | — | Whether this surface can be configured for extended-range (HDR) output. This is surface-path support, not a measurement of the monitor or current OS HDR headroom. False without a surface. |
@@ -206,4 +206,4 @@ struct RenderCapabilities {
 }
 ```
 
-<sub>Module `render` line 2992</sub>
+<sub>Module `render` line 2995</sub>

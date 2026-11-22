@@ -43,13 +43,22 @@ impl Renderer {
         // the device reads these.
         let adapter_features = adapter.features() - desc.without_features;
         let adapter_flags = adapter.get_downlevel_capabilities().flags - desc.without_downlevel;
-        let caps =
-            Caps::of(adapter_features, adapter_flags, &adapter.limits()) & desc.tier.ceiling();
+        let mut caps = Caps::of(adapter_features, adapter_flags, &adapter.limits());
+        if !adapter
+            .get_texture_format_features(wgpu::TextureFormat::Rg32Float)
+            .allowed_usages
+            .contains(wgpu::TextureUsages::STORAGE_BINDING)
+        {
+            caps = caps.without(Caps::RG32_STORAGE);
+        }
+        let caps = caps & desc.tier.ceiling();
         let adapter_features = caps.features(adapter_features);
         let flags = caps.downlevel(adapter_flags);
         // GPU culling and the meshlet path: compute dispatches and indirect draws.
         let indirect = caps.contains(Caps::INDIRECT | Caps::COMPUTE);
-        let msaa_ok = supports_msaa(adapter);
+        // Compatibility mode multisamples no rgba16float target (the HDR
+        // target, gpuweb's compatibility-mode proposal §22).
+        let msaa_ok = supports_msaa(adapter) && desc.tier != Tier::Compat;
         let antialias = match desc.antialias {
             Antialias::Off => Antialias::Off,
             Antialias::Taa => Antialias::Taa,
@@ -76,6 +85,7 @@ impl Renderer {
             .max_storage_buffers_per_shader_stage
             .max(8)
             .min(adapter.limits().max_storage_buffers_per_shader_stage);
+        let limits = desc.tier.compat_limits(limits);
         let shadow_size = desc
             .shadow_map_size
             .clamp(64, limits.max_texture_dimension_2d.max(64));

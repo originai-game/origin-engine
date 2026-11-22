@@ -26,6 +26,7 @@ fn cfg(taa: bool, gi: bool) -> GraphConfig {
         object_space: false,
         ui_depth: false,
         oit: None,
+        lindepth_storage: true,
     }
 }
 

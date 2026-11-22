@@ -121,6 +121,7 @@ impl Renderer {
                     object_space,
                     ui_depth: ui_depth && prepass,
                     oit: oit_mode.map(|m| m == oit::Oit::List),
+                    lindepth_storage: self.info.caps.contains(Caps::RG32_STORAGE),
                 },
                 &self.post,
                 &self.persistent,

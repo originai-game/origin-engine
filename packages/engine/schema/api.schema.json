@@ -22289,12 +22289,14 @@
       "enum": [
         "full",
         "miniGame",
-        "gl"
+        "gl",
+        "compat"
       ],
       "x-og-variants": {
         "full": "Whatever the device can do (WebGPU, Vulkan, Metal, DX12). Also without a renderer.",
         "miniGame": "The mini-game WebGPU set: no multiple render targets, asynchronous pipelines or timestamps.",
-        "gl": "The GL tier: as miniGame, and no compute, nor the storage and indirect execution WebGL2 lacks with it."
+        "gl": "The GL tier: as miniGame, and no compute, nor the storage and indirect execution WebGL2 lacks with it.",
+        "compat": "WebGPU's compatibility mode (GLES and D3D11 devices): no vertex-stage storage, per-target blending or rg32 storage; 4096-texel textures, 128-invocation workgroups, no MSAA (msaa4 resolves to fxaa) and no order-independent transparency (blended surfaces sorted back to front)."
       }
     },
     "RenderCaps": {
@@ -22334,6 +22336,14 @@
         "vertexStorage": {
           "type": "boolean",
           "description": "Storage read in the vertex stage."
+        },
+        "independentBlend": {
+          "type": "boolean",
+          "description": "Colour targets of one pipeline blended each their own way: order-independent transparency's targets and the 2D lights' directions need it."
+        },
+        "rg32Storage": {
+          "type": "boolean",
+          "description": "Storage bindings of two-channel 32-bit textures: scattered impostor cards take the depth prepass's surface with it, and search their frames again without it."
         }
       },
       "required": [
@@ -22344,7 +22354,9 @@
         "indirect",
         "indirectFirstInstance",
         "fragmentStorage",
-        "vertexStorage"
+        "vertexStorage",
+        "independentBlend",
+        "rg32Storage"
       ],
       "additionalProperties": false
     },

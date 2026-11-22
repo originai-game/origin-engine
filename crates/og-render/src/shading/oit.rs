@@ -253,8 +253,11 @@ pub(crate) fn arena_layout_entry() -> wgpu::BindGroupLayoutEntry {
 /// buffers a skinned lit pipeline binds (the light tables, the light
 /// volumes, the LTC table, the decals and the palette).
 pub(crate) fn supports_lists(flags: wgpu::DownlevelFlags, limits: &wgpu::Limits) -> bool {
-    flags.contains(wgpu::DownlevelFlags::FRAGMENT_WRITABLE_STORAGE)
-        && limits.max_storage_buffers_per_shader_stage >= 8
+    // The lists ride on the weighted targets (independent blending) and
+    // read `sample_mask`, which compatibility mode refuses with it.
+    flags.contains(
+        wgpu::DownlevelFlags::FRAGMENT_WRITABLE_STORAGE | wgpu::DownlevelFlags::INDEPENDENT_BLEND,
+    ) && limits.max_storage_buffers_per_shader_stage >= 8
 }
 
 /// The bytes the device lets one arena take: the smaller of its largest

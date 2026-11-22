@@ -67,8 +67,20 @@ impl Renderer {
     /// resolve pipelines, or `None` (it made them, or no clustered mesh
     /// has asked for them yet). Once refused, the camera's small clusters
     /// draw on the hardware meshlet path, as with
-    /// `RenderScene::visibility_buffer` off.
+    /// `RenderScene::visibility_buffer` off. On a tier without the
+    /// meshlet path's capabilities (compute, indirect draws and storage in
+    /// the vertex stage) clustered meshes draw as the others do, and this
+    /// says so.
     pub fn visibility_buffer_refused(&self) -> Option<&str> {
+        if !self
+            .info
+            .caps
+            .contains(Caps::COMPUTE | Caps::INDIRECT | Caps::VERTEX_STORAGE)
+        {
+            return Some(
+                "this tier has no meshlet path (compute, indirect draws and vertex-stage storage)",
+            );
+        }
         self.visibility
             .meshlet
             .as_ref()?

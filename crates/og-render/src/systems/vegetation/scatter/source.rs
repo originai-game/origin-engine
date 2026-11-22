@@ -10,8 +10,11 @@ const SHADING: crate::Shading = crate::Shading::lit().weather().effects(3).decal
 
 /// The scattered copies' lit module with a material shader's `hooks`
 /// (vertex_offset, surface_color, surface_normal and surface_emissive run
-/// on the copies as on meshes).
-pub(crate) fn scatter_lit_source(hooks: &str) -> String {
+/// on the copies as on meshes); with `kept`, the cards' pass over the
+/// prepass's view depth (impostor_kept.wgsl), whose `rg32float` storage
+/// binding a device without [`crate::Caps::RG32_STORAGE`] refuses with the
+/// whole module.
+pub(crate) fn scatter_lit_source(hooks: &str, kept: bool) -> String {
     assemble(
         &[
             FRAME_WGSL,
@@ -30,7 +33,11 @@ pub(crate) fn scatter_lit_source(hooks: &str) -> String {
             &og_render_data::impostor::march_wgsl(),
             wgsl!("impostor_common.wgsl"),
             wgsl!("impostor.wgsl"),
-            wgsl!("impostor_kept.wgsl"),
+            if kept {
+                wgsl!("impostor_kept.wgsl")
+            } else {
+                ""
+            },
             wgsl!("crowd_card_common.wgsl"),
             wgsl!("crowd_card.wgsl"),
         ],

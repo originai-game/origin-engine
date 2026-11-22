@@ -60,9 +60,10 @@ impl ScatterRenderer {
         // The main camera's scatter group where it goes on in the prepass's
         // own depth (single-sampled, with compute): the uniform group's
         // bindings and the prepass's view depth, which the cards' lit stage
-        // reads (impostor.wgsl `imp_view_depth`; a storage texture, as the
-        // fragment stage has no sampled texture left).
-        let card_depth_layout = (p.compute && p.samples == 1).then(|| {
+        // reads (impostor_kept.wgsl `imp_view_depth`; a storage texture, as the
+        // fragment stage has no sampled texture left), where the device
+        // binds rg32float storage.
+        let card_depth_layout = (p.compute && p.samples == 1 && p.kept_depth).then(|| {
             let mut entries = uniform_entries().to_vec();
             entries.push(wgpu::BindGroupLayoutEntry {
                 binding: 5,

@@ -42,6 +42,7 @@ module render {
     variant full "Whatever the device can do (WebGPU, Vulkan, Metal, DX12). Also without a renderer."
     variant miniGame "The mini-game WebGPU set: no multiple render targets, asynchronous pipelines or timestamps."
     variant gl "The GL tier: as miniGame, and no compute, nor the storage and indirect execution WebGL2 lacks with it."
+    variant compat "WebGPU's compatibility mode (GLES and D3D11 devices): no vertex-stage storage, per-target blending or rg32 storage; 4096-texel textures, 128-invocation workgroups, no MSAA (msaa4 resolves to fxaa) and no order-independent transparency (blended surfaces sorted back to front)."
   }
 
   struct RenderCaps {
@@ -54,6 +55,8 @@ module render {
     field indirectFirstInstance bool "Indirect draws with a first instance."
     field fragmentStorage bool "Storage written from fragment shaders."
     field vertexStorage bool "Storage read in the vertex stage."
+    field independentBlend bool "Colour targets of one pipeline blended each their own way: order-independent transparency's targets and the 2D lights' directions need it."
+    field rg32Storage bool "Storage bindings of two-channel 32-bit textures: scattered impostor cards take the depth prepass's surface with it, and search their frames again without it."
   }
 
   enum Antialias {

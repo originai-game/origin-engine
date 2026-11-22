@@ -82,6 +82,7 @@ terrain                                  | full         | full    | full   | -  
 terrain (layer arrays)                   | full         | full    | full   | -    | stub              | full      | -        | full
 wind                                     | full         | full    | full   | full | stub              | full      | full     | full
 scatter                                  | full         | full    | full   | -    | stub              | full      | -        | full
+scatter (prepass depth)                  | full         | full    | full   | -    | stub              | full      | -        | full
 grass                                    | full         | full    | full   | -    | stub              | full      | -        | full
 water                                    | full         | -       | -      | -    | -                 | stub      | -        | full
 ";

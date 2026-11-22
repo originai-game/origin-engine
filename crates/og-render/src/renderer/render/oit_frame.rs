@@ -53,9 +53,10 @@ impl Renderer {
         // What needs no culling: billboards, particles and strips.
         let oit_candidates =
             !oit_billboards.is_empty() || oit_particles || oit_strips.0 || oit_strips.1;
-        // Its targets are three (sorted blending without MRT).
+        // Its targets are three, each blended its own way (sorted
+        // blending without MRT or independent blending).
         let oit_frame = (scene.frame.debug == DebugView::None
-            && self.info.caps.contains(Caps::MRT)
+            && self.info.caps.contains(Caps::MRT | Caps::INDEPENDENT_BLEND)
             && (oit_candidates
                 || batches.iter().any(|b| b.transparent && b.blend)
                 || skinned_batches.iter().any(|b| b.transparent && b.blend)))

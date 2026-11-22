@@ -246,4 +246,11 @@ impl Renderer {
     pub(crate) fn gpu_culls(&self) -> bool {
         self.visibility.indirect
     }
+
+    /// Whether `scene`'s clustered meshes draw on the meshlet path: culled
+    /// on the GPU, with the storage its vertex stage pulls clusters from
+    /// (the tiers without it draw them as other meshes).
+    pub(crate) fn meshlets(&self, scene: &RenderScene) -> bool {
+        self.gpu_culls() && self.info.caps.contains(Caps::VERTEX_STORAGE) && scene.objects.meshlets
+    }
 }

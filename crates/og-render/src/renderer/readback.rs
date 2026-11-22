@@ -157,7 +157,10 @@ impl Renderer {
                     deferred::warm_one(&[&g.pipeline, &g.pipelines[0], &g.pipelines[1]])
                 }))
             || (r.particles && self.particles.gpu.warm())
-            || (r.lights_2d && self.lights_2d.warm())
+            || (r.lights_2d
+                && self
+                    .lights_2d
+                    .warm(self.info.caps.contains(Caps::MRT | Caps::INDEPENDENT_BLEND)))
             || (r.water && self.world.water.get().is_some_and(|w| w.warm()))
             || (r.terrain && self.world.terrain.get().is_some_and(|t| t.warm()))
             || (r.scatter && self.world.scatter.get().is_some_and(|s| s.warm()))

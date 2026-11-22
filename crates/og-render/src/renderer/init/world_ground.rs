@@ -82,6 +82,7 @@ impl Renderer {
             let (material_layout, fx_layout) = (material_layout.clone(), fx_layout.clone());
             let (wind, trample) = (wind.clone(), trample.clone());
             let indirect_per_draw = info.indirect_per_draw;
+            let kept_depth = info.caps.contains(Caps::RG32_STORAGE);
             OnDemand::new(Box::new(move || {
                 scatter::ScatterRenderer::new(
                     &device,
@@ -92,13 +93,14 @@ impl Renderer {
                         shadow_layout: &shadow_layout,
                         fx_layout: &fx_layout,
                         lit_wgsl: Box::new(move |hooks: &str| {
-                            off.leave_out(scatter_lit_source(hooks))
+                            off.leave_out(scatter_lit_source(hooks, kept_depth))
                         }),
                         shadow_wgsl: scatter_shadow_source(),
                         samples,
                         wind_field: wind,
                         trample,
                         compute: vegetation_compute,
+                        kept_depth,
                         indirect_per_draw,
                     },
                 )

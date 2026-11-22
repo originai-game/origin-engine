@@ -40,10 +40,18 @@ impl Caps {
     pub const FRAGMENT_STORAGE: Caps = Caps(1 << 6);
     /// Storage read in the vertex stage (`DownlevelFlags::VERTEX_STORAGE`).
     pub const VERTEX_STORAGE: Caps = Caps(1 << 7);
+    /// Colour targets of one pipeline blended each its own way
+    /// (`DownlevelFlags::INDEPENDENT_BLEND`): weighted OIT's three targets,
+    /// the 2D light map's two.
+    pub const INDEPENDENT_BLEND: Caps = Caps(1 << 8);
+    /// Storage bindings of two-channel 32-bit textures (`rg32float`),
+    /// which every core device has and compatibility mode's lack: the
+    /// scatter cards' lit stage reads the prepass's view depth through one.
+    pub const RG32_STORAGE: Caps = Caps(1 << 9);
     /// Every capability above: the full tier.
-    pub const FULL: Caps = Caps((1 << 8) - 1);
+    pub const FULL: Caps = Caps((1 << 10) - 1);
 
-    const NAMES: [(Caps, &'static str); 8] = [
+    const NAMES: [(Caps, &'static str); 10] = [
         (Caps::COMPUTE, "compute"),
         (Caps::MRT, "mrt"),
         (Caps::ASYNC_PIPELINES, "asyncPipelines"),
@@ -52,18 +60,22 @@ impl Caps {
         (Caps::INDIRECT_FIRST_INSTANCE, "indirectFirstInstance"),
         (Caps::FRAGMENT_STORAGE, "fragmentStorage"),
         (Caps::VERTEX_STORAGE, "vertexStorage"),
+        (Caps::INDEPENDENT_BLEND, "independentBlend"),
+        (Caps::RG32_STORAGE, "rg32Storage"),
     ];
 
     /// What an adapter with `features` (already less the caller's
     /// `without_features`), `flags` and `limits` can do, before any tier's
     /// ceiling. Timestamps count here when the adapter has them; the device
     /// takes them away again when it is made without the feature.
+    /// [`Caps::RG32_STORAGE`] counts as every core device has it; the
+    /// renderer takes it away where the adapter's format says otherwise.
     pub fn of(
         features: wgpu::Features,
         flags: wgpu::DownlevelFlags,
         limits: &wgpu::Limits,
     ) -> Caps {
-        let mut caps = Caps::ASYNC_PIPELINES;
+        let mut caps = Caps::ASYNC_PIPELINES | Caps::RG32_STORAGE;
         let flag =
             |f: wgpu::DownlevelFlags, c: Caps| if flags.contains(f) { c } else { Caps::NONE };
         let feature =
@@ -75,6 +87,10 @@ impl Caps {
             Caps::FRAGMENT_STORAGE,
         );
         caps |= flag(wgpu::DownlevelFlags::VERTEX_STORAGE, Caps::VERTEX_STORAGE);
+        caps |= flag(
+            wgpu::DownlevelFlags::INDEPENDENT_BLEND,
+            Caps::INDEPENDENT_BLEND,
+        );
         caps |= feature(wgpu::Features::TIMESTAMP_QUERY, Caps::TIMESTAMPS);
         caps |= feature(
             wgpu::Features::INDIRECT_FIRST_INSTANCE,
@@ -126,6 +142,10 @@ impl Caps {
                 wgpu::DownlevelFlags::FRAGMENT_WRITABLE_STORAGE,
             ),
             (Caps::VERTEX_STORAGE, wgpu::DownlevelFlags::VERTEX_STORAGE),
+            (
+                Caps::INDEPENDENT_BLEND,
+                wgpu::DownlevelFlags::INDEPENDENT_BLEND,
+            ),
         ] {
             if !self.contains(c) {
                 flags.remove(f);
@@ -192,6 +212,13 @@ pub enum Tier {
     /// The GL tier: as [`Tier::MiniGame`], and no compute, nor the storage
     /// and indirect execution that WebGL2 lacks with it.
     Gl,
+    /// WebGPU's compatibility mode (`featureLevel: "compatibility"`, the
+    /// GLES and D3D11 devices): no storage in the vertex stage, colour
+    /// targets blended each their own way or `rg32float` storage, no MSAA
+    /// (it multisamples no `rgba16float`), and the device made at that
+    /// mode's limits ([`Tier::compat_limits`]). Its shaders keep the mode's
+    /// WGSL rules on every tier (og-render's `tests/wgsl_rules.rs`).
+    Compat,
 }
 
 impl Tier {
@@ -201,6 +228,7 @@ impl Tier {
             Tier::Full => "full",
             Tier::MiniGame => "miniGame",
             Tier::Gl => "gl",
+            Tier::Compat => "compat",
         }
     }
 
@@ -217,8 +245,40 @@ impl Tier {
                     | Caps::INDIRECT.0
                     | Caps::INDIRECT_FIRST_INSTANCE.0
                     | Caps::FRAGMENT_STORAGE.0
-                    | Caps::VERTEX_STORAGE.0,
+                    | Caps::VERTEX_STORAGE.0
+                    | Caps::INDEPENDENT_BLEND.0
+                    | Caps::RG32_STORAGE.0,
             )),
+            Tier::Compat => Caps::FULL.without(Caps(
+                Caps::VERTEX_STORAGE.0 | Caps::INDEPENDENT_BLEND.0 | Caps::RG32_STORAGE.0,
+            )),
+        }
+    }
+
+    /// `limits` at most the tier's: compatibility mode's defaults on
+    /// [`Tier::Compat`] (gpuweb's compatibility-mode proposal §10: 2D and
+    /// 1D textures of 4096, four colour attachments, 16 KiB uniform
+    /// bindings, 15 inter-stage variables, compute workgroups of 128
+    /// invocations and 128 along x and y), `limits` itself on the others.
+    /// The mode's storage per stage (four in the fragment stage, none in
+    /// the vertex stage) has no wgpu limit yet: the tier's ceiling takes
+    /// [`Caps::VERTEX_STORAGE`] away instead.
+    pub fn compat_limits(self, limits: wgpu::Limits) -> wgpu::Limits {
+        if self != Tier::Compat {
+            return limits;
+        }
+        wgpu::Limits {
+            max_texture_dimension_1d: limits.max_texture_dimension_1d.min(4096),
+            max_texture_dimension_2d: limits.max_texture_dimension_2d.min(4096),
+            max_color_attachments: limits.max_color_attachments.min(4),
+            max_uniform_buffer_binding_size: limits.max_uniform_buffer_binding_size.min(16 << 10),
+            max_inter_stage_shader_variables: limits.max_inter_stage_shader_variables.min(15),
+            max_compute_invocations_per_workgroup: limits
+                .max_compute_invocations_per_workgroup
+                .min(128),
+            max_compute_workgroup_size_x: limits.max_compute_workgroup_size_x.min(128),
+            max_compute_workgroup_size_y: limits.max_compute_workgroup_size_y.min(128),
+            ..limits
         }
     }
 }
@@ -249,6 +309,15 @@ mod tests {
         }
         let gl = full_adapter() & Tier::Gl.ceiling();
         assert_eq!(gl, Caps::NONE);
+        let compat = full_adapter() & Tier::Compat.ceiling();
+        assert!(compat.contains(Caps::COMPUTE | Caps::MRT | Caps::FRAGMENT_STORAGE));
+        for lacking in [
+            Caps::VERTEX_STORAGE,
+            Caps::INDEPENDENT_BLEND,
+            Caps::RG32_STORAGE,
+        ] {
+            assert!(!compat.contains(lacking), "{lacking:?}");
+        }
         assert_eq!(full_adapter() & Tier::Full.ceiling(), Caps::FULL);
     }
 
@@ -284,6 +353,29 @@ mod tests {
             wgpu::Features::PIPELINE_CACHE
         );
         assert_eq!(Caps::FULL.features(all), all);
+    }
+
+    #[test]
+    fn only_the_compat_tier_lowers_the_limits() {
+        let full = wgpu::Limits::default();
+        let compat = Tier::Compat.compat_limits(full.clone());
+        assert_eq!(compat.max_texture_dimension_2d, 4096);
+        assert_eq!(compat.max_compute_invocations_per_workgroup, 128);
+        assert_eq!(compat.max_compute_workgroup_size_x, 128);
+        assert_eq!(compat.max_uniform_buffer_binding_size, 16 << 10);
+        // Never raised past what was asked.
+        assert_eq!(
+            compat.max_texture_dimension_3d,
+            full.max_texture_dimension_3d
+        );
+        let small = wgpu::Limits::downlevel_webgl2_defaults();
+        assert_eq!(
+            Tier::Compat
+                .compat_limits(small.clone())
+                .max_texture_dimension_2d,
+            2048
+        );
+        assert_eq!(Tier::MiniGame.compat_limits(full.clone()), full);
     }
 
     #[test]

@@ -261,9 +261,13 @@ pub(crate) struct Light2dRenderer {
 }
 
 impl Light2dRenderer {
-    /// Makes its pipeline if no frame used it yet (Renderer::warm).
-    pub(crate) fn warm(&self) -> bool {
-        crate::deferred::warm_one(&[&self.pipeline, &self.shadows.pipeline, &self.pipeline_dir])
+    /// Makes its next pipeline no frame used yet (Renderer::warm); the
+    /// directions' only with `dir` (two targets blended each their own
+    /// way: never without [`crate::Caps::INDEPENDENT_BLEND`], which the
+    /// device would refuse).
+    pub(crate) fn warm(&self, dir: bool) -> bool {
+        crate::deferred::warm_one(&[&self.pipeline, &self.shadows.pipeline])
+            || (dir && crate::deferred::warm_one(&[&self.pipeline_dir]))
     }
 
     pub fn new(device: &wgpu::Device) -> Light2dRenderer {

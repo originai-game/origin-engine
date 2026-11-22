@@ -22,7 +22,12 @@ pub(crate) fn shader_sources(add: &mut dyn FnMut(&str, String)) {
     add("wind shadow", crate::shadow_source(&wind));
     add(
         "scatter",
-        crate::scatter_lit_source(&crate::hooks::default_hooks()),
+        crate::scatter_lit_source(&crate::hooks::default_hooks(), false),
+    );
+    // Built only with Caps::RG32_STORAGE (wgsl_rules.rs `compat`).
+    add(
+        "scatter (prepass depth)",
+        crate::scatter_lit_source(&crate::hooks::default_hooks(), true),
     );
     add("scatter shadow", crate::scatter_shadow_source());
     add("grass", crate::grass::lit_source());

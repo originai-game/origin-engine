@@ -629,6 +629,7 @@ mod tests {
             object_space: false,
             ui_depth: true,
             oit: None,
+            lindepth_storage: true,
         };
         let passes = frame_passes(&everything(&lights), Caps::FULL);
         let plan = post::build_graph(&passes, &cfg).compile().unwrap();
