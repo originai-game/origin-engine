@@ -86,6 +86,8 @@ export interface NativeExtras {
   og_node_replay_hash(engine: number, tableJson: string): string;
   /** `og replay compare`: og-net's diff of a recorded save (`og-save:2:...`, local) against the world now (remote), JSON, or `{ error }`. Not in publish builds. */
   og_node_replay_diff(engine: number, saveText: string): string;
+  /** `og run --restart-at`: og-net's structural restart diff of a fresh start's save against the world now, within a `{ type: [field, ...] }` ignore table (`[]` the whole type), JSON (`{ differs, hash, startHash, components, names, entities, resources, events, blocks, unchecked }`) or `{ error }`. Not in publish builds. */
+  og_node_restart_diff(engine: number, saveText: string, ignoreJson: string): string;
   /** `og ui check`: the UI's last laid-out frame (elements, overlaps, drawn text, fills, the accessibility tree, counts, viewport and theme facts; src/node/ui-check.ts's UiFrameSnapshot), or `{ error }`. Not in publish builds. */
   og_node_ui_frame(engine: number): string;
 }

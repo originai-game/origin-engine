@@ -65,9 +65,13 @@
 // - With --restart-at S (and --commands that restart the game before S
 //   seconds): once the run has played that many ticks, the world is compared
 //   with the world after the run's first tick (the restart's tick is the new
-//   game's first), by og-net's portable hash and diff, the clock left out
-//   (og.Time and og.TimeScale.elapsed: a restart cannot turn it back). --json's `restart` is the result; a
-//   world that differs fails the run, naming the first difference.
+//   game's first, so both sides ran exactly one tick), structurally by
+//   og-net's restart_diff: entities paired by name, then in spawn order
+//   within their component set, handle fields read through that pairing,
+//   the allocator and the clock left out (og.Time and
+//   og.TimeScale.elapsed: a restart cannot turn it back). --json's
+//   `restart` is the result; a world that differs, or an extra or missing
+//   entity, fails the run, naming the first difference by entity path.
 // - --json's `timings`: each frame's step + render milliseconds (p50, p95)
 //   and each render pass's GPU milliseconds (the performance record's
 //   `gpu <pass>` lines), the first five frames left out. Without a renderer
@@ -566,69 +570,66 @@ export async function run(argv: string[], output: RunOutput = hostProcess, contr
     const renderTimes: number[] = [];
     // Each rendered frame's step + render milliseconds (ProbeTimings.frameMs), the first five left out.
     const frameTimes: number[] = [];
-    // --restart-at: the world of a fresh start, and the table its hash is taken within (the clock left out).
-    type Restart = { tick: number; ok: boolean; hash: string; startHash: string; first: string | null; diff: unknown };
+    // --restart-at: the world of a fresh start, compared with the world after the restart's tick.
+    type Restart = { tick: number; ok: boolean; hash: string; startHash: string; first: string | null; unchecked: string[]; diff: unknown };
     let restart: Restart | null = null;
     let ticksRun = 0;
     const restartTick = restartAt === undefined ? undefined : Math.max(1, Math.round(restartAt * engine.rate));
-    // Taken after the run's first tick (the engine's own systems set their state up in it): the
-    // restart's tick is the new game's first.
+    // Taken after the run's first tick (the engine's own systems set their state up in it), and the
+    // restart's world after exactly one tick too: the restart's tick is the new game's first.
     const takeStart = () => {
       const save = engine.world.snapshot();
       if (!save.ok) fail(`--restart-at: the engine refused the start's snapshot (${save.reason})`);
-      const own = JSON.parse(extras.og_node_replay_hash(engine.id, "")) as { table?: Record<string, string[]>; error?: string };
-      if (!own.table) fail(`--restart-at: ${own.error ?? "the world has no hash table"}`);
-      // The clock: og.Time and og.TimeScale's elapsed (its scaled elapsed time); scale and hitStop are the game's.
-      delete own.table!["og.Time"];
-      if (own.table!["og.TimeScale"]) own.table!["og.TimeScale"] = own.table!["og.TimeScale"]!.filter((f) => f !== "elapsed");
-      const table = JSON.stringify(own.table);
-      const hashed = JSON.parse(extras.og_node_replay_hash(engine.id, table)) as { hash: string };
-      return { save: save.value, table, hash: hashed.hash };
+      return save.value;
     };
-    let startWorld: ReturnType<typeof takeStart> | null = null;
-    /** The world now against the start's: equal when og-net's diff finds nothing but the clock. */
+    let startWorld: string | null = null;
+    // The clock: og.Time and og.TimeScale's elapsed (its scaled elapsed time); scale and hitStop are the game's.
+    const restartIgnore = JSON.stringify({ "og.Time": [], "og.TimeScale": ["elapsed"] });
+    /** The world now against the start's, structurally (og-net's restart_diff): entities paired in spawn order, handles through the pairing. */
     const checkRestart = (tick: number): Restart => {
-      const start = startWorld!;
-      const hash = (JSON.parse(extras.og_node_replay_hash(engine.id, start.table)) as { hash: string }).hash;
+      type Fields = Array<{ field: string; start: unknown; now: unknown }>;
       type Diff = {
         error?: string;
-        components?: Array<{ entity: string; component: string; fields?: Array<{ field: string; local: unknown; remote: unknown }>; only?: string }>;
-        entities?: { onlyLocal: string[]; onlyRemote: string[] };
-        resources?: Array<{ resource: string; fields?: Array<{ field: string; local: unknown; remote: unknown }>; only?: string }>;
-        events?: Array<{ event: string; local: number; remote: number }>;
+        differs?: boolean;
+        hash?: string;
+        startHash?: string;
+        components?: Array<{ entity: string; component: string; fields?: Fields; only?: string }>;
+        names?: Array<{ entity: string; start: string | null; now: string | null }>;
+        entities?: { missing: string[]; extra: string[] };
+        resources?: Array<{ resource: string; fields?: Fields; only?: string }>;
+        events?: Array<{ event: string; start: number; now: number }>;
         blocks?: Array<{ block: string }>;
-        allocator?: boolean;
+        unchecked?: string[];
       };
-      const d = JSON.parse(extras.og_node_replay_diff(engine.id, start.save)) as Diff;
-      if (d.error) return { tick, ok: false, hash, startHash: start.hash, first: `the diff failed: ${d.error}`, diff: d };
-      d.resources = (d.resources ?? [])
-        .filter((r) => r.resource !== "og.Time")
-        .map((r) => (r.resource === "og.TimeScale" && r.fields ? { ...r, fields: r.fields.filter((f) => f.field !== "elapsed") } : r))
-        .filter((r) => r.only || (r.fields?.length ?? 1) > 0);
-      const field = (f?: Array<{ field: string; local: unknown; remote: unknown }>) =>
-        f?.[0] ? `.${f[0].field} is ${JSON.stringify(f[0].remote)}, a fresh start's ${JSON.stringify(f[0].local)}` : "";
+      const d = JSON.parse(extras.og_node_restart_diff(engine.id, startWorld!, restartIgnore)) as Diff;
+      if (d.error) return { tick, ok: false, hash: "", startHash: "", first: `the diff failed: ${d.error}`, unchecked: [], diff: d };
+      const field = (f?: Fields) => (f?.[0] ? `.${f[0].field} is ${JSON.stringify(f[0].now)}, a fresh start's ${JSON.stringify(f[0].start)}` : "");
       const c = d.components?.[0];
-      const r = d.resources[0];
-      const first = c
-        ? c.only === "local"
-          ? `${c.entity} has no ${c.component}, which a fresh start's has`
-          : c.only === "remote"
-            ? `${c.entity} has ${c.component}, which a fresh start's has not`
-            : `${c.entity} ${c.component}${field(c.fields)}`
-        : d.entities?.onlyLocal[0] !== undefined
-          ? `entity ${d.entities.onlyLocal[0]} of a fresh start is gone (${d.entities.onlyLocal.length} in all)`
-          : d.entities?.onlyRemote[0] !== undefined
-            ? `entity ${d.entities.onlyRemote[0]} is not in a fresh start (${d.entities.onlyRemote.length} in all)`
-            : r
-              ? `resource ${r.resource}${r.only ? " is missing" : field(r.fields)}`
-              : d.events?.[0]
-                ? `event queue ${d.events[0].event} holds ${d.events[0].remote}, a fresh start's ${d.events[0].local}`
-                : d.blocks?.[0]
-                  ? `module state ${d.blocks[0].block} differs`
-                  : d.allocator
-                    ? "the entity allocator differs (entities were despawned and spawned again: restore the start's world.snapshot instead)"
-                    : null;
-      return { tick, ok: first === null && hash === start.hash, hash, startHash: start.hash, first, diff: d };
+      const r = d.resources?.[0];
+      const n = d.names?.[0];
+      const { missing = [], extra = [] } = d.entities ?? {};
+      // An extra or a missing entity first: it shifts the pairing of the rest of its component set.
+      const first =
+        extra[0] !== undefined
+          ? `entity ${extra[0]} is not in a fresh start (${extra.length} extra in all)`
+          : missing[0] !== undefined
+            ? `entity ${missing[0]} of a fresh start is missing (${missing.length} in all)`
+            : c
+              ? c.only === "start"
+                ? `${c.entity} has no ${c.component}, which a fresh start's has`
+                : c.only === "now"
+                  ? `${c.entity} has ${c.component}, which a fresh start's has not`
+                  : `${c.entity} ${c.component}${field(c.fields)}`
+              : n
+                ? `${n.entity} is named ${JSON.stringify(n.now)}, a fresh start's ${JSON.stringify(n.start)}`
+                : r
+                  ? `resource ${r.resource}${r.only === "start" ? " is missing" : r.only === "now" ? " is not in a fresh start" : field(r.fields)}`
+                  : d.events?.[0]
+                    ? `event queue ${d.events[0].event} holds ${d.events[0].now}, a fresh start's ${d.events[0].start}`
+                    : d.blocks?.[0]
+                      ? `module state ${d.blocks[0].block} differs`
+                      : null;
+      return { tick, ok: first === null && d.differs === false, hash: d.hash!, startHash: d.startHash!, first, unchecked: d.unchecked ?? [], diff: d };
     };
     // Each frame's own time and the time between consecutive frames are the engine's performance record's
     // (`frame work`, `frame interval`: author/perf.rs), turned on after the first five frames unless --perf
@@ -901,7 +902,7 @@ export async function run(argv: string[], output: RunOutput = hostProcess, contr
     }
     const forkFailed = forkResults.some((f) => f.mismatches.length > 0);
     if (restartTick !== undefined && restart === null)
-      restart = { tick: dump.tick, ok: false, hash: "", startHash: startWorld?.hash ?? "", first: `the run ended after ${ticksRun} ticks, before --restart-at's ${restartTick}`, diff: null };
+      restart = { tick: dump.tick, ok: false, hash: "", startHash: "", first: `the run ended after ${ticksRun} ticks, before --restart-at's ${restartTick}`, unchecked: [], diff: null };
     const restartFailed = restart !== null && !restart.ok;
     if (restart && !restart.ok) process.stderr.write(`og run: the world after ${restart.tick} ticks is not a fresh start's: ${restart.first}\n`);
     // Order statistics (nearest rank).

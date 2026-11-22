@@ -77,7 +77,7 @@ else if (code !== 0 && failures.length === 0) failures.push(`bun test exited ${c
 const ok = code === 0 && tests > 0 && failures.length === 0;
 
 // What each runPlaytest call reported, and the frames run.frame left unchecked.
-type RunLine = { kind: "run"; out: string; checks: number; frameChecks: number; unchecked: string[]; adapterErrors: string[]; captures: string[]; assertions: { violations: unknown[]; uncovered: unknown[]; required: unknown[]; defaults: unknown[] }; tick?: number; hash?: string; hashes?: string[]; tier?: string; renderer?: string; adapterError?: string | null; warnings?: string[]; netHashes?: string[]; lockstep?: unknown[]; timings?: unknown; restart?: unknown; failed?: boolean };
+type RunLine = { kind: "run"; out: string; checks: number; frameChecks: number; unchecked: string[]; adapterErrors: string[]; captures: string[]; assertions: { violations: unknown[]; uncovered: unknown[]; required: unknown[]; defaults: unknown[] }; tick?: number; hash?: string; hashes?: string[]; tier?: string; renderer?: string; adapterError?: string | null; warnings?: string[]; netHashes?: string[]; lockstep?: unknown[]; timings?: unknown; budget?: unknown; restart?: unknown; failed?: boolean };
 type Line = RunLine | { kind: "unchecked"; files: string[] };
 const lines = readFileSync(results, "utf8").split("\n").filter(Boolean).map((l) => JSON.parse(l) as Line);
 const runs = lines.filter((l): l is RunLine => l.kind === "run");
@@ -142,7 +142,7 @@ const line = {
   ms: +(performance.now() - t0).toFixed(0),
   assertions: assertionLog,
   runs: runs.length,
-  ...(first ? { tick: first.tick, hash: first.hash, hashes: first.hashes, tier: first.tier, renderer: first.renderer, adapterError: first.adapterError, warnings: first.warnings, timings: first.timings ?? null, ...(first.restart ? { restart: first.restart } : {}), ...(first.netHashes ? { netHashes: first.netHashes, lockstep: first.lockstep } : {}) } : {}),
+  ...(first ? { tick: first.tick, hash: first.hash, hashes: first.hashes, tier: first.tier, renderer: first.renderer, adapterError: first.adapterError, warnings: first.warnings, timings: first.timings ?? null, ...(first.budget ? { budget: first.budget } : {}), ...(first.restart ? { restart: first.restart } : {}), ...(first.netHashes ? { netHashes: first.netHashes, lockstep: first.lockstep } : {}) } : {}),
 };
 if (resultFile) {
   mkdirSync(dirname(resolve(resultFile)), { recursive: true });

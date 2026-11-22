@@ -215,6 +215,7 @@ export async function runPlaytest(desc: PlaytestDesc): Promise<PlaytestRun> {
       checks++;
       const r = summary.restart;
       if (!r.ok) failures.push(`${what}: restart: the world after ${r.tick} ticks is not a fresh start's (hash ${r.hash}, a fresh start's ${r.startHash}): ${r.first ?? "the hashes differ"}`);
+      else for (const block of r.unchecked ?? []) unchecked.push(`${what}: restart: module state ${block} differs and holds entity ids the restart moved, unchecked`);
     }
     return summary;
   };
@@ -438,6 +439,7 @@ export async function runPlaytest(desc: PlaytestDesc): Promise<PlaytestRun> {
     adapterError: summary.adapterError,
     warnings: summary.warnings,
     timings: summary.timings ?? NO_TIMINGS,
+    ...(desc.budget ? { budget: desc.budget } : {}),
     ...(summary.restart ? { restart: summary.restart } : {}),
     ...(room ? { netHashes: [summary, ...peerSummaries].map((s) => s.netHash ?? ""), lockstep: [summary, ...peerSummaries].map((s) => s.lockstep ?? null) } : {}),
   };

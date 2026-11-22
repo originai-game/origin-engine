@@ -140,12 +140,14 @@ export interface PlaytestRestart {
   readonly tick: number;
   /** Whether it is a fresh start's world (the clock left out). */
   readonly ok: boolean;
-  /** Its portable hash, the clock left out, and the start world's. */
+  /** Its structural hash (entities by their spawn-order place, handles through it; ids, the allocator, module state and the clock left out), and the start world's. */
   readonly hash: string;
   readonly startHash: string;
-  /** The first difference, such as `hero Health.hp is 3, a fresh start's 10`; null when equal. */
+  /** The first difference by entity path, such as `level/hero Health.hp is 3, a fresh start's 10` or `entity #7.0 is not in a fresh start`; null when equal. */
   readonly first: string | null;
-  /** og-net's whole diff of the two worlds (og replay compare's). */
+  /** Module state blocks (og.physics, og.anim) that differ while the restart moved entity ids, which they hold: not compared, listed in the playtest's `unchecked`. */
+  readonly unchecked: readonly string[];
+  /** og-net's whole restart diff: `{ differs, components, names, entities: { missing, extra }, resources, events, blocks, unchecked }`. */
   readonly diff: unknown;
 }
 
@@ -281,10 +283,12 @@ export interface PlaytestDesc {
   /**
    * A restart check: the script restarts the game (presses its Play again, sends its command) so
    * that the restart runs in the tick at `at` seconds, and the world after that tick must be a fresh
-   * start's after its first tick (the restart's tick is the new game's first), the clock left out
-   * (og.Time, og.TimeScale.elapsed), by the world hash a replay and a save compare. A different
-   * world fails the playtest, naming the first differing entity, component and field. Entities
-   * despawned and spawned again differ too (the allocator moved on): reset them in place.
+   * start's after its first tick (the restart's tick is the new game's first: both sides ran
+   * exactly one tick), the clock left out (og.Time, og.TimeScale.elapsed). The comparison is
+   * structural: entities paired by name, then in spawn order within their component set, every
+   * handle field read through that pairing, the entity allocator left out, so despawning
+   * everything and spawning it again is a restart. A different world, or an extra or missing
+   * entity, fails the playtest, naming the first difference by entity path.
    */
   readonly restart?: { readonly at: number };
   /** More fresh runs after the script, in order (a relaunch): their runs are `run.then`. With `room`, every place of the room relaunches at once. */

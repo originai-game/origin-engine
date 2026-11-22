@@ -937,6 +937,481 @@ pub fn diff(local: &Snapshot, remote: &Snapshot) -> Value {
     })
 }
 
+/// What [`restart_diff`] leaves out: a type by name, all of it (an empty
+/// list) or the fields it names.
+pub type Ignore = BTreeMap<String, Vec<String>>;
+
+fn ignored<'a>(ignore: &'a Ignore, ty: &str) -> Option<&'a [String]> {
+    ignore.get(ty).map(Vec::as_slice)
+}
+
+/// The entities of two worlds paired as a restart leaves them: by name,
+/// then the rest by their place in their component set's storage (spawn
+/// order once a set was emptied and filled again), whatever ids the
+/// allocator gave them. `now_to_start` maps an entity of `now` to the one
+/// of `start` it stands for; `missing` and `extra` are rows left over.
+struct Pairing {
+    now_to_start: std::collections::HashMap<u64, u64>,
+    pairs: Vec<(usize, usize)>,
+    missing: Vec<usize>,
+    extra: Vec<usize>,
+}
+
+impl Snapshot {
+    fn name_of(&self, entity: u64) -> Option<&str> {
+        self.names
+            .iter()
+            .find(|(e, _)| *e == entity)
+            .map(|(_, n)| n.as_str())
+    }
+
+    /// The type names of a row's components, sorted: its component set.
+    fn set_of(&self, row: &Row) -> Vec<&str> {
+        let mut set: Vec<&str> = row
+            .components
+            .iter()
+            .map(|(t, _)| self.type_name(*t))
+            .collect();
+        set.sort_unstable();
+        set
+    }
+
+    /// An entity's path: its og.Parent chain's ids joined by `/`
+    /// (`level/door`, `#4.1`).
+    pub fn entity_path(&self, entity: u64) -> String {
+        let parent = self.types.iter().position(|t| t.name == "og.Parent");
+        let mut parts = vec![self.entity_id(entity)];
+        let mut at = entity;
+        while let Some(p) = parent
+            && parts.len() < 32
+        {
+            let Some(row) = self.rows.iter().find(|r| r.entity == at) else {
+                break;
+            };
+            let Some((_, b)) = row.components.iter().find(|(t, _)| *t == p) else {
+                break;
+            };
+            let Some(bits) = b.get(..8) else { break };
+            at = u64::from_le_bytes(bits.try_into().expect("8 bytes"));
+            if !self.rows.iter().any(|r| r.entity == at) {
+                break;
+            }
+            parts.push(self.entity_id(at));
+        }
+        parts.reverse();
+        parts.join("/")
+    }
+}
+
+fn pair(start: &Snapshot, now: &Snapshot) -> Pairing {
+    use std::collections::HashMap;
+    let mut pairs = Vec::new();
+    let (mut start_used, mut now_used) =
+        (vec![false; start.rows.len()], vec![false; now.rows.len()]);
+    // A name held by one entity on each side pairs them.
+    let unique = |s: &Snapshot| -> HashMap<String, usize> {
+        let mut seen: HashMap<String, Option<usize>> = HashMap::new();
+        for (i, row) in s.rows.iter().enumerate() {
+            if let Some(n) = s.name_of(row.entity) {
+                seen.entry(n.to_owned())
+                    .and_modify(|v| *v = None)
+                    .or_insert(Some(i));
+            }
+        }
+        seen.into_iter()
+            .filter_map(|(n, i)| Some((n, i?)))
+            .collect()
+    };
+    let now_names = unique(now);
+    for (name, i) in unique(start) {
+        if let Some(&j) = now_names.get(&name) {
+            pairs.push((i, j));
+            start_used[i] = true;
+            now_used[j] = true;
+        }
+    }
+    // The rest within their component set, in storage order.
+    let mut sets: HashMap<Vec<&str>, Vec<usize>> = HashMap::new();
+    for (j, row) in now.rows.iter().enumerate() {
+        if !now_used[j] {
+            sets.entry(now.set_of(row)).or_default().push(j);
+        }
+    }
+    let mut next: HashMap<Vec<&str>, usize> = HashMap::new();
+    for (i, row) in start.rows.iter().enumerate() {
+        if start_used[i] {
+            continue;
+        }
+        let set = start.set_of(row);
+        let k = next.entry(set.clone()).or_default();
+        if let Some(&j) = sets.get(&set).and_then(|l| l.get(*k)) {
+            *k += 1;
+            pairs.push((i, j));
+            start_used[i] = true;
+            now_used[j] = true;
+        }
+    }
+    pairs.sort_unstable();
+    Pairing {
+        now_to_start: pairs
+            .iter()
+            .map(|&(i, j)| (now.rows[j].entity, start.rows[i].entity))
+            .collect(),
+        pairs,
+        missing: (0..start.rows.len()).filter(|&i| !start_used[i]).collect(),
+        extra: (0..now.rows.len()).filter(|&j| !now_used[j]).collect(),
+    }
+}
+
+/// Whether a handle lane of `now` stands for the same thing as `start`'s:
+/// equal bits, or an entity paired with it.
+fn same_handle(start: &[u8], now: &[u8], map: &std::collections::HashMap<u64, u64>) -> bool {
+    if start == now {
+        return true;
+    }
+    let bits = |b: &[u8]| u64::from_le_bytes(b.try_into().expect("8 bytes"));
+    map.get(&bits(now)) == Some(&bits(start))
+}
+
+/// The fields of one record that differ after the pairing, as
+/// `{ field, start, now }`, leaving out `skip`.
+fn record_changes(
+    (start, ts, bs): (&Snapshot, usize, &[u8]),
+    (now, tn, bn): (&Snapshot, usize, &[u8]),
+    skip: &[String],
+    map: &std::collections::HashMap<u64, u64>,
+) -> Vec<Value> {
+    let (ss, sn) = (&start.types[ts], &now.types[tn]);
+    let mut out = Vec::new();
+    for (i, f) in ss.schema.fields.iter().enumerate() {
+        if skip.contains(&f.name) {
+            continue;
+        }
+        let x = &bs[ss.layout.range(i)];
+        let Some(j) = sn.schema.fields.iter().position(|g| g.name == f.name) else {
+            out.push(json!({ "field": f.name, "start": field_json(f, x), "now": null }));
+            continue;
+        };
+        let g = &sn.schema.fields[j];
+        let y = &bn[sn.layout.range(j)];
+        let same = match (f.ty, g.ty) {
+            (FieldType::U64, FieldType::U64) => same_handle(x, y, map),
+            (
+                FieldType::List(og_core::Scalar::U64, _),
+                FieldType::List(og_core::Scalar::U64, _),
+            ) => {
+                let (a, b): (Vec<&[u8]>, Vec<&[u8]>) = (
+                    og_core::list_elements(f.ty, x).collect(),
+                    og_core::list_elements(g.ty, y).collect(),
+                );
+                a.len() == b.len() && a.iter().zip(&b).all(|(p, q)| same_handle(p, q, map))
+            }
+            _ => f.ty == g.ty && x == y,
+        };
+        if !same {
+            out.push(
+                json!({ "field": f.name, "start": field_json(f, x), "now": field_json(g, y) }),
+            );
+        }
+    }
+    out
+}
+
+/// A world's structural hash, the restart check's: entities in their
+/// [`pair`] order (start's order; `now` maps through `pairing`), each by its
+/// name and components by type name, a handle to a live entity as its place
+/// in that order; resources and event queues by name, `ignore` and each
+/// peer's session left out. Entity ids, the allocator and module state
+/// blocks (which hold ids of their own) are not in it.
+fn structural_hash(s: &Snapshot, order: &[usize], ignore: &Ignore) -> u64 {
+    use std::collections::HashMap;
+    let place: HashMap<u64, u32> = order
+        .iter()
+        .enumerate()
+        .map(|(k, &i)| (s.rows[i].entity, k as u32))
+        .collect();
+    let record = |h: &mut StableHasher, t: usize, bytes: &[u8], skip: &[String]| {
+        let ty = &s.types[t];
+        for (i, f) in ty.schema.fields.iter().enumerate() {
+            if skip.contains(&f.name) {
+                continue;
+            }
+            h.write_str(&f.name);
+            let b = &bytes[ty.layout.range(i)];
+            let lanes: Vec<&[u8]> = match f.ty {
+                FieldType::U64 => vec![b],
+                FieldType::List(og_core::Scalar::U64, _) => {
+                    og_core::list_elements(f.ty, b).collect()
+                }
+                _ => {
+                    h.write(b);
+                    continue;
+                }
+            };
+            h.write_u32(lanes.len() as u32);
+            for lane in lanes {
+                match place.get(&u64::from_le_bytes(lane.try_into().expect("8 bytes"))) {
+                    Some(&k) => {
+                        h.write(&[1]);
+                        h.write_u32(k);
+                    }
+                    None => {
+                        h.write(&[0]);
+                        h.write(lane);
+                    }
+                }
+            }
+        }
+    };
+    let mut h = StableHasher::new();
+    h.write_u32(order.len() as u32);
+    for &i in order {
+        let row = &s.rows[i];
+        h.write_str(s.name_of(row.entity).unwrap_or(""));
+        let mut parts: Vec<(&str, usize, &[u8])> = row
+            .components
+            .iter()
+            .map(|(t, b)| (s.type_name(*t), *t, b.as_slice()))
+            .filter(|(n, _, _)| ignored(ignore, n).is_none_or(|f| !f.is_empty()))
+            .collect();
+        parts.sort_by_key(|p| p.0);
+        for (name, t, bytes) in parts {
+            h.write_str(name);
+            record(&mut h, t, bytes, ignored(ignore, name).unwrap_or(&[]));
+        }
+    }
+    let mut resources: Vec<(&str, usize, &[u8])> = s
+        .resources
+        .iter()
+        .map(|(t, b)| (s.type_name(*t), *t, b.as_slice()))
+        .filter(|(n, _, _)| {
+            !SESSION_RESOURCES.contains(n) && ignored(ignore, n).is_none_or(|f| !f.is_empty())
+        })
+        .collect();
+    resources.sort_by_key(|p| p.0);
+    for (name, t, bytes) in resources {
+        h.write_str(name);
+        record(&mut h, t, bytes, ignored(ignore, name).unwrap_or(&[]));
+    }
+    let mut events: Vec<&Queue> = s
+        .events
+        .iter()
+        .filter(|q| !SESSION_EVENTS.contains(&s.type_name(q.ty)))
+        .collect();
+    events.sort_by_key(|q| s.type_name(q.ty));
+    for q in events {
+        h.write_str(s.type_name(q.ty));
+        for list in [&q.current, &q.pending] {
+            h.write_u32(list.len() as u32);
+            for e in list {
+                record(&mut h, q.ty, e, &[]);
+            }
+        }
+    }
+    h.finish()
+}
+
+/// What differs between a fresh start's world (`start`) and the world after
+/// a restart (`now`), structurally: entities paired by name, then in spawn
+/// order within their component set; every handle field (u64, and lists of
+/// them) read through that pairing; the allocator's generations and free
+/// list, each peer's session and `ignore` left out.
+///
+/// ```text
+/// { differs, hash, startHash,
+///   components: [{ entity, component, fields: [{ field, start, now }] | only: "start"|"now" }],
+///   names: [{ entity, start, now }],
+///   entities: { missing: [path], extra: [path] },
+///   resources: [{ resource, fields | only }],
+///   events: [{ event, start, now }]     (queued counts)
+///   blocks: [{ block, startBytes, nowBytes }], unchecked: [block], truncated: n }
+/// ```
+///
+/// Entities are named by path ([`Snapshot::entity_path`], the fresh
+/// start's). A module state block (physics, animation) is compared by its
+/// bytes while every entity kept its id; once ids moved it holds ids the
+/// pairing cannot read, and one that differs is listed in `unchecked`
+/// instead. `hash` and `startHash` are each world's structural hash
+/// (entities by their paired place): equal when nothing but blocks differs.
+pub fn restart_diff(start: &Snapshot, now: &Snapshot, ignore: &Ignore) -> Value {
+    let pairing = pair(start, now);
+    let map = &pairing.now_to_start;
+    let mut truncated = 0usize;
+    let mut push = |list: &mut Vec<Value>, v: Value| {
+        if list.len() < MAX_DIFFERENCES {
+            list.push(v);
+        } else {
+            truncated += 1;
+        }
+    };
+    let mut components = Vec::new();
+    let mut names = Vec::new();
+    for &(i, j) in &pairing.pairs {
+        let (rs, rn) = (&start.rows[i], &now.rows[j]);
+        let path = start.entity_path(rs.entity);
+        let (ns, nn) = (start.name_of(rs.entity), now.name_of(rn.entity));
+        if ns != nn {
+            names.push(json!({ "entity": path, "start": ns, "now": nn }));
+        }
+        for (t, bytes) in &rs.components {
+            let name = start.type_name(*t);
+            let skip = ignored(ignore, name).unwrap_or(&[]);
+            if ignored(ignore, name).is_some_and(<[String]>::is_empty) {
+                continue;
+            }
+            match rn
+                .components
+                .iter()
+                .find(|(u, _)| now.type_name(*u) == name)
+            {
+                Some((u, b2)) => {
+                    let fields = record_changes((start, *t, bytes), (now, *u, b2), skip, map);
+                    if !fields.is_empty() {
+                        push(
+                            &mut components,
+                            json!({ "entity": path, "component": name, "fields": fields }),
+                        );
+                    }
+                }
+                None => push(
+                    &mut components,
+                    json!({ "entity": path, "component": name, "only": "start" }),
+                ),
+            }
+        }
+        for (u, _) in &rn.components {
+            let name = now.type_name(*u);
+            if !ignored(ignore, name).is_some_and(<[String]>::is_empty)
+                && !rs
+                    .components
+                    .iter()
+                    .any(|(t, _)| start.type_name(*t) == name)
+            {
+                push(
+                    &mut components,
+                    json!({ "entity": path, "component": name, "only": "now" }),
+                );
+            }
+        }
+    }
+    let missing: Vec<Value> = pairing
+        .missing
+        .iter()
+        .map(|&i| json!(start.entity_path(start.rows[i].entity)))
+        .collect();
+    let extra: Vec<Value> = pairing
+        .extra
+        .iter()
+        .map(|&j| json!(now.entity_path(now.rows[j].entity)))
+        .collect();
+    let mut resources = Vec::new();
+    for (t, bytes) in &start.resources {
+        let name = start.type_name(*t);
+        let skip = ignored(ignore, name);
+        if SESSION_RESOURCES.contains(&name) || skip.is_some_and(<[String]>::is_empty) {
+            continue;
+        }
+        match now
+            .resources
+            .iter()
+            .find(|(u, _)| now.type_name(*u) == name)
+        {
+            Some((u, b2)) => {
+                let fields =
+                    record_changes((start, *t, bytes), (now, *u, b2), skip.unwrap_or(&[]), map);
+                if !fields.is_empty() {
+                    resources.push(json!({ "resource": name, "fields": fields }));
+                }
+            }
+            None => resources.push(json!({ "resource": name, "only": "start" })),
+        }
+    }
+    for (u, _) in &now.resources {
+        let name = now.type_name(*u);
+        if !SESSION_RESOURCES.contains(&name)
+            && !ignored(ignore, name).is_some_and(<[String]>::is_empty)
+            && !start
+                .resources
+                .iter()
+                .any(|(t, _)| start.type_name(*t) == name)
+        {
+            resources.push(json!({ "resource": name, "only": "now" }));
+        }
+    }
+    let mut events = Vec::new();
+    for q in &start.events {
+        let name = start.type_name(q.ty);
+        if SESSION_EVENTS.contains(&name) {
+            continue;
+        }
+        let theirs = now.events.iter().find(|r| now.type_name(r.ty) == name);
+        let same_list = |a: &[Vec<u8>], b: &[Vec<u8>], r: &Queue| {
+            a.len() == b.len()
+                && a.iter().zip(b).all(|(x, y)| {
+                    record_changes((start, q.ty, x), (now, r.ty, y), &[], map).is_empty()
+                })
+        };
+        let same = theirs.is_some_and(|r| {
+            same_list(&q.current, &r.current, r) && same_list(&q.pending, &r.pending, r)
+        });
+        if !same {
+            let count = |r: Option<&Queue>| r.map_or(0, |r| r.current.len() + r.pending.len());
+            events.push(json!({ "event": name, "start": count(Some(q)), "now": count(theirs) }));
+        }
+    }
+    let ids_kept = pairing
+        .pairs
+        .iter()
+        .all(|&(i, j)| start.rows[i].entity == now.rows[j].entity);
+    let (mut blocks, mut unchecked) = (Vec::new(), Vec::new());
+    for (name, bytes) in &start.blocks {
+        if SESSION_BLOCKS.contains(&name.as_str()) {
+            continue;
+        }
+        let theirs = now.blocks.iter().find(|(n, _)| n == name).map(|(_, b)| b);
+        if theirs == Some(bytes) {
+            continue;
+        }
+        if ids_kept || theirs.is_none() {
+            blocks.push(json!({ "block": name, "startBytes": bytes.len(), "nowBytes": theirs.map(Vec::len) }));
+        } else {
+            unchecked.push(json!(name));
+        }
+    }
+    let start_order: Vec<usize> = pairing
+        .pairs
+        .iter()
+        .map(|p| p.0)
+        .chain(pairing.missing.iter().copied())
+        .collect();
+    let now_order: Vec<usize> = pairing
+        .pairs
+        .iter()
+        .map(|p| p.1)
+        .chain(pairing.extra.iter().copied())
+        .collect();
+    let differs = !components.is_empty()
+        || !names.is_empty()
+        || !missing.is_empty()
+        || !extra.is_empty()
+        || !resources.is_empty()
+        || !events.is_empty()
+        || !blocks.is_empty();
+    json!({
+        "differs": differs,
+        "hash": format!("{:016x}", structural_hash(now, &now_order, ignore)),
+        "startHash": format!("{:016x}", structural_hash(start, &start_order, ignore)),
+        "components": components,
+        "names": names,
+        "entities": { "missing": missing, "extra": extra },
+        "resources": resources,
+        "events": events,
+        "blocks": blocks,
+        "unchecked": unchecked,
+        "truncated": truncated,
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1063,6 +1538,107 @@ mod tests {
         swapped.rows[0].components.remove(0);
         swapped.rows[1].components.push((1, floats(&[5.0])));
         assert_ne!(old.portable_hash(&table), swapped.portable_hash(&table));
+    }
+
+    /// A fresh start: a named hero, two coins and a Target on the hero
+    /// holding the second coin's handle, all in their first slots.
+    fn arena() -> Snapshot {
+        let mut target = ty("Target", &[]);
+        target
+            .schema
+            .fields
+            .push(FieldSchema::new("coin", FieldType::U64));
+        target.layout = Layout::of(&target.schema);
+        let mut w = world();
+        w.types.push(target);
+        let target = w.types.len() - 1;
+        let coin = |x: f32| Row {
+            entity: 0,
+            components: vec![(1, floats(&[x]))],
+        };
+        w.rows = vec![
+            Row {
+                entity: 0,
+                components: vec![
+                    (0, floats(&[1.0, 2.0])),
+                    (target, 2u64.to_le_bytes().to_vec()),
+                ],
+            },
+            coin(10.0),
+            coin(20.0),
+        ];
+        w.rows[1].entity = 1;
+        w.rows[2].entity = 2;
+        w.slots = vec![(0, true); 3];
+        w.names = vec![(0, "hero".into())];
+        w
+    }
+
+    /// `w` after despawning every entity and spawning them again in the same
+    /// order: new generations, slots taken from the free list's end.
+    fn respawned(w: &Snapshot) -> Snapshot {
+        let mut r = w.clone();
+        let id = |index: u64| (1u64 << 32) | index;
+        let new_of = [id(2), id(1), id(0)];
+        for (row, new) in r.rows.iter_mut().zip(new_of) {
+            row.entity = new;
+        }
+        let target = r.types.iter().position(|t| t.name == "Target").unwrap();
+        r.rows[0].components[1] = (target, new_of[2].to_le_bytes().to_vec());
+        r.names = vec![(new_of[0], "hero".into())];
+        r.slots = vec![(1, true); 3];
+        r
+    }
+
+    #[test]
+    fn a_restart_that_spawns_its_entities_again_is_the_fresh_start() {
+        let start = arena();
+        let now = respawned(&start);
+        assert_ne!(
+            start.portable_hash(&start.portable_table()),
+            now.portable_hash(&now.portable_table())
+        );
+        let d = restart_diff(&start, &now, &Ignore::new());
+        assert_eq!(d["differs"], json!(false), "{d:#}");
+        assert_eq!(d["hash"], d["startHash"]);
+        // The hero's Target holding the first coin instead of the second is a difference.
+        let mut wrong = now.clone();
+        let target = wrong.rows[0].components[1].0;
+        wrong.rows[0].components[1] = (target, ((1u64 << 32) | 1).to_le_bytes().to_vec());
+        let d = restart_diff(&start, &wrong, &Ignore::new());
+        assert_eq!(d["components"][0]["entity"], json!("hero"));
+        assert_eq!(d["components"][0]["component"], json!("Target"));
+        assert_ne!(d["hash"], d["startHash"]);
+        // A coin left over from the last game is an extra entity, named.
+        let mut leak = now.clone();
+        leak.rows.push(Row {
+            entity: 3,
+            components: vec![(1, floats(&[30.0]))],
+        });
+        leak.slots.push((0, true));
+        let d = restart_diff(&start, &leak, &Ignore::new());
+        assert_eq!(d["differs"], json!(true));
+        assert_eq!(d["entities"]["extra"], json!(["#3.0"]));
+        assert_eq!(d["entities"]["missing"], json!([]));
+        // A coin the restart forgot is a missing one, by the fresh start's name for it.
+        let mut lost = now.clone();
+        lost.rows.pop();
+        assert_eq!(
+            restart_diff(&start, &lost, &Ignore::new())["entities"]["missing"],
+            json!(["#2.0"])
+        );
+        // An ignored field is left out.
+        let mut moved = now.clone();
+        moved.resources[0].1 = floats(&[9.0]);
+        assert_eq!(
+            restart_diff(&start, &moved, &Ignore::new())["resources"][0]["resource"],
+            json!("Clock")
+        );
+        let clock = Ignore::from([("Clock".to_owned(), vec![])]);
+        assert_eq!(
+            restart_diff(&start, &moved, &clock)["differs"],
+            json!(false)
+        );
     }
 
     #[test]

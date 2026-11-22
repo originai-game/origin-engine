@@ -7,14 +7,17 @@
 //!   returned beside it (`{"hash","table"}`) for the trace to keep;
 //! - `og_node_replay_diff`: what differs between a recorded save
 //!   (`og-save:2:...`, local) and the world now (remote): og-net's
-//!   `state::diff` as JSON, or `{"error": reason}`.
+//!   `state::diff` as JSON, or `{"error": reason}`;
+//! - `og_node_restart_diff`: og-net's `state::restart_diff` of a fresh
+//!   start's save (start) against the world now, within an ignore table,
+//!   for `og run --restart-at`.
 
 // napi registers the exports outside `cfg(test)` only.
 #![cfg_attr(test, allow(dead_code))]
 
 use napi_derive::napi;
 use og_net::Snapshot;
-use og_net::state::diff;
+use og_net::state::{Ignore, diff, restart_diff};
 use serde_json::json;
 use std::collections::BTreeMap;
 
@@ -51,6 +54,22 @@ pub fn og_node_replay_diff(engine: u32, save_text: String) -> String {
     let diffed = og_runtime::save_snapshot_bytes(&save_text)
         .and_then(|b| Snapshot::decode(&b))
         .and_then(|recorded| Ok(diff(&recorded, &world(engine)?)));
+    match diffed {
+        Ok(v) => v.to_string(),
+        Err(e) => json!({ "error": e }).to_string(),
+    }
+}
+
+/// og-net's structural restart diff of a fresh start's save against the
+/// world, leaving out `ignore_json` (`{type: [field, ...]}`, `[]` the whole type).
+#[napi(js_name = "og_node_restart_diff")]
+pub fn og_node_restart_diff(engine: u32, save_text: String, ignore_json: String) -> String {
+    let diffed = serde_json::from_str::<Ignore>(&ignore_json)
+        .map_err(|e| format!("the ignore table: {e}"))
+        .and_then(|ignore| {
+            let start = Snapshot::decode(&og_runtime::save_snapshot_bytes(&save_text)?)?;
+            Ok(restart_diff(&start, &world(engine)?, &ignore))
+        });
     match diffed {
         Ok(v) => v.to_string(),
         Err(e) => json!({ "error": e }).to_string(),

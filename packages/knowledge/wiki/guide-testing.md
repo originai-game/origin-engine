@@ -234,12 +234,19 @@ const run = await runPlaytest({ commands: "10:quit", budget: { frameMs: { p95: 1
 
 - A restart is checked with `restart: { at }`: the script restarts the
   game so the restart runs in the tick at `at` seconds, and the world
-  after that tick must hash as a fresh start's after its first tick, the
-  clock (og.Time, og.TimeScale.elapsed) left out. A difference fails the
-  playtest with the first differing entity, component and field
-  (`run.restart.first`) and og replay compare's whole diff
-  (`run.restart.diff`). Reset entities in place: one despawned and spawned
-  again moves the entity allocator, which a fresh start's world does not.
+  after that tick must be a fresh start's after its first tick. Both sides
+  ran exactly one tick of their game: the restart's tick is the new game's
+  first. The comparison is structural. Entities pair by name, then in spawn
+  order within their component set; every handle field reads through that
+  pairing; the entity allocator (generations, free list) and the clock
+  (og.Time, og.TimeScale.elapsed) are left out. Despawning everything and
+  spawning it again is a restart, as is resetting in place. A difference
+  fails the playtest with its first one by entity path
+  (`run.restart.first`: `level/hero Health.hp is 3, a fresh start's 10`,
+  `entity #7.1 is not in a fresh start (1 extra in all)`) and the whole
+  diff (`run.restart.diff`). A module's state (og.physics, og.anim) that
+  differs once entity ids moved holds ids the pairing cannot read: it is
+  listed in `unchecked`, never passed.
 - First frame on a phone over 4G within 2 s for a small game: a large
   first scene, fonts for every language at once and uncompressed textures
   are the usual causes. Stream what the first screen does not show.
@@ -359,8 +366,11 @@ Each line has an `event`, in this order:
    a renderer, or without GPU timestamps for the passes, and `missing`
    (`{frameMs?, gpuPasses?}`) says why, never 0. A `budget` it could not
    hold is listed in `unchecked` (`budget frameMs.p95 <= 16.6 ms: <why>,
-   unchecked`) and one it exceeded in `failures`. With `restart`, the
-   first run's `restart`: `{tick, ok, hash, startHash, first, diff}`.
+   unchecked`) and one it exceeded in `failures`; with a `budget`, the
+   event echoes it as stated (`budget: {frameMs: {p95: 16.6}, gpuPasses:
+   {main: {p95: 6}}}`), absent without one. With `restart`, the first
+   run's `restart`: `{tick, ok, hash, startHash, first, unchecked, diff}`,
+   `hash` and `startHash` each world's structural hash.
 3. `test`, last: `ok`, `suites`, `passed`, `failed`, `uncheckedSuites`,
    `uncheckedCount`, `skipped`, `renderer` (`null`, or `"none"` when a run
    found no GPU), `adapterError`, `adapterErrors` and `check` (`{ok, ms,

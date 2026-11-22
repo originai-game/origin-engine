@@ -129,6 +129,43 @@ const Tick = defineSystem("Tick", { reads: [], writes: [Count] }, (_q, _t, world
 export default og.game({ systems: [Tick] });
 `;
 
+/**
+ * A game whose first tick spawns three coins and a hero aiming at the second, and whose restart in
+ * its 30th tick despawns them all and spawns them again (new ids, the hero's Target a new handle),
+ * or by mistake keeps one coin of the last game.
+ */
+const respawnGame = (leak: boolean) => `import { defineComponent, defineResource, defineSystem, Entity, og, u32 } from "@origingame/engine";
+const Count = defineResource("Count", { n: u32() });
+const Piece = defineComponent("Piece", { v: u32() });
+const Target = defineComponent("Target", { coin: Entity() });
+const spawnAll = (world: any) => {
+  const coins = [1, 2, 3].map((v) => {
+    const e = world.spawn({ bare: true });
+    if (!e.ok) throw new Error(e.reason);
+    world.insert(e.value, Piece, { v });
+    return e.value;
+  });
+  const hero = world.spawn({ name: "hero", bare: true });
+  if (!hero.ok) throw new Error(hero.reason);
+  world.insert(hero.value, Piece, { v: 9 });
+  world.insert(hero.value, Target, { coin: coins[1] });
+};
+const Clear = defineSystem("Clear", { reads: [Count], writes: [Piece] }, (q, _t, world) => {
+  const c = world.resource(Count);
+  if (!c.ok || c.value.n !== 29) return;
+  const all: any[] = [];
+  for (const a of q.archetypes()) for (let i = 0; i < a.count; i++) all.push(a.entity(i));
+  for (const e of all.slice(${leak ? 1 : 0})) world.despawn(e);
+});
+const Round = defineSystem("Round", { reads: [], writes: [Count, Piece, Target] }, (_q, _t, world) => {
+  const c = world.resource(Count);
+  if (!c.ok) return;
+  if (c.value.n === 0 || c.value.n === 29) spawnAll(world);
+  c.value.n = c.value.n === 29 ? 1 : c.value.n + 1;
+});
+export default og.game({ systems: [Clear, Round] });
+`;
+
 test("a playtest's timings are absent with the reason without a renderer, and a budget on them is unchecked; a restart check names the first difference", () => {
   const original = join(game, "src/main.ts");
   rmSync(join(game, "tests/smoke.og.ts"), { force: true });
@@ -156,6 +193,8 @@ test("restarts", async () => {
       if (good) {
         expect(budget).toMatchObject({ ok: true, status: "unchecked" });
         expect(budget.timings).toMatchObject({ frameMs: null, gpuPasses: null });
+        expect(budget.budget).toEqual({ frameMs: { p95: 16.7 }, gpuPasses: { main: { p50: 2 } } });
+        expect(restart).not.toHaveProperty("budget");
         expect(budget.timings.missing.frameMs).toContain("no renderer");
         expect(budget.timings.missing.gpuPasses).toContain("no renderer");
         expect(budget.unchecked.filter((u: string) => u.startsWith("budget "))).toEqual([
@@ -170,12 +209,28 @@ test("restarts", async () => {
         expect(restart.failures.join("\n")).toContain("restart: the world after 30 ticks is not a fresh start's");
       }
     }
+    rmSync(join(game, "tests/budget.og.ts"));
+    // Despawning everything and spawning it again is a restart; one entity left over is not, by name.
+    for (const leak of [false, true]) {
+      writeFileSync(original, respawnGame(leak));
+      const ran = og("test", game, "--json");
+      const restart = lines(ran.stdout).find((e) => e.playtest === "restart") as Record<string, any> | undefined;
+      if (!restart) throw new Error(ran.stdout + ran.stderr);
+      if (!leak) {
+        expect(restart, JSON.stringify(restart.restart)).toMatchObject({ ok: true, status: "passed", restart: { tick: 30, ok: true, first: null, unchecked: [] } });
+        expect(restart.restart.hash).toBe(restart.restart.startHash);
+      } else {
+        expect(restart).toMatchObject({ ok: false, status: "failed", restart: { tick: 30, ok: false } });
+        expect(restart.restart.first).toMatch(/^entity #\d+\.\d+ is not in a fresh start \(1 extra in all\)$/);
+        expect(restart.restart.diff.entities).toMatchObject({ missing: [] });
+      }
+    }
   } finally {
     writeFileSync(original, `import { og } from "@origingame/engine"; export default og.game({});`);
-    rmSync(join(game, "tests/budget.og.ts"));
+    rmSync(join(game, "tests/budget.og.ts"), { force: true });
     rmSync(join(game, "tests/restart.og.ts"));
   }
-}, 240_000);
+}, 360_000);
 
 gpuTest("a playtest over its frame budget fails, naming the timing and its ceiling", () => {
   writeFileSync(join(game, "tests/over.og.ts"), `import { expect, test } from "bun:test";
