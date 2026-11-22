@@ -1,4 +1,4 @@
-import { For, Icon, Show, Text, View, formatNumber, t } from "@origingame/engine/ui";
+import { For, Icon, Show, Text, View, formatNumber, packClass, t } from "@origingame/engine/ui";
 import type { Entity } from "@origingame/engine";
 import "./world.en.ogt";
 
@@ -51,7 +51,8 @@ export interface NameplateProps {
  * A unit's plate over its head: the level chip and the name in its
  * reaction's ink, its title in small capitals, its health as a bar cut in
  * quarters (a cream ghost of a hit, the shield after the fill) and the
- * cast row (the spell and its time over a thin bar). Read only; the game
+ * cast row (the spell and its time over a thin bar), all on a HUD plate
+ * (compact, the bar alone, has none). Read only; the game
  * owns every figure and state. The old style's lean (skewX), the wings'
  * and the target brackets' clip-path arrows, the interrupted cast's hatch
  * and the anchor's max distance have no TSX surface and are dropped; it
@@ -80,7 +81,7 @@ export function Nameplate(props: NameplateProps) {
       lift={[0, props.height ?? 0, 0]}
       declutter="stack"
       occlusion="fade"
-      class="group -translate-x-1/2 -translate-y-full flex-col items-center gap-y-0.5 w-max max-w-full text-fg leading-tight"
+      class={`group -translate-x-1/2 -translate-y-full flex-col items-center gap-y-0.5 w-max max-w-full text-fg leading-tight ${props.compact ? "" : `py-1 px-2 nine-plate-cut bg-glass ${packClass("Plate", "frame")}`}`}
       label={props.name}
       data-boss={props.boss}
       data-compact={props.compact}
@@ -108,13 +109,13 @@ export function Nameplate(props: NameplateProps) {
           <Show when={icon() !== ""}>
             <Icon class="shrink-0 size-4" name={icon()} />
           </Show>
-          <Text class="shrink min-w-0 max-w-37.5 text-reading font-semibold whitespace-nowrap truncate text-gold text-shadow-2xs text-stroke-3 text-stroke-bg group-data-reaction-hostile:text-danger group-data-reaction-friendly:text-success group-data-reaction-player:text-hud-accent-ink group-data-boss:max-w-50 group-data-boss:text-base group-data-boss:font-bold group-data-boss:tracking-md group-data-boss:uppercase group-data-targeted:text-fg group-data-dead:text-fg-muted">{props.name}</Text>
+          <Text class="shrink min-w-0 max-w-37.5 text-reading font-semibold whitespace-nowrap truncate text-gold group-data-reaction-hostile:text-danger group-data-reaction-friendly:text-success group-data-reaction-player:text-hud-accent-ink group-data-boss:max-w-50 group-data-boss:text-base group-data-boss:font-bold group-data-boss:tracking-md group-data-boss:uppercase group-data-targeted:text-fg group-data-dead:text-fg-muted">{props.name}</Text>
         </View>
         <Show when={title() !== ""}>
-          <Text class="min-w-0 max-w-47.5 text-2xs font-semibold tracking-wide uppercase whitespace-nowrap truncate text-fg-muted text-shadow-2xs group-data-dead:text-fg-muted">{title()}</Text>
+          <Text class="min-w-0 max-w-47.5 text-2xs font-semibold tracking-wide uppercase whitespace-nowrap truncate text-fg-muted">{title()}</Text>
         </Show>
         <Show when={props.dead && props.lootable}>
-          <Text role="status" class="text-2xs font-bold tracking-wide uppercase whitespace-nowrap text-gold text-shadow-2xs">{t("world.nameplate.lootable")}</Text>
+          <Text role="status" class="text-2xs font-bold tracking-wide uppercase whitespace-nowrap text-gold">{t("world.nameplate.lootable")}</Text>
         </Show>
       </Show>
       <Show when={health() >= 0 && !props.dead}>
@@ -128,7 +129,7 @@ export function Nameplate(props: NameplateProps) {
             valueNow={hp()}
             valueText={`${formatNumber(hp() * 100, { decimals: 0 })}%`}
           >
-            <View class="absolute left-0 top-0 bottom-0 overflow-hidden">
+            <View class="absolute inset-0 overflow-hidden">
               <View class="absolute left-0 top-0 bottom-0 bg-gold-hi transition-layout duration-300 delay-400 ease-out" style={{ width: `${hp() * 100}%` }} />
               <View class="absolute left-0 top-0 bottom-0 bg-linear-to-b from-sheen to-transparent to-50% bg-gold group-data-reaction-hostile:bg-danger group-data-reaction-friendly:bg-success group-data-reaction-player:bg-hud-accent" style={{ width: `${hp() * 100}%` }} />
               <Show when={(props.shield ?? 0) > 0}>
@@ -143,7 +144,7 @@ export function Nameplate(props: NameplateProps) {
             </Show>
           </View>
           <Show when={(props.boss || low()) && !props.compact}>
-            <Text class="shrink-0 text-xs leading-none font-bold tabular-nums whitespace-nowrap text-shadow-2xs group-data-low:text-danger">{`${formatNumber(hp() * 100, { decimals: 0 })}%`}</Text>
+            <Text class="shrink-0 text-xs leading-none font-bold tabular-nums whitespace-nowrap group-data-low:text-danger">{`${formatNumber(hp() * 100, { decimals: 0 })}%`}</Text>
           </Show>
         </View>
       </Show>

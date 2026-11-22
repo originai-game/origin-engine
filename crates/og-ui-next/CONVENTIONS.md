@@ -650,8 +650,9 @@ are a pair the theme chose, never a component's tuning:
   and does not read on a pale ground.
   A ground under text is at least 85% opaque in both schemes, with no
   opacity modifier taking it below that.
-- Text straight over the scene sits on `Plate.frame`, or carries the
-  text-stroke halo (paint draws it).
+- Text straight over the scene sits on `Plate.frame`. Only a figure of
+  24 px or more, read at 3:1, may stand on the text-stroke halo instead
+  (paint draws it); a smaller label's halo is too thin to be its ground.
 - Muted text is `text-fg-muted` (4.5:1 on the neutral grounds), never
   `text-fg/<n>`; `text-fg-subtle` holds only 3:1 and is for a disabled
   line. An ink is never thinned.

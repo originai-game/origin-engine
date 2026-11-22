@@ -1,4 +1,4 @@
-import { Show, Text, View } from "@origingame/engine/ui";
+import { Show, Text, View, packClass } from "@origingame/engine/ui";
 import type { Entity } from "@origingame/engine";
 import "./world.en.ogt";
 
@@ -11,7 +11,7 @@ export interface WaypointProps {
   height?: number;
   /** What it is: objective (empty, gold), ping (cyan, a ripple), danger (red), ally (green) or loot (violet). */
   kind?: string;
-  /** Its name in the kind's ink (The Ninefold Gate); empty is none. It drops when far. */
+  /** Its name on a HUD plate under the diamond (The Ninefold Gate); empty is none. It drops when far. */
   label?: string;
   /** How far it is as the game words it (412), on a dark tag; empty is none. */
   distance?: string;
@@ -25,7 +25,7 @@ export interface WaypointProps {
 
 /**
  * A place to go: a lit diamond with a dark core in the kind's colour, its
- * name under it and the distance on a dark tag. Off screen, a chevron
+ * name on a plate under it and the distance on a dark tag. Off screen, a chevron
  * points the way. Read only; the game owns the distance and what counts
  * as near and far. Off screen or behind the camera it pins 24 px inside
  * the screen's edge toward its point (the anchor's clamp, which marks the
@@ -62,9 +62,9 @@ export function Waypoint(props: WaypointProps) {
         <View class="absolute inset-8/25 bg-tile" />
       </View>
       <Show when={(label() !== "" && range() !== "far") || (distance() !== "")}>
-        <View class="flex-col items-center gap-y-0.5 min-w-0 group-data-way-left:items-start group-data-way-right:items-end group-data-far:opacity-82">
+        <View class="flex-col items-center gap-y-0.5 min-w-0 group-data-way-left:items-start group-data-way-right:items-end">
           <Show when={label() !== "" && range() !== "far"}>
-            <Text class="min-w-0 max-w-50 text-2xs leading-tight font-bold tracking-wide uppercase whitespace-nowrap truncate text-gold text-shadow-2xs text-stroke-3 text-stroke-bg group-data-danger:text-danger group-data-ally:text-success group-data-loot:text-epic group-data-ping:text-rare">{label()}</Text>
+            <Text class={`min-w-0 max-w-50 py-0.25 px-1.5 text-2xs leading-tight font-bold tracking-wide uppercase whitespace-nowrap truncate text-fg nine-chip-cut bg-glass ${packClass("Plate", "frame")}`}>{label()}</Text>
           </Show>
           <Show when={distance() !== ""}>
             <View class="shrink-0 flex-row items-baseline py-0.25 px-1.5 nine-chip-cut bg-raised-pressed">

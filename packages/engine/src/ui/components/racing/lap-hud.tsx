@@ -58,7 +58,7 @@ export function RacingLapHud(props: RacingLapHudProps) {
             <Text class={`text-8xl leading-flat italic font-bold tabular-nums whitespace-nowrap text-fg text-stroke-3 text-stroke-bg compact:text-6xl`}>
               {props.position > 0 ? formatNumber(props.position) : t("racing.lap.pending")}
             </Text>
-            <Text class={`text-4xl leading-flat italic font-bold whitespace-nowrap text-fg-muted compact:text-title`}>{t("racing.lap.of", { total: props.racers })}</Text>
+            <Text class={`text-4xl leading-flat italic font-bold whitespace-nowrap text-fg-muted text-stroke-3 text-stroke-bg compact:text-title`}>{t("racing.lap.of", { total: props.racers })}</Text>
           </View>
         </Show>
         <View class="flex min-w-0 flex-col items-start gap-y-2 pb-1 compact:gap-y-1 compact:pb-0">
@@ -69,17 +69,17 @@ export function RacingLapHud(props: RacingLapHudProps) {
               label={props.laps > 0 && props.lap > 0 ? t("racing.lap.lapValue", { lap: props.lap, laps: props.laps }) : t("racing.lap.lap")}
               data-final={props.finalLap}
             >
-              <Text class={`text-xs font-semibold tracking-label uppercase whitespace-nowrap opacity-78 group-data-final/lap:text-hud-accent-ink`}>
+              <Text class={`text-xs font-semibold tracking-label uppercase whitespace-nowrap text-fg-muted group-data-final/lap:text-hud-accent-ink`}>
                 {props.finalLap ? t("racing.lap.finalLap") : t("racing.lap.lap")}
               </Text>
               <Text class={`text-reading font-bold tabular-nums whitespace-nowrap`}>{props.lap > 0 ? formatNumber(props.lap) : t("racing.lap.pending")}</Text>
               <Show when={props.laps > 0}>
-                <Text class={`text-caption font-bold tabular-nums whitespace-nowrap opacity-80`}>{t("racing.lap.ofSpaced", { total: props.laps })}</Text>
+                <Text class={`text-caption font-bold tabular-nums whitespace-nowrap text-fg-muted`}>{t("racing.lap.ofSpaced", { total: props.laps })}</Text>
               </Show>
             </View>
           </Show>
           <Show when={props.gained !== 0}>
-            <View class="group/gained flex-row items-center gap-x-1.25 max-w-full min-w-0" data-trend-down={props.gained < 0}>
+            <View class={`group/gained flex-row items-center gap-x-1.25 max-w-full min-w-0 py-0.5 px-2 nine-chip-cut bg-glass ${packClass("Plate", "frame")}`} data-trend-down={props.gained < 0}>
               <View
                 class={`shrink-0 size-2 -rotate-45 border-l-2 border-b-2 border-hud-accent group-data-trend-down/gained:rotate-45 group-data-trend-down/gained:border-t-2 group-data-trend-down/gained:border-r-2 group-data-trend-down/gained:border-l-0 group-data-trend-down/gained:border-b-0 group-data-trend-down/gained:border-foe`}
               />
