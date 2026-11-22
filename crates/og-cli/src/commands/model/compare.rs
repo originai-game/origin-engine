@@ -16,11 +16,18 @@
 //! - `parts`: per part, the pixels where it and the image overlap, and
 //!   CIEDE2000 between its mean drawn colour and the image's mean colour
 //!   over those pixels (`null` where the part is hidden or off the
-//!   image's silhouette).
+//!   image's silhouette); and the thin-part facts ([`super::thin`]):
+//!   `widthPx`, the part's width in the image's pixels (0 where it shows
+//!   no pixel: hidden, or too thin for the silhouette), `edgeShare`, the share of its pixels on its edge, and
+//!   `resolved`, whether it is at least two pixels wide.
+//! - `iouOnePixel`: the IoU the model's own silhouette keeps when it is
+//!   off by one pixel all round: the most a fit this size can show, so a
+//!   low `iou` on thin legs reads as the view's resolution.
 //!
 //! `--image <view>=<png>`, repeated, compares every view in one call:
 //! `views` (each view's facts as above) and the same facts ranked
-//! (`byIou`, `byAspect`, `byColour`), so one pass fixes them all.
+//! (`byIou`, `byAspect`, `byColour`, `byWidth`), so one pass fixes them
+//! all.
 
 use image::RgbaImage;
 use og_shape::mesh::Solid;
@@ -85,8 +92,9 @@ pub fn run(a: &Args) -> Result<String, Failure> {
 
 /// Every view's facts, and the same facts ranked so one pass can fix them
 /// all: `byIou` (the views, least overlap first), `byAspect` (the views,
-/// farthest aspect ratio from 1 first) and `byColour` (each part's largest
-/// colour distance over the views, farthest first). Rankings, no
+/// farthest aspect ratio from 1 first), `byColour` (each part's largest
+/// colour distance over the views, farthest first) and `byWidth` (each
+/// part's narrowest width over the views, thinnest first). Rankings, no
 /// thresholds.
 fn summary(views: Vec<Value>) -> Value {
     let name = |v: &Value| v["view"].clone();
@@ -114,10 +122,29 @@ fn summary(views: Vec<Value>) -> Value {
         }
     }
     colour.sort_by(|a, b| b.1.total_cmp(&a.1).then(a.0.cmp(&b.0)));
+    // Each part's narrowest showing over the views, thinnest first.
+    let mut width: Vec<(String, f64, Value, Value)> = Vec::new();
+    for v in &views {
+        for p in v["parts"].as_array().into_iter().flatten() {
+            let (Some(part), Some(d)) = (p["part"].as_str(), p["widthPx"].as_f64()) else {
+                continue;
+            };
+            if d <= 0.0 {
+                continue;
+            }
+            match width.iter_mut().find(|c| c.0 == part) {
+                Some(c) if c.1 <= d => {}
+                Some(c) => *c = (part.into(), d, name(v), p["resolved"].clone()),
+                None => width.push((part.into(), d, name(v), p["resolved"].clone())),
+            }
+        }
+    }
+    width.sort_by(|a, b| a.1.total_cmp(&b.1).then(a.0.cmp(&b.0)));
     json!({
         "byIou": by_iou.iter().map(|v| json!({ "view": name(v), "iou": v["iou"] })).collect::<Vec<_>>(),
         "byAspect": by_aspect.iter().map(|v| json!({ "view": name(v), "ratio": v["aspect"]["ratio"] })).collect::<Vec<_>>(),
         "byColour": colour.iter().map(|(p, d, v)| json!({ "part": p, "colourDistance": d, "view": v })).collect::<Vec<_>>(),
+        "byWidth": width.iter().map(|(p, d, v, r)| json!({ "part": p, "widthPx": d, "view": v, "resolved": r })).collect::<Vec<_>>(),
         "views": views,
     })
 }
@@ -203,19 +230,25 @@ pub fn compare(source: &Source, view: &View, reference: &RgbaImage) -> Result<Va
         let (mut both, mut either) = (0usize, 0usize);
         // Per part: pixels, the image's colour sum and the drawn one's.
         let mut sums = vec![(0usize, [0f64; 3], [0f64; 3]); n];
+        // The aligned model in the image's pixels: each pixel's part.
+        let mut labels: Vec<Option<usize>> = vec![None; (w * h) as usize];
         for y in 0..h {
             for x in 0..w {
                 let r = ref_mask[(y * w + x) as usize];
                 let m = at(x, y).filter(|&(mx, my)| drawn.get_pixel(mx, my)[3] >= 128);
                 both += usize::from(r && m.is_some());
                 either += usize::from(r || m.is_some());
-                let (Some((mx, my)), true) = (m, r) else {
+                let Some((mx, my)) = m else {
                     continue;
                 };
                 let p = id_image.get_pixel(mx, my);
                 let Some(k) = id_of([p[0], p[1], p[2]]).filter(|&k| k < n) else {
                     continue;
                 };
+                labels[(y * w + x) as usize] = Some(k);
+                if !r {
+                    continue;
+                }
                 let (rp, dp) = (reference.get_pixel(x, y), drawn.get_pixel(mx, my));
                 let s = &mut sums[k];
                 s.0 += 1;
@@ -229,11 +262,15 @@ pub fn compare(source: &Source, view: &View, reference: &RgbaImage) -> Result<Va
             crate::commands::compare::bbox(mask, w).map(|b| (b.2 - b.0) / (b.3 - b.1))
         };
         let (am, ai) = (aspect(&model_mask), aspect(&ref_mask));
+        let (uw, uh) = (w as usize, h as usize);
+        let widths = super::thin::widths(&labels, uw, uh, n);
+        let shown: Vec<bool> = labels.iter().map(Option::is_some).collect();
         let parts: Vec<Value> = scene
             .parts
             .iter()
             .zip(&sums)
-            .map(|(p, (k, r, d))| {
+            .zip(&widths)
+            .map(|((p, (k, r, d)), &(width, edge))| {
                 let mean = |s: &[f64; 3]| s.map(|v| (v / *k as f64).round().clamp(0.0, 255.0) as u8);
                 let distance = (*k > 0).then(|| delta_e00(lab(mean(r)), lab(mean(d))));
                 json!({
@@ -241,12 +278,16 @@ pub fn compare(source: &Source, view: &View, reference: &RgbaImage) -> Result<Va
                     "material": p.material.name,
                     "pixels": k,
                     "colourDistance": distance,
+                    "widthPx": width,
+                    "edgeShare": edge,
+                    "resolved": width >= 2.0,
                 })
             })
             .collect();
         Ok(json!({
             "view": view.name(),
             "iou": if either == 0 { 1.0 } else { both as f64 / either as f64 },
+            "iouOnePixel": super::thin::iou_one_pixel(&shown, uw, uh),
             "aspect": {
                 "model": am,
                 "image": ai,

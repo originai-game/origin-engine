@@ -572,6 +572,53 @@ fn compare_fits_the_view_it_was_drawn_in() {
     let _ = std::fs::remove_dir_all(&dir);
 }
 
+/// `compare` says how wide each part shows: a 12 mm leg under a 400 mm top
+/// is under two pixels in a 100-pixel view (not resolved, and a one-pixel
+/// misfit costs the fit more) and resolved in an 800-pixel one.
+#[test]
+fn compare_reports_a_thin_part_the_view_cannot_resolve() {
+    let dir = std::env::temp_dir().join(format!("og-model-thin-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let program = dir.join("stand.shape.json");
+    std::fs::write(
+        &program,
+        r#"{"ops": [
+  {"op": "box", "name": "leg", "width": 12, "depth": 12, "height": 400},
+  {"op": "box", "name": "top", "width": 400, "depth": 400, "height": 20,
+   "on": {"origin": [0, 0, 400], "x": [1, 0, 0], "y": [0, 1, 0], "z": [0, 0, 1]}}
+]}"#,
+    )
+    .unwrap();
+    let program = program.to_str().unwrap();
+    let fit = |width: &str| -> serde_json::Value {
+        let out = dir.join(width);
+        report(&[
+            "preview",
+            program,
+            "--views",
+            "front",
+            "--out",
+            out.to_str().unwrap(),
+            "--width",
+            width,
+            "--json",
+        ]);
+        let image = format!("front={}", out.join("front.png").display());
+        report(&["compare", program, "--image", &image, "--json"])
+    };
+    let leg = |f: &serde_json::Value| f["views"][0]["parts"][0].clone();
+    let (small, large) = (fit("100"), fit("800"));
+    assert_eq!(leg(&small)["part"], "leg", "{small}");
+    assert_eq!(leg(&small)["resolved"], false, "{small}");
+    assert!(leg(&small)["widthPx"].as_f64().unwrap() < 2.0, "{small}");
+    assert_eq!(small["byWidth"][0]["part"], "leg", "{small}");
+    assert_eq!(leg(&large)["resolved"], true, "{large}");
+    assert!(leg(&large)["widthPx"].as_f64().unwrap() >= 8.0, "{large}");
+    let ceiling = |f: &serde_json::Value| f["views"][0]["iouOnePixel"].as_f64().unwrap();
+    assert!(ceiling(&small) < ceiling(&large), "{small} {large}");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
 /// `process --out <folder>` writes a prop: scaled to the height asked
 /// (a bare number is metres), standing on its base at the origin, with
 /// import settings the cook reads and convex hulls beside it; `--size`

@@ -41,6 +41,7 @@ pub mod repair;
 pub mod report;
 pub mod rig;
 pub mod source;
+pub mod thin;
 pub mod transfer;
 pub mod unwrap;
 pub mod views;
