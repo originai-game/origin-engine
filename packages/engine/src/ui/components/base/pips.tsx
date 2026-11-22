@@ -67,6 +67,9 @@ export function Pips(props: PipsProps) {
   );
 }
 
+/** Where it belongs: a piece of a panel, drawn on the panel's ground and never straight over the scene; the gallery mounts it inside a panel's frame. */
+export const ground = "panel" as const;
+
 export const fixtures: Record<string, Partial<PipsProps>> = {
   default: {"label":"Lives","icon":"heart","tone":"","items":[{"id":"life-a","value":1,"label":"First life"},{"id":"life-b","value":0.5,"label":"Second life"},{"id":"life-c","value":0,"label":"Third life"}],"loading":false,"disabled":false},
   full: {"label":"Action points","icon":"bolt","tone":"warn","items":[{"id":"ap-a","value":1},{"id":"ap-b","value":1},{"id":"ap-c","value":1}]},

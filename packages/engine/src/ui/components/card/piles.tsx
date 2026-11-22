@@ -50,6 +50,9 @@ export function CardPiles(props: CardPilesProps) {
   );
 }
 
+/** Where it belongs: a piece of a panel, drawn on the panel's ground and never straight over the scene; the gallery mounts it inside a panel's frame. */
+export const ground = "panel" as const;
+
 export const fixtures: Record<string, Partial<CardPilesProps>> = {
   default: {"label":"","piles":[{"id":"draw","kind":"draw","label":"Draw","icon":"bag","count":14,"enabled":true},{"id":"discard","kind":"discard","label":"Discard","icon":"back","count":3,"enabled":true},{"id":"exhaust","kind":"exhaust","label":"Exhaust","icon":"fire","count":1,"enabled":true}]},
   empty: {"label":"","piles":[{"id":"draw","kind":"draw","label":"Draw","icon":"bag","count":0,"enabled":true},{"id":"discard","kind":"discard","label":"Discard","icon":"back","count":0,"enabled":true},{"id":"exhaust","kind":"exhaust","label":"Exhaust","icon":"fire","count":0,"enabled":false}]},

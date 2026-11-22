@@ -27,6 +27,9 @@ export function KeyValues(props: KeyValuesProps) {
   );
 }
 
+/** Where it belongs: a piece of a panel, drawn on the panel's ground and never straight over the scene; the gallery mounts it inside a panel's frame. */
+export const ground = "panel" as const;
+
 export const fixtures: Record<string, Partial<KeyValuesProps>> = {
   default: {"rows":[{"id":"atk","key":"Attack","value":"42","delta":"+6"},{"id":"def","key":"Defence","value":"18","delta":"-2"},{"id":"wt","key":"Weight","value":"3.5 kg","delta":""}]},
 };

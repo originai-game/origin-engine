@@ -86,6 +86,9 @@ export function ItemSlot(props: ItemSlotProps) {
   );
 }
 
+/** Where it belongs: a piece of a panel, drawn on the panel's ground and never straight over the scene; the gallery mounts it inside a panel's frame. */
+export const ground = "panel" as const;
+
 export const fixtures: Record<string, Partial<ItemSlotProps>> = {
   default: {"name":"Healing draught","icon":"potion","count":12,"rarity":"rare","cooldown":0,"cooldownMax":8,"keyLabel":"Q","selected":false,"disabled":false,"locked":false,"loading":false,"empty":false,"showName":true},
   selected: {"name":"Storm crystal","icon":"gem","count":3,"rarity":"epic","cooldown":3,"cooldownMax":8,"keyLabel":"2","selected":true,"disabled":false,"locked":false,"loading":false,"empty":false,"showName":true},

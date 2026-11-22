@@ -80,6 +80,9 @@ export function Avatar(props: AvatarProps) {
   );
 }
 
+/** Where it belongs: a piece of a panel, drawn on the panel's ground and never straight over the scene; the gallery mounts it inside a panel's frame. */
+export const ground = "panel" as const;
+
 export const fixtures: Record<string, Partial<AvatarProps>> = {
   default: {"name":"Brenna Vale","portrait":0,"icon":"person","level":12,"status":"online","statusText":"","frame":"","loading":false},
   away: {"name":"Idris","level":8,"status":"away"},

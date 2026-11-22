@@ -71,6 +71,9 @@ export function Steps(props: StepsProps) {
   );
 }
 
+/** Where it belongs: a piece of a panel, drawn on the panel's ground and never straight over the scene; the gallery mounts it inside a panel's frame. */
+export const ground = "panel" as const;
+
 export const fixtures: Record<string, Partial<StepsProps>> = {
   default: {"title":"Prepare your expedition","steps":[{"id":"party","label":"Party","detail":"3 players ready","number":"1","state":"done","disabled":false},{"id":"route","label":"Route","detail":"Choose a destination","number":"2","state":"current","disabled":false},{"id":"launch","label":"Launch","detail":"Waiting for a route","number":"3","state":"upcoming","disabled":true}],"column":false},
   empty: {"steps":[]},
