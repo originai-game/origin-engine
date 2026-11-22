@@ -3,7 +3,7 @@
 // drive the tick.
 //
 //   bun src/node/run.ts --entry <game.js|.ts> [--root <project>] [--content <dir>] [--ticks N] [--seed S]
-//       [--setup action[:arg...]]... [--commands "t:action[:args];..."] [--out <dir>]
+//       [--setup action[:arg...]]... [--commands "t:action[:args];..." | --commands-file <f>] [--out <dir>]
 //       [--port P] [--size WxH] [--realtime] [--watch <bundle.js>] [--no-render] [--capture-only]
 //       [--audio null|device|<out.wav>] [--platform-store <file.json>] [--platform-fake <file.json>] [--clock <UTC ms>] [--locale <tag>]
 //       [--trace <out.json> [--trace-append]] [--perf <dir> [--budgets <json>]] [--room ws://127.0.0.1:P/<room>]
@@ -151,6 +151,7 @@ export async function run(argv: string[], output: RunOutput = hostProcess, contr
       else if (a === "--seed") seed = Number(next());
       else if (a === "--setup") setup.push(next());
       else if (a === "--commands") commands = next();
+      else if (a === "--commands-file") commands = readFileSync(next(), "utf8").trim();
       else if (a === "--out") out = next();
       else if (a === "--port") port = Number(next());
       else if (a === "--size") {

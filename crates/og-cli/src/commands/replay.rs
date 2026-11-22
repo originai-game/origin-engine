@@ -99,10 +99,11 @@ fn parse(args: &[&str]) -> Result<Args, String> {
                             .extend(["--loads".into(), path.display().to_string()]);
                     }
                     "--commands-file" => {
-                        let script = std::fs::read_to_string(v)
+                        std::fs::read_to_string(v)
                             .map_err(|e| format!("--commands-file {v}: {e}"))?;
-                        a.forward
-                            .extend(["--commands".into(), script.trim().to_string()]);
+                        let path = std::path::absolute(v)
+                            .map_err(|e| format!("--commands-file {v}: {e}"))?;
+                        a.forward.extend([flag.into(), path.display().to_string()]);
                         commands = true;
                     }
                     _ => {

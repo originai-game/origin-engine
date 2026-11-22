@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {
+      "member": "og run / og render --commands-file",
+      "summary": "Read a UTF-8 command script from a file, like og replay record, without passing its contents through process arguments. Long recordings no longer hit the operating system's per-argument limit, including replay record's internal host launch."
+    }
+  ]
+}

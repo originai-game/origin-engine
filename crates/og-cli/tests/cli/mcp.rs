@@ -50,6 +50,21 @@ fn mcp_serves_the_og_commands_as_tools_with_their_own_output() {
     );
 
     let call = |name: &str, arguments: Value| json!({"jsonrpc": "2.0", "id": 3, "method": "tools/call", "params": {"name": name, "arguments": arguments}});
+    let missing = TempDir::new("og-mcp-commands-file").join("missing.txt");
+    for tool in ["run", "render"] {
+        let answer = ask(call(tool, json!({"commandsFile": missing}))).unwrap();
+        assert_eq!(answer["result"]["isError"], true, "{answer}");
+        assert!(
+            answer["result"]["content"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|block| block["text"].as_str().is_some_and(|text| {
+                    text.contains(&format!("--commands-file {}:", missing.display()))
+                })),
+            "{answer}"
+        );
+    }
     let found = ask(call(
         "api_find",
         json!({"words": "why is it not drawn", "limit": 3}),

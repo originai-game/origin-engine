@@ -3,7 +3,7 @@
 import { fileURLToPath } from "node:url";
 import { expect, test } from "bun:test";
 import { dirname, join } from "node:path";
-import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { ogBin } from "./support/og-bin.ts";
 
@@ -62,6 +62,28 @@ test("og run takes tick and seed from project.ogt for a GameDesc that leaves the
     const read = (f: string) => (JSON.parse(readFileSync(join(out, f), "utf8")) as { value: unknown }).value;
     expect((read("time.json") as { rate: number }).rate).toBe(30);
     expect(read("seed.json")).toBe(5);
+  } finally {
+    rmSync(out, { recursive: true, force: true });
+  }
+}, 120_000);
+
+test("run and replay read command files larger than a process argument, relative to the caller", () => {
+  const out = mkdtempSync(join(tmpdir(), "og-command-file-"));
+  try {
+    const script = "0:set:og.Audio.master=1;".repeat(6_000) + "0.1:quit";
+    expect(script.length).toBeGreaterThan(131_072);
+    writeFileSync(join(out, "commands.txt"), `\n  ${script}\n`);
+    const game = join(repo, "packages/engine/tests/fixtures/project-defaults");
+    const args = ["--commands", "0:quit", "--commands-file", "commands.txt", "--json"];
+    const summary = run([ogBin(), "run", game, "--headless", "--no-render", ...args], out);
+    expect([summary.tick, summary.quit]).toEqual([3, true]);
+    // Reverse the options: the inline script wins instead.
+    const inline = run([ogBin(), "run", game, "--headless", "--no-render", "--commands-file", "commands.txt", "--commands", "0.2:quit", "--json"], out);
+    expect(inline.tick).toBe(6);
+    const trace = join(out, "trace.json");
+    const recorded = spawn([ogBin(), "replay", "record", game, ...args, "--out", trace], out);
+    expect(recorded.exitCode, recorded.stderr).toBe(0);
+    expect(JSON.parse(readFileSync(trace, "utf8")).commands).toBe(script);
   } finally {
     rmSync(out, { recursive: true, force: true });
   }

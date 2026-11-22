@@ -1,4 +1,4 @@
-//! `og render [project] --commands "..." | --timeline <name> [--fps F] [--from S] [--to S]
+//! `og render [project] --commands "..." | --commands-file <f> | --timeline <name> [--fps F] [--from S] [--to S]
 //! [--size WxH] [--out DIR | out.mp4 | out.webm] [--frames png|jpg] [--audio]
 //! [--contact-sheet COLS] [--jobs N] [--seed S] [--json] [--no-check]`
 //!
@@ -49,7 +49,7 @@ use std::io::{BufReader, Read, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Child, ChildStdin, Command, ExitCode, Stdio};
 
-const USAGE: &str = "usage: og render [project] --commands \"t:action[:args];...\" | --timeline <name> [--fps F] [--from S] [--to S] [--size WxH] [--out DIR|out.mp4|out.webm] [--frames png|jpg] [--audio] [--contact-sheet COLS] [--keyframes [--keyframe-change F] [--keyframe-gap S]] [--jobs N] [--seed S] [--json] [--no-check]";
+const USAGE: &str = "usage: og render [project] --commands \"t:action[:args];...\" | --commands-file <f> | --timeline <name> [--fps F] [--from S] [--to S] [--size WxH] [--out DIR|out.mp4|out.webm] [--frames png|jpg] [--audio] [--contact-sheet COLS] [--keyframes [--keyframe-change F] [--keyframe-gap S]] [--jobs N] [--seed S] [--json] [--no-check]";
 
 /// Frames each job of `--jobs` draws before its range, unsent.
 const WARMUP: u32 = 8;
@@ -129,6 +129,15 @@ pub fn parse(args: &[&str]) -> Result<RenderArgs, String> {
         };
         match flag {
             "--commands" => r.commands = Some(value()?.to_string()),
+            "--commands-file" => {
+                let v = value()?;
+                r.commands = Some(
+                    std::fs::read_to_string(v)
+                        .map_err(|e| format!("--commands-file {v}: {e}"))?
+                        .trim()
+                        .to_string(),
+                );
+            }
             "--timeline" => r.timeline = Some(value()?.to_string()),
             "--fps" => r.fps = count(value()?)?,
             "--from" => r.from = seconds(value()?)?,
@@ -180,7 +189,9 @@ pub fn parse(args: &[&str]) -> Result<RenderArgs, String> {
         i += 1;
     }
     if r.commands.is_none() && r.timeline.is_none() {
-        return Err(format!("say what plays: --commands or --timeline. {USAGE}"));
+        return Err(format!(
+            "say what plays: --commands, --commands-file or --timeline. {USAGE}"
+        ));
     }
     if r.timeline.is_none() && r.to.is_none() {
         return Err("--to names where the render ends, in seconds (--timeline defaults it to the timeline's duration)".into());
@@ -601,6 +612,10 @@ fn render(args: &[&str]) -> Result<(), (u8, String)> {
     let bundle = crate::run::prepare(&p, &package, a.check, a.json).map_err(fail)?;
     let work = std::env::temp_dir().join(format!("og-render-{}", std::process::id()));
     std::fs::create_dir_all(&work).map_err(|e| fail(e.to_string()))?;
+    // The composed script can exceed the OS's per-argument limit, even
+    // when the caller supplied it through --commands-file.
+    let commands_file = work.join("commands.txt");
+    std::fs::write(&commands_file, &script).map_err(|e| fail(e.to_string()))?;
 
     let base = |extra: &[String]| -> Command {
         let mut c = project::bun(&package, "src/node/render.ts");
@@ -610,7 +625,8 @@ fn render(args: &[&str]) -> Result<(), (u8, String)> {
         }
         c.args(["--fps", &a.fps.to_string(), "--from", &a.from.to_string()])
             .args(["--size", &format!("{}x{}", a.size.0, a.size.1)])
-            .args(["--commands", &script])
+            .arg("--commands-file")
+            .arg(&commands_file)
             .args(["--warmup", &WARMUP.to_string()])
             // Reproducible like a playtest: og.platform.now starts at 2026-01-01.
             .args(["--clock", "1767225600000"])
@@ -995,7 +1011,7 @@ mod tests {
         assert!(
             parse(&["--to", "2"])
                 .unwrap_err()
-                .contains("--commands or --timeline")
+                .contains("--commands, --commands-file or --timeline")
         );
         assert!(
             parse(&["--commands", "x", "--from", "3", "--to", "2"])

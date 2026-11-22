@@ -131,6 +131,7 @@ impl Server {
                 project(&mut args);
                 args.push("--headless".into());
                 push(&mut args, "--commands", "commands");
+                push(&mut args, "--commands-file", "commandsFile");
                 push(&mut args, "--ticks", "ticks");
                 push(&mut args, "--seed", "seed");
                 push(&mut args, "--size", "size");
@@ -149,6 +150,7 @@ impl Server {
                 args.push("render".into());
                 project(&mut args);
                 push(&mut args, "--commands", "commands");
+                push(&mut args, "--commands-file", "commandsFile");
                 push(&mut args, "--timeline", "timeline");
                 push(&mut args, "--fps", "fps");
                 push(&mut args, "--from", "from");
@@ -384,6 +386,7 @@ fn tools() -> Value {
             "`og run --headless --json`: cook, check, bundle and run the game with a command script; its JSON on stdout. With `port`, the game starts in the background and the answer is its probe's hello: call `probe` on that port, and stop it with probe commands {\"script\": \"0:quit\"}.",
             json!({
                 "project": project, "commands": s("The command script, `t:action[:args];...` (testing §7)."),
+                "commandsFile": s("UTF-8 script file, relative to the server's working directory; use instead of commands for long scripts."),
                 "ticks": n("Ticks to run."), "seed": n("The seed."), "size": s("WxH."),
                 "out": s("Where screenshots and dumps land (default og-out/)."),
                 "port": n("Serve the probe on this port and keep running."),
@@ -405,6 +408,7 @@ fn tools() -> Value {
             "`og render --json`: the game drawn frame by frame headless into PNG frames or a video, with frames.json.",
             json!({
                 "project": project, "commands": s("The command script."), "timeline": s("A timeline to play."),
+                "commandsFile": s("UTF-8 script file, relative to the server's working directory; use instead of commands for long scripts."),
                 "fps": n("Frames a second."), "from": { "type": "number" }, "to": { "type": "number" },
                 "size": s("WxH."), "out": s("A directory, out.mp4 or out.webm."),
                 "contactSheet": n("Columns of a contact sheet."), "keyframes": b("Also the key frames."),

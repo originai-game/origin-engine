@@ -1,6 +1,32 @@
 use super::*;
 
 #[test]
+fn command_file_errors_match_replay_record() {
+    let dir = TempDir::new("og-command-file-errors");
+    let invalid = dir.join("invalid.txt");
+    std::fs::write(&invalid, [0xff]).unwrap();
+    for command in [vec!["run"], vec!["render"], vec!["replay", "record"]] {
+        let missing_value = og().args(&command).arg("--commands-file").output().unwrap();
+        assert_eq!(missing_value.status.code(), Some(2));
+        assert!(text(&missing_value).contains("--commands-file needs a value. usage:"));
+        for file in [dir.join("missing.txt"), invalid.clone()] {
+            let out = og()
+                .args(&command)
+                .arg("--commands-file")
+                .arg(&file)
+                .output()
+                .unwrap();
+            assert_eq!(out.status.code(), Some(2), "{}", text(&out));
+            assert!(
+                text(&out).contains(&format!("--commands-file {}:", file.display())),
+                "{}",
+                text(&out)
+            );
+        }
+    }
+}
+
+#[test]
 fn tests_default_to_hardware_but_preserve_explicit_renderer_selection() {
     let dir = TempDir::new("og-test-renderer");
     std::fs::create_dir_all(dir.join("tests")).unwrap();

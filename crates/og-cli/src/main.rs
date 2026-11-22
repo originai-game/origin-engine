@@ -51,7 +51,7 @@ commands:
                       the start guide §1
   new [dir] [options]  alias for og create
   session [project]   keep a worktree's native host warm until idle or interrupted
-  run [project|entry] [--headless] [--commands \"t:action[:args];...\"] [--seed S] [--port P]
+  run [project|entry] [--headless] [--commands \"t:action[:args];...\" | --commands-file <f>] [--seed S] [--port P]
       [--ticks N] [--out DIR] [--size WxH] [--setup action[:arg]]... [--audio <out.wav>]
       [--platform-store <file.json>] [--platform-fake <file.json>] [--clock <UTC ms>] [--locale <tag>] [--room <ws url>]
       [--shared <ws or https url> [--shared-token-file <f>] [--shared-cert-hash <hex>]] [--json] [--no-check] [--require-checked]
@@ -83,7 +83,7 @@ commands:
                       60 s, 200000 ticks, 256 MB of snapshots, 1 job, horizon 3600 ticks; --first
                       stops at the first violation or error and reports only those; the explore
                       guide: og api show explore
-  render [project] --commands \"t:action[:args];...\" | --timeline <name> [--fps F] [--from S] [--to S]
+  render [project] --commands \"t:action[:args];...\" | --commands-file <f> | --timeline <name> [--fps F] [--from S] [--to S]
       [--size WxH] [--out DIR|out.mp4|out.webm] [--frames png|jpg] [--audio] [--contact-sheet COLS]
       [--keyframes [--keyframe-change F] [--keyframe-gap S]] [--jobs N] [--seed S] [--json] [--no-check]
                       render the script to frames, a video (ffmpeg: H.264 or VP9, the capture

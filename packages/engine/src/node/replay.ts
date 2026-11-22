@@ -133,6 +133,7 @@ for (let i = 0; i < argv.length; i++) {
   else if (a === "--record") recordPath = resolve(next());
   else if (a === "--compare") comparePath = resolve(next());
   else if (a === "--commands") commands = next();
+  else if (a === "--commands-file") commands = readFileSync(next(), "utf8").trim();
   else if (a === "--ticks") ticks = Number(next());
   else if (a === "--seed") seed = Number(next());
   else if (a === "--clock") clock = Number(next());

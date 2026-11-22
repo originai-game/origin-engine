@@ -1,4 +1,4 @@
-//! `og run [project|entry] [--headless] [--commands "t:action[:args];..."] [--seed S]
+//! `og run [project|entry] [--headless] [--commands "t:action[:args];..." | --commands-file <f>] [--seed S]
 //! [--port P] [--ticks N] [--out DIR] [--size WxH] [--setup action[:arg]]...
 //! [--audio null|device|<out.wav>] [--content <dir>] [--platform-store <file.json>] [--platform-fake <file.json>] [--clock <UTC ms>] [--locale <tag>] [--trace <out.json>] [--perf <dir> [--budget <line>=<ms>]...] [--gpu-serial] [--profile <out.cpuprofile|out.md>] [--capture-only] [--forks N] [--json] [--no-check]`
 //!
@@ -54,7 +54,7 @@ use crate::project::{self, Project};
 use std::path::Path;
 use std::process::ExitCode;
 
-const USAGE: &str = "usage: og run [project|entry] [--headless] [--commands \"t:action[:args];...\"] [--seed S] [--port P] [--ticks N] [--out DIR] [--size WxH] [--setup action[:arg]]... [--audio null|device|<out.wav>] [--content <dir>] [--platform-store <file.json>] [--platform-fake <file.json>] [--clock <UTC ms>] [--locale <tag>] [--trace <out.json>] [--perf <dir> [--budget <line>=<ms>]...] [--gpu-serial] [--profile <out.cpuprofile|out.md>] [--room ws://127.0.0.1:P/<room>|wss://<host>/<room>] [--shared ws://127.0.0.1:P/|wss://<host>/|https://<host>:P/ [--shared-token-file <f>] [--shared-cert-hash <hex>]] [--capture-only] [--forks N] [--json] [--no-check]\n       og run --device chrome|safari|android[:serial]|iphone[:udid] [project] [--seconds N] [--port P] [--out DIR] [--size WxH] [--headed] [--chrome <path>] [--cert <pem> --key <pem>] [--host <ip>] [--json]";
+const USAGE: &str = "usage: og run [project|entry] [--headless] [--commands \"t:action[:args];...\" | --commands-file <f>] [--seed S] [--port P] [--ticks N] [--out DIR] [--size WxH] [--setup action[:arg]]... [--audio null|device|<out.wav>] [--content <dir>] [--platform-store <file.json>] [--platform-fake <file.json>] [--clock <UTC ms>] [--locale <tag>] [--trace <out.json>] [--perf <dir> [--budget <line>=<ms>]...] [--gpu-serial] [--profile <out.cpuprofile|out.md>] [--room ws://127.0.0.1:P/<room>|wss://<host>/<room>] [--shared ws://127.0.0.1:P/|wss://<host>/|https://<host>:P/ [--shared-token-file <f>] [--shared-cert-hash <hex>]] [--capture-only] [--forks N] [--json] [--no-check]\n       og run --device chrome|safari|android[:serial]|iphone[:udid] [project] [--seconds N] [--port P] [--out DIR] [--size WxH] [--headed] [--chrome <path>] [--cert <pem> --key <pem>] [--host <ip>] [--json]";
 
 /// What `og run` was asked.
 pub struct RunArgs {
@@ -157,6 +157,7 @@ pub fn parse(args: &[&str]) -> Result<RunArgs, String> {
             | "--seed"
             | "--setup"
             | "--commands"
+            | "--commands-file"
             | "--size"
             | "--out"
             | "--port"
@@ -181,6 +182,15 @@ pub fn parse(args: &[&str]) -> Result<RunArgs, String> {
                 match flag {
                     "--out" => r.out = Some(v.to_string()),
                     "--port" => r.port = Some(v.to_string()),
+                    "--commands-file" => {
+                        // Validate like replay record, but never put the script in argv.
+                        std::fs::read_to_string(v)
+                            .map_err(|e| format!("--commands-file {v}: {e}"))?;
+                        let path = std::path::absolute(v)
+                            .map_err(|e| format!("--commands-file {v}: {e}"))?;
+                        r.forward.extend([flag.into(), path.display().to_string()]);
+                        r.native.push(flag.into());
+                    }
                     "--trace" => {
                         r.trace =
                             Some(std::path::absolute(v).map_err(|e| format!("--trace {v}: {e}"))?);

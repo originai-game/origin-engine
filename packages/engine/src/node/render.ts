@@ -4,7 +4,7 @@
 // encodes the video and draws the contact sheet. One process of two kinds:
 //
 //   bun src/node/render.ts --entry <game.js> [--root <project>] [--seed S] [--size WxH]
-//       [--commands "t:action[:args];..."] --fps F [--from <seconds>] [--warmup W]
+//       [--commands "t:action[:args];..." | --commands-file <f>] --fps F [--from <seconds>] [--warmup W]
 //       [--clock <UTC ms>] [--locale <tag>] [--out <dir>]
 //       a range:    --first I --count N [--restore <snapshot>] [--audio <out.wav>]
 //       the leader: --leader --end N [--snapshot <frame>:<file>]... [--audio <out.wav>]
@@ -75,6 +75,7 @@ for (let i = 0; i < argv.length; i++) {
   else if (a === "--root") root = resolve(next());
   else if (a === "--seed") seed = whole(next());
   else if (a === "--commands") commands = next();
+  else if (a === "--commands-file") commands = readFileSync(next(), "utf8").trim();
   else if (a === "--size") {
     const m = /^(\d+)x(\d+)$/.exec(next());
     if (!m) fail("--size takes WIDTHxHEIGHT, such as 1280x720");
