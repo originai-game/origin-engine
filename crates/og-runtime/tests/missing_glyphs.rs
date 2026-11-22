@@ -1,19 +1,19 @@
 //! The missing-glyph warning (Meridian Loop's finding #13): a frame that
-//! draws characters its font lacks is warned of on the tick it draws them,
-//! naming each character once, the font's asset and what its atlas holds
-//! (the charset its `.ogt` cooked), so the minus sign a race first draws at
-//! its second lap is named at that tick even after another character was
-//! warned of earlier.
+//! draws characters no face of the UI's collection covers is warned of on
+//! the tick it draws them, naming each character once and the font that
+//! drew the text, so the Hangul a race first draws at its second lap is
+//! named at that tick even after another character was warned of earlier.
 //!
 //! Ways this could fail (each the old warning): it says tick 0; it fires
 //! once a process, so a later character is never named; it names neither
-//! the font nor its charset; it needs a renderer (it once counted what the
-//! GPU drew, so a run without one, or whose adapter request failed, never
-//! warned: ui-kit's settings-saved missed 국 one run in five); it is once a
-//! character, so a second face lacking the same one is never named.
+//! the character nor the font; it needs a renderer (it once counted what
+//! the GPU drew, so a run without one, or whose adapter request failed,
+//! never warned: ui-kit's settings-saved missed 국 one run in five); it is
+//! once a face, so a character one face covers is still named for another
+//! face's text.
 //!
 //! Every test here runs with no render backend: the check reads each
-//! face's characters on the CPU (og-ui's frame, a queued text).
+//! face's coverage on the CPU (og-ui's frame, a queued text).
 
 use og_runtime::{
     Dispatch, Fetch, Hooks, og_engine_create, og_engine_frame, og_engine_take_log, og_game_game,
@@ -30,9 +30,9 @@ fn repo() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..")
 }
 
-/// A project with the kit's neon display face cooked with `charset latin
-/// punct` alone (no `chars`: the minus and arrows stay out of its atlas),
-/// once per test process.
+/// A project with the kit's neon display face, cooked twice under two
+/// names (the `.ogt`s' charsets are the cook's; at run time both faces'
+/// coverage is their file's, read whole), once per test process.
 fn project() -> &'static Path {
     static ROOT: OnceLock<PathBuf> = OnceLock::new();
     ROOT.get_or_init(|| {
@@ -209,57 +209,64 @@ fn a_missing_glyph_is_named_once_on_the_tick_it_is_first_drawn() {
         engine,
         "fonts/ChakraPetch-BoldItalic.ttf".into(),
     )));
+    value(og_runtime::host_impl::answer(og_ui_configure(
+        engine,
+        Some(json!({ "font": font }).to_string()),
+    )));
     value(og_engine_frame(engine, 0.0));
     let _ = warnings(engine);
 
-    // The first lap: Latin-1 and the typographic punctuation the font cooked.
+    // The first lap: Latin-1 and the typographic punctuation the file has.
     for _ in 0..3 {
         show(engine, &font, "Lap 1/3 – 0:31.200");
     }
-    assert_eq!(warnings(engine), vec![], "every character is in the atlas");
+    assert_eq!(
+        warnings(engine),
+        vec![],
+        "every character is in the font's file"
+    );
 
-    // The arrows the title once drew: warned of at their tick.
-    show(engine, &font, "↑ ↓ Steer");
-    let arrows = og_world_get_tick(engine) as u64;
+    // The Hangul the file lacks: warned of at its tick.
+    show(engine, &font, "국 ↑ ↓ Steer");
+    let hangul = og_world_get_tick(engine) as u64;
     let w = warnings(engine);
     assert_eq!(w.len(), 1, "{w:?}");
-    assert_eq!(w[0].0, arrows, "the tick that drew them, not 0: {w:?}");
+    assert_eq!(w[0].0, hangul, "the tick that drew it, not 0: {w:?}");
     for part in [
-        "\"↑\" U+2191",
-        "\"↓\" U+2193",
-        "font fonts/ChakraPetch-BoldItalic.ttf",
-        "charset latin punct",
-        "font { chars \"↑↓\" }",
+        "\"국\" U+AD6D",
+        "no font of the UI has",
+        "font fonts/ChakraPetch-BoldItalic.ttf among those it asks",
+        "fallbackFonts",
     ] {
         assert!(w[0].1.contains(part), "names {part}: {}", w[0].1);
     }
     for _ in 0..3 {
-        show(engine, &font, "↑ ↓ Steer");
+        show(engine, &font, "국 ↑ ↓ Steer");
     }
     assert_eq!(warnings(engine), vec![], "each character once");
 
-    // The second lap's first split, much later: its minus sign is named too.
+    // A much later split draws another character the file lacks: named too.
     for _ in 0..40 {
         show(engine, &font, "Lap 2/3");
     }
-    show(engine, &font, "S1 −0.412 ↑");
+    show(engine, &font, "S1 −0.412 한");
     let split = og_world_get_tick(engine) as u64;
     let w = warnings(engine);
     assert_eq!(w.len(), 1, "{w:?}");
     assert_eq!(w[0].0, split);
-    assert!(w[0].1.contains("\"−\" U+2212"), "{}", w[0].1);
+    assert!(w[0].1.contains("\"한\" U+D55C"), "{}", w[0].1);
     assert!(
-        !w[0].1.contains("U+2191"),
-        "the arrow was named already: {}",
+        !w[0].1.contains("U+AD6D"),
+        "국 was named already: {}",
         w[0].1
     );
 }
 
-/// The TSX UI's text, with no renderer. A face ships whole, so a
-/// character outside its import's `charset` draws and is not named. A
-/// character no font of the UI has is named on the tick the label is
-/// built, once. A queued or floating text still reads its face's atlas:
-/// the arrow the UI drew from the file is named there, per face.
+/// The TSX UI's text, with no renderer. A face draws what its file has, so
+/// the punctuation the label mixes draws and is not named. A character no
+/// font of the UI has is named on the tick the label is built, once — a
+/// queued or floating text that draws it after is not: the UI's
+/// collection is one, whatever drew through it.
 #[test]
 fn ui_text_names_what_no_font_has_with_no_renderer() {
     set_hooks(Rc::new(Disk));
@@ -307,9 +314,11 @@ fn ui_text_names_what_no_font_has_with_no_renderer() {
     }
     assert_eq!(warnings(engine), vec![], "each character once");
 
-    // A floating text in the UI's face reads its atlas, which lacks the
-    // arrow: named for that face.
-    let float = json!({ "text": "↑ 12", "position": { "x": 0, "y": 0, "z": 0 } });
+    // A floating text draws a character the file lacks too: named there.
+    let float = json!({
+        "text": "↑ 12 한", "font": punct,
+        "position": { "x": 0, "y": 0, "z": 0 }
+    });
     value(og_runtime::host_impl::answer(og_render_floating_text(
         engine,
         Some(float.to_string()),
@@ -318,19 +327,13 @@ fn ui_text_names_what_no_font_has_with_no_renderer() {
     let w = warnings(engine);
     assert_eq!(w.len(), 1, "{w:?}");
     assert!(
-        w[0].1.contains("U+2191") && w[0].1.contains("font fonts/ChakraPetch-BoldItalic.ttf"),
+        w[0].1.contains("U+D55C") && w[0].1.contains("font fonts/ChakraPetch-BoldItalic.ttf"),
         "{}",
         w[0].1
     );
 
-    // The same arrow and a dash in the Latin face: named again, for it.
-    show(engine, &latin, "– ↑");
-    let w = warnings(engine);
-    assert_eq!(w.len(), 1, "{w:?}");
-    assert!(w[0].1.contains("font fonts/Latin.ttf"), "{}", w[0].1);
-    assert!(
-        w[0].1.contains("U+2191") && w[0].1.contains("U+2013"),
-        "{}",
-        w[0].1
-    );
+    // The same character through the second face's queued text: not named
+    // again — the collection is one, whatever drew through it.
+    show(engine, &latin, "한 – ↑");
+    assert_eq!(warnings(engine), vec![], "each character once");
 }
