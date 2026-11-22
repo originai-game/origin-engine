@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "Confirm",
+      "summary": "The dialog sits on its own ground, the pack's `Panel.frame` over `bg-plate-hi` with a rim, instead of drawing its question and buttons straight over whatever is behind it."
+    }
+  ]
+}
