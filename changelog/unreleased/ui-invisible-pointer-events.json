@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "invisible, pointer-events-none, pointer-events-auto",
+      "summary": "TSX classes that parsed but did nothing. `invisible` keeps an element's place but draws neither it nor its subtree, and presses pass it (a `visible` inside does not show again). `pointer-events-none` lets presses, hover and the cursor through an element and the subtree under it to what lies beneath, as a HUD overlay needs; `pointer-events-auto` inside takes them back."
+    }
+  ]
+}

@@ -3738,7 +3738,7 @@ impl Style {
 
     /// What the style says of the node's own props: `numberOfLines`,
     /// `textOverflow`, `userSelect` and `pointerEvents`, into `props`.
-    pub(crate) fn node_props(&self, props: &mut crate::tailwind::ClassProps) {
+    pub fn node_props(&self, props: &mut crate::tailwind::ClassProps) {
         let p = &self.pending;
         props.number_of_lines = p.number_of_lines;
         props.ellipsize = p.text_overflow;

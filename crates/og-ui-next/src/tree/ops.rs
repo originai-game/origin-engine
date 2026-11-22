@@ -2576,6 +2576,63 @@ mod tests {
         assert_eq!(dark(&t), [true, true, false, false, true], "dark page");
     }
 
+    /// `pointer-events-none` lets a press through it and the subtree that
+    /// sets nothing to what is under it, and `pointer-events-auto` inside
+    /// takes it back; `invisible` hides its subtree from presses too.
+    /// Ways this could fail: none not inherited (its child still takes the
+    /// press), auto not overriding it, or an invisible node still hit.
+    #[test]
+    fn pointer_events_and_invisible_decide_what_a_press_reaches() {
+        let mut t = tree();
+        t.set_resolver(Box::new(|class, _, _, _| {
+            let s = taffy::Style {
+                size: taffy::Size::from_lengths(50.0, 20.0),
+                ..Default::default()
+            };
+            let mut r = Record {
+                layout: rune_taffy::CompactStyle::from(&s),
+                ..Record::default()
+            };
+            for c in class.split_whitespace() {
+                match c {
+                    "pn" => r.touch = Some(false),
+                    "pa" => r.touch = Some(true),
+                    "inv" => r.hidden = true,
+                    _ => {}
+                }
+            }
+            r
+        }));
+        let mut b = Batch::default();
+        for (id, parent) in [(1, 0), (2, 1), (3, 2)] {
+            b.op(1).u32(id).u8(0);
+            b.op(4).u32(id).str("");
+            b.op(7).u32(id).u8(Event::Press as u8).u8(1);
+            b.op(8).u32(parent).u32(id).u32(u32::MAX);
+        }
+        t.apply(&b.bytes()).unwrap();
+        frame(&mut t);
+        let press = |t: &mut Tree, classes: [&str; 2]| -> Vec<u32> {
+            let mut b = Batch::default();
+            for (id, c) in [2, 3].into_iter().zip(classes) {
+                b.op(4).u32(id).str(c);
+            }
+            t.apply(&b.bytes()).unwrap();
+            frame(t);
+            t.events.clear();
+            for (pressed, released) in [(false, false), (true, false), (false, true)] {
+                t.pointer(10.0, 10.0, pressed, released);
+                frame(t);
+            }
+            let ids = t.events.iter().filter(|f| f.event == Event::Press);
+            ids.map(|f| f.id).collect()
+        };
+        assert_eq!(press(&mut t, ["", ""]), [3], "the topmost");
+        assert_eq!(press(&mut t, ["pn", ""]), [1], "through 2 and 3");
+        assert_eq!(press(&mut t, ["pn", "pa"]), [3], "3 takes it back");
+        assert_eq!(press(&mut t, ["inv", "pa"]), [1], "2 and 3 hidden");
+    }
+
     /// Ids 1..=n as `class` views under a row at the root, each listening
     /// to `press`, `focus` and `blur`.
     fn buttons(t: &mut Tree, classes: &[&str]) {

@@ -404,6 +404,8 @@ struct Shown {
     text_shadow: Shadow,
     text_stroke: TextStroke,
     out: bool,
+    /// A press, a hover and the cursor reach it (`pointer-events-*`).
+    touch: bool,
 }
 
 /// An element's text as glyph quads (from its leaf's top left; colour and
@@ -1024,6 +1026,7 @@ impl Tree {
             text_shadow: self.root.text_shadow,
             text_stroke: self.root.text_stroke,
             out: false,
+            touch: true,
         };
         // NaN: not reached yet this frame.
         let unseen = Shown {
@@ -1072,6 +1075,7 @@ impl Tree {
                         text_shadow: eff.text_shadow,
                         text_stroke: eff.text_stroke,
                         out: false,
+                        touch: true,
                     }
                 }
             };
@@ -1097,10 +1101,12 @@ impl Tree {
                 text_shadow,
                 text_stroke,
                 out: from.out || self.motion.exiting(el.node),
+                touch: r.touch.unwrap_or(from.touch),
             };
             let visible = pv
                 && !el.dead
                 && el.hidden == 0
+                && !r.hidden
                 && alpha > 0.0
                 && r.layout.display() != taffy::Display::None;
             let (x, y) = (px + b.x, py + b.y);
@@ -1622,7 +1628,7 @@ impl Tree {
         for &e in self.order.iter().rev() {
             let (e, el) = (e as usize, &self.els[e as usize]);
             // An element on its way out, or in one, answers nothing.
-            if el.dead || !want(el) || self.shown.get(e).is_some_and(|s| s.out) {
+            if el.dead || !want(el) || self.shown.get(e).is_some_and(|s| s.out || !s.touch) {
                 continue;
             }
             let Some(&(bx, by, shown, _)) = self.abs.get(e) else {

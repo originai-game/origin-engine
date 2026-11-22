@@ -72,5 +72,9 @@ the changes after it are only these:
   place a style's start and end sides (`ps-*`, `me-*`, `rounded-s-*`), so
   it calls it on each record's style with the page's direction.
 
+- `style.rs` makes `Style::node_props` public, for og-ui-next to read what
+  a style sets of a node's own props (`line-clamp-*`, `pointer-events-*`,
+  `text-ellipsis`, `select-*`) without NSH's core.
+
 Its own tests (`tailwind/tests.rs`, `geometry/tests.rs`, `style.rs`) run
 unchanged otherwise.

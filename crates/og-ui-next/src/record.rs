@@ -405,6 +405,13 @@ pub struct Record {
     pub scheme: Option<bool>,
     /// The scheme it was resolved in.
     pub dark: bool,
+    /// `invisible` (CSS's `visibility: hidden`): it and its subtree are
+    /// laid out but neither drawn nor touched.
+    pub hidden: bool,
+    /// `pointer-events-none` (false) or `pointer-events-auto` (true): whether
+    /// a press, a hover or the cursor reaches it and the subtree that sets
+    /// none; `None` follows its parent, as CSS's inherits.
+    pub touch: Option<bool>,
 }
 
 impl Record {
@@ -462,6 +469,8 @@ impl Default for Record {
             cursor: nsh_tailwind::effects::Cursor::Auto,
             z_index: None,
             mask: None,
+            hidden: false,
+            touch: None,
             scheme: None,
             dark: false,
         }

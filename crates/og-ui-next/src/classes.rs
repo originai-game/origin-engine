@@ -302,6 +302,14 @@ impl Classes {
             };
             let _ = out.set(&camel(name), value);
         }
+        // What the classes set of the node's own props (`line-clamp-*`,
+        // `pointer-events-*`, `text-ellipsis`) NSH keeps in the style.
+        let mut own = ClassProps::default();
+        out.node_props(&mut own);
+        props.number_of_lines = own.number_of_lines.or(props.number_of_lines);
+        props.ellipsize = own.ellipsize.or(props.ellipsize);
+        props.selectable = own.selectable.or(props.selectable);
+        props.pointer_events = own.pointer_events.or(props.pointer_events);
         // `ps-4`, `me-2`, `rounded-s-lg`: the start and end sides on the
         // page's direction's (NSH's core places them; this tree has none).
         // Only the sides: the layout's direction stays what it was.
@@ -458,6 +466,10 @@ fn record_of(style: &Style, props: &ClassProps) -> Record {
     }
     r.cursor = style.view.cursor;
     r.z_index = style.z_index;
+    r.hidden = style.view.hidden;
+    r.touch = props
+        .pointer_events
+        .map(|p| p == nsh_tailwind::props::PointerEvents::Auto);
     let (view, text, skin) = (&style.view, &style.text, &mut r.skin);
     skin.fill = linear(view.background_color);
     skin.opacity = view.opacity;
@@ -715,6 +727,11 @@ mod tests {
         assert_eq!((r.text.weight, r.text.transform, r.text.align), (700, 1, 1));
         assert_eq!(r.font_size, 18.0);
         assert_eq!(c.unknown("p-4 not-a-class"), ["not-a-class"]);
+        // `pointer-events-*` and `invisible`, which NSH keeps off the props.
+        assert_eq!(c.record("pointer-events-none", &env).touch, Some(false));
+        assert_eq!(c.record("pointer-events-auto", &env).touch, Some(true));
+        assert_eq!(c.record("p-1", &env).touch, None);
+        assert!(c.record("invisible", &env).hidden);
         // Start and end are the page's direction's sides.
         let px = taffy::LengthPercentage::length;
         let sides = |r: Record| (r.layout.padding().left, r.layout.padding().right);
@@ -1196,16 +1213,15 @@ mod tests {
             ("ViewStyle", format!("{:#?}", ViewStyle::default()),
                 &["background_color", "border_radius", "corner_radius", "borders",
                   "opacity", "transform", "transform_origin", "effects", "outline",
-                  "cursor", "transition", "animation",
+                  "cursor", "transition", "animation", "hidden",
                   // The layout's overflow carries it.
                   "overflow_hidden"],
                 &[// Platform materials and props of native views.
                   "continuous_corners", "tint_color", "elevation", "backface_hidden",
                   "backdrop_material", "glass_effect", "glass_tint_color",
                   "macos_backdrop", "windows_backdrop",
-                  // Not drawn yet: `accent-*`, `object-*`, `mix-blend-*`,
-                  // `invisible`.
-                  "accent_color", "object_position", "blend_mode", "hidden"]),
+                  // Not drawn yet: `accent-*`, `object-*`, `mix-blend-*`.
+                  "accent_color", "object_position", "blend_mode"]),
             ("TextStyle", format!("{:#?}", TextStyle::default()),
                 &["color", "font_size", "font_weight", "line_height", "text_align",
                   "letter_spacing", "letter_spacing_em", "line_height_em",
@@ -1229,10 +1245,10 @@ mod tests {
                 // Not drawn yet: `blur-*`, `brightness-*` and the other filters.
                 &["filters"]),
             ("ClassProps", format!("{:#?}", ClassProps::default()),
-                &["ellipsize", "no_wrap", "text_shadows"],
+                &["ellipsize", "no_wrap", "text_shadows", "pointer_events"],
                 // Not drawn yet: `line-clamp-*`, `pointer-events-*`,
                 // `select-*`, `space-x-*` and the input colours.
-                &["number_of_lines", "pointer_events", "selectable", "space",
+                &["number_of_lines", "selectable", "space",
                   "placeholder_color", "selection_color", "caret_color"]),
         ];
         for (name, debug, read, not_drawn) in structs {
