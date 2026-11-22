@@ -82,54 +82,14 @@ impl ModelFiles for Model {
     fn glb_atlas(&self, d: &og_shape::tools::Atlas) -> Result<AtlasExport, ModelError> {
         let built = self.build()?;
         let mut scene = built.scene();
-        let packs = |m: &Material, s: &Solid| s.uvs.is_some() && m.maps().is_empty();
-        let mut own = Vec::new();
-        let mut taken: Vec<usize> = Vec::new();
-        let mut solids: Vec<Solid> = Vec::new();
-        for (k, p) in scene.parts.iter().enumerate() {
-            if packs(&p.material, p.solid) {
-                taken.push(k);
-                solids.push(p.solid.clone());
-            } else if p.solid.uvs.is_some() {
-                own.push(p.name.clone());
-            }
-        }
-        if solids.is_empty() {
-            return Err(ModelError::Atlas(og_shape::tools::AtlasError::NoUvs));
-        }
-        let atlas = og_shape::tools::repack(&mut solids, d)?;
-        // Materials alike (names aside) take the first one's name.
-        let bare = |m: &Material| Material {
-            name: String::new(),
-            ..m.clone()
-        };
-        let mut firsts: Vec<(Material, String)> = Vec::new();
-        for &k in &taken {
-            let p = &mut scene.parts[k];
-            let b = bare(&p.material);
-            let name = match firsts.iter().find(|(m, _)| *m == b) {
-                Some((_, n)) => n.clone(),
-                None => {
-                    let n = if p.material.name.is_empty() {
-                        p.name.clone()
-                    } else {
-                        p.material.name.clone()
-                    };
-                    firsts.push((b, n.clone()));
-                    n
-                }
-            };
-            p.material.name = name;
-        }
-        for (k, s) in taken.iter().zip(&solids) {
-            scene.parts[*k].solid = s;
-        }
+        let packed = pack(&scene, d)?;
+        packed.apply(&mut scene);
         let glb = crate::gltf::write::glb_shared(&scene)?;
         Ok(AtlasExport {
             glb,
-            atlas,
-            materials: firsts.len(),
-            own,
+            atlas: packed.atlas,
+            materials: packed.materials,
+            own: packed.own,
         })
     }
 
@@ -178,4 +138,85 @@ impl ModelFiles for Model {
     fn usda(&self, prefix: &str) -> Result<crate::usd::write::Usd, ModelError> {
         Ok(crate::usd::write::usda(&self.build()?.scene(), prefix)?)
     }
+}
+
+/// A scene's parts packed into one atlas ([`pack`]).
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct Packed {
+    /// Per packed part (its index in the scene), its solid with the
+    /// atlas's UVs and the name its material takes.
+    pub parts: Vec<(usize, Solid, String)>,
+    /// The packing.
+    pub atlas: og_shape::tools::AtlasReport,
+    /// Materials the packed parts share.
+    pub materials: usize,
+    /// Parts with UVs left out: their material has a map.
+    pub own: Vec<String>,
+}
+
+impl Packed {
+    /// Puts the packed solids and the shared names into `scene`.
+    pub fn apply<'a>(&'a self, scene: &mut og_shape::tools::Scene<'a>) {
+        for (k, s, name) in &self.parts {
+            scene.parts[*k].solid = s;
+            scene.parts[*k].material.name = name.clone();
+        }
+    }
+}
+
+/// Every UV island of every part with UVs and a material without maps
+/// packed at one texel density on `d`'s grid (`og_shape::tools::repack`),
+/// and parts whose materials then agree (names aside) sharing one
+/// material, named after the first. A part whose material has a map keeps
+/// its own UVs (its map was painted for them).
+pub fn pack(
+    scene: &og_shape::tools::Scene,
+    d: &og_shape::tools::Atlas,
+) -> Result<Packed, ModelError> {
+    let packs = |m: &Material, s: &Solid| s.uvs.is_some() && m.maps().is_empty();
+    let mut own = Vec::new();
+    let mut taken: Vec<usize> = Vec::new();
+    let mut solids: Vec<Solid> = Vec::new();
+    for (k, p) in scene.parts.iter().enumerate() {
+        if packs(&p.material, p.solid) {
+            taken.push(k);
+            solids.push(p.solid.clone());
+        } else if p.solid.uvs.is_some() {
+            own.push(p.name.clone());
+        }
+    }
+    if solids.is_empty() {
+        return Err(ModelError::Atlas(og_shape::tools::AtlasError::NoUvs));
+    }
+    let atlas = og_shape::tools::repack(&mut solids, d)?;
+    // Materials alike (names aside) take the first one's name.
+    let bare = |m: &Material| Material {
+        name: String::new(),
+        ..m.clone()
+    };
+    let mut firsts: Vec<(Material, String)> = Vec::new();
+    let mut parts = Vec::new();
+    for (&k, s) in taken.iter().zip(solids) {
+        let p = &scene.parts[k];
+        let b = bare(&p.material);
+        let name = match firsts.iter().find(|(m, _)| *m == b) {
+            Some((_, n)) => n.clone(),
+            None => {
+                let n = if p.material.name.is_empty() {
+                    p.name.clone()
+                } else {
+                    p.material.name.clone()
+                };
+                firsts.push((b, n.clone()));
+                n
+            }
+        };
+        parts.push((k, s, name));
+    }
+    Ok(Packed {
+        parts,
+        atlas,
+        materials: firsts.len(),
+        own,
+    })
 }

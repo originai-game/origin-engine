@@ -23,4 +23,4 @@ pub mod webp;
 pub mod zstd;
 
 pub use import::import;
-pub use model::{AtlasExport, ModelFiles};
+pub use model::{AtlasExport, ModelFiles, Packed, pack};
