@@ -387,7 +387,7 @@ fn shape_color(s: UiInstance, in: UiOut, im: ImageUv, gx: vec2<f32>, gy: vec2<f3
 
 @fragment
 fn fs_shape(in: UiOut) -> @location(0) vec4<f32> {
-  let s = instances[in.instance];
+  let s = ui_instance(in.instance);
   let px = local_px(in.local);
   let im = image_uv(s, in.local);
   let gx = dpdxFine(im.raw);
@@ -402,7 +402,7 @@ fn fs_shape(in: UiOut) -> @location(0) vec4<f32> {
 // the formula, laid over it by the shape's coverage.
 @fragment
 fn fs_shape_dst(in: UiOut) -> @location(0) vec4<f32> {
-  let s = instances[in.instance];
+  let s = ui_instance(in.instance);
   let px = local_px(in.local);
   let im = image_uv(s, in.local);
   let gx = dpdxFine(im.raw);
@@ -449,7 +449,7 @@ fn backdrop_limit(rgb: vec3<f32>, limit: f32) -> vec3<f32> {
 
 @fragment
 fn fs_backdrop(in: UiOut) -> @location(0) vec4<f32> {
-  let s = instances[in.instance];
+  let s = ui_instance(in.instance);
   let px = local_px(in.local);
   let d = shape_distance(s, in.local).x;
   let cov = clamp(0.5 - d / px, 0.0, 1.0);
@@ -474,9 +474,9 @@ fn fs_backdrop(in: UiOut) -> @location(0) vec4<f32> {
         // CSS's backdrop-filter colour functions as one matrix over
         // encoded values, its opacity over the unblurred backdrop.
         let e = vec4<f32>(encode(max(rgb, vec3<f32>(0.0))), 1.0);
-        let o = clamp(vec3<f32>(dot(points[mi - 1u], e), dot(points[mi], e), dot(points[mi + 1u], e)), vec3<f32>(0.0), vec3<f32>(1.0));
+        let o = clamp(vec3<f32>(dot(ui_point(mi - 1u), e), dot(ui_point(mi), e), dot(ui_point(mi + 1u), e)), vec3<f32>(0.0), vec3<f32>(1.0));
         let sharp = textureSampleLevel(pyramid_tex, backdrop_sampler, at, 0.0).rgb;
-        rgb = mix(sharp, decode(o), clamp(points[mi + 2u].x, 0.0, 1.0));
+        rgb = mix(sharp, decode(o), clamp(ui_point(mi + 2u).x, 0.0, 1.0));
       }
       if (srgb) {
         // CSS's backdrop-filter and its tint work on encoded values.
@@ -552,7 +552,7 @@ fn fs_backdrop(in: UiOut) -> @location(0) vec4<f32> {
 // half a device pixel along the outline's normal, in (-1) or out (+1).
 @vertex
 fn vs_vector(@location(0) pn: vec4<f32>, @location(1) ap: vec2<u32>, @builtin(instance_index) ii: u32) -> UiOut {
-  let s = instances[ii];
+  let s = ui_instance(ii);
   let vb = s.geo;
   let k = min(2.0 * s.center_half.z / max(vb.z, 1e-4), 2.0 * s.center_half.w / max(vb.w, 1e-4));
   var local = (pn.xy - (vb.xy + 0.5 * vb.zw)) * k;
@@ -571,7 +571,7 @@ fn vs_vector(@location(0) pn: vec4<f32>, @location(1) ap: vec2<u32>, @builtin(in
 
 @fragment
 fn fs_vector(in: UiOut) -> @location(0) vec4<f32> {
-  let s = instances[in.instance];
+  let s = ui_instance(in.instance);
   let vb = s.geo;
   let k = min(2.0 * s.center_half.z / max(vb.z, 1e-4), 2.0 * s.center_half.w / max(vb.w, 1e-4));
   let f = (in.local - vb.xy) / max(vb.zw, vec2<f32>(1e-4));

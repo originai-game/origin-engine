@@ -163,7 +163,7 @@ fn layer_uv(css: vec2<f32>) -> vec2<f32> {
 }
 
 fn composite(in: UiOut, c: vec4<f32>) -> vec4<f32> {
-  let s = instances[in.instance];
+  let s = ui_instance(in.instance);
   let px = local_px(in.local);
   var cov = clamp(0.5 - shape_distance(s, in.local).x / px, 0.0, 1.0);
   let r = layer_params.rect;

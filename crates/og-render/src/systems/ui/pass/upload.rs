@@ -6,7 +6,7 @@ use super::*;
 impl UiRenderer {
     /// Writes the frame's shape instances, gradients, clips and points.
     fn write_tables(&mut self, device: &wgpu::Device, queue: &wgpu::Queue, frame: &OverlayFrame) {
-        self.table_uploads[0].write(
+        self.table_uploads[0].write_data(
             device,
             queue,
             &mut self.instances,
@@ -27,7 +27,7 @@ impl UiRenderer {
             "ui clips",
             &frame.tables.clips,
         );
-        self.table_uploads[3].write(
+        self.table_uploads[3].write_data(
             device,
             queue,
             &mut self.points,
@@ -92,8 +92,8 @@ impl UiRenderer {
                     buffer.as_entire_binding(),
                     self.clips.as_entire_binding(),
                     self.gradients.as_entire_binding(),
-                    self.points.as_entire_binding(),
-                    self.instances.as_entire_binding(),
+                    wgpu::BindingResource::TextureView(&self.points.view),
+                    wgpu::BindingResource::TextureView(&self.instances.view),
                     wgpu::BindingResource::TextureView(depth),
                 ],
             )

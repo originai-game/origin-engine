@@ -984,8 +984,11 @@ impl OverlayRenderer {
                 },
                 storage(1),
                 storage(2),
-                storage(3),
-                storage(4),
+                // The points and the shape instances, data textures
+                // (data_texture.rs): a vertex stage reads no storage under
+                // WebGPU's compatibility mode.
+                crate::gpu::data_texture::data_entry(3, wgpu::ShaderStages::VERTEX_FRAGMENT, false),
+                crate::gpu::data_texture::data_entry(4, wgpu::ShaderStages::VERTEX_FRAGMENT, true),
                 // The frame's view depth (occluders, mass elements).
                 wgpu::BindGroupLayoutEntry {
                     binding: 5,

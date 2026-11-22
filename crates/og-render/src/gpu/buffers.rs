@@ -45,10 +45,49 @@ pub(crate) fn grow_and_write(
 #[derive(Default)]
 pub(crate) struct RetainedUpload {
     buffer: Option<wgpu::Buffer>,
+    /// Or the data texture it writes ([`RetainedUpload::write_data`]).
+    texture: Option<wgpu::Texture>,
     bytes: Vec<u8>,
 }
 
 impl RetainedUpload {
+    /// [`RetainedUpload::write`] into a data texture (data_texture.rs)
+    /// of whole-texel elements, grown (twice the texels) when they do not
+    /// fit; returns whether it was made again.
+    #[track_caller]
+    pub(crate) fn write_data<T: bytemuck::Pod>(
+        &mut self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        texture: &mut crate::gpu::data_texture::DataTexture,
+        label: &str,
+        values: &[T],
+    ) -> bool {
+        let bytes: &[u8] = bytemuck::cast_slice(values);
+        let texels = (bytes.len() / 16) as u32;
+        let grew = texels > texture.texels;
+        if grew {
+            *texture = crate::gpu::data_texture::DataTexture::new(
+                device,
+                label,
+                texture.texture.format(),
+                texels.next_power_of_two(),
+                texture.texture.usage(),
+            );
+        }
+        let previous =
+            (self.texture.as_ref() == Some(&texture.texture)).then_some(self.bytes.as_slice());
+        changed_ranges(previous, values, |range| {
+            texture.write(queue, (range.start / 16) as u32, &bytes[range]);
+        });
+        if self.texture.as_ref() != Some(&texture.texture) {
+            self.texture = Some(texture.texture.clone());
+        }
+        self.bytes.resize(bytes.len(), 0);
+        self.bytes.copy_from_slice(bytes);
+        grew
+    }
+
     #[track_caller]
     pub(crate) fn write<T: bytemuck::Pod>(
         &mut self,

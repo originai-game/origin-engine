@@ -77,14 +77,12 @@ impl DataTexture {
         grew
     }
 
-    /// Writes `data` (whole 16-byte texels) from texel `first`, which
-    /// starts a row; made with `COPY_DST`.
+    /// Writes `data` (whole 16-byte texels) from texel `first`: the rest
+    /// of its row, whole rows, then the start of the last; made with
+    /// `COPY_DST`.
     pub fn write(&self, queue: &wgpu::Queue, first: u32, data: &[u8]) {
-        debug_assert!(first.is_multiple_of(DATA_WIDTH) && data.len().is_multiple_of(16));
-        let texels = (data.len() / 16) as u32;
-        let whole = texels / DATA_WIDTH;
-        let row = first / DATA_WIDTH;
-        let put = |row: u32, width: u32, height: u32, bytes: &[u8]| {
+        debug_assert!(data.len().is_multiple_of(16));
+        let put = |at: u32, width: u32, height: u32, bytes: &[u8]| {
             if width == 0 || height == 0 {
                 return;
             }
@@ -93,7 +91,11 @@ impl DataTexture {
                 wgpu::TexelCopyTextureInfo {
                     texture: &self.texture,
                     mip_level: 0,
-                    origin: wgpu::Origin3d { x: 0, y: row, z: 0 },
+                    origin: wgpu::Origin3d {
+                        x: at % DATA_WIDTH,
+                        y: at / DATA_WIDTH,
+                        z: 0,
+                    },
                     aspect: wgpu::TextureAspect::All,
                 },
                 bytes,
@@ -109,9 +111,19 @@ impl DataTexture {
                 },
             );
         };
+        let texels = (data.len() / 16) as u32;
+        let head = texels.min((DATA_WIDTH - first % DATA_WIDTH) % DATA_WIDTH);
+        put(first, head, 1, &data[..head as usize * 16]);
+        let rest = &data[head as usize * 16..];
+        let (at, whole) = (first + head, (texels - head) / DATA_WIDTH);
         let split = whole as usize * ROW_BYTES as usize;
-        put(row, DATA_WIDTH, whole, &data[..split]);
-        put(row + whole, texels % DATA_WIDTH, 1, &data[split..]);
+        put(at, DATA_WIDTH, whole, &rest[..split]);
+        put(
+            at + whole * DATA_WIDTH,
+            (texels - head) % DATA_WIDTH,
+            1,
+            &rest[split..],
+        );
     }
 }
 

@@ -49,7 +49,13 @@ struct UiGradient {
 
 // Polyline points (xy local, z the length along the line up to the point)
 // and gradient stops.
-@group(0) @binding(3) var<storage, read> points: array<vec4<f32>>;
+// A data texture (data_texture.rs), as a vertex stage reads no storage
+// under WebGPU's compatibility mode.
+@group(0) @binding(3) var points: texture_2d<f32>;
+
+fn ui_point(i: u32) -> vec4<f32> {
+  return textureLoad(points, data_at(i), 0);
+}
 
 // The frame's view depth (the prepass's `lindepth`: r is the depth along
 // the camera's forward axis, world units; far without a prepass), for
@@ -377,8 +383,8 @@ fn sd_polyline(p: vec2<f32>, first: u32, count: u32, closed: bool, width: f32, c
   }
   let segs = select(count - 1u, count, closed);
   for (var i = 0u; i < segs; i++) {
-    let a4 = points[first + i];
-    let b4 = points[first + (i + 1u) % count];
+    let a4 = ui_point(first + i);
+    let b4 = ui_point(first + (i + 1u) % count);
     let a = a4.xy;
     let b = b4.xy;
     let ab = b - a;
@@ -412,11 +418,11 @@ fn sd_polyline(p: vec2<f32>, first: u32, count: u32, closed: bool, width: f32, c
     // the bevel's line) on the outer side.
     if (e0 == 3u) {
       let pi = select(i - 1u, count - 1u, i == 0u);
-      let pdir = normalize(a - points[first + pi].xy + vec2<f32>(1e-9, 0.0));
+      let pdir = normalize(a - ui_point(first + pi).xy + vec2<f32>(1e-9, 0.0));
       d = max(d, joint_cut(p, a, pdir, dir, hw, join, limit, false));
     }
     if (e1 == 3u) {
-      let ndir = normalize(points[first + (i + 2u) % count].xy - b + vec2<f32>(1e-9, 0.0));
+      let ndir = normalize(ui_point(first + (i + 2u) % count).xy - b + vec2<f32>(1e-9, 0.0));
       d = max(d, joint_cut(p, b, dir, ndir, hw, join, limit, true));
     }
     if (d < best) {
@@ -438,9 +444,9 @@ fn sd_filled_path(p: vec2<f32>, first: u32, count: u32) -> vec2<f32> {
     return vec2<f32>(best, 0.0);
   }
   for (var i = 0u; i < count; i++) {
-    let a4 = points[first + i];
+    let a4 = ui_point(first + i);
     let a = a4.xy;
-    let b = points[first + (i + 1u) % count].xy;
+    let b = ui_point(first + (i + 1u) % count).xy;
     let ab = b - a;
     let h = clamp(dot(p - a, ab) / max(dot(ab, ab), 1e-10), 0.0, 1.0);
     let d = length(p - a - ab * h);
@@ -554,17 +560,17 @@ struct PathCurve {
 fn path_band(y: f32, geo: vec4<f32>) -> vec2<u32> {
   let nb = u32(geo.z);
   let header = u32(geo.y);
-  let top = points[header + 1u].x;
+  let top = ui_point(header + 1u).x;
   let band = u32(clamp(floor((y - top) / max(geo.w, 1e-6)), 0.0, f32(nb - 1u)));
-  let head = points[header + 2u + band];
+  let head = ui_point(header + 2u + band);
   return vec2<u32>(u32(head.x), u32(head.y));
 }
 
 // Curve `k` of the band list at `start`, relative to `p`.
 fn path_curve(geo: vec4<f32>, start: u32, k: u32, p: vec2<f32>) -> PathCurve {
-  let ci = u32(points[start + k / 4u][k % 4u]);
-  let r0 = points[u32(geo.x) + 2u * ci];
-  let r1 = points[u32(geo.x) + 2u * ci + 1u];
+  let ci = u32(ui_point(start + k / 4u)[k % 4u]);
+  let r0 = ui_point(u32(geo.x) + 2u * ci);
+  let r1 = ui_point(u32(geo.x) + 2u * ci + 1u);
   return PathCurve(r0.xy - p, r0.zw - p, r1.xy - p, r1.z > 0.5);
 }
 
@@ -599,7 +605,7 @@ fn sd_path(p: vec2<f32>, geo: vec4<f32>, rule: f32) -> vec2<f32> {
   if (geo.z < 0.5) {
     return vec2<f32>(1e9);
   }
-  let margin = points[u32(geo.y) + 1u].y;
+  let margin = ui_point(u32(geo.y) + 1u).y;
   let band = path_band(p.y, geo);
   let here = path_inside(path_winding(p, geo), rule);
   var fill = 1e9;
@@ -904,11 +910,11 @@ fn rounded_box_shadow(p: vec2<f32>, half: vec2<f32>, corner: f32, sigma: f32) ->
 // ── gradients ────────────────────────────────────────────────────────────
 
 fn stop_offset(g: UiGradient, i: u32) -> f32 {
-  return points[u32(g.stops.x) + i / 4u][i % 4u];
+  return ui_point(u32(g.stops.x) + i / 4u)[i % 4u];
 }
 
 fn stop_color(g: UiGradient, i: u32) -> vec4<f32> {
-  return points[u32(g.stops.x) + (u32(g.head.y) + 3u) / 4u + i];
+  return ui_point(u32(g.stops.x) + (u32(g.head.y) + 3u) / 4u + i);
 }
 
 // Linear `c` on the sRGB curve, as a gradient averages and dithers it: on
@@ -1066,7 +1072,23 @@ struct UiInstance {
   // backdrop's flags (1 solid, 2 mixed in sRGB-encoded values), w: layer.
   extra: vec4<f32>,
 };
-@group(0) @binding(4) var<storage, read> instances: array<UiInstance>;
+// A data texture (data_texture.rs), an instance fourteen texels in a row
+// (build.rs `UiGpu`).
+@group(0) @binding(4) var instances: texture_2d<u32>;
+
+fn ui_instance(i: u32) -> UiInstance {
+  var t: array<vec4<u32>, 14>;
+  for (var k = 0u; k < 14u; k++) {
+    t[k] = textureLoad(instances, data_at(i * 14u + k), 0);
+  }
+  return UiInstance(
+    bitcast<vec4<f32>>(t[0]), bitcast<vec4<f32>>(t[1]), bitcast<vec4<f32>>(t[2]),
+    bitcast<vec4<f32>>(t[3]), bitcast<vec4<f32>>(t[4]), bitcast<vec4<f32>>(t[5]),
+    bitcast<vec4<f32>>(t[6]), bitcast<vec4<f32>>(t[7]), bitcast<vec4<f32>>(t[8]),
+    bitcast<vec4<f32>>(t[9]), bitcast<vec4<f32>>(t[10]), bitcast<vec4<f32>>(t[11]),
+    t[12], bitcast<vec4<f32>>(t[13]),
+  );
+}
 
 struct UiOut {
   @builtin(position) position: vec4<f32>,
@@ -1090,7 +1112,7 @@ fn vs_shape(@builtin(vertex_index) vi: u32, @builtin(instance_index) ii: u32) ->
   var corners = array<vec2<f32>, 6>(
     vec2<f32>(-1.0, -1.0), vec2<f32>(1.0, -1.0), vec2<f32>(1.0, 1.0),
     vec2<f32>(-1.0, -1.0), vec2<f32>(1.0, 1.0), vec2<f32>(-1.0, 1.0));
-  let s = instances[ii];
+  let s = ui_instance(ii);
   let mode = s.kinds.z & 15u;
   let det = abs(s.xform.x * s.xform.w - s.xform.y * s.xform.z);
   // Two device pixels in local units, for the antialiased edge.
@@ -1110,7 +1132,7 @@ fn vs_shape(@builtin(vertex_index) vi: u32, @builtin(instance_index) ii: u32) ->
     if (s.geo.z < 0.5) {
       local = vec2<f32>(0.0);
     } else {
-      let b = points[u32(s.geo.y)];
+      let b = ui_point(u32(s.geo.y));
       local = mix(b.xy - vec2<f32>(grow), b.zw + vec2<f32>(grow), corners[vi] * 0.5 + 0.5);
     }
   }

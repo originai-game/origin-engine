@@ -25,6 +25,9 @@ pub(crate) struct UiGpu {
     pub extra: [f32; 4],
 }
 
+// ui_common.wgsl `ui_instance` reads an instance as fourteen texels.
+const _: () = assert!(std::mem::size_of::<UiGpu>() == 14 * 16);
+
 /// `struct UiGradient` in ui_common.wgsl. Its stops are in the points
 /// table from `stops[0]`: their offsets four to an entry, then one colour
 /// each, so a gradient costs what its stops do.
