@@ -39,8 +39,10 @@
 //!   compute before the frame's passes) is left for a later frame
 //!   ([`Deferred::ready`]), its readers with it. A compute dispatch is never
 //!   skipped: what it writes is read later in the same frame. Either way the
-//!   frame counts what it left ([`frame_skipped`]); the host draws its
-//!   first frame again until it left nothing.
+//!   frame counts what it left ([`frame_skipped`]). A renderer's first
+//!   frame is never shown without what it draws: natively it waits, as a
+//!   capture does; on the web the host draws it again until it left
+//!   nothing.
 //!
 //! A pipeline still compiling when its entry is dropped is waited for
 //! ([`Pending`]): the driver cannot stop a compile.
@@ -200,7 +202,8 @@ pub(crate) fn skipped_now() -> u32 {
 
 /// The draws the frame drawn last skipped and the work it left for a
 /// later frame, each for a pipeline that was not ready: 0 when it was
-/// drawn whole. A host draws its first frame again until it is.
+/// drawn whole. The web host draws its first frame again until it is (a
+/// renderer's first frame waits natively).
 pub fn frame_skipped() -> u32 {
     LAST_SKIPPED.with(|l| l.get())
 }

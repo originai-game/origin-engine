@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "renderer",
+      "summary": "Natively (a desktop window, `og run`), a game's first frame is drawn whole: it waits for the pipelines it draws with, as a capture does, instead of drawing without those still compiling. On a cold driver cache (an NVIDIA GPU's first run) the sky's light was left for a later frame, so the first frames showed a black ground behind the UI for seconds. On the web the engine Worker already draws its first frame again until it is whole."
+    }
+  ]
+}

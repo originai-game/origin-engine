@@ -683,13 +683,18 @@ fn mixed_script_text_draws_from_its_packs() {
     }
 }
 
-/// Glyphs render off the frame: draws until the chain holds `packs`
-/// packs and three frames in a row wait for no glyph.
+/// Glyphs render off the frame and pipelines compile off it: draws until
+/// the chain holds `packs` packs and three frames in a row wait for no
+/// glyph and skip no draw (og-render `frame_skipped`), so the frame read
+/// is the scene's whole.
 fn settle(engine: u32, frame: &impl Fn() -> Cost, packs: usize) {
     let mut quiet = 0;
     for _ in 0..2000 {
         frame();
-        quiet = if chain(engine).len() == packs && og_runtime::glyphs_pending(engine) == 0 {
+        quiet = if chain(engine).len() == packs
+            && og_runtime::glyphs_pending(engine) == 0
+            && og_render::frame_skipped() == 0
+        {
             quiet + 1
         } else {
             0
@@ -699,7 +704,10 @@ fn settle(engine: u32, frame: &impl Fn() -> Cost, packs: usize) {
         }
         std::thread::sleep(std::time::Duration::from_millis(2));
     }
-    assert_eq!(quiet, 3, "the glyphs never arrived");
+    assert_eq!(
+        quiet, 3,
+        "the glyphs never arrived, or a draw was still skipped"
+    );
 }
 
 /// `crates/og-tests/references/vulkan/color-emoji-{1280,390}.png`: a label

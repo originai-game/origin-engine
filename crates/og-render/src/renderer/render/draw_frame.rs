@@ -17,8 +17,15 @@ impl Renderer {
         }
         // A display frame draws without what still compiles; every other
         // frame, a capture's among them, waits for it (gpu/deferred.rs).
+        // So does a renderer's first frame natively: the host shows it,
+        // and every pipeline in it is cold, the sky's and the post passes'
+        // too, so it would show their ground black (a cold NVIDIA driver,
+        // for seconds). The web cannot wait (the browser would make them
+        // at once): its Worker draws the first frame again until it is
+        // whole.
+        let first = cfg!(not(target_arch = "wasm32")) && self.frame_index == 0;
         let _policy = crate::deferred::FramePolicy::open(
-            !scene.frame.display || self.capturing || self.uploads_whole,
+            !scene.frame.display || self.capturing || self.uploads_whole || first,
         );
         // Where the call's time goes, with a clock (frame_stages.rs).
         let mut stages = Stages::start(self.clock);

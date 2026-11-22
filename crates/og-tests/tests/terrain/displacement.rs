@@ -62,6 +62,10 @@ fn a_terrain_whose_corner_pipeline_is_not_ready_is_left_out_whole() {
     scene.frame.camera.position = Vec3::new(0.0, ts::displaced_height(z) + 2.0, z);
     scene.frame.camera.target = Vec3::new(0.3, ts::displaced_height(z - 1.0), z - 1.0);
     let mut renderer = Renderer::new_blocking(&scenes::base_desc()).expect("renderer");
+    // A renderer's first frame waits natively: the terrain comes in after it.
+    renderer
+        .render(&og_render::RenderScene::default(), &RenderTarget::Offscreen)
+        .expect("first frame");
     // The background pixels, what the frame left for a later one, and all.
     let mut draw = |display: bool| {
         scene.frame.display = display;
@@ -79,7 +83,7 @@ fn a_terrain_whose_corner_pipeline_is_not_ready_is_left_out_whole() {
             (img.width * img.height) as usize,
         )
     };
-    // The first frame's corner pipeline compiles on a worker meanwhile: it
+    // The terrain's corner pipeline compiles on a worker meanwhile: it
     // is either ready in time or left out whole, never half drawn.
     let display = draw(true);
     let waited = draw(false);

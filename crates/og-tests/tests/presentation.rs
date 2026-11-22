@@ -80,6 +80,45 @@ fn a_resident_renderer_restarts_without_previous_run_state() {
     );
 }
 
+/// A renderer's first display frame is whole: every pipeline in it is
+/// cold, and a display frame draws without what still compiles, but the
+/// host shows this one, so natively it waits. Its sky's ground is the sky
+/// a frame that waits draws, not black: the IBL bake the sky is drawn from
+/// was left for a later frame, for seconds on a cold NVIDIA driver (the
+/// font packs' frames, L4). Fails if the first display frame skips a draw
+/// or leaves work, or draws its ground differently from a waited frame.
+#[test]
+#[ignore = "requires GPU"]
+fn a_renderers_first_display_frame_draws_its_sky_whole() {
+    let first = |display: bool| {
+        let mut scene = RenderScene::default();
+        scene.frame.display = display;
+        let mut renderer = Renderer::new_blocking(&scenes::base_desc()).expect("renderer");
+        renderer
+            .render(&scene, &RenderTarget::Offscreen)
+            .expect("frame");
+        let skipped = og_render::frame_skipped();
+        let img = renderer.read_offscreen().expect("capture");
+        let at = |x: u32, y: u32| {
+            let i = ((y * img.width + x) * 4) as usize;
+            [img.pixels[i], img.pixels[i + 1], img.pixels[i + 2]]
+        };
+        ([at(2, 2), at(img.width / 2, img.height / 2)], skipped)
+    };
+    let (waited, _) = first(false);
+    let (shown, skipped) = first(true);
+    println!("ground: waited {waited:?}, display {shown:?} (skipped {skipped})");
+    assert!(
+        waited.iter().all(|p| p.iter().any(|&c| c > 0)),
+        "the sky's ground is black even waited: {waited:?}"
+    );
+    assert_eq!(
+        skipped, 0,
+        "the first display frame skipped draws or left work"
+    );
+    assert_eq!(shown, waited, "the first display frame's ground");
+}
+
 /// The frame after a loss is the frame before it: a renderer made again
 /// from the same description uploads the whole scene (meshes, textures,
 /// materials, the sky's light) on its first frame, and draws it as the

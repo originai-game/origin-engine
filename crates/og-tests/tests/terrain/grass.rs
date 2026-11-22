@@ -137,6 +137,9 @@ fn a_grass_pusher_tramples_the_blades_and_they_recover() {
 fn grass_whose_generate_pipelines_are_not_ready_draws_no_blade_until_they_are() {
     let mut scene = trample_scene();
     let mut r = Renderer::new_blocking(&scenes::base_desc()).expect("renderer");
+    // A renderer's first frame waits natively: the meadow comes in after it.
+    r.render(&RenderScene::default(), &RenderTarget::Offscreen)
+        .expect("first frame");
     let mut draw = |scene: &mut RenderScene, tick: u64, display: bool| {
         scene.frame.tick = tick;
         scene.frame.display = display;
