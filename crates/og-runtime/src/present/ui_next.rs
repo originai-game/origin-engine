@@ -402,8 +402,8 @@ pub(crate) fn configured_seeds(engine: u32) -> String {
 type SizeClass = (u8, bool, bool);
 
 /// What a class resolver was made for: the pack, the dark scheme, high
-/// contrast, the size class, and the window when a class it resolved
-/// reads the window's exact size.
+/// contrast, the size class, the window when a class it resolved
+/// reads the window's exact size, and the locale's direction.
 type Resolved = (
     Option<String>,
     String,
@@ -411,6 +411,7 @@ type Resolved = (
     bool,
     SizeClass,
     Option<[f32; 2]>,
+    bool,
 );
 
 fn size_class(widths: &[f32], [w, h]: [f32; 2]) -> SizeClass {
@@ -474,9 +475,11 @@ fn resolver(
     // The page's scheme's classes, and the other scheme's for a subtree
     // that names it (`scheme-dark` over dark art), made when first asked.
     let classes = RefCell::new([Some(make(scheme)), None]);
+    // The active locale's direction: `ps-*` and `rtl:` follow it.
     let env = og_ui_next::classes::Env {
         window,
         dark,
+        rtl: crate::bind::i18n::rtl(engine),
         ..Default::default()
     };
     // The tree asks for an entry's state records (motion's `starting:`
@@ -510,8 +513,15 @@ impl Next {
         let at = size_class(&self.widths, window);
         let exact = self.sized.get().then_some(window);
         let seeds = configured_seeds(engine);
-        if self.resolved.as_ref().is_some_and(|(p, s, d, h, c, w)| {
-            *p == self.pack && *s == seeds && *d == dark && *h == high && *c == at && *w == exact
+        let rtl = crate::bind::i18n::rtl(engine);
+        if self.resolved.as_ref().is_some_and(|(p, s, d, h, c, w, r)| {
+            *p == self.pack
+                && *s == seeds
+                && *d == dark
+                && *h == high
+                && *c == at
+                && *w == exact
+                && *r == rtl
         }) {
             return;
         }
@@ -534,6 +544,7 @@ impl Next {
             high,
             size_class(&widths, window),
             exact,
+            rtl,
         ));
         self.widths = widths;
     }
@@ -1449,5 +1460,42 @@ mod tests {
             resolve("opacity-50", "opacity: 0.25", 0, "").skin.opacity,
             0.25
         );
+    }
+
+    /// The resolver reads the active locale's direction: `ps-4` pads the
+    /// start, the right in a right-to-left locale. Way this could fail:
+    /// the resolver's `Env.rtl` left at its default, so start is always
+    /// the left.
+    #[test]
+    fn start_classes_follow_the_locales_direction() {
+        struct Quiet;
+        impl crate::Hooks for Quiet {
+            fn dispatch(&self, _call: &crate::Dispatch) -> Result<String, String> {
+                Ok(String::new())
+            }
+        }
+        crate::set_hooks(Rc::new(Quiet));
+        crate::og_host_begin_bundle();
+        let game = crate::og_game_game(Some(r#"{"seed":1}"#.into()));
+        let created: Value =
+            serde_json::from_str(&crate::og_engine_create(game, "{}".into())).unwrap();
+        let engine = created["value"].as_u64().unwrap() as u32;
+        let padding = || {
+            let (resolve, _) = resolver(
+                engine,
+                None,
+                true,
+                false,
+                [1280.0, 720.0],
+                &BTreeMap::new(),
+                Rc::default(),
+            );
+            let side = |c| resolve(c, "", 0, "").layout.padding();
+            let start = side("ps-4");
+            (start == side("pl-4"), start == side("pr-4"))
+        };
+        assert_eq!(padding(), (true, false), "left to right");
+        crate::og_i18n_set_locale(engine, "ar-XB".into());
+        assert_eq!(padding(), (false, true), "right to left");
     }
 }
