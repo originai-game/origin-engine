@@ -218,7 +218,7 @@ type Level = (usize, usize, Vec<[f32; 3]>, Vec<bool>);
 /// canvas export premultiplies, so alpha 0 comes out black), leaf and petal
 /// cards darkened with distance. Visible texels are untouched. `None` when
 /// no texel is transparent, or every one is.
-fn dilate_transparent(img: &Image) -> Option<Image> {
+pub(crate) fn dilate_transparent(img: &Image) -> Option<Image> {
     let texels = img.rgba.as_chunks::<4>().0;
     if !texels.iter().any(|p| p[3] == 0) || texels.iter().all(|p| p[3] == 0) {
         return None;

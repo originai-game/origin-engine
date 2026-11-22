@@ -336,7 +336,8 @@ fn a_stream_wider_than_720p_gets_a_720p_rendition_for_the_webs_fallback() {
 /// `alpha true` keeps a source's alpha (QuickTime Animation, alpha ramping
 /// 0 to 255 left to right): a clip's layers hold it, and a stream packs it
 /// below the colour, which rav1d folds back (`Decoder::packed_alpha`), as
-/// the poster shows. A source without alpha is refused.
+/// the poster shows. Its colour under alpha 0 (column 0, screen green) is
+/// not what the edge beside it shows. A source without alpha is refused.
 ///
 /// Ways it could fail: the matte packed in full range or with the colour's
 /// chroma (its edges bleed), the stream's height recorded as the packed
@@ -354,7 +355,7 @@ fn alpha_true_keeps_the_sources_alpha_in_a_clip_and_a_packed_stream() {
     std::fs::create_dir_all(&clips).unwrap();
     let made = std::process::Command::new(og_cook::cook::video::ffmpeg_bin())
         .args(["-v", "error", "-y", "-f", "lavfi", "-i"])
-        .arg("color=c=0x3080c0:size=128x72:rate=10:duration=1,format=rgba,geq=r='r(X,Y)':g='g(X,Y)':b='b(X,Y)':a='X*255/127'")
+        .arg("color=c=black:size=128x72:rate=10:duration=1,format=rgba,geq=r='if(X,48,0)':g='if(X,128,255)':b='if(X,192,0)':a='X*255/127'")
         .args(["-c:v", "qtrle"])
         .arg(clips.join("key.mov"))
         .status()
@@ -389,12 +390,19 @@ fn alpha_true_keeps_the_sources_alpha_in_a_clip_and_a_packed_stream() {
                 "{what}: alpha {a:.1} at x {x}, not {want}"
             );
         }
-        // The colour stays the colour, not the matte.
-        assert!(
-            (i32::from(rgba[64 * 4 + 2]) - 0xc0).abs() < 12,
-            "{what}: blue {}",
-            rgba[64 * 4 + 2]
-        );
+        // The colour stays the colour, not the matte, and the edge beside
+        // the transparent column takes none of its green (4:2:0 pairs them).
+        for x in [1, 64] {
+            let px = &rgba[(36 * 128 + x) * 4..][..3];
+            let off = (i32::from(px[0]) - 48)
+                .abs()
+                .max((i32::from(px[1]) - 128).abs())
+                .max((i32::from(px[2]) - 192).abs());
+            assert!(
+                off < 14,
+                "{what}: colour {px:?} at x {x}, not (48, 128, 192)"
+            );
+        }
     };
     let meta = b
         .video(

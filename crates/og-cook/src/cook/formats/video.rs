@@ -745,6 +745,83 @@ pub fn coded_height(plan: &VideoPlan) -> u32 {
     }
 }
 
+/// A keyed frame with its transparent texels' colour taken from their
+/// visible neighbourhood (texture.rs `dilate_transparent`). A source keeps
+/// whatever colour it likes under alpha 0 (the green of a screen, or
+/// black), and that colour reaches the visible edge through 4:2:0 chroma
+/// and the texture's bilinear sampling as a fringe; the matte is untouched.
+fn keyed(width: u32, height: u32, rgba: Vec<u8>) -> Vec<u8> {
+    let img = texture::Image {
+        width,
+        height,
+        rgba,
+    };
+    match texture::dilate_transparent(&img) {
+        Some(d) => d.rgba,
+        None => img.rgba,
+    }
+}
+
+/// Encodes a keyed stream: one ffmpeg reads the source's frames as RGBA,
+/// each is filled under its matte ([`keyed`]) and piped, frame by frame,
+/// into `encoder` (raw RGBA on its stdin), so no stream is held whole.
+fn encode_keyed(
+    path: &Path,
+    plan: &VideoPlan,
+    seconds: f64,
+    encoder: &mut Command,
+) -> Result<std::process::Output, String> {
+    use std::io::{Read, Write};
+    use std::process::Stdio;
+    let (w, h) = plan.size;
+    let mut reader = reading(path, plan)
+        .args(["-t", &format!("{seconds}"), "-an"])
+        .args([
+            "-vf",
+            &format!("fps={},scale={w}:{h}:flags=bicubic", plan.decl.fps),
+        ])
+        .args(["-f", "rawvideo", "-pix_fmt", "rgba", "-"])
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null())
+        .spawn()
+        .map_err(|e| format!("{NO_FFMPEG} ({e})"))?;
+    let mut enc = encoder
+        .stdin(Stdio::piped())
+        .stdout(Stdio::null())
+        .stderr(Stdio::piped())
+        .spawn()
+        .map_err(|e| format!("{NO_FFMPEG} ({e})"))?;
+    let mut src = reader.stdout.take().expect("piped");
+    let mut sink = enc.stdin.take().expect("piped");
+    let per = (w * h * 4) as usize;
+    let mut failed = None;
+    loop {
+        let mut frame = vec![0u8; per];
+        match src.read_exact(&mut frame) {
+            Ok(()) => {}
+            Err(e) if e.kind() == std::io::ErrorKind::UnexpectedEof => break,
+            Err(e) => {
+                failed = Some(format!("reading {}: {e}", path.display()));
+                break;
+            }
+        }
+        // The encoder stops reading once it has its frames.
+        if sink.write_all(&keyed(w, h, frame)).is_err() {
+            break;
+        }
+    }
+    drop(sink);
+    drop(src);
+    let _ = reader.wait();
+    let out = enc
+        .wait_with_output()
+        .map_err(|e| format!("{NO_FFMPEG} ({e})"))?;
+    match failed {
+        Some(e) => Err(e),
+        None => Ok(out),
+    }
+}
+
 /// Runs ffmpeg for the frames: `fps` filter, bicubic scale, RGBA8 (opaque
 /// unless `alpha true`); the count made exactly the plan's (the last frame
 /// held, or the extra dropped).
@@ -771,8 +848,10 @@ fn decode(path: &Path, plan: &VideoPlan) -> Result<Decoded, String> {
     if frames.is_empty() {
         return Err(format!("ffmpeg decoded no frames from {}", path.display()));
     }
-    if !plan.decl.alpha {
-        for f in &mut frames {
+    for f in &mut frames {
+        if plan.decl.alpha {
+            *f = keyed(w, h, std::mem::take(f));
+        } else {
             for a in f.iter_mut().skip(3).step_by(4) {
                 *a = 255;
             }
@@ -1094,20 +1173,28 @@ fn encode(path: &Path, plan: &VideoPlan) -> Result<Encoded, String> {
     let key = plan.key_interval().to_string();
     let crf = plan.decl.crf.to_string();
     let fps = plan.decl.fps;
-    // Packed alpha: the colour above, the alpha as limited-range luma
-    // with neutral chroma below.
-    let filter = if plan.decl.alpha {
-        format!(
-            "fps={fps},scale={w}:{h}:flags=bicubic,format=rgba,split[c][m];[c]scale=out_color_matrix=bt709:out_range=tv,format=yuv420p[top];[m]alphaextract,scale=out_range=tv,format=yuv420p[bottom];[top][bottom]vstack,tpad=stop_mode=clone:stop=-1"
+    // Packed alpha: keyed frames ([`encode_keyed`]) on stdin; the colour
+    // above, the alpha as limited-range luma with neutral chroma below.
+    let (mut cmd, filter) = if plan.decl.alpha {
+        let mut c = Command::new(ffmpeg_bin());
+        c.args(["-v", "error", "-y", "-f", "rawvideo", "-pix_fmt", "rgba"])
+            .args(["-s", &format!("{w}x{h}"), "-framerate", &fps.to_string()])
+            .args(["-i", "-"]);
+        (
+            c,
+            "split[c][m];[c]scale=out_color_matrix=bt709:out_range=tv,format=yuv420p[top];[m]alphaextract,scale=out_range=tv,format=yuv420p[bottom];[top][bottom]vstack,tpad=stop_mode=clone:stop=-1".to_string(),
         )
     } else {
-        format!(
-            "fps={fps},scale={w}:{h}:flags=bicubic:out_color_matrix=bt709:out_range=tv,format=yuv420p,tpad=stop_mode=clone:stop=-1"
+        let mut c = reading(path, plan);
+        c.args(["-t", &format!("{seconds}"), "-an"]);
+        (
+            c,
+            format!(
+                "fps={fps},scale={w}:{h}:flags=bicubic:out_color_matrix=bt709:out_range=tv,format=yuv420p,tpad=stop_mode=clone:stop=-1"
+            ),
         )
     };
-    let mut cmd = reading(path, plan);
-    cmd.args(["-t", &format!("{seconds}"), "-an"])
-        .args(["-vf", &filter])
+    cmd.args(["-vf", &filter])
         .args(["-frames:v", &plan.frames.to_string()]);
     let crf = plan
         .rendition
@@ -1168,7 +1255,14 @@ fn encode(path: &Path, plan: &VideoPlan) -> Result<Encoded, String> {
         },
     ])
     .arg(&tmp);
-    let out = cmd.output().map_err(|e| format!("{NO_FFMPEG} ({e})"))?;
+    let out = if plan.decl.alpha {
+        encode_keyed(path, plan, seconds, &mut cmd)
+    } else {
+        cmd.output().map_err(|e| format!("{NO_FFMPEG} ({e})"))
+    };
+    let out = out.inspect_err(|_| {
+        let _ = std::fs::remove_file(&tmp);
+    })?;
     let bytes = std::fs::read(&tmp);
     let _ = std::fs::remove_file(&tmp);
     if !out.status.success() {
