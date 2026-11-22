@@ -3,7 +3,7 @@
 // bundle and assembles its engine; `og run --headless` drives it (run.ts).
 
 import { createRequire } from "node:module";
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { dirname, join, resolve } from "node:path";
 import {
@@ -44,6 +44,8 @@ export function addonPath(): string {
 /** The addon's own symbols beyond the shared ABI. */
 export interface NativeExtras {
   og_node_views_mode(): string;
+  /** The host's cooked-format stamp (og-bundle's format_stamp, 016x); absent in a host built before it existed. */
+  og_node_formats?(): string;
   /** Retain the device and compatible pipelines between sequential fresh runs. */
   og_node_resident(enabled: boolean): void;
   /** Redirect reads only; source-edit commands still write to the project. */
@@ -88,6 +90,38 @@ export interface NativeExtras {
   og_node_ui_frame(engine: number): string;
 }
 
+/**
+ * Why the host library at `path` cannot read what the og that launched it
+ * cooks, or null when it can: `cook` is that og's cooked-format stamp
+ * (OG_COOK_FORMATS, which og sets; unset outside og), `host` the library's
+ * (`og_node_formats`, undefined in a library older than it). Two stamps
+ * differ exactly when og and the library were built from different sources,
+ * one rebuilt and the other not; every loader would then refuse the blobs
+ * ("holds type ..., re-run og cook") and no re-cook could help. The message
+ * names the command that rebuilds them together.
+ */
+export function formatsMismatch(path: string, cook: string | undefined, host: string | undefined): string | null {
+  if (!cook || host === cook) return null;
+  const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
+  const checkout = resolve(packageRoot, "..", "..");
+  const local = resolve(path).startsWith(join(packageRoot, "native")) && existsSync(join(checkout, "Cargo.toml"));
+  let fix: string;
+  if (process.env.OG_NATIVE_ADDON) {
+    fix = `point OG_NATIVE_ADDON at the host library built with this og, or unset it`;
+  } else if (local) {
+    let profile = "release";
+    try {
+      profile = readFileSync(join(packageRoot, "native", "build-profile"), "utf8").trim() || profile;
+    } catch {}
+    const command = profile === "dev" ? "OG_GATE=1 sh packages/engine/scripts/build.sh --native" : "OG_RELEASE=1 sh packages/engine/scripts/build.sh --native";
+    fix = `rebuild og and the host library together from the checkout: \`${command}\` in ${checkout} (rebuilding og alone, such as cargo build -p og-cli, leaves the host behind)`;
+  } else {
+    fix = `og and this engine package are from different installs; reinstall the engine (curl -fsSL https://origingame.ai/downloads/engine/install.sh | sh) and run the og it installs`;
+  }
+  const hostStamp = host ?? "none (a library older than the format stamp)";
+  return `the native host library ${path} was built from other engine sources than this og: og cooks formats ${cook}, the library reads ${hostStamp}, so it would refuse every blob og cooks and re-cooking cannot help. Fix: ${fix}`;
+}
+
 let extras: NativeExtras | null = null;
 const arrays = new WeakMap<ArrayBuffer, ColumnArray>();
 
@@ -99,6 +133,8 @@ export function loadNativeHost(path: string = addonPath()): HostBinding {
     throw new Error(`no native addon at ${path}: build it with \`bun run build\` in packages/engine (scripts/build.sh), or point OG_NATIVE_ADDON at one`);
   }
   const addon = createRequire(import.meta.url)(path) as HostAbi<Uint32Array, unknown> & NativeExtras;
+  const mismatch = formatsMismatch(path, process.env.OG_COOK_FORMATS, addon.og_node_formats?.());
+  if (mismatch) throw new Error(mismatch);
   extras = addon;
   process.on("exit", () => addon.og_node_resident?.(false));
   // An ArrayBuffer the addon made and keeps: it never moves.

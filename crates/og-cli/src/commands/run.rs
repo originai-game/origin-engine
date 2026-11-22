@@ -427,6 +427,7 @@ const TAIL_LINES: usize = 40;
 fn profiled(package: &Path, out: &Path) -> std::process::Command {
     let json = profile_json(out).unwrap_or_else(|| out.to_path_buf());
     let mut c = std::process::Command::new("bun");
+    c.env(project::COOK_FORMATS, project::cook_formats());
     c.arg("--cpu-prof");
     let dir = json.parent().unwrap_or(Path::new("."));
     c.arg(format!("--cpu-prof-dir={}", dir.display()));

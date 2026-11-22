@@ -92,6 +92,63 @@ pub trait BlobKind {
     }
 }
 
+/// Every kind of blob the cook writes: its manifest type name, type hash
+/// and schema version, as this build defines them.
+fn kinds() -> &'static [(&'static str, u64, u32)] {
+    macro_rules! kinds {
+        ($($k:ident),* $(,)?) => {
+            vec![$((<$k as BlobKind>::NAME, <$k as BlobKind>::type_hash(), <$k as BlobKind>::schema_version())),*]
+        };
+    }
+    static KINDS: std::sync::OnceLock<Vec<(&'static str, u64, u32)>> = std::sync::OnceLock::new();
+    KINDS.get_or_init(|| {
+        kinds!(
+            Model,
+            TextureArray,
+            Video,
+            VideoStream,
+            VideoChunk,
+            Texture,
+            Sound,
+            SoundChunk,
+            Font,
+            Scene,
+            Animation,
+            Lut,
+            Pack,
+            Shader,
+            Post,
+            UiMaterial,
+            Vector,
+            RiveArtboard,
+            Emitter,
+            Effect,
+            Vfx,
+            Tileset,
+            Tilemap,
+            Flipbook,
+            Rig2D,
+            Behaviour,
+            Dialogue,
+            Quest,
+            Table,
+            Rig,
+            Look,
+            Palette,
+            NavMesh,
+            Strings,
+            FontPack,
+            Timeline,
+            Fracture,
+            Hlod,
+            Lightmap,
+            Terrain,
+            EnvironmentMap,
+            StreamPack,
+        )
+    })
+}
+
 /// The type hash and schema version a cooked file of manifest type `name`
 /// must hold today, for every kind the cook writes. The incremental cook
 /// reads a kept output's header against this, so a schema that changed
@@ -99,58 +156,29 @@ pub trait BlobKind {
 /// leaving files the loader refuses. `None`: not a kind the cook writes
 /// (such an output is never fresh, which the first cook test shows).
 pub fn expected_header(name: &str) -> Option<(u64, u32)> {
-    macro_rules! kinds {
-        ($($k:ident),* $(,)?) => {{
-            $(if name == <$k as BlobKind>::NAME {
-                return Some((<$k as BlobKind>::type_hash(), <$k as BlobKind>::schema_version()));
-            })*
-            None
-        }};
+    kinds()
+        .iter()
+        .find(|(n, ..)| *n == name)
+        .map(|&(_, hash, version)| (hash, version))
+}
+
+/// One hash of [`COOKER_VERSION`] and every kind's type hash and schema
+/// version: equal in two builds exactly when each writes and reads the same
+/// cooked files. `og` hands its own to the engine's scripts and the native
+/// host reports its own, so an `og` and a host library built from different
+/// sources (one rebuilt, the other not) are told apart before a loader
+/// refuses a blob with "holds type ..., re-run og cook", which a re-cook
+/// cannot fix: the cook's up-to-date check already holds every kept file to
+/// this build's type hashes and schema versions ([`expected_header`]).
+pub fn format_stamp() -> u64 {
+    let mut h = StableHasher::new();
+    h.write_str(COOKER_VERSION);
+    for &(name, hash, version) in kinds() {
+        h.write_str(name);
+        h.write_u64(hash);
+        h.write_u64(version as u64);
     }
-    kinds!(
-        Model,
-        TextureArray,
-        Video,
-        VideoStream,
-        VideoChunk,
-        Texture,
-        Sound,
-        SoundChunk,
-        Font,
-        Scene,
-        Animation,
-        Lut,
-        Pack,
-        Shader,
-        Post,
-        UiMaterial,
-        Vector,
-        RiveArtboard,
-        Emitter,
-        Effect,
-        Vfx,
-        Tileset,
-        Tilemap,
-        Flipbook,
-        Rig2D,
-        Behaviour,
-        Dialogue,
-        Quest,
-        Table,
-        Rig,
-        Look,
-        Palette,
-        NavMesh,
-        Strings,
-        FontPack,
-        Timeline,
-        Fracture,
-        Hlod,
-        Lightmap,
-        Terrain,
-        EnvironmentMap,
-        StreamPack,
-    )
+    h.finish()
 }
 
 macro_rules! row {

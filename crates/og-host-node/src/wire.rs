@@ -321,6 +321,15 @@ impl ToNapiValue for NodeViews {
     }
 }
 
+/// This build's cooked-format stamp (`og_bundle::format::format_stamp`, 016x
+/// hex): the native loader compares it with the stamp of the `og` that
+/// cooked and launched the game, so a host library older or newer than the
+/// cook is named before a loader refuses a blob.
+#[napi(js_name = "og_node_formats")]
+pub fn og_node_formats() -> String {
+    format!("{:016x}", og_bundle::format::format_stamp())
+}
+
 /// Whether column views alias engine memory (`"alias"`) or are copied in
 /// and out (`"copy"`), as decided so far.
 #[napi(js_name = "og_node_views_mode")]

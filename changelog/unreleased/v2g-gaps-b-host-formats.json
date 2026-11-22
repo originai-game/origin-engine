@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "og run",
+      "summary": "An og and a native host library built from different engine sources (one rebuilt, the other not) are told apart before any asset loads: the host refuses to start, naming both cooked-format stamps and the command that rebuilds them together, instead of every cooked file failing with \"holds type ..., re-run og cook\", which no re-cook could fix."
+    }
+  ]
+}

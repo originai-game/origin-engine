@@ -508,8 +508,21 @@ pub const NO_ENGINE: &str = "no engine package: run og through its launcher (cur
 /// `bun <script> <args>` with the script resolved in the engine package.
 pub fn bun(package: &Path, script: &str) -> Command {
     let mut c = Command::new("bun");
+    c.env(COOK_FORMATS, cook_formats());
     c.arg(package.join(script));
     c
+}
+
+/// The variable carrying this og's cooked-format stamp to the engine's
+/// scripts ([`bun`] sets it): the native host loader (src/node/index.ts)
+/// compares it with the host library's own and names a host built from
+/// other sources, which would refuse every blob this og cooks.
+pub const COOK_FORMATS: &str = "OG_COOK_FORMATS";
+
+/// This og's cooked-format stamp, as the host library reports its own
+/// (`og_node_formats`).
+pub fn cook_formats() -> String {
+    format!("{:016x}", og_cook::format::format_stamp())
 }
 
 pub const NO_BUN: &str = "cannot start bun; install it: curl -fsSL https://bun.sh/install | bash";
