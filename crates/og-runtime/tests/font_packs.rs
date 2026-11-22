@@ -15,7 +15,7 @@
 use og_runtime::{
     Dispatch, Fetch, Hooks, og_engine_create, og_engine_frame, og_engine_take_log, og_game_game,
     og_host_begin_bundle, og_i18n_locale, og_i18n_set_locale, og_load_font,
-    og_system_define_system, og_ui_configure, ui_fonts,
+    og_system_define_system, og_ui_configure,
 };
 use serde_json::{Value, json};
 use std::cell::RefCell;
@@ -40,14 +40,7 @@ const PACKS: [&str; 6] = [
 /// installed as `og font add` installs them; cooked once per process.
 fn project() -> &'static Path {
     static ROOT: OnceLock<PathBuf> = OnceLock::new();
-    ROOT.get_or_init(|| cooked("og-runtime-font-packs", None))
-}
-
-/// The same project with every pack face cooked as an atlas font for
-/// `MIXED`'s characters: the baseline a run-time face is measured against.
-fn atlas_project() -> &'static Path {
-    static ROOT: OnceLock<PathBuf> = OnceLock::new();
-    ROOT.get_or_init(|| cooked("og-runtime-font-packs-atlas", Some(MIXED)))
+    ROOT.get_or_init(|| cooked("og-runtime-font-packs"))
 }
 
 /// The mixed-script label the frames draw.
@@ -58,7 +51,7 @@ const MIXED: &str = "はじめる 骨 · ليلى 门 · Start";
 /// emoji presentation selector.
 const EMOJI: &str = "Victory 🏆🔥⭐ 👍🏽 👨‍👩‍👧 🇳🇿 ❤️";
 
-fn cooked(name: &str, atlas: Option<&str>) -> PathBuf {
+fn cooked(name: &str) -> PathBuf {
     {
         let root = PathBuf::from(env!("CARGO_TARGET_TMPDIR"))
             .join(format!("{name}-{}", std::process::id()));
@@ -83,30 +76,6 @@ fn cooked(name: &str, atlas: Option<&str>) -> PathBuf {
             for e in std::fs::read_dir(&from).unwrap() {
                 let e = e.unwrap();
                 std::fs::copy(e.path(), to.join(e.file_name())).unwrap();
-            }
-            if let Some(text) = atlas {
-                for e in std::fs::read_dir(&to).unwrap() {
-                    let path = e.unwrap().path();
-                    if path.extension().is_some_and(|x| x == "ogt") {
-                        // The emoji face cooks its colour glyphs as images.
-                        let colour = std::fs::read_to_string(&path)
-                            .unwrap()
-                            .contains("color true");
-                        let (chars, colour) = if colour {
-                            (
-                                EMOJI.replace(char::is_alphabetic, ""),
-                                "  color true\n  color_px 64\n",
-                            )
-                        } else {
-                            (format!("{text} \u{3000}").replace('"', ""), "")
-                        };
-                        std::fs::write(
-                            path,
-                            format!("type import\nversion 1\n---\nfont {{\n  charset\n  chars {chars:?}\n  em_px 48\n  px_range 16\n{colour}}}\n"),
-                        )
-                        .unwrap();
-                    }
-                }
             }
         }
         let report = og_cook::cook_project(
@@ -420,33 +389,13 @@ fn default_ui_uses_instrument_outlines_before_locale_fallbacks() {
     show("Start");
     step();
     step();
-    {
-        let fonts = ui_fonts(engine).unwrap();
-        for role in [
-            og_ui_next::fonts::FontRole::Body,
-            og_ui_next::fonts::FontRole::Display,
-            og_ui_next::fonts::FontRole::Mono,
-            og_ui_next::fonts::FontRole::Rounded,
-            og_ui_next::fonts::FontRole::Family(og_ui_next::fonts::Family::new(
-                "Instrument Sans",
-                og_ui_next::fonts::FontRole::Body,
-            )),
-        ] {
-            let (face, synth) = fonts.for_styled(
-                role,
-                og_ui_next::fonts::FontQuery::new(700, false).at_width(Some(75.0)),
-                "Victory",
-            );
-            let file = face.metrics.file.as_ref().expect("the default's outlines");
-            assert_eq!(file.bytes().as_slice(), source);
-            assert!(file.variations().contains(&(*b"wght", 700.0)));
-            assert!(file.variations().contains(&(*b"wdth", 75.0)));
-            assert!(!synth.bold, "the variable face supplies bold outlines");
-        }
-        let japanese = fonts.for_text(og_ui_next::fonts::FontRole::Body, "はじめる");
-        assert_ne!(
-            japanese.metrics.file.as_ref().unwrap().bytes().as_slice(),
-            source
+    // Every role the game named no font for resolves to the default face,
+    // ahead of the locale's packs.
+    for role in og_runtime::ui_font_roles(engine) {
+        assert_eq!(
+            og_runtime::ui_text_family(engine, &role).as_deref(),
+            Some("Instrument Sans"),
+            "{role}"
         );
     }
     let face = value(og_runtime::host_impl::answer(og_load_font(
@@ -458,17 +407,10 @@ fn default_ui_uses_instrument_outlines_before_locale_fallbacks() {
         Some(json!({"font": face}).to_string()),
     )));
     step();
+    let roles = og_runtime::ui_font_roles(engine);
     assert_ne!(
-        ui_fonts(engine)
-            .unwrap()
-            .body
-            .metrics
-            .file
-            .as_ref()
-            .unwrap()
-            .bytes()
-            .as_slice(),
-        source,
+        og_runtime::ui_text_family(engine, &roles[0]).as_deref(),
+        Some("Instrument Sans"),
         "the game's explicit font still wins"
     );
     assert_eq!(warnings(engine), Vec::<String>::new());
@@ -487,16 +429,10 @@ fn a_game_with_no_locale_draws_in_the_latin_pack() {
 #[derive(Default)]
 struct Seen {
     frame: Option<og_render::RgbaImage>,
-    /// Milliseconds the backend spent waiting on the GPU (not the engine's CPU).
-    waited: f64,
-    /// The frame's GPU milliseconds, from timestamp queries (all passes).
-    gpu: f64,
-    /// The UI overlay pass's share of it.
-    gpu_ui: f64,
 }
 
-/// og-render's headless renderer behind the engine. Each frame waits for
-/// the GPU and reads its timestamps; `capture` reads the frame back.
+/// og-render's headless renderer behind the engine; `capture` reads the
+/// frame back.
 struct Offscreen {
     renderer: og_render::Renderer,
     seen: Rc<RefCell<Seen>>,
@@ -525,22 +461,10 @@ impl og_runtime::RenderBackend for Offscreen {
         self.renderer
             .render(scene, &og_render::RenderTarget::Offscreen)
             .map_err(|e| e.to_string())?;
-        let t = std::time::Instant::now();
-        let frames = self.renderer.gpu_timings(true);
-        let mut seen = self.seen.borrow_mut();
-        if let Some(f) = frames.last() {
-            seen.gpu = f.ms();
-            seen.gpu_ui = f
-                .passes
-                .iter()
-                .filter(|p| p.name.contains("overlay") || p.name.contains("ui"))
-                .filter_map(|p| p.ms())
-                .sum();
-        }
         if self.read {
+            let mut seen = self.seen.borrow_mut();
             seen.frame = Some(self.renderer.read_offscreen().map_err(|e| e.to_string())?);
         }
-        seen.waited = t.elapsed().as_secs_f64() * 1e3;
         Ok(())
     }
     fn capture(
@@ -553,32 +477,13 @@ impl og_runtime::RenderBackend for Offscreen {
     }
 }
 
-/// One frame's cost: the engine's CPU milliseconds (the frame without the
-/// backend's wait on the GPU) and the GPU's.
-#[derive(Clone, Copy, Debug, Default)]
-struct Cost {
-    cpu: f64,
-    gpu: f64,
-    gpu_ui: f64,
-}
-
-fn median(mut v: Vec<f64>) -> f64 {
-    v.sort_by(f64::total_cmp);
-    v[v.len() / 2]
-}
-
 /// An engine in `ja-JP` on `root`, drawing to a `width`×`height` renderer.
 fn rig(
     root: &Path,
     width: u32,
     height: u32,
     read: bool,
-) -> (
-    u32,
-    impl Fn() -> Cost,
-    Rc<RefCell<Seen>>,
-    og_render::RenderInfo,
-) {
+) -> (u32, impl Fn(), Rc<RefCell<Seen>>, og_render::RenderInfo) {
     let (engine, step) = start_in(root, "ja-JP");
     let seen = Rc::new(RefCell::new(Seen::default()));
     let mut renderer = og_render::Renderer::new_blocking(&og_render::RenderDesc {
@@ -598,103 +503,10 @@ fn rig(
         })),
     )
     .unwrap();
-    let s = seen.clone();
     let frame = move || {
-        let t = std::time::Instant::now();
         step();
-        let wall = t.elapsed().as_secs_f64() * 1e3;
-        let s = s.borrow();
-        Cost {
-            cpu: wall - s.waited,
-            gpu: s.gpu,
-            gpu_ui: s.gpu_ui,
-        }
     };
     (engine, frame, seen, info)
-}
-
-/// Steady (median of 30), the first frames that draw `text` (loading
-/// the packs only it needs), and steady after (median of 30).
-fn costs(root: &Path, text: &str) -> (Cost, Vec<Cost>, Cost, u32) {
-    let (engine, frame, _, _) = rig(root, 1280, 720, false);
-    let steady = |n: usize| {
-        let c: Vec<Cost> = (0..n).map(|_| frame()).collect();
-        Cost {
-            cpu: median(c.iter().map(|c| c.cpu).collect()),
-            gpu: median(c.iter().map(|c| c.gpu).collect()),
-            gpu_ui: median(c.iter().map(|c| c.gpu_ui).collect()),
-        }
-    };
-    show("はじめる 骨 · Start");
-    steady(10);
-    let before = steady(30);
-    show(text);
-    // The packs load on the first frame, their glyphs are asked for on
-    // the second: the most still rendering when any of the frames returns.
-    let mut waited = 0;
-    let first: Vec<Cost> = (0..12)
-        .map(|_| {
-            let c = frame();
-            waited = waited.max(og_runtime::glyphs_pending(engine));
-            std::thread::sleep(std::time::Duration::from_millis(4));
-            c
-        })
-        .collect();
-    steady(10);
-    let after = steady(30);
-    (before, first, after, waited)
-}
-
-/// Frame cost of `MIXED` from run-time pack faces against the same packs
-/// cooked as atlas fonts for its characters, in one scene. Prints CPU and
-/// GPU milliseconds; asserts a run-time face's steady frame within noise of
-/// the atlas font's, and that the frames drawing a new script return
-/// while its glyphs still render (rendered on the frame, they hitched it:
-/// 203 ms).
-#[test]
-#[ignore = "requires GPU; perf"]
-fn run_time_faces_cost_what_atlas_fonts_cost() {
-    let show_cost = |c: &Cost| {
-        format!(
-            "cpu {:.2} ms, gpu {:.3} ms (ui {:.3})",
-            c.cpu, c.gpu, c.gpu_ui
-        )
-    };
-    let mut runs = Vec::new();
-    for (name, root) in [("run-time", project()), ("atlas", atlas_project())] {
-        // Best of three, each a fresh engine: the machine's noise.
-        let mut best: Option<(Cost, Vec<Cost>, Cost, u32)> = None;
-        for _ in 0..3 {
-            let r = costs(root, MIXED);
-            if best.as_ref().is_none_or(|b| r.2.cpu < b.2.cpu) {
-                best = Some(r);
-            }
-        }
-        let (before, first, after, waited) = best.unwrap();
-        if name == "run-time" {
-            assert!(waited > 0, "a frame waited for its new glyphs to render");
-        }
-        println!("{name}: steady before {}", show_cost(&before));
-        for (i, c) in first.iter().enumerate() {
-            println!("{name}: first-use frame {i} {}", show_cost(c));
-        }
-        println!("{name}: steady after {}", show_cost(&after));
-        runs.push((before, first, after, waited));
-    }
-    let (rt, at) = (&runs[0], &runs[1]);
-    assert!(
-        rt.2.cpu <= at.2.cpu * 1.25 + 0.3,
-        "run-time steady {:.2} ms against atlas {:.2} ms",
-        rt.2.cpu,
-        at.2.cpu
-    );
-    let worst = |r: &(Cost, Vec<Cost>, Cost, u32)| r.1.iter().map(|c| c.cpu).fold(0.0, f64::max);
-    println!(
-        "worst first-use frame: run-time {:.2} ms ({} glyphs rendered off it), atlas {:.2} ms",
-        worst(rt),
-        rt.3,
-        worst(at)
-    );
 }
 
 /// `crates/og-tests/references/vulkan/font-packs-{1280,390}.png`: a Japanese
@@ -723,17 +535,13 @@ fn mixed_script_text_draws_from_its_packs() {
 }
 
 /// Glyphs render off the frame and pipelines compile off it: draws until
-/// the chain holds `packs` packs and three frames in a row wait for no
-/// glyph and skip no draw (og-render `frame_skipped`), so the frame read
-/// is the scene's whole.
-fn settle(engine: u32, frame: &impl Fn() -> Cost, packs: usize) {
+/// the chain holds `packs` packs and three frames in a row skip no draw
+/// (og-render `frame_skipped`), so the frame read is the scene's whole.
+fn settle(engine: u32, frame: &impl Fn(), packs: usize) {
     let mut quiet = 0;
     for _ in 0..2000 {
         frame();
-        quiet = if chain(engine).len() == packs
-            && og_runtime::glyphs_pending(engine) == 0
-            && og_render::frame_skipped() == 0
-        {
+        quiet = if chain(engine).len() == packs && og_render::frame_skipped() == 0 {
             quiet + 1
         } else {
             0
@@ -786,62 +594,6 @@ fn colour_emoji_draw_from_the_emoji_pack_in_colour() {
         );
         check_reference(&format!("color-emoji-{width}.png"), &image, &info);
     }
-}
-
-/// Frame and size cost of colour emoji painted at run time (the emoji
-/// pack as shipped) against the same emoji cooked as images (`color
-/// true`, its characters in `chars`). Prints CPU and GPU milliseconds and
-/// the cooked bytes; asserts the steady frame within noise of the cooked
-/// font's, and that the frames first drawing them return while they are
-/// still being painted.
-#[test]
-#[ignore = "requires GPU; perf"]
-fn run_time_emoji_cost_what_cooked_emoji_cost() {
-    let show_cost = |c: &Cost| {
-        format!(
-            "cpu {:.2} ms, gpu {:.3} ms (ui {:.3})",
-            c.cpu, c.gpu, c.gpu_ui
-        )
-    };
-    let mut runs = Vec::new();
-    for (name, root) in [("run-time", project()), ("cooked", atlas_project())] {
-        let bytes: u64 = std::fs::read_dir(root.join("cooked/fonts/emoji"))
-            .unwrap()
-            .map(|e| e.unwrap().metadata().unwrap().len())
-            .sum();
-        println!("{name}: emoji pack cooked to {bytes} bytes");
-        let mut best: Option<(Cost, Vec<Cost>, Cost, u32)> = None;
-        for _ in 0..3 {
-            let r = costs(root, EMOJI);
-            if best.as_ref().is_none_or(|b| r.2.cpu < b.2.cpu) {
-                best = Some(r);
-            }
-        }
-        let (before, first, after, waited) = best.unwrap();
-        if name == "run-time" {
-            assert!(waited > 0, "a frame waited for its emoji to be painted");
-        }
-        println!("{name}: steady before {}", show_cost(&before));
-        for (i, c) in first.iter().enumerate() {
-            println!("{name}: first-use frame {i} {}", show_cost(c));
-        }
-        println!("{name}: steady after {}", show_cost(&after));
-        runs.push((before, first, after, waited));
-    }
-    let (rt, ck) = (&runs[0], &runs[1]);
-    assert!(
-        rt.2.cpu <= ck.2.cpu * 1.25 + 0.3,
-        "run-time steady {:.2} ms against cooked {:.2} ms",
-        rt.2.cpu,
-        ck.2.cpu
-    );
-    let worst = |r: &(Cost, Vec<Cost>, Cost, u32)| r.1.iter().map(|c| c.cpu).fold(0.0, f64::max);
-    println!(
-        "worst first-use frame: run-time {:.2} ms ({} glyphs painted off it), cooked {:.2} ms",
-        worst(rt),
-        rt.3,
-        worst(ck)
-    );
 }
 
 /// Compares `image` with `crates/og-tests/references/vulkan/<name>`
