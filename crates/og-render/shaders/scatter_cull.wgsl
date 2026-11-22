@@ -69,8 +69,10 @@ struct CullRow {
 @group(2) @binding(0) var density_map: texture_2d<f32>;
 @group(2) @binding(1) var density_sampler: sampler;
 
-const CULL_LANES: u32 = 256u;
-const CULL_PER_LANE: u32 = 4u;
+// 128 lanes (compatibility mode's most invocations a workgroup) of eight
+// copies: a chunk's 1024 (scatter_cull.rs MAX_CHUNK_COPIES).
+const CULL_LANES: u32 = 128u;
+const CULL_PER_LANE: u32 = 8u;
 const CULL_SET_WORDS: u32 = 20u;
 
 // The workgroup's chunk.
@@ -146,7 +148,7 @@ fn cull_count(mask: u32) -> vec4<u32> {
   return (vec4<u32>(mask) >> vec4<u32>(0u, 1u, 2u, 3u)) & vec4<u32>(1u);
 }
 
-@compute @workgroup_size(256)
+@compute @workgroup_size(CULL_LANES)
 fn cull(@builtin(local_invocation_index) lane: u32, @builtin(workgroup_id) chunk: vec3<u32>) {
   item = items[chunk.x].item;
   var n = item.item.y;

@@ -24,7 +24,8 @@
 // Binding 4, the drawn points, and `emit` come after this file
 // (visual_sim.rs: a surface's coarse vertices or a garment's points).
 
-const WG: u32 = 256u;
+// Compatibility mode's most invocations a workgroup.
+const WG: u32 = 128u;
 // Header words (visual_sim.rs `Header`).
 const N: u32 = 0u;
 const KIND: u32 = 1u;
@@ -85,8 +86,8 @@ fn at_new_normal(i: u32) -> u32 { return 6u * body[N] + i; }
 fn word(i: u32) -> f32 { return bitcast<f32>(body[i]); }
 fn vec(i: u32) -> vec3<f32> { return vec3<f32>(word(i), word(i + 1u), word(i + 2u)); }
 
-var<workgroup> partial: array<f32, 256>;
-var<workgroup> partial_b: array<f32, 256>;
+var<workgroup> partial: array<f32, WG>;
+var<workgroup> partial_b: array<f32, WG>;
 
 fn sync() {
     storageBarrier();
@@ -533,7 +534,7 @@ fn collide(lid: u32) {
     sync();
 }
 
-@compute @workgroup_size(256)
+@compute @workgroup_size(WG)
 fn solve(@builtin(local_invocation_index) lid: u32) {
     let n = body[N];
     let kind = body[KIND];

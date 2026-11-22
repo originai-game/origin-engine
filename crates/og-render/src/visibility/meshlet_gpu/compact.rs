@@ -4,7 +4,8 @@
 use super::{WORKGROUPS_PER_ROW, buffer, entry, grow, storage, storage_usage};
 
 pub(crate) const WGSL: &str = concat!(wgsl!("meshlet_compact.wgsl"), wgsl!("cull_scan.wgsl"));
-const WG: u32 = 256;
+/// `meshlet_compact.wgsl` `WG`: 128, compatibility mode's most invocations a workgroup.
+const WG: u32 = 128;
 
 pub(super) struct Compact {
     pub selected: wgpu::Buffer,

@@ -311,13 +311,15 @@ fn evaluate(@builtin(workgroup_id) group: vec3<u32>, @builtin(local_invocation_i
   if (lane < 3u) { counts[w * 3u + lane] = atomicLoad(&slice_counts[lane]); }
 }
 
-var<workgroup> partial: array<vec3<u32>, 256>;
+// The scan's lanes: compatibility mode's most invocations a workgroup.
+const GRASS_SCAN_LANES: u32 = 128u;
+var<workgroup> partial: array<vec3<u32>, GRASS_SCAN_LANES>;
 var<workgroup> totals: vec3<u32>;
 
-@compute @workgroup_size(256)
+@compute @workgroup_size(GRASS_SCAN_LANES)
 fn scan(@builtin(local_invocation_index) lane: u32) {
   let n = gen.counts.x;
-  let per = (n + 255u) / 256u;
+  let per = (n + GRASS_SCAN_LANES - 1u) / GRASS_SCAN_LANES;
   let first = min(lane * per, n);
   let last = min(first + per, n);
   var sum = vec3<u32>(0u);
@@ -328,7 +330,7 @@ fn scan(@builtin(local_invocation_index) lane: u32) {
   workgroupBarrier();
   if (lane == 0u) {
     var run = vec3<u32>(0u);
-    for (var i = 0u; i < 256u; i++) {
+    for (var i = 0u; i < GRASS_SCAN_LANES; i++) {
       let v = partial[i];
       partial[i] = run;
       run += v;

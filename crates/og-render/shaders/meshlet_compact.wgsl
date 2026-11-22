@@ -15,8 +15,8 @@
 @group(0) @binding(5) var<storage, read_write> items: array<vec2<u32>>;
 @group(0) @binding(6) var<storage, read_write> draws: array<u32>;
 @group(0) @binding(7) var<storage, read_write> block_sums: array<vec2<u32>>;
-const WG: u32 = 256u;
-var<workgroup> shared_sum: array<vec2<u32>, 256>;
+const WG: u32 = 128u;
+var<workgroup> shared_sum: array<vec2<u32>, WG>;
 
 fn block(wid: vec3<u32>) -> u32 { return wid.x + wid.y * 65535u; }
 fn blocks() -> u32 { return (params.x + WG - 1u) / WG; }
@@ -26,7 +26,7 @@ fn value(k: u32) -> vec2<u32> {
   return vec2<u32>(u32(s.x != 0u), s.y);
 }
 
-@compute @workgroup_size(256)
+@compute @workgroup_size(WG)
 fn reduce(@builtin(workgroup_id) wid: vec3<u32>, @builtin(local_invocation_index) li: u32) {
   let b = block(wid);
   if (b >= blocks()) { return; }
@@ -39,7 +39,7 @@ fn reduce(@builtin(workgroup_id) wid: vec3<u32>, @builtin(local_invocation_index
   if (li == 0u) { block_sums[b] = shared_sum[0]; }
 }
 
-@compute @workgroup_size(256)
+@compute @workgroup_size(WG)
 fn scan_blocks(@builtin(local_invocation_index) li: u32) {
   var carry = vec2<u32>(0u);
   for (var base = 0u; base < blocks(); base += WG) {
@@ -59,7 +59,7 @@ fn scan_blocks(@builtin(local_invocation_index) li: u32) {
   }
 }
 
-@compute @workgroup_size(256)
+@compute @workgroup_size(WG)
 fn prefix(@builtin(workgroup_id) wid: vec3<u32>, @builtin(local_invocation_index) li: u32) {
   let b = block(wid);
   if (b >= blocks()) { return; }
@@ -77,7 +77,7 @@ fn before(k: u32) -> vec2<u32> {
   return sums[k];
 }
 
-@compute @workgroup_size(256)
+@compute @workgroup_size(WG)
 fn scatter(@builtin(workgroup_id) wid: vec3<u32>, @builtin(local_invocation_index) li: u32) {
   let k = block(wid) * WG + li;
   if (k >= params.x) { return; }

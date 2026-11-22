@@ -115,21 +115,22 @@ fn load_source(p: vec2<i32>) -> vec2<f32> {
   return vec2<f32>(d, select(0.0, sign(d), d != 0.0));
 }
 
-var<workgroup> level0: array<vec2<f32>, 256>;
-var<workgroup> level1: array<vec2<f32>, 64>;
+var<workgroup> level0: array<vec2<f32>, 128>;
+var<workgroup> level1: array<vec2<f32>, 32>;
 
-// A 16x16 workgroup covers 32x32 render pixels: each thread reduces its
+// A 16x8 workgroup (compatibility mode's most invocations) covers 32x16
+// render pixels (fsr.rs `TILE`): each thread reduces its
 // 2x2 render pixels to one level-0 texel, a quarter of the threads reduce
 // 2x2 of those to level 1, and a sixteenth 2x2 of those to level 2. (One
 // thread per 4x4 render pixels, 16 differences each in turn, left the GPU
 // waiting on too few threads.)
-@compute @workgroup_size(16, 16, 1)
+@compute @workgroup_size(16, 8, 1)
 fn cs(
   @builtin(workgroup_id) wg: vec3<u32>,
   @builtin(local_invocation_id) local: vec3<u32>,
   @builtin(local_invocation_index) li: u32,
 ) {
-  let m0 = vec2<i32>(wg.xy * 16u + local.xy);
+  let m0 = vec2<i32>(wg.xy * vec2<u32>(16u, 8u) + local.xy);
   let s0 = (load_source(m0 * 2) + load_source(m0 * 2 + vec2<i32>(1, 0))
     + load_source(m0 * 2 + vec2<i32>(0, 1)) + load_source(m0 * 2 + vec2<i32>(1, 1))) * 0.25;
   textureStore(mip0_out, m0, vec4<f32>(s0, 0.0, 0.0));

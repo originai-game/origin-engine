@@ -307,13 +307,18 @@ struct State {
     frame_info: wgpu::Buffer,
 }
 
+/// The render pixels one workgroup of the luma and shading change
+/// pyramids covers: a 2x2 a thread, 16x8 threads (compatibility mode's
+/// most invocations a workgroup).
+const TILE: (u32, u32) = (32, 16);
+
 impl State {
     fn new(device: &wgpu::Device, upscale: (u32, u32)) -> State {
         let half = ((upscale.0 / 2).max(1), (upscale.1 / 2).max(1));
         let spd = texture(device, "fsr spd mips", half, F::Rgba16Float, 3);
         let level = |m| crate::mips::level_view(&spd, "fsr spd level", m);
         let pixels = u64::from(upscale.0) * u64::from(upscale.1);
-        let groups = u64::from(upscale.0.div_ceil(32)) * u64::from(upscale.1.div_ceil(32));
+        let groups = u64::from(upscale.0.div_ceil(TILE.0)) * u64::from(upscale.1.div_ceil(TILE.1));
         State {
             upscale,
             dilated_depth: view(&texture(
@@ -639,7 +644,7 @@ impl FsrPasses {
         // rows 2 and 3 (fsr_common.wgsl `view_depth`).
         let ip = f.proj.inverse().transpose();
         let device_to_view = [ip.z_axis.z, ip.z_axis.w, ip.w_axis.z, ip.w_axis.w];
-        let luma_groups = (f.render.0.div_ceil(32), f.render.1.div_ceil(32));
+        let luma_groups = (f.render.0.div_ceil(TILE.0), f.render.1.div_ceil(TILE.1));
         // RCAS's sharpness in stops (FsrRcasCon of 2 - 2 s).
         let sharp = (-(2.0 - 2.0 * f.sharpness.clamp(0.0, 1.0))).exp2();
         let i = |(x, y): (u32, u32)| [x as i32, y as i32];
@@ -803,7 +808,7 @@ impl FsrPasses {
             (rw.div_ceil(8), rh.div_ceil(8)),
             r.luma_groups,
             (1, 1),
-            (rw.div_ceil(32), rh.div_ceil(32)),
+            (rw.div_ceil(TILE.0), rh.div_ceil(TILE.1)),
             (half.0.div_ceil(8), half.1.div_ceil(8)),
             (rw.div_ceil(8), rh.div_ceil(8)),
             (uw.div_ceil(8), uh.div_ceil(8)),

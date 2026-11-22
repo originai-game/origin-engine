@@ -16,12 +16,14 @@
 @group(0) @binding(4) var<storage, read_write> luma_partials: array<vec2<f32>>;
 @group(0) @binding(5) var<storage, read_write> frame_info: vec4<f32>;
 
-var<workgroup> partial_log: array<f32, 256>;
-var<workgroup> partial_luma: array<f32, 256>;
+// A workgroup's invocations: compatibility mode's most.
+const LANES: u32 = 128u;
+var<workgroup> partial_log: array<f32, LANES>;
+var<workgroup> partial_luma: array<f32, LANES>;
 
 // Each thread reduces a 2x2 of render pixels to one half-resolution
-// texel; a 16x16 workgroup covers 32x32 render pixels.
-@compute @workgroup_size(16, 16, 1)
+// texel; a 16x8 workgroup covers 32x16 render pixels (fsr.rs `TILE`).
+@compute @workgroup_size(16, 8, 1)
 fn cs_reduce(
   @builtin(global_invocation_id) id: vec3<u32>,
   @builtin(local_invocation_index) li: u32,
@@ -50,7 +52,7 @@ fn cs_reduce(
   partial_log[li] = log_sum;
   partial_luma[li] = luma_sum;
   workgroupBarrier();
-  for (var s = 128u; s > 0u; s = s >> 1u) {
+  for (var s = LANES / 2u; s > 0u; s = s >> 1u) {
     if (li < s) {
       partial_log[li] += partial_log[li + s];
       partial_luma[li] += partial_luma[li + s];
@@ -62,19 +64,19 @@ fn cs_reduce(
   }
 }
 
-@compute @workgroup_size(256, 1, 1)
+@compute @workgroup_size(LANES, 1, 1)
 fn cs_finish(@builtin(local_invocation_index) li: u32) {
   let count = u32(fsr.misc.x);
   var log_sum = 0.0;
   var luma_sum = 0.0;
-  for (var i = li; i < count; i += 256u) {
+  for (var i = li; i < count; i += LANES) {
     log_sum += luma_partials[i].x;
     luma_sum += luma_partials[i].y;
   }
   partial_log[li] = log_sum;
   partial_luma[li] = luma_sum;
   workgroupBarrier();
-  for (var s = 128u; s > 0u; s = s >> 1u) {
+  for (var s = LANES / 2u; s > 0u; s = s >> 1u) {
     if (li < s) {
       partial_log[li] += partial_log[li + s];
       partial_luma[li] += partial_luma[li + s];

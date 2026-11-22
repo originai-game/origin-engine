@@ -147,7 +147,8 @@ const MAX_PLANES: usize = 12;
 pub(crate) fn tested(planes: &[Vec4]) -> &[Vec4] {
     &planes[..planes.len().min(MAX_PLANES)]
 }
-const WORKGROUP: u32 = 256;
+/// `cull.wgsl` `WG`: 128, compatibility mode's most invocations a workgroup.
+const WORKGROUP: u32 = 128;
 const READBACKS: usize = 3;
 
 const TRANSPARENT: u32 = 1;

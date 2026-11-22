@@ -24,7 +24,10 @@ struct GiParams {
 @group(0) @binding(2) var<storage, read_write> estimator: array<vec4<f32>>;
 @group(0) @binding(3) var<uniform> gp: GiParams;
 
-const THREADS: u32 = 144u;
+// Half the 12x12 distance texels: each thread blends two, `t` and
+// `t + THREADS` (144 threads would pass compatibility mode's 128).
+const THREADS: u32 = 72u;
+const DEPTH_TEXELS: u32 = 144u;
 const TEXELS: u32 = 36u;
 // The estimator's vec4 a radiance texel.
 const WORDS: u32 = 3u;
@@ -37,7 +40,7 @@ const KEEP: f32 = 0.1;
 var<workgroup> cache: array<vec4<f32>, THREADS>;
 var<workgroup> cache_dir: array<vec3<f32>, THREADS>;
 var<workgroup> radiance: array<vec3<f32>, TEXELS>;
-var<workgroup> depth: array<vec2<f32>, THREADS>;
+var<workgroup> depth: array<vec2<f32>, DEPTH_TEXELS>;
 
 // What the estimator keeps of a texel.
 struct Estimate {
@@ -98,7 +101,17 @@ fn estimate(y_in: vec3<f32>, s_in: Estimate, short_blend: f32) -> Estimate {
   return s;
 }
 
-@compute @workgroup_size(144)
+// Distance texel `t` of the probe at `at`: its rays' moments blended into
+// what it held (two texels a vec4).
+fn blend_depth(at: u32, t: u32, moments: vec2<f32>, weight: f32, restart: bool) -> vec2<f32> {
+  let old_at = at + GI_DEPTH_AT + (t >> 1u);
+  let old = select(probes[old_at].xy, probes[old_at].zw, (t & 1u) == 1u);
+  var m = select(old, moments / max(weight, 1e-6), weight > 1e-4);
+  if (!restart) { m = mix(old, m, gp.blend.z); }
+  return m;
+}
+
+@compute @workgroup_size(THREADS)
 fn cs_blend(@builtin(local_invocation_index) t: u32, @builtin(workgroup_id) group: vec3<u32>) {
   let k = group.x;
   let rays = gp.slice.w;
@@ -120,13 +133,19 @@ fn cs_blend(@builtin(local_invocation_index) t: u32, @builtin(workgroup_id) grou
   let range = gp.blend.x;
   let first_ray = gp.misc.y + k * rays;
 
-  // This thread's distance texel, and its radiance texel for the first 36.
+  // This thread's two distance texels, and its radiance texel for the
+  // first 36.
   let dt = vec2<f32>(f32(t % GI_DEPTH), f32(t / GI_DEPTH));
   let depth_dir = oct_decode((dt + 0.5) / f32(GI_DEPTH) * 2.0 - 1.0);
+  let t2 = t + THREADS;
+  let dt2 = vec2<f32>(f32(t2 % GI_DEPTH), f32(t2 / GI_DEPTH));
+  let depth_dir2 = oct_decode((dt2 + 0.5) / f32(GI_DEPTH) * 2.0 - 1.0);
   let rt = vec2<f32>(f32(t % GI_RADIANCE), f32(t / GI_RADIANCE));
   let radiance_dir = oct_decode((rt + 0.5) / f32(GI_RADIANCE) * 2.0 - 1.0);
   var moments = vec2<f32>(0.0);
   var moment_weight = 0.0;
+  var moments2 = vec2<f32>(0.0);
+  var moment_weight2 = 0.0;
   var light = vec3<f32>(0.0);
   var light_weight = 0.0;
   for (var base = 0u; base < rays; base += THREADS) {
@@ -147,6 +166,11 @@ fn cs_blend(@builtin(local_invocation_index) t: u32, @builtin(workgroup_id) grou
       if (wd > 1e-4) {
         moments += vec2<f32>(dist, dist * dist) * wd;
         moment_weight += wd;
+      }
+      let wd2 = pow(max(dot(depth_dir2, dir), 0.0), 50.0);
+      if (wd2 > 1e-4) {
+        moments2 += vec2<f32>(dist, dist * dist) * wd2;
+        moment_weight2 += wd2;
       }
       let cr = max(dot(radiance_dir, dir), 0.0);
       let wr = cr * cr * cr * cr;
@@ -176,15 +200,10 @@ fn cs_blend(@builtin(local_invocation_index) t: u32, @builtin(workgroup_id) grou
   }
 
   // Distances: blended in time, two texels a vec4.
-  let old_at = at + GI_DEPTH_AT + (t >> 1u);
-  let old = select(probes[old_at].xy, probes[old_at].zw, (t & 1u) == 1u);
-  var m = select(old, moments / max(moment_weight, 1e-6), moment_weight > 1e-4);
-  if (!restart) { m = mix(old, m, gp.blend.z); }
-  depth[t] = m;
+  depth[t] = blend_depth(at, t, moments, moment_weight, restart);
+  depth[t2] = blend_depth(at, t2, moments2, moment_weight2, restart);
   workgroupBarrier();
-  if (t < GI_DEPTH * GI_DEPTH / 2u) {
-    probes[at + GI_DEPTH_AT + t] = vec4<f32>(depth[2u * t], depth[2u * t + 1u]);
-  }
+  probes[at + GI_DEPTH_AT + t] = vec4<f32>(depth[2u * t], depth[2u * t + 1u]);
 
   if (t == 0u) {
     // The harmonics: each texel's radiance over its share of the sphere

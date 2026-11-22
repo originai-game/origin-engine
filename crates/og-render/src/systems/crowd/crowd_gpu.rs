@@ -15,7 +15,8 @@ use crate::cull_gpu::{CROWD_COUNT_WORDS, CullPass, PassKind};
 use crate::skin::SKINNED_INSTANCE_STRIDE;
 use glam::{Mat4, Vec3};
 
-const WORKGROUP: u32 = 256;
+/// `crowd_cull.wgsl` `WG`: 128, compatibility mode's most invocations a workgroup.
+const WORKGROUP: u32 = 128;
 const MAX_PLANES: usize = 12;
 
 /// `Params` in crowd_cull.wgsl.

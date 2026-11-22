@@ -46,9 +46,11 @@ const MAX_NEAR: u32 = 128u;
 var<workgroup> near: array<u32, 128>;
 var<workgroup> near_count: atomic<u32>;
 var<workgroup> tile_min: atomic<u32>;
-// The light's sums, one pair per invocation (`light_sum`).
-var<workgroup> light_up: array<vec4<f32>, 256>;
-var<workgroup> light_side: array<vec4<f32>, 256>;
+// The light's sums, one pair per invocation (`light_sum`) of `light`'s
+// workgroup, the widest: compatibility mode's most invocations.
+const LIGHT_LANES: u32 = 128u;
+var<workgroup> light_up: array<vec4<f32>, LIGHT_LANES>;
+var<workgroup> light_side: array<vec4<f32>, LIGHT_LANES>;
 
 fn place(q: vec2<f32>) -> vec2<f32> {
   return q * length(q) * params.head.y;
@@ -294,18 +296,18 @@ fn light_sum(li: u32, count: u32) {
 
 // The light of the whole footprint, from `main`'s workgroups' shares, into
 // the texture's light row: texel 0 from above, 1 from the side (per line).
-@compute @workgroup_size(256)
+@compute @workgroup_size(LIGHT_LANES)
 fn light(@builtin(local_invocation_index) li: u32) {
   let groups = arrayLength(&partials) / 2u;
   var up = vec4<f32>(0.0);
   var side = vec4<f32>(0.0);
-  for (var g = li; g < groups; g += 256u) {
+  for (var g = li; g < groups; g += LIGHT_LANES) {
     up += partials[2u * g];
     side += partials[2u * g + 1u];
   }
   light_up[li] = up;
   light_side[li] = side;
-  light_sum(li, 256u);
+  light_sum(li, LIGHT_LANES);
   if (li == 0u) {
     let row = i32(params.sky.z);
     textureStore(footprint, vec2<i32>(0, row), light_up[0]);

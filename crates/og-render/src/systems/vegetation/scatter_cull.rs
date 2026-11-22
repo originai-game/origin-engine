@@ -30,7 +30,8 @@
 use glam::{Mat4, Vec3, Vec4};
 
 /// Copies a chunk holds at most (scatter.rs `CHUNK_CELLS` squared): one
-/// workgroup's four per lane.
+/// workgroup's eight per lane (scatter_cull.wgsl), its four a round of
+/// two (scatter_place.wgsl).
 pub(crate) const MAX_CHUNK_COPIES: u32 = 1024;
 /// Words per set in the draws buffer: three indexed draws (a level
 /// each), a plain one (the card), a pad.
@@ -1278,7 +1279,7 @@ mod tests {
             COPY_BYTES, 64,
             "four vectors per copy, as the shader reads them"
         );
-        assert_eq!(MAX_CHUNK_COPIES, 256 * 4, "a lane's four copies");
+        assert_eq!(MAX_CHUNK_COPIES, 128 * 8, "a cull lane's eight copies");
     }
 
     /// A chunk's regions follow one another in the list, a set after the

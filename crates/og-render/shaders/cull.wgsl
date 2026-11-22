@@ -12,7 +12,7 @@
 //   scatter     copies the visible transforms and writes the draws (the
 //               camera pass's previous transforms too, with object motion)
 
-const WG: u32 = 256u;
+const WG: u32 = 128u;
 const MAX_PLANES: u32 = 12u;
 
 // Pass kinds.
@@ -106,7 +106,7 @@ struct BatchGpu {
 fn pass_at(row: u32) -> u32 { return params.motion.y + row; }
 
 alias Sum = u32;
-var<workgroup> shared_sum: array<Sum, 256>;
+var<workgroup> shared_sum: array<Sum, WG>;
 var<workgroup> shared_inside: atomic<u32>;
 // The camera pass's hidden instances of the workgroup's first two batches
 // (the instances are sorted by batch), and the first one's index.
@@ -151,7 +151,7 @@ fn large_occluder(m: mat4x4<f32>, center: vec3<f32>, extent: vec3<f32>) -> bool 
   return max(covered.x, covered.y) * 16.0 >= max(size.x, size.y);
 }
 
-@compute @workgroup_size(256)
+@compute @workgroup_size(WG)
 fn visibility(@builtin(global_invocation_id) gid: vec3<u32>,
               @builtin(local_invocation_index) li: u32,
               @builtin(workgroup_id) wid: vec3<u32>) {
@@ -249,14 +249,14 @@ fn visibility(@builtin(global_invocation_id) gid: vec3<u32>,
   }
 }
 
-@compute @workgroup_size(256)
+@compute @workgroup_size(WG)
 fn scan_blocks(@builtin(local_invocation_index) li: u32,
                @builtin(workgroup_id) wid: vec3<u32>) {
   let g = passes[pass_at(wid.y)].info.z;
   scan_row_blocks(li, blocks_at(g), params.sizes.x);
 }
 
-@compute @workgroup_size(256)
+@compute @workgroup_size(WG)
 fn prefix(@builtin(global_invocation_id) gid: vec3<u32>,
           @builtin(local_invocation_index) li: u32,
           @builtin(workgroup_id) wid: vec3<u32>) {
@@ -264,7 +264,7 @@ fn prefix(@builtin(global_invocation_id) gid: vec3<u32>,
   scan_row_prefix(li, gid.x, n_instances(), prefix_at(g), blocks_at(g) + wid.x);
 }
 
-@compute @workgroup_size(256)
+@compute @workgroup_size(WG)
 fn scatter(@builtin(global_invocation_id) gid: vec3<u32>,
            @builtin(workgroup_id) wid: vec3<u32>) {
   let g = passes[pass_at(wid.y)].info.z;

@@ -49,8 +49,12 @@ struct PlaceJob {
 // at PLACE_TAIL its draws: an indexed indirect draw and a plain one.
 @group(2) @binding(0) var<storage, read_write> out: array<vec4<f32>>;
 
-const PLACE_LANES: u32 = 256u;
+// 128 lanes (compatibility mode's most invocations a workgroup) of four
+// copies a round, two rounds: a chunk's 1024 (scatter_cull.rs
+// MAX_CHUNK_COPIES).
+const PLACE_LANES: u32 = 128u;
 const PLACE_PER_LANE: u32 = 4u;
+const PLACE_ROUNDS: u32 = 2u;
 // scatter_cull.rs MAX_CHUNK_COPIES: the chunk's draws' first vector.
 const PLACE_TAIL: u32 = 4096u;
 
@@ -398,46 +402,52 @@ fn evaluate(@builtin(global_invocation_id) id: vec3<u32>) {
 
 var<workgroup> lane_counts: array<u32, PLACE_LANES>;
 
-// The chunk: its copies, compacted in order, and its draws.
-@compute @workgroup_size(256)
+// The chunk: its copies, compacted in order, and its draws. Each round
+// places the next PLACE_LANES * PLACE_PER_LANE copies after the last's.
+@compute @workgroup_size(PLACE_LANES)
 fn place(@builtin(local_invocation_index) lane: u32) {
   let li = job.counts.y;
   let r = job.layers[li].region;
   let n = r.z * r.w;
-  var copies: array<PlaceCopy, PLACE_PER_LANE>;
-  var mine = 0u;
-  for (var j = 0u; j < PLACE_PER_LANE; j++) {
-    let k = lane * PLACE_PER_LANE + j;
-    copies[j].grows = false;
-    if (k < n) {
-      copies[j] = place_copy(li, r.x + k % r.z, r.y + k / r.z, true);
-      if (copies[j].grows) { mine += 1u; }
+  var placed = 0u;
+  for (var w = 0u; w < PLACE_ROUNDS; w++) {
+    var copies: array<PlaceCopy, PLACE_PER_LANE>;
+    var mine = 0u;
+    for (var j = 0u; j < PLACE_PER_LANE; j++) {
+      let k = (w * PLACE_LANES + lane) * PLACE_PER_LANE + j;
+      copies[j].grows = false;
+      if (k < n) {
+        copies[j] = place_copy(li, r.x + k % r.z, r.y + k / r.z, true);
+        if (copies[j].grows) { mine += 1u; }
+      }
     }
-  }
-  lane_counts[lane] = mine;
-  workgroupBarrier();
-  // An inclusive scan over the lanes (Hillis and Steele).
-  for (var step = 1u; step < PLACE_LANES; step <<= 1u) {
-    var add = 0u;
-    if (lane >= step) { add = lane_counts[lane - step]; }
+    lane_counts[lane] = mine;
     workgroupBarrier();
-    lane_counts[lane] += add;
-    workgroupBarrier();
-  }
-  var at = lane_counts[lane] - mine;
-  for (var j = 0u; j < PLACE_PER_LANE; j++) {
-    if (copies[j].grows) {
-      let c = copies[j].columns;
-      // instances.rs GpuTransform: the columns' xyz, layer 0, no look.
-      out[at * 4u] = vec4<f32>(c[0], c[1].x);
-      out[at * 4u + 1u] = vec4<f32>(c[1].yz, c[2].xy);
-      out[at * 4u + 2u] = vec4<f32>(c[2].z, c[3]);
-      out[at * 4u + 3u] = vec4<f32>(0.0);
-      at += 1u;
+    // An inclusive scan over the lanes (Hillis and Steele).
+    for (var step = 1u; step < PLACE_LANES; step <<= 1u) {
+      var add = 0u;
+      if (lane >= step) { add = lane_counts[lane - step]; }
+      workgroupBarrier();
+      lane_counts[lane] += add;
+      workgroupBarrier();
     }
+    var at = placed + lane_counts[lane] - mine;
+    for (var j = 0u; j < PLACE_PER_LANE; j++) {
+      if (copies[j].grows) {
+        let c = copies[j].columns;
+        // instances.rs GpuTransform: the columns' xyz, layer 0, no look.
+        out[at * 4u] = vec4<f32>(c[0], c[1].x);
+        out[at * 4u + 1u] = vec4<f32>(c[1].yz, c[2].xy);
+        out[at * 4u + 2u] = vec4<f32>(c[2].z, c[3]);
+        out[at * 4u + 3u] = vec4<f32>(0.0);
+        at += 1u;
+      }
+    }
+    placed += lane_counts[PLACE_LANES - 1u];
+    workgroupBarrier();
   }
   if (lane == PLACE_LANES - 1u) {
-    let total = bitcast<f32>(lane_counts[lane]);
+    let total = bitcast<f32>(placed);
     out[PLACE_TAIL] = vec4<f32>(bitcast<f32>(job.counts.z), total, 0.0, 0.0);
     // The card's draw: its vertices (scatter.rs IMPOSTOR_CARD_VERTICES).
     out[PLACE_TAIL + 1u] = vec4<f32>(0.0, bitcast<f32>(24u), total, 0.0);

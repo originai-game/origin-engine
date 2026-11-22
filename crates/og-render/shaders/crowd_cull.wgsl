@@ -18,7 +18,7 @@
 //   totals      sums the frame's counts for its stats (cull_gpu.rs
 //               `CROWD_COUNT_WORDS`) after the draws
 
-const WG: u32 = 256u;
+const WG: u32 = 128u;
 
 // Row kinds (cull_gpu.rs `PassKind`).
 const SHADOW: u32 = 0u;
@@ -89,7 +89,7 @@ struct ClipGpu {
 @group(0) @binding(9) var<storage, read_write> args: array<u32>;
 
 alias Sum = vec4<u32>;
-var<workgroup> shared_sum: array<Sum, 256>;
+var<workgroup> shared_sum: array<Sum, WG>;
 
 fn n_members() -> u32 { return params.counts.x; }
 fn prefix_at(r: u32) -> u32 { return r * (n_members() + 1u + 2u * params.sizes.x); }
@@ -163,7 +163,7 @@ fn one_hot(l: u32) -> vec4<u32> {
   return vec4<u32>(vec4<bool>(l == 0u, l == 1u, l == 2u, l == 3u));
 }
 
-@compute @workgroup_size(256)
+@compute @workgroup_size(WG)
 fn visibility(@builtin(global_invocation_id) gid: vec3<u32>,
               @builtin(local_invocation_index) li: u32,
               @builtin(workgroup_id) wid: vec3<u32>) {
@@ -230,13 +230,13 @@ fn visibility(@builtin(global_invocation_id) gid: vec3<u32>,
   if (li == 0u) { scan[hidden_at(r) + wid.x] = shared_sum[0]; }
 }
 
-@compute @workgroup_size(256)
+@compute @workgroup_size(WG)
 fn scan_blocks(@builtin(local_invocation_index) li: u32,
                @builtin(workgroup_id) wid: vec3<u32>) {
   scan_row_blocks(li, blocks_at(wid.y), params.sizes.x);
 }
 
-@compute @workgroup_size(256)
+@compute @workgroup_size(WG)
 fn prefix(@builtin(global_invocation_id) gid: vec3<u32>,
           @builtin(local_invocation_index) li: u32,
           @builtin(workgroup_id) wid: vec3<u32>) {
@@ -255,7 +255,7 @@ fn frame_slot(c: CrowdGpu, clip: f32, frame: f32) -> vec2<f32> {
   return vec2<f32>(f32(info.x + k * info.y), clamp(f - f32(k), 0.0, 1.0));
 }
 
-@compute @workgroup_size(256)
+@compute @workgroup_size(WG)
 fn scatter(@builtin(global_invocation_id) gid: vec3<u32>,
            @builtin(workgroup_id) wid: vec3<u32>) {
   let r = wid.y;
