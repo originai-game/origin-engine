@@ -309,13 +309,19 @@ fn box_minus_box_is_its_analytic_volume_and_closed() {
     assert!((i.volume() - 0.336).abs() < 1e-5, "{}", i.volume());
 }
 
+/// A turn of `angle` about a unit `axis`, from the kernel's trig.
+fn turn(axis: DVec3, angle: f64) -> DQuat {
+    let (s, c) = og_shape::math::trig::sin_cos(angle / 2.0);
+    DQuat::from_xyzw(axis.x * s, axis.y * s, axis.z * s, c)
+}
+
 #[test]
 fn csg_of_a_cube_and_a_sphere_is_closed_and_adds_up() {
     let a = boxed(2.0, 2.0, 2.0);
     let b = sphere(0.6, 24, 12);
     let rotated = Placement {
         position: DVec3::new(0.85, 0.3, -0.2),
-        quaternion: DQuat::from_euler(glam::EulerRot::XYZ, 0.3, 0.7, 0.1),
+        quaternion: turn(DVec3::X, 0.3) * turn(DVec3::Y, 0.7) * turn(DVec3::Z, 0.1),
         scale: DVec3::new(1.0, 1.2, 0.9),
     };
     let none = Placement::default();
