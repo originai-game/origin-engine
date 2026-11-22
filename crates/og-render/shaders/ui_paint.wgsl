@@ -41,7 +41,22 @@ struct PaintGpu {
   // x: its colour matrix's first row in `gradients` + 1 (0 none).
   f: vec4<u32>,
 };
-@group(0) @binding(1) var<storage, read> quads: array<PaintGpu>;
+// A data texture (data_texture.rs), a quad nine texels in a row
+// (paint.rs `PaintGpu`): a vertex stage reads no storage under WebGPU's
+// compatibility mode.
+@group(0) @binding(1) var quads: texture_2d<u32>;
+
+fn paint_quad(i: u32) -> PaintGpu {
+  var t: array<vec4<u32>, 9>;
+  for (var k = 0u; k < 9u; k++) {
+    t[k] = textureLoad(quads, data_at(i * 9u + k), 0);
+  }
+  return PaintGpu(
+    bitcast<vec4<f32>>(t[0]), bitcast<vec4<f32>>(t[1]), bitcast<vec4<f32>>(t[2]),
+    bitcast<vec4<f32>>(t[3]), bitcast<vec4<f32>>(t[4]), bitcast<vec4<f32>>(t[5]),
+    t[6], bitcast<vec4<f32>>(t[7]), t[8],
+  );
+}
 // Three entries a gradient: x the angle (radians, CSS: 0 up, clockwise), y
 // its first stop, z its stops, w its shape (0 linear, 1 radial, 2 conic);
 // then its centre (xy, CSS px from the box's centre) and a radial one's radii
@@ -52,8 +67,9 @@ struct PaintGpu {
 @group(0) @binding(3) var<storage, read> stops: array<vec4<f32>>;
 // The built-in icons' segments, a b in their 24-unit space.
 @group(0) @binding(4) var<storage, read> segments: array<vec4<f32>>;
-// Paint-time transforms, two entries each: CSS's matrix a b c d, then e f.
-@group(0) @binding(5) var<storage, read> transforms: array<vec4<f32>>;
+// Paint-time transforms, two entries each: CSS's matrix a b c d, then e f;
+// a data texture (data_texture.rs) the vertex stage reads.
+@group(0) @binding(5) var transforms: texture_2d<f32>;
 
 @group(1) @binding(0) var page: texture_2d<f32>;
 @group(1) @binding(1) var page_sampler: sampler;
@@ -77,7 +93,7 @@ fn vs_paint(@builtin(vertex_index) vi: u32, @builtin(instance_index) ii: u32) ->
   var corners = array<vec2<f32>, 6>(
     vec2<f32>(0.0, 0.0), vec2<f32>(1.0, 0.0), vec2<f32>(1.0, 1.0),
     vec2<f32>(0.0, 0.0), vec2<f32>(1.0, 1.0), vec2<f32>(0.0, 1.0));
-  let q = quads[ii];
+  let q = paint_quad(ii);
   let c = corners[vi];
   // What the quad covers around the box's centre: a box and a device pixel
   // for its antialiased edge; a glyph's quad, which holds its field's reach;
@@ -85,8 +101,8 @@ fn vs_paint(@builtin(vertex_index) vi: u32, @builtin(instance_index) ii: u32) ->
   var m = vec4<f32>(1.0, 0.0, 0.0, 1.0);
   var t = vec2<f32>(0.0);
   if (q.k.w != 0u) {
-    m = transforms[2u * q.k.w];
-    t = transforms[2u * q.k.w + 1u].xy;
+    m = textureLoad(transforms, data_at(2u * q.k.w), 0);
+    t = textureLoad(transforms, data_at(2u * q.k.w + 1u), 0).xy;
   }
   let aa = frame.output.z * sqrt(max(abs(m.x * m.w - m.y * m.z), 1e-6));
   let px = 1.0 / max(aa, 1e-3);
@@ -265,7 +281,7 @@ fn fs_paint(in: PaintOut) -> @location(0) vec4<f32> {
   let screen_tex = vec2<f32>(1.0) / fwidthFine(in.uv);
   let local_dx = dpdx(in.local);
   let local_dy = dpdy(in.local);
-  let q = quads[in.index];
+  let q = paint_quad(in.index);
   let css = in.position.xy / frame.output.z;
   if (css.x < q.clip.x || css.y < q.clip.y || css.x >= q.clip.z || css.y >= q.clip.w) {
     discard;

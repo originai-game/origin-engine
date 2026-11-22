@@ -11,6 +11,7 @@
 //! arena's order, where the UI's layer lies among the overlay's runs
 //! ([`crate::overlay::OverlayFrame::ui_at`]).
 
+use crate::gpu::data_texture::{DataTexture, data_entry};
 use crate::scene::GlyphKey;
 use crate::sprites::FontLayout;
 use crate::{FontHandle, TextureHandle};
@@ -32,6 +33,9 @@ pub(crate) struct PaintGpu {
     /// x: its colour matrix's first row in `gradients` + 1 (0 none).
     f: [u32; 4],
 }
+
+// ui_paint.wgsl `paint_quad` reads a quad as nine texels.
+const _: () = assert!(std::mem::size_of::<PaintGpu>() == 9 * 16);
 
 /// What a run binds as group 1: the white sprite (nothing samples it), a
 /// font page, or a texture's sprite group.
@@ -86,11 +90,13 @@ pub(crate) struct PaintRenderer {
     layer: Option<Layer>,
     layout: wgpu::BindGroupLayout,
     uniform: wgpu::Buffer,
-    quads: wgpu::Buffer,
+    /// The quads and the transforms, data textures (data_texture.rs) the
+    /// vertex stage reads.
+    quads: DataTexture,
     gradients: wgpu::Buffer,
     stops: wgpu::Buffer,
     segments: wgpu::Buffer,
-    transforms: wgpu::Buffer,
+    transforms: DataTexture,
     group: Option<wgpu::BindGroup>,
     uploaded: Option<Uploaded>,
     /// The icon table uploaded (its address and length).
@@ -164,11 +170,11 @@ impl PaintRenderer {
             label: Some("ui paint"),
             entries: &[
                 entry(0, wgpu::BufferBindingType::Uniform),
-                entry(1, storage),
+                data_entry(1, wgpu::ShaderStages::VERTEX_FRAGMENT, true),
                 entry(2, storage),
                 entry(3, storage),
                 entry(4, storage),
-                entry(5, storage),
+                data_entry(5, wgpu::ShaderStages::VERTEX, false),
             ],
         });
         let pl = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
@@ -234,11 +240,23 @@ impl PaintRenderer {
                     mapped_at_creation: false,
                 },
             ),
-            quads: buffer(device, "ui paint quads", 0),
+            quads: DataTexture::new(
+                device,
+                "ui paint quads",
+                wgpu::TextureFormat::Rgba32Uint,
+                1,
+                wgpu::TextureUsages::COPY_DST,
+            ),
             gradients: buffer(device, "ui paint gradients", 0),
             stops: buffer(device, "ui paint stops", 0),
             segments: buffer(device, "ui paint icons", 0),
-            transforms: buffer(device, "ui paint transforms", 0),
+            transforms: DataTexture::new(
+                device,
+                "ui paint transforms",
+                wgpu::TextureFormat::Rgba32Float,
+                1,
+                wgpu::TextureUsages::COPY_DST,
+            ),
             group: None,
             uploaded: None,
             icons: (0, 0),
@@ -292,7 +310,12 @@ impl PaintRenderer {
         self.uploaded = Some(now);
         self.resolve(paint, font, texture);
         let mut grew = self.group.is_none();
-        grew |= write(device, queue, &mut self.quads, "ui paint quads", &self.gpu);
+        grew |= self.quads.grow_and_write(
+            device,
+            queue,
+            "ui paint quads",
+            bytemuck::cast_slice(&self.gpu),
+        );
         self.gradient_rows.clear();
         // Three rows a gradient: its angle, stops and shape, its centre
         // and radii, and a mask's box (ui_paint.wgsl `gradients`).
@@ -332,12 +355,11 @@ impl PaintRenderer {
         } else {
             &paint.transforms[..]
         };
-        grew |= write(
+        grew |= self.transforms.grow_and_write(
             device,
             queue,
-            &mut self.transforms,
             "ui paint transforms",
-            transforms,
+            bytemuck::cast_slice(transforms),
         );
         if let Some(icons) = &paint.icons {
             let at = (icons.as_ptr() as usize, icons.len());
@@ -353,11 +375,11 @@ impl PaintRenderer {
                 &self.layout,
                 &[
                     self.uniform.as_entire_binding(),
-                    self.quads.as_entire_binding(),
+                    wgpu::BindingResource::TextureView(&self.quads.view),
                     self.gradients.as_entire_binding(),
                     self.stops.as_entire_binding(),
                     self.segments.as_entire_binding(),
-                    self.transforms.as_entire_binding(),
+                    wgpu::BindingResource::TextureView(&self.transforms.view),
                 ],
             ));
         }
