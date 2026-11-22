@@ -25,6 +25,7 @@ pub(super) mod story;
 pub(super) mod story_functions;
 pub(super) mod strings;
 pub mod strings_extract;
+pub(super) mod table;
 pub(super) mod terrain;
 pub(super) mod terrain_generate;
 pub mod tilemap;

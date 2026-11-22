@@ -1,5 +1,5 @@
 //! `og i18n extract [project] [--json] [--write] [--check]`: the og.i18n
-//! keys a project's dialogues and quests show, checked against its string
+//! keys a project's dialogues, quests and data tables show, checked against its string
 //! tables per locale (og-cook's `strings_extract`).
 
 use og_cook::cook::strings_extract::{extract, write_base};

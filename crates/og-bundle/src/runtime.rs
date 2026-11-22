@@ -1460,6 +1460,21 @@ impl Bundle {
         }
     }
 
+    /// The checked text of a table blob (`og.Table`); read it with
+    /// og-core's `table::Table::parse`.
+    pub fn table_text(&self, id: &str, bytes: &[u8]) -> Result<String, LoadError> {
+        let blob = self.blob::<format::Table>(id, bytes)?;
+        let meta = one::<format::TableMeta>(&blob)?;
+        match blob
+            .raw("text")?
+            .get(..meta.text_bytes as usize)
+            .map(std::str::from_utf8)
+        {
+            Some(Ok(t)) => Ok(t.to_string()),
+            _ => Err(invalid(&blob, "the table text is cut short or not UTF-8")),
+        }
+    }
+
     /// The look of a look blob (`og.Look`): flattened and checked by the
     /// cook; the assets it names are the caller's to load.
     pub fn look(&self, id: &str, bytes: &[u8]) -> Result<crate::look::LookFile, LoadError> {

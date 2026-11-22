@@ -1,5 +1,5 @@
-//! `og i18n extract`: every og.i18n key a project's dialogues and quests
-//! show (`.yarn`, `type quest`), with the arguments they pass and
+//! `og i18n extract`: every og.i18n key a project's dialogues, quests and
+//! tables show (`.yarn`, `type quest`, `type table`), with the arguments they pass and
 //! where, checked against each string table (`type strings`): per locale,
 //! the keys it lacks and the messages that take an argument nothing
 //! passes. [`write_base`] adds the keys the base table lacks to it, each
@@ -109,6 +109,15 @@ pub fn extract(project: &Path) -> Result<Extract, String> {
                 })
             }
             t if t == og_story::QUEST_TYPE => og_story::Quest::parse(&text).map(|q| q.keys()),
+            // A table's `text` fields: each key with its base text.
+            t if t == og_core::table::TABLE_TYPE => og_core::table::Table::parse(&text).map(|t| {
+                t.texts()
+                    .map(|(key, base, line)| {
+                        x.keys.entry(key.to_string()).or_default().text = Some(base.to_string());
+                        (key.to_string(), Vec::new(), line)
+                    })
+                    .collect::<Vec<_>>()
+            }),
             t if t == og_i18n::STRINGS_TYPE => {
                 match og_i18n::StringTable::parse(&text) {
                     Ok(t) => tables.push((rel, t)),
