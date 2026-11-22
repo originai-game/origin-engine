@@ -141,6 +141,36 @@ Colab host through the plugin, only on the coordinator's instruction.
 Reference movements are reported for quality review, not used as a
 pixel-difference landing gate (§Reference frames).
 
+### The final L4 pass
+
+Heads land on their authors' CPU or browser frames; one L4 session over one
+main SHA then judges every look they deferred. `scripts/final-l4-pass.sh`
+makes that one command and a download:
+
+1. On the orb, at the SHA: `OG_GATE_SKIP=web-reference scripts/check.sh
+   full --only web-reference` (the web build with the publish pair, its
+   tests skipped), then `scripts/final-l4-pass.sh bundle` (og, the addon,
+   og-gfx, the GPU test binaries, the web build and the ignored assets:
+   template fonts, og-tests' assets and the fixtures' footage, in
+   `../final-l4-bundle`). The GPU host fetches nothing.
+2. Dry-run it on the orb first: `scripts/final-l4-pass.sh run
+   ../final-l4-bundle /tmp/final --dry` cuts each section to a few cases on
+   the CPU; its failures must be only what a CPU cannot judge.
+3. Take one session when the coordinator gives the slot: `colab_gpu_start`
+   (L4, `idle_minutes` 20), `colab_gpu_sync` the checkout and the bundle
+   (`repo: "final-l4-bundle"`), then `colab_gpu_run` `scripts/final-l4-pass.sh
+   run /content/work/final-l4-bundle /content/final > /content/final.log
+   2>&1`. Poll `colab_gpu_jobs` minutes apart; the gallery alone is about 30
+   minutes, the whole pass about 90. Keep the session under two hours.
+4. `colab_gpu_download` `/content/final`, then `colab_gpu_stop` at once,
+   before reading anything.
+
+The output holds a contact sheet per section, `lane.txt` (the gallery
+lane), `summary.txt` (the SHA, the adapters, each section's time and
+result) and `failures.txt`. Movements of og-gfx scenes are listed with
+their actual and diff frames for review, never as a failure; a skipped GPU
+run, a black or blank frame or a software web adapter is one.
+
 Web frames and web GPU timings both come from Chrome on the L4. The
 engine's launch (`webGpuSwitches` in `packages/engine/src/node/device.ts`)
 puts headless Chrome's WebGPU on SwiftShader, a CPU renderer. SwiftShader

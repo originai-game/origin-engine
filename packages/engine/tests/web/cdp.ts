@@ -149,7 +149,13 @@ export class Browser {
           "--lang=en-US", "--accept-lang=en-US",
           `--window-size=${o.width ?? 1280},${o.height ?? 720}`, "--hide-scrollbars",
           ...(process.platform === "darwin" ? ["--use-angle=metal"] : []),
-          ...(o.webgpu === false ? [] : ["--enable-unsafe-webgpu", ...webGpuSwitches(true)]),
+          // OG_WEB_GPU=nvidia: the set docs/ci.md §The GPU host names for the L4, which gives
+          // WebGPU the NVIDIA adapter (no canvas shows; frames are read back).
+          ...(o.webgpu === false
+            ? []
+            : ["--enable-unsafe-webgpu", ...(process.env.OG_WEB_GPU === "nvidia"
+              ? ["--use-angle=vulkan", "--enable-features=WebGPU,Vulkan", "--disable-vulkan-surface"]
+              : webGpuSwitches(true))]),
           "--ignore-gpu-blocklist", "--disable-gpu-vsync",
           "--autoplay-policy=user-gesture-required", "--remote-debugging-port=0",
           ...(o.flags ?? []),
