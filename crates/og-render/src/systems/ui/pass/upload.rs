@@ -390,6 +390,7 @@ impl UiRenderer {
                         origin: input.origin,
                         scale: input.scale,
                         decode: *decode,
+                        encode: false,
                         size: input.size,
                     },
                 )),

@@ -240,7 +240,8 @@ impl Pass for OverlayPass {
                 || rebuilds.len() > 1
                 || !copies.is_empty()
                 || !captures.is_empty()
-                || color_filter.is_some();
+                || color_filter.is_some()
+                || r.paint.splits();
             // The overlay draws into the source through the view it blends in.
             layered = match (over_content, overlay_view) {
                 (false, _) => None,
@@ -296,41 +297,45 @@ impl Pass for OverlayPass {
         // too, else in a pass of its own on `paint_to`, else in its layer,
         // drawn here over the target.
         let paint = r.paint.drawn() && !scene.ui.paint.is_empty();
-        let paint_shared = decode && overlay_view.is_none();
+        // A paint whose backdrops end its pass draws in passes of its own.
+        let paint_shared = decode && overlay_view.is_none() && !r.paint.splits();
         fn paint_group(r: &Renderer, bind: ui::paint::PaintBind) -> &wgpu::BindGroup {
             match bind {
                 ui::paint::PaintBind::Texture(t) => r.cache.sprite_groups[t.index()]
                     .as_ref()
                     .expect("made at upload"),
-                // A glyph page is the pass's own.
-                ui::paint::PaintBind::White | ui::paint::PaintBind::Glyphs(..) => {
-                    &r.sprite.white_sprite_group
-                }
+                // A glyph page and a group's result are the pass's own.
+                ui::paint::PaintBind::White
+                | ui::paint::PaintBind::Glyphs(..)
+                | ui::paint::PaintBind::Group(_) => &r.sprite.white_sprite_group,
             }
         }
-        let paint_pass = |encoder: &mut crate::Encoder, view, load| {
-            let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                label: Some("ui paint"),
-                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                    view,
-                    depth_slice: None,
-                    resolve_target: None,
-                    ops: wgpu::Operations {
-                        load,
-                        store: wgpu::StoreOp::Store,
-                    },
-                })],
-                depth_stencil_attachment: None,
-                timestamp_writes: None,
-                occlusion_query_set: None,
-                multiview_mask: None,
-            });
-            r.paint.draw(&mut pass, |bind| paint_group(r, bind))
+        let group1 = |bind| paint_group(r, bind);
+        let cx = ui::paint::GroupCx {
+            device: &r.device,
+            queue: &r.queue,
+            group1: &group1,
+            layout: &r.sprite.sprite_layout,
+            sampler: &r.sprite.sprite_sampler,
         };
-        if let (true, None, Some(layer)) = (paint, paint_to, r.paint.layer()) {
-            let clear = wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT);
-            stats.draw_calls += paint_pass(encoder, layer, clear);
+        // The groups' layers and their filters, before anything reads them.
+        if paint {
+            stats.draw_calls += r.paint.record_groups(encoder, &cx);
         }
+        // What a backdrop reads where the paint draws in the target: the
+        // glass source the frame goes through ([`PaintRenderer::reads_target`]).
+        let paint_pass = |encoder: &mut crate::Encoder, view, load| {
+            let under = match layered {
+                Some(_) => ui::paint::Under::Target(view, (r.out_width, r.out_height)),
+                None => ui::paint::Under::None,
+            };
+            r.paint.record_main(encoder, &cx, view, load, under)
+        };
+        // The pass's own layer, drawn where the paint lies among the runs.
+        let paint_layer = match (paint, paint_to) {
+            (true, None) => r.paint.layer(),
+            _ => None,
+        };
         let paint_at = overlay_frame.map_or(0, |f| f.ui_at).min(runs.len());
         let group0 = r.ui_main_group();
         if (!runs.is_empty() && group0.is_some()) || paint {
@@ -378,6 +383,11 @@ impl Pass for OverlayPass {
                 let over = paint_here && paint_own.is_none() && !paint_shared;
                 if let (true, Some(texture)) = (over, behind) {
                     stats.draw_calls += r.paint.copy_behind(encoder, texture);
+                }
+                if let (true, Some(layer)) = (paint_here, paint_layer) {
+                    let clear = wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT);
+                    let under = ui::paint::Under::Layer(over && behind.is_some());
+                    stats.draw_calls += r.paint.record_main(encoder, &cx, layer, clear, under);
                 }
                 if to > from || (paint_here && paint_own.is_none()) {
                     let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {

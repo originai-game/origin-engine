@@ -19,7 +19,8 @@
 struct PaintFrame {
   // xy: the target in device pixels; z: device pixels per CSS pixel.
   output: vec4<f32>,
-  // x: one code value of the target (a gradient's dither).
+  // x: one code value of the target (a gradient's dither); zw: the
+  // target's top left on the output, device pixels (a group's layer).
   extra: vec4<f32>,
   // The preblend's eight rows of 256 coverages, a byte each.
   preblend: array<vec4<u32>, 128>,
@@ -41,10 +42,12 @@ struct PaintGpu {
   p: vec4<f32>,
   // x: the kind (0 solid, 1 gradient, 2 glyph, 3 icon, 4 border, 5 shadow,
   // 6 inset shadow, 7 image, 8 a polyline's segment: ends in uv, its
-  // neighbours' far ends in r, width and flags in p, 9 a glyph's raster),
-  // y and z its gradient, or its first segment and their count, or an
-  // image's flags (1 fill, 2 tile), or a raster's tier (0 coverage, 1
-  // colour, 2 distance field), w its transform (0 none).
+  // neighbours' far ends in r, width and flags in p, 9 a glyph's raster,
+  // 10 a group's composite: its result's top left and size on the output
+  // in uv, device px), y and z its gradient, or its first segment and their
+  // count, or an image's flags (1 fill, 2 tile), or a raster's tier (0
+  // coverage, 1 colour, 2 distance field), or a group's flags (z: 1 cut to
+  // its rounded box), w its transform (0 none).
   k: vec4<u32>,
   // An image's radial wipe: the fraction hidden, the start angle, 1 for
   // counter-clockwise; w its mask, a gradient's index + 1 (0 none).
@@ -124,7 +127,7 @@ fn vs_paint(@builtin(vertex_index) vi: u32, @builtin(instance_index) ii: u32) ->
   let half = 0.5 * q.rect.zw;
   var lo = -half - vec2<f32>(px);
   var hi = half + vec2<f32>(px);
-  if (q.k.x == 7u || q.k.x == 9u) {
+  if (q.k.x == 7u || q.k.x == 9u || (q.k.x == 10u && (q.k.z & 1u) == 0u)) {
     lo = -half;
     hi = half;
   } else if (q.k.x == 5u) {
@@ -136,11 +139,18 @@ fn vs_paint(@builtin(vertex_index) vi: u32, @builtin(instance_index) ii: u32) ->
   let at = q.rect.xy + half + local;
   // The transform moves the quad; the box's distances stay its own.
   let css = vec2<f32>(m.x * at.x + m.z * at.y, m.y * at.x + m.w * at.y) + t;
-  let device = css * frame.output.z;
+  // On the output, then on the target, which may be a layer of it.
+  let screen = css * frame.output.z;
+  let device = screen - frame.extra.zw;
   var o: PaintOut;
   o.position = vec4<f32>(device.x / frame.output.x * 2.0 - 1.0, 1.0 - device.y / frame.output.y * 2.0, 0.0, 1.0);
   o.local = local;
   o.uv = vec2<f32>(mix(q.uv.x, q.uv.z, c.x), mix(q.uv.y, q.uv.w, c.y));
+  if (q.k.x == 10u) {
+    // A group's result where this corner lands on the output: a pixel's
+    // centre reads its texel's centre.
+    o.uv = (screen - q.uv.xy) / q.uv.zw;
+  }
   o.index = ii;
   o.aa = aa;
   o.at = at;
@@ -308,7 +318,7 @@ fn fs_paint(in: PaintOut) -> @location(0) vec4<f32> {
   let local_dx = dpdx(in.local);
   let local_dy = dpdy(in.local);
   let q = paint_quad(in.index);
-  let css = in.position.xy / frame.output.z;
+  let css = (in.position.xy + frame.extra.zw) / frame.output.z;
   if (css.x < q.clip.x || css.y < q.clip.y || css.x >= q.clip.z || css.y >= q.clip.w) {
     discard;
   }
@@ -431,6 +441,19 @@ fn fs_paint(in: PaintOut) -> @location(0) vec4<f32> {
         let shown = 1.0 - q.w.x;
         let r = length(in.local) * scale * turn;
         a *= clamp(min(t, shown - t) * r + 0.5, 0.0, 1.0) * select(0.0, 1.0, shown > 0.0);
+      }
+    }
+    case 10u: {
+      // A group's filtered layer, or a backdrop's filtered capture
+      // (premultiplied, sRGB-encoded), at its opacity; a backdrop cut to
+      // its element's rounded box.
+      if (m.a <= 0.0) {
+        discard;
+      }
+      rgb = srgb_decode(m.rgb / m.a);
+      a *= m.a;
+      if ((q.k.z & 1u) != 0u) {
+        a *= edge(sd_round_box(in.local, half, q.r), scale);
       }
     }
     case 8u: {

@@ -1052,6 +1052,11 @@ impl Next {
         let t1 = now();
         self.font = faces.any();
         let (_, painted) = tree.present(&mut faces.collection, atlas, icons);
+        warnings.extend(
+            tree.take_warnings()
+                .into_iter()
+                .map(|w| format!("og.ui: {w}")),
+        );
         // The atlas's frame: a plot no text read for long enough empties.
         atlas.advance();
         let t2 = now();

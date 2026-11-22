@@ -2001,7 +2001,13 @@ mod tests {
         let apply = |m: &og_draw::paint::ColorMatrix, c: [f32; 4]| -> [f32; 4] {
             std::array::from_fn(|i| (0..4).map(|k| m[i][k] * c[k]).sum::<f32>() + m[4][i])
         };
-        let filters: Vec<u32> = t.drawn.quads.iter().map(|q| q.filter).collect();
+        let filters: Vec<u32> = t
+            .drawn
+            .quads
+            .iter()
+            .filter(|q| q.kind == PaintKind::Solid as u32)
+            .map(|q| q.filter)
+            .collect();
         assert_eq!(filters.len(), 4);
         assert!(filters[0] != 0 && filters[1] != 0 && filters[0] != filters[1]);
         assert_eq!(&filters[2..], [0, 0], "unfiltered, and blur is no matrix");
@@ -5019,6 +5025,156 @@ mod tests {
         assert_eq!(child.rect, [2.0, 2.0, 36.0, 36.0], "its own box");
         assert_eq!(solid(4).round, 1, "a grandchild");
         assert_eq!(solid(5).round, 0, "a sibling");
+    }
+
+    /// `drop-shadow-*` and `blur-*` draw an element and its subtree
+    /// through a group: its composite quad first, then what it holds, the
+    /// group listed when its subtree ends, so a nested one comes before
+    /// its parent and its range lies inside its parent's. The group's
+    /// opacity and mask go to its composite, and what it holds draws at
+    /// full alpha and unmasked. A backdrop is a group of no quads under
+    /// its element's own. Ways this could fail: a group's range ending at
+    /// its own quads (its children outside the layer), groups listed
+    /// parent first, the opacity applied twice (inside and on the
+    /// composite), or a sibling drawn into the layer.
+    #[test]
+    fn a_filter_draws_its_subtree_through_a_group_and_a_backdrop_under_it() {
+        let mut t = real();
+        nodes(
+            &mut t,
+            &[
+                (
+                    1,
+                    0,
+                    "w-[100px] h-[100px] shrink-0 bg-white opacity-50 \
+                     mask-[linear-gradient(black,transparent)] drop-shadow-[0_4px_6px_#000]",
+                    0,
+                ),
+                (2, 0, "w-[40px] h-[40px] bg-black blur-[3px]", 1),
+                (3, 0, "w-[10px] h-[10px] bg-white", 2),
+                (4, 0, "w-[20px] h-[20px] shrink-0 bg-white", 0),
+                (
+                    5,
+                    0,
+                    "w-[30px] h-[30px] shrink-0 bg-white/20 rounded-[8px] backdrop-blur-[5px] backdrop-brightness-50",
+                    0,
+                ),
+            ],
+        );
+        frame(&mut t);
+        let d = &t.drawn;
+        assert_eq!(d.groups.len(), 3, "{:?}", d.groups);
+        let (inner, outer, backdrop) = (d.groups[0], d.groups[1], d.groups[2]);
+        assert!(!inner.backdrop && !outer.backdrop && backdrop.backdrop);
+        // The outer group holds the inner one, which holds its child.
+        assert!(outer.quad < inner.quad && inner.end <= outer.end);
+        let at = |id: u32| {
+            let r = t.op_box(id).unwrap();
+            d.quads
+                .iter()
+                .position(|q| q.kind == PaintKind::Solid as u32 && q.rect == r)
+                .unwrap() as u32
+        };
+        assert!(
+            (inner.quad + 1..inner.end).contains(&at(3)),
+            "the grandchild"
+        );
+        assert!(
+            (outer.quad + 1..outer.end).contains(&at(1)),
+            "its own ground"
+        );
+        assert!(!(outer.quad..outer.end).contains(&at(4)), "a sibling");
+        let composite = d.quads[outer.quad as usize];
+        assert_eq!(composite.kind, PaintKind::Group as u32);
+        assert_eq!(composite.a, 1, "the group it composites");
+        assert_eq!(composite.color[3], 0.5, "its opacity");
+        assert_ne!(composite.mask, 0, "its mask");
+        let own = d.quads[at(1) as usize];
+        assert_eq!((own.color[3], own.mask), (1.0, 0), "inside: as it is");
+        // Its layer covers its box and the shadow's reach (3 deviations of
+        // 3 px and the 4 px offset).
+        let [x, y, w, h] = t.op_box(1).unwrap();
+        let r = composite.rect;
+        assert!(r[0] <= x - 9.0 && r[1] <= y - 9.0, "{r:?}");
+        assert!(
+            r[0] + r[2] >= x + w + 9.0 && r[1] + r[3] >= y + h + 13.0,
+            "{r:?}"
+        );
+        assert_eq!(
+            &d.effects[outer.first as usize..(outer.first + outer.count) as usize],
+            &[PaintEffect::DropShadow {
+                offset: [0.0, 4.0],
+                sigma: 3.0,
+                color: [0.0, 0.0, 0.0, 1.0]
+            }]
+        );
+        assert_eq!(d.effects[inner.first as usize], PaintEffect::Blur(3.0));
+        // The backdrop: its composite under its element's ground, its
+        // blur then its colour matrix.
+        let b = d.quads[backdrop.quad as usize];
+        assert_eq!(
+            (b.kind, b.rect),
+            (PaintKind::Group as u32, t.op_box(5).unwrap())
+        );
+        assert_eq!(b.radius, [8.0; 4]);
+        assert_eq!(backdrop.end, backdrop.quad + 1);
+        assert!(at(5) > backdrop.quad);
+        let fx = &d.effects[backdrop.first as usize..(backdrop.first + backdrop.count) as usize];
+        assert_eq!(fx[0], PaintEffect::Blur(5.0));
+        assert!(matches!(fx[1], PaintEffect::Matrix(_)));
+    }
+
+    /// A filter is a stacking context, as in CSS: a z-indexed child stays
+    /// in its group, and a group and a backdrop still name their own
+    /// quads after z moves a sibling painted before them past them. Ways
+    /// this could fail: the child lifted out of the layer to the root's
+    /// context, or the groups left naming the places their quads had
+    /// before the reorder.
+    #[test]
+    fn a_filter_keeps_its_z_indexed_children_and_its_groups_follow_the_reorder() {
+        let mut t = real();
+        nodes(
+            &mut t,
+            &[
+                (1, 0, "w-[20px] h-[20px] shrink-0 bg-white z-[1]", 0),
+                (2, 0, "w-[60px] h-[60px] shrink-0 bg-black blur-[2px]", 0),
+                (3, 0, "w-[10px] h-[10px] bg-white z-10", 2),
+                (4, 0, "w-[10px] h-[10px] bg-white", 2),
+                (
+                    5,
+                    0,
+                    "w-[30px] h-[30px] shrink-0 bg-white/20 backdrop-blur-[4px]",
+                    0,
+                ),
+            ],
+        );
+        frame(&mut t);
+        let d = &t.drawn;
+        let at = |id: u32| {
+            let r = t.op_box(id).unwrap();
+            d.quads
+                .iter()
+                .position(|q| q.kind == PaintKind::Solid as u32 && q.rect == r)
+                .unwrap() as u32
+        };
+        let group = *d.groups.iter().find(|g| !g.backdrop).unwrap();
+        let backdrop = *d.groups.iter().find(|g| g.backdrop).unwrap();
+        assert_eq!(d.quads[group.quad as usize].kind, PaintKind::Group as u32);
+        for id in [2, 3, 4] {
+            assert!((group.quad + 1..group.end).contains(&at(id)), "{id}");
+        }
+        assert!(at(1) > at(5), "z-1 paints over the auto siblings");
+        assert!(!(group.quad..group.end).contains(&at(1)));
+        let b = d.quads[backdrop.quad as usize];
+        assert_eq!(
+            (b.kind, b.rect, backdrop.end),
+            (
+                PaintKind::Group as u32,
+                t.op_box(5).unwrap(),
+                backdrop.quad + 1
+            )
+        );
+        assert_eq!(at(5), backdrop.quad + 1, "the backdrop right under its box");
     }
 
     /// A box paints its outer shadows under it, then its fill and

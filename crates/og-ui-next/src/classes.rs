@@ -15,6 +15,7 @@ use nsh_tailwind::geometry::{DefiniteLength, Points, Size};
 use nsh_tailwind::style::{Color, Style, StyleValue, SvgPaint, TextAlign, TextTransform};
 use nsh_tailwind::tailwind::{self, ClassEnvironment, ClassList, ClassProps, Context, Theme};
 use nsh_tailwind::transform::TransformKind;
+use og_draw::paint::PaintEffect;
 use rune_taffy::CompactStyle;
 use rustc_hash::FxHashMap;
 
@@ -628,14 +629,47 @@ fn record_of(style: &Style, props: &ClassProps) -> Record {
             .iter()
             .filter_map(color_matrix)
             .reduce(|m, next| og_draw::paint::color_then(&m, &next));
+        let effects = fx
+            .filters
+            .iter()
+            .filter_map(|f| match *f {
+                Filter::Blur(p) if p.0 > 0.0 => Some(PaintEffect::Blur(p.0)),
+                Filter::DropShadow {
+                    offset_x,
+                    offset_y,
+                    blur,
+                    color,
+                    // Its blur is a radius, as a box shadow's is: a Gaussian
+                    // of half its deviation, as browsers draw it.
+                } if color.0 & 0xff != 0 => Some(PaintEffect::DropShadow {
+                    offset: [offset_x.0, offset_y.0],
+                    sigma: 0.5 * blur.0.max(0.0),
+                    color: linear(color),
+                }),
+                _ => None,
+            })
+            .take(crate::record::EFFECTS);
+        r.effect_count = 0;
+        for (k, e) in effects.enumerate() {
+            r.effects[k] = e;
+            r.effect_count = k as u8 + 1;
+        }
+        // Blurs in a list add up (a Gaussian of their deviations'
+        // root sum of squares).
         skin.backdrop_blur = fx
             .backdrop_filters
             .iter()
-            .find_map(|f| match f {
-                Filter::Blur(p) => Some(p.0),
+            .filter_map(|f| match f {
+                Filter::Blur(p) => Some(p.0 * p.0),
                 _ => None,
             })
-            .unwrap_or(0.0);
+            .sum::<f32>()
+            .sqrt();
+        r.backdrop_filter = fx
+            .backdrop_filters
+            .iter()
+            .filter_map(color_matrix)
+            .reduce(|m, next| og_draw::paint::color_then(&m, &next));
     }
     if let Some(c) = text.color {
         skin.ink = linear(c);
@@ -1386,9 +1420,10 @@ mod tests {
                 // Not drawn: a `<Line>`'s dashes.
                 &["stroke_dasharray"]),
             ("Effects", format!("{:#?}", Effects::default()),
-                // `filters`: its colour functions; its `blur-*` and
-                // `drop-shadow-*`, and `backdrop-*` but the blur, need an
-                // offscreen pass of their own and are not drawn yet.
+                // `filters`: its colour functions on each quad, its
+                // `blur-*` and `drop-shadow-*` through a layer;
+                // `backdrop_filters`: a blurred, colour-filtered copy of
+                // what is under it.
                 &["box_shadows", "background_images", "backdrop_filters", "mask_images",
                   "filters"],
                 &[]),

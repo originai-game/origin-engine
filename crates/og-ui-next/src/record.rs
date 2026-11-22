@@ -210,6 +210,9 @@ impl Gradient {
 /// The most box-shadow layers a record keeps.
 pub const SHADOWS: usize = 4;
 
+/// The most `blur-*` and `drop-shadow-*` steps a record keeps.
+pub const EFFECTS: usize = 4;
+
 /// A shadow layer (`box-shadow`, `ring-*`, `text-shadow`); a colour of 0
 /// alpha draws nothing.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
@@ -490,9 +493,23 @@ pub struct Record {
     /// `filter`), composed in order into one matrix over everything it
     /// and its subtree draw; `None` none.
     pub filter: Option<og_draw::paint::ColorMatrix>,
+    /// Its `blur-*` and `drop-shadow-*` (`filter`'s functions that read
+    /// the pixels around one), `effect_count` of them in order: it and its
+    /// subtree draw through a layer these filter.
+    pub effects: [og_draw::paint::PaintEffect; EFFECTS],
+    pub effect_count: u8,
+    /// Its `backdrop-*` colour functions (`backdrop-brightness-*`,
+    /// `backdrop-saturate-*` and the rest), composed into one matrix over
+    /// the blurred backdrop ([`Skin::backdrop_blur`]); `None` none.
+    pub backdrop_filter: Option<og_draw::paint::ColorMatrix>,
 }
 
 impl Record {
+    /// Its `blur-*` and `drop-shadow-*`, in order.
+    pub fn effects(&self) -> &[og_draw::paint::PaintEffect] {
+        &self.effects[..usize::from(self.effect_count)]
+    }
+
     /// Its layout with the HUD's safe-area `insets` (top, right, bottom,
     /// left) added where its rules read them.
     pub fn layout_in(&self, insets: [f32; 4]) -> CompactStyle {
@@ -560,6 +577,9 @@ impl Default for Record {
             space: Spacing::default(),
             object: None,
             filter: None,
+            effects: [og_draw::paint::PaintEffect::Blur(0.0); EFFECTS],
+            effect_count: 0,
+            backdrop_filter: None,
             scheme: None,
             dark: false,
         }

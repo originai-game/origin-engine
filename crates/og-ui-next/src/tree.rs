@@ -9,7 +9,7 @@ use crate::arena::{Arena, Id, Run};
 use crate::icons::{IconAtlas, IconCell};
 use crate::record::{Decoration, Record, Rgba, Shadow, Text, TextStroke};
 use og_draw::glyphs::Atlas;
-use og_draw::paint::{Paint, PaintKind, PaintQuad};
+use og_draw::paint::{Paint, PaintEffect, PaintGroup, PaintKind, PaintQuad};
 use og_i18n::Direction;
 use og_text::fonts::Collection;
 
@@ -352,6 +352,11 @@ pub struct Tree {
     /// covers them (docs/ui.md §3.4), and the text draws in it once it is
     /// in the collection.
     missing: Vec<char>,
+    /// What the host logs once ([`Tree::take_warnings`]), and the nodes
+    /// whose filters were drawn unfiltered for want of layers, each said
+    /// once.
+    warnings: Vec<String>,
+    warned_layers: Vec<u32>,
     /// The screen transition cover [`Tree::set_cover`] gave this frame.
     cover: Option<(crate::cover::Cover, bool)>,
     /// The pad's virtual cursor ([`Tree::virtual_cursor`]), and its
@@ -532,6 +537,8 @@ impl Tree {
             paints: 0,
             particles: Default::default(),
             missing: Vec::new(),
+            warnings: Vec::new(),
+            warned_layers: Vec::new(),
             cover: None,
             vcursor: Default::default(),
             cursor_colors: [[0.0, 0.0, 0.0, 0.45], [1.0; 4], [0.9, 0.9, 0.95, 1.0]],
@@ -1035,6 +1042,12 @@ impl Tree {
         std::mem::take(&mut self.missing)
     }
 
+    /// What the paint could not draw as asked since the last call (a
+    /// filter past the frame's layers), for the host's log.
+    pub fn take_warnings(&mut self) -> Vec<String> {
+        std::mem::take(&mut self.warnings)
+    }
+
     /// Device pixels a CSS px of the surface: glyphs raster at their
     /// drawn size, on its pixels.
     pub fn set_scale(&mut self, scale: f32) {
@@ -1268,8 +1281,24 @@ impl Tree {
         self.filters.resize(self.els.len(), 0);
         // The nodes painting for the first time with a `sound` to play.
         let mut sounding: Vec<u32> = Vec::new();
+        // The groups open while their subtrees paint, innermost last, and
+        // the layers the paint may still draw.
+        let mut open: Vec<Open> = Vec::new();
+        let mut room = Room {
+            layers: 0,
+            area: 0.0,
+            limit: og_draw::paint::GROUP_SCREENS * vw * vh,
+        };
         for k in 0..self.order.len() {
             let e = self.order[k] as usize;
+            // What it is not under is painted: those groups close.
+            while open
+                .last()
+                .is_some_and(|o| !descends(&self.els, e as u32, o.e))
+            {
+                let o = open.pop().expect("open");
+                close_group(&mut self.drawn, &o, screen);
+            }
             let el = &self.els[e];
             // What motion shows: the box a layout transition slides, the
             // skin a transition or keyframes move.
@@ -1396,6 +1425,34 @@ impl Tree {
             let mut t = s.transform;
             t.translate = [t.translate[0] + kx, t.translate[1] + ky];
             let hole = self.hole(e as u32);
+            // Its `blur-*` and `drop-shadow-*` draw it and its subtree
+            // through a layer of their own, while the paint has room for
+            // one; past it, unfiltered, said once.
+            let group =
+                r.effect_count > 0 && room.take(reached([x, y, b.w, b.h], r.effects(), screen));
+            if r.effect_count > 0 && !group && !self.warned_layers.contains(&el.node) {
+                self.warned_layers.push(el.node);
+                let name = &self.input.per[e].name;
+                self.warnings.push(format!(
+                    "node {}{}{} draws its blur and drop shadows unfiltered: the frame's other filters already take {} layers or {} screens of them",
+                    el.node,
+                    if name.is_empty() { "" } else { " " },
+                    name,
+                    og_draw::paint::GROUP_LAYERS,
+                    og_draw::paint::GROUP_SCREENS,
+                ));
+            }
+            // Its group's composite takes its opacity, its mask and its
+            // ancestors' colour filters (CSS's order: the filter, then the
+            // mask, then opacity); inside the layer it and its subtree
+            // draw as they are, their own colour filters first.
+            let outer_alpha = alpha;
+            let alpha = if group {
+                self.shown[e].alpha = 1.0;
+                1.0
+            } else {
+                alpha
+            };
             let p = &mut self.drawn;
             let start = p.quads.len();
             // Its own mask replaces an ancestor's over its subtree.
@@ -1403,6 +1460,10 @@ impl Tree {
                 let area = [x, y, b.w, b.h];
                 let gi = p.shaped_gradient(paint_gradient(g, area), g.stops().iter().copied());
                 self.masks[e] = gi + 1;
+            }
+            let (outer_mask, outer_filter) = (self.masks[e], self.filters[e]);
+            if group {
+                (self.masks[e], self.filters[e]) = (0, 0);
             }
             // Its own filters, then its ancestors' over them (CSS's filter
             // on each of the nested groups).
@@ -1458,6 +1519,68 @@ impl Tree {
             }
             let rect = [x, y, b.w, b.h];
             let radius = radii(s.radius, b.w, b.h);
+            // Its backdrop filter: a filtered copy of what is under it,
+            // drawn under its box, rounded as it is.
+            let mut backdrop = None;
+            if s.backdrop_blur > 0.0 || r.backdrop_filter.is_some() {
+                let first = p.effects.len() as u32;
+                if s.backdrop_blur > 0.0 {
+                    p.effects.push(PaintEffect::Blur(s.backdrop_blur));
+                }
+                if let Some(m) = &r.backdrop_filter {
+                    p.filters.push(*m);
+                    p.effects
+                        .push(PaintEffect::Matrix(p.filters.len() as u32 - 1));
+                }
+                let at = p.quads.len() as u32;
+                p.groups.push(PaintGroup {
+                    quad: at,
+                    end: at + 1,
+                    first,
+                    count: p.effects.len() as u32 - first,
+                    xf,
+                    backdrop: true,
+                });
+                p.quads.push(quad(
+                    PaintKind::Group,
+                    rect,
+                    clip,
+                    [1.0, 1.0, 1.0, outer_alpha],
+                    radius,
+                    [0.0; 4],
+                    p.groups.len() as u32 - 1,
+                    og_draw::paint::GROUP_SHAPED,
+                ));
+                backdrop = Some(at as usize);
+            }
+            if group {
+                let first = p.effects.len() as u32;
+                p.effects.extend_from_slice(r.effects());
+                open.push(Open {
+                    e: e as u32,
+                    quad: p.quads.len(),
+                    first,
+                    count: u32::from(r.effect_count),
+                    xf,
+                    composite: PaintQuad {
+                        mask: outer_mask,
+                        filter: outer_filter,
+                        round: pround,
+                        ..quad(
+                            PaintKind::Group,
+                            [0.0; 4],
+                            clip,
+                            [1.0, 1.0, 1.0, outer_alpha],
+                            [0.0; 4],
+                            [0.0; 4],
+                            0,
+                            0,
+                        )
+                    },
+                });
+                // Written when its subtree has painted (`close_group`).
+                p.quads.push(open.last().expect("pushed").composite);
+            }
             let faded = |mut c: Rgba| {
                 c[3] *= alpha;
                 c
@@ -1968,9 +2091,19 @@ impl Tree {
                     (q.mask, q.filter) = (mask, filter);
                 }
             }
+            // A backdrop takes its mask, and its ancestors' colour filters
+            // as what is under it would.
+            if let Some(at) = backdrop {
+                let q = &mut self.drawn.quads[at];
+                (q.mask, q.filter) = (outer_mask, outer_filter);
+            }
             self.stacking.painted(e, start..self.drawn.quads.len());
         }
-        self.stacking.reorder(&mut self.drawn.quads);
+        while let Some(o) = open.pop() {
+            close_group(&mut self.drawn, &o, screen);
+        }
+        self.stacking
+            .reorder(&mut self.drawn.quads, &mut self.drawn.groups);
         for e in sounding {
             let cue = std::mem::take(&mut self.input.per[e as usize].cue);
             self.sound(e, &cue);
@@ -2072,6 +2205,165 @@ impl Tree {
             self.pointer_ops(x, y, (was.0, was.1) != (x, y), pressed, released);
         }
     }
+}
+
+/// A filter group open while its subtree paints: its element, its
+/// composite's place in the arena (written by [`close_group`]), its
+/// effects in [`Paint::effects`], its element's transform, and its
+/// composite's look but the rect.
+struct Open {
+    e: u32,
+    quad: usize,
+    first: u32,
+    count: u32,
+    xf: u32,
+    composite: PaintQuad,
+}
+
+/// The layers a paint may still draw ([`og_draw::paint::GROUP_LAYERS`])
+/// and the area they may cover (CSS px²).
+struct Room {
+    layers: usize,
+    area: f32,
+    limit: f32,
+}
+
+impl Room {
+    /// Takes a layer of `area`, when there is room for it.
+    fn take(&mut self, area: f32) -> bool {
+        if self.layers >= og_draw::paint::GROUP_LAYERS || self.area + area > self.limit {
+            return false;
+        }
+        self.layers += 1;
+        self.area += area;
+        true
+    }
+}
+
+/// How far `effects` spread what they filter, CSS px of the space they
+/// are in: three deviations a blur, and a shadow's offset.
+fn reach_of(effects: &[PaintEffect]) -> f32 {
+    effects
+        .iter()
+        .map(|f| match *f {
+            PaintEffect::Blur(sigma) => 3.0 * sigma,
+            PaintEffect::DropShadow { offset, sigma, .. } => {
+                3.0 * sigma + (offset[0] * offset[0] + offset[1] * offset[1]).sqrt()
+            }
+            PaintEffect::Matrix(_) => 0.0,
+        })
+        .sum()
+}
+
+/// The area of the layer a box `rect` (x, y, w, h) filtered by `effects`
+/// may take on `screen`: the box grown by their reach, on the screen
+/// grown by it.
+fn reached(rect: [f32; 4], effects: &[PaintEffect], screen: [f32; 4]) -> f32 {
+    let r = reach_of(effects);
+    let [x, y, w, h] = rect;
+    let w = (x + w + r).min(screen[2] + r) - (x - r).max(screen[0] - r);
+    let h = (y + h + r).min(screen[3] + r) - (y - r).max(screen[1] - r);
+    w.max(0.0) * h.max(0.0)
+}
+
+/// Whether element `e` is drawn under element `a` (its arena descendant).
+fn descends(els: &[El], e: u32, a: u32) -> bool {
+    let mut c = els[e as usize].arena_parent;
+    while c != NONE {
+        if c == a {
+            return true;
+        }
+        c = els[c as usize].arena_parent;
+    }
+    false
+}
+
+/// Ends group `o` once everything it holds has painted: its composite
+/// covers the screen box of what it holds (each quad's reach, through its
+/// transform, inside its clip) grown by its effects' reach (through its
+/// element's transform), on what of `screen` it shows in grown as much,
+/// and the group is listed.
+fn close_group(p: &mut Paint, o: &Open, screen: [f32; 4]) {
+    let mut bounds = [f32::MAX, f32::MAX, f32::MIN, f32::MIN];
+    for q in &p.quads[o.quad + 1..] {
+        let [x, y, w, h] = q.rect;
+        // A shadow reaches past its box by its offset, spread and three
+        // deviations; a line by its stroke; a box's edge by a pixel.
+        let g = match q.kind {
+            k if k == PaintKind::Shadow as u32 => {
+                q.p[0].abs().max(q.p[1].abs()) + q.p[3].max(0.0) + 1.5 * q.p[2] + 1.0
+            }
+            k if k == PaintKind::Line as u32 => q.p[0] + 1.0,
+            k if k == PaintKind::Group as u32
+                || k == PaintKind::Image as u32
+                || k == PaintKind::Raster as u32 =>
+            {
+                0.0
+            }
+            _ => 1.0,
+        };
+        let [ma, mb, mc, md, me, mf, _, _] = match q.xf {
+            0 => og_draw::paint::IDENTITY,
+            xf => p.transforms[xf as usize],
+        };
+        let mut b = [f32::MAX, f32::MAX, f32::MIN, f32::MIN];
+        for [cx, cy] in [
+            [x - g, y - g],
+            [x + w + g, y - g],
+            [x - g, y + h + g],
+            [x + w + g, y + h + g],
+        ] {
+            let (sx, sy) = (ma * cx + mc * cy + me, mb * cx + md * cy + mf);
+            b = [b[0].min(sx), b[1].min(sy), b[2].max(sx), b[3].max(sy)];
+        }
+        let c = q.clip;
+        b = [
+            b[0].max(c[0]),
+            b[1].max(c[1]),
+            b[2].min(c[2]),
+            b[3].min(c[3]),
+        ];
+        if b[0] < b[2] && b[1] < b[3] {
+            bounds = [
+                bounds[0].min(b[0]),
+                bounds[1].min(b[1]),
+                bounds[2].max(b[2]),
+                bounds[3].max(b[3]),
+            ];
+        }
+    }
+    let [ma, mb, mc, md, ..] = match o.xf {
+        0 => og_draw::paint::IDENTITY,
+        xf => p.transforms[xf as usize],
+    };
+    // The reach in screen px: the longer of the space's axes.
+    let scale = (ma * ma + mb * mb).max(mc * mc + md * md).sqrt();
+    let effects = &p.effects[o.first as usize..(o.first + o.count) as usize];
+    let r = reach_of(effects) * scale;
+    let c = o.composite.clip;
+    let shown = [
+        c[0].max(screen[0]) - r,
+        c[1].max(screen[1]) - r,
+        c[2].min(screen[2]) + r,
+        c[3].min(screen[3]) + r,
+    ];
+    let x0 = (bounds[0] - r).max(shown[0]);
+    let y0 = (bounds[1] - r).max(shown[1]);
+    let x1 = (bounds[2] + r).min(shown[2]);
+    let y1 = (bounds[3] + r).min(shown[3]);
+    p.groups.push(PaintGroup {
+        quad: o.quad as u32,
+        end: p.quads.len() as u32,
+        first: o.first,
+        count: o.count,
+        xf: o.xf,
+        backdrop: false,
+    });
+    p.quads[o.quad] = PaintQuad {
+        rect: [x0, y0, (x1 - x0).max(0.0), (y1 - y0).max(0.0)],
+        a: p.groups.len() as u32 - 1,
+        ..o.composite
+    };
 }
 
 /// An image of `size` texels showing `uv` of it, fitted into `rect` as

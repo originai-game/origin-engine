@@ -443,6 +443,14 @@ pub(crate) struct Prepared {
     pub result: wgpu::TextureView,
 }
 
+impl Prepared {
+    /// Its passes, which [`FilterRunner::record`] returns when it records
+    /// them all.
+    pub(crate) fn passes(&self) -> u32 {
+        self.passes.len() as u32
+    }
+}
+
 /// What a layer's filter reads as its source.
 pub(crate) enum Source<'a> {
     /// What the layer drew.
@@ -454,12 +462,14 @@ pub(crate) enum Source<'a> {
 /// The target a backdrop layer's composite draws into, as drawn so far:
 /// its view, its top left (CSS px), its device px per CSS px, and whether
 /// it holds sRGB-encoded values (a non-sRGB output, which the tonemap
-/// encodes).
+/// encodes) the filter decodes, or linear ones it encodes (the paint
+/// pass's filters work on encoded values).
 pub(crate) struct Capture<'a> {
     pub view: &'a wgpu::TextureView,
     pub origin: [f32; 2],
     pub scale: f32,
     pub decode: bool,
+    pub encode: bool,
     pub size: (u32, u32),
 }
 
@@ -580,6 +590,11 @@ impl FilterRunner {
             next_uniform: 0,
             lattices: Vec::new(),
         }
+    }
+
+    /// Makes its pipeline now, before a frame needs it.
+    pub(crate) fn warm(&self) {
+        crate::deferred::Start::start(&self.pipeline);
     }
 
     /// Frees every target and parameter buffer for a new frame.
@@ -720,7 +735,11 @@ impl FilterRunner {
                         c.origin[0],
                         c.origin[1],
                         c.scale,
-                        f32::from(u8::from(c.decode)),
+                        if c.encode {
+                            2.0
+                        } else {
+                            f32::from(u8::from(c.decode))
+                        },
                     ],
                     ..Default::default()
                 };

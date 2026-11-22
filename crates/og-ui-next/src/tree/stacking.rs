@@ -2,8 +2,10 @@
 //! establishes an atomic context, including z-0; auto descendants belong
 //! to their nearest context. Each context paints its own box first, then
 //! negative, auto/zero and positive members in stable document order.
+//! A filter (a blur, a drop shadow or a backdrop's) establishes one too,
+//! as in CSS, so a filter group's subtree stays one run of quads.
 
-use super::{El, NONE, PaintQuad};
+use super::{El, NONE, PaintGroup, PaintQuad};
 use std::ops::Range;
 
 #[derive(Default)]
@@ -15,6 +17,8 @@ pub(super) struct Stacking {
     walk: Vec<u32>,
     ranges: Vec<Range<usize>>,
     scratch: Vec<PaintQuad>,
+    // Each quad's place after the reorder, for the groups.
+    moved: Vec<u32>,
     changed: bool,
 }
 
@@ -41,7 +45,7 @@ impl Stacking {
             };
             self.members
                 .push((owner, el.record.z_index.unwrap_or(0), position, e));
-            self.context[e as usize] = if el.record.z_index.is_some() {
+            self.context[e as usize] = if el.record.z_index.is_some() || filters(el) {
                 e
             } else {
                 owner
@@ -76,15 +80,41 @@ impl Stacking {
         }
     }
 
-    pub fn reorder(&mut self, quads: &mut Vec<PaintQuad>) {
+    /// Puts the quads in paint order, and each group's quads where they
+    /// moved (a group's subtree is a context, so they stay one run).
+    pub fn reorder(&mut self, quads: &mut Vec<PaintQuad>, groups: &mut [PaintGroup]) {
         if !self.changed {
             return;
         }
         self.scratch.clear();
+        self.moved.clear();
+        self.moved.resize(quads.len(), u32::MAX);
         for &e in &self.order {
-            self.scratch
-                .extend_from_slice(&quads[self.ranges[e as usize].clone()]);
+            let range = self.ranges[e as usize].clone();
+            for (k, old) in range.clone().enumerate() {
+                self.moved[old] = (self.scratch.len() + k) as u32;
+            }
+            self.scratch.extend_from_slice(&quads[range]);
         }
         std::mem::swap(quads, &mut self.scratch);
+        for g in groups {
+            let at = self.moved[g.quad as usize];
+            let len = g.end - g.quad;
+            debug_assert!(
+                self.moved[g.quad as usize..g.end as usize]
+                    .iter()
+                    .all(|&k| (at..at + len).contains(&k)),
+                "a group's quads stay one run"
+            );
+            g.end = at + len;
+            g.quad = at;
+        }
     }
+}
+
+/// Whether `el` filters what it holds or what is under it, which makes it
+/// a stacking context.
+fn filters(el: &El) -> bool {
+    let r = &el.record;
+    r.effect_count > 0 || r.skin.backdrop_blur > 0.0 || r.backdrop_filter.is_some()
 }

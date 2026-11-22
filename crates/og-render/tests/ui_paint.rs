@@ -493,6 +493,61 @@ fn a_round_clip_cuts_an_image_round_and_an_inverted_one_spares_its_hole() {
     near(at(&px, 100, 56), RED, "the shade below the hole");
 }
 
+/// A group's composite quad (`group` of the paint's), over `rect`.
+fn composite(group: u32, rect: [f32; 4]) -> PaintQuad {
+    PaintQuad {
+        kind: PaintKind::Group as u32,
+        a: group,
+        ..solid(rect, WHITE, 1.0)
+    }
+}
+
+#[test]
+#[ignore = "requires GPU"]
+fn a_group_blurs_what_it_holds_and_a_drop_shadow_lands_below_it() {
+    use og_render::paint::{PaintEffect, PaintGroup};
+    // Left: a white 32 px box at 16, 16 blurred by a deviation of 4 px.
+    // Right: a white 16 px box at 88, 16 with a red drop shadow 24 px
+    // below it, sharp (a deviation of half a pixel).
+    let px = render(|scene| {
+        let p = &mut scene.ui.paint;
+        p.effects = vec![
+            PaintEffect::Blur(4.0),
+            PaintEffect::DropShadow {
+                offset: [0.0, 24.0],
+                sigma: 0.5,
+                color: [1.0, 0.0, 0.0, 1.0],
+            },
+        ];
+        let group = |quad, first| PaintGroup {
+            quad,
+            end: quad + 2,
+            first,
+            count: 1,
+            xf: 0,
+            backdrop: false,
+        };
+        p.groups = vec![group(0, 0), group(2, 1)];
+        vec![
+            composite(0, [0.0, 0.0, 64.0, 64.0]),
+            solid([16.0, 16.0, 32.0, 32.0], WHITE, 1.0),
+            composite(1, [80.0, 8.0, 32.0, 64.0]),
+            solid([88.0, 16.0, 16.0, 16.0], WHITE, 1.0),
+        ]
+    });
+    // Across the blurred box's left edge at mid height, in encoded values
+    // as CSS blurs: half at the edge, 0.5 erfc(1/√2) = 0.159 a deviation
+    // out, 0.841 a deviation in, the middle untouched.
+    near(at(&px, 32, 32), WHITE, "the middle");
+    near(at(&px, 16, 32), grey(128), "the edge");
+    near(at(&px, 12, 32), grey(41), "a deviation out");
+    near(at(&px, 20, 32), grey(214), "a deviation in");
+    near(at(&px, 2, 32), BLACK, "past three deviations");
+    near(at(&px, 96, 24), WHITE, "the shadowed box over its shadow");
+    near(at(&px, 96, 48), RED, "its shadow 24 px below");
+    near(at(&px, 96, 36), BLACK, "between them");
+}
+
 #[test]
 #[ignore = "requires GPU"]
 fn a_colour_matrix_filters_the_encoded_colour() {
@@ -590,6 +645,51 @@ fn a_translucent_fill_blends_in_encoded_srgb_as_css_does() {
         if !matches!(to, To::View) {
             exact(64, 96, grey(64), "white over the frame");
         }
+    }
+}
+
+#[test]
+#[ignore = "requires GPU"]
+fn a_backdrop_filters_what_is_under_it_on_every_target() {
+    use og_render::paint::{GROUP_SHAPED, PaintEffect, PaintGroup};
+    // White over the left half (x < 64), the black frame on the right; a
+    // backdrop over 32..96 rounded by 16, blurred by a deviation of 4 then
+    // halved (brightness 0.5), in encoded values.
+    for to in [To::Offscreen, To::Plain, To::View, To::Float] {
+        let px = render_to(to, |scene| {
+            let p = &mut scene.ui.paint;
+            p.filters.push([
+                [0.5, 0.0, 0.0, 0.0],
+                [0.0, 0.5, 0.0, 0.0],
+                [0.0, 0.0, 0.5, 0.0],
+                [0.0, 0.0, 0.0, 1.0],
+                [0.0; 4],
+            ]);
+            p.effects = vec![PaintEffect::Blur(4.0), PaintEffect::Matrix(0)];
+            p.groups = vec![PaintGroup {
+                quad: 1,
+                end: 2,
+                first: 0,
+                count: 2,
+                xf: 0,
+                backdrop: true,
+            }];
+            vec![
+                solid([0.0, 0.0, 64.0, 128.0], WHITE, 1.0),
+                PaintQuad {
+                    radius: [16.0; 4],
+                    b: GROUP_SHAPED,
+                    ..composite(0, [32.0, 32.0, 64.0, 64.0])
+                },
+            ]
+        });
+        let what = |w: &str| format!("{to:?}: {w}");
+        near(at(&px, 40, 64), grey(128), &what("white, halved"));
+        near(at(&px, 88, 64), BLACK, &what("black"));
+        // 0.5 erfc(0.5 / (4 √2)) = 0.45 of white half a pixel past it.
+        near(at(&px, 64, 64), grey(57), &what("across the edge, blurred"));
+        near(at(&px, 16, 64), WHITE, &what("beside it"));
+        near(at(&px, 34, 34), WHITE, &what("its corner, outside the arc"));
     }
 }
 

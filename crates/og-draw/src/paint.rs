@@ -8,7 +8,10 @@
 //! it ([`PaintKind`]): a solid rounded box, a gradient, a border ring, an
 //! outer or inset box shadow, a glyph's raster in the glyph atlas
 //! ([`crate::glyphs::Atlas`]), or a built-in icon drawn as its stroked
-//! segments from [`Paint::icons`], a table made once and shared.
+//! segments from [`Paint::icons`], a table made once and shared. A
+//! [`PaintGroup`] draws an element's subtree through a layer of its own
+//! (a blur, a drop shadow) or over a filtered copy of what is under it (a
+//! backdrop filter).
 
 use bytemuck::{Pod, Zeroable};
 use std::sync::Arc;
@@ -59,7 +62,17 @@ pub enum PaintKind {
     /// distance field in `color`, grown by `p`'s x and blurred by
     /// its y (CSS px), its field `p`'s z atlas pixels across.
     Raster = 9,
+    /// Group `a` of [`Paint::groups`] composited: its filtered layer (or a
+    /// backdrop's filtered capture) over `rect`, read where each pixel
+    /// lands on screen, at `color`'s alpha. A filter group's quad is in
+    /// screen space (no transform), its rect the layer's; a backdrop's
+    /// is its element's border box under its transform, rounded by
+    /// `radius`, with `b` [`GROUP_SHAPED`].
+    Group = 10,
 }
+
+/// [`PaintKind::Group`]'s flags: cut to the quad's rounded box.
+pub const GROUP_SHAPED: u32 = 1;
 
 /// One quad of the arena (`struct PaintIn` in ui_paint.wgsl's terms
 /// before the renderer resolves glyphs).
@@ -134,6 +147,50 @@ pub fn round_box_distance(p: [f32; 2], half: [f32; 2], radius: [f32; 4]) -> f32 
     let outside = (ox * ox + oy * oy).sqrt();
     outside + q[0].max(q[1]).min(0.0) - r
 }
+
+/// One step of what a [`PaintGroup`] does to what it holds, in CSS's
+/// filter list order. Lengths are CSS px in the element's own space
+/// ([`PaintGroup::xf`]); colours are linear, straight.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum PaintEffect {
+    /// `blur()`: a Gaussian of this standard deviation.
+    Blur(f32),
+    /// `drop-shadow()`: what it holds so far, its alpha blurred by
+    /// `sigma`, moved by `offset`, flooded with `color`, under it.
+    DropShadow {
+        offset: [f32; 2],
+        sigma: f32,
+        color: [f32; 4],
+    },
+    /// A colour matrix, `k` of [`Paint::filters`] (a backdrop's colour
+    /// functions).
+    Matrix(u32),
+}
+
+/// An element drawn through an offscreen layer (CSS's `filter` with a
+/// blur or a drop shadow) or over a filtered copy of what is under it
+/// (`backdrop-filter`). Its composite is quad `quad` ([`PaintKind::Group`]);
+/// a filter group holds quads `quad + 1 .. end` (its subtree, nested
+/// groups inside), which draw into its layer and not where they are; a
+/// backdrop holds none.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct PaintGroup {
+    pub quad: u32,
+    pub end: u32,
+    /// Its effects: `effects[first .. first + count]`.
+    pub first: u32,
+    pub count: u32,
+    /// The transform of the element's own space, of [`Paint::transforms`].
+    pub xf: u32,
+    pub backdrop: bool,
+}
+
+/// The most groups a paint draws through layers; past it, the rest draw
+/// unfiltered.
+pub const GROUP_LAYERS: usize = 16;
+/// The most screens of layer a paint's groups cover together; past it,
+/// the rest draw unfiltered.
+pub const GROUP_SCREENS: f32 = 1.5;
 
 /// A colour filter as one matrix (CSS Filter Effects' colour functions
 /// composed, applied to the sRGB-encoded, unpremultiplied colour): rows r,
@@ -224,6 +281,11 @@ pub struct Paint {
     pub filters: Vec<ColorMatrix>,
     /// The rounded clips [`PaintQuad::round`] names.
     pub rounds: Vec<PaintRound>,
+    /// The groups [`PaintKind::Group`] quads composite, each listed when
+    /// what it holds ends (so a nested one before its parent), and their
+    /// effects.
+    pub groups: Vec<PaintGroup>,
+    pub effects: Vec<PaintEffect>,
     /// Paint-time transforms, CSS's `matrix(a, b, c, d, e, f)` on CSS px
     /// as `[a, b, c, d, e, f, 0, 0]` (x' = a x + c y + e); entry 0 is the
     /// identity, which the shader skips.
@@ -244,6 +306,8 @@ impl Paint {
         self.stops.clear();
         self.filters.clear();
         self.rounds.clear();
+        self.groups.clear();
+        self.effects.clear();
         self.points.clear();
         self.transforms.clear();
         self.transforms.push(IDENTITY);

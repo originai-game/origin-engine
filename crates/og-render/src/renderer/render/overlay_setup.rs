@@ -47,10 +47,12 @@ impl Renderer {
         }
         // Glass: the tonemap renders into the glass source, which becomes
         // the output and the blur pyramid after the post passes (glass, a
-        // UI backdrop, a blend that reads what is under it).
+        // UI backdrop, a blend that reads what is under it, the paint's
+        // backdrops).
         let glass_on = overlay_frame
             .as_ref()
-            .is_some_and(overlay::OverlayFrame::reads_backdrop);
+            .is_some_and(overlay::OverlayFrame::reads_backdrop)
+            || crate::ui::paint::PaintRenderer::reads_target(&scene.ui.paint);
         // A colour filter reads the whole frame from the same source.
         if (glass_on || scene.look.color_filter.is_some())
             && self

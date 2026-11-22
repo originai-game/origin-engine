@@ -469,7 +469,13 @@ rune-taffy style, and these paint fields (fixed size, no allocation):
   (tl tr br bl); `border` (t r b l, also layout) and `border_color`;
   `shadows` (4 layers, `ring-*` a spread layer, `inset-shadow-*` inset);
   `outline` (width, offset, colour); `opacity`; `transform` (translate,
-  scale, rotate, origin; paint only); `backdrop_blur`;
+  scale, rotate, origin; paint only); `backdrop_blur` and
+  `backdrop_filter` (`backdrop-*`'s colour functions: a blurred,
+  filtered copy of what is under the box, drawn under it); `filter`
+  (the colour functions, on each quad) and `effects` (`blur-*` and
+  `drop-shadow-*`, 4 steps: the box and its subtree drawn through a layer
+  of their own, at most 16 a frame). A filter or a backdrop makes the box a
+  stacking context, as `z-*` does;
 - text: `ink`, font size, weight, family, line height, tracking, align,
   case, `truncate`/`line-clamp`, `text_shadow`, `decoration`,
   `text_stroke` (`text-stroke-<number>` or `-[<length>]` its width,

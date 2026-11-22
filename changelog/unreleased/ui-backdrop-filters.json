@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "backdrop-*",
+      "summary": "A TSX element's `backdrop-blur-*` and its backdrop colour functions (`backdrop-brightness-*`, `backdrop-saturate-*`, `backdrop-grayscale` and the rest) are drawn: what lies under the element (the scene and the UI under it, or its filtered ancestor's layer) is blurred and colour-filtered and drawn under its box, rounded as the box is. Before, the backdrop blur was not drawn and the colour functions were ignored, so a glass panel showed only its own tint. Like CSS's backdrop-filter, the element is a stacking context: a `z-*` descendant orders inside it."
+    }
+  ]
+}

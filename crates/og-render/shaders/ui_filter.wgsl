@@ -539,10 +539,14 @@ fn fs_filter(@builtin(position) at: vec4<f32>) -> @location(0) vec4<f32> {
     }
     case 17u: {
       // A backdrop's capture: in1 is the target under the layer, its top
-      // left a.xy (CSS px) and a.z device px per CSS px, sRGB-encoded
-      // when a.w is 1; premultiplied linear out.
+      // left a.xy (CSS px) and a.z device px per CSS px; premultiplied out,
+      // linear from sRGB-encoded when a.w is 1, sRGB-encoded from linear
+      // when it is 2 (the paint pass's filters, on encoded values).
       var c = bilinear(in1_tex, (q - f.a.xy) * f.a.z, f.extent.xy);
-      if (f.a.w > 0.5) {
+      if (f.a.w > 1.5) {
+        let u = unpremul(c);
+        c = vec4<f32>(to_srgb(u.rgb) * u.a, u.a);
+      } else if (f.a.w > 0.5) {
         let u = unpremul(c);
         c = vec4<f32>(to_linear(u.rgb) * u.a, u.a);
       }
