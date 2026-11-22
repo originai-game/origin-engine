@@ -4,9 +4,16 @@ use super::*;
 /// made when drawn), or tiles handed over one by one (streaming).
 #[derive(Clone, Debug)]
 pub(crate) enum TerrainSource {
-    /// The field, its height range (measured once, when it was set) and
-    /// its height errors (`terrain_error.rs`; built when first asked for).
-    Data(TerrainData, (f32, f32), FieldErrors),
+    /// The field, its height range (measured once, when it was set), its
+    /// height errors (`terrain_error.rs`; built when first asked for) and
+    /// its layout, or why it cannot be drawn: checked once, when the field
+    /// was set, since every frame asks for it ([`Self::layout`]).
+    Data(
+        TerrainData,
+        (f32, f32),
+        FieldErrors,
+        Result<TerrainLayout, String>,
+    ),
     Stream {
         layout: TerrainLayout,
         range: (f32, f32),
@@ -20,8 +27,14 @@ pub(crate) type FieldErrors = Arc<std::sync::OnceLock<Arc<crate::terrain_error::
 impl TerrainSource {
     /// A field in memory, its range measured.
     pub(crate) fn data(d: TerrainData) -> TerrainSource {
+        Self::checked(d, FieldErrors::default())
+    }
+
+    /// `d` with `errors`, its range measured and its layout checked.
+    fn checked(d: TerrainData, errors: FieldErrors) -> TerrainSource {
         let range = d.range();
-        TerrainSource::Data(d, range, FieldErrors::default())
+        let layout = field_layout(&d);
+        TerrainSource::Data(d, range, errors, layout)
     }
 
     /// `d`, a field of the same shape as this one's edited inside `lo`..`hi`
@@ -29,7 +42,7 @@ impl TerrainSource {
     /// one's were built.
     pub(crate) fn edited(&self, d: TerrainData, lo: Vec2, hi: Vec2) -> TerrainSource {
         let errors = FieldErrors::default();
-        if let TerrainSource::Data(_, _, old) = self
+        if let TerrainSource::Data(_, _, old, _) = self
             && let Some(old) = old.get()
         {
             let top = Vec2::new((d.columns - 1) as f32, (d.rows - 1) as f32);
@@ -41,8 +54,7 @@ impl TerrainSource {
             e.update(&|x, z| d.heights[(z * d.columns + x) as usize], lo, hi);
             let _ = errors.set(Arc::new(e));
         }
-        let range = d.range();
-        TerrainSource::Data(d, range, errors)
+        Self::checked(d, errors)
     }
 
     /// Its height errors' blocks for `layout` (`terrain_error.rs`): a
@@ -57,7 +69,7 @@ impl TerrainSource {
         let half = layout.size * 0.5;
         let metres = |x: u32, z: u32| Vec2::new(x as f32, z as f32) * cell - half;
         match self {
-            TerrainSource::Data(d, _, errors) => {
+            TerrainSource::Data(d, _, errors, _) => {
                 let e = errors.get_or_init(|| {
                     let n = (d.columns.max(d.rows) - 1).max(2);
                     let levels = 32 - (n - 1).leading_zeros();
@@ -113,24 +125,63 @@ impl TerrainSource {
     pub(crate) fn layout(&self) -> Result<TerrainLayout, String> {
         match self {
             TerrainSource::Stream { layout, .. } => Ok(*layout),
-            TerrainSource::Data(d, ..) => {
-                d.check()?;
-                let mut tile = TERRAIN_TILE;
-                loop {
-                    match d.layout(tile) {
-                        Ok(l) => return Ok(l),
-                        Err(e) if tile >= 1024 => return Err(e),
-                        Err(_) => tile *= 2,
-                    }
-                }
-            }
+            TerrainSource::Data(.., layout) => layout.clone(),
         }
     }
 
     pub(crate) fn range(&self) -> (f32, f32) {
         match self {
             TerrainSource::Stream { range, .. } => *range,
-            TerrainSource::Data(_, range, _) => *range,
+            TerrainSource::Data(_, range, ..) => *range,
         }
+    }
+}
+
+/// A field's layout ([`TerrainSource::layout`]), after [`TerrainData::check`].
+fn field_layout(d: &TerrainData) -> Result<TerrainLayout, String> {
+    d.check()?;
+    let mut tile = TERRAIN_TILE;
+    loop {
+        match d.layout(tile) {
+            Ok(l) => return Ok(l),
+            Err(e) if tile >= 1024 => return Err(e),
+            Err(_) => tile *= 2,
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Every frame asks each field for its layout; when that checked the
+    /// field (every height finite), terrain-grass spent 2.27 ms a frame on
+    /// it. The check runs when the field is set: a height spoilt behind the
+    /// source's back is not looked at again until the field is set anew.
+    #[test]
+    fn a_field_is_checked_when_set_not_when_drawn() {
+        let mut source = TerrainSource::data(TerrainData::flat(Vec2::splat(64.0), 65, 65));
+        let laid = source.layout().expect("a flat field draws");
+        let TerrainSource::Data(d, ..) = &mut source else {
+            unreachable!("a field in memory");
+        };
+        let mut heights = d.heights.to_vec();
+        heights[0] = f32::NAN;
+        d.heights = heights.into();
+        let spoilt = d.clone();
+        for _ in 0..3 {
+            assert_eq!(
+                source.layout(),
+                Ok(laid),
+                "an unchanged field is checked again"
+            );
+        }
+        assert!(TerrainSource::data(spoilt.clone()).layout().is_err());
+        assert!(
+            source
+                .edited(spoilt, Vec2::ZERO, Vec2::ONE)
+                .layout()
+                .is_err()
+        );
     }
 }
