@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "og model bake --project <view>=<image>",
+      "summary": "Paints a model's base colour from concept images (front, back, left, right, top, three_quarter or a camera, framed as og model preview frames them): each texel takes the view that sees it most squarely, a texel no view sees takes the nearest painted colour on the model, and the report gives each material's coverage. Writes <name>.<material>.basecolor.png beside the model, and the program's <name>.ogt or the mesh file with the maps."
+    }
+  ]
+}

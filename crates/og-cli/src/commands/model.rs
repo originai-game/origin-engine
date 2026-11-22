@@ -15,7 +15,8 @@
 //! - [`repair`], [`decimate`], [`unwrap`]: the mesh tools on a mesh file.
 //! - [`place`]: a mesh file turned, sized and moved to a base pivot.
 //! - [`process`]: the chain import → repair → decimate → unwrap →
-//!   measure → export under a triangle budget.
+//!   measure → export under a triangle budget, or a prop folder.
+//! - [`bake`]: base colour projected from concept images onto the UVs.
 //!
 //! Reports are JSON with keys in a fixed order ([`report`]); errors are
 //! [`Failure`] values. [`args`] reads the command line.
@@ -23,6 +24,7 @@
 use std::process::ExitCode;
 
 pub mod args;
+pub mod bake;
 pub mod build;
 pub mod collide;
 pub mod compare;
@@ -125,6 +127,9 @@ const USAGE: &str = "usage: og model <command> <input> [options]
            [--intersections] [--unwrap] [--max-texture PX] [--ktx2 | --ktx2-rdo Q | --etc1s | --webp]
            [--bake PX [--bake-distance MM]]    --bake: fresh UVs packed at PX², the
                                                 look baked into new maps
+  bake     <input> --project VIEW=IMAGE.png … [--size PX] [--view-size PX] [--out DIR]
+                                                base colour from concept images (views as
+                                                preview's), per material beside the model
   rig      <mesh> [-o out.glb] [--skeleton joints.json] [--check-clip]
                                                 a skin by bone heat: for the joints given,
                                                 or a humanoid's found from the mesh (up +Z,
@@ -152,6 +157,7 @@ pub fn run(argv: &[&str]) -> ExitCode {
                 "compress" => compress::run(&a),
                 "process" => process::run(&a),
                 "rig" => rig::run(&a),
+                "bake" => bake::run(&a),
                 "help" | "-h" | "--help" => {
                     println!("{USAGE}");
                     return ExitCode::SUCCESS;

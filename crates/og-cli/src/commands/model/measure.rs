@@ -282,7 +282,7 @@ fn hex(c: [u8; 3]) -> String {
 
 /// A material's colour as drawn, sRGB: its base colour times the mean of
 /// its base-colour map when the map decodes.
-fn colour(m: &og_shape::tools::Material) -> [u8; 3] {
+pub(super) fn colour(m: &og_shape::tools::Material) -> [u8; 3] {
     let lin = |c: f64| {
         if c <= 0.04045 {
             c / 12.92

@@ -457,7 +457,7 @@ fn source_maps(mesh: &super::source::Mesh) -> Vec<ImageInfo> {
 
 /// A file name for the model `name` (its path separators and spaces
 /// made dashes; `model` when empty).
-fn file_stem(name: &str) -> String {
+pub(super) fn file_stem(name: &str) -> String {
     let s: String = name
         .chars()
         .map(|c| {

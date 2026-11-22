@@ -3,6 +3,7 @@
 //! library's bytes, reports say what the kernel did, and mistakes exit 2.
 
 use og_shape_formats::ModelFiles;
+use std::path::Path;
 use std::process::Command;
 
 const PROGRAM: &str = concat!(
@@ -651,4 +652,137 @@ fn process_writes_a_prop_at_its_size_on_its_base() {
         "--json",
     ]);
     assert_eq!(mixed.status.code(), Some(2));
+}
+
+/// `bake --project` paints each texel from the view that sees it: a front
+/// image red on its left half and blue on its right comes back on the
+/// baked model's own front view pixel for pixel (a mirrored or shifted
+/// projection would swap or smear the halves), every texel is painted or
+/// filled, and a program gets its `.ogt` beside it, never a new program.
+#[test]
+fn bake_projects_a_front_image_onto_the_uvs() {
+    let dir = std::env::temp_dir().join(format!("shape-bake-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    let glb = dir.join("wm.glb");
+    assert!(
+        shape(&["export", PROGRAM, "-o", glb.to_str().unwrap()])
+            .status
+            .success()
+    );
+    let prop = dir.join("prop");
+    report(&[
+        "process",
+        glb.to_str().unwrap(),
+        "--out",
+        prop.to_str().unwrap(),
+        "--json",
+    ]);
+    let model = prop.join("prop.glb");
+    let views = dir.join("views");
+    let front = |input: &Path, out: &Path, unlit: bool| {
+        let mut args = vec![
+            "preview",
+            input.to_str().unwrap(),
+            "--views",
+            "front",
+            "--width",
+            "256",
+            "--out",
+            out.to_str().unwrap(),
+            "--json",
+        ];
+        if unlit {
+            args.push("--unlit");
+        }
+        report(&args);
+        image::open(out.join("front.png")).unwrap().to_rgba8()
+    };
+    let mut concept = front(&model, &views, false);
+    let w = concept.width();
+    for (x, _, p) in concept.enumerate_pixels_mut() {
+        let c = if x < w / 2 {
+            [220, 30, 30]
+        } else {
+            [30, 30, 220]
+        };
+        p.0 = [c[0], c[1], c[2], p[3]];
+    }
+    let concept_path = dir.join("concept.png");
+    concept.save(&concept_path).unwrap();
+    let project = format!("front={}", concept_path.display());
+    let r = report(&[
+        "bake",
+        model.to_str().unwrap(),
+        "--project",
+        &project,
+        "--size",
+        "256",
+        "--view-size",
+        "256",
+        "--json",
+    ]);
+    let c = &r["coverage"][0];
+    let (covered, filled) = (
+        c["covered"].as_f64().unwrap(),
+        c["filled"].as_f64().unwrap(),
+    );
+    assert!(
+        covered > 0.05 && (covered + filled - 1.0).abs() < 1e-6,
+        "{c}"
+    );
+    assert!(
+        prop.join(format!(
+            "prop.{}.basecolor.png",
+            c["material"].as_str().unwrap()
+        ))
+        .is_file()
+    );
+    let baked = front(&model, &dir.join("baked"), true);
+    let (mut same, mut seen) = (0, 0);
+    for (x, y, p) in baked.enumerate_pixels() {
+        let q = concept.get_pixel(x, y);
+        if p[3] < 255 || q[3] < 255 || x.abs_diff(w / 2) < 4 {
+            continue;
+        }
+        seen += 1;
+        same += usize::from((p[0] > p[2]) == (q[0] > q[2]));
+    }
+    assert!(
+        seen > 1000 && same as f64 > 0.95 * seen as f64,
+        "{same} of {seen}"
+    );
+    // A program: its `.ogt` names it and the maps; the program is as it was.
+    let program = dir.join("wm.shape.json");
+    std::fs::copy(PROGRAM, &program).unwrap();
+    let r = report(&[
+        "bake",
+        program.to_str().unwrap(),
+        "--project",
+        &project,
+        "--size",
+        "64",
+        "--view-size",
+        "128",
+        "--json",
+    ]);
+    let ogt = std::fs::read_to_string(dir.join("wm.ogt")).unwrap();
+    assert!(
+        ogt.starts_with("type model") && ogt.contains("program \"wm.shape.json\""),
+        "{ogt}"
+    );
+    for t in r["output"]["textures"].as_array().unwrap() {
+        let file = Path::new(t["path"].as_str().unwrap())
+            .file_name()
+            .unwrap()
+            .to_str()
+            .unwrap()
+            .to_string();
+        assert!(ogt.contains(&format!("map \"{file}\"")), "{ogt}");
+    }
+    assert_eq!(
+        std::fs::read(&program).unwrap(),
+        std::fs::read(PROGRAM).unwrap()
+    );
+    let _ = std::fs::remove_dir_all(&dir);
 }

@@ -115,6 +115,18 @@ impl Args {
         }
     }
 
+    /// Every value of a repeatable option, in order.
+    pub fn values(&self, name: &str) -> Result<Vec<&str>, Failure> {
+        self.options
+            .iter()
+            .filter(|(k, _)| k == name)
+            .map(|(k, v)| {
+                v.as_deref()
+                    .ok_or_else(|| Failure::Usage(format!("{k} needs a value")))
+            })
+            .collect()
+    }
+
     /// Whether a switch is given.
     pub fn switch(&self, name: &str) -> bool {
         self.options.iter().any(|(k, _)| k == name)
