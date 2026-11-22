@@ -4,10 +4,11 @@ pub(crate) mod invariants;
 pub(crate) mod lazy;
 
 mod creation;
+pub(crate) use crate::present::extract::extract_layouts;
 #[cfg_attr(feature = "publish", allow(unused_imports))]
 pub(crate) use creation::assemble;
 pub(crate) use creation::run_ui_registration;
-pub(crate) use creation::{Assembled, extract_layouts, versioned};
+pub(crate) use creation::{Assembled, versioned};
 pub use creation::{
     antialias_name, create, destroy, point_shadows_name, render_desc, render_options,
     set_render_backend, transparency_name, warm_renderer,
@@ -27,13 +28,14 @@ pub(crate) use tick::advance_probe;
 pub use tick::{advance, answer_call, call_rpc, frame, take_log, take_outputs};
 pub(crate) use tick::{extract_frame, frame_value};
 mod module_state;
-pub(crate) use module_state::{Modules, Mount};
+pub(crate) use crate::registry::Modules;
+pub(crate) use module_state::Mount;
 mod resources;
 use crate::{
     author::trace, bind::agents, bind::anim, bind::i18n, bind::modules, bind::terrain,
-    bind::timeline, bind::video, host::api, host::codec, ok_void, present::art,
-    present::atmosphere, present::extract, present::feel, present::fx, present::interpolate,
-    present::look, present::probes, present::views, world::assets, world::save, world::stream,
+    bind::timeline, bind::video, host::api, host::codec, ok_void, present::art, present::extract,
+    present::feel, present::interpolate, present::look, present::probes, world::assets,
+    world::save, world::stream,
 };
 pub(crate) use resources::{
     bump_layout_epoch, layout_epoch, world_query_views, write_resource_value,
@@ -45,7 +47,7 @@ pub use resources::{
 
 use crate::author::probe::{self as rprobe, NameOp};
 use crate::host::codec::{Layout, RecordKind};
-use crate::present::extract::{DrawLayouts, RenderState};
+use crate::present::extract::RenderState;
 use crate::world::assets::{Assets, Fetch, Status};
 use crate::{ok, parse, refuse};
 use og_api::host::DISPATCH_PLATFORM;

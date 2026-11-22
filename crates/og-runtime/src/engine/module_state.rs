@@ -6,45 +6,7 @@
 //! saved by the module's state block, as before; the rest is the engine's,
 //! never the process's.
 
-use crate::{
-    bind::agents, bind::destruction, bind::destruction2d, bind::flow, bind::forces, bind::i18n,
-    bind::modules, bind::motion, bind::net, bind::particles, bind::shared, bind::sight,
-    bind::story, bind::terrain, bind::timeline, bind::vfx, bind::video, bind::wind,
-    engine::invariants, host::platform, present::atmosphere, present::loading, world::origin,
-    world::scenes, world::stream,
-};
-
-/// Each module's state on one engine.
-#[derive(Default)]
-pub(crate) struct Modules {
-    pub atmosphere: atmosphere::ModuleState,
-    pub destruction: destruction::ModuleState,
-    pub destruction2d: destruction2d::ModuleState,
-    pub motion: motion::ModuleState,
-    pub particles: particles::ModuleState,
-    pub vfx: vfx::ModuleState,
-    pub timeline: timeline::ModuleState,
-    pub terrain: terrain::ModuleState,
-    pub video: video::ModuleState,
-    pub cells: stream::cells::ModuleState,
-    pub stream: stream::ModuleState,
-    pub agents: agents::ModuleState,
-    pub story: story::ModuleState,
-    pub flow: flow::ModuleState,
-    pub platform: platform::ModuleState,
-    pub net: net::ModuleState,
-    pub i18n: i18n::ModuleState,
-    pub docs: modules::docs::ModuleState,
-    pub ui: modules::ModuleState,
-    pub invariants: invariants::ModuleState,
-    pub origin: origin::ModuleState,
-    pub air: wind::ModuleState,
-    pub forces: forces::ModuleState,
-    pub sight: sight::ModuleState,
-    pub shared: shared::ModuleState,
-    pub scenes: scenes::ModuleState,
-    pub loading: loading::ModuleState,
-}
+use crate::registry::Modules;
 
 /// The engine a world is assembled for, as its modules mount on it: its
 /// id (what its systems name it by when they run) and its modules' state.

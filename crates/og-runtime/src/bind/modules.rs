@@ -754,6 +754,21 @@ fn preview_of(engine_id: u32) -> Option<Viewport> {
     engine(engine_id).ok()?.modules.ui.preview.get()
 }
 
+/// An engine's UI surface, CSS px, and the UI events its pack gives a
+/// pack-wide sound: `og ui check` reads them (og-host-node `og_node_ui_frame`).
+pub fn ui_surface(engine: u32) -> Option<(og_ui_model::Viewport, Vec<String>)> {
+    let eng = crate::engine::engine(engine).ok()?;
+    let sounds = eng
+        .render
+        .try_borrow()
+        .ok()?
+        .ui_next
+        .as_ref()
+        .map(|n| n.pack_sound_events())
+        .unwrap_or_default();
+    Some((viewport_of(engine), sounds))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

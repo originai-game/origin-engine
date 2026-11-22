@@ -139,5 +139,49 @@ pub(crate) struct DrawLayouts {
     pub engine: u32,
 }
 
+/// The layouts extraction reads, from an engine's registered records.
+pub(crate) fn extract_layouts(
+    eng: &crate::engine::Engine,
+) -> (Option<Layout>, Option<Layout>, DrawLayouts) {
+    let st = eng.state.borrow();
+    let get = |n: &str| st.layouts.get(n).cloned();
+    (
+        get("og.Camera"),
+        get("og.RenderSettings"),
+        DrawLayouts {
+            model: get("og.Model"),
+            mesh: get("og.Mesh"),
+            directional: get("og.DirectionalLight"),
+            point: get("og.PointLight"),
+            spot: get("og.SpotLight"),
+            rect: get("og.RectLight"),
+            fx: super::fx::FxLayouts::from(get),
+            atmo: super::atmosphere::AtmoLayouts::from(get, st.physics.clone()),
+            environment: get("og.Environment"),
+            terrain: get("og.Terrain"),
+            scatter: get("og.TerrainScatter"),
+            grass: get("og.Grass"),
+            stamp: get("og.TerrainStamp"),
+            grass_pusher: get("og.GrassPusher"),
+            scatter_clearing: get("og.ScatterClearing"),
+            grass_type: get("og.GrassType"),
+            collider: get("og.Collider"),
+            force_field: get("og.ForceField"),
+            lines: get("og.Lines"),
+            points: get("og.Points"),
+            probe: get("og.ReflectionProbe"),
+            light_volume: get("og.LightVolume"),
+            realtime_volume: get(crate::present::probes::REALTIME_LIGHT_VOLUME),
+            volume: get("og.Volume"),
+            sight: get(crate::bind::sight::MAP),
+            interpolation: get("og.Interpolation"),
+            origin: get(crate::world::origin::RESOURCE),
+            views: super::views::ViewLayouts::from(get),
+            physics: st.physics.clone(),
+            engine: eng.id,
+        },
+    )
+}
+
 #[cfg(test)]
 mod tests;

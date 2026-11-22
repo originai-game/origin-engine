@@ -1381,6 +1381,44 @@ pub(crate) fn sighting(
     }
 }
 
+/// The binary, host-neutral retained UI protocol.
+pub fn og_engine_ui_patch(world: u32, bytes: &[u8]) -> Vec<u8> {
+    match crate::engine::engine(world) {
+        // A world: the TS renderer's ops and the game's stores.
+        Ok(eng) => {
+            let ops = bytes.strip_prefix(og_ui_next::tree::MAGIC);
+            if ops.is_some() {
+                eng.render
+                    .borrow_mut()
+                    .ui_next
+                    .get_or_insert_with(|| Box::new(Next::new()))
+                    .draws = true;
+                pack_images(world);
+            }
+            let (reply, tables) = {
+                let mut rs = eng.render.borrow_mut();
+                let next = rs.ui_next.get_or_insert_with(|| Box::new(Next::new()));
+                // The TS renderer's op batches, beside the store's commands.
+                match ops {
+                    Some(ops) => {
+                        let reply = next.ops(world, ops);
+                        (reply, next.take_strings())
+                    }
+                    None => (next.patch(bytes), Vec::new()),
+                }
+            };
+            // Its components' string tables, registered once the render
+            // state is free (a table's locale may load its fonts).
+            crate::bind::i18n::component_tables(&eng, tables);
+            reply
+        }
+        Err(reason) => og_reactive::reactive::wire::encode(&serde_json::json!({
+            "ok": false, "reason": reason
+        }))
+        .expect("bounded error reply"),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -400,7 +400,7 @@ pub(crate) fn assemble(
     // Lazy records a game system or hook names, with their partners and
     // what their modules need: registered before the systems that declare
     // them, their modules granted them once mounted.
-    let lazy_named: Vec<&'static str> = crate::engine::lazy::LAZY
+    let lazy_named: Vec<&'static str> = crate::registry::LAZY
         .iter()
         .map(|l| l.name)
         .filter(|&name| {
@@ -425,7 +425,7 @@ pub(crate) fn assemble(
         })
         .collect();
     // In LAZY's order, once each (a partner joins at its own place).
-    let lazy_named: Vec<&'static str> = crate::engine::lazy::LAZY
+    let lazy_named: Vec<&'static str> = crate::registry::LAZY
         .iter()
         .map(|l| l.name)
         .filter(|n| lazy_named.contains(n))
