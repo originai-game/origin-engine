@@ -485,6 +485,9 @@ fn record_of(style: &Style, props: &ClassProps) -> Record {
     r.cursor = style.view.cursor;
     r.z_index = style.z_index;
     r.hidden = style.view.hidden;
+    r.object = style
+        .object_fit()
+        .map(|fit| (fit, style.view.object_position));
     r.touch = props
         .pointer_events
         .map(|p| p == nsh_tailwind::props::PointerEvents::Auto);
@@ -1235,15 +1238,15 @@ mod tests {
             ("ViewStyle", format!("{:#?}", ViewStyle::default()),
                 &["background_color", "border_radius", "corner_radius", "borders",
                   "opacity", "transform", "transform_origin", "effects", "outline",
-                  "cursor", "transition", "animation", "hidden",
+                  "cursor", "transition", "animation", "hidden", "object_position",
                   // The layout's overflow carries it.
                   "overflow_hidden"],
                 &[// Platform materials and props of native views.
                   "continuous_corners", "tint_color", "elevation", "backface_hidden",
                   "backdrop_material", "glass_effect", "glass_tint_color",
                   "macos_backdrop", "windows_backdrop",
-                  // Not drawn yet: `accent-*`, `object-*`, `mix-blend-*`.
-                  "accent_color", "object_position", "blend_mode"]),
+                  // Not drawn yet: `accent-*`, `mix-blend-*`.
+                  "accent_color", "blend_mode"]),
             ("TextStyle", format!("{:#?}", TextStyle::default()),
                 &["color", "font_size", "font_weight", "line_height", "text_align",
                   "letter_spacing", "letter_spacing_em", "line_height_em",

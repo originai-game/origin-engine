@@ -89,6 +89,9 @@ pub(crate) struct Next {
     /// frame: what the tree's images resolve their sources against (the
     /// tree paints while the render state is borrowed).
     textures: Rc<RefCell<Vec<og_render::TextureHandle>>>,
+    /// Each of `textures`' size in texels (0 unknown): `object-*` fits an
+    /// image's source by it.
+    texture_sizes: Rc<RefCell<Vec<[f32; 2]>>>,
     /// The frame's run-time glyphs render all at once, not a few a frame
     /// (`glyphs::generate`): a fresh tree painted, so its text arrives
     /// with its panels.
@@ -395,6 +398,9 @@ pub(crate) fn configured_seeds(engine: u32) -> String {
     json!({ "seeds": seeds }).to_string()
 }
 
+/// A texture's size in texels (the render scene's), when it has one.
+pub(crate) type TextureSize<'a> = dyn Fn(og_render::TextureHandle) -> Option<(u32, u32)> + 'a;
+
 /// Where a UI box falls among what classes read of it: how many of the
 /// theme's widths it reaches, and whether it is under 500 px tall and
 /// wider than tall. A box that stays in one resolves every class alike
@@ -628,6 +634,7 @@ impl Next {
             a11y: og_ui_next::a11y::Tree::new(),
             fresh: false,
             textures: Rc::default(),
+            texture_sizes: Rc::default(),
             generation: 0,
             settle_glyphs: false,
             zones: Vec::new(),
@@ -654,11 +661,14 @@ impl Next {
         tree.set_sounds(self.sounds.clone());
         // An image's source is a Texture handle (`og.load.texture`, a
         // video player's texture).
-        let textures = self.textures.clone();
+        let (textures, sizes) = (self.textures.clone(), self.texture_sizes.clone());
         tree.set_textures(Box::new(move |handle| {
             crate::world::assets::index_of(handle)
-                .and_then(|i| textures.borrow().get(i).map(|t| t.slot()))
-                .unwrap_or(0)
+                .and_then(|i| {
+                    let slot = textures.borrow().get(i)?.slot();
+                    Some((slot, sizes.borrow().get(i).copied().unwrap_or_default()))
+                })
+                .unwrap_or_default()
         }));
         self.tree = Some(tree);
         // Before the first op batch, so its records are the pack's from
@@ -795,7 +805,7 @@ impl Next {
         engine: u32,
         (fonts, icons): (&og_ui_next::fonts::Fonts, &og_ui_next::icons::IconAtlas),
         view: Option<og_ui_next::view::WorldView>,
-        textures: &[og_render::TextureHandle],
+        (textures, size_of): (&[og_render::TextureHandle], &TextureSize<'_>),
         (time, tick): (f64, u64),
         tps: u32,
         emitters: &dyn Fn(f64) -> Option<&'e og_render::ParticleEmitter>,
@@ -832,6 +842,13 @@ impl Next {
             let mut t = self.textures.borrow_mut();
             t.clear();
             t.extend_from_slice(textures);
+            let mut sizes = self.texture_sizes.borrow_mut();
+            sizes.clear();
+            sizes.extend(
+                textures
+                    .iter()
+                    .map(|&h| size_of(h).map_or([0.0; 2], |(w, h)| [w as f32, h as f32])),
+            );
             tree.repaint_images();
         }
         let v = frame.viewport();

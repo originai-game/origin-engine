@@ -212,7 +212,7 @@ pub(crate) fn mount_back(
                         engine_id,
                         (ui_fonts, ui_icons),
                         view,
-                        textures,
+                        (textures, &|h| scene.texture_size(h)),
                         (ui_time, t.tick),
                         t.rate.max(1),
                         // A `<Particles>`' emitter, by the handle og.load.emitter gave.

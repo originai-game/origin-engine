@@ -270,7 +270,7 @@ impl ImageProps {
     ) -> crate::record::Slice {
         let mut im = *base;
         if !self.handle.is_nan() {
-            im.texture = textures.map_or(0, |f| f(self.handle));
+            (im.texture, im.size) = textures.map_or((0, [0.0; 2]), |f| f(self.handle));
         }
         im.wipe = self.wipe.unwrap_or(im.wipe);
         im.wipe_start = self.wipe_start.unwrap_or(im.wipe_start);
@@ -433,9 +433,9 @@ pub use ops::{EVENTS, Event as OpEvent, Fired, MAGIC, REFUSED, Resolve};
 pub use vcursor::{Pad as CursorPad, Pointer as CursorPointer, VirtualCursorDesc};
 
 /// An image's source, a texture handle as the game holds it, as its
-/// texture's slot (`og_draw::TextureHandle::slot`; 0 none)
-/// ([`Tree::set_textures`]).
-pub type Textures = Box<dyn Fn(f64) -> u32>;
+/// texture's slot (`og_draw::TextureHandle::slot`; 0 none) and its size in
+/// texels (0 unknown) ([`Tree::set_textures`]).
+pub type Textures = Box<dyn Fn(f64) -> (u32, [f32; 2])>;
 
 impl Default for Tree {
     fn default() -> Self {
@@ -1260,8 +1260,14 @@ impl Tree {
                 let flags = (u32::from(im.fill) * og_draw::paint::IMAGE_FILL)
                     | (u32::from(im.tile) * og_draw::paint::IMAGE_TILE);
                 let cut = if im.wipe < 1.0 { 1.0 - im.wipe } else { 0.0 };
+                // `object-*`: the source at its size in the box, placed
+                // and cropped to it.
+                let (rect, uv) = match r.object {
+                    Some(object) if im.slice == [0.0; 4] => fitted(object, rect, im.uv, im.size),
+                    _ => (rect, im.uv),
+                };
                 p.quads.push(PaintQuad {
-                    uv: im.uv,
+                    uv,
                     wipe: [cut, im.wipe_start, f32::from(u8::from(im.wipe_ccw)), 0.0],
                     mask: 0,
                     ..quad(
@@ -1681,6 +1687,52 @@ impl Tree {
             self.pointer_ops(x, y, (was.0, was.1) != (x, y), pressed, released);
         }
     }
+}
+
+/// An image of `size` texels showing `uv` of it, fitted into `rect` as
+/// CSS's `object-fit` and `object-position` place it: the part of the box
+/// it covers, and the region of the texture drawn there. An unknown size
+/// stretches it.
+fn fitted(
+    (fit, at): (
+        nsh_tailwind::ResizeMode,
+        nsh_tailwind::style::ObjectPosition,
+    ),
+    rect: [f32; 4],
+    uv: [f32; 4],
+    size: [f32; 2],
+) -> ([f32; 4], [f32; 4]) {
+    use nsh_tailwind::ResizeMode as R;
+    let [x, y, w, h] = rect;
+    let natural = [
+        size[0] * (uv[2] - uv[0]).abs(),
+        size[1] * (uv[3] - uv[1]).abs(),
+    ];
+    if fit == R::Stretch || natural[0] <= 0.0 || natural[1] <= 0.0 || w <= 0.0 || h <= 0.0 {
+        return (rect, uv);
+    }
+    let contain = (w / natural[0]).min(h / natural[1]);
+    let scale = match fit {
+        R::Contain => contain,
+        R::Cover => (w / natural[0]).max(h / natural[1]),
+        R::Center => 1.0,
+        R::ScaleDown => contain.min(1.0),
+        R::Stretch => unreachable!(),
+    };
+    let (dw, dh) = (natural[0] * scale, natural[1] * scale);
+    let dx = at.x.resolve(nsh_tailwind::geometry::Points(w - dw)).0;
+    let dy = at.y.resolve(nsh_tailwind::geometry::Points(h - dh)).0;
+    // The drawn image's box, then the part of it inside the element's.
+    let (ix0, iy0) = (x + dx, y + dy);
+    let (x0, y0) = (ix0.max(x), iy0.max(y));
+    let (x1, y1) = ((ix0 + dw).min(x + w), (iy0 + dh).min(y + h));
+    let along = |a: f32, b: f32, t: f32| a + (b - a) * t;
+    let u = |px: f32| along(uv[0], uv[2], (px - ix0) / dw);
+    let v = |py: f32| along(uv[1], uv[3], (py - iy0) / dh);
+    (
+        [x0, y0, (x1 - x0).max(0.0), (y1 - y0).max(0.0)],
+        [u(x0), v(y0), u(x1), v(y1)],
+    )
 }
 
 #[allow(clippy::too_many_arguments)]

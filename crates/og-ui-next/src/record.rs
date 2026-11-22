@@ -299,6 +299,8 @@ pub struct Slice {
     pub wipe: f32,
     pub wipe_start: f32,
     pub wipe_ccw: bool,
+    /// Its texture's size in texels, as its source resolved; 0 unknown.
+    pub size: [f32; 2],
 }
 
 impl Default for Slice {
@@ -314,6 +316,7 @@ impl Default for Slice {
             wipe: 1.0,
             wipe_start: 0.0,
             wipe_ccw: false,
+            size: [0.0; 2],
         }
     }
 }
@@ -435,6 +438,12 @@ pub struct Record {
     pub fill: Option<Option<Rgba>>,
     /// Its `space-x-*` and `space-y-*`, for its children.
     pub space: Spacing,
+    /// Its `object-*` (CSS's `object-fit` and `object-position`): how its
+    /// image's source fits its box; `None` stretches it (`fill`).
+    pub object: Option<(
+        nsh_tailwind::ResizeMode,
+        nsh_tailwind::style::ObjectPosition,
+    )>,
 }
 
 impl Record {
@@ -496,6 +505,7 @@ impl Default for Record {
             touch: None,
             fill: None,
             space: Spacing::default(),
+            object: None,
             scheme: None,
             dark: false,
         }

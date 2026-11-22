@@ -1860,7 +1860,9 @@ mod tests {
         };
         frame(&mut t);
         assert_eq!(images(&t).len(), 1, "an unresolved src draws nothing yet");
-        t.set_textures(Box::new(|h| if h == 4294967298.0 { 8 } else { 0 }));
+        t.set_textures(Box::new(|h| {
+            (if h == 4294967298.0 { 8 } else { 0 }, [0.0; 2])
+        }));
         frame(&mut t);
         let tex = |slot: u32| og_draw::TextureHandle::from_slot(slot).unwrap().to_bits();
         let got = images(&t);
@@ -1876,6 +1878,52 @@ mod tests {
             "the wipe over nine"
         );
         assert_eq!(got[1].2, [3.0; 4], "its slices are the classes'");
+    }
+
+    /// `object-*` fits an image's source of known size into its box as
+    /// CSS does: `contain` letterboxes it, `cover` crops it about the
+    /// centre (`object-top` from the top), `none` shows it at its size,
+    /// and no `object-*` stretches it. Ways this could fail: the crop's
+    /// texture region off its drawn box, or the position ignored.
+    #[test]
+    fn object_fit_places_and_crops_an_images_source() {
+        let mut t = real();
+        let classes = [
+            "w-[100px] h-[50px]",
+            "w-[100px] h-[50px] object-contain",
+            "w-[100px] h-[50px] object-cover",
+            "w-[100px] h-[50px] object-cover object-top",
+            "w-[100px] h-[50px] object-none object-left-top",
+        ];
+        let mut b = Batch::default();
+        for (k, c) in classes.iter().enumerate() {
+            let id = k as u32 + 1;
+            b.op(1).u32(id).u8(2);
+            b.op(4).u32(id).str(&format!("{c} absolute top-0 left-0"));
+            b.op(6).u32(id).str("src").str("7");
+            b.op(8).u32(0).u32(id).u32(u32::MAX);
+        }
+        t.apply(&b.bytes()).unwrap();
+        t.set_textures(Box::new(|_| (3, [200.0, 200.0])));
+        frame(&mut t);
+        let got: Vec<([f32; 4], [f32; 4])> = t
+            .drawn
+            .quads
+            .iter()
+            .filter(|q| q.kind == PaintKind::Image as u32)
+            .map(|q| (q.rect, q.uv))
+            .collect();
+        let whole = [0.0, 0.0, 1.0, 1.0];
+        assert_eq!(
+            got,
+            [
+                ([0.0, 0.0, 100.0, 50.0], whole),
+                ([25.0, 0.0, 50.0, 50.0], whole),
+                ([0.0, 0.0, 100.0, 50.0], [0.0, 0.25, 1.0, 0.75]),
+                ([0.0, 0.0, 100.0, 50.0], [0.0, 0.0, 1.0, 0.5]),
+                ([0.0, 0.0, 100.0, 50.0], [0.0, 0.0, 0.5, 0.25]),
+            ]
+        );
     }
 
     /// An `aspect-[7/10]` flex item in an `items-center` row takes its
