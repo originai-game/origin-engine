@@ -191,6 +191,13 @@ pack and scheme, and times that HUD with `og cost`, its filter classes on
 and off. The median difference is held to the UI filters' budget,
 0.5 ms of GPU frame at 1080p; over it, or unmeasured, is a failure.
 
+The environment section shoots `scripts/final-l4/environment`: the pinned
+AI sky (`crates/og-cook/tests/assets/environment/ai-coast.png`) as a full
+sphere, its upper half as a dome over the filled ground, blurred and
+blended, each facing the sun and away from it, with boxes and spheres lit
+by the sun `og.load.environmentSun` extracts. Look for banding, a black or
+white sky, a hard seam at the dome's horizon and top faces going white.
+
 Web frames and web GPU timings both come from Chrome on the L4. The
 engine's launch (`webGpuSwitches` in `packages/engine/src/node/device.ts`)
 puts headless Chrome's WebGPU on SwiftShader, a CPU renderer. SwiftShader

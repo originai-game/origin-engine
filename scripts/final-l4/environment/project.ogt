@@ -1,0 +1,10 @@
+type project
+version 1
+---
+# The LDR environment scene the final L4 pass shoots (docs/ci.md §The final L4 pass).
+name "Environment scene"
+id "environment-scene"
+engine "0.9.0"
+entry "src/main.ts"
+tick 60
+seed 1

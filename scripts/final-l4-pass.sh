@@ -18,7 +18,8 @@
 # cut of packages/engine/tests/fixtures/fused, won and lost routes), gpu-tests (og-render's ui_paint,
 # the float-output blend included), web (the web-reference groups in Chrome), web-compat (the
 # browser's compatibility mode read back, the engine's Compat tier, the adapter retry), filters (the
-# UI filter scenes per pack and scheme, and their 0.5 ms budget at 1080p), gfx (og-gfx's core
+# UI filter scenes per pack and scheme, and their 0.5 ms budget at 1080p), environment (the pinned
+# AI sky as a full sphere, an upper dome, blurred and blended, lighting shapes by its extracted sun), gfx (og-gfx's core
 # and compat scenes against main's references, movements kept for review, not a gate).
 #
 # OUT holds, per section, <section>/sheet-*.jpg contact sheets and its logs; summary.txt (the SHA,
@@ -27,7 +28,7 @@
 # failures.txt is empty.
 set -uo pipefail
 root="$(cd "$(dirname "$0")/.." && pwd)"
-SECTIONS="gallery text fused gpu-tests web web-compat filters gfx"
+SECTIONS="gallery text fused gpu-tests web web-compat filters environment gfx"
 
 die() { echo "final-l4-pass: $*" >&2; exit 2; }
 
@@ -60,9 +61,9 @@ for l in sys.stdin:
   [ -f packages/engine/dist/web-publish/origin-engine.js ] || die "bundle: no packages/engine/dist/web-publish; run OG_GATE_SKIP=web-reference scripts/check.sh full --only web-reference first"
   rm -rf "$b/web" && mkdir -p "$b/web" && cp -r packages/engine/dist/web packages/engine/dist/web-publish packages/engine/native "$b/web/"
   # Ignored assets the checkout's sync leaves behind (the template fonts the text section's Chrome
-  # sheets use, the fused fixture's footage, vehicle-terrain's assets): fetched here, shipped in the
-  # bundle, put back by run.
-  local where="templates crates/og-tests packages/engine/tests/fixtures/fused tests/fixtures/vehicle-terrain packages/engine/vendor/basis packages/engine/motion packages/engine/shell/brand"
+  # sheets use, the fused fixture's footage, vehicle-terrain's assets, the environment section's
+  # sky): fetched here, shipped in the bundle, put back by run.
+  local where="templates crates/og-tests packages/engine/tests/fixtures/fused tests/fixtures/vehicle-terrain packages/engine/vendor/basis packages/engine/motion packages/engine/shell/brand crates/og-cook/tests/assets/environment"
   # shellcheck disable=SC2086
   bun scripts/assets.ts ensure $where >/dev/null || die "bundle: assets ensure failed"
   rm -rf "$b/assets" && mkdir -p "$b/assets"
@@ -375,6 +376,37 @@ print("" if v is None else round(v, 3))' "$w/cost.json")"
 # og-gfx's core (og-tests and og-tests-cooked `gfx`) and compat scenes against main's references.
 # A moved frame is reported with its actual and diff PNGs, for review; only a crash, a black or
 # blank frame or an unchecked run is a failure.
+# The LDR environment scene (scripts/final-l4/environment): the pinned AI sky as a full sphere, its
+# upper half as a dome, blurred and blended, each facing the sun and away from it. Judged by eye
+# for banding, a black or white sky, a seam at the dome's horizon and white tops on the shapes.
+sec_environment() {
+  local src="$root/scripts/final-l4/environment" w="$OUT/environment" p sky
+  sky="$root/crates/og-cook/tests/assets/environment/ai-coast.png"
+  [ -f "$sky" ] || { fail environment "no $sky (bun scripts/assets.ts ensure crates/og-cook/tests/assets/environment)"; return 0; }
+  p="$(mktemp -d)"; cp -r "$src/." "$p/"; rm -rf "$p/cooked" "$p/.og" "$p/node_modules"
+  mkdir -p "$p/node_modules/@origingame" "$w/shots" && ln -sfn "$root/packages/engine" "$p/node_modules/@origingame/engine"
+  # The upper dome is the panorama's upper half: zenith to horizon.
+  cp "$sky" "$p/assets/env/"
+  local wh; read -r -a wh <<< "$($IM "$sky" -format '%w %h' info: 2>/dev/null)"
+  $IM "$sky" -crop "${wh[0]}x$((wh[1] / 2))+0+0" +repage "$p/assets/env/ai-coast-upper.png" \
+    || { fail environment "could not cut the sky's upper half"; return 0; }
+  local size=1920x1080 views="full upper blur blend" v cmds="" t=0.2
+  [ "$DRY" = 1 ] && size=320x180
+  for v in $views; do
+    cmds+="$t:sky:$v;$(awk -v t="$t" 'BEGIN{print t+0.2}'):screenshot:$v-sun.png;$(awk -v t="$t" 'BEGIN{print t+0.25}'):face:away;$(awk -v t="$t" 'BEGIN{print t+0.45}'):screenshot:$v-away.png;$(awk -v t="$t" 'BEGIN{print t+0.5}'):face:sun;"
+    t="$(awk -v t="$t" 'BEGIN{print t+0.6}')"
+  done
+  (cd "$p" && OG_NATIVE_ADDON="$BUNDLE/bin/og-addon.node" "$BUNDLE/bin/og" run . --headless --no-check --size "$size" --out "$w/shots" \
+    --commands "${cmds}$t:quit") > "$w/run.log" 2>&1 || fail environment "the capture run failed (environment/run.log)"
+  grep '^sun ' "$w/run.log" > "$w/sun.txt"
+  local f why
+  for f in "$w"/shots/*.png; do why="$(blank "$f")"; [ -n "$why" ] && fail environment "$(basename "$f" .png): $why"; done
+  # shellcheck disable=SC2046
+  sheet "$w" views $(ls "$w"/shots/*.png 2>/dev/null)
+  note "environment: $(ls "$w"/shots/*.png 2>/dev/null | wc -l) frames; $(head -1 "$w/sun.txt" | cut -c1-200)"
+  rm -rf "$p"
+  return 0
+}
 sec_gfx() {
   local rep="$OUT/gfx/movements" pkg filter=gfx rc
   mkdir -p "$rep"

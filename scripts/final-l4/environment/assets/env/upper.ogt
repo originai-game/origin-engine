@@ -1,0 +1,9 @@
+type environment
+version 1
+---
+# The same sky's upper half (zenith to horizon, cut by the pass) as an upper dome, its ground
+# filled from the horizon rows.
+source "ai-coast-upper.png"
+hemisphere upper
+size 256
+samples 256

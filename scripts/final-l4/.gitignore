@@ -1,0 +1,2 @@
+# The pass copies the pinned sky in, and cuts its upper half, at run time.
+environment/assets/env/*.png
