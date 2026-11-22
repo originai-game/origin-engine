@@ -170,14 +170,23 @@ impl Renderer {
                         } else {
                             &self.post.white
                         };
+                        let copy = transmission_view.map_or(&self.post.white, |(v, _)| v);
+                        let exits = exits.unwrap_or(&p.empty_exits);
+                        let key = (
+                            [ao_view, atlas_view, copy, exits].map(Clone::clone),
+                            self.lights.fx_buffer.clone(),
+                            self.lights.decal_buffers.generation,
+                        );
+                        let mut made = p.fx_groups.lock().expect("physical fx groups");
+                        if let Some((_, g)) = made.iter().find(|(k, _)| *k == key) {
+                            return g.clone();
+                        }
                         let resources = [
                             self.lights.fx_buffer.as_entire_binding(),
                             wgpu::BindingResource::TextureView(ao_view),
                             wgpu::BindingResource::TextureView(atlas_view),
                             wgpu::BindingResource::Sampler(&self.trilinear_sampler),
-                            wgpu::BindingResource::TextureView(
-                                transmission_view.map_or(&self.post.white, |(v, _)| v),
-                            ),
+                            wgpu::BindingResource::TextureView(copy),
                         ];
                         let mut entries: Vec<_> = resources
                             .iter()
@@ -190,15 +199,20 @@ impl Renderer {
                         entries.extend(self.lights.decal_buffers.entries());
                         entries.push(wgpu::BindGroupEntry {
                             binding: 7,
-                            resource: wgpu::BindingResource::TextureView(
-                                exits.unwrap_or(&p.empty_exits),
-                            ),
+                            resource: wgpu::BindingResource::TextureView(exits),
                         });
-                        self.device.create_bind_group(&wgpu::BindGroupDescriptor {
+                        let group = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
                             label: Some("physical fx"),
                             layout: &p.fx_layout,
                             entries: &entries,
-                        })
+                        });
+                        // The frame's group and the backfaces' (`exits`
+                        // none) are the two a frame uses.
+                        if made.len() == 2 {
+                            made.remove(0);
+                        }
+                        made.push((key, group.clone()));
+                        group
                     })
             })
         };

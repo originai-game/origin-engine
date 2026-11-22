@@ -1,6 +1,7 @@
 //! Drawing a terrain's levels.
 
 use super::*;
+use crate::gpu::bundle::Encode;
 
 /// Fills each terrain's corner cache for this frame (`terrain_corners.wgsl`):
 /// every level's corners, before any pass draws them.
@@ -27,7 +28,7 @@ pub(crate) fn encode_corners(encoder: &mut crate::Encoder, draws: &[TerrainDraw]
 /// group 0 bound by the caller, or per level the reflection probe's frame
 /// group `probes` picks: probe_select.rs). Returns (draws, triangles).
 pub(crate) fn draw_levels(
-    pass: &mut wgpu::RenderPass,
+    pass: &mut impl Encode,
     draws: &[TerrainDraw],
     indices: &wgpu::Buffer,
     which: TerrainPass,

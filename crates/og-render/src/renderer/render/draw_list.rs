@@ -2,8 +2,8 @@
 
 use super::*;
 
-pub(super) struct DrawListInputs<'a, 'p, F0> {
-    pub(super) pass: &'a mut wgpu::RenderPass<'p>,
+pub(super) struct DrawListInputs<'a, P, F0> {
+    pub(super) pass: &'a mut P,
     pub(super) list: &'a DrawList,
     pub(super) lit: bool,
     /// What a shadow pass (`lit` false) draws into.
@@ -36,7 +36,11 @@ impl Renderer {
             culled_gpu,
             fx_lean_of,
             oit,
-        }: DrawListInputs<'_, '_, impl Fn(&wgpu::BindGroup) -> Option<&'r wgpu::BindGroup>>,
+        }: DrawListInputs<
+            '_,
+            impl Encode,
+            impl Fn(&wgpu::BindGroup) -> Option<&'r wgpu::BindGroup>,
+        >,
     ) {
         let mut shadow_key: Option<(ShadowKey, Option<usize>, bool, bool)> = None;
         let mut physical_bound = false;

@@ -1,4 +1,5 @@
 use super::*;
+use crate::gpu::bundle::Encode;
 
 impl ScatterRenderer {
     /// Places the chunks this frame built on the GPU, then culls this
@@ -54,9 +55,9 @@ impl ScatterRenderer {
     /// surface the prepass found. Answers the draws and the copies in the
     /// chunks drawn.
     #[allow(clippy::too_many_arguments)]
-    pub(crate) fn draw<'a>(
+    pub(crate) fn draw<'a, E: Encode>(
         &self,
-        pass: &mut wgpu::RenderPass,
+        pass: &mut E,
         kind: ScatterPass,
         all: &ScatterBatches,
         material_group: impl Fn(usize) -> Option<&'a wgpu::BindGroup>,
@@ -87,7 +88,7 @@ impl ScatterRenderer {
             self.cull.as_ref().filter(|_| at.has(set)).map(|c| (c, at))
         };
         let (mut draws, mut copies) = (0, 0);
-        let bind_with = |pass: &mut wgpu::RenderPass, scatter: &wgpu::BindGroup, group, offset| {
+        let bind_with = |pass: &mut E, scatter: &wgpu::BindGroup, group, offset| {
             pass.set_bind_group(1, group, &[]);
             pass.set_bind_group(2, scatter, &[offset]);
             if kind != ScatterPass::Shadow
@@ -96,9 +97,7 @@ impl ScatterRenderer {
                 pass.set_bind_group(3, fx, &[]);
             }
         };
-        let bind_rest = |pass: &mut wgpu::RenderPass, group, offset| {
-            bind_with(pass, &self.group, group, offset)
-        };
+        let bind_rest = |pass: &mut E, group, offset| bind_with(pass, &self.group, group, offset);
         // The cards over the prepass's own depth take its surface, through
         // their twin and the group with its view depth.
         let impostor_key = (None, Side::Double, kind as u8 + IMPOSTOR_KIND);

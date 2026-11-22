@@ -24,6 +24,7 @@
 //! (`frame.wgsl` `probe_weight`, 0 past the fade), so the part of a
 //! draw outside its probe's reach shows the environment.
 
+use crate::gpu::bundle::Encode;
 use crate::probes::ReflectionProbe;
 use glam::Vec3;
 
@@ -106,7 +107,7 @@ impl<'a> Binder<'a> {
     }
 
     /// Binds probe `probe`'s group (or the frame's).
-    pub fn bind(&mut self, pass: &mut wgpu::RenderPass, probe: u8) {
+    pub fn bind(&mut self, pass: &mut impl Encode, probe: u8) {
         let Some(g) = self.groups else { return };
         let probe = if (probe as usize) < g.groups.len() {
             probe
@@ -121,14 +122,14 @@ impl<'a> Binder<'a> {
 
     /// Binds the group of the probe a draw bounded by (`c`, `r`) samples
     /// ([`pick_sphere`]).
-    pub fn at(&mut self, pass: &mut wgpu::RenderPass, c: Vec3, r: f32) {
+    pub fn at(&mut self, pass: &mut impl Encode, c: Vec3, r: f32) {
         if let Some(g) = self.groups {
             self.bind(pass, pick_sphere(g.boxes, c, r));
         }
     }
 
     /// Puts the frame's group back for what follows.
-    pub fn reset(&mut self, pass: &mut wgpu::RenderPass) {
+    pub fn reset(&mut self, pass: &mut impl Encode) {
         self.bind(pass, NONE);
     }
 }

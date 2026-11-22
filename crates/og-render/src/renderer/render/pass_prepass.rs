@@ -145,46 +145,76 @@ impl Renderer {
             (true, Some(_), Some(gc)) => &gc.previous,
             (true, ..) => &self.instances.prev_instance_buffer,
         };
-        let mut current = None;
-        for &(b, first, count) in &main_list.ranges {
-            let batch = &batches[b as usize];
-            let key = (
-                batch.faces,
-                batch.shader,
-                batch.lean,
-                batch.derivatives,
-                batch.compact,
-                batch.array,
-                self.cache.meshes[batch.mesh].surface.is_some(),
-            );
-            if current != Some(key) {
-                p.set_pipeline(
-                    self.prepass_pipeline_of(batch, false)
-                        .expect("prepared prepass"),
+        // Each part plays from its render bundle while its draws repeat
+        // (gpu/bundle.rs), as the main pass's do (pass_main.rs).
+        let target = Target::of(
+            &[
+                Some(self.graph.view("gbuffer")),
+                Some(self.graph.view("lindepth")),
+                Some(self.graph.view("outline-id")),
+            ],
+            Some((self.graph.view(post::prepass_depth(self.samples)), false)),
+        );
+        macro_rules! bundled {
+            ($part:literal, |$d:ident| $draw:expr) => {{
+                let (out, played) = self.bundles.play(
+                    &self.device,
+                    &mut p,
+                    ($part, 0),
+                    &target,
+                    self.frame_index,
+                    |$d| {
+                        $d.set_bind_group(0, frame_bind_group, &[]);
+                        $d.set_bind_group(2, fx_group, &[]);
+                        $draw
+                    },
                 );
-                current = Some(key);
-            }
-            let m = &self.cache.materials[batch.material];
-            p.set_bind_group(1, m.array.as_ref().unwrap_or(&m.bind_group), &[]);
-            let mesh = &self.cache.meshes[batch.mesh];
-            let start = first as u64 * INSTANCE_STRIDE;
-            let end = start + count as u64 * INSTANCE_STRIDE;
-            p.set_vertex_buffer(0, mesh.vertex_slice(batch.compact));
-            p.set_vertex_buffer(1, instances.slice(start..end));
-            p.set_vertex_buffer(2, prev.slice(start..end));
-            if let Some(surface) = &mesh.surface {
-                p.set_vertex_buffer(3, surface.previous.slice(..));
-            }
-            p.set_index_buffer(mesh.indices.slice(..), wgpu::IndexFormat::Uint32);
-            match (main_list.indirect, culled_gpu) {
-                (Some(g), Some(gc)) => {
-                    let (args, at) = gc.draw_args(g, b);
-                    p.draw_indexed_indirect(args, at)
-                }
-                _ => p.draw_indexed(0..mesh.index_count, 0, 0..count),
-            }
-            stats.prepass_draws += 1;
+                played.count(stats);
+                out
+            }};
         }
+        stats.prepass_draws += bundled!("prepass: instances", |p| {
+            let mut current = None;
+            for &(b, first, count) in &main_list.ranges {
+                let batch = &batches[b as usize];
+                let key = (
+                    batch.faces,
+                    batch.shader,
+                    batch.lean,
+                    batch.derivatives,
+                    batch.compact,
+                    batch.array,
+                    self.cache.meshes[batch.mesh].surface.is_some(),
+                );
+                if current != Some(key) {
+                    p.set_pipeline(
+                        self.prepass_pipeline_of(batch, false)
+                            .expect("prepared prepass"),
+                    );
+                    current = Some(key);
+                }
+                let m = &self.cache.materials[batch.material];
+                p.set_bind_group(1, m.array.as_ref().unwrap_or(&m.bind_group), &[]);
+                let mesh = &self.cache.meshes[batch.mesh];
+                let start = first as u64 * INSTANCE_STRIDE;
+                let end = start + count as u64 * INSTANCE_STRIDE;
+                p.set_vertex_buffer(0, mesh.vertex_slice(batch.compact));
+                p.set_vertex_buffer(1, instances.slice(start..end));
+                p.set_vertex_buffer(2, prev.slice(start..end));
+                if let Some(surface) = &mesh.surface {
+                    p.set_vertex_buffer(3, surface.previous.slice(..));
+                }
+                p.set_index_buffer(mesh.indices.slice(..), wgpu::IndexFormat::Uint32);
+                match (main_list.indirect, culled_gpu) {
+                    (Some(g), Some(gc)) => {
+                        let (args, at) = gc.draw_args(g, b);
+                        p.draw_indexed_indirect(args, at)
+                    }
+                    _ => p.draw_indexed(0..mesh.index_count, 0, 0..count),
+                }
+            }
+            main_list.ranges.len() as u32
+        });
         part!("prepass: meshlets");
         if let Some(m) = self
             .visibility
@@ -192,25 +222,15 @@ impl Renderer {
             .as_ref()
             .filter(|m| !m.frame.is_empty())
         {
-            stats.prepass_draws += m.draw(
-                &mut p,
-                batches,
-                0,
-                true,
-                |b| &self.cache.materials[b.material].bind_group,
-                |_, _| {},
-            );
-            stats.prepass_draws += m.draw_resolve(
-                &mut p,
-                batches,
-                true,
-                |b| &self.cache.materials[b.material].bind_group,
-                |_, _| {},
-            );
+            stats.prepass_draws += bundled!("prepass: meshlets", |p| {
+                let material = |b: &Batch| &self.cache.materials[b.material].bind_group;
+                m.draw(p, batches, 0, true, material, |_, _| {})
+                    + m.draw_resolve(p, batches, true, material, |_, _| {})
+            });
         }
         part!("prepass: skinned");
-        stats.prepass_draws += ctx.draw_skinned(
-            &mut p,
+        stats.prepass_draws += bundled!("prepass: skinned", |p| ctx.draw_skinned(
+            p,
             skinned_visible,
             false,
             1,
@@ -219,19 +239,20 @@ impl Renderer {
             None,
             None,
             main_list.indirect,
-        );
+        ));
         part!("prepass: terrain");
         if let Some(indices) = terrain_indices {
-            p.set_bind_group(3, self.world.terrain_fx.group(true), &[]);
-            let prepass = terrain::TerrainPass::Prepass;
-            let (n, _) =
-                terrain::draw_levels(&mut p, terrain_draws, indices, prepass, view_frustum, None);
+            let (n, _) = bundled!("prepass: terrain", |p| {
+                p.set_bind_group(3, self.world.terrain_fx.group(true), &[]);
+                let prepass = terrain::TerrainPass::Prepass;
+                terrain::draw_levels(p, terrain_draws, indices, prepass, view_frustum, None)
+            });
             stats.prepass_draws += n;
         }
         part!("prepass: scatter");
-        let (n, _) = self.world.scatter.get().map_or(Default::default(), |x| {
-            x.draw(
-                &mut p,
+        if let Some(x) = self.world.scatter.get() {
+            let (n, _) = bundled!("prepass: scatter", |p| x.draw(
+                p,
                 scatter::ScatterPass::Prepass,
                 scatter_batches,
                 |m| ctx.scatter_material(m),
@@ -244,19 +265,19 @@ impl Renderer {
                 None,
                 cards,
                 ShadowTarget::Cascade,
-            )
-        });
-        stats.prepass_draws += n;
+            ));
+            stats.prepass_draws += n;
+        }
         part!("prepass: grass");
-        stats.prepass_draws += self.world.grass.get().map_or(Default::default(), |x| {
-            x.draw(
-                &mut p,
+        if let Some(x) = self.world.grass.get() {
+            stats.prepass_draws += bundled!("prepass: grass", |p| x.draw(
+                p,
                 grass::GrassPass::Prepass,
                 grass_frame,
                 Some(fx_group),
                 f32::INFINITY,
-            )
-        });
+            ));
+        }
         stats.draw_calls += stats.prepass_draws;
         drop(p);
         if let Some(object) = self

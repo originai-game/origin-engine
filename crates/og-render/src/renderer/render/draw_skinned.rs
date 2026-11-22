@@ -2,8 +2,8 @@
 
 use super::*;
 
-pub(super) struct DrawSkinnedInputs<'a, 'p> {
-    pub(super) pass: &'a mut wgpu::RenderPass<'p>,
+pub(super) struct DrawSkinnedInputs<'a, P> {
+    pub(super) pass: &'a mut P,
     pub(super) list: &'a [Batch],
     pub(super) transparent: bool,
     /// Of the transparent batches, only the blended (`Some(true)`: the
@@ -43,7 +43,7 @@ impl Renderer {
             palette_group,
             indirect,
             crowds,
-        }: DrawSkinnedInputs<'_, '_>,
+        }: DrawSkinnedInputs<'_, impl Encode>,
     ) -> u32 {
         let Some(palette) = palette_group else {
             return 0;

@@ -227,7 +227,7 @@ impl<'f> DrawCtx<'f> {
     #[allow(clippy::too_many_arguments)]
     pub(super) fn draw_list(
         &self,
-        pass: &mut wgpu::RenderPass,
+        pass: &mut impl Encode,
         list: &DrawList,
         lit: bool,
         current: &mut Option<LitDrawKey>,
@@ -266,7 +266,7 @@ impl<'f> DrawCtx<'f> {
     #[allow(clippy::too_many_arguments)]
     pub(super) fn draw_skinned(
         &self,
-        pass: &mut wgpu::RenderPass,
+        pass: &mut impl Encode,
         list: &[Batch],
         transparent: bool,
         material_group: u32,

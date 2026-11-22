@@ -669,6 +669,13 @@ pub struct FrameStats {
     /// shadow cache instead of being drawn again (only the dynamic
     /// casters, if any, were drawn over them).
     pub shadow_cached: u32,
+    /// Pass parts drawn by one render bundle (`gpu/bundle.rs`): a part
+    /// whose commands are the same as the frame before; of those, the
+    /// parts whose bundle was recorded this frame; and the parts drawn
+    /// call by call because their commands changed.
+    pub bundles: u32,
+    pub bundles_recorded: u32,
+    pub bundles_direct: u32,
     /// Point and spot lights drawn with shadows, and those in view whose
     /// shadows were left out past [`RenderInfo::shadowed_lights`] (the
     /// least radiant at the camera).

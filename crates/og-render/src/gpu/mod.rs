@@ -1,6 +1,7 @@
 //! The device and what lives on it: capabilities, targets, textures, the pipeline cache, objects made on first use.
 
 pub(crate) mod buffers;
+pub(crate) mod bundle;
 pub mod caps;
 pub(crate) mod copy;
 pub(crate) mod data_texture;

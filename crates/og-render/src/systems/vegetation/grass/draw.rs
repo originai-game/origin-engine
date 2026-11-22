@@ -1,6 +1,7 @@
 //! The grass's generate pass and its draws.
 
 use super::*;
+use crate::gpu::bundle::Encode;
 
 impl GrassRenderer {
     /// Generates this frame's blades (before every pass that draws them).
@@ -44,7 +45,7 @@ impl GrassRenderer {
     /// the draws made.
     pub(crate) fn draw(
         &self,
-        pass: &mut wgpu::RenderPass,
+        pass: &mut impl Encode,
         kind: GrassPass,
         frame: &GrassFrame,
         fx: Option<&wgpu::BindGroup>,

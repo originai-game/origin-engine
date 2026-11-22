@@ -223,7 +223,7 @@ mod web {
                     .map_err(err)?;
             }
             Ok(format!(
-                "{{\"gpu_culling\":{},\"draws\":{},\"instances\":{},\"culled\":{},\"occluded\":{},\"triangles\":{},\"shadow_casters\":{},\"counts_lag\":{}}}",
+                "{{\"gpu_culling\":{},\"draws\":{},\"instances\":{},\"culled\":{},\"occluded\":{},\"triangles\":{},\"shadow_casters\":{},\"counts_lag\":{},\"bundles\":{},\"bundles_direct\":{}}}",
                 stats.gpu_culling,
                 stats.draw_calls,
                 stats.instances,
@@ -232,6 +232,8 @@ mod web {
                 stats.triangles,
                 stats.shadow_casters,
                 stats.counts_lag,
+                stats.bundles,
+                stats.bundles_direct,
             ))
         })
     }

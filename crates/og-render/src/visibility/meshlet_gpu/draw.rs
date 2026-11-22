@@ -1,6 +1,7 @@
 //! Drawing the surviving clusters: lit, resolved from the visibility buffer and into shadows.
 
 use super::*;
+use crate::gpu::bundle::Encode;
 
 impl MeshletGpu {
     /// Draws the frame's clustered batches of lit view `view` (0 the
@@ -9,14 +10,14 @@ impl MeshletGpu {
     /// groups 0 and 2 are bound by the caller; `material(b)` is batch `b`'s
     /// material group; `probe(pass, b)` binds its reflection probe.
     /// Returns the draws made.
-    pub fn draw<'m>(
+    pub fn draw<'m, E: Encode>(
         &self,
-        pass: &mut wgpu::RenderPass<'_>,
+        pass: &mut E,
         batches: &[Batch],
         view: u32,
         prepass: bool,
         material: impl Fn(&Batch) -> &'m wgpu::BindGroup,
-        mut probe: impl FnMut(&mut wgpu::RenderPass<'_>, &Batch),
+        mut probe: impl FnMut(&mut E, &Batch),
     ) -> u32 {
         let mut n = 0;
         for d in self.frame.iter().filter(|d| d.view == view && d.lit) {
@@ -50,13 +51,13 @@ impl MeshletGpu {
     /// lit pass, or its prepass with `prepass`): one full-screen triangle
     /// each, shading the visibility buffer's pixels of its batch; groups 0
     /// and 2 bound by the caller. Returns the draws made.
-    pub fn draw_resolve<'m>(
+    pub fn draw_resolve<'m, E: Encode>(
         &self,
-        pass: &mut wgpu::RenderPass<'_>,
+        pass: &mut E,
         batches: &[Batch],
         prepass: bool,
         material: impl Fn(&Batch) -> &'m wgpu::BindGroup,
-        mut probe: impl FnMut(&mut wgpu::RenderPass<'_>, &Batch),
+        mut probe: impl FnMut(&mut E, &Batch),
     ) -> u32 {
         // A pipeline the device has not answered for may be refused: its
         // draw would invalidate the frame (vis.rs).
@@ -95,7 +96,7 @@ impl MeshletGpu {
     /// Returns the draws made.
     pub fn draw_shadow<'m>(
         &self,
-        pass: &mut wgpu::RenderPass<'_>,
+        pass: &mut impl Encode,
         target: crate::ShadowTarget,
         batches: &[Batch],
         view: u32,

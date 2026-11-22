@@ -1,0 +1,15 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {
+      "member": "FrameStats.bundles",
+      "summary": "`bundles`, `bundles_recorded` and `bundles_direct` count the pass parts drawn from a render bundle, those whose bundle was recorded this frame, and those drawn call by call because their draws changed."
+    }
+  ],
+  "fixed": [
+    {
+      "member": "rendering",
+      "summary": "A still scene's opaque main pass, depth prepass and shadow layers play from render bundles, recorded once and re-recorded only when a part's draws change, on the web and natively. On WebGPU (Chrome, NVIDIA L4) crowd-lods' render call takes 2.27 ms instead of 2.78 ms and the browser's GPU process 1.92 ms instead of 3.25 ms a frame."
+    }
+  ]
+}

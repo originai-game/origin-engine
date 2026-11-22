@@ -53,7 +53,7 @@ impl DrawCtx<'_> {
         stats.shadow_cached += plan.cached() as u32;
         // What every pass of every caster draws besides the instances.
         let draw_rest =
-            |pass: &mut wgpu::RenderPass, shadow: ShadowTarget, stats: &mut FrameStats| {
+            |pass: &mut crate::gpu::bundle::Draws, shadow: ShadowTarget, stats: &mut FrameStats| {
                 // The clustered casters (meshlet_gpu.rs), each one draw of
                 // the clusters the pass's view kept.
                 if view > 0
@@ -149,39 +149,56 @@ impl DrawCtx<'_> {
                     keep_depth: bool,
                     stats: &mut FrameStats| {
             let mut pass = shadow_target(encoder, color, depth, keep_depth);
-            if over_kept {
-                let (keep, layer) = kept();
-                keep.put_back(&mut pass, layer, targets);
-            }
-            let Some(list) = list else { return };
-            // No pipeline first: the draw list sets each batch's own, as
-            // do the meshlet, skinned, terrain and scatter casters.
-            pass.set_bind_group(
-                0,
-                &r.shadows.shadow_bind_group,
-                &[(slot as u64 * SHADOW_SLOT_STRIDE) as u32],
+            // The layer's casters stand still more often than not: the
+            // pass plays from its render bundle while they do
+            // (gpu/bundle.rs), one per layer and pass of it.
+            let part = (
+                if all_casters {
+                    "shadow"
+                } else {
+                    "shadow (shelter)"
+                },
+                (slot as u32) << 2 | (over_kept as u32) << 1 | rest as u32,
             );
-            for &shadow in targets {
-                r.frame_draw_list(DrawListInputs {
-                    pass: &mut pass,
-                    list,
-                    lit: false,
-                    shadow,
-                    current: &mut None,
-                    physical_fx: None,
-                    probes: None,
-                    fx: None,
-                    batches,
-                    culled_gpu,
-                    fx_lean_of: &|fx: &wgpu::BindGroup| self.fx_lean_of(fx),
-                    oit: None,
-                });
-                stats.draw_calls += list.ranges.len() as u32;
-                if rest {
-                    draw_rest(&mut pass, shadow, stats);
-                }
-            }
-            stats.shadow_casters += list.instances;
+            let target = Target::of(&[Some(color)], Some((depth, false)));
+            let (_, played) =
+                r.bundles
+                    .play(&r.device, &mut pass, part, &target, r.frame_index, |d| {
+                        if over_kept {
+                            let (keep, layer) = kept();
+                            keep.put_back(d, layer, targets);
+                        }
+                        let Some(list) = list else { return };
+                        // No pipeline first: the draw list sets each batch's own, as
+                        // do the meshlet, skinned, terrain and scatter casters.
+                        d.set_bind_group(
+                            0,
+                            &r.shadows.shadow_bind_group,
+                            &[(slot as u64 * SHADOW_SLOT_STRIDE) as u32],
+                        );
+                        for &shadow in targets {
+                            r.frame_draw_list(DrawListInputs {
+                                pass: d,
+                                list,
+                                lit: false,
+                                shadow,
+                                current: &mut None,
+                                physical_fx: None,
+                                probes: None,
+                                fx: None,
+                                batches,
+                                culled_gpu,
+                                fx_lean_of: &|fx: &wgpu::BindGroup| self.fx_lean_of(fx),
+                                oit: None,
+                            });
+                            stats.draw_calls += list.ranges.len() as u32;
+                            if rest {
+                                draw_rest(d, shadow, stats);
+                            }
+                        }
+                        stats.shadow_casters += list.instances;
+                    });
+            played.count(stats);
         };
         if plan.draw_static {
             // Every caster when it is one pass; a local layer's depth kept

@@ -217,15 +217,46 @@ impl Renderer {
                 }
             };
         }
-        ctx.draw_list(
-            &mut pass,
+        // The opaque parts below draw the same commands frame after frame
+        // while the scene stands still (GPU culling's counts are read by
+        // the GPU), so each plays from its render bundle (gpu/bundle.rs).
+        // A bundle starts with nothing bound: each part binds the pass's
+        // groups 0 and 2 itself.
+        let target = Target::of(
+            &[Some(if msaa {
+                self.graph.view("hdr-msaa")
+            } else {
+                hdr
+            })],
+            Some((self.graph.view("depth"), false)),
+        );
+        macro_rules! bundled {
+            ($part:literal, |$d:ident| $draw:expr) => {{
+                let (out, played) = self.bundles.play(
+                    &self.device,
+                    &mut pass,
+                    ($part, 0),
+                    &target,
+                    self.frame_index,
+                    |$d| {
+                        $d.set_bind_group(0, frame_bind_group, &[]);
+                        $d.set_bind_group(2, fx_group, &[]);
+                        $draw
+                    },
+                );
+                played.count(stats);
+                out
+            }};
+        }
+        bundled!("main: instances", |d| ctx.draw_list(
+            d,
             main_list,
             true,
             &mut None,
             physical_fx,
             probe_binding,
             Some(fx_group),
-        );
+        ));
         stats.draw_calls += main_list.ranges.len() as u32;
         // The clustered batches (meshlet_gpu.rs), each one draw of its
         // visible clusters.
@@ -236,28 +267,29 @@ impl Renderer {
             .as_ref()
             .filter(|m| !m.frame.is_empty())
         {
-            let mut binder = probe_select::Binder::new(probe_binding);
-            stats.draw_calls += m.draw(
-                &mut pass,
-                batches,
-                0,
-                false,
-                |b| &self.cache.materials[b.material].bind_group,
-                |p, b| binder.bind(p, b.probe),
-            );
-            // The visibility buffer's pixels of each soft batch.
-            stats.draw_calls += m.draw_resolve(
-                &mut pass,
-                batches,
-                false,
-                |b| &self.cache.materials[b.material].bind_group,
-                |p, b| binder.bind(p, b.probe),
-            );
-            binder.reset(&mut pass);
+            stats.draw_calls += bundled!("main: meshlets", |d| {
+                let mut binder = probe_select::Binder::new(probe_binding);
+                let n = m.draw(
+                    d,
+                    batches,
+                    0,
+                    false,
+                    |b| &self.cache.materials[b.material].bind_group,
+                    |p, b| binder.bind(p, b.probe),
+                );
+                // The visibility buffer's pixels of each soft batch.
+                n + m.draw_resolve(
+                    d,
+                    batches,
+                    false,
+                    |b| &self.cache.materials[b.material].bind_group,
+                    |p, b| binder.bind(p, b.probe),
+                )
+            });
         }
         part!("main: skinned");
-        stats.draw_calls += ctx.draw_skinned(
-            &mut pass,
+        stats.draw_calls += bundled!("main: skinned", |d| ctx.draw_skinned(
+            d,
             skinned_visible,
             false,
             1,
@@ -266,18 +298,20 @@ impl Renderer {
             physical_fx,
             probe_binding,
             main_list.indirect,
-        );
+        ));
         part!("main: terrain");
         if let Some(indices) = terrain_indices {
-            pass.set_bind_group(3, self.world.terrain_fx.group(true), &[]);
-            let (n, tris) = terrain::draw_levels(
-                &mut pass,
-                terrain_draws,
-                indices,
-                terrain::TerrainPass::Lit,
-                view_frustum,
-                Some(&mut probe_select::Binder::new(probe_binding)),
-            );
+            let (n, tris) = bundled!("main: terrain", |d| {
+                d.set_bind_group(3, self.world.terrain_fx.group(true), &[]);
+                terrain::draw_levels(
+                    d,
+                    terrain_draws,
+                    indices,
+                    terrain::TerrainPass::Lit,
+                    view_frustum,
+                    Some(&mut probe_select::Binder::new(probe_binding)),
+                )
+            });
             stats.draw_calls += n;
             stats.terrain_draws += n;
             stats.terrain_triangles += tris;
@@ -294,9 +328,9 @@ impl Renderer {
                     .get()
                     .and_then(|x| x.card_depth_group(&self.device, v))
             });
-        let (n, copies) = self.world.scatter.get().map_or(Default::default(), |x| {
-            x.draw(
-                &mut pass,
+        if let Some(x) = self.world.scatter.get() {
+            let (n, copies) = bundled!("main: scatter", |d| x.draw(
+                d,
                 scatter::ScatterPass::Lit,
                 scatter_batches,
                 |m| ctx.scatter_material(m),
@@ -309,25 +343,25 @@ impl Renderer {
                 card_depth.as_ref(),
                 cards,
                 ShadowTarget::Cascade,
-            )
-        });
-        if n > 0 {
-            // The copies' group 2 is theirs: the effects' back for what follows.
-            pass.set_bind_group(2, fx_group, &[]);
+            ));
+            stats.draw_calls += n;
+            stats.scatter_draws += n;
+            stats.scatter_copies += copies;
         }
-        stats.draw_calls += n;
-        stats.scatter_draws += n;
-        stats.scatter_copies += copies;
         part!("main: grass");
-        stats.draw_calls += self.world.grass.get().map_or(Default::default(), |x| {
-            x.draw(
-                &mut pass,
+        if let Some(x) = self.world.grass.get() {
+            stats.draw_calls += bundled!("main: grass", |d| x.draw(
+                d,
                 grass::GrassPass::Lit,
                 grass_frame,
                 Some(fx_group),
                 f32::INFINITY,
-            )
-        });
+            ));
+        }
+        // What follows draws on the pass's groups 0 and 2, which a bundle
+        // leaves unbound.
+        pass.set_bind_group(0, frame_bind_group, &[]);
+        pass.set_bind_group(2, fx_group, &[]);
         // The clouds the cloud pass marched at half the frame's size, when it ran (pass_clouds.rs): the sky draws
         // them from there.
         let clouds_low = self.graph.try_view("clouds").map(|clouds| {

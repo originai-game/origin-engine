@@ -1,6 +1,7 @@
 //! Frame rendering.
 
 use super::*;
+use crate::gpu::bundle::{Encode, Target};
 
 mod overlay_setup;
 

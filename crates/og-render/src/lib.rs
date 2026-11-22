@@ -659,6 +659,9 @@ pub struct Renderer {
     cache: SceneCache,
     /// Frames rendered so far.
     frame_index: u64,
+    /// The passes' parts whose draws repeat, each recorded once into a
+    /// render bundle (`gpu/bundle.rs`).
+    bundles: gpu::bundle::Bundles,
     /// `frame_index` at the last [`Renderer::render_capture`]: the
     /// temporal phase ([`Renderer::phase`]) counts from it.
     phase_base: u64,

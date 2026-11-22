@@ -288,3 +288,57 @@ fn crowd_cards_draw_the_far_members_and_only_them() {
         "the cards draw the far crowd (RMSE {to_meshes} from the meshes, {to_empty} from the empty avenue)"
     );
 }
+
+/// A still scene's opaque, prepass and shadow passes draw the same
+/// commands every frame, so each part plays from its render bundle
+/// (og-render's gpu/bundle.rs): drawn directly the first frame, its bundle
+/// recorded the frame its commands first repeat, then executed. Once the
+/// frame settles (the shadow cache has kept its layers, the lit variants
+/// compiled on workers have replaced their stand-ins), no frame records a
+/// bundle or draws a part directly: a group or buffer made again every
+/// frame, or a part named differently each frame, fails here.
+#[test]
+#[ignore = "requires GPU"]
+fn a_still_frame_plays_its_bundles_without_recording_them() {
+    for name in ["crowd-lods", "gltf-reference"] {
+        let built = scenes::build(name).expect("scene");
+        let mut renderer = Renderer::new_blocking(&built.desc).expect("renderer");
+        let mut frame = || {
+            renderer
+                .render(&built.scene, &RenderTarget::Offscreen)
+                .expect("render")
+        };
+        let first = frame();
+        assert!(first.bundles_direct > 0, "{name}: {first:?}");
+        assert_eq!(
+            first.bundles, 0,
+            "{name}: nothing repeats on the first frame"
+        );
+        let settled = |s: &FrameStats| s.bundles_recorded == 0 && s.bundles_direct == 0;
+        let mut calm = 0;
+        let mut frames = 1;
+        while calm < 3 {
+            assert!(frames < 40, "{name}: never settled");
+            // The full lit variants in place of their stand-ins.
+            og_render::settle_pipelines();
+            calm = if settled(&frame()) { calm + 1 } else { 0 };
+            frames += 1;
+        }
+        let still = frame();
+        assert!(still.bundles > 0, "{name}: {still:?}");
+        for f in 0..5 {
+            let stats = frame();
+            assert!(
+                settled(&stats),
+                "{name} frame {}: {stats:?}",
+                frames + 1 + f
+            );
+            assert_eq!(stats.bundles, still.bundles, "{name}");
+            assert_eq!(stats.draw_calls, still.draw_calls, "{name}");
+        }
+        eprintln!(
+            "{name}: settled after {frames} frames, {} parts bundled, {} draws",
+            still.bundles, still.draw_calls
+        );
+    }
+}

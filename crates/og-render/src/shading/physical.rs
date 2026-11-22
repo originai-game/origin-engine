@@ -283,7 +283,17 @@ pub(crate) struct PhysicalPipelines {
     pub empty_exits: wgpu::TextureView,
     pack_layout: wgpu::BindGroupLayout,
     pack_pipeline: wgpu::RenderPipeline,
+    /// The effect groups made (`Renderer::bind_frame`: the frame's and the
+    /// backfaces'), each by what it binds: made again only when one of its
+    /// views or its buffer is, so the frame's draws stay the same
+    /// (gpu/bundle.rs).
+    pub fx_groups: std::sync::Mutex<Vec<(PhysicalFxKey, wgpu::BindGroup)>>,
 }
+
+/// What a physical effect group binds besides its fixed sampler: the AO,
+/// decal atlas, scene copy and exit views, the effects buffer, and the
+/// decal buffers' generation.
+pub(crate) type PhysicalFxKey = ([wgpu::TextureView; 4], wgpu::Buffer, u32);
 
 impl PhysicalPipelines {
     pub fn new(
@@ -431,6 +441,7 @@ impl PhysicalPipelines {
             empty_exits,
             pack_layout,
             pack_pipeline,
+            fx_groups: Default::default(),
         }
     }
 

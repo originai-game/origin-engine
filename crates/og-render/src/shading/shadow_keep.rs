@@ -16,6 +16,7 @@
 //! cascades: 0.7 ms a frame over four cascades). One draw in the pass
 //! reads the kept texture once.
 
+use crate::gpu::bundle::Encode;
 use crate::{DEPTH_FORMAT, LOCAL_SHADOW_FORMAT, ShadowTarget};
 
 /// The cascades' format: their casters' depth in red.
@@ -164,7 +165,7 @@ impl ShadowKeep {
     /// casters drawn over it. `targets`: the pass's ([`ShadowTarget`]).
     pub(crate) fn put_back(
         &self,
-        pass: &mut wgpu::RenderPass,
+        pass: &mut impl Encode,
         layer: &KeptLayer,
         targets: &[ShadowTarget],
     ) {

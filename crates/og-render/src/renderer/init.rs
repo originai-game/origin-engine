@@ -770,6 +770,7 @@ impl Renderer {
             glass_targets: None,
             cache: SceneCache::default(),
             frame_index: 0,
+            bundles: Default::default(),
             phase_base: 0,
             saves: Default::default(),
             pipeline_disk,
