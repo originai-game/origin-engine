@@ -281,7 +281,6 @@ pub(super) fn add_gltf(
 /// Place each primitive in the same model space used by its impostor bake,
 /// and its coarser levels (`levels`: per part, each level's mesh and its
 /// error at the part's scale) with it.
-#[cfg(not(feature = "profile2d"))]
 fn scatter_meshes(
     scene: &mut og_render::RenderScene,
     parts: &crate::present::extract::Parts,
@@ -315,7 +314,6 @@ fn scatter_meshes(
 
 /// `mesh` once at each of `placements`, as one mesh with its foliage
 /// placed alike (itself where it stands once, as made).
-#[cfg(not(feature = "profile2d"))]
 fn placed_mesh(
     scene: &mut og_render::RenderScene,
     mesh: og_render::MeshHandle,
@@ -420,7 +418,6 @@ pub(crate) fn insert_model(
         }
     }
     let texture_handles = parts.textures.clone();
-    #[cfg(not(feature = "profile2d"))]
     let scattered = impostor.is_some();
     // Each primitive's raycast BVH, cooked into the blob: loaded with the
     // mesh, so the first og.render.raycast builds nothing (a mesh shared
@@ -538,7 +535,6 @@ pub(crate) fn insert_model(
                 }
                 _ => None,
             };
-            #[cfg(not(feature = "profile2d"))]
             let scatter_meshes = match scattered {
                 true => scatter_meshes(&mut rs.scene, model_parts, &parts),
                 false => Vec::new(),
@@ -549,7 +545,6 @@ pub(crate) fn insert_model(
                     materials: lod_materials,
                     center: (model.min + model.max) * 0.5,
                     radius: ((model.max - model.min) * 0.5).length().max(1e-3),
-                    #[cfg(not(feature = "profile2d"))]
                     scatter_meshes,
                     impostor,
                 }

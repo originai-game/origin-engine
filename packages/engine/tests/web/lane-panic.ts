@@ -58,7 +58,7 @@ cookProject(project, repo);
 const dist = join(work, "build");
 const built = await webBuild(project, join(project, "src", "main.ts"), dist, true, settingsOf(project));
 if (!built.ok) throw new Error(built.reason);
-check(built.manifest?.lanes !== null && built.manifest?.variant === "3d", "the publish build ships the 3D variant and the lanes variant", { variant: built.manifest?.variant, lanes: built.manifest?.lanes });
+check(built.manifest?.lanes !== null && built.manifest?.variant === "publish", "the publish build ships the publish module and the lanes variant", { variant: built.manifest?.variant, lanes: built.manifest?.lanes });
 
 type HostError = { kind: string; message: string; tick: number | null; lane: string | null; location: string | null };
 type Lanes = { on: boolean; threads: number; why: string };

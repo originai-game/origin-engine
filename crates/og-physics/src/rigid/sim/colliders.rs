@@ -31,14 +31,6 @@ pub(super) fn shape(c: &Collider, scale: Vec3, shared: &mut Shared) -> Result<rp
             format!("og.Transform.scale must be finite, got {scale}"),
         ));
     }
-    if c.shape == SHAPE_HEIGHTFIELD
-        && let Some(why) = shared.heightfields_absent
-    {
-        return Err(Error::new(
-            ErrorKind::Invalid,
-            format!("og.Collider.shape heightfield (a terrain's height field): {why}"),
-        ));
-    }
     if let Some(k) = crate::key_chunk(c.shape) {
         return chunk_shape(c.mesh, k, s, shared);
     }
@@ -125,7 +117,7 @@ fn chunk_shape(mesh: u64, k: u32, s: Vec3, shared: &mut Shared) -> Result<rp::Sh
 /// than one chunk ([`crate::FIELD_CHUNK`]), the field; `None` for every
 /// other collider (one rapier collider).
 pub(super) fn chunked(c: &Collider, shared: &Shared) -> Option<Arc<crate::HeightfieldDesc>> {
-    if c.shape != SHAPE_HEIGHTFIELD || shared.heightfields_absent.is_some() {
+    if c.shape != SHAPE_HEIGHTFIELD {
         return None;
     }
     let f = shared.heightfields.get(&c.mesh)?;

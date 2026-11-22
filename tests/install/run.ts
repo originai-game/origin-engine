@@ -155,7 +155,7 @@ function install(step: Step, work: string): string {
   // A dev build dev.<date>.<n> names the release it is based on and its exact commit (docs/release.md §1a).
   if (VERSION!.startsWith("dev.") && !(/^\d+\.\d+\.\d+$/.test(build.base ?? "") && /^[0-9a-f]{40}$/.test(build.revision))) step.fail(`a dev build's record names no base release or full revision: ${JSON.stringify(build)}`);
   if (sha256(join(dist, "bin", windows ? "og.exe" : "og")) !== build.og) step.fail("bin/og is not the build record's og");
-  for (const f of ["overlay/project.ogt", "create/template/project.ogt", "create/bin/create.ts", "engine/dist/web-publish/origin-engine_bg.wasm", "engine/dist/web-publish-2d/origin-engine_bg.wasm", "engine/dist/web-publish/origin-engine-lanes_bg.wasm", "engine/shell", "engine/types/index.d.ts", "engine/schema/api.schema.json", `engine/native/origin-engine.${PLATFORM}.node`]) {
+  for (const f of ["overlay/project.ogt", "create/template/project.ogt", "create/bin/create.ts", "engine/dist/web-publish/origin-engine_bg.wasm", "engine/dist/web-publish/origin-engine-lanes_bg.wasm", "engine/shell", "engine/types/index.d.ts", "engine/schema/api.schema.json", `engine/native/origin-engine.${PLATFORM}.node`]) {
     if (!existsSync(join(dist, f))) step.fail(`the dist has no ${f}`);
   }
   const list = run(step, [...ogCmd, "engine", "list"], work);

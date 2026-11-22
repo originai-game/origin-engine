@@ -102,8 +102,7 @@ impl Renderer {
         // where a caster meets its receiver, which a local shadow map's
         // texels (a few centimetres at a few metres) cannot. Their masks
         // share the AO texture (gba), which the GI's bounce fills instead.
-        let contact = WORLD_3D
-            && self.runs(FramePass::Contact)
+        let contact = self.runs(FramePass::Contact)
             && gi.is_none()
             && scene
                 .frame
@@ -119,8 +118,7 @@ impl Renderer {
         // GTAO's bent normals for the probe GI (fxpost.wgsl `fs_gtao_bent`):
         // the AO targets hold them in gba, where the screen GI's bounce or
         // the contact shadows' masks would be, so either takes the place.
-        let bent = WORLD_3D
-            && gi.is_none()
+        let bent = gi.is_none()
             && !contact
             && ao.is_some_and(|a| a.method == AoMethod::Gtao)
             && post_fx.gi_probes.is_some()
@@ -129,7 +127,7 @@ impl Renderer {
         // The style's outline also lines what no batch draws: the terrain
         // and scattered copies (lighting.wgsl outline_bytes).
         let outline = post_fx.outline.is_some()
-            || (WORLD_3D && scene.look.stylise.material.outline_width > 0.0)
+            || scene.look.stylise.material.outline_width > 0.0
             || batches
                 .iter()
                 .chain(skinned_batches)
@@ -142,13 +140,12 @@ impl Renderer {
         // lights' own flares, seen by a perspective 3D camera, read the
         // prepass depth for their occlusion.
         let lens_flare = post_fx.lens_flare.filter(|f| f.intensity > 0.0);
-        let flare_sources_on = WORLD_3D && !cam.orthographic && lens_flare.is_some();
-        let fluids_3d = WORLD_3D
-            && scene
-                .world
-                .fluids_3d
-                .iter()
-                .any(|f| !f.particles.is_empty() || f.visual.is_some());
+        let flare_sources_on = !cam.orthographic && lens_flare.is_some();
+        let fluids_3d = scene
+            .world
+            .fluids_3d
+            .iter()
+            .any(|f| !f.particles.is_empty() || f.visual.is_some());
         let depth_bands = scene.look.stylise.depth_bands.filter(|b| b.count >= 2);
         let fog_of_war = scene.look.fog_of_war.as_ref().filter(|f| f.drawn());
         // On the ground it reads each pixel's surface from the prepass.
@@ -196,8 +193,7 @@ impl Renderer {
             // The painterly filter's object edges and detail, and the
             // Ben-Day dots' facing (halftone_faces), where meshes
             // are drawn (a 2D scene's prepass would hold nothing).
-            || (WORLD_3D
-                && (scene.look.stylise.paint.is_some_and(|p| p.detail_aware())
+            || ((scene.look.stylise.paint.is_some_and(|p| p.detail_aware())
                     // The watercolour wash's outer boundaries (object
                     // edges, silhouettes, creases), where its rim pools
                     // and its dry brush skips.

@@ -117,13 +117,12 @@ fn session_startup_failure_names_the_cause_without_waiting_for_readiness() {
     }
 }
 
-/// A 2D project's publish build refuses the 3D world in its scenes (the 2D
-/// publish module leaves terrain, planar water, scattered copies and 3D
-/// fluids out: RenderCapabilities.world3d), naming each by scene and line,
-/// before anything is cooked or exported; a 2D project without them, its
-/// dev build, and a 3D project with them build as before.
+/// A 2D project's publish build keeps the 3D world its scenes hold
+/// (terrain, planar water): every game ships the one publish module, whose
+/// 3D world is the on-demand module `world3d`, so a 2D game can hold a 3D
+/// scene. Its dev build and a 3D project build as before.
 #[test]
-fn a_2d_publish_build_refuses_the_3d_world_by_scene_and_line() {
+fn a_2d_publish_build_keeps_the_3d_world_in_its_scenes() {
     let dir = scratch_root();
     std::fs::remove_dir_all(dir.join("crates")).unwrap();
     // A stand-in engine package: the exporter leaves a mark when it runs;
@@ -182,33 +181,11 @@ fn a_2d_publish_build_refuses_the_3d_world_by_scene_and_line() {
     project("2d");
     scene(true);
     let (code, t, exported) = build(&["build", "--publish"]);
-    assert_eq!(code, Some(1), "{t}");
-    assert!(!exported, "the exporter ran past the refusal: {t}");
-    // The refusal reads the cooked profile, so the cook ran; nothing was
-    // exported.
-    assert!(game.join("cooked").join(".cook.ogt").exists(), "{t}");
-    assert!(!game.join("dist").exists(), "{t}");
-    let assets: Vec<_> = std::fs::read_dir(game.join("assets")).unwrap().collect();
-    assert_eq!(assets.len(), 1, "{t}");
-    for line in [
-        "assets/scenes/main.ogt:9: Terrain (a terrain)",
-        "assets/scenes/main.ogt:13: Water (planar water)",
-    ] {
-        assert!(t.contains(line), "{line}: {t}");
-    }
-    assert!(t.contains("RenderCapabilities.world3d is false"), "{t}");
-    assert!(t.contains("create { form \"3d\" }"), "{t}");
-
-    // The dev build has every subsystem; a 3D project's publish keeps them,
-    // in whatever UI style the game draws (the default one included).
+    assert_eq!((code, exported), (Some(0), true), "{t}");
+    assert!(!t.contains("RenderCapabilities.world3d"), "{t}");
     let (code, t, exported) = build(&["build"]);
     assert_eq!((code, exported), (Some(0), true), "{t}");
     project("3d");
-    let (code, t, exported) = build(&["build", "--publish"]);
-    assert_eq!((code, exported), (Some(0), true), "{t}");
-    // A 2D project without them publishes as before.
-    project("2d");
-    scene(false);
     let (code, t, exported) = build(&["build", "--publish"]);
     assert_eq!((code, exported), (Some(0), true), "{t}");
     let _ = std::fs::remove_dir_all(&dir);

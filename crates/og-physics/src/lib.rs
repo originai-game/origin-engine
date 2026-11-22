@@ -385,14 +385,6 @@ fn check_profile(profile: u32) -> Result<()> {
 }
 
 impl PhysicsSystem {
-    /// Height fields have no source in this build (a host without terrain,
-    /// og-runtime's 2D profile): every [`SHAPE_HEIGHTFIELD`] collider is
-    /// refused with `why`, in either profile, and [`Self::set_heightfield`]
-    /// is refused too.
-    pub fn refuse_heightfields(&self, why: &'static str) {
-        lock(&self.shared).heightfields_absent = Some(why);
-    }
-
     /// Registers (or replaces) the geometry of mesh `handle` for convex,
     /// polygon and triangle-mesh colliders. Meshes are assets, not world
     /// state: a world restored into a fresh engine needs them registered
@@ -529,14 +521,8 @@ impl PhysicsSystem {
         Ok(())
     }
 
-    /// Refuses a height field this build or its dimensions cannot take.
+    /// Refuses a height field its dimensions cannot take.
     fn check_heightfield(&self, handle: u64, field: &HeightfieldDesc) -> Result<()> {
-        if let Some(why) = lock(&self.shared).heightfields_absent {
-            return Err(Error::new(
-                ErrorKind::Invalid,
-                format!("height field {handle}: {why}"),
-            ));
-        }
         if field.columns < 2 || field.rows < 2 {
             return Err(Error::new(
                 ErrorKind::Invalid,

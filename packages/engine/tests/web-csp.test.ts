@@ -25,7 +25,7 @@ declare const Bun: { spawnSync(cmd: string[]): { exitCode: number; stderr: Uint8
 const pkg = join(dirname(fileURLToPath(import.meta.url)), "..");
 const repo = join(pkg, "..", "..");
 const NO_DEV_WASM = !existsSync(join(pkg, "dist", "web", "origin-engine_bg.wasm"));
-const NO_PUBLISH_WASM = !existsSync(join(pkg, "dist", "web-publish-2d", "origin-engine_bg.wasm"));
+const NO_PUBLISH_WASM = !existsSync(join(pkg, "dist", "web-publish", "origin-engine_bg.wasm"));
 
 /** What a page's `script-src 'self'` and `style-src 'self'` refuse in its HTML. */
 function inline(html: string): string[] {

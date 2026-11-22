@@ -113,9 +113,6 @@ pub(crate) fn mount_front(
         },
     )
     .map_err(err)?;
-    // The 2D profile has no terrain, so no height field (bind/absent/terrain.rs).
-    #[cfg(feature = "profile2d")]
-    physics.refuse_heightfields(crate::bind::terrain::ABSENT);
     physics.set_mesh_source(Some(std::sync::Arc::new(move |h| {
         geometry_mesh(engine_id, h)
     })));

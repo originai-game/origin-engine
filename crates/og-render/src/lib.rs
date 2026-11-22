@@ -53,45 +53,6 @@ macro_rules! wgsl_library {
     };
 }
 
-/// [`wgsl!`] for a 3D world subsystem's own file (terrain, water, the 3D
-/// fluids, the scattered copies, volumetric fog): empty in a `profile2d`
-/// build, which never draws them ([`WORLD_3D`]), so their text is not in
-/// the module.
-#[cfg(not(feature = "profile2d"))]
-macro_rules! wgsl3d {
-    ($file:literal) => {
-        wgsl!($file)
-    };
-}
-#[cfg(feature = "profile2d")]
-macro_rules! wgsl3d {
-    ($file:literal) => {
-        ""
-    };
-}
-
-/// [`wgsl_library!`] for a 3D world subsystem's module: empty in a
-/// `profile2d` build, as [`wgsl3d!`].
-#[cfg(not(feature = "profile2d"))]
-macro_rules! wgsl3d_library {
-    ($($file:literal),+) => {
-        wgsl_library!($($file),+)
-    };
-}
-#[cfg(feature = "profile2d")]
-macro_rules! wgsl3d_library {
-    ($($file:literal),+) => {
-        ""
-    };
-}
-
-/// Whether this renderer draws the 3D world subsystems: terrain, planar
-/// water, the 3D fluids, the scattered copies and volumetric fog. False in
-/// a `profile2d` build (the 2D profile's web modules), which leaves their
-/// shaders and their per-frame work out and draws a scene as if it had
-/// none of them (`RenderCapabilities.world3d`).
-pub const WORLD_3D: bool = cfg!(not(feature = "profile2d"));
-
 mod fields;
 mod gpu;
 mod media;

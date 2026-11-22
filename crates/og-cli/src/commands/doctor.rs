@@ -593,9 +593,7 @@ fn engine_checks(out: &mut Out, cwd: &Path) -> EngineReport {
     for (key, what) in [
         ("wasm", "wasm"),
         ("publishWasm", "wasm-publish"),
-        ("publishWasm2d", "wasm-publish-2d"),
         ("lanesWasm", "wasm-lanes"),
-        ("lanesWasm2d", "wasm-lanes-2d"),
     ] {
         let w = &report[key];
         let detail = match w["bytes"].as_u64() {

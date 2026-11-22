@@ -13,7 +13,6 @@
 //! order, a chunk shape that is not the step's own), so the boxes land
 //! elsewhere and the world hash differs; or it touches what a snapshot
 //! keeps, so the snapshots differ.
-#![cfg(not(feature = "profile2d"))]
 
 use og_runtime::{
     Dispatch, Fetch, Hooks, og_engine_create, og_engine_frame, og_engine_probe_dump,

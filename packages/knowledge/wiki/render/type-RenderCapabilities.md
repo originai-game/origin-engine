@@ -87,7 +87,7 @@ What the renderer can do on this device. Backend limits are reported here, never
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `planarReflections` | `number` | `0` | — | — | — | How many water surfaces draw a planar reflection in one frame: RenderOptions.planarReflections (1 by default, at most 2), 0 without a renderer or where world3d is false. A surface past it that asks reflects by the screen-space and sky reflections instead. |
+| `planarReflections` | `number` | `0` | — | — | — | How many water surfaces draw a planar reflection in one frame: RenderOptions.planarReflections (1 by default, at most 2), 0 without a renderer. A surface past it that asks reflects by the screen-space and sky reflections instead. |
 
 #### Optional features
 
@@ -131,7 +131,7 @@ What the renderer can do on this device. Backend limits are reported here, never
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `world3d` | `boolean` | `false` | — | — | — | Whether the renderer draws the 3D world: terrain, planar water (og.Water), 3D fluids, scattered copies and volumetric fog. False in the 2D profile's publish and lanes modules, where og.terrain's calls and a heightfield collider are refused naming this field; true elsewhere. See `looks §18`. |
+| `world3d` | `boolean` | `false` | — | — | — | Whether the renderer draws the 3D world: terrain, planar water (og.Water), 3D fluids, scattered copies and volumetric fog. Always true: every build has it, 2D games included, and a published game loads it on first use. See `looks §18`. |
 
 ```ogt
 struct RenderCapabilities {
@@ -178,7 +178,7 @@ struct RenderCapabilities {
     guide "looks §18"
   }
   group "Water"
-  field planarReflections u32 "How many water surfaces draw a planar reflection in one frame: RenderOptions.planarReflections (1 by default, at most 2), 0 without a renderer or where world3d is false. A surface past it that asks reflects by the screen-space and sky reflections instead."
+  field planarReflections u32 "How many water surfaces draw a planar reflection in one frame: RenderOptions.planarReflections (1 by default, at most 2), 0 without a renderer. A surface past it that asks reflects by the screen-space and sky reflections instead."
   group "Optional features"
   field without List.LitFeature "The optional lit features the renderer was made without (RenderOptions.without), in LitFeature's order: none of its lit shaders carries them and a scene that uses one draws without it. Empty by default and without a renderer."
   field upscalers List.String "The Upscaler variants this device draws under TAA: taau with any renderer, fsr3 where it has compute (every tier but gl: it needs no shader-f16 or subgroups and fits WebGPU's default limits); empty without a renderer. auto draws one of these."
@@ -200,7 +200,7 @@ struct RenderCapabilities {
     guide "looks §18"
   }
   group "3D world"
-  field world3d bool "Whether the renderer draws the 3D world: terrain, planar water (og.Water), 3D fluids, scattered copies and volumetric fog. False in the 2D profile's publish and lanes modules, where og.terrain's calls and a heightfield collider are refused naming this field; true elsewhere." {
+  field world3d bool "Whether the renderer draws the 3D world: terrain, planar water (og.Water), 3D fluids, scattered copies and volumetric fog. Always true: every build has it, 2D games included, and a published game loads it on first use." {
     guide "looks §18"
   }
 }

@@ -168,10 +168,6 @@ pub fn run(args: &[&str]) -> ExitCode {
         }
         build_trace("cook-complete");
     }
-    if publish && let Err(e) = crate::publish::refuse_3d_world(&p.root) {
-        eprintln!("og build --publish: {e}");
-        return ExitCode::FAILURE;
-    }
     if check {
         build_trace("check-start");
     }

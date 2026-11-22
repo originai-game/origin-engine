@@ -58,7 +58,7 @@ step_clippy() {
 # on every run and recompiled and relinked og-host-web, og-runtime and
 # og-probe both times (about 29 s on an unrelated change). The variant's
 # dependencies come from sccache (or CI's cached target/) the first time.
-# A VARIANT lanes* (lanes, lanes2d) builds through scripts/wasm-lanes.sh
+# A VARIANT lanes* builds through scripts/wasm-lanes.sh
 # (wasm atomics, std rebuilt), which keeps its own target dir
 # (target/wasm-mt) for the same reason; the lanes variants share it as the
 # others share the wasm32 one.
@@ -241,7 +241,6 @@ step_wasm_build() {
       continue
     fi
     while read -r vname vfeat; do
-      [ "$variants" != reference ] || [ "$vname" != publish2d ] || continue
       og_say "publish variant $vname: $c (--no-default-features --features $vfeat)"
       wasm_build "$vname" "-$(printf '%s' "$vfeat" | tr ',' '\n' | sed "s|^|$c/|" | paste -sd, -)" "$c" || return 1
     done <<EOF_VARIANTS
@@ -259,9 +258,8 @@ EOF_VARIANTS
       wasm_build lanes "$c/publish" "$c" || return 1
       continue
     fi
-    # One lanes module per game profile (scripts/wasm-crates.txt `lanes`).
+    # The lanes modules (scripts/wasm-crates.txt `lanes`).
     while read -r vname vfeat; do
-      [ "$variants" != reference ] || [ "$vname" != lanes2d ] || continue
       og_say "lanes variant $vname: $c (--no-default-features --features $vfeat, wasm atomics: scripts/wasm-lanes.sh)"
       wasm_build "$vname" "-$(printf '%s' "$vfeat" | tr ',' '\n' | sed "s|^|$c/|" | paste -sd, -)" "$c" || return 1
     done <<EOF_LANES
@@ -326,7 +324,7 @@ wasm_bindgen_one() {
 # remote-frame twins ship whole. The size gate measures the whole modules:
 # the largest download is a game that uses every module.
 wasm_split() {
-  local d name profile pids=() failed=0
+  local d name pids=() failed=0
   rm -rf "$OG_WASM_OUT/split"
   for d in "$OG_WASM_OUT"/bindgen/og_host_web-publish* "$OG_WASM_OUT"/bindgen/og_host_web-lanes*; do
     [ -d "$d" ] || continue
@@ -334,10 +332,8 @@ wasm_split() {
     og_need wasm-split || return 1
     og_need rustfilt || return 1
     mkdir -p "$OG_WASM_OUT/split/$name"
-    profile=3d
-    case "$name" in *2d) profile=2d ;; esac
     wasm_product split "$name" "$d" "$OG_WASM_OUT/split/$name" \
-      bun "$OG_ROOT/packages/engine/scripts/wasm-split.ts" "$d" "$OG_WASM_OUT/split/$name" "$profile" "$OG_WASM_OUT/raw/$name.wasm" > "$OG_WASM_OUT/split/$name.log" 2>&1 &
+      bun "$OG_ROOT/packages/engine/scripts/wasm-split.ts" "$d" "$OG_WASM_OUT/split/$name" "$OG_WASM_OUT/raw/$name.wasm" > "$OG_WASM_OUT/split/$name.log" 2>&1 &
     pids+=($!)
   done
   for d in "${pids[@]:-}"; do [ -z "$d" ] || wait "$d" || failed=1; done

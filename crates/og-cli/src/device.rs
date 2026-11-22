@@ -77,10 +77,6 @@ pub fn run(project: &str, out: Option<&str>, port: Option<&str>, a: &DeviceArgs)
         return ExitCode::FAILURE;
     }
     // The device plays the publish build.
-    if let Err(e) = crate::publish::refuse_3d_world(&p.root) {
-        eprintln!("og run --device: {e}");
-        return ExitCode::FAILURE;
-    }
     let dist = p.work_dir().join("device");
     let built = status(
         crate::bundle::web_build(&p, &package, &settings, &dist, true)

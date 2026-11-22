@@ -4,7 +4,7 @@
 // named by --host. Prints JSON { host, tick, hash, ... } for hosts.test.ts.
 //
 //   bun tests/support/physics-hash.ts --host node|web|lanes [--ticks 600] [--profile 3d|2d]
-//       [--bodies N] [--snapshot] [--threads N] [--module 3d|2d] [--restore <file>]
+//       [--bodies N] [--snapshot] [--threads N] [--restore <file>]
 //       [--dir <bound module directory>] [--modules physics,nav]
 //
 // --bodies: the dropped bodies, 64 by default; past 64 each further 64 drop
@@ -12,10 +12,8 @@
 // is a world whose step goes to the lanes pool: og-physics's grain is 500
 // bodies on two to four lanes).
 //
-// lanes: the lanes module of the profile (wasm atomics and the publish
-// members: dist/web-publish for 3d, dist/web-publish-2d for 2d, one module
-// per physics profile since owed row 71; --module takes the other profile's,
-// which refuses the world), on --threads Workers when given
+// lanes: the lanes module (wasm atomics and the publish members, beside
+// the publish module in dist/web-publish), on --threads Workers when given
 // (wasm-bindgen-rayon's pool), else on the engine thread alone. A publish
 // module has no world dump, so its hash is empty and --snapshot (the
 // world's snapshot, which every host writes alike) is what is compared.
@@ -47,7 +45,7 @@ if (which === "node") {
   const { loadNativeHost } = await import("../../src/node/index.ts");
   loadNativeHost();
 } else if (which === "lanes") {
-  const dir = argv.includes("--dir") ? opt("--dir", "") : join(pkg, "dist", opt("--module", profile) === "2d" ? "web-publish-2d" : "web-publish");
+  const dir = argv.includes("--dir") ? opt("--dir", "") : join(pkg, "dist", "web-publish");
   const { loadWebHost } = await import("../../src/web/host.ts");
   const glue = await import(join(dir, "origin-engine-lanes.js"));
   const { fileModuleHost } = await import("../../src/node/modules.ts");
@@ -55,7 +53,7 @@ if (which === "node") {
   lanesReport = glue.og_web_lanes;
 } else {
   const { loadWebHost, loadEngineModules } = await import("../../src/web/host.ts");
-  const directory = which === "publish" ? (profile === "2d" ? "web-publish-2d" : "web-publish") : "web";
+  const directory = which === "publish" ? "web-publish" : "web";
   const dir = argv.includes("--dir") ? opt("--dir", "") : join(pkg, "dist", directory);
   const glue = await import(join(dir, "origin-engine.js"));
   // A split module's modules come from modules/ beside it (docs/web-export.md

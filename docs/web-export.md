@@ -29,8 +29,8 @@ only (§Content-hashed names), listed in og-build.json.
 | `audio-decoder.js` | The audio decoder's Worker, started by the engine Worker once audio starts. |
 | `game.js.map`, `play.js.map`, `audio-worklet.js.map` | A dev build's source maps, beside their bundles and linked from them (§Source maps). |
 | `sourcemaps/` | A publish build's source maps of the same three bundles, unlinked and not to be served (§Source maps). |
-| `origin-engine.js`, `origin-engine_bg.wasm` | The web host from wasm-bindgen: `dist/web` in a dev build, the publish variant of the project's profile (the cooked manifest's, from its creation form: `create { form "2d" }` for 2D) with `--publish` (§Variants). |
-| `origin-engine-lanes.js`, `origin-engine-lanes_bg.wasm`, `snippets/` | `--publish` with `isolation` not `off`: the lanes variant of the same profile and wasm-bindgen-rayon's Worker script (§Lanes). |
+| `origin-engine.js`, `origin-engine_bg.wasm` | The web host from wasm-bindgen: `dist/web` in a dev build, the publish variant (`dist/web-publish`, the same for every game, 2D or 3D) with `--publish` (§Variants). |
+| `origin-engine-lanes.js`, `origin-engine-lanes_bg.wasm`, `snippets/` | `--publish` with `isolation` not `off`: the lanes variant and wasm-bindgen-rayon's Worker script (§Lanes). |
 | `basis/` | Binomial's Basis transcoder and its licence. |
 | `av1/` | The AV1 fallback decoder (`og-av1.wasm`) and its Worker (`av1-worker.js`), fetched only by a browser without AV1 in WebCodecs. |
 | `cooked/` | The cooked bundle, split by streaming group: the first group and one pack per streaming group, `cooked/stream/<name>.ogb` (§Streaming groups). |
@@ -55,7 +55,7 @@ dates, no absolute paths, files in sorted order
   "entry": "index.html",
   "worker": "game.3f2a9c1e04b7.js",
   "wasm": "origin-engine_bg.9b0c51d2e7a4.wasm",
-  "variant": "2d",
+  "variant": "publish",
   "names": { "game.js": "game.3f2a9c1e04b7.js", "play.js": "play.81aa0f3c6d25.js", "…": "…" },
   "probe": { "protocol": 5, "wire": 1, "build": "publish",
              "members": ["hello", "tick", "state", "pick", "entity", "input", "capture"] },
@@ -84,7 +84,7 @@ dates, no absolute paths, files in sorted order
 - `engine.version` is the engine that built it; `engine.pinned` is
   project.ogt's `engine`. `probe` is read from the copied wasm's own
   `hello` (`build` `publish`, or `release` for a dev build).
-- `variant` is `3d`, `2d`, or `full` for a dev build (§Variants).
+- `variant` is `publish`, or `full` for a dev build (§Variants); the game's profile is `game.profile`.
 - `assets` is `null`, or `{ "base", "origin" }` for a build whose package
   is served from an asset base (§Asset base).
 - `content` is `null`, or `{ "base", "origin" }` for a build whose
@@ -271,23 +271,24 @@ posts `{ type: "og-cache", files }`. Natively, `OG_LANES` sets the pool
 
 ## Variants
 
-One engine module per download. A publish build ships the variants of the
-game's profile, single-threaded and lanes. The cook records the profile in
-cooked/.cook.ogt (`profile "3d"` or `"2d"`, from project.ogt's
-`create { form }`: og-bundle's `look::Profile`), and the build reads it
-there:
+One engine module per download. Every publish build ships the same
+publish module, single-threaded and lanes, whatever the game's profile:
+its capabilities are split modules a page fetches on first use (§Modules),
+so a 2D game downloads no 3D world and a 3D game or a film can hold a 2D
+minigame. The cook records the profile in cooked/.cook.ogt (`profile
+"3d"` or `"2d"`, from project.ogt's `create { form }`: og-bundle's
+`look::Profile`) as the project's default, which picks the physics
+simulation a world starts with; it walls nothing off:
 
 | Variant | Where | Built with (og-host-web) | Physics |
 |---|---|---|---|
-| 3D publish | `dist/web-publish/origin-engine*` | `--no-default-features --features publish,shaping` | both |
-| 3D lanes | `dist/web-publish/origin-engine-lanes*`, `snippets/` | `--no-default-features --features publish,shaping`, wasm atomics (§Lanes) | both (`parallel`) |
-| 2D publish | `dist/web-publish-2d/origin-engine*` | `--no-default-features --features publish,profile2d,shaping` | both |
-| 2D lanes | `dist/web-publish-2d/origin-engine-lanes*`, `snippets/` | `--no-default-features --features publish,profile2d,shaping`, wasm atomics | both (`parallel`) |
+| publish | `dist/web-publish/origin-engine*` | `--no-default-features --features publish,shaping` | both |
+| lanes | `dist/web-publish/origin-engine-lanes*`, `snippets/` | `--no-default-features --features publish,shaping`, wasm atomics (§Lanes) | both (`parallel`) |
 | dev | `dist/web/origin-engine*` | default features | both, not shipped |
 
-Every variant links rapier2d and rapier3d, so a world switches
-`og.Physics.profile` at run time (a 2D minigame inside a 3D game). The 2D
-simulation is the split module `physics2d` and the 3D one `physics`
+Every variant links rapier2d, rapier3d and the 3D world, so a world
+switches `og.Physics.profile` at run time (a 2D minigame inside a 3D game). The 2D
+simulation is the split module `physics2d` and the 3D one `physics3d`
 (§Modules): a page fetches each on its first call.
 
 The feature sets are scripts/wasm-crates.txt's, the gate's own build list
@@ -295,13 +296,11 @@ The feature sets are scripts/wasm-crates.txt's, the gate's own build list
 sets equal to its `variant` and `lanes` lines for `og-host-web`.
 
 `publish` leaves out the probe's tool members, GPU timestamp queries and
-the reflected field docs. `profile2d` leaves out the 3D world
-(`RenderCapabilities.world3d` is false), so `og build --publish` refuses a
-`2d` project whose scenes hold `Terrain`, `TerrainScatter`, `Water`,
-`WaterSurface` or `Fluid3D`, naming each by file and line. The variant is
-copied as `origin-engine.js` and `origin-engine_bg.wasm` and recorded as
-`variant`. The size budget (design §7, `scripts/budgets.txt`) holds per
-variant: what counts is the largest one a player downloads, never the sum
+the reflected field docs. The variant is copied as `origin-engine.js` and
+`origin-engine_bg.wasm` and recorded as og-build.json's `variant`
+(`publish`, or `full` for a dev build). The size budget (design §7,
+`scripts/budgets.txt`) holds per variant: what counts is the largest one a
+player downloads, never the sum
 (`scripts/size-gate.sh`, docs/ci.md).
 
 ## Modules
@@ -978,7 +977,7 @@ bun ../../tests/install/instabox.ts --version <v> --from ../../dist/release/<v> 
 ```
 
 - `@origingame/engine`: the TypeScript API and runtime, the web hosts
-  (`dist/web`, `dist/web-publish`, `dist/web-publish-2d`), the shell, the
+  (`dist/web`, `dist/web-publish`), the shell, the
   Basis transcoder, `bin/og.mjs`. No native code.
 - `@origingame/engine-<platform>-<arch>`: `origin-engine.node` and `og`,
   one tarball per platform, which `scripts/release-dist.ts` puts into that

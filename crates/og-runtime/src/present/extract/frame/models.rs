@@ -463,8 +463,7 @@ pub(super) fn models(
             // At its impostor's level a model at rest is one card
             // (og-render's `impostor`), drawn with the scattered copies'
             // passes.
-            if og_render::WORLD_3D
-                && let Some(l) = model_lods.get(&asset)
+            if let Some(l) = model_lods.get(&asset)
                 && let Some((impostor, _)) = l.impostor
                 && l.impostor_level() == Some(level)
                 && !posed.contains(&e)
@@ -502,8 +501,8 @@ pub(super) fn models(
                 }
             }
             let part_levels = model_lods.get(&asset).map(|l| &l.parts);
-            // Its meshes never draw past their coarsest: a posed model (or
-            // one in the 2D profile) at its impostor's level draws that.
+            // Its meshes never draw past their coarsest: a posed model at
+            // its impostor's level draws that.
             let level = match model_lods.get(&asset).and_then(|l| l.impostor_level()) {
                 Some(i) => level.min(i - 1),
                 None => level,

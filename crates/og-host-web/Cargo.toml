@@ -17,12 +17,6 @@ default = ["shaping"]
 shaping = ["og-runtime/shaping"]
 # A published game: the commands module and the probe's non-player members are not exported.
 publish = ["og-runtime/publish"]
-# The 2D profile's renderer: terrain, planar water, 3D fluids, scattered
-# copies and volumetric fog are not built in (og-render's `profile2d`,
-# RenderCapabilities.world3d false), nor og-runtime's terrain (its calls
-# answer the refusal naming world3d). The 2D publish and lanes modules
-# have it (scripts/wasm-crates.txt).
-profile2d = ["og-runtime/profile2d"]
 
 [dependencies]
 og-api = { path = "../og-api" }

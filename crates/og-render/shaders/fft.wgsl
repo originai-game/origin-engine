@@ -4,7 +4,7 @@
 // frequency and each stage's butterfly. Each module keeps its own
 // workgroup arrays and loops over the stages itself, and declares the
 // transform's size: N points, LOGN = log2 N. Prepended after the library
-// (wgsl3d_library!).
+// (wgsl_library!).
 //
 // The transform (bit-reversed loads, radix-2 butterflies in shared memory,
 // two complex signals per texel) is ported from Noniv/web-ocean's

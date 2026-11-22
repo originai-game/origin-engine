@@ -27,7 +27,7 @@
 // origin-agent's engine_scaffold read, usable unpacked with no npm:
 //
 //   origin-engine.json   the scaffold overlay's origin-engine.json + build {package, version, base?, revision, target, triple,
-//                        og, addon, wasm, wasmPublish, wasmPublish2d, wasmLanes}; `target` is the node platform
+//                        og, addon, wasm, wasmPublish, wasmLanes}; `target` is the node platform
 //                        (linux-x64, darwin-arm64, win32-x64), `triple` the archive's target; `base` (a dev build
 //                        dev.<date>.<n> only, as in manifest.json) the release it is based on: the newest version
 //                        of the engine package's changelog.json
@@ -175,7 +175,6 @@ interface Layout {
   addon: string;
   wasm: string;
   wasmPublish: string;
-  wasmPublish2d: string;
   wasmLanes: string;
 }
 
@@ -253,7 +252,6 @@ export function checkLayout(dir: string, t: Target): void {
     "engine/styles/cartoon/LilitaOne-Regular.ttf",
     "engine/styles/cartoon/OFL-LilitaOne.txt",
     "engine/dist/web-publish/origin-engine_bg.wasm",
-    "engine/dist/web-publish-2d/origin-engine_bg.wasm",
     "engine/dist/web-publish/origin-engine-lanes_bg.wasm",
     "engine/dist/web-publish/origin-engine-lanes.js",
     `engine/native/origin-engine.${platform}.node`,
@@ -379,7 +377,6 @@ async function assemble(o: { dir: string; work: string; version: string; base?: 
     addon: sha256(join(root, "engine/native", `origin-engine.${platform}.node`)),
     wasm: sha256(join(root, "engine/dist/web/origin-engine_bg.wasm")),
     wasmPublish: sha256(join(root, "engine/dist/web-publish/origin-engine_bg.wasm")),
-    wasmPublish2d: sha256(join(root, "engine/dist/web-publish-2d/origin-engine_bg.wasm")),
     wasmLanes: sha256(join(root, "engine/dist/web-publish/origin-engine-lanes_bg.wasm")),
   };
   const overlayManifest = JSON.parse(readFileSync(join(root, "overlay/origin-engine.json"), "utf8")) as Record<string, unknown>;
@@ -603,9 +600,7 @@ export function finish(dir: string, version: string, revision: string, releasedA
  */
 export const WASM_HOSTS: Record<string, string> = {
   "web-publish/modules": "publish",
-  "web-publish-2d/modules": "publish2d",
   "web-publish/modules-lanes": "lanes",
-  "web-publish-2d/modules-lanes": "lanes2d",
 };
 export function writeWasmModules(engine: string, dir: string, version: string): string[] {
   rmSync(join(dir, "wasm"), { recursive: true, force: true });

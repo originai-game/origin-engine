@@ -75,8 +75,7 @@ impl Renderer {
             .post
             .ssr
             .filter(|s| {
-                WORLD_3D
-                    && self.runs(FramePass::Ssr)
+                self.runs(FramePass::Ssr)
                     && perspective
                     && scene.frame.quality.ssr
                     && s.intensity > 0.0

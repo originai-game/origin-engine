@@ -13,9 +13,9 @@
 use glam::{Vec2, Vec3};
 
 /// wind_common.wgsl.
-pub(crate) const WIND_COMMON_WGSL: &str = wgsl3d!("wind_common.wgsl");
+pub(crate) const WIND_COMMON_WGSL: &str = wgsl!("wind_common.wgsl");
 /// wind_lean.wgsl: the simulated field's lean (after [`WIND_COMMON_WGSL`]).
-pub(crate) const WIND_LEAN_WGSL: &str = wgsl3d!("wind_lean.wgsl");
+pub(crate) const WIND_LEAN_WGSL: &str = wgsl!("wind_lean.wgsl");
 
 /// Seconds after which the wind's clock starts again (wind_common.wgsl).
 const TIME_PERIOD: f64 = 3600.0;

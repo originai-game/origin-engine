@@ -15,8 +15,6 @@ mod meshlet;
 mod params_motion;
 #[path = "../png.rs"]
 mod png;
-#[path = "../profile2d.rs"]
-mod profile2d;
 #[path = "../shader_capabilities.rs"]
 mod shader_capabilities;
 #[path = "../shader_loops.rs"]

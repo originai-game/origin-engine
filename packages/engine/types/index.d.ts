@@ -10918,7 +10918,7 @@ export interface RenderCapabilities {
   readonly spriteAnisotropy: number;
   // ── Water ──
   /**
-   * How many water surfaces draw a planar reflection in one frame: RenderOptions.planarReflections (1 by default, at most 2), 0 without a renderer or where world3d is false. A surface past it that asks reflects by the screen-space and sky reflections instead.
+   * How many water surfaces draw a planar reflection in one frame: RenderOptions.planarReflections (1 by default, at most 2), 0 without a renderer. A surface past it that asks reflects by the screen-space and sky reflections instead.
    */
   readonly planarReflections: number;
   // ── Optional features ──
@@ -10964,7 +10964,7 @@ export interface RenderCapabilities {
   readonly visualSimulation: boolean;
   // ── 3D world ──
   /**
-   * Whether the renderer draws the 3D world: terrain, planar water (og.Water), 3D fluids, scattered copies and volumetric fog. False in the 2D profile's publish and lanes modules, where og.terrain's calls and a heightfield collider are refused naming this field; true elsewhere.
+   * Whether the renderer draws the 3D world: terrain, planar water (og.Water), 3D fluids, scattered copies and volumetric fog. Always true: every build has it, 2D games included, and a published game loads it on first use.
    * See `looks §18`.
    */
   readonly world3d: boolean;
@@ -27887,7 +27887,7 @@ export interface EngineProbe extends RuntimeProbe {
 
 // ── terrain ─────────────────────────────────────────────────────
 // Terrain (phase 2): a height field over a rectangle, cooked by `og cook` from a `type terrain` .ogt (a heightmap, a control map, up to sixteen layered materials, a holes map) into tiles; drawn as a clipmap around the camera, collided with as a height field, baked into navmeshes.
-// Load it with og.terrain.load, then place it with an og.Terrain and an og.Collider of shape heightfield naming TerrainInfo.geometry. Edits are world state. Terrain is 3D: where RenderCapabilities.world3d is false every call answers a refusal naming that field. Its tiles stream; no tick reads which are resident.
+// Load it with og.terrain.load, then place it with an og.Terrain and an og.Collider of shape heightfield naming TerrainInfo.geometry. Edits are world state. Its tiles stream; no tick reads which are resident.
 // See `world §1`.
 
 /**
@@ -37050,7 +37050,7 @@ export declare namespace og {
   const ScatterClearing: ComponentType<{ readonly size: FieldSpec<"Vector3"> }, ScatterClearing>;
   /**
    * Terrain (phase 2): a height field over a rectangle, cooked by `og cook` from a `type terrain` .ogt (a heightmap, a control map, up to sixteen layered materials, a holes map) into tiles; drawn as a clipmap around the camera, collided with as a height field, baked into navmeshes.
-   * Load it with og.terrain.load, then place it with an og.Terrain and an og.Collider of shape heightfield naming TerrainInfo.geometry. Edits are world state. Terrain is 3D: where RenderCapabilities.world3d is false every call answers a refusal naming that field. Its tiles stream; no tick reads which are resident.
+   * Load it with og.terrain.load, then place it with an og.Terrain and an og.Collider of shape heightfield naming TerrainInfo.geometry. Edits are world state. Its tiles stream; no tick reads which are resident.
    * See `world §1`.
    */
   namespace terrain {

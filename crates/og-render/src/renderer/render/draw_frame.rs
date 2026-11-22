@@ -160,9 +160,8 @@ impl Renderer {
         let palette = &self.instances.palette;
         crowd_frame.place_clips(&|c| palette.baked_offset(c));
         stages.end("skinned");
-        // The planar water this frame draws: none where the 3D world is
-        // not built in (WORLD_3D).
-        let scene_water: &[Water] = if WORLD_3D { &scene.world.water } else { &[] };
+        // The planar water this frame draws.
+        let scene_water: &[Water] = &scene.world.water;
 
         let (aspect, temporal, camera, cam, view_frustum) = self.prepare_frame_camera(scene);
         let taa = self.info.antialias == Antialias::Taa;
@@ -285,7 +284,7 @@ impl Renderer {
         // on worker threads before the batches' pipelines (deferred.rs):
         // the terrains', the frame's longest compiles, the sky's and the
         // post chain's.
-        if let Some(t) = self.world.terrain.get().filter(|_| WORLD_3D) {
+        if let Some(t) = self.world.terrain.get() {
             t.start_passes(scene, effects.prepass);
         }
         {

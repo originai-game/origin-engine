@@ -19,19 +19,14 @@
 # A line `lanes NAME CRATE FEATURES` does the same for the lanes variant:
 # one lanes module per line, through scripts/wasm-lanes.sh, raw name
 # <crate>-NAME.wasm (NAME starts with `lanes`). og-host-web ships one of
-# each per game profile (docs/web-export.md §Variants), each with both
-# physics (a world switches og.Physics.profile at run time; rapier2d is the
-# split module `physics2d`), and the 2D ones without the 3D world's
-# renderer (`profile2d`): `publish` and `lanes` are the 3D modules
-# (dist/web-publish), `publish2d` and `lanes2d` the 2D ones
-# (dist/web-publish-2d); `og build --publish` copies the pair of the game's
-# profile, so a page downloads one of them. All keep og-ui's `shaping`
+# each for every game, 2D or 3D (docs/web-export.md §Variants): `publish`
+# and `lanes` (dist/web-publish), with both physics simulations and the 3D
+# world, each an on-demand module (rapier2d is `physics2d`, rapier3d
+# `physics3d`, terrain and water `world3d`), and og-ui's `shaping`
 # (rustybuzz: Arabic, Indic); every engine module is in each, split into
 # the parts the web loads on first use (packages/engine/scripts/
 # wasm-modules.json). The size gate holds each download to the budget.
 og-render   required
 og-host-web required publish lanes
 variant publish         og-host-web publish,shaping
-variant publish2d       og-host-web publish,profile2d,shaping
-lanes   lanes2d         og-host-web publish,profile2d,shaping
 lanes   lanes           og-host-web publish,shaping

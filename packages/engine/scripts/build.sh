@@ -2,12 +2,11 @@
 # Builds both hosts for this package: the native addon and the og tool for
 # this machine into native/origin-engine.<platform>-<arch>.node and
 # native/og.<platform>-<arch>, and the web host (wasm-bindgen --target web)
-# into dist/web/ (every member, both physics profiles), dist/web-publish/
-# (the 3D publish variant, with the 3D lanes variant beside it:
-# origin-engine-lanes.js, origin-engine-lanes_bg.wasm, snippets/; wasm
-# atomics, scripts/wasm-lanes.sh, docs/web-export.md §Lanes) and
-# dist/web-publish-2d/ (the 2D publish variant and the 2D lanes variant
-# beside it; docs/web-export.md §Variants). Honours CARGO_TARGET_DIR.
+# into dist/web/ (every member, both physics profiles) and dist/web-publish/
+# (the publish variant every game ships, 2D or 3D, with the lanes variant
+# beside it: origin-engine-lanes.js, origin-engine-lanes_bg.wasm, snippets/;
+# wasm atomics, scripts/wasm-lanes.sh, docs/web-export.md §Lanes and
+# §Variants). Honours CARGO_TARGET_DIR.
 # Incremental.
 #
 #   sh scripts/build.sh                     dev when the gate has built, else release
@@ -169,37 +168,18 @@ use_split() {
 }
 if [ -f "$gate_wasm/bindgen/og_host_web/origin-engine_bg.wasm" ] \
     && { [ -f "$gate_modules/og_host_web-publish.wasm" ] || [ "$variants" = dev ]; }; then
-  rm -rf "$here/dist/web-publish"/* "$here/dist/web"/* "$here/dist/web-publish-2d"
+  rm -rf "$here/dist/web-publish"/* "$here/dist/web"/*
   cp "$gate_wasm/bindgen/og_host_web/"* "$here/dist/web/"
   [ "$variants" != dev ] || exit 0
   cp "$gate_wasm/bindgen/og_host_web-publish/"* "$here/dist/web-publish/"
   cp "$gate_modules/og_host_web-publish.wasm" "$here/dist/web-publish/origin-engine_bg.wasm"
   use_split og_host_web-publish web-publish
-  # The 2D publish variant, when scripts/wasm-crates.txt declares it (a
-  # 2d game's og build --publish ships it); a missing one stops the build.
-  variant_2d="$(awk '{ sub(/#.*/, "") } $1 == "variant" && $2 == "publish2d" && $3 == "og-host-web" { print 1 }' "$root/scripts/wasm-crates.txt")"
-  if [ -f "$gate_modules/og_host_web-publish2d.wasm" ]; then
-    mkdir -p "$here/dist/web-publish-2d"
-    cp "$gate_wasm/bindgen/og_host_web-publish2d/"* "$here/dist/web-publish-2d/"
-    cp "$gate_modules/og_host_web-publish2d.wasm" "$here/dist/web-publish-2d/origin-engine_bg.wasm"
-    use_split og_host_web-publish2d web-publish-2d
-  elif [ -n "$variant_2d" ] && [ "$variants" != reference ]; then
-    echo "build.sh: $gate_modules/og_host_web-publish2d.wasm is missing; prepare all wasm variants again (docs/web-export.md §Variants)" >&2
-    # The functional lane runs with the gate's web module stale (OG_WASM_STALE=1,
-    # scripts/check.sh): it ships what the last wasm-build produced and skips
-    # the tests that load the web module; a module the gate has never built is
-    # then a warning, not a stop.
-    [ "${OG_WASM_STALE:-0}" = 1 ] || exit 1
-  fi
-  # The gate builds a lanes variant per game profile whenever
-  # scripts/wasm-crates.txt marks og-host-web `lanes` (its `lanes` lines:
-  # `lanes` the 3D one beside the 3D publish module, `lanes2d` the 2D one);
-  # without them every publish build here would quietly ship
-  # single-threaded, so a missing one stops the build.
+  # The gate builds the lanes variant whenever scripts/wasm-crates.txt
+  # marks og-host-web `lanes`; without it every publish build here would
+  # quietly ship single-threaded, so a missing one stops the build.
   lanes_expected="$(awk '{ sub(/#.*/, "") } $1 == "og-host-web" && $3 == "publish" && $4 == "lanes" { print 1 }' "$root/scripts/wasm-crates.txt")"
-  for v in "lanes web-publish" "lanes2d web-publish-2d"; do
+  for v in "lanes web-publish"; do
     set -- $v
-    [ "$variants" != reference ] || [ "$1" != lanes2d ] || continue
     if [ -f "$gate_modules/og_host_web-$1.wasm" ]; then
       cp "$gate_wasm/bindgen/og_host_web-$1/origin-engine-lanes.js" "$here/dist/$2/"
       cp -R "$gate_wasm/bindgen/og_host_web-$1/snippets" "$here/dist/$2/"

@@ -16,7 +16,6 @@ use crate::{
 
 /// Each module's state on one engine.
 #[derive(Default)]
-#[cfg_attr(feature = "profile2d", allow(dead_code))]
 pub(crate) struct Modules {
     pub atmosphere: atmosphere::ModuleState,
     pub destruction: destruction::ModuleState,

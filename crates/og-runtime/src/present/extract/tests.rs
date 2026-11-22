@@ -23,7 +23,6 @@ fn the_impostor_ends_the_level_chain() {
         materials: Vec::new(),
         center: Vec3::ZERO,
         radius: 1.0,
-        #[cfg(not(feature = "profile2d"))]
         scatter_meshes: Vec::new(),
         impostor: Some((impostor, 0.05)),
     };

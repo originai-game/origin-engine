@@ -26,9 +26,7 @@ pub(crate) fn resolve_releases(eng: &Engine) {
         }
     }
     // The released bundles' terrains nothing names any more (none to free
-    // in an engine that loaded none: the 3D world's engine module; the 2D
-    // profile loads none).
-    #[cfg(not(feature = "profile2d"))]
+    // in an engine that loaded none: the 3D world's engine module).
     if eng.render.borrow().terrain.loaded.iter().next().is_some() {
         crate::bind::terrain::free_released(eng);
     }
@@ -240,7 +238,6 @@ fn close_bundle(eng: &Engine, bundle: usize) -> Result<(), String> {
             if let Some(lods) = rs.model_lods.remove(&key) {
                 meshes.extend(lods.parts.into_iter().flatten().map(|(m, _)| m));
                 render_materials.extend(lods.materials.into_iter().flatten().flatten());
-                #[cfg(not(feature = "profile2d"))]
                 for (raw, placed, levels) in lods.scatter_meshes {
                     meshes.extend([raw, placed]);
                     meshes.extend(levels.into_iter().flatten().map(|(m, _)| m));

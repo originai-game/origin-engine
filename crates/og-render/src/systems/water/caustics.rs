@@ -59,7 +59,7 @@ pub(super) struct CausticsPass {
     pending: Option<wgpu::BindGroup>,
 }
 
-const CAUSTICS_WGSL: &str = wgsl3d_library!("water_caustics.wgsl");
+const CAUSTICS_WGSL: &str = wgsl_library!("water_caustics.wgsl");
 
 /// This module's own WGSL, for the shader check.
 pub fn caustics_source() -> (&'static str, String) {

@@ -103,8 +103,6 @@ interface Table {
   modules: Record<string, string[]>;
   roots: string[];
   entries: string[];
-  /** Entries only the 3D profile builds: the 2D profile compiles their calls out. */
-  entries3d: string[];
 }
 
 /** A name without its crates' disambiguators (`og_runtime[1a2b3c…]` → `og_runtime`), as wasm-modules.json's patterns read it. */
@@ -158,14 +156,12 @@ export function keepShared(assigned: Map<string, string>, calls: Map<string, str
  * primary whatever their names, so no game's frame calls into a module it
  * does not use (a body the linker folded under a module type's name
  * included). An entry no function is named any more is an error: its
- * guard's boundary moved (`entries3d` only in the 3D profile, which alone
- * builds the calls they name).
+ * guard's boundary moved.
  */
-export function framePath(wasmFile: string, names: string[], table: Table, calls: Map<string, string[]>, profile: "2d" | "3d"): Set<string> {
+export function framePath(wasmFile: string, names: string[], table: Table, calls: Map<string, string[]>): Set<string> {
   const roots = table.roots.map((p) => new RegExp(p));
-  const required = profile === "3d" ? [...table.entries, ...table.entries3d] : table.entries;
-  const entries = [...table.entries, ...table.entries3d].map((p) => new RegExp(p));
-  const missing = required.filter((p) => !names.some((n) => new RegExp(p).test(plain(n))));
+  const entries = table.entries.map((p) => new RegExp(p));
+  const missing = table.entries.filter((_, i) => !names.some((n) => entries[i]!.test(plain(n))));
   if (missing.length) throw new Error(`wasm-modules.json entries name no function of ${wasmFile}: ${missing.join(", ")} (inlined or renamed: name the guarded call that replaced it)`);
   const seen = new Set(names.filter((n) => roots.some((r) => r.test(plain(n)))));
   if (seen.size === 0) throw new Error(`wasm-modules.json roots name no function of ${wasmFile}`);
@@ -195,7 +191,7 @@ function demangle(names: string[]): string[] {
 /** Where a module's split modules sit beside it. */
 export const moduleDir = (lanes: boolean) => (lanes ? "modules-lanes" : "modules");
 
-export function splitEngine(bound: string, out: string, profile: "2d" | "3d", raw: string): Record<string, { file: string; bytes: number; sha256: string; data: number }> {
+export function splitEngine(bound: string, out: string, raw: string): Record<string, { file: string; bytes: number; sha256: string; data: number }> {
   const lanes = existsSync(join(bound, "origin-engine-lanes_bg.wasm"));
   const stem = lanes ? "origin-engine-lanes" : "origin-engine";
   const dir = moduleDir(lanes);
@@ -212,7 +208,7 @@ export function splitEngine(bound: string, out: string, profile: "2d" | "3d", ra
     // The lanes glue imports wasm-bindgen-rayon's Worker helper from beside it.
     if (existsSync(join(bound, "snippets"))) cpSync(join(bound, "snippets"), join(work, "snippets"), { recursive: true });
     const coreProfile = join(work, "core.prof");
-    run("bun", [join(here, "wasm-profile.ts"), join(work, `${stem}.js`), instrumented, coreProfile, profile]);
+    run("bun", [join(here, "wasm-profile.ts"), join(work, `${stem}.js`), instrumented, coreProfile]);
     const keep = new Set<string>();
     let keeping = false;
     for (const line of run("wasm-split", ["--print-profile=" + coreProfile, wasmFile, ...FEATURES]).split("\n")) {
@@ -222,7 +218,7 @@ export function splitEngine(bound: string, out: string, profile: "2d" | "3d", ra
     }
     const names = functionNames(named);
     const calls = callGraph(wasmFile);
-    for (const name of framePath(wasmFile, names, table, calls, profile)) keep.add(name);
+    for (const name of framePath(wasmFile, names, table, calls)) keep.add(name);
     const assigned = new Map<string, string>();
     for (const name of names) {
       const m = keep.has(name) ? null : moduleOf(name, rules);
@@ -270,8 +266,8 @@ export function splitEngine(bound: string, out: string, profile: "2d" | "3d", ra
 }
 
 if (import.meta.main) {
-  const [bound, out, profile, raw] = process.argv.slice(2);
-  if (!bound || !out || (profile !== "2d" && profile !== "3d") || !raw) throw new Error("usage: bun scripts/wasm-split.ts <bound dir> <out dir> <2d|3d> <raw wasm>");
-  const listed = splitEngine(bound, out, profile, raw);
+  const [bound, out, raw] = process.argv.slice(2);
+  if (!bound || !out || !raw) throw new Error("usage: bun scripts/wasm-split.ts <bound dir> <out dir> <raw wasm>");
+  const listed = splitEngine(bound, out, raw);
   for (const [m, f] of Object.entries(listed)) console.log(`${m} ${f.bytes} ${f.sha256.slice(0, 12)} data ${f.data}`);
 }

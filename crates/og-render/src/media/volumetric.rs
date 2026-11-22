@@ -629,13 +629,13 @@ pub(crate) fn source(froxel: bool) -> String {
         crate::clusters::wgsl(),
         crate::LIGHTING_WGSL,
         crate::AREA_WGSL,
-        wgsl3d!("volumetric.wgsl"),
+        wgsl!("volumetric.wgsl"),
         if froxel {
-            wgsl3d!("volumetric_froxel.wgsl").to_string()
+            wgsl!("volumetric_froxel.wgsl").to_string()
         } else {
             format!(
                 "const RAYMARCH_LIGHTS: u32 = {RAYMARCH_LIGHTS}u;\n{}",
-                wgsl3d!("volumetric_raymarch.wgsl")
+                wgsl!("volumetric_raymarch.wgsl")
             )
         }
     )

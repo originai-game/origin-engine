@@ -80,7 +80,7 @@ impl Renderer {
         // (water::underwater_light), which is the caustics' light, so none
         // in a renderer made without them (RenderDesc::without) or under a
         // surface without them.
-        let volume = WORLD_3D && scene.frame.quality.volumetric_fog && !cam.orthographic;
+        let volume = scene.frame.quality.volumetric_fog && !cam.orthographic;
         let mut underwater = under.map(|i| {
             let w = &scene_water[i];
             water::underwater_light(w, w.mesh.and_then(|m| scene.mesh(m)))

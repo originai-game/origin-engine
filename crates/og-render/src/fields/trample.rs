@@ -44,10 +44,10 @@ pub struct GrassPusher {
 }
 
 /// trample_read.wgsl: what a reader of the map includes.
-pub(crate) const READ_WGSL: &str = wgsl3d!("trample_read.wgsl");
+pub(crate) const READ_WGSL: &str = wgsl!("trample_read.wgsl");
 
 pub(crate) fn source() -> String {
-    wgsl3d!("grass_trample.wgsl").to_string()
+    wgsl!("grass_trample.wgsl").to_string()
 }
 
 /// `Trample` in grass_trample.wgsl.
@@ -333,7 +333,7 @@ impl Trample {
                 .surface_weather
                 .as_ref()
                 .is_some_and(|w| w.snow > 0.0 || w.dust > 0.0);
-        if self.layout.is_none() || !crate::WORLD_3D || !wanted || !(vegetation || cover) {
+        if self.layout.is_none() || !wanted || !(vegetation || cover) {
             self.grid = [0.0; 4];
             self.last = None;
             return;

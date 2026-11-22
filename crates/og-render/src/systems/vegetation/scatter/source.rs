@@ -24,18 +24,14 @@ pub(crate) fn scatter_lit_source(hooks: &str) -> String {
             crate::wind::WIND_COMMON_WGSL,
             crate::wind::WIND_LEAN_WGSL,
             crate::trample::READ_WGSL,
-            if crate::WORLD_3D {
-                crate::foliage::WGSL
-            } else {
-                ""
-            },
-            wgsl3d!("scatter_common.wgsl"),
-            wgsl3d!("scatter.wgsl"),
+            crate::foliage::WGSL,
+            wgsl!("scatter_common.wgsl"),
+            wgsl!("scatter.wgsl"),
             &og_render_data::impostor::march_wgsl(),
-            wgsl3d!("impostor_common.wgsl"),
-            wgsl3d!("impostor.wgsl"),
-            wgsl3d!("crowd_card_common.wgsl"),
-            wgsl3d!("crowd_card.wgsl"),
+            wgsl!("impostor_common.wgsl"),
+            wgsl!("impostor.wgsl"),
+            wgsl!("crowd_card_common.wgsl"),
+            wgsl!("crowd_card.wgsl"),
         ],
         &Capability::OPAQUE_SURFACE,
     )
@@ -48,17 +44,13 @@ pub(crate) fn scatter_shadow_source() -> String {
         crate::wind::WIND_COMMON_WGSL,
         crate::wind::WIND_LEAN_WGSL,
         crate::trample::READ_WGSL,
-        if crate::WORLD_3D {
-            crate::foliage::WGSL
-        } else {
-            ""
-        },
-        wgsl3d!("scatter_common.wgsl"),
-        wgsl3d!("scatter_shadow.wgsl"),
+        crate::foliage::WGSL,
+        wgsl!("scatter_common.wgsl"),
+        wgsl!("scatter_shadow.wgsl"),
         og_render_data::impostor::march_wgsl(),
-        wgsl3d!("impostor_common.wgsl"),
-        wgsl3d!("impostor_shadow.wgsl"),
-        wgsl3d!("crowd_card_common.wgsl"),
-        wgsl3d!("crowd_card_shadow.wgsl")
+        wgsl!("impostor_common.wgsl"),
+        wgsl!("impostor_shadow.wgsl"),
+        wgsl!("crowd_card_common.wgsl"),
+        wgsl!("crowd_card_shadow.wgsl")
     )
 }

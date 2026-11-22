@@ -95,10 +95,6 @@ pub(crate) struct Shared {
     /// The bytes of the simulation a restore applied, until the next step
     /// ([`Restored`]).
     pub restored: Option<Restored>,
-    /// Why no height field can be registered in this build
-    /// ([`PhysicsSystem::refuse_heightfields`]): every SHAPE_HEIGHTFIELD
-    /// collider is refused with it.
-    pub heightfields_absent: Option<&'static str>,
     pub shapes3: BTreeMap<ShapeKey, rapier3d::prelude::SharedShape>,
     pub shapes2: BTreeMap<ShapeKey, rapier2d::prelude::SharedShape>,
     /// Triangle-mesh shapes the cook baked over a mesh at scale 1, by mesh

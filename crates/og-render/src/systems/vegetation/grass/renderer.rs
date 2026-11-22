@@ -14,8 +14,8 @@ pub(crate) fn lit_source() -> String {
             &SHADING.text(),
             crate::wind::WIND_COMMON_WGSL,
             crate::ground::GRASS_COMMON_WGSL,
-            wgsl3d!("grass_blade.wgsl"),
-            wgsl3d!("grass.wgsl"),
+            wgsl!("grass_blade.wgsl"),
+            wgsl!("grass.wgsl"),
         ],
         &crate::Capability::OPAQUE_SURFACE,
     )
@@ -29,8 +29,8 @@ pub(crate) fn shadow_source() -> String {
         crate::SHADOW_PASS_WGSL,
         crate::wind::WIND_COMMON_WGSL,
         crate::ground::GRASS_COMMON_WGSL,
-        wgsl3d!("grass_blade.wgsl"),
-        wgsl3d!("grass_shadow.wgsl"),
+        wgsl!("grass_blade.wgsl"),
+        wgsl!("grass_shadow.wgsl"),
     )
 }
 
@@ -45,7 +45,7 @@ pub(crate) fn generate_source(arrayed: bool) -> String {
         crate::trample::READ_WGSL,
         crate::ground::GRASS_COMMON_WGSL,
         crate::ground::TERRAIN_WGSL,
-        wgsl3d!("grass_generate.wgsl"),
+        wgsl!("grass_generate.wgsl"),
     );
     if arrayed {
         crate::ground::terrain_array_declarations(&s)

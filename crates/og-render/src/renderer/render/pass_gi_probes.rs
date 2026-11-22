@@ -66,7 +66,7 @@ impl Renderer {
             .look
             .post
             .gi_probes
-            .filter(|_| WORLD_3D && scene.frame.quality.global_illumination)
+            .filter(|_| scene.frame.quality.global_illumination)
             // A renderer made without the probe GI (RenderDesc::without).
             .filter(|_| !self.info.without.contains(LitFeatures::GI));
         if desc.is_none()
@@ -76,11 +76,7 @@ impl Renderer {
         }
         let region = crate::lightmap::PROBE_CAPACITY;
         let far_at = region + desc.as_ref().map_or(0, crate::gi_probes::region_vec4s);
-        let far = if WORLD_3D {
-            crate::static_far::far_lights(scene, self.lights.clusters.skip_rects)
-        } else {
-            Vec::new()
-        };
+        let far = crate::static_far::far_lights(scene, self.lights.clusters.skip_rects);
         let need = far_at
             + if far.is_empty() {
                 0

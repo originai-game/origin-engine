@@ -313,15 +313,11 @@ impl Pass for CascadePass {
                     let all = instances::fold_box(sphere_box, skinned);
                     Renderer::instance_bounds(instances::fold_box(
                         all,
-                        if WORLD_3D {
-                            r.world
-                                .terrain
-                                .get()
-                                .map(|x| x.bounds(scene))
-                                .unwrap_or_default()
-                        } else {
-                            Vec::new()
-                        },
+                        r.world
+                            .terrain
+                            .get()
+                            .map(|x| x.bounds(scene))
+                            .unwrap_or_default(),
                     ))
                 }
             };

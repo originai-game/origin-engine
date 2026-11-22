@@ -30,9 +30,9 @@ pub(crate) trait GroundDraw {
     fn arrayed(&self) -> bool;
 }
 
-pub(crate) const TERRAIN_WGSL: &str = wgsl3d!("terrain.wgsl");
+pub(crate) const TERRAIN_WGSL: &str = wgsl!("terrain.wgsl");
 /// What terrain.wgsl's far grass needs declared (after wind_common.wgsl).
-pub(crate) const GRASS_COMMON_WGSL: &str = wgsl3d!("grass_common.wgsl");
+pub(crate) const GRASS_COMMON_WGSL: &str = wgsl!("grass_common.wgsl");
 
 /// The eight layer textures' declarations (terrain.wgsl), and the layer
 /// arrays' that replace them in the layer-array variant.

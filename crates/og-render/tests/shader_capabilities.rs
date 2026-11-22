@@ -16,7 +16,6 @@
 //! this capability); the water reads the screen's occlusion through its
 //! own binding; only meshes are lightmapped. The guides say the same to
 //! an author (render.md, looks.md).
-#![cfg(not(feature = "profile2d"))]
 
 use og_render::Capability;
 

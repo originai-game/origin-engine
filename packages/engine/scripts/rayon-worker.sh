@@ -21,7 +21,7 @@
 #   WebKit needs distinct request URLs for simultaneous workers served by
 #   the offline cache. The service worker strips their query for cache lookup.
 #
-#   sh scripts/rayon-worker.sh <dir>     <dir>: dist/web-publish or dist/web-publish-2d
+#   sh scripts/rayon-worker.sh <dir>     <dir>: dist/web-publish
 #
 # Exits 1 when the directory has a lanes module but no helper, or a helper
 # whose start call or Worker start is in neither form (a wasm-bindgen-rayon

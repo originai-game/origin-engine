@@ -29,13 +29,10 @@ pub(crate) struct DrawIds {
     /// `(sprite index, entity)` for og.Sprite rows.
     pub sprites: Vec<(u32, u64)>,
     /// Per `scene.terrains`.
-    #[cfg(not(feature = "profile2d"))]
     pub terrains: Vec<u64>,
     /// Per `scene.terrain_stamps`.
-    #[cfg(not(feature = "profile2d"))]
     pub stamps: Vec<u64>,
     /// Per `scene.grass`.
-    #[cfg(not(feature = "profile2d"))]
     pub grass: Vec<u64>,
 }
 
@@ -67,14 +64,11 @@ impl CullIds {
     fn of(rs: &RenderState, frame: u64) -> CullIds {
         let by_palette: IdMap<u32, u64> =
             IdMap::from_iter(rs.atmo.palettes.iter().map(|(&e, &p)| (p, e)));
-        #[cfg(not(feature = "profile2d"))]
         let laid_out = (rs.ids.terrains.iter())
             .chain(&rs.ids.stamps)
             .chain(&rs.ids.grass)
             .copied()
             .collect();
-        #[cfg(feature = "profile2d")]
-        let laid_out = Vec::new();
         CullIds {
             frame,
             instances: rs.ids.instances.clone(),
@@ -184,12 +178,9 @@ impl RuntimeView {
                 *slot = id_of(e);
             }
         }
-        #[cfg(not(feature = "profile2d"))]
-        {
-            sources.terrains = rs.ids.terrains.iter().map(|&e| id_of(e)).collect();
-            sources.stamps = rs.ids.stamps.iter().map(|&e| id_of(e)).collect();
-            sources.grass = rs.ids.grass.iter().map(|&e| id_of(e)).collect();
-        }
+        sources.terrains = rs.ids.terrains.iter().map(|&e| id_of(e)).collect();
+        sources.stamps = rs.ids.stamps.iter().map(|&e| id_of(e)).collect();
+        sources.grass = rs.ids.grass.iter().map(|&e| id_of(e)).collect();
         let heights = crate::bind::terrain::id_heights(&rs);
         let frame = og_render::render_ids(scene, &sources, &heights, pw, ph);
         // Each view from its own camera on its own layers, at a quarter of

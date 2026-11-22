@@ -49,7 +49,7 @@ impl Renderer {
         let textures = &self.cache.textures;
         let arrays = &self.cache.texture_arrays;
         let terrain_draws = match self.world.terrain.get_mut() {
-            Some(terrain) if WORLD_3D => terrain.prepare(
+            Some(terrain) => terrain.prepare(
                 &self.device,
                 &self.queue,
                 scene,
@@ -88,7 +88,7 @@ impl Renderer {
             None => &NoGround,
         };
         let scatter_batches = match self.world.scatter.get_mut() {
-            Some(scatter) if WORLD_3D => {
+            Some(scatter) => {
                 let materials = &self.cache.materials;
                 let meshes = &self.cache.meshes;
                 scatter.prepare(
@@ -122,7 +122,7 @@ impl Renderer {
         };
         // Grass: this frame's fields planned over the drawn terrains (grass.rs).
         let grass_frame = match (self.world.grass.get_mut(), self.world.terrain.get()) {
-            (Some(grass), Some(terrain)) if WORLD_3D => grass.prepare(
+            (Some(grass), Some(terrain)) => grass.prepare(
                 &self.device,
                 &self.queue,
                 scene,
@@ -175,9 +175,6 @@ impl Renderer {
     /// field on a terrain, the water with a water and the 3D fluids with
     /// one; each at the frame's sample count and features.
     pub(super) fn make_world(&mut self, scene: &RenderScene, cards: bool) {
-        if !WORLD_3D {
-            return;
-        }
         let samples = self.samples;
         let features = self.frame_features;
         let capturing = self.capturing;

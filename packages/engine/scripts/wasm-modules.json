@@ -52,15 +52,12 @@
     "og_web_attach_canvas",
     "^og_render_[a-z0-9_]+_geometry$"
   ],
-  "//entries": "The calls those make into a module only once the game uses it, each guarded in og-runtime (names without crate hashes): og.motion once og.MotionAgent is registered (engine/tick.rs render); set_mesh for a dynamic geometry's update, a streamed model's proxy and a destructible's hulls (generated geometry goes to physics' mesh source, bind/modules.rs note_mesh); the physics debug view; a video's stream once a video plays, and `entries3d`. og-render makes its 3D world renderers through closures the frame path does not follow (renderer/resources.rs OnDemand).",
+  "//entries": "The calls those make into a module only once the game uses it, each guarded in og-runtime (names without crate hashes): og.motion once og.MotionAgent is registered (engine/tick.rs render); set_mesh for a dynamic geometry's update, a streamed model's proxy and a destructible's hulls (generated geometry goes to physics' mesh source, bind/modules.rs note_mesh); the physics debug view; a video's stream once a video plays; og-runtime's terrain extraction, release, seabed and drop shadows once a terrain is loaded or named (present/extract/frame.rs uses_terrain, world/assets/release.rs). og-render makes its 3D world renderers through closures the frame path does not follow (renderer/resources.rs OnDemand).",
   "entries": [
     "^og_runtime::bind::motion::present::tick::catch_up$",
     "^og_runtime::bind::modules::set_mesh$",
     "^(<og_physics::PhysicsSystem>::debug_lines|og_physics::dim[23]::debug_lines::lines)$",
-    "^<og_runtime::bind::video::StreamSource>::poll$"
-  ],
-  "//entries3d": "Entries the 2D profile compiles out (og-runtime's profile2d draws no terrain), so only a 3D build must name them: og-runtime's terrain extraction, release, seabed and drop shadows once a terrain is loaded or named (present/extract/frame.rs uses_terrain, world/assets/release.rs).",
-  "entries3d": [
+    "^<og_runtime::bind::video::StreamSource>::poll$",
     "^og_runtime::bind::terrain::(draw::)?(extract|seabed_grid)$",
     "^og_runtime::bind::terrain::ground_drop_shadows$",
     "^og_runtime::bind::terrain::(release::)?free_released$"

@@ -511,7 +511,7 @@ pub struct RenderInfo {
     pub sprite_anisotropy: u16,
     /// How many water surfaces draw a planar reflection in one frame:
     /// [`RenderDesc::planar_reflections`] clamped to 1 to
-    /// [`MAX_PLANAR_REFLECTIONS`], 0 without the 3D world ([`WORLD_3D`]).
+    /// [`MAX_PLANAR_REFLECTIONS`].
     pub planar_reflections: u32,
     /// The lit features the renderer's shaders were made without
     /// ([`RenderDesc::without`]).

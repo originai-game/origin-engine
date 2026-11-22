@@ -127,11 +127,8 @@ pub(super) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
     scene.sprite.water_2d.clear();
     let layouts = &draw.atmo;
     let physics = layouts.physics.as_ref();
-    // The terrains a sea's seabed is read from (none in the 2D profile).
-    #[cfg(not(feature = "profile2d"))]
+    // The terrains a sea's seabed is read from.
     let terrain_layout = draw.terrain.as_ref();
-    #[cfg(feature = "profile2d")]
-    let terrain_layout = None;
     let texture =
         |h: u64| crate::world::assets::index_of(h as f64).and_then(|i| textures.get(i).copied());
     // 3D water, with its wave heights when the entity has them.

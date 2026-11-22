@@ -95,10 +95,10 @@ pub(crate) fn flood(scene: &crate::RenderScene) -> f32 {
 
 /// The layers' sampling (after [`TERRAIN_WGSL`]): the lit pass's shading
 /// and the displacement's heights.
-const TERRAIN_LAYERS_WGSL: &str = wgsl3d!("terrain_layers.wgsl");
+const TERRAIN_LAYERS_WGSL: &str = wgsl!("terrain_layers.wgsl");
 /// The clipmap's mesh with its displacement (after [`TERRAIN_LAYERS_WGSL`]):
 /// the lit and shadow modules' `terrain_local_vertex`.
-const TERRAIN_VERTEX_WGSL: &str = wgsl3d!("terrain_vertex.wgsl");
+const TERRAIN_VERTEX_WGSL: &str = wgsl!("terrain_vertex.wgsl");
 /// What the ground takes of the shared shading: the weather, and the lit
 /// passes' effect group at group 3 with the screen AO and the decals
 /// (`fx.rs`: the trample map after them).
@@ -117,7 +117,7 @@ pub(crate) fn terrain_lit_source() -> String {
             TERRAIN_WGSL,
             TERRAIN_LAYERS_WGSL,
             TERRAIN_VERTEX_WGSL,
-            wgsl3d!("terrain_lit.wgsl"),
+            wgsl!("terrain_lit.wgsl"),
         ],
         &crate::Capability::OPAQUE_SURFACE,
     )
@@ -172,7 +172,7 @@ pub(crate) fn terrain_corners_source() -> String {
         "{}{}{GRASS_COMMON_WGSL}{TERRAIN_WGSL}{TERRAIN_LAYERS_WGSL}{TERRAIN_VERTEX_WGSL}{}",
         crate::LIBRARY_WGSL,
         crate::wind::WIND_COMMON_WGSL,
-        wgsl3d!("terrain_corners.wgsl")
+        wgsl!("terrain_corners.wgsl")
     )
 }
 
@@ -183,6 +183,6 @@ pub(crate) fn terrain_shadow_source() -> String {
         crate::LIBRARY_WGSL,
         crate::wind::WIND_COMMON_WGSL,
         crate::SHADOW_PASS_WGSL,
-        wgsl3d!("terrain_shadow.wgsl")
+        wgsl!("terrain_shadow.wgsl")
     )
 }

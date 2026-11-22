@@ -14,9 +14,6 @@
 //!
 //! The same project has a generated island (`generate { sea 1.5 }`):
 //! og.terrain.load answers its sea level, and none for the ramp.
-//!
-//! The 2D profile has no terrain (tests/profile2d.rs).
-#![cfg(not(feature = "profile2d"))]
 
 use og_render::{RenderScene, ShadowGround, Sprite};
 use og_runtime::{

@@ -121,7 +121,7 @@ impl Renderer {
     /// calls it until it answers false. The frames are the same either way.
     pub fn warm(&mut self) -> bool {
         let r = self.reach;
-        let world = WORLD_3D && r.world;
+        let world = r.world;
         (r.sprites
             && deferred::warm_one(&[
                 &self.sprite.sprite_pipeline,
@@ -158,11 +158,11 @@ impl Renderer {
                 }))
             || (r.particles && self.particles.gpu.warm())
             || (r.lights_2d && self.lights_2d.warm())
-            || (WORLD_3D && r.water && self.world.water.get().is_some_and(|w| w.warm()))
-            || (WORLD_3D && r.terrain && self.world.terrain.get().is_some_and(|t| t.warm()))
-            || (WORLD_3D && r.scatter && self.world.scatter.get().is_some_and(|s| s.warm()))
+            || (r.water && self.world.water.get().is_some_and(|w| w.warm()))
+            || (r.terrain && self.world.terrain.get().is_some_and(|t| t.warm()))
+            || (r.scatter && self.world.scatter.get().is_some_and(|s| s.warm()))
             || (r.metaballs && self.world.metaballs.warm())
-            || (WORLD_3D && r.fluids && self.world.fluid3d.get().is_some_and(|f| f.warm()))
+            || (r.fluids && self.world.fluid3d.get().is_some_and(|f| f.warm()))
             || (r.lines && self.lines.warm())
     }
 

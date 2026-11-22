@@ -485,7 +485,7 @@ impl SeaWakes {
 }
 
 /// The wakes' compute shader.
-pub(crate) const WGSL: &str = wgsl3d_library!("fft.wgsl", "sea_wakes.wgsl");
+pub(crate) const WGSL: &str = wgsl_library!("fft.wgsl", "sea_wakes.wgsl");
 
 #[cfg(test)]
 mod tests {

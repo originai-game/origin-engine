@@ -104,22 +104,15 @@ pub(crate) struct DrawLayouts {
     pub environment: Option<Layout>,
     /// og.Terrain and og.TerrainScatter (`crate::bind::terrain`; the 2D
     /// profile draws neither).
-    #[cfg(not(feature = "profile2d"))]
     pub terrain: Option<Layout>,
-    #[cfg(not(feature = "profile2d"))]
     pub scatter: Option<Layout>,
-    #[cfg(not(feature = "profile2d"))]
     pub grass: Option<Layout>,
-    #[cfg(not(feature = "profile2d"))]
     pub stamp: Option<Layout>,
     /// og.GrassPusher (`crate::bind::terrain`, the trample map).
-    #[cfg(not(feature = "profile2d"))]
     pub grass_pusher: Option<Layout>,
     /// og.ScatterClearing (`crate::bind::terrain`): where nothing grows.
-    #[cfg(not(feature = "profile2d"))]
     pub scatter_clearing: Option<Layout>,
     /// og.GrassType (the kinds og.Grass fields list in `types`).
-    #[cfg(not(feature = "profile2d"))]
     pub grass_type: Option<Layout>,
     /// og.Collider: what CPU-simulated particles bounce off.
     pub collider: Option<Layout>,

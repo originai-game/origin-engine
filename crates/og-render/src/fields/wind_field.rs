@@ -35,7 +35,7 @@ pub(crate) fn source() -> String {
         "{}{}{}",
         crate::LIBRARY_WGSL,
         crate::wind::WIND_COMMON_WGSL,
-        wgsl3d!("wind_field.wgsl")
+        wgsl!("wind_field.wgsl")
     )
 }
 
@@ -401,7 +401,7 @@ impl WindFieldSim {
             me.drive = None;
             me.cap = lean_cap(wind, motors_on);
         };
-        if self.layout.is_none() || !crate::WORLD_3D {
+        if self.layout.is_none() {
             return off(self);
         }
         let sref = |w: crate::Wind| w.speed.max(1.0);

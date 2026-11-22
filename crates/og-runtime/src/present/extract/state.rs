@@ -37,7 +37,6 @@ pub(crate) struct QueuedText {
 pub(crate) type Parts = Vec<(MeshHandle, MaterialHandle, Mat4)>;
 
 /// The coarser levels a scattered mesh draws (`og_render::ScatterDraw::lods`).
-#[cfg(not(feature = "profile2d"))]
 pub(crate) type ScatterLods = [Option<(MeshHandle, f32)>; 2];
 
 /// A model's levels of detail (`og-render`'s `lod.rs` picks one per
@@ -56,7 +55,6 @@ pub(crate) struct ModelLods {
     /// Raw primitive meshes paired with their placed, model-space scatter
     /// mesh and that mesh's coarser levels with their errors, placed alike:
     /// og.TerrainScatter's, so 3D only.
-    #[cfg(not(feature = "profile2d"))]
     pub scatter_meshes: Vec<(MeshHandle, MeshHandle, ScatterLods)>,
     /// The model's impostor and its error: the level after the parts'
     /// coarsest (`og_render::Impostor`).

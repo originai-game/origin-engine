@@ -59,7 +59,7 @@ impl Renderer {
             }))
         };
         // The vegetation's wind field (G2), simulated where compute runs.
-        let vegetation_compute = WORLD_3D && flags.contains(wgpu::DownlevelFlags::COMPUTE_SHADERS);
+        let vegetation_compute = flags.contains(wgpu::DownlevelFlags::COMPUTE_SHADERS);
         let wind_field = crate::wind_field::WindFieldSim::new(device, vegetation_compute);
         // The grass trample map (G3), pressed where compute runs.
         let trample = crate::trample::Trample::new(device, vegetation_compute);

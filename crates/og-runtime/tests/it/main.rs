@@ -102,8 +102,6 @@ mod pixel_terrain;
 mod prefabs;
 #[path = "../preview_overlay.rs"]
 mod preview_overlay;
-#[path = "../profile2d.rs"]
-mod profile2d;
 #[path = "../publish.rs"]
 mod publish;
 #[path = "../raycast_record_cost.rs"]

@@ -135,9 +135,9 @@ pub(crate) fn source() -> String {
     format!(
         "{}{}{}{}",
         crate::LIBRARY_WGSL,
-        wgsl3d!("scatter_cull.wgsl"),
-        wgsl3d!("cull_plane.wgsl"),
-        wgsl3d!("cull_hiz.wgsl")
+        wgsl!("scatter_cull.wgsl"),
+        wgsl!("cull_plane.wgsl"),
+        wgsl!("cull_hiz.wgsl")
     )
 }
 

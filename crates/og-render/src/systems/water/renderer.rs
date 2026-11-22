@@ -235,12 +235,12 @@ pub(crate) fn water_source(off: crate::pipeline_features::Features) -> String {
 fn water_parts() -> String {
     [
         crate::ocean_fft::SHORE_WGSL,
-        wgsl3d!("water.wgsl"),
-        wgsl3d!("water_sea.wgsl"),
-        wgsl3d!("water_detail.wgsl"),
-        wgsl3d!("water_below.wgsl"),
-        wgsl3d!("water_spray.wgsl"),
-        wgsl3d!("water_waterline.wgsl"),
+        wgsl!("water.wgsl"),
+        wgsl!("water_sea.wgsl"),
+        wgsl!("water_detail.wgsl"),
+        wgsl!("water_below.wgsl"),
+        wgsl!("water_spray.wgsl"),
+        wgsl!("water_waterline.wgsl"),
     ]
     .concat()
 }

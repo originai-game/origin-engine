@@ -110,7 +110,7 @@ for (const profile of ["3d", "2d"]) {
   // the primary (scripts/wasm-split-data.ts); the test above shows the
   // world is unchanged with it moved.
   test.skipIf(STALE_WASM || NO_SPLIT)(`a ${profile} split publish module's modules each carry their own data`, () => {
-    const listed = JSON.parse(readFileSync(join(pkg, "dist", profile === "2d" ? "web-publish-2d" : "web-publish", "modules", "modules.json"), "utf8")) as Record<string, { data: number }>;
+    const listed = JSON.parse(readFileSync(join(pkg, "dist", "web-publish", "modules", "modules.json"), "utf8")) as Record<string, { data: number }>;
     for (const [m, e] of Object.entries(listed)) expect([m, e.data > 0]).toEqual([m, true]);
   });
 
@@ -126,8 +126,9 @@ for (const profile of ["3d", "2d"]) {
     expect(run.tick).toBeGreaterThan(30);
   }, 120_000);
 
-  // A 3D game that calls og.terrain loads the 3D world's module, and only it.
-  test.skipIf(STALE_WASM || NO_SPLIT || profile === "2d")(`a ${profile} game calling og.terrain loads the 3D world's module`, () => {
+  // A game that calls og.terrain loads the 3D world's module, and only it:
+  // a 2D game holds a 3D world too, from the same publish module.
+  test.skipIf(STALE_WASM || NO_SPLIT)(`a ${profile} game calling og.terrain loads the 3D world's module`, () => {
     const r = Bun.spawnSync(["bun", "tests/support/module-free.ts", "--profile", profile, "--terrain"], { cwd: pkg });
     const out = new TextDecoder().decode(r.stdout);
     if (r.exitCode !== 0) throw new Error(`${new TextDecoder().decode(r.stderr)}${out}`);
@@ -217,20 +218,19 @@ test.skipIf(STALE_WASM)("tweens, presets, hit stop, slow motion and camera feel 
   expect(free.tally.frozen).toBe(0);
 }, 120_000);
 
-// One lanes module per physics profile (owed row 71, docs/web-export.md
-// §Variants): the 3D one in dist/web-publish, the 2D one in
-// dist/web-publish-2d, each with only its profile's physics, wasm atomics
-// and the publish members. Each steps its profile's scene to the native
+// The lanes module (docs/web-export.md §Lanes), beside the one publish
+// module in dist/web-publish: both physics simulations, wasm atomics and
+// the publish members. It steps each profile's scene to the native
 // world, on the engine thread alone and with 1,024 bodies on a pool of four
 // Workers (wasm-bindgen-rayon's, under bun as in a page; every step went to
 // the pool): the same snapshot as the native host's at tick 600, which
 // restored natively has the native world's hash (a publish module has no
 // world dump of its own). Split (docs/web-export.md §Modules), each pool
 // Worker loads physics into its own instance at its lane's first call,
-// and nothing loads the modules the scene never calls. And it refuses a
-// world of the other profile.
+// and nothing loads the modules the scene never calls, the other
+// profile's simulation included.
 for (const profile of ["3d", "2d"] as const) {
-  test.skipIf(STALE_WASM || NO_PUBLISH_WASM)(`the ${profile} lanes module steps a ${profile} physics scene to the native world, on one thread and on four Workers, and refuses the other profile`, () => {
+  test.skipIf(STALE_WASM || NO_PUBLISH_WASM)(`the lanes module steps a ${profile} physics scene to the native world, on one thread and on four Workers`, () => {
     const dir = mkdtempSync(join(tmpdir(), "og-lanes-profile-"));
     for (const [bodies, threads] of [["64", null], ["1024", "4"]] as const) {
       const node = physics("node", "--profile", profile, "--bodies", bodies, "--snapshot");
@@ -249,15 +249,13 @@ for (const profile of ["3d", "2d"] as const) {
       expect([label, lanes.tally]).toEqual([label, node.tally]);
       expect(lanes.snapshot!.length).toBeGreaterThan(0);
       expect([label, lanes.snapshot]).toEqual([label, node.snapshot!]);
-      if (existsSync(join(pkg, "dist", profile === "2d" ? "web-publish-2d" : "web-publish", "modules-lanes", "modules.json"))) {
+      if (existsSync(join(pkg, "dist", "web-publish", "modules-lanes", "modules.json"))) {
         expect([label, lanes.modules!.includes("physics"), lanes.modules!.filter((m) => ["nav", "motion", "destruction", "video", profile === "2d" ? "physics3d" : "physics2d"].includes(m))]).toEqual([label, true, []]);
       }
       const file = join(dir, `lanes-${profile}-${bodies}.snapshot`);
       writeFileSync(file, lanes.snapshot!);
       expect([label, physics("node", "--profile", profile, "--bodies", bodies, "--restore", file).restored]).toEqual([label, { tick: 600, hash: node.hash }]);
     }
-    const other = profile === "2d" ? "3d" : "2d";
-    expect(physics("lanes", "--profile", other, "--module", profile).refused).toContain(`without the physics${other} feature`);
   }, 180_000);
 }
 

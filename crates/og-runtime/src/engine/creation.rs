@@ -39,19 +39,12 @@ pub(crate) fn extract_layouts(eng: &Engine) -> (Option<Layout>, Option<Layout>, 
             fx: super::fx::FxLayouts::from(get),
             atmo: super::atmosphere::AtmoLayouts::from(get, st.physics.clone()),
             environment: get("og.Environment"),
-            #[cfg(not(feature = "profile2d"))]
             terrain: get("og.Terrain"),
-            #[cfg(not(feature = "profile2d"))]
             scatter: get("og.TerrainScatter"),
-            #[cfg(not(feature = "profile2d"))]
             grass: get("og.Grass"),
-            #[cfg(not(feature = "profile2d"))]
             stamp: get("og.TerrainStamp"),
-            #[cfg(not(feature = "profile2d"))]
             grass_pusher: get("og.GrassPusher"),
-            #[cfg(not(feature = "profile2d"))]
             scatter_clearing: get("og.ScatterClearing"),
-            #[cfg(not(feature = "profile2d"))]
             grass_type: get("og.GrassType"),
             collider: get("og.Collider"),
             force_field: get("og.ForceField"),

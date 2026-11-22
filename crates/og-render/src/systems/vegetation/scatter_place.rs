@@ -230,7 +230,7 @@ pub(crate) fn source(arrayed: bool) -> String {
         crate::wind::WIND_COMMON_WGSL,
         crate::ground::GRASS_COMMON_WGSL,
         crate::ground::TERRAIN_WGSL,
-        wgsl3d!("scatter_place.wgsl"),
+        wgsl!("scatter_place.wgsl"),
     );
     if arrayed {
         crate::ground::terrain_array_declarations(&s)

@@ -360,6 +360,6 @@ pub(crate) fn crowd_bake_source() -> String {
     format!(
         "{LIBRARY_WGSL}{MATERIAL_WGSL}{MATERIAL_MAPS_WGSL}{}{}",
         skin::palette_wgsl(2),
-        wgsl3d!("crowd_bake.wgsl")
+        wgsl!("crowd_bake.wgsl")
     )
 }

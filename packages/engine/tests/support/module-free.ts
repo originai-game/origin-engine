@@ -23,7 +23,7 @@ const argv = process.argv.slice(2);
 const profile = argv.includes("--profile") ? argv[argv.indexOf("--profile") + 1]! : "3d";
 if (profile !== "3d" && profile !== "2d") throw new Error(`--profile ${profile}: 3d or 2d`);
 const pkg = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
-const dir = join(pkg, "dist", profile === "2d" ? "web-publish-2d" : "web-publish");
+const dir = join(pkg, "dist", "web-publish");
 const terrain = argv.includes("--terrain");
 const refuse = (name: string): never => {
   throw new Error(`a game using no optional module called into engine module ${name}`);

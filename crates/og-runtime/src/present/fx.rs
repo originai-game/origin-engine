@@ -270,7 +270,6 @@ pub(crate) struct FxState {
 }
 
 // Its readers are 3D (terrain.rs).
-#[cfg(not(feature = "profile2d"))]
 pub(crate) fn f(v: &Value, key: &str, default: f32) -> f32 {
     v[key].as_f64().map_or(default, |x| x as f32)
 }

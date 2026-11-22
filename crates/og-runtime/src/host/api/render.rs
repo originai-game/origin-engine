@@ -370,7 +370,7 @@ pub fn og_render_capabilities(world: u32) -> Value {
                 "transparency": info.as_ref().map_or("weighted", |i| crate::transparency_name(i.transparency)),
                 "gpuCrowds": info.as_ref().is_some_and(|i| i.gpu_crowds),
                 "visualSimulation": info.as_ref().is_some_and(|i| i.visual_simulation),
-                "world3d": og_render::WORLD_3D,
+                "world3d": true,
                 "exrDecode": crate::world::uncooked::EXR_DECODE,
                 "visibilityBuffer": info.is_some() && b.visibility_buffer_refused().is_none(),
                 "visibilityBufferRefused": b.visibility_buffer_refused(),
@@ -383,7 +383,7 @@ pub fn og_render_capabilities(world: u32) -> Value {
             c
         })
     });
-    caps.unwrap_or_else(|| json!({ "backend": "none", "tier": "full", "caps": render_caps(og_render::Caps::NONE), "compute": false, "antialias": "off", "hdrSupported": false, "hdr": false, "wideGamut": false, "maxLights": 0, "maxShadowedLights": 0, "maxMsaaSamples": 0, "pointShadows": "cube", "width": 0, "height": 0, "stylise": [], "ssr": false, "reflectionProbes": 0, "renderTargetDepth": false, "maxRenderTargetSize": 0, "maxCustomPosts": 0, "volumetricFog": "raymarch", "volumetricLights": 0, "maxLightCookies": 0, "gpuTimestamps": false, "planarReflections": 0, "without": [], "visualSimulation": false, "upscalers": [], "transparency": "weighted", "gpuCrowds": false, "world3d": og_render::WORLD_3D, "exrDecode": crate::world::uncooked::EXR_DECODE, "visibilityBuffer": false, "visibilityBufferRefused": null }))
+    caps.unwrap_or_else(|| json!({ "backend": "none", "tier": "full", "caps": render_caps(og_render::Caps::NONE), "compute": false, "antialias": "off", "hdrSupported": false, "hdr": false, "wideGamut": false, "maxLights": 0, "maxShadowedLights": 0, "maxMsaaSamples": 0, "pointShadows": "cube", "width": 0, "height": 0, "stylise": [], "ssr": false, "reflectionProbes": 0, "renderTargetDepth": false, "maxRenderTargetSize": 0, "maxCustomPosts": 0, "volumetricFog": "raymarch", "volumetricLights": 0, "maxLightCookies": 0, "gpuTimestamps": false, "planarReflections": 0, "without": [], "visualSimulation": false, "upscalers": [], "transparency": "weighted", "gpuCrowds": false, "world3d": true, "exrDecode": crate::world::uncooked::EXR_DECODE, "visibilityBuffer": false, "visibilityBufferRefused": null }))
 }
 
 /// The IDL's `RenderCaps`: each of `Caps`'s names, and whether `caps` has it.

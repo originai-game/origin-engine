@@ -30,16 +30,10 @@ const wasm = join(pkg, "dist", "web", "origin-engine_bg.wasm");
 report.wasm = existsSync(wasm) ? { ok: true, path: wasm, bytes: statSync(wasm).size } : { ok: false, path: wasm };
 const publishWasm = join(pkg, "dist", "web-publish", "origin-engine_bg.wasm");
 report.publishWasm = existsSync(publishWasm) ? { ok: true, path: publishWasm, bytes: statSync(publishWasm).size } : { ok: false, path: publishWasm };
-// The 2D publish variant: what `og build --publish` ships for a 2d game (docs/web-export.md §Variants).
-const publishWasm2d = join(pkg, "dist", "web-publish-2d", "origin-engine_bg.wasm");
-report.publishWasm2d = existsSync(publishWasm2d) ? { ok: true, path: publishWasm2d, bytes: statSync(publishWasm2d).size } : { ok: false, path: publishWasm2d };
-// The lanes variants (wasm atomics), one per physics profile beside its
-// publish wasm: `og build` ships the one of the game's profile for cross-origin
-// isolated pages (docs/web-export.md §Lanes, §Variants).
+// The lanes variant (wasm atomics) beside the publish wasm: `og build`
+// ships it for cross-origin isolated pages (docs/web-export.md §Lanes).
 const lanesWasm = join(pkg, "dist", "web-publish", "origin-engine-lanes_bg.wasm");
 report.lanesWasm = existsSync(lanesWasm) ? { ok: true, path: lanesWasm, bytes: statSync(lanesWasm).size } : { ok: false, path: lanesWasm };
-const lanesWasm2d = join(pkg, "dist", "web-publish-2d", "origin-engine-lanes_bg.wasm");
-report.lanesWasm2d = existsSync(lanesWasm2d) ? { ok: true, path: lanesWasm2d, bytes: statSync(lanesWasm2d).size } : { ok: false, path: lanesWasm2d };
 
 if ((report.addon as { ok: boolean }).ok) {
   try {

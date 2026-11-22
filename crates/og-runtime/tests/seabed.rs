@@ -9,7 +9,6 @@
 //! renderer gets no seabed, or one other than the tick's (a floater then
 //! rides waves that are not drawn); the seabed is read off the terrain's
 //! wrong place.
-#![cfg(not(feature = "profile2d"))]
 
 use og_render::RenderScene;
 use og_runtime::{

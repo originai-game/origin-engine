@@ -19,12 +19,12 @@
 //   audio-decoder.js           the audio decoder's Worker (src/web/audio-decoder.ts), started by
 //                              the engine Worker from this file, never a `blob:` URL
 //   origin-engine.js, origin-engine_bg.wasm   the web host: dist/web (every member, both physics
-//                              profiles), or with --publish the variant of the game's profile:
-//                              dist/web-publish (3D) or dist/web-publish-2d (2D), each with only
-//                              its profile's physics (docs/web-export.md §Variants)
+//                              profiles), or with --publish the publish variant, dist/web-publish,
+//                              the one every game ships, 2D or 3D: each capability a split module
+//                              loaded on first use (docs/web-export.md §Variants, §Modules)
 //   origin-engine-lanes.js, origin-engine-lanes_bg.wasm, snippets/
-//                              (--publish, isolation not "off") the lanes variant of the same
-//                              profile, from the same directory: wasm atomics, rayon on a pool of
+//                              (--publish, isolation not "off") the lanes variant, from the
+//                              same directory: wasm atomics, rayon on a pool of
 //                              Workers when the page is cross-origin isolated
 //   basis/                     Binomial's Basis transcoder and its licence
 //   av1/                       the AV1 fallback decoder, og-av1.wasm, and its Worker, av1-worker.js
@@ -285,12 +285,13 @@ export interface BuildManifest {
   readonly wasm: string;
   /**
    * Which engine module `wasm` is (docs/web-export.md §Variants): `full`
-   * (a dev build: every member, both physics profiles), or the publish
-   * variant of the game's profile, `3d` or `2d`, which has only that
-   * profile's physics. The lanes variant, when there is one, is the same
-   * profile's (its physics and the publish members, with wasm atomics).
+   * (a dev build: every member, both physics profiles), or `publish`, the
+   * one publish module every game ships, 2D or 3D, whose capabilities
+   * (both physics simulations, the 3D world) are split modules loaded on
+   * first use. The lanes variant, when there is one, is its twin with wasm
+   * atomics. The game's profile is `game.profile`.
    */
-  readonly variant: "full" | "3d" | "2d";
+  readonly variant: "full" | "publish";
   /**
    * The lanes variant (docs/web-export.md §Lanes): the same engine built with
    * wasm atomics, which the shell boots instead when the page is cross-origin
@@ -637,7 +638,7 @@ export function factPut(key: string, value: unknown): void {
  */
 export async function engineFacts(): Promise<Record<string, unknown>> {
   const facts: Record<string, unknown> = {};
-  const hosts: Array<[string, Array<"2d" | "3d">]> = [["web", ["2d", "3d"]], ["web-publish", ["3d"]], ["web-publish-2d", ["2d"]]];
+  const hosts: Array<[string, Array<"2d" | "3d">]> = [["web", ["2d", "3d"]], ["web-publish", ["2d", "3d"]]];
   for (const [name, profiles] of hosts) {
     const dir = join(ENGINE_ROOT, "dist", name);
     if (!existsSync(dir)) continue;
@@ -710,8 +711,7 @@ async function compressedSize(bytes: Uint8Array, quality: 11 | 5): Promise<{ byt
 
 /**
  * The probe build and members the copied web host serves: its own hello,
- * under bun, from an engine of the game's profile (a publish variant has
- * only that profile's physics).
+ * under bun, from an engine of the game's profile.
  */
 async function probeOf(glue: string, wasm: string, profile: "2d" | "3d"): Promise<{ build: string; members: string[] } | null> {
   const key = probeKey(glue, wasm, profile);
@@ -884,8 +884,8 @@ function mapOptions(out: string, file: string, publish: boolean): { root?: strin
 /** Files that never go into the service worker's precache (not fetched by the page). */
 const NOT_PRECACHED = /(^|\/)(LICENSE|NOTICE|README\.md|_headers|origingame\.runtime\.json|og-build\.json|sw\.js|[^/]+\.map)$/;
 /**
- * The lanes variant's files beside each profile's publish module
- * (dist/web-publish for 3D, dist/web-publish-2d for 2D; scripts/build.sh);
+ * The lanes variant's files beside the publish module (dist/web-publish;
+ * scripts/build.sh);
  * snippets/ holds wasm-bindgen-rayon's Worker module.
  */
 const LANES_FILES = ["origin-engine-lanes.js", "origin-engine-lanes_bg.wasm", "snippets"] as const;
@@ -988,14 +988,14 @@ export async function webBuild(project: string, entry: string, out: string, publ
     for (const load of assets.computed) process.stderr.write(`og build: ${load.source}:${load.line}: ${load.reason}; retaining ${load.prefix ? `assets under ${load.prefix}` : "all assets"}\n`);
   }
   // The engine module: a dev build takes the full one; a publish build the
-  // variant of the game's profile, which a player downloads alone, and the
-  // lanes variant of that profile from the same directory (one lanes module
-  // per profile since owed row 71: a 2D game's lanes page never downloads
-  // rapier3d, nor a 3D game's rapier2d).
-  const variant: BuildManifest["variant"] = publish ? profile : "full";
-  const engineDir = join(ENGINE_ROOT, "dist", variant === "2d" ? "web-publish-2d" : publish ? "web-publish" : "web");
+  // publish module, whatever the game's profile, and its lanes variant from
+  // the same directory. A 2D game's page never downloads rapier3d nor the
+  // 3D world, nor a 3D game's rapier2d: each is a split module it loads
+  // only once it uses it (docs/web-export.md §Modules).
+  const variant: BuildManifest["variant"] = publish ? "publish" : "full";
+  const engineDir = join(ENGINE_ROOT, "dist", publish ? "web-publish" : "web");
   for (const f of ["origin-engine.js", "origin-engine_bg.wasm"]) {
-    if (!existsSync(join(engineDir, f))) return fail(`${join(engineDir, f)} is missing: build the web host with \`bun run build\` in packages/engine (scripts/build.sh)${variant === "2d" ? "; a 2d game ships the 2D publish variant, dist/web-publish-2d" : ""}`);
+    if (!existsSync(join(engineDir, f))) return fail(`${join(engineDir, f)} is missing: build the web host with \`bun run build\` in packages/engine (scripts/build.sh)`);
   }
   const vendor = join(ENGINE_ROOT, "vendor", "basis");
   if (!existsSync(join(vendor, "basis_transcoder.wasm"))) return fail(`${vendor} is missing the Basis transcoder`);
@@ -1026,7 +1026,7 @@ export async function webBuild(project: string, entry: string, out: string, publ
   const lanes = publish && p.isolation !== "off" && missingLanes.length === 0;
   if (missingLanes.length > 0) {
     process.stderr.write(
-      `og build: warning: ${join(engineDir, missingLanes[0]!)} is missing, so this build ships single-threaded (no ${variant === "2d" ? "2D" : "3D"} lanes variant); \`bun run build\` in packages/engine builds it (scripts/build.sh, docs/web-export.md §Lanes)\n`,
+      `og build: warning: ${join(engineDir, missingLanes[0]!)} is missing, so this build ships single-threaded (no lanes variant); \`bun run build\` in packages/engine builds it (scripts/build.sh, docs/web-export.md §Lanes)\n`,
     );
   }
   if (lanes) {

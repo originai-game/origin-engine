@@ -133,11 +133,7 @@ impl Renderer {
             } else {
                 1
             },
-            planar_reflections: if WORLD_3D {
-                desc.planar_reflections.clamp(1, MAX_PLANAR_REFLECTIONS)
-            } else {
-                0
-            },
+            planar_reflections: desc.planar_reflections.clamp(1, MAX_PLANAR_REFLECTIONS),
             without: desc.without,
             transparency: Transparency::Weighted,
             gpu_crowds: crowd_indirect,

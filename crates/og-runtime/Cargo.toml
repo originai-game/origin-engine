@@ -67,11 +67,6 @@ default = ["shaping", "fetch"]
 # reflected and record field docs are empty (og-core's and og-api's
 # `publish`: nothing in a publish build reads them).
 publish = ["og-probe/publish", "og-render/publish", "og-core/publish", "og-api/publish"]
-# The 2D profile: the renderer without the 3D world subsystems (og-render's
-# `profile2d`) and the runtime without terrain (src/bind/absent/terrain.rs: its
-# calls and height-field colliders answer the refusal); the 2D web modules,
-# docs/web-export.md §Variants.
-profile2d = ["og-render/profile2d"]
 # og-ui's run-time shaping (rustybuzz: Arabic, Indic and the other shaped
 # scripts). A build for games without them can leave it out.
 shaping = ["og-ui/shaping", "og-text/shaping"]

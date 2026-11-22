@@ -319,17 +319,11 @@ fn settings(world: &World, rs: &mut RenderState, b: &Begun, exposure: f32) {
 /// Whether the frame has a terrain to extract: one loaded, one drawn last
 /// frame, or an og.Terrain (which names no loaded terrain yet).
 fn uses_terrain(world: &World, rs: &RenderState) -> bool {
-    #[cfg(not(feature = "profile2d"))]
     let named = rs
         .draw
         .terrain
         .as_ref()
         .is_some_and(|l| !super::column_rows(world, l).is_empty());
-    #[cfg(feature = "profile2d")]
-    let named = {
-        let _ = world;
-        false
-    };
     rs.terrain.loaded.iter().next().is_some() || !rs.scene.world.terrains.is_empty() || named
 }
 
@@ -496,9 +490,7 @@ fn finish(
     // Which entity each instance came from, for the probe's id pass.
     rs.ids.instances.clear();
     rs.ids.instances.extend(keys.iter().map(|k| k.0));
-    // Drop shadows over the terrain under their sprites (the 2D profile
-    // draws no terrain).
-    #[cfg(not(feature = "profile2d"))]
+    // Drop shadows over the terrain under their sprites.
     if !rs.scene.world.terrains.is_empty() && !rs.scene.sprite.sprite_shadows.is_empty() {
         super::terrain::ground_drop_shadows(rs);
     }

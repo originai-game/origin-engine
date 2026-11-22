@@ -112,7 +112,7 @@ impl WaterRenderer {
         let probe_module = module.clone();
         // The sea grid's fill (`sea_grid_fill`), where compute runs (the FFT sea, the one surface drawn from the grid,
         // needs it too).
-        let grid = (compute && crate::WORLD_3D).then(|| {
+        let grid = compute.then(|| {
             let grid_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
                 label: Some("sea grid"),
                 entries: &[wgpu::BindGroupLayoutEntry {
@@ -370,7 +370,7 @@ impl WaterRenderer {
             flat,
             slots: Vec::new(),
             ripple_pipelines: None,
-            compute: compute && crate::WORLD_3D,
+            compute,
             fft: None,
             module: probe_module,
             last_sea: None,
