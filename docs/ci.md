@@ -183,6 +183,13 @@ adapter and judges its stations against the references, with no
 `[og] WebGPU error:` line allowed in Chrome's log. `tests/web/adapter-probe.ts`
 records what a cold launch's first `requestAdapter` answers on both adapters.
 
+The filters section shoots `scripts/final-l4/filters` (glass over busy
+ground, blur and shadows, the tutorial spotlight's round hole, the
+minimap's round clip, and the four together) at 1920×1080 per pack and
+scheme, and times the four together with `og cost`, their filter classes
+on and off. The median difference is held to the UI filters' budget,
+0.5 ms of GPU frame at 1080p; over it, or unmeasured, is a failure.
+
 Web frames and web GPU timings both come from Chrome on the L4. The
 engine's launch (`webGpuSwitches` in `packages/engine/src/node/device.ts`)
 puts headless Chrome's WebGPU on SwiftShader, a CPU renderer. SwiftShader

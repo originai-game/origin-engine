@@ -17,7 +17,8 @@
 # text (8956's measuring scripts, scripts/text-l4/run.sh), fused (the frames either side of every
 # cut of packages/engine/tests/fixtures/fused, won and lost routes), gpu-tests (og-render's ui_paint,
 # the float-output blend included), web (the web-reference groups in Chrome), web-compat (the
-# browser's compatibility mode read back, the engine's Compat tier, the adapter retry), gfx (og-gfx's core
+# browser's compatibility mode read back, the engine's Compat tier, the adapter retry), filters (the
+# UI filter scenes per pack and scheme, and their 0.5 ms budget at 1080p), gfx (og-gfx's core
 # and compat scenes against main's references, movements kept for review, not a gate).
 #
 # OUT holds, per section, <section>/sheet-*.jpg contact sheets and its logs; summary.txt (the SHA,
@@ -26,7 +27,7 @@
 # failures.txt is empty.
 set -uo pipefail
 root="$(cd "$(dirname "$0")/.." && pwd)"
-SECTIONS="gallery text fused gpu-tests web web-compat gfx"
+SECTIONS="gallery text fused gpu-tests web web-compat filters gfx"
 
 die() { echo "final-l4-pass: $*" >&2; exit 2; }
 
@@ -294,6 +295,46 @@ print(" ".join(k+"="+str(v.get("rmse")) for k,v in (r.get("stations") or {}).ite
   grep -h 'GPU process exited unexpectedly' "$w"/*-chrome.log 2>/dev/null | wc -l | sed 's/^/web-compat GPU-process crashes: /' >> "$OUT/summary.txt"
   # shellcheck disable=SC2046
   sheet "$w" frames $(find "$w" -name '*.png' | sort)
+  return 0
+}
+
+# The UI filter scenes (scripts/final-l4/filters: glass, shadows, spotlight, minimap), shot per
+# pack and scheme for review, and the filters' cost at 1080p: og cost of the four together, with
+# and without their filter classes, held to the 0.5 ms GPU budget (offscreen filter plan §6).
+FILTER_BUDGET_MS=0.5
+sec_filters() {
+  local src="$root/scripts/final-l4/filters" w="$OUT/filters" p
+  p="$(mktemp -d)"; cp -r "$src/." "$p/"; rm -rf "$p/cooked" "$p/.og" "$p/node_modules"
+  mkdir -p "$p/node_modules/@origingame" && ln -sfn "$root/packages/engine" "$p/node_modules/@origingame/engine"
+  local packs="default cartoon fantasy scifi" schemes="dark light" scenes="glass shadows spotlight minimap all" size=1920x1080 pk sc s
+  # The dry run proves the wiring only: one scene, small, and no timing (a CPU judges no budget).
+  [ "$DRY" = 1 ] && packs="default" schemes="dark" scenes="all" size=320x180
+  # One run a scene: a mount is never taken down mid-run.
+  for pk in $packs; do for sc in $schemes; do for s in $scenes; do
+    (cd "$p" && OG_NATIVE_ADDON="$BUNDLE/bin/og-addon.node" "$BUNDLE/bin/og" run . --headless --no-check --size "$size" --out "$w/shots" \
+      --commands "0.02:pack:$pk;0.03:scheme:$sc;0.05:scene:$s;1.5:screenshot:$pk-$sc-$s.png;1.6:quit") > "$w/shots-$pk-$sc-$s.log" 2>&1 \
+      || fail filters "$pk $sc $s: the capture run failed (filters/shots-$pk-$sc-$s.log)"
+  done; done; done
+  local f why
+  for f in "$w"/shots/*.png; do why="$(blank "$f")"; [ -n "$why" ] && fail filters "$(basename "$f" .png): $why"; done
+  # shellcheck disable=SC2046
+  sheet "$w" scenes $(ls "$w"/shots/*.png 2>/dev/null)
+  # The budget: the four scenes together, with their filters and without. Not on a dry run.
+  if [ "$DRY" = 1 ]; then note "filters: cost not measured on a dry run"; rm -rf "$p"; return 0; fi
+  local end=240
+  (cd "$p" && OG_NATIVE_ADDON="$BUNDLE/bin/og-addon.node" "$BUNDLE/bin/og" cost . --json --runs 8 --ticks "60..$end" \
+    --on "--commands 0.02:scene:all" --off "--commands 0.02:scene:all:plain" -- --headless --no-check --size 1920x1080 --ticks $((end + 20))) > "$w/cost.json" 2> "$w/cost.log"
+  local rc=$? ms
+  ms="$(python3 -c 'import json,sys
+try: r=json.load(open(sys.argv[1]))
+except Exception: sys.exit()
+v=(r.get("cost") or {}).get("median")
+print("" if v is None else round(v, 3))' "$w/cost.json")"
+  note "filters: cost at 1920x1080 $([ -n "$ms" ] && echo "$ms ms, median GPU frame with filters less without (budget $FILTER_BUDGET_MS; range and load in filters/cost.json)" || echo "unmeasured (exit $rc, filters/cost.log)")"
+  if [ -z "$ms" ]; then fail filters "cost: og cost gave no difference (exit $rc, filters/cost.log)"
+  elif awk -v m="$ms" -v b="$FILTER_BUDGET_MS" 'BEGIN { exit !(m > b) }'; then fail filters "cost: the filters take $ms ms at 1080p, over the $FILTER_BUDGET_MS ms budget"
+  fi
+  rm -rf "$p"
   return 0
 }
 

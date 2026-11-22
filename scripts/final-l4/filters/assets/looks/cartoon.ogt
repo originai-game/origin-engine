@@ -1,0 +1,6 @@
+type look
+version 1
+---
+# Names @styles/cartoon so the cook bundles it; the scenes switch packs themselves.
+name "filters cartoon"
+ui "cartoon"

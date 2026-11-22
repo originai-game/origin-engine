@@ -1,0 +1,6 @@
+type look
+version 1
+---
+# Names @styles/fantasy so the cook bundles it; the scenes switch packs themselves.
+name "filters fantasy"
+ui "fantasy"
