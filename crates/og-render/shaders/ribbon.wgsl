@@ -80,7 +80,17 @@ struct StripPoint {
   seed: u32,
 };
 
-@group(2) @binding(0) var<storage, read> strip_points: array<StripPoint>;
+// The strip points, a data texture (data_texture.rs): point i at texels
+// 3i to 3i + 2 (trails.wgsl put_point), as a vertex stage reads no storage
+// under WebGPU's compatibility mode.
+@group(2) @binding(0) var strip_texels: texture_2d<u32>;
+
+fn strip_point(i: u32) -> StripPoint {
+  let a = textureLoad(strip_texels, data_at(i * 3u), 0);
+  let b = textureLoad(strip_texels, data_at(i * 3u + 1u), 0);
+  let c = textureLoad(strip_texels, data_at(i * 3u + 2u), 0);
+  return StripPoint(bitcast<vec3<f32>>(a.xyz), bitcast<f32>(a.w), bitcast<vec4<f32>>(b), bitcast<f32>(c.x), c.y, bitcast<f32>(c.z), c.w);
+}
 
 fn strip_dir(v: vec3<f32>, fallback: vec3<f32>) -> vec3<f32> {
   let l = length(v);
@@ -98,7 +108,7 @@ fn vs_strip(@builtin(vertex_index) vi: u32) -> RibbonOut {
   var o: RibbonOut;
   let seg = vi / 6u;
   let k = vi % 6u;
-  if ((strip_points[seg].flags & 2u) == 0u) {
+  if ((strip_point(seg).flags & 2u) == 0u) {
     o.clip = vec4<f32>(0.0, 0.0, 0.0, 1.0);
     o.uv = vec2<f32>(0.0);
     o.color = vec4<f32>(0.0);
@@ -110,9 +120,9 @@ fn vs_strip(@builtin(vertex_index) vi: u32) -> RibbonOut {
   let far = k == 2u || k == 4u || k == 5u;
   let plus = k == 1u || k == 2u || k == 4u;
   let i = select(seg, seg + 1u, far);
-  let p = strip_points[i];
-  let prev = strip_points[select(i, i - 1u, (p.flags & 1u) != 0u)].position;
-  let next = strip_points[select(i, i + 1u, (p.flags & 2u) != 0u)].position;
+  let p = strip_point(i);
+  let prev = strip_point(select(i, i - 1u, (p.flags & 1u) != 0u)).position;
+  let next = strip_point(select(i, i + 1u, (p.flags & 2u) != 0u)).position;
   let tangent = strip_dir(next - prev, vec3<f32>(1.0, 0.0, 0.0));
   let forward = frame.view_forward.xyz;
   var to_eye = -forward;
@@ -120,7 +130,7 @@ fn vs_strip(@builtin(vertex_index) vi: u32) -> RibbonOut {
     to_eye = strip_dir(frame.view_pos.xyz - p.position, -forward);
   }
   let side = strip_dir(cross(tangent, to_eye), vec3<f32>(0.0, 1.0, 0.0)) * (p.width * 0.5);
-  let start = strip_points[seg];
+  let start = strip_point(seg);
   o.oit_key = oit_key4(vec4<f32>(start.position, start.u), vec3<f32>(f32(k / 3u), start.width, 0.0));
   let world = p.position + select(-side, side, plus);
   o.clip = frame.view_proj * vec4<f32>(world, 1.0);

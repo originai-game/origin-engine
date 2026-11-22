@@ -50,7 +50,21 @@ struct StripPoint {
 @group(0) @binding(0) var<storage, read> jobs: array<Job>;
 @group(0) @binding(1) var<storage, read> styles: array<Style>;
 @group(0) @binding(2) var<storage, read_write> ring: array<vec4<u32>>;
-@group(0) @binding(3) var<storage, read_write> points: array<StripPoint>;
+// The strip points, a data texture (data_texture.rs) the strips' vertex
+// stage reads: point i at texels 3i to 3i + 2, 1024 a row.
+@group(0) @binding(3) var points: texture_storage_2d<rgba32uint, write>;
+
+fn put_point(i: u32, p: StripPoint) {
+  let words = array<vec4<u32>, 3>(
+    vec4<u32>(bitcast<vec3<u32>>(p.position), bitcast<u32>(p.width)),
+    bitcast<vec4<u32>>(p.color),
+    vec4<u32>(bitcast<u32>(p.u), p.flags, bitcast<u32>(p.life), p.seed),
+  );
+  for (var k = 0u; k < 3u; k++) {
+    let t = i * 3u + k;
+    textureStore(points, vec2<u32>(t % 1024u, t / 1024u), words[k]);
+  }
+}
 @group(0) @binding(4) var<uniform> count: vec4<u32>;  // x: jobs
 
 fn ring_at(job: Job, head: u32, k: u32) -> u32 {
@@ -108,7 +122,7 @@ fn write_point(job: Job, s: Style, o: u32, p: vec3<f32>, along: f32, total: f32,
   if (s.tile > 0.0) {
     u = along / s.tile;
   }
-  points[job.out_first + o] = StripPoint(p, width_at(s, f), color_at(s, f), u, flags, f, job.seed);
+  put_point(job.out_first + o, StripPoint(p, width_at(s, f), color_at(s, f), u, flags, f, job.seed));
 }
 
 @compute @workgroup_size(64)
@@ -195,6 +209,6 @@ fn advance(@builtin(global_invocation_id) id: vec3<u32>) {
   }
   // The rest of the trail's range draws nothing.
   for (; o < job.out_count; o++) {
-    points[job.out_first + o] = StripPoint(vec3<f32>(0.0), 0.0, vec4<f32>(0.0), 0.0, 0u, 0.0, 0u);
+    put_point(job.out_first + o, StripPoint(vec3<f32>(0.0), 0.0, vec4<f32>(0.0), 0.0, 0u, 0.0, 0u));
   }
 }

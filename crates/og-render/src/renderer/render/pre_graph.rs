@@ -42,7 +42,7 @@ pub(crate) const WATER_FIELDS: PassDesc = PassDesc {
 pub(crate) const TRAILS: PassDesc = PassDesc {
     pass: FramePass::Trails,
     name: "trails",
-    needs: Caps::COMPUTE.union(Caps::VERTEX_STORAGE),
+    needs: Caps::COMPUTE,
 };
 
 /// The aurora's footprint at the frame's time (aurora.rs), before every

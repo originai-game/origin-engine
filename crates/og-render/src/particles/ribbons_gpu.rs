@@ -21,6 +21,7 @@
 //! code taken.
 
 use crate::deferred::{Deferred, Sampled};
+use crate::gpu::data_texture::DataTexture;
 use crate::oit::{ARENA_WGSL, OIT_WGSL};
 use crate::particles::{MAX_CURVE_KEYS, ParticleBlend};
 use crate::ribbons::{
@@ -156,7 +157,8 @@ pub(crate) struct GpuTrails {
     jobs: wgpu::Buffer,
     styles: wgpu::Buffer,
     count: wgpu::Buffer,
-    points: wgpu::Buffer,
+    /// The strip points (data_texture.rs), three texels each.
+    points: DataTexture,
     layout: wgpu::BindGroupLayout,
     /// Made on first use (deferred.rs).
     pub(crate) pipeline: Deferred<wgpu::ComputePipeline>,
@@ -220,10 +222,10 @@ fn buffer(
 const STORAGE: wgpu::BufferUsages = wgpu::BufferUsages::STORAGE.union(wgpu::BufferUsages::COPY_DST);
 
 impl GpuTrails {
-    /// Whether the device runs this path: compute, and storage buffers
-    /// read in the vertex stage.
+    /// Whether the device runs this path: compute (the strips' vertex
+    /// stage reads the points from a data texture).
     pub(crate) fn supported(flags: wgpu::DownlevelFlags) -> bool {
-        flags.contains(wgpu::DownlevelFlags::COMPUTE_SHADERS | wgpu::DownlevelFlags::VERTEX_STORAGE)
+        flags.contains(wgpu::DownlevelFlags::COMPUTE_SHADERS)
     }
 
     /// The layout of `vs_strip`'s group 2 (the strip points), for the
@@ -231,7 +233,11 @@ impl GpuTrails {
     pub(crate) fn draw_layout(device: &wgpu::Device) -> wgpu::BindGroupLayout {
         device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("strip points"),
-            entries: &[storage_entry(0, wgpu::ShaderStages::VERTEX, true)],
+            entries: &[crate::gpu::data_texture::data_entry(
+                0,
+                wgpu::ShaderStages::VERTEX,
+                true,
+            )],
         })
     }
 
@@ -247,7 +253,16 @@ impl GpuTrails {
                 storage_entry(0, compute, true),
                 storage_entry(1, compute, true),
                 storage_entry(2, compute, false),
-                storage_entry(3, compute, false),
+                wgpu::BindGroupLayoutEntry {
+                    binding: 3,
+                    visibility: compute,
+                    ty: wgpu::BindingType::StorageTexture {
+                        access: wgpu::StorageTextureAccess::WriteOnly,
+                        format: wgpu::TextureFormat::Rgba32Uint,
+                        view_dimension: wgpu::TextureViewDimension::D2,
+                    },
+                    count: None,
+                },
                 wgpu::BindGroupLayoutEntry {
                     binding: 4,
                     visibility: compute,
@@ -285,7 +300,7 @@ impl GpuTrails {
                 )
             })
         };
-        let points = buffer(device, "strip points", POINT_BYTES * 256, STORAGE);
+        let points = points_texture(device, 256);
         let draw_group = Self::group(device, &draw_layout, &points);
         GpuTrails {
             slots: HashMap::new(),
@@ -320,14 +335,14 @@ impl GpuTrails {
     fn group(
         device: &wgpu::Device,
         layout: &wgpu::BindGroupLayout,
-        points: &wgpu::Buffer,
+        points: &DataTexture,
     ) -> wgpu::BindGroup {
         device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("strip points"),
             layout,
             entries: &[wgpu::BindGroupEntry {
                 binding: 0,
-                resource: points.as_entire_binding(),
+                resource: wgpu::BindingResource::TextureView(&points.view),
             }],
         })
     }
@@ -500,12 +515,11 @@ impl GpuTrails {
         if points.is_empty() {
             return Ok(out);
         }
-        let bytes = points.len() as u64 * POINT_BYTES;
-        if bytes > self.points.size() {
-            self.points = buffer(device, "strip points", bytes.next_power_of_two(), STORAGE);
+        if points.len() as u32 * TEXELS > self.points.texels {
+            self.points = points_texture(device, (points.len() as u32).next_power_of_two());
             self.draw_group = Self::group(device, &self.draw_layout, &self.points);
         }
-        crate::traffic::write_buffer(queue, &self.points, 0, bytemuck::cast_slice(&points));
+        self.points.write(queue, 0, bytemuck::cast_slice(&points));
         if jobs.is_empty() {
             return Ok(out);
         }
@@ -564,7 +578,7 @@ impl GpuTrails {
                 },
                 wgpu::BindGroupEntry {
                     binding: 3,
-                    resource: self.points.as_entire_binding(),
+                    resource: wgpu::BindingResource::TextureView(&self.points.view),
                 },
                 wgpu::BindGroupEntry {
                     binding: 4,
@@ -597,6 +611,21 @@ impl GpuTrails {
         pass.set_bind_group(0, &planned.group, &[]);
         pass.dispatch_workgroups(planned.jobs.div_ceil(64), 1, 1);
     }
+}
+
+/// A strip point's texels in the points' data texture.
+const TEXELS: u32 = (POINT_BYTES / 16) as u32;
+
+/// The strip points' data texture, room for `points`: written by the CPU
+/// (ribbons and beams) and by the trails' step.
+fn points_texture(device: &wgpu::Device, points: u32) -> DataTexture {
+    DataTexture::new(
+        device,
+        "strip points",
+        wgpu::TextureFormat::Rgba32Uint,
+        points * TEXELS,
+        wgpu::TextureUsages::COPY_DST | wgpu::TextureUsages::STORAGE_BINDING,
+    )
 }
 
 /// The trail step's module (compute).
