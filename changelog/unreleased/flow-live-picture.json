@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "og.flow.view texture",
+      "summary": "A live segment (a scene track and no footage of its own) played on a deck that had played footage before showed that footage's last frame over its scene for the whole segment: the view's picture was the deck's player texture, which a segment without a video track never touches. A segment without footage now has no picture (texture 0), so FlowScreen and FlowPicture show the live scene from its first frame."
+    }
+  ]
+}

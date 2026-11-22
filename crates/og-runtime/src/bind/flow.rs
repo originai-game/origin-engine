@@ -1297,14 +1297,20 @@ fn tick(
     }
     let node = prep.nodes.get(&flow.node);
     let time = shows(ctx, &flow, advancing)?;
-    // A segment whose footage plays under the scene shows no picture over it.
+    // A segment whose footage plays under the scene shows no picture over
+    // it, and one with no footage of its own (a live scene) none at all: its
+    // deck's player still holds whatever that deck played last.
     let picture = |deck: Entity| -> og_core::Result<u64> {
         let held = r
             .deck
             .1
             .read::<record::FlowDeck>(&ctx.get_bytes(deck, r.deck.0)?)
             .map_err(bad)?;
-        if prep.nodes.get(&held.node).is_some_and(|n| n.under) {
+        if prep
+            .nodes
+            .get(&held.node)
+            .is_some_and(|n| n.under || n.first.is_none())
+        {
             return Ok(0);
         }
         Ok(deck_state(ctx, r, deck)?.2)
