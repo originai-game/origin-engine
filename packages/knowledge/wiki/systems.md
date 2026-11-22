@@ -4,11 +4,11 @@
 
 Systems the engine ships as TypeScript: game-level code, listed explicitly in GameDesc.systems like the game's own, so the schedule (and dump_world) shows them and nothing runs that the game did not ask for.
 
-See `combat §1`, `interaction §1`, `items §1`.
+See `combat §1`, `interaction §1`, `items §1`, `abilities §1`.
 
 - **TypeScript**: functions are none at module level (its members live on the types below); components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
-- **Core** (what most games use): `og.systems.cameras`; 3 more are advanced (`og api show systems --all`).
+- **Core** (what most games use): `og.systems.cameras`; 4 more are advanced (`og api show systems --all`).
 - **Index**: [every module and guide](index.md).
 
 ```ogt
@@ -27,6 +27,7 @@ module systems {
 | [`og.systems.combat`](#value-combat) | value |  | The combat systems, in order: og.combatIndex (lists every og.Attack) and og.combat (last tick's hits as damage, then each og.Attack's move, links and hit volumes). |
 | [`og.systems.interact`](#value-interact) | value |  | The interaction systems, in order: og.interactors, og.toggles and og.doors (list each kind) and og.interact (each interactor's focus, hold and use, then plates, then doors and their links). |
 | [`og.systems.inventory`](#value-inventory) | value |  | The inventory systems, in order: og.containers and og.pickups (list each kind) and og.inventory (places each container's missing slots, then each og.Pickup into the og.Collector inside its sensor). |
+| [`og.systems.abilities`](#value-abilities) | value |  | The ability systems, in order: og.abilityList, og.statList, og.statusList, og.modifierList, then og.abilities (charges, locks and presses, then statuses merged and counted down, then stats' values). |
 
 ## Values
 
@@ -95,3 +96,19 @@ value inventory List.System "The inventory systems, in order: og.containers and 
 ```
 
 <sub>Module `systems` line 13</sub>
+
+<a id="value-abilities"></a>
+
+### `og.systems.abilities`
+
+The ability systems, in order: og.abilityList, og.statList, og.statusList, og.modifierList, then og.abilities (charges, locks and presses, then statuses merged and counted down, then stats' values). Idle without those records. Usage: `systems: [...og.systems.abilities, ...yours]`.
+
+```ts
+const abilities: readonly System[]
+```
+
+```ogt
+value abilities List.System "The ability systems, in order: og.abilityList, og.statList, og.statusList, og.modifierList, then og.abilities (charges, locks and presses, then statuses merged and counted down, then stats' values). Idle without those records. Usage: `systems: [...og.systems.abilities, ...yours]`."
+```
+
+<sub>Module `systems` line 16</sub>

@@ -683,6 +683,18 @@
       "array": "Uint32Array",
       "stride": 2,
       "value": "TableRow"
+    },
+    {
+      "name": "StatusStacking",
+      "array": "Uint32Array",
+      "stride": 1,
+      "value": "StatusStacking"
+    },
+    {
+      "name": "ModifierOp",
+      "array": "Uint32Array",
+      "stride": 1,
+      "value": "ModifierOp"
     }
   ],
   "components": [
@@ -9446,6 +9458,160 @@
           "default": 0
         }
       ]
+    },
+    {
+      "id": 135,
+      "name": "Ability",
+      "schema": "og.Ability",
+      "module": "abilities",
+      "fields": [
+        {
+          "name": "owner",
+          "column": "Entity",
+          "default": 0
+        },
+        {
+          "name": "action",
+          "column": "str",
+          "capacity": 32,
+          "default": ""
+        },
+        {
+          "name": "maxCharges",
+          "column": "u32",
+          "default": 0,
+          "tunable": true
+        },
+        {
+          "name": "charges",
+          "column": "u32",
+          "default": 0
+        },
+        {
+          "name": "rechargeTicks",
+          "column": "u32",
+          "default": 0,
+          "tunable": true
+        },
+        {
+          "name": "recharge",
+          "column": "u32",
+          "default": 0,
+          "readonly": true
+        },
+        {
+          "name": "lockTicks",
+          "column": "u32",
+          "default": 0,
+          "tunable": true
+        },
+        {
+          "name": "lock",
+          "column": "u32",
+          "default": 0,
+          "readonly": true
+        },
+        {
+          "name": "pool",
+          "column": "Entity",
+          "default": 0
+        },
+        {
+          "name": "cost",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
+        }
+      ]
+    },
+    {
+      "id": 136,
+      "name": "Stat",
+      "schema": "og.Stat",
+      "module": "abilities",
+      "fields": [
+        {
+          "name": "base",
+          "column": "f32",
+          "default": 0
+        },
+        {
+          "name": "value",
+          "column": "f32",
+          "default": 0,
+          "readonly": true
+        }
+      ]
+    },
+    {
+      "id": 137,
+      "name": "Modifier",
+      "schema": "og.Modifier",
+      "module": "abilities",
+      "fields": [
+        {
+          "name": "stat",
+          "column": "Entity",
+          "default": 0
+        },
+        {
+          "name": "op",
+          "column": "ModifierOp",
+          "default": "add"
+        },
+        {
+          "name": "amount",
+          "column": "f32",
+          "default": 0
+        }
+      ]
+    },
+    {
+      "id": 138,
+      "name": "Status",
+      "schema": "og.Status",
+      "module": "abilities",
+      "fields": [
+        {
+          "name": "kind",
+          "column": "str",
+          "capacity": 32,
+          "default": ""
+        },
+        {
+          "name": "stacking",
+          "column": "StatusStacking",
+          "default": "refresh"
+        },
+        {
+          "name": "ticks",
+          "column": "u32",
+          "default": 0,
+          "tunable": true
+        },
+        {
+          "name": "stacks",
+          "column": "u32",
+          "default": 0
+        },
+        {
+          "name": "maxStacks",
+          "column": "u32",
+          "default": 0,
+          "tunable": true
+        },
+        {
+          "name": "strength",
+          "column": "f32",
+          "default": 0
+        },
+        {
+          "name": "applied",
+          "column": "bool",
+          "default": false,
+          "readonly": true
+        }
+      ]
     }
   ],
   "resources": [
@@ -13713,6 +13879,38 @@
           "default": []
         }
       ]
+    },
+    {
+      "id": 47,
+      "name": "AbilityEntities",
+      "schema": "og.AbilityEntities",
+      "module": "abilities",
+      "fields": [
+        {
+          "name": "abilities",
+          "column": "Entity",
+          "list": 1024,
+          "default": []
+        },
+        {
+          "name": "stats",
+          "column": "Entity",
+          "list": 1024,
+          "default": []
+        },
+        {
+          "name": "statuses",
+          "column": "Entity",
+          "list": 1024,
+          "default": []
+        },
+        {
+          "name": "modifiers",
+          "column": "Entity",
+          "list": 1024,
+          "default": []
+        }
+      ]
     }
   ],
   "events": [
@@ -15871,6 +16069,24 @@
         {
           "name": "count",
           "type": "u32",
+          "default": 0
+        }
+      ]
+    },
+    {
+      "id": 81,
+      "name": "AbilityUsed",
+      "schema": "og.AbilityUsed",
+      "module": "abilities",
+      "fields": [
+        {
+          "name": "ability",
+          "type": "Entity",
+          "default": 0
+        },
+        {
+          "name": "owner",
+          "type": "Entity",
           "default": 0
         }
       ]

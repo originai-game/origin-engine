@@ -12,6 +12,9 @@ module systems {
 
   value inventory List.System "The inventory systems, in order: og.containers and og.pickups (list each kind) and og.inventory (places each container's missing slots, then each og.Pickup into the og.Collector inside its sensor). Idle without those records. Usage: `systems: [...og.systems.inventory, ...yours]`."
     guide "items §1"
+
+  value abilities List.System "The ability systems, in order: og.abilityList, og.statList, og.statusList, og.modifierList, then og.abilities (charges, locks and presses, then statuses merged and counted down, then stats' values). Idle without those records. Usage: `systems: [...og.systems.abilities, ...yours]`."
+    guide "abilities §1"
 }
 
 # ── commands ──────────────────────────────────────────────────────────────

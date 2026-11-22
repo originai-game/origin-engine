@@ -366,6 +366,10 @@ export interface ColumnKinds {
    * A TableRow handle field: a row of a table, written in a table as `row "id"` or `row "table" "id"`.
    */
   TableRow: { readonly array: Uint32Array; readonly stride: 2; readonly value: TableRow };
+  /** A StatusStacking field: the variant's index. */
+  StatusStacking: { readonly array: Uint32Array; readonly stride: 1; readonly value: StatusStacking };
+  /** A ModifierOp field: the variant's index. */
+  ModifierOp: { readonly array: Uint32Array; readonly stride: 1; readonly value: ModifierOp };
 }
 
 // ── math ────────────────────────────────────────────────────────
@@ -26298,7 +26302,7 @@ export interface UiScope {
 
 // ── systems ─────────────────────────────────────────────────────
 // Systems the engine ships as TypeScript: game-level code, listed explicitly in GameDesc.systems like the game's own, so the schedule (and dump_world) shows them and nothing runs that the game did not ask for.
-// See `combat §1`, `interaction §1`, `items §1`.
+// See `combat §1`, `interaction §1`, `items §1`, `abilities §1`.
 
 // ── commands ────────────────────────────────────────────────────
 // The command channel: actions scheduled on simulation time, from `og run --commands "t:action[:args];..."` or the probe's commands().
@@ -34346,6 +34350,236 @@ export interface CraftDesc {
 
 
 
+// ── abilities ───────────────────────────────────────────────────
+// The records og.systems.abilities carries out: an og.Ability is used on a press of its action or by og.abilities.use when it has a charge, its lock has run out and its pool holds its cost; its charges return one by one. An og.Status on a target merges with one of the same kind by its stacking rule and runs out after its ticks; an og.Stat's value is its base with the og.Modifier entities naming it applied in a fixed order. Every number is the game's: an ability of 0 charges is never used.
+// See `abilities §1`.
+
+/**
+ * What a second og.Status of the same kind on the same target does to the first.
+ * - `"refresh"`: The first stays and takes the second's ticks; the second goes.
+ * - `"stack"`: The first stays, adds the second's stacks up to maxStacks and takes its ticks; the second goes.
+ * - `"strongest"`: The stronger stays (a tie keeps the first, with the second's ticks); the other goes.
+ */
+export type StatusStacking = "refresh" | "stack" | "strongest";
+
+/**
+ * A StatusStacking field: the variant's index.
+ *
+ * A `StatusStacking` field: stored in a `Uint32Array` with stride 1.
+ * @param value The field's default; omitted, the column's zero value.
+ * @param options Range, unit, label, docs and the tunable flag.
+ */
+export declare function StatusStacking(value?: StatusStacking, options?: FieldOptions): FieldSpec<"StatusStacking">;
+
+/**
+ * How an og.Modifier changes its og.Stat: all adds, then the percents summed, then each multiply.
+ * - `"add"`: Adds its amount to the base.
+ * - `"percent"`: Its amount joins one sum: the value is times 1 + the sum (0.1 and 0.2 make 1.3).
+ * - `"multiply"`: Times 1 + its amount, one by one (0.1 and 0.2 make 1.32).
+ */
+export type ModifierOp = "add" | "percent" | "multiply";
+
+/**
+ * A ModifierOp field: the variant's index.
+ *
+ * A `ModifierOp` field: stored in a `Uint32Array` with stride 1.
+ * @param value The field's default; omitted, the column's zero value.
+ * @param options Range, unit, label, docs and the tunable flag.
+ */
+export declare function ModifierOp(value?: ModifierOp, options?: FieldOptions): FieldSpec<"ModifierOp">;
+
+/**
+ * Something its owner uses: on a press of `action` (og.input.consume, taken only when it can be used, so an early press waits in the buffer) or by og.abilities.use, it spends a charge and its cost and starts its lock, and og.AbilityUsed is sent. Below maxCharges a charge returns every rechargeTicks. Charges and locks count the ticks time moves (none in a hit stop).
+ * See `abilities §1`.
+ *
+ * The value of the `Ability` component (token `og.Ability`).
+ */
+export interface Ability {
+  /** Who uses it, as og.AbilityUsed reports. */
+  owner: Entity;
+  /**
+   * The input action that uses it; empty: only og.abilities.use.
+   *
+   * @capacity 32 bytes of UTF-8 (str(32)); longer text is refused, never truncated
+   */
+  action: string;
+  /**
+   * The charges it holds at most; 0 is never used.
+   *
+   * @range 0..
+   * @tunable
+   */
+  maxCharges: number;
+  /**
+   * The charges it has: give its first ones when it is inserted; written as it is used and recharged.
+   */
+  charges: number;
+  /**
+   * Ticks for one charge to return while below maxCharges; 0 returns none.
+   *
+   * @range 0..
+   * @unit ticks (fixed simulation steps)
+   * @tunable
+   */
+  rechargeTicks: number;
+  /**
+   * Written: ticks into the charge returning (0 when full).
+   *
+   * @unit ticks (fixed simulation steps)
+   * @readonly written by the engine
+   */
+  readonly recharge: number;
+  /**
+   * Ticks after a use before it can be used again, whatever its charges; 0 locks nothing.
+   *
+   * @range 0..
+   * @unit ticks (fixed simulation steps)
+   * @tunable
+   */
+  lockTicks: number;
+  /**
+   * Written: ticks of its lock left.
+   *
+   * @unit ticks (fixed simulation steps)
+   * @readonly written by the engine
+   */
+  readonly lock: number;
+  /** The og.Stat a use takes `cost` from (its base: mana, stamina, ammo); 0 costs nothing. */
+  pool: Entity;
+  /**
+   * What a use takes from the pool's base; a pool whose value is under it refuses the use.
+   *
+   * @range 0..
+   * @tunable
+   */
+  cost: number;
+}
+
+/**
+ * An og.Ability was used: sent the tick it was.
+ * See `abilities §1`.
+ *
+ * The payload of the `AbilityUsed` event (token `og.AbilityUsed`).
+ */
+export interface AbilityUsed {
+  /** The og.Ability. */
+  readonly ability: Entity;
+  /** Its owner. */
+  readonly owner: Entity;
+}
+
+/**
+ * A number something has, on an entity of its own: `value` is `base` with every og.Modifier whose stat it is applied: adds, then percents, then multiplies, each kind in ascending order of what it adds, so the order modifiers came in never changes it. Written by og.systems.abilities each tick.
+ * See `abilities §2`.
+ *
+ * The value of the `Stat` component (token `og.Stat`).
+ */
+export interface Stat {
+  /** Its own number: a pool's amount (og.Ability.cost takes from it), a level's strength. */
+  base: number;
+  /**
+   * Written: the base with its modifiers applied, each tick.
+   *
+   * @readonly written by the engine
+   */
+  readonly value: number;
+}
+
+/**
+ * A change to an og.Stat, on an entity of its own: a child of an og.Status counts its amount once per stack and goes with it; one without counts once until it is despawned.
+ * See `abilities §2`.
+ *
+ * The value of the `Modifier` component (token `og.Modifier`).
+ */
+export interface Modifier {
+  /** The og.Stat it changes. */
+  stat: Entity;
+  /** How it changes it. */
+  op: ModifierOp;
+  /**
+   * What it adds (add), joins to the percent sum (percent) or multiplies by 1 + (multiply); 0 changes nothing.
+   */
+  amount: number;
+}
+
+/**
+ * An effect on a target, its parent (og.Parent): spawned there to apply it. og.systems.abilities merges it with the target's status of the same kind by that status's `stacking`, counts down `ticks` each tick time moves (its first tick counting) and despawns it, and its modifiers, when they run out.
+ * See `abilities §2`.
+ *
+ * The value of the `Status` component (token `og.Status`).
+ */
+export interface Status {
+  /**
+   * Which statuses on one target are one effect; empty never merges.
+   *
+   * @capacity 32 bytes of UTF-8 (str(32)); longer text is refused, never truncated
+   */
+  kind: string;
+  /** What one of the same kind applied after it does. */
+  stacking: StatusStacking;
+  /**
+   * Ticks left; 0 lasts until it is despawned.
+   *
+   * @range 0..
+   * @unit ticks (fixed simulation steps)
+   * @tunable
+   */
+  ticks: number;
+  /**
+   * How many stacks it holds: each of its modifiers counts this many times; 0 changes nothing.
+   */
+  stacks: number;
+  /**
+   * The most stacks `stack` adds up to; 0 adds none.
+   *
+   * @range 0..
+   * @tunable
+   */
+  maxStacks: number;
+  /** What `strongest` compares. */
+  strength: number;
+  /**
+   * Written: it has been merged (or found alone) on its target.
+   *
+   * @readonly written by the engine
+   */
+  readonly applied: boolean;
+}
+
+/**
+ * Every og.Ability, og.Stat, og.Status and og.Modifier in entity order, written by og.systems.abilities' first systems each tick for its last.
+ *
+ * The `AbilityEntities` resource (token `og.AbilityEntities`).
+ */
+export interface AbilityEntities {
+  /**
+   * The abilities (at most 1,024).
+   *
+   * @capacity 1024 elements (List.Entity.1024): reading answers a frozen copy (push throws); write a whole array, refused over the capacity, never truncated
+   */
+  abilities: readonly Entity[];
+  /**
+   * The stats (at most 1,024).
+   *
+   * @capacity 1024 elements (List.Entity.1024): reading answers a frozen copy (push throws); write a whole array, refused over the capacity, never truncated
+   */
+  stats: readonly Entity[];
+  /**
+   * The statuses (at most 1,024).
+   *
+   * @capacity 1024 elements (List.Entity.1024): reading answers a frozen copy (push throws); write a whole array, refused over the capacity, never truncated
+   */
+  statuses: readonly Entity[];
+  /**
+   * The modifiers (at most 1,024).
+   *
+   * @capacity 1024 elements (List.Entity.1024): reading answers a frozen copy (push throws); write a whole array, refused over the capacity, never truncated
+   */
+  modifiers: readonly Entity[];
+}
+
+
+
 // ── og ──────────────────────────────────────────────────────────
 
 /**
@@ -38035,7 +38269,7 @@ export declare namespace og {
   }
   /**
    * Systems the engine ships as TypeScript: game-level code, listed explicitly in GameDesc.systems like the game's own, so the schedule (and dump_world) shows them and nothing runs that the game did not ask for.
-   * See `combat §1`, `interaction §1`, `items §1`.
+   * See `combat §1`, `interaction §1`, `items §1`, `abilities §1`.
    */
   namespace systems {
     /**
@@ -38054,6 +38288,10 @@ export declare namespace og {
      * The inventory systems, in order: og.containers and og.pickups (list each kind) and og.inventory (places each container's missing slots, then each og.Pickup into the og.Collector inside its sensor). Idle without those records. Usage: `systems: [...og.systems.inventory, ...yours]`.
      */
     const inventory: readonly System[];
+    /**
+     * The ability systems, in order: og.abilityList, og.statList, og.statusList, og.modifierList, then og.abilities (charges, locks and presses, then statuses merged and counted down, then stats' values). Idle without those records. Usage: `systems: [...og.systems.abilities, ...yours]`.
+     */
+    const abilities: readonly System[];
   }
   /**
    * The command channel: actions scheduled on simulation time, from `og run --commands "t:action[:args];..."` or the probe's commands().
@@ -39669,5 +39907,55 @@ export declare namespace og {
      * @returns One per draw that picked an entry, in draw order.
      */
     function roll(world: World, desc: RollDesc): readonly ItemCount[];
+  }
+  /**
+   * Something its owner uses: on a press of `action` (og.input.consume, taken only when it can be used, so an early press waits in the buffer) or by og.abilities.use, it spends a charge and its cost and starts its lock, and og.AbilityUsed is sent. Below maxCharges a charge returns every rechargeTicks. Charges and locks count the ticks time moves (none in a hit stop).
+   * See `abilities §1`.
+   */
+  const Ability: ComponentType<{ readonly owner: FieldSpec<"Entity">; readonly action: FieldSpec<"str">; readonly maxCharges: FieldSpec<"u32">; readonly charges: FieldSpec<"u32">; readonly rechargeTicks: FieldSpec<"u32">; readonly recharge: FieldSpec<"u32">; readonly lockTicks: FieldSpec<"u32">; readonly lock: FieldSpec<"u32">; readonly pool: FieldSpec<"Entity">; readonly cost: FieldSpec<"f32"> }, Ability>;
+  /**
+   * An og.Ability was used: sent the tick it was.
+   * See `abilities §1`.
+   */
+  const AbilityUsed: EventType<AbilityUsed>;
+  /**
+   * A number something has, on an entity of its own: `value` is `base` with every og.Modifier whose stat it is applied: adds, then percents, then multiplies, each kind in ascending order of what it adds, so the order modifiers came in never changes it. Written by og.systems.abilities each tick.
+   * See `abilities §2`.
+   */
+  const Stat: ComponentType<{ readonly base: FieldSpec<"f32">; readonly value: FieldSpec<"f32"> }, Stat>;
+  /**
+   * A change to an og.Stat, on an entity of its own: a child of an og.Status counts its amount once per stack and goes with it; one without counts once until it is despawned.
+   * See `abilities §2`.
+   */
+  const Modifier: ComponentType<{ readonly stat: FieldSpec<"Entity">; readonly op: FieldSpec<"ModifierOp">; readonly amount: FieldSpec<"f32"> }, Modifier>;
+  /**
+   * An effect on a target, its parent (og.Parent): spawned there to apply it. og.systems.abilities merges it with the target's status of the same kind by that status's `stacking`, counts down `ticks` each tick time moves (its first tick counting) and despawns it, and its modifiers, when they run out.
+   * See `abilities §2`.
+   */
+  const Status: ComponentType<{ readonly kind: FieldSpec<"str">; readonly stacking: FieldSpec<"StatusStacking">; readonly ticks: FieldSpec<"u32">; readonly stacks: FieldSpec<"u32">; readonly maxStacks: FieldSpec<"u32">; readonly strength: FieldSpec<"f32">; readonly applied: FieldSpec<"bool"> }, Status>;
+  /**
+   * Every og.Ability, og.Stat, og.Status and og.Modifier in entity order, written by og.systems.abilities' first systems each tick for its last.
+   */
+  const AbilityEntities: ResourceType<{ readonly abilities: ListSpec<"Entity">; readonly stats: ListSpec<"Entity">; readonly statuses: ListSpec<"Entity">; readonly modifiers: ListSpec<"Entity"> }, AbilityEntities>;
+  /**
+   * The records og.systems.abilities carries out: an og.Ability is used on a press of its action or by og.abilities.use when it has a charge, its lock has run out and its pool holds its cost; its charges return one by one. An og.Status on a target merges with one of the same kind by its stacking rule and runs out after its ticks; an og.Stat's value is its base with the og.Modifier entities naming it applied in a fixed order. Every number is the game's: an ability of 0 charges is never used.
+   * See `abilities §1`.
+   */
+  namespace abilities {
+    /**
+     * Whether an ability can be used now: a charge, no lock, and its pool's value at least its cost.
+     *
+     * @param world The world.
+     * @param ability The og.Ability.
+     */
+    function ready(world: World, ability: Entity): boolean;
+    /**
+     * Use an ability now: a charge, its lock and its cost, then og.AbilityUsed. A system that calls this lists og.Ability, og.Stat and og.AbilityUsed in its writes.
+     *
+     * @param world The world.
+     * @param ability The og.Ability.
+     * @returns Refused, changing nothing, without a charge, while locked or when its pool holds less than its cost, naming which.
+     */
+    function use(world: World, ability: Entity): Result<void>;
   }
 }

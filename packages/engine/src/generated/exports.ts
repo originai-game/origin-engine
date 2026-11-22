@@ -184,3 +184,7 @@ export const InteractRule = ((value = "nearest" as Api.InteractRule, options) =>
 
 // table
 export const TableRow = ((value = 0 as Api.TableRow, options) => spec("TableRow", value, options)) as typeof Api.TableRow;
+
+// abilities
+export const StatusStacking = ((value = "refresh" as Api.StatusStacking, options) => spec("StatusStacking", value, options)) as typeof Api.StatusStacking;
+export const ModifierOp = ((value = "add" as Api.ModifierOp, options) => spec("ModifierOp", value, options)) as typeof Api.ModifierOp;

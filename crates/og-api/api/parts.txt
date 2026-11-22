@@ -69,3 +69,4 @@ systems-combat.ogt
 systems-interact.ogt
 table.ogt
 systems-inventory.ogt
+systems-abilities.ogt

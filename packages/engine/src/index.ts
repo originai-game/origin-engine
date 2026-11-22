@@ -7,6 +7,7 @@ import type * as Api from "@origingame/engine";
 import { BUILTINS, calls, clip, fieldSpec, top, ui } from "./runtime.ts";
 import * as systems from "./systems/index.ts";
 import { inventoryModule } from "./systems/inventory.ts";
+import { abilitiesModule } from "./systems/abilities.ts";
 import { assertModule } from "./assert.ts";
 import { Path2, Shape } from "./geom.ts";
 import { uiKit } from "./ui-kit/index.ts";
@@ -26,7 +27,7 @@ export * from "./generated/vocabulary.ts";
 
 // The package's own functions and og's namespaces are generated from the IDL
 // (src/generated/calls.ts); what is added here is TypeScript the IDL declares
-// `host false` (og.anim.clip, og.assert's sites, og.Shape, og.inventory) and og.ui, whose
+// `host false` (og.anim.clip, og.assert's sites, og.Shape, og.inventory, og.abilities) and og.ui, whose
 // hand-written members go once its IDL settles.
 export const { defineComponent, defineResource, defineEvent, defineSystem, defineHook } = top as unknown as Pick<
   typeof Api,
@@ -42,5 +43,6 @@ export const og: typeof Api.og = Object.freeze({
   assert: Object.freeze({ ...calls.assert, ...assertModule }),
   ui: Object.freeze({ ...ui, ...uiKit, formatNumber: formatNotation }),
   inventory: inventoryModule,
+  abilities: abilitiesModule,
   systems: Object.freeze({ ...systems }),
 }) as unknown as typeof Api.og;

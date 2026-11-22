@@ -2,7 +2,7 @@
 
 # The Origin Engine API
 
-`@origingame/engine`, API version 1: 51 modules, generated from `crates/og-api/api.ogt`. Each module has an overview page and every function, component and type a page of its own under `<module>/`; every signature is quoted from the IDL. `og api find <words>` ranks every entry; `og api show <name>` prints one.
+`@origingame/engine`, API version 1: 52 modules, generated from `crates/og-api/api.ogt`. Each module has an overview page and every function, component and type a page of its own under `<module>/`; every signature is quoted from the IDL. `og api find <words>` ranks every entry; `og api show <name>` prints one.
 
 The Origin Engine API. Game code declares components and systems, and reads the world through typed views over engine memory.
 
@@ -63,6 +63,7 @@ Every failure is a returned Result; desc objects may omit any field; nothing rea
 | [`interact`](interact.md) | types and tokens | kept | The records og.systems.interact carries out: an og.Interactor focuses one og.Interactable among og.play.candidates by its own rule (nearest, most centred, priority then nearest), uses it on a press of its action or after holding it, and reports og.Interacted. Using an og.Door opens or closes it and its navmesh link, an og.Toggle flips, an og.Grab is picked up and later thrown. Every number is the game's: a zero range focuses nothing. |
 | [`table`](table.md) | `og.table.*` | kept | A game's data as rows keyed by id: items, abilities, recipes, loot, waves, levels. A table is an `.ogt` of `type table` that og cook checks (every id once, every `asset` path there, every row a `row` field names in its table); og.table.load reads it against one of the game's components, field by field, and answers each row by a handle that names the same row in every load, hot reload and save. The values are the game's: nothing here picks, sums or balances them. |
 | [`inventory`](inventory.md) | `og.inventory.*` | kept | The records og.systems.inventory carries out, and the moves a game makes with them: an og.Container holds `slots` slot entities (its children, each an og.ItemStack of a table row and a count), a stack holds at most its row's stack limit, read from the item table, and every move, split, merge and craft is all or nothing. An og.Pickup lying in the world is taken by the og.Collector that enters its sensor. Every number is the game's: a container of 0 slots holds nothing. |
+| [`abilities`](abilities.md) | `og.abilities.*` | kept | The records og.systems.abilities carries out: an og.Ability is used on a press of its action or by og.abilities.use when it has a charge, its lock has run out and its pool holds its cost; its charges return one by one. An og.Status on a target merges with one of the same kind by its stacking rule and runs out after its ticks; an og.Stat's value is its base with the og.Modifier entities naming it applied in a fixed order. Every number is the game's: an ability of 0 charges is never used. |
 
 ## Guides
 
@@ -70,6 +71,7 @@ Workflow, thresholds and pitfalls no signature states, written by hand beside th
 
 | Guide | Summary |
 |---|---|
+| [`abilities`](guide-abilities.md) | How og.systems.abilities uses abilities with charges, recharge, a lock and a cost, keeps status effects that stack by a rule and run out, and computes stats from their modifiers in a fixed order. Read before building spells, skills, a dash with charges, buffs and debuffs, damage over time or any stat a bonus changes. Buffered presses are in `input`; hit stop in `og api show time`; a table of ability or status rows in `data`. |
 | [`animation`](guide-animation.md) | Motion in an Origin Engine game. Clips and animation graphs, og.motion's generated humanoid motion and why it is presentation only, tweens and timelines, and the timings that make actions read. |
 | [`art-review`](guide-art-review.md) | Art judgment for an Origin Engine game. Choosing the style from the premise, requesting every asset through the art brief, the cook's conformance, and reviewing frames and models with measured thresholds. The engine measures; this guide says what is good enough. |
 | [`assets`](guide-assets.md) | `og assets` searches the cooked asset inventory for reusable assets, unused outputs, dependencies, and duplicate content. `og cook` writes the inventory to `cooked/.assets.ogt`. The sidecar is not part of a web export. |

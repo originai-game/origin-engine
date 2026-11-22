@@ -26005,6 +26005,84 @@ impl ToJson for MissingRow {
     }
 }
 
+/// `StatusStacking`: packages/knowledge/wiki/abilities.md.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum StatusStacking {
+    #[default]
+    Refresh,
+    Stack,
+    Strongest,
+}
+
+impl StatusStacking {
+    /// The variants' IDL names, in index order.
+    pub const NAMES: &'static [&'static str] = &["refresh", "stack", "strongest"];
+    /// Every variant, in index order.
+    pub const ALL: &'static [Self] = &[Self::Refresh, Self::Stack, Self::Strongest];
+    /// The IDL name.
+    pub fn as_str(self) -> &'static str {
+        Self::NAMES[self as usize]
+    }
+    /// The variant named `s`, or a refusal naming them all.
+    pub fn parse(s: &str) -> Result<Self, String> {
+        match Self::NAMES.iter().position(|n| *n == s) {
+            Some(i) => Ok(Self::ALL[i]),
+            None => Err(unknown_variant("StatusStacking", s, Self::NAMES)),
+        }
+    }
+}
+
+impl FromJson for StatusStacking {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::parse(variant(v, "StatusStacking", Self::NAMES)?)
+    }
+}
+
+impl ToJson for StatusStacking {
+    fn to_json(&self) -> Value {
+        Value::String(self.as_str().into())
+    }
+}
+
+/// `ModifierOp`: packages/knowledge/wiki/abilities.md.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum ModifierOp {
+    #[default]
+    Add,
+    Percent,
+    Multiply,
+}
+
+impl ModifierOp {
+    /// The variants' IDL names, in index order.
+    pub const NAMES: &'static [&'static str] = &["add", "percent", "multiply"];
+    /// Every variant, in index order.
+    pub const ALL: &'static [Self] = &[Self::Add, Self::Percent, Self::Multiply];
+    /// The IDL name.
+    pub fn as_str(self) -> &'static str {
+        Self::NAMES[self as usize]
+    }
+    /// The variant named `s`, or a refusal naming them all.
+    pub fn parse(s: &str) -> Result<Self, String> {
+        match Self::NAMES.iter().position(|n| *n == s) {
+            Some(i) => Ok(Self::ALL[i]),
+            None => Err(unknown_variant("ModifierOp", s, Self::NAMES)),
+        }
+    }
+}
+
+impl FromJson for ModifierOp {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::parse(variant(v, "ModifierOp", Self::NAMES)?)
+    }
+}
+
+impl ToJson for ModifierOp {
+    fn to_json(&self) -> Value {
+        Value::String(self.as_str().into())
+    }
+}
+
 /// The rows of the engine's records (IDL `component`, `resource` and
 /// `event`), as their layouts decode them: every field, with its IDL
 /// default, read through the same rules as the wire types.
@@ -38563,6 +38641,228 @@ pub mod record {
             Ok(Self {
                 containers: field(o, "containers", d.containers)?,
                 pickups: field(o, "pickups", d.pickups)?,
+            })
+        }
+    }
+
+    /// `Ability`: packages/knowledge/wiki/abilities.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct Ability {
+        pub owner: u64,
+        pub action: Value,
+        pub max_charges: u32,
+        pub charges: u32,
+        pub recharge_ticks: u32,
+        pub recharge: u32,
+        pub lock_ticks: u32,
+        pub lock: u32,
+        pub pool: u64,
+        pub cost: f32,
+    }
+
+    impl Default for Ability {
+        fn default() -> Self {
+            Self {
+                owner: Default::default(),
+                action: Default::default(),
+                max_charges: Default::default(),
+                charges: Default::default(),
+                recharge_ticks: Default::default(),
+                recharge: Default::default(),
+                lock_ticks: Default::default(),
+                lock: Default::default(),
+                pool: Default::default(),
+                cost: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for Ability {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                owner: field(o, "owner", d.owner)?,
+                action: field(o, "action", d.action)?,
+                max_charges: field(o, "maxCharges", d.max_charges)?,
+                charges: field(o, "charges", d.charges)?,
+                recharge_ticks: field(o, "rechargeTicks", d.recharge_ticks)?,
+                recharge: field(o, "recharge", d.recharge)?,
+                lock_ticks: field(o, "lockTicks", d.lock_ticks)?,
+                lock: field(o, "lock", d.lock)?,
+                pool: field(o, "pool", d.pool)?,
+                cost: field(o, "cost", d.cost)?,
+            })
+        }
+    }
+
+    /// `AbilityUsed`: packages/knowledge/wiki/abilities.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct AbilityUsed {
+        pub ability: u64,
+        pub owner: u64,
+    }
+
+    impl Default for AbilityUsed {
+        fn default() -> Self {
+            Self {
+                ability: Default::default(),
+                owner: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for AbilityUsed {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                ability: field(o, "ability", d.ability)?,
+                owner: field(o, "owner", d.owner)?,
+            })
+        }
+    }
+
+    /// `Stat`: packages/knowledge/wiki/abilities.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct Stat {
+        pub base: f32,
+        pub value: f32,
+    }
+
+    impl Default for Stat {
+        fn default() -> Self {
+            Self {
+                base: Default::default(),
+                value: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for Stat {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                base: field(o, "base", d.base)?,
+                value: field(o, "value", d.value)?,
+            })
+        }
+    }
+
+    /// `Modifier`: packages/knowledge/wiki/abilities.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct Modifier {
+        pub stat: u64,
+        pub op: ModifierOp,
+        pub amount: f32,
+    }
+
+    impl Default for Modifier {
+        fn default() -> Self {
+            Self {
+                stat: Default::default(),
+                op: Default::default(),
+                amount: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for Modifier {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                stat: field(o, "stat", d.stat)?,
+                op: field(o, "op", d.op)?,
+                amount: field(o, "amount", d.amount)?,
+            })
+        }
+    }
+
+    /// `Status`: packages/knowledge/wiki/abilities.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct Status {
+        pub kind: Value,
+        pub stacking: StatusStacking,
+        pub ticks: u32,
+        pub stacks: u32,
+        pub max_stacks: u32,
+        pub strength: f32,
+        pub applied: bool,
+    }
+
+    impl Default for Status {
+        fn default() -> Self {
+            Self {
+                kind: Default::default(),
+                stacking: Default::default(),
+                ticks: Default::default(),
+                stacks: Default::default(),
+                max_stacks: Default::default(),
+                strength: Default::default(),
+                applied: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for Status {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                kind: field(o, "kind", d.kind)?,
+                stacking: field(o, "stacking", d.stacking)?,
+                ticks: field(o, "ticks", d.ticks)?,
+                stacks: field(o, "stacks", d.stacks)?,
+                max_stacks: field(o, "maxStacks", d.max_stacks)?,
+                strength: field(o, "strength", d.strength)?,
+                applied: field(o, "applied", d.applied)?,
+            })
+        }
+    }
+
+    /// `AbilityEntities`: packages/knowledge/wiki/abilities.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct AbilityEntities {
+        pub abilities: Vec<u64>,
+        pub stats: Vec<u64>,
+        pub statuses: Vec<u64>,
+        pub modifiers: Vec<u64>,
+    }
+
+    impl Default for AbilityEntities {
+        fn default() -> Self {
+            Self {
+                abilities: Default::default(),
+                stats: Default::default(),
+                statuses: Default::default(),
+                modifiers: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for AbilityEntities {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                abilities: field(o, "abilities", d.abilities)?,
+                stats: field(o, "stats", d.stats)?,
+                statuses: field(o, "statuses", d.statuses)?,
+                modifiers: field(o, "modifiers", d.modifiers)?,
             })
         }
     }

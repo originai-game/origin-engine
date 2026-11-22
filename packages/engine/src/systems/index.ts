@@ -5,3 +5,4 @@ export { cameras } from "./cameras.ts";
 export { combat } from "./combat.ts";
 export { interact } from "./interact.ts";
 export { inventory } from "./inventory.ts";
+export { abilities } from "./abilities.ts";
