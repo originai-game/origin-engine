@@ -37,7 +37,7 @@
 //! Every output type has its own figures in the report: a sound its
 //! seconds, channels, rate and chunks; a font its glyphs, kerning pairs and
 //! atlas pages; a scene its entities and components; a navmesh its tiles,
-//! polygons and vertices; a timeline its tracks and seconds; a style, a
+//! polygons and vertices; a timeline its tracks and seconds; a
 //! string table, a behaviour, a tileset, a tilemap, a rig, a flipbook, a
 //! shader, a post pass, an emitter, a look, a palette, a LUT, an
 //! environment map, a video, a terrain and a stream pack theirs.

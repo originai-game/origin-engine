@@ -4,10 +4,10 @@
 //! floating text's facing survives a snapshot.
 //!
 //! A floating text with no font of its own draws with the UI's: a line
-//! mixing a style's Latin body face with its Chinese companion (`fonts {
-//! cjk }`) reaches the renderer as one text per font, side by side and
-//! centred on its point (rhythm archetype: a judgement word drawn whole in
-//! the body face lost every Chinese character).
+//! mixing a style's Latin body face with its Chinese companion (both in its
+//! pack.json's `fonts`) reaches the renderer as one text per font, side by
+//! side and centred on its point (rhythm archetype: a judgement word drawn
+//! whole in the body face lost every Chinese character).
 //!
 //! Ways this could fail: the facing lands on another text's index; an
 //! aligned text keeps the runtime's shift along the world x axis (the
@@ -243,12 +243,14 @@ fn mixed_project() -> &'static Path {
             &std::fs::read(neon.join("ChakraPetch-BoldItalic.ttf.ogt")).unwrap(),
         );
         write(
-            "styles/mix/main.css",
-            br#"
-            @font-face { font-family: Body; src: url(Body.ttf); }
-            @font-face { font-family: Chinese; src: url(/@styles/cjk/NotoSansSC-Regular.ttf); }
-            :root { font-family: Body, Chinese; }
-        "#,
+            "styles/mix/pack.json",
+            br#"{
+                "fonts": [
+                    { "family": "Body", "src": "Body.ttf" },
+                    { "family": "Chinese", "src": "@styles/cjk/NotoSansSC-Regular.ttf" }
+                ],
+                "theme": { "fontFamily": { "sans": "\"Body\", \"Chinese\"" } }
+            }"#,
         );
         write(
             "strings/zh-CN.ogt",

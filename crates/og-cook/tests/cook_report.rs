@@ -29,8 +29,8 @@ fn every_asset_type_reports_its_figures_and_its_budgets_flag_it() {
     support::stage_template(&root.join("assets"));
     std::fs::create_dir_all(root.join("assets/core-test")).unwrap();
     std::fs::write(
-        root.join("assets/core-test/main.css"),
-        ":root { --example: #123456; }",
+        root.join("assets/core-test/pack.json"),
+        r##"{ "theme": { "colors": { "fg": { "light": "#123456", "dark": "#654321" } } } }"##,
     )
     .unwrap();
     let report = cook_project(&root, &CookOptions::default()).unwrap();
@@ -84,8 +84,13 @@ fn every_asset_type_reports_its_figures_and_its_budgets_flag_it() {
         polygons > 0 && nav["vertices"].as_u64() >= Some(polygons * 3 / 2),
         "{nav}"
     );
-    let style = &asset(&json, "core-test")["style"];
-    assert_eq!(style["name"], "core-test");
+    // A style pack is its pack.json, cooked into one og.UiPack blob.
+    let style = asset(&json, "core-test/pack.json");
+    assert_eq!(
+        (&style["kind"], &style["outputs"][0]["type"]),
+        (&serde_json::json!("pack"), &serde_json::json!("og.UiPack")),
+        "{style}"
+    );
     for a in json["assets"].as_array().unwrap() {
         assert!(a.get("unread").is_none(), "{a}");
         assert_eq!(a["flags"], serde_json::json!([]), "{a}");

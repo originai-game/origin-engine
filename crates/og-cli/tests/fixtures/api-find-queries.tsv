@@ -3,7 +3,7 @@ keep the hero glued to the ground and let it walk up slopes	og.CharacterControll
 knock a crate back when an explosion goes off next to it	og.physics.applyImpulse
 tell when the player walks into a trigger area	og.SensorEntered
 raycast all hits along a ray	og.physics.castRayAll
-door hinge joint	JOINT_REVOLUTE | og.Joint
+door hinge joint	og.Joint
 charcter controler	og.CharacterController
 the screen trembles when the player gets hit	og.camera.shake
 pixel position of an enemy's head so I can draw a label over it	Camera.worldToScreen
@@ -24,12 +24,12 @@ decal for bullet holes	og.Decal
 box geometry for a cube mesh	og.render.boxGeometry
 partical emitter	og.ParticleSystem | og.load.emitter
 make text bigger for accessibility	UiDesc | og.ui.configure
-hold the button down to delete a save	components §1 | components §11
-short message popup that goes away on its own	og.ui.toast
-weapon wheel chosen with the right stick	screens §7
-on-screen virtual joystick for mobile	components §37
-plus and minus buttons to pick how many players	components §26
-on off switch for the music	components §18
+hold the button down to delete a save	components §44
+short message popup that goes away on its own	components §201
+weapon wheel chosen with the right stick	components §57 | screens §7
+on-screen virtual joystick for mobile	components §63
+plus and minus buttons to pick how many players	components §207
+on off switch for the music	components §207
 make the hand reach for the door handle	og.IkChain
 hair and tail that jiggle when the character moves	og.SpringBone
 sprite sheet animation	og.Flipbook
@@ -144,7 +144,7 @@ lines of a conversation shown one at a time with choices	og.story.view
 show numbers like 1.2K for big scores in the player's language	og.i18n.formatCompact
 let the player switch the game to German in the settings menu	og.i18n.setLocale
 slow motion for only the enemies, not the player	og.time.setGroupScale
-smoothly slide a menu panel to a new position over half a second	og.tween.to
+smoothly slide a menu panel to a new position over half a second	og.tween.to | screens §8
 grass and flowers sprinkled across the hills near the camera	og.TerrainScatter
 a cliff overhang the heightmap cannot express	og.TerrainStamp
 read which tile is at the mouse in my 2D level	og.tilemap.cellAt

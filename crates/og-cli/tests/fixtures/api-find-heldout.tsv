@@ -1,13 +1,13 @@
 query	expected
 show a little arrow from the gun to where it points while debugging	og.debug.arrow
 a number counting down on screen until the round ends	screens §7
-let the player choose one option from a list that drops open	components §30
-a volume bar the player drags left and right	og.ui.slider
-switch between inventory, map and settings pages along the top	og.ui.tabs
-confetti when the player wins	og.ui.celebration
-a red health bar over the HUD	components §30 | screens §7
+let the player choose one option from a list that drops open	components §207
+a volume bar the player drags left and right	components §207
+switch between inventory, map and settings pages along the top	components §133 | components §207
+confetti when the player wins	components §34
+a red health bar over the HUD	components §61 | components §32
 a small map in the corner showing where enemies are	screens §7
-type the player's name into a box	components §26
+type the player's name into a box	og.TextInput | screens §2
 the player's highscore and the scores just above and below theirs	og.platform.leaderboardAround
 unlock a trophy once the player has collected 50 coins	og.platform.achievementProgress
 open the share sheet so the player can post their result	og.platform.share
