@@ -9,7 +9,6 @@
 use crate::RenderError;
 use crate::deferred::Deferred;
 use crate::scene::{Overlay, TextureArrayHandle, TextureHandle};
-use crate::sprites::FontLayout;
 use crate::ui::build::{self as ub, ShapePipe, ShapeSource, UiGpu, UiTables};
 use crate::ui::{UiLayer, UiVectorData, UiVectorHandle};
 use glam::Vec2;
@@ -60,6 +59,9 @@ pub(crate) enum OverlaySource {
     /// [`crate::ui::UiList::mass`]' batch `n`: mass elements, instanced
     /// from the frame's mass buffer (`shaders/ui_mass.wgsl`).
     Mass(u32),
+    /// Batch `n`'s glyph template `t` (one page of the glyph atlas, one
+    /// per page the batch's glyphs lie on), instanced from the same buffer.
+    MassPage(u32, u16, og_draw::glyphs::GlyphTier, u16),
 }
 
 impl OverlaySource {
@@ -232,13 +234,12 @@ pub(crate) struct OverlayTarget {
 
 /// Sorts an overlay's sprites, texts, glass and UI into runs (the world
 /// batch's order). `sides`: the glyph atlas's page side by tier, which
-/// its texts' glyphs read. `array_layers(a)`: the layers of an uploaded texture
-/// array (`None`: not uploaded or removed). A sprite drawn from an array
-/// ([`Overlay::sprite_arrays`]) joins its array's run.
+/// its texts' glyphs and mass templates read. `array_layers(a)`: the layers of
+/// an uploaded texture array (`None`: not uploaded or removed). A sprite drawn
+/// from an array ([`Overlay::sprite_arrays`]) joins its array's run.
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn build<'a>(
     overlay: &Overlay,
-    font: impl Fn(usize) -> Option<&'a FontLayout>,
     texture_count: usize,
     array_layers: impl Fn(TextureArrayHandle) -> Option<u32>,
     vector: impl Fn(UiVectorHandle) -> Option<&'a UiVectorData>,
@@ -405,21 +406,13 @@ pub(crate) fn build<'a>(
         }
     }
     sprites += uv.len() as u32;
-    // Mass elements: one run per batch.
+    // Mass elements: one run per batch, and per page of the glyph atlas a
+    // text batch's glyphs lie on.
     let mut mass_templates = Vec::with_capacity(ui.mass.len());
     let mut mass_table = Vec::new();
     mass_eases.begin_frame();
     for (k, b) in ui.mass.iter().enumerate() {
         let t = &b.template;
-        let font_layout = match (&t.kind, t.font) {
-            (
-                crate::ui::UiMassKind::Number { .. } | crate::ui::UiMassKind::Text { .. },
-                Some(f),
-            ) => Some(font(f.index()).ok_or_else(|| {
-                RenderError::InvalidHandle(format!("ui mass batch {k}: font {}", f.index()))
-            })?),
-            _ => None,
-        };
         if let Some(tex) = t.texture
             && tex.index() >= texture_count
         {
@@ -429,14 +422,71 @@ pub(crate) fn build<'a>(
             )));
         }
         let clip = clip_rect(overlay, &heads, b.clip, &format!("ui mass batch {k}"))?;
-        mass_templates.push(crate::ui::mass::template_gpu(
-            b,
-            clip,
-            font_layout,
-            &mut mass_table,
-            mass_eases,
-        ));
-        if !b.instances.is_empty() && k < crate::ui::UI_MASS_BATCHES {
+        let text = matches!(
+            &t.kind,
+            crate::ui::UiMassKind::Number { .. } | crate::ui::UiMassKind::Text { .. }
+        );
+        if !text {
+            mass_templates.push(crate::ui::mass::template_gpu(
+                b,
+                clip,
+                sides,
+                None,
+                &mut mass_table,
+                mass_eases,
+            ));
+            if !b.instances.is_empty() && k < crate::ui::UI_MASS_BATCHES {
+                let count = if b.depth_sort.is_some() {
+                    b.instances.len()
+                } else {
+                    1
+                };
+                for index in 0..count {
+                    keyed.push((
+                        target_of(b.layer, layers),
+                        b.layer,
+                        OverlaySource::Mass(k as u32),
+                        index as u32,
+                    ));
+                }
+            }
+            continue;
+        }
+        // The batch draws once per page its glyphs lie on: each page's
+        // template packs its glyphs, the rest taking blanks that keep the
+        // numbers' widths. No instances, no draws, no templates.
+        if b.instances.is_empty() {
+            continue;
+        }
+        let mut pages: Vec<(og_draw::glyphs::GlyphTier, u16)> = match &t.kind {
+            crate::ui::UiMassKind::Number { glyphs, .. } => glyphs
+                .iter()
+                .filter(|g| g.glyph.rect[2] > g.glyph.rect[0])
+                .map(|g| (g.glyph.tier, g.glyph.page))
+                .collect(),
+            crate::ui::UiMassKind::Text { strings } => strings
+                .iter()
+                .flat_map(|s| s.glyphs.iter())
+                .filter(|g| g.glyph.rect[2] > g.glyph.rect[0])
+                .map(|g| (g.glyph.tier, g.glyph.page))
+                .collect(),
+            _ => Vec::new(),
+        };
+        og_core::sort::sort_by(&mut pages, |a, b| a.cmp(b));
+        pages.dedup();
+        for (tier, page) in pages {
+            let ti = mass_templates.len() as u16;
+            if (ti as usize) >= crate::ui::UI_MASS_BATCHES {
+                break;
+            }
+            mass_templates.push(crate::ui::mass::template_gpu(
+                b,
+                clip,
+                sides,
+                Some((tier, page)),
+                &mut mass_table,
+                mass_eases,
+            ));
             let count = if b.depth_sort.is_some() {
                 b.instances.len()
             } else {
@@ -446,7 +496,7 @@ pub(crate) fn build<'a>(
                 keyed.push((
                     target_of(b.layer, layers),
                     b.layer,
-                    OverlaySource::Mass(k as u32),
+                    OverlaySource::MassPage(k as u32, ti, tier, page),
                     index as u32,
                 ));
             }
@@ -676,8 +726,9 @@ pub(crate) fn build<'a>(
     // CSS text-shadow composites precede the glyph fill on the same
     // painter level. og-ui gives shadowed text its own overlap boundary.
     let depth = |source: OverlaySource, index: u32| {
-        let OverlaySource::Mass(k) = source else {
-            return None;
+        let k = match source {
+            OverlaySource::Mass(k) | OverlaySource::MassPage(k, ..) => k,
+            _ => return None,
         };
         let batch = &ui.mass[k as usize];
         batch.depth_sort.map(|axis| {
@@ -715,7 +766,12 @@ pub(crate) fn build<'a>(
         if over_ui {
             ui_at = Some(runs.len());
         }
-        if let OverlaySource::Mass(k) = source {
+        let mass = match source {
+            OverlaySource::Mass(k) => Some((k, k)),
+            OverlaySource::MassPage(k, ti, ..) => Some((k, u32::from(ti))),
+            _ => None,
+        };
+        if let Some((k, template)) = mass {
             let first = mass_instances.len() as u32;
             let batch = &ui.mass[k as usize];
             let instances = if batch.depth_sort.is_some() {
@@ -723,9 +779,10 @@ pub(crate) fn build<'a>(
             } else {
                 &batch.instances
             };
+            // A page's draw reads its own template of the batch's.
             mass_instances.extend(instances.iter().map(|i| {
                 let mut i = *i;
-                i.batch = k;
+                i.batch = template;
                 i
             }));
             let count = mass_instances.len() as u32 - first;

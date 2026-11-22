@@ -174,14 +174,7 @@ impl Renderer {
                         continue;
                     };
                     let t = &batch.template;
-                    let texture = match t.kind {
-                        super::super::UiMassKind::Number { .. }
-                        | super::super::UiMassKind::Text { .. } => {
-                            t.font.map(|f| &self.cache.fonts[f.index()].bind_group)
-                        }
-                        _ => None,
-                    }
-                    .unwrap_or_else(|| sprite_group(t.texture));
+                    let texture = sprite_group(t.texture);
                     let stride = std::mem::size_of::<super::super::UiMassInstance>() as u64;
                     let Some(pipeline) = ui.mass.get() else {
                         continue;
@@ -196,6 +189,33 @@ impl Renderer {
                         ),
                     );
                     pass.draw(0..6 * t.quads(), 0..run.count);
+                }
+                OverlaySource::MassPage(k, _, tier, page) => {
+                    let (Some(group), Some(page_group), Some(batch)) = (
+                        self.ui.frame.mass.as_ref(),
+                        self.paint.glyph_group(tier, page),
+                        scene
+                            .ui
+                            .overlay
+                            .as_ref()
+                            .and_then(|o| o.ui.mass.get(k as usize)),
+                    ) else {
+                        continue;
+                    };
+                    let stride = std::mem::size_of::<super::super::UiMassInstance>() as u64;
+                    let Some(pipeline) = ui.mass.get() else {
+                        continue;
+                    };
+                    pass.set_pipeline(pipeline);
+                    pass.set_bind_group(1, page_group, &[]);
+                    pass.set_bind_group(2, group, &[]);
+                    pass.set_vertex_buffer(
+                        0,
+                        self.ui.mass_instances.slice(
+                            run.first as u64 * stride..(run.first + run.count) as u64 * stride,
+                        ),
+                    );
+                    pass.draw(0..6 * batch.template.quads(), 0..run.count);
                 }
                 OverlaySource::Vector(h) => {
                     let Some(mesh) = self.ui.vectors.get(&(scene.id(), h.index())) else {

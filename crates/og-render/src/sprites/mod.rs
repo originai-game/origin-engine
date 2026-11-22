@@ -269,10 +269,9 @@ pub(crate) struct SpriteRun {
     pub tone_mapped: bool,
 }
 
-/// The glyph table of one font, by key, and its kerning pairs.
+/// The glyph table of one font, by key.
 pub(crate) struct FontLayout {
     pub glyphs: HashMap<GlyphKey, Glyph>,
-    pub kerning: HashMap<(char, char), f32>,
     pub atlas_size: Vec2,
     /// A page of colour glyphs ([`MsdfFont::distance_range`] 0).
     pub color: bool,
@@ -284,11 +283,6 @@ impl FontLayout {
     pub fn new(font: &MsdfFont, atlas_size: Vec2) -> FontLayout {
         FontLayout {
             glyphs: font.glyphs.iter().map(|g| (g.key, *g)).collect(),
-            kerning: font
-                .kerning
-                .iter()
-                .map(|k| ((k.left, k.right), k.adjust))
-                .collect(),
             atlas_size,
             color: font.distance_range == 0.0,
             foreground: font.foreground,

@@ -16,8 +16,8 @@
 //! The shader uses exact simple opcodes or a deduplicated 4097-sample LUT;
 //! readback tests measure approximation error and preserve step boundaries.
 
-use glam::Vec2;
 use og_core::ease::{Ease, StepPosition};
+use og_draw::glyphs::GlyphTier;
 pub use og_draw::ui::mass::*;
 use std::collections::BTreeMap;
 
@@ -191,11 +191,6 @@ pub(crate) struct MassCameraGpu {
     pub tick: [u32; 4],
 }
 
-/// The symbols a number draws, in the order of the shader's codes.
-const NUMBER_SYMBOLS: [char; 16] = [
-    '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '+', '-', '.', 'k', 'M', ' ',
-];
-
 const FLAG_WORLD: u32 = 1;
 const FLAG_OCCLUDE: u32 = 2;
 const FLAG_HIDE: u32 = 4;
@@ -205,32 +200,36 @@ const FLAG_COMPACT: u32 = 32;
 const FLAG_DISTANCE: u32 = 64;
 const FLAG_DRAG: u32 = 128;
 
-/// A glyph's three table entries: its uv, its plane bounds moved by `pen`
-/// (em), its advance.
-fn glyph_entries(font: &crate::sprites::FontLayout, ch: char, pen: f32, out: &mut Vec<[f32; 4]>) {
-    match font.glyphs.get(&crate::GlyphKey::Char(ch)) {
-        Some(g) => {
-            let [al, at, ar, ab] = g.atlas_bounds;
-            let size = font.atlas_size.max(Vec2::ONE);
-            let [l, b, r, t] = g.plane_bounds;
-            out.push([al / size.x, at / size.y, ar / size.x, ab / size.y]);
-            out.push([l + pen, b, r + pen, t]);
-            out.push([g.advance, 0.0, 0.0, 0.0]);
-        }
-        None => {
-            out.push([0.0; 4]);
-            out.push([0.0; 4]);
-            out.push([0.0; 4]);
-        }
-    }
+/// A template glyph's three table entries: its uv (texels over the page's
+/// side), its quad (em) and its advance, with a colour glyph's flag in the
+/// advance texel.
+fn glyph_entries(g: &UiMassGlyph, side: f32, out: &mut Vec<[f32; 4]>) {
+    let [ul, ut, ur, ub] = g.glyph.uv.map(f32::from);
+    out.push([ul / side, ut / side, ur / side, ub / side]);
+    out.push(g.glyph.rect);
+    out.push([g.advance, u32::from(g.glyph.tier == GlyphTier::Color) as f32, 0.0, 0.0]);
+}
+
+/// The blank entries of a glyph that draws from another page of the glyph
+/// atlas (or found none): no uv, an empty quad, but its own advance, which
+/// the number's pen still moves by.
+fn blank_entries(advance: f32, out: &mut Vec<[f32; 4]>) {
+    out.push([0.0; 4]);
+    out.push([0.0; 4]);
+    out.push([advance, 0.0, 0.0, 0.0]);
 }
 
 /// Batch `b`'s template on the GPU, its glyphs, strings or frames appended
 /// to `table`. `clip`: its clip rectangle (x0, y0, x1, y1) and clip head.
+/// `sides`: the glyph atlas's page side by tier, which its glyphs' texels
+/// read. `page`: which page of the glyph atlas this table packs its text
+/// from (`None`: a kind with no text; a text kind's glyphs from the other
+/// pages take blank entries that keep their advances).
 pub(crate) fn template_gpu(
     b: &UiMassBatch,
     clip: ([f32; 4], u32),
-    font: Option<&crate::sprites::FontLayout>,
+    sides: [f32; 3],
+    page: Option<(GlyphTier, u16)>,
     table: &mut Vec<[f32; 4]>,
     eases: &mut EaseTables,
 ) -> TemplateGpu {
@@ -259,6 +258,7 @@ pub(crate) fn template_gpu(
             decimals,
             plus,
             compact,
+            glyphs,
         } => {
             if *plus {
                 flags |= FLAG_PLUS;
@@ -266,43 +266,49 @@ pub(crate) fn template_gpu(
             if *compact {
                 flags |= FLAG_COMPACT;
             }
-            for ch in NUMBER_SYMBOLS {
-                match font {
-                    Some(f) => glyph_entries(f, ch, 0.0, table),
-                    None => table.extend([[0.0; 4]; 3]),
+            // The symbols in the shader's code order, whether this page has
+            // them or not: the shader places each by the advances before it.
+            for code in 0..NUMBER_SYMBOLS.len() {
+                match glyphs.get(code) {
+                    Some(g) if g.glyph.rect[2] > g.glyph.rect[0] => {
+                        if Some((g.glyph.tier, g.glyph.page)) == page {
+                            glyph_entries(g, sides[g.glyph.tier as usize].max(1.0), table);
+                        } else {
+                            blank_entries(g.advance, table);
+                        }
+                    }
+                    Some(g) => blank_entries(g.advance, table),
+                    None => blank_entries(0.0, table),
                 }
             }
-            (0, 16, *decimals)
+            (0, NUMBER_SYMBOLS.len() as u32, *decimals)
         }
         UiMassKind::Text { strings } => {
-            // The runs first (start, count, width), then every string's
-            // glyphs laid out with the font's advances and kerning.
+            // The runs first (start, count, width), then the page's glyphs
+            // in string order, each's pen in its quad; a string's glyphs
+            // from the other pages take no entry, its run on this page
+            // counts the ones it has.
             let runs = table.len();
             table.extend(std::iter::repeat_n([0.0; 4], strings.len()));
             let mut start = 0usize;
+            let mut on_page = Vec::new();
             for (i, s) in strings.iter().enumerate() {
-                let mut pen = 0.0;
-                let mut prev: Option<char> = None;
                 let mut count = 0usize;
-                for ch in s.chars().take(UI_MASS_QUADS as usize) {
-                    if let (Some(f), Some(p)) = (font, prev) {
-                        pen += f.kerning.get(&(p, ch)).copied().unwrap_or(0.0);
+                for g in &s.glyphs {
+                    if let Some((tier, page)) = page
+                        && g.glyph.rect[2] > g.glyph.rect[0]
+                        && g.glyph.tier == tier
+                        && g.glyph.page == page
+                    {
+                        on_page.push(g);
+                        count += 1;
                     }
-                    match font {
-                        Some(f) => {
-                            glyph_entries(f, ch, pen, table);
-                            pen += f
-                                .glyphs
-                                .get(&crate::GlyphKey::Char(ch))
-                                .map_or(0.0, |g| g.advance);
-                        }
-                        None => table.extend([[0.0; 4]; 3]),
-                    }
-                    prev = Some(ch);
-                    count += 1;
                 }
-                table[runs + i] = [start as f32, count as f32, pen, 0.0];
+                table[runs + i] = [start as f32, count as f32, s.width, 0.0];
                 start += count;
+            }
+            for g in &on_page {
+                glyph_entries(g, sides[g.glyph.tier as usize].max(1.0), table);
             }
             (1, strings.len() as u32, 0)
         }
@@ -372,6 +378,7 @@ pub(crate) fn template_gpu(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use glam::Vec2;
     use std::sync::Arc;
 
     #[test]
@@ -466,10 +473,12 @@ mod tests {
                 clip: None,
                 depth_sort: None,
             };
-            texels
-                .extend(template_gpu(&batch, ([0.0; 4], 0), None, &mut table, &mut cache).texels());
+            texels.extend(
+                template_gpu(&batch, ([0.0; 4], 0), [1.0; 3], None, &mut table, &mut cache)
+                    .texels(),
+            );
             let bytes = table.len();
-            template_gpu(&batch, ([0.0; 4], 0), None, &mut table, &mut cache);
+            template_gpu(&batch, ([0.0; 4], 0), [1.0; 3], None, &mut table, &mut cache);
             assert_eq!(table.len(), bytes, "same curve does not duplicate its LUT");
             // Prime spacing exercises interpolation, not just LUT knots.
             let mut times: Vec<_> = (0..=4093).map(|i| i as f32 / 4093.0).collect();
