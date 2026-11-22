@@ -22,7 +22,7 @@ export function RpgStats(props: RpgStatsProps) {
           <View class={`flex-col w-full pb-2`} role="group">
             <For each={props.rows ?? []} key={(r) => r.id}>
               {(r) => r().group === g().id ? (
-                <View class={`flex-row items-center min-h-8 py-1 w-full shadow-[inset_0px_-1px_0px_0px_#ffffff24]`} role="row">
+                <View class={`flex-row items-center min-h-8 py-1 w-full inset-shadow-underline inset-shadow-sheen`} role="row">
                   <Icon class={`shrink size-4 text-fg-muted`} name={r().icon} />
                   <Text class={`grow min-w-0 text-caption font-semibold text-fg-muted`} role="rowheader">{r().label}</Text>
                   <Text class={`shrink whitespace-nowrap text-lg font-bold tabular-nums text-fg`} role="cell">{r().value}</Text>
@@ -38,7 +38,7 @@ export function RpgStats(props: RpgStatsProps) {
     <View class={`flex-col size-full p-4 compact:p-2 nine-panel-cut bg-raised-pressed text-fg ${packClass("Panel", "frame")}`} label={props.title}>
       <View class={`shrink flex-row items-center justify-center gap-3 w-full`}>
         <View class="shrink-0 w-12 h-4" />
-        <Text class={`min-w-0 text-title leading-[1.1] font-bold tracking-sm uppercase text-fg text-center whitespace-normal`} role="heading" level={2}>
+        <Text class={`min-w-0 text-title leading-tight font-bold tracking-sm uppercase text-fg text-center whitespace-normal`} role="heading" level={2}>
           {props.title}
         </Text>
         <View class="shrink-0 w-12 h-4" />

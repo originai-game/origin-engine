@@ -53,7 +53,7 @@ export function RpgLeader(props: RpgLeaderProps) {
         <View class="flex-row flex-wrap items-baseline gap-x-1 min-w-0">
           <View class="flex-row items-baseline gap-x-1 min-w-0 shrink">
             <Show when={props.name !== ""}>
-              <Text class={`min-w-0 text-[1.214rem] font-semibold whitespace-nowrap overflow-hidden text-fg compact:text-base`}>
+              <Text class={`min-w-0 text-base font-semibold whitespace-nowrap overflow-hidden text-fg compact:text-base`}>
                 {props.name}
               </Text>
             </Show>
@@ -65,7 +65,7 @@ export function RpgLeader(props: RpgLeaderProps) {
           </View>
           <Show when={props.healthMax > 0}>
             <View class="flex-row items-baseline gap-x-1 ml-auto shrink">
-              <Text class={`shrink text-[1.214rem] leading-none font-bold tabular-nums whitespace-nowrap text-fg data-low:text-danger compact:text-base`} data-low={low()}>
+              <Text class={`shrink text-base leading-none font-bold tabular-nums whitespace-nowrap text-fg data-low:text-danger compact:text-base`} data-low={low()}>
                 {formatNumber(props.health < 0 ? 0 : props.health)}
               </Text>
               <Text class={`shrink text-base font-bold tabular-nums whitespace-nowrap text-fg-muted compact:text-caption`}>

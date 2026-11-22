@@ -37,7 +37,7 @@ export function RpgPlaceCard(props: RpgPlaceCardProps) {
         </View>
       </Show>
       <View class="flex-col justify-center min-w-0 grow gap-y-1 py-3 px-4 compact:py-2 compact:px-3">
-        <Text role="heading" level={3} class={`max-w-full text-left text-display-lg leading-[1.05] font-bold whitespace-nowrap overflow-hidden text-fg compact:text-3xl`}>
+        <Text role="heading" level={3} class={`max-w-full text-left text-display-lg leading-flat font-bold whitespace-nowrap overflow-hidden text-fg compact:text-3xl`}>
           {props.name}
         </Text>
         <View class="w-full h-0.5 shrink-0 bg-linear-to-r from-gold to-transparent" />

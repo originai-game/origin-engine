@@ -20,7 +20,7 @@ export function RpgCommands(props: RpgCommandsProps) {
       class={`flex-col w-full text-fg nine-panel-cut bg-plate-hi p-2 gap-y-2 ${packClass("Panel", "frame")}`}
       label={t("rpg.commands.name")}
     >
-      <View class={`flex-row items-center justify-center w-full shrink-0 min-h-8 py-0.5 px-3 shadow-[inset_0px_-1px_0px_#343d4f]`}>
+      <View class={`flex-row items-center justify-center w-full shrink-0 min-h-8 py-0.5 px-3 inset-shadow-underline inset-shadow-rim-soft`}>
         <Text
           role="heading"
           level={3}
@@ -33,7 +33,7 @@ export function RpgCommands(props: RpgCommandsProps) {
         <For each={props.commands ?? []} key={(c) => c.id}>
           {(c) => (
           <View
-            class={`flex-row items-center justify-center gap-1 group/cmd flex h-19.25 min-w-0 p-0 bg-tile bg-linear-to-b from-shade to-transparent to-55% rounded-field shadow-[inset_0px_0px_0px_1px_#343d4f] hover:shadow-[inset_0px_0px_0px_1px_#8892a8] data-selected:shadow-[inset_0px_0px_0px_2px_#e8e8ed,inset_0px_3px_0px_#ffffff80] disabled:text-fg-subtle ${packClass("Button", "plate", c().id === props.selected ? "primary" : undefined)}`}
+            class={`flex-row items-center justify-center gap-1 group/cmd flex h-19.25 min-w-0 p-0 bg-tile rounded-field inset-ring-1 inset-ring-rim-soft hover:inset-ring-1 hover:inset-ring-well-rim data-selected:inset-shadow-lit data-selected:inset-ring-2 data-selected:inset-ring-accent disabled:text-fg-subtle ${packClass("Button", "plate", c().id === props.selected ? "primary" : undefined)}`}
             role="button"
             label={c().label}
             selected={c().id === props.selected}

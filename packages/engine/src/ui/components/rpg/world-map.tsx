@@ -93,12 +93,12 @@ export function RpgWorldMap(props: RpgWorldMapProps) {
                   onPress={(e) => props.onChoose?.(e, m().id)}
                 >
                   <Show when={m().id === props.selected}>
-                    <View class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 size-16 rounded-full shadow-[0px_0px_0px_2.288px_#ffffffeb,0px_0px_0px_6.857px_#ffcf5a59,0px_0px_22.857px_#ffcf5ab3]" />
+                    <View class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 size-16 rounded-full shadow-glow-lg shadow-gold ring-2 ring-rim-strong" />
                   </Show>
                   <View class="relative flex-row items-center justify-center size-7.5 group-data-selected/marker:size-10">
                     <Switch fallback={
                       <Show when={m().kind === "player"}>
-                        <View class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 size-71/100 rounded-full bg-hud-accent shadow-[0px_0px_0px_5px_#38e8ff47,0px_0px_0px_11px_#38e8ff1f,0px_0px_20px_#38e8ff]" />
+                        <View class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 size-71/100 rounded-full bg-hud-accent shadow-glow-lg ring-5 ring-entry-grain" />
                         <Line class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 size-3/5 rotate-35 stroke-hud-accent-fg" points={[8, 1, 14, 14, 8, 10.5, 2, 14]} closed />
                       </Show>
                     }>
@@ -117,7 +117,7 @@ export function RpgWorldMap(props: RpgWorldMapProps) {
                         </View>
                       </Match>
                       <Match when={m().kind === "waypoint"}>
-                        <View class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 size-71/100 rounded-full bg-hud-accent shadow-[0px_0px_10px_#38e8ff99]" />
+                        <View class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 size-71/100 rounded-full bg-hud-accent shadow-glow" />
                         <View class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 size-7/20 rounded-full bg-tile" />
                       </Match>
                     </Switch>
@@ -133,7 +133,7 @@ export function RpgWorldMap(props: RpgWorldMapProps) {
       </View>
       <Show when={props.here}>
         <View class={`absolute left-2 top-2 flex-row items-center gap-1 py-0.5 px-2 nine-plate-cut bg-plate-hi compact:left-1 compact:top-1 text-fg ${packClass("Plate", "frame")}`}>
-          <View class={`shrink size-4 rounded-full bg-hud-accent shadow-[0px_0px_10px_#38e8ff99]`} />
+          <View class={`shrink size-4 rounded-full bg-hud-accent shadow-glow`} />
           <Text class={`text-caption whitespace-nowrap`}>{props.here}</Text>
         </View>
       </Show>

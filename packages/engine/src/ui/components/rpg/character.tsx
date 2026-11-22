@@ -44,7 +44,7 @@ export function RpgCharacter(props: RpgCharacterProps) {
       data-dense={props.dense}
     >
       <Show when={props.title !== ""} fallback={
-          <View class={`flex-row items-start w-full gap-x-3 pb-2 shadow-[inset_0px_-1px_0px_#ffffff24]`}>
+          <View class={`flex-row items-start w-full gap-x-3 pb-2 inset-shadow-underline inset-shadow-sheen`}>
             <Show when={props.portrait !== 0}>
               <Image
                 class={`size-16 shrink-0 rounded-block compact:size-12`}
@@ -54,7 +54,7 @@ export function RpgCharacter(props: RpgCharacterProps) {
             </Show>
             <View class={`flex-col items-start min-w-0 gap-y-0.5`}>
               <Text
-                class={`max-w-full text-3xl leading-[1.05] font-bold tracking-label uppercase text-fg compact:text-xl`}
+                class={`max-w-full text-3xl leading-flat font-bold tracking-label uppercase text-fg compact:text-xl`}
               >
                 {props.name}
               </Text>
@@ -70,14 +70,14 @@ export function RpgCharacter(props: RpgCharacterProps) {
         <View class={`flex-row items-center justify-center w-full shrink-0`}>
           <View class={`w-12 h-4 shrink-0`} />
           <Text
-            class={`min-w-0 text-title leading-[1.1] font-bold tracking-label uppercase text-fg text-center whitespace-normal`}
+            class={`min-w-0 text-title leading-tight font-bold tracking-label uppercase text-fg text-center whitespace-normal`}
           >
             {props.title}
           </Text>
           <View class={`w-12 h-4 shrink-0`} />
         </View>
       </Show>
-      <View class={`relative flex-row justify-between w-full px-1 py-2 bg-linear-to-b from-hud-accent/10 to-transparent`}>
+      <View class={`relative flex-row justify-between w-full px-1 py-2 bg-linear-to-b from-hud-accent to-transparent`}>
         <Show when={props.figure !== 0}>
           <View class={`absolute left-9/50 top-0 bottom-0 w-16/25`}>
             <Image class={`size-full`} src={props.figure} label="" />
@@ -148,7 +148,7 @@ export function RpgCharacter(props: RpgCharacterProps) {
       </View>
       <Show when={(props.attributes ?? []).length}>
         <View
-          class={`flex flex-wrap items-stretch w-full gap-x-3 gap-y-1 pt-2 shadow-[inset_0px_1px_0px_#ffffff24] group-data-dense/sheet:gap-x-2`}
+          class={`flex flex-wrap items-stretch w-full gap-x-3 gap-y-1 pt-2 inset-shadow-lit group-data-dense/sheet:gap-x-2`}
           role="table"
           label={t("rpg.character.attributes")}
         >
@@ -156,7 +156,7 @@ export function RpgCharacter(props: RpgCharacterProps) {
             <For each={props.attributes ?? []} key={(a) => a.id}>
               {(a) => (
               <Show when={a().group === "a"}>
-                <View class={`flex-row items-center gap-2 py-1 shadow-[inset_0px_-1px_0px_#ffffff24]`} role="row">
+                <View class={`flex-row items-center gap-2 py-1 inset-shadow-underline inset-shadow-sheen`} role="row">
                   <Icon class={`text-fg-muted size-4 shrink-0 group-data-dense/sheet:hidden`} name={a().icon} />
                   <Text class={`min-w-0 grow text-caption font-semibold text-fg-muted`} role="rowheader">
                     {a().label}
@@ -174,7 +174,7 @@ export function RpgCharacter(props: RpgCharacterProps) {
             <For each={props.attributes ?? []} key={(a) => a.id}>
               {(a) => (
               <Show when={a().group === "b"}>
-                <View class={`flex-row items-center gap-2 py-1 shadow-[inset_0px_-1px_0px_#ffffff24]`} role="row">
+                <View class={`flex-row items-center gap-2 py-1 inset-shadow-underline inset-shadow-sheen`} role="row">
                   <Icon class={`text-fg-muted size-4 shrink-0 group-data-dense/sheet:hidden`} name={a().icon} />
                   <Text class={`min-w-0 grow text-caption font-semibold text-fg-muted`} role="rowheader">
                     {a().label}

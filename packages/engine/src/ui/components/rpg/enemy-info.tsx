@@ -29,7 +29,7 @@ export function RpgEnemyInfo(props: RpgEnemyInfoProps) {
       class={`flex-col items-center w-full text-fg text-stroke-3 text-stroke-bg nine-plate-cut bg-plate-hi p-2 gap-y-2 ${packClass("Plate", "frame")}`}
       label={props.name}
     >
-      <View class={`flex-row items-center justify-center w-full shrink-0 min-h-8 py-0.5 px-3 shadow-[inset_0px_-1px_0px_#343d4f]`}>
+      <View class={`flex-row items-center justify-center w-full shrink-0 min-h-8 py-0.5 px-3 inset-shadow-underline inset-shadow-rim-soft`}>
         <Text
           role="heading"
           level={3}

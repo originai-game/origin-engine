@@ -38,7 +38,7 @@ export function RpgParty(props: RpgPartyProps) {
                   <Image class="absolute inset-0 size-full" src={m().portrait} />
                 </Show>
               </View>
-              <View class={`absolute left-1 top-1 w-8 min-h-8 flex-col items-center justify-center py-0 px-1 bg-raised-lo shadow-[inset_0px_0px_0px_1px_#4e586c] rounded-capsule text-fg ${packClass("Chip", "frame")}`} label={m().down ? t("rpg.party.down") : t("rpg.party.level", { level: m().level })}>
+              <View class={`absolute left-1 top-1 w-8 min-h-8 flex-col items-center justify-center py-0 px-1 bg-raised-lo inset-ring-1 inset-ring-rim rounded-capsule text-fg ${packClass("Chip", "frame")}`} label={m().down ? t("rpg.party.down") : t("rpg.party.level", { level: m().level })}>
                 <Show when={!m().down} fallback={
                     <Icon class="size-4" name="skull" />
                 }>

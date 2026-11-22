@@ -26,7 +26,7 @@ export function RpgCombo(props: RpgComboProps) {
     >
       <Show when={props.count > 0}>
         <View class={`flex-row items-baseline justify-end max-w-full min-w-0 gap-1`}>
-          <Text class={`shrink-0 text-[4.429rem] leading-[0.9] font-bold italic tabular-nums whitespace-nowrap compact:text-4xl animate-pop`}>
+          <Text class={`shrink-0 text-8xl leading-flat font-bold italic tabular-nums whitespace-nowrap compact:text-4xl animate-pop`}>
             {formatNumber(props.count)}
           </Text>
           <Text
@@ -37,10 +37,10 @@ export function RpgCombo(props: RpgComboProps) {
         </View>
         <Show when={(props.remaining ?? -1) >= 0}>
           <View
-            class={`w-40 max-w-full h-1.5 mt-1.5 overflow-hidden -skew-x-22 bg-track shadow-[0px_0px_0px_1px_#ffffff38,inset_0px_1px_0px_#ffffff24,0px_2px_4px_#00000073] compact:w-27.5 compact:h-1.25 compact:mt-1`}
+            class={`w-40 max-w-full h-1.5 mt-1.5 overflow-hidden -skew-x-22 bg-track shadow-raise ring ring-rim compact:w-27.5 compact:h-1.25 compact:mt-1`}
           >
             <View
-              class={`h-full bg-hud-accent bg-linear-to-b from-white/55 to-transparent to-42% shadow-[2px_0px_10px_#38e8ffbf]`}
+              class={`h-full bg-hud-accent bg-linear-to-b from-sheen to-transparent to-42% shadow-glow`}
               style={{ width: `${Math.min((props.remaining ?? -1) >= 1 ? 1 : props.remaining ?? 0, 1) * 100}%` }}
             />
           </View>

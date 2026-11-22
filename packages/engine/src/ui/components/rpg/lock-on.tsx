@@ -19,10 +19,10 @@ export function RpgLockOn(props: RpgLockOnProps) {
             0°, 70°, 160° and 250°, clockwise from up) as nine-ring Views;
             the accent glow went with the mask. */}
         <View class={`absolute inset-0 animate-pop`}>
-          <View class={`absolute inset-0 nine-ring bg-white`} wipe={1 / 9} wipeStart={0} />
-          <View class={`absolute inset-0 nine-ring bg-white`} wipe={1 / 9} wipeStart={1.2217} />
-          <View class={`absolute inset-0 nine-ring bg-white`} wipe={1 / 9} wipeStart={2.7925} />
-          <View class={`absolute inset-0 nine-ring bg-white`} wipe={1 / 9} wipeStart={4.3633} />
+          <View class={`absolute inset-0 nine-ring bg-fg`} wipe={1 / 9} wipeStart={0} />
+          <View class={`absolute inset-0 nine-ring bg-fg`} wipe={1 / 9} wipeStart={1.2217} />
+          <View class={`absolute inset-0 nine-ring bg-fg`} wipe={1 / 9} wipeStart={2.7925} />
+          <View class={`absolute inset-0 nine-ring bg-fg`} wipe={1 / 9} wipeStart={4.3633} />
         </View>
       </Show>
     </View>
