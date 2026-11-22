@@ -41,6 +41,8 @@ pub mod conform;
 pub mod flow;
 pub use conform::{ConformAction, ConformEntry};
 pub mod riv;
+mod schemas;
+pub use schemas::engine_schemas;
 #[cfg(test)]
 #[path = "../../../../tests/temp.rs"]
 mod test_dir;

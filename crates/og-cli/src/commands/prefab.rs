@@ -90,7 +90,7 @@ fn positional<'a>(args: &[&'a str]) -> Vec<&'a str> {
 fn check(args: &[&str]) -> Result<ExitCode, String> {
     let root = PathBuf::from(positional(args).first().copied().unwrap_or("."));
     let all = texts(&root)?;
-    let schemas: BTreeMap<String, og_core::Schema> = crate::cook::engine_schemas()
+    let schemas: BTreeMap<String, og_core::Schema> = og_cook::cook::engine_schemas()
         .into_iter()
         .map(|s| (s.name.clone(), s))
         .collect();
@@ -185,7 +185,7 @@ fn show(args: &[&str]) -> Result<ExitCode, String> {
     };
     let prefab = og_cook::runtime::asset_id(prefab).to_string();
     let all = texts(&root)?;
-    let schemas: BTreeMap<String, og_core::Schema> = crate::cook::engine_schemas()
+    let schemas: BTreeMap<String, og_core::Schema> = og_cook::cook::engine_schemas()
         .into_iter()
         .map(|s| (s.name.clone(), s))
         .collect();
