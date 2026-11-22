@@ -23,7 +23,17 @@
 //! loudness -16               # normalise the sound to this LUFS (EBU R128); off by default
 //! aiGenerated true           # the footage was made by a generative model (VideoInfo.aiGenerated)
 //! placeholder true           # stand-in footage to replace (og flow list reports it)
+//! alpha true                 # keep the source's alpha (ProRes 4444, QuickTime Animation, PNG, VP8/VP9 WebM)
 //! ```
+//!
+//! `alpha true` keeps the source's alpha channel (refused for a source
+//! without one); without it every frame is opaque. A clip's layers hold
+//! it. A stream's codecs carry no alpha, so each unit is a picture twice
+//! the frame's height (packed alpha): the colour above, the alpha below as
+//! luma (limited range, neutral chroma), its 4:2:0 chroma rows split
+//! cleanly at the even height. rav1d folds the lower half into the frame's
+//! alpha natively and for the poster (og-video's `Decoder::packed_alpha`);
+//! on the web og-render does it on the GPU after the browser's copy.
 //!
 //! A stream (`stream true`: long footage, decoded as it plays) cooks to
 //!
@@ -151,6 +161,9 @@ pub struct VideoDecl {
     /// `placeholder true`: stand-in footage to replace (the skeleton's
     /// clip). Cooked as any other; `og flow list` reports it.
     pub placeholder: bool,
+    /// `alpha true`: the frames keep the source's alpha (a stream's units
+    /// pack it below the colour); otherwise they are opaque.
+    pub alpha: bool,
 }
 
 /// A stream's copy in a codec other than AV1, for browsers whose WebCodecs
@@ -218,6 +231,11 @@ pub struct Probe {
     pub width: u32,
     pub height: u32,
     pub has_audio: bool,
+    /// The video stream's codec (`ffprobe`'s `codec_name`).
+    pub codec: String,
+    /// Whether its pixels carry alpha: an alpha pixel format, or a WebM's
+    /// `alpha_mode` tag (VP8 and VP9 keep alpha beside the picture).
+    pub has_alpha: bool,
 }
 
 /// What a video cooks to, decided when the cook plans.
@@ -279,6 +297,9 @@ impl VideoPlan {
         if self.decl.ai_generated {
             d.push_str(" ai");
         }
+        if self.decl.alpha {
+            d.push_str(" alpha");
+        }
         d
     }
 
@@ -336,6 +357,7 @@ pub fn parse(rel: &str, text: &str, exists: &dyn Fn(&str) -> bool) -> Result<Vid
         loudness: None,
         ai_generated: false,
         placeholder: false,
+        alpha: false,
     };
     let mut max_given = false;
     for e in &doc.body.entries {
@@ -488,9 +510,16 @@ pub fn parse(rel: &str, text: &str, exists: &dyn Fn(&str) -> bool) -> Result<Vid
                     .and_then(|v| v.as_bool())
                     .ok_or_else(|| format!("line {line}: placeholder is true or false"))?;
             }
+            "alpha" => {
+                out.alpha = e
+                    .values
+                    .first()
+                    .and_then(|v| v.as_bool())
+                    .ok_or_else(|| format!("line {line}: alpha is true or false"))?;
+            }
             k => {
                 return Err(format!(
-                    "line {line}: unknown key '{k}' (source, fps, maxSeconds, size, kind, audio, aiGenerated, placeholder, loudness, stream, keyframe, chunk, crf, crf720, renditions)"
+                    "line {line}: unknown key '{k}' (source, fps, maxSeconds, size, kind, audio, aiGenerated, placeholder, alpha, loudness, stream, keyframe, chunk, crf, crf720, renditions)"
                 ));
             }
         }
@@ -577,11 +606,22 @@ pub fn probe(path: &Path) -> Result<Probe, String> {
         .or_else(|| num(&video["duration"]))
         .filter(|d| *d > 0.0)
         .ok_or_else(|| format!("{}: ffprobe gives no duration", path.display()))?;
+    let pix = video["pix_fmt"].as_str().unwrap_or_default();
+    let has_alpha = ["yuva", "gbrap", "ya8", "ya16", "pal8"]
+        .iter()
+        .any(|p| pix.starts_with(p))
+        || ["rgba", "bgra", "argb", "abgr"]
+            .iter()
+            .any(|p| pix.contains(p))
+        || video["tags"]["alpha_mode"].as_str() == Some("1")
+        || video["tags"]["ALPHA_MODE"].as_str() == Some("1");
     Ok(Probe {
         duration,
         width: video["width"].as_u64().unwrap_or(0) as u32,
         height: video["height"].as_u64().unwrap_or(0) as u32,
         has_audio: streams.iter().any(|s| s["codec_type"] == "audio"),
+        codec: video["codec_name"].as_str().unwrap_or_default().to_string(),
+        has_alpha,
     })
 }
 
@@ -606,6 +646,17 @@ pub fn plan(decl: &VideoDecl, probe: Probe, encoder: &str) -> Result<VideoPlan, 
             (w & !1, h)
         }
     };
+    if decl.alpha && !probe.has_alpha {
+        return Err(format!(
+            "`alpha true`, but {} carries no alpha ({}): export it with alpha (ProRes 4444, QuickTime Animation, PNG in .mov, or VP9 WebM with alpha), or leave alpha out",
+            decl.source,
+            if probe.codec.is_empty() {
+                "its codec is unknown"
+            } else {
+                probe.codec.as_str()
+            }
+        ));
+    }
     let seconds = probe.duration.min(decl.max_seconds);
     let frames = ((seconds * f64::from(decl.fps)) - 1e-6).ceil().max(1.0) as u32;
     if decl.stream && (size.0 % 2 != 0 || size.1 % 2 != 0 || size.0 < 64 || size.1 < 64) {
@@ -663,13 +714,43 @@ fn decoded(path: &Path, hash: u64, plan: &VideoPlan) -> Result<Arc<Decoded>, Coo
         .map_err(CookError)
 }
 
-/// Runs ffmpeg for the frames: `fps` filter, bicubic scale, RGBA8; the
-/// count made exactly the plan's (the last frame held, or the extra dropped).
+/// ffmpeg reading `path`: libvpx for a VP8 or VP9 source whose alpha is
+/// kept (ffmpeg's own decoders drop the alpha WebM stores beside the
+/// picture).
+fn reading(path: &Path, plan: &VideoPlan) -> Command {
+    let mut cmd = Command::new(ffmpeg_bin());
+    cmd.args(["-v", "error", "-nostdin", "-y"]);
+    if plan.decl.alpha {
+        match plan.probe.codec.as_str() {
+            "vp9" => {
+                cmd.args(["-c:v", "libvpx-vp9"]);
+            }
+            "vp8" => {
+                cmd.args(["-c:v", "libvpx"]);
+            }
+            _ => {}
+        }
+    }
+    cmd.arg("-i").arg(path);
+    cmd
+}
+
+/// The rows' height a stream's units hold: twice the frame's with packed
+/// alpha (the alpha below the colour).
+pub fn coded_height(plan: &VideoPlan) -> u32 {
+    if plan.decl.alpha {
+        plan.size.1 * 2
+    } else {
+        plan.size.1
+    }
+}
+
+/// Runs ffmpeg for the frames: `fps` filter, bicubic scale, RGBA8 (opaque
+/// unless `alpha true`); the count made exactly the plan's (the last frame
+/// held, or the extra dropped).
 fn decode(path: &Path, plan: &VideoPlan) -> Result<Decoded, String> {
     let (w, h) = plan.size;
-    let out = Command::new(ffmpeg_bin())
-        .args(["-v", "error", "-nostdin", "-i"])
-        .arg(path)
+    let out = reading(path, plan)
         .args(["-t", &plan.decl.max_seconds.to_string(), "-an"])
         .args([
             "-vf",
@@ -689,6 +770,13 @@ fn decode(path: &Path, plan: &VideoPlan) -> Result<Decoded, String> {
     let mut frames: Vec<Vec<u8>> = out.stdout.chunks_exact(per).map(<[u8]>::to_vec).collect();
     if frames.is_empty() {
         return Err(format!("ffmpeg decoded no frames from {}", path.display()));
+    }
+    if !plan.decl.alpha {
+        for f in &mut frames {
+            for a in f.iter_mut().skip(3).step_by(4) {
+                *a = 255;
+            }
+        }
     }
     let want = plan.frames as usize;
     frames.truncate(want);
@@ -734,6 +822,7 @@ pub fn cook_meta(plan: &VideoPlan, stamp: u64) -> Result<(Vec<u8>, Vec<String>),
             0
         },
         ai_generated: u32::from(plan.decl.ai_generated),
+        alpha: u32::from(plan.decl.alpha),
     };
     let mut w = BlobWriter::new(
         format::Video::type_hash(),
@@ -1004,17 +1093,21 @@ fn encode(path: &Path, plan: &VideoPlan) -> Result<Encoded, String> {
     let seconds = f64::from(plan.frames) / f64::from(plan.decl.fps);
     let key = plan.key_interval().to_string();
     let crf = plan.decl.crf.to_string();
-    let mut cmd = Command::new(ffmpeg_bin());
-    cmd.args(["-v", "error", "-nostdin", "-y", "-i"])
-        .arg(path)
-        .args(["-t", &format!("{seconds}"), "-an"])
-        .args([
-            "-vf",
-            &format!(
-                "fps={},scale={w}:{h}:flags=bicubic:out_color_matrix=bt709:out_range=tv,format=yuv420p,tpad=stop_mode=clone:stop=-1",
-                plan.decl.fps
-            ),
-        ])
+    let fps = plan.decl.fps;
+    // Packed alpha: the colour above, the alpha as limited-range luma
+    // with neutral chroma below.
+    let filter = if plan.decl.alpha {
+        format!(
+            "fps={fps},scale={w}:{h}:flags=bicubic,format=rgba,split[c][m];[c]scale=out_color_matrix=bt709:out_range=tv,format=yuv420p[top];[m]alphaextract,scale=out_range=tv,format=yuv420p[bottom];[top][bottom]vstack,tpad=stop_mode=clone:stop=-1"
+        )
+    } else {
+        format!(
+            "fps={fps},scale={w}:{h}:flags=bicubic:out_color_matrix=bt709:out_range=tv,format=yuv420p,tpad=stop_mode=clone:stop=-1"
+        )
+    };
+    let mut cmd = reading(path, plan);
+    cmd.args(["-t", &format!("{seconds}"), "-an"])
+        .args(["-vf", &filter])
         .args(["-frames:v", &plan.frames.to_string()]);
     let crf = plan
         .rendition
@@ -1110,9 +1203,10 @@ fn encode(path: &Path, plan: &VideoPlan) -> Result<Encoded, String> {
             (ivf.width, ivf.height),
         )
     };
-    if e.units.len() != plan.frames as usize || size != (w, h) {
+    let ch = coded_height(plan);
+    if e.units.len() != plan.frames as usize || size != (w, ch) {
         return Err(format!(
-            "ffmpeg encoded {} frames of {}x{} from {}, not the {} of {w}x{h} planned",
+            "ffmpeg encoded {} frames of {}x{} from {}, not the {} of {w}x{ch} planned",
             e.units.len(),
             size.0,
             size.1,
@@ -1179,7 +1273,7 @@ pub fn cook_stream(
     let meta = format::VideoStreamMeta {
         codec: e.codec,
         width: plan.size.0,
-        height: plan.size.1,
+        height: coded_height(plan),
         frames: rows.len() as u32,
         fps: plan.decl.fps,
         key_interval: longest,
@@ -1264,7 +1358,9 @@ pub fn cook_poster(
     stamp: u64,
 ) -> Result<Vec<u8>, CookError> {
     let e = encoded(path, hash, plan)?;
-    let mut d = og_video::decode::Decoder::new(1).map_err(CookError)?;
+    let mut d = og_video::decode::Decoder::new(1)
+        .map_err(CookError)?
+        .packed_alpha(plan.decl.alpha);
     let pic = d
         .decode(&e.units[0].data)
         .map_err(|x| CookError(format!("{}: frame 0: {x}", path.display())))?
@@ -1557,6 +1653,7 @@ mod tests {
         assert!(bad("fps 2.5").contains("whole number"));
         assert!(bad("fps 30").contains("names its file"));
         assert!(bad("loop true").contains("unknown key 'loop'"));
+        assert!(bad("alpha 1").contains("alpha is true or false"));
     }
 
     #[test]
@@ -1577,12 +1674,15 @@ mod tests {
             loudness: None,
             ai_generated: false,
             placeholder: false,
+            alpha: false,
         };
         let probe = Probe {
             duration: 5.0,
             width: 1920,
             height: 1080,
             has_audio: false,
+            codec: "h264".into(),
+            has_alpha: false,
         };
         let p = plan(&decl(30, 4.0), probe.clone(), "").unwrap();
         assert_eq!((p.frames, p.size, p.audio), (120, (1024, 576), false));
@@ -1613,6 +1713,8 @@ mod tests {
                 width: 1920,
                 height: 1080,
                 has_audio: true,
+                codec: "h264".into(),
+                has_alpha: false,
             };
             plan(self, probe, "libsvtav1")
                 .unwrap()

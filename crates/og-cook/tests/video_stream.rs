@@ -332,3 +332,120 @@ fn a_stream_wider_than_720p_gets_a_720p_rendition_for_the_webs_fallback() {
         bytes("clips/same.ogt#stream720")
     );
 }
+
+/// `alpha true` keeps a source's alpha (QuickTime Animation, alpha ramping
+/// 0 to 255 left to right): a clip's layers hold it, and a stream packs it
+/// below the colour, which rav1d folds back (`Decoder::packed_alpha`), as
+/// the poster shows. A source without alpha is refused.
+///
+/// Ways it could fail: the matte packed in full range or with the colour's
+/// chroma (its edges bleed), the stream's height recorded as the packed
+/// one (a texture twice as tall), the fold reading the matte from the wrong
+/// row, or an opaque source cooked as if keyed.
+#[test]
+fn alpha_true_keeps_the_sources_alpha_in_a_clip_and_a_packed_stream() {
+    if og_cook::cook::video::av1_encoder().is_none() {
+        eprintln!("skipped: no ffmpeg with an AV1 encoder");
+        return;
+    }
+    let root = PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join("og-cook-video-alpha");
+    let _ = std::fs::remove_dir_all(&root);
+    let clips = root.join("assets/clips");
+    std::fs::create_dir_all(&clips).unwrap();
+    let made = std::process::Command::new(og_cook::cook::video::ffmpeg_bin())
+        .args(["-v", "error", "-y", "-f", "lavfi", "-i"])
+        .arg("color=c=0x3080c0:size=128x72:rate=10:duration=1,format=rgba,geq=r='r(X,Y)':g='g(X,Y)':b='b(X,Y)':a='X*255/127'")
+        .args(["-c:v", "qtrle"])
+        .arg(clips.join("key.mov"))
+        .status()
+        .unwrap();
+    assert!(made.success());
+    let body = "source \"key.mov\"\nfps 10\nsize 128 72\naudio false\nalpha true\n";
+    std::fs::write(
+        clips.join("clip.ogt"),
+        format!("type video\nversion 1\n---\n{body}"),
+    )
+    .unwrap();
+    std::fs::write(
+        clips.join("stream.ogt"),
+        format!("type video\nversion 1\n---\n{body}stream true\ncrf 20\n"),
+    )
+    .unwrap();
+    let report = cook_project(&root, &CookOptions::default()).unwrap();
+    assert!(report.ok(), "{:?}", report.errors());
+    let b = Bundle::open(&root.join("cooked")).unwrap();
+    // The alpha at a column, averaged down it.
+    let column = |rgba: &[u8], x: usize| -> f64 {
+        (0..72)
+            .map(|y| f64::from(rgba[(y * 128 + x) * 4 + 3]))
+            .sum::<f64>()
+            / 72.0
+    };
+    let ramp = |rgba: &[u8], what: &str| {
+        for (x, want) in [(0, 0.0), (32, 64.0), (64, 128.0), (96, 193.0), (127, 255.0)] {
+            let a = column(rgba, x);
+            assert!(
+                (a - want).abs() < 10.0,
+                "{what}: alpha {a:.1} at x {x}, not {want}"
+            );
+        }
+        // The colour stays the colour, not the matte.
+        assert!(
+            (i32::from(rgba[64 * 4 + 2]) - 0xc0).abs() < 12,
+            "{what}: blue {}",
+            rgba[64 * 4 + 2]
+        );
+    };
+    let meta = b
+        .video(
+            "clips/clip.ogt",
+            b.read("clips/clip.ogt").unwrap().as_slice(),
+        )
+        .unwrap();
+    assert_eq!((meta.alpha, meta.width, meta.height), (1, 128, 72));
+    let layer = b
+        .load_texture("clips/clip.ogt#frames#layer0")
+        .unwrap()
+        .to_texture_data()
+        .unwrap();
+    ramp(&layer.rgba, "a clip's layer");
+    let meta = b
+        .video(
+            "clips/stream.ogt",
+            b.read("clips/stream.ogt").unwrap().as_slice(),
+        )
+        .unwrap();
+    assert_eq!(
+        (meta.alpha, meta.width, meta.height),
+        (1, 128, 72),
+        "the frame's size"
+    );
+    let (s, units) = read_stream(&b, "clips/stream.ogt#stream");
+    assert_eq!(
+        (s.meta.width, s.meta.height),
+        (128, 144),
+        "units are packed, twice as tall"
+    );
+    let mut d = og_video::decode::Decoder::new(1)
+        .unwrap()
+        .packed_alpha(true);
+    let p = d.decode(&units[0].1).unwrap().unwrap();
+    assert_eq!((p.width, p.height), (128, 72));
+    ramp(&p.rgba, "a stream's frame");
+    let poster = b
+        .load_texture("clips/stream.ogt#poster")
+        .unwrap()
+        .to_texture_data()
+        .unwrap();
+    ramp(&poster.rgba, "the poster");
+    // An opaque source is refused.
+    std::fs::copy(fixture(), clips.join("count.mp4")).unwrap();
+    std::fs::write(
+        clips.join("opaque.ogt"),
+        "type video\nversion 1\n---\nsource \"count.mp4\"\nalpha true\n",
+    )
+    .unwrap();
+    let report = cook_project(&root, &CookOptions::default()).unwrap();
+    let errors = format!("{:?}", report.errors());
+    assert!(errors.contains("carries no alpha"), "{errors}");
+}

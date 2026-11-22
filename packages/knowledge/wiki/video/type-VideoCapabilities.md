@@ -33,4 +33,4 @@ struct VideoCapabilities {
 }
 ```
 
-<sub>Module `video` line 40</sub>
+<sub>Module `video` line 41</sub>

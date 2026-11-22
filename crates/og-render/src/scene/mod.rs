@@ -190,6 +190,10 @@ pub struct RenderScene {
     #[cfg(target_arch = "wasm32")]
     pub(crate) stream_external:
         std::cell::RefCell<std::collections::BTreeMap<usize, wgpu::web_sys::VideoFrame>>,
+    /// On the web: the stream textures whose frames are packed alpha
+    /// ([`RenderScene::add_stream_texture`]), by texture index.
+    #[cfg(target_arch = "wasm32")]
+    pub(crate) stream_packed: std::collections::BTreeSet<usize>,
     material_slots: Slots,
     font_slots: Slots,
     environment_map_slots: Slots,

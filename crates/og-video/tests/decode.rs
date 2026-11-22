@@ -165,7 +165,7 @@ fn rav1d_decodes_the_cooks_av1_and_a_seek_matches_decoding_through() {
     };
     units.put(0, chunk(0));
     units.put(1, chunk(1));
-    let player = Player::new(units.clone(), 2).unwrap();
+    let player = Player::new(units.clone(), 2, false).unwrap();
     for (frame, looped) in [
         (0, false),
         (70, false),

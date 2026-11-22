@@ -21713,6 +21713,7 @@ pub struct VideoInfo {
     pub bytes: f64,
     pub streamed: bool,
     pub ai_generated: bool,
+    pub alpha: bool,
     pub codec: String,
     pub poster: u64,
 }
@@ -21732,6 +21733,7 @@ impl Default for VideoInfo {
             bytes: Default::default(),
             streamed: Default::default(),
             ai_generated: Default::default(),
+            alpha: Default::default(),
             codec: Default::default(),
             poster: Default::default(),
         }
@@ -21757,6 +21759,7 @@ impl FromJson for VideoInfo {
             bytes: field(o, "bytes", d.bytes)?,
             streamed: field(o, "streamed", d.streamed)?,
             ai_generated: field(o, "aiGenerated", d.ai_generated)?,
+            alpha: field(o, "alpha", d.alpha)?,
             codec: field(o, "codec", d.codec)?,
             poster: field(o, "poster", d.poster)?,
         })
@@ -21778,6 +21781,7 @@ impl ToJson for VideoInfo {
         o.insert("bytes".into(), self.bytes.to_json());
         o.insert("streamed".into(), self.streamed.to_json());
         o.insert("aiGenerated".into(), self.ai_generated.to_json());
+        o.insert("alpha".into(), self.alpha.to_json());
         o.insert("codec".into(), self.codec.to_json());
         o.insert("poster".into(), self.poster.to_json());
         Value::Object(o)

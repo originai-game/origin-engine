@@ -22,6 +22,7 @@ What og.load.video loaded.
 | `bytes` | `number` | `0` | — | `bytes` | — | Bytes its frames take on the GPU (a stream: its texture's, one frame). |
 | `streamed` | `boolean` | `false` | — | — | — | Whether it is a stream (`stream true`: decoded as it plays) rather than a clip of cooked frames. |
 | `aiGenerated` | `boolean` | `false` | — | — | — | Whether the footage was made by a generative model (`aiGenerated true` in its `type video`): a game or store labels AI content from it. |
+| `alpha` | `boolean` | `false` | — | — | — | Whether its frames carry the source's alpha (`alpha true` in its `type video`): keyed footage drawn over the scene through its texture shows the scene where the matte is clear. |
 | `codec` | `string` | `""` | — | — | — | The codec this host plays a stream in: `av1`, or `hevc` or `h264` where the browser decodes no AV1 and the cook made that rendition; empty for a clip. See `audio §8`. |
 | `poster` | `Texture` | `0` | — | — | — | A stream's first frame as an ordinary texture, ready as soon as the bundle is (a menu's thumbnail, the picture while the stream is fetched); for a clip, VideoInfo.texture. |
 
@@ -44,6 +45,7 @@ struct VideoInfo {
   }
   field streamed bool "Whether it is a stream (`stream true`: decoded as it plays) rather than a clip of cooked frames."
   field aiGenerated bool "Whether the footage was made by a generative model (`aiGenerated true` in its `type video`): a game or store labels AI content from it."
+  field alpha bool "Whether its frames carry the source's alpha (`alpha true` in its `type video`): keyed footage drawn over the scene through its texture shows the scene where the matte is clear."
   field codec String "The codec this host plays a stream in: `av1`, or `hevc` or `h264` where the browser decodes no AV1 and the cook made that rendition; empty for a clip." {
     guide "audio §8"
   }

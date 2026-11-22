@@ -36,6 +36,10 @@ pub struct Planes {
 /// One rav1d context.
 pub struct Decoder {
     ctx: Option<Dav1dContext>,
+    /// Each picture is packed alpha (`alpha true`): the colour in its upper
+    /// half, the matte as luma in its lower; [`Decoder::decode`] answers the
+    /// upper half with the matte as its alpha.
+    packed_alpha: bool,
 }
 
 // SAFETY: a dav1d context is used from one thread at a time (it is owned
@@ -66,7 +70,16 @@ impl Decoder {
         if r.0 != 0 || ctx.is_none() {
             return Err(format!("rav1d refused to open a decoder ({})", r.0));
         }
-        Ok(Decoder { ctx })
+        Ok(Decoder {
+            ctx,
+            packed_alpha: false,
+        })
+    }
+
+    /// Decodes packed-alpha pictures ([`Decoder::packed_alpha`]'s field).
+    pub fn packed_alpha(mut self, packed: bool) -> Decoder {
+        self.packed_alpha = packed;
+        self
     }
 
     /// Forgets every frame it holds (before decoding from another key frame).
@@ -91,7 +104,7 @@ impl Decoder {
     fn decode_with<T>(
         &mut self,
         unit: &[u8],
-        out: fn(&Dav1dPicture) -> Result<T, String>,
+        out: fn(&Dav1dPicture, bool) -> Result<T, String>,
     ) -> Result<Option<T>, String> {
         let c = self.ctx.ok_or("the decoder is closed")?;
         if unit.is_empty() {
@@ -130,7 +143,7 @@ impl Decoder {
     fn picture<T>(
         &mut self,
         c: Dav1dContext,
-        out: fn(&Dav1dPicture) -> Result<T, String>,
+        out: fn(&Dav1dPicture, bool) -> Result<T, String>,
     ) -> Result<Option<T>, String> {
         let mut pic = MaybeUninit::<Dav1dPicture>::zeroed();
         // SAFETY: `c` is open; `pic` is valid to write.
@@ -144,7 +157,7 @@ impl Decoder {
         }
         // SAFETY: get_picture succeeded and wrote `pic`.
         let mut pic = unsafe { pic.assume_init() };
-        let result = out(&pic);
+        let result = out(&pic, self.packed_alpha);
         // SAFETY: `pic` came from get_picture.
         unsafe { dav1d_picture_unref(Some(NonNull::from(&mut pic))) };
         result.map(Some)
@@ -178,8 +191,9 @@ fn planes(pic: &Dav1dPicture) -> Result<[Plane<'_>; 3], String> {
     ])
 }
 
-/// Packs a picture's planes row after row, without their strides' padding.
-fn pack(pic: &Dav1dPicture) -> Result<Planes, String> {
+/// Packs a picture's planes row after row, without their strides' padding
+/// (a packed-alpha picture whole: the web folds it on the GPU).
+fn pack(pic: &Dav1dPicture, _: bool) -> Result<Planes, String> {
     let [y, u, v] = planes(pic)?;
     let (w, h) = (pic.p.w as usize, pic.p.h as usize);
     let (cw, ch) = (w.div_ceil(2), h.div_ceil(2));
@@ -196,8 +210,9 @@ fn pack(pic: &Dav1dPicture) -> Result<Planes, String> {
     })
 }
 
-fn convert(pic: &Dav1dPicture) -> Result<Picture, String> {
-    let (w, h) = (pic.p.w as usize, pic.p.h as usize);
+fn convert(pic: &Dav1dPicture, packed_alpha: bool) -> Result<Picture, String> {
+    let (w, coded) = (pic.p.w as usize, pic.p.h as usize);
+    let h = if packed_alpha { coded / 2 } else { coded };
     let [y, u, v] = planes(pic)?;
     let matrix = pic
         .seq_hdr
@@ -212,6 +227,15 @@ fn convert(pic: &Dav1dPicture) -> Result<Picture, String> {
         });
     let mut rgba = vec![0u8; w * h * 4];
     yuv::i420_to_rgba(y, u, v, w, h, matrix, &mut rgba);
+    if packed_alpha {
+        // The cook packs at an even height, so the matte starts on a row
+        // of its own and the colour's chroma rows end above it.
+        let matte = Plane {
+            data: &y.data[h * y.stride..],
+            stride: y.stride,
+        };
+        yuv::alpha_from_luma(matte, w, h, &mut rgba);
+    }
     Ok(Picture {
         width: w as u32,
         height: h as u32,

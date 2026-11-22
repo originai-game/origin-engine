@@ -273,12 +273,13 @@ mod native {
 
     impl Player {
         /// Starts decoding `units` from frame 0 on `threads` decoder
-        /// threads (0: rav1d's choice).
-        pub fn new(units: Arc<Units>, threads: u32) -> Result<Player, String> {
+        /// threads (0: rav1d's choice); `packed_alpha`: its pictures carry
+        /// their matte below the colour (`alpha true`).
+        pub fn new(units: Arc<Units>, threads: u32, packed_alpha: bool) -> Result<Player, String> {
             if units.is_empty() {
                 return Err("a stream with no frames".into());
             }
-            let decoder = Decoder::new(threads)?;
+            let decoder = Decoder::new(threads)?.packed_alpha(packed_alpha);
             let shared = Arc::new((
                 Mutex::new(Shared {
                     want: 0,

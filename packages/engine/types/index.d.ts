@@ -29288,6 +29288,10 @@ export interface VideoInfo {
    */
   readonly aiGenerated: boolean;
   /**
+   * Whether its frames carry the source's alpha (`alpha true` in its `type video`): keyed footage drawn over the scene through its texture shows the scene where the matte is clear.
+   */
+  readonly alpha: boolean;
+  /**
    * The codec this host plays a stream in: `av1`, or `hevc` or `h264` where the browser decodes no AV1 and the cook made that rendition; empty for a clip.
    * See `audio §8`.
    */

@@ -302,6 +302,14 @@ pub(crate) struct SceneCache {
     /// Each stream texture's frame serial when it was last written
     /// ([`RenderScene::write_stream_texture`]), by texture index.
     pub(crate) stream_serials: std::collections::BTreeMap<usize, u64>,
+    /// On the web: the fold of packed-alpha video frames
+    /// (`video_fold.wgsl`), made when the first one is copied, and each
+    /// packed stream texture's staging copy (twice its height) with its
+    /// bind group, by texture index.
+    #[cfg(target_arch = "wasm32")]
+    pub(crate) stream_fold: Option<(wgpu::RenderPipeline, wgpu::BindGroupLayout)>,
+    #[cfg(target_arch = "wasm32")]
+    pub(crate) stream_staging: std::collections::BTreeMap<usize, (wgpu::Texture, wgpu::BindGroup)>,
     pub(crate) materials: Vec<GpuMaterial>,
     /// Sprite bind groups per texture, made on first use.
     pub(crate) sprite_groups: Vec<Option<wgpu::BindGroup>>,

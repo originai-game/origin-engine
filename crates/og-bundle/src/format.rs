@@ -796,7 +796,7 @@ row!(
     /// the AV1 units of `<id>#stream` ([`VideoStreamMeta`]), decoded as it
     /// plays, and its first frame the texture `<id>#poster`. Its sound
     /// (when `audio` is 1) is the sound `<id>#audio` either way.
-    VideoMeta, "og.Video", 3 {
+    VideoMeta, "og.Video", 4 {
         width: u32,
         height: u32,
         frames: u32,
@@ -813,6 +813,11 @@ row!(
         codec: u32,
         /// 1 when the footage was made by a generative model (`aiGenerated true`).
         ai_generated: u32,
+        /// 1: its frames carry the source's alpha (`alpha true`). A clip's
+        /// layers hold it; a stream's units are each a picture twice its
+        /// height, the colour above and the alpha as luma below (packed
+        /// alpha), which the decoder folds into the frame's alpha.
+        alpha: u32,
     }
 );
 

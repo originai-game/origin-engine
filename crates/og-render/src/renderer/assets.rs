@@ -445,6 +445,8 @@ impl Renderer {
         // texture uploaded again (its slot replaced) takes its frame again.
         for &index in &replaced {
             self.cache.stream_serials.remove(&index);
+            #[cfg(target_arch = "wasm32")]
+            self.cache.stream_staging.remove(&index);
         }
         for (&index, (serial, rgba)) in scene.stream_frames() {
             if self.cache.stream_serials.get(&index) == Some(serial) {
@@ -741,10 +743,19 @@ impl Renderer {
                 frame.close();
                 continue;
             };
+            let packed = scene.stream_packed.contains(&index);
+            let tall = if packed { t.height * 2 } else { t.height };
             let (w, h) = (
                 frame.display_width().min(t.width),
-                frame.display_height().min(t.height),
+                frame.display_height().min(tall),
             );
+            let target = gpu.view.clone();
+            // A packed-alpha frame lands in its staging copy, then is folded.
+            let dest = if packed {
+                self.stream_staging(index, t.width, tall).0.clone()
+            } else {
+                target.texture().clone()
+            };
             let source = wgpu::CopyExternalImageSourceInfo {
                 source: wgpu::ExternalImageSource::VideoFrame(frame),
                 origin: wgpu::Origin2d::ZERO,
@@ -753,7 +764,7 @@ impl Renderer {
             self.queue.copy_external_image_to_texture(
                 &source,
                 wgpu::CopyExternalImageDestInfo {
-                    texture: gpu.view.texture(),
+                    texture: &dest,
                     mip_level: 0,
                     origin: wgpu::Origin3d::ZERO,
                     aspect: wgpu::TextureAspect::All,
@@ -769,7 +780,155 @@ impl Renderer {
             if let wgpu::ExternalImageSource::VideoFrame(f) = &source.source {
                 f.close();
             }
+            if packed {
+                self.fold_stream(index, &target);
+            }
         }
+    }
+
+    /// The packed stream texture `index`'s staging copy (`width` x `tall`,
+    /// 8-bit, the browser's sRGB values as stored) and its fold group.
+    fn stream_staging(
+        &mut self,
+        index: usize,
+        width: u32,
+        tall: u32,
+    ) -> &(wgpu::Texture, wgpu::BindGroup) {
+        if self.cache.stream_fold.is_none() {
+            let module = self
+                .device
+                .create_shader_module(wgpu::ShaderModuleDescriptor {
+                    label: Some("video fold"),
+                    source: wgpu::ShaderSource::Wgsl(
+                        concat!(
+                            wgsl!("common.wgsl"),
+                            wgsl!("color.wgsl"),
+                            wgsl!("video_fold.wgsl")
+                        )
+                        .into(),
+                    ),
+                });
+            let layout = self
+                .device
+                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                    label: Some("video fold"),
+                    entries: &[wgpu::BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Texture {
+                            sample_type: wgpu::TextureSampleType::Float { filterable: false },
+                            view_dimension: wgpu::TextureViewDimension::D2,
+                            multisampled: false,
+                        },
+                        count: None,
+                    }],
+                });
+            let pl = self
+                .device
+                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                    label: Some("video fold"),
+                    bind_group_layouts: &[Some(&layout)],
+                    immediate_size: 0,
+                });
+            let pipeline = crate::traffic::create_render_pipeline(
+                &self.device,
+                &wgpu::RenderPipelineDescriptor {
+                    label: Some("video fold"),
+                    layout: Some(&pl),
+                    vertex: wgpu::VertexState {
+                        module: &module,
+                        entry_point: Some("vs"),
+                        compilation_options: Default::default(),
+                        buffers: &[],
+                    },
+                    primitive: Default::default(),
+                    depth_stencil: None,
+                    multisample: Default::default(),
+                    fragment: Some(wgpu::FragmentState {
+                        module: &module,
+                        entry_point: Some("fs"),
+                        compilation_options: Default::default(),
+                        targets: &[Some(wgpu::ColorTargetState {
+                            format: wgpu::TextureFormat::Rgba8UnormSrgb,
+                            blend: None,
+                            write_mask: wgpu::ColorWrites::ALL,
+                        })],
+                    }),
+                    multiview_mask: None,
+                    cache: None,
+                },
+            );
+            self.cache.stream_fold = Some((pipeline, layout));
+        }
+        let (_, layout) = self.cache.stream_fold.as_ref().expect("made above");
+        let device = &self.device;
+        self.cache.stream_staging.entry(index).or_insert_with(|| {
+            let texture = device.create_texture(&wgpu::TextureDescriptor {
+                label: Some("video fold staging"),
+                size: wgpu::Extent3d {
+                    width,
+                    height: tall,
+                    depth_or_array_layers: 1,
+                },
+                mip_level_count: 1,
+                sample_count: 1,
+                dimension: wgpu::TextureDimension::D2,
+                format: wgpu::TextureFormat::Rgba8Unorm,
+                // copyExternalImageToTexture needs the attachment usage.
+                usage: wgpu::TextureUsages::COPY_DST
+                    | wgpu::TextureUsages::TEXTURE_BINDING
+                    | wgpu::TextureUsages::RENDER_ATTACHMENT,
+                view_formats: &[],
+            });
+            let view = texture.create_view(&Default::default());
+            let group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+                label: Some("video fold"),
+                layout,
+                entries: &[wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: wgpu::BindingResource::TextureView(&view),
+                }],
+            });
+            (texture, group)
+        })
+    }
+
+    /// Draws stream texture `index`'s staging copy, folded (colour above,
+    /// matte below as alpha), into the stream texture `target`.
+    fn fold_stream(&mut self, index: usize, target: &wgpu::TextureView) {
+        let (Some((pipeline, _)), Some((_, group))) = (
+            self.cache.stream_fold.as_ref(),
+            self.cache.stream_staging.get(&index),
+        ) else {
+            return;
+        };
+        let mut encoder = self
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("video fold"),
+            });
+        {
+            let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: Some("video fold"),
+                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                    view: target,
+                    depth_slice: None,
+                    resolve_target: None,
+                    ops: wgpu::Operations {
+                        load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
+                        store: wgpu::StoreOp::Store,
+                    },
+                })],
+                depth_stencil_attachment: None,
+                timestamp_writes: None,
+                occlusion_query_set: None,
+                multiview_mask: None,
+            });
+            pass.set_pipeline(pipeline);
+            pass.set_bind_group(0, group, &[]);
+            pass.draw(0..3, 0..1);
+        }
+        self.queue.submit(Some(encoder.finish()));
     }
 }
 

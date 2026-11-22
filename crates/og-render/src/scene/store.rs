@@ -264,6 +264,8 @@ impl RenderScene {
             stream_serial: 0,
             #[cfg(target_arch = "wasm32")]
             stream_external: Default::default(),
+            #[cfg(target_arch = "wasm32")]
+            stream_packed: Default::default(),
             material_slots: Slots::default(),
             font_slots: Slots::default(),
             environment_map_slots: Slots::default(),

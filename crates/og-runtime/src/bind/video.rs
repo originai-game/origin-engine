@@ -178,7 +178,7 @@ pub(crate) struct StreamView {
 impl StreamView {
     fn new(scene: &mut og_render::RenderScene, s: &StreamSource) -> StreamView {
         StreamView {
-            texture: scene.add_stream_texture(s.width, s.height, s.nearest),
+            texture: scene.add_stream_texture(s.width, s.height, s.nearest, s.alpha),
             #[cfg(not(target_arch = "wasm32"))]
             player: None,
             shown: None,
@@ -196,6 +196,9 @@ pub(crate) struct StreamSource {
     width: u32,
     height: u32,
     nearest: bool,
+    /// `alpha true`: each unit is packed alpha, twice `height` tall (the
+    /// colour above, the matte below), folded into the frame's alpha.
+    alpha: bool,
     fps: u32,
     /// Each chunk's cooked file and stamp (`<stream id>.<n>`).
     chunks: Vec<(String, u64)>,
@@ -817,7 +820,7 @@ fn show_stream(
         }
     }
     if sv.player.is_none() {
-        match og_video::stream::Player::new(units, DECODE_THREADS) {
+        match og_video::stream::Player::new(units, DECODE_THREADS, source.alpha) {
             Ok(p) => sv.player = Some(p),
             Err(e) => {
                 source.error = Some(e);
@@ -886,7 +889,10 @@ fn show_stream(
         };
         if !hooks.video_stream(
             source.key,
-            (source.width, source.height),
+            (
+                source.width,
+                source.height * if source.alpha { 2 } else { 1 },
+            ),
             &codec,
             config,
             &table,
@@ -1011,6 +1017,7 @@ fn load_video(eng: &Engine, path: &str) -> Result<VideoInfo, String> {
             width,
             height,
             nearest,
+            alpha: meta.alpha == 1,
             fps: meta.fps,
             chunks,
             index: None,
@@ -1067,6 +1074,7 @@ fn load_video(eng: &Engine, path: &str) -> Result<VideoInfo, String> {
         bytes,
         streamed: stream.is_some(),
         ai_generated: meta.ai_generated == 1,
+        alpha: meta.alpha == 1,
         codec: if stream.is_some() { codec } else { "" }.to_string(),
         poster: poster.unwrap_or(texture),
     };

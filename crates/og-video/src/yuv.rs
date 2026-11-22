@@ -105,6 +105,24 @@ pub fn i420_to_rgba(
     });
 }
 
+/// Writes the alpha of `width` x `height` RGBA8 `out` from a packed
+/// picture's lower half: `y` the luma rows below the colour (the matte,
+/// limited range: 16 transparent, 235 opaque), as the cook packs a stream
+/// with `alpha true`.
+pub fn alpha_from_luma(y: Plane<'_>, width: usize, height: usize, out: &mut [u8]) {
+    for (r, o) in out[..width * height * 4]
+        .chunks_exact_mut(width * 4)
+        .enumerate()
+    {
+        let row = &y.data[r * y.stride..][..width];
+        for (px, &l) in o.as_chunks_mut::<4>().0.iter_mut().zip(row) {
+            px[3] = ((i32::from(l) - 16) * 255 + 109)
+                .div_euclid(219)
+                .clamp(0, 255) as u8;
+        }
+    }
+}
+
 /// One row: `y` its luma, `u` and `v` its chroma row (half as many,
 /// rounded up), `o` its RGBA.
 fn row(y: &[u8], u: &[u8], v: &[u8], o: &mut [u8], g: Gains) {
@@ -147,6 +165,25 @@ fn row_body(y: &[u8], u: &[u8], v: &[u8], o: &mut [u8], g: Gains) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_matte_in_limited_range_luma_becomes_full_range_alpha() {
+        let y = [16u8, 126, 235, 0, 255, 70];
+        let mut out = [9u8; 3 * 2 * 4];
+        alpha_from_luma(
+            Plane {
+                data: &y,
+                stride: 3,
+            },
+            3,
+            2,
+            &mut out,
+        );
+        let a: Vec<u8> = out.iter().skip(3).step_by(4).copied().collect();
+        // 16 → 0, 235 → 255, the midpoint 126 → 128; outside the range clamps.
+        assert_eq!(a, [0, 128, 255, 0, 255, 63]);
+        assert_eq!(out[0], 9, "the colour is left alone");
+    }
 
     #[test]
     fn limited_range_bt709_maps_black_white_and_primaries() {

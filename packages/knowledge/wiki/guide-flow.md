@@ -137,6 +137,13 @@ track hotspot {
   scene, so the same clip over or under shows the same colours. The plate
   takes the drawn sky's place only: the scene's sky still lights it and is
   what its reflections show.
+- Keyed footage over the scene (an actor shot on green, a smoke or fire
+  element): export it with alpha (ProRes 4444, QuickTime Animation, PNG in
+  `.mov`, or VP9 WebM with alpha) and write `alpha true` in its `type
+  video`. Its picture then shows the live scene where the matte is clear,
+  drawn over it as any `layer over` footage. A stream carries the matte
+  below the colour, so it costs about half again the bytes; key the source
+  before the cook, which keeps the alpha it is given and makes none.
 - `flow.open` shows the choices, `flow.lock` ends choosing, and the cut is
   `flow.cut` if the segment has one, else its end. Keep
   `flow.open < flow.lock ≤ cut`.

@@ -23,7 +23,17 @@ use std::sync::Arc;
 impl RenderScene {
     /// Adds a streamed video's texture, `width` x `height` 8-bit sRGB,
     /// sampled as any texture; `nearest` samples it texel by texel.
-    pub fn add_stream_texture(&mut self, width: u32, height: u32, nearest: bool) -> TextureHandle {
+    /// `packed_alpha`: the web's decoded frames are packed alpha (`alpha
+    /// true`), twice `height` tall with the matte below the colour, folded
+    /// into the texture's alpha on the GPU as they are copied. Natively the
+    /// host folds them before [`RenderScene::write_stream_texture`].
+    pub fn add_stream_texture(
+        &mut self,
+        width: u32,
+        height: u32,
+        nearest: bool,
+        packed_alpha: bool,
+    ) -> TextureHandle {
         let t = self.add_texture_source(TextureSource::Target(TargetTexture {
             width: width.max(1),
             height: height.max(1),
@@ -32,6 +42,12 @@ impl RenderScene {
         if nearest {
             self.set_texture_filter(t, TextureFilter::Nearest);
         }
+        #[cfg(target_arch = "wasm32")]
+        if packed_alpha {
+            self.stream_packed.insert(t.index());
+        }
+        #[cfg(not(target_arch = "wasm32"))]
+        let _ = packed_alpha;
         t
     }
 
@@ -224,7 +240,7 @@ mod tests {
     #[test]
     fn a_stream_texture_takes_frames_of_its_size_without_a_new_revision() {
         let mut scene = RenderScene::new();
-        let t = scene.add_stream_texture(4, 2, false);
+        let t = scene.add_stream_texture(4, 2, false, false);
         let rev = scene.texture_revisions()[t.index()];
         assert!(scene.write_stream_texture(t, Arc::new(vec![7; 32])));
         assert!(scene.write_stream_texture(t, Arc::new(vec![9; 32])));
