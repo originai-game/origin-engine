@@ -18,7 +18,7 @@
 //! `--unwrap` asks for fresh UVs, which drops the old UVs before
 //! decimation (their seams no longer hold it back) and every map (each
 //! is listed in the material's `dropped`). Vertex colours and the
-//! material's factors are kept either way. `--texture-max PX` shrinks
+//! material's factors are kept either way. `--max-texture PX` shrinks
 //! each map kept whose longest side is over `PX` texels
 //! (`og_shape_formats::texture::downsize`) and reports each map's size before and
 //! after (`textures`).
@@ -38,14 +38,19 @@
 //! coverage, overlap, texel density). Without `--bake` nothing changes.
 //!
 //! `--out <folder>` (a folder, or a path without an extension) writes a
-//! prop instead of one file: `<name>.glb`, standing on its base unless
+//! prop named after the folder instead of one file: `<name>.glb`, standing
+//! on its base unless
 //! `--pivot` says otherwise, its import settings `<name>.glb.ogt` (the
 //! cook's levels of detail and baked triangle-mesh collider) and its
 //! convex hulls `<name>.collider.glb`. `--height 1.2` scales it to that
 //! height, `--size x,y,z` (GLB axes, metres, 0 for a free axis) to the
 //! one scale nearest every axis given. The report then adds the facts of
 //! `og model measure` (`size` in metres, `triangles`, the look's facts)
-//! and `scale`, `leftover`, `textureBytes`, `lods` and `collider`.
+//! and `scale`, `leftover`, `textureBytes` (and `textureBytesBefore`, the
+//! file's maps as read), `edges` (open and non-manifold, `before` the
+//! repair and `after`), `lods` and `collider`. The repair does what its
+//! options ask (`--weld MM`, `--non-manifold`, `--holes N`, …) and nothing
+//! by itself; `--max-texture PX` shrinks the maps.
 
 use std::path::PathBuf;
 
@@ -247,6 +252,11 @@ pub fn process(files: &dyn Files, d: &ProcessDesc) -> Result<String, Failure> {
     let imported = report::imported(&mesh.format, &mesh.imported);
     let mut clips = mesh.clips()?;
     let joined = mesh.take_joined()?;
+    // A prop reports its edges before the repair, beside after.
+    let open_before = d
+        .prop
+        .is_some()
+        .then(|| open_edges(&og_shape::tools::measure(&joined, &Measure::default())));
     let (mut fixed, r) = og_shape::tools::repair_owned(joined, &d.repair).map_err(failed)?;
     // The bake's source: the repaired mesh with its UVs and colours.
     let source = (d.bake > 0).then(|| fixed.clone());
@@ -326,6 +336,11 @@ pub fn process(files: &dyn Files, d: &ProcessDesc) -> Result<String, Failure> {
         (d.ktx2, d.etc1s, d.ktx2_rdo),
         d.webp,
     );
+    let images_before: Vec<ImageInfo> = if d.prop.is_some() {
+        source_maps(&mesh)
+    } else {
+        Vec::new()
+    };
     let images: Vec<ImageInfo> = material
         .maps()
         .into_iter()
@@ -341,7 +356,7 @@ pub fn process(files: &dyn Files, d: &ProcessDesc) -> Result<String, Failure> {
         },
     );
     let out = match &d.prop {
-        Some(dir) => Some(dir.join(format!("{}.glb", file_stem(&mesh.name)))),
+        Some(dir) => Some(dir.join(format!("{}.glb", prop_name(dir, &mesh.name)))),
         None => d.out.clone(),
     };
     let output = if baked.is_some() {
@@ -384,9 +399,18 @@ pub fn process(files: &dyn Files, d: &ProcessDesc) -> Result<String, Failure> {
         fields.push(("output", output));
         return Ok(object(&fields));
     };
-    let prop = prop(
-        files, dir, &mesh.name, &low, &material, &images, &want.size, d,
-    )?;
+    let name = prop_name(dir, &mesh.name);
+    let mut prop = prop(files, dir, &name, &low, &material, &images, &want.size, d)?;
+    let before_bytes: u64 = images_before
+        .iter()
+        .filter_map(|i| i.decoded_bytes())
+        .map(|b| b.1)
+        .sum();
+    prop["textureBytesBefore"] = serde_json::json!(before_bytes);
+    prop["edges"] = serde_json::json!({
+        "before": open_before.unwrap_or_default(),
+        "after": open_edges(&m),
+    });
     let mut v: serde_json::Value = serde_json::from_str(&object(&fields)).map_err(failed)?;
     if let (serde_json::Value::Object(o), serde_json::Value::Object(p)) = (&mut v, prop) {
         o.extend(p);
@@ -400,6 +424,35 @@ pub fn process(files: &dyn Files, d: &ProcessDesc) -> Result<String, Failure> {
         );
     }
     Ok(v.to_string())
+}
+
+/// A prop's name: its folder's, else the input's.
+fn prop_name(dir: &std::path::Path, input: &str) -> String {
+    file_stem(dir.file_name().and_then(|n| n.to_str()).unwrap_or(input))
+}
+
+/// A mesh's open and non-manifold edges, as a prop reports them.
+fn open_edges(m: &og_shape::tools::MeshMeasures) -> serde_json::Value {
+    serde_json::json!({
+        "boundary": m.boundary_edges,
+        "nonManifold": m.non_manifold_edges,
+        "closed": m.closed,
+    })
+}
+
+/// The maps of the file's parts as read, each once.
+fn source_maps(mesh: &super::source::Mesh) -> Vec<ImageInfo> {
+    let mut seen: Vec<&og_shape::tools::Texture> = Vec::new();
+    for p in &mesh.imported.parts {
+        for (_, t) in p.material.maps() {
+            if !seen.contains(&t) {
+                seen.push(t);
+            }
+        }
+    }
+    seen.into_iter()
+        .map(|t| ImageInfo::from_bytes(&t.name, &t.bytes))
+        .collect()
 }
 
 /// A file name for the model `name` (its path separators and spaces
@@ -418,7 +471,7 @@ fn file_stem(name: &str) -> String {
     if s.is_empty() { "model".into() } else { s }
 }
 
-/// The prop's other files and facts: the import settings, the convex
+/// The prop `name`'s other files and facts: the import settings, the convex
 /// hulls, and `size` (metres, the GLB's x, y up, z), `scale`, `leftover`
 /// (with `--size`: per GLB axis, the size reached over the size asked,
 /// less 1; null for an axis left free), `triangles`, `textureBytes` (the
@@ -437,7 +490,7 @@ fn prop(
     d: &ProcessDesc,
 ) -> Result<serde_json::Value, Failure> {
     use serde_json::{Value, json};
-    let stem = file_stem(name);
+    let stem = name.to_string();
     let (hulls, collider) = og_shape::tools::colliders(low, &og_shape::tools::Collide::default())
         .map_err(|e| Failure::Failed(format!("collider: {e}")))?;
     let named: Vec<(String, og_shape::mesh::Solid)> = hulls
@@ -615,7 +668,7 @@ pub fn run(a: &Args) -> Result<String, Failure> {
         "--cross-color-borders",
         "--intersections",
         "--unwrap",
-        "--texture-max",
+        "--max-texture",
         "--ktx2",
         "--etc1s",
         "--webp",
@@ -650,7 +703,7 @@ pub fn run(a: &Args) -> Result<String, Failure> {
             unwrap: super::unwrap::options(a)?,
             fresh_uvs: a.switch("--unwrap"),
             intersections: a.switch("--intersections"),
-            texture_max: a.number("--texture-max")?.unwrap_or(0),
+            texture_max: a.number("--max-texture")?.unwrap_or(0),
             ktx2: a.switch("--ktx2"),
             etc1s: a.switch("--etc1s"),
             webp: a.switch("--webp"),

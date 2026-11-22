@@ -590,20 +590,32 @@ fn process_writes_a_prop_at_its_size_on_its_base() {
     // GLB frame: y is up.
     assert!((size[1] - 1.2).abs() < 1e-6, "{size:?}");
     assert!(size[0] > size[2] && size[0] != 1.2);
-    let m = report(&["measure", out.join("wm.glb").to_str().unwrap(), "--json"]);
+    let m = report(&["measure", out.join("prop.glb").to_str().unwrap(), "--json"]);
     let b = &m["whole"]["bounds"];
     // On its base: the kernel's lowest z at 0, centred in x and y.
     assert_eq!(b["min"][2].as_f64().unwrap(), 0.0);
     let mid = |k: usize| b["min"][k].as_f64().unwrap() + b["max"][k].as_f64().unwrap();
     assert!(mid(0).abs() < 1e-3 && mid(1).abs() < 1e-3);
-    let settings = std::fs::read_to_string(out.join("wm.glb.ogt")).unwrap();
+    // Its import settings stand for it.
+    let settings_path = out.join("prop.glb.ogt");
+    let by_settings = report(&["measure", settings_path.to_str().unwrap(), "--json"]);
+    assert_eq!(by_settings["size"], m["size"]);
+    // The edges the repair was asked to leave, before and after.
+    for k in ["before", "after"] {
+        assert!(
+            r["edges"][k]["boundary"].is_u64() && r["edges"][k]["nonManifold"].is_u64(),
+            "{}",
+            r["edges"]
+        );
+    }
+    let settings = std::fs::read_to_string(out.join("prop.glb.ogt")).unwrap();
     assert!(
         settings.contains("type import")
             && settings.contains("lods 1 0.5 0.25")
             && settings.contains("collider true")
     );
     assert!(r["output"]["collider"]["hulls"].as_u64().unwrap() >= 1);
-    assert!(out.join("wm.collider.glb").is_file());
+    assert!(out.join("prop.collider.glb").is_file());
     let lods = r["lods"].as_array().unwrap();
     assert_eq!(
         lods[1]["triangles"].as_u64().unwrap() * 2,

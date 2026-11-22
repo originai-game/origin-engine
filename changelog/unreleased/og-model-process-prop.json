@@ -2,7 +2,7 @@
   "added": [
     {
       "member": "og model process --out <folder>",
-      "summary": "Writes a prop: the processed GLB standing on its base, its import settings (levels of detail and a baked collider for og cook) and its convex hulls, and reports its size in metres, scale, triangles, texture memory, levels and the look's facts."
+      "summary": "Writes a prop named after the folder: the processed GLB standing on its base, its import settings (levels of detail and a baked collider for og cook) and its convex hulls, and reports its size in metres, scale, triangles, texture memory before and after, open and non-manifold edges before and after the repair, levels and the look's facts. --max-texture PX shrinks its maps."
     },
     {
       "member": "og model place --size, og model process --size",
@@ -11,6 +11,10 @@
     {
       "member": "og model lengths",
       "summary": "A length without a unit (--height 1.2) is metres; m, cm and mm still name their unit."
+    },
+    {
+      "member": "og model measure, preview, compare",
+      "summary": "Take a mesh's import settings (boulder.glb.ogt) for the model they set."
     }
   ]
 }

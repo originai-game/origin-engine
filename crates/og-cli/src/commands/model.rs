@@ -122,7 +122,7 @@ const USAGE: &str = "usage: og model <command> <input> [options]
   process  <mesh> [--budget N | --ratio R] [--merge-charts UV] [--cross-color-borders]
            [-o out.glb]
            [repair, unwrap and place options]
-           [--intersections] [--unwrap] [--texture-max PX] [--ktx2 | --ktx2-rdo Q | --etc1s | --webp]
+           [--intersections] [--unwrap] [--max-texture PX] [--ktx2 | --ktx2-rdo Q | --etc1s | --webp]
            [--bake PX [--bake-distance MM]]    --bake: fresh UVs packed at PX², the
                                                 look baked into new maps
   rig      <mesh> [-o out.glb] [--skeleton joints.json] [--check-clip]

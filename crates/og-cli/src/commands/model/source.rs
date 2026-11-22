@@ -64,6 +64,15 @@ pub fn extension(p: &Path) -> String {
         .unwrap_or_default()
 }
 
+/// The mesh file a mesh's import settings (`boulder.glb.ogt`) set, which
+/// stands for its model; any other path as it is.
+pub fn settings_of(p: &Path) -> PathBuf {
+    match p.to_str().and_then(|s| s.strip_suffix(".ogt")) {
+        Some(mesh) if is_mesh(Path::new(mesh)) => PathBuf::from(mesh),
+        _ => p.to_path_buf(),
+    }
+}
+
 /// Whether a path names a mesh file, by its extension.
 pub fn is_mesh(p: &Path) -> bool {
     MESH_EXTENSIONS.contains(&extension(p).as_str())
@@ -103,6 +112,7 @@ pub fn load_uvs(
     d: &Import,
     uvs: bool,
 ) -> Result<Source, Failure> {
+    let input = &resolved(input);
     match input {
         Input::None => Err(Failure::Usage(
             "no input: give a program or a mesh file".into(),
@@ -124,7 +134,7 @@ pub fn load_uvs(
 
 /// Reads an input that must be a mesh file.
 pub fn load_mesh(files: &dyn Files, input: &Input, d: &Import) -> Result<Mesh, Failure> {
-    match input {
+    match &resolved(input) {
         Input::Path(p) if is_mesh(p) => mesh_file(files, p, d),
         Input::None => Err(Failure::Usage("no input: give a mesh file".into())),
         _ => Err(Failure::Usage(format!(
@@ -172,6 +182,13 @@ fn program(
         text
     };
     p::run_files(text, &fonts, &textures).map_err(fail)
+}
+
+fn resolved(input: &Input) -> Input {
+    match input {
+        Input::Path(p) => Input::Path(settings_of(p)),
+        i => i.clone(),
+    }
 }
 
 fn mesh_file(files: &dyn Files, path: &Path, d: &Import) -> Result<Mesh, Failure> {
