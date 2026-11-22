@@ -1,6 +1,7 @@
 //! Tile chunks stay on the device for the lifetime of their shared geometry.
 //! Animated UVs are selected in the vertex shader from tick time. Views and
 //! repeats share geometry, with one small dynamic uniform per placement.
+use crate::gpu::data_texture::DataTexture;
 use crate::{RenderScene, TileChunk};
 use glam::Vec2;
 use std::sync::Arc;
@@ -70,9 +71,11 @@ fn pack(chunk: &TileChunk) -> (Vec<Quad>, Vec<Frame>) {
     (quads, frames)
 }
 
+/// A chunk's quads and frames, data textures (data_texture.rs) its vertex
+/// stage reads.
 struct Chunk {
-    quads: wgpu::Buffer,
-    frames: wgpu::Buffer,
+    quads: DataTexture,
+    frames: DataTexture,
     group: Option<wgpu::BindGroup>,
 }
 struct Layer {
@@ -95,7 +98,7 @@ pub(crate) struct Tiles {
 
 impl Tiles {
     pub fn supported(flags: wgpu::DownlevelFlags) -> bool {
-        flags.contains(wgpu::DownlevelFlags::COMPUTE_SHADERS | wgpu::DownlevelFlags::VERTEX_STORAGE)
+        flags.contains(wgpu::DownlevelFlags::COMPUTE_SHADERS)
     }
 
     pub fn new(
@@ -104,15 +107,8 @@ impl Tiles {
         samples: u32,
         off: crate::pipeline_features::Features,
     ) -> Self {
-        let storage = |binding| wgpu::BindGroupLayoutEntry {
-            binding,
-            visibility: wgpu::ShaderStages::VERTEX,
-            ty: wgpu::BindingType::Buffer {
-                ty: wgpu::BufferBindingType::Storage { read_only: true },
-                has_dynamic_offset: false,
-                min_binding_size: None,
-            },
-            count: None,
+        let storage = |binding| {
+            crate::gpu::data_texture::data_entry(binding, wgpu::ShaderStages::VERTEX, true)
         };
         let layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("tile chunk"),
@@ -201,15 +197,17 @@ impl Tiles {
                         .map(|chunk| {
                             let (q, f) = pack(chunk);
                             let buffer = |label, bytes: &[u8]| {
-                                crate::buffer_init(
+                                let texture = DataTexture::new(
                                     device,
-                                    queue,
-                                    &wgpu::util::BufferInitDescriptor {
-                                        label: Some(label),
-                                        contents: if bytes.is_empty() { &[0; 48] } else { bytes },
-                                        usage: wgpu::BufferUsages::STORAGE,
-                                    },
-                                )
+                                    label,
+                                    wgpu::TextureFormat::Rgba32Uint,
+                                    (bytes.len() / 16) as u32,
+                                    wgpu::TextureUsages::COPY_DST,
+                                );
+                                if !bytes.is_empty() {
+                                    texture.write(queue, 0, bytes);
+                                }
+                                texture
                             };
                             Chunk {
                                 quads: buffer("tile quads", bytemuck::cast_slice(&q)),
@@ -254,11 +252,11 @@ impl Tiles {
                         entries: &[
                             wgpu::BindGroupEntry {
                                 binding: 0,
-                                resource: chunk.quads.as_entire_binding(),
+                                resource: wgpu::BindingResource::TextureView(&chunk.quads.view),
                             },
                             wgpu::BindGroupEntry {
                                 binding: 1,
-                                resource: chunk.frames.as_entire_binding(),
+                                resource: wgpu::BindingResource::TextureView(&chunk.frames.view),
                             },
                             wgpu::BindGroupEntry {
                                 binding: 2,

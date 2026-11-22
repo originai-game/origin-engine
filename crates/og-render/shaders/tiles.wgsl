@@ -9,19 +9,35 @@ struct TileQuad {
 };
 struct TileFrame { uv: vec4<f32>, duration: vec4<f32> };
 struct TileParams { origin_time: vec4<f32>, color: vec4<f32>, light: vec4<f32> };
-@group(3) @binding(0) var<storage, read> tile_quads: array<TileQuad>;
-@group(3) @binding(1) var<storage, read> tile_frames: array<TileFrame>;
+// Data textures (data_texture.rs) of the quads (three texels each) and the
+// frames (two each): a vertex stage reads no storage under WebGPU's
+// compatibility mode.
+@group(3) @binding(0) var tile_quads: texture_2d<u32>;
+@group(3) @binding(1) var tile_frames: texture_2d<u32>;
+
+fn tile_quad(i: u32) -> TileQuad {
+  let a = textureLoad(tile_quads, data_at(i * 3u), 0);
+  let b = textureLoad(tile_quads, data_at(i * 3u + 1u), 0);
+  let c = textureLoad(tile_quads, data_at(i * 3u + 2u), 0);
+  return TileQuad(bitcast<vec4<f32>>(a), bitcast<vec4<f32>>(b), c.xy, bitcast<f32>(c.z), 0.0);
+}
+
+fn tile_frame(i: u32) -> TileFrame {
+  let a = textureLoad(tile_frames, data_at(i * 2u), 0);
+  let b = textureLoad(tile_frames, data_at(i * 2u + 1u), 0);
+  return TileFrame(bitcast<vec4<f32>>(a), bitcast<vec4<f32>>(b));
+}
 @group(3) @binding(2) var<uniform> tile_params: TileParams;
 
 @vertex
 fn vs_tile(@builtin(vertex_index) vi: u32, @builtin(instance_index) qi: u32) -> SpriteOut {
-  let q = tile_quads[qi];
+  let q = tile_quad(qi);
   var uv = q.uv;
   if (q.frames.y != 0u) {
     var t = tile_params.origin_time.w % q.total;
     if (t < 0.0) { t += q.total; }
     for (var k = 0u; k < q.frames.y; k += 1u) {
-      let f = tile_frames[q.frames.x + k];
+      let f = tile_frame(q.frames.x + k);
       uv = f.uv;
       if (t < f.duration.x) { break; }
       t -= f.duration.x;
