@@ -94,13 +94,13 @@ thick dark outlines, chunky buttons that sink when pressed). Name one in
 the look (`ui "scifi"`), which makes the cook bundle it, or load it as
 `@styles/scifi` in place of a directory of the game's own below. To
 change one, copy it with `og style add scifi` into `assets/styles/scifi/`,
-which the look then resolves before the built-in one, and edit the copy:
-every value is a `:root` token in its `base.css`, so a file of tokens
-sorting after it restyles the pack with no other rule. The palette is
+which the look then resolves before the built-in one, and edit the copy's
+`pack.json`: its seeds, the theme values it sets over the default pack,
+its art and the classes of the slots it dresses. The palette is
 derived from seed colours. A pack or a game that only wants its own
-colours sets those (`:root { --seed-primary: #c8102e; --seed-neutral:
-#3a3226; }`, or `og.ui.configure(engine, { seeds: { primary:
-color.fromHex(0xc8102e) } })`), and every ground, ink, state, status and
+colours sets those (`"seeds": { "primary": "#c8102e", "neutral":
+"#3a3226" }` in its pack.json, or `og.ui.configure(engine, { seeds: {
+primary: color.fromHex(0xc8102e) } })`), and every ground, ink, state, status and
 team colour follows in both schemes with its contrast kept. Configuring
 new seeds at run time restyles the whole UI. Art that is one picture in
 both schemes, such as a dark plate, names its scheme on its slot with
@@ -109,14 +109,14 @@ rest, then resolve in that scheme whatever the page's is, down to a nearer
 `scheme-*`. `og style list`
 names the built-in and installed packs.
 
-1. Run `og style new my-style --look neon-vector --scheme dark` in your
-   project. It writes `assets/styles/my-style/main.css` and refuses to
-   overwrite an existing directory. `--out` chooses another directory.
-2. Edit its `:root` custom properties and part rules. The generated file
-   includes dark and light palettes and core-control states. `--finish`
-   accepts flat, gradient, glass, hologram, neon, paper, bevel, or brush.
-   `--scheme` selects the fallback palette; the UI's explicit `data-scheme`
-   selects its dark or light palette at runtime.
+1. Make `assets/styles/my-style/` with a `pack.json` (or copy a built-in
+   pack there with `og style add scifi` and rename it). A pack holds only
+   what it changes: what it does not set keeps the default pack's value.
+2. Write its `seeds` and, where the derived palette is not what you want,
+   the `theme` colours, radii and font families; its `fonts`; its
+   nine-slice art under `images`; and under `variants` the classes of
+   each slot it dresses (`Button.plate`, `Panel.frame`). The cook checks
+   every class against the theme in both schemes and every file it names.
 3. Name it in the game's look (`ui "my-style"`) and capture the game's
    screens with `og ui preview` (desktop and phone, 100% and 150% text;
    `--locales game,pseudo,zh,ar` for locale coverage). Review frames

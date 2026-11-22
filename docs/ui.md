@@ -2604,17 +2604,14 @@ rewards, legal card targets, or note timing.
 | `storybook` | Paper and illustrated edges, quiet ornament, readable text | Pentiment, Strange Horticulture | Not yet built |
 
 A built pack lives in `templates/styles/<name>/` and ships with the engine
-as `@styles/<name>`, with the art its CSS names. A pack is a theme of CSS
-tokens: `base.css` holds every value as a `:root` token (with a
-`:root[data-scheme=light]` block), and `motion.css` and `sounds.css` hold
-its transitions and `-og-sound` sets. It selects no component part: every
-built-in component wears the default style's control and role rules, which
-read these tokens. Each pack's README lists its files and tokens.
+as `@styles/<name>`, with the art it names. A pack is one `pack.json`
+over the engine's default pack (crates/og-ui-next/CONVENTIONS.md §Theme and
+packs): its seeds, the theme values it sets, its faces, its nine-slice art,
+its sounds and the classes of the slots it dresses. It selects no component
+part: a built-in component asks for its slot's dress with `packClass`. Each
+pack's README lists what it sets.
 `templates/styles/shared/` holds the fonts, sounds and art packs share (`/@styles/shared/`) and
 `templates/styles/cjk/` the CJK faces; neither is a pack.
-`templates/styles/tests/fantasy-frost/` is a token-only variant of
-`fantasy` that proves the pack restyles by tokens alone; it is not
-shipped.
 
 A pack becomes a creation choice only once it is accepted (§6.3); the
 integration owner then updates the schema and bilingual labels together.

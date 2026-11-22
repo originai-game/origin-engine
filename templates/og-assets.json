@@ -1304,18 +1304,6 @@
       "visibility": "public"
     },
     {
-      "path": "styles/cartoon/Fredoka-Medium.ttf",
-      "sha256": "38ef6d7402e01db6d97732ff2ab09da5e098e8f0486172efbab12ea2232a2624",
-      "size": 35328,
-      "visibility": "public"
-    },
-    {
-      "path": "styles/cartoon/Fredoka-SemiBold.ttf",
-      "sha256": "dfe2a2800f3cf6d7bd6c2d2236f79d544a72e7e1a521a7d57d2c5668a5dfd6e3",
-      "size": 35316,
-      "visibility": "public"
-    },
-    {
       "path": "styles/cartoon/Fredoka[wdth,wght].ttf",
       "sha256": "2ba02e68b152868aef9ba28e24b3648c7d457fe6f25c761f2c2c53fb61a73fc8",
       "size": 159184,

@@ -1,5 +1,0 @@
-/* fantasy: surfaces over the default ones. Rows, cells and tabs ease over
-   the pack's slow, warm curve (--motion-easing-out in tokens.css). */
-.row, .cell, .tab {
-  transition: background var(--motion-duration-fast) var(--motion-easing-out), border-color var(--motion-duration-fast) var(--motion-easing-out), box-shadow var(--motion-duration-base) var(--motion-easing-out), color var(--motion-duration-fast) var(--motion-easing-out);
-}

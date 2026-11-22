@@ -1,5 +1,0 @@
-/* fantasy: interaction sounds from the shared set (--sfx-* in base.css).
-   Volumes and pitches are unitless ranges of the -og-sound grammar. */
-:root { -og-sound: press var(--sfx-tap) var(--sfx-tap2) volume(0.22 0.28) pitch(0.94 0.99), select var(--sfx-confirm) volume(0.28), confirm var(--sfx-confirm) volume(0.3), cancel var(--sfx-back) volume(0.24), back var(--sfx-back) volume(0.24), open var(--sfx-open) volume(0.22), close var(--sfx-back) volume(0.2), error var(--sfx-error) volume(0.3), reward var(--sfx-reward) volume(0.32); }
-button::part(base) { -og-sound: press var(--sfx-tap) volume(0.22 0.28) pitch(0.94 0.99), hover var(--sfx-tap2) volume(0.1); }
-button.primary::part(base) { -og-sound: press var(--sfx-confirm) volume(0.3) pitch(0.92 0.96), hover var(--sfx-tap2) volume(0.1); }

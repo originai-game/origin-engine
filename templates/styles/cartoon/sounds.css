@@ -1,8 +1,0 @@
-/* cartoon: interaction sounds from the shared set (--sfx-* in base.css),
-   pitched up and a little wide so repeated taps do not sound alike. Volumes
-   and pitches are unitless ranges of the -og-sound grammar. */
-:root { -og-sound: press var(--sfx-tap) var(--sfx-tap2) volume(0.24 0.3) pitch(1.04 1.16), select var(--sfx-confirm) volume(0.28) pitch(1.06 1.12), confirm var(--sfx-confirm) volume(0.32) pitch(1.08 1.14), cancel var(--sfx-back) volume(0.24) pitch(1.02 1.08), back var(--sfx-back) volume(0.24) pitch(1.02 1.08), open var(--sfx-open) volume(0.24) pitch(1.06 1.12), close var(--sfx-back) volume(0.2) pitch(1.08 1.14), error var(--sfx-error) volume(0.3), reward var(--sfx-reward) volume(0.34) pitch(1.04 1.1); }
-button::part(base) { -og-sound: press var(--sfx-tap) var(--sfx-tap2) volume(0.24 0.3) pitch(1.04 1.16), hover var(--sfx-tap2) volume(0.08) pitch(1.2 1.3); }
-button.primary::part(base) { -og-sound: press var(--sfx-confirm) volume(0.32) pitch(1.08 1.14), hover var(--sfx-tap2) volume(0.1) pitch(1.2 1.3); }
-button.danger::part(base) { -og-sound: press var(--sfx-back) volume(0.28) pitch(0.94 1), hover var(--sfx-tap2) volume(0.08) pitch(1.2 1.3); }
-slot::part(frame), tabs::part(tab), input[type=radio]::part(card) { -og-sound: press var(--sfx-tap2) volume(0.22 0.28) pitch(1.1 1.24), hover var(--sfx-tap) volume(0.07) pitch(1.24 1.34); }

@@ -1,76 +1,47 @@
 # cartoon: style pack
 
-A casual cartoon dress in standard CSS, in the spirit of Brawl Stars, Clash
-Royale and Fall Guys: bright candy colours on a sky ground, one thick dark
-outline around every control, frame and tile, chunky rounded buttons that
-stand on a raised bottom edge and sink onto it when pressed, bold rounded
-display type, soft drop shadows and springy motion. Load it with
+A casual cartoon dress, in the spirit of Brawl Stars, Clash Royale and Fall
+Guys: bright candy colours on a sky ground, one thick dark outline around
+every control, frame and tile, chunky rounded buttons that stand on a
+raised bottom edge and sink onto it when pressed, bold rounded display
+type and soft drop shadows. Load it with
 `og.load.style(world, "@styles/cartoon")`, or name it in a look
-(`ui "cartoon"`).
+(`ui "cartoon"`). It has a dark scheme (indigo panels on a deep sky) and a
+light one (cream panels on a day sky).
 
-The pack is a theme of CSS tokens. It applies in the `og-pack` layer, above
-the built-in components' structure (`og-components`) and below a game's own
-styles (`og-game`, unlayered), and it selects no component part: every
-built-in component and screen wears the default style's control and role
-rules, which read these tokens. It has a dark scheme (indigo panels on a
-deep sky) and a light one (cream panels on a day sky):
-`:root[data-scheme=light]` in `base.css`.
+The pack is one file, `pack.json`, over the engine's default pack
+(crates/og-ui-next/CONVENTIONS.md §Theme and packs): what it does not set
+keeps the default's value. A built-in component asks for its slot's dress
+with `packClass`, and the pack answers with classes; it selects no
+component part. Review every component under it with
+`bun packages/engine/src/node/gallery.ts --packs cartoon --schemes dark,light`.
 
 | File | What it holds |
 | --- | --- |
-| `base.css` | Fonts (`@font-face`) and every value the pack draws with, as `:root` tokens for the dark and light schemes |
-| `motion.css` | Transitions on a spring (`-og-spring()`) for the core controls and the row and cell roles, the pressed plate's drop; a `prefers-reduced-motion` branch keeps every state change and drops the movement |
-| `sounds.css` | `-og-sound` sets from the shared library, pitched up, with a range so repeated taps differ |
-| `art/` | Marks, bursts and the ground's dots (SVG), each with its import `.ogt` (colour art sRGB; masks linear) |
-| `LilitaOne-Regular.ttf`, `Fredoka*.ttf` | The pack's Latin faces, each with its import `.ogt`, and their licences (`OFL-*.txt`) |
+| `pack.json` | The seeds, the theme's own colours, radii and font families, the faces, the nine-slice art, the slots' classes, the sounds and the icons |
+| `art/` | The art `pack.json`'s `images` and `icons` name, each with its import `.ogt` (colour art sRGB; masks linear). Art no entry names yet waits for the slots still to be dressed |
 
-## Tokens
+## What it sets
 
-Only `base.css` writes values; `motion.css` and `sounds.css` name them with
-`var()`, so a variant restyles the pack by
-setting tokens alone.
-
-- The seeds: `--seed-primary` and `--seed-accent` (sunflower),
-  `--seed-neutral` (indigo), the status seeds and `--seed-team`, from which
-  the default style derives the primary, accent, focus, status and team
-  colours in both schemes. The grounds and their inks (`--backdrop`,
-  `--panel`, `--well`, `--ink`, `--line`, `--line-strong`, `--selection`,
-  `--hud`, `--scene-*`) stay literal on top: the sky and indigo are more
-  saturated than the derived grounds' chroma allows. Then `--gold`, the
-  tones, the rarity colours,
-  `--font-*` and the em type steps, `--radius-*`, the strokes, the motion
-  curve, every duration and the spring and scale steps. `--line-strong` is
-  the outline around everything and `--selection` the blue of whatever is
-  chosen, so changing one restyles all of them.
-- The core controls' tokens: `--button-*` (the plate and its lip are
-  `--button-*-fill` and `--button-*-shadow`; `--button-pad` and
-  `--button-pressed-pad` sink the label with the face), `--checkbox-*`,
-  `--radio-*`, `--switch-*`, `--tabs-*`, `--slider-*`, `--field-*`,
-  `--dropdown-*`, `--stepper-*`, `--details-*`, `--panel-*`, `--tooltip-*`,
-  `--hud-*`, `--slot-*`, `--badge-*` (a toned badge is a plate of its tone:
-  `--badge-<tone>-fill` and `-ink`), `--meter-*`, `--keyboard-*`,
-  `--touch-*`, `--scrollbar-*`.
-- The role tokens (docs/ui.md §3.1): `--frame-*`, `--plate-*`, `--band-*`
-  (a band is a plate of its own in the outline: `--band-rim`), `--title-*`,
-  `--row-*`, `--cell-*` (and `--cell-<rarity>-*`), `--badge-*`, `--well-*`,
-  `--figure-*`, `--label-*`, `--name-*`, `--picture-*`, `--tag-*`, the
-  state inks, `--trend-*`, `--tone-*`, the art marks (`--mark-*`) and
-  sounds (`--sfx-*`).
-- One component's own look: `--bubble-tail-*`, `--reticle-*`,
-  `--damage-arc-stroke`, `--minimap-bezel`, `--star-*`, `--celebration-*`,
-  `--compass-window-*`, and the sheets' `--ground-fill`.
-- Pack-private `--cartoon-*`: the candy colours and their lips (a plate is
-  its colour as a gradient with the lip under it), the outline and the
-  edges (`--cartoon-outline-width`, `-outline-thin`, `--cartoon-lip`,
-  `-edge`, `-edge-small`, `-press`, `-drop`, `-ring*`), the text outline and
-  drop, the leadings, the sky and the art, and the springs.
-
-A gradient fill ends `padding-box`: a gradient repeats under a border, and
-its far end would show along the outline.
-
-Tokens the engine does not read yet are listed with the engine-gaps thread
-as missing hooks; until it reads them, that part wears the default shape in
-this pack's colours.
+- **`seeds`** (`accent`, `danger`, `info`, `neutral`, `primary`, `success`,
+  `team`, `warn`): the palette is derived from them in both schemes at the
+  contrast its pairs need, so `og.ui.configure`'s `seeds` retints the pack.
+- **`theme`**: the 30 colours it writes over the derived palette, 7 radii
+  and the font families (Cartoon Display, Cartoon Fallback, Cartoon Label,
+  Cartoon Text).
+- **`fonts`**: each family's faces with their weight ranges, its CJK face
+  last with a `unicodeRange`.
+- **`images`**: nine-slice art by name (`button`, `button-hover`,
+  `button-pressed`, `button-disabled`, `button-primary`,
+  `button-primary-hover`, `button-primary-pressed`, `panel`, `plate`,
+  `chip`); a class `nine-<name>` draws one.
+- **`variants`**: the classes of the slots it dresses (`Button.plate`,
+  `Button.plate.primary`, `Panel.frame`, `Plate.frame`, `Chip.frame`).
+- **`sounds`**: `back`, `cancel`, `close`, `confirm`, `error`, `open`,
+  `press`, `reward`, `select` for the whole pack, and its own for
+  `Button.plate`, `Button.plate.primary`, `Slot.frame`, from the shared set
+  (`@styles/shared/sfx-*`).
+- **`icons`**: 5 of the default set's names drawn by its own art.
 
 ## Fonts and art
 
@@ -80,11 +51,8 @@ this pack's colours.
 - Fredoka (The Fredoka Project Authors, 2016), SIL Open Font License 1.1
   (`OFL-Fredoka.txt`): text and labels. `Fredoka[wdth,wght].ttf` is the
   variable font from Google Fonts (`ofl/fredoka`), unmodified, which
-  pack.json names for wght 300–700. `Fredoka-Medium.ttf` and
-  `Fredoka-SemiBold.ttf`, kept until the CSS packs go, are instances of the variable font from Google
-  Fonts (`ofl/fredoka`, version 2.001) at weights 500 and 600, width 100,
-  subset to Latin-1, Latin Extended-A and general punctuation, unhinted.
-  Fredoka declares no reserved font name.
+  pack.json names for wght 300–700. Fredoka declares no reserved font
+  name.
 - Arrows and any other glyph the two faces lack come from Instrument Sans
   (`@styles/shared`, the `Cartoon Fallback` family after them in every
   font list) and Chinese from ZCOOL KuaiLe for display and Noto Sans SC

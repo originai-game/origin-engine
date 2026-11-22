@@ -1,0 +1,19 @@
+{
+  "simulation": "unchanged",
+  "breaking": [
+    {
+      "member": "Built-in style packs: the CSS files",
+      "change": "Removed: `@styles/fantasy`, `@styles/scifi` and `@styles/cartoon` no longer hold `base.css`, `tokens.css`, `surfaces.css`, `motion.css` and `sounds.css`, and `@styles/cartoon/Fredoka-Medium.ttf` and `Fredoka-SemiBold.ttf`, which only those files named, are gone. Nothing has read a pack's CSS since the CSS core was removed; a pack is its `pack.json` and the files that names.",
+      "fix": "A game that loaded one of those files by id (`@styles/scifi/base.css`) drops the load: `og.load.style(engine, \"@styles/scifi\")` or the look's `ui \"scifi\"` loads the pack. A game that named a Fredoka instance names `@styles/cartoon/Fredoka[wdth,wght].ttf`, the variable face, with the weight it wants. A copy of a pack under `assets/styles/` keeps working by its pack.json; its `.css` files can be deleted.",
+      "find": [
+        "base.css",
+        "tokens.css",
+        "surfaces.css",
+        "motion.css",
+        "sounds.css",
+        "Fredoka-Medium",
+        "Fredoka-SemiBold"
+      ]
+    }
+  ]
+}
