@@ -125,6 +125,18 @@ export const dispatch: Dispatcher = (kind, engine, id, query, tick, dt, elapsed,
         // The throw already failed the call; this refusal adds nothing.
       }
     }
+    // The TSX UI's ops this call wrote (a store a system set, through
+    // useStore) reach the tree now, not at the next boundary: og.ui.end
+    // lays the tree out inside the tick, so a store set in tick t is drawn
+    // in tick t's frame.
+    const ui = renderers.get(engine);
+    if (ui?.pending) {
+      try {
+        ui.flush();
+      } catch (e) {
+        ui.errors.push(message(e));
+      }
+    }
     rt.inGame--;
     rt.running = outer;
     rt.calling = outerCall;

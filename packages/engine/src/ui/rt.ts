@@ -121,6 +121,9 @@ export class Renderer {
   }
   private op(code: number): void { this.count++; this.u8(code); }
 
+  /** Whether ops were written since the last flush. */
+  get pending(): boolean { return this.count > 0 || this.orphans.size > 0; }
+
   /** Sends the string tables recorded since the last flush, so a component's `t()` reads them as it is built. */
   sendTables(): void {
     if (this.tablesSent < tables.length) this.flush();

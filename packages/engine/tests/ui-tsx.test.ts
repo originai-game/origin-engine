@@ -213,7 +213,8 @@ test("a display frame sends the UI's changes at each tick boundary", () => {
     systems: [Count],
     ui(world) {
       const n = useStore<number>(og.ui.scope(world, "count").writable("n", 0));
-      mount(world, () => Text({ children: () => String(n()) }), {});
+      // A box only while the count is 10: in that tick's paint.
+      mount(world, () => View({ children: [Text({ children: () => String(n()) }), () => (n() === 10 ? View({ class: "w-4 h-4 bg-surface" }) : null)] }), {});
     },
   });
   const created = createEngine(game as unknown as GameToken);
@@ -233,6 +234,15 @@ test("a display frame sends the UI's changes at each tick boundary", () => {
   // The UI's clock is the world's: it moves by the ticks run, at the tick's length.
   expect(ui.clock().tick - before).toBe(ticks);
   expect(ui.clock().dt).toBeCloseTo(1 / 60, 6);
+  // og.ui.end lays the tree out inside the tick, after the game's systems:
+  // what a system wrote in tick t is in tick t's paint, not tick t+1's.
+  // The tenth write shows the box in the tenth tick's paint.
+  expect(ticks).toBeLessThan(10);
+  const quads = () => (engine.probe.dump({ what: "ui" }) as unknown as { next: { quads: number } }).next.quads;
+  engine.advance(9 - ticks);
+  expect(quads()).toBe(0);
+  engine.advance(1);
+  expect(quads()).toBeGreaterThan(0);
   renderers.delete(id);
 });
 

@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "@origingame/engine/ui (useStore, mount)",
+      "summary": "A store a system sets is drawn in that tick's frame, not one tick later. The TSX renderer's ops waited for the next tick boundary, but og.ui.end lays the tree out inside the tick, after the game's systems, so a HUD's number (useStore) showed the previous tick's value in every frame and screenshot, natively and on the web. Each game call's ops now reach the tree when the call returns."
+    }
+  ]
+}
