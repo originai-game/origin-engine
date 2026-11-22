@@ -24,19 +24,12 @@ use crate::bevel::patch::{self, Corner};
 use crate::bevel::profile;
 use crate::bevel::{BevelError, Miter};
 
-#[path = "check.rs"]
 mod check;
-#[path = "cones.rs"]
 mod cones;
-#[path = "general.rs"]
 mod general;
-#[path = "rows.rs"]
 mod rows;
-#[path = "runs.rs"]
 mod runs;
-#[path = "tips.rs"]
 mod tips;
-#[path = "wide.rs"]
 mod wide;
 
 /// What the new faces are called.

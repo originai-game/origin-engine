@@ -1,5 +1,5 @@
 use super::*;
-use crate::bevel::bevel;
+use crate::bevel::layout;
 use crate::edit::{Hole, above, hole};
 use crate::generators::solids::{BoxDesc, CylinderDesc, Extrude, cuboid, cylinder, extrude};
 use crate::math::DVec2;
@@ -463,7 +463,7 @@ fn pyramid(pick: &str, one: bool) -> Solid {
 /// Every vertex of the result lies inside the convex solid it came from.
 fn inside(s: &Solid, of: &Solid) {
     for t in 0..of.triangles.len() {
-        let n = bevel::tri_normal(of, t);
+        let n = layout::tri_normal(of, t);
         let c = of.positions[of.triangles[t][0] as usize];
         for p in &s.positions {
             assert!(n.dot(*p - c) < 1e-9, "{p} outside");
@@ -876,9 +876,9 @@ fn loop_slide_keeps_each_bevel_s_width_even_along_its_edge() {
     // The width of the front wall's bevel at each end: the distance from
     // the wall's top edge of the points the chamfer leaves on the wall.
     let wall = (0..p.triangles.len())
-        .find(|&t| bevel::tri_normal(&p, t).y < -0.5)
+        .find(|&t| layout::tri_normal(&p, t).y < -0.5)
         .unwrap();
-    let n = bevel::tri_normal(&p, wall);
+    let n = layout::tri_normal(&p, wall);
     let on = |q: crate::math::DVec3, a: crate::math::DVec3| n.dot(q - a).abs() < 1e-9;
     let a = p.positions[p.triangles[wall][0] as usize];
     let top: Vec<_> = p

@@ -43,7 +43,7 @@
 //! ([`BevelError::SelfCrossing`]; a boolean's points 1e-15 apart are
 //! welded first).
 
-mod bevel;
+mod layout;
 mod patch;
 mod profile;
 mod uvs;
@@ -53,7 +53,7 @@ use std::collections::BTreeMap;
 use crate::math::{DVec3, trig};
 use crate::mesh::{EdgeKey, Solid};
 
-use bevel::{Kind, Miters, Offsets, Spec};
+use layout::{Kind, Miters, Offsets, Spec};
 
 /// Why a bevel could not be honoured.
 #[derive(Clone, Debug, PartialEq)]
@@ -241,12 +241,12 @@ fn select(s: &Solid, names: &[String], min_turn: f64) -> Result<Vec<EdgeKey>, Be
             .edges(&refs)
             .map_err(|e| BevelError::NoSuchEdge(e.missing, e.available));
     }
-    let topo = bevel::topology(s);
+    let topo = layout::topology(s);
     Ok(s.real_edges()
         .into_iter()
         .filter(
             |&(a, b)| match (topo.dir.get(&(a, b)), topo.dir.get(&(b, a))) {
-                (Some(&ta), Some(&tb)) => bevel::turn(s, ta, tb) > min_turn,
+                (Some(&ta), Some(&tb)) => layout::turn(s, ta, tb) > min_turn,
                 _ => false,
             },
         )
@@ -256,11 +256,11 @@ fn select(s: &Solid, names: &[String], min_turn: f64) -> Result<Vec<EdgeKey>, Be
 /// The bevel, its UVs carried when the solid has some (`uvs.rs`).
 fn run(s: &Solid, spec: &Spec) -> Result<Solid, BevelError> {
     if s.uvs.is_none() {
-        return bevel::bevel(s, spec);
+        return layout::bevel(s, spec);
     }
     let mut bare = s.clone();
     bare.uvs = None;
-    let out = bevel::bevel(&bare, spec)?;
+    let out = layout::bevel(&bare, spec)?;
     uvs::carry(s, out, spec.kind.name())
 }
 
