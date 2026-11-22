@@ -1,0 +1,11 @@
+type project
+version 1
+---
+# A test fixture, not a template (tests/fixtures/README.md): og.systems.combat
+# playing a light-light-heavy combo into a dummy, with a dodge cancel.
+name "Combat arena"
+id "combat-arena"
+engine "0.9.0"
+entry "src/main.ts"
+tick 60
+seed 1
