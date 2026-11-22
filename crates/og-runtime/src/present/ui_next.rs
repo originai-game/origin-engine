@@ -1279,6 +1279,13 @@ impl Next {
             .unwrap_or_default()
     }
 
+    /// Whether the TSX tree's motion is still on its way to rest (finite
+    /// animations, transitions and exits; never a loop): `dump_ui`'s
+    /// `moving`.
+    pub(crate) fn moving(&self) -> bool {
+        self.tree.as_ref().is_some_and(|t| t.settling())
+    }
+
     /// What `__runtime_probe__` reads beside the timings.
     pub(crate) fn probe(&self) -> Value {
         let s = &self.spans;

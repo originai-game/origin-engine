@@ -364,6 +364,21 @@ impl Motion {
         self.store.set_reduced_motion(on);
     }
 
+    /// Whether anything is still on its way to rest: a transition or layout
+    /// move in flight, an exit under way, or keyframes that end playing
+    /// (an entrance's pop) or not yet started. A loop that never ends (a
+    /// spinner, a shimmer) does not count: a frame of it is as settled as
+    /// any other.
+    pub fn settling(&self) -> bool {
+        self.live.iter().any(|l| {
+            l.tracks != 0
+                || l.exiting
+                || l.spec.animate.is_some_and(|a| {
+                    a.iterations.is_some() && (l.playing || l.since == f64::INFINITY)
+                })
+        })
+    }
+
     /// Advances to the UI tick's time `t` (seconds) and samples what moves.
     /// Call it first in the frame. True when anything moved since the last
     /// tick, the tick it lands included: paint again even with nothing
@@ -977,6 +992,34 @@ mod tests {
         m.tick_at(0.5);
         assert!(!m.tick_at(0.6));
         assert_eq!(m.box_of(1), None, "settled: paint reads the arena");
+    }
+
+    /// A capture waits for an entrance to land, never for a loop: a
+    /// spinner alone is settled while it turns, a pop is not until it ends.
+    #[test]
+    fn only_motion_that_ends_keeps_the_ui_settling() {
+        let mut m = Motion::new();
+        let spin = with(looping(Keyframes::Spin, 1.0, None), |_| {});
+        m.enter(1, &spin, None::<&R>);
+        m.tick_at(0.0);
+        assert!(m.tick_at(0.25) && !m.settling(), "a spinner turns, settled");
+        let pop = with(looping(Keyframes::Pop, 0.52, Some(1)), |_| {});
+        m.enter(2, &pop, None::<&R>);
+        assert!(m.settling(), "a pop set between ticks has yet to play");
+        m.tick_at(0.3);
+        assert!(m.settling(), "mid-pop");
+        m.tick_at(1.0);
+        assert!(!m.settling(), "landed, while the spinner still turns");
+        let fade = timed(ALL, 0.3, LINEAR);
+        m.restyle(
+            3,
+            &with(fade, |s| s.opacity = 0.0),
+            &with(fade, |s| s.opacity = 1.0),
+        );
+        m.tick_at(1.1);
+        assert!(m.settling(), "a transition in flight");
+        m.tick_at(1.5);
+        assert!(!m.settling());
     }
 
     #[test]

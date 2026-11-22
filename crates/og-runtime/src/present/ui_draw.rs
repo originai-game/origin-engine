@@ -60,6 +60,7 @@ impl og_probe::UiTree for MaterialProbe {
         extra.insert("materials".into(), json!(materials));
         if let Some(next) = &render.ui_next {
             extra.insert("next".into(), next.probe());
+            extra.insert("moving".into(), json!(next.moving()));
         }
         Some(extra)
     }

@@ -2869,6 +2869,11 @@ References: `ui-debug-1280`, `ui-debug-390`.
 `dump_ui:motion[:path]` writes the motion alone, as `dump_ui:layers` the
 layer stack: each element in a visual state or animating, with its
 states, what moves, what plays and whether it is leaving.
+`dump_ui`'s `moving` says whether the TSX tree is still on its way to
+rest: a transition or layout move in flight, an exit, or keyframes that
+end (an entrance's pop) still playing. A loop that never ends (a
+spinner, a shimmer) leaves it false, so a capture that waits for
+`moving: false` judges an entered screen, not its entrance.
 
 ### 6.5 UI gallery
 

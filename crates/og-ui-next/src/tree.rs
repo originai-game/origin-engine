@@ -855,6 +855,13 @@ impl Tree {
         self.paint = true;
     }
 
+    /// Whether the tree's motion is still on its way to rest as of the
+    /// last frame ([`crate::motion::Motion::settling`]): what a capture
+    /// waits out before it judges a frame.
+    pub fn settling(&self) -> bool {
+        self.motion.settling()
+    }
+
     /// The characters laid-out text drew that no face has, since the last
     /// call: a frame that found none allocates nothing.
     pub fn take_missing(&mut self) -> Vec<char> {
