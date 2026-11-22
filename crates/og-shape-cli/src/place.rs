@@ -1,8 +1,8 @@
 //! `shape place <mesh> [-o out]`: the file's parts turned, sized and
-//! moved as one (`shape_tools::place`), so the model stands where a game
+//! moved as one (`og_shape::tools::place`), so the model stands where a game
 //! wants it: up along +Z and facing −Y, at a real size, its origin at
 //! its base. Each step is optional and the report gives the numbers
-//! before and after (`shape_tools::PlaceReport`). With `-o`, writes the
+//! before and after (`og_shape::tools::PlaceReport`). With `-o`, writes the
 //! parts placed: GLB with their skins, UVs and base-colour textures, or
 //! OBJ or STL.
 //!
@@ -14,8 +14,8 @@
 
 use std::path::{Path, PathBuf};
 
-use shape_mesh::Solid;
-use shape_tools::{Import, Pivot, Place, Size, glb, obj, place as place_parts, stl};
+use og_shape::mesh::Solid;
+use og_shape::tools::{Import, Pivot, Place, Size, glb, obj, place as place_parts, stl};
 
 use crate::args::{Args, IMPORT_OPTIONS};
 use crate::export::written;

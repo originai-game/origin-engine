@@ -39,20 +39,20 @@
 //! ```
 //!
 //! An input is a program (the JSON a binding records,
-//! `shape_model::program`) or a mesh file (`.glb`, `.gltf`, `.obj`,
+//! `og_shape::model::program`) or a mesh file (`.glb`, `.gltf`, `.obj`,
 //! `.fbx`; OBJ with `--unit-mm MM`; OBJ and glTF with `--up AXIS` and
 //! `--front AXIS`, the file's axes that are the object's up and front,
 //! or `--z-up` for `--up +z --front -y`). `--uvs` on `build`,
 //! `export`, `measure` and `preview` replays a program as if it began
 //! with the `uvs` operation, so every part it makes has UVs. Reports go to stdout
 //! as JSON with no thresholds; errors go to stderr with exit status 1 (2
-//! for a usage error). Each subcommand is one module of the `shape_cli`
+//! for a usage error). Each subcommand is one module of the `og_shape_cli`
 //! library, which the MCP server (`shape-mcp`) calls too.
 
 use std::process::ExitCode;
 
-use shape_cli::Failure;
-use shape_cli::args::Args;
+use og_shape_cli::Failure;
+use og_shape_cli::args::Args;
 
 const USAGE: &str = "usage: shape <command> <input> [options]
   an input is a program (.json) or a mesh file (.glb .gltf .obj .fbx);
@@ -123,20 +123,20 @@ fn main() -> ExitCode {
         Some((cmd, rest)) => {
             let a = Args::new(rest);
             match cmd.as_str() {
-                "build" => shape_cli::build::run(&a),
-                "export" => shape_cli::export::run(&a),
-                "measure" => shape_cli::measure::run(&a),
-                "preview" => shape_cli::preview::run(&a),
-                "import" => shape_cli::import::run(&a),
-                "repair" => shape_cli::repair::run(&a),
-                "decimate" => shape_cli::decimate::run(&a),
-                "unwrap" => shape_cli::unwrap::run(&a),
-                "place" => shape_cli::place::run(&a),
-                "collide" => shape_cli::collide::run(&a),
-                "compress" => shape_cli::compress::run(&a),
-                "process" => shape_cli::process::run(&a),
-                "rig" => shape_cli::rig::run(&a),
-                "retarget" => shape_cli::retarget::run(&a),
+                "build" => og_shape_cli::build::run(&a),
+                "export" => og_shape_cli::export::run(&a),
+                "measure" => og_shape_cli::measure::run(&a),
+                "preview" => og_shape_cli::preview::run(&a),
+                "import" => og_shape_cli::import::run(&a),
+                "repair" => og_shape_cli::repair::run(&a),
+                "decimate" => og_shape_cli::decimate::run(&a),
+                "unwrap" => og_shape_cli::unwrap::run(&a),
+                "place" => og_shape_cli::place::run(&a),
+                "collide" => og_shape_cli::collide::run(&a),
+                "compress" => og_shape_cli::compress::run(&a),
+                "process" => og_shape_cli::process::run(&a),
+                "rig" => og_shape_cli::rig::run(&a),
+                "retarget" => og_shape_cli::retarget::run(&a),
                 "help" | "-h" | "--help" => {
                     println!("{USAGE}");
                     return ExitCode::SUCCESS;

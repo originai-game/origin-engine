@@ -5,18 +5,18 @@
 //! binding through wasm). The binding's test hashes the GLB and PNG it
 //! makes in wasm32 the same way and compares with these lines.
 
-use shape_core::{DVec3, Frame, HashError, OutputHash, trig};
-use shape_gen::solids::{BoxDesc, CylinderDesc, cuboid, cylinder};
-use shape_model::{
+use og_shape::math::{DVec3, Frame, HashError, OutputHash, trig};
+use og_shape::generators::solids::{BoxDesc, CylinderDesc, cuboid, cylinder};
+use og_shape::model::{
     JointDesc, JointKind, Material, Mimic, Model, Path, Preview, Unit, place, program,
 };
 
 use crate::cases::Case;
 
-const WASHING_MACHINE: &str = include_str!("../../../golden/programs/washing_machine.json");
+const WASHING_MACHINE: &str = include_str!("../../og-shape/tests/data/programs/washing_machine.json");
 const WASHING_MACHINE_CLIPS: &str =
-    include_str!("../../../golden/programs/washing_machine_clips.json");
-const PLACED_SLOT: &str = include_str!("../../../golden/programs/placed_slot.json");
+    include_str!("../../og-shape/tests/data/programs/washing_machine_clips.json");
+const PLACED_SLOT: &str = include_str!("../../og-shape/tests/data/programs/placed_slot.json");
 
 pub fn cases() -> Vec<Case> {
     vec![
@@ -56,7 +56,7 @@ pub fn cases() -> Vec<Case> {
                         ..Default::default()
                     };
                     m.preview(&d)
-                        .map(|v| shape_tools::png(&shape_tools::sheet(&v, 2)))
+                        .map(|v| og_shape::tools::png(&og_shape::tools::sheet(&v, 2)))
                 })
             },
         },
@@ -81,7 +81,7 @@ pub fn cases() -> Vec<Case> {
             run: |h| {
                 washing_machine(h, |m| {
                     m.preview(&washing_machine_preview())
-                        .map(|v| shape_tools::png(&shape_tools::sheet(&v, 4)))
+                        .map(|v| og_shape::tools::png(&og_shape::tools::sheet(&v, 4)))
                 })
             },
         },
@@ -170,7 +170,7 @@ fn placement(h: &mut OutputHash) -> Result<(), HashError> {
         .translate(10.0, 20.0, 30.0)
         .turn(0.0, 0.0, trig::PI / 2.0);
     m.at(cab, &on).map_err(fail)?;
-    let ok = |r: Result<Frame, shape_model::ModelError>| r.map_err(fail);
+    let ok = |r: Result<Frame, og_shape::model::ModelError>| r.map_err(fail);
     for which in ["+X", "-Y", "top", "bottom", "front"] {
         h.str(which);
         frame(h, &ok(m.face(cab, which))?)?;
@@ -222,7 +222,7 @@ fn placement(h: &mut OutputHash) -> Result<(), HashError> {
 
 /// A cabinet in centimetres: a door group on a hinge, a flap following
 /// it, a knob that slides and turns (two joints), a fixed badge, posed.
-fn jointed() -> Result<Model, shape_model::ModelError> {
+fn jointed() -> Result<Model, og_shape::model::ModelError> {
     let mut m = Model::new("cabinet");
     m.units(Unit::Centimetre)?;
     let block = |w, d, h| {
@@ -326,15 +326,15 @@ fn jointed() -> Result<Model, shape_model::ModelError> {
 /// The jointed cabinet with its door copied (moved aside, posed its own
 /// way) and mirrored across the cabinet's side, its knob mirrored too:
 /// joints through copies (`docs/research.md` §20).
-fn copies(m: &Model) -> Result<Model, shape_model::ModelError> {
+fn copies(m: &Model) -> Result<Model, og_shape::model::ModelError> {
     let mut m = m.clone();
-    let door = m.find("door").ok_or(shape_model::ModelError::EmptyName)?;
-    let knob = m.find("knob").ok_or(shape_model::ModelError::EmptyName)?;
+    let door = m.find("door").ok_or(og_shape::model::ModelError::EmptyName)?;
+    let knob = m.find("knob").ok_or(og_shape::model::ModelError::EmptyName)?;
     let twin = m.copy(door, "twin")?;
     m.transform(twin, &Frame::IDENTITY.translate(0.0, 0.0, 60.0))?;
     m.pose("hinge.001", 0.4)?;
     let side = Frame::facing(DVec3::new(25.0, 0.0, 0.0), DVec3::X).ok_or(
-        shape_model::ModelError::BadValue("the mirror's plane".into()),
+        og_shape::model::ModelError::BadValue("the mirror's plane".into()),
     )?;
     m.mirror(door, &side, "door_r")?;
     m.mirror(knob, &side, "knob_r")?;
@@ -346,7 +346,7 @@ fn copies(m: &Model) -> Result<Model, shape_model::ModelError> {
 
 fn model_bytes(
     h: &mut OutputHash,
-    f: impl Fn(&Model) -> Result<Vec<u8>, shape_model::ModelError>,
+    f: impl Fn(&Model) -> Result<Vec<u8>, og_shape::model::ModelError>,
 ) -> Result<(), HashError> {
     let m = jointed().map_err(fail)?;
     h.bytes(&f(&m).map_err(fail)?);
@@ -355,7 +355,7 @@ fn model_bytes(
 
 fn washing_machine(
     h: &mut OutputHash,
-    f: impl Fn(&Model) -> Result<Vec<u8>, shape_model::ModelError>,
+    f: impl Fn(&Model) -> Result<Vec<u8>, og_shape::model::ModelError>,
 ) -> Result<(), HashError> {
     let m = program::run(WASHING_MACHINE).map_err(fail)?;
     h.bytes(&f(&m).map_err(fail)?);

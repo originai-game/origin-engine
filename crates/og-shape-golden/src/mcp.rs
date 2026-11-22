@@ -6,10 +6,10 @@
 use std::cell::RefCell;
 use std::path::{Path, PathBuf};
 
-use shape_cli::process::{ProcessDesc, process};
-use shape_cli::{Failure, Files, Input};
-use shape_core::{HashError, OutputHash};
-use shape_tools::{Floaters, Repair};
+use og_shape_cli::process::{ProcessDesc, process};
+use og_shape_cli::{Failure, Files, Input};
+use og_shape::math::{HashError, OutputHash};
+use og_shape::tools::{Floaters, Repair};
 
 use crate::cases::Case;
 
@@ -65,7 +65,7 @@ fn process_case(h: &mut OutputHash) -> Result<(), HashError> {
     let files = Memory {
         input: (
             PathBuf::from("ball_defects.obj"),
-            include_bytes!("../../../golden/meshes/ball_defects.obj").to_vec(),
+            include_bytes!("../../og-shape/tests/data/meshes/ball_defects.obj").to_vec(),
         ),
         written: RefCell::new(Vec::new()),
     };
@@ -103,9 +103,9 @@ fn process_case(h: &mut OutputHash) -> Result<(), HashError> {
 /// UVs and material not written, and said so).
 fn look_case(h: &mut OutputHash) -> Result<(), HashError> {
     let s = crate::look::painted_sphere()?;
-    let mut part = shape_tools::Part::new("ball", &s);
+    let mut part = og_shape::tools::Part::new("ball", &s);
     part.material = crate::look::material();
-    let glb = shape_tools::glb(&shape_tools::Scene {
+    let glb = og_shape::tools::glb(&og_shape::tools::Scene {
         name: "look".into(),
         parts: vec![part],
     })
@@ -146,14 +146,14 @@ fn look_case(h: &mut OutputHash) -> Result<(), HashError> {
 /// baked PNGs inside).
 fn bake_case(h: &mut OutputHash) -> Result<(), HashError> {
     let s = crate::look::painted_sphere()?;
-    let mut part = shape_tools::Part::new("ball", &s);
+    let mut part = og_shape::tools::Part::new("ball", &s);
     part.material = crate::look::material();
-    let glb = shape_tools::glb(&shape_tools::Scene {
+    let glb = og_shape::tools::glb(&og_shape::tools::Scene {
         name: "look".into(),
         parts: vec![part],
     })
     .map_err(fail)?;
-    let obj = include_bytes!("../../../golden/meshes/ball_defects.obj").to_vec();
+    let obj = include_bytes!("../../og-shape/tests/data/meshes/ball_defects.obj").to_vec();
     for (name, bytes, budget) in [("ball.glb", glb, 300), ("ball_defects.obj", obj, 500)] {
         let files = Memory {
             input: (PathBuf::from(name), bytes),

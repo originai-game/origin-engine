@@ -3,14 +3,14 @@
 //! refused, and the interference report of the washing machine at rest,
 //! as recorded, and with the door and drawer fully open.
 
-use shape_2d::{Circle, Polygon, Profile, Rect, circle, polygon, rect};
-use shape_core::{HashError, OutputHash, trig};
-use shape_gen::paths::{Loft, LoftCurve, loft};
-use shape_model::program;
+use og_shape::profile::{Circle, Polygon, Profile, Rect, circle, polygon, rect};
+use og_shape::math::{HashError, OutputHash, trig};
+use og_shape::generators::paths::{Loft, LoftCurve, loft};
+use og_shape::model::program;
 
 use crate::cases::Case;
 
-const WASHING_MACHINE: &str = include_str!("../../../golden/programs/washing_machine.json");
+const WASHING_MACHINE: &str = include_str!("../../og-shape/tests/data/programs/washing_machine.json");
 
 pub fn cases() -> Vec<Case> {
     vec![
@@ -32,7 +32,7 @@ pub fn cases() -> Vec<Case> {
 /// A generator's solid, which must be closed, into the hash.
 fn solid<E: std::fmt::Display>(
     h: &mut OutputHash,
-    s: Result<shape_mesh::Solid, E>,
+    s: Result<og_shape::mesh::Solid, E>,
 ) -> Result<(), HashError> {
     let s = s.map_err(|e| {
         eprintln!("{e}");
@@ -106,7 +106,7 @@ fn corners(h: &mut OutputHash) -> Result<(), HashError> {
 }
 
 /// Uneven heights on a Catmull-Rom curve (z runs straight, inside the end
-/// sections), and the narrow neck `shape_model::loft` refuses: its
+/// sections), and the narrow neck `og_shape::model::loft` refuses: its
 /// message is hashed.
 fn folds(h: &mut OutputHash) -> Result<(), HashError> {
     solid(
@@ -131,7 +131,7 @@ fn folds(h: &mut OutputHash) -> Result<(), HashError> {
         steps: 6,
         ..Default::default()
     };
-    match shape_model::loft(&neck) {
+    match og_shape::model::loft(&neck) {
         Ok(_) => Err(HashError::NaN),
         Err(e) => {
             h.bytes(e.to_string().as_bytes());

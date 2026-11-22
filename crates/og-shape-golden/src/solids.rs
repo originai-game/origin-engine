@@ -1,17 +1,17 @@
 //! Golden cases for profiles (shape-2d) and named solids (shape-gen).
 
-use shape_2d::{
+use og_shape::profile::{
     Circle, Gear, Join, Outline, Path, Poly, PolyPoint, Profile, Rect, Slot, StrokeDesc,
     Superellipse, circle, gear, outline_profile, poly, rect, slot, stroke, superellipse,
 };
-use shape_bool::{BoolOp, Boolean, boolean};
-use shape_core::{DVec2, HashError, OutputHash, trig};
-use shape_gen::paths::{Helix, Loft, Sweep, Thread, helix, loft, sweep, thread};
-use shape_gen::solids::{
+use og_shape::boolean::{BoolOp, Boolean, boolean};
+use og_shape::math::{DVec2, HashError, OutputHash, trig};
+use og_shape::generators::paths::{Helix, Loft, Sweep, Thread, helix, loft, sweep, thread};
+use og_shape::generators::solids::{
     BoxDesc, CylinderDesc, Extrude, Revolve, cone, cuboid, cylinder, dome, extrude, revolve,
     sphere, torus, tube, wedge,
 };
-use shape_mesh::Solid;
+use og_shape::mesh::Solid;
 
 use crate::cases::Case;
 
@@ -243,7 +243,7 @@ pub fn cases() -> Vec<Case> {
                     ..Default::default()
                 })
                 .unwrap();
-                pin.map_positions(|p| p + shape_core::DVec3::new(10.0, 5.0, -1.0), false);
+                pin.map_positions(|p| p + og_shape::math::DVec3::new(10.0, 5.0, -1.0), false);
                 solid(
                     h,
                     boolean(
@@ -268,7 +268,7 @@ pub fn cases() -> Vec<Case> {
                     height: 12.0,
                 })
                 .unwrap();
-                b.map_positions(|p| p + shape_core::DVec3::new(3.0, 2.0, -4.0), false);
+                b.map_positions(|p| p + og_shape::math::DVec3::new(3.0, 2.0, -4.0), false);
                 solid(
                     h,
                     boolean(
@@ -304,33 +304,33 @@ pub fn cases() -> Vec<Case> {
                 })
                 .unwrap();
                 let at = [(-30.0, -15.0), (30.0, -15.0), (-30.0, 15.0), (30.0, 15.0)]
-                    .map(|(x, y)| shape_edit::above(x, y))
+                    .map(|(x, y)| og_shape::edit::above(x, y))
                     .to_vec();
-                let s = shape_edit::hole(
+                let s = og_shape::edit::hole(
                     &plate,
-                    &shape_edit::Hole {
+                    &og_shape::edit::Hole {
                         diameter: 6.6,
                         at,
                         ..Default::default()
                     },
                 );
                 let s = s.and_then(|s| {
-                    shape_edit::hole(
+                    og_shape::edit::hole(
                         &s,
-                        &shape_edit::Hole {
+                        &og_shape::edit::Hole {
                             diameter: 5.0,
-                            at: vec![shape_edit::above(0.0, 15.0)],
+                            at: vec![og_shape::edit::above(0.0, 15.0)],
                             counterbore: (9.0, 4.0),
                             ..Default::default()
                         },
                     )
                 });
                 let s = s.and_then(|s| {
-                    shape_edit::hole(
+                    og_shape::edit::hole(
                         &s,
-                        &shape_edit::Hole {
+                        &og_shape::edit::Hole {
                             diameter: 4.0,
-                            at: vec![shape_edit::above(0.0, -5.0)],
+                            at: vec![og_shape::edit::above(0.0, -5.0)],
                             depth: 6.0,
                             countersink: (8.0, trig::PI / 2.0),
                             ..Default::default()
@@ -338,16 +338,16 @@ pub fn cases() -> Vec<Case> {
                     )
                 });
                 let s = s.and_then(|s| {
-                    shape_edit::pocket(
+                    og_shape::edit::pocket(
                         &s,
-                        &shape_edit::Pocket {
+                        &og_shape::edit::Pocket {
                             profile: slot(&Slot {
                                 length: 20.0,
                                 width: 8.0,
                             })
                             .unwrap(),
                             depth: 3.0,
-                            at: vec![shape_edit::above(20.0, 0.0)],
+                            at: vec![og_shape::edit::above(20.0, 0.0)],
                         },
                     )
                 });
@@ -365,28 +365,28 @@ pub fn cases() -> Vec<Case> {
                 .unwrap();
                 solid(
                     h,
-                    shape_edit::shell(
+                    og_shape::edit::shell(
                         &b,
-                        &shape_edit::Shell {
+                        &og_shape::edit::Shell {
                             thickness: 2.0,
                             open: vec!["top".into()],
                         },
                     ),
                 )?;
-                let f = shape_core::Frame {
-                    origin: shape_core::DVec3::new(0.0, 0.0, 7.0),
-                    ..shape_core::Frame::IDENTITY
+                let f = og_shape::math::Frame {
+                    origin: og_shape::math::DVec3::new(0.0, 0.0, 7.0),
+                    ..og_shape::math::Frame::IDENTITY
                 };
-                solid(h, shape_edit::split(&b, &f, shape_edit::Keep::Below))?;
+                solid(h, og_shape::edit::split(&b, &f, og_shape::edit::Keep::Below))?;
                 let spots = vec![
-                    shape_core::DVec3::new(-10.0, 0.0, 20.0),
-                    shape_core::DVec3::new(10.0, 0.0, 20.0),
+                    og_shape::math::DVec3::new(-10.0, 0.0, 20.0),
+                    og_shape::math::DVec3::new(10.0, 0.0, 20.0),
                 ];
                 solid(
                     h,
-                    shape_edit::dent(
+                    og_shape::edit::dent(
                         &b,
-                        &shape_edit::Dent {
+                        &og_shape::edit::Dent {
                             at: spots,
                             radius: 8.0,
                             depth: 3.0,

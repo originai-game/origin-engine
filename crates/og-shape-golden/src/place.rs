@@ -6,19 +6,19 @@
 use std::cell::RefCell;
 use std::path::{Path, PathBuf};
 
-use shape_cli::place::{PlaceDesc, place as place_command};
-use shape_cli::process::{ProcessDesc, process};
-use shape_cli::{Failure, Files, Input};
-use shape_core::{DVec3, HashError, OutputHash};
-use shape_gen::solids::{BoxDesc, cuboid, torus};
-use shape_mesh::Solid;
-use shape_tools::{Axis, Floaters, Import, Pivot, Place, Repair, Size, import, no_files, place};
+use og_shape_cli::place::{PlaceDesc, place as place_command};
+use og_shape_cli::process::{ProcessDesc, process};
+use og_shape_cli::{Failure, Files, Input};
+use og_shape::math::{DVec3, HashError, OutputHash};
+use og_shape::generators::solids::{BoxDesc, cuboid, torus};
+use og_shape::mesh::Solid;
+use og_shape::tools::{Axis, Floaters, Import, Pivot, Place, Repair, Size, import, no_files, place};
 
 use crate::cases::Case;
 
 // Also `meshtools`'s, whose copy is private to it.
 #[allow(dead_code, clippy::duplicate_mod)]
-#[path = "../../shape-tools/tests/support/skinned.rs"]
+#[path = "../../og-shape/tests/tools/support/skinned.rs"]
 mod skinned_support;
 
 pub fn cases() -> Vec<Case> {
@@ -183,12 +183,12 @@ fn skinned_case(h: &mut OutputHash) -> Result<(), HashError> {
 /// up through its words and its switch, and a GLB read Z up.
 fn import_axes_case(h: &mut OutputHash) -> Result<(), HashError> {
     let obj = "o thing\nv 0 0 0\nv 1 0 0\nv 0 2 0\nv 0 0 3\nf 1 3 2\nf 1 2 4\nf 2 3 4\nf 1 4 3\n";
-    let gltf = shape_tools::glb(&shape_tools::Scene {
+    let gltf = og_shape::tools::glb(&og_shape::tools::Scene {
         name: "m".into(),
         parts: model()?
             .iter()
             .enumerate()
-            .map(|(k, s)| shape_tools::Part::new(["body", "ring"][k], s))
+            .map(|(k, s)| og_shape::tools::Part::new(["body", "ring"][k], s))
             .collect::<Vec<_>>(),
     })
     .map_err(fail)?;
@@ -255,7 +255,7 @@ fn ball() -> Memory {
     Memory {
         input: (
             PathBuf::from("ball_defects.obj"),
-            include_bytes!("../../../golden/meshes/ball_defects.obj"),
+            include_bytes!("../../og-shape/tests/data/meshes/ball_defects.obj"),
         ),
         written: RefCell::new(Vec::new()),
     }

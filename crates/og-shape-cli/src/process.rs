@@ -20,17 +20,17 @@
 //! is listed in the material's `dropped`). Vertex colours and the
 //! material's factors are kept either way. `--texture-max PX` shrinks
 //! each map kept whose longest side is over `PX` texels
-//! (`shape_tools::downsize`) and reports each map's size before and
+//! (`og_shape::tools::downsize`) and reports each map's size before and
 //! after (`textures`).
 //!
 //! `--bake PX` keeps the look through a fresh unwrap: the repaired mesh
 //! (with its UVs, maps and vertex colours) is the source; a copy without
 //! UVs or colours is decimated to the budget, its charts packed on a
-//! PX × PX grid (`shape_tools::unwrap_atlas`; `--padding` texels apart,
+//! PX × PX grid (`og_shape::tools::unwrap_atlas`; `--padding` texels apart,
 //! 4 if not given), and the source's base colour (times its vertex
 //! colours), metallic-roughness, emissive and occlusion maps and its
 //! shading normals are baked into new maps in that layout
-//! (`shape_tools::bake`; `--bake-distance` in the file's units, mm for a
+//! (`og_shape::tools::bake`; `--bake-distance` in the file's units, mm for a
 //! glTF, 2 % of the diagonal if not given). The GLB carries the baked
 //! maps, the material's factors and `TANGENT`. The report gains `bake`
 //! (what was baked, texels without a source, the distances, the normal
@@ -39,7 +39,7 @@
 
 use std::path::PathBuf;
 
-use shape_tools::{
+use og_shape::tools::{
     Decimate, Downsize, ImageInfo, Import, Material, Measure, Place, Repair, Unwrap, downsize,
 };
 
@@ -89,13 +89,13 @@ pub struct ProcessDesc {
     pub ktx2: bool,
     /// With `ktx2` (which it implies): let a UASTC block be a copy of a
     /// neighbour where that costs at most this much squared error a
-    /// channel of a texel (`shape_tools::to_ktx2_rdo`); 0 does not.
+    /// channel of a texel (`og_shape::tools::to_ktx2_rdo`); 0 does not.
     pub ktx2_rdo: f64,
     /// Write every map kept as KTX2 of ETC1S blocks under BasisLZ: far
     /// smaller files than `ktx2`'s UASTC, at a lower quality.
     pub etc1s: bool,
     /// Write every map that is not KTX2 as lossless WebP
-    /// (`EXT_texture_webp`, `shape_tools::to_webp`): every texel as it
+    /// (`EXT_texture_webp`, `og_shape::tools::to_webp`): every texel as it
     /// is. Not with `ktx2` or `etc1s`.
     pub webp: bool,
     /// Bake the source's look into maps of this many texels across, on
@@ -166,15 +166,15 @@ fn texture_budget(
             let from = small.as_ref().unwrap_or(t);
             if !ktx2 {
                 return Ok(if webp {
-                    shape_tools::to_webp(from)?.or(small)
+                    og_shape::tools::to_webp(from)?.or(small)
                 } else {
                     small
                 });
             }
             let packed = if etc1s {
-                shape_tools::to_ktx2_etc1s(from, d.color)?
+                og_shape::tools::to_ktx2_etc1s(from, d.color)?
             } else {
-                shape_tools::to_ktx2_rdo(from, d.color, rdo)?
+                og_shape::tools::to_ktx2_rdo(from, d.color, rdo)?
             };
             Ok(packed.or(small))
         });
@@ -231,7 +231,7 @@ pub fn process_steps(
     let mut clips = mesh.clips()?;
     let joined = mesh.take_joined()?;
     step(1)?;
-    let (mut fixed, r) = shape_tools::repair_owned(joined, &d.repair).map_err(failed)?;
+    let (mut fixed, r) = og_shape::tools::repair_owned(joined, &d.repair).map_err(failed)?;
     // The bake's source: the repaired mesh with its UVs and colours.
     let source = (d.bake > 0).then(|| fixed.clone());
     if source.is_some() {
@@ -255,7 +255,7 @@ pub fn process_steps(
         ((fixed.triangles.len() as f64 * d.ratio).round() as usize).max(1)
     };
     let (low, dec) = if budget > 0 && fixed.triangles.len() > budget {
-        let (low, dr) = shape_tools::decimate(
+        let (low, dr) = og_shape::tools::decimate(
             &fixed,
             &Decimate {
                 target: budget,
@@ -286,7 +286,7 @@ pub fn process_steps(
     // on is the output's.
     let (mut low, placed) = if placing {
         let (mut out, r) =
-            shape_tools::place(std::slice::from_ref(&low), &place).map_err(failed)?;
+            og_shape::tools::place(std::slice::from_ref(&low), &place).map_err(failed)?;
         // The clips go where the mesh went.
         clips = clips
             .iter()
@@ -300,7 +300,7 @@ pub fn process_steps(
     let unwrapped = if let Some((atlas, _)) = &baked {
         atlas.to_json()
     } else if low.uvs.is_none() || d.fresh_uvs {
-        let uvs = shape_tools::unwrap(&mut low, &d.unwrap).map_err(failed)?;
+        let uvs = og_shape::tools::unwrap(&mut low, &d.unwrap).map_err(failed)?;
         dropped.extend(drop_maps(&mut material));
         report::unwrap(&uvs)
     } else {
@@ -319,7 +319,7 @@ pub fn process_steps(
         .into_iter()
         .map(|(_, t)| ImageInfo::from_bytes(&t.name, &t.bytes))
         .collect();
-    let m = shape_tools::measure(
+    let m = og_shape::tools::measure(
         &low,
         &Measure {
             images: &images,
@@ -374,19 +374,19 @@ pub fn process_steps(
 /// when they differ).
 fn bake_onto(
     mesh: &crate::source::Mesh,
-    src: &shape_mesh::Solid,
-    low: &mut shape_mesh::Solid,
+    src: &og_shape::mesh::Solid,
+    low: &mut og_shape::mesh::Solid,
     d: &ProcessDesc,
-) -> Result<(shape_tools::AtlasReport, shape_tools::Baked), Failure> {
+) -> Result<(og_shape::tools::AtlasReport, og_shape::tools::Baked), Failure> {
     let padding = if d.unwrap.padding > 0.0 {
         d.unwrap.padding.ceil() as u32
     } else {
         4
     };
-    let atlas = shape_tools::unwrap_atlas(
+    let atlas = og_shape::tools::unwrap_atlas(
         low,
         &d.unwrap,
-        &shape_tools::Atlas {
+        &og_shape::tools::Atlas {
             size: d.bake,
             padding,
             no_turns: false,
@@ -420,14 +420,14 @@ fn bake_onto(
     } else {
         (materials, material_of)
     };
-    let baked = shape_tools::bake(
-        &shape_tools::BakeSource {
+    let baked = og_shape::tools::bake(
+        &og_shape::tools::BakeSource {
             solid: src,
             materials: &materials,
             material_of: &material_of,
         },
         low,
-        &shape_tools::Bake {
+        &og_shape::tools::Bake {
             size: d.bake,
             distance: d.bake_distance,
             ..Default::default()

@@ -3,14 +3,14 @@
 //! refined blend bands, a posed mesh with its measures, the GLB, and a
 //! figure rigged from its mesh alone (joints found, bone heat).
 
-use shape_bool::{Boolean, boolean};
-use shape_core::{DVec3, Frame, HashError, OutputHash, trig};
-use shape_gen::solids::{BoxDesc, CylinderDesc, cuboid, cylinder, sphere};
-use shape_mesh::{Bone, Skin, Solid, Weights};
-use shape_skin::{
+use og_shape::boolean::{Boolean, boolean};
+use og_shape::math::{DVec3, Frame, HashError, OutputHash, trig};
+use og_shape::generators::solids::{BoxDesc, CylinderDesc, cuboid, cylinder, sphere};
+use og_shape::mesh::{Bone, Skin, Solid, Weights};
+use og_shape::skin::{
     Pose, Rig, RigBone, Turn, bind, humanoid, measure_pose, pose, retarget, skin, skin_matrices,
 };
-use shape_tools::{Part, Scene, glb};
+use og_shape::tools::{Part, Scene, glb};
 
 use crate::cases::Case;
 
@@ -247,7 +247,7 @@ fn retargeted(h: &mut OutputHash) -> Result<(), HashError> {
     };
     let source = chain(DVec3::X, 50.0, "mixamorig:");
     let key = |turns: Vec<Turn>| skin_matrices(&source, &Pose { turns }).map_err(nan);
-    let clip = shape_mesh::SkinClip {
+    let clip = og_shape::mesh::SkinClip {
         name: "bend".into(),
         times: vec![0.0, 1.0],
         poses: vec![

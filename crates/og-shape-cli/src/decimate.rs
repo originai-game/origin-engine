@@ -1,15 +1,15 @@
 //! `shape decimate <mesh> (--ratio R | --target N | --lod-ratios A,B,…) [--lods N] [-o out]`:
-//! the file's parts joined and decimated (`shape_tools::decimate`), as
+//! the file's parts joined and decimated (`og_shape::tools::decimate`), as
 //! JSON: per level, the decimation's report and the measures after. With
 //! `--lods N`, N levels, each decimated from the one before
-//! (`shape_tools::lods`): level k keeps `ratio`^k of the triangles, or,
+//! (`og_shape::tools::lods`): level k keeps `ratio`^k of the triangles, or,
 //! with a target, level 1 keeps `target` and each next level half the
 //! one before. They are written as `<out stem>.lod1.<ext>` … With `-o`,
 //! writes each level (a plain GLB, OBJ or STL).
 
 use std::path::{Path, PathBuf};
 
-use shape_tools::{Decimate, Import, Measure, lods};
+use og_shape::tools::{Decimate, Import, Measure, lods};
 
 use crate::args::{Args, IMPORT_OPTIONS};
 use crate::report::{self, array, object};
@@ -47,7 +47,7 @@ pub fn lod_path(out: &Path, k: u32) -> PathBuf {
 
 /// The levels of [`DecimateDesc::lods`]: `ratio`^k, or the target
 /// halved at each level after the first. (Repeating one desc gave every
-/// level the same count, since `shape_tools::lods` takes a ratio of the
+/// level the same count, since `og_shape::tools::lods` takes a ratio of the
 /// input.)
 fn lod_levels(d: &Decimate, n: u32) -> Vec<Decimate> {
     let mut levels = Vec::new();
@@ -90,7 +90,7 @@ pub fn decimate(files: &dyn Files, d: &DecimateDesc) -> Result<String, Failure> 
             .collect();
         lods(&joined, &each).map_err(failed)?
     } else if d.lods == 0 {
-        vec![shape_tools::decimate(&joined, &d.decimate).map_err(failed)?]
+        vec![og_shape::tools::decimate(&joined, &d.decimate).map_err(failed)?]
     } else {
         lods(&joined, &lod_levels(&d.decimate, d.lods)).map_err(failed)?
     };
@@ -103,7 +103,7 @@ pub fn decimate(files: &dyn Files, d: &DecimateDesc) -> Result<String, Failure> 
             (Some(o), false) => Some(o.clone()),
             (Some(o), true) => Some(lod_path(o, k as u32 + 1)),
         };
-        let m = shape_tools::measure(s, &Measure::default());
+        let m = og_shape::tools::measure(s, &Measure::default());
         list.push(object(&[
             ("decimate", report::decimate(r)),
             ("measures", m.to_json()),

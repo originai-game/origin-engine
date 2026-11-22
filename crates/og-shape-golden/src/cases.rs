@@ -3,7 +3,7 @@
 
 use core::cmp::Ordering;
 
-use shape_core::{DVec2, DVec3, Frame, HashError, OutputHash, order, predicates, trig};
+use og_shape::math::{DVec2, DVec3, Frame, HashError, OutputHash, order, predicates, trig};
 
 /// One golden case.
 pub struct Case {

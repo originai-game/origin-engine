@@ -2,10 +2,10 @@
 //! inputs are og-geom's own determinism fixtures, so the engine and this
 //! repository can be compared directly.
 
-use shape_bool::{CsgOp, csg};
-use shape_core::{DVec2, DVec3, HashError, OutputHash};
-use shape_gen::extrude::ExtrudePath;
-use shape_gen::{
+use og_shape::boolean::{CsgOp, csg};
+use og_shape::math::{DVec2, DVec3, HashError, OutputHash};
+use og_shape::generators::extrude::ExtrudePath;
+use og_shape::generators::{
     Extrude, Key, Lathe, Mesh, Placement, ShapePoints, Sweep, dodecahedron, extrude, icosahedron,
     lathe, sweep, trig,
 };

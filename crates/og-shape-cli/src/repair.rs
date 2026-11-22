@@ -1,5 +1,5 @@
 //! `shape repair <mesh> [-o out]`: the file's parts joined and repaired
-//! (`shape_tools::repair`), as JSON: what each step changed and the
+//! (`og_shape::tools::repair`), as JSON: what each step changed and the
 //! measures after. With `-o`, writes the repaired solid (a plain GLB,
 //! OBJ or STL). The zero value of every option does the least; the
 //! settings that worked on the acceptance meshes are in
@@ -7,7 +7,7 @@
 
 use std::path::PathBuf;
 
-use shape_tools::{Floaters, Import, Measure, Repair};
+use og_shape::tools::{Floaters, Import, Measure, Repair};
 
 use crate::args::{Args, IMPORT_OPTIONS};
 use crate::report::{self, object};
@@ -33,8 +33,8 @@ pub fn repair(files: &dyn Files, d: &RepairDesc) -> Result<String, Failure> {
     let clips = mesh.clips()?;
     let joined = mesh.take_joined()?;
     let triangles_in = joined.triangles.len();
-    let (fixed, r) = shape_tools::repair_owned(joined, &d.repair).map_err(failed)?;
-    let m = shape_tools::measure(&fixed, &Measure::default());
+    let (fixed, r) = og_shape::tools::repair_owned(joined, &d.repair).map_err(failed)?;
+    let m = og_shape::tools::measure(&fixed, &Measure::default());
     let (material, defaults, dropped) = mesh.material();
     let output = crate::export::write_solid_clips(
         files,

@@ -1,6 +1,6 @@
 //! `shape retarget <rigged mesh> --from <animated file> [--clip NAME]
 //! [--map SOURCE=TARGET,…] [-o out.glb]`: clips made for another
-//! skeleton moved onto a skinned mesh (`shape_skin::retarget`), such as
+//! skeleton moved onto a skinned mesh (`og_shape::skin::retarget`), such as
 //! one `shape rig` wrote. The animated file may carry the skeleton
 //! alone, with no mesh (the origin asset library's motion clips). Bones
 //! match by name (Mixamo's prefix taken off, Tripo's biped names read as
@@ -15,8 +15,8 @@
 use std::path::{Path, PathBuf};
 
 use serde_json::{Value, json};
-use shape_skin::{Retarget, retarget as move_clip};
-use shape_tools::Import;
+use og_shape::skin::{Retarget, retarget as move_clip};
+use og_shape::tools::Import;
 
 use crate::args::{Args, IMPORT_OPTIONS};
 use crate::report::object;

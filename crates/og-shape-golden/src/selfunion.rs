@@ -3,10 +3,10 @@
 //! sphere folded many times by noise (triple points), two overlapping
 //! copies, and repair's fuse step on the folded sphere.
 
-use shape_bool::{Boolean, boolean, check_operands, crossing_pairs, self_union};
-use shape_core::{DVec3, HashError, OutputHash};
-use shape_gen::solids::sphere;
-use shape_mesh::Solid;
+use og_shape::boolean::{Boolean, boolean, check_operands, crossing_pairs, self_union};
+use og_shape::math::{DVec3, HashError, OutputHash};
+use og_shape::generators::solids::sphere;
+use og_shape::mesh::Solid;
 
 use crate::cases::Case;
 
@@ -31,12 +31,12 @@ pub fn cases() -> Vec<Case> {
         Case {
             name: "selfunion.repair.fuse",
             run: |h| {
-                let d = shape_tools::Repair {
+                let d = og_shape::tools::Repair {
                     fuse: true,
                     check_intersections: true,
                     ..Default::default()
                 };
-                match shape_tools::repair(&folded_ball(), &d) {
+                match og_shape::tools::repair(&folded_ball(), &d) {
                     Ok((s, r)) => {
                         h.str(&format!("{:?} {:?}", r.fused, r.self_intersections));
                         s.hash_into(h)

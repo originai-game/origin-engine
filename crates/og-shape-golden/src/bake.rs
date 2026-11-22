@@ -1,10 +1,10 @@
 //! Golden cases for atlas packing and baking (`docs/research.md` §34):
 //! the packer's placements and measures, and the PNG bytes of a bake.
 
-use shape_core::{DVec2, DVec3, HashError, OutputHash};
-use shape_gen::solids::{BoxDesc, cuboid, sphere, torus};
-use shape_mesh::Solid;
-use shape_tools::{
+use og_shape::math::{DVec2, DVec3, HashError, OutputHash};
+use og_shape::generators::solids::{BoxDesc, cuboid, sphere, torus};
+use og_shape::mesh::Solid;
+use og_shape::tools::{
     Atlas, Bake, BakeSource, ChartPlace, Image, Material, Packing, PlainGlb, Texture, Unwrap, bake,
     glb_plain, pack, png, repack, unwrap, unwrap_atlas,
 };
@@ -168,7 +168,7 @@ fn bake_case(h: &mut OutputHash) -> Result<(), HashError> {
                 let p = t.map(|v| src.positions[v as usize]);
                 uvs.push(p.map(|q| DVec2::new(q.x / 40.0, q.y / 40.0)));
                 cols.push(
-                    p.map(|q| shape_mesh::stored([0.25 + q.x / 80.0, 1.0, 0.5 + q.y / 80.0, 1.0])),
+                    p.map(|q| og_shape::mesh::stored([0.25 + q.x / 80.0, 1.0, 0.5 + q.y / 80.0, 1.0])),
                 );
             }
         }
@@ -244,9 +244,9 @@ fn bake_case(h: &mut OutputHash) -> Result<(), HashError> {
 /// one 512-texel atlas: the GLB, the packing's report, the materials the
 /// parts share.
 fn model_case(h: &mut OutputHash) -> Result<(), HashError> {
-    let text = include_str!("../../../golden/programs/washing_machine.json");
+    let text = include_str!("../../og-shape/tests/data/programs/washing_machine.json");
     let text = text.replacen("\"ops\":[", "\"ops\":[{\"op\":\"uvs\"},", 1);
-    let m = shape_model::program::run(&text).map_err(fail)?;
+    let m = og_shape::model::program::run(&text).map_err(fail)?;
     let e = m
         .glb_atlas(&Atlas {
             size: 512,

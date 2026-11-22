@@ -3,10 +3,10 @@
 //! every target, so a JPEG decoded, a mip chain filtered and a texel
 //! sampled must come out the same on each.
 
-use shape_core::{DVec3, HashError, OutputHash};
-use shape_gen::solids::{BoxDesc, CylinderDesc, Generator, sphere, textured};
-use shape_mesh::Solid;
-use shape_tools::{Material, Part, Preview, Scene, Texture, UvView, png, sheet, uv_view, views};
+use og_shape::math::{DVec3, HashError, OutputHash};
+use og_shape::generators::solids::{BoxDesc, CylinderDesc, Generator, sphere, textured};
+use og_shape::mesh::Solid;
+use og_shape::tools::{Material, Part, Preview, Scene, Texture, UvView, png, sheet, uv_view, views};
 
 use crate::cases::Case;
 
@@ -27,7 +27,7 @@ pub fn cases() -> Vec<Case> {
     ]
 }
 
-const LABEL: &[u8] = include_bytes!("../../../golden/programs/label.jpg");
+const LABEL: &[u8] = include_bytes!("../../og-shape/tests/data/programs/label.jpg");
 use crate::uvs::CHECKER;
 
 fn fail(e: impl std::fmt::Display) -> HashError {
@@ -150,7 +150,7 @@ fn colors_case(h: &mut OutputHash) -> Result<(), HashError> {
     ball.colors = Some(
         ball.triangles
             .iter()
-            .map(|t| t.map(|v| shape_mesh::stored(colour(ball.positions[v as usize]))))
+            .map(|t| t.map(|v| og_shape::mesh::stored(colour(ball.positions[v as usize]))))
             .collect(),
     );
     let s = Scene {

@@ -10,16 +10,16 @@
 //!
 //! Each case hashes the solid, the model's GLB, or the error.
 
-use shape_bool::{BoolOp, Boolean, boolean};
-use shape_core::{DVec3, Frame, HashError, OutputHash, trig};
-use shape_gen::solids::{BoxDesc, Extrude, cuboid, extrude};
-use shape_mesh::Solid;
-use shape_model::program;
+use og_shape::boolean::{BoolOp, Boolean, boolean};
+use og_shape::math::{DVec3, Frame, HashError, OutputHash, trig};
+use og_shape::generators::solids::{BoxDesc, Extrude, cuboid, extrude};
+use og_shape::mesh::Solid;
+use og_shape::model::program;
 
 use crate::cases::Case;
 
-const KNOB: &str = include_str!("../../../golden/programs/smallgaps_knob.json");
-const THROUGH: &str = include_str!("../../../golden/programs/smallgaps_through_hole.json");
+const KNOB: &str = include_str!("../../og-shape/tests/data/programs/smallgaps_knob.json");
+const THROUGH: &str = include_str!("../../og-shape/tests/data/programs/smallgaps_through_hole.json");
 
 pub fn cases() -> Vec<Case> {
     vec![
@@ -50,9 +50,9 @@ pub fn cases() -> Vec<Case> {
                 let (b, at) = diagonal();
                 solid(
                     h,
-                    shape_edit::hole(
+                    og_shape::edit::hole(
                         &b,
-                        &shape_edit::Hole {
+                        &og_shape::edit::Hole {
                             diameter: 1.0,
                             depth: 3.0,
                             at: vec![at],
@@ -100,7 +100,7 @@ fn replay(h: &mut OutputHash, json: &str) -> Result<(), HashError> {
 /// A hexagon turned a quarter turn, extruded with a taper and stood at
 /// height `z`: one of the knob's bands.
 fn band(radius: f64, height: f64, taper: f64, z: f64) -> Solid {
-    let p = shape_2d::polygon(&shape_2d::Polygon {
+    let p = og_shape::profile::polygon(&og_shape::profile::Polygon {
         sides: 6,
         radius,
         ..Default::default()

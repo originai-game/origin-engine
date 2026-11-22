@@ -8,18 +8,18 @@
 //! (joined by snapping the tool onto the target, `docs/research.md` §18).
 //! Each case hashes the solid and its report, or the error.
 
-use shape_bool::{BoolOp, BoolReport, Boolean, boolean_report};
-use shape_core::{DVec3, HashError, OutputHash};
-use shape_gen::loft::{Loft, loft};
-use shape_gen::solids::{BoxDesc, cuboid, torus, tube};
-use shape_mesh::Solid;
-use shape_model::program;
+use og_shape::boolean::{BoolOp, BoolReport, Boolean, boolean_report};
+use og_shape::math::{DVec3, HashError, OutputHash};
+use og_shape::generators::loft::{Loft, loft};
+use og_shape::generators::solids::{BoxDesc, cuboid, torus, tube};
+use og_shape::mesh::Solid;
+use og_shape::model::program;
 
 use crate::cases::Case;
 
-const RIM: &str = include_str!("../../../golden/programs/touching_rim.json");
-const ELBOWS: &str = include_str!("../../../golden/programs/touching_elbows.json");
-const ELBOWS_TURNED: &str = include_str!("../../../golden/programs/touching_elbows_turned.json");
+const RIM: &str = include_str!("../../og-shape/tests/data/programs/touching_rim.json");
+const ELBOWS: &str = include_str!("../../og-shape/tests/data/programs/touching_elbows.json");
+const ELBOWS_TURNED: &str = include_str!("../../og-shape/tests/data/programs/touching_elbows_turned.json");
 
 pub fn cases() -> Vec<Case> {
     vec![
@@ -103,7 +103,7 @@ pub fn cases() -> Vec<Case> {
                     op: BoolOp::Cut,
                     ..Default::default()
                 };
-                let bored = shape_bool::boolean(&plate, &bore, &d).map_err(fail)?;
+                let bored = og_shape::boolean::boolean(&plate, &bore, &d).map_err(fail)?;
                 both(h, &bored, &sink, BoolOp::Cut)
             },
         },
@@ -135,7 +135,7 @@ pub fn cases() -> Vec<Case> {
             name: "touching.uncross",
             run: |h| {
                 // Outputs that crossed themselves by a rounding error,
-                // repaired (`shape_bool::uncross_output`, §23): the post,
+                // repaired (`og_shape::boolean::uncross_output`, §23): the post,
                 // the countersink ring, the torus ring on a box face.
                 let plate = block(20.0, 20.0, 10.0)?;
                 let pin = moved(frustum(3.0, 3.0, 0.0, 8.0)?, DVec3::new(0.0, 0.0, 10.0));
@@ -144,24 +144,24 @@ pub fn cases() -> Vec<Case> {
                     op: BoolOp::Cut,
                     ..Default::default()
                 };
-                let bored = shape_bool::boolean(&big, &frustum(2.0, 2.0, -30.0, 40.06)?, &d)
+                let bored = og_shape::boolean::boolean(&big, &frustum(2.0, 2.0, -30.0, 40.06)?, &d)
                     .map_err(fail)?;
                 let sink = frustum(2.0, 4.06, 8.0, 2.06)?;
                 let t = torus(351.0, 127.0).map_err(fail)?;
                 let q = moved(block(600.0, 400.0, 600.0)?, DVec3::new(300.0, 0.0, 0.0));
-                use shape_bool::CsgOp;
+                use og_shape::boolean::CsgOp;
                 for (a, b, op) in [
                     (&plate, &pin, CsgOp::Union),
                     (&bored, &sink, CsgOp::Subtract),
                     (&t, &q, CsgOp::Intersect),
                 ] {
-                    let o = shape_bool::csg_points_traced(
+                    let o = og_shape::boolean::csg_points_traced(
                         (&a.positions, &a.triangles),
                         (&b.positions, &b.triangles),
                         op,
                     )
                     .map_err(|e| fail(format!("{e:?}")))?;
-                    let (u, r) = shape_bool::uncross_output(&a.positions, &b.positions, o);
+                    let (u, r) = og_shape::boolean::uncross_output(&a.positions, &b.positions, o);
                     h.str(&format!("{r:?}"));
                     h.dvec3s(&u.points)?;
                     for t in &u.tris {
@@ -209,7 +209,7 @@ fn block(w: f64, d: f64, h: f64) -> Result<Solid, HashError> {
 
 fn lofts() -> (Solid, Solid) {
     let circle = |r: f64| {
-        shape_2d::circle(&shape_2d::Circle {
+        og_shape::profile::circle(&og_shape::profile::Circle {
             radius: r,
             segments: 0,
         })
@@ -232,7 +232,7 @@ fn lofts() -> (Solid, Solid) {
 /// with edges used four times and no error.
 fn polygon_lofts(sides: u32) -> (Solid, Solid) {
     let p = |r: f64| {
-        shape_2d::polygon(&shape_2d::Polygon {
+        og_shape::profile::polygon(&og_shape::profile::Polygon {
             sides,
             radius: r,
             ..Default::default()
@@ -267,7 +267,7 @@ fn strap() -> Result<(Solid, Solid), HashError> {
 /// faces a few ulps apart (`docs/research.md` §18).
 fn turned_elbows() -> Result<(Solid, Solid), HashError> {
     let a = std::f64::consts::PI / 64.0;
-    let (c, s) = (shape_core::trig::cos(a), shape_core::trig::sin(a));
+    let (c, s) = (og_shape::math::trig::cos(a), og_shape::math::trig::sin(a));
     let turn = |mut m: Solid, s: f64| -> Result<Solid, HashError> {
         m.map_positions(
             |p| DVec3::new(c * p.x + s * p.z, p.y, -s * p.x + c * p.z),
@@ -286,7 +286,7 @@ fn turned_elbows() -> Result<(Solid, Solid), HashError> {
             op: BoolOp::Intersect,
             ..Default::default()
         };
-        shape_bool::boolean(&t, &q, &d).map_err(fail)
+        og_shape::boolean::boolean(&t, &q, &d).map_err(fail)
     };
     let b = turn(turn(elbow(-600.0)?, s)?, -s)?;
     Ok((elbow(0.0)?, b))
@@ -295,14 +295,14 @@ fn turned_elbows() -> Result<(Solid, Solid), HashError> {
 /// A frustum along z from `z0`, `h` high, radii `r0` to `r1`, on a
 /// 24-gon: a hole's tools in `shape-edit`.
 fn frustum(r0: f64, r1: f64, z0: f64, h: f64) -> Result<Solid, HashError> {
-    let c = shape_2d::circle(&shape_2d::Circle {
+    let c = og_shape::profile::circle(&og_shape::profile::Circle {
         radius: r0,
         segments: 24,
     })
     .map_err(fail)?;
-    let s = shape_gen::solids::extrude(
+    let s = og_shape::generators::solids::extrude(
         &c,
-        &shape_gen::solids::Extrude {
+        &og_shape::generators::solids::Extrude {
             height: h,
             taper: 1.0 - r1 / r0,
             ..Default::default()

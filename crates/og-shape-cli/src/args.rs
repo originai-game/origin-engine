@@ -5,7 +5,7 @@
 
 use std::path::PathBuf;
 
-use shape_tools::{Axis, Import};
+use og_shape::tools::{Axis, Import};
 
 use crate::{Failure, Input};
 

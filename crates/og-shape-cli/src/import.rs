@@ -6,7 +6,7 @@
 
 use std::path::PathBuf;
 
-use shape_tools::Import;
+use og_shape::tools::Import;
 
 use crate::args::{Args, IMPORT_OPTIONS};
 use crate::export::export;

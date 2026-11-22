@@ -1,11 +1,11 @@
 //! Golden cases for export and the preview (shape-tools): the bytes of
 //! each file and of the preview's framebuffer.
 
-use shape_2d::{Circle, Rect, circle, rect};
-use shape_core::{DVec3, Frame, HashError, OutputHash};
-use shape_gen::solids::{CylinderDesc, Extrude, cylinder, extrude, sphere};
-use shape_mesh::Solid;
-use shape_tools::{
+use og_shape::profile::{Circle, Rect, circle, rect};
+use og_shape::math::{DVec3, Frame, HashError, OutputHash};
+use og_shape::generators::solids::{CylinderDesc, Extrude, cylinder, extrude, sphere};
+use og_shape::mesh::Solid;
+use og_shape::tools::{
     Joint, JointKind, Material, Mimic, Part, Preview, Scene, glb, obj, png, preview, sheet, stl,
 };
 
@@ -66,8 +66,8 @@ pub fn cases() -> Vec<Case> {
 /// both, three views of 96²: the preview's crease and blending rules
 /// (`docs/research.md` §20).
 fn facets(h: &mut OutputHash) -> Result<(), HashError> {
-    use shape_2d::{Polygon, polygon};
-    use shape_gen::paths::{Loft, loft};
+    use og_shape::profile::{Polygon, polygon};
+    use og_shape::generators::paths::{Loft, loft};
     let built = (|| -> Result<(Solid, Solid, Solid), String> {
         let hex = |r: f64| {
             polygon(&Polygon {
@@ -90,7 +90,7 @@ fn facets(h: &mut OutputHash) -> Result<(), HashError> {
         })
         .map_err(|e| e.to_string())?;
         drum.map_positions(|p| p + DVec3::new(28.0, 6.0, 0.0), false);
-        let mut pane = shape_gen::solids::cuboid(&shape_gen::solids::BoxDesc {
+        let mut pane = og_shape::generators::solids::cuboid(&og_shape::generators::solids::BoxDesc {
             width: 60.0,
             depth: 2.0,
             height: 26.0,
@@ -145,9 +145,9 @@ fn facets(h: &mut OutputHash) -> Result<(), HashError> {
 /// follows it: every export feature at once.
 fn with_scene(
     h: &mut OutputHash,
-    run: impl FnOnce(&mut OutputHash, &Scene) -> Result<(), shape_tools::ExportError>,
+    run: impl FnOnce(&mut OutputHash, &Scene) -> Result<(), og_shape::tools::ExportError>,
 ) -> Result<(), HashError> {
-    let built = (|| -> Result<(Solid, Solid, Solid), shape_gen::solids::GenError> {
+    let built = (|| -> Result<(Solid, Solid, Solid), og_shape::generators::solids::GenError> {
         let profile = rect(&Rect {
             width: 60.0,
             height: 40.0,

@@ -3,10 +3,10 @@
 //! and every boolean (`cut`, `join`, `intersect`) with what its result
 //! alone does not say: the voids it left and the edges where its operands
 //! touch, the faces it left without UVs, and the pairs of its result's
-//! triangles that still cross (`shape_bool::BoolReport`).
+//! triangles that still cross (`og_shape::boolean::BoolReport`).
 
-use shape_model::Model;
-use shape_tools::Import;
+use og_shape::model::Model;
+use og_shape::tools::Import;
 
 use crate::args::Args;
 use crate::report::{array, object, string};

@@ -1,12 +1,12 @@
 //! `shape unwrap <mesh> [-o out]`: the file's parts joined and UV-unwrapped
-//! (`shape_tools::unwrap`), as JSON: the charts, the UV scale and the
+//! (`og_shape::tools::unwrap`), as JSON: the charts, the UV scale and the
 //! measures with the new UVs. With `-o`, writes a plain GLB with the UVs
 //! (OBJ and STL carry none). A skinned file of one part is unwrapped as
 //! it is; the plain GLB refuses its skin.
 
 use std::path::PathBuf;
 
-use shape_tools::{Import, Measure, Unwrap};
+use og_shape::tools::{Import, Measure, Unwrap};
 
 use crate::args::{Args, IMPORT_OPTIONS};
 use crate::export::write_solid;
@@ -35,8 +35,8 @@ pub fn unwrap(files: &dyn Files, d: &UnwrapDesc) -> Result<String, Failure> {
         _ => mesh.joined()?,
     };
     let mut s = s;
-    let uvs = shape_tools::unwrap(&mut s, &d.unwrap).map_err(failed)?;
-    let m = shape_tools::measure(
+    let uvs = og_shape::tools::unwrap(&mut s, &d.unwrap).map_err(failed)?;
+    let m = og_shape::tools::measure(
         &s,
         &Measure {
             uv_resolution: d.unwrap.resolution,

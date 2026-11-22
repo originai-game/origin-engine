@@ -1,9 +1,9 @@
 //! `shape compress <file.glb> -o out.glb`: the GLB with its geometry
 //! and animation under `EXT_meshopt_compression`
-//! (`shape_tools::compress`), losslessly, as JSON: how many buffer
+//! (`og_shape::tools::compress`), losslessly, as JSON: how many buffer
 //! views were compressed, their bytes before and after, and the output.
 //! With `--draco`, its triangle meshes under
-//! `KHR_draco_mesh_compression` instead (`shape_tools::compress_draco`,
+//! `KHR_draco_mesh_compression` instead (`og_shape::tools::compress_draco`,
 //! lossy: `--position-bits`, `--normal-bits`, `--uv-bits`,
 //! `--color-bits`).
 
@@ -23,14 +23,14 @@ pub struct CompressDesc {
     pub out: PathBuf,
     /// Compress with Draco (lossy: values kept to a number of bits)
     /// in place of meshopt (lossless).
-    pub draco: Option<shape_tools::Draco>,
+    pub draco: Option<og_shape::tools::Draco>,
     /// Before meshopt: write the vertex attributes in fewer bytes
-    /// (`shape_tools::quantize`, lossy), positions to this many bits
+    /// (`og_shape::tools::quantize`, lossy), positions to this many bits
     /// (0 is 14).
     pub quantize: Option<u8>,
     /// Before meshopt: leave the triangles and vertices in the file's
     /// order. Off, they are also tried in a vertex-cache order
-    /// (`shape_tools::reorder`: nothing drawn changes), and the
+    /// (`og_shape::tools::reorder`: nothing drawn changes), and the
     /// smaller file is written.
     pub keep_order: bool,
 }
@@ -43,7 +43,7 @@ pub fn compress(files: &dyn Files, d: &CompressDesc) -> Result<String, Failure> 
     };
     let bytes = files.read(path)?;
     if let Some(draco) = &d.draco {
-        let (out, c) = shape_tools::compress_draco(&bytes, draco).map_err(failed)?;
+        let (out, c) = og_shape::tools::compress_draco(&bytes, draco).map_err(failed)?;
         files.write(&d.out, &out)?;
         return Ok(object(&[
             ("primitives", c.primitives.to_string()),
@@ -58,18 +58,18 @@ pub fn compress(files: &dyn Files, d: &CompressDesc) -> Result<String, Failure> 
     }
     let pack = |from: &[u8]| -> Result<_, Failure> {
         let (smaller, q) = match d.quantize {
-            Some(bits) => shape_tools::quantize(from, bits).map_err(failed)?,
-            None => (from.to_vec(), shape_tools::Quantized::default()),
+            Some(bits) => og_shape::tools::quantize(from, bits).map_err(failed)?,
+            None => (from.to_vec(), og_shape::tools::Quantized::default()),
         };
-        let (out, c) = shape_tools::compress(&smaller).map_err(failed)?;
+        let (out, c) = og_shape::tools::compress(&smaller).map_err(failed)?;
         Ok((out, c, q))
     };
     // In the file's order, and in a vertex-cache order: the smaller
     // (a file an exporter already ordered gains nothing by it).
     let (mut out, mut c, mut q) = pack(&bytes)?;
-    let mut r = shape_tools::Reordered::default();
+    let mut r = og_shape::tools::Reordered::default();
     if !d.keep_order {
-        let (ordered, did) = shape_tools::reorder(&bytes).map_err(failed)?;
+        let (ordered, did) = og_shape::tools::reorder(&bytes).map_err(failed)?;
         let other = pack(&ordered)?;
         if did.reordered > 0 && other.0.len() < out.len() {
             (out, c, q) = other;
@@ -116,7 +116,7 @@ pub fn run(a: &Args) -> Result<String, Failure> {
         "--weight-bits",
     ])?;
     let bits = |name: &str| a.number::<u8>(name).map(|v| v.unwrap_or(0));
-    let draco = shape_tools::Draco {
+    let draco = og_shape::tools::Draco {
         position_bits: bits("--position-bits")?,
         normal_bits: bits("--normal-bits")?,
         uv_bits: bits("--uv-bits")?,

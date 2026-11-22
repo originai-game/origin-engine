@@ -1,10 +1,10 @@
 //! Golden cases for the mesh tools (shape-tools, phase 5): import, repair,
 //! decimate and LODs, UV unwrap, measure and the plain GLB.
 
-use shape_core::{DVec2, DVec3, Frame, HashError, OutputHash};
-use shape_gen::solids::{BoxDesc, cuboid, sphere, torus};
-use shape_mesh::Solid;
-use shape_tools::{
+use og_shape::math::{DVec2, DVec3, Frame, HashError, OutputHash};
+use og_shape::generators::solids::{BoxDesc, cuboid, sphere, torus};
+use og_shape::mesh::Solid;
+use og_shape::tools::{
     Affine, Decimate, Floaters, Import, ImportedPart, Joint, JointKind, Measure, Part, PlainGlb,
     Repair, Scene, Unwrap, Uvs, apply_transform, collapse_short_edges, decimate, glb, glb_plain,
     import, import_obj, join, lods, measure, no_files, repair, unwrap,
@@ -13,10 +13,10 @@ use shape_tools::{
 use crate::cases::Case;
 
 #[allow(dead_code)]
-#[path = "../../shape-tools/tests/support/fbx.rs"]
+#[path = "../../og-shape/tests/tools/support/fbx.rs"]
 mod fbx_support;
 #[allow(dead_code)]
-#[path = "../../shape-tools/tests/support/skinned.rs"]
+#[path = "../../og-shape/tests/tools/support/skinned.rs"]
 mod skinned_support;
 
 pub fn cases() -> Vec<Case> {
@@ -316,7 +316,7 @@ fn repaired() -> Result<Solid, HashError> {
     Ok(repair(&broken()?, &d).map_err(fail)?.0)
 }
 
-/// An open sheet given a thickness (`shape_tools::thicken`): a ball's
+/// An open sheet given a thickness (`og_shape::tools::thicken`): a ball's
 /// upper half (its faces with a corner below the middle dropped), 1.5
 /// thick, beside a closed box that is left as it is.
 fn thicken_case(h: &mut OutputHash) -> Result<(), HashError> {
@@ -339,7 +339,7 @@ fn thicken_case(h: &mut OutputHash) -> Result<(), HashError> {
     let mut side = side;
     side.map_positions(|p| p + DVec3::new(40.0, 0.0, 0.0), false);
     s.append(&side);
-    let (o, r) = shape_tools::thicken(&s, 1.5).map_err(fail)?;
+    let (o, r) = og_shape::tools::thicken(&s, 1.5).map_err(fail)?;
     for v in [r.pieces, r.skipped, r.triangles] {
         h.u64(v as u64);
     }
@@ -404,7 +404,7 @@ fn decimate_case(h: &mut OutputHash) -> Result<(), HashError> {
     open.triangles = keep.iter().map(|&i| open.triangles[i]).collect();
     open.surfaces = keep.iter().map(|&i| open.surfaces[i]).collect();
     open.face_tags = keep.iter().map(|&i| open.face_tags[i].clone()).collect();
-    let (low, r) = shape_tools::decimate(
+    let (low, r) = og_shape::tools::decimate(
         &open,
         &Decimate {
             target: 4,
@@ -430,7 +430,7 @@ fn decimate_case(h: &mut OutputHash) -> Result<(), HashError> {
         fine.face_tags.push(tags.clone());
     }
     fine.canonicalize()?;
-    let (out, gone) = shape_tools::collapse_short_edges(&fine, 1e-3).map_err(fail)?;
+    let (out, gone) = og_shape::tools::collapse_short_edges(&fine, 1e-3).map_err(fail)?;
     h.u64(gone as u64);
     out.hash_into(h)
 }
@@ -490,12 +490,12 @@ fn measure_case(h: &mut OutputHash) -> Result<(), HashError> {
     );
     let mut s = repaired()?;
     unwrap(&mut s, &Unwrap::default()).map_err(fail)?;
-    let png = shape_tools::png(&shape_tools::Image {
+    let png = og_shape::tools::png(&og_shape::tools::Image {
         width: 8,
         height: 4,
         rgba: vec![255; 8 * 4 * 4],
     });
-    let images = [shape_tools::ImageInfo::from_bytes("albedo.png", &png)];
+    let images = [og_shape::tools::ImageInfo::from_bytes("albedo.png", &png)];
     let d = Measure {
         images: &images,
         uv_resolution: 128,
@@ -508,7 +508,7 @@ fn measure_case(h: &mut OutputHash) -> Result<(), HashError> {
 
 fn plain_case(h: &mut OutputHash) -> Result<(), HashError> {
     let s = repaired()?;
-    let (low, _) = shape_tools::decimate(
+    let (low, _) = og_shape::tools::decimate(
         &s,
         &Decimate {
             target: 200,
@@ -623,19 +623,19 @@ fn skin_decimate_case(h: &mut OutputHash) -> Result<(), HashError> {
 /// A skinned, animated GLB under meshopt compression: its bytes.
 fn compress_case(h: &mut OutputHash) -> Result<(), HashError> {
     let (bytes, report) =
-        shape_tools::compress(&skinned_support::skinned_glb_animated(None)).map_err(fail)?;
+        og_shape::tools::compress(&skinned_support::skinned_glb_animated(None)).map_err(fail)?;
     h.u64(report.compressed as u64);
     h.bytes(&bytes);
     // A plain mesh quantized, then under meshopt.
-    let ball = shape_gen::solids::sphere(10.0).map_err(fail)?;
-    let plain = shape_tools::glb_plain(&ball, &shape_tools::PlainGlb::default()).map_err(fail)?;
-    let (small, report) = shape_tools::quantize(&plain, 0).map_err(fail)?;
+    let ball = og_shape::generators::solids::sphere(10.0).map_err(fail)?;
+    let plain = og_shape::tools::glb_plain(&ball, &og_shape::tools::PlainGlb::default()).map_err(fail)?;
+    let (small, report) = og_shape::tools::quantize(&plain, 0).map_err(fail)?;
     h.u64(report.accessors as u64);
-    h.bytes(&shape_tools::compress(&small).map_err(fail)?.0);
+    h.bytes(&og_shape::tools::compress(&small).map_err(fail)?.0);
     // The same file under Draco (quantized in f32, rANS).
-    let (bytes, report) = shape_tools::compress_draco(
+    let (bytes, report) = og_shape::tools::compress_draco(
         &skinned_support::skinned_glb_animated(None),
-        &shape_tools::Draco::default(),
+        &og_shape::tools::Draco::default(),
     )
     .map_err(fail)?;
     h.u64(report.compressed as u64);

@@ -6,12 +6,12 @@ use std::process::Command;
 
 const PROGRAM: &str = concat!(
     env!("CARGO_MANIFEST_DIR"),
-    "/../../golden/programs/washing_machine.json"
+    "/../og-shape/tests/data/programs/washing_machine.json"
 );
 
 const MESH: &str = concat!(
     env!("CARGO_MANIFEST_DIR"),
-    "/../../golden/meshes/ball_defects.obj"
+    "/../og-shape/tests/data/meshes/ball_defects.obj"
 );
 
 fn shape(args: &[&str]) -> std::process::Output {
@@ -25,7 +25,7 @@ fn shape(args: &[&str]) -> std::process::Output {
 fn subcommands_match_the_library() {
     let dir = std::env::temp_dir().join(format!("shape-cli-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
-    let model = shape_model::program::run(&std::fs::read_to_string(PROGRAM).unwrap()).unwrap();
+    let model = og_shape::model::program::run(&std::fs::read_to_string(PROGRAM).unwrap()).unwrap();
     let glb = dir.join("m.glb");
     let out = shape(&["export", PROGRAM, "-o", glb.to_str().unwrap()]);
     assert!(
@@ -39,7 +39,7 @@ fn subcommands_match_the_library() {
     let text = String::from_utf8(out.stdout).unwrap();
     assert_eq!(
         text.trim(),
-        shape_model::program::measures_json(&model).unwrap()
+        og_shape::model::program::measures_json(&model).unwrap()
     );
     // The washing machine is posed: OBJ is written at the pose, and the
     // report says so.
@@ -57,7 +57,7 @@ fn subcommands_match_the_library() {
     let out = shape(&["measure", PROGRAM, "--posed"]);
     assert_eq!(
         String::from_utf8(out.stdout).unwrap().trim(),
-        shape_model::program::posed_json(&model).unwrap()
+        og_shape::model::program::posed_json(&model).unwrap()
     );
     let png = dir.join("m.png");
     let out = shape(&[
@@ -401,7 +401,7 @@ fn preview_draws_a_files_vertex_colours_in_place() {
         "{}",
         String::from_utf8_lossy(&out.stderr)
     );
-    let im = shape_tools::decode(&std::fs::read(&png).unwrap()).unwrap();
+    let im = og_shape::tools::decode(&std::fs::read(&png).unwrap()).unwrap();
     let at = |x: u32, y: u32| {
         let i = ((y * im.width + x) * 4) as usize;
         [im.rgba[i], im.rgba[i + 1], im.rgba[i + 2]]
@@ -494,8 +494,8 @@ fn ratios_levels_and_frames_are_taken_and_bounded() {
 /// and weights are there.
 #[test]
 fn a_skinned_solid_is_written_with_its_skin() {
-    use shape_core::{DVec3, Frame};
-    use shape_mesh::{Bone, Skin, Solid, Weights};
+    use og_shape::math::{DVec3, Frame};
+    use og_shape::mesh::{Bone, Skin, Solid, Weights};
     let mut s = Solid::default();
     for p in [
         [0.0, 0.0, 0.0],
@@ -525,8 +525,8 @@ fn a_skinned_solid_is_written_with_its_skin() {
         ],
     });
     let bytes =
-        shape_cli::export::encode_solid("tet", &s, None, std::path::Path::new("tet.glb")).unwrap();
-    let back = shape_tools::import(&bytes, &shape_tools::Import::default(), &|_: &str| {
+        og_shape_cli::export::encode_solid("tet", &s, None, std::path::Path::new("tet.glb")).unwrap();
+    let back = og_shape::tools::import(&bytes, &og_shape::tools::Import::default(), &|_: &str| {
         Err(String::new())
     })
     .unwrap();

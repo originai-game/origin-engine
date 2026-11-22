@@ -36,7 +36,7 @@ fn main() -> ExitCode {
     let mut cases = cases::all();
     cases.sort_by(|a, b| a.name.cmp(b.name));
     for case in cases {
-        let mut hash = shape_core::OutputHash::new();
+        let mut hash = og_shape::math::OutputHash::new();
         match (case.run)(&mut hash) {
             Ok(()) => println!("{} {}", case.name, hash.finish_hex()),
             Err(err) => {

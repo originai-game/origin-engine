@@ -1,7 +1,7 @@
 //! `shape rig <mesh> [-o out.glb] [--skeleton joints.json] [--check-clip]`:
-//! a skin for a mesh that has none (`shape_skin::bind`). The file's parts
+//! a skin for a mesh that has none (`og_shape::skin::bind`). The file's parts
 //! are joined; the skeleton is the one given, or a humanoid's found from
-//! the mesh (`shape_skin::humanoid`: standing up +Z, facing −Y as read,
+//! the mesh (`og_shape::skin::humanoid`: standing up +Z, facing −Y as read,
 //! in a T or A pose; `--up` and `--front` name the file's own axes).
 //!
 //! The report (JSON) gives the skeleton in the form `--skeleton` reads,
@@ -14,13 +14,13 @@
 use std::path::{Path, PathBuf};
 
 use serde_json::{Value, json};
-use shape_core::DVec3;
-use shape_mesh::{Skin, SkinClip, Solid};
-use shape_skin::{
+use og_shape::math::DVec3;
+use og_shape::mesh::{Skin, SkinClip, Solid};
+use og_shape::skin::{
     BindReport, FitReport, Joint, Pose, PoseMeasures, Skeleton, Turn, bind, humanoid, measure_pose,
     skin_matrices,
 };
-use shape_tools::Import;
+use og_shape::tools::Import;
 
 use crate::args::{Args, IMPORT_OPTIONS};
 use crate::report::object;
@@ -157,7 +157,7 @@ fn check_poses(skin: &Skin) -> Vec<(&'static str, Pose)> {
         match (at(arm), at(hand)) {
             (Some(a), Some(h)) => {
                 let d = h - a;
-                shape_core::trig::atan2(-d.z, (d.x * d.x + d.y * d.y).sqrt())
+                og_shape::math::trig::atan2(-d.z, (d.x * d.x + d.y * d.y).sqrt())
             }
             _ => 0.0,
         }

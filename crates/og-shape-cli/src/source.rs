@@ -2,19 +2,19 @@
 //!
 //! Entry: [`load`]. An [`Input`] is a path or a program's text. A path
 //! whose extension is `glb`, `gltf`, `obj` or `fbx` is a mesh, imported by
-//! `shape_tools::import` (glTF's external buffers and images and OBJ's
+//! `og_shape::tools::import` (glTF's external buffers and images and OBJ's
 //! material libraries are read beside it, through the same [`Files`]);
 //! any other path is a program (`{"name", "ops"}`) replayed by
-//! `shape_model::program::run_files`, with the fonts its `text` profiles
+//! `og_shape::model::program::run_files`, with the fonts its `text` profiles
 //! and the images its materials' `map`s name read through the same
 //! [`Files`], relative to the program. [`load_uvs`] asks the program for
 //! UVs first (`--uvs`, MCP `uvs`).
 
 use std::path::{Path, PathBuf};
 
-use shape_mesh::Solid;
-use shape_model::Model;
-use shape_tools::{Import, Imported, Material, Part, Scene, apply_transform, import, join};
+use og_shape::mesh::Solid;
+use og_shape::model::Model;
+use og_shape::tools::{Import, Imported, Material, Part, Scene, apply_transform, import, join};
 
 use crate::{Failure, failed};
 
@@ -149,8 +149,8 @@ fn program(
     dir: &Path,
     uvs: bool,
 ) -> Result<Model, Failure> {
-    use shape_model::program as p;
-    let fail = |e: shape_model::ModelError| Failure::Failed(format!("{what}: {e}"));
+    use og_shape::model::program as p;
+    let fail = |e: og_shape::model::ModelError| Failure::Failed(format!("{what}: {e}"));
     let read = |kind: &str, names: Vec<String>| -> Result<p::Fonts, Failure> {
         let mut out = p::Fonts::new();
         for name in names {
@@ -216,7 +216,7 @@ impl Mesh {
             .collect()
     }
 
-    /// Every part placed and joined into one solid (`shape_tools::join`).
+    /// Every part placed and joined into one solid (`og_shape::tools::join`).
     pub fn joined(&self) -> Result<Solid, Failure> {
         if self.imported.parts.is_empty() {
             return Err(Failure::Failed(format!(
@@ -228,7 +228,7 @@ impl Mesh {
     }
 
     /// [`Mesh::joined`], giving up the parts' solids
-    /// (`shape_tools::join_owned`): for a command that goes on with the
+    /// (`og_shape::tools::join_owned`): for a command that goes on with the
     /// joined solid alone. Their names, materials and transforms stay;
     /// [`Mesh::clips`] is asked before this.
     pub fn take_joined(&mut self) -> Result<Solid, Failure> {
@@ -238,13 +238,13 @@ impl Mesh {
                 self.name
             )));
         }
-        shape_tools::join_owned(&mut self.imported.parts).map_err(failed)
+        og_shape::tools::join_owned(&mut self.imported.parts).map_err(failed)
     }
 
     /// The file's clips on the joined solid's skeleton
-    /// (`shape_tools::join_clips`); empty for a file without any.
-    pub fn clips(&self) -> Result<Vec<shape_mesh::SkinClip>, Failure> {
-        shape_tools::join_clips(&self.imported.parts).map_err(failed)
+    /// (`og_shape::tools::join_clips`); empty for a file without any.
+    pub fn clips(&self) -> Result<Vec<og_shape::mesh::SkinClip>, Failure> {
+        og_shape::tools::join_clips(&self.imported.parts).map_err(failed)
     }
 
     /// The material the joined solid is written with, the glTF factors

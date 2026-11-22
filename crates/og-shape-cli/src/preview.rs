@@ -7,13 +7,13 @@
 //! each keeps its base-colour map.
 //!
 //! The report (stdout, JSON) lists every PNG written with what it shows:
-//! the cameras (`shape_tools::ViewCamera`, in the scene's frame and in
+//! the cameras (`og_shape::tools::ViewCamera`, in the scene's frame and in
 //! the GLB's), or a UV view's mapping from pixels to UVs; and the maps
 //! not drawn, with why.
 
 use std::path::{Path, PathBuf};
 
-use shape_tools::{Part, Preview, Scene, UvView, ViewCamera, uv_view};
+use og_shape::tools::{Part, Preview, Scene, UvView, ViewCamera, uv_view};
 
 use crate::args::{Args, IMPORT_OPTIONS};
 use crate::export::written;
@@ -22,7 +22,7 @@ use crate::source::{Local, Source, load_uvs};
 use crate::{Failure, Files, failed};
 
 /// The views and how to lay them out. The zero value is the kernel's
-/// default turntable (`shape_tools::Preview`) in one row.
+/// default turntable (`og_shape::tools::Preview`) in one row.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct PreviewDesc {
     /// The views.
@@ -49,20 +49,20 @@ pub struct PreviewDesc {
     pub frames: u32,
     /// A picture of what is all round the scene, to light it by in
     /// place of the plain sky over the ground ([`environment`]).
-    pub environment: Option<shape_tools::Environment>,
+    pub environment: Option<og_shape::tools::Environment>,
 }
 
 /// The picture at `path` as the light all round a scene: an
 /// equirectangular Radiance `.hdr`, or a PNG, JPEG, WebP or KTX2 image
 /// taken as sRGB.
-pub fn environment(files: &dyn Files, path: &Path) -> Result<shape_tools::Environment, Failure> {
+pub fn environment(files: &dyn Files, path: &Path) -> Result<og_shape::tools::Environment, Failure> {
     let bytes = files.read(path)?;
     let why = |e: String| Failure::Usage(format!("{}: {e}", path.display()));
     if bytes.starts_with(b"#?") {
-        return shape_tools::Environment::from_hdr(&bytes).map_err(why);
+        return og_shape::tools::Environment::from_hdr(&bytes).map_err(why);
     }
-    let image = shape_tools::decode(&bytes).map_err(|e| why(e.to_string()))?;
-    shape_tools::Environment::from_image(&image)
+    let image = og_shape::tools::decode(&bytes).map_err(|e| why(e.to_string()))?;
+    og_shape::tools::Environment::from_image(&image)
         .ok_or_else(|| why("a picture with no light in it".into()))
 }
 
@@ -90,8 +90,8 @@ fn num(v: f64) -> String {
 /// A camera as JSON: in the scene's frame (kernel units, +Z up), and in
 /// the GLB's (metres, +Y up: kernel x, z, −y over 1000).
 pub fn camera(c: &ViewCamera) -> String {
-    let p = |v: shape_core::DVec3| triple([v.x, v.y, v.z]);
-    let gltf = |v: shape_core::DVec3, k: f64| triple([v.x * k, v.z * k, -v.y * k]);
+    let p = |v: og_shape::math::DVec3| triple([v.x, v.y, v.z]);
+    let gltf = |v: og_shape::math::DVec3, k: f64| triple([v.x * k, v.z * k, -v.y * k]);
     object(&[
         ("position", p(c.position)),
         ("target", p(c.target)),
@@ -139,7 +139,7 @@ fn with_scene<T>(
             let mut placed = mesh.placed()?;
             // Each target named must be one of some part's.
             for (name, _) in morph {
-                let known = |s: &shape_mesh::Solid| {
+                let known = |s: &og_shape::mesh::Solid| {
                     s.morphs
                         .as_ref()
                         .is_some_and(|m| m.targets.iter().any(|t| t.name == *name))
@@ -157,7 +157,7 @@ fn with_scene<T>(
             }
             // A part's weights: its rest ones, a clip's over them, the
             // ones asked for over both.
-            let weights_of = |s: &shape_mesh::Solid, from_clip: Option<Vec<f64>>| -> Vec<f64> {
+            let weights_of = |s: &og_shape::mesh::Solid, from_clip: Option<Vec<f64>>| -> Vec<f64> {
                 let Some(m) = &s.morphs else {
                     return Vec::new();
                 };
@@ -178,8 +178,8 @@ fn with_scene<T>(
                     // mesh at that rest.
                     let posed = s.skin.as_ref().is_some_and(|k| {
                         k.bones.iter().any(|b| {
-                            let m = shape_mesh::skin::mat_mul(
-                                &shape_mesh::skin::frame_matrix(&b.rest),
+                            let m = og_shape::mesh::skin::mat_mul(
+                                &og_shape::mesh::skin::frame_matrix(&b.rest),
                                 &b.inverse_bind,
                             );
                             (0..16).any(|i| {
@@ -189,7 +189,7 @@ fn with_scene<T>(
                         })
                     });
                     if posed {
-                        *s = shape_skin::pose(s, &Default::default()).map_err(failed)?;
+                        *s = og_shape::skin::pose(s, &Default::default()).map_err(failed)?;
                     }
                 }
             }
@@ -210,7 +210,7 @@ fn with_scene<T>(
                     any |= driven.is_some();
                     *s = s.morphed(&weights_of(s, driven));
                     if let Some(m) = c.at(time).filter(|_| s.skin.is_some()) {
-                        *s = shape_skin::pose_by(s, &m).map_err(failed)?;
+                        *s = og_shape::skin::pose_by(s, &m).map_err(failed)?;
                         any = true;
                     }
                 }
@@ -302,7 +302,7 @@ pub fn render(source: &Source, d: &PreviewDesc) -> Result<Rendered, Failure> {
         .map(|k| duration * (f64::from(k) / f64::from(d.frames)))
         .collect();
     // One box for all the frames: the camera stands still.
-    let mut frame: Option<(shape_core::DVec3, shape_core::DVec3)> = None;
+    let mut frame: Option<(og_shape::math::DVec3, og_shape::math::DVec3)> = None;
     for &t in &times {
         with_scene(source, Some((&name, t)), &d.morph, |scene| {
             for p in scene.parts.iter().flat_map(|p| &p.solid.positions) {
@@ -372,7 +372,7 @@ fn render_pose(
                         ("tiles", l.tiles.to_string()),
                         ("under", string(if l.textured { "map" } else { "checker" })),
                     ]);
-                    (shape_tools::png(&l.image), about)
+                    (og_shape::tools::png(&l.image), about)
                 })
                 .collect();
             return Ok(Rendered {
@@ -380,7 +380,7 @@ fn render_pose(
                 undrawn: array(&undrawn),
             });
         }
-        let v = shape_tools::views_in(scene, &d.preview, d.environment.as_ref()).map_err(failed)?;
+        let v = og_shape::tools::views_in(scene, &d.preview, d.environment.as_ref()).map_err(failed)?;
         let undrawn = array(
             &v.undrawn
                 .iter()
@@ -395,7 +395,7 @@ fn render_pose(
                 .enumerate()
                 .map(|(k, (im, c))| {
                     (
-                        shape_tools::png(im),
+                        og_shape::tools::png(im),
                         object(&[("view", k.to_string()), ("camera", c.clone())]),
                     )
                 })
@@ -407,7 +407,7 @@ fn render_pose(
                 d.columns
             };
             vec![(
-                shape_tools::png(&shape_tools::sheet(&v.images, columns)),
+                og_shape::tools::png(&og_shape::tools::sheet(&v.images, columns)),
                 object(&[
                     ("columns", columns.to_string()),
                     ("cameras", array(&cameras)),

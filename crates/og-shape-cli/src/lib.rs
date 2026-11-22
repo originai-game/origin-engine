@@ -4,7 +4,7 @@
 //! reads inputs, calls the kernel and writes its outputs.
 //!
 //! Entry: [`source::load`] reads a [`Source`]: a model program
-//! (`shape_model::program`) or a mesh file (glb, gltf, obj, fbx), through
+//! (`og_shape::model::program`) or a mesh file (glb, gltf, obj, fbx), through
 //! a [`Files`] that does the I/O (plain files for the command line, a
 //! confined workspace for the server). Each command is one module:
 //!

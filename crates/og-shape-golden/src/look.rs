@@ -4,10 +4,10 @@
 //! MTL), the chain (repair, decimation, a cut) on a coloured solid, the
 //! plain GLB with a material, and the texture decoder and box filter.
 
-use shape_core::{DVec3, HashError, OutputHash};
-use shape_gen::solids::{BoxDesc, CylinderDesc, Generator, SphereDesc, cuboid, cylinder, textured};
-use shape_mesh::Solid;
-use shape_tools::{
+use og_shape::math::{DVec3, HashError, OutputHash};
+use og_shape::generators::solids::{BoxDesc, CylinderDesc, Generator, SphereDesc, cuboid, cylinder, textured};
+use og_shape::mesh::Solid;
+use og_shape::tools::{
     ColorSpace, Decimate, Downsize, Floaters, Import, Material, Part, PlainGlb, Repair, Scene,
     Texture, decimate, decode, downsize, glb, glb_plain, import, repair,
 };
@@ -79,7 +79,7 @@ pub fn hash_material(h: &mut OutputHash, m: &Material) -> Result<(), HashError> 
 }
 
 fn png(seed: u8, w: u32, h: u32) -> Vec<u8> {
-    shape_tools::png(&shape_tools::Image {
+    og_shape::tools::png(&og_shape::tools::Image {
         width: w,
         height: h,
         rgba: (0..w * h * 4)
@@ -106,7 +106,7 @@ pub fn painted_sphere() -> Result<Solid, HashError> {
     s.colors = Some(
         s.triangles
             .iter()
-            .map(|t| t.map(|v| shape_mesh::stored(affine(s.positions[v as usize]))))
+            .map(|t| t.map(|v| og_shape::mesh::stored(affine(s.positions[v as usize]))))
             .collect(),
     );
     Ok(s)
@@ -155,7 +155,7 @@ fn import_case(h: &mut OutputHash) -> Result<(), HashError> {
     .map_err(fail)?;
     h.bytes(&bytes);
     let none = |uri: &str| -> Result<Vec<u8>, String> { Err(format!("no {uri}")) };
-    let hash_import = |h: &mut OutputHash, bytes: &[u8], files: shape_tools::Resolve| {
+    let hash_import = |h: &mut OutputHash, bytes: &[u8], files: og_shape::tools::Resolve| {
         let im = import(bytes, &Import::default(), files).map_err(fail)?;
         for p in &im.parts {
             h.str(&p.name);
@@ -275,9 +275,9 @@ fn chain_case(h: &mut OutputHash) -> Result<(), HashError> {
         )
         .map_err(fail)?,
     );
-    let measured = shape_tools::measure(
+    let measured = og_shape::tools::measure(
         &low,
-        &shape_tools::Measure {
+        &og_shape::tools::Measure {
             materials: core::slice::from_ref(&m),
             ..Default::default()
         },
@@ -293,7 +293,7 @@ fn chain_case(h: &mut OutputHash) -> Result<(), HashError> {
         block
             .triangles
             .iter()
-            .map(|t| t.map(|v| shape_mesh::stored(affine(block.positions[v as usize]))))
+            .map(|t| t.map(|v| og_shape::mesh::stored(affine(block.positions[v as usize]))))
             .collect(),
     );
     let mut pin = cylinder(&CylinderDesc {
@@ -303,11 +303,11 @@ fn chain_case(h: &mut OutputHash) -> Result<(), HashError> {
     })
     .map_err(fail)?;
     pin.map_positions(|p| p + DVec3::new(5.0, 3.0, -20.0), false);
-    let (out, report) = shape_bool::boolean_report(
+    let (out, report) = og_shape::boolean::boolean_report(
         &block,
         &pin,
-        &shape_bool::Boolean {
-            op: shape_bool::BoolOp::Cut,
+        &og_shape::boolean::Boolean {
+            op: og_shape::boolean::BoolOp::Cut,
             ..Default::default()
         },
     )
@@ -321,13 +321,13 @@ fn chain_case(h: &mut OutputHash) -> Result<(), HashError> {
 /// Maps written as KTX2: the files' bytes (UASTC blocks fitted in f64,
 /// mip levels, Zstandard) and what they decode to.
 fn ktx2_case(h: &mut OutputHash) -> Result<(), HashError> {
-    let jpg = include_bytes!("../../../golden/meshes/stripes_420.jpg");
+    let jpg = include_bytes!("../../og-shape/tests/data/meshes/stripes_420.jpg");
     let tex = [
         (Texture::from_bytes("stripes.jpg", jpg.to_vec()), true),
         (Texture::from_bytes("noise.png", png(9, 37, 23)), false),
     ];
     for (t, color) in &tex {
-        let k = shape_tools::to_ktx2(t, *color)
+        let k = og_shape::tools::to_ktx2(t, *color)
             .map_err(fail)?
             .ok_or(HashError::NaN)?;
         h.str(&k.name);
@@ -341,13 +341,13 @@ fn ktx2_case(h: &mut OutputHash) -> Result<(), HashError> {
 /// fitted and codebooks split in f64, Huffman tables) and what they
 /// decode to.
 fn etc1s_case(h: &mut OutputHash) -> Result<(), HashError> {
-    let jpg = include_bytes!("../../../golden/meshes/stripes_420.jpg");
+    let jpg = include_bytes!("../../og-shape/tests/data/meshes/stripes_420.jpg");
     let tex = [
         (Texture::from_bytes("stripes.jpg", jpg.to_vec()), true),
         (Texture::from_bytes("noise.png", png(9, 37, 23)), false),
     ];
     for (t, color) in &tex {
-        let k = shape_tools::to_ktx2_etc1s(t, *color)
+        let k = og_shape::tools::to_ktx2_etc1s(t, *color)
             .map_err(fail)?
             .ok_or(HashError::NaN)?;
         h.bytes(&k.bytes);
@@ -359,13 +359,13 @@ fn etc1s_case(h: &mut OutputHash) -> Result<(), HashError> {
 /// A lossless WebP (stored here, made by `image-webp`'s encoder from
 /// 23 × 17 texels of a fixed pattern) decoded.
 fn webp_case(h: &mut OutputHash) -> Result<(), HashError> {
-    let webp = include_bytes!("../../../golden/meshes/pattern.webp");
+    let webp = include_bytes!("../../og-shape/tests/data/meshes/pattern.webp");
     h.bytes(&decode(webp).map_err(fail)?.rgba);
     Ok(())
 }
 
 fn texture_case(h: &mut OutputHash) -> Result<(), HashError> {
-    let jpg = include_bytes!("../../../golden/meshes/stripes_420.jpg");
+    let jpg = include_bytes!("../../og-shape/tests/data/meshes/stripes_420.jpg");
     let img = decode(jpg).map_err(fail)?;
     h.bytes(&img.rgba);
     let tex = [

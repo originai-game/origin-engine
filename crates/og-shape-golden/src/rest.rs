@@ -8,8 +8,8 @@
 //! `wire` along a helix and along a tangent arc; `merge`, `delete`; and a
 //! checked `cut` that leaves a void.
 
-use shape_core::{HashError, OutputHash};
-use shape_model::{Model, ModelError, program};
+use og_shape::math::{HashError, OutputHash};
+use og_shape::model::{Model, ModelError, program};
 
 use crate::cases::Case;
 

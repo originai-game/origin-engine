@@ -7,7 +7,7 @@
 //! write one kernel report each, in `shape-tools`' snake_case.
 
 use serde_json::{Value, json};
-use shape_tools::{
+use og_shape::tools::{
     Blocked, ColorSpace, DecimateReport, ImageInfo, Imported, Material, NonManifold, RepairReport,
     Uvs,
 };
@@ -31,7 +31,7 @@ pub fn string(s: &str) -> String {
     Value::from(s).to_string()
 }
 
-/// What `shape_tools::repair` changed.
+/// What `og_shape::tools::repair` changed.
 pub fn repair(r: &RepairReport) -> String {
     let fused = match &r.fused {
         None => Value::Null,
@@ -100,7 +100,7 @@ fn non_manifold(n: &NonManifold) -> String {
     ])
 }
 
-/// What `shape_tools::decimate` did.
+/// What `og_shape::tools::decimate` did.
 pub fn decimate(r: &DecimateReport) -> String {
     object(&[
         ("triangles_before", r.triangles_before.to_string()),
@@ -128,7 +128,7 @@ fn blocked(b: &Blocked) -> String {
     ])
 }
 
-/// What `shape_tools::unwrap` made.
+/// What `og_shape::tools::unwrap` made.
 pub fn unwrap(u: &Uvs) -> String {
     object(&[
         ("charts", u.chart_count.to_string()),

@@ -4,10 +4,10 @@
 //! cubes on one edge split apart, a hole over the fill limit, a fill
 //! across a UV seam, and the pockets an untangling leaves.
 
-use shape_core::{DVec2, DVec3, HashError, OutputHash};
-use shape_gen::solids::{Generator, SphereDesc, sphere, textured};
-use shape_mesh::Solid;
-use shape_tools::{Decimate, DecimateReport, Floaters, Repair, close_holes, decimate, repair};
+use og_shape::math::{DVec2, DVec3, HashError, OutputHash};
+use og_shape::generators::solids::{Generator, SphereDesc, sphere, textured};
+use og_shape::mesh::Solid;
+use og_shape::tools::{Decimate, DecimateReport, Floaters, Repair, close_holes, decimate, repair};
 
 use crate::cases::Case;
 

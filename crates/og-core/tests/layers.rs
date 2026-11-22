@@ -42,6 +42,7 @@ const LAYERS: &[(&str, &[&str])] = &[
             "og-idl",
             "og-physics-data",
             "og-records",
+            "og-shape",
             "og-render-data",
             "og-tilemap",
             "og-timeline",
@@ -73,7 +74,7 @@ const LAYERS: &[(&str, &[&str])] = &[
         ],
     ),
     ("assembly", &["og-runtime"]),
-    ("tools", &["og-cli", "og-cook", "og-sccache-wrap"]),
+    ("tools", &["og-cli", "og-cook", "og-sccache-wrap", "og-shape-cli", "og-shape-golden"]),
     (
         "hosts",
         &[

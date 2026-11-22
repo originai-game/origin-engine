@@ -2,17 +2,17 @@
 //! (`docs/research.md` §6.4, §10): loft through holes and by spline, the
 //! +z axis, body, wire, knurl and the gear solid.
 
-use shape_2d::{Circle, Rect, circle, rect};
-use shape_core::{DVec3, HashError, OutputHash, trig};
-use shape_gen::body::{Body, View, body};
-use shape_gen::parts::{GearDesc, Knurl, gear_solid, knurl};
-use shape_gen::path3::{Path3, Piece, flatten};
-use shape_gen::paths::{Helix, Loft, LoftAlong, LoftCurve, Sweep, loft, loft_along, sweep};
-use shape_gen::solids::{
+use og_shape::profile::{Circle, Rect, circle, rect};
+use og_shape::math::{DVec3, HashError, OutputHash, trig};
+use og_shape::generators::body::{Body, View, body};
+use og_shape::generators::parts::{GearDesc, Knurl, gear_solid, knurl};
+use og_shape::generators::path3::{Path3, Piece, flatten};
+use og_shape::generators::paths::{Helix, Loft, LoftAlong, LoftCurve, Sweep, loft, loft_along, sweep};
+use og_shape::generators::solids::{
     Axis, DomeDesc, Revolve, SphereDesc, TorusDesc, dome_desc, revolve, sphere_desc, torus_desc,
 };
-use shape_gen::wire::{Wire, wire};
-use shape_mesh::Solid;
+use og_shape::generators::wire::{Wire, wire};
+use og_shape::mesh::Solid;
 
 use crate::cases::Case;
 
@@ -86,7 +86,7 @@ fn solid<E: std::fmt::Display>(h: &mut OutputHash, s: Result<Solid, E>) -> Resul
     }
 }
 
-fn disc(radius: f64) -> shape_2d::Profile {
+fn disc(radius: f64) -> og_shape::profile::Profile {
     circle(&Circle {
         radius,
         segments: 0,
@@ -94,7 +94,7 @@ fn disc(radius: f64) -> shape_2d::Profile {
     .unwrap_or_default()
 }
 
-fn square(side: f64, radius: f64) -> shape_2d::Profile {
+fn square(side: f64, radius: f64) -> og_shape::profile::Profile {
     rect(&Rect {
         width: side,
         height: side,
@@ -116,8 +116,8 @@ fn loft_holes(h: &mut OutputHash) -> Result<(), HashError> {
     )?;
     let two = |side: f64, dx: f64| {
         square(side, 4.0)
-            .subtract(&disc(2.5).translate(shape_core::DVec2::new(-dx, 0.0)))
-            .subtract(&disc(2.5).translate(shape_core::DVec2::new(dx, 0.0)))
+            .subtract(&disc(2.5).translate(og_shape::math::DVec2::new(-dx, 0.0)))
+            .subtract(&disc(2.5).translate(og_shape::math::DVec2::new(dx, 0.0)))
     };
     solid(
         h,
@@ -167,7 +167,7 @@ fn axis_z(h: &mut OutputHash) -> Result<(), HashError> {
     solid(
         h,
         revolve(
-            &square(4.0, 0.0).translate(shape_core::DVec2::new(8.0, 2.0)),
+            &square(4.0, 0.0).translate(og_shape::math::DVec2::new(8.0, 2.0)),
             &Revolve {
                 angle: 2.0,
                 axis: Axis::Z,
@@ -381,7 +381,7 @@ fn sweep_ends(h: &mut OutputHash) -> Result<(), HashError> {
             },
         ),
     )?;
-    let spring = shape_gen::path3::helix(&Helix {
+    let spring = og_shape::generators::path3::helix(&Helix {
         radius: 3.0,
         pitch: 2.0,
         turns: 2.5,
@@ -402,7 +402,7 @@ fn sweep_ends(h: &mut OutputHash) -> Result<(), HashError> {
 /// circles round a ring, on a curve and straight; an open quarter bend
 /// from a square with a hole to a circle with one, with UVs.
 fn lofts_along(h: &mut OutputHash) -> Result<(), HashError> {
-    use shape_core::Frame;
+    use og_shape::math::Frame;
     let on_ring = |r: f64, turn: f64| {
         let (sin, cos) = trig::sin_cos(trig::TAU * turn);
         Frame {
@@ -456,14 +456,14 @@ fn lofts_along(h: &mut OutputHash) -> Result<(), HashError> {
     solid(h, loft_along(&bend))?;
     solid(
         h,
-        shape_gen::solids::textured(&shape_gen::solids::Generator::LoftAlong(&bend)),
+        og_shape::generators::solids::textured(&og_shape::generators::solids::Generator::LoftAlong(&bend)),
     )
 }
 
-/// Convex hulls (`shape_gen::hull`): a grid of points on and inside a
+/// Convex hulls (`og_shape::generators::hull`): a grid of points on and inside a
 /// box (every degenerate place), a torus's vertices, and a scatter.
 fn hulls(h: &mut OutputHash) -> Result<(), HashError> {
-    use shape_gen::hull::convex_hull;
+    use og_shape::generators::hull::convex_hull;
     let mut grid = Vec::new();
     for x in 0..=4 {
         for y in 0..=4 {
@@ -500,11 +500,11 @@ fn hulls(h: &mut OutputHash) -> Result<(), HashError> {
     solid(h, convex_hull(&scatter))
 }
 
-/// Colliders (`shape_tools::colliders`): an L cut at its inner corner, a
+/// Colliders (`og_shape::tools::colliders`): an L cut at its inner corner, a
 /// ring covered by eight thinned hulls, a ball thinned to 14 vertices:
 /// every hull and each report.
 fn colliders_case(h: &mut OutputHash) -> Result<(), HashError> {
-    use shape_tools::{Collide, colliders};
+    use og_shape::tools::{Collide, colliders};
     let fail = |e: &dyn std::fmt::Display| {
         eprintln!("collide.hulls: {e}");
         HashError::NaN
@@ -517,10 +517,10 @@ fn colliders_case(h: &mut OutputHash) -> Result<(), HashError> {
         (-5.0, 25.0),
         (-15.0, 25.0),
     ];
-    let profile = shape_2d::poly(&shape_2d::Poly {
+    let profile = og_shape::profile::poly(&og_shape::profile::Poly {
         points: corners
             .iter()
-            .map(|&(x, y)| shape_2d::PolyPoint {
+            .map(|&(x, y)| og_shape::profile::PolyPoint {
                 x,
                 y,
                 ..Default::default()
@@ -528,9 +528,9 @@ fn colliders_case(h: &mut OutputHash) -> Result<(), HashError> {
             .collect(),
     })
     .map_err(|e| fail(&e))?;
-    let ell = shape_gen::solids::extrude(
+    let ell = og_shape::generators::solids::extrude(
         &profile,
-        &shape_gen::solids::Extrude {
+        &og_shape::generators::solids::Extrude {
             height: 10.0,
             ..Default::default()
         },
@@ -591,16 +591,16 @@ impl std::fmt::Display for GenErrorNever {
     }
 }
 
-/// Subdivision (`shape_edit::subdivide`): a box rounded all over at
+/// Subdivision (`og_shape::edit::subdivide`): a box rounded all over at
 /// three levels, the same with its base sharp, and an extruded L with
 /// both caps sharp.
 fn subdivided(h: &mut OutputHash) -> Result<(), HashError> {
-    use shape_edit::{Subdivide, subdivide};
+    use og_shape::edit::{Subdivide, subdivide};
     let fail = |e: &dyn std::fmt::Display| {
         eprintln!("edit.subdivide: {e}");
         HashError::NaN
     };
-    let cage = shape_gen::solids::cuboid(&shape_gen::solids::BoxDesc {
+    let cage = og_shape::generators::solids::cuboid(&og_shape::generators::solids::BoxDesc {
         width: 60.0,
         depth: 40.0,
         height: 25.0,
@@ -614,10 +614,10 @@ fn subdivided(h: &mut OutputHash) -> Result<(), HashError> {
         (-5.0, 25.0),
         (-15.0, 25.0),
     ];
-    let profile = shape_2d::poly(&shape_2d::Poly {
+    let profile = og_shape::profile::poly(&og_shape::profile::Poly {
         points: corners
             .iter()
-            .map(|&(x, y)| shape_2d::PolyPoint {
+            .map(|&(x, y)| og_shape::profile::PolyPoint {
                 x,
                 y,
                 ..Default::default()
@@ -625,9 +625,9 @@ fn subdivided(h: &mut OutputHash) -> Result<(), HashError> {
             .collect(),
     })
     .map_err(|e| fail(&e))?;
-    let ell = shape_gen::solids::extrude(
+    let ell = og_shape::generators::solids::extrude(
         &profile,
-        &shape_gen::solids::Extrude {
+        &og_shape::generators::solids::Extrude {
             height: 20.0,
             ..Default::default()
         },

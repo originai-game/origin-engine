@@ -2,13 +2,13 @@
 //! the generators' UVs, the mesh tools carrying them, a boolean
 //! interpolating them, and GLB with a texture written and read back.
 
-use shape_core::{DVec3, HashError, OutputHash};
-use shape_gen::solids::{
+use og_shape::math::{DVec3, HashError, OutputHash};
+use og_shape::generators::solids::{
     Axis, BoxDesc, CylinderDesc, DomeDesc, Extrude, Generator, SphereDesc, TorusDesc, cylinder,
     textured,
 };
-use shape_mesh::Solid;
-use shape_tools::{
+use og_shape::mesh::Solid;
+use og_shape::tools::{
     Decimate, Import, Part, PlainGlb, Repair, Scene, Texture, decimate, glb, glb_plain, import,
     no_files, repair,
 };
@@ -57,8 +57,8 @@ fn fail(e: impl std::fmt::Display) -> HashError {
     HashError::NaN
 }
 
-fn rounded_bar() -> Result<shape_2d::Profile, HashError> {
-    shape_2d::rect(&shape_2d::Rect {
+fn rounded_bar() -> Result<og_shape::profile::Profile, HashError> {
+    og_shape::profile::rect(&og_shape::profile::Rect {
         width: 30.0,
         height: 12.0,
         radius: 3.0,
@@ -175,11 +175,11 @@ fn boolean(h: &mut OutputHash) -> Result<(), HashError> {
     })
     .map_err(fail)?;
     pin.map_positions(|p| p + DVec3::new(3.0, 2.0, -10.0), false);
-    let (cut, r) = shape_bool::boolean_report(
+    let (cut, r) = og_shape::boolean::boolean_report(
         &block,
         &pin,
-        &shape_bool::Boolean {
-            op: shape_bool::BoolOp::Cut,
+        &og_shape::boolean::Boolean {
+            op: og_shape::boolean::BoolOp::Cut,
             target: "block",
             tool: "pin",
         },
@@ -199,7 +199,7 @@ fn glb_case(h: &mut OutputHash) -> Result<(), HashError> {
         ..Default::default()
     }))
     .map_err(fail)?;
-    let png = shape_tools::png(&shape_tools::Image {
+    let png = og_shape::tools::png(&og_shape::tools::Image {
         width: 4,
         height: 2,
         rgba: (0..32u8).map(|i| i * 8).collect(),
@@ -235,12 +235,12 @@ fn glb_case(h: &mut OutputHash) -> Result<(), HashError> {
 
 /// The generators stream Y gave UVs (`docs/research.md` §21.1).
 fn generators2(h: &mut OutputHash) -> Result<(), HashError> {
-    use shape_gen::body::{Body, View};
-    use shape_gen::parts::{GearDesc, Knurl};
-    use shape_gen::paths::{Loft, Sweep, Thread};
-    use shape_gen::wire::Wire;
+    use og_shape::generators::body::{Body, View};
+    use og_shape::generators::parts::{GearDesc, Knurl};
+    use og_shape::generators::paths::{Loft, Sweep, Thread};
+    use og_shape::generators::wire::Wire;
     let bar = rounded_bar()?;
-    let disc = shape_2d::circle(&shape_2d::Circle {
+    let disc = og_shape::profile::circle(&og_shape::profile::Circle {
         radius: 6.0,
         segments: 20,
     })
@@ -323,7 +323,7 @@ fn generators2(h: &mut OutputHash) -> Result<(), HashError> {
 
 /// A textured plate through every edit and bevel that carries UVs.
 fn edits(h: &mut OutputHash) -> Result<(), HashError> {
-    use shape_core::Frame;
+    use og_shape::math::Frame;
     let plate = textured(&Generator::Extrude(
         &rounded_bar()?,
         Extrude {
@@ -336,9 +336,9 @@ fn edits(h: &mut OutputHash) -> Result<(), HashError> {
         origin: DVec3::new(x, 0.0, 20.0),
         ..Frame::IDENTITY
     };
-    let holed = shape_edit::hole(
+    let holed = og_shape::edit::hole(
         &plate,
-        &shape_edit::Hole {
+        &og_shape::edit::Hole {
             diameter: 4.0,
             at: vec![above(-8.0)],
             counterbore: (6.0, 2.0),
@@ -347,10 +347,10 @@ fn edits(h: &mut OutputHash) -> Result<(), HashError> {
     )
     .map_err(fail)?;
     holed.hash_into(h)?;
-    let pocketed = shape_edit::pocket(
+    let pocketed = og_shape::edit::pocket(
         &holed,
-        &shape_edit::Pocket {
-            profile: shape_2d::rect(&shape_2d::Rect {
+        &og_shape::edit::Pocket {
+            profile: og_shape::profile::rect(&og_shape::profile::Rect {
                 width: 6.0,
                 height: 4.0,
                 radius: 0.0,
@@ -362,9 +362,9 @@ fn edits(h: &mut OutputHash) -> Result<(), HashError> {
     )
     .map_err(fail)?;
     pocketed.hash_into(h)?;
-    let filleted = shape_bevel::fillet(
+    let filleted = og_shape::bevel::fillet(
         &plate,
-        &shape_bevel::Fillet {
+        &og_shape::bevel::Fillet {
             radius: 0.8,
             edges: vec!["bottom".into()],
             ..Default::default()
@@ -372,9 +372,9 @@ fn edits(h: &mut OutputHash) -> Result<(), HashError> {
     )
     .map_err(fail)?;
     filleted.hash_into(h)?;
-    let chamfered = shape_bevel::chamfer(
+    let chamfered = og_shape::bevel::chamfer(
         &plate,
-        &shape_bevel::Chamfer {
+        &og_shape::bevel::Chamfer {
             distance: 1.0,
             edges: vec!["top".into()],
             ..Default::default()
@@ -382,18 +382,18 @@ fn edits(h: &mut OutputHash) -> Result<(), HashError> {
     )
     .map_err(fail)?;
     chamfered.hash_into(h)?;
-    let shelled = shape_edit::shell(
+    let shelled = og_shape::edit::shell(
         &plate,
-        &shape_edit::Shell {
+        &og_shape::edit::Shell {
             thickness: 1.0,
             open: vec!["top".into()],
         },
     )
     .map_err(fail)?;
     shelled.hash_into(h)?;
-    let dented = shape_edit::dent(
+    let dented = og_shape::edit::dent(
         &plate,
-        &shape_edit::Dent {
+        &og_shape::edit::Dent {
             at: vec![DVec3::new(0.0, 0.0, 8.0)],
             radius: 4.0,
             depth: 1.0,
@@ -401,30 +401,30 @@ fn edits(h: &mut OutputHash) -> Result<(), HashError> {
     )
     .map_err(fail)?;
     dented.hash_into(h)?;
-    let split = shape_edit::split(
+    let split = og_shape::edit::split(
         &plate,
         &Frame {
             origin: DVec3::new(0.0, 0.0, 3.0),
             ..Frame::IDENTITY
         },
-        shape_edit::Keep::Below,
+        og_shape::edit::Keep::Below,
     )
     .map_err(fail)?;
     split.hash_into(h)
 }
 
-const UV_PLATE: &str = include_str!("../../../golden/programs/uv_plate.json");
-pub const CHECKER: &[u8] = include_bytes!("../../../golden/programs/checker.png");
+const UV_PLATE: &str = include_str!("../../og-shape/tests/data/programs/uv_plate.json");
+pub const CHECKER: &[u8] = include_bytes!("../../og-shape/tests/data/programs/checker.png");
 
 /// The acceptance program (`golden/programs/uv_plate.json`, recorded by
 /// `crates/shape-wasm/ts/examples/uv_plate.ts`): its GLB and measures.
 fn program(h: &mut OutputHash) -> Result<(), HashError> {
-    use shape_model::program::{Fonts, run_files};
+    use og_shape::model::program::{Fonts, run_files};
     let mut textures = Fonts::new();
     textures.insert("checker.png".into(), CHECKER.to_vec());
     let m = run_files(UV_PLATE, &Fonts::new(), &textures).map_err(fail)?;
     h.bytes(&m.glb().map_err(fail)?);
-    h.str(&shape_model::program::measures_json(&m).map_err(fail)?);
+    h.str(&og_shape::model::program::measures_json(&m).map_err(fail)?);
     Ok(())
 }
 
@@ -432,23 +432,23 @@ fn program(h: &mut OutputHash) -> Result<(), HashError> {
 /// sampled on the plate and handle (`docs/research.md` §30), and its UV
 /// view over the checker.
 fn program_preview(h: &mut OutputHash) -> Result<(), HashError> {
-    use shape_model::program::{Fonts, run_files};
+    use og_shape::model::program::{Fonts, run_files};
     let mut textures = Fonts::new();
     textures.insert("checker.png".into(), CHECKER.to_vec());
     let m = run_files(UV_PLATE, &Fonts::new(), &textures).map_err(fail)?;
     let built = m.build().map_err(fail)?;
     let scene = built.scene();
-    let d = shape_tools::Preview {
+    let d = og_shape::tools::Preview {
         width: 128,
         views: 2,
         ..Default::default()
     };
-    let v = shape_tools::views(&scene, &d).map_err(fail)?;
-    h.bytes(&shape_tools::png(&shape_tools::sheet(&v.images, 2)));
-    for l in shape_tools::uv_view(&scene, &shape_tools::UvView { size: 128 }).map_err(fail)? {
+    let v = og_shape::tools::views(&scene, &d).map_err(fail)?;
+    h.bytes(&og_shape::tools::png(&og_shape::tools::sheet(&v.images, 2)));
+    for l in og_shape::tools::uv_view(&scene, &og_shape::tools::UvView { size: 128 }).map_err(fail)? {
         h.u64(u64::from(l.tiles));
         h.f64s(&l.uv_min)?;
-        h.bytes(&shape_tools::png(&l.image));
+        h.bytes(&og_shape::tools::png(&l.image));
     }
     Ok(())
 }

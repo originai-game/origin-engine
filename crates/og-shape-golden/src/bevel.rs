@@ -1,13 +1,13 @@
 //! Golden cases for fillet, chamfer and soften (shape-bevel).
 
-use shape_bevel::{Chamfer, Fillet, Miter, Soften, chamfer, fillet, soften};
-use shape_core::{DVec2, DVec3};
-use shape_core::{HashError, OutputHash, trig};
-use shape_edit::{Hole, above, hole};
-use shape_gen::solids::{
+use og_shape::bevel::{Chamfer, Fillet, Miter, Soften, chamfer, fillet, soften};
+use og_shape::math::{DVec2, DVec3};
+use og_shape::math::{HashError, OutputHash, trig};
+use og_shape::edit::{Hole, above, hole};
+use og_shape::generators::solids::{
     Axis, BoxDesc, CylinderDesc, Extrude, Revolve, cuboid, cylinder, extrude, revolve,
 };
-use shape_mesh::Solid;
+use og_shape::mesh::Solid;
 
 use crate::cases::Case;
 
@@ -196,7 +196,7 @@ fn curved(h: &mut OutputHash) -> Result<(), HashError> {
 
 fn sand3d(h: &mut OutputHash) -> Result<(), HashError> {
     // The bracket.
-    let plate = shape_2d::rect(&shape_2d::Rect {
+    let plate = og_shape::profile::rect(&og_shape::profile::Rect {
         width: 80.0,
         height: 40.0,
         radius: 4.0,
@@ -266,7 +266,7 @@ fn sand3d(h: &mut OutputHash) -> Result<(), HashError> {
 }
 
 fn adj(h: &mut OutputHash) -> Result<(), HashError> {
-    let square = shape_2d::rect(&shape_2d::Rect {
+    let square = og_shape::profile::rect(&og_shape::profile::Rect {
         width: 20.0,
         height: 20.0,
         radius: 0.0,
@@ -300,7 +300,7 @@ fn adj(h: &mut OutputHash) -> Result<(), HashError> {
 
 fn prism(corners: &[(f64, f64)], d: &Extrude) -> Solid {
     extrude(
-        &shape_2d::Profile::from_contour(shape_2d::Contour::corners(
+        &og_shape::profile::Profile::from_contour(og_shape::profile::Contour::corners(
             corners.iter().map(|&(x, y)| DVec2::new(x, y)).collect(),
         )),
         d,
@@ -506,7 +506,7 @@ fn slivers(h: &mut OutputHash) -> Result<(), HashError> {
     .unwrap_or_default();
     small.map_positions(|p| p + DVec3::new(3.0, 2.0, 8.0), false);
     let joined =
-        shape_bool::boolean(&big, &small, &shape_bool::Boolean::default()).unwrap_or_default();
+        og_shape::boolean::boolean(&big, &small, &og_shape::boolean::Boolean::default()).unwrap_or_default();
     solid(h, fillet(&joined, &round(1.0, &[], 4)))?;
     solid(
         h,
@@ -518,7 +518,7 @@ fn slivers(h: &mut OutputHash) -> Result<(), HashError> {
             },
         ),
     )?;
-    let section = shape_2d::Profile::from_contour(shape_2d::Contour::corners(vec![
+    let section = og_shape::profile::Profile::from_contour(og_shape::profile::Contour::corners(vec![
         DVec2::new(5.0, 0.0),
         DVec2::new(10.0, 0.0),
         DVec2::new(10.0, 8.0),
@@ -571,7 +571,7 @@ fn cones(h: &mut OutputHash) -> Result<(), HashError> {
     .unwrap_or_default();
     let mut b = a.clone();
     b.map_positions(|p| p + DVec3::new(20.0, 20.0, 10.0), false);
-    let j = shape_bool::boolean(&a, &b, &shape_bool::Boolean::default()).unwrap_or_default();
+    let j = og_shape::boolean::boolean(&a, &b, &og_shape::boolean::Boolean::default()).unwrap_or_default();
     solid(h, fillet(&j, &round(2.0, &[], 4)))?;
     let low = tag(&j, "low", |p| p.x <= 10.0 && p.y <= 10.0 && p.z <= 10.0);
     solid(
@@ -694,11 +694,11 @@ fn chamfers(h: &mut OutputHash) -> Result<(), HashError> {
     })
     .unwrap_or_default();
     c.map_positions(|p| p + DVec3::new(0.0, 0.0, -10.0), false);
-    let bored = shape_bool::boolean(
+    let bored = og_shape::boolean::boolean(
         &b,
         &c,
-        &shape_bool::Boolean {
-            op: shape_bool::BoolOp::Cut,
+        &og_shape::boolean::Boolean {
+            op: og_shape::boolean::BoolOp::Cut,
             ..Default::default()
         },
     )
@@ -722,7 +722,7 @@ fn chamfers(h: &mut OutputHash) -> Result<(), HashError> {
 fn untested(h: &mut OutputHash) -> Result<(), HashError> {
     let part = |c: &[(f64, f64)]| {
         revolve(
-            &shape_2d::Profile::from_contour(shape_2d::Contour::corners(
+            &og_shape::profile::Profile::from_contour(og_shape::profile::Contour::corners(
                 c.iter().map(|&(x, y)| DVec2::new(x, y)).collect(),
             )),
             &Revolve {
@@ -777,7 +777,7 @@ fn untested(h: &mut OutputHash) -> Result<(), HashError> {
             },
         ),
     )?;
-    let curvy = shape_2d::Path::new(0.0, 0.0)
+    let curvy = og_shape::profile::Path::new(0.0, 0.0)
         .line_to(30.0, 0.0)
         .tangent_arc_to(30.0, 10.0)
         .line_to(10.0, 10.0)
@@ -833,7 +833,7 @@ fn wide(h: &mut OutputHash) -> Result<(), HashError> {
     solid(h, fillet(&holed, &round(1.5, &["hole"], 4)))?;
     solid(h, fillet(&holed, &round(1.5, &["top"], 4)))?;
     let pie = revolve(
-        &shape_2d::Profile::from_contour(shape_2d::Contour::corners(vec![
+        &og_shape::profile::Profile::from_contour(og_shape::profile::Contour::corners(vec![
             DVec2::new(0.0, 0.0),
             DVec2::new(5.0, 0.0),
             DVec2::new(5.0, 8.0),
@@ -889,10 +889,10 @@ fn sound(h: &mut OutputHash) -> Result<(), HashError> {
         c
     };
     let op = |b: &Solid, op| {
-        shape_bool::boolean(
+        og_shape::boolean::boolean(
             &plate,
             b,
-            &shape_bool::Boolean {
+            &og_shape::boolean::Boolean {
                 op,
                 ..Default::default()
             },
@@ -900,7 +900,7 @@ fn sound(h: &mut OutputHash) -> Result<(), HashError> {
         .unwrap_or_default()
     };
     // Crossed itself near the bore; the straight-run retry fits it.
-    let bore = op(&pin(4.0, 30.0, -10.0), shape_bool::BoolOp::Cut);
+    let bore = op(&pin(4.0, 30.0, -10.0), og_shape::boolean::BoolOp::Cut);
     solid(
         h,
         chamfer(
@@ -913,13 +913,13 @@ fn sound(h: &mut OutputHash) -> Result<(), HashError> {
         ),
     )?;
     // The input crossed itself (a boolean's sliver): welded first.
-    let post = op(&pin(3.0, 8.0, 10.0), shape_bool::BoolOp::Join);
+    let post = op(&pin(3.0, 8.0, 10.0), og_shape::boolean::BoolOp::Join);
     let corner = tag(&post, "pick", |p| p.x == -10.0 && p.y == -10.0);
     solid(h, fillet(&corner, &round(0.5, &["pick"], 4)))?;
     // Four faces on one edge.
     let mut other = plate.clone();
     other.map_positions(|p| p + DVec3::new(20.0, 0.0, 10.0), false);
-    let edge = op(&other, shape_bool::BoolOp::Join);
+    let edge = op(&other, og_shape::boolean::BoolOp::Join);
     solid(h, fillet(&edge, &round(1.0, &[], 4)))?;
     // The twisted prism's top at radii its rows' tilt broke.
     let square = [(-10.0, -10.0), (10.0, -10.0), (10.0, 10.0), (-10.0, 10.0)];
@@ -965,7 +965,7 @@ fn tips(h: &mut OutputHash) -> Result<(), HashError> {
     .unwrap_or_default();
     let rim = tag(&pin, "pick", |p| p.z == 10.0 && p.x > 4.8 && p.y >= 0.0);
     let slot = extrude(
-        &shape_2d::rect(&shape_2d::Rect {
+        &og_shape::profile::rect(&og_shape::profile::Rect {
             width: 30.0,
             height: 20.0,
             radius: 4.0,
@@ -1022,14 +1022,14 @@ fn tips(h: &mut OutputHash) -> Result<(), HashError> {
 /// twisted prism's sides, and the apex revolve's start cap.
 fn folds(h: &mut OutputHash) -> Result<(), HashError> {
     let rr = |w: f64, d: f64, r: f64| {
-        shape_2d::rect(&shape_2d::Rect {
+        og_shape::profile::rect(&og_shape::profile::Rect {
             width: w,
             height: d,
             radius: r,
         })
         .unwrap_or_default()
     };
-    let housing = shape_gen::loft::loft(&shape_gen::loft::Loft {
+    let housing = og_shape::generators::loft::loft(&og_shape::generators::loft::Loft {
         sections: vec![
             (rr(155.0, 285.0, 30.0), 0.0),
             (rr(151.0, 281.0, 32.0), 61.25),
@@ -1061,7 +1061,7 @@ fn folds(h: &mut OutputHash) -> Result<(), HashError> {
         ),
     )?;
     let apex = revolve(
-        &shape_2d::Profile::from_contour(shape_2d::Contour::corners(vec![
+        &og_shape::profile::Profile::from_contour(og_shape::profile::Contour::corners(vec![
             DVec2::new(0.0, 0.0),
             DVec2::new(8.0, 0.0),
             DVec2::new(8.0, 4.0),
@@ -1084,14 +1084,14 @@ fn folds(h: &mut OutputHash) -> Result<(), HashError> {
 /// rows 2.5 high), filleted and chamfered 3 deep.
 fn rows(h: &mut OutputHash) -> Result<(), HashError> {
     let rr = |w: f64, d: f64, r: f64| {
-        shape_2d::rect(&shape_2d::Rect {
+        og_shape::profile::rect(&og_shape::profile::Rect {
             width: w,
             height: d,
             radius: r,
         })
         .unwrap_or_default()
     };
-    let housing = shape_gen::loft::loft(&shape_gen::loft::Loft {
+    let housing = og_shape::generators::loft::loft(&og_shape::generators::loft::Loft {
         sections: vec![
             (rr(146.0, 284.0, 30.0), 0.0),
             (rr(155.0, 290.0, 34.0), 45.0),
@@ -1099,15 +1099,15 @@ fn rows(h: &mut OutputHash) -> Result<(), HashError> {
             (rr(128.0, 264.0, 24.0), 175.0),
         ],
         steps: 8,
-        curve: shape_gen::loft::LoftCurve::Spline,
+        curve: og_shape::generators::loft::LoftCurve::Spline,
         ..Default::default()
     })
     .unwrap_or_default();
     solid(h, fillet(&housing, &round(10.0, &["top"], 0)))?;
-    let small = shape_gen::loft::loft(&shape_gen::loft::Loft {
+    let small = og_shape::generators::loft::loft(&og_shape::generators::loft::Loft {
         sections: vec![(rr(20.0, 20.0, 4.0), 0.0), (rr(16.0, 16.0, 3.0), 10.0)],
         steps: 4,
-        curve: shape_gen::loft::LoftCurve::Straight,
+        curve: og_shape::generators::loft::LoftCurve::Straight,
         ..Default::default()
     })
     .unwrap_or_default();

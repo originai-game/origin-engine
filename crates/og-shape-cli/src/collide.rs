@@ -1,5 +1,5 @@
 //! `shape collide <input> [-o out]`: colliders for a program's parts or
-//! a mesh file's (`shape_tools::colliders`): each part covered by convex
+//! a mesh file's (`og_shape::tools::colliders`): each part covered by convex
 //! hulls, the shape a physics engine tests against. The report gives,
 //! per part, each hull's vertices, triangles, volume, concavity (how
 //! deep the part's surface lies under the hull) and `outside` (how far
@@ -11,8 +11,8 @@
 
 use std::path::PathBuf;
 
-use shape_mesh::Solid;
-use shape_tools::{Collide, Import, colliders, glb, obj, stl};
+use og_shape::mesh::Solid;
+use og_shape::tools::{Collide, Import, colliders, glb, obj, stl};
 
 use crate::args::{Args, IMPORT_OPTIONS};
 use crate::export::written;

@@ -1,0 +1,159 @@
+[package]
+name = "og-shape"
+version = "0.9.0"
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "Origin Engine modeling kernel: profiles, named generators, exact booleans, edits, bevels, skins, models as programs, and the mesh tools (repair, decimate, unwrap, bake, collide, measure, preview), deterministic in f64 on every host"
+autotests = false
+autoexamples = false
+
+[dependencies]
+glam = { workspace = true }
+libm = "0.2.16"
+robust = "1.2.0"
+sha2 = "0.11"
+spade = "2.15.1"
+ttf-parser = { version = "0.25.1", default-features = false, features = ["std", "opentype-layout", "glyph-names"] }
+i_overlay = { version = "9.1.0", default-features = false }
+serde_json = { version = "1.0.154", default-features = false, features = ["std"] }
+miniz_oxide = { version = "0.9.1", default-features = false, features = ["with-alloc"] }
+ruzstd = { version = "0.9.1", default-features = false, features = ["std"] }
+image-webp = "0.2.4"
+
+[dev-dependencies]
+gltf = { version = "1.4.1", default-features = false, features = ["utils", "names", "extras"] }
+
+# The determinism lint (clippy.toml beside this file).
+[lints.rust]
+unsafe_code = "forbid"
+missing_docs = "warn"
+
+[lints.clippy]
+disallowed_methods = "deny"
+disallowed_types = "deny"
+float_cmp = "allow"
+
+[[test]]
+name = "bevel_morphs"
+path = "tests/bevel/morphs.rs"
+
+[[test]]
+name = "bevel_uvs"
+path = "tests/bevel/uvs.rs"
+
+[[test]]
+name = "boolean_edge_on_edge"
+path = "tests/boolean/edge_on_edge.rs"
+
+[[test]]
+name = "boolean_og_geom_contracts"
+path = "tests/boolean/og_geom_contracts.rs"
+
+[[test]]
+name = "boolean_self_union"
+path = "tests/boolean/self_union.rs"
+
+[[test]]
+name = "boolean_slivers"
+path = "tests/boolean/slivers.rs"
+
+[[test]]
+name = "boolean_touching"
+path = "tests/boolean/touching.rs"
+
+[[test]]
+name = "boolean_ulps_apart"
+path = "tests/boolean/ulps_apart.rs"
+
+[[test]]
+name = "boolean_uncross"
+path = "tests/boolean/uncross.rs"
+
+[[test]]
+name = "edit_holes"
+path = "tests/edit/holes.rs"
+
+[[test]]
+name = "edit_morphs"
+path = "tests/edit/morphs.rs"
+
+[[test]]
+name = "generators_sweep_ends"
+path = "tests/generators/sweep_ends.rs"
+
+[[test]]
+name = "generators_textured"
+path = "tests/generators/textured.rs"
+
+[[test]]
+name = "model_built_parts"
+path = "tests/model/built_parts.rs"
+
+[[test]]
+name = "model_model"
+path = "tests/model/model.rs"
+
+[[test]]
+name = "model_phase6_b"
+path = "tests/model/phase6_b.rs"
+
+[[test]]
+name = "model_pose"
+path = "tests/model/pose.rs"
+
+[[test]]
+name = "model_rest"
+path = "tests/model/rest.rs"
+
+[[test]]
+name = "model_surface"
+path = "tests/model/surface.rs"
+
+[[test]]
+name = "model_uvs"
+path = "tests/model/uvs.rs"
+
+[[test]]
+name = "skin_phase5b"
+path = "tests/skin/phase5b.rs"
+
+[[test]]
+name = "tools_colors"
+path = "tests/tools/colors.rs"
+
+[[test]]
+name = "tools_export"
+path = "tests/tools/export.rs"
+
+[[test]]
+name = "tools_meshtools"
+path = "tests/tools/meshtools.rs"
+
+[[test]]
+name = "tools_sand3d_gallery"
+path = "tests/tools/sand3d_gallery.rs"
+
+[[test]]
+name = "tools_uvs"
+path = "tests/tools/uvs.rs"
+
+[[example]]
+name = "bevel_phase3"
+path = "examples/bevel_phase3.rs"
+
+[[example]]
+name = "bevel_scan"
+path = "examples/bevel_scan.rs"
+
+[[example]]
+name = "edit_sweep"
+path = "examples/edit_sweep.rs"
+
+[[example]]
+name = "model_report"
+path = "examples/model_report.rs"
+
+[[example]]
+name = "shell_sweep"
+path = "examples/shell_sweep.rs"

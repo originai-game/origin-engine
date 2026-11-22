@@ -5,8 +5,8 @@
 //! turned solids' axis, `wire`, `body`, `knurl`, `gear`, `scale`, and the
 //! profiles' arc edge (`bulge`), across-flats size and scale.
 
-use shape_core::{HashError, OutputHash};
-use shape_model::{Model, ModelError, program};
+use og_shape::math::{HashError, OutputHash};
+use og_shape::model::{Model, ModelError, program};
 
 use crate::cases::Case;
 
