@@ -53,7 +53,7 @@ installed by `scripts/install-tools.sh` (cargo-nextest when absent).
 | Tool | Version | Pinned by |
 |---|---|---|
 | Rust (rustc, rustfmt, clippy, rust-src; wasm32-unknown-unknown, wasm32-wasip1, x86_64-unknown-linux-gnu and x86_64-pc-windows-msvc targets) | nightly-2026-11-05 (1.101.0-nightly), edition 2024, `rust-version` 1.99 | `rust-toolchain.toml`, `Cargo.toml` `[workspace.package]` |
-| wgpu / naga | 30.0.2 with the fork's patches (branch `og/v30.0.2-compat` of `https://github.com/originai-game/wgpu`) | `Cargo.toml` `[patch.crates-io]` (a commit; its comment names each patch's upstream PR) |
+| wgpu / naga | 30.0.2 with the fork's patches (branch `og/v30.0.2-compat` of `https://github.com/originai-game/wgpu-flash`) | `Cargo.toml` `[patch.crates-io]` (a commit; its comment lists the fork's patches) |
 | AccessKit (native shared-frame accessibility schema) | 0.25.2 | `crates/og-ui-next/Cargo.toml` (exact; serde enabled, no OS adapter in the engine) |
 | Parley / parley_engine, HarfRust, Skrifa (UI text) | 0.12.0 / 0.12.0, 0.12.0, 0.44.0 | `crates/og-text/Cargo.toml` (exact compatible stack; default features off, `libm`, no system font discovery) |
 | write-fonts (cook-only SFNT shaping tables) | 0.55.0 | `crates/og-cook/Cargo.toml` (exact, default features off; no runtime outlines in layout-only fonts) |
@@ -87,11 +87,11 @@ artifact messages, not guessed executable paths.
 | x86_64-pc-windows-msvc (studio-win) | LLVM, `-Zthreads=8` | rust-lld (lld-link), not link.exe | verified on studio-win (RTX 5060, DX12 and Vulkan) |
 
 wgpu and naga stay on 30.0.x until 31 is on crates.io; the move is kept
-when its frames look right. The fork lives at
-`https://github.com/originai-game/wgpu`, a public fork of gfx-rs/wgpu that
-every host (orbs, macrunner, Colab, the release workflow) fetches
-anonymously with git; the Amp project `@origingame/wgpu` is no longer where
-the fork lives.
+when its frames look right. wgpu comes from wgpu-flash, our own fork built
+for speed, at `https://github.com/originai-game/wgpu-flash`: public, so
+every host (orbs, macrunner, Colab, the release workflow) fetches it
+anonymously with git. It was `originai-game/wgpu` before the rename, and
+the Amp project `@origingame/wgpu` is not where it lives.
 
 ## Windows x64 prerequisites
 
