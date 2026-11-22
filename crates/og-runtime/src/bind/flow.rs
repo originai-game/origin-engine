@@ -157,6 +157,9 @@ pub(crate) struct Rt {
     ops: Vec<(u64, Op)>,
     views: BTreeMap<u64, Shown>,
     warned: BTreeSet<String>,
+    /// The flow project.ogt's `flow` started (og.flow.current), which every
+    /// process starts the same way before GameDesc.start.
+    declared: Option<u64>,
 }
 
 pub(crate) type ModuleState = Arc<Mutex<Rt>>;
@@ -350,6 +353,21 @@ fn insert(eng: &Engine, world: &mut World, e: Entity, name: &str, v: Value) -> R
     world
         .insert_bytes(e, id, &bytes)
         .map_err(|e| e.reason().to_string())
+}
+
+/// Starts the flow project.ogt's `flow` declares (dialogue `name`, loaded
+/// and prepared): og.flow.current's from now on.
+pub(crate) fn start_declared(world: u32, name: &str) -> Result<(), String> {
+    let flow = og_flow_start(world, Some(json!({ "dialogue": name }).to_string()))?;
+    let st = state(world)?;
+    lock(&st).declared = flow.as_f64().map(|f| f as u64);
+    Ok(())
+}
+
+pub fn og_flow_current(world: u32) -> Option<u64> {
+    let st = state(world).ok()?;
+    let rt = lock(&st);
+    rt.declared.filter(|f| rt.views.contains_key(f))
 }
 
 pub fn og_flow_start(world: u32, desc: Option<String>) -> Result<Value, String> {

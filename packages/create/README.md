@@ -17,8 +17,7 @@ with the chosen preset, variant and UI pack, named by the manifest's top-level
 The agent builds the game with the engine API and skills after creation.
 The block's `form` is also the game's profile, the one field it follows:
 `form "2d"` is a 2D game (rapier2d physics, sprites in the art brief, the
-cook's 2D conformance, the 2D publish module); `2.5d`, `3d` and `film` are
-3D (`profileOf(form)`). Each requested language installs its
+cook's 2D conformance); `2.5d` and `3d` are 3D (`profileOf(form)`). Each requested language installs its
 script's font pack under `assets/fonts/<pack>/` with its licence (docs/ui.md
 §3.4), which og.i18n chains with no generated code; the languages still need
 authored string tables. `og check` warns about a language with no font for
@@ -30,22 +29,19 @@ its script.
 accepts `--form`, `--genre`, `--view`, `--look`, `--variant`,
 `--ui`, `--platform`, `--input`, `--players`, `--lang en,zh`, and `--music`.
 
-`--form` is `2d`, `2.5d`, `3d` or `film`. For a game, the view is one of
-its form's (`2d`: side-2d, top-down-2d; `2.5d`: isometric-2.5d; `3d`:
-third-person-3d, first-person-3d), defaulting to its genre's first view of
-that form; a form and view that disagree are refused. `film` is an
-interactive film (`og api show flow`): creation writes the same skeleton
-plus `assets/story/film.yarn` (three flow nodes, two endings),
-`assets/segments/opening.ogt` and `ending.ogt`, a placeholder
-`assets/clips/opening.ogt` stream, the picture's `assets/ui/film-view.tsx`
-and an entry that loads and starts the film paused and shows it with the
-built-in Subtitles and FlowChoices (from `templates/film`, packed
-as `film/`; the clip is pinned in `templates/og-assets.json`, so a checkout
-runs `bun scripts/assets.ts ensure templates` first). `--genre
-interactive-film` chooses form film too. A film's genre is
-`interactive-film` and it has no `view` or `players`; another genre, a view
-or players is refused. The look must draw the form (its catalogue `views`; every look
-styles a film), and `--variant` must be one of the look's. Mood is not a
+`--form` is `2d`, `2.5d` or `3d`. The view is one of its form's (`2d`:
+side-2d, top-down-2d; `2.5d`: isometric-2.5d; `3d`: third-person-3d,
+first-person-3d), defaulting to its genre's first view of that form; a
+form and view that disagree are refused. `--genre interactive-film` is a
+game told in segments (`og api show flow`): its form is 3d unless named
+and its view may be left out, and creation writes the same skeleton plus
+`assets/story/film.yarn` (three flow nodes, two endings),
+`assets/segments/opening.ogt` and `ending.ogt` and a placeholder
+`assets/clips/opening.ogt` stream (from `templates/film`, packed as
+`film/`; the clip is pinned in `templates/og-assets.json`, so a checkout
+runs `bun scripts/assets.ts ensure templates` first), and project.ogt's
+`flow "story/film.yarn"`, which the engine starts and draws with its
+FlowScreen. The look must draw the form (its catalogue `views`), and `--variant` must be one of the look's. Mood is not a
 creation choice: the look draws in its preset's or variant's own mood, and
 `--mood` is refused (write `mood "<word>"` in the look file to change it).
 
@@ -99,9 +95,9 @@ without a breaking changelog entry.
 |---|---|
 | `schemaVersion` | 1 |
 | `order`, `more` | the home page's questions in order (`form`, `genre`, `look`, `variant`, `ui`), and those behind "more settings" |
-| `schema` | `creationSchema(looks)`: JSON Schema 2020-12 of a selection, with `form`, `variant`, and `allOf` rules (a film's genre is interactive-film and it has no view or players; a game's view is its form's) |
+| `schema` | `creationSchema(looks)`: JSON Schema 2020-12 of a selection, with `form`, `variant`, and `allOf` rules (a view is its form's; every genre but interactive-film names one) |
 | `options.<field>` | each option's `id`, `label` and `description` (`en`, `zh-CN`); views carry their `form`; looks carry `variants`; looks, variants and `ui` options carry `preview` |
-| `compat` | `formViews`, `genreViews` (preferred first), `genreDefaultView[genre][form]`, `formFields[form]` (the fields that apply), and `looks[slug]`: `forms`, `views`, recommended `ui`, `variants` |
+| `compat` | `formViews`, `genreViews` (preferred first), `genreDefaultView[genre][form]`, `fields` (the create block's, in order), and `looks[slug]`: `forms`, `views`, recommended `ui`, `variants` |
 | `defaults` | the default `form` and `byForm[form]`: what creation picks with no premise |
 
 A `preview` is `{ path }`, relative to the version root, and the release

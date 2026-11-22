@@ -45,8 +45,8 @@ commands:
       [--input I] [--players P] [--lang en,zh] [--music M]
                       write one empty game project and its creation choices; `og new` is an alias;
                       never prompts with --no-prompt or without a terminal; --look is a catalogue
-                      style with a preset (an unknown one exits 1, listing them); --form film or
-                      --genre interactive-film writes an interactive film (og api show flow);
+                      style with a preset (an unknown one exits 1, listing them);
+                      --genre interactive-film adds a flow (og api show flow);
                       the start guide §1
   new [dir] [options]  alias for og create
   session [project]   keep a worktree's native host warm until idle or interrupted

@@ -3850,6 +3850,12 @@ pub fn og_flow_start(env: Env, world: u32, desc: Option<String>) -> String {
     <Host as FlowApi>::og_flow_start(&Host, world, desc)
 }
 
+#[napi(js_name = "og_flow_current")]
+pub fn og_flow_current(env: Env, world: u32) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as FlowApi>::og_flow_current(&Host, world)
+}
+
 #[napi(js_name = "og_flow_view")]
 pub fn og_flow_view(env: Env, world: u32, flow: f64) -> String {
     let _env = crate::EnvScope::enter(&env);

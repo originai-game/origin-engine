@@ -42,6 +42,7 @@ export const ART_KINDS = [
   "abilityIcon", "cardArt", "cardFrame", "unitPortrait", "levelThumb", "songJacket", "saveThumb", "menuBackground",
   "menuPattern", "banner", "playerBanner", "emblem", "achievement", "emote", "currency", "mapGlyph", "talentIcon",
   "tutorial", "cosmeticPreview", "styleFrame", "styleButton", "ornament", "iconSet",
+  "keyframe",
 ] as const;
 export type ArtKind = (typeof ART_KINDS)[number];
 
@@ -252,6 +253,8 @@ export interface BriefOptions {
   readonly cells?: readonly [number, number];
   /** A nine-slice's insets as fractions of the art (left, top, right, bottom); unset, a quarter each. */
   readonly insets?: readonly [number, number, number, number];
+  /** A prop's or character's medium, over the profile's (a sprite in 2D, a model in 3D): a project mixes sprites, models and footage, so one asset may be the other. Refused for any other kind. */
+  readonly medium?: "image" | "model";
 }
 
 /** What a UI kind's art must hold to fit its slot (docs/ui.md §3.3). */
@@ -531,6 +534,8 @@ function opening(kind: ArtKind, subject: string, medium: "image" | "model", metr
       return `A seamless tiling surface texture of ${subject}, seen straight on and evenly lit.`;
     case "icon":
       return `A UI icon of ${subject}: one bold shape that reads at a glance.`;
+    case "keyframe":
+      return `A key frame of ${subject}: the first frame of a shot an image-to-video model animates, composed to fill the whole frame, its subject placed for the motion to come.`;
   }
 }
 
@@ -553,7 +558,9 @@ export function artBrief(look: BriefLook, kind: ArtKind, subject: string, option
   const motion = art.ArtMotion ?? {};
   const camera = art.ArtCamera ?? {};
   const profile = look.profile ?? (style && style.look.profiles.length === 1 ? style.look.profiles[0]! : "3d");
-  const medium: "image" | "model" = (kind === "prop" || kind === "character") && profile === "3d" ? "model" : "image";
+  const either = kind === "prop" || kind === "character";
+  if (options.medium !== undefined && !either) throw new Error(`a ${kind} is an image; only a prop or a character takes medium (image or model)`);
+  const medium: "image" | "model" = either ? (options.medium ?? (profile === "3d" ? "model" : "image")) : "image";
   const metres = options.metres !== undefined && options.metres > 0 ? options.metres : (DEFAULT_METRES[kind] ?? 1);
   const uiSpec: UiKindSpec | null = isUi(kind) ? UI_KINDS[kind] : null;
   const lines: string[] = [opening(kind, what, medium, metres)];
@@ -683,6 +690,8 @@ export function artBrief(look: BriefLook, kind: ArtKind, subject: string, option
       };
     } else if (kind === "texture" && density > 0) {
       grid = null; // a 3D surface: texels, below
+    } else if (kind === "keyframe") {
+      grid = null; // a video's frame: the project's aspect, below
     } else if (kind === "backdrop" && logicalHeight > 0) {
       grid = { width: Math.round((logicalHeight * 16) / 9), height: logicalHeight };
     } else if (pixelArt) {
@@ -745,6 +754,15 @@ export function artBrief(look: BriefLook, kind: ArtKind, subject: string, option
       const at = drawn !== side && filter !== "nearest" ? `, drawn at ${drawn} x ${drawn} and resampled` : "";
       lines.push(`Size: ${side} x ${side} texels${density > 0 ? ` covering ${metres} m (${density} texels per metre)` : ""}${crisp}${at}${mips === "none" ? ", no mip maps: as crisp far away as near" : ""}.`);
       if (filter === "nearest") avoid.push("fine detail smaller than one texel");
+    } else if (kind === "keyframe") {
+      // The video's frame: the project's aspect (16:9 unless given), its long side 1536.
+      const aspect = options.aspect ?? "16:9";
+      const [aw, ah] = aspectOf(aspect) ?? (() => { throw new Error(`'${aspect}' is not an aspect: write w:h, such as 16:9`); })();
+      const even = (n: number) => Math.round(n / 16) * 16;
+      const [width, height] = aw >= ah ? [1536, even((1536 * ah) / aw)] : [even((1536 * aw) / ah), 1536];
+      image = { transparent: false, width, height, grid: null, tiling: false };
+      lines.push(`Size: ${width} x ${height} pixels, ${aspect}, the frame of the video it starts.`);
+      lines.push("Frame: one still moment, sharp, with no motion blur, text, borders or split panels; the camera's framing is the shot's.");
     } else {
       const [width, height] = kind === "backdrop" ? [1536, 864] : kind === "portrait" ? [1024, 1024] : [GENERATED, GENERATED];
       image = { transparent, width, height, grid: null, tiling };
@@ -869,8 +887,8 @@ const PKG = join(HERE, "..");
 
 /**
  * The profile a creation form draws in (project.ogt's `create { form }`, the
- * one field it follows, as og-bundle's `look::project_2d` reads it): `2d` is
- * the 2D profile; `2.5d`, `3d`, `film` or no form the 3D one.
+ * one field it follows, as og-bundle's `look::project_profile` reads it):
+ * `2d` is the 2D profile; `2.5d`, `3d` or no form the 3D one.
  */
 export function profileOf(form: string | undefined): "2d" | "3d" {
   return form === "2d" ? "2d" : "3d";
@@ -1554,7 +1572,7 @@ export interface AudioBriefInput {
   readonly music: string;
   /** `MOODS`: bright, dark, warm, cold, soft, high-contrast (the game's look's mood). */
   readonly mood: string;
-  /** `CREATION_CHOICES.genre`; absent for an interactive film (create block `form "film"`), which has none. */
+  /** `CREATION_CHOICES.genre`; `interactive-film` (or absent) asks for an interactive film's scores and choice sounds. */
   readonly genre?: string;
   /** The game in one line; the prompts carry it as written. */
   readonly premise?: string;
@@ -1886,16 +1904,12 @@ const ROLE_WORDS: Readonly<Record<MusicRole, string>> = {
   stinger: "short stinger that plays over the loop at a highlight",
 };
 
-/** The audio choices of a project's create block (project.ogt): `music`, `mood` and `genre`, which a film (`form "film"`) has none of. */
+/** The audio choices of a project's create block (project.ogt): `music`, `mood` and `genre`. */
 export function readAudioChoices(projectDir: string): AudioBriefInput {
   const field = createBlock(readFileSync(join(projectDir, "project.ogt"), "utf8"));
   if (!field) throw new Error(`${join(projectDir, "project.ogt")} has no create block: pass music, mood and genre (brief audio --music --mood --genre)`);
   // The mood: a create block's from before 2026-11-20, else the game's look's own.
   const music = field("music"), mood = field("mood") ?? readLook(projectDir).mood ?? undefined, genre = field("genre");
-  if (field("form") === "film") {
-    if (!music || !mood) throw new Error("the create block lacks music, or the look names no mood");
-    return { music, mood };
-  }
   if (!music || !mood || !genre) throw new Error("the create block lacks music or genre, or the look names no mood");
   return { music, mood, genre };
 }

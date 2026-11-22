@@ -1457,6 +1457,8 @@ pub trait FlowApi: Wire {
     fn og_flow_load(&self, world: u32, dialogue: String) -> String;
     /// `og.flow.start`
     fn og_flow_start(&self, world: u32, desc: Option<String>) -> String;
+    /// `og.flow.current`
+    fn og_flow_current(&self, world: u32) -> String;
     /// `og.flow.view`
     fn og_flow_view(&self, world: u32, flow: f64) -> String;
     /// `og.flow.choose`
@@ -2097,6 +2099,7 @@ pub const SYMBOLS: &[&str] = &[
     "og_sight_forget",
     "og_flow_load",
     "og_flow_start",
+    "og_flow_current",
     "og_flow_view",
     "og_flow_choose",
     "og_flow_advance",

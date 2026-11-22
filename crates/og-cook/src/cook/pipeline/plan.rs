@@ -31,6 +31,9 @@ pub(crate) struct Cx<'a> {
     /// `None` when project.ogt names none: the manifest's `modules` are
     /// then every asset's.
     pub(crate) boot: Option<&'a str>,
+    /// project.ogt's `flow` dialogue, which the bundle needs beside its boot
+    /// scene.
+    pub(crate) flow: Option<&'a str>,
     /// The shared action cache and the project's key in it
     /// (`action_cache`), which a plan may read before anything cooks.
     pub(crate) texture_cache: Option<&'a Path>,

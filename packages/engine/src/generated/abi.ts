@@ -1293,6 +1293,8 @@ export interface HostAbi<A, V> {
   og_flow_load(world: number, dialogue: string): string;
   /** `og.flow.start` */
   og_flow_start(world: number, desc: string | undefined): string;
+  /** `og.flow.current` */
+  og_flow_current(world: number): string;
   /** `og.flow.view` */
   og_flow_view(world: number, flow: number): string;
   /** `og.flow.choose` */
@@ -1920,6 +1922,7 @@ export const SYMBOLS: readonly string[] = [
   "og_sight_forget",
   "og_flow_load",
   "og_flow_start",
+  "og_flow_current",
   "og_flow_view",
   "og_flow_choose",
   "og_flow_advance",

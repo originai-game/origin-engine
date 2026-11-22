@@ -65,6 +65,8 @@ const uiRegistrationReads = new Set([
   "og_i18n_locale", "og_i18n_t", "og_i18n_has",
   "og_i18n_format_number", "og_i18n_format_compact", "og_i18n_format_currency",
   "og_i18n_format_date", "og_i18n_format_time", "og_i18n_format_duration",
+  // What FlowScreen reads as it mounts.
+  "og_flow_current", "og_flow_view", "og_timeline_captions",
 ]);
 const abiReturns = new Map(bindings.calls.filter(call => "symbol" in call)
   .map(call => [call.symbol, call.returns]));

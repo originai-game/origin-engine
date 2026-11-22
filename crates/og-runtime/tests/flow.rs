@@ -28,11 +28,11 @@
 
 use og_runtime::{
     Dispatch, Fetch, Hooks, og_engine_create, og_engine_frame, og_engine_probe_commands,
-    og_engine_probe_dump, og_flow_chart, og_flow_choose, og_flow_load, og_flow_skip, og_flow_start,
-    og_flow_view, og_game_game, og_host_begin_bundle, og_input_define_action, og_load_timeline,
-    og_story_parse, og_system_define_system, og_timeline_captions, og_world_events, og_world_get,
-    og_world_get_tick, og_world_insert, og_world_restore, og_world_snapshot, og_world_spawn,
-    set_hooks,
+    og_engine_probe_dump, og_flow_chart, og_flow_choose, og_flow_current, og_flow_load,
+    og_flow_skip, og_flow_start, og_flow_view, og_game_game, og_host_begin_bundle,
+    og_input_define_action, og_load_timeline, og_story_parse, og_system_define_system,
+    og_timeline_captions, og_world_events, og_world_get, og_world_get_tick, og_world_insert,
+    og_world_restore, og_world_snapshot, og_world_spawn, set_hooks,
 };
 use serde_json::{Value, json};
 use std::cell::RefCell;
@@ -221,11 +221,19 @@ fn project() -> Option<&'static Path> {
         std::fs::write(segments.join("level.ogt"), LEVEL).unwrap();
         std::fs::create_dir_all(root.join("assets/scenes")).unwrap();
         std::fs::write(root.join("assets/scenes/room.ogt"), ROOM).unwrap();
+        // The dialogue a project.ogt `flow` line names.
+        std::fs::create_dir_all(root.join("assets/story")).unwrap();
+        std::fs::write(root.join("assets/story/flow.yarn"), script()).unwrap();
         let report = og_cook::cook_project(&root, &og_cook::CookOptions::default()).unwrap();
         assert!(report.ok(), "{:?}", report.errors());
         Some(root)
     })
     .as_deref()
+}
+
+thread_local! {
+    /// The payload of every UI registration pass (DISPATCH_UI) dispatched.
+    static UI_PAYLOADS: RefCell<Vec<String>> = const { RefCell::new(Vec::new()) };
 }
 
 /// (tick, event name, event) of every flow event of one engine.
@@ -235,6 +243,9 @@ struct Game(Seen);
 
 impl Hooks for Game {
     fn dispatch(&self, call: &Dispatch) -> Result<String, String> {
+        if call.kind == 6 {
+            UI_PAYLOADS.with(|p| p.borrow_mut().push(call.payload.clone()));
+        }
         if call.kind == 0 && call.id == WATCH {
             let w = call.engine;
             for name in EVENTS {
@@ -1015,4 +1026,60 @@ fn a_held_segment_waits_for_advance_and_takes_its_outcome() {
     ok(og_flow_choose(r.engine, r.flow, 0));
     frame(r.engine, 2);
     assert_eq!(route(&r), ["level", "frozen"]);
+}
+
+/// An engine whose project.ogt carries `flow` (and its `screen`), with no
+/// game code: what og.flow.current answers and the UI pass's payload.
+fn declared(root: &Path, block: &str) -> (u32, Option<u64>, Vec<String>) {
+    set_hooks(Rc::new(Game(Seen::default())));
+    UI_PAYLOADS.with(|p| p.borrow_mut().clear());
+    og_host_begin_bundle();
+    let game = og_game_game(Some(json!({ "seed": 1 }).to_string()));
+    let project = format!(
+        "type project\nversion 1\n---\nname \"Declared\"\nflow \"story/flow.yarn\"{block}\n"
+    );
+    let options = json!({ "root": root.to_str().unwrap(), "project": project }).to_string();
+    let engine = value(og_engine_create(game, options)).as_u64().unwrap() as u32;
+    frame(engine, 2);
+    let payloads = UI_PAYLOADS.with(|p| p.borrow().clone());
+    (engine, og_flow_current(engine), payloads)
+}
+
+#[test]
+fn a_declared_flow_starts_before_the_game_and_the_engine_draws_it() {
+    let Some(root) = project() else {
+        eprintln!("skipped: no AV1 encoder");
+        return;
+    };
+    let (engine, flow, payloads) = declared(root, "");
+    let flow = flow.expect("og.flow.current names the declared flow");
+    let shown: Value = serde_json::from_str(&og_runtime::host_impl::json(og_flow_view(
+        engine,
+        flow as f64,
+    )))
+    .unwrap();
+    assert_eq!(shown["node"], json!("start"), "{shown}");
+    assert_eq!(
+        payloads,
+        vec!["flow".to_string()],
+        "the UI pass mounts FlowScreen"
+    );
+    // It plays like a started one: on to its ending.
+    let r = Run {
+        engine,
+        flow: flow as f64,
+        decks: 3,
+        seen: Seen::default(),
+    };
+    to_end(&r);
+    assert_eq!(view(&r)["ending"], json!("brave"), "{}", view(&r));
+
+    // `screen game`: the flow runs, and the game draws it.
+    let (_, flow, payloads) = declared(root, " {\n  screen game\n}");
+    assert!(flow.is_some());
+    assert_eq!(payloads, vec![String::new()]);
+
+    // A game started without the line has none.
+    let plain = start(root, 3);
+    assert_eq!(og_flow_current(plain.engine), None);
 }

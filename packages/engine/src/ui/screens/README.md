@@ -64,7 +64,7 @@ the core controls.
 | Death, retry, revive offer, game over | `game-over` |
 | Creator tools (inspector, hierarchy, catalogues) | `creator-tools` |
 | Credits | `credits` |
-| Interactive film (og.flow: the window's choices with the time left, hotspots on the picture and quick-time progress; the story-so-far flowchart; chapter select; the ending gallery) | `flow-choices`, `flow-chart`, `flow-chapters`, `flow-gallery` |
+| Interactive film (og.flow: the picture with its dissolve, captions and choices the engine mounts for project.ogt's `flow`; the window's choices with the time left, hotspots on the picture and quick-time progress; the story-so-far flowchart; chapter select; the ending gallery) | `flow-screen`, `flow-choices`, `flow-chart`, `flow-chapters`, `flow-gallery` |
 | Card, confirm dialog | `card`, `confirm` |
 | Lists and tables (data list, key-value and stat compare, table, tree, calendar, pagination) | `data-list`, `key-values`, `table`, `tree`, `calendar`, `pagination` |
 | HUD feedback (objectives, rating, banner, subtitles, notifications) | `objective-tracker`, `star-rating`, `banner`, `subtitles`, `notifications` |

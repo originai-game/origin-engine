@@ -499,11 +499,10 @@ pub fn project_look(body: &Block) -> Result<Option<String>, String> {
 /// build, publish and the play page read; a new profile is a value here.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum Profile {
-    /// Form `2.5d`, `3d`, `film` or none: rapier3d, the 3D publish module,
-    /// models.
+    /// Form `2.5d`, `3d` or none: rapier3d, models.
     #[default]
     ThreeD,
-    /// Form `2d`: rapier2d, the 2D publish module, sprites.
+    /// Form `2d`: rapier2d, sprites.
     TwoD,
 }
 
@@ -533,17 +532,67 @@ pub fn project_profile(body: &Block) -> Result<Profile, String> {
             e.line
         ));
     }
+    let form = body
+        .get("create")
+        .and_then(|c| c.block.as_ref())
+        .and_then(|b| b.get("form"));
     Ok(
-        match body
-            .get("create")
-            .and_then(|c| c.block.as_ref())
-            .and_then(|b| b.get("form"))
-            .and_then(|f| f.string(0).ok())
-        {
-            Some("2d") => Profile::TwoD,
+        match form.and_then(|f| f.string(0).ok().map(|v| (f.line, v))) {
+            Some((_, "2d")) => Profile::TwoD,
+            Some((line, "film")) => {
+                return Err(format!(
+                    "{line}: form \"film\" was removed: an interactive film is `genre \"interactive-film\"` in the form its live scenes draw in (form \"3d\"), its flow started by project.ogt's `flow \"story/<name>.yarn\"`; og upgrade rewrites the form"
+                ));
+            }
             _ => Profile::ThreeD,
         },
     )
+}
+
+/// project.ogt's `flow "story/<name>.yarn"`: the dialogue the engine runs
+/// as the game's flow (og.flow) from the first tick, and who draws it.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ProjectFlow {
+    /// The dialogue's asset id (`story/game.yarn`).
+    pub dialogue: String,
+    /// `screen game`: the game draws the flow itself, so the engine mounts
+    /// no FlowScreen; the default, `screen engine`, mounts it.
+    pub game_screen: bool,
+}
+
+/// project.ogt's `flow` line (the project's `body`), `None` without one. A
+/// value that is not one quoted `.yarn` path, or a block with anything but
+/// `screen engine|game`, is refused as `<line>: ...`.
+pub fn project_flow(body: &Block) -> Result<Option<ProjectFlow>, String> {
+    let Some(e) = body.get("flow") else {
+        return Ok(None);
+    };
+    let dialogue = match e.values.as_slice() {
+        [Value::String(s)] if s.ends_with(".yarn") => crate::runtime::asset_id(s).to_string(),
+        _ => {
+            return Err(format!(
+                "{}: `flow` names the game's flow by its Yarn dialogue, such as `flow \"story/game.yarn\"`",
+                e.line
+            ));
+        }
+    };
+    let mut game_screen = false;
+    for s in e.block.iter().flat_map(|b| &b.entries) {
+        match (s.key.as_str(), s.word(0).ok()) {
+            ("screen", Some("engine")) => game_screen = false,
+            ("screen", Some("game")) => game_screen = true,
+            _ => {
+                return Err(format!(
+                    "{}: a `flow` block takes `screen engine` (the built-in FlowScreen draws the flow, the default) or `screen game` (the game draws it)",
+                    s.line
+                ));
+            }
+        }
+    }
+    Ok(Some(ProjectFlow {
+        dialogue,
+        game_screen,
+    }))
 }
 
 /// An sRGB `#rrggbb` (or `rrggbb`) colour as linear RGB, as three.js
@@ -726,7 +775,11 @@ mod tests {
         };
         let form = |f: &str| profile(&format!("create {{\n  form \"{f}\"\n}}\n"));
         assert_eq!(form("2d"), Ok(Profile::TwoD));
-        assert_eq!(form("film"), Ok(Profile::ThreeD));
+        assert!(
+            form("film")
+                .unwrap_err()
+                .contains("genre \"interactive-film\"")
+        );
         assert_eq!(form("2.5d"), Ok(Profile::ThreeD));
         assert_eq!(form("3d"), Ok(Profile::ThreeD));
         assert_eq!(profile(""), Ok(Profile::ThreeD));
@@ -734,6 +787,39 @@ mod tests {
             profile("profile \"2d\"\n")
                 .unwrap_err()
                 .contains("form \"2d\"")
+        );
+    }
+
+    #[test]
+    fn the_project_declares_its_flow_by_its_dialogue() {
+        let flow = |body: &str| {
+            let doc = Document::parse(&format!("type project\nversion 1\n---\n{body}")).unwrap();
+            project_flow(&doc.body)
+        };
+        assert_eq!(flow("name \"P\"\n"), Ok(None));
+        let declared = |dialogue: &str, game_screen| {
+            Ok(Some(ProjectFlow {
+                dialogue: dialogue.into(),
+                game_screen,
+            }))
+        };
+        assert_eq!(
+            flow("flow \"assets/story/game.yarn\"\n"),
+            declared("story/game.yarn", false)
+        );
+        assert_eq!(
+            flow("flow \"story/game.yarn\" {\n  screen game\n}\n"),
+            declared("story/game.yarn", true)
+        );
+        assert!(
+            flow("flow \"story/game.ogt\"\n")
+                .unwrap_err()
+                .starts_with("4:")
+        );
+        assert!(
+            flow("flow \"story/g.yarn\" {\n  screen none\n}\n")
+                .unwrap_err()
+                .contains("screen game")
         );
     }
 

@@ -143,6 +143,12 @@ export function renameSources(sources: readonly (string | null)[], dir: string, 
 }
 
 /** The project an entry belongs to: the nearest directory above it with a project.ogt, else the entry's own. */
+/** A project's project.ogt text; empty without one. */
+function projectText(root: string): string {
+  const file = join(root, "project.ogt");
+  return existsSync(file) ? readFileSync(file, "utf8") : "";
+}
+
 function projectRoot(entry: string): string {
   for (let dir = dirname(entry); ; dir = dirname(dir)) {
     if (existsSync(join(dir, "project.ogt"))) return dir;
@@ -169,16 +175,17 @@ const ADOPT_SITES = `{
  * The files the game's entry reaches, as the bundler resolved its imports
  * (the bundle's metafile, `<out>.graph.json`): the game's own modules and
  * every engine module and string table it imports, by absolute path, with
- * the engine package's root. What the bundle adds beside the entry (the
- * development inspector) is not the game's. The cook reads it to know
+ * the engine package's root, from each of `roots`: the entry, and the
+ * built-in FlowScreen a project's `flow` line mounts. What else the bundle
+ * adds beside the entry (the development inspector) is not the game's. The cook reads it to know
  * which built-in UI, string tables and raycast BVHs the code needs
  * (og-cook's `CodeGraph`).
  */
-export function reached(meta: Metafile, entry: string): { engine: string; files: string[] } {
+export function reached(meta: Metafile, roots: readonly string[]): { engine: string; files: string[] } {
   const abs = (p: string) => (/^[a-z][\w+.-]*:/i.test(p) ? p : resolve(process.cwd(), p));
   const inputs = new Map(Object.entries(meta.inputs).map(([k, v]) => [abs(k), v]));
   const seen = new Set<string>();
-  const stack = [entry];
+  const stack = [...roots];
   while (stack.length > 0) {
     const file = stack.pop()!;
     if (seen.has(file)) continue;
@@ -207,6 +214,7 @@ export async function bundleGame(entry: string, out: string, target: "native" | 
     } catch { cacheable = false; }
   }
   const gameRoot = projectRoot(absEntry);
+  const flowScreen = /^flow\s/m.test(projectText(gameRoot)) ? join(ENGINE_ROOT, "src/ui/screens/flow-screen.tsx") : null;
   const engine = {
     name: "origin-engine",
     setup(build: {
@@ -320,7 +328,11 @@ export async function bundleGame(entry: string, out: string, target: "native" | 
       // sites of this bundle's files (ADOPT_SITES).
       // A development bundle carries the inspector's TSX panel; a publish
       // build (minified) has no inspector.
-      const inspector = minify ? "" : `import ${JSON.stringify(join(ENGINE_ROOT, "src/ui/inspector.tsx"))};\n`;
+      const inspector = (minify ? "" : `import ${JSON.stringify(join(ENGINE_ROOT, "src/ui/inspector.tsx"))};\n`)
+        // project.ogt's `flow`: the engine mounts the built-in FlowScreen, which only such a bundle carries.
+        + (flowScreen
+          ? `import { FlowScreen as __ogFlowScreen } from ${JSON.stringify(flowScreen)};\nimport { flowScreen as __ogFlowSlot } from "@origingame/engine/ui/rt";\n__ogFlowSlot.component = __ogFlowScreen;\n`
+          : "");
       build.onLoad({ filter: /.*/, namespace: "og" }, (a) => ({
         contents:
           a.path === "worker"
@@ -371,7 +383,7 @@ export async function bundleGame(entry: string, out: string, target: "native" | 
     if (maps.link !== false) text = `${text.replace(/\n*$/, "\n")}//# sourceMappingURL=${basename(mapFile)}\n`;
   } else rmSync(mapFile, { force: true });
   await Bun.write(out, text);
-  if (r.metafile) writeFileSync(`${out}.graph.json`, JSON.stringify(reached(r.metafile, absEntry)));
+  if (r.metafile) writeFileSync(`${out}.graph.json`, JSON.stringify(reached(r.metafile, flowScreen ? [absEntry, flowScreen] : [absEntry])));
   const ms = +(performance.now() - t0).toFixed(1);
   bundleTrace("bundle-end", { ok: true, ms, bytes: new TextEncoder().encode(text).length, bundlerMs, jsxMs: +jsxMs.toFixed(1), jsxCount, cacheable });
   return { ok: true, out, bytes: new TextEncoder().encode(text).length, ms, ...(sourcemap ? { map: mapFile } : {}), ...(cacheInputs ? { cacheable } : {}) };

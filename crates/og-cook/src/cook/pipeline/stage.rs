@@ -19,6 +19,9 @@ pub(crate) struct Project {
     /// through its `scenes` block; `None` when the block does not name it
     /// (the game's GameDesc does, which the cook does not read).
     pub(crate) boot: Option<String>,
+    /// project.ogt's `flow`: its dialogue's asset id, which the engine runs
+    /// from the first tick, so the bundle needs what it needs.
+    pub(crate) flow: Option<String>,
     /// `cook { uses }`: the assets other cooked bundles provide.
     pub(crate) provided: provided::Provided,
 }
@@ -62,6 +65,13 @@ impl Project {
                 .ok()?;
             Some(crate::runtime::asset_id(path).to_string())
         });
+        let flow = doc
+            .as_ref()
+            .map(|d| crate::look::project_flow(&d.body))
+            .transpose()
+            .map_err(|e| CookError(format!("project.ogt:{e}")))?
+            .flatten()
+            .map(|f| f.dialogue);
         let budget_desc = format!(
             "budgets triangles {} vertices {}",
             budgets.triangles, budgets.vertices
@@ -77,6 +87,7 @@ impl Project {
             story_functions_stamp,
             profile,
             boot,
+            flow,
             provided,
         })
     }

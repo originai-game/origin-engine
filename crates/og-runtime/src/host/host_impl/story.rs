@@ -101,6 +101,9 @@ macro_rules! __og_host_bindings_story {
             fn og_flow_start(&self, world: u32, desc: Option<String>) -> String {
                 $crate::host_impl::answer($crate::og_flow_start(world, desc))
             }
+            fn og_flow_current(&self, world: u32) -> String {
+                $crate::host_impl::json($crate::og_flow_current(world))
+            }
             fn og_flow_view(&self, world: u32, flow: f64) -> String {
                 $crate::host_impl::json($crate::og_flow_view(world, flow))
             }

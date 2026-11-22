@@ -14,23 +14,36 @@ transitions and sound are the timeline's, saves are the world's.
 ### `flow §1` Lay out the files
 
 ```text
+project.ogt                   # flow "story/film.yarn"
 assets/story/film.yarn        # the story: nodes, choices, variables, endings
 assets/segments/kitchen.ogt   # a segment: type timeline with one video track
 assets/clips/kitchen.ogt      # footage: type video, stream true
 ```
 
-Load the dialogue, then the flow, in GameDesc.start, in every process that
-may restore a flow:
+One line in project.ogt makes the dialogue the game's flow:
 
-```ts
-og.story.load(world, "story/film.yarn");
-og.flow.load(world, "film");
-const flow = og.flow.start(world, { dialogue: "film", paused: true });
+```text
+flow "story/film.yarn"
 ```
+
+The engine loads the dialogue, prepares it (og.flow.load) and starts it
+(og.flow.start) before GameDesc.start, in every process, and the built-in
+`FlowScreen` draws it (§4). `og.flow.current(world)` is its entity: what a
+playable segment passes to `og.flow.advance`, and what a title screen
+pauses in start and plays from its Start button. The cook counts the
+flow's segments, footage and scenes among the bundle's first modules, so
+nothing waits on the first cut.
 
 `og.flow.load` loads every segment and through it every video. A stream
 fetches nothing until it plays, so a flow of hundreds of segments loads
-them all at start.
+them all at start. A game with several flows, or one that starts its flow
+later, calls the three itself:
+
+```ts
+og.story.load(world, "story/side.yarn");
+og.flow.load(world, "side");
+const flow = og.flow.start(world, { dialogue: "side", paused: true });
+```
 
 <a id="guide-flow-2"></a>
 ### `flow §2` Write a flow node
@@ -175,38 +188,28 @@ or UI image, and while `window` is set offer `choices` with the time left
 footage plays on to the cut, and a later pick replaces it until the window
 locks.
 
-The built-in `FlowChoices` draws the window and `Subtitles` the segment's
-captions (`@origingame/engine/ui/components`). Both take plain values:
-keep a signal per world, set it each tick from `og.flow.view` and
-`og.timeline.captions`, and pass it to the mounts. `FlowChoices` derives
-the choice rows, the pending one, each QTE's progress, the hotspots, the
-time left and the lock from the view itself, and calls `onChoose` with the
-ChoiceView.index of a row or hotspot pressed (nothing after the lock):
+The engine mounts the built-in `FlowScreen` for project.ogt's `flow`,
+under the game's own UI: the picture filling the surface with its
+dissolve (a segment with no footage leaves the live scene showing), the
+captions its timelines say (`Subtitles`), and the window (`FlowChoices`:
+the rows, the pending one, each QTE's progress, the hotspots, the time
+left and the lock), each press taken by og.flow.choose. It reads
+og.flow.view each tick; nothing of it is world state.
 
-```ts
-import { createSignal, mount } from "@origingame/engine/ui";
-import { FlowChoices, Subtitles } from "@origingame/engine/ui/components";
+A game that draws the flow itself says so, and mounts what it wants from
+`@origingame/engine/ui/components`: `FlowScreen` for another flow
+(`{ flow }`), or its parts, `FlowPicture` (the picture and dissolve, with a
+Skip button when given `onSkip`, for a cutscene alone), `Subtitles` and
+`FlowChoices`, which take plain values from og.flow.view:
 
-const view = createSignal<FlowView | null>(null);        // one per world
-const captions = createSignal<readonly TimelineCaption[]>([]);
-
-// A system, each tick:
-view.set(og.flow.view(world, flow));
-captions.set(og.timeline.captions(world));
-
-// GameDesc.ui:
-mount(world, FilmView, { get picture() { return view()?.texture ?? 0; }, ... });
-mount(world, Subtitles, { get captions() { return captions(); } });
-mount(world, FlowChoices, {
-  get view() { return view(); },
-  onChoose: (e, index) => void og.flow.choose(e.world, flow, index),
-});
+```text
+flow "story/film.yarn" {
+  screen game
+}
 ```
 
-Mount `Subtitles` before `FlowChoices`, so the choices lie over the
-captions. `og new --form film` writes this whole presentation
-(`src/main.ts`, `assets/ui/film-view.tsx`). A test takes a choice without
-a press through a command (`flow:choose:<index>`) or a playtest.
+A test takes a choice without a press through a command
+(`flow:choose:<index>`) or a playtest.
 
 The screen's hotspot layer fills the surface, so a hotspot's `rect`
 (fractions of the picture) lands on the picture only when the game draws
@@ -218,8 +221,10 @@ og.flow records the QTE itself from the actions the tags name, and
 `FlowChoices` shows its progress from the view. `og.flow.skip` jumps a seen segment
 to its window, then to its cut.
 
-On the web, audio starts only after a gesture: start the flow paused
-behind a title screen and call `og.flow.play` from its Start button.
+On the web, audio starts only after a gesture, and the page's play gate
+takes it before the first tick. A game with its own title screen pauses
+`og.flow.current(world)` in start and calls `og.flow.play` from its Start
+button.
 
 <a id="guide-flow-5"></a>
 ### `flow §5` Saves, chapters and seen segments

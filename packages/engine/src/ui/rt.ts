@@ -470,3 +470,10 @@ export function list(): never { throw new Error("og.ui: <List> is not an engine 
  * game's bundle and the runtime share.
  */
 export const inspector: { panel: ((props: never) => unknown) | null } = { panel: null };
+
+/**
+ * @internal The built-in FlowScreen (src/ui/screens/flow-screen.tsx), set
+ * by the entry of a bundle whose project.ogt declares a `flow`
+ * (node/build.ts); the UI registration pass mounts it for that flow.
+ */
+export const flowScreen: { component: ((props: Record<string, never>) => unknown) | null } = { component: null };

@@ -253,3 +253,53 @@ fn a_scene_track_names_cooked_scenes_and_the_timeline_needs_their_modules() {
     let e = format!("{:?}", report.errors());
     assert!(!report.ok() && e.contains("scene 'scenes/gone.ogt'"), "{e}");
 }
+
+/// A flow dialogue reaches its segments (`og-flow` headers), and through
+/// them their scenes; project.ogt's `flow` line puts that dialogue's
+/// modules among the bundle's, which og build loads beside the primary.
+///
+/// Ways this could fail: the dialogue's needs stop at `story`, so the
+/// first live segment loads physics where it stands; the bundle's modules
+/// stay the boot scene's alone, so a declared flow's story module is
+/// fetched on its first call; a project without the line gains them.
+#[test]
+fn a_declared_flow_puts_its_segments_modules_in_the_bundle() {
+    let story = format!(
+        "#og-profile:{}\n#og-name:s\ntitle: a\nog-flow: segments/level.ogt\n---\n===\n",
+        og_story::yarn::PROFILE
+    );
+    let files = [
+        (
+            "scenes/main.ogt",
+            "type scene\nversion 1\n---\nname \"Main\"\n",
+        ),
+        (
+            "scenes/arena.ogt",
+            "type scene\nversion 1\n---\nname \"Arena\"\nentity \"ball\" {\n  RigidBody {\n    mass 2\n  }\n}\n",
+        ),
+        (
+            "segments/level.ogt",
+            "type timeline\nversion 1\n---\nduration 4\ntrack scene {\n  key 0 {\n    scene \"scenes/arena.ogt\"\n  }\n}\n",
+        ),
+        ("story/s.yarn", story.as_str()),
+    ];
+    let cooked = |name: &str, flow: &str| {
+        let root = project(name, &files);
+        std::fs::write(
+            root.join("project.ogt"),
+            format!("type project\nversion 1\n---\nname \"F\"\nscenes {{\n  main \"scenes/main.ogt\"\n}}\n{flow}"),
+        )
+        .unwrap();
+        let report = cook_project(&root, &CookOptions::default()).unwrap();
+        assert!(report.ok(), "{:?}", report.errors());
+        og_cook::runtime::Bundle::open(&root.join("cooked")).unwrap()
+    };
+    let bundle = cooked("flow-declared", "flow \"story/s.yarn\"\n");
+    assert_eq!(
+        bundle.asset("story/s.yarn").unwrap().modules,
+        ["physics", "physics3d", "story"]
+    );
+    assert_eq!(bundle.manifest().modules, ["physics", "physics3d", "story"]);
+    let bundle = cooked("flow-undeclared", "");
+    assert!(bundle.manifest().modules.is_empty());
+}

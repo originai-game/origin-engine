@@ -2,7 +2,7 @@
 import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { basename, dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { CREATION_CHOICES, creationBlock, FORM_VIEWS, formOf, GAME_ONLY, inferCreationChoices, parseCreationInput } from "./choices.ts";
+import { CREATION_CHOICES, creationBlock, FILM_GENRE, FORM_VIEWS, formOf, inferCreationChoices, parseCreationInput } from "./choices.ts";
 import type { View } from "./choices.ts";
 import { creationDocument } from "./creation.ts";
 import type { PreviewFile } from "./creation.ts";
@@ -11,7 +11,7 @@ import { profileOf } from "./knowledge.ts";
 import { fontPackFor } from "./languages.ts";
 import type { FontPackLanguages } from "./languages.ts";
 
-export { CREATION_CHOICES, creationBlock, creationSchema, defaultView, FILM_GENRE, FORM_VIEWS, formFields, formOf, GAME_ONLY, GENRE_VIEWS, inferCreationChoices, parseCreationInput } from "./choices.ts";
+export { CREATION_CHOICES, CREATION_FIELDS, creationBlock, creationSchema, defaultView, FILM_GENRE, FORM_VIEWS, formOf, GENRE_VIEWS, inferCreationChoices, parseCreationInput } from "./choices.ts";
 export type { CreationChoices, CreationInput, Form, Genre, View } from "./choices.ts";
 export { creationCompat, creationDocument, lookForms, previewSlots } from "./creation.ts";
 export type { CreationCompat, CreationDocument, PreviewFile, PreviewSlot } from "./creation.ts";
@@ -156,7 +156,7 @@ export function skeletonFiles(): string[] {
   return skeleton;
 }
 
-/** The film skeleton, what `form film` adds over template/ (og api show flow): templates/film in a checkout, the package's film/ once packed. */
+/** The flow skeleton, what `genre interactive-film` adds over template/ (og api show flow): templates/film in a checkout, the package's film/ once packed. */
 export function filmDir(): string {
   const here = dirname(fileURLToPath(import.meta.url));
   for (const candidate of [join(here, "..", "..", "..", "templates", "film"), join(here, "..", "film")]) {
@@ -179,7 +179,9 @@ export function resolveCreationChoices(premise: string, input: CreationInput = {
     asked = inferCreationChoices(premise, { ...input, form: formOf(chosen.look.views[0] as View) });
   }
   const view = asked.view;
-  const slug = input.look ?? (asked.form === "film" ? "cinematic-realism" : pickStyle(premise, styles, profileOf(asked.form), view)?.style.slug ?? (asked.form === "2d" ? "pixel" : "faceted-low-poly"));
+  // An interactive film looks cinematic where that look draws its view (a 3D one, or none named).
+  const cinematic = asked.genre === FILM_GENRE && asked.form === "3d" && (view === undefined || styles.some(s => s.slug === "cinematic-realism" && s.look.views.includes(view)));
+  const slug = input.look ?? (cinematic ? "cinematic-realism" : pickStyle(premise, styles, profileOf(asked.form), view)?.style.slug ?? (asked.form === "2d" ? "pixel" : "faceted-low-poly"));
   const style = styles.find(s => s.slug === slug && s.look.presetReady);
   if (!style) throw new Error(`no look preset '${slug}'; pick one of ${creationLooks(styles).join(", ")}`);
   if (view !== undefined && !style.look.views.includes(view)) {
@@ -217,7 +219,8 @@ export function create(options: CreateOptions): Created {
     if (missing.length) throw new Error(`${missing.length} pinned file(s) of the checkout's templates/fonts/${name} are not installed (${missing[0]}); run bun scripts/assets.ts ensure templates`);
   }
   // The film's placeholder clip is pinned like the fonts (templates/og-assets.json).
-  if (choices.form === "film") {
+  const film = choices.genre === FILM_GENRE;
+  if (film) {
     const missing = missingPins(filmDir(), "film");
     if (missing.length) throw new Error(`${missing.length} pinned file(s) of the checkout's templates/film are not installed (${missing[0]}); run bun scripts/assets.ts ensure templates`);
   }
@@ -247,8 +250,8 @@ export function create(options: CreateOptions): Created {
   for (const name of new Set(choices.lang.map((l) => fontPackFor(l, available)).filter((n) => n !== undefined))) {
     copy(available.find((p) => p.name === name)!.dir, join(dir, "assets", "fonts", name));
   }
-  // A film adds its story, segments, placeholder clip and entry (og api show flow).
-  if (choices.form === "film") copy(filmDir(), dir);
+  // An interactive film adds its story, segments and placeholder clip, run by project.ogt's `flow` (og api show flow).
+  if (film) copy(filmDir(), dir);
   const look = `looks/${id}.ogt`;
   mkdirSync(join(dir, "assets/looks"), { recursive: true });
   writeFileSync(join(dir, "assets", look), `type look\nversion 1\n---\nextends ${JSON.stringify(choices.look)}\n${choices.variant === undefined ? "" : `variant ${JSON.stringify(choices.variant)}\n`}ui ${JSON.stringify(choices.ui)}\n`);
@@ -256,7 +259,7 @@ export function create(options: CreateOptions): Created {
   const manifest = join(dir, "project.ogt");
   writeFileSync(manifest, readFileSync(manifest, "utf8")
     .replace(/^name ".*"$/m, () => `name ${JSON.stringify(name)}`)
-    .replace(/^id ".*"$/m, () => `id ${JSON.stringify(id)}`) + `\nlook ${JSON.stringify(look)}\n\n${creationBlock(choices)}`);
+    .replace(/^id ".*"$/m, () => `id ${JSON.stringify(id)}`) + `\nlook ${JSON.stringify(look)}\n${film ? 'flow "story/film.yarn"\n' : ""}\n${creationBlock(choices)}`);
   const pkg = join(dir, "package.json");
   const data = JSON.parse(readFileSync(pkg, "utf8"));
   data.name = id;
@@ -264,17 +267,17 @@ export function create(options: CreateOptions): Created {
   return { dir, name, id, files: [...new Set(written)], choices };
 }
 
-const USAGE = `usage: create [dir] [--name "Name"] [--id slug] [--premise "one line"] [--form 2d|2.5d|3d|film] [--look slug] [--force]
+const USAGE = `usage: create [dir] [--name "Name"] [--id slug] [--premise "one line"] [--form 2d|2.5d|3d] [--look slug] [--force]
        create --creation [--previews previews.json]
 
 Writes one empty Origin Engine project (default: ./origin-game).
 Choices are constraints and hints in project.ogt's create block.
 The look, variant and UI also configure its look file, which draws in the
 look's own mood; no gameplay is generated.
-  --form      2d, 2.5d or 3d (a game, its view one of the form's), or film: an
-              interactive film (og.flow), which adds a Yarn story, two segments, a
-              placeholder clip, the picture and the flow-choices and subtitles screens;
-              --genre interactive-film is the same; view and players do not apply to a film
+  --form      2d, 2.5d or 3d: the world's form, the view one of the form's
+  --genre     interactive-film adds a flow (og.flow): a Yarn story, two segments and a
+              placeholder clip, run by project.ogt's \`flow\` and drawn by the engine's
+              FlowScreen; its form is 3d unless named and its view may be left out
   --genre --view --look --variant --ui --platform --input --players --lang --music
               creation choices; --lang en,zh accepts comma-separated tags. A look must
               draw the form; a variant must be one of the look's. --mood is refused:
@@ -323,7 +326,7 @@ function main(argv: string[]): number {
     for (const key of FIELDS) {
       if (choices[key] !== undefined) continue;
       const now = resolveCreationChoices(premise, parseCreationInput(choices));
-      if (now.form === "film" && ((GAME_ONLY as readonly string[]).includes(key) || key === "genre")) continue;
+      if (key === "view" && now.genre === FILM_GENRE) continue;
       const styles = readCatalogue();
       const variants = (styles.find(s => s.slug === now.look)?.variants ?? []).map(v => v.name);
       if (key === "variant" && !variants.length) continue;
@@ -347,7 +350,7 @@ function main(argv: string[]): number {
     }
   }
   const made = create({ dir: dir ?? id ?? (name ? slug(name) : "origin-game"), ...(name === undefined ? {} : { name }), ...(id === undefined ? {} : { id }), ...(premise === undefined ? {} : { premise }), choices: parseCreationInput(choices), force });
-  console.log(`Created ${made.name} (${made.id}) in ${relative(process.cwd(), made.dir) || "."}: ${made.files.length} files.\nCreation choices are in project.ogt. ${made.choices.form === "film" ? "Write the story and segments (og api show flow), replace the placeholder clip" : "Build the game with the engine API"}, then run og check and og run .`);
+  console.log(`Created ${made.name} (${made.id}) in ${relative(process.cwd(), made.dir) || "."}: ${made.files.length} files.\nCreation choices are in project.ogt. ${made.choices.genre === FILM_GENRE ? "Write the story and segments (og api show flow), replace the placeholder clip" : "Build the game with the engine API"}, then run og check and og run .`);
   return 0;
 }
 

@@ -9,10 +9,9 @@ export const CHOICE_LABELS = {
     "2d": ["2D", "2D", "Flat sprites and tiles, seen from the side or from above.", "平面的精灵与瓦片，从侧面或上方观察。"],
     "2.5d": ["2.5D", "2.5D", "A 3D world seen through a fixed angled camera.", "通过固定斜角镜头观察的三维世界。"],
     "3d": ["3D", "3D", "A 3D world the camera moves through.", "镜头可在其中自由移动的三维世界。"],
-    film: ["Interactive film", "互动影游", "Footage that branches on the player's choices.", "随玩家选择分支的影像剧情。"],
   },
   genre: {
-    "interactive-film": ["Interactive film", "互动影游", "Footage that branches on the player's choices (form film).", "随玩家选择分支的影像剧情（形式为互动影游）。"],
+    "interactive-film": ["Interactive film", "互动影游", "A story told in segments that branch on the player's choices: footage, live scenes and playable levels.", "随玩家选择分支的影像剧情（形式为互动影游）。"],
     "action-platformer": ["Action platformer", "动作平台", "Run, jump and fight through obstacles.", "奔跑、跳跃并战胜沿途的障碍。"],
     shooter: ["Shooter", "射击", "Aim and shoot while managing movement and cover.", "瞄准射击，配合移动与掩护。"],
     rpg: ["Role-playing", "角色扮演", "Develop characters through quests and combat.", "通过任务与战斗培养角色。"],

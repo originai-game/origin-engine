@@ -33137,6 +33137,7 @@ export interface FlowEnded {
 
 
 
+
 // ── scene ───────────────────────────────────────────────────────
 // Scene changes with their assets fetched first: og.scene.preload asks for every streaming group a scene declares, og.scene.progress says how much of them has arrived, and og.scene.change replaces the current scene with it as the next tick starts. A scene is a GameDesc.scenes name (`level2`) or an asset id (`scenes/level2.ogt`).
 // What is resident is presentation: until a group arrives its models draw proxies and its sounds silence, so a change happens at the same tick on every host and in a replay. A loading screen (og.loading) covers it until og.scene.progress says ready.
@@ -38142,6 +38143,13 @@ export declare namespace og {
      * @returns The flow's entity (og.Flow), or why not: a dialogue og.flow.load has not prepared, an unknown node, or inside a system.
      */
     function start(world: World, desc?: FlowStartDesc): Result<Entity>;
+    /**
+     * The flow project.ogt's `flow` line started before GameDesc.start (the engine loads its dialogue, prepares it and starts it, and its FlowScreen draws it unless the line's block says `screen game`): what a playable segment's game passes to og.flow.advance.
+     *
+     * @param world The world.
+     * @returns Null without a `flow` line, or once og.flow.stop ended it.
+     */
+    function current(world: World): Entity | null;
     /**
      * What a flow shows now: its picture, segment time, choices and window.
      *

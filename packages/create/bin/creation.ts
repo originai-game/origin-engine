@@ -1,5 +1,5 @@
 import { CHOICE_LABELS, localized, LOOK_ZH, VARIANT_ZH } from "./choice-labels.ts";
-import { CREATION_CHOICES, creationSchema, defaultView, FORM_VIEWS, formFields, formOf, GENRE_VIEWS } from "./choices.ts";
+import { CREATION_CHOICES, creationSchema, defaultView, FORM_VIEWS, CREATION_FIELDS, formOf, GENRE_VIEWS } from "./choices.ts";
 import type { Form, View } from "./choices.ts";
 import { catalogueFile, creationLooks, readCatalogue, resolveCreationChoices } from "./create.ts";
 import type { Style } from "./create.ts";
@@ -46,30 +46,29 @@ export function previewSlots(catalogue: string = catalogueFile()): PreviewSlot[]
   ];
 }
 
-/** The forms a look draws: those of its views, and film, whose footage and screens it styles. */
+/** The forms a look draws: those of its views. */
 export function lookForms(style: Style): Form[] {
-  return [...CREATION_CHOICES.form.filter(f => f !== "film" && style.look.views.some(v => formOf(v as View) === f)), "film"];
+  return CREATION_CHOICES.form.filter(f => style.look.views.some(v => formOf(v as View) === f));
 }
 
 export interface CreationCompat {
-  /** The views of each form; a film has none. */
+  /** The views of each form. */
   readonly formViews: typeof FORM_VIEWS;
   /** Each genre's views, preferred first: its default view in a form is the first of that form's. */
   readonly genreViews: typeof GENRE_VIEWS;
   readonly genreDefaultView: Record<string, Partial<Record<Form, View>>>;
-  /** The fields each form asks for (a film has no view or players). */
-  readonly formFields: Record<Form, string[]>;
+  /** The create block's fields, in its order; `view` may be left out by an interactive film. */
+  readonly fields: readonly string[];
   readonly looks: Record<string, { forms: Form[]; views: readonly string[]; ui: string; variants: string[] }>;
 }
 
 /** The rules between options, as data. */
 export function creationCompat(catalogue: string = catalogueFile()): CreationCompat {
-  const games = CREATION_CHOICES.form.filter(f => f !== "film");
   return {
     formViews: FORM_VIEWS,
     genreViews: GENRE_VIEWS,
-    genreDefaultView: Object.fromEntries(CREATION_CHOICES.genre.map(g => [g, Object.fromEntries(games.map(f => [f, defaultView(g, f)]))])),
-    formFields: Object.fromEntries(CREATION_CHOICES.form.map(f => [f, formFields(f)])) as Record<Form, string[]>,
+    genreDefaultView: Object.fromEntries(CREATION_CHOICES.genre.map(g => [g, Object.fromEntries(CREATION_CHOICES.form.map(f => [f, defaultView(g, f)]))])),
+    fields: CREATION_FIELDS,
     looks: Object.fromEntries(styles(catalogue).map(s => [s.slug, { forms: lookForms(s), views: s.look.views, ui: s.ui, variants: (s.variants ?? []).map(v => v.name) }])),
   };
 }

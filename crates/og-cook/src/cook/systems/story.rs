@@ -279,7 +279,7 @@ pub(crate) static KINDS: &[&KindDef] = &[&DIALOGUE, &QUEST];
 
 fn plan_dialogue<'a>(
     cx: &Cx<'a>,
-    _state: &mut PlanState,
+    state: &mut PlanState,
     s: &'a Source,
     hash: [u8; 8],
     outs: &mut Vec<Out<'a>>,
@@ -289,6 +289,21 @@ fn plan_dialogue<'a>(
         story_functions_stamp,
         ..
     } = *cx;
+    // A flow node's `og-flow: <segment>` header: the dialogue reaches the
+    // segment, and through it the segment's footage and scenes (needs.rs).
+    let segments: std::collections::BTreeSet<String> = String::from_utf8_lossy(&s.bytes)
+        .lines()
+        .filter_map(|l| l.trim().strip_prefix("og-flow:"))
+        .map(|v| v.trim().to_string())
+        .filter(|v| !v.is_empty())
+        .collect();
+    if !segments.is_empty() {
+        state
+            .parsed_refs
+            .entry(s.rel.clone())
+            .or_default()
+            .extend(segments);
+    }
     let st = stamp(&[b"dialogue", &hash, story_functions_stamp]);
     outs.push((
         s.rel.clone(),

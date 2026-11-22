@@ -156,6 +156,9 @@ pub(crate) struct State {
     pub project: Option<ProjectGame>,
     /// GameDesc.look, until it has been applied (just before start).
     pub boot_look: Option<String>,
+    /// project.ogt's `flow` dialogue, until it has been started (just
+    /// before start).
+    pub boot_flow: Option<String>,
     /// The game's save version (GameDesc.saveVersion, project.ogt's
     /// `saveVersion`): written into every save.
     pub save_version: u32,

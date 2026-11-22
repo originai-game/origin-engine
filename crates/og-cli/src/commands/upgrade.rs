@@ -196,6 +196,8 @@ fn upgrade(dir: &Path, to: Option<&str>, dry: bool) -> Value {
     let mut drop_ui_core = false;
     // project.ogt's `profile` line becomes the creation form.
     let mut profile_form: Option<(&str, &Value)> = None;
+    // The creation form `film` becomes `3d` (its genre stays).
+    let mut film_form: Option<(&str, &Value)> = None;
     // The game's tsconfig.json, when a codemod rewrote it.
     let mut tsconfig: Option<(PathBuf, String)> = None;
     for e in &crossed {
@@ -290,6 +292,10 @@ fn upgrade(dir: &Path, to: Option<&str>, dry: bool) -> Value {
                 }
                 continue;
             }
+            if b["codemod"]["kind"] == "film-form" {
+                film_form = Some((version, b));
+                continue;
+            }
             if b["codemod"]["kind"] == "profile-form" {
                 profile_form = Some((version, b));
                 continue;
@@ -382,6 +388,13 @@ fn upgrade(dir: &Path, to: Option<&str>, dry: bool) -> Value {
                     }
                 }) {
                 Some(t) => {
+                    let t = match film_form.and_then(|f| film_to_3d(&t).map(|u| (f, u))) {
+                        Some(((version, b), upgraded)) => {
+                            codemods.push(json!({ "version": version, "member": b["member"], "file": "project.ogt", "from": "form \"film\"", "to": "form \"3d\"", "count": 1 }));
+                            upgraded
+                        }
+                        None => t,
+                    };
                     if let Some((version, b)) = profile_form
                         && let Some(line) = t.lines().position(|l| l.starts_with("profile "))
                     {
@@ -1193,6 +1206,29 @@ fn form_of_profile(text: &str) -> String {
     out.concat()
 }
 
+/// project.ogt with its create block's `form "film"` as `form "3d"`, the
+/// form an interactive film's live scenes draw in; `None` without one.
+fn film_to_3d(text: &str) -> Option<String> {
+    let mut inside = false;
+    let mut hit = false;
+    let out: Vec<String> = text
+        .split_inclusive('\n')
+        .map(|l| {
+            let t = l.trim();
+            if t == "create {" || t == "create{" {
+                inside = true;
+            } else if inside && t.starts_with('}') {
+                inside = false;
+            } else if inside && !hit && t == "form \"film\"" {
+                hit = true;
+                return l.replacen("\"film\"", "\"3d\"", 1);
+            }
+            l.to_string()
+        })
+        .collect();
+    hit.then(|| out.concat())
+}
+
 /// project.ogt with its `engine "<v>"` line set to `to`.
 fn set_engine_line(text: &str, to: &str) -> Option<String> {
     let mut hit = false;
@@ -1481,6 +1517,18 @@ if (film.open && marker === "flow.cut") run("10.6:flow:choose:0", `flow:play`);
             without_ui_core("name \"x\"\nuiCore next\nuiCores 1\n"),
             "name \"x\"\nuiCores 1\n"
         );
+    }
+
+    #[test]
+    fn a_film_form_becomes_3d_inside_the_create_block_only() {
+        assert_eq!(
+            film_to_3d(
+                "form \"film\"\ncreate {\n  form \"film\"\n  genre \"interactive-film\"\n}\n"
+            )
+            .as_deref(),
+            Some("form \"film\"\ncreate {\n  form \"3d\"\n  genre \"interactive-film\"\n}\n")
+        );
+        assert_eq!(film_to_3d("create {\n  form \"2d\"\n}\n"), None);
     }
 
     #[test]

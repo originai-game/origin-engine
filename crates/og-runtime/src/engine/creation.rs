@@ -87,6 +87,10 @@ fn create_inner(game: u32, options: &str) -> Result<u32, String> {
     };
     let mut a = assemble(game, seed, mount, profile, project.as_ref(), None)?;
     let probe = a.probe.take().expect("assemble makes a probe");
+    let boot_flow = project
+        .as_ref()
+        .and_then(|p| p.flow.as_ref())
+        .map(|f| f.dialogue.clone());
     let state = State {
         layouts: a.layouts,
         names_by_id: a.names_by_id,
@@ -112,6 +116,7 @@ fn create_inner(game: u32, options: &str) -> Result<u32, String> {
         start_failed: None,
         project,
         boot_look: (!a.game.look.is_empty()).then(|| a.game.look.clone()),
+        boot_flow,
         save_version: a.game.save_version,
         ui_desc: Value::Null,
         step_ms: 0.0,
@@ -241,6 +246,16 @@ pub(super) fn run_start(eng: &Engine) -> Result<(), String> {
             .push(json!({ "tick": 0, "warning": true, "text": text }));
         st.warnings.push(text);
     }
+    // project.ogt's `flow`: started before GameDesc.start, which may read
+    // it (og.flow.current) or pause it behind a title screen.
+    let flow = eng.state.borrow_mut().boot_flow.take();
+    if let Some(dialogue) = flow
+        && let Err(e) = start_flow(eng, &dialogue)
+    {
+        let text = format!("project.ogt's `flow`: {e}");
+        eng.state.borrow_mut().start_failed = Some(text.clone());
+        return Err(text);
+    }
     let start = eng.state.borrow_mut().start.take();
     if let Some(start) = start {
         before_structural(eng);
@@ -258,18 +273,36 @@ pub(super) fn run_start(eng: &Engine) -> Result<(), String> {
     Ok(())
 }
 
+/// Loads, prepares and starts the flow project.ogt declares (its
+/// dialogue's asset id), as a game's og.story.load, og.flow.load and
+/// og.flow.start would.
+fn start_flow(eng: &Engine, dialogue: &str) -> Result<(), String> {
+    let story = crate::bind::story::og_story_load(eng.id, dialogue.to_string())?;
+    crate::bind::flow::og_flow_load(eng.id, story.name.clone())?;
+    crate::bind::flow::start_declared(eng.id, &story.name)
+}
+
 pub(crate) fn run_ui_registration(eng: &Engine, callback: Option<u32>) -> Result<(), String> {
     if callback.is_none() && hooks().is_none() {
         return Ok(());
     }
     let before = eng.world()?.world_hash();
+    // `flow`: the TypeScript runtime mounts the built-in FlowScreen first,
+    // unless project.ogt's `flow` block says the game draws it.
+    let screen = eng
+        .state
+        .borrow()
+        .project
+        .as_ref()
+        .and_then(|p| p.flow.as_ref())
+        .is_some_and(|f| !f.game_screen);
     // An absent callback on reload is still a registration pass: it disposes
     // the presentation IDs removed with the old GameDesc.ui.
     let result = call(
         eng,
         DISPATCH_UI,
         callback.unwrap_or(u32::MAX),
-        String::new(),
+        if screen { "flow".into() } else { String::new() },
     );
     let after = eng.world()?.world_hash();
     let result = if before == after {

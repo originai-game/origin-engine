@@ -35,7 +35,7 @@ const fontsTarget = join(pkg, "fonts");
 rmSync(fontsTarget, { recursive: true, force: true });
 cpSync(join(pkg, "../../templates/fonts"), fontsTarget, { recursive: true, filter: (path) => filter(path) && !path.endsWith(".py") });
 
-// The film skeleton `form film` adds (templates/film, its clip pinned in templates/og-assets.json).
+// The interactive-film skeleton `genre interactive-film` adds (templates/film, its clip pinned in templates/og-assets.json).
 const filmTarget = join(pkg, "film");
 rmSync(filmTarget, { recursive: true, force: true });
 cpSync(join(pkg, "../../templates/film"), filmTarget, { recursive: true, filter });

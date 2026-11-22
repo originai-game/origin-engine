@@ -3217,6 +3217,11 @@ unsafe extern "C" fn og_flow_start(args: *const crate::OgValue, out: *mut crate:
     unsafe { crate::IntoC::into_c(r, out) }
 }
 
+unsafe extern "C" fn og_flow_current(args: *const crate::OgValue, out: *mut crate::OgValue) {
+    let r = <Host as FlowApi>::og_flow_current(&Host, unsafe { crate::arg(args, 0) });
+    unsafe { crate::IntoC::into_c(r, out) }
+}
+
 unsafe extern "C" fn og_flow_view(args: *const crate::OgValue, out: *mut crate::OgValue) {
     let r = <Host as FlowApi>::og_flow_view(&Host, unsafe { crate::arg(args, 0) }, unsafe { crate::arg(args, 1) });
     unsafe { crate::IntoC::into_c(r, out) }
@@ -3980,6 +3985,7 @@ pub static SYMBOLS: &[crate::Symbol] = &[
     crate::Symbol { name: c"og_sight_forget", arity: 2, call: og_sight_forget },
     crate::Symbol { name: c"og_flow_load", arity: 2, call: og_flow_load },
     crate::Symbol { name: c"og_flow_start", arity: 2, call: og_flow_start },
+    crate::Symbol { name: c"og_flow_current", arity: 1, call: og_flow_current },
     crate::Symbol { name: c"og_flow_view", arity: 2, call: og_flow_view },
     crate::Symbol { name: c"og_flow_choose", arity: 3, call: og_flow_choose },
     crate::Symbol { name: c"og_flow_advance", arity: 3, call: og_flow_advance },

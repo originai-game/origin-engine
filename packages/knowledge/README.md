@@ -73,7 +73,9 @@ break, with a `changelog.json` breaking entry):
 - `artBrief(look: BriefLook, kind: ArtKind, subject: string, options?:
   BriefOptions): ArtBrief`, pure. `kind` is one of `ART_KINDS`: `sprite`,
   `tileset`, `portrait`, `backdrop`, `prop`, `character`, `texture`,
-  `icon`. `options.references` are the game's accepted assets (paths or
+  `icon`, and last `keyframe` (an image-to-video model's first frame, at
+  `options.aspect`, 16:9 by default). `options.medium` sets a prop's or
+  character's medium (`image` or `model`) over the profile's. `options.references` are the game's accepted assets (paths or
   URLs), passed on after the style's preview; `options.metres` is the
   asset's size (a prop 1, a character 2, a texture's tile 2 by default).
   After those eight come the UI's art-slot kinds (docs/ui.md §3.3), each specified in `UI_KINDS` (`UiKindSpec`: aspects, transparency,

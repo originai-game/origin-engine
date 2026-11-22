@@ -3217,6 +3217,11 @@ pub fn og_flow_start(world: u32, desc: Option<String>) -> String {
 }
 
 #[wasm_bindgen]
+pub fn og_flow_current(world: u32) -> String {
+    <Host as FlowApi>::og_flow_current(&Host, world)
+}
+
+#[wasm_bindgen]
 pub fn og_flow_view(world: u32, flow: f64) -> String {
     <Host as FlowApi>::og_flow_view(&Host, world, flow)
 }

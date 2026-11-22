@@ -201,7 +201,8 @@ pub struct Manifest {
     pub profile: crate::look::Profile,
     /// The engine wasm modules opening the bundle needs (`modules nav
     /// physics`, sorted; empty: none, and no line): its boot scene's
-    /// (project.ogt `scene`, as [`ManifestAsset::modules`]), or every
+    /// (project.ogt `scene`, as [`ManifestAsset::modules`]) and its
+    /// project.ogt `flow` dialogue's, or every
     /// asset's when the cook cannot name that scene. og build loads them
     /// beside the primary; og.load.bundle fetches them once the bundle
     /// opens.

@@ -3,12 +3,13 @@
 //! are its records' (the IDL's `split`: `RigidBody` is in `physics`); a
 //! dialogue's, a video's and a navmesh's are their kind's; an asset needs
 //! its own and those of every asset it references (parsed_refs: a scene's
-//! sub-scenes, prefabs and models, a timeline's clips and scenes). Physics
+//! sub-scenes, prefabs and models, a timeline's clips and scenes, a flow
+//! dialogue's segments). Physics
 //! is two modules: `physics`, which every physics record's split names, and
 //! the simulation of the world's profile, `physics3d` or `physics2d`: the
 //! scene's own `resource og.Physics { profile }`, else the project's. The
-//! bundle needs its boot scene's, or every asset's when the cook cannot
-//! name that scene.
+//! bundle needs its boot scene's and its project.ogt `flow` dialogue's, or
+//! every asset's when the cook cannot name that scene.
 //!
 //! Readers fetch them before the first call that would load one where it
 //! stands: og build beside the primary, og.load.bundle as the bundle
@@ -105,6 +106,7 @@ pub(crate) fn record(
     sources: &[Source],
     parsed_refs: &BTreeMap<String, BTreeSet<String>>,
     boot: Option<&str>,
+    flow: Option<&str>,
     profile: Profile,
 ) {
     let by_rel: BTreeMap<&str, &Source> = sources.iter().map(|s| (s.rel.as_str(), s)).collect();
@@ -162,7 +164,9 @@ pub(crate) fn record(
         })
         .collect();
     let bundle: BTreeSet<&'static str> = match boot.and_then(|b| owner.get(b)) {
-        Some(&i) => needs[i].clone(),
+        Some(&i) => flow
+            .and_then(|f| owner.get(f))
+            .map_or(needs[i].clone(), |&f| &needs[i] | &needs[f]),
         None => needs.iter().flatten().copied().collect(),
     };
     manifest.modules = bundle.into_iter().map(str::to_string).collect();

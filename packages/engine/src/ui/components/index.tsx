@@ -191,6 +191,7 @@ export { FlowChaptersScreen } from "../screens/flow-chapters";
 export { FlowChoices } from "../screens/flow-choices";
 export { FlowChartScreen } from "../screens/flow-chart";
 export { FlowGalleryScreen } from "../screens/flow-gallery";
+export { FlowPicture, FlowScreen } from "../screens/flow-screen";
 export { GameOverScreen } from "../screens/game-over";
 export { HudEditorScreen } from "../screens/hud-editor";
 export { KeyValues } from "../screens/key-values";

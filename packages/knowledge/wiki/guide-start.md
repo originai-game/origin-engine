@@ -23,23 +23,21 @@ having written project.ogt with `engine "<this version>"`, `look
 "looks/<id>.ogt"` and the `create` block, and `assets/looks/<id>.ogt`
 extending the chosen look.
 
-The first choice is `--form`: `2d`, `2.5d` or `3d` for a game, `film` for
-an interactive film (`--genre interactive-film` is the same choice).
+The first choice is `--form`: `2d`, `2.5d` or `3d`, the world's form.
 
 - A game's `view` is one of its form's: `side-2d` or `top-down-2d` for
   2d, `isometric-2.5d` for 2.5d, `third-person-3d` or `first-person-3d`
   for 3d. Without one it is the genre's usual view in that form. A form and
   view that disagree, or a look that does not draw them (pixel in 3d), exit
   1 naming the looks that do.
-- `film` writes the same skeleton plus a film to replace: the story in
-  `assets/story/film.yarn`, a segment per flow node in `assets/segments/`,
-  a placeholder stream in `assets/clips/`, the picture's screen in
-  `assets/ui/film-view.tsx`, and a `src/main.ts` that loads the story
-  and the film, starts it paused and shows it with the built-in
-  `Subtitles` and `FlowChoices`. Read the flow guide next (`og api
-  show flow`): it covers the story, segments, choices, saves and route
-  tests. A film's genre is `interactive-film`, and it has no `view` or
-  `players`; passing another genre, a view or players exits 1.
+- `--genre interactive-film` writes the same skeleton plus a flow to
+  replace: the story in `assets/story/film.yarn`, a segment per flow node
+  in `assets/segments/` and a placeholder stream in `assets/clips/`, run
+  by project.ogt's `flow "story/film.yarn"` line, which the engine starts
+  and draws with its FlowScreen (src/main.ts stays empty). Its form is 3d
+  unless named, the world its live scenes and levels draw in, and its view
+  may be left out. Read the flow guide next (`og api show flow`): it
+  covers the story, segments, choices, saves and route tests.
 - `--variant <name>` picks one of the look's variants (looks), written into
   the look file. The look draws in its own mood, the preset's or the
   variant's; `--mood` is refused (to change it, write `mood "<word>"` in

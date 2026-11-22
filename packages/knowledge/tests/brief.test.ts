@@ -161,7 +161,20 @@ test("readLook's profile is the creation form's: a 2D game's prop is a sprite, a
     return [look.profile, artBrief(look, "prop", "a crate").medium];
   };
   expect(medium("2d")).toEqual(["2d", "image"]);
-  for (const form of ["2.5d", "3d", "film", null]) expect(medium(form)).toEqual(["3d", "model"]);
+  for (const form of ["2.5d", "3d", null]) expect(medium(form)).toEqual(["3d", "model"]);
+});
+
+test("medium overrides a prop's or character's profile, and only theirs; a keyframe is a video's first frame at the project's aspect", () => {
+  const two = { ...presetLook("minimal-geometric"), profile: "2d" as const };
+  const three = { ...presetLook("minimal-geometric"), profile: "3d" as const };
+  expect(artBrief(two, "character", "a pilot", { medium: "model" }).model).toBeDefined();
+  expect(artBrief(three, "prop", "a crate", { medium: "image" }).image).toBeDefined();
+  expect(() => artBrief(three, "backdrop", "a hangar", { medium: "model" })).toThrow(/only a prop or a character/);
+  const wide = artBrief(three, "keyframe", "a pilot running to her ship");
+  expect([wide.medium, wide.image?.width, wide.image?.height, wide.image?.transparent]).toEqual(["image", 1536, 864, false]);
+  const tall = artBrief(three, "keyframe", "a pilot", { aspect: "9:16" });
+  expect([tall.image?.width, tall.image?.height]).toEqual([864, 1536]);
+  expect(() => artBrief(three, "keyframe", "a pilot", { aspect: "wide" })).toThrow(/not an aspect/);
 });
 
 test("readLook follows project.ogt's look through the game's own looks to the preset, field by field", () => {
@@ -226,7 +239,8 @@ test("a look with no contract still asks for a whole asset", () => {
 
 test("the kinds of before stay first and in order: the UI kinds are added after them", () => {
   expect(ART_KINDS.slice(0, 8)).toEqual(["sprite", "tileset", "portrait", "backdrop", "prop", "character", "texture", "icon"]);
-  expect(ART_KINDS.slice(8)).toEqual(Object.keys(UI_KINDS));
+  expect(ART_KINDS.slice(8, -1)).toEqual(Object.keys(UI_KINDS));
+  expect(ART_KINDS.at(-1)).toBe("keyframe");
 });
 
 test("a UI kind asks for its slot: the aspect, the focal point, the safe area and the size", () => {
@@ -408,9 +422,9 @@ test("an unknown style, mood or genre is refused with the values; a project's cr
   const dir = mkdtempSync(join(tmpdir(), "og-audio-"));
   writeFileSync(join(dir, "project.ogt"), 'type project\nversion 1\n---\nname "x"\ncreate {\n  genre "idle"\n  mood "cold"\n  music "folk"\n}\n');
   expect(readAudioChoices(dir)).toEqual({ music: "folk", mood: "cold", genre: "idle" });
-  // A film has no genre: its block reads without one, a game's never does.
-  writeFileSync(join(dir, "project.ogt"), 'type project\nversion 1\n---\nname "x"\ncreate {\n  form "film"\n  mood "dark"\n  music "orchestral"\n}\n');
-  expect(readAudioChoices(dir)).toEqual({ music: "orchestral", mood: "dark" });
+  // An interactive film is its genre: its scores and choice sounds.
+  writeFileSync(join(dir, "project.ogt"), 'type project\nversion 1\n---\nname "x"\ncreate {\n  form "3d"\n  genre "interactive-film"\n  mood "dark"\n  music "orchestral"\n}\n');
+  expect(readAudioChoices(dir)).toEqual({ music: "orchestral", mood: "dark", genre: "interactive-film" });
   const film = audioBrief(readAudioChoices(dir));
   expect(film.genre).toBe("film");
   expect(film.cues.map((c) => c.id)).toEqual(["title", "scene", "tension", "choice", "victory", "defeat"]);

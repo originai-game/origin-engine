@@ -505,13 +505,16 @@ pub(crate) struct ProjectGame {
     /// `publish { loading game }`: who draws the loading screen
     /// (og.loading.status answers it on every host).
     pub loading: Option<String>,
+    /// `flow "story/<name>.yarn"`: the flow the engine starts before
+    /// GameDesc.start (og.flow.current), and whether the game draws it.
+    pub flow: Option<og_bundle::look::ProjectFlow>,
     /// `create { form "2d" }`: the 2D profile (og-bundle's
     /// `look::project_profile`); any other form, or none, is 3D.
     pub two_d: bool,
 }
 
-/// Reads `tick`, `seed`, `scenes`, `scene`, `look`, `saveVersion` and the
-/// creation form from project.ogt's text; a value of the wrong kind is
+/// Reads `tick`, `seed`, `scenes`, `scene`, `look`, `saveVersion`, `flow`
+/// and the creation form from project.ogt's text; a value of the wrong kind is
 /// refused naming its line. Other keys are og's (`name`, `entry`,
 /// `publish`, ...) and are not read here.
 pub(crate) fn project_game(text: &str) -> Result<ProjectGame, String> {
@@ -590,6 +593,7 @@ pub(crate) fn project_game(text: &str) -> Result<ProjectGame, String> {
         .and_then(|e| e.values.first())
         .and_then(|v| v.as_word().or_else(|| v.as_str()))
         .map(str::to_string);
+    let flow = og_bundle::look::project_flow(b).map_err(|e| format!("project.ogt:{e}"))?;
     let two_d = og_bundle::look::project_profile(b).map_err(|e| format!("project.ogt:{e}"))?
         == og_bundle::look::Profile::TwoD;
     Ok(ProjectGame {
@@ -600,6 +604,7 @@ pub(crate) fn project_game(text: &str) -> Result<ProjectGame, String> {
         look,
         save_version,
         loading,
+        flow,
         two_d,
     })
 }

@@ -16333,6 +16333,21 @@
           "publish": true
         },
         {
+          "name": "current",
+          "doc": "The flow project.ogt's `flow` line started before GameDesc.start (the engine loads its dialogue, prepares it and starts it, and its FlowScreen draws it unless the line's block says `screen game`): what a playable segment's game passes to og.flow.advance.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            }
+          ],
+          "returns": "Option<Entity>",
+          "returnsDoc": "Null without a `flow` line, or once og.flow.stop ended it.",
+          "publish": true
+        },
+        {
           "name": "view",
           "doc": "What a flow shows now: its picture, segment time, choices and window.",
           "params": [
