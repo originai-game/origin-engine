@@ -16,3 +16,8 @@ og-i18n = { path = "../og-i18n" }
 og-css = { path = "../og-css" }
 # The 2D transforms and the codec primitives its bytes are written with.
 og-ui-model = { path = "../og-ui-model" }
+# Rive text is laid out on og-text's Parley layout; its lines break at
+# UAX #14 opportunities, which Parley reads through parley_engine's
+# analyzer, and its glyphs come from Parley's layout items.
+parley = { version = "=0.12.0", default-features = false, features = ["libm"] }
+parley_engine = { version = "=0.12.0", default-features = false, features = ["libm"] }
