@@ -1,0 +1,13 @@
+type project
+version 1
+---
+# The text sheet scripts/text-l4/run.sh measures against Chrome.
+name "Text sheet"
+id "text-sheet"
+engine "0.9.0"
+entry "src/main.tsx"
+create {
+  form "2d"
+}
+tick 60
+seed 1

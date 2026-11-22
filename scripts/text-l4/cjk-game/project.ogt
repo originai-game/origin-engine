@@ -1,0 +1,15 @@
+type project
+version 1
+---
+# A cartoon-pack game with Chinese strings: scripts/text-l4/cold-*.ts time its first Han glyph.
+name "CJK cold start"
+id "cjk-cold"
+engine "0.9.0"
+entry "src/main.tsx"
+tick 60
+seed 1
+publish {
+  probe all
+}
+
+look "looks/game.ogt"

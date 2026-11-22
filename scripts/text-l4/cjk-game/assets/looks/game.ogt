@@ -1,0 +1,5 @@
+type look
+version 1
+---
+extends "cartoon-2d"
+ui "cartoon"
