@@ -38,7 +38,8 @@ impl Renderer {
             samples,
         }: WorldSimsInputs<'_>,
     ) -> WorldSimsOutputs {
-        let surfaces = ribbons_gpu::GpuTrails::supported(flags)
+        let surfaces = flags
+            .contains(wgpu::DownlevelFlags::COMPUTE_SHADERS)
             .then(|| surface::SurfacePipelines::new(device));
         let garments = surfaces
             .as_ref()

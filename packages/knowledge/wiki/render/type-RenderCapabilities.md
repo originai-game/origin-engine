@@ -125,7 +125,7 @@ What the renderer can do on this device. Backend limits are reported here, never
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `visualSimulation` | `boolean` | `false` | — | — | — | Whether visual bodies (og.Cloth, og.SoftBody and og.Garment with simulation visual) simulate here: the device runs compute and reads storage in the vertex stage. Where false they draw their rest shape, as their points read in the tick; false without a renderer. See `looks §18`. |
+| `visualSimulation` | `boolean` | `false` | — | — | — | Whether visual bodies (og.Cloth, og.SoftBody and og.Garment with simulation visual) simulate here: the device runs compute. Where false they draw their rest shape, as their points read in the tick; false without a renderer. See `looks §18`. |
 
 #### 3D world
 
@@ -196,7 +196,7 @@ struct RenderCapabilities {
   }
   field visibilityBufferRefused Option.String "What the device said when it refused the visibility buffer's resolve pipelines (Chrome on the Pixel 10's PowerVR D-Series answers VK_ERROR_UNKNOWN), or null."
   group "Visual simulation"
-  field visualSimulation bool "Whether visual bodies (og.Cloth, og.SoftBody and og.Garment with simulation visual) simulate here: the device runs compute and reads storage in the vertex stage. Where false they draw their rest shape, as their points read in the tick; false without a renderer." {
+  field visualSimulation bool "Whether visual bodies (og.Cloth, og.SoftBody and og.Garment with simulation visual) simulate here: the device runs compute. Where false they draw their rest shape, as their points read in the tick; false without a renderer." {
     guide "looks §18"
   }
   group "3D world"

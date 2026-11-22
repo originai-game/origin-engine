@@ -62,11 +62,12 @@ pub(crate) const CLOUD_SHADOW: PassDesc = PassDesc {
 };
 
 /// The visual bodies' and the visual fluids' steps (visual_sim.rs,
-/// visual_fluid.rs): simulated in compute, drawn from storage.
+/// visual_fluid.rs): simulated in compute into the vertex and instance
+/// buffers their draws read.
 pub(crate) const VISUAL: PassDesc = PassDesc {
     pass: FramePass::Visual,
     name: "visual simulation",
-    needs: Caps::COMPUTE.union(Caps::VERTEX_STORAGE),
+    needs: Caps::COMPUTE,
 };
 
 /// The deforming surfaces' and the garments' vertices (surface.rs,
@@ -74,7 +75,7 @@ pub(crate) const VISUAL: PassDesc = PassDesc {
 pub(crate) const SURFACES: PassDesc = PassDesc {
     pass: FramePass::Surfaces,
     name: "surfaces",
-    needs: Caps::COMPUTE.union(Caps::VERTEX_STORAGE),
+    needs: Caps::COMPUTE,
 };
 
 /// Every terrain level's corners (terrain/renderer.rs), before every

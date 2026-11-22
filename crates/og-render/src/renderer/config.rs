@@ -527,7 +527,7 @@ pub struct RenderInfo {
     /// levels.
     pub gpu_crowds: bool,
     /// Whether visual bodies ([`crate::VisualBody`]) simulate: the device
-    /// runs compute and reads storage in the vertex stage. Without, they
+    /// runs compute, which writes the vertices they draw. Without, they
     /// draw their rest shape.
     pub visual_simulation: bool,
     /// Whether GPU culling's indirect draws each read their args from a

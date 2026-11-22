@@ -10967,7 +10967,7 @@ export interface RenderCapabilities {
   readonly visibilityBufferRefused: string | null;
   // ── Visual simulation ──
   /**
-   * Whether visual bodies (og.Cloth, og.SoftBody and og.Garment with simulation visual) simulate here: the device runs compute and reads storage in the vertex stage. Where false they draw their rest shape, as their points read in the tick; false without a renderer.
+   * Whether visual bodies (og.Cloth, og.SoftBody and og.Garment with simulation visual) simulate here: the device runs compute. Where false they draw their rest shape, as their points read in the tick; false without a renderer.
    * See `looks §18`.
    */
   readonly visualSimulation: boolean;

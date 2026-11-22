@@ -147,7 +147,7 @@ impl Renderer {
             without: desc.without,
             transparency: Transparency::Weighted,
             gpu_crowds: crowd_indirect,
-            visual_simulation: ribbons_gpu::GpuTrails::supported(flags),
+            visual_simulation: caps.contains(Caps::COMPUTE),
             indirect_per_draw: desc.indirect_per_draw || webkit(),
             caps,
             tier: desc.tier,
