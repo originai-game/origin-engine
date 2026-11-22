@@ -243,7 +243,7 @@ wasm products keyed by content. Neither lane partitions tests across machines.
 | Lane | Checks |
 |---|---|
 | `quick` | fmt, clippy, native test build, CPU tests, GPU tests outside the crates in `scripts/gate-exclude.txt`, generated API drift, engine TypeScript checks, non-engine package tests, and the one wasm32 check of the wasm-only crates (feature matrix and lanes variants) |
-| `full` | quick plus og-tests, doctests, engine and extension Bun tests, bindgen-only wasm variants, fixtures, the browser tests of packages/engine's `test:browser` |
+| `full` | quick plus og-tests, doctests, engine and extension Bun tests, bindgen-only wasm variants, fixtures, the guides' recipes, the showcases' playtests, the browser tests of packages/engine's `test:browser` |
 
 `OG_GATE_SKIP` (comma-separated step names) drops those steps from a run.
 Its standing use is `OG_GATE_SKIP=rust-gpu scripts/land.sh` for a head
@@ -344,6 +344,8 @@ split, and the lowest such crate is its cause.
 | `size-gate` | Brotli-11 bytes of each shipping-profile bindgen module in `dev.txt`, checked against `wasm_core_brotli_bytes` before packing. | release only |
 | `bun-test` | Package tests using the dev addon and gate-produced wasm (`OG_GATE=1`), after engine typecheck, drift and surface checks. A scoped Bun landing also selects the native suites, but Bun doesn't wait for their results. | full |
 | `fixtures` | `og test` for each changed runnable feature fixture and the creation skeleton; needs only the native `og`, so `--only fixtures` builds no wasm. | full |
+| `guide-recipes` | `scripts/guide-recipes.ts`: every ```` ```ts recipe ```` block in `crates/og-api/guides/*.md` is a whole `src/main.ts`, written into a project under `target/guide-recipes/`, type-checked and run headless twice (`og run --json`, 120 ticks, or `ticks=N` on the fence line). A check error, a throw, a violated og.assert, a reachable or sometimes site that never fired, no og.assert site at all, or two end hashes fails it with the guide's file and line. Its own test (`scripts/guide-recipes.test.ts`, with the step's og) runs broken recipes first; bun-quick runs that file without og and skips its runs. | full |
+| `showcase` | `og test` for each changed `showcase/*/` with tests, after `bun scripts/assets.ts ensure`, as `fixtures` does. Each showcase keeps a `tests/play.og.ts` that plays it through its keys (or its simulation alone), requires an og.assert.reachable site in its source and ends two runs on one hash. shared-walk is left out: it plays only against a world server, which `packages/engine/tests/web-shared.test.ts` starts. | full |
 | `browser` | Every file packages/engine's `test:browser` names, each run even when one before it failed. | full |
 | `web-reference` | Headless Chrome WebGPU groups with `OG_WEB_JOBS` concurrency (default 3), compared under unchanged tolerances. | explicit |
 | `safari` | Wire, player, export, device, and motion ticks in desktop Safari. Also plays publish builds of First Light and Side Scroller. | explicit, macOS |

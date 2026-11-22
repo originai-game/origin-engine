@@ -31,7 +31,7 @@ if [ -n "${GATE_LOGS:-}" ]; then
   python3 -c 'import time; print(time.monotonic())' > "$GATE_LOGS/$1.resource-start"
 fi
 case "$1" in
-  rust-gpu|bun-test|fixtures|browser|web-reference|safari)
+  rust-gpu|bun-test|fixtures|guide-recipes|showcase|browser|web-reference|safari)
     og_gpu_acquire "gate $1 ($PWD)" || exit 1 ;;
 esac
 if [ -n "${GATE_LOGS:-}" ]; then

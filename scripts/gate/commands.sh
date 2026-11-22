@@ -572,6 +572,62 @@ step_fixtures() {
   fi
 }
 
+# The guides' recipes (scripts/guide-recipes.ts): every ```ts recipe block
+# in crates/og-api/guides/ written into a project, type-checked and run
+# headless twice; a check error, a throw, an og.assert violation, a site
+# that never fired or two hashes fail it, naming the guide's file and line.
+# Its own test first: a broken recipe must fail there with its line.
+step_guide_recipes() {
+  require_ready guide-recipes native-ready || return 1
+  OG_BIN="$OG_TARGET_DIR/debug/og" bun test ./scripts/guide-recipes.test.ts || return 1
+  bun scripts/guide-recipes.ts --og "$OG_TARGET_DIR/debug/og"
+}
+
+# The showcases (showcase/*/ with tests/): `og test` in each whose inputs
+# changed since it last passed, as step_fixtures does. Each has a playtest
+# that reaches an og.assert.reachable site through its keys and ends two
+# runs on one hash. shared-walk is left out: without a world server it never
+# joins, and packages/engine/tests/web-shared.test.ts plays it against one.
+step_showcase() {
+  local dir name log rc ran="" unchanged="" unchecked="" bad=""
+  require_ready showcase native-ready || return 1
+  for dir in showcase/*/; do
+    dir="${dir%/}"
+    name="${dir##*/}"
+    [ -f "$dir/project.ogt" ] && [ -d "$dir/tests" ] && [ "$name" != shared-walk ] || continue
+    if skip_unchanged "showcase.$name" "showcase $name" "$(rule_fixture "$dir")"; then
+      unchanged="$unchanged $name"
+      continue
+    fi
+    og_green_clear "showcase.$name"
+    log="$GATE_LOGS/showcase-$name.txt"
+    { bun scripts/assets.ts ensure "$dir" && "$OG_TARGET_DIR/debug/og" test "$dir"; } 2>&1 | tee "$log"
+    rc="${PIPESTATUS[0]}"
+    if [ "$rc" -ne 0 ]; then
+      bad="$bad $name"
+    elif grep -Eq '[1-9][0-9]* GPU frame/expectation checks unchecked' "$log"; then
+      unchecked="$unchecked $name"
+    else
+      ran="$ran $name"
+      og_green_set "showcase.$name"
+    fi
+  done
+  SKIP_NOTE=""
+  if [ -n "$bad" ]; then
+    og_err "showcase: failed:$bad"
+    return 1
+  fi
+  PASS_NOTE="ran${ran:- none}${unchanged:+; unchanged$unchanged}${unchecked:+; unchecked (no renderer)$unchecked}"
+  if [ -n "$unchecked" ]; then
+    SKIP_NOTE="GPU checks unchecked:$unchecked (no passing step snapshot)"
+    return $SKIP
+  fi
+  if [ -z "$ran" ]; then
+    SKIP_NOTE="no showcase's inputs changed (${unchanged# }; --all runs them)"
+    return $SKIP
+  fi
+}
+
 # The browser tiers in headless Chrome on WebGPU (docs/ci.md §Browser
 # reference tiers; `make web-reference`): the former test sample, og-tests'
 # gfx scenes (crates/og-tests-web), Ember Vale, the
