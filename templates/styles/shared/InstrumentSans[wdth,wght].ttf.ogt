@@ -5,5 +5,4 @@ version 1
 # condensed are its own outlines, not synthesised. The face ships whole;
 # every character is drawn from its outlines at the size it is shown.
 font {
-  chars " "
 }

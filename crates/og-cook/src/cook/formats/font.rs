@@ -56,18 +56,6 @@ pub fn cook(bytes: &[u8], s: &FontSettings, stamp: u64) -> Result<(Vec<u8>, Font
             ));
         }
     }
-    let missing: String = s
-        .chars
-        .chars()
-        .filter(|&c| !c.is_whitespace() && face.glyph_index(c).is_none())
-        .collect();
-    if !missing.is_empty() {
-        let list: String = missing.chars().take(8).collect();
-        note.push_str(&format!(
-            "; {} requested character(s) not in the font: {list}",
-            missing.chars().count()
-        ));
-    }
     Ok((w.finish(), FontNotes { note }))
 }
 
@@ -169,10 +157,7 @@ mod tests {
             std::fs::read(format!("{}/../../{p}", env!("CARGO_MANIFEST_DIR"))).expect("the font")
         };
         let cook_px = |bytes: &[u8], pixel: u32| {
-            let s = FontSettings {
-                pixel,
-                ..FontSettings::default()
-            };
+            let s = FontSettings { pixel };
             let (blob, notes) = cook(bytes, &s, 0).expect("cooks");
             (blob, notes.note)
         };

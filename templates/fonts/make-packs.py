@@ -187,7 +187,6 @@ version 1
 # Made by templates/fonts/make-packs.py: the face ships whole and every
 # character is drawn from its outlines when first shown.
 font {{
-  chars " 　"
 }}
 """
 
@@ -199,7 +198,6 @@ version 1
 # Made by templates/fonts/make-packs.py: the face ships whole and every
 # emoji is painted in colour from its COLR table when first shown.
 font {{
-  chars " "
 }}
 """
 

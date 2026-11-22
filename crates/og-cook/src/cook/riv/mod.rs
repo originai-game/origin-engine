@@ -104,8 +104,6 @@ struct ArtboardSettings {
 struct FontAssetSettings {
     /// A referenced font's file under `assets/` (an embedded one has none).
     source: Option<String>,
-    /// More characters than the runs' own, checked against the font.
-    chars: String,
 }
 
 /// A `.riv`'s import settings (`<file>.riv.ogt`, `type import`).
@@ -211,10 +209,9 @@ fn settings(body: &Block) -> Result<Settings, String> {
                 for g in e.block.iter().flat_map(|b| &b.entries) {
                     match g.key.as_str() {
                         "source" => f.source = Some(word_or_string(g, 0)?),
-                        "chars" => f.chars = word_or_string(g, 0)?,
                         k => {
                             return Err(format!(
-                                "line {}: '{k}' is not a font setting (source, chars)",
+                                "line {}: '{k}' is not a font setting (source)",
                                 g.line
                             ));
                         }
@@ -284,13 +281,14 @@ fn names_font(n: &str, index: usize, name: &str) -> bool {
 
 /// A font the `.riv` sets text in, as the cook makes it: its asset index,
 /// its name in Rive, the font file's bytes (embedded, or the referenced
-/// one's source) and its cook's settings, the characters its
-/// runs show.
+/// one's source), its cook's settings and the characters its runs show
+/// that the face lacks.
 pub(super) struct RivFont {
     pub index: usize,
     pub name: String,
     pub bytes: Vec<u8>,
     pub settings: super::FontSettings,
+    pub missing: String,
 }
 
 /// The fonts a `.riv`'s text uses, each with what it cooks from.
@@ -318,8 +316,9 @@ fn fonts(
             // The artboard that draws with it names it.
             (None, None) => continue,
         };
+        let face = ttf_parser::Face::parse(&bytes, 0).ok();
         // A face with none of what its runs show would draw nothing of it.
-        if let Ok(face) = ttf_parser::Face::parse(&bytes, 0)
+        if let Some(face) = &face
             && !used
                 .chars()
                 .any(|c| c.is_whitespace() || face.glyph_index(c).is_some())
@@ -328,14 +327,19 @@ fn fonts(
                 "font '{name}' has none of the characters its runs show (\"{used}\"); Rive draws them as missing glyphs: set them in a font that has them"
             ));
         }
+        let missing = face.map_or_else(String::new, |face| {
+            used.chars()
+                .filter(|&c| !c.is_whitespace() && face.glyph_index(c).is_none())
+                .collect()
+        });
         let mut settings = base.clone();
-        settings.chars = format!("{used}{}", own.map_or("", |f| f.chars.as_str()));
         settings.pixel = 0;
         out.push(RivFont {
             index,
             name,
             bytes,
             settings,
+            missing,
         });
     }
     Ok(out)
@@ -375,10 +379,15 @@ pub(super) fn plan(s: &Source, base: &super::FontSettings) -> Result<Plan, Strin
 pub(super) fn cook_font(f: &RivFont, stamp: u64) -> Result<(Vec<u8>, Vec<String>), CookError> {
     let (bytes, notes) = super::font::cook(&f.bytes, &f.settings, stamp)
         .map_err(|e| CookError(format!("font{} '{}': {}", f.index, f.name, e.0)))?;
-    Ok((
-        bytes,
-        vec![format!("font{} '{}': {}", f.index, f.name, notes.note)],
-    ))
+    let mut note = format!("font{} '{}': {}", f.index, f.name, notes.note);
+    if !f.missing.is_empty() {
+        let list: String = f.missing.chars().take(8).collect();
+        note.push_str(&format!(
+            "; {} character(s) its runs show not in the font: {list}",
+            f.missing.chars().count()
+        ));
+    }
+    Ok((bytes, vec![note]))
 }
 
 /// Cooks a `.riv`'s embedded image `n` into a colour texture.

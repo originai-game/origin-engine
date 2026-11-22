@@ -4,5 +4,4 @@ version 1
 # Fantasy's display face, variable (wght 400–900). The face ships whole;
 # every character is drawn from its outlines at the size it is shown.
 font {
-  chars " "
 }

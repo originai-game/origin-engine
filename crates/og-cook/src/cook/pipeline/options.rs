@@ -302,8 +302,6 @@ impl TextureOptions {
 /// A font's import settings (`<font>.ogt`'s `font { … }` block).
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct FontSettings {
-    /// Characters the font is checked for: the cook notes the ones it lacks.
-    pub chars: String,
     /// A pixel font's grid, its pixels to the em (`pixel 12`; 0: an
     /// outline font): the raster snaps the face to the grid at whole
     /// multiples of it, with no anti-aliasing.
@@ -312,7 +310,7 @@ pub struct FontSettings {
 
 impl FontSettings {
     pub(crate) fn describe(&self) -> String {
-        format!("chars {:?} pixel {}", self.chars, self.pixel)
+        format!("pixel {}", self.pixel)
     }
 }
 
@@ -476,7 +474,6 @@ pub(crate) fn font_settings(s: &Source, base: &FontSettings) -> Result<FontSetti
         for e in &b.entries {
             let err = |x: og_core::Error| format!("line {}: {x}", e.line);
             match e.key.as_str() {
-                "chars" => f.chars = e.string(0).map_err(err)?.to_string(),
                 "pixel" => {
                     f.pixel = e.number(0).map_err(err)?.as_u64().map_err(err)? as u32;
                     if !(4..=64).contains(&f.pixel) {
@@ -485,7 +482,7 @@ pub(crate) fn font_settings(s: &Source, base: &FontSettings) -> Result<FontSetti
                 }
                 k => {
                     return Err(format!(
-                        "line {}: unknown font setting '{k}' (chars, pixel; og upgrade drops the atlas settings)",
+                        "line {}: unknown font setting '{k}' (pixel; og upgrade drops the atlas settings and chars)",
                         e.line
                     ));
                 }

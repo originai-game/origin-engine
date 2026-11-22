@@ -655,13 +655,14 @@ fn flow_rename(text: &str) -> Option<(String, Vec<FlowRenamed>)> {
 
 /// The font atlas's settings dropped from a font import's `font { … }`
 /// block (and a `.riv` import's `font <name> { … }`): `charset`,
-/// `em_px`, `px_range`, `page_size`, `runtime`, `features`, `color`,
-/// `color_px` and `palette` lines, which no longer mean anything now that
-/// a face ships whole and draws at the size it is shown. Lines outside a
-/// font block are left as they are.
+/// `chars`, `em_px`, `px_range`, `page_size`, `runtime`, `features`,
+/// `color`, `color_px` and `palette` lines, which no longer mean anything
+/// now that a face ships whole and draws at the size it is shown. Lines
+/// outside a font block are left as they are.
 fn font_atlas_keys(text: &str) -> Option<(String, usize)> {
-    const KEYS: [&str; 9] = [
+    const KEYS: [&str; 10] = [
         "charset",
+        "chars",
         "em_px",
         "px_range",
         "page_size",
@@ -1483,16 +1484,16 @@ if (film.open && marker === "flow.cut") run("10.6:flow:choose:0", `flow:play`);
     fn font_atlas_keys_leave_a_font_block_its_other_lines_and_other_blocks_theirs() {
         let ogt = "type import\nversion 1\n---\nfont {\n  charset latin # the atlas\n  chars \"é\"\n  em_px 48\n  pixel 12\n  runtime true\n}\nmesh {\n  runtime true\n}\n";
         let (out, n) = font_atlas_keys(ogt).expect("rewritten");
-        assert_eq!(n, 3);
+        assert_eq!(n, 4);
         assert_eq!(
             out,
-            "type import\nversion 1\n---\nfont {\n  chars \"é\"\n  pixel 12\n}\nmesh {\n  runtime true\n}\n"
+            "type import\nversion 1\n---\nfont {\n  pixel 12\n}\nmesh {\n  runtime true\n}\n"
         );
-        let riv = "font \"Inter\" {\n  source \"fonts/Inter.ttf\"\n  charset latin\n}\n";
+        let riv = "font \"Inter\" {\n  source \"fonts/Inter.ttf\"\n  charset latin\n  chars \"→\"\n}\n";
         let (out, n) = font_atlas_keys(riv).expect("rewritten");
         assert_eq!(
             (n, out.as_str()),
-            (1, "font \"Inter\" {\n  source \"fonts/Inter.ttf\"\n}\n")
+            (2, "font \"Inter\" {\n  source \"fonts/Inter.ttf\"\n}\n")
         );
         assert_eq!(font_atlas_keys("const charset = 1;\n"), None);
     }

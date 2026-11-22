@@ -4,5 +4,4 @@ version 1
 # The characters the UI kit's string tables use (tools/make-locale-
 # fonts.py).
 font {
-  chars ""
 }

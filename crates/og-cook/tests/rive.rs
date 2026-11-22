@@ -115,17 +115,15 @@ fn a_riv_text_cooks_its_font_to_the_characters_it_shows() {
     );
 
     // Its settings name it by its output (the asset has no name in Rive);
-    // a character it lacks is named in the cook's note.
+    // `chars`, which checked a font for characters, is gone and refused.
     std::fs::write(
         root.join("assets/ui/hello_world.riv.ogt"),
         "type import\nversion 1\n---\nfont font0 {\n  chars \"0123\"\n}\n",
     )
     .unwrap();
     let report = cook_project(&root, &CookOptions::default()).unwrap();
-    assert!(report.ok(), "{:?}", report.errors());
-    let bundle = Bundle::open(&root.join("cooked")).unwrap();
-    let f = font_of(&root, &bundle, "ui/hello_world.riv#font0");
-    assert!(f.file.is_some());
+    let errors = report.errors().join("\n");
+    assert!(errors.contains("'chars' is not a font setting"), "{errors}");
 }
 
 /// A keyed font that has none of the characters its run shows is an

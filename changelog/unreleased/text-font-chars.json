@@ -1,0 +1,12 @@
+{
+  "simulation": "unchanged",
+  "breaking": [
+    {
+      "member": "font import setting chars (a font .ogt's font block and a .riv import's font <name> block)",
+      "change": "chars only checked a face for the characters it listed, a check left from the atlas, which drew only the characters cooked into it. A face now ships whole and any character it has draws, and a character it lacks falls back through the chain, so the cook refuses a chars line. A .riv's font still notes the characters its own runs show that the face lacks.",
+      "fix": "Delete the line (og upgrade does). To see which characters a text draws from which face, read the probe's missing-glyph warnings.",
+      "find": ["chars "],
+      "codemod": { "kind": "font-atlas-keys" }
+    }
+  ]
+}

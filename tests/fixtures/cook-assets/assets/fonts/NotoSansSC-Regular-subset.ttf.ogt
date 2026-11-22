@@ -4,5 +4,4 @@ version 1
 # The face ships whole; every character is drawn from its outlines at the
 # size it is shown.
 font {
-  chars "开始游戏设置退出暂停继续分数最高关卡生命时间胜利失败加载中−…←→"
 }
