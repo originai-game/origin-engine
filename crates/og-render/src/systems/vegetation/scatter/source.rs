@@ -30,6 +30,7 @@ pub(crate) fn scatter_lit_source(hooks: &str) -> String {
             &og_render_data::impostor::march_wgsl(),
             wgsl!("impostor_common.wgsl"),
             wgsl!("impostor.wgsl"),
+            wgsl!("impostor_kept.wgsl"),
             wgsl!("crowd_card_common.wgsl"),
             wgsl!("crowd_card.wgsl"),
         ],
