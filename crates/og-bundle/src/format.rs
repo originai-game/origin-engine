@@ -59,7 +59,7 @@ use og_core::{Reflect, Schema};
 
 /// Changes whenever the bytes the cook writes for the same input change.
 /// Part of every cook stamp, so a new cooker re-cooks everything.
-pub const COOKER_VERSION: &str = concat!("og-cook ", env!("CARGO_PKG_VERSION"), " r28");
+pub const COOKER_VERSION: &str = concat!("og-cook ", env!("CARGO_PKG_VERSION"), " r29");
 
 /// "None" in a u32 index field.
 pub const NONE: u32 = u32::MAX;
