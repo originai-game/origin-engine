@@ -3248,6 +3248,7 @@ dependencies = [
  "og-render-data",
  "og-rive",
  "og-shape",
+ "og-shape-formats",
  "og-story",
  "og-tests",
  "og-text",

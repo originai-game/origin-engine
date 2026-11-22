@@ -266,6 +266,7 @@ pub(crate) fn scan_with(
         let extension = ext(rel);
         let kind = match (kind_by_extension(&extension), extension.as_str()) {
             (Some(kind), _) => kind,
+            (None, "json") if model_program::is_program(rel) => &crate::cook::model::MODEL,
             (None, "json") if font_pack::is_pack(rel, &read(rel, path)?) => &font_pack::FONT_PACK,
             (None, "json") if ui_packs::is_pack(rel) => &ui_packs::PACK,
             (None, "svelte") => {

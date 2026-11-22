@@ -12,6 +12,7 @@ pub(super) mod font_pack;
 pub mod icons;
 pub mod ktx2_source;
 pub(super) mod model;
+pub mod model_program;
 pub mod model_text;
 pub(super) mod motion;
 pub(super) mod normal2d;

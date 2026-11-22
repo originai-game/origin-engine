@@ -33,8 +33,8 @@ pub use formats::texture::{
     Image as DecodedImage, decode as decode_image, orientation as image_orientation,
 };
 pub use formats::{
-    anim, audio, bc6h, cube_source, fbx, icons, ktx2_source, model_text, prefab, sfx,
-    texture_array, video, vox,
+    anim, audio, bc6h, cube_source, fbx, icons, ktx2_source, model_program, model_text, prefab,
+    sfx, texture_array, video, vox,
 };
 use formats::{font, font_pack, model, motion, psd, scene, texture, timeline};
 pub mod conform;

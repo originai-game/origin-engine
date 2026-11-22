@@ -13,7 +13,7 @@ default = ["cook", "basis", "transcode"]
 # og-render (og-bundle's `transcode`).
 transcode = ["og-bundle/transcode"]
 # The cook itself (native only): importers, encoders, the incremental manifest.
-cook = ["og-render-data/bake", "dep:resvg", "dep:blake3", "dep:og-story", "dep:og-i18n", "og-ai/bake", "dep:gltf", "og-render-data/gltf", "dep:image", "dep:image_dds", "dep:draco-core", "dep:meshopt", "dep:mikktspace", "dep:fdsm", "dep:ttf-parser", "dep:skrifa", "dep:hound", "dep:symphonia", "dep:opus-pure", "dep:ruzstd", "dep:serde", "dep:serde_json", "dep:oxc_allocator", "dep:oxc_ast", "dep:oxc_ast_visit", "dep:oxc_parser", "dep:oxc_span", "dep:nalgebra", "dep:og-ui-next", "dep:og-text", "dep:og-rive", "dep:og-css", "dep:og-tween", "dep:naga", "dep:og-records", "og-timeline/import", "dep:og-shape", "dep:og-video", "dep:ufbx", "dep:libm", "dep:og-bake"]
+cook = ["og-render-data/bake", "dep:resvg", "dep:blake3", "dep:og-story", "dep:og-i18n", "og-ai/bake", "dep:gltf", "og-render-data/gltf", "dep:image", "dep:image_dds", "dep:draco-core", "dep:meshopt", "dep:mikktspace", "dep:fdsm", "dep:ttf-parser", "dep:skrifa", "dep:hound", "dep:symphonia", "dep:opus-pure", "dep:ruzstd", "dep:serde", "dep:serde_json", "dep:oxc_allocator", "dep:oxc_ast", "dep:oxc_ast_visit", "dep:oxc_parser", "dep:oxc_span", "dep:nalgebra", "dep:og-ui-next", "dep:og-text", "dep:og-rive", "dep:og-css", "dep:og-tween", "dep:naga", "dep:og-records", "og-timeline/import", "dep:og-shape", "dep:og-shape-formats", "dep:og-video", "dep:ufbx", "dep:libm", "dep:og-bake"]
 # Encode textures with the basis-universal crate (a default). Without it the
 # cook looks for KTX-Software's `toktx` on PATH.
 basis = ["og-bundle/basis", "dep:basis-universal", "dep:ruzstd"]
@@ -50,6 +50,9 @@ og-physics-data = { path = "../og-physics-data" }
 # model's `fracture` block: og-shape cuts the pieces, og-physics-data holds
 # the asset (`cook/systems/fracture.rs`).
 og-shape = { path = "../og-shape", optional = true }
+# A model whose source is an og-shape program is written as a glTF binary
+# (`cook/formats/model_program.rs`).
+og-shape-formats = { path = "../og-shape-formats", optional = true }
 # A streamed `type video`: the IVF ffmpeg writes is read into units, and its
 # poster is frame 0 as rav1d decodes it (the frame the runtime shows first).
 og-video = { path = "../og-video", optional = true }

@@ -199,9 +199,32 @@ pub(crate) fn import(
                 }
             }
         }
+        // A model whose source is an og-shape program (the program, or a
+        // `type model` naming it with its values): replayed by the kernel
+        // and written as a glTF binary here (`model_program.rs`); the
+        // program and the files it read join its hash.
+        if s.kind == &crate::cook::model::MODEL
+            && (model_program::is_program(&s.rel)
+                || (ext(&s.rel) == "ogt"
+                    && Document::parse(&String::from_utf8_lossy(&s.bytes))
+                        .is_ok_and(|d| model_program::names_program(&d))))
+        {
+            let dir = s.path.parent().unwrap_or(Path::new(".")).to_path_buf();
+            let read = |f: &str| std::fs::read(dir.join(f)).map_err(|e| e.to_string());
+            match model_program::parse(&s.rel, &s.bytes, &read).and_then(|p| p.glb(&read)) {
+                Ok(w) => {
+                    s.bytes = w.glb;
+                    imported = Some((w.read, Vec::new()));
+                }
+                Err(e) => {
+                    s.error = Some(e);
+                    continue;
+                }
+            }
+        }
         // A model written as text (`type model`): its parts built and
         // written as a glTF binary here, so the rest of the cook sees a .glb.
-        if s.kind == &crate::cook::model::MODEL && ext(&s.rel) == "ogt" {
+        else if s.kind == &crate::cook::model::MODEL && ext(&s.rel) == "ogt" {
             let text = String::from_utf8_lossy(&s.bytes).to_string();
             match model_text::to_glb(&text) {
                 Ok(glb) => {
