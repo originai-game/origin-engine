@@ -421,7 +421,7 @@ pub const COMPAT_SCENES: &[&str] = &[
 /// Draws `g` as a game does, with the tier's antialiasing settled over
 /// eight frames: an outdoor set's thin edges (pine needles, blades of
 /// grass) alias without it, and the clouds' march is dithered for it.
-fn as_played(g: &mut GfxScene) {
+pub fn as_played(g: &mut GfxScene) {
     g.desc.antialias = Antialias::Tier;
     g.frames = g.frames.max(8);
 }

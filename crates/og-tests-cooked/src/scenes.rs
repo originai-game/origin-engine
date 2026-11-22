@@ -141,6 +141,7 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         #[cfg(not(target_arch = "wasm32"))]
         "plant-scatter" => |g, _| {
             g.scene = crate::plant_scenes::scatter_scene()?;
+            og_tests::scenes::as_played(g);
             Ok(())
         },
         #[cfg(not(target_arch = "wasm32"))]
