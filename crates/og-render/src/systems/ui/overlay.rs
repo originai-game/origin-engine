@@ -1007,10 +1007,13 @@ impl OverlayRenderer {
             bind_group_layouts: &[Some(&layout), Some(sprite_layout)],
             immediate_size: 0,
         });
-        let module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("overlay"),
-            source: wgpu::ShaderSource::Wgsl(overlay_source().into()),
-        });
+        let module = crate::gpu::shader_module(
+            device,
+            wgpu::ShaderModuleDescriptor {
+                label: Some("overlay"),
+                source: wgpu::ShaderSource::Wgsl(overlay_source().into()),
+            },
+        );
         const BUFFERS: &[Option<wgpu::VertexBufferLayout<'static>>] = &[Some(OVERLAY_LAYOUT)];
         let pipeline = |label: &'static str, fs: &'static str, format: wgpu::TextureFormat| {
             let (device, pl, module) = (device.clone(), pl.clone(), module.clone());

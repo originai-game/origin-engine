@@ -97,18 +97,27 @@ impl UiRenderer {
             ],
             immediate_size: 0,
         });
-        let mass_module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("ui mass"),
-            source: wgpu::ShaderSource::Wgsl(mass_source().into()),
-        });
-        let module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("ui"),
-            source: wgpu::ShaderSource::Wgsl(ui_source().into()),
-        });
-        let builtin = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("ui builtin materials"),
-            source: wgpu::ShaderSource::Wgsl(builtin_source().into()),
-        });
+        let mass_module = crate::gpu::shader_module(
+            device,
+            wgpu::ShaderModuleDescriptor {
+                label: Some("ui mass"),
+                source: wgpu::ShaderSource::Wgsl(mass_source().into()),
+            },
+        );
+        let module = crate::gpu::shader_module(
+            device,
+            wgpu::ShaderModuleDescriptor {
+                label: Some("ui"),
+                source: wgpu::ShaderSource::Wgsl(ui_source().into()),
+            },
+        );
+        let builtin = crate::gpu::shader_module(
+            device,
+            wgpu::ShaderModuleDescriptor {
+                label: Some("ui builtin materials"),
+                source: wgpu::ShaderSource::Wgsl(builtin_source().into()),
+            },
+        );
         let pipelines = |format| {
             let p = |label, fs, pipe| {
                 pipeline(

@@ -597,10 +597,13 @@ impl PostPasses {
             let output_entry = if srgb { entry } else { encoded.as_str() };
             let (shader, layout) = if pass == FramePass::Fxaa {
                 let shader = self.fxaa_shader.get_or_insert_with(|| {
-                    device.create_shader_module(wgpu::ShaderModuleDescriptor {
-                        label: Some("fxaa"),
-                        source: wgpu::ShaderSource::Wgsl(fullscreen_source(FXAA_WGSL).into()),
-                    })
+                    crate::gpu::shader_module(
+                        device,
+                        wgpu::ShaderModuleDescriptor {
+                            label: Some("fxaa"),
+                            source: wgpu::ShaderSource::Wgsl(fullscreen_source(FXAA_WGSL).into()),
+                        },
+                    )
                 });
                 (&*shader, &self.source_pl)
             } else if pass == FramePass::SmaaBlend {

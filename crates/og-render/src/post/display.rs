@@ -216,10 +216,13 @@ impl Output {
             bind_group_layouts: &[Some(&layout)],
             immediate_size: 0,
         });
-        let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("display output"),
-            source: wgpu::ShaderSource::Wgsl(post::fullscreen_source(TRANSFER).into()),
-        });
+        let shader = crate::gpu::shader_module(
+            device,
+            wgpu::ShaderModuleDescriptor {
+                label: Some("display output"),
+                source: wgpu::ShaderSource::Wgsl(post::fullscreen_source(TRANSFER).into()),
+            },
+        );
         let pipeline =
             post::fullscreen_pipeline(device, "display output", &shader, "fs", &pl, format, None);
         Self {

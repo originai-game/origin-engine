@@ -51,10 +51,13 @@ pub(crate) fn encoded_view_format(
 }
 
 pub(crate) fn shader(device: &wgpu::Device, label: &str, source: String) -> wgpu::ShaderModule {
-    device.create_shader_module(wgpu::ShaderModuleDescriptor {
-        label: Some(label),
-        source: wgpu::ShaderSource::Wgsl(source.into()),
-    })
+    crate::gpu::shader_module(
+        device,
+        wgpu::ShaderModuleDescriptor {
+            label: Some(label),
+            source: wgpu::ShaderSource::Wgsl(source.into()),
+        },
+    )
 }
 
 /// [`shader`] for a module in [`crate::UNBOUNDED_MODULES`]: every other

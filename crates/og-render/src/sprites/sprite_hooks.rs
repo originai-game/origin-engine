@@ -133,10 +133,13 @@ impl SpriteHooks {
             return;
         }
         let scope = device.push_error_scope(wgpu::ErrorFilter::Validation);
-        let module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("sprite (material shader)"),
-            source: wgpu::ShaderSource::Wgsl(self.off.leave_out(source(shader)).into()),
-        });
+        let module = crate::gpu::shader_module(
+            device,
+            wgpu::ShaderModuleDescriptor {
+                label: Some("sprite (material shader)"),
+                source: wgpu::ShaderSource::Wgsl(self.off.leave_out(source(shader)).into()),
+            },
+        );
         let pipeline = |label, fs, blend| {
             crate::hdr_pipeline(
                 device,

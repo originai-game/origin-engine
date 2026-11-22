@@ -755,10 +755,13 @@ impl ScatterRenderer {
             {
                 let source = (self.lit_wgsl)(&hooks_of(sh));
                 let declared = Features::declared(&source);
-                let module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-                    label: Some("scatter (material shader)"),
-                    source: wgpu::ShaderSource::Wgsl(source.into()),
-                });
+                let module = crate::gpu::shader_module(
+                    device,
+                    wgpu::ShaderModuleDescriptor {
+                        label: Some("scatter (material shader)"),
+                        source: wgpu::ShaderSource::Wgsl(source.into()),
+                    },
+                );
                 self.hooked.insert(sh, (module, declared));
             }
             for pass in [ScatterPass::Lit, ScatterPass::Prepass, ScatterPass::Shadow] {

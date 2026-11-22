@@ -172,10 +172,13 @@ impl GpuCulling {
             })
             .collect();
         if self.hiz_base[multisampled as usize].is_none() {
-            let module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-                label: Some("depth pyramid base"),
-                source: wgpu::ShaderSource::Wgsl(hiz_source(multisampled).into()),
-            });
+            let module = crate::gpu::shader_module(
+                device,
+                wgpu::ShaderModuleDescriptor {
+                    label: Some("depth pyramid base"),
+                    source: wgpu::ShaderSource::Wgsl(hiz_source(multisampled).into()),
+                },
+            );
             let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: Some("depth pyramid base"),
                 bind_group_layouts: &[Some(&self.hiz_base_layout[multisampled as usize])],

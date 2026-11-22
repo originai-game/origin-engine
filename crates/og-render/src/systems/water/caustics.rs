@@ -107,10 +107,13 @@ impl CausticsPass {
                 ),
             ],
         });
-        let module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("water caustics"),
-            source: wgpu::ShaderSource::Wgsl(CAUSTICS_WGSL.into()),
-        });
+        let module = crate::gpu::shader_module(
+            device,
+            wgpu::ShaderModuleDescriptor {
+                label: Some("water caustics"),
+                source: wgpu::ShaderSource::Wgsl(CAUSTICS_WGSL.into()),
+            },
+        );
         let pl = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("water caustics"),
             bind_group_layouts: &[Some(&layout)],

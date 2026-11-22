@@ -152,10 +152,13 @@ fn pipelines(
         ],
         immediate_size: 0,
     });
-    let module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-        label: Some("sprite skin"),
-        source: wgpu::ShaderSource::Wgsl(source().into()),
-    });
+    let module = crate::gpu::shader_module(
+        device,
+        wgpu::ShaderModuleDescriptor {
+            label: Some("sprite skin"),
+            source: wgpu::ShaderSource::Wgsl(source().into()),
+        },
+    );
     [
         wgpu::BlendState::ALPHA_BLENDING,
         wgpu::BlendState {

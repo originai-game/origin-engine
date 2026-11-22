@@ -767,10 +767,13 @@ impl Pipelines {
                 &[texture(9, true), storage(15, FORMAT), texture(23, false)],
             ),
         ];
-        let module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("ssr"),
-            source: wgpu::ShaderSource::Wgsl(SSR_WGSL.into()),
-        });
+        let module = crate::gpu::shader_module(
+            device,
+            wgpu::ShaderModuleDescriptor {
+                label: Some("ssr"),
+                source: wgpu::ShaderSource::Wgsl(SSR_WGSL.into()),
+            },
+        );
         let entries = [
             "hiz_base",
             "hiz_reduce",

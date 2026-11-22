@@ -231,10 +231,13 @@ impl Trample {
         if self.gpu.is_some() {
             return self.gpu.as_ref();
         }
-        let module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("grass trample"),
-            source: wgpu::ShaderSource::Wgsl(source().into()),
-        });
+        let module = crate::gpu::shader_module(
+            device,
+            wgpu::ShaderModuleDescriptor {
+                label: Some("grass trample"),
+                source: wgpu::ShaderSource::Wgsl(source().into()),
+            },
+        );
         let pl = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("grass trample"),
             bind_group_layouts: &[Some(layout)],

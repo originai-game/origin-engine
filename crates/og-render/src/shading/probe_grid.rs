@@ -258,10 +258,13 @@ impl GridProjector {
         let pipeline = crate::deferred::Deferred::anywhere({
             let device = device.clone();
             move || {
-                let module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-                    label: Some("probe grid"),
-                    source: wgpu::ShaderSource::Wgsl(PROBE_GRID_WGSL.into()),
-                });
+                let module = crate::gpu::shader_module(
+                    &device,
+                    wgpu::ShaderModuleDescriptor {
+                        label: Some("probe grid"),
+                        source: wgpu::ShaderSource::Wgsl(PROBE_GRID_WGSL.into()),
+                    },
+                );
                 crate::traffic::create_compute_pipeline(
                     &device,
                     &wgpu::ComputePipelineDescriptor {

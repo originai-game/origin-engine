@@ -73,10 +73,13 @@ impl SpriteNormals {
             immediate_size: 0,
         });
         // The mesh module holds the sprite module whole.
-        let module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("sprite (normal map)"),
-            source: wgpu::ShaderSource::Wgsl(crate::sprite_mesh::source().into()),
-        });
+        let module = crate::gpu::shader_module(
+            device,
+            wgpu::ShaderModuleDescriptor {
+                label: Some("sprite (normal map)"),
+                source: wgpu::ShaderSource::Wgsl(crate::sprite_mesh::source().into()),
+            },
+        );
         let mesh_buffers = [Some(crate::sprite_mesh::MESH_LAYOUT)];
         let pipeline = |label, mesh: bool, fs, blend| {
             crate::hdr_pipeline(

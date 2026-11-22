@@ -227,10 +227,13 @@ impl AuroraMap {
             let device = device.clone();
             crate::deferred::Deferred::anywhere(move || {
                 crate::deferred::note(|| "aurora footprint".into());
-                let module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-                    label: Some("aurora footprint"),
-                    source: wgpu::ShaderSource::Wgsl(FOOTPRINT_WGSL.into()),
-                });
+                let module = crate::gpu::shader_module(
+                    &device,
+                    wgpu::ShaderModuleDescriptor {
+                        label: Some("aurora footprint"),
+                        source: wgpu::ShaderSource::Wgsl(FOOTPRINT_WGSL.into()),
+                    },
+                );
                 let compute = |entry| {
                     crate::traffic::create_compute_pipeline(
                         &device,

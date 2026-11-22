@@ -214,10 +214,13 @@ impl SpriteMeshRenderer {
             bind_group_layouts: &[Some(layouts[0]), Some(layouts[1]), Some(layouts[2])],
             immediate_size: 0,
         });
-        let module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("sprite mesh"),
-            source: wgpu::ShaderSource::Wgsl(off.leave_out(source()).into()),
-        });
+        let module = crate::gpu::shader_module(
+            device,
+            wgpu::ShaderModuleDescriptor {
+                label: Some("sprite mesh"),
+                source: wgpu::ShaderSource::Wgsl(off.leave_out(source()).into()),
+            },
+        );
         let buffers = [Some(MESH_LAYOUT)];
         let pipeline = |label, blend| {
             crate::hdr_pipeline(

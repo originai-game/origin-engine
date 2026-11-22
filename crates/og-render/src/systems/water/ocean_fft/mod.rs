@@ -284,10 +284,13 @@ impl FftOcean {
             ],
         });
         let module = |label: &'static str, source: &str| {
-            device.create_shader_module(wgpu::ShaderModuleDescriptor {
-                label: Some(label),
-                source: wgpu::ShaderSource::Wgsl(source.into()),
-            })
+            crate::gpu::shader_module(
+                device,
+                wgpu::ShaderModuleDescriptor {
+                    label: Some(label),
+                    source: wgpu::ShaderSource::Wgsl(source.into()),
+                },
+            )
         };
         let fft = module("ocean fft", FFT_WGSL);
         let mips_module = module("ocean fft mips", MIPS_WGSL);

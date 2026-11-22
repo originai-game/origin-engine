@@ -207,10 +207,13 @@ impl SeaWakes {
                 },
             ],
         });
-        let module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("sea wakes"),
-            source: wgpu::ShaderSource::Wgsl(WGSL.into()),
-        });
+        let module = crate::gpu::shader_module(
+            device,
+            wgpu::ShaderModuleDescriptor {
+                label: Some("sea wakes"),
+                source: wgpu::ShaderSource::Wgsl(WGSL.into()),
+            },
+        );
         let pl = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("sea wakes"),
             bind_group_layouts: &[Some(&layout)],

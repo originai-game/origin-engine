@@ -193,10 +193,13 @@ impl PaintRenderer {
             bind_group_layouts: &[Some(&layout), Some(sprite_layout)],
             immediate_size: 0,
         });
-        let module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("ui paint"),
-            source: wgpu::ShaderSource::Wgsl(source().into()),
-        });
+        let module = crate::gpu::shader_module(
+            device,
+            wgpu::ShaderModuleDescriptor {
+                label: Some("ui paint"),
+                source: wgpu::ShaderSource::Wgsl(source().into()),
+            },
+        );
         // Entries of the pipeline cache (gpu/deferred.rs), asked for now.
         let pipeline = |format,
                         pl: &wgpu::PipelineLayout,

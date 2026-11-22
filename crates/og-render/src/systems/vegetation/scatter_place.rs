@@ -419,10 +419,13 @@ impl ScatterPlace {
         terrain_layout: &wgpu::BindGroupLayout,
         arrayed: bool,
     ) -> crate::deferred::Deferred<[wgpu::ComputePipeline; 2]> {
-        let module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("scatter place"),
-            source: wgpu::ShaderSource::Wgsl(source(arrayed).into()),
-        });
+        let module = crate::gpu::shader_module(
+            device,
+            wgpu::ShaderModuleDescriptor {
+                label: Some("scatter place"),
+                source: wgpu::ShaderSource::Wgsl(source(arrayed).into()),
+            },
+        );
         let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("scatter place"),
             bind_group_layouts: &[

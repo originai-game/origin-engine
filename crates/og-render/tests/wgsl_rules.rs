@@ -809,7 +809,10 @@ fn every_module_parses_as_wgsl_writes_its_operators() {
 ///   builds without the compatibility tier (`GATED`);
 /// - no storage buffer or texture a vertex stage reads, and four of each a
 ///   fragment stage reads, but in the modules the renderer builds only with
-///   `Caps::VERTEX_STORAGE` (`VERTEX_STORAGE_MODULES`).
+///   `Caps::VERTEX_STORAGE` (`VERTEX_STORAGE_MODULES`);
+/// - no fine derivative (`dpdxFine`, `dpdyFine`, `fwidthFine`): a
+///   compatibility device compiles each module as `og_render::compat_wgsl`
+///   gives it, with the plain ones.
 mod compat {
     use naga::{
         Binding, BuiltIn, Expression as E, Function, ImageClass, Interpolation, Module, Sampling,
@@ -854,6 +857,10 @@ mod compat {
         };
         for (_, e) in f.expressions.iter() {
             match *e {
+                E::Derivative {
+                    ctrl: naga::DerivativeControl::Fine,
+                    ..
+                } => out.push(format!("{at}: a fine derivative")),
                 E::ImageLoad { image, .. } => {
                     if let Some(ImageClass::Depth { multi: false }) = class(image) {
                         out.push(format!("{at}: textureLoad of a texture_depth"));
@@ -1002,8 +1009,8 @@ mod compat {
 /// [`compat`] over every module and variant: what a WebGPU compatibility
 /// adapter (Chrome 146+'s default on GLES and D3D11 devices) refuses.
 /// Broken by a `@interpolate(flat)` without `either`, a 256-wide
-/// workgroup, a `textureLoad` of a depth texture or a storage buffer read
-/// in a vertex stage.
+/// workgroup, a `textureLoad` of a depth texture, a storage buffer read
+/// in a vertex stage or a fine derivative the rewrite misses.
 #[test]
 fn every_module_keeps_the_compatibility_rules() {
     let mut failures = Vec::new();
@@ -1011,7 +1018,7 @@ fn every_module_keeps_the_compatibility_rules() {
     for s in og_render::shader_sources() {
         let (module, info) = crate::shaders::checked(
             &s.label,
-            &s.wgsl,
+            &og_render::compat_wgsl(&s.wgsl),
             &s.constants,
             crate::shaders::full_capabilities(),
         )

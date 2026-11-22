@@ -64,6 +64,8 @@ mod sprites;
 mod systems;
 mod visibility;
 use gpu::buffers::{grow, grow_and_write};
+#[doc(hidden)]
+pub use gpu::compat_wgsl;
 use gpu::copy::GpuCopy;
 use gpu::indirect_own;
 use gpu::layout::{sampler_entry, tex2d, texture_entry, uniform_entry};

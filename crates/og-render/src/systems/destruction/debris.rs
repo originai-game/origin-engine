@@ -379,10 +379,13 @@ impl DebrisLayer {
                     storage(7, false),
                 ],
             });
-            let module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-                label: Some("debris"),
-                source: wgpu::ShaderSource::Wgsl(source().into()),
-            });
+            let module = crate::gpu::shader_module(
+                device,
+                wgpu::ShaderModuleDescriptor {
+                    label: Some("debris"),
+                    source: wgpu::ShaderSource::Wgsl(source().into()),
+                },
+            );
             let pl = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: Some("debris"),
                 bind_group_layouts: &[Some(&layout)],

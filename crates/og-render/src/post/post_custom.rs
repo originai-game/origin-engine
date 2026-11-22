@@ -190,10 +190,13 @@ impl CustomPosts {
         }
         let (_, layout, _) = self.layout.as_ref().expect("made in prepare");
         let scope = device.push_error_scope(wgpu::ErrorFilter::Validation);
-        let module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some(&post.name),
-            source: wgpu::ShaderSource::Wgsl(post_module_source(post).into()),
-        });
+        let module = crate::gpu::shader_module(
+            device,
+            wgpu::ShaderModuleDescriptor {
+                label: Some(&post.name),
+                source: wgpu::ShaderSource::Wgsl(post_module_source(post).into()),
+            },
+        );
         let pipeline = crate::traffic::create_render_pipeline(
             device,
             &wgpu::RenderPipelineDescriptor {

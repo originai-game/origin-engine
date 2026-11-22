@@ -739,10 +739,13 @@ impl ScatterCull {
                 ),
             ],
         });
-        let module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("scatter cull"),
-            source: wgpu::ShaderSource::Wgsl(source().into()),
-        });
+        let module = crate::gpu::shader_module(
+            device,
+            wgpu::ShaderModuleDescriptor {
+                label: Some("scatter cull"),
+                source: wgpu::ShaderSource::Wgsl(source().into()),
+            },
+        );
         let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("scatter cull"),
             bind_group_layouts: &[Some(&shared_layout), Some(&chunk_layout), Some(&map_layout)],

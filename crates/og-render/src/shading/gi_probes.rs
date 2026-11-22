@@ -493,10 +493,13 @@ impl GiProbes {
                         layouts: &[Option<&wgpu::BindGroupLayout>],
                         source: String,
                         entry: &str| {
-            let module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-                label: Some(label),
-                source: wgpu::ShaderSource::Wgsl(source.into()),
-            });
+            let module = crate::gpu::shader_module(
+                device,
+                wgpu::ShaderModuleDescriptor {
+                    label: Some(label),
+                    source: wgpu::ShaderSource::Wgsl(source.into()),
+                },
+            );
             let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: Some(label),
                 bind_group_layouts: layouts,

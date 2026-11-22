@@ -279,10 +279,13 @@ impl WindFieldSim {
             return self.gpu.as_ref();
         }
         let slots = slots.next_power_of_two().max(16);
-        let module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("wind field"),
-            source: wgpu::ShaderSource::Wgsl(source().into()),
-        });
+        let module = crate::gpu::shader_module(
+            device,
+            wgpu::ShaderModuleDescriptor {
+                label: Some("wind field"),
+                source: wgpu::ShaderSource::Wgsl(source().into()),
+            },
+        );
         let pl = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("wind field"),
             bind_group_layouts: &[Some(layout)],

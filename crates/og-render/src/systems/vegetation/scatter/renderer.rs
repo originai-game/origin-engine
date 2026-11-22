@@ -110,14 +110,20 @@ impl ScatterRenderer {
         );
         let lit_source = (p.lit_wgsl)(&crate::hooks::default_hooks());
         let declared = Features::declared(&lit_source);
-        let lit_module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("scatter"),
-            source: wgpu::ShaderSource::Wgsl(lit_source.into()),
-        });
-        let shadow_module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("scatter shadow"),
-            source: wgpu::ShaderSource::Wgsl(p.shadow_wgsl.into()),
-        });
+        let lit_module = crate::gpu::shader_module(
+            device,
+            wgpu::ShaderModuleDescriptor {
+                label: Some("scatter"),
+                source: wgpu::ShaderSource::Wgsl(lit_source.into()),
+            },
+        );
+        let shadow_module = crate::gpu::shader_module(
+            device,
+            wgpu::ShaderModuleDescriptor {
+                label: Some("scatter shadow"),
+                source: wgpu::ShaderSource::Wgsl(p.shadow_wgsl.into()),
+            },
+        );
         let wind_uniform = crate::traffic::create_buffer(
             device,
             &wgpu::BufferDescriptor {

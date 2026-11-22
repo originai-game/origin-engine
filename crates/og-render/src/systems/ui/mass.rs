@@ -519,10 +519,13 @@ fn table(i: u32) -> vec4<f32> {{ return texels[{base}u + i]; }}
             pollster::block_on(instance.request_adapter(&Default::default())).expect("GPU adapter");
         let (device, queue) =
             pollster::block_on(adapter.request_device(&Default::default())).unwrap();
-        let module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("mass timing readback"),
-            source: wgpu::ShaderSource::Wgsl(shader.into()),
-        });
+        let module = crate::gpu::shader_module(
+            &device,
+            wgpu::ShaderModuleDescriptor {
+                label: Some("mass timing readback"),
+                source: wgpu::ShaderSource::Wgsl(shader.into()),
+            },
+        );
         let pipeline = crate::traffic::create_compute_pipeline(
             &device,
             &wgpu::ComputePipelineDescriptor {

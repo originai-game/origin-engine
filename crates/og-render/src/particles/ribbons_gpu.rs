@@ -289,10 +289,13 @@ impl GpuTrails {
                                 immediate_size: 0,
                             },
                         )),
-                        module: &device.create_shader_module(wgpu::ShaderModuleDescriptor {
-                            label: Some("trails"),
-                            source: wgpu::ShaderSource::Wgsl(WGSL.into()),
-                        }),
+                        module: &crate::gpu::shader_module(
+                            &device,
+                            wgpu::ShaderModuleDescriptor {
+                                label: Some("trails"),
+                                source: wgpu::ShaderSource::Wgsl(WGSL.into()),
+                            },
+                        ),
                         entry_point: Some("advance"),
                         compilation_options: Default::default(),
                         cache: crate::pipeline_cache::of(&device).as_ref(),

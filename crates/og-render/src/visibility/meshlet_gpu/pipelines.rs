@@ -23,10 +23,13 @@ impl MeshletGpu {
             self.vis_buffer.clear_pipelines();
             self.lit_module = Some((
                 planar,
-                device.create_shader_module(wgpu::ShaderModuleDescriptor {
-                    label: Some("pbr meshlet"),
-                    source: wgpu::ShaderSource::Wgsl(off.leave_out(lit_source(planar)).into()),
-                }),
+                crate::gpu::shader_module(
+                    device,
+                    wgpu::ShaderModuleDescriptor {
+                        label: Some("pbr meshlet"),
+                        source: wgpu::ShaderSource::Wgsl(off.leave_out(lit_source(planar)).into()),
+                    },
+                ),
             ));
         }
         let module = &self.lit_module.as_ref().expect("made above").1;
@@ -117,10 +120,13 @@ impl MeshletGpu {
             return;
         }
         let module = self.shadow_module.get_or_insert_with(|| {
-            device.create_shader_module(wgpu::ShaderModuleDescriptor {
-                label: Some("shadow meshlet"),
-                source: wgpu::ShaderSource::Wgsl(shadow_source().into()),
-            })
+            crate::gpu::shader_module(
+                device,
+                wgpu::ShaderModuleDescriptor {
+                    label: Some("shadow meshlet"),
+                    source: wgpu::ShaderSource::Wgsl(shadow_source().into()),
+                },
+            )
         });
         let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("shadow meshlet"),

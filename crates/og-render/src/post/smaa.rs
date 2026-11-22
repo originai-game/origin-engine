@@ -74,10 +74,13 @@ impl Smaa {
             })
         };
         let shader = |label, body| {
-            device.create_shader_module(wgpu::ShaderModuleDescriptor {
-                label: Some(label),
-                source: wgpu::ShaderSource::Wgsl(fullscreen_source(body).into()),
-            })
+            crate::gpu::shader_module(
+                device,
+                wgpu::ShaderModuleDescriptor {
+                    label: Some(label),
+                    source: wgpu::ShaderSource::Wgsl(fullscreen_source(body).into()),
+                },
+            )
         };
         let weights_layout = layout("smaa weights", 5);
         let blend_layout = layout("smaa blend", 3);

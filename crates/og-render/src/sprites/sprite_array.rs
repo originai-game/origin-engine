@@ -75,10 +75,13 @@ impl SpriteArrayPipelines {
             bind_group_layouts: &[Some(frame_layout), Some(&layout), Some(fx_layout)],
             immediate_size: 0,
         });
-        let module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("sprite array"),
-            source: wgpu::ShaderSource::Wgsl(off.leave_out(source()).into()),
-        });
+        let module = crate::gpu::shader_module(
+            device,
+            wgpu::ShaderModuleDescriptor {
+                label: Some("sprite array"),
+                source: wgpu::ShaderSource::Wgsl(off.leave_out(source()).into()),
+            },
+        );
         let buffers = [Some(SPRITE_ARRAY_LAYOUT)];
         // Into the scene's HDR target: at the renderer's samples per pixel.
         let pipeline = |label: &'static str, fs: &'static str, blend: wgpu::BlendState| {
@@ -205,10 +208,13 @@ impl SpriteArrayPipelines {
             bind_group_layouts: &[Some(overlay_layout), Some(&self.layout)],
             immediate_size: 0,
         });
-        let module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("overlay array"),
-            source: wgpu::ShaderSource::Wgsl(OVERLAY_ARRAY_WGSL.into()),
-        });
+        let module = crate::gpu::shader_module(
+            device,
+            wgpu::ShaderModuleDescriptor {
+                label: Some("overlay array"),
+                source: wgpu::ShaderSource::Wgsl(OVERLAY_ARRAY_WGSL.into()),
+            },
+        );
         let buffers = [Some(instances)];
         let pipeline = |format| {
             crate::traffic::create_render_pipeline(

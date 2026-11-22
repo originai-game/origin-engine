@@ -34,10 +34,13 @@ impl Compact {
                 storage(7, false, c),
             ],
         });
-        let module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("meshlet compact"),
-            source: wgpu::ShaderSource::Wgsl(WGSL.into()),
-        });
+        let module = crate::gpu::shader_module(
+            device,
+            wgpu::ShaderModuleDescriptor {
+                label: Some("meshlet compact"),
+                source: wgpu::ShaderSource::Wgsl(WGSL.into()),
+            },
+        );
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("meshlet compact"),
             bind_group_layouts: &[Some(&layout)],

@@ -296,10 +296,13 @@ impl BakePass {
             let device = device.clone();
             crate::deferred::Deferred::anywhere(move || {
                 crate::deferred::note(|| "cloud shadow".into());
-                let module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-                    label: Some("cloud shadow"),
-                    source: wgpu::ShaderSource::Wgsl(bake_source().into()),
-                });
+                let module = crate::gpu::shader_module(
+                    &device,
+                    wgpu::ShaderModuleDescriptor {
+                        label: Some("cloud shadow"),
+                        source: wgpu::ShaderSource::Wgsl(bake_source().into()),
+                    },
+                );
                 crate::traffic::create_compute_pipeline(
                     &device,
                     &wgpu::ComputePipelineDescriptor {

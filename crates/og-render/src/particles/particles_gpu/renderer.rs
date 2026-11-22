@@ -69,10 +69,13 @@ impl ParticleRenderer {
                 sim_system_layout.clone(),
             );
             Deferred::new(move || {
-                let module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-                    label: Some("particle sim"),
-                    source: wgpu::ShaderSource::Wgsl(sim_source().into()),
-                });
+                let module = crate::gpu::shader_module(
+                    &device,
+                    wgpu::ShaderModuleDescriptor {
+                        label: Some("particle sim"),
+                        source: wgpu::ShaderSource::Wgsl(sim_source().into()),
+                    },
+                );
                 let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                     label: Some("particle sim"),
                     bind_group_layouts: &[Some(&sim_layout), Some(&system_layout)],
@@ -117,10 +120,13 @@ impl ParticleRenderer {
                                 immediate_size: 0,
                             },
                         )),
-                        module: &device.create_shader_module(wgpu::ShaderModuleDescriptor {
-                            label: Some("particle sprites"),
-                            source: wgpu::ShaderSource::Wgsl(sprites_source().into()),
-                        }),
+                        module: &crate::gpu::shader_module(
+                            &device,
+                            wgpu::ShaderModuleDescriptor {
+                                label: Some("particle sprites"),
+                                source: wgpu::ShaderSource::Wgsl(sprites_source().into()),
+                            },
+                        ),
                         entry_point: Some("expand"),
                         compilation_options: Default::default(),
                         cache: crate::pipeline_cache::of(&device).as_ref(),
@@ -356,10 +362,13 @@ impl ParticleRenderer {
                 && !self.hook_modules.contains_key(&h)
             {
                 let source = draw_source(&self.frame_wgsl, shaders.get(h));
-                let module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-                    label: Some("particles (effect hook)"),
-                    source: wgpu::ShaderSource::Wgsl(source.into()),
-                });
+                let module = crate::gpu::shader_module(
+                    device,
+                    wgpu::ShaderModuleDescriptor {
+                        label: Some("particles (effect hook)"),
+                        source: wgpu::ShaderSource::Wgsl(source.into()),
+                    },
+                );
                 self.hook_modules.insert(h, module);
             }
             let blend = match s.blend {

@@ -100,10 +100,13 @@ impl CrowdImpostors {
                 count: None,
             }],
         });
-        let module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("crowd bake"),
-            source: wgpu::ShaderSource::Wgsl(crowd_bake_source().into()),
-        });
+        let module = crate::gpu::shader_module(
+            device,
+            wgpu::ShaderModuleDescriptor {
+                label: Some("crowd bake"),
+                source: wgpu::ShaderSource::Wgsl(crowd_bake_source().into()),
+            },
+        );
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("crowd bake"),
             bind_group_layouts: &[Some(&layout), Some(material_layout), Some(palette_layout)],

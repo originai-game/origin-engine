@@ -208,10 +208,13 @@ fn pass(
     Pass {
         layout,
         pipeline: Deferred::new(move || {
-            let module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-                label: Some(label),
-                source: wgpu::ShaderSource::Wgsl(source(body).into()),
-            });
+            let module = crate::gpu::shader_module(
+                &device,
+                wgpu::ShaderModuleDescriptor {
+                    label: Some(label),
+                    source: wgpu::ShaderSource::Wgsl(source(body).into()),
+                },
+            );
             let pl = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: Some(label),
                 bind_group_layouts: &[Some(&group)],

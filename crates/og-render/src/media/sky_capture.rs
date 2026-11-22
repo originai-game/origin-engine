@@ -108,12 +108,15 @@ impl SkyCapture {
             let device = device.clone();
             crate::deferred::Deferred::anywhere(move || {
                 crate::deferred::note(|| "live sky vs_sky_look/fs_sky_look".into());
-                let module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-                    label: Some("live sky"),
-                    source: wgpu::ShaderSource::Wgsl(
-                        off.leave_out(super::sky::sky_source()).into(),
-                    ),
-                });
+                let module = crate::gpu::shader_module(
+                    &device,
+                    wgpu::ShaderModuleDescriptor {
+                        label: Some("live sky"),
+                        source: wgpu::ShaderSource::Wgsl(
+                            off.leave_out(super::sky::sky_source()).into(),
+                        ),
+                    },
+                );
                 crate::traffic::create_render_pipeline(
                     &device,
                     &wgpu::RenderPipelineDescriptor {

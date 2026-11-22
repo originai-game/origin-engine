@@ -145,10 +145,13 @@ impl CrowdCulling {
                 storage(9, false),
             ],
         });
-        let module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("crowd cull"),
-            source: wgpu::ShaderSource::Wgsl(CROWD_CULL_WGSL.into()),
-        });
+        let module = crate::gpu::shader_module(
+            device,
+            wgpu::ShaderModuleDescriptor {
+                label: Some("crowd cull"),
+                source: wgpu::ShaderSource::Wgsl(CROWD_CULL_WGSL.into()),
+            },
+        );
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("crowd cull"),
             bind_group_layouts: &[Some(&layout)],

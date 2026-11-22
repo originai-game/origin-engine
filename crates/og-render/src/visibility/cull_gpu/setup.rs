@@ -31,10 +31,13 @@ impl GpuCulling {
                 storage(8, false),
             ],
         });
-        let module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("cull"),
-            source: wgpu::ShaderSource::Wgsl(CULL_WGSL.into()),
-        });
+        let module = crate::gpu::shader_module(
+            device,
+            wgpu::ShaderModuleDescriptor {
+                label: Some("cull"),
+                source: wgpu::ShaderSource::Wgsl(CULL_WGSL.into()),
+            },
+        );
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("cull"),
             bind_group_layouts: &[Some(&layout)],
@@ -64,10 +67,13 @@ impl GpuCulling {
                 level_out(1),
             ],
         });
-        let hiz_module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("depth pyramid"),
-            source: wgpu::ShaderSource::Wgsl(hiz_source(false).into()),
-        });
+        let hiz_module = crate::gpu::shader_module(
+            device,
+            wgpu::ShaderModuleDescriptor {
+                label: Some("depth pyramid"),
+                source: wgpu::ShaderSource::Wgsl(hiz_source(false).into()),
+            },
+        );
         let reduce_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("depth pyramid"),
             bind_group_layouts: &[Some(&hiz_reduce_layout)],
@@ -121,10 +127,13 @@ impl GpuCulling {
             hiz_base: [None, None],
             hiz_base_layout,
             hiz_reduce_layout,
-            depth_module: device.create_shader_module(wgpu::ShaderModuleDescriptor {
-                label: Some("occluder depth"),
-                source: wgpu::ShaderSource::Wgsl(DEPTH_WGSL.into()),
-            }),
+            depth_module: crate::gpu::shader_module(
+                device,
+                wgpu::ShaderModuleDescriptor {
+                    label: Some("occluder depth"),
+                    source: wgpu::ShaderSource::Wgsl(DEPTH_WGSL.into()),
+                },
+            ),
             depth_pipeline_layout: device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: Some("occluder depth"),
                 bind_group_layouts: &[Some(&view_layout)],

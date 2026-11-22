@@ -541,10 +541,13 @@ impl CloudNoise {
             let device = device.clone();
             crate::deferred::Deferred::anywhere(move || {
                 crate::deferred::note(|| "cloud noise".into());
-                let module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-                    label: Some("cloud noise"),
-                    source: wgpu::ShaderSource::Wgsl(NOISE_WGSL.into()),
-                });
+                let module = crate::gpu::shader_module(
+                    &device,
+                    wgpu::ShaderModuleDescriptor {
+                        label: Some("cloud noise"),
+                        source: wgpu::ShaderSource::Wgsl(NOISE_WGSL.into()),
+                    },
+                );
                 crate::traffic::create_compute_pipeline(
                     &device,
                     &wgpu::ComputePipelineDescriptor {

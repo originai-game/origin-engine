@@ -162,10 +162,13 @@ fn ggx_test_fs(@builtin(position) at: vec4<f32>) -> @location(0) vec4<f32> {{
 ",
             crate::physical_source(&crate::hooks::default_hooks())
         );
-    let module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-        label: None,
-        source: wgpu::ShaderSource::Wgsl(source.into()),
-    });
+    let module = crate::gpu::shader_module(
+        &device,
+        wgpu::ShaderModuleDescriptor {
+            label: None,
+            source: wgpu::ShaderSource::Wgsl(source.into()),
+        },
+    );
     let format = wgpu::TextureFormat::Rgba32Float;
     let pipeline = crate::traffic::create_render_pipeline(
         &device,

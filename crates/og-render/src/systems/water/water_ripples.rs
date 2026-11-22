@@ -103,10 +103,13 @@ impl RipplePipelines {
                 storage(5, OUT_FORMAT),
             ],
         });
-        let module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("water ripples"),
-            source: wgpu::ShaderSource::Wgsl(WGSL.into()),
-        });
+        let module = crate::gpu::shader_module(
+            device,
+            wgpu::ShaderModuleDescriptor {
+                label: Some("water ripples"),
+                source: wgpu::ShaderSource::Wgsl(WGSL.into()),
+            },
+        );
         let pl = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("water ripples"),
             bind_group_layouts: &[Some(&layout)],

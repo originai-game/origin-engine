@@ -265,10 +265,13 @@ impl GrassRenderer {
         let pipelines = crate::deferred::Deferred::anywhere(move || {
             let device = &device;
             let module = |label, src: String| {
-                device.create_shader_module(wgpu::ShaderModuleDescriptor {
-                    label: Some(label),
-                    source: wgpu::ShaderSource::Wgsl(src.into()),
-                })
+                crate::gpu::shader_module(
+                    device,
+                    wgpu::ShaderModuleDescriptor {
+                        label: Some(label),
+                        source: wgpu::ShaderSource::Wgsl(src.into()),
+                    },
+                )
             };
             let lit_module = module("grass", off.leave_out(lit_source()));
             let shadow_module = module("grass shadow", shadow_source());
@@ -366,10 +369,13 @@ impl GrassRenderer {
         terrain_layout: &wgpu::BindGroupLayout,
         arrayed: bool,
     ) -> crate::deferred::Deferred<[wgpu::ComputePipeline; 3]> {
-        let module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("grass generate"),
-            source: wgpu::ShaderSource::Wgsl(generate_source(arrayed).into()),
-        });
+        let module = crate::gpu::shader_module(
+            device,
+            wgpu::ShaderModuleDescriptor {
+                label: Some("grass generate"),
+                source: wgpu::ShaderSource::Wgsl(generate_source(arrayed).into()),
+            },
+        );
         let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("grass generate"),
             bind_group_layouts: &[

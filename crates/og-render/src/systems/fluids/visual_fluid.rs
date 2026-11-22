@@ -451,10 +451,13 @@ impl VisualFluids {
                 let (device, layout, module) = (device.clone(), layout.clone(), module.clone());
                 Deferred::new(move || {
                     let module = module.get_or_init(|| {
-                        device.create_shader_module(wgpu::ShaderModuleDescriptor {
-                            label: Some("visual fluid"),
-                            source: wgpu::ShaderSource::Wgsl(source().into()),
-                        })
+                        crate::gpu::shader_module(
+                            &device,
+                            wgpu::ShaderModuleDescriptor {
+                                label: Some("visual fluid"),
+                                source: wgpu::ShaderSource::Wgsl(source().into()),
+                            },
+                        )
                     });
                     crate::traffic::create_compute_pipeline(
                         &device,

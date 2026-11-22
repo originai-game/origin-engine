@@ -533,10 +533,13 @@ impl FilterRunner {
             bind_group_layouts: &[Some(&layout)],
             immediate_size: 0,
         });
-        let module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("ui filter"),
-            source: wgpu::ShaderSource::Wgsl(source().into()),
-        });
+        let module = crate::gpu::shader_module(
+            device,
+            wgpu::ShaderModuleDescriptor {
+                label: Some("ui filter"),
+                source: wgpu::ShaderSource::Wgsl(source().into()),
+            },
+        );
         let device = device.clone();
         let pipeline = crate::deferred::Deferred::new(move || {
             crate::traffic::create_render_pipeline(

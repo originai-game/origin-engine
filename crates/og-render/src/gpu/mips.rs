@@ -49,10 +49,13 @@ pub(crate) fn level_views(texture: &wgpu::Texture, label: &str) -> Vec<wgpu::Tex
 
 impl MipGenerator {
     pub(crate) fn new(device: &wgpu::Device) -> Self {
-        let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("mipmap"),
-            source: wgpu::ShaderSource::Wgsl(MIPMAP_WGSL.into()),
-        });
+        let shader = crate::gpu::shader_module(
+            device,
+            wgpu::ShaderModuleDescriptor {
+                label: Some("mipmap"),
+                source: wgpu::ShaderSource::Wgsl(MIPMAP_WGSL.into()),
+            },
+        );
         let layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("mipmap"),
             entries: &[

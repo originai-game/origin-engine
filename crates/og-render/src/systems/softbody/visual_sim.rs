@@ -689,10 +689,13 @@ impl VisualPipelines {
                                 immediate_size: 0,
                             },
                         )),
-                        module: &device.create_shader_module(wgpu::ShaderModuleDescriptor {
-                            label: Some(label),
-                            source: wgpu::ShaderSource::Wgsl(source.into()),
-                        }),
+                        module: &crate::gpu::shader_module(
+                            &device,
+                            wgpu::ShaderModuleDescriptor {
+                                label: Some(label),
+                                source: wgpu::ShaderSource::Wgsl(source.into()),
+                            },
+                        ),
                         entry_point: Some("solve"),
                         compilation_options: Default::default(),
                         cache: crate::pipeline_cache::of(&device).as_ref(),

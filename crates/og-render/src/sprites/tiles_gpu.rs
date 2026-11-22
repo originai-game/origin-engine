@@ -319,10 +319,13 @@ fn pipeline(
             ],
             immediate_size: 0,
         });
-        let module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("tiles"),
-            source: wgpu::ShaderSource::Wgsl(off.leave_out(source()).into()),
-        });
+        let module = crate::gpu::shader_module(
+            device,
+            wgpu::ShaderModuleDescriptor {
+                label: Some("tiles"),
+                source: wgpu::ShaderSource::Wgsl(off.leave_out(source()).into()),
+            },
+        );
         crate::hdr_pipeline(
             device,
             crate::HdrPipeline {

@@ -77,10 +77,13 @@ impl MeshletGpu {
                 },
             ],
         });
-        let module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("meshlet cull"),
-            source: wgpu::ShaderSource::Wgsl(MESHLET_CULL_WGSL.into()),
-        });
+        let module = crate::gpu::shader_module(
+            device,
+            wgpu::ShaderModuleDescriptor {
+                label: Some("meshlet cull"),
+                source: wgpu::ShaderSource::Wgsl(MESHLET_CULL_WGSL.into()),
+            },
+        );
         let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("meshlet cull"),
             bind_group_layouts: &[Some(&cull_layout)],
@@ -146,10 +149,13 @@ impl MeshletGpu {
                 bind_group_layouts: &[Some(&depth_layout), Some(&draw_layout)],
                 immediate_size: 0,
             });
-        let depth_module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("meshlet early depth"),
-            source: wgpu::ShaderSource::Wgsl(depth_source().into()),
-        });
+        let depth_module = crate::gpu::shader_module(
+            device,
+            wgpu::ShaderModuleDescriptor {
+                label: Some("meshlet early depth"),
+                source: wgpu::ShaderSource::Wgsl(depth_source().into()),
+            },
+        );
         let compact = compact::Compact::new(device);
         MeshletGpu {
             cull_layout,

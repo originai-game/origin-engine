@@ -118,10 +118,13 @@ impl VisBuffer {
                 },
             ],
         });
-        let module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("meshlet raster"),
-            source: wgpu::ShaderSource::Wgsl(super::raster_source().into()),
-        });
+        let module = crate::gpu::shader_module(
+            device,
+            wgpu::ShaderModuleDescriptor {
+                label: Some("meshlet raster"),
+                source: wgpu::ShaderSource::Wgsl(super::raster_source().into()),
+            },
+        );
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("meshlet raster"),
             bind_group_layouts: &[Some(&layout)],
@@ -449,12 +452,16 @@ mod tests {
         });
         // A lit module without the resolve's entry points: the device
         // refuses its pipelines as the PowerVR driver refuses the real one.
-        let module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: None,
-            source: wgpu::ShaderSource::Wgsl(
-                "@vertex fn vs() -> @builtin(position) vec4<f32> { return vec4<f32>(0.0); }".into(),
-            ),
-        });
+        let module = crate::gpu::shader_module(
+            &device,
+            wgpu::ShaderModuleDescriptor {
+                label: None,
+                source: wgpu::ShaderSource::Wgsl(
+                    "@vertex fn vs() -> @builtin(position) vec4<f32> { return vec4<f32>(0.0); }"
+                        .into(),
+                ),
+            },
+        );
         vis.ensure_pipelines(
             &device,
             [&empty, &empty, &empty],

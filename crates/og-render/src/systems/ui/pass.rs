@@ -309,10 +309,13 @@ impl UiRenderer {
             return Compiled::Failed(e);
         }
         let scope = device.push_error_scope(wgpu::ErrorFilter::Validation);
-        let module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some(&material.name),
-            source: wgpu::ShaderSource::Wgsl(ui_material_module_source(material).into()),
-        });
+        let module = crate::gpu::shader_module(
+            device,
+            wgpu::ShaderModuleDescriptor {
+                label: Some(&material.name),
+                source: wgpu::ShaderSource::Wgsl(ui_material_module_source(material).into()),
+            },
+        );
         let mut pipelines = Vec::new();
         let mut kinds = vec![TargetKind::Output, TargetKind::Layer];
         if self.linear_format.is_some() {
