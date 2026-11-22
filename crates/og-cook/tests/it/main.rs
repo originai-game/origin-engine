@@ -30,6 +30,8 @@ mod environment;
 mod fbx;
 #[path = "../flipbook.rs"]
 mod flipbook;
+#[path = "../flow_facts.rs"]
+mod flow_facts;
 #[path = "../foliage.rs"]
 mod foliage;
 #[path = "../fracture.rs"]

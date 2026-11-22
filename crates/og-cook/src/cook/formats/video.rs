@@ -22,6 +22,7 @@
 //! audio true                 # its sound track as <id>#audio (default true)
 //! loudness -16               # normalise the sound to this LUFS (EBU R128); off by default
 //! aiGenerated true           # the footage was made by a generative model (VideoInfo.aiGenerated)
+//! placeholder true           # stand-in footage to replace (og flow list reports it)
 //! ```
 //!
 //! A stream (`stream true`: long footage, decoded as it plays) cooks to
@@ -147,6 +148,9 @@ pub struct VideoDecl {
     /// `aiGenerated true`: the footage was made by a generative model.
     /// VideoInfo.aiGenerated carries it, so a game or store can label it.
     pub ai_generated: bool,
+    /// `placeholder true`: stand-in footage to replace (the skeleton's
+    /// clip). Cooked as any other; `og flow list` reports it.
+    pub placeholder: bool,
 }
 
 /// A stream's copy in a codec other than AV1, for browsers whose WebCodecs
@@ -331,6 +335,7 @@ pub fn parse(rel: &str, text: &str, exists: &dyn Fn(&str) -> bool) -> Result<Vid
         renditions: None,
         loudness: None,
         ai_generated: false,
+        placeholder: false,
     };
     let mut max_given = false;
     for e in &doc.body.entries {
@@ -476,9 +481,16 @@ pub fn parse(rel: &str, text: &str, exists: &dyn Fn(&str) -> bool) -> Result<Vid
                     .and_then(|v| v.as_bool())
                     .ok_or_else(|| format!("line {line}: aiGenerated is true or false"))?;
             }
+            "placeholder" => {
+                out.placeholder = e
+                    .values
+                    .first()
+                    .and_then(|v| v.as_bool())
+                    .ok_or_else(|| format!("line {line}: placeholder is true or false"))?;
+            }
             k => {
                 return Err(format!(
-                    "line {line}: unknown key '{k}' (source, fps, maxSeconds, size, kind, audio, aiGenerated, loudness, stream, keyframe, chunk, crf, crf720, renditions)"
+                    "line {line}: unknown key '{k}' (source, fps, maxSeconds, size, kind, audio, aiGenerated, placeholder, loudness, stream, keyframe, chunk, crf, crf720, renditions)"
                 ));
             }
         }
@@ -1564,6 +1576,7 @@ mod tests {
             renditions: None,
             loudness: None,
             ai_generated: false,
+            placeholder: false,
         };
         let probe = Probe {
             duration: 5.0,

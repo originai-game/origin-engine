@@ -30,15 +30,21 @@ pub(crate) fn bundle(bundle: &Bundle) {
 /// (`owner` first, as [`crate::world::assets::Assets::source`])
 /// records them; an asset no open bundle holds needs none it can name.
 pub(crate) fn asset(eng: &Engine, id: &str, owner: Option<usize>) {
+    fetch(&of(eng, id, owner));
+}
+
+/// The modules asset `id` needs, as the bundle it loads from records
+/// them; none when no open bundle holds it.
+pub(crate) fn of(eng: &Engine, id: &str, owner: Option<usize>) -> Vec<String> {
     let a = eng.assets.borrow();
     let Ok(i) = a.source(id, owner) else {
-        return;
+        return Vec::new();
     };
-    if let crate::world::assets::Payload::Bundle { bundle, .. } = &a.entries[i].payload
-        && let Ok(asset) = bundle.asset(id)
-    {
-        let modules = asset.modules.clone();
-        drop(a);
-        fetch(&modules);
+    match &a.entries[i].payload {
+        crate::world::assets::Payload::Bundle { bundle, .. } => bundle
+            .asset(id)
+            .map(|asset| asset.modules.clone())
+            .unwrap_or_default(),
+        _ => Vec::new(),
     }
 }

@@ -556,6 +556,26 @@ pub(crate) fn segment(
     })
 }
 
+/// The scenes loaded timeline `h`'s scene tracks place, in key order
+/// (`dump_flow`).
+pub(crate) fn scenes_of(engine: u32, h: u64) -> Vec<String> {
+    let Some(t) = lock(&registry(engine)).timeline(h) else {
+        return Vec::new();
+    };
+    let l = lock(&t);
+    l.timeline
+        .tracks
+        .iter()
+        .filter_map(|tr| match tr {
+            og_timeline::Track::Scene(keys) => Some(keys.iter()),
+            _ => None,
+        })
+        .flatten()
+        .filter(|k| !k.scene.is_empty())
+        .map(|k| k.scene.clone())
+        .collect()
+}
+
 /// A timeline's handle by asset path, loaded (and granted) as
 /// og.load.timeline does.
 pub(crate) fn load_granted(

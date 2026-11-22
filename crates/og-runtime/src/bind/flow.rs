@@ -57,7 +57,7 @@ const TIMELINE: &str = "og.Timeline";
 const PLAYER: &str = crate::bind::video::PLAYER;
 const AUDIO: &str = "og.AudioSource";
 /// The node header that names a segment (and holds the conversation).
-const HEADER: &str = "og-flow";
+const HEADER: &str = og_story::graph::FLOW_HEADER;
 const MAX_DECKS: u32 = 3;
 
 /// A flow node of a prepared dialogue.
@@ -202,31 +202,12 @@ fn warn(eng: &Engine, rt: &ModuleState, text: String) {
 fn prepare(eng: &Engine, world: &mut World, name: &str) -> Result<(Prepared, FlowInfo), String> {
     let graph = crate::bind::story::graph_of(eng.id, name)
         .ok_or_else(|| format!("no dialogue '{name}' is loaded: og.story.load it first"))?;
-    let by_title: BTreeMap<&str, &og_story::graph::GraphNode> =
-        graph.iter().map(|n| (n.title.as_str(), n)).collect();
     // The flow nodes reachable from `to` without passing another flow node.
     let reach = |to: &[String]| -> Vec<u32> {
-        let mut out = Vec::new();
-        let mut seen = BTreeSet::new();
-        let mut stack: Vec<&str> = to.iter().rev().map(String::as_str).collect();
-        while let Some(t) = stack.pop() {
-            if !seen.insert(t) {
-                continue;
-            }
-            let Some(n) = by_title.get(t) else { continue };
-            if n.headers.contains_key(HEADER) {
-                let id = node_id(t);
-                if !out.contains(&id) {
-                    out.push(id);
-                }
-                continue;
-            }
-            for c in n.choices.iter().rev() {
-                stack.extend(c.to.iter().rev().map(String::as_str));
-            }
-            stack.extend(n.to.iter().rev().map(String::as_str));
-        }
-        out
+        og_story::graph::flow_reach(&graph, to)
+            .into_iter()
+            .map(node_id)
+            .collect()
     };
     let mut p = Prepared::default();
     let mut info = FlowInfo {
@@ -1545,6 +1526,117 @@ pub(crate) fn register_commands(probe: &mut og_probe::Probe, engine_id: u32) {
         },
         move |_world, args| command(engine_id, args),
     );
+    let _ = probe.register_dump(
+        "dump_flow",
+        og_probe::CommandDesc {
+            usage: "dump_flow[:path]".into(),
+            doc: "og.flow: every flow (its dialogue, node, paused, held, ended) and its decks: the node each holds as current, previous, warm or free, its segment's time and pre-roll, whether each scene its scene track places is prepared (and why not), and the engine modules the segment needs".into(),
+        },
+        0,
+        move |world, _args| dump(engine_id, world),
+    );
+}
+
+/// `dump_flow`: every flow's decks, each with the node it holds and how
+/// ready its segment is to show (pre-roll, scenes, modules).
+fn dump(engine_id: u32, world: &World) -> Result<Value, String> {
+    let eng = engine(engine_id)?;
+    let st = state(engine_id)?;
+    let layout = |name: &str| -> Result<(SchemaId, Layout), String> {
+        let l = eng
+            .state
+            .borrow()
+            .layouts
+            .get(name)
+            .cloned()
+            .ok_or_else(|| format!("{name} has no layout"))?;
+        Ok((world.id_by_name(name).map_err(|e| e.to_string())?, l))
+    };
+    let (Ok(fr), Ok(dr), Ok(tr)) = (layout(FLOW), layout(DECK), layout(TIMELINE)) else {
+        return Ok(json!({ "flows": [] }));
+    };
+    let mut flows = Vec::new();
+    let mut decks = Vec::new();
+    for e in world.entities() {
+        if let Ok(b) = world.get_bytes(e, fr.0) {
+            flows.push((e, fr.1.read::<record::Flow>(&b)?));
+        }
+        if let Ok(b) = world.get_bytes(e, dr.0) {
+            decks.push((e, dr.1.read::<record::FlowDeck>(&b)?));
+        }
+    }
+    flows.sort_by_key(|(e, _)| e.to_bits());
+    decks.sort_by_key(|(e, _)| e.to_bits());
+    let declared = lock(&st).declared;
+    let mut out = Vec::new();
+    for (f, flow) in &flows {
+        let key = f.to_bits();
+        let dialogue = crate::bind::story::dialogue_of(engine_id, flow.conversation);
+        let prep = dialogue
+            .as_ref()
+            .and_then(|d| lock(&st).flows.get(d).cloned());
+        let title = |id: u32| {
+            prep.as_ref()
+                .and_then(|p| p.nodes.get(&id))
+                .map(|n| n.title.clone())
+                .unwrap_or_default()
+        };
+        let mut ds = Vec::new();
+        for (d, deck) in decks.iter().filter(|(_, d)| d.flow == key) {
+            let t: record::Timeline = match world.get_bytes(*d, tr.0) {
+                Ok(b) => tr.1.read(&b)?,
+                Err(_) => record::Timeline::default(),
+            };
+            let node = prep.as_ref().and_then(|p| p.nodes.get(&deck.node));
+            let role = if d.to_bits() == flow.current {
+                "current"
+            } else if d.to_bits() == flow.previous {
+                "previous"
+            } else if deck.node != 0 {
+                "warm"
+            } else {
+                "free"
+            };
+            let scenes: Vec<Value> = node
+                .map(|_| crate::bind::timeline::scenes_of(engine_id, t.asset))
+                .unwrap_or_default()
+                .into_iter()
+                .map(|id| {
+                    let (ready, why) = match crate::world::scenes::prepared(&eng, &id) {
+                        crate::world::assets::Prepared::Yes => ("yes", String::new()),
+                        crate::world::assets::Prepared::Busy => ("busy", String::new()),
+                        crate::world::assets::Prepared::No(w) => ("no", w),
+                    };
+                    json!({ "scene": id, "prepared": ready, "why": why })
+                })
+                .collect();
+            ds.push(json!({
+                "deck": d.to_bits() as f64,
+                "role": role,
+                "node": node.map(|n| n.title.clone()).unwrap_or_default(),
+                "segment": node.map(|n| n.segment.clone()).unwrap_or_default(),
+                "time": t.time,
+                "playing": t.playing,
+                "preroll": t.preroll,
+                "scenes": scenes,
+                "modules": node
+                    .map(|n| crate::world::needs::of(&eng, &n.segment, None))
+                    .unwrap_or_default(),
+            }));
+        }
+        out.push(json!({
+            "flow": key as f64,
+            "dialogue": dialogue.unwrap_or_default(),
+            "declared": declared == Some(key),
+            "prepared": prep.is_some(),
+            "node": title(flow.node),
+            "paused": flow.paused,
+            "held": flow.held,
+            "ended": flow.ended,
+            "decks": ds,
+        }));
+    }
+    Ok(json!({ "flows": out }))
 }
 
 fn command(engine_id: u32, args: &[String]) -> Result<(), String> {

@@ -18,6 +18,7 @@ pub(super) mod dev;
 pub(super) mod doctor;
 pub(super) mod explore;
 pub(super) mod export;
+pub(super) mod flow;
 pub(super) mod fmt;
 pub(super) mod frame;
 pub(super) mod i18n;

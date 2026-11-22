@@ -1,0 +1,24 @@
+type timeline
+version 1
+---
+# A live segment: no footage. Its scene track places scenes/ending.ogt
+# (warmed on a deck before the cut) and its camera track pushes in.
+duration 4
+track scene {
+  key 0 {
+    scene "scenes/ending.ogt"
+  }
+}
+track camera {
+  key 0 {
+    position 0 2.2 7
+    target 0 0.8 0
+    fov 45
+  }
+  key 4 {
+    position 1.5 1.4 3.5
+    target 0.4 0.8 0
+    fov 38
+    ease power2.inOut
+  }
+}

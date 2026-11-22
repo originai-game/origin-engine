@@ -15,7 +15,14 @@ project.ogt                   # flow "story/film.yarn"
 assets/story/film.yarn        # the story: nodes, choices, variables, endings
 assets/segments/kitchen.ogt   # a segment: type timeline with one video track
 assets/clips/kitchen.ogt      # footage: type video, stream true
+assets/segments/live.ogt      # a live segment: a scene track and a camera track
+assets/scenes/ending.ogt      # the scene it places
 ```
+
+`og create --genre interactive-film` writes this skeleton: an opening on
+placeholder footage (its clip says `placeholder true` until the game's own
+footage replaces it), and two endings, one on footage and one live, a set
+of built-in geometry the camera track pushes in on.
 
 One line in project.ogt makes the dialogue the game's flow:
 
@@ -287,6 +294,25 @@ consistent and one tool continues them:
 
 ## 8. Test every route
 
+`og flow list --json` is the flow as the cook reads it, without running
+it: per flow dialogue (the project.ogt one first) each node with its
+segment (footage, live or both, its length, window and hold), its
+footage (missing, streamed, placeholder), its scenes, choices, outcomes,
+hotspots, the nodes each leads to and the `problems` found. `og flow
+routes --json` walks every route from the start to an ending without
+passing a node twice: each step is the node, what takes it (`choose`,
+`advance` with the outcome, or `cut`) and the node it reaches, marked
+`condition` where an `<<if>>` decides between several. Its `unreached`
+names the endings no route reaches. Each route's steps are the commands a
+test sends: `flow:choose:<i>` in the window, `flow:advance:<outcome>` for a
+held segment.
+
+The probe's `dump_flow` is the running side: per flow its node, paused,
+held and ended, and per deck the node it holds (current, previous, warm or
+free), its segment's time and pre-roll, whether each scene its scene track
+places is prepared (and why not) and the engine modules the segment
+needs. Take it just before a cut to see that the segment cut to is warm.
+
 The world is deterministic, so a test walks `og.story.graph` from the
 start, chooses each choice of each flow node in turn with `flow:choose:<i>`
 and asserts every ending is reached and every segment played. Check also
@@ -312,3 +338,25 @@ const restored = await runPlaytest({ commands: `${choose};11.1:qa_roundtrip;19.6
 expect(restored.tick).toBe(plain.tick);
 expect(restored.hash).toBe(plain.hash);
 ```
+
+## 9. Cutscenes and minigames in any game
+
+A flow is not only a film. Any game plays its cutscenes and CG through
+one, and any flow can stop for a game.
+
+- **A cutscene in a game.** Give the cutscene its own dialogue, one node a
+  segment (footage, a live scene with a `camera` track, or both), and
+  start it when the story reaches it: `og.story.load`, `og.flow.load` in
+  setup, then `og.flow.start(world, { dialogue: "boss-intro" })`. Draw it
+  with `FlowPicture` and `Subtitles`, or `FlowScreen { flow }`, and give
+  `FlowPicture` an `onSkip` that calls `og.flow.skip`. Its view's `ended`
+  says when to `og.flow.stop` it and give the player back the game.
+- **A minigame between segments.** Make it a playable segment (§3): the
+  node's segment holds at `flow.hold`, the game runs its own systems over
+  it, 2D or 3D, and ends it with
+  `og.flow.advance(world, og.flow.current(world), "won")`. The outcome
+  names the branch, so the chart and `og flow routes` show it.
+- **A live scene between clips.** A segment with a `scene` track and no
+  video shows the real-time world; with both, the footage plays over
+  it. The decks warm
+  its scene before the cut as they warm footage, so it never hitches.

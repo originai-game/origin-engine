@@ -10,9 +10,9 @@
 mod commands;
 use commands::{
     api, assets, bake_lightmaps, bake_probes, bake_projection, bundle, cache, check, compare, cook,
-    cost, create, dev, doctor, explore, export, fmt, frame, i18n, mcp, migrate, prefab, probe,
-    render, replay, run, serve_relay, session, sfx, sprite, style, test, ui, upgrade, vfx_import,
-    vfx_preview, video, world_server,
+    cost, create, dev, doctor, explore, export, flow, fmt, frame, i18n, mcp, migrate, prefab,
+    probe, render, replay, run, serve_relay, session, sfx, sprite, style, test, ui, upgrade,
+    vfx_import, vfx_preview, video, world_server,
 };
 mod api_lookup;
 mod bundle_cache;
@@ -332,6 +332,12 @@ commands:
   bake probes [project] [--commands \"t:action[:args];...\"] [--at S] [--size WxH]
                       render the baked og.ReflectionProbe captures on the native host into
                       cooked/probes/ (loaded instead of drawn on first use)
+  flow list|routes [project] [--json]
+                      a project's flows (og.flow) from its sources: list gives each node's segment
+                      (footage, live or both; duration; window or hold), the footage and scenes it
+                      names (missing, placeholder) and where each choice leads; routes gives every
+                      route from the start to an ending as the steps that take it, and the endings
+                      none reaches (a step marked ? passes a logic node's condition)
   video edges <clip> [--out DIR]
                       write <stem>.first.png and <stem>.last.png; clip is .mp4, .webm, .mov or
                       a type video .ogt (source and maxSeconds); requires ffmpeg (OG_FFMPEG)
@@ -462,6 +468,7 @@ fn main() -> ExitCode {
         ["sfx", rest @ ..] => sfx::run(rest),
         ["sprite", rest @ ..] => sprite::run(rest),
         ["video", rest @ ..] => video::run(rest),
+        ["flow", rest @ ..] => flow::run(rest),
         ["i18n", rest @ ..] => i18n::run(rest),
         ["style", rest @ ..] => style::run(rest),
         ["ui", rest @ ..] => ui::run(rest),

@@ -1,0 +1,9 @@
+type scene
+version 1
+---
+# The live ending: segments/live.ogt places it with its scene track and
+# moves the camera over it.
+name "Ending"
+entity "set" {
+  model "models/set.ogt"
+}

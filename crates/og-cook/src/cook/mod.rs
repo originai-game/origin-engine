@@ -38,6 +38,7 @@ pub use formats::{
 };
 use formats::{fbx, font, font_pack, model, motion, psd, scene, texture, timeline};
 pub mod conform;
+pub mod flow;
 pub use conform::{ConformAction, ConformEntry};
 pub mod riv;
 #[cfg(test)]

@@ -518,6 +518,33 @@ fn the_choice_warms_its_segment_and_the_cut_lands_on_that_deck() {
         decks(&r)
     );
     assert_eq!(warm(&r), [hall], "the default's segment warms first");
+    // dump_flow says the same: the playing deck and the one warming in pre-roll.
+    let d = dump_flow(&r);
+    let f = &d["flows"][0];
+    assert_eq!(
+        (f["node"].clone(), f["prepared"].clone()),
+        (json!("start"), json!(true)),
+        "{d}"
+    );
+    let roles: Vec<(&str, &str, bool)> = f["decks"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|k| {
+            (
+                k["role"].as_str().unwrap(),
+                k["node"].as_str().unwrap(),
+                k["preroll"].as_bool().unwrap(),
+            )
+        })
+        .collect();
+    let mut roles = roles;
+    roles.sort();
+    assert_eq!(
+        roles,
+        [("current", "start", false), ("warm", "hall", true)],
+        "{d}"
+    );
     ok(og_flow_choose(r.engine, r.flow, 2));
     frame(r.engine, 2);
     assert_eq!(warm(&r), [wait], "the chosen segment replaces it");
@@ -696,6 +723,21 @@ fn a_stopped_timeline_in_preroll_prepares_the_frame_its_video_starts_with() {
         (p["time"].as_f64().unwrap() - 0.4).abs() < 1e-6,
         "pre-roll does not take a sought timeline back to its start: {p}"
     );
+}
+
+/// The probe's `dump_flow`, taken at the next frame.
+fn dump_flow(r: &Run) -> Value {
+    command(r, "dump_flow");
+    frame(r.engine, 1);
+    let outputs: Value =
+        serde_json::from_str(&og_runtime::og_engine_take_outputs(r.engine)).unwrap();
+    let dump = outputs
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|o| o["action"] == "dump_flow")
+        .unwrap_or_else(|| panic!("no dump_flow: {outputs}"));
+    serde_json::from_str(dump["data"].as_str().unwrap()).unwrap()
 }
 
 fn command(r: &Run, cmd: &str) {
@@ -985,6 +1027,16 @@ fn a_held_segment_waits_for_advance_and_takes_its_outcome() {
     assert_eq!(flow["held"], json!(true), "{flow}");
     // The live scene is in the world while the level plays.
     assert!(og_runtime::og_world_find(r.engine, "lamp".into()).is_some());
+    let d = dump_flow(&r);
+    let deck = d["flows"][0]["decks"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|k| k["role"] == "current")
+        .unwrap_or_else(|| panic!("{d}"));
+    assert_eq!(deck["segment"], json!("segments/level.ogt"), "{d}");
+    assert_eq!(deck["scenes"][0]["scene"], json!("scenes/room.ogt"), "{d}");
+    assert_eq!(d["flows"][0]["held"], json!(true), "{d}");
     let refused = |o: Option<&str>| {
         og_runtime::host_impl::answer(og_runtime::og_flow_advance(
             r.engine,

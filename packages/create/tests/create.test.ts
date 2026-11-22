@@ -290,7 +290,7 @@ test("genre interactive-film writes the flow skeleton over the one skeleton, run
   const r = cli("film", "--genre", "interactive-film", "--look", "painterly-3d", "--variant", "lush");
   expect(r.code, r.err).toBe(0);
   const made = files(join(scratch, "film"));
-  for (const f of ["assets/story/film.yarn", "assets/segments/opening.ogt", "assets/segments/ending.ogt", "assets/clips/opening.ogt", "assets/clips/opening.mp4", "tests/smoke.og.ts", "tsconfig.json"]) expect(made).toContain(f);
+  for (const f of ["assets/story/film.yarn", "assets/segments/opening.ogt", "assets/segments/ending.ogt", "assets/segments/live.ogt", "assets/scenes/ending.ogt", "assets/models/set.ogt", "assets/clips/opening.ogt", "assets/clips/opening.mp4", "tests/smoke.og.ts", "tsconfig.json"]) expect(made).toContain(f);
   // No glue: the engine starts the flow and draws it.
   expect(read("film/src/main.ts")).toBe(read("film-genre/src/main.ts"));
   expect(read("film/src/main.ts")).not.toContain("og.flow");

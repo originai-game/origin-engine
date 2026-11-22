@@ -74,6 +74,40 @@ impl Dialogue {
     }
 }
 
+/// The node header that makes a node a flow node (og.flow plays its
+/// segment and holds there).
+pub const FLOW_HEADER: &str = "og-flow";
+
+/// The flow nodes (those with an `og-flow` header) reachable from `to`
+/// without passing another flow node: through logic nodes, every branch
+/// of their conditions and choices counting. In the order a depth-first
+/// walk meets them, each once. What og.flow warms and what `og flow`
+/// lists as where a choice leads.
+pub fn flow_reach<'a>(graph: &'a [GraphNode], to: &'a [String]) -> Vec<&'a str> {
+    let by_title: BTreeMap<&str, &GraphNode> =
+        graph.iter().map(|n| (n.title.as_str(), n)).collect();
+    let mut out: Vec<&str> = Vec::new();
+    let mut seen = BTreeSet::new();
+    let mut stack: Vec<&str> = to.iter().rev().map(String::as_str).collect();
+    while let Some(t) = stack.pop() {
+        if !seen.insert(t) {
+            continue;
+        }
+        let Some(n) = by_title.get(t) else { continue };
+        if n.headers.contains_key(FLOW_HEADER) {
+            if !out.contains(&n.title.as_str()) {
+                out.push(n.title.as_str());
+            }
+            continue;
+        }
+        for c in n.choices.iter().rev() {
+            stack.extend(c.to.iter().rev().map(String::as_str));
+        }
+        stack.extend(n.to.iter().rev().map(String::as_str));
+    }
+    out
+}
+
 impl Dialogue {
     /// The source lines of the lines node `title` says, its choices' bodies
     /// included (og.flow refuses them in a flow node).
