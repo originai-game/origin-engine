@@ -48,7 +48,10 @@
 //! `og model measure` (`size` in metres, `triangles`, the look's facts)
 //! and `scale`, `leftover`, `textureBytes` (and `textureBytesBefore`, the
 //! file's maps as read), `edges` (open and non-manifold, `before` the
-//! repair and `after`), `lods` and `collider`. The repair does what its
+//! repair and `after`), `lods`, `collider`, `issues` (every problem left,
+//! each with the option that fixes it: `og model measure`'s, and a map
+//! past the look's largest texture) and `next` (those options, or with
+//! none the fit and texture steps). The repair does what its
 //! options ask (`--weld MM`, `--non-manifold`, `--holes N`, …) and nothing
 //! by itself; `--max-texture PX` shrinks the maps.
 
@@ -411,6 +414,47 @@ pub fn process(files: &dyn Files, d: &ProcessDesc) -> Result<String, Failure> {
         "before": open_before.unwrap_or_default(),
         "after": open_edges(&m),
     });
+    // Every problem left, and what to run next: each issue's option, or,
+    // with none, the fit and texture steps.
+    let mut found = super::issues::issues(
+        &serde_json::from_str(&m.to_json()).map_err(failed)?,
+        prop.get("look"),
+    );
+    let largest = images
+        .iter()
+        .filter_map(|i| Some(i.width?.max(i.height?)))
+        .max()
+        .unwrap_or(0);
+    if let Some(max) = prop["look"]["maxTextureSize"].as_u64()
+        && u64::from(largest) > max
+    {
+        found.push(serde_json::json!({
+            "issue": "overTextureSize",
+            "count": largest,
+            "budget": max,
+            "next": format!("og model process --max-texture {max}"),
+        }));
+    }
+    let mut next: Vec<serde_json::Value> = Vec::new();
+    for i in &found {
+        if !next.contains(&i["next"]) {
+            next.push(i["next"].clone());
+        }
+    }
+    if next.is_empty() {
+        let glb = out
+            .as_deref()
+            .map(|p| p.display().to_string())
+            .unwrap_or_default();
+        next.push(serde_json::json!(format!(
+            "og model compare {glb} --image front=<concept.png> --image left=<concept.png> …"
+        )));
+        next.push(serde_json::json!(format!(
+            "og model bake {glb} --project front=<concept.png> … (when it has no texture of its own)"
+        )));
+    }
+    prop["issues"] = serde_json::Value::Array(found);
+    prop["next"] = serde_json::Value::Array(next);
     let mut v: serde_json::Value = serde_json::from_str(&object(&fields)).map_err(failed)?;
     if let (serde_json::Value::Object(o), serde_json::Value::Object(p)) = (&mut v, prop) {
         o.extend(p);

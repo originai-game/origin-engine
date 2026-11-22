@@ -1,0 +1,12 @@
+{
+  "added": [
+    {
+      "member": "og model measure, og model process: issues",
+      "summary": "`issues` lists every defect at once (open, non-manifold or flipped edges, degenerate or repeated triangles, floating pieces, a triangle, colour or texture budget the look states and the model is past), each with the option that fixes it; process adds `next`, the command to run after it. Parts of a program that only touch are an assembly, not an issue."
+    },
+    {
+      "member": "og model compare --image <view>=<png>",
+      "summary": "Repeated, compares every view in one call: each view's facts in `views`, ranked by `byIou`, `byAspect` and `byColour` (rankings, no thresholds). `--image <png> --view <view>` is as before."
+    }
+  ]
+}

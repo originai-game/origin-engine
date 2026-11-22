@@ -382,6 +382,9 @@ pub fn run(a: &Args) -> Result<String, Failure> {
             o.insert("lookError".into(), Value::String(e));
         }
     }
+    // Every problem at once, each with what addresses it.
+    let found = super::issues::issues(&super::issues::totals(&v), v.get("look"));
+    v["issues"] = Value::Array(found);
     Ok(v.to_string())
 }
 

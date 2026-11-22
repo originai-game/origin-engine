@@ -550,6 +550,21 @@ fn compare_fits_the_view_it_was_drawn_in() {
         (other["aspect"]["ratio"].as_f64().unwrap() - 1.0).abs() > 0.2,
         "{other}"
     );
+    // Every view in one call, ranked: the wrong view's image fits least.
+    let both = report(&[
+        "compare",
+        PROGRAM,
+        "--image",
+        &format!("front={}", dir.join("front.png").display()),
+        "--image",
+        &format!("left={}", dir.join("front.png").display()),
+        "--json",
+    ]);
+    assert_eq!(both["views"].as_array().unwrap().len(), 2);
+    assert_eq!(both["byIou"][0]["view"], "left", "{both}");
+    // A program's touching parts are an assembly: no issue.
+    let m = report(&["measure", PROGRAM, "--json"]);
+    assert!(m["issues"].is_array(), "{m}");
     let missing = shape(&["compare", PROGRAM, "--image", "/no/such.png", "--json"]);
     assert_eq!(missing.status.code(), Some(1));
     let e: serde_json::Value = serde_json::from_slice(&missing.stdout).unwrap();

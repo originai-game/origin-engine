@@ -97,7 +97,34 @@ A variant's `material` blocks replace only the fields they name (`color`
 is linear here, as in glTF). `atlas <px>` packs every part's UVs into one
 atlas, the layout `og model bake` paints its maps on.
 
-## 5. Recipe
+## 5. From concept views to a prop
+
+Fit the program to the concept first, then texture it:
+
+1. Read the sizes off the views. The front view gives the width and
+   height, `left` the depth, and `top` the width and depth. Write each
+   size that the views fix as a parameter, and derive the other sizes
+   from those with expressions.
+2. Build and check every view in one call: `og model compare
+   chair.shape.json --image front=f.png --image left=l.png --image
+   top=t.png --json`. `byAspect` puts the view with the worst proportions
+   first. Its `ratio` is model over image, so divide the parameter that
+   sets that view's width or height by the ratio. `byIou` points at a
+   view whose outline differs (a missing part or a wrong profile), and
+   `byColour` points at a part whose material is off. Fix them all, then
+   compare again.
+3. `og model measure` lists every remaining problem in `issues`, each with
+   the option that fixes it. A program's parts that touch are an
+   assembly, not an issue.
+4. `og model bake chair.shape.json --project front=f.png --project
+   left=l.png --project top=t.png` paints the base colour, and
+   `og model bake tall.ogt --from chair.ogt` carries that colour to each
+   variant.
+
+A generated mesh goes through `og model process` instead. Its `issues`
+and `next` name what to run after it.
+
+## 6. Recipe
 
 A side table: a filleted top on four tapered legs, with its size and leg
 radius as parameters. Each part is made once and mirrored into place.
@@ -123,7 +150,7 @@ radius as parameters. Each part is made once and mirrored into place.
 }
 ```
 
-## 6. The og model commands
+## 7. The og model commands
 
 Each command takes a program, a mesh file (`.glb`, `.gltf`, `.obj`,
 `.fbx`), a mesh's import settings (`x.glb.ogt`) or a variant `.ogt`. With
@@ -133,17 +160,21 @@ are metres. Every report gives facts and never a verdict: the thresholds
 are the game's.
 
 - `build`, `measure`: the parts, and the model's `size` (metres, GLB
-  axes), triangles, materials and the look's facts. A fact the look does
+  axes), triangles, materials and the look's facts. `issues` lists every defect
+  (open, non-manifold or flipped edges, degenerate triangles, floating
+  pieces, a budget the look states and the model exceeds), each with its fix. A fact the look does
   not state is null, with the reason in `look.absent`.
 - `preview --views front,left,top --out DIR`: one PNG per view on a
   transparent background. The views are `front`, `back`, `left`, `right`,
   `top`, `three_quarter`, or `camera:{"eye", "target", "up", "fov"?}`.
 - `compare --image view.png --view front`: silhouette IoU, the bounding
-  box's aspect against the image's, and the colour distance per part.
+  box's aspect against the image's, and the colour distance per part. `--image front=f.png --image left=l.png …` compares
+  every view in one call and ranks them (`byIou`, `byAspect`, `byColour`).
 - `process mesh.glb --out DIR [--height 1.2 | --size x,y,z]`: repair (only
   what `--weld`, `--non-manifold` and `--holes` ask), decimation, scaling,
   a base pivot, import settings with levels of detail and a collider, and
-  convex hulls. It reports the edges and texture memory before and after.
+  convex hulls. It reports the edges and texture memory before and after. Its `issues` lists every problem left with the
+  option that fixes it, and `next` gives the command to run next.
 - `bake model --project front=a.png --project left=b.png`: the base colour
   painted from concept images onto the UVs, one texture per material
   beside the model, with each material's coverage.
@@ -154,7 +185,7 @@ are the game's.
 - `repair`, `decimate`, `unwrap`, `collide`, `place`, `export`, `rig`:
   each step on its own.
 
-## 7. Pitfalls
+## 8. Pitfalls
 
 - The ids count every part made, including copies and mirrors, in order.
   Look them up with `og model build` before naming them.

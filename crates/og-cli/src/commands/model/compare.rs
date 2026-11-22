@@ -17,6 +17,10 @@
 //!   CIEDE2000 between its mean drawn colour and the image's mean colour
 //!   over those pixels (`null` where the part is hidden or off the
 //!   image's silhouette).
+//!
+//! `--image <view>=<png>`, repeated, compares every view in one call:
+//! `views` (each view's facts as above) and the same facts ranked
+//! (`byIou`, `byAspect`, `byColour`), so one pass fixes them all.
 
 use image::RgbaImage;
 use og_shape::mesh::Solid;
@@ -42,15 +46,80 @@ pub fn run(a: &Args) -> Result<String, Failure> {
         IMPORT_OPTIONS[2],
         IMPORT_OPTIONS[3],
     ])?;
-    let image = a
-        .value(&["--image"])?
-        .ok_or_else(|| Failure::Usage("no image: --image <view.png>".into()))?;
-    let view = View::parse(a.value(&["--view"])?.unwrap_or("front"))?;
-    let reference = image::open(Path::new(image))
-        .map_err(|e| Failure::Failed(format!("{image}: {e}")))?
-        .to_rgba8();
     let source = load_uvs(&Local, &a.input()?, &a.import()?, a.switch("--uvs"))?;
-    Ok(compare(&source, &view, &reference)?.to_string())
+    let images = a.values("--image")?;
+    // `--image <view>=<png>`, repeated: every view in one call.
+    let pairs: Vec<(View, &str)> = images
+        .iter()
+        .filter_map(|v| {
+            let (view, path) = v.split_once('=')?;
+            View::parse(view).ok().map(|w| (w, path))
+        })
+        .collect();
+    let read = |image: &str| {
+        image::open(Path::new(image))
+            .map(|i| i.to_rgba8())
+            .map_err(|e| Failure::Failed(format!("{image}: {e}")))
+    };
+    if !pairs.is_empty() {
+        if pairs.len() != images.len() || a.value(&["--view"])?.is_some() {
+            return Err(Failure::Usage(
+                "give every image as --image <view>=<png>, or one --image <png> with --view".into(),
+            ));
+        }
+        let mut views = Vec::new();
+        for (view, path) in &pairs {
+            views.push(compare(&source, view, &read(path)?)?);
+        }
+        return Ok(summary(views).to_string());
+    }
+    let [image] = images[..] else {
+        return Err(Failure::Usage(
+            "no image: --image <view.png> --view <view>, or --image <view>=<png> for each view"
+                .into(),
+        ));
+    };
+    let view = View::parse(a.value(&["--view"])?.unwrap_or("front"))?;
+    Ok(compare(&source, &view, &read(image)?)?.to_string())
+}
+
+/// Every view's facts, and the same facts ranked so one pass can fix them
+/// all: `byIou` (the views, least overlap first), `byAspect` (the views,
+/// farthest aspect ratio from 1 first) and `byColour` (each part's largest
+/// colour distance over the views, farthest first). Rankings, no
+/// thresholds.
+fn summary(views: Vec<Value>) -> Value {
+    let name = |v: &Value| v["view"].clone();
+    let mut by_iou: Vec<&Value> = views.iter().collect();
+    let iou = |v: &Value| v["iou"].as_f64().unwrap_or(0.0);
+    by_iou.sort_by(|a, b| iou(a).total_cmp(&iou(b)));
+    let off = |v: &Value| {
+        v["aspect"]["ratio"]
+            .as_f64()
+            .map_or(0.0, |r| (r.ln()).abs())
+    };
+    let mut by_aspect: Vec<&Value> = views.iter().collect();
+    by_aspect.sort_by(|a, b| off(b).total_cmp(&off(a)));
+    let mut colour: Vec<(String, f64, Value)> = Vec::new();
+    for v in &views {
+        for p in v["parts"].as_array().into_iter().flatten() {
+            let (Some(part), Some(d)) = (p["part"].as_str(), p["colourDistance"].as_f64()) else {
+                continue;
+            };
+            match colour.iter_mut().find(|c| c.0 == part) {
+                Some(c) if c.1 >= d => {}
+                Some(c) => *c = (part.into(), d, name(v)),
+                None => colour.push((part.into(), d, name(v))),
+            }
+        }
+    }
+    colour.sort_by(|a, b| b.1.total_cmp(&a.1).then(a.0.cmp(&b.0)));
+    json!({
+        "byIou": by_iou.iter().map(|v| json!({ "view": name(v), "iou": v["iou"] })).collect::<Vec<_>>(),
+        "byAspect": by_aspect.iter().map(|v| json!({ "view": name(v), "ratio": v["aspect"]["ratio"] })).collect::<Vec<_>>(),
+        "byColour": colour.iter().map(|(p, d, v)| json!({ "part": p, "colourDistance": d, "view": v })).collect::<Vec<_>>(),
+        "views": views,
+    })
 }
 
 /// A part's ID as a flat colour, 8 apart per channel so the unlit render

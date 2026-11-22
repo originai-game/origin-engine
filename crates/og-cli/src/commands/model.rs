@@ -32,6 +32,7 @@ pub mod compress;
 pub mod decimate;
 pub mod export;
 pub mod import;
+pub mod issues;
 pub mod measure;
 pub mod place;
 pub mod preview;
