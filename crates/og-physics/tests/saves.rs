@@ -340,3 +340,51 @@ fn a_generated_2d_outline_collides_and_restores_without_its_mesh() {
     let y = transform(&r, ball).position.y;
     assert!(y > 0.0 && y < 1.0, "the ball is at {y}");
 }
+
+/// A world with nothing to simulate builds no rapier world, so its
+/// snapshot carries no rapier state and a game without physics never runs
+/// rapier's code (the web's physics modules stay unloaded); its first body
+/// steps and restores as in any world. Ways this fails: an empty step
+/// still builds and saves a simulation (the snapshot grows by rapier's
+/// empty world), or a world restored before its first body steps it
+/// differently from the one that was not.
+#[test]
+fn an_empty_world_carries_no_simulation_until_its_first_body() {
+    for profile in [PROFILE_3D, PROFILE_2D] {
+        let settings = Physics {
+            profile,
+            ..Physics::default()
+        };
+        let (mut w, _p) = world(settings, 1);
+        let fresh = w.snapshot().len();
+        for _ in 0..30 {
+            w.step().unwrap();
+        }
+        assert_eq!(
+            w.snapshot().len(),
+            fresh,
+            "profile {profile}: no rapier state"
+        );
+        let saved = w.snapshot();
+        let (mut r, _rp) = world(settings, 2);
+        r.restore(&saved).unwrap();
+        for w in [&mut w, &mut r] {
+            spawn_body(
+                w,
+                at(0.0, 5.0, 0.0),
+                RigidBody::dynamic(),
+                Collider::sphere(0.5),
+            );
+            floor(w);
+            for _ in 0..60 {
+                w.step().unwrap();
+            }
+        }
+        assert_eq!(r.world_hash(), w.world_hash(), "profile {profile}");
+        assert_eq!(r.snapshot(), w.snapshot(), "profile {profile}");
+        assert!(
+            w.snapshot().len() > fresh,
+            "profile {profile}: the body built a simulation"
+        );
+    }
+}

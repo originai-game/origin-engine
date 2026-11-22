@@ -107,6 +107,14 @@ pub(super) fn run(ctx: &mut SystemContext<'_>, ids: &Ids, shared: &Mutex<Shared>
     // succeeds: a failed tick leaves none, and the next one rebuilds it.
     let out = {
         let mut shared = lock(shared);
+        // A world with nothing to simulate, and no simulation yet, builds
+        // none: a game without physics never runs rapier, so its code stays
+        // in the physics modules (docs/web-export.md §Modules). Its first
+        // body builds the simulation as any first step does.
+        if scene.is_empty() && shared.sim3.is_none() && shared.sim2.is_none() {
+            shared.pushes.clear();
+            return Ok(());
+        }
         match settings.profile {
             PROFILE_3D => {
                 shared.sim2 = None;

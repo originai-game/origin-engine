@@ -124,6 +124,27 @@ pub(crate) struct Scene {
     pub seconds: f64,
 }
 
+impl Scene {
+    /// Nothing for physics to step: no body, collider, joint, controller
+    /// or any of the components it simulates beyond them.
+    pub(crate) fn is_empty(&self) -> bool {
+        self.bodies.is_empty()
+            && self.statics.is_empty()
+            && self.joints.is_empty()
+            && self.vehicles.is_empty()
+            && self.ropes.is_empty()
+            && self.cloths.is_empty()
+            && self.fluids.is_empty()
+            && self.surfaces.is_empty()
+            && self.lines.is_empty()
+            && self.ragdolls.is_empty()
+            && self.fluids3.is_empty()
+            && self.softs.is_empty()
+            && self.garments.is_empty()
+            && self.floats.is_empty()
+    }
+}
+
 /// The most og.VehicleWheel children a vehicle takes.
 pub(crate) const MAX_WHEELS: usize = 16;
 

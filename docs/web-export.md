@@ -326,8 +326,16 @@ extraction once a terrain is loaded or an og.Terrain placed). og-render
 makes each 3D world renderer when a frame first draws what it draws
 (`renderer/resources.rs` `OnDemand`), so a frame without terrain,
 scattered copies, grass, water or 3D fluids calls into none of them. A generated
-geometry is not handed to physics until a collider names it. The split
-fails when an entry names no function any more. A lanes module's
+geometry is not handed to physics until a collider names it, and a
+world with nothing to simulate builds no rapier world until its first
+body or collider (its snapshot carries none). A generic instance of std,
+the serializers or og-lanes goes with its type arguments' module
+(bincode's reader of a rapier2d body is physics2d's). `siblings` are
+modules built from one source per variant (physics2d and physics3d, from
+og-physics' rigid/sim.rs): the linker folds their identical bodies under
+one name, so a function one sibling calls in the other goes to their
+parent, `physics`. The split fails when an entry names no function any
+more. A lanes module's
 modules sit in `modules-lanes/` beside it. Each lanes pool Worker
 instantiates the primary again on the shared memory, with the same
 placeholders (`scripts/og-pool-split.js`, which `scripts/rayon-worker.sh`

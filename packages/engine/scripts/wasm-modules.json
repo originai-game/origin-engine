@@ -46,6 +46,10 @@
       "^robust::"
     ]
   },
+  "//siblings": "Modules built from one source per variant (og-physics' rigid/sim.rs, for dim2 and for dim3), whose identical bodies the linker folds under one name: a function one calls in the other goes to their parent (wasm-split.ts keepShared).",
+  "siblings": {
+    "physics": ["physics2d", "physics3d"]
+  },
   "//roots": "The engine's calls every game makes whatever it uses (scripts/wasm-split.ts framePath): a frame, a canvas attach, a geometry. Every function they reach by direct calls stays in the primary, stopping at `entries`.",
   "roots": [
     "^og_engine_frame$",

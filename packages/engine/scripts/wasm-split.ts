@@ -81,11 +81,12 @@ export function functionNames(wasm: Uint8Array): string[] {
 
 const CRATE = /([A-Za-z_][A-Za-z0-9_]*)\[[0-9a-f]{6,}\]/g;
 /**
- * Crates whose generic instances belong with their type arguments: std's
- * and the serializers' (bincode's deserializer of a rapier2d body is
- * physics2d's code, called only from physics2d's load).
+ * Crates whose generic instances belong with their type arguments: std's,
+ * the serializers' (bincode's deserializer of a rapier2d body is
+ * physics2d's code, called only from physics2d's load) and og-lanes' (its
+ * `map` over dim3's body plans is physics3d's).
  */
-const CARRIERS = new Set(["core", "alloc", "std", "hashbrown", "bincode", "serde_core"]);
+const CARRIERS = new Set(["core", "alloc", "std", "hashbrown", "bincode", "serde_core", "og_lanes"]);
 
 /** The module a function belongs to by its name, or null for the primary. */
 export function moduleOf(name: string, rules: Array<[string, RegExp[]]>): string | null {
@@ -101,6 +102,7 @@ export function moduleOf(name: string, rules: Array<[string, RegExp[]]>): string
 
 interface Table {
   modules: Record<string, string[]>;
+  siblings?: Record<string, string[]>;
   roots: string[];
   entries: string[];
 }
@@ -133,15 +135,25 @@ function generic(name: string): boolean {
  * load nav there. Repeated until nothing moves (a moved function's own
  * generic callees then have a caller in the primary).
  */
-export function keepShared(assigned: Map<string, string>, calls: Map<string, string[]>): void {
+export function keepShared(assigned: Map<string, string>, calls: Map<string, string[]>, siblings: Record<string, readonly string[]> = {}): void {
   const callers = new Map<string, string[]>();
   for (const [f, gs] of calls) for (const g of gs) (callers.get(g) ?? callers.set(g, []).get(g)!).push(f);
+  // Sibling modules (wasm-modules.json `siblings`) are one source built per
+  // variant (og-physics' rigid/sim.rs for dim2 and dim3): their
+  // dimension-free functions come out byte-identical and the linker folds
+  // them under one sibling's name, which the other calls. A function one
+  // sibling calls in another goes to their parent, which both load.
+  const parent = new Map<string, string>();
+  for (const [p, kids] of Object.entries(siblings)) for (const k of kids) parent.set(k, p);
   for (let moved = true; moved; ) {
     moved = false;
     for (const [f, m] of assigned) {
-      if (!generic(f)) continue;
-      if ((callers.get(f) ?? []).some((c) => assigned.get(c) !== m)) {
+      const outside = (callers.get(f) ?? []).map((c) => assigned.get(c)).filter((c) => c !== m);
+      if (generic(f) && outside.length) {
         assigned.delete(f);
+        moved = true;
+      } else if (parent.has(m) && outside.some((c) => c !== undefined && parent.get(c) === parent.get(m))) {
+        assigned.set(f, parent.get(m)!);
         moved = true;
       }
     }
@@ -224,7 +236,7 @@ export function splitEngine(bound: string, out: string, raw: string): Record<str
       const m = keep.has(name) ? null : moduleOf(name, rules);
       if (m) assigned.set(name, m);
     }
-    keepShared(assigned, calls);
+    keepShared(assigned, calls, table.siblings);
     const groups = new Map<string, string[]>();
     for (const [name, m] of assigned) (groups.get(m) ?? groups.set(m, []).get(m)!).push(name);
     const manifest = join(work, "manifest.txt");

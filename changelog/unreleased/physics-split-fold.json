@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "Physics",
+      "summary": "On the web a 3D physics world loads only the physics and physics3d modules: dimension-free code the 2D and 3D simulations share no longer sends a 3D world to fetch physics2d too. A world with no body or collider builds no rapier world (its snapshot carries no physics simulation), so a game without physics never runs rapier and its first download is about 270 KB smaller (brotli); its first body steps and restores as before."
+    }
+  ]
+}
