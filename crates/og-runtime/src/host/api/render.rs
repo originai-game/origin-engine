@@ -498,57 +498,24 @@ pub fn og_render_text(world: u32, desc: Option<String>) -> Result<(), String> {
             wire::TextAlign::Center => 0.5,
             wire::TextAlign::End => 1.0,
         };
-        // Unaligned, or a faced world text, which the renderer aligns about
-        // its point in its own plane (`og_render::TextFacing::align`).
-        let faced = facing != og_render::SpriteFacing::None && !screen;
-        if shift == 0.0 || faced {
-            rs.texts.push(super::extract::QueuedText {
-                font: render,
-                text,
-                position,
-                size,
-                rotation,
-                color,
-                layer,
-                screen,
-                clip,
-                outline,
-                outline_color,
-                facing,
-                align: shift,
-            });
-            return Ok(());
-        }
-        // Aligned: each line is placed on its own, moved left along the
-        // text's baseline by its advance times `shift`.
-        let (metrics, line_height) = font_metrics(&rs, render)?;
-        let (sin, cos) = og_core::math::sin_cos(rotation);
-        let along = glam::Vec3::new(cos, sin, 0.0);
-        // The next line is below: -y in the world, +y on screen (y down,
-        // rotation clockwise).
-        let down = if screen {
-            glam::Vec3::new(-sin, cos, 0.0)
-        } else {
-            glam::Vec3::new(sin, -cos, 0.0)
-        };
-        for (i, line) in text.split('\n').enumerate() {
-            let w = metrics.measure(line, size);
-            rs.texts.push(super::extract::QueuedText {
-                font: render,
-                text: line.to_string(),
-                position: position - along * (w * shift) + down * (i as f32 * line_height * size),
-                size,
-                rotation,
-                color,
-                layer,
-                screen,
-                clip,
-                outline,
-                outline_color,
-                facing,
-                align: 0.0,
-            });
-        }
+        let family = crate::present::faces::family_of(&eng, &mut rs.ui_faces, fi)
+            .ok_or_else(|| format!("font {font} ships no file to lay text out from"))?;
+        rs.texts.push(super::extract::QueuedText {
+            font: render,
+            family,
+            text,
+            position,
+            size,
+            rotation,
+            color,
+            layer,
+            screen,
+            clip,
+            outline,
+            outline_color,
+            facing,
+            align: shift,
+        });
         Ok(())
     })()
 }
@@ -650,27 +617,6 @@ fn new_frame(rs: &mut super::extract::RenderState, tick: u64) {
         rs.fx.ribbons.clear();
         rs.texts_tick = tick;
     }
-}
-
-/// A loaded font's layout metrics (its first page carries every advance)
-/// and its line height in em.
-fn font_metrics(
-    rs: &super::extract::RenderState,
-    render: usize,
-) -> Result<(og_text::text::FontMetrics, f32), String> {
-    let first = rs
-        .fonts
-        .get(render)
-        .and_then(|p| p.pages.first().copied())
-        .ok_or("the font has no pages")?;
-    let msdf = rs
-        .scene
-        .font(first)
-        .ok_or("the font's first page is missing")?;
-    Ok((
-        og_text::text::FontMetrics::from_msdf(msdf),
-        msdf.line_height,
-    ))
 }
 
 pub fn og_render_sprite(world: u32, desc: Option<String>) -> Result<(), String> {
@@ -853,19 +799,30 @@ pub fn og_render_measure_text(
             .get(fi)
             .map(|f| f.render)
             .ok_or_else(|| format!("font {font} is not alive"))?;
+        let _ = render;
         let size = d.size;
-        let text = d.text.as_str();
-        let rs = eng.render.borrow();
-        let (metrics, line_height) = font_metrics(&rs, render)?;
-        let lines: Vec<&str> = text.split('\n').collect();
-        let width = lines
-            .iter()
-            .map(|l| metrics.measure(l, size))
-            .fold(0.0f32, f32::max);
+        let mut rs = eng.render.borrow_mut();
+        let family = crate::present::faces::family_of(&eng, &mut rs.ui_faces, fi)
+            .ok_or_else(|| format!("font {font} ships no file to lay text out from"))?;
+        // Laid out as og.render.text lays it out.
+        let em = og_render::glyphs::FIELD_EM_PX;
+        let style = og_text::layout::Style {
+            family: &family,
+            size: em,
+            wrap: false,
+            ..Default::default()
+        };
+        let rs = &mut *rs;
+        let layout = &mut rs.text_layout;
+        let fonts = &mut rs.ui_faces.collection;
+        layout.shape(fonts, &d.text, &style);
+        layout.break_at(fonts, &d.text, &style, None);
+        let mut lines = 0;
+        layout.lines(|_, _| lines += 1);
         Ok(wire::TextMetrics {
-            width,
-            height: lines.len() as f32 * line_height * size,
-            lines: lines.len() as u32,
+            width: layout.width() / em * size,
+            height: layout.height() / em * size,
+            lines: lines.max(1),
         })
     })()
 }

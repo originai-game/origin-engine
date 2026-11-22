@@ -1,4 +1,4 @@
-// The overlay: sprites and MSDF text in screen space (CSS pixels, origin top
+// The overlay: sprites and text in screen space (CSS pixels, origin top
 // left, y down), drawn after every post effect straight into the output with
 // no depth test, alpha blended over the finished frame. Colours are linear;
 // an sRGB output encodes them in hardware, any other output (a WebGPU
@@ -10,8 +10,9 @@
 // a layer (UiLayer) draws them offset by its origin.
 
 struct SpriteParams {
-  // x: MSDF distance range in atlas pixels (0: a plain sprite, -1: a page
-  // of colour glyph pairs, foreground_mix), yz: atlas size in pixels; w:
+  // x: a glyph atlas page's distance range in its pixels (0: a plain
+  // sprite, -1: a page of colour glyph pairs, foreground_mix), yz: its
+  // size in pixels; w:
   // the glass pyramid's mip levels (src/glass.rs).
   msdf: vec4<f32>,
 };
@@ -25,11 +26,9 @@ struct OverlayIn {
   @location(2) uv_rect: vec4<f32>,            // u0, v0, u1, v1 (v down)
   @location(3) color: vec4<f32>,
   @location(4) clip: vec4<f32>,               // x0, y0, x1, y1 in CSS px
-  @location(5) effect: vec4<f32>,             // MSDF text: x glow radius (CSS px), y weight (CSS px), z 1: the glow pass
-  @location(6) effect_color: vec4<f32>,       // the glow's colour; glass: a its opacity
-  @location(7) effect2: vec4<f32>,            // MSDF text: x outline inside, y outline outside or shadow softness (CSS px), z gradient + 1
-  @location(8) clip_shape: u32,               // the clip's shape (UiClip) + 1, 0: none
-  @location(9) shear: vec3<f32>,              // MSDF text under a map: x scale - 1, skew, y scale - 1 before the turn
+  @location(5) effect: vec4<f32>,             // glass: its corner and blur radii and size; an array sprite: w its layer
+  @location(6) effect_color: vec4<f32>,       // glass: a its opacity
+  @location(7) clip_shape: u32,               // the clip's shape (UiClip) + 1, 0: none
 };
 
 struct OverlayOut {
@@ -39,8 +38,7 @@ struct OverlayOut {
   @location(2) clip: vec4<f32>,
   @location(3) effect: vec4<f32>,
   @location(4) effect_color: vec4<f32>,
-  @location(5) effect2: vec4<f32>,
-  @location(6) @interpolate(flat, either) clip_shape: u32,
+  @location(5) @interpolate(flat, either) clip_shape: u32,
 };
 
 @vertex
@@ -50,7 +48,7 @@ fn vs(@builtin(vertex_index) vi: u32, s: OverlayIn) -> OverlayOut {
     vec2<f32>(0.0, 0.0), vec2<f32>(1.0, 1.0), vec2<f32>(0.0, 1.0));
   let c = corners[vi];
   let quad = (c - s.size_anchor.zw) * s.size_anchor.xy;
-  let local = vec2<f32>((1.0 + s.shear.x) * quad.x + s.shear.y * quad.y, (1.0 + s.shear.z) * quad.y);
+  let local = quad;
   let cs = cos(s.position_rotation.w);
   let sn = sin(s.position_rotation.w);
   // y grows downwards, so this turns clockwise on screen.
@@ -65,7 +63,6 @@ fn vs(@builtin(vertex_index) vi: u32, s: OverlayIn) -> OverlayOut {
   // Lengths in device pixels, as the fragment measures distance.
   o.effect = vec4<f32>(s.effect.xy * frame.output.z, s.effect.zw);
   o.effect_color = s.effect_color;
-  o.effect2 = vec4<f32>(s.effect2.xy * frame.output.z, s.effect2.zw);
   o.clip_shape = s.clip_shape;
   return o;
 }
@@ -106,72 +103,16 @@ fn median(r: f32, g: f32, b: f32) -> f32 {
   return max(min(r, g), min(max(r, g), b));
 }
 
+// A text's glyph from its distance field in the glyph atlas: the field's
+// range scaled to the screen, the edge where the median crosses half.
 @fragment
 fn fs_msdf(in: OverlayOut) -> @location(0) vec4<f32> {
   let m = textureSample(sprite_tex, sprite_sampler, in.uv);
   let unit_range = vec2<f32>(sprite_params.msdf.x) / sprite_params.msdf.yz;
   let screen_tex_size = vec2<f32>(1.0) / fwidthFine(in.uv);
   let screen_px_range = max(0.5 * dot(unit_range, screen_tex_size), 1.0);
-  // Signed distance to the glyph's edge in device pixels, inside positive,
-  // thickened by the weight. The field is flat past half its range, so the
-  // weight stays inside that reach (a heavier one would fill the glyph's
-  // whole quad where the field is thin: small text from a narrow range).
-  let reach = 0.5 * screen_px_range - 0.5;
-  let weight = min(in.effect.y, max(0.5 * screen_px_range - 0.75, 0.0));
-  let distance = screen_px_range * (median(m.r, m.g, m.b) - 0.5) + weight;
-  let fill = clamp(distance + 0.5, 0.0, 1.0);
-  // An MTSDF's alpha is the true distance (round past corners, where the
-  // median runs on along the edges); a plain MSDF's alpha is 1, so the
-  // smaller of the two is the median there.
-  let true_distance = screen_px_range * (min(median(m.r, m.g, m.b), m.a) - 0.5) + weight;
-  let kind = u32(in.effect.z + 0.5);
-  switch kind {
-    case 1u: {
-      // The glow pass: the distance outside the ink, falling off
-      // quadratically to the radius. The field holds distances up to half
-      // its range: past that it is flat, so the glow ends inside it (never
-      // at the glyph quad's hard edge).
-      let outside = max(-true_distance, 0.0);
-      let k = clamp(1.0 - outside / max(min(in.effect.x, reach), 1e-3), 0.0, 1.0);
-      let a = in.effect_color.a * k * k * (1.0 - fill) * in.color.a;
-      return finish(in.effect_color.rgb, a, in.position.xy, in.clip, in.clip_shape);
-    }
-    case 2u: {
-      // A shadow (UiTextShadow): the moved glyph, its edge softened over
-      // the blur, which the field's reach bounds.
-      let soft = clamp(in.effect2.y, 1.0, max(2.0 * reach, 1.0));
-      let k = clamp(true_distance / soft + 0.5, 0.0, 1.0);
-      return finish(in.effect_color.rgb, in.effect_color.a * k * in.color.a, in.position.xy, in.clip, in.clip_shape);
-    }
-    case 3u, 4u: {
-      // An outline (UiTextOutline): the band from `inside` within the ink
-      // to `outside` beyond it, each bounded by the field's reach. Drawn
-      // under the fill (3: outside) or over it (4: inside or centred).
-      // Weight already moves the edge out into that reach. Leave room
-      // for it and the antialias fringe, so a saturated exterior sample
-      // has zero coverage rather than tinting the entire glyph quad.
-      let outer = min(in.effect2.y, max(reach - weight, 0.0));
-      let inner = min(in.effect2.x, reach);
-      let d = select(distance, true_distance, distance < 0.0);
-      var a = clamp(d + outer + 0.5, 0.0, 1.0);
-      if (kind == 4u) {
-        a *= 1.0 - clamp(d - inner + 0.5, 0.0, 1.0);
-      }
-      return finish(in.effect_color.rgb, in.effect_color.a * a * in.color.a, in.position.xy, in.clip, in.clip_shape);
-    }
-    default: {
-      var color = in.color;
-      if (in.effect2.z > 0.5) {
-        // A gradient fill over the text's box.
-        let gi = u32(in.effect2.z - 0.5);
-        let g = gradients[gi];
-        let css = css_of(in.position.xy);
-        let c = gradient_color(gi, (css - g.box.xy) / max(g.box.zw, vec2<f32>(1e-4)), g.box.zw, in.position.xy);
-        color = vec4<f32>(c.rgb, c.a * in.color.a);
-      }
-      return finish(color.rgb, ink_cover(fill, color.rgb) * color.a, in.position.xy, in.clip, in.clip_shape);
-    }
-  }
+  let fill = clamp(screen_px_range * (median(m.r, m.g, m.b) - 0.5) + 0.5, 0.0, 1.0);
+  return finish(in.color.rgb, ink_cover(fill, in.color.rgb) * in.color.a, in.position.xy, in.clip, in.clip_shape);
 }
 
 @fragment

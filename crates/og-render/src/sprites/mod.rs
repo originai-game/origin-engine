@@ -1,6 +1,6 @@
-//! The 2D batch: sprites and MSDF text as instanced quads, sorted by
-//! (layer, kind, texture) so each run of one texture (or one font) in one
-//! layer is a single instanced draw.
+//! The 2D batch: sprites and text as instanced quads, sorted by (layer,
+//! kind, texture) so each run of one texture (or one glyph atlas page) in
+//! one layer is a single instanced draw.
 
 pub(crate) mod light2d;
 pub(crate) mod sprite_array;
@@ -14,10 +14,10 @@ use crate::RenderError;
 use crate::effects::SpriteBlend;
 use crate::scene::SpriteFacing;
 use crate::scene::{
-    FontHandle, Glyph, GlyphKey, MsdfFont, RenderScene, Sprite, Text, TextureArrayHandle,
-    TextureHandle, TileLayer,
+    Glyph, GlyphKey, MsdfFont, RenderScene, Sprite, TextureArrayHandle, TextureHandle, TileLayer,
 };
 use glam::{Vec2, Vec3};
+use og_draw::glyphs::GlyphTier;
 use std::collections::HashMap;
 
 mod build;
@@ -178,7 +178,9 @@ pub(crate) enum RunSource {
     /// its own buffer (`first`/`count` index that buffer); drawn as the
     /// range's source draws.
     Particles(u32),
-    Font(FontHandle),
+    /// Text's glyphs from a page of the glyph atlas: its distance fields
+    /// (the MSDF pipeline) or colour glyphs (the sprite pipeline).
+    Glyphs(GlyphTier, u16),
     /// A 2D trail's strip: `first`/`count` are vertices of the ribbon
     /// buffer, or strip points when the last field is true
     /// ([`crate::ribbons::RibbonRun::points`]); the blend is
@@ -271,14 +273,11 @@ pub(crate) struct SpriteRun {
 pub(crate) struct FontLayout {
     pub glyphs: HashMap<GlyphKey, Glyph>,
     pub kerning: HashMap<(char, char), f32>,
-    pub line_height: f32,
     pub atlas_size: Vec2,
     /// A page of colour glyphs ([`MsdfFont::distance_range`] 0).
     pub color: bool,
     /// Its glyphs use the text's colour ([`MsdfFont::foreground`]).
     pub foreground: bool,
-    /// A colour glyph silhouette page (MsdfFont::silhouette): effects only.
-    pub silhouette: bool,
 }
 
 impl FontLayout {
@@ -290,57 +289,10 @@ impl FontLayout {
                 .iter()
                 .map(|k| ((k.left, k.right), k.adjust))
                 .collect(),
-            line_height: font.line_height,
             atlas_size,
             color: font.distance_range == 0.0,
             foreground: font.foreground,
-            silhouette: font.silhouette,
         }
-    }
-
-    /// Walks a text's characters with the pen (em; lines step by
-    /// `line_step`, the line height down the overlay or up the world):
-    /// `f(char, glyph or None when the font lacks it, pen, offset)`. The pen
-    /// moves by the text's placements when it has them, else by each glyph's
-    /// advance, the kerning with the character before it and the tracking
-    /// (a missing glyph takes no space and breaks the kerning pair).
-    /// Returns each line's width (em): where the pen ends it.
-    pub fn walk(
-        &self,
-        text: &Text,
-        line_step: f32,
-        mut f: impl FnMut(char, Option<&Glyph>, Vec2, Vec2),
-    ) -> Vec<f32> {
-        let mut pen = Vec2::ZERO;
-        let mut prev: Option<char> = None;
-        let mut widths = Vec::new();
-        for (i, ch) in text.text.chars().enumerate() {
-            if ch == '\n' {
-                widths.push(pen.x);
-                pen = Vec2::new(0.0, pen.y + line_step);
-                prev = None;
-                continue;
-            }
-            if let Some(p) = text.placements.get(i) {
-                let key = p.glyph.map_or(GlyphKey::Char(ch), GlyphKey::Id);
-                f(ch, self.glyphs.get(&key), pen, Vec2::new(p.x, p.y));
-                pen.x += p.advance;
-                continue;
-            }
-            let Some(g) = self.glyphs.get(&GlyphKey::Char(ch)) else {
-                f(ch, None, pen, Vec2::ZERO);
-                prev = None;
-                continue;
-            };
-            if let Some(k) = prev.and_then(|p| self.kerning.get(&(p, ch))) {
-                pen.x += k;
-            }
-            f(ch, Some(g), pen, Vec2::ZERO);
-            pen.x += g.advance + text.tracking;
-            prev = Some(ch);
-        }
-        widths.push(pen.x);
-        widths
     }
 }
 
@@ -355,7 +307,6 @@ pub(crate) struct SpriteFrame {
     pub glow_runs: Vec<SpriteRun>,
     pub sprites: u32,
     pub glyphs: u32,
-    pub missing_glyphs: u32,
     /// Tile quads drawn (after culling) and chunks they came from.
     pub tiles: u32,
     pub tile_chunks: u32,

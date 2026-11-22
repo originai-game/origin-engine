@@ -95,7 +95,6 @@ impl Renderer {
                 + sprite_frame.billboard_shadows.len()
                 + sprites::draw_runs_of(&sprite_frame.billboards).len())
                 as u32,
-            missing_glyphs: sprite_frame.missing_glyphs,
             transparent: blended_list.instances,
             transparent_draws: blended_list.ranges.len() as u32,
             graph_passes: self.graph.order().len() as u32,
@@ -157,7 +156,6 @@ impl Renderer {
             stats.sprites += of.sprites;
             stats.glyphs += of.glyphs;
             stats.sprite_draws += of.runs.len() as u32;
-            stats.missing_glyphs += of.missing_glyphs;
         }
         // Under GPU culling its counts hold the skinned draws too.
         for b in skinned_visible.iter().filter(|_| !skinned_gpu) {

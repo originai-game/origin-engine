@@ -379,16 +379,6 @@ impl RenderScene {
                 return Some(format!("sprite {k}: texture {} was removed", h.index()));
             }
         }
-        let texts = self
-            .sprite
-            .texts
-            .iter()
-            .chain(overlay.into_iter().flat_map(|o| o.texts.iter()));
-        for (k, text) in texts.enumerate() {
-            if !f.live(text.font.index(), text.font.generation()) {
-                return Some(format!("text {k}: font {} was removed", text.font.index()));
-            }
-        }
         for (k, font) in self.fonts.iter().enumerate() {
             if f.live(k, f.generation(k)) && !t.live(font.atlas.index(), font.atlas.generation()) {
                 return Some(format!(

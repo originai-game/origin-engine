@@ -104,6 +104,12 @@ impl Renderer {
             );
             ui_uniform = Some(u);
         }
+        // The glyph atlas's pages the paint arena, the world's and the
+        // overlay's text draw from: the plots that changed.
+        {
+            let glyphs = scene.ui.glyphs.lock().unwrap_or_else(|e| e.into_inner());
+            self.paint.upload_glyphs(&self.device, &self.queue, &glyphs);
+        }
         // og-ui's paint arena (ui/paint.rs): uploaded when it changed.
         if !scene.ui.paint.is_empty() {
             let fonts = &self.cache.fonts;

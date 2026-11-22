@@ -697,8 +697,6 @@ pub struct FrameStats {
     /// Faced world sprites (billboards, [`RenderScene::sprite_facing`]) the
     /// main camera left out because their bounds miss its frustum.
     pub sprites_culled: u32,
-    /// Characters of [`RenderScene::texts`] (and the overlay's) missing from their font.
-    pub missing_glyphs: u32,
     /// The overlay's share of `sprites`, `glyphs` and `sprite_draws`
     /// ([`RenderScene::overlay`]).
     pub overlay_sprites: u32,

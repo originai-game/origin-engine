@@ -369,7 +369,7 @@ pub fn wireframe_scene() -> RenderScene {
 /// layer, so it is neither bloomed nor tone mapped and no mesh hides it.
 fn debug_label(
     scene: &mut RenderScene,
-    font: og_render::FontHandle,
+    font: &crate::scenes::TestFont,
     at: Vec3,
     text: &str,
     size: f32,
@@ -386,8 +386,7 @@ fn debug_label(
             * glam::camera::rh::view::look_at_mat4(cam.position, cam.target, cam.up);
     let clip = vpm * at.extend(1.0);
     let ndc = clip.truncate() / clip.w;
-    let width = scene.font(font).map_or(0.0, |f| f.measure(text) * size);
-    let x = (ndc.x * 0.5 + 0.5) * w - width * 0.5;
+    let x = (ndc.x * 0.5 + 0.5) * w;
     let y = (0.5 - ndc.y * 0.5) * h - size * 0.6;
     let o = scene
         .ui
@@ -398,7 +397,7 @@ fn debug_label(
         size,
         color,
         layer: og_render::screen_layer(og_render::UI_LAYER),
-        ..og_render::Text::new(font, text)
+        ..font.aligned(text, 0.5)
     });
 }
 
@@ -484,7 +483,7 @@ pub fn debug_scene() -> Result<RenderScene, String> {
     // The labels: after the camera, since they are projected through it.
     debug_label(
         &mut scene,
-        font,
+        &font,
         Vec3::new(-1.5, 1.5, 0.0),
         "sphere 1.2 m",
         22.0,
@@ -492,7 +491,7 @@ pub fn debug_scene() -> Result<RenderScene, String> {
     );
     debug_label(
         &mut scene,
-        font,
+        &font,
         Vec3::new(1.6, 1.1, -0.4),
         "hidden box",
         22.0,

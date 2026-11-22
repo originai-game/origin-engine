@@ -4,18 +4,17 @@
 //! floating text's facing survives a snapshot.
 //!
 //! A floating text with no font of its own draws with the UI's: a line
-//! mixing a style's Latin body face with its Chinese companion (both in its
-//! pack.json's `fonts`) reaches the renderer as one text per font, side by
-//! side and centred on its point (rhythm archetype: a judgement word drawn
-//! whole in the body face lost every Chinese character).
+//! mixing a style's Latin body face with its Chinese companion reaches the
+//! renderer with every character's glyph, centred on its point (rhythm
+//! archetype: a judgement word drawn whole in the body face lost every
+//! Chinese character).
 //!
 //! Ways this could fail: the facing lands on another text's index; an
-//! aligned text keeps the runtime's shift along the world x axis (the
-//! renderer then turns it about its left end, off its point); a screen
-//! text faces; a snapshot drops the facing, or a snapshot without a faced
-//! text changes its bytes.
+//! aligned text is shifted along the world x axis instead of laid out
+//! about its point (the renderer then turns it about its left end, off
+//! its point); a screen text faces; a snapshot drops the facing.
 
-use og_render::{FontHandle, RenderScene, SpriteFacing, TextFacing};
+use og_render::{RenderScene, SpriteFacing, TextFacing};
 use og_runtime::{
     Dispatch, Fetch, Hooks, RenderBackend, og_engine_create, og_engine_frame, og_game_game,
     og_host_begin_bundle, og_load_font, og_load_style, og_render_floating_text, og_render_text,
@@ -67,11 +66,20 @@ impl Hooks for Disk {
     }
 }
 
-/// The last frame's world texts as (text, x of its position, its facing).
+/// One world text as the renderer got it: its position's x, its facing,
+/// its glyphs' count and their left and right ends (em from the point).
+#[derive(Clone, Debug)]
+struct Drawn {
+    x: f32,
+    facing: Option<TextFacing>,
+    glyphs: usize,
+    span: [f32; 2],
+}
+
+/// The last frame's world texts, in the order drawn, and the screen texts.
 #[derive(Default)]
 struct Seen {
-    texts: Vec<(String, f32, Option<TextFacing>)>,
-    fonts: Vec<FontHandle>,
+    texts: Vec<Drawn>,
     screen: usize,
 }
 
@@ -91,28 +99,21 @@ impl RenderBackend for Recorder {
             .texts
             .iter()
             .enumerate()
-            .map(|(i, t)| {
-                let facing = scene
+            .map(|(i, t)| Drawn {
+                x: t.position.x,
+                facing: scene
                     .sprite
                     .text_facing
                     .iter()
                     .rev()
                     .find(|f| f.text == i as u32)
-                    .copied();
-                // A glyph drawn by id as U+F0000 + id, to compare alone.
-                let text = t
-                    .text
-                    .chars()
-                    .enumerate()
-                    .map(|(i, c)| match t.placements.get(i).and_then(|p| p.glyph) {
-                        Some(id) => char::from_u32(0xF_0000 + u32::from(id)).expect("an id"),
-                        None => c,
-                    })
-                    .collect();
-                (text, t.position.x, facing)
+                    .copied(),
+                glyphs: t.glyphs.len(),
+                span: t.glyphs.iter().fold([f32::MAX, f32::MIN], |[l, r], g| {
+                    [l.min(g.rect[0]), r.max(g.rect[2])]
+                }),
             })
             .collect();
-        seen.fonts = scene.sprite.texts.iter().map(|t| t.font).collect();
         seen.screen = scene.ui.overlay.as_ref().map_or(0, |o| o.texts.len());
         Ok(())
     }
@@ -165,41 +166,37 @@ fn faced_world_text_reaches_the_renderer_with_its_pivot() {
         ),
     )));
     value(og_engine_frame(engine, 0.0));
-    let seen_now = |name: &str| {
-        seen.borrow()
-            .texts
-            .iter()
-            .find(|t| t.0 == name)
-            .cloned()
-            .unwrap_or_else(|| panic!("{name} drawn"))
-    };
-    let flat = seen_now("flat");
+    // The floating text first, then the queued ones in order (flat, name,
+    // sign).
+    let seen_now = |i: usize| seen.borrow().texts.get(i).cloned().expect("drawn");
+    let centred = |d: &Drawn| (d.span[0] + d.span[1]).abs() < 0.1 * (d.span[1] - d.span[0]);
+    let facing = |d: &Drawn| d.facing.map(|f| f.facing);
+    let flat = seen_now(1);
     assert!(
-        flat.1 < 5.0 && flat.2.is_none(),
-        "centred by a shift: {flat:?}"
+        flat.x == 5.0 && flat.facing.is_none() && centred(&flat),
+        "laid out about its point: {flat:?}"
     );
-    let faced = |facing, align| {
-        Some(TextFacing {
-            text: 0,
-            facing,
-            align,
-        })
-    };
-    let pivot =
-        |t: (String, f32, Option<TextFacing>)| (t.1, t.2.map(|f| TextFacing { text: 0, ..f }));
-    assert_eq!(
-        pivot(seen_now("name")),
-        (5.0, faced(SpriteFacing::CameraY, 0.5)),
-        "turned about its point, the renderer centring it"
+    let name = seen_now(2);
+    assert!(
+        name.x == 5.0 && facing(&name) == Some(SpriteFacing::CameraY) && centred(&name),
+        "turned about its point, centred on it: {name:?}"
     );
-    assert_eq!(
-        pivot(seen_now("sign")),
-        (5.0, faced(SpriteFacing::Camera, 0.0))
+    let sign = seen_now(3);
+    assert!(
+        sign.x == 5.0
+            && facing(&sign) == Some(SpriteFacing::Camera)
+            && !centred(&sign)
+            // A field's quad reaches past its ink by the field's padding.
+            && sign.span[0] > -0.2,
+        "starting at its point: {sign:?}"
     );
-    assert_eq!(
-        pivot(seen_now("-12")),
-        (-3.0, faced(SpriteFacing::Camera, 0.5)),
-        "a floating text centred on its point"
+    let float = seen_now(0);
+    assert!(
+        float.x == -3.0
+            && facing(&float) == Some(SpriteFacing::Camera)
+            && float.glyphs == 3
+            && centred(&float),
+        "a floating text centred on its point: {float:?}"
     );
     assert_eq!(seen.borrow().screen, 1, "the screen text is the overlay's");
 
@@ -214,7 +211,7 @@ fn faced_world_text_reaches_the_renderer_with_its_pivot() {
     )));
     value(og_engine_frame(engine, 1000.0 / 60.0));
     assert_eq!(
-        seen_now("-12").2.map(|f| f.facing),
+        facing(&seen_now(0)),
         Some(SpriteFacing::Camera),
         "restored facing"
     );
@@ -245,11 +242,8 @@ fn mixed_project() -> &'static Path {
         write(
             "styles/mix/pack.json",
             br#"{
-                "fonts": [
-                    { "family": "Body", "src": "Body.ttf" },
-                    { "family": "Chinese", "src": "@styles/cjk/NotoSansSC-Regular.ttf" }
-                ],
-                "theme": { "fontFamily": { "sans": "\"Body\", \"Chinese\"" } }
+                "fonts": ["Body.ttf", "@styles/cjk/NotoSansSC-Regular.ttf"],
+                "theme": { "fontFamily": { "sans": "\"Chakra Petch\", \"Noto Sans SC\"" } }
             }"#,
         );
         write(
@@ -302,49 +296,17 @@ fn a_floating_text_mixing_a_companion_draws_each_run_in_its_font() {
     }
     value(og_engine_frame(engine, 0.0));
     let seen = seen.borrow();
-    let drawn: Vec<(String, f32, Option<TextFacing>, FontHandle)> = seen
-        .texts
-        .iter()
-        .zip(&seen.fonts)
-        .map(|(t, f)| (t.0.clone(), t.1, t.2, *f))
-        .collect();
-    let piece = |s: &str| {
-        drawn
-            .iter()
-            .find(|t| t.0 == s)
-            .cloned()
-            .unwrap_or_else(|| panic!("{s:?} drawn alone: {drawn:?}"))
-    };
-
-    // Flat: the Chinese run first, the Latin after it, in two fonts, the
-    // line centred on x = 4 (its start left of the point, its end right).
-    // Paragraph shaping addresses uncooked companion glyphs by glyph id.
-    // Derive the expected keys from the source cmap with a separate parser,
-    // rather than depending on the runtime's choice of an atlas alias.
-    let bytes = std::fs::read(repo().join("templates/styles/cjk/NotoSansSC-Regular.ttf")).unwrap();
-    let face = ttf_parser::Face::parse(&bytes, 0).unwrap();
-    let companion = |text: &str| -> String {
-        text.chars()
-            .map(|c| char::from_u32(0xF0000 + u32::from(face.glyph_index(c).unwrap().0)).unwrap())
-            .collect()
-    };
-    let (zh, latin) = (piece(&companion("完美 ")), piece("x2"));
-    assert_ne!(
-        zh.3, latin.3,
-        "the Chinese in the companion, the Latin in the body face"
-    );
-    assert!(
-        zh.1 < latin.1 && zh.1 < 4.0 && latin.1 > 4.0 - 0.01,
-        "side by side about the point: {zh:?} {latin:?}"
-    );
-
-    // Faced: both turn about the point, aligned so the line's middle is it
-    // (the Chinese run's align past its middle, the Latin's before its start).
-    let (zh, latin) = (piece(&companion("美完 ")), piece("x3"));
-    let (fz, fl) = (zh.2.expect("faced"), latin.2.expect("faced"));
-    assert_eq!((zh.1, latin.1), (-2.0, -2.0), "both at the point");
-    assert!(
-        fz.align > 0.5 && fl.align < 0.0,
-        "one line centred: {fz:?} {fl:?}"
-    );
+    // Every character drawn, the Chinese from the companion, each line
+    // centred on its point.
+    let [flat, faced] = [&seen.texts[0], &seen.texts[1]];
+    for (d, x) in [(flat, 4.0), (faced, -2.0)] {
+        assert_eq!(d.glyphs, 4, "完美 and x2 whole: {d:?}");
+        assert_eq!(d.x, x);
+        assert!(
+            (d.span[0] + d.span[1]).abs() < 0.1 * (d.span[1] - d.span[0]),
+            "centred: {d:?}"
+        );
+    }
+    assert!(flat.facing.is_none());
+    assert_eq!(faced.facing.map(|f| f.facing), Some(SpriteFacing::Camera));
 }

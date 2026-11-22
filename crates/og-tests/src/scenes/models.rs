@@ -131,7 +131,7 @@ pub(super) fn showcase() -> Result<RenderScene, String> {
         position: Vec3::new(-3.1, 4.3, -2.0),
         size: 0.8,
         color: [3.0, 2.6, 1.6, 1.0],
-        ..Text::new(font, "Origin Engine 原点引擎")
+        ..font.text("Origin Engine 原点引擎")
     });
     let [disc, _, ring] = sprite_textures(&mut scene);
     for i in 0..40 {

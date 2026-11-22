@@ -19,6 +19,8 @@ og-env = { path = "../og-env" }
 og-tween = { path = "../og-tween" }
 og-geom = { path = "../og-geom" }
 og-tilemap = { path = "../og-tilemap" }
+# The text scenes' glyphs, laid out and rastered into each scene's atlas.
+og-text = { path = "../og-text", default-features = false }
 # A failing frame's FLIP heat map and worst regions (og-probe's frame module).
 og-probe = { path = "../og-probe", default-features = false }
 glam = { workspace = true }

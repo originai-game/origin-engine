@@ -195,3 +195,59 @@ pub(crate) fn roles(engine: u32) -> [String; 4] {
         .map(|eng| eng.state.borrow().ui_font_roles.clone())
         .unwrap_or_default()
 }
+
+/// Loaded font `index`'s family as a CSS family list naming it alone (the
+/// collection's fallback draws what it lacks); `None` for a font that
+/// ships no file.
+pub(crate) fn family_of(eng: &Engine, faces: &mut Faces, index: usize) -> Option<String> {
+    let id = faces.face(eng, index)?;
+    let name = faces.collection.family_name(id)?;
+    Some(format!("\"{}\"", name.replace('"', "")))
+}
+
+/// The pixels an em world and overlay text are laid out at: the distance
+/// field's own, so a colour glyph is painted as finely as a field holds.
+const TEXT_EM_PX: f32 = og_render::glyphs::FIELD_EM_PX;
+
+/// `text` in `family` (a CSS family list; `sans-serif` the UI's body)
+/// laid out from the UI's collection into the glyph atlas as world and
+/// overlay text draws it: lines broken at `\n`, aligned by `shift` (0
+/// start, 0.5 centre, 1 end) about the first baseline's origin, colour
+/// glyphs painted in `color` (linear). The glyphs are in em.
+pub(crate) fn text_glyphs(
+    rs: &mut crate::present::extract::RenderState,
+    family: &str,
+    text: &str,
+    shift: f32,
+    color: [f32; 4],
+) -> Vec<og_render::TextGlyph> {
+    let mut out = Vec::new();
+    let glyphs = rs.scene.ui.glyphs.clone();
+    let mut atlas = glyphs.lock().unwrap_or_else(|e| e.into_inner());
+    let style = og_text::layout::Style {
+        family,
+        size: TEXT_EM_PX,
+        wrap: false,
+        align: if shift >= 0.75 {
+            og_text::layout::Alignment::End
+        } else if shift >= 0.25 {
+            og_text::layout::Alignment::Center
+        } else {
+            og_text::layout::Alignment::Start
+        },
+        ..Default::default()
+    };
+    let ink = [color[0], color[1], color[2]].map(og_core::color::linear_to_srgb);
+    og_text::strike::text_glyphs(
+        &mut rs.text_strikes,
+        &mut rs.ui_faces.collection,
+        &mut atlas,
+        &mut rs.text_layout,
+        text,
+        &style,
+        shift,
+        ink,
+        &mut out,
+    );
+    out
+}

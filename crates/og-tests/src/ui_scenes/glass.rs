@@ -121,7 +121,7 @@ fn fill(a: f32) -> [f32; 4] {
 /// left out) and the inks it records.
 struct Painter<'a> {
     o: &'a mut Overlay,
-    font: Option<FontHandle>,
+    font: Option<crate::scenes::TestFont>,
     inks: Vec<GlassInk>,
     /// The ink held to 4.5:1 where the next texts are ([`GlassInk::held`]).
     held: Option<[u8; 3]>,
@@ -160,13 +160,13 @@ impl Painter<'_> {
             held: self.held == Some(ink),
             on_thin: self.on_thin,
         });
-        if let Some(font) = self.font {
+        if let Some(font) = &self.font {
             self.o.texts.push(Text {
                 position: Vec3::new(x, y, 0.0),
                 size,
                 color: rgba(ink, 1.0),
                 layer,
-                ..Text::new(font, s)
+                ..font.text(s)
             });
         }
     }
@@ -492,7 +492,7 @@ fn dark_backdrop(o: &mut Overlay) {
 
 /// Everything at once: saturated stripes, white and black bars, discs and
 /// big type, the worst a glass can sit on.
-fn busy_backdrop(o: &mut Overlay, font: Option<FontHandle>) {
+fn busy_backdrop(o: &mut Overlay, font: Option<&crate::scenes::TestFont>) {
     let hues = [
         rgb(255, 59, 48),
         rgb(255, 204, 0),
@@ -538,7 +538,7 @@ fn busy_backdrop(o: &mut Overlay, font: Option<FontHandle>) {
                     [1.0; 4]
                 },
                 layer: 0,
-                ..Text::new(font, *s)
+                ..font.text(s)
             });
         }
     }
@@ -548,7 +548,7 @@ fn busy_backdrop(o: &mut Overlay, font: Option<FontHandle>) {
 /// called unless `text` is false (the frame the contrast is read from).
 pub fn glass_scene(
     which: GlassScene,
-    font: impl FnOnce(&mut RenderScene) -> Result<FontHandle, String>,
+    font: impl FnOnce(&mut RenderScene) -> Result<crate::scenes::TestFont, String>,
     text: bool,
 ) -> Result<(RenderScene, Vec<GlassInk>), String> {
     let mut err = None;
@@ -568,7 +568,7 @@ pub fn glass_scene(
         match which {
             GlassScene::Bright => bright_backdrop(o),
             GlassScene::Dark | GlassScene::Dialog | GlassScene::Fallback => dark_backdrop(o),
-            GlassScene::Busy => busy_backdrop(o, font),
+            GlassScene::Busy => busy_backdrop(o, font.as_ref()),
         }
         let mut p = Painter {
             o,

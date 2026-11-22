@@ -617,18 +617,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
 #[allow(clippy::disallowed_methods)]
 fn floating(rs: &mut RenderState, feel: &Feel, now: f64) {
     let list = lock(&feel.shared).floating.clone();
-    let direction = crate::bind::i18n::direction(rs.engine);
     for t in list {
-        // No font of its own: the UI's for this text (its body face, or the
-        // locale's or a fallback when the body face lacks a character), cut
-        // into one piece per font when it mixes them: a style's Chinese
-        // companion draws the Chinese of a line whose Latin is the body's.
-        let body = Some({
-            let font = rs
-                .ui_fonts
-                .for_text(og_ui_next::fonts::FontRole::Body, &t.text);
-            og_text::text::pieces(font, &t.text, direction, 0.0)
-        });
         let age = (now - t.start) as f32;
         if age < 0.0 || age > t.lifetime {
             continue;
@@ -642,91 +631,40 @@ fn floating(rs: &mut RenderState, feel: &Feel, now: f64) {
         } else {
             1.0
         };
-        // Each piece: its font's pages, where it starts and how wide it is
-        // (em), and what it draws.
-        let mut parts: Vec<(Vec<og_render::FontHandle>, f32, f32, og_text::text::Piece)> =
-            Vec::new();
-        if t.font == u32::MAX {
-            let Some(pieces) = body else { continue };
-            for piece in pieces {
-                let Some(h) = piece.font else { continue };
-                let pages = rs.ui_pages.get(&h).cloned().unwrap_or_else(|| vec![h]);
-                parts.push((pages, piece.dx, piece.width, piece));
-            }
-        } else {
-            let Some(p) = rs.fonts.get(t.font as usize) else {
-                continue;
-            };
-            let piece = og_text::text::Piece {
-                font: None,
-                scale: 1.0,
-                dx: 0.0,
-                width: 0.0,
-                text: t.text.clone(),
-                placements: Vec::new(),
-            };
-            parts.push((p.pages.clone(), 0.0, 0.0, piece));
+        let color = [t.color.x, t.color.y, t.color.z, alpha];
+        // Centred on its point (faced, turned about it).
+        let glyphs = crate::present::faces::text_glyphs(rs, &t.family, &t.text, 0.5, color);
+        let index = rs.scene.sprite.texts.len() as u32;
+        if t.facing != og_render::SpriteFacing::None {
+            rs.scene.sprite.text_facing.push(og_render::TextFacing {
+                text: index,
+                facing: t.facing,
+            });
         }
-        // One piece is measured by its font (a font that is not mixed gives
-        // no width).
-        if let [(pages, _, width, piece)] = parts.as_mut_slice() {
-            match pages.first().and_then(|p| rs.scene.font(*p)) {
-                Some(first) => *width = first.measure(&piece.text),
-                None => continue,
-            }
-        }
-        let line: f32 = parts.iter().map(|p| p.2).sum();
-        // Centred on its point: moved back by half its width, or, faced,
-        // turned about the point with its line centred on it (each piece
-        // aligned so the line's middle is the point).
-        let faced = t.facing != og_render::SpriteFacing::None;
-        for (pages, dx, width, piece) in parts {
-            let position = Vec3::new(
-                t.position.x + t.drift * k + if faced { 0.0 } else { (dx - line / 2.0) * size },
+        rs.scene.sprite.texts.push(og_render::Text {
+            glyphs,
+            position: Vec3::new(
+                t.position.x + t.drift * k,
                 t.position.y + rise,
                 t.position.z,
-            );
-            let align = if width > 0.0 {
-                (line / 2.0 - dx) / width
-            } else {
-                0.5
-            };
-            for page in pages {
-                let index = rs.scene.sprite.texts.len() as u32;
-                if faced {
-                    rs.scene.sprite.text_facing.push(og_render::TextFacing {
-                        text: index,
-                        facing: t.facing,
-                        align,
-                    });
-                }
-                rs.scene.sprite.texts.push(og_render::Text {
-                    font: page,
-                    text: piece.text.clone(),
-                    position,
-                    size,
-                    rotation: 0.0,
-                    color: [t.color.x, t.color.y, t.color.z, alpha],
-                    layer: t.layer,
-                    clip: None,
-                    tracking: 0.0,
-                    weight: 0.0,
-                    glow: None,
-                    placements: piece.placements.clone(),
-                });
-                if t.outline > 0.0 {
-                    rs.scene.sprite.text_outlines.push(og_render::TextOutline {
-                        text: index,
-                        width: t.outline,
-                        color: [
-                            t.outline_color.x,
-                            t.outline_color.y,
-                            t.outline_color.z,
-                            alpha,
-                        ],
-                    });
-                }
-            }
+            ),
+            size,
+            rotation: 0.0,
+            color,
+            layer: t.layer,
+            clip: None,
+        });
+        if t.outline > 0.0 {
+            rs.scene.sprite.text_outlines.push(og_render::TextOutline {
+                text: index,
+                width: t.outline,
+                color: [
+                    t.outline_color.x,
+                    t.outline_color.y,
+                    t.outline_color.z,
+                    alpha,
+                ],
+            });
         }
     }
 }

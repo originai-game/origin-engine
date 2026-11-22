@@ -9,7 +9,7 @@
 //! atlas holds costs one lookup and no allocation.
 
 use crate::fonts::{Collection, FaceId};
-use crate::layout::GlyphRun;
+use crate::layout::{GlyphRun, Style, Text};
 use crate::raster::{Glyph, Placement, Rasterizer};
 use og_draw::glyphs::{Atlas, GlyphKey, GlyphSlot, GlyphTier};
 use skrifa::instance::NormalizedCoord;
@@ -290,6 +290,75 @@ impl Strikes {
     }
 }
 
+/// Lays `text` out in `style` (its lines broken only at `\n`, aligned in
+/// the widest by `style.align`) and puts each glyph into `atlas` as world
+/// and overlay text draws it ([`og_draw::Text`]): an outline glyph's
+/// distance field, a colour glyph painted at `style.size` device pixels an
+/// em in `ink` (sRGB). `out` is replaced with the glyphs in em from the
+/// first line's baseline origin, y up, the whole block moved left by
+/// `shift` of its width (0 start, 0.5 centre, 1 end). False when a glyph
+/// found no room in the atlas this frame (drawn next frame).
+#[allow(clippy::too_many_arguments)]
+pub fn text_glyphs(
+    strikes: &mut Strikes,
+    fonts: &mut Collection,
+    atlas: &mut Atlas,
+    layout: &mut Text,
+    text: &str,
+    style: &Style,
+    shift: f32,
+    ink: [f32; 3],
+    out: &mut Vec<og_draw::TextGlyph>,
+) -> bool {
+    out.clear();
+    layout.shape(fonts, text, style);
+    layout.break_at(fonts, text, style, None);
+    let em = style.size.max(1e-3);
+    let first = layout.first_baseline().unwrap_or(0.0);
+    let dx = -shift * layout.width();
+    let mut whole = true;
+    let fonts = &*fonts;
+    layout.runs(fonts, |run| {
+        let font = FontRef::from_index(fonts.file(run.face), run.index).ok();
+        let strike = strikes.strike(atlas, &run, 1.0, false);
+        for g in run.glyphs.iter().filter(|g| g.id != 0) {
+            // The pen in em, y up from the first baseline.
+            let (x, y) = ((g.x + dx) / em, (first - g.y) / em);
+            let colour = font
+                .as_ref()
+                .is_some_and(|f| f.color_glyphs().get(GlyphId::new(g.id)).is_some());
+            let found = if colour {
+                strikes
+                    .glyph(fonts, atlas, &strike, run.coords, g.id, 0, Form::Fill, ink)
+                    .map(|(tier, s)| (tier, s, run.size))
+            } else {
+                strikes
+                    .field(fonts, atlas, &strike, run.coords, g.id)
+                    .map(|s| (GlyphTier::Field, s, crate::sdf::EM_PX))
+            };
+            let Some((tier, s, px)) = found else {
+                whole = false;
+                continue;
+            };
+            if s.width == 0 || s.height == 0 {
+                continue;
+            }
+            // Its pixels' em at the size they were made: the field's own,
+            // or the run's for a colour glyph (laid out at `em`).
+            let k = px * em / run.size.max(1e-3);
+            let (left, top) = (f32::from(s.left) / k, f32::from(s.top) / k);
+            let (w, h) = (f32::from(s.width) / k, f32::from(s.height) / k);
+            out.push(og_draw::TextGlyph {
+                rect: [x + left, y + top - h, x + left + w, y + top],
+                tier,
+                page: s.page,
+                uv: [s.x, s.y, s.x + s.width, s.y + s.height],
+            });
+        }
+    });
+    whole
+}
+
 /// The mask that covers what either of two masks does (`a`, placed `at`,
 /// and `b`, placed `bt`), their coverage summed and clamped: a fill and the
 /// stroke of its own outline. Left in `a`; `scratch` holds it meanwhile.
@@ -337,7 +406,6 @@ fn union(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::layout::{Style, Text};
     use std::sync::Arc;
 
     fn file(path: &str) -> Arc<Vec<u8>> {

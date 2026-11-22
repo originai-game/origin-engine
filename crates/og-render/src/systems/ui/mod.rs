@@ -16,8 +16,6 @@
 //! - [`UiLayer`]s: the overlay layers in a range drawn offscreen, then
 //!   composited by a [`UiShape`] whose paint is [`UiPaint::Layer`] through a
 //!   built-in or custom material ([`UiMaterialShader`]).
-//! - [`UiTextEffects`]: outline, gradient fill and shadows of one overlay
-//!   text, read from its font's distance field.
 //! - [`UiVectorDraw`]s: a cooked vector ([`UiVectorData`], tessellated at
 //!   cook with an antialiasing fringe) drawn into a rectangle.
 //! - [`UiMassBatch`]es: mass elements ([`mass`], §14), each an instance of

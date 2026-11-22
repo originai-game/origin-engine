@@ -14,7 +14,20 @@
 //! drawn with its own font.
 
 use crate::shape::{Features, FontFile};
-use og_draw::{FontHandle, GlyphKey, GlyphPlacement, MsdfFont};
+use og_draw::{FontHandle, GlyphKey, MsdfFont};
+
+/// Where a shaper put one character of a line, in em: the pen moves
+/// `advance` after it, and its glyph is drawn offset by `(x, y)` from the
+/// pen (y up), as HarfBuzz's positions are.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct GlyphPlacement {
+    pub advance: f32,
+    pub x: f32,
+    pub y: f32,
+    /// A shaped form drawn by the font's glyph id instead of its
+    /// character's glyph; `None`: the character's own glyph.
+    pub glyph: Option<u16>,
+}
 use og_i18n::Direction;
 use std::ops::Range;
 use std::sync::Arc;

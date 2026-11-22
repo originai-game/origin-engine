@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "og.render.text, og.render.floatingText, og.render.measureText, og.debug.text",
+      "summary": "World, screen, floating and debug text are laid out by the same Parley layout as the UI (shaping, kerning, bidi and fallback faces) and drawn from the run-time glyph atlas: a character the font lacks is drawn by the UI's fallback faces instead of nothing, a floating text mixing Latin and Chinese is one line, and measureText returns what drawing takes. An outline's width is a fraction of the run-time field's reach, the same for every font."
+    }
+  ]
+}
