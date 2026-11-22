@@ -127,6 +127,48 @@ impl Dialogue {
         out.sort_unstable();
         out
     }
+
+    /// Where node `title` branches on the story's variables before its
+    /// choices are taken: each `<<if>>` (and each line group's condition)
+    /// its body reaches without taking a choice, and each choice's own
+    /// condition, as (source line, the variables it reads), in line order.
+    /// og.flow runs a flow node's body as its segment starts, so in a
+    /// segment held for the game these are read before the game is played.
+    pub fn branches_in(&self, title: &str) -> Vec<(usize, Vec<String>)> {
+        let blocks: BTreeMap<&str, &Node> = self.nodes.iter().map(|n| (n.id.as_str(), n)).collect();
+        let mut body: Vec<&Node> = Vec::new();
+        leads(&blocks, title, title, &mut BTreeSet::new(), &mut |b| {
+            body.push(b)
+        });
+        let mut out = Vec::new();
+        let mut read = |line: usize, e: &Expr| {
+            let mut vars = Vec::new();
+            e.vars(&mut vars);
+            vars.dedup();
+            if !vars.is_empty() {
+                out.push((line, vars));
+            }
+        };
+        for b in body {
+            for (s, &line) in b.steps.iter().zip(&b.lines) {
+                match s {
+                    Step::If(e, _) => read(line, e),
+                    Step::Select(picks) => picks
+                        .iter()
+                        .filter_map(|(_, c, _)| c.as_ref())
+                        .for_each(|c| read(line, c)),
+                    _ => {}
+                }
+            }
+            for c in &b.choices {
+                if let Some(e) = &c.cond {
+                    read(c.line, e);
+                }
+            }
+        }
+        out.sort_by_key(|(line, _)| *line);
+        out
+    }
 }
 
 /// The source nodes reachable from block `start` of node `title` without

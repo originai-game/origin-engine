@@ -214,3 +214,89 @@ fn a_flow_dialogue_is_refused_for_each_segment_default_line_and_choice_it_gets_w
         assert!(e.contains(want), "{want}: {e}");
     }
 }
+
+/// A flow node whose segment holds for the game (`flow.hold`) runs its body
+/// as the segment starts, before the game is played: an `<<if>>` there, or
+/// a choice's condition, that reads the story's variables is a warning
+/// naming the line and the `#outcome` fix, and the dialogue still cooks.
+/// The same branch in a segment that does not hold, or inside an outcome's
+/// own body (run after the game advanced), says nothing.
+#[test]
+fn a_held_flow_node_branching_on_variables_is_a_warning_with_its_fix() {
+    let held = "type timeline\nversion 1\n---\nduration 2\ntrack scene {\n  key 0 {\n    scene \"scenes/room.ogt\"\n  }\n}\ntrack marker {\n  key 0 {\n    name \"flow.hold\"\n  }\n}\n";
+    let plain = "type timeline\nversion 1\n---\nduration 2\ntrack scene {\n  key 0 {\n    scene \"scenes/room.ogt\"\n  }\n}\n";
+    let story = "#og-profile:yarn-spinner-3.2.2
+#og-name:game
+title: level
+og-flow: segments/held.ogt
+---
+<<declare $won = false>>
+<<declare $lives = 3>>
+<<if $won>>
+    <<jump good>>
+<<endif>>
+-> retry <<if $lives > 0>> #line:level.retry #outcome:retry
+    <<jump level>>
+-> won #line:level.won #outcome:won
+    <<if $lives > 1>>
+        <<jump good>>
+    <<else>>
+        <<jump bad>>
+    <<endif>>
+===
+title: cutscene
+og-flow: segments/plain.ogt
+---
+<<if $won>>
+    <<jump good>>
+<<else>>
+    <<jump bad>>
+<<endif>>
+===
+title: good
+og-flow: segments/plain.ogt
+og-flow-ending: good
+---
+===
+title: bad
+og-flow: segments/plain.ogt
+og-flow-ending: bad
+---
+===
+";
+    let root = project(
+        "held-branch",
+        &[
+            ("story/game.yarn", story),
+            ("segments/held.ogt", held),
+            ("segments/plain.ogt", plain),
+            (
+                "scenes/room.ogt",
+                "type scene\nversion 1\n---\nname \"Room\"\n",
+            ),
+        ],
+    );
+    let report = cook_project(&root, &CookOptions::default()).unwrap();
+    assert!(report.errors().is_empty(), "{:?}", report.errors());
+    let w: Vec<&String> = report
+        .warnings
+        .iter()
+        .filter(|w| w.starts_with("assets/story/game.yarn"))
+        .collect();
+    assert_eq!(w.len(), 2, "{w:?}");
+    assert!(
+        w[0].contains("line 8: node 'level'")
+            && w[0].contains("holds for the game (flow.hold)")
+            && w[0].contains("branches on $won")
+            && w[0].contains("#outcome:<name>")
+            && w[0].contains("og.flow.advance(world, flow, \"<name>\")"),
+        "{w:?}"
+    );
+    assert!(
+        w[1].contains("line 11: node 'level'") && w[1].contains("branches on $lives"),
+        "the retry choice's condition: {w:?}"
+    );
+    assert!(!w.iter().any(|w| w.contains("'cutscene'")), "{w:?}");
+    let bundle = Bundle::open(&root.join("cooked")).unwrap();
+    assert!(bundle.read("story/game.yarn").is_ok(), "it still cooks");
+}

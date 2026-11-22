@@ -197,6 +197,8 @@ if (bossDown) og.flow.advance(world, flow, "won");
 - Put the result in an outcome, never in an `<<if>>` in the node: the node
   runs when its segment starts, before the level is played, and an outcome
   shows on the chart, is prepared ahead and is walked by the route tests.
+  The cook warns about a held node that branches on variables (an
+  `<<if>>` in its body or a choice's condition) and names the line.
 - Jumping back to the same node plays the level again from its start.
 - Every cut snaps the camera (og.render.snapCamera). To ease from the
   game's camera into a segment's and back, give its `camera` track

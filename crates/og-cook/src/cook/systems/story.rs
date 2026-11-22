@@ -148,17 +148,25 @@ pub(crate) fn check_story_keys(
     out
 }
 
+/// (source, message) findings of a check.
+type Findings = Vec<(String, String)>;
+
 /// The cook's check of the dialogues og.flow plays (those with a node
 /// headed `og-flow`): each flow node's segment is a timeline og.flow can
 /// play (`segment` answers it by asset id: `None` when there is none), at
 /// most one of its choices is `#default`, it says no Yarn lines, and every
-/// node with choices is a flow node. As (source, error).
+/// node with choices is a flow node. As (source, error) errors, then
+/// (source, warning) warnings: a node whose segment holds for the game
+/// (`flow.hold`) and which branches on the story's variables before its
+/// choices are taken (they are read as the segment starts, before the
+/// game is played; its results belong in `#outcome` choices).
 pub(crate) fn check_flows(
     stories: &[(&str, &[u8])],
     segment: &dyn Fn(&str) -> Option<Result<og_timeline::segment::Segment, String>>,
     functions: &std::collections::BTreeMap<String, og_story::yarn::types::Function>,
-) -> Vec<(String, String)> {
+) -> (Findings, Findings) {
     let mut out = Vec::new();
+    let mut warnings = Vec::new();
     for (rel, bytes) in stories.iter().filter(|(r, _)| r.ends_with(".yarn")) {
         let Some(d) = std::str::from_utf8(bytes)
             .ok()
@@ -199,6 +207,19 @@ pub(crate) fn check_flows(
                         n.choices.iter().map(|c| (c.index, &c.tags)),
                     ) {
                         errors.push(format!("node '{}': {e}", n.title));
+                    }
+                    if s.hold.is_some() {
+                        for (line, vars) in d.branches_in(&n.title) {
+                            let vars: Vec<String> = vars.iter().map(|v| format!("${v}")).collect();
+                            warnings.push((
+                                rel.to_string(),
+                                format!(
+                                    "line {line}: node '{}' plays {seg}, which holds for the game (flow.hold), but it branches on {} as the segment starts, before the game is played: give each result a choice tagged #outcome:<name> (`-> won #outcome:won` then its jump) and have the game call og.flow.advance(world, flow, \"<name>\") when it is decided",
+                                    n.title,
+                                    vars.join(", ")
+                                ),
+                            ));
+                        }
                     }
                     Some(s.hotspots.into_iter().map(|k| k.id).collect())
                 }
@@ -253,7 +274,7 @@ pub(crate) fn check_flows(
         }
         out.extend(errors.into_iter().map(|e| (rel.to_string(), e)));
     }
-    out
+    (out, warnings)
 }
 
 pub(crate) static DIALOGUE: KindDef = KindDef {

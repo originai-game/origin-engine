@@ -632,7 +632,8 @@ pub(crate) fn diagnose(
         }
     }
     // Dialogues og.flow plays: their segments, defaults and lines. An error
-    // of the dialogue's (the cook fails), on a cached cook too.
+    // of the dialogue's (the cook fails), on a cached cook too; a held
+    // node's branch on the variables is a warning (the cook builds).
     let segment = |id: &str| {
         sources
             .iter()
@@ -643,7 +644,14 @@ pub(crate) fn diagnose(
                     .and_then(|t| t.segment())
             })
     };
-    for (rel, what) in story::check_flows(&stories, &segment, story_functions) {
+    let (flow_errors, flow_warnings) = story::check_flows(&stories, &segment, story_functions);
+    for (rel, what) in flow_warnings {
+        warnings.push(format!("assets/{rel}: {what}"));
+        if let Some(r) = reports.iter_mut().find(|r| r.source == rel) {
+            r.notes.push(what);
+        }
+    }
+    for (rel, what) in flow_errors {
         if let Some(r) = reports.iter_mut().find(|r| r.source == rel) {
             match &mut r.error {
                 Some(e) => {
