@@ -249,13 +249,6 @@ pub(crate) fn rgba_texture_bytes(texture: &TextureData) -> u64 {
     }
 }
 
-pub(crate) struct GpuFont {
-    pub(crate) layout: FontLayout,
-    pub(crate) bind_group: wgpu::BindGroup,
-    /// The scene's revision of the font this was built from.
-    pub(crate) revision: u64,
-}
-
 /// GPU copies of one scene's resources, indexed like the scene's handles.
 #[derive(Default)]
 pub(crate) struct SceneCache {
@@ -317,7 +310,6 @@ pub(crate) struct SceneCache {
     pub(crate) filters: Vec<TextureFilter>,
     /// The same with a repeating sampler (trails, ribbons, beams).
     pub(crate) ribbon_groups: Vec<Option<wgpu::BindGroup>>,
-    pub(crate) fonts: Vec<GpuFont>,
     /// Joints and weights of skinned (or morphed) meshes, by mesh.
     pub(crate) skins: Vec<Option<wgpu::Buffer>>,
     /// Each skinned mesh's joint boxes (`skin::joint_boxes`): its posed

@@ -798,9 +798,15 @@ pub(crate) fn load_font(eng: &Engine, path: &str) -> Result<usize, String> {
         bundle.font(&id, bytes.bytes()).map_err(|e| e.to_string())?
     };
     let m = &font.meta;
+    let (family, weight, axes) = font
+        .file
+        .as_deref()
+        .and_then(|b| skrifa::FontRef::new(b).ok())
+        .map(|f| face_info(&f))
+        .unwrap_or_else(|| (String::new(), 400.0, Vec::new()));
     let info = json!({
-        "glyphs": m.glyph_count, "pages": m.page_count, "emPx": m.em_px as u32,
-        "pxRange": m.px_range, "ascender": m.ascender, "descender": m.descender,
+        "family": family, "weight": weight, "axes": axes,
+        "ascender": m.ascender, "descender": m.descender,
         "lineHeight": m.ascender - m.descender + m.line_gap,
         "icons": font.names.len(), "pixel": font.pixel,
     });
@@ -818,6 +824,23 @@ pub(crate) fn load_font(eng: &Engine, path: &str) -> Result<usize, String> {
         face,
     });
     Ok(index)
+}
+
+/// A face's family (its typographic family, else its family name), its
+/// default weight and its variation axes' tags, as og.load.fontInfo
+/// reports them.
+fn face_info(f: &skrifa::FontRef) -> (String, f32, Vec<String>) {
+    use skrifa::{MetadataProvider, string::StringId};
+    let name = |id: StringId| {
+        f.localized_strings(id)
+            .english_or_first()
+            .map(|s| s.to_string())
+    };
+    let family = name(StringId::TYPOGRAPHIC_FAMILY_NAME)
+        .or_else(|| name(StringId::FAMILY_NAME))
+        .unwrap_or_default();
+    let axes = f.axes().iter().map(|a| a.tag().to_string()).collect();
+    (family, f.attributes().weight.value(), axes)
 }
 
 /// An icon set's face for the shared glyph atlas (`crate::present::faces`

@@ -191,9 +191,6 @@ fn fix_for(budget: &str) -> &'static str {
         "assetBytes" => "reduce the asset's content, or raise budgets.assetBytes",
         "soundSeconds" => "shorten the sound in its source, or raise budgets.soundSeconds",
         "videoSeconds" => "shorten the video in its source, or raise budgets.videoSeconds",
-        "fontGlyphs" => {
-            "narrow the font's charset in its .ogt (only the scripts the game shows), or raise budgets.fontGlyphs"
-        }
         "navPolygons" => {
             "raise the navmesh's cellSize or maxError, narrow its bounds, or raise budgets.navPolygons"
         }

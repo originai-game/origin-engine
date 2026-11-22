@@ -207,7 +207,12 @@ fn glyph_entries(g: &UiMassGlyph, side: f32, out: &mut Vec<[f32; 4]>) {
     let [ul, ut, ur, ub] = g.glyph.uv.map(f32::from);
     out.push([ul / side, ut / side, ur / side, ub / side]);
     out.push(g.glyph.rect);
-    out.push([g.advance, u32::from(g.glyph.tier == GlyphTier::Color) as f32, 0.0, 0.0]);
+    out.push([
+        g.advance,
+        u32::from(g.glyph.tier == GlyphTier::Color) as f32,
+        0.0,
+        0.0,
+    ]);
 }
 
 /// The blank entries of a glyph that draws from another page of the glyph
@@ -474,11 +479,25 @@ mod tests {
                 depth_sort: None,
             };
             texels.extend(
-                template_gpu(&batch, ([0.0; 4], 0), [1.0; 3], None, &mut table, &mut cache)
-                    .texels(),
+                template_gpu(
+                    &batch,
+                    ([0.0; 4], 0),
+                    [1.0; 3],
+                    None,
+                    &mut table,
+                    &mut cache,
+                )
+                .texels(),
             );
             let bytes = table.len();
-            template_gpu(&batch, ([0.0; 4], 0), [1.0; 3], None, &mut table, &mut cache);
+            template_gpu(
+                &batch,
+                ([0.0; 4], 0),
+                [1.0; 3],
+                None,
+                &mut table,
+                &mut cache,
+            );
             assert_eq!(table.len(), bytes, "same curve does not duplicate its LUT");
             // Prime spacing exercises interpolation, not just LUT knots.
             let mut times: Vec<_> = (0..=4093).map(|i| i as f32 / 4093.0).collect();

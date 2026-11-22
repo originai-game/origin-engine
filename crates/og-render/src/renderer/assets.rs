@@ -677,52 +677,6 @@ impl Renderer {
         }
         // Also when the pass was skipped: nothing is stamped in that frame.
         self.instances.sorted.set_params_moved(params_moved);
-        let stale_fonts: Vec<usize> = (0..self.cache.fonts.len())
-            .filter(|&i| {
-                replaced.contains(&scene.fonts()[i].atlas.index())
-                    || self.cache.fonts[i].revision != scene.font_revisions()[i]
-            })
-            .collect();
-        self.cache
-            .fonts
-            .truncate(stale_fonts.first().copied().unwrap_or(usize::MAX));
-        let start = self.cache.fonts.len();
-        for (i, font) in scene.fonts()[start..].iter().enumerate() {
-            let index = start + i;
-            let atlas = font.atlas.index();
-            let (Some(gpu), Some((w, h))) = (
-                self.cache.textures.get(atlas),
-                scene.texture_source(atlas).ok().map(TextureSource::size),
-            ) else {
-                return Err(RenderError::InvalidHandle(format!(
-                    "font {index}: atlas texture {atlas}"
-                )));
-            };
-            let atlas_size = Vec2::new(w as f32, h as f32);
-            let bind_group = sprite_bind_group(
-                &self.device,
-                &self.queue,
-                &self.sprite.sprite_layout,
-                &gpu.view,
-                &self.trilinear_sampler,
-                // -1: a page of colour glyph pairs (foreground_mix).
-                [
-                    if font.foreground {
-                        -1.0
-                    } else {
-                        font.distance_range
-                    },
-                    atlas_size.x,
-                    atlas_size.y,
-                    0.0,
-                ],
-            );
-            self.cache.fonts.push(GpuFont {
-                layout: FontLayout::new(font, atlas_size),
-                bind_group,
-                revision: scene.font_revisions()[index],
-            });
-        }
         Ok(())
     }
 }

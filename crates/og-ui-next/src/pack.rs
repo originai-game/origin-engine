@@ -11,6 +11,10 @@
 
 pub mod design;
 
+/// The default UI face, bundled for games with UI documents and drawn
+/// first wherever no game font or style names a role.
+pub const DEFAULT_FONT_ASSET: &str = "@styles/shared/InstrumentSans[wdth,wght].ttf";
+
 use serde_json::{Map, Value};
 use std::collections::BTreeMap;
 

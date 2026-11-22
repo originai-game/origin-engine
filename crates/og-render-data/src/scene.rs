@@ -11,6 +11,6 @@ pub use sprites::*;
 use crate::texture::TextureUpload;
 use glam::Vec3;
 pub use og_draw::{
-    EnvironmentMapHandle, FontHandle, LutHandle, MaterialHandle, MeshHandle, PaletteHandle,
+    EnvironmentMapHandle, LutHandle, MaterialHandle, MeshHandle, PaletteHandle,
     ShaderHandle, SpriteArray, TerrainHandle, TextureArrayHandle, TextureHandle,
 };

@@ -30,4 +30,4 @@ fn lut {
 }
 ```
 
-<sub>Module `load` line 292</sub>
+<sub>Module `load` line 291</sub>

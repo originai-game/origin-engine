@@ -23,4 +23,4 @@ struct ImageInfo {
 }
 ```
 
-<sub>Module `load` line 599</sub>
+<sub>Module `load` line 598</sub>

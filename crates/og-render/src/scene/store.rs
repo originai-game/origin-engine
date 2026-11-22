@@ -5,7 +5,6 @@ use super::*;
 mod colors;
 mod effects;
 mod environment_maps;
-mod fonts;
 mod materials;
 mod meshes;
 mod terrain;
@@ -123,8 +122,6 @@ impl RenderScene {
             drawable_serial: 0,
             material_aliases: Vec::new(),
             material_copies: Vec::new(),
-            fonts: Vec::new(),
-            font_revisions: Vec::new(),
             frame: SceneFrame {
                 tick: 0,
                 tick_rate: 60.0,
@@ -268,7 +265,6 @@ impl RenderScene {
             #[cfg(target_arch = "wasm32")]
             stream_packed: Default::default(),
             material_slots: Slots::default(),
-            font_slots: Slots::default(),
             environment_map_slots: Slots::default(),
             texture_array_slots: Slots::default(),
             palette_slots: Slots::default(),
@@ -282,22 +278,16 @@ impl RenderScene {
     }
 
     /// Every per-frame reference to a removed mesh, material, texture,
-    /// font, environment map, texture array, palette or LUT: instances,
+    /// environment map, texture array, palette or LUT: instances,
     /// skinned instances, sprites (and the arrays they draw from), texts,
     /// the overlay's, the environment map, the colour grading's LUT and the
     /// stylisation's palette (nothing to look at until something was
     /// removed).
     pub(crate) fn stale_handle(&self) -> Option<String> {
-        let (m, t, mat, f) = (
-            &self.mesh_slots,
-            &self.texture_slots,
-            &self.material_slots,
-            &self.font_slots,
-        );
+        let (m, t, mat) = (&self.mesh_slots, &self.texture_slots, &self.material_slots);
         if !(m.any_removed
             || t.any_removed
             || mat.any_removed
-            || f.any_removed
             || self.environment_map_slots.any_removed
             || self.texture_array_slots.any_removed
             || self.palette_slots.any_removed
@@ -377,14 +367,6 @@ impl RenderScene {
                 && !t.live(h.index(), h.generation())
             {
                 return Some(format!("sprite {k}: texture {} was removed", h.index()));
-            }
-        }
-        for (k, font) in self.fonts.iter().enumerate() {
-            if f.live(k, f.generation(k)) && !t.live(font.atlas.index(), font.atlas.generation()) {
-                return Some(format!(
-                    "font {k}: its atlas texture {} was removed",
-                    font.atlas.index()
-                ));
             }
         }
         None
@@ -630,10 +612,6 @@ impl RenderScene {
 
     pub(crate) fn meshes(&self) -> &[MeshData] {
         &self.meshes
-    }
-
-    pub(crate) fn fonts(&self) -> &[MsdfFont] {
-        &self.fonts
     }
 
     /// [`RenderScene::material_serial`]'s count of material changes.

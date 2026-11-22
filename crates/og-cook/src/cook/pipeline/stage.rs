@@ -631,9 +631,9 @@ pub(crate) fn group(
     }
     if sources
         .iter()
-        .any(|s| s.rel == og_ui_next::fonts::DEFAULT_FONT_ASSET)
+        .any(|s| s.rel == og_ui_next::pack::DEFAULT_FONT_ASSET)
     {
-        pack_faces.insert(og_ui_next::fonts::DEFAULT_FONT_ASSET.to_string());
+        pack_faces.insert(og_ui_next::pack::DEFAULT_FONT_ASSET.to_string());
     }
     Grouped {
         groups,

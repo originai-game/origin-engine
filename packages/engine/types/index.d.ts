@@ -9993,7 +9993,7 @@ export interface RibbonDesc {
 
 
 /**
- * A line or block of MSDF text in the world's xy plane facing +z, drawn this frame only (immediate mode: submit it every tick it should show).
+ * A line or block of text, drawn from the frame's glyph atlas, in the world's xy plane facing +z, drawn this frame only (immediate mode: submit it every tick it should show).
  *
  * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
  */
@@ -13167,7 +13167,7 @@ export interface ShapeClass {
 export type Asset = number & { readonly [handleType]: "Asset" };
 
 /**
- * A cooked MSDF font: its glyph table and one or more atlas pages.
+ * A cooked font: its file, which text is laid out and rastered from at the size it is drawn, or an icon set.
  *
  * A generational handle: a number the engine hands out. A dead handle is an error value, never a crash.
  */
@@ -13327,14 +13327,12 @@ export interface BundleInfo {
 
 /** A loaded font's metrics, in em units unless stated. */
 export interface FontInfo {
-  /** Glyphs cooked into it. */
-  readonly glyphs: number;
-  /** Atlas pages; the renderer draws one page per pass with one shared layout. */
-  readonly pages: number;
-  /** Atlas pixels per em. */
-  readonly emPx: number;
-  /** The distance range in atlas pixels. */
-  readonly pxRange: number;
+  /** The family its file names, as a font-family list calls it; empty for an icon set. */
+  readonly family: string;
+  /** Its default weight (OS/2's weight class, 400 regular). */
+  readonly weight: number;
+  /** Its variation axes' tags (wght, wdth, opsz …); empty for a static face. */
+  readonly axes: readonly string[];
   /** Ascender above the baseline. */
   readonly ascender: number;
   /** Descender below the baseline (negative). */
@@ -25555,7 +25553,7 @@ export interface UiDesc {
    */
   readonly roundedFont?: Font | null;
   /**
-   * Fonts for other scripts (Hebrew, Devanagari, a CJK face with `font { runtime true }`), tried in order after the locale's (og.i18n) for text the role's font cannot draw: each run of a mixed text takes the first font that has it.
+   * Fonts for other scripts (Hebrew, Devanagari, a CJK face, each fetched the first time its script shows), tried in order after the locale's (og.i18n) for text the role's font cannot draw: each run of a mixed text takes the first font that has it.
    *
    * @default []
    */
@@ -34645,7 +34643,7 @@ export declare namespace og {
      */
     function prefab(world: World, path: string): Result<Asset>;
     /**
-     * Load a cooked MSDF font for og.render.text, or an icon set (an `.ogt` of `type icons`: SVG icons cooked into a distance-field atlas like a font) for UiDesc.icons.font. Synchronous on both hosts: an ungrouped font-pack face must be in the cook's boot preload set. Undeclared paths are refused on both hosts, even if their bytes are resident; name them in game code or project.ogt publish.keep and recook (loading guide §1). Optional locale coverage uses og.i18n.
+     * Load a cooked font for og.render.text, or an icon set (an `.ogt` of `type icons`: SVG icons cooked into a distance-field atlas like a font) for UiDesc.icons.font. Synchronous on both hosts: an ungrouped font-pack face must be in the cook's boot preload set. Undeclared paths are refused on both hosts, even if their bytes are resident; name them in game code or project.ogt publish.keep and recook (loading guide §1). Optional locale coverage uses og.i18n.
      *
      * @param world The world that owns the font.
      * @param path The font's asset id, such as `fonts/NotoSansSC-Regular-subset.ttf`.

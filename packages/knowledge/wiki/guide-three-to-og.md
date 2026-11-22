@@ -217,7 +217,7 @@ numbers.
 
 There is no loader object and nothing is fetched by URL. Sources go in
 `assets/`, `og cook` turns them into `cooked/` (meshopt meshes with LODs
-and BVHs, KTX2 textures, QOA audio, MSDF fonts), and every `og.load`
+and BVHs, KTX2 textures, QOA audio, fonts as their files), and every `og.load`
 call names an asset id, the path under `assets/` (`og api show load`).
 
 | three.js | Origin Engine |

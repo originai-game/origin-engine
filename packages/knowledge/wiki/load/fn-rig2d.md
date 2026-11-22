@@ -30,4 +30,4 @@ fn rig2d {
 }
 ```
 
-<sub>Module `load` line 506</sub>
+<sub>Module `load` line 505</sub>

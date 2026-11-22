@@ -71,10 +71,6 @@ impl TextureHandle {
     }
 }
 handle!(
-    /// An MSDF font added to a [`RenderScene`].
-    FontHandle
-);
-handle!(
     /// Terrain data added to a [`RenderScene`] ([`RenderScene::add_terrain`]).
     TerrainHandle
 );

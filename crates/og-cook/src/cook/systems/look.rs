@@ -129,54 +129,6 @@ pub fn pack_files(source: &str, text: &str) -> Vec<(&'static str, &'static [u8])
     out
 }
 
-/// The CJK forms the project under `root` (its assets directory) shows:
-/// those of each `type strings` table's Chinese, Japanese or Korean
-/// `locale` (`zh-TW` traditional, `zh` simplified). A style's companions
-/// of a locale join the bundle only then.
-pub fn shown_cjk(root: &Path) -> Vec<og_ui_next::fonts::CjkLocale> {
-    fn walk(dir: &Path, out: &mut Vec<og_ui_next::fonts::CjkLocale>) {
-        let Ok(entries) = std::fs::read_dir(dir) else {
-            return;
-        };
-        for e in entries.flatten() {
-            let p = e.path();
-            if p.is_dir() {
-                walk(&p, out);
-                continue;
-            }
-            if p.extension().is_none_or(|x| x != "ogt") {
-                continue;
-            }
-            let Ok(t) = std::fs::read_to_string(&p) else {
-                continue;
-            };
-            if !t.lines().any(|l| l.trim() == "type strings") {
-                continue;
-            }
-            for l in t.lines() {
-                let Some(tag) = l.trim_start().strip_prefix("locale \"") else {
-                    continue;
-                };
-                let tag = tag.split('"').next().unwrap_or("");
-                let primary = tag
-                    .split(['-', '_'])
-                    .next()
-                    .unwrap_or("")
-                    .to_ascii_lowercase();
-                if matches!(primary.as_str(), "zh" | "ja" | "ko") {
-                    let l = og_ui_next::fonts::CjkLocale::of_locale(tag);
-                    if !out.contains(&l) {
-                        out.push(l);
-                    }
-                }
-            }
-        }
-    }
-    let mut out = Vec::new();
-    walk(root, &mut out);
-    out
-}
-
 /// The built-in asset `name` names (`"@canvas/paper"` or its full id
 /// `"@canvas/paper.png"`): its bundle id and bytes.
 pub fn builtin(name: &str) -> Option<(&'static str, &'static [u8])> {

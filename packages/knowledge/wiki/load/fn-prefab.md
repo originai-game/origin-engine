@@ -30,4 +30,4 @@ fn prefab {
 }
 ```
 
-<sub>Module `load` line 249</sub>
+<sub>Module `load` line 248</sub>

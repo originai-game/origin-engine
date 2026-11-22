@@ -38,12 +38,6 @@
       "visibility": "public"
     },
     {
-      "path": "assets/fonts/noto-sans-sc-msdf.png",
-      "sha256": "d4fcd3234c925664bfc8a1cc6dad666963bfa57694817ad81cbf610d9a7e147d",
-      "size": 103460,
-      "visibility": "public"
-    },
-    {
       "path": "assets/kit/adobe.glb",
       "sha256": "0658e9e2ac32956c99cbbf4853fdbfbfcf57593d1c9d4edbf298b4f3346e5a16",
       "size": 893176,

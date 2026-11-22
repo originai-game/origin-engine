@@ -7,7 +7,7 @@
 //! - [`paint::Paint`]: og-ui's paint arena, drawn by the paint pass.
 //! - [`ui`]: the UI pass's shapes, paints, layers, filters, paths and mass
 //!   elements.
-//! - The resource handles ([`TextureHandle`], [`FontHandle`], ...) a scene
+//! - The resource handles ([`TextureHandle`], ...) a scene
 //!   gives what is added to it.
 //! - [`ColorFilter`]: the colour vision filter over the presented frame.
 //! - [`RangeLimit`]: how far over SDR white the presented frame may go.

@@ -187,7 +187,12 @@ impl IconFace {
     /// drops it after [`UNUSED_FRAMES`] unused frames and this puts it
     /// back). The quad's colour and clip are the painter's; `None` when
     /// the atlas has no room for it this frame (the next has).
-    pub fn quad(&self, atlas: &mut Atlas, index: u32, square: [f32; 4]) -> Option<(PaintQuad, u32)> {
+    pub fn quad(
+        &self,
+        atlas: &mut Atlas,
+        index: u32,
+        square: [f32; 4],
+    ) -> Option<(PaintQuad, u32)> {
         let cell = self.cells.get(index as usize)?;
         let key = GlyphKey::new(GlyphTier::Field, self.id, 0, ICON_PUA + index, 0);
         let slot = match atlas.get(&key) {

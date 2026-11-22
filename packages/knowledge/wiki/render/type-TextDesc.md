@@ -6,7 +6,7 @@ Module [`render`](../render.md) · [index](../index.md)
 
 ### `TextDesc` (desc struct)
 
-A line or block of MSDF text in the world's xy plane facing +z, drawn this frame only (immediate mode: submit it every tick it should show).
+A line or block of text, drawn from the frame's glyph atlas, in the world's xy plane facing +z, drawn this frame only (immediate mode: submit it every tick it should show).
 
 A desc: every field may be omitted and takes its default; `{}` is valid.
 
@@ -29,7 +29,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 
 ```ogt
 struct TextDesc {
-  doc "A line or block of MSDF text in the world's xy plane facing +z, drawn this frame only (immediate mode: submit it every tick it should show)."
+  doc "A line or block of text, drawn from the frame's glyph atlas, in the world's xy plane facing +z, drawn this frame only (immediate mode: submit it every tick it should show)."
   desc true
   field font Option.Font "The font from og.load.font; null draws nothing."
   field text String "The text; `\\n` starts a new line."

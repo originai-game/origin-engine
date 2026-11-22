@@ -17,7 +17,6 @@
 //!   totalBytes 67108864  # cooked bytes of the project
 //!   soundSeconds 600     # the length of one sound
 //!   videoSeconds 300     # the length of one video
-//!   fontGlyphs 8192      # glyphs cooked into one font's atlas
 //!   navPolygons 65536    # polygons of one navmesh
 //!   sceneEntities 10000  # entities one scene spawns
 //!   emitterParticles 16384 # max particles of one emitter
@@ -74,8 +73,6 @@ pub struct Budgets {
     pub sound_seconds: u64,
     /// Seconds of one video.
     pub video_seconds: u64,
-    /// Glyphs cooked into one font (its charset).
-    pub font_glyphs: u64,
     /// Polygons of one navmesh.
     pub nav_polygons: u64,
     /// Entities of one scene.
@@ -109,7 +106,6 @@ impl Default for Budgets {
             total_bytes: 64 << 20,
             sound_seconds: 600,
             video_seconds: 300,
-            font_glyphs: 8192,
             nav_polygons: 65_536,
             scene_entities: 10_000,
             emitter_particles: 16_384,
@@ -119,7 +115,7 @@ impl Default for Budgets {
     }
 }
 
-const KEYS: [&str; 15] = [
+const KEYS: [&str; 14] = [
     "triangles",
     "vertices",
     "textureSize",
@@ -129,7 +125,6 @@ const KEYS: [&str; 15] = [
     "totalBytes",
     "soundSeconds",
     "videoSeconds",
-    "fontGlyphs",
     "navPolygons",
     "sceneEntities",
     "emitterParticles",
@@ -167,7 +162,6 @@ impl Budgets {
                 "totalBytes" => b.total_bytes = v,
                 "soundSeconds" => b.sound_seconds = v,
                 "videoSeconds" => b.video_seconds = v,
-                "fontGlyphs" => b.font_glyphs = v,
                 "navPolygons" => b.nav_polygons = v,
                 "sceneEntities" => b.scene_entities = v,
                 "emitterParticles" => b.emitter_particles = v,
@@ -196,7 +190,6 @@ impl Budgets {
             "totalBytes": self.total_bytes,
             "soundSeconds": self.sound_seconds,
             "videoSeconds": self.video_seconds,
-            "fontGlyphs": self.font_glyphs,
             "navPolygons": self.nav_polygons,
             "sceneEntities": self.scene_entities,
             "emitterParticles": self.emitter_particles,
@@ -220,7 +213,6 @@ impl Budgets {
             total_bytes: n("totalBytes", d.total_bytes),
             sound_seconds: n("soundSeconds", d.sound_seconds),
             video_seconds: n("videoSeconds", d.video_seconds),
-            font_glyphs: n("fontGlyphs", d.font_glyphs),
             nav_polygons: n("navPolygons", d.nav_polygons),
             scene_entities: n("sceneEntities", d.scene_entities),
             emitter_particles: n("emitterParticles", d.emitter_particles),
@@ -556,14 +548,15 @@ fn other_stats(bundle: &Bundle, id: &str, ty: &str) -> Result<Option<(String, Va
             let f = bundle.load_font(id).map_err(e)?;
             (
                 "font",
+                // A text font's glyphs are its file's; an icon set's, its own.
                 json!({
-                    "glyphs": f.meta.glyph_count,
-                    "kerningPairs": f.kerning.len(),
-                    "pages": f.meta.page_count,
-                    "pageWidth": f.meta.page_width,
-                    "pageHeight": f.meta.page_height,
-                    "emPx": milli(f.meta.em_px as f64),
-                    "uncookedCodepoints": f.meta.uncooked_codepoints,
+                    "glyphs": f
+                        .file
+                        .as_deref()
+                        .and_then(|b| ttf_parser::Face::parse(b, 0).ok())
+                        .map_or(f.meta.glyph_count, |face| u32::from(face.number_of_glyphs())),
+                    "fileBytes": f.file.as_ref().map_or(0, |b| b.len()),
+                    "icons": f.names.len(),
                 }),
             )
         }
@@ -922,7 +915,6 @@ pub fn asset_flags(asset: &Value, b: &Budgets) -> Vec<Value> {
         }
     }
     for (key, field, budget, limit, what) in [
-        ("font", "glyphs", "fontGlyphs", b.font_glyphs, "font glyphs"),
         (
             "navmesh",
             "polygons",

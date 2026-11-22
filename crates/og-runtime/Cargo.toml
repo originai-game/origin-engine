@@ -31,6 +31,8 @@ og-ui-model = { path = "../og-ui-model" }
 og-ui-next = { path = "../og-ui-next" }
 # Text shaping, run-time glyphs and fonts (`shaping`), and Rive files.
 og-text = { path = "../og-text", default-features = false }
+# og.load.fontInfo's family, weight and axes, from the font file.
+skrifa = { version = "=0.44.0", default-features = false, features = ["libm"] }
 og-rive = { path = "../og-rive" }
 og-css = { path = "../og-css" }
 og-input = { path = "../og-input" }
@@ -60,15 +62,12 @@ og-video = { path = "../og-video" }
 image = { workspace = true, features = ["exr", "webp"] }
 
 [features]
-default = ["shaping", "fetch"]
+default = ["fetch"]
 # A published game: the probe keeps only its player-facing members, the
 # renderer times no pass on the GPU (og-render's `publish`), and the
 # reflected and record field docs are empty (og-core's and og-api's
 # `publish`: nothing in a publish build reads them).
 publish = ["og-probe/publish", "og-render/publish", "og-core/publish", "og-api/publish"]
-# The UI's run-time shaping (rustybuzz: Arabic, Indic and the other shaped
-# scripts). A build for games without them can leave it out.
-shaping = ["og-text/shaping"]
 # Natively, og.load.data's integrity check of a version's files
 # (world/data.rs, og-net's sha384). On the web the engine Worker's fetch
 # checks it, so the wasm takes none.

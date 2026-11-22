@@ -6,12 +6,12 @@ Module [`load`](../load.md) · [index](../index.md)
 
 ### `Font` (handle)
 
-A cooked MSDF font: its glyph table and one or more atlas pages.
+A cooked font: its file, which text is laid out and rastered from at the size it is drawn, or an icon set.
 
 A generational handle: a number the engine hands out. A dead handle is an error value, never a crash.
 
 ```ogt
-handle Font "A cooked MSDF font: its glyph table and one or more atlas pages."
+handle Font "A cooked font: its file, which text is laid out and rastered from at the size it is drawn, or an icon set."
 ```
 
 <sub>Module `load` line 9</sub>

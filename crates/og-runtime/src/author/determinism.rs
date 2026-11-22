@@ -245,76 +245,52 @@ pub fn anim_hash() -> u64 {
 /// the same OpenType bytes on both hosts: a paragraph that breaks (combining
 /// marks, a tab, a no-break space, a soft hyphen, a zero-width space) and
 /// one whose Arabic and Devanagari fall back to the game's fonts, each at
-/// three widths. No renderer or system fonts.
+/// three widths, through the UI's Parley layout. No renderer or system
+/// fonts.
 pub fn text_layout_hash() -> u64 {
-    use og_text::text::{FontMetrics, UiFont, break_lines, pieces};
-    use og_ui_next::fonts::{FontRole, Fonts};
+    use og_text::fonts::Collection;
+    use og_text::layout::{Style, Text};
     use std::sync::Arc;
-    let msdf = og_render::MsdfFont {
-        atlas: og_render::TextureHandle::from_slot(1).unwrap(),
-        distance_range: 4.0,
-        foreground: false,
-        silhouette: false,
-        line_height: 1.2,
-        glyphs: Vec::new(),
-        kerning: Vec::new(),
+    let mut fonts = Collection::new();
+    for bytes in [
+        &include_bytes!("../../../../tests/fixtures/ui-text/assets/fonts/Inter-Display.ttf")[..],
+        include_bytes!("../../../../tests/fixtures/ui-text/assets/fonts/NotoSansArabic-subset.ttf"),
+        include_bytes!(
+            "../../../../tests/fixtures/ui-text/assets/fonts/NotoSansDevanagari-subset.ttf"
+        ),
+    ] {
+        fonts.add(Arc::new(bytes.to_vec())).expect("a fixture face");
+    }
+    let style = Style {
+        family: "Inter, \"Noto Sans Arabic\", \"Noto Sans Devanagari\"",
+        size: 16.0,
+        ..Style::default()
     };
-    let mut scene = og_render::RenderScene::new();
-    let handle = scene.add_font(msdf.clone());
-    let face = |bytes: &[u8]| {
-        let file = og_text::shape::FontFile::new(Arc::new(bytes.to_vec())).unwrap();
-        UiFont {
-            handle: Some(handle),
-            metrics: FontMetrics::from_msdf(&msdf).with_file(Some(file)),
-        }
-    };
-    let latin = face(include_bytes!(
-        "../../../../tests/fixtures/ui-text/assets/fonts/Inter-Display.ttf"
-    ));
-    let arabic = face(include_bytes!(
-        "../../../../tests/fixtures/ui-text/assets/fonts/NotoSansArabic-subset.ttf"
-    ));
-    let indic = face(include_bytes!(
-        "../../../../tests/fixtures/ui-text/assets/fonts/NotoSansDevanagari-subset.ttf"
-    ));
-    let mut fonts = Fonts {
-        body: latin,
-        fallbacks: vec![arabic, indic],
-        ..Default::default()
-    };
-    fonts.link();
     let mut h = StableHasher::new();
-    let size = 16.0;
+    let mut layout = Text::new();
     for text in [
         "office cafe\u{301}\tA\u{a0}B a/b-c\u{200b}def ab\u{ad}cdef",
         "مرحبا 42 नमस्ते",
     ] {
-        let font = fonts.for_text(FontRole::Body, text);
+        layout.shape(&mut fonts, text, &style);
         for width in [53.25f32, 91.75, 231.5] {
-            let lines = break_lines(
-                text,
-                &font.metrics,
-                size,
-                0.0,
-                og_text::shape::Features::NONE,
-                Some(width),
-            );
-            for line in &lines {
-                h.write_str(&line.text);
-                h.write_u32(line.width.to_bits());
-                for p in pieces(font, &line.text, og_i18n::Direction::Ltr, 0.0) {
-                    h.write_str(&p.text);
-                    for v in [p.scale, p.dx, p.width] {
+            layout.break_at(&mut fonts, text, &style, Some(width));
+            layout.lines(|m, range| {
+                h.write_u32(range.start as u32);
+                h.write_u32(range.end as u32);
+                for v in m {
+                    h.write_u32(v.to_bits());
+                }
+            });
+            layout.runs(&fonts, |run| {
+                h.write_u32(run.face.0);
+                for g in run.glyphs {
+                    h.write_u32(g.id);
+                    for v in [g.x, g.y, g.advance] {
                         h.write_u32(v.to_bits());
                     }
-                    for g in &p.placements {
-                        for v in [g.advance, g.x, g.y] {
-                            h.write_u32(v.to_bits());
-                        }
-                        h.write_u32(g.glyph.map_or(u32::MAX, u32::from));
-                    }
                 }
-            }
+            });
         }
     }
     h.finish()

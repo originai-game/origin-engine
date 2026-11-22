@@ -391,7 +391,7 @@ fn chinese_locales_never_take_the_other_script() {
 fn default_ui_uses_instrument_outlines_before_locale_fallbacks() {
     let bundle = og_cook::runtime::Bundle::open(&project().join("cooked")).unwrap();
     let cooked = bundle
-        .load_font(og_ui_next::fonts::DEFAULT_FONT_ASSET)
+        .load_font(og_ui_next::pack::DEFAULT_FONT_ASSET)
         .expect("a UI game bundles its default face");
     assert!(
         cooked.pages.is_empty(),
@@ -422,6 +422,13 @@ fn default_ui_uses_instrument_outlines_before_locale_fallbacks() {
         engine,
         "fonts/Display.ttf".into(),
     )));
+    // FontInfo names the face its file is: Chakra Petch Bold Italic, static.
+    let info = og_runtime::og_load_font_info(engine, face.as_f64().unwrap()).unwrap();
+    assert_eq!(
+        (&info["family"], &info["weight"], &info["axes"]),
+        (&json!("Chakra Petch"), &json!(700.0), &json!([])),
+        "{info}"
+    );
     value(og_runtime::host_impl::answer(og_ui_configure(
         engine,
         Some(json!({"font": face}).to_string()),

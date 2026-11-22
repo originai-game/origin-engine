@@ -45,7 +45,7 @@ export default og.game({
     startTick = world.tick;
   },
   commands: { arabic: (world) => { og.i18n.setLocale(world, "ar"); }, hidden: (world, [code, path]) => { hiddenResult = new Function("og", "world", "path", code)(og, world, path); } },
-  facts(world) { return { startTick, same, draws, tick: world.tick, hiddenResult, glyphs: must(og.load.fontInfo(world, font)).glyphs, fonts: og.i18n.locale(world).fonts, completions: og.load.completions(world) }; }
+  facts(world) { return { startTick, same, draws, tick: world.tick, hiddenResult, family: must(og.load.fontInfo(world, font)).family, fonts: og.i18n.locale(world).fonts, completions: og.load.completions(world) }; }
 });
 `);
 cookProject(project, repo);
@@ -92,8 +92,8 @@ try {
   await tab.until("globalThis.__error || globalThis.__shell.probe('state').then(s => s.facts?.startTick === 0)", 60_000);
   const error = await tab.eval<string | null>("globalThis.__error");
   if (error) throw new Error(error);
-  const state = await tab.eval<{ facts: { startTick: number; same: boolean; glyphs: number; completions: unknown[] } }>("__shell.probe('state')");
-  check(state.facts.startTick === 0 && state.facts.same && state.facts.glyphs > 0, "start loaded a ready, stable font at tick 0 outside the locale chain");
+  const state = await tab.eval<{ facts: { startTick: number; same: boolean; family: string; completions: unknown[] } }>("__shell.probe('state')");
+  check(state.facts.startTick === 0 && state.facts.same && state.facts.family.length > 0, "start loaded a ready, stable font at tick 0 outside the locale chain");
   check(state.facts.completions.length === 0, "boot font loading introduced no host-timed completion");
   const latin = "/game/cooked/fonts/latin/NotoSans-Latin.ttf.face.ogb";
   const arabic = "/game/cooked/fonts/arabic/NotoSansArabic-Regular.ttf.face.ogb";

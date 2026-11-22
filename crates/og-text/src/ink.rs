@@ -5,50 +5,56 @@
 //! glyph's outline is clipped to the line's band and the leftmost and
 //! rightmost ink inside it make one interval.
 
-use crate::text::{FontMetrics, UiFont, VisualGlyph};
+use crate::fonts::Collection;
+use crate::layout::GlyphRun;
+use skrifa::MetadataProvider;
+use skrifa::instance::{LocationRef, NormalizedCoord, Size};
+use skrifa::outline::{DrawSettings, OutlinePen};
 
 /// Pieces per quadratic and cubic curve: within a few hundredths of an em
 /// of the curve, far below the gap around the ink.
 const QUAD_STEPS: u32 = 6;
 const CUBIC_STEPS: u32 = 8;
 
-/// The x ranges, px from the line's start, where `glyphs` (left to right,
-/// drawn `size` px tall in `font`) put ink between `top` and `bottom` px
-/// below the baseline, each widened by `gap` on both sides, sorted and
-/// merged. `cjk`: whether CJK text is skipped too (`all`); under `auto`
-/// a CJK script run is crossed (§2.10.4's note). A glyph from a face
-/// without its file has no outline here and is crossed.
+/// The x ranges, CSS px from the box's left, where `run`'s glyphs put ink
+/// between `top` and `bottom` px below its baseline, each widened by `gap`
+/// on both sides, sorted and merged. Whether a run is skipped at all (CSS
+/// `auto` crosses a CJK run, §2.10.4's note) is its caller's choice.
 pub fn ink_gaps(
-    font: &UiFont,
-    glyphs: &[VisualGlyph],
-    size: f32,
+    fonts: &Collection,
+    run: &GlyphRun,
     top: f32,
     bottom: f32,
     gap: f32,
-    cjk: bool,
 ) -> Vec<(f32, f32)> {
+    let Ok(face) = skrifa::FontRef::from_index(fonts.file(run.face), run.index) else {
+        return Vec::new();
+    };
+    let coords: Vec<NormalizedCoord> = run
+        .coords
+        .iter()
+        .map(|&c| NormalizedCoord::from_bits(c))
+        .collect();
+    let outlines = face.outline_glyphs();
     let mut out: Vec<(f32, f32)> = Vec::new();
-    let mut pen = 0.0f32;
-    // The script run so far: a Common character takes the one before it.
-    let mut run_cjk = false;
-    for g in glyphs {
-        let x = pen + g.x * size;
-        pen += g.advance * size;
-        let script = og_i18n::text::cjk_script(g.ch);
-        let is_cjk = script.unwrap_or(run_cjk);
-        if script.is_some() {
-            run_cjk = is_cjk;
-        }
-        if is_cjk && !cjk {
-            continue;
-        }
-        let Some(m) = metrics_of(font, g.font) else {
+    for g in run.glyphs {
+        let Some(glyph) = outlines.get(skrifa::GlyphId::new(g.id)) else {
             continue;
         };
-        // The band in the glyph's em, y up from its own baseline.
-        let dy = g.y * size;
-        if let Some((l, r)) = glyph_ink(m, g, (-(bottom + dy) / size, -(top + dy) / size)) {
-            out.push((x + l * size - gap, x + r * size + gap));
+        // The band in px, y up from the glyph's own baseline.
+        let dy = g.y - run.baseline;
+        let mut clip = Clip {
+            low: -(bottom - dy),
+            high: -(top - dy),
+            start: (0.0, 0.0),
+            at: (0.0, 0.0),
+            ink: None,
+        };
+        let settings = DrawSettings::unhinted(Size::new(run.size), LocationRef::new(&coords));
+        if glyph.draw(settings, &mut clip).is_ok()
+            && let Some((l, r)) = clip.ink
+        {
+            out.push((g.x + l - gap, g.x + r + gap));
         }
     }
     out.sort_by(|a, b| a.0.total_cmp(&b.0));
@@ -62,40 +68,8 @@ pub fn ink_gaps(
     merged
 }
 
-/// The metrics of [`VisualGlyph::font`] `k`.
-fn metrics_of(font: &UiFont, k: u8) -> Option<&FontMetrics> {
-    match k {
-        0 => Some(&font.metrics),
-        k => Some(&font.metrics.runs.as_ref()?.get(k as usize - 1)?.metrics),
-    }
-}
-
-/// The leftmost and rightmost ink of `g`'s outline between `band.0` and
-/// `band.1` em above its baseline, em from its origin.
-fn glyph_ink(m: &FontMetrics, g: &VisualGlyph, band: (f32, f32)) -> Option<(f32, f32)> {
-    let file = m.file.as_ref()?;
-    let mut face = ttf_parser::Face::parse(file.bytes(), 0).ok()?;
-    for &(tag, value) in file.variations() {
-        face.set_variation(ttf_parser::Tag::from_bytes(&tag), value);
-    }
-    let id = match g.glyph {
-        Some(id) => ttf_parser::GlyphId(id),
-        None => face.glyph_index(g.ch)?,
-    };
-    let upem = f32::from(face.units_per_em());
-    let mut clip = Clip {
-        low: band.0 * upem,
-        high: band.1 * upem,
-        start: (0.0, 0.0),
-        at: (0.0, 0.0),
-        ink: None,
-    };
-    face.outline_glyph(id, &mut clip)?;
-    clip.ink.map(|(l, r)| (l / upem, r / upem))
-}
-
 /// An outline builder that keeps the x extent of its segments' parts
-/// inside a horizontal band, in font units.
+/// inside a horizontal band, in px.
 struct Clip {
     low: f32,
     high: f32,
@@ -133,7 +107,7 @@ impl Clip {
     }
 }
 
-impl ttf_parser::OutlineBuilder for Clip {
+impl OutlinePen for Clip {
     fn move_to(&mut self, x: f32, y: f32) {
         self.start = (x, y);
         self.at = (x, y);

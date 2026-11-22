@@ -126,7 +126,7 @@ module render {
 | [`RibbonPoint`](render/type-RibbonPoint.md) | desc struct |  | One point of a ribbon. |
 | [`RibbonDesc`](render/type-RibbonDesc.md) | desc struct |  | An explicit camera-facing strip through points, drawn this frame only (immediate mode, as og.render.sprite): submit it every tick it should show. |
 | [`og.render.ribbon`](render/fn-ribbon.md) | function | `(world: World, desc?: RibbonDesc): Result<void>` | Draw a ribbon this frame. |
-| [`TextDesc`](render/type-TextDesc.md) | desc struct |  | A line or block of MSDF text in the world's xy plane facing +z, drawn this frame only (immediate mode: submit it every tick it should show). |
+| [`TextDesc`](render/type-TextDesc.md) | desc struct |  | A line or block of text, drawn from the frame's glyph atlas, in the world's xy plane facing +z, drawn this frame only (immediate mode: submit it every tick it should show). |
 | [`TextMeasureDesc`](render/type-TextMeasureDesc.md) | desc struct |  | Text to measure with og.render.measureText, laid out as og.render.text lays it out. |
 | [`TextMetrics`](render/type-TextMetrics.md) | struct |  | The extent of a laid-out text, in world units. |
 | [`SpriteDesc`](render/type-SpriteDesc.md) | desc struct |  | A textured or solid quad in the world's xy plane facing +z (or turned to the camera, `facing`), drawn this frame only (immediate mode, as og.render.text): submit it every tick it should show. |

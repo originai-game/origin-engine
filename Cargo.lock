@@ -877,15 +877,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0e9c71c2167ca323c882b99918929403426e2373ea17242ff5653e0d5e1058be"
 
 [[package]]
-name = "elsa"
-version = "1.11.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9abf33c656a7256451ebb7d0082c5a471820c31269e49d807c538c252352186e"
-dependencies = [
- "stable_deref_trait",
-]
-
-[[package]]
 name = "embedded-io"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3591,6 +3582,7 @@ dependencies = [
  "ring",
  "serde",
  "serde_json",
+ "skrifa",
  "tokio",
  "ttf-parser",
  "wgpu",
@@ -3695,13 +3687,11 @@ version = "0.9.0"
 dependencies = [
  "fdsm",
  "font-rs",
- "harfrust",
  "image",
  "kurbo",
  "libm",
  "nalgebra 0.34.2",
  "og-core",
- "og-css",
  "og-draw",
  "og-i18n",
  "parley",
@@ -3710,7 +3700,6 @@ dependencies = [
  "skrifa",
  "tiny-skia",
  "ttf-parser",
- "unicode-bidi",
 ]
 
 [[package]]
@@ -3751,7 +3740,6 @@ version = "0.9.0"
 dependencies = [
  "accesskit",
  "bytemuck",
- "elsa",
  "nsh-input",
  "nsh-reactive",
  "nsh-tailwind",
@@ -3769,7 +3757,6 @@ dependencies = [
  "rune-taffy",
  "rustc-hash 2.1.3",
  "serde_json",
- "skrifa",
  "taffy",
 ]
 

@@ -8383,10 +8383,9 @@ impl ToJson for BundleInfo {
 /// `FontInfo`: packages/knowledge/wiki/load.md.
 #[derive(Clone, Debug, PartialEq)]
 pub struct FontInfo {
-    pub glyphs: u32,
-    pub pages: u32,
-    pub em_px: u32,
-    pub px_range: f32,
+    pub family: String,
+    pub weight: f32,
+    pub axes: Vec<String>,
     pub ascender: f32,
     pub descender: f32,
     pub line_height: f32,
@@ -8396,10 +8395,9 @@ pub struct FontInfo {
 impl Default for FontInfo {
     fn default() -> Self {
         Self {
-            glyphs: Default::default(),
-            pages: Default::default(),
-            em_px: Default::default(),
-            px_range: Default::default(),
+            family: Default::default(),
+            weight: Default::default(),
+            axes: Default::default(),
             ascender: Default::default(),
             descender: Default::default(),
             line_height: Default::default(),
@@ -8415,10 +8413,9 @@ impl FromJson for FontInfo {
     fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
         let o = object(v)?;
         Ok(Self {
-            glyphs: field(o, "glyphs", d.glyphs)?,
-            pages: field(o, "pages", d.pages)?,
-            em_px: field(o, "emPx", d.em_px)?,
-            px_range: field(o, "pxRange", d.px_range)?,
+            family: field(o, "family", d.family)?,
+            weight: field(o, "weight", d.weight)?,
+            axes: field(o, "axes", d.axes)?,
             ascender: field(o, "ascender", d.ascender)?,
             descender: field(o, "descender", d.descender)?,
             line_height: field(o, "lineHeight", d.line_height)?,
@@ -8430,10 +8427,9 @@ impl FromJson for FontInfo {
 impl ToJson for FontInfo {
     fn to_json(&self) -> Value {
         let mut o = Map::new();
-        o.insert("glyphs".into(), self.glyphs.to_json());
-        o.insert("pages".into(), self.pages.to_json());
-        o.insert("emPx".into(), self.em_px.to_json());
-        o.insert("pxRange".into(), self.px_range.to_json());
+        o.insert("family".into(), self.family.to_json());
+        o.insert("weight".into(), self.weight.to_json());
+        o.insert("axes".into(), self.axes.to_json());
         o.insert("ascender".into(), self.ascender.to_json());
         o.insert("descender".into(), self.descender.to_json());
         o.insert("lineHeight".into(), self.line_height.to_json());

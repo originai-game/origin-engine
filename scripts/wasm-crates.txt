@@ -22,11 +22,10 @@
 # each for every game, 2D or 3D (docs/web-export.md §Variants): `publish`
 # and `lanes` (dist/web-publish), with both physics simulations and the 3D
 # world, each an on-demand module (rapier2d is `physics2d`, rapier3d
-# `physics3d`, terrain and water `world3d`), and og-text's `shaping`
-# (rustybuzz: Arabic, Indic); every engine module is in each, split into
+# `physics3d`, terrain and water `world3d`); every engine module is in each, split into
 # the parts the web loads on first use (packages/engine/scripts/
 # wasm-modules.json). The size gate holds each download to the budget.
 og-render   required
 og-host-web required publish lanes
-variant publish         og-host-web publish,shaping
-lanes   lanes           og-host-web publish,shaping
+variant publish         og-host-web publish
+lanes   lanes           og-host-web publish

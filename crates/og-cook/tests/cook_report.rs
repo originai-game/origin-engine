@@ -77,7 +77,7 @@ fn every_asset_type_reports_its_figures_and_its_budgets_flag_it() {
 
     let font = &asset(&json, "fonts/NotoSansSC-Regular-subset.ttf")["font"];
     let glyphs = font["glyphs"].as_u64().unwrap();
-    assert!(glyphs > 0 && font["pages"].as_u64() > Some(0), "{font}");
+    assert!(glyphs > 0 && font["fileBytes"].as_u64() > Some(0), "{font}");
     let nav = &asset(&json, "nav/yard.ogt")["navmesh"];
     let polygons = nav["polygons"].as_u64().unwrap();
     assert!(
@@ -99,7 +99,6 @@ fn every_asset_type_reports_its_figures_and_its_budgets_flag_it() {
     // Budgets one under each figure flag exactly those assets.
     let tight = Budgets {
         sound_seconds: 0,
-        font_glyphs: glyphs - 1,
         nav_polygons: polygons - 1,
         scene_entities: 3,
         ..Budgets::default()
@@ -119,10 +118,7 @@ fn every_asset_type_reports_its_figures_and_its_budgets_flag_it() {
             .collect()
     };
     assert_eq!(flags("audio/blip.wav"), [("soundSeconds".to_string(), 1)]);
-    assert_eq!(
-        flags("fonts/NotoSansSC-Regular-subset.ttf"),
-        [("fontGlyphs".to_string(), glyphs)]
-    );
+    assert_eq!(flags("fonts/NotoSansSC-Regular-subset.ttf"), []);
     assert_eq!(
         flags("nav/yard.ogt"),
         [("navPolygons".to_string(), polygons)]

@@ -55,8 +55,9 @@ pub enum UiParticleShape {
 
 /// The symbols a [`UiMassKind::Number`]'s glyphs cover, in the shader's
 /// symbol code order: the symbol's index is its code.
-pub const NUMBER_SYMBOLS: [char; 15] =
-    ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '+', '-', '.', 'k', 'M'];
+pub const NUMBER_SYMBOLS: [char; 15] = [
+    '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '+', '-', '.', 'k', 'M',
+];
 
 /// One glyph of a mass template's text: laid out into
 /// [`crate::sprites::TextGlyph`] and rastered into the glyph atlas (a

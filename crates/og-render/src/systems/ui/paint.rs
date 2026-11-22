@@ -18,8 +18,8 @@
 //! when the atlas makes a page, and only the plots whose pixels changed
 //! written each frame.
 
-use crate::gpu::data_texture::{DataTexture, data_entry};
 use crate::TextureHandle;
+use crate::gpu::data_texture::{DataTexture, data_entry};
 use bytemuck::{Pod, Zeroable};
 use og_draw::glyphs::{Atlas, GlyphTier, PLOT};
 use og_draw::paint::{Paint, PaintKind};

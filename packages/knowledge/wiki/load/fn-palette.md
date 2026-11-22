@@ -30,4 +30,4 @@ fn palette {
 }
 ```
 
-<sub>Module `load` line 409</sub>
+<sub>Module `load` line 408</sub>

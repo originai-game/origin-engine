@@ -690,15 +690,9 @@ OG_GFX_DEBUG_CASCADES=1 cargo run --release -p og-tests-cooked --bin og-gfx -- c
 `crates/og-tests/perf/` per tier and adapter, compared with 15 %
 tolerance.
 
-**The MSDF test atlas** (`crates/og-tests/assets/fonts/noto-sans-sc-msdf.*`)
-is Noto Sans SC (an OFL subset; `OFL.txt` alongside), ASCII plus
-原点引擎文字渲染, generated with
-[msdf-atlas-gen](https://github.com/Chlumsky/msdf-atlas-gen) (commit
-6148900):
-`msdf-atlas-gen -font NotoSansSC-Regular-subset.ttf -charset noto-sans-sc-msdf.charset -type msdf -format png -size 32 -pxrange 4 -dimensions 512 256 -yorigin top -imageout noto-sans-sc-msdf.png -csv noto-sans-sc-msdf.csv -json noto-sans-sc-msdf.json`.
-`og_tests::scenes::load_font` reads the PNG, the CSV (glyphs) and two
-numbers of the JSON (`distanceRange`, `lineHeight`). The cook owns
-producing atlases; the renderer only takes a texture and a glyph table.
+**The text scenes' fonts** are the templates' InstrumentSans and Noto
+Sans SC (`bun scripts/assets.ts ensure templates`), laid out with og-text
+and drawn from the frame's glyph atlas (`og_tests::scenes::load_font`).
 
 **Display output** (`RenderDesc::output`: `DisplayOutput::{Best, Wide,
 Srgb}`, with `paper_white_nits` and `peak_nits`; `src/post/display.rs`).

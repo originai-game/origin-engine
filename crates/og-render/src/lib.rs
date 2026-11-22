@@ -438,7 +438,7 @@ use post::FramePass;
 use shadow_fit::Cascade;
 use shadow_target::{LOCAL_SHADOW_FORMAT, ShadowSet, ShadowTarget};
 use shadows::LOCAL_SHADOW_LAYERS;
-use sprites::{FontLayout, RunSource, SPRITE_LAYOUT, SPRITE_STRIDE};
+use sprites::{RunSource, SPRITE_LAYOUT, SPRITE_STRIDE};
 use std::collections::HashMap;
 use wgpu::util::DeviceExt;
 

@@ -10,11 +10,7 @@ description = "Origin Engine web host: the binding symbols as a wasm-bindgen mod
 crate-type = ["cdylib", "rlib"]
 
 [features]
-default = ["shaping"]
-# The UI's run-time shaping (rustybuzz: Arabic, Indic); every shipped variant
-# keeps it (scripts/wasm-crates.txt); a build without it is for games
-# without shaped scripts.
-shaping = ["og-runtime/shaping"]
+default = []
 # A published game: the commands module and the probe's non-player members are not exported.
 publish = ["og-runtime/publish"]
 

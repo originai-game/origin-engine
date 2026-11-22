@@ -1,5 +1,5 @@
 //! Resources can be removed (og-render's `RenderScene::remove_mesh`,
-//! `remove_texture`, `remove_material`, `remove_font`,
+//! `remove_texture`, `remove_material`,
 //! `remove_environment_map`, `remove_texture_array`, `remove_palette`,
 //! `remove_lut`): a removed slot is
 //! freed on the GPU before the next frame, the next add of its kind reuses

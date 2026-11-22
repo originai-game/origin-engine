@@ -170,8 +170,8 @@ pub fn og_ui_configure(world: u32, desc: Option<String>) -> Result<(), String> {
         let default_available = eng
             .assets
             .borrow()
-            .bundle_for(og_ui_next::fonts::DEFAULT_FONT_ASSET)
-            .is_ok_and(|(bundle, _)| bundle.output(og_ui_next::fonts::DEFAULT_FONT_ASSET).is_ok());
+            .bundle_for(og_ui_next::pack::DEFAULT_FONT_ASSET)
+            .is_ok_and(|(bundle, _)| bundle.output(og_ui_next::pack::DEFAULT_FONT_ASSET).is_ok());
         if fontless && !default_available {
             let text = "og.ui.configure: the UI has no font now, so it draws no text (every label, button and field is blank): give `font` (og.load.font) or a `style` (og.load.style, whose fonts it brings), in this call or an earlier one; a field set to null is cleared, a field left out keeps its value".to_string();
             if st.ui_warned.insert(text.clone()) {

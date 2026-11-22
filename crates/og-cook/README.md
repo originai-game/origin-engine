@@ -103,7 +103,7 @@ after an hour, leaving recent writes alone even if they exceed the cap.
 | KTX2 | `<path>.ogb` (`og.Texture`) | `src/cook/formats/ktx2_source.rs`. Basis ETC1S or UASTC, or RGBA8 (none or zlib), its `KTXorientation` and `KTXswizzle` honoured: a file that is `rd` and `rgba` (or says neither), of a colour or linear kind matching its transfer function, is taken byte for byte; any other is decoded (Basis through the native transcoder), flipped to rows top to bottom and columns left to right, swizzled (`r g b a 0 1` per channel) and cooked again as an image of its kind (`texture { kind }`, else sRGB colour or linear). The report says which. `toktx`'s own output goes through the same check. |
 | texture array `.ogt` (`type texture-array`) | `<path>.ogb` (`og.TextureArray`) + `<path>.layer<n>.ogb` (`og.Texture`, id `<path>#layer<n>`) per layer | `src/cook/formats/texture_array.rs`: `kind color|normal|linear|pixel` and 1–256 `layer "<file>"` images (beside the file, else under `assets/`) of one size (a layer of another size is refused naming both); each layer cooked as a texture of the kind; the array blob holds the size, kind, level count and the layers' ids. The runtime uploads the layers as one `D2Array` texture (`og.load.textureArray`, og-render's `RenderScene::add_texture_array`). World and overlay sprites (`SpriteDesc.array`, `og.Sprite.array`), `array true` flipbooks and 2D particle emitters (an emitter's `array` line, og-bundle's `src/fx.rs`) draw from it, one draw per array whatever the layers; so do lit materials (`mapArray`, `normalMapArray`) and terrain layers (`layers`, `layerNormals`). |
 | WAV, MP3, Ogg Vorbis, FLAC | `<path>.ogb` (`og.Sound`), and for a sound cooked in chunks `<path>.chunk<n>.ogb` (`og.SoundChunk`, id `<path>#chunk<n>`) | A WAV's 8–32-bit integer or 32-bit float PCM, 1–8 channels, to 16-bit; an MP3, Ogg Vorbis or FLAC decoded to 16-bit by symphonia (pure Rust, the first audio track, encoder delay and padding trimmed; Ogg Opus is refused); then QOA (in-crate encoder: 3.2 bits per sample). With `sound { stream true }`, or when the QOA file would pass 1 MiB (27 s of 48 kHz stereo) unless `stream false`, the file is encoded once and cut between QOA frames into chunks of about `chunk` seconds (default 4, whole frames): the sound's blob holds the QOA header and the first chunk, each other chunk a blob of its own, which the runtime reads ahead of the playheads and drops behind them (og-audio's README §Chunked sounds). A QOA frame carries its predictor's state, so the chunks decode to the whole file's samples exactly. A chunked sound in a stream group puts its head in the group's pack; its other chunks stay files of their own (never grouped), read ahead of the playheads once the group is resident. |
-| TTF/OTF | `<path>.ogb` (`og.Font`) | The import settings' charset, rendered by fdsm as MTSDF (RGB multi-channel, A true SDF) at `em_px` with `px_range`, generated in f32 and passed through msdfgen's error correction (fdsm's `correct_error_mtsdf`: edge priority, distance checks at edges, before the sign correction) so channels that would interpolate into a false edge at a sharp corner become single-channel; shelf-packed into pages, each page a lossless KTX2 (RGBA8 + zlib); a glyph table (advance, plane bounds in em, atlas rectangle), ascender/descender/line gap and a kerning table: the pair adjustments of every `kern` feature's GPOS lookups (pair positioning formats 1 and 2, every script's; the first subtable of a lookup that takes a pair decides it, lookups add), else the legacy `kern` table, between the cooked characters, in em. A charset with a shaped script (Arabic, Devanagari and og-i18n's other `needs_shaping` scripts) adds every glyph the font's substitutions reach (joining forms, ligatures, conjuncts) by glyph id (keyed 0x110000 + id, past Unicode, so a font's own private-use characters never alias one), and the font file; so does `runtime true`, for characters outside the charset that og-ui renders from the outlines when a text needs them. |
+| TTF/OTF | `<path>.ogb` (`og.Font`) | The face's ascender, descender and line gap in em, its file whole (`file`), and a pixel font's grid (`pixel`); no glyph table, kerning or pages. A note names the characters of `chars` the face lacks. |
 | rig `.ogt` (`type rig`) | `<path>.ogb` (`og.Rig`) | A humanoid map (og-anim's README §Retargeting): `scheme` (auto, mixamo, vrm, unity, rigify, ue, blender, soma) and standard bones named outright or `none`; validated and stored as canonical text, loaded with `og.load.rig`. A model's `animation { rig }` names it for the cook's retargeting. |
 | animation library (a glTF named by another model's `animation { library }`) | into the naming model's `#anim` | The library is cooked like any glTF (its own `#anim`, loadable with `og.load.animation`); the naming model's `#anim` gets the library's clips after its own, each rewritten by `og_anim::retarget` from the library's skeleton (its humanoid map from its own `animation { rig }` or detected) onto the model's (its `rig` or detected): rest corrections, the model's bone lengths, the hips' travel scaled by the leg ratio, the legs solved for the feet unless `footIk false`. A clip the model has of its own wins over a library's of the same name (a note says so); a library naming libraries is refused. Then each `mirror "<clip>" ["<name>"]`: the clip (the model's own or a library's, retargeted) mirrored on the model's skeleton by `og_anim::mirror` (sides paired by name, reflected in x = 0), written under the name (default `<clip>.mirrored`), so a mirrored clip costs nothing at run time; a clip it lacks, a name already taken or named twice is refused. |
 | flipbook `.ogt` (`type flipbook`) | `<path>.ogb` (`og.Flipbook`) | The canonical sheet text (og-anim's README): grid and `frame` lines, an `atlas` (Aseprite frames and tags, TexturePacker frames and pivots) resolved into frames and clips, the texture's size read from the image, paths relative to the sheet when the file exists. The stamp covers the texture's and the atlas's bytes. With `array true` the frames, cut out of the texture, also cook into a texture array: `<path>#array` (`og.TextureArray`) with a layer `<path>#array#layer<n>` (`og.Texture`, pixel art under `filter nearest`, colour otherwise) per frame, frame `n` being layer `n`; every frame must then have one size (two sizes are refused naming both) and lie inside the texture, at most 256 of them. The runtime draws an `og.Flipbook` of such a sheet from the array (one draw per sheet whichever frames its sprites show). A sheet with `source` lines (animated GIF, WebP or APNG; `src/cook/systems/animated.rs`) is expanded before anything is hashed: its frames decoded, composited, keyed, aligned, cropped to one size, shared when identical and packed into a texture source `<path>#sheet` (`og.Texture`, pixel art under `filter nearest`), its text replaced by the canonical sheet over that texture; the files it names are consumed. |
@@ -283,14 +283,8 @@ animation {
   tolerance 0.0001            # the most compression may move a sampled value (default 1e-4)
 }
 font {
-  charset latin cjk-punct   # ascii | latin | punct | cjk-punct | kana | hangul | arabic | all
-  chars "开始游戏"           # extra characters (UI strings)
-  em_px 32
-  px_range 11               # the field's reach in atlas px; it bounds outlines, glows and weight at 0.5 * px_range * size / em_px - 0.5 CSS px (a third of em_px: a 2 px outline at 16 px; default 4)
-  page_size 1024            # the last page is cut to the rows it uses
-  runtime true              # ship the font file: characters outside the charset render at run time (default false)
-  color true                # COLR v0/v1 colour glyphs drawn in colour onto colour pages (default false; not with runtime)
-  color_px 64               # the colour images' pixels per em, 8..=256 (default 64)
+  chars "开始游戏"           # characters the cook checks the face for (UI strings)
+  pixel 12                  # a pixel font's grid, 4..=64 pixels per em: drawn snapped to whole multiples, unsmoothed (default 0: an outline font)
 }
 sound {                     # a .wav, .mp3, .ogg or .flac
   stream true               # cook in chunks: true | false (default: when the QOA file passes 1 MiB)
@@ -435,64 +429,18 @@ export. `Report::slowest(n)` and `AssetReport::cook_ms` read them:
 `CookOptions { threads, mesh: MeshOptions, texture: TextureOptions, font: FontSettings, schemas }`.
 Defaults: LOD levels 3, ratio 0.5, max error 0.05, overdraw 1.05, tangents on;
 ETC1S quality 128, UASTC level 3, RDO 1.0, Zstandard on, mips on; fonts
-`latin`, 32 px/em, range 4, 1024-pixel pages. Thread count never changes the
-output.
+outline fonts. Thread count never changes the output.
 
-### CJK fonts
+### Fonts
 
-`charset all` on a CJK font cooks to many atlas pages, several times the
-TTF's size. Games should declare the characters they show (`chars`), and
-add `runtime true` for text they cannot know (a player's name, chat): the
-blob then carries the font file and og-ui renders what the charset left
-out from its outlines into pages of the font's own
-(`crates/og-ui/README.md` §Text).
-
-### Colour glyphs
-
-`color true` draws each cooked character that has a COLR paint (v0
-layers, v1 paint graphs: solid, linear, radial and sweep brushes with pad,
-repeat and reflect, transforms, glyph and box clips, every composite mode)
-into an sRGB image at `color_px` (`crates/og-ui/src/text/colr.rs`: skrifa walks the
-graph, font-rs's accumulation rasterizer covers each clip). The images are
-shelf-packed onto the blob's `color.<n>` pages, after the field's pages,
-and the glyph rows point at them; the field keeps their advances. og-render
-draws a colour page (`MsdfFont::distance_range` 0) as sprites, untinted but
-for the text's alpha and without glow, outline or shadow, on both hosts.
-Only fonts that ask carry colour pages, and an emoji font is its own asset,
-loaded when a game loads it. A font none of whose cooked characters is
-coloured refuses the setting, as does `runtime true` (run-time glyphs have
-no colour). The images are painted with CPAL palette 0, or the one
-`palette` names: an index (`palette 2`), or `light` or `dark`, the first
-palette the font marks for that background; a palette the font lacks is
-refused. One palette is cooked per font: a game that shows the same glyphs
-in two palettes imports the font twice (a copy of the file with its own
-`.ogt`), so each palette costs its pages only where it is used.
-
-A glyph whose paint uses the text's colour (palette entry 0xFFFF) is
-painted twice, with a black foreground and a white one, side by side on the
-blob's `foreground.<n>` pages (after the colour pages; the row points at the
-black copy, the white one is half the page to the right). og-render mixes
-the two channel by channel by the text's colour in sRGB, where the cook
-painted them, at the text's alpha: exact for fills, gradients and
-Porter-Duff composites, whose result is affine in the foreground. A blend
-can bend it: a separable blend that branches on the foreground (overlay
-with it as the backdrop, hard-light as the source, soft-light, darken,
-lighten, dodge, burn, difference), the foreground multiplied or screened
-by itself, a clamping plus, or a hue, saturation, colour or luminosity
-blend. The cook paints each such glyph again at three text colours (two
-greys and one colour) and warns in the font's note, naming the characters
-and the worst difference from the mix in 8-bit levels; the glyph still
-draws as the mix. Glyphs that do not use it stay on the colour pages, byte
-for byte.
-
-Each colour page and foreground page also gets its glyphs' silhouette as a
-distance field (`color-field.<n>`, `foreground-field.<n>`: the exact
-Euclidean distance to the alpha's half-coverage edge, range 8 px, twice
-the 4 px border round each image, so it never reaches a neighbour). og-runtime adds
-each as a font page before the colour pages that draws only the shadows,
-glow and outline of a text (never a fill), so they lie under the images.
-The fields cost about a tenth of the colour pages (the whole COLR test
-font: 67 KB beside 672 KB).
+A font blob is the face's metrics and its file, whole (and a pixel font's
+grid): no atlas is cooked. Text is laid out from the file at run time
+(og-text's Parley layout) and every glyph rastered at the size it is
+drawn, COLR glyphs in colour, so a CJK face costs its file's size and a
+character a game never declared draws like any other. OpenType features
+and palettes are CSS's (`font-feature-settings`, `font-variant-*`,
+`font-palette`). A `.riv`'s fonts cook the same way, each checked for the
+characters its runs show.
 
 ## Determinism
 
@@ -552,12 +500,12 @@ cargo run --release -p og-cook --bin og-cook -- templates/game --report report.m
 | Test | Asserts |
 |---|---|
 | `cooking_twice_gives_identical_bytes` | two fresh cooks (all cores, one thread) write identical files (the cook times aside: the same assets, their times masked); a difference names every file that differs, each with its size and first differing byte, and the manifest's differing lines; cooked ≤ 60 % of the sources; writes the report and the two hashes |
-| `every_thread_count_cooks_the_same_bytes` | the template made small (trickster.glb out, the two textures at 128², the font's charset ASCII and its characters: 13 outputs of every kind the template has, both texture encoders, the font's own glyph pool) cooked on 1, 2 and 8 threads with the three series running at once (one cook a series in the quick and functional lanes, ten under `--all`, `OG_GATE_ALL`), so each cook shares the machine with two others: every file of every cook is the first one-thread cook's bytes, the cook times masked as above |
+| `every_thread_count_cooks_the_same_bytes` | the template made small (trickster.glb out, the two textures at 128², 13 outputs of every kind the template has, both texture encoders, the font's own glyph pool) cooked on 1, 2 and 8 threads with the three series running at once (one cook a series in the quick and functional lanes, ten under `--all`, `OG_GATE_ALL`), so each cook shares the machine with two others: every file of every cook is the first one-thread cook's bytes, the cook times masked as above |
 | `a_gltf_edit_recooks_exactly_its_outputs` | an unchanged project cooks nothing and writes nothing, each asset reporting its recorded cook time and the slowest ten in order; renaming a glTF material re-cooks exactly `models/trickster.glb`, changes exactly its blob, the manifest and the cook times, where only its time moved (to this run's) |
 | `a_stale_blob_is_refused_with_both_stamps` | an old blob behind a new manifest is refused with the path and both stamps (`og_core::ErrorKind::Schema` through the API); wrong type and unknown ids are refused |
 | `meshes_keep_their_triangles_and_bounds` | per primitive: LOD 0 triangle count equals the source's, decoded vertex bounds within 1 % of the source accessor's, LODs shrink, normals unit length; per model: decoded default-scene bounds within 1 % of og-render's own glTF loader |
 | `textures_decode_close_to_their_sources` | transcoded level 0 against the source pixels: ETC1S ≥ 30 dB (glTF base colour ≥ 27 dB), UASTC ≥ 35–38 dB; a row-flipped decode scores worse (orientation) |
-| `sounds_fonts_and_scenes_load_as_authored` | QOA SNR > 20 dB and the WAV's length; the charset, the extra characters, inside/outside of a glyph's distance field; scene entities, nesting, instances, the Transform rows' values |
+| `sounds_fonts_and_scenes_load_as_authored` | QOA SNR > 20 dB and the WAV's length; the font's file whole with its metrics and no atlas; scene entities, nesting, instances, the Transform rows' values |
 | `animation.rs` (separate file) | every cooked clip sample of `walker.glb` (source rates and 60 Hz) and `trickster.glb` equals an independent glTF sampler within 1e-5; skins, inverse binds, joints, weights and morph deltas follow the cooked vertices; markers from extras and import settings, bad ones refused; a cooked walker plays in og-anim |
 | `anim_compress.rs` (separate file) | every committed animated model cooked f32 and compressed: every frame of every channel within the tolerance, every node within 0.5 mm per metre of the skeleton, smaller samples, the same skins and morphs; the trickster posed mid-clip by each cook within og-tests' default frame tolerance; the settings parse and enter the stamp. Resident: a compressed model's loaded clips take exactly the bytes of its blob's sample sections (less than the frames as f32), every frame read from the keys has the bits of the frames written out from the format's description, and og.anim playing every clip at speeds 1, 0.37 and −1 gives the same world hash tick for tick from the keys as from those frames |
 | `sound_formats.rs` (separate file) | an MP3 (1 s, 44.1 kHz stereo) and an Ogg Vorbis (0.5 s, 22.05 kHz mono) fixture cook to `og.Sound` blobs with the source's rate, channels and length (within 3 %), whose QOA decodes to the tone (RMS, zero crossings of the first channel); an undecodable `.mp3` is refused naming the file and the format |

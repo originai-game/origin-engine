@@ -36,4 +36,4 @@ fn texture {
 }
 ```
 
-<sub>Module `load` line 367</sub>
+<sub>Module `load` line 366</sub>

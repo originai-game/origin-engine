@@ -1,8 +1,8 @@
 //! Scene geometry, materials, textures and resource handles.
 
 pub use og_draw::{
-    EnvironmentMapHandle, FontHandle, LutHandle, MaterialHandle, MeshHandle, PaletteHandle,
-    ShaderHandle, SpriteArray, TerrainHandle, TextureArrayHandle, TextureHandle,
+    EnvironmentMapHandle, LutHandle, MaterialHandle, MeshHandle, PaletteHandle, ShaderHandle,
+    SpriteArray, TerrainHandle, TextureArrayHandle, TextureHandle,
 };
 
 /// Which slots of one kind of resource hold one, and their generations:

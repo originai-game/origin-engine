@@ -13,9 +13,7 @@ pub(crate) mod tiles_gpu;
 use crate::RenderError;
 use crate::effects::SpriteBlend;
 use crate::scene::SpriteFacing;
-use crate::scene::{
-    Glyph, GlyphKey, MsdfFont, RenderScene, Sprite, TextureArrayHandle, TextureHandle, TileLayer,
-};
+use crate::scene::{RenderScene, Sprite, TextureArrayHandle, TextureHandle, TileLayer};
 use glam::{Vec2, Vec3};
 use og_draw::glyphs::GlyphTier;
 use std::collections::HashMap;
@@ -267,21 +265,6 @@ pub(crate) struct SpriteRun {
     /// tone curve ([`crate::SpriteFx::tone_mapped`]), drawn with the
     /// untonemapped pipelines.
     pub tone_mapped: bool,
-}
-
-/// The glyph table of one font, by key.
-pub(crate) struct FontLayout {
-    pub glyphs: HashMap<GlyphKey, Glyph>,
-    pub atlas_size: Vec2,
-}
-
-impl FontLayout {
-    pub fn new(font: &MsdfFont, atlas_size: Vec2) -> FontLayout {
-        FontLayout {
-            glyphs: font.glyphs.iter().map(|g| (g.key, *g)).collect(),
-            atlas_size,
-        }
-    }
 }
 
 /// The sorted instances of a frame's sprites and text.

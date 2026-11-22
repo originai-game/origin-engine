@@ -1756,10 +1756,9 @@ from google/fonts; `templates/fonts/LICENSES.md` lists sources and
 licences.
 
 The cook writes each pack's index (`og.FontPack`: languages, face ids,
-covered code points) beside its faces, cooked by their own settings to
-`<id>.face.ogb` with no atlas (`runtime true`), so a pack costs about its
-files' size. A pack changes no other font's cooked bytes, charset or
-run-time mode.
+covered code points) beside its faces, each cooked whole to
+`<id>.face.ogb`, so a pack costs about its files' size. A pack changes no
+other font's cooked bytes.
 
 A pack also carries the hyphenation dictionaries of its languages
 (`<lang>.hyph`, listed under `hyphenation` in its `extension.json`):
@@ -1788,45 +1787,48 @@ Parley's line breaks (through a hook patched into parley_engine,
 cut by them, and without them those scripts break by UAX #14 and #29's
 rules alone.
 
-og.i18n chains the active table's fonts, the locale's pack, the packs a
-frame needed, then the other tables' fonts. A character only an unchained
-pack covers loads that pack (a Chinese locale's own script first) and
-draws from the next frame, unwarned; a character no pack covers keeps the
-missing-glyph warning. The web boot does not preload `.face.ogb` files
-(the service worker caches them on fetch); the first frame waits for the
-locale's pack and glyphs (`og_web_fonts_pending`).
+og.i18n chains the active table's fonts, the default pack's body face,
+the locale's pack, the packs a frame needed, then the other tables'
+fonts, so a character a pack's faces lack falls back the way a browser's
+does. A character only an unchained pack covers loads that pack (a
+Chinese locale's own script first); until a face lands its characters
+draw from the next face of the chain, and the layout takes the face over
+when it arrives, never blank and never warned of. A character no face
+covers keeps the missing-glyph warning. The web boot does not preload
+`.face.ogb` files (the service worker caches them on fetch); the first
+frame waits only for a character no loaded face has
+(`og_web_fonts_pending`).
 
-A run-time face renders each glyph's distance field once into 512² pages
-off the frame (natively a thread per batch; on the web three glyphs a
-frame per face), so steady frames cost what an atlas font's do. A glyph
-is blank until the frame after it arrives, never warned of; a probe
-capture waits for every requested glyph. Glyphs are presentation only.
+Every glyph is rastered from its face's outlines the first time it is
+drawn at a size, a subpixel bin and a form (fill, stroke or blurred
+shadow) into the frame's glyph atlas (`og_text::strike`): coverage at the
+drawn size for text (Skia's mask gamma, Chrome on Linux's gamma 1.2 and
+contrast 0.2, keyed on the ink's luminance), a distance field for world
+text and the mass HUD that scale freely, and colour pages for COLR
+glyphs. Steady frames cost a lookup a glyph. Glyphs are presentation
+only.
 
 A text shadow (a theme `text-shadow-<name>` class; arbitrary
-`text-shadow-[…]` values are not supported) rasterizes the complete line's glyph silhouette into an
-offscreen layer, then uses the filter graph's Gaussian blur with standard
-deviation `blur-radius / 2`. Its paint and raster bounds include glyph
-overhang, the offset and three standard deviations, independently of the
-line height and the atlas distance range. Shadows draw back to front below
-the foreground ink and composite source-over in sRGB-encoded space, as in
+`text-shadow-[…]` values are not supported) draws each glyph's
+silhouette blurred by a Gaussian of standard deviation `blur-radius / 2`,
+rastered once per glyph and radius into the atlas. Its paint bounds
+include glyph overhang, the offset and three standard deviations,
+independently of the line height. Shadows draw back to front below the
+foreground ink and composite source-over in sRGB-encoded space, as in
 CSS; ordinary UI paint keeps its existing blending. An authored overflow
-clip still cuts the final shadow. The distance-field glow and outline
-effects remain separate from CSS text shadows.
+clip still cuts the final shadow. A text stroke (`text-stroke-*`) is each
+glyph's outline stroked at its width (`og_text::raster`), drawn below the
+fill.
 
 Colour emoji are a font feature. The `emoji` pack is Noto Color Emoji's
 COLRv1 face (SIL OFL 1.1; script `Zsye`, no language, tried after every
-text pack), declared `color true` with `runtime true`: COLR v0 and v1
-glyphs are painted when first shown by the cook's painter
-(`crates/og-ui/src/text/colr.rs`) at `color_px` in the configured palette,
-onto colour pages with a silhouette field for shadow, glow and outline;
-CPAL 0xFFFF layers take the text colour at draw. GSUB forms skin tones,
-ZWJ sequences and flags; spaces and punctuation after an emoji take a text
-face's glyph. On the web a colour glyph counts as two of the three a
-frame. The pack cooks to about 5 MB, paid only when installed; a game
-showing a fixed handful of emoji lists them in `chars` with `color true`
-instead. Any project font may declare `font { color true runtime true }`;
-one with no COLR glyph is refused. References: `color-emoji-1280`,
-`color-emoji-390`.
+text pack): COLR v0 and v1 glyphs are painted when first shown
+(`og_text::colr`) into the atlas's colour pages in the text's palette;
+CPAL 0xFFFF layers take the text colour. GSUB forms skin tones, ZWJ
+sequences and flags; spaces and punctuation after an emoji take a text
+face's glyph. The pack is about 5 MB, paid only when installed. Any
+project font with COLR glyphs draws them in colour. References:
+`color-emoji-1280`, `color-emoji-390`.
 
 CSS `font-palette` (Fonts 4 §9, inherited) draws such a font in another
 CPAL palette: `light` and `dark` take the first palette the font marks for
@@ -1836,10 +1838,8 @@ that background (else its first), and a `--name` takes the last
 `base-palette` (an index past the font's palettes: its first) with its
 `override-colors`; a name with no rule for the family is `normal`, the
 cooked palette. The text is drawn with an instance of the font in that
-palette, whose glyphs the host paints at run time from the frame after it
-first appears; until then the text draws with the nearest instance made
-(by location, then by palette), or blank if there is none. A font cooked
-without `runtime true` keeps its cooked palette.
+palette, whose glyphs are painted into the atlas the first time they are
+drawn.
 
 `palette-mix([in <method>,] <palette> [<n>%], …)` mixes its palettes
 entry by entry as `color-mix()` mixes colours (OKLab when no method is

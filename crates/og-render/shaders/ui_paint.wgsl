@@ -120,7 +120,7 @@ fn vs_paint(@builtin(vertex_index) vi: u32, @builtin(instance_index) ii: u32) ->
   let half = 0.5 * q.rect.zw;
   var lo = -half - vec2<f32>(px);
   var hi = half + vec2<f32>(px);
-  if (q.k.x == 2u || q.k.x == 7u || q.k.x == 9u) {
+  if (q.k.x == 7u || q.k.x == 9u) {
     lo = -half;
     hi = half;
   } else if (q.k.x == 5u) {
@@ -320,23 +320,6 @@ fn fs_paint(in: PaintOut) -> @location(0) vec4<f32> {
       a *= g.a;
       dither = true;
       a *= edge(sd_round_box(in.local, half, q.r), scale);
-    }
-    case 2u: {
-      let unit_range = vec2<f32>(page_params.x) / max(page_params.yz, vec2<f32>(1.0));
-      let px_range = max(0.5 * dot(unit_range, screen_tex), 1.0);
-      let weight = min(q.p.x * scale, max(0.5 * px_range - 0.75, 0.0));
-      let d = px_range * (median(m.r, m.g, m.b) - 0.5) + weight;
-      if (page_params.x <= 0.0) {
-        // A colour page: its images, at the text's alpha.
-        rgb = m.rgb;
-        a *= m.a;
-      } else if (q.p.y * scale > 1.0) {
-        // A text shadow's blur (CSS's radius, a deviation of half), as far
-        // as the field reaches.
-        a *= 0.5 + 0.5 * erf_approx(d / (0.5 * q.p.y * scale * 1.4142135));
-      } else {
-        a *= clamp(d + 0.5, 0.0, 1.0);
-      }
     }
     case 9u: {
       if (q.k.y == 0u) {

@@ -92,9 +92,6 @@ pub struct RenderScene {
     /// Per material: the copies aliased to it, so an edit of it checks
     /// them again.
     material_copies: Vec<Vec<u32>>,
-    fonts: Vec<MsdfFont>,
-    /// Bumped by [`RenderScene::set_font`].
-    font_revisions: Vec<u64>,
     /// Per mesh: its skin, for meshes added with `add_skinned_mesh`.
     skins: Vec<Option<SkinData>>,
     /// Per mesh: its blendshape targets.
@@ -195,7 +192,6 @@ pub struct RenderScene {
     #[cfg(target_arch = "wasm32")]
     pub(crate) stream_packed: std::collections::BTreeSet<usize>,
     material_slots: Slots,
-    font_slots: Slots,
     environment_map_slots: Slots,
     texture_array_slots: Slots,
     palette_slots: Slots,

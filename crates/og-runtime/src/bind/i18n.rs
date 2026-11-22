@@ -205,10 +205,10 @@ pub(crate) fn apply(eng: &Engine) -> Result<(), String> {
         && eng
             .assets
             .borrow()
-            .bundle_for(og_ui_next::fonts::DEFAULT_FONT_ASSET)
-            .is_ok_and(|(bundle, _)| bundle.output(og_ui_next::fonts::DEFAULT_FONT_ASSET).is_ok())
+            .bundle_for(og_ui_next::pack::DEFAULT_FONT_ASSET)
+            .is_ok_and(|(bundle, _)| bundle.output(og_ui_next::pack::DEFAULT_FONT_ASSET).is_ok())
     {
-        paths.insert(0, og_ui_next::fonts::DEFAULT_FONT_ASSET.to_string());
+        paths.insert(0, og_ui_next::pack::DEFAULT_FONT_ASSET.to_string());
     }
     // The same fonts for TSX text (present::faces): the default face
     // whenever the bundle has it, then the locale's in order, so a family
@@ -224,13 +224,13 @@ pub(crate) fn apply(eng: &Engine) -> Result<(), String> {
         }
         drawn.push(p.clone());
         let i = crate::world::assets::load_font(eng, p).map_err(|e| format!("font '{p}': {e}"))?;
-        if p == og_ui_next::fonts::DEFAULT_FONT_ASSET {
+        if p == og_ui_next::pack::DEFAULT_FONT_ASSET {
             faces.insert(0, i);
         } else {
             faces.push(i);
         }
     }
-    let default = og_ui_next::fonts::DEFAULT_FONT_ASSET;
+    let default = og_ui_next::pack::DEFAULT_FONT_ASSET;
     let has_default = eng
         .assets
         .borrow()

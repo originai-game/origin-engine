@@ -26,7 +26,7 @@ native-audio = ["og-audio/device"]
 [dependencies]
 og-api = { path = "../og-api" }
 og-core = { path = "../og-core" }
-og-runtime = { path = "../og-runtime", default-features = false, features = ["shaping", "fetch"] }
+og-runtime = { path = "../og-runtime", default-features = false, features = ["fetch"] }
 # Not called here: naming og-physics as the workspace's test build selects
 # it as a member, so asking for it here gives og and the addon
 # the tests' build of og-physics and og-runtime instead of a second one

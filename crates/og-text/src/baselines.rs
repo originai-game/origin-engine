@@ -2,7 +2,6 @@
 //! above its alphabetic one, em, read from its OpenType `BASE` table and
 //! synthesized where the table does not give it (Appendix A.2).
 
-use crate::shape::FontFile;
 use skrifa::raw::TableProvider;
 use skrifa::raw::types::Tag;
 
@@ -116,22 +115,12 @@ impl Baselines {
     }
 }
 
-/// `file`'s baselines. Its `BASE` table's horizontal ones for the default
-/// script (else its first) come first; the rest are synthesized as CSS
-/// Inline 3 Appendix A.2 suggests: ideographic-over and -under 1em apart
-/// where it names one, else the ascent and descent
-/// ([`Baselines::synthesize`]); the mathematical baseline at the minus
-/// sign's centre where it has one.
-pub fn baselines(file: &FontFile) -> Baselines {
-    let synthesized = Baselines::synthesize(file.ascent(), file.descent(), file.x_height());
-    match skrifa::FontRef::new(file.bytes()) {
-        Ok(face) => of_face(&face, synthesized),
-        Err(_) => synthesized,
-    }
-}
-
-/// `face`'s baselines at variation `location`, as [`baselines`] finds them,
-/// synthesized from its metrics there where its `BASE` table is silent.
+/// `face`'s baselines at variation `location`. Its `BASE` table's
+/// horizontal ones for the default script (else its first) come first; the
+/// rest are synthesized from its metrics there as CSS Inline 3 Appendix A.2
+/// suggests: ideographic-over and -under 1em apart where it names one, else
+/// the ascent and descent ([`Baselines::synthesize`]); the mathematical
+/// baseline at the minus sign's centre where it has one.
 pub fn face_baselines(
     face: &skrifa::FontRef,
     location: skrifa::instance::LocationRef,
@@ -226,12 +215,14 @@ fn ink_centre(f: &skrifa::FontRef, c: char, upem: f32) -> Option<f32> {
 mod tests {
     use super::*;
 
-    fn font(path: &str) -> std::sync::Arc<FontFile> {
+    fn baselines(path: &str) -> Baselines {
         let path = format!(
             "{}/../../templates/fonts/{path}",
             env!("CARGO_MANIFEST_DIR")
         );
-        FontFile::new(std::sync::Arc::new(std::fs::read(path).unwrap())).unwrap()
+        let bytes = std::fs::read(path).unwrap();
+        let face = skrifa::FontRef::new(&bytes).unwrap();
+        face_baselines(&face, skrifa::instance::LocationRef::default())
     }
 
     /// Per fontTools: Noto Sans has no BASE table and no minus sign, so
@@ -245,7 +236,7 @@ mod tests {
     #[test]
     fn baselines_come_from_base_and_synthesize_the_rest() {
         let near = |a: f32, b: f32| (a - b).abs() < 1e-3;
-        let b = baselines(&font("latin/NotoSans-Latin.ttf"));
+        let b = baselines("latin/NotoSans-Latin.ttf");
         assert!(
             near(b.text_top, 1.069) && near(b.text_bottom, -0.293),
             "{b:?}"
@@ -259,7 +250,7 @@ mod tests {
             "{b:?}"
         );
         assert!(near(b.hanging, 0.6), "{b:?}");
-        let j = baselines(&font("japanese/NotoSansJP-Regular.ttf"));
+        let j = baselines("japanese/NotoSansJP-Regular.ttf");
         assert!(
             near(j.text_top, 1.16) && near(j.text_bottom, -0.288),
             "{j:?}"

@@ -87,7 +87,7 @@ module ui {
     field displayFont Option.Font "The display font; null uses the body font."
     field monoFont Option.Font "The monospaced font; null uses the body font."
     field roundedFont Option.Font "The rounded font (levels and scores); null uses the display font, then the body font."
-    field fallbackFonts List.Font "Fonts for other scripts (Hebrew, Devanagari, a CJK face with `font { runtime true }`), tried in order after the locale's (og.i18n) for text the role's font cannot draw: each run of a mixed text takes the first font that has it."
+    field fallbackFonts List.Font "Fonts for other scripts (Hebrew, Devanagari, a CJK face, each fetched the first time its script shows), tried in order after the locale's (og.i18n) for text the role's font cannot draw: each run of a mixed text takes the first font that has it."
     field contrast Contrast "Standard or high contrast. The page's prefers-contrast: more takes high contrast too (Viewport.highContrast)."
     field seeds Option.UiSeeds "The seed colours the whole palette is derived from, over the style's (docs/ui.md §3.1): a faction's or the time of day's, given again at run time to restyle the whole UI. Given whole: a seed left out takes the style's. null keeps the style's seeds."
     field reducedMotion bool "Transitions only fade; sheens stop. The page's prefers-reduced-motion turns it on too (Viewport.reducedMotion)."

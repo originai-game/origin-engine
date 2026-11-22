@@ -57,7 +57,7 @@ step_clippy() {
 # (target/wasm-mt) for the same reason; the lanes variants share it as the
 # others share the wasm32 one.
 # A FEATURES starting with `-` builds without the default features
-# (`-og-host-web/publish,og-host-web/shaping`).
+# (`-og-host-web/publish`).
 wasm_build() {
   local variant="$1" features="$2"; shift 2
   local args=() c f name dest cargo=(cargo build --target "$WASM_TRIPLE")

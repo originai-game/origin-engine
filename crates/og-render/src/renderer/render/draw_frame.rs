@@ -376,9 +376,8 @@ impl Renderer {
                 scale: overlay::OverlayRenderer::scale(self.out_height, o).to_bits(),
                 revisions: og_core::hash::hash_words(
                     scene
-                        .font_revisions()
+                        .texture_revisions()
                         .iter()
-                        .chain(scene.texture_revisions())
                         .chain(scene.texture_array_revisions())
                         .copied(),
                 ),
