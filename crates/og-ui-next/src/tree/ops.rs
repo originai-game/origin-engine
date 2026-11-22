@@ -4274,6 +4274,50 @@ mod tests {
         assert!(glyphs[2].2 && glyphs[3].2, "the outline is black");
     }
 
+    /// A rounded `overflow-hidden` box rounds the corners of a child's
+    /// ground that fills them, to its inner radii (its radius less its
+    /// border); a child short of a corner keeps its own. Ways this could
+    /// fail: the child cut square by the rectangle clip (the slot's
+    /// ultimate), the outer radius used inside a border, or a rounded
+    /// corner given to a child that does not reach it.
+    #[test]
+    fn a_rounded_clip_rounds_the_children_that_fill_its_corners() {
+        let mut t = real();
+        nodes(
+            &mut t,
+            &[
+                (
+                    1,
+                    0,
+                    "relative w-[40px] h-[40px] rounded-[20px] border-2 overflow-hidden",
+                    0,
+                ),
+                (2, 0, "absolute inset-0 bg-white", 1),
+                (
+                    3,
+                    0,
+                    "absolute top-[10px] left-[10px] w-[10px] h-[10px] bg-black",
+                    1,
+                ),
+            ],
+        );
+        frame(&mut t);
+        let solids: Vec<([f32; 4], [f32; 4])> = t
+            .drawn
+            .quads
+            .iter()
+            .filter(|q| q.kind == PaintKind::Solid as u32)
+            .map(|q| (q.rect, q.radius))
+            .collect();
+        assert_eq!(
+            solids,
+            [
+                ([2.0, 2.0, 36.0, 36.0], [18.0; 4]),
+                ([12.0, 12.0, 10.0, 10.0], [0.0; 4]),
+            ]
+        );
+    }
+
     /// A box paints its outer shadows under it, then its fill and
     /// gradient, its inset shadows, its border and its outline, with CSS's
     /// radii (scaled down together when they overlap) and a corner
