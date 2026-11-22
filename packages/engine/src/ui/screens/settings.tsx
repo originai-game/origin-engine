@@ -98,7 +98,7 @@ export function SettingsScreen(props: SettingsScreenProps) {
                       </View>
                     </Show>
                     <Show when={entry().kind === "range"}>
-                      <View class="grid grid-cols-[minmax(182.9px,1fr)_minmax(0,365.7px)] items-center gap-x-6 min-h-16 text-lg py-1 px-4 compact:grid-cols-1 compact:items-stretch compact:text-base compact:gap-y-1 compact:py-2 compact:px-3">
+                      <View class="grid grid-cols-2 items-center gap-x-6 min-h-16 text-lg py-1 px-4 compact:grid-cols-1 compact:items-stretch compact:text-base compact:gap-y-1 compact:py-2 compact:px-3">
                         <Text class="grow shrink text-fg-muted m-0 group-hover/row:text-fg">
                           {entry().name}
                         </Text>
@@ -125,7 +125,7 @@ export function SettingsScreen(props: SettingsScreenProps) {
                       </View>
                     </Show>
                     <Show when={entry().kind === "select"}>
-                      <View class="grid grid-cols-[minmax(182.9px,1fr)_minmax(0,365.7px)] items-center gap-x-6 min-h-16 text-lg py-1 px-4 compact:grid-cols-1 compact:items-stretch compact:text-base compact:gap-y-1 compact:py-2 compact:px-3">
+                      <View class="grid grid-cols-2 items-center gap-x-6 min-h-16 text-lg py-1 px-4 compact:grid-cols-1 compact:items-stretch compact:text-base compact:gap-y-1 compact:py-2 compact:px-3">
                         <Text class="grow shrink text-fg-muted m-0 group-hover/row:text-fg">
                           {entry().name}
                         </Text>
@@ -165,7 +165,7 @@ export function SettingsScreen(props: SettingsScreenProps) {
                       </View>
                     </Show>
                     <Show when={entry().kind === "binding"}>
-                      <View class={`grid grid-cols-[minmax(182.9px,1fr)_minmax(0,365.7px)] items-center gap-x-6 min-h-16 text-lg py-1 px-4 compact:grid-cols-[minmax(0,1fr)_auto] compact:items-center compact:text-base compact:gap-y-1 compact:py-2 compact:px-3 group-hover/row:text-fg data-listening:bg-hud-accent data-listening:text-hud-accent-fg`} role="button" tabIndex={0} label={entry().name} data-listening={listening() === entry().id} onPress={() => listening.set(listening() === entry().id ? "" : entry().id)} onKey={(e) => {
+                      <View class={`grid grid-cols-2 items-center gap-x-6 min-h-16 text-lg py-1 px-4 compact:grid-cols-[minmax(0,1fr)_auto] compact:items-center compact:text-base compact:gap-y-1 compact:py-2 compact:px-3 group-hover/row:text-fg data-listening:bg-hud-accent data-listening:text-hud-accent-fg`} role="button" tabIndex={0} label={entry().name} data-listening={listening() === entry().id} onPress={() => listening.set(listening() === entry().id ? "" : entry().id)} onKey={(e) => {
                         if (listening() !== entry().id) return;
                         if (e.key === "Escape") {
                           listening.set("");

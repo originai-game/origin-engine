@@ -127,19 +127,19 @@ export function RpgQuestDetail(props: RpgQuestDetailProps) {
       <Show when={props.canTrack || props.canLocate}>
         <View class={`shrink flex-row flex-wrap justify-end gap-2 pt-2 px-4 pb-3 compact:px-3`}>
           <Show when={props.canLocate}>
-            <View class={`min-h-11 flex-row items-center justify-center gap-1 px-2 rounded-control border border-rim text-fg hover:bg-lit-soft disabled:opacity-45 ${packClass("Button", "plate")}`} role="button" label={t("rpg.quest.locate")} onPress={(e) => props.onLocate?.(e)}>
+            <View class={`min-h-11 flex-row items-center justify-center gap-1 px-2 rounded-control border border-rim text-fg hover:bg-surface-hover disabled:opacity-45 ${packClass("Button", "plate")}`} role="button" label={t("rpg.quest.locate")} onPress={(e) => props.onLocate?.(e)}>
               <Icon class="shrink size-4" name="map" />
               <Text class={`text-caption font-bold tracking-label uppercase`}>{t("rpg.quest.locate")}</Text>
             </View>
           </Show>
           <Show when={props.canTrack && props.tracked} fallback={
             <Show when={props.canTrack}>
-              <View class={`min-h-11 flex-row items-center justify-center gap-1 px-3 rounded-control bg-accent text-accent-ink inset-shadow-lit hover:bg-accent-hover ${packClass("Button", "plate", "primary")}`} role="button" label={t("rpg.quest.track")} onPress={(e) => props.onTrack?.(e)}>
+              <View class={`min-h-11 flex-row items-center justify-center gap-1 px-3 rounded-control bg-accent text-accent-fg inset-shadow-lit hover:bg-accent-hover ${packClass("Button", "plate", "primary")}`} role="button" label={t("rpg.quest.track")} onPress={(e) => props.onTrack?.(e)}>
                 <Text class={`text-caption font-bold tracking-label uppercase`}>{t("rpg.quest.track")}</Text>
               </View>
             </Show>
           }>
-            <View class={`min-h-11 flex-row items-center justify-center gap-1 px-2 rounded-control border border-rim text-fg hover:bg-lit-soft disabled:opacity-45 ${packClass("Button", "plate")}`} role="button" label={t("rpg.quest.untrack")} onPress={(e) => props.onTrack?.(e)}>
+            <View class={`min-h-11 flex-row items-center justify-center gap-1 px-2 rounded-control border border-rim text-fg hover:bg-surface-hover disabled:opacity-45 ${packClass("Button", "plate")}`} role="button" label={t("rpg.quest.untrack")} onPress={(e) => props.onTrack?.(e)}>
               <Text class={`text-caption font-bold tracking-label uppercase`}>{t("rpg.quest.untrack")}</Text>
             </View>
           </Show>

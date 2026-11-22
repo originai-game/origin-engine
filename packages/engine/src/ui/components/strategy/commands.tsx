@@ -77,13 +77,13 @@ export function StrategyCommands(props: StrategyCommandsProps) {
         </Show>
         )}
       </For>
-      <View class={`group/grid grid grid-cols-4 auto-rows-[3.657rem] gap-1 justify-start self-end p-2.5 nine-panel-cut bg-plate-hi compact:grid-cols-8 compact:justify-between compact:self-stretch compact:p-1.25 ${packClass("Panel", "frame")}`} role="toolbar" label={t("strategy.commands.name")}>
+      <View class={`group/grid grid grid-cols-4 gap-1 justify-start self-end p-2.5 nine-panel-cut bg-plate-hi compact:grid-cols-8 compact:justify-between compact:self-stretch compact:p-1.25 ${packClass("Panel", "frame")}`} role="toolbar" label={t("strategy.commands.name")}>
         <For each={props.commands ?? []} key={(c) => c.id}>
           {(c) => (
           <Show when={c().name} fallback={
-              <View class={`nine-plate-cut bg-sheen`} />
+              <View class={`h-12.75 nine-plate-cut bg-sheen`} />
           }>
-            <View class={`flex-row items-center justify-center gap-1 group/cmd flex p-0.5 nine-plate-cut bg-plate-hi data-active:bg-hud-accent disabled:opacity-45 text-fg ${packClass("Button", "plate")}`} role="button" label={c().name} description={c().reason ? c().reason : c().readyText ? c().readyText : c().detail} pressed={c().active} disabled={!c().enabled || !c().affordable} data-cooling={c().cooldown > 0} data-active={c().active} onPress={(e) => props.onCommand?.(e, c().id)}>
+            <View class={`h-12.75 flex-row items-center justify-center gap-1 group/cmd flex p-0.5 nine-plate-cut bg-plate-hi data-active:bg-hud-accent disabled:opacity-45 text-fg ${packClass("Button", "plate")}`} role="button" label={c().name} description={c().reason ? c().reason : c().readyText ? c().readyText : c().detail} pressed={c().active} disabled={!c().enabled || !c().affordable} data-cooling={c().cooldown > 0} data-active={c().active} onPress={(e) => props.onCommand?.(e, c().id)}>
               <View class="relative size-full overflow-hidden">
                 <Show when={c().icon} fallback={
                     <View class="absolute inset-0 flex-row items-center justify-center bg-linear-to-b from-plate-hi to-plate-lo">

@@ -43,13 +43,13 @@ export interface TutorialScreenProps {
  */
 function StepCard(props: TutorialScreenProps) {
   return (
-    <View class={`bg-linear-to-b from-glass-hi to-glass-lo shadow-[inset_0px_0px_0px_1px_#38e8ff73,inset_0px_2px_0px_#38e8ff,0px_20.576px_45.712px_#00000099] text-fg w-full max-w-100 transition duration-240 ease-out absolute py-4 px-6 gap-2 narrow:w-auto narrow:max-w-none narrow:inset-x-3 starting:opacity-0 starting:scale-60 ${packClass("Panel", "frame")}`} style={{ left: `${props.x}px`, top: `${props.y}px` }}>
+    <View class={`bg-linear-to-b from-glass-hi to-glass-lo shadow-overlay inset-shadow-overline inset-ring-1 inset-ring-hud-accent text-fg w-full max-w-100 transition duration-240 ease-out absolute py-4 px-6 gap-2 narrow:w-auto narrow:max-w-none narrow:inset-x-3 starting:opacity-0 starting:scale-60 ${packClass("Panel", "frame")}`} style={{ left: `${props.x}px`, top: `${props.y}px` }}>
       <View class="flex-row items-center gap-x-3">
         <Text class={`text-xs font-bold tracking-label uppercase tabular-nums text-fg m-0 shrink`}>
           {t("screen.tutorial.Step", { step: props.step, steps: props.steps })}
         </Text>
         <View class="grow shrink basis-0 min-w-0 h-0.5 bg-raised-hi">
-          <View class="h-full bg-hud-accent shadow-[0px_0px_4.571px_#38e8ff]" style={{ width: `${(props.step / (props.steps || 1)) * 100}%` }} />
+          <View class="h-full bg-hud-accent shadow-glow-sm" style={{ width: `${(props.step / (props.steps || 1)) * 100}%` }} />
         </View>
       </View>
       <Show when={props.texture !== 0}>

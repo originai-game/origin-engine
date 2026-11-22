@@ -66,8 +66,8 @@ export function CreatorToolsScreen(props: CreatorToolsScreenProps) {
           <Text>{t("screen.common.save")}</Text>
         </Button>
       </View>
-      <View class="grow shrink basis-0 grid grid-cols-[280px_1fr_360px] grid-rows-[1fr_200px] narrow:grid-cols-1 narrow:grid-rows-[minmax(0,2fr)_auto_minmax(280px,3fr)]">
-        <View class={`border-rim bg-linear-to-b from-plate-hi to-plate-lo inset-shadow-bar inset-shadow-entry-grain inset-ring-1 inset-ring-rim text-fg p-2 gap-2 border disabled:text-fg-subtle narrow:hidden narrow:data-chosen:flex ${packClass("Panel", "frame")}`} data-chosen={props.panel === 'hierarchy'}>
+      <View class="grow shrink basis-0 grid grid-cols-[auto_1fr_auto] grid-rows-[1fr_auto] narrow:grid-cols-1 narrow:grid-rows-[minmax(0,2fr)_auto_minmax(0,3fr)]">
+        <View class={`w-70 narrow:w-auto narrow:min-h-70 border-rim bg-linear-to-b from-plate-hi to-plate-lo inset-shadow-bar inset-shadow-entry-grain inset-ring-1 inset-ring-rim text-fg p-2 gap-2 border disabled:text-fg-subtle narrow:hidden narrow:data-chosen:flex ${packClass("Panel", "frame")}`} data-chosen={props.panel === 'hierarchy'}>
           <Text class={`tracking-label uppercase text-fg-muted text-xs font-semibold m-0`}>
             {t("screen.creator-tools.hierarchy")}
           </Text>
@@ -85,7 +85,7 @@ export function CreatorToolsScreen(props: CreatorToolsScreenProps) {
             <Text class="narrow:whitespace-nowrap">{t("screen.creator-tools.catalogue")}</Text>
           </Button>
         </Scroll>
-        <View class={`border-rim bg-linear-to-b from-plate-hi to-plate-lo inset-shadow-bar inset-shadow-entry-grain inset-ring-1 inset-ring-rim text-fg p-2 gap-2 border disabled:text-fg-subtle narrow:hidden narrow:data-chosen:flex ${packClass("Panel", "frame")}`} data-chosen={props.panel === 'inspector'}>
+        <View class={`w-90 narrow:w-auto narrow:min-h-70 border-rim bg-linear-to-b from-plate-hi to-plate-lo inset-shadow-bar inset-shadow-entry-grain inset-ring-1 inset-ring-rim text-fg p-2 gap-2 border disabled:text-fg-subtle narrow:hidden narrow:data-chosen:flex ${packClass("Panel", "frame")}`} data-chosen={props.panel === 'inspector'}>
           <Text class={`font-display text-base font-bold leading-tight tracking-tight text-fg line-clamp-1 text-ellipsis m-0`}>
             {props.selected}
           </Text>
@@ -93,7 +93,7 @@ export function CreatorToolsScreen(props: CreatorToolsScreenProps) {
             <View class="pb-4">{props.scrollInspector?.()}</View>
           </Scroll>
         </View>
-        <View class={`border-rim bg-linear-to-b from-plate-hi to-plate-lo inset-shadow-lit inset-ring-1 inset-ring-rim text-fg p-2 gap-2 border disabled:text-fg-subtle narrow:hidden narrow:data-chosen:flex ${packClass("Panel", "frame")}`} data-chosen={props.panel === 'catalogue'}>
+        <View class={`h-50 narrow:h-auto narrow:min-h-70 border-rim bg-linear-to-b from-plate-hi to-plate-lo inset-shadow-lit inset-ring-1 inset-ring-rim text-fg p-2 gap-2 border disabled:text-fg-subtle narrow:hidden narrow:data-chosen:flex ${packClass("Panel", "frame")}`} data-chosen={props.panel === 'catalogue'}>
           <Text class={`tracking-label uppercase text-fg-muted text-xs font-semibold m-0`}>
             {t("screen.creator-tools.catalogue")}
           </Text>
