@@ -5,8 +5,8 @@
 // lights. Everything is a function of the amounts, so a state looks the
 // same however it was reached.
 //
-// The ramps between weather kinds are the game's own until the engine's
-// `og.Weather.change` lands, and a season is a palette, an air and a rule
+// The ramps between weather kinds are the game's own, so og.Weather.change
+// is 0 (the engine draws the weather the Air system writes, unramped), and a season is a palette, an air and a rule
 // for lying snow until `og.Season` does (the seasons and weather proposal).
 import { defineResource, defineSystem, f32, og, u32, WEATHER_NONE, WEATHER_RAIN, WEATHER_SNOW } from "@origingame/engine";
 import type { Color, World } from "@origingame/engine";
@@ -84,6 +84,8 @@ export function buildAir(world: World): void {
   const weather = must(world.resource(og.Weather));
   weather.radius = 22;
   weather.dim = 0;
+  // Air ramps the weather itself; a second ramp would hold the new kind back.
+  weather.change = 0;
   // The street answers in seconds, so a switch shows while it is watched.
   const ground = must(world.resource(og.WeatherState));
   ground.soakTime = 4;
