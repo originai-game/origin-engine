@@ -274,15 +274,19 @@ export async function bundleGame(entry: string, out: string, target: "native" | 
       // bundle records only the table's id, which the UI renderer sends the
       // host to register. An engine table's id is `@ui/<path under src/ui>`
       // (the cook bundles them for a game using the built-in components), a
-      // game's its path under assets/.
+      // game's its path under assets/. An emitter (`type particles`, an
+      // engine component's built-in effect) has nothing to register: its
+      // import's default is its id, which og.load.emitter loads.
       const engineUi = join(ENGINE_ROOT, "src", "ui") + sep;
       const assets = join(project, "assets") + sep;
       build.onLoad({ filter: /\.ogt$/, namespace: "file" }, (a) => {
         const id = a.path.startsWith(engineUi)
           ? `@ui/${a.path.slice(engineUi.length)}`
           : relative(a.path.startsWith(assets) ? assets : project, a.path);
+        const name = JSON.stringify(id.split(sep).join("/"));
+        if (/^type particles\s*$/m.test(readFileSync(a.path, "utf8").split("---", 1)[0]!)) return { contents: `export default ${name};\n`, loader: "js" };
         return {
-          contents: `import { strings } from "@origingame/engine/ui/rt";\nstrings(${JSON.stringify(id.split(sep).join("/"))});\n`,
+          contents: `import { strings } from "@origingame/engine/ui/rt";\nstrings(${name});\nexport default ${name};\n`,
           loader: "js",
         };
       });

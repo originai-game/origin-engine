@@ -19,9 +19,10 @@ pub struct CodeGraph {
     /// `src/ui/`), which draws with the default face and the default pack's
     /// images.
     pub tsx: bool,
-    /// The engine string tables the bundle holds, by the id the bundle
-    /// registers them under (`@ui/components/hud/bar.en.ogt`), with the
-    /// file each is read from.
+    /// The engine `.ogt` files the bundle holds, by the id the bundle names
+    /// them by (`@ui/components/hud/bar.en.ogt`), with the file each is
+    /// read from: its components' string tables, and the emitters they
+    /// draw (`@ui/components/hud/fx/sparks.ogt`, a `type particles`).
     pub tables: BTreeMap<String, PathBuf>,
     /// The built-in `@ui/` documents the code names by id.
     pub ids: BTreeSet<String>,

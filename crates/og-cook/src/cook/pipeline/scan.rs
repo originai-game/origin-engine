@@ -161,8 +161,9 @@ pub(crate) fn scan_with(
         }
     }
     let mut early_errors: Vec<(String, &'static str, String)> = Vec::new();
-    // The engine string tables the bundle holds (its components'), read
-    // from the files the bundler resolved.
+    // The engine string tables and emitters the bundle holds (its
+    // components'), read from the files the bundler resolved; each cooks
+    // by its own `type`.
     let mut table_inputs = Vec::new();
     for (id, path) in &code.tables {
         match std::fs::read(path) {

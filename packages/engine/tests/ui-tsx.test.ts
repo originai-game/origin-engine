@@ -175,7 +175,7 @@ test("a native bundle compiles the engine's TSX components with the game's", asy
   const dir = mkdtempSync(join(tmpdir(), "og-tsx-native-"));
   try {
     writeFileSync(join(dir, "project.ogt"), "type project\nversion 1\n---\n");
-    writeFileSync(join(dir, "main.ts"), `export { Spinner } from "@origingame/engine/ui/components";\n`);
+    writeFileSync(join(dir, "main.ts"), `export { Celebration, Spinner } from "@origingame/engine/ui/components";\n`);
     const out = join(dir, "game.js");
     // As og run builds it too: with a cache plan, whose catch-all resolver
     // once dropped the table's import, and its strings() call, as unused.
@@ -189,6 +189,10 @@ test("a native bundle compiles the engine's TSX components with the game's", asy
       expect(code).toMatch(/from ["'][^"']*ui\/rt(\.ts)?["']/);
       // The component's `import "./spinner.en.ogt"` records the table's bundle id.
       expect(code).toMatch(/strings\d*\("@ui\/components\/base\/spinner\.en\.ogt"\)/);
+      // An emitter's import (Celebration's `import sparks from "./fx/sparks.ogt"`)
+      // is its bundle id for og.load.emitter, and registers no string table.
+      expect(code).toContain(`"@ui/components/hud/fx/sparks.ogt"`);
+      expect(code).not.toMatch(/strings\d*\("@ui\/components\/hud\/fx\//);
     }
   } finally {
     rmSync(dir, { recursive: true, force: true });

@@ -430,6 +430,12 @@ its arena (tree/particles.rs).
   says. The host warns once per node, naming the first such line.
 - **Reduced motion** draws none, and a play that would have started then
   never plays late.
+- **Built-in emitters.** An engine component keeps its emitters beside it
+  (`components/hud/fx/*.ogt`) and imports each: the import's default is the
+  asset's id (`@ui/components/hud/fx/confetti.ogt`), which the cook bundles
+  for a game whose code reaches the component, and `og.load.emitter` loads.
+  A game's own component loads an emitter from its assets the same way, by
+  its path.
 
 ## Classes and the Record (head 1)
 

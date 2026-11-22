@@ -1,0 +1,15 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {
+      "member": "Engine component assets",
+      "summary": "An `.ogt` an engine component imports gives its asset id as the import's default (`import sparks from \"./fx/sparks.ogt\"`), and a `type particles` file reached this way is bundled as an emitter under that id. The built-in emitters are `@ui/components/hud/fx/confetti.ogt`, `sparks.ogt`, `embers.ogt` and `firework.ogt`, written white so the node's ink colours them."
+    }
+  ],
+  "fixed": [
+    {
+      "member": "Celebration",
+      "summary": "Celebration draws its particles again: `confetti` throws paper from the top edge in four roles, `burst` throws sparks with its ring, `levelUp` has embers rising under the level, and `fireworks` bursts five shells in turn, each in its own role. Since the TSX port, confetti drew nothing and the others only a ring or five dots. The level-up's rays are still not drawn; they wait for pack art."
+    }
+  ]
+}

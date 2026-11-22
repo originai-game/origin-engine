@@ -619,7 +619,7 @@ pub fn ui_declarations(root: &Path, tsrs: &Path) -> Result<Vec<Generated>, Strin
         }
         files.push(Generated {
             path: "packages/engine/types/ui/ogt.d.ts".into(),
-            contents: format!("{HEADER}// A component's strings (`import \"./ability-slot.en.ogt\"`): the build\n// records the table, the cook compiles it, and the import has no value.\ndeclare module \"*.ogt\" {{}}\n"),
+            contents: format!("{HEADER}// A component's `.ogt` beside it: the build records it and the cook compiles\n// it. Strings (`import \"./ability-slot.en.ogt\"`) register themselves; an\n// emitter (`import sparks from \"./fx/sparks.ogt\"`, `type particles`) is\n// loaded by the id its import gives: `og.load.emitter(world, sparks)`.\ndeclare module \"*.ogt\" {{\n  const id: string;\n  export default id;\n}}\n"),
         });
         files.sort_by(|a, b| a.path.cmp(&b.path));
         Ok(files)
