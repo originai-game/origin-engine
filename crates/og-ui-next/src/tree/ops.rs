@@ -1532,6 +1532,34 @@ mod tests {
         t.apply(&b.bytes()).unwrap();
     }
 
+    /// `animate-float` on an anchored node mounted into a tree whose last
+    /// sample is long past (an idle HUD's damage number) starts when the
+    /// tick first shows it: at 200 ms it is drawn, still mostly opaque.
+    /// Way this could fail: the loop timed from the motion store's last
+    /// sample, so it starts finished and draws nothing.
+    #[test]
+    fn a_keyframe_loop_starts_at_the_tick_that_shows_it() {
+        let mut t = real();
+        t.set_time(0.1, false);
+        frame(&mut t);
+        t.set_time(5.0, false);
+        anchored(
+            &mut t,
+            "w-[40px] h-[20px] bg-white animate-float",
+            &[(1, &[])],
+        );
+        let alpha = |t: &mut Tree, at: f64| -> Vec<f32> {
+            t.set_time(at, false);
+            t.place_anchors(|_, _, _| sighted([100.0, 100.0], 1.0));
+            frame(t);
+            t.drawn.quads.iter().map(|q| q.color[3]).collect()
+        };
+        assert_eq!(alpha(&mut t, 5.0), [1.0], "its first frame");
+        let a = alpha(&mut t, 5.2);
+        assert!(a.len() == 1 && a[0] > 0.5, "200 ms in: {a:?}");
+        assert_eq!(placed(&t, 1), Some([100.0, 100.0]));
+    }
+
     fn placed(t: &Tree, id: u32) -> Option<[f32; 2]> {
         let n = t.dump_ops().into_iter().find(|n| n.id == id).unwrap();
         n.shown.then_some([n.rect[0], n.rect[1]])

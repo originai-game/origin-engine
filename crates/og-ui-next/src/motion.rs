@@ -318,7 +318,10 @@ struct Live {
     laid: Option<BoxLayout>,
     /// The box paint draws while its layout moves.
     frame: BoxLayout,
-    /// Its keyframes' start, or NaN for none playing.
+    /// Its keyframes' start, NaN for none playing, or infinity for the
+    /// next sample's time: a loop set between ticks starts at the tick
+    /// that first shows it, not at the store's last sample, which may be
+    /// long past (an idle HUD's damage number then started finished).
     since: f64,
     /// Its keyframes hold a pose away from `base` (a running loop, or a
     /// finished one that stays where it ended).
@@ -371,6 +374,9 @@ impl Motion {
         let mut i = 0;
         while i < self.live.len() {
             let l = &mut self.live[i];
+            if l.since == f64::INFINITY {
+                l.since = t;
+            }
             // What moved since the last tick moves this one, landing.
             let was = l.tracks != 0 || l.playing;
             let n = node(l.id);
@@ -597,7 +603,6 @@ impl Motion {
             at = Some(self.ensure(id, to));
         }
         let Some(i) = at else { return };
-        let now = self.store.now();
         let l = &mut self.live[i];
         if spec.props & LAYOUT == 0 && l.tracks & FRAME_BIT != 0 {
             self.store.remove(n, prop::FRAME);
@@ -607,7 +612,7 @@ impl Motion {
             l.since = f64::NAN;
             l.posed = false;
         } else if replay {
-            l.since = now;
+            l.since = f64::INFINITY;
         }
         l.spec = *spec;
         l.base = *to;
@@ -980,15 +985,15 @@ mod tests {
         let mut spin = looping(Keyframes::Spin, 1.0, None);
         spin.animate.as_mut().unwrap().ease = LINEAR;
         let r = with(spin, |_| {});
-        m.tick_at(0.0);
+        // A loop starts at the sample that first shows it.
         m.enter(1, &r, None::<&R>);
+        m.tick_at(0.0);
         assert!(m.tick_at(0.25));
         let turn = m.skin(1, &r.skin).transform.rotate;
         assert!((turn - std::f32::consts::FRAC_PI_2).abs() < 1e-3, "{turn}");
         assert!(m.tick_at(10.0), "forever");
 
         let mut m = Motion::new();
-        m.tick_at(10.0);
         let beat = looping(Keyframes::Beat, 0.4, Some(1));
         let (calm, hit) = (with(Spec::default(), |_| {}), with(beat, |_| {}));
         m.restyle(2, &calm, &hit);
@@ -996,6 +1001,7 @@ mod tests {
             m.skin(2, &hit.skin).transform.scale[0] > 1.1,
             "it starts swollen"
         );
+        m.tick_at(10.0);
         m.tick_at(10.5);
         assert!(!m.tick_at(10.6), "once");
         assert!(std::ptr::eq(m.skin(2, &hit.skin), &hit.skin));
@@ -1010,10 +1016,10 @@ mod tests {
 
         // A float rises, fades and stays out.
         let mut m = Motion::new();
-        m.tick_at(10.0);
         let float = looping(Keyframes::Float, 0.8, Some(1));
         let f = with(float, |_| {});
         m.enter(3, &f, None::<&R>);
+        m.tick_at(10.0);
         m.tick_at(12.0);
         let s = m.skin(3, &f.skin);
         assert_eq!((s.opacity, s.transform.translate[1]), (0.0, -48.0));
@@ -1042,6 +1048,7 @@ mod tests {
         );
         let ping = with(looping(Keyframes::Ping, 1.0, None), |_| {});
         m.enter(2, &ping, None::<&R>);
+        m.tick_at(0.02);
         m.tick_at(0.4);
         let s = m.skin(2, &ping.skin);
         assert_eq!(s.transform.scale, [1.0; 2]);
