@@ -25,6 +25,12 @@ pub(crate) struct State {
     /// Pack faces of the chain still being fetched (the web reads a pack's
     /// faces on demand, not at boot): the chain is applied again as they land.
     pending: Vec<String>,
+    /// The style pack's faces still being fetched, likewise.
+    styling: Vec<String>,
+    /// The characters the last UI frame drew that no loaded face has:
+    /// while one is left and a face is pending, the first frame waits
+    /// ([`fonts_pending`]).
+    missed: Vec<char>,
 }
 
 /// og.i18n on one engine: its string tables, the active locale and its
@@ -216,9 +222,9 @@ pub(crate) fn apply(eng: &Engine) -> Result<(), String> {
         paths.insert(0, og_ui_next::fonts::DEFAULT_FONT_ASSET.to_string());
     }
     let mut default_font = None;
-    // The same fonts for TSX text (present::faces): the locale's in
-    // order, then the default face whenever the bundle has it, so a
-    // family no file backs and a character no family has still draw.
+    // The same fonts for TSX text (present::faces): the default face
+    // whenever the bundle has it, then the locale's in order, so a family
+    // no file backs and a character no family has still draw.
     let mut faces = Vec::with_capacity(paths.len() + 1);
     let mut chain = Vec::with_capacity(paths.len());
     let mut pending = Vec::new();
@@ -257,7 +263,10 @@ pub(crate) fn apply(eng: &Engine) -> Result<(), String> {
         } else {
             let i = crate::world::assets::load_font(eng, default)
                 .map_err(|e| format!("font '{default}': {e}"))?;
-            faces.push(i);
+            // Right behind the pack's faces, before the locale's: a
+            // character a pack face lacks (→ in Fredoka) takes the default
+            // body face, as a browser takes its default font.
+            faces.insert(0, i);
         }
     }
     {
@@ -291,11 +300,29 @@ pub(crate) fn apply(eng: &Engine) -> Result<(), String> {
         // Each face's mixed font, the locale's chain after it.
         rs.ui_fonts.link();
     }
+    // The style pack's files, in its order, by the same rule: one still
+    // being fetched joins when it lands, and text draws from the next
+    // face meanwhile.
+    let (mut style, mut styling) = (Vec::new(), Vec::new());
+    for p in crate::present::faces::style_files(eng) {
+        if eng
+            .assets
+            .borrow()
+            .pending(og_bundle::runtime::asset_id(&p))
+        {
+            styling.push(p);
+            continue;
+        }
+        style.push(
+            crate::world::assets::load_font(eng, &p).map_err(|e| format!("font '{p}': {e}"))?,
+        );
+    }
     with(eng.id, |s| {
         s.fonts = drawn;
         s.pending = pending;
+        s.styling = styling;
     });
-    crate::present::faces::configure(eng, &faces);
+    crate::present::faces::configure(eng, &style, &faces);
     Ok(())
 }
 
@@ -303,7 +330,15 @@ pub(crate) fn apply(eng: &Engine) -> Result<(), String> {
 /// chain with them: the first UI frame of a game with packs installed
 /// draws in them with no call of its own. Cheap after the first time.
 pub(crate) fn ensure_packs(eng: &Engine) {
-    if let Some(waiting) = with(eng.id, |s| s.packs.as_ref().map(|_| s.pending.clone())) {
+    if let Some(waiting) = with(eng.id, |s| {
+        s.packs.as_ref().map(|_| {
+            s.pending
+                .iter()
+                .chain(&s.styling)
+                .cloned()
+                .collect::<Vec<_>>()
+        })
+    }) {
         // A pack face fetched since: the chain takes it.
         let landed = {
             let assets = eng.assets.borrow();
@@ -311,8 +346,23 @@ pub(crate) fn ensure_packs(eng: &Engine) {
                 .iter()
                 .any(|p| !assets.pending(og_bundle::runtime::asset_id(p)))
         };
-        if landed && let Err(e) = apply(eng) {
-            note(eng.id, format!("font packs: {e}"));
+        if landed {
+            if let Err(e) = apply(eng) {
+                note(eng.id, format!("font packs: {e}"));
+            }
+            // Behind the play gate no tick lays the frame out again: what
+            // the landed faces draw is no longer missing, the rest still is
+            // (a Latin face landing first did not release a frame that
+            // still lacked its Han).
+            let missed = with(eng.id, |s| std::mem::take(&mut s.missed));
+            let left: Vec<char> = {
+                let rs = eng.render.borrow();
+                missed
+                    .into_iter()
+                    .filter(|&c| !rs.ui_faces.draws(c))
+                    .collect()
+            };
+            with(eng.id, |s| s.missed = left);
         }
         return;
     }
@@ -431,10 +481,15 @@ pub(crate) fn resolve_missing(
 /// draws: what is left when the packs that cover the others load.
 pub(crate) fn resolve_missing_chars(eng: &Engine, missing: Vec<char>) -> Vec<char> {
     let any = og_render::FontHandle::from_index(0);
-    resolve_missing(eng, vec![(any, missing)])
+    let left: Vec<char> = resolve_missing(eng, vec![(any, missing)])
         .into_iter()
         .flat_map(|(_, chars)| chars)
-        .collect()
+        .collect();
+    // A face still being fetched may have the rest: none is missing yet.
+    if with(eng.id, |s| !s.pending.is_empty() || !s.styling.is_empty()) {
+        return Vec::new();
+    }
+    left
 }
 
 /// Whether the locale's chain still waits for a font-pack face being
@@ -444,9 +499,20 @@ pub(crate) fn faces_pending(eng: &Engine) -> bool {
     with(eng.id, |s| !s.pending.is_empty())
 }
 
-/// Pack faces and glyphs every engine's chain still waits for: the web Worker draws
-/// the first frame again until none is left, so a boot never shows a
-/// locale's text missing while its pack is fetched.
+/// The characters the UI frame just laid out has that no loaded face draws.
+pub(crate) fn frame_missed(eng: &Engine, missed: &[char]) {
+    // A frame that laid nothing out again reports none: the set stands
+    // until a frame finds others or a landed face draws them (ensure_packs).
+    if !missed.is_empty() {
+        with(eng.id, |s| s.missed = missed.to_vec());
+    }
+}
+
+/// Faces and glyphs every engine's frame still waits for: the web Worker
+/// draws the first frame again until none is left, so a boot never shows
+/// text missing while its face is fetched. A face being fetched counts
+/// only while the frame lacks a character: a frame its loaded faces draw
+/// whole does not wait for the rest.
 pub fn fonts_pending() -> u32 {
     let engines = crate::engine::engine_ids();
     // A face that landed since the last tick joins the chain now: behind the
@@ -459,7 +525,15 @@ pub fn fonts_pending() -> u32 {
     }
     let faces: u32 = engines
         .iter()
-        .map(|&id| with(id, |s| s.pending.len() as u32))
+        .map(|&id| {
+            with(id, |s| {
+                if !s.missed.is_empty() {
+                    (s.pending.len() + s.styling.len()) as u32
+                } else {
+                    0
+                }
+            })
+        })
         .sum();
     // And their glyphs still rendering: the first frame shows the text whole.
     faces

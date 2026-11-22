@@ -182,6 +182,14 @@ impl Collection {
         &self.files[id.0 as usize]
     }
 
+    /// Whether a face of registered file `id` maps `c` to a glyph.
+    pub fn covers(&self, id: FaceId, c: char) -> bool {
+        let data = self.file(id).as_slice();
+        (0..)
+            .map_while(|i| FontRef::from_index(data, i).ok())
+            .any(|f| f.charmap().map(c).is_some())
+    }
+
     /// The fontique context and Parley's layout context, to build with.
     pub(crate) fn contexts(&mut self) -> (&mut FontContext, &mut LayoutContext<()>) {
         (&mut self.context, &mut self.layout)

@@ -27,12 +27,21 @@
       "find": [
         "charset"
       ]
+    },
+    {
+      "member": "pack.json fonts loading",
+      "change": "A style pack's font files no longer ship in a web build's first download: each cooks to `<id>.face.ogb`, as a font pack's faces do, and the web fetches it after the boot. Until a file lands, the characters it would draw come from the next face (the default face, then the locale's fonts), and it takes over the moment it lands; the first frame waits only while it shows a character no loaded face has. Native builds read every file at once, as before. The UI gallery's first download goes from 14.2 MB to 3.2 MB, its Chinese faces whole on demand.",
+      "fix": "None needed. A game that must show a pack's face on its very first frame keeps a character of it on that frame, which holds the frame until the face lands."
     }
   ],
   "added": [
     {
       "member": "break-words",
       "summary": "`break-words` (`wrap-break-word`), `wrap-anywhere` and `break-normal` (`wrap-normal`) set CSS `overflow-wrap` on TSX text: under `break-words` a word wider than its box breaks at the box's edge while the other words wrap whole, and a box sized to its content still keeps its longest word; under `wrap-anywhere` it may shrink to a letter."
+    },
+    {
+      "member": "Chinese in every UI",
+      "summary": "Every TSX UI's bundle carries the `chinese-simplified` font pack (Noto Sans SC) and reads it only when a frame first draws a character it covers, so Chinese draws in every style pack with nothing installed and costs a game that never shows it nothing. A project's own `chinese-simplified` pack replaces it."
     }
   ],
   "fixed": [
@@ -43,6 +52,10 @@
     {
       "member": "Input",
       "summary": "An `Input`'s caret stands where the shaped text puts it (after kerning, ligatures and right-to-left runs), on the line that holds it."
+    },
+    {
+      "member": "og.ui text",
+      "summary": "A character a style pack's faces lack (→ in Fredoka, Newsreader and Barlow Semi Condensed) draws from the default face, Instrument Sans, before the locale's fonts, as a browser takes its default font."
     }
   ]
 }

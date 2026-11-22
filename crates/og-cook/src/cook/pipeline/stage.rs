@@ -602,13 +602,33 @@ pub(crate) fn group(
 ) -> Grouped {
     // Streaming groups (phase 3): every scene's, read before anything cooks.
     let (groups, group_of) = plan_groups(sources, known, early_errors, threads);
-    // Font packs' faces (docs/ui.md §3.4): cooked as fonts by their own
-    // settings, to `<id>.face.ogb`, which the web reads on demand.
+    // Font packs' faces and every face a style pack's `fonts` names
+    // (docs/ui.md §3.4): cooked as fonts by their own settings, to
+    // `<id>.face.ogb`, which the web reads after the boot; text draws
+    // from the next face of its fallbacks until one lands.
     let mut pack_faces: BTreeSet<String> = sources
         .iter()
         .filter(|s| s.kind == &font_pack::FONT_PACK)
         .flat_map(font_pack::faces)
         .collect();
+    for s in sources
+        .iter()
+        .filter(|s| crate::cook::ui_packs::is_pack(&s.rel))
+    {
+        let Ok(text) = std::str::from_utf8(&s.bytes) else {
+            continue;
+        };
+        let Ok(mut layer) = og_ui_next::pack::Layer::parse(text) else {
+            continue;
+        };
+        layer.resolve(s.rel.rsplit_once('/').map_or("", |(dir, _)| dir));
+        pack_faces.extend(
+            layer
+                .fonts
+                .iter()
+                .map(|f| crate::runtime::asset_id(f).to_owned()),
+        );
+    }
     if sources
         .iter()
         .any(|s| s.rel == og_ui_next::fonts::DEFAULT_FONT_ASSET)

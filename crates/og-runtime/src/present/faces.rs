@@ -10,7 +10,9 @@
 //! `font-mono`, `font-rounded`) and fontique's generic families. A
 //! character no family of a text's list draws comes from the fallback
 //! list: the game's `fallbackFonts`, its role fonts, the pack's files, the
-//! locale's, then the default face.
+//! default face, then the locale's and the font packs a frame loaded (the
+//! bundled Chinese one among them). A pack's file still being fetched
+//! joins when it lands; its characters draw from the next face meanwhile.
 
 use crate::engine::Engine;
 use og_text::fonts::{Collection, FaceId, GenericFamily};
@@ -54,30 +56,43 @@ impl Faces {
     pub(crate) fn any(&self) -> bool {
         !self.ids.is_empty()
     }
+
+    /// Whether a registered face draws `c`.
+    pub(crate) fn draws(&self, c: char) -> bool {
+        self.ids.values().any(|&id| self.collection.covers(id, c))
+    }
+}
+
+/// The font files of engine `eng`'s style pack (its `fonts`), first first.
+pub(crate) fn style_files(eng: &Engine) -> Vec<String> {
+    let style = eng
+        .state
+        .borrow()
+        .ui_desc
+        .get("style")
+        .and_then(Value::as_f64)
+        .and_then(crate::world::assets::index_of);
+    style
+        .and_then(|i| eng.assets.borrow().styles.get(i).map(|s| s.files.clone()))
+        .unwrap_or_default()
 }
 
 /// Sets engine `eng`'s roles and fallbacks from its UiDesc, its style
-/// pack and `chain`: the locale's fonts in order, the default face last
-/// (loaded fonts by index). Called whenever one of them changes.
-pub(crate) fn configure(eng: &Engine, chain: &[usize]) {
+/// pack, `style_fonts` (the pack's files fetched so far) and `chain`: the
+/// default face, then the locale's fonts in order (loaded fonts by
+/// index). Called whenever one of them changes, or a file lands.
+pub(crate) fn configure(eng: &Engine, style_fonts: &[usize], chain: &[usize]) {
     let desc = eng.state.borrow().ui_desc.clone();
     let font_of = |field: &str| {
         desc.get(field)
             .and_then(Value::as_f64)
             .and_then(crate::world::assets::index_of)
     };
-    // The style's own families for each role, and its files.
+    // The style's own families for each role.
     let style = font_of("style");
-    let (layer, style_fonts) = {
-        let id = style.and_then(|i| eng.assets.borrow().styles.get(i).map(|s| s.id.clone()));
-        let fonts = style
-            .and_then(|i| eng.assets.borrow().styles.get(i).map(|s| s.fonts.clone()))
-            .unwrap_or_default();
-        (
-            id.and_then(|id| super::ui_next::pack_layer(eng.id, &id)),
-            fonts,
-        )
-    };
+    let layer = style
+        .and_then(|i| eng.assets.borrow().styles.get(i).map(|s| s.id.clone()))
+        .and_then(|id| super::ui_next::pack_layer(eng.id, &id));
     let default = Layer::default_pack();
     let mut rs = eng.render.borrow_mut();
     let faces = &mut rs.ui_faces;

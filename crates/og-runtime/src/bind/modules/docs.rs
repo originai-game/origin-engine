@@ -31,21 +31,28 @@ fn hash_of(eng: &Engine, id: &str) -> u64 {
         .unwrap_or(0)
 }
 
-/// A pack's font files (its `pack.json` `fonts`), each loaded: their
-/// indices among the engine's fonts, which TSX text is laid out from
-/// (`crate::present::faces`), and each as a family face under the family
-/// its file names, for the text still drawn from cooked atlases.
+/// A pack's font files (its `pack.json` `fonts`) already fetched, each as
+/// a family face under the family its file names, for the text still
+/// drawn from cooked atlases.
 pub(super) fn pack_faces(
     eng: &Engine,
     files: &[String],
     source: &str,
     owner: &str,
-) -> Result<(Vec<og_ui_next::fonts::FamilyFace>, Vec<usize>), String> {
-    let (mut out, mut loaded) = (Vec::new(), Vec::new());
+) -> Result<Vec<og_ui_next::fonts::FamilyFace>, String> {
+    let mut out = Vec::new();
     for src in files {
+        // A face still being fetched joins TSX text when it lands
+        // (`bind::i18n::apply`); the atlas text goes without it.
+        if eng
+            .assets
+            .borrow()
+            .pending(og_bundle::runtime::asset_id(src))
+        {
+            continue;
+        }
         let i = crate::world::assets::load_font(eng, src)
             .map_err(|e| format!("{source}: fonts: {src}: {e}"))?;
-        loaded.push(i);
         let font = super::ui_config::ui_font(eng, crate::world::assets::handle(i) as f64)?;
         let family = {
             let mut rs = eng.render.borrow_mut();
@@ -82,7 +89,7 @@ pub(super) fn pack_faces(
             ..og_ui_next::fonts::FamilyFace::default()
         });
     }
-    Ok((out, loaded))
+    Ok(out)
 }
 
 /// After a hot reload (`og dev`): every style the UI is configured with
