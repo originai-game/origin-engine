@@ -26,7 +26,7 @@
 
 use og_core::glam::{Vec2, Vec3};
 use og_render::{
-    Background, ColorSpace, FontHandle, Mips, Overlay, RenderScene, Text, TextureData,
+    Background, ColorSpace, Mips, Overlay, RenderScene, Text, TextureData,
     TextureHandle, Tonemap, UiAlign, UiBlend, UiBuiltin, UiCap, UiClip, UiCorner, UiEdge, UiFit,
     UiGeometry, UiGradient, UiGradientKind, UiImage, UiJoin, UiLayer, UiMask, UiMaterial, UiMode,
     UiPaint, UiShape, UiSpread, UiStop, UiStroke,
