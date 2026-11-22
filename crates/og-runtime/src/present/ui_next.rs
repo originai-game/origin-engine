@@ -776,16 +776,19 @@ impl Next {
 
     /// The UI's tick is ending: the tree takes the frame's input, lays
     /// out and paints. `time` is the UI tick's end in seconds, unscaled,
-    /// which motion samples at; `now` times the spans only.
+    /// which motion samples at, and `tick` its number, which `<Particles>`
+    /// step to; `emitters` answers a loaded emitter by the handle the game
+    /// holds; `now` times the spans only.
     #[allow(clippy::too_many_arguments)]
-    pub(crate) fn end(
+    pub(crate) fn end<'e>(
         &mut self,
         engine: u32,
         (fonts, icons): (&og_ui_next::fonts::Fonts, &og_ui_next::icons::IconAtlas),
         view: Option<og_ui_next::view::WorldView>,
         textures: &[og_render::TextureHandle],
-        time: f64,
+        (time, tick): (f64, u64),
         tps: u32,
+        emitters: &dyn Fn(f64) -> Option<&'e og_render::ParticleEmitter>,
         now: &dyn Fn() -> f64,
         world: Option<&dyn Fn(u64) -> Option<og_core::glam::Vec3>>,
         occluded: &mut dyn FnMut(og_core::glam::Vec3, og_core::glam::Vec3, Option<u64>) -> bool,
@@ -826,6 +829,17 @@ impl Next {
         let hud = v.hud_insets(og_ui_model::HUD_MAX_ASPECT);
         tree.set_insets([hud.top, hud.right, hud.bottom, hud.left]);
         tree.set_time(time, settings.reduced_motion);
+        // The `<Particles>` nodes step to the tick's number, and one that
+        // waits for its emitter reads it from the loaded ones
+        // (CONVENTIONS.md §Particles).
+        tree.set_tick(tick, tps);
+        if tree.wants_emitters() {
+            for line in tree.resolve_emitters(emitters) {
+                warnings.push(format!(
+                    "og.ui: a <Particles> emitter's `{line}` does not draw in the UI: only its shape, emission, motion and look over life do (CONVENTIONS.md §Particles)"
+                ));
+            }
+        }
         tree.set_cover(cover, settings.reduced_motion);
         // Anchored nodes where the tick's camera sees their entity or point
         // (CONVENTIONS.md §World), and whether drawn geometry stands in

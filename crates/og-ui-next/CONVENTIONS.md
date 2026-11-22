@@ -40,7 +40,8 @@ export function AbilitySlot(props: { icon: string; cooldown: number; ready: bool
   a class's `nine-<name>` slices a pack's art instead), `Icon`, `Scroll`,
   `Input`, `Line` (a polyline: `points` x, y
   pairs in its box, `closed`, stroked by `stroke-<colour>` and
-  `stroke-<width>`; no fill, curves or dashes), and the
+  `stroke-<width>`; no fill, curves or dashes), `Particles` (an engine
+  particle emitter drawn in its box, §Particles), and the
   control flow `<Show when fallback keyed>` and `<For each key>{(item,
   index) => …}</For>` (`item` and `index` are accessors), and
   `<Switch fallback><Match when>…</Match></Switch>` (components). Every other tag
@@ -134,7 +135,8 @@ Tags: 0 `View`, 1 `Text`, 2 `Image`, 3 `Scroll`, 4 `Input`, 5 `Icon`, 6
 `Line` (its `points` and `closed` are setProps: numbers split by commas or
 spaces; `viewBox`, `w h` or SVG's `x y w h`, puts the points in that space,
 mapped onto the laid-out box as it paints, stretched or with `fit` `contain`
-uniform and centred, the stroke staying in px); there are no others. What can be an image is an `Image` (an
+uniform and centred, the stroke staying in px), 7 `Particles` (its
+`emitter`, `seed`, `delay` and `restart` are setProps, §Particles); there are no others. What can be an image is an `Image` (an
 `.svg` file too: the cook makes it a texture). A line paints one
 `PaintKind::Line` quad over its box (og-draw paint.rs): its points in
 `Paint.points`, box-relative, width `p.x`, closed `p.y`. Events: 0 press, 1 tap, 2 pointerdown,
@@ -329,7 +331,7 @@ Roles: `button` `link` `heading` `image` `text` `checkbox` `radio`
 join its parent). Another name is a group.
 
 Without `role`: a `text` node is static text, an `input` a text box, a
-`scroll` a scroll view, an `image`/`icon`/`line` an image when labelled. A
+`scroll` a scroll view, an `image`/`icon`/`line`/`particles` an image when labelled. A
 `view` listening to `press` or `tap` is a button, a modal one a dialog,
 one the keyboard reaches or that is labelled a group; any other view is a
 plain container, left out with its children joining its parent. Inside a
@@ -391,6 +393,43 @@ placement props (`occlusion`, `declutter`, `priority`, `clamp`,
   drawn (blended) place (`Tree::follow_anchors`), so it stays on what it
   names; one the tick hid stays hidden. Clamping and decluttering settle
   after layout on every frame (`Tree::present`), from this frame's boxes.
+
+## Particles
+
+`<Particles emitter={e} seed={n} delay={s} restart={key} class="…" />` draws
+an engine particle emitter in the UI: `emitter` is an `og.load.emitter`
+handle (0 none), the same `.ogt` of `type particles` an `og.ParticleSystem`
+runs in the world. One simulation, two places it draws: the tree steps
+og-render-data's `CpuParticles` and paints each living particle as a quad of
+its arena (tree/particles.rs).
+
+- **Space.** The emitter sits at the centre of the node's laid-out box. One
+  unit is one CSS px and +y is up, so `gravity 0 -600 0` falls down the
+  screen. A `box` shape is the node's box (its x and y half extents are the
+  box's, whatever the file writes); any other shape is born at the centre.
+  `space local` particles move with the node, `space world` ones stay where
+  they were born.
+- **Time.** It steps on the UI tick's number, never a wall clock, and
+  catches up after ticks it was not painted on. It starts when the node
+  first paints, `delay` seconds later when given, and starts again from
+  nothing when `restart` or `emitter` changes. Its randomness is `seed` and
+  the tick it started: each play differs and a replay draws the same.
+  A node with anything still to draw repaints every frame; a finished one
+  costs nothing. Placing and stepping allocate nothing per frame
+  (`examples/op_costs.rs`).
+- **Paint.** Particles draw in painter's order where the node stands, under
+  its clip and transform, each a box of its size (a disc with `round true`)
+  or its `texture` (a `sheet`'s frame), turned by its rotation or along its
+  velocity (`align velocity`). The colour is the node's ink (`text-<role>`,
+  faded by its opacity) times the emitter's colour over life, so an emitter
+  written white takes a pack's role; several inks are several nodes with
+  their own `seed`.
+- **What does not draw** is what needs the scene: wind and force fields,
+  collision, lighting, distortion, trails, meshes, effect materials, texture
+  arrays, glow and sub-emitters, and the arena blends alpha whatever `blend`
+  says. The host warns once per node, naming the first such line.
+- **Reduced motion** draws none, and a play that would have started then
+  never plays late.
 
 ## Classes and the Record (head 1)
 

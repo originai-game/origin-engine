@@ -4,7 +4,7 @@
 // as a value. `mount` puts a component on a world's UI; `useStore` reads a store
 // as a signal; `t` and the formatters read the mount's world.
 
-import type { Texture, World } from "@origingame/engine";
+import type { ParticleEmitter, Texture, World } from "@origingame/engine";
 import { abi } from "../runtime/host.ts";
 import { json } from "../runtime/result.ts";
 import { type Renderer, Renderer as UiRenderer, RendererContext, component, element, insert, spread } from "./rt.ts";
@@ -46,6 +46,20 @@ export const Scroll = host<HostProps>("scroll");
  * fill, curves or dashes: what can be an image is an `Image`.
  */
 export const Line = host<HostProps & { points: readonly number[]; closed?: boolean | undefined; viewBox?: readonly [number, number] | string | undefined; fit?: "fill" | "contain" | undefined }>("line");
+/**
+ * An engine particle emitter drawn in the UI: `emitter` is an
+ * `og.load.emitter` handle (0 none), the same `type particles` asset
+ * `og.ParticleSystem` runs in the world. It sits at the centre of the
+ * laid-out box, 1 unit a CSS px and +y up (`gravity 0 -600 0` falls down the
+ * screen); a `box` shape is the box itself. It starts when the node first
+ * draws, `delay` seconds later when given, and again whenever `restart`
+ * changes; `seed` and the tick it started are its randomness. Its particles
+ * are the node's ink (`text-<colour>`) times the emitter's colour, in
+ * painter's order where the node stands, clipped as it is; reduced motion
+ * draws none. What needs the scene (fields, collision, light, trails,
+ * meshes) does not draw.
+ */
+export const Particles = host<HostProps & { emitter?: ParticleEmitter | 0 | undefined; seed?: number | undefined; delay?: number | undefined; restart?: string | number | undefined }>("particles");
 export const Input = host<HostProps & { value?: string | undefined; placeholder?: string | undefined }>("input");
 
 /** `<Show when={c} fallback={…} keyed>`: compiled to the renderer's `cond`. */

@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {
+      "member": "@origingame/engine/ui",
+      "summary": "`<Particles emitter={e} seed={1} delay={0.2} restart={key} class=\"size-2 text-gold\" />`: an engine particle emitter drawn in the UI. `emitter` is an `og.load.emitter` handle, the same `.ogt` of `type particles` an og.ParticleSystem runs. It sits at the centre of the node's box, 1 unit a CSS px and +y up; a `box` shape is the node's box. It steps on the UI tick, starts when the node first draws (`delay` seconds later) and again when `restart` changes, and draws in painter's order under the node's clip, in the node's ink times the emitter's colour. Reduced motion draws none. Lines that need the scene (fields, collision, light, distortion, trails, meshes, effect materials, sub-emitters) do not draw, and the UI warns naming the first."
+    }
+  ]
+}

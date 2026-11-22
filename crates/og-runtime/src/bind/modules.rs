@@ -199,6 +199,7 @@ pub(crate) fn mount_back(
                         scene,
                         models,
                         geometries,
+                        fx,
                         ..
                     } = rs
                 {
@@ -211,8 +212,14 @@ pub(crate) fn mount_back(
                         (ui_fonts, ui_icons),
                         view,
                         textures,
-                        ui_time,
+                        (ui_time, t.tick),
                         t.rate.max(1),
+                        // A `<Particles>`' emitter, by the handle og.load.emitter gave.
+                        &|handle| {
+                            crate::world::assets::index_of(handle)
+                                .and_then(|i| fx.emitters.get(i))
+                                .and_then(|h| scene.emitter(*h))
+                        },
                         &crate::author::probe::now_ms,
                         Some(&|bits| ui_world::Feed::world_pose(ctx, bits).map(|p| p.0)),
                         // What hides an anchored node with `occlusion`:

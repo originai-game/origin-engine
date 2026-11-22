@@ -441,11 +441,14 @@ screen can wait for it.
   animation it is a bar that stays with its row.
 - Celebrate with CSS: `@keyframes land { 60% { -og-burst: 24 48px #ffd166
   600ms; -og-sound: success; } }`. Sparkle a rare item with
-  `<og-emitter effect="sparkles">` (presets: sparkles, confetti, embers, snow,
-  bubbles, dust, sparks, fireworks), throw confetti once with
-  `effect="confetti 70 burst 110 for 1.4s"`, or set rate, shape, size, `life`, speed
-  (`120px/s`) and colours yourself. The `celebration` component is confetti,
-  a burst, a level-up flourish or fireworks. Flash damage with `<og-overlay
+  `<Particles emitter={sparkle} class="size-2 text-gold" />`: `sparkle` is
+  an `og.load.emitter` handle, the same `type particles` file an
+  og.ParticleSystem runs, here in CSS px with +y up at the centre of the
+  node's box and coloured by the node's ink. Give `restart` a new value to
+  play it again, `delay` seconds to hold it, and each ink its own node and
+  `seed`. Lines that need the scene (collision, fields, light, trails,
+  meshes) do not draw. The `celebration` component is confetti,
+  a burst, a level-up flourish or fireworks, built this way. Flash damage with `<og-overlay
   id="Hurt" effect="vignette #a00">` and `#Hurt { opacity: var(--hit); }`.
 - Turn a model on a turntable with `<viewport src={$target} camera-controls
   camera-orbit="30deg 75deg 3m" max-camera-orbit="auto 100deg 6m"
