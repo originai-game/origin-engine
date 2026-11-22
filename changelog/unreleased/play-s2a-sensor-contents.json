@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "og.physics.sensorContents",
+      "summary": "Every entity inside a sensor now, each once, in entity order: who stands on a pressure plate, what lies in a pickup zone. It reads og.Contact, the pairs of the last step, so it is what og.SensorEntered and og.SensorExited have added up to and stays right through a restore and a hit stop; a system that calls it lists og.Contact in its reads. Refused for an entity without an og.Collider; a solid holds nothing."
+    }
+  ]
+}

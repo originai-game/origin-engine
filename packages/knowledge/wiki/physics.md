@@ -12,7 +12,7 @@ See `physics`.
 
 - **TypeScript**: functions are the namespace `og.physics`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
-- **Core** (what most games use): `og.RigidBody`, `ColliderShape`, `ColliderShape()`, `og.Collider`, `og.Velocity`, `og.CharacterController`, `og.Vehicle`; 103 more are advanced (`og api show physics --all`).
+- **Core** (what most games use): `og.RigidBody`, `ColliderShape`, `ColliderShape()`, `og.Collider`, `og.Velocity`, `og.CharacterController`, `og.Vehicle`; 104 more are advanced (`og api show physics --all`).
 - **Index**: [every module and guide](index.md).
 
 ```ogt
@@ -116,6 +116,7 @@ module physics {
 | [`og.physics.projectPoint`](physics/fn-projectPoint.md) | function | `(world: World, desc?: ProjectPointDesc): Result<PointProjection \| null>` | The nearest point on any collider to a point, within maxDistance: snapping to a surface, the closest cover, whether a point is inside a solid. |
 | [`og.physics.castShape`](physics/fn-castShape.md) | function | `(world: World, desc?: ShapeCastDesc): Result<ShapeCastHit \| null>` | The first collider a shape meets when swept along a direction; the same view of the colliders as castRay. |
 | [`og.physics.overlap`](physics/fn-overlap.md) | function | `(world: World, desc?: OverlapDesc): Result<readonly Entity[]>` | Every collider overlapping a shape, sorted by entity id; the same view of the colliders as castRay. |
+| [`og.physics.sensorContents`](physics/fn-sensorContents.md) | function | `(world: World, sensor: Entity): Result<readonly Entity[]>` | Every entity inside a sensor now, each once, sorted by entity id: who stands on a pressure plate, what lies in a pickup zone, how many are in a capture area. |
 | [`og.physics.applyForce`](physics/fn-applyForce.md) | function | `(world: World, entity: Entity, force: Vector3, point?: Vector3): Result<void>` | Push a dynamic body with a force (N, world axes) over the next physics step, at a world point or its centre of mass: call it every tick for a steady force (thrust, wind, a car's downforce or an anti-… |
 | [`og.physics.applyImpulse`](physics/fn-applyImpulse.md) | function | `(world: World, entity: Entity, impulse: Vector3, point?: Vector3): Result<void>` | Give a dynamic body an impulse (N·s, world axes) at a world point or its centre of mass: a sudden change of momentum (a kick, a hit, a jump: its velocity changes by impulse / mass), applied by the ne… |
 | [`og.physics.applyTorque`](physics/fn-applyTorque.md) | function | `(world: World, entity: Entity, torque: Vector3): Result<void>` | Turn a dynamic body with a torque (N·m about each world axis; 2D uses z) over the next physics step, as applyForce: call it every tick for a steady twist. |

@@ -17066,6 +17066,7 @@ export interface MeshDesc {
 
 
 
+
 /** A wheel of an og.Vehicle as the last step left it, for drawing. */
 export interface WheelPose {
   /**
@@ -35219,6 +35220,15 @@ export declare namespace og {
      * @param desc The shape, its placement and the filter.
      */
     function overlap(world: World, desc?: OverlapDesc): Result<readonly Entity[]>;
+    /**
+     * Every entity inside a sensor now, each once, sorted by entity id: who stands on a pressure plate, what lies in a pickup zone, how many are in a capture area. It is what og.SensorEntered and og.SensorExited have added up to, read from og.Contact (the pairs of the last step), so inside a system the system lists og.Contact in its reads; it is world state, the same after a restore and while a hit stop holds the step. Something that passes through a sensor within one step is never in it, and sends neither event.
+     * See `physics §5`.
+     *
+     * @param world The world.
+     * @param sensor The sensor: an entity whose og.Collider has `sensor` set.
+     * @returns Empty when nothing is inside; refused for an entity without a sensor collider, and inside a system that does not read og.Contact.
+     */
+    function sensorContents(world: World, sensor: Entity): Result<readonly Entity[]>;
     /**
      * Push a dynamic body with a force (N, world axes) over the next physics step, at a world point or its centre of mass: call it every tick for a steady force (thrust, wind, a car's downforce or an anti-roll assist). Applied by the og.physics step after the systems, in the order given, then gone; a hit stop drops it. Kinematic and static bodies ignore it. Pushes not yet applied are world state (in snapshots and the hash).
      *

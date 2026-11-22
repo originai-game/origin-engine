@@ -1574,6 +1574,11 @@ unsafe extern "C" fn og_physics_overlap(args: *const crate::OgValue, out: *mut c
     unsafe { crate::IntoC::into_c(r, out) }
 }
 
+unsafe extern "C" fn og_physics_sensor_contents(args: *const crate::OgValue, out: *mut crate::OgValue) {
+    let r = <Host as PhysicsApi>::og_physics_sensor_contents(&Host, unsafe { crate::arg(args, 0) }, unsafe { crate::arg(args, 1) });
+    unsafe { crate::IntoC::into_c(r, out) }
+}
+
 unsafe extern "C" fn og_physics_apply_force(args: *const crate::OgValue, out: *mut crate::OgValue) {
     let r = <Host as PhysicsApi>::og_physics_apply_force(&Host, unsafe { crate::arg(args, 0) }, unsafe { crate::arg(args, 1) }, unsafe { crate::arg(args, 2) }, unsafe { crate::arg(args, 3) });
     unsafe { crate::IntoC::into_c(r, out) }
@@ -3622,6 +3627,7 @@ pub static SYMBOLS: &[crate::Symbol] = &[
     crate::Symbol { name: c"og_physics_project_point", arity: 2, call: og_physics_project_point },
     crate::Symbol { name: c"og_physics_cast_shape", arity: 2, call: og_physics_cast_shape },
     crate::Symbol { name: c"og_physics_overlap", arity: 2, call: og_physics_overlap },
+    crate::Symbol { name: c"og_physics_sensor_contents", arity: 2, call: og_physics_sensor_contents },
     crate::Symbol { name: c"og_physics_apply_force", arity: 4, call: og_physics_apply_force },
     crate::Symbol { name: c"og_physics_apply_impulse", arity: 4, call: og_physics_apply_impulse },
     crate::Symbol { name: c"og_physics_apply_torque", arity: 3, call: og_physics_apply_torque },

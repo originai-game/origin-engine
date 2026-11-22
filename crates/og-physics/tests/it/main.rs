@@ -46,6 +46,8 @@ mod ragdoll;
 mod saves;
 #[path = "../self_collision.rs"]
 mod self_collision;
+#[path = "../sensors.rs"]
+mod sensors;
 #[path = "../sleep.rs"]
 mod sleep;
 #[path = "../soft.rs"]

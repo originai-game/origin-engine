@@ -1574,6 +1574,11 @@ pub fn og_physics_overlap(world: u32, desc: Option<String>) -> String {
 }
 
 #[wasm_bindgen]
+pub fn og_physics_sensor_contents(world: u32, sensor: f64) -> String {
+    <Host as PhysicsApi>::og_physics_sensor_contents(&Host, world, sensor)
+}
+
+#[wasm_bindgen]
 pub fn og_physics_apply_force(world: u32, entity: f64, force: String, point: Option<String>) -> String {
     <Host as PhysicsApi>::og_physics_apply_force(&Host, world, entity, force, point)
 }

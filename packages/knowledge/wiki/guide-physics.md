@@ -183,6 +183,13 @@ event, taken in the step itself:
 sensor reports og.SensorEntered and og.SensorExited and pushes nothing.
 og.Contact lists every touching pair every tick: read it for "what is
 touching what right now" rather than tracking start and end yourself.
+`og.physics.sensorContents(world, sensor)` is that list for one sensor:
+who is inside it now, each once, in entity order (a system that calls it
+lists og.Contact in its reads). A pressure plate that holds while anything
+stands on it is `sensorContents(...).length > 0` every tick, never a count
+kept from the events; it stays right through a restore and a hit stop. A
+body fast enough to cross a sensor within one step is never inside it: use
+a ray or a shape cast for those (§4).
 
 <a id="guide-physics-6"></a>
 ### `physics §6` Character control

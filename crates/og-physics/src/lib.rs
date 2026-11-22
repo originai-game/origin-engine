@@ -118,6 +118,7 @@ use persist::*;
 pub use query::*;
 pub use readout::*;
 pub use shared::*;
+pub use tick::sensor_contents;
 use tick::*;
 
 /// The name of the scheduled system.

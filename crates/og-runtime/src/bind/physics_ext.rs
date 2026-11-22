@@ -275,6 +275,37 @@ pub fn og_physics_stats(world: u32) -> Result<PhysicsStats, String> {
     })()
 }
 
+/// `og.physics.sensorContents`: what is inside a sensor after the last
+/// step, from the og.Contact pairs it sent (in a system, the ones it
+/// delivered this tick: the same pairs). Refused for an entity without an
+/// og.Collider (membership needs no declaration); a solid holds nothing.
+pub fn og_physics_sensor_contents(world: u32, e: f64) -> Result<Vec<u64>, String> {
+    (|| {
+        let eng = engine(world)?;
+        let e = entity(e)?;
+        let err = |e: og_core::Error| e.to_string();
+        let (collider, contacts) = if let Some(f) = running(world) {
+            // SAFETY: the frame is published while its system runs.
+            let ctx = unsafe { f.ctx() };
+            let id = ctx.id_by_name("og.Collider").map_err(err)?;
+            let collider = ctx.components_of(e).is_ok_and(|c| c.contains(&id));
+            (collider, ctx.events::<og_physics::Contact>().map_err(err)?)
+        } else {
+            let w = eng.world()?;
+            let id = w.id_by_name("og.Collider").map_err(err)?;
+            let collider = w.components_of(e).is_ok_and(|c| c.contains(&id));
+            (
+                collider,
+                w.pending_events::<og_physics::Contact>().map_err(err)?,
+            )
+        };
+        if !collider {
+            return Err(format!("entity {} has no og.Collider", e.to_bits()));
+        }
+        Ok(og_physics::sensor_contents(&contacts, e.to_bits()))
+    })()
+}
+
 /// What og.physics.waterHeight and the bodies in water read of the world: the
 /// world itself (between ticks, and as a tick starts), or, inside a system
 /// (a boat a game floats in its own tick), its context, through the

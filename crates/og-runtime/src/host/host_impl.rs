@@ -35,6 +35,9 @@ mod ui;
 mod world;
 
 use crate::ColumnPtr;
+/// Bindings the expansion reaches here rather than at the crate root.
+#[doc(hidden)]
+pub use crate::bind::physics_ext::og_physics_sensor_contents;
 /// The generated host traits the expansion implements.
 #[doc(hidden)]
 pub use og_api::host as api;

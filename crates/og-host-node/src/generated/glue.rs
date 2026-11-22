@@ -1887,6 +1887,12 @@ pub fn og_physics_overlap(env: Env, world: u32, desc: Option<String>) -> String 
     <Host as PhysicsApi>::og_physics_overlap(&Host, world, desc)
 }
 
+#[napi(js_name = "og_physics_sensor_contents")]
+pub fn og_physics_sensor_contents(env: Env, world: u32, sensor: f64) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as PhysicsApi>::og_physics_sensor_contents(&Host, world, sensor)
+}
+
 #[napi(js_name = "og_physics_apply_force")]
 pub fn og_physics_apply_force(env: Env, world: u32, entity: f64, force: String, point: Option<String>) -> String {
     let _env = crate::EnvScope::enter(&env);

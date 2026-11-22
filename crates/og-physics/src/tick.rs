@@ -249,6 +249,24 @@ pub(super) fn run(ctx: &mut SystemContext<'_>, ids: &Ids, shared: &Mutex<Shared>
     Ok(())
 }
 
+/// What is inside `sensor` as one step's pairs (its og.Contact events)
+/// have it: every entity overlapping it, each once, in entity order. A pair
+/// counts only on the side its `sensor` bits name, so a solid touching a
+/// sensor's entity is not in it; empty for an entity that is no sensor.
+pub fn sensor_contents(contacts: &[Contact], sensor: u64) -> Vec<u64> {
+    let mut inside: Vec<u64> = contacts
+        .iter()
+        .filter_map(|c| match () {
+            _ if c.a == sensor && c.sensor & 1 != 0 => Some(c.b),
+            _ if c.b == sensor && c.sensor & 2 != 0 => Some(c.a),
+            _ => None,
+        })
+        .collect();
+    og_core::sort::sort(&mut inside);
+    inside.dedup();
+    inside
+}
+
 fn sensor_events(ctx: &SystemContext<'_>, c: &Contact, entered: bool) -> Result<()> {
     let mut pairs = Vec::with_capacity(2);
     if c.sensor & 1 != 0 {

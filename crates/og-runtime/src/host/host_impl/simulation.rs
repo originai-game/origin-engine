@@ -103,6 +103,11 @@ macro_rules! __og_host_bindings_simulation {
             fn og_physics_overlap(&self, world: u32, desc: Option<String>) -> String {
                 $crate::host_impl::answer($crate::og_physics_overlap(world, desc))
             }
+            fn og_physics_sensor_contents(&self, world: u32, sensor: f64) -> String {
+                $crate::host_impl::answer($crate::host_impl::og_physics_sensor_contents(
+                    world, sensor,
+                ))
+            }
             fn og_physics_set_mesh(&self, world: u32, mesh: f64, desc: Option<String>) -> String {
                 $crate::host_impl::answer($crate::og_physics_set_mesh(world, mesh, desc))
             }

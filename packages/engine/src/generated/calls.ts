@@ -661,6 +661,7 @@ export const og = Object.freeze({
     projectPoint: (world: { readonly id: number }, desc?: unknown): unknown => JSON.parse(abi().og_physics_project_point(world.id, json(desc))) as unknown,
     castShape: (world: { readonly id: number }, desc?: unknown): unknown => JSON.parse(abi().og_physics_cast_shape(world.id, json(desc))) as unknown,
     overlap: (world: { readonly id: number }, desc?: unknown): unknown => JSON.parse(abi().og_physics_overlap(world.id, json(desc))) as unknown,
+    sensorContents: (world: { readonly id: number }, sensor: number): unknown => JSON.parse(abi().og_physics_sensor_contents(world.id, sensor)) as unknown,
     applyForce: (world: { readonly id: number }, entity: number, force: unknown, point?: unknown): unknown => JSON.parse(abi().og_physics_apply_force(world.id, entity, JSON.stringify(force), json(point))) as unknown,
     applyImpulse: (world: { readonly id: number }, entity: number, impulse: unknown, point?: unknown): unknown => JSON.parse(abi().og_physics_apply_impulse(world.id, entity, JSON.stringify(impulse), json(point))) as unknown,
     applyTorque: (world: { readonly id: number }, entity: number, torque: unknown): unknown => JSON.parse(abi().og_physics_apply_torque(world.id, entity, JSON.stringify(torque))) as unknown,
