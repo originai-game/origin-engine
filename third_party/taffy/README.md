@@ -47,8 +47,9 @@ skipped there: a column of flexed square items stays as wide as their
 own widths, not the widths their flexed heights give.
 
 5. `src/compute/flexbox.rs`, `collect_flex_lines`. An item wraps only when
-its line passes the available main size by more than `WRAP_SLACK`
-(0.01 layout units). A fit-content wrapping row is as wide as its items'
-max-content sum, and the line break summed them back in another order, so
-it lost a few ulps and wrapped its last item onto a second line, while the
-row kept the height of one.
+its line passes the available main size by more than `LAYOUT_SLACK`
+(0.01 layout units, `src/lib.rs`, the slack og-ui's text breaks past
+too). A fit-content wrapping row is as wide as its items' max-content
+sum, and the line break summed them back in another order, so it lost a
+few ulps and wrapped its last item onto a second line, while the row kept
+the height of one.

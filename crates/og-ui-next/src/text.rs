@@ -22,11 +22,6 @@ use og_text::layout::{
 };
 use og_text::strike::{Form, Strikes};
 
-/// What a leaf breaks wider than the width it is given by, CSS px: a box
-/// is its text's measured width through layout's sums, which may lose a
-/// little, and the text given that width back must keep its lines.
-const SLACK: f32 = 0.01;
-
 /// Above this many device pixels an em a glyph draws from its distance
 /// field: one raster would take a plot of its own.
 const FIELD_OVER: f32 = 128.0;
@@ -288,7 +283,10 @@ impl Texts {
             let width = match avail {
                 Avail::Max => None,
                 Avail::Min => Some(leaf.layout.content_widths().0),
-                Avail::Width(w) => Some(w + SLACK),
+                // A box is its text's measured width through layout's sums,
+                // which may lose a little: the text given that width back
+                // keeps its lines, as a flex line keeps its items.
+                Avail::Width(w) => Some(w + taffy::LAYOUT_SLACK),
             };
             leaf.layout.break_at(fonts, text, &s, width);
             leaf.broken = Some(key);

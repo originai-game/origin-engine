@@ -93,6 +93,12 @@ pub mod tree;
 #[macro_use]
 pub mod util;
 
+/// Origin Engine: how far past a size, in layout units (CSS px), what was measured to fit it may
+/// reach and still fit it. A box sized to its content's sum gets that sum back through other
+/// additions, which may lose a few ulps: a flex line wraps its next item only past it
+/// (`collect_flex_lines`), and og-ui breaks a text given its own measured width only past it.
+pub const LAYOUT_SLACK: f32 = 0.01;
+
 mod readme_doctest {
     #![doc = include_str!("../README.md")]
 }

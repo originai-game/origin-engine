@@ -1313,10 +1313,10 @@ fn collect_flex_lines<'a>(
                             // So first item in the line does not contribute a gap to the line length
                             let gap_contribution = if idx == 0 { 0.0 } else { main_axis_gap };
                             line_length += child.hypothetical_outer_size.main(constants.dir) + gap_contribution;
-                            // Origin Engine: an item overflows the line only past a slack of
-                            // WRAP_SLACK, so a container sized to its items on one line (fit-content)
-                            // keeps them on it, whatever the order of its sums loses.
-                            line_length > main_axis_available_space + WRAP_SLACK && idx != 0
+                            // Origin Engine: an item overflows the line only past LAYOUT_SLACK, so a
+                            // container sized to its items on one line (fit-content) keeps them on
+                            // it, whatever the order of its sums loses.
+                            line_length > main_axis_available_space + crate::LAYOUT_SLACK && idx != 0
                         })
                         .map(|(idx, _)| idx)
                         .unwrap_or(flex_items.len());
@@ -1330,11 +1330,6 @@ fn collect_flex_lines<'a>(
         }
     }
 }
-
-/// Origin Engine: how far past the available main size, in layout units (CSS px), a line's items
-/// may reach before the next one wraps: a container sized to its items' sum gets that sum back
-/// through other additions, which may lose a few ulps.
-const WRAP_SLACK: f32 = 0.01;
 
 /// Collect flex items into balanced flex lines (`flex-wrap: balance`), such that the largest
 /// line is as small as possible.
