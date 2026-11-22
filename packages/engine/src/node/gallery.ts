@@ -195,6 +195,14 @@ function pack(world: World, name: string): void {
 export default og.game({
   tick: 60,
   seed: 1,
+  // A camera that sees the origin, where the world kit's fixtures anchor (a nameplate, a loot
+  // label, a speech bubble): at the default camera's own place they are behind nothing and on no
+  // screen, and only an edge-clamped one draws.
+  start: (world) => {
+    const camera = world.resource(og.Camera);
+    if (!camera.ok) throw new Error(\`og.Camera: \${camera.reason}\`);
+    camera.value.position = { x: 0, y: 1, z: 8 };
+  },
   // Pages mount by command only, so one that throws is a listed defect, not a failed start.
   ui: () => {},
   commands: {
@@ -274,6 +282,22 @@ export function contrast(a: readonly number[], b: readonly number[]): number {
   }, 0);
   const [x, y] = [lum(a), lum(b)];
   return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05);
+}
+
+/**
+ * Whether a frame is the bare stage: each half one flat colour above the caption's strip (its
+ * bottom 24 CSS px). Such a fixture drew nothing, so nothing of it was checked. `scale`: frame px
+ * per CSS px.
+ */
+export function bareStage(frame: { width: number; height: number; rgba: Uint8Array }, scale: number): boolean {
+  const half = Math.floor(frame.height / 2), end = frame.height - Math.ceil(24 * scale);
+  const flat = (y0: number, y1: number): boolean => {
+    const o = y0 * frame.width * 4, [r, g, b] = [frame.rgba[o], frame.rgba[o + 1], frame.rgba[o + 2]];
+    for (let i = o; i < y1 * frame.width * 4; i += 4) if (frame.rgba[i] !== r || frame.rgba[i + 1] !== g || frame.rgba[i + 2] !== b) return false;
+    return true;
+  };
+  // The row the halves meet on blends the two where the surface's height is odd.
+  return flat(0, half - 1) && flat(half + 1, end);
 }
 
 interface TextElement { id?: string; parent?: string; text?: string; disabled?: boolean; ink?: number[]; fontSize?: number; textLines?: number[][]; textTransform?: number[] }
@@ -383,7 +407,7 @@ async function main(): Promise<number> {
   const keys = tableKeys();
   const size = arg("--size") ?? "1280x720";
   const width = Number(size.split("x")[0]);
-  /** The hard defects, by fixture: a mount that threw, a raw string key drawn, a word broken across lines, text under the contrast bar on its drawn ground. */
+  /** The hard defects, by fixture: a mount that threw, a frame that is the bare stage, a raw string key drawn, a word broken across lines, text under the contrast bar on its drawn ground. */
   const defects: string[] = [];
   if (!(await run(["cook", "."])).ok) return 1;
   // A pack loads its look and fonts over a few frames; a page settles in 12 ticks.
@@ -421,6 +445,8 @@ async function main(): Promise<number> {
         if (broken.length) defects.push(`${where(n)}: breaks inside a word ${broken.join(", ")}`);
         const shot = frameFiles[n];
         const frame = shot ? decodePng(readFileSync(join(shots, shot))) : undefined;
+        // A fixture that lays out text yet leaves the bare stage drew nothing it meant to; an empty one meant to.
+        if (frame && (dump.elements ?? []).some((e: TextElement) => e.text && e.text !== `${list[n]!.name} · ${list[n]!.fixture}`) && bareStage(frame, frame.width / width)) defects.push(`${where(n)}: draws nothing: the frame is the bare stage, so nothing of it is checked`);
         for (const low of frame ? lowContrast(dump, frame, frame.width / width) : []) defects.push(`${where(n)}: reads under the contrast bar: ${low}`);
       }
       rmSync(join(shots, f));
