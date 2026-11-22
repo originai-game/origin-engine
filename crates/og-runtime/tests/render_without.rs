@@ -111,7 +111,7 @@ fn the_capabilities_report_the_tier_and_its_set() {
     assert_eq!(caps["backend"], "none");
     assert_eq!(caps["tier"], "full");
     let set = caps["caps"].as_object().unwrap();
-    assert_eq!(set.len(), 8, "{set:?}");
+    assert_eq!(set.len(), 10, "{set:?}");
     assert!(set.values().all(|v| v == false), "{set:?}");
     let desc = render_desc(
         e,
@@ -125,6 +125,12 @@ fn the_capabilities_report_the_tier_and_its_set() {
     let renderer = og_render::Renderer::new_blocking(&desc).expect("a headless adapter");
     let backend = renderer.info().backend_tier();
     let compute = renderer.info().caps.contains(og_render::Caps::COMPUTE);
+    // The mini-game tier keeps these: they follow the device.
+    let blend = renderer
+        .info()
+        .caps
+        .contains(og_render::Caps::INDEPENDENT_BLEND);
+    let rg32 = renderer.info().caps.contains(og_render::Caps::RG32_STORAGE);
     set_render_backend(e, Some(Box::new(Made(renderer)))).unwrap();
     let caps: Value = og_render_capabilities(e);
     assert_eq!(caps["backend"], backend.as_str());
@@ -133,6 +139,8 @@ fn the_capabilities_report_the_tier_and_its_set() {
         assert_eq!(caps["caps"][lacking], false, "{lacking}: {caps}");
     }
     assert_eq!(caps["caps"]["compute"], compute);
+    assert_eq!(caps["caps"]["independentBlend"], blend, "{caps}");
+    assert_eq!(caps["caps"]["rg32Storage"], rg32, "{caps}");
     assert_eq!(caps["compute"], compute);
     let fsr = json!(if compute {
         vec!["taau", "fsr3"]
