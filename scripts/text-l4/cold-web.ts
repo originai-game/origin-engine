@@ -2,12 +2,13 @@
 //   bun cold-web.ts <og> <chrome> <project> <out-dir>
 // Builds <project> for the web (`og build`, a development build: its probe has `dump`),
 // serves it cold (COOP/COEP, no-store), opens it in headless Chrome with docs/ci.md's
-// timing switches (WebGPU on the NVIDIA adapter), passes the play gate, and every 50 ms
+// timing switches (WebGPU on Vulkan, or Metal on macOS), passes the play gate, and every 50 ms
 // captures the drawn frame: when the first frame landed, when each text line first had
 // ink, any line that had ink and lost it, and when each .face.ogb was served.
 // Env: FACE_DELAY_MS holds the Han faces (FACE_DELAY_RE, default `SC|ZCOOL`) that long
 // before serving them, so a pending face is exercised; SWIFTSHADER=1 puts WebGPU on
 // SwiftShader (a functional check only: its times are not counted); LIMIT_MS (90000).
+// FACE_DELAY_RE=ZCOOL leaves Noto Sans SC available to test fallback while ZCOOL is pending.
 // Prints one JSON line and writes <out-dir>/cold-web.json and frame PNGs.
 // Exits 1 on a finding: no first frame, a text line that never draws, a line that goes
 // blank after it drew, or (without SWIFTSHADER) a software adapter. 2 on a usage or build error.
@@ -50,7 +51,7 @@ const server = Bun.serve({
     return new Response(Bun.file(file), { headers });
   },
 });
-const gpu = software ? ["--use-angle=vulkan", "--use-vulkan=swiftshader", "--enable-features=WebGPU,Vulkan", "--enable-unsafe-swiftshader"] : ["--use-angle=vulkan", "--enable-features=WebGPU,Vulkan", "--disable-vulkan-surface"];
+const gpu = software ? ["--use-angle=vulkan", "--use-vulkan=swiftshader", "--enable-features=WebGPU,Vulkan", "--enable-unsafe-swiftshader"] : process.platform === "darwin" ? ["--use-angle=metal"] : ["--use-angle=vulkan", "--enable-features=WebGPU,Vulkan", "--disable-vulkan-surface"];
 const profile = mkdtempSync(join(tmpdir(), "og-cold-web-"));
 const proc = Bun.spawn([chrome, "--headless=new", "--no-first-run", `--user-data-dir=${profile}`, "--window-size=1280,720", "--hide-scrollbars", "--enable-unsafe-webgpu", ...gpu, "--ignore-gpu-blocklist", "--no-sandbox", "--remote-debugging-port=0", "about:blank"], { stdout: "ignore", stderr: "ignore" });
 const portFile = join(profile, "DevToolsActivePort");
@@ -142,6 +143,8 @@ server.stop();
 rmSync(profile, { recursive: true, force: true });
 const findings: string[] = [];
 if (!result.firstFrameMs) findings.push(`cold-web: no first frame in ${limit} ms`);
+if (!texts.length) findings.push(`cold-web: no text lines discovered in ${limit} ms`);
+if (!firstInk.size) findings.push(`cold-web: no text ink captured in ${limit} ms`);
 for (const t of texts) if (!firstInk.has(t)) findings.push(`cold-web: "${t}" never drew`);
 for (const l of lost) findings.push(`cold-web: a line went blank after it drew, at ${l}`);
 if (!software && (!adapter || /software|swiftshader/i.test(adapter))) findings.push(`cold-web: the adapter is ${adapter ?? "unknown"}, not a GPU`);
