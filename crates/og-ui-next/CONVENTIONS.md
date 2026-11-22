@@ -385,6 +385,19 @@ placement props (`occlusion`, `declutter`, `priority`, `clamp`,
   one that would leave the top hides (MapLibre's collision pass, one
   direction). A node without `declutter` neither moves nor blocks; an
   edge-clamped one does not declutter.
+- `anchor` as any other text (not a number or `x,y,z`) is a UI node's
+  `name`: the tree places it after layout on every frame, its top left at
+  that node's laid-out box's top left (its parents' scrolls and layout
+  transitions counted, not its transform) plus `lift`'s x and y as
+  fractions of that box's size, so `lift={[0, 1, 0]}` stands under it.
+  Hidden while no live node of that name shows; the host is never asked,
+  and `occlusion`, `declutter` and `clamp` do not apply.
+- `spotlight="<name>"` (a tutorial step): the node's own `bg-*` colour
+  covers the surface outside the named node's box, and it takes every
+  press there, listening or not, so nothing under the shade gets one and
+  the lit node keeps its own. Its children paint and take presses as
+  laid out. While the name finds no node that shows, it is an ordinary
+  box. Of live nodes sharing a `name`, the last made answers.
 - The host places it at each tick's end, after the game's systems, from the
   tick's camera and entities' world poses (`Tree::place_anchors`, which
   allocates nothing unless a `data-clamped`, `data-edge-*` or

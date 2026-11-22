@@ -144,8 +144,14 @@ export interface HostProps {
    * screen, behind the camera or on a dead entity it is hidden (unless
    * `clamp`): it paints nothing, takes no press and leaves the
    * accessibility tree. Never seen by the simulation.
+   *
+   * A string anchors it to the UI node of that `name` instead: its top
+   * left at that node's laid-out box's top left, `lift`'s x and y fractions
+   * of that box's size (`lift={[0, 1, 0]}` stands under it), following it
+   * every frame; hidden while no node of that name shows. `occlusion`,
+   * `declutter` and `clamp` are for world anchors.
    */
-  anchor?: Entity | readonly [number, number, number] | null | undefined;
+  anchor?: Entity | readonly [number, number, number] | string | null | undefined;
   /** The anchor's offset in world units, such as `[0, 2, 0]` over a head. */
   lift?: readonly [number, number, number] | undefined;
   /**
@@ -170,6 +176,20 @@ export interface HostProps {
    */
   clamp?: "none" | "edge" | undefined;
   clampMargin?: number | undefined;
+  /**
+   * What `anchor` and `spotlight` find it by. Of the live nodes that
+   * share a name, the last made answers. An `Icon`'s `name` is its icon:
+   * name a `View` around it.
+   */
+  name?: string | undefined;
+  /**
+   * A tutorial's spotlight: the `name` of the node it lights. Its own
+   * `bg-*` covers the whole surface outside that node's box, and it takes
+   * every press there (whether it listens or not: nothing under it gets
+   * one), so the lit node keeps its own presses. Its children paint as
+   * laid out. While no node of that name shows, it is an ordinary box.
+   */
+  spotlight?: string | undefined;
   /** `data-*` states class variants read (`data-ready:`). */
   [data: `data-${string}`]: string | number | boolean | undefined;
 }

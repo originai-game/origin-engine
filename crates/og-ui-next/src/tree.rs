@@ -93,6 +93,10 @@ pub enum AnchorTarget {
     /// An entity, by its bits.
     Entity(u64),
     Point([f32; 3]),
+    /// A UI node, by its `name` (an index into the tree's names): the
+    /// tree places it from that node's box after layout; the host is
+    /// never asked.
+    Node(u32),
 }
 
 /// What the host sees of an anchored node's target ([`Tree::place_anchors`]).
@@ -321,6 +325,8 @@ pub struct Tree {
     /// [`Tree::settle_anchors`]'s order and the boxes it placed, kept.
     anchor_order: Vec<u32>,
     anchor_placed: Vec<[f32; 4]>,
+    /// The names node anchors target, each once ([`AnchorTarget::Node`]).
+    names: Vec<Box<str>>,
     /// Each element's text laid out as glyph quads from its leaf's top
     /// left, kept while its text, width and run stay.
     glyphs: Vec<Glyphs>,
@@ -489,6 +495,7 @@ impl Tree {
             anchored: Vec::new(),
             anchor_order: Vec::new(),
             anchor_placed: Vec::new(),
+            names: Vec::new(),
             glyphs: Vec::new(),
             xfs: Vec::new(),
             masks: Vec::new(),
@@ -606,6 +613,9 @@ impl Tree {
                 continue;
             }
             let target = a.target.expect("an anchored node");
+            if matches!(target, AnchorTarget::Node(_)) {
+                continue;
+            }
             let ask = tick && a.occlusion != Occlusion::None;
             let seen = project(target, a.lift, ask);
             // The last layout's drawn box (none before the first), for
@@ -684,6 +694,29 @@ impl Tree {
     /// pass, one direction). Repaints and moves the accessibility nodes
     /// of what changed.
     fn settle_anchors(&mut self) {
+        // A node anchored to a UI node sits where that node's box is now,
+        // `lift` its x and y as fractions of that box's size.
+        for k in 0..self.anchored.len() {
+            let e = self.anchored[k];
+            let Some(&Anchor {
+                target: Some(AnchorTarget::Node(n)),
+                lift,
+                ..
+            }) = self.els[e as usize].anchored()
+            else {
+                continue;
+            };
+            let seen = self
+                .named(&self.names[n as usize])
+                .filter(|&t| t != e)
+                .and_then(|t| self.laid_box(t))
+                .map(|[x, y, bw, bh]| Sighting {
+                    at: [x + lift[0] * bw, y + lift[1] * bh],
+                    ..Sighting::default()
+                });
+            let a = self.els[e as usize].anchor.as_mut().expect("anchored");
+            (a.seen, a.edge, a.occluded, a.ticked) = (seen, None, false, seen.is_some());
+        }
         let (w, h) = self.size;
         let mut order = std::mem::take(&mut self.anchor_order);
         let mut placed = std::mem::take(&mut self.anchor_placed);
@@ -741,11 +774,82 @@ impl Tree {
         self.anchor_placed = placed;
     }
 
-    /// The anchored nodes, for the host to ask which entities they need.
+    /// The anchored nodes' world targets, for the host to ask which
+    /// entities they need (a node anchored to a UI node is the tree's).
     pub fn anchor_targets(&self) -> impl Iterator<Item = AnchorTarget> + '_ {
         self.anchored
             .iter()
             .filter_map(|&e| self.els[e as usize].anchored().and_then(|a| a.target))
+            .filter(|t| !matches!(t, AnchorTarget::Node(_)))
+    }
+
+    /// The index of `name` among the names node anchors target.
+    pub(crate) fn name_index(&mut self, name: &str) -> u32 {
+        match self.names.iter().position(|n| **n == *name) {
+            Some(i) => i as u32,
+            None => {
+                self.names.push(name.into());
+                self.names.len() as u32 - 1
+            }
+        }
+    }
+
+    /// The live node `name` names: the last made of those that carry it.
+    fn named(&self, name: &str) -> Option<u32> {
+        if name.is_empty() {
+            return None;
+        }
+        (0..self.els.len().min(self.input.per.len()))
+            .rev()
+            .find(|&e| !self.els[e].dead && *self.input.per[e].name == *name)
+            .map(|e| e as u32)
+    }
+
+    /// `e`'s box on the surface as laid out now (x, y, width, height: its
+    /// layout transition's box, its parents' scrolls, an anchored
+    /// ancestor's place; not its transform), `None` while it or an
+    /// ancestor does not show.
+    fn laid_box(&self, e: u32) -> Option<[f32; 4]> {
+        let size = |c: u32| {
+            let n = self.els[c as usize].node;
+            self.motion
+                .box_of(n)
+                .unwrap_or_else(|| self.arena.box_of(n))
+        };
+        let own = size(e);
+        let (mut x, mut y) = (0.0, 0.0);
+        let mut c = e;
+        loop {
+            let el = &self.els[c as usize];
+            if el.dead
+                || el.hidden > 0
+                || el.record.hidden
+                || el.record.layout.display() == taffy::Display::None
+            {
+                return None;
+            }
+            if let Some(a) = el.anchored() {
+                a.shown.then_some(())?;
+                (x, y) = (x + a.at[0], y + a.at[1]);
+                break;
+            }
+            let b = size(c);
+            (x, y) = (x + b.x, y + b.y);
+            if el.arena_parent == NONE {
+                break;
+            }
+            let [sx, sy] = self.scroll_of(el.arena_parent);
+            (x, y) = (x - sx, y - sy);
+            c = el.arena_parent;
+        }
+        Some([x, y, own.w, own.h])
+    }
+
+    /// The box spotlight `e` lights (its `spotlight` node's), when it
+    /// names one that shows.
+    fn hole(&self, e: u32) -> Option<[f32; 4]> {
+        let name = &self.input.per.get(e as usize)?.spotlight;
+        self.laid_box(self.named(name).filter(|&t| t != e)?)
     }
 
     /// Applies `e`'s record over what it inherits, then its children's.
@@ -1193,6 +1297,7 @@ impl Tree {
             let [kx, ky] = self.knob_of(e as u32);
             let mut t = s.transform;
             t.translate = [t.translate[0] + kx, t.translate[1] + ky];
+            let hole = self.hole(e as u32);
             let p = &mut self.drawn;
             let start = p.quads.len();
             // Its own mask replaces an ancestor's over its subtree.
@@ -1282,7 +1387,32 @@ impl Tree {
             let image = og_draw::TextureHandle::from_slot(im.texture).filter(|_| im.wipe > 0.0);
             // A fill-tinted image takes the fill's colour in its place.
             let fill_tints = image.is_some() && im.tint == crate::record::Tint::Fill;
-            if s.fill[3] > 0.0 && !fill_tints {
+            if let Some([hx, hy, hw, hh]) = hole.filter(|_| s.fill[3] > 0.0) {
+                // A spotlight's ground covers the surface but its hole:
+                // above, below, then left and right of it.
+                let (sw, sh) = (screen[2] - screen[0], screen[3] - screen[1]);
+                let (hx0, hy0) = (hx.clamp(0.0, sw), hy.clamp(0.0, sh));
+                let (hx1, hy1) = ((hx + hw).clamp(0.0, sw), (hy + hh).clamp(0.0, sh));
+                for r in [
+                    [0.0, 0.0, sw, hy0],
+                    [0.0, hy1, sw, sh - hy1],
+                    [0.0, hy0, hx0, hy1 - hy0],
+                    [hx1, hy0, sw - hx1, hy1 - hy0],
+                ] {
+                    if r[2] > 0.0 && r[3] > 0.0 {
+                        p.quads.push(quad(
+                            PaintKind::Solid,
+                            r,
+                            screen,
+                            faded(s.fill),
+                            [0.0; 4],
+                            [0.0; 4],
+                            0,
+                            0,
+                        ));
+                    }
+                }
+            } else if s.fill[3] > 0.0 && !fill_tints {
                 p.quads.push(quad(
                     PaintKind::Solid,
                     rect,
@@ -1729,12 +1859,28 @@ impl Tree {
         for &e in self.order.iter().rev() {
             let (e, el) = (e as usize, &self.els[e as usize]);
             // An element on its way out, or in one, answers nothing.
-            if el.dead || !want(el) || self.shown.get(e).is_some_and(|s| s.out || !s.touch) {
+            if el.dead || self.shown.get(e).is_some_and(|s| s.out || !s.touch) {
                 continue;
             }
             let Some(&(bx, by, shown, _)) = self.abs.get(e) else {
                 continue;
             };
+            // A spotlight takes the surface outside its hole, whatever its
+            // box: the lit node under it takes its own presses, and what
+            // else is under it none.
+            if let Some([hx, hy, hw, hh]) = self
+                .hole(e as u32)
+                .filter(|_| shown && self.reachable(e as u32))
+            {
+                if x >= hx && x < hx + hw && y >= hy && y < hy + hh {
+                    continue;
+                }
+                let takes = want(el) && !(enabled && el.clickable && el.disabled);
+                return if takes { e as u32 } else { NONE };
+            }
+            if !want(el) {
+                continue;
+            }
             let all = [f32::MIN, f32::MIN, f32::MAX, f32::MAX];
             let [cx0, cy0, cx1, cy1] = match el.arena_parent {
                 _ if el.anchored().is_some() => all,

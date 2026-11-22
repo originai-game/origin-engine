@@ -772,14 +772,22 @@ impl Tree {
                         }
                         // `anchor` an entity's number or a world point
                         // `x,y,z` (empty: back in flow): the host places
-                        // the node (§World).
+                        // the node (§World); any other text is a UI
+                        // node's `name`, which the tree places it on.
                         "anchor" => {
+                            let v = value.trim();
+                            let node_name = !v.is_empty()
+                                && v.split([',', ' '])
+                                    .any(|t| !t.is_empty() && t.parse::<f64>().is_err());
                             let n: Vec<f32> = value
                                 .split([',', ' '])
                                 .filter(|t| !t.is_empty())
                                 .map(|t| t.parse().unwrap_or(0.0))
                                 .collect();
                             let target = match n[..] {
+                                _ if node_name => {
+                                    Some(super::AnchorTarget::Node(self.name_index(v)))
+                                }
                                 [] => None,
                                 [x, y, z] => Some(super::AnchorTarget::Point([x, y, z])),
                                 _ => value
@@ -888,6 +896,16 @@ impl Tree {
                         }
                         "name" if self.els[e as usize].kind == Kind::Icon => {
                             self.set_text(e, value);
+                        }
+                        // `name`: what `anchor` and `spotlight` find it by.
+                        "name" => {
+                            self.input.per[e as usize].name = value.trim().into();
+                            self.paint = true;
+                        }
+                        // `spotlight`: the named node its ground lights.
+                        "spotlight" => {
+                            self.input.per[e as usize].spotlight = value.trim().into();
+                            self.paint = true;
                         }
                         // A `data-*` attribute, on unless empty or false:
                         // the classes' `data-*:` variants read it here,
@@ -3439,6 +3457,80 @@ mod tests {
             let want = lines as f32 * 20.0 + (lines - 1) as f32 * 6.0 + 12.0;
             assert_eq!(h, want, "{width}: the row holds its lines");
         }
+    }
+
+    /// A tutorial step: `spotlight="goal"` draws the shade's `bg-*` over
+    /// the surface outside the node named `goal` and takes presses only
+    /// there, so the goal takes its own; a card anchored to `goal` with
+    /// `lift` 0,1 stands under it, and follows it when it moves.
+    #[test]
+    fn a_spotlight_lights_its_named_node_and_a_card_anchors_to_it() {
+        let mut t = tree();
+        let classes = std::cell::RefCell::new(crate::classes::Classes::new(None).unwrap().0);
+        t.set_resolver(Box::new(move |class, style, _, _| {
+            classes
+                .borrow_mut()
+                .record_styled(class, style, &crate::classes::Env::default())
+        }));
+        let mut b = Batch::default();
+        for (id, class, parent) in [
+            (1, "relative w-[400px] h-[300px]", 0),
+            (
+                2,
+                "absolute left-[100px] top-[50px] w-[60px] h-[40px] bg-white",
+                1,
+            ),
+            (3, "absolute left-0 top-0 w-[10px] h-[10px] bg-black/50", 1),
+            (4, "w-[50px] h-[20px]", 3),
+        ] {
+            b.op(1).u32(id).u8(0);
+            b.op(4).u32(id).str(class);
+            b.op(8).u32(parent).u32(id).u32(u32::MAX);
+        }
+        b.op(6).u32(2).str("name").str("goal");
+        b.op(7).u32(2).u8(Event::Press as u8).u8(1);
+        b.op(6).u32(3).str("spotlight").str("goal");
+        b.op(7).u32(3).u8(Event::Press as u8).u8(1);
+        b.op(6).u32(4).str("anchor").str("goal");
+        b.op(6).u32(4).str("lift").str("0,1,0");
+        t.apply(&b.bytes()).unwrap();
+        frame(&mut t);
+        // The shade: the whole surface but the goal's box.
+        let shade: Vec<[f32; 4]> = t
+            .drawn
+            .quads
+            .iter()
+            .filter(|q| q.color[..3] == [0.0; 3] && q.color[3] > 0.0)
+            .map(|q| q.rect)
+            .collect();
+        let area: f32 = shade.iter().map(|r| r[2] * r[3]).sum();
+        assert_eq!(area, 400.0 * 300.0 - 60.0 * 40.0, "{shade:?}");
+        assert!(
+            shade.iter().all(|r| r[0] >= 160.0
+                || r[0] + r[2] <= 100.0
+                || r[1] >= 90.0
+                || r[1] + r[3] <= 50.0),
+            "nothing over the goal: {shade:?}"
+        );
+        assert_eq!(t.op_box(4).unwrap(), [100.0, 90.0, 50.0, 20.0]);
+        let press = |t: &mut Tree, x, y| {
+            t.events.clear();
+            t.pointer(x, y, true, false);
+            t.pointer(x, y, false, true);
+            t.events.iter().map(|f| f.id).collect::<Vec<_>>()
+        };
+        assert_eq!(press(&mut t, 130.0, 70.0), [2], "the goal takes its own");
+        assert_eq!(press(&mut t, 300.0, 200.0), [3], "the shade takes the rest");
+        // The goal moves: the hole and the card follow.
+        let mut b = Batch::default();
+        b.op(4)
+            .u32(2)
+            .str("absolute left-[200px] top-[150px] w-[60px] h-[40px] bg-white");
+        t.apply(&b.bytes()).unwrap();
+        frame(&mut t);
+        assert_eq!(t.op_box(4).unwrap(), [200.0, 190.0, 50.0, 20.0]);
+        assert_eq!(press(&mut t, 230.0, 170.0), [2]);
+        assert_eq!(press(&mut t, 130.0, 70.0), [3]);
     }
 
     /// Classes lay out with CSS's initial flex values: a `w-full min-w-0`

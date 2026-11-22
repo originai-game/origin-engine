@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {
+      "member": "TSX element props: name, spotlight, anchor",
+      "summary": "`name` gives an element a name to find it by. `anchor` now also takes a name: the element then stands on that UI element's box (its top left, plus `lift`'s x and y as fractions of the box's size, so `lift={[0, 1, 0]}` sits under it) and follows it every frame. `spotlight=\"<name>\"` makes an element a tutorial's shade: its `bg-*` colour covers the screen outside the named element's box, and it takes every press there, so the lit element keeps its own presses."
+    }
+  ]
+}

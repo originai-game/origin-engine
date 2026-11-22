@@ -877,6 +877,8 @@ impl Next {
             let (p, skip) = match target {
                 og_ui_next::tree::AnchorTarget::Entity(bits) => (world(bits)?, Some(bits)),
                 og_ui_next::tree::AnchorTarget::Point(p) => (p.into(), None),
+                // The tree places a node anchored to a UI node itself.
+                og_ui_next::tree::AnchorTarget::Node(_) => return None,
             };
             let p = p + og_core::glam::Vec3::from(lift);
             let mut seen = sighting(view, p, w, h);

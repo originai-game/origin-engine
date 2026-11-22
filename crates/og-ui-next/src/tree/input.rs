@@ -113,6 +113,11 @@ pub(super) struct Per {
     /// its id (non-empty: a drop target).
     pub drag: Box<str>,
     pub drop: Box<str>,
+    /// `name`: what `anchor` and `spotlight` find it by (empty: none).
+    pub name: Box<str>,
+    /// `spotlight`: the name of the node it lights; its `bg-*` covers the
+    /// surface outside that node's box, and it takes presses only there.
+    pub spotlight: Box<str>,
     /// `focusGroup`: its focusable descendants are one group for the
     /// arrows and the d-pad (`Some(true)` wraps at its edge, `Some(false)`
     /// stops: the move leaves it); `focusMemory`: focus coming into it
@@ -1100,6 +1105,12 @@ impl Tree {
         let Some(&(bx, by, shown, _)) = self.abs.get(e as usize) else {
             return false;
         };
+        // A spotlight's box is the surface outside its hole.
+        if let Some([hx, hy, hw, hh]) = self.hole(e) {
+            let (w, h) = self.size;
+            let on = x >= 0.0 && y >= 0.0 && x < w && y < h;
+            return shown && on && !(x >= hx && x < hx + hw && y >= hy && y < hy + hh);
+        }
         let b = self.arena.box_of(self.els[e as usize].node);
         let local = nsh_input::Point {
             x: nsh_input::Points(x - bx),

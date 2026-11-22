@@ -388,6 +388,7 @@ pub(crate) fn ui_anchors(rs: &mut RenderState, h: &mut Hierarchy, camera: Option
         let p = match target {
             og_ui_next::tree::AnchorTarget::Entity(bits) => h.world_of(bits).w_axis.truncate(),
             og_ui_next::tree::AnchorTarget::Point(p) => p.into(),
+            og_ui_next::tree::AnchorTarget::Node(_) => return None,
         };
         Some(super::ui_next::sighting(&view, p + Vec3::from(lift), w, ht))
     });
