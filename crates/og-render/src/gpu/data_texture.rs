@@ -50,6 +50,33 @@ impl DataTexture {
         }
     }
 
+    /// Writes `bytes` (whole texels) from the start, made again first
+    /// (twice the texels, of its format and usage) when they do not fit;
+    /// returns whether it was made again, so its bind groups must be too.
+    pub fn grow_and_write(
+        &mut self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        label: &str,
+        bytes: &[u8],
+    ) -> bool {
+        let texels = (bytes.len() / 16) as u32;
+        let grew = texels > self.texels;
+        if grew {
+            *self = DataTexture::new(
+                device,
+                label,
+                self.texture.format(),
+                texels.next_power_of_two(),
+                self.texture.usage(),
+            );
+        }
+        if !bytes.is_empty() {
+            self.write(queue, 0, bytes);
+        }
+        grew
+    }
+
     /// Writes `data` (whole 16-byte texels) from texel `first`, which
     /// starts a row; made with `COPY_DST`.
     pub fn write(&self, queue: &wgpu::Queue, first: u32, data: &[u8]) {

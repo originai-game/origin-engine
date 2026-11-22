@@ -3,6 +3,7 @@
 //! unlike its fixed influence count, rig2d keeps every bone-local influence.
 //! Group 3 is private to these mesh pipelines; sprite and 3D layouts do not change.
 
+use crate::gpu::data_texture::DataTexture;
 use crate::{RenderScene, SpriteBlend};
 
 pub(crate) fn source() -> String {
@@ -23,8 +24,9 @@ struct Influence {
 
 pub(crate) struct SkinRenderer {
     layout: wgpu::BindGroupLayout,
-    bones: wgpu::Buffer,
-    influences: wgpu::Buffer,
+    /// Data textures (data_texture.rs) the vertex stage reads.
+    bones: DataTexture,
+    influences: DataTexture,
     group: wgpu::BindGroup,
     pipelines: [wgpu::RenderPipeline; 2],
     normals: Option<[wgpu::RenderPipeline; 2]>,
@@ -32,36 +34,22 @@ pub(crate) struct SkinRenderer {
 
 impl SkinRenderer {
     pub fn supported(flags: wgpu::DownlevelFlags) -> bool {
-        flags.contains(wgpu::DownlevelFlags::VERTEX_STORAGE | wgpu::DownlevelFlags::COMPUTE_SHADERS)
+        flags.contains(wgpu::DownlevelFlags::COMPUTE_SHADERS)
     }
 
     pub fn new(device: &wgpu::Device, layouts: [&wgpu::BindGroupLayout; 3], samples: u32) -> Self {
         let layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("sprite skin"),
-            entries: &[0, 1].map(|binding| wgpu::BindGroupLayoutEntry {
-                binding,
-                visibility: wgpu::ShaderStages::VERTEX,
-                ty: wgpu::BindingType::Buffer {
-                    ty: wgpu::BufferBindingType::Storage { read_only: true },
-                    has_dynamic_offset: false,
-                    min_binding_size: None,
-                },
-                count: None,
-            }),
+            entries: &[
+                crate::gpu::data_texture::data_entry(0, wgpu::ShaderStages::VERTEX, false),
+                crate::gpu::data_texture::data_entry(1, wgpu::ShaderStages::VERTEX, true),
+            ],
         });
-        let buffer = |label| {
-            crate::traffic::create_buffer(
-                device,
-                &wgpu::BufferDescriptor {
-                    label: Some(label),
-                    size: 64,
-                    usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
-                    mapped_at_creation: false,
-                },
-            )
+        let texture = |label, format| {
+            DataTexture::new(device, label, format, 1, wgpu::TextureUsages::COPY_DST)
         };
-        let bones = buffer("sprite bones");
-        let influences = buffer("sprite influences");
+        let bones = texture("sprite bones", wgpu::TextureFormat::Rgba32Float);
+        let influences = texture("sprite influences", wgpu::TextureFormat::Rgba32Uint);
         let group = group(device, &layout, &bones, &influences);
         let pipelines = pipelines(device, layouts, &layout, samples, false);
         Self {
@@ -100,22 +88,16 @@ impl SkinRenderer {
                 }));
             }
         }
-        let sizes = (self.bones.size(), self.influences.size());
-        crate::gpu::buffers::grow_and_write(
-            device,
-            queue,
-            &mut self.bones,
-            "sprite bones",
-            bytemuck::cast_slice(&bones),
-        );
-        crate::gpu::buffers::grow_and_write(
-            device,
-            queue,
-            &mut self.influences,
-            "sprite influences",
-            bytemuck::cast_slice(&influences),
-        );
-        if sizes != (self.bones.size(), self.influences.size()) {
+        let grew =
+            self.bones
+                .grow_and_write(device, queue, "sprite bones", bytemuck::cast_slice(&bones))
+                | self.influences.grow_and_write(
+                    device,
+                    queue,
+                    "sprite influences",
+                    bytemuck::cast_slice(&influences),
+                );
+        if grew {
             self.group = group(device, &self.layout, &self.bones, &self.influences);
         }
     }
@@ -134,8 +116,8 @@ impl SkinRenderer {
 fn group(
     device: &wgpu::Device,
     layout: &wgpu::BindGroupLayout,
-    bones: &wgpu::Buffer,
-    influences: &wgpu::Buffer,
+    bones: &DataTexture,
+    influences: &DataTexture,
 ) -> wgpu::BindGroup {
     device.create_bind_group(&wgpu::BindGroupDescriptor {
         label: Some("sprite skin"),
@@ -143,11 +125,11 @@ fn group(
         entries: &[
             wgpu::BindGroupEntry {
                 binding: 0,
-                resource: bones.as_entire_binding(),
+                resource: wgpu::BindingResource::TextureView(&bones.view),
             },
             wgpu::BindGroupEntry {
                 binding: 1,
-                resource: influences.as_entire_binding(),
+                resource: wgpu::BindingResource::TextureView(&influences.view),
             },
         ],
     })
