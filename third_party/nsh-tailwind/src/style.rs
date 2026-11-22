@@ -1692,7 +1692,7 @@ pub(crate) fn unstyled_layout() -> taffy::Style {
 /// Lays a node out in direction `rtl`: its left and right properties keep
 /// their sides, as in CSS, and its start / end ones take the sides the
 /// direction gives them.
-pub(crate) fn apply_direction(
+pub fn apply_direction(
     layout: &mut taffy::Style,
     view: &mut ViewStyle,
     logical: &Logical,

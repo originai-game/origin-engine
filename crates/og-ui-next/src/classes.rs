@@ -302,6 +302,12 @@ impl Classes {
             };
             let _ = out.set(&camel(name), value);
         }
+        // `ps-4`, `me-2`, `rounded-s-lg`: the start and end sides on the
+        // page's direction's (NSH's core places them; this tree has none).
+        // Only the sides: the layout's direction stays what it was.
+        let (direction, logical) = (out.layout.direction, out.logical);
+        nsh_tailwind::style::apply_direction(&mut out.layout, &mut out.view, &logical, env.rtl);
+        out.layout.direction = direction;
         let mut record = record_of(&out, &props);
         record.scheme = scheme;
         record.dark = env.dark;
@@ -709,6 +715,12 @@ mod tests {
         assert_eq!((r.text.weight, r.text.transform, r.text.align), (700, 1, 1));
         assert_eq!(r.font_size, 18.0);
         assert_eq!(c.unknown("p-4 not-a-class"), ["not-a-class"]);
+        // Start and end are the page's direction's sides.
+        let px = taffy::LengthPercentage::length;
+        let sides = |r: Record| (r.layout.padding().left, r.layout.padding().right);
+        assert_eq!(sides(c.record("ps-4", &env)), (px(16.0), px(0.0)));
+        let rtl = Env { rtl: true, ..env };
+        assert_eq!(sides(c.record("ps-4 pe-1", &rtl)), (px(4.0), px(16.0)));
         // z-index: unset and z-auto stack nothing, z-0 stacks at 0.
         assert_eq!(c.record("p-1", &env).z_index, None);
         assert_eq!(c.record("z-0", &env).z_index, Some(0));

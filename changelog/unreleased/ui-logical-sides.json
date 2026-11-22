@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "ps-*, pe-*, ms-*, me-*, start-*, end-*, border-s-*, rounded-s-* and the other start and end classes",
+      "summary": "TSX classes for an element's start and end sides parsed but drew nothing (`ps-4` gave no padding); they now set the left and right sides, the other way round on a right-to-left page."
+    }
+  ]
+}

@@ -68,5 +68,9 @@ the changes after it are only these:
   `rem` lengths in px at the theme's rem, which og-ui-next applies before
   `Style::set`, so a style prop and a bracketed class read the same rem.
 
+- `style.rs` makes `apply_direction` public: og-ui-next has no NSH core to
+  place a style's start and end sides (`ps-*`, `me-*`, `rounded-s-*`), so
+  it calls it on each record's style with the page's direction.
+
 Its own tests (`tailwind/tests.rs`, `geometry/tests.rs`, `style.rs`) run
 unchanged otherwise.
