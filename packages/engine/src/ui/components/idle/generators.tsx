@@ -90,7 +90,7 @@ export function IdleGenerators(props: IdleGeneratorsProps) {
                           </Text>
                         </Show>
                         <Show when={!g().locked && g().auto}>
-                          <Text class={`text-shadow-2xs bg-tile nine-chip-cut whitespace-nowrap text-xs font-semibold tracking-label uppercase text-fg-muted py-0 px-1 data-tag-auto:bg-success data-tag-auto:bg-none data-tag-auto:text-bg ${packClass("Chip", "frame")}`} data-tag-auto={true}>
+                          <Text class={`text-shadow-2xs bg-tile nine-chip-cut whitespace-nowrap text-xs font-semibold tracking-label uppercase text-fg-muted py-0 px-1 data-tag-auto:bg-success data-tag-auto:bg-none data-tag-auto:text-success-fg ${packClass("Chip", "frame")}`} data-tag-auto={true}>
                             {t("idle.generators.auto")}
                           </Text>
                         </Show>

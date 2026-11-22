@@ -60,7 +60,7 @@ export interface ArenaRosterProps {
  * is an opacity, and the scroll fade at the grid's foot is dropped.
  */
 const CARD = `w-full max-h-full p-4 flex-col gap-y-3 text-fg nine-panel-cut bg-plate-hi data-compact:p-2 ${packClass("Panel", "frame")}`;
-const MARK = "flex-row items-center gap-x-0.5 py-0 px-1 whitespace-nowrap text-xs leading-normal font-bold text-key-fg bg-linear-to-b from-key-hi to-key-lo shadow-key rounded-control data-ready:bg-none data-ready:bg-success data-ready:text-boon-fg";
+const MARK = "flex-row items-center gap-x-0.5 py-0 px-1 whitespace-nowrap text-xs leading-normal font-bold text-key-fg bg-linear-to-b from-key-hi to-key-lo shadow-key rounded-control data-ready:bg-none data-ready:bg-success data-ready:text-success-fg";
 /** A tag in a state's own colour (an accent or gold fill and its ink): the pack's neutral chip does not dress it. */
 const ACCENT_TAG = `flex-none max-w-full self-center py-0 px-1 text-xs leading-normal font-bold tracking-label uppercase text-center text-fg nine-chip-cut bg-raised-pressed`;
 const TAG = `${ACCENT_TAG} ${packClass("Chip", "frame")}`;

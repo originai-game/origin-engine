@@ -32,7 +32,7 @@ export interface ErrorStateProps {
 export function ErrorState(props: ErrorStateProps) {
   return (
     <View class={`bg-tile shadow-sunk text-fg items-center text-center p-6 gap-4 rounded-block disabled:text-fg-subtle transition duration-240 ease-out starting:opacity-0 starting:translate-y-2`} role="alert" busy={(props.busy ?? false)} label={props.title || t("base.error.title")}>
-      <View class={`border-danger bg-danger text-bg justify-center items-center gap-4 size-16 rounded-capsule border-2 animate-pop`}>
+      <View class={`border-danger bg-danger text-danger-fg justify-center items-center gap-4 size-16 rounded-capsule border-2 animate-pop`}>
         <Icon class={`text-bg size-8`} name="close" />
       </View>
       <View class="items-center max-w-105 gap-1">

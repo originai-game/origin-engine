@@ -235,7 +235,7 @@ export function RhythmSongSelect(props: RhythmSongSelectProps) {
                   role="button"
                   label={t("rhythm.songs.retry")}
                   onPress={(e) => props.onRetry?.(e)}
-                  class={`min-h-11 min-w-30 flex-row items-center justify-center gap-1 px-3 bg-hud-accent nine-plate-cut hover:bg-hud-accent text-gold-fg ${packClass("Button", "plate", "primary")}`}
+                  class={`min-h-11 min-w-30 flex-row items-center justify-center gap-1 px-3 bg-hud-accent nine-plate-cut hover:bg-hud-accent text-hud-accent-fg ${packClass("Button", "plate", "primary")}`}
                 >
                   <Text class={`text-caption font-bold tracking-label uppercase`}>{t("rhythm.songs.retry")}</Text>
                 </View>

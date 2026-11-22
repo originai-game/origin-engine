@@ -52,7 +52,7 @@ export function DailyRewards(props: DailyRewardsProps) {
               <Show when={d().state === 'today' && props.canClaim} fallback={
                   <View class={`group/cell flex-row nine-plate-cut bg-raised-pressed border border-rim text-fg transition duration-317 w-full min-h-43.25 p-0 gap-0 data-selected:border-accent data-done:border-success active:border-accent data-milestone:border-epic data-state-missed:bg-surface data-state-today:bg-raised-pressed disabled:text-fg-subtle disabled:scale-100 active:scale-96 data-locked:scale-100 data-down:opacity-45 compact:min-h-38.5 shrink`} role="group" current={d().state === 'today'} label={t("general.rewards.day", { day: d().label, reward: d().amount, state: d().state === 'claimed' ? t("general.rewards.claimed") : d().state === 'missed' ? t("general.rewards.missed") : d().state === 'today' ? t("general.rewards.today") : t("general.rewards.upcoming") })} data-state-claimed={(d().state) === 'claimed'} data-state-missed={(d().state) === 'missed'} data-state-today={(d().state) === 'today'} data-milestone={d().milestone}>
                     <View class="w-full gap-0 shrink">
-                      <Text class={`tracking-label uppercase text-fg-muted text-center font-bold text-caption bg-well p-0.5 m-0 group-data-milestone/cell:bg-none group-data-milestone/cell:bg-epic group-data-milestone/cell:text-bg group-data-state-today/cell:text-gold-fg group-data-state-today/cell:bg-none group-data-state-today/cell:bg-gold`}>
+                      <Text class={`tracking-label uppercase text-fg-muted text-center font-bold text-caption bg-well p-0.5 m-0 group-data-milestone/cell:bg-none group-data-milestone/cell:bg-epic group-data-milestone/cell:text-epic-fg group-data-state-today/cell:text-gold-fg group-data-state-today/cell:bg-none group-data-state-today/cell:bg-gold`}>
                         {d().label}
                       </Text>
                       <View class="grow shrink basis-0 min-h-16 w-full gap-2">
@@ -60,15 +60,15 @@ export function DailyRewards(props: DailyRewardsProps) {
                           <Icon class="text-fg size-12 compact:size-8 group-data-milestone/cell:text-epic-hi group-data-state-today/cell:text-gold" name={d().icon} />
                         </View>
                         <Show when={d().state === 'claimed'}>
-                          <View class="absolute justify-center items-center bg-success text-boon-fg shadow-plate ring-3 ring-fill -rotate-8 inset-0 gap-2 size-16 rounded-capsule compact:size-12 animate-stamp">
+                          <View class="absolute justify-center items-center bg-success text-success-fg shadow-plate ring-3 ring-fill -rotate-8 inset-0 gap-2 size-16 rounded-capsule compact:size-12 animate-stamp">
                             <Icon class="size-6 compact:size-4" name="check" />
                           </View>
                         </Show>
                       </View>
-                      <Text class={`text-xl font-bold tabular-nums text-fg pt-0 pb-1 text-center px-0.5 m-0 group-data-state-claimed/cell:opacity-35 group-data-state-missed/cell:opacity-35`}>
+                      <Text class={`text-xl font-bold tabular-nums text-fg pt-0 pb-1 text-center px-0.5 m-0 group-data-state-claimed/cell:text-fg-muted group-data-state-missed/cell:text-fg-muted`}>
                         {d().amount}
                       </Text>
-                      <View class={`flex-row items-center tracking-label uppercase text-fg-subtle w-full justify-center font-bold text-caption p-0.5 gap-0.5 compact:flex-col compact:tracking-normal group-data-state-claimed/cell:bg-none group-data-state-claimed/cell:bg-success group-data-state-claimed/cell:text-boon-fg group-data-state-missed/cell:bg-none group-data-state-missed/cell:bg-danger group-data-state-missed/cell:text-bg group-data-state-today/cell:text-gold-fg group-data-state-today/cell:bg-none group-data-state-today/cell:bg-gold`} data-state-claimed={(d().state) === 'claimed'} data-state-missed={(d().state) === 'missed'} data-state-today={(d().state) === 'today'}>
+                      <View class={`flex-row items-center tracking-label uppercase text-fg-subtle w-full justify-center font-bold text-caption p-0.5 gap-0.5 compact:flex-col compact:tracking-normal group-data-state-claimed/cell:bg-none group-data-state-claimed/cell:bg-success group-data-state-claimed/cell:text-success-fg group-data-state-missed/cell:bg-none group-data-state-missed/cell:bg-danger group-data-state-missed/cell:text-danger-fg group-data-state-today/cell:text-gold-fg group-data-state-today/cell:bg-none group-data-state-today/cell:bg-gold`} data-state-claimed={(d().state) === 'claimed'} data-state-missed={(d().state) === 'missed'} data-state-today={(d().state) === 'today'}>
                         <Show when={d().state !== 'upcoming'}>
                           <Icon class="size-4" name={d().state === 'claimed' ? 'check' : d().state === 'missed' ? 'close' : 'star'} />
                         </Show>
@@ -81,16 +81,16 @@ export function DailyRewards(props: DailyRewardsProps) {
               }>
                 <View class={`flex-row items-stretch justify-start gap-1 group/cell nine-plate-cut bg-raised-pressed border border-rim text-fg transition duration-317 w-full min-h-43.25 p-0 data-selected:border-accent data-done:border-success active:border-accent data-milestone:border-epic data-state-missed:bg-surface data-state-today:bg-raised-pressed disabled:text-fg-subtle disabled:scale-100 active:scale-96 data-locked:scale-100 data-down:opacity-45 compact:min-h-38.5 data-state-today:active:bg-raised-pressed shrink`} role="button" current={true} label={t("general.rewards.day", { day: d().label, reward: d().amount, state: t("general.rewards.claim") })} onPress={(e) => props.onClaim?.(e, d().id)} data-state-claimed={(d().state) === 'claimed'} data-state-missed={(d().state) === 'missed'} data-state-today={(d().state) === 'today'} data-milestone={d().milestone}>
                   <View class="w-full gap-0">
-                    <Text class={`tracking-label uppercase text-fg-muted text-center font-bold text-caption bg-well p-0.5 m-0 group-data-milestone/cell:bg-none group-data-milestone/cell:bg-epic group-data-milestone/cell:text-bg group-data-state-today/cell:text-gold-fg group-data-state-today/cell:bg-none group-data-state-today/cell:bg-gold`}>
+                    <Text class={`tracking-label uppercase text-fg-muted text-center font-bold text-caption bg-well p-0.5 m-0 group-data-milestone/cell:bg-none group-data-milestone/cell:bg-epic group-data-milestone/cell:text-epic-fg group-data-state-today/cell:text-gold-fg group-data-state-today/cell:bg-none group-data-state-today/cell:bg-gold`}>
                       {d().label}
                     </Text>
                     <View class="grow shrink basis-0 min-h-16 justify-center items-center w-full gap-2">
                       <Icon class="text-fg size-12 compact:size-8 group-data-milestone/cell:text-epic-hi group-data-state-today/cell:text-gold" name={d().icon} />
                     </View>
-                    <Text class={`text-xl font-bold tabular-nums text-fg pt-0 pb-1 text-center px-0.5 m-0 group-data-state-claimed/cell:opacity-35 group-data-state-missed/cell:opacity-35`}>
+                    <Text class={`text-xl font-bold tabular-nums text-fg pt-0 pb-1 text-center px-0.5 m-0 group-data-state-claimed/cell:text-fg-muted group-data-state-missed/cell:text-fg-muted`}>
                       {d().amount}
                     </Text>
-                    <View class={`flex-row items-center tracking-label uppercase text-fg-subtle w-full justify-center font-bold text-caption p-0.5 gap-0.5 compact:flex-col compact:tracking-normal group-data-state-claimed/cell:bg-none group-data-state-claimed/cell:bg-success group-data-state-claimed/cell:text-boon-fg group-data-state-missed/cell:bg-none group-data-state-missed/cell:bg-danger group-data-state-missed/cell:text-bg group-data-state-today/cell:text-gold-fg group-data-state-today/cell:bg-none group-data-state-today/cell:bg-gold animate-pop`} data-state-claimed={(d().state) === 'claimed'} data-state-missed={(d().state) === 'missed'} data-state-today={(d().state) === 'today'}>
+                    <View class={`flex-row items-center tracking-label uppercase text-fg-subtle w-full justify-center font-bold text-caption p-0.5 gap-0.5 compact:flex-col compact:tracking-normal group-data-state-claimed/cell:bg-none group-data-state-claimed/cell:bg-success group-data-state-claimed/cell:text-success-fg group-data-state-missed/cell:bg-none group-data-state-missed/cell:bg-danger group-data-state-missed/cell:text-danger-fg group-data-state-today/cell:text-gold-fg group-data-state-today/cell:bg-none group-data-state-today/cell:bg-gold animate-pop`} data-state-claimed={(d().state) === 'claimed'} data-state-missed={(d().state) === 'missed'} data-state-today={(d().state) === 'today'}>
                       <Icon class="size-4" name="star" />
                       <Text class="text-center compact:whitespace-nowrap group-data-narrow/dailyrewards:hidden shrink">
                         {t("general.rewards.claim")}
@@ -100,7 +100,7 @@ export function DailyRewards(props: DailyRewardsProps) {
                 </View>
               </Show>
               <Show when={d().milestone}>
-                <Text class="absolute right-0 top-8.5 pr-1 pl-2 font-bold text-caption tracking-label uppercase whitespace-nowrap text-glass-lo bg-epic-hi pointer-events-none py-0">
+                <Text class="absolute right-0 top-8.5 pr-1 pl-2 font-bold text-caption tracking-label uppercase whitespace-nowrap text-epic-fg bg-epic pointer-events-none py-0">
                   {t("general.rewards.milestone")}
                 </Text>
               </Show>

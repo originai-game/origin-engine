@@ -129,7 +129,7 @@ export function Shop(props: ShopProps) {
                                 </Text>
                               </Show>
                               <Show when={o().badge}>
-                                <Text class={`font-bold text-xs leading-tight tabular-nums bg-gold text-gold-fg transition duration-317 absolute top-2 tracking-label uppercase whitespace-nowrap text-ellipsis right-2 py-0.5 px-1 overflow-hidden data-tone-success:bg-none data-tone-success:bg-success data-tone-success:text-boon-fg`} data-tone-success={(o().badgeTone) === 'success'}>
+                                <Text class={`font-bold text-xs leading-tight tabular-nums bg-gold text-gold-fg transition duration-317 absolute top-2 tracking-label uppercase whitespace-nowrap text-ellipsis right-2 py-0.5 px-1 overflow-hidden data-tone-success:bg-none data-tone-success:bg-success data-tone-success:text-success-fg`} data-tone-success={(o().badgeTone) === 'success'}>
                                   {o().badge}
                                 </Text>
                               </Show>
@@ -167,13 +167,13 @@ export function Shop(props: ShopProps) {
                                   </View>
                                 </Show>
                                 <Show when={o().owned && !o().soldOut}>
-                                  <View class={`flex-row items-center ml-auto text-xs font-bold tracking-label uppercase text-fg-muted nine-plate-cut py-0.5 px-1 gap-0.5 data-kind-owned:bg-none data-kind-owned:bg-success data-kind-owned:text-boon-fg ${packClass("Chip", "frame")}`} data-kind-owned={true}>
+                                  <View class={`flex-row items-center ml-auto text-xs font-bold tracking-label uppercase text-fg-muted nine-plate-cut py-0.5 px-1 gap-0.5 data-kind-owned:bg-none data-kind-owned:bg-success data-kind-owned:text-success-fg ${packClass("Chip", "frame")}`} data-kind-owned={true}>
                                     <Icon class="size-3" name="check" />
                                     <Text class="whitespace-nowrap shrink">{t("general.shop.owned")}</Text>
                                   </View>
                                 </Show>
                                 <Show when={!o().affordable && !o().soldOut && !o().owned}>
-                                  <View class={`flex-row items-center ml-auto text-xs font-bold tracking-label uppercase text-fg-muted nine-plate-cut py-0.5 px-1 gap-0.5 data-kind-short:bg-none data-kind-short:bg-danger data-kind-short:text-bg ${packClass("Chip", "frame")}`} data-kind-short={true}>
+                                  <View class={`flex-row items-center ml-auto text-xs font-bold tracking-label uppercase text-fg-muted nine-plate-cut py-0.5 px-1 gap-0.5 data-kind-short:bg-none data-kind-short:bg-danger data-kind-short:text-danger-fg ${packClass("Chip", "frame")}`} data-kind-short={true}>
                                     <Text class="whitespace-nowrap shrink">{t("general.shop.short")}</Text>
                                   </View>
                                 </Show>
@@ -196,7 +196,7 @@ export function Shop(props: ShopProps) {
                               </Text>
                             </Show>
                             <Show when={o().badge}>
-                              <Text class={`font-bold text-xs leading-tight tabular-nums bg-gold text-gold-fg transition duration-317 absolute top-2 tracking-label uppercase whitespace-nowrap text-ellipsis right-2 py-0.5 px-1 overflow-hidden data-tone-success:bg-none data-tone-success:bg-success data-tone-success:text-boon-fg`} data-tone-success={(o().badgeTone) === 'success'}>
+                              <Text class={`font-bold text-xs leading-tight tabular-nums bg-gold text-gold-fg transition duration-317 absolute top-2 tracking-label uppercase whitespace-nowrap text-ellipsis right-2 py-0.5 px-1 overflow-hidden data-tone-success:bg-none data-tone-success:bg-success data-tone-success:text-success-fg`} data-tone-success={(o().badgeTone) === 'success'}>
                                 {o().badge}
                               </Text>
                             </Show>

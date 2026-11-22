@@ -67,7 +67,7 @@ export function RhythmResults(props: RhythmResultsProps) {
               </Show>
               <View class={`flex-col items-start gap-0.5 min-w-0`}>
                 <Text
-                  class={`whitespace-nowrap py-0 px-2 text-base font-bold tracking-label uppercase text-gold-fg bg-hud-accent nine-chip-cut data-tag-failed:text-fg data-tag-failed:bg-critical ${packClass("Chip", "frame")}`}
+                  class={`whitespace-nowrap py-0 px-2 text-base font-bold tracking-label uppercase text-hud-accent-fg bg-hud-accent nine-chip-cut data-tag-failed:text-critical-fg data-tag-failed:bg-critical ${packClass("Chip", "frame")}`}
                   data-tag-cleared={props.cleared}
                   data-tag-failed={!props.cleared}
                 >
@@ -161,7 +161,7 @@ export function RhythmResults(props: RhythmResultsProps) {
           onPress={(e) => props.onNext?.(e)}
           onKey={(e) => { if (e.key === "Escape") props.onNext?.(e); }}
           onAction={{ back: (e) => props.onNext?.(e) }}
-          class={`min-h-11 min-w-30 compact:flex-1 compact:min-w-0 flex-row items-center justify-center gap-1 px-3 rounded-control bg-hud-accent text-gold-fg inset-shadow-lit ${packClass("Button", "plate", "primary")}`}
+          class={`min-h-11 min-w-30 compact:flex-1 compact:min-w-0 flex-row items-center justify-center gap-1 px-3 rounded-control bg-hud-accent text-hud-accent-fg inset-shadow-lit ${packClass("Button", "plate", "primary")}`}
         >
           <Text class={`shrink-0 pointer-coarse:hidden text-title leading-none`} glyph="back" />
           <Text class={`text-caption font-bold tracking-label uppercase`}>{t("rhythm.results.next")}</Text>

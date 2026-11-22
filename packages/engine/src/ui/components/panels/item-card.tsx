@@ -8,7 +8,7 @@ const keyCap = `shrink-0 pointer-coarse:hidden text-xl leading-none`;
 
 /** A change chip: the delta in the trend's colour with its triangle; plain (no trend) it is muted type with no ground. */
 const deltaChip =
-  "group/delta flex-row items-center font-bold text-fg-muted py-0 px-1 gap-0.5 data-trend-up:text-boon-fg data-trend-up:bg-success data-trend-down:text-foe-fg data-trend-down:bg-danger";
+  "group/delta flex-row items-center font-bold text-fg-muted py-0 px-1 gap-0.5 data-trend-up:text-success-fg data-trend-up:bg-success data-trend-down:text-danger-fg data-trend-down:bg-danger";
 
 export interface RpgItemCardProps {
   /** The item's name. */

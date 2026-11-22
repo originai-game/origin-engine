@@ -84,7 +84,7 @@ export function RacingResults(props: RacingResultsProps) {
                 <For each={rows()} key={(r) => r.id}>
                   {(r, i) => (
                     <View
-                      class={`group/results flex-row items-center gap-4 min-h-11 py-0.5 pr-3 bg-glass nine-plate-cut text-fg data-dnf:text-fg-muted data-dsq:text-fg-muted data-player:bg-hud-accent data-player:text-gold-fg compact:gap-2 compact:py-0.5 compact:pr-1`}
+                      class={`group/results flex-row items-center gap-4 min-h-11 py-0.5 pr-3 bg-glass nine-plate-cut text-fg data-dnf:text-fg-muted data-dsq:text-fg-muted data-player:bg-hud-accent data-player:text-hud-accent-fg compact:gap-2 compact:py-0.5 compact:pr-1`}
                       role="listitem"
                       label={r().name}
                       current={r().player}
@@ -136,7 +136,7 @@ export function RacingResults(props: RacingResultsProps) {
           <Text glyph="details" class={keyCap} />
           <Text>{t("racing.results.retry")}</Text>
         </View>
-        <View class={`min-h-11 min-w-30 flex-row items-center justify-center gap-1 py-0.5 px-4 text-caption font-bold tracking-label uppercase text-fg bg-plate-hi inset-ring-1 inset-ring-rim hover:bg-glass-hi disabled:opacity-45 compact:flex-1 compact:min-w-0 bg-hud-accent text-gold-fg shadow-none ${packClass("Button", "plate", "primary")}`} role="button" label={t("racing.results.continue")} onPress={(e) => props.onContinue?.(e)}>
+        <View class={`min-h-11 min-w-30 flex-row items-center justify-center gap-1 py-0.5 px-4 text-caption font-bold tracking-label uppercase text-fg bg-plate-hi inset-ring-1 inset-ring-rim hover:bg-glass-hi disabled:opacity-45 compact:flex-1 compact:min-w-0 bg-hud-accent text-hud-accent-fg shadow-none ${packClass("Button", "plate", "primary")}`} role="button" label={t("racing.results.continue")} onPress={(e) => props.onContinue?.(e)}>
           <Text>{t("racing.results.continue")}</Text>
         </View>
       </View>

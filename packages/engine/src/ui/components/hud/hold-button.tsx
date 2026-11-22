@@ -1,4 +1,4 @@
-import { Icon, Show, Text, View, createSignal, type UiEvent } from "@origingame/engine/ui";
+import { Icon, Show, Text, View, createSignal, packClass, type UiEvent } from "@origingame/engine/ui";
 import { Button } from "../../controls/button";
 
 export interface HoldButtonProps {
@@ -70,7 +70,7 @@ export function HoldButton(props: HoldButtonProps) {
         </Show>
       </Button>
       <Show when={props.hint}>
-        <Text class="text-center text-caption text-fg-muted">{props.hint}</Text>
+        <Text class={`text-center text-caption text-fg-muted mt-1 py-0 px-2 nine-chip-cut bg-glass ${packClass("Plate", "frame")}`}>{props.hint}</Text>
       </Show>
     </View>
   );

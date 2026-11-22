@@ -1,4 +1,4 @@
-import { Show, Text, View, formatNumber, t } from "@origingame/engine/ui";
+import { Show, Text, View, formatNumber, packClass, t } from "@origingame/engine/ui";
 import "./progress-bar.en.ogt";
 
 export interface ProgressBarProps {
@@ -22,8 +22,8 @@ export interface ProgressBarProps {
  * A bar fills the width its container gives it: a caption over it at the
  * start and its value in words at the end, a paler buffer ahead of the
  * fill in a dark well with one lit rim, thinner than a vital's; with no
- * known value a band sweeps the track instead. Drawn over the scene, its
- * words take the scene's opaque ink. The style's lean (skewX) and the
+ * known value a band sweeps the track instead. It sits on a HUD plate,
+ * so its words read over any scene. The style's lean (skewX) and the
  * fill's sheen have no TSX surface: the lean is dropped and the sweeping
  * band carries the shimmer.
  */
@@ -31,7 +31,7 @@ export function ProgressBar(props: ProgressBarProps) {
   const percent = () => `${formatNumber(Math.min(Math.max(props.value, 0), 1) * 100, { decimals: 0 })}%`;
   return (
     <View
-      class={`group/progress flex-col w-full min-w-0 gap-y-1`}
+      class={`group/progress flex-col w-full min-w-0 gap-y-1 nine-plate-cut bg-glass py-1 px-2 ${packClass("Plate", "frame")}`}
       role="progressbar"
       label={(props.label ?? "") !== "" ? props.label : t("component.progress-bar.name")}
       valueMin={0}
@@ -48,10 +48,10 @@ export function ProgressBar(props: ProgressBarProps) {
       <Show when={(props.label ?? "") !== "" || props.showValue}>
         <View class="flex-row items-end">
           <Show when={(props.label ?? "") !== ""}>
-            <Text class="flex-1 min-w-0 text-caption whitespace-nowrap truncate text-fg text-shadow-xs">{props.label}</Text>
+            <Text class="flex-1 min-w-0 text-caption whitespace-nowrap truncate text-fg">{props.label}</Text>
           </Show>
           <Show when={props.showValue && !props.indeterminate}>
-            <Text class="shrink-0 text-reading font-bold tabular-nums whitespace-nowrap text-fg text-shadow-xs">{(props.valueText ?? "") !== "" ? props.valueText : percent()}</Text>
+            <Text class="shrink-0 text-reading font-bold tabular-nums whitespace-nowrap text-fg">{(props.valueText ?? "") !== "" ? props.valueText : percent()}</Text>
           </Show>
         </View>
       </Show>

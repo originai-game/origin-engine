@@ -134,7 +134,7 @@ export function PassTrack(props: PassTrackProps) {
                                     </View>
                                   </Show>
                               }>
-                                <View class={`flex-row items-center mt-auto text-xs font-bold tracking-label uppercase text-fg-muted nine-chip-cut py-0.5 px-1 gap-0.5 data-kind-claimed:bg-none data-kind-claimed:bg-success data-kind-claimed:text-boon-fg ${packClass("Chip", "frame")}`} data-kind-claimed={true}>
+                                <View class={`flex-row items-center mt-auto text-xs font-bold tracking-label uppercase text-fg-muted nine-chip-cut py-0.5 px-1 gap-0.5 data-kind-claimed:bg-none data-kind-claimed:bg-success data-kind-claimed:text-success-fg ${packClass("Chip", "frame")}`} data-kind-claimed={true}>
                                   <Icon class="size-3" name="check" />
                                   <Text class="whitespace-nowrap">{t("meta.claimed")}</Text>
                                 </View>
@@ -180,7 +180,7 @@ export function PassTrack(props: PassTrackProps) {
                                     </View>
                                   </Show>
                               }>
-                                <View class={`flex-row items-center mt-auto text-xs font-bold tracking-label uppercase text-fg-muted nine-chip-cut py-0.5 px-1 gap-0.5 data-kind-claimed:bg-none data-kind-claimed:bg-success data-kind-claimed:text-boon-fg ${packClass("Chip", "frame")}`} data-kind-claimed={true}>
+                                <View class={`flex-row items-center mt-auto text-xs font-bold tracking-label uppercase text-fg-muted nine-chip-cut py-0.5 px-1 gap-0.5 data-kind-claimed:bg-none data-kind-claimed:bg-success data-kind-claimed:text-success-fg ${packClass("Chip", "frame")}`} data-kind-claimed={true}>
                                   <Icon class="size-3" name="check" />
                                   <Text class="whitespace-nowrap">{t("meta.claimed")}</Text>
                                 </View>

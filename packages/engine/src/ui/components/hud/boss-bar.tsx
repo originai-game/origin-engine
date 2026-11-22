@@ -1,4 +1,4 @@
-import { For, Icon, Image, Show, Text, View, formatNumber, t } from "@origingame/engine/ui";
+import { For, Icon, Image, Show, Text, View, formatNumber, packClass, t } from "@origingame/engine/ui";
 import type { Texture } from "@origingame/engine";
 import { Spinner } from "../base/spinner";
 import "./boss-bar.en.ogt";
@@ -49,8 +49,8 @@ export interface BossBarProps {
 }
 
 /**
- * A boss's bar across the top of the screen: a Boss tag, the name and its
- * epithet; a long health bar with a warm ghost behind the fill and a
+ * A boss's bar across the top of the screen, on a HUD plate: a Boss tag,
+ * the name and its epithet; a long health bar with a warm ghost behind the fill and a
  * diamond at each phase boundary; under it the stagger gauge cut into
  * cells, the elements the boss is weak to and its health's share. The
  * game owns every value; read only. The style's lean (skewX), the gauge's
@@ -71,7 +71,7 @@ export function BossBar(props: BossBarProps) {
   const staggerCells = () => (props.staggerCells ?? 10) > 0 ? (props.staggerCells ?? 1) : 1;
   return (
     <View
-      class={`flex-col items-center w-full max-w-150 gap-y-1.5 text-fg compact:gap-y-1`}
+      class={`flex-col items-center w-full max-w-150 gap-y-1.5 text-fg nine-panel-cut bg-glass py-2 px-4 compact:gap-y-1 compact:py-1 compact:px-2 ${packClass("Plate", "frame")}`}
       role="region"
       label={(props.name ?? "") !== "" ? props.name : t("hud.boss-bar.name")}
       busy={props.loading}
@@ -79,13 +79,13 @@ export function BossBar(props: BossBarProps) {
       <View class={`flex-row items-baseline justify-center w-full min-w-0 gap-x-2.5`}>
         <View class={`flex-row items-center shrink-0 gap-x-1.25`}>
           <View class={`shrink-0 size-1.5 rotate-45 bg-foe`} />
-          <Text class={`text-xs font-semibold tracking-label uppercase whitespace-nowrap text-foe text-shadow-2xs`}>{t("hud.boss-bar.tag")}</Text>
+          <Text class={`text-xs font-semibold tracking-label uppercase whitespace-nowrap text-foe-ink`}>{t("hud.boss-bar.tag")}</Text>
         </View>
-        <Text class={`shrink min-w-0 text-2xl leading-tight font-bold tracking-label uppercase whitespace-nowrap truncate text-fg text-shadow-2xs compact:text-reading`}>
+        <Text class={`shrink min-w-0 text-2xl leading-tight font-bold tracking-label uppercase whitespace-nowrap truncate text-fg compact:text-reading`}>
           {(props.name ?? "") !== "" ? props.name : t("hud.boss-bar.name")}
         </Text>
         <Show when={(props.epithet ?? "") !== ""}>
-          <Text class={`shrink min-w-0 text-xs font-semibold tracking-label uppercase whitespace-nowrap truncate text-fg-muted text-shadow-2xs compact:hidden`}>
+          <Text class={`shrink min-w-0 text-xs font-semibold tracking-label uppercase whitespace-nowrap truncate text-fg-muted compact:hidden`}>
             {props.epithet}
           </Text>
         </Show>
@@ -123,7 +123,7 @@ export function BossBar(props: BossBarProps) {
           <View class={`flex-row items-center justify-between w-full min-w-0 gap-x-3`}>
             <Show when={(props.stagger ?? -1) >= 0}>
               <View class={`shrink min-w-0 flex-row items-center gap-x-1`}>
-                <Text class={`shrink-0 text-xs font-semibold tracking-label uppercase whitespace-nowrap text-fg-muted text-shadow-2xs`}>{t("hud.boss-bar.stagger")}</Text>
+                <Text class={`shrink-0 text-xs font-semibold tracking-label uppercase whitespace-nowrap text-fg-muted`}>{t("hud.boss-bar.stagger")}</Text>
                 <View
                   class={`relative w-42.5 min-w-10 h-2 overflow-hidden bg-track shadow-plate ring ring-rim compact:h-1.25`}
                   role="meter"
@@ -141,7 +141,7 @@ export function BossBar(props: BossBarProps) {
             </Show>
             <View class={`flex-row items-center ml-auto min-w-0 gap-x-1`}>
               <Show when={(props.defeated ?? false) || invulnerable()}>
-                <Text class={`shrink-0 text-xs font-semibold tracking-label uppercase whitespace-nowrap text-fg-muted text-shadow-2xs data-defeated:text-boon`} role="status" data-defeated={props.defeated}>
+                <Text class={`shrink-0 text-xs font-semibold tracking-label uppercase whitespace-nowrap text-fg-muted data-defeated:text-boon-ink`} role="status" data-defeated={props.defeated}>
                   {(props.defeated ?? false) ? t("hud.boss-bar.defeated") : t("hud.boss-bar.invulnerable")}
                 </Text>
               </Show>
@@ -160,7 +160,7 @@ export function BossBar(props: BossBarProps) {
                   </View>
                 )}
               </For>
-              <Text class={`shrink-0 text-base leading-none font-bold tabular-nums whitespace-nowrap text-fg text-shadow-2xs compact:text-caption`}>
+              <Text class={`shrink-0 text-base leading-none font-bold tabular-nums whitespace-nowrap text-fg compact:text-caption`}>
                 {`${formatNumber(share() * 100, { decimals: 0 })}%`}
               </Text>
             </View>
@@ -169,7 +169,7 @@ export function BossBar(props: BossBarProps) {
       }>
         <View class={`flex-row items-center gap-x-1`}>
           <Spinner size={18} name={t("hud.boss-bar.loading")} />
-          <Text class={`text-xs font-semibold tracking-label uppercase whitespace-nowrap text-fg-muted text-shadow-2xs`} role="status">
+          <Text class={`text-xs font-semibold tracking-label uppercase whitespace-nowrap text-fg-muted`} role="status">
             {t("hud.boss-bar.loading")}
           </Text>
         </View>

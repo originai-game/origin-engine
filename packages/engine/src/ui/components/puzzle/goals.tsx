@@ -41,7 +41,7 @@ export function PuzzleGoals(props: PuzzleGoalsProps) {
             {props.counter === 'time' ? t("puzzle.goals.time") : t("puzzle.goals.moves")}
           </Text>
           <Show when={props.low}>
-            <Text class={`mt-0.5 whitespace-nowrap text-xs font-semibold tracking-label uppercase text-bg bg-warn nine-chip-cut text-shadow-2xs py-0 px-1 ${packClass("Chip", "frame")}`}>
+            <Text class={`mt-0.5 whitespace-nowrap text-xs font-semibold tracking-label uppercase text-warn-fg bg-warn nine-chip-cut text-shadow-2xs py-0 px-1 ${packClass("Chip", "frame")}`}>
               {t("puzzle.goals.low")}
             </Text>
           </Show>
@@ -54,7 +54,7 @@ export function PuzzleGoals(props: PuzzleGoalsProps) {
                 <Icon class="text-shadow-2xs size-full" name={g().icon} />
               </View>
               <Show when={g().done}>
-                <Icon class={`absolute top-0.5 right-0.5 bg-success shadow-glow-sm shadow-success size-4 rounded-control text-bg`} name="check" />
+                <Icon class={`absolute top-0.5 right-0.5 bg-success shadow-glow-sm shadow-success size-4 rounded-control text-success-fg`} name="check" />
               </Show>
               <Text class={`whitespace-nowrap text-xl font-bold tabular-nums text-fg text-shadow-2xs data-done:text-success`} data-done={g().done}>
                 {formatNumber(g().left)}

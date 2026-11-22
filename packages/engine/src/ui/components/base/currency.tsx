@@ -54,7 +54,7 @@ export function Currency(props: CurrencyProps) {
                     </View>
                   </Show>
                   <Show when={props.full}>
-                    <View class={`bg-warn text-bg font-bold text-caption py-0.5 px-2 rounded-capsule animate-pop shrink`}>
+                    <View class={`bg-warn text-warn-fg font-bold text-caption py-0.5 px-2 rounded-capsule animate-pop shrink`}>
                       <Text>{t("currency.full")}</Text>
                     </View>
                   </Show>

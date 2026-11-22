@@ -117,7 +117,7 @@ export function ShopConfirm(props: ShopConfirmProps) {
         </View>
       </Scroll>
       <Show when={props.error}>
-        <Text class={`w-full bg-danger text-bg inset-shadow-bar inset-shadow-danger py-1 px-2 m-0`} role="alert">
+        <Text class={`w-full bg-danger text-danger-fg inset-shadow-bar inset-shadow-danger py-1 px-2 m-0`} role="alert">
           {props.error}
         </Text>
       </Show>

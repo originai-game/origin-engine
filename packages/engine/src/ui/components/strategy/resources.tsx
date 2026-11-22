@@ -54,7 +54,7 @@ export function StrategyResources(props: StrategyResourcesProps) {
         )}
       </For>
       <Show when={props.tier !== ""}>
-        <Text class={`shrink py-0.5 px-2 text-xs font-bold tracking-label uppercase whitespace-nowrap overflow-hidden text-gold-fg nine-chip-cut bg-hud-accent ${packClass("Chip", "frame")}`}>
+        <Text class={`shrink py-0.5 px-2 text-xs font-bold tracking-label uppercase whitespace-nowrap overflow-hidden text-hud-accent-fg nine-chip-cut bg-hud-accent ${packClass("Chip", "frame")}`}>
           {props.tier}
         </Text>
       </Show>

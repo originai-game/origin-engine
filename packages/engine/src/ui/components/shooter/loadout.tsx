@@ -89,7 +89,7 @@ export function Loadout(props: LoadoutProps) {
                                 <Text class="text-start text-caption font-semibold whitespace-nowrap text-fg-muted">{s().detail}</Text>
                               </Show>
                               <Show when={s().equipped}>
-                                <Text class={`shrink py-0 px-1 text-xs leading-normal font-bold tracking-label uppercase text-bg nine-chip-cut bg-success ${packClass("Chip", "frame")}`}>
+                                <Text class={`shrink py-0 px-1 text-xs leading-normal font-bold tracking-label uppercase text-success-fg nine-chip-cut bg-success ${packClass("Chip", "frame")}`}>
                                   {t("shooter.loadout.equipped")}
                                 </Text>
                               </Show>

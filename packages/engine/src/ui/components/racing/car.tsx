@@ -61,7 +61,7 @@ export function RacingCar(props: RacingCarProps) {
         </View>
       </Show>
       <Show when={props.pit}>
-        <View class={`max-w-full min-w-0 py-0 px-2 bg-gold nine-chip-cut compact:tracking-normal text-hud-accent-fg ${packClass("Chip", "frame")}`} role="status">
+        <View class={`max-w-full min-w-0 py-0 px-2 bg-gold nine-chip-cut compact:tracking-normal text-gold-fg ${packClass("Chip", "frame")}`} role="status">
           <Text class={`text-xs leading-loose font-bold tracking-label uppercase whitespace-nowrap overflow-hidden compact:tracking-normal`}>{t("racing.car.pit")}</Text>
         </View>
       </Show>

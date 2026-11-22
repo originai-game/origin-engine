@@ -135,7 +135,7 @@ export function RpgBackpack(props: RpgBackpackProps) {
                   </Text>
                 </Show>
                 <Show when={i().equipped}>
-                  <Text class={`absolute text-xs font-bold leading-snug text-boon-fg bg-success whitespace-nowrap left-1 top-1 py-0 px-1 nine-chip-cut ${packClass("Chip", "frame")}`} label={t("rpg.backpack.equipped")}>
+                  <Text class={`absolute text-xs font-bold leading-snug text-success-fg bg-success whitespace-nowrap left-1 top-1 py-0 px-1 nine-chip-cut ${packClass("Chip", "frame")}`} label={t("rpg.backpack.equipped")}>
                     {t("rpg.backpack.equippedMark")}
                   </Text>
                 </Show>

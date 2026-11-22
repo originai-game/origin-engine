@@ -105,7 +105,7 @@ export function ArenaRoundHud(props: ArenaRoundHudProps) {
         <Show when={ended()}>
           <View class={`flex-col items-center gap-y-1 max-w-full py-3 px-8 bg-glass nine-panel-cut compact:py-2 compact:px-4 ${packClass("Panel", "frame")}`}>
             <Text
-              class={`max-w-full text-center text-8xl leading-none font-bold uppercase tracking-xs text-gold-hi shadow-glow-lg shadow-gold data-lost:text-danger data-lost:shadow-glow-lg data-lost:shadow-critical`}
+              class={`max-w-full text-center text-8xl leading-none font-bold uppercase tracking-xs text-gold shadow-glow-lg shadow-gold data-lost:text-danger data-lost:shadow-glow-lg data-lost:shadow-critical`}
               data-lost={props.outcome == "lost"}
             >
               {props.outcome == "won" ? t("arena.round.won") : props.outcome == "lost" ? t("arena.round.lost") : t("arena.round.draw")}

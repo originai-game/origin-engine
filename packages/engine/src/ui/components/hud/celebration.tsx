@@ -58,7 +58,7 @@ export function Celebration(props: CelebrationProps) {
             </Show>
             <Show when={kind() == "levelUp"}>
               <View class="relative w-105 max-w-full min-h-72 flex-col items-center justify-center">
-                <View class="absolute size-66 rounded-full border-4 border-gold shadow-glow-lg shadow-gold inset-shadow-glow inset-shadow-gold bg-gold-fg animate-stamp compact:size-23.75" />
+                <View class="absolute size-66 rounded-full border-4 border-gold shadow-glow-lg shadow-gold inset-shadow-glow inset-shadow-gold bg-glass animate-stamp compact:size-23.75" />
                 <Text class="relative max-w-full mb-3 text-title font-bold tracking-label uppercase text-center text-gold animate-stamp">
                   {props.title || t("component.celebration.level-up")}
                 </Text>
