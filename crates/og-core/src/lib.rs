@@ -51,6 +51,7 @@ pub mod procgen;
 pub mod reflect;
 pub mod rng;
 pub mod sort;
+pub mod table;
 pub mod time;
 
 pub use error::{Error, ErrorKind, Result};
