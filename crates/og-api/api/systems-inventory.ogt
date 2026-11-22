@@ -1,0 +1,185 @@
+module inventory {
+  doc "The records og.systems.inventory carries out, and the moves a game makes with them: an og.Container holds `slots` slot entities (its children, each an og.ItemStack of a table row and a count), a stack holds at most its row's stack limit, read from the item table, and every move, split, merge and craft is all or nothing. An og.Pickup lying in the world is taken by the og.Collector that enters its sensor. Every number is the game's: a container of 0 slots holds nothing."
+  guide "items §1"
+
+  component Container {
+    aliases "inventory, backpack, bag, chest, stash, item container, slots, Unity inventory, storage box"
+    doc "Holds items in `slots` slot entities: og.systems.inventory places them as its children (og.Parent), each an og.ItemStack numbered by its slot, on the tick it appears; a move outside a system (GameDesc.start, a command) places them itself. Its stacks are og.inventory.slots in slot order."
+    guide "items §1"
+    field slots u32 "How many stacks it holds; 0 holds nothing. Lowering it keeps the slots past it: they hold and give what they hold but take nothing new." {
+      min 0
+      max 1024
+      tunable true
+    }
+    field stack str.32 "The field of the item table's component that holds a row's stack limit here (a u32 field, as `maxStack`), read with og.table.get; empty, or a row whose field is 0, fits none."
+  }
+
+  component ItemStack {
+    aliases "item stack, slot, item count, stack size, held item, item instance"
+    doc "Some of one table row: a slot of an og.Container (a child of it) or, with og.Pickup, a pickup lying in the world. An empty slot has a count of 0 and no row."
+    guide "items §1"
+    field item TableRow "The row of the item table (og.table) it holds; 0 with a count of 0."
+    field count u32 "How many it holds; 0 is an empty slot."
+    field slot u32 "Written: its slot in its container, from 0." {
+      readonly true
+    }
+    field container Entity "Written: the og.Container it is a slot of (its parent); 0 for a pickup." {
+      readonly true
+    }
+  }
+
+  component Pickup {
+    aliases "pickup, loot drop, collectible, coin, item on the ground, auto pickup"
+    doc "An og.ItemStack lying in the world, with a sensor og.Collider on its entity: og.systems.inventory moves it into the og.Container of an og.Collector inside the sensor, in entity order, and despawns it once it is empty."
+    guide "items §2"
+    field partial bool "Take what fits and leave the rest lying; otherwise it is taken whole or not at all."
+  }
+
+  component Collector {
+    aliases "picker, auto loot, magnet, player pickup, vacuum items"
+    doc "What takes an og.Pickup whose sensor it is inside (its entity's collider): into `container`."
+    guide "items §2"
+    field container Entity "The og.Container what it picks up goes into; 0 picks up nothing."
+  }
+
+  event PickedUp {
+    aliases "on pickup, item collected, loot taken"
+    doc "An og.Collector took some of an og.Pickup: sent by og.systems.inventory the tick it was moved."
+    guide "items §2"
+    field collector Entity "The og.Collector."
+    field pickup Entity "The og.Pickup; despawned when og.inventory returns once it is empty."
+    field item TableRow "The row taken."
+    field count u32 "How many were moved."
+  }
+
+  resource InventoryEntities {
+    doc "Every og.Container and og.Pickup in entity order, written by og.systems.inventory's first systems each tick for its last."
+    field containers List.Entity.1024 "The containers (at most 1,024)."
+    field pickups List.Entity.1024 "The pickups (at most 1,024)."
+  }
+
+  struct ItemCount {
+    doc "Some of one row."
+    field item TableRow "The row."
+    field count u32 "How many."
+  }
+
+  struct LootEntry {
+    doc "One line of a loot table."
+    field item TableRow "The row it gives."
+    field weight f64 "Its share of the draws; 0 is never drawn."
+    field min u32 "The fewest it gives when drawn."
+    field max u32 "The most it gives when drawn; under min gives min."
+  }
+
+  struct RollDesc {
+    doc "What og.inventory.roll draws."
+    field entries List.LootEntry "The loot table's lines."
+    field rolls u32 "How many draws; 0 draws nothing."
+  }
+
+  struct CraftDesc {
+    doc "What og.inventory.craft takes and gives."
+    field inputs List.ItemCount "What it takes from the container."
+    field outputs List.ItemCount "What it puts in the container once the inputs are taken."
+  }
+
+  fn slots {
+    doc "A container's slots in slot order (og.ItemStack entities, empty ones too): what a backpack screen lists. A system that calls this or another og.inventory function lists og.Container and og.ItemStack in its writes."
+    host false
+    param world World "The world."
+    param container Entity "The og.Container."
+    returns List.Entity "Empty for an entity without og.Container, or before its slots are placed."
+  }
+
+  fn count {
+    doc "How many of a row a container holds, over all its stacks."
+    host false
+    param world World "The world."
+    param container Entity "The og.Container."
+    param item TableRow "The row."
+    returns u32
+  }
+
+  fn canFit {
+    doc "Whether `count` of a row fit in a container now: onto its stacks of that row up to the row's stack limit, then into its empty slots."
+    host false
+    param world World "The world."
+    param container Entity "The og.Container."
+    param item TableRow "The row."
+    param count u32 "How many."
+    returns bool
+  }
+
+  fn add {
+    doc "Put `count` of a row in a container: onto its stacks of that row in slot order up to the stack limit, then into its empty slots in order. All or nothing."
+    aliases "give item, add to inventory, grant item"
+    host false
+    param world World "The world."
+    param container Entity "The og.Container."
+    param item TableRow "The row."
+    param count u32 "How many; 0 adds nothing."
+    returns Result.Void "Refused, changing nothing, when they do not fit, for a row no loaded table has, or inside a system for a container whose slots are not placed yet (the tick it appeared), naming why."
+  }
+
+  fn remove {
+    doc "Take `count` of a row from a container: from its stacks of that row from the last slot back, so the first slots stay full. All or nothing."
+    aliases "consume item, take item, spend item"
+    host false
+    param world World "The world."
+    param container Entity "The og.Container."
+    param item TableRow "The row."
+    param count u32 "How many; 0 takes nothing."
+    returns Result.Void "Refused, changing nothing, when the container holds fewer."
+  }
+
+  fn move {
+    doc "Move `count` from a slot into another container (or its own): onto that container's stacks of the row, then into its empty slots. All or nothing: both containers stay as they were when they do not fit."
+    aliases "transfer item, move to chest, drag item, deposit, withdraw"
+    host false
+    param world World "The world."
+    param slot Entity "The og.ItemStack slot taken from."
+    param to Entity "The og.Container put into."
+    param count u32 "How many; 0 moves nothing."
+    returns Result.Void "Refused, changing nothing, for more than the slot holds or when they do not fit."
+  }
+
+  fn split {
+    doc "Move `count` of a slot's stack into the first empty slot of its container."
+    aliases "split stack, divide stack"
+    host false
+    param world World "The world."
+    param slot Entity "The og.ItemStack slot."
+    param count u32 "How many leave it: at least 1, fewer than it holds."
+    returns Result.Entity "The slot they went to; refused, changing nothing, with no empty slot or a count out of range."
+  }
+
+  fn merge {
+    doc "Move as much of one slot into another as fits: into an empty slot, or onto a stack of the same row up to its limit; the rest stays. The two may be in different containers."
+    aliases "stack items, combine stacks, drop onto slot"
+    host false
+    param world World "The world."
+    param from Entity "The og.ItemStack slot taken from."
+    param into Entity "The og.ItemStack slot put into."
+    returns Result.u32 "How many moved (0 when the other slot is full or holds another row); refused for an entity that is not a slot."
+  }
+
+  fn craft {
+    doc "Take the inputs from a container and put the outputs in it, as one move: refused, changing nothing, when an input is short or the outputs do not fit once the inputs are taken."
+    aliases "craft item, recipe, combine items, cook, smelt, forge"
+    host false
+    param world World "The world."
+    param container Entity "The og.Container."
+    param desc CraftDesc "The inputs and outputs."
+    returns Result.Void "Refused, naming the first input short or the output that does not fit."
+  }
+
+  fn roll {
+    doc "Draw from a loot table on og.Rng: each draw picks an entry in proportion to its weight (og.Rng.weighted) and a count from min to max (og.Rng.integer). The same seed draws the same loot; nothing is added anywhere."
+    aliases "loot table, drop table, random loot, gacha, chest loot, weighted drop"
+    host false
+    param world World "The world; a system that calls this lists og.Rng in its writes."
+    param desc RollDesc "The entries and how many draws."
+    returns List.ItemCount "One per draw that picked an entry, in draw order."
+  }
+}

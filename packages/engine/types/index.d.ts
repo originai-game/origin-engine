@@ -26298,7 +26298,7 @@ export interface UiScope {
 
 // ── systems ─────────────────────────────────────────────────────
 // Systems the engine ships as TypeScript: game-level code, listed explicitly in GameDesc.systems like the game's own, so the schedule (and dump_world) shows them and nothing runs that the game did not ask for.
-// See `combat §1`, `interaction §1`.
+// See `combat §1`, `interaction §1`, `items §1`.
 
 // ── commands ────────────────────────────────────────────────────
 // The command channel: actions scheduled on simulation time, from `og run --commands "t:action[:args];..."` or the probe's commands().
@@ -34190,6 +34190,162 @@ export interface MissingRow {
 
 
 
+// ── inventory ───────────────────────────────────────────────────
+// The records og.systems.inventory carries out, and the moves a game makes with them: an og.Container holds `slots` slot entities (its children, each an og.ItemStack of a table row and a count), a stack holds at most its row's stack limit, read from the item table, and every move, split, merge and craft is all or nothing. An og.Pickup lying in the world is taken by the og.Collector that enters its sensor. Every number is the game's: a container of 0 slots holds nothing.
+// See `items §1`.
+
+/**
+ * Holds items in `slots` slot entities: og.systems.inventory places them as its children (og.Parent), each an og.ItemStack numbered by its slot, on the tick it appears; a move outside a system (GameDesc.start, a command) places them itself. Its stacks are og.inventory.slots in slot order.
+ * See `items §1`.
+ *
+ * The value of the `Container` component (token `og.Container`).
+ */
+export interface Container {
+  /**
+   * How many stacks it holds; 0 holds nothing. Lowering it keeps the slots past it: they hold and give what they hold but take nothing new.
+   *
+   * @range 0..1024
+   * @tunable
+   */
+  slots: number;
+  /**
+   * The field of the item table's component that holds a row's stack limit here (a u32 field, as `maxStack`), read with og.table.get; empty, or a row whose field is 0, fits none.
+   *
+   * @capacity 32 bytes of UTF-8 (str(32)); longer text is refused, never truncated
+   */
+  stack: string;
+}
+
+/**
+ * Some of one table row: a slot of an og.Container (a child of it) or, with og.Pickup, a pickup lying in the world. An empty slot has a count of 0 and no row.
+ * See `items §1`.
+ *
+ * The value of the `ItemStack` component (token `og.ItemStack`).
+ */
+export interface ItemStack {
+  /** The row of the item table (og.table) it holds; 0 with a count of 0. */
+  item: TableRow;
+  /** How many it holds; 0 is an empty slot. */
+  count: number;
+  /**
+   * Written: its slot in its container, from 0.
+   *
+   * @readonly written by the engine
+   */
+  readonly slot: number;
+  /**
+   * Written: the og.Container it is a slot of (its parent); 0 for a pickup.
+   *
+   * @readonly written by the engine
+   */
+  readonly container: Entity;
+}
+
+/**
+ * An og.ItemStack lying in the world, with a sensor og.Collider on its entity: og.systems.inventory moves it into the og.Container of an og.Collector inside the sensor, in entity order, and despawns it once it is empty.
+ * See `items §2`.
+ *
+ * The value of the `Pickup` component (token `og.Pickup`).
+ */
+export interface Pickup {
+  /** Take what fits and leave the rest lying; otherwise it is taken whole or not at all. */
+  partial: boolean;
+}
+
+/**
+ * What takes an og.Pickup whose sensor it is inside (its entity's collider): into `container`.
+ * See `items §2`.
+ *
+ * The value of the `Collector` component (token `og.Collector`).
+ */
+export interface Collector {
+  /** The og.Container what it picks up goes into; 0 picks up nothing. */
+  container: Entity;
+}
+
+/**
+ * An og.Collector took some of an og.Pickup: sent by og.systems.inventory the tick it was moved.
+ * See `items §2`.
+ *
+ * The payload of the `PickedUp` event (token `og.PickedUp`).
+ */
+export interface PickedUp {
+  /** The og.Collector. */
+  readonly collector: Entity;
+  /** The og.Pickup; despawned when og.inventory returns once it is empty. */
+  readonly pickup: Entity;
+  /** The row taken. */
+  readonly item: TableRow;
+  /** How many were moved. */
+  readonly count: number;
+}
+
+/**
+ * Every og.Container and og.Pickup in entity order, written by og.systems.inventory's first systems each tick for its last.
+ *
+ * The `InventoryEntities` resource (token `og.InventoryEntities`).
+ */
+export interface InventoryEntities {
+  /**
+   * The containers (at most 1,024).
+   *
+   * @capacity 1024 elements (List.Entity.1024): reading answers a frozen copy (push throws); write a whole array, refused over the capacity, never truncated
+   */
+  containers: readonly Entity[];
+  /**
+   * The pickups (at most 1,024).
+   *
+   * @capacity 1024 elements (List.Entity.1024): reading answers a frozen copy (push throws); write a whole array, refused over the capacity, never truncated
+   */
+  pickups: readonly Entity[];
+}
+
+/** Some of one row. */
+export interface ItemCount {
+  /** The row. */
+  readonly item: TableRow;
+  /** How many. */
+  readonly count: number;
+}
+
+/** One line of a loot table. */
+export interface LootEntry {
+  /** The row it gives. */
+  readonly item: TableRow;
+  /** Its share of the draws; 0 is never drawn. */
+  readonly weight: number;
+  /** The fewest it gives when drawn. */
+  readonly min: number;
+  /** The most it gives when drawn; under min gives min. */
+  readonly max: number;
+}
+
+/** What og.inventory.roll draws. */
+export interface RollDesc {
+  /** The loot table's lines. */
+  readonly entries: readonly LootEntry[];
+  /** How many draws; 0 draws nothing. */
+  readonly rolls: number;
+}
+
+/** What og.inventory.craft takes and gives. */
+export interface CraftDesc {
+  /** What it takes from the container. */
+  readonly inputs: readonly ItemCount[];
+  /** What it puts in the container once the inputs are taken. */
+  readonly outputs: readonly ItemCount[];
+}
+
+
+
+
+
+
+
+
+
+
+
 // ── og ──────────────────────────────────────────────────────────
 
 /**
@@ -37879,7 +38035,7 @@ export declare namespace og {
   }
   /**
    * Systems the engine ships as TypeScript: game-level code, listed explicitly in GameDesc.systems like the game's own, so the schedule (and dump_world) shows them and nothing runs that the game did not ask for.
-   * See `combat §1`, `interaction §1`.
+   * See `combat §1`, `interaction §1`, `items §1`.
    */
   namespace systems {
     /**
@@ -37894,6 +38050,10 @@ export declare namespace og {
      * The interaction systems, in order: og.interactors, og.toggles and og.doors (list each kind) and og.interact (each interactor's focus, hold and use, then plates, then doors and their links). Idle without those records. Usage: `systems: [...og.systems.interact, ...yours]`.
      */
     const interact: readonly System[];
+    /**
+     * The inventory systems, in order: og.containers and og.pickups (list each kind) and og.inventory (places each container's missing slots, then each og.Pickup into the og.Collector inside its sensor). Idle without those records. Usage: `systems: [...og.systems.inventory, ...yours]`.
+     */
+    const inventory: readonly System[];
   }
   /**
    * The command channel: actions scheduled on simulation time, from `og run --commands "t:action[:args];..."` or the probe's commands().
@@ -39384,5 +39544,130 @@ export declare namespace og {
      * @returns Empty when every row held is loaded.
      */
     function missing(world: World): readonly MissingRow[];
+  }
+  /**
+   * Holds items in `slots` slot entities: og.systems.inventory places them as its children (og.Parent), each an og.ItemStack numbered by its slot, on the tick it appears; a move outside a system (GameDesc.start, a command) places them itself. Its stacks are og.inventory.slots in slot order.
+   * See `items §1`.
+   */
+  const Container: ComponentType<{ readonly slots: FieldSpec<"u32">; readonly stack: FieldSpec<"str"> }, Container>;
+  /**
+   * Some of one table row: a slot of an og.Container (a child of it) or, with og.Pickup, a pickup lying in the world. An empty slot has a count of 0 and no row.
+   * See `items §1`.
+   */
+  const ItemStack: ComponentType<{ readonly item: FieldSpec<"TableRow">; readonly count: FieldSpec<"u32">; readonly slot: FieldSpec<"u32">; readonly container: FieldSpec<"Entity"> }, ItemStack>;
+  /**
+   * An og.ItemStack lying in the world, with a sensor og.Collider on its entity: og.systems.inventory moves it into the og.Container of an og.Collector inside the sensor, in entity order, and despawns it once it is empty.
+   * See `items §2`.
+   */
+  const Pickup: ComponentType<{ readonly partial: FieldSpec<"bool"> }, Pickup>;
+  /**
+   * What takes an og.Pickup whose sensor it is inside (its entity's collider): into `container`.
+   * See `items §2`.
+   */
+  const Collector: ComponentType<{ readonly container: FieldSpec<"Entity"> }, Collector>;
+  /**
+   * An og.Collector took some of an og.Pickup: sent by og.systems.inventory the tick it was moved.
+   * See `items §2`.
+   */
+  const PickedUp: EventType<PickedUp>;
+  /**
+   * Every og.Container and og.Pickup in entity order, written by og.systems.inventory's first systems each tick for its last.
+   */
+  const InventoryEntities: ResourceType<{ readonly containers: ListSpec<"Entity">; readonly pickups: ListSpec<"Entity"> }, InventoryEntities>;
+  /**
+   * The records og.systems.inventory carries out, and the moves a game makes with them: an og.Container holds `slots` slot entities (its children, each an og.ItemStack of a table row and a count), a stack holds at most its row's stack limit, read from the item table, and every move, split, merge and craft is all or nothing. An og.Pickup lying in the world is taken by the og.Collector that enters its sensor. Every number is the game's: a container of 0 slots holds nothing.
+   * See `items §1`.
+   */
+  namespace inventory {
+    /**
+     * A container's slots in slot order (og.ItemStack entities, empty ones too): what a backpack screen lists. A system that calls this or another og.inventory function lists og.Container and og.ItemStack in its writes.
+     *
+     * @param world The world.
+     * @param container The og.Container.
+     * @returns Empty for an entity without og.Container, or before its slots are placed.
+     */
+    function slots(world: World, container: Entity): readonly Entity[];
+    /**
+     * How many of a row a container holds, over all its stacks.
+     *
+     * @param world The world.
+     * @param container The og.Container.
+     * @param item The row.
+     */
+    function count(world: World, container: Entity, item: TableRow): number;
+    /**
+     * Whether `count` of a row fit in a container now: onto its stacks of that row up to the row's stack limit, then into its empty slots.
+     *
+     * @param world The world.
+     * @param container The og.Container.
+     * @param item The row.
+     * @param count How many.
+     */
+    function canFit(world: World, container: Entity, item: TableRow, count: number): boolean;
+    /**
+     * Put `count` of a row in a container: onto its stacks of that row in slot order up to the stack limit, then into its empty slots in order. All or nothing.
+     *
+     * @param world The world.
+     * @param container The og.Container.
+     * @param item The row.
+     * @param count How many; 0 adds nothing.
+     * @returns Refused, changing nothing, when they do not fit, for a row no loaded table has, or inside a system for a container whose slots are not placed yet (the tick it appeared), naming why.
+     */
+    function add(world: World, container: Entity, item: TableRow, count: number): Result<void>;
+    /**
+     * Take `count` of a row from a container: from its stacks of that row from the last slot back, so the first slots stay full. All or nothing.
+     *
+     * @param world The world.
+     * @param container The og.Container.
+     * @param item The row.
+     * @param count How many; 0 takes nothing.
+     * @returns Refused, changing nothing, when the container holds fewer.
+     */
+    function remove(world: World, container: Entity, item: TableRow, count: number): Result<void>;
+    /**
+     * Move `count` from a slot into another container (or its own): onto that container's stacks of the row, then into its empty slots. All or nothing: both containers stay as they were when they do not fit.
+     *
+     * @param world The world.
+     * @param slot The og.ItemStack slot taken from.
+     * @param to The og.Container put into.
+     * @param count How many; 0 moves nothing.
+     * @returns Refused, changing nothing, for more than the slot holds or when they do not fit.
+     */
+    function move(world: World, slot: Entity, to: Entity, count: number): Result<void>;
+    /**
+     * Move `count` of a slot's stack into the first empty slot of its container.
+     *
+     * @param world The world.
+     * @param slot The og.ItemStack slot.
+     * @param count How many leave it: at least 1, fewer than it holds.
+     * @returns The slot they went to; refused, changing nothing, with no empty slot or a count out of range.
+     */
+    function split(world: World, slot: Entity, count: number): Result<Entity>;
+    /**
+     * Move as much of one slot into another as fits: into an empty slot, or onto a stack of the same row up to its limit; the rest stays. The two may be in different containers.
+     *
+     * @param world The world.
+     * @param from The og.ItemStack slot taken from.
+     * @param into The og.ItemStack slot put into.
+     * @returns How many moved (0 when the other slot is full or holds another row); refused for an entity that is not a slot.
+     */
+    function merge(world: World, from: Entity, into: Entity): Result<number>;
+    /**
+     * Take the inputs from a container and put the outputs in it, as one move: refused, changing nothing, when an input is short or the outputs do not fit once the inputs are taken.
+     *
+     * @param world The world.
+     * @param container The og.Container.
+     * @param desc The inputs and outputs.
+     * @returns Refused, naming the first input short or the output that does not fit.
+     */
+    function craft(world: World, container: Entity, desc: CraftDesc): Result<void>;
+    /**
+     * Draw from a loot table on og.Rng: each draw picks an entry in proportion to its weight (og.Rng.weighted) and a count from min to max (og.Rng.integer). The same seed draws the same loot; nothing is added anywhere.
+     *
+     * @param world The world; a system that calls this lists og.Rng in its writes.
+     * @param desc The entries and how many draws.
+     * @returns One per draw that picked an entry, in draw order.
+     */
+    function roll(world: World, desc: RollDesc): readonly ItemCount[];
   }
 }

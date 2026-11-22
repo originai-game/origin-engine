@@ -12950,7 +12950,7 @@
     },
     {
       "name": "systems",
-      "doc": "Systems the engine ships as TypeScript: game-level code, listed explicitly in GameDesc.systems like the game's own, so the schedule (and dump_world) shows them and nothing runs that the game did not ask for.\nSee `combat §1`, `interaction §1`.",
+      "doc": "Systems the engine ships as TypeScript: game-level code, listed explicitly in GameDesc.systems like the game's own, so the schedule (and dump_world) shows them and nothing runs that the game did not ask for.\nSee `combat §1`, `interaction §1`, `items §1`.",
       "place": "namespace",
       "publish": true,
       "types": [],
@@ -12970,6 +12970,11 @@
           "name": "interact",
           "type": "List<System>",
           "doc": "The interaction systems, in order: og.interactors, og.toggles and og.doors (list each kind) and og.interact (each interactor's focus, hold and use, then plates, then doors and their links). Idle without those records. Usage: `systems: [...og.systems.interact, ...yours]`."
+        },
+        {
+          "name": "inventory",
+          "type": "List<System>",
+          "doc": "The inventory systems, in order: og.containers and og.pickups (list each kind) and og.inventory (places each container's missing slots, then each og.Pickup into the og.Collector inside its sensor). Idle without those records. Usage: `systems: [...og.systems.inventory, ...yours]`."
         }
       ],
       "functions": [],
@@ -17062,6 +17067,319 @@
           "returns": "List<MissingRow>",
           "returnsDoc": "Empty when every row held is loaded.",
           "publish": true
+        }
+      ],
+      "interfaces": [],
+      "callbacks": []
+    },
+    {
+      "name": "inventory",
+      "doc": "The records og.systems.inventory carries out, and the moves a game makes with them: an og.Container holds `slots` slot entities (its children, each an og.ItemStack of a table row and a count), a stack holds at most its row's stack limit, read from the item table, and every move, split, merge and craft is all or nothing. An og.Pickup lying in the world is taken by the og.Collector that enters its sensor. Every number is the game's: a container of 0 slots holds nothing.\nSee `items §1`.",
+      "place": "namespace",
+      "publish": true,
+      "types": [
+        "Container",
+        "ItemStack",
+        "Pickup",
+        "Collector",
+        "PickedUp",
+        "InventoryEntities",
+        "ItemCount",
+        "LootEntry",
+        "RollDesc",
+        "CraftDesc"
+      ],
+      "consts": [],
+      "functions": [
+        {
+          "name": "slots",
+          "doc": "A container's slots in slot order (og.ItemStack entities, empty ones too): what a backpack screen lists. A system that calls this or another og.inventory function lists og.Container and og.ItemStack in its writes.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "container",
+              "type": "Entity",
+              "optional": false,
+              "doc": "The og.Container."
+            }
+          ],
+          "returns": "List<Entity>",
+          "returnsDoc": "Empty for an entity without og.Container, or before its slots are placed.",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "count",
+          "doc": "How many of a row a container holds, over all its stacks.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "container",
+              "type": "Entity",
+              "optional": false,
+              "doc": "The og.Container."
+            },
+            {
+              "name": "item",
+              "type": "TableRow",
+              "optional": false,
+              "doc": "The row."
+            }
+          ],
+          "returns": "u32",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "canFit",
+          "doc": "Whether `count` of a row fit in a container now: onto its stacks of that row up to the row's stack limit, then into its empty slots.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "container",
+              "type": "Entity",
+              "optional": false,
+              "doc": "The og.Container."
+            },
+            {
+              "name": "item",
+              "type": "TableRow",
+              "optional": false,
+              "doc": "The row."
+            },
+            {
+              "name": "count",
+              "type": "u32",
+              "optional": false,
+              "doc": "How many."
+            }
+          ],
+          "returns": "bool",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "add",
+          "doc": "Put `count` of a row in a container: onto its stacks of that row in slot order up to the stack limit, then into its empty slots in order. All or nothing.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "container",
+              "type": "Entity",
+              "optional": false,
+              "doc": "The og.Container."
+            },
+            {
+              "name": "item",
+              "type": "TableRow",
+              "optional": false,
+              "doc": "The row."
+            },
+            {
+              "name": "count",
+              "type": "u32",
+              "optional": false,
+              "doc": "How many; 0 adds nothing."
+            }
+          ],
+          "returns": "Result<Void>",
+          "returnsDoc": "Refused, changing nothing, when they do not fit, for a row no loaded table has, or inside a system for a container whose slots are not placed yet (the tick it appeared), naming why.",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "remove",
+          "doc": "Take `count` of a row from a container: from its stacks of that row from the last slot back, so the first slots stay full. All or nothing.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "container",
+              "type": "Entity",
+              "optional": false,
+              "doc": "The og.Container."
+            },
+            {
+              "name": "item",
+              "type": "TableRow",
+              "optional": false,
+              "doc": "The row."
+            },
+            {
+              "name": "count",
+              "type": "u32",
+              "optional": false,
+              "doc": "How many; 0 takes nothing."
+            }
+          ],
+          "returns": "Result<Void>",
+          "returnsDoc": "Refused, changing nothing, when the container holds fewer.",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "move",
+          "doc": "Move `count` from a slot into another container (or its own): onto that container's stacks of the row, then into its empty slots. All or nothing: both containers stay as they were when they do not fit.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "slot",
+              "type": "Entity",
+              "optional": false,
+              "doc": "The og.ItemStack slot taken from."
+            },
+            {
+              "name": "to",
+              "type": "Entity",
+              "optional": false,
+              "doc": "The og.Container put into."
+            },
+            {
+              "name": "count",
+              "type": "u32",
+              "optional": false,
+              "doc": "How many; 0 moves nothing."
+            }
+          ],
+          "returns": "Result<Void>",
+          "returnsDoc": "Refused, changing nothing, for more than the slot holds or when they do not fit.",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "split",
+          "doc": "Move `count` of a slot's stack into the first empty slot of its container.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "slot",
+              "type": "Entity",
+              "optional": false,
+              "doc": "The og.ItemStack slot."
+            },
+            {
+              "name": "count",
+              "type": "u32",
+              "optional": false,
+              "doc": "How many leave it: at least 1, fewer than it holds."
+            }
+          ],
+          "returns": "Result<Entity>",
+          "returnsDoc": "The slot they went to; refused, changing nothing, with no empty slot or a count out of range.",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "merge",
+          "doc": "Move as much of one slot into another as fits: into an empty slot, or onto a stack of the same row up to its limit; the rest stays. The two may be in different containers.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "from",
+              "type": "Entity",
+              "optional": false,
+              "doc": "The og.ItemStack slot taken from."
+            },
+            {
+              "name": "into",
+              "type": "Entity",
+              "optional": false,
+              "doc": "The og.ItemStack slot put into."
+            }
+          ],
+          "returns": "Result<u32>",
+          "returnsDoc": "How many moved (0 when the other slot is full or holds another row); refused for an entity that is not a slot.",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "craft",
+          "doc": "Take the inputs from a container and put the outputs in it, as one move: refused, changing nothing, when an input is short or the outputs do not fit once the inputs are taken.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "container",
+              "type": "Entity",
+              "optional": false,
+              "doc": "The og.Container."
+            },
+            {
+              "name": "desc",
+              "type": "CraftDesc",
+              "optional": false,
+              "doc": "The inputs and outputs."
+            }
+          ],
+          "returns": "Result<Void>",
+          "returnsDoc": "Refused, naming the first input short or the output that does not fit.",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "roll",
+          "doc": "Draw from a loot table on og.Rng: each draw picks an entry in proportion to its weight (og.Rng.weighted) and a count from min to max (og.Rng.integer). The same seed draws the same loot; nothing is added anywhere.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world; a system that calls this lists og.Rng in its writes."
+            },
+            {
+              "name": "desc",
+              "type": "RollDesc",
+              "optional": false,
+              "doc": "The entries and how many draws."
+            }
+          ],
+          "returns": "List<ItemCount>",
+          "returnsDoc": "One per draw that picked an entry, in draw order.",
+          "publish": true,
+          "host": false
         }
       ],
       "interfaces": [],
@@ -58499,6 +58817,265 @@
         "record",
         "field",
         "row"
+      ],
+      "additionalProperties": false
+    },
+    "Container": {
+      "x-og-kind": "component",
+      "x-og-module": "inventory",
+      "description": "Holds items in `slots` slot entities: og.systems.inventory places them as its children (og.Parent), each an og.ItemStack numbered by its slot, on the tick it appears; a move outside a system (GameDesc.start, a command) places them itself. Its stacks are og.inventory.slots in slot order.\nSee `items §1`.",
+      "type": "object",
+      "properties": {
+        "slots": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "How many stacks it holds; 0 holds nothing. Lowering it keeps the slots past it: they hold and give what they hold but take nothing new.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 1024,
+          "x-og-tunable": true
+        },
+        "stack": {
+          "type": "string",
+          "x-og-capacity": 32,
+          "description": "The field of the item table's component that holds a row's stack limit here (a u32 field, as `maxStack`), read with og.table.get; empty, or a row whose field is 0, fits none.",
+          "default": ""
+        }
+      },
+      "additionalProperties": false
+    },
+    "ItemStack": {
+      "x-og-kind": "component",
+      "x-og-module": "inventory",
+      "description": "Some of one table row: a slot of an og.Container (a child of it) or, with og.Pickup, a pickup lying in the world. An empty slot has a count of 0 and no row.\nSee `items §1`.",
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "#/$defs/TableRow",
+          "description": "The row of the item table (og.table) it holds; 0 with a count of 0.",
+          "default": 0
+        },
+        "count": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "How many it holds; 0 is an empty slot.",
+          "default": 0
+        },
+        "slot": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Written: its slot in its container, from 0.",
+          "default": 0,
+          "readOnly": true
+        },
+        "container": {
+          "$ref": "#/$defs/Entity",
+          "description": "Written: the og.Container it is a slot of (its parent); 0 for a pickup.",
+          "default": 0,
+          "readOnly": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "Pickup": {
+      "x-og-kind": "component",
+      "x-og-module": "inventory",
+      "description": "An og.ItemStack lying in the world, with a sensor og.Collider on its entity: og.systems.inventory moves it into the og.Container of an og.Collector inside the sensor, in entity order, and despawns it once it is empty.\nSee `items §2`.",
+      "type": "object",
+      "properties": {
+        "partial": {
+          "type": "boolean",
+          "description": "Take what fits and leave the rest lying; otherwise it is taken whole or not at all.",
+          "default": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "Collector": {
+      "x-og-kind": "component",
+      "x-og-module": "inventory",
+      "description": "What takes an og.Pickup whose sensor it is inside (its entity's collider): into `container`.\nSee `items §2`.",
+      "type": "object",
+      "properties": {
+        "container": {
+          "$ref": "#/$defs/Entity",
+          "description": "The og.Container what it picks up goes into; 0 picks up nothing.",
+          "default": 0
+        }
+      },
+      "additionalProperties": false
+    },
+    "PickedUp": {
+      "x-og-kind": "event",
+      "x-og-module": "inventory",
+      "description": "An og.Collector took some of an og.Pickup: sent by og.systems.inventory the tick it was moved.\nSee `items §2`.",
+      "type": "object",
+      "properties": {
+        "collector": {
+          "$ref": "#/$defs/Entity",
+          "description": "The og.Collector."
+        },
+        "pickup": {
+          "$ref": "#/$defs/Entity",
+          "description": "The og.Pickup; despawned when og.inventory returns once it is empty."
+        },
+        "item": {
+          "$ref": "#/$defs/TableRow",
+          "description": "The row taken."
+        },
+        "count": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "How many were moved."
+        }
+      },
+      "required": [
+        "collector",
+        "pickup",
+        "item",
+        "count"
+      ],
+      "additionalProperties": false
+    },
+    "InventoryEntities": {
+      "x-og-kind": "resource",
+      "x-og-module": "inventory",
+      "description": "Every og.Container and og.Pickup in entity order, written by og.systems.inventory's first systems each tick for its last.",
+      "type": "object",
+      "properties": {
+        "containers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Entity"
+          },
+          "maxItems": 1024,
+          "description": "The containers (at most 1,024).",
+          "default": []
+        },
+        "pickups": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Entity"
+          },
+          "maxItems": 1024,
+          "description": "The pickups (at most 1,024).",
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    },
+    "ItemCount": {
+      "x-og-kind": "struct",
+      "x-og-module": "inventory",
+      "description": "Some of one row.",
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "#/$defs/TableRow",
+          "description": "The row."
+        },
+        "count": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "How many."
+        }
+      },
+      "required": [
+        "item",
+        "count"
+      ],
+      "additionalProperties": false
+    },
+    "LootEntry": {
+      "x-og-kind": "struct",
+      "x-og-module": "inventory",
+      "description": "One line of a loot table.",
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "#/$defs/TableRow",
+          "description": "The row it gives."
+        },
+        "weight": {
+          "type": "number",
+          "description": "Its share of the draws; 0 is never drawn."
+        },
+        "min": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The fewest it gives when drawn."
+        },
+        "max": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The most it gives when drawn; under min gives min."
+        }
+      },
+      "required": [
+        "item",
+        "weight",
+        "min",
+        "max"
+      ],
+      "additionalProperties": false
+    },
+    "RollDesc": {
+      "x-og-kind": "struct",
+      "x-og-module": "inventory",
+      "description": "What og.inventory.roll draws.",
+      "type": "object",
+      "properties": {
+        "entries": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/LootEntry"
+          },
+          "description": "The loot table's lines."
+        },
+        "rolls": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "How many draws; 0 draws nothing."
+        }
+      },
+      "required": [
+        "entries",
+        "rolls"
+      ],
+      "additionalProperties": false
+    },
+    "CraftDesc": {
+      "x-og-kind": "struct",
+      "x-og-module": "inventory",
+      "description": "What og.inventory.craft takes and gives.",
+      "type": "object",
+      "properties": {
+        "inputs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ItemCount"
+          },
+          "description": "What it takes from the container."
+        },
+        "outputs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ItemCount"
+          },
+          "description": "What it puts in the container once the inputs are taken."
+        }
+      },
+      "required": [
+        "inputs",
+        "outputs"
       ],
       "additionalProperties": false
     }

@@ -38387,4 +38387,184 @@ pub mod record {
         }
     }
 
+    /// `Container`: packages/knowledge/wiki/inventory.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct Container {
+        pub slots: u32,
+        pub stack: Value,
+    }
+
+    impl Default for Container {
+        fn default() -> Self {
+            Self {
+                slots: Default::default(),
+                stack: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for Container {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                slots: field(o, "slots", d.slots)?,
+                stack: field(o, "stack", d.stack)?,
+            })
+        }
+    }
+
+    /// `ItemStack`: packages/knowledge/wiki/inventory.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct ItemStack {
+        pub item: u64,
+        pub count: u32,
+        pub slot: u32,
+        pub container: u64,
+    }
+
+    impl Default for ItemStack {
+        fn default() -> Self {
+            Self {
+                item: Default::default(),
+                count: Default::default(),
+                slot: Default::default(),
+                container: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for ItemStack {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                item: field(o, "item", d.item)?,
+                count: field(o, "count", d.count)?,
+                slot: field(o, "slot", d.slot)?,
+                container: field(o, "container", d.container)?,
+            })
+        }
+    }
+
+    /// `Pickup`: packages/knowledge/wiki/inventory.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct Pickup {
+        pub partial: bool,
+    }
+
+    impl Default for Pickup {
+        fn default() -> Self {
+            Self {
+                partial: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for Pickup {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                partial: field(o, "partial", d.partial)?,
+            })
+        }
+    }
+
+    /// `Collector`: packages/knowledge/wiki/inventory.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct Collector {
+        pub container: u64,
+    }
+
+    impl Default for Collector {
+        fn default() -> Self {
+            Self {
+                container: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for Collector {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                container: field(o, "container", d.container)?,
+            })
+        }
+    }
+
+    /// `PickedUp`: packages/knowledge/wiki/inventory.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct PickedUp {
+        pub collector: u64,
+        pub pickup: u64,
+        pub item: u64,
+        pub count: u32,
+    }
+
+    impl Default for PickedUp {
+        fn default() -> Self {
+            Self {
+                collector: Default::default(),
+                pickup: Default::default(),
+                item: Default::default(),
+                count: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for PickedUp {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                collector: field(o, "collector", d.collector)?,
+                pickup: field(o, "pickup", d.pickup)?,
+                item: field(o, "item", d.item)?,
+                count: field(o, "count", d.count)?,
+            })
+        }
+    }
+
+    /// `InventoryEntities`: packages/knowledge/wiki/inventory.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct InventoryEntities {
+        pub containers: Vec<u64>,
+        pub pickups: Vec<u64>,
+    }
+
+    impl Default for InventoryEntities {
+        fn default() -> Self {
+            Self {
+                containers: Default::default(),
+                pickups: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for InventoryEntities {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                containers: field(o, "containers", d.containers)?,
+                pickups: field(o, "pickups", d.pickups)?,
+            })
+        }
+    }
+
 }

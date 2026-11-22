@@ -68,3 +68,4 @@ play.ogt
 systems-combat.ogt
 systems-interact.ogt
 table.ogt
+systems-inventory.ogt

@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "og.systems.inventory",
+      "summary": "Items as entities: an og.Container places `slots` og.ItemStack children (a TableRow and a count), each stack held to its row's limit, the item table's field the container's `stack` names (no default: 0 fits none). og.inventory.add, remove, move, split, merge and craft are all or nothing (refused, both containers stay as they were); slots, count and canFit read them; roll draws a loot table on og.Rng. An og.Pickup's stack goes into the container of the og.Collector inside its sensor, sending og.PickedUp. List `...og.systems.inventory` in GameDesc.systems. Guide: `og api show items`."
+    }
+  ]
+}

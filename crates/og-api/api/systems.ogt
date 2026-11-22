@@ -9,6 +9,9 @@ module systems {
 
   value interact List.System "The interaction systems, in order: og.interactors, og.toggles and og.doors (list each kind) and og.interact (each interactor's focus, hold and use, then plates, then doors and their links). Idle without those records. Usage: `systems: [...og.systems.interact, ...yours]`."
     guide "interaction §1"
+
+  value inventory List.System "The inventory systems, in order: og.containers and og.pickups (list each kind) and og.inventory (places each container's missing slots, then each og.Pickup into the og.Collector inside its sensor). Idle without those records. Usage: `systems: [...og.systems.inventory, ...yours]`."
+    guide "items §1"
 }
 
 # ── commands ──────────────────────────────────────────────────────────────

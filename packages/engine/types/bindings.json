@@ -9370,6 +9370,82 @@
           "readonly": true
         }
       ]
+    },
+    {
+      "id": 131,
+      "name": "Container",
+      "schema": "og.Container",
+      "module": "inventory",
+      "fields": [
+        {
+          "name": "slots",
+          "column": "u32",
+          "default": 0,
+          "tunable": true
+        },
+        {
+          "name": "stack",
+          "column": "str",
+          "capacity": 32,
+          "default": ""
+        }
+      ]
+    },
+    {
+      "id": 132,
+      "name": "ItemStack",
+      "schema": "og.ItemStack",
+      "module": "inventory",
+      "fields": [
+        {
+          "name": "item",
+          "column": "TableRow",
+          "default": 0
+        },
+        {
+          "name": "count",
+          "column": "u32",
+          "default": 0
+        },
+        {
+          "name": "slot",
+          "column": "u32",
+          "default": 0,
+          "readonly": true
+        },
+        {
+          "name": "container",
+          "column": "Entity",
+          "default": 0,
+          "readonly": true
+        }
+      ]
+    },
+    {
+      "id": 133,
+      "name": "Pickup",
+      "schema": "og.Pickup",
+      "module": "inventory",
+      "fields": [
+        {
+          "name": "partial",
+          "column": "bool",
+          "default": false
+        }
+      ]
+    },
+    {
+      "id": 134,
+      "name": "Collector",
+      "schema": "og.Collector",
+      "module": "inventory",
+      "fields": [
+        {
+          "name": "container",
+          "column": "Entity",
+          "default": 0
+        }
+      ]
     }
   ],
   "resources": [
@@ -13617,6 +13693,26 @@
           "default": []
         }
       ]
+    },
+    {
+      "id": 46,
+      "name": "InventoryEntities",
+      "schema": "og.InventoryEntities",
+      "module": "inventory",
+      "fields": [
+        {
+          "name": "containers",
+          "column": "Entity",
+          "list": 1024,
+          "default": []
+        },
+        {
+          "name": "pickups",
+          "column": "Entity",
+          "list": 1024,
+          "default": []
+        }
+      ]
     }
   ],
   "events": [
@@ -15747,6 +15843,34 @@
         {
           "name": "target",
           "type": "Entity",
+          "default": 0
+        }
+      ]
+    },
+    {
+      "id": 80,
+      "name": "PickedUp",
+      "schema": "og.PickedUp",
+      "module": "inventory",
+      "fields": [
+        {
+          "name": "collector",
+          "type": "Entity",
+          "default": 0
+        },
+        {
+          "name": "pickup",
+          "type": "Entity",
+          "default": 0
+        },
+        {
+          "name": "item",
+          "type": "TableRow",
+          "default": 0
+        },
+        {
+          "name": "count",
+          "type": "u32",
           "default": 0
         }
       ]
