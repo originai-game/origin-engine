@@ -334,9 +334,13 @@ struct Slot {
     /// The bind group and what it was made from: (data index, data
     /// generation, the layers' textures).
     group: Option<(GroupKey, wgpu::BindGroup)>,
-    /// Its corner cache: the buffer's corners, the buffer, and its groups
-    /// to read and to write it (made again, larger, when it is outgrown).
-    corners: Option<(u64, wgpu::Buffer, wgpu::BindGroup, wgpu::BindGroup)>,
+    /// Its corner cache, a data texture, and its groups to read and to
+    /// write it (made again, larger, when it is outgrown).
+    corners: Option<(
+        crate::gpu::data_texture::DataTexture,
+        wgpu::BindGroup,
+        wgpu::BindGroup,
+    )>,
 }
 
 type GroupKey = (

@@ -9,6 +9,14 @@
 // turn as 2.0 * PI and other multiples from it.
 const PI: f32 = 3.141592653589793;
 
+// Texel `i` of a data texture (data_texture.rs): an array a vertex stage
+// reads, DATA_WIDTH 16-byte texels a row, since a vertex stage may read no
+// storage under WebGPU's compatibility mode.
+const DATA_WIDTH: u32 = 1024u;
+fn data_at(i: u32) -> vec2<u32> {
+  return vec2<u32>(i % DATA_WIDTH, i / DATA_WIDTH);
+}
+
 // Octahedral encoding of a unit vector into -1..1 (two channels): the
 // G-buffer's normals, the probes' maps, a compact vertex's normal
 // (compact.rs `oct_encode` is the same map).

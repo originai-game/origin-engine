@@ -229,25 +229,30 @@ impl TerrainRenderer {
                 count: None,
             }],
         });
-        let storage = |read_only, visibility| {
+        let corners = |entry| {
             device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
                 label: Some("terrain corners"),
-                entries: &[wgpu::BindGroupLayoutEntry {
-                    binding: u32::from(read_only),
-                    visibility,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                }],
+                entries: &[entry],
             })
         };
-        // Read at binding 1 (the stamps' passes have their uniform at 0 of
-        // group 2), written at 0 of the writer's group 0.
-        let corners_layout = storage(true, wgpu::ShaderStages::VERTEX);
-        let corners_write_layout = storage(false, wgpu::ShaderStages::COMPUTE);
+        // A data texture (data_texture.rs): read at binding 1 (the stamps'
+        // passes have their uniform at 0 of group 2), written at 0 of the
+        // writer's group 0.
+        let corners_layout = corners(crate::gpu::data_texture::data_entry(
+            1,
+            wgpu::ShaderStages::VERTEX,
+            true,
+        ));
+        let corners_write_layout = corners(wgpu::BindGroupLayoutEntry {
+            binding: 0,
+            visibility: wgpu::ShaderStages::COMPUTE,
+            ty: wgpu::BindingType::StorageTexture {
+                access: wgpu::StorageTextureAccess::WriteOnly,
+                format: wgpu::TextureFormat::Rgba32Uint,
+                view_dimension: wgpu::TextureViewDimension::D2,
+            },
+            count: None,
+        });
         let passes = terrain_passes(
             device,
             TerrainPassLayouts {

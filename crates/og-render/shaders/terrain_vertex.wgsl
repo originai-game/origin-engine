@@ -29,7 +29,9 @@
 // ground vertex-bound (GPU-driven terrain caches its vertices once a
 // frame for every view the same way, as Far Cry 5's and Frostbite's do).
 
-@group(2) @binding(1) var<storage, read> terrain_corners: array<vec4<u32>>;
+// A data texture (data_texture.rs), as the vertex stage reads no storage
+// under WebGPU's compatibility mode.
+@group(2) @binding(1) var terrain_corners: texture_2d<u32>;
 
 // Two floats as IEEE halves in one word, packed and read by hand (as
 // area.wgsl's table): pack2x16float and unpack2x16float need a capability
@@ -66,7 +68,7 @@ fn corner_unpack(w: u32) -> vec2<f32> {
 fn cached_corner(first: f32, g: vec2<f32>) -> vec4<u32> {
   let n = u32(level.grid.x) + 1u;
   let i = vec2<u32>(clamp(g + 0.5, vec2<f32>(0.0), vec2<f32>(f32(n) - 0.5)));
-  return terrain_corners[u32(first) + i.y * n + i.x];
+  return textureLoad(terrain_corners, data_at(u32(first) + i.y * n + i.x), 0);
 }
 
 // This level's own height at its grid corner `g`.

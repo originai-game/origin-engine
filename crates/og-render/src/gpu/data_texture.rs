@@ -1,0 +1,112 @@
+//! Data textures: the arrays a vertex stage reads, as 2D textures of
+//! 16-byte texels addressed by index (`common.wgsl` `data_at`), DATA_WIDTH
+//! texels a row. WebGPU's compatibility mode allows no storage in the
+//! vertex stage; a texture read with `textureLoad` works on every tier.
+//! A writer fills one from the CPU ([`DataTexture::write`]) or with
+//! `textureStore` in compute (made with `STORAGE_BINDING`).
+
+/// Texels a row (`common.wgsl` `DATA_WIDTH`).
+pub(crate) const DATA_WIDTH: u32 = 1024;
+const ROW_BYTES: u64 = DATA_WIDTH as u64 * 16;
+
+pub(crate) struct DataTexture {
+    pub texture: wgpu::Texture,
+    pub view: wgpu::TextureView,
+    /// The texels it holds: whole rows.
+    pub texels: u32,
+}
+
+impl DataTexture {
+    /// At least `texels` (one row at least) of `format`, a four-component
+    /// 32-bit format (`Rgba32Uint`, `Rgba32Float`), readable as a texture
+    /// and with `usage`.
+    pub fn new(
+        device: &wgpu::Device,
+        label: &str,
+        format: wgpu::TextureFormat,
+        texels: u32,
+        usage: wgpu::TextureUsages,
+    ) -> Self {
+        let rows = texels.div_ceil(DATA_WIDTH).max(1);
+        let texture = device.create_texture(&wgpu::TextureDescriptor {
+            label: Some(label),
+            size: wgpu::Extent3d {
+                width: DATA_WIDTH,
+                height: rows,
+                depth_or_array_layers: 1,
+            },
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format,
+            usage: usage | wgpu::TextureUsages::TEXTURE_BINDING,
+            view_formats: &[],
+        });
+        let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
+        DataTexture {
+            texture,
+            view,
+            texels: rows * DATA_WIDTH,
+        }
+    }
+
+    /// Writes `data` (whole 16-byte texels) from texel `first`, which
+    /// starts a row; made with `COPY_DST`.
+    pub fn write(&self, queue: &wgpu::Queue, first: u32, data: &[u8]) {
+        debug_assert!(first.is_multiple_of(DATA_WIDTH) && data.len().is_multiple_of(16));
+        let texels = (data.len() / 16) as u32;
+        let whole = texels / DATA_WIDTH;
+        let row = first / DATA_WIDTH;
+        let put = |row: u32, width: u32, height: u32, bytes: &[u8]| {
+            if width == 0 || height == 0 {
+                return;
+            }
+            crate::traffic::write_texture(
+                queue,
+                wgpu::TexelCopyTextureInfo {
+                    texture: &self.texture,
+                    mip_level: 0,
+                    origin: wgpu::Origin3d { x: 0, y: row, z: 0 },
+                    aspect: wgpu::TextureAspect::All,
+                },
+                bytes,
+                wgpu::TexelCopyBufferLayout {
+                    offset: 0,
+                    bytes_per_row: Some(width * 16),
+                    rows_per_image: None,
+                },
+                wgpu::Extent3d {
+                    width,
+                    height,
+                    depth_or_array_layers: 1,
+                },
+            );
+        };
+        let split = whole as usize * ROW_BYTES as usize;
+        put(row, DATA_WIDTH, whole, &data[..split]);
+        put(row + whole, texels % DATA_WIDTH, 1, &data[split..]);
+    }
+}
+
+/// A data texture's layout entry at `binding`, read in `visibility`:
+/// `uint` for `texture_2d<u32>`, else `texture_2d<f32>` (unfilterable).
+pub(crate) fn data_entry(
+    binding: u32,
+    visibility: wgpu::ShaderStages,
+    uint: bool,
+) -> wgpu::BindGroupLayoutEntry {
+    wgpu::BindGroupLayoutEntry {
+        binding,
+        visibility,
+        ty: wgpu::BindingType::Texture {
+            sample_type: if uint {
+                wgpu::TextureSampleType::Uint
+            } else {
+                wgpu::TextureSampleType::Float { filterable: false }
+            },
+            view_dimension: wgpu::TextureViewDimension::D2,
+            multisampled: false,
+        },
+        count: None,
+    }
+}

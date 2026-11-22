@@ -3,6 +3,7 @@
 pub(crate) mod buffers;
 pub mod caps;
 pub(crate) mod copy;
+pub(crate) mod data_texture;
 pub(crate) mod deferred;
 #[cfg(not(target_arch = "wasm32"))]
 pub(crate) mod headless;

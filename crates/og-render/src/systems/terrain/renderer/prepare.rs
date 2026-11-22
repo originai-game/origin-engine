@@ -363,21 +363,20 @@ impl TerrainRenderer {
                 });
             }
             crate::traffic::write_buffer(queue, &slot.levels, 0, &level_bytes);
-            // The corner cache: every level's corners, 16 bytes each.
-            let needed = u64::from(corner_count) * list.len().max(1) as u64;
+            // The corner cache: every level's corners, a data texture's
+            // texel each.
+            let needed = corner_count * list.len().max(1) as u32;
             if slot
                 .corners
                 .as_ref()
-                .is_none_or(|(have, ..)| *have < needed)
+                .is_none_or(|(have, ..)| have.texels < needed)
             {
-                let buffer = crate::traffic::create_buffer(
+                let texture = crate::gpu::data_texture::DataTexture::new(
                     device,
-                    &wgpu::BufferDescriptor {
-                        label: Some("terrain corners"),
-                        size: needed * 16,
-                        usage: wgpu::BufferUsages::STORAGE,
-                        mapped_at_creation: false,
-                    },
+                    "terrain corners",
+                    wgpu::TextureFormat::Rgba32Uint,
+                    needed,
+                    wgpu::TextureUsages::STORAGE_BINDING,
                 );
                 let group = |layout, binding| {
                     device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -385,13 +384,13 @@ impl TerrainRenderer {
                         layout,
                         entries: &[wgpu::BindGroupEntry {
                             binding,
-                            resource: buffer.as_entire_binding(),
+                            resource: wgpu::BindingResource::TextureView(&texture.view),
                         }],
                     })
                 };
                 let read = group(&self.corners_layout, 1);
                 let write = group(&self.corners_write_layout, 0);
-                slot.corners = Some((needed, buffer, read, write));
+                slot.corners = Some((texture, read, write));
             }
             let key: GroupKey = (di, data.generation, handles, t.layer_arrays);
             if slot.group.as_ref().is_none_or(|(k, _)| *k != key) && arrayed {
@@ -496,7 +495,7 @@ impl TerrainRenderer {
             if passes.corners.ready().is_none() {
                 continue;
             }
-            let (_, _, corners, corners_write) = slot.corners.as_ref().expect("made above");
+            let (_, corners, corners_write) = slot.corners.as_ref().expect("made above");
             draws.push(TerrainDraw {
                 group: slot.group.as_ref().expect("made above").1.clone(),
                 corners: corners.clone(),
