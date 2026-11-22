@@ -53,6 +53,8 @@ mod garment;
 #[path = "../geometry_uv_repeat.rs"]
 mod geometry_uv_repeat;
 // It reads the probe's dump_render, which a publish build has not.
+#[path = "../environment_sun.rs"]
+mod environment_sun;
 #[cfg(not(feature = "publish"))]
 #[path = "../hlod.rs"]
 mod hlod;
@@ -67,8 +69,6 @@ mod instantiate_in_system;
 mod invariants;
 #[path = "../load_data.rs"]
 mod load_data;
-#[path = "../environment_sun.rs"]
-mod environment_sun;
 #[path = "../material_arrays.rs"]
 mod material_arrays;
 #[path = "../mesh_flash.rs"]
