@@ -236,6 +236,12 @@
       "visibility": "public"
     },
     {
+      "path": "vulkan/plant-scatter.png",
+      "sha256": "1532f826f27fcb79f3d20a9b4adefb6e3fa3401b055cd01e0b84b5a56cbb7ed4",
+      "size": 1359731,
+      "visibility": "public"
+    },
+    {
       "path": "vulkan/point-spot-lights.png",
       "sha256": "61308bcd25e7de45251e14e772d6f832b8d68a32f7c2f0a93b9ae06c3751277f",
       "size": 382963,
