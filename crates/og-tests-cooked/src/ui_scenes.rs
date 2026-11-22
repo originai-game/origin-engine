@@ -134,7 +134,8 @@ pub fn rive() -> Result<RenderScene, String> {
             o.clips.push(*rect);
             let clip = (o.clips.len() - 1) as u32;
             // These artboards have no text: their shapes are all they draw.
-            for d in p.draw(*rect, 1.0) {
+            let mut fonts = og_text::fonts::Collection::new();
+            for d in p.draw(&mut fonts, *rect, 1.0) {
                 if let og_rive::Drawn::Shape(mut s) = d {
                     s.clip = Some(clip);
                     o.ui.shapes.push(*s);
