@@ -95,6 +95,7 @@ fn texture(device: &wgpu::Device, columns: u32, rows: u32) -> wgpu::Texture {
         format: wgpu::TextureFormat::R8Unorm,
         usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
         view_formats: &[],
+        texture_binding_view_dimension: None,
     })
 }
 

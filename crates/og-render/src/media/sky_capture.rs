@@ -158,6 +158,7 @@ impl SkyCapture {
             format: HDR_FORMAT,
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
             view_formats: &[],
+            texture_binding_view_dimension: None,
         });
         let mips = CAPTURE_SIZE.ilog2() + 1;
         let radiance = crate::ibl::cube_texture(device, "live sky radiance", CAPTURE_SIZE, mips);

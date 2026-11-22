@@ -165,6 +165,7 @@ impl Renderer {
             format,
             usage,
             view_formats: &[],
+            texture_binding_view_dimension: None,
         });
         crate::traffic::write_texture(
             &self.queue,
@@ -208,6 +209,7 @@ impl Renderer {
                 format,
                 usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
                 view_formats: &[],
+                texture_binding_view_dimension: None,
             },
             wgpu::util::TextureDataOrder::LayerMajor,
             &upload.levels.concat(),

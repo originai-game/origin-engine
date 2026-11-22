@@ -87,7 +87,12 @@ status `docs/roadmap.md`. Platform contracts implemented here:
   call (`wasm-modules.json`); a binding is written once for every host;
   cooked formats sit below feature crates; a tier is a capability set
   (§2.6 Tiers).
-- **wgpu as published**, never vendored or patched.
+- **wgpu from its latest release, or our fork of it.** The fork
+  (`https://ampcode.com/@origingame/wgpu`, pinned at a commit in
+  `Cargo.toml`'s `[patch.crates-io]`) is based on the latest wgpu release
+  and carries only patches that correspond to upstream PRs, each named in
+  that comment. The engine goes back to crates.io once a wgpu release has
+  them. wgpu is never vendored into this tree.
 - **The web engine runs in a Worker** with an OffscreenCanvas; the main
   thread owns input and the shell.
 - **One design language.** `packages/design/tokens/*.css` generates the

@@ -179,6 +179,7 @@ impl Fluid3dTargets {
                     format,
                     usage,
                     view_formats: &[],
+                    texture_binding_view_dimension: None,
                 })
                 .create_view(&Default::default())
         };

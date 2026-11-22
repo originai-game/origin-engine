@@ -314,6 +314,7 @@ impl EffectRenderer {
             format: wgpu::TextureFormat::Rgba8Unorm,
             usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
             view_formats: &[],
+            texture_binding_view_dimension: None,
         });
         crate::traffic::write_texture(
             queue,

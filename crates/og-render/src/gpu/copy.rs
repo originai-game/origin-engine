@@ -58,6 +58,7 @@ impl GpuCopy {
                     format: t.format(),
                     usage: wgpu::TextureUsages::COPY_SRC | wgpu::TextureUsages::COPY_DST,
                     view_formats: &[],
+                    texture_binding_view_dimension: None,
                 });
                 copy_texture(encoder, t, &copy);
                 copy

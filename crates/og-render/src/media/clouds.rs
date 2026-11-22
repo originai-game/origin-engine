@@ -388,6 +388,7 @@ impl CloudsTemporal {
                     | wgpu::TextureUsages::COPY_SRC
                     | wgpu::TextureUsages::COPY_DST,
                 view_formats: &[],
+                texture_binding_view_dimension: None,
             });
             let view = texture.create_view(&Default::default());
             self.history = Some((texture, view));
@@ -468,6 +469,7 @@ fn volume(device: &wgpu::Device, size: u32, storage: bool) -> wgpu::Texture {
             wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST
         },
         view_formats: &[],
+        texture_binding_view_dimension: None,
     })
 }
 

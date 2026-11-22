@@ -438,6 +438,7 @@ mod tests {
                 format: wgpu::TextureFormat::Rgba16Float,
                 usage: wgpu::TextureUsages::TEXTURE_BINDING,
                 view_formats: &[],
+                texture_binding_view_dimension: None,
             })
             .create_view(&Default::default());
         let mut vis = VisBuffer::new(&device, wind);

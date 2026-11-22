@@ -101,6 +101,7 @@ pub(crate) fn cube_texture(
             | wgpu::TextureUsages::COPY_SRC
             | wgpu::TextureUsages::COPY_DST,
         view_formats: &[],
+        texture_binding_view_dimension: None,
     })
 }
 
@@ -347,6 +348,7 @@ impl IblGenerator {
             format: HDR_FORMAT,
             usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::RENDER_ATTACHMENT,
             view_formats: &[],
+            texture_binding_view_dimension: None,
         });
         let count = 6 * (sky_mips as usize + 1 + PREFILTER_MIPS as usize) + 1;
         let params = crate::traffic::create_buffer(
@@ -373,6 +375,7 @@ impl IblGenerator {
             format: HDR_FORMAT,
             usage: wgpu::TextureUsages::TEXTURE_BINDING,
             view_formats: &[],
+            texture_binding_view_dimension: None,
         });
         let flat = placeholder.create_view(&Default::default());
         let group = |source: &wgpu::TextureView| -> wgpu::BindGroup {

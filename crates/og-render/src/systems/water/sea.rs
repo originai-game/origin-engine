@@ -73,6 +73,7 @@ pub(super) fn shore_texture(
         format: wgpu::TextureFormat::Rgba32Float,
         usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
         view_formats: &[],
+        texture_binding_view_dimension: None,
     });
     if field.columns * field.rows > 0 {
         let texels: Vec<[f32; 4]> = field.texels.iter().map(|v| v.to_array()).collect();

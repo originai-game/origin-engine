@@ -133,6 +133,7 @@ pub(crate) fn target_texture(
         format,
         usage,
         view_formats: &[],
+        texture_binding_view_dimension: None,
     })
 }
 
@@ -157,6 +158,7 @@ pub(crate) fn solid_texture(
                 format: wgpu::TextureFormat::Rgba8Unorm,
                 usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
                 view_formats: &[],
+                texture_binding_view_dimension: None,
             },
             wgpu::util::TextureDataOrder::LayerMajor,
             &rgba,

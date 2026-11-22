@@ -61,6 +61,7 @@ impl DepthMips {
             format: DEPTH_MIPS_FORMAT,
             usage: wgpu::TextureUsages::STORAGE_BINDING | wgpu::TextureUsages::TEXTURE_BINDING,
             view_formats: &[],
+            texture_binding_view_dimension: None,
         });
         DepthMips {
             size: (width, height),

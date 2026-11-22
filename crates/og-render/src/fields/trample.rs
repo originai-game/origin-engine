@@ -165,6 +165,7 @@ impl Trample {
                     wgpu::TextureUsages::empty()
                 },
             view_formats: &[],
+            texture_binding_view_dimension: None,
         });
         let view = texture.create_view(&Default::default());
         let layout = compute.then(|| {

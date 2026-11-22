@@ -207,6 +207,7 @@ impl WindFieldSim {
                 wgpu::TextureUsages::TEXTURE_BINDING
             },
             view_formats: &[],
+            texture_binding_view_dimension: None,
         });
         let lean_view = lean.create_view(&Default::default());
         let layout = compute.then(|| {

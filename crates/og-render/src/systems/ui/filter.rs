@@ -609,6 +609,7 @@ impl FilterRunner {
             format: super::pass::LAYER_FORMAT,
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
             view_formats: &[],
+            texture_binding_view_dimension: None,
         });
         let view = texture.create_view(&Default::default());
         self.pool.push(Pooled { size, view });
@@ -643,6 +644,7 @@ impl FilterRunner {
                 format: wgpu::TextureFormat::Rgba32Float,
                 usage: wgpu::TextureUsages::TEXTURE_BINDING,
                 view_formats: &[],
+                texture_binding_view_dimension: None,
             },
             wgpu::util::TextureDataOrder::LayerMajor,
             bytemuck::cast_slice(&texels),

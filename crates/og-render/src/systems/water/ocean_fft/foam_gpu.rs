@@ -39,6 +39,7 @@ impl Foam {
                 format: wgpu::TextureFormat::Rgba16Float,
                 usage,
                 view_formats: &[],
+                texture_binding_view_dimension: None,
             })
         };
         let history = texture(

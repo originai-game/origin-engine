@@ -141,6 +141,7 @@ impl UiRenderer {
                     format: wgpu::TextureFormat::Rgba32Float,
                     usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
                     view_formats: &[],
+                    texture_binding_view_dimension: None,
                 });
                 let view = texture.create_view(&Default::default());
                 self.mass_table = Some((texture, view, rows.next_power_of_two()));
@@ -222,6 +223,7 @@ impl UiRenderer {
                             | wgpu::TextureUsages::TEXTURE_BINDING
                             | wgpu::TextureUsages::COPY_SRC,
                         view_formats: &[],
+                        texture_binding_view_dimension: None,
                     });
                     let sampled = texture.create_view(&Default::default());
                     let (view, chain) = if with_mips {
@@ -471,6 +473,7 @@ impl UiRenderer {
                     format: LAYER_FORMAT,
                     usage: wgpu::TextureUsages::COPY_DST | wgpu::TextureUsages::TEXTURE_BINDING,
                     view_formats: &[],
+                    texture_binding_view_dimension: None,
                 });
                 self.layer_behind = Some((texture, size));
             }

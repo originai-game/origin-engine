@@ -397,6 +397,7 @@ impl PhysicalPipelines {
                 format: PACK_FORMAT,
                 usage: wgpu::TextureUsages::TEXTURE_BINDING,
                 view_formats: &[],
+                texture_binding_view_dimension: None,
             })
             .create_view(&wgpu::TextureViewDescriptor {
                 dimension: Some(wgpu::TextureViewDimension::D2Array),
@@ -416,6 +417,7 @@ impl PhysicalPipelines {
                 format: volume::FORMAT,
                 usage: wgpu::TextureUsages::TEXTURE_BINDING,
                 view_formats: &[],
+                texture_binding_view_dimension: None,
             })
             .create_view(&Default::default());
         PhysicalPipelines {
@@ -457,6 +459,7 @@ impl PhysicalPipelines {
             format: PACK_FORMAT,
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
             view_formats: &[],
+            texture_binding_view_dimension: None,
         });
         for (layer, (uniform, views)) in layers.iter().enumerate() {
             let buffer = crate::buffer_init(

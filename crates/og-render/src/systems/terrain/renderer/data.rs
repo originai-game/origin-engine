@@ -29,6 +29,7 @@ impl TerrainRenderer {
                 format,
                 usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
                 view_formats: &[],
+                texture_binding_view_dimension: None,
             });
             let v = t.create_view(&wgpu::TextureViewDescriptor {
                 dimension: Some(wgpu::TextureViewDimension::D2Array),

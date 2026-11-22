@@ -270,6 +270,7 @@ impl PostPasses {
                     | wgpu::TextureUsages::COPY_SRC
                     | wgpu::TextureUsages::COPY_DST,
                 view_formats: &[],
+                texture_binding_view_dimension: None,
             })
         };
         let textures = [

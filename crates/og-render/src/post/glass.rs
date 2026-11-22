@@ -274,6 +274,7 @@ impl GlassPasses {
                 | wgpu::TextureUsages::TEXTURE_BINDING
                 | wgpu::TextureUsages::COPY_SRC,
             view_formats: &view_formats,
+            texture_binding_view_dimension: None,
         });
         let source_view = source.create_view(&Default::default());
         let behind = device.create_texture(&wgpu::TextureDescriptor {
@@ -289,6 +290,7 @@ impl GlassPasses {
             format,
             usage: wgpu::TextureUsages::COPY_DST | wgpu::TextureUsages::TEXTURE_BINDING,
             view_formats: &[],
+            texture_binding_view_dimension: None,
         });
         let behind_view = behind.create_view(&Default::default());
         let view_as = |f| {
@@ -321,6 +323,7 @@ impl GlassPasses {
             format: PYRAMID_FORMAT,
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
             view_formats: &[],
+            texture_binding_view_dimension: None,
         });
         let pyramid_view = pyramid.create_view(&Default::default());
         let levels = crate::mips::level_views(&pyramid, "glass level");

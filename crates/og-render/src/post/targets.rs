@@ -49,6 +49,7 @@ impl Persistent {
             format: output_format,
             usage: attach_bind | wgpu::TextureUsages::COPY_SRC | wgpu::TextureUsages::COPY_DST,
             view_formats: twin_format.as_slice(),
+            texture_binding_view_dimension: None,
         });
         let offscreen_view = offscreen.create_view(&Default::default());
         let view_as = |format| {
@@ -202,6 +203,7 @@ pub(crate) fn texture_from_rgba8(
                 format,
                 usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
                 view_formats: &[],
+                texture_binding_view_dimension: None,
             },
             wgpu::util::TextureDataOrder::LayerMajor,
             rgba,

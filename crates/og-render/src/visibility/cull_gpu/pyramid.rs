@@ -119,6 +119,7 @@ impl GpuCulling {
                 usage: wgpu::TextureUsages::RENDER_ATTACHMENT
                     | wgpu::TextureUsages::TEXTURE_BINDING,
                 view_formats: &[],
+                texture_binding_view_dimension: None,
             })
             .create_view(&Default::default());
         let levels = crate::mips::mip_count(width, height);
@@ -135,6 +136,7 @@ impl GpuCulling {
             format: wgpu::TextureFormat::R32Float,
             usage: wgpu::TextureUsages::STORAGE_BINDING | wgpu::TextureUsages::TEXTURE_BINDING,
             view_formats: &[],
+            texture_binding_view_dimension: None,
         });
         let level_views = crate::mips::level_views(&texture, "depth pyramid level");
         let base_group = device.create_bind_group(&wgpu::BindGroupDescriptor {

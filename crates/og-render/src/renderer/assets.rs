@@ -879,6 +879,7 @@ impl Renderer {
                     | wgpu::TextureUsages::TEXTURE_BINDING
                     | wgpu::TextureUsages::RENDER_ATTACHMENT,
                 view_formats: &[],
+                texture_binding_view_dimension: None,
             });
             let view = texture.create_view(&Default::default());
             let group = device.create_bind_group(&wgpu::BindGroupDescriptor {

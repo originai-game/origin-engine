@@ -143,5 +143,6 @@ pub(crate) fn create(device: &wgpu::Device, t: TargetTexture) -> wgpu::Texture {
                 wgpu::TextureUsages::empty()
             },
         view_formats: &[],
+        texture_binding_view_dimension: None,
     })
 }

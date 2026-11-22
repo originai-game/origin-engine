@@ -87,6 +87,7 @@ fn render_to(to: To, quads: impl FnOnce(&mut RenderScene) -> Vec<PaintQuad>) -> 
         format: renderer.output_format(),
         usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::COPY_SRC,
         view_formats: &[],
+        texture_binding_view_dimension: None,
     });
     let view = texture.create_view(&Default::default());
     renderer

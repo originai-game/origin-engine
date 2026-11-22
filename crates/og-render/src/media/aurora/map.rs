@@ -51,6 +51,7 @@ fn map_texture(device: &wgpu::Device, width: u32, height: u32, storage: bool) ->
             wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST
         },
         view_formats: &[],
+        texture_binding_view_dimension: None,
     })
 }
 
@@ -126,6 +127,7 @@ impl AuroraMap {
             format: wgpu::TextureFormat::Rgba8Unorm,
             usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
             view_formats: &[],
+            texture_binding_view_dimension: None,
         });
         for (level, (w, h, texels)) in strip_mips(&kh_strip(seed)).iter().enumerate() {
             crate::traffic::write_texture(

@@ -634,6 +634,7 @@ impl ShadowMap {
                     wgpu::TextureUsages::empty()
                 },
             view_formats: &[],
+            texture_binding_view_dimension: None,
         });
         let depth_texture = target_texture(
             device,

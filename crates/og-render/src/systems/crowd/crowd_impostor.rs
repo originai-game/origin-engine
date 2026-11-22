@@ -259,6 +259,7 @@ impl CrowdImpostors {
                 usage: wgpu::TextureUsages::RENDER_ATTACHMENT
                     | wgpu::TextureUsages::TEXTURE_BINDING,
                 view_formats: &[],
+                texture_binding_view_dimension: None,
             })
         };
         let albedo = texture("crowd impostor albedo", ALBEDO_FORMAT);
@@ -279,6 +280,7 @@ impl CrowdImpostors {
                         format,
                         usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
                         view_formats: &[],
+                        texture_binding_view_dimension: None,
                     })
                     .create_view(&Default::default())
             };

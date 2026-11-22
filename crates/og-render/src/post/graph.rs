@@ -254,6 +254,7 @@ impl FrameGraph {
                         format: desc.format,
                         usage: desc.usage,
                         view_formats: &[],
+                        texture_binding_view_dimension: None,
                     });
                     self.pool
                         .push((*desc, texture.create_view(&Default::default())));

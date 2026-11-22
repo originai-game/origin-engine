@@ -532,6 +532,7 @@ fn froxel_volume(device: &wgpu::Device, label: &str, slices: u32) -> wgpu::Textu
             format: FROXEL_FORMAT,
             usage: wgpu::TextureUsages::STORAGE_BINDING | wgpu::TextureUsages::TEXTURE_BINDING,
             view_formats: &[],
+            texture_binding_view_dimension: None,
         })
         .create_view(&Default::default())
 }

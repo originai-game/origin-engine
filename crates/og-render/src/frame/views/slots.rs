@@ -66,6 +66,7 @@ impl DepthPrepass {
                     format,
                     usage,
                     view_formats: &[],
+                    texture_binding_view_dimension: None,
                 })
                 .create_view(&Default::default())
         };
@@ -180,6 +181,7 @@ fn textures(
                 format,
                 usage,
                 view_formats: &[],
+                texture_binding_view_dimension: None,
             })
             .create_view(&Default::default())
     };
@@ -213,6 +215,7 @@ pub(super) fn hdr_texture(
             format: crate::HDR_FORMAT,
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
             view_formats: &[],
+            texture_binding_view_dimension: None,
         })
         .create_view(&Default::default())
 }

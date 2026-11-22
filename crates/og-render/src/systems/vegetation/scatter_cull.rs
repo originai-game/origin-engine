@@ -668,6 +668,7 @@ fn texture_1x1(
                 format,
                 usage: wgpu::TextureUsages::TEXTURE_BINDING,
                 view_formats: &[],
+                texture_binding_view_dimension: None,
             },
             wgpu::util::TextureDataOrder::LayerMajor,
             data,

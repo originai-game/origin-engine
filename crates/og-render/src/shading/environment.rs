@@ -97,6 +97,7 @@ pub(crate) fn upload(
         format: wgpu::TextureFormat::Rgb9e5Ufloat,
         usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
         view_formats: &[],
+        texture_binding_view_dimension: None,
     });
     let mut at = 0;
     for level in 0..ENVIRONMENT_MAP_LEVELS {

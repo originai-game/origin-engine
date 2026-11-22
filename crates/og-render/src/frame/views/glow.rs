@@ -210,6 +210,7 @@ pub(super) fn view_glow(
         format: crate::HDR_FORMAT,
         usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
         view_formats: &[],
+        texture_binding_view_dimension: None,
     });
     let levels = crate::mips::level_views(&texture, "view glow level");
     let uniforms: Vec<wgpu::Buffer> = (0..levels.len() as u32)

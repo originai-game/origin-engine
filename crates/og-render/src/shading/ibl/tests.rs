@@ -38,6 +38,7 @@ fn drawn(
         format,
         usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::COPY_SRC,
         view_formats: &[],
+        texture_binding_view_dimension: None,
     });
     let texel = format.block_copy_size(None).expect("a colour format") as usize;
     let row = (width as usize * texel).next_multiple_of(256);

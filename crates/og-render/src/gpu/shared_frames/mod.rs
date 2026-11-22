@@ -212,6 +212,7 @@ fn slot_desc(width: u32, height: u32) -> wgpu::TextureDescriptor<'static> {
             | wgpu::TextureUsages::COPY_SRC
             | wgpu::TextureUsages::COPY_DST,
         view_formats: &[OUTPUT_FORMAT],
+        texture_binding_view_dimension: None,
     }
 }
 

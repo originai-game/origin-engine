@@ -42,6 +42,7 @@ pub(crate) fn upload(
                 | wgpu::TextureUsages::COPY_DST
                 | wgpu::TextureUsages::COPY_SRC,
             view_formats: &[],
+            texture_binding_view_dimension: None,
         },
         wgpu::util::TextureDataOrder::LayerMajor,
         &data.texels(&info),

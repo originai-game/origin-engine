@@ -243,6 +243,7 @@ impl SeaWakes {
                 format,
                 usage,
                 view_formats: &[],
+                texture_binding_view_dimension: None,
             })
         };
         let both = wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::STORAGE_BINDING;

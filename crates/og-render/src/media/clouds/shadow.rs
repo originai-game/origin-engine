@@ -239,6 +239,7 @@ fn texture(device: &wgpu::Device, side: u32) -> wgpu::TextureView {
             format: FORMAT,
             usage: wgpu::TextureUsages::STORAGE_BINDING,
             view_formats: &[],
+            texture_binding_view_dimension: None,
         })
         .create_view(&Default::default())
 }

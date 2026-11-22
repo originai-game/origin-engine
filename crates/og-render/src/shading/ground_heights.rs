@@ -204,6 +204,7 @@ impl GroundCatcher {
                 usage: wgpu::TextureUsages::RENDER_ATTACHMENT
                     | wgpu::TextureUsages::TEXTURE_BINDING,
                 view_formats: &[],
+                texture_binding_view_dimension: None,
             })
             .create_view(&Default::default());
         let bake_group = crate::bind_group(

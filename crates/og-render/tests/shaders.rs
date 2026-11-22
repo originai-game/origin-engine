@@ -364,6 +364,7 @@ fn depth_contract(@builtin(local_invocation_index) lane: u32) {
             format: wgpu::TextureFormat::Rg32Float,
             usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
             view_formats: &[],
+            texture_binding_view_dimension: None,
         })
     };
     let depth = make(512, 256, 1);

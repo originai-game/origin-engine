@@ -651,6 +651,7 @@ fn shadow_map(device: &wgpu::Device, angles: u32) -> (u32, wgpu::Texture, wgpu::
         format: SHADOW_FORMAT,
         usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
         view_formats: &[],
+        texture_binding_view_dimension: None,
     });
     let view = texture.create_view(&Default::default());
     (angles, texture, view)

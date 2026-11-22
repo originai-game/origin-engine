@@ -64,6 +64,7 @@ impl Renderer {
                         | wgpu::TextureUsages::TEXTURE_BINDING
                         | wgpu::TextureUsages::COPY_DST,
                     view_formats: &[],
+                    texture_binding_view_dimension: None,
                 });
                 let view = texture.create_view(&Default::default());
                 let chain = self.mips.chain(&self.device, &texture);

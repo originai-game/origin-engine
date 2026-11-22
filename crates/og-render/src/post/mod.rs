@@ -540,6 +540,7 @@ fn new_lut_texture(device: &wgpu::Device, label: &str, size: u32) -> wgpu::Textu
         format: wgpu::TextureFormat::Rgba8Unorm,
         usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
         view_formats: &[],
+        texture_binding_view_dimension: None,
     })
 }
 
@@ -597,6 +598,7 @@ pub(crate) fn texture_with_data(
                 format,
                 usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
                 view_formats: &[],
+                texture_binding_view_dimension: None,
             },
             wgpu::util::TextureDataOrder::LayerMajor,
             bytes,

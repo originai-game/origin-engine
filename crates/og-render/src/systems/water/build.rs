@@ -336,6 +336,7 @@ impl WaterRenderer {
                 format: wgpu::TextureFormat::Rgba16Float,
                 usage: wgpu::TextureUsages::TEXTURE_BINDING,
                 view_formats: &[],
+                texture_binding_view_dimension: None,
             })
             .create_view(&Default::default());
         let no_shore = {
@@ -352,6 +353,7 @@ impl WaterRenderer {
                 format: wgpu::TextureFormat::Rgba32Float,
                 usage: wgpu::TextureUsages::TEXTURE_BINDING,
                 view_formats: &[],
+                texture_binding_view_dimension: None,
             });
             t.create_view(&Default::default())
         };
@@ -415,6 +417,7 @@ pub(super) fn sea_grid_texture(
                 wgpu::TextureUsages::TEXTURE_BINDING
             },
             view_formats: &[],
+            texture_binding_view_dimension: None,
         })
         .create_view(&wgpu::TextureViewDescriptor {
             dimension: Some(wgpu::TextureViewDimension::D2Array),
@@ -440,6 +443,7 @@ pub(super) fn height_texture(device: &wgpu::Device, n: u32) -> (wgpu::Texture, w
         format: HEIGHT_FORMAT,
         usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
         view_formats: &[],
+        texture_binding_view_dimension: None,
     });
     let v = t.create_view(&wgpu::TextureViewDescriptor {
         dimension: Some(wgpu::TextureViewDimension::D2Array),
