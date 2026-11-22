@@ -261,11 +261,11 @@
     }
   },
   "variants": {
-    "Button.plate": "nine-button-iron hover:nine-button-iron-hover active:nine-button-iron-pressed disabled:nine-button-disabled text-art-fg data-pressed:text-art-fg data-pressed:hover:text-art-fg disabled:text-art-fg/55",
-    "Button.plate.primary": "nine-button-red hover:nine-button-red-hover active:nine-button-red-pressed disabled:nine-button-disabled text-art-primary-fg data-pressed:text-art-primary-fg data-pressed:hover:text-art-primary-fg disabled:text-art-fg/55",
+    "Button.plate": "scheme-dark nine-button-iron hover:nine-button-iron-hover active:nine-button-iron-pressed disabled:nine-button-disabled text-art-fg data-pressed:text-art-fg data-pressed:hover:text-art-fg disabled:text-art-fg/55",
+    "Button.plate.primary": "scheme-dark nine-button-red hover:nine-button-red-hover active:nine-button-red-pressed disabled:nine-button-disabled text-art-primary-fg data-pressed:text-art-primary-fg data-pressed:hover:text-art-primary-fg disabled:text-art-fg/55",
     "Panel.frame": "nine-frame-filigree",
-    "Plate.frame": "nine-plate bg-transparent hover:bg-transparent active:bg-transparent border-transparent outline-0 shadow-none text-art-fg",
-    "Chip.frame": "nine-chip bg-transparent hover:bg-transparent active:bg-transparent border-transparent outline-0 shadow-none text-art-fg"
+    "Plate.frame": "scheme-dark nine-plate bg-transparent hover:bg-transparent active:bg-transparent border-transparent outline-0 shadow-none text-art-fg",
+    "Chip.frame": "scheme-dark nine-chip bg-transparent hover:bg-transparent active:bg-transparent border-transparent outline-0 shadow-none text-art-fg"
   },
   "images": {
     "frame-filigree": {

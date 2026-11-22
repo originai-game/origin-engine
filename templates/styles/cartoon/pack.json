@@ -378,11 +378,11 @@
     }
   },
   "variants": {
-    "Button.plate": "nine-button hover:nine-button-hover active:nine-button-pressed disabled:nine-button-disabled bg-transparent hover:bg-transparent active:bg-transparent border-transparent outline-0 shadow-none text-art-fg data-pressed:text-art-fg data-pressed:hover:text-art-fg disabled:text-art-fg/55",
-    "Button.plate.primary": "nine-button-primary hover:nine-button-primary-hover active:nine-button-primary-pressed disabled:nine-button-disabled bg-transparent hover:bg-transparent active:bg-transparent border-transparent outline-0 shadow-none text-art-primary-fg data-pressed:text-art-primary-fg data-pressed:hover:text-art-primary-fg disabled:text-art-fg/55",
-    "Panel.frame": "nine-panel bg-transparent hover:bg-transparent active:bg-transparent border-transparent outline-0 shadow-none text-art-fg",
-    "Plate.frame": "nine-plate bg-transparent hover:bg-transparent active:bg-transparent border-transparent outline-0 shadow-none text-art-fg",
-    "Chip.frame": "nine-chip bg-transparent hover:bg-transparent active:bg-transparent border-transparent outline-0 shadow-none text-art-fg"
+    "Button.plate": "scheme-dark nine-button hover:nine-button-hover active:nine-button-pressed disabled:nine-button-disabled bg-transparent hover:bg-transparent active:bg-transparent border-transparent outline-0 shadow-none text-art-fg data-pressed:text-art-fg data-pressed:hover:text-art-fg disabled:text-art-fg/55",
+    "Button.plate.primary": "scheme-light nine-button-primary hover:nine-button-primary-hover active:nine-button-primary-pressed disabled:nine-button-disabled bg-transparent hover:bg-transparent active:bg-transparent border-transparent outline-0 shadow-none text-art-primary-fg data-pressed:text-art-primary-fg data-pressed:hover:text-art-primary-fg disabled:text-art-fg/55",
+    "Panel.frame": "scheme-dark nine-panel bg-transparent hover:bg-transparent active:bg-transparent border-transparent outline-0 shadow-none text-art-fg",
+    "Plate.frame": "scheme-dark nine-plate bg-transparent hover:bg-transparent active:bg-transparent border-transparent outline-0 shadow-none text-art-fg",
+    "Chip.frame": "scheme-dark nine-chip bg-transparent hover:bg-transparent active:bg-transparent border-transparent outline-0 shadow-none text-art-fg"
   },
   "images": {
     "button": {
