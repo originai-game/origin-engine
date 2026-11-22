@@ -85,6 +85,35 @@ pub struct Face {
     pub unicode_range: Option<String>,
 }
 
+impl Face {
+    /// Its `unicode-range` as inclusive code point ranges (`U+4E00-9FFF`,
+    /// `U+0041`, `U+4??`); empty when it has none (every character).
+    pub fn ranges(&self) -> Result<Vec<(u32, u32)>, String> {
+        let Some(text) = &self.unicode_range else {
+            return Ok(Vec::new());
+        };
+        text.split(',')
+            .map(|range| {
+                let r = range
+                    .trim()
+                    .trim_start_matches(['U', 'u'])
+                    .trim_start_matches('+');
+                let hex = |s: &str| {
+                    u32::from_str_radix(s, 16)
+                        .map_err(|_| format!("unicodeRange: {} is not hexadecimal", range.trim()))
+                };
+                Ok(if let Some((a, b)) = r.split_once('-') {
+                    (hex(a)?, hex(b)?)
+                } else if r.contains('?') {
+                    (hex(&r.replace('?', "0"))?, hex(&r.replace('?', "F"))?)
+                } else {
+                    (hex(r)?, hex(r)?)
+                })
+            })
+            .collect()
+    }
+}
+
 /// A sound an event plays: one of `clips` at random, at a volume and
 /// pitch drawn from their ranges.
 #[derive(Clone, Debug, PartialEq)]
@@ -300,6 +329,27 @@ impl Layer {
 }
 
 impl Layer {
+    /// The family names its theme's `fontFamily` lists for the text roles
+    /// body (`sans`), display, mono and rounded, first first, quotes
+    /// removed (the light scheme's; a pack's fonts do not change with
+    /// the scheme). A role the theme leaves out is empty.
+    pub fn role_families(&self) -> [Vec<String>; 4] {
+        let list = |key: &str| -> Vec<String> {
+            self.theme[0]
+                .get("fontFamily")
+                .and_then(|f| f.get(key))
+                .and_then(Value::as_str)
+                .map(|l| {
+                    l.split(',')
+                        .map(|n| n.trim().trim_matches(['"', '\'']).to_owned())
+                        .filter(|n| !n.is_empty())
+                        .collect()
+                })
+                .unwrap_or_default()
+        };
+        ["sans", "display", "mono", "rounded"].map(list)
+    }
+
     /// Every asset the layer names: its faces, icons and sound clips.
     pub fn assets(&self) -> Vec<&str> {
         let mut out: Vec<&str> = self.fonts.iter().map(|f| f.src.as_str()).collect();
@@ -754,13 +804,15 @@ fn face(v: &Value) -> Result<Face, String> {
         Some("italic") => true,
         Some(_) => return Err("style: \"normal\" or \"italic\"".into()),
     };
-    Ok(Face {
+    let face = Face {
         family: text("family").ok_or("family: a name")?,
         src: text("src").ok_or("src: a font file")?,
         weight,
         italic,
         unicode_range: text("unicodeRange"),
-    })
+    };
+    face.ranges()?;
+    Ok(face)
 }
 
 fn sound(v: &Value) -> Result<Sound, String> {
@@ -954,6 +1006,10 @@ mod tests {
             (
                 r##"{ "fonts": [{ "family": "A", "src": "a.ttf", "weight": [700, 400] }] }"##,
                 "fonts[0]: weight",
+            ),
+            (
+                r##"{ "fonts": [{ "family": "A", "src": "a.ttf", "unicodeRange": "U+4E00-9FZF" }] }"##,
+                "fonts[0]: unicodeRange",
             ),
             (r##"{ "surfaces": {} }"##, "surfaces"),
         ] {

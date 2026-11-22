@@ -95,7 +95,7 @@ pub fn og_ui_configure(world: u32, desc: Option<String>) -> Result<(), String> {
                     .styles
                     .get(i)
                     .ok_or_else(|| format!("style: style {h} is not alive"))?;
-                Some(s.faces.clone())
+                Some((s.faces.clone(), s.roles.clone()))
             }
             None => None,
         };
@@ -192,7 +192,7 @@ pub fn og_ui_configure(world: u32, desc: Option<String>) -> Result<(), String> {
             rs.ui_fonts.families.clone(),
         );
         families.retain(|f| !f.document.starts_with("@pack:") && f.document != "@default");
-        if let Some(faces) = &style {
+        if let Some((faces, _)) = &style {
             families.extend(faces.clone());
         }
         let fonts = Fonts {
@@ -210,6 +210,16 @@ pub fn og_ui_configure(world: u32, desc: Option<String>) -> Result<(), String> {
             && fonts.chain.is_empty()
             && fonts.families.is_empty();
         rs.ui_fonts = fonts;
+        // A role the game gave no font takes the first of the style's
+        // families for it that has a face; one none backs is drawn in the
+        // default face (i18n::apply), never in none.
+        let roles = style.as_ref().map(|(_, r)| r.clone()).unwrap_or_default();
+        rs.ui_fonts.back_roles(roles.map(|names| {
+            names
+                .into_iter()
+                .map(og_ui_next::fonts::FontFamily::Named)
+                .collect()
+        }));
         // Each face's mixed font: the chain and fallbacks after it.
         rs.ui_fonts.link();
         rs.ui_icons = atlas;
@@ -218,14 +228,12 @@ pub fn og_ui_configure(world: u32, desc: Option<String>) -> Result<(), String> {
             UiSettings::of(&d, String::new(), (false, false)).color_filter();
         let mut st = eng.state.borrow_mut();
         st.ui_desc = d;
-        let default_available = style.is_none()
-            && eng
-                .assets
-                .borrow()
-                .bundle_for(og_ui_next::fonts::DEFAULT_FONT_ASSET)
-                .is_ok_and(|(bundle, _)| {
-                    bundle.output(og_ui_next::fonts::DEFAULT_FONT_ASSET).is_ok()
-                });
+        // i18n::apply draws a role nothing backs in the default face.
+        let default_available = eng
+            .assets
+            .borrow()
+            .bundle_for(og_ui_next::fonts::DEFAULT_FONT_ASSET)
+            .is_ok_and(|(bundle, _)| bundle.output(og_ui_next::fonts::DEFAULT_FONT_ASSET).is_ok());
         if fontless && !default_available {
             let text = "og.ui.configure: the UI has no font now, so it draws no text (every label, button and field is blank): give `font` (og.load.font) or a `style` (og.load.style, whose fonts it brings), in this call or an earlier one; a field set to null is cleared, a field left out keeps its value".to_string();
             if st.ui_warned.insert(text.clone()) {
@@ -248,6 +256,9 @@ pub fn og_ui_configure(world: u32, desc: Option<String>) -> Result<(), String> {
 pub(crate) struct LoadedStyle {
     pub id: String,
     pub faces: Vec<og_ui_next::fonts::FamilyFace>,
+    /// The families its theme names for body, display, mono and rounded
+    /// text, first first ([`og_ui_next::pack::Layer::role_families`]).
+    pub roles: [Vec<String>; 4],
 }
 
 /// `og.load.style`: a cooked UI style, its atlas, fonts, icons and sounds loaded with it.
@@ -279,7 +290,30 @@ pub(crate) fn load_style(eng: &Engine, path: &str) -> Result<usize, String> {
 
 pub(super) fn read_style(eng: &Engine, id: &str) -> Result<LoadedStyle, String> {
     if id.ends_with(".ogt") {
-        return Err("style.ogt is removed; og.load.style takes the directory containing the pack's CSS files".into());
+        return Err("style.ogt is removed; og.load.style takes the directory containing the pack's pack.json".into());
+    }
+    // A pack's pack.json names its faces (`fonts`) and the families its
+    // text roles take (`theme.fontFamily`).
+    let blob = format!("{id}/pack.json");
+    let pack = {
+        let assets = eng.assets.borrow();
+        match assets.blob(&blob) {
+            Ok((bytes, bundle)) => Some(
+                bundle
+                    .pack_text(&blob, bytes.bytes())
+                    .map_err(|e| e.to_string())?,
+            ),
+            Err(_) => None,
+        }
+    };
+    if let Some(text) = pack {
+        let layer = og_ui_next::pack::Layer::parse(&text).map_err(|e| format!("{blob}: {e}"))?;
+        let faces = docs::pack_faces(eng, &layer.fonts, &blob, &format!("@pack:{id}"))?;
+        return Ok(LoadedStyle {
+            id: id.to_owned(),
+            faces,
+            roles: layer.role_families(),
+        });
     }
     let text = {
         let assets = eng.assets.borrow();
@@ -294,6 +328,7 @@ pub(super) fn read_style(eng: &Engine, id: &str) -> Result<LoadedStyle, String> 
     Ok(LoadedStyle {
         id: id.to_owned(),
         faces,
+        roles: Default::default(),
     })
 }
 

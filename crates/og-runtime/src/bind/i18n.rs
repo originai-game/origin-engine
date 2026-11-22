@@ -190,15 +190,20 @@ pub(crate) fn apply(eng: &Engine) -> Result<(), String> {
         }
         (paths, s.catalog.direction())
     });
+    // The default face draws a role the game gave no font and no style
+    // backs (a style whose families have no face for it, too).
     let default_roles = {
         let state = eng.state.borrow();
+        let rs = eng.render.borrow();
+        let f = &rs.ui_fonts;
         let unset = |field| state.ui_desc.get(field).is_none_or(Value::is_null);
-        let default = unset("style") && unset("font");
+        let styled = !unset("style");
+        let body = unset("font") && (!styled || f.body.handle.is_none());
         [
-            default,
-            default && unset("displayFont"),
-            default && unset("monoFont"),
-            default && unset("roundedFont"),
+            body,
+            body && unset("displayFont") && (!styled || f.display.is_none()),
+            body && unset("monoFont") && (!styled || f.mono.is_none()),
+            body && unset("roundedFont") && (!styled || f.rounded.is_none()),
         ]
     };
     if default_roles[0]

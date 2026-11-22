@@ -60,6 +60,22 @@ fn project() -> &'static Path {
             "styles/tinted/pack.json",
             br##"{ "theme": { "colors": { "fg": { "light": "#123456", "dark": "#654321" } }, "radius": { "button": 13 } } }"##,
         );
+        // A pack.json pack whose theme's text roles name its own face,
+        // and one whose families have none.
+        let font = repo().join("templates/styles/shared/Newsreader-Medium.ttf");
+        write("styles/faced/Body.ttf", &std::fs::read(font).unwrap());
+        write(
+            "styles/faced/Body.ttf.ogt",
+            b"type import\nversion 1\n---\nfont {\n  charset latin\n  em_px 32\n  px_range 4\n}\n",
+        );
+        write(
+            "styles/faced/pack.json",
+            br##"{ "fonts": [{ "family": "Faced", "src": "Body.ttf", "weight": [400, 700] }], "theme": { "fontFamily": { "sans": "\"Faced\", \"Nowhere\"", "display": "\"Faced\"" } } }"##,
+        );
+        write(
+            "styles/faceless/pack.json",
+            br##"{ "theme": { "fontFamily": { "sans": "\"Nowhere\"" } } }"##,
+        );
         let font = repo().join("templates/styles/shared/Cinzel-Bold.ttf");
         write("styles/copied/Body.ttf", &std::fs::read(font).unwrap());
         write(
@@ -299,6 +315,49 @@ fn colour(pack: &og_ui_next::pack::Pack, scheme: og_ui_next::pack::Scheme, name:
     ])
 }
 
+/// A pack's pack.json registers its `fonts` and its theme's `fontFamily`
+/// gives the text roles their face, so a label in the pack draws glyphs;
+/// a pack whose families have no face draws in the default face, not in
+/// none. Ways this could fail: pack.json's fonts are never read (the roles
+/// stay faceless and every label is blank), or a styled UI skips the
+/// default face whatever the style backs.
+#[test]
+fn a_packs_fonts_draw_its_text_and_a_faceless_family_falls_back() {
+    let e = engine();
+    let style = value(og_runtime::host_impl::answer(og_load_style(
+        e,
+        "styles/faced".into(),
+    )));
+    configure(e, json!({ "style": style }));
+    let fonts = og_runtime::ui_fonts(e).unwrap();
+    let faced: Vec<_> = fonts
+        .families
+        .iter()
+        .filter(|f| f.family == "Faced")
+        .collect();
+    assert_eq!(faced.len(), 1, "pack.json's face is registered");
+    assert!(faced[0].font.handle.is_some());
+    assert_eq!(
+        fonts.body.handle, faced[0].font.handle,
+        "body takes the pack's face"
+    );
+    assert_eq!(
+        fonts.display.as_ref().and_then(|f| f.handle),
+        faced[0].font.handle
+    );
+    assert!(fonts.body.metrics.has('a'), "the label's glyphs draw");
+
+    let style = value(og_runtime::host_impl::answer(og_load_style(
+        e,
+        "styles/faceless".into(),
+    )));
+    configure(e, json!({ "style": style }));
+    let fonts = og_runtime::ui_fonts(e).unwrap();
+    assert!(fonts.body.handle.is_some(), "the default face draws it");
+    assert!(fonts.body.metrics.has('a'));
+    assert!(warnings(e).iter().all(|w| !w.contains("no font")));
+}
+
 #[test]
 fn a_style_names_its_assets_relative_to_itself_or_from_assets() {
     let e = engine();
@@ -309,8 +368,13 @@ fn a_style_names_its_assets_relative_to_itself_or_from_assets() {
     configure(e, json!({ "style": style }));
     assert_eq!(theme(e)["style"].as_str(), Some("copied"));
     let fonts = og_runtime::ui_fonts(e).unwrap();
-    assert_eq!(fonts.families.len(), 3);
-    assert!(fonts.families.iter().all(|f| f.font.handle.is_some()));
+    let own: Vec<_> = fonts
+        .families
+        .iter()
+        .filter(|f| f.document.starts_with("@pack:"))
+        .collect();
+    assert_eq!(own.len(), 3);
+    assert!(own.iter().all(|f| f.font.handle.is_some()));
     assert!(
         warnings(e).iter().all(|w| !w.contains("no font")),
         "its body font, beside it, loaded"

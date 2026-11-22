@@ -87,6 +87,66 @@ pub(super) fn sheet_faces(
     Ok(out)
 }
 
+/// A pack's font faces (its `pack.json` `fonts`), each file loaded as the
+/// family face its weight, style and `unicodeRange` declare (CSS Fonts 4
+/// §4); a weight or width left out is the variable face's axis range, else
+/// the normal value.
+pub(super) fn pack_faces(
+    eng: &Engine,
+    faces: &[og_ui_next::pack::Face],
+    source: &str,
+    owner: &str,
+) -> Result<Vec<og_ui_next::fonts::FamilyFace>, String> {
+    let mut out = Vec::new();
+    for face in faces {
+        let i = crate::world::assets::load_font(eng, &face.src)
+            .map_err(|e| format!("{source}: fonts {}: {}: {e}", face.family, face.src))?;
+        let mut font = super::ui_config::ui_font(eng, crate::world::assets::handle(i) as f64)?;
+        let ranges = face
+            .ranges()
+            .map_err(|e| format!("{source}: fonts {}: {e}", face.family))?;
+        font.metrics = font.metrics.with_range(&ranges);
+        let axis = |tag: &[u8; 4], normal: f32| {
+            font.metrics
+                .file
+                .as_ref()
+                .and_then(|f| {
+                    f.axes()
+                        .iter()
+                        .find(|a| a.tag == *tag)
+                        .map(|a| (a.min, a.max))
+                })
+                .unwrap_or((normal, normal))
+        };
+        let weight = |w: f32| w.round().clamp(1.0, 1000.0) as u16;
+        let (w0, w1) = match face.weight {
+            Some([a, b]) => (a, b),
+            None => {
+                let (a, b) = axis(b"wght", 400.0);
+                (weight(a), weight(b))
+            }
+        };
+        let (s0, s1) = axis(b"wdth", 100.0);
+        out.push(og_ui_next::fonts::FamilyFace {
+            family: face.family.clone(),
+            document: owner.to_owned(),
+            weight: (w0, w1),
+            stretch: (
+                og_ui_next::fonts::FontQuery::width_tenths(s0),
+                og_ui_next::fonts::FontQuery::width_tenths(s1),
+            ),
+            style: if face.italic {
+                og_ui_next::fonts::FaceStyle::Italic
+            } else {
+                og_ui_next::fonts::FaceStyle::Normal
+            },
+            font,
+            ..og_ui_next::fonts::FamilyFace::default()
+        });
+    }
+    Ok(out)
+}
+
 /// A development build: puts the default style a development cook from a
 /// checkout carries (`@ui/base`, the source tree's when it is not the
 /// compiled one; og-cook's `ui_components::base_css`) in effect for the
