@@ -1161,4 +1161,88 @@ mod tests {
         let r = c.record("stroke-current", &env);
         assert_eq!((r.stroke, r.stroke_width), (None, 1.0), "the ink, 1 px");
     }
+
+    /// Every field of NSH's style and class props is either read into a
+    /// [`Record`] or named here as not drawn, with why. A field NSH gains,
+    /// or one a mapping stops reading, fails this until its line moves:
+    /// the mapping is total, so no class parses and then silently draws
+    /// nothing. The names come from each struct's derived `Debug`, which
+    /// shows its private fields too.
+    #[test]
+    fn every_nsh_style_field_is_read_or_named_not_drawn() {
+        use nsh_tailwind::effects::Effects;
+        use nsh_tailwind::style::{PaintStyle, TextStyle, ViewStyle};
+        fn fields(debug: String) -> Vec<String> {
+            let mut names: Vec<String> = debug
+                .lines()
+                .filter_map(|l| l.strip_prefix("    ").filter(|r| !r.starts_with(' ')))
+                .filter_map(|l| Some(l.split_once(": ")?.0.to_string()))
+                .collect();
+            names.sort();
+            names
+        }
+        #[rustfmt::skip]
+        let structs: [(&str, String, &[&str], &[&str]); 6] = [
+            ("Style", format!("{:#?}", Style::default()),
+                &["layout", "view", "text", "paint", "z_index", "logical",
+                  // Its env() padding (`env_padding`).
+                  "pending"],
+                &[// Native animation nodes: motion drives the tree.
+                  "animated",
+                  // Inline boxes inside a <Text>, a per-element `dir` and
+                  // 3D: the tree lays out no inline boxes, takes the page's
+                  // direction and draws 2D transforms.
+                  "vertical_align", "direction", "perspective"]),
+            ("ViewStyle", format!("{:#?}", ViewStyle::default()),
+                &["background_color", "border_radius", "corner_radius", "borders",
+                  "opacity", "transform", "transform_origin", "effects", "outline",
+                  "cursor", "transition", "animation",
+                  // The layout's overflow carries it.
+                  "overflow_hidden"],
+                &[// Platform materials and props of native views.
+                  "continuous_corners", "tint_color", "elevation", "backface_hidden",
+                  "backdrop_material", "glass_effect", "glass_tint_color",
+                  "macos_backdrop", "windows_backdrop",
+                  // Not drawn yet: `accent-*`, `object-*`, `mix-blend-*`,
+                  // `invisible`.
+                  "accent_color", "object_position", "blend_mode", "hidden"]),
+            ("TextStyle", format!("{:#?}", TextStyle::default()),
+                &["color", "font_size", "font_weight", "line_height", "text_align",
+                  "letter_spacing", "letter_spacing_em", "line_height_em",
+                  "line_height_multiple", "decoration", "decoration_color",
+                  "decoration_thickness", "stroke_width", "stroke_color", "transform",
+                  "hyphens", "shadow_color", "shadow_offset", "shadow_radius"],
+                &[// Not drawn yet: faces (`font-*` families, `italic`,
+                  // variants), `em` sizes, decoration styles and offsets,
+                  // `text-start` kept physical, `dir`, vertical alignment
+                  // and the input colours.
+                  "font_family", "italic", "font_variant", "font_size_em",
+                  "decoration_style", "underline_offset", "text_align_physical",
+                  "writing_direction", "align_vertical", "placeholder_color",
+                  "selection_color", "caret_color"]),
+            ("PaintStyle", format!("{:#?}", PaintStyle::default()),
+                &["stroke", "stroke_width"],
+                // Not drawn yet: an SVG's `fill-*` and dashes.
+                &["fill", "stroke_dasharray"]),
+            ("Effects", format!("{:#?}", Effects::default()),
+                &["box_shadows", "background_images", "backdrop_filters", "mask_images"],
+                // Not drawn yet: `blur-*`, `brightness-*` and the other filters.
+                &["filters"]),
+            ("ClassProps", format!("{:#?}", ClassProps::default()),
+                &["ellipsize", "no_wrap", "text_shadows"],
+                // Not drawn yet: `line-clamp-*`, `pointer-events-*`,
+                // `select-*`, `space-x-*` and the input colours.
+                &["number_of_lines", "pointer_events", "selectable", "space",
+                  "placeholder_color", "selection_color", "caret_color"]),
+        ];
+        for (name, debug, read, not_drawn) in structs {
+            let mut want: Vec<String> = read
+                .iter()
+                .chain(not_drawn)
+                .map(|f| f.to_string())
+                .collect();
+            want.sort();
+            assert_eq!(fields(debug), want, "NSH's {name}");
+        }
+    }
 }
