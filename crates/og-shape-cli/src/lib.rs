@@ -34,7 +34,6 @@ pub mod preview;
 pub mod process;
 pub mod repair;
 pub mod report;
-pub mod retarget;
 pub mod rig;
 pub mod source;
 pub mod unwrap;
