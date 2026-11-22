@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {
+      "member": "TSX element props: spotlight",
+      "summary": "A `spotlight` element carries `data-lit` while the element it names is showing, and loses it while that element is missing or hidden, so its classes and its group's read it in the same frame: `data-lit:bg-scrim` shades only around a target that shows, and a fallback card with `group-data-lit/<g>:hidden` shows only when there is none."
+    }
+  ]
+}

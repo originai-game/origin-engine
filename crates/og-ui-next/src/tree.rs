@@ -327,6 +327,9 @@ pub struct Tree {
     anchor_placed: Vec<[f32; 4]>,
     /// The names node anchors target, each once ([`AnchorTarget::Node`]).
     names: Vec<Box<str>>,
+    /// The elements with a `spotlight`, in no order (a dead or cleared one
+    /// leaves at the next [`Tree::present`]).
+    spotlights: Vec<u32>,
     /// Each element's text laid out as glyph quads from its leaf's top
     /// left, kept while its text, width and run stay.
     glyphs: Vec<Glyphs>,
@@ -496,6 +499,7 @@ impl Tree {
             anchor_order: Vec::new(),
             anchor_placed: Vec::new(),
             names: Vec::new(),
+            spotlights: Vec::new(),
             glyphs: Vec::new(),
             xfs: Vec::new(),
             masks: Vec::new(),
@@ -845,6 +849,25 @@ impl Tree {
         Some([x, y, own.w, own.h])
     }
 
+    /// Turns each spotlight's `data-lit` on while the node it names shows,
+    /// off otherwise: whether any changed.
+    fn mark_lit(&mut self) -> bool {
+        let (els, per) = (&self.els, &self.input.per);
+        self.spotlights.retain(|&e| {
+            !els[e as usize].dead && per.get(e as usize).is_some_and(|p| !p.spotlight.is_empty())
+        });
+        let was = self.data_dirty;
+        self.data_dirty = false;
+        for k in 0..self.spotlights.len() {
+            let e = self.spotlights[k];
+            let lit = self.hole(e).is_some();
+            self.mark(e, "lit", lit);
+        }
+        let changed = self.data_dirty;
+        self.data_dirty |= was;
+        changed
+    }
+
     /// The box spotlight `e` lights (its `spotlight` node's), when it
     /// names one that shows.
     fn hole(&self, e: u32) -> Option<[f32; 4]> {
@@ -1027,6 +1050,23 @@ impl Tree {
         self.motion.relayout(|n| arena.box_of(n));
         if !self.anchored.is_empty() {
             self.settle_anchors();
+        }
+        // A spotlight's `data-lit` follows whether its node shows; what
+        // its classes and its group's read of it change lays out again.
+        if !self.spotlights.is_empty() && self.mark_lit() {
+            self.refresh_data();
+            let m = &tf.metrics;
+            if self.arena.layout(w, h, &mut |t, run, width| {
+                crate::text::measure(m, t, run, width)
+            }) {
+                self.clamp_scrolls();
+            }
+            let arena = &self.arena;
+            self.motion.relayout(|n| arena.box_of(n));
+            if !self.anchored.is_empty() {
+                self.settle_anchors();
+            }
+            self.paint = true;
         }
         // A `<Particles>` with anything still to draw paints every frame.
         let painted = laid_out || self.paint || moving || self.particles.live;

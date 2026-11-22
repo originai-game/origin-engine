@@ -905,6 +905,13 @@ impl Tree {
                         // `spotlight`: the named node its ground lights.
                         "spotlight" => {
                             self.input.per[e as usize].spotlight = value.trim().into();
+                            if !self.spotlights.contains(&e) {
+                                self.spotlights.push(e);
+                            }
+                            // Off until the next frame finds its node.
+                            if value.trim().is_empty() {
+                                self.mark(e, "lit", false);
+                            }
                             self.paint = true;
                         }
                         // A `data-*` attribute, on unless empty or false:
@@ -3531,6 +3538,78 @@ mod tests {
         assert_eq!(t.op_box(4).unwrap(), [200.0, 190.0, 50.0, 20.0]);
         assert_eq!(press(&mut t, 230.0, 170.0), [2]);
         assert_eq!(press(&mut t, 130.0, 70.0), [3]);
+    }
+
+    /// A spotlight carries `data-lit` while the node it names shows: on,
+    /// off once the target hides, on again when it shows; its classes and
+    /// its group's (`group-data-lit/spot:`) read it in the same frame.
+    #[test]
+    fn a_spotlight_is_lit_while_its_node_shows() {
+        let mut t = tree();
+        let classes = std::cell::RefCell::new(crate::classes::Classes::new(None).unwrap().0);
+        t.set_resolver(Box::new(move |class, style, states, data| {
+            classes.borrow_mut().record_data(
+                class,
+                style,
+                &crate::classes::Env {
+                    states,
+                    ..crate::classes::Env::default()
+                },
+                data,
+            )
+        }));
+        let goal = |hidden: bool| {
+            format!(
+                "absolute left-[100px] top-[50px] w-[60px] h-[40px] {}",
+                if hidden { "hidden" } else { "" }
+            )
+        };
+        let mut b = Batch::default();
+        for (id, class, parent) in [
+            (1, "relative w-[400px] h-[300px]".to_string(), 0),
+            (2, goal(false), 1),
+            (
+                3,
+                "group/spot absolute inset-0 data-lit:bg-black/50".to_string(),
+                1,
+            ),
+            (
+                4,
+                "w-[50px] h-[20px] group-data-lit/spot:hidden".to_string(),
+                3,
+            ),
+        ] {
+            b.op(1).u32(id).u8(0);
+            b.op(4).u32(id).str(&class);
+            b.op(8).u32(parent).u32(id).u32(u32::MAX);
+        }
+        b.op(6).u32(2).str("name").str("goal");
+        b.op(6).u32(3).str("spotlight").str("goal");
+        t.apply(&b.bytes()).unwrap();
+        let shaded = |t: &Tree| {
+            t.drawn
+                .quads
+                .iter()
+                .any(|q| q.color[..3] == [0.0; 3] && q.color[3] > 0.0)
+        };
+        for (hidden, lit) in [(false, true), (true, false), (false, true)] {
+            let mut b = Batch::default();
+            b.op(4).u32(2).str(&goal(hidden));
+            t.apply(&b.bytes()).unwrap();
+            frame(&mut t);
+            let el = &t.els[t.op(3).unwrap() as usize];
+            assert_eq!(
+                el.attrs.iter().any(|a| &**a == "lit"),
+                lit,
+                "hidden {hidden}"
+            );
+            assert_eq!(shaded(&t), lit, "the shade's bg, hidden {hidden}");
+            assert_eq!(
+                t.op_box(4).is_none(),
+                lit,
+                "the fallback card, hidden {hidden}"
+            );
+        }
     }
 
     /// Classes lay out with CSS's initial flex values: a `w-full min-w-0`

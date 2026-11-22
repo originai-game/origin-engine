@@ -185,6 +185,8 @@ export interface HostProps {
      * every press there (whether it listens or not: nothing under it gets
      * one), so the lit node keeps its own presses. Its children paint as
      * laid out. While no node of that name shows, it is an ordinary box.
+     * It carries `data-lit` while its node shows (`data-lit:bg-scrim`, and
+     * `group-data-lit/<g>:hidden` for a fallback without a target).
      */
     spotlight?: string | undefined;
     /** `data-*` states class variants read (`data-ready:`). */

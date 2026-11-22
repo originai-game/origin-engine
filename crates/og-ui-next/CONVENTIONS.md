@@ -397,7 +397,10 @@ placement props (`occlusion`, `declutter`, `priority`, `clamp`,
   press there, listening or not, so nothing under the shade gets one and
   the lit node keeps its own. Its children paint and take presses as
   laid out. While the name finds no node that shows, it is an ordinary
-  box. Of live nodes sharing a `name`, the last made answers.
+  box. Of live nodes sharing a `name`, the last made answers. It carries
+  `data-lit` while its node shows, set after layout and read in the same
+  frame, so `data-lit:bg-scrim` shades only then and a fallback card's
+  `group-data-lit/<g>:hidden` shows only when the target is gone.
 - The host places it at each tick's end, after the game's systems, from the
   tick's camera and entities' world poses (`Tree::place_anchors`, which
   allocates nothing unless a `data-clamped`, `data-edge-*` or
