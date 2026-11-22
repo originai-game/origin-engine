@@ -1,4 +1,4 @@
-import { Show, Text, View } from "@origingame/engine/ui";
+import { Show, Text, View, packClass } from "@origingame/engine/ui";
 import "./shooter.en.ogt";
 
 export interface ShooterPromptProps {
@@ -33,9 +33,9 @@ export function ShooterPrompt(props: ShooterPromptProps) {
             {props.key}
           </Text>
         </Show>
-        <Text class={`min-w-0 text-base font-semibold whitespace-nowrap truncate text-shadow-2xs text-stroke-3 text-stroke-bg compact:text-caption`}>{props.text}</Text>
+        <Text class={`min-w-0 text-base font-semibold whitespace-nowrap truncate compact:text-caption py-0.25 px-1.5 nine-chip-cut bg-glass ${packClass("Plate", "frame")}`}>{props.text}</Text>
         <Show when={props.disabled && props.reason != ""}>
-          <Text class={`shrink-0 text-xs font-semibold tracking-label uppercase text-danger whitespace-nowrap text-shadow-2xs text-stroke-3 text-stroke-bg`}>{props.reason}</Text>
+          <Text class={`shrink-0 text-xs font-semibold tracking-label uppercase text-danger whitespace-nowrap py-0.25 px-1.5 nine-chip-cut bg-glass ${packClass("Plate", "frame")}`}>{props.reason}</Text>
         </Show>
       </Show>
     </View>

@@ -51,12 +51,12 @@ export function ShooterRound(props: ShooterRoundProps) {
       </Show>
       <View class="min-w-0 flex-1 compact:hidden" />
       <Show when={score()}>
-        <View class="shrink-0 flex-row items-baseline gap-1">
-          <Text class="text-title leading-none font-bold tabular-nums whitespace-nowrap text-ally-ink text-shadow-2xs text-stroke-3 text-stroke-bg compact:text-base">
+        <View class={`shrink-0 flex-row items-baseline gap-1 py-0.5 px-2 nine-plate-cut bg-glass ${packClass("Plate", "frame")}`}>
+          <Text class="text-title leading-none font-bold tabular-nums whitespace-nowrap text-ally-ink compact:text-base">
             {formatNumber(props.ours ?? 0)}
           </Text>
           <View class="self-center w-2.5 h-0.5 bg-fg" />
-          <Text class="text-title leading-none font-bold tabular-nums whitespace-nowrap text-danger text-shadow-2xs text-stroke-3 text-stroke-bg compact:text-base">
+          <Text class="text-title leading-none font-bold tabular-nums whitespace-nowrap text-foe-ink compact:text-base">
             {formatNumber(props.theirs ?? 0)}
           </Text>
         </View>

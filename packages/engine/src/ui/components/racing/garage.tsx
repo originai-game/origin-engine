@@ -56,7 +56,7 @@ export function RacingGarage(props: RacingGarageProps) {
       </Show>
       <View class="absolute inset-0 pointer-events-none bg-linear-to-b from-well via-transparent to-plate-lo compact:bottom-auto compact:h-19/50" />
       <View class="relative flex-row w-full shrink-0">
-        <Text class={`flex-1 min-w-0 text-xs leading-snug font-semibold tracking-label uppercase text-fg text-stroke-3 text-stroke-bg`}>{heading()}</Text>
+        <Text class={`flex-1 min-w-0 text-xs leading-snug font-semibold tracking-label uppercase text-fg py-0.25 px-1.5 nine-chip-cut bg-glass ${packClass("Plate", "frame")}`}>{heading()}</Text>
       </View>
       <Show when={vehicles().length} fallback={
         <View class="relative flex-col items-center justify-center gap-6 w-full h-full" role="status">
@@ -78,7 +78,7 @@ export function RacingGarage(props: RacingGarageProps) {
                   <Show when={!v().image}>
                     <View class={`w-full aspect-3.2 bg-tile nine-panel-cut`} />
                   </Show>
-                  <Text class={`w-full text-left text-xs leading-snug font-semibold tracking-label uppercase text-hud-accent-ink text-stroke-3 text-stroke-bg`}>{v().body}</Text>
+                  <Text class={`w-full text-left text-xs leading-snug font-semibold tracking-label uppercase text-hud-accent-ink py-0.25 px-1.5 nine-chip-cut bg-glass ${packClass("Plate", "frame")}`}>{v().body}</Text>
                   <Text class={`w-full text-left text-8xl leading-none font-bold italic uppercase text-fg text-stroke-3 text-stroke-bg line-clamp-3 overflow-hidden`}>{v().title}</Text>
                 </View>
               )}

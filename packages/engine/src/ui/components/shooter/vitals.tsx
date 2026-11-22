@@ -1,4 +1,4 @@
-import { For, Icon, Image, Show, Text, View, formatNumber, t } from "@origingame/engine/ui";
+import { For, Icon, Image, Show, Text, View, formatNumber, t, packClass } from "@origingame/engine/ui";
 import type { Texture } from "@origingame/engine";
 import "./shooter.en.ogt";
 
@@ -64,19 +64,19 @@ export function ShooterVitals(props: ShooterVitalsProps) {
         <View class="flex-row flex-wrap items-baseline gap-x-2 min-w-0">
           <View class="shrink basis-auto flex-row items-baseline gap-x-2 min-w-0">
             <Show when={(props.name ?? "") != ""}>
-              <Text class="min-w-0 text-base font-semibold whitespace-nowrap truncate text-fg text-shadow-2xs text-stroke-3 text-stroke-bg">{props.name}</Text>
+              <Text class={`min-w-0 text-base font-semibold whitespace-nowrap truncate text-fg py-0.25 px-1.5 nine-chip-cut bg-glass ${packClass("Plate", "frame")}`}>{props.name}</Text>
             </Show>
             <Show when={(props.level ?? 0) > 0}>
-              <Text class="shrink-0 text-xs font-semibold tracking-label uppercase whitespace-nowrap text-hud-accent-ink text-shadow-2xs text-stroke-3 text-stroke-bg">
+              <Text class={`shrink-0 text-xs font-semibold tracking-label uppercase whitespace-nowrap text-hud-accent-ink py-0.25 px-1.5 nine-chip-cut bg-glass ${packClass("Plate", "frame")}`}>
                 {t("shooter.vitals.level", { level: props.level ?? 0 })}
               </Text>
             </Show>
           </View>
-          <View class="shrink-0 ml-auto flex-row items-baseline gap-x-1">
-            <Text class="text-title leading-none font-bold tabular-nums whitespace-nowrap text-fg text-shadow-2xs text-stroke-3 text-stroke-bg group-data-low/vitals:text-danger compact:text-base">
+          <View class={`shrink-0 ml-auto flex-row items-baseline gap-x-1 py-0.5 px-2 nine-plate-cut bg-glass ${packClass("Plate", "frame")}`}>
+            <Text class="text-title leading-none font-bold tabular-nums whitespace-nowrap text-fg group-data-low/vitals:text-foe-ink compact:text-base">
               {formatNumber(props.health)}
             </Text>
-            <Text class="text-caption font-bold tabular-nums whitespace-nowrap text-fg-muted text-shadow-2xs text-stroke-3 text-stroke-bg">
+            <Text class="text-caption font-bold tabular-nums whitespace-nowrap text-fg-muted">
               {t("shooter.vitals.max", { max: formatNumber(healthMax()) })}
             </Text>
           </View>

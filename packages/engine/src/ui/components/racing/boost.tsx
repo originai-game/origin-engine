@@ -1,5 +1,5 @@
 import type { Texture } from "@origingame/engine";
-import { For, Image, Show, Text, View, t } from "@origingame/engine/ui";
+import { For, Image, Show, Text, View, t, packClass } from "@origingame/engine/ui";
 import "./racing.en.ogt";
 
 export interface RacingBoostProps {
@@ -46,7 +46,7 @@ export function RacingBoost(props: RacingBoostProps) {
       </Show>
       <View class={`flex-1 min-w-0 flex-col gap-y-1.25`}>
         <View class="flex-row items-center gap-x-2 min-w-0">
-          <Text class={`shrink min-w-0 text-xs font-semibold tracking-label uppercase whitespace-nowrap overflow-hidden text-ally-ink text-stroke-3 text-stroke-bg compact:tracking-normal`}>{label()}</Text>
+          <Text class={`shrink min-w-0 text-xs font-semibold tracking-label uppercase whitespace-nowrap overflow-hidden text-ally-ink compact:tracking-normal py-0.25 px-1.5 nine-chip-cut bg-glass ${packClass("Plate", "frame")}`}>{label()}</Text>
           <Show when={(props.key ?? "") !== ""}>
             <Text class={`shrink min-w-5.5 max-w-3/5 pointer-coarse:hidden bg-linear-to-b from-key-hi to-key-lo text-hud-accent-fg rounded-control shadow-key text-xs leading-normal font-bold tabular-nums text-center whitespace-nowrap overflow-hidden py-0 px-1`}>{props.key}</Text>
           </Show>

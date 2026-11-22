@@ -1,5 +1,5 @@
 import type { Texture } from "@origingame/engine";
-import { For, Image, Show, Text, View } from "@origingame/engine/ui";
+import { For, Image, Show, Text, View, packClass } from "@origingame/engine/ui";
 import "./world.en.ogt";
 
 export interface MinimapMarker {
@@ -92,7 +92,7 @@ export function Minimap(props: MinimapProps) {
         </For>
       </View>
       <Show when={(props.label ?? "") !== ""}>
-        <Text class="whitespace-nowrap text-caption text-fg text-shadow-xs">{props.label}</Text>
+        <Text class={`py-0.5 px-2 whitespace-nowrap text-caption text-fg nine-plate-cut bg-plate-hi ${packClass("Plate", "frame")}`}>{props.label}</Text>
       </Show>
     </View>
   );

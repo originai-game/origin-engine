@@ -1,0 +1,13 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "HudHint, RacingBonus, RacingBoost, RacingCar, RacingPedals, RacingGarage, RhythmGauge, RhythmScoreHud, RpgVitals, ShooterDamage, ShooterObjectives, ShooterPrompt, ShooterSquad, ShooterVitals, ShooterRound, Minimap, RacingTelemetry",
+      "summary": "Labels and figures under 24 px over the scene sit on a HUD plate (`Plate.frame` over `bg-glass`, the pack's plate art where a pack dresses it) instead of a 1.5 px text-stroke halo that read faint over a bright sky: each small label is a chip, and the round's score, the shooter vitals' health and the score HUD's accuracy and grade sit on one plate each. Minimap's area name is on a plate. Telemetry's dial has a glass face under its figures. Large figures (24 px and over) keep the halo. Objectives' other goals are `text-fg-muted` instead of a row at 66% opacity, and the round's and vitals' red figures use `text-foe-ink`. Fix: none."
+    },
+    {
+      "member": "StrategySelection",
+      "summary": "Declares `ground = \"panel\"`: it is a piece of the strategy HUD's bottom panel and is drawn on that panel's ground, never straight over the scene; its name drops the text-stroke halo."
+    }
+  ]
+}

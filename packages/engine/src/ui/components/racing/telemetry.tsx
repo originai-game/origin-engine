@@ -57,6 +57,7 @@ export function RacingTelemetry(props: RacingTelemetryProps) {
         valueText={t("racing.telemetry.rpmValue", { rpm: props.rpm })}
       >
         {/* The dial (svg arcs in the svelte): the well ring, then the revs as a nine-ring wipe from the lower left clockwise over the top (the arc spans 270°, so the wipe is the rev share of 0.75), then the red zone as a second nine-ring over its own span. */}
+        <View class="absolute inset-0 rounded-full bg-glass" />
         <View class="absolute inset-0 rounded-full border-8 border-rim" />
         <View class="absolute inset-0 nine-ring bg-fg" wipe={revFrac()} wipeStart={REV_START} />
         <Show when={props.redline > 0 && max() > 0 && props.redline < max()}>
@@ -79,7 +80,7 @@ export function RacingTelemetry(props: RacingTelemetryProps) {
                   data-red={red()}
                 />
                 <Text
-                  class={`absolute text-xs leading-none font-bold tabular-nums whitespace-nowrap text-fg text-stroke-3 text-stroke-bg data-red:text-foe-ink compact:hidden`}
+                  class={`absolute text-xs leading-none font-bold tabular-nums whitespace-nowrap text-fg data-red:text-foe-ink compact:hidden`}
                   style={{ left: `${50 + Math.sin(a()) * 35}%`, top: `${50 - Math.cos(a()) * 35}%`, transform: "translate(-50%,-50%)" }}
                   data-red={red()}
                 >

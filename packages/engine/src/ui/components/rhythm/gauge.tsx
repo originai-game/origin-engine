@@ -1,4 +1,4 @@
-import { For, Show, Text, View, t } from "@origingame/engine/ui";
+import { For, Show, Text, View, t, packClass } from "@origingame/engine/ui";
 import "./rhythm.en.ogt";
 
 export interface RhythmGaugeProps {
@@ -53,7 +53,7 @@ export function RhythmGauge(props: RhythmGaugeProps) {
           {(i) => <View class={`absolute left-0 right-0 h-0.75 bg-shade-deep`} style={{ top: `${(i() + 1) * 10}%`, marginTop: "-1.5px" }} />}
         </For>
       </View>
-      <Text class={`text-xs font-semibold tracking-label uppercase whitespace-nowrap text-fg-muted text-stroke-3 text-stroke-bg group-data-kind-fever/gauge:text-fever-ink`}>
+      <Text class={`text-xs font-semibold tracking-label uppercase whitespace-nowrap text-fg-muted group-data-kind-fever/gauge:text-fever-ink py-0.25 px-1.5 nine-chip-cut bg-glass ${packClass("Plate", "frame")}`}>
         {(props.kind ?? "life") === "fever" ? t("rhythm.gauge.fever") : t("rhythm.gauge.life")}
       </Text>
       <Show when={props.failed} fallback={

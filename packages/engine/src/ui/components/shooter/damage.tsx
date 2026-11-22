@@ -1,4 +1,4 @@
-import { For, Show, Text, View, formatNumber, t } from "@origingame/engine/ui";
+import { For, Show, Text, View, formatNumber, t, packClass } from "@origingame/engine/ui";
 import "./shooter.en.ogt";
 
 export interface DamageHit {
@@ -36,12 +36,12 @@ export function ShooterDamage(props: ShooterDamageProps) {
             data-third={i() >= 2}
           >
             <Show when={i() < 1 && h().kind == "headshot"}>
-              <Text class={`text-xs font-semibold tracking-label uppercase whitespace-nowrap text-gold text-shadow-2xs text-stroke-3 text-stroke-bg compact:tracking-normal`}>
+              <Text class={`text-xs font-semibold tracking-label uppercase whitespace-nowrap text-gold compact:tracking-normal py-0.25 px-1.5 nine-chip-cut bg-glass ${packClass("Plate", "frame")}`}>
                 {t("shooter.dealt.headshot")}
               </Text>
             </Show>
             <Show when={i() < 1 && h().kind == "kill"}>
-              <Text class={`text-xs font-semibold tracking-label uppercase whitespace-nowrap text-gold text-shadow-2xs text-stroke-3 text-stroke-bg compact:tracking-normal`}>
+              <Text class={`text-xs font-semibold tracking-label uppercase whitespace-nowrap text-gold compact:tracking-normal py-0.25 px-1.5 nine-chip-cut bg-glass ${packClass("Plate", "frame")}`}>
                 {t("shooter.dealt.kill")}
               </Text>
             </Show>

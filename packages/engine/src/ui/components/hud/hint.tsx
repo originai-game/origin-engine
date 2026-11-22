@@ -1,4 +1,4 @@
-import { Show, Text, View } from "@origingame/engine/ui";
+import { Show, Text, View, packClass } from "@origingame/engine/ui";
 
 export interface HudHintProps {
   /** The input as the game names it (Tab, Space), on a key cap; empty is none. */
@@ -21,7 +21,7 @@ export function HudHint(props: HudHintProps) {
           {props.key}
         </Text>
       </Show>
-      <Text class="min-w-0 text-xs font-semibold tracking-label uppercase text-fg-muted whitespace-nowrap truncate text-shadow-2xs text-stroke-3 text-stroke-bg">{props.label}</Text>
+      <Text class={`min-w-0 text-xs font-semibold tracking-label uppercase text-fg-muted whitespace-nowrap truncate py-0.25 px-1.5 nine-chip-cut bg-glass ${packClass("Plate", "frame")}`}>{props.label}</Text>
     </View>
   );
 }

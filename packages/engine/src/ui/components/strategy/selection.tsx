@@ -39,6 +39,9 @@ export interface StrategySelectionProps {
  * the focused one lit. Reports choose (a card's key: show that unit or
  * subgroup). The game owns every figure and what the panel shows.
  */
+/** Where it belongs: a piece of the strategy HUD's bottom panel, drawn on the panel's ground and never straight over the scene; the gallery mounts it inside a panel's frame. */
+export const ground = "panel" as const;
+
 export function StrategySelection(props: StrategySelectionProps) {
   return (
     <View class={`flex-row items-start gap-x-4 w-full min-w-0 text-fg compact:gap-x-2`} label={props.name !== "" ? props.name : t("strategy.selection.title")} data-kind-unit={props.kind === "unit"} data-kind-building={props.kind === "building"}>
@@ -84,7 +87,7 @@ export function StrategySelection(props: StrategySelectionProps) {
           <View class={`flex-row flex-wrap items-start justify-between gap-x-3 gap-y-1 min-w-0`}>
             <View class={`flex-col gap-y-0.25 flex-1 min-w-0`}>
               <View class={`flex-row items-baseline gap-x-1.5 min-w-0`}>
-                <Text class={`shrink min-w-0 text-xl leading-tight font-bold whitespace-nowrap overflow-hidden text-stroke-3 text-stroke-bg compact:text-base`}>
+                <Text class={`shrink min-w-0 text-xl leading-tight font-bold whitespace-nowrap overflow-hidden compact:text-base`}>
                   {props.name}
                 </Text>
                 <Show when={props.count > 1}>
