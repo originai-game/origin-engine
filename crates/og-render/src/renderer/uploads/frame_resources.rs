@@ -299,7 +299,7 @@ impl Renderer {
         let ibl = self.lights.ibl.views();
         let entries = self.frame_entries(FrameGroupParts {
             uniform: self.lights.frame_buffer.as_entire_binding(),
-            clusters: [&self.lights.light_buffers[1], &self.lights.light_buffers[2]],
+            lights: &self.lights.light_tables,
             cubes: [&ibl.irradiance, &ibl.prefiltered],
             // The main camera's reflections (ssr.rs; `Frame.ssr` switches
             // them, off in the planar reflections' uniforms).
@@ -307,10 +307,10 @@ impl Renderer {
         });
         let group = bind_group(&self.device, "frame", &self.frame_layout, &entries);
         let reflection_group = (0..self.reflections.reflection_buffer.len()).map(|k| {
-            let clusters = &self.reflections.reflection_light_buffers[k];
+            let lights = &self.reflections.reflection_light_tables[k];
             let reflected = self.frame_entries(FrameGroupParts {
                 uniform: self.reflections.reflection_buffer[k].as_entire_binding(),
-                clusters: [&clusters[1], &clusters[2]],
+                lights,
                 cubes: [&ibl.irradiance, &ibl.prefiltered],
                 ssr: self.ssr.frame_view(),
             });

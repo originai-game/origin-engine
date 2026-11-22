@@ -32,19 +32,11 @@ use crate::scene::{LightDesc, LightKind};
 use glam::{Vec3, Vec4};
 pub use og_render_data::clusters::*;
 
-/// Byte sizes of the three buffers: lights, the cluster table, the refs.
-fn sizes() -> [u64; 3] {
-    [
-        (MAX_LIGHTS * std::mem::size_of::<crate::frame::LightGpu>()) as u64,
-        (CLUSTERS * 4) as u64,
-        LIGHT_REFS as u64,
-    ]
-}
-
-/// The frame layout's entries for the three buffers.
-pub(crate) fn layout_entries() -> [wgpu::BindGroupLayoutEntry; 3] {
-    [7, 8, 9].map(|binding| wgpu::BindGroupLayoutEntry {
-        binding,
+/// The frame layout's entry for the light tables (binding 7,
+/// [`LIGHT_TABLES_AT`]).
+pub(crate) fn layout_entry() -> wgpu::BindGroupLayoutEntry {
+    wgpu::BindGroupLayoutEntry {
+        binding: 7,
         visibility: wgpu::ShaderStages::FRAGMENT,
         ty: wgpu::BindingType::Buffer {
             ty: wgpu::BufferBindingType::Storage { read_only: true },
@@ -52,25 +44,51 @@ pub(crate) fn layout_entries() -> [wgpu::BindGroupLayoutEntry; 3] {
             min_binding_size: None,
         },
         count: None,
-    })
+    }
 }
 
-/// The three buffers, at their fixed sizes.
-pub(crate) fn buffers(device: &wgpu::Device) -> [wgpu::Buffer; 3] {
-    let usage = wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST;
-    let labels = ["lights", "cluster table", "cluster lights"];
-    let sizes = sizes();
-    [0, 1, 2].map(|i| {
-        crate::traffic::create_buffer(
-            device,
-            &wgpu::BufferDescriptor {
-                label: Some(labels[i]),
-                size: sizes[i],
-                usage,
-                mapped_at_creation: false,
-            },
-        )
-    })
+/// The light tables' buffer, at its fixed size.
+pub(crate) fn buffer(device: &wgpu::Device) -> wgpu::Buffer {
+    const _: () = assert!(std::mem::size_of::<crate::frame::LightGpu>() == LIGHT_VEC4S * 16);
+    crate::traffic::create_buffer(
+        device,
+        &wgpu::BufferDescriptor {
+            label: Some("light tables"),
+            size: LIGHT_TABLES_AT[3],
+            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        },
+    )
+}
+
+/// Writes `lights` and the clusters `built` into the light tables `buffer`.
+pub(crate) fn write_tables(
+    queue: &wgpu::Queue,
+    buffer: &wgpu::Buffer,
+    lights: &[crate::frame::LightGpu],
+    built: &ClusterBuilder,
+) {
+    if lights.is_empty() {
+        return;
+    }
+    crate::traffic::write_buffer(
+        queue,
+        buffer,
+        LIGHT_TABLES_AT[0],
+        bytemuck::cast_slice(lights),
+    );
+    crate::traffic::write_buffer(
+        queue,
+        buffer,
+        LIGHT_TABLES_AT[1],
+        bytemuck::cast_slice(&built.table),
+    );
+    crate::traffic::write_buffer(
+        queue,
+        buffer,
+        LIGHT_TABLES_AT[2],
+        bytemuck::cast_slice(&built.ref_words()),
+    );
 }
 
 /// What the camera looks like to the cluster build.

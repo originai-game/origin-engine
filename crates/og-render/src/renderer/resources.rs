@@ -667,7 +667,12 @@ impl ShadowMap {
 pub(crate) struct Lights {
     pub(crate) frame_buffer: wgpu::Buffer,
     /// The local lights, the cluster table and its light references (`clusters.rs`).
-    pub(crate) light_buffers: [wgpu::Buffer; 3],
+    /// The light tables (clusters.rs `LIGHT_TABLES_AT`): the records and
+    /// the main camera's clusters.
+    pub(crate) light_tables: wgpu::Buffer,
+    /// The records last written, which the views' and reflections' own
+    /// tables repeat.
+    pub(crate) records: Vec<frame::LightGpu>,
     pub(crate) clusters: clusters::ClusterBuilder,
     /// The static lights' far field (`static_far.rs`).
     pub(crate) static_far: static_far::StaticFar,
@@ -771,28 +776,10 @@ impl Lights {
 
     /// The light tables every lit pass binds: the records, and the
     /// clusters' table and words.
-    pub(crate) fn write(&self, queue: &wgpu::Queue, lights_gpu: &[frame::LightGpu]) {
-        if lights_gpu.is_empty() {
-            return;
-        }
-        crate::traffic::write_buffer(
-            queue,
-            &self.light_buffers[0],
-            0,
-            bytemuck::cast_slice(lights_gpu),
-        );
-        crate::traffic::write_buffer(
-            queue,
-            &self.light_buffers[1],
-            0,
-            bytemuck::cast_slice(&self.clusters.table),
-        );
-        crate::traffic::write_buffer(
-            queue,
-            &self.light_buffers[2],
-            0,
-            bytemuck::cast_slice(&self.clusters.ref_words()),
-        );
+    pub(crate) fn write(&mut self, queue: &wgpu::Queue, lights_gpu: &[frame::LightGpu]) {
+        clusters::write_tables(queue, &self.light_tables, lights_gpu, &self.clusters);
+        self.records.clear();
+        self.records.extend_from_slice(lights_gpu);
     }
 
     /// The decals' records, and the clusters of `view` they reach, written
@@ -884,7 +871,7 @@ pub(crate) struct ReflectionTargets {
     /// Its effect uniform (decals; no screen-space AO).
     pub(crate) reflection_fx_buffer: Vec<wgpu::Buffer>,
     /// Its cluster table and references, over the main view's light records.
-    pub(crate) reflection_light_buffers: Vec<[wgpu::Buffer; 3]>,
+    pub(crate) reflection_light_tables: Vec<wgpu::Buffer>,
     pub(crate) reflection_clusters: Vec<clusters::ClusterBuilder>,
     /// A second water surface asked for a planar reflection the renderer
     /// does not draw ([`RenderDesc::planar_reflections`] 1), and the log

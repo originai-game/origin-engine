@@ -16,7 +16,7 @@
 
 // Four words to a vec4, a uniform array's element.
 struct LtcWords { v: array<vec4<u32>, 1024> };
-@group(0) @binding(11) var<uniform> ltc_table: LtcWords;
+@group(0) @binding(9) var<uniform> ltc_table: LtcWords;
 
 struct LtcSample {
   m: vec4<f32>,       // the inverse transform's a, b, c, d (three.js ltc_1)

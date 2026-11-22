@@ -223,7 +223,7 @@ impl crate::Renderer {
                     &self.frame_layout,
                     &self.frame_entries(super::FrameGroupParts {
                         uniform: slot.frame_buffer.as_entire_binding(),
-                        clusters: [&slot.light_buffers[1], &slot.light_buffers[2]],
+                        lights: &slot.light_tables,
                         cubes: [&ibl.irradiance, &ibl.prefiltered],
                         ssr: self.ssr.off_view(),
                     }),

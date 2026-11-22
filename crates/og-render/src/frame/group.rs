@@ -6,8 +6,9 @@
 pub(crate) struct FrameGroupParts<'a> {
     /// Its camera's frame uniform.
     pub uniform: wgpu::BindingResource<'a>,
-    /// Its camera's light clusters: the table and the references.
-    pub clusters: [&'a wgpu::Buffer; 2],
+    /// Its camera's light tables: the records and its clusters
+    /// (clusters.rs `LIGHT_TABLES_AT`).
+    pub lights: &'a wgpu::Buffer,
     /// Its irradiance and prefiltered cubes.
     pub cubes: [&'a wgpu::TextureView; 2],
     /// The screen-space reflections it reads (ssr.rs: the frame's or none).
@@ -30,9 +31,7 @@ impl crate::Renderer {
             wgpu::BindingResource::TextureView(parts.cubes[1]),
             wgpu::BindingResource::TextureView(&ibl.brdf_lut),
             wgpu::BindingResource::Sampler(&ibl.sampler),
-            self.lights.light_buffers[0].as_entire_binding(),
-            parts.clusters[0].as_entire_binding(),
-            parts.clusters[1].as_entire_binding(),
+            parts.lights.as_entire_binding(),
             self.lights.lightmaps.probe_buffer.as_entire_binding(),
             self.lights.ltc.as_entire_binding(),
             self.lights.caustic_grid.as_entire_binding(),

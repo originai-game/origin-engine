@@ -57,11 +57,7 @@ impl Pass for VolumetricPass {
             &r.lights.frame_buffer,
             &r.shadows.cascade_map.array_view,
             &r.shadows.local_map.array_view,
-            [
-                &r.lights.light_buffers[0],
-                &r.lights.light_buffers[1],
-                &r.lights.light_buffers[2],
-            ],
+            &r.lights.light_tables,
             &crate::volumetric::FroxelAmbient {
                 irradiance: &ibl.irradiance,
                 prefiltered: &ibl.prefiltered,

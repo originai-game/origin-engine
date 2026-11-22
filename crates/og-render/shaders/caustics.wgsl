@@ -2,7 +2,7 @@
 // buffers are spent): per texel its Hessian (xx, zz, xz) as three signed 10-bit words, each the square root of its
 // share of CAUSTIC_H (finer near zero, where most of the sea's curvature lies).
 struct CausticGrid { w: array<vec4<u32>, 1024> };
-@group(0) @binding(12) var<uniform> caustic_grid: CausticGrid;
+@group(0) @binding(10) var<uniform> caustic_grid: CausticGrid;
 const CAUSTIC_H: f32 = 8.0;
 
 fn caustic_word(q: u32) -> f32 {

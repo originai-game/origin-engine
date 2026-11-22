@@ -13,32 +13,57 @@ pub const MAX_CLUSTER_LIGHTS: usize = 64;
 /// a word, in a storage buffer): every cluster full.
 pub const LIGHT_REFS: usize = CLUSTERS * MAX_CLUSTER_LIGHTS;
 
-/// The WGSL declaring the light tables' read-only storage buffers (group 0,
-/// bindings 7 to 9) and their accessors, placed after frame.wgsl in the lit
-/// shader: the lights as [`MAX_LIGHTS`] records of four vec4s, the table as
-/// one word per cluster (the first reference, 24 bits, and the count, 8
-/// bits), the references one byte each, four to a word.
+/// A light's record in the light tables: five vec4s (frame.wgsl
+/// `LocalLight`).
+pub const LIGHT_VEC4S: usize = 5;
+/// Where the light tables' parts start, in bytes: the lights, then the
+/// cluster table (one word per cluster), then the references (one byte
+/// each, four to a word); and their end.
+pub const LIGHT_TABLES_AT: [u64; 4] = {
+    let table = (MAX_LIGHTS * LIGHT_VEC4S * 16) as u64;
+    let refs = table + CLUSTERS as u64 * 4;
+    [0, table, refs, refs + LIGHT_REFS as u64]
+};
+const _: () = assert!(LIGHT_TABLES_AT[1] % 16 == 0 && LIGHT_TABLES_AT[2] % 16 == 0);
+
+/// The WGSL declaring the light tables, one read-only storage buffer
+/// (group 0, binding 7: [`LIGHT_TABLES_AT`]), and their accessors, placed
+/// after frame.wgsl in the lit shader: the lights as [`MAX_LIGHTS`] records
+/// of [`LIGHT_VEC4S`] vec4s, the table as one word per cluster (the first
+/// reference, 24 bits, and the count, 8 bits), the references one byte
+/// each, four to a word. One buffer, as WebGPU's compatibility mode allows
+/// a fragment stage four storage buffers.
 pub fn wgsl() -> String {
     let decls = format!(
-        "@group(0) @binding(7) var<storage, read> light_list: array<LocalLight, {lights}>;
-@group(0) @binding(8) var<storage, read> cluster_table: array<u32, {table}>;
-@group(0) @binding(9) var<storage, read> cluster_refs: array<u32, {refs}>;
+        "@group(0) @binding(7) var<storage, read> light_tables: array<vec4<u32>, {vec4s}>;
 
 fn light_at(i: u32) -> LocalLight {{
-  return light_list[i];
+  let b = i * {per}u;
+  return LocalLight(
+    bitcast<vec4<f32>>(light_tables[b]),
+    bitcast<vec4<f32>>(light_tables[b + 1u]),
+    bitcast<vec4<f32>>(light_tables[b + 2u]),
+    bitcast<vec4<f32>>(light_tables[b + 3u]),
+    bitcast<vec4<f32>>(light_tables[b + 4u]),
+  );
+}}
+
+fn light_word(w: u32) -> u32 {{
+  return light_tables[w >> 2u][w & 3u];
 }}
 
 fn cluster_word(c: u32) -> u32 {{
-  return cluster_table[c];
+  return light_word({table}u + c);
 }}
 
 fn cluster_ref(j: u32) -> u32 {{
-  return (cluster_refs[j >> 2u] >> ((j & 3u) * 8u)) & 255u;
+  return (light_word({refs}u + (j >> 2u)) >> ((j & 3u) * 8u)) & 255u;
 }}
 ",
-        lights = MAX_LIGHTS,
-        table = CLUSTERS,
-        refs = LIGHT_REFS / 4,
+        vec4s = LIGHT_TABLES_AT[3] / 16,
+        per = LIGHT_VEC4S,
+        table = LIGHT_TABLES_AT[1] / 4,
+        refs = LIGHT_TABLES_AT[2] / 4,
     );
     format!(
         "// The local lights and their clusters (clusters.rs).

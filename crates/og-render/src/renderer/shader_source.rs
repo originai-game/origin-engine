@@ -77,13 +77,13 @@ mod tests {
             let fx = fx_layout_entries(planar_slot(count));
             let bindings: Vec<u32> = fx.iter().map(|e| e.binding).collect();
             if slot {
-                assert_eq!(bindings, [0, 1, 2, 3, 4, 5, 6], "{at}");
+                assert_eq!(bindings, [0, 1, 2, 3, 4, 5], "{at}");
                 assert_eq!(textures(&fx), 3, "{at}");
                 // The lightmapped pipelines' group: the default one's.
                 let lean = fx_layout_entries(false);
                 assert_eq!(textures(&lean), 2, "{at}");
             } else {
-                assert_eq!(bindings, [0, 1, 2, 3, 5, 6], "{at}");
+                assert_eq!(bindings, [0, 1, 2, 3, 5], "{at}");
                 assert_eq!(textures(&fx), 2, "{at}");
             }
             let source = lit_source_with(&hooks, planar_slot(count));

@@ -2,7 +2,7 @@
 // volumes' header and probes, then the probe GI's header rows and probes
 // (gi_common.wgsl). Read by every lit fragment through ambient_light and
 // the probe GI's sampling (gi_sample.wgsl).
-@group(0) @binding(10) var<storage, read> probe_data: ProbeWords;
+@group(0) @binding(8) var<storage, read> probe_data: ProbeWords;
 
 // The probe GI's harmonics at a lit fragment's `p` for normal `n`: one
 // gather, which the diffuse light (gi_ambient_from) and the reflections'

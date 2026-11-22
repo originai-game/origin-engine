@@ -189,7 +189,7 @@ impl Lights {
     /// and decal buffers; the clusters skip the rect lights the renderer
     /// was made without (`off`).
     pub(super) fn new(
-        (frame_buffer, light_buffers): (wgpu::Buffer, [wgpu::Buffer; 3]),
+        (frame_buffer, light_tables): (wgpu::Buffer, wgpu::Buffer),
         (ltc, caustic_grid): (wgpu::Buffer, wgpu::Buffer),
         lightmaps: lightmap::Lightmaps,
         ibl: ibl::IblGenerator,
@@ -198,7 +198,8 @@ impl Lights {
     ) -> Lights {
         Lights {
             frame_buffer,
-            light_buffers,
+            light_tables,
+            records: Vec::new(),
             clusters: {
                 let mut c = clusters::ClusterBuilder::default();
                 c.skip_rects = off.contains(crate::pipeline_features::Features::AREA);
@@ -226,13 +227,13 @@ impl ReflectionTargets {
     pub(super) fn new(
         reflection_buffer: Vec<wgpu::Buffer>,
         reflection_fx_buffer: Vec<wgpu::Buffer>,
-        reflection_light_buffers: Vec<[wgpu::Buffer; 3]>,
+        reflection_light_tables: Vec<wgpu::Buffer>,
         reflection_clusters: Vec<clusters::ClusterBuilder>,
     ) -> ReflectionTargets {
         ReflectionTargets {
             reflection_buffer,
             reflection_fx_buffer,
-            reflection_light_buffers,
+            reflection_light_tables,
             reflection_clusters,
             warned_planar: false,
         }

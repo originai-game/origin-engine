@@ -187,10 +187,10 @@ fn params_moved(stamp: u32) -> bool {
 // Screen-space reflections (ssr.rs): rgb the reflected radiance over the
 // share of the lobe the screen resolved, a that share. A storage texture, so it takes none of the lit pipelines'
 // sixteen texture slots.
-@group(0) @binding(13) var ssr_tex: texture_storage_2d<rgba16float, read>;
+@group(0) @binding(11) var ssr_tex: texture_storage_2d<rgba16float, read>;
 // The clouds' shadow (clouds/shadow.rs, cloud_shadow_bake.wgsl): how much of the sun's beam the layer lets through,
 // over one period of the cloud field. A storage texture as the reflections are, read by lighting.wgsl `cloud_shadow`.
-@group(0) @binding(14) var cloud_shadow_map: texture_storage_2d<r32float, read>;
+@group(0) @binding(12) var cloud_shadow_map: texture_storage_2d<r32float, read>;
 
 // The radiance a surface at `p` drawn at fragment `clip` reflects:
 // `prefiltered` (the probes, the probe GI and the environment) with the

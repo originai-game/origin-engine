@@ -38,7 +38,6 @@ impl Renderer {
         }: LayoutsInputs<'_>,
     ) -> LayoutsOutputs {
         // Layouts.
-        let [lights_entry, table_entry, refs_entry] = clusters::layout_entries();
         let frame_entries = [
             uniform_entry(0, wgpu::ShaderStages::VERTEX_FRAGMENT),
             // The cascades: a read-only storage texture, so the lit
@@ -49,11 +48,10 @@ impl Renderer {
             texture_entry(4, true, wgpu::TextureViewDimension::Cube),
             tex2d(5),
             sampler_entry(6, wgpu::SamplerBindingType::Filtering),
-            // The local lights and their clusters: buffers, so the lit
-            // pipelines keep their sixteen texture slots.
-            lights_entry,
-            table_entry,
-            refs_entry,
+            // The local lights and their clusters: one buffer, so the lit
+            // pipelines keep their sixteen texture slots and within
+            // WebGPU compatibility mode's four storage buffers.
+            clusters::layout_entry(),
             // Baked light volumes and the rect lights' LTC table
             // (lightmap.rs, area.rs): buffers, as the light tables.
             lightmap::probe_layout_entry(),
@@ -63,9 +61,9 @@ impl Renderer {
             water::caustic_layout_entry(),
             // The main camera's screen-space reflections (ssr.rs): a
             // read-only storage texture, so it takes no texture slot.
-            ssr::SsrRenderer::lit_layout_entry(13),
+            ssr::SsrRenderer::lit_layout_entry(11),
             // The clouds' shadow (clouds/shadow.rs): as the reflections.
-            clouds::CloudShadow::layout_entry(14, wgpu::ShaderStages::FRAGMENT),
+            clouds::CloudShadow::layout_entry(12, wgpu::ShaderStages::FRAGMENT),
         ];
         let frame_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("frame"),

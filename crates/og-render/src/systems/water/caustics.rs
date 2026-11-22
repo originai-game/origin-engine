@@ -24,7 +24,7 @@ pub(crate) fn caustic_buffer(device: &wgpu::Device) -> wgpu::Buffer {
 
 pub(crate) fn caustic_layout_entry() -> wgpu::BindGroupLayoutEntry {
     wgpu::BindGroupLayoutEntry {
-        binding: 12,
+        binding: 10,
         visibility: wgpu::ShaderStages::FRAGMENT,
         ty: wgpu::BindingType::Buffer {
             ty: wgpu::BufferBindingType::Uniform,

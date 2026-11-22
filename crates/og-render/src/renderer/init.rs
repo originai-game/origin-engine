@@ -396,11 +396,11 @@ impl Renderer {
         // Uniform buffers (init/uniforms.rs).
         let UniformBuffersOutputs {
             frame_buffer,
-            light_buffers,
+            light_tables,
             ltc,
             caustic_grid,
             volumetric,
-            reflection_light_buffers,
+            reflection_light_tables,
             reflection_buffer,
             reflection_clusters,
             reflection_fx_buffer,
@@ -711,7 +711,7 @@ impl Renderer {
             ),
             material_layout,
             lights: Lights::new(
-                (frame_buffer, light_buffers),
+                (frame_buffer, light_tables),
                 (ltc, caustic_grid),
                 lightmaps,
                 ibl,
@@ -722,7 +722,7 @@ impl Renderer {
             reflections: ReflectionTargets::new(
                 reflection_buffer,
                 reflection_fx_buffer,
-                reflection_light_buffers,
+                reflection_light_tables,
                 reflection_clusters,
             ),
             lit: LitPipelines::new(pbr_layout, pbr_skinned_layout, pbr_shader),

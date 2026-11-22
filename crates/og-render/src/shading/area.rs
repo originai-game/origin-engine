@@ -70,7 +70,7 @@ pub(crate) fn ltc_buffer(device: &wgpu::Device, queue: &wgpu::Queue) -> wgpu::Bu
 
 pub(crate) fn ltc_layout_entry() -> wgpu::BindGroupLayoutEntry {
     wgpu::BindGroupLayoutEntry {
-        binding: 11,
+        binding: 9,
         visibility: wgpu::ShaderStages::FRAGMENT,
         ty: wgpu::BindingType::Buffer {
             ty: wgpu::BufferBindingType::Uniform,

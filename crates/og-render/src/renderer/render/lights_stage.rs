@@ -120,20 +120,12 @@ impl Renderer {
                     height: *rh,
                 },
             );
-            if !lights_gpu.is_empty() {
-                crate::traffic::write_buffer(
-                    &self.queue,
-                    &self.reflections.reflection_light_buffers[k][1],
-                    0,
-                    bytemuck::cast_slice(&self.reflections.reflection_clusters[k].table),
-                );
-                crate::traffic::write_buffer(
-                    &self.queue,
-                    &self.reflections.reflection_light_buffers[k][2],
-                    0,
-                    bytemuck::cast_slice(&self.reflections.reflection_clusters[k].ref_words()),
-                );
-            }
+            clusters::write_tables(
+                &self.queue,
+                &self.reflections.reflection_light_tables[k],
+                &lights_gpu,
+                &self.reflections.reflection_clusters[k],
+            );
         }
         PrepareLightsOutputs {
             lights_gpu,

@@ -65,7 +65,7 @@ impl Renderer {
         // irradiance and prefiltered cubes; per due capture face, the
         // frame's own cubes under the face camera's uniform.
         // With the linked lists (oit.rs) the OIT pass binds the frame's and
-        // its probes' groups again with the arena at binding 15.
+        // its probes' groups again with the arena at binding 13.
         let oit_arena = self
             .oit
             .frame_list_layout
@@ -77,7 +77,7 @@ impl Renderer {
             // The reflections' read (frame.wgsl ssr_tex), whose rows the
             // uniforms switch: on in the main camera's and its probes'.
             let ssr_view = self.ssr.frame_view();
-            let clusters = [&self.lights.light_buffers[1], &self.lights.light_buffers[2]];
+            let lights = &self.lights.light_tables;
             let group_in = |layout: &wgpu::BindGroupLayout,
                             arena: Option<&wgpu::Buffer>,
                             label: &str,
@@ -86,7 +86,7 @@ impl Renderer {
                             b: &wgpu::TextureView| {
                 let mut entries = self.frame_entries(FrameGroupParts {
                     uniform,
-                    clusters,
+                    lights,
                     cubes: [a, b],
                     ssr: ssr_view,
                 });
@@ -111,7 +111,7 @@ impl Renderer {
                     &self.frame_layout,
                     &self.frame_entries(FrameGroupParts {
                         uniform: self.probes.binding(k),
-                        clusters,
+                        lights,
                         cubes: [a, b],
                         ssr: ssr_view,
                     }),

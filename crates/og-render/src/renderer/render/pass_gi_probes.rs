@@ -43,8 +43,8 @@ impl Pass for GiProbesPass {
                 (3, wgpu::BindingResource::TextureView(&ibl.irradiance)),
                 (4, wgpu::BindingResource::TextureView(&ibl.prefiltered)),
                 (6, wgpu::BindingResource::Sampler(&ibl.sampler)),
-                (7, r.lights.light_buffers[0].as_entire_binding()),
-                (10, r.lights.lightmaps.probe_buffer.as_entire_binding()),
+                (7, r.lights.light_tables.as_entire_binding()),
+                (8, r.lights.lightmaps.probe_buffer.as_entire_binding()),
             ],
         );
         g.record(

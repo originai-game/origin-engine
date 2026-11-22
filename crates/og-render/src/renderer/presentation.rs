@@ -313,10 +313,10 @@ impl Renderer {
             &self.sprite.sprite_buffer,
         ]
         .into_iter()
-        .chain(&self.lights.light_buffers)
+        .chain(std::iter::once(&self.lights.light_tables))
         .chain(&self.reflections.reflection_buffer)
         .chain(&self.reflections.reflection_fx_buffer)
-        .chain(self.reflections.reflection_light_buffers.iter().flatten())
+        .chain(&self.reflections.reflection_light_tables)
         .map(wgpu::Buffer::size)
         .sum::<u64>()
             + self.oit.bytes();

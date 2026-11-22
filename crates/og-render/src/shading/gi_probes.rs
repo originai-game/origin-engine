@@ -469,7 +469,7 @@ impl GiProbes {
                     wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
                 ),
                 entry(7, storage(true)),
-                entry(10, storage(true)),
+                entry(8, storage(true)),
             ],
         });
         let trace_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {

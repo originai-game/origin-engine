@@ -43,7 +43,7 @@ impl Pass for LiveSkyPass {
                 &r.frame_layout,
                 &r.frame_entries(FrameGroupParts {
                     uniform,
-                    clusters: [&r.lights.light_buffers[1], &r.lights.light_buffers[2]],
+                    lights: &r.lights.light_tables,
                     cubes: [&ibl.irradiance, &ibl.prefiltered],
                     ssr: r.ssr.off_view(),
                 }),

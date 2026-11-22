@@ -51,7 +51,7 @@ impl Renderer {
             view_plans,
             uniform,
             fx_uniform,
-            lights_on,
+            if lights_on { &self.lights.records } else { &[] },
             viewport_format,
             scene
                 .sprite

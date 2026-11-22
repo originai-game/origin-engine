@@ -13,11 +13,11 @@ pub(super) struct UniformBuffersInputs<'a> {
 
 pub(super) struct UniformBuffersOutputs {
     pub frame_buffer: wgpu::Buffer,
-    pub light_buffers: [wgpu::Buffer; 3],
+    pub light_tables: wgpu::Buffer,
     pub ltc: wgpu::Buffer,
     pub caustic_grid: wgpu::Buffer,
     pub volumetric: volumetric::Volumetric,
-    pub reflection_light_buffers: Vec<[wgpu::Buffer; 3]>,
+    pub reflection_light_tables: Vec<wgpu::Buffer>,
     pub reflection_buffer: Vec<wgpu::Buffer>,
     pub reflection_clusters: Vec<clusters::ClusterBuilder>,
     pub reflection_fx_buffer: Vec<wgpu::Buffer>,
@@ -46,7 +46,7 @@ impl Renderer {
                 mapped_at_creation: false,
             },
         );
-        let light_buffers = clusters::buffers(device);
+        let light_tables = clusters::buffer(device);
         let ltc = area::ltc_buffer(device, queue);
         let caustic_grid = water::caustic_buffer(device);
         let volumetric =
@@ -54,8 +54,8 @@ impl Renderer {
         // One set per planar reflection the renderer draws (none without
         // the 3D world).
         let slots = 0..info.planar_reflections;
-        let reflection_light_buffers: Vec<_> =
-            slots.clone().map(|_| clusters::buffers(device)).collect();
+        let reflection_light_tables: Vec<_> =
+            slots.clone().map(|_| clusters::buffer(device)).collect();
         let reflection_buffer: Vec<_> = slots
             .clone()
             .map(|_| {
@@ -110,11 +110,11 @@ impl Renderer {
         });
         UniformBuffersOutputs {
             frame_buffer,
-            light_buffers,
+            light_tables,
             ltc,
             caustic_grid,
             volumetric,
-            reflection_light_buffers,
+            reflection_light_tables,
             reflection_buffer,
             reflection_clusters,
             reflection_fx_buffer,

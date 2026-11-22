@@ -7,7 +7,7 @@ pub(crate) struct ViewSlot {
     pub frame_buffer: wgpu::Buffer,
     pub fx_buffer: wgpu::Buffer,
     /// The view's light clusters: the table and the references.
-    pub light_buffers: [wgpu::Buffer; 3],
+    pub light_tables: wgpu::Buffer,
     pub clusters: crate::clusters::ClusterBuilder,
     pub resolve_buffer: wgpu::Buffer,
     /// Its camera for the particle billboards (`ParticleViewGpu`) and for
@@ -121,7 +121,7 @@ impl Views {
             ViewSlot {
                 frame_buffer: buffer("view frame", frame_bytes),
                 fx_buffer: buffer("view fx", fx_bytes),
-                light_buffers: crate::clusters::buffers(device),
+                light_tables: crate::clusters::buffer(device),
                 clusters: Default::default(),
                 resolve_buffer: buffer(
                     "view resolve",

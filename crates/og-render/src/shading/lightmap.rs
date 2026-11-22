@@ -106,7 +106,7 @@ pub(crate) const PROBE_CAPACITY: usize = HEADER + 3 * 16384;
 /// The frame layout's entry for the probe buffer.
 pub(crate) fn probe_layout_entry() -> wgpu::BindGroupLayoutEntry {
     wgpu::BindGroupLayoutEntry {
-        binding: 10,
+        binding: 8,
         visibility: wgpu::ShaderStages::FRAGMENT,
         ty: wgpu::BindingType::Buffer {
             ty: wgpu::BufferBindingType::Storage { read_only: true },

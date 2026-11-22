@@ -454,14 +454,13 @@ impl Froxels {
                     compute,
                     wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
                 ),
+                // The light tables (clusters.rs), the probe GI's buffer.
                 entry(7, compute, table_ty),
                 entry(8, compute, table_ty),
-                entry(9, compute, table_ty),
-                entry(10, compute, table_ty),
                 // The water's light (caustics.wgsl `water_focus`).
-                entry(12, compute, uniform_ty()),
+                entry(10, compute, uniform_ty()),
                 // The clouds' shadow (lighting.wgsl `cloud_shadow`).
-                crate::clouds::CloudShadow::layout_entry(14, compute),
+                crate::clouds::CloudShadow::layout_entry(12, compute),
             ],
         });
         let inject_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
@@ -825,7 +824,7 @@ impl Volumetric {
         frame: &wgpu::Buffer,
         cascades: &wgpu::TextureView,
         locals: &wgpu::TextureView,
-        tables: [&wgpu::Buffer; 3],
+        tables: &wgpu::Buffer,
         ambient: &FroxelAmbient<'_>,
         (caustics, cloud_shadow): (&wgpu::Buffer, &wgpu::TextureView),
     ) {
@@ -846,12 +845,10 @@ impl Volumetric {
                 (3, wgpu::BindingResource::TextureView(ambient.irradiance)),
                 (4, wgpu::BindingResource::TextureView(ambient.prefiltered)),
                 (6, wgpu::BindingResource::Sampler(ambient.sampler)),
-                (7, tables[0].as_entire_binding()),
-                (8, tables[1].as_entire_binding()),
-                (9, tables[2].as_entire_binding()),
-                (10, ambient.probes.as_entire_binding()),
-                (12, caustics.as_entire_binding()),
-                (14, wgpu::BindingResource::TextureView(cloud_shadow)),
+                (7, tables.as_entire_binding()),
+                (8, ambient.probes.as_entire_binding()),
+                (10, caustics.as_entire_binding()),
+                (12, wgpu::BindingResource::TextureView(cloud_shadow)),
             ],
         );
         let inject = bind_at(

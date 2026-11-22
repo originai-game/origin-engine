@@ -49,7 +49,7 @@ impl Views {
         plans: &[ViewPlan],
         uniform: &crate::frame::FrameUniform,
         fx: &crate::fx::FxUniform,
-        lights: bool,
+        lights: &[crate::frame::LightGpu],
         viewport_format: wgpu::TextureFormat,
         light_map: Option<(f32, u32)>,
         fields: usize,
@@ -87,20 +87,7 @@ impl Views {
                     height: p.size.1,
                 },
             );
-            if lights {
-                crate::traffic::write_buffer(
-                    queue,
-                    &slot.light_buffers[1],
-                    0,
-                    bytemuck::cast_slice(&slot.clusters.table),
-                );
-                crate::traffic::write_buffer(
-                    queue,
-                    &slot.light_buffers[2],
-                    0,
-                    bytemuck::cast_slice(&slot.clusters.ref_words()),
-                );
-            }
+            crate::clusters::write_tables(queue, &slot.light_tables, lights, &slot.clusters);
             let vp = p.frame.view_proj.to_cols_array_2d();
             let mut u = *uniform;
             u.view_proj = vp;
