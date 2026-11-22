@@ -12,7 +12,6 @@ import { fetchModuleHost, loadEngineModules, loadWebHost } from "../host.ts";
 import type { EngineModules } from "../split.ts";
 import { settle, SETTLE_FIRST_MS, SETTLE_MS } from "../settle.ts";
 import type { Gate } from "./gate.ts";
-import { webGpuMissing } from "../webgpu.ts";
 import { choose, onDeviceAdapter, usePipelines } from "./device.ts";
 import type { FrameLoop } from "./loop.ts";
 import type { Start, WorkerScope } from "./messages.ts";
@@ -37,11 +36,6 @@ async function loadOwnSourceMap(): Promise<void> {
 /** Boots `game` as `data` asks; a failure is the run's crash (an `error` before ready). */
 export async function start(game: GameToken, data: Start, run: Run, gate: Gate, loop: FrameLoop): Promise<void> {
   try {
-    // The adapter is asked here, never on the page's main thread (webgpu.ts): without one the
-    // page shows why, and nothing is fetched. The page checked navigator.gpu itself; a Worker
-    // without it is a headless host (bun's), which draws nothing.
-    const unsupported = (self as { navigator?: { gpu?: unknown } }).navigator?.gpu ? await webGpuMissing(data.lowPower === true) : null;
-    if (unsupported) return self.postMessage({ type: "unsupported", reason: unsupported });
     gate.pageStages(data.stages === true);
     const received = new Received((data.expect?.wasm ?? 0) + (data.expect?.cooked ?? 0));
     // Fork s61: the bar runs on past the download (BOOT_SPANS): the bytes, then the transcode by
@@ -187,10 +181,19 @@ export async function start(game: GameToken, data: Start, run: Run, gate: Gate, 
       // after mapAsync resolves. Don't put pass profiling on the play clock.
       const ua = navigator.userAgent;
       const cpuPassTimingOnly = /AppleWebKit\//.test(ua) && !/Chrome\/|Chromium\//.test(ua);
-      // WebGPU only: a rejection is the reason the renderer did not start (no fallback).
-      tier = await glue.og_web_attach_canvas(engine.id, data.canvas, data.lowPower === true, data.highDynamicRange, cpuPassTimingOnly, data.renderTier).catch((e: unknown) => {
-        throw new Error(`WebGPU did not start: ${e instanceof Error ? e.message : String(e)}`);
-      });
+      // The adapter is asked here, where boot first needs the device: after the wasm and the
+      // world, never on the page's main thread (webgpu.ts). The page checked navigator.gpu
+      // itself. WebGPU only: a rejection is the reason the renderer did not start (no
+      // fallback), and no adapter says the browser cannot run the engine (the page shows why).
+      const attached = await glue.og_web_attach_canvas(engine.id, data.canvas, data.lowPower === true, data.highDynamicRange, cpuPassTimingOnly, data.renderTier).then(
+        (t: string) => ({ tier: t, error: null }),
+        (e: unknown) => ({ tier: "none", error: e instanceof Error ? e.message : String(e) }),
+      );
+      if (attached.error !== null) {
+        if (/^no (GPU|WebGPU) adapter/.test(attached.error)) return self.postMessage({ type: "unsupported", reason: attached.error });
+        throw new Error(`WebGPU did not start: ${attached.error}`);
+      }
+      tier = attached.tier;
       run.rendering = true;
     }
     run.boot.phase("attach");

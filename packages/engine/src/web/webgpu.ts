@@ -1,7 +1,8 @@
 // Whether this browser can run the engine at all: WebGPU (docs/design.md §8).
 //
-// The page asks only `webGpuAbsent`; the engine Worker asks for the adapter
-// (`webGpuMissing`) before it fetches the wasm. Chrome's first
+// The page asks only `webGpuAbsent`; the engine Worker's renderer asks for
+// the adapter where boot first needs the device, after the wasm and the
+// world (worker/start.ts, og_web_attach_canvas). Chrome's first
 // requestAdapter blocks the thread that calls it while the GPU process
 // starts WebGPU (seconds on a cold or busy GPU process), and on the page's
 // main thread that froze the boot splash: its genesis, the progress, input.

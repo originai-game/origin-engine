@@ -17,7 +17,7 @@
 # text (8956's measuring scripts, scripts/text-l4/run.sh), fused (the frames either side of every
 # cut of packages/engine/tests/fixtures/fused, won and lost routes), gpu-tests (og-render's ui_paint,
 # the float-output blend included), web (the web-reference groups in Chrome), web-compat (the
-# browser's compatibility mode read back, the engine's Compat tier, the adapter retry), filters (the
+# browser's compatibility mode read back, the engine's Compat tier), filters (the
 # UI filter scenes per pack and scheme, and their 0.5 ms budget at 1080p), environment (the pinned
 # AI sky as a full sphere, an upper dome, blurred and blended, lighting shapes by its extracted sun), gfx (og-gfx's core
 # and compat scenes against main's references, movements kept for review, not a gate).
@@ -284,8 +284,8 @@ sec_web() {
 #              wrong pixels fails)
 #   tier       reference.ts --tier compat on the core adapter, 2D and 3D, against the references:
 #              its stations' RMSE, and 0 "[og] WebGPU error:" lines in Chrome's log
-#   retry      adapter-probe.ts, cold launches on both adapters: what the first requestAdapter
-#              answers, the null the engine's adapter retry covers (facts, not a verdict)
+# Each run is a cold launch of the engine, which asks for its adapter only once boot needs the
+# device (docs/ci.md §The final L4 pass), so a launch without one fails its run as unsupported.
 sec_web_compat() {
   local e="$root/packages/engine" w="$OUT/web-compat" rc
   if [ ! -f "$e/tests/web/compat-readback.ts" ]; then
@@ -295,8 +295,8 @@ sec_web_compat() {
   [ -n "${CHROME:-}" ] || { fail web-compat "no Chrome"; return 0; }
   # The harness's own GPU switches are the L4 set, which the wrapper replaces with its own.
   export OG_L4_CHROME_BIN="$CHROME" OG_WEB_GPU=nvidia
-  local chrome="$root/scripts/l4-chrome.sh" runs=3 probes=4 errs
-  [ "$DRY" = 1 ] && runs=1 probes=1
+  local chrome="$root/scripts/l4-chrome.sh" runs=3 errs
+  [ "$DRY" = 1 ] && runs=1
 
   (cd "$e" && OG_L4_COMPAT=1 OG_L4_ANGLE=gl-egl OG_L4_CHROME_LOG="$w/readback-chrome.log" \
     timeout 300 bun tests/web/compat-readback.ts --chrome "$chrome" --runs "$runs") > "$w/readback.jsonl" 2> "$w/readback.log"; rc=$?
@@ -321,15 +321,6 @@ print(" ".join(k+"="+str(v.get("rmse")) for k,v in (r.get("stations") or {}).ite
     [ "$errs" = 0 ] || fail web-compat "tier $p: $errs WebGPU validation errors (web-compat/tier-$p-chrome.log)"
   done
 
-  local m
-  for m in 0 1; do
-    (cd "$e" && OG_L4_COMPAT=$m OG_L4_ANGLE="$([ "$m" = 1 ] && echo gl-egl || echo vulkan)" OG_L4_CHROME_LOG="$w/retry-$m-chrome.log" \
-      timeout 300 bun tests/web/adapter-probe.ts "$chrome" "$probes") > "$w/retry-$m.txt" 2>&1
-    sed "s/^/web-compat retry: /" "$w/retry-$m.txt" >> "$OUT/summary.txt"
-    grep -q 'early \[{"ms":[0-9]*,"ok":false[^]]*"ok":false' "$w/retry-$m.txt" && fail web-compat "retry compat=$m: a cold launch got no adapter on either request (web-compat/retry-$m.txt)"
-    grep -q '^run [0-9]* error' "$w/retry-$m.txt" && fail web-compat "retry compat=$m: the probe did not answer (web-compat/retry-$m.txt)"
-    [ "$DRY" = 0 ] && grep -q '"arch":"swiftshader"' "$w/retry-$m.txt" && fail web-compat "retry compat=$m: Chrome gave a software adapter, so this section's results are not counted (web-compat/retry-$m.txt)"
-  done
   grep -h 'GPU process exited unexpectedly' "$w"/*-chrome.log 2>/dev/null | wc -l | sed 's/^/web-compat GPU-process crashes: /' >> "$OUT/summary.txt"
   # shellcheck disable=SC2046
   sheet "$w" frames $(find "$w" -name '*.png' | sort)

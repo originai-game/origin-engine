@@ -180,8 +180,7 @@ on that adapter, so nothing presents there: `tests/web/compat-readback.ts`
 reads a compatibility device's triangle back from a texture, and
 `reference.ts --tier compat` makes the engine's Compat tier on the core
 adapter and judges its stations against the references, with no
-`[og] WebGPU error:` line allowed in Chrome's log. `tests/web/adapter-probe.ts`
-records what a cold launch's first `requestAdapter` answers on both adapters.
+`[og] WebGPU error:` line allowed in Chrome's log.
 
 The filters section shoots `scripts/final-l4/filters` (glass over busy
 ground, blur and shadows, the tutorial spotlight's round hole, the
@@ -211,6 +210,14 @@ on the L4. A timing run launches Chrome with
 NVIDIA 580 driver has no `VK_EXT_headless_surface`) and composites by
 readback, so the page shows no canvas but its frames are timed on the GPU.
 Every web timing names its adapter; one marked `(software)` is not counted.
+On this host Chrome answers a `requestAdapter` made in the first
+150 ms or so after launch with null while its GPU process starts (Dawn logs
+"A valid external Instance reference no longer exists"); one made a moment
+later gets the GPU. It is a property of the test host's headless flag set,
+not of a player's browser. The engine asks only where boot first needs the
+device, after the wasm and the first world (`og_web_attach_canvas`), and
+never earlier, so it does not meet this; a test page's own early probe
+would.
 These timings compare one build with another, not with a real display.
 Metal (macrunner) stays a compatibility check: its numbers are extra.
 
