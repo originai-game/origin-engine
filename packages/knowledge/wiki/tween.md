@@ -55,7 +55,7 @@ module tween {
 | [`og.tween.cancelEntity`](tween/fn-cancelEntity.md) | function | `(world: World, entity: Entity): number` | Stop every tween of an entity (no events), say before starting a new reaction. |
 | [`og.tween.active`](tween/fn-active.md) | function | `(world: World, tween: Tween): boolean` | Whether a tween is still running. |
 | [`og.tween.squash`](tween/fn-squash.md) | function | `(world: World, desc?: SquashDesc): Result<Tween>` | Squash and stretch the entity's og.Transform.scale (cancels its earlier squash). |
-| [`og.tween.flash`](tween/fn-flash.md) | function | `(world: World, desc?: FlashDesc): Result<Tween>` | Flash the entity's og.Sprite, its og.Mesh, or its og.Model (a glTF instance: this instance only, the others sharing its materials stay as they are). |
+| [`og.tween.flash`](tween/fn-flash.md) | function | `(world: World, desc?: FlashDesc): Result<Tween>` | Flash an entity towards a colour (white by default) and fade it back, the blink of a hit or of damage taken: its og.Sprite, its og.Mesh, or its og.Model (a glTF instance: this instance only, the othe… |
 
 ## Column kinds
 

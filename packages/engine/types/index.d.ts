@@ -35715,7 +35715,7 @@ export declare namespace og {
      */
     function squash(world: World, desc?: SquashDesc): Result<Tween>;
     /**
-     * Flash the entity's og.Sprite, its og.Mesh, or its og.Model (a glTF instance: this instance only, the others sharing its materials stay as they are). Cancels its earlier flash.
+     * Flash an entity towards a colour (white by default) and fade it back, the blink of a hit or of damage taken: its og.Sprite, its og.Mesh, or its og.Model (a glTF instance: this instance only, the others sharing its materials stay as they are). Cancels its earlier flash.
      *
      * @param world The world.
      * @param desc The entity and the flash.

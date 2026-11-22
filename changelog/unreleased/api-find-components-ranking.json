@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "og api find",
+      "summary": "A section of the components guide no longer takes first place over the function that answers a query merely because its long description shares the query's words: `og api find \"enemy blinks white when hit\"` gives og.tween.flash first, not the Crosshair's section. An entry's aliases now count towards what it is asked for, a guide section is matched by its title and its prose rather than its number and its props table, and tables (props, parameters) no longer pull an entry towards every query. og.tween.flash's description now says what it is for (a hit's or damage's blink). A component that does what is asked is still found."
+    }
+  ]
+}

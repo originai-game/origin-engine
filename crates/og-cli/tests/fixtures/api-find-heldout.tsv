@@ -1,12 +1,12 @@
 query	expected
 show a little arrow from the gun to where it points while debugging	og.debug.arrow
-a number counting down on screen until the round ends	screens §7
+a number counting down on screen until the round ends	screens §7 | components §45
 let the player choose one option from a list that drops open	components §207
 a volume bar the player drags left and right	components §207
 switch between inventory, map and settings pages along the top	components §133 | components §207
 confetti when the player wins	components §34
 a red health bar over the HUD	components §61 | components §32
-a small map in the corner showing where enemies are	screens §7
+a small map in the corner showing where enemies are	screens §7 | components §170
 type the player's name into a box	og.TextInput | screens §2
 the player's highscore and the scores just above and below theirs	og.platform.leaderboardAround
 unlock a trophy once the player has collected 50 coins	og.platform.achievementProgress
@@ -31,7 +31,7 @@ spin a wheel by applying rotational force each frame	og.physics.applyTorque
 sweep a sphere forward to see what it would hit first	og.physics.castShape
 how deep the water is under the boat right now	og.physics.waterHeight | og.physics.water
 mark a quest as done and give the reward	og.story.completeQuest
-the previous lines of the conversation the player can scroll back through	og.story.history
+the previous lines of the conversation the player can scroll back through	og.story.history | components §84
 pause the cutscene halfway	og.timeline.pause
 stop every running animation on an enemy before it dies	og.tween.cancelEntity
 smooth random hills values for a terrain generator	og.procgen.noise

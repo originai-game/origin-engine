@@ -270,9 +270,12 @@ fn fields(e: &Entry) -> [Vec<String>; NF] {
             aliases.push_str(rest);
             continue;
         }
-        // A table row's first cell is a field, parameter, variant or member name.
+        // A table row's first cell is a field, parameter, variant or member
+        // name; a guide section's tables (a component's props) are only its
+        // body, so their many words do not outweigh what an entry is named
+        // and says it does.
         if let Some(rest) = line.strip_prefix("| ") {
-            if let Some(cell) = rest.split('|').next() {
+            if let Some(cell) = rest.split('|').next().filter(|_| e.kind != "guide") {
                 members.push_str(cell);
                 members.push(' ');
             }
@@ -285,14 +288,33 @@ fn fields(e: &Entry) -> [Vec<String>; NF] {
         }
         body.push(' ');
     }
+    // A guide section's first sentence (a component's whole doc comment,
+    // often) scores as the body it opens, not as a summary a whole entry
+    // stands behind.
+    let guide = e.kind == "guide";
     let name = format!("{} {}", e.name, e.name.rsplit('.').next().unwrap_or(""));
     [
         tokens(&name),
-        tokens(&e.summary),
+        if guide {
+            Vec::new()
+        } else {
+            tokens(&e.summary)
+        },
         tokens(&members),
         tokens(&body),
         tokens(&aliases),
     ]
+}
+
+/// A guide section's title: its heading after the name (`### `components
+/// §38` Crosshair`).
+fn title(e: &Entry) -> Option<&str> {
+    e.body
+        .lines()
+        .find(|l| l.starts_with('#'))
+        .and_then(|h| h.splitn(3, '`').nth(2))
+        .map(str::trim)
+        .filter(|t| !t.is_empty())
 }
 
 /// One entry of the index: what `find` prints, and its fields' lengths.
@@ -321,10 +343,18 @@ pub struct Hit {
 }
 
 /// The text an entry is embedded from: its name split into words, twice (a
-/// name is the densest statement of purpose), its summary and the first
-/// hundred words of its prose, code and tables' markup left out.
+/// name is the densest statement of purpose), its aliases, its summary and
+/// the first hundred words of its prose, code and tables left out.
 fn embed_text(e: &Entry) -> String {
-    let leaf = e.name.trim_start_matches("og.");
+    // A guide section is named by its heading's title (`components §38`
+    // Crosshair), not its number. Tables (a component's props, a function's
+    // parameters) are left out: their many words pull an entry towards
+    // every query.
+    let guide = e.kind == "guide";
+    let leaf = guide
+        .then(|| title(e))
+        .flatten()
+        .unwrap_or_else(|| e.name.trim_start_matches("og."));
     let mut name = String::new();
     let mut prev_lower = false;
     for c in leaf.chars() {
@@ -342,6 +372,7 @@ fn embed_text(e: &Entry) -> String {
             continue;
         }
         if code
+            || line.starts_with('|')
             || line.starts_with("Binding symbol ")
             || line.starts_with("<sub>")
             || line.starts_with("<a id=")
@@ -356,7 +387,18 @@ fn embed_text(e: &Entry) -> String {
         .filter(|w| !w.is_empty())
         .take(100)
         .collect();
-    format!("{name}. {name}. {} {}", e.summary, words.join(" "))
+    // Its aliases are what it is asked for by: beside its name.
+    let aliases = e
+        .body
+        .lines()
+        .find_map(|l| l.strip_prefix(crate::r#gen::wiki::ALSO_KNOWN_AS))
+        .unwrap_or("");
+    // A guide section's first sentence opens its prose already.
+    let summary = if guide { "" } else { e.summary.as_str() };
+    format!(
+        "{name}. {name}. {aliases}. {aliases}. {summary} {}",
+        words.join(" ")
+    )
 }
 
 /// Reciprocal-rank fusion's constant: a small one lets either ranker's top

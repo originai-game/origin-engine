@@ -6,7 +6,7 @@ Module [`tween`](../tween.md) · [index](../index.md)
 
 ### `og.tween.flash`
 
-Flash the entity's og.Sprite, its og.Mesh, or its og.Model (a glTF instance: this instance only, the others sharing its materials stay as they are). Cancels its earlier flash.
+Flash an entity towards a colour (white by default) and fade it back, the blink of a hit or of damage taken: its og.Sprite, its og.Mesh, or its og.Model (a glTF instance: this instance only, the others sharing its materials stay as they are). Cancels its earlier flash.
 
 Also known as: hit flash, damage flash, blink, white flash, flicker
 
@@ -25,7 +25,7 @@ Binding symbol `og_tween_flash` · publish builds: kept
 
 ```ogt
 fn flash {
-  doc "Flash the entity's og.Sprite, its og.Mesh, or its og.Model (a glTF instance: this instance only, the others sharing its materials stay as they are). Cancels its earlier flash."
+  doc "Flash an entity towards a colour (white by default) and fade it back, the blink of a hit or of damage taken: its og.Sprite, its og.Mesh, or its og.Model (a glTF instance: this instance only, the others sharing its materials stay as they are). Cancels its earlier flash."
   aliases "hit flash, damage flash, blink, white flash, flicker"
   param world World "The world."
   param desc FlashDesc "The entity and the flash."

@@ -99,7 +99,7 @@ game entry point default export	og.game
 built-in camera controller systems to list in the game	og.systems.cameras
 let the player aim the view by moving the mouse in a first-person game	og.PointerLock
 remember the player's volume and language choices for the next session	og.platform.saveSettings
-show the best scores of all players	og.platform.leaderboardTop
+show the best scores of all players	og.platform.leaderboardTop | components §197
 the player bought something; record that it was handed over so it is not given twice	og.platform.grant
 tell the platform the game shows AI-made pictures	og.platform.aiMark
 send the other people in the multiplayer session a chat line	og.platform.roomSend
@@ -139,7 +139,7 @@ change the face expression smile on a 3D head	og.Blendshapes
 play the same animation flipped for the left hand	og.anim.mirror
 have the humanoid character wave hello	og.motion.pose
 characters say short random lines when nothing is happening	og.story.ambient
-a quest journal listing what the player started	og.story.quests
+a quest journal listing what the player started	og.story.quests | components §91
 lines of a conversation shown one at a time with choices	og.story.view
 show numbers like 1.2K for big scores in the player's language	og.i18n.formatCompact
 let the player switch the game to German in the settings menu	og.i18n.setLocale
