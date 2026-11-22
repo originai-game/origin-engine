@@ -512,6 +512,9 @@ impl Tree {
         let el = &mut self.els[e as usize];
         el.dead = true;
         let (node, js) = (el.node, el.js);
+        if let Some(leaf) = el.leaf {
+            self.texts.release(leaf);
+        }
         self.arena.detach(node);
         self.motion.forget(node);
         self.sem.release(node);

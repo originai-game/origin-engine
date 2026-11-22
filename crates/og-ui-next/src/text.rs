@@ -98,6 +98,11 @@ impl Leaf {
 /// Every text leaf's layout, by arena node.
 pub struct Texts {
     leaves: Vec<Option<Box<Leaf>>>,
+    /// Freed nodes' leaves, which new leaves take with their buffers' room
+    /// (a HUD's spawning numbers shape and paint into kept vectors). Boxed
+    /// as `leaves` holds them, so a leaf moves between the two unallocated.
+    #[allow(clippy::vec_box)]
+    spare: Vec<Box<Leaf>>,
     strikes: Strikes,
     /// The paragraph direction and the locale (BCP 47) texts are laid out
     /// in, and a count of their changes.
@@ -111,6 +116,7 @@ impl Default for Texts {
     fn default() -> Self {
         Texts {
             leaves: Vec::new(),
+            spare: Vec::new(),
             strikes: Strikes::new(),
             direction: Direction::Ltr,
             locale: String::new(),
@@ -201,12 +207,23 @@ impl Texts {
         self.leaves.get(id as usize)?.as_deref()
     }
 
+    /// Leaf `id`'s node is freed: its leaf goes to the spare ones, shaped
+    /// and painted again by the next leaf that takes it.
+    pub fn release(&mut self, id: Id) {
+        if let Some(mut leaf) = self.leaves.get_mut(id as usize).and_then(Option::take) {
+            leaf.run = None;
+            leaf.painted = None;
+            self.spare.push(leaf);
+        }
+    }
+
     /// Leaf `id` shaped from `text` and `run`, and its style's parts.
     fn shaped(&mut self, fonts: &mut Collection, id: Id, text: &str, run: &Run) -> &mut Leaf {
         if self.leaves.len() <= id as usize {
             self.leaves.resize_with(id as usize + 1, || None);
         }
-        let leaf = self.leaves[id as usize].get_or_insert_with(Default::default);
+        let spare = &mut self.spare;
+        let leaf = self.leaves[id as usize].get_or_insert_with(|| spare.pop().unwrap_or_default());
         let at = (fonts.revision(), self.writing);
         if leaf.run != Some(*run) || leaf.shaped != at || *leaf.text != *text {
             leaf.text.clear();
