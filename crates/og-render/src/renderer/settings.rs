@@ -116,7 +116,7 @@ impl Renderer {
             width,
             height,
             self.output_format,
-            self.offscreen_linear,
+            self.offscreen_linear.or(self.offscreen_encoded),
             self.info.antialias,
             self.post.chain_format,
         );

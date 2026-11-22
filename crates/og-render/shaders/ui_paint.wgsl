@@ -4,14 +4,15 @@
 // (origin top left, y down) with its clip: a box rounded per corner in a
 // colour or a gradient, a border ring, an outer or inset Gaussian box
 // shadow, an MSDF glyph of the bound font page, or a built-in icon's stroked
-// segments. Colours are linear and straight; an sRGB view encodes in
-// hardware, any other output here.
+// segments. Colours are linear and straight until the end, which encodes
+// them: the target stores what is returned, so the pass blends sRGB-encoded
+// values, as CSS does. Where the output is no such target, the pass draws a
+// layer that fs_layer draws over it (src/ui/paint.rs).
 
 struct PaintFrame {
-  // xy: the target in device pixels; z: device pixels per CSS pixel; w: 1
-  // when the shader encodes sRGB.
+  // xy: the target in device pixels; z: device pixels per CSS pixel.
   output: vec4<f32>,
-  // x: one code value of the output, encoded (a gradient's dither).
+  // x: one code value of the target (a gradient's dither).
   extra: vec4<f32>,
 };
 @group(0) @binding(0) var<uniform> frame: PaintFrame;
@@ -417,14 +418,31 @@ fn fs_paint(in: PaintOut) -> @location(0) vec4<f32> {
   if (a <= 0.0) {
     discard;
   }
-  if (frame.output.w > 0.5) {
-    rgb = srgb_encode(rgb);
-    if (dither) {
-      // A pixel's worth of noise before the output's code values: a
-      // shallow ramp shows no bands.
-      let n = fract(52.9829189 * fract(dot(in.position.xy, vec2<f32>(0.06711056, 0.00583715))));
-      rgb += vec3<f32>((n - 0.5) * frame.extra.x);
-    }
+  rgb = srgb_encode(rgb);
+  if (dither) {
+    // A pixel's worth of noise before the target's code values: a shallow
+    // ramp shows no bands.
+    let n = fract(52.9829189 * fract(dot(in.position.xy, vec2<f32>(0.06711056, 0.00583715))));
+    rgb += vec3<f32>((n - 0.5) * frame.extra.x);
   }
   return vec4<f32>(rgb, a);
+}
+
+// The pass's layer (bound as the page: premultiplied, sRGB-encoded) over an
+// output the pass cannot blend in, an sRGB one with no plain view or a float
+// one: a pixel the pass blended keeps its colour, and a translucent one
+// meets the output in the output's light.
+@vertex
+fn vs_layer(@builtin(vertex_index) vi: u32) -> @builtin(position) vec4<f32> {
+  let p = vec2<f32>(f32((vi << 1u) & 2u), f32(vi & 2u));
+  return vec4<f32>(p * 2.0 - 1.0, 0.0, 1.0);
+}
+
+@fragment
+fn fs_layer(@builtin(position) at: vec4<f32>) -> @location(0) vec4<f32> {
+  let c = textureLoad(page, vec2<i32>(at.xy), 0);
+  if (c.a <= 0.0) {
+    discard;
+  }
+  return vec4<f32>(srgb_decode(c.rgb / c.a), c.a);
 }

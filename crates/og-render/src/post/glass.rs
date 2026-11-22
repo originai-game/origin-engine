@@ -73,6 +73,9 @@ pub(crate) struct GlassTargets {
     /// blends through one (the overlay draws into `source` when glass lies
     /// over overlay content).
     pub source_linear_view: Option<wgpu::TextureView>,
+    /// `source` through its plain view format, when the output is sRGB:
+    /// where the paint pass blends when the overlay draws into `source`.
+    pub source_encoded_view: Option<wgpu::TextureView>,
     levels: Vec<wgpu::TextureView>,
     /// The whole pyramid, for the UI pass's backdrops (src/ui/pass.rs).
     pub pyramid_view: wgpu::TextureView,
@@ -237,19 +240,20 @@ impl GlassPasses {
     }
 
     /// The textures for an output of `width`×`height` in `format` (with a
-    /// `linear` view format: the sRGB one the overlay blends through).
+    /// `twin` view format: the sRGB one the overlay blends through, or the
+    /// plain one the paint pass blends through).
     #[allow(clippy::too_many_arguments)]
     pub fn targets(
         &self,
         device: &wgpu::Device,
         queue: &wgpu::Queue,
         format: wgpu::TextureFormat,
-        linear: Option<wgpu::TextureFormat>,
+        twin: Option<wgpu::TextureFormat>,
         width: u32,
         height: u32,
         sprite_layout: &wgpu::BindGroupLayout,
     ) -> GlassTargets {
-        let view_formats: Vec<wgpu::TextureFormat> = linear.into_iter().collect();
+        let view_formats: Vec<wgpu::TextureFormat> = twin.into_iter().collect();
         let source = device.create_texture(&wgpu::TextureDescriptor {
             label: Some("glass source"),
             size: wgpu::Extent3d {
@@ -282,13 +286,15 @@ impl GlassPasses {
             view_formats: &[],
         });
         let behind_view = behind.create_view(&Default::default());
-        let source_linear_view = linear.map(|f| {
+        let view_as = |f| {
             source.create_view(&wgpu::TextureViewDescriptor {
-                label: Some("glass source (sRGB view)"),
+                label: Some("glass source (twin view)"),
                 format: Some(f),
                 ..Default::default()
             })
-        });
+        };
+        let source_linear_view = twin.filter(|f| f.is_srgb()).map(view_as);
+        let source_encoded_view = twin.filter(|f| !f.is_srgb()).map(view_as);
         // Half the output, but never too small for LEVELS mips (an output
         // under 64 pixels on its longer side): the levels are sampled by uv,
         // so a larger pyramid only changes how much a tiny output blurs.
@@ -377,6 +383,7 @@ impl GlassPasses {
             size: (width, height),
             source_view,
             source_linear_view,
+            source_encoded_view,
             levels,
             pyramid_view,
             source,

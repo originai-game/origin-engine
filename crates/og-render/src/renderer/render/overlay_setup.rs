@@ -62,7 +62,7 @@ impl Renderer {
                 &self.device,
                 &self.queue,
                 self.output_format,
-                self.offscreen_linear,
+                self.offscreen_linear.or(self.offscreen_encoded),
                 self.out_width,
                 self.out_height,
                 &self.sprite.sprite_layout,

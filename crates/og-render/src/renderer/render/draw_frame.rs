@@ -1021,13 +1021,15 @@ impl Renderer {
                             format: Some(config.format),
                             ..Default::default()
                         });
-                        let linear = config.view_formats.first().map(|&format| {
+                        // In its other encoding: sRGB of a plain surface,
+                        // plain of an sRGB one.
+                        let twin = config.view_formats.first().map(|&format| {
                             t.texture.create_view(&wgpu::TextureViewDescriptor {
                                 format: Some(format),
                                 ..Default::default()
                             })
                         });
-                        Some((t, view, linear))
+                        Some((t, view, twin))
                     }
                     wgpu::CurrentSurfaceTexture::Occluded => {
                         return Err(RenderError::SurfaceOccluded);
@@ -1124,6 +1126,18 @@ impl Renderer {
         let overlay_view = match target {
             _ if self.output_format.is_srgb() || self.display.is_some() => None,
             RenderTarget::Offscreen => self.persistent.offscreen_linear.as_ref(),
+            RenderTarget::Surface => surface_frame.as_ref().and_then(|f| f.2.as_ref()),
+            RenderTarget::View(_) => None,
+        };
+        // Where the paint pass blends, in encoded values as CSS does: the
+        // output when it holds them, else its plain view where the backend
+        // has one, else (`None`) a layer of the pass's own (ui/paint.rs).
+        let paint_view = match target {
+            _ if ui::paint::encoded_format(self.output_format) == self.output_format => {
+                Some(output)
+            }
+            _ if self.display.is_some() => None,
+            RenderTarget::Offscreen => self.persistent.offscreen_encoded.as_ref(),
             RenderTarget::Surface => surface_frame.as_ref().and_then(|f| f.2.as_ref()),
             RenderTarget::View(_) => None,
         };
@@ -1428,6 +1442,7 @@ impl Renderer {
         let finished = FinishedFrame {
             routed,
             overlay_view,
+            paint_view,
             output,
         };
         plans.viewport_views = ViewportViewsPass::bind(

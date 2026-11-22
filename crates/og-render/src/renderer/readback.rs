@@ -275,9 +275,26 @@ impl Renderer {
             RenderTarget::Surface => self
                 .surface
                 .as_ref()
-                .is_some_and(|(_, config)| !config.view_formats.is_empty()),
+                .is_some_and(|(_, config)| config.view_formats.iter().any(|f| f.is_srgb())),
             RenderTarget::View(_) => false,
         }
+    }
+
+    /// Whether the paint pass draws a layer of its own for `target`: the
+    /// output holds no encoded values, and `target` or the glass source,
+    /// which a frame may go through, has no plain view
+    /// ([`encoded_view_format`]).
+    pub(crate) fn paint_layered(&self, target: &RenderTarget) -> bool {
+        let plain = self.offscreen_encoded.is_some()
+            && match target {
+                RenderTarget::Offscreen => true,
+                RenderTarget::Surface => self
+                    .surface
+                    .as_ref()
+                    .is_some_and(|(_, config)| !config.view_formats.is_empty()),
+                RenderTarget::View(_) => false,
+            };
+        ui::paint::encoded_format(self.output_format) != self.output_format && !plain
     }
 
     /// Reads back the capture of reflection probe `id` (blocking): `None`

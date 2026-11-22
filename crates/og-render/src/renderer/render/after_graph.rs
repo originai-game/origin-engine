@@ -9,14 +9,18 @@
 
 use super::*;
 
-/// Where the frame's passes after the graph draw: the output, or its sRGB
-/// view, and whether the frame goes through the glass source on its way.
+/// Where the frame's passes after the graph draw: the output, or a view of
+/// it in its other encoding, and whether the frame goes through the glass
+/// source on its way.
 #[derive(Clone, Copy)]
 pub(super) struct FinishedFrame<'f> {
     /// The frame goes through the glass source.
     pub routed: bool,
     /// The output's sRGB view the overlay blends in (`None`: the output).
     pub overlay_view: Option<&'f wgpu::TextureView>,
+    /// Where the paint pass blends encoded values: the output or its
+    /// plain view (`None`: the pass's layer, drawn over the output).
+    pub paint_view: Option<&'f wgpu::TextureView>,
     pub output: &'f wgpu::TextureView,
 }
 
@@ -68,6 +72,7 @@ impl Pass for ViewportViewsPass {
             routed,
             overlay_view,
             output,
+            ..
         } = plan.to;
         for p in plan
             .view_plans
@@ -197,6 +202,7 @@ impl Pass for OverlayPass {
                 FinishedFrame {
                     routed,
                     overlay_view,
+                    paint_view,
                     output,
                 },
         } = plan;
@@ -211,6 +217,7 @@ impl Pass for OverlayPass {
         let mut rebuilds = Vec::new();
         let mut copies = Vec::new();
         let mut layered = None;
+        let mut paint_to = paint_view;
         if let (Some(g), true) = (&r.glass_targets, routed) {
             rebuilds = glass::rebuilds(
                 &runs
@@ -236,6 +243,14 @@ impl Pass for OverlayPass {
                 (true, None) => Some(&g.source_view),
                 (true, Some(_)) => g.source_linear_view.as_ref(),
             };
+            // The paint pass with it, through the view that keeps what its
+            // shader encodes.
+            if layered.is_some() {
+                paint_to = match decode {
+                    true => Some(&g.source_view),
+                    false => g.source_encoded_view.as_ref(),
+                };
+            }
             if layered.is_none() {
                 // The source as it is now to the output: filtered (only the
                 // scene, where the overlay has no view into the source),
@@ -272,8 +287,44 @@ impl Pass for OverlayPass {
         // view), or in the glass source when what it draws reads what is
         // under it.
         // og-ui's paint arena draws at the UI's layer: after the runs
-        // under it, before a game's screen layers over it (ui/paint.rs).
+        // under it, before a game's screen layers over it (ui/paint.rs),
+        // blending encoded values: in the overlay's pass where that does
+        // too, else in a pass of its own on `paint_to`, else in its layer,
+        // drawn here over the target.
         let paint = r.paint.drawn() && !scene.ui.paint.is_empty();
+        let paint_shared = decode && overlay_view.is_none();
+        fn paint_group(r: &Renderer, bind: ui::paint::PaintBind) -> &wgpu::BindGroup {
+            match bind {
+                ui::paint::PaintBind::Font(f) => &r.cache.fonts[f.index()].bind_group,
+                ui::paint::PaintBind::Texture(t) => r.cache.sprite_groups[t.index()]
+                    .as_ref()
+                    .expect("made at upload"),
+                ui::paint::PaintBind::White => &r.sprite.white_sprite_group,
+            }
+        }
+        let paint_pass = |encoder: &mut crate::Encoder, view, load| {
+            let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: Some("ui paint"),
+                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                    view,
+                    depth_slice: None,
+                    resolve_target: None,
+                    ops: wgpu::Operations {
+                        load,
+                        store: wgpu::StoreOp::Store,
+                    },
+                })],
+                depth_stencil_attachment: None,
+                timestamp_writes: None,
+                occlusion_query_set: None,
+                multiview_mask: None,
+            });
+            r.paint.draw(&mut pass, |bind| paint_group(r, bind))
+        };
+        if let (true, None, Some(layer)) = (paint, paint_to, r.paint.layer()) {
+            let clear = wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT);
+            stats.draw_calls += paint_pass(encoder, layer, clear);
+        }
         let paint_at = overlay_frame.map_or(0, |f| f.ui_at).min(runs.len());
         let group0 = r.ui_main_group();
         if (!runs.is_empty() && group0.is_some()) || paint {
@@ -307,7 +358,12 @@ impl Pass for OverlayPass {
             let mut painted = !paint;
             for &to in &cuts {
                 let paint_here = !painted && from == paint_at;
-                if to > from || paint_here {
+                painted |= paint_here;
+                let paint_own = paint_to.filter(|_| paint_here && !paint_shared);
+                if let Some(view) = paint_own {
+                    stats.draw_calls += paint_pass(encoder, view, wgpu::LoadOp::Load);
+                }
+                if to > from || (paint_here && paint_own.is_none()) {
                     let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                         label: Some("overlay"),
                         color_attachments: &[Some(wgpu::RenderPassColorAttachment {
@@ -324,22 +380,10 @@ impl Pass for OverlayPass {
                         occlusion_query_set: None,
                         multiview_mask: None,
                     });
-                    if paint_here {
-                        painted = true;
-                        stats.draw_calls +=
-                            r.paint
-                                .draw(&mut pass, kind == ui::pass::TargetKind::Linear, |bind| {
-                                    match bind {
-                                        ui::paint::PaintBind::Font(f) => {
-                                            &r.cache.fonts[f.index()].bind_group
-                                        }
-                                        ui::paint::PaintBind::Texture(t) => r.cache.sprite_groups
-                                            [t.index()]
-                                        .as_ref()
-                                        .expect("made at upload"),
-                                        ui::paint::PaintBind::White => &r.sprite.white_sprite_group,
-                                    }
-                                });
+                    if paint_here && paint_shared {
+                        stats.draw_calls += r.paint.draw(&mut pass, |bind| paint_group(r, bind));
+                    } else if paint_here && paint_own.is_none() {
+                        stats.draw_calls += r.paint.composite(&mut pass);
                     }
                     if let (true, Some(group0)) = (to > from, group0) {
                         stats.draw_calls +=

@@ -10,6 +10,9 @@ pub(crate) struct Persistent {
     /// The offscreen target seen as sRGB when its format is not
     /// ([`crate::linear_view_format`]): where the overlay blends.
     pub offscreen_linear: Option<wgpu::TextureView>,
+    /// The offscreen target seen as plain when its format is sRGB
+    /// ([`crate::encoded_view_format`]): where the paint pass blends.
+    pub offscreen_encoded: Option<wgpu::TextureView>,
     /// TAA history ping-pong: frame `n` writes `history[n % 2]`.
     pub history: Option<[wgpu::TextureView; 2]>,
     /// T2x stores the two raw, spatially filtered display frames, never
@@ -27,7 +30,7 @@ impl Persistent {
         width: u32,
         height: u32,
         output_format: wgpu::TextureFormat,
-        linear_format: Option<wgpu::TextureFormat>,
+        twin_format: Option<wgpu::TextureFormat>,
         antialias: Antialias,
         chain_format: wgpu::TextureFormat,
     ) -> Persistent {
@@ -45,15 +48,19 @@ impl Persistent {
             dimension: wgpu::TextureDimension::D2,
             format: output_format,
             usage: attach_bind | wgpu::TextureUsages::COPY_SRC | wgpu::TextureUsages::COPY_DST,
-            view_formats: linear_format.as_slice(),
+            view_formats: twin_format.as_slice(),
         });
         let offscreen_view = offscreen.create_view(&Default::default());
-        let offscreen_linear = linear_format.map(|format| {
+        let view_as = |format| {
             offscreen.create_view(&wgpu::TextureViewDescriptor {
                 format: Some(format),
                 ..Default::default()
             })
-        });
+        };
+        // The output in its other encoding: sRGB of a plain one, plain of
+        // an sRGB one.
+        let offscreen_linear = twin_format.filter(|f| f.is_srgb()).map(view_as);
+        let offscreen_encoded = twin_format.filter(|f| !f.is_srgb()).map(view_as);
         let history = (antialias == Antialias::Taa).then(|| {
             [0, 1].map(|_| {
                 target_texture(
@@ -76,6 +83,7 @@ impl Persistent {
             offscreen,
             offscreen_view,
             offscreen_linear,
+            offscreen_encoded,
             history,
             smaa_history: smaa_history(device, width, height, chain_format, antialias),
             gi: None,

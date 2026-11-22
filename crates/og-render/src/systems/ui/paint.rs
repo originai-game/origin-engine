@@ -1,11 +1,14 @@
 //! The paint pass: og-ui's paint arena ([`og_draw::paint::Paint`]) drawn
-//! with one uber shader (`shaders/ui_paint.wgsl`), one pipeline for the
-//! output and one for its sRGB view, both made with the renderer: no UI
-//! pipeline is made after boot. The arena is uploaded only when its
-//! generation, the target or a font's pages change; a glyph quad is
-//! resolved against its font's pages then (its first page with the glyph),
-//! and the quads draw in runs of one page each, in the arena's order,
-//! inside the overlay pass where the UI's layer lies
+//! with one uber shader (`shaders/ui_paint.wgsl`) and one pipeline, made
+//! with the renderer: no UI pipeline is made after boot. The pass blends
+//! sRGB-encoded values, as CSS does and as its components are designed
+//! against: it draws in the output's plain format ([`encoded_format`]),
+//! through the output itself, its plain view, or else a layer of its own
+//! drawn over the output once ([`PaintRenderer::composite`]). The arena is
+//! uploaded only when its generation, the target or a font's pages change;
+//! a glyph quad is resolved against its font's pages then (its first page
+//! with the glyph), and the quads draw in runs of one page each, in the
+//! arena's order, where the UI's layer lies among the overlay's runs
 //! ([`crate::overlay::OverlayFrame::ui_at`]).
 
 use crate::scene::GlyphKey;
@@ -54,9 +57,31 @@ struct Uploaded {
     height: u32,
 }
 
+/// The pass's own target for an output it cannot blend in.
+struct Layer {
+    size: (u32, u32),
+    view: wgpu::TextureView,
+    /// The layer as group 1 of the composite.
+    group: wgpu::BindGroup,
+}
+
+/// The format the paint pass draws in for an output in `output`: one whose
+/// stored value is the encoded one the shader returns. An sRGB output's
+/// plain format, and eight bits for a float output.
+pub(crate) fn encoded_format(output: wgpu::TextureFormat) -> wgpu::TextureFormat {
+    if output == crate::HDR_FORMAT {
+        wgpu::TextureFormat::Rgba8Unorm
+    } else {
+        output.remove_srgb_suffix()
+    }
+}
+
 pub(crate) struct PaintRenderer {
-    output: crate::deferred::Deferred<wgpu::RenderPipeline>,
-    linear: Option<crate::deferred::Deferred<wgpu::RenderPipeline>>,
+    format: wgpu::TextureFormat,
+    pipeline: crate::deferred::Deferred<wgpu::RenderPipeline>,
+    /// Draws the layer over an output that is not in `format`.
+    composite: Option<crate::deferred::Deferred<wgpu::RenderPipeline>>,
+    layer: Option<Layer>,
     layout: wgpu::BindGroupLayout,
     uniform: wgpu::Buffer,
     quads: wgpu::Buffer,
@@ -120,7 +145,6 @@ impl PaintRenderer {
     pub fn new(
         device: &wgpu::Device,
         output_format: wgpu::TextureFormat,
-        linear_format: Option<wgpu::TextureFormat>,
         sprite_layout: &wgpu::BindGroupLayout,
     ) -> PaintRenderer {
         let entry = |binding, ty| wgpu::BindGroupLayoutEntry {
@@ -155,7 +179,7 @@ impl PaintRenderer {
             source: wgpu::ShaderSource::Wgsl(source().into()),
         });
         // Entries of the pipeline cache (gpu/deferred.rs), asked for now.
-        let pipeline = |format| {
+        let pipeline = |format, vertex: &'static str, fragment: &'static str| {
             let (device, pl, module) = (device.clone(), pl.clone(), module.clone());
             let entry = crate::deferred::Deferred::anywhere(move || {
                 let device = &device;
@@ -166,7 +190,7 @@ impl PaintRenderer {
                         layout: Some(&pl),
                         vertex: wgpu::VertexState {
                             module: &module,
-                            entry_point: Some("vs_paint"),
+                            entry_point: Some(vertex),
                             compilation_options: Default::default(),
                             buffers: &[],
                         },
@@ -175,7 +199,7 @@ impl PaintRenderer {
                         multisample: Default::default(),
                         fragment: Some(wgpu::FragmentState {
                             module: &module,
-                            entry_point: Some("fs_paint"),
+                            entry_point: Some(fragment),
                             compilation_options: Default::default(),
                             targets: &[Some(wgpu::ColorTargetState {
                                 format,
@@ -191,10 +215,13 @@ impl PaintRenderer {
             crate::deferred::Start::start(&entry);
             entry
         };
-        let (output, linear) = (pipeline(output_format), linear_format.map(pipeline));
+        let format = encoded_format(output_format);
         PaintRenderer {
-            output,
-            linear,
+            format,
+            pipeline: pipeline(format, "vs_paint", "fs_paint"),
+            composite: (format != output_format)
+                .then(|| pipeline(output_format, "vs_layer", "fs_layer")),
+            layer: None,
             layout,
             uniform: crate::traffic::create_buffer(
                 device,
@@ -223,8 +250,7 @@ impl PaintRenderer {
 
     /// Uploads `paint` for an output of `width`×`height` device pixels
     /// when it, the target or the fonts' `revisions` changed since the
-    /// last upload, and the frame uniform (`encode`: the shader encodes
-    /// sRGB; `step`: one of the output's code values).
+    /// last upload, and the frame uniform.
     #[allow(clippy::too_many_arguments)]
     pub fn upload<'a>(
         &mut self,
@@ -235,8 +261,6 @@ impl PaintRenderer {
         texture: impl Fn(TextureHandle) -> bool,
         revisions: u64,
         (width, height): (u32, u32),
-        encode: bool,
-        step: f32,
     ) {
         let scale = if paint.height > 0.0 {
             height as f32 / paint.height
@@ -247,8 +271,8 @@ impl PaintRenderer {
             width as f32,
             height as f32,
             scale,
-            f32::from(u8::from(encode)),
-            step,
+            0.0,
+            crate::overlay::dither_step(self.format),
             0.0,
             0.0,
             0.0,
@@ -486,23 +510,47 @@ impl PaintRenderer {
         !self.runs.is_empty() && self.group.is_some()
     }
 
-    /// Draws the uploaded paint into `pass` (an sRGB view's pipeline when
-    /// `linear`); `group1` binds a run's font page or texture. Returns the
-    /// draws.
+    /// Makes the pass's layer for an output of `size` it cannot blend
+    /// in, where it has none of that size (`layout`, `sampler`: the
+    /// sprites', which bind it to the composite).
+    pub fn ensure_layer(
+        &mut self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        layout: &wgpu::BindGroupLayout,
+        sampler: &wgpu::Sampler,
+        size: (u32, u32),
+    ) {
+        if self.layer.as_ref().is_some_and(|l| l.size == size) {
+            return;
+        }
+        let view = crate::target_texture(
+            device,
+            "ui paint layer",
+            size.0,
+            size.1,
+            self.format,
+            wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
+        )
+        .create_view(&Default::default());
+        let group = crate::sprite_bind_group(device, queue, layout, &view, sampler, [0.0; 4]);
+        self.layer = Some(Layer { size, view, group });
+    }
+
+    /// The layer, where an output of its size needed one.
+    pub fn layer(&self) -> Option<&wgpu::TextureView> {
+        self.layer.as_ref().map(|l| &l.view)
+    }
+
+    /// Draws the uploaded paint into `pass`, on a target in the pass's
+    /// format ([`encoded_format`]); `group1` binds a run's font page or
+    /// texture. Returns the draws.
     pub fn draw<'p>(
         &'p self,
         pass: &mut wgpu::RenderPass<'p>,
-        linear: bool,
         group1: impl Fn(PaintBind) -> &'p wgpu::BindGroup,
     ) -> u32 {
-        let Some(group) = &self.group else {
-            return 0;
-        };
-        let Some(pipeline) = match (linear, &self.linear) {
-            (true, Some(l)) => l,
-            _ => &self.output,
-        }
-        .get() else {
+        let (Some(group), Some(pipeline)) = (&self.group, self.pipeline.get()) else {
             return 0;
         };
         pass.set_pipeline(pipeline);
@@ -512,5 +560,23 @@ impl PaintRenderer {
             pass.draw(0..6, r.first..r.first + r.count);
         }
         self.runs.len() as u32
+    }
+
+    /// Draws the layer over `pass`'s target, the output: what the pass
+    /// blended in it stays as blended, and its translucent pixels meet the
+    /// output in the output's own light. Returns the draws.
+    pub fn composite<'p>(&'p self, pass: &mut wgpu::RenderPass<'p>) -> u32 {
+        let (Some(group), Some(layer), Some(pipeline)) = (
+            &self.group,
+            &self.layer,
+            self.composite.as_ref().and_then(|c| c.get()),
+        ) else {
+            return 0;
+        };
+        pass.set_pipeline(pipeline);
+        pass.set_bind_group(0, group, &[]);
+        pass.set_bind_group(1, &layer.group, &[]);
+        pass.draw(0..3, 0..1);
+        1
     }
 }

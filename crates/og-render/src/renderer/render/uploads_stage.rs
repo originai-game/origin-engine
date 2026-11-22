@@ -124,11 +124,16 @@ impl Renderer {
                 |t| t.index() < textures,
                 revisions,
                 (self.out_width, self.out_height),
-                !self.output_format.is_srgb()
-                    && self.output_format != HDR_FORMAT
-                    && !self.has_linear_view(target),
-                crate::overlay::dither_step(self.output_format),
             );
+            if self.paint_layered(target) {
+                self.paint.ensure_layer(
+                    &self.device,
+                    &self.queue,
+                    &self.sprite.sprite_layout,
+                    &self.sprite.sprite_sampler,
+                    (self.out_width, self.out_height),
+                );
+            }
             // Its images' sprite groups, made before the pass binds them.
             for k in 0..self.paint.runs.len() {
                 if let ui::paint::PaintBind::Texture(t) = self.paint.runs[k].bind {

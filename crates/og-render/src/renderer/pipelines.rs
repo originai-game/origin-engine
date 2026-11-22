@@ -2,23 +2,45 @@
 
 use super::*;
 
-/// The sRGB view format of a non-sRGB 8-bit output, when the backend can
-/// view the texture (`surface`: a surface's) in it: the overlay blends
-/// there in linear light, as on an sRGB output. `None` on an sRGB output,
-/// or where reinterpretation is missing (GL: textures; GL and Android
-/// Vulkan: surfaces), where the overlay shader encodes instead.
-pub(crate) fn linear_view_format(
-    adapter: &wgpu::Adapter,
-    output: wgpu::TextureFormat,
-    surface: bool,
-) -> Option<wgpu::TextureFormat> {
+/// Whether the backend views a texture (`surface`: a surface's) in its
+/// format's other encoding, sRGB or plain. Missing on GL for textures and
+/// on GL and Android Vulkan for surfaces.
+fn views_other_encoding(adapter: &wgpu::Adapter, surface: bool) -> bool {
     let flag = if surface {
         wgpu::DownlevelFlags::SURFACE_VIEW_FORMATS
     } else {
         wgpu::DownlevelFlags::VIEW_FORMATS
     };
+    adapter.get_downlevel_capabilities().flags.contains(flag)
+}
+
+/// The sRGB view format of a non-sRGB 8-bit output, when the backend can
+/// view the texture (`surface`: a surface's) in it: the overlay blends
+/// there in linear light, as on an sRGB output. `None` on an sRGB output,
+/// or where reinterpretation is missing, where the overlay shader encodes
+/// instead.
+pub(crate) fn linear_view_format(
+    adapter: &wgpu::Adapter,
+    output: wgpu::TextureFormat,
+    surface: bool,
+) -> Option<wgpu::TextureFormat> {
     let srgb = output.add_srgb_suffix();
-    (srgb != output && adapter.get_downlevel_capabilities().flags.contains(flag)).then_some(srgb)
+    (srgb != output && views_other_encoding(adapter, surface)).then_some(srgb)
+}
+
+/// The plain view format of an sRGB `output`, when the backend can view
+/// the texture in it: where the paint pass blends encoded values, as CSS
+/// does (ui/paint.rs). `None` on a plain output, which the pass draws on
+/// as it is, or where reinterpretation is missing, where the pass draws a
+/// layer of its own. An output has this or a [`linear_view_format`], never
+/// both.
+pub(crate) fn encoded_view_format(
+    adapter: &wgpu::Adapter,
+    output: wgpu::TextureFormat,
+    surface: bool,
+) -> Option<wgpu::TextureFormat> {
+    let plain = output.remove_srgb_suffix();
+    (plain != output && views_other_encoding(adapter, surface)).then_some(plain)
 }
 
 pub(crate) fn shader(device: &wgpu::Device, label: &str, source: String) -> wgpu::ShaderModule {

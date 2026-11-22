@@ -517,6 +517,8 @@ pub struct Renderer {
     display: Option<display::Output>,
     /// The offscreen target's sRGB view format ([`linear_view_format`]).
     offscreen_linear: Option<wgpu::TextureFormat>,
+    /// The offscreen target's plain view format ([`encoded_view_format`]).
+    offscreen_encoded: Option<wgpu::TextureFormat>,
     surface: Option<(wgpu::Surface<'static>, wgpu::SurfaceConfiguration)>,
     /// Copy each presented surface frame into the offscreen target, so
     /// [`Renderer::begin_capture`] reads it ([`Renderer::set_keep_frame`]).

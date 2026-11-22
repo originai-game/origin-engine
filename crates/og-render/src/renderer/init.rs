@@ -264,6 +264,7 @@ impl Renderer {
             alpha_mode: wgpu::CompositeAlphaMode::Opaque,
             // The display pass writes the surface; nothing blends on it.
             view_formats: linear_view_format(&adapter, format, true)
+                .or(encoded_view_format(&adapter, format, true))
                 .filter(|_| wide.is_none())
                 .into_iter()
                 .collect(),
@@ -605,18 +606,20 @@ impl Renderer {
             [0.0; 4],
         );
         let offscreen_linear = linear_view_format(&adapter, output_format, false);
+        let offscreen_encoded = encoded_view_format(&adapter, output_format, false);
         let persistent = post::Persistent::new(
             &device,
             width,
             height,
             output_format,
-            offscreen_linear,
+            offscreen_linear.or(offscreen_encoded),
             antialias,
             post.chain_format,
         );
         let surface_linear = surface
             .as_ref()
-            .and_then(|(_, config)| config.view_formats.first().copied());
+            .and_then(|(_, config)| config.view_formats.first().copied())
+            .filter(|f| f.is_srgb());
         let overlay = overlay::OverlayRenderer::new(
             &device,
             output_format,
@@ -624,12 +627,7 @@ impl Renderer {
             &sprite_layout,
         );
         let ui = ui::pass::UiRenderer::new(&device, &queue, &overlay, &sprite_layout);
-        let paint = ui::paint::PaintRenderer::new(
-            &device,
-            output_format,
-            offscreen_linear.or(surface_linear),
-            &sprite_layout,
-        );
+        let paint = ui::paint::PaintRenderer::new(&device, output_format, &sprite_layout);
         let glass = glass::GlassPasses::new(&device, &queue, output_format);
         let lines = lines::LineRenderer::new(
             &device,
@@ -656,6 +654,7 @@ impl Renderer {
             out_height: height,
             output_format,
             offscreen_linear,
+            offscreen_encoded,
             surface,
             display,
             keep_frame: false,
