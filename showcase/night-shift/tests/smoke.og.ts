@@ -15,9 +15,10 @@ test("the game starts in spring rain at night", async () => {
 });
 
 test("a switch ramps the air to what it names, and snow lies in winter", async () => {
-  const run = await runPlaytest({ commands: "0:weather:snow;0:season:winter;0:time:dawn;0:advance:180;3:get:Air;3:advance:390;9.5:get:Air;9.5:get:og.WeatherState.snowDepth;9.5:quit", size: SIZE });
-  // Half way through the ramp the two cross: neither full nor gone.
-  const half = run.json<{ value: Air }>("get-000180.json").value;
+  // The switches come after the first tick, which takes the weather as the game started it (og.Weather.change).
+  const run = await runPlaytest({ commands: "0:advance:1;0:weather:snow;0:season:winter;0:time:dawn;0:advance:89;1.5:get:Air;1.5:advance:480;9.5:get:Air;9.5:get:og.WeatherState.snowDepth;9.5:quit", size: SIZE });
+  // Half way through the weather's 3 s (og.Weather.change) the two cross: neither full nor gone.
+  const half = run.json<{ value: Air }>("get-000090.json").value;
   expect(half.snow).toBeGreaterThan(0.3);
   expect(half.snow).toBeLessThan(0.7);
   expect(half.rain).toBeCloseTo(1 - half.snow, 4);

@@ -1,11 +1,12 @@
 // The air and the year: the weather, the season and the time of day, each
 // chosen by the player (or a command) and blended in over a few seconds.
 //
-// Each axis keeps a weight per state in the Climate resource; a switch moves
-// the weights towards the chosen state, and what is drawn is the weighted
-// mean of the states' tables below. A switch made halfway through another
-// carries on from where the air is.
-import { WEATHER_NONE, WEATHER_RAIN, WEATHER_SNOW, defineResource, defineSystem, f32, f64, og, u32 } from "@origingame/engine";
+// Each axis keeps a weight per state in the Climate resource, and what is
+// drawn is the weighted mean of the states' tables below. The weather's
+// weights are read from og.Weather's drawn weather, which follows the
+// chosen one over `change`; a season's move towards the chosen one here.
+// A switch made halfway through another carries on from where the air is.
+import { WEATHER_MIST, WEATHER_NONE, WEATHER_RAIN, WEATHER_SNOW, defineResource, defineSystem, f32, f64, og, u32 } from "@origingame/engine";
 import type { Color, World } from "@origingame/engine";
 import { must } from "./must.ts";
 
@@ -13,7 +14,7 @@ export const WEATHERS = ["clear", "rain", "storm", "fog", "snow"] as const;
 export const SEASONS = ["spring", "summer", "autumn", "winter"] as const;
 export const TIMES = ["sunset", "night", "dawn"] as const;
 
-/** Seconds a weather, a season and a day's hour take to come in. */
+/** Seconds a weather (at most: the heaviest, a storm, included) and a season take to come in. */
 const WEATHER_SECONDS = 6, SEASON_SECONDS = 8;
 /** Game hours the clock runs through per second on its way to the chosen time (always forwards). */
 const HOURS_PER_SECOND = 1.6;
@@ -31,13 +32,24 @@ export const Climate = defineResource("Climate", {
 type Table = { readonly [key: string]: number | Color };
 const rgb = (r: number, g: number, b: number): Color => ({ r, g, b });
 
+/** Each weather as og.Weather draws it: a storm is rain at 1.6, fog is mist (og.Fog draws its haze). */
+const KINDS = [
+  /* clear */ { kind: WEATHER_NONE, intensity: 0 },
+  /* rain  */ { kind: WEATHER_RAIN, intensity: 1 },
+  /* storm */ { kind: WEATHER_RAIN, intensity: 1.6 },
+  /* fog   */ { kind: WEATHER_MIST, intensity: 1 },
+  /* snow  */ { kind: WEATHER_SNOW, intensity: 1.2 },
+] as const;
+/** og.Weather.change is per unit of intensity: the storm's 1.6 builds or clears in WEATHER_SECONDS. */
+const CHANGE = WEATHER_SECONDS / KINDS[2].intensity;
+
 // What each weather does to the sky, the air and the sea.
 const AIR = [
-  /* clear */ { cover: 0.46, cloud: 0.03, grey: 1, haze: 0.00005, mist: 0.00015, veil: 0.08, rain: 0, snow: 0, wind: 8, sea: 12.3, swell: 1.8, chop: 0.9, lightning: 0, warmth: 0, colour: 0 },
-  /* rain  */ { cover: 0.86, cloud: 0.05, grey: 0.62, haze: 0.0016, mist: 0.012, veil: 0.2, rain: 1, snow: 0, wind: 12, sea: 15, swell: 2, chop: 0.95, lightning: 0, warmth: -0.22, colour: -0.12 },
-  /* storm */ { cover: 1, cloud: 0.08, grey: 0.36, haze: 0.003, mist: 0.02, veil: 0.25, rain: 1.6, snow: 0, wind: 22, sea: 20, swell: 2.4, chop: 1, lightning: 30, warmth: -0.34, colour: -0.2 },
-  /* fog   */ { cover: 0.7, cloud: 0.03, grey: 0.86, haze: 0.011, mist: 0.05, veil: 1, rain: 0, snow: 0, wind: 2.5, sea: 6, swell: 0.8, chop: 0.6, lightning: 0, warmth: -0.12, colour: -0.16 },
-  /* snow  */ { cover: 0.9, cloud: 0.045, grey: 0.82, haze: 0.003, mist: 0.01, veil: 0.3, rain: 0, snow: 1.2, wind: 5, sea: 9, swell: 1, chop: 0.75, lightning: 0, warmth: -0.14, colour: -0.14 },
+  /* clear */ { cover: 0.46, cloud: 0.03, grey: 1, haze: 0.00005, mist: 0.00015, veil: 0.08, wind: 8, sea: 12.3, swell: 1.8, chop: 0.9, lightning: 0, warmth: 0, colour: 0 },
+  /* rain  */ { cover: 0.86, cloud: 0.05, grey: 0.62, haze: 0.0016, mist: 0.012, veil: 0.2, wind: 12, sea: 15, swell: 2, chop: 0.95, lightning: 0, warmth: -0.22, colour: -0.12 },
+  /* storm */ { cover: 1, cloud: 0.08, grey: 0.36, haze: 0.003, mist: 0.02, veil: 0.25, wind: 22, sea: 20, swell: 2.4, chop: 1, lightning: 30, warmth: -0.34, colour: -0.2 },
+  /* fog   */ { cover: 0.7, cloud: 0.03, grey: 0.86, haze: 0.011, mist: 0.05, veil: 1, wind: 2.5, sea: 6, swell: 0.8, chop: 0.6, lightning: 0, warmth: -0.12, colour: -0.16 },
+  /* snow  */ { cover: 0.9, cloud: 0.045, grey: 0.82, haze: 0.003, mist: 0.01, veil: 0.3, wind: 5, sea: 9, swell: 1, chop: 0.75, lightning: 0, warmth: -0.14, colour: -0.14 },
 ] as const satisfies readonly Table[];
 
 // What each season does to the land. `melt` is metres of lying snow lost a
@@ -67,6 +79,19 @@ function blend<T extends Table>(tables: readonly T[], weights: readonly number[]
 }
 
 type Weights = { [name: string]: number };
+
+/** The weathers' weights from og.Weather's drawn weather (the last tick's: it draws after the game's systems). */
+function drawnWeights(climate: Weights, weather: { kind: number; intensity: number; drawnKind: number; drawnIntensity: number; fadingKind: number; fadingIntensity: number }): void {
+  const drawn = (kind: number): number => {
+    if (weather.drawnIntensity < 0) return weather.kind === kind ? weather.intensity : 0;
+    return (weather.drawnKind === kind ? weather.drawnIntensity : 0) + (weather.fadingKind === kind ? weather.fadingIntensity : 0);
+  };
+  // Rain at 1 is rain; on to 1.6 it turns into the storm.
+  const wet = drawn(WEATHER_RAIN), heavy = KINDS[2].intensity;
+  const storm = Math.min(1, Math.max(0, (wet - 1) / (heavy - 1))), rain = Math.min(1, wet) - storm;
+  const fog = Math.min(1, drawn(WEATHER_MIST) / KINDS[3].intensity), snow = Math.min(1, drawn(WEATHER_SNOW) / KINDS[4].intensity);
+  Object.assign(climate, { clear: Math.max(0, 1 - rain - storm - fog - snow), rain, storm, fog, snow });
+}
 
 /** Moves an axis's weights `rate` towards its chosen state; whether any moved. */
 function step(climate: Weights, names: readonly string[], chosen: number, rate: number): boolean {
@@ -113,6 +138,10 @@ export function buildClimate(world: World): void {
   state.lightningCenter = { x: 60, y: 0, z: -160 };
   state.lightningRadius = 220;
   must(world.resource(og.DayNight)).step = 1;
+  const weather = must(world.resource(og.Weather));
+  weather.change = CHANGE;
+  weather.kind = KINDS[0].kind;
+  weather.intensity = KINDS[0].intensity;
   must(og.input.defineAction(world, { name: "weather", kind: "button", bindings: [{ control: "KeyZ" }, { control: "pad.x" }] }));
   must(og.input.defineAction(world, { name: "season", kind: "button", bindings: [{ control: "KeyX" }, { control: "pad.y" }] }));
   must(og.input.defineAction(world, { name: "time", kind: "button", bindings: [{ control: "KeyC" }, { control: "pad.b" }] }));
@@ -136,7 +165,14 @@ export const Seasons = defineSystem("Seasons", {
   }
 
   const weights = climate as unknown as Weights;
-  step(weights, WEATHERS, climate.weather, time.dt / WEATHER_SECONDS);
+  // The weather chosen goes to og.Weather, which draws it over `change`.
+  const weather = must(world.resource(og.Weather));
+  const chosen = KINDS[climate.weather]!;
+  // A `now` choice switched at once (change 0); once it is drawn, back to the blend.
+  if (weather.change === 0 && weather.drawnKind === chosen.kind && weather.drawnIntensity === chosen.intensity && weather.fadingIntensity === 0) weather.change = CHANGE;
+  weather.kind = chosen.kind;
+  weather.intensity = chosen.intensity;
+  drawnWeights(weights, weather);
   const turned = step(weights, SEASONS, climate.season, time.dt / SEASON_SECONDS);
   // The hour is stored in 32 bits: against the goal as written, 23.2 held there reads as a day away.
   const goal = HOURS[climate.time]!, ahead = (goal - climate.hour + 24) % 24, pace = HOURS_PER_SECOND * time.dt;
@@ -158,11 +194,6 @@ export const Seasons = defineSystem("Seasons", {
   fog.heightDensity = air.mist;
   fog.sky = air.veil;
   must(world.resource(og.Wind)).speed = air.wind;
-  // Rain and snow are one fall: rain gives way to snow through a dry moment.
-  const fall = air.rain - air.snow;
-  const weather = must(world.resource(og.Weather));
-  weather.kind = fall > 0.02 ? WEATHER_RAIN : fall < -0.02 ? WEATHER_SNOW : WEATHER_NONE;
-  weather.intensity = Math.abs(fall);
   must(world.resource(og.WeatherState)).lightning = air.lightning;
   const sea = world.find("sea");
   if (sea !== null) must(world.set(sea, og.Water, { wind: { x: -0.894 * air.sea, y: 0.447 * air.sea }, swell: air.swell, choppiness: air.chop }));
@@ -186,6 +217,8 @@ function choose(world: World, axis: "weather" | "season" | "time", names: readon
   if (args[1] !== "now") return;
   const weights = climate as unknown as Weights;
   if (axis === "time") climate.hour = HOURS[chosen]!;
+  // og.Weather draws the next tick's weather whole, and its weights follow.
+  else if (axis === "weather") must(world.resource(og.Weather)).change = 0;
   else for (const [i, name] of names.entries()) weights[name] = i === chosen ? 1 : 0;
   climate.stale = 1;
 }

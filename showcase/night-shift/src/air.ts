@@ -1,14 +1,15 @@
 // The air over the alley: which weather, season and time of day it is, and
 // the ramps between them. The game sets a target (a key, a command); the
-// Air system moves the amounts in the air towards it a little each tick and
-// writes what follows from them to the engine's sky, fog, weather, wind and
-// lights. Everything is a function of the amounts, so a state looks the
-// same however it was reached.
+// Air system writes the chosen weather to og.Weather, whose drawn weather
+// follows it over `change`, and reads back how much of each weather is
+// drawn; the season and the dawn it moves towards their targets itself.
+// It writes what follows from those amounts to the engine's sky, fog,
+// wind and lights. Everything is a function of the amounts, so a state
+// looks the same however it was reached.
 //
-// The ramps between weather kinds are the game's own, so og.Weather.change
-// is 0 (the engine draws the weather the Air system writes, unramped), and a season is a palette, an air and a rule
-// for lying snow until `og.Season` does (the seasons and weather proposal).
-import { defineResource, defineSystem, f32, og, u32, WEATHER_NONE, WEATHER_RAIN, WEATHER_SNOW } from "@origingame/engine";
+// A season is a palette, an air and a rule for lying snow until
+// `og.Season` does (the seasons and weather proposal).
+import { defineResource, defineSystem, f32, og, u32, WEATHER_MIST, WEATHER_NONE, WEATHER_RAIN, WEATHER_SNOW } from "@origingame/engine";
 import type { Color, World } from "@origingame/engine";
 import { lerp, mix, must, rgb, smooth, v3 } from "./util.ts";
 
@@ -19,7 +20,7 @@ export type WeatherName = (typeof WEATHERS)[number];
 export type SeasonName = (typeof SEASONS)[number];
 export type TimeName = (typeof TIMES)[number];
 
-/** Seconds a weather takes to build or clear, a season to turn and the dawn to break. */
+/** Seconds a weather takes to build or clear at most (the heaviest, a storm, included), a season to turn and the dawn to break. */
 const WEATHER_RAMP = 6;
 const SEASON_RAMP = 6;
 const TIME_RAMP = 8;
@@ -27,7 +28,16 @@ const TIME_RAMP = 8;
 const PUDDLES = 0.45;
 const PUDDLES_STORM = 0.75;
 
-/** The targets (indices into WEATHERS, SEASONS and TIMES) and how much of each is in the air now, 0 to 1. */
+/** Each weather as og.Weather draws it: a storm is rain twice as heavy, and fog is mist (og.Fog draws it). */
+const KINDS = {
+  rain: { kind: WEATHER_RAIN, intensity: 1 },
+  storm: { kind: WEATHER_RAIN, intensity: 2 },
+  fog: { kind: WEATHER_MIST, intensity: 1 },
+  clear: { kind: WEATHER_NONE, intensity: 0 },
+  snow: { kind: WEATHER_SNOW, intensity: 1 },
+} as const satisfies Readonly<Record<WeatherName, { kind: number; intensity: number }>>;
+
+/** The targets (indices into WEATHERS, SEASONS and TIMES) and how much of each is in the air now, 0 to 1 (the weathers read from og.Weather's drawn weather). */
 export const Air = defineResource("Air", {
   weather: u32(), season: u32(), time: u32(),
   rain: f32(1), storm: f32(), fog: f32(), snow: f32(),
@@ -84,8 +94,10 @@ export function buildAir(world: World): void {
   const weather = must(world.resource(og.Weather));
   weather.radius = 22;
   weather.dim = 0;
-  // Air ramps the weather itself; a second ramp would hold the new kind back.
-  weather.change = 0;
+  // og.Weather.change is per unit of intensity: the storm's 2 builds or clears in WEATHER_RAMP.
+  weather.change = WEATHER_RAMP / KINDS.storm.intensity;
+  weather.kind = KINDS.rain.kind;
+  weather.intensity = KINDS.rain.intensity;
   // The street answers in seconds, so a switch shows while it is watched.
   const ground = must(world.resource(og.WeatherState));
   ground.soakTime = 4;
@@ -101,12 +113,22 @@ const towards = (now: number, goal: number, step: number): number => (now < goal
 
 export const AirSystem = defineSystem("Air", { after: ["Switches"], writes: [Air, og.Weather, og.WeatherState, og.Fog, og.Sky, og.Wind, og.DirectionalLight] }, (_q, time, world) => {
   const air = must(world.resource(Air));
-  const goal = WEATHERS[air.weather] ?? "clear";
-  const w = time.dt / WEATHER_RAMP;
-  air.rain = towards(air.rain, goal === "rain" ? 1 : 0, w);
-  air.storm = towards(air.storm, goal === "storm" ? 1 : 0, w);
-  air.fog = towards(air.fog, goal === "fog" ? 1 : 0, w);
-  air.snow = towards(air.snow, goal === "snow" ? 1 : 0, w);
+  // The weather chosen goes to og.Weather; what is in the air is what it
+  // draws, which follows the choice over `change` (it draws after this
+  // system, so these are the last tick's amounts).
+  const weather = must(world.resource(og.Weather));
+  const goal = KINDS[WEATHERS[air.weather] ?? "clear"];
+  weather.kind = goal.kind;
+  weather.intensity = goal.intensity;
+  const drawn = (kind: number): number => {
+    if (weather.drawnIntensity < 0) return weather.kind === kind ? weather.intensity : 0;
+    return (weather.drawnKind === kind ? weather.drawnIntensity : 0) + (weather.fadingKind === kind ? weather.fadingIntensity : 0);
+  };
+  const wet = drawn(WEATHER_RAIN);
+  air.storm = Math.min(1, Math.max(0, wet - 1));
+  air.rain = Math.min(1, wet) - air.storm;
+  air.fog = Math.min(1, drawn(WEATHER_MIST));
+  air.snow = Math.min(1, drawn(WEATHER_SNOW));
   const s = time.dt / SEASON_RAMP;
   air.spring = towards(air.spring, air.season === 0 ? 1 : 0, s);
   air.summer = towards(air.summer, air.season === 1 ? 1 : 0, s);
@@ -124,15 +146,7 @@ export const AirSystem = defineSystem("Air", { after: ["Switches"], writes: [Air
     haze += a.haze * k; gust += a.wind * k; melt += a.melt * k;
   }
 
-  // One kind falls at a time: the heavier of rain (a storm is rain twice
-  // as heavy) and snow, thinning to nothing where they cross.
-  const rain = smooth(air.rain) + 2 * smooth(air.storm), snow = smooth(air.snow);
-  const weather = must(world.resource(og.Weather));
-  if (rain > snow) weather.kind = WEATHER_RAIN;
-  else if (snow > rain) weather.kind = WEATHER_SNOW;
-  else if (rain === 0) weather.kind = WEATHER_NONE;
-  weather.intensity = Math.abs(rain - snow);
-
+  const snow = smooth(air.snow);
   const storm = smooth(air.storm), mist = smooth(air.fog), dawn = smooth(air.dawn);
   const ground = must(world.resource(og.WeatherState));
   ground.lightning = 14 * storm;

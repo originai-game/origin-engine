@@ -1,7 +1,7 @@
-// The switches: a weather and a season blend in over their seconds and
-// arrive whole, the clock runs on to the chosen time, and `now` skips the
-// blend. Read from the Climate resource (src/climate.ts), which the drawn
-// sky, air, sea and land follow.
+// The switches: a weather (og.Weather's drawn weather) and a season blend
+// in over their seconds and arrive whole, the clock runs on to the chosen
+// time, and `now` skips the blend. Read from the Climate resource
+// (src/climate.ts), which the drawn sky, air, sea and land follow.
 import { expect, test } from "bun:test";
 import { runPlaytest } from "@origingame/engine/playtest";
 
@@ -21,9 +21,12 @@ test("a weather and a season blend in and arrive", async () => {
     commands: "0.5:weather:storm;0.5:season:winter;2.5:get:Climate:mid.json;9.5:get:Climate:end.json;9.6:quit",
   });
   const mid = run.json<Climate>("mid.json").value, end = run.json<Climate>("end.json").value;
-  // Two seconds into a weather's six and a season's eight.
-  expect(Math.abs(mid.storm - 2 / 6)).toBeLessThanOrEqual(0.02);
-  expect(Math.abs(mid.clear - 4 / 6)).toBeLessThanOrEqual(0.02);
+  // Two seconds into the weather's ramp and a season's eight. og.Weather
+  // draws the storm as rain building to 1.6 over 6 s (change 3.75 s a unit),
+  // so two seconds in it is still rain, at 2 / 3.75.
+  expect(Math.abs(mid.rain - 2 / 3.75)).toBeLessThanOrEqual(0.02);
+  expect(Math.abs(mid.clear - (1 - 2 / 3.75))).toBeLessThanOrEqual(0.02);
+  expect(mid.storm).toBe(0);
   expect(Math.abs(mid.winter - 2 / 8)).toBeLessThanOrEqual(0.02);
   expect(Math.abs(mid.summer - 6 / 8)).toBeLessThanOrEqual(0.02);
   expect([end.clear, end.rain, end.storm, end.fog, end.snow]).toEqual([0, 0, 1, 0, 0]);

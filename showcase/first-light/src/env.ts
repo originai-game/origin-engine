@@ -2,7 +2,7 @@
 // how the sky, the light, the fog and the wind ease from one choice to the
 // next. Every choice is world state in the Scene resource, so a capture
 // script, a replay and a save all land on the same frame.
-import { og, defineEvent, defineResource, defineSystem, f64, math, u32 } from "@origingame/engine";
+import { og, defineEvent, defineResource, defineSystem, f64, u32, WEATHER_MIST, WEATHER_RAIN, WEATHER_SNOW } from "@origingame/engine";
 import type { World } from "@origingame/engine";
 import { must } from "./util.ts";
 
@@ -14,11 +14,11 @@ export const TIMES = ["dawn", "noon", "dusk", "night"] as const;
 const SUNRISE = 196;
 /** The hour each time of day holds. */
 const HOURS = [6.9, 12.4, 18.55, 23.4];
-/** Seconds a change of weather takes to settle, and game hours the clock runs per second while the time changes. */
+/** Seconds a change of weather takes to settle (at most: the heaviest, a storm, included), and game hours the clock runs per second while the time changes. */
 const SETTLE = 6, CLOCK = 3.2;
 
 /** What the player chose, the hour drawn now, and which kinds of switch they have made (bits: weather 1, season 2, night 4). */
-export const Scene = defineResource("Scene", { weather: u32(0), season: u32(1), time: u32(0), hud: u32(1), hour: f64(HOURS[0]!), falling: u32(0), seen: u32(0) });
+export const Scene = defineResource("Scene", { weather: u32(0), season: u32(1), time: u32(0), hud: u32(1), hour: f64(HOURS[0]!), seen: u32(0) });
 
 /** A hotbar slot pressed: 0 weather, 1 season, 2 time. */
 export const Pick = defineEvent("Pick", { which: u32(0, { min: 0, max: 2 }) });
@@ -31,6 +31,25 @@ const AIR = [
   { kind: 4, intensity: 1, cover: 0.7, density: 0.04, grey: 0.9, fog: 0.004, mist: 0.07, wind: 0.8, lightning: 0 },
   { kind: 2, intensity: 1, cover: 0.95, density: 0.05, grey: 0.85, fog: 0.0004, mist: 0.02, wind: 3, lightning: 0 },
 ];
+/** og.Weather.change is per unit of intensity: the storm's 1.8 builds or clears in SETTLE. */
+const CHANGE = SETTLE / AIR[2]!.intensity;
+
+/**
+ * How much of each weather is in the air: og.Weather's drawn weather (the last
+ * tick's), rain building through the rain on to the storm, the rest clear.
+ */
+function weights(w: { kind: number; intensity: number; drawnKind: number; drawnIntensity: number; fadingKind: number; fadingIntensity: number }): number[] {
+  const drawn = (kind: number): number => {
+    if (w.drawnIntensity < 0) return w.kind === kind ? w.intensity : 0;
+    return (w.drawnKind === kind ? w.drawnIntensity : 0) + (w.fadingKind === kind ? w.fadingIntensity : 0);
+  };
+  const wet = drawn(WEATHER_RAIN), light = AIR[1]!.intensity, heavy = AIR[2]!.intensity;
+  const storm = Math.min(1, Math.max(0, (wet - light) / (heavy - light))), rain = Math.min(1, wet / light) - storm;
+  const fog = Math.min(1, drawn(WEATHER_MIST) / AIR[3]!.intensity), snow = Math.min(1, drawn(WEATHER_SNOW) / AIR[4]!.intensity);
+  // Two kinds crossing can add up past 1: then each is its share.
+  const sum = rain + storm + fog + snow, over = Math.max(1, sum);
+  return [Math.max(0, 1 - sum), rain / over, storm / over, fog / over, snow / over];
+}
 
 export function buildEnv(world: World): void {
   const sun = must(world.spawn({ name: "sun" }));
@@ -58,6 +77,10 @@ export function buildEnv(world: World): void {
   const post = must(world.resource(og.PostEffects));
   post.godRays = true;
   post.godRaysIntensity = 0.55;
+  const weather = must(world.resource(og.Weather));
+  weather.change = CHANGE;
+  weather.kind = AIR[0]!.kind;
+  weather.intensity = AIR[0]!.intensity;
 }
 
 /** The next choice of each kind, from the keys and the hotbar; `set_scene` writes them from a script. */
@@ -74,36 +97,29 @@ export const Choose = defineSystem("Choose", { reads: [og.Input, Pick], writes: 
   if (og.input.isActionJustPressed(world, "hud")) s.hud = 1 - s.hud;
 });
 
-/** Eases the air towards the chosen weather and runs the clock on to the chosen time. */
+/** Sends the chosen weather to og.Weather, puts the air it draws on the sky, and runs the clock on to the chosen time. */
 export const Air = defineSystem("Air", { reads: [og.Time], writes: [Scene, og.DayNight, og.Clouds, og.Fog, og.Wind, og.Weather, og.WeatherState], after: ["Choose"] }, (_q, time, world) => {
   const s = must(world.resource(Scene));
-  const air = AIR[s.weather]!;
-  const k = 1 - math.exp(-(3 / SETTLE) * time.dt);
-  const ease = (from: number, to: number) => from + (to - from) * k;
+  const chosen = AIR[s.weather]!;
+  const weather = must(world.resource(og.Weather));
+  // A `now` choice switched at once (change 0); once it is drawn, back to the ramp.
+  if (weather.change === 0 && weather.drawnKind === chosen.kind && weather.drawnIntensity === chosen.intensity && weather.fadingIntensity === 0) weather.change = CHANGE;
+  weather.kind = chosen.kind;
+  weather.intensity = chosen.intensity;
 
+  // The sky, the fog and the wind of the weathers drawn, by how much of each.
+  const k = weights(weather);
+  const mean = (f: (a: (typeof AIR)[number]) => number) => AIR.reduce((sum, a, i) => sum + f(a) * k[i]!, 0);
   const clouds = must(world.resource(og.Clouds));
-  clouds.coverage = ease(clouds.coverage, air.cover);
-  clouds.density = ease(clouds.density, air.density);
-  const grey = ease(clouds.color.r, air.grey);
+  clouds.coverage = mean((a) => a.cover);
+  clouds.density = mean((a) => a.density);
+  const grey = mean((a) => a.grey);
   clouds.color = { r: grey, g: grey, b: grey };
   const fog = must(world.resource(og.Fog));
-  fog.density = ease(fog.density, air.fog);
-  fog.heightDensity = ease(fog.heightDensity, air.mist);
-  const wind = must(world.resource(og.Wind));
-  wind.speed = ease(wind.speed, air.wind);
-  must(world.resource(og.WeatherState)).lightning = air.lightning;
-
-  // What falls: the old kind thins out before the new one builds.
-  const weather = must(world.resource(og.Weather));
-  if (s.falling !== air.kind) {
-    weather.intensity = Math.max(0, weather.intensity - time.dt / (SETTLE * 0.4));
-    if (weather.intensity <= 0) {
-      s.falling = air.kind;
-      weather.kind = air.kind;
-    }
-  } else {
-    weather.intensity = ease(weather.intensity, air.intensity);
-  }
+  fog.density = mean((a) => a.fog);
+  fog.heightDensity = mean((a) => a.mist);
+  must(world.resource(og.Wind)).speed = mean((a) => a.wind);
+  must(world.resource(og.WeatherState)).lightning = mean((a) => a.lightning);
 
   // The clock only runs forward: dusk to dawn passes through the night.
   const ahead = (HOURS[s.time]! - s.hour + 24) % 24;
@@ -125,19 +141,8 @@ export function setScene(world: World, args: readonly string[]): void {
   s.season = pick(SEASONS, args[1], s.season);
   s.time = pick(TIMES, args[2], s.time);
   if (args[3] !== "now") return;
-  const air = AIR[s.weather]!;
-  const clouds = must(world.resource(og.Clouds));
-  clouds.coverage = air.cover;
-  clouds.density = air.density;
-  clouds.color = { r: air.grey, g: air.grey, b: air.grey };
-  const fog = must(world.resource(og.Fog));
-  fog.density = air.fog;
-  fog.heightDensity = air.mist;
-  must(world.resource(og.Wind)).speed = air.wind;
-  const weather = must(world.resource(og.Weather));
-  weather.kind = air.kind;
-  weather.intensity = air.intensity;
-  s.falling = air.kind;
+  // og.Weather draws the next tick's weather whole, and the air follows it.
+  must(world.resource(og.Weather)).change = 0;
   s.hour = HOURS[s.time]!;
   must(world.resource(og.DayNight)).start = s.hour;
 }
