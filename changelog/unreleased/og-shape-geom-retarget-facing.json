@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "og.anim.retarget",
+      "summary": "A source clip whose skeleton faces another way than the target (a rig authored facing +X or -Z, say) is now turned by the quarter turn about +Y that best carries its rest joints onto the target's before it is retargeted, so the character no longer walks sideways or backwards. A `type animation` library's cook note says how far a clip was turned."
+    }
+  ]
+}

@@ -234,10 +234,18 @@ are not retroactive on seek unless authored that way.
   plays it retargeted: at cook time with a model's `animation { library }`
   import setting (the usual way, for a library known ahead), at run time
   with og.anim.retarget for clips chosen while playing.
+- A source that faces another way than the target (a rig authored
+  facing +X or -Z) is turned first: by the quarter turn about +Y that
+  best carries its mapped rest joints onto the target's, each about its
+  centroid seen from above. A cook note says how far a clip was turned;
+  a skeleton too narrow to tell (a spine alone) is not turned.
 - Retargeting corrects each rig's rest pose first, so a T-pose drives an
   A-pose and differing bone frames agree; fingers turn from their hand, so
   a hand pose holds whatever the arm does. Name `footHeight` on each rig
   when the feet do not land on the ground of the rest pose.
+- Twist bones (unmapped nodes on a limb named `twist`, or Rigify's
+  `DEF-….001`) take a share of the limb's twist by their position along
+  it.
 - A mirrored clip known ahead needs no call: a graph's `clip` line with
   `mirror true` plays it mirrored, and the cook's
   `animation { mirror "<clip>" }` writes the mirrored clip into the model.

@@ -855,8 +855,9 @@ pub fn cook(
             )
             .map_err(|e| fail(format!("clip '{}': {}", c.name, e.reason())))?;
             notes.push(format!(
-                "library '{lib}': clip '{}' retargeted ({} -> {} names, {} bones, {} legs solved, {} twist bones, travel x{:.3})",
-                c.name, source_map.scheme, target_map.scheme, r.bones, r.legs, r.twists, r.scale
+                "library '{lib}': clip '{}' retargeted ({} -> {} names, {} bones, {} legs solved, {} twist bones, travel x{:.3}{})",
+                c.name, source_map.scheme, target_map.scheme, r.bones, r.legs, r.twists, r.scale,
+                if r.turn == 0 { String::new() } else { format!(", turned {}° to face as the model does", r.turn) }
             ));
             extra.push(r.clip);
         }

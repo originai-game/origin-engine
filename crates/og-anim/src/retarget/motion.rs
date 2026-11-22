@@ -263,6 +263,47 @@ pub struct Retargeted {
     pub legs: u32,
     /// Twist bones of the target driven from their limb segments.
     pub twists: u32,
+    /// The quarter turn about +Y, in degrees counter-clockwise seen from
+    /// above (0, 90, 180 or 270), the source was given so it faces as the
+    /// target does.
+    pub turn: u32,
+}
+
+/// The quarter turn about +Y that best carries the source's mapped rest
+/// joints onto the target's, each about its own centroid, seen from
+/// above: its degrees and rotation. The least-squares angle has `cos ∝
+/// Σ a·b` and `sin ∝ Σ a×b` over the horizontal parts (`a` source, `b`
+/// target); the quarter turn nearest it is picked from those two sums
+/// alone, ties to the smaller turn, and a skeleton whose joints barely
+/// spread sideways (a spine alone) is not turned, so one that faces as
+/// the target does is left exactly as it is.
+fn facing(pairs: &[(Vec3, Vec3)]) -> (u32, Quat) {
+    if pairs.is_empty() {
+        return (0, Quat::IDENTITY);
+    }
+    let n = pairs.len() as f32;
+    let (ca, cb) = pairs
+        .iter()
+        .fold((Vec3::ZERO, Vec3::ZERO), |(x, y), (a, b)| (x + *a, y + *b));
+    let (ca, cb) = (ca / n, cb / n);
+    // Seen from above with +Y up, a turn about +Y takes z towards x.
+    let (mut dot, mut cross, mut size) = (0f32, 0f32, 0f32);
+    for (a, b) in pairs {
+        let (a, b) = (*a - ca, *b - cb);
+        dot += a.z * b.z + a.x * b.x;
+        cross += a.z * b.x - a.x * b.z;
+        size += (a.z * a.z + a.x * a.x).sqrt() * (b.z * b.z + b.x * b.x).sqrt();
+    }
+    let half = std::f32::consts::FRAC_1_SQRT_2;
+    if dot.abs() + cross.abs() <= 1e-3 * size || (dot.abs() >= cross.abs() && dot >= 0.0) {
+        (0, Quat::IDENTITY)
+    } else if dot.abs() >= cross.abs() {
+        (180, Quat::from_xyzw(0.0, 1.0, 0.0, 0.0))
+    } else if cross > 0.0 {
+        (90, Quat::from_xyzw(0.0, half, 0.0, half))
+    } else {
+        (270, Quat::from_xyzw(0.0, -half, 0.0, half))
+    }
 }
 
 /// The height of the foot of `leg` (0 left, 1 right) above the ground the
@@ -501,9 +542,35 @@ pub fn retarget(
     };
     let both = |b: usize| source_map.nodes[b] != NONE && target_map.nodes[b] != NONE;
 
-    let s_rest = model(source, &source.rest_pose());
     let t_rest_pose = target.rest_pose();
     let t_rest = model(target, &t_rest_pose);
+    // A source that faces another way than the target is turned first,
+    // its rest and every frame of its clip with it, so all that follows
+    // compares two skeletons that face alike.
+    let s_rest = model(source, &source.rest_pose());
+    let pairs: Vec<(Vec3, Vec3)> = (0..HUMAN_BONE_COUNT)
+        .filter(|&b| both(b))
+        .map(|b| {
+            (
+                s_rest[source_map.nodes[b] as usize].translation,
+                t_rest[target_map.nodes[b] as usize].translation,
+            )
+        })
+        .collect();
+    let (turn, face) = facing(&pairs);
+    let faced = |m: Vec<Trs>| -> Vec<Trs> {
+        if turn == 0 {
+            return m;
+        }
+        m.into_iter()
+            .map(|t| Trs {
+                translation: face * t.translation,
+                rotation: unit(face * t.rotation),
+                ..t
+            })
+            .collect()
+    };
+    let s_rest = faced(s_rest);
     let (hs, ht) = (
         leg_height(&s_rest, source_map),
         leg_height(&t_rest, target_map),
@@ -600,7 +667,7 @@ pub fn retarget(
         let t = (i as f32 / clip.rate).min(clip.duration);
         let mut ps = Pose::rest(source);
         sample(source, clip, &binding, t, NONE, &mut ps);
-        let ms = model(source, &ps.nodes);
+        let ms = faced(model(source, &ps.nodes));
         let desired = |b: usize| -> Quat {
             let s = source_map.nodes[b] as usize;
             let tb = target_map.nodes[b] as usize;
@@ -785,5 +852,6 @@ pub fn retarget(
         bones: (0..HUMAN_BONE_COUNT).filter(|&b| both(b)).count() as u32,
         legs: legs.len() as u32,
         twists: twists.len() as u32,
+        turn,
     })
 }

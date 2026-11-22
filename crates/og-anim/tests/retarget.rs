@@ -277,3 +277,35 @@ fn twist_bones_share_their_segments_twist() {
     // its own pose.
     assert!(rel(5, 3).abs() < 1e-3, "forearm {}", rel(5, 3));
 }
+
+/// A source that faces another way (the walker turned a quarter about +Y
+/// at its root, as a library exported facing +X is) plays onto the walker
+/// facing +Z: the clip is turned with it, so the waving hand moves about
+/// the target's body as it does about the source's, seen from the body.
+/// Without the turn the hand would sweep a quarter turn off, and an
+/// unturned pair is left as it is.
+#[test]
+fn a_source_facing_another_way_is_turned_to_face_as_the_target() {
+    let mut s = support::skeleton();
+    s.nodes[0].rest.rotation =
+        og_core::math::quat_from_axis_angle(Vec3::Y, std::f32::consts::FRAC_PI_2);
+    let t = support::skeleton();
+    let (sm, tm) = (HumanoidMap::detect(&s), HumanoidMap::detect(&t));
+    let wave = support::clips()
+        .into_iter()
+        .find(|(id, _)| *id == support::WAVE)
+        .unwrap()
+        .1;
+    let out = retarget(&s, &sm, &t, &tm, &wave, &RetargetOptions::default()).unwrap();
+    assert_eq!(out.turn, 270);
+    let back = s.nodes[0].rest.rotation.conjugate();
+    let (hips, hand) = (support::J_HIPS as usize + 1, support::J_HAND_L as usize + 1);
+    for i in 0..wave.frames {
+        let (ps, pt) = (frame_pose(&s, &wave, i), frame_pose(&t, &out.clip, i));
+        let want = back * (ps[hand].translation - ps[hips].translation);
+        let got = pt[hand].translation - pt[hips].translation;
+        assert!((got - want).length() < 1e-3, "frame {i}: {got} for {want}");
+    }
+    let same = retarget(&t, &tm, &t, &tm, &wave, &RetargetOptions::default()).unwrap();
+    assert_eq!(same.turn, 0);
+}
