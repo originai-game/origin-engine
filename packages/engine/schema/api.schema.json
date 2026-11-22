@@ -4653,7 +4653,7 @@
     },
     {
       "name": "camera",
-      "doc": "The main camera, as a resource with three.js PerspectiveCamera and OrthographicCamera parameter names.\nCamera controllers are components (OrbitCamera, FollowCamera, Follow2D) on the entity the camera orbits or follows; the systems that drive them ship in TypeScript as og.systems.cameras.\nSee `camera`.",
+      "doc": "The main camera, as a resource with three.js PerspectiveCamera and OrthographicCamera parameter names.\nCamera controllers are components (OrbitCamera, FollowCamera, Follow2D, FramingCamera) on the entity the camera orbits, follows or frames; the systems that drive them ship in TypeScript as og.systems.cameras.\nSee `camera`.",
       "place": "namespace",
       "publish": true,
       "types": [
@@ -4661,6 +4661,7 @@
         "OrbitCamera",
         "FollowCamera",
         "Follow2D",
+        "FramingCamera",
         "CameraZone",
         "CameraRail",
         "VirtualCamera",
@@ -13025,7 +13026,7 @@
         {
           "name": "cameras",
           "type": "List<System>",
-          "doc": "The camera controllers, in order: og.orbitCamera (og.OrbitCamera), og.followCamera (og.FollowCamera) and og.follow2D (og.Follow2D). Each moves og.Camera only while an entity carries its component. List them before the game's systems that read og.Camera: `systems: [...og.systems.cameras, ...yours]`."
+          "doc": "The camera controllers, in order: og.orbitCamera, og.followCamera, og.follow2D and og.framingCamera, one per component of the name. Each moves og.Camera only while an entity carries its component. List them before the game's systems that read og.Camera: `systems: [...og.systems.cameras, ...yours]`."
         },
         {
           "name": "combat",
@@ -22539,6 +22540,60 @@
           },
           "x-og-unit": "m",
           "x-og-worldspace": "world"
+        }
+      },
+      "additionalProperties": false
+    },
+    "FramingCamera": {
+      "x-og-kind": "component",
+      "x-og-module": "camera",
+      "description": "Frames the entity carrying it with og.Camera by beats, as a shot list states them: per beat the subject's height as a fraction of the frame's, where its centre sits, and the view's yaw and pitch. It solves the camera's distance and place from og.Camera's fov and the play surface's aspect, easing between beats (smoothstep); before the first the first holds, after the last the last. Perspective only. Driven by og.systems.cameras; the first entity carrying one, in query order, drives the camera.\nSee `camera §5`.",
+      "type": "object",
+      "properties": {
+        "height": {
+          "type": "number",
+          "description": "The subject's height, the length a beat's screen height measures (a character's standing height); 0 frames nothing.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "m",
+          "x-og-tunable": true
+        },
+        "centre": {
+          "$ref": "#/$defs/Vector3",
+          "description": "The point a beat's x and y place, relative to the entity's position, in world axes: the centre of the subject's box, such as half its height up for a character standing on its origin.",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "x-og-unit": "m",
+          "x-og-worldspace": "none"
+        },
+        "beats": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "maxItems": 96,
+          "description": "Up to 16 beats in rising time, six numbers each: time (on `time`'s clock), screen height (above 0), x and y (the centre's place, fractions of the frame from its top left), yaw (degrees about +Y from +Z towards +X, eased as written) and pitch (degrees above the horizon). Empty frames nothing.",
+          "default": []
+        },
+        "ticks": {
+          "type": "boolean",
+          "description": "Beat times count ticks instead of seconds.",
+          "default": false
+        },
+        "time": {
+          "type": "number",
+          "description": "The clock the beats are read on: a tick frames the time it holds, then advances it by `speed` seconds (ticks with `ticks`), so the first tick after adding the component frames time 0. A game may set it, such as to the second of a clip a state stands for.",
+          "default": 0,
+          "x-og-tunable": true
+        },
+        "speed": {
+          "type": "number",
+          "description": "How fast `time` advances: 1 in step with the world's time, 0 holds it for the game to set.",
+          "default": 1,
+          "x-og-tunable": true
         }
       },
       "additionalProperties": false

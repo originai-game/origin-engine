@@ -4,19 +4,19 @@
 
 The main camera, as a resource with three.js PerspectiveCamera and OrthographicCamera parameter names.
 
-Camera controllers are components (OrbitCamera, FollowCamera, Follow2D) on the entity the camera orbits or follows; the systems that drive them ship in TypeScript as og.systems.cameras.
+Camera controllers are components (OrbitCamera, FollowCamera, Follow2D, FramingCamera) on the entity the camera orbits, follows or frames; the systems that drive them ship in TypeScript as og.systems.cameras.
 
 See `camera`.
 
 - **TypeScript**: functions are the namespace `og.camera`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
-- **Core** (what most games use): `og.Camera`, `og.Follow2D`, `og.camera.shake`; 9 more are advanced (`og api show camera --all`).
+- **Core** (what most games use): `og.Camera`, `og.Follow2D`, `og.camera.shake`; 10 more are advanced (`og api show camera --all`).
 - **Index**: [every module and guide](index.md).
 
 ```ogt
 module camera {
   doc "The main camera, as a resource with three.js PerspectiveCamera and OrthographicCamera parameter names."
-  doc "Camera controllers are components (OrbitCamera, FollowCamera, Follow2D) on the entity the camera orbits or follows; the systems that drive them ship in TypeScript as og.systems.cameras."
+  doc "Camera controllers are components (OrbitCamera, FollowCamera, Follow2D, FramingCamera) on the entity the camera orbits, follows or frames; the systems that drive them ship in TypeScript as og.systems.cameras."
   # declarations follow, each on its own page
 ```
 
@@ -30,6 +30,7 @@ module camera {
 | [`og.OrbitCamera`](camera/record-OrbitCamera.md) | component |  | Orbits og.Camera around the entity carrying it, as three.js OrbitControls: a left-button drag on the play surface turns it, the wheel zooms, autoRotate turns it on its own. |
 | [`og.FollowCamera`](camera/record-FollowCamera.md) | component |  | Chases the entity carrying it with og.Camera: a third-person 3D view that eases towards a point offset from the entity and looks at it. |
 | [`og.Follow2D`](camera/record-Follow2D.md) | component |  | Keeps og.Camera on the entity carrying it in the xy plane, for 2D games: the camera moves only when the entity leaves the dead zone, eases by smoothTime (smoothTimeY for y when set) and, with clamp, … |
+| [`og.FramingCamera`](camera/record-FramingCamera.md) | component |  | Frames the entity carrying it with og.Camera by beats, as a shot list states them: per beat the subject's height as a fraction of the frame's, where its centre sits, and the view's yaw and pitch. |
 | [`og.CameraZone`](camera/record-CameraZone.md) | component |  | A rectangle of the xy plane (min to max, world units, not moved by the entity's Transform) that keeps a 2D view inside it while the entity followed by og.Follow2D is in it: rooms, arenas, a level's b… |
 | [`og.CameraRail`](camera/record-CameraRail.md) | component |  | Moves og.Camera along a spline through p0 to p(points - 1) (Catmull-Rom, through every point) to the point nearest the entity carrying it, easing by smoothTime: a corridor, a side-scroller's track, a… |
 | [`og.VirtualCamera`](camera/record-VirtualCamera.md) | component |  | A shot og.Camera can take, as Cinemachine's virtual cameras: a position, what it looks at, a field of view, roll and focus. |

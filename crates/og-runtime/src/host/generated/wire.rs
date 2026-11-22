@@ -27479,6 +27479,47 @@ pub mod record {
         }
     }
 
+    /// `FramingCamera`: packages/knowledge/wiki/camera.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct FramingCamera {
+        pub height: f32,
+        pub centre: Vec3,
+        pub beats: Vec<f32>,
+        pub ticks: bool,
+        pub time: f32,
+        pub speed: f32,
+    }
+
+    impl Default for FramingCamera {
+        fn default() -> Self {
+            Self {
+                height: Default::default(),
+                centre: Default::default(),
+                beats: Default::default(),
+                ticks: Default::default(),
+                time: Default::default(),
+                speed: 1.0_f32,
+            }
+        }
+    }
+
+    impl FromJson for FramingCamera {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                height: field(o, "height", d.height)?,
+                centre: field(o, "centre", d.centre)?,
+                beats: field(o, "beats", d.beats)?,
+                ticks: field(o, "ticks", d.ticks)?,
+                time: field(o, "time", d.time)?,
+                speed: field(o, "speed", d.speed)?,
+            })
+        }
+    }
+
     /// `CameraZone`: packages/knowledge/wiki/camera.md.
     #[derive(Clone, Debug, PartialEq)]
     pub struct CameraZone {

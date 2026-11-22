@@ -23,7 +23,7 @@ module systems {
 
 | Name | Kind | Signature | Summary |
 |---|---|---|---|
-| [`og.systems.cameras`](#value-cameras) | value |  | The camera controllers, in order: og.orbitCamera (og.OrbitCamera), og.followCamera (og.FollowCamera) and og.follow2D (og.Follow2D). |
+| [`og.systems.cameras`](#value-cameras) | value |  | The camera controllers, in order: og.orbitCamera, og.followCamera, og.follow2D and og.framingCamera, one per component of the name. |
 | [`og.systems.combat`](#value-combat) | value |  | The combat systems, in order: og.combatIndex (lists every og.Attack) and og.combat (last tick's hits as damage, then each og.Attack's move, links and hit volumes). |
 | [`og.systems.interact`](#value-interact) | value |  | The interaction systems, in order: og.interactors, og.toggles and og.doors (list each kind) and og.interact (each interactor's focus, hold and use, then plates, then doors and their links). |
 | [`og.systems.inventory`](#value-inventory) | value |  | The inventory systems, in order: og.containers and og.pickups (list each kind) and og.inventory (places each container's missing slots, then each og.Pickup into the og.Collector inside its sensor). |
@@ -37,14 +37,14 @@ Provided by the TypeScript runtime: no binding symbol.
 
 ### `og.systems.cameras`
 
-The camera controllers, in order: og.orbitCamera (og.OrbitCamera), og.followCamera (og.FollowCamera) and og.follow2D (og.Follow2D). Each moves og.Camera only while an entity carries its component. List them before the game's systems that read og.Camera: `systems: [...og.systems.cameras, ...yours]`.
+The camera controllers, in order: og.orbitCamera, og.followCamera, og.follow2D and og.framingCamera, one per component of the name. Each moves og.Camera only while an entity carries its component. List them before the game's systems that read og.Camera: `systems: [...og.systems.cameras, ...yours]`.
 
 ```ts
 const cameras: readonly System[]
 ```
 
 ```ogt
-value cameras List.System "The camera controllers, in order: og.orbitCamera (og.OrbitCamera), og.followCamera (og.FollowCamera) and og.follow2D (og.Follow2D). Each moves og.Camera only while an entity carries its component. List them before the game's systems that read og.Camera: `systems: [...og.systems.cameras, ...yours]`."
+value cameras List.System "The camera controllers, in order: og.orbitCamera, og.followCamera, og.follow2D and og.framingCamera, one per component of the name. Each moves og.Camera only while an entity carries its component. List them before the game's systems that read og.Camera: `systems: [...og.systems.cameras, ...yours]`."
 ```
 
 <sub>Module `systems` line 5</sub>

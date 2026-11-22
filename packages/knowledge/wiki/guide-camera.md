@@ -16,6 +16,7 @@ The API: `og api show camera`. Cutscene shots on a timeline are in
 | a model viewer, a board, an editor-like scene | og.OrbitCamera | three.js OrbitControls: drag turns, the wheel zooms, autoRotate |
 | a quick third-person chase | og.FollowCamera | eases to an offset and looks at the entity; a vcam with `follow` and `collide` replaces it |
 | a 2D game | og.Follow2D, og.CameraZone, og.CameraRail | dead zone, look-ahead, rooms and tracks |
+| a shot list or a reference clip's framing | og.FramingCamera | the subject's screen height, place, yaw and pitch per beat; distance solved at any fov and aspect (§5) |
 
 The controllers are game-level systems the engine ships in TypeScript; list
 them first:
@@ -127,7 +128,93 @@ tick.
   shake off.
 
 <a id="guide-camera-5"></a>
-### `camera §5` Pitfalls
+### `camera §5` Framing a subject by beats
+
+og.FramingCamera frames one subject the way a shot list or a reference
+clip states it. At each beat it takes the subject's height as a fraction of
+the frame's, where its centre sits in the frame, and the view's yaw and
+pitch. It solves the camera's distance and place from og.Camera's `fov`
+and the play surface's aspect, so a table measured on a 16:9 clip frames
+the same on a phone or at another field of view. Nothing is placed by eye.
+
+- Copy the shot list into `beats` row for row: time, screen height, x, y,
+  yaw and pitch, six numbers a beat, at most 16 beats. x and y are
+  fractions of the frame from its top left, as an image editor measures
+  them. Yaw is in degrees about +Y from +Z towards +X; pitch is degrees
+  above the horizon.
+- Give `height`, the length the screen height measures (a character's
+  standing height), and `centre`, the point x and y place, relative to
+  the entity's position: half the height up for a character standing on
+  its origin.
+- Between beats every number eases (smoothstep). The screen height eases
+  through its reciprocal, so the distance changes evenly. Yaw eases as
+  written: -90 to -160 turns 70 degrees, and to go the short way round
+  you write the short way.
+- The clock is `time`: each tick frames the time it holds, then adds
+  `speed` seconds, or ticks with `ticks`. A game whose shot follows its
+  own states sets `time` itself (such as `SWING_AT + t` during a swing)
+  with `speed` 0.
+- The screen height is measured at the subject's centre. A subject seen
+  from well above or below spans a little more or less than h from its
+  top to its feet.
+- Use a perspective og.Camera. Keep pitch inside ±90 degrees.
+
+```ts recipe ticks=130
+import { defineSystem, og } from "@origingame/engine";
+import type { Result, Vector3, World } from "@origingame/engine";
+
+function must<T>(r: Result<T>): T {
+  if (!r.ok) throw new Error(r.reason);
+  return r.value;
+}
+
+const HEIGHT = 1.8;
+// The shot list, one row a beat: tick, screen height, x, y, yaw (deg), pitch (deg).
+const BEATS = [
+  0, 0.7, 0.5, 0.45, 0, 0,
+  60, 0.3, 0.33, 0.6, -90, 12,
+  120, 0.5, 0.66, 0.4, -180, 0,
+];
+
+// He runs along +Z; the camera frames him wherever he is.
+const Run = defineSystem("Run", { reads: [], writes: [og.Transform] }, (_q, time, world) => {
+  const hero = world.find("hero")!;
+  const t = must(world.get(hero, og.Transform));
+  must(world.set(hero, og.Transform, { ...t, position: { ...t.position, z: t.position.z + 4 * time.dt } }));
+});
+
+// On each beat's tick, project him and compare with the row.
+const Check = defineSystem("Check", { reads: [og.Camera, og.Transform, og.FramingCamera], writes: [] }, (_q, _time, world: World) => {
+  const hero = world.find("hero")!;
+  // The clock has moved on past the tick this frame was read at.
+  const at = must(world.get(hero, og.FramingCamera)).time - 1;
+  const row = BEATS.findIndex((v, i) => i % 6 === 0 && v === at);
+  if (row < 0) return;
+  const [, h, x, y, , pitch] = BEATS.slice(row, row + 6) as [number, number, number, number, number, number];
+  const camera = must(world.resource(og.Camera));
+  const view = og.ui.viewport(world);
+  const p = must(world.get(hero, og.Transform)).position;
+  const screen = (v: Vector3) => camera.worldToScreen(v)!;
+  const centre = screen({ x: p.x, y: p.y + HEIGHT / 2, z: p.z });
+  og.assert.always(Math.abs(centre.x / view.width - x) < 0.002 && Math.abs(centre.y / view.height - y) < 0.002, "his centre sits where the row says", { at, centre });
+  if (pitch === 0) {
+    const span = (screen(p).y - screen({ x: p.x, y: p.y + HEIGHT, z: p.z }).y) / view.height;
+    og.assert.always(Math.abs(span - h) < 0.01, "level, he is the row's height of the frame", { at, span });
+  }
+  if (row === 12) og.assert.reachable("the last beat was framed", {});
+});
+
+export default og.game({
+  systems: [Run, ...og.systems.cameras, Check],
+  start(world) {
+    const hero = must(world.spawn({ name: "hero" }));
+    must(world.insert(hero, og.FramingCamera, { height: HEIGHT, centre: { x: 0, y: HEIGHT / 2, z: 0 }, beats: BEATS, ticks: true }));
+  },
+});
+```
+
+<a id="guide-camera-6"></a>
+### `camera §6` Pitfalls
 
 - Two drivers fighting: a vcam and an og.FollowCamera, or two follow
   controllers on two entities. The view jitters or ignores one; keep one.

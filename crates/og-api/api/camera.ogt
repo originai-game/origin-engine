@@ -1,6 +1,6 @@
 module camera {
   doc "The main camera, as a resource with three.js PerspectiveCamera and OrthographicCamera parameter names."
-  doc "Camera controllers are components (OrbitCamera, FollowCamera, Follow2D) on the entity the camera orbits or follows; the systems that drive them ship in TypeScript as og.systems.cameras."
+  doc "Camera controllers are components (OrbitCamera, FollowCamera, Follow2D, FramingCamera) on the entity the camera orbits, follows or frames; the systems that drive them ship in TypeScript as og.systems.cameras."
   guide "camera"
   core Camera Follow2D shake
 
@@ -303,6 +303,30 @@ module camera {
     field boundsMax Vector2 "The largest x and y the camera centre takes with clamp." {
       worldspace world
       unit m
+    }
+  }
+
+  component FramingCamera {
+    doc "Frames the entity carrying it with og.Camera by beats, as a shot list states them: per beat the subject's height as a fraction of the frame's, where its centre sits, and the view's yaw and pitch. It solves the camera's distance and place from og.Camera's fov and the play surface's aspect, easing between beats (smoothstep); before the first the first holds, after the last the last. Perspective only. Driven by og.systems.cameras; the first entity carrying one, in query order, drives the camera."
+    guide "camera §5"
+    aliases "framing camera, shot list, composition, rule of thirds, Cinemachine framing transposer, screen position"
+    field height f32 "The subject's height, the length a beat's screen height measures (a character's standing height); 0 frames nothing." {
+      min 0
+      unit m
+      tunable true
+    }
+    field centre Vector3 "The point a beat's x and y place, relative to the entity's position, in world axes: the centre of the subject's box, such as half its height up for a character standing on its origin." {
+      worldspace none
+      unit m
+    }
+    field beats List.f32.96 "Up to 16 beats in rising time, six numbers each: time (on `time`'s clock), screen height (above 0), x and y (the centre's place, fractions of the frame from its top left), yaw (degrees about +Y from +Z towards +X, eased as written) and pitch (degrees above the horizon). Empty frames nothing."
+    field ticks bool "Beat times count ticks instead of seconds."
+    field time f32 "The clock the beats are read on: a tick frames the time it holds, then advances it by `speed` seconds (ticks with `ticks`), so the first tick after adding the component frames time 0. A game may set it, such as to the second of a clip a state stands for." {
+      tunable true
+    }
+    field speed f32 "How fast `time` advances: 1 in step with the world's time, 0 holds it for the game to set." {
+      default 1
+      tunable true
     }
   }
 

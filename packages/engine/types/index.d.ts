@@ -4980,7 +4980,7 @@ export interface A11yAction {
 
 // ── camera ──────────────────────────────────────────────────────
 // The main camera, as a resource with three.js PerspectiveCamera and OrthographicCamera parameter names.
-// Camera controllers are components (OrbitCamera, FollowCamera, Follow2D) on the entity the camera orbits or follows; the systems that drive them ship in TypeScript as og.systems.cameras.
+// Camera controllers are components (OrbitCamera, FollowCamera, Follow2D, FramingCamera) on the entity the camera orbits, follows or frames; the systems that drive them ship in TypeScript as og.systems.cameras.
 // See `camera`.
 
 /**
@@ -5465,6 +5465,51 @@ export interface Follow2D {
    * @worldspace world (how og.WorldOrigin's shift moves it)
    */
   boundsMax: Vector2;
+}
+
+/**
+ * Frames the entity carrying it with og.Camera by beats, as a shot list states them: per beat the subject's height as a fraction of the frame's, where its centre sits, and the view's yaw and pitch. It solves the camera's distance and place from og.Camera's fov and the play surface's aspect, easing between beats (smoothstep); before the first the first holds, after the last the last. Perspective only. Driven by og.systems.cameras; the first entity carrying one, in query order, drives the camera.
+ * See `camera §5`.
+ *
+ * The value of the `FramingCamera` component (token `og.FramingCamera`).
+ */
+export interface FramingCamera {
+  /**
+   * The subject's height, the length a beat's screen height measures (a character's standing height); 0 frames nothing.
+   *
+   * @range 0..
+   * @unit m (metres)
+   * @tunable
+   */
+  height: number;
+  /**
+   * The point a beat's x and y place, relative to the entity's position, in world axes: the centre of the subject's box, such as half its height up for a character standing on its origin.
+   *
+   * @unit m (metres)
+   * @worldspace none (how og.WorldOrigin's shift moves it)
+   */
+  centre: Vector3;
+  /**
+   * Up to 16 beats in rising time, six numbers each: time (on `time`'s clock), screen height (above 0), x and y (the centre's place, fractions of the frame from its top left), yaw (degrees about +Y from +Z towards +X, eased as written) and pitch (degrees above the horizon). Empty frames nothing.
+   *
+   * @capacity 96 elements (List.f32.96): reading answers a frozen copy (push throws); write a whole array, refused over the capacity, never truncated
+   */
+  beats: readonly number[];
+  /** Beat times count ticks instead of seconds. */
+  ticks: boolean;
+  /**
+   * The clock the beats are read on: a tick frames the time it holds, then advances it by `speed` seconds (ticks with `ticks`), so the first tick after adding the component frames time 0. A game may set it, such as to the second of a clip a state stands for.
+   *
+   * @tunable
+   */
+  time: number;
+  /**
+   * How fast `time` advances: 1 in step with the world's time, 0 holds it for the game to set.
+   *
+   * @default 1
+   * @tunable
+   */
+  speed: number;
 }
 
 /**
@@ -35353,6 +35398,11 @@ export declare namespace og {
    */
   const Follow2D: ComponentType<{ readonly offset: FieldSpec<"Vector2">; readonly deadZone: FieldSpec<"Vector2">; readonly smoothTime: FieldSpec<"f32">; readonly smoothTimeY: FieldSpec<"f32">; readonly lookAhead: FieldSpec<"f32">; readonly lookAheadMax: FieldSpec<"Vector2">; readonly lookAheadSmoothing: FieldSpec<"f32">; readonly lead: FieldSpec<"Vector2">; readonly last: FieldSpec<"Vector2">; readonly clamp: FieldSpec<"bool">; readonly boundsMin: FieldSpec<"Vector2">; readonly boundsMax: FieldSpec<"Vector2"> }, Follow2D>;
   /**
+   * Frames the entity carrying it with og.Camera by beats, as a shot list states them: per beat the subject's height as a fraction of the frame's, where its centre sits, and the view's yaw and pitch. It solves the camera's distance and place from og.Camera's fov and the play surface's aspect, easing between beats (smoothstep); before the first the first holds, after the last the last. Perspective only. Driven by og.systems.cameras; the first entity carrying one, in query order, drives the camera.
+   * See `camera §5`.
+   */
+  const FramingCamera: ComponentType<{ readonly height: FieldSpec<"f32">; readonly centre: FieldSpec<"Vector3">; readonly beats: ListSpec<"f32">; readonly ticks: FieldSpec<"bool">; readonly time: FieldSpec<"f32">; readonly speed: FieldSpec<"f32"> }, FramingCamera>;
+  /**
    * A rectangle of the xy plane (min to max, world units, not moved by the entity's Transform) that keeps a 2D view inside it while the entity followed by og.Follow2D is in it: rooms, arenas, a level's bounds. Of overlapping zones the highest priority wins, then the first in query order. The engine's og.camera system picks the zone after the game's systems (into og.Camera's zone fields); entering another zone scrolls the view across over the new zone's scrollTime, or jumps when it is 0. A zone smaller than the view centres it.
    */
   const CameraZone: ComponentType<{ readonly min: FieldSpec<"Vector2">; readonly max: FieldSpec<"Vector2">; readonly priority: FieldSpec<"i32">; readonly scrollTime: FieldSpec<"f32"> }, CameraZone>;
@@ -35376,7 +35426,7 @@ export declare namespace og {
   const CameraCut: EventType<CameraCut>;
   /**
    * The main camera, as a resource with three.js PerspectiveCamera and OrthographicCamera parameter names.
-   * Camera controllers are components (OrbitCamera, FollowCamera, Follow2D) on the entity the camera orbits or follows; the systems that drive them ship in TypeScript as og.systems.cameras.
+   * Camera controllers are components (OrbitCamera, FollowCamera, Follow2D, FramingCamera) on the entity the camera orbits, follows or frames; the systems that drive them ship in TypeScript as og.systems.cameras.
    * See `camera`.
    */
   namespace camera {
@@ -38447,7 +38497,7 @@ export declare namespace og {
    */
   namespace systems {
     /**
-     * The camera controllers, in order: og.orbitCamera (og.OrbitCamera), og.followCamera (og.FollowCamera) and og.follow2D (og.Follow2D). Each moves og.Camera only while an entity carries its component. List them before the game's systems that read og.Camera: `systems: [...og.systems.cameras, ...yours]`.
+     * The camera controllers, in order: og.orbitCamera, og.followCamera, og.follow2D and og.framingCamera, one per component of the name. Each moves og.Camera only while an entity carries its component. List them before the game's systems that read og.Camera: `systems: [...og.systems.cameras, ...yours]`.
      */
     const cameras: readonly System[];
     /**
