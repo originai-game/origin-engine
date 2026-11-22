@@ -176,6 +176,14 @@ and is verified once on the GPU host. Open work is collected on PR #40.
 - UI blending into a linear target: the UI blends into the 8-bit sRGB
   output, so two equal paths can differ by 2 on NVIDIA; a linear target
   moves frames on every tier and is decided with the art review.
+- Grass as per-level instanced vertex buffers: since compatibility mode's
+  vertex-stage storage moved to data textures (3584355e0), the grass's
+  blades and the terrain's corners are texture fetches in the vertex
+  stage, and terrain-grass's GPU frame on the L4 is 0.6 ms slower (9.13–9.21
+  → 9.74–9.78 ms; cascade.0 1.09 → 1.27, cascade.1 1.10 → 1.24, prepass
+  1.94 → 2.01 ms, the other passes flat). Each level's blades as an
+  instance-rate vertex buffer recovers it on every tier with one path;
+  it needs `first_instance` in indirect draws or fixed per-level regions.
 
 ## Decided
 
