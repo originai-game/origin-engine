@@ -365,6 +365,49 @@ fn declarations(css: &str) -> impl Iterator<Item = (&str, &str)> {
     })
 }
 
+/// What an inline `style` declaration's property does here
+/// ([`style_property`]).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum StyleProperty {
+    /// NSH reads it and the tree draws or lays it out.
+    Drawn,
+    /// NSH reads it into a field the tree does not draw (the reason).
+    NotDrawn(&'static str),
+    /// No NSH style property has the name: the declaration is skipped.
+    Unknown,
+}
+
+/// The style properties NSH reads into a field this tree does not draw,
+/// with why: each is a field `every_nsh_style_field_is_read_or_named_not_drawn`
+/// names as not drawn.
+const NOT_DRAWN: [(&str, &str); 11] = [
+    ("glassEffect", "a platform material"),
+    ("glassTintColor", "a platform material"),
+    ("tintColor", "a native image's tint"),
+    ("backfaceVisibility", "3D: the tree draws 2D transforms"),
+    ("mixBlendMode", "blend modes are not drawn yet"),
+    ("accentColor", "an accent colour is not drawn yet"),
+    ("direction", "the tree takes the page's direction"),
+    ("writingDirection", "the tree takes the page's direction"),
+    ("textAlignVertical", "vertical alignment inside a text"),
+    ("verticalAlign", "the tree lays out no inline boxes"),
+    ("strokeDasharray", "a line's dashes are not drawn"),
+];
+
+/// What the inline style property `name` does, by the name the renderer's
+/// `setStyle` sends it under (`background-color`, or `--…`). A custom
+/// property (`--x`) is not a style property NSH reads.
+pub fn style_property(name: &str) -> StyleProperty {
+    let key = camel(name.trim());
+    if nsh_tailwind::style::StyleKey::parse(&key).is_none() {
+        return StyleProperty::Unknown;
+    }
+    match NOT_DRAWN.iter().find(|(k, _)| *k == key) {
+        Some((_, why)) => StyleProperty::NotDrawn(why),
+        None => StyleProperty::Drawn,
+    }
+}
+
 /// A CSS property name in React Native's camel case (`border-top-width`
 /// is `borderTopWidth`), the names NSH's declarations take.
 fn camel(name: &str) -> String {
@@ -1168,6 +1211,22 @@ mod tests {
             Vec::<String>::new()
         );
         assert_eq!(c.unknown("grid-cols-fill-x"), ["grid-cols-fill-x"]);
+    }
+
+    #[test]
+    fn an_inline_style_property_is_drawn_not_drawn_or_unknown() {
+        assert_eq!(style_property("background-color"), StyleProperty::Drawn);
+        assert_eq!(style_property("width"), StyleProperty::Drawn);
+        // No NSH key: `background` is CSS's shorthand, which NSH has not.
+        assert_eq!(style_property("background"), StyleProperty::Unknown);
+        assert!(matches!(
+            style_property("mix-blend-mode"),
+            StyleProperty::NotDrawn(_)
+        ));
+        // Each not-drawn name is one NSH reads: a rename there fails here.
+        for (key, _) in NOT_DRAWN {
+            assert!(nsh_tailwind::style::StyleKey::parse(key).is_some(), "{key}");
+        }
     }
 
     #[test]

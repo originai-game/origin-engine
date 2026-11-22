@@ -1557,9 +1557,11 @@ pub fn run(args: &[&str]) -> ExitCode {
         ];
         ui_grounds_lint(&p.root, &dirs, Some(&game), json);
         crate::ui_data::lint(&p.root, &dirs, json);
+        crate::ui_styles::lint(&p.root, &dirs, json);
     } else {
         ui_grounds_lint(&target.root, &[&target.root], None, json);
         crate::ui_data::lint(&target.root, &[&target.root], json);
+        crate::ui_styles::lint(&target.root, &[&target.root], json);
     }
     if report.ok() {
         ExitCode::SUCCESS
