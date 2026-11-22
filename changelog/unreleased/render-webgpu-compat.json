@@ -11,6 +11,6 @@
     }
   ],
   "fixed": [
-    "The renderer's shaders keep WebGPU compatibility mode's rules on every tier, so a compatibility adapter no longer refuses them: flat inter-stage values take either vertex, compute workgroups have at most 128 invocations, depth is read as an unfilterable float texture, the screen-space reflections' depth pyramid and FSR's dilated motion are stored as rgba32float, and the sea's foam passes write textures of their own. Frames look the same."
+    "The renderer's shaders keep WebGPU compatibility mode's rules on every tier, so a compatibility adapter no longer refuses them: flat inter-stage values take either vertex, compute workgroups (og.motion's included) have at most 128 invocations, depth is read as an unfilterable float texture, the screen-space reflections' depth pyramid and FSR's dilated motion are stored as rgba32float, and the sea's foam passes write textures of their own. Frames look the same."
   ]
 }

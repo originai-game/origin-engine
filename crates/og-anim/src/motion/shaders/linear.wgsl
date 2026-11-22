@@ -1,5 +1,5 @@
 // y[r,o] = b[o] + Σk x[r,k]·w[o,k] (PyTorch Linear layout). 64×64 output
-// tiles, 16 deep; each of the 256 invocations computes 4×4 outputs.
+// tiles, 16 deep; each of the 128 invocations computes 8×4 outputs.
 // flags: 1 relu, 2 accumulate into y (residual).
 struct Params { rows: u32, k: u32, out: u32, flags: u32, pad0: u32, pad1: u32, pad2: u32, pad3: u32 }
 @group(0) @binding(0) var<uniform> p: Params;
@@ -12,15 +12,15 @@ struct Params { rows: u32, k: u32, out: u32, flags: u32, pad0: u32, pad1: u32, p
 var<workgroup> xs: array<f32, 1024>;
 var<workgroup> ws: array<f32, 1024>;
 
-@compute @workgroup_size(16, 16)
+@compute @workgroup_size(16, 8)
 fn main(@builtin(workgroup_id) wg: vec3u, @builtin(local_invocation_id) l: vec3u, @builtin(local_invocation_index) li: u32) {
     let row0 = wg.y * 64u;
     let out0 = wg.x * 64u;
-    var acc: array<f32, 16>;
+    var acc: array<f32, 32>;
     let tiles = (p.k + 15u) / 16u;
     for (var t = 0u; t < tiles; t++) {
-        for (var e = 0u; e < 4u; e++) {
-            let idx = li + e * 256u;
+        for (var e = 0u; e < 8u; e++) {
+            let idx = li + e * 128u;
             let r = idx / 16u;
             let k = t * 16u + idx % 16u;
             var xv = 0.0;
@@ -32,19 +32,19 @@ fn main(@builtin(workgroup_id) wg: vec3u, @builtin(local_invocation_id) l: vec3u
         }
         workgroupBarrier();
         for (var k = 0u; k < 16u; k++) {
-            let a = vec4f(xs[k * 64u + l.y * 4u], xs[k * 64u + l.y * 4u + 1u], xs[k * 64u + l.y * 4u + 2u], xs[k * 64u + l.y * 4u + 3u]);
             let c = vec4f(ws[k * 64u + l.x * 4u], ws[k * 64u + l.x * 4u + 1u], ws[k * 64u + l.x * 4u + 2u], ws[k * 64u + l.x * 4u + 3u]);
-            for (var i = 0u; i < 4u; i++) {
-                acc[i * 4u] += a[i] * c.x;
-                acc[i * 4u + 1u] += a[i] * c.y;
-                acc[i * 4u + 2u] += a[i] * c.z;
-                acc[i * 4u + 3u] += a[i] * c.w;
+            for (var i = 0u; i < 8u; i++) {
+                let a = xs[k * 64u + l.y * 8u + i];
+                acc[i * 4u] += a * c.x;
+                acc[i * 4u + 1u] += a * c.y;
+                acc[i * 4u + 2u] += a * c.z;
+                acc[i * 4u + 3u] += a * c.w;
             }
         }
         workgroupBarrier();
     }
-    for (var i = 0u; i < 4u; i++) {
-        let row = row0 + l.y * 4u + i;
+    for (var i = 0u; i < 8u; i++) {
+        let row = row0 + l.y * 8u + i;
         for (var j = 0u; j < 4u; j++) {
             let o = out0 + l.x * 4u + j;
             if (row < p.rows && o < p.out) {

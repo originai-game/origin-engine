@@ -12,9 +12,9 @@ struct Params { n: u32, width: u32, length: u32, pad1: u32, pad2: u32, pad3: u32
 @group(0) @binding(6) var<storage, read> queries: array<f32>;
 @group(0) @binding(7) var<storage, read_write> seq: array<f32>;
 
-@compute @workgroup_size(256)
+@compute @workgroup_size(128)
 fn main(@builtin(workgroup_id) wg: vec3u, @builtin(num_workgroups) groups: vec3u, @builtin(local_invocation_index) l: u32) {
-    let id = (wg.y * groups.x + wg.x) * 256u + l;
+    let id = (wg.y * groups.x + wg.x) * 128u + l;
     if (id >= p.n * p.length * p.width) { return; }
     let c = id % p.width;
     var r = (id / p.width) % p.length;

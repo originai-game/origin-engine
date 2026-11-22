@@ -1,4 +1,4 @@
-// linear.wgsl for few rows: 16×16 output tiles, one output per invocation,
+// linear.wgsl for few rows: 16×16 output tiles, two rows per invocation (l.y and l.y + 8),
 // so a short sequence still spreads over many workgroups; 64 deep per
 // barrier, since with few rows the chain of k tiles is the latency.
 // flags: 1 relu, 2 accumulate into y (residual).
@@ -13,15 +13,15 @@ struct Params { rows: u32, k: u32, out: u32, flags: u32, pad0: u32, pad1: u32, p
 var<workgroup> xs: array<f32, 1024>;
 var<workgroup> ws: array<f32, 1024>;
 
-@compute @workgroup_size(16, 16)
+@compute @workgroup_size(16, 8)
 fn main(@builtin(workgroup_id) wg: vec3u, @builtin(local_invocation_id) l: vec3u, @builtin(local_invocation_index) li: u32) {
     let row0 = wg.y * 16u;
     let out0 = wg.x * 16u;
-    var acc = 0.0;
+    var acc = vec2f(0.0);
     let tiles = (p.k + 63u) / 64u;
     for (var t = 0u; t < tiles; t++) {
-        for (var e = 0u; e < 4u; e++) {
-            let idx = li + e * 256u;
+        for (var e = 0u; e < 8u; e++) {
+            let idx = li + e * 128u;
             let r = idx / 64u;
             let k = t * 64u + idx % 64u;
             var xv = 0.0;
@@ -33,17 +33,20 @@ fn main(@builtin(workgroup_id) wg: vec3u, @builtin(local_invocation_id) l: vec3u
         }
         workgroupBarrier();
         for (var i = 0u; i < 64u; i++) {
-            acc += xs[l.y * 64u + i] * ws[l.x * 64u + i];
+            let wv = ws[l.x * 64u + i];
+            acc += vec2f(xs[l.y * 64u + i], xs[(l.y + 8u) * 64u + i]) * wv;
         }
         workgroupBarrier();
     }
-    let row = row0 + l.y;
     let o = out0 + l.x;
-    if (row < p.rows && o < p.out) {
-        var v = acc + b[o];
-        if ((p.flags & 1u) != 0u) { v = max(v, 0.0); }
-        let at = row * p.out + o;
-        if ((p.flags & 2u) != 0u) { v += y[at]; }
-        y[at] = v;
+    for (var i = 0u; i < 2u; i++) {
+        let row = row0 + l.y + i * 8u;
+        if (row < p.rows && o < p.out) {
+            var v = acc[i] + b[o];
+            if ((p.flags & 1u) != 0u) { v = max(v, 0.0); }
+            let at = row * p.out + o;
+            if ((p.flags & 2u) != 0u) { v += y[at]; }
+            y[at] = v;
+        }
     }
 }

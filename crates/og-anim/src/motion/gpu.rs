@@ -361,7 +361,7 @@ impl Recorder<'_> {
             Kernel::Transpose,
             [n as u32, a as u32, b as u32, 0, 0, 0, 0, 0],
             &[x, out],
-            groups_for(n * a * b, 256),
+            groups_for(n * a * b, 128),
         );
     }
 
@@ -968,7 +968,7 @@ impl Gpu {
                     &w["student.queries"],
                     &x,
                 ],
-                groups_for(rows * width, 256),
+                groups_for(rows * width, 128),
             );
             let mask = if pass == 0 {
                 &self.mask_count
@@ -1155,7 +1155,7 @@ impl Gpu {
                     0,
                 ],
                 &[&h, &ht, &has, &external, &fused],
-                groups_for(n * positions * (width + 2 * per), 256),
+                groups_for(n * positions * (width + 2 * per), 128),
             );
             r.linear(
                 &fused,

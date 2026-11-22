@@ -26,6 +26,14 @@ fn every_kernel_validates_and_translates() {
                     continue;
                 }
             };
+        // og.motion runs on the renderer's device, which at the WebGPU
+        // compatibility tier allows 128 invocations per workgroup.
+        for ep in &module.entry_points {
+            let [x, y, z] = ep.workgroup_size;
+            if x * y * z > 128 {
+                failures.push(format!("{name}: {} has {x}×{y}×{z} invocations", ep.name));
+            }
+        }
         let options = msl::Options {
             lang_version: (2, 4),
             ..Default::default()
