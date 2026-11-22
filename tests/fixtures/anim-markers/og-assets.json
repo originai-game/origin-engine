@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "assets/models/walker.glb",
+      "sha256": "e068aeca18b491e54b48ae8c264d208a414f9de455a571340bf55ef0c3d2face",
+      "size": 34296,
+      "visibility": "public"
+    }
+  ]
+}

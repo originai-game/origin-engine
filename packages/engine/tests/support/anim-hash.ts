@@ -4,7 +4,7 @@
 // system drives with p0, one with blendshape weights set by game code, and
 // an IK chain on its own entity. Advances --ticks and prints JSON for
 // anim.test.ts: the world hash, what the components were written, the
-// animation events a system read, and the refusals.
+// animation events a system read (with where they came from), and the refusals.
 //
 //   bun tests/support/anim-hash.ts --host node|web --project <the former test sample> [--ticks 300]
 
@@ -41,7 +41,7 @@ if (which === "node") {
   for (const o of listed) glue["og_web_put_file"]!(`${root}/cooked/${o.file}`, new Uint8Array(readFileSync(join(project, "cooked", o.file))));
 }
 
-const Tally = defineResource("AnTally", { events: u32(), switched: u32() });
+const Tally = defineResource("AnTally", { events: u32(), switched: u32(), dominant: u32(), states: u32() });
 const out: Record<string, unknown> = { host: which };
 let queryRig = 0 as Entity;
 let queryNode = 0;
@@ -58,8 +58,15 @@ const Drive = defineSystem("AnDrive", { writes: [og.AnimationGraph] }, (q, time)
 /** Counts the markers og.anim fired last tick. */
 const Count = defineSystem("AnCount", { reads: [og.AnimationEvent, og.Skeleton], writes: [Tally] }, (_q, _t, world) => {
   const t = world.resource(Tally);
-  const n = world.events(og.AnimationEvent).length;
-  if (t.ok && n) t.value.events += n;
+  const events = world.events(og.AnimationEvent);
+  if (t.ok && events.length) {
+    t.value.events += events.length;
+    // Where each came from, so both hosts are compared on it too.
+    for (const e of events) {
+      if (e.dominant) t.value.dominant += 1;
+      t.value.states += e.state + 2 * e.layer;
+    }
+  }
   const a = og.anim.getNodeMatrix(world, queryRig, queryNode);
   const b = og.anim.getNodeMatrix(world, queryRig, queryNode);
   if (!a.ok) throw new Error(a.reason);
@@ -169,4 +176,5 @@ const dynamic = w.set(w.find("lantern")!, og.RigidBody, { kind: "dynamic" });
 out.dynamicSocket = dynamic.ok ? null : dynamic.reason;
 const tally = w.resource(Tally);
 out.events = tally.ok ? tally.value.events : null;
+out.markerSources = tally.ok ? { dominant: tally.value.dominant, states: tally.value.states } : null;
 console.log(JSON.stringify(out));

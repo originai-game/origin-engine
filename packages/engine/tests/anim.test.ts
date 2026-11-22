@@ -65,6 +65,10 @@ test.skipIf(STALE_WASM)("og.anim poses the walker the same way on both hosts", (
   // Markers fire as og.AnimationEvent when the walker's clips carry them.
   const markers = node.animation.clips.reduce((n: number, c: { markers: string[] }) => n + c.markers.length, 0);
   if (markers > 0) expect(node.events).toBeGreaterThan(0);
+  // The graph's walk markers come from its second state, dominant past its fade.
+  if (markers > 0) expect(node.markerSources.dominant).toBeGreaterThan(0);
+  if (markers > 0) expect(node.markerSources.states).toBeGreaterThan(0);
+  expect(web.markerSources).toEqual(node.markerSources);
   // Refusals name the fix.
   expect(node.missingClip).toMatch(/no-such-clip/);
   expect(node.brokenGraph).toMatch(/line|nowhere/);

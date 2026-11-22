@@ -1,0 +1,7 @@
+cooked/
+.og/
+og-out/
+
+# og-assets: the files og-assets.json pins, installed by `bun scripts/assets.ts ensure` (written by the tool)
+/assets/models/walker.glb
+# og-assets end

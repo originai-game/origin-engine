@@ -1,0 +1,11 @@
+type project
+version 1
+---
+# A test fixture, not a template (tests/fixtures/README.md): where an
+# og.AnimationEvent came from in a cross-fade and a three-way blend.
+name "Animation markers"
+id "anim-markers"
+engine "0.9.0"
+entry "src/main.ts"
+tick 60
+seed 1
