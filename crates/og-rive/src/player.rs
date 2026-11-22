@@ -9,9 +9,9 @@ use og_draw::{
     UiBlend, UiGeometry, UiGradient, UiGradientKind, UiJoin, UiMode, UiPaint, UiPath, UiShape,
     UiSpread, UiStop, glam_vec2, kurbo_point,
 };
+use og_text::fonts::{Collection, FaceId};
 use og_ui_model::Affine;
 use og_ui_model::codec::{R, W};
-use og_text::fonts::{Collection, FaceId};
 use std::sync::Arc;
 
 /// What a playing artboard draws, bottom to top, in screen space.
@@ -685,86 +685,86 @@ fn draw_text(
         ]);
         for face in &piece.faces {
             for &p in paints {
-            let (shader, visible, stroke) = match &a.nodes[p as usize].kind {
-                Kind::Fill {
-                    shader, visible, ..
-                } => (*shader, *visible, None),
-                Kind::Stroke {
-                    shader, visible, ..
-                } => (*shader, *visible, Some(pose[p as usize].thickness)),
-                _ => continue,
-            };
-            if !visible {
-                continue;
-            }
-            let v = &pose[shader as usize];
-            let (color, gradient) = match &a.nodes[shader as usize].kind {
-                Kind::Solid => (linear(v.color, alpha), None),
-                Kind::Gradient { radial, stops } => {
-                    // The gradient's ends in the text's space, as fractions
-                    // of the whole text's box on screen.
-                    let fill_box = screen_box(laid.bounds);
-                    let size = Vec2::new(fill_box[2], fill_box[3]).max(Vec2::splat(1e-3));
-                    let lo = Vec2::new(fill_box[0], fill_box[1]);
-                    let frac = |q: Vec2| (map(q) - lo) / size;
-                    let mut st: Vec<UiStop> = stops
-                        .iter()
-                        .map(|s| UiStop {
-                            offset: pose[*s as usize].position,
-                            color: linear(pose[*s as usize].color, alpha * v.opacity),
-                        })
-                        .collect();
-                    st.sort_by(|x, y| x.offset.total_cmp(&y.offset));
-                    let to = if *radial {
-                        Vec2::splat((v.end - v.start).length() * unit) / size
-                    } else {
-                        frac(v.end)
-                    };
-                    (
-                        [1.0; 4],
-                        Some((
-                            UiGradient {
-                                kind: if *radial {
-                                    UiGradientKind::Radial
-                                } else {
-                                    UiGradientKind::Linear
-                                },
-                                from: frac(v.start),
-                                to,
-                                stops: st,
-                                spread: UiSpread::Pad,
-                                dither: true,
-                            },
-                            fill_box,
-                        )),
-                    )
+                let (shader, visible, stroke) = match &a.nodes[p as usize].kind {
+                    Kind::Fill {
+                        shader, visible, ..
+                    } => (*shader, *visible, None),
+                    Kind::Stroke {
+                        shader, visible, ..
+                    } => (*shader, *visible, Some(pose[p as usize].thickness)),
+                    _ => continue,
+                };
+                if !visible {
+                    continue;
                 }
-                _ => continue,
-            };
-            let (color, outline) = match stroke {
-                // A stroke draws its outline; the glyphs' fill stays clear.
-                Some(t) if t > 0.0 => ([color[0], color[1], color[2], 0.0], Some((t, color))),
-                Some(_) => continue,
-                None => (color, None),
-            };
-            emit(
-                Some(Drawn::Text(TextDraw {
-                    face: face.face,
-                    index: face.index,
-                    size: face.size,
-                    coords: face.coords.clone(),
-                    embolden: face.embolden,
-                    skew: face.skew,
-                    glyphs: face.glyphs.clone(),
-                    pen: map(*pen),
-                    transform: linear_map,
-                    color,
-                    gradient: if outline.is_some() { None } else { gradient },
-                    outline,
-                    bounds: line_box,
-                })),
-                None,
-            );
+                let v = &pose[shader as usize];
+                let (color, gradient) = match &a.nodes[shader as usize].kind {
+                    Kind::Solid => (linear(v.color, alpha), None),
+                    Kind::Gradient { radial, stops } => {
+                        // The gradient's ends in the text's space, as fractions
+                        // of the whole text's box on screen.
+                        let fill_box = screen_box(laid.bounds);
+                        let size = Vec2::new(fill_box[2], fill_box[3]).max(Vec2::splat(1e-3));
+                        let lo = Vec2::new(fill_box[0], fill_box[1]);
+                        let frac = |q: Vec2| (map(q) - lo) / size;
+                        let mut st: Vec<UiStop> = stops
+                            .iter()
+                            .map(|s| UiStop {
+                                offset: pose[*s as usize].position,
+                                color: linear(pose[*s as usize].color, alpha * v.opacity),
+                            })
+                            .collect();
+                        st.sort_by(|x, y| x.offset.total_cmp(&y.offset));
+                        let to = if *radial {
+                            Vec2::splat((v.end - v.start).length() * unit) / size
+                        } else {
+                            frac(v.end)
+                        };
+                        (
+                            [1.0; 4],
+                            Some((
+                                UiGradient {
+                                    kind: if *radial {
+                                        UiGradientKind::Radial
+                                    } else {
+                                        UiGradientKind::Linear
+                                    },
+                                    from: frac(v.start),
+                                    to,
+                                    stops: st,
+                                    spread: UiSpread::Pad,
+                                    dither: true,
+                                },
+                                fill_box,
+                            )),
+                        )
+                    }
+                    _ => continue,
+                };
+                let (color, outline) = match stroke {
+                    // A stroke draws its outline; the glyphs' fill stays clear.
+                    Some(t) if t > 0.0 => ([color[0], color[1], color[2], 0.0], Some((t, color))),
+                    Some(_) => continue,
+                    None => (color, None),
+                };
+                emit(
+                    Some(Drawn::Text(TextDraw {
+                        face: face.face,
+                        index: face.index,
+                        size: face.size,
+                        coords: face.coords.clone(),
+                        embolden: face.embolden,
+                        skew: face.skew,
+                        glyphs: face.glyphs.clone(),
+                        pen: map(*pen),
+                        transform: linear_map,
+                        color,
+                        gradient: if outline.is_some() { None } else { gradient },
+                        outline,
+                        bounds: line_box,
+                    })),
+                    None,
+                );
             }
         }
     }

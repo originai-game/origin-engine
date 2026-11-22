@@ -1489,7 +1489,8 @@ if (film.open && marker === "flow.cut") run("10.6:flow:choose:0", `flow:play`);
             out,
             "type import\nversion 1\n---\nfont {\n  pixel 12\n}\nmesh {\n  runtime true\n}\n"
         );
-        let riv = "font \"Inter\" {\n  source \"fonts/Inter.ttf\"\n  charset latin\n  chars \"→\"\n}\n";
+        let riv =
+            "font \"Inter\" {\n  source \"fonts/Inter.ttf\"\n  charset latin\n  chars \"→\"\n}\n";
         let (out, n) = font_atlas_keys(riv).expect("rewritten");
         assert_eq!(
             (n, out.as_str()),

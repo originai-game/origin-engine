@@ -51,7 +51,10 @@ fn spawn(b: &mut Batch, k: u32) {
     let (p, l) = (100_000 + k * 2, 100_001 + k * 2);
     b.op(1).u32(p).u8(1);
     b.op(4).u32(p).str(DAMAGE);
-    b.op(6).u32(p).str("anchor").str(&(k % 5000 + 1).to_string());
+    b.op(6)
+        .u32(p)
+        .str("anchor")
+        .str(&(k % 5000 + 1).to_string());
     if k % 3 == 0 {
         b.op(5).u32(p).str("color: #ffc93c");
     }
@@ -151,7 +154,10 @@ fn a_thousand_damage_numbers_stay_in_their_budget_and_an_unchanged_frame_allocat
             worst = worst.max(og_core::alloc::thread_allocations() - before);
         }
     }
-    assert!(worst <= 1056, "{worst} allocations in a frame of 1000 damage numbers");
+    assert!(
+        worst <= 1056,
+        "{worst} allocations in a frame of 1000 damage numbers"
+    );
     // Past every float's end, with the clock then held: nothing moves and
     // nothing changed.
     t.set_time(60.0, false);
@@ -159,5 +165,9 @@ fn a_thousand_damage_numbers_stay_in_their_budget_and_an_unchanged_frame_allocat
     t.frame(&mut fonts, &mut atlas, &icons);
     let before = og_core::alloc::thread_allocations();
     t.frame(&mut fonts, &mut atlas, &icons);
-    assert_eq!(og_core::alloc::thread_allocations() - before, 0, "an unchanged frame");
+    assert_eq!(
+        og_core::alloc::thread_allocations() - before,
+        0,
+        "an unchanged frame"
+    );
 }

@@ -304,8 +304,8 @@ simulation a world starts with; it walls nothing off:
 
 | Variant | Where | Built with (og-host-web) | Physics |
 |---|---|---|---|
-| publish | `dist/web-publish/origin-engine*` | `--no-default-features --features publish,shaping` | both |
-| lanes | `dist/web-publish/origin-engine-lanes*`, `snippets/` | `--no-default-features --features publish,shaping`, wasm atomics (§Lanes) | both (`parallel`) |
+| publish | `dist/web-publish/origin-engine*` | `--no-default-features --features publish` | both |
+| lanes | `dist/web-publish/origin-engine-lanes*`, `snippets/` | `--no-default-features --features publish`, wasm atomics (§Lanes) | both (`parallel`) |
 | dev | `dist/web/origin-engine*` | default features | both, not shipped |
 
 Every variant links rapier2d, rapier3d and the 3D world, so a world

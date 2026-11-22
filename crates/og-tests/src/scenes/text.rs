@@ -144,8 +144,7 @@ impl TestFont {
             // one-line string is what the whole call laid.
             let mut advances = Vec::new();
             l.layout.runs(&l.fonts, |run| {
-                advances
-                    .extend(run.glyphs.iter().filter(|g| g.id != 0).map(|g| g.advance));
+                advances.extend(run.glyphs.iter().filter(|g| g.id != 0).map(|g| g.advance));
             });
             let em = style.size.max(1e-3);
             width = l.layout.width() / em;

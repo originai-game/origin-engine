@@ -116,8 +116,7 @@ impl Artboard {
         file: &mut dyn FnMut(&str) -> Option<Arc<Vec<u8>>>,
     ) {
         for f in &mut self.fonts {
-            f.font = file(&f.id)
-                .and_then(|bytes| fonts.add(bytes).ok());
+            f.font = file(&f.id).and_then(|bytes| fonts.add(bytes).ok());
         }
         for n in &mut self.nested {
             n.bind_fonts(fonts, file);

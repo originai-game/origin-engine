@@ -14,8 +14,8 @@
 
 use super::*;
 use og_text::fonts::{Collection, FaceId};
-use og_text::layout::{Alignment, LineHeight, Style, WhiteSpaceCollapse};
 use og_text::layout::Text as Shaped;
+use og_text::layout::{Alignment, LineHeight, Style, WhiteSpaceCollapse};
 use og_ui_model::Affine;
 use parley::layout::PositionedLayoutItem;
 use parley_engine::break_overrides::CHROMIUM_LINE_BREAK_OVERRIDE;
@@ -232,7 +232,12 @@ fn read(
     for line in shaped.layout().lines() {
         let m = line.metrics();
         let ascent = m.baseline - top;
-        lines.push((line.text_range(), m.baseline, ascent, m.line_height - ascent));
+        lines.push((
+            line.text_range(),
+            m.baseline,
+            ascent,
+            m.line_height - ascent,
+        ));
         top += m.line_height;
         for item in line.items() {
             let PositionedLayoutItem::GlyphRun(gr) = item else {
@@ -584,7 +589,14 @@ pub(super) fn layout(
     }
     let auto = l.sizing == Sizing::AutoWidth;
     let limit = (!auto && l.wrap).then_some(w);
-    let paras = lines(&text, &runs, limit, l.break_words, l.align, (!auto).then_some(w));
+    let paras = lines(
+        &text,
+        &runs,
+        limit,
+        l.break_words,
+        l.align,
+        (!auto).then_some(w),
+    );
     // computeBoundsInfo.
     let mut y = 0.0f32;
     let mut min_y = 0.0f32;
@@ -779,15 +791,14 @@ fn ellipsize(
 ) -> Option<(Vec<Piece>, f32)> {
     // "..." per run's style, as it is reached.
     let mut cache: Vec<(usize, Dots)> = Vec::new();
-    let dots_for =
-        |cache: &mut Vec<(usize, Dots)>, fonts: &mut Collection, run: usize| -> Dots {
-            if let Some((_, d)) = cache.iter().find(|(k, _)| *k == run) {
-                return d.clone();
-            }
-            let d = dots_of(fonts, &runs[run]);
-            cache.push((run, d.clone()));
-            d
-        };
+    let dots_for = |cache: &mut Vec<(usize, Dots)>, fonts: &mut Collection, run: usize| -> Dots {
+        if let Some((_, d)) = cache.iter().find(|(k, _)| *k == run) {
+            return d.clone();
+        }
+        let d = dots_of(fonts, &runs[run]);
+        cache.push((run, d.clone()));
+        d
+    };
     let mut out: Vec<Piece> = Vec::new();
     let mut x = 0.0f32;
     let mut dots: Option<(usize, f32)> = None;
@@ -952,7 +963,8 @@ mod tests {
     fn fonts() -> Collection {
         let mut fonts = Collection::new();
         let bytes: Arc<Vec<u8>> = Arc::new(
-            include_bytes!("../../../tests/fixtures/ui-text/assets/fonts/Inter-Display.ttf").to_vec(),
+            include_bytes!("../../../tests/fixtures/ui-text/assets/fonts/Inter-Display.ttf")
+                .to_vec(),
         );
         fonts.add(bytes).expect("the test font");
         fonts
@@ -960,14 +972,7 @@ mod tests {
 
     /// One text of `words` in a style of `size` px and `line_height`, in
     /// a box `w` by `h`.
-    fn board(
-        words: &str,
-        size: f32,
-        line_height: f32,
-        l: TextLayout,
-        w: f32,
-        h: f32,
-    ) -> Artboard {
+    fn board(words: &str, size: f32, line_height: f32, l: TextLayout, w: f32, h: f32) -> Artboard {
         let node = |kind, parent| Node {
             name: "t".into(),
             parent,
@@ -1067,7 +1072,14 @@ mod tests {
         let e = width_of(&mut fonts, "e", size);
         assert!(((w - e) / 2.0 - pens[1].x).abs() < 0.5, "{:?}", pens);
         // A line feed is a paragraph, U+2028 a line of the same one.
-        let a = board("ab\u{2028}c\nd", size, -1.0, TextLayout::default(), 0.0, 0.0);
+        let a = board(
+            "ab\u{2028}c\nd",
+            size,
+            -1.0,
+            TextLayout::default(),
+            0.0,
+            0.0,
+        );
         assert_eq!(laid(&a, &mut fonts).words, "ab\nc\nd");
     }
 
@@ -1108,7 +1120,11 @@ mod tests {
         );
         a.nodes[1].values.spacing = 5.0;
         let t = laid(&a, &mut fonts);
-        assert!((t.bounds[3] - (2.0 * lh + 5.0)).abs() < 1e-3, "{:?}", t.bounds);
+        assert!(
+            (t.bounds[3] - (2.0 * lh + 5.0)).abs() < 1e-3,
+            "{:?}",
+            t.bounds
+        );
     }
 
     /// A fixed box: the last line that fits ends in "...", cut so the
@@ -1198,7 +1214,11 @@ mod tests {
             60.0,
         );
         let t = laid(&a, &mut fonts);
-        assert!(t.transform.a < 1.0 && t.transform.a > 0.0, "{:?}", t.transform);
+        assert!(
+            t.transform.a < 1.0 && t.transform.a > 0.0,
+            "{:?}",
+            t.transform
+        );
         // Fit font size: the largest whole size whose two lines fit.
         let a = board(
             words,

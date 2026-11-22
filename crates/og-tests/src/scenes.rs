@@ -9,8 +9,8 @@ use glam::{Mat4, Quat, Vec2, Vec3};
 use og_render::gltf::{GltfModel, load_glb};
 use og_render::{
     Antialias, Background, Bloom, Camera, ColorSpace, DirectionalLight, Environment, Exposure,
-    LightDesc, LightKind, Material, Mips, ProceduralSky, Projection, RenderDesc,
-    RenderScene, ShadowBounds, Sprite, Text, TextureData, Tonemap, shapes,
+    LightDesc, LightKind, Material, Mips, ProceduralSky, Projection, RenderDesc, RenderScene,
+    ShadowBounds, Sprite, Text, TextureData, Tonemap, shapes,
 };
 use std::path::PathBuf;
 

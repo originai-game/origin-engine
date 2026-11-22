@@ -562,8 +562,8 @@ fn mass_timing_luts_draw_at_the_shared_curves_positions() {
 fn ui_mass_bar_after_a_two_page_text_batch_draws_its_own_template() {
     use og_core::glam::{Vec2, Vec3};
     use og_render::{
-        Background, Overlay, RenderScene, RenderTarget, Renderer, UiMassBatch,
-        UiMassInstance, UiMassKind, UiMassSpace, UiMassTemplate,
+        Background, Overlay, RenderScene, RenderTarget, Renderer, UiMassBatch, UiMassInstance,
+        UiMassKind, UiMassSpace, UiMassTemplate,
     };
     use std::sync::Arc;
 
@@ -664,5 +664,8 @@ fn ui_mass_bar_after_a_two_page_text_batch_draws_its_own_template() {
     );
     // Past the fill, the template's back.
     let back = px(390, 60);
-    assert!(back.iter().all(|&c| c < 100), "the bar's back draws {back:?}");
+    assert!(
+        back.iter().all(|&c| c < 100),
+        "the bar's back draws {back:?}"
+    );
 }
