@@ -24,7 +24,7 @@ impl Csg {
                 .copied()
                 .filter(|&i| i != a && i != b && self.on[i as usize].contains(&e))
                 .collect();
-            crate::math::sort::sort_by(&mut along, |&x, &y| {
+            og_core::sort::sort_by(&mut along, |&x, &y| {
                 (self.p(x) - pa)
                     .dot(pb - pa)
                     .total_cmp(&(self.p(y) - pa).dot(pb - pa))
@@ -168,7 +168,7 @@ impl Csg {
         let (p, q) = (self.p(e.1), self.p(e.2));
         let d = q - p;
         let u = |i: u32| (self.p(i) - p).dot(d);
-        crate::math::sort::sort_by(&mut ids, |&x, &y| u(x).total_cmp(&u(y)).then(x.cmp(&y)));
+        og_core::sort::sort_by(&mut ids, |&x, &y| u(x).total_cmp(&u(y)).then(x.cmp(&y)));
         let tol = d.length_squared() * (1.0 / (1u64 << 30) as f64);
         let mut start = 0;
         while start < ids.len() {

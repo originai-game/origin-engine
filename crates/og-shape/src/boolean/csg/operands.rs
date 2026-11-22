@@ -183,7 +183,7 @@ pub(crate) fn snap_onto(a: &[DVec3], b: &[DVec3]) -> Option<Vec<DVec3>> {
     let tol2 = tol * tol;
     // The target's positions by x, for a window search.
     let mut by_x: Vec<u32> = (0..a.len() as u32).collect();
-    crate::math::sort::sort_by(&mut by_x, |&i, &j| {
+    og_core::sort::sort_by(&mut by_x, |&i, &j| {
         a[i as usize].x.total_cmp(&a[j as usize].x).then(i.cmp(&j))
     });
     let mut out = b.to_vec();

@@ -80,7 +80,7 @@ impl<'a> Tree<'a> {
             } else {
                 2
             };
-            crate::math::sort::sort_by(&mut order[lo..hi], |&a, &b| {
+            og_core::sort::sort_by(&mut order[lo..hi], |&a, &b| {
                 cen[a as usize][axis]
                     .total_cmp(&cen[b as usize][axis])
                     .then(a.cmp(&b))

@@ -8,7 +8,7 @@
 //! - [`predicates`]: exact geometric sides (Shewchuk's predicates).
 //! - [`order`]: total, sign-of-zero-insensitive ordering for canonical
 //!   output.
-//! - [`sort`]: the one stable sort.
+//! - The one stable sort is `og_core::sort`, the engine's.
 //! - [`hash`]: the output hash the gate compares across targets.
 //!
 //! The determinism lint (`clippy.toml`) forbids the `std` maths and the
@@ -18,7 +18,6 @@ pub mod frame;
 pub mod hash;
 pub mod order;
 pub mod predicates;
-pub mod sort;
 pub mod trig;
 
 pub use frame::Frame;

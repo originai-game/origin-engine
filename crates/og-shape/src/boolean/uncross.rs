@@ -339,7 +339,7 @@ pub(crate) fn uncross(
                 }
             }
         }
-        crate::math::sort::sort_by(&mut cands, |a, b| {
+        og_core::sort::sort_by(&mut cands, |a, b| {
             a.0.total_cmp(&b.0).then(a.1.cmp(&b.1)).then(a.2.cmp(&b.2))
         });
         cands.dedup();
@@ -375,7 +375,7 @@ pub(crate) fn uncross(
                 }
             }
         }
-        crate::math::sort::sort_by(&mut needles, |a, b| {
+        og_core::sort::sort_by(&mut needles, |a, b| {
             a.0.total_cmp(&b.0).then(a.1.cmp(&b.1)).then(a.2.cmp(&b.2))
         });
         needles.dedup();

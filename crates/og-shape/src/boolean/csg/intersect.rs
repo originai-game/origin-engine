@@ -402,7 +402,7 @@ impl Csg {
             }
         }
         let dir = self.tri_normal(ta).cross(self.tri_normal(tb));
-        crate::math::sort::sort_by(&mut uniq, |&a, &b| {
+        og_core::sort::sort_by(&mut uniq, |&a, &b| {
             self.p(a)
                 .dot(dir)
                 .total_cmp(&self.p(b).dot(dir))
@@ -484,7 +484,7 @@ impl Csg {
                         along.push(v);
                     }
                 }
-                crate::math::sort::sort_by(&mut along, |&a, &b| {
+                og_core::sort::sort_by(&mut along, |&a, &b| {
                     (self.p(a) - p0)
                         .dot(p1 - p0)
                         .total_cmp(&(self.p(b) - p0).dot(p1 - p0))

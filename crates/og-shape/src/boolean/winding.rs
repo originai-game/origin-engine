@@ -119,7 +119,7 @@ impl<'a> Tree<'a> {
             } else {
                 2
             };
-            crate::math::sort::sort_by(slice, |&i, &j| {
+            og_core::sort::sort_by(slice, |&i, &j| {
                 centroid[i as usize][axis]
                     .total_cmp(&centroid[j as usize][axis])
                     .then(i.cmp(&j))
