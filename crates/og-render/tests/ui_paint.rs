@@ -16,8 +16,8 @@
 //!   its plain view, its own layer), or a layer meeting a float output (a
 //!   wide-gamut display's) in linear light
 //! - a glyph's raster read from the wrong place in the glyph atlas, or its
-//!   coverage drawn as anything but the text's alpha (each test below says
-//!   more)
+//!   coverage drawn as anything but Skia's preblend of it (each test below
+//!   says more)
 use glam::Vec3;
 use og_render::glyphs::{GlyphKey, GlyphSlot, GlyphTier, UNUSED_FRAMES};
 use og_render::paint::{
@@ -574,13 +574,18 @@ fn close(got: [u8; 3], want: [u8; 3], what: &str) {
 /// - a coverage glyph read from the wrong place in its page (a plot past
 ///   the first uploaded at the page's origin, a texel off, or filtered
 ///   with its neighbour)
-/// - coverage remapped on its way to alpha, or blended with the ground in
-///   linear light (dark text on white reads thin there: half coverage of
-///   40 over 255 is 189, and CSS's 148), on any of the pass's targets
+/// - coverage drawn as it is, not through Skia's preblend as Chrome on
+///   Linux draws text (white ink at half coverage is 143 there, not 128),
+///   or blended with the ground in linear light (186), on any of the
+///   pass's targets
 #[test]
 #[ignore = "requires GPU"]
-fn a_coverage_glyph_is_its_colours_alpha_blended_as_css_blends() {
-    let ink = linear(40);
+fn a_coverage_glyph_is_preblended_then_blended_as_css_blends() {
+    // SkTMaskGamma's row for white ink (gamma 1.2, no contrast there) at
+    // the ramp's coverages, worked from Skia's formula.
+    const WANT: [u8; 16] = [
+        24, 44, 62, 80, 96, 112, 128, 143, 157, 172, 186, 200, 214, 228, 242, 255,
+    ];
     let key = |g| GlyphKey::new(GlyphTier::Coverage, 0, 0, g, 16 * 64);
     for to in [To::Offscreen, To::Plain, To::View] {
         let px = render_to(to, |scene| {
@@ -592,25 +597,17 @@ fn a_coverage_glyph_is_its_colours_alpha_blended_as_css_blends() {
             let slot = atlas.insert(key(2), (0, 0), (4, 4), &ramp()).unwrap();
             assert_eq!((slot.x, slot.y), (256, 0));
             vec![
-                solid([0.0, 0.0, W as f32, W as f32], WHITE, 1.0),
-                raster(
-                    GlyphTier::Coverage,
-                    slot,
-                    [10.0, 20.0],
-                    [ink, ink, ink, 1.0],
-                    [0.0; 4],
-                ),
+                solid([0.0, 0.0, W as f32, W as f32], BLACK, 1.0),
+                raster(GlyphTier::Coverage, slot, [10.0, 20.0], [1.0; 4], [0.0; 4]),
             ]
         });
-        for i in 0..16u32 {
-            let a = (15 + 16 * i) as f32 / 255.0;
-            let want = (40.0 * a + 255.0 * (1.0 - a)).round() as u8;
+        for (i, want) in (0..16u32).zip(WANT) {
             let (x, y) = (10 + i % 4, 20 + i / 4);
             close(at(&px, x, y), [want; 3], &format!("{to:?}, pixel {i}"));
         }
         // Its neighbours in the plot are clear: nothing past its edge.
         for (x, y) in [(9, 20), (14, 20), (10, 19), (10, 24)] {
-            close(at(&px, x, y), [255; 3], "beside the glyph");
+            close(at(&px, x, y), [0; 3], "beside the glyph");
         }
     }
 }

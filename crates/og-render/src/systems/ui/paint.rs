@@ -119,6 +119,9 @@ pub(crate) struct PaintRenderer {
     layer: Option<Layer>,
     layout: wgpu::BindGroupLayout,
     uniform: wgpu::Buffer,
+    /// Whether the uniform holds the preblend table yet (written once,
+    /// behind the frame's floats).
+    preblend: bool,
     /// The quads and the transforms, data textures (data_texture.rs) the
     /// vertex stage reads.
     quads: DataTexture,
@@ -145,7 +148,45 @@ pub(crate) struct PaintRenderer {
     pub missing: u32,
 }
 
-const UNIFORM_SIZE: u64 = 32;
+/// The frame's eight floats, then the preblend table.
+const UNIFORM_SIZE: u64 = 32 + PREBLEND_TABLE as u64;
+
+/// Skia's mask gamma tables (third_party/skia-mask-gamma), one row of 256
+/// per luminance class.
+const PREBLEND_TABLE: usize = 8 * 256;
+
+/// Skia's text preblend with Chrome on Linux's gamma (1.2) and contrast
+/// (0.2), ported from `SkTMaskGamma`: for each of eight ink luminances
+/// (`sk_t_scale255<3>`), the coverage a glyph is drawn with for each
+/// coverage it has, so that blending it as is gives the ink the weight
+/// Skia's text has. Row `l >> 5` serves an ink of luminance `l`
+/// (`computeLuminance` at gamma 1.2, in 8 bits).
+fn preblend_table() -> [u8; PREBLEND_TABLE] {
+    const GAMMA: f32 = 1.2;
+    const CONTRAST: f32 = 0.2;
+    let mut table = [0; PREBLEND_TABLE];
+    for (row, lut) in table.chunks_mut(256).enumerate() {
+        let base = (row as u32) << 5;
+        let src = (base | base >> 3 | base >> 6) as f32 / 255.0;
+        let lin_src = src.powf(GAMMA);
+        let dst = 1.0 - src;
+        let lin_dst = dst.powf(GAMMA);
+        // Contrast tapers off to nothing as the ink nears white.
+        let contrast = CONTRAST * lin_dst;
+        for (i, out) in lut.iter_mut().enumerate() {
+            let raw = i as f32 / 255.0;
+            let srca = raw + (1.0 - raw) * contrast * raw;
+            let result = if (src - dst).abs() < 1.0 / 256.0 {
+                srca
+            } else {
+                let lin_out = lin_src * srca + (1.0 - srca) * lin_dst;
+                (lin_out.powf(1.0 / GAMMA) - dst) / (src - dst)
+            };
+            *out = (255.0 * result + 0.5).floor().clamp(0.0, 255.0) as u8;
+        }
+    }
+    table
+}
 
 /// Its module: the library every shader may call, then ui_paint.wgsl.
 pub(crate) fn source() -> String {
@@ -296,6 +337,7 @@ impl PaintRenderer {
                     mapped_at_creation: false,
                 },
             ),
+            preblend: false,
             quads: DataTexture::new(
                 device,
                 "ui paint quads",
@@ -371,6 +413,10 @@ impl PaintRenderer {
             0.0,
         ];
         crate::traffic::write_buffer(queue, &self.uniform, 0, bytemuck::cast_slice(&u));
+        if !self.preblend {
+            self.preblend = true;
+            crate::traffic::write_buffer(queue, &self.uniform, 32, &preblend_table());
+        }
         self.upload_glyphs(device, queue, glyphs);
         let now = Uploaded {
             generation: paint.generation,
@@ -844,5 +890,23 @@ impl PaintRenderer {
         }
         pass.draw(0..3, 0..1);
         1
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    /// Half coverage through Skia's curve at Chrome on Linux's gamma 1.2
+    /// and contrast 0.2, worked by hand from SkTMaskGamma: white ink
+    /// (row 7, no contrast) gets (128/255)^(1/1.2) = 0.5627 → 144, black
+    /// ink (row 0) 1 − (1 − (a + 0.2a(1 − a)))^(1/1.2) = 0.4877 → 124.
+    #[test]
+    fn half_coverage_is_heavier_light_on_dark_and_lighter_dark_on_light() {
+        let table = super::preblend_table();
+        assert_eq!(table[7 * 256 + 128], 144);
+        assert_eq!(table[128], 124);
+        // The ends stay put in every row.
+        for row in table.chunks(256) {
+            assert_eq!((row[0], row[255]), (0, 255));
+        }
     }
 }
