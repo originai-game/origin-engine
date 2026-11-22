@@ -46,8 +46,6 @@ export interface HudSlotProps {
  * the cell with clip-path; here the cell is rounded and the sweep and the
  * ring are pack art (a nine-disc wipe and a nine-ring wipe).
  */
-const SIDE = "3.657rem";
-
 export function HudSlot(props: HudSlotProps) {
   const cooldown = () => Math.min(Math.max(props.cooldown ?? 0, 0), 1);
   const charge = () => Math.min(Math.max(props.charge ?? 0, 0), 1);
@@ -89,7 +87,7 @@ export function HudSlot(props: HudSlotProps) {
         </View>
       </Show>
       <View
-        class={`relative ${SIDE} ${SIDE} ${ready() ? "shadow-glow" : ""} ${ready() && ultimate() ? "shadow-glow shadow-gold" : ""} ${packClass("Slot", "frame")}`}
+        class={`relative size-12.75 ${ready() ? "shadow-glow" : ""} ${ready() && ultimate() ? "shadow-glow shadow-gold" : ""} ${packClass("Slot", "frame")}`}
       >
         <Show when={ultimate()}>
           <View
@@ -104,7 +102,7 @@ export function HudSlot(props: HudSlotProps) {
           </View>
         </Show>
         <View
-          class={`absolute inset-0.5 rounded-field data-ultimate:inset-1.5 data-ultimate:rounded-capsule overflow-hidden ${ready() ? "bg-linear-to-b from-sheen to-hud-accent" : "bg-linear-to-b from-sheen via-sheen via-45% to-lit"}`}
+          class={`absolute inset-0.5 rounded-field data-ultimate:inset-1.5 data-ultimate:rounded-capsule overflow-hidden ${ready() ? "bg-linear-to-b from-hud-accent-hi to-hud-accent" : "bg-tile"}`}
           data-ultimate={ultimate()}
         >
           <Show when={(props.icon ?? 0) > 0} fallback={

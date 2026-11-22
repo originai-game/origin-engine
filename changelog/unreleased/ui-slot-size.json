@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "HudSlot",
+      "summary": "The slot draws its cell again: 51 px square (the design's HUD slot size), with its icon or glyph, cooldown sweep, time, stack count and unaffordable veil. Its size had been written into the class as a bare `3.657rem`, which is no class, so the cell had no size and only the charge pips and the key cap showed. The cell's face under the cooldown's text is an opaque ground (`bg-tile`, or the HUD accent's gradient when ready), where it was a translucent sheen."
+    }
+  ]
+}
