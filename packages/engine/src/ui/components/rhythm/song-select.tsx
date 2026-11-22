@@ -80,7 +80,7 @@ export function RhythmSongSelect(props: RhythmSongSelectProps) {
                           <View class={`shrink size-15 compact:size-12 data-selected:size-20 rounded-panel bg-linear-to-b from-rim-strong via-rim to-rim-soft p-0.5 data-selected:from-rim-strong data-selected:via-rim data-selected:to-hud-accent`}>
                             <Show when={s().jacket} fallback={
                               <View class={`size-full rounded-card bg-glass flex-row items-center justify-center`}>
-                                <Icon class={`size-11/25 text-hud-accent`} name="music" />
+                                <Icon class={`size-11/25 text-hud-accent-ink`} name="music" />
                               </View>
                             }>
                               <Image class={`size-full rounded-card object-cover`} src={s().jacket} />
@@ -96,12 +96,12 @@ export function RhythmSongSelect(props: RhythmSongSelectProps) {
                             <Show when={s().id === props.selected || s().id === props.previewing || s().fresh || s().cleared || s().locked}>
                               <View class={`flex flex-row flex-wrap gap-0.5 mt-0.75`}>
                                 <Show when={s().id === props.selected}>
-                                  <View class={`flex-row items-center shrink py-0 px-1 bg-well nine-chip-cut text-hud-accent ${packClass("Chip", "frame")}`} data-tag-selected={true}>
+                                  <View class={`flex-row items-center shrink py-0 px-1 bg-well nine-chip-cut text-hud-accent-ink ${packClass("Chip", "frame")}`} data-tag-selected={true}>
                                     <Text class={`text-xs font-bold tracking-label uppercase whitespace-nowrap`}>{t("rhythm.songs.selected")}</Text>
                                   </View>
                                 </Show>
                                 <Show when={s().id === props.previewing}>
-                                  <View class={`flex-row items-center gap-1 shrink py-0 px-1 bg-well nine-chip-cut text-hud-accent ${packClass("Chip", "frame")}`} data-tag-previewing={true}>
+                                  <View class={`flex-row items-center gap-1 shrink py-0 px-1 bg-well nine-chip-cut text-hud-accent-ink ${packClass("Chip", "frame")}`} data-tag-previewing={true}>
                                     <View class={`shrink flex-row items-end gap-0.5 h-2.75`}>
                                       <View class={`w-0.75 h-3/5 bg-hud-accent animate-pulse`} />
                                       <View class={`w-0.75 h-full bg-hud-accent animate-pulse`} />
@@ -116,7 +116,7 @@ export function RhythmSongSelect(props: RhythmSongSelectProps) {
                                   </View>
                                 </Show>
                                 <Show when={s().cleared}>
-                                  <View class={`flex-row items-center shrink py-0 px-1 bg-well nine-chip-cut text-boon ${packClass("Chip", "frame")}`} data-tag-cleared={true}>
+                                  <View class={`flex-row items-center shrink py-0 px-1 bg-well nine-chip-cut text-boon-ink ${packClass("Chip", "frame")}`} data-tag-cleared={true}>
                                     <Text class={`text-xs font-bold tracking-label uppercase whitespace-nowrap`}>{t("rhythm.songs.cleared")}</Text>
                                   </View>
                                 </Show>
@@ -157,7 +157,7 @@ export function RhythmSongSelect(props: RhythmSongSelectProps) {
                           <View class={`relative size-full rounded-panel bg-glass`}>
                             <Show when={s().jacket} fallback={
                               <View class={`absolute inset-0 flex-row items-center justify-center`}>
-                                <Icon class={`size-11/25 text-hud-accent`} name="music" />
+                                <Icon class={`size-11/25 text-hud-accent-ink`} name="music" />
                               </View>
                             }>
                               <Image class={`size-full rounded-panel object-cover`} src={s().jacket} />

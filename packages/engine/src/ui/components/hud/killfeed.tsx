@@ -42,15 +42,15 @@ export function Killfeed(props: KillfeedProps) {
             label={t("shooter.killfeed.row", { killer: r().killer, victim: r().victim, weapon: r().weapon ?? "" })}
             data-self={r().self}
           >
-            <Text class={`shrink min-w-0 py-0.75 text-sm font-semibold whitespace-nowrap truncate text-shadow-2xs text-ally data-enemy:text-foe data-self-ally:text-hud-accent`} data-enemy={(r().team ?? "") !== "ally"} data-self-ally={(r().team ?? "") === "ally" && r().self}>
+            <Text class={`shrink min-w-0 py-0.75 text-sm font-semibold whitespace-nowrap truncate text-shadow-2xs text-ally-ink data-enemy:text-foe-ink data-self-ally:text-hud-accent-ink`} data-enemy={(r().team ?? "") !== "ally"} data-self-ally={(r().team ?? "") === "ally" && r().self}>
               {r().killer}
             </Text>
             <Text class={`shrink-0 text-xs font-semibold tracking-label uppercase whitespace-nowrap truncate text-fg-muted text-shadow-2xs`}>{r().weapon ?? ""}</Text>
-            <Text class={`shrink min-w-0 py-0.75 text-sm font-semibold whitespace-nowrap truncate text-shadow-2xs text-foe data-ally:text-ally data-self-ally:text-hud-accent`} data-ally={(r().team ?? "") !== "ally"} data-self-ally={(r().team ?? "") !== "ally" && r().self}>
+            <Text class={`shrink min-w-0 py-0.75 text-sm font-semibold whitespace-nowrap truncate text-shadow-2xs text-foe-ink data-ally:text-ally-ink data-self-ally:text-hud-accent-ink`} data-ally={(r().team ?? "") !== "ally"} data-self-ally={(r().team ?? "") !== "ally" && r().self}>
               {r().victim}
             </Text>
             <Show when={r().headshot}>
-              <Text class={`shrink-0 py-0 px-1.25 text-xs font-bold tracking-label uppercase whitespace-nowrap text-foe text-shadow-none nine-chip-cut bg-raised-pressed ${packClass("Chip", "frame")}`}>
+              <Text class={`shrink-0 py-0 px-1.25 text-xs font-bold tracking-label uppercase whitespace-nowrap text-foe-ink text-shadow-none nine-chip-cut bg-raised-pressed ${packClass("Chip", "frame")}`}>
                 {t("shooter.killfeed.hs")}
               </Text>
             </Show>

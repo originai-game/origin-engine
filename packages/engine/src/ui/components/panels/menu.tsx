@@ -64,7 +64,7 @@ export function Menu(props: MenuProps) {
                         <Icon class="size-full" name={e().icon} />
                       </Show>
                       <Show when={e().kind === "check" && e().checked}>
-                        <Icon name="check" class="text-hud-accent size-3/4" />
+                        <Icon name="check" class="text-hud-accent-ink size-3/4" />
                       </Show>
                       <Show when={e().kind === "radio" && e().checked}>
                         <View class="bg-hud-accent rotate-45 size-9/20" />

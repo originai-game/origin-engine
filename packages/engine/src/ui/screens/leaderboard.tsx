@@ -86,7 +86,7 @@ export function LeaderboardScreen(props: LeaderboardScreenProps) {
                   {r().name}
                 </Text>
                 <Show when={r().you}>
-                  <Text class="text-xs font-bold tracking-label uppercase text-hud-accent bg-tile inset-shadow-overline inset-shadow-hud-accent inset-ring-1 inset-ring-hud-accent whitespace-nowrap py-0 px-1">
+                  <Text class="text-xs font-bold tracking-label uppercase text-hud-accent-ink bg-tile inset-shadow-overline inset-shadow-hud-accent inset-ring-1 inset-ring-hud-accent whitespace-nowrap py-0 px-1">
                     {t("screen.leaderboard.you")}
                   </Text>
                 </Show>
@@ -106,7 +106,7 @@ export function LeaderboardScreen(props: LeaderboardScreenProps) {
         <Text class="text-base font-semibold whitespace-nowrap shrink m-0 overflow-hidden">
           {props.me.name}
         </Text>
-        <Text class="text-xs font-bold tracking-label uppercase text-hud-accent bg-tile inset-shadow-overline inset-shadow-hud-accent inset-ring-1 inset-ring-hud-accent whitespace-nowrap mr-auto py-0 px-1">
+        <Text class="text-xs font-bold tracking-label uppercase text-hud-accent-ink bg-tile inset-shadow-overline inset-shadow-hud-accent inset-ring-1 inset-ring-hud-accent whitespace-nowrap mr-auto py-0 px-1">
           {t("screen.leaderboard.you")}
         </Text>
         <Text class={`tabular-nums text-fg text-display-md font-bold whitespace-nowrap text-end m-0 compact:text-title shrink`}>

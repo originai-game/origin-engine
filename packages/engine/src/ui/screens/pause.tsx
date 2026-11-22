@@ -56,7 +56,7 @@ export function PauseScreen(props: PauseScreenProps) {
               <Text class="grow shrink text-start text-title leading-tight font-semibold text-shadow-xs text-shadow-bg compact:text-xl">
                 {t("screen.pause.resume")}
               </Text>
-              <Icon class="text-hud-accent opacity-0 size-4 group-hover/resume:opacity-100 rtl:-scale-x-100 rtl:scale-y-100" name="chevronRight" />
+              <Icon class="text-hud-accent-ink opacity-0 size-4 group-hover/resume:opacity-100 rtl:-scale-x-100 rtl:scale-y-100" name="chevronRight" />
             </View>
           </View>
           <View class={`flex-row items-center justify-center gap-1 group/settings w-full min-h-11 text-fg-muted py-1 px-4 hover:bg-hud-accent hover:text-hud-accent-fg active:bg-hud-accent active:text-hud-accent-fg disabled:bg-transparent disabled:bg-none disabled:text-fg-subtle compact:pr-4 compact:pl-6`} role="button" onPress={(e) => props.onSettings?.(e)}>
@@ -64,7 +64,7 @@ export function PauseScreen(props: PauseScreenProps) {
               <Text class="grow shrink text-start text-title leading-tight font-semibold text-shadow-xs text-shadow-bg compact:text-xl">
                 {t("screen.pause.settings")}
               </Text>
-              <Icon class="text-hud-accent opacity-0 size-4 group-hover/settings:opacity-100 rtl:-scale-x-100 rtl:scale-y-100" name="chevronRight" />
+              <Icon class="text-hud-accent-ink opacity-0 size-4 group-hover/settings:opacity-100 rtl:-scale-x-100 rtl:scale-y-100" name="chevronRight" />
             </View>
           </View>
           <View class={`flex-row items-center justify-center gap-1 group/controls w-full min-h-11 text-fg-muted py-1 px-4 hover:bg-hud-accent hover:text-hud-accent-fg active:bg-hud-accent active:text-hud-accent-fg disabled:bg-transparent disabled:bg-none disabled:text-fg-subtle compact:pr-4 compact:pl-6`} role="button" onPress={(e) => props.onControls?.(e)}>
@@ -72,7 +72,7 @@ export function PauseScreen(props: PauseScreenProps) {
               <Text class="grow shrink text-start text-title leading-tight font-semibold text-shadow-xs text-shadow-bg compact:text-xl">
                 {t("screen.pause.controls")}
               </Text>
-              <Icon class="text-hud-accent opacity-0 size-4 group-hover/controls:opacity-100 rtl:-scale-x-100 rtl:scale-y-100" name="chevronRight" />
+              <Icon class="text-hud-accent-ink opacity-0 size-4 group-hover/controls:opacity-100 rtl:-scale-x-100 rtl:scale-y-100" name="chevronRight" />
             </View>
           </View>
           <View class={`flex-row items-center justify-center gap-1 group/save w-full min-h-11 text-fg-muted py-1 px-4 hover:bg-hud-accent hover:text-hud-accent-fg active:bg-hud-accent active:text-hud-accent-fg disabled:bg-transparent disabled:bg-none disabled:text-fg-subtle compact:pr-4 compact:pl-6`} role="button" disabled={!props.canSave} onPress={(e) => props.onSave?.(e)}>
@@ -80,7 +80,7 @@ export function PauseScreen(props: PauseScreenProps) {
               <Text class="grow shrink text-start text-title leading-tight font-semibold text-shadow-xs text-shadow-bg compact:text-xl">
                 {t("screen.pause.save")}
               </Text>
-              <Icon class="text-hud-accent opacity-0 size-4 group-hover/save:opacity-100 rtl:-scale-x-100 rtl:scale-y-100" name="chevronRight" />
+              <Icon class="text-hud-accent-ink opacity-0 size-4 group-hover/save:opacity-100 rtl:-scale-x-100 rtl:scale-y-100" name="chevronRight" />
             </View>
           </View>
           <View class={`flex-row items-center justify-center gap-1 group/load w-full min-h-11 text-fg-muted py-1 px-4 hover:bg-hud-accent hover:text-hud-accent-fg active:bg-hud-accent active:text-hud-accent-fg disabled:bg-transparent disabled:bg-none disabled:text-fg-subtle compact:pr-4 compact:pl-6`} role="button" onPress={(e) => props.onLoad?.(e)}>
@@ -88,7 +88,7 @@ export function PauseScreen(props: PauseScreenProps) {
               <Text class="grow shrink text-start text-title leading-tight font-semibold text-shadow-xs text-shadow-bg compact:text-xl">
                 {t("screen.pause.load")}
               </Text>
-              <Icon class="text-hud-accent opacity-0 size-4 group-hover/load:opacity-100 rtl:-scale-x-100 rtl:scale-y-100" name="chevronRight" />
+              <Icon class="text-hud-accent-ink opacity-0 size-4 group-hover/load:opacity-100 rtl:-scale-x-100 rtl:scale-y-100" name="chevronRight" />
             </View>
           </View>
           <View class="h-px mt-2 mr-0 mb-1 ml-4 bg-linear-to-r from-sheen to-transparent to-80% compact:ml-6 short:hidden" />

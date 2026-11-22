@@ -79,7 +79,7 @@ export function RacingTelemetry(props: RacingTelemetryProps) {
                   data-red={red()}
                 />
                 <Text
-                  class={`absolute text-xs leading-none font-bold tabular-nums whitespace-nowrap text-fg text-stroke-3 text-stroke-bg data-red:text-foe compact:hidden`}
+                  class={`absolute text-xs leading-none font-bold tabular-nums whitespace-nowrap text-fg text-stroke-3 text-stroke-bg data-red:text-foe-ink compact:hidden`}
                   style={{ left: `${50 + Math.sin(a()) * 35}%`, top: `${50 - Math.cos(a()) * 35}%`, transform: "translate(-50%,-50%)" }}
                   data-red={red()}
                 >
@@ -127,7 +127,7 @@ export function RacingTelemetry(props: RacingTelemetryProps) {
                   <Text class={`max-w-full min-w-0 text-xs font-semibold tracking-label uppercase whitespace-nowrap overflow-hidden text-fg-muted compact:hidden compact:tracking-normal compact:leading-none`}>{props.mode}</Text>
                 </Show>
               }>
-                <Text class={`max-w-full min-w-0 text-xs font-semibold tracking-label uppercase whitespace-nowrap overflow-hidden text-foe compact:tracking-normal compact:leading-none`} role="status">{t("racing.telemetry.shift")}</Text>
+                <Text class={`max-w-full min-w-0 text-xs font-semibold tracking-label uppercase whitespace-nowrap overflow-hidden text-foe-ink compact:tracking-normal compact:leading-none`} role="status">{t("racing.telemetry.shift")}</Text>
               </Show>
             </View>
           </Show>

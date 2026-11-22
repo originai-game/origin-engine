@@ -68,7 +68,7 @@ export function RacingStandings(props: RacingStandingsProps) {
                   <Text class={`flex-1 min-w-0 text-reading font-semibold whitespace-nowrap overflow-hidden text-fg compact:text-caption`}>{r().name}</Text>
                   <Show when={r().state !== "racing"}>
                     <Text
-                      class={`shrink-0 py-0 px-1.25 text-xs font-bold tracking-label uppercase whitespace-nowrap text-fg bg-well nine-chip-cut data-pitting:text-gold data-retired:text-foe ${packClass("Chip", "frame")}`}
+                      class={`shrink-0 py-0 px-1.25 text-xs font-bold tracking-label uppercase whitespace-nowrap text-fg bg-well nine-chip-cut data-pitting:text-gold data-retired:text-foe-ink ${packClass("Chip", "frame")}`}
                       label={r().state === "pitting" ? t("racing.standings.pittingName") : r().state === "retired" ? t("racing.standings.retiredName") : t("racing.standings.finishedName")}
                       data-pitting={r().state === "pitting"}
                       data-retired={r().state === "retired"}

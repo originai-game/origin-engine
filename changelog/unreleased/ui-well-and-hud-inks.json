@@ -1,0 +1,31 @@
+{
+  "simulation": "unchanged",
+  "breaking": [
+    {
+      "member": "Theme colours: well",
+      "change": "`well` follows the scheme: pale glass in light, near black in dark as before. It was near black in both, so the scheme's dark inks on a `bg-well` tag, ledger or day header could not be read in light.",
+      "fix": "Nothing to do for `bg-well` under `text-fg`, `text-fg-muted`, `text-gold` or `text-danger`. Text in a HUD colour takes its ink role: `text-hud-accent` → `text-hud-accent-ink`, and the same for `foe`, `ally`, `boon`, `fever` and `late`. A ground that must stay dark in both schemes is a pack slot (`packClass`), not `well`.",
+      "find": [
+        "bg-well",
+        "text-hud-accent",
+        "text-foe",
+        "text-ally",
+        "text-boon",
+        "text-fever",
+        "text-late"
+      ]
+    }
+  ],
+  "added": [
+    {
+      "member": "Theme colours",
+      "summary": "`hud-accent-ink`, `foe-ink`, `ally-ink`, `boon-ink`, `fever-ink` and `late-ink`: a HUD colour as an ink (`text-foe-ink`). Each holds 4.5:1 on the scheme's grounds and on `well` in both schemes: the colour itself where it already reads, scaled down in linear light on a pale ground, mixed with white on a dark one. `hud-accent`, `foe`, `ally`, `boon`, `fever` and `late` themselves stay the same in both schemes and are for fills, edges and glows."
+    }
+  ],
+  "fixed": [
+    {
+      "member": "Built-in components",
+      "summary": "In the light scheme the tags, ledgers and headers on `well` read (daily rewards' days, the shop confirmation's ledger, the tower's stats, lap times, rhythm results and timing, the kill feed), and text in a HUD colour reads on a pale ground: 42 components take the `-ink` roles."
+    }
+  ]
+}

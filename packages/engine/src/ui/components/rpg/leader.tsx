@@ -58,7 +58,7 @@ export function RpgLeader(props: RpgLeaderProps) {
               </Text>
             </Show>
             <Show when={props.level > 0}>
-              <Text class={`shrink text-xs font-semibold tracking-label uppercase whitespace-nowrap text-hud-accent`}>
+              <Text class={`shrink text-xs font-semibold tracking-label uppercase whitespace-nowrap text-hud-accent-ink`}>
                 {t("rpg.leader.level", { level: props.level })}
               </Text>
             </Show>

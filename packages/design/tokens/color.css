@@ -74,13 +74,19 @@
   --color-slot-selected-edge: #ffffff8c;
   /* The HUD's own colours, over the scene in either scheme: its instrument
      accent (and the ink on it), foe and ally, a boon, a vital in danger,
-     the fever gauge, a late judgement, the dark well a tag or dial sits
-     in, a key cap's face from its top (`-hi`) to its foot (`-lo`) and its
-     ink, and the chart tiers easy to master. `-fg` is the ink on a fill
-     of that colour, `-hi` the lit top of its gradient. `stick` (beside
-     `knob`, a slider's and a switch's thumb) is a touch stick's knob on
-     its ring, 3:1 on tile and tile-pressed: dark on the pale ring in
-     light, pale on the dark one. */
+     the fever gauge, a late judgement, a key cap's face from its top
+     (`-hi`) to its foot (`-lo`) and its ink, and the chart tiers easy to
+     master. `-fg` is the ink on a fill of that colour, `-hi` the lit top
+     of its gradient, and `-ink` the colour as an ink (text and icons, on a
+     plate, a panel, the well, or over the scene inside its halo), 4.5:1
+     on the scheme's grounds: scaled down in linear light on pale ones,
+     and on dark ones itself or mixed with white as far as that takes.
+     The colour itself is for fills, edges and glows. `well` is the sunk
+     ground a tag, a figure or a bar's groove sits in: pale glass in
+     light, near black in dark, so the scheme's inks read on it. `stick`
+     (beside `knob`, a slider's and a switch's thumb) is a touch stick's
+     knob on its ring, 3:1 on tile and tile-pressed: dark on the pale
+     ring in light, pale on the dark one. */
   --color-hud-accent: oklch(from var(--seed-hud) max(l, 0.75) c h);
   --color-hud-accent-fg: #0b0f18;
   --color-hud-accent-hi: #d6fdff;
@@ -94,7 +100,13 @@
   --color-fever: rgb(255 61 138);
   --color-fever-fg: contrast-color(var(--color-fever));
   --color-late: rgb(255 140 70);
-  --color-well: #060910e0;
+  --color-well: oklch(from var(--seed-neutral) 0.93 min(c, 0.03) h / 0.96);
+  --color-hud-accent-ink: color(from color(from var(--color-hud-accent) srgb clamp(0, r, 1) clamp(0, g, 1) clamp(0, b, 1)) xyz-d65 calc(x * min(1, calc(0.088 / y))) calc(y * min(1, calc(0.088 / y))) calc(z * min(1, calc(0.088 / y))));
+  --color-foe-ink: color(from color(from var(--color-foe) srgb clamp(0, r, 1) clamp(0, g, 1) clamp(0, b, 1)) xyz-d65 calc(x * min(1, calc(0.088 / y))) calc(y * min(1, calc(0.088 / y))) calc(z * min(1, calc(0.088 / y))));
+  --color-ally-ink: color(from color(from var(--color-ally) srgb clamp(0, r, 1) clamp(0, g, 1) clamp(0, b, 1)) xyz-d65 calc(x * min(1, calc(0.088 / y))) calc(y * min(1, calc(0.088 / y))) calc(z * min(1, calc(0.088 / y))));
+  --color-boon-ink: color(from color(from var(--color-boon) srgb clamp(0, r, 1) clamp(0, g, 1) clamp(0, b, 1)) xyz-d65 calc(x * min(1, calc(0.088 / y))) calc(y * min(1, calc(0.088 / y))) calc(z * min(1, calc(0.088 / y))));
+  --color-fever-ink: color(from color(from var(--color-fever) srgb clamp(0, r, 1) clamp(0, g, 1) clamp(0, b, 1)) xyz-d65 calc(x * min(1, calc(0.088 / y))) calc(y * min(1, calc(0.088 / y))) calc(z * min(1, calc(0.088 / y))));
+  --color-late-ink: color(from color(from var(--color-late) srgb clamp(0, r, 1) clamp(0, g, 1) clamp(0, b, 1)) xyz-d65 calc(x * min(1, calc(0.088 / y))) calc(y * min(1, calc(0.088 / y))) calc(z * min(1, calc(0.088 / y))));
   --color-key-hi: #d8dbe2;
   --color-key-lo: #c9d1e2;
   --color-key-fg: #262b38;
@@ -297,6 +309,13 @@
   --color-shade-deep: rgb(0 0 0 / 0.5);
   --color-tile: oklch(from var(--seed-neutral) 0.165 min(c, 0.04) h);
   --color-tile-pressed: oklch(from var(--seed-neutral) 0.12 min(c, 0.04) h);
+  --color-well: #060910e0;
+  --color-hud-accent-ink: color(from color(from var(--color-hud-accent) srgb clamp(0, r, 1) clamp(0, g, 1) clamp(0, b, 1)) xyz-d65 calc(x + calc(0.9505 - x) * min(1, calc(max(0, calc(0.3 - y)) / max(calc(1 - y), 0.001)))) calc(y + calc(1 - y) * min(1, calc(max(0, calc(0.3 - y)) / max(calc(1 - y), 0.001)))) calc(z + calc(1.089 - z) * min(1, calc(max(0, calc(0.3 - y)) / max(calc(1 - y), 0.001)))));
+  --color-foe-ink: color(from color(from var(--color-foe) srgb clamp(0, r, 1) clamp(0, g, 1) clamp(0, b, 1)) xyz-d65 calc(x + calc(0.9505 - x) * min(1, calc(max(0, calc(0.3 - y)) / max(calc(1 - y), 0.001)))) calc(y + calc(1 - y) * min(1, calc(max(0, calc(0.3 - y)) / max(calc(1 - y), 0.001)))) calc(z + calc(1.089 - z) * min(1, calc(max(0, calc(0.3 - y)) / max(calc(1 - y), 0.001)))));
+  --color-ally-ink: color(from color(from var(--color-ally) srgb clamp(0, r, 1) clamp(0, g, 1) clamp(0, b, 1)) xyz-d65 calc(x + calc(0.9505 - x) * min(1, calc(max(0, calc(0.3 - y)) / max(calc(1 - y), 0.001)))) calc(y + calc(1 - y) * min(1, calc(max(0, calc(0.3 - y)) / max(calc(1 - y), 0.001)))) calc(z + calc(1.089 - z) * min(1, calc(max(0, calc(0.3 - y)) / max(calc(1 - y), 0.001)))));
+  --color-boon-ink: color(from color(from var(--color-boon) srgb clamp(0, r, 1) clamp(0, g, 1) clamp(0, b, 1)) xyz-d65 calc(x + calc(0.9505 - x) * min(1, calc(max(0, calc(0.3 - y)) / max(calc(1 - y), 0.001)))) calc(y + calc(1 - y) * min(1, calc(max(0, calc(0.3 - y)) / max(calc(1 - y), 0.001)))) calc(z + calc(1.089 - z) * min(1, calc(max(0, calc(0.3 - y)) / max(calc(1 - y), 0.001)))));
+  --color-fever-ink: color(from color(from var(--color-fever) srgb clamp(0, r, 1) clamp(0, g, 1) clamp(0, b, 1)) xyz-d65 calc(x + calc(0.9505 - x) * min(1, calc(max(0, calc(0.3 - y)) / max(calc(1 - y), 0.001)))) calc(y + calc(1 - y) * min(1, calc(max(0, calc(0.3 - y)) / max(calc(1 - y), 0.001)))) calc(z + calc(1.089 - z) * min(1, calc(max(0, calc(0.3 - y)) / max(calc(1 - y), 0.001)))));
+  --color-late-ink: color(from color(from var(--color-late) srgb clamp(0, r, 1) clamp(0, g, 1) clamp(0, b, 1)) xyz-d65 calc(x + calc(0.9505 - x) * min(1, calc(max(0, calc(0.3 - y)) / max(calc(1 - y), 0.001)))) calc(y + calc(1 - y) * min(1, calc(max(0, calc(0.3 - y)) / max(calc(1 - y), 0.001)))) calc(z + calc(1.089 - z) * min(1, calc(max(0, calc(0.3 - y)) / max(calc(1 - y), 0.001)))));
   --color-card: oklch(from var(--seed-neutral) 0.36 min(c, 0.05) h / 0.42);
   --color-entry-hi: oklch(from var(--seed-neutral) 0.265 min(c, 0.04) h / 0.88);
   --color-entry-lo: oklch(from var(--seed-neutral) 0.205 min(c, 0.04) h / 0.74);

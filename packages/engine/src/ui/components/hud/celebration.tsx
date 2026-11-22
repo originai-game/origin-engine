@@ -26,7 +26,7 @@ function emitter(path: string): ParticleEmitter | 0 {
 /** Where fireworks' five shells burst (down from the top edge), in which ink, and how long after the play, in seconds. */
 const SHELLS = [
   { drop: "mt-12", ink: "text-gold", delay: 0 },
-  { drop: "mt-6", ink: "text-hud-accent", delay: 0.8 },
+  { drop: "mt-6", ink: "text-hud-accent-ink", delay: 0.8 },
   { drop: "mt-24", ink: "text-danger", delay: 0.2 },
   { drop: "mt-8", ink: "text-success", delay: 0.4 },
   { drop: "mt-18", ink: "text-gold", delay: 0.6 },
@@ -50,7 +50,7 @@ export function Celebration(props: CelebrationProps) {
           <View class="absolute inset-0 flex-col items-center justify-center">
             <Show when={kind() == "confetti"}>
               <View class="absolute top-0 inset-x-0 h-1">
-                <Particles class="absolute inset-0 text-hud-accent" emitter={fx.confetti} seed={1} />
+                <Particles class="absolute inset-0 text-hud-accent-ink" emitter={fx.confetti} seed={1} />
                 <Particles class="absolute inset-0 text-gold" emitter={fx.confetti} seed={2} />
                 <Particles class="absolute inset-0 text-success" emitter={fx.confetti} seed={3} />
                 <Particles class="absolute inset-0 text-info" emitter={fx.confetti} seed={4} />
@@ -75,7 +75,7 @@ export function Celebration(props: CelebrationProps) {
             <Show when={kind() == "burst"}>
               <View class="size-16 rounded-full border-4 border-rim-strong shadow-glow-sm shadow-knob animate-ping" />
               <View class="absolute size-2">
-                <Particles class="absolute inset-0 text-hud-accent" emitter={fx.sparks} seed={1} />
+                <Particles class="absolute inset-0 text-hud-accent-ink" emitter={fx.sparks} seed={1} />
                 <Particles class="absolute inset-0 text-gold" emitter={fx.sparks} seed={2} />
                 <Particles class="absolute inset-0 text-fg" emitter={fx.sparks} seed={3} />
               </View>

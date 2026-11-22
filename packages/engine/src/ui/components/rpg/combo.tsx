@@ -47,7 +47,7 @@ export function RpgCombo(props: RpgComboProps) {
         </Show>
         <Show when={(props.multiplier ?? 0) > 1}>
           <Text
-            class={`mt-1.5 text-xs font-semibold tracking-label uppercase text-hud-accent whitespace-nowrap compact:mt-0.75 compact:tracking-normal`}
+            class={`mt-1.5 text-xs font-semibold tracking-label uppercase text-hud-accent-ink whitespace-nowrap compact:mt-0.75 compact:tracking-normal`}
           >
             {t("rpg.combo.bonus", { value: props.multiplier ?? 0 })}
           </Text>

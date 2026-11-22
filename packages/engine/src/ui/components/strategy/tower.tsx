@@ -83,7 +83,7 @@ export function StrategyTower(props: StrategyTowerProps) {
           <For each={props.paths ?? []} key={(p) => p.id}>
             {(p) => (
             <View class={`group/path flex-row items-center gap-x-2.5 p-2 bg-well`} role="listitem" label={p().name} data-affordable={p().state === "affordable"} data-locked={p().state === "locked"} data-maxed={p().state === "maxed"} data-unaffordable={p().state === "unaffordable"}>
-              <Icon class={`shrink size-8 text-fg group-data-affordable/path:text-hud-accent group-data-unaffordable/path:text-danger group-data-maxed/path:text-gold`} name={p().icon} />
+              <Icon class={`shrink size-8 text-fg group-data-affordable/path:text-hud-accent-ink group-data-unaffordable/path:text-danger group-data-maxed/path:text-gold`} name={p().icon} />
               <View class="flex-1 min-w-0 overflow-hidden flex-col gap-y-0.5">
                 <Text class={`min-w-0 text-reading font-bold whitespace-nowrap overflow-hidden`}>
                   {p().name}

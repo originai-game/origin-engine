@@ -108,7 +108,7 @@ export function Nameplate(props: NameplateProps) {
           <Show when={icon() !== ""}>
             <Icon class="shrink-0 size-4" name={icon()} />
           </Show>
-          <Text class="shrink min-w-0 max-w-37.5 text-reading font-semibold whitespace-nowrap truncate text-gold text-shadow-2xs text-stroke-3 text-stroke-bg group-data-reaction-hostile:text-danger group-data-reaction-friendly:text-success group-data-reaction-player:text-hud-accent group-data-boss:max-w-50 group-data-boss:text-base group-data-boss:font-bold group-data-boss:tracking-md group-data-boss:uppercase group-data-targeted:text-fg group-data-dead:text-fg-muted">{props.name}</Text>
+          <Text class="shrink min-w-0 max-w-37.5 text-reading font-semibold whitespace-nowrap truncate text-gold text-shadow-2xs text-stroke-3 text-stroke-bg group-data-reaction-hostile:text-danger group-data-reaction-friendly:text-success group-data-reaction-player:text-hud-accent-ink group-data-boss:max-w-50 group-data-boss:text-base group-data-boss:font-bold group-data-boss:tracking-md group-data-boss:uppercase group-data-targeted:text-fg group-data-dead:text-fg-muted">{props.name}</Text>
         </View>
         <Show when={title() !== ""}>
           <Text class="min-w-0 max-w-47.5 text-2xs font-semibold tracking-wide uppercase whitespace-nowrap truncate text-fg-muted text-shadow-2xs group-data-dead:text-fg-muted">{title()}</Text>

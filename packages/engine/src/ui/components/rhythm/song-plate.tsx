@@ -36,7 +36,7 @@ export function RhythmSongPlate(props: RhythmSongPlateProps) {
       <View class={`shrink size-21 compact:size-14 rounded-panel bg-linear-to-b from-rim-strong via-rim to-rim-soft p-0.5`}>
         <Show when={props.jacket} fallback={
           <View class={`size-full rounded-panel bg-plate-hi flex-row items-center justify-center`}>
-            <Icon class={`size-11/25 text-hud-accent`} name="music" />
+            <Icon class={`size-11/25 text-hud-accent-ink`} name="music" />
           </View>
         }>
           <Image class={`size-full rounded-panel object-cover`} src={props.jacket} />

@@ -55,7 +55,7 @@ export function RacingResults(props: RacingResultsProps) {
             <Show when={playerRow()} keyed>
               {(r) => (
                 <>
-                  <Text class={`text-8xl leading-none font-bold italic whitespace-nowrap text-hud-accent text-stroke-3 text-stroke-bg compact:text-6xl`}>
+                  <Text class={`text-8xl leading-none font-bold italic whitespace-nowrap text-hud-accent-ink text-stroke-3 text-stroke-bg compact:text-6xl`}>
                     {r().state === "dnf" || r().state === "dsq" ? (r().state === "dsq" ? t("racing.results.dsq") : t("racing.results.dnf")) : ordinal(r().position)}
                   </Text>
                   <View class={`flex-row flex-wrap items-baseline justify-between gap-x-3 py-2 px-3 bg-plate-hi nine-plate-cut text-fg ${packClass("Plate", "frame")}`}>
@@ -113,7 +113,7 @@ export function RacingResults(props: RacingResultsProps) {
                           <Text class={`shrink-0 w-27.5 text-right text-title font-bold tabular-nums whitespace-nowrap compact:w-21.5 compact:text-caption`}>{r().time}</Text>
                         }
                       >
-                        <Text class={`shrink-0 ml-auto py-0 px-1 text-xs font-bold tracking-label uppercase whitespace-nowrap bg-well nine-chip-cut text-foe ${packClass("Chip", "frame")}`} label={r().state === "dsq" ? t("racing.results.dsqName") : t("racing.results.dnfName")}>
+                        <Text class={`shrink-0 ml-auto py-0 px-1 text-xs font-bold tracking-label uppercase whitespace-nowrap bg-well nine-chip-cut text-foe-ink ${packClass("Chip", "frame")}`} label={r().state === "dsq" ? t("racing.results.dsqName") : t("racing.results.dnfName")}>
                           {r().state === "dsq" ? t("racing.results.dsq") : t("racing.results.dnf")}
                         </Text>
                       </Show>

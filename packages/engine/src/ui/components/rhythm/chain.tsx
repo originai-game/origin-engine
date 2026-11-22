@@ -26,7 +26,7 @@ export function RhythmChain(props: RhythmChainProps) {
             <Text class={`text-xs font-semibold tracking-label uppercase whitespace-nowrap opacity-78`}>
               {t("rhythm.chain.label")}
             </Text>
-            <Text class={`text-title leading-tight font-bold tabular-nums whitespace-nowrap text-hud-accent`}>
+            <Text class={`text-title leading-tight font-bold tabular-nums whitespace-nowrap text-hud-accent-ink`}>
               {props.multiplier}
             </Text>
           </View>

@@ -90,7 +90,7 @@ export function ArenaVote(props: ArenaVoteProps) {
                         <Text class="text-caption text-fg-muted">{o().detail}</Text>
                       </Show>
                       <Show when={props.selected == o().id}>
-                        <Text class="text-xs leading-normal font-bold tracking-label uppercase text-hud-accent">{t("vote.selected")}</Text>
+                        <Text class="text-xs leading-normal font-bold tracking-label uppercase text-hud-accent-ink">{t("vote.selected")}</Text>
                       </Show>
                       <Show when={props.closed && props.winner == o().id}>
                         <Text class="text-xs leading-normal font-bold tracking-label uppercase text-success">{t("vote.winner")}</Text>

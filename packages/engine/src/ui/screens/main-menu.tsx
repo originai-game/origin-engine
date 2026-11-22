@@ -59,7 +59,7 @@ export function MainMenuScreen(props: MainMenuScreenProps) {
         <Show when={props.news !== ""}>
           <View class={`flex-row absolute right-12 bottom-12 items-center gap-x-3 w-90 bg-plate-hi border border-rim nine-panel-cut py-3 px-4 compact:static compact:w-auto compact:max-w-none compact:mt-auto compact:mb-3 compact:py-2 compact:px-3 short:hidden hover:translate-x-0 hover:-translate-y-0.25 active:translate-x-0 active:translate-y-0 ${packClass("Panel", "frame")}`} onPress={(e) => props.onNews?.(e)} tabIndex={0}>
             <View class="gap-y-0.5 grow shrink">
-              <Text class="text-xs font-bold tracking-kicker uppercase text-hud-accent m-0">
+              <Text class="text-xs font-bold tracking-kicker uppercase text-hud-accent-ink m-0">
                 {t("screen.main-menu.newsEyebrow")}
               </Text>
               <Text class="text-xl leading-snug font-semibold line-clamp-2 m-0 compact:text-base">
@@ -81,7 +81,7 @@ export function MainMenuScreen(props: MainMenuScreenProps) {
                     {props.saveLine}
                   </Text>
                 </View>
-                <Icon class="text-hud-accent opacity-0 size-4 group-hover/continue:opacity-100 rtl:-scale-x-100 rtl:scale-y-100" name="chevronRight" />
+                <Icon class="text-hud-accent-ink opacity-0 size-4 group-hover/continue:opacity-100 rtl:-scale-x-100 rtl:scale-y-100" name="chevronRight" />
               </View>
             </View>
           </Show>
@@ -90,7 +90,7 @@ export function MainMenuScreen(props: MainMenuScreenProps) {
               <Text class="grow shrink text-start text-3xl leading-tight font-semibold text-shadow-xs text-shadow-bg">
                 {t("screen.main-menu.newGame")}
               </Text>
-              <Icon class="text-hud-accent opacity-0 size-4 group-hover/newgame:opacity-100 rtl:-scale-x-100 rtl:scale-y-100" name="chevronRight" />
+              <Icon class="text-hud-accent-ink opacity-0 size-4 group-hover/newgame:opacity-100 rtl:-scale-x-100 rtl:scale-y-100" name="chevronRight" />
             </View>
           </View>
           <View class={`flex-row items-center justify-center gap-1 group/modes w-full min-h-11 text-fg-muted py-2 px-4 hover:bg-hud-accent hover:text-hud-accent-fg active:bg-hud-accent active:text-hud-accent-fg compact:pr-4 compact:pl-6`} role="button" onPress={(e) => props.onModes?.(e)}>
@@ -98,7 +98,7 @@ export function MainMenuScreen(props: MainMenuScreenProps) {
               <Text class="grow shrink text-start text-3xl leading-tight font-semibold text-shadow-xs text-shadow-bg">
                 {t("screen.main-menu.modes")}
               </Text>
-              <Icon class="text-hud-accent opacity-0 size-4 group-hover/modes:opacity-100 rtl:-scale-x-100 rtl:scale-y-100" name="chevronRight" />
+              <Icon class="text-hud-accent-ink opacity-0 size-4 group-hover/modes:opacity-100 rtl:-scale-x-100 rtl:scale-y-100" name="chevronRight" />
             </View>
           </View>
           <View class={`flex-row items-center justify-center gap-1 group/settings w-full min-h-11 text-fg-muted py-2 px-4 hover:bg-hud-accent hover:text-hud-accent-fg active:bg-hud-accent active:text-hud-accent-fg compact:pr-4 compact:pl-6`} role="button" onPress={(e) => props.onSettings?.(e)}>
@@ -106,7 +106,7 @@ export function MainMenuScreen(props: MainMenuScreenProps) {
               <Text class="grow shrink text-start text-3xl leading-tight font-semibold text-shadow-xs text-shadow-bg">
                 {t("screen.main-menu.settings")}
               </Text>
-              <Icon class="text-hud-accent opacity-0 size-4 group-hover/settings:opacity-100 rtl:-scale-x-100 rtl:scale-y-100" name="chevronRight" />
+              <Icon class="text-hud-accent-ink opacity-0 size-4 group-hover/settings:opacity-100 rtl:-scale-x-100 rtl:scale-y-100" name="chevronRight" />
             </View>
           </View>
           <View class="h-px mt-2 mr-0 mb-1 ml-4 bg-linear-to-r from-sheen to-transparent to-80% compact:ml-6" />

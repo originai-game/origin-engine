@@ -69,7 +69,7 @@ export function RacingLapHud(props: RacingLapHudProps) {
               label={props.laps > 0 && props.lap > 0 ? t("racing.lap.lapValue", { lap: props.lap, laps: props.laps }) : t("racing.lap.lap")}
               data-final={props.finalLap}
             >
-              <Text class={`text-xs font-semibold tracking-label uppercase whitespace-nowrap opacity-78 group-data-final/lap:text-hud-accent`}>
+              <Text class={`text-xs font-semibold tracking-label uppercase whitespace-nowrap opacity-78 group-data-final/lap:text-hud-accent-ink`}>
                 {props.finalLap ? t("racing.lap.finalLap") : t("racing.lap.lap")}
               </Text>
               <Text class={`text-reading font-bold tabular-nums whitespace-nowrap`}>{props.lap > 0 ? formatNumber(props.lap) : t("racing.lap.pending")}</Text>
@@ -83,7 +83,7 @@ export function RacingLapHud(props: RacingLapHudProps) {
               <View
                 class={`shrink-0 size-2 -rotate-45 border-l-2 border-b-2 border-hud-accent group-data-trend-down/gained:rotate-45 group-data-trend-down/gained:border-t-2 group-data-trend-down/gained:border-r-2 group-data-trend-down/gained:border-l-0 group-data-trend-down/gained:border-b-0 group-data-trend-down/gained:border-foe`}
               />
-              <Text class={`min-w-0 text-xs font-semibold tracking-label uppercase whitespace-nowrap overflow-hidden text-hud-accent group-data-trend-down/gained:text-foe compact:tracking-normal`}>
+              <Text class={`min-w-0 text-xs font-semibold tracking-label uppercase whitespace-nowrap overflow-hidden text-hud-accent-ink group-data-trend-down/gained:text-foe-ink compact:tracking-normal`}>
                 {props.gained > 0 ? t("racing.lap.up", { n: props.gained }) : t("racing.lap.down", { n: -props.gained })}
               </Text>
             </View>

@@ -49,7 +49,7 @@ export function PuzzleBoosters(props: PuzzleBoostersProps) {
                       {b().count === 0 ? '+' : t("puzzle.boosters.times", { count: formatNumber(b().count) })}
                     </Text>
                   </View>
-                  <Text class={`text-fg max-w-32 text-center line-clamp-2 text-xs font-semibold overflow-hidden group-data-armed/booster:text-hud-accent group-data-not-available/booster:text-fg-muted compact:max-w-22.75`}>
+                  <Text class={`text-fg max-w-32 text-center line-clamp-2 text-xs font-semibold overflow-hidden group-data-armed/booster:text-hud-accent-ink group-data-not-available/booster:text-fg-muted compact:max-w-22.75`}>
                     {b().name}
                   </Text>
                 </View>

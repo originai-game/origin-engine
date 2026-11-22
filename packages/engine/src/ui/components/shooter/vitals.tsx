@@ -67,7 +67,7 @@ export function ShooterVitals(props: ShooterVitalsProps) {
               <Text class="min-w-0 text-base font-semibold whitespace-nowrap truncate text-fg text-shadow-2xs text-stroke-3 text-stroke-bg">{props.name}</Text>
             </Show>
             <Show when={(props.level ?? 0) > 0}>
-              <Text class="shrink-0 text-xs font-semibold tracking-label uppercase whitespace-nowrap text-hud-accent text-shadow-2xs text-stroke-3 text-stroke-bg">
+              <Text class="shrink-0 text-xs font-semibold tracking-label uppercase whitespace-nowrap text-hud-accent-ink text-shadow-2xs text-stroke-3 text-stroke-bg">
                 {t("shooter.vitals.level", { level: props.level ?? 0 })}
               </Text>
             </Show>

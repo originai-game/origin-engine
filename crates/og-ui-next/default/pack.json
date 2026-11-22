@@ -346,6 +346,10 @@
         "light": "#1c1c1e"
       },
       "ally": "#4fd8ff",
+      "ally-ink": {
+        "dark": "#4fd8ff",
+        "light": "#1c5b6d"
+      },
       "bg": {
         "dark": "#000000",
         "light": "#e7f3ff"
@@ -356,6 +360,10 @@
       },
       "boon": "#55e39a",
       "boon-fg": "#011e0f",
+      "boon-ink": {
+        "dark": "#55e39a",
+        "light": "#1f5f3e"
+      },
       "border": {
         "dark": "#2f384a",
         "light": "#d1ddf4"
@@ -415,6 +423,10 @@
       "epic-hi": "#d9c6fe",
       "fever": "#ff3d8a",
       "fever-fg": "#000000",
+      "fever-ink": {
+        "dark": "#ff5693",
+        "light": "#9c2152"
+      },
       "fg": {
         "dark": "#edf6ff",
         "light": "#121824"
@@ -445,6 +457,10 @@
       },
       "foe": "#ff4d5e",
       "foe-fg": "#000000",
+      "foe-ink": {
+        "dark": "#ff5c6a",
+        "light": "#9a2b35"
+      },
       "glass": {
         "dark": "#141b2cf7",
         "light": "#f3fafff7"
@@ -485,6 +501,10 @@
       "hud-accent": "#38e8ff",
       "hud-accent-fg": "#0b0f18",
       "hud-accent-hi": "#d6fdff",
+      "hud-accent-ink": {
+        "dark": "#38e8ff",
+        "light": "#105c66"
+      },
       "info": {
         "dark": "#5cc8ff",
         "light": "#0052a6"
@@ -501,6 +521,10 @@
         "light": "#ffffff"
       },
       "late": "#ff8c46",
+      "late-ink": {
+        "dark": "#ff8c46",
+        "light": "#80441e"
+      },
       "legendary": {
         "dark": "#ffa53d",
         "light": "#973107"
@@ -712,7 +736,10 @@
         "dark": "#000000",
         "light": "#ffffff"
       },
-      "well": "#060910e0",
+      "well": {
+        "dark": "#060910e0",
+        "light": "#dee8fdf5"
+      },
       "well-rim": {
         "dark": "#707b8f",
         "light": "#8892a8"

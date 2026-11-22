@@ -53,7 +53,7 @@ export function RhythmGauge(props: RhythmGaugeProps) {
           {(i) => <View class={`absolute left-0 right-0 h-0.75 bg-shade-deep`} style={{ top: `${(i() + 1) * 10}%`, marginTop: "-1.5px" }} />}
         </For>
       </View>
-      <Text class={`text-xs font-semibold tracking-label uppercase whitespace-nowrap text-fg-muted text-stroke-3 text-stroke-bg group-data-kind-fever/gauge:text-fever`}>
+      <Text class={`text-xs font-semibold tracking-label uppercase whitespace-nowrap text-fg-muted text-stroke-3 text-stroke-bg group-data-kind-fever/gauge:text-fever-ink`}>
         {(props.kind ?? "life") === "fever" ? t("rhythm.gauge.fever") : t("rhythm.gauge.life")}
       </Text>
       <Show when={props.failed} fallback={
@@ -68,7 +68,7 @@ export function RhythmGauge(props: RhythmGaugeProps) {
         </Text>
       </Show>
       <Show when={props.ready}>
-        <Text role="status" class={`text-xs font-bold tracking-label uppercase whitespace-nowrap text-fever text-stroke-3 text-stroke-bg`}>
+        <Text role="status" class={`text-xs font-bold tracking-label uppercase whitespace-nowrap text-fever-ink text-stroke-3 text-stroke-bg`}>
           {t("rhythm.gauge.ready")}
         </Text>
       </Show>

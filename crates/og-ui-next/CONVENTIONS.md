@@ -590,7 +590,7 @@ relative colours evaluated) to `#rrggbb[aa]` and points.
 
 | Section | Names | From |
 |---|---|---|
-| `colors` | every `--color-*`: `bg`, `bg-subtle`, `surface`, `surface-raised`, `surface-hover`, `card`, `fg`, `fg-muted`, `fg-subtle`, `fg-inverse`, `border`, `border-strong`, `well-rim`, `fill`, `fill-strong`, `accent`, `accent-hover`, `accent-active`, `accent-fg`, `accent-soft`, `accent-ink`, `focus`, `danger`, `warn`, `success`, `info`, `gold`, `health`, `mana`, `xp`, `hud`, `scrim`, `glass`, `glass-hi`, `glass-lo`, `plate-hi`, `plate-lo`, `rim`, `rim-soft`, `rim-strong`, `lit`, `lit-soft`, `shade`, `shade-deep`, `tile`, `tile-pressed`, `raised-*`, `glow`, `glow-soft`, `select-hi`, `select-lo`, `entry-*`, `stage*`, `material-*`, `team1`…`team8`, `common`…`mythic`, the ink on a fill of a status or rarity colour (`success-fg`, `danger-fg`, `warn-fg`, `info-fg`, `epic-fg`, `legendary-fg`), the HUD's `hud-accent`, `hud-accent-fg`, `hud-accent-hi`, `foe`, `foe-fg`, `ally`, `boon`, `boon-fg`, `critical`, `critical-fg`, `fever`, `fever-fg`, `late`, `well`, `key-hi`, `key-lo`, `key-fg`, `gold-fg`, `gold-hi`, `epic-hi` and `chart-easy`…`chart-master` with their `-fg` | `--color-<name>` (color.css) |
+| `colors` | every `--color-*`: `bg`, `bg-subtle`, `surface`, `surface-raised`, `surface-hover`, `card`, `fg`, `fg-muted`, `fg-subtle`, `fg-inverse`, `border`, `border-strong`, `well-rim`, `fill`, `fill-strong`, `accent`, `accent-hover`, `accent-active`, `accent-fg`, `accent-soft`, `accent-ink`, `focus`, `danger`, `warn`, `success`, `info`, `gold`, `health`, `mana`, `xp`, `hud`, `scrim`, `glass`, `glass-hi`, `glass-lo`, `plate-hi`, `plate-lo`, `rim`, `rim-soft`, `rim-strong`, `lit`, `lit-soft`, `shade`, `shade-deep`, `tile`, `tile-pressed`, `raised-*`, `glow`, `glow-soft`, `select-hi`, `select-lo`, `entry-*`, `stage*`, `material-*`, `team1`…`team8`, `common`…`mythic`, the ink on a fill of a status or rarity colour (`success-fg`, `danger-fg`, `warn-fg`, `info-fg`, `epic-fg`, `legendary-fg`), the HUD's `hud-accent`, `hud-accent-fg`, `hud-accent-hi`, `hud-accent-ink`, `foe`, `foe-fg`, `foe-ink`, `ally`, `ally-ink`, `boon`, `boon-fg`, `boon-ink`, `critical`, `critical-fg`, `fever`, `fever-fg`, `fever-ink`, `late`, `late-ink`, `well`, `key-hi`, `key-lo`, `key-fg`, `gold-fg`, `gold-hi`, `epic-hi` and `chart-easy`…`chart-master` with their `-fg` | `--color-<name>` (color.css) |
 | `radius` | `control` `field` `block` `card` `panel` `sheet` `button` `capsule` | `--radius-<name>` (space.css) |
 | `fontSize` | `xs` `sm` `base` `lg` `xl`…`8xl` (over Tailwind's), `2xs` `meta` `caption` `body` `reading` `title` `display-sm`…`display-2xl`; `[size, line height ÷ size]` | `--font-scale-<name>-size` and `-line-height` |
 | `tracking` | `tight` `xs`…`xl` `wide` `label` `kicker` (`--font-tracking-*`), and the letter spacing of the scale steps `2xl`…`8xl` and `display-*` (`xl` is `--font-tracking-xl`) | type.css, in em |
@@ -640,6 +640,11 @@ are a pair the theme chose, never a component's tuning:
   `raised-pressed`, `tile`, `glass`, `glass-hi`, `plate-hi`, a state colour
   such as `hud-accent` or `gold`), and its ink is that ground's pair
   (`text-fg` on the neutral grounds, `text-<role>-fg` on a state colour).
+  A HUD colour as an ink is its `-ink` role (`text-hud-accent-ink`,
+  `text-foe-ink`, `text-ally-ink`, `text-boon-ink`, `text-fever-ink`,
+  `text-late-ink`), which holds 4.5:1 on the neutral grounds and the
+  `well` in both schemes; `text-hud-accent` itself is a fill's colour
+  and does not read on a pale ground.
   A ground under text is at least 85% opaque in both schemes, with no
   opacity modifier taking it below that.
 - Text straight over the scene sits on `Plate.frame`, or carries the

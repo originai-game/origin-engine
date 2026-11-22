@@ -78,7 +78,7 @@ export function RacingGarage(props: RacingGarageProps) {
                   <Show when={!v().image}>
                     <View class={`w-full aspect-3.2 bg-lit-soft nine-panel-cut`} />
                   </Show>
-                  <Text class={`w-full text-left text-xs leading-snug font-semibold tracking-label uppercase text-hud-accent text-stroke-3 text-stroke-bg`}>{v().body}</Text>
+                  <Text class={`w-full text-left text-xs leading-snug font-semibold tracking-label uppercase text-hud-accent-ink text-stroke-3 text-stroke-bg`}>{v().body}</Text>
                   <Text class={`w-full text-left text-8xl leading-none font-bold italic uppercase text-fg text-stroke-3 text-stroke-bg line-clamp-3 overflow-hidden`}>{v().title}</Text>
                 </View>
               )}

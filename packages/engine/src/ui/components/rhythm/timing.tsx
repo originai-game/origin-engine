@@ -28,7 +28,7 @@ export function RhythmTiming(props: RhythmTimingProps) {
               <View
                 role="listitem"
                 label={c().label}
-                class={`flex-row items-baseline gap-4 compact:gap-1 text-fg data-judgement-perfect:text-gold data-judgement-great:text-hud-accent data-judgement-good:text-boon data-judgement-bad:text-warn data-judgement-miss:text-fg-muted`}
+                class={`flex-row items-baseline gap-4 compact:gap-1 text-fg data-judgement-perfect:text-gold data-judgement-great:text-hud-accent-ink data-judgement-good:text-boon-ink data-judgement-bad:text-warn data-judgement-miss:text-fg-muted`}
                 data-judgement-perfect={c().judgement === "perfect"}
                 data-judgement-great={c().judgement === "great"}
                 data-judgement-good={c().judgement === "good"}

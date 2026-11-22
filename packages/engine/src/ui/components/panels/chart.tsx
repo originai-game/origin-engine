@@ -29,7 +29,7 @@ export function Chart(props: ChartProps) {
   return (
     <View class="w-120 max-w-full gap-1 p-4 nine-panel-cut bg-glass text-fg" role="figure" label={props.title || t("component.chart.name")}>
       <Show when={props.subtitle}>
-        <Text class="text-caption font-bold tracking-label uppercase text-hud-accent">{props.subtitle}</Text>
+        <Text class="text-caption font-bold tracking-label uppercase text-hud-accent-ink">{props.subtitle}</Text>
       </Show>
       <Show when={props.title}>
         <Text class="text-base font-bold text-fg">{props.title}</Text>

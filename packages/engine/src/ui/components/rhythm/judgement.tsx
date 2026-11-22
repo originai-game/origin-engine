@@ -56,7 +56,7 @@ export function RhythmJudgement(props: RhythmJudgementProps) {
           </Show>
           <View class={`flex-col items-center gap-0.5 compact:flex-row compact:items-baseline compact:gap-2`}>
             <Text
-              class={`text-base font-semibold uppercase whitespace-nowrap text-hud-accent tracking-kicker compact:tracking-label data-broken:text-fg-muted data-broken:tracking-label`}
+              class={`text-base font-semibold uppercase whitespace-nowrap text-hud-accent-ink tracking-kicker compact:tracking-label data-broken:text-fg-muted data-broken:tracking-label`}
               data-broken={props.broken}
             >
               {props.broken ? t("rhythm.judge.broken") : t("rhythm.judge.combo")}
@@ -84,7 +84,7 @@ export function RhythmJudgement(props: RhythmJudgementProps) {
           data-judgement-miss={judgement === "miss"}
         >
           <Text
-            class={`max-w-full min-w-0 text-8xl compact:text-title leading-flat font-bold italic tracking-wide uppercase text-center whitespace-nowrap text-ellipsis overflow-hidden text-gold data-judgement-great:text-hud-accent data-judgement-good:text-boon data-judgement-bad:text-warn data-judgement-miss:text-fg-muted`}
+            class={`max-w-full min-w-0 text-8xl compact:text-title leading-flat font-bold italic tracking-wide uppercase text-center whitespace-nowrap text-ellipsis overflow-hidden text-gold data-judgement-great:text-hud-accent-ink data-judgement-good:text-boon-ink data-judgement-bad:text-warn data-judgement-miss:text-fg-muted`}
             data-judgement-perfect={judgement === "perfect"}
             data-judgement-great={judgement === "great"}
             data-judgement-good={judgement === "good"}
@@ -97,7 +97,7 @@ export function RhythmJudgement(props: RhythmJudgementProps) {
             <View class={`flex-row items-baseline justify-center gap-1`}>
               <Show when={props.timing !== ""}>
                 <Text
-                  class={`text-xs font-semibold tracking-label uppercase whitespace-nowrap text-fg data-timing-early:text-hud-accent data-timing-late:text-late`}
+                  class={`text-xs font-semibold tracking-label uppercase whitespace-nowrap text-fg data-timing-early:text-hud-accent-ink data-timing-late:text-late-ink`}
                   data-timing-early={props.timing === "early"}
                   data-timing-late={props.timing === "late"}
                 >
@@ -106,7 +106,7 @@ export function RhythmJudgement(props: RhythmJudgementProps) {
               </Show>
               <Show when={props.offset !== ""}>
                 <Text
-                  class={`text-base font-bold tabular-nums whitespace-nowrap text-gold data-timing-early:text-hud-accent data-timing-late:text-late`}
+                  class={`text-base font-bold tabular-nums whitespace-nowrap text-gold data-timing-early:text-hud-accent-ink data-timing-late:text-late-ink`}
                   data-timing-early={props.timing === "early"}
                   data-timing-late={props.timing === "late"}
                 >

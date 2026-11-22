@@ -58,7 +58,7 @@ export function RhythmResults(props: RhythmResultsProps) {
             <View class={`flex-row items-center gap-4 shrink`}>
               <Show when={props.grade !== ""}>
                 <Text
-                  class={`shrink min-w-14 pr-2 text-8xl compact:text-display-xl leading-flat font-bold italic text-center whitespace-nowrap text-gold data-not-cleared:text-foe`}
+                  class={`shrink min-w-14 pr-2 text-8xl compact:text-display-xl leading-flat font-bold italic text-center whitespace-nowrap text-gold data-not-cleared:text-foe-ink`}
                   label={t("rhythm.results.gradeName", { grade: props.grade })}
                   data-not-cleared={!props.cleared}
                 >
@@ -128,7 +128,7 @@ export function RhythmResults(props: RhythmResultsProps) {
                     <View
                       role="listitem"
                       label={c().label}
-                      class={`flex-row items-baseline gap-3 py-0.5 w-full data-judgement-perfect:text-gold data-judgement-great:text-hud-accent data-judgement-good:text-boon data-judgement-bad:text-warn data-judgement-miss:opacity-80`}
+                      class={`flex-row items-baseline gap-3 py-0.5 w-full data-judgement-perfect:text-gold data-judgement-great:text-hud-accent-ink data-judgement-good:text-boon-ink data-judgement-bad:text-warn data-judgement-miss:opacity-80`}
                       data-judgement-perfect={c().judgement === "perfect"}
                       data-judgement-great={c().judgement === "great"}
                       data-judgement-good={c().judgement === "good"}

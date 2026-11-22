@@ -117,7 +117,7 @@ export function CardCollection(props: CardCollectionProps) {
                     </View>
                   </View>
                 </Show>
-                <Text class={`max-w-full text-center whitespace-nowrap text-ellipsis text-xs font-bold text-fg-muted overflow-hidden data-in-deck:text-hud-accent`} data-in-deck={c().inDeck > 0}>
+                <Text class={`max-w-full text-center whitespace-nowrap text-ellipsis text-xs font-bold text-fg-muted overflow-hidden data-in-deck:text-hud-accent-ink`} data-in-deck={c().inDeck > 0}>
                   {c().inDeck > 0 ? t("card.collection.inDeck", { count: c().inDeck }) : t("card.collection.notInDeck")}
                 </Text>
                 <Show when={!c().canAdd}>

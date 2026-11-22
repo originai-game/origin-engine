@@ -49,7 +49,7 @@ export function LoadingScreen(props: LoadingScreenProps) {
         <View class="absolute -top-30 bottom-0 inset-x-0 bg-linear-to-b from-transparent via-shade-deep via-30% to-shade-deep" />
         <View class="gap-5 short:flex-row short:items-end short:gap-4 compact:gap-4">
           <View class="max-w-3/5 gap-0.5 compact:max-w-full short:max-w-9/20 short:grow short:shrink short:basis-0 short:min-w-0">
-            <View class={`flex-row items-center text-xs font-semibold tracking-label uppercase text-hud-accent gap-2.5 transition duration-240 ease-out starting:opacity-0 starting:translate-y-2`}>
+            <View class={`flex-row items-center text-xs font-semibold tracking-label uppercase text-hud-accent-ink gap-2.5 transition duration-240 ease-out starting:opacity-0 starting:translate-y-2`}>
               <View class="w-8 h-0.5 bg-hud-accent shadow-glow-sm" />
               <Text class="shrink">{t("screen.loading.entering")}</Text>
             </View>
@@ -59,7 +59,7 @@ export function LoadingScreen(props: LoadingScreenProps) {
           </View>
           <View class={`pt-4 pb-4.5 nine-panel-cut bg-plate-hi text-fg max-w-190 px-5.5 gap-1 compact:py-3 compact:px-4 grow short:shrink short:basis-0 short:min-w-0 short:py-2.5 short:px-4 disabled:text-fg-subtle transition duration-240 ease-out starting:opacity-0 starting:translate-y-2 ${packClass("Panel", "frame")}`}>
             <View class="flex-row items-center gap-2">
-              <Text class={`tracking-label uppercase text-hud-accent text-xs font-bold bg-tile nine-plate-cut py-0.5 px-2 m-0 ${packClass("Chip", "frame")}`}>
+              <Text class={`tracking-label uppercase text-hud-accent-ink text-xs font-bold bg-tile nine-plate-cut py-0.5 px-2 m-0 ${packClass("Chip", "frame")}`}>
                 {t("screen.loading.tip")}
               </Text>
               <View class={`flex-row items-center justify-center shrink ml-auto gap-x-1 text-xs font-semibold tracking-label px-1 pointer-coarse:min-h-11`} role="button" onPress={(e) => props.onNextTip?.(e)}>
@@ -87,7 +87,7 @@ export function LoadingScreen(props: LoadingScreenProps) {
               </Text>
             </Show>
             <Show when={!(props.ready && props.waits)}>
-              <Text class={`tabular-nums text-fg text-stroke-3 text-stroke-bg text-shadow-xs text-shadow-bg min-w-18 text-display-lg leading-flat text-end font-bold whitespace-nowrap m-0 data-ready:text-hud-accent compact:ml-auto compact:min-w-0 compact:text-display-sm short:text-title shrink`} data-ready={props.ready === true}>
+              <Text class={`tabular-nums text-fg text-stroke-3 text-stroke-bg text-shadow-xs text-shadow-bg min-w-18 text-display-lg leading-flat text-end font-bold whitespace-nowrap m-0 data-ready:text-hud-accent-ink compact:ml-auto compact:min-w-0 compact:text-display-sm short:text-title shrink`} data-ready={props.ready === true}>
                 {t("screen.loading.Percent", { progress: `${formatNumber((props.progress) * 100, { decimals: 0 })}%` })}
               </Text>
             </Show>
