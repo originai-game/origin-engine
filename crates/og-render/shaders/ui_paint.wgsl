@@ -3,11 +3,12 @@
 // so nothing is compiled after boot. Each instance is a box in CSS pixels
 // (origin top left, y down) with its clip: a box rounded per corner in a
 // colour or a gradient, a border ring, an outer or inset Gaussian box
-// shadow, an MSDF glyph of the bound font page, or a built-in icon's stroked
-// segments. Colours are linear and straight until the end, which encodes
-// them: the target stores what is returned, so the pass blends sRGB-encoded
-// values, as CSS does. Where the output is no such target, the pass draws a
-// layer that fs_layer draws over it (src/ui/paint.rs).
+// shadow, an MSDF glyph of the bound font page, a glyph's raster in the
+// bound page of the glyph atlas, or a built-in icon's stroked segments.
+// Colours are linear and straight until the end, which encodes them: the
+// target stores what is returned, so the pass blends sRGB-encoded values, as
+// CSS does. Where the output is no such target, the pass draws a layer that
+// fs_layer draws over it (src/ui/paint.rs).
 
 struct PaintFrame {
   // xy: the target in device pixels; z: device pixels per CSS pixel.
@@ -32,8 +33,10 @@ struct PaintGpu {
   p: vec4<f32>,
   // x: the kind (0 solid, 1 gradient, 2 glyph, 3 icon, 4 border, 5 shadow,
   // 6 inset shadow, 7 image, 8 a polyline's segment: ends in uv, its
-  // neighbours' far ends in r, width and flags in p), y and z its gradient, or its first segment and their
-  // count, or an image's flags (1 fill, 2 tile), w its transform (0 none).
+  // neighbours' far ends in r, width and flags in p, 9 a glyph's raster),
+  // y and z its gradient, or its first segment and their count, or an
+  // image's flags (1 fill, 2 tile), or a raster's tier (0 coverage, 1
+  // colour, 2 distance field), w its transform (0 none).
   k: vec4<u32>,
   // An image's radial wipe: the fraction hidden, the start angle, 1 for
   // counter-clockwise; w its mask, a gradient's index + 1 (0 none).
@@ -109,7 +112,7 @@ fn vs_paint(@builtin(vertex_index) vi: u32, @builtin(instance_index) ii: u32) ->
   let half = 0.5 * q.rect.zw;
   var lo = -half - vec2<f32>(px);
   var hi = half + vec2<f32>(px);
-  if (q.k.x == 2u || q.k.x == 7u) {
+  if (q.k.x == 2u || q.k.x == 7u || q.k.x == 9u) {
     lo = -half;
     hi = half;
   } else if (q.k.x == 5u) {
@@ -314,6 +317,29 @@ fn fs_paint(in: PaintOut) -> @location(0) vec4<f32> {
         a *= 0.5 + 0.5 * erf_approx(d / (0.5 * q.p.y * scale * 1.4142135));
       } else {
         a *= clamp(d + 0.5, 0.0, 1.0);
+      }
+    }
+    case 9u: {
+      if (q.k.y == 0u) {
+        // Coverage is the text's alpha as it is: the pass blends encoded
+        // values, where a browser blends a glyph too.
+        a *= m.r;
+      } else if (q.k.y == 1u) {
+        // A colour glyph: premultiplied, sRGB-encoded.
+        rgb = srgb_decode(m.rgb / max(m.a, 1e-4));
+        a *= m.a;
+      } else {
+        // A distance field, `p.z` atlas pixels across: grown by `p.x`, and
+        // blurred by `p.y` (CSS's radius, a deviation of half).
+        let size = vec2<f32>(textureDimensions(page));
+        let px_range = max(0.5 * dot(vec2<f32>(q.p.z) / size, screen_tex), 1.0);
+        let grow = min(q.p.x * scale, max(0.5 * px_range - 0.75, 0.0));
+        let d = px_range * (median(m.r, m.g, m.b) - 0.5) + grow;
+        if (q.p.y * scale > 1.0) {
+          a *= 0.5 + 0.5 * erf_approx(d / (0.5 * q.p.y * scale * 1.4142135));
+        } else {
+          a *= clamp(d + 0.5, 0.0, 1.0);
+        }
       }
     }
     case 3u: {

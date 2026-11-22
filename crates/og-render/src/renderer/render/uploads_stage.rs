@@ -116,15 +116,19 @@ impl Renderer {
                     .copied()
                     .chain([textures as u64]),
             );
+            // Held only here: whoever paints fills the atlas between frames.
+            let glyphs = scene.ui.glyphs.lock().unwrap_or_else(|e| e.into_inner());
             self.paint.upload(
                 &self.device,
                 &self.queue,
                 &scene.ui.paint,
+                &glyphs,
                 |h| fonts.get(h.index()).map(|f| &f.layout),
                 |t| t.index() < textures,
                 revisions,
                 (self.out_width, self.out_height),
             );
+            drop(glyphs);
             if self.paint_layered(target) {
                 self.paint.ensure_layer(
                     &self.device,

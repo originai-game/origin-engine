@@ -303,7 +303,10 @@ impl Pass for OverlayPass {
                 ui::paint::PaintBind::Texture(t) => r.cache.sprite_groups[t.index()]
                     .as_ref()
                     .expect("made at upload"),
-                ui::paint::PaintBind::White => &r.sprite.white_sprite_group,
+                // A glyph page is the pass's own.
+                ui::paint::PaintBind::White | ui::paint::PaintBind::Glyphs(..) => {
+                    &r.sprite.white_sprite_group
+                }
             }
         }
         let paint_pass = |encoder: &mut crate::Encoder, view, load| {

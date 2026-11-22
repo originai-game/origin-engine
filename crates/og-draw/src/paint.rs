@@ -8,8 +8,9 @@
 //! it ([`PaintKind`]): a solid rounded box, a gradient, a border ring, an
 //! outer or inset box shadow, an MSDF glyph of
 //! one of [`Paint::fonts`] (resolved against the font's pages by the
-//! renderer), or a built-in icon drawn as its stroked segments from
-//! [`Paint::icons`], a table made once and shared.
+//! renderer), a glyph's raster in the glyph atlas
+//! ([`crate::glyphs::Atlas`]), or a built-in icon drawn as its stroked
+//! segments from [`Paint::icons`], a table made once and shared.
 
 use crate::FontHandle;
 use bytemuck::{Pod, Zeroable};
@@ -56,6 +57,15 @@ pub enum PaintKind {
     /// (CSS px from `rect`'s top left), stroked `p`'s x wide in `color`,
     /// round joins and caps, closed when `p`'s y is 1.
     Line = 8,
+    /// A glyph's raster in the glyph atlas ([`crate::glyphs::Atlas`]):
+    /// region `uv` (x0 y0 x1 y1, atlas pixels) of page `b` of tier `a`
+    /// ([`crate::glyphs::GlyphTier`]) over `rect`, which whoever painted
+    /// it placed on whole device pixels at the raster's own size when the
+    /// text is axis-aligned. Coverage draws in `color`, its alpha the
+    /// coverage; a colour glyph in its own colours at `color`'s alpha; a
+    /// distance field in `color`, grown by `p`'s x and blurred by
+    /// its y (CSS px), its field `p`'s z atlas pixels across.
+    Raster = 9,
 }
 
 /// One quad of the arena (`struct PaintIn` in ui_paint.wgsl's terms
