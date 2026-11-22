@@ -21,6 +21,9 @@ use image::Rgb32FImage;
 use std::f32::consts::{PI, TAU};
 
 const LUMA: Vec3 = Vec3::new(0.2126, 0.7152, 0.0722);
+// Below an upper-only sky, preserve the column's horizon before easing
+// into the author-selected (or horizon-averaged) ground, in linear light.
+const HORIZON_BLEND_DEGREES: f32 = 6.0;
 
 pub(super) fn expand(rgb: &mut [f32], amount: f32) {
     for p in rgb.as_chunks_mut::<3>().0 {
@@ -74,7 +77,11 @@ pub(super) fn panorama(
         if y < upper_height {
             *img.get_pixel(x, y)
         } else {
-            image::Rgb(ground.to_array())
+            let horizon = Vec3::from_array(img.get_pixel(x, upper_height - 1).0);
+            let t = ((y - upper_height) as f32 * 180.0 / (height as f32 * HORIZON_BLEND_DEGREES))
+                .min(1.0);
+            let eased = t * t * (3.0 - 2.0 * t);
+            image::Rgb(horizon.lerp(ground, eased).to_array())
         }
     }))
 }

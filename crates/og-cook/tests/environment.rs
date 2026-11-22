@@ -968,6 +968,56 @@ fn upper_hemisphere_fills_ground() {
     }
 }
 
+/// The horizon must retain azimuthal colour, transition rather than step,
+/// and reach the explicit ground colour, not an average of the columns.
+#[test]
+fn upper_horizon_eases_each_column_to_ground() {
+    let sky = ldr_image(
+        1024,
+        256,
+        |x, _| {
+            if x < 512 {
+                [64, 128, 192]
+            } else {
+                [192, 64, 32]
+            }
+        },
+        image::ImageFormat::Png,
+    );
+    let root = project(
+        "ldr-upper-transition",
+        &[
+            ("sky.png", &sky),
+            (
+                "sky.ogt",
+                b"type environment\nversion 1\n---\nsize 16\nsamples 16\nsun keep\nexpand 0\nsource \"sky.png\"\nhemisphere upper\nground 0.1 0.2 0.03\n",
+            ),
+        ],
+    );
+    cook(&root);
+    let bundle = Bundle::open(&root.join("cooked")).unwrap();
+    let map = bundle.load_environment("sky.ogt").unwrap();
+    assert_eq!(map.background_size, 256);
+    let ground = [0.1, 0.2, 0.03];
+    // +Z and -Z face centres see the two different horizon colours.
+    // Rows 128, 134 and 148 look about 0.2°, 2.9° and 9.1° below it.
+    for (face, horizon) in [
+        (4, [0.52712, 0.05127, 0.01444]),
+        (5, [0.05127, 0.21586, 0.52712]),
+    ] {
+        let pixel =
+            |y: usize| og_render::rgb9e5_decode(map.background[face * 256 * 256 + y * 256 + 128]);
+        let (near, middle, far) = (pixel(128), pixel(134), pixel(148));
+        for c in 0..3 {
+            assert!((near[c] - horizon[c]).abs() < 0.015, "horizon: {near:?}");
+            let midpoint = (horizon[c] + ground[c]) * 0.5;
+            let tolerance = (horizon[c] - ground[c]).abs() * 0.2 + 0.002;
+            assert!((middle[c] - midpoint).abs() < tolerance, "ease: {middle:?}");
+            assert!((far[c] - ground[c]).abs() < 0.002, "ground: {far:?}");
+        }
+    }
+}
+
 #[test]
 fn ldr_sun_is_removed_from_lighting_not_the_authored_background() {
     let sky = ldr_image(

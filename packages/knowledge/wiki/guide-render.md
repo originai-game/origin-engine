@@ -172,7 +172,9 @@ sunBoost 1
   horizon at its bottom, across the full 360° width. Its aspect ratio need
   not be 2:1. The lower half is filled with the mean linear colour of the
   last four resampled horizon rows; `ground 0.12 0.10 0.08` overrides it
-  with linear RGB in 0..1. This supplies a ground to the existing dome; it
+  with linear RGB in 0..1. Each column starts at its last sky colour and
+  smoothly eases to that ground colour over six degrees below the horizon,
+  avoiding a hard step. This supplies a ground to the existing dome; it
   cannot turn a full-sphere image's mirrored lower half into terrain.
 - A lone LDR image has an authored background: the image's own colours,
   without exposure or the tone curve, like a camera background texture,

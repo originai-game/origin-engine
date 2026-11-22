@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "EnvironmentMap",
+      "summary": "Upper-only skies ease from each column's horizon colour to the ground colour over six degrees below the horizon, removing the hard step while preserving authored ground fill. Existing environment cooks are invalidated automatically."
+    }
+  ]
+}
