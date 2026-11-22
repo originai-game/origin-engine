@@ -465,6 +465,7 @@ pub fn volumetric_fog_scene() -> RenderScene {
         scattering: 0.9,
         anisotropy: 0.6,
         distance: 60.0,
+        ..Default::default()
     });
     scene.frame.camera = Camera {
         position: Vec3::new(-2.5, 1.7, 8.0),

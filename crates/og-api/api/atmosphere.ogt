@@ -13,7 +13,7 @@ module atmosphere {
   const SEASON_WINTER u32 355 "og.Season.start: the northern winter solstice, about 21 December (the summer solstice south of the equator)."
 
   resource Fog {
-    doc "Distance and height fog over the 3D scene and world sprites: distance fog, measured from the camera, thickens exponentially by density per metre past start and, when end > start, also by a linear ramp from start to full fog at end; the two apply together, and density defaults to 0.02, so setting only end still adds exponential fog (set density 0 for the ramp alone). Height fog is densest below height and thins by falloff per metre above it; looking into the sun it turns towards sunColor. The overlay is never fogged."
+    doc "Distance and height fog over the 3D scene and world sprites: distance fog, measured from the camera, thickens exponentially by density per metre past start and, when end > start, also by a linear ramp from start to full fog at end; the two apply together, and density defaults to 0.02, so setting only end still adds exponential fog (set density 0 for the ramp alone). Height fog is densest below height and thins by falloff per metre above it. Plain fog turns towards sunColor looking into the sun; volumetric fog scatters the actual lights with anisotropy's phase. The overlay is never fogged."
     guide "render §7"
     field enabled bool "Draw the fog."
     field color Color "The colour the fog tends to (linear, before exposure)." {
@@ -25,7 +25,7 @@ module atmosphere {
       max 2
       tunable true
     }
-    field start f32 "The distance from the camera where distance fog starts." {
+    field start f32 "The distance from the camera where distance fog starts, also with volumetric on. Height fog and FogVolume are independent of start." {
       min 0
       unit m
       tunable true
@@ -51,16 +51,16 @@ module atmosphere {
       max 20
       tunable true
     }
-    field sunColor Color "The fog's colour looking into the sun (forward scattering)." {
+    field sunColor Color "Plain fog's colour looking into the sun. Ignored by volumetric fog, which scatters the actual lights' colours; anisotropy controls its angular spread." {
       default 1 0.86 0.62
     }
-    field sunPower f32 "How tight the sun's glow in the fog is (higher: smaller)." {
+    field sunPower f32 "How tight plain fog's sun-colour glow is (higher: smaller). Ignored by volumetric fog: use anisotropy for its Henyey-Greenstein angular spread." {
       default 8
       min 0
       max 256
       tunable true
     }
-    field maxOpacity f32 "The most the fog hides." {
+    field maxOpacity f32 "The most the global distance and height fog together hide, also with volumetric on. Does not limit independent FogVolume media." {
       default 1
       min 0
       max 1
@@ -798,4 +798,3 @@ module atmosphere {
     param world World "The world."
     returns SeasonInfo
   }
-

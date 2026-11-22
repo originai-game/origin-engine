@@ -17319,7 +17319,7 @@ export declare const SEASON_AUTUMN: 265;
 export declare const SEASON_WINTER: 355;
 
 /**
- * Distance and height fog over the 3D scene and world sprites: distance fog, measured from the camera, thickens exponentially by density per metre past start and, when end > start, also by a linear ramp from start to full fog at end; the two apply together, and density defaults to 0.02, so setting only end still adds exponential fog (set density 0 for the ramp alone). Height fog is densest below height and thins by falloff per metre above it; looking into the sun it turns towards sunColor. The overlay is never fogged.
+ * Distance and height fog over the 3D scene and world sprites: distance fog, measured from the camera, thickens exponentially by density per metre past start and, when end > start, also by a linear ramp from start to full fog at end; the two apply together, and density defaults to 0.02, so setting only end still adds exponential fog (set density 0 for the ramp alone). Height fog is densest below height and thins by falloff per metre above it. Plain fog turns towards sunColor looking into the sun; volumetric fog scatters the actual lights with anisotropy's phase. The overlay is never fogged.
  * See `render §7`.
  *
  * The `Fog` resource (token `og.Fog`).
@@ -17342,7 +17342,7 @@ export interface Fog {
    */
   density: number;
   /**
-   * The distance from the camera where distance fog starts.
+   * The distance from the camera where distance fog starts, also with volumetric on. Height fog and FogVolume are independent of start.
    *
    * @range 0..
    * @unit m (metres)
@@ -17381,13 +17381,13 @@ export interface Fog {
    */
   falloff: number;
   /**
-   * The fog's colour looking into the sun (forward scattering).
+   * Plain fog's colour looking into the sun. Ignored by volumetric fog, which scatters the actual lights' colours; anisotropy controls its angular spread.
    *
    * @default { r: 1, g: 0.86, b: 0.62 }
    */
   sunColor: Color;
   /**
-   * How tight the sun's glow in the fog is (higher: smaller).
+   * How tight plain fog's sun-colour glow is (higher: smaller). Ignored by volumetric fog: use anisotropy for its Henyey-Greenstein angular spread.
    *
    * @default 8
    * @range 0..256
@@ -17395,7 +17395,7 @@ export interface Fog {
    */
   sunPower: number;
   /**
-   * The most the fog hides.
+   * The most the global distance and height fog together hide, also with volumetric on. Does not limit independent FogVolume media.
    *
    * @default 1
    * @range 0..1
@@ -36638,7 +36638,7 @@ export declare namespace og {
     function stats(world: World): Result<PhysicsStats>;
   }
   /**
-   * Distance and height fog over the 3D scene and world sprites: distance fog, measured from the camera, thickens exponentially by density per metre past start and, when end > start, also by a linear ramp from start to full fog at end; the two apply together, and density defaults to 0.02, so setting only end still adds exponential fog (set density 0 for the ramp alone). Height fog is densest below height and thins by falloff per metre above it; looking into the sun it turns towards sunColor. The overlay is never fogged.
+   * Distance and height fog over the 3D scene and world sprites: distance fog, measured from the camera, thickens exponentially by density per metre past start and, when end > start, also by a linear ramp from start to full fog at end; the two apply together, and density defaults to 0.02, so setting only end still adds exponential fog (set density 0 for the ramp alone). Height fog is densest below height and thins by falloff per metre above it. Plain fog turns towards sunColor looking into the sun; volumetric fog scatters the actual lights with anisotropy's phase. The overlay is never fogged.
    * See `render §7`.
    */
   const Fog: ResourceType<{ readonly enabled: FieldSpec<"bool">; readonly color: FieldSpec<"Color">; readonly density: FieldSpec<"f32">; readonly start: FieldSpec<"f32">; readonly end: FieldSpec<"f32">; readonly heightDensity: FieldSpec<"f32">; readonly height: FieldSpec<"f32">; readonly falloff: FieldSpec<"f32">; readonly sunColor: FieldSpec<"Color">; readonly sunPower: FieldSpec<"f32">; readonly maxOpacity: FieldSpec<"f32">; readonly sky: FieldSpec<"f32">; readonly volumetric: FieldSpec<"bool">; readonly scattering: FieldSpec<"f32">; readonly anisotropy: FieldSpec<"f32">; readonly volumetricDistance: FieldSpec<"f32"> }, Fog>;

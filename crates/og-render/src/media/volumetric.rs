@@ -62,8 +62,16 @@ pub struct VolumetricFog {
     /// it ([`crate::Fog::color`]): what a depth of it that the sun and the
     /// local lights do not reach tends to. Black: it is lit by them alone.
     pub ambient: Vec3,
-    /// Extinction per metre everywhere.
+    /// Distance extinction per metre past `start`.
     pub density: f32,
+    /// Distance from the eye at which distance fog starts; height fog and
+    /// local fog volumes are independent of it.
+    pub start: f32,
+    /// With `end > start`, also a linear distance-fog ramp to full opacity.
+    pub end: f32,
+    /// Maximum opacity of the global distance and height fog together,
+    /// not of local fog volumes.
+    pub max_opacity: f32,
     /// The height below which the height fog is densest.
     pub height: f32,
     /// Extra extinction per metre at and below `height`.
@@ -84,6 +92,9 @@ impl Default for VolumetricFog {
             color: Vec3::ONE,
             ambient: Vec3::ZERO,
             density: 0.02,
+            start: 0.0,
+            end: 0.0,
+            max_opacity: 1.0,
             height: 0.0,
             height_density: 0.0,
             falloff: 0.5,
@@ -282,7 +293,10 @@ impl Medium {
                     fog.falloff.max(1e-4),
                 ],
                 fog.distance.max(1.0),
-                fog.ambient.max(Vec3::ZERO).extend(0.0).to_array(),
+                fog.ambient
+                    .max(Vec3::ZERO)
+                    .extend(fog.max_opacity.clamp(0.0, 1.0))
+                    .to_array(),
             ),
             Medium::Water { density } => (
                 [1.0, 1.0, 1.0, WATER_ANISOTROPY],
@@ -314,10 +328,10 @@ struct VolUniform {
     extent: [f32; 4],
     grid: [f32; 4],
     /// x: how many of `volumes` are set, y: how much of the far air
-    /// covers the sky.
+    /// covers the sky, zw: the global distance fog's start and end.
     local: [f32; 4],
     /// rgb: what a depth of the scene's fog lit by nothing else tends to
-    /// ([`VolumetricFog::ambient`]).
+    /// ([`VolumetricFog::ambient`]); w: the global fog's maximum opacity.
     own: [f32; 4],
     volumes: [[[f32; 4]; 4]; FOG_VOLUMES],
 }
@@ -793,6 +807,10 @@ impl Volumetric {
         for (slot, v) in volumes.iter_mut().zip(&near) {
             *slot = v.record();
         }
+        let (start, end) = match medium {
+            Medium::Fog(fog) => (fog.start.max(0.0), fog.end.max(0.0)),
+            Medium::Water { .. } => (0.0, 0.0),
+        };
         let u = VolUniform {
             scatter,
             medium: fog,
@@ -808,7 +826,7 @@ impl Volumetric {
                 slices as f32,
                 (tick % 64) as f32,
             ],
-            local: [near.len() as f32, sky.clamp(0.0, 1.0), 0.0, 0.0],
+            local: [near.len() as f32, sky.clamp(0.0, 1.0), start, end],
             own,
             volumes,
         };

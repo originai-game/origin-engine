@@ -6,7 +6,7 @@ Module [`atmosphere`](../atmosphere.md) · [index](../index.md)
 
 ### `og.Fog` (resource)
 
-Distance and height fog over the 3D scene and world sprites: distance fog, measured from the camera, thickens exponentially by density per metre past start and, when end > start, also by a linear ramp from start to full fog at end; the two apply together, and density defaults to 0.02, so setting only end still adds exponential fog (set density 0 for the ramp alone). Height fog is densest below height and thins by falloff per metre above it; looking into the sun it turns towards sunColor. The overlay is never fogged.
+Distance and height fog over the 3D scene and world sprites: distance fog, measured from the camera, thickens exponentially by density per metre past start and, when end > start, also by a linear ramp from start to full fog at end; the two apply together, and density defaults to 0.02, so setting only end still adds exponential fog (set density 0 for the ramp alone). Height fog is densest below height and thins by falloff per metre above it. Plain fog turns towards sunColor looking into the sun; volumetric fog scatters the actual lights with anisotropy's phase. The overlay is never fogged.
 
 See `render §7`.
 
@@ -17,14 +17,14 @@ Token `og.Fog`, registered under the schema name `og.Fog`; its value type is `Fo
 | `enabled` | `boolean` | `false` | — | — | — | Draw the fog. |
 | `color` | `Color` | `{ r: 0.62, g: 0.68, b: 0.76 }` | — | — | — | The colour the fog tends to (linear, before exposure). |
 | `density` | `number` | `0.02` | 0 … 2 | — | tunable | Exponential distance fog per metre past start, with or without end's ramp (0: none). |
-| `start` | `number` | `0` | ≥ 0 | `m` | tunable | The distance from the camera where distance fog starts. |
+| `start` | `number` | `0` | ≥ 0 | `m` | tunable | The distance from the camera where distance fog starts, also with volumetric on. Height fog and FogVolume are independent of start. |
 | `end` | `number` | `0` | ≥ 0 | `m` | tunable | The distance from the camera where fog is full: with end > start, a linear ramp from start to end applied together with density's exponential fog (0: no ramp). |
 | `heightDensity` | `number` | `0` | 0 … 10 | — | tunable | Height fog at and below height (0: none). |
 | `height` | `number` | `0` | — | `m` | tunable, worldspace `world y` | The world height below which height fog is densest. |
 | `falloff` | `number` | `0.5` | 0.0001 … 20 | — | tunable | How fast height fog thins above height, per metre. |
-| `sunColor` | `Color` | `{ r: 1, g: 0.86, b: 0.62 }` | — | — | — | The fog's colour looking into the sun (forward scattering). |
-| `sunPower` | `number` | `8` | 0 … 256 | — | tunable | How tight the sun's glow in the fog is (higher: smaller). |
-| `maxOpacity` | `number` | `1` | 0 … 1 | `ratio` | tunable | The most the fog hides. |
+| `sunColor` | `Color` | `{ r: 1, g: 0.86, b: 0.62 }` | — | — | — | Plain fog's colour looking into the sun. Ignored by volumetric fog, which scatters the actual lights' colours; anisotropy controls its angular spread. |
+| `sunPower` | `number` | `8` | 0 … 256 | — | tunable | How tight plain fog's sun-colour glow is (higher: smaller). Ignored by volumetric fog: use anisotropy for its Henyey-Greenstein angular spread. |
+| `maxOpacity` | `number` | `1` | 0 … 1 | `ratio` | tunable | The most the global distance and height fog together hide, also with volumetric on. Does not limit independent FogVolume media. |
 | `sky` | `number` | `1` | 0 … 1 | `ratio` | tunable | How much of the fog covers the sky and the clouds in it (0: they stay clear, however far the fog hides the land). What the sky draws under the horizon stands for land: the fog hides it as it hides land as far off. |
 | `volumetric` | `boolean` | `false` | — | — | — | Light the fog as a medium: unlit, it tends to color as the plain fog does; over that it (density, thickened below height) scatters the sun through its cascades and the point, spot and rect lights (up to RenderCapabilities.volumetricLights a sample). Blended surfaces and sprites take the plain fog. See `render §7`. |
 | `scattering` | `number` | `0.8` | 0 … 4 | — | tunable | How much of the sun's and the lamps' light the fog scatters (its albedo, tinted by color): 0 leaves the plain fog's haze without shafts or glow, 1 sends all of that light on, above 1 brightens the shafts for effect. |
@@ -33,7 +33,7 @@ Token `og.Fog`, registered under the schema name `og.Fog`; its value type is `Fo
 
 ```ogt
 resource Fog {
-  doc "Distance and height fog over the 3D scene and world sprites: distance fog, measured from the camera, thickens exponentially by density per metre past start and, when end > start, also by a linear ramp from start to full fog at end; the two apply together, and density defaults to 0.02, so setting only end still adds exponential fog (set density 0 for the ramp alone). Height fog is densest below height and thins by falloff per metre above it; looking into the sun it turns towards sunColor. The overlay is never fogged."
+  doc "Distance and height fog over the 3D scene and world sprites: distance fog, measured from the camera, thickens exponentially by density per metre past start and, when end > start, also by a linear ramp from start to full fog at end; the two apply together, and density defaults to 0.02, so setting only end still adds exponential fog (set density 0 for the ramp alone). Height fog is densest below height and thins by falloff per metre above it. Plain fog turns towards sunColor looking into the sun; volumetric fog scatters the actual lights with anisotropy's phase. The overlay is never fogged."
   guide "render §7"
   field enabled bool "Draw the fog."
   field color Color "The colour the fog tends to (linear, before exposure)." {
@@ -45,7 +45,7 @@ resource Fog {
     max 2
     tunable true
   }
-  field start f32 "The distance from the camera where distance fog starts." {
+  field start f32 "The distance from the camera where distance fog starts, also with volumetric on. Height fog and FogVolume are independent of start." {
     min 0
     unit m
     tunable true
@@ -71,16 +71,16 @@ resource Fog {
     max 20
     tunable true
   }
-  field sunColor Color "The fog's colour looking into the sun (forward scattering)." {
+  field sunColor Color "Plain fog's colour looking into the sun. Ignored by volumetric fog, which scatters the actual lights' colours; anisotropy controls its angular spread." {
     default 1 0.86 0.62
   }
-  field sunPower f32 "How tight the sun's glow in the fog is (higher: smaller)." {
+  field sunPower f32 "How tight plain fog's sun-colour glow is (higher: smaller). Ignored by volumetric fog: use anisotropy for its Henyey-Greenstein angular spread." {
     default 8
     min 0
     max 256
     tunable true
   }
-  field maxOpacity f32 "The most the fog hides." {
+  field maxOpacity f32 "The most the global distance and height fog together hide, also with volumetric on. Does not limit independent FogVolume media." {
     default 1
     min 0
     max 1

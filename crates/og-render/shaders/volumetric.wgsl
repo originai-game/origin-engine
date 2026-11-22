@@ -46,8 +46,8 @@ struct Vol {
   medium: vec4<f32>,   // x: density, y: height, z: height density, w: falloff
   extent: vec4<f32>,   // x: distance, y: raymarch steps, zw: the target's size in pixels
   grid: vec4<f32>,     // xyz: froxels across, down and deep, w: the frame's noise seed
-  local: vec4<f32>,    // x: how many of `volumes` are set, y: how much of the far air covers the sky
-  own: vec4<f32>,      // rgb: what a depth of the scene's fog lit by nothing else tends to (VolumetricFog::ambient)
+  local: vec4<f32>,    // x: how many of `volumes` are set, y: far-air sky coverage, zw: distance fog start/end
+  own: vec4<f32>,      // rgb: the scene fog's ambient (VolumetricFog::ambient), w: its maximum opacity
   volumes: array<FogVolume, FOG_VOLUMES>,
 };
 
@@ -74,13 +74,25 @@ struct MediumAt {
   local: vec3<f32>,    // the fog volumes' share of `scatter`, which scatters the environment's light (`ambient_in`) too
 };
 
-fn vol_medium(p: vec3<f32>) -> MediumAt {
+// span.xy: the sample's interval in metres from the eye; span.z: the length
+// its column is averaged over (one equal share of a froxel, or a march step).
+// The distance contribution uses interval overlap, not a jittered point test.
+fn vol_medium(p: vec3<f32>, dir: vec3<f32>, span: vec3<f32>) -> MediumAt {
   // The water's: its fog's, below its surface.
   if (VOL_WATER) {
     let sigma = select(0.0, max(frame.fog_distance.x, 1e-5), p.y < frame.fog_height.x);
     return MediumAt(vol.scatter.rgb * sigma, sigma, vec3<f32>(0.0), vec3<f32>(0.0));
   }
-  let sigma = vol.medium.x + vol.medium.z * exp(-vol.medium.w * max(p.y - vol.medium.y, 0.0));
+  var sigma = vol.medium.x + vol.medium.z * exp(-vol.medium.w * max(p.y - vol.medium.y, 0.0));
+  // Keep the original arithmetic for start=0, no ramp and no opacity cap.
+  if (vol.local.z > 0.0) {
+    let overlap = max(span.y - max(span.x, vol.local.z), 0.0);
+    sigma = vol.medium.x * overlap / max(span.z, 1e-20)
+      + vol.medium.z * exp(-vol.medium.w * max(p.y - vol.medium.y, 0.0));
+  }
+  if (vol.local.w > vol.local.z || vol.own.w < 1.0) {
+    sigma = fog_column(dir, span.xy) / max(span.z, 1e-20);
+  }
   var m = MediumAt(vol.scatter.rgb * sigma, sigma, vol.own.rgb * sigma, vec3<f32>(0.0));
   let count = min(u32(vol.local.x), FOG_VOLUMES);
   for (var i = 0u; i < count; i++) {
@@ -186,6 +198,31 @@ fn height_column(ya: f32, yb: f32, len: f32) -> f32 {
   return vol.medium.z * len * (above * mean + (1.0 - above));
 }
 
+// The plain fog's distance transmittance is exp(-density * max(t-start,0))
+// times 1-clamp((t-start)/(end-start),0,1) when end>start (media.wgsl).
+// Its optical-depth difference gives a column over any interval, including
+// one crossing start or end. The floor represents full fog without infinities.
+fn distance_column(span: vec2<f32>) -> f32 {
+  var tau = vol.medium.x * max(span.y - max(span.x, vol.local.z), 0.0);
+  if (vol.local.w > vol.local.z) {
+    let clear = vec2<f32>(1.0) - clamp((span - vec2<f32>(vol.local.z)) / (vol.local.w - vol.local.z), vec2<f32>(0.0), vec2<f32>(1.0));
+    tau += log(max(clear.x, 1e-20) / max(clear.y, 1e-20));
+  }
+  return tau;
+}
+
+// Only the global fog spends the opacity budget. The plain path caps the
+// distance and height fog together; local FogVolumes are independent media.
+fn fog_column(dir: vec3<f32>, span: vec2<f32>) -> f32 {
+  let y = frame.view_pos.y - vol.medium.y;
+  let len = max(span.y - span.x, 0.0);
+  let tau = distance_column(span) + height_column(y + dir.y * span.x, y + dir.y * span.y, len);
+  if (vol.own.w >= 1.0) { return tau; }
+  let before = distance_column(vec2<f32>(0.0, span.x)) + height_column(y, y + dir.y * span.x, span.x);
+  let budget = -log(max(1.0 - vol.own.w, 1e-20));
+  return min(tau, max(budget - before, 0.0));
+}
+
 // The air past the grid along the view ray `dir` to the pixel's view depth `depth` (rgb: its in-scattered
 // light, a: its transmittance): the scene's fog going on from `distance`, its own colour and the unshadowed sun's
 // light in it (no cascade reaches there), summed in closed form. Behind the sky it is 5 km of it, as much as
@@ -200,7 +237,11 @@ fn far_air(dir: vec3<f32>, depth: f32) -> vec4<f32> {
   let len = t1 - t0;
   if (len <= 0.0) { return vec4<f32>(0.0, 0.0, 0.0, 1.0); }
   let y0 = frame.view_pos.y + dir.y * t0 - vol.medium.y;
-  let tau = vol.medium.x * len + height_column(y0, y0 + dir.y * len, len);
+  var tau = vol.medium.x * len + height_column(y0, y0 + dir.y * len, len);
+  if (vol.local.z > 0.0) {
+    tau = vol.medium.x * max(t1 - max(t0, vol.local.z), 0.0) + height_column(y0, y0 + dir.y * len, len);
+  }
+  if (vol.local.w > vol.local.z || vol.own.w < 1.0) { tau = fog_column(dir, vec2<f32>(t0, t1)); }
   var hidden = 1.0 - exp(-tau);
   if (sky) { hidden *= mix(vol.local.y, 1.0, smoothstep(0.0, 0.05, -dir.y)); }
   if (hidden <= 0.0) { return vec4<f32>(0.0, 0.0, 0.0, 1.0); }
@@ -295,7 +336,8 @@ fn locals_in(p: vec3<f32>, dir: vec3<f32>, frag: vec2<f32>, most: u32, scatter: 
       if (interval.y <= interval.x) { continue; }
       at += dir * mix(interval.x, interval.y, span.z);
       weight = (interval.y - interval.x) / (span.y - span.x);
-      tint = vol_medium(at).scatter;
+      let along = dot(p - frame.view_pos.xyz, dir);
+      tint = vol_medium(at, dir, vec3<f32>(vec2<f32>(along) + interval, interval.y - interval.x)).scatter;
     }
     sum += tint * weight * local_in(light, at, dir);
   }

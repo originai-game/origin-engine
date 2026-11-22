@@ -42,7 +42,9 @@ fn inject(@builtin(global_invocation_id) id: vec3<u32>) {
     let f = (f32(id.z) + (f32(t) + jitter) / f32(INJECT_TAPS)) / vol.grid.z;
     let p = frame.view_pos.xyz + dir * slice_depth(f) * stretch;
     let along = slice_depth(f) * stretch;
-    let m = vol_medium(p);
+    let edges = (vec2<f32>(f32(id.z)) + vec2<f32>(f32(t), f32(t + 1u)) / f32(INJECT_TAPS)) / vol.grid.z;
+    let span = vec2<f32>(slice_depth(edges.x), slice_depth(edges.y)) * stretch;
+    let m = vol_medium(p, dir, vec3<f32>(span, deep));
     sigma_sum += m.sigma;
     if (m.sigma > 0.0) {
       local_sum += m.local;
@@ -54,7 +56,13 @@ fn inject(@builtin(global_invocation_id) id: vec3<u32>) {
     light_sum += local_sum * ambient_in(middle, env_in(middle));
   }
   let n = f32(INJECT_TAPS);
-  textureStore(froxel_out, id, vec4<f32>(light_sum / n, sigma_sum / n));
+  var sample = vec4<f32>(light_sum / n, sigma_sum / n);
+  if (vol.local.w > vol.local.z) {
+    // A finite-distance clear ramp has unbounded extinction at its end.
+    // Store the finite column, not extinction per metre, in the half-float grid.
+    sample *= deep * n;
+  }
+  textureStore(froxel_out, id, sample);
 }
 
 @group(1) @binding(2) var froxel_in: texture_3d<f32>;
@@ -74,8 +82,13 @@ fn integrate(@builtin(global_invocation_id) id: vec3<u32>) {
     let thick = (far - near) * stretch;
     near = far;
     let s = textureLoad(froxel_in, vec3<i32>(vec3<u32>(id.xy, z)), 0);
-    let tr = exp(-s.a * thick);
-    acc += transmittance * s.rgb * select(thick, (1.0 - tr) / s.a, s.a > 1e-5);
+    var tr = exp(-s.a * thick);
+    if (vol.local.w > vol.local.z) {
+      tr = exp(-s.a);
+      acc += transmittance * s.rgb * select(1.0, (1.0 - tr) / s.a, s.a > 1e-5);
+    } else {
+      acc += transmittance * s.rgb * select(thick, (1.0 - tr) / s.a, s.a > 1e-5);
+    }
     transmittance *= tr;
     textureStore(froxel_sum, vec3<u32>(id.xy, z), vec4<f32>(acc, transmittance));
   }
@@ -147,7 +160,11 @@ fn spots_in(uv: vec2<f32>, d: f32) -> vec3<f32> {
         }
       }
       if (!present) { continue; }
-      let m = vol_medium(p);
+      let angles = mix(vec2<f32>(a0), vec2<f32>(a1), vec2<f32>(f32(t), f32(t + 1u)) / f32(SPOT_TAPS));
+      var edges = clamp(vec2<f32>(mid) + reach * tan(angles), vec2<f32>(span.x), vec2<f32>(span.y));
+      if (t == 0u) { edges.x = span.x; }
+      if (t + 1u == SPOT_TAPS) { edges.y = span.y; }
+      let m = vol_medium(p, dir, vec3<f32>(edges, edges.y - edges.x));
       if (m.sigma <= 0.0) { continue; }
       let off = along - mid;
       let trans = froxel_at(uv, along * forward).a;

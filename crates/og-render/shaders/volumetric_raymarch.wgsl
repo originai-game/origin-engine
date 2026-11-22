@@ -20,7 +20,7 @@ fn fs_raymarch(in: VolOut) -> @location(0) vec4<f32> {
   var transmittance = 1.0;
   for (var i = 0u; i < steps; i++) {
     let p = frame.view_pos.xyz + dir * (f32(i) + jitter) * dt;
-    let m = vol_medium(p);
+    let m = vol_medium(p, dir, vec3<f32>(f32(i) * dt, f32(i + 1u) * dt, dt));
     let sigma = m.sigma;
     if (sigma <= 0.0) { continue; }
     let tr = exp(-sigma * dt);

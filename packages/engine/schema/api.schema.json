@@ -35789,7 +35789,7 @@
     "Fog": {
       "x-og-kind": "resource",
       "x-og-module": "atmosphere",
-      "description": "Distance and height fog over the 3D scene and world sprites: distance fog, measured from the camera, thickens exponentially by density per metre past start and, when end > start, also by a linear ramp from start to full fog at end; the two apply together, and density defaults to 0.02, so setting only end still adds exponential fog (set density 0 for the ramp alone). Height fog is densest below height and thins by falloff per metre above it; looking into the sun it turns towards sunColor. The overlay is never fogged.\nSee `render §7`.",
+      "description": "Distance and height fog over the 3D scene and world sprites: distance fog, measured from the camera, thickens exponentially by density per metre past start and, when end > start, also by a linear ramp from start to full fog at end; the two apply together, and density defaults to 0.02, so setting only end still adds exponential fog (set density 0 for the ramp alone). Height fog is densest below height and thins by falloff per metre above it. Plain fog turns towards sunColor looking into the sun; volumetric fog scatters the actual lights with anisotropy's phase. The overlay is never fogged.\nSee `render §7`.",
       "type": "object",
       "properties": {
         "enabled": {
@@ -35816,7 +35816,7 @@
         },
         "start": {
           "type": "number",
-          "description": "The distance from the camera where distance fog starts.",
+          "description": "The distance from the camera where distance fog starts, also with volumetric on. Height fog and FogVolume are independent of start.",
           "default": 0,
           "minimum": 0,
           "x-og-unit": "m",
@@ -35856,7 +35856,7 @@
         },
         "sunColor": {
           "$ref": "#/$defs/Color",
-          "description": "The fog's colour looking into the sun (forward scattering).",
+          "description": "Plain fog's colour looking into the sun. Ignored by volumetric fog, which scatters the actual lights' colours; anisotropy controls its angular spread.",
           "default": {
             "r": 1,
             "g": 0.86,
@@ -35865,7 +35865,7 @@
         },
         "sunPower": {
           "type": "number",
-          "description": "How tight the sun's glow in the fog is (higher: smaller).",
+          "description": "How tight plain fog's sun-colour glow is (higher: smaller). Ignored by volumetric fog: use anisotropy for its Henyey-Greenstein angular spread.",
           "default": 8,
           "minimum": 0,
           "maximum": 256,
@@ -35873,7 +35873,7 @@
         },
         "maxOpacity": {
           "type": "number",
-          "description": "The most the fog hides.",
+          "description": "The most the global distance and height fog together hide, also with volumetric on. Does not limit independent FogVolume media.",
           "default": 1,
           "minimum": 0,
           "maximum": 1,

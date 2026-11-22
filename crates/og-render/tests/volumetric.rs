@@ -1,10 +1,130 @@
 //! A narrow spot still lights fog between the froxel columns' centre rays.
 
-use glam::Vec3;
+use glam::{Mat4, Vec3};
 use og_render::{
-    Background, Camera, LightDesc, LightKind, Projection, RenderDesc, RenderScene, VolumetricFog,
-    VolumetricMethod, render_to_rgba,
+    Background, Camera, Fog, FogVolume, LightDesc, LightKind, Material, Projection, RenderDesc,
+    RenderScene, VolumetricFog, VolumetricMethod, render_to_rgba, shapes,
 };
+
+#[test]
+#[ignore = "requires GPU"]
+fn global_distance_fog_keeps_the_plain_start_ramp_and_opacity_contract() {
+    let mut scene = RenderScene::new();
+    scene.frame.camera = Camera {
+        position: Vec3::ZERO,
+        target: -Vec3::Z,
+        projection: Projection::Perspective {
+            fov_y_degrees: 62.0,
+        },
+        far: 500.0,
+        ..Default::default()
+    };
+    scene.lighting.environment.background = Background::Color(Vec3::ZERO);
+    scene.lighting.environment.intensity = 0.0;
+    scene.lighting.light.intensity = 0.0;
+    scene.lighting.light.cast_shadows = false;
+    let material = scene.add_material(Material {
+        base_color: [0.0, 0.0, 0.0, 1.0],
+        emissive: [0.05; 3],
+        ..Default::default()
+    });
+    // Opaque panels inside and beyond the 48 m grid; the sample pixels
+    // also distinguish Euclidean camera distance from view depth.
+    for (x, width, depth) in [
+        (0.0, 1000.0, 180.0),
+        (-53.0, 100.0, 24.0),
+        (35.0, 60.0, 75.0),
+    ] {
+        let mesh = scene.add_mesh(shapes::plane_xy(width, 1000.0));
+        scene.add_instance(
+            mesh,
+            material,
+            Mat4::from_translation(Vec3::new(x, 0.0, -depth)),
+        );
+    }
+    let color = Vec3::new(0.3, 0.45, 0.7);
+    for method in [VolumetricMethod::Froxel, VolumetricMethod::Raymarch] {
+        let desc = RenderDesc {
+            width: 128,
+            height: 72,
+            volumetric: Some(method),
+            ..Default::default()
+        };
+        for (start, end, max_opacity) in [
+            (250.0, 0.0, 1.0),
+            (11.7, 0.0, 1.0),
+            (11.7, 31.3, 1.0),
+            (11.7, 93.1, 1.0),
+            (11.7, 93.1, 0.35),
+            (0.0, 0.0001, 1.0),
+            (0.0, 0.0, 0.0),
+        ] {
+            let fog = Fog {
+                color,
+                sun_color: color,
+                density: 0.008,
+                start,
+                end,
+                max_opacity,
+                ..Default::default()
+            };
+            scene.atmosphere.fog = Some(fog);
+            scene.atmosphere.volumetric_fog = None;
+            let plain = render_to_rgba(&desc, &scene).expect("plain fog control");
+            scene.atmosphere.volumetric_fog = Some(VolumetricFog {
+                ambient: color,
+                density: fog.density,
+                start,
+                end,
+                max_opacity,
+                scattering: 0.0,
+                ..Default::default()
+            });
+            let lit = render_to_rgba(&desc, &scene).expect("lit fog without direct light");
+            for x in [10, 64, 100] {
+                let at = (36 * 128 + x) * 4;
+                for c in 0..3 {
+                    assert!(
+                        plain.pixels[at + c].abs_diff(lit.pixels[at + c]) <= 3,
+                        "{method:?}: start={start} end={end} cap={max_opacity} pixel {x} channel {c}: plain {} volume {}",
+                        plain.pixels[at + c],
+                        lit.pixels[at + c]
+                    );
+                }
+            }
+        }
+        // Moving the distance start must not move height fog or a local
+        // volume. The ordinary fog is replaced in both of these views.
+        for local in [false, true] {
+            scene.atmosphere.volumetric_fog = Some(VolumetricFog {
+                ambient: color,
+                density: 0.0,
+                height_density: if local { 0.0 } else { 0.015 },
+                scattering: 0.0,
+                ..Default::default()
+            });
+            scene.atmosphere.fog_volumes = if local {
+                vec![FogVolume {
+                    at: og_env::volume::Placement::at(Vec3::ZERO),
+                    volume: None,
+                    color: Vec3::ONE,
+                    density: 0.015,
+                    scattering: 0.0,
+                }]
+            } else {
+                Vec::new()
+            };
+            let zero = render_to_rgba(&desc, &scene).expect("independent fog");
+            scene.atmosphere.volumetric_fog.as_mut().unwrap().start = 250.0;
+            let delayed = render_to_rgba(&desc, &scene).expect("distance fog delayed");
+            assert_eq!(
+                zero.pixels, delayed.pixels,
+                "{method:?}: start changed independent fog (local={local})"
+            );
+        }
+        scene.atmosphere.fog_volumes.clear();
+    }
+}
 
 #[test]
 #[ignore = "requires GPU"]
