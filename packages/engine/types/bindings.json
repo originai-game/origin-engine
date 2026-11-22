@@ -26675,7 +26675,14 @@
       "module": "probe",
       "owner": "EngineProbe",
       "name": "describe",
-      "params": [],
+      "params": [
+        {
+          "name": "joints",
+          "type": "String",
+          "optional": true,
+          "default": "all"
+        }
+      ],
       "returns": "Description",
       "publish": false
     },

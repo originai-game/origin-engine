@@ -2723,8 +2723,8 @@ pub fn og_engine_probe_memory(engine_probe: u32) -> String {
 
 #[cfg(not(feature = "publish"))]
 #[wasm_bindgen]
-pub fn og_engine_probe_describe(engine_probe: u32) -> String {
-    <Host as ProbeApi>::og_engine_probe_describe(&Host, engine_probe)
+pub fn og_engine_probe_describe(engine_probe: u32, joints: Option<String>) -> String {
+    <Host as ProbeApi>::og_engine_probe_describe(&Host, engine_probe, joints)
 }
 
 #[cfg(not(feature = "publish"))]

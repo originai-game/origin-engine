@@ -389,8 +389,8 @@ export class EngineProbe extends RuntimeProbe {
   memory(): unknown {
     return JSON.parse(abi().og_engine_probe_memory(this.#handle)) as unknown;
   }
-  describe(): unknown {
-    return JSON.parse(abi().og_engine_probe_describe(this.#handle)) as unknown;
+  describe(joints?: string): unknown {
+    return JSON.parse(abi().og_engine_probe_describe(this.#handle, joints)) as unknown;
   }
   expect(what: string): unknown {
     return JSON.parse(abi().og_engine_probe_expect(this.#handle, what)) as unknown;

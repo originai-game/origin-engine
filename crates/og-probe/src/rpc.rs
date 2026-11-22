@@ -491,7 +491,13 @@ impl Probe {
             #[cfg(not(feature = "publish"))]
             "memory" => or_null(self.memory(world)),
             #[cfg(not(feature = "publish"))]
-            "describe" => self.describe(world),
+            "describe" => {
+                let joints = p.get("joints").and_then(Value::as_str);
+                self.describe_with(
+                    world,
+                    crate::Joints::parse(joints).map_err(RpcError::invalid)?,
+                )
+            }
             #[cfg(not(feature = "publish"))]
             "expect" => match self.expect(world, string(p, "what")?) {
                 Ok(r) => r.to_json(),

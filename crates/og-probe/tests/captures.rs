@@ -99,6 +99,7 @@ impl SceneView for View {
                 coverage: 0.1,
                 occlusion: 0.0,
                 labels: vec!["mesh".into()],
+                joints: Vec::new(),
             }],
             views: Vec::new(),
         })

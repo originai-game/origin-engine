@@ -1027,8 +1027,9 @@ pixels:
 
 - **The semantic frame.** `describe` answers the tick's frame as JSON,
   deterministic for the same world: visible entities nearest first with
-  screen boxes, pick points, depth and occlusion, the UI elements, the
-  camera, and each secondary view with what it shows. Entities come from an
+  screen boxes, pick points, depth and occlusion (a skeleton's joints on
+  screen too, by humanoid role), the UI elements, the camera, and each
+  secondary view with what it shows. Entities come from an
   entity-id pass drawn on the CPU, so a host without a GPU describes the same
   frame; `pick` answers from the same pass when the game has no picker.
   Visibility is per camera, never merged.

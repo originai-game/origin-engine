@@ -123,6 +123,19 @@ struct Pass {
     /// Each secondary camera's pass: its entity, whether a mirror, the
     /// image's pixels and its id frame (ids as `entities`').
     views: Vec<(u64, bool, (u32, u32), og_render::IdFrame)>,
+    /// The main camera's eye and unit forward, from the render origin.
+    eye: glam::Vec3,
+    forward: glam::Vec3,
+}
+
+/// What projecting a skeleton's joints through the main pass needs.
+#[cfg(not(feature = "publish"))]
+struct JointView<'a> {
+    back: glam::Vec3,
+    eye: glam::Vec3,
+    forward: glam::Vec3,
+    /// The UI's opaque rects, in pass pixels.
+    cover: &'a [[f32; 4]],
 }
 
 impl RuntimeView {
@@ -224,6 +237,8 @@ impl RuntimeView {
             camera,
             back,
             views,
+            eye: c.position,
+            forward: (c.target - c.position).normalize_or_zero(),
         })
     }
 
@@ -236,6 +251,7 @@ impl RuntimeView {
         frame: &og_render::IdFrame,
         entities: &[u64],
         (sx, sy): (f32, f32),
+        joints: Option<&JointView>,
     ) -> Vec<Shown> {
         let area = (frame.width * frame.height).max(1) as f32;
         let r = |b: [u32; 4]| {
@@ -264,6 +280,92 @@ impl RuntimeView {
                     coverage: o.visible as f32 / area,
                     occlusion: o.occlusion(),
                     labels: self.labels(world, e),
+                    joints: joints
+                        .map(|v| self.joints(world, e, o.id, frame, (sx, sy), v))
+                        .unwrap_or_default(),
+                })
+            })
+            .collect()
+    }
+
+    #[cfg(not(feature = "publish"))]
+    /// An og.Skeleton's skin joints as the last tick posed them, projected
+    /// through the pass's camera: named by humanoid role where
+    /// og.anim.humanoid recognises the rig, else by node name; visible when
+    /// on the surface, in front, under no opaque UI and behind nothing
+    /// else the pass drew (its own surface does not hide it).
+    fn joints(
+        &self,
+        world: &World,
+        e: u64,
+        id: u32,
+        frame: &og_render::IdFrame,
+        (sx, sy): (f32, f32),
+        v: &JointView,
+    ) -> Vec<og_probe::ShownJoint> {
+        use og_ecs::transform::{Parent, Transform};
+        let entity = Entity::from_bits(e);
+        let Ok(skeleton) = world.get::<og_anim::Skeleton>(entity) else {
+            return Vec::new();
+        };
+        let Ok(rs) = self.render.try_borrow() else {
+            return Vec::new();
+        };
+        let Some(anim) = rs.fx.anim.as_ref() else {
+            return Vec::new();
+        };
+        let (Some(asset), Some(out)) = (anim.skeleton(skeleton.asset), anim.output(entity)) else {
+            return Vec::new();
+        };
+        let model = og_ecs::transform::world_matrix(
+            entity,
+            &IdMap::new(),
+            |p| {
+                world
+                    .get::<Parent>(p)
+                    .ok()
+                    .map(|p| Entity::from_bits(p.entity))
+            },
+            |p| world.get::<Transform>(p).ok(),
+        );
+        let humanoid = og_anim::HumanoidMap::detect(&asset);
+        let nodes: Vec<u32> = match asset.skins.get(skeleton.skin as usize) {
+            Some(skin) => skin.joints.clone(),
+            None => (0..asset.nodes.len() as u32).collect(),
+        };
+        let (w, h) = (frame.width as f32, frame.height as f32);
+        nodes
+            .into_iter()
+            .filter_map(|n| {
+                let posed = out.nodes.get(n as usize)?;
+                let at = model.transform_point3(posed.w_axis.truncate()) - v.back;
+                let role = humanoid.nodes.iter().position(|&m| m == n);
+                let name = match role {
+                    Some(b) => og_anim::HUMAN_BONES[b].to_string(),
+                    None => asset.nodes[n as usize].name.clone(),
+                };
+                let clip = frame.view_proj * at.extend(1.0);
+                let ndc = clip.truncate() / clip.w;
+                let (px, py) = ((ndc.x + 1.0) / 2.0 * w, (1.0 - ndc.y) / 2.0 * h);
+                let inside = clip.w > 0.0
+                    && px >= 0.0
+                    && py >= 0.0
+                    && px < w
+                    && py < h
+                    && (0.0..=1.0).contains(&ndc.z);
+                let covered = v
+                    .cover
+                    .iter()
+                    .any(|r| px >= r[0] && px < r[0] + r[2] && py >= r[1] && py < r[1] + r[3]);
+                let k = (py as u32 * frame.width + px as u32) as usize;
+                let behind =
+                    inside && frame.ids[k] != 0 && frame.ids[k] != id && frame.depth[k] < ndc.z;
+                Some(og_probe::ShownJoint {
+                    name,
+                    humanoid: role.is_some(),
+                    point: [px * sx, py * sy],
+                    depth: (at - v.eye).dot(v.forward),
+                    visible: inside && !covered && !behind,
                 })
             })
             .collect()
@@ -348,7 +450,19 @@ impl SceneView for RuntimeView {
             })
             .collect();
         hide_under(&mut pass.frame, &cover);
-        let entities = self.shown(world, &pass.frame, &pass.entities, pass.scale);
+        let joint_view = JointView {
+            back: pass.back,
+            eye: pass.eye,
+            forward: pass.forward,
+            cover: &cover,
+        };
+        let entities = self.shown(
+            world,
+            &pass.frame,
+            &pass.entities,
+            pass.scale,
+            Some(&joint_view),
+        );
         let views = pass
             .views
             .iter()
@@ -361,7 +475,7 @@ impl SceneView for RuntimeView {
                     entity: Entity::from_bits(*e),
                     mirror: *mirror,
                     size: *size,
-                    entities: self.shown(world, frame, &pass.entities, scale),
+                    entities: self.shown(world, frame, &pass.entities, scale, None),
                 }
             })
             .collect();

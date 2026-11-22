@@ -300,8 +300,13 @@ pub fn og_engine_probe_memory(probe: u32) -> String {
     member(probe, "memory", json!({})).to_string()
 }
 
-pub fn og_engine_probe_describe(probe: u32) -> String {
-    member(probe, "describe", json!({})).to_string()
+/// `joints`: "all" (none given), "humanoid" or "none".
+pub fn og_engine_probe_describe(probe: u32, joints: Option<String>) -> String {
+    let params = match joints {
+        Some(j) => json!({ "joints": j }),
+        None => json!({}),
+    };
+    member(probe, "describe", params).to_string()
 }
 
 /// A malformed expectation answers null (the call's error names why).

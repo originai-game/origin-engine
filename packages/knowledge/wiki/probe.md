@@ -93,6 +93,7 @@ module probe {
 | [`ScreenBox`](probe/type-ScreenBox.md) | struct |  | A box on the play surface. |
 | [`ScreenPoint`](probe/type-ScreenPoint.md) | struct |  | A point on the play surface. |
 | [`DescribedEntity`](probe/type-DescribedEntity.md) | struct |  | One entity the frame shows, from the entity-id pass (a CPU rasterisation of the frame's meshes, skinned meshes and world sprites at a quarter of its pixels). |
+| [`DescribedJoint`](probe/type-DescribedJoint.md) | struct |  | One joint of a described skeleton, projected from its posed node through the frame's camera. |
 | [`DescribedView`](probe/type-DescribedView.md) | struct |  | A secondary camera (og.CameraView, og.Mirror) and what its image shows: its own entity-id pass, from its eye and on its layers, at a quarter of its image's pixels, whatever its `every`. |
 | [`DescribedUi`](probe/type-DescribedUi.md) | struct |  | One UI element as describe lists it (the tree dump_ui writes). |
 | [`DescribedCamera`](probe/type-DescribedCamera.md) | struct |  | The camera as drawn, with its shake. |

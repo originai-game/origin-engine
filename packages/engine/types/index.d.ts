@@ -27658,9 +27658,35 @@ export interface DescribedEntity {
    */
   readonly occlusion: number;
   /**
+   * For an entity with og.Skeleton, its skin's joints as this tick poses them, in skin order (describe's `joints` param picks all, the humanoid ones or none); absent for other entities and on a secondary camera's image.
+   */
+  readonly joints?: readonly DescribedJoint[];
+  /**
    * The probe ids of the og.CameraView and og.Mirror entities whose image also shows it, from their own id passes on their own layers; empty when only the main camera does (under DescribedView.entities it is empty).
    */
   readonly views: readonly string[];
+}
+
+/**
+ * One joint of a described skeleton, projected from its posed node through the frame's camera.
+ */
+export interface DescribedJoint {
+  /**
+   * Its humanoid role when og.anim.humanoid recognises the rig (VRM names: hips, spine, chest, neck, head, leftUpperArm, leftHand, leftUpperLeg, leftFoot, rightFoot ...), else its node's name.
+   */
+  readonly name: string;
+  /** Where it lands on the surface; outside the surface when off screen. */
+  readonly point: ScreenPoint;
+  /**
+   * From the camera along the view; negative behind it.
+   *
+   * @unit m (metres)
+   */
+  readonly depth: number;
+  /**
+   * On the surface, in front of the camera, and hidden by nothing else drawn or by opaque UI (its own skeleton's surface never hides it).
+   */
+  readonly visible: boolean;
 }
 
 /**
@@ -28023,9 +28049,11 @@ export interface EngineProbe extends RuntimeProbe {
    */
   memory(): ProbeMemory | null;
   /**
-   * The frame of the current tick as data: the visible entities with screen boxes, depth order and occlusion from the entity-id pass, their names, archetypes and labels; the UI elements with rects and text; the camera. Answers without a renderer too (the pass runs on the CPU).
+   * The frame of the current tick as data: the visible entities with screen boxes, depth order and occlusion from the entity-id pass, their names, archetypes and labels, and a skeleton's joints; the UI elements with rects and text; the camera. Answers without a renderer too (the pass runs on the CPU).
+   *
+   * @param joints Which joints a skeleton lists: `all`, `humanoid` (only those with a humanoid role) or `none`. Default `"all"`.
    */
-  describe(): Description;
+  describe(joints?: string): Description;
   /**
    * Evaluate one expectation now (the forms of the command channel's `expect:`); the result is also kept for expectations().
    *

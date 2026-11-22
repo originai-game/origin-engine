@@ -294,8 +294,12 @@ macro_rules! __og_host_bindings_engine {
                 $crate::og_engine_probe_memory(engine_probe)
             }
 
-            fn og_engine_probe_describe(&self, engine_probe: u32) -> String {
-                $crate::og_engine_probe_describe(engine_probe)
+            fn og_engine_probe_describe(
+                &self,
+                engine_probe: u32,
+                joints: Option<String>,
+            ) -> String {
+                $crate::og_engine_probe_describe(engine_probe, joints)
             }
 
             fn og_engine_probe_capture_views(

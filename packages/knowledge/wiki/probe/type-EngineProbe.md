@@ -18,7 +18,7 @@ interface EngineProbe {
   # members follow, each quoted below
 ```
 
-<sub>Module `probe` line 825</sub>
+<sub>Module `probe` line 838</sub>
 
 <a id="member-EngineProbe-hello"></a>
 
@@ -42,7 +42,7 @@ fn hello {
 }
 ```
 
-<sub>Module `probe` line 830</sub>
+<sub>Module `probe` line 843</sub>
 
 <a id="member-EngineProbe-capture"></a>
 
@@ -97,7 +97,7 @@ fn capture {
 }
 ```
 
-<sub>Module `probe` line 835</sub>
+<sub>Module `probe` line 848</sub>
 
 <a id="member-EngineProbe-captureViews"></a>
 
@@ -143,7 +143,7 @@ fn captureViews {
 }
 ```
 
-<sub>Module `probe` line 856</sub>
+<sub>Module `probe` line 869</sub>
 
 <a id="member-EngineProbe-visible"></a>
 
@@ -177,7 +177,7 @@ fn visible {
 }
 ```
 
-<sub>Module `probe` line 872</sub>
+<sub>Module `probe` line 885</sub>
 
 <a id="member-EngineProbe-marks"></a>
 
@@ -216,7 +216,7 @@ fn marks {
 }
 ```
 
-<sub>Module `probe` line 879</sub>
+<sub>Module `probe` line 892</sub>
 
 <a id="member-EngineProbe-timeline"></a>
 
@@ -239,7 +239,7 @@ fn timeline {
 }
 ```
 
-<sub>Module `probe` line 889</sub>
+<sub>Module `probe` line 902</sub>
 
 <a id="member-EngineProbe-sweep"></a>
 
@@ -269,7 +269,7 @@ fn sweep {
 }
 ```
 
-<sub>Module `probe` line 893</sub>
+<sub>Module `probe` line 906</sub>
 
 <a id="member-EngineProbe-reload"></a>
 
@@ -292,7 +292,7 @@ fn reload {
 }
 ```
 
-<sub>Module `probe` line 900</sub>
+<sub>Module `probe` line 913</sub>
 
 <a id="member-EngineProbe-snapshot"></a>
 
@@ -315,7 +315,7 @@ fn snapshot {
 }
 ```
 
-<sub>Module `probe` line 904</sub>
+<sub>Module `probe` line 917</sub>
 
 <a id="member-EngineProbe-restore"></a>
 
@@ -344,7 +344,7 @@ fn restore {
 }
 ```
 
-<sub>Module `probe` line 908</sub>
+<sub>Module `probe` line 921</sub>
 
 <a id="member-EngineProbe-dump"></a>
 
@@ -374,7 +374,7 @@ fn dump {
 }
 ```
 
-<sub>Module `probe` line 914</sub>
+<sub>Module `probe` line 927</sub>
 
 <a id="member-EngineProbe-commands"></a>
 
@@ -402,7 +402,7 @@ fn commands {
 }
 ```
 
-<sub>Module `probe` line 921</sub>
+<sub>Module `probe` line 934</sub>
 
 <a id="member-EngineProbe-listen"></a>
 
@@ -432,7 +432,7 @@ fn listen {
 }
 ```
 
-<sub>Module `probe` line 926</sub>
+<sub>Module `probe` line 939</sub>
 
 <a id="member-EngineProbe-memory"></a>
 
@@ -455,17 +455,21 @@ fn memory {
 }
 ```
 
-<sub>Module `probe` line 933</sub>
+<sub>Module `probe` line 946</sub>
 
 <a id="member-EngineProbe-describe"></a>
 
 #### `EngineProbe.describe`
 
-The frame of the current tick as data: the visible entities with screen boxes, depth order and occlusion from the entity-id pass, their names, archetypes and labels; the UI elements with rects and text; the camera. Answers without a renderer too (the pass runs on the CPU).
+The frame of the current tick as data: the visible entities with screen boxes, depth order and occlusion from the entity-id pass, their names, archetypes and labels, and a skeleton's joints; the UI elements with rects and text; the camera. Answers without a renderer too (the pass runs on the CPU).
 
 ```ts
-EngineProbe.describe(): Description
+EngineProbe.describe(joints?: string): Description
 ```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `joints` | `string` | yes | Which joints a skeleton lists: `all`, `humanoid` (only those with a humanoid role) or `none`. Default `"all"`. |
 
 **Returns** `Description`.
 
@@ -473,12 +477,15 @@ Binding symbol `og_engine_probe_describe` · publish builds: dropped
 
 ```ogt
 fn describe {
-  doc "The frame of the current tick as data: the visible entities with screen boxes, depth order and occlusion from the entity-id pass, their names, archetypes and labels; the UI elements with rects and text; the camera. Answers without a renderer too (the pass runs on the CPU)."
+  doc "The frame of the current tick as data: the visible entities with screen boxes, depth order and occlusion from the entity-id pass, their names, archetypes and labels, and a skeleton's joints; the UI elements with rects and text; the camera. Answers without a renderer too (the pass runs on the CPU)."
+  param joints String "Which joints a skeleton lists: `all`, `humanoid` (only those with a humanoid role) or `none`." {
+    default "all"
+  }
   returns Description
 }
 ```
 
-<sub>Module `probe` line 937</sub>
+<sub>Module `probe` line 950</sub>
 
 <a id="member-EngineProbe-expect"></a>
 
@@ -506,7 +513,7 @@ fn expect {
 }
 ```
 
-<sub>Module `probe` line 941</sub>
+<sub>Module `probe` line 957</sub>
 
 <a id="member-EngineProbe-expectations"></a>
 
@@ -529,7 +536,7 @@ fn expectations {
 }
 ```
 
-<sub>Module `probe` line 946</sub>
+<sub>Module `probe` line 962</sub>
 
 <a id="member-EngineProbe-assertions"></a>
 
@@ -559,7 +566,7 @@ fn assertions {
 }
 ```
 
-<sub>Module `probe` line 950</sub>
+<sub>Module `probe` line 966</sub>
 
 <a id="member-EngineProbe-assertionEvents"></a>
 
@@ -582,7 +589,7 @@ fn assertionEvents {
 }
 ```
 
-<sub>Module `probe` line 957</sub>
+<sub>Module `probe` line 973</sub>
 
 <a id="member-EngineProbe-observe"></a>
 
@@ -616,7 +623,7 @@ fn observe {
 }
 ```
 
-<sub>Module `probe` line 961</sub>
+<sub>Module `probe` line 977</sub>
 
 <a id="member-EngineProbe-saveScene"></a>
 
@@ -650,7 +657,7 @@ fn saveScene {
 }
 ```
 
-<sub>Module `probe` line 971</sub>
+<sub>Module `probe` line 987</sub>
 
 <a id="member-EngineProbe-pickUi"></a>
 
@@ -680,4 +687,4 @@ fn pickUi {
 }
 ```
 
-<sub>Module `probe` line 981</sub>
+<sub>Module `probe` line 997</sub>

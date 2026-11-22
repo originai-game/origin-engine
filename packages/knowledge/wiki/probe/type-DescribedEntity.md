@@ -21,6 +21,7 @@ One entity the frame shows, from the entity-id pass (a CPU rasterisation of the 
 | `depth` | `number` | `0` | — | `m` | — | From the camera to its nearest visible point, along the view. |
 | `coverage` | `number` | `0` | — | `ratio` | — | Its visible share of the surface. |
 | `occlusion` | `number` | `0` | — | `ratio` | — | The share of what it covers alone that something else hides: another object in front, or a UI element drawn opaque over it (DescribedUi.opaque); on a secondary camera's image, objects only. |
+| `joints` | `readonly DescribedJoint[]` | `[]` | — | — | optional | For an entity with og.Skeleton, its skin's joints as this tick poses them, in skin order (describe's `joints` param picks all, the humanoid ones or none); absent for other entities and on a secondary camera's image. |
 | `views` | `readonly string[]` | `[]` | — | — | — | The probe ids of the og.CameraView and og.Mirror entities whose image also shows it, from their own id passes on their own layers; empty when only the main camera does (under DescribedView.entities it is empty). |
 
 ```ogt
@@ -42,6 +43,9 @@ struct DescribedEntity {
   }
   field occlusion f32 "The share of what it covers alone that something else hides: another object in front, or a UI element drawn opaque over it (DescribedUi.opaque); on a secondary camera's image, objects only." {
     unit ratio
+  }
+  field joints List.DescribedJoint "For an entity with og.Skeleton, its skin's joints as this tick poses them, in skin order (describe's `joints` param picks all, the humanoid ones or none); absent for other entities and on a secondary camera's image." {
+    optional true
   }
   field views List.String "The probe ids of the og.CameraView and og.Mirror entities whose image also shows it, from their own id passes on their own layers; empty when only the main camera does (under DescribedView.entities it is empty)."
 }

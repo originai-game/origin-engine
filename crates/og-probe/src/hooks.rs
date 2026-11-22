@@ -172,6 +172,28 @@ pub struct Shown {
     /// What draws it: `model`, `mesh`, `skinned`, `sprite`, and the model's
     /// asset path, such as `models/walker.glb`.
     pub labels: Vec<String>,
+    /// For an og.Skeleton: its skin's joints as this frame poses them
+    /// (`describe`'s `joints`); empty otherwise.
+    pub joints: Vec<ShownJoint>,
+}
+
+/// One joint of a described skeleton on screen.
+#[derive(Clone, Debug, PartialEq)]
+pub struct ShownJoint {
+    /// Its humanoid role (og.anim.humanoid's VRM name: `head`, `hips`,
+    /// `leftFoot`, `rightHand` ...) when the rig is recognised, else its
+    /// node's name.
+    pub name: String,
+    /// Whether `name` is a humanoid role.
+    pub humanoid: bool,
+    /// Where it lands on the surface, in CSS pixels (outside it when off
+    /// screen).
+    pub point: [f32; 2],
+    /// From the camera along the view, in world units (negative behind it).
+    pub depth: f32,
+    /// On screen, in front of the camera and hidden by nothing else drawn
+    /// or by opaque UI (the skeleton's own surface does not hide it).
+    pub visible: bool,
 }
 
 /// The renderer's view of the frame at the current tick (`describe`).

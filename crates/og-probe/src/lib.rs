@@ -27,6 +27,7 @@
 pub mod assertions;
 pub mod command;
 mod describe;
+pub use describe::Joints;
 pub mod expect;
 pub mod frame;
 pub mod hooks;
@@ -45,8 +46,8 @@ pub use command::{
 pub use expect::{ExpectResult, Status};
 pub use hooks::{
     Capture, DrawReason, Drawn, Frame, Pick, PrefabEdit, RawFrame, Rebuilt, Reloader, SavedFile,
-    SavedScene, SceneView, SceneWriter, Seen, SeenView, Shown, StaticUi, UiElement, UiTree,
-    Viewpoint, pick_ui,
+    SavedScene, SceneView, SceneWriter, Seen, SeenView, Shown, ShownJoint, StaticUi, UiElement,
+    UiTree, Viewpoint, pick_ui,
 };
 pub use input::{InjectedInput, Input, InputSink, WorldInput};
 pub use names::Names;

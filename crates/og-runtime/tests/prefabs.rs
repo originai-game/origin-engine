@@ -271,7 +271,7 @@ fn apply_back_and_revert_round_trip_in_the_text() {
     assert_eq!(dump["prefab"]["overrides"], json!(["Health.hp"]));
     assert_eq!(dump["prefab"]["root"], json!("crate2"));
     // describe lists the instances by prefab.
-    let described: Value = serde_json::from_str(&og_engine_probe_describe(e)).unwrap();
+    let described: Value = serde_json::from_str(&og_engine_probe_describe(e, None)).unwrap();
     assert_eq!(
         described["prefabs"],
         json!([{ "prefab": "prefabs/crate.ogt", "instances": ["crate1", "crate2"] }]),

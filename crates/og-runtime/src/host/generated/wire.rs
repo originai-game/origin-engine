@@ -20395,6 +20395,7 @@ pub struct DescribedEntity {
     pub depth: f32,
     pub coverage: f32,
     pub occlusion: f32,
+    pub joints: Option<Vec<DescribedJoint>>,
     pub views: Vec<String>,
 }
 
@@ -20412,6 +20413,7 @@ impl Default for DescribedEntity {
             depth: Default::default(),
             coverage: Default::default(),
             occlusion: Default::default(),
+            joints: Default::default(),
             views: Default::default(),
         }
     }
@@ -20435,6 +20437,7 @@ impl FromJson for DescribedEntity {
             depth: field(o, "depth", d.depth)?,
             coverage: field(o, "coverage", d.coverage)?,
             occlusion: field(o, "occlusion", d.occlusion)?,
+            joints: field(o, "joints", d.joints)?,
             views: field(o, "views", d.views)?,
         })
     }
@@ -20454,7 +20457,56 @@ impl ToJson for DescribedEntity {
         o.insert("depth".into(), self.depth.to_json());
         o.insert("coverage".into(), self.coverage.to_json());
         o.insert("occlusion".into(), self.occlusion.to_json());
+        if let Some(x) = &self.joints {
+            o.insert("joints".into(), x.to_json());
+        }
         o.insert("views".into(), self.views.to_json());
+        Value::Object(o)
+    }
+}
+
+/// `DescribedJoint`: packages/knowledge/wiki/probe.md.
+#[derive(Clone, Debug, PartialEq)]
+pub struct DescribedJoint {
+    pub name: String,
+    pub point: ScreenPoint,
+    pub depth: f32,
+    pub visible: bool,
+}
+
+impl Default for DescribedJoint {
+    fn default() -> Self {
+        Self {
+            name: Default::default(),
+            point: Default::default(),
+            depth: Default::default(),
+            visible: Default::default(),
+        }
+    }
+}
+
+impl FromJson for DescribedJoint {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::from_json_over(v, Self::default())
+    }
+    fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+        let o = object(v)?;
+        Ok(Self {
+            name: field(o, "name", d.name)?,
+            point: field(o, "point", d.point)?,
+            depth: field(o, "depth", d.depth)?,
+            visible: field(o, "visible", d.visible)?,
+        })
+    }
+}
+
+impl ToJson for DescribedJoint {
+    fn to_json(&self) -> Value {
+        let mut o = Map::new();
+        o.insert("name".into(), self.name.to_json());
+        o.insert("point".into(), self.point.to_json());
+        o.insert("depth".into(), self.depth.to_json());
+        o.insert("visible".into(), self.visible.to_json());
         Value::Object(o)
     }
 }

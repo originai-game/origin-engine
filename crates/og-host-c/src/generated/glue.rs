@@ -2724,7 +2724,7 @@ unsafe extern "C" fn og_engine_probe_memory(args: *const crate::OgValue, out: *m
 
 #[cfg(not(feature = "publish"))]
 unsafe extern "C" fn og_engine_probe_describe(args: *const crate::OgValue, out: *mut crate::OgValue) {
-    let r = <Host as ProbeApi>::og_engine_probe_describe(&Host, unsafe { crate::arg(args, 0) });
+    let r = <Host as ProbeApi>::og_engine_probe_describe(&Host, unsafe { crate::arg(args, 0) }, unsafe { crate::arg(args, 1) });
     unsafe { crate::IntoC::into_c(r, out) }
 }
 
@@ -3921,7 +3921,7 @@ pub static SYMBOLS: &[crate::Symbol] = &[
     #[cfg(not(feature = "publish"))]
     crate::Symbol { name: c"og_engine_probe_memory", arity: 1, call: og_engine_probe_memory },
     #[cfg(not(feature = "publish"))]
-    crate::Symbol { name: c"og_engine_probe_describe", arity: 1, call: og_engine_probe_describe },
+    crate::Symbol { name: c"og_engine_probe_describe", arity: 2, call: og_engine_probe_describe },
     #[cfg(not(feature = "publish"))]
     crate::Symbol { name: c"og_engine_probe_expect", arity: 2, call: og_engine_probe_expect },
     #[cfg(not(feature = "publish"))]

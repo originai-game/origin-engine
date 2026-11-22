@@ -32,6 +32,7 @@ impl SceneView for FixedView {
             coverage: 0.01,
             occlusion,
             labels: vec!["mesh".into()],
+            joints: Vec::new(),
         };
         Some(Seen {
             pass: (32, 18),

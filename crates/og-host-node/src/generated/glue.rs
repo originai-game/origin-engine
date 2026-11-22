@@ -3262,9 +3262,9 @@ pub fn og_engine_probe_memory(env: Env, engine_probe: u32) -> String {
 
 #[cfg(not(feature = "publish"))]
 #[napi(js_name = "og_engine_probe_describe")]
-pub fn og_engine_probe_describe(env: Env, engine_probe: u32) -> String {
+pub fn og_engine_probe_describe(env: Env, engine_probe: u32, joints: Option<String>) -> String {
     let _env = crate::EnvScope::enter(&env);
-    <Host as ProbeApi>::og_engine_probe_describe(&Host, engine_probe)
+    <Host as ProbeApi>::og_engine_probe_describe(&Host, engine_probe, joints)
 }
 
 #[cfg(not(feature = "publish"))]

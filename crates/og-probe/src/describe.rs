@@ -18,12 +18,43 @@ fn rect(r: [f32; 4]) -> Value {
     json!({"x": round(r[0], 2), "y": round(r[1], 2), "width": round(r[2], 2), "height": round(r[3], 2)})
 }
 
+/// Which skeleton joints `describe` lists per entity (its `joints` param).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum Joints {
+    /// Every joint of the skin, by humanoid role or node name.
+    #[default]
+    All,
+    /// Only the joints with a humanoid role.
+    Humanoid,
+    /// None.
+    None,
+}
+
+impl Joints {
+    /// `describe`'s `joints` param: `all` (or absent), `humanoid` or `none`.
+    pub fn parse(v: Option<&str>) -> Result<Joints, String> {
+        match v {
+            None | Some("all") => Ok(Joints::All),
+            Some("humanoid") => Ok(Joints::Humanoid),
+            Some("none") => Ok(Joints::None),
+            Some(other) => Err(format!(
+                "describe: joints is all, humanoid or none, not '{other}'"
+            )),
+        }
+    }
+}
+
 impl Probe {
     /// `describe`: what the frame at the current tick shows, as data
     /// (IDL `probe.Description`). Entities are nearest first (`order` 0),
     /// then by id; without a scene view the entity list is empty and
     /// `pass` and `camera` are null.
     pub fn describe(&mut self, world: &World) -> Value {
+        self.describe_with(world, Joints::All)
+    }
+
+    /// [`Probe::describe`], listing the skeletons' joints as `joints` says.
+    pub fn describe_with(&mut self, world: &World, joints: Joints) -> Value {
         let seen = self.host.seen_now(world);
         let mut entities = Vec::new();
         let mut views = Vec::new();
@@ -41,10 +72,10 @@ impl Probe {
                     "name": self.names.name_of(world, v.entity),
                     "kind": if v.mirror { "mirror" } else { "camera" },
                     "size": {"width": v.size.0, "height": v.size.1},
-                    "entities": self.shown_entities(world, &v.entities, &[]),
+                    "entities": self.shown_entities(world, &v.entities, &[], joints),
                 }));
             }
-            entities = self.shown_entities(world, &seen.entities, &shows);
+            entities = self.shown_entities(world, &seen.entities, &shows, joints);
         }
         let ui: Vec<Value> = self
             .host
@@ -144,6 +175,7 @@ impl Probe {
         world: &World,
         shown: &[crate::Shown],
         shows: &[(og_ecs::Entity, String)],
+        joints: Joints,
     ) -> Vec<Value> {
         let mut entities: Vec<(f32, String, Value)> = Vec::new();
         for s in shown {
@@ -160,7 +192,7 @@ impl Probe {
                 .map(|(_, v)| v.as_str())
                 .collect();
             in_views.dedup();
-            let value = json!({
+            let mut value = json!({
                 "id": id,
                 "name": self.names.name_of(world, s.entity),
                 "order": 0,
@@ -174,6 +206,26 @@ impl Probe {
                 "occlusion": round(s.occlusion, 4),
                 "views": in_views,
             });
+            let listed: Vec<Value> = s
+                .joints
+                .iter()
+                .filter(|j| match joints {
+                    Joints::All => true,
+                    Joints::Humanoid => j.humanoid,
+                    Joints::None => false,
+                })
+                .map(|j| {
+                    json!({
+                        "name": j.name,
+                        "point": {"x": round(j.point[0], 2), "y": round(j.point[1], 2)},
+                        "depth": round(j.depth, 4),
+                        "visible": j.visible,
+                    })
+                })
+                .collect();
+            if !listed.is_empty() {
+                value["joints"] = Value::Array(listed);
+            }
             entities.push((s.depth, id, value));
         }
         og_core::sort::sort_by(&mut entities, |a, b| {

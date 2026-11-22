@@ -1104,7 +1104,7 @@ export interface HostAbi<A, V> {
   /** `EngineProbe.memory` */
   og_engine_probe_memory(engine_probe: number): string;
   /** `EngineProbe.describe` */
-  og_engine_probe_describe(engine_probe: number): string;
+  og_engine_probe_describe(engine_probe: number, joints: string | undefined): string;
   /** `EngineProbe.expect` */
   og_engine_probe_expect(engine_probe: number, what: string): string;
   /** `EngineProbe.expectations` */

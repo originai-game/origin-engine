@@ -1212,7 +1212,7 @@ pub trait ProbeApi: Wire {
     /// `EngineProbe.memory`
     fn og_engine_probe_memory(&self, engine_probe: u32) -> String;
     /// `EngineProbe.describe`
-    fn og_engine_probe_describe(&self, engine_probe: u32) -> String;
+    fn og_engine_probe_describe(&self, engine_probe: u32, joints: Option<String>) -> String;
     /// `EngineProbe.expect`
     fn og_engine_probe_expect(&self, engine_probe: u32, what: String) -> String;
     /// `EngineProbe.expectations`
