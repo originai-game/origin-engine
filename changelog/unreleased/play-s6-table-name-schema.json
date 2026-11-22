@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "og.table.name",
+      "summary": "Also answers `schema`, the component the row's table was loaded as, so code given only a TableRow can read it with og.table.get."
+    }
+  ]
+}

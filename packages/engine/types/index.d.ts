@@ -34165,6 +34165,8 @@ export interface TableRowName {
   readonly table: string;
   /** The row's id. */
   readonly id: string;
+  /** The component its table was loaded as, which og.table.get takes. */
+  readonly schema: string;
 }
 
 /**

@@ -12,12 +12,14 @@ Which row a handle names.
 |---|---|---|---|---|---|---|
 | `table` | `string` | `""` | — | — | — | The table's asset id. |
 | `id` | `string` | `""` | — | — | — | The row's id. |
+| `schema` | `string` | `""` | — | — | — | The component its table was loaded as, which og.table.get takes. |
 
 ```ogt
 struct TableRowName {
   doc "Which row a handle names."
   field table String "The table's asset id."
   field id String "The row's id."
+  field schema String "The component its table was loaded as, which og.table.get takes."
 }
 ```
 

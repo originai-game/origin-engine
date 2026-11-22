@@ -36,4 +36,4 @@ fn load {
 }
 ```
 
-<sub>Module `table` line 36</sub>
+<sub>Module `table` line 37</sub>

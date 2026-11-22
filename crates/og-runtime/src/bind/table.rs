@@ -364,10 +364,13 @@ pub fn og_table_get(world: u32, row: f64, schema: String) -> Result<Value, Strin
 pub fn og_table_name(world: u32, row: f64) -> Result<TableRowName, String> {
     let eng = engine(world)?;
     let (path, i) = find(&eng, row)?;
-    let id = eng.modules.table.0.borrow().by_path[&path].rows[i]
-        .0
-        .clone();
-    Ok(TableRowName { table: path, id })
+    let tb = eng.modules.table.0.borrow();
+    let t = &tb.by_path[&path];
+    Ok(TableRowName {
+        id: t.rows[i].0.clone(),
+        schema: t.schema.clone(),
+        table: path.clone(),
+    })
 }
 
 /// Every TableRow a component or resource field holds that no loaded

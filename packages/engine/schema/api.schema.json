@@ -58458,11 +58458,16 @@
         "id": {
           "type": "string",
           "description": "The row's id."
+        },
+        "schema": {
+          "type": "string",
+          "description": "The component its table was loaded as, which og.table.get takes."
         }
       },
       "required": [
         "table",
-        "id"
+        "id",
+        "schema"
       ],
       "additionalProperties": false
     },

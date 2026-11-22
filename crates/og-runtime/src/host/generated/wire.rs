@@ -25922,6 +25922,7 @@ impl ToJson for TableInfo {
 pub struct TableRowName {
     pub table: String,
     pub id: String,
+    pub schema: String,
 }
 
 impl Default for TableRowName {
@@ -25929,6 +25930,7 @@ impl Default for TableRowName {
         Self {
             table: Default::default(),
             id: Default::default(),
+            schema: Default::default(),
         }
     }
 }
@@ -25942,6 +25944,7 @@ impl FromJson for TableRowName {
         Ok(Self {
             table: field(o, "table", d.table)?,
             id: field(o, "id", d.id)?,
+            schema: field(o, "schema", d.schema)?,
         })
     }
 }
@@ -25951,6 +25954,7 @@ impl ToJson for TableRowName {
         let mut o = Map::new();
         o.insert("table".into(), self.table.to_json());
         o.insert("id".into(), self.id.to_json());
+        o.insert("schema".into(), self.schema.to_json());
         Value::Object(o)
     }
 }

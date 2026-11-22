@@ -23,6 +23,7 @@ module table {
     doc "Which row a handle names."
     field table String "The table's asset id."
     field id String "The row's id."
+    field schema String "The component its table was loaded as, which og.table.get takes."
   }
 
   struct MissingRow {

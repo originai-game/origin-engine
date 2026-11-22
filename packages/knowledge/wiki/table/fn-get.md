@@ -33,4 +33,4 @@ fn get {
 }
 ```
 
-<sub>Module `table` line 71</sub>
+<sub>Module `table` line 72</sub>

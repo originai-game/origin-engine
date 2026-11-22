@@ -28,4 +28,4 @@ fn missing {
 }
 ```
 
-<sub>Module `table` line 87</sub>
+<sub>Module `table` line 88</sub>

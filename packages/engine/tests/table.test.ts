@@ -71,7 +71,7 @@ test("a save restored after its row was deleted reads nothing for it, and og.tab
   must(og.table.parse(world, "items.ogt", rows(["sword", 20], ["arrow", 5], ["bow", 8]), Item));
   expect(og.table.missing(world)).toEqual([]);
   expect(must(og.table.get(world, arrow, Item)).damage).toBe(5);
-  expect(must(og.table.name(world, arrow))).toEqual({ table: "items.ogt", id: "arrow" });
+  expect(must(og.table.name(world, arrow))).toEqual({ table: "items.ogt", id: "arrow", schema: "Item" });
   engine.destroy();
 });
 

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites name="bun test" tests="1" assertions="3" failures="0" skipped="0" time="1.184940445">
+  <testsuite name="tests/chest.og.ts" file="tests/chest.og.ts" tests="1" assertions="3" failures="0" skipped="0" time="1.176522326" hostname="sandbox">
+    <testcase name="pickups fill the bag, moves are all or nothing, a craft needs room, loot replays" classname="" time="1.170991" file="tests/chest.og.ts" line="11" assertions="3" />
+  </testsuite>
+</testsuites>
