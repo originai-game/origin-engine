@@ -299,7 +299,6 @@ impl Pass for OverlayPass {
         let paint_shared = decode && overlay_view.is_none();
         fn paint_group(r: &Renderer, bind: ui::paint::PaintBind) -> &wgpu::BindGroup {
             match bind {
-                ui::paint::PaintBind::Font(f) => &r.cache.fonts[f.index()].bind_group,
                 ui::paint::PaintBind::Texture(t) => r.cache.sprite_groups[t.index()]
                     .as_ref()
                     .expect("made at upload"),

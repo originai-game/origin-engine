@@ -19,9 +19,7 @@
 //! written each frame.
 
 use crate::gpu::data_texture::{DataTexture, data_entry};
-use crate::scene::GlyphKey;
-use crate::sprites::FontLayout;
-use crate::{FontHandle, TextureHandle};
+use crate::TextureHandle;
 use bytemuck::{Pod, Zeroable};
 use og_draw::glyphs::{Atlas, GlyphTier, PLOT};
 use og_draw::paint::{Paint, PaintKind};
@@ -51,7 +49,6 @@ const _: () = assert!(std::mem::size_of::<PaintGpu>() == 9 * 16);
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum PaintBind {
     White,
-    Font(FontHandle),
     Texture(TextureHandle),
     Glyphs(u8, u16),
 }
@@ -386,17 +383,15 @@ impl PaintRenderer {
     }
 
     /// Uploads `paint` for an output of `width`×`height` device pixels
-    /// and the plots of `glyphs` whose pixels changed,
-    /// when it, the target or the fonts' `revisions` changed since the
-    /// last upload, and the frame uniform.
+    /// and the plots of `glyphs` whose pixels changed, when it or the
+    /// target changed since the last upload, and the frame uniform.
     #[allow(clippy::too_many_arguments)]
-    pub fn upload<'a>(
+    pub fn upload(
         &mut self,
         device: &wgpu::Device,
         queue: &wgpu::Queue,
         paint: &Paint,
         glyphs: &Atlas,
-        font: impl Fn(FontHandle) -> Option<&'a FontLayout>,
         texture: impl Fn(TextureHandle) -> bool,
         revisions: u64,
         (width, height): (u32, u32),
@@ -433,7 +428,7 @@ impl PaintRenderer {
             return;
         }
         self.uploaded = Some(now);
-        self.resolve(paint, font, texture);
+        self.resolve(paint, texture);
         let mut grew = self.group.is_none();
         grew |= self.quads.grow_and_write(
             device,
@@ -623,15 +618,9 @@ impl PaintRenderer {
         }
     }
 
-    /// The arena's quads as instances, each glyph from the first page of
-    /// its font that has it, each image of a loaded `texture`, and their
-    /// runs.
-    fn resolve<'a>(
-        &mut self,
-        paint: &Paint,
-        font: impl Fn(FontHandle) -> Option<&'a FontLayout>,
-        texture: impl Fn(TextureHandle) -> bool,
-    ) {
+    /// The arena's quads as instances, each image of a loaded `texture`,
+    /// and their runs.
+    fn resolve(&mut self, paint: &Paint, texture: impl Fn(TextureHandle) -> bool) {
         self.gpu.clear();
         self.runs.clear();
         self.missing = 0;
@@ -671,37 +660,7 @@ impl PaintRenderer {
             // What the quad samples; a quad that samples nothing draws with
             // whatever is bound.
             let mut wants = None;
-            if q.kind == PaintKind::Glyph as u32 {
-                // Every page of a run-time font knows each glyph's advance;
-                // only the page that holds it has its bounds.
-                let found = char::from_u32(q.a).and_then(|ch| {
-                    paint.fonts.get(q.b as usize)?.iter().find_map(|&h| {
-                        let l = font(h)?;
-                        let g = l.glyphs.get(&GlyphKey::Char(ch))?;
-                        let [pl, pb, pr, pt] = g.plane_bounds;
-                        (pr > pl && pt > pb).then_some((h, l, g))
-                    })
-                });
-                let Some((h, l, glyph)) = found else {
-                    self.missing += 1;
-                    continue;
-                };
-                let [pl, pb, pr, pt] = glyph.plane_bounds;
-                let [x, baseline, size, _] = q.rect;
-                g.rect = [
-                    x + pl * size,
-                    baseline - pt * size,
-                    (pr - pl) * size,
-                    (pt - pb) * size,
-                ];
-                let [al, at, ar, ab] = glyph.atlas_bounds;
-                let s = l.atlas_size;
-                g.uv = [al / s.x, at / s.y, ar / s.x, ab / s.y];
-                if l.color && !l.foreground {
-                    g.color = [1.0, 1.0, 1.0, q.color[3]];
-                }
-                wants = Some(PaintBind::Font(h));
-            } else if q.kind == PaintKind::Image as u32 {
+            if q.kind == PaintKind::Image as u32 {
                 let t = TextureHandle::from_bits(q.a);
                 if !texture(t) {
                     self.missing += 1;

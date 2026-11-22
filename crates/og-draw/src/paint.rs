@@ -6,13 +6,10 @@
 //!
 //! A quad is a box in CSS pixels with its clip and colour and what fills
 //! it ([`PaintKind`]): a solid rounded box, a gradient, a border ring, an
-//! outer or inset box shadow, an MSDF glyph of
-//! one of [`Paint::fonts`] (resolved against the font's pages by the
-//! renderer), a glyph's raster in the glyph atlas
+//! outer or inset box shadow, a glyph's raster in the glyph atlas
 //! ([`crate::glyphs::Atlas`]), or a built-in icon drawn as its stroked
 //! segments from [`Paint::icons`], a table made once and shared.
 
-use crate::FontHandle;
 use bytemuck::{Pod, Zeroable};
 use std::sync::Arc;
 
@@ -25,10 +22,6 @@ pub enum PaintKind {
     /// A box rounded by `radius`, filled by gradient `a` of
     /// [`Paint::gradients`], at `color`'s alpha.
     Gradient = 1,
-    /// Glyph `a` (its char) of font `b` of [`Paint::fonts`]: `rect`'s x is
-    /// the pen and y the baseline, w the size in CSS px; `p`'s x the
-    /// weight's thickening, CSS px.
-    Glyph = 2,
     /// Built-in icon segments `a..a + b` of [`Paint::icons`] (24-unit icon
     /// space, 2 units wide, round), in `rect`, in `color`.
     Icon = 3,
@@ -178,8 +171,8 @@ pub const IDENTITY: [f32; 8] = [1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0];
 /// space.
 pub type IconSegment = [f32; 4];
 
-/// The UI's paint: the quads in painter's order, their gradients, the
-/// fonts their glyphs name and the built-in icons' segments.
+/// The UI's paint: the quads in painter's order, their gradients and the
+/// built-in icons' segments.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct Paint {
     /// The CSS px size it was laid out in (the overlay's: fitted to the
@@ -191,10 +184,6 @@ pub struct Paint {
     pub stops: Vec<PaintStop>,
     /// The colour matrices [`PaintQuad::filter`] names.
     pub filters: Vec<ColorMatrix>,
-    /// Each glyph font slot: the font's pages, first first (a run-time
-    /// font adds pages as glyphs render; a glyph is drawn from the first
-    /// page that has it).
-    pub fonts: Vec<Vec<FontHandle>>,
     /// Paint-time transforms, CSS's `matrix(a, b, c, d, e, f)` on CSS px
     /// as `[a, b, c, d, e, f, 0, 0]` (x' = a x + c y + e); entry 0 is the
     /// identity, which the shader skips.
