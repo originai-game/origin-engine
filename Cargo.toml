@@ -429,13 +429,15 @@ taffy = { path = "third_party/taffy" }
 #   `CommandEncoder::transition_resources` (a no-op in the browser); no
 #   per-resource state tracking (each resource has a home state it returns
 #   to after every command); queue writes staged in a persistently mapped
-#   ring; no bind group validation.
-naga = { git = "https://github.com/originai-game/wgpu-flash", rev = "cd6b3c43502681a24b3d22e59ce640aea7f92f60" }
-naga-types = { git = "https://github.com/originai-game/wgpu-flash", rev = "cd6b3c43502681a24b3d22e59ce640aea7f92f60" }
-wgpu = { git = "https://github.com/originai-game/wgpu-flash", rev = "cd6b3c43502681a24b3d22e59ce640aea7f92f60" }
-wgpu-core = { git = "https://github.com/originai-game/wgpu-flash", rev = "cd6b3c43502681a24b3d22e59ce640aea7f92f60" }
-wgpu-core-deps-apple = { git = "https://github.com/originai-game/wgpu-flash", rev = "cd6b3c43502681a24b3d22e59ce640aea7f92f60" }
-wgpu-core-deps-windows-linux-android = { git = "https://github.com/originai-game/wgpu-flash", rev = "cd6b3c43502681a24b3d22e59ce640aea7f92f60" }
-wgpu-hal = { git = "https://github.com/originai-game/wgpu-flash", rev = "cd6b3c43502681a24b3d22e59ce640aea7f92f60" }
-wgpu-naga-bridge = { git = "https://github.com/originai-game/wgpu-flash", rev = "cd6b3c43502681a24b3d22e59ce640aea7f92f60" }
-wgpu-types = { git = "https://github.com/originai-game/wgpu-flash", rev = "cd6b3c43502681a24b3d22e59ce640aea7f92f60" }
+#   ring; no bind group validation; wgpu-hal's dynamic layer casting to the
+#   backend's types unchecked; per-command calls given wgpu-core objects
+#   directly instead of looking ids up in the registry.
+naga = { git = "https://github.com/originai-game/wgpu-flash", rev = "ecd05a003f430c0797014212ae0c4088c19b735c" }
+naga-types = { git = "https://github.com/originai-game/wgpu-flash", rev = "ecd05a003f430c0797014212ae0c4088c19b735c" }
+wgpu = { git = "https://github.com/originai-game/wgpu-flash", rev = "ecd05a003f430c0797014212ae0c4088c19b735c" }
+wgpu-core = { git = "https://github.com/originai-game/wgpu-flash", rev = "ecd05a003f430c0797014212ae0c4088c19b735c" }
+wgpu-core-deps-apple = { git = "https://github.com/originai-game/wgpu-flash", rev = "ecd05a003f430c0797014212ae0c4088c19b735c" }
+wgpu-core-deps-windows-linux-android = { git = "https://github.com/originai-game/wgpu-flash", rev = "ecd05a003f430c0797014212ae0c4088c19b735c" }
+wgpu-hal = { git = "https://github.com/originai-game/wgpu-flash", rev = "ecd05a003f430c0797014212ae0c4088c19b735c" }
+wgpu-naga-bridge = { git = "https://github.com/originai-game/wgpu-flash", rev = "ecd05a003f430c0797014212ae0c4088c19b735c" }
+wgpu-types = { git = "https://github.com/originai-game/wgpu-flash", rev = "ecd05a003f430c0797014212ae0c4088c19b735c" }
