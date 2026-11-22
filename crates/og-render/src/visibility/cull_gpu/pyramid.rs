@@ -2,18 +2,20 @@
 
 use super::*;
 
-/// The pyramid's base: the farthest of a pixel's samples.
+/// The pyramid's base: the farthest of a pixel's samples, the depth read
+/// as an unfilterable float texture (compatibility mode loads no
+/// `texture_depth_2d`).
 pub(crate) fn hiz_source(multisampled: bool) -> String {
     let decl = if multisampled {
-        "@group(0) @binding(2) var depth_in: texture_depth_multisampled_2d;\n\
+        "@group(0) @binding(2) var depth_in: texture_multisampled_2d<f32>;\n\
          fn farthest_sample(xy: vec2<u32>) -> f32 {\n\
            var d = 0.0;\n\
-           for (var s = 0u; s < textureNumSamples(depth_in); s++) { d = max(d, textureLoad(depth_in, xy, i32(s))); }\n\
+           for (var s = 0u; s < textureNumSamples(depth_in); s++) { d = max(d, textureLoad(depth_in, xy, i32(s)).r); }\n\
            return d;\n\
          }\n"
     } else {
-        "@group(0) @binding(2) var depth_in: texture_depth_2d;\n\
-         fn farthest_sample(xy: vec2<u32>) -> f32 { return textureLoad(depth_in, xy, 0); }\n"
+        "@group(0) @binding(2) var depth_in: texture_2d<f32>;\n\
+         fn farthest_sample(xy: vec2<u32>) -> f32 { return textureLoad(depth_in, xy, 0).r; }\n"
     };
     format!("{decl}{HIZ_WGSL}")
 }

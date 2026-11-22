@@ -698,15 +698,17 @@ fn oit_front_at(p: vec2<i32>, s: u32) -> vec4<f32> {{ return textureLoad(oit_fro
 "
     );
     if list {
+        // The depth as an unfilterable float texture: compatibility mode
+        // loads no texture_depth_2d.
         let depth = if msaa {
-            "texture_depth_multisampled_2d"
+            "texture_multisampled_2d<f32>"
         } else {
-            "texture_depth_2d"
+            "texture_2d<f32>"
         };
         s.push_str(&format!(
             "@group(0) @binding(3) var oit_depth: {depth};
 @group(0) @binding(4) var<storage, read> oit_nodes: array<u32>;
-fn oit_depth_at(p: vec2<i32>, s: u32) -> f32 {{ return textureLoad(oit_depth, p, {sample}); }}
+fn oit_depth_at(p: vec2<i32>, s: u32) -> f32 {{ return textureLoad(oit_depth, p, {sample}).r; }}
 {LIST_WGSL}"
         ));
     } else {
@@ -762,7 +764,7 @@ impl Resolver {
                     binding: 3,
                     visibility: wgpu::ShaderStages::FRAGMENT,
                     ty: wgpu::BindingType::Texture {
-                        sample_type: wgpu::TextureSampleType::Depth,
+                        sample_type: wgpu::TextureSampleType::Float { filterable: false },
                         view_dimension: wgpu::TextureViewDimension::D2,
                         multisampled: msaa,
                     },

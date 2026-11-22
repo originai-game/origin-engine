@@ -50,7 +50,7 @@ impl Volume {
                 binding: 0,
                 visibility: wgpu::ShaderStages::FRAGMENT,
                 ty: wgpu::BindingType::Texture {
-                    sample_type: wgpu::TextureSampleType::Depth,
+                    sample_type: wgpu::TextureSampleType::Float { filterable: false },
                     view_dimension: wgpu::TextureViewDimension::D2,
                     multisampled: samples > 1,
                 },
@@ -63,18 +63,20 @@ impl Volume {
             immediate_size: 0,
         });
         let depth_source = if samples > 1 {
-            "@group(1) @binding(0) var opaque_depth: texture_depth_multisampled_2d;
+            "@group(1) @binding(0) var opaque_depth: texture_multisampled_2d<f32>;
              fn opaque_depth_at(px: vec2<i32>) -> f32 {
                var z = 1.0;
                for (var i = 0u; i < textureNumSamples(opaque_depth); i++) {
-                 z = min(z, textureLoad(opaque_depth, px, i32(i)));
+                 z = min(z, textureLoad(opaque_depth, px, i32(i)).r);
                }
                return z;
              }"
         } else {
-            "@group(1) @binding(0) var opaque_depth: texture_depth_2d;
+            // An unfilterable float texture: compatibility mode loads no
+            // texture_depth_2d.
+            "@group(1) @binding(0) var opaque_depth: texture_2d<f32>;
              fn opaque_depth_at(px: vec2<i32>) -> f32 {
-               return textureLoad(opaque_depth, px, 0);
+               return textureLoad(opaque_depth, px, 0).r;
              }"
         };
         let module = crate::shader(

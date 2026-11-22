@@ -3,7 +3,9 @@
 // the kept value and the depth the casters after it are tested against.
 
 @group(0) @binding(0) var kept: texture_2d<f32>;
-@group(0) @binding(1) var kept_depth: texture_depth_2d;
+// The depth as an unfilterable float texture: compatibility mode loads no
+// texture_depth_2d.
+@group(0) @binding(1) var kept_depth: texture_2d<f32>;
 
 struct KeptOut {
   @location(0) value: vec4<f32>,
@@ -22,5 +24,5 @@ fn fs_cascade(in: VsOut) -> KeptOut {
 @fragment
 fn fs_local(in: VsOut) -> KeptOut {
   let at = vec2<i32>(in.pos.xy);
-  return KeptOut(textureLoad(kept, at, 0), textureLoad(kept_depth, at, 0));
+  return KeptOut(textureLoad(kept, at, 0), textureLoad(kept_depth, at, 0).r);
 }

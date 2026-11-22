@@ -45,7 +45,11 @@ impl GpuCulling {
                 label: Some("depth pyramid base"),
                 entries: &[
                     level_out(1),
-                    texture(2, wgpu::TextureSampleType::Depth, multisampled),
+                    texture(
+                        2,
+                        wgpu::TextureSampleType::Float { filterable: false },
+                        multisampled,
+                    ),
                 ],
             })
         });
