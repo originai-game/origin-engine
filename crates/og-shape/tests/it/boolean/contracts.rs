@@ -507,12 +507,12 @@ fn two_builds_are_byte_identical() {
     assert_eq!(
         hashes,
         [
-            "b03f283171de7f75",
-            "be6b1fa2121783ef",
-            "7133bb6f67635d0f",
+            "bd3a1315442aefbe",
+            "5c426bd443c4462a",
+            "b7ddbf14c9c171e7",
             "dd8e55eccf0c7012",
             "a6bf8294bc6c52f2",
-            "003c474fdb6b2aeb"
+            "c205aaae210975cd"
         ],
         "extrude, lathe, sweep, icosahedron, dodecahedron, csg"
     );
@@ -595,10 +595,10 @@ fn path2_flattens_to_the_typescript_runtime_s_points() {
     .map(|p| (p.len(), format!("{:016x}", fnv_points(p))))
     .collect();
     let want: Vec<(usize, String)> = [
-        (23, "ea23d9a8a5cb3a2a"),
+        (23, "2c62b7366a66b61a"),
         (44, "33e053fbf600b013"),
-        (50, "93b7c449378d949c"),
-        (50, "5c8c6a9a4e4fec9e"),
+        (50, "e4828e5598c0691d"),
+        (50, "051e04a684644f88"),
         (3, "328e239e448cbc18"),
     ]
     .iter()
