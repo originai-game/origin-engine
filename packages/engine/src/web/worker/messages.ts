@@ -35,7 +35,7 @@ export interface Start {
   /** The page draws the loading screen (project.ogt `loading page`, fork s61): the canvas covered until og.loading.done. */
   stages?: boolean;
   /**
-   * Fork s60: project.ogt `publish { pipelines }`, absent for `auto` (pipelines.ts `choose`): `sync`; `async`, the frame pipelines with createRenderPipelineAsync;
+   * Fork s60: project.ogt `publish { pipelines }`, absent for `auto` (worker/device.ts `choose`): `sync`; `async`, the frame pipelines with createRenderPipelineAsync;
    * `prewarm`, only the warm-up behind the gate's; absent: synchronously.
    */
   pipelines?: "sync" | "async" | "prewarm";

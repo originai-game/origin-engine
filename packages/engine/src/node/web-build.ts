@@ -155,7 +155,7 @@ export interface PublishSettings {
   /**
    * How the web page makes the renderer's frame pipelines (docs/web-export.md
    * §Pipelines): `auto` (the default) picks at the adapter, `async` on a
-   * mobile GPU and `sync` elsewhere (src/web/pipelines.ts `choose`); `sync`
+   * mobile GPU and `sync` elsewhere (src/web/worker/device.ts `choose`); `sync`
    * with createRenderPipeline when a pass first needs one; `async` with
    * createRenderPipelineAsync, the frame's draws of one still compiling
    * skipped; `prewarm`, only the warm-up behind the gate's. On a Pixel 10

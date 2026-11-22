@@ -74,8 +74,8 @@ export const LOG_LINES = 200;
  * Run `game` in this Worker, driven by the shell's messages. Its concerns
  * live under worker/: the run's state and how it fails (run.ts), the frame
  * loop (loop.ts), the play gate (gate.ts), the boot (start.ts), the calls
- * (calls.ts), og.platform and the rooms (platform.ts), the GPU device and
- * the warm-up's pacing (gpu.ts), and the state each frame keeps (state.ts).
+ * (calls.ts), og.platform and the rooms (platform.ts), the GPU device, its pipeline mode and
+ * the warm-up's pacing (device.ts), and the state each frame keeps (state.ts).
  */
 export function startWorker(game: GameToken): void {
   // The probe's requests ask the frame loop, made after the run, for frames.

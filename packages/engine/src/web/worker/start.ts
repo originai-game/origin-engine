@@ -10,11 +10,10 @@ import { useSourceMap } from "../../spawn-site.ts";
 import { type Fetched, Received, TRACE_BEFORE_ENGINE, UPLOAD_BUDGET, deviceReport, installFetcher, installImageDecoder, installInflater, installTranscoder, installVideo, onBar, preloadBundle, prepareTextures } from "../boot.ts";
 import { fetchModuleHost, loadEngineModules, loadWebHost } from "../host.ts";
 import type { EngineModules } from "../split.ts";
-import * as pipelines from "../pipelines.ts";
 import { settle, SETTLE_FIRST_MS, SETTLE_MS } from "../settle.ts";
 import type { Gate } from "./gate.ts";
 import { webGpuMissing } from "../webgpu.ts";
-import { onDeviceAdapter } from "./gpu.ts";
+import { choose, onDeviceAdapter, usePipelines } from "./device.ts";
 import type { FrameLoop } from "./loop.ts";
 import type { Start, WorkerScope } from "./messages.ts";
 import { toPage } from "./platform.ts";
@@ -107,16 +106,17 @@ export async function start(game: GameToken, data: Start, run: Run, gate: Gate, 
     run.glue = glue;
     // Fork s63: at most UPLOAD_BUDGET texture bytes a frame; the rest in the frames after.
     glue.og_web_upload_budget?.(UPLOAD_BUDGET);
-    // The renderer's pipeline cache compiles off the browser's GPU-process main task (pipelines.ts)
+    // The renderer's pipeline cache compiles off the browser's GPU-process main task (wgpu's
+    // create_*_pipeline_async, og-render gpu/deferred.rs)
     // as the build asks, or for auto (absent) on every GPU but Apple's, picked at the adapter: a cold
     // driver compiles a large scene's for seconds each, and synchronous ones past Chrome's GPU
     // watchdog lose the device (docs/web-export.md §Pipelines).
     {
       const asked = data.pipelines;
-      glue.og_web_pipeline_compiler(pipelines.asking, pipelines.count, pipelines.made, pipelines.isCompiled, pipelines.finish);
+      const g = glue;
       onDeviceAdapter((adapter) => {
-        const choice = pipelines.choose(asked, adapter.info);
-        pipelines.use(choice);
+        const choice = choose(asked, adapter.info);
+        usePipelines(g, choice);
         console.info(`[og] pipelines ${choice.mode}: ${choice.reason}`);
       });
     }

@@ -241,8 +241,14 @@ export interface WebExtras {
   og_web_lose_device?(engine: number): boolean;
   /** The frames the renderer drew that the GPU has not finished (og-render's Renderer::frames_in_flight): a harness's `frame` answers once one is left. */
   og_web_frames_in_flight(engine: number): number;
-  /** og-render's pipeline cache's compiler (pipelines.ts `asking`, `count`, `made`, `isCompiled`, `finish`; og-render gpu/deferred.rs). */
-  og_web_pipeline_compiler(asking: (on: boolean) => void, count: () => number, made: () => number, compiled: (n: number) => boolean, finish: (n: number) => void): void;
+  /** How og-render's pipeline cache makes its pipelines (gpu/deferred.rs): `async` with createRenderPipelineAsync, `prewarm` only behind the gate, else at once. */
+  og_web_pipeline_mode?(mode: "sync" | "async" | "prewarm"): void;
+  /** The cache's pipelines made each way so far, JSON `{ requested, settled, sync, waited, asks }`. */
+  og_web_pipeline_stats?(): string;
+  /** Every pipeline asked for asynchronously, JSON `[{ label, asked, made, how }]` (perf's report). */
+  og_web_pipeline_compiles?(): string;
+  /** og_web_warm behind the play gate: under `prewarm` its pipelines are asked for asynchronously. */
+  og_web_warm_behind_gate?(engine: number): boolean;
   /** The draws the last frame skipped and the work it left for a later frame, each for a pipeline not ready (og-render `frame_skipped`). */
   og_web_frame_skipped(): number;
   /** Fork s63: the texture bytes a frame uploads at most (0: no limit). */

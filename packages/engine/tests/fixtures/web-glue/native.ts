@@ -45,9 +45,9 @@ export function og_web_prepare_textures(_engine: number): string {
 // The frame kind (src/web/worker/calls.ts `frame`, `probe`): nothing to set,
 // the engine here is the native host's, which keeps its own.
 export function og_web_frame_kind(_engine: number, _kind: "display" | "scripted" | "recorded"): void {}
-// The pipeline cache's compiler (src/web/worker/start.ts): the native host's
-// renderer compiles on its own workers, so nothing is asked of the Worker.
-export function og_web_pipeline_compiler(_asking: (on: boolean) => void, _count: () => number, _made: () => number, _compiled: (n: number) => boolean, _finish: (n: number) => void): void {}
+// The pipeline cache's mode (src/web/worker/start.ts): the native host's
+// renderer compiles on its own workers, so the mode changes nothing.
+export function og_web_pipeline_mode(_mode: "sync" | "async" | "prewarm"): void {}
 export function og_web_frame_skipped(): number {
   return 0;
 }

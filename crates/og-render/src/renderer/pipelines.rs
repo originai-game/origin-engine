@@ -77,7 +77,7 @@ pub(crate) fn unbounded_shader(
     // SAFETY: without the bounding an endless loop is undefined behaviour on
     // Metal. These modules hold no game WGSL, and `tests/shader_loops.rs`
     // fails on any loop in them that is not shown to end.
-    unsafe {
+    crate::deferred::recorded_module(Some(label), || unsafe {
         device.create_shader_module_trusted(
             desc,
             wgpu::ShaderRuntimeChecks {
@@ -85,7 +85,7 @@ pub(crate) fn unbounded_shader(
                 ..wgpu::ShaderRuntimeChecks::checked()
             },
         )
-    }
+    })
 }
 
 /// The depth test of every opaque surface the prepass also draws, in the

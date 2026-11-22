@@ -3,9 +3,8 @@
 // loading screen, which covers the canvas until the game calls its loading
 // done.
 
-import * as pipelines from "../pipelines.ts";
 import { onBar } from "../boot.ts";
-import { WARM_COMPILING, warmBusy, warmPaced } from "./gpu.ts";
+import { WARM_COMPILING, compiling, pipelineStats, warmBusy, warmPaced } from "./device.ts";
 import type { WorkerScope } from "./messages.ts";
 import { post, type Run } from "./run.ts";
 
@@ -26,12 +25,9 @@ export class Gate {
     this.#run = run;
   }
 
-  /** Fork s60: the pipelines' counts once `warmed` pipelines are made, said loudly when the frame pipelines bypassed createRenderPipelineAsync. */
-  #reportPipelines(warmed: number): void {
-    const stats = pipelines.stats();
-    const bypassed = pipelines.bypassed(stats, warmed);
-    if (bypassed) console.warn(`[og] renderer: ${bypassed}`);
-    self.postMessage({ type: "pipelines", stats: bypassed ? { ...stats, bypassed } : stats });
+  /** Fork s60: the pipelines' counts once the warm-up ends or play stops it. */
+  #reportPipelines(): void {
+    self.postMessage({ type: "pipelines", stats: pipelineStats(this.#run.glue) });
   }
 
   /**
@@ -40,13 +36,13 @@ export class Gate {
    */
   warmCovered(): void {
     const glue = this.#run.glue;
-    if (this.covered && this.#coveredWarmLeft && !warmBusy() && glue?.og_web_warm && pipelines.compiling() < WARM_COMPILING) {
-      // Before the first frame: synchronous under prewarm (only warmBehindGate's are `warming`).
+    if (this.covered && this.#coveredWarmLeft && !warmBusy() && glue?.og_web_warm && compiling(glue) < WARM_COMPILING) {
+      // Before the first frame: synchronous under prewarm (only warmBehindGate's ask asynchronously).
       const warm = glue.og_web_warm;
       const engine = this.#run.engine;
       this.#coveredWarmLeft = warmPaced(() => warm(engine!.id));
       if (this.#coveredWarmLeft) this.#coveredWarm++;
-      else this.#reportPipelines(this.#coveredWarm);
+      else this.#reportPipelines();
     }
   }
 
@@ -57,7 +53,7 @@ export class Gate {
    */
   #warmBehindGate(): void {
     const run = this.#run;
-    const warm = run.glue?.og_web_warm;
+    const warm = run.glue?.og_web_warm_behind_gate ?? run.glue?.og_web_warm;
     if (!warm || !run.rendering) return;
     const began = performance.now();
     let made = 0;
@@ -79,16 +75,16 @@ export class Gate {
     const step = () => {
       if (run.crashed || !run.engine) return;
       // Play stopped the warm-up: its counts so far, over the first frame's.
-      if (run.playing) return this.#reportPipelines(made);
+      if (run.playing) return this.#reportPipelines();
       // Fork s60: with the pipelines asynchronous a warm call returns at once; at most WARM_COMPILING
       // (s75) compile at a time, so the ones a frame needs are not queued behind every pass's.
-      if (pipelines.compiling() >= WARM_COMPILING || warmBusy()) {
+      if (compiling(run.glue) >= WARM_COMPILING || warmBusy()) {
         setTimeout(step, 50);
         return;
       }
       let more: boolean;
       try {
-        more = warmPaced(() => pipelines.warming(() => warm(run.engine!.id)));
+        more = warmPaced(() => warm(run.engine!.id));
       } catch (e) {
         run.crash(e instanceof Error ? e.message : String(e));
         return;
@@ -98,7 +94,7 @@ export class Gate {
         setTimeout(step, 0);
       } else {
         if (made > 0) console.info(`renderer: ${made} pipelines made behind the gate in ${Math.round(performance.now() - began)} ms`);
-        this.#reportPipelines(made);
+        this.#reportPipelines();
       }
     };
     setTimeout(tick, 0);
@@ -143,7 +139,7 @@ export class Gate {
 
   /** og.loading.idle: no pipelines compiling and no textures or font faces waiting. */
   idle(): boolean {
-    return pipelines.compiling() === 0 && !this.#texturesWaiting();
+    return compiling(this.#run.glue) === 0 && !this.#texturesWaiting();
   }
 
   /** One rendered frame without a tick: the first frame behind the play gate. */
@@ -166,26 +162,26 @@ export class Gate {
           // The pipelines ready of those requested (each count only goes up; the page's bar never
           // goes back): the splash's "Preparing graphics 41/96".
           const bar = () => {
-            const { requested, ready } = pipelines.counted();
+            const { async: requested, settled: ready } = pipelineStats(run.glue);
             const fraction = requested ? ready / requested : 0;
             self.postMessage({ type: "progress", value: onBar("present", fraction), fraction, stage: "present", count: [ready, requested] });
           };
           bar();
           const poll = () => {
             waiting.again = 0;
-            if (pipelines.compiling() > 0) {
+            if (compiling(run.glue) > 0) {
               bar();
               waiting.again = setTimeout(poll, 50);
             } else this.present();
           };
-          if (!waiting.again) waiting.again = setTimeout(poll, pipelines.compiling() > 0 ? 50 : 0);
+          if (!waiting.again) waiting.again = setTimeout(poll, compiling(run.glue) > 0 ? 50 : 0);
           run.flushLog();
           return;
         }
         if (waiting.since) console.info(`renderer: the first frame waited ${Math.round(performance.now() - waiting.since)} ms (${waiting.frames} frames behind the gate)`);
         run.firstFrame = true;
         run.boot.phase("present");
-        post(run.boot.firstFrame());
+        post(run.boot.firstFrame(pipelineStats(run.glue)));
         this.#warmBehindGate();
       }
       run.flushLog();

@@ -155,7 +155,7 @@ export interface ShellOptions {
   readonly trace?: boolean;
   /** Record the played frames for field telemetry (`call("telemetry")` takes them binned: shell/telemetry.ts FrameStats). */
   readonly telemetry?: boolean;
-  /** Fork s60: project.ogt `publish { pipelines }` (src/web/pipelines.ts): `sync`, `async` or `prewarm`; absent: auto, picked at the adapter. */
+  /** Fork s60: project.ogt `publish { pipelines }` (src/web/worker/device.ts `choose`): `sync`, `async` or `prewarm`; absent: auto, picked at the adapter. */
   readonly pipelines?: "sync" | "async" | "prewarm";
   /** A file of the bundle did not arrive, at the boot or later: its path under `cooked/` and why (`http_<status>`, `timeout`, `network`). */
   readonly onLoadFailure?: (failure: { readonly file: string; readonly reason: string }) => void;

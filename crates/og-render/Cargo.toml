@@ -91,6 +91,8 @@ wgpu = { workspace = true, features = ["webgpu"] }
 # navigator.userAgent: WebKit's indirect draws (RenderInfo::indirect_per_draw).
 js-sys = "=0.3.106"
 wasm-bindgen = "=0.2.129"
+# The browser's asynchronous pipeline calls (gpu/deferred.rs).
+wasm-bindgen-futures = "=0.4.79"
 
 [[test]]
 name = "tests"

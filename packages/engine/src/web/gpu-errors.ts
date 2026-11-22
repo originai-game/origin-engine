@@ -1,5 +1,5 @@
 // Error scopes the published wgpu can read (installed on GPUDevice.prototype
-// by the Worker, before the wasm's glue loads, as pipelines.ts is).
+// by the Worker, before the wasm's glue loads: worker/device.ts).
 //
 // wgpu 30's WebGPU backend decodes only a GPUValidationError or a
 // GPUOutOfMemoryError from popErrorScope and panics ("Unexpected error") on

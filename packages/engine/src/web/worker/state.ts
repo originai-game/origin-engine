@@ -7,8 +7,7 @@
 
 import { boundHost, type CursorImage, type Engine } from "../../runtime.ts";
 import { Trace, unixMs, type TraceDocument } from "../../trace.ts";
-import * as pipelines from "../pipelines.ts";
-import type { PipelineChoice, PipelineStats } from "../pipelines.ts";
+import type { PipelineChoice, PipelineStats } from "./device.ts";
 import { readFrames, writeFrame, type RpcRings } from "../rpc-ring.ts";
 
 /** A message to the shell. */
@@ -26,8 +25,8 @@ type Post = (message: Record<string, unknown>) => void;
  */
 export type BootPhases = Partial<Record<"wasm" | "bundle" | "create" | "attach" | "transcode" | "prime" | "settle" | "present", number>> & {
   at?: number;
-  /** Fork s60: the render pipelines made each way (pipelines.ts), at the first frame and again when the warm-up ends or play stops it, with the mode chosen and why (`auto`'s pick) and `bypassed` when the frame pipelines lost createRenderPipelineAsync. */
-  pipelines?: PipelineStats & Partial<PipelineChoice> & { bypassed?: string };
+  /** Fork s60: the render pipelines made each way (device.ts `pipelineStats`), at the first frame and again when the warm-up ends or play stops it, with the mode chosen and why (`auto`'s pick). */
+  pipelines?: PipelineStats & Partial<PipelineChoice>;
 };
 
 /** Where the boot went (BootPhases): each phase ends where the next begins. */
@@ -49,10 +48,10 @@ export class BootClock {
   }
 
   /** The first frame's message: the phases, when it was drawn and the pipelines made for it. */
-  firstFrame(): Record<string, unknown> {
+  firstFrame(pipelines: BootPhases["pipelines"]): Record<string, unknown> {
     const at = Math.round(performance.now());
     console.info(`[og] first frame at ${at} ms`);
-    return { type: "frame", first: true, boot: { ...this.phases, at, pipelines: pipelines.stats() } };
+    return { type: "frame", first: true, boot: { ...this.phases, at, pipelines } };
   }
 }
 

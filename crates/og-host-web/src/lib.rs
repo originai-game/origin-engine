@@ -91,9 +91,6 @@ thread_local! {
     /// (s58): a boot's hundreds of texture calls parse the 0.5 MB manifest
     /// once, not twice per texture.
     static BUNDLE: RefCell<Option<(String, std::rc::Rc<og_bundle::runtime::Bundle>)>> = const { RefCell::new(None) };
-    /// The Worker's pipeline compiler: `asking`, `count`, `made`, `compiled`
-    /// and `finish` (`og_web_pipeline_compiler`).
-    static COMPILER: RefCell<Option<[js_sys::Function; 5]>> = const { RefCell::new(None) };
     /// The Worker's `fetch(path)` for files nobody fetched yet.
     static FETCHER: RefCell<Option<js_sys::Function>> = const { RefCell::new(None) };
     /// The Worker's `transcode(key, ktx2, target)`, the only way a Basis
@@ -346,40 +343,57 @@ pub fn og_web_warm_tick(engine: u32) {
     og_runtime::warm_tick(engine)
 }
 
-/// The Worker's pipeline compiler (src/web/pipelines.ts), og-render's
-/// `PipelineCompiler`: `asking(on)` around each pipeline the renderer's
-/// cache makes, so the Worker asks the browser for it with
-/// `createRenderPipelineAsync` (or the compute one) and numbers it;
-/// `count()` the pipelines numbered so far, `made()` how many of them are
-/// compiled or refused, `compiled(n)` whether pipeline `n` is, and
-/// `finish(n)` makes it at once (a use that waits). A page that compiles
-/// synchronously numbers none. (The engine's wasm only: natively the
-/// renderer's compile workers are its compiler.)
+/// How the renderer's pipeline cache makes its pipelines (og-render
+/// `set_pipeline_mode`): `"async"` with wgpu's `create_*_pipeline_async`
+/// (the browser's createRenderPipelineAsync), `"prewarm"` only for those
+/// warmed behind the play gate (`og_web_warm_behind_gate`), else (`"sync"`)
+/// each at once. The engine's wasm only.
 #[cfg(target_arch = "wasm32")]
 #[wasm_bindgen]
-pub fn og_web_pipeline_compiler(
-    asking: js_sys::Function,
-    count: js_sys::Function,
-    made: js_sys::Function,
-    compiled: js_sys::Function,
-    finish: js_sys::Function,
-) {
-    COMPILER.with(|cell| *cell.borrow_mut() = Some([asking, count, made, compiled, finish]));
-    og_render::set_pipeline_compiler(Some(og_render::PipelineCompiler {
-        asking: |on| {
-            compiler_call(0, &JsValue::from_bool(on));
-        },
-        count: || number(compiler_call(1, &JsValue::NULL)),
-        made: || number(compiler_call(2, &JsValue::NULL)),
-        compiled: |n| {
-            compiler_call(3, &JsValue::from(n))
-                .as_bool()
-                .unwrap_or(true)
-        },
-        finish: |n| {
-            compiler_call(4, &JsValue::from(n));
-        },
-    }));
+pub fn og_web_pipeline_mode(mode: String) {
+    og_render::set_pipeline_mode(match mode.as_str() {
+        "async" => og_render::PipelineMode::Async,
+        "prewarm" => og_render::PipelineMode::Prewarm,
+        _ => og_render::PipelineMode::Sync,
+    });
+}
+
+/// The pipelines the cache made each way so far (og-render
+/// `pipeline_stats`), as JSON `{ requested, settled, sync, waited, asks }`:
+/// `requested - settled` compile now.
+#[cfg(target_arch = "wasm32")]
+#[wasm_bindgen]
+pub fn og_web_pipeline_stats() -> String {
+    let s = og_render::pipeline_stats();
+    serde_json::json!({
+        "requested": s.requested,
+        "settled": s.settled,
+        "sync": s.sync,
+        "waited": s.waited,
+        "asks": s.asks,
+    })
+    .to_string()
+}
+
+/// Every pipeline asked for asynchronously so far (og-render
+/// `pipeline_compiles`), as JSON `[{ label, asked, made, how }]`: perf's
+/// report lists the UI's and the overlay's.
+#[cfg(target_arch = "wasm32")]
+#[wasm_bindgen]
+pub fn og_web_pipeline_compiles() -> String {
+    let all: Vec<_> = og_render::pipeline_compiles()
+        .into_iter()
+        .map(|c| serde_json::json!({ "label": c.label, "asked": c.asked, "made": c.made, "how": c.how }))
+        .collect();
+    serde_json::Value::Array(all).to_string()
+}
+
+/// `og_web_warm` behind the play gate, after the first frame: under
+/// `prewarm` its pipelines are asked for asynchronously too.
+#[cfg(target_arch = "wasm32")]
+#[wasm_bindgen]
+pub fn og_web_warm_behind_gate(engine: u32) -> bool {
+    og_render::warming(|| og_runtime::warm_renderer(engine))
 }
 
 /// The draws the last frame skipped and the work it left for a later frame,
@@ -388,21 +402,6 @@ pub fn og_web_pipeline_compiler(
 #[wasm_bindgen]
 pub fn og_web_frame_skipped() -> u32 {
     og_render::frame_skipped()
-}
-
-#[cfg(target_arch = "wasm32")]
-fn compiler_call(i: usize, arg: &JsValue) -> JsValue {
-    COMPILER.with(|cell| {
-        cell.borrow()
-            .as_ref()
-            .and_then(|h| h[i].call1(&JsValue::NULL, arg).ok())
-            .unwrap_or(JsValue::UNDEFINED)
-    })
-}
-
-#[cfg(target_arch = "wasm32")]
-fn number(v: JsValue) -> u32 {
-    v.as_f64().map_or(0, |n| n as u32)
 }
 
 /// Fork s63: the texture bytes a frame uploads at most (0: no limit); a

@@ -435,10 +435,10 @@ pub(crate) enum Made {
 /// A batch pipeline's making, which owns what it reads: run on the
 /// compile workers natively (deferred.rs).
 #[cfg(not(target_arch = "wasm32"))]
-pub(super) type Job = Box<dyn FnOnce() -> Made + Send>;
+pub(super) type Job = Box<dyn Fn() -> Made + Send>;
 
 #[cfg(target_arch = "wasm32")]
-pub(super) type Job = Box<dyn FnOnce() -> Made>;
+pub(super) type Job = Box<dyn Fn() -> Made>;
 
 /// A built-in lit or prepass pipeline's making with the constants that
 /// leave features out (pipeline_features.rs).
@@ -505,7 +505,7 @@ pub(crate) fn variants(
 /// A batch pipeline made by `make`: an entry of the pipeline cache, asked
 /// for by the host's compiler (gpu/deferred.rs).
 pub(super) fn deferred<T: crate::deferred::AnywhereOnce + 'static>(
-    make: impl FnOnce() -> T + crate::deferred::AnywhereOnce + 'static,
+    make: impl Fn() -> T + crate::deferred::AnywhereOnce + 'static,
 ) -> Deferred<T> {
     let d = Deferred::anywhere(make);
     #[cfg(not(target_arch = "wasm32"))]

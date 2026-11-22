@@ -102,7 +102,10 @@ pub use deferred::{
     settle_pipelines, take_compile_times,
 };
 #[cfg(target_arch = "wasm32")]
-pub use deferred::{PipelineCompiler, set_pipeline_compiler};
+pub use deferred::{
+    PipelineCompile, PipelineMode, PipelineStats, pipeline_compiles, pipeline_stats,
+    set_pipeline_mode, warming,
+};
 use gpu::deferred;
 pub use mesh::foliage;
 use particles::effect;

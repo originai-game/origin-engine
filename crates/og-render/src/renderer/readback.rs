@@ -202,7 +202,7 @@ impl Renderer {
                 key,
                 crate::pipeline_features::Variants::new(declared, move |_| {
                     let p = p.clone();
-                    Deferred::new(move || p)
+                    Deferred::new(move || p.clone())
                 }),
             );
             return true;
@@ -217,9 +217,11 @@ impl Renderer {
                 false,
                 false,
             );
-            self.shadows
-                .shadow_pipelines
-                .insert(key, Deferred::new(|| p));
+            self.shadows.shadow_pipelines.insert(key, {
+                // Made already: its entry is made once, with no pipeline left to ask for.
+                let p = std::cell::Cell::new(Some(p));
+                Deferred::new(move || p.take().expect("an entry with no pipeline is made once"))
+            });
             return true;
         }
         false

@@ -13,6 +13,8 @@ disallowed-methods = [
   { path = "wgpu::Device::poll", reason = "counted: crate::traffic::poll" },
   { path = "wgpu::Device::create_render_pipeline", reason = "counted: crate::traffic::create_render_pipeline" },
   { path = "wgpu::Device::create_compute_pipeline", reason = "counted: crate::traffic::create_compute_pipeline" },
+  { path = "wgpu::Device::create_render_pipeline_async", reason = "the pipeline cache asks for it: gpu/deferred.rs" },
+  { path = "wgpu::Device::create_compute_pipeline_async", reason = "the pipeline cache asks for it: gpu/deferred.rs" },
   { path = "wgpu::BufferSlice::map_async", reason = "counted: crate::traffic::map_async" },
   { path = "wgpu::Buffer::map_async", reason = "counted: crate::traffic::map_async" },
   { path = "wgpu::util::DeviceExt::create_buffer_init", reason = "mapped at creation on the web: crate::buffer_init" },

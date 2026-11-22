@@ -7,6 +7,7 @@
 // probe's requests between frames whether the clock plays or not.
 
 import { waitForFrames } from "../rpc-ring.ts";
+import { pipelineStats } from "./device.ts";
 import type { Gate } from "./gate.ts";
 import type { WorkerScope } from "./messages.ts";
 import { pumpRoom } from "./platform.ts";
@@ -64,7 +65,7 @@ export class FrameLoop {
           this.#gate.warmCovered();
           if (!run.firstFrame && answered.rendered !== false) {
             run.firstFrame = true;
-            post(run.boot.firstFrame());
+            post(run.boot.firstFrame(pipelineStats(run.glue)));
           }
           run.audio?.pump();
         }

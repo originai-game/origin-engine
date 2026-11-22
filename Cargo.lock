@@ -3519,6 +3519,7 @@ dependencies = [
  "serde_json",
  "uds_windows",
  "wasm-bindgen",
+ "wasm-bindgen-futures",
  "wgpu",
  "windows",
 ]

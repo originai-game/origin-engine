@@ -522,18 +522,21 @@ what it wrote.
 ### Pipelines
 
 How the frame's render and compute pipelines compile on the web
-(`src/web/pipelines.ts`, `publish { pipelines }`):
+(`publish { pipelines }`, picked in `src/web/worker/device.ts`):
 
 - `sync`: a pipeline is made when a pass first draws with it, and the rest
   are warmed behind the play gate after the first frame.
 - `async`: the renderer's pipeline cache (og-render `gpu/deferred.rs`)
   asks the browser for every pipeline with `createRenderPipelineAsync` or
-  `createComputePipelineAsync`. Readiness is the cache's and works the same
+  `createComputePipelineAsync`, through wgpu's
+  `Device::create_{render,compute}_pipeline_async` (the fork's port of
+  gfx-rs/wgpu#10438). Readiness is the cache's and works the same
   way natively. A display frame skips a draw whose pipeline is not ready
   yet. Work whose output later frames keep (a scatter chunk's placement, a
   grass field's blades, the bakes, the compute before the frame's passes)
   waits for a later frame. A frame that waits (a scripted, recorded or
-  capture frame) has the browser make each such pipeline at once. After a
+  capture frame) makes each such pipeline at once with the synchronous
+  call. After a
   frame that skipped a shadow caster's draw, the static shadow cache keeps
   none of its layers. The gate shows once a frame skipped nothing
   (`og_web_frame_skipped`).

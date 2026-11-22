@@ -4,7 +4,6 @@
 
 import { beginBundle, boundHost, type Engine } from "../../runtime.ts";
 import { deviceReport } from "../boot.ts";
-import * as pipelines from "../pipelines.ts";
 import { adapterName } from "../webgpu.ts";
 import { pumpRoom } from "./platform.ts";
 import { pumpShared } from "./shared.ts";
@@ -111,9 +110,9 @@ export function callsOf(run: Run): Calls {
       const adapter = adapterOf(run);
       report.json["adapter"] = adapter;
       report.text = report.text.replace(/^og perf: .*$/m, (head) => `${head} on ${adapter}`);
-      // The pipelines asked for asynchronously and when each was made (pipelines.ts `compiled`):
+      // The pipelines asked for asynchronously and when each was made (og_web_pipeline_compiles):
       // the UI's and the overlay's by name, so one still compiling at Play shows.
-      const all = pipelines.compiled();
+      const all = JSON.parse(run.glue?.og_web_pipeline_compiles?.() ?? "[]") as Array<{ label: string; asked: number; made: number | null; how: string | null }>;
       report.json["pipelines"] = all;
       const ui = all.filter((c) => /^(ui|overlay)\b/.test(c.label));
       if (ui.length) {

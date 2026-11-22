@@ -18,8 +18,8 @@
 //! - **Creating**: the host's compiler has it. Natively that is the
 //!   compile workers (wgpu's native device makes pipelines from any
 //!   thread, as Bevy's cache compiles on a task pool); on the web it is
-//!   the browser's `createRenderPipelineAsync` (the host's
-//!   [`PipelineCompiler`]), since a cold driver compiles one for seconds,
+//!   the browser's `createRenderPipelineAsync` (wgpu's
+//!   `create_render_pipeline_async`, [`web`]), since a cold driver compiles one for seconds,
 //!   and synchronous ones in one GPU-process task past Chrome's 15 s
 //!   watchdog lose the device. An entry that cannot leave the renderer's
 //!   thread natively ([`Deferred::new`]) is made there when asked for.
@@ -80,12 +80,24 @@ pub(crate) trait AnywhereOnce {}
 #[cfg(target_arch = "wasm32")]
 impl<T> AnywhereOnce for T {}
 
+/// An entry's closure: natively run once; on the web run once to ask for
+/// its pipelines asynchronously and again to make it from them
+/// ([`web::probe`]).
+#[cfg(not(target_arch = "wasm32"))]
+type MakeHere<T> = Box<dyn FnOnce() -> T>;
+#[cfg(not(target_arch = "wasm32"))]
+type MakeEntry<T> = MakeAnywhere<T>;
+#[cfg(target_arch = "wasm32")]
+type MakeHere<T> = Box<dyn Fn() -> T>;
+#[cfg(target_arch = "wasm32")]
+type MakeEntry<T> = Box<dyn Fn() -> T>;
+
 /// How an entry not made yet is made.
 enum Make<T> {
     /// When asked for, here.
-    Here(Box<dyn FnOnce() -> T>),
+    Here(MakeHere<T>),
     /// When asked for, by the host's compiler.
-    Anywhere(MakeAnywhere<T>),
+    Anywhere(MakeEntry<T>),
     /// Asked for: queued or creating.
     Asked(Pending<T>),
 }
@@ -209,9 +221,9 @@ pub fn frame_skipped() -> u32 {
 }
 
 /// The entries made on the renderer's thread without a compiler (natively
-/// [`Deferred::new`]'s; on the web all of them without
-/// [`PipelineCompiler`], or a page that compiles synchronously): each is
-/// asked for and made at once ([`pipeline_counts`]).
+/// [`Deferred::new`]'s; on the web those that ask for no pipeline
+/// asynchronously, all of them on a page that compiles synchronously):
+/// each is asked for and made at once ([`pipeline_counts`]).
 static MADE_HERE: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
 
 /// The entries asked for so far and how many of them are made, on every
@@ -237,10 +249,8 @@ fn compiler_counts() -> (u32, u32) {
 #[cfg(target_arch = "wasm32")]
 fn compiler_counts() -> (u32, u32) {
     let queued = web::QUEUED.with(|q| q.get());
-    match web::COMPILER.with(|c| c.get()) {
-        Some(c) => (queued + (c.count)(), (c.made)()),
-        None => (queued, 0),
-    }
+    let stats = web::pipeline_stats();
+    (queued + stats.requested, stats.settled)
 }
 
 /// `make()` on the renderer's thread, counted made here and timed as
@@ -250,125 +260,655 @@ fn made_here<T>(make: impl FnOnce() -> T) -> T {
     timed(make)
 }
 
-/// The web host's pipeline compiler (packages/engine/src/web/pipelines.ts):
-/// the pipelines made between `asking(true)` and `asking(false)` are asked
-/// of the browser asynchronously, each numbered from 1 in order (`count`:
-/// those numbered so far, `made`: how many of them are compiled or
-/// refused); `compiled(n)` answers whether pipeline `n` is, and
-/// `finish(n)` makes it at once when it is not. A page that compiles
-/// synchronously numbers none.
 #[cfg(target_arch = "wasm32")]
-#[derive(Clone, Copy)]
-pub struct PipelineCompiler {
-    pub asking: fn(bool),
-    pub count: fn() -> u32,
-    pub made: fn() -> u32,
-    pub compiled: fn(u32) -> bool,
-    pub finish: fn(u32),
+pub use web::{
+    PipelineCompile, PipelineMode, PipelineStats, pipeline_compiles, pipeline_stats,
+    set_pipeline_mode, warming,
+};
+#[cfg(target_arch = "wasm32")]
+pub(crate) use web::{compute_pipeline, render_pipeline};
+
+/// A shader module made by `make`: on the web, one an entry's first run
+/// made is handed to the run that makes the entry ([`web::probe`]), so
+/// its WGSL is parsed once.
+pub(crate) fn recorded_module(
+    label: Option<&str>,
+    make: impl FnOnce() -> wgpu::ShaderModule,
+) -> wgpu::ShaderModule {
+    #[cfg(target_arch = "wasm32")]
+    return web::module(label, make);
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        let _ = label;
+        make()
+    }
 }
 
-/// The web host's compiler (`None`, the default: every entry is made at
-/// once, as natively without workers).
-#[cfg(target_arch = "wasm32")]
-pub fn set_pipeline_compiler(compiler: Option<PipelineCompiler>) {
-    web::COMPILER.with(|c| c.set(compiler));
-}
-
+/// The web's compiler: the browser's `createRenderPipelineAsync` and
+/// `createComputePipelineAsync` (wgpu's `create_*_pipeline_async`), which
+/// compile off Chrome's GPU-process main task.
+///
+/// An entry's closure makes its pipelines with the synchronous calls
+/// (`crate::traffic`), so it is run twice: first asking ([`probe`]), where
+/// each pipeline it makes is asked of the browser asynchronously and a
+/// stand-in takes its place in a value that is then dropped, and once all
+/// of them are compiled (or refused) again, taking ([`take`]), where each
+/// call gets its compiled pipeline back in the same order (a refused one
+/// is made with the synchronous call, which reports why). A use that waits
+/// for an entry still compiling makes it at once with the synchronous
+/// calls ([`waited`]). The shader modules the first run made are handed to
+/// the second.
 #[cfg(target_arch = "wasm32")]
 mod web {
-    use super::PipelineCompiler;
     use std::cell::{Cell, RefCell};
+    use std::collections::VecDeque;
     use std::rc::{Rc, Weak};
 
+    /// How the web host makes the cache's pipelines: project.ogt
+    /// `publish { pipelines }`, or auto's pick at the adapter.
+    #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+    pub enum PipelineMode {
+        /// Each with the synchronous call, at once.
+        Sync,
+        /// Asked of the browser asynchronously.
+        Async,
+        /// Synchronously, but those the renderer warms behind the play
+        /// gate ([`warming`]) asynchronously.
+        Prewarm,
+    }
+
+    /// The render and compute pipelines the cache made each way so far.
+    #[derive(Clone, Copy, Debug, Default)]
+    pub struct PipelineStats {
+        /// Asked of the browser asynchronously, and how many of those are
+        /// compiled or refused (`requested - settled` compile now).
+        pub requested: u32,
+        pub settled: u32,
+        /// Made with the synchronous call: in an entry made at once, and in
+        /// one made at once by a use that waited for it after it asked (or
+        /// for one the browser refused).
+        pub sync: u32,
+        pub waited: u32,
+        /// Entries made asking asynchronously ([`probe`]).
+        pub asks: u32,
+    }
+
+    /// A pipeline asked for asynchronously: its label, when it was asked
+    /// for and made (ms, the global's `performance.now`; `None` while it
+    /// compiles), and how: `async` (the browser's), `waited` (made at once
+    /// by a use that waited for it) or `refused`.
+    #[derive(Clone, Debug)]
+    pub struct PipelineCompile {
+        pub label: String,
+        pub asked: f64,
+        pub made: Option<f64>,
+        pub how: Option<&'static str>,
+    }
+
     thread_local! {
-        pub(super) static COMPILER: Cell<Option<PipelineCompiler>> = const { Cell::new(None) };
+        static MODE: Cell<PipelineMode> = const { Cell::new(PipelineMode::Sync) };
+        static WARMING: Cell<u32> = const { Cell::new(0) };
+        static STATS: Cell<PipelineStats> = const {
+            Cell::new(PipelineStats { requested: 0, settled: 0, sync: 0, waited: 0, asks: 0 })
+        };
+        static COMPILES: RefCell<Vec<PipelineCompile>> = const { RefCell::new(Vec::new()) };
+        static MAKING: RefCell<Making> = const { RefCell::new(Making::Here) };
+        /// The pipelines that stand in for those asked for, made once for
+        /// the last device that asked.
+        static STAND_INS: RefCell<Option<StandIns>> = const { RefCell::new(None) };
+        /// The global's `performance` and its `now`.
+        static NOW: Option<(wasm_bindgen::JsValue, js_sys::Function)> = {
+            use wasm_bindgen::JsCast;
+            let performance = js_sys::Reflect::get(&js_sys::global(), &"performance".into()).ok();
+            performance.and_then(|p| {
+                let now = js_sys::Reflect::get(&p, &"now".into()).ok()?;
+                Some((p, now.dyn_into::<js_sys::Function>().ok()?))
+            })
+        };
         /// Background entries held until the second frame ([`super::release_background`]).
         pub(super) static HELD: RefCell<Vec<Weak<dyn Release>>> = const { RefCell::new(Vec::new()) };
-        /// How many of them.
+        /// A frame's entries, asked of the browser once the renderer's call
+        /// returns, [`PER_TASK`] a task ([`hold_frame`]), and whether that
+        /// is scheduled.
+        static FRAME_HELD: RefCell<VecDeque<Weak<dyn Release>>> = const { RefCell::new(VecDeque::new()) };
+        static FRAME_SCHEDULED: Cell<bool> = const { Cell::new(false) };
+        /// How many entries are held, of both kinds.
         pub(super) static QUEUED: Cell<u32> = const { Cell::new(0) };
     }
 
-    /// The pipelines the compiler numbered while an entry was made: after
-    /// `from`, up to `to`.
-    #[derive(Clone, Copy, Debug, Default)]
-    pub(crate) struct Numbers {
-        from: u32,
-        to: u32,
+    /// How the cache makes its pipelines from now on (`Sync`, the
+    /// default: each at once, as natively without workers).
+    pub fn set_pipeline_mode(mode: PipelineMode) {
+        MODE.with(|m| m.set(mode));
     }
 
-    impl Numbers {
-        pub(super) fn compiled(self) -> bool {
-            self.from >= self.to
-                || COMPILER
-                    .with(|c| c.get())
-                    .is_none_or(|c| (self.from + 1..=self.to).all(c.compiled))
-        }
+    /// `f()`, the renderer's warm-up behind the play gate: under
+    /// [`PipelineMode::Prewarm`] the pipelines it asks for are asked of the
+    /// browser asynchronously.
+    pub fn warming<R>(f: impl FnOnce() -> R) -> R {
+        WARMING.with(|w| w.set(w.get() + 1));
+        let r = f();
+        WARMING.with(|w| w.set(w.get() - 1));
+        r
+    }
 
-        pub(super) fn finish(self) {
-            if let Some(c) = COMPILER.with(|c| c.get()) {
-                for n in self.from + 1..=self.to {
-                    if !(c.compiled)(n) {
-                        (c.finish)(n);
-                    }
+    pub fn pipeline_stats() -> PipelineStats {
+        STATS.with(|s| s.get())
+    }
+
+    /// Every pipeline asked for asynchronously so far, in the order asked.
+    pub fn pipeline_compiles() -> Vec<PipelineCompile> {
+        COMPILES.with(|c| c.borrow().clone())
+    }
+
+    fn stat(f: impl FnOnce(&mut PipelineStats)) {
+        STATS.with(|s| {
+            let mut stats = s.get();
+            f(&mut stats);
+            s.set(stats);
+        });
+    }
+
+    fn now() -> f64 {
+        NOW.with(|n| {
+            n.as_ref()
+                .and_then(|(p, f)| f.call0(p).ok()?.as_f64())
+                .unwrap_or(0.0)
+        })
+    }
+
+    /// Whether an entry asked for now asks for its pipelines asynchronously.
+    pub(super) fn asks_async() -> bool {
+        match MODE.with(|m| m.get()) {
+            PipelineMode::Sync => false,
+            PipelineMode::Async => true,
+            PipelineMode::Prewarm => WARMING.with(|w| w.get()) > 0,
+        }
+    }
+
+    /// What the pipelines and modules made now are made for.
+    enum Making {
+        /// An entry made at once (or no entry).
+        Here,
+        /// An entry a use waited for while its pipelines compiled.
+        Waited,
+        /// An entry's first run: its pipelines asked for asynchronously.
+        Asking(Asked),
+        /// The run that makes it from them.
+        Taking(Asked),
+    }
+
+    /// What an entry's first run asked for, in order.
+    #[derive(Default)]
+    pub(super) struct Asked {
+        modules: VecDeque<(Option<String>, wgpu::ShaderModule)>,
+        pipelines: VecDeque<Slot>,
+    }
+
+    struct Slot {
+        label: Option<String>,
+        answer: Rc<RefCell<Answer>>,
+        /// Its entry in `COMPILES`.
+        compile: usize,
+    }
+
+    enum Answer {
+        Compiling,
+        Render(wgpu::RenderPipeline),
+        Compute(wgpu::ComputePipeline),
+        Refused,
+    }
+
+    impl Asked {
+        fn settled(&self) -> bool {
+            self.pipelines
+                .iter()
+                .all(|s| !matches!(*s.answer.borrow(), Answer::Compiling))
+        }
+    }
+
+    /// `f()` with what it makes made for `making`; what that became.
+    fn making<R>(making: Making, f: impl FnOnce() -> R) -> (R, Making) {
+        let outer = MAKING.with(|m| m.replace(making));
+        let r = f();
+        (r, MAKING.with(|m| m.replace(outer)))
+    }
+
+    /// An entry asked for: made at once, its first run having asked for
+    /// no pipeline, or its pipelines compiling.
+    pub(super) enum Probed<T> {
+        Made(T),
+        Asked(Asked),
+    }
+
+    /// `make`'s first run, its pipelines asked of the browser
+    /// asynchronously.
+    pub(super) fn probe<T>(make: &dyn Fn() -> T) -> Probed<T> {
+        stat(|s| s.asks += 1);
+        let (value, made) = making(Making::Asking(Asked::default()), make);
+        let Making::Asking(asked) = made else {
+            unreachable!("restored as it was set")
+        };
+        if asked.pipelines.is_empty() {
+            super::MADE_HERE.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+            return Probed::Made(value);
+        }
+        Probed::Asked(asked)
+    }
+
+    /// `make` run again once what it asked for is compiled.
+    fn take<T>(make: &dyn Fn() -> T, asked: Asked) -> T {
+        making(Making::Taking(asked), make).0
+    }
+
+    /// `make` at once, by a use that waited while its pipelines compiled.
+    fn waited<T>(make: &dyn Fn() -> T, asked: Asked) -> T {
+        let t = now();
+        COMPILES.with(|c| {
+            let mut compiles = c.borrow_mut();
+            for slot in &asked.pipelines {
+                let compile = &mut compiles[slot.compile];
+                if compile.how.is_none() {
+                    compile.made = Some(t);
+                    compile.how = Some("waited");
                 }
             }
-        }
+        });
+        making(Making::Waited, make).0
     }
 
-    /// `make()` by the compiler: its pipelines asked of the browser
-    /// asynchronously, numbered.
-    pub(super) fn compile<T>(make: impl FnOnce() -> T) -> (T, Numbers) {
-        let Some(c) = COMPILER.with(|c| c.get()) else {
-            return (super::made_here(make), Numbers::default());
-        };
-        let from = (c.count)();
-        (c.asking)(true);
-        let made = make();
-        (c.asking)(false);
-        let to = (c.count)();
-        if from == to {
-            super::MADE_HERE.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    /// `make` at once.
+    pub(super) fn here<T>(make: &dyn Fn() -> T) -> T {
+        making(Making::Here, || super::made_here(make)).0
+    }
+
+    /// A pipeline asked for: its slot's answer, filled in when the
+    /// browser's promise settles.
+    fn ask(asked: &mut Asked, label: Option<&str>) -> Rc<RefCell<Answer>> {
+        let answer = Rc::new(RefCell::new(Answer::Compiling));
+        let compile = COMPILES.with(|c| {
+            let mut compiles = c.borrow_mut();
+            compiles.push(PipelineCompile {
+                label: label.unwrap_or("").to_string(),
+                asked: now(),
+                made: None,
+                how: None,
+            });
+            compiles.len() - 1
+        });
+        stat(|s| s.requested += 1);
+        asked.pipelines.push_back(Slot {
+            label: label.map(str::to_owned),
+            answer: answer.clone(),
+            compile,
+        });
+        answer
+    }
+
+    fn settle(answer: &RefCell<Answer>, compile: usize, made: Option<Answer>) {
+        let refused = made.is_none();
+        *answer.borrow_mut() = made.unwrap_or(Answer::Refused);
+        stat(|s| s.settled += 1);
+        let t = now();
+        COMPILES.with(|c| {
+            let compile = &mut c.borrow_mut()[compile];
+            if compile.how.is_none() {
+                compile.made = Some(t);
+                compile.how = Some(if refused { "refused" } else { "async" });
+            }
+        });
+    }
+
+    /// The next pipeline the first run asked for, if it is the one `label`
+    /// names (else the runs differ, and nothing more is taken).
+    fn taken(asked: &mut Asked, label: Option<&str>) -> Option<Answer> {
+        let slot = asked.pipelines.pop_front()?;
+        if slot.label.as_deref() != label {
+            asked.pipelines.clear();
+            asked.modules.clear();
+            return None;
         }
-        (made, Numbers { from, to })
+        Some(std::mem::replace(
+            &mut *slot.answer.borrow_mut(),
+            Answer::Refused,
+        ))
+    }
+
+    /// The pipeline `desc` makes for the entry being made; `None`: the
+    /// caller makes it at once with the synchronous call.
+    pub(crate) fn render_pipeline(
+        device: &wgpu::Device,
+        desc: &wgpu::RenderPipelineDescriptor<'_>,
+    ) -> Option<wgpu::RenderPipeline> {
+        MAKING.with(|m| match &mut *m.borrow_mut() {
+            Making::Asking(asked) => {
+                let answer = ask(asked, desc.label);
+                let compile = asked.pipelines.back().map_or(0, |s| s.compile);
+                #[allow(clippy::disallowed_methods)]
+                let made = device.create_render_pipeline_async(desc);
+                wasm_bindgen_futures::spawn_local(async move {
+                    let made = made.await.ok().map(Answer::Render);
+                    settle(&answer, compile, made);
+                });
+                Some(stand_ins(device, |s| s.render.clone()))
+            }
+            Making::Taking(asked) => match taken(asked, desc.label) {
+                Some(Answer::Render(p)) => Some(p),
+                _ => {
+                    stat(|s| s.waited += 1);
+                    None
+                }
+            },
+            Making::Waited => {
+                stat(|s| s.waited += 1);
+                None
+            }
+            Making::Here => {
+                stat(|s| s.sync += 1);
+                None
+            }
+        })
+    }
+
+    /// [`render_pipeline`] for a compute pipeline.
+    pub(crate) fn compute_pipeline(
+        device: &wgpu::Device,
+        desc: &wgpu::ComputePipelineDescriptor<'_>,
+    ) -> Option<wgpu::ComputePipeline> {
+        MAKING.with(|m| match &mut *m.borrow_mut() {
+            Making::Asking(asked) => {
+                let answer = ask(asked, desc.label);
+                let compile = asked.pipelines.back().map_or(0, |s| s.compile);
+                #[allow(clippy::disallowed_methods)]
+                let made = device.create_compute_pipeline_async(desc);
+                wasm_bindgen_futures::spawn_local(async move {
+                    let made = made.await.ok().map(Answer::Compute);
+                    settle(&answer, compile, made);
+                });
+                Some(stand_ins(device, |s| s.compute.clone()))
+            }
+            Making::Taking(asked) => match taken(asked, desc.label) {
+                Some(Answer::Compute(p)) => Some(p),
+                _ => {
+                    stat(|s| s.waited += 1);
+                    None
+                }
+            },
+            Making::Waited => {
+                stat(|s| s.waited += 1);
+                None
+            }
+            Making::Here => {
+                stat(|s| s.sync += 1);
+                None
+            }
+        })
+    }
+
+    /// A module made for the entry being made ([`super::recorded_module`]).
+    pub(super) fn module(
+        label: Option<&str>,
+        make: impl FnOnce() -> wgpu::ShaderModule,
+    ) -> wgpu::ShaderModule {
+        let taken = MAKING.with(|m| match &mut *m.borrow_mut() {
+            // By label: a module the first run made through a shared
+            // [`super::Module`] is not made again.
+            Making::Taking(asked) => {
+                let i = asked
+                    .modules
+                    .iter()
+                    .position(|(l, _)| l.as_deref() == label)?;
+                asked.modules.remove(i).map(|(_, module)| module)
+            }
+            _ => None,
+        });
+        if let Some(module) = taken {
+            return module;
+        }
+        let module = make();
+        MAKING.with(|m| {
+            if let Making::Asking(asked) = &mut *m.borrow_mut() {
+                asked
+                    .modules
+                    .push_back((label.map(str::to_owned), module.clone()));
+            }
+        });
+        module
+    }
+
+    struct StandIns {
+        device: wgpu::Device,
+        render: wgpu::RenderPipeline,
+        compute: wgpu::ComputePipeline,
+    }
+
+    const STAND_IN: &str = "@vertex fn v() -> @builtin(position) vec4f { return vec4f(0.0); }
+@fragment fn f() -> @location(0) vec4f { return vec4f(0.0); }
+@compute @workgroup_size(1) fn c() {}";
+
+    /// `f` of `device`'s stand-ins, made the first time it asks.
+    fn stand_ins<R>(device: &wgpu::Device, f: impl FnOnce(&StandIns) -> R) -> R {
+        STAND_INS.with(|s| {
+            let mut s = s.borrow_mut();
+            if s.as_ref().is_none_or(|s| s.device != *device) {
+                let module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+                    label: Some("og stand-in"),
+                    source: wgpu::ShaderSource::Wgsl(STAND_IN.into()),
+                });
+                #[allow(clippy::disallowed_methods)]
+                let render = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+                    label: Some("og stand-in"),
+                    layout: None,
+                    vertex: wgpu::VertexState {
+                        module: &module,
+                        entry_point: Some("v"),
+                        compilation_options: Default::default(),
+                        buffers: &[],
+                    },
+                    primitive: Default::default(),
+                    depth_stencil: None,
+                    multisample: Default::default(),
+                    fragment: Some(wgpu::FragmentState {
+                        module: &module,
+                        entry_point: Some("f"),
+                        compilation_options: Default::default(),
+                        targets: &[Some(wgpu::TextureFormat::Rgba8Unorm.into())],
+                    }),
+                    multiview_mask: None,
+                    cache: None,
+                });
+                #[allow(clippy::disallowed_methods)]
+                let compute = device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                    label: Some("og stand-in"),
+                    layout: None,
+                    module: &module,
+                    entry_point: Some("c"),
+                    compilation_options: Default::default(),
+                    cache: None,
+                });
+                *s = Some(StandIns {
+                    device: device.clone(),
+                    render,
+                    compute,
+                });
+            }
+            f(s.as_ref().expect("made just now"))
+        })
     }
 
     pub(super) trait Release {
         fn release(&self);
+        fn held(&self) -> bool;
     }
 
-    /// A background entry, held ([`super::Pending`]).
-    pub(super) struct Held<T> {
-        pub(super) make: RefCell<Option<Box<dyn FnOnce() -> T>>>,
-        pub(super) made: RefCell<Option<(T, Numbers)>>,
+    /// An entry asked for on the web ([`super::Pending`]).
+    pub(super) struct Entry<T> {
+        make: super::MakeHere<T>,
+        state: RefCell<State<T>>,
     }
 
-    impl<T> Release for Held<T> {
+    enum State<T> {
+        /// Asked for and not run yet: until the second frame (a background
+        /// entry), or until a later task (a frame's, [`hold_frame`]), so a
+        /// use that waits for it meanwhile makes it once, with the
+        /// synchronous calls, and the browser is not asked for it twice.
+        Held {
+            frame: bool,
+        },
+        Asked(Asked),
+        Made(T),
+        Taken,
+    }
+
+    impl<T> Entry<T> {
+        /// Its value once it is ready.
+        pub(super) fn ready(&self) -> Option<T> {
+            let state = self.state.replace(State::Taken);
+            match state {
+                State::Made(value) => Some(value),
+                State::Asked(asked) if asked.settled() => Some(take(&*self.make, asked)),
+                other => {
+                    self.state.replace(other);
+                    None
+                }
+            }
+        }
+
+        /// Its value now, made at once if it is not ready.
+        pub(super) fn wait(&self) -> T {
+            match self.state.replace(State::Taken) {
+                State::Held { .. } => {
+                    QUEUED.with(|q| q.set(q.get() - 1));
+                    here(&*self.make)
+                }
+                State::Made(value) => value,
+                State::Asked(asked) if asked.settled() => take(&*self.make, asked),
+                State::Asked(asked) => waited(&*self.make, asked),
+                State::Taken => unreachable!("an entry is taken once"),
+            }
+        }
+    }
+
+    impl<T: 'static> Entry<T> {
+        /// A frame asks for a background entry: it is asked of the browser
+        /// with the frame's, or made at once on a page that compiles
+        /// synchronously.
+        pub(super) fn promote(self: &Rc<Self>) {
+            if !matches!(*self.state.borrow(), State::Held { frame: false }) {
+                return;
+            }
+            if asks_async() {
+                self.state.replace(State::Held { frame: true });
+                queue_frame(self.clone());
+            } else {
+                self.release();
+            }
+        }
+    }
+
+    impl<T> Release for Entry<T> {
+        fn held(&self) -> bool {
+            matches!(*self.state.borrow(), State::Held { .. })
+        }
+
         fn release(&self) {
-            let make = self.make.borrow_mut().take();
-            if let Some(make) = make {
-                QUEUED.with(|q| q.set(q.get() - 1));
-                *self.made.borrow_mut() = Some(compile(make));
-            }
+            let State::Held { frame } = *self.state.borrow() else {
+                return;
+            };
+            QUEUED.with(|q| q.set(q.get() - 1));
+            let state = if frame || asks_async() {
+                match probe(&*self.make) {
+                    Probed::Made(value) => State::Made(value),
+                    Probed::Asked(asked) => State::Asked(asked),
+                }
+            } else {
+                State::Made(here(&*self.make))
+            };
+            self.state.replace(state);
         }
     }
 
-    impl<T> Drop for Held<T> {
+    impl<T> Drop for Entry<T> {
         fn drop(&mut self) {
-            if self.make.get_mut().is_some() {
+            if matches!(self.state.get_mut(), State::Held { .. }) {
                 QUEUED.with(|q| q.set(q.get() - 1));
             }
         }
     }
 
-    pub(super) fn hold<T: 'static>(make: Box<dyn FnOnce() -> T>) -> Rc<Held<T>> {
-        let held = Rc::new(Held {
-            make: RefCell::new(Some(make)),
-            made: RefCell::new(None),
-        });
+    fn held<T>(make: super::MakeHere<T>, frame: bool) -> Rc<Entry<T>> {
         QUEUED.with(|q| q.set(q.get() + 1));
+        Rc::new(Entry {
+            make,
+            state: RefCell::new(State::Held { frame }),
+        })
+    }
+
+    /// A background entry, held until the second frame.
+    pub(super) fn hold<T: 'static>(make: super::MakeHere<T>) -> Rc<Entry<T>> {
+        let held = held(make, false);
         let weak: Weak<dyn Release> = Rc::downgrade(&(held.clone() as Rc<dyn Release>));
         HELD.with(|h| h.borrow_mut().push(weak));
         held
+    }
+
+    /// A frame's entry, asked of the browser in a later task ([`PER_TASK`]).
+    pub(super) fn hold_frame<T: 'static>(make: super::MakeHere<T>) -> Rc<Entry<T>> {
+        let held = held(make, true);
+        queue_frame(held.clone());
+        held
+    }
+
+    /// The frame's entries asked of the browser in one task: a use that
+    /// waits for one not asked yet makes it once, with the synchronous
+    /// calls, and the rest are asked in the tasks after.
+    const PER_TASK: usize = 2;
+
+    fn queue_frame<T: 'static>(entry: Rc<Entry<T>>) {
+        let weak: Weak<dyn Release> = Rc::downgrade(&(entry as Rc<dyn Release>));
+        FRAME_HELD.with(|h| h.borrow_mut().push_back(weak));
+        if FRAME_SCHEDULED.with(|s| s.replace(true)) {
+            return;
+        }
+        wasm_bindgen_futures::spawn_local(async {
+            loop {
+                next_task().await;
+                let mut asked = 0;
+                while asked < PER_TASK {
+                    let Some(h) = FRAME_HELD.with(|h| h.borrow_mut().pop_front()) else {
+                        break;
+                    };
+                    if let Some(h) = h.upgrade()
+                        && h.held()
+                    {
+                        h.release();
+                        asked += 1;
+                    }
+                }
+                if FRAME_HELD.with(|h| h.borrow().is_empty()) {
+                    break;
+                }
+            }
+            FRAME_SCHEDULED.with(|s| s.set(false));
+        });
+    }
+
+    /// Resolves in the browser's next task (`setTimeout(0)`).
+    async fn next_task() {
+        let promise = js_sys::Promise::new(&mut |resolve, _| {
+            let set_timeout = js_sys::Reflect::get(&js_sys::global(), &"setTimeout".into())
+                .ok()
+                .and_then(|f| wasm_bindgen::JsCast::dyn_into::<js_sys::Function>(f).ok());
+            match set_timeout {
+                Some(f) => {
+                    let _ = f.call2(&wasm_bindgen::JsValue::NULL, &resolve, &0.into());
+                }
+                None => {
+                    let _ = resolve.call0(&wasm_bindgen::JsValue::NULL);
+                }
+            }
+        });
+        let _ = wasm_bindgen_futures::JsFuture::from(promise).await;
     }
 
     pub(super) fn release_all() {
@@ -381,10 +921,10 @@ mod web {
     }
 }
 
-/// A background entry on the web, held until the second frame (or until a
-/// use asks for it).
+/// An entry on the web asked for: held until the second frame (or until a
+/// use asks for it), or its pipelines compiling.
 #[cfg(target_arch = "wasm32")]
-pub(crate) struct Pending<T>(std::rc::Rc<web::Held<T>>);
+pub(crate) struct Pending<T>(std::rc::Rc<web::Entry<T>>);
 
 /// A value being made on a compile worker ([`spawn`]).
 ///
@@ -837,9 +1377,6 @@ fn held(id: u64) -> bool {
 pub(crate) struct Deferred<T> {
     value: OnceCell<T>,
     make: Cell<Option<Make<T>>>,
-    /// The pipelines the web host's compiler numbered while it was made.
-    #[cfg(target_arch = "wasm32")]
-    numbers: Cell<web::Numbers>,
 }
 
 impl<T> Deferred<T> {
@@ -847,23 +1384,21 @@ impl<T> Deferred<T> {
         Deferred {
             value: OnceCell::new(),
             make: Cell::new(Some(make)),
-            #[cfg(target_arch = "wasm32")]
-            numbers: Cell::default(),
         }
     }
 
     /// One made on the renderer's thread when asked for (on the web, by the
     /// host's compiler like every entry).
-    pub(crate) fn new<F: FnOnce() -> T + 'static>(make: F) -> Deferred<T> {
+    pub(crate) fn new<F: Fn() -> T + 'static>(make: F) -> Deferred<T> {
         let asker = std::any::type_name::<F>();
-        Deferred::with(Make::Here(Box::new(move || logged(asker, make))))
+        Deferred::with(Make::Here(Box::new(move || logged(asker, &make))))
     }
 
     /// One the host's compiler makes when asked for: natively on the
     /// compile workers.
-    pub(crate) fn anywhere<F: FnOnce() -> T + AnywhereOnce + 'static>(make: F) -> Deferred<T> {
+    pub(crate) fn anywhere<F: Fn() -> T + AnywhereOnce + 'static>(make: F) -> Deferred<T> {
         let asker = std::any::type_name::<F>();
-        Deferred::with(Make::Anywhere(Box::new(move || logged(asker, make))))
+        Deferred::with(Make::Anywhere(Box::new(move || logged(asker, &make))))
     }
 
     /// Whether it has been asked for (or made).
@@ -913,7 +1448,13 @@ impl<T: AnywhereOnce + 'static> Deferred<T> {
             Some(Make::Anywhere(make)) => self.make.set(Some(Make::Asked(spawn(priority, make)))),
             #[cfg(target_arch = "wasm32")]
             Some(Make::Here(make) | Make::Anywhere(make)) => match priority {
-                Priority::Frame => self.set_compiled(web::compile(make)),
+                Priority::Frame if web::asks_async() => {
+                    self.make
+                        .set(Some(Make::Asked(Pending(web::hold_frame(make)))));
+                }
+                Priority::Frame => {
+                    let _ = self.value.set(web::here(&*make));
+                }
                 Priority::Background => {
                     self.make.set(Some(Make::Asked(Pending(web::hold(make)))));
                 }
@@ -926,12 +1467,6 @@ impl<T: AnywhereOnce + 'static> Deferred<T> {
             }
             None => {}
         }
-    }
-
-    #[cfg(target_arch = "wasm32")]
-    fn set_compiled(&self, (value, numbers): (T, web::Numbers)) {
-        self.numbers.set(numbers);
-        let _ = self.value.set(value);
     }
 
     /// The value once it is ready, without waiting or asking for it.
@@ -952,52 +1487,35 @@ impl<T: AnywhereOnce + 'static> Deferred<T> {
                     }
                 },
                 #[cfg(target_arch = "wasm32")]
-                Some(Make::Asked(pending)) => match pending.take() {
-                    Some(made) => self.set_compiled(made),
+                Some(Make::Asked(pending)) => match pending.0.ready() {
+                    Some(value) => {
+                        let _ = self.value.set(value);
+                    }
                     None => self.make.set(Some(Make::Asked(pending))),
                 },
                 other => self.make.set(other),
             }
         }
-        #[cfg(target_arch = "wasm32")]
-        if !self.numbers.get().compiled() {
-            return None;
-        }
         self.value.get()
     }
 
     /// The value, waited for: made now if it was not asked for, its worker
-    /// waited for natively, made by the browser at once on the web.
+    /// waited for natively, made at once on the web if it still compiles.
     pub(crate) fn wait(&self) -> &T {
-        let value = self.value.get_or_init(|| {
+        self.value.get_or_init(|| {
             match self.make.take().expect("an entry not made has its maker") {
+                #[cfg(not(target_arch = "wasm32"))]
                 Make::Here(make) => made_here(make),
                 #[cfg(not(target_arch = "wasm32"))]
                 Make::Anywhere(make) => made_here(make),
                 #[cfg(not(target_arch = "wasm32"))]
                 Make::Asked(pending) => joined(pending),
                 #[cfg(target_arch = "wasm32")]
-                Make::Anywhere(make) => {
-                    let (value, numbers) = web::compile(make);
-                    self.numbers.set(numbers);
-                    value
-                }
+                Make::Here(make) | Make::Anywhere(make) => web::here(&*make),
                 #[cfg(target_arch = "wasm32")]
-                Make::Asked(pending) => {
-                    pending.promote();
-                    let (value, numbers) = pending.take().expect("released just now");
-                    self.numbers.set(numbers);
-                    value
-                }
+                Make::Asked(pending) => pending.0.wait(),
             }
-        });
-        #[cfg(target_arch = "wasm32")]
-        {
-            let numbers = self.numbers.get();
-            numbers.finish();
-            self.numbers.set(web::Numbers::default());
-        }
-        value
+        })
     }
 
     /// The value for a draw, by the frame's policy ([`FramePolicy`]): in a
@@ -1046,19 +1564,15 @@ impl<T> Pending<T> {
 }
 
 #[cfg(target_arch = "wasm32")]
-impl<T> Pending<T> {
+impl<T: 'static> Pending<T> {
     #[cfg(test)]
     fn held(&self) -> bool {
-        self.0.make.borrow().is_some()
+        use web::Release;
+        self.0.held()
     }
 
     fn promote(&self) {
-        use web::Release;
-        self.0.release();
-    }
-
-    fn take(&self) -> Option<(T, web::Numbers)> {
-        self.0.made.borrow_mut().take()
+        self.0.promote();
     }
 }
 
@@ -1390,7 +1904,7 @@ mod tests {
         use std::sync::atomic::{AtomicBool, Ordering::SeqCst};
         let resource = Arc::new(());
         let captured = resource.clone();
-        let held = Deferred::anywhere(move || captured);
+        let held = Deferred::anywhere(move || captured.clone());
         held.start_at(Priority::Background);
         assert_eq!(held.state(), State::Queued);
         drop(held);

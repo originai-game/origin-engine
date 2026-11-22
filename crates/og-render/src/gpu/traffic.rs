@@ -312,6 +312,12 @@ pub fn create_render_pipeline(
     desc: &wgpu::RenderPipelineDescriptor<'_>,
 ) -> wgpu::RenderPipeline {
     let at = Location::caller();
+    // On the web, an entry of the pipeline cache asks for it asynchronously
+    // (gpu/deferred.rs).
+    #[cfg(target_arch = "wasm32")]
+    if let Some(p) = crate::deferred::render_pipeline(device, desc) {
+        return p;
+    }
     let t0 = now();
     #[allow(clippy::disallowed_methods)]
     let p = device.create_render_pipeline(desc);
@@ -334,6 +340,10 @@ pub fn create_compute_pipeline(
     desc: &wgpu::ComputePipelineDescriptor<'_>,
 ) -> wgpu::ComputePipeline {
     let at = Location::caller();
+    #[cfg(target_arch = "wasm32")]
+    if let Some(p) = crate::deferred::compute_pipeline(device, desc) {
+        return p;
+    }
     let t0 = now();
     #[allow(clippy::disallowed_methods)]
     let p = device.create_compute_pipeline(desc);

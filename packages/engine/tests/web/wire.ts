@@ -174,8 +174,8 @@ async function run(kind: Kind, isolate: boolean, pipelines: Pipelines, browser: 
     const [n1, n2, n3, n4] = [t1, t2, tSettled, tHeld].map((t) => t.result as number);
     check(n2! >= n1! && n3! >= n2! && n3! - n1! <= SETTLE_TICKS && n4 === n3, `${label}: the clock holds behind the play gate (only settling ticks, within SETTLE_MS)`, { first: n1, after400ms: n2, afterSettle: n3, after400msMore: n4 });
     // Fork s60: with `pipelines async` the first frame's pipelines went through createRenderPipelineAsync
-    // (src/web/pipelines.ts): a wgpu that reaches the browser's createRenderPipeline another way fails here,
-    // not silently slower. With sync none did and the pipeline cache asked the compiler for none.
+    // (wgpu's create_*_pipeline_async, og-render gpu/deferred.rs), not silently slower. With sync none did
+    // and the pipeline cache asked for none asynchronously.
     const pl = await page.evalChild<{ async: number; sync: number; waited: number; asks: number; bypassed?: string; mode?: string; reason?: string } | null>("localhost", "__runtime_probe__.boot?.pipelines ?? null");
     check(!!pl, `${label}: the probe's boot counts the render pipelines`, pl);
     // Auto (the default) keeps Apple GPUs synchronous and compiles asynchronously on every other GPU.

@@ -44,5 +44,6 @@ pub(crate) fn shader_module(
     {
         desc.source = wgpu::ShaderSource::Wgsl(compat_wgsl(wgsl).into());
     }
-    device.create_shader_module(desc)
+    let label = desc.label;
+    crate::deferred::recorded_module(label, || device.create_shader_module(desc))
 }

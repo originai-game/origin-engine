@@ -693,7 +693,7 @@ impl VisualPipelines {
                             &device,
                             wgpu::ShaderModuleDescriptor {
                                 label: Some(label),
-                                source: wgpu::ShaderSource::Wgsl(source.into()),
+                                source: wgpu::ShaderSource::Wgsl(source.as_str().into()),
                             },
                         ),
                         entry_point: Some("solve"),
