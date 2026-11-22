@@ -597,6 +597,9 @@ pub struct ClassProps {
     /// `whitespace-nowrap`, `text-nowrap`, `truncate`: lines never wrap.
     /// Inherited, as CSS's `white-space`: a view's reaches the texts in it.
     pub no_wrap: Option<bool>,
+    /// Origin Engine: `overflow-wrap` (`break-normal` 0, `break-words` 1,
+    /// `wrap-anywhere` 2). Inherited, as in CSS.
+    pub overflow_wrap: Option<u8>,
     /// `pointerEvents` (`pointer-events-none` / `-auto`).
     pub pointer_events: Option<PointerEvents>,
     /// `userSelect` (`select-none` / `select-text`; `auto`: none). A

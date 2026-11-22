@@ -81,5 +81,10 @@ the changes after it are only these:
   takes it (`Len::Calc`, a `rune_taffy::calc` handle), so an inline
   `left: calc(50% - 2px)` resolves at layout instead of being rejected.
 
+- `tailwind/utilities.rs` and `tailwind/mod.rs` add CSS `overflow-wrap`
+  (each marked in place): `break-normal` / `wrap-normal`, `break-words` /
+  `wrap-break-word` and `wrap-anywhere` set `ClassProps::overflow_wrap`
+  (0, 1, 2), which og-ui-next hands to the text's line breaking.
+
 Its own tests (`tailwind/tests.rs`, `geometry/tests.rs`, `style.rs`) run
 unchanged otherwise.
