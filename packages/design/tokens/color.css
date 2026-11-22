@@ -90,6 +90,7 @@
   --color-boon: rgb(85 227 154);
   --color-boon-fg: #011e0f;
   --color-critical: rgb(222 38 52);
+  --color-critical-fg: contrast-color(var(--color-critical));
   --color-fever: rgb(255 61 138);
   --color-fever-fg: contrast-color(var(--color-fever));
   --color-late: rgb(255 140 70);
@@ -230,6 +231,16 @@
   --color-epic: var(--color-xp);
   --color-legendary: var(--color-warn);
   --color-mythic: var(--color-danger);
+  /* The ink on a fill of a status or rarity colour (a claimed day's
+     footer, a danger button, an epic tag): the status colours are inks
+     first, dark in light and light in dark, so the ink on one flips with
+     the scheme and is never `bg` or another colour's `-fg`. */
+  --color-success-fg: contrast-color(var(--color-success));
+  --color-danger-fg: contrast-color(var(--color-danger));
+  --color-warn-fg: contrast-color(var(--color-warn));
+  --color-info-fg: contrast-color(var(--color-info));
+  --color-epic-fg: contrast-color(var(--color-epic));
+  --color-legendary-fg: contrast-color(var(--color-legendary));
 }
 
 :root[data-scheme=dark] {

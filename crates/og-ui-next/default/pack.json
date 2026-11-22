@@ -383,9 +383,14 @@
         "light": "#404754"
       },
       "critical": "#de2634",
+      "critical-fg": "#ffffff",
       "danger": {
         "dark": "#ff9599",
         "light": "#ac0010"
+      },
+      "danger-fg": {
+        "dark": "#000000",
+        "light": "#ffffff"
       },
       "entry-grain": {
         "dark": "#2830428c",
@@ -402,6 +407,10 @@
       "epic": {
         "dark": "#c86ff5",
         "light": "#7d3fc4"
+      },
+      "epic-fg": {
+        "dark": "#000000",
+        "light": "#ffffff"
       },
       "epic-hi": "#d9c6fe",
       "fever": "#ff3d8a",
@@ -480,6 +489,10 @@
         "dark": "#5cc8ff",
         "light": "#0052a6"
       },
+      "info-fg": {
+        "dark": "#000000",
+        "light": "#ffffff"
+      },
       "key-fg": "#262b38",
       "key-hi": "#d8dbe2",
       "key-lo": "#c9d1e2",
@@ -491,6 +504,10 @@
       "legendary": {
         "dark": "#ffa53d",
         "light": "#973107"
+      },
+      "legendary-fg": {
+        "dark": "#000000",
+        "light": "#ffffff"
       },
       "lit": {
         "dark": "#ffffff1a",
@@ -622,6 +639,10 @@
         "dark": "#45e08f",
         "light": "#13612a"
       },
+      "success-fg": {
+        "dark": "#000000",
+        "light": "#ffffff"
+      },
       "surface": {
         "dark": "#141c2c",
         "light": "#ffffff"
@@ -686,6 +707,10 @@
       "warn": {
         "dark": "#ffa53d",
         "light": "#973107"
+      },
+      "warn-fg": {
+        "dark": "#000000",
+        "light": "#ffffff"
       },
       "well": "#060910e0",
       "well-rim": {

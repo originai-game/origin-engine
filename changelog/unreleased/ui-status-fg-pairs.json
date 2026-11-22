@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {
+      "member": "Theme colours",
+      "summary": "The ink on a fill of a status or rarity colour: `success-fg`, `danger-fg`, `warn-fg`, `info-fg`, `epic-fg`, `legendary-fg` and `critical-fg` (`bg-danger text-danger-fg`). The status colours are inks first, dark in the light scheme and light in the dark one, so the ink on one flips with the scheme; each pair holds 4.5:1 in both, for the default seeds and for a pack's. They are in the default pack, in a pack's palette derived from its seeds, and in `@origingame/design`'s tokens.json."
+    }
+  ]
+}
