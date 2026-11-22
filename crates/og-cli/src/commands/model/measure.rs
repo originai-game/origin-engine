@@ -326,7 +326,7 @@ fn colour(m: &og_shape::tools::Material) -> [u8; 3] {
 
 /// The project the model is in: `--project`, else the nearest folder
 /// above the model (or the current one) holding a project.ogt.
-fn project_of(a: &Args, input: &super::Input) -> Result<Option<PathBuf>, Failure> {
+pub fn project_of(a: &Args, input: &super::Input) -> Result<Option<PathBuf>, Failure> {
     if let Some(p) = a.value(&["--project"])? {
         return Ok(Some(PathBuf::from(p)));
     }

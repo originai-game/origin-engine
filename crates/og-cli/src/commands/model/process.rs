@@ -36,10 +36,22 @@
 //! (what was baked, texels without a source, the distances, the normal
 //! map's angles), and `unwrap` is the atlas's report (its measures:
 //! coverage, overlap, texel density). Without `--bake` nothing changes.
+//!
+//! `--out <folder>` (a folder, or a path without an extension) writes a
+//! prop instead of one file: `<name>.glb`, standing on its base unless
+//! `--pivot` says otherwise, its import settings `<name>.glb.ogt` (the
+//! cook's levels of detail and baked triangle-mesh collider) and its
+//! convex hulls `<name>.collider.glb`. `--height 1.2` scales it to that
+//! height, `--size x,y,z` (GLB axes, metres, 0 for a free axis) to the
+//! one scale nearest every axis given. The report then adds the facts of
+//! `og model measure` (`size` in metres, `triangles`, the look's facts)
+//! and `scale`, `leftover`, `textureBytes`, `lods` and `collider`.
 
 use std::path::PathBuf;
 
-use og_shape::tools::{Decimate, ImageInfo, Import, Material, Measure, Place, Repair, Unwrap};
+use og_shape::tools::{
+    Decimate, ImageInfo, Import, Material, Measure, Pivot, Place, Repair, Size, Unwrap,
+};
 
 use og_shape_formats::texture::Downsize;
 
@@ -108,7 +120,19 @@ pub struct ProcessDesc {
     pub bake_distance: f64,
     /// Where to write the result, if anywhere.
     pub out: Option<PathBuf>,
+    /// Write the result as a prop into this folder instead of `out`:
+    /// `<name>.glb`, its import settings `<name>.glb.ogt` (the cook's
+    /// levels of detail and baked collider) and its convex hulls
+    /// `<name>.collider.glb`. The pivot is then the base unless placed
+    /// otherwise.
+    pub prop: Option<PathBuf>,
+    /// The project whose look a prop's facts are measured against.
+    pub project: Option<PathBuf>,
 }
+
+/// The levels of detail a prop's import settings ask the cook for: each
+/// level's share of the full mesh's triangles.
+pub const PROP_LODS: [f64; 3] = [1.0, 0.5, 0.25];
 
 /// Takes every map off a material whose UVs were replaced, and says so.
 pub fn drop_maps(m: &mut Material) -> Vec<String> {
@@ -200,15 +224,24 @@ fn texture_budget(
 /// dropped), `textures` (null without a limit), `measures` and
 /// `output`.
 pub fn process(files: &dyn Files, d: &ProcessDesc) -> Result<String, Failure> {
-    let placing = d.place != Place::default();
+    if d.prop.is_some() && d.out.is_some() {
+        return Err(Failure::Usage(
+            "give -o FILE or a folder to write the prop into, not both".into(),
+        ));
+    }
+    let mut want = d.place;
+    if d.prop.is_some() && want.pivot == Pivot::Keep {
+        want.pivot = Pivot::Base;
+    }
+    let placing = want != Place::default();
     let (import, place) = if placing {
         let format = match &d.input {
             Input::Path(p) => super::source::extension(p),
             _ => String::new(),
         };
-        super::place::plain_and_place(&format, &d.import, &d.place)?
+        super::place::plain_and_place(&format, &d.import, &want)?
     } else {
-        (d.import, d.place)
+        (d.import, want)
     };
     let mut mesh = load_mesh(files, &d.input, &import)?;
     let imported = report::imported(&mesh.format, &mesh.imported);
@@ -307,6 +340,10 @@ pub fn process(files: &dyn Files, d: &ProcessDesc) -> Result<String, Failure> {
             materials: core::slice::from_ref(&material),
         },
     );
+    let out = match &d.prop {
+        Some(dir) => Some(dir.join(format!("{}.glb", file_stem(&mesh.name)))),
+        None => d.out.clone(),
+    };
     let output = if baked.is_some() {
         super::export::write_solid_tangents(
             files,
@@ -314,7 +351,7 @@ pub fn process(files: &dyn Files, d: &ProcessDesc) -> Result<String, Failure> {
             &low,
             &material,
             &clips,
-            d.out.as_deref(),
+            out.as_deref(),
         )?
     } else {
         super::export::write_solid_clips(
@@ -323,7 +360,7 @@ pub fn process(files: &dyn Files, d: &ProcessDesc) -> Result<String, Failure> {
             &low,
             Some(&material),
             &clips,
-            d.out.as_deref(),
+            out.as_deref(),
         )?
     };
     let mut fields = vec![
@@ -342,9 +379,157 @@ pub fn process(files: &dyn Files, d: &ProcessDesc) -> Result<String, Failure> {
         ("material", report::material(&material, &defaults, &dropped)),
         ("textures", textures),
         ("measures", m.to_json()),
-        ("output", output),
     ]);
-    Ok(object(&fields))
+    let Some(dir) = &d.prop else {
+        fields.push(("output", output));
+        return Ok(object(&fields));
+    };
+    let prop = prop(
+        files, dir, &mesh.name, &low, &material, &images, &want.size, d,
+    )?;
+    let mut v: serde_json::Value = serde_json::from_str(&object(&fields)).map_err(failed)?;
+    if let (serde_json::Value::Object(o), serde_json::Value::Object(p)) = (&mut v, prop) {
+        o.extend(p);
+        let scale = o.get("place").and_then(|p| p.get("scale")).cloned();
+        o.insert("scale".into(), scale.unwrap_or(serde_json::json!(1.0)));
+        let model: serde_json::Value = serde_json::from_str(&output).map_err(failed)?;
+        let (settings, collider) = (o.remove("settings"), o.remove("colliderFile"));
+        o.insert(
+            "output".into(),
+            serde_json::json!({ "model": model, "settings": settings, "collider": collider }),
+        );
+    }
+    Ok(v.to_string())
+}
+
+/// A file name for the model `name` (its path separators and spaces
+/// made dashes; `model` when empty).
+fn file_stem(name: &str) -> String {
+    let s: String = name
+        .chars()
+        .map(|c| {
+            if c == '/' || c == '\\' || c.is_whitespace() {
+                '-'
+            } else {
+                c
+            }
+        })
+        .collect();
+    if s.is_empty() { "model".into() } else { s }
+}
+
+/// The prop's other files and facts: the import settings, the convex
+/// hulls, and `size` (metres, the GLB's x, y up, z), `scale`, `leftover`
+/// (with `--size`: per GLB axis, the size reached over the size asked,
+/// less 1; null for an axis left free), `triangles`, `textureBytes` (the
+/// maps decoded with their mips), `lods` (each level's share and the
+/// triangles it aims at; the cook builds them), `collider` (the hulls'
+/// report, mm) and the look's facts (`og model measure`).
+#[allow(clippy::too_many_arguments)]
+fn prop(
+    files: &dyn Files,
+    dir: &std::path::Path,
+    name: &str,
+    low: &og_shape::mesh::Solid,
+    material: &Material,
+    images: &[ImageInfo],
+    size: &Size,
+    d: &ProcessDesc,
+) -> Result<serde_json::Value, Failure> {
+    use serde_json::{Value, json};
+    let stem = file_stem(name);
+    let (hulls, collider) = og_shape::tools::colliders(low, &og_shape::tools::Collide::default())
+        .map_err(|e| Failure::Failed(format!("collider: {e}")))?;
+    let named: Vec<(String, og_shape::mesh::Solid)> = hulls
+        .into_iter()
+        .enumerate()
+        .map(|(k, h)| (format!("{stem}.collider.{k}"), h))
+        .collect();
+    let hull_path = dir.join(format!("{stem}.collider.glb"));
+    let bytes =
+        og_shape_formats::gltf::write::glb(&super::source::scene(&stem, &named)).map_err(failed)?;
+    files.write(&hull_path, &bytes)?;
+    let settings_path = dir.join(format!("{stem}.glb.ogt"));
+    let lods: Vec<String> = PROP_LODS.iter().map(|r| r.to_string()).collect();
+    let settings = format!(
+        "type import\nversion 1\n---\n# Written by og model process: the cook builds these levels of detail\n# and bakes the triangle-mesh collider (static bodies). {stem}.collider.glb\n# holds the convex hulls, for a dynamic body's og.Collider convex shapes.\nmodel {{\n  lods {}\n  collider true\n}}\n",
+        lods.join(" ")
+    );
+    files.write(&settings_path, settings.as_bytes())?;
+    let part = og_shape::tools::Part {
+        material: material.clone(),
+        ..og_shape::tools::Part::new(&stem, low)
+    };
+    let scene = og_shape::tools::Scene {
+        name: stem.clone(),
+        parts: vec![part],
+    };
+    let contract = d
+        .project
+        .as_deref()
+        .map(crate::style_check::contract)
+        .transpose();
+    let (contract, look_error) = match contract {
+        Ok(c) => (c.flatten(), None),
+        Err(e) => (None, Some(e)),
+    };
+    let mut facts = super::measure::facts(&scene, contract.as_ref());
+    let reached: Vec<f64> = facts["size"]
+        .as_array()
+        .map(|a| a.iter().filter_map(Value::as_f64).collect())
+        .unwrap_or_default();
+    let leftover = match size {
+        // Kernel x, y (front to back), z (up) to the GLB's x, y up, z.
+        Size::Fit(t) => Value::Array(
+            [t.x, t.z, t.y]
+                .iter()
+                .zip(&reached)
+                .map(|(&asked, &got)| {
+                    if asked == 0.0 {
+                        Value::Null
+                    } else {
+                        json!(got / (asked * 0.001) - 1.0)
+                    }
+                })
+                .collect(),
+        ),
+        _ => Value::Null,
+    };
+    let triangles = low.triangles.len();
+    let texture_bytes: u64 = images
+        .iter()
+        .filter_map(|i| i.decoded_bytes())
+        .map(|b| b.1)
+        .sum();
+    if let Value::Object(o) = &mut facts {
+        o.insert("leftover".into(), leftover);
+        o.insert("textureBytes".into(), json!(texture_bytes));
+        o.insert(
+            "lods".into(),
+            Value::Array(
+                PROP_LODS
+                    .iter()
+                    .map(|&r| json!({ "share": r, "triangles": ((triangles as f64 * r).round() as u64).max(1) }))
+                    .collect(),
+            ),
+        );
+        o.insert(
+            "collider".into(),
+            serde_json::from_str(&collider.to_json()).map_err(failed)?,
+        );
+        o.insert(
+            "settings".into(),
+            json!({ "path": settings_path.display().to_string(), "bytes": settings.len() }),
+        );
+        o.insert(
+            "colliderFile".into(),
+            json!({ "path": hull_path.display().to_string(), "bytes": bytes.len(), "hulls": named.len() }),
+        );
+        if let Some(e) = look_error {
+            o.insert("lookError".into(), Value::String(e));
+        }
+    }
+    Ok(facts)
 }
 
 /// Packs `low`'s fresh charts at `d.bake` texels and bakes `src` into
@@ -437,6 +622,7 @@ pub fn run(a: &Args) -> Result<String, Failure> {
         "--ktx2-rdo",
         "--bake",
         "--bake-distance",
+        "--project",
     ];
     known.extend(IMPORT_OPTIONS);
     known.extend(super::repair::OPTIONS);
@@ -445,10 +631,15 @@ pub fn run(a: &Args) -> Result<String, Failure> {
     a.only(&known)?;
     let mut repair = super::repair::options(a)?;
     repair.check_intersections = false;
+    let input = a.input()?;
+    let out = a.out_opt()?;
+    if let Some(dir) = out.as_ref().filter(|o| is_folder(o)) {
+        std::fs::create_dir_all(dir)
+            .map_err(|e| Failure::Failed(format!("{}: {e}", dir.display())))?;
+    }
     process(
         &Local,
         &ProcessDesc {
-            input: a.input()?,
             import: a.import()?,
             place: super::place::options(a)?,
             repair,
@@ -466,7 +657,16 @@ pub fn run(a: &Args) -> Result<String, Failure> {
             ktx2_rdo: a.number("--ktx2-rdo")?.unwrap_or(0.0),
             bake: a.number("--bake")?.unwrap_or(0),
             bake_distance: a.number("--bake-distance")?.unwrap_or(0.0),
-            out: a.out_opt()?,
+            out: out.clone().filter(|o| !is_folder(o)),
+            prop: out.filter(|o| is_folder(o)),
+            project: super::measure::project_of(a, &input)?,
+            input,
         },
     )
+}
+
+/// An output that names a folder: one that is, or a path without an
+/// extension.
+fn is_folder(p: &std::path::Path) -> bool {
+    p.is_dir() || p.extension().is_none()
 }

@@ -1,0 +1,16 @@
+{
+  "added": [
+    {
+      "member": "og model process --out <folder>",
+      "summary": "Writes a prop: the processed GLB standing on its base, its import settings (levels of detail and a baked collider for og cook) and its convex hulls, and reports its size in metres, scale, triangles, texture memory, levels and the look's facts."
+    },
+    {
+      "member": "og model place --size, og model process --size",
+      "summary": "--size x,y,z (GLB axes, 0 leaves an axis free) scales a model by the one factor nearest every axis given and reports what is left per axis."
+    },
+    {
+      "member": "og model lengths",
+      "summary": "A length without a unit (--height 1.2) is metres; m, cm and mm still name their unit."
+    }
+  ]
+}

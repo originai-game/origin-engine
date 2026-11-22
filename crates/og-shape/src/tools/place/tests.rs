@@ -199,3 +199,24 @@ fn errors_are_values() {
         PlaceError::Empty
     );
 }
+
+#[test]
+fn fit_takes_the_one_scale_nearest_every_axis_asked() {
+    let fit = |t: DVec3| {
+        place(
+            &[block()],
+            &Place {
+                size: Size::Fit(t),
+                ..Default::default()
+            },
+        )
+        .map(|(_, r)| r.scale)
+    };
+    // In proportion: exact.
+    assert_eq!(fit(DVec3::new(20.0, 40.0, 80.0)).unwrap(), 2.0);
+    // x asks twice its width, z its height, y is free: u = (0.5, 1), s = 1.5 / 1.25,
+    // not the mean of the two (1.5) nor either alone.
+    assert!((fit(DVec3::new(20.0, 0.0, 40.0)).unwrap() - 1.2).abs() < 1e-12);
+    assert!(fit(DVec3::ZERO).is_err());
+    assert!(fit(DVec3::new(-1.0, 0.0, 0.0)).is_err());
+}

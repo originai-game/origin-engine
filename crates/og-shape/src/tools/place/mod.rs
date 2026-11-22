@@ -65,6 +65,10 @@ pub enum Size {
     Depth(f64),
     /// Scale by this factor.
     Scale(f64),
+    /// The box as near these extents (x, y, z, mm) as one scale gets it:
+    /// the factor with the least sum of squared relative errors over the
+    /// axes given; an axis at 0 is not counted.
+    Fit(DVec3),
 }
 
 /// Where the origin goes. The zero value keeps it.
@@ -330,6 +334,7 @@ pub fn place(parts: &[Solid], d: &Place) -> Result<(Vec<Solid>, PlaceReport), Pl
             }
             f
         }
+        Size::Fit(t) => fit(t, size)?,
     };
     let (lo, hi) = (lo * m.scale, hi * m.scale);
     m.t = match d.pivot {
@@ -369,6 +374,32 @@ pub fn place(parts: &[Solid], d: &Place) -> Result<(Vec<Solid>, PlaceReport), Pl
         after: axis_measures(&out),
     };
     Ok((out, report))
+}
+
+/// [`Size::Fit`]'s factor: with uₖ the box's extent over the one asked,
+/// s = Σuₖ / Σuₖ² makes Σ(s·uₖ − 1)² least.
+fn fit(target: DVec3, size: DVec3) -> Result<f64, PlaceError> {
+    let (mut su, mut su2) = (0.0, 0.0);
+    for k in 0..3 {
+        let (t, e) = (target[k], size[k]);
+        if t == 0.0 {
+            continue;
+        }
+        if !(t > 0.0 && t.is_finite()) {
+            return Err(PlaceError::Size(format!(
+                "size {t}: give lengths above 0 (0 leaves an axis free)"
+            )));
+        }
+        let u = e / t;
+        su += u;
+        su2 += u * u;
+    }
+    if su2 == 0.0 {
+        return Err(PlaceError::Size(
+            "the mesh has no extent along the axes asked to scale (0 mm)".into(),
+        ));
+    }
+    Ok(su / su2)
 }
 
 impl PlaceReport {

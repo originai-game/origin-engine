@@ -555,3 +555,88 @@ fn compare_fits_the_view_it_was_drawn_in() {
     assert!(e["error"].as_str().unwrap().contains("such.png"), "{e}");
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+/// `process --out <folder>` writes a prop: scaled to the height asked
+/// (a bare number is metres), standing on its base at the origin, with
+/// import settings the cook reads and convex hulls beside it; `--size`
+/// reports what one scale could not reach per axis.
+#[test]
+fn process_writes_a_prop_at_its_size_on_its_base() {
+    let dir = std::env::temp_dir().join(format!("shape-prop-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    let glb = dir.join("wm.glb");
+    assert!(
+        shape(&["export", PROGRAM, "-o", glb.to_str().unwrap()])
+            .status
+            .success()
+    );
+    let out = dir.join("prop");
+    let r = report(&[
+        "process",
+        glb.to_str().unwrap(),
+        "--height",
+        "1.2",
+        "--out",
+        out.to_str().unwrap(),
+        "--json",
+    ]);
+    let size: Vec<f64> = r["size"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|v| v.as_f64().unwrap())
+        .collect();
+    // GLB frame: y is up.
+    assert!((size[1] - 1.2).abs() < 1e-6, "{size:?}");
+    assert!(size[0] > size[2] && size[0] != 1.2);
+    let m = report(&["measure", out.join("wm.glb").to_str().unwrap(), "--json"]);
+    let b = &m["whole"]["bounds"];
+    // On its base: the kernel's lowest z at 0, centred in x and y.
+    assert_eq!(b["min"][2].as_f64().unwrap(), 0.0);
+    let mid = |k: usize| b["min"][k].as_f64().unwrap() + b["max"][k].as_f64().unwrap();
+    assert!(mid(0).abs() < 1e-3 && mid(1).abs() < 1e-3);
+    let settings = std::fs::read_to_string(out.join("wm.glb.ogt")).unwrap();
+    assert!(
+        settings.contains("type import")
+            && settings.contains("lods 1 0.5 0.25")
+            && settings.contains("collider true")
+    );
+    assert!(r["output"]["collider"]["hulls"].as_u64().unwrap() >= 1);
+    assert!(out.join("wm.collider.glb").is_file());
+    let lods = r["lods"].as_array().unwrap();
+    assert_eq!(
+        lods[1]["triangles"].as_u64().unwrap() * 2,
+        r["triangles"].as_u64().unwrap()
+    );
+    // Two axes asked against the program's proportions: the scale is
+    // between the two each alone would take, and the leftover has the
+    // signs that say so; the free axis is null.
+    let r = report(&[
+        "process",
+        glb.to_str().unwrap(),
+        "--size",
+        "2,0,0.5",
+        "--out",
+        dir.join("fit").to_str().unwrap(),
+        "--json",
+    ]);
+    let left = r["leftover"].as_array().unwrap();
+    assert!(
+        left[0].as_f64().unwrap() < 0.0 && left[2].as_f64().unwrap() > 0.0,
+        "{left:?}"
+    );
+    assert!(left[1].is_null());
+    let mixed = shape(&[
+        "process",
+        glb.to_str().unwrap(),
+        "--height",
+        "1",
+        "--size",
+        "1,1,1",
+        "--out",
+        dir.join("x").to_str().unwrap(),
+        "--json",
+    ]);
+    assert_eq!(mixed.status.code(), Some(2));
+}

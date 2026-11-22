@@ -9,7 +9,8 @@
 //! `--up` and `--front` name the file's own axes (as every mesh command
 //! reads them; `--z-up` is `--up +z --front -y`); the report's `up` and
 //! `front` are the kernel axes of the file read plainly (Y up for OBJ
-//! and glTF) that became up and front. Lengths take a unit: `1.2m`,
+//! and glTF) that became up and front. Lengths are metres, or take a
+//! unit: `1.2`, `1.2m`,
 //! `90cm`, `900mm`.
 
 use std::path::{Path, PathBuf};
@@ -115,24 +116,40 @@ fn encode_parts(mesh: &Mesh, parts: &[(String, Solid)], out: &Path) -> Result<Ve
     }
 }
 
-/// A length with its unit (`1.2m`, `90cm`, `900mm`), in mm.
+/// A length (`1.2m`, `90cm`, `900mm`; a bare number is metres, the
+/// GLB's unit), in mm.
 pub fn length(what: &str, v: &str) -> Result<f64, Failure> {
     let v = v.trim();
     let (number, unit) = [("mm", 1.0), ("cm", 10.0), ("m", 1000.0)]
         .iter()
         .find_map(|(u, f)| v.strip_suffix(u).map(|n| (n, *f)))
-        .ok_or_else(|| {
-            Failure::Usage(format!(
-                "{what}: {v:?} needs a unit: m, cm or mm (1.2m, 900mm)"
-            ))
-        })?;
+        .unwrap_or((v, 1000.0));
     number
         .trim()
         .parse::<f64>()
         .ok()
         .filter(|x| x.is_finite())
         .map(|x| x * unit)
-        .ok_or_else(|| Failure::Usage(format!("{what}: {v:?} is not a length")))
+        .ok_or_else(|| Failure::Usage(format!("{what}: {v:?} is not a length (1.2, 1.2m, 900mm)")))
+}
+
+/// `--size x,y,z`: the extents asked in the GLB's frame (x across, y up,
+/// z front to back), one unit after the last (metres if none), 0 for an
+/// axis left free; in mm, in the kernel's axes (x, y front to back, z up).
+pub fn size(v: &str) -> Result<glam::DVec3, Failure> {
+    let v = v.trim();
+    let unit = v.trim_start_matches(|c: char| !c.is_ascii_alphabetic());
+    let numbers: Vec<&str> = v[..v.len() - unit.len()].split(',').collect();
+    if numbers.len() != 3 {
+        return Err(Failure::Usage(format!(
+            "size: {v:?} is not x,y,z (1.2,0.8,0.5 or 120,80,50cm; 0 leaves an axis free)"
+        )));
+    }
+    let mut xyz = [0.0; 3];
+    for (k, n) in numbers.iter().enumerate() {
+        xyz[k] = length("size", &format!("{}{unit}", n.trim()))?;
+    }
+    Ok(glam::DVec3::new(xyz[0], xyz[2], xyz[1]))
 }
 
 /// A pivot: `base`, `center`, or a point `x,y,z` with a unit
@@ -162,8 +179,9 @@ pub fn pivot(v: &str) -> Result<Pivot, Failure> {
 }
 
 /// The placement options of the command line.
-pub const OPTIONS: [&str; 7] = [
+pub const OPTIONS: [&str; 8] = [
     "--turn",
+    "--size",
     "--pivot",
     "--longest",
     "--height",
@@ -188,9 +206,12 @@ pub fn options(a: &Args) -> Result<Place, Failure> {
     if let Some(f) = a.number("--scale")? {
         sizes.push(Size::Scale(f));
     }
+    if let Some(v) = a.value(&["--size"])? {
+        sizes.push(Size::Fit(size(v)?));
+    }
     if sizes.len() > 1 {
         return Err(Failure::Usage(
-            "one size: --longest, --height, --width, --depth or --scale".into(),
+            "one size: --longest, --height, --width, --depth, --size or --scale".into(),
         ));
     }
     Ok(Place {
@@ -227,11 +248,23 @@ mod tests {
     use super::*;
 
     #[test]
-    fn lengths_need_a_unit() {
+    fn lengths_are_metres_unless_they_name_a_unit() {
         assert_eq!(length("h", "1.2m").unwrap(), 1200.0);
         assert_eq!(length("h", "90cm").unwrap(), 900.0);
         assert_eq!(length("h", "900mm").unwrap(), 900.0);
-        assert!(length("h", "900").is_err());
+        assert_eq!(length("h", "1.2").unwrap(), 1200.0);
+        assert!(length("h", "1.2ft").is_err());
+        // --size is the GLB's x, y (up), z, one unit after the last:
+        // kernel x, z (up) and y.
+        assert_eq!(
+            size("1,2,0").unwrap(),
+            glam::DVec3::new(1000.0, 0.0, 2000.0)
+        );
+        assert_eq!(
+            size("10,20,30cm").unwrap(),
+            glam::DVec3::new(100.0, 300.0, 200.0)
+        );
+        assert!(size("1,2").is_err());
         assert_eq!(
             pivot("1,2,-3cm").unwrap(),
             Pivot::Point([10.0, 20.0, -30.0].into())
