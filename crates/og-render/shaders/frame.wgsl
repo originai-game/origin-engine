@@ -308,3 +308,14 @@ fn reflected_light(r_in: vec3<f32>, p: vec3<f32>, mip: f32) -> vec3<f32> {
 fn reflectivity_bits(roughness: f32, metalness: f32) -> f32 {
   return round((1.0 - clamp(roughness, 0.0, 1.0)) * 255.0) + 256.0 * round(clamp(metalness, 0.0, 1.0) * 255.0);
 }
+
+// Signed world height, including a floating origin: world y 0 need not
+// be sea level. Shared by the cloud march and both kinds of land fog.
+fn cloud_viewer() -> f32 {
+  return frame.view_pos.y + frame.origin.y;
+}
+
+fn above_cloud_base() -> bool {
+  let c = frame.clouds;
+  return c[3].w > 0.5 && c[0].x > 0.0 && c[0].y > 0.0 && c[0].w > 0.0 && cloud_viewer() > c[0].z;
+}

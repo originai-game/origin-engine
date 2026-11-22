@@ -116,6 +116,63 @@ fn a_replaced_mesh_draws_its_new_shape() {
     }
 }
 
+/// Above a cloud base the lower sky is a cloud sea, not distant land.
+/// Fog.sky = 0 must leave it clear; at the base and without a layer,
+/// the existing land fog must still hide the lower hemisphere.
+#[test]
+#[ignore = "requires GPU"]
+fn a_cloud_sea_keeps_its_shape_above_the_base_with_land_fog() {
+    let mut scene = og_tests::sky_scenes::sky_scene("clouds-fair");
+    scene.objects.instances.clear();
+    scene.atmosphere.fog = None;
+    scene.atmosphere.clouds.as_mut().unwrap().layer = 0.0;
+    scene.frame.camera = Camera {
+        position: Vec3::new(0.0, 4000.0, 0.0),
+        target: Vec3::new(0.0, 3300.0, -1800.0),
+        ..scene.frame.camera
+    };
+    let mut desc = scenes::base_desc();
+    desc.width = 320;
+    desc.height = 180;
+    let mut renderer = Renderer::new_blocking(&desc).expect("renderer");
+    let mut draw = |scene: &RenderScene| {
+        renderer
+            .render_capture(scene, &RenderTarget::Offscreen)
+            .expect("render");
+        renderer.read_offscreen().expect("capture")
+    };
+    let fog = og_render::Fog {
+        density: 0.002,
+        height_density: 0.0,
+        sky: 0.0,
+        color: Vec3::new(0.8, 0.1, 0.05),
+        sun_color: Vec3::new(0.8, 0.1, 0.05),
+        ..Default::default()
+    };
+    let clear = draw(&scene);
+    scene.atmosphere.fog = Some(fog);
+    let fogged = draw(&scene);
+    assert!(
+        clear.pixels == fogged.pixels,
+        "land fog must not erase the cloud sea"
+    );
+    scene.atmosphere.clouds.as_mut().unwrap().thickness = 0.0;
+    let fogged = draw(&scene);
+    scene.atmosphere.fog = None;
+    let clear = draw(&scene);
+    assert!(
+        clear.pixels != fogged.pixels,
+        "without a layer land fog stays"
+    );
+    scene.atmosphere.clouds.as_mut().unwrap().thickness = 1800.0;
+    scene.frame.camera.position.y = 1500.0;
+    scene.frame.camera.target.y = 800.0;
+    let clear = draw(&scene);
+    scene.atmosphere.fog = Some(fog);
+    let fogged = draw(&scene);
+    assert!(clear.pixels != fogged.pixels, "at the base land fog stays");
+}
+
 /// A disc alone against black, so neither scattered sky nor automatic
 /// exposure can hide a lost HDR peak or manufacture its bloom halo.
 fn solar_probe() -> RenderScene {

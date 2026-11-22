@@ -51,7 +51,7 @@ fn vs_sky(@builtin(vertex_index) i: u32) -> SkyOut {
 fn vs_sky_look(@builtin(vertex_index) i: u32) -> SkyOut {
   var o = sky_triangle(i);
   let c = frame.clouds;
-  let viewer = max(frame.view_pos.y + frame.origin.y, 0.0);
+  let viewer = cloud_viewer();
   if (c[3].w < 0.5 || viewer > c[0].z || cloud_deck(vec3<f32>(0.0, 1.0, 0.0)).a <= 0.0) { return o; }
   let lowest = clamp((c[0].z - viewer) / 24000.0, 0.002, 0.2);
   let ahead = frame.view_forward.xyz;
@@ -136,7 +136,9 @@ fn sky_fog(color: vec3<f32>, dir: vec3<f32>) -> vec3<f32> {
 // the point, whose light the surfaces take from below.
 fn land_fog(color: vec3<f32>, dir: vec3<f32>) -> vec3<f32> {
   let below = smoothstep(0.0, 0.05, -dir.y);
-  if (frame.fog_color.w < 0.5 || frame.drawn.z != 0u || below <= 0.0) { return color; }
+  // From above a cloud base the lower sky is the cloud sea, not the
+  // ground's stand-in. Its own fog and aerial perspective already apply.
+  if (frame.fog_color.w < 0.5 || frame.drawn.z != 0u || below <= 0.0 || above_cloud_base()) { return color; }
   let f = fog_amount(frame.view_pos.xyz + dir * 5000.0);
   // Fogged by f.a s already; the rest t takes it to f.a: (1 - f.a) = (1 - f.a s)(1 - t).
   let shown = f.a * frame.fog_height.w;
@@ -256,7 +258,7 @@ fn cloud_sphere(o: vec3<f32>, d: vec3<f32>, r: f32) -> vec2<f32> {
 // through its transmittance at that height, else the scene's `light`.
 fn cloud_sun(p: vec3<f32>, radius: f32, to_light: vec3<f32>, light: vec3<f32>, physical: bool) -> vec3<f32> {
   if (!physical) { return light; }
-  let r_km = frame.sky_scatter[3].x + (length(p) - radius) * 0.001;
+  let r_km = frame.sky_scatter[3].x + (length(p) - radius + frame.clouds[6].w) * 0.001;
   return light * scatter_sun_transmittance(r_km, dot(normalize(p), to_light));
 }
 
@@ -280,7 +282,7 @@ fn cloud_key() -> CloudKey {
   let moon_light = 3.0 * sky_moon_light();
   if (frame.sky_moon.w <= 0.0) { return CloudKey(sun, sun_light); }
   let moon = normalize(frame.sky_moon.xyz);
-  let base = frame.sky_scatter[3].x + frame.clouds[0].z * 0.001;
+  let base = frame.sky_scatter[3].x + (frame.clouds[0].z + frame.clouds[6].w) * 0.001;
   let s = dot(sun_light * scatter_sun_transmittance(base, sun.y), LUMA);
   let m = dot(moon_light * scatter_sun_transmittance(base, moon.y), LUMA);
   let swap = smoothstep(0.0, 0.2, abs(s - m) / max(s + m, 1e-30));
@@ -311,7 +313,7 @@ fn cloud_layer_mix(layer: vec4<f32>, over: vec3<f32>, w: f32) -> vec4<f32> {
 fn clouds_over(d: vec3<f32>, pixel: vec2<f32>, grey: vec4<f32>) -> vec4<f32> {
   let c = frame.clouds;
   if (c[3].w < 0.5) { return vec4<f32>(0.0, 0.0, 0.0, 1.0); }
-  let viewer = max(frame.view_pos.y + frame.origin.y, 0.0);
+  let viewer = cloud_viewer();
   let cover = cloud_deck(d).a;
   let lowest = clamp((c[0].z - viewer) / 24000.0, 0.002, 0.2);
   let low = cover > 0.0 && viewer <= c[0].z && d.y < lowest;
@@ -393,7 +395,7 @@ fn cloud_air(color: vec4<f32>, scattered: vec3<f32>, transmittance: f32, at: f32
   // Clouds::light_scene, and a lightning flash turns it towards the bolt.
   let sun_side = clear_sky_light(normalize(vec3<f32>(to_light.x, 0.0, to_light.z) + vec3<f32>(0.0, 1e-3, 0.0)));
   let view_side = clear_sky_light(normalize(vec3<f32>(d.x, 0.0, d.z) + vec3<f32>(0.0, 1e-3, 0.0)));
-  let above = light * scatter_sun_transmittance(frame.sky_scatter[3].x + c[0].z * 0.001, to_light.y);
+  let above = light * scatter_sun_transmittance(frame.sky_scatter[3].x + (c[0].z + c[6].w) * 0.001, to_light.y);
   // In the hue of the light falling on it (a dusk's lavender, warmer
   // towards the glow), greyed by the cover as the march greys a cloud's
   // ambient: a cloud scatters every wavelength alike.
@@ -460,12 +462,12 @@ fn clouds_march(d: vec3<f32>, pixel: vec2<f32>) -> vec4<f32> {
   let c = frame.clouds;
   if (c[3].w < 0.5) { return vec4<f32>(0.0, 0.0, 0.0, 1.0); }
   let radius = c[4].x;
-  let viewer = max(frame.view_pos.y + frame.origin.y, 0.0);
+  let viewer = cloud_viewer();
   let o = vec3<f32>(0.0, radius + viewer, 0.0);
   // A ray that meets the ground sees no clouds, unless the eye is above the
   // cloud base: then it looks down onto the layer (a sea of cloud from a
   // mountain), and the march below stops at the base, before the ground.
-  let ground = cloud_sphere(o, d, radius);
+  let ground = cloud_sphere(o, d, radius - c[6].w);
   if (ground.x > 0.0 && viewer <= c[0].z) { return vec4<f32>(0.0, 0.0, 0.0, 1.0); }
   // Under the physical sky the clouds are lit by their key, the sun or by
   // night the moon (cloud_key), at their own height: the key above the
@@ -949,8 +951,8 @@ fn clouds_covered(pos: vec2<f32>, texel: vec2<f32>) -> bool {
 // Whether a ray along unit `d` meets the ground from under the cloud base: it sees no clouds (clouds_march).
 fn cloud_grounded(d: vec3<f32>) -> bool {
   let c = frame.clouds;
-  let viewer = max(frame.view_pos.y + frame.origin.y, 0.0);
-  return viewer <= c[0].z && cloud_sphere(vec3<f32>(0.0, c[4].x + viewer, 0.0), d, c[4].x).x > 0.0;
+  let viewer = cloud_viewer();
+  return viewer <= c[0].z && cloud_sphere(vec3<f32>(0.0, c[4].x + viewer, 0.0), d, c[4].x - c[6].w).x > 0.0;
 }
 
 // The cloud history's step (clouds.rs `CloudsLow::prepare`): the march and the resolve of a frame that reprojects.

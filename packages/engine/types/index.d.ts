@@ -17429,7 +17429,7 @@ export interface Fog {
    */
   maxOpacity: number;
   /**
-   * How much of the fog covers the sky and the clouds in it (0: they stay clear, however far the fog hides the land). What the sky draws under the horizon stands for land: the fog hides it as it hides land as far off.
+   * How much fog covers the sky and clouds (0: clear). Below a cumulus base, or without cumulus, the lower sky stands for distant land and takes land fog. Above a cumulus base it is cloud sea and keeps this share.
    *
    * @default 1
    * @range 0..1
@@ -17873,10 +17873,9 @@ export interface Clouds {
    */
   density: number;
   /**
-   * The height of the cloud base above the world's y 0.
+   * The cloud base's world y, in metres; negative places it below the game's origin. With og.PhysicalSky, its altitude is the sea-level height of world y 0 for the clouds too.
    *
    * @default 1500
-   * @range 0..
    * @unit m (metres)
    * @tunable
    */

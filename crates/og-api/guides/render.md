@@ -513,7 +513,10 @@ depth-normal prepass: the first one pays for it.
   in it: far towers fade into the haze as in the plain fog. Under the
   horizon a procedural sky stands for land, and both fogs hide it whole
   whatever `Fog.sky` is, so a gap in the world's ground reads as land
-  lost in the haze, not as a band of sky. It has no shafts and no lamps'
+  lost in the haze, not as a band of sky. Above a cumulus base the lower
+  sky is a cloud sea instead: it keeps the sky's fog share, with the
+  physical sky's aerial perspective, not that extra land fog.
+  It has no shafts and no lamps'
   glow there, so set the distance past the last lamp whose glow should
   show (the froxels grow with it).
 - Local fog: og.FogVolume beside an og.Volume fills that box or sphere
@@ -568,6 +571,11 @@ depth-normal prepass: the first one pays for it.
   sky: they are lit as bright as the sky behind them is drawn, so
   `environmentIntensity` (and og.DayNight's twilight lift) brightens or
   darkens the land under them, never the deck against the clear sky.
+  For a cloud sea below a flying route, keep gameplay near world y 0:
+  place the world's origin at a physical altitude and the cloud base
+  below it (for example altitude 4000 m, base -2500 m, thickness 1800 m).
+  Cloud heights are world-relative; the atmosphere and clouds share the
+  same sea level. Do not lift every game object just to stand above clouds.
 - Cloud shadows: the cumulus shades the world under it, along the sun's
   ray: the ground, the water, the grass, particles and the volumetric
   fog's shafts take it, in every camera, out to the horizon. A cloud is

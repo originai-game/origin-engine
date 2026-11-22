@@ -141,7 +141,10 @@ impl Clouds {
             // cover. Clouds undo both: they are lit above their cover.
             [radius, light.0, light.1, 0.0],
             self.flash.to_array(),
-            // The clear sky's light, filled by AtmosphereGpu::new.
+            // The clear sky's light, filled by AtmosphereGpu::new (rgb), and
+            // in this first row's w the sea-level height of world y 0
+            // (og.PhysicalSky's altitude): sky.wgsl's cloud shell, its
+            // sunlight and the ground below it read it as `clouds[6].w`.
             [0.0; 4],
             [0.0; 4],
             [0.0; 4],

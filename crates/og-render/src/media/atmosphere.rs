@@ -296,6 +296,13 @@ impl AtmosphereGpu {
             .map_or(6_360_000.0, |p| p.planet_radius.clamp(10.0, 1.0e5) * 1000.0);
         if let Some((c, live)) = clouds {
             a.clouds = c.gpu(tick as f64 / f64::from(rate), radius, eye);
+            // Cloud heights and noise remain world-relative. The shell's
+            // reference radius is world y 0, not sea level; carry that
+            // offset too for sunlight and the true ground intersection.
+            let altitude = sky
+                .and_then(|(look, ..)| look.physical)
+                .map_or(0.0, |p| p.altitude.max(0.0));
+            a.clouds[4][0] += altitude;
             if let Some((look, sun, color)) = sky {
                 // The clouds' ambient is the clear sky's, never the image-based
                 // light's: the live sky captures the clouds into it, and lit by
@@ -311,6 +318,8 @@ impl AtmosphereGpu {
                 // deck over it (water.wgsl).
                 a.clouds[4][3] = f32::from(live);
             }
+            // After the clear sky's rows, whose w it shares (clouds.rs `gpu`).
+            a.clouds[crate::clouds::CLEAR_SKY_ROW][3] = altitude;
         }
         if sky.is_some()
             && let Some(au) = aurora

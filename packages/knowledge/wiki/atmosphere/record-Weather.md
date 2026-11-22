@@ -92,4 +92,4 @@ resource Weather {
 }
 ```
 
-<sub>Module `atmosphere` line 630</sub>
+<sub>Module `atmosphere` line 629</sub>

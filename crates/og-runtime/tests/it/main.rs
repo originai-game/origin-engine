@@ -26,6 +26,8 @@ mod billboards;
 mod camera_projection;
 #[path = "../cells.rs"]
 mod cells;
+#[path = "../cloud_height.rs"]
+mod cloud_height;
 #[path = "../contact_hit.rs"]
 mod contact_hit;
 #[path = "../cookie_cap.rs"]

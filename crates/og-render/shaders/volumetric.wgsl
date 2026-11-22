@@ -243,7 +243,10 @@ fn far_air(dir: vec3<f32>, depth: f32) -> vec4<f32> {
   }
   if (vol.local.w > vol.local.z || vol.own.w < 1.0) { tau = fog_column(dir, vec2<f32>(t0, t1)); }
   var hidden = 1.0 - exp(-tau);
-  if (sky) { hidden *= mix(vol.local.y, 1.0, smoothstep(0.0, 0.05, -dir.y)); }
+  if (sky) {
+    let land = select(smoothstep(0.0, 0.05, -dir.y), 0.0, above_cloud_base());
+    hidden *= mix(vol.local.y, 1.0, land);
+  }
   if (hidden <= 0.0) { return vec4<f32>(0.0, 0.0, 0.0, 1.0); }
   let l = normalize(frame.light_dir.xyz);
   let sun = vol.scatter.rgb * frame.light_color.rgb * hg_phase(dot(dir, l), vol.scatter.w);
