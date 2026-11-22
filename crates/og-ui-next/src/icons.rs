@@ -2,9 +2,15 @@
 //! of stroke segments in their 24-unit space, made once when the first
 //! icon paints and shared by every paint arena: an icon is a quad naming
 //! its span, which the paint shader strokes 2 units wide and round.
+//!
+//! An icon set cooked like a font (og-cook's `cook::icons`) is an
+//! [`IconFace`]: its icons' distance fields, in the shared glyph atlas,
+//! drawn as a [`og_draw::paint::PaintKind::Raster`] quad like a text
+//! glyph's, crisp at any size and tinted by their ink.
 
 use og_draw::TextureHandle;
-use og_draw::paint::IconSegment;
+use og_draw::glyphs::{Atlas, FIELD_EM_PX, GlyphKey, GlyphTier, NO_PLOT};
+use og_draw::paint::{IconSegment, PaintKind, PaintQuad};
 use std::sync::{Arc, OnceLock};
 
 /// The table and each icon's span of it, by name.
@@ -100,7 +106,7 @@ fn flatten(points: &[[f32; 2]], closed: bool, out: &mut Vec<IconSegment>) {
 }
 
 /// The icon atlas `Ui::icon` draws from: a grid of equal cells of a
-/// texture, or an icon set cooked like a font (`font`: an `.ogt` of
+/// texture, or an icon set cooked like a font (`face`: an `.ogt` of
 /// `type icons`, og-cook's `cook::icons`), whose icons are distance-field
 /// glyphs drawn crisp at any size and tinted by their ink.
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -111,8 +117,8 @@ pub struct IconAtlas {
     /// Optional names, one per cell in reading order, for `icon_named`;
     /// an icon set's names, glyph U+E000 + i being icon i.
     pub names: Vec<String>,
-    /// An icon set: its MTSDF font (`texture` is then unused).
-    pub font: Option<og_text::text::UiFont>,
+    /// An icon set: its icons in the glyph atlas (`texture` is then unused).
+    pub face: Option<Arc<IconFace>>,
     /// The texture's cells are full-colour pictures, drawn in their own
     /// colours as an `<img>` is; false, masks drawn in the icon's ink, as a
     /// CSS `mask-image` over `currentColor` is. An icon set is masks.
@@ -122,11 +128,42 @@ pub struct IconAtlas {
     pub fallback: Option<Box<IconAtlas>>,
 }
 
+/// An icon set's icons in the shared glyph atlas, one cell each: the
+/// cooked field of icon `i` ([`ICON_PUA`] + i), resampled to the atlas's
+/// own scale ([`FIELD_EM_PX`] pixels an em). Its pixels stay in the face,
+/// so a plot the atlas dropped after [`og_draw::glyphs::UNUSED_FRAMES`]
+/// unused frames (an icon a menu drew once is drawn again minutes later)
+/// is put back the next time its icon paints.
+#[derive(Clone, Debug, PartialEq)]
+pub struct IconFace {
+    /// The atlas's face id naming this set (past every text face's).
+    pub id: u32,
+    /// Each icon's cell, in atlas pixels.
+    pub cells: Arc<[Cell]>,
+}
+
+/// One icon's field: its placement and pixels, as
+/// [`og_draw::glyphs::Atlas::insert`] takes them.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Cell {
+    /// `left` pixels right of the pen and `top` above the baseline: the
+    /// em square's edges (`-edge`, `1 + edge` of it).
+    pub left: i16,
+    pub top: i16,
+    pub width: u32,
+    pub height: u32,
+    /// The distance range, atlas pixels across.
+    pub range: f32,
+    /// The field's pixels, rows from the top, RGBA (every channel the
+    /// true distance, as og-ui's run-time glyphs read them).
+    pub pixels: Arc<[u8]>,
+}
+
 /// Where an icon of the atlas is drawn from ([`IconAtlas::find`]).
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum IconCell {
-    /// An icon set's distance-field glyph.
-    Glyph(og_draw::FontHandle, char),
+    /// An icon set's distance-field glyph: its face, the icon's index.
+    Face(Arc<IconFace>, u32),
     /// A cell of a texture grid, `[u0, v0, u1, v1]`.
     Image(TextureHandle, [f32; 4]),
     /// A lazily parsed engine vector, after every game-supplied icon layer.
@@ -141,6 +178,63 @@ pub struct InlineImage {
     /// `[u0, v0, u1, v1]`, v down.
     pub uv: [f32; 4],
     pub aspect: f32,
+}
+
+impl IconFace {
+    /// Icon `index`'s quad, its field drawn from the atlas in `square`
+    /// (the em box it fills, `size` × `size` at the baseline's bottom):
+    /// looked up, else its cell put in ([`Atlas::insert`]; the atlas
+    /// drops it after [`UNUSED_FRAMES`] unused frames and this puts it
+    /// back). The quad's colour and clip are the painter's; `None` when
+    /// the atlas has no room for it this frame (the next has).
+    pub fn quad(&self, atlas: &mut Atlas, index: u32, square: [f32; 4]) -> Option<(PaintQuad, u32)> {
+        let cell = self.cells.get(index as usize)?;
+        let key = GlyphKey::new(GlyphTier::Field, self.id, 0, ICON_PUA + index, 0);
+        let slot = match atlas.get(&key) {
+            Some(slot) => slot,
+            None => atlas.insert(
+                key,
+                (i32::from(cell.left), i32::from(cell.top)),
+                (cell.width, cell.height),
+                &cell.pixels,
+            )?,
+        };
+        if slot.plot == NO_PLOT {
+            return None;
+        }
+        // Atlas pixels to CSS px: an em square of atlas pixels is `size`
+        // of them on screen.
+        let em = square[2] / FIELD_EM_PX;
+        let (sx, sy) = (f32::from(slot.x), f32::from(slot.y));
+        Some((
+            PaintQuad {
+                rect: [
+                    square[0] + f32::from(slot.left) * em,
+                    square[1] + square[3] - f32::from(slot.top) * em,
+                    f32::from(slot.width) * em,
+                    f32::from(slot.height) * em,
+                ],
+                clip: [0.0; 4],
+                color: [0.0; 4],
+                radius: [0.0; 4],
+                p: [0.0, 0.0, cell.range, 0.0],
+                kind: PaintKind::Raster as u32,
+                a: GlyphTier::Field as u32,
+                b: u32::from(slot.page),
+                xf: 0,
+                uv: [
+                    sx,
+                    sy,
+                    sx + f32::from(slot.width),
+                    sy + f32::from(slot.height),
+                ],
+                wipe: [0.0; 4],
+                mask: 0,
+                filter: 0,
+            },
+            slot.plot,
+        ))
+    }
 }
 
 /// The code point of an icon set's first icon (og-cook's `ICON_PUA`).
@@ -159,15 +253,9 @@ impl IconAtlas {
         self.names.iter().position(|n| n == name).map(|i| i as u32)
     }
 
-    /// Whether it draws anything (a texture, or an icon set's font).
+    /// Whether it draws anything (a texture, or an icon set's face).
     pub fn is_drawn(&self) -> bool {
-        self.texture.is_some() || self.font.as_ref().is_some_and(|f| f.handle.is_some())
-    }
-
-    /// An icon set's glyph for icon `index`: its font and character.
-    pub fn glyph(&self, index: u32) -> Option<(og_draw::FontHandle, char)> {
-        let f = self.font.as_ref()?.handle?;
-        Some((f, char::from_u32(ICON_PUA + index)?))
+        self.texture.is_some() || self.face.is_some()
     }
 
     /// The icon named `name`: from this atlas where it draws one, else
@@ -179,11 +267,13 @@ impl IconAtlas {
     /// The icon named `name`, and whether it is a full-colour picture
     /// (its atlas's `pictures`), drawn in its own colours.
     pub fn find_drawn(&self, name: &str) -> Option<(IconCell, bool)> {
-        let own = self.index_of(name).and_then(|k| match self.glyph(k) {
-            Some((font, ch)) => Some((IconCell::Glyph(font, ch), false)),
-            None => self
-                .texture
-                .map(|t| (IconCell::Image(t, self.uv(k)), self.pictures)),
+        let own = self.index_of(name).and_then(|k| {
+            if let Some(face) = &self.face {
+                Some((IconCell::Face(face.clone(), k), false))
+            } else {
+                self.texture
+                    .map(|t| (IconCell::Image(t, self.uv(k)), self.pictures))
+            }
         });
         own.or_else(|| self.fallback.as_deref()?.find_drawn(name))
             .or_else(|| {
