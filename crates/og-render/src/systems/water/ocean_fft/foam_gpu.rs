@@ -7,7 +7,6 @@ impl Foam {
     pub(super) fn new(
         device: &wgpu::Device,
         fields: &wgpu::Texture,
-        cascades: u32,
         uniform_entry: &wgpu::BindGroupLayoutEntry,
         pipeline: &dyn Fn(
             &'static str,
@@ -17,7 +16,6 @@ impl Foam {
         ) -> wgpu::ComputePipeline,
         module: &dyn Fn(&'static str, &str) -> wgpu::ShaderModule,
     ) -> Foam {
-        let first = foam_layer(cascades);
         let uniform = crate::traffic::create_buffer(
             device,
             &wgpu::BufferDescriptor {
@@ -27,57 +25,44 @@ impl Foam {
                 mapped_at_creation: false,
             },
         );
-        let history = device.create_texture(&wgpu::TextureDescriptor {
-            label: Some("ocean foam history"),
-            size: wgpu::Extent3d {
-                width: foam::RES,
-                height: foam::RES,
-                depth_or_array_layers: 2,
-            },
-            mip_level_count: 1,
-            sample_count: 1,
-            dimension: wgpu::TextureDimension::D2,
-            format: wgpu::TextureFormat::Rgba16Float,
-            usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
-            view_formats: &[],
-        });
-        let view = |label, dimension, base_mip_level, mips, base_array_layer, layers| {
-            fields.create_view(&wgpu::TextureViewDescriptor {
+        let texture = |label, layers, usage| {
+            device.create_texture(&wgpu::TextureDescriptor {
                 label: Some(label),
-                dimension: Some(dimension),
-                base_mip_level,
-                mip_level_count: mips,
-                base_array_layer,
-                array_layer_count: Some(layers),
+                size: wgpu::Extent3d {
+                    width: foam::RES,
+                    height: foam::RES,
+                    depth_or_array_layers: layers,
+                },
+                mip_level_count: 1,
+                sample_count: 1,
+                dimension: wgpu::TextureDimension::D2,
+                format: wgpu::TextureFormat::Rgba16Float,
+                usage,
+                view_formats: &[],
+            })
+        };
+        let history = texture(
+            "ocean foam history",
+            2,
+            wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+        );
+        // The update samples the fields (it reads the cascades' layers) and
+        // writes its own two levels, copied into the fields' foam layers
+        // after it: every binding a whole texture (compatibility mode binds
+        // no part of an array, nor one texture in two shapes).
+        let written = wgpu::TextureUsages::STORAGE_BINDING | wgpu::TextureUsages::COPY_SRC;
+        let out_texture = texture("ocean foam out", 2, written);
+        let detail_texture = texture("ocean foam detail", 1, written);
+        let array = |t: &wgpu::Texture, label| {
+            t.create_view(&wgpu::TextureViewDescriptor {
+                label: Some(label),
+                dimension: Some(wgpu::TextureViewDimension::D2Array),
                 ..Default::default()
             })
         };
-        // The update samples the cascades' layers (every mip) while it writes
-        // the foam's (mip 0): disjoint parts of the one array.
-        let waves = view(
-            "ocean foam waves",
-            wgpu::TextureViewDimension::D2Array,
-            0,
-            None,
-            0,
-            first,
-        );
-        let out = view(
-            "ocean foam out",
-            wgpu::TextureViewDimension::D2Array,
-            0,
-            Some(1),
-            first,
-            2,
-        );
-        let detail_out = view(
-            "ocean foam detail",
-            wgpu::TextureViewDimension::D2,
-            0,
-            Some(1),
-            first + 2,
-            1,
-        );
+        let waves = array(fields, "ocean foam waves");
+        let out = array(&out_texture, "ocean foam out");
+        let detail_out = detail_texture.create_view(&Default::default());
         let sampled = |binding| wgpu::BindGroupLayoutEntry {
             binding,
             visibility: wgpu::ShaderStages::COMPUTE,
@@ -156,6 +141,8 @@ impl Foam {
         Foam {
             uniform,
             history,
+            out: out_texture,
+            detail_out: detail_texture,
             update,
             update_layout,
             update_views: [waves, history_view, out],

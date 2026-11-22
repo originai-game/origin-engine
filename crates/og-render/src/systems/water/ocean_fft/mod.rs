@@ -125,9 +125,16 @@ struct Pending {
 /// The foam's passes and its history between steps ([`foam`]).
 struct Foam {
     uniform: wgpu::Buffer,
-    /// The last step's levels (copied from the fields' foam layers), read by
-    /// the next.
+    /// The last step's levels (copied from [`Foam::out`]), read by the next.
     history: wgpu::Texture,
+    /// What the update writes, the foam's two levels, then copied into the
+    /// fields' foam layers: a texture of its own, as compatibility mode
+    /// binds no part of an array (the update samples the whole fields).
+    out: wgpu::Texture,
+    /// What the detail pass writes, the micro-structure, then copied into
+    /// the fields' last layer (a 2D texture of its own, for the same
+    /// reason).
+    detail_out: wgpu::Texture,
     update: wgpu::ComputePipeline,
     /// The update's bindings but the seabed's (W1: the sea's `Water::shore`
     /// texture, bound as each advance's [`Foam::group`]).
@@ -211,7 +218,8 @@ impl FftOcean {
             format: wgpu::TextureFormat::Rgba16Float,
             usage: wgpu::TextureUsages::TEXTURE_BINDING
                 | wgpu::TextureUsages::STORAGE_BINDING
-                | wgpu::TextureUsages::COPY_SRC,
+                | wgpu::TextureUsages::COPY_SRC
+                | wgpu::TextureUsages::COPY_DST,
             view_formats: &[],
         });
         let level = |mip: u32| {
@@ -308,7 +316,6 @@ impl FftOcean {
         let foam = Foam::new(
             device,
             &fields,
-            cascades,
             &uniform_entry(std::mem::size_of::<foam::FoamGpu>()),
             &pipeline,
             &module,
@@ -510,6 +517,13 @@ impl FftOcean {
             pass.set_pipeline(&self.foam.detail);
             pass.set_bind_group(0, &self.foam.detail_group, &[]);
             pass.dispatch_workgroups(N / 8, N / 8, 1);
+            drop(pass);
+            self.copy_foam(
+                encoder,
+                &self.foam.detail_out,
+                foam_layer(self.cascades) + 2,
+                1,
+            );
         }
         let foam_stride = ring_stride::<foam::FoamGpu>();
         let first = foam_layer(self.cascades);
@@ -524,17 +538,9 @@ impl FftOcean {
                 pass.set_bind_group(0, &planned.foam, &[(i as u64 * foam_stride) as u32]);
                 pass.dispatch_workgroups(foam::RES / 8, foam::RES / 8, 2);
             }
+            self.copy_foam(encoder, &self.foam.out, first, 2);
             encoder.copy_texture_to_texture(
-                wgpu::TexelCopyTextureInfo {
-                    texture: &self.fields,
-                    mip_level: 0,
-                    origin: wgpu::Origin3d {
-                        x: 0,
-                        y: 0,
-                        z: first,
-                    },
-                    aspect: wgpu::TextureAspect::All,
-                },
+                self.foam.out.as_image_copy(),
                 self.foam.history.as_image_copy(),
                 wgpu::Extent3d {
                     width: foam::RES,
@@ -544,6 +550,35 @@ impl FftOcean {
             );
         }
         self.encode_fields(encoder, planned.steps);
+    }
+
+    /// `layers` layers of a foam pass's own texture `from` into the fields'
+    /// layers from `first` (mip 0; the fields' passes after it mip them).
+    fn copy_foam(
+        &self,
+        encoder: &mut crate::Encoder,
+        from: &wgpu::Texture,
+        first: u32,
+        layers: u32,
+    ) {
+        encoder.copy_texture_to_texture(
+            from.as_image_copy(),
+            wgpu::TexelCopyTextureInfo {
+                texture: &self.fields,
+                mip_level: 0,
+                origin: wgpu::Origin3d {
+                    x: 0,
+                    y: 0,
+                    z: first,
+                },
+                aspect: wgpu::TextureAspect::All,
+            },
+            wgpu::Extent3d {
+                width: foam::RES,
+                height: foam::RES,
+                depth_or_array_layers: layers,
+            },
+        );
     }
 
     /// The fields' uniforms at `seconds` of the scene's clock, into slot
