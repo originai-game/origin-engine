@@ -43,6 +43,21 @@ fn a_variant_sets_what_it_names_and_the_program_the_rest() {
         )
         .contains("tall")
     );
+    // Expressions: precedence, parentheses, unary minus, and errors that
+    // name the expression.
+    let derived = PROGRAM.replace(
+        "\"depth\":250",
+        "\"depth\":\"($width - 100) / 2 * -1 + 2 * $height\"",
+    );
+    assert_eq!(size(&derived), [400.0, 450.0, 300.0]);
+    for wrong in ["$width / 0", "($width", "$width $height", "$width ^ 2"] {
+        let p = PROGRAM.replace("\"depth\":250", &format!("\"depth\":\"{wrong}\""));
+        let e = format!("{:?}", with_params(&p, &Params::new()).unwrap_err());
+        assert!(
+            e.contains(&wrong.replace('$', "")) || e.contains(wrong),
+            "{e}"
+        );
+    }
     let bad = PROGRAM.replace("\"height\":300", "\"height\":\"x\"");
     assert!(with_params(&bad, &Params::new()).is_err());
 }

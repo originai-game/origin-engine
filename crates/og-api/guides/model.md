@@ -72,7 +72,10 @@ The fields are three.js names: `color`, `metalness`, `roughness`,
 with one name, so a texture is painted once for all of them.
 
 `"params": {"height": 720}` declares a parameter, and any field of any op
-may then be `"$height"`. A name that is not declared is an error. A
+may then be `"$height"` or an expression over parameters and numbers:
+`"$height - 30"`, `"($width - 2 * $leg) / 2"` (`+ - * /`, parentheses and
+unary minus, in f64). A name that is not declared, or a division by 0, is
+an error that names the expression. A
 variant is a `type model` text beside the program that names it and sets
 its own values:
 

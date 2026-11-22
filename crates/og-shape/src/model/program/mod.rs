@@ -11,7 +11,8 @@
 //! readers and gives the same bytes.
 //!
 //! A program may declare parameters, `"params": {"height": 900}`, and
-//! give any field of its operations as `"$height"`: [`with_params`] sets
+//! give any field of its operations as `"$height"` or an expression over
+//! them (`"$height / 2 - 15"`: numbers, `+ - * /` and parentheses): [`with_params`] sets
 //! them (a variant's values over the program's own), and every replay
 //! takes the program's own.
 //!
@@ -165,8 +166,9 @@ pub type Fonts = BTreeMap<String, Vec<u8>>;
 /// `ops`, each a number an operation's field takes as `"$height"`.
 pub type Params = BTreeMap<String, f64>;
 
-/// The program with its parameters set: every `"$name"` string in its
-/// operations becomes the number `overrides` gives `name`, else the
+/// The program with its parameters set: every string in its operations
+/// that names a parameter (`"$name"`, or an expression such as
+/// `"($width - 40) / 2"`, [`eval`]) becomes the number it comes to with `overrides` gives `name`, else the
 /// program's own `params` value, and `params` is dropped. A `"$name"` the
 /// program does not declare, an override it does not declare, or a
 /// parameter that is not a finite number is an error. A program without
@@ -209,14 +211,10 @@ pub fn with_params(program: &str, overrides: &Params) -> Result<String, ModelErr
     }
     fn walk(v: &mut Value, values: &Params) -> Result<(), ModelError> {
         match v {
-            Value::String(s) if s.starts_with('$') => {
-                let x = values.get(&s[1..]).ok_or_else(|| {
-                    ModelError::Program(format!(
-                        "{s:?}: the program declares no parameter {:?}",
-                        &s[1..]
-                    ))
-                })?;
-                *v = json!(*x);
+            Value::String(s) if s.contains('$') => {
+                let x =
+                    eval(s, values).map_err(|why| ModelError::Program(format!("{s:?}: {why}")))?;
+                *v = json!(x);
             }
             Value::Array(l) => l.iter_mut().try_for_each(|x| walk(x, values))?,
             Value::Object(o) => o.values_mut().try_for_each(|x| walk(x, values))?,
@@ -228,6 +226,112 @@ pub fn with_params(program: &str, overrides: &Params) -> Result<String, ModelErr
         walk(ops, &values)?;
     }
     Ok(v.to_string())
+}
+
+/// A parameter expression: numbers, `$name`, `+ - * /`, unary minus and
+/// parentheses, left to right with `*` and `/` before `+` and `-`, in
+/// f64 (so the same on every machine). A result that is not finite (a
+/// division by 0) is an error.
+fn eval(text: &str, values: &Params) -> Result<f64, String> {
+    struct P<'a> {
+        s: &'a [u8],
+        i: usize,
+        values: &'a Params,
+    }
+    impl P<'_> {
+        fn skip(&mut self) {
+            while self.s.get(self.i).is_some_and(u8::is_ascii_whitespace) {
+                self.i += 1;
+            }
+        }
+        fn peek(&mut self) -> Option<u8> {
+            self.skip();
+            self.s.get(self.i).copied()
+        }
+        fn sum(&mut self) -> Result<f64, String> {
+            let mut x = self.product()?;
+            while let Some(c @ (b'+' | b'-')) = self.peek() {
+                self.i += 1;
+                let y = self.product()?;
+                x = if c == b'+' { x + y } else { x - y };
+            }
+            Ok(x)
+        }
+        fn product(&mut self) -> Result<f64, String> {
+            let mut x = self.atom()?;
+            while let Some(c @ (b'*' | b'/')) = self.peek() {
+                self.i += 1;
+                let y = self.atom()?;
+                x = if c == b'*' { x * y } else { x / y };
+            }
+            Ok(x)
+        }
+        fn atom(&mut self) -> Result<f64, String> {
+            match self.peek() {
+                Some(b'-') => {
+                    self.i += 1;
+                    Ok(-self.atom()?)
+                }
+                Some(b'(') => {
+                    self.i += 1;
+                    let x = self.sum()?;
+                    if self.peek() != Some(b')') {
+                        return Err(format!("a ')' is missing at {}", self.i));
+                    }
+                    self.i += 1;
+                    Ok(x)
+                }
+                Some(b'$') => {
+                    self.i += 1;
+                    let start = self.i;
+                    while self
+                        .s
+                        .get(self.i)
+                        .is_some_and(|c| c.is_ascii_alphanumeric() || *c == b'_')
+                    {
+                        self.i += 1;
+                    }
+                    let name = std::str::from_utf8(&self.s[start..self.i]).unwrap_or("");
+                    self.values
+                        .get(name)
+                        .copied()
+                        .ok_or_else(|| format!("the program declares no parameter {name:?}"))
+                }
+                Some(c) if c.is_ascii_digit() || c == b'.' => {
+                    let start = self.i;
+                    while self.s.get(self.i).is_some_and(|c| {
+                        c.is_ascii_digit()
+                            || *c == b'.'
+                            || ((*c == b'e' || *c == b'E') && self.i > start)
+                            || ((*c == b'-' || *c == b'+')
+                                && matches!(self.s[self.i - 1], b'e' | b'E'))
+                    }) {
+                        self.i += 1;
+                    }
+                    let n = std::str::from_utf8(&self.s[start..self.i]).unwrap_or("");
+                    n.parse().map_err(|_| format!("{n:?} is not a number"))
+                }
+                Some(c) => Err(format!(
+                    "{:?} at {} is not part of an expression (numbers, $name, + - * / and parentheses)",
+                    c as char, self.i
+                )),
+                None => Err("the expression ends early".into()),
+            }
+        }
+    }
+    let mut p = P {
+        s: text.as_bytes(),
+        i: 0,
+        values,
+    };
+    let x = p.sum()?;
+    if p.peek().is_some() {
+        return Err(format!("{:?} at {} is left over", &text[p.i..], p.i));
+    }
+    if !x.is_finite() {
+        return Err(format!("comes to {x}, not a finite number"));
+    }
+    Ok(x)
 }
 
 /// Replays a program (`{"name": …, "ops": [...]}`) into a model.
