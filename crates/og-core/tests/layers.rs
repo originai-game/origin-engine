@@ -77,7 +77,7 @@ const LAYERS: &[(&str, &[&str])] = &[
         ],
     ),
     ("assembly", &["og-runtime"]),
-    ("tools", &["og-cli", "og-cook", "og-sccache-wrap", "og-shape-cli", "og-shape-golden"]),
+    ("tools", &["og-cli", "og-cook", "og-sccache-wrap", "og-shape-cli"]),
     (
         "hosts",
         &[

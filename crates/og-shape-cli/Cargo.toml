@@ -16,13 +16,17 @@ name = "shape"
 path = "src/main.rs"
 
 [[test]]
-name = "cli"
-path = "tests/cli.rs"
+name = "tests"
+path = "tests/it/main.rs"
 
 [dependencies]
 og-shape = { path = "../og-shape" }
 og-shape-formats = { path = "../og-shape-formats" }
 serde_json = { version = "1.0.154", default-features = false, features = ["std"] }
+
+[dev-dependencies]
+# Compresses the arrays of the hand-written binary FBX golden case.
+miniz_oxide = { version = "0.9.1", default-features = false, features = ["with-alloc"] }
 
 [lints.rust]
 unsafe_code = "forbid"
