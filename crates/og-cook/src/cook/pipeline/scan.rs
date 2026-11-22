@@ -1,5 +1,8 @@
 use super::*;
 
+/// The font pack every TSX UI's bundle carries (`templates/fonts/`).
+const DEFAULT_CJK_PACK: &str = "chinese-simplified";
+
 fn walk(dir: &Path, rel: &str, out: &mut Vec<(String, PathBuf)>) -> std::io::Result<()> {
     let mut entries: Vec<_> = std::fs::read_dir(dir)?.collect::<Result<_, _>>()?;
     entries.sort_by_key(|e| e.file_name());
@@ -202,14 +205,40 @@ pub(crate) fn scan_with(
             }
         }
     }
+    // Every UI draws Chinese with nothing installed: the bundled
+    // `chinese-simplified` font pack joins a TSX UI's bundle unless the
+    // project installs its own. Like every font pack, its face is read
+    // only when a frame first draws a character only it covers.
+    let mut at: BTreeMap<String, PathBuf> = BTreeMap::new();
+    if code.tsx
+        && !files
+            .iter()
+            .any(|(r, _)| r.ends_with(&format!("/{DEFAULT_CJK_PACK}/extension.json")))
+        && let Some(dir) = look::fonts_dir().map(|d| d.join(DEFAULT_CJK_PACK))
+        && let Ok(entries) = std::fs::read_dir(&dir)
+    {
+        for e in entries.flatten() {
+            let (Some(name), Ok(bytes)) = (
+                e.file_name().to_str().map(str::to_owned),
+                std::fs::read(e.path()),
+            ) else {
+                continue;
+            };
+            let id = format!("@fonts/{DEFAULT_CJK_PACK}/{name}");
+            builtins.insert(id.clone(), intern(bytes));
+            at.insert(id, e.path());
+        }
+    }
     for id in builtins.keys() {
-        files.push((id.clone(), assets_dir.join(id)));
+        let path = at.get(id).cloned().unwrap_or_else(|| assets_dir.join(id));
+        files.push((id.clone(), path));
     }
     let mut external: Vec<PathBuf> = builtins
         .keys()
         .filter(|id| !code.tables.contains_key(*id))
         .filter_map(|id| look::style_path(id).map(Path::to_path_buf))
         .collect();
+    external.extend(at.into_values());
     external.extend(table_inputs);
     let read = |rel: &str, path: &Path| -> Result<Vec<u8>, CookError> {
         match builtins.get(rel) {

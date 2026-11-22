@@ -252,6 +252,9 @@ pub(crate) fn mount_back(
                 // found by the core on the CPU: the same with a renderer or none.
                 // A character an installed font pack covers loads that pack
                 // instead (docs/ui.md §3.4): it draws from the next frame.
+                if let Ok(eng) = engine(engine_id) {
+                    crate::bind::i18n::frame_missed(&eng, &missing);
+                }
                 if !missing.is_empty()
                     && let Ok(eng) = engine(engine_id)
                 {

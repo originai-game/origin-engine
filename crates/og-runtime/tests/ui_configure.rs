@@ -114,11 +114,20 @@ fn project() -> &'static Path {
 
 struct Disk;
 
+thread_local! {
+    /// A file whose path ends so is still being fetched, as the web reads
+    /// an on-demand face after the boot.
+    static FETCHING: std::cell::RefCell<Option<&'static str>> = const { std::cell::RefCell::new(None) };
+}
+
 impl Hooks for Disk {
     fn dispatch(&self, _call: &Dispatch) -> Result<String, String> {
         Ok(String::new())
     }
     fn read_asset(&self, path: &str) -> Fetch<Vec<u8>> {
+        if FETCHING.with(|f| f.borrow().is_some_and(|end| path.ends_with(end))) {
+            return Fetch::Pending;
+        }
         match std::fs::read(path) {
             Ok(bytes) => Fetch::Ready(bytes),
             Err(e) => Fetch::Failed(format!("{path}: {e}")),
@@ -348,6 +357,35 @@ fn a_packs_fonts_draw_its_text_and_a_faceless_family_falls_back() {
         og_runtime::ui_text_family(e, "sans-serif").as_deref(),
         Some("Instrument Sans"),
         "the default face draws it"
+    );
+    assert!(warnings(e).iter().all(|w| !w.contains("no font")));
+}
+
+/// A pack's face ships whole and on demand (`<id>.face.ogb`): until it
+/// lands, its text draws from the next face, the default one, and the
+/// face joins the moment it is fetched. Ways this could fail: the style
+/// refuses to load while its face is fetched, the face is never taken
+/// once it lands, or the wait warns that the text has no font.
+#[test]
+fn a_packs_face_still_being_fetched_draws_from_the_next_face_until_it_lands() {
+    FETCHING.with(|f| *f.borrow_mut() = Some("styles/faced/Body.ttf.face.ogb"));
+    let e = engine();
+    let style = value(og_runtime::host_impl::answer(og_load_style(
+        e,
+        "styles/faced".into(),
+    )));
+    configure(e, json!({ "style": style }));
+    assert_eq!(
+        og_runtime::ui_text_family(e, "sans-serif").as_deref(),
+        Some("Instrument Sans"),
+        "the next face draws it meanwhile"
+    );
+    FETCHING.with(|f| *f.borrow_mut() = None);
+    og_runtime::fonts_pending();
+    assert_eq!(
+        og_runtime::ui_text_family(e, "sans-serif").as_deref(),
+        Some("Newsreader"),
+        "the pack's face, once it lands"
     );
     assert!(warnings(e).iter().all(|w| !w.contains("no font")));
 }

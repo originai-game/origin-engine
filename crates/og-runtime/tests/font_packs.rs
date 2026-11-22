@@ -135,6 +135,9 @@ thread_local! {
     static LABEL: RefCell<Option<String>> = const { RefCell::new(None) };
     /// The engines whose UI shows the label.
     static MOUNTED: RefCell<Vec<u32>> = const { RefCell::new(Vec::new()) };
+    /// Files whose path holds one of these are still being fetched, as the
+    /// web reads an on-demand face after the boot.
+    static FETCHING: RefCell<Vec<&'static str>> = const { RefCell::new(Vec::new()) };
 }
 
 /// Shows `text` as a TSX label in engine `e`'s tree, as the TS renderer's
@@ -200,6 +203,9 @@ impl Hooks for Disk {
         Ok(String::new())
     }
     fn read_asset(&self, path: &str) -> Fetch<Vec<u8>> {
+        if FETCHING.with(|f| f.borrow().iter().any(|p| path.contains(p))) {
+            return Fetch::Pending;
+        }
         match std::fs::read(path) {
             Ok(bytes) => Fetch::Ready(bytes),
             Err(e) => Fetch::Failed(format!("{path}: {e}")),
@@ -346,6 +352,37 @@ fn the_locale_pack_is_in_the_chain_and_others_load_on_demand() {
         chain(engine),
         vec!["japanese", "arabic"],
         "no pack for Hebrew"
+    );
+}
+
+#[test]
+fn the_first_frame_waits_until_a_landed_face_draws_what_it_lacked() {
+    // Every face with Arabic or Han still being fetched.
+    let han = [
+        "NotoSansSC",
+        "NotoSansTC",
+        "NotoSansJP",
+        "NotoSerifSC",
+        "ZCOOL",
+    ];
+    FETCHING.with(|f| *f.borrow_mut() = [&["NotoSansArabic"][..], &han].concat());
+    let (_engine, step) = start("ar");
+    show("ليلى 商店");
+    step();
+    step();
+    assert!(og_runtime::fonts_pending() > 0, "the frame lacks both");
+    // The Arabic face lands first: the Han is still missing, and behind
+    // the play gate no tick lays the frame out again to say so.
+    FETCHING.with(|f| f.borrow_mut().retain(|p| !p.contains("Arabic")));
+    assert!(
+        og_runtime::fonts_pending() > 0,
+        "the first frame still waits for the Han"
+    );
+    FETCHING.with(|f| f.borrow_mut().clear());
+    assert_eq!(
+        og_runtime::fonts_pending(),
+        0,
+        "every face it lacked landed"
     );
 }
 

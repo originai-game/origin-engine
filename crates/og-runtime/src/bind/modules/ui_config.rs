@@ -256,8 +256,10 @@ pub fn og_ui_configure(world: u32, desc: Option<String>) -> Result<(), String> {
 pub(crate) struct LoadedStyle {
     pub id: String,
     pub faces: Vec<og_ui_next::fonts::FamilyFace>,
-    /// Its `fonts`: the font files it ships, loaded (their indices).
-    pub fonts: Vec<usize>,
+    /// Its `fonts`: the font files it ships, first first. Each is loaded
+    /// once it is fetched (the web reads them after the boot,
+    /// `bind::i18n::apply`).
+    pub files: Vec<String>,
     /// The families its theme names for body, display, mono and rounded
     /// text, first first ([`og_ui_next::pack::Layer::role_families`]).
     pub roles: [Vec<String>; 4],
@@ -307,12 +309,12 @@ pub(super) fn read_style(eng: &Engine, id: &str) -> Result<LoadedStyle, String> 
             .map_err(|e| e.to_string())?
     };
     let layer = og_ui_next::pack::Layer::parse(&text).map_err(|e| format!("{blob}: {e}"))?;
-    let (faces, fonts) = docs::pack_faces(eng, &layer.fonts, &blob, &format!("@pack:{id}"))?;
+    let faces = docs::pack_faces(eng, &layer.fonts, &blob, &format!("@pack:{id}"))?;
     Ok(LoadedStyle {
         id: id.to_owned(),
         faces,
-        fonts,
         roles: layer.role_families(),
+        files: layer.fonts,
     })
 }
 
