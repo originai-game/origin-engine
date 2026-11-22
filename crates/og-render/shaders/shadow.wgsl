@@ -46,7 +46,7 @@ struct VsOut {
   @location(4) color: vec4<f32>,
   // How much of an instance fading in is hidden (instance.wgsl
   // `look_hidden`; 0: whole): `fs_dissolve` cuts that share of its texels.
-  @location(5) @interpolate(flat) hidden: f32,
+  @location(5) @interpolate(flat, either) hidden: f32,
 };
 
 fn shadow_vertex(model: mat4x4<f32>, v: VertexIn) -> VsOut {

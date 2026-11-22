@@ -47,13 +47,13 @@ struct ParticleOut {
   // the corner before the rotation, which the texture and the round dot use.
   @location(6) facing: vec2<f32>,
   // oit.wgsl `oit_key`: the particle and which of its triangles.
-  @location(7) @interpolate(flat) oit_key: vec2<u32>,
+  @location(7) @interpolate(flat, either) oit_key: vec2<u32>,
   // The effect material's driven values (effect.wgsl EffectDriven) and
   // the surface's own 0 to 1 coordinates.
-  @location(8) @interpolate(flat) fx_a: vec4<f32>,
-  @location(9) @interpolate(flat) fx_b: vec4<f32>,
-  @location(10) @interpolate(flat) fx_c1: vec4<f32>,
-  @location(11) @interpolate(flat) fx_c2: vec4<f32>,
+  @location(8) @interpolate(flat, either) fx_a: vec4<f32>,
+  @location(9) @interpolate(flat, either) fx_b: vec4<f32>,
+  @location(10) @interpolate(flat, either) fx_c1: vec4<f32>,
+  @location(11) @interpolate(flat, either) fx_c2: vec4<f32>,
   @location(12) shape_uv: vec2<f32>,
   // A blended sheet's next frame (xy) and how far into it (z; 0 without).
   @location(13) uv_next: vec3<f32>,

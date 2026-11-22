@@ -111,11 +111,11 @@ struct SpriteOut {
   @location(4) corner: vec2<f32>,
   @location(5) world: vec3<f32>,
   @location(6) shadow: f32,                   // 1 for a drop shadow
-  @location(7) @interpolate(flat) region: vec4<f32>,         // the uv region: its smallest u and v (xy), its largest (zw)
-  @location(8) @interpolate(flat) outline: vec4<f32>,
-  @location(9) @interpolate(flat) outline_color: vec4<f32>,
+  @location(7) @interpolate(flat, either) region: vec4<f32>,         // the uv region: its smallest u and v (xy), its largest (zw)
+  @location(8) @interpolate(flat, either) outline: vec4<f32>,
+  @location(9) @interpolate(flat, either) outline_color: vec4<f32>,
   // oit.wgsl `oit_key`: the sprite and which of its triangles.
-  @location(10) @interpolate(flat) oit_key: vec2<u32>,
+  @location(10) @interpolate(flat, either) oit_key: vec2<u32>,
 };
 
 // The instance's uv region as min (xy) and max (zw): a flipped region's

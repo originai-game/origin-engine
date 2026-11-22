@@ -61,9 +61,9 @@ struct PaintOut {
   // The fragment's place in the box, CSS px from its centre.
   @location(0) local: vec2<f32>,
   @location(1) uv: vec2<f32>,
-  @location(2) @interpolate(flat) index: u32,
+  @location(2) @interpolate(flat, either) index: u32,
   // Device pixels per CSS pixel of the box, its transform's scale included.
-  @location(3) @interpolate(flat) aa: f32,
+  @location(3) @interpolate(flat, either) aa: f32,
   // The fragment's place in CSS px before transforms, which a mask reads.
   @location(4) at: vec2<f32>,
 };

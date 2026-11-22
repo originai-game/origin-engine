@@ -26,7 +26,7 @@ struct SkyParams {
 struct SkyOut {
   @builtin(position) pos: vec4<f32>,
   @location(0) ndc: vec2<f32>,
-  @location(1) @interpolate(flat) grey: vec4<f32>,
+  @location(1) @interpolate(flat, either) grey: vec4<f32>,
 };
 
 fn sky_triangle(i: u32) -> SkyOut {

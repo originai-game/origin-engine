@@ -155,9 +155,9 @@ struct CustomOut {
   @location(4) local: vec3<f32>,
   @location(5) data: vec4<f32>,
   // oit.wgsl `oit_key` (the linked lists' equal-depth order).
-  @location(6) @interpolate(flat) oit_key: vec2<u32>,
+  @location(6) @interpolate(flat, either) oit_key: vec2<u32>,
   // 1 for a skinned instance (pbr.wgsl VertexOut's `moves`).
-  @location(7) @interpolate(flat) moves: u32,
+  @location(7) @interpolate(flat, either) moves: u32,
 };
 
 fn custom_input(v: CustomVertexIn) -> VertexInput {

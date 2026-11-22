@@ -23,10 +23,10 @@ struct ScatterOut {
   @location(2) uv: vec2<f32>,
   @location(3) color: vec4<f32>,
   // How much of the copy draws as its mesh (scatter_near; scatter_hidden).
-  @location(4) @interpolate(flat) fade: f32,
+  @location(4) @interpolate(flat, either) fade: f32,
   // The copy's id in the outline target (clump_id); beside the other
   // scalar, so no vector is packed for it (impostor.wgsl).
-  @location(8) @interpolate(flat) object: u32,
+  @location(8) @interpolate(flat, either) object: u32,
   @location(5) cur_clip: vec4<f32>,
   @location(6) prev_clip: vec4<f32>,
   @location(7) local: vec3<f32>,

@@ -8,12 +8,12 @@ struct CardShadowOut {
   @builtin(position) clip: vec4<f32>,
   @location(0) world: vec3<f32>,
   @location(1) local: vec3<f32>,
-  @location(2) @interpolate(flat) cols: vec2<f32>,
-  @location(3) @interpolate(flat) rows: vec2<f32>,
+  @location(2) @interpolate(flat, either) cols: vec2<f32>,
+  @location(3) @interpolate(flat, either) rows: vec2<f32>,
   // x: the second column's weight, y: the second frame's, z: the sphere's
   // radius in the world
-  @location(4) @interpolate(flat) blend: vec3<f32>,
-  @location(5) @interpolate(flat) toward: vec3<f32>,
+  @location(4) @interpolate(flat, either) blend: vec3<f32>,
+  @location(5) @interpolate(flat, either) toward: vec3<f32>,
 };
 
 @vertex

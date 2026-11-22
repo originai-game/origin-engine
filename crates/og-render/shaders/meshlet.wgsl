@@ -166,7 +166,7 @@ fn vs_prepass_meshlet(@builtin(vertex_index) vi: u32, @builtin(instance_index) i
 
 struct MeshletResolveOut {
   @builtin(position) clip: vec4<f32>,
-  @location(0) @interpolate(flat) row: u32,
+  @location(0) @interpolate(flat, either) row: u32,
 };
 
 @vertex

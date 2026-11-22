@@ -18,26 +18,26 @@ struct ImpostorOut {
   @location(0) world: vec3<f32>,
   @location(1) uv01: vec4<f32>,
   @location(2) uv2: vec2<f32>,
-  @location(3) @interpolate(flat) frames: vec3<u32>,
-  @location(4) @interpolate(flat) weights: vec3<f32>,
+  @location(3) @interpolate(flat, either) frames: vec3<u32>,
+  @location(4) @interpolate(flat, either) weights: vec3<f32>,
   // How much of the card the dither cuts (imp_hidden).
-  @location(5) @interpolate(flat) fade: f32,
+  @location(5) @interpolate(flat, either) fade: f32,
   @location(6) cur_clip: vec4<f32>,
   @location(7) prev_clip: vec4<f32>,
   // The model's turn (its columns, normalised).
-  @location(8) @interpolate(flat) m0: vec3<f32>,
-  @location(9) @interpolate(flat) m1: vec3<f32>,
-  @location(10) @interpolate(flat) m2: vec3<f32>,
+  @location(8) @interpolate(flat, either) m0: vec3<f32>,
+  @location(9) @interpolate(flat, either) m1: vec3<f32>,
+  @location(10) @interpolate(flat, either) m2: vec3<f32>,
   // xyz: where the copy's root stands (its transform's translation),
   // whose tree lot its leaves' year takes (imp_leaf); w: its sphere's
   // radius in the world.
-  @location(11) @interpolate(flat) root_extent: vec4<f32>,
+  @location(11) @interpolate(flat, either) root_extent: vec4<f32>,
   // The copy's id in the outline target, its mesh's (scatter.wgsl). Here,
   // not last: a scalar after `rest` packs it, and naga's Metal output then
   // fails to multiply it by a matrix.
-  @location(14) @interpolate(flat) object: u32,
+  @location(14) @interpolate(flat, either) object: u32,
   // The model's sphere's centre in the world.
-  @location(12) @interpolate(flat) centre: vec3<f32>,
+  @location(12) @interpolate(flat, either) centre: vec3<f32>,
   // The card's point before the wind moved it (imp_sway): what the frames'
   // depths are measured from.
   @location(13) rest: vec3<f32>,

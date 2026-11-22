@@ -85,10 +85,10 @@ struct VertexOut {
   // so the fragment can undo the perspective-correct interpolation.
   @location(6) affine: vec3<f32>,
   // The instance's look (InstanceFxIn; zero: none).
-  @location(8) @interpolate(flat) look: vec4<f32>,
+  @location(8) @interpolate(flat, either) look: vec4<f32>,
   // Order-independent transparency's key of the draw and primitive
   // (oit.wgsl `oit_key`; the linked lists' equal-depth order).
-  @location(9) @interpolate(flat) oit_key: vec2<u32>,
+  @location(9) @interpolate(flat, either) oit_key: vec2<u32>,
   // A seasonal leaf's autumn colour (foliage.wgsl
   // `season_leaf_color`: rgb, and a, how far it replaces the leaf's own;
   // zero: its own), set by the meshlet path's foliage.
@@ -99,7 +99,7 @@ struct VertexOut {
   @location(11) crown: vec2<f32>,
   // 1 for a surface that moves (a skinned instance, a garment), whose
   // weather is a dusting (weather_surface.wgsl WEATHER_MOVES).
-  @location(12) @interpolate(flat) moves: u32,
+  @location(12) @interpolate(flat, either) moves: u32,
 };
 
 // The surface's own colour, the material's base colour times the vertex
@@ -202,7 +202,7 @@ struct PrepassOut {
   @location(6) prev_clip: vec4<f32>,
   // Which object this is (`object_id`), for the outline pass; bit 8 set
   // on a skinned instance (vs_prepass_skinned).
-  @location(8) @interpolate(flat) object: u32,
+  @location(8) @interpolate(flat, either) object: u32,
   // VertexOut's: the prepass cuts with the lit pass's uv.
   @location(9) affine: vec3<f32>,
 };

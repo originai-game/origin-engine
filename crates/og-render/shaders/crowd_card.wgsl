@@ -11,18 +11,18 @@ struct CardOut {
   @builtin(position) clip: vec4<f32>,
   @location(0) world: vec3<f32>,
   @location(1) local: vec3<f32>,
-  @location(2) @interpolate(flat) cols: vec2<f32>,
-  @location(3) @interpolate(flat) rows: vec2<f32>,
+  @location(2) @interpolate(flat, either) cols: vec2<f32>,
+  @location(3) @interpolate(flat, either) rows: vec2<f32>,
   // x: the second column's weight, y: the second frame's, z: the sphere's
   // radius in the world
-  @location(4) @interpolate(flat) blend: vec3<f32>,
-  @location(5) @interpolate(flat) toward: vec3<f32>,
+  @location(4) @interpolate(flat, either) blend: vec3<f32>,
+  @location(5) @interpolate(flat, either) toward: vec3<f32>,
   // The member's turn (its columns, normalised) and its sphere's centre.
-  @location(6) @interpolate(flat) m0: vec3<f32>,
-  @location(7) @interpolate(flat) m1: vec3<f32>,
-  @location(8) @interpolate(flat) m2: vec3<f32>,
-  @location(9) @interpolate(flat) centre: vec3<f32>,
-  @location(10) @interpolate(flat) look: vec4<f32>,
+  @location(6) @interpolate(flat, either) m0: vec3<f32>,
+  @location(7) @interpolate(flat, either) m1: vec3<f32>,
+  @location(8) @interpolate(flat, either) m2: vec3<f32>,
+  @location(9) @interpolate(flat, either) centre: vec3<f32>,
+  @location(10) @interpolate(flat, either) look: vec4<f32>,
   @location(11) cur_clip: vec4<f32>,
   @location(12) prev_clip: vec4<f32>,
 };

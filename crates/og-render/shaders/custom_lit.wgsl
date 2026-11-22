@@ -129,7 +129,7 @@ struct CustomPrepassOut {
   @location(5) data: vec4<f32>,
   @location(6) cur_clip: vec4<f32>,
   @location(7) prev_clip: vec4<f32>,
-  @location(8) @interpolate(flat) moves: u32,
+  @location(8) @interpolate(flat, either) moves: u32,
 };
 
 struct CustomPrevIn {

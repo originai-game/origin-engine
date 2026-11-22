@@ -28,12 +28,12 @@ struct PhysicalOut {
   @location(6) scale: vec3<f32>,
   @location(7) affine: vec3<f32>,
   // The instance's look (pbr.wgsl InstanceFxIn).
-  @location(8) @interpolate(flat) look: vec4<f32>,
+  @location(8) @interpolate(flat, either) look: vec4<f32>,
   // pbr.wgsl VertexOut's.
-  @location(9) @interpolate(flat) oit_key: vec2<u32>,
-  @location(10) @interpolate(flat) volume_id: u32,
+  @location(9) @interpolate(flat, either) oit_key: vec2<u32>,
+  @location(10) @interpolate(flat, either) volume_id: u32,
   // pbr.wgsl VertexOut's.
-  @location(11) @interpolate(flat) moves: u32,
+  @location(11) @interpolate(flat, either) moves: u32,
 };
 
 fn physical_vertex(model: mat4x4<f32>, v: VertexIn) -> PhysicalOut {

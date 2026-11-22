@@ -9,7 +9,7 @@ struct ScatterShadowOut {
   @builtin(position) clip: vec4<f32>,
   @location(0) world: vec3<f32>,
   @location(1) uv: vec2<f32>,
-  @location(2) @interpolate(flat) fade: f32,
+  @location(2) @interpolate(flat, either) fade: f32,
 };
 
 @vertex

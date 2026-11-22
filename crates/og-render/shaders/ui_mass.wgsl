@@ -135,9 +135,9 @@ struct MassOut {
   // A bar's position from its centre and its half size (CSS px).
   @location(2) local: vec2<f32>,
   @location(3) half: vec2<f32>,
-  @location(4) @interpolate(flat) batch: u32,
+  @location(4) @interpolate(flat, either) batch: u32,
   // Quad, segment count and drawn scale (bars only).
-  @location(5) @interpolate(flat) bar: vec3<f32>,
+  @location(5) @interpolate(flat, either) bar: vec3<f32>,
 };
 
 fn ease_lut(base: u32, k: f32) -> f32 {

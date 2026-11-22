@@ -37,7 +37,7 @@ struct LeanOut {
   @location(1) normal: vec3<f32>,
   @location(2) color: vec4<f32>,
   // The instance's look (pbr.wgsl InstanceFxIn).
-  @location(3) @interpolate(flat) look: vec4<f32>,
+  @location(3) @interpolate(flat, either) look: vec4<f32>,
 };
 
 @vertex
@@ -87,7 +87,7 @@ struct LeanPrepassOut {
   @location(1) normal: vec3<f32>,
   @location(2) cur_clip: vec4<f32>,
   @location(3) prev_clip: vec4<f32>,
-  @location(4) @interpolate(flat) object: u32,
+  @location(4) @interpolate(flat, either) object: u32,
 };
 
 @vertex

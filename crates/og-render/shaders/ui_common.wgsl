@@ -1071,9 +1071,9 @@ struct UiInstance {
 struct UiOut {
   @builtin(position) position: vec4<f32>,
   @location(0) local: vec2<f32>,
-  @location(1) @interpolate(flat) instance: u32,
+  @location(1) @interpolate(flat, either) instance: u32,
   // A vector's paint (its gradient's index past the instance's base).
-  @location(2) @interpolate(flat) vpaint: u32,
+  @location(2) @interpolate(flat, either) vpaint: u32,
   // A vector's edge coverage, 1 inside, 0 at the fringe's outer side.
   @location(3) aa: f32,
 };

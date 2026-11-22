@@ -37,9 +37,9 @@ struct SprayOut {
   // The sprite's corner (-1 to 1) and its opacity.
   @location(1) corner: vec2<f32>,
   @location(2) alpha: f32,
-  @location(3) @interpolate(flat) sheet: u32,
+  @location(3) @interpolate(flat, either) sheet: u32,
   // A spume sheet's own hash (0 to 1): its strands, its sway and where along it it is densest.
-  @location(4) @interpolate(flat) seed: f32,
+  @location(4) @interpolate(flat, either) seed: f32,
 };
 
 @vertex

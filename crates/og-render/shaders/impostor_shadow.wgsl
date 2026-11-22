@@ -8,18 +8,18 @@ struct ImpostorShadowOut {
   @location(0) world: vec3<f32>,
   @location(1) uv01: vec4<f32>,
   @location(2) uv2: vec2<f32>,
-  @location(3) @interpolate(flat) frames: vec3<u32>,
-  @location(4) @interpolate(flat) weights: vec3<f32>,
-  @location(5) @interpolate(flat) fade: f32,
-  @location(6) @interpolate(flat) par01: vec4<f32>,
-  @location(7) @interpolate(flat) par2: vec2<f32>,
+  @location(3) @interpolate(flat, either) frames: vec3<u32>,
+  @location(4) @interpolate(flat, either) weights: vec3<f32>,
+  @location(5) @interpolate(flat, either) fade: f32,
+  @location(6) @interpolate(flat, either) par01: vec4<f32>,
+  @location(7) @interpolate(flat, either) par2: vec2<f32>,
   // Towards the light from the copy's centre (the frames' depth axis) and
   // the model's sphere radius in the world.
-  @location(8) @interpolate(flat) toward: vec3<f32>,
-  @location(9) @interpolate(flat) extent: f32,
+  @location(8) @interpolate(flat, either) toward: vec3<f32>,
+  @location(9) @interpolate(flat, either) extent: f32,
   // imp_depths of the card's point (pd linear over the card).
   @location(10) pd: vec3<f32>,
-  @location(11) @interpolate(flat) vd: vec3<f32>,
+  @location(11) @interpolate(flat, either) vd: vec3<f32>,
 };
 
 @vertex

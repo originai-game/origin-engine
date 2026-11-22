@@ -305,7 +305,7 @@ pub(crate) fn array_lit_source(standard: &str) -> String {
             &s,
             &format!("struct {out} {{\n  @builtin(position) clip: vec4<f32>,\n"),
             &format!(
-                "struct {out} {{\n  @builtin(position) clip: vec4<f32>,\n  // The instance's texture-array layer plus one (0: the material's).\n  @location(7) @interpolate(flat) layer: u32,\n"
+                "struct {out} {{\n  @builtin(position) clip: vec4<f32>,\n  // The instance's texture-array layer plus one (0: the material's).\n  @location(7) @interpolate(flat, either) layer: u32,\n"
             ),
             out,
         );
@@ -535,13 +535,18 @@ mod tests {
         for decl in [
             "var base_color_tex: texture_2d_array<f32>;",
             "var normal_tex: texture_2d_array<f32>;",
-            "@location(7) @interpolate(flat) layer: u32,",
+            "@location(7) @interpolate(flat, either) layer: u32,",
             "fn vs_standard(",
             "fn fs_prepass_standard(",
         ] {
             assert!(array.contains(decl), "{decl}");
         }
-        assert_eq!(array.matches("@interpolate(flat) layer: u32").count(), 2);
+        assert_eq!(
+            array
+                .matches("@interpolate(flat, either) layer: u32")
+                .count(),
+            2
+        );
         for (texture, layer) in [
             ("base_color_tex", "map_layer"),
             ("normal_tex", "normal_layer"),

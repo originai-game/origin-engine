@@ -33,7 +33,7 @@ struct RibbonOut {
   @location(2) textured: f32,
   @location(3) world: vec3<f32>,
   // oit.wgsl `oit_key`: the strip's segment (its provoking vertex's).
-  @location(4) @interpolate(flat) oit_key: vec2<u32>,
+  @location(4) @interpolate(flat, either) oit_key: vec2<u32>,
   // The effect material's driven values (effect.wgsl EffectDriven) and
   // the strip's own coordinates: life along it, 0 to 1 across.
   @location(5) fx_a: vec4<f32>,

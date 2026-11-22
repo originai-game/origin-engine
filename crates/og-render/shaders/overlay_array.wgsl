@@ -30,7 +30,7 @@ struct OverlayOut {
   @location(0) uv: vec2<f32>,
   @location(1) color: vec4<f32>,
   @location(2) clip: vec4<f32>,
-  @location(3) @interpolate(flat) layer: u32,
+  @location(3) @interpolate(flat, either) layer: u32,
 };
 
 @vertex

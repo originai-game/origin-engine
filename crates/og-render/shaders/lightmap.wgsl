@@ -17,8 +17,8 @@ struct LightmappedOut {
   @location(5) tangent: vec4<f32>,
   @location(6) affine: vec3<f32>,
   @location(7) lightmap: vec3<f32>,
-  @location(8) @interpolate(flat) look: vec4<f32>,
-  @location(9) @interpolate(flat) oit_key: vec2<u32>,
+  @location(8) @interpolate(flat, either) look: vec4<f32>,
+  @location(9) @interpolate(flat, either) oit_key: vec2<u32>,
 };
 
 @vertex

@@ -40,7 +40,7 @@ struct OverlayOut {
   @location(3) effect: vec4<f32>,
   @location(4) effect_color: vec4<f32>,
   @location(5) effect2: vec4<f32>,
-  @location(6) @interpolate(flat) clip_shape: u32,
+  @location(6) @interpolate(flat, either) clip_shape: u32,
 };
 
 @vertex
