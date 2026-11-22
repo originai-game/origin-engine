@@ -20,15 +20,28 @@ const restore = () => {
 test("no navigator.gpu, an insecure page, no adapter: each a reason; an adapter: null", async () => {
   try {
     withGpu(undefined);
-    expect(await webGpuMissing()).toBe("navigator.gpu is missing");
+    expect(await webGpuMissing(false)).toBe("navigator.gpu is missing");
     withGpu(undefined, false);
-    expect(await webGpuMissing()).toMatch(/not a secure context/);
+    expect(await webGpuMissing(false)).toMatch(/not a secure context/);
     withGpu({ requestAdapter: async () => null });
-    expect(await webGpuMissing()).toBe("the browser found no WebGPU adapter");
+    expect(await webGpuMissing(false)).toBe("the browser found no WebGPU adapter");
     withGpu({ requestAdapter: async () => Promise.reject(new Error("blocked")) });
-    expect(await webGpuMissing()).toBe("the browser's WebGPU did not start: blocked");
+    expect(await webGpuMissing(false)).toBe("the browser's WebGPU did not start: blocked");
     withGpu({ requestAdapter: async () => ({}) });
-    expect(await webGpuMissing()).toBeNull();
+    expect(await webGpuMissing(false)).toBeNull();
+  } finally {
+    restore();
+  }
+});
+
+test("it asks for the renderer's adapter: high-performance, or low-power where the player chose it", async () => {
+  try {
+    // Chrome on a Linux host with an NVIDIA GPU: no adapter without a preference, the GPU with one.
+    const asked: unknown[] = [];
+    withGpu({ requestAdapter: async (o?: { powerPreference?: string }) => (asked.push(o?.powerPreference), o?.powerPreference ? {} : null) });
+    expect(await webGpuMissing(false)).toBeNull();
+    expect(await webGpuMissing(true)).toBeNull();
+    expect(asked).toEqual(["high-performance", "low-power"]);
   } finally {
     restore();
   }

@@ -41,7 +41,7 @@ export async function start(game: GameToken, data: Start, run: Run, gate: Gate, 
     // The adapter is asked here, never on the page's main thread (webgpu.ts): without one the
     // page shows why, and nothing is fetched. The page checked navigator.gpu itself; a Worker
     // without it is a headless host (bun's), which draws nothing.
-    const unsupported = (self as { navigator?: { gpu?: unknown } }).navigator?.gpu ? await webGpuMissing() : null;
+    const unsupported = (self as { navigator?: { gpu?: unknown } }).navigator?.gpu ? await webGpuMissing(data.lowPower === true) : null;
     if (unsupported) return self.postMessage({ type: "unsupported", reason: unsupported });
     gate.pageStages(data.stages === true);
     const received = new Received((data.expect?.wasm ?? 0) + (data.expect?.cooked ?? 0));

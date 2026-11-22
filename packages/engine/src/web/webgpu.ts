@@ -19,14 +19,18 @@ export function webGpuAbsent(): string | null {
  * needs https or localhost) or no adapter is not supported, and the player
  * shell says so instead of starting the engine. A device the adapter then
  * refuses is the engine Worker's start failure (`og_web_attach_canvas`).
- * It asks for an adapter: call it off the page's main thread.
+ * It asks for the adapter the renderer will ask for: its power preference,
+ * `low-power` where the player chose it (`lowPower`), else `high-performance`
+ * (og-render `power_preference`). Chrome on a Linux host with an NVIDIA GPU
+ * answers a request without one null and that one the GPU. It asks for an
+ * adapter: call it off the page's main thread.
  */
-export async function webGpuMissing(): Promise<string | null> {
+export async function webGpuMissing(lowPower: boolean): Promise<string | null> {
   const absent = webGpuAbsent();
   if (absent) return absent;
-  const gpu = (globalThis.navigator as { gpu: { requestAdapter(): Promise<unknown> } }).gpu;
+  const gpu = (globalThis.navigator as { gpu: { requestAdapter(options: { powerPreference: string }): Promise<unknown> } }).gpu;
   try {
-    return (await gpu.requestAdapter()) ? null : "the browser found no WebGPU adapter";
+    return (await gpu.requestAdapter({ powerPreference: lowPower ? "low-power" : "high-performance" })) ? null : "the browser found no WebGPU adapter";
   } catch (e) {
     return `the browser's WebGPU did not start: ${e instanceof Error ? e.message : String(e)}`;
   }
