@@ -4471,7 +4471,7 @@ mod tests {
         assert!(!frame.painted && t.take_missing().is_empty(), "once");
         let path = concat!(
             env!("CARGO_MANIFEST_DIR"),
-            "/../../templates/styles/cjk/NotoSansSC[wght].ttf"
+            "/../../templates/styles/cjk/NotoSansSC-Regular.ttf"
         );
         let cjk = fonts
             .add(std::sync::Arc::new(std::fs::read(path).unwrap()))

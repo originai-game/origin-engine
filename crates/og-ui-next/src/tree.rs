@@ -1199,12 +1199,6 @@ impl Tree {
         let p = &mut self.drawn;
         p.clear();
         (p.width, p.height) = (vw, vh);
-        // Font slot 1 is an icon set's cooked font, which the host adds
-        // the other pages of; texts draw from the glyph atlas.
-        let icon_font = icons.font.as_ref().and_then(|f| f.handle);
-        if p.fonts.len() != 2 || p.fonts[1].first().copied() != icon_font {
-            p.fonts = vec![Vec::new(), icon_font.into_iter().collect()];
-        }
         self.plots.clear();
         let scale = self.scale;
         self.order();
@@ -1634,22 +1628,20 @@ impl Tree {
                 let size = b.w.min(b.h).max(1.0);
                 let square = [x + (b.w - size) / 2.0, y + (b.h - size) / 2.0, size, size];
                 match icons.find_drawn(&el.text) {
-                    Some((IconCell::Glyph(_, ch), _)) => {
-                        let (asc, desc) = icons
-                            .font
-                            .as_ref()
-                            .map_or((0.8, -0.2), |f| (f.metrics.ascender, f.metrics.descender));
-                        let top = y + (b.h - (asc - desc) * size) / 2.0;
-                        p.quads.push(quad(
-                            PaintKind::Glyph,
-                            [square[0], top + asc * size, size, 0.0],
-                            clip,
-                            icon_ink,
-                            [0.0; 4],
-                            [0.0; 4],
-                            ch as u32,
-                            1,
-                        ));
+                    Some((IconCell::Face(face, index), _)) => {
+                        // Its field, in the glyph atlas: put back when the
+                        // atlas dropped it, drawn nothing this frame when
+                        // it has no room for it yet.
+                        if let Some((q, plot)) = face.quad(atlas, index, square) {
+                            if !self.plots.contains(&plot) {
+                                self.plots.push(plot);
+                            }
+                            p.quads.push(PaintQuad {
+                                color: icon_ink,
+                                clip,
+                                ..q
+                            });
+                        }
                     }
                     // A texture grid's cell: a picture in its own colours, a
                     // mask in the ink.
