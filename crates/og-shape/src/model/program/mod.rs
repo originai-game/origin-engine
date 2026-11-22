@@ -10,6 +10,11 @@
 //! written into the operations that used them, so a replay needs no
 //! readers and gives the same bytes.
 //!
+//! A program may declare parameters, `"params": {"height": 900}`, and
+//! give any field of its operations as `"$height"`: [`with_params`] sets
+//! them (a variant's values over the program's own), and every replay
+//! takes the program's own.
+//!
 //! Every operation, and every object inside one (a profile, a section, a
 //! view, a frame), takes only the fields listed; any other field is an
 //! error naming it and the fields it takes. A failing operation answers
@@ -156,6 +161,75 @@ pub struct Session {
 /// font file's bytes (TrueType or OpenType).
 pub type Fonts = BTreeMap<String, Vec<u8>>;
 
+/// A program's parameters: `"params": {"height": 900, …}` beside its
+/// `ops`, each a number an operation's field takes as `"$height"`.
+pub type Params = BTreeMap<String, f64>;
+
+/// The program with its parameters set: every `"$name"` string in its
+/// operations becomes the number `overrides` gives `name`, else the
+/// program's own `params` value, and `params` is dropped. A `"$name"` the
+/// program does not declare, an override it does not declare, or a
+/// parameter that is not a finite number is an error. A program without
+/// `params` and without overrides comes back as it was.
+pub fn with_params(program: &str, overrides: &Params) -> Result<String, ModelError> {
+    let mut v: Value =
+        serde_json::from_str(program).map_err(|e| ModelError::Program(format!("not JSON: {e}")))?;
+    let declared = match v.as_object_mut().and_then(|o| o.remove("params")) {
+        None => Params::new(),
+        Some(Value::Object(o)) => o
+            .into_iter()
+            .map(|(k, x)| match x.as_f64().filter(|n| n.is_finite()) {
+                Some(n) => Ok((k, n)),
+                None => Err(ModelError::Program(format!(
+                    "params: {k:?} is not a finite number"
+                ))),
+            })
+            .collect::<Result<_, _>>()?,
+        Some(_) => {
+            return Err(ModelError::Program(
+                "params is an object of numbers: {\"height\": 900}".into(),
+            ));
+        }
+    };
+    if declared.is_empty() && overrides.is_empty() {
+        return Ok(program.to_string());
+    }
+    let mut values = declared.clone();
+    for (k, x) in overrides {
+        if !declared.contains_key(k) {
+            return Err(ModelError::Program(format!(
+                "params: the program declares no {k:?} (it has {:?})",
+                declared.keys().collect::<Vec<_>>()
+            )));
+        }
+        if !x.is_finite() {
+            return Err(ModelError::Program(format!("params: {k:?} is not finite")));
+        }
+        values.insert(k.clone(), *x);
+    }
+    fn walk(v: &mut Value, values: &Params) -> Result<(), ModelError> {
+        match v {
+            Value::String(s) if s.starts_with('$') => {
+                let x = values.get(&s[1..]).ok_or_else(|| {
+                    ModelError::Program(format!(
+                        "{s:?}: the program declares no parameter {:?}",
+                        &s[1..]
+                    ))
+                })?;
+                *v = json!(*x);
+            }
+            Value::Array(l) => l.iter_mut().try_for_each(|x| walk(x, values))?,
+            Value::Object(o) => o.values_mut().try_for_each(|x| walk(x, values))?,
+            _ => {}
+        }
+        Ok(())
+    }
+    if let Some(ops) = v.get_mut("ops") {
+        walk(ops, &values)?;
+    }
+    Ok(v.to_string())
+}
+
 /// Replays a program (`{"name": …, "ops": [...]}`) into a model.
 pub fn run(program: &str) -> Result<Model, ModelError> {
     Ok(Session::replay(program)?.model)
@@ -256,6 +330,8 @@ impl Session {
         fonts: &Fonts,
         textures: &Fonts,
     ) -> Result<Session, ModelError> {
+        // Its parameters at their own values.
+        let program = &with_params(program, &Params::new())?;
         let v: Value = serde_json::from_str(program)
             .map_err(|e| ModelError::Program(format!("not JSON: {e}")))?;
         let name = v.get("name").and_then(Value::as_str).unwrap_or("model");

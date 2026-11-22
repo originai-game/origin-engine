@@ -24,6 +24,7 @@ mod generators {
 mod model {
     mod built_parts;
     mod end_to_end;
+    mod params;
     mod phase6_b;
     mod pose;
     mod rest;
