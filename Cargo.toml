@@ -394,7 +394,7 @@ parley_engine = { path = "third_party/parley_engine" }
 # Layout, patched at the root (third_party/taffy/README.md).
 taffy = { path = "third_party/taffy" }
 # wgpu: wgpu-flash, origin-engine's own fork, built for speed
-# (github.com/originai-game/wgpu-flash, branch og/v30.0.2-async): v30.0.2
+# (github.com/originai-game/wgpu-flash, branch og/flash-2-hotspots): v30.0.2
 # plus WebGPU compatibility mode and asynchronous pipeline creation. Its
 # crates keep wgpu's names, which [patch.crates-io] needs. Its patches, with
 # the upstream work each came from:
@@ -408,13 +408,19 @@ taffy = { path = "third_party/taffy" }
 # - `TextureDescriptor::texture_binding_view_dimension`, passed on by the
 #   WebGPU backend only: the subset of gfx-rs/wgpu#8014 the browser needs;
 # - `Device::create_{render,compute}_pipeline_async`, from gfx-rs/wgpu#10438
-#   (the browser's createRenderPipelineAsync; natively a ready future).
-naga = { git = "https://github.com/originai-game/wgpu-flash", rev = "25597b8fca7dee4fb73666caef2f3e5e5fa7f0d0" }
-naga-types = { git = "https://github.com/originai-game/wgpu-flash", rev = "25597b8fca7dee4fb73666caef2f3e5e5fa7f0d0" }
-wgpu = { git = "https://github.com/originai-game/wgpu-flash", rev = "25597b8fca7dee4fb73666caef2f3e5e5fa7f0d0" }
-wgpu-core = { git = "https://github.com/originai-game/wgpu-flash", rev = "25597b8fca7dee4fb73666caef2f3e5e5fa7f0d0" }
-wgpu-core-deps-apple = { git = "https://github.com/originai-game/wgpu-flash", rev = "25597b8fca7dee4fb73666caef2f3e5e5fa7f0d0" }
-wgpu-core-deps-windows-linux-android = { git = "https://github.com/originai-game/wgpu-flash", rev = "25597b8fca7dee4fb73666caef2f3e5e5fa7f0d0" }
-wgpu-hal = { git = "https://github.com/originai-game/wgpu-flash", rev = "25597b8fca7dee4fb73666caef2f3e5e5fa7f0d0" }
-wgpu-naga-bridge = { git = "https://github.com/originai-game/wgpu-flash", rev = "25597b8fca7dee4fb73666caef2f3e5e5fa7f0d0" }
-wgpu-types = { git = "https://github.com/originai-game/wgpu-flash", rev = "25597b8fca7dee4fb73666caef2f3e5e5fa7f0d0" }
+#   (the browser's createRenderPipelineAsync; natively a ready future);
+# - wgpu-flash's own speed work, sent nowhere upstream: API and resource
+#   logging compiled out and hal labels discarded in release builds; one
+#   command buffer per encoder, with pass barriers recorded inline; buffers
+#   and textures zeroed when they are made instead of lazily on first use
+#   (a `StoreOp::Discard` now leaves an attachment's contents undefined);
+#   Vulkan samples textures that have a storage usage in GENERAL.
+naga = { git = "https://github.com/originai-game/wgpu-flash", rev = "c14bcda5ab72e7c20c59b02923ccc50e97e9d887" }
+naga-types = { git = "https://github.com/originai-game/wgpu-flash", rev = "c14bcda5ab72e7c20c59b02923ccc50e97e9d887" }
+wgpu = { git = "https://github.com/originai-game/wgpu-flash", rev = "c14bcda5ab72e7c20c59b02923ccc50e97e9d887" }
+wgpu-core = { git = "https://github.com/originai-game/wgpu-flash", rev = "c14bcda5ab72e7c20c59b02923ccc50e97e9d887" }
+wgpu-core-deps-apple = { git = "https://github.com/originai-game/wgpu-flash", rev = "c14bcda5ab72e7c20c59b02923ccc50e97e9d887" }
+wgpu-core-deps-windows-linux-android = { git = "https://github.com/originai-game/wgpu-flash", rev = "c14bcda5ab72e7c20c59b02923ccc50e97e9d887" }
+wgpu-hal = { git = "https://github.com/originai-game/wgpu-flash", rev = "c14bcda5ab72e7c20c59b02923ccc50e97e9d887" }
+wgpu-naga-bridge = { git = "https://github.com/originai-game/wgpu-flash", rev = "c14bcda5ab72e7c20c59b02923ccc50e97e9d887" }
+wgpu-types = { git = "https://github.com/originai-game/wgpu-flash", rev = "c14bcda5ab72e7c20c59b02923ccc50e97e9d887" }
