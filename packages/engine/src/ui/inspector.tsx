@@ -243,8 +243,9 @@ export function Inspector(props: InspectorProps) {
                       <View class="flex-row items-center gap-1 min-h-7">
                         <View data-on={f().mark} class="size-2 shrink-0 rounded-capsule data-on:bg-fg" />
                         <Text
-                          data-tone={f().tone}
-                          class="w-24 shrink-0 truncate text-xs text-fg-muted data-[tone=override]:text-info data-[tone=flash]:text-warn"
+                          data-override={f().tone === "override"}
+                          data-flash={f().tone === "flash"}
+                          class="w-24 shrink-0 truncate text-xs text-fg-muted data-override:text-info data-flash:text-warn"
                           description={f().doc}
                         >
                           {f().name}
@@ -320,7 +321,7 @@ export function Inspector(props: InspectorProps) {
           </For>
           <For each={v().lines} key={(l) => l.id}>
             {(l) => (
-              <Text data-kind={l().kind} class="shrink-0 text-xs text-fg data-[kind=head]:text-sm data-[kind=muted]:text-fg-muted">{l().text}</Text>
+              <Text data-head={l().kind === "head"} data-muted={l().kind === "muted"} class="shrink-0 text-xs text-fg data-head:text-sm data-muted:text-fg-muted">{l().text}</Text>
             )}
           </For>
         </Scroll>

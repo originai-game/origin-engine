@@ -28,6 +28,7 @@ mod relay;
 mod style_check;
 mod trace;
 mod ui_components;
+mod ui_data;
 mod ui_grounds;
 mod ui_values;
 mod vfx_catalogue;

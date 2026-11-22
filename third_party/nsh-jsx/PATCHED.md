@@ -9,6 +9,9 @@ directory has them unchanged; the changes after it are only these:
 
 - `src/lib.rs` (new): `compile` (a module to JS and its source map) and
   `unknown_classes` (the class check against a theme).
+- `classes.rs` accepts a host resolver for class checks; `unknown_classes_with`
+  uses the runtime's pack and host utilities without duplicating their parser.
+  `is_host_export` exposes the compiler's primitive classification for linting.
 - oxc 0.153 to 0.157 (the workspace's pin): a string literal's value is a
   `JSStr`, read with `display()`/`as_str()`; `oxc_sourcemap` 9.
 - The primitives are Origin Engine's (`crates/og-ui-next/CONVENTIONS.md`

@@ -1231,11 +1231,28 @@ fn module_state(p: &Project, report: &mut Report) {
     }
 }
 
-/// The unknown Tailwind classes in the game's TSX (crates/og-ui-next/
-/// CONVENTIONS.md §JSX compile): each an error naming the class, at its
-/// line and column, against the engine's default pack laid under the game's
-/// own (`assets/styles/game/pack.json`). A class with no field in the
-/// record is unknown too, so none is dropped silently.
+fn class_resolver(pack: &og_ui_next::pack::Pack) -> Result<og_ui_next::classes::Classes, String> {
+    use og_ui_next::{
+        classes::{Classes, nine_slice},
+        pack::Scheme,
+    };
+    let (mut classes, _) = Classes::new(Some(&pack.theme_json(Scheme::Dark)))?;
+    classes.set_variants(pack.variants().clone());
+    classes.set_images(
+        [Scheme::Light, Scheme::Dark]
+            .into_iter()
+            .flat_map(|s| {
+                pack.images(s)
+                    .iter()
+                    .map(|(n, i)| (n.clone(), nine_slice(i, 0)))
+            })
+            .collect(),
+    );
+    Ok(classes)
+}
+
+/// Check against the default pack under the game's own pack, using the
+/// same class resolver as runtime rather than a parallel parser contract.
 fn unknown_classes(p: &Project, report: &mut Report) {
     // The game's code and its UI components, where the template's
     // tsconfig reads TSX.
@@ -1248,7 +1265,7 @@ fn unknown_classes(p: &Project, report: &mut Report) {
     if files.is_empty() {
         return;
     }
-    use og_ui_next::pack::{Layer, Pack, Scheme};
+    use og_ui_next::pack::{Layer, Pack};
     let mut layers = vec![Layer::default_pack()];
     let game = p.root.join("assets/styles/game/pack.json");
     if let Ok(text) = std::fs::read_to_string(&game) {
@@ -1259,33 +1276,18 @@ fn unknown_classes(p: &Project, report: &mut Report) {
         }
     }
     let pack = Pack::new(&layers);
-    let Ok(theme) = nsh_jsx::Theme::from_json(&pack.theme_json(Scheme::Dark)) else {
+    let Ok(mut classes) = class_resolver(&pack) else {
         return;
-    };
-    // `nine-<name>` names one of the pack's images, under any variant.
-    let image = |class: &str| {
-        let name = class
-            .rsplit(':')
-            .next()
-            .unwrap_or(class)
-            .strip_prefix("nine-")?;
-        Some(
-            [Scheme::Light, Scheme::Dark]
-                .iter()
-                .any(|s| pack.images(*s).contains_key(name)),
-        )
     };
     for path in files {
         let Ok(text) = std::fs::read_to_string(&path) else {
             continue;
         };
         let file = typescript_path(path.strip_prefix(&p.root).unwrap_or(&path));
-        for u in nsh_jsx::unknown_classes(&path.to_string_lossy(), &text, &theme) {
-            let message = match image(&u.class) {
-                Some(true) => continue,
-                Some(false) => format!("unknown class `{}`: the pack names no such image", u.class),
-                None => format!("unknown class `{}`", u.class),
-            };
+        for u in
+            nsh_jsx::unknown_classes_with(&path.to_string_lossy(), &text, |s| classes.unknown(s))
+        {
+            let message = format!("unknown class `{}`", u.class);
             report.raw.push_str(&format!(
                 "{file}({},{}): error OG{UNKNOWN_CLASS}: {message}\n",
                 u.line, u.column
@@ -1554,8 +1556,10 @@ pub fn run(args: &[&str]) -> ExitCode {
             &p.root.join("assets/ui"),
         ];
         ui_grounds_lint(&p.root, &dirs, Some(&game), json);
+        crate::ui_data::lint(&p.root, &dirs, json);
     } else {
         ui_grounds_lint(&target.root, &[&target.root], None, json);
+        crate::ui_data::lint(&target.root, &[&target.root], json);
     }
     if report.ok() {
         ExitCode::SUCCESS
@@ -1568,17 +1572,32 @@ pub fn run(args: &[&str]) -> ExitCode {
 mod tests {
     use super::*;
 
+    #[test]
+    fn class_check_uses_the_runtime_contract_without_accepting_typos() {
+        use og_ui_next::pack::{Layer, Pack};
+        let pack = Pack::new(&[Layer::default_pack()]);
+        let mut classes = class_resolver(&pack).unwrap();
+        let found = nsh_jsx::unknown_classes_with(
+            "a.tsx",
+            r#"<View class="scheme-dark scheme-light aspect-[3.2] data-active:text-white aspect-3.2 scheme-dakr" />"#,
+            |s| classes.unknown(s),
+        );
+        assert_eq!(
+            found.iter().map(|f| f.class.as_str()).collect::<Vec<_>>(),
+            ["aspect-3.2", "scheme-dakr"]
+        );
+    }
+
     /// The engine's own TSX components (packages/engine/src/ui) use only
     /// classes the default pack's theme knows, as a game's must
     /// ([`unknown_classes`]): one that styles nothing fails here, where
     /// no game's check reaches it.
     #[test]
     fn the_engines_components_use_only_known_classes() {
-        use og_ui_next::pack::{Layer, Pack, Scheme};
+        use og_ui_next::pack::{Layer, Pack};
         let ui = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../packages/engine/src/ui");
         let pack = Pack::new(&[Layer::default_pack()]);
-        let theme = nsh_jsx::Theme::from_json(&pack.theme_json(Scheme::Dark)).unwrap();
-        let images: Vec<String> = pack.images(Scheme::Dark).keys().cloned().collect();
+        let mut classes = class_resolver(&pack).unwrap();
         let mut files = Vec::new();
         crate::lockstep_lint::sources(&ui, &mut files);
         files.retain(|f| f.extension().is_some_and(|e| e == "tsx"));
@@ -1586,15 +1605,9 @@ mod tests {
         let mut unknown = Vec::new();
         for path in files {
             let text = std::fs::read_to_string(&path).unwrap();
-            for u in nsh_jsx::unknown_classes(&path.to_string_lossy(), &text, &theme) {
-                let nine = u
-                    .class
-                    .rsplit(':')
-                    .next()
-                    .and_then(|c| c.strip_prefix("nine-"));
-                if nine.is_some_and(|n| images.iter().any(|i| i == n)) {
-                    continue;
-                }
+            for u in nsh_jsx::unknown_classes_with(&path.to_string_lossy(), &text, |s| {
+                classes.unknown(s)
+            }) {
                 let file = path
                     .strip_prefix(&ui)
                     .unwrap_or(&path)

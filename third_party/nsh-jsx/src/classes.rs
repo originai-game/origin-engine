@@ -2,7 +2,6 @@
 //! `classList` attributes are parsed with the core's own parser and theme,
 //! and unknown classes are reported with their source position.
 
-use nsh_tailwind::tailwind::{Theme, parse};
 use oxc::{
     allocator::Allocator,
     ast::ast::{
@@ -24,12 +23,16 @@ pub(crate) struct UnknownClass {
 }
 
 /// The unknown classes in `source`'s JSX.
-pub(crate) fn check(source: &str, source_type: SourceType, theme: &Theme) -> Vec<UnknownClass> {
+pub(crate) fn check(
+    source: &str,
+    source_type: SourceType,
+    unknown: &mut dyn FnMut(&str) -> Vec<String>,
+) -> Vec<UnknownClass> {
     let allocator = Allocator::default();
     let parsed = Parser::new(&allocator, source, source_type).parse();
     let mut v = Checker {
         source,
-        theme,
+        unknown,
         found: Vec::new(),
     };
     v.visit_program(&parsed.program);
@@ -38,17 +41,16 @@ pub(crate) fn check(source: &str, source_type: SourceType, theme: &Theme) -> Vec
 
 struct Checker<'s> {
     source: &'s str,
-    theme: &'s Theme,
+    unknown: &'s mut dyn FnMut(&str) -> Vec<String>,
     found: Vec<UnknownClass>,
 }
 
 impl Checker<'_> {
     /// Checks the classes of the string at byte `offset` of the source.
     fn classes(&mut self, classes: &str, offset: u32) {
-        let list = parse(self.theme, classes);
-        for unknown in list.unknown() {
+        for unknown in (self.unknown)(classes) {
             // The class's own position within the string, if found.
-            let at = classes.find(&**unknown).unwrap_or(0) as u32;
+            let at = classes.find(&unknown).unwrap_or(0) as u32;
             let (line, column) = crate::compile::position(self.source, offset + at);
             self.found.push(UnknownClass {
                 line,
@@ -140,7 +142,7 @@ impl<'a> Visit<'a> for Checker<'_> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use crate::{Theme, unknown_classes};
 
     #[test]
     fn reports_unknown_static_classes() {
@@ -155,7 +157,7 @@ export function A(p: { on: boolean }) {
   );
 }
 "#;
-        let found = check(source, SourceType::tsx(), &Theme::default());
+        let found = unknown_classes("a.tsx", source, &Theme::default());
         let names: Vec<&str> = found.iter().map(|u| u.class.as_str()).collect();
         assert_eq!(names, ["bg-blu-500", "txt-black", "nope", "wat"]);
         assert_eq!((found[0].line, found[0].column), (5, 22));
@@ -164,7 +166,7 @@ export function A(p: { on: boolean }) {
     #[test]
     fn theme_keys_are_classes() {
         let source = r#"<View class="bg-surface rounded-card text-fg-muted" />"#;
-        let found = check(source, SourceType::tsx(), &Theme::default());
+        let found = unknown_classes("a.tsx", source, &Theme::default());
         let names: Vec<&str> = found.iter().map(|u| u.class.as_str()).collect();
         assert_eq!(names, ["bg-surface", "rounded-card", "text-fg-muted"]);
         // A pack's theme adds its keys.
@@ -172,6 +174,6 @@ export function A(p: { on: boolean }) {
             r##"{ "colors": { "surface": "#1b1d24", "fg-muted": "#888" }, "radius": { "card": 10 } }"##,
         )
         .unwrap();
-        assert!(check(source, SourceType::tsx(), &theme).is_empty());
+        assert!(unknown_classes("a.tsx", source, &theme).is_empty());
     }
 }

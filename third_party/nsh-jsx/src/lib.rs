@@ -9,6 +9,14 @@ mod props;
 
 pub use nsh_tailwind::tailwind::Theme;
 
+/// Whether an import names a host element made directly by the compiler,
+/// rather than a component whose props may be forwarded or transformed.
+pub fn is_host_export(module: &str, name: &str) -> bool {
+    jsx::PRIMITIVES
+        .iter()
+        .any(|(m, n, kind)| *m == module && *n == name && matches!(kind, jsx::Compiled::Host(_)))
+}
+
 /// A `.tsx`/`.jsx`/`.ts` module compiled to JS: TypeScript removed, the JSX
 /// compiled to the renderer's calls (`@origingame/engine/ui/rt`).
 pub struct Module {
@@ -47,10 +55,27 @@ pub struct UnknownClass {
 /// The unknown classes of `source`'s JSX (the module at `path`): the
 /// static parts of each `class` and `classList`.
 pub fn unknown_classes(path: &str, source: &str, theme: &Theme) -> Vec<UnknownClass> {
+    unknown_classes_with(path, source, |s| {
+        nsh_tailwind::tailwind::parse(theme, s)
+            .unknown()
+            .iter()
+            .map(ToString::to_string)
+            .collect()
+    })
+}
+
+/// Checks static JSX class strings with the host's runtime resolver, so
+/// host-owned utilities and pack images have the same contract at check
+/// time and at paint time.
+pub fn unknown_classes_with(
+    path: &str,
+    source: &str,
+    mut unknown: impl FnMut(&str) -> Vec<String>,
+) -> Vec<UnknownClass> {
     let Ok(source_type) = oxc::span::SourceType::from_path(path) else {
         return Vec::new();
     };
-    classes::check(source, source_type, theme)
+    classes::check(source, source_type, &mut unknown)
         .into_iter()
         .map(|u| UnknownClass {
             line: u.line,

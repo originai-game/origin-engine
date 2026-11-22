@@ -1,0 +1,6 @@
+{
+  "fixed": [{
+    "member": "og check",
+    "summary": "Check JSX classes with the runtime's resolver, including scheme and pack-image utilities, and gate built-in components on known classes. OG9110 warns when a data variant belongs on a known ancestor group; uncertain spreads and component forwarding are left unjudged. Correct Garage aspect ratio, Inspector data states and FlowPicture safe-area placement to supported class contracts."
+  }]
+}
