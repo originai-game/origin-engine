@@ -7,9 +7,8 @@ Each face is a Noto face from google/fonts instanced at Regular (wght
 400, wdth 100) and subset with fontTools, keeping every layout feature
 (Arabic joining, Devanagari conjuncts, Thai marks, CJK `locl`, `palt`,
 `vert`) and dropping hinting. The CJK subsets hold a national standard's
-common set, not one game's strings. A face cooks no atlas (its space or ideographic space alone)
-and draws every character from its outlines when first shown (`runtime
-true`), so a game pays per character it shows and a pack cooks to about
+common set, not one game's strings. A face ships whole and draws every
+character from its outlines when first shown, so a pack cooks to about
 its face's size. A pack takes no Latin a style's face already draws, except
 `latin`, the fallback for the Latin a style face lacks (Vietnamese,
 Latin Extended).
@@ -185,36 +184,22 @@ def regular(font: TTFont) -> TTFont:
 SIDECAR = """type import
 version 1
 ---
-# Made by templates/fonts/make-packs.py: no atlas cooked (its space alone);
-# every character is drawn from the face's outlines when first shown, so
-# a game pays only for what it shows. px_range is a third of em_px, so a
-# 2 px outline reaches 16 px text.
+# Made by templates/fonts/make-packs.py: the face ships whole and every
+# character is drawn from its outlines when first shown.
 font {{
-  charset
   chars " 　"
-  em_px 48
-  px_range 16
-  runtime true
 }}
 """
 
-# A colour face (`color true` with `runtime true`): each glyph with a COLR
-# paint is painted in colour from the file when first shown, at color_px
-# pixels per em, with a silhouette field for its glow and outline.
+# A colour face: each glyph with a COLR paint is painted in colour from the
+# file when first shown.
 COLOR_SIDECAR = """type import
 version 1
 ---
-# Made by templates/fonts/make-packs.py: no atlas cooked (its space alone);
-# every emoji is painted in colour from the face's COLR table when first
-# shown, so a game pays only for what it shows.
+# Made by templates/fonts/make-packs.py: the face ships whole and every
+# emoji is painted in colour from its COLR table when first shown.
 font {{
-  charset
   chars " "
-  em_px 48
-  px_range 16
-  runtime true
-  color true
-  color_px 64
 }}
 """
 

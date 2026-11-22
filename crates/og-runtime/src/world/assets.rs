@@ -804,11 +804,7 @@ pub(crate) fn load_font(eng: &Engine, path: &str) -> Result<usize, String> {
         "lineHeight": m.ascender - m.descender + m.line_gap,
         "icons": font.names.len(), "pixel": font.pixel,
     });
-    let bytes = font
-        .ttf
-        .clone()
-        .or_else(|| font.file.clone())
-        .map(std::sync::Arc::new);
+    let bytes = font.file.clone().map(std::sync::Arc::new);
     // The font file's bytes: what TSX text is laid out and rastered from
     // (`crate::present::faces`), which registers it the first time it lays
     // something out with it.
@@ -889,8 +885,9 @@ fn resample(
     if (tw, th) == (w, h) {
         for r in 0..h {
             let o = (r * w * 4) as usize;
-            out[o..o + (w * 4) as usize]
-                .copy_from_slice(&page[(((y + r) * stride + x) * 4) as usize..][..(w * 4) as usize]);
+            out[o..o + (w * 4) as usize].copy_from_slice(
+                &page[(((y + r) * stride + x) * 4) as usize..][..(w * 4) as usize],
+            );
         }
         return out;
     }

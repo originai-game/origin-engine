@@ -59,9 +59,9 @@ string "coins" "{n, plural, =0 {コインなし} other {# コイン}}"
   (`og font add thai` for a `th` table), so a game pays only for its own
   locales; a locale whose language no installed pack names is warned of
   at cook, and its text breaks by the rules alone (whole runs, not words).
-- A right-to-left locale (ar, he, fa, ur) mirrors og.ui's layout. og-ui
-  shapes Arabic words with the font's own tables, which a font cooked with
-  the `arabic` charset carries.
+- A right-to-left locale (ar, he, fa, ur) mirrors og.ui's layout. Arabic
+  words are shaped with the font's own tables: every font ships its file
+  whole.
 
 ## 4. Chinese and Japanese typesetting
 

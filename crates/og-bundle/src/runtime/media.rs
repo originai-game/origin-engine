@@ -598,8 +598,8 @@ impl CookedSound {
     }
 }
 
-/// A cooked font: metrics, glyphs sorted by code point, atlas pages (RGBA8,
-/// linear; RGB is the MSDF, A the true SDF).
+/// A cooked font: its metrics and file; an icon set's glyphs, sorted by
+/// code point, and distance-field pages (RGBA8, linear).
 #[derive(Clone, Debug, PartialEq)]
 pub struct CookedFont {
     pub id: String,
@@ -608,30 +608,8 @@ pub struct CookedFont {
     /// Kerning pairs between cooked characters, sorted by (left, right).
     pub kerning: Vec<KernRow>,
     pub pages: Vec<TextureData>,
-    /// Colour glyph pages (`font { color true }`), sRGB with straight alpha:
-    /// page `pages.len() + i` of a glyph row is `color_pages[i]`.
-    pub color_pages: Vec<TextureData>,
-    /// Colour glyph pages of the glyphs that use the text's colour (COLR
-    /// palette entry 0xFFFF), after `color_pages`: each glyph painted with
-    /// a black foreground at its row's place in the left half, and with a
-    /// white one at the same place in the right half.
-    pub foreground_pages: Vec<TextureData>,
-    /// The colour glyphs' silhouettes as distance fields (linear, every
-    /// channel the same, range [`crate::format::COLOR_FIELD_RANGE`] in their pixels),
-    /// one per colour page and then one per foreground page, each glyph
-    /// at its row's place (a foreground page's field is its left half):
-    /// what their shadows, glow and outline are drawn from.
-    pub color_fields: Vec<TextureData>,
-    pub foreground_fields: Vec<TextureData>,
-    /// The font file, for a font cooked with a shaped script (og-ui shapes
-    /// its words) or with `runtime true` (characters outside the charset
-    /// are rendered from it when a text needs them).
-    pub ttf: Option<Vec<u8>>,
-    /// OpenType tables for paragraph layout, without outlines or permission
-    /// to render characters outside the cooked charset.
-    pub shaping: Option<Vec<u8>>,
-    /// The font file of a font that ships no `ttf`: every font ships its
-    /// file, which UI text is laid out and rastered from.
+    /// The font file, whole: what text is laid out and rastered from
+    /// (`None` for an icon set, which draws from `pages`).
     pub file: Option<Vec<u8>>,
     /// An icon set's names (an `.ogt` of `type icons`, cook::icons): icon
     /// `i` is the glyph at U+E000 + i. Empty for a text font.
@@ -639,41 +617,6 @@ pub struct CookedFont {
     /// A pixel font's grid, its pixels to the em (`font { pixel <grid> }`,
     /// the blob's `pixel` section); 0 for an outline font.
     pub pixel: u32,
-    /// A colour font that paints its colour glyphs at run time (`font {
-    /// color true runtime true }`, the blob's `color-runtime` section):
-    /// a character outside the charset with a COLR paint is painted from
-    /// `ttf` as the cook paints one. `None` for every other font.
-    pub color_runtime: Option<ColorRuntime>,
-}
-
-/// How a colour font's run-time glyphs are painted: as its cooked ones.
-#[derive(Clone, Debug, PartialEq)]
-pub struct ColorRuntime {
-    /// Image pixels per em (`color_px`).
-    pub em_px: f32,
-    /// The CPAL palette the cook chose, straight sRGB in 0..1, RGBA.
-    pub palette: Vec<[f32; 4]>,
-}
-
-impl ColorRuntime {
-    /// From the `color-runtime` section: `em_px` as f32 (LE), then RGBA8
-    /// per palette entry; `None` for a section that is not that.
-    pub fn parse(b: &[u8]) -> Option<ColorRuntime> {
-        let (px, rest) = b.split_first_chunk::<4>()?;
-        let em_px = f32::from_le_bytes(*px);
-        if em_px.is_nan() || em_px <= 0.0 || rest.len() % 4 != 0 {
-            return None;
-        }
-        Some(ColorRuntime {
-            em_px,
-            palette: rest
-                .as_chunks::<4>()
-                .0
-                .iter()
-                .map(|c| c.map(|v| f32::from(v) / 255.0))
-                .collect(),
-        })
-    }
 }
 
 impl CookedFont {

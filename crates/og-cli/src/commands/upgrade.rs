@@ -318,6 +318,17 @@ fn upgrade(dir: &Path, to: Option<&str>, dry: bool) -> Value {
                 }
                 continue;
             }
+            if b["codemod"]["kind"] == "font-atlas-keys" {
+                for (file, text, touched) in &mut texts {
+                    let Some((upgraded, n)) = font_atlas_keys(text) else {
+                        continue;
+                    };
+                    codemods.push(json!({ "version": version, "member": member, "file": rel(file), "from": "font atlas settings", "to": "none (the file ships whole)", "count": n }));
+                    *touched = true;
+                    *text = upgraded;
+                }
+                continue;
+            }
             if b["codemod"]["kind"] == "light-mobility" {
                 for (file, text, touched) in &mut texts {
                     let Some((upgraded, n)) = light_mobility(text) else {
@@ -640,6 +651,48 @@ fn flow_rename(text: &str) -> Option<(String, Vec<FlowRenamed>)> {
         .map(|((from, to, _), n)| (*from, *to, n))
         .collect();
     (!renamed.is_empty()).then_some((out, renamed))
+}
+
+/// The font atlas's settings dropped from a font import's `font { … }`
+/// block (and a `.riv` import's `font <name> { … }`): `charset`,
+/// `em_px`, `px_range`, `page_size`, `runtime`, `features`, `color`,
+/// `color_px` and `palette` lines, which no longer mean anything now that
+/// a face ships whole and draws at the size it is shown. Lines outside a
+/// font block are left as they are.
+fn font_atlas_keys(text: &str) -> Option<(String, usize)> {
+    const KEYS: [&str; 9] = [
+        "charset",
+        "em_px",
+        "px_range",
+        "page_size",
+        "runtime",
+        "features",
+        "color",
+        "color_px",
+        "palette",
+    ];
+    let (mut out, mut n) = (String::with_capacity(text.len()), 0);
+    // The open blocks' first words, innermost last.
+    let mut blocks: Vec<&str> = Vec::new();
+    for l in text.split_inclusive('\n') {
+        let code = l.split('#').next().unwrap_or("").trim();
+        let key = code.split_whitespace().next().unwrap_or("");
+        if blocks.last() == Some(&"font") && KEYS.contains(&key) {
+            n += 1;
+            continue;
+        }
+        for c in code.chars() {
+            match c {
+                '{' => blocks.push(code.split_whitespace().next().unwrap_or("")),
+                '}' => {
+                    blocks.pop();
+                }
+                _ => {}
+            }
+        }
+        out.push_str(l);
+    }
+    (n > 0).then_some((out, n))
 }
 
 /// A light's `static` mark moved to its mobility: in a scene's
@@ -1424,6 +1477,24 @@ if (film.open && marker === "flow.cut") run("10.6:flow:choose:0", `flow:play`);
         serde_json::from_str::<Value>(&kept).unwrap();
         let packed = old.replace("],\n      \"bun:test\"", "], \"bun:test\"");
         assert_eq!(engine_package_tsconfig(&packed), Some(Err(7)));
+    }
+
+    #[test]
+    fn font_atlas_keys_leave_a_font_block_its_other_lines_and_other_blocks_theirs() {
+        let ogt = "type import\nversion 1\n---\nfont {\n  charset latin # the atlas\n  chars \"é\"\n  em_px 48\n  pixel 12\n  runtime true\n}\nmesh {\n  runtime true\n}\n";
+        let (out, n) = font_atlas_keys(ogt).expect("rewritten");
+        assert_eq!(n, 3);
+        assert_eq!(
+            out,
+            "type import\nversion 1\n---\nfont {\n  chars \"é\"\n  pixel 12\n}\nmesh {\n  runtime true\n}\n"
+        );
+        let riv = "font \"Inter\" {\n  source \"fonts/Inter.ttf\"\n  charset latin\n}\n";
+        let (out, n) = font_atlas_keys(riv).expect("rewritten");
+        assert_eq!(
+            (n, out.as_str()),
+            (1, "font \"Inter\" {\n  source \"fonts/Inter.ttf\"\n}\n")
+        );
+        assert_eq!(font_atlas_keys("const charset = 1;\n"), None);
     }
 
     #[test]

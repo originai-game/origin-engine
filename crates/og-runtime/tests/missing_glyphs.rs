@@ -49,7 +49,7 @@ fn project() -> &'static Path {
         .unwrap();
         std::fs::write(
             dir.join("ChakraPetch-BoldItalic.ttf.ogt"),
-            "type import\nversion 1\n---\nfont {\n  charset latin punct\n  em_px 48\n  px_range 4\n}\n",
+            "type import\nversion 1\n---\nfont {\n}\n",
         )
         .unwrap();
         // A second face: the same file, its atlas Latin alone.
@@ -60,7 +60,7 @@ fn project() -> &'static Path {
         .unwrap();
         std::fs::write(
             dir.join("Latin.ttf.ogt"),
-            "type import\nversion 1\n---\nfont {\n  charset latin\n  em_px 48\n  px_range 4\n}\n",
+            "type import\nversion 1\n---\nfont {\n}\n",
         )
         .unwrap();
         let report = og_cook::cook_project(
@@ -74,7 +74,8 @@ fn project() -> &'static Path {
                 },
                 ..Default::default()
             },
-        ).unwrap();
+        )
+        .unwrap();
         assert!(report.ok(), "{:?}", report.errors());
         root
     })

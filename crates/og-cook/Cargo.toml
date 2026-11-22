@@ -13,7 +13,7 @@ default = ["cook", "basis", "transcode"]
 # og-render (og-bundle's `transcode`).
 transcode = ["og-bundle/transcode"]
 # The cook itself (native only): importers, encoders, the incremental manifest.
-cook = ["og-render-data/bake", "dep:resvg", "dep:blake3", "dep:og-story", "dep:og-i18n", "og-ai/bake", "dep:gltf", "og-render-data/gltf", "dep:image", "dep:image_dds", "dep:draco-core", "dep:meshopt", "dep:mikktspace", "dep:fdsm", "dep:fdsm-ttf-parser", "dep:ttf-parser", "dep:skrifa", "dep:write-fonts", "dep:hound", "dep:symphonia", "dep:opus-pure", "dep:ruzstd", "dep:serde", "dep:serde_json", "dep:oxc_allocator", "dep:oxc_ast", "dep:oxc_ast_visit", "dep:oxc_parser", "dep:oxc_span", "dep:nalgebra", "dep:og-ui-next", "dep:og-text", "dep:og-rive", "dep:og-css", "dep:og-tween", "dep:naga", "dep:og-records", "og-timeline/import", "dep:og-geom", "dep:og-video", "dep:ufbx", "dep:libm", "dep:og-bake"]
+cook = ["og-render-data/bake", "dep:resvg", "dep:blake3", "dep:og-story", "dep:og-i18n", "og-ai/bake", "dep:gltf", "og-render-data/gltf", "dep:image", "dep:image_dds", "dep:draco-core", "dep:meshopt", "dep:mikktspace", "dep:fdsm", "dep:ttf-parser", "dep:skrifa", "dep:hound", "dep:symphonia", "dep:opus-pure", "dep:ruzstd", "dep:serde", "dep:serde_json", "dep:oxc_allocator", "dep:oxc_ast", "dep:oxc_ast_visit", "dep:oxc_parser", "dep:oxc_span", "dep:nalgebra", "dep:og-ui-next", "dep:og-text", "dep:og-rive", "dep:og-css", "dep:og-tween", "dep:naga", "dep:og-records", "og-timeline/import", "dep:og-geom", "dep:og-video", "dep:ufbx", "dep:libm", "dep:og-bake"]
 # Encode textures with the basis-universal crate (a default). Without it the
 # cook looks for KTX-Software's `toktx` on PATH.
 basis = ["og-bundle/basis", "dep:basis-universal", "dep:ruzstd"]
@@ -87,12 +87,10 @@ draco-core = { version = "2.3.3", default-features = false, features = ["decoder
 meshopt = { version = "0.6.2", optional = true }
 mikktspace = { version = "0.3.0", default-features = false, features = ["glam"], optional = true }
 fdsm = { version = "0.8.0", optional = true }
-fdsm-ttf-parser = { version = "0.2.0", optional = true }
 ttf-parser = { version = "0.25.1", optional = true }
 # COLR v0 and v1 paint graphs of `font { color true }` (painted by og-ui-next's colr.rs),
 # the version og-ui-next paints with.
 skrifa = { version = "=0.44.0", default-features = false, features = ["libm"], optional = true }
-write-fonts = { version = "=0.55.0", default-features = false, optional = true }
 hound = { version = "3.5.1", optional = true }
 # Compressed sound sources (MP3, Ogg Vorbis, FLAC) decode to PCM at cook
 # time, pure Rust; the cook only, never the runtime or the wasm.

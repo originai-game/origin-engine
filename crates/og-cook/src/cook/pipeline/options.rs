@@ -299,99 +299,20 @@ impl TextureOptions {
     }
 }
 
-/// Font atlas settings; a font's import settings (`<font>.ogt`) override them.
-#[derive(Clone, Debug, PartialEq)]
+/// A font's import settings (`<font>.ogt`'s `font { … }` block).
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct FontSettings {
-    /// Named code point sets: `ascii`, `latin` (ASCII + Latin-1), `punct`,
-    /// `cjk-punct`, `kana`, `all` (every code point the font maps).
-    pub charset: Vec<String>,
-    /// Extra characters to include (UI strings, a game's CJK text).
+    /// Characters the font is checked for: the cook notes the ones it lacks.
     pub chars: String,
-    /// Atlas pixels per em.
-    pub em_px: f32,
-    /// Distance range in pixels.
-    pub px_range: f32,
-    /// Atlas page edge in pixels.
-    pub page_size: u32,
-    /// Ship the font file with the atlas, so characters outside the charset
-    /// are rendered from its outlines when a text needs them (CJK UIs that
-    /// show player text).
-    pub runtime: bool,
-    /// OpenType features type steps turn on with this font (`features smcp
-    /// tnum`, og-ui's `Features::TAGS`): the atlas also holds every glyph
-    /// they substitute, and the font file ships for run-time shaping.
-    pub features: Vec<String>,
     /// A pixel font's grid, its pixels to the em (`pixel 12`; 0: an
-    /// outline font): each glyph is cooked as its cells on the grid, square
-    /// and sharp, advances and kerning in whole cells, and og-ui draws the
-    /// font at whole multiples of the grid only.
+    /// outline font): the raster snaps the face to the grid at whole
+    /// multiples of it, with no anti-aliasing.
     pub pixel: u32,
-    /// Draw the font's COLR colour glyphs (v0 layers and v1 paint graphs:
-    /// gradients, transforms, clips, composites) in colour: each cooked
-    /// character with a colour paint is an image on the font's colour
-    /// pages instead of a distance field (`color true`; emoji fonts).
-    pub color: bool,
-    /// The colour images' pixels per em (`color_px 64`).
-    pub color_px: f32,
-    /// The CPAL palette the colour glyphs are painted with (`palette 2`,
-    /// `palette dark`).
-    pub palette: Palette,
-}
-
-/// A COLR font's CPAL palette (`font { palette ... }`).
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub enum Palette {
-    /// Palette 0, the font's default.
-    #[default]
-    First,
-    /// The palette at this index.
-    Index(u16),
-    /// The first palette the font marks usable on a light background.
-    Light,
-    /// The first palette the font marks usable on a dark background.
-    Dark,
-}
-
-impl Default for FontSettings {
-    fn default() -> Self {
-        FontSettings {
-            charset: vec!["latin".into()],
-            chars: String::new(),
-            em_px: 32.0,
-            px_range: 4.0,
-            page_size: 1024,
-            runtime: false,
-            features: Vec::new(),
-            pixel: 0,
-            color: false,
-            color_px: 64.0,
-            palette: Palette::First,
-        }
-    }
 }
 
 impl FontSettings {
     pub(crate) fn describe(&self) -> String {
-        format!(
-            "charset {} chars {:?} em {} range {} page {} mtsdf ec kern{}{}",
-            self.charset.join(" "),
-            self.chars,
-            self.em_px,
-            self.px_range,
-            self.page_size,
-            if self.runtime { " runtime" } else { "" },
-            if self.color {
-                let palette = match self.palette {
-                    Palette::First => String::new(),
-                    Palette::Index(i) => format!(" palette {i}"),
-                    Palette::Light => " palette light".into(),
-                    Palette::Dark => " palette dark".into(),
-                };
-                format!(" color {}{palette}", self.color_px)
-            } else {
-                String::new()
-            }
-        )
+        format!("chars {:?} pixel {}", self.chars, self.pixel)
     }
 }
 
@@ -549,102 +470,27 @@ pub(crate) fn anim_settings(s: &Source) -> Result<anim::AnimSettings, String> {
     anim::AnimSettings::parse(settings_block(s, "animation"))
 }
 
-/// The OpenType features a font import may name (og-ui's `Features::TAGS`).
-pub const FONT_FEATURES: [&str; 5] = ["smcp", "c2sc", "tnum", "lnum", "case"];
-
 pub(crate) fn font_settings(s: &Source, base: &FontSettings) -> Result<FontSettings, String> {
     let mut f = base.clone();
     if let Some(b) = settings_block(s, "font") {
         for e in &b.entries {
             let err = |x: og_core::Error| format!("line {}: {x}", e.line);
             match e.key.as_str() {
-                "charset" => {
-                    f.charset = e
-                        .values
-                        .iter()
-                        .map(|v| {
-                            v.as_word()
-                                .map(str::to_string)
-                                .ok_or_else(|| format!("line {}: charset takes words", e.line))
-                        })
-                        .collect::<Result<_, _>>()?
-                }
                 "chars" => f.chars = e.string(0).map_err(err)?.to_string(),
-                "em_px" => f.em_px = e.f32(0).map_err(err)?,
-                "px_range" => f.px_range = e.f32(0).map_err(err)?,
-                "runtime" => {
-                    f.runtime =
-                        e.values.first().and_then(|v| v.as_bool()).ok_or_else(|| {
-                            format!("line {}: runtime takes true or false", e.line)
-                        })?
-                }
-                "color" => {
-                    f.color = e.values.first().and_then(|v| v.as_bool()).ok_or_else(|| {
-                        format!(
-                            "line {}: color takes true (COLR glyphs drawn in colour) or false",
-                            e.line
-                        )
-                    })?
-                }
-                "palette" => {
-                    let v = e.values.first();
-                    f.palette = match v.and_then(|v| v.as_word()) {
-                        Some("light") => Palette::Light,
-                        Some("dark") => Palette::Dark,
-                        _ => match v
-                            .and_then(|v| v.as_number()?.as_u64().ok())
-                            .map(u16::try_from)
-                        {
-                            Some(Ok(0)) => Palette::First,
-                            Some(Ok(i)) => Palette::Index(i),
-                            _ => {
-                                return Err(format!(
-                                    "line {}: palette takes a CPAL palette's index, light or dark",
-                                    e.line
-                                ));
-                            }
-                        },
-                    };
-                }
-                "color_px" => {
-                    f.color_px = e.f32(0).map_err(err)?;
-                    if !(8.0..=256.0).contains(&f.color_px) {
-                        return Err(format!("line {}: color_px takes 8 to 256", e.line));
-                    }
-                }
                 "pixel" => {
                     f.pixel = e.number(0).map_err(err)?.as_u64().map_err(err)? as u32;
                     if !(4..=64).contains(&f.pixel) {
                         return Err(format!("line {}: pixel takes a grid of 4 to 64", e.line));
                     }
                 }
-                "page_size" => {
-                    f.page_size = e.number(0).map_err(err)?.as_u64().map_err(err)? as u32
+                k => {
+                    return Err(format!(
+                        "line {}: unknown font setting '{k}' (chars, pixel; og upgrade drops the atlas settings)",
+                        e.line
+                    ));
                 }
-                "features" => {
-                    f.features = e
-                        .values
-                        .iter()
-                        .map(|v| {
-                            v.as_word()
-                                .filter(|w| FONT_FEATURES.contains(w))
-                                .map(str::to_string)
-                                .ok_or_else(|| {
-                                    format!(
-                                        "line {}: features takes OpenType tags among {}",
-                                        e.line,
-                                        FONT_FEATURES.join(", ")
-                                    )
-                                })
-                        })
-                        .collect::<Result<_, _>>()?
-                }
-                k => return Err(format!("line {}: unknown font setting '{k}'", e.line)),
             }
         }
-    }
-    if !(4.0..=256.0).contains(&f.em_px) || !(1.0..=32.0).contains(&f.px_range) {
-        return Err("font em_px must be 4..=256 and px_range 1..=32".into());
     }
     Ok(f)
 }

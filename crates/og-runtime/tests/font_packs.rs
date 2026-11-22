@@ -66,7 +66,7 @@ fn cooked(name: &str) -> PathBuf {
         .unwrap();
         std::fs::write(
             fonts.join("Display.ttf.ogt"),
-            "type import\nversion 1\n---\nfont {\n  charset latin\n  em_px 48\n  px_range 4\n}\n",
+            "type import\nversion 1\n---\nfont {\n}\n",
         )
         .unwrap();
         for pack in PACKS {
@@ -400,7 +400,7 @@ fn default_ui_uses_instrument_outlines_before_locale_fallbacks() {
     let source =
         std::fs::read(repo().join("templates/styles/shared/InstrumentSans[wdth,wght].ttf"))
             .unwrap();
-    assert_eq!(cooked.ttf.as_ref().unwrap(), &source);
+    assert_eq!(cooked.file.as_ref().unwrap(), &source);
     let (engine, step) = start("ja-JP");
     value(og_runtime::host_impl::answer(og_ui_configure(
         engine,

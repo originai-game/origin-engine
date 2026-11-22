@@ -103,95 +103,6 @@ fn tables_are_validated_and_every_locale_is_checked_against_the_base() {
     );
 }
 
-#[test]
-fn an_arabic_font_carries_its_joined_forms_and_its_file() {
-    let ttf = std::fs::read(concat!(
-        env!("CARGO_MANIFEST_DIR"),
-        "/../../tests/fixtures/ui-text/assets/fonts/NotoSansArabic-subset.ttf"
-    ))
-    .unwrap();
-    let settings =
-        b"type import\nversion 1\n---\nfont {\n  charset ascii arabic\n  em_px 24\n}\n".to_vec();
-    let root = project(
-        "arabic",
-        &[
-            ("fonts/ar.ttf", ttf.clone()),
-            ("fonts/ar.ttf.ogt", settings),
-        ],
-    );
-    let report = cook_project(&root, &CookOptions::default()).unwrap();
-    assert!(report.ok(), "{:?}", report.errors());
-    let font = Bundle::open(&root.join("cooked"))
-        .unwrap()
-        .load_font("fonts/ar.ttf")
-        .unwrap();
-    assert_eq!(
-        font.ttf.as_deref(),
-        Some(ttf.as_slice()),
-        "the font file rides along for shaping"
-    );
-    let letters = font
-        .glyphs
-        .iter()
-        .filter(|g| (0x0600..0x0700).contains(&g.codepoint))
-        .count();
-    let forms = font
-        .glyphs
-        .iter()
-        .filter(|g| g.codepoint >= og_bundle::format::GLYPH_ID_KEYS)
-        .count();
-    assert!(
-        letters >= 20,
-        "the Arabic letters the subset holds: {letters}"
-    );
-    assert!(
-        forms >= 2 * letters,
-        "their contextual forms, reached through GSUB: {forms} for {letters} letters"
-    );
-    let note = &report
-        .assets
-        .iter()
-        .find(|a| a.source == "fonts/ar.ttf")
-        .unwrap()
-        .notes[0];
-    assert!(note.contains("shaped script"), "{note}");
-    // An ASCII-only atlas carries layout tables but no runtime outlines.
-    let latin = b"type import\nversion 1\n---\nfont {\n  charset ascii\n}\n".to_vec();
-    let root = project(
-        "latin",
-        &[
-            (
-                "fonts/ar.ttf",
-                std::fs::read(concat!(
-                    env!("CARGO_MANIFEST_DIR"),
-                    "/../../tests/fixtures/ui-text/assets/fonts/NotoSansArabic-subset.ttf"
-                ))
-                .unwrap(),
-            ),
-            ("fonts/ar.ttf.ogt", latin),
-        ],
-    );
-    cook_project(&root, &CookOptions::default()).unwrap();
-    let font = Bundle::open(&root.join("cooked"))
-        .unwrap()
-        .load_font("fonts/ar.ttf")
-        .unwrap();
-    assert!(font.ttf.is_none());
-    let tables = font.shaping.expect("paragraph layout tables");
-    let face = ttf_parser::Face::parse(&tables, 0).unwrap();
-    assert!(
-        face.raw_face()
-            .table(ttf_parser::Tag::from_bytes(b"glyf"))
-            .is_none()
-    );
-    let file = og_text::shape::FontFile::for_shaping(std::sync::Arc::new(tables)).unwrap();
-    assert_eq!(
-        file.advance('A'),
-        None,
-        "layout data must not enable runtime rasterization"
-    );
-}
-
 /// A font pack (docs/ui.md §3.4): its index names its languages, its faces'
 /// asset ids and what their cmaps cover; its faces cook to `.face.ogb`
 /// (the web reads them on demand) with their outlines for run-time glyphs
@@ -199,7 +110,7 @@ fn an_arabic_font_carries_its_joined_forms_and_its_file() {
 /// cooks.
 ///
 /// Ways it could fail: the pack index pulls the faces into another font's
-/// stamp (every font re-cooks, its bytes or charset move); a face cooks a
+/// stamp (every font re-cooks, its bytes move); a face cooks a
 /// script's whole atlas (megabytes of payload); the face loses runtime or
 /// ships at boot; the coverage misses a character, so the runtime never
 /// loads the pack for it.
@@ -208,8 +119,7 @@ fn a_font_pack_indexes_its_faces_and_leaves_other_fonts_alone() {
     let repo = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
     let display =
         std::fs::read(repo.join("templates/styles/shared/ChakraPetch-BoldItalic.ttf")).unwrap();
-    let settings =
-        b"type import\nversion 1\n---\nfont {\n  charset latin punct\n  em_px 48\n  px_range 16\n}\n".to_vec();
+    let settings = b"type import\nversion 1\n---\nfont {\n}\n".to_vec();
     let base = vec![
         ("fonts/Display.ttf", display.clone()),
         ("fonts/Display.ttf.ogt", settings.clone()),
@@ -246,7 +156,7 @@ fn a_font_pack_indexes_its_faces_and_leaves_other_fonts_alone() {
     let report = cook_project(&root, &CookOptions::default()).unwrap();
     assert!(report.ok(), "{:?}", report.errors());
 
-    // The other font: the same stamp, bytes and file; its charset as before.
+    // The other font: the same stamp, bytes and file.
     let (a, b) = (
         output(&alone, "fonts/Display.ttf"),
         output(&root, "fonts/Display.ttf"),
@@ -257,12 +167,10 @@ fn a_font_pack_indexes_its_faces_and_leaves_other_fonts_alone() {
     );
     let bundle = Bundle::open(&root.join("cooked")).unwrap();
     let font = bundle.load_font("fonts/Display.ttf").unwrap();
-    assert!(font.ttf.is_none(), "its run-time mode is its own (off)");
-    assert!(
-        !font
-            .glyphs
-            .iter()
-            .any(|g| (0x0600..0x0700).contains(&g.codepoint))
+    assert_eq!(
+        font.file.as_deref(),
+        Some(display.as_slice()),
+        "its own file, whole"
     );
 
     // The index.
@@ -294,7 +202,7 @@ fn a_font_pack_indexes_its_faces_and_leaves_other_fonts_alone() {
     let ttf = files.iter().find(|(p, _)| p == face_id).unwrap().1.len() as u64;
     let font = bundle.load_font(face_id).unwrap();
     assert_eq!(
-        font.ttf.as_ref().map(Vec::len),
+        font.file.as_ref().map(Vec::len),
         Some(ttf as usize),
         "drawn from outlines at run time"
     );

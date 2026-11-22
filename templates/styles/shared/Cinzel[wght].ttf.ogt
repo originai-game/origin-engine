@@ -1,11 +1,8 @@
 type import
 version 1
 ---
-# Fantasy's display face, variable (wght 400–900). No atlas: drawn from the outlines, so the whole file ships.
+# Fantasy's display face, variable (wght 400–900). The face ships whole;
+# every character is drawn from its outlines at the size it is shown.
 font {
-  charset
   chars " "
-  em_px 48
-  px_range 16
-  runtime true
 }

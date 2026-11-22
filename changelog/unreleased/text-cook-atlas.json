@@ -1,0 +1,12 @@
+{
+  "simulation": "unchanged",
+  "breaking": [
+    {
+      "member": "font import settings: charset, em_px, px_range, page_size, runtime, features, color, color_px, palette",
+      "change": "The cook no longer makes a font atlas: a font blob carries the face's file, whole, and every character is laid out and rastered from it at the size it is drawn, COLR glyphs in colour. The settings that chose and sized the atlas are gone, and the cook refuses a font .ogt or a .riv import's font block that still names one. A font blob has no glyph table, kerning or pages: FontInfo's glyphs and pages are 0.",
+      "fix": "Delete the lines (og upgrade does). A character outside the old charset now draws with nothing to do. A features line's tags go in CSS font-feature-settings or font-variant-* (or TypeStep.features); a palette line's choice in CSS font-palette.",
+      "find": ["charset", "em_px", "px_range", "page_size", "color_px"],
+      "codemod": { "kind": "font-atlas-keys" }
+    }
+  ]
+}

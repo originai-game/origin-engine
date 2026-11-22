@@ -52,7 +52,7 @@ pub mod vector;
 
 use execute::{read_sibling, run};
 pub use graph::CodeGraph;
-pub use options::{CookOptions, FontSettings, MeshOptions, Palette, TextureOptions};
+pub use options::{CookOptions, FontSettings, MeshOptions, TextureOptions};
 use options::{
     anim_settings, conform_off, font_settings, mesh_for, mesh_texture, model_stream_textures,
     own_conform_off, settings_block, texture_kind, texture_stream,

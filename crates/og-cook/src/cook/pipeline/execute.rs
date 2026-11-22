@@ -3,7 +3,6 @@ use super::*;
 pub(crate) fn run(
     p: &Planned,
     options: &CookOptions,
-    threads: usize,
     schemas: &BTreeMap<String, Schema>,
     known: &BTreeSet<String>,
     prefab_texts: &BTreeMap<String, String>,
@@ -13,7 +12,6 @@ pub(crate) fn run(
         p,
         &Exec {
             options,
-            threads,
             schemas,
             known,
             prefab_texts,

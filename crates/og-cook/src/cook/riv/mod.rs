@@ -104,12 +104,8 @@ struct ArtboardSettings {
 struct FontAssetSettings {
     /// A referenced font's file under `assets/` (an embedded one has none).
     source: Option<String>,
-    /// Text set at run time renders from the font's outlines (as any
-    /// og-ui font's `runtime true`).
-    runtime: bool,
-    /// More characters and named sets than the runs' own.
+    /// More characters than the runs' own, checked against the font.
     chars: String,
-    charset: Vec<String>,
 }
 
 /// A `.riv`'s import settings (`<file>.riv.ogt`, `type import`).
@@ -216,20 +212,9 @@ fn settings(body: &Block) -> Result<Settings, String> {
                     match g.key.as_str() {
                         "source" => f.source = Some(word_or_string(g, 0)?),
                         "chars" => f.chars = word_or_string(g, 0)?,
-                        "charset" => {
-                            f.charset = (0..g.values.len())
-                                .map(|i| word_or_string(g, i))
-                                .collect::<Result<_, _>>()?
-                        }
-                        "runtime" => {
-                            f.runtime =
-                                g.values.first().and_then(|v| v.as_bool()).ok_or_else(|| {
-                                    format!("line {}: runtime takes true or false", g.line)
-                                })?
-                        }
                         k => {
                             return Err(format!(
-                                "line {}: '{k}' is not a font setting (source, runtime, chars, charset)",
+                                "line {}: '{k}' is not a font setting (source, chars)",
                                 g.line
                             ));
                         }
@@ -299,7 +284,7 @@ fn names_font(n: &str, index: usize, name: &str) -> bool {
 
 /// A font the `.riv` sets text in, as the cook makes it: its asset index,
 /// its name in Rive, the font file's bytes (embedded, or the referenced
-/// one's source) and its cook's settings, the charset the characters its
+/// one's source) and its cook's settings, the characters its
 /// runs show.
 pub(super) struct RivFont {
     pub index: usize,
@@ -344,10 +329,7 @@ fn fonts(
             ));
         }
         let mut settings = base.clone();
-        settings.charset = own.map(|f| f.charset.clone()).unwrap_or_default();
         settings.chars = format!("{used}{}", own.map_or("", |f| f.chars.as_str()));
-        settings.runtime = own.is_some_and(|f| f.runtime);
-        settings.features = Vec::new();
         settings.pixel = 0;
         out.push(RivFont {
             index,
@@ -389,14 +371,9 @@ pub(super) fn plan(s: &Source, base: &super::FontSettings) -> Result<Plan, Strin
     Ok((chosen, images, fonts))
 }
 
-/// Cooks a `.riv`'s font into a font blob (charset: the characters its
-/// runs show; `runtime` only when its settings say so).
-pub(super) fn cook_font(
-    f: &RivFont,
-    threads: usize,
-    stamp: u64,
-) -> Result<(Vec<u8>, Vec<String>), CookError> {
-    let (bytes, notes) = super::font::cook(&f.bytes, &f.settings, threads, stamp)
+/// Cooks a `.riv`'s font into a font blob: its file, whole.
+pub(super) fn cook_font(f: &RivFont, stamp: u64) -> Result<(Vec<u8>, Vec<String>), CookError> {
+    let (bytes, notes) = super::font::cook(&f.bytes, &f.settings, stamp)
         .map_err(|e| CookError(format!("font{} '{}': {}", f.index, f.name, e.0)))?;
     Ok((
         bytes,
@@ -639,9 +616,8 @@ impl Job for RiveImageJob<'_> {
 struct RiveFontJob(Box<RivFont>);
 
 impl Job for RiveFontJob {
-    fn cook(&self, p: &Planned, ex: &Exec) -> Result<(Vec<u8>, Vec<String>), CookError> {
+    fn cook(&self, p: &Planned, _: &Exec) -> Result<(Vec<u8>, Vec<String>), CookError> {
         let RiveFontJob(f) = self;
-        let Exec { threads, .. } = ex;
-        cook_font(f, *threads, p.stamp)
+        cook_font(f, p.stamp)
     }
 }

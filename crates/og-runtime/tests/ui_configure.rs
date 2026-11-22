@@ -43,7 +43,7 @@ fn project() -> &'static Path {
         write("styles/mini/Body.ttf", &std::fs::read(font).unwrap());
         write(
             "styles/mini/Body.ttf.ogt",
-            b"type import\nversion 1\n---\nfont {\n  charset latin\n  em_px 32\n  px_range 4\n}\n",
+            b"type import\nversion 1\n---\nfont {\n}\n",
         );
         write(
             "styles/mini/pack.json",
@@ -59,7 +59,7 @@ fn project() -> &'static Path {
         write("styles/faced/Body.ttf", &std::fs::read(font).unwrap());
         write(
             "styles/faced/Body.ttf.ogt",
-            b"type import\nversion 1\n---\nfont {\n  charset latin\n  em_px 32\n  px_range 4\n}\n",
+            b"type import\nversion 1\n---\nfont {\n}\n",
         );
         write(
             "styles/faced/pack.json",
@@ -73,14 +73,14 @@ fn project() -> &'static Path {
         write("styles/copied/Body.ttf", &std::fs::read(&font).unwrap());
         write(
             "styles/copied/Body.ttf.ogt",
-            b"type import\nversion 1\n---\nfont {\n  charset latin\n  em_px 32\n  px_range 4\n}\n",
+            b"type import\nversion 1\n---\nfont {\n}\n",
         );
         // Faces beside the pack, in a directory of it, and named from
         // assets/ by a leading `/`.
         write("styles/copied/nested/Numeric.ttf", &std::fs::read(font).unwrap());
         write(
             "styles/copied/nested/Numeric.ttf.ogt",
-            b"type import\nversion 1\n---\nfont {\n  charset latin\n  em_px 32\n  px_range 4\n}\n",
+            b"type import\nversion 1\n---\nfont {\n}\n",
         );
         write(
             "styles/copied/pack.json",

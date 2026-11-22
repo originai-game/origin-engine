@@ -67,7 +67,7 @@ pub(crate) fn execute(
                     let t = Instant::now();
                     let start = t.duration_since(started).as_secs_f64() * 1000.0;
                     let r = action_cache::run(texture_cache, p, options, project_key, || {
-                        run(p, options, threads, schemas, known, prefab_texts, budgets)
+                        run(p, options, schemas, known, prefab_texts, budgets)
                     });
                     *results[i].lock().expect("no poisoning") =
                         Some((r, t.elapsed().as_secs_f64() * 1000.0, start, worker as u32));

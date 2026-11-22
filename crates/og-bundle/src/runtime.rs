@@ -1079,48 +1079,16 @@ impl Bundle {
                 mips: Mips::None,
             });
         }
-        let colour = |prefix: &str, field: bool| -> Result<Vec<TextureData>, LoadError> {
-            let mut pages = Vec::new();
-            while let Some(ktx) = blob.raw_opt(&format!("{prefix}.{}", pages.len())) {
-                let (width, height, rgba) =
-                    ktx2::decode_rgba8(ktx, 0).map_err(|r| invalid(&blob, r))?;
-                pages.push(TextureData {
-                    width,
-                    height,
-                    rgba,
-                    color_space: if field {
-                        ColorSpace::Linear
-                    } else {
-                        ColorSpace::Srgb
-                    },
-                    mips: if field { Mips::None } else { Mips::Generate },
-                });
-            }
-            Ok(pages)
-        };
-        let color_pages = colour("color", false)?;
-        let foreground_pages = colour("foreground", false)?;
-        let color_fields = colour("color-field", true)?;
-        let foreground_fields = colour("foreground-field", true)?;
         let kerning = blob
             .table::<KernRow>("kerning", row_hash::<KernRow>())?
             .into_owned();
         Ok(CookedFont {
-            color_pages,
-            foreground_pages,
-            color_fields,
-            foreground_fields,
             id: asset_id(id).to_string(),
             meta,
             glyphs,
             kerning,
             pages,
-            ttf: blob.raw("ttf").ok().map(<[u8]>::to_vec),
-            shaping: blob.raw("shaping").ok().map(<[u8]>::to_vec),
             file: blob.raw_opt("file").map(<[u8]>::to_vec),
-            color_runtime: blob
-                .raw_opt("color-runtime")
-                .and_then(crate::runtime::ColorRuntime::parse),
             pixel: blob
                 .raw_opt("pixel")
                 .and_then(|b| std::str::from_utf8(b).ok()?.parse().ok())

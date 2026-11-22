@@ -129,9 +129,8 @@ fn bundle() -> Bundle {
 /// The template made small enough to cook thirty times: as the template
 /// ships (without the fixture's trickster.glb, whose three 1024² textures
 /// are most of a cook; its scene entity is the walker), the two standalone
-/// textures cut to 128², the font's charset to ASCII and the template's own
-/// characters. Every kind of output and both texture encoders remain, and
-/// the font still renders its glyphs on the cook's thread count.
+/// textures cut to 128². Every kind of output and both texture encoders
+/// remain.
 fn small_template(root: &Path) {
     copy_dir(&template_assets(), &root.join("assets"));
     let assets = root.join("assets");
@@ -141,11 +140,6 @@ fn small_template(root: &Path) {
             .save(assets.join(t))
             .unwrap();
     }
-    let font = assets.join("fonts/NotoSansSC-Regular-subset.ttf.ogt");
-    let text = std::fs::read_to_string(&font).unwrap();
-    let text = text.replace("charset latin cjk-punct", "charset ascii");
-    assert!(text.contains("charset ascii"), "{text}");
-    std::fs::write(&font, text).unwrap();
 }
 
 /// Cooks of one project on one, two and eight threads, the three series
@@ -356,92 +350,13 @@ fn sounds_fonts_and_scenes_load_as_authored() {
     let snr = 10.0 * (sig / err).log10();
     assert!(snr > 20.0, "QOA SNR {snr:.1} dB");
 
-    // Font: the charset and the extra characters, with distance fields whose
-    // inside is inside: the centre of '中' (its vertical stroke) is ink,
-    // the atlas border around it is not.
+    // Font: the file, whole, with its metrics; no atlas.
     let f = b.load_font("fonts/NotoSansSC-Regular-subset.ttf").unwrap();
-    assert!(f.glyph('A').is_some() && f.glyph('é').is_some() && f.glyph('。').is_some());
-    assert!(f.glyph('开').is_some(), "chars from the import settings");
-    assert!(f.glyph('龍').is_none(), "outside the charset");
-    let space = f.glyph(' ').unwrap();
-    assert!(space.advance > 0.1 && space.atlas_w == 0);
-    let g = f.glyph('中').unwrap();
-    let page = &f.pages[g.page as usize];
-    let at = |x: u32, y: u32| page.rgba[((y * page.width + x) * 4) as usize..][..4].to_vec();
-    let centre = at(g.atlas_x + g.atlas_w / 2, g.atlas_y + g.atlas_h / 2);
-    let corner = at(g.atlas_x + 1, g.atlas_y + 1);
-    let median = |p: &[u8]| {
-        let mut c = [p[0], p[1], p[2]];
-        c.sort();
-        c[1]
-    };
-    assert!(
-        median(&centre) > 160 && centre[3] > 160,
-        "inside: {centre:?}"
-    );
-    assert!(
-        median(&corner) < 96 && corner[3] < 96,
-        "outside: {corner:?}"
-    );
+    let source =
+        std::fs::read(template_assets().join("fonts/NotoSansSC-Regular-subset.ttf")).unwrap();
+    assert_eq!(f.file.as_deref(), Some(source.as_slice()));
+    assert!(f.pages.is_empty() && f.glyphs.is_empty() && f.kerning.is_empty());
     assert!(f.meta.ascender > 0.5 && f.meta.descender < 0.0);
-
-    // Kerning: the GPOS `kern` pairs between cooked characters, sorted and
-    // unique, in em; Latin pairs the font tightens ("AV", "To") come out
-    // negative, a pair it does not kern ("HH") is absent.
-    assert!(!f.kerning.is_empty(), "the template font kerns");
-    assert!(
-        f.kerning
-            .windows(2)
-            .all(|w| (w[0].left, w[0].right) < (w[1].left, w[1].right)),
-        "sorted by (left, right), no duplicate"
-    );
-    let kern = |a: char, b: char| {
-        f.kerning
-            .iter()
-            .find(|k| k.left == a as u32 && k.right == b as u32)
-            .map(|k| k.adjust)
-    };
-    assert!(kern('A', 'V').is_some_and(|k| k < 0.0) && kern('T', 'o').is_some_and(|k| k < -0.05));
-    assert_eq!(kern('H', 'H'), None);
-    // Error correction (msdfgen's): between two neighbouring texels that
-    // the true distance (alpha) puts on the same side, well away from an
-    // edge, the interpolated multi-channel median stays on that side, so no
-    // corner draws a false spike or notch where the channels clash.
-    let mut clashes = 0;
-    for g in f
-        .glyphs
-        .iter()
-        .filter(|g| g.atlas_w > 0 && g.codepoint < og_bundle::format::GLYPH_ID_KEYS)
-    {
-        let page = &f.pages[g.page as usize];
-        let px = |x: u32, y: u32| &page.rgba[((y * page.width + x) * 4) as usize..][..4];
-        for y in g.atlas_y..g.atlas_y + g.atlas_h {
-            for x in g.atlas_x..g.atlas_x + g.atlas_w {
-                let a = px(x, y);
-                for (nx, ny) in [(x + 1, y), (x, y + 1)] {
-                    if nx >= g.atlas_x + g.atlas_w || ny >= g.atlas_y + g.atlas_h {
-                        continue;
-                    }
-                    let b = px(nx, ny);
-                    let (ta, tb) = (a[3] as i32 - 128, b[3] as i32 - 128);
-                    if ta.signum() != tb.signum() || ta.abs() < 24 || tb.abs() < 24 {
-                        continue;
-                    }
-                    let mid: Vec<u8> = (0..3)
-                        .map(|c| ((a[c] as u32 + b[c] as u32) / 2) as u8)
-                        .collect();
-                    if (median(&mid) as i32 - 128).signum() != ta.signum() {
-                        clashes += 1;
-                    }
-                }
-            }
-        }
-    }
-    // Measured on this font: 474 such clashes without the correction, 224
-    // with it (what remains is the sharp corners the median keeps and the
-    // rounded true distance does not); a clash per two glyphs is the bound.
-    let drawn = f.glyphs.iter().filter(|g| g.atlas_w > 0).count();
-    assert!(clashes * 2 < drawn, "{clashes} clashes over {drawn} glyphs");
 
     // Scene: entities, nesting, model instances and the Transform table.
     let scene = b.load_scene("scenes/main.ogt").unwrap();

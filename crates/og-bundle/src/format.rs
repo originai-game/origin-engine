@@ -25,7 +25,7 @@
 //! | video chunk (`og.VideoChunk`, `<stream id>.<n>`: a stream's frames from key frame `n · chunk_frames` on, fetched ahead of its players) | [`VideoChunkMeta`] | `data` (the AV1 temporal units, or the H.264 or HEVC samples as MP4 holds them) |
 //! | sound (`og.Sound`; a `.wav`, `.mp3`, `.ogg` (Vorbis), `.flac` or `.opus`, or a procedural preset: an `.ogt` of `type sfx` synthesised by the cook) | [`SoundMeta`] | `qoa` (`codec` QOA: a QOA file; of a sound cooked in chunks, the header and the first chunk's frames) or `opus` (`codec` Opus: an Opus sound, `crate::opus`) |
 //! | sound chunk (`og.SoundChunk`, `<id>#chunk<n>` of a sound cooked in chunks) | [`SoundChunkMeta`] | `qoa` (the chunk's QOA frames) |
-//! | font (`og.Font`) | [`FontMeta`] | `glyphs` [`GlyphRow`], `kerning` [`KernRow`] (sorted by left, right), `atlas.<n>` (KTX2 RGBA8, zlib), `ttf` (the font file, when shaped or `runtime`) |
+//! | font (`og.Font`) | [`FontMeta`] | `glyphs` [`GlyphRow`], `kerning` [`KernRow`] (both empty but an icon set's), `file` (the font file, whole), `pixel` (a pixel font's grid); an icon set: `atlas.<n>` (KTX2 RGBA8, zlib) and `names` |
 //! | scene (`og.Scene`) | [`SceneMeta`] | `entities` [`EntityRow`], `refs` [`RefRow`], `components` [`ComponentRow`], `strings`, per component `c.<Type>` rows and `s.<Type>` its schema JSON; when an entity was placed from a prefab, `prefabs` [`PrefabRow`] and `prefab_refs` [`RefRow`]; when one places a sub-scene, `subscenes` [`SubsceneRow`] and `subscene_refs` [`RefRow`]; outside a publish cook, `lines` [`SceneLineRow`]. A prefab (an `.ogt` of `type prefab`) cooks to one too, flattened |
 //! | colour LUT (`og.Lut`, a `.cube`) | [`LutMeta`] | `rgba` (size³ RGBA8, red fastest) |
 //! | particle emitter (`og.ParticleEmitter`, an `.ogt` of `type particles`) | [`EmitterMeta`] | `text` (the validated emitter file) |
@@ -59,7 +59,7 @@ use og_core::{Reflect, Schema};
 
 /// Changes whenever the bytes the cook writes for the same input change.
 /// Part of every cook stamp, so a new cooker re-cooks everything.
-pub const COOKER_VERSION: &str = concat!("og-cook ", env!("CARGO_PKG_VERSION"), " r30");
+pub const COOKER_VERSION: &str = concat!("og-cook ", env!("CARGO_PKG_VERSION"), " r31");
 
 /// "None" in a u32 index field.
 pub const NONE: u32 = u32::MAX;
@@ -1092,11 +1092,6 @@ row!(
 /// plus the glyph id, past every Unicode code point, so no character a
 /// font maps (an icon font's private-use ones included) can name one.
 pub const GLYPH_ID_KEYS: u32 = 0x11_0000;
-
-/// The distance range, in their pixels, of a font blob's colour glyph
-/// silhouettes (`color-field.<n>`, `foreground-field.<n>`): signed
-/// distance fields, every channel `0.5 + d / range`, positive inside.
-pub const COLOR_FIELD_RANGE: f32 = 8.0;
 
 impl GlyphRow {
     /// The glyph's key: its character, or its glyph id (`None`: neither,

@@ -125,7 +125,14 @@ pub fn og_ui_configure(world: u32, desc: Option<String>) -> Result<(), String> {
                             "{field}.font: font {h} is not an icon set (cook SVGs with an .ogt of `type icons`)"
                         ));
                     }
-                    Some((eng.assets.borrow().fonts.get(i).and_then(|f| f.face.clone()), names))
+                    Some((
+                        eng.assets
+                            .borrow()
+                            .fonts
+                            .get(i)
+                            .and_then(|f| f.face.clone()),
+                        names,
+                    ))
                 }
                 None => None,
             };

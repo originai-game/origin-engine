@@ -109,28 +109,23 @@ fn a_riv_text_cooks_its_font_to_the_characters_it_shows() {
     assert_eq!(a.fonts[0].id, "ui/hello_world.riv#font0");
     assert_eq!(a.strings, ["Hello World!"]);
     let f = font_of(&root, &bundle, "ui/hello_world.riv#font0");
-    let cooked: String = f
-        .glyphs
-        .iter()
-        .filter_map(|g| char::from_u32(g.codepoint))
-        .filter(|c| !c.is_whitespace())
-        .collect();
-    assert_eq!(cooked, "!HWdelor");
-    assert!(f.ttf.is_none(), "no run-time glyphs unless asked");
+    assert!(
+        f.file.is_some() && f.pages.is_empty(),
+        "the face ships whole"
+    );
 
-    // Its settings name it by its output (the asset has no name in Rive)
-    // and opt it into run-time glyphs and more characters.
+    // Its settings name it by its output (the asset has no name in Rive);
+    // a character it lacks is named in the cook's note.
     std::fs::write(
         root.join("assets/ui/hello_world.riv.ogt"),
-        "type import\nversion 1\n---\nfont font0 {\n  runtime true\n  chars \"0123\"\n}\n",
+        "type import\nversion 1\n---\nfont font0 {\n  chars \"0123\"\n}\n",
     )
     .unwrap();
     let report = cook_project(&root, &CookOptions::default()).unwrap();
     assert!(report.ok(), "{:?}", report.errors());
     let bundle = Bundle::open(&root.join("cooked")).unwrap();
     let f = font_of(&root, &bundle, "ui/hello_world.riv#font0");
-    assert!(f.ttf.is_some(), "runtime true ships the file");
-    assert!(f.glyph('0').is_some() && f.glyph('a').is_none());
+    assert!(f.file.is_some());
 }
 
 /// A keyed font that has none of the characters its run shows is an

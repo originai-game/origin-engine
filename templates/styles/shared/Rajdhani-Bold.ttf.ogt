@@ -1,10 +1,8 @@
 type import
 version 1
 ---
-# Latin-1 and the typographic punctuation the kit shows; 32 px per em in the atlas; px_range 11, a third of the em, for a 2 px outline at 16 px.
+# The face ships whole; every character is drawn from its outlines at the
+# size it is shown.
 font {
-  charset latin punct
   chars "−"
-  em_px 32
-  px_range 11
 }

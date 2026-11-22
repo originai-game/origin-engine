@@ -48,7 +48,6 @@ impl fmt::Debug for KindDef {
 /// What cooking an output reads beside its own work.
 pub(crate) struct Exec<'a> {
     pub(crate) options: &'a CookOptions,
-    pub(crate) threads: usize,
     pub(crate) schemas: &'a BTreeMap<String, Schema>,
     pub(crate) known: &'a BTreeSet<String>,
     pub(crate) prefab_texts: &'a BTreeMap<String, String>,
