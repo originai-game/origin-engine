@@ -38,6 +38,7 @@ pub mod report;
 pub mod rig;
 pub mod source;
 pub mod unwrap;
+pub mod views;
 
 #[cfg(test)]
 mod golden;
@@ -158,7 +159,16 @@ pub fn run(argv: &[&str]) -> ExitCode {
         }
         None => Err(Failure::Usage("no command".into())),
     };
+    let json = argv.iter().any(|a| a == "--json");
     match result {
+        Err(Failure::Usage(why)) if json => {
+            println!("{}", serde_json::json!({ "error": why }));
+            ExitCode::from(2)
+        }
+        Err(Failure::Failed(why)) if json => {
+            println!("{}", serde_json::json!({ "error": why }));
+            ExitCode::from(1)
+        }
         Ok(out) => {
             if !out.is_empty() {
                 println!("{out}");

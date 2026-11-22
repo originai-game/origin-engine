@@ -16,7 +16,8 @@ pub struct Args {
 }
 
 /// Flags that take no value.
-const SWITCHES: [&str; 28] = [
+const SWITCHES: [&str; 29] = [
+    "--json",
     "--shared",
     "--webp",
     "--keep-order",
@@ -132,7 +133,9 @@ impl Args {
     /// Fails on an option the command does not take.
     pub fn only(&self, known: &[&str]) -> Result<(), Failure> {
         for (k, _) in &self.options {
-            if !known.contains(&k.as_str()) {
+            // Every command takes --json: its report is JSON already,
+            // and a failure is `{"error"}` on stdout.
+            if k != "--json" && !known.contains(&k.as_str()) {
                 return Err(Failure::Usage(format!("unknown option {k}")));
             }
         }

@@ -19,7 +19,7 @@ use super::args::{Args, IMPORT_OPTIONS};
 use super::export::written;
 use super::report::{array, object, string};
 use super::source::{Local, Source, load_uvs};
-use super::{Failure, Files, failed};
+use super::{Failure, Files, failed, views};
 
 /// The views and how to lay them out. The zero value is the kernel's
 /// default turntable (`og_shape::tools::Preview`) in one row.
@@ -117,7 +117,7 @@ pub fn camera(c: &ViewCamera) -> String {
 
 /// What the source shows: a program's built scene, or a mesh's parts
 /// placed, welded and each with its map.
-fn with_scene<T>(
+pub fn with_scene<T>(
     source: &Source,
     pose: Option<(&str, f64)>,
     morph: &[(String, f64)],
@@ -241,6 +241,36 @@ fn with_scene<T>(
             run(&scene)
         }
     }
+}
+
+/// `--views` by name: `<dir>/<stem>.png` a view, transparent off the
+/// model, lit, with edges; the report lists each view, its file and its
+/// camera ([`views::camera_json`]).
+fn named(source: &Source, list: &[views::View], size: u32, dir: &Path) -> Result<String, Failure> {
+    std::fs::create_dir_all(dir).map_err(|e| Failure::Failed(format!("{}: {e}", dir.display())))?;
+    let mut out = Vec::new();
+    for (v, stem) in list.iter().zip(views::stems(list)) {
+        let (image, cam) = with_scene(source, None, &[], |scene| {
+            views::render(
+                scene,
+                v,
+                size,
+                views::Look {
+                    unlit: false,
+                    edges: true,
+                },
+            )
+        })?;
+        let path = dir.join(format!("{stem}.png"));
+        std::fs::write(&path, og_shape_formats::png::write::png(&image))
+            .map_err(|e| Failure::Failed(format!("{}: {e}", path.display())))?;
+        out.push(serde_json::json!({
+            "view": stem,
+            "path": path.display().to_string(),
+            "camera": views::camera_json(&cam),
+        }));
+    }
+    Ok(serde_json::json!({ "views": out }).to_string())
 }
 
 /// The names of a mesh file's clips, each once, in file order.
@@ -492,6 +522,15 @@ pub fn run(a: &Args) -> Result<String, Failure> {
         IMPORT_OPTIONS[2],
         IMPORT_OPTIONS[3],
     ])?;
+    // `--views front,right,…`: one cut-out PNG a named view into the
+    // directory `--out`.
+    if let Some(list) = a.value(&["--views"])?
+        && list.chars().any(|c| c.is_ascii_alphabetic())
+    {
+        let source = load_uvs(&Local, &a.input()?, &a.import()?, a.switch("--uvs"))?;
+        let size = a.number("--width")?.unwrap_or(1024);
+        return named(&source, &views::parse(list)?, size, &a.out()?);
+    }
     let out = a.out()?;
     if a.value(&["--uv-size"])?.is_some() && !a.switch("--uv") {
         return Err(Failure::Usage("--uv-size goes with --uv".into()));
@@ -508,6 +547,8 @@ pub fn run(a: &Args) -> Result<String, Failure> {
             fov: a.number("--fov")?,
             unlit: a.switch("--unlit"),
             frame: None,
+            transparent: false,
+            aim: None,
         },
         columns: a.number("--columns")?.unwrap_or(0),
         each: a.switch("--each"),
