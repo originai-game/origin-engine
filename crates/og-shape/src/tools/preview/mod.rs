@@ -118,7 +118,7 @@ pub struct Preview {
     /// Views evenly around the turntable; 0 is 4.
     pub views: u32,
     /// Camera height above the horizon, radians; `None` is 25°. Must lie
-    /// in (0, π/2]: the ground is seen from above.
+    /// in [0, π/2]: at 0 a level view sees the ground edge on.
     pub elevation: Option<f64>,
     /// Azimuth of the first view, radians from the side the kernel's −Y
     /// looks at (the front), turning counter-clockwise seen from above.
@@ -140,6 +140,25 @@ pub struct Preview {
     /// corner; `None` is the scene's own. One box for every frame of a
     /// motion keeps the camera still while the scene moves in it.
     pub frame: Option<(DVec3, DVec3)>,
+    /// Off the model, alpha 0 (the ground and its shadow are not drawn):
+    /// a cut-out, whose alpha is the model's silhouette.
+    pub transparent: bool,
+    /// One view from this camera instead of the turntable; `views`,
+    /// `elevation` and `azimuth` are not read. Orthographic, it looks
+    /// along `target − eye` at the framed box's centre; with
+    /// [`Preview::fov`], it stands at `eye`.
+    pub aim: Option<Aim>,
+}
+
+/// A camera given by where it stands and looks, in the scene's frame.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct Aim {
+    /// Where the camera stands.
+    pub eye: DVec3,
+    /// The point it looks at.
+    pub target: DVec3,
+    /// Which way is up in the image; it need not be square to the view.
+    pub up: DVec3,
 }
 
 /// Where a view looks from, in the scene's frame (kernel units, +Z up).
@@ -240,7 +259,11 @@ pub fn views_in(
     let placed = crate::tools::export::check(scene)?;
     let width = if d.width == 0 { 256 } else { d.width };
     let height = if d.height == 0 { width } else { d.height };
-    let views = if d.views == 0 { 4 } else { d.views };
+    let views = match (d.aim, d.views) {
+        (Some(_), _) => 1,
+        (None, 0) => 4,
+        (None, n) => n,
+    };
     // Bounds, so a caller that passes a request on need not check it:
     // an image side, the views, and the pixels of them all.
     if width > MAX_SIDE || height > MAX_SIDE {
@@ -260,7 +283,7 @@ pub fn views_in(
         )));
     }
     let elevation = d.elevation.unwrap_or(double::to_radians(25.0));
-    if !(elevation > 0.0 && elevation <= double::PI / 2.0) || !d.azimuth.is_finite() {
+    if !(0.0..=double::PI / 2.0).contains(&elevation) || !d.azimuth.is_finite() {
         return Err(ExportError::NotFinite("the preview's elevation".into()));
     }
     if let Some(f) = d.fov
@@ -387,6 +410,24 @@ pub fn views_in(
         DVec3::new(centre.x - half, centre.y + half, ground_z),
     ];
     let (se, ce) = double::sin_cos(elevation);
+    // An aimed camera: the direction from the scene to it, and its right.
+    let aimed = match d.aim {
+        Some(a) => {
+            let toward = (a.eye - a.target).normalize_or_zero();
+            let right = a.up.cross(toward).normalize_or_zero();
+            if !(a.eye.is_finite() && a.target.is_finite())
+                || toward == DVec3::ZERO
+                || right == DVec3::ZERO
+            {
+                return Err(ExportError::NotFinite(
+                    "the preview's camera (an eye apart from its target, an up not along the view)"
+                        .into(),
+                ));
+            }
+            Some((a, toward, right))
+        }
+        None => None,
+    };
     let mut out = Views {
         undrawn,
         ..Default::default()
@@ -395,8 +436,16 @@ pub fn views_in(
         let az = d.azimuth + double::TAU * (f64::from(k) / f64::from(views));
         let (sa, ca) = double::sin_cos(az);
         // At azimuth 0 the camera stands at −Y looking at +Y.
-        let toward = DVec3::new(sa * ce, -ca * ce, se); // from the scene to the camera
-        let right = DVec3::new(ca, sa, 0.0);
+        let (toward, right) = match aimed {
+            Some((_, toward, right)) => (toward, right),
+            // From the scene to the camera.
+            None => (DVec3::new(sa * ce, -ca * ce, se), DVec3::new(ca, sa, 0.0)),
+        };
+        // Perspective from an aimed camera stands at its eye.
+        let eye = |dist: f64| match aimed {
+            Some((a, ..)) => a.eye,
+            None => centre + toward * dist,
+        };
         // Right-handed: right × up = toward; up leans to +Z.
         let up = toward.cross(right);
         let cam = Camera {
@@ -407,11 +456,11 @@ pub fn views_in(
             scale: fit,
             width,
             height,
-            eye: lens.map(|(focal, dist)| (centre + toward * dist, focal)),
+            eye: lens.map(|(focal, dist)| (eye(dist), focal)),
         };
         out.cameras.push(ViewCamera {
             position: match lens {
-                Some((_, dist)) => centre + toward * dist,
+                Some((_, dist)) => eye(dist),
                 None => centre + toward * (radius * 3.0),
             },
             target: centre,
@@ -441,7 +490,7 @@ pub fn views_in(
             maps: &maps,
             environment,
         };
-        if !d.no_ground {
+        if !d.no_ground && !d.transparent {
             draw_ground(&mut t, &cam, &ground, &parts, light, ground_z);
         }
         for p in parts.iter().filter(|p| p.opacity == 1.0) {
@@ -458,9 +507,13 @@ pub fn views_in(
             }
         }
         let mut rgba = Vec::with_capacity(n * 4);
-        for px in &t.rgb {
+        for (px, z) in t.rgb.iter().zip(&t.depth) {
             rgba.extend_from_slice(px);
-            rgba.push(255);
+            rgba.push(if d.transparent && *z == f64::INFINITY {
+                0
+            } else {
+                255
+            });
         }
         out.images.push(Image {
             width,
