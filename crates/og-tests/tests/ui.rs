@@ -552,3 +552,117 @@ fn mass_timing_luts_draw_at_the_shared_curves_positions() {
         }
     }
 }
+
+/// The mass instances' template index (`overlay.rs`): a text batch whose
+/// glyphs lie on two pages of the glyph atlas takes two templates, and a
+/// bar batch after it must read its own, not the text's last. `ui_world`
+/// hides this: each of its text batches sits on one page.
+#[test]
+#[ignore = "requires GPU"]
+fn ui_mass_bar_after_a_two_page_text_batch_draws_its_own_template() {
+    use og_core::glam::{Vec2, Vec3};
+    use og_render::{
+        Background, Overlay, RenderScene, RenderTarget, Renderer, UiMassBatch,
+        UiMassInstance, UiMassKind, UiMassSpace, UiMassTemplate,
+    };
+    use std::sync::Arc;
+
+    let mut desc = scenes::base_desc();
+    desc.width = 480;
+    desc.height = 280;
+    let mut renderer = Renderer::new_blocking(&desc).unwrap();
+    let mut scene = RenderScene::new();
+    scene.lighting.environment.background = Background::Color(Vec3::splat(0.015));
+    let font = scenes::load_font(&mut scene).unwrap();
+
+    // "HP" fills early, so its glyphs land on the atlas's first field
+    // page. Filler glyphs then fill the atlas until one of them lands on
+    // another field page: the two strings then span two pages, whatever
+    // room the plots' shelves leave.
+    let hp = font.mass_string("HP").unwrap();
+    let hp_page = hp.glyphs[0].glyph.page;
+    let mut code = 0x4e00u32;
+    let han = loop {
+        assert!(code < 0xd000, "the atlas never grew a second field page");
+        let ch = char::from_u32(code).expect("filler code point");
+        code += 1;
+        match font.mass_string(&ch.to_string()) {
+            Ok(s) if !s.glyphs.is_empty() && s.glyphs[0].glyph.page != hp_page => break s,
+            _ => continue,
+        }
+    };
+
+    let mut overlay = Overlay::new(480.0, 280.0, 0.0);
+    overlay.ui.tick = 1;
+    // The text batch first: its glyphs lie on two pages, so it takes two
+    // templates; the bar after it takes the third. The instance shows the
+    // first string, whose glyphs lie on the second page.
+    overlay.ui.mass.push(UiMassBatch {
+        template: Arc::new(UiMassTemplate {
+            kind: UiMassKind::Text {
+                strings: vec![hp, han],
+            },
+            size: Vec2::new(28.0, 28.0),
+            pivot: Vec2::new(0.5, 0.5),
+            ..Default::default()
+        }),
+        space: UiMassSpace::Screen,
+        instances: vec![UiMassInstance {
+            position: [60.0, 200.0, 0.0],
+            value: 0.0,
+            color: [1.0; 4],
+            scale: 1.0,
+            ..Default::default()
+        }],
+        layer: 1,
+        clip: None,
+        depth_sort: None,
+    });
+    // A bar after it: 120 px wide from (300, 52), half filled in green.
+    overlay.ui.mass.push(UiMassBatch {
+        template: Arc::new(UiMassTemplate {
+            kind: UiMassKind::Bar {
+                back: [0.02, 0.02, 0.03, 0.85],
+                ghost: [1.0, 0.9, 0.9, 1.0],
+                radius: 6.0,
+            },
+            size: Vec2::new(120.0, 12.0),
+            pivot: Vec2::ZERO,
+            ..Default::default()
+        }),
+        space: UiMassSpace::Screen,
+        instances: vec![UiMassInstance {
+            position: [300.0, 52.0, 0.0],
+            value: 0.5,
+            color: [0.1, 0.8, 0.2, 1.0],
+            scale: 1.0,
+            ..Default::default()
+        }],
+        layer: 1,
+        clip: None,
+        depth_sort: None,
+    });
+    scene.ui.overlay = Some(overlay);
+    // A first frame may skip draws whose pipelines are still compiling;
+    // the pass is drawn again whole until nothing was left.
+    let image = loop {
+        renderer.render(&scene, &RenderTarget::Offscreen).unwrap();
+        let image = renderer.read_offscreen().unwrap();
+        if og_render::frame_skipped() == 0 {
+            break image;
+        }
+    };
+    let px = |x: u32, y: u32| {
+        let at = ((y * image.width + x) * 4) as usize;
+        [image.pixels[at], image.pixels[at + 1], image.pixels[at + 2]]
+    };
+    // The fill's centre, a quarter in, is the instance's green.
+    let fill = px(330, 60);
+    assert!(
+        fill[1] > 200 && fill[0] < fill[1] - 60 && fill[2] < fill[1] - 60,
+        "the bar's fill draws {fill:?}"
+    );
+    // Past the fill, the template's back.
+    let back = px(390, 60);
+    assert!(back.iter().all(|&c| c < 100), "the bar's back draws {back:?}");
+}

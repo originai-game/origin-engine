@@ -13,7 +13,7 @@ impl Renderer {
             // Mass elements' icon textures (and the white one).
             if let Some(o) = &scene.ui.overlay {
                 for r in &of.runs {
-                    if let overlay::OverlaySource::Mass(k) = r.source {
+                    if let overlay::OverlaySource::Mass(k, _) = r.source {
                         textures.push(o.ui.mass[k as usize].template.texture);
                     }
                 }
