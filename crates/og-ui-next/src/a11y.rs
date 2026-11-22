@@ -40,13 +40,15 @@ pub enum Kind {
     Input,
     /// A `<Line>` (tag 6).
     Line,
+    /// A `<Particles>` (tag 7): decoration, an image when labelled.
+    Particles,
     /// A `Show`/`For` anchor: never a node.
     Placeholder,
 }
 
 impl Kind {
     /// A `create` op's tag code (CONVENTIONS.md §Ops: 0 View, 1 Text,
-    /// 2 Image, 3 Scroll, 4 Input, 5 Icon, 6 Line).
+    /// 2 Image, 3 Scroll, 4 Input, 5 Icon, 6 Line, 7 Particles).
     pub fn of(tag: u8) -> Kind {
         match tag {
             1 => Kind::Text,
@@ -54,7 +56,8 @@ impl Kind {
             3 => Kind::Scroll,
             4 => Kind::Input,
             5 => Kind::Icon,
-            6.. => Kind::Line,
+            6 => Kind::Line,
+            7.. => Kind::Particles,
             0 => Kind::View,
         }
     }
@@ -482,7 +485,9 @@ fn role(s: &Sem, run: bool) -> Option<Role> {
         Kind::Input => Some(Role::TextInput),
         Kind::Text => Some(Role::Label),
         Kind::Scroll => Some(Role::ScrollView),
-        Kind::Image | Kind::Icon | Kind::Line => s.label.is_some().then_some(Role::Image),
+        Kind::Image | Kind::Icon | Kind::Line | Kind::Particles => {
+            s.label.is_some().then_some(Role::Image)
+        }
         Kind::Placeholder => None,
         Kind::View if s.modal => Some(Role::Dialog),
         Kind::View if s.press => Some(Role::Button),

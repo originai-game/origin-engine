@@ -65,6 +65,9 @@ struct El {
     /// A `<Line>`'s points and how they map onto its box; `None` for any
     /// other node.
     line: Option<Box<Line>>,
+    /// A `<Particles>`'s props and its running system; `None` for any
+    /// other node.
+    particles: Option<Box<particles::Particles>>,
     /// Where an op node with `anchor` sits in the world, how it is placed
     /// there and where it was last placed; `None` for one that sets no
     /// placement prop ([`El::anchored`] for whether it is anchored).
@@ -376,6 +379,9 @@ pub struct Tree {
     input: input::Input,
     last_pointer: (f32, f32, u64),
     paints: u64,
+    /// The `<Particles>` nodes' tick and which wait for their emitter
+    /// ([`particles`]).
+    particles: particles::Clock,
 }
 
 /// What an element passes down in a frame, as motion shows it: its
@@ -407,6 +413,7 @@ struct Glyphs {
 
 mod input;
 mod ops;
+mod particles;
 mod vcursor;
 pub use input::{Cue, Play, SoundTable};
 pub use ops::{EVENTS, Event as OpEvent, Fired, MAGIC, REFUSED, Resolve};
@@ -483,6 +490,7 @@ impl Tree {
             input: input::Input::new(),
             last_pointer: (f32::NAN, f32::NAN, 0),
             paints: 0,
+            particles: Default::default(),
             faces: Vec::new(),
             missing: Vec::new(),
             breaks: Vec::new(),
@@ -840,6 +848,7 @@ impl Tree {
     pub fn set_time(&mut self, t: f64, reduced_motion: bool) {
         self.time = t;
         self.motion.set_reduced_motion(reduced_motion);
+        self.particles.reduced = reduced_motion;
     }
 
     /// Samples motion at the tick's time, lays out what is dirty and paints
@@ -882,8 +891,10 @@ impl Tree {
         if !self.anchored.is_empty() {
             self.settle_anchors();
         }
-        let painted = laid_out || self.paint || moving;
+        // A `<Particles>` with anything still to draw paints every frame.
+        let painted = laid_out || self.paint || moving || self.particles.live;
         if painted {
+            self.particles.live = false;
             self.repaint(fonts, icons);
             self.paint = false;
             self.paints += 1;
@@ -1535,6 +1546,11 @@ impl Tree {
                 for q in &mut self.drawn.quads[start..] {
                     q.xf = xf;
                 }
+            }
+            // A `<Particles>`' particles over its box, each under the
+            // node's transform with its own turn.
+            if self.els[e].particles.is_some() {
+                self.paint_particles(e, rect, ink, clip, xf);
             }
         }
         self.painted_transforms.clone_from(&self.drawn.transforms);

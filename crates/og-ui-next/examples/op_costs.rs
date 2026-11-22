@@ -5,7 +5,8 @@
 //! panels, and 200 anchored nameplates placed again as the camera moves
 //! (their placing alone and with the frame), and 1000 DamageNumbers as the
 //! component makes them (the default pack's classes, a real face) rising
-//! as hits spawn and expire, each the median of N runs with its
+//! as hits spawn and expire, and a `<Particles>` of 180 turning particles
+//! stepped and painted each tick, each the median of N runs with its
 //! allocations.
 //!
 //!     cargo run --release -p og-ui-next --example op_costs [N]
@@ -354,7 +355,48 @@ fn main() {
             }
         }
     }
+    // A `<Particles>` raining 120 a second that live 1.5 s and turn: 180
+    // alive, each stepped by the engine's simulation and painted as a
+    // quad with its own transform. The first 120 ticks reach the steady
+    // state and the paint's capacity.
+    let mut rain = Vec::new();
+    let mut rain_quads = 0;
+    let emitter = og_render_data::ParticleEmitter {
+        max_particles: 256,
+        shape: og_render_data::EmitterShape::Box {
+            half_extents: og_core::glam::Vec3::ZERO,
+        },
+        rate: 120.0,
+        lifetime: [1.5, 1.5],
+        speed: [40.0, 120.0],
+        size: [6.0, 10.0],
+        spread_degrees: 30.0,
+        angular_velocity_degrees: [-360.0, 360.0],
+        gravity: og_core::glam::Vec3::new(0.0, -300.0, 0.0),
+        ..Default::default()
+    };
+    for _ in 0..n {
+        let mut t = tree();
+        let mut b = Batch::default();
+        b.op(1).u32(1).u8(7);
+        b.op(6).u32(1).str("emitter").str("1");
+        b.op(8).u32(0).u32(1).u32(u32::MAX);
+        t.apply(&b.bytes()).unwrap();
+        assert!(t.wants_emitters());
+        t.resolve_emitters(&|_| Some(&emitter));
+        for f in 0..180u64 {
+            let a = allocations();
+            let s = Instant::now();
+            t.set_tick(f, 60);
+            t.frame(&fonts, &icons);
+            if f >= 120 {
+                rain.push((s.elapsed().as_secs_f64() * 1e3, allocations() - a));
+                rain_quads = t.drawn.quads.len();
+            }
+        }
+    }
     println!("1000 damage numbers: {paint_quads} quads painted a frame");
+    println!("particles: {rain_quads} quads painted a frame");
     assert_eq!(&MAGIC[..], b"OGOP");
     for (what, v) in [
         ("build", builds),
@@ -366,6 +408,7 @@ fn main() {
         ("200 moved", anchored),
         ("1000 dmg", damage),
         ("1000 drift", drift),
+        ("particles", rain),
     ] {
         let (ms, allocs) = median(v);
         println!("{what:>10}: {ms:.4} ms, {allocs} allocations");

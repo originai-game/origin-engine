@@ -424,6 +424,7 @@ impl Tree {
             dead: false,
             record,
             line: None,
+            particles: None,
             anchor: None,
             attrs: Vec::new(),
             data: 0,
@@ -559,7 +560,7 @@ impl Tree {
                     let kind = match tag {
                         2 => Kind::Image,
                         5 => Kind::Icon,
-                        0..=6 => Kind::Box,
+                        0..=7 => Kind::Box,
                         t => return Err(format!("og.ui ops: unknown tag {t}")),
                     };
                     // An `Input` shows its text in a text leaf of its own.
@@ -567,6 +568,9 @@ impl Tree {
                     self.input.per[e as usize].scroller = tag == 3;
                     if tag == 6 {
                         self.els[e as usize].line = Some(Box::default());
+                    }
+                    if tag == 7 {
+                        self.els[e as usize].particles = Some(Box::default());
                     }
                     self.input.per[e as usize].input = tag == 4;
                     self.sem
@@ -729,6 +733,13 @@ impl Tree {
                                 }
                             }
                             self.paint = true;
+                        }
+                        // A `<Particles>`' emitter, seed, delay and restart
+                        // key (`particles`).
+                        "emitter" | "seed" | "delay" | "restart"
+                            if self.els[e as usize].particles.is_some() =>
+                        {
+                            self.set_particles(e, name, value);
                         }
                         // `anchor` an entity's number or a world point
                         // `x,y,z` (empty: back in flow): the host places
