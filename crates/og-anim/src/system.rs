@@ -14,7 +14,7 @@ use crate::asset::{ClipAsset, NONE, SkeletonAsset, bind};
 use crate::graph::{GraphAsset, Interrupt, LayerMode, Motion};
 use crate::ik;
 use crate::machine::{LayerState, Phase};
-use crate::pose::{Blend, Fired, Leaf, Pose, RootMotion, stepped};
+use crate::pose::{Blend, Dominance, Fired, Leaf, Pose, RootMotion, stepped};
 use crate::retarget::{FootPlants, HumanoidMap, TwistBone, share_twist, twist_bones};
 use crate::schema::*;
 use crate::xform::{Trs, nlerp, rotation_arc, unit};
@@ -1236,6 +1236,9 @@ fn run(
             name: Str64::new(&f.name)?,
             time: f.time,
             weight: f.weight,
+            state: f.state,
+            layer: f.layer,
+            dominant: f.dominant,
         })?;
     }
     sh.states = states;

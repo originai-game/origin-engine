@@ -62,7 +62,7 @@ fn idl_schema(decl: &RecordDecl, version: u32) -> Schema {
 /// version bump fails too: a save restores a record by its version, so
 /// changing one's fields means a new version (og.Gamepad 2: eight pads).
 const VERSIONS: &[(&str, u32, u64)] = &[
-    ("og.AnimationEvent", 1, 0x28aaa9078ce00980),
+    ("og.AnimationEvent", 2, 0xf17130e84b059c4b),
     ("og.AnimationGraph", 1, 0x14f7a654994eb4b2),
     ("og.AnimationPlayer", 1, 0x2bec5d121d54fe87),
     ("og.Audio", 1, 0xc68086afae021f9b),

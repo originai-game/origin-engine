@@ -223,7 +223,7 @@ column Rig {
 }
 ```
 
-<sub>Module `anim` line 613</sub>
+<sub>Module `anim` line 619</sub>
 
 ```ogt
 column FlipbookSheet {
@@ -234,7 +234,7 @@ column FlipbookSheet {
 }
 ```
 
-<sub>Module `anim` line 684</sub>
+<sub>Module `anim` line 690</sub>
 
 ```ogt
 column Rig2D {
@@ -245,4 +245,4 @@ column Rig2D {
 }
 ```
 
-<sub>Module `anim` line 787</sub>
+<sub>Module `anim` line 793</sub>

@@ -13700,6 +13700,21 @@
           "name": "weight",
           "type": "f32",
           "default": 0
+        },
+        {
+          "name": "state",
+          "type": "u32",
+          "default": 0
+        },
+        {
+          "name": "layer",
+          "type": "u32",
+          "default": 0
+        },
+        {
+          "name": "dominant",
+          "type": "bool",
+          "default": false
         }
       ]
     },

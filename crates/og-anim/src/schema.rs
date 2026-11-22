@@ -661,9 +661,9 @@ impl Default for SpringCollider {
 }
 
 /// A named marker of a clip that playback passed in the last tick (read in
-/// the tick after it fired, like every event).
+/// the tick after it fired, like every event), with where it came from.
 #[derive(Clone, Copy, Debug, PartialEq, Reflect)]
-#[reflect(name = "og.AnimationEvent")]
+#[reflect(name = "og.AnimationEvent", version = 2)]
 pub struct AnimationEvent {
     /// The skeleton entity.
     pub entity: u64,
@@ -676,4 +676,10 @@ pub struct AnimationEvent {
     pub time: f32,
     /// The clip's blend weight when it fired (cross-fades and blends fire every contributing clip's markers).
     pub weight: f32,
+    /// The graph state that played the clip, its index in its layer; 0 for an og.AnimationPlayer's clip.
+    pub state: u32,
+    /// The graph layer, in file order (0 the base); 0 for a player's clip.
+    pub layer: u32,
+    /// The clip weighed most of its layer this tick (a tie goes to the state faded to, then to the later clip of a blend).
+    pub dominant: bool,
 }

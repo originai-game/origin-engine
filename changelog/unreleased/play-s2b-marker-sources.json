@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "og.AnimationEvent.state",
+      "summary": "og.AnimationEvent says where a marker came from: `state` (the graph state that played its clip, its index in its layer; 0 for an og.AnimationPlayer's), `layer` (the graph layer, 0 the base) and `dominant` (its clip weighed most of its layer that tick: in a cross-fade the state left until the fade passes half, then the state entered; a tie goes to the state entered, then to the later clip of a blend). Every contributing clip still fires its markers; the game decides which to act on. A save holding a pending event of the version before restores it with 0, 0 and false."
+    }
+  ]
+}

@@ -98,6 +98,15 @@ walk or jump, so the generated stride has a start and a run to follow.
   and og.anim.retarget), never per frame.
 - Hitboxes and damage windows come from the tick: mark them with clip
   events or tick counts, not with how far the drawn animation has played.
+- During a cross-fade or a blend every playing clip fires its markers.
+  Each og.AnimationEvent says which graph `state` and `layer` played it
+  and whether its clip was `dominant` (weighed most of its layer that
+  tick: in a cross-fade the state left until the fade passes half, then
+  the state entered; in a player's fade its current clip from half on).
+  Act on the markers your rule names: a hit window that only the
+  attack being entered may open reads `state`; one the heavier attack
+  owns reads `dominant`; footsteps that should sound from both clips of a
+  walk-to-run fade read neither, and scale the volume by `weight`.
 
 <a id="guide-animation-4"></a>
 ### `animation §4` Timing that reads

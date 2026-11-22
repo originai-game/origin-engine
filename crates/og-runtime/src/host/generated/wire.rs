@@ -32745,6 +32745,9 @@ pub mod record {
         pub name: String,
         pub time: f32,
         pub weight: f32,
+        pub state: u32,
+        pub layer: u32,
+        pub dominant: bool,
     }
 
     impl Default for AnimationEvent {
@@ -32755,6 +32758,9 @@ pub mod record {
                 name: Default::default(),
                 time: Default::default(),
                 weight: Default::default(),
+                state: Default::default(),
+                layer: Default::default(),
+                dominant: Default::default(),
             }
         }
     }
@@ -32771,6 +32777,9 @@ pub mod record {
                 name: field(o, "name", d.name)?,
                 time: field(o, "time", d.time)?,
                 weight: field(o, "weight", d.weight)?,
+                state: field(o, "state", d.state)?,
+                layer: field(o, "layer", d.layer)?,
+                dominant: field(o, "dominant", d.dominant)?,
             })
         }
     }

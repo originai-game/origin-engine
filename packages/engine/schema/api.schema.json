@@ -37733,7 +37733,7 @@
     "AnimationEvent": {
       "x-og-kind": "event",
       "x-og-module": "anim",
-      "description": "A named marker of a clip that playback passed in the last tick (read in the tick after it fired, like every event). Cross-fades and blends fire every contributing clip's markers.",
+      "description": "A named marker of a clip that playback passed in the last tick (read in the tick after it fired, like every event). Cross-fades and blends fire every contributing clip's markers; each says where it came from (`state`, `layer`) and whether its clip weighed most of its layer (`dominant`), and the game decides which to act on.\nSee `animation §3`.",
       "type": "object",
       "properties": {
         "entity": {
@@ -37756,6 +37756,22 @@
         "weight": {
           "type": "number",
           "description": "The clip's blend weight when it fired."
+        },
+        "state": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The graph state that played the clip: its index in its layer in the graph file, as og.AnimationGraph.state numbers the base layer's; 0 for an og.AnimationPlayer's clip."
+        },
+        "layer": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The graph layer that played it, in file order (0 is the base); 0 for a player's clip."
+        },
+        "dominant": {
+          "type": "boolean",
+          "description": "Its clip weighed most of its layer this tick (a player's clips count as one layer). One clip per layer is dominant each tick, whether or not it fired; a tie goes to the state entered, then to the later clip of a blend.\nSee `animation §3`."
         }
       },
       "required": [
@@ -37763,7 +37779,10 @@
         "clip",
         "name",
         "time",
-        "weight"
+        "weight",
+        "state",
+        "layer",
+        "dominant"
       ],
       "additionalProperties": false
     },

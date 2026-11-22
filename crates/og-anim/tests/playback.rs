@@ -38,14 +38,15 @@ fn spawn(w: &mut World, player: AnimationPlayer) -> Entity {
     .unwrap()
 }
 
-/// Steps `n` ticks; returns (tick the event was sent in, name, weight).
-fn events(w: &mut World, n: u64) -> Vec<(u64, String, f32)> {
+/// Steps `n` ticks; returns (tick the event was sent in, name, weight, dominant).
+fn events(w: &mut World, n: u64) -> Vec<(u64, String, f32, bool)> {
     let mut out = Vec::new();
     for _ in 0..n {
         let tick = w.time().tick;
         w.step().unwrap();
         for e in w.pending_events::<AnimationEvent>().unwrap() {
-            out.push((tick, e.name.as_str().to_string(), e.weight));
+            assert_eq!((e.state, e.layer), (0, 0), "a player's markers");
+            out.push((tick, e.name.as_str().to_string(), e.weight, e.dominant));
         }
     }
     out
@@ -77,6 +78,8 @@ fn a_clip_change_cross_fades_and_fires_both_clips_markers_by_weight() {
     assert_eq!(run_marker.0, 6 + tick_of(0.16 - 0.1));
     let fade_at = |tick: u64| (tick - 6 + 1) as f32 / 60.0 / 0.5;
     assert!((run_marker.2 - (1.0 - fade_at(run_marker.0))).abs() < 1e-5);
+    // A sixth of the way in, the run it fades from still weighs most.
+    assert!(run_marker.3, "{run_marker:?}");
     let walk_marker = got
         .iter()
         .find(|g| g.1 == "footL" && g.0 > run_marker.0)
@@ -84,6 +87,8 @@ fn a_clip_change_cross_fades_and_fires_both_clips_markers_by_weight() {
     // Walk restarts at 0 on the change: its footL is 0.26 s after it.
     assert_eq!(walk_marker.0, 6 + tick_of(0.26));
     assert!((walk_marker.2 - fade_at(walk_marker.0)).abs() < 1e-5);
+    // Past half the fade the walk does.
+    assert!(walk_marker.3, "{walk_marker:?}");
     // The pose during the fade lies between the clips, and equals walk after it.
     let mid = anim.pose(e).unwrap();
     let thigh = |pose: &[Trs]| pose[4].rotation;

@@ -7,6 +7,7 @@ use crate::support;
 
 use og_anim::*;
 use og_ecs::{Entity, World, WorldDesc};
+use std::collections::BTreeSet;
 use support::*;
 
 fn world() -> (World, AnimationSystem, Entity) {
@@ -183,4 +184,173 @@ fn a_mirrored_graph_clip_plays_as_the_clip_og_anim_mirror_makes() {
     )
     .unwrap_err();
     assert!(e.reason().contains("line 5"), "{e}");
+}
+
+/// Three one-second clips that each pass a marker every half tick, so every
+/// clip playing fires every tick, whatever its weight.
+fn marker_world(mix: f32) -> (World, Entity) {
+    const TEXT: &str = r#"type animgraph
+version 1
+---
+param go
+param mix
+clip a1 "attack1"
+clip a2 "attack2"
+clip a3 "attack3"
+blend1d pair mix {
+  child a2 0
+  child a3 1
+}
+layer base {
+  state first a1
+  state second pair
+  entry first
+  transition first second {
+    when go gt 0.5
+    fade 0.5
+  }
+}
+layer upper {
+  weight mix
+  state only a3
+  entry only
+}
+"#;
+    let mut w = World::new(&WorldDesc {
+        tick_rate: 60,
+        seed: 1,
+    })
+    .unwrap();
+    let anim = install(&mut w).unwrap();
+    anim.add_skeleton(SKELETON, skeleton()).unwrap();
+    let marks: Vec<(String, f32)> = (0..240)
+        .map(|i| (format!("m{i}"), i as f32 / 120.0))
+        .collect();
+    let marks: Vec<(&str, f32)> = marks.iter().map(|(n, t)| (n.as_str(), *t)).collect();
+    for (h, name) in [(31, "attack1"), (32, "attack2"), (33, "attack3")] {
+        let spine = Box::new(move |t: f32| {
+            let q = og_core::math::quat_from_axis_angle(og_core::glam::Vec3::Z, 0.1 * h as f32 * t);
+            q.to_array().to_vec()
+        });
+        let c = clip(
+            name,
+            2.0,
+            &marks,
+            vec![(2, "spine", ChannelPath::Rotation, 4, spine)],
+        );
+        anim.add_clip(h, c).unwrap();
+    }
+    let resolve = |n: &str| match n {
+        "attack1" => Some(31),
+        "attack2" => Some(32),
+        "attack3" => Some(33),
+        _ => None,
+    };
+    anim.add_graph(41, GraphAsset::parse(TEXT, &resolve).unwrap())
+        .unwrap();
+    let mut graph = AnimationGraph::new(41);
+    graph.p1 = mix;
+    let e = w
+        .spawn((
+            Transform::default(),
+            Skeleton {
+                asset: SKELETON,
+                ..Skeleton::default()
+            },
+            graph,
+        ))
+        .unwrap();
+    (w, e)
+}
+
+/// The markers fired in the last tick, each as (clip, state, layer, dominant, weight).
+fn fired(w: &World) -> Vec<(u64, u32, u32, bool, f32)> {
+    w.pending_events::<AnimationEvent>()
+        .unwrap()
+        .iter()
+        .map(|e| (e.clip, e.state, e.layer, e.dominant, e.weight))
+        .collect()
+}
+
+#[test]
+fn cross_fade_markers_say_their_state_layer_and_which_clip_dominates() {
+    let (mut w, e) = marker_world(0.0);
+    for _ in 0..5 {
+        w.step().unwrap();
+    }
+    set(&mut w, e, |g| g.p0 = 1.0);
+    // The 0.5 s fade is 30 ticks: attack1 weighs more for its first half.
+    let mut dominant = Vec::new();
+    for tick in 0..40 {
+        w.step().unwrap();
+        let f = fired(&w);
+        for &(clip, state, layer, _, _) in &f {
+            assert_eq!(layer, 0, "tick {tick}: the upper layer weighs nothing");
+            assert_eq!(state, if clip == 31 { 0 } else { 1 }, "tick {tick}");
+        }
+        let fading = tick < 29;
+        assert_eq!(
+            f.iter().any(|m| m.0 == 31),
+            fading,
+            "tick {tick}: attack1 fires while it fades out"
+        );
+        assert!(
+            f.iter().any(|m| m.0 == 32),
+            "tick {tick}: attack2 fires from the start"
+        );
+        assert!(
+            !f.iter().any(|m| m.0 == 33),
+            "tick {tick}: attack3 has no weight"
+        );
+        let mut on: Vec<u64> = f.iter().filter(|m| m.3).map(|m| m.0).collect();
+        on.dedup();
+        assert_eq!(on.len(), 1, "tick {tick}: one dominant clip, {f:?}");
+        // The dominant clip is the heavier one (the weight its markers carry).
+        let weight = |c: u64| f.iter().find(|m| m.0 == c).map_or(0.0, |m| m.4);
+        let other = if on[0] == 31 { 32 } else { 31 };
+        assert!(weight(on[0]) >= weight(other), "tick {tick}: {f:?}");
+        dominant.push(on[0]);
+    }
+    // attack1 until the fade passes half (alpha = (tick + 1) / 30 reaches
+    // 0.5 on tick 14), attack2 from then on.
+    let switch = dominant.iter().position(|&c| c == 32).unwrap();
+    assert!((14..=15).contains(&switch), "{dominant:?}");
+    assert!(dominant[switch..].iter().all(|&c| c == 32), "{dominant:?}");
+}
+
+#[test]
+fn a_three_way_blend_has_one_dominant_clip_per_layer() {
+    // attack1 fading out into an even attack2 and attack3 blend; the upper
+    // layer at weight 0.5 plays attack3 alone.
+    let (mut w, e) = marker_world(0.5);
+    w.step().unwrap();
+    set(&mut w, e, |g| g.p0 = 1.0);
+    let mut seen = BTreeSet::new();
+    for tick in 0..40 {
+        w.step().unwrap();
+        let f = fired(&w);
+        for layer in [0, 1] {
+            let mut on: Vec<u64> = f
+                .iter()
+                .filter(|m| m.2 == layer && m.3)
+                .map(|m| m.0)
+                .collect();
+            on.dedup();
+            assert_eq!(on.len(), 1, "tick {tick} layer {layer}: {f:?}");
+            if layer == 1 {
+                assert_eq!(on[0], 33);
+                continue;
+            }
+            // The heaviest base clip; attack2 and attack3 tie and the later one wins.
+            let base: Vec<_> = f.iter().filter(|m| m.2 == 0).collect();
+            let heaviest = base.iter().map(|m| m.4).fold(0.0f32, f32::max);
+            assert!(
+                base.iter().filter(|m| m.3).all(|m| m.4 == heaviest),
+                "tick {tick}: {f:?}"
+            );
+            assert_ne!(on[0], 32, "tick {tick}: a tie goes to the later clip");
+            seen.insert(on[0]);
+        }
+    }
+    assert_eq!(seen, BTreeSet::from([31, 33]), "attack1, then attack3");
 }

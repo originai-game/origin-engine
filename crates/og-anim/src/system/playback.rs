@@ -72,6 +72,7 @@ pub(super) fn eval_graph(
         let leaf_root = if base { root } else { None };
         let mut layer_blend = Blend::new();
         let mut reference = Blend::new();
+        let mut dom = Dominance::new(events.len());
         let mut run_state = |state: usize,
                              phase: &mut Phase,
                              w: f32,
@@ -148,7 +149,7 @@ pub(super) fn eval_graph(
                     wraps,
                     lw * w * layer_weight * graph_weight,
                 );
-                leaf.events(events);
+                dom.leaf(&leaf, lw * w, state as u32, li as u32, events);
                 let d = if base {
                     stance.push(((clip, mirror), leaf.t1, lw * w * layer_weight));
                     leaf.delta(skel, leaf_root)
@@ -176,6 +177,7 @@ pub(super) fn eval_graph(
         {
             leaders[g] = Some((before, cur_phase, wraps));
         }
+        dom.mark(events);
         ls.phase = cur_phase;
         ls.time += dt * speed;
         ls.settle(alpha);
@@ -287,6 +289,7 @@ pub(super) fn eval_player(
         s.2 *= 1.0 - wt;
     }
     let mut blend = Blend::new();
+    let mut dom = Dominance::new(events.len());
     if ps.prev_clip != 0 && alpha < 1.0 {
         let pc = sh
             .clips
@@ -310,7 +313,7 @@ pub(super) fn eval_player(
             wraps,
             weight: (1.0 - alpha) * comp.weight,
         };
-        leaf.events(events);
+        dom.leaf(&leaf, 1.0 - alpha, 0, 0, events);
         let held = stepped(t1, step_fps, pc.duration, ps.prev_looping);
         stance.push(((ps.prev_clip, false), held, (1.0 - alpha) * wt));
         blend.push(
@@ -336,7 +339,8 @@ pub(super) fn eval_player(
         wraps,
         weight: alpha * comp.weight,
     };
-    leaf.events(events);
+    dom.leaf(&leaf, alpha, 0, 0, events);
+    dom.mark(events);
     let held = stepped(t1, step_fps, clip.duration, comp.looping);
     stance.push(((ps.clip, false), held, alpha * wt));
     blend.push(

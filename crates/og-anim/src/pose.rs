@@ -360,6 +360,68 @@ pub struct Fired {
     pub name: String,
     pub time: f32,
     pub weight: f32,
+    /// The graph state that played the leaf (its index in its layer); 0 for a player's.
+    pub state: u32,
+    /// The graph layer (0 the base); 0 for a player's.
+    pub layer: u32,
+    /// The leaf weighed most of its layer this tick ([`Dominance`]).
+    pub dominant: bool,
+}
+
+/// Which leaf of one layer (or of a player) weighs most this tick, and the
+/// markers its leaves fired: every leaf is offered in evaluation order,
+/// each with its weight; a tie goes to the later one (the state faded to
+/// over the one faded from, then the later clip of a blend), a leaf of no
+/// weight is never dominant, and [`Dominance::mark`] marks the dominant
+/// leaf's markers.
+pub struct Dominance {
+    /// The first marker of this layer in the tick's list.
+    from: usize,
+    /// The leaves offered so far.
+    leaves: u32,
+    /// The heaviest leaf so far, by its order, and its weight.
+    best: Option<(u32, f32)>,
+    /// Each marker's leaf, from `from` on.
+    of: Vec<u32>,
+}
+
+impl Dominance {
+    /// A layer whose markers start at `from` in the tick's list.
+    pub fn new(from: usize) -> Dominance {
+        Dominance {
+            from,
+            leaves: 0,
+            best: None,
+            of: Vec::new(),
+        }
+    }
+
+    /// Offers `leaf`, of `weight` in its layer, and adds the markers it
+    /// passed to `out`, as played by graph `state` on `layer`.
+    pub fn leaf(&mut self, leaf: &Leaf, weight: f32, state: u32, layer: u32, out: &mut Vec<Fired>) {
+        let n = self.leaves;
+        self.leaves += 1;
+        if weight > 0.0 && self.best.is_none_or(|(_, w)| weight >= w) {
+            self.best = Some((n, weight));
+        }
+        let before = out.len();
+        leaf.events(out);
+        for f in &mut out[before..] {
+            f.state = state;
+            f.layer = layer;
+        }
+        self.of.resize(out.len() - self.from, n);
+    }
+
+    /// Marks the dominant leaf's markers.
+    pub fn mark(self, out: &mut [Fired]) {
+        let Some((best, _)) = self.best else {
+            return;
+        };
+        for (f, &n) in out[self.from..].iter_mut().zip(&self.of) {
+            f.dominant = n == best;
+        }
+    }
 }
 
 impl Leaf<'_> {
@@ -454,6 +516,9 @@ impl Leaf<'_> {
                         name: e.name.clone(),
                         time: t,
                         weight: self.weight,
+                        state: 0,
+                        layer: 0,
+                        dominant: false,
                     });
                 }
             }

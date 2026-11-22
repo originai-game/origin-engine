@@ -470,6 +470,13 @@ pub(crate) const MIGRATIONS: &[Migration] = &[
         note: "f64 clocks: start and speed are f64, each saved value widened as it was",
         run: Some(|e| widened(e, "og.DayNight", 3)),
     },
+    Migration {
+        name: "og.AnimationEvent",
+        from: 1,
+        to: 2,
+        note: "0.9.0 and earlier: gained state, layer and dominant (where a marker came from); a pending event restores with them at 0, 0 and false",
+        run: None,
+    },
 ];
 
 /// og.Time 1 -> 2: `tick`, `dt` and `elapsed` become `tick` and `rate`,

@@ -19769,7 +19769,8 @@ export interface SpringCollider {
 }
 
 /**
- * A named marker of a clip that playback passed in the last tick (read in the tick after it fired, like every event). Cross-fades and blends fire every contributing clip's markers.
+ * A named marker of a clip that playback passed in the last tick (read in the tick after it fired, like every event). Cross-fades and blends fire every contributing clip's markers; each says where it came from (`state`, `layer`) and whether its clip weighed most of its layer (`dominant`), and the game decides which to act on.
+ * See `animation §3`.
  *
  * The payload of the `AnimationEvent` event (token `og.AnimationEvent`).
  */
@@ -19788,6 +19789,17 @@ export interface AnimationEvent {
   readonly time: number;
   /** The clip's blend weight when it fired. */
   readonly weight: number;
+  /**
+   * The graph state that played the clip: its index in its layer in the graph file, as og.AnimationGraph.state numbers the base layer's; 0 for an og.AnimationPlayer's clip.
+   */
+  readonly state: number;
+  /** The graph layer that played it, in file order (0 is the base); 0 for a player's clip. */
+  readonly layer: number;
+  /**
+   * Its clip weighed most of its layer this tick (a player's clips count as one layer). One clip per layer is dominant each tick, whether or not it fired; a tie goes to the state entered, then to the later clip of a blend.
+   * See `animation §3`.
+   */
+  readonly dominant: boolean;
 }
 
 /** One clip of a loaded animation. */
@@ -35514,7 +35526,8 @@ export declare namespace og {
    */
   const SpringCollider: ComponentType<{ readonly skeleton: FieldSpec<"Entity">; readonly joint: FieldSpec<"u32">; readonly shape: FieldSpec<"SpringColliderShape">; readonly offset: FieldSpec<"Vector3">; readonly tail: FieldSpec<"Vector3">; readonly radius: FieldSpec<"f32">; readonly layers: FieldSpec<"u32"> }, SpringCollider>;
   /**
-   * A named marker of a clip that playback passed in the last tick (read in the tick after it fired, like every event). Cross-fades and blends fire every contributing clip's markers.
+   * A named marker of a clip that playback passed in the last tick (read in the tick after it fired, like every event). Cross-fades and blends fire every contributing clip's markers; each says where it came from (`state`, `layer`) and whether its clip weighed most of its layer (`dominant`), and the game decides which to act on.
+   * See `animation §3`.
    */
   const AnimationEvent: EventType<AnimationEvent>;
   /**
