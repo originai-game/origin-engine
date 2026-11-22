@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "guide video-to-game",
+      "summary": "A workflow for turning one or several gameplay videos into a playable game, with timestamped design evidence, asset preflight, a shared input route and separate mechanic, frame and performance acceptance."
+    }
+  ]
+}
