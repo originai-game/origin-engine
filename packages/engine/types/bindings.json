@@ -671,6 +671,12 @@
       "array": "Uint32Array",
       "stride": 1,
       "value": "AttackPhase"
+    },
+    {
+      "name": "InteractRule",
+      "array": "Uint32Array",
+      "stride": 1,
+      "value": "InteractRule"
     }
   ],
   "components": [
@@ -9179,6 +9185,185 @@
           "tunable": true
         }
       ]
+    },
+    {
+      "id": 126,
+      "name": "Interactable",
+      "schema": "og.Interactable",
+      "module": "interact",
+      "fields": [
+        {
+          "name": "priority",
+          "column": "u32",
+          "default": 0
+        },
+        {
+          "name": "holdTicks",
+          "column": "u32",
+          "default": 0,
+          "tunable": true
+        },
+        {
+          "name": "disabled",
+          "column": "bool",
+          "default": false
+        }
+      ]
+    },
+    {
+      "id": 127,
+      "name": "Interactor",
+      "schema": "og.Interactor",
+      "module": "interact",
+      "fields": [
+        {
+          "name": "action",
+          "column": "str",
+          "capacity": 32,
+          "default": ""
+        },
+        {
+          "name": "range",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
+        },
+        {
+          "name": "cone",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
+        },
+        {
+          "name": "sight",
+          "column": "bool",
+          "default": false
+        },
+        {
+          "name": "sightMask",
+          "column": "u32",
+          "default": 0
+        },
+        {
+          "name": "rule",
+          "column": "InteractRule",
+          "default": "nearest"
+        },
+        {
+          "name": "eye",
+          "column": "Vector3",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          }
+        },
+        {
+          "name": "focus",
+          "column": "Entity",
+          "default": 0,
+          "readonly": true
+        },
+        {
+          "name": "progress",
+          "column": "u32",
+          "default": 0,
+          "readonly": true
+        },
+        {
+          "name": "holding",
+          "column": "Entity",
+          "default": 0,
+          "readonly": true
+        }
+      ]
+    },
+    {
+      "id": 128,
+      "name": "Door",
+      "schema": "og.Door",
+      "module": "interact",
+      "fields": [
+        {
+          "name": "open",
+          "column": "bool",
+          "default": false
+        },
+        {
+          "name": "toggle",
+          "column": "Entity",
+          "default": 0
+        },
+        {
+          "name": "mesh",
+          "column": "Navigation",
+          "default": 0
+        },
+        {
+          "name": "link",
+          "column": "u32",
+          "default": 0
+        },
+        {
+          "name": "linkOpen",
+          "column": "bool",
+          "default": false,
+          "readonly": true
+        },
+        {
+          "name": "linked",
+          "column": "bool",
+          "default": false,
+          "readonly": true
+        }
+      ]
+    },
+    {
+      "id": 129,
+      "name": "Toggle",
+      "schema": "og.Toggle",
+      "module": "interact",
+      "fields": [
+        {
+          "name": "on",
+          "column": "bool",
+          "default": false
+        },
+        {
+          "name": "plate",
+          "column": "bool",
+          "default": false
+        }
+      ]
+    },
+    {
+      "id": 130,
+      "name": "Grab",
+      "schema": "og.Grab",
+      "module": "interact",
+      "fields": [
+        {
+          "name": "carry",
+          "column": "Vector3",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          }
+        },
+        {
+          "name": "throwSpeed",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
+        },
+        {
+          "name": "heldBy",
+          "column": "Entity",
+          "default": 0,
+          "readonly": true
+        }
+      ]
     }
   ],
   "resources": [
@@ -13400,6 +13585,32 @@
           "default": []
         }
       ]
+    },
+    {
+      "id": 45,
+      "name": "InteractEntities",
+      "schema": "og.InteractEntities",
+      "module": "interact",
+      "fields": [
+        {
+          "name": "interactors",
+          "column": "Entity",
+          "list": 256,
+          "default": []
+        },
+        {
+          "name": "toggles",
+          "column": "Entity",
+          "list": 1024,
+          "default": []
+        },
+        {
+          "name": "doors",
+          "column": "Entity",
+          "list": 1024,
+          "default": []
+        }
+      ]
     }
   ],
   "events": [
@@ -15511,6 +15722,24 @@
         },
         {
           "name": "source",
+          "type": "Entity",
+          "default": 0
+        }
+      ]
+    },
+    {
+      "id": 79,
+      "name": "Interacted",
+      "schema": "og.Interacted",
+      "module": "interact",
+      "fields": [
+        {
+          "name": "interactor",
+          "type": "Entity",
+          "default": 0
+        },
+        {
+          "name": "target",
           "type": "Entity",
           "default": 0
         }

@@ -25832,6 +25832,45 @@ impl ToJson for AttackPhase {
     }
 }
 
+/// `InteractRule`: packages/knowledge/wiki/interact.md.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum InteractRule {
+    #[default]
+    Nearest,
+    Centred,
+    Priority,
+}
+
+impl InteractRule {
+    /// The variants' IDL names, in index order.
+    pub const NAMES: &'static [&'static str] = &["nearest", "centred", "priority"];
+    /// Every variant, in index order.
+    pub const ALL: &'static [Self] = &[Self::Nearest, Self::Centred, Self::Priority];
+    /// The IDL name.
+    pub fn as_str(self) -> &'static str {
+        Self::NAMES[self as usize]
+    }
+    /// The variant named `s`, or a refusal naming them all.
+    pub fn parse(s: &str) -> Result<Self, String> {
+        match Self::NAMES.iter().position(|n| *n == s) {
+            Some(i) => Ok(Self::ALL[i]),
+            None => Err(unknown_variant("InteractRule", s, Self::NAMES)),
+        }
+    }
+}
+
+impl FromJson for InteractRule {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::parse(variant(v, "InteractRule", Self::NAMES)?)
+    }
+}
+
+impl ToJson for InteractRule {
+    fn to_json(&self) -> Value {
+        Value::String(self.as_str().into())
+    }
+}
+
 /// The rows of the engine's records (IDL `component`, `resource` and
 /// `event`), as their layouts decode them: every field, with its IDL
 /// default, read through the same rules as the wire types.
@@ -37962,6 +38001,254 @@ pub mod record {
             let o = object(v)?;
             Ok(Self {
                 attackers: field(o, "attackers", d.attackers)?,
+            })
+        }
+    }
+
+    /// `Interactable`: packages/knowledge/wiki/interact.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct Interactable {
+        pub priority: u32,
+        pub hold_ticks: u32,
+        pub disabled: bool,
+    }
+
+    impl Default for Interactable {
+        fn default() -> Self {
+            Self {
+                priority: Default::default(),
+                hold_ticks: Default::default(),
+                disabled: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for Interactable {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                priority: field(o, "priority", d.priority)?,
+                hold_ticks: field(o, "holdTicks", d.hold_ticks)?,
+                disabled: field(o, "disabled", d.disabled)?,
+            })
+        }
+    }
+
+    /// `Interactor`: packages/knowledge/wiki/interact.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct Interactor {
+        pub action: Value,
+        pub range: f32,
+        pub cone: f32,
+        pub sight: bool,
+        pub sight_mask: u32,
+        pub rule: InteractRule,
+        pub eye: Vec3,
+        pub focus: u64,
+        pub progress: u32,
+        pub holding: u64,
+    }
+
+    impl Default for Interactor {
+        fn default() -> Self {
+            Self {
+                action: Default::default(),
+                range: Default::default(),
+                cone: Default::default(),
+                sight: Default::default(),
+                sight_mask: Default::default(),
+                rule: Default::default(),
+                eye: Default::default(),
+                focus: Default::default(),
+                progress: Default::default(),
+                holding: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for Interactor {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                action: field(o, "action", d.action)?,
+                range: field(o, "range", d.range)?,
+                cone: field(o, "cone", d.cone)?,
+                sight: field(o, "sight", d.sight)?,
+                sight_mask: field(o, "sightMask", d.sight_mask)?,
+                rule: field(o, "rule", d.rule)?,
+                eye: field(o, "eye", d.eye)?,
+                focus: field(o, "focus", d.focus)?,
+                progress: field(o, "progress", d.progress)?,
+                holding: field(o, "holding", d.holding)?,
+            })
+        }
+    }
+
+    /// `Interacted`: packages/knowledge/wiki/interact.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct Interacted {
+        pub interactor: u64,
+        pub target: u64,
+    }
+
+    impl Default for Interacted {
+        fn default() -> Self {
+            Self {
+                interactor: Default::default(),
+                target: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for Interacted {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                interactor: field(o, "interactor", d.interactor)?,
+                target: field(o, "target", d.target)?,
+            })
+        }
+    }
+
+    /// `Door`: packages/knowledge/wiki/interact.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct Door {
+        pub open: bool,
+        pub toggle: u64,
+        pub mesh: u64,
+        pub link: u32,
+        pub link_open: bool,
+        pub linked: bool,
+    }
+
+    impl Default for Door {
+        fn default() -> Self {
+            Self {
+                open: Default::default(),
+                toggle: Default::default(),
+                mesh: Default::default(),
+                link: Default::default(),
+                link_open: Default::default(),
+                linked: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for Door {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                open: field(o, "open", d.open)?,
+                toggle: field(o, "toggle", d.toggle)?,
+                mesh: field(o, "mesh", d.mesh)?,
+                link: field(o, "link", d.link)?,
+                link_open: field(o, "linkOpen", d.link_open)?,
+                linked: field(o, "linked", d.linked)?,
+            })
+        }
+    }
+
+    /// `Toggle`: packages/knowledge/wiki/interact.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct Toggle {
+        pub on: bool,
+        pub plate: bool,
+    }
+
+    impl Default for Toggle {
+        fn default() -> Self {
+            Self {
+                on: Default::default(),
+                plate: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for Toggle {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                on: field(o, "on", d.on)?,
+                plate: field(o, "plate", d.plate)?,
+            })
+        }
+    }
+
+    /// `Grab`: packages/knowledge/wiki/interact.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct Grab {
+        pub carry: Vec3,
+        pub throw_speed: f32,
+        pub held_by: u64,
+    }
+
+    impl Default for Grab {
+        fn default() -> Self {
+            Self {
+                carry: Default::default(),
+                throw_speed: Default::default(),
+                held_by: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for Grab {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                carry: field(o, "carry", d.carry)?,
+                throw_speed: field(o, "throwSpeed", d.throw_speed)?,
+                held_by: field(o, "heldBy", d.held_by)?,
+            })
+        }
+    }
+
+    /// `InteractEntities`: packages/knowledge/wiki/interact.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct InteractEntities {
+        pub interactors: Vec<u64>,
+        pub toggles: Vec<u64>,
+        pub doors: Vec<u64>,
+    }
+
+    impl Default for InteractEntities {
+        fn default() -> Self {
+            Self {
+                interactors: Default::default(),
+                toggles: Default::default(),
+                doors: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for InteractEntities {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                interactors: field(o, "interactors", d.interactors)?,
+                toggles: field(o, "toggles", d.toggles)?,
+                doors: field(o, "doors", d.doors)?,
             })
         }
     }

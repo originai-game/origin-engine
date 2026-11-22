@@ -360,6 +360,8 @@ export interface ColumnKinds {
   VolumeShape: { readonly array: Uint32Array; readonly stride: 1; readonly value: VolumeShape };
   /** An AttackPhase field: the variant's index. */
   AttackPhase: { readonly array: Uint32Array; readonly stride: 1; readonly value: AttackPhase };
+  /** An InteractRule field: the variant's index. */
+  InteractRule: { readonly array: Uint32Array; readonly stride: 1; readonly value: InteractRule };
 }
 
 // ── math ────────────────────────────────────────────────────────
@@ -26292,7 +26294,7 @@ export interface UiScope {
 
 // ── systems ─────────────────────────────────────────────────────
 // Systems the engine ships as TypeScript: game-level code, listed explicitly in GameDesc.systems like the game's own, so the schedule (and dump_world) shows them and nothing runs that the game did not ask for.
-// See `combat §1`.
+// See `combat §1`, `interaction §1`.
 
 // ── commands ────────────────────────────────────────────────────
 // The command channel: actions scheduled on simulation time, from `og run --commands "t:action[:args];..."` or the probe's commands().
@@ -33906,6 +33908,221 @@ export interface CombatAttackers {
   attackers: readonly Entity[];
 }
 
+// ── interact ────────────────────────────────────────────────────
+// The records og.systems.interact carries out: an og.Interactor focuses one og.Interactable among og.play.candidates by its own rule (nearest, most centred, priority then nearest), uses it on a press of its action or after holding it, and reports og.Interacted. Using an og.Door opens or closes it and its navmesh link, an og.Toggle flips, an og.Grab is picked up and later thrown. Every number is the game's: a zero range focuses nothing.
+// See `interaction §1`.
+
+/**
+ * How an og.Interactor picks its focus among the candidates in range, in its cone and in sight.
+ * - `"nearest"`: The nearest; equal distances in entity order.
+ * - `"centred"`: The smallest angle off its forward, then the nearest.
+ * - `"priority"`: The highest og.Interactable.priority, then the nearest.
+ */
+export type InteractRule = "nearest" | "centred" | "priority";
+
+/**
+ * An InteractRule field: the variant's index.
+ *
+ * A `InteractRule` field: stored in a `Uint32Array` with stride 1.
+ * @param value The field's default; omitted, the column's zero value.
+ * @param options Range, unit, label, docs and the tunable flag.
+ */
+export declare function InteractRule(value?: InteractRule, options?: FieldOptions): FieldSpec<"InteractRule">;
+
+/**
+ * Something an og.Interactor can focus and use: found by og.play.candidates at its entity's position. With `holdTicks` the action must be held on it that long (a door to force, a body to search); released sooner, nothing happens.
+ * See `interaction §1`.
+ *
+ * The value of the `Interactable` component (token `og.Interactable`).
+ */
+export interface Interactable {
+  /** Ranks it under InteractRule.priority: the highest is focused first. */
+  priority: number;
+  /**
+   * Ticks the action is held on it before it is used; 0 uses it on the press.
+   *
+   * @range 0..
+   * @unit ticks (fixed simulation steps)
+   * @tunable
+   */
+  holdTicks: number;
+  /** Never focused (a locked door, a lever used up). */
+  disabled: boolean;
+}
+
+/**
+ * Who interacts: each tick og.systems.interact looks from its og.Transform (a root entity's) plus `eye`, along its forward (+Z), for og.Interactable entities by og.play.candidates, focuses one by `rule`, and uses it on a press of `action` (og.input.consume) or once the action has been held on it for its holdTicks. While it carries an og.Grab it focuses nothing and the next press throws it.
+ * See `interaction §1`.
+ *
+ * The value of the `Interactor` component (token `og.Interactor`).
+ */
+export interface Interactor {
+  /**
+   * The input action that uses the focus (og.input.defineAction's name); empty uses nothing.
+   *
+   * @capacity 32 bytes of UTF-8 (str(32)); longer text is refused, never truncated
+   */
+  action: string;
+  /**
+   * How far it looks; 0 focuses nothing.
+   *
+   * @range 0..
+   * @unit m (metres)
+   * @tunable
+   */
+  range: number;
+  /**
+   * The half angle about its forward it looks within; 0, or π and more, takes every direction.
+   *
+   * @range 0..
+   * @unit rad (radians: every rotation, heading, yaw, joint or steering limit, arc, uv rotation and cone; a cone is given as its half-angle)
+   * @tunable
+   */
+  cone: number;
+  /** Skip candidates a collider stands in front of (its own entity's excepted). */
+  sight: boolean;
+  /** The collider layers that block sight; 0 is every layer. */
+  sightMask: number;
+  /** How it picks among the candidates. */
+  rule: InteractRule;
+  /**
+   * Where it looks from, in its own frame.
+   *
+   * @unit m (metres)
+   * @worldspace none (how og.WorldOrigin's shift moves it)
+   */
+  eye: Vector3;
+  /**
+   * Written: the og.Interactable focused this tick (0: none), what a prompt shows.
+   *
+   * @readonly written by the engine
+   */
+  readonly focus: Entity;
+  /**
+   * Written: ticks the action has been held on the focus (0: not holding), for a hold prompt's ring against og.Interactable.holdTicks.
+   *
+   * @readonly written by the engine
+   */
+  readonly progress: number;
+  /**
+   * Written: the og.Grab it carries (0: none).
+   *
+   * @readonly written by the engine
+   */
+  readonly holding: Entity;
+}
+
+/**
+ * An og.Interactor used an og.Interactable: sent by og.systems.interact the tick it was pressed, or the tick its hold was complete, before the door, toggle or grab it carries changes.
+ * See `interaction §1`.
+ *
+ * The payload of the `Interacted` event (token `og.Interacted`).
+ */
+export interface Interacted {
+  /** The og.Interactor. */
+  readonly interactor: Entity;
+  /** The og.Interactable. */
+  readonly target: Entity;
+}
+
+/**
+ * A door: using it (og.Interactable) flips `open`, or it follows an og.Toggle's `on`; with a navmesh link, og.nav.setLinkOpen opens and closes it with the door, so agents path through only while it is open. Moving its leaf is the game's (a tween, a hinge), read from `open`.
+ * See `interaction §2`.
+ *
+ * The value of the `Door` component (token `og.Door`).
+ */
+export interface Door {
+  /** Whether it is open; write it to open or close it from the game. */
+  open: boolean;
+  /** An og.Toggle (a lever, a pressure plate) whose `on` it follows; 0: using it flips it. */
+  toggle: Entity;
+  /** The navmesh its link is on (og.nav.build, og.nav.load); 0: no link. */
+  mesh: Navigation;
+  /** The link's id on `mesh` (og.nav.setLink, a baked `link` line). */
+  link: number;
+  /**
+   * Written: what og.nav.setLinkOpen was last told.
+   *
+   * @readonly written by the engine
+   */
+  readonly linkOpen: boolean;
+  /**
+   * Written: the link has been set at least once (on the first run, to `open`).
+   *
+   * @readonly written by the engine
+   */
+  readonly linked: boolean;
+}
+
+/**
+ * Something on or off: using it (og.Interactable) flips `on`; a `plate` is on exactly while its entity's sensor collider holds anything (og.physics.sensorContents), and using it does nothing. An og.Door with this as its `toggle` follows it.
+ * See `interaction §2`.
+ *
+ * The value of the `Toggle` component (token `og.Toggle`).
+ */
+export interface Toggle {
+  /** Whether it is on. */
+  on: boolean;
+  /** On while anything is inside its sensor (an og.Collider with `sensor` on its entity). */
+  plate: boolean;
+}
+
+/**
+ * A body an og.Interactor picks up when it uses it: while carried it is made kinematic and moved each tick to `carry` in the carrier's frame; the carrier's next press throws it, dynamic again, along the carrier's forward at `throwSpeed`. Put it on a dynamic og.RigidBody.
+ * See `interaction §2`.
+ *
+ * The value of the `Grab` component (token `og.Grab`).
+ */
+export interface Grab {
+  /**
+   * Where it is carried, in the carrier's frame (forward +Z).
+   *
+   * @unit m (metres)
+   * @worldspace none (how og.WorldOrigin's shift moves it)
+   */
+  carry: Vector3;
+  /**
+   * The speed it leaves the carrier at; 0 drops it.
+   *
+   * @range 0..
+   * @unit mps (metres per second)
+   * @tunable
+   */
+  throwSpeed: number;
+  /**
+   * Written: the og.Interactor carrying it (0: none).
+   *
+   * @readonly written by the engine
+   */
+  readonly heldBy: Entity;
+}
+
+/**
+ * Every og.Interactor, og.Toggle and og.Door in entity order, written by og.systems.interact's first systems each tick for its last, which reads the others' records entity by entity.
+ *
+ * The `InteractEntities` resource (token `og.InteractEntities`).
+ */
+export interface InteractEntities {
+  /**
+   * The interactors (at most 256).
+   *
+   * @capacity 256 elements (List.Entity.256): reading answers a frozen copy (push throws); write a whole array, refused over the capacity, never truncated
+   */
+  interactors: readonly Entity[];
+  /**
+   * The toggles (at most 1,024).
+   *
+   * @capacity 1024 elements (List.Entity.1024): reading answers a frozen copy (push throws); write a whole array, refused over the capacity, never truncated
+   */
+  toggles: readonly Entity[];
+  /**
+   * The doors (at most 1,024).
+   *
+   * @capacity 1024 elements (List.Entity.1024): reading answers a frozen copy (push throws); write a whole array, refused over the capacity, never truncated
+   */
+  doors: readonly Entity[];
+}
+
 // ── og ──────────────────────────────────────────────────────────
 
 /**
@@ -37595,7 +37812,7 @@ export declare namespace og {
   }
   /**
    * Systems the engine ships as TypeScript: game-level code, listed explicitly in GameDesc.systems like the game's own, so the schedule (and dump_world) shows them and nothing runs that the game did not ask for.
-   * See `combat §1`.
+   * See `combat §1`, `interaction §1`.
    */
   namespace systems {
     /**
@@ -37606,6 +37823,10 @@ export declare namespace og {
      * The combat systems, in order: og.combatIndex (lists every og.Attack) and og.combat (last tick's hits as damage, then each og.Attack's move, links and hit volumes). They do nothing until an entity carries og.Attack or og.Health. Usage: `systems: [...og.systems.combat, ...yours]`.
      */
     const combat: readonly System[];
+    /**
+     * The interaction systems, in order: og.interactors, og.toggles and og.doors (list each kind) and og.interact (each interactor's focus, hold and use, then plates, then doors and their links). Idle without those records. Usage: `systems: [...og.systems.interact, ...yours]`.
+     */
+    const interact: readonly System[];
   }
   /**
    * The command channel: actions scheduled on simulation time, from `og run --commands "t:action[:args];..."` or the probe's commands().
@@ -38997,4 +39218,38 @@ export declare namespace og {
    * Every og.Attack entity in entity order, written by og.systems.combat's first system each tick for its second, which reads the others' records entity by entity (at most 1,024 attackers).
    */
   const CombatAttackers: ResourceType<{ readonly attackers: ListSpec<"Entity"> }, CombatAttackers>;
+  /**
+   * Something an og.Interactor can focus and use: found by og.play.candidates at its entity's position. With `holdTicks` the action must be held on it that long (a door to force, a body to search); released sooner, nothing happens.
+   * See `interaction §1`.
+   */
+  const Interactable: ComponentType<{ readonly priority: FieldSpec<"u32">; readonly holdTicks: FieldSpec<"u32">; readonly disabled: FieldSpec<"bool"> }, Interactable>;
+  /**
+   * Who interacts: each tick og.systems.interact looks from its og.Transform (a root entity's) plus `eye`, along its forward (+Z), for og.Interactable entities by og.play.candidates, focuses one by `rule`, and uses it on a press of `action` (og.input.consume) or once the action has been held on it for its holdTicks. While it carries an og.Grab it focuses nothing and the next press throws it.
+   * See `interaction §1`.
+   */
+  const Interactor: ComponentType<{ readonly action: FieldSpec<"str">; readonly range: FieldSpec<"f32">; readonly cone: FieldSpec<"f32">; readonly sight: FieldSpec<"bool">; readonly sightMask: FieldSpec<"u32">; readonly rule: FieldSpec<"InteractRule">; readonly eye: FieldSpec<"Vector3">; readonly focus: FieldSpec<"Entity">; readonly progress: FieldSpec<"u32">; readonly holding: FieldSpec<"Entity"> }, Interactor>;
+  /**
+   * An og.Interactor used an og.Interactable: sent by og.systems.interact the tick it was pressed, or the tick its hold was complete, before the door, toggle or grab it carries changes.
+   * See `interaction §1`.
+   */
+  const Interacted: EventType<Interacted>;
+  /**
+   * A door: using it (og.Interactable) flips `open`, or it follows an og.Toggle's `on`; with a navmesh link, og.nav.setLinkOpen opens and closes it with the door, so agents path through only while it is open. Moving its leaf is the game's (a tween, a hinge), read from `open`.
+   * See `interaction §2`.
+   */
+  const Door: ComponentType<{ readonly open: FieldSpec<"bool">; readonly toggle: FieldSpec<"Entity">; readonly mesh: FieldSpec<"Navigation">; readonly link: FieldSpec<"u32">; readonly linkOpen: FieldSpec<"bool">; readonly linked: FieldSpec<"bool"> }, Door>;
+  /**
+   * Something on or off: using it (og.Interactable) flips `on`; a `plate` is on exactly while its entity's sensor collider holds anything (og.physics.sensorContents), and using it does nothing. An og.Door with this as its `toggle` follows it.
+   * See `interaction §2`.
+   */
+  const Toggle: ComponentType<{ readonly on: FieldSpec<"bool">; readonly plate: FieldSpec<"bool"> }, Toggle>;
+  /**
+   * A body an og.Interactor picks up when it uses it: while carried it is made kinematic and moved each tick to `carry` in the carrier's frame; the carrier's next press throws it, dynamic again, along the carrier's forward at `throwSpeed`. Put it on a dynamic og.RigidBody.
+   * See `interaction §2`.
+   */
+  const Grab: ComponentType<{ readonly carry: FieldSpec<"Vector3">; readonly throwSpeed: FieldSpec<"f32">; readonly heldBy: FieldSpec<"Entity"> }, Grab>;
+  /**
+   * Every og.Interactor, og.Toggle and og.Door in entity order, written by og.systems.interact's first systems each tick for its last, which reads the others' records entity by entity.
+   */
+  const InteractEntities: ResourceType<{ readonly interactors: ListSpec<"Entity">; readonly toggles: ListSpec<"Entity">; readonly doors: ListSpec<"Entity"> }, InteractEntities>;
 }

@@ -1,0 +1,20 @@
+{
+  "added": [
+    {
+      "member": "og.systems.interact",
+      "summary": "Interaction a game lists by name: an og.Interactor focuses one og.Interactable among og.play.candidates by its rule (nearest, centred, or priority then nearest), skipping what is out of sight, and uses it on a buffered press of its action or after holding the action on it for its holdTicks (let go sooner, nothing happens); it writes the focus and the hold's progress for a prompt and sends og.Interacted. Every number is the game's: a zero range focuses nothing."
+    },
+    {
+      "member": "og.Door",
+      "summary": "A door that flips when used or follows an og.Toggle, and opens and closes its navmesh link with it (og.nav.setLinkOpen), so agents path through only while it is open."
+    },
+    {
+      "member": "og.Toggle",
+      "summary": "A lever or switch that flips when used, or a pressure plate that is on while its sensor holds anything (og.physics.sensorContents)."
+    },
+    {
+      "member": "og.Grab",
+      "summary": "A body an interactor picks up: kinematic and moved to a carry point in the carrier's frame while held, thrown along the carrier's forward at throwSpeed on the next press."
+    }
+  ]
+}

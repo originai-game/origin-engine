@@ -6,6 +6,9 @@ module systems {
 
   value combat List.System "The combat systems, in order: og.combatIndex (lists every og.Attack) and og.combat (last tick's hits as damage, then each og.Attack's move, links and hit volumes). They do nothing until an entity carries og.Attack or og.Health. Usage: `systems: [...og.systems.combat, ...yours]`."
     guide "combat §1"
+
+  value interact List.System "The interaction systems, in order: og.interactors, og.toggles and og.doors (list each kind) and og.interact (each interactor's focus, hold and use, then plates, then doors and their links). Idle without those records. Usage: `systems: [...og.systems.interact, ...yours]`."
+    guide "interaction §1"
 }
 
 # ── commands ──────────────────────────────────────────────────────────────

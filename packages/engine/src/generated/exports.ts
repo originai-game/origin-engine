@@ -178,3 +178,6 @@ export const VolumeShape = ((value = "sphere" as Api.VolumeShape, options) => sp
 
 // combat
 export const AttackPhase = ((value = "idle" as Api.AttackPhase, options) => spec("AttackPhase", value, options)) as typeof Api.AttackPhase;
+
+// interact
+export const InteractRule = ((value = "nearest" as Api.InteractRule, options) => spec("InteractRule", value, options)) as typeof Api.InteractRule;

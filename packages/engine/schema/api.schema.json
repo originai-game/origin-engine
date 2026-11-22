@@ -12950,7 +12950,7 @@
     },
     {
       "name": "systems",
-      "doc": "Systems the engine ships as TypeScript: game-level code, listed explicitly in GameDesc.systems like the game's own, so the schedule (and dump_world) shows them and nothing runs that the game did not ask for.\nSee `combat §1`.",
+      "doc": "Systems the engine ships as TypeScript: game-level code, listed explicitly in GameDesc.systems like the game's own, so the schedule (and dump_world) shows them and nothing runs that the game did not ask for.\nSee `combat §1`, `interaction §1`.",
       "place": "namespace",
       "publish": true,
       "types": [],
@@ -12965,6 +12965,11 @@
           "name": "combat",
           "type": "List<System>",
           "doc": "The combat systems, in order: og.combatIndex (lists every og.Attack) and og.combat (last tick's hits as damage, then each og.Attack's move, links and hit volumes). They do nothing until an entity carries og.Attack or og.Health. Usage: `systems: [...og.systems.combat, ...yours]`."
+        },
+        {
+          "name": "interact",
+          "type": "List<System>",
+          "doc": "The interaction systems, in order: og.interactors, og.toggles and og.doors (list each kind) and og.interact (each interactor's focus, hold and use, then plates, then doors and their links). Idle without those records. Usage: `systems: [...og.systems.interact, ...yours]`."
         }
       ],
       "functions": [],
@@ -16828,6 +16833,27 @@
         "Damaged",
         "Died",
         "CombatAttackers"
+      ],
+      "consts": [],
+      "functions": [],
+      "interfaces": [],
+      "callbacks": []
+    },
+    {
+      "name": "interact",
+      "doc": "The records og.systems.interact carries out: an og.Interactor focuses one og.Interactable among og.play.candidates by its own rule (nearest, most centred, priority then nearest), uses it on a press of its action or after holding it, and reports og.Interacted. Using an og.Door opens or closes it and its navmesh link, an og.Toggle flips, an og.Grab is picked up and later thrown. Every number is the game's: a zero range focuses nothing.\nSee `interaction §1`.",
+      "place": "namespace",
+      "publish": true,
+      "types": [
+        "InteractRule",
+        "InteractRule",
+        "Interactable",
+        "Interactor",
+        "Interacted",
+        "Door",
+        "Toggle",
+        "Grab",
+        "InteractEntities"
       ],
       "consts": [],
       "functions": [],
@@ -57887,6 +57913,285 @@
           },
           "maxItems": 1024,
           "description": "The attackers (og.systems.combat writes them; a game reads them).",
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    },
+    "InteractRule": {
+      "x-og-kind": "enum",
+      "x-og-module": "interact",
+      "description": "How an og.Interactor picks its focus among the candidates in range, in its cone and in sight.",
+      "type": "string",
+      "enum": [
+        "nearest",
+        "centred",
+        "priority"
+      ],
+      "x-og-variants": {
+        "nearest": "The nearest; equal distances in entity order.",
+        "centred": "The smallest angle off its forward, then the nearest.",
+        "priority": "The highest og.Interactable.priority, then the nearest."
+      }
+    },
+    "Interactable": {
+      "x-og-kind": "component",
+      "x-og-module": "interact",
+      "description": "Something an og.Interactor can focus and use: found by og.play.candidates at its entity's position. With `holdTicks` the action must be held on it that long (a door to force, a body to search); released sooner, nothing happens.\nSee `interaction §1`.",
+      "type": "object",
+      "properties": {
+        "priority": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Ranks it under InteractRule.priority: the highest is focused first.",
+          "default": 0
+        },
+        "holdTicks": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Ticks the action is held on it before it is used; 0 uses it on the press.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "ticks",
+          "x-og-tunable": true
+        },
+        "disabled": {
+          "type": "boolean",
+          "description": "Never focused (a locked door, a lever used up).",
+          "default": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "Interactor": {
+      "x-og-kind": "component",
+      "x-og-module": "interact",
+      "description": "Who interacts: each tick og.systems.interact looks from its og.Transform (a root entity's) plus `eye`, along its forward (+Z), for og.Interactable entities by og.play.candidates, focuses one by `rule`, and uses it on a press of `action` (og.input.consume) or once the action has been held on it for its holdTicks. While it carries an og.Grab it focuses nothing and the next press throws it.\nSee `interaction §1`.",
+      "type": "object",
+      "properties": {
+        "action": {
+          "type": "string",
+          "x-og-capacity": 32,
+          "description": "The input action that uses the focus (og.input.defineAction's name); empty uses nothing.",
+          "default": ""
+        },
+        "range": {
+          "type": "number",
+          "description": "How far it looks; 0 focuses nothing.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "m",
+          "x-og-tunable": true
+        },
+        "cone": {
+          "type": "number",
+          "description": "The half angle about its forward it looks within; 0, or π and more, takes every direction.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "rad",
+          "x-og-tunable": true
+        },
+        "sight": {
+          "type": "boolean",
+          "description": "Skip candidates a collider stands in front of (its own entity's excepted).",
+          "default": false
+        },
+        "sightMask": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The collider layers that block sight; 0 is every layer.",
+          "default": 0
+        },
+        "rule": {
+          "$ref": "#/$defs/InteractRule",
+          "description": "How it picks among the candidates.",
+          "default": "nearest"
+        },
+        "eye": {
+          "$ref": "#/$defs/Vector3",
+          "description": "Where it looks from, in its own frame.",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "x-og-unit": "m",
+          "x-og-worldspace": "none"
+        },
+        "focus": {
+          "$ref": "#/$defs/Entity",
+          "description": "Written: the og.Interactable focused this tick (0: none), what a prompt shows.",
+          "default": 0,
+          "readOnly": true
+        },
+        "progress": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Written: ticks the action has been held on the focus (0: not holding), for a hold prompt's ring against og.Interactable.holdTicks.",
+          "default": 0,
+          "readOnly": true
+        },
+        "holding": {
+          "$ref": "#/$defs/Entity",
+          "description": "Written: the og.Grab it carries (0: none).",
+          "default": 0,
+          "readOnly": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "Interacted": {
+      "x-og-kind": "event",
+      "x-og-module": "interact",
+      "description": "An og.Interactor used an og.Interactable: sent by og.systems.interact the tick it was pressed, or the tick its hold was complete, before the door, toggle or grab it carries changes.\nSee `interaction §1`.",
+      "type": "object",
+      "properties": {
+        "interactor": {
+          "$ref": "#/$defs/Entity",
+          "description": "The og.Interactor."
+        },
+        "target": {
+          "$ref": "#/$defs/Entity",
+          "description": "The og.Interactable."
+        }
+      },
+      "required": [
+        "interactor",
+        "target"
+      ],
+      "additionalProperties": false
+    },
+    "Door": {
+      "x-og-kind": "component",
+      "x-og-module": "interact",
+      "description": "A door: using it (og.Interactable) flips `open`, or it follows an og.Toggle's `on`; with a navmesh link, og.nav.setLinkOpen opens and closes it with the door, so agents path through only while it is open. Moving its leaf is the game's (a tween, a hinge), read from `open`.\nSee `interaction §2`.",
+      "type": "object",
+      "properties": {
+        "open": {
+          "type": "boolean",
+          "description": "Whether it is open; write it to open or close it from the game.",
+          "default": false
+        },
+        "toggle": {
+          "$ref": "#/$defs/Entity",
+          "description": "An og.Toggle (a lever, a pressure plate) whose `on` it follows; 0: using it flips it.",
+          "default": 0
+        },
+        "mesh": {
+          "$ref": "#/$defs/Navigation",
+          "description": "The navmesh its link is on (og.nav.build, og.nav.load); 0: no link.",
+          "default": 0
+        },
+        "link": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The link's id on `mesh` (og.nav.setLink, a baked `link` line).",
+          "default": 0
+        },
+        "linkOpen": {
+          "type": "boolean",
+          "description": "Written: what og.nav.setLinkOpen was last told.",
+          "default": false,
+          "readOnly": true
+        },
+        "linked": {
+          "type": "boolean",
+          "description": "Written: the link has been set at least once (on the first run, to `open`).",
+          "default": false,
+          "readOnly": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "Toggle": {
+      "x-og-kind": "component",
+      "x-og-module": "interact",
+      "description": "Something on or off: using it (og.Interactable) flips `on`; a `plate` is on exactly while its entity's sensor collider holds anything (og.physics.sensorContents), and using it does nothing. An og.Door with this as its `toggle` follows it.\nSee `interaction §2`.",
+      "type": "object",
+      "properties": {
+        "on": {
+          "type": "boolean",
+          "description": "Whether it is on.",
+          "default": false
+        },
+        "plate": {
+          "type": "boolean",
+          "description": "On while anything is inside its sensor (an og.Collider with `sensor` on its entity).",
+          "default": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "Grab": {
+      "x-og-kind": "component",
+      "x-og-module": "interact",
+      "description": "A body an og.Interactor picks up when it uses it: while carried it is made kinematic and moved each tick to `carry` in the carrier's frame; the carrier's next press throws it, dynamic again, along the carrier's forward at `throwSpeed`. Put it on a dynamic og.RigidBody.\nSee `interaction §2`.",
+      "type": "object",
+      "properties": {
+        "carry": {
+          "$ref": "#/$defs/Vector3",
+          "description": "Where it is carried, in the carrier's frame (forward +Z).",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "x-og-unit": "m",
+          "x-og-worldspace": "none"
+        },
+        "throwSpeed": {
+          "type": "number",
+          "description": "The speed it leaves the carrier at; 0 drops it.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "mps",
+          "x-og-tunable": true
+        },
+        "heldBy": {
+          "$ref": "#/$defs/Entity",
+          "description": "Written: the og.Interactor carrying it (0: none).",
+          "default": 0,
+          "readOnly": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "InteractEntities": {
+      "x-og-kind": "resource",
+      "x-og-module": "interact",
+      "description": "Every og.Interactor, og.Toggle and og.Door in entity order, written by og.systems.interact's first systems each tick for its last, which reads the others' records entity by entity.",
+      "type": "object",
+      "properties": {
+        "interactors": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Entity"
+          },
+          "maxItems": 256,
+          "description": "The interactors (at most 256).",
+          "default": []
+        },
+        "toggles": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Entity"
+          },
+          "maxItems": 1024,
+          "description": "The toggles (at most 1,024).",
+          "default": []
+        },
+        "doors": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Entity"
+          },
+          "maxItems": 1024,
+          "description": "The doors (at most 1,024).",
           "default": []
         }
       },

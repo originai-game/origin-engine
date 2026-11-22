@@ -4,11 +4,11 @@
 
 Systems the engine ships as TypeScript: game-level code, listed explicitly in GameDesc.systems like the game's own, so the schedule (and dump_world) shows them and nothing runs that the game did not ask for.
 
-See `combat §1`.
+See `combat §1`, `interaction §1`.
 
 - **TypeScript**: functions are none at module level (its members live on the types below); components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
-- **Core** (what most games use): `og.systems.cameras`; 1 more are advanced (`og api show systems --all`).
+- **Core** (what most games use): `og.systems.cameras`; 2 more are advanced (`og api show systems --all`).
 - **Index**: [every module and guide](index.md).
 
 ```ogt
@@ -25,6 +25,7 @@ module systems {
 |---|---|---|---|
 | [`og.systems.cameras`](#value-cameras) | value |  | The camera controllers, in order: og.orbitCamera (og.OrbitCamera), og.followCamera (og.FollowCamera) and og.follow2D (og.Follow2D). |
 | [`og.systems.combat`](#value-combat) | value |  | The combat systems, in order: og.combatIndex (lists every og.Attack) and og.combat (last tick's hits as damage, then each og.Attack's move, links and hit volumes). |
+| [`og.systems.interact`](#value-interact) | value |  | The interaction systems, in order: og.interactors, og.toggles and og.doors (list each kind) and og.interact (each interactor's focus, hold and use, then plates, then doors and their links). |
 
 ## Values
 
@@ -61,3 +62,19 @@ value combat List.System "The combat systems, in order: og.combatIndex (lists ev
 ```
 
 <sub>Module `systems` line 7</sub>
+
+<a id="value-interact"></a>
+
+### `og.systems.interact`
+
+The interaction systems, in order: og.interactors, og.toggles and og.doors (list each kind) and og.interact (each interactor's focus, hold and use, then plates, then doors and their links). Idle without those records. Usage: `systems: [...og.systems.interact, ...yours]`.
+
+```ts
+const interact: readonly System[]
+```
+
+```ogt
+value interact List.System "The interaction systems, in order: og.interactors, og.toggles and og.doors (list each kind) and og.interact (each interactor's focus, hold and use, then plates, then doors and their links). Idle without those records. Usage: `systems: [...og.systems.interact, ...yours]`."
+```
+
+<sub>Module `systems` line 10</sub>

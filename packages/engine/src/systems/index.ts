@@ -3,3 +3,4 @@
 
 export { cameras } from "./cameras.ts";
 export { combat } from "./combat.ts";
+export { interact } from "./interact.ts";

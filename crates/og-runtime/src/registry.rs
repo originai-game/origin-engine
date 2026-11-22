@@ -626,6 +626,47 @@ pub(crate) const LAZY: &[Lazy] = &[
         name: COMBAT[7],
         enable: |_, _| Ok(()),
     },
+    // og.systems.interact's records, the same way.
+    Lazy {
+        name: INTERACT[0],
+        enable: |_, _| Ok(()),
+    },
+    Lazy {
+        name: INTERACT[1],
+        enable: |_, _| Ok(()),
+    },
+    Lazy {
+        name: INTERACT[2],
+        enable: |_, _| Ok(()),
+    },
+    Lazy {
+        name: INTERACT[3],
+        enable: |_, _| Ok(()),
+    },
+    Lazy {
+        name: INTERACT[4],
+        enable: |_, _| Ok(()),
+    },
+    Lazy {
+        name: INTERACT[5],
+        enable: |_, _| Ok(()),
+    },
+    Lazy {
+        name: INTERACT[6],
+        enable: |_, _| Ok(()),
+    },
+];
+
+/// The records of og.systems.interact (IDL `interact`), which ships in
+/// TypeScript (packages/engine/src/systems/interact.ts).
+const INTERACT: [&str; 7] = [
+    "og.Interactable",
+    "og.Interactor",
+    "og.Interacted",
+    "og.Door",
+    "og.Toggle",
+    "og.Grab",
+    "og.InteractEntities",
 ];
 
 /// The records of og.systems.combat (IDL `combat`), which ships in
@@ -657,6 +698,7 @@ pub(crate) const TOGETHER: &[&[&str]] = &[
     &crate::world::scenes::RECORDS,
     &crate::bind::play::RECORDS,
     &COMBAT,
+    &INTERACT,
     &[
         crate::world::stream::cells::CELL,
         crate::world::stream::cells::MEMBER,
