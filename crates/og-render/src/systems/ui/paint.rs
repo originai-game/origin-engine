@@ -36,7 +36,8 @@ pub(crate) struct PaintGpu {
     p: [f32; 4],
     k: [u32; 4],
     w: [f32; 4],
-    /// x: its colour matrix's first row in `gradients` + 1 (0 none).
+    /// x: its colour matrix's first row in `gradients` + 1, y: its
+    /// rounded clip's (0 none).
     f: [u32; 4],
 }
 
@@ -446,9 +447,33 @@ impl PaintRenderer {
                 g.area,
             ]);
         }
-        // Then five rows a colour matrix (`PaintGpu::f`).
+        // Then five rows a colour matrix (`PaintGpu::f`), then four a
+        // rounded clip: its box, its radii, and the inverse of its
+        // transform (linear part, then translation and whether it is
+        // inverted), which takes a fragment's place on screen into it.
         for m in &paint.filters {
             self.gradient_rows.extend(m);
+        }
+        for r in &paint.rounds {
+            let [a, b, c, d, e, f, _, _] = paint
+                .transforms
+                .get(r.xf as usize)
+                .copied()
+                .unwrap_or(og_draw::paint::IDENTITY);
+            let det = a * d - b * c;
+            // A transform with no inverse leaves nothing of what it clips.
+            let [ia, ib, ic, id, ie, iff] = if det.abs() > 1e-12 {
+                let (ia, ib, ic, id) = (d / det, -b / det, -c / det, a / det);
+                [ia, ib, ic, id, -(ia * e + ic * f), -(ib * e + id * f)]
+            } else {
+                [0.0, 0.0, 0.0, 0.0, f32::MAX, f32::MAX]
+            };
+            self.gradient_rows.extend([
+                r.rect,
+                r.radius,
+                [ia, ib, ic, id],
+                [ie, iff, r.invert as f32, 0.0],
+            ]);
         }
         grew |= write(
             device,
@@ -648,7 +673,15 @@ impl PaintRenderer {
                         0 => 0,
                         k => 3 * paint.gradients.len() as u32 + 5 * (k - 1) + 1,
                     },
-                    0,
+                    match q.round {
+                        0 => 0,
+                        k => {
+                            3 * paint.gradients.len() as u32
+                                + 5 * paint.filters.len() as u32
+                                + 4 * (k - 1)
+                                + 1
+                        }
+                    },
                     0,
                     0,
                 ],

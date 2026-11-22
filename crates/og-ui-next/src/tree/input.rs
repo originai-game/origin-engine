@@ -1130,10 +1130,10 @@ impl Tree {
             return false;
         };
         // A spotlight's box is the surface outside its hole.
-        if let Some([hx, hy, hw, hh]) = self.hole(e) {
+        if let Some(in_hole) = self.in_hole(e, x, y) {
             let (w, h) = self.size;
             let on = x >= 0.0 && y >= 0.0 && x < w && y < h;
-            return shown && on && !(x >= hx && x < hx + hw && y >= hy && y < hy + hh);
+            return shown && on && !in_hole;
         }
         let b = self.arena.box_of(self.els[e as usize].node);
         let local = nsh_input::Point {

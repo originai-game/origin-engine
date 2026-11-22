@@ -49,7 +49,8 @@ struct PaintGpu {
   // An image's radial wipe: the fraction hidden, the start angle, 1 for
   // counter-clockwise; w its mask, a gradient's index + 1 (0 none).
   w: vec4<f32>,
-  // x: its colour matrix's first row in `gradients` + 1 (0 none).
+  // x: its colour matrix's first row in `gradients` + 1, y: its rounded
+  // clip's (0 none).
   f: vec4<u32>,
 };
 // A data texture (data_texture.rs), a quad nine texels in a row
@@ -72,7 +73,10 @@ fn paint_quad(i: u32) -> PaintGpu {
 // its first stop, z its stops, w its shape (0 linear, 1 radial, 2 conic);
 // then its centre (xy, CSS px from the box's centre) and a radial one's radii
 // (zw); then a mask's box (x y w h, CSS px before transforms). After the
-// gradients, five rows a colour matrix: its rows r, g, b, a, then offsets.
+// gradients, five rows a colour matrix: its rows r, g, b, a, then offsets;
+// then four a rounded clip: its box (x0 y0 x1 y1), its radii, and the inverse
+// of its transform, the linear part (a b c d) then the translation (xy) and
+// z 1 when it is inverted (drawn only outside).
 @group(0) @binding(2) var<storage, read> gradients: array<vec4<f32>>;
 // Two entries a stop: its colour (linear, straight), then its offset in x.
 @group(0) @binding(3) var<storage, read> stops: array<vec4<f32>>;
@@ -461,6 +465,23 @@ fn fs_paint(in: PaintOut) -> @location(0) vec4<f32> {
     let box = gradients[3u * mi + 2u];
     let mh = 0.5 * box.zw;
     a *= gradient_at(mi, in.at - box.xy - mh, mh).a;
+  }
+  // Its rounded clip, at the fragment's place in the clip's own space
+  // (through the inverse of its transform), whatever the quad's kind or
+  // transform: so an image or a glyph crossing a rounded corner is cut
+  // round, antialiased, and a spotlight's shade spares its round hole.
+  if (q.f.y != 0u) {
+    let ri = q.f.y - 1u;
+    let box = gradients[ri];
+    let inv = gradients[ri + 2u];
+    let t = gradients[ri + 3u];
+    let p = mat2x2<f32>(inv.xy, inv.zw) * css + t.xy;
+    let k = frame.output.z / sqrt(max(abs(inv.x * inv.w - inv.y * inv.z), 1e-12));
+    var c = edge(sd_round_box(p - 0.5 * (box.xy + box.zw), 0.5 * (box.zw - box.xy), gradients[ri + 1u]), k);
+    if (t.z > 0.5) {
+      c = 1.0 - c;
+    }
+    a *= c;
   }
   if (a <= 0.0) {
     discard;

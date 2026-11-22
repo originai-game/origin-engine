@@ -3482,8 +3482,10 @@ mod tests {
     }
 
     /// A tutorial step: `spotlight="goal"` draws the shade's `bg-*` over
-    /// the surface outside the node named `goal` and takes presses only
-    /// there, so the goal takes its own; a card anchored to `goal` with
+    /// the surface outside the node named `goal`, rounded as the goal is
+    /// (one quad cut by an inverted round of its border box and radii),
+    /// and takes presses only there, a corner outside the goal's arc
+    /// included, so the goal takes its own; a card anchored to `goal` with
     /// `lift` 0,1 stands under it, and follows it when it moves.
     #[test]
     fn a_spotlight_lights_its_named_node_and_a_card_anchors_to_it() {
@@ -3499,7 +3501,7 @@ mod tests {
             (1, "relative w-[400px] h-[300px]", 0),
             (
                 2,
-                "absolute left-[100px] top-[50px] w-[60px] h-[40px] bg-white",
+                "absolute left-[100px] top-[50px] w-[60px] h-[40px] bg-white rounded-[16px]",
                 1,
             ),
             (3, "absolute left-0 top-0 w-[10px] h-[10px] bg-black/50", 1),
@@ -3517,23 +3519,21 @@ mod tests {
         b.op(6).u32(4).str("lift").str("0,1,0");
         t.apply(&b.bytes()).unwrap();
         frame(&mut t);
-        // The shade: the whole surface but the goal's box.
-        let shade: Vec<[f32; 4]> = t
+        // The shade: one quad over the surface, cut by the goal's rounded
+        // box, inverted.
+        let shade: Vec<&PaintQuad> = t
             .drawn
             .quads
             .iter()
             .filter(|q| q.color[..3] == [0.0; 3] && q.color[3] > 0.0)
-            .map(|q| q.rect)
             .collect();
-        let area: f32 = shade.iter().map(|r| r[2] * r[3]).sum();
-        assert_eq!(area, 400.0 * 300.0 - 60.0 * 40.0, "{shade:?}");
-        assert!(
-            shade.iter().all(|r| r[0] >= 160.0
-                || r[0] + r[2] <= 100.0
-                || r[1] >= 90.0
-                || r[1] + r[3] <= 50.0),
-            "nothing over the goal: {shade:?}"
-        );
+        assert_eq!(shade.len(), 1, "{shade:?}");
+        let (w, h) = t.size;
+        assert_eq!(shade[0].rect, [0.0, 0.0, w, h]);
+        let hole = t.drawn.rounds[shade[0].round as usize - 1];
+        assert_eq!(hole.rect, [100.0, 50.0, 160.0, 90.0]);
+        assert_eq!(hole.radius, [16.0; 4]);
+        assert_eq!(hole.invert, 1);
         assert_eq!(t.op_box(4).unwrap(), [100.0, 90.0, 50.0, 20.0]);
         let press = |t: &mut Tree, x, y| {
             t.events.clear();
@@ -3543,6 +3543,10 @@ mod tests {
         };
         assert_eq!(press(&mut t, 130.0, 70.0), [2], "the goal takes its own");
         assert_eq!(press(&mut t, 300.0, 200.0), [3], "the shade takes the rest");
+        // Its top left corner: inside the box, outside the 16 px arc (whose
+        // centre is at 116, 66), and a point just inside the arc.
+        assert_eq!(press(&mut t, 102.0, 52.0), [3], "outside the arc");
+        assert_eq!(press(&mut t, 106.0, 56.0), [2], "inside the arc");
         // The goal moves: the hole and the card follow.
         let mut b = Batch::default();
         b.op(4)
@@ -4969,14 +4973,16 @@ mod tests {
         assert!(lines(&t) > 1, "removing the override restores inheritance");
     }
 
-    /// A rounded `overflow-hidden` box rounds the corners of a child's
-    /// ground that fills them, to its inner radii (its radius less its
-    /// border); a child short of a corner keeps its own. Ways this could
-    /// fail: the child cut square by the rectangle clip (the slot's
-    /// ultimate), the outer radius used inside a border, or a rounded
-    /// corner given to a child that does not reach it.
+    /// A rounded `overflow-hidden` box clips everything its subtree paints
+    /// to its rounded padding box (its inner radii, its radius less its
+    /// border), as CSS clips: every quad of a child and a grandchild names
+    /// that round, whatever its kind, while the box's own quads and a
+    /// sibling's name none. Ways this could fail: the outer radius used
+    /// inside a border, the round given to the clipping box itself, a
+    /// grandchild left square, or a child's own rect and radii changed
+    /// instead (the old corner rounding).
     #[test]
-    fn a_rounded_clip_rounds_the_children_that_fill_its_corners() {
+    fn a_rounded_clip_names_its_round_on_everything_under_it() {
         let mut t = real();
         nodes(
             &mut t,
@@ -4984,33 +4990,35 @@ mod tests {
                 (
                     1,
                     0,
-                    "relative w-[40px] h-[40px] rounded-[20px] border-2 overflow-hidden",
+                    "relative w-[40px] h-[40px] shrink-0 bg-black rounded-[20px] border-2 overflow-hidden",
                     0,
                 ),
                 (2, 0, "absolute inset-0 bg-white", 1),
-                (
-                    3,
-                    0,
-                    "absolute top-[10px] left-[10px] w-[10px] h-[10px] bg-black",
-                    1,
-                ),
+                (3, 0, "absolute top-[10px] left-[10px] w-[10px] h-[10px]", 1),
+                (4, 0, "w-[4px] h-[4px] bg-black", 3),
+                (5, 0, "w-[10px] h-[10px] shrink-0 bg-white", 0),
             ],
         );
         frame(&mut t);
-        let solids: Vec<([f32; 4], [f32; 4])> = t
-            .drawn
-            .quads
-            .iter()
-            .filter(|q| q.kind == PaintKind::Solid as u32)
-            .map(|q| (q.rect, q.radius))
-            .collect();
-        assert_eq!(
-            solids,
-            [
-                ([2.0, 2.0, 36.0, 36.0], [18.0; 4]),
-                ([12.0, 12.0, 10.0, 10.0], [0.0; 4]),
-            ]
-        );
+        let d = &t.drawn;
+        let solid = |id: u32| {
+            let r = t.op_box(id).unwrap();
+            *d.quads
+                .iter()
+                .find(|q| q.kind == PaintKind::Solid as u32 && q.rect == r)
+                .unwrap()
+        };
+        assert_eq!(d.rounds.len(), 1, "{:?}", d.rounds);
+        let round = d.rounds[0];
+        assert_eq!(round.rect, [2.0, 2.0, 38.0, 38.0], "the padding box");
+        assert_eq!(round.radius, [18.0; 4], "the inner radii");
+        assert_eq!(round.invert, 0);
+        assert_eq!(solid(1).round, 0, "the clipping box itself");
+        let child = solid(2);
+        assert_eq!((child.round, child.radius), (1, [0.0; 4]));
+        assert_eq!(child.rect, [2.0, 2.0, 36.0, 36.0], "its own box");
+        assert_eq!(solid(4).round, 1, "a grandchild");
+        assert_eq!(solid(5).round, 0, "a sibling");
     }
 
     /// A box paints its outer shadows under it, then its fill and

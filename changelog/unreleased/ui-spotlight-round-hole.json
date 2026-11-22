@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "TSX element props: spotlight",
+      "summary": "A spotlight's hole takes the lit element's rounded shape (its border box and radii) instead of its square box: the shade no longer leaves square corners lit round a round button, and a press in a corner outside the arc goes to the shade."
+    }
+  ]
+}

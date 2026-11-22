@@ -320,9 +320,10 @@ pub struct Tree {
     /// not counted: what the probe calls clipped.
     cuts: Vec<[f32; 4]>,
     /// The rounded overflow clip each element's children paint in, its
-    /// own or its nearest clipping ancestor's: its padding box (x0, y0,
-    /// x1, y1), inner corner radii and transform ([`round_to`]).
-    rounds: Vec<Option<Round>>,
+    /// own or its nearest clipping ancestor's: its index + 1 in
+    /// [`Paint::rounds`] (its padding box, inner corner radii and
+    /// transform), 0 none.
+    rounds: Vec<u32>,
     /// The elements with an anchor, in no order (a dead or unanchored one
     /// leaves at the next [`Tree::place_anchors`]).
     anchored: Vec<u32>,
@@ -871,10 +872,24 @@ impl Tree {
     }
 
     /// The box spotlight `e` lights (its `spotlight` node's), when it
-    /// names one that shows.
-    fn hole(&self, e: u32) -> Option<[f32; 4]> {
+    /// names one that shows, and that node's corner radii: the hole is its
+    /// border box, rounded as it is.
+    fn hole(&self, e: u32) -> Option<([f32; 4], [f32; 4])> {
         let name = &self.input.per.get(e as usize)?.spotlight;
-        self.laid_box(self.named(name).filter(|&t| t != e)?)
+        let t = self.named(name).filter(|&t| t != e)?;
+        let b = self.laid_box(t)?;
+        let node = self.els[t as usize].node;
+        let skin = self.motion.skin(node, &self.els[t as usize].record.skin);
+        Some((b, radii(skin.radius, b[2], b[3])))
+    }
+
+    /// Whether (x, y) is in spotlight `e`'s hole, the rounded box its
+    /// shade is drawn around (a press in a corner outside the arc is the
+    /// shade's); `None` when it lights nothing.
+    fn in_hole(&self, e: u32, x: f32, y: f32) -> Option<bool> {
+        let ([hx, hy, hw, hh], r) = self.hole(e)?;
+        let at = [x - hx - hw / 2.0, y - hy - hh / 2.0];
+        Some(og_draw::paint::round_box_distance(at, [hw / 2.0, hh / 2.0], r) < 0.0)
     }
 
     /// Applies `e`'s record over what it inherits, then its children's.
@@ -1229,7 +1244,7 @@ impl Tree {
         self.cuts.clear();
         self.cuts.resize(self.els.len(), ALL);
         self.rounds.clear();
-        self.rounds.resize(self.els.len(), None);
+        self.rounds.resize(self.els.len(), 0);
         self.shown.clear();
         let top = Shown {
             alpha: 1.0,
@@ -1350,8 +1365,8 @@ impl Tree {
             // The rounded clip it is drawn in, and the one it sets: CSS
             // clips overflow to the padding box with the inner radii.
             let pround = match el.arena_parent {
-                _ if el.anchor.is_some() => None,
-                NONE => None,
+                _ if el.anchor.is_some() => 0,
+                NONE => 0,
                 p => self.rounds[p as usize],
             };
             let pxf = if el.arena_parent == NONE {
@@ -1412,11 +1427,14 @@ impl Tree {
                 ]
                 .map(|k| k.max(0.0));
                 if inner.iter().any(|&k| k > 0.0) {
-                    self.rounds[e] = Some(Round {
-                        bounds: padding,
+                    p.rounds.push(og_draw::paint::PaintRound {
+                        rect: padding,
                         radius: inner,
                         xf,
+                        invert: 0,
+                        _pad: [0; 2],
                     });
+                    self.rounds[e] = p.rounds.len() as u32;
                 }
             }
             // The clip it sets for what it holds is drawn through its
@@ -1470,31 +1488,30 @@ impl Tree {
             let image = og_draw::TextureHandle::from_slot(im.texture).filter(|_| im.wipe > 0.0);
             // A fill-tinted image takes the fill's colour in its place.
             let fill_tints = image.is_some() && im.tint == crate::record::Tint::Fill;
-            if let Some([hx, hy, hw, hh]) = hole.filter(|_| s.fill[3] > 0.0) {
-                // A spotlight's ground covers the surface but its hole:
-                // above, below, then left and right of it.
-                let (sw, sh) = (screen[2] - screen[0], screen[3] - screen[1]);
-                let (hx0, hy0) = (hx.clamp(0.0, sw), hy.clamp(0.0, sh));
-                let (hx1, hy1) = ((hx + hw).clamp(0.0, sw), (hy + hh).clamp(0.0, sh));
-                for r in [
-                    [0.0, 0.0, sw, hy0],
-                    [0.0, hy1, sw, sh - hy1],
-                    [0.0, hy0, hx0, hy1 - hy0],
-                    [hx1, hy0, sw - hx1, hy1 - hy0],
-                ] {
-                    if r[2] > 0.0 && r[3] > 0.0 {
-                        p.quads.push(quad(
-                            PaintKind::Solid,
-                            r,
-                            screen,
-                            faded(s.fill),
-                            [0.0; 4],
-                            [0.0; 4],
-                            0,
-                            0,
-                        ));
-                    }
-                }
+            if let Some(([hx, hy, hw, hh], hr)) = hole.filter(|_| s.fill[3] > 0.0) {
+                // A spotlight's ground covers the surface but its hole,
+                // the lit node's border box rounded as it is: one quad
+                // cut by the hole's round, inverted.
+                p.rounds.push(og_draw::paint::PaintRound {
+                    rect: [hx, hy, hx + hw, hy + hh],
+                    radius: hr,
+                    xf: 0,
+                    invert: 1,
+                    _pad: [0; 2],
+                });
+                p.quads.push(PaintQuad {
+                    round: p.rounds.len() as u32,
+                    ..quad(
+                        PaintKind::Solid,
+                        screen,
+                        screen,
+                        faded(s.fill),
+                        [0.0; 4],
+                        [0.0; 4],
+                        0,
+                        0,
+                    )
+                });
             } else if s.fill[3] > 0.0 && !fill_tints {
                 p.quads.push(quad(
                     PaintKind::Solid,
@@ -1936,9 +1953,13 @@ impl Tree {
             if self.els[e].particles.is_some() {
                 self.paint_particles(e, rect, ink, clip, xf);
             }
-            if let Some(round) = pround {
+            // The rounded clip it is drawn in cuts what it drew but a
+            // spotlight's shade, which its own hole cuts.
+            if pround != 0 {
                 for q in &mut self.drawn.quads[start..] {
-                    round_to(q, &round);
+                    if q.round == 0 {
+                        q.round = pround;
+                    }
                 }
             }
             let (mask, filter) = (self.masks[e], self.filters[e]);
@@ -2004,11 +2025,11 @@ impl Tree {
             // A spotlight takes the surface outside its hole, whatever its
             // box: the lit node under it takes its own presses, and what
             // else is under it none.
-            if let Some([hx, hy, hw, hh]) = self
-                .hole(e as u32)
+            if let Some(in_hole) = self
+                .in_hole(e as u32, x, y)
                 .filter(|_| shown && self.reachable(e as u32))
             {
-                if x >= hx && x < hx + hw && y >= hy && y < hy + hh {
+                if in_hole {
                     continue;
                 }
                 let takes = want(el) && !(enabled && el.clickable && el.disabled);
@@ -2191,6 +2212,7 @@ fn quad(
         wipe: [0.0; 4],
         mask: 0,
         filter: 0,
+        round: 0,
     }
 }
 
@@ -2364,55 +2386,6 @@ fn radii(r: [f32; 4], w: f32, h: f32) -> [f32; 4] {
         .min(fit(h, tl + bl))
         .min(fit(h, tr + br));
     [tl * f, tr * f, br * f, bl * f]
-}
-
-/// A rounded overflow clip: a box (x0, y0, x1, y1), its corner radii (top
-/// left, top right, bottom right, bottom left) and the transform it is
-/// drawn through.
-#[derive(Clone, Copy, Debug, PartialEq)]
-struct Round {
-    bounds: [f32; 4],
-    radius: [f32; 4],
-    xf: u32,
-}
-
-/// Rounds box quad `q` where it fills a corner of `round`: the rectangle
-/// clip cuts it square there, so its corner takes the clip's radius (a
-/// ground inside a round ring). A quad short of the corner, a glyph, an
-/// image or one under another transform keeps its shape.
-fn round_to(q: &mut PaintQuad, round: &Round) {
-    let box_kind = [
-        PaintKind::Solid,
-        PaintKind::Gradient,
-        PaintKind::InsetShadow,
-        PaintKind::Border,
-    ]
-    .iter()
-    .any(|&k| q.kind == k as u32);
-    if !box_kind || q.xf != round.xf {
-        return;
-    }
-    let [x0, y0, x1, y1] = round.bounds;
-    let [x, y, w, h] = q.rect;
-    let (left, top, right, bottom) = (
-        x <= x0 + 0.5,
-        y <= y0 + 0.5,
-        x + w >= x1 - 0.5,
-        y + h >= y1 - 0.5,
-    );
-    let corners = [left && top, right && top, right && bottom, left && bottom];
-    if !corners.iter().zip(round.radius).any(|(&c, r)| c && r > 0.0) {
-        return;
-    }
-    // Its part inside the clip, so the corner it rounds is the clip's.
-    let nx0 = x.max(x0);
-    let ny0 = y.max(y0);
-    q.rect = [nx0, ny0, (x + w).min(x1) - nx0, (y + h).min(y1) - ny0];
-    for k in 0..4 {
-        if corners[k] {
-            q.radius[k] = q.radius[k].max(round.radius[k]);
-        }
-    }
 }
 
 /// The right edge of the content box that set `e`'s `text-overflow`

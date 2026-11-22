@@ -95,6 +95,44 @@ pub struct PaintQuad {
     /// colour filters on it or an ancestor): `filter - 1` of
     /// [`Paint::filters`]; 0 none.
     pub filter: u32,
+    /// The rounded clip over it (a rounded `overflow-hidden` box it is
+    /// in, or a spotlight's hole): `round - 1` of [`Paint::rounds`],
+    /// which every kind is cut by, antialiased; 0 none.
+    pub round: u32,
+}
+
+/// A rounded clip ([`PaintQuad::round`]): the box `rect` (x0, y0, x1, y1,
+/// CSS px before transform `xf` of [`Paint::transforms`]) rounded by
+/// `radius` (top left, top right, bottom right, bottom left). A quad
+/// draws inside it, or with `invert` 1 only outside it (a spotlight's
+/// shade around its hole).
+#[derive(Clone, Copy, Debug, PartialEq, Pod, Zeroable)]
+#[repr(C)]
+pub struct PaintRound {
+    pub rect: [f32; 4],
+    pub radius: [f32; 4],
+    pub xf: u32,
+    pub invert: u32,
+    pub _pad: [u32; 2],
+}
+
+/// The signed distance at `p` (from the box's centre, y down) to a box
+/// of half size `half` rounded by `radius` (top left, top right, bottom
+/// right, bottom left): negative inside. The paint shader's
+/// `sd_round_box`, so what tests a point against a [`PaintRound`] agrees
+/// with what draws it.
+pub fn round_box_distance(p: [f32; 2], half: [f32; 2], radius: [f32; 4]) -> f32 {
+    let k = match (p[0] > 0.0, p[1] > 0.0) {
+        (false, false) => radius[0],
+        (true, false) => radius[1],
+        (true, true) => radius[2],
+        (false, true) => radius[3],
+    };
+    let r = k.clamp(0.0, half[0].min(half[1]).max(0.0));
+    let q = [p[0].abs() - half[0] + r, p[1].abs() - half[1] + r];
+    let (ox, oy) = (q[0].max(0.0), q[1].max(0.0));
+    let outside = (ox * ox + oy * oy).sqrt();
+    outside + q[0].max(q[1]).min(0.0) - r
 }
 
 /// A colour filter as one matrix (CSS Filter Effects' colour functions
@@ -184,6 +222,8 @@ pub struct Paint {
     pub stops: Vec<PaintStop>,
     /// The colour matrices [`PaintQuad::filter`] names.
     pub filters: Vec<ColorMatrix>,
+    /// The rounded clips [`PaintQuad::round`] names.
+    pub rounds: Vec<PaintRound>,
     /// Paint-time transforms, CSS's `matrix(a, b, c, d, e, f)` on CSS px
     /// as `[a, b, c, d, e, f, 0, 0]` (x' = a x + c y + e); entry 0 is the
     /// identity, which the shader skips.
@@ -203,6 +243,7 @@ impl Paint {
         self.gradients.clear();
         self.stops.clear();
         self.filters.clear();
+        self.rounds.clear();
         self.points.clear();
         self.transforms.clear();
         self.transforms.push(IDENTITY);

@@ -175,6 +175,7 @@ fn image(
         wipe,
         mask: 0,
         filter: 0,
+        round: 0,
     }
 }
 
@@ -280,6 +281,7 @@ fn line(points: &mut Vec<[f32; 2]>, pts: &[[f32; 2]], width: f32, closed: bool) 
         wipe: [0.0; 4],
         mask: 0,
         filter: 0,
+        round: 0,
     }
 }
 
@@ -346,6 +348,7 @@ fn gradient_box(scene: &mut RenderScene, rect: [f32; 4], g: PaintGradient) -> Pa
         wipe: [0.0; 4],
         mask: 0,
         filter: 0,
+        round: 0,
     }
 }
 
@@ -422,6 +425,7 @@ fn a_mask_fades_what_it_covers_over_its_own_box() {
             wipe: [0.0; 4],
             mask: mi + 1,
             filter: 0,
+            round: 0,
         };
         vec![
             white([16.0, 16.0, 32.0, 96.0]),
@@ -433,6 +437,60 @@ fn a_mask_fades_what_it_covers_over_its_own_box() {
     near(at(&px, 16, 64), grey(191), "near the mask's opaque edge");
     near(at(&px, 47, 64), grey(64), "a quarter left");
     near(at(&px, 96, 64), BLACK, "past the mask's transparent end");
+}
+
+#[test]
+#[ignore = "requires GPU"]
+fn a_round_clip_cuts_an_image_round_and_an_inverted_one_spares_its_hole() {
+    // Left: a white image across a clip's 20 px top left corner (its box
+    // 8..56, the arc's centre at 28, 28). Right: a red shade over x 64..128
+    // cut by an inverted round of the box 80..120 × 8..48, radius 20 (a
+    // spotlight's hole round a round button). A gradient and a colour
+    // matrix come first, so the rounds' rows sit after theirs.
+    let px = render(|scene| {
+        let ground = gradient_box(scene, [0.0, 100.0, 4.0, 4.0], bytemuck::Zeroable::zeroed());
+        let p = &mut scene.ui.paint;
+        p.filters.push(og_render::paint::COLOR_IDENTITY);
+        let round = |rect, invert| og_render::paint::PaintRound {
+            rect,
+            radius: [20.0; 4],
+            xf: 0,
+            invert,
+            _pad: [0; 2],
+        };
+        p.rounds.push(round([8.0, 8.0, 56.0, 56.0], 0));
+        p.rounds.push(round([80.0, 8.0, 120.0, 48.0], 1));
+        let white = texture(scene, 4, 4, |_, _| WHITE);
+        let mut shade = solid([64.0, 0.0, 64.0, 64.0], RED, 1.0);
+        shade.round = 2;
+        vec![
+            ground,
+            PaintQuad {
+                round: 1,
+                ..image(
+                    white,
+                    [0.0, 0.0, 64.0, 64.0],
+                    [0.0; 4],
+                    [0.0; 4],
+                    IMAGE_FILL,
+                    [0.0; 4],
+                )
+            },
+            shade,
+        ]
+    });
+    near(at(&px, 10, 10), BLACK, "the image outside the arc");
+    near(at(&px, 20, 20), WHITE, "inside the arc");
+    near(at(&px, 50, 30), WHITE, "along the box's edge");
+    near(at(&px, 60, 30), BLACK, "past the box");
+    near(
+        at(&px, 82, 10),
+        RED,
+        "the shade in the hole's corner, outside the arc",
+    );
+    near(at(&px, 100, 28), BLACK, "none in the hole");
+    near(at(&px, 92, 20), BLACK, "none inside the arc");
+    near(at(&px, 100, 56), RED, "the shade below the hole");
 }
 
 #[test]
@@ -503,6 +561,7 @@ fn solid(rect: [f32; 4], [r, g, b]: [u8; 3], alpha: f32) -> PaintQuad {
         wipe: [0.0; 4],
         mask: 0,
         filter: 0,
+        round: 0,
     }
 }
 
@@ -557,6 +616,7 @@ fn raster(
         wipe: [0.0; 4],
         mask: 0,
         filter: 0,
+        round: 0,
     }
 }
 

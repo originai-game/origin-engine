@@ -544,6 +544,7 @@ impl Texts {
                         wipe: [0.0; 4],
                         mask: 0,
                         filter: 0,
+                        round: 0,
                     });
                 }
             }
