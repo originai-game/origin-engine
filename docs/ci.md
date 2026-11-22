@@ -171,6 +171,17 @@ result) and `failures.txt`. Movements of og-gfx scenes are listed with
 their actual and diff frames for review, never as a failure; a skipped GPU
 run, a black or blank frame or a software web adapter is one.
 
+The web-compat section runs Chrome through `scripts/l4-chrome.sh`, which
+swaps the harness's GPU switches for the L4 set (`OG_L4_COMPAT=1` adds
+`--use-webgpu-adapter=opengles`, the compatibility adapter, with ANGLE on
+`gl-egl`). Linux Chrome's GPU process crashes at a canvas's first present
+on that adapter, so nothing presents there: `tests/web/compat-readback.ts`
+reads a compatibility device's triangle back from a texture, and
+`reference.ts --tier compat` makes the engine's Compat tier on the core
+adapter and judges its stations against the references, with no
+`[og] WebGPU error:` line allowed in Chrome's log. `tests/web/adapter-probe.ts`
+records what a cold launch's first `requestAdapter` answers on both adapters.
+
 Web frames and web GPU timings both come from Chrome on the L4. The
 engine's launch (`webGpuSwitches` in `packages/engine/src/node/device.ts`)
 puts headless Chrome's WebGPU on SwiftShader, a CPU renderer. SwiftShader

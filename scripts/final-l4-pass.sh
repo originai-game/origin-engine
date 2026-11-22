@@ -16,8 +16,8 @@
 # Sections: gallery (4 packs x dark/light with the lane: contrast, missing glyphs, clip, settle),
 # text (8956's measuring scripts, scripts/text-l4/run.sh), fused (the frames either side of every
 # cut of packages/engine/tests/fixtures/fused, won and lost routes), gpu-tests (og-render's ui_paint,
-# the float-output blend included), web (the web-reference groups in Chrome), web-compat (Chrome on
-# the compat adapter, read back), gfx (og-gfx's core
+# the float-output blend included), web (the web-reference groups in Chrome), web-compat (the
+# browser's compatibility mode read back, the engine's Compat tier, the adapter retry), gfx (og-gfx's core
 # and compat scenes against main's references, movements kept for review, not a gate).
 #
 # OUT holds, per section, <section>/sheet-*.jpg contact sheets and its logs; summary.txt (the SHA,
@@ -236,11 +236,64 @@ sec_web() {
   return 0
 }
 
-# Web compat: Chrome on the compat adapter, frames read back to a texture (presenting crashes
-# Chrome's opengles GPU process): 0 validation errors, core vehicle-terrain's RMSE against
-# references/vulkan, and the cold-launch adapter retry. The wgpu fork's harness, called as it is.
+# Web compat, in L4 Chrome through scripts/l4-chrome.sh (the wgpu fork thread's harness, called as
+# it is). Linux Chrome's opengles adapter crashes its GPU process at a canvas's first present, so
+# the browser's compatibility mode is checked without one, and the engine's Compat tier presents
+# on the core adapter:
+#   readback   compat-readback.ts on the opengles adapter: a compatibility device draws into a
+#              texture and reads it back (a validation error, a lost device, a core adapter or
+#              wrong pixels fails)
+#   tier       reference.ts --tier compat on the core adapter, 2D and 3D, against the references:
+#              its stations' RMSE, and 0 "[og] WebGPU error:" lines in Chrome's log
+#   retry      adapter-probe.ts, cold launches on both adapters: what the first requestAdapter
+#              answers, the null the engine's adapter retry covers (facts, not a verdict)
 sec_web_compat() {
-  fail web-compat "not wired: every present on the opengles adapter crashes Chrome's GPU process, so the compat leg waits for a headless render target in the harness (wgpu fork thread)"
+  local e="$root/packages/engine" w="$OUT/web-compat" rc
+  if [ ! -f "$e/tests/web/compat-readback.ts" ]; then
+    fail web-compat "not wired: tests/web/compat-readback.ts and reference.ts --tier compat (the wgpu fork's async-pipelines head) are not in this checkout"
+    return 0
+  fi
+  [ -n "${CHROME:-}" ] || { fail web-compat "no Chrome"; return 0; }
+  # The harness's own GPU switches are the L4 set, which the wrapper replaces with its own.
+  export OG_L4_CHROME_BIN="$CHROME" OG_WEB_GPU=nvidia
+  local chrome="$root/scripts/l4-chrome.sh" runs=3 probes=4 errs
+  [ "$DRY" = 1 ] && runs=1 probes=1
+
+  (cd "$e" && OG_L4_COMPAT=1 OG_L4_ANGLE=gl-egl OG_L4_CHROME_LOG="$w/readback-chrome.log" \
+    timeout 300 bun tests/web/compat-readback.ts --chrome "$chrome" --runs "$runs") > "$w/readback.jsonl" 2> "$w/readback.log"; rc=$?
+  note "web-compat readback: $([ "$rc" = 0 ] && echo PASS || echo "FAIL exit $rc"), $(grep -c '"ok":true' "$w/readback.jsonl")/$runs runs ok"
+  grep -m1 -oE '"adapter":\{[^}]*\}' "$w/readback.jsonl" | sed 's/^/web-compat readback adapter: /' >> "$OUT/summary.txt"
+  [ "$rc" = 0 ] || fail web-compat "readback: exit $rc: $(grep -ohE '"findings":\[[^]]*\]' "$w/readback.jsonl" | sort -u | tr '\n' ' ')(web-compat/readback.jsonl)"
+
+  local case p t
+  local cases="side-scroller:slash vehicle-terrain:drive"
+  [ "$DRY" = 1 ] && cases="side-scroller:slash"
+  for case in $cases; do
+    p="${case%%:*}" t="${case#*:}"
+    (cd "$e" && OG_L4_COMPAT=0 OG_L4_CHROME_LOG="$w/tier-$p-chrome.log" timeout 600 bun tests/web/reference.ts \
+      --project "tests/fixtures/$p" --playtest "tests/$t.og.ts" --tier compat --chrome "$chrome" --out "$w/tier-$p") > "$w/tier-$p.log" 2>&1; rc=$?
+    errs="$(cat "$w/tier-$p-chrome.log" 2>/dev/null | grep -c '\[og\] WebGPU error:')"
+    note "web-compat tier $p: $([ "$rc" = 0 ] && echo PASS || echo "FAIL exit $rc"), $errs WebGPU errors, rmse $(python3 -c '
+import json,sys
+try: r=json.load(open(sys.argv[1]))
+except Exception: print("none"); sys.exit()
+print(" ".join(k+"="+str(v.get("rmse")) for k,v in (r.get("stations") or {}).items()) or "none", r.get("renderer") or "")' "$w/tier-$p/reference-webgpu.json")"
+    [ "$rc" = 0 ] || fail web-compat "tier $p: exit $rc$([ "$rc" = 124 ] && echo ' (hung)') (web-compat/tier-$p.log)"
+    [ "$errs" = 0 ] || fail web-compat "tier $p: $errs WebGPU validation errors (web-compat/tier-$p-chrome.log)"
+  done
+
+  local m
+  for m in 0 1; do
+    (cd "$e" && OG_L4_COMPAT=$m OG_L4_ANGLE="$([ "$m" = 1 ] && echo gl-egl || echo vulkan)" OG_L4_CHROME_LOG="$w/retry-$m-chrome.log" \
+      timeout 300 bun tests/web/adapter-probe.ts "$chrome" "$probes") > "$w/retry-$m.txt" 2>&1
+    sed "s/^/web-compat retry: /" "$w/retry-$m.txt" >> "$OUT/summary.txt"
+    grep -q 'early \[{"ms":[0-9]*,"ok":false[^]]*"ok":false' "$w/retry-$m.txt" && fail web-compat "retry compat=$m: a cold launch got no adapter on either request (web-compat/retry-$m.txt)"
+    grep -q '^run [0-9]* error' "$w/retry-$m.txt" && fail web-compat "retry compat=$m: the probe did not answer (web-compat/retry-$m.txt)"
+    [ "$DRY" = 0 ] && grep -q '"arch":"swiftshader"' "$w/retry-$m.txt" && fail web-compat "retry compat=$m: Chrome gave a software adapter, so this section's results are not counted (web-compat/retry-$m.txt)"
+  done
+  grep -h 'GPU process exited unexpectedly' "$w"/*-chrome.log 2>/dev/null | wc -l | sed 's/^/web-compat GPU-process crashes: /' >> "$OUT/summary.txt"
+  # shellcheck disable=SC2046
+  sheet "$w" frames $(find "$w" -name '*.png' | sort)
   return 0
 }
 
@@ -291,7 +344,7 @@ run() {
   command -v montage >/dev/null || command -v magick >/dev/null || { apt-get install -y -qq imagemagick >/dev/null 2>&1 || fail setup "no ImageMagick: no contact sheets"; }
   # ImageMagick 7's montage labels each frame with its name; 6's needs the label before reading.
   MONTAGE="montage"; command -v magick >/dev/null && MONTAGE="magick montage"
-  if [ -z "${CHROME:-}" ] && [[ " $only " == *" web "* || " $only " == *" text "* ]]; then
+  if [ -z "${CHROME:-}" ] && [[ " $only " == *" web "* || " $only " == *" web-compat "* || " $only " == *" text "* ]]; then
     CHROME="$(ls -d "$HOME"/.agent-browser/browsers/chrome-*/chrome 2>/dev/null | tail -1)"
     if [ -z "$CHROME" ]; then
       (cd /tmp && bunx @puppeteer/browsers install chrome@stable --path /content/chrome >/dev/null 2>&1)
