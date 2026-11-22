@@ -56,10 +56,13 @@ pub(crate) enum OverlaySource {
     Ui(ShapeSource),
     /// A cooked vector's mesh, instanced from the UI buffer.
     Vector(UiVectorHandle),
-    /// [`crate::ui::UiList::mass`]' batch `n`: mass elements, instanced
-    /// from the frame's mass buffer (`shaders/ui_mass.wgsl`).
-    Mass(u32),
-    /// Batch `n`'s glyph template `t` (one page of the glyph atlas, one
+    /// [`crate::ui::UiList::mass`]'s batch `b`, instanced from the frame's
+    /// mass buffer (`shaders/ui_mass.wgsl`) through its template `t` of
+    /// the frame's template table: a batch with no glyphs has one
+    /// template, a text batch one per page of the glyph atlas its glyphs
+    /// lie on.
+    Mass(u32, u16),
+    /// Batch `b`'s glyph template `t` (one page of the glyph atlas, one
     /// per page the batch's glyphs lie on), instanced from the same buffer.
     MassPage(u32, u16, og_draw::glyphs::GlyphTier, u16),
 }
@@ -427,6 +430,13 @@ pub(crate) fn build<'a>(
             crate::ui::UiMassKind::Number { .. } | crate::ui::UiMassKind::Text { .. }
         );
         if !text {
+            let ti = mass_templates.len() as u16;
+            if (ti as usize) >= crate::ui::UI_MASS_BATCHES {
+                return Err(RenderError::InvalidHandle(format!(
+                    "ui mass batch {k}: its template {ti} is past the mass templates' limit of {}",
+                    crate::ui::UI_MASS_BATCHES
+                )));
+            }
             mass_templates.push(crate::ui::mass::template_gpu(
                 b,
                 clip,
@@ -435,7 +445,7 @@ pub(crate) fn build<'a>(
                 &mut mass_table,
                 mass_eases,
             ));
-            if !b.instances.is_empty() && k < crate::ui::UI_MASS_BATCHES {
+            if !b.instances.is_empty() {
                 let count = if b.depth_sort.is_some() {
                     b.instances.len()
                 } else {
@@ -445,7 +455,7 @@ pub(crate) fn build<'a>(
                     keyed.push((
                         target_of(b.layer, layers),
                         b.layer,
-                        OverlaySource::Mass(k as u32),
+                        OverlaySource::Mass(k as u32, ti),
                         index as u32,
                     ));
                 }
@@ -477,7 +487,11 @@ pub(crate) fn build<'a>(
         for (tier, page) in pages {
             let ti = mass_templates.len() as u16;
             if (ti as usize) >= crate::ui::UI_MASS_BATCHES {
-                break;
+                return Err(RenderError::InvalidHandle(format!(
+                    "ui mass batch {k}: its text's page {page} of tier {tier:?} would be \
+                     template {ti}, past the mass templates' limit of {}",
+                    crate::ui::UI_MASS_BATCHES
+                )));
             }
             mass_templates.push(crate::ui::mass::template_gpu(
                 b,
@@ -727,7 +741,7 @@ pub(crate) fn build<'a>(
     // painter level. og-ui gives shadowed text its own overlap boundary.
     let depth = |source: OverlaySource, index: u32| {
         let k = match source {
-            OverlaySource::Mass(k) | OverlaySource::MassPage(k, ..) => k,
+            OverlaySource::Mass(k, ..) | OverlaySource::MassPage(k, ..) => k,
             _ => return None,
         };
         let batch = &ui.mass[k as usize];
@@ -767,8 +781,9 @@ pub(crate) fn build<'a>(
             ui_at = Some(runs.len());
         }
         let mass = match source {
-            OverlaySource::Mass(k) => Some((k, k)),
-            OverlaySource::MassPage(k, ti, ..) => Some((k, u32::from(ti))),
+            OverlaySource::Mass(k, ti) | OverlaySource::MassPage(k, ti, ..) => {
+                Some((k, u32::from(ti)))
+            }
             _ => None,
         };
         if let Some((k, template)) = mass {

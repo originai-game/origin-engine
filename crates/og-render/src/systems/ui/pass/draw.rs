@@ -162,7 +162,7 @@ impl Renderer {
                     pass.set_bind_group(2, backdrop, &[]);
                     pass.draw(0..6, range);
                 }
-                OverlaySource::Mass(k) => {
+                OverlaySource::Mass(k, _) => {
                     let (Some(group), Some(batch)) = (
                         self.ui.frame.mass.as_ref(),
                         scene
