@@ -5,12 +5,11 @@
 // picture (WebCodecs, else rav1d-wasm), copyExternalImageToTexture puts it
 // in its staging texture, and og-render's fold (video_fold.wgsl) writes the
 // colour and the matte as alpha into the stream texture. The source is white
-// with its alpha ramping 0 to 255 left to right over black. How a host
-// blends a translucent UI pixel depends on its output (in display values on
-// an 8-bit sRGB one, in linear light on the web's wide-gamut canvas, whose
-// paint pass composites a layer of its own), so the fixture draws white
-// swatches at 25, 50 and 75 % opacity beside the image: the host's own blend
-// of those alphas.
+// with its alpha ramping 0 to 255 left to right over black. The fixture
+// draws white swatches at 25, 50 and 75 % opacity beside the image: the
+// host's own blend of those alphas, which every output makes in encoded
+// values (an 8-bit sRGB one directly, the web's wide-gamut canvas through
+// the paint pass's layer over a copy of the frame), 64, 128 and 191.
 //
 // Checks, on the web frame and on the native one
 // (references/<recording tier>/keyed.png): the ramp's ends (alpha 0 and

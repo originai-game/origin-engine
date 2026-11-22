@@ -13,7 +13,8 @@
 //! - a mask measured over the quad instead of its own box, or ignored
 //! - a translucent fill blended in linear light instead of in sRGB-encoded
 //!   values as CSS blends, on any of the pass's three targets (the output,
-//!   its plain view, its own layer)
+//!   its plain view, its own layer), or a layer meeting a float output (a
+//!   wide-gamut display's) in linear light
 use glam::Vec3;
 use og_render::paint::{
     GRADIENT_CONIC, GRADIENT_RADIAL, IMAGE_FILL, PaintGradient, PaintKind, PaintQuad,
@@ -34,6 +35,9 @@ enum To {
     Plain,
     /// A caller's sRGB view, which has no plain view: the pass's layer.
     View,
+    /// A float offscreen output (a wide-gamut or HDR display's): the
+    /// pass's layer, over a copy of what is behind it.
+    Float,
 }
 
 /// One frame of the quads `quads` makes, at one device px per CSS px.
@@ -56,7 +60,11 @@ fn render_to(to: To, quads: impl FnOnce(&mut RenderScene) -> Vec<PaintQuad>) -> 
     let mut renderer = Renderer::new_blocking(&RenderDesc {
         width: W,
         height: W,
-        output_format: matches!(to, To::Plain).then_some(wgpu::TextureFormat::Rgba8Unorm),
+        output_format: match to {
+            To::Plain => Some(wgpu::TextureFormat::Rgba8Unorm),
+            To::Float => Some(wgpu::TextureFormat::Rgba16Float),
+            _ => None,
+        },
         ..Default::default()
     })
     .expect("renderer");
@@ -499,7 +507,7 @@ fn a_translucent_fill_blends_in_encoded_srgb_as_css_does() {
     // A quarter of white over a dark red ground, and the ground alone.
     // CSS: 0.75 × (200, 40, 40) + 0.25 × 255 = (214, 94, 94); a blend in
     // linear light puts the green at 141.
-    for to in [To::Offscreen, To::Plain, To::View] {
+    for to in [To::Offscreen, To::Plain, To::View, To::Float] {
         let px = render_to(to, |_| {
             vec![
                 solid([0.0, 0.0, 128.0, 64.0], [200, 40, 40], 1.0),
@@ -513,8 +521,8 @@ fn a_translucent_fill_blends_in_encoded_srgb_as_css_does() {
         };
         exact(8, 32, [200, 40, 40], "the ground");
         exact(64, 32, [214, 94, 94], "white over the ground");
-        // Over the frame itself (black): a quarter of white. A layer meets
-        // the output in the output's light instead (ui/paint.rs).
+        // Over the frame itself (black): a quarter of white. A layer over a
+        // caller's view meets it in the view's light instead (ui/paint.rs).
         if !matches!(to, To::View) {
             exact(64, 96, grey(64), "white over the frame");
         }

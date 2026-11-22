@@ -470,8 +470,10 @@ fn fs_paint(in: PaintOut) -> @location(0) vec4<f32> {
 
 // The pass's layer (bound as the page: premultiplied, sRGB-encoded) over an
 // output the pass cannot blend in, an sRGB one with no plain view or a float
-// one: a pixel the pass blended keeps its colour, and a translucent one
-// meets the output in the output's light.
+// one: a pixel the pass blended keeps its colour. fs_layer_over meets what
+// is behind it (a copy, group 2) in encoded values, as an sRGB output's
+// blend does; fs_layer, for a target the renderer cannot copy, in the
+// output's light.
 @vertex
 fn vs_layer(@builtin(vertex_index) vi: u32) -> @builtin(position) vec4<f32> {
   let p = vec2<f32>(f32((vi << 1u) & 2u), f32(vi & 2u));
@@ -485,4 +487,21 @@ fn fs_layer(@builtin(position) at: vec4<f32>) -> @location(0) vec4<f32> {
     discard;
   }
   return vec4<f32>(srgb_decode(c.rgb / c.a), c.a);
+}
+
+@group(2) @binding(0) var behind: texture_2d<f32>;
+
+// srgb_encode and srgb_decode extend past 0 and 1 and invert each other
+// there, so a wide colour (a negative channel) or a highlight behind the UI
+// comes back as it was.
+@fragment
+fn fs_layer_over(@builtin(position) at: vec4<f32>) -> @location(0) vec4<f32> {
+  let p = vec2<i32>(at.xy);
+  let c = textureLoad(page, p, 0);
+  if (c.a <= 0.0) {
+    discard;
+  }
+  let b = textureLoad(behind, p, 0);
+  let rgb = c.rgb + srgb_encode(b.rgb) * (1.0 - c.a);
+  return vec4<f32>(srgb_decode(rgb), c.a + b.a * (1.0 - c.a));
 }

@@ -93,6 +93,11 @@ pub(crate) struct GlassTargets {
 }
 
 impl GlassTargets {
+    /// The texture the frame is routed through.
+    pub(crate) fn source(&self) -> &wgpu::Texture {
+        &self.source
+    }
+
     /// GPU bytes of its source, pyramid and copy.
     pub(crate) fn bytes(&self) -> u64 {
         crate::gpu::texture::texture_bytes(&self.source)

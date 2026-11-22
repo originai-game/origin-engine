@@ -4,7 +4,9 @@
 //! sRGB-encoded values, as CSS does and as its components are designed
 //! against: it draws in the output's plain format ([`encoded_format`]),
 //! through the output itself, its plain view, or else a layer of its own
-//! drawn over the output once ([`PaintRenderer::composite`]). The arena is
+//! drawn over the output once ([`PaintRenderer::composite`]), blended in the
+//! shader over a copy of what is behind it where the renderer owns the
+//! target. The arena is
 //! uploaded only when its generation, the target or a font's pages change;
 //! a glyph quad is resolved against its font's pages then (its first page
 //! with the glyph), and the quads draw in runs of one page each, in the
@@ -69,6 +71,10 @@ struct Layer {
     view: wgpu::TextureView,
     /// The layer as group 1 of the composite.
     group: wgpu::BindGroup,
+    /// What the layer is drawn over, copied from the target in the
+    /// output's format before the composite, and as its group 2.
+    behind: wgpu::Texture,
+    behind_group: wgpu::BindGroup,
 }
 
 /// The format the paint pass draws in for an output in `output`: one whose
@@ -84,9 +90,14 @@ pub(crate) fn encoded_format(output: wgpu::TextureFormat) -> wgpu::TextureFormat
 
 pub(crate) struct PaintRenderer {
     format: wgpu::TextureFormat,
+    output_format: wgpu::TextureFormat,
     pipeline: crate::deferred::Deferred<wgpu::RenderPipeline>,
-    /// Draws the layer over an output that is not in `format`.
-    composite: Option<crate::deferred::Deferred<wgpu::RenderPipeline>>,
+    /// Draws the layer over an output that is not in `format`: blended by
+    /// the output, and over a copy of what is behind it, in encoded values.
+    composite: Option<(
+        crate::deferred::Deferred<wgpu::RenderPipeline>,
+        crate::deferred::Deferred<wgpu::RenderPipeline>,
+    )>,
     layer: Option<Layer>,
     layout: wgpu::BindGroupLayout,
     uniform: wgpu::Buffer,
@@ -187,7 +198,11 @@ impl PaintRenderer {
             source: wgpu::ShaderSource::Wgsl(source().into()),
         });
         // Entries of the pipeline cache (gpu/deferred.rs), asked for now.
-        let pipeline = |format, vertex: &'static str, fragment: &'static str| {
+        let pipeline = |format,
+                        pl: &wgpu::PipelineLayout,
+                        blend,
+                        vertex: &'static str,
+                        fragment: &'static str| {
             let (device, pl, module) = (device.clone(), pl.clone(), module.clone());
             let entry = crate::deferred::Deferred::anywhere(move || {
                 let device = &device;
@@ -211,7 +226,7 @@ impl PaintRenderer {
                             compilation_options: Default::default(),
                             targets: &[Some(wgpu::ColorTargetState {
                                 format,
-                                blend: Some(wgpu::BlendState::ALPHA_BLENDING),
+                                blend,
                                 write_mask: wgpu::ColorWrites::ALL,
                             })],
                         }),
@@ -224,11 +239,24 @@ impl PaintRenderer {
             entry
         };
         let format = encoded_format(output_format);
+        let blend = Some(wgpu::BlendState::ALPHA_BLENDING);
+        // The composite over a copy of what is behind it: the same groups,
+        // and the copy as group 2.
+        let over_pl = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: Some("ui paint over"),
+            bind_group_layouts: &[Some(&layout), Some(sprite_layout), Some(sprite_layout)],
+            immediate_size: 0,
+        });
         PaintRenderer {
             format,
-            pipeline: pipeline(format, "vs_paint", "fs_paint"),
-            composite: (format != output_format)
-                .then(|| pipeline(output_format, "vs_layer", "fs_layer")),
+            output_format,
+            pipeline: pipeline(format, &pl, blend, "vs_paint", "fs_paint"),
+            composite: (format != output_format).then(|| {
+                (
+                    pipeline(output_format, &pl, blend, "vs_layer", "fs_layer"),
+                    pipeline(output_format, &over_pl, None, "vs_layer", "fs_layer_over"),
+                )
+            }),
             layer: None,
             layout,
             uniform: crate::traffic::create_buffer(
@@ -572,7 +600,24 @@ impl PaintRenderer {
         )
         .create_view(&Default::default());
         let group = crate::sprite_bind_group(device, queue, layout, &view, sampler, [0.0; 4]);
-        self.layer = Some(Layer { size, view, group });
+        let behind = crate::target_texture(
+            device,
+            "ui paint behind",
+            size.0,
+            size.1,
+            self.output_format,
+            wgpu::TextureUsages::COPY_DST | wgpu::TextureUsages::TEXTURE_BINDING,
+        );
+        let behind_view = behind.create_view(&Default::default());
+        let behind_group =
+            crate::sprite_bind_group(device, queue, layout, &behind_view, sampler, [0.0; 4]);
+        self.layer = Some(Layer {
+            size,
+            view,
+            group,
+            behind,
+            behind_group,
+        });
     }
 
     /// The layer, where an output of its size needed one.
@@ -600,20 +645,45 @@ impl PaintRenderer {
         self.runs.len() as u32
     }
 
+    /// Copies `target`, the texture the layer is about to be drawn over,
+    /// into the layer's copy of what is behind it. Returns the copies.
+    pub fn copy_behind(&self, encoder: &mut crate::Encoder, target: &wgpu::Texture) -> u32 {
+        let Some(layer) = &self.layer else {
+            return 0;
+        };
+        encoder.copy_texture_to_texture(
+            target.as_image_copy(),
+            layer.behind.as_image_copy(),
+            wgpu::Extent3d {
+                width: layer.size.0.min(target.width()),
+                height: layer.size.1.min(target.height()),
+                depth_or_array_layers: 1,
+            },
+        );
+        1
+    }
+
     /// Draws the layer over `pass`'s target, the output: what the pass
-    /// blended in it stays as blended, and its translucent pixels meet the
-    /// output in the output's own light. Returns the draws.
-    pub fn composite<'p>(&'p self, pass: &mut wgpu::RenderPass<'p>) -> u32 {
-        let (Some(group), Some(layer), Some(pipeline)) = (
-            &self.group,
-            &self.layer,
-            self.composite.as_ref().and_then(|c| c.get()),
-        ) else {
+    /// blended in it stays as blended. With `over` (after
+    /// [`Self::copy_behind`]), its translucent pixels meet what is behind
+    /// them in encoded values too, as on an sRGB output; without it (a
+    /// target the renderer cannot copy, a caller's view), in the output's
+    /// own light. Returns the draws.
+    pub fn composite<'p>(&'p self, pass: &mut wgpu::RenderPass<'p>, over: bool) -> u32 {
+        let (Some(group), Some(layer), Some((blended, behind))) =
+            (&self.group, &self.layer, &self.composite)
+        else {
+            return 0;
+        };
+        let Some(pipeline) = (if over { behind } else { blended }).get() else {
             return 0;
         };
         pass.set_pipeline(pipeline);
         pass.set_bind_group(0, group, &[]);
         pass.set_bind_group(1, &layer.group, &[]);
+        if over {
+            pass.set_bind_group(2, &layer.behind_group, &[]);
+        }
         pass.draw(0..3, 0..1);
         1
     }

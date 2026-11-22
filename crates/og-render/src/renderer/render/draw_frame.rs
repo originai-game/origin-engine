@@ -1119,11 +1119,15 @@ impl Renderer {
         };
         // A display output composes in the float offscreen target and its
         // pass writes the surface; a caller's view takes the composition.
-        let output = if self.display.is_some() && matches!(target, RenderTarget::Surface) {
+        let composed = self.display.is_some() && matches!(target, RenderTarget::Surface);
+        let output = if composed {
             &self.persistent.offscreen_view
         } else {
             destination
         };
+        // Its texture, where it is the renderer's own.
+        let output_texture = (composed || matches!(target, RenderTarget::Offscreen))
+            .then_some(&self.persistent.offscreen);
         // Where the overlay blends: the output when it is sRGB, else its sRGB
         // view where the backend has one (linear light either way), else the
         // output itself with the shader encoding (a caller's non-sRGB view).
@@ -1448,6 +1452,7 @@ impl Renderer {
             overlay_view,
             paint_view,
             output,
+            output_texture,
         };
         plans.viewport_views = ViewportViewsPass::bind(
             self,

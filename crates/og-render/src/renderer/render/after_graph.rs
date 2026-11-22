@@ -22,6 +22,9 @@ pub(super) struct FinishedFrame<'f> {
     /// plain view (`None`: the pass's layer, drawn over the output).
     pub paint_view: Option<&'f wgpu::TextureView>,
     pub output: &'f wgpu::TextureView,
+    /// The output's texture when the renderer owns it (the offscreen
+    /// target): what the paint pass's layer copies to blend over.
+    pub output_texture: Option<&'f wgpu::Texture>,
 }
 
 /// A frame's viewport views (split-screen, views.rs).
@@ -204,6 +207,7 @@ impl Pass for OverlayPass {
                     overlay_view,
                     paint_view,
                     output,
+                    output_texture,
                 },
         } = plan;
         let runs: &[overlay::OverlayRun] = overlay_frame.map_or(&[], |f| f.main_runs());
@@ -333,6 +337,12 @@ impl Pass for OverlayPass {
                 None => ui::pass::TargetKind::Output,
             };
             let target = layered.unwrap_or(overlay_view.unwrap_or(output));
+            // The texture under `target`, which the paint pass's layer
+            // copies to blend over in encoded values.
+            let behind = match layered {
+                Some(_) => r.glass_targets.as_ref().map(|g| g.source()),
+                None => output_texture,
+            };
             // The runs between the pyramid's builds and the target's copies,
             // each in a pass of its own: before run `at`, what `events`
             // lists (true: a pyramid, false: a copy).
@@ -363,6 +373,10 @@ impl Pass for OverlayPass {
                 if let Some(view) = paint_own {
                     stats.draw_calls += paint_pass(encoder, view, wgpu::LoadOp::Load);
                 }
+                let over = paint_here && paint_own.is_none() && !paint_shared;
+                if let (true, Some(texture)) = (over, behind) {
+                    stats.draw_calls += r.paint.copy_behind(encoder, texture);
+                }
                 if to > from || (paint_here && paint_own.is_none()) {
                     let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                         label: Some("overlay"),
@@ -383,7 +397,7 @@ impl Pass for OverlayPass {
                     if paint_here && paint_shared {
                         stats.draw_calls += r.paint.draw(&mut pass, |bind| paint_group(r, bind));
                     } else if paint_here && paint_own.is_none() {
-                        stats.draw_calls += r.paint.composite(&mut pass);
+                        stats.draw_calls += r.paint.composite(&mut pass, behind.is_some());
                     }
                     if let (true, Some(group0)) = (to > from, group0) {
                         stats.draw_calls +=

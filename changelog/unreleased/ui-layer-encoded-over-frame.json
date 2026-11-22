@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "og.ui (TSX components over the game's frame on a wide-gamut or HDR display, and on the web)",
+      "summary": "On a wide-gamut or HDR display (the web's wide-gamut canvas, an HDR monitor), a translucent UI pixel directly over the game's frame now blends with it in sRGB-encoded values, as it does on an 8-bit sRGB output and in a browser. Before, it blended in linear light: 25, 50 and 75 % white over black read 137, 186 and 224 on the web against 64, 128 and 191 natively. A frame's wide colours and highlights under the UI keep their values. Only a caller's own render target that is not the renderer's still meets the UI in its own light."
+    }
+  ]
+}
