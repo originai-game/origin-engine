@@ -113,7 +113,9 @@ status `docs/roadmap.md`. Platform contracts implemented here:
 - **A test is kept only when it fails on a plausible regression.** A missing
   GPU makes a test skipped or unchecked, never passed. Lavapipe is neither
   a standard nor a check: a GPU result from lavapipe is unchecked, and no
-  frame, timing or landing is judged on it.
+  frame, timing or landing is judged on it. SwiftShader (headless Chrome's
+  CPU WebGPU) is a functional check only, that the web path runs; web
+  frames and timings are judged on Chrome on the L4.
 - **One GPU host: Colab.** GPU results and references come from a Colab
   NVIDIA GPU (L4 by default, Vulkan) through the workspace plugin
   `colab-gpu` (`docs/ci.md` §The GPU host, §Reference frames); the `gcp-l4`

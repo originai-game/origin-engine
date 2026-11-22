@@ -139,8 +139,12 @@ pixel-difference landing gate (§Reference frames).
 
 Web frames and web GPU timings both come from Chrome on the L4. The
 engine's launch (`webGpuSwitches` in `packages/engine/src/node/device.ts`)
-puts headless Chrome's WebGPU on SwiftShader, which composites its canvas:
-frames are judged there. A timing run launches Chrome with
+puts headless Chrome's WebGPU on SwiftShader, a CPU renderer. SwiftShader
+is a functional check only: it shows that the web path runs and that values
+read within one frame agree (as `web-reference`'s groups do in an orb).
+Like lavapipe, it is not a standard: no frame's quality, reference or
+timing is judged on it, and a head's web frames for review come from Chrome
+on the L4. A timing run launches Chrome with
 `--use-angle=vulkan --enable-features=WebGPU,Vulkan
 --disable-vulkan-surface`, which gives WebGPU the NVIDIA adapter (the
 NVIDIA 580 driver has no `VK_EXT_headless_surface`) and composites by
