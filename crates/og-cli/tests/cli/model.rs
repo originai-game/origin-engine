@@ -38,11 +38,16 @@ fn subcommands_match_the_library() {
     assert_eq!(std::fs::read(&glb).unwrap(), model.glb().unwrap());
     let out = shape(&["measure", PROGRAM]);
     assert!(out.status.success());
-    let text = String::from_utf8(out.stdout).unwrap();
-    assert_eq!(
-        text.trim(),
-        og_shape::model::program::measures_json(&model).unwrap()
-    );
+    // The kernel's report, every key as it was, plus the prop facts.
+    let got: serde_json::Value = serde_json::from_slice(&out.stdout).unwrap();
+    let kernel: serde_json::Value =
+        serde_json::from_str(&og_shape::model::program::measures_json(&model).unwrap()).unwrap();
+    for (k, v) in kernel.as_object().unwrap() {
+        assert_eq!(&got[k], v, "{k}");
+    }
+    for k in ["size", "partCount", "materials"] {
+        assert!(got.get(k).is_some(), "{k}: {got}");
+    }
     // The washing machine is posed: OBJ is written at the pose, and the
     // report says so.
     let obj = dir.join("m.obj");
