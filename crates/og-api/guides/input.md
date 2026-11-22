@@ -52,6 +52,22 @@ Controls are named by strings:
   actions share a control. og.input.setActionMaps lists the live ones by
   priority: with `["vehicle", "gameplay"]` E exits the car instead of
   interacting. Empty is every action map, none winning.
+- A press the game cannot act on yet (a jump in the air, an attack in
+  another's recovery) is buffered: `bufferTicks` keeps it for that many
+  ticks, and og.input.consume takes it once, when the game can act. A
+  jump or combo buffer of 6 to 10 ticks at 60 Hz (100 to 170 ms) forgives
+  an early press without one press doing two moves.
+- `pressedAt` is when in the tick a key or pointer press happened, in
+  seconds from the tick's start, taken from the host's event time: a
+  rhythm judgement measures `time.elapsed + pressedAt` against the beat
+  rather than the tick. Pad and on-screen presses read 0.
+
+  ```ts
+  if (grounded && og.input.consume(world, "jump")) jump();
+  const hit = og.input.action(world, "tap");
+  if (hit?.justPressed) judge(time.elapsed + hit.pressedAt - beatTime);
+  ```
+
 - og.input.defineAction may be called again: a redefinition keeps the
   player's bindings while they still fit, and the action's state while its
   kind stays. The map is world state, so snapshots carry it.

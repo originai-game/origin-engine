@@ -4,11 +4,22 @@ use super::*;
 
 fn rt_json(rt: &Runtime) -> Value {
     let s = rt.state;
-    json!({
+    let mut v = json!({
         "down": s.down, "pressed": s.pressed, "released": s.released, "held": s.held,
         "value": s.value, "vx": s.vector.x, "vy": s.vector.y, "device": s.device.index(),
         "rawDown": rt.raw_down, "since": rt.since, "toggled": rt.toggled, "suppressed": rt.suppressed,
-    })
+    });
+    // Only when set: a world that buffers and times no press saves the bytes it always did.
+    if s.pressed_at != 0.0 {
+        v["pressedAt"] = json!(s.pressed_at);
+    }
+    if s.buffered {
+        v["buffered"] = json!(true);
+    }
+    if let Some(t) = rt.unconsumed {
+        v["unconsumed"] = json!(t);
+    }
+    v
 }
 
 fn rt_of(v: &Value) -> Result<Runtime, String> {
@@ -22,11 +33,14 @@ fn rt_of(v: &Value) -> Result<Runtime, String> {
             vector: Vec2::new(f32_of(v, "vx", 0.0)?, f32_of(v, "vy", 0.0)?),
             device: Device::from_index(v["device"].as_u64().unwrap_or(0) as u32)
                 .unwrap_or_default(),
+            pressed_at: f32_of(v, "pressedAt", 0.0)?,
+            buffered: bool_of(v, "buffered", false)?,
         },
         raw_down: bool_of(v, "rawDown", false)?,
         since: v["since"].as_u64().unwrap_or(0),
         toggled: bool_of(v, "toggled", false)?,
         suppressed: bool_of(v, "suppressed", false)?,
+        unconsumed: v["unconsumed"].as_u64(),
     })
 }
 

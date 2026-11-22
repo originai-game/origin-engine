@@ -31,4 +31,4 @@ resource PointerLock {
 }
 ```
 
-<sub>Module `input` line 984</sub>
+<sub>Module `input` line 1003</sub>

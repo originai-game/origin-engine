@@ -499,3 +499,90 @@ fn on_screen_controls_feed_their_actions() {
     rig.tick(&[]);
     assert_eq!(rig.state("move").vector, og_core::glam::Vec2::ZERO);
 }
+
+/// Ways a buffer could fail: a press taken twice, taken past its window or
+/// lost to the release before it is taken; a second press inside the
+/// window doing nothing; bufferTicks 0 taking nothing at all; a snapshot
+/// that drops a press waiting.
+#[test]
+fn a_buffered_press_is_taken_once_within_its_ticks() {
+    let jump = ActionDesc {
+        buffer_ticks: 3,
+        ..action("jump", ActionKind::Button, vec![Binding::control("Space")])
+    };
+    let now = action("now", ActionKind::Button, vec![Binding::control("KeyN")]);
+    let mut rig = Rig::new(&[jump, now]);
+    let consume = |rig: &Rig, name: &str| rig.map.lock().unwrap().consume(name);
+    // Pressed and released between ticks: taken 3 ticks later, once.
+    rig.tick(&[down("Space"), up("Space")]);
+    assert!(rig.state("jump").buffered);
+    for _ in 0..3 {
+        rig.tick(&[]);
+    }
+    assert!(rig.state("jump").buffered, "the third tick after the press");
+    let snap = rig.world.snapshot();
+    assert!(consume(&rig, "jump"));
+    assert!(!consume(&rig, "jump"), "taken once");
+    rig.tick(&[]);
+    assert!(!rig.state("jump").buffered);
+    // A press left four ticks is gone.
+    rig.tick(&[down("Space")]);
+    for _ in 0..4 {
+        rig.tick(&[]);
+    }
+    assert!(!consume(&rig, "jump"), "past its bufferTicks");
+    // A second press restarts the window.
+    rig.tick(&[up("Space")]);
+    rig.tick(&[down("Space")]);
+    rig.tick(&[up("Space")]);
+    rig.tick(&[down("Space")]);
+    for _ in 0..3 {
+        rig.tick(&[]);
+    }
+    assert!(consume(&rig, "jump"), "the later press's window");
+    // 0: only the tick it went down.
+    rig.tick(&[down("KeyN")]);
+    assert!(rig.state("now").buffered);
+    rig.tick(&[]);
+    assert!(!consume(&rig, "now"));
+    assert!(!consume(&rig, "nothing"));
+    // A restored world has the press waiting again.
+    let mut b = Rig::new(&[]);
+    b.world.restore(&snap).unwrap();
+    assert!(b.map.lock().unwrap().consume("jump"));
+}
+
+/// Ways pressed times could fail: the time of another control's press, of
+/// a press of the tick before, the latest press rather than the first, a
+/// time in ticks instead of seconds, or a time kept past its tick.
+#[test]
+fn pressed_at_is_the_first_press_of_its_controls_in_seconds() {
+    let tap = action(
+        "tap",
+        ActionKind::Button,
+        vec![Binding::control("KeyJ"), Binding::control("KeyK")],
+    );
+    let mut rig = Rig::new(&[
+        tap,
+        action("other", ActionKind::Button, vec![Binding::control("KeyL")]),
+    ]);
+    let at = |rig: &mut Rig, code: &str, t: f32| {
+        assert!(rig.layer.inject_at(&mut rig.world, &down(code), t));
+    };
+    at(&mut rig, "KeyL", -0.9);
+    at(&mut rig, "KeyK", 0.4);
+    at(&mut rig, "KeyJ", -0.25);
+    rig.world.step().unwrap();
+    rig.layer.end_tick(&mut rig.world);
+    let s = rig.state("tap");
+    assert!(s.pressed);
+    // -0.25 of a 60 Hz tick, in seconds: the earlier of J and K, not L.
+    assert!(close(s.pressed_at, -0.25 / 60.0), "{s:?}");
+    assert!(close(rig.state("other").pressed_at, -0.9 / 60.0));
+    rig.tick(&[]);
+    assert_eq!(
+        rig.state("tap").pressed_at,
+        0.0,
+        "only in the tick it went down"
+    );
+}

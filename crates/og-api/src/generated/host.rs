@@ -359,6 +359,8 @@ pub trait InputApi: Wire {
     fn og_input_actions(&self, world: u32) -> String;
     /// `og.input.action`
     fn og_input_action(&self, world: u32, name: String) -> String;
+    /// `og.input.consume`
+    fn og_input_consume(&self, world: u32, name: String) -> bool;
     /// `og.input.isActionDown`
     fn og_input_is_action_down(&self, world: u32, name: String) -> bool;
     /// `og.input.isActionJustPressed`
@@ -1614,6 +1616,7 @@ pub const SYMBOLS: &[&str] = &[
     "og_input_define_action",
     "og_input_actions",
     "og_input_action",
+    "og_input_consume",
     "og_input_is_action_down",
     "og_input_is_action_just_pressed",
     "og_input_is_action_just_released",

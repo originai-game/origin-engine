@@ -24,6 +24,9 @@ macro_rules! __og_host_bindings_input {
             fn og_input_action(&self, world: u32, name: String) -> String {
                 $crate::host_impl::json($crate::og_input_action(world, name))
             }
+            fn og_input_consume(&self, world: u32, name: String) -> bool {
+                $crate::og_input_consume(world, name)
+            }
             fn og_input_is_action_down(&self, world: u32, name: String) -> bool {
                 $crate::og_input_is_action_down(world, name)
             }

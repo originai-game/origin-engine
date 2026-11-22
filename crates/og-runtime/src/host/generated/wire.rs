@@ -1789,6 +1789,7 @@ pub struct ActionDesc {
     pub threshold: f32,
     pub deadzone: f32,
     pub hold_ms: f32,
+    pub buffer_ticks: u32,
     pub locked: bool,
     pub toggle: bool,
 }
@@ -1804,6 +1805,7 @@ impl Default for ActionDesc {
             threshold: 0.5_f32,
             deadzone: Default::default(),
             hold_ms: Default::default(),
+            buffer_ticks: Default::default(),
             locked: Default::default(),
             toggle: Default::default(),
         }
@@ -1825,6 +1827,7 @@ impl FromJson for ActionDesc {
             threshold: field(o, "threshold", d.threshold)?,
             deadzone: field(o, "deadzone", d.deadzone)?,
             hold_ms: field(o, "holdMs", d.hold_ms)?,
+            buffer_ticks: field(o, "bufferTicks", d.buffer_ticks)?,
             locked: field(o, "locked", d.locked)?,
             toggle: field(o, "toggle", d.toggle)?,
         })
@@ -1842,6 +1845,7 @@ impl ToJson for ActionDesc {
         o.insert("threshold".into(), self.threshold.to_json());
         o.insert("deadzone".into(), self.deadzone.to_json());
         o.insert("holdMs".into(), self.hold_ms.to_json());
+        o.insert("bufferTicks".into(), self.buffer_ticks.to_json());
         o.insert("locked".into(), self.locked.to_json());
         o.insert("toggle".into(), self.toggle.to_json());
         Value::Object(o)
@@ -1858,6 +1862,8 @@ pub struct ActionState {
     pub value: f32,
     pub vector: Vec2,
     pub device: InputDevice,
+    pub pressed_at: f32,
+    pub buffered: bool,
 }
 
 impl Default for ActionState {
@@ -1870,6 +1876,8 @@ impl Default for ActionState {
             value: Default::default(),
             vector: Default::default(),
             device: Default::default(),
+            pressed_at: Default::default(),
+            buffered: Default::default(),
         }
     }
 }
@@ -1888,6 +1896,8 @@ impl FromJson for ActionState {
             value: field(o, "value", d.value)?,
             vector: field(o, "vector", d.vector)?,
             device: field(o, "device", d.device)?,
+            pressed_at: field(o, "pressedAt", d.pressed_at)?,
+            buffered: field(o, "buffered", d.buffered)?,
         })
     }
 }
@@ -1902,6 +1912,8 @@ impl ToJson for ActionState {
         o.insert("value".into(), self.value.to_json());
         o.insert("vector".into(), self.vector.to_json());
         o.insert("device".into(), self.device.to_json());
+        o.insert("pressedAt".into(), self.pressed_at.to_json());
+        o.insert("buffered".into(), self.buffered.to_json());
         Value::Object(o)
     }
 }

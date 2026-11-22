@@ -885,6 +885,12 @@ pub fn og_input_action(env: Env, world: u32, name: String) -> String {
     <Host as InputApi>::og_input_action(&Host, world, name)
 }
 
+#[napi(js_name = "og_input_consume")]
+pub fn og_input_consume(env: Env, world: u32, name: String) -> bool {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as InputApi>::og_input_consume(&Host, world, name)
+}
+
 #[napi(js_name = "og_input_is_action_down")]
 pub fn og_input_is_action_down(env: Env, world: u32, name: String) -> bool {
     let _env = crate::EnvScope::enter(&env);

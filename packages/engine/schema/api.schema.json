@@ -3990,6 +3990,27 @@
           "publish": true
         },
         {
+          "name": "consume",
+          "doc": "Take an action's buffered press: true once per press, in the tick it went down or the ActionDesc.bufferTicks after it, then false until the next press. What a combo, a jump or a cancel window calls when it can act on the press, so one press starts one move.\nSee `input §1`.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "name",
+              "type": "String",
+              "optional": false,
+              "doc": "The action."
+            }
+          ],
+          "returns": "bool",
+          "returnsDoc": "Whether a press was waiting; false for an unknown action.",
+          "publish": true
+        },
+        {
           "name": "isActionDown",
           "doc": "Whether an action is down this tick (false for an unknown one).",
           "params": [
@@ -18945,6 +18966,15 @@
           "minimum": 0,
           "x-og-unit": "ms"
         },
+        "bufferTicks": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "How many ticks after its press og.input.consume still takes it (0: only in the tick it went down): a press made just before the game can act on it is not lost. Each press is taken once.\nSee `input §1`.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 600
+        },
         "locked": {
           "type": "boolean",
           "description": "The player cannot rebind it (pause, a debug key).",
@@ -18991,6 +19021,15 @@
         "device": {
           "$ref": "#/$defs/InputDevice",
           "description": "The device whose binding drove it last."
+        },
+        "pressedAt": {
+          "type": "number",
+          "description": "When in the tick it went down, in seconds from the tick's start (-dt to dt): the time its key or pointer press carried, so its world time is `time.elapsed + pressedAt` and a replay gives it again. 0 when it did not go down this tick or its press carried no time (a gamepad, an on-screen control).\nSee `input §1`.",
+          "x-og-unit": "s"
+        },
+        "buffered": {
+          "type": "boolean",
+          "description": "A press og.input.consume would take now: within its bufferTicks and not taken yet."
         }
       },
       "required": [
@@ -19000,7 +19039,9 @@
         "held",
         "value",
         "vector",
-        "device"
+        "device",
+        "pressedAt",
+        "buffered"
       ],
       "additionalProperties": false
     },

@@ -153,7 +153,13 @@ pub fn og_input_action(world: u32, name: String) -> Option<crate::host::wire::Ac
         value: s.value,
         vector: s.vector,
         device: input_device(s.device),
+        pressed_at: s.pressed_at,
+        buffered: s.buffered,
     })
+}
+
+pub fn og_input_consume(world: u32, name: String) -> bool {
+    on_map(world, |m| m.consume(&name)).unwrap_or(false)
 }
 
 pub fn og_input_is_action_down(world: u32, name: String) -> bool {

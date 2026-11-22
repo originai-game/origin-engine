@@ -12,7 +12,7 @@ See `input`.
 
 - **TypeScript**: functions are the namespace `og.input`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
-- **Core** (what most games use): `og.Input`; 89 more are advanced (`og api show input --all`).
+- **Core** (what most games use): `og.Input`; 90 more are advanced (`og api show input --all`).
 - **Index**: [every module and guide](index.md).
 
 ```ogt
@@ -59,6 +59,7 @@ module input {
 | [`og.input.defineAction`](input/fn-defineAction.md) | function | `(world: World, desc?: ActionDesc): Result<void>` | Define (or redefine) a gameplay action. |
 | [`og.input.actions`](input/fn-actions.md) | function | `(world: World): readonly ActionInfo[]` | Every action, in definition order, with its bindings now and its defaults: what a controls screen lists. |
 | [`og.input.action`](input/fn-action.md) | function | `(world: World, name: string): ActionState \| null` | An action this tick: down, the edges, held, its value and vector, and the device that drove it. |
+| [`og.input.consume`](input/fn-consume.md) | function | `(world: World, name: string): boolean` | Take an action's buffered press: true once per press, in the tick it went down or the ActionDesc.bufferTicks after it, then false until the next press. |
 | [`og.input.isActionDown`](input/fn-isActionDown.md) | function | `(world: World, name: string): boolean` | Whether an action is down this tick (false for an unknown one). |
 | [`og.input.isActionJustPressed`](input/fn-isActionJustPressed.md) | function | `(world: World, name: string): boolean` | Whether an action went down this tick. |
 | [`og.input.isActionJustReleased`](input/fn-isActionJustReleased.md) | function | `(world: World, name: string): boolean` | Whether an action went up this tick. |

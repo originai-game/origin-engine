@@ -739,6 +739,11 @@ pub fn og_input_action(world: u32, name: String) -> String {
 }
 
 #[wasm_bindgen]
+pub fn og_input_consume(world: u32, name: String) -> bool {
+    <Host as InputApi>::og_input_consume(&Host, world, name)
+}
+
+#[wasm_bindgen]
 pub fn og_input_is_action_down(world: u32, name: String) -> bool {
     <Host as InputApi>::og_input_is_action_down(&Host, world, name)
 }

@@ -3397,6 +3397,14 @@ export interface ActionDesc {
    */
   readonly holdMs?: number;
   /**
+   * How many ticks after its press og.input.consume still takes it (0: only in the tick it went down): a press made just before the game can act on it is not lost. Each press is taken once.
+   * See `input §1`.
+   *
+   * @default 0
+   * @range 0..600
+   */
+  readonly bufferTicks?: number;
+  /**
    * The player cannot rebind it (pause, a debug key).
    *
    * @default false
@@ -3428,6 +3436,15 @@ export interface ActionState {
   readonly vector: Vector2;
   /** The device whose binding drove it last. */
   readonly device: InputDevice;
+  /**
+   * When in the tick it went down, in seconds from the tick's start (-dt to dt): the time its key or pointer press carried, so its world time is `time.elapsed + pressedAt` and a replay gives it again. 0 when it did not go down this tick or its press carried no time (a gamepad, an on-screen control).
+   * See `input §1`.
+   *
+   * @unit s (seconds of simulation time)
+   */
+  readonly pressedAt: number;
+  /** A press og.input.consume would take now: within its bufferTicks and not taken yet. */
+  readonly buffered: boolean;
 }
 
 /** An action as a controls screen lists it. */
@@ -3767,6 +3784,7 @@ export interface RumbleDesc {
    */
   readonly ms?: number;
 }
+
 
 
 
@@ -33694,6 +33712,15 @@ export declare namespace og {
      * @param name The action.
      */
     function action(world: World, name: string): ActionState | null;
+    /**
+     * Take an action's buffered press: true once per press, in the tick it went down or the ActionDesc.bufferTicks after it, then false until the next press. What a combo, a jump or a cancel window calls when it can act on the press, so one press starts one move.
+     * See `input §1`.
+     *
+     * @param world The world.
+     * @param name The action.
+     * @returns Whether a press was waiting; false for an unknown action.
+     */
+    function consume(world: World, name: string): boolean;
     /**
      * Whether an action is down this tick (false for an unknown one).
      *

@@ -319,6 +319,8 @@ export interface HostAbi<A, V> {
   og_input_actions(world: number): string;
   /** `og.input.action` */
   og_input_action(world: number, name: string): string;
+  /** `og.input.consume` */
+  og_input_consume(world: number, name: string): boolean;
   /** `og.input.isActionDown` */
   og_input_is_action_down(world: number, name: string): boolean;
   /** `og.input.isActionJustPressed` */
@@ -1437,6 +1439,7 @@ export const SYMBOLS: readonly string[] = [
   "og_input_define_action",
   "og_input_actions",
   "og_input_action",
+  "og_input_consume",
   "og_input_is_action_down",
   "og_input_is_action_just_pressed",
   "og_input_is_action_just_released",

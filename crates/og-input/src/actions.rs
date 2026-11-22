@@ -146,6 +146,9 @@ pub struct ActionDesc {
     pub deadzone: f32,
     /// How long a press is held before `held` (0: never).
     pub hold_ms: f32,
+    /// Ticks after its press that [`ActionMap::consume`] still takes it
+    /// (0: only in the tick it went down).
+    pub buffer_ticks: u32,
     /// The player cannot rebind it.
     pub locked: bool,
     /// A press turns it on and the next press off (a hold's alternative,
@@ -164,6 +167,7 @@ impl Default for ActionDesc {
             threshold: 0.5,
             deadzone: 0.0,
             hold_ms: 0.0,
+            buffer_ticks: 0,
             locked: false,
             toggle: false,
         }
@@ -205,6 +209,13 @@ impl ActionDesc {
             threshold: f32_of(v, "threshold", 0.5)?,
             deadzone: f32_of(v, "deadzone", 0.0)?,
             hold_ms: f32_of(v, "holdMs", 0.0)?,
+            buffer_ticks: match v.get("bufferTicks") {
+                None | Some(Value::Null) => 0,
+                Some(x) => x
+                    .as_u64()
+                    .and_then(|n| u32::try_from(n).ok())
+                    .ok_or("bufferTicks is a whole number of ticks, 0 or more")?,
+            },
             locked: bool_of(v, "locked", false)?,
             toggle: bool_of(v, "toggle", false)?,
         })
@@ -215,7 +226,7 @@ impl ActionDesc {
             "name": self.name, "kind": self.kind.name(), "actionMap": self.context,
             "label": self.label, "bindings": self.bindings.iter().map(Binding::to_json).collect::<Vec<_>>(),
             "threshold": self.threshold, "deadzone": self.deadzone, "holdMs": self.hold_ms,
-            "locked": self.locked, "toggle": self.toggle,
+            "bufferTicks": self.buffer_ticks, "locked": self.locked, "toggle": self.toggle,
         })
     }
 
@@ -262,6 +273,12 @@ pub struct ActionState {
     pub vector: Vec2,
     /// The device whose binding drove it last.
     pub device: Device,
+    /// When in the tick it went down, in seconds from the tick's start
+    /// (-dt to dt), from the press events of its controls (0 when none
+    /// carried a time, or it did not go down this tick).
+    pub pressed_at: f32,
+    /// A press [`ActionMap::consume`] would take now.
+    pub buffered: bool,
 }
 
 impl ActionState {
@@ -269,7 +286,7 @@ impl ActionState {
         json!({
             "down": self.down, "justPressed": self.pressed, "justReleased": self.released, "held": self.held,
             "value": self.value, "vector": { "x": self.vector.x, "y": self.vector.y },
-            "device": self.device.name(),
+            "device": self.device.name(), "pressedAt": self.pressed_at, "buffered": self.buffered,
         })
     }
 }
@@ -319,6 +336,8 @@ struct Runtime {
     toggled: bool,
     /// After a capture: reads nothing until its bindings read nothing.
     suppressed: bool,
+    /// The tick of the last press not yet consumed.
+    unconsumed: Option<u64>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -596,6 +615,20 @@ impl ActionMap {
         self.find(name).map(|i| self.actions[i].rt.state)
     }
 
+    /// Takes the action's buffered press: true once for a press, in the
+    /// tick it went down or the `bufferTicks` after; false for an unknown
+    /// action, one with no press waiting, or a press already taken.
+    pub fn consume(&mut self, name: &str) -> bool {
+        let Some(i) = self.find(name) else {
+            return false;
+        };
+        let rt = &mut self.actions[i].rt;
+        let taken = rt.state.buffered;
+        rt.unconsumed = None;
+        rt.state.buffered = false;
+        taken
+    }
+
     /// An action's bindings now.
     pub fn bindings(&self, name: &str) -> Option<&[Binding]> {
         self.find(name).map(|i| self.actions[i].bindings())
@@ -799,6 +832,7 @@ impl ActionMap {
         input: &Input,
         pointers: &Pointers,
         pads: &Gamepad,
+        presses: &[(Control, f32)],
         tick: u64,
         dt: f32,
     ) {
@@ -892,6 +926,14 @@ impl ActionMap {
                     }
                 }
             }
+            // The earliest press of one of its controls this tick, in ticks.
+            let press_at = a
+                .bindings()
+                .iter()
+                .flat_map(|b| b.controls())
+                .filter_map(|(_, c)| presses.iter().find(|p| p.0 == c).map(|p| p.1))
+                .fold(None, |m: Option<f32>, t| Some(m.map_or(t, |m| m.min(t))))
+                .unwrap_or(0.0);
             let rt = &mut a.rt;
             if rt.suppressed {
                 if best_len == 0.0 && !any_pressed {
@@ -950,7 +992,12 @@ impl ActionMap {
             }
             if s.pressed {
                 rt.since = tick;
+                rt.unconsumed = Some(tick);
+                s.pressed_at = press_at * dt;
             }
+            s.buffered = rt
+                .unconsumed
+                .is_some_and(|t| tick <= t + u64::from(a.desc.buffer_ticks));
             if a.desc.hold_ms > 0.0 && s.down && dt > 0.0 {
                 let need = ((a.desc.hold_ms / 1000.0) / dt).ceil() as u64;
                 s.held = tick.saturating_sub(rt.since) >= need;
@@ -1626,17 +1673,36 @@ pub fn install(
         og_ecs::SystemDesc::new(ACTIONS_SYSTEM)
             .read::<Input>()
             .read::<Pointers>()
-            .read::<Gamepad>(),
+            .read::<Gamepad>()
+            .read::<crate::KeyDown>()
+            .read::<crate::PointerDown>(),
         move |ctx| {
             let input = ctx.resource::<Input>().map(|r| *r).unwrap_or_default();
             let pointers = ctx.resource::<Pointers>().map(|r| *r).unwrap_or_default();
             let pads = ctx.resource::<Gamepad>().map(|r| *r).unwrap_or_default();
+            // The tick's presses with when they happened (KeyDown.at, in ticks).
+            let mut presses: Vec<(Control, f32)> = Vec::new();
+            for k in ctx.events::<crate::KeyDown>().unwrap_or_default() {
+                if !k.repeat
+                    && let Some(c) = Control::parse(k.key.as_str())
+                {
+                    presses.push((c, k.at));
+                }
+            }
+            for p in ctx.events::<crate::PointerDown>().unwrap_or_default() {
+                if let Some(b) = crate::PointerButton::from_index(p.button) {
+                    if p.id == 0 {
+                        presses.push((Control::Mouse(b), p.at));
+                    }
+                    presses.push((Control::Touch, p.at));
+                }
+            }
             let time = ctx.time();
             let mut map = lock(&sampler);
             if let Some(s) = surface() {
                 map.set_surface(s);
             }
-            map.sample(&input, &pointers, &pads, time.tick, time.dt());
+            map.sample(&input, &pointers, &pads, &presses, time.tick, time.dt());
             Ok(())
         },
     )?;

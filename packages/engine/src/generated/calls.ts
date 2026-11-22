@@ -508,6 +508,7 @@ export const og = Object.freeze({
     defineAction: (world: { readonly id: number }, desc?: unknown): unknown => JSON.parse(abi().og_input_define_action(world.id, json(desc))) as unknown,
     actions: (world: { readonly id: number }): unknown => JSON.parse(abi().og_input_actions(world.id)) as unknown,
     action: (world: { readonly id: number }, name: string): unknown => JSON.parse(abi().og_input_action(world.id, name)) as unknown,
+    consume: (world: { readonly id: number }, name: string): boolean => abi().og_input_consume(world.id, name),
     isActionDown: (world: { readonly id: number }, name: string): boolean => abi().og_input_is_action_down(world.id, name),
     isActionJustPressed: (world: { readonly id: number }, name: string): boolean => abi().og_input_is_action_just_pressed(world.id, name),
     isActionJustReleased: (world: { readonly id: number }, name: string): boolean => abi().og_input_is_action_just_released(world.id, name),

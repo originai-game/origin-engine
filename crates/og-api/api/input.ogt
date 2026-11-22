@@ -111,6 +111,11 @@ module input {
       min 0
       unit ms
     }
+    field bufferTicks u32 "How many ticks after its press og.input.consume still takes it (0: only in the tick it went down): a press made just before the game can act on it is not lost. Each press is taken once." {
+      guide "input §1"
+      min 0
+      max 600
+    }
     field locked bool "The player cannot rebind it (pause, a debug key)."
     field toggle bool "A button whose press turns it on and the next press off (a hold's alternative, XAG 107); the player may change it (og.input.setToggle)."
   }
@@ -124,6 +129,11 @@ module input {
     field value f32 "A button's strength (0 to 1: a trigger's travel), an axis's value, a two-axis value's length."
     field vector Vector2 "A two-axis action's value (x right, y up); value and 0 for the others."
     field device InputDevice "The device whose binding drove it last."
+    field pressedAt f32 "When in the tick it went down, in seconds from the tick's start (-dt to dt): the time its key or pointer press carried, so its world time is `time.elapsed + pressedAt` and a replay gives it again. 0 when it did not go down this tick or its press carried no time (a gamepad, an on-screen control)." {
+      guide "input §1"
+      unit s
+    }
+    field buffered bool "A press og.input.consume would take now: within its bufferTicks and not taken yet."
   }
 
   struct ActionInfo {
@@ -315,6 +325,15 @@ module input {
     param world World "The world."
     param name String "The action."
     returns Option.ActionState
+  }
+
+  fn consume {
+    doc "Take an action's buffered press: true once per press, in the tick it went down or the ActionDesc.bufferTicks after it, then false until the next press. What a combo, a jump or a cancel window calls when it can act on the press, so one press starts one move."
+    guide "input §1"
+    aliases "input buffer, buffered input, consume input, jump buffer, combo buffer"
+    param world World "The world."
+    param name String "The action."
+    returns bool "Whether a press was waiting; false for an unknown action."
   }
 
   fn isActionDown {
