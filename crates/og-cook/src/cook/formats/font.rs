@@ -905,6 +905,9 @@ pub fn cook(
         w.raw("ttf", bytes.to_vec(), 16);
     } else {
         w.raw("shaping", shaping_tables(&face), 16);
+        // Every font ships its file: UI text is laid out and rastered
+        // from it at the size it is drawn.
+        w.raw("file", bytes.to_vec(), 16);
     }
     if s.color && s.runtime {
         // A colour glyph a text first shows is painted from the file at

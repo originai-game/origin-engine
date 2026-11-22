@@ -1117,6 +1117,7 @@ impl Bundle {
             pages,
             ttf: blob.raw("ttf").ok().map(<[u8]>::to_vec),
             shaping: blob.raw("shaping").ok().map(<[u8]>::to_vec),
+            file: blob.raw_opt("file").map(<[u8]>::to_vec),
             color_runtime: blob
                 .raw_opt("color-runtime")
                 .and_then(crate::runtime::ColorRuntime::parse),

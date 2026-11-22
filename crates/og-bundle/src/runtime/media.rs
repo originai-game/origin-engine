@@ -630,6 +630,9 @@ pub struct CookedFont {
     /// OpenType tables for paragraph layout, without outlines or permission
     /// to render characters outside the cooked charset.
     pub shaping: Option<Vec<u8>>,
+    /// The font file of a font that ships no `ttf`: every font ships its
+    /// file, which UI text is laid out and rastered from.
+    pub file: Option<Vec<u8>>,
     /// An icon set's names (an `.ogt` of `type icons`, cook::icons): icon
     /// `i` is the glyph at U+E000 + i. Empty for a text font.
     pub names: Vec<String>,
