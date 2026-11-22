@@ -761,7 +761,7 @@ fn bake_projects_a_front_image_onto_the_uvs() {
         "--project",
         &project,
         "--size",
-        "64",
+        "256",
         "--view-size",
         "128",
         "--json",
@@ -784,5 +784,31 @@ fn bake_projects_a_front_image_onto_the_uvs() {
         std::fs::read(&program).unwrap(),
         std::fs::read(PROGRAM).unwrap()
     );
+    // Packed into one atlas, so a view paints it, and the `.ogt` says so.
+    assert!(ogt.contains("atlas 256"), "{ogt}");
+    assert!(
+        r["coverage"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|c| c["covered"].as_f64().unwrap() > 0.05),
+        "{r}"
+    );
+    // The `.ogt` is the model og cook builds, maps and all.
+    let built = report(&["measure", dir.join("wm.ogt").to_str().unwrap(), "--json"]);
+    assert!(built["triangles"].as_u64().unwrap() > 0, "{built}");
+    // Images that miss the model paint nothing: an error, not coverage 0.
+    let blank = dir.join("blank.png");
+    image::RgbaImage::from_pixel(8, 8, image::Rgba([0, 0, 0, 0]))
+        .save(&blank)
+        .unwrap();
+    let none = shape(&[
+        "bake",
+        program.to_str().unwrap(),
+        "--project",
+        &format!("front={}", blank.display()),
+        "--json",
+    ]);
+    assert_eq!(none.status.code(), Some(1));
     let _ = std::fs::remove_dir_all(&dir);
 }

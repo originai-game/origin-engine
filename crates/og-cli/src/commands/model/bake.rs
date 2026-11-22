@@ -39,7 +39,9 @@ use og_shape::tools::{Import, Material, Part, Scene, Texture, ViewCamera};
 use serde_json::{Value, json};
 
 use super::args::Args;
-use super::source::{Input, Local, Source, load_uvs};
+use og_cook::cook::model_program::Program;
+
+use super::source::{Input, Local, Source};
 use super::views::{self, Look, View};
 use super::{Failure, Files, failed};
 
@@ -233,20 +235,6 @@ pub fn bake(files: &dyn Files, d: &BakeDesc) -> Result<String, Failure> {
         ));
     };
     let size = if d.size == 0 { 1024 } else { d.size };
-    let vs = if d.view_size == 0 { 1024 } else { d.view_size };
-    let source = load_uvs(
-        files,
-        &d.input,
-        &Import::default(),
-        !super::source::is_mesh(input),
-    )?;
-    if let Source::Mesh(m) = &source
-        && m.skinned()
-    {
-        return Err(Failure::Usage(
-            "bake --project paints a model at rest; this file is skinned".into(),
-        ));
-    }
     let images: Vec<RgbaImage> = d
         .project
         .iter()
@@ -256,66 +244,131 @@ pub fn bake(files: &dyn Files, d: &BakeDesc) -> Result<String, Failure> {
                 .map_err(|e| Failure::Failed(format!("{}: {e}", p.display())))
         })
         .collect::<Result<_, _>>()?;
-    super::preview::with_scene(&source, None, &[], |scene| {
-        let surf = surface(scene)?;
-        let whole = surf.level(None);
-        let mut textures: Vec<(Texels, Paint, Vec<Value>)> = (0..surf.materials.len())
-            .map(|m| {
-                let t = Texels::rasterise(&surf.level(Some(m as u16)), size, 0);
-                let p = Paint::new(&t);
-                (t, p, Vec::new())
-            })
-            .collect();
-        let mut views_report = Vec::new();
-        let flat = Look {
-            unlit: true,
-            edges: false,
-        };
-        for ((view, path), img) in d.project.iter().zip(&images) {
-            let (_, camera) = views::render(scene, view, (vs, vs), flat)?;
-            let g = GBuffer::cast(&whole, spec(&camera), vs, 0);
-            let (painting, scale) = view_image(&g, img)?;
-            let edge = silhouette(&g);
-            let mut written = 0;
-            for (t, p, per_view) in &mut textures {
-                let r = project(t, p, &g, &edge, &painting, 1.0, 0);
-                written += r.written;
-                per_view.push(json!({ "view": view.name(), "written": r.written }));
-            }
-            views_report.push(json!({
-                "view": view.name(),
-                "image": path.display().to_string(),
-                "imagePixelsPerViewPixel": scale,
-                "written": written,
-            }));
+    let paint = |scene: &Scene| paint(scene, d, &images, size);
+    let (report, program) = match super::source::program_of(files, input)? {
+        // A program is painted on its parts packed into one atlas of the
+        // texture's size, as og cook packs it for the `atlas` the `.ogt`
+        // then names.
+        Some((p, read)) => {
+            let (r, _) = p
+                .scene(size, &read, |scene, _| {
+                    paint(scene)
+                        .map(|r| (r, scene_parts(scene)))
+                        .map_err(|e| e.to_string())
+                })
+                .map_err(Failure::Failed)?;
+            (r, Some(p))
         }
-        let mut coverage = Vec::new();
-        let mut maps = Vec::new();
-        for ((t, p, per_view), (name, material)) in textures.iter_mut().zip(&surf.materials) {
-            let covered = p.coverage();
-            let filled = fill_unpainted(t, p, 0);
-            coverage.push(json!({
-                "material": name,
-                "texels": t.len(),
-                "covered": covered,
-                "filled": filled as f64 / t.len().max(1) as f64,
-                "views": per_view,
-            }));
-            // A material no view saw keeps its colour, and gets no map.
-            if covered > 0.0 {
-                let rgb = padded(t, p, 4, super::measure::colour(material));
-                maps.push((name.clone(), encode(&rgb, size)?));
+        None => {
+            let source = super::source::load(files, &d.input, &Import::default())?;
+            if let Source::Mesh(m) = &source
+                && m.skinned()
+            {
+                return Err(Failure::Usage(
+                    "bake --project paints a model at rest; this file is skinned".into(),
+                ));
             }
+            let r = super::preview::with_scene(&source, None, &[], |scene| {
+                Ok((paint(scene)?, scene_parts(scene)))
+            })?;
+            (r, None)
         }
-        let output = write(files, input, &source, scene, &maps, d.out.as_deref())?;
-        Ok(json!({
-            "size": size,
-            "views": views_report,
-            "coverage": coverage,
-            "output": output,
-        })
-        .to_string())
+    };
+    let ((views_report, coverage, maps), parts) = report;
+    if maps.is_empty() {
+        return Err(Failure::Failed(format!(
+            "no view painted a texel: the images do not fall on the model's UVs (coverage {})",
+            Value::Array(coverage)
+        )));
+    }
+    let output = write(
+        files,
+        input,
+        program.as_ref(),
+        size,
+        &parts,
+        &maps,
+        d.out.as_deref(),
+    )?;
+    Ok(json!({
+        "size": size,
+        "views": views_report,
+        "coverage": coverage,
+        "output": output,
     })
+    .to_string())
+}
+
+/// What a mesh's rewrite needs of the scene: each part's name, solid and
+/// material.
+type Parts = Vec<(String, og_shape::mesh::Solid, Material)>;
+
+fn scene_parts(scene: &Scene) -> Parts {
+    scene
+        .parts
+        .iter()
+        .map(|p| (p.name.clone(), p.solid.clone(), p.material.clone()))
+        .collect()
+}
+
+/// The views' reports, the coverage per material, and each painted
+/// material's texture as PNG.
+type Painted = (Vec<Value>, Vec<Value>, Vec<(String, Vec<u8>)>);
+
+/// Paints every view's image into each material's texture.
+fn paint(scene: &Scene, d: &BakeDesc, images: &[RgbaImage], size: u32) -> Result<Painted, Failure> {
+    let vs = if d.view_size == 0 { 1024 } else { d.view_size };
+    let surf = surface(scene)?;
+    let whole = surf.level(None);
+    let mut textures: Vec<(Texels, Paint, Vec<Value>)> = (0..surf.materials.len())
+        .map(|m| {
+            let t = Texels::rasterise(&surf.level(Some(m as u16)), size, 0);
+            let p = Paint::new(&t);
+            (t, p, Vec::new())
+        })
+        .collect();
+    let mut views_report = Vec::new();
+    let flat = Look {
+        unlit: true,
+        edges: false,
+    };
+    for ((view, path), img) in d.project.iter().zip(images) {
+        let (_, camera) = views::render(scene, view, (vs, vs), flat)?;
+        let g = GBuffer::cast(&whole, spec(&camera), vs, 0);
+        let (painting, scale) = view_image(&g, img)?;
+        let edge = silhouette(&g);
+        let mut written = 0;
+        for (t, p, per_view) in &mut textures {
+            let r = project(t, p, &g, &edge, &painting, 1.0, 0);
+            written += r.written;
+            per_view.push(json!({ "view": view.name(), "written": r.written }));
+        }
+        views_report.push(json!({
+            "view": view.name(),
+            "image": path.display().to_string(),
+            "imagePixelsPerViewPixel": scale,
+            "written": written,
+        }));
+    }
+    let mut coverage = Vec::new();
+    let mut maps = Vec::new();
+    for ((t, p, per_view), (name, material)) in textures.iter_mut().zip(&surf.materials) {
+        let covered = p.coverage();
+        let filled = fill_unpainted(t, p, 0);
+        coverage.push(json!({
+            "material": name,
+            "texels": t.len(),
+            "covered": covered,
+            "filled": filled as f64 / t.len().max(1) as f64,
+            "views": per_view,
+        }));
+        // A material no view saw keeps its colour, and gets no map.
+        if covered > 0.0 {
+            let rgb = padded(t, p, 4, super::measure::colour(material));
+            maps.push((name.clone(), encode(&rgb, size)?));
+        }
+    }
+    Ok((views_report, coverage, maps))
 }
 
 /// An RGB texture as PNG.
@@ -343,8 +396,9 @@ fn name_of(input: &Path) -> String {
 fn write(
     files: &dyn Files,
     input: &Path,
-    source: &Source,
-    scene: &Scene,
+    program: Option<&Program>,
+    atlas: u32,
+    parts: &Parts,
     maps: &[(String, Vec<u8>)],
     out: Option<&Path>,
 ) -> Result<Value, Failure> {
@@ -367,26 +421,21 @@ fn write(
         );
         files_of.push((material.clone(), file, png));
     }
-    let model = match source {
-        Source::Program(_) => {
+    let model = match program {
+        Some(p) => {
             let path = dir.join(format!("{name}.ogt"));
-            let program = input
-                .file_name()
-                .and_then(|f| f.to_str())
-                .unwrap_or_default()
-                .to_string();
-            let text = program_settings(files, &path, &program, &files_of)?;
+            let text = program_settings(files, &path, &p.file, atlas, &files_of)?;
             files.write(&path, text.as_bytes())?;
             json!({ "path": path.display().to_string(), "bytes": text.len() })
         }
-        Source::Mesh(_) => {
+        None => {
             let path = dir.join(format!("{name}.glb"));
-            let parts: Vec<Part> = scene
-                .parts
+            let parts: Vec<Part> = parts
                 .iter()
-                .map(|p| {
-                    let mut p = p.clone();
-                    if let Some((_, file, png)) = files_of.iter().find(|(m, ..)| *m == key(&p)) {
+                .map(|(n, s, m)| {
+                    let mut p = Part::new(n, s);
+                    p.material = m.clone();
+                    if let Some((_, file, png)) = files_of.iter().find(|(k, ..)| *k == key(&p)) {
                         p.material.map = Some(Texture::from_bytes(file, png.to_vec()));
                         p.material.color = None;
                     }
@@ -394,7 +443,7 @@ fn write(
                 })
                 .collect();
             let bytes = og_shape_formats::gltf::write::glb(&Scene {
-                name: scene.name.clone(),
+                name: name.clone(),
                 parts,
             })
             .map_err(failed)?;
@@ -413,6 +462,7 @@ fn program_settings(
     files: &dyn Files,
     path: &Path,
     program: &str,
+    atlas: u32,
     maps: &[(String, String, &Vec<u8>)],
 ) -> Result<String, Failure> {
     use og_core::ogt::{Block, Document, Entry, Number};
@@ -441,6 +491,11 @@ fn program_settings(
     let num = |v: f64| -> Result<og_core::ogt::Value, Failure> {
         Number::from_f64(v).map(Into::into).map_err(failed)
     };
+    let atlas_entry = Entry::new("atlas").with(num(f64::from(atlas))?);
+    match doc.body.entries.iter_mut().find(|e| e.key == "atlas") {
+        Some(e) => *e = atlas_entry,
+        None => doc.body.push(atlas_entry),
+    }
     for (material, file, _) in maps {
         let block = Block::new()
             .with(

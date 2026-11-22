@@ -70,7 +70,13 @@ pub struct Program {
     pub params: Params,
     /// The material blocks, in order.
     pub materials: Vec<MaterialOver>,
+    /// `atlas <px>`: every part's UVs packed into one atlas on this grid
+    /// (what `og model bake` paints its maps on); 0 is none.
+    pub atlas: u32,
 }
+
+/// Texels between an atlas's charts, enough for the bake's gutter.
+pub const ATLAS_PADDING: u32 = 4;
 
 /// The fields a material block takes.
 const MATERIAL_FIELDS: [&str; 6] = [
@@ -191,13 +197,22 @@ pub fn parse(
                 }
             }
             "material" => p.materials.push(material(e)?),
+            "atlas" => {
+                p.atlas = e
+                    .number(0)
+                    .ok()
+                    .and_then(|n| n.as_u64().ok())
+                    .filter(|&n| (16..=8192).contains(&n))
+                    .ok_or_else(|| at(e, "takes the atlas's texels across, 16 to 8192"))?
+                    as u32;
+            }
             // Read by the cook's conform step.
             "conform" => {}
             other => {
                 return Err(at(
                     e,
                     format!(
-                        "is not an entry of a program model ({other}); it takes program, params, material and conform"
+                        "is not an entry of a program model ({other}); it takes program, params, material, atlas and conform"
                     ),
                 ));
             }
@@ -213,6 +228,9 @@ pub fn parse(
     Ok(p)
 }
 
+/// Files read beside a source: (path relative to its folder, bytes).
+pub type Read = Vec<(String, Vec<u8>)>;
+
 /// What [`Program::glb`] wrote.
 pub struct Written {
     /// The glTF binary.
@@ -220,7 +238,7 @@ pub struct Written {
     /// Every file read beside the source (the program, its fonts and
     /// textures, the material blocks' maps), relative to the source's
     /// folder: part of its hash, consumed with it.
-    pub read: Vec<(String, Vec<u8>)>,
+    pub read: Read,
 }
 
 impl Program {
@@ -235,7 +253,7 @@ impl Program {
         &self,
         uvs: bool,
         read: &dyn Fn(&str) -> Result<Vec<u8>, String>,
-    ) -> Result<(Model, Vec<(String, Vec<u8>)>), String> {
+    ) -> Result<(Model, Read), String> {
         let fail = |e: og_shape::model::ModelError| format!("{}: {e}", self.file);
         let mut text = program::with_params(&self.text, &self.params).map_err(fail)?;
         if uvs || self.wants_uvs() {
@@ -268,12 +286,48 @@ impl Program {
         Ok((model, files))
     }
 
-    /// The model as a glTF binary: [`Program::model`]'s scene, with the
-    /// material blocks over the program's materials.
+    /// The model as a glTF binary: [`Program::scene`] at its own atlas.
     pub fn glb(&self, read: &dyn Fn(&str) -> Result<Vec<u8>, String>) -> Result<Written, String> {
-        let (model, mut files) = self.model(false, read)?;
+        let file = self.file.clone();
+        let (glb, files) = self.scene(self.atlas, read, |scene, model| {
+            og_shape_formats::gltf::write::glb_clips(scene, &model.scene_clips())
+                .map_err(|e| format!("{file}: {e}"))
+        })?;
+        Ok(Written { glb, read: files })
+    }
+
+    /// Runs `f` on the model's scene: [`Program::model`]'s, with every
+    /// part's UVs packed into one atlas of `atlas` texels when above 0
+    /// (`og_shape_formats::pack`; materials alike then share the first's
+    /// name), and the material blocks over the program's materials. Also
+    /// the files read.
+    pub fn scene<T>(
+        &self,
+        atlas: u32,
+        read: &dyn Fn(&str) -> Result<Vec<u8>, String>,
+        f: impl FnOnce(&og_shape::tools::Scene, &Model) -> Result<T, String>,
+    ) -> Result<(T, Read), String> {
+        let (model, mut files) = self.model(atlas > 0, read)?;
         let built = model.build().map_err(|e| format!("{}: {e}", self.file))?;
         let mut scene = built.scene();
+        let packed = if atlas > 0 {
+            Some(
+                og_shape_formats::pack(
+                    &scene,
+                    &og_shape::tools::Atlas {
+                        size: atlas,
+                        padding: ATLAS_PADDING,
+                        no_turns: false,
+                    },
+                )
+                .map_err(|e| format!("{}: atlas: {e}", self.file))?,
+            )
+        } else {
+            None
+        };
+        if let Some(p) = &packed {
+            p.apply(&mut scene);
+        }
         for m in &self.materials {
             let key = |p: &og_shape::tools::Part| {
                 if p.material.name.is_empty() {
@@ -302,9 +356,7 @@ impl Program {
                 over(&mut p.material, m, map.as_ref());
             }
         }
-        let glb = og_shape_formats::gltf::write::glb_clips(&scene, &model.scene_clips())
-            .map_err(|e| format!("{}: {e}", self.file))?;
-        Ok(Written { glb, read: files })
+        Ok((f(&scene, &model)?, files))
     }
 }
 

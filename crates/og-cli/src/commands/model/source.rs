@@ -122,6 +122,19 @@ pub fn load_uvs(
                 .into(),
         )),
         Input::Path(p) if is_mesh(p) => mesh_file(files, p, d).map(Source::Mesh),
+        // A `type model` naming a program: the model og cook builds.
+        Input::Path(p) if extension(p) == "ogt" => match program_of(files, p)? {
+            Some((program, read)) => {
+                let w = program
+                    .glb(&read)
+                    .map_err(|e| Failure::Failed(format!("{}: {e}", p.display())))?;
+                mesh_bytes(files, p, w.glb, d).map(Source::Mesh)
+            }
+            None => Err(Failure::Usage(format!(
+                "{}: an .ogt input is a mesh's import settings or a type model naming a program",
+                p.display()
+            ))),
+        },
         Input::Path(p) => {
             let bytes = files.read(p)?;
             let text = String::from_utf8(bytes)
@@ -184,6 +197,34 @@ fn program(
     p::run_files(text, &fonts, &textures).map_err(fail)
 }
 
+/// A reader of files beside a source, by their path relative to it.
+pub type Beside<'a> = Box<dyn Fn(&str) -> Result<Vec<u8>, String> + 'a>;
+
+/// The program a path is (a `.shape.json`, or a `type model` `.ogt`
+/// naming one, og cook's [`Program`]) with a reader of the files beside
+/// it; `None` for any other path.
+pub fn program_of<'a>(
+    files: &'a dyn Files,
+    path: &Path,
+) -> Result<Option<(og_cook::cook::model_program::Program, Beside<'a>)>, Failure> {
+    use og_cook::cook::model_program as mp;
+    let rel = path.to_string_lossy();
+    let named = extension(path) == "ogt"
+        && files.read(path).ok().is_some_and(|b| {
+            og_core::ogt::Document::parse(&String::from_utf8_lossy(&b))
+                .is_ok_and(|d| d.ty == "model" && mp::names_program(&d))
+        });
+    if !mp::is_program(&rel) && !named {
+        return Ok(None);
+    }
+    let dir = path.parent().map(Path::to_path_buf).unwrap_or_default();
+    let read: Beside<'a> =
+        Box::new(move |f: &str| files.read(&dir.join(f)).map_err(|e| e.to_string()));
+    let p = mp::parse(&rel, &files.read(path)?, &read)
+        .map_err(|e| Failure::Failed(format!("{}: {e}", path.display())))?;
+    Ok(Some((p, read)))
+}
+
 fn resolved(input: &Input) -> Input {
     match input {
         Input::Path(p) => Input::Path(settings_of(p)),
@@ -192,8 +233,13 @@ fn resolved(input: &Input) -> Input {
 }
 
 fn mesh_file(files: &dyn Files, path: &Path, d: &Import) -> Result<Mesh, Failure> {
+    mesh_bytes(files, path, files.read(path)?, d)
+}
+
+/// [`mesh_file`] with its bytes read.
+fn mesh_bytes(files: &dyn Files, path: &Path, bytes: Vec<u8>, d: &Import) -> Result<Mesh, Failure> {
     #[cfg_attr(target_arch = "wasm32", expect(unused_mut))]
-    let mut bytes = files.read(path)?;
+    let mut bytes = bytes;
     #[cfg(not(target_arch = "wasm32"))]
     if extension(path) == "fbx" {
         // FBX has one reader, the cook's ufbx import: as glTF from here
