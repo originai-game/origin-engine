@@ -4,7 +4,9 @@
 
 use glam::{Vec2, Vec3};
 use og_bake::projection::composite::{ViewMasks, finish};
-use og_bake::projection::{GBuffer, Level, Paint, Texels, ViewKind, ViewSpec, project};
+use og_bake::projection::{
+    GBuffer, Level, Paint, Texels, ViewKind, ViewSpec, fill_unpainted, project,
+};
 
 /// A 10 m floor (uv: its x, z over [-5, 5] onto the left half of the
 /// texture) and a 2 m square wall standing on it at z = 0 facing +z (uv:
@@ -206,4 +208,113 @@ fn finish_keeps_known_pixels_and_leaves_out_what_the_model_left_grey() {
     assert_ne!([c[0], c[1], c[2]], [140, 140, 140]);
     // 16 of the unknown half's 32 rows, minus the blur's eroded border.
     assert!(f.left > 0.15 && f.left <= 0.25, "left {}", f.left);
+}
+
+/// An orthographic camera 20 m away, looking 30° down at the scene, 4 m
+/// to its image's edge.
+fn ortho_camera() -> ViewSpec {
+    ViewSpec {
+        position: Vec3::new(0.0, 10.0, 17.32),
+        yaw: 0.0,
+        pitch: (-30f32).to_radians(),
+        fov: 0.0,
+        ortho: 4.0,
+        kind: ViewKind::Ground,
+    }
+}
+
+/// Under an orthographic camera a texel lands at its offset across the view
+/// over `ortho`, at any depth (a perspective camera would shrink the far
+/// floor), and the floor just behind the wall stays unpainted though the
+/// camera is far away.
+#[test]
+fn an_orthographic_view_paints_each_texel_from_its_parallel_ray() {
+    let level = scene();
+    let size = 256;
+    let texels = Texels::rasterise(&level, size, 2);
+    let mut paint = Paint::new(&texels);
+    let vs = 256;
+    let cam = ortho_camera();
+    let g = GBuffer::cast(&level, cam, vs, 2);
+    let edge = vec![0u8; (vs * vs) as usize];
+    let p = project(&texels, &mut paint, &g, &edge, &index_image(vs), 0.4, 2);
+    assert!(p.written > 2_000, "only {} texels written", p.written);
+    let (f, r, _) = cam.axes();
+    let (mut far, mut hidden) = (0, 0);
+    for (i, t) in paint.texels.iter().enumerate() {
+        let pos = texels.position[i];
+        // Hidden along the view's own direction, with a 5 cm margin.
+        let blocked = [
+            Vec3::ZERO,
+            Vec3::X * 0.05,
+            -Vec3::X * 0.05,
+            Vec3::Z * 0.05,
+            -Vec3::Z * 0.05,
+        ]
+        .iter()
+        .all(|&o| level.hit(pos + o - f * 0.05, -f, 100.0).is_some());
+        if blocked && pos.y < 0.01 {
+            hidden += 1;
+            assert_eq!(
+                t.quality, 0.0,
+                "floor texel {} behind the wall was painted",
+                texels.index[i]
+            );
+        }
+        if t.quality == 0.0 {
+            continue;
+        }
+        let (x, _) = decode(t.rgb);
+        let expect = ((pos - cam.position).dot(r) / cam.ortho + 1.0) * 0.5 * vs as f32;
+        assert!(
+            (x as f32 + 0.5 - expect).abs() <= 1.5,
+            "texel at {pos} took pixel column {x}, not {expect}"
+        );
+        far += usize::from(pos.z < -3.0);
+    }
+    assert!(far > 100, "the far floor should be painted ({far})");
+    assert!(hidden > 200, "the wall should hide floor texels ({hidden})");
+}
+
+/// A texel no view painted takes the colour of the painted texel nearest
+/// it in the world, found here by brute force.
+#[test]
+fn fill_takes_the_nearest_painted_texel_in_the_world() {
+    let level = scene();
+    let size = 128;
+    let texels = Texels::rasterise(&level, size, 2);
+    let mut paint = Paint::new(&texels);
+    // Paint the wall alone, each texel a colour of its own place.
+    for (i, t) in paint.texels.iter_mut().enumerate() {
+        let p = texels.position[i];
+        if p.y > 0.01 {
+            t.rgb = [(p.x * 100.0 + 128.0) as u8, (p.y * 100.0) as u8, 7];
+            t.quality = 1.0;
+        }
+    }
+    let before = paint.clone();
+    let painted: Vec<usize> = (0..texels.len())
+        .filter(|&i| before.texels[i].quality > 0.0)
+        .collect();
+    let filled = fill_unpainted(&texels, &mut paint, 2);
+    assert_eq!(filled, texels.len() - painted.len());
+    for i in (0..texels.len())
+        .step_by(37)
+        .filter(|&i| before.texels[i].quality == 0.0)
+    {
+        let p = texels.position[i];
+        let d = |j: usize| (texels.position[j] - p).length_squared();
+        let best = painted
+            .iter()
+            .copied()
+            .min_by(|&a, &b| d(a).total_cmp(&d(b)).then(a.cmp(&b)))
+            .unwrap();
+        assert_eq!(
+            paint.texels[i].rgb, before.texels[best].rgb,
+            "texel {i} at {p}"
+        );
+        assert!(paint.texels[i].quality > 0.0);
+    }
+    // A view replaces a filled texel.
+    assert!(paint.texels.iter().all(|t| t.quality <= 1.0));
 }

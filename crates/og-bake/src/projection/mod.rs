@@ -27,7 +27,7 @@ mod semantics;
 mod texels;
 mod view;
 
-pub use atlas::{Paint, Projected, Texel, padded, project, silhouette};
+pub use atlas::{Paint, Projected, Texel, fill_unpainted, padded, project, silhouette};
 pub use level::{Level, SurfaceHit};
 pub use prepare::{Prepared, prepare, unpainted_pixels};
 pub use semantics::{Classes, Description, classify, describe};

@@ -478,6 +478,7 @@ fn spec_from(v: &Value) -> Result<ViewSpec, String> {
         yaw: f("yaw")?,
         pitch: f("pitch")?,
         fov: f("fov")?,
+        ortho: 0.0,
         kind: v["kind"]
             .as_str()
             .and_then(ViewKind::parse)

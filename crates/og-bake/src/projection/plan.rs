@@ -255,6 +255,7 @@ pub fn ground_candidates(points: &[Vec3], o: &PlanOptions) -> Vec<ViewSpec> {
                 yaw: offset + std::f32::consts::TAU * k as f32 / o.yaws as f32,
                 pitch: o.pitch_deg.to_radians(),
                 fov: o.fov,
+                ortho: 0.0,
                 kind: ViewKind::Ground,
             });
         }
@@ -358,6 +359,7 @@ pub fn roof_candidates(level: &Level, o: &PlanOptions) -> Vec<ViewSpec> {
                 yaw,
                 pitch,
                 fov: 60.0,
+                ortho: 0.0,
                 kind: ViewKind::Roof,
             });
         }
@@ -380,6 +382,7 @@ pub fn hole_candidates(level: &Level, points: &[Vec3], ring: usize) -> Vec<ViewS
                 yaw: k as f32 * std::f32::consts::FRAC_PI_2 + 0.4,
                 pitch,
                 fov: 75.0,
+                ortho: 0.0,
                 kind: ViewKind::Fill,
             });
         }

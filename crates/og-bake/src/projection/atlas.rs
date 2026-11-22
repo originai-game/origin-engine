@@ -143,12 +143,10 @@ pub fn project(
             paint.texels.iter_mut().zip(seen.iter_mut()).collect();
         par_for(&mut work, threads, |i, (out, saw)| {
             let p = texels.position[i];
-            let to_cam = view.position - p;
-            let d = to_cam.length();
-            if d < 1e-4 || (-to_cam).dot(f) <= 0.0 {
+            let Some((to_cam, d)) = view.toward(p, f) else {
                 return;
-            }
-            let cos = texels.normal[i].dot(to_cam / d);
+            };
+            let cos = texels.normal[i].dot(to_cam);
             if cos < 0.08 {
                 return;
             }
@@ -187,6 +185,95 @@ pub fn project(
         seen: seen.iter().filter(|&&s| s > 0).count(),
         written: seen.iter().filter(|&&s| s == 2).count(),
     }
+}
+
+/// Paints every texel no view painted with the colour of the painted texel
+/// nearest it on the surface (in world space, ties to the lower index), so
+/// a face no view saw takes the colour of the faces around it rather than
+/// a neighbour's in the texture, which may be another chart's. A filled
+/// texel's quality is the least above 0, so any view replaces it. Returns
+/// how many were filled; none when nothing is painted.
+pub fn fill_unpainted(texels: &Texels, paint: &mut Paint, threads: usize) -> usize {
+    let painted: Vec<u32> = (0..texels.len() as u32)
+        .filter(|&i| paint.texels[i as usize].quality > 0.0)
+        .collect();
+    if painted.is_empty() || painted.len() == texels.len() {
+        return 0;
+    }
+    let (mut lo, mut hi) = (
+        glam::Vec3::splat(f32::INFINITY),
+        glam::Vec3::splat(f32::NEG_INFINITY),
+    );
+    for p in &texels.position {
+        lo = lo.min(*p);
+        hi = hi.max(*p);
+    }
+    // About 64 cells along the longest side.
+    let cell = ((hi - lo).max_element() / 64.0).max(1e-6);
+    let dims = ((hi - lo) / cell).floor().as_ivec3() + 1;
+    let at = |p: glam::Vec3| {
+        ((p - lo) / cell)
+            .floor()
+            .as_ivec3()
+            .clamp(glam::IVec3::ZERO, dims - 1)
+    };
+    let slot = |c: glam::IVec3| ((c.z * dims.y + c.y) * dims.x + c.x) as usize;
+    let mut cells: Vec<Vec<u32>> = vec![Vec::new(); (dims.x * dims.y * dims.z) as usize];
+    for &i in &painted {
+        cells[slot(at(texels.position[i as usize]))].push(i);
+    }
+    let mut nearest: Vec<u32> = (0..texels.len() as u32)
+        .map(|i| {
+            if paint.texels[i as usize].quality > 0.0 {
+                i
+            } else {
+                u32::MAX
+            }
+        })
+        .collect();
+    par_for(&mut nearest, threads, |i, out| {
+        if *out != u32::MAX {
+            return;
+        }
+        let p = texels.position[i];
+        let c = at(p);
+        let mut best = (f32::INFINITY, u32::MAX);
+        for r in 0..dims.max_element() {
+            for z in (c.z - r).max(0)..=(c.z + r).min(dims.z - 1) {
+                for y in (c.y - r).max(0)..=(c.y + r).min(dims.y - 1) {
+                    for x in (c.x - r).max(0)..=(c.x + r).min(dims.x - 1) {
+                        let q = glam::IVec3::new(x, y, z);
+                        // The shell of ring r only.
+                        if (q - c).abs().max_element() != r {
+                            continue;
+                        }
+                        for &j in &cells[slot(q)] {
+                            let d = (texels.position[j as usize] - p).length_squared();
+                            if (d, j) < best {
+                                best = (d, j);
+                            }
+                        }
+                    }
+                }
+            }
+            // Every texel past ring r is at least r cells away.
+            if best.1 != u32::MAX && best.0.sqrt() <= r as f32 * cell {
+                break;
+            }
+        }
+        *out = best.1;
+    });
+    let mut filled = 0;
+    for (i, &j) in nearest.iter().enumerate() {
+        if j as usize != i && j != u32::MAX {
+            paint.texels[i] = Texel {
+                rgb: paint.texels[j as usize].rgb,
+                quality: f32::MIN_POSITIVE,
+            };
+            filled += 1;
+        }
+    }
+    filled
 }
 
 /// The texture as an RGB image (rows from the top): painted texels, then

@@ -37,14 +37,18 @@ impl ViewKind {
     }
 }
 
-/// A square perspective camera. Yaw 0 looks down -Z; pitch is up from the
-/// horizon; `fov` is the vertical (and horizontal) angle in degrees.
+/// A square camera. Yaw 0 looks down -Z; pitch is up from the horizon;
+/// `fov` is the vertical (and horizontal) angle in degrees. With `ortho`
+/// above 0 it is orthographic instead: `ortho` metres from the image's
+/// centre to its edge, every ray along the view from the plane through
+/// `position` square to it (`fov` unused).
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct ViewSpec {
     pub position: Vec3,
     pub yaw: f32,
     pub pitch: f32,
     pub fov: f32,
+    pub ortho: f32,
     pub kind: ViewKind,
 }
 
@@ -57,6 +61,7 @@ impl ViewSpec {
             yaw: (-d.x).atan2(-d.z),
             pitch: d.y.clamp(-1.0, 1.0).asin(),
             fov,
+            ortho: 0.0,
             kind,
         }
     }
@@ -73,10 +78,37 @@ impl ViewSpec {
         (f, right, right.cross(f))
     }
 
+    /// Where the ray through pixel (x, y) of a `size`² image starts: the
+    /// eye, or an orthographic camera's point on its image plane.
+    pub fn origin(&self, x: f32, y: f32, size: u32) -> Vec3 {
+        if self.ortho <= 0.0 {
+            return self.position;
+        }
+        let (_, r, u) = self.axes();
+        let nx = 2.0 * (x + 0.5) / size as f32 - 1.0;
+        let ny = 1.0 - 2.0 * (y + 0.5) / size as f32;
+        self.position + r * (nx * self.ortho) + u * (ny * self.ortho)
+    }
+
+    /// The unit direction from `p` to the camera and `p`'s distance along
+    /// the ray that meets it, if `p` is in front; `f` is [`Self::forward`].
+    pub fn toward(&self, p: Vec3, f: Vec3) -> Option<(Vec3, f32)> {
+        if self.ortho > 0.0 {
+            let depth = (p - self.position).dot(f);
+            return (depth > 1e-4).then_some((-f, depth));
+        }
+        let to_cam = self.position - p;
+        let d = to_cam.length();
+        (d >= 1e-4 && (-to_cam).dot(f) > 0.0).then(|| (to_cam / d, d))
+    }
+
     /// The unit ray through the centre of pixel (x, y) of a `size`² image
     /// (rows from the top).
     pub fn ray(&self, x: f32, y: f32, size: u32) -> Vec3 {
         let (f, r, u) = self.axes();
+        if self.ortho > 0.0 {
+            return f;
+        }
         let k = (self.fov.to_radians() * 0.5).tan();
         let nx = 2.0 * (x + 0.5) / size as f32 - 1.0;
         let ny = 1.0 - 2.0 * (y + 0.5) / size as f32;
@@ -92,7 +124,11 @@ impl ViewSpec {
         if z <= 1e-4 {
             return None;
         }
-        let k = (self.fov.to_radians() * 0.5).tan();
+        let k = if self.ortho > 0.0 {
+            self.ortho / z
+        } else {
+            (self.fov.to_radians() * 0.5).tan()
+        };
         let nx = v.dot(r) / (z * k);
         let ny = v.dot(u) / (z * k);
         Some(Vec2::new(
@@ -123,14 +159,18 @@ impl GBuffer {
         let mut hits = vec![None; (size * size) as usize];
         par_for(&mut hits, threads, |i, out| {
             let (x, y) = ((i as u32 % size) as f32, (i as u32 / size) as f32);
-            *out = level.hit(view.position, view.ray(x, y, size), f32::MAX);
+            *out = level.hit(view.origin(x, y, size), view.ray(x, y, size), f32::MAX);
         });
         GBuffer { size, view, hits }
     }
 
     pub fn sample(&self, i: usize) -> Option<Sample> {
         let hit = self.hits[i]?;
-        let to_cam = (self.view.position - hit.position).normalize_or(Vec3::Y);
+        let to_cam = if self.view.ortho > 0.0 {
+            -self.view.forward()
+        } else {
+            (self.view.position - hit.position).normalize_or(Vec3::Y)
+        };
         Some(Sample {
             hit,
             quality: hit.normal.dot(to_cam).max(0.0) / hit.t.max(0.5),
