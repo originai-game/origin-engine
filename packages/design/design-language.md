@@ -1,7 +1,7 @@
 # The design language of Origin Engine and origin-agent
 
-One design language for the engine's own UI (og-ui's default style, the
-engine's tools) and origin-agent's surfaces (its web, Stage and iOS
+One design language for the engine's own UI (the default style pack, the
+engine's built-in components and tools) and origin-agent's surfaces (its web, Stage and iOS
 clients), decoupled from the platform's (`origingame/docs/design-language.md`
 styles the portal, ops and mail). Values live in
 [`tokens/*.css`](tokens); this document says how they are used.
@@ -9,19 +9,19 @@ styles the portal, ops and mail). Values live in
 language at origingame d25f1f15.
 
 **Where it binds.** The language binds the engine's **default style** alone
-(`crates/og-ui/src/theme.rs`, generated from `tokens/*.css`; docs/ui.md
-§3) and origin-agent. A game may draw in the default style, a built-in
+(`crates/og-ui-next/default/pack.json`, generated from `tokens/*.css`;
+docs/ui.md §3) and origin-agent. A game may draw in the default style, a built-in
 pack or a style of its own (generated or hand-made, a look's `ui` line);
 the engine requires none of them. A game's style may restyle, re-dress, re-shape
 or replace anything here above the accessibility floor of docs/ui.md §6.1.
 
-**Carriers.** og-ui reads the generated constants (palette, space, radii,
-type ramp, densities, durations, springs, eases, press scale, control
-states, named transitions) and the default style's part dressings, and
-its default stylesheet (`crates/og-ui/default.css`) sets every value
-as a CSS variable that a game's style overrides (the token families of
-docs/ui.md §3.1). og-ui reads the theme back from them, so a value set
-there reaches every built-in control. origin-agent's web components and its
+**Carriers.** og-ui-next generates the default style pack,
+`crates/og-ui-next/default/pack.json` (`pack::design`: palette per scheme,
+space, radii, type ramp, shadows, durations, springs and eases, and the
+slots' default classes), and `tokens.json` for the platform, both from
+`tokens/*.css` and both drift-checked. The built-in components write only
+the Tailwind classes of that theme, so a pack that sets an entry of the
+same name (docs/ui.md §3.2) reaches every one of them. origin-agent's web components and its
 SwiftUI views read the same file through their own generators. None of
 them defines a second palette, scale or component grammar.
 
@@ -157,18 +157,12 @@ Light and dark are peers; dark is `data-theme="dark"` on any element, never
   `mana`, `xp` and `gold` (meters and currency; `gold` is also an ink and holds
   4.5:1 on `surface` and `surface-raised`), `hud` (a capsule over the game,
   translucent; `fg` holds 4.5:1 on it over a mid-grey scene), `knob` (slider
-  and switch knobs) and `sheen` (a skeleton's passing light). og-ui's 33
-  roles map onto these keys one to one (`crates/og-ui/scripts/theme_codegen.rs`).
-- **Linear light.** A browser mixes a translucent fill over encoded sRGB;
-  the engine's UI pass blends flat fills in linear light, where a light tint
-  over a dark ground reads about three times as strong (a white 13 % control
-  over dark glass took a current item under 4.5:1). `linear` restates every
-  translucent fill for the engine: the alpha whose linear blend over its
-  stated ground (`linear.over`) draws what the CSS value draws there
-  (`material-control` dark: 13 % in CSS, 3.9 % in linear light). og-ui's
-  `control`, `controlStrong`, `primarySoft` and `scrim` take these. Glass
-  tints, hairlines and shadows are mixed as CSS mixes them by the glass
-  material itself, so they keep their CSS values.
+  and switch knobs) and `sheen` (a skeleton's passing light, a highlight away
+  from text; a hairline is `rim`). Each is a `bg-*`/`text-*` class of the
+  default pack's theme.
+- **Blending.** The engine's UI pass mixes a translucent fill or text over
+  its ground in sRGB, as a browser does, so a token's CSS value draws on the
+  engine what it draws on the web, and the contrast pairs hold on both.
 - **Contrast over glass.** `glassContrast` holds text over glass at 4.5:1
   over the brightest and darkest scenes og-tests measures (#e4e4e4 under a
   bright sky, #151515 under a dark scene), a selected row's `fill-strong`
@@ -228,7 +222,7 @@ big title (`SectionHeader eyebrow="10月11日星期日" title="今日"`).
 
 **In the engine** the densities follow the input: `compact` for a mouse,
 `touch` on a coarse pointer or under 768 CSS px, and `pad` (the engine's,
-`density.pad`) for a gamepad across a room. Lengths are og-ui units: on a
+`density.pad`) for a gamepad across a room. Lengths are UI units: on a
 mouse or pad surface one unit grows with the surface's CSS height against
 a 720 base (1 to 2), so 14 px body text is 21 px on a 1080p window and the
 smallest step, 12 px, is 18 px there (docs/ui.md §6.1); touch surfaces keep
@@ -366,8 +360,8 @@ gestures the runtime spring in `ui-svelte` `motion/spring.ts`, Swift
   | Toast | in over `base`, held 3200 ms (an error 6000), out over `fast` | `toast <kind>`, `toastHold <ms> [<error ms>]` |
   | Screen transition | cover then reveal over twice `slow` | `screen <ms>` |
 
-  The engine's widgets read these rows (og-ui's `theme::TIMING`, generated
-  from `tokens/*.css`).
+  The engine's components read these rows as the default pack's `duration-*`
+  and `ease-*` steps, generated from `tokens/*.css`.
 - `prefers-reduced-motion` keeps state changes and drops spatial movement:
   colour and opacity still transition (overlays and views cross-fade), every
   rise, scale, slide, glide and drag spring jumps. Motion never delays a
@@ -375,8 +369,9 @@ gestures the runtime spring in `ui-svelte` `motion/spring.ts`, Swift
 
 ## Components
 
-The components are the engine's og-ui widgets and its built-in component
-documents, and origin-agent's web components; each draws the grammar below
+The components are the engine's built-in TSX components, controls and
+screens (the `components` guide lists them with their props), and
+origin-agent's web components; each draws the grammar below
 from the tokens and never hard-codes a colour, size or curve. The inventory: primitives
 (Button, IconButton, Field, Select, Checkbox, Switch, Menu, Dialog, Sheet,
 Popover, Tooltip, Tabs, SegmentedControl, Toast, Badge, Avatar, Kbd), data
@@ -451,7 +446,7 @@ Button variants: `primary`
 A style or a page never overrides the shared variants of the default.
 
 **The game components' materials.** The engine's built-in game components
-and og-ui's controls are dressed in four materials of their own, apart
+and controls are dressed in four materials of their own, apart
 from the flat content ladder above, which origin-agent's surfaces keep.
 Their tokens are the engine default style's alone (`--color-glass*`,
 `-plate*`, `-rim*`, `-lit*`, `-shade*`, `-tile*`, `-raised*`, `-glow*`,

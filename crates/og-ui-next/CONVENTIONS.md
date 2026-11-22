@@ -254,9 +254,8 @@ machines do (ported as logic).
   activate does the same. Sounds: the pack's `select` on pick-up,
   `confirm` on a drop, `cancel` when put back.
 - **On-screen controls**: a node with `touchStick`, `touchPad` or
-  `touchButton` is an input source of the og-input action it names, as a
-  document's `<joystick action>`, `<dpad action>` and `<button
-  data-og-touch>` are (docs/ui.md §3.3): after each layout its box, in
+  `touchButton` is an input source of the og-input action it names
+  (`TouchControls` is built on them): after each layout its box, in
   surface px, goes to the action map as a control zone
   (`Tree::take_zones`), which samples the touches that started on it in
   the tick. No handler runs. A disabled or hidden one is no zone. What
