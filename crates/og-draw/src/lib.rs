@@ -13,6 +13,7 @@
 //! - [`RangeLimit`]: how far over SDR white the presented frame may go.
 
 mod color_vision;
+pub mod glyphs;
 mod handles;
 pub mod paint;
 mod range_limit;
