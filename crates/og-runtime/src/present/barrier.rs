@@ -69,13 +69,26 @@ pub(crate) fn busy(eng: &Engine) -> bool {
     drawing || streaming || crate::engine::hooks().is_some_and(|h| !h.loading_idle(eng.id))
 }
 
-/// og.motion only once the game named it (its og.MotionAgent registered,
-/// engine/lazy.rs): before that it has no agents and no goals, and a game
-/// that never does never reaches the motion module (docs/web-export.md
-/// §Modules).
-fn motion(eng: &Engine) -> bool {
-    eng.world()
-        .is_ok_and(|w| w.id_by_name(crate::bind::motion::AGENT).is_ok())
+/// Whether og.motion has work: an entity holds an og.MotionAgent, the
+/// Presenter still holds ticks to step, or the open bundle declares the
+/// model (its manifest's `motion` entry, motion/present/load.rs
+/// `declares`), which loads before any agent needs it. Every world
+/// registers the schema, so this asks for rows, and reads the manifest
+/// here: a game that uses none never loads the `motion` engine module
+/// (docs/web-export.md §Modules).
+pub(crate) fn motion(eng: &Engine) -> bool {
+    let declared = {
+        let a = eng.assets.borrow();
+        a.default_bundle.is_some_and(|i| {
+            matches!(&a.entries[i].payload,
+                crate::world::assets::Payload::Bundle { bundle, .. } if bundle.manifest().motion.is_some())
+        })
+    };
+    declared
+        || eng
+            .world()
+            .is_ok_and(|w| crate::present::extract::any_rows(w, crate::bind::motion::AGENT))
+        || !eng.render.borrow().motion.behind.is_empty()
 }
 
 /// Natively, until no texture is being prepared: the frame draws the

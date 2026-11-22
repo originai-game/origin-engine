@@ -415,6 +415,23 @@ impl WindFieldSim {
         if !runs(driven, self.drive.map(|d| d.tick), scene.frame.tick) {
             return off(self);
         }
+        self.step(device, queue, scene, wind, motors_on);
+    }
+
+    /// [`WindFieldSim::prepare`]'s steps once the field runs: its pipelines
+    /// and buffers, made the first time, and the steps' uniforms.
+    // A guarded entry into the engine's `render3d` module (wasm-modules.json).
+    #[inline(never)]
+    fn step(
+        &mut self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        scene: &crate::RenderScene,
+        wind: Option<crate::Wind>,
+        motors_on: bool,
+    ) {
+        let driven = wind.is_some() || motors_on;
+        let sref = |w: crate::Wind| w.speed.max(1.0);
         let drive = self.drive.expect("runs only after a drive");
         self.cap = if driven {
             lean_cap(wind, motors_on)

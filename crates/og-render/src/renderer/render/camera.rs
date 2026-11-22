@@ -60,19 +60,29 @@ impl Renderer {
         // mirrored in it, clipped at the surface by an oblique near plane).
         // W6: where the near plane crosses a surface the frame is the air's,
         // the waterline pass fogging what lies under it (water.rs).
-        let line = water::waterline(
-            scene_water,
-            &camera,
-            water::seconds(scene),
-            scene.frame.origin,
-        );
-        let under = water::underwater(
-            scene_water,
-            camera.position,
-            water::seconds(scene),
-            scene.frame.origin,
-        )
-        .filter(|_| line.is_none());
+        // A scene without water asks nothing of the 3D world's engine
+        // module (docs/web-export.md §Modules).
+        let line = (!scene_water.is_empty())
+            .then(|| {
+                water::waterline(
+                    scene_water,
+                    &camera,
+                    water::seconds(scene),
+                    scene.frame.origin,
+                )
+            })
+            .flatten();
+        let under = (!scene_water.is_empty())
+            .then(|| {
+                water::underwater(
+                    scene_water,
+                    camera.position,
+                    water::seconds(scene),
+                    scene.frame.origin,
+                )
+            })
+            .flatten()
+            .filter(|_| line.is_none());
         // The volume (volumetric.rs), for a perspective camera, where the
         // quality lets it. Above water it is the scene's volumetric fog,
         // which replaces the plain fog. Under water it is the water's own,

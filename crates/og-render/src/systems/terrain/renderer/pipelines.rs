@@ -164,6 +164,9 @@ impl TerrainRenderer {
             .expect("made above")
     }
 
+    // Made in the 3D world's engine module through its OnDemand closure
+    // (renderer/resources.rs), never inlined into it.
+    #[inline(never)]
     pub(crate) fn new(
         device: &wgpu::Device,
         queue: &wgpu::Queue,

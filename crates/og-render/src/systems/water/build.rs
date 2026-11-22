@@ -1,6 +1,9 @@
 use super::*;
 
 impl WaterRenderer {
+    // Made in the 3D world's engine module through its OnDemand closure
+    // (renderer/resources.rs), never inlined into it.
+    #[inline(never)]
     pub(crate) fn new(
         device: &wgpu::Device,
         frame_layout: &wgpu::BindGroupLayout,

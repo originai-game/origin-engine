@@ -2,10 +2,20 @@
   "//": "The engine wasm's split modules (docs/web-export.md §Modules): each module takes the functions whose demangled path, from its first non-std crate on, matches one of its patterns; the first module that matches wins. scripts/wasm-split.ts keeps in the primary every function a game using none of them runs (wasm-profile.ts) and every function `roots` reach up to `entries`, so such a game loads none.",
   "modules": {
     "world3d": [
-      "^og_render::systems::(terrain|vegetation|water)::",
+      "^og_render::systems::terrain::(?!fx::)",
+      "^og_render::systems::vegetation::",
+      "^og_render::systems::water::(?!Water2d\\b|surface::water_2d_strips$)",
       "^og_render::systems::fluids::fluid3d",
       "^og_render::media::volumetric::source",
+      "^og_render::fields::ground::",
+      "^og_render_data::(terrain|terrain_tiles)::",
+      "^og_bundle::runtime::terrain::",
       "^og_runtime::bind::(terrain|terrain_stream|seabed)::"
+    ],
+    "render3d": [
+      "^og_render::shading::(gi_probes|gi_scene)::",
+      "^og_render::fields::(wind_field|trample)::",
+      "^og_render::systems::crowd::crowd_impostor::"
     ],
     "video": [
       "^og_video::",
@@ -50,13 +60,15 @@
   "siblings": {
     "physics": ["physics2d", "physics3d"]
   },
-  "//roots": "The engine's calls every game makes whatever it uses (scripts/wasm-split.ts framePath): a frame, a canvas attach, a geometry. Every function they reach by direct calls stays in the primary, stopping at `entries`.",
+  "//roots": "The engine's calls every game makes whatever it uses (scripts/wasm-split.ts framePath): a frame, the tick log the web host takes every tick, a canvas attach, a geometry. Every function they reach by direct calls stays in the primary, stopping at `entries`.",
   "roots": [
     "^og_engine_frame$",
+    "^og_engine_take_log$",
     "og_web_attach_canvas",
     "^og_render_[a-z0-9_]+_geometry$"
   ],
-  "//entries": "The calls those make into a module only once the game uses it, each guarded in og-runtime (names without crate hashes): og.motion once og.MotionAgent is registered (engine/tick.rs render); set_mesh for a dynamic geometry's update, a streamed model's proxy and a destructible's hulls (generated geometry goes to physics' mesh source, bind/modules.rs note_mesh); the physics debug view; a video's stream once a video plays; og-runtime's terrain extraction, release, seabed and drop shadows once a terrain is loaded or named (present/extract/frame.rs uses_terrain, world/assets/release.rs). og-render makes its 3D world renderers through closures the frame path does not follow (renderer/resources.rs OnDemand).",
+  "//world3d": "Not the 2D water (Water2d, water_2d_strips: the sprite order's strips) nor the terrains' effect group (terrain::fx), which every frame writes and binds: og-render draws a frame behind og-runtime's RenderBackend, a call the roots' graph does not follow, so an og-render function a module's pattern takes and every frame calls would load that module for every game.",
+  "//entries": "The calls those make into a module only once the game uses it, each guarded in og-runtime (names without crate hashes): og.motion once og.MotionAgent is registered (engine/tick.rs render); set_mesh for a dynamic geometry's update, a streamed model's proxy and a destructible's hulls (generated geometry goes to physics' mesh source, bind/modules.rs note_mesh); the physics debug view; a video's stream once a video plays; og-runtime's terrain extraction, release, seabed and drop shadows once a terrain is loaded or named (present/extract/frame.rs uses_terrain, world/assets/release.rs). og-render makes its 3D world renderers through closures the frame path does not follow (renderer/resources.rs OnDemand), and its own guarded entries into render3d: the probe GI once a look enables it (pass_gi_probes.rs), the wind field and trample map once wind, a motor or a pusher drives them, and a crowd's impostor bake once a crowd draws cards.",
   "entries": [
     "^og_runtime::bind::motion::present::tick::catch_up$",
     "^og_runtime::bind::modules::set_mesh$",
@@ -64,6 +76,9 @@
     "^<og_runtime::bind::video::StreamSource>::poll$",
     "^og_runtime::bind::terrain::(draw::)?(extract|seabed_grid)$",
     "^og_runtime::bind::terrain::ground_drop_shadows$",
-    "^og_runtime::bind::terrain::(release::)?free_released$"
+    "^og_runtime::bind::terrain::(release::)?free_released$",
+    "^<og_render::shading::gi_probes::GiProbes>::(new|prepare|record)$",
+    "^<og_render::fields::(wind_field::WindFieldSim|trample::Trample)>::step$",
+    "^<og_render::systems::crowd::crowd_impostor::CrowdImpostors>::(new|atlas)$"
   ]
 }

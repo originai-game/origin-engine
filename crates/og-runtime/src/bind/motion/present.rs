@@ -168,7 +168,7 @@ pub(crate) struct Presenter {
     stepped: Option<u64>,
     /// The ticks the world has run that are not stepped yet, oldest first:
     /// the front one stopped for a batch that has not landed.
-    behind: VecDeque<Input>,
+    pub(crate) behind: VecDeque<Input>,
     /// The last tick whose [`Input`] was taken.
     taken_tick: Option<u64>,
     /// Where the front of [`Presenter::behind`]'s step stopped for a batch

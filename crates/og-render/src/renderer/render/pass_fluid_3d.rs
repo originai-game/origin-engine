@@ -40,8 +40,8 @@ impl Pass for Fluid3dPass {
         cx: &mut EncodeCx<'_, 'f>,
     ) {
         let r = cx.ctx.r;
-        if let (Some(f), Some(views), Some(st)) =
-            (plan, fluid3d::views(&r.graph, cx.scene_depth), st.get())
+        if let (Some(f), Some(st)) = (plan, st.get())
+            && let Some(views) = fluid3d::views(&r.graph, cx.scene_depth)
         {
             cx.stats.draw_calls += st.encode(cx.encoder, f, cx.frame_bind_group, &views);
         }

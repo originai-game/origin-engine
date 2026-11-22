@@ -115,8 +115,11 @@ pub fn warm_tick(id: u32) {
     let physics = eng.state.borrow().physics.clone();
     crate::present::ui_next::pack_images(id);
     if let (Some(physics), Ok(world)) = (physics, eng.world()) {
-        // A world without the physics settings has nothing to build.
-        let _ = physics.query(world);
+        // A world without the physics settings, or without a collider, has
+        // nothing to build (and so never loads the physics engine module).
+        if crate::present::extract::any_rows(world, "og.Collider") {
+            let _ = physics.query(world);
+        }
     }
 }
 

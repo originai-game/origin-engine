@@ -338,6 +338,14 @@ impl Trample {
             self.last = None;
             return;
         }
+        self.step(device, queue, scene);
+    }
+
+    /// [`Trample::prepare`]'s steps once the map runs: its pipeline and
+    /// buffers, made the first time, and the steps' uniforms.
+    // A guarded entry into the engine's `render3d` module (wasm-modules.json).
+    #[inline(never)]
+    fn step(&mut self, device: &wgpu::Device, queue: &wgpu::Queue, scene: &crate::RenderScene) {
         let fresh = self.gpu.is_none();
         let Some(gpu) = self.gpu(device) else {
             self.grid = [0.0; 4];

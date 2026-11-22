@@ -310,10 +310,11 @@ Each publish module, single-threaded and lanes, is split (Binaryen's `wasm-split
 the primary, which boots, and one module per optional capability:
 `physics` with its two simulations `physics3d` (rapier3d) and `physics2d`
 (rapier2d), `story` (with og.flow), `nav` (with og.ai), `motion`,
-`destruction`, `video` and `world3d` (terrain, scattered copies and
+`destruction`, `video`, `world3d` (terrain, scattered copies and
 grass, planar water, the 3D fluids and volumetric fog's shaders, with
-og.terrain) (`scripts/wasm-modules.json` assigns the
-functions). A world loads `physics` and the simulation of its
+og.terrain) and `render3d` (the probe GI, the vegetation's wind field and
+trample map, the crowds' impostor bake) (`scripts/wasm-modules.json`
+assigns the functions). A world loads `physics` and the simulation of its
 og.Physics.profile; switching the profile loads the other one. What a game using none of them runs stays in the primary,
 so such a game loads none: every function its ticks, snapshots and
 restores run (profiled by `scripts/wasm-profile.ts`), and every function
@@ -325,7 +326,13 @@ update, the physics debug view, a playing video's stream, the terrain's
 extraction once a terrain is loaded or an og.Terrain placed). og-render
 makes each 3D world renderer when a frame first draws what it draws
 (`renderer/resources.rs` `OnDemand`), so a frame without terrain,
-scattered copies, grass, water or 3D fluids calls into none of them. A generated
+scattered copies, grass, water or 3D fluids calls into none of them; its
+`render3d` calls are guarded entries, made the first frame a look enables
+the probe GI, wind or a motor drives the field, a pusher presses grass or
+a crowd draws cards. The roots' graph does not follow the frame into
+og-render (it is drawn behind og-runtime's `RenderBackend`), so a module's
+patterns leave out what every frame calls there (the 2D water, the
+terrains' effect group). A generated
 geometry is not handed to physics until a collider names it, and a
 world with nothing to simulate builds no rapier world until its first
 body or collider (its snapshot carries none). A generic instance of std,

@@ -137,23 +137,26 @@ impl Renderer {
             }),
         )
         .map(|(lo, hi)| ((lo + hi) * 0.5, (hi - lo).length() * 0.5));
-        let fluid_frame = match (
-            fluid3d::views(&self.graph, scene_depth),
-            self.world.fluid3d.get_mut(),
-        ) {
-            (Some(views), Some(fluid3d)) if fluids_3d => fluid3d.prepare(
-                &self.device,
-                &self.queue,
-                &scene.world.fluids_3d,
-                &fluid3d::Fluid3dCamera {
-                    view: cam.view,
-                    proj: cam.proj,
-                    orthographic: cam.orthographic,
-                },
-                (self.width, self.height),
-                &views,
-                self.world.visual_fluids.is_some(),
-            ),
+        // Its views only once the 3D fluids' renderer is made: they are
+        // the 3D world's engine module's (resources.rs OnDemand).
+        let fluid_frame = match self.world.fluid3d.get_mut() {
+            Some(fluid3d) if fluids_3d => {
+                fluid3d::views(&self.graph, scene_depth).and_then(|views| {
+                    fluid3d.prepare(
+                        &self.device,
+                        &self.queue,
+                        &scene.world.fluids_3d,
+                        &fluid3d::Fluid3dCamera {
+                            view: cam.view,
+                            proj: cam.proj,
+                            orthographic: cam.orthographic,
+                        },
+                        (self.width, self.height),
+                        &views,
+                        self.world.visual_fluids.is_some(),
+                    )
+                })
+            }
             _ => None,
         };
         if let (Some(fluids), Some(fluid3d)) =

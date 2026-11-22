@@ -63,7 +63,9 @@ impl Capture for RuntimeCapture {
 
     fn save_state(&mut self) -> u64 {
         // og.motion at the saved tick, as a frame there draws it.
-        if let Ok(eng) = engine(self.engine) {
+        if let Ok(eng) = engine(self.engine)
+            && crate::present::barrier::motion(&eng)
+        {
             crate::bind::motion::present::step(&eng);
         }
         self.render
@@ -639,7 +641,9 @@ pub(crate) fn install(eng: &Rc<Engine>, facts: Option<u32>) -> Result<(), String
         if engine(id).is_ok_and(|eng| !crate::bind::timeline::gate(&eng)) {
             return false;
         }
-        engine(id).map_or(true, |eng| crate::bind::motion::present::step(&eng))
+        engine(id).map_or(true, |eng| {
+            !crate::present::barrier::motion(&eng) || crate::bind::motion::present::step(&eng)
+        })
     }));
     // og.WorldRestored, the tick after a restore.
     probe.set_before_tick(Box::new(move |world| {
@@ -682,7 +686,9 @@ pub(crate) fn install(eng: &Rc<Engine>, facts: Option<u32>) -> Result<(), String
             }
             // og.motion steps once a tick with the world the tick left,
             // whether or not a frame is drawn.
-            crate::bind::motion::present::step(&eng);
+            if crate::present::barrier::motion(&eng) {
+                crate::bind::motion::present::step(&eng);
+            }
         }
     }));
     probe.set_ui(Box::new(crate::present::ui_draw::MaterialProbe {

@@ -426,6 +426,8 @@ pub(crate) struct GiProbes {
 }
 
 impl GiProbes {
+    // A guarded entry into the engine's `render3d` module (wasm-modules.json).
+    #[inline(never)]
     pub fn new(device: &wgpu::Device) -> GiProbes {
         let compute = wgpu::ShaderStages::COMPUTE;
         let entry = |binding, ty| wgpu::BindGroupLayoutEntry {
@@ -569,6 +571,8 @@ impl GiProbes {
     /// Plans this frame: the traced scene built and written, the slices
     /// and their parameters, the header rows (written by
     /// [`GiProbes::write_header`] after the light volumes' rows).
+    // A guarded entry into the engine's `render3d` module (wasm-modules.json).
+    #[inline(never)]
     pub fn prepare(
         &mut self,
         device: &wgpu::Device,
@@ -702,6 +706,8 @@ impl GiProbes {
 
     /// Records this frame's trace and blend, `frame` the trace's frame group
     /// (made with [`GiProbes::frame_layout`]).
+    // A guarded entry into the engine's `render3d` module (wasm-modules.json).
+    #[inline(never)]
     pub fn record(
         &self,
         device: &wgpu::Device,

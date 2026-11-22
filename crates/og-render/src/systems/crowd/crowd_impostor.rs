@@ -80,6 +80,8 @@ pub(crate) struct CrowdImpostors {
 }
 
 impl CrowdImpostors {
+    // A guarded entry into the engine's `render3d` module (wasm-modules.json).
+    #[inline(never)]
     pub fn new(
         device: &wgpu::Device,
         material_layout: &wgpu::BindGroupLayout,
@@ -203,6 +205,8 @@ impl CrowdImpostors {
     /// The atlas `key` shows, baked into `encoder` now when it has none
     /// (`parts`: the full mesh of each part, in the crowd's order; `bake`:
     /// the uniform without its part, which each part's slot fills in).
+    // A guarded entry into the engine's `render3d` module (wasm-modules.json).
+    #[inline(never)]
     #[allow(clippy::too_many_arguments)]
     pub fn atlas(
         &mut self,

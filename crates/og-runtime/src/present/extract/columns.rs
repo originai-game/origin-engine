@@ -36,6 +36,19 @@ impl ColumnRows<'_> {
     }
 }
 
+/// Whether any entity holds `schema`: the guard before a call into the
+/// engine module that serves it (docs/web-export.md §Modules), so a world
+/// without one never loads that module.
+pub(crate) fn any_rows(world: &World, schema: &str) -> bool {
+    let q = QueryDesc {
+        read: vec![schema.to_string()],
+        ..QueryDesc::default()
+    };
+    world
+        .query(&q)
+        .is_ok_and(|mut all| all.any(|a| !a.is_empty()))
+}
+
 /// The rows of `layout`'s component, borrowed from the world's columns: no
 /// row is copied or looked up by its entity (a packed copy of each row,
 /// found through its entity, was most of reading 20,000 sprites or models).
