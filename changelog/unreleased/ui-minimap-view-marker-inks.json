@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "MinimapView",
+      "summary": "Markers are filled again: an ally or point of interest in the ally ink, an enemy in the foe ink, an objective in gold and loot in epic, each paired per scheme by the pack, in a ring of the map's ground. Their fills had been a fixed colour the UI never drew, which left a dark outline that disappeared on a dark map."
+    }
+  ]
+}

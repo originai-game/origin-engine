@@ -41,8 +41,8 @@ export interface MinimapViewProps {
  * A minimap: a lit bezel round (or square) dark glass, bearing ticks
  * inside its rim, a red north badge pinned on the rim, the player's arrow
  * in the middle with a heading cone. Each marker kind keeps its own shape
- * at any size (an ally a blue disc, an enemy a red diamond, an objective
- * a larger gold diamond, loot a violet square, a ping an orange ring), so
+ * at any size (an ally a disc, an enemy a diamond, an objective a larger
+ * diamond, loot a square, a ping a ring), each in its kind's theme ink, so
  * a kind is never told by colour alone. The zone's name sits on a plate
  * under it. Reports pick (a tap on the glass). The style draws the player
  * as a filled SVG arrow and the cone and bezel with conic gradients: the
@@ -66,24 +66,22 @@ function Marker(props: { marker: () => MinimapViewMarker; cx: () => number; cy: 
     if (m().kind === "ally" || m().kind === "poi" || m().kind === "ping") return "rounded-full";
     return "";
   };
+  // Each kind's fill is its theme ink, paired per scheme (bright on the dark map, deep on the
+  // light one), and every pip stands in a halo of the map's own ground so the grid and the
+  // cone never run through it.
   const fill = () => {
-    if (m().kind === "ally" || m().kind === "poi") return "#50aaff";
-    if (m().kind === "enemy") return "#ff4d5e";
-    if (m().kind === "objective") return "#ffcf5a";
-    if (m().kind === "loot") return "#c86ff5";
-    return "transparent";
+    if (m().kind === "ally" || m().kind === "poi") return "bg-ally-ink";
+    if (m().kind === "enemy") return "bg-foe-ink";
+    if (m().kind === "objective") return "bg-gold";
+    if (m().kind === "loot") return "bg-epic";
+    return "";
   };
-  const ring = () =>
-    m().kind === "ping"
-      ? "ring-4 ring-fill inset-ring-2 inset-ring-warn"
-      : m().kind === "ping" || m().kind === "ally" || m().kind === "poi" || m().kind === "loot"
-        ? "ring-2 ring-key-fg"
-        : "";
+  const ring = () => (m().kind === "ping" ? "ring-4 ring-fill inset-ring-2 inset-ring-warn" : "ring-2 ring-raised-lo");
   return (
     <View
-      class={`absolute ${shape()} ${ring()}`}
+      class={`absolute ${shape()} ${fill()} ${ring()}`}
       label={m().label}
-      style={{ width: `${pip()}rem`, height: `${pip()}rem`, left: left(), top: top(), background: fill() }}
+      style={{ width: `${pip()}rem`, height: `${pip()}rem`, left: left(), top: top() }}
     >
       <Show when={m().kind === "ping"}>
         <View class="absolute inset-0 rounded-full ring-4 ring-fill inset-ring-2 inset-ring-warn animate-ping" />
