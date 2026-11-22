@@ -10,11 +10,16 @@
 //!
 //! Every report but `--posed` also carries the facts a prop pipeline reads, at its top
 //! level and in the GLB's frame ([`facts`]): `size` `[x, y, z]` in metres
-//! (+Y up), `triangles`, `vertices`, `partCount` and `materials`. In a
+//! (+Y up), `triangles`, `vertices`, `partCount`, `colours` (distinct
+//! sRGB colours over untextured materials and every map's opaque texels)
+//! and `materials`. In a
 //! project whose look sets an art contract (read from its cooked look, as
 //! `og check` does), `look` adds how the model sits against it: each
 //! material's colour, its nearest palette colour and their CIEDE2000, and
-//! the triangles against `ArtShape.propFaces`. Facts only: nothing here
+//! the triangles against `ArtShape.propFaces` and `characterFaces`, and
+//! the colours against `ArtPalette.maxColors`. A fact the look does not
+//! state is null, never 0 or an empty list, and `look.absent` gives the
+//! reason ("the look states no palette (ArtPalette.colors)"). Facts only: nothing here
 //! refuses on them.
 
 use og_shape::tools::{ColorSpace, Measure, Scene};
@@ -135,6 +140,29 @@ pub fn facts(scene: &Scene, contract: Option<&crate::style_check::Contract>) -> 
     // Each material once, by name (a part's name when it has none), with
     // its sRGB colour: the base colour times its map's mean.
     let mut materials: Vec<(String, [u8; 3])> = Vec::new();
+    // Every colour the model shows: untextured materials' colours and
+    // each map's opaque texels (sRGB), as ArtPalette.maxColors counts.
+    let mut colours = std::collections::BTreeSet::new();
+    for p in &scene.parts {
+        match p
+            .material
+            .map
+            .as_ref()
+            .and_then(|t| og_shape_formats::texture::decode(&t.bytes).ok())
+        {
+            Some(img) => colours.extend(
+                img.rgba
+                    .as_chunks::<4>()
+                    .0
+                    .iter()
+                    .filter(|px| px[3] >= 128)
+                    .map(|px| [px[0], px[1], px[2]]),
+            ),
+            None => {
+                colours.insert(colour(&p.material));
+            }
+        }
+    }
     for p in &scene.parts {
         let name = if p.material.name.is_empty() {
             p.name.clone()
@@ -151,35 +179,101 @@ pub fn facts(scene: &Scene, contract: Option<&crate::style_check::Contract>) -> 
         "triangles": triangles,
         "vertices": vertices,
         "partCount": scene.parts.len(),
+        "colours": colours.len(),
         "materials": materials.iter().map(|(n, c)| json!({ "material": n, "colour": hex(*c) })).collect::<Vec<_>>(),
     });
     if let Some(c) = contract {
-        let palette: Vec<Value> = match &c.palette {
-            Some((_, colours)) if !colours.is_empty() => materials
+        out["look"] = look_facts(c, &materials, triangles, colours.len());
+    }
+    out
+}
+
+/// The model against the look's art contract. A fact the look does not
+/// state (its field at the zero value, which constrains nothing) is null,
+/// and `absent` says why, so no 0 reads as a budget of nothing.
+fn look_facts(
+    c: &crate::style_check::Contract,
+    materials: &[(String, [u8; 3])],
+    triangles: usize,
+    colours: usize,
+) -> Value {
+    use crate::commands::compare::{delta_e00, lab};
+    let mut absent = serde_json::Map::new();
+    let mut stated = |key: &str, set: bool, why: &str| {
+        if !set {
+            absent.insert(
+                key.into(),
+                Value::String(format!("the look states no {why}")),
+            );
+        }
+        set
+    };
+    let palette = match &c.palette {
+        Some((_, p)) if stated("palette", !p.is_empty(), "palette (ArtPalette.colors)") => Some((
+            p.len(),
+            materials
                 .iter()
                 .map(|(n, rgb)| {
-                    let here = crate::commands::compare::lab(*rgb);
-                    let (near, de) = colours
+                    let (near, de) = p
                         .iter()
-                        .map(|p| (*p, crate::commands::compare::delta_e00(here, crate::commands::compare::lab(*p))))
+                        .map(|q| (*q, delta_e00(lab(*rgb), lab(*q))))
                         .min_by(|a, b| a.1.total_cmp(&b.1))
                         .expect("a palette with colours");
                     json!({ "material": n, "colour": hex(*rgb), "nearest": hex(near), "deltaE": de })
                 })
-                .collect(),
-            _ => Vec::new(),
-        };
-        out["look"] = json!({
-            "look": c.look,
-            "palette": palette,
-            "paletteColours": c.palette.as_ref().map_or(0, |p| p.1.len()),
-            "propFaces": c.prop_faces,
-            "facesRatio": (c.prop_faces > 0).then(|| triangles as f64 / f64::from(c.prop_faces)),
-            "texelDensity": c.density,
-            "maxTextureSize": c.max_size,
-        });
-    }
-    out
+                .collect::<Vec<_>>(),
+        )),
+        Some(_) => None,
+        None => {
+            stated("palette", false, "palette (ArtPalette.colors)");
+            None
+        }
+    };
+    let budget = |n: u32, of: usize| (n > 0).then(|| (n, of as f64 / f64::from(n)));
+    let prop = budget(c.prop_faces, triangles);
+    stated(
+        "propFaces",
+        prop.is_some(),
+        "prop triangle budget (ArtShape.propFaces)",
+    );
+    let character = budget(c.character_faces, triangles);
+    stated(
+        "characterFaces",
+        character.is_some(),
+        "character triangle budget (ArtShape.characterFaces)",
+    );
+    let max_colors = budget(c.max_colors, colours);
+    stated(
+        "maxColors",
+        max_colors.is_some(),
+        "colour budget (ArtPalette.maxColors)",
+    );
+    let density = (c.density > 0.0).then_some(c.density);
+    stated(
+        "texelDensity",
+        density.is_some(),
+        "texel density (ArtTexels.density)",
+    );
+    let max_size = (c.max_size > 0).then_some(c.max_size);
+    stated(
+        "maxTextureSize",
+        max_size.is_some(),
+        "largest texture (ArtTexels.maxSize)",
+    );
+    json!({
+        "look": c.look,
+        "palette": palette.as_ref().map(|p| &p.1),
+        "paletteColours": palette.as_ref().map(|p| p.0),
+        "propFaces": prop.map(|p| p.0),
+        "facesRatio": prop.map(|p| p.1),
+        "characterFaces": character.map(|p| p.0),
+        "characterFacesRatio": character.map(|p| p.1),
+        "maxColors": max_colors.map(|p| p.0),
+        "coloursRatio": max_colors.map(|p| p.1),
+        "texelDensity": density,
+        "maxTextureSize": max_size,
+        "absent": absent,
+    })
 }
 
 fn hex(c: [u8; 3]) -> String {
@@ -324,6 +418,7 @@ mod tests {
             look: "looks/test.ogt".into(),
             palette: Some(("p".into(), vec![[160, 20, 20], [20, 20, 160]])),
             prop_faces: 6,
+            max_colors: 4,
             ..Default::default()
         };
         let f = facts(&scene, Some(&contract));
@@ -339,6 +434,36 @@ mod tests {
             "{f}"
         );
         assert_eq!(f["look"]["facesRatio"], 2.0, "{f}");
+        // One flat colour of a budget of 4; no character budget set.
+        assert_eq!(f["colours"], 1, "{f}");
+        assert_eq!(f["look"]["coloursRatio"], 0.25, "{f}");
+        assert!(f["look"]["characterFacesRatio"].is_null(), "{f}");
+        assert!(f["look"]["characterFaces"].is_null(), "{f}");
+        assert!(
+            f["look"]["absent"]["characterFaces"]
+                .as_str()
+                .unwrap()
+                .contains("states no"),
+            "{f}"
+        );
+        assert!(f["look"]["absent"].get("palette").is_none(), "{f}");
+        // A look that states nothing: every fact null, each with a reason,
+        // never a budget of 0.
+        let none = facts(&scene, Some(&crate::style_check::Contract::default()));
+        for k in [
+            "palette",
+            "paletteColours",
+            "propFaces",
+            "maxColors",
+            "texelDensity",
+        ] {
+            assert!(none["look"][k].is_null(), "{k}: {none}");
+        }
+        assert_eq!(
+            none["look"]["absent"].as_object().unwrap().len(),
+            6,
+            "{none}"
+        );
         // No contract: no look block.
         assert!(facts(&scene, None).get("look").is_none());
     }
