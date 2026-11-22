@@ -111,7 +111,9 @@ status `docs/roadmap.md`. Platform contracts implemented here:
 - **Tests never run `cargo`.** Rust tests use `env!("CARGO_BIN_EXE_og")`, bun
   tests `tests/support/og-bin.ts`.
 - **A test is kept only when it fails on a plausible regression.** A missing
-  GPU makes a test skipped or unchecked, never passed.
+  GPU makes a test skipped or unchecked, never passed. Lavapipe is neither
+  a standard nor a check: a GPU result from lavapipe is unchecked, and no
+  frame, timing or landing is judged on it.
 - **One GPU host: Colab.** GPU results and references come from a Colab
   NVIDIA GPU (L4 by default, Vulkan) through the workspace plugin
   `colab-gpu` (`docs/ci.md` §The GPU host, §Reference frames); the `gcp-l4`

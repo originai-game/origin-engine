@@ -180,7 +180,9 @@ widen one to absorb a defect.
 
 `.agents/setup` upgrades `mesa-vulkan-drivers` below 25.0.7 (on Debian 12
 from bookworm-backports), because Debian 12's Mesa 22.3.6 leaks memory
-every frame. No reference lane runs on lavapipe.
+every frame. Lavapipe is neither a standard nor a check: no reference lane
+runs on it, a GPU test that ran only on it is unchecked, and a head's frames,
+timings and landing evidence come from the Colab L4.
 
 ## Lanes
 
