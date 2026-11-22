@@ -3399,6 +3399,48 @@ mod tests {
         assert_eq!(t.op_box(3).unwrap(), [130.0, 80.0, 30.0, 10.0]);
     }
 
+    /// A `w-fit` wrapping row (strategy/resources) is as wide as its items
+    /// on one line and keeps them on it, whatever layout's sums lose; one
+    /// its box caps wraps, and is as tall as its lines.
+    #[test]
+    fn a_fit_wrapping_row_keeps_its_line_and_grows_by_its_lines() {
+        let row = "flex-row flex-wrap items-center w-fit max-w-full min-w-0 gap-x-5.5 gap-y-1.5 py-1.5 px-4";
+        // Widths whose sum, taken back in the line break's order, lost an
+        // ulp: the last one wrapped and the row stayed one line tall.
+        let widths = [43.014706f32, 39.824173, 67.97606, 40.306263, 67.63821];
+        for (width, lines) in [(600.0, 1), (200.0, 3)] {
+            let mut t = tree();
+            let classes = std::cell::RefCell::new(crate::classes::Classes::new(None).unwrap().0);
+            t.set_resolver(Box::new(move |class, style, _, _| {
+                classes
+                    .borrow_mut()
+                    .record_styled(class, style, &crate::classes::Env::default())
+            }));
+            let mut b = Batch::default();
+            let mut nodes = vec![
+                (1, format!("flex-col items-start w-[{width}px]"), 0),
+                (2, row.to_string(), 1),
+            ];
+            for (k, w) in widths.iter().enumerate() {
+                nodes.push((10 + k as u32, format!("h-[20px] w-[{w}px] shrink-0"), 2));
+            }
+            for (id, class, parent) in &nodes {
+                b.op(1).u32(*id).u8(0);
+                b.op(4).u32(*id).str(class);
+                b.op(8).u32(*parent).u32(*id).u32(u32::MAX);
+            }
+            t.apply(&b.bytes()).unwrap();
+            frame(&mut t);
+            let tops: std::collections::BTreeSet<u32> = (10..15)
+                .map(|id| t.op_box(id).unwrap()[1].to_bits())
+                .collect();
+            let [_, _, w, h] = t.op_box(2).unwrap();
+            assert_eq!(tops.len(), lines, "{width}: lines {tops:?}, row {w}×{h}");
+            let want = lines as f32 * 20.0 + (lines - 1) as f32 * 6.0 + 12.0;
+            assert_eq!(h, want, "{width}: the row holds its lines");
+        }
+    }
+
     /// Classes lay out with CSS's initial flex values: a `w-full min-w-0`
     /// bar beside a `shrink-0` count gives way to it (meta/daily-quests),
     /// and a `flex-1 min-h-0` `Scroll` in a column sized to its content

@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "TSX layout (flex-wrap rows)",
+      "summary": "A wrapping row sized to its content (`w-fit`, or any automatic width) keeps its items on one line when they fit: it used to wrap its last item by a rounding error of the row's own width and keep a one-line height, so that item showed below the row (strategy/resources' \"47 / 50 Near cap\"). An item now wraps only past 0.01 px over the line, the slack a text keeps at its own width."
+    }
+  ]
+}

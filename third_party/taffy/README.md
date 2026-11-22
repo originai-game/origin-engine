@@ -7,7 +7,7 @@ contains its licence. It is used through the workspace's
 `[patch.crates-io]`; `Cargo.toml` is the published one without its
 `[[example]]` tables (the examples are not vendored).
 
-Four changes; 3 and 4 are marked `Origin Engine` in place.
+Five changes; 3, 4 and 5 are marked `Origin Engine` in place.
 
 1. `src/compute/flexbox.rs`, `determine_container_main_size`.
 A container with no definite main size under definite available space
@@ -45,3 +45,10 @@ horizontal axis), that width is its intrinsic inline size, its items'
 width contributions (CSS Flexbox §9.9.3), so change 3's transfer is
 skipped there: a column of flexed square items stays as wide as their
 own widths, not the widths their flexed heights give.
+
+5. `src/compute/flexbox.rs`, `collect_flex_lines`. An item wraps only when
+its line passes the available main size by more than `WRAP_SLACK`
+(0.01 layout units). A fit-content wrapping row is as wide as its items'
+max-content sum, and the line break summed them back in another order, so
+it lost a few ulps and wrapped its last item onto a second line, while the
+row kept the height of one.
