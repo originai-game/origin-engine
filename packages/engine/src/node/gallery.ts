@@ -407,7 +407,7 @@ async function main(): Promise<number> {
   const keys = tableKeys();
   const size = arg("--size") ?? "1280x720";
   const width = Number(size.split("x")[0]);
-  /** The hard defects, by fixture: a mount that threw, a frame that is the bare stage, a raw string key drawn, a word broken across lines, text under the contrast bar on its drawn ground. */
+  /** The hard defects, by fixture: a mount that threw, a character no face draws, a frame that is the bare stage, a raw string key drawn, a word broken across lines, text under the contrast bar on its drawn ground. */
   const defects: string[] = [];
   if (!(await run(["cook", "."])).ok) return 1;
   // A pack loads its look and fonts over a few frames; a page settles in 12 ticks.
@@ -433,6 +433,11 @@ async function main(): Promise<number> {
       if (threw.has(n)) continue;
       threw.add(n);
       defects.push(`${where(n)}: threw at mount: ${m[2]}`);
+    }
+    // A character no face draws, as the engine reports it with its tick: the page shown then draws tofu.
+    for (const m of r.log.matchAll(/WARN tick (\d+): a frame drew ([^\n]*?), which font/g)) {
+      const n = Math.floor((Number(m[1]) - LEAD) / STEP);
+      if (n >= 0 && n < list.length) defects.push(`${where(n)}: draws no glyph for ${m[2]}`);
     }
     const frameFiles = readdirSync(shots).filter((f) => /^screenshot-\d+\.png$/.test(f)).sort();
     const dumps = readdirSync(shots).filter((f) => /^dump_ui-\d+\.json$/.test(f)).sort();
