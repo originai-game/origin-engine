@@ -25792,6 +25792,46 @@ impl ToJson for Candidate {
     }
 }
 
+/// `AttackPhase`: packages/knowledge/wiki/combat.md.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum AttackPhase {
+    #[default]
+    Idle,
+    Startup,
+    Active,
+    Recovery,
+}
+
+impl AttackPhase {
+    /// The variants' IDL names, in index order.
+    pub const NAMES: &'static [&'static str] = &["idle", "startup", "active", "recovery"];
+    /// Every variant, in index order.
+    pub const ALL: &'static [Self] = &[Self::Idle, Self::Startup, Self::Active, Self::Recovery];
+    /// The IDL name.
+    pub fn as_str(self) -> &'static str {
+        Self::NAMES[self as usize]
+    }
+    /// The variant named `s`, or a refusal naming them all.
+    pub fn parse(s: &str) -> Result<Self, String> {
+        match Self::NAMES.iter().position(|n| *n == s) {
+            Some(i) => Ok(Self::ALL[i]),
+            None => Err(unknown_variant("AttackPhase", s, Self::NAMES)),
+        }
+    }
+}
+
+impl FromJson for AttackPhase {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::parse(variant(v, "AttackPhase", Self::NAMES)?)
+    }
+}
+
+impl ToJson for AttackPhase {
+    fn to_json(&self) -> Value {
+        Value::String(self.as_str().into())
+    }
+}
+
 /// The rows of the engine's records (IDL `component`, `resource` and
 /// `event`), as their layouts decode them: every field, with its IDL
 /// default, read through the same rules as the wire types.
@@ -37621,6 +37661,307 @@ pub mod record {
                 hurt: field(o, "hurt", d.hurt)?,
                 point: field(o, "point", d.point)?,
                 normal: field(o, "normal", d.normal)?,
+            })
+        }
+    }
+
+    /// `Attack`: packages/knowledge/wiki/combat.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct Attack {
+        pub r#move: u64,
+        pub next: u64,
+        pub tick: u32,
+        pub phase: AttackPhase,
+        pub swing: u32,
+        pub swing_move: u64,
+        pub cancelable: bool,
+        pub starters: Vec<u64>,
+        pub volumes: Vec<u64>,
+    }
+
+    impl Default for Attack {
+        fn default() -> Self {
+            Self {
+                r#move: Default::default(),
+                next: Default::default(),
+                tick: Default::default(),
+                phase: Default::default(),
+                swing: Default::default(),
+                swing_move: Default::default(),
+                cancelable: Default::default(),
+                starters: Default::default(),
+                volumes: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for Attack {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                r#move: field(o, "move", d.r#move)?,
+                next: field(o, "next", d.next)?,
+                tick: field(o, "tick", d.tick)?,
+                phase: field(o, "phase", d.phase)?,
+                swing: field(o, "swing", d.swing)?,
+                swing_move: field(o, "swingMove", d.swing_move)?,
+                cancelable: field(o, "cancelable", d.cancelable)?,
+                starters: field(o, "starters", d.starters)?,
+                volumes: field(o, "volumes", d.volumes)?,
+            })
+        }
+    }
+
+    /// `AttackMove`: packages/knowledge/wiki/combat.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct AttackMove {
+        pub startup: u32,
+        pub active: u32,
+        pub recovery: u32,
+        pub damage: f32,
+        pub volumes: u32,
+        pub cancel_open: u32,
+        pub cancel_close: u32,
+        pub links: Vec<u64>,
+    }
+
+    impl Default for AttackMove {
+        fn default() -> Self {
+            Self {
+                startup: Default::default(),
+                active: Default::default(),
+                recovery: Default::default(),
+                damage: Default::default(),
+                volumes: Default::default(),
+                cancel_open: Default::default(),
+                cancel_close: Default::default(),
+                links: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for AttackMove {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                startup: field(o, "startup", d.startup)?,
+                active: field(o, "active", d.active)?,
+                recovery: field(o, "recovery", d.recovery)?,
+                damage: field(o, "damage", d.damage)?,
+                volumes: field(o, "volumes", d.volumes)?,
+                cancel_open: field(o, "cancelOpen", d.cancel_open)?,
+                cancel_close: field(o, "cancelClose", d.cancel_close)?,
+                links: field(o, "links", d.links)?,
+            })
+        }
+    }
+
+    /// `AttackLink`: packages/knowledge/wiki/combat.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct AttackLink {
+        pub action: Value,
+        pub to: u64,
+        pub open: u32,
+        pub close: u32,
+    }
+
+    impl Default for AttackLink {
+        fn default() -> Self {
+            Self {
+                action: Default::default(),
+                to: Default::default(),
+                open: Default::default(),
+                close: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for AttackLink {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                action: field(o, "action", d.action)?,
+                to: field(o, "to", d.to)?,
+                open: field(o, "open", d.open)?,
+                close: field(o, "close", d.close)?,
+            })
+        }
+    }
+
+    /// `Health`: packages/knowledge/wiki/combat.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct Health {
+        pub value: f32,
+        pub dead: bool,
+    }
+
+    impl Default for Health {
+        fn default() -> Self {
+            Self {
+                value: Default::default(),
+                dead: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for Health {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                value: field(o, "value", d.value)?,
+                dead: field(o, "dead", d.dead)?,
+            })
+        }
+    }
+
+    /// `Hurt`: packages/knowledge/wiki/combat.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct Hurt {
+        pub invulnerable_ticks: u32,
+        pub invulnerable_until: u32,
+        pub stagger_ticks: u32,
+        pub staggered_until: u32,
+        pub knockback: f32,
+    }
+
+    impl Default for Hurt {
+        fn default() -> Self {
+            Self {
+                invulnerable_ticks: Default::default(),
+                invulnerable_until: Default::default(),
+                stagger_ticks: Default::default(),
+                staggered_until: Default::default(),
+                knockback: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for Hurt {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                invulnerable_ticks: field(o, "invulnerableTicks", d.invulnerable_ticks)?,
+                invulnerable_until: field(o, "invulnerableUntil", d.invulnerable_until)?,
+                stagger_ticks: field(o, "staggerTicks", d.stagger_ticks)?,
+                staggered_until: field(o, "staggeredUntil", d.staggered_until)?,
+                knockback: field(o, "knockback", d.knockback)?,
+            })
+        }
+    }
+
+    /// `Damaged`: packages/knowledge/wiki/combat.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct Damaged {
+        pub target: u64,
+        pub source: u64,
+        pub r#move: u64,
+        pub swing: u32,
+        pub amount: f32,
+        pub health: f32,
+        pub point: Vec3,
+        pub knockback: Vec3,
+    }
+
+    impl Default for Damaged {
+        fn default() -> Self {
+            Self {
+                target: Default::default(),
+                source: Default::default(),
+                r#move: Default::default(),
+                swing: Default::default(),
+                amount: Default::default(),
+                health: Default::default(),
+                point: Default::default(),
+                knockback: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for Damaged {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                target: field(o, "target", d.target)?,
+                source: field(o, "source", d.source)?,
+                r#move: field(o, "move", d.r#move)?,
+                swing: field(o, "swing", d.swing)?,
+                amount: field(o, "amount", d.amount)?,
+                health: field(o, "health", d.health)?,
+                point: field(o, "point", d.point)?,
+                knockback: field(o, "knockback", d.knockback)?,
+            })
+        }
+    }
+
+    /// `Died`: packages/knowledge/wiki/combat.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct Died {
+        pub entity: u64,
+        pub source: u64,
+    }
+
+    impl Default for Died {
+        fn default() -> Self {
+            Self {
+                entity: Default::default(),
+                source: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for Died {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                entity: field(o, "entity", d.entity)?,
+                source: field(o, "source", d.source)?,
+            })
+        }
+    }
+
+    /// `CombatAttackers`: packages/knowledge/wiki/combat.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct CombatAttackers {
+        pub attackers: Vec<u64>,
+    }
+
+    impl Default for CombatAttackers {
+        fn default() -> Self {
+            Self {
+                attackers: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for CombatAttackers {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                attackers: field(o, "attackers", d.attackers)?,
             })
         }
     }

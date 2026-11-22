@@ -1,0 +1,24 @@
+{
+  "added": [
+    {
+      "member": "og.systems.combat",
+      "summary": "Melee attacks a game lists by name: og.Attack plays og.AttackMove frame data (startup, active, recovery in ticks) and drives its hit volumes in the active window, a new swing per move; an og.AttackLink is taken when its action's buffered press (og.input.consume) lands in its window, so combos chain; og.Attack.cancelable says when a dodge may cut the move; a hit stop holds every move. Every number is the game's: zero does nothing."
+    },
+    {
+      "member": "og.Health",
+      "summary": "What a target has left: a hit of a move's swing takes the move's damage, never below 0, and sets `dead` at 0."
+    },
+    {
+      "member": "og.Hurt",
+      "summary": "How a target takes a hit: ticks of invulnerability (a dodge writes invulnerableUntil for its i-frames), ticks of stagger that cut its own attack, and a knockback speed og.Damaged carries away from the volume."
+    },
+    {
+      "member": "og.Damaged",
+      "summary": "A hit took damage: the target, the attacker, the move and swing, the amount, what is left, where, and the knockback; sent the tick the hit is read."
+    },
+    {
+      "member": "og.Died",
+      "summary": "A target's health reached 0: sent once, with the attacker whose hit it was."
+    }
+  ]
+}

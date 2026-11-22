@@ -592,6 +592,53 @@ pub(crate) const LAZY: &[Lazy] = &[
         name: crate::bind::play::RECORDS[2],
         enable: crate::bind::play::enable,
     },
+    // og.systems.combat's records: its TypeScript systems read and write
+    // them, so no Rust module is granted them. Naming one registers all.
+    Lazy {
+        name: COMBAT[0],
+        enable: |_, _| Ok(()),
+    },
+    Lazy {
+        name: COMBAT[1],
+        enable: |_, _| Ok(()),
+    },
+    Lazy {
+        name: COMBAT[2],
+        enable: |_, _| Ok(()),
+    },
+    Lazy {
+        name: COMBAT[3],
+        enable: |_, _| Ok(()),
+    },
+    Lazy {
+        name: COMBAT[4],
+        enable: |_, _| Ok(()),
+    },
+    Lazy {
+        name: COMBAT[5],
+        enable: |_, _| Ok(()),
+    },
+    Lazy {
+        name: COMBAT[6],
+        enable: |_, _| Ok(()),
+    },
+    Lazy {
+        name: COMBAT[7],
+        enable: |_, _| Ok(()),
+    },
+];
+
+/// The records of og.systems.combat (IDL `combat`), which ships in
+/// TypeScript (packages/engine/src/systems/combat.ts).
+const COMBAT: [&str; 8] = [
+    "og.Attack",
+    "og.AttackMove",
+    "og.AttackLink",
+    "og.Health",
+    "og.Hurt",
+    "og.Damaged",
+    "og.Died",
+    "og.CombatAttackers",
 ];
 
 /// Lazy records registered together: naming one registers the rest.
@@ -609,6 +656,7 @@ pub(crate) const TOGETHER: &[&[&str]] = &[
     &crate::bind::shared::RECORDS,
     &crate::world::scenes::RECORDS,
     &crate::bind::play::RECORDS,
+    &COMBAT,
     &[
         crate::world::stream::cells::CELL,
         crate::world::stream::cells::MEMBER,

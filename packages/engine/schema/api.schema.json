@@ -12950,7 +12950,7 @@
     },
     {
       "name": "systems",
-      "doc": "Systems the engine ships as TypeScript: game-level code, listed explicitly in GameDesc.systems like the game's own, so the schedule (and dump_world) shows them and nothing runs that the game did not ask for.",
+      "doc": "Systems the engine ships as TypeScript: game-level code, listed explicitly in GameDesc.systems like the game's own, so the schedule (and dump_world) shows them and nothing runs that the game did not ask for.\nSee `combat §1`.",
       "place": "namespace",
       "publish": true,
       "types": [],
@@ -12960,6 +12960,11 @@
           "name": "cameras",
           "type": "List<System>",
           "doc": "The camera controllers, in order: og.orbitCamera (og.OrbitCamera), og.followCamera (og.FollowCamera) and og.follow2D (og.Follow2D). Each moves og.Camera only while an entity carries its component. List them before the game's systems that read og.Camera: `systems: [...og.systems.cameras, ...yours]`."
+        },
+        {
+          "name": "combat",
+          "type": "List<System>",
+          "doc": "The combat systems, in order: og.combatIndex (lists every og.Attack) and og.combat (last tick's hits as damage, then each og.Attack's move, links and hit volumes). They do nothing until an entity carries og.Attack or og.Health. Usage: `systems: [...og.systems.combat, ...yours]`."
         }
       ],
       "functions": [],
@@ -16804,6 +16809,28 @@
           "publish": true
         }
       ],
+      "interfaces": [],
+      "callbacks": []
+    },
+    {
+      "name": "combat",
+      "doc": "The records og.systems.combat carries out: an og.Attack plays og.AttackMove entities tick by tick (startup, active, recovery), drives its og.HitVolume entities in the active window, and takes an og.AttackLink when its input action's buffered press lands in the link's window (og.input.consume); an og.HitEvent of a move's swing takes the move's damage from the target's og.Health, unless its og.Hurt says it is invulnerable, and is reported as og.Damaged and, once, og.Died. Every number is the game's: a zero window, damage or invulnerability does nothing.\nSee `combat §1`.",
+      "place": "namespace",
+      "publish": true,
+      "types": [
+        "AttackPhase",
+        "AttackPhase",
+        "Attack",
+        "AttackMove",
+        "AttackLink",
+        "Health",
+        "Hurt",
+        "Damaged",
+        "Died",
+        "CombatAttackers"
+      ],
+      "consts": [],
+      "functions": [],
       "interfaces": [],
       "callbacks": []
     }
@@ -57496,6 +57523,373 @@
         "angle",
         "visible"
       ],
+      "additionalProperties": false
+    },
+    "AttackPhase": {
+      "x-og-kind": "enum",
+      "x-og-module": "combat",
+      "description": "Where an og.Attack is in its move.",
+      "type": "string",
+      "enum": [
+        "idle",
+        "startup",
+        "active",
+        "recovery"
+      ],
+      "x-og-variants": {
+        "idle": "No move.",
+        "startup": "Before the move's active window.",
+        "active": "In its active window: its hit volumes strike.",
+        "recovery": "After the active window, until the move ends."
+      }
+    },
+    "Attack": {
+      "x-og-kind": "component",
+      "x-og-module": "combat",
+      "description": "An attacker's moves, played by og.systems.combat: `move` advances a tick each tick time moves (none in a hit stop) and ends after its startup, active and recovery ticks. While idle, a buffered press of a `starters` link's action starts its move; while a move plays, one of the move's links whose window holds `tick` does. Each start counts a `swing`, written with `active` and `owner` to the `volumes` the move's mask names.\nSee `combat §1`.",
+      "type": "object",
+      "properties": {
+        "move": {
+          "$ref": "#/$defs/Entity",
+          "description": "The og.AttackMove playing (0: idle). Write 0 to stop it (a dodge out of a cancel window); start one with `next`.",
+          "default": 0
+        },
+        "next": {
+          "$ref": "#/$defs/Entity",
+          "description": "An og.AttackMove to start at the next run whatever the windows (an AI's choice, a scripted move); cleared once taken. A staggered attacker drops it.",
+          "default": 0
+        },
+        "tick": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Written: ticks since the move started (0 its first).",
+          "default": 0,
+          "readOnly": true
+        },
+        "phase": {
+          "$ref": "#/$defs/AttackPhase",
+          "description": "Written: where in the move it is.",
+          "default": "idle",
+          "readOnly": true
+        },
+        "swing": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Written: how many moves it has started, written to its hit volumes' `swing`, so each move strikes a target once.",
+          "default": 0,
+          "readOnly": true
+        },
+        "swingMove": {
+          "$ref": "#/$defs/Entity",
+          "description": "Written: the og.AttackMove the current swing started, kept after it ends or is cut: a hit is read the tick after it struck, and takes this move's damage.",
+          "default": 0,
+          "readOnly": true
+        },
+        "cancelable": {
+          "type": "boolean",
+          "description": "Written: idle, or within the move's cancel window (og.AttackMove.cancelOpen to cancelClose): what a dodge or a jump checks before it writes `move` 0.",
+          "default": false,
+          "readOnly": true
+        },
+        "starters": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Entity"
+          },
+          "maxItems": 8,
+          "description": "The og.AttackLink entities taken while idle, in order (their windows are not read).",
+          "default": []
+        },
+        "volumes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Entity"
+          },
+          "maxItems": 8,
+          "description": "The og.HitVolume entities its moves drive: bit i of og.AttackMove.volumes is volumes[i].",
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    },
+    "AttackMove": {
+      "x-og-kind": "component",
+      "x-og-module": "combat",
+      "description": "One move's frame data, on an entity of its own that any og.Attack may play: its windows in ticks, its damage, the hit volumes it uses and the links out of it. All zero is no move: a link to it is never taken.\nSee `combat §1`.",
+      "type": "object",
+      "properties": {
+        "startup": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Ticks before its active window.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-tunable": true
+        },
+        "active": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Ticks its hit volumes strike.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-tunable": true
+        },
+        "recovery": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Ticks after the active window before it ends.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-tunable": true
+        },
+        "damage": {
+          "type": "number",
+          "description": "What a hit of its swing takes from the target's og.Health; 0 takes nothing.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-tunable": true
+        },
+        "volumes": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Which of og.Attack.volumes strike in its active window, as bits (bit 0 is volumes[0]); 0 strikes with none.",
+          "default": 0
+        },
+        "cancelOpen": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The first tick (from its start) of its cancel window, when og.Attack.cancelable holds.",
+          "default": 0,
+          "minimum": 0
+        },
+        "cancelClose": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The tick its cancel window closes; at or before cancelOpen, there is none.",
+          "default": 0,
+          "minimum": 0
+        },
+        "links": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Entity"
+          },
+          "maxItems": 8,
+          "description": "The og.AttackLink entities followed out of it, in order: the first whose window holds the tick and whose action has a buffered press is taken.",
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    },
+    "AttackLink": {
+      "x-og-kind": "component",
+      "x-og-module": "combat",
+      "description": "A way from one move to another: a press of `action` buffered (og.input.consume) while the move it leaves is at a tick in [open, close) starts `to`. A press before the window waits in the action's buffer (ActionDesc.bufferTicks) and is taken the tick the window opens; one after it closes does not chain.\nSee `combat §1`.",
+      "type": "object",
+      "properties": {
+        "action": {
+          "type": "string",
+          "x-og-capacity": 32,
+          "description": "The input action whose press takes it (og.input.defineAction's name).",
+          "default": ""
+        },
+        "to": {
+          "$ref": "#/$defs/Entity",
+          "description": "The og.AttackMove it starts.",
+          "default": 0
+        },
+        "open": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The first tick (from the start of the move it leaves) it can be taken.",
+          "default": 0,
+          "minimum": 0
+        },
+        "close": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The tick it can no longer be taken; at or before open, never (a starter's window is not read).",
+          "default": 0,
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false
+    },
+    "Health": {
+      "x-og-kind": "component",
+      "x-og-module": "combat",
+      "description": "What a target has left. og.systems.combat takes a hit's damage from `value` (never below 0) and sets `dead` when it reaches 0, sending og.Died once; it never heals. A dead target takes no more damage.\nSee `combat §2`.",
+      "type": "object",
+      "properties": {
+        "value": {
+          "type": "number",
+          "description": "What is left.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-tunable": true
+        },
+        "dead": {
+          "type": "boolean",
+          "description": "Set when `value` reached 0; write false (and a value) to revive it.",
+          "default": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "Hurt": {
+      "x-og-kind": "component",
+      "x-og-module": "combat",
+      "description": "How a target takes a hit, beside its og.Health: for `invulnerableTicks` from a hit (its own tick first) further hits are ignored, for `staggerTicks` its og.Attack plays nothing (the move it played is cut), and og.Damaged carries a knockback of `knockback` away from the volume. A dodge's i-frames: write `invulnerableUntil`.\nSee `combat §2`.",
+      "type": "object",
+      "properties": {
+        "invulnerableTicks": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Ticks from a hit in which further hits are ignored; 0 ignores none.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-tunable": true
+        },
+        "invulnerableUntil": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The first tick it can be hurt again (hits read before it are ignored): written at a hit, and by a game for a dodge's i-frames.",
+          "default": 0,
+          "minimum": 0
+        },
+        "staggerTicks": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Ticks from a hit in which its og.Attack plays nothing; 0 staggers not at all.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-tunable": true
+        },
+        "staggeredUntil": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The first tick its og.Attack plays again: written at a hit.",
+          "default": 0,
+          "minimum": 0
+        },
+        "knockback": {
+          "type": "number",
+          "description": "The speed og.Damaged.knockback carries, away from the striking volume; 0 is none (applying it is the game's: a velocity, a controller's addVelocity).",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "mps",
+          "x-og-tunable": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "Damaged": {
+      "x-og-kind": "event",
+      "x-og-module": "combat",
+      "description": "A hit took damage from a target's og.Health: sent by og.systems.combat the tick it read the og.HitEvent, in event order.\nSee `combat §2`.",
+      "type": "object",
+      "properties": {
+        "target": {
+          "$ref": "#/$defs/Entity",
+          "description": "The entity with the og.Health."
+        },
+        "source": {
+          "$ref": "#/$defs/Entity",
+          "description": "The attacker (og.HitEvent.owner)."
+        },
+        "move": {
+          "$ref": "#/$defs/Entity",
+          "description": "The og.AttackMove whose swing it was."
+        },
+        "swing": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The attacker's swing."
+        },
+        "amount": {
+          "type": "number",
+          "description": "The damage taken (the move's, whatever was left)."
+        },
+        "health": {
+          "type": "number",
+          "description": "What the target has left."
+        },
+        "point": {
+          "$ref": "#/$defs/Vector3",
+          "description": "Where they met (og.HitEvent.point).",
+          "x-og-unit": "m",
+          "x-og-worldspace": "world"
+        },
+        "knockback": {
+          "$ref": "#/$defs/Vector3",
+          "description": "og.Hurt.knockback along the hit, away from the volume: zero without og.Hurt or a knockback.",
+          "x-og-unit": "mps"
+        }
+      },
+      "required": [
+        "target",
+        "source",
+        "move",
+        "swing",
+        "amount",
+        "health",
+        "point",
+        "knockback"
+      ],
+      "additionalProperties": false
+    },
+    "Died": {
+      "x-og-kind": "event",
+      "x-og-module": "combat",
+      "description": "A target's og.Health reached 0: sent once, the tick the hit was read (og.Health.dead is set).\nSee `combat §2`.",
+      "type": "object",
+      "properties": {
+        "entity": {
+          "$ref": "#/$defs/Entity",
+          "description": "The entity with the og.Health."
+        },
+        "source": {
+          "$ref": "#/$defs/Entity",
+          "description": "The attacker whose hit it was."
+        }
+      },
+      "required": [
+        "entity",
+        "source"
+      ],
+      "additionalProperties": false
+    },
+    "CombatAttackers": {
+      "x-og-kind": "resource",
+      "x-og-module": "combat",
+      "description": "Every og.Attack entity in entity order, written by og.systems.combat's first system each tick for its second, which reads the others' records entity by entity (at most 1,024 attackers).",
+      "type": "object",
+      "properties": {
+        "attackers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Entity"
+          },
+          "maxItems": 1024,
+          "description": "The attackers (og.systems.combat writes them; a game reads them).",
+          "default": []
+        }
+      },
       "additionalProperties": false
     }
   }

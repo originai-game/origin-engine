@@ -4,9 +4,11 @@
 
 Systems the engine ships as TypeScript: game-level code, listed explicitly in GameDesc.systems like the game's own, so the schedule (and dump_world) shows them and nothing runs that the game did not ask for.
 
+See `combat §1`.
+
 - **TypeScript**: functions are none at module level (its members live on the types below); components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
-- **Core** (what most games use): `og.systems.cameras`; 0 more are advanced (`og api show systems --all`).
+- **Core** (what most games use): `og.systems.cameras`; 1 more are advanced (`og api show systems --all`).
 - **Index**: [every module and guide](index.md).
 
 ```ogt
@@ -22,6 +24,7 @@ module systems {
 | Name | Kind | Signature | Summary |
 |---|---|---|---|
 | [`og.systems.cameras`](#value-cameras) | value |  | The camera controllers, in order: og.orbitCamera (og.OrbitCamera), og.followCamera (og.FollowCamera) and og.follow2D (og.Follow2D). |
+| [`og.systems.combat`](#value-combat) | value |  | The combat systems, in order: og.combatIndex (lists every og.Attack) and og.combat (last tick's hits as damage, then each og.Attack's move, links and hit volumes). |
 
 ## Values
 
@@ -42,3 +45,19 @@ value cameras List.System "The camera controllers, in order: og.orbitCamera (og.
 ```
 
 <sub>Module `systems` line 5</sub>
+
+<a id="value-combat"></a>
+
+### `og.systems.combat`
+
+The combat systems, in order: og.combatIndex (lists every og.Attack) and og.combat (last tick's hits as damage, then each og.Attack's move, links and hit volumes). They do nothing until an entity carries og.Attack or og.Health. Usage: `systems: [...og.systems.combat, ...yours]`.
+
+```ts
+const combat: readonly System[]
+```
+
+```ogt
+value combat List.System "The combat systems, in order: og.combatIndex (lists every og.Attack) and og.combat (last tick's hits as damage, then each og.Attack's move, links and hit volumes). They do nothing until an entity carries og.Attack or og.Health. Usage: `systems: [...og.systems.combat, ...yours]`."
+```
+
+<sub>Module `systems` line 7</sub>

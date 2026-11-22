@@ -358,6 +358,8 @@ export interface ColumnKinds {
   SightPlane: { readonly array: Uint32Array; readonly stride: 1; readonly value: SightPlane };
   /** A VolumeShape field: the variant's index. */
   VolumeShape: { readonly array: Uint32Array; readonly stride: 1; readonly value: VolumeShape };
+  /** An AttackPhase field: the variant's index. */
+  AttackPhase: { readonly array: Uint32Array; readonly stride: 1; readonly value: AttackPhase };
 }
 
 // ── math ────────────────────────────────────────────────────────
@@ -26290,6 +26292,7 @@ export interface UiScope {
 
 // ── systems ─────────────────────────────────────────────────────
 // Systems the engine ships as TypeScript: game-level code, listed explicitly in GameDesc.systems like the game's own, so the schedule (and dump_world) shows them and nothing runs that the game did not ask for.
+// See `combat §1`.
 
 // ── commands ────────────────────────────────────────────────────
 // The command channel: actions scheduled on simulation time, from `og run --commands "t:action[:args];..."` or the probe's commands().
@@ -33612,6 +33615,297 @@ export interface Candidate {
 }
 
 
+// ── combat ──────────────────────────────────────────────────────
+// The records og.systems.combat carries out: an og.Attack plays og.AttackMove entities tick by tick (startup, active, recovery), drives its og.HitVolume entities in the active window, and takes an og.AttackLink when its input action's buffered press lands in the link's window (og.input.consume); an og.HitEvent of a move's swing takes the move's damage from the target's og.Health, unless its og.Hurt says it is invulnerable, and is reported as og.Damaged and, once, og.Died. Every number is the game's: a zero window, damage or invulnerability does nothing.
+// See `combat §1`.
+
+/**
+ * Where an og.Attack is in its move.
+ * - `"idle"`: No move.
+ * - `"startup"`: Before the move's active window.
+ * - `"active"`: In its active window: its hit volumes strike.
+ * - `"recovery"`: After the active window, until the move ends.
+ */
+export type AttackPhase = "idle" | "startup" | "active" | "recovery";
+
+/**
+ * An AttackPhase field: the variant's index.
+ *
+ * A `AttackPhase` field: stored in a `Uint32Array` with stride 1.
+ * @param value The field's default; omitted, the column's zero value.
+ * @param options Range, unit, label, docs and the tunable flag.
+ */
+export declare function AttackPhase(value?: AttackPhase, options?: FieldOptions): FieldSpec<"AttackPhase">;
+
+/**
+ * An attacker's moves, played by og.systems.combat: `move` advances a tick each tick time moves (none in a hit stop) and ends after its startup, active and recovery ticks. While idle, a buffered press of a `starters` link's action starts its move; while a move plays, one of the move's links whose window holds `tick` does. Each start counts a `swing`, written with `active` and `owner` to the `volumes` the move's mask names.
+ * See `combat §1`.
+ *
+ * The value of the `Attack` component (token `og.Attack`).
+ */
+export interface Attack {
+  /**
+   * The og.AttackMove playing (0: idle). Write 0 to stop it (a dodge out of a cancel window); start one with `next`.
+   */
+  move: Entity;
+  /**
+   * An og.AttackMove to start at the next run whatever the windows (an AI's choice, a scripted move); cleared once taken. A staggered attacker drops it.
+   */
+  next: Entity;
+  /**
+   * Written: ticks since the move started (0 its first).
+   *
+   * @readonly written by the engine
+   */
+  readonly tick: number;
+  /**
+   * Written: where in the move it is.
+   *
+   * @readonly written by the engine
+   */
+  readonly phase: AttackPhase;
+  /**
+   * Written: how many moves it has started, written to its hit volumes' `swing`, so each move strikes a target once.
+   *
+   * @readonly written by the engine
+   */
+  readonly swing: number;
+  /**
+   * Written: the og.AttackMove the current swing started, kept after it ends or is cut: a hit is read the tick after it struck, and takes this move's damage.
+   *
+   * @readonly written by the engine
+   */
+  readonly swingMove: Entity;
+  /**
+   * Written: idle, or within the move's cancel window (og.AttackMove.cancelOpen to cancelClose): what a dodge or a jump checks before it writes `move` 0.
+   *
+   * @readonly written by the engine
+   */
+  readonly cancelable: boolean;
+  /**
+   * The og.AttackLink entities taken while idle, in order (their windows are not read).
+   *
+   * @capacity 8 elements (List.Entity.8): reading answers a frozen copy (push throws); write a whole array, refused over the capacity, never truncated
+   */
+  starters: readonly Entity[];
+  /**
+   * The og.HitVolume entities its moves drive: bit i of og.AttackMove.volumes is volumes[i].
+   *
+   * @capacity 8 elements (List.Entity.8): reading answers a frozen copy (push throws); write a whole array, refused over the capacity, never truncated
+   */
+  volumes: readonly Entity[];
+}
+
+/**
+ * One move's frame data, on an entity of its own that any og.Attack may play: its windows in ticks, its damage, the hit volumes it uses and the links out of it. All zero is no move: a link to it is never taken.
+ * See `combat §1`.
+ *
+ * The value of the `AttackMove` component (token `og.AttackMove`).
+ */
+export interface AttackMove {
+  /**
+   * Ticks before its active window.
+   *
+   * @range 0..
+   * @tunable
+   */
+  startup: number;
+  /**
+   * Ticks its hit volumes strike.
+   *
+   * @range 0..
+   * @tunable
+   */
+  active: number;
+  /**
+   * Ticks after the active window before it ends.
+   *
+   * @range 0..
+   * @tunable
+   */
+  recovery: number;
+  /**
+   * What a hit of its swing takes from the target's og.Health; 0 takes nothing.
+   *
+   * @range 0..
+   * @tunable
+   */
+  damage: number;
+  /**
+   * Which of og.Attack.volumes strike in its active window, as bits (bit 0 is volumes[0]); 0 strikes with none.
+   */
+  volumes: number;
+  /**
+   * The first tick (from its start) of its cancel window, when og.Attack.cancelable holds.
+   *
+   * @range 0..
+   */
+  cancelOpen: number;
+  /**
+   * The tick its cancel window closes; at or before cancelOpen, there is none.
+   *
+   * @range 0..
+   */
+  cancelClose: number;
+  /**
+   * The og.AttackLink entities followed out of it, in order: the first whose window holds the tick and whose action has a buffered press is taken.
+   *
+   * @capacity 8 elements (List.Entity.8): reading answers a frozen copy (push throws); write a whole array, refused over the capacity, never truncated
+   */
+  links: readonly Entity[];
+}
+
+/**
+ * A way from one move to another: a press of `action` buffered (og.input.consume) while the move it leaves is at a tick in [open, close) starts `to`. A press before the window waits in the action's buffer (ActionDesc.bufferTicks) and is taken the tick the window opens; one after it closes does not chain.
+ * See `combat §1`.
+ *
+ * The value of the `AttackLink` component (token `og.AttackLink`).
+ */
+export interface AttackLink {
+  /**
+   * The input action whose press takes it (og.input.defineAction's name).
+   *
+   * @capacity 32 bytes of UTF-8 (str(32)); longer text is refused, never truncated
+   */
+  action: string;
+  /** The og.AttackMove it starts. */
+  to: Entity;
+  /**
+   * The first tick (from the start of the move it leaves) it can be taken.
+   *
+   * @range 0..
+   */
+  open: number;
+  /**
+   * The tick it can no longer be taken; at or before open, never (a starter's window is not read).
+   *
+   * @range 0..
+   */
+  close: number;
+}
+
+/**
+ * What a target has left. og.systems.combat takes a hit's damage from `value` (never below 0) and sets `dead` when it reaches 0, sending og.Died once; it never heals. A dead target takes no more damage.
+ * See `combat §2`.
+ *
+ * The value of the `Health` component (token `og.Health`).
+ */
+export interface Health {
+  /**
+   * What is left.
+   *
+   * @range 0..
+   * @tunable
+   */
+  value: number;
+  /** Set when `value` reached 0; write false (and a value) to revive it. */
+  dead: boolean;
+}
+
+/**
+ * How a target takes a hit, beside its og.Health: for `invulnerableTicks` from a hit (its own tick first) further hits are ignored, for `staggerTicks` its og.Attack plays nothing (the move it played is cut), and og.Damaged carries a knockback of `knockback` away from the volume. A dodge's i-frames: write `invulnerableUntil`.
+ * See `combat §2`.
+ *
+ * The value of the `Hurt` component (token `og.Hurt`).
+ */
+export interface Hurt {
+  /**
+   * Ticks from a hit in which further hits are ignored; 0 ignores none.
+   *
+   * @range 0..
+   * @tunable
+   */
+  invulnerableTicks: number;
+  /**
+   * The first tick it can be hurt again (hits read before it are ignored): written at a hit, and by a game for a dodge's i-frames.
+   *
+   * @range 0..
+   */
+  invulnerableUntil: number;
+  /**
+   * Ticks from a hit in which its og.Attack plays nothing; 0 staggers not at all.
+   *
+   * @range 0..
+   * @tunable
+   */
+  staggerTicks: number;
+  /**
+   * The first tick its og.Attack plays again: written at a hit.
+   *
+   * @range 0..
+   */
+  staggeredUntil: number;
+  /**
+   * The speed og.Damaged.knockback carries, away from the striking volume; 0 is none (applying it is the game's: a velocity, a controller's addVelocity).
+   *
+   * @range 0..
+   * @unit mps (metres per second)
+   * @tunable
+   */
+  knockback: number;
+}
+
+/**
+ * A hit took damage from a target's og.Health: sent by og.systems.combat the tick it read the og.HitEvent, in event order.
+ * See `combat §2`.
+ *
+ * The payload of the `Damaged` event (token `og.Damaged`).
+ */
+export interface Damaged {
+  /** The entity with the og.Health. */
+  readonly target: Entity;
+  /** The attacker (og.HitEvent.owner). */
+  readonly source: Entity;
+  /** The og.AttackMove whose swing it was. */
+  readonly move: Entity;
+  /** The attacker's swing. */
+  readonly swing: number;
+  /** The damage taken (the move's, whatever was left). */
+  readonly amount: number;
+  /** What the target has left. */
+  readonly health: number;
+  /**
+   * Where they met (og.HitEvent.point).
+   *
+   * @unit m (metres)
+   * @worldspace world (how og.WorldOrigin's shift moves it)
+   */
+  readonly point: Vector3;
+  /**
+   * og.Hurt.knockback along the hit, away from the volume: zero without og.Hurt or a knockback.
+   *
+   * @unit mps (metres per second)
+   */
+  readonly knockback: Vector3;
+}
+
+/**
+ * A target's og.Health reached 0: sent once, the tick the hit was read (og.Health.dead is set).
+ * See `combat §2`.
+ *
+ * The payload of the `Died` event (token `og.Died`).
+ */
+export interface Died {
+  /** The entity with the og.Health. */
+  readonly entity: Entity;
+  /** The attacker whose hit it was. */
+  readonly source: Entity;
+}
+
+/**
+ * Every og.Attack entity in entity order, written by og.systems.combat's first system each tick for its second, which reads the others' records entity by entity (at most 1,024 attackers).
+ *
+ * The `CombatAttackers` resource (token `og.CombatAttackers`).
+ */
+export interface CombatAttackers {
+  /**
+   * The attackers (og.systems.combat writes them; a game reads them).
+   *
+   * @capacity 1024 elements (List.Entity.1024): reading answers a frozen copy (push throws); write a whole array, refused over the capacity, never truncated
+   */
+  attackers: readonly Entity[];
+}
+
 // ── og ──────────────────────────────────────────────────────────
 
 /**
@@ -37301,12 +37595,17 @@ export declare namespace og {
   }
   /**
    * Systems the engine ships as TypeScript: game-level code, listed explicitly in GameDesc.systems like the game's own, so the schedule (and dump_world) shows them and nothing runs that the game did not ask for.
+   * See `combat §1`.
    */
   namespace systems {
     /**
      * The camera controllers, in order: og.orbitCamera (og.OrbitCamera), og.followCamera (og.FollowCamera) and og.follow2D (og.Follow2D). Each moves og.Camera only while an entity carries its component. List them before the game's systems that read og.Camera: `systems: [...og.systems.cameras, ...yours]`.
      */
     const cameras: readonly System[];
+    /**
+     * The combat systems, in order: og.combatIndex (lists every og.Attack) and og.combat (last tick's hits as damage, then each og.Attack's move, links and hit volumes). They do nothing until an entity carries og.Attack or og.Health. Usage: `systems: [...og.systems.combat, ...yours]`.
+     */
+    const combat: readonly System[];
   }
   /**
    * The command channel: actions scheduled on simulation time, from `og run --commands "t:action[:args];..."` or the probe's commands().
@@ -38659,4 +38958,43 @@ export declare namespace og {
      */
     function candidates(world: World, desc?: CandidatesDesc): Result<readonly Candidate[]>;
   }
+  /**
+   * An attacker's moves, played by og.systems.combat: `move` advances a tick each tick time moves (none in a hit stop) and ends after its startup, active and recovery ticks. While idle, a buffered press of a `starters` link's action starts its move; while a move plays, one of the move's links whose window holds `tick` does. Each start counts a `swing`, written with `active` and `owner` to the `volumes` the move's mask names.
+   * See `combat §1`.
+   */
+  const Attack: ComponentType<{ readonly move: FieldSpec<"Entity">; readonly next: FieldSpec<"Entity">; readonly tick: FieldSpec<"u32">; readonly phase: FieldSpec<"AttackPhase">; readonly swing: FieldSpec<"u32">; readonly swingMove: FieldSpec<"Entity">; readonly cancelable: FieldSpec<"bool">; readonly starters: ListSpec<"Entity">; readonly volumes: ListSpec<"Entity"> }, Attack>;
+  /**
+   * One move's frame data, on an entity of its own that any og.Attack may play: its windows in ticks, its damage, the hit volumes it uses and the links out of it. All zero is no move: a link to it is never taken.
+   * See `combat §1`.
+   */
+  const AttackMove: ComponentType<{ readonly startup: FieldSpec<"u32">; readonly active: FieldSpec<"u32">; readonly recovery: FieldSpec<"u32">; readonly damage: FieldSpec<"f32">; readonly volumes: FieldSpec<"u32">; readonly cancelOpen: FieldSpec<"u32">; readonly cancelClose: FieldSpec<"u32">; readonly links: ListSpec<"Entity"> }, AttackMove>;
+  /**
+   * A way from one move to another: a press of `action` buffered (og.input.consume) while the move it leaves is at a tick in [open, close) starts `to`. A press before the window waits in the action's buffer (ActionDesc.bufferTicks) and is taken the tick the window opens; one after it closes does not chain.
+   * See `combat §1`.
+   */
+  const AttackLink: ComponentType<{ readonly action: FieldSpec<"str">; readonly to: FieldSpec<"Entity">; readonly open: FieldSpec<"u32">; readonly close: FieldSpec<"u32"> }, AttackLink>;
+  /**
+   * What a target has left. og.systems.combat takes a hit's damage from `value` (never below 0) and sets `dead` when it reaches 0, sending og.Died once; it never heals. A dead target takes no more damage.
+   * See `combat §2`.
+   */
+  const Health: ComponentType<{ readonly value: FieldSpec<"f32">; readonly dead: FieldSpec<"bool"> }, Health>;
+  /**
+   * How a target takes a hit, beside its og.Health: for `invulnerableTicks` from a hit (its own tick first) further hits are ignored, for `staggerTicks` its og.Attack plays nothing (the move it played is cut), and og.Damaged carries a knockback of `knockback` away from the volume. A dodge's i-frames: write `invulnerableUntil`.
+   * See `combat §2`.
+   */
+  const Hurt: ComponentType<{ readonly invulnerableTicks: FieldSpec<"u32">; readonly invulnerableUntil: FieldSpec<"u32">; readonly staggerTicks: FieldSpec<"u32">; readonly staggeredUntil: FieldSpec<"u32">; readonly knockback: FieldSpec<"f32"> }, Hurt>;
+  /**
+   * A hit took damage from a target's og.Health: sent by og.systems.combat the tick it read the og.HitEvent, in event order.
+   * See `combat §2`.
+   */
+  const Damaged: EventType<Damaged>;
+  /**
+   * A target's og.Health reached 0: sent once, the tick the hit was read (og.Health.dead is set).
+   * See `combat §2`.
+   */
+  const Died: EventType<Died>;
+  /**
+   * Every og.Attack entity in entity order, written by og.systems.combat's first system each tick for its second, which reads the others' records entity by entity (at most 1,024 attackers).
+   */
+  const CombatAttackers: ResourceType<{ readonly attackers: ListSpec<"Entity"> }, CombatAttackers>;
 }

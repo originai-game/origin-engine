@@ -1,0 +1,156 @@
+module combat {
+  doc "The records og.systems.combat carries out: an og.Attack plays og.AttackMove entities tick by tick (startup, active, recovery), drives its og.HitVolume entities in the active window, and takes an og.AttackLink when its input action's buffered press lands in the link's window (og.input.consume); an og.HitEvent of a move's swing takes the move's damage from the target's og.Health, unless its og.Hurt says it is invulnerable, and is reported as og.Damaged and, once, og.Died. Every number is the game's: a zero window, damage or invulnerability does nothing."
+  guide "combat §1"
+
+  enum AttackPhase {
+    doc "Where an og.Attack is in its move."
+    variant idle "No move."
+    variant startup "Before the move's active window."
+    variant active "In its active window: its hit volumes strike."
+    variant recovery "After the active window, until the move ends."
+  }
+
+  column AttackPhase {
+    doc "An AttackPhase field: the variant's index."
+    array Uint32Array
+    stride 1
+    value AttackPhase
+  }
+
+  component Attack {
+    aliases "attack state machine, combo state, melee attacker, fighting game moves, attack frames, cancel window"
+    doc "An attacker's moves, played by og.systems.combat: `move` advances a tick each tick time moves (none in a hit stop) and ends after its startup, active and recovery ticks. While idle, a buffered press of a `starters` link's action starts its move; while a move plays, one of the move's links whose window holds `tick` does. Each start counts a `swing`, written with `active` and `owner` to the `volumes` the move's mask names."
+    guide "combat §1"
+    field move Entity "The og.AttackMove playing (0: idle). Write 0 to stop it (a dodge out of a cancel window); start one with `next`."
+    field next Entity "An og.AttackMove to start at the next run whatever the windows (an AI's choice, a scripted move); cleared once taken. A staggered attacker drops it."
+    field tick u32 "Written: ticks since the move started (0 its first)." {
+      readonly true
+    }
+    field phase AttackPhase "Written: where in the move it is." {
+      readonly true
+    }
+    field swing u32 "Written: how many moves it has started, written to its hit volumes' `swing`, so each move strikes a target once." {
+      readonly true
+    }
+    field swingMove Entity "Written: the og.AttackMove the current swing started, kept after it ends or is cut: a hit is read the tick after it struck, and takes this move's damage." {
+      readonly true
+    }
+    field cancelable bool "Written: idle, or within the move's cancel window (og.AttackMove.cancelOpen to cancelClose): what a dodge or a jump checks before it writes `move` 0." {
+      readonly true
+    }
+    field starters List.Entity.8 "The og.AttackLink entities taken while idle, in order (their windows are not read)."
+    field volumes List.Entity.8 "The og.HitVolume entities its moves drive: bit i of og.AttackMove.volumes is volumes[i]."
+  }
+
+  component AttackMove {
+    aliases "attack data, move frame data, startup active recovery, hitbox timing, attack definition"
+    doc "One move's frame data, on an entity of its own that any og.Attack may play: its windows in ticks, its damage, the hit volumes it uses and the links out of it. All zero is no move: a link to it is never taken."
+    guide "combat §1"
+    field startup u32 "Ticks before its active window." {
+      min 0
+      tunable true
+    }
+    field active u32 "Ticks its hit volumes strike." {
+      min 0
+      tunable true
+    }
+    field recovery u32 "Ticks after the active window before it ends." {
+      min 0
+      tunable true
+    }
+    field damage f32 "What a hit of its swing takes from the target's og.Health; 0 takes nothing." {
+      min 0
+      tunable true
+    }
+    field volumes u32 "Which of og.Attack.volumes strike in its active window, as bits (bit 0 is volumes[0]); 0 strikes with none."
+    field cancelOpen u32 "The first tick (from its start) of its cancel window, when og.Attack.cancelable holds." {
+      min 0
+    }
+    field cancelClose u32 "The tick its cancel window closes; at or before cancelOpen, there is none." {
+      min 0
+    }
+    field links List.Entity.8 "The og.AttackLink entities followed out of it, in order: the first whose window holds the tick and whose action has a buffered press is taken."
+  }
+
+  component AttackLink {
+    aliases "combo link, chain, cancel into, follow-up attack, combo route"
+    doc "A way from one move to another: a press of `action` buffered (og.input.consume) while the move it leaves is at a tick in [open, close) starts `to`. A press before the window waits in the action's buffer (ActionDesc.bufferTicks) and is taken the tick the window opens; one after it closes does not chain."
+    guide "combat §1"
+    field action str.32 "The input action whose press takes it (og.input.defineAction's name)."
+    field to Entity "The og.AttackMove it starts."
+    field open u32 "The first tick (from the start of the move it leaves) it can be taken." {
+      min 0
+    }
+    field close u32 "The tick it can no longer be taken; at or before open, never (a starter's window is not read)." {
+      min 0
+    }
+  }
+
+  component Health {
+    aliases "hit points, HP, life, health bar value, damageable"
+    doc "What a target has left. og.systems.combat takes a hit's damage from `value` (never below 0) and sets `dead` when it reaches 0, sending og.Died once; it never heals. A dead target takes no more damage."
+    guide "combat §2"
+    field value f32 "What is left." {
+      min 0
+      tunable true
+    }
+    field dead bool "Set when `value` reached 0; write false (and a value) to revive it."
+  }
+
+  component Hurt {
+    aliases "invulnerability frames, i-frames, invincibility, hit stun, stagger, knockback, flinch"
+    doc "How a target takes a hit, beside its og.Health: for `invulnerableTicks` from a hit (its own tick first) further hits are ignored, for `staggerTicks` its og.Attack plays nothing (the move it played is cut), and og.Damaged carries a knockback of `knockback` away from the volume. A dodge's i-frames: write `invulnerableUntil`."
+    guide "combat §2"
+    field invulnerableTicks u32 "Ticks from a hit in which further hits are ignored; 0 ignores none." {
+      min 0
+      tunable true
+    }
+    field invulnerableUntil u32 "The first tick it can be hurt again (hits read before it are ignored): written at a hit, and by a game for a dodge's i-frames." {
+      min 0
+    }
+    field staggerTicks u32 "Ticks from a hit in which its og.Attack plays nothing; 0 staggers not at all." {
+      min 0
+      tunable true
+    }
+    field staggeredUntil u32 "The first tick its og.Attack plays again: written at a hit." {
+      min 0
+    }
+    field knockback f32 "The speed og.Damaged.knockback carries, away from the striking volume; 0 is none (applying it is the game's: a velocity, a controller's addVelocity)." {
+      min 0
+      unit mps
+      tunable true
+    }
+  }
+
+  event Damaged {
+    aliases "on damage, took damage, hit landed, damage event, damage number"
+    doc "A hit took damage from a target's og.Health: sent by og.systems.combat the tick it read the og.HitEvent, in event order."
+    guide "combat §2"
+    field target Entity "The entity with the og.Health."
+    field source Entity "The attacker (og.HitEvent.owner)."
+    field move Entity "The og.AttackMove whose swing it was."
+    field swing u32 "The attacker's swing."
+    field amount f32 "The damage taken (the move's, whatever was left)."
+    field health f32 "What the target has left."
+    field point Vector3 "Where they met (og.HitEvent.point)." {
+      unit m
+      worldspace world
+    }
+    field knockback Vector3 "og.Hurt.knockback along the hit, away from the volume: zero without og.Hurt or a knockback." {
+      unit mps
+    }
+  }
+
+  event Died {
+    aliases "on death, killed, health reached zero, death event"
+    doc "A target's og.Health reached 0: sent once, the tick the hit was read (og.Health.dead is set)."
+    guide "combat §2"
+    field entity Entity "The entity with the og.Health."
+    field source Entity "The attacker whose hit it was."
+  }
+
+  resource CombatAttackers {
+    doc "Every og.Attack entity in entity order, written by og.systems.combat's first system each tick for its second, which reads the others' records entity by entity (at most 1,024 attackers)."
+    field attackers List.Entity.1024 "The attackers (og.systems.combat writes them; a game reads them)."
+  }
+}

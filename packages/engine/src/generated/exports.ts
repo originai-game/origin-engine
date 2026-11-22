@@ -175,3 +175,6 @@ export const SightPlane = ((value = "ground" as Api.SightPlane, options) => spec
 
 // play
 export const VolumeShape = ((value = "sphere" as Api.VolumeShape, options) => spec("VolumeShape", value, options)) as typeof Api.VolumeShape;
+
+// combat
+export const AttackPhase = ((value = "idle" as Api.AttackPhase, options) => spec("AttackPhase", value, options)) as typeof Api.AttackPhase;

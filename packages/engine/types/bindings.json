@@ -665,6 +665,12 @@
       "array": "Uint32Array",
       "stride": 1,
       "value": "VolumeShape"
+    },
+    {
+      "name": "AttackPhase",
+      "array": "Uint32Array",
+      "stride": 1,
+      "value": "AttackPhase"
     }
   ],
   "components": [
@@ -8976,6 +8982,203 @@
           "default": 0
         }
       ]
+    },
+    {
+      "id": 121,
+      "name": "Attack",
+      "schema": "og.Attack",
+      "module": "combat",
+      "fields": [
+        {
+          "name": "move",
+          "column": "Entity",
+          "default": 0
+        },
+        {
+          "name": "next",
+          "column": "Entity",
+          "default": 0
+        },
+        {
+          "name": "tick",
+          "column": "u32",
+          "default": 0,
+          "readonly": true
+        },
+        {
+          "name": "phase",
+          "column": "AttackPhase",
+          "default": "idle",
+          "readonly": true
+        },
+        {
+          "name": "swing",
+          "column": "u32",
+          "default": 0,
+          "readonly": true
+        },
+        {
+          "name": "swingMove",
+          "column": "Entity",
+          "default": 0,
+          "readonly": true
+        },
+        {
+          "name": "cancelable",
+          "column": "bool",
+          "default": false,
+          "readonly": true
+        },
+        {
+          "name": "starters",
+          "column": "Entity",
+          "list": 8,
+          "default": []
+        },
+        {
+          "name": "volumes",
+          "column": "Entity",
+          "list": 8,
+          "default": []
+        }
+      ]
+    },
+    {
+      "id": 122,
+      "name": "AttackMove",
+      "schema": "og.AttackMove",
+      "module": "combat",
+      "fields": [
+        {
+          "name": "startup",
+          "column": "u32",
+          "default": 0,
+          "tunable": true
+        },
+        {
+          "name": "active",
+          "column": "u32",
+          "default": 0,
+          "tunable": true
+        },
+        {
+          "name": "recovery",
+          "column": "u32",
+          "default": 0,
+          "tunable": true
+        },
+        {
+          "name": "damage",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
+        },
+        {
+          "name": "volumes",
+          "column": "u32",
+          "default": 0
+        },
+        {
+          "name": "cancelOpen",
+          "column": "u32",
+          "default": 0
+        },
+        {
+          "name": "cancelClose",
+          "column": "u32",
+          "default": 0
+        },
+        {
+          "name": "links",
+          "column": "Entity",
+          "list": 8,
+          "default": []
+        }
+      ]
+    },
+    {
+      "id": 123,
+      "name": "AttackLink",
+      "schema": "og.AttackLink",
+      "module": "combat",
+      "fields": [
+        {
+          "name": "action",
+          "column": "str",
+          "capacity": 32,
+          "default": ""
+        },
+        {
+          "name": "to",
+          "column": "Entity",
+          "default": 0
+        },
+        {
+          "name": "open",
+          "column": "u32",
+          "default": 0
+        },
+        {
+          "name": "close",
+          "column": "u32",
+          "default": 0
+        }
+      ]
+    },
+    {
+      "id": 124,
+      "name": "Health",
+      "schema": "og.Health",
+      "module": "combat",
+      "fields": [
+        {
+          "name": "value",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
+        },
+        {
+          "name": "dead",
+          "column": "bool",
+          "default": false
+        }
+      ]
+    },
+    {
+      "id": 125,
+      "name": "Hurt",
+      "schema": "og.Hurt",
+      "module": "combat",
+      "fields": [
+        {
+          "name": "invulnerableTicks",
+          "column": "u32",
+          "default": 0,
+          "tunable": true
+        },
+        {
+          "name": "invulnerableUntil",
+          "column": "u32",
+          "default": 0
+        },
+        {
+          "name": "staggerTicks",
+          "column": "u32",
+          "default": 0,
+          "tunable": true
+        },
+        {
+          "name": "staggeredUntil",
+          "column": "u32",
+          "default": 0
+        },
+        {
+          "name": "knockback",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
+        }
+      ]
     }
   ],
   "resources": [
@@ -13183,6 +13386,20 @@
           "readonly": true
         }
       ]
+    },
+    {
+      "id": 44,
+      "name": "CombatAttackers",
+      "schema": "og.CombatAttackers",
+      "module": "combat",
+      "fields": [
+        {
+          "name": "attackers",
+          "column": "Entity",
+          "list": 1024,
+          "default": []
+        }
+      ]
     }
   ],
   "events": [
@@ -15222,6 +15439,80 @@
             "y": 0,
             "z": 0
           }
+        }
+      ]
+    },
+    {
+      "id": 77,
+      "name": "Damaged",
+      "schema": "og.Damaged",
+      "module": "combat",
+      "fields": [
+        {
+          "name": "target",
+          "type": "Entity",
+          "default": 0
+        },
+        {
+          "name": "source",
+          "type": "Entity",
+          "default": 0
+        },
+        {
+          "name": "move",
+          "type": "Entity",
+          "default": 0
+        },
+        {
+          "name": "swing",
+          "type": "u32",
+          "default": 0
+        },
+        {
+          "name": "amount",
+          "type": "f32",
+          "default": 0
+        },
+        {
+          "name": "health",
+          "type": "f32",
+          "default": 0
+        },
+        {
+          "name": "point",
+          "type": "Vector3",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          }
+        },
+        {
+          "name": "knockback",
+          "type": "Vector3",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          }
+        }
+      ]
+    },
+    {
+      "id": 78,
+      "name": "Died",
+      "schema": "og.Died",
+      "module": "combat",
+      "fields": [
+        {
+          "name": "entity",
+          "type": "Entity",
+          "default": 0
+        },
+        {
+          "name": "source",
+          "type": "Entity",
+          "default": 0
         }
       ]
     }
