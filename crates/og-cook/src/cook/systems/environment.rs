@@ -385,19 +385,24 @@ pub(crate) fn environment_dependencies(s: &Source) -> String {
 }
 
 /// Both LDR layouts share solar estimation, range expansion and the bake.
+/// With `sun extract`, `no_sun` is set to why the LDR image gave no sun.
 fn bake_image(
     mut img: image::Rgb32FImage,
     source_width: u32,
     ldr: bool,
     doc: &EnvironmentDoc,
     desc: &og_render_data::bake::BakeDesc,
+    no_sun: &mut Option<String>,
 ) -> Result<og_render_data::EnvironmentMapData, CookError> {
     let (width, height) = img.dimensions();
     let background = ldr.then(|| img.clone());
     let mut sun = Default::default();
     if ldr {
         if doc.sun {
-            sun = prepare::take_sun(&mut img, doc.sun_boost);
+            match prepare::take_sun(&mut img, doc.sun_boost) {
+                Ok(s) => sun = s,
+                Err(why) => *no_sun = Some(why),
+            }
         }
         prepare::expand(img.as_mut(), doc.expand);
     }
@@ -474,6 +479,7 @@ pub(crate) fn cook_environment(
     };
     let mut facts = Vec::new();
     let mut diagnostics = serde_json::Value::Null;
+    let mut no_sun = None;
     let (map, width, height, what) = match &doc.source {
         EnvironmentSource::Equirect(source) => {
             let img = decode_image(source, &read(source)?)?;
@@ -484,7 +490,7 @@ pub(crate) fn cook_environment(
             let source_width = img.width();
             let img = prepare::panorama(source, img, &doc)?;
             let (width, height) = img.dimensions();
-            let map = bake_image(img, source_width, ldr, &doc, &desc)?;
+            let map = bake_image(img, source_width, ldr, &doc, &desc, &mut no_sun)?;
             (map, width, height, format!("{source} {width} × {height}"))
         }
         EnvironmentSource::Ktx2(source) if doc.prefiltered => {
@@ -571,7 +577,7 @@ pub(crate) fn cook_environment(
                 "environment facts (faces projected to panorama): {diagnostics}"
             ));
             let map = if faces.iter().all(|f| !hdr_image(f)) {
-                bake_image(panorama, 4 * size, true, &doc, &desc)?
+                bake_image(panorama, 4 * size, true, &doc, &desc, &mut no_sun)?
             } else {
                 og_render_data::bake::bake_cube(
                     &og_render_data::bake::CubeFaces { size, rgb: &rgb },
@@ -588,6 +594,17 @@ pub(crate) fn cook_environment(
         }
     };
     let samples = if doc.prefiltered { 0 } else { doc.samples };
+    // Why `sun extract` found no sun, in the report (environment.facts and
+    // environment.sun) and the cook's message: an HDR image's sun is every
+    // texel within 5° of the brightest over sixteen times the rest's mean.
+    let no_sun = (doc.sun && map.sun.intensity <= 0.0).then(|| {
+        no_sun.unwrap_or_else(|| {
+            "none bright enough: no texel near the brightest stands over sixteen times the mean of the rest".into()
+        })
+    });
+    if let (Some(why), serde_json::Value::Object(facts)) = (&no_sun, &mut diagnostics) {
+        facts.insert("sunMissing".into(), serde_json::json!(why));
+    }
     let (blob, texels, packed) = environment_blob(
         &map,
         (width, height),
@@ -609,9 +626,10 @@ pub(crate) fn cook_environment(
             s.direction[1],
             s.direction[2]
         ),
-        (true, _) => {
-            "; sun extract: no measurable sun was found, so the image is kept whole".into()
-        }
+        (true, _) => format!(
+            "; sun extract: no measurable sun was found ({}), so the image is kept whole",
+            no_sun.as_deref().unwrap_or("none bright enough")
+        ),
     };
     let note = format!(
         "environment: {what} into a {}² cube of {} levels (RGB9E5, {} KiB, {} KiB zlib'd){}{sun}",

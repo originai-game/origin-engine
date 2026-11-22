@@ -1150,3 +1150,101 @@ fn near_equirect_resamples_but_a_distant_aspect_names_its_size() {
             .is_ok()
     );
 }
+
+/// When `sun extract` finds no sun in an LDR sky, the cook's message and
+/// report name why: nothing bright enough, white clouds merged with the
+/// disc (a clipped area), or a disc drawn too large. A small white disc in
+/// the same sky is measured.
+#[test]
+fn an_ldr_sky_without_a_measurable_sun_names_the_cause() {
+    let sky = |paint: fn(f32, f32) -> Option<[u8; 3]>| {
+        ldr_image(
+            512,
+            256,
+            move |x, y| {
+                paint(x as f32 - 300.0, y as f32 - 70.0).unwrap_or({
+                    let glow = (y as f32 * 0.2) as u8;
+                    [90 + glow, 120 + glow, 170]
+                })
+            },
+            image::ImageFormat::Png,
+        )
+    };
+    let small = sky(|dx, dy| (dx.hypot(dy) < 2.5).then_some([255, 255, 255]));
+    let dim = sky(|dx, dy| (dx.hypot(dy) < 2.5).then_some([200, 200, 200]));
+    let large = sky(|dx, dy| (dx.hypot(dy) < 20.0).then_some([255, 255, 255]));
+    // The disc, with white cumulus lumps running off it to the right.
+    let clouds = sky(|dx, dy| {
+        let lump = |cx: f32, cy: f32, r: f32| (dx - cx).hypot(dy - cy) < r;
+        (dx.hypot(dy) < 2.5
+            || lump(4.0, 1.0, 4.0)
+            || lump(14.0, 6.0, 7.0)
+            || lump(28.0, 2.0, 9.0)
+            || lump(44.0, 10.0, 8.0)
+            || lump(60.0, 4.0, 10.0))
+        .then_some([255, 255, 255])
+    });
+    let env = |source: &str| {
+        format!(
+            "type environment\nversion 1\n---\nsource \"{source}\"\nsize 32\nsamples 16\nexpand 0\n"
+        )
+    };
+    let root = project(
+        "ldr-no-sun",
+        &[
+            ("small.png", &small),
+            ("dim.png", &dim),
+            ("large.png", &large),
+            ("clouds.png", &clouds),
+            ("small.ogt", env("small.png").as_bytes()),
+            ("dim.ogt", env("dim.png").as_bytes()),
+            ("large.ogt", env("large.png").as_bytes()),
+            ("clouds.ogt", env("clouds.png").as_bytes()),
+        ],
+    );
+    let report = cook(&root);
+    let notes = |source: &str| {
+        report
+            .assets
+            .iter()
+            .find(|a| a.source == source)
+            .unwrap()
+            .notes
+            .join("\n")
+    };
+    assert!(
+        notes("small.ogt").contains("sun extract: intensity"),
+        "{}",
+        notes("small.ogt")
+    );
+    for (source, cause) in [
+        ("dim.ogt", "none bright enough"),
+        ("large.ogt", "a disc too large"),
+        ("clouds.ogt", "clipped area"),
+    ] {
+        let n = notes(source);
+        assert!(
+            n.contains("no measurable sun was found (") && n.contains(cause),
+            "{source}: {n}"
+        );
+    }
+    let stats =
+        og_cook::cook::stats::cook_report_json(&report, &root.join("cooked"), &Default::default());
+    let sun = |source: &str| {
+        stats["assets"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|a| a["source"] == source)
+            .unwrap()["environment"]["sun"]
+            .clone()
+    };
+    assert!(sun("small.ogt")["missing"].is_null());
+    assert!(
+        sun("large.ogt")["missing"]
+            .as_str()
+            .is_some_and(|m| m.starts_with("a disc too large")),
+        "{}",
+        sun("large.ogt")
+    );
+}

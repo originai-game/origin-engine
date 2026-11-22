@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "og cook",
+      "summary": "When `sun extract` finds no measurable sun in an LDR sky, the cook's message and the report's `environment.sun.missing` name the cause: none bright enough (with the brightest pixel's colour), a clipped area (white clouds joined to the disc) or a disc too large (its size and the limit)."
+    }
+  ]
+}

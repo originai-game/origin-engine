@@ -251,11 +251,21 @@ fn daylight(img: &Rgb32FImage, sun: Vec3) -> Option<Vec3> {
     Some(color / color.dot(LUMA).max(1e-6) * (127_500.0 * attenuation(0.55) * scale))
 }
 
+/// The largest solid angle (steradians) a region may cover to be measured
+/// as the sun's disc: about 11° across.
+const MAX_SUN_AREA: f32 = 0.03;
+
 /// Locate the brightest compact connected disc in the upper hemisphere.
 /// Its observed solid angle and the unclipped circumsolar gradient determine
 /// the estimate. It is deliberately reported as an estimate: clipping has
-/// destroyed information, and a white cloud can be ambiguous.
-pub(super) fn take_sun(img: &mut Rgb32FImage, strength: f32) -> og_render_data::EnvironmentSun {
+/// destroyed information, and a white cloud can be ambiguous. `Err` names
+/// why no sun was measured: nothing bright enough, a bright region too
+/// large (clipped clouds or haze merged with the disc, or a disc drawn too
+/// large), or no sky around it to measure against.
+pub(super) fn take_sun(
+    img: &mut Rgb32FImage,
+    strength: f32,
+) -> Result<og_render_data::EnvironmentSun, String> {
     let (w, h) = img.dimensions();
     let pixels = (w * h) as usize;
     let peak = (0..pixels / 2)
@@ -266,7 +276,12 @@ pub(super) fn take_sun(img: &mut Rgb32FImage, strength: f32) -> og_render_data::
         .unwrap_or(0);
     let peak_rgb = Vec3::from_slice(&img.as_raw()[3 * peak..3 * peak + 3]);
     if peak_rgb.min_element() < 0.8 {
-        return Default::default();
+        return Err(format!(
+            "none bright enough: the brightest pixel above the horizon is sRGB {:.2} {:.2} {:.2}, and a sun disc has every channel at 0.9 or more in sRGB (0.8 linear); draw the sun as a small white disc",
+            image_srgb(peak_rgb.x),
+            image_srgb(peak_rgb.y),
+            image_srgb(peak_rgb.z)
+        ));
     }
     let mut visited = vec![false; pixels];
     let mut disc = vec![peak];
@@ -297,12 +312,45 @@ pub(super) fn take_sun(img: &mut Rgb32FImage, strength: f32) -> og_render_data::
             }
         }
     }
-    // Large overcast white regions are not a measurable solar disc.
-    if area <= 0.0 || area > 0.03 {
-        return Default::default();
-    }
     let aim = aim.normalize();
     let radius = (1.0 - area / TAU).acos();
+    // Large overcast white regions are not a measurable solar disc.
+    if area > MAX_SUN_AREA {
+        // Drawn as a disc in the image, the region reaches about its
+        // equivalent radius in pixels from its centre (a circle 1, a 2:1
+        // rectangle 1.3); one that sprawls past that is clouds or haze
+        // joined to the sun. Measured in the image, where a generator draws
+        // the disc round, with x unwrapped around the peak.
+        let (px, py) = ((peak as u32 % w) as f32, (peak as u32 / w) as f32);
+        let offsets: Vec<(f32, f32)> = disc
+            .iter()
+            .map(|&k| {
+                let dx = (k as u32 % w) as f32 - px;
+                let dx = dx - w as f32 * (dx / w as f32).round();
+                (dx, (k as u32 / w) as f32 - py)
+            })
+            .collect();
+        let n = offsets.len() as f32;
+        let (cx, cy) = offsets
+            .iter()
+            .fold((0.0, 0.0), |(a, b), &(x, y)| (a + x / n, b + y / n));
+        let reach = offsets
+            .iter()
+            .map(|&(x, y)| (x - cx).hypot(y - cy))
+            .fold(0.0f32, f32::max);
+        let compact = reach <= 1.25 * (n / PI).sqrt().max(1.0);
+        let across = (2.0 * radius).to_degrees();
+        let largest = (2.0 * (1.0 - MAX_SUN_AREA / TAU).acos()).to_degrees();
+        return Err(if !compact {
+            format!(
+                "clipped area: the white region around the brightest pixel covers {area:.3} sr in an irregular shape, so bright clouds or haze touching the sun joined its disc (a sun is at most {MAX_SUN_AREA} sr, {largest:.0}° across); keep the clouds around the sun below white"
+            )
+        } else {
+            format!(
+                "a disc too large: the white disc around the brightest pixel is {across:.0}° across ({area:.3} sr), and a sun is at most {largest:.0}° ({MAX_SUN_AREA} sr); draw it smaller"
+            )
+        });
+    }
     let (mut ring, mut ring_area) = (Vec3::ZERO, 0.0);
     let (mut outer, mut outer_area) = (Vec3::ZERO, 0.0);
     for k in 0..pixels / 2 {
@@ -320,7 +368,7 @@ pub(super) fn take_sun(img: &mut Rgb32FImage, strength: f32) -> og_render_data::
         }
     }
     if ring_area == 0.0 || outer_area == 0.0 {
-        return Default::default();
+        return Err("no sky to measure around the disc: it sits where the image has no sky above the horizon around it".into());
     }
     ring /= ring_area;
     outer /= outer_area;
@@ -335,12 +383,22 @@ pub(super) fn take_sun(img: &mut Rgb32FImage, strength: f32) -> og_render_data::
     }
     let intensity = light.max_element();
     if intensity <= 0.0 {
-        return Default::default();
+        return Err("none bright enough: the disc is no brighter than the sky around it".into());
     }
-    og_render_data::EnvironmentSun {
+    Ok(og_render_data::EnvironmentSun {
         direction: aim.to_array(),
         color: (light / intensity).to_array(),
         intensity,
         angular_size: 2.0 * radius,
+    })
+}
+
+/// A linear channel in sRGB, for messages.
+fn image_srgb(c: f32) -> f32 {
+    let c = c.clamp(0.0, 1.0);
+    if c <= 0.003_130_8 {
+        12.92 * c
+    } else {
+        1.055 * c.powf(1.0 / 2.4) - 0.055
     }
 }

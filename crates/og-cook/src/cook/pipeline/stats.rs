@@ -722,7 +722,7 @@ fn other_stats(bundle: &Bundle, id: &str, ty: &str) -> Result<Option<(String, Va
                     "samples": m.samples,
                     "authoredBackground": m.background_size != 0,
                     "facts": facts,
-                    "sun": { "direction": [m.sun_x,m.sun_y,m.sun_z], "color": [m.sun_r,m.sun_g,m.sun_b], "intensity": m.sun_intensity, "angularSize": m.sun_angular_size, "estimated": m.background_size != 0 },
+                    "sun": { "direction": [m.sun_x,m.sun_y,m.sun_z], "color": [m.sun_r,m.sun_g,m.sun_b], "intensity": m.sun_intensity, "angularSize": m.sun_angular_size, "estimated": m.background_size != 0, "missing": facts.get("sunMissing").cloned().unwrap_or(Value::Null) },
                 }),
             )
         }
