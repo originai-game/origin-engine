@@ -1264,6 +1264,29 @@ fn tick(
         }
     }
 
+    // A spare deck holding a segment the flow can no longer cut to (one
+    // warmed for a choice not taken, or any once the flow ends) lets go:
+    // its decoder and the scenes its segment placed are prepared for
+    // nothing.
+    let reach: BTreeSet<u32> = match prep.nodes.get(&flow.node) {
+        Some(node) if !flow.ended => node
+            .choices
+            .iter()
+            .flatten()
+            .chain(&node.next)
+            .copied()
+            .collect(),
+        _ => BTreeSet::new(),
+    };
+    let cur = current(&flow);
+    let prev = previous(&flow);
+    for (d, k) in decks.iter_mut() {
+        if *d != cur && Some(*d) != prev && k.node != 0 && !reach.contains(&k.node) {
+            free_deck(ctx, r, *d)?;
+            k.node = 0;
+        }
+    }
+
     let out = r
         .flow
         .1
