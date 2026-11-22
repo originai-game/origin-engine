@@ -19,6 +19,15 @@ pub use parley::layout::Alignment;
 pub use parley::style::FontFeature;
 pub use parley::{LineHeight, OverflowWrap, WhiteSpaceCollapse};
 
+/// CSS `hyphens`: author soft hyphens, dictionary breaks, or neither.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub enum Hyphens {
+    #[default]
+    Manual,
+    Auto,
+    None,
+}
+
 /// OpenType feature `tag` (`b"tnum"`) set to `value` (1 on, 0 off), for
 /// [`Style::features`].
 pub fn feature(tag: &[u8; 4], value: u16) -> FontFeature {
@@ -83,6 +92,7 @@ pub struct Style<'a> {
     /// `text-wrap-mode: wrap`; `false` is `nowrap`.
     pub wrap: bool,
     pub overflow_wrap: OverflowWrap,
+    pub hyphens: Hyphens,
     pub align: Alignment,
     /// `text-overflow: ellipsis`.
     pub ellipsis: bool,
@@ -108,6 +118,7 @@ impl Default for Style<'_> {
             white_space: WhiteSpaceCollapse::Preserve,
             wrap: true,
             overflow_wrap: OverflowWrap::Normal,
+            hyphens: Hyphens::Manual,
             align: Alignment::Start,
             ellipsis: false,
             max_lines: 0,
@@ -142,6 +153,8 @@ pub struct GlyphRun<'a> {
 #[derive(Default)]
 pub struct Text {
     layout: parley::Layout<()>,
+    /// A shaped line ending, shared by all taken discretionary breaks.
+    hyphen: Option<parley::Layout<()>>,
     /// The width the lines were last broken at.
     width: Option<f32>,
     /// What trim takes off the top and the bottom, CSS px.
@@ -149,9 +162,12 @@ pub struct Text {
     /// The ellipsized text, when the layout holds it and not the text
     /// it was shaped from.
     cut: Option<String>,
-    /// The content widths of the text it was shaped from, kept while the
-    /// layout holds the ellipsized one.
+    /// Intrinsic widths when min-content needs separate ligature shaping,
+    /// or while the layout holds an ellipsized version of the source.
     content: Option<(f32, f32)>,
+    /// A narrow line had to reshape across a ligature. Restore natural
+    /// shaping before reflow, so an untaken break never loses its ligature.
+    resegmented: bool,
     /// Scratch for paint's glyphs and a run's location.
     glyphs: Vec<parley::layout::Glyph>,
     coords: Vec<i16>,
@@ -165,9 +181,9 @@ impl Text {
     /// Shapes `text` in `style`. Its lines are broken at no width until
     /// [`Text::break_at`].
     pub fn shape(&mut self, fonts: &mut Collection, text: &str, style: &Style) {
-        build(fonts, &mut self.layout, text, style);
+        (self.hyphen, self.content) = build(fonts, &mut self.layout, text, style);
         self.cut = None;
-        self.content = None;
+        self.resegmented = false;
         self.width = None;
         self.layout.break_all_lines(None);
         self.trimmed = trim(fonts, style, &self.layout);
@@ -185,14 +201,25 @@ impl Text {
         style: &Style,
         width: Option<f32>,
     ) {
-        if self.cut.take().is_some() {
-            build(fonts, &mut self.layout, text, style);
+        if self.cut.take().is_some() || self.resegmented {
+            (self.hyphen, self.content) = build(fonts, &mut self.layout, text, style);
+            self.resegmented = false;
         }
         self.width = width;
         self.layout.break_all_lines(width);
+        if let Some(width) = width {
+            let boundaries = ligature_breaks(&self.layout, Some(width));
+            if !boundaries.is_empty() {
+                let breaks = self.layout.discretionary_breaks().to_vec();
+                shape_layout(fonts, &mut self.layout, text, style, &boundaries);
+                self.layout.set_discretionary_breaks(&breaks);
+                self.layout.break_all_lines(Some(width));
+                self.resegmented = true;
+            }
+        }
         if let Some(cut) = ellipsized(fonts, &self.layout, text, style, width) {
             self.content = Some(self.content_widths());
-            build(fonts, &mut self.layout, &cut, style);
+            self.hyphen = build(fonts, &mut self.layout, &cut, style).0;
             self.cut = Some(cut);
             self.layout.break_all_lines(width);
         }
@@ -236,6 +263,13 @@ impl Text {
     /// The layout, for Parley's cursor, selection and hit testing.
     pub fn layout(&self) -> &parley::Layout<()> {
         &self.layout
+    }
+
+    /// Whether the laid-out line ending at source byte `at` took a discretionary break.
+    pub fn is_discretionary_break(&self, at: usize) -> bool {
+        self.layout
+            .lines()
+            .any(|l| l.text_range().end == at && l.discretionary_offset().is_some())
     }
 
     /// Calls `f` with each line: where its text starts (CSS px from the
@@ -297,44 +331,162 @@ impl Text {
     /// Calls `f` with each glyph run, line by line in visual order.
     pub fn runs(&mut self, fonts: &Collection, mut f: impl FnMut(GlyphRun)) {
         let top = self.trimmed[0];
+        let mut emit = |run: parley::layout::GlyphRun<'_, ()>, x: f32, y: f32| {
+            let r = run.run();
+            let Some(face) = fonts.face_of(r.font()) else {
+                return;
+            };
+            self.glyphs.clear();
+            self.glyphs.extend(run.positioned_glyphs().map(|mut g| {
+                g.x += x;
+                g.y += y - top;
+                g
+            }));
+            self.coords.clear();
+            self.coords
+                .extend(r.normalized_coords().iter().map(|c| c.to_bits()));
+            let synthesis = r.synthesis();
+            f(GlyphRun {
+                face,
+                index: r.font().index,
+                size: r.font_size(),
+                coords: &self.coords,
+                embolden: synthesis.embolden(),
+                skew: synthesis.skew(),
+                baseline: run.baseline() + y - top,
+                glyphs: &self.glyphs,
+            });
+        };
         for line in self.layout.lines() {
             for item in line.items() {
-                let PositionedLayoutItem::GlyphRun(run) = item else {
-                    continue;
-                };
-                let r = run.run();
-                let Some(face) = fonts.face_of(r.font()) else {
-                    continue;
-                };
-                self.glyphs.clear();
-                self.glyphs.extend(run.positioned_glyphs().map(|mut g| {
-                    g.y -= top;
-                    g
-                }));
-                self.coords.clear();
-                self.coords
-                    .extend(r.normalized_coords().iter().map(|c| c.to_bits()));
-                let synthesis = r.synthesis();
-                f(GlyphRun {
-                    face,
-                    index: r.font().index,
-                    size: r.font_size(),
-                    coords: &self.coords,
-                    embolden: synthesis.embolden(),
-                    skew: synthesis.skew(),
-                    baseline: run.baseline() - top,
-                    glyphs: &self.glyphs,
-                });
+                if let PositionedLayoutItem::GlyphRun(run) = item {
+                    emit(run, 0., 0.);
+                }
+            }
+            if let (Some(x), Some(hyphen)) = (line.discretionary_offset(), &self.hyphen) {
+                for ending in hyphen.lines() {
+                    let y = line.metrics().baseline - ending.metrics().baseline;
+                    for item in ending.items() {
+                        if let PositionedLayoutItem::GlyphRun(run) = item {
+                            emit(run, x, y);
+                        }
+                    }
+                }
             }
         }
     }
 }
 
 /// Shapes `text` in `style` into `layout`.
-fn build(fonts: &mut Collection, layout: &mut parley::Layout<()>, text: &str, style: &Style) {
+fn build(
+    fonts: &mut Collection,
+    layout: &mut parley::Layout<()>,
+    text: &str,
+    style: &Style,
+) -> (Option<parley::Layout<()>>, Option<(f32, f32)>) {
+    shape_layout(fonts, layout, text, style, &[]);
+    if style.hyphens == Hyphens::None || !style.wrap {
+        return (None, None);
+    }
+    let marked = match (style.hyphens, style.locale) {
+        (Hyphens::Auto, Some(lang)) => {
+            Cow::Owned(og_i18n::hyphenation::hyphenate(text, lang, 0, None, None))
+        }
+        _ => Cow::Borrowed(text),
+    };
+    // Dictionary markers never enter the shaped source. Cursor, selection
+    // and probe ranges remain byte offsets into the author's text.
+    let mut original = text.chars().peekable();
+    let mut byte = 0;
+    let mut breaks = Vec::new();
+    for c in marked.chars() {
+        if c == '\u{ad}' && original.peek() != Some(&c) {
+            breaks.push((byte, 0.));
+        } else {
+            original.next();
+            byte += c.len_utf8();
+            if c == '\u{ad}' && byte < text.len() {
+                breaks.push((byte, 0.));
+            }
+        }
+    }
+    if breaks.is_empty() {
+        return (None, None);
+    }
+    let mut hyphen = parley::Layout::new();
+    shape_layout(fonts, &mut hyphen, "-", style, &[]);
+    hyphen.break_all_lines(None);
+    for point in &mut breaks {
+        point.1 = hyphen.width();
+    }
+    layout.set_discretionary_breaks(&breaks);
+    layout.break_all_lines(None);
+    let boundaries = ligature_breaks(layout, None);
+    let intrinsic = if boundaries.is_empty() {
+        None
+    } else {
+        // Min-content takes every opportunity; its shape must be allowed
+        // to separate the ligatures an unbroken max-content line keeps.
+        let mut minimum = parley::Layout::new();
+        shape_layout(fonts, &mut minimum, text, style, &boundaries);
+        minimum.set_discretionary_breaks(&breaks);
+        Some((
+            minimum.calculate_content_widths().min,
+            layout.calculate_content_widths().max,
+        ))
+    };
+    (Some(hyphen), intrinsic)
+}
+
+/// Discretionary opportunities that shaping joined into a ligature. For
+/// wrapping, only overflowing lines need reshaping; a line that fits keeps
+/// its original glyphs. With no width, find them all for min-content.
+fn ligature_breaks(layout: &parley::Layout<()>, width: Option<f32>) -> Vec<usize> {
+    let mut boundaries = Vec::new();
+    if layout.discretionary_breaks().is_empty() {
+        return boundaries;
+    }
+    for line in layout.lines() {
+        if width.is_some_and(|w| line.metrics().advance - line.metrics().hanging_advance <= w) {
+            continue;
+        }
+        for run in line.runs() {
+            for cluster in run.clusters() {
+                let at = cluster.text_range().start;
+                if cluster.is_ligature_continuation()
+                    && layout
+                        .discretionary_breaks()
+                        .binary_search_by_key(&at, |p| p.0)
+                        .is_ok()
+                {
+                    boundaries.push(at);
+                }
+            }
+        }
+    }
+    boundaries.sort_unstable();
+    boundaries
+}
+
+fn shape_layout(
+    fonts: &mut Collection,
+    layout: &mut parley::Layout<()>,
+    text: &str,
+    style: &Style,
+    boundaries: &[usize],
+) {
     let (context, lcx) = fonts.contexts();
+    let no_hyphens = style.hyphens == Hyphens::None;
+    let overrides = move |cx: parley_engine::break_overrides::LineBreakContext| {
+        if no_hyphens && cx.before == '\u{ad}' {
+            Some(false)
+        } else {
+            parley::CHROMIUM_LINE_BREAK_OVERRIDE(cx)
+        }
+    };
     let mut b = lcx.ranged_builder(context, text, 1.0, true);
-    b.set_line_break_override(Some(parley::CHROMIUM_LINE_BREAK_OVERRIDE));
+    b.set_line_break_override(Some(&overrides));
+    b.set_shaping_boundaries(boundaries);
     b.set_base_direction(match style.direction {
         Direction::Ltr => parley::BaseDirection::Ltr,
         Direction::Rtl => parley::BaseDirection::Rtl,
@@ -561,6 +713,216 @@ mod tests {
             .map(|l| l.text_range().len())
             .sum::<usize>()
             .min(text_len)
+    }
+
+    #[test]
+    fn discretionary_hyphens_take_space_and_ink_only_at_a_taken_break() {
+        let mut fonts = fonts();
+        let style = Style {
+            family: FAMILY,
+            ..Default::default()
+        };
+        let mut dash = laid(&mut fonts, "-", &style, None);
+        let dash_width = dash.width();
+        let mut dash_id = 0;
+        dash.runs(&fonts, |r| dash_id = r.glyphs[0].id);
+        let prefix = laid(&mut fonts, "hy", &style, None).width();
+        let text = "hy\u{ad}phenation";
+        let mut t = laid(&mut fonts, text, &style, Some(prefix + dash_width + 0.01));
+        let first = t.layout().lines().next().unwrap();
+        assert_eq!(
+            first.text_range(),
+            0..4,
+            "source offsets include only the author's SHY"
+        );
+        assert!((first.metrics().advance - prefix - dash_width).abs() < 0.01);
+        let mut ink = Vec::new();
+        t.runs(&fonts, |r| {
+            ink.extend(
+                r.glyphs
+                    .iter()
+                    .filter(|g| g.id == dash_id)
+                    .map(|g| (g.x, g.y)),
+            )
+        });
+        assert_eq!(ink.len(), 1);
+        assert!((ink[0].0 - prefix).abs() < 0.01);
+        assert!((ink[0].1 - t.first_baseline().unwrap()).abs() < 0.01);
+
+        // The letters fit but the hyphen does not: do not take this break.
+        t.break_at(&mut fonts, text, &style, Some(prefix + dash_width / 2.));
+        assert_eq!(t.layout().len(), 1);
+        t.runs(&fonts, |r| {
+            assert!(r.glyphs.iter().all(|g| g.id != dash_id))
+        });
+        t.break_at(&mut fonts, text, &style, None);
+        assert_eq!(t.layout().len(), 1);
+        t.runs(&fonts, |r| {
+            assert!(r.glyphs.iter().all(|g| g.id != dash_id))
+        });
+
+        let none = Style {
+            hyphens: Hyphens::None,
+            ..style
+        };
+        let mut t = laid(&mut fonts, text, &none, Some(prefix + dash_width + 0.01));
+        assert_eq!(t.layout().len(), 1);
+        t.runs(&fonts, |r| {
+            assert!(r.glyphs.iter().all(|g| g.id != dash_id))
+        });
+        assert!(t.content_widths().0 > prefix + dash_width);
+    }
+
+    #[test]
+    fn automatic_hyphens_follow_the_installed_language_without_rewriting_source() {
+        let mut fonts = fonts();
+        for (lang, word, prefix) in [("en", "hyphenation", "hy"), ("de", "Silbentrennung", "Sil")] {
+            og_i18n::hyphenation::install(
+                lang,
+                file(&format!("fonts/latin/{lang}.hyph")).as_slice().into(),
+            );
+            let style = Style {
+                family: FAMILY,
+                hyphens: Hyphens::Auto,
+                locale: Some(lang),
+                ..Default::default()
+            };
+            let width = laid(&mut fonts, prefix, &style, None).width()
+                + laid(&mut fonts, "-", &style, None).width()
+                + 1.;
+            let mut t = laid(&mut fonts, word, &style, Some(width + 0.01));
+            assert_eq!(
+                t.layout().lines().next().unwrap().text_range(),
+                0..prefix.len(),
+                "{lang}: {width}"
+            );
+            assert!(
+                t.layout()
+                    .lines()
+                    .next()
+                    .unwrap()
+                    .discretionary_offset()
+                    .is_some()
+            );
+            assert_eq!(t.laid(word), word);
+            assert_eq!(
+                t.layout().lines().last().unwrap().text_range().end,
+                word.len()
+            );
+            assert!(t.content_widths().0 < t.content_widths().1);
+            t.break_at(&mut fonts, word, &style, None);
+            assert_eq!(t.layout().len(), 1);
+            assert!(
+                t.layout()
+                    .lines()
+                    .next()
+                    .unwrap()
+                    .discretionary_offset()
+                    .is_none()
+            );
+            // Missing dictionaries retain manual opportunities, never guess a language.
+            let unknown = Style {
+                locale: Some("und"),
+                ..style
+            };
+            assert_eq!(
+                laid(&mut fonts, word, &unknown, Some(width)).layout().len(),
+                1
+            );
+        }
+    }
+
+    #[test]
+    fn a_discretionary_ending_follows_its_word_in_bidi_text() {
+        let mut fonts = fonts();
+        fonts
+            .add(file("fonts/hebrew/NotoSansHebrew-Regular.ttf"))
+            .unwrap();
+        let style = Style {
+            family: "\"Noto Sans Hebrew\", \"Barlow Semi Condensed\"",
+            direction: Direction::Rtl,
+            ..Default::default()
+        };
+        for (text, prefix) in [("אב\u{ad}גדהוז", "אב"), ("אב hy\u{ad}phenation", "אב hy")]
+        {
+            let mut dash = laid(&mut fonts, "-", &style, None);
+            let mut dash_id = 0;
+            dash.runs(&fonts, |r| dash_id = r.glyphs[0].id);
+            let width = laid(&mut fonts, prefix, &style, None).width() + dash.width() + 1.;
+            let mut t = laid(&mut fonts, text, &style, Some(width));
+            let first = t.first_baseline().unwrap();
+            let mut glyphs = Vec::new();
+            t.runs(&fonts, |r| {
+                glyphs.extend(
+                    r.glyphs
+                        .iter()
+                        .filter(|g| (g.y - first).abs() < 0.01)
+                        .copied(),
+                )
+            });
+            let ending = glyphs
+                .iter()
+                .find(|g| g.id == dash_id)
+                .expect("visible ending");
+            assert!(
+                ending.x >= -0.01 && ending.x + ending.advance <= width + 0.01,
+                "{text}: {glyphs:?}"
+            );
+            assert!(
+                glyphs
+                    .iter()
+                    .filter(|g| g.id != dash_id)
+                    .all(|g| g.x + g.advance <= ending.x + 0.01
+                        || g.x >= ending.x + ending.advance - 0.01),
+                "ending has its own gap: {glyphs:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn a_hyphenation_point_inside_a_ligature_can_break_without_losing_wide_ligatures() {
+        let mut fonts = fonts();
+        fonts
+            .add(file("styles/shared/Newsreader[opsz,wght].ttf"))
+            .unwrap();
+        let style = Style {
+            family: "Newsreader",
+            ..Default::default()
+        };
+        let text = "of\u{ad}fice";
+        let width = laid(&mut fonts, "of-", &style, None).width() + 1.;
+        let mut t = laid(&mut fonts, text, &style, Some(width));
+        assert_eq!(t.layout().lines().next().unwrap().text_range(), 0..4);
+        let min = laid(&mut fonts, "fice", &style, None)
+            .width()
+            .max(width - 1.);
+        assert!((t.content_widths().0 - min).abs() < 0.01);
+        let mut whole = laid(&mut fonts, "office", &style, None);
+        let mut expected = Vec::new();
+        whole.runs(&fonts, |r| {
+            expected.extend(
+                r.glyphs
+                    .iter()
+                    .filter(|g| g.advance > 0.)
+                    .map(|g| (g.id, g.x)),
+            )
+        });
+        for width in [Some(200.), None, Some(200.)] {
+            t.break_at(&mut fonts, text, &style, width);
+            let mut actual = Vec::new();
+            t.runs(&fonts, |r| {
+                actual.extend(
+                    r.glyphs
+                        .iter()
+                        .filter(|g| g.advance > 0.)
+                        .map(|g| (g.id, g.x)),
+                )
+            });
+            assert_eq!(
+                actual, expected,
+                "wide reflow restores the unbroken ligature"
+            );
+        }
     }
 
     /// CSS 2 §10.8.1 with Blink's rounding. At line-height 28 px a 16 px

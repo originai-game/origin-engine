@@ -1255,9 +1255,7 @@ impl Tree {
                     clipped,
                     shown,
                     text: &el.text,
-                    broken: glyphs.map_or(Vec::new(), |g| {
-                        crate::text::broken_words(&g.text, &g.line_text)
-                    }),
+                    broken: glyphs.map_or(Vec::new(), crate::text::Leaf::broken_words),
                     ink: self.shown.get(e).map_or([0.0; 4], |s| {
                         [s.ink[0], s.ink[1], s.ink[2], s.ink[3] * s.alpha]
                     }),
@@ -4676,6 +4674,35 @@ mod tests {
         assert!(leaf(&t, 5).lines.iter().all(|l| l[2] <= 60.0));
         assert_eq!(leaf(&t, 7).lines.len(), 1, "whole, past its box");
         assert!(t.op_box(4).unwrap()[3] > t.op_box(6).unwrap()[3]);
+    }
+
+    #[test]
+    fn hyphens_inherit_and_reflow_after_an_override() {
+        let mut t = real();
+        nodes(
+            &mut t,
+            &[(1, 0, "w-[40px] hyphens-manual", 0), (2, 0, "", 1)],
+        );
+        let mut b = Batch::default();
+        b.op(2).u32(3).str("hy\u{ad}phenation");
+        b.op(8).u32(2).u32(3).u32(u32::MAX);
+        t.apply(&b.bytes()).unwrap();
+        frame(&mut t);
+        let lines = |t: &Tree| {
+            let e = t.by_js[3] as usize;
+            t.texts.leaf(t.els[e].leaf.unwrap()).unwrap().lines.len()
+        };
+        assert!(lines(&t) > 1, "the text inherits manual breaks");
+        let mut b = Batch::default();
+        b.op(4).u32(2).str("hyphens-none");
+        t.apply(&b.bytes()).unwrap();
+        frame(&mut t);
+        assert_eq!(lines(&t), 1, "a child override reshapes and remeasures");
+        let mut b = Batch::default();
+        b.op(4).u32(2).str("");
+        t.apply(&b.bytes()).unwrap();
+        frame(&mut t);
+        assert!(lines(&t) > 1, "removing the override restores inheritance");
     }
 
     /// A rounded `overflow-hidden` box rounds the corners of a child's

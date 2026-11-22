@@ -397,6 +397,8 @@ tiny-skia = { path = "third_party/tiny-skia" }
 font-rs = { path = "third_party/font-rs" }
 # Segmenters from the host, so ICU's dictionaries load with a locale (third_party/parley_engine/PATCHED.md).
 parley_engine = { path = "third_party/parley_engine" }
+# Discretionary line endings reserve their shaped advance (third_party/parley/PATCHED.md).
+parley = { path = "third_party/parley" }
 # Layout, patched at the root (third_party/taffy/README.md).
 taffy = { path = "third_party/taffy" }
 # wgpu: wgpu-flash, origin-engine's own fork, built for speed

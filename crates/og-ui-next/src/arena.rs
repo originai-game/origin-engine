@@ -57,6 +57,7 @@ pub struct Run {
     pub variant: u8,
     /// `overflow-wrap`: 0 normal, 1 break-word, 2 anywhere.
     pub wrap: u8,
+    pub hyphens: og_text::layout::Hyphens,
     /// `text-overflow: ellipsis`.
     pub ellipsis: bool,
     /// `text-align`: 0 start, 1 center, 2 right, 3 left, 4 justify.
@@ -77,6 +78,7 @@ impl Run {
             italic: false,
             variant: 0,
             wrap: 0,
+            hyphens: og_text::layout::Hyphens::Manual,
             ellipsis: false,
             align: 0,
         }
@@ -91,6 +93,7 @@ impl Run {
         (self.weight, self.nowrap, self.family, self.italic).hash(h);
         (self.variant, self.wrap, self.ellipsis, self.align).hash(h);
         self.clamp.hash(h);
+        self.hyphens.hash(h);
     }
 }
 

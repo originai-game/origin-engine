@@ -937,6 +937,11 @@ impl Tree {
                     italic: eff.text.italic,
                     variant: eff.text.variant,
                     wrap: eff.text.wrap,
+                    hyphens: match eff.text.hyphens {
+                        nsh_tailwind::Hyphens::Manual => og_text::layout::Hyphens::Manual,
+                        nsh_tailwind::Hyphens::Auto => og_text::layout::Hyphens::Auto,
+                        nsh_tailwind::Hyphens::None => og_text::layout::Hyphens::None,
+                    },
                     ellipsis: eff.text.overflow == 1,
                     align: eff.text.align,
                 },

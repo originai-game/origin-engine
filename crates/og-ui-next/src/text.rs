@@ -93,6 +93,12 @@ impl Leaf {
     pub fn size(&self) -> f32 {
         self.run.map_or(0.0, |r| r.size)
     }
+
+    pub fn broken_words(&self) -> Vec<String> {
+        broken_words(&self.text, &self.line_text, |at| {
+            self.layout.is_discretionary_break(at)
+        })
+    }
 }
 
 /// Every text leaf's layout, by arena node.
@@ -150,6 +156,7 @@ fn style<'a>(
         locale: (!locale.is_empty()).then_some(locale),
         direction,
         wrap: !run.nowrap,
+        hyphens: run.hyphens,
         overflow_wrap: match run.wrap {
             1 => OverflowWrap::BreakWord,
             2 => OverflowWrap::Anywhere,
@@ -553,7 +560,7 @@ impl Texts {
 /// line inside a word: at a place UAX #14 gives no break opportunity and
 /// no `\n` of `text` ends the line before. Each as `…end|start…` of the
 /// two lines, a few characters of each.
-pub fn broken_words(text: &str, lines: &str) -> Vec<String> {
+pub fn broken_words(text: &str, lines: &str, discretionary: impl Fn(usize) -> bool) -> Vec<String> {
     let mut out = Vec::new();
     let mut parts = lines.split_terminator('\n');
     let Some(mut before) = parts.next() else {
@@ -571,7 +578,7 @@ pub fn broken_words(text: &str, lines: &str) -> Vec<String> {
                     .segment_str(text)
                     .collect()
             });
-            if !opportunities.contains(&start) {
+            if !opportunities.contains(&start) && !discretionary(start) {
                 let tail: String = {
                     let c: Vec<char> = before.chars().rev().take(12).collect();
                     c.into_iter().rev().collect()
@@ -634,17 +641,17 @@ pub(crate) mod tests {
     #[test]
     fn a_line_starting_inside_a_word_is_a_broken_word() {
         // Breaks at spaces, after a hyphen and at a newline are allowed.
-        assert!(broken_words("Main quest log", "Main\nquest log\n").is_empty());
-        assert!(broken_words("well-known", "well-\nknown\n").is_empty());
-        assert!(broken_words("Leader\nboard", "Leader\nboard\n").is_empty());
-        assert!(broken_words("One", "One\n").is_empty());
+        assert!(broken_words("Main quest log", "Main\nquest log\n", |_| false).is_empty());
+        assert!(broken_words("well-known", "well-\nknown\n", |_| false).is_empty());
+        assert!(broken_words("Leader\nboard", "Leader\nboard\n", |_| false).is_empty());
+        assert!(broken_words("One", "One\n", |_| false).is_empty());
         // Inside a word: listed with the two sides.
         assert_eq!(
-            broken_words("Leaderboard", "Leaderb\noard\n"),
+            broken_words("Leaderboard", "Leaderb\noard\n", |_| false),
             ["Leaderb|oard"]
         );
         assert_eq!(
-            broken_words("The Leaderboard", "The\nLeaderb\noard\n"),
+            broken_words("The Leaderboard", "The\nLeaderb\noard\n", |_| false),
             ["Leaderb|oard"]
         );
     }

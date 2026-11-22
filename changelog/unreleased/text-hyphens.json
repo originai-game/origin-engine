@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "UI hyphens-*",
+      "summary": "Manual soft hyphens and automatic language-dictionary breaks reserve and draw a shaped hyphen only when taken. hyphens-none suppresses discretionary breaks. Inheritance, reflow and probe word-break reporting follow the same layout."
+    }
+  ]
+}
