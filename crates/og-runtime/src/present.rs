@@ -15,7 +15,6 @@ pub(crate) mod faces;
 pub(crate) mod feel;
 pub(crate) mod fx;
 pub(crate) mod geometry;
-pub(crate) mod glyphs;
 pub(crate) mod hlod;
 pub(crate) mod interpolate;
 pub(crate) mod key_light;

@@ -59,7 +59,6 @@ mod world;
 pub use host::{host_impl, shared, ui_cursor, wire};
 
 pub use author::lanes::{panic_report, record_panic, report as lanes_report};
-pub use present::glyphs::glyphs_pending;
 
 pub use author::memory::memory_report;
 pub use author::perf::{report as perf_report, set as perf_set, take_frames as perf_frames};
@@ -304,19 +303,6 @@ pub fn ui_text_family(engine: u32, css: &str) -> Option<String> {
 /// give a text.
 pub fn ui_font_roles(engine: u32) -> [String; 4] {
     present::faces::roles(engine)
-}
-
-/// The fonts an engine's UI lays out and draws with, as og.ui.configure,
-/// the locale and the style left them; `None` for no engine.
-pub fn ui_fonts(engine: u32) -> Option<og_ui_next::fonts::Fonts> {
-    Some(
-        engine::engine(engine)
-            .ok()?
-            .render
-            .borrow()
-            .ui_fonts
-            .clone(),
-    )
 }
 
 /// What a native window's AccessKit session was last sent ([`ui_a11y`]).

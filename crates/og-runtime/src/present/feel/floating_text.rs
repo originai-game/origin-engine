@@ -6,7 +6,7 @@ pub fn og_render_floating_text(world: u32, desc: Option<String>) -> Result<(), S
     engine(world).and_then(|eng| {
         let d: crate::host::wire::FloatingTextDesc = crate::host::wire::arg(desc.as_deref(), "desc")?;
         let text = d.text;
-        let (family, font) = match d.font {
+        let (family, named) = match d.font {
             None => {
                 if !eng.render.borrow().ui_faces.any() {
                     return Err("desc.font is null and the UI has no body font: load one with og.load.font and pass it".into());
@@ -15,10 +15,13 @@ pub fn og_render_floating_text(world: u32, desc: Option<String>) -> Result<(), S
             }
             Some(h) => {
                 let i = crate::world::assets::index_of(h as f64).ok_or_else(|| format!("{h} is not a font handle"))?;
-                let render = eng.assets.borrow().fonts.get(i).map(|f| f.render).ok_or_else(|| format!("font {h} is not alive"))?;
+                let named = eng.assets.borrow().fonts.get(i).map(|f| f.id.clone());
+                if named.is_none() {
+                    return Err(format!("font {h} is not alive"));
+                }
                 let family = crate::present::faces::family_of(&eng, &mut eng.render.borrow_mut().ui_faces, i)
                     .ok_or_else(|| format!("font {h} ships no file to lay text out from"))?;
-                (family, Some(render))
+                (family, named)
             }
         };
         let elapsed = with_world(&eng, |c| Ok(c.time_scale().elapsed), |w| Ok(w.time_scale().elapsed))?;
@@ -26,12 +29,9 @@ pub fn og_render_floating_text(world: u32, desc: Option<String>) -> Result<(), S
         let tick = with_world(&eng, |c| Ok(c.time().tick), |w| Ok(w.time().tick))?;
         let missing = {
             let mut rs = eng.render.borrow_mut();
-            match font {
-                None => crate::present::glyphs::ui_lacking(&mut rs, &text),
-                Some(render) => crate::present::glyphs::lacking(&mut rs, render, &text).into_iter().collect(),
-            }
+            crate::present::faces::lacking(&mut rs, &text)
         };
-        crate::present::glyphs::warn_missing(&eng, tick, missing);
+        crate::present::faces::warn_missing(&eng, tick, named.as_deref(), &missing);
         let crit = d.crit;
         let scale = if crit { d.crit_scale.max(1.0) } else { 1.0 };
         let feel = feel_of(&eng)?;

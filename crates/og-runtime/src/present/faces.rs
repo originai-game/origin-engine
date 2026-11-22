@@ -205,6 +205,84 @@ pub(crate) fn family_of(eng: &Engine, faces: &mut Faces, index: usize) -> Option
     Some(format!("\"{}\"", name.replace('"', "")))
 }
 
+/// The characters of `text` no face of the UI's collection draws, each
+/// judged once a run ([`RenderState::glyphs_judged`]): what a queued
+/// world or floating text drew, warned of on its tick
+/// ([`warn_missing`]), a pack covered by loaded instead
+/// ([`crate::bind::i18n::resolve_missing`]).
+pub(crate) fn lacking(rs: &mut crate::present::extract::RenderState, text: &str) -> Vec<char> {
+    text.chars()
+        .filter(|c| !c.is_whitespace() && !c.is_control() && rs.glyphs_judged.insert(*c))
+        .filter(|c| !rs.ui_faces.draws(*c))
+        .collect()
+}
+
+/// Logs `chars` (a text the host queued drew that no face of the UI's
+/// collection draws) on `tick`, the batch as one warning, each character
+/// once a run: `font` (the asset the text named) named when it gave one.
+pub(crate) fn warn_missing(
+    eng: &crate::engine::Engine,
+    tick: u64,
+    font: Option<&str>,
+    chars: &[char],
+) {
+    if chars.is_empty() {
+        return;
+    }
+    let which = chars
+        .iter()
+        .take(8)
+        .map(|c| format!("\"{c}\" U+{:04X}", *c as u32))
+        .collect::<Vec<_>>()
+        .join(", ");
+    let more = if chars.len() > 8 {
+        format!(" and {} more", chars.len() - 8)
+    } else {
+        String::new()
+    };
+    let named = font.map_or_else(String::new, |f| format!(" (font {f} among those it asks)"));
+    let text = format!(
+        "a text drew {which}{more}, which no font of the UI has{named}, so nothing is drawn for it: give og.ui.configure a `fallbackFonts` font that has them, add one to the style pack's `fonts`, or draw characters the UI's fonts have"
+    );
+    let mut st = eng.state.borrow_mut();
+    if st.ui_warned.insert(text.clone()) {
+        st.log
+            .push(serde_json::json!({ "tick": tick, "warning": true, "text": text }));
+    }
+}
+
+/// Warns of the characters a frame's TSX texts drew that no font of the
+/// UI has, once each: the text's family list, the game's
+/// `fallbackFonts`, the locale's fonts and font packs and the default
+/// face were all asked.
+pub(crate) fn warn_undrawn(eng: &crate::engine::Engine, tick: u64, chars: &[char]) {
+    let mut st = eng.state.borrow_mut();
+    let fresh: Vec<char> = chars
+        .iter()
+        .copied()
+        .filter(|c| st.ui_warned.insert(format!("undrawn U+{:04X}", *c as u32)))
+        .collect();
+    if fresh.is_empty() {
+        return;
+    }
+    let which = fresh
+        .iter()
+        .take(8)
+        .map(|c| format!("\"{c}\" U+{:04X}", *c as u32))
+        .collect::<Vec<_>>()
+        .join(", ");
+    let more = if fresh.len() > 8 {
+        format!(" and {} more", fresh.len() - 8)
+    } else {
+        String::new()
+    };
+    let text = format!(
+        "a frame drew {which}{more}, which no font of the UI has, so nothing is drawn for them: load a font that has them and give it to og.ui.configure (`fallbackFonts`, or the role's font), add it to the style pack's `fonts`, or draw characters the UI's fonts have"
+    );
+    st.log
+        .push(serde_json::json!({ "tick": tick, "warning": true, "text": text }));
+}
+
 /// The pixels an em world and overlay text are laid out at: the distance
 /// field's own, so a colour glyph is painted as finely as a field holds.
 const TEXT_EM_PX: f32 = og_render::glyphs::FIELD_EM_PX;

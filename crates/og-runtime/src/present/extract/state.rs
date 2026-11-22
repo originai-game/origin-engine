@@ -1,19 +1,11 @@
-//! What extraction keeps between frames: fonts, queued text, models' levels of detail and the render state.
+//! What extraction keeps between frames: queued text, models' levels of
+//! detail and the render state.
 
 use super::*;
-
-/// One loaded font: a cooked MTSDF font as one `MsdfFont` per atlas page.
-/// Every page's font carries every glyph's advance, and the plane bounds only
-/// of its own page's glyphs (the others are blank), so drawing the same
-/// string once per page lays every page out identically.
-pub(crate) struct FontPages {
-    pub pages: Vec<FontHandle>,
-}
 
 /// A queued `og.render.text`.
 #[derive(Clone, Debug)]
 pub(crate) struct QueuedText {
-    pub font: usize,
     /// Its font's family (`crate::present::faces::family_of`).
     pub family: String,
     pub text: String,
@@ -169,8 +161,6 @@ pub(crate) struct RenderState {
     pub wind: wind::WindModels,
     /// The baked reflection probes' captures tried (`crate::present::probes`).
     pub probe_bakes: crate::present::probes::ProbeBakes,
-    /// Fonts by Font handle index.
-    pub fonts: Vec<FontPages>,
     /// Text queued during the current tick, and that tick.
     pub texts: Vec<QueuedText>,
     pub texts_tick: u64,
@@ -212,10 +202,7 @@ pub(crate) struct RenderState {
     /// The player's colour vision filter (og.ui.configure's colorVision),
     /// over the whole frame whether or not the UI draws anything.
     pub color_filter: Option<og_render::ColorFilter>,
-    /// The UI's fonts (og.ui.configure's, the locale's chain and the
-    /// style's families) and icon atlas, which the new core lays out and
-    /// paints with.
-    pub ui_fonts: og_ui_next::fonts::Fonts,
+    /// The UI's icon atlas, which the new core lays out and paints with.
     pub ui_icons: og_ui_next::icons::IconAtlas,
     /// The font files TSX text is laid out from and rastered
     /// (`crate::present::faces`).
@@ -226,19 +213,15 @@ pub(crate) struct RenderState {
     pub text_layout: og_text::layout::Text,
     /// The documents, on og-ui's new core.
     pub ui_next: Option<Box<crate::present::ui_next::Next>>,
-    /// A UI font's first atlas page → every page, so text is drawn per page.
-    pub ui_pages: BTreeMap<FontHandle, Vec<FontHandle>>,
-    /// Fonts (by index into `fonts`) that render missing characters at run
-    /// time from their file (`crate::present::glyphs`).
-    pub runtime_fonts: IdMap<usize, crate::present::glyphs::RuntimeFont>,
     /// Warnings of the last extraction, for the engine's log.
     pub notes: Vec<String>,
     /// The engine this state draws (its id: the paths a river follows are
     /// its own, `timeline::path_of`).
     pub engine: u32,
-    /// Each (font, character) a text drew, judged once a run: in the
-    /// font, or warned of on the tick it was first drawn (`crate::present::glyphs`).
-    pub glyphs_judged: std::collections::BTreeSet<(FontHandle, char)>,
+    /// Each character a text drew, judged once a run: a face covers it, or
+    /// it is warned of on the tick it was first drawn
+    /// (`crate::present::faces::lacking`).
+    pub glyphs_judged: std::collections::BTreeSet<char>,
     /// Composed effects (by asset id) warned of drawing a decal region
     /// without og.RenderSettings.decalAtlas, each once a run
     /// (`crate::present::vfx`).
@@ -247,9 +230,6 @@ pub(crate) struct RenderState {
     /// RenderSettings.maxVfx or maxVfxParticles (the render dump's `vfx`).
     pub vfx_drawn: u32,
     pub vfx_dropped: u32,
-    /// The next frame waits for every run-time glyph asked for (a capture
-    /// is the frame a build that rendered them on the frame draws).
-    pub glyphs_settle: bool,
     /// The inspector (development builds): its panel is drawn over the
     /// frame, above the game's UI.
     #[cfg(not(feature = "publish"))]
@@ -332,7 +312,6 @@ impl RenderState {
             warm_tick: false,
             wind: Default::default(),
             probe_bakes: Default::default(),
-            fonts: Vec::new(),
             texts: Vec::new(),
             texts_tick: 0,
             capture_ms: 0.0,
@@ -350,20 +329,16 @@ impl RenderState {
             preview: None,
             cover: None,
             color_filter: None,
-            ui_fonts: Default::default(),
             ui_icons: Default::default(),
             ui_faces: Default::default(),
             text_strikes: Default::default(),
             text_layout: Default::default(),
             ui_next: None,
-            ui_pages: BTreeMap::new(),
-            runtime_fonts: IdMap::new(),
             notes: Vec::new(),
             glyphs_judged: Default::default(),
             vfx_decals_warned: Default::default(),
             vfx_drawn: 0,
             vfx_dropped: 0,
-            glyphs_settle: false,
             #[cfg(not(feature = "publish"))]
             inspector: None,
             feel: Default::default(),

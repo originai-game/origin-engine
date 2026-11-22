@@ -45,7 +45,6 @@ pub(crate) fn settle(eng: &Engine) -> bool {
     }
     let mut rs = eng.render.borrow_mut();
     rs.terrain.settle = true;
-    rs.glyphs_settle = true;
     true
 }
 

@@ -12,7 +12,6 @@
 
 use crate::engine::{Engine, before_structural, hooks};
 use crate::host::codec::Layout;
-use crate::present::extract::add_font;
 use og_bundle::runtime::{Bundle, CookedSound, SceneDesc};
 use og_core::IdMap;
 use og_core::reflect::{FieldType, Schema};
@@ -137,19 +136,14 @@ impl std::ops::Deref for LoadedScene {
 pub(crate) struct LoadedFont {
     pub id: String,
     pub info: Value,
-    /// Index into the render state's fonts.
-    pub render: usize,
-    /// The font's file, when it ships one (a shaped script, `runtime
-    /// true`): og-ui shapes with it and measures characters outside the
-    /// atlas, which `crate::present::glyphs` renders.
-    pub file: Option<std::sync::Arc<og_text::shape::FontFile>>,
     /// The font file's bytes: what TSX text is laid out and rastered
     /// from (`crate::present::faces`).
     pub bytes: Option<std::sync::Arc<Vec<u8>>>,
     /// An icon set's names (glyph U+E000 + i is icon i); empty for a text font.
     pub icons: Vec<String>,
-    /// A pixel font's grid (`font { pixel <grid> }`); 0 for an outline font.
-    pub pixel: u32,
+    /// An icon set's face (one field a glyph, at the atlas's pixels per
+    /// em); none for a text font.
+    pub face: Option<std::sync::Arc<og_ui_next::icons::IconFace>>,
 }
 
 /// Everything an engine loaded.
@@ -791,9 +785,13 @@ pub(crate) fn decode_scene(
 
 pub(crate) fn load_font(eng: &Engine, path: &str) -> Result<usize, String> {
     let id = og_bundle::runtime::asset_id(path).to_string();
-    if let Some(i) = eng.assets.borrow().fonts.iter().position(|f| f.id == id) {
-        return Ok(i);
-    }
+    let index = {
+        let assets = eng.assets.borrow();
+        if let Some(i) = assets.fonts.iter().position(|f| f.id == id) {
+            return Ok(i);
+        }
+        assets.fonts.len()
+    };
     let font = {
         let assets = eng.assets.borrow();
         let (bytes, bundle) = assets.blob(&id)?;
@@ -806,47 +804,116 @@ pub(crate) fn load_font(eng: &Engine, path: &str) -> Result<usize, String> {
         "lineHeight": m.ascender - m.descender + m.line_gap,
         "icons": font.names.len(), "pixel": font.pixel,
     });
-    let mut rs = eng.render.borrow_mut();
-    let pages = add_font(&mut rs.scene, &font);
-    rs.fonts.push(pages);
-    let render = rs.fonts.len() - 1;
     let bytes = font
         .ttf
         .clone()
         .or_else(|| font.file.clone())
         .map(std::sync::Arc::new);
-    let file = bytes
-        .clone()
-        .filter(|_| font.ttf.is_some())
-        .and_then(og_text::shape::FontFile::new)
-        .or_else(|| {
-            font.shaping
-                .clone()
-                .and_then(|t| og_text::shape::FontFile::for_shaping(std::sync::Arc::new(t)))
-        });
-    if font.ttf.is_some()
-        && let Some(f) = &file
-    {
-        rs.runtime_fonts.insert(
-            render,
-            crate::present::glyphs::RuntimeFont::new(
-                f.clone(),
-                m.em_px,
-                m.px_range,
-                font.pixel,
-                font.color_runtime.clone(),
-            ),
-        );
-    }
+    // The font file's bytes: what TSX text is laid out and rastered from
+    // (`crate::present::faces`), which registers it the first time it lays
+    // something out with it.
+    let face = icon_face(&font, index);
     let mut assets = eng.assets.borrow_mut();
     assets.fonts.push(LoadedFont {
         id,
         info,
-        render,
-        file,
         bytes,
         icons: font.names.clone(),
-        pixel: font.pixel,
+        face,
     });
-    Ok(assets.fonts.len() - 1)
+    Ok(index)
+}
+
+/// An icon set's face for the shared glyph atlas (`crate::present::faces`
+/// rasterises text; an icon set is its own face, one field a glyph):
+/// every glyph's cooked field, resampled from the set's own
+/// pixels-per-em to the atlas's ([`og_render::glyphs::FIELD_EM_PX`]).
+/// Bilinearly, and its pixel values unchanged: the field's encoding (a
+/// distance of `range` across the pixel's span) reads the same at any
+/// scale, so only its size and its range in atlas pixels move.
+///
+/// `index` (the font's index in the engine's assets) names the face in
+/// the atlas, past every text face's ids (`og_text::fonts::FaceId`).
+fn icon_face(
+    font: &og_bundle::runtime::CookedFont,
+    index: usize,
+) -> Option<std::sync::Arc<og_ui_next::icons::IconFace>> {
+    if font.names.is_empty() {
+        return None;
+    }
+    let page = font.pages.first()?;
+    let k = og_render::glyphs::FIELD_EM_PX / font.meta.em_px;
+    let cells: Vec<og_ui_next::icons::Cell> = font
+        .glyphs
+        .iter()
+        .map(|g| {
+            let (w, h) = (
+                (f32::from(u16::try_from(g.atlas_w).unwrap_or(u16::MAX)) * k).round() as u32,
+                (f32::from(u16::try_from(g.atlas_h).unwrap_or(u16::MAX)) * k).round() as u32,
+            );
+            og_ui_next::icons::Cell {
+                left: (g.plane_left * og_render::glyphs::FIELD_EM_PX).round() as i16,
+                top: (g.plane_top * og_render::glyphs::FIELD_EM_PX).round() as i16,
+                width: w,
+                height: h,
+                range: font.meta.px_range * k,
+                pixels: resample(
+                    &page.rgba,
+                    page.width,
+                    (g.atlas_x, g.atlas_y, g.atlas_w, g.atlas_h),
+                    (w, h),
+                )
+                .into(),
+            }
+        })
+        .collect();
+    Some(std::sync::Arc::new(og_ui_next::icons::IconFace {
+        id: u32::MAX - index as u32,
+        cells: cells.into(),
+    }))
+}
+
+/// `src` (an `x y w h` rectangle of RGBA `page`, its `stride` wide, rows
+/// from the top) resampled bilinearly to `to` (`w h`). Whole size: a copy.
+fn resample(
+    page: &[u8],
+    stride: u32,
+    (x, y, w, h): (u32, u32, u32, u32),
+    (tw, th): (u32, u32),
+) -> Vec<u8> {
+    let at = |px: u32, py: u32| {
+        let o = (((y + py) * stride + x + px) * 4) as usize;
+        [page[o], page[o + 1], page[o + 2], page[o + 3]]
+    };
+    let mut out = vec![0u8; (tw * th * 4) as usize];
+    if (tw, th) == (w, h) {
+        for r in 0..h {
+            let o = (r * w * 4) as usize;
+            out[o..o + (w * 4) as usize]
+                .copy_from_slice(&page[(((y + r) * stride + x) * 4) as usize..][..(w * 4) as usize]);
+        }
+        return out;
+    }
+    // The source place of each target pixel's centre, in source pixels.
+    let map = |t: u32, tw: u32, w: u32| (t as f32 + 0.5) * w as f32 / tw as f32 - 0.5;
+    for r in 0..th {
+        let sy = map(r, th, h).clamp(0.0, (h - 1) as f32);
+        let y0 = sy.floor() as u32;
+        let y1 = (y0 + 1).min(h - 1);
+        let fy = sy - y0 as f32;
+        for c in 0..tw {
+            let sx = map(c, tw, w).clamp(0.0, (w - 1) as f32);
+            let x0 = sx.floor() as u32;
+            let x1 = (x0 + 1).min(w - 1);
+            let fx = sx - x0 as f32;
+            let lerp = |(a, b): ([u8; 4], [u8; 4]), t: f32| {
+                [0, 1, 2, 3].map(|k| (a[k] as f32 + (b[k] as f32 - a[k] as f32) * t) as u8)
+            };
+            let o = ((r * tw + c) * 4) as usize;
+            let top = lerp((at(x0, y0), at(x1, y0)), fx);
+            let bottom = lerp((at(x0, y1), at(x1, y1)), fx);
+            out[o..o + 4].copy_from_slice(&lerp((top, bottom), fy));
+        }
+    }
+    out
 }
