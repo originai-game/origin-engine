@@ -40,12 +40,12 @@ export function StrategyResources(props: StrategyResourcesProps) {
             </View>
             <Show when={r().note} fallback={
                 <Show when={r().rate}>
-                  <Text class={`min-w-0 leading-tight text-xs font-semibold tabular-nums whitespace-nowrap overflow-hidden text-fg-muted data-gain:text-success data-loss:text-danger data-note:text-gold compact:text-xs`} data-gain={r().trend === "gain"} data-loss={r().trend === "loss"} data-note={r().trend === "note"}>
+                  <Text class={`leading-tight text-xs font-semibold tabular-nums whitespace-nowrap text-fg-muted data-gain:text-success data-loss:text-danger data-note:text-gold compact:text-xs`} data-gain={r().trend === "gain"} data-loss={r().trend === "loss"} data-note={r().trend === "note"}>
                     {r().rate}
                   </Text>
                 </Show>
             }>
-              <Text class={`min-w-0 leading-tight text-xs font-semibold tabular-nums whitespace-nowrap overflow-hidden text-gold compact:text-xs`}>
+              <Text class={`leading-tight text-xs font-semibold tabular-nums whitespace-nowrap text-gold compact:text-xs`}>
                 {r().note}
               </Text>
             </Show>

@@ -21,7 +21,7 @@ export interface TutorialScreenProps {
   y: number;
   /** The step's art (0: none). */
   texture: Texture | 0;
-  /** The id of the element the step points at, in any document under this one: the rest of the screen dims and takes presses, the element stays lit and takes its own, and the card stands against it in place of x and y. Empty: nothing is dimmed. The TSX host has no spotlight surface yet, so the card stands at x and y regardless. */
+  /** The `name` of the element the step points at, anywhere in the UI (name a `View` around an `Icon`): the rest of the screen dims and takes every press, the element stays lit and takes its own, and the card stands under it in place of x and y. Empty: nothing is dimmed and the card stands at x and y. While no element of that name shows, the whole screen dims and the card waits hidden. */
   target?: string;
   /** Content the caller supplies (was the highlight snippet). */
   highlight?: (() => JSX.Element) | undefined;
@@ -34,16 +34,21 @@ export interface TutorialScreenProps {
 }
 
 /**
- * A tutorial step: a dense smoked plate lit in the accent, at the game's x
- * and y, with the step count and the lesson's progress, the step's art,
- * its words, and Skip beside Next. The Svelte screen's spotlight (the dim
- * over the rest of the screen and the card anchored to the target element)
- * has no TSX surface yet: the card always stands at x and y, and nothing
- * is dimmed.
+ * A tutorial step's card: a dense smoked plate lit in the accent, with the
+ * step count and the lesson's progress, the step's art, its words, and Skip
+ * beside Next. It stands under the target when there is one, else at the
+ * game's x and y.
  */
 function StepCard(props: TutorialScreenProps) {
+  const target = () => props.target ?? "";
   return (
-    <View class={`bg-linear-to-b from-glass-hi to-glass-lo shadow-overlay inset-shadow-overline inset-ring-1 inset-ring-hud-accent text-fg w-full max-w-100 transition duration-240 ease-out absolute py-4 px-6 gap-2 narrow:w-auto narrow:max-w-none narrow:inset-x-3 starting:opacity-0 starting:scale-60 ${packClass("Panel", "frame")}`} style={{ left: `${props.x}px`, top: `${props.y}px` }}>
+    <View
+      anchor={target() || undefined}
+      lift={target() ? [0, 1, 0] : undefined}
+      class={`data-target:translate-y-3 bg-linear-to-b from-glass-hi to-glass-lo shadow-overlay inset-shadow-overline inset-ring-1 inset-ring-hud-accent text-fg w-full max-w-100 transition duration-240 ease-out absolute py-4 px-6 gap-2 narrow:w-auto narrow:max-w-none narrow:inset-x-3 starting:opacity-0 starting:scale-60 ${packClass("Panel", "frame")}`}
+      data-target={target() !== ""}
+      style={target() ? undefined : { left: `${props.x}px`, top: `${props.y}px` }}
+    >
       <View class="flex-row items-center gap-x-3">
         <Text class={`text-xs font-bold tracking-label uppercase tabular-nums text-fg m-0 shrink`}>
           {t("screen.tutorial.Step", { step: props.step, steps: props.steps })}
@@ -78,20 +83,27 @@ function StepCard(props: TutorialScreenProps) {
 
 /**
  * A tutorial step: a card with the step's title, what to do, its art and
- * the step count, placed where the game puts it, pointing at an element by
- * its id; Next (hidden while the step waits for the player) and Skip.
+ * the step count, and Next (hidden while the step waits for the player) and
+ * Skip. Given a target, the screen dims around that element, which keeps its
+ * own presses, and the card stands under it; else the card stands where the
+ * game puts it.
  */
 export function TutorialScreen(props: TutorialScreenProps) {
   return (
     <View class="relative h-full">
       <View class="absolute inset-0">{props.highlight?.()}</View>
-      <StepCard {...props} />
+      <Show when={props.target} fallback={<StepCard {...props} />}>
+        <View class="absolute inset-0 bg-scrim" spotlight={props.target}>
+          <StepCard {...props} />
+        </View>
+      </Show>
     </View>
   );
 }
 
 export const fixtures: Record<string, Partial<TutorialScreenProps>> = {
   default: {"step":2,"steps":5,"target":"","text":"Press the dodge button just before an attack lands to slip past it.","texture":0,"title":"Dodge","waits":false,"x":64,"y":120},
+  spotlight: {"step":3,"steps":5,"target":"dodge-button","text":"This is your dodge. Press it just before an attack lands.","texture":0,"title":"Your dodge","waits":true,"x":64,"y":120},
 };
 
 /** The input actions it answers, with the label a hint shows for each. */

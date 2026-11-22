@@ -1,4 +1,4 @@
-import { For, Icon, Show, Text, View, formatNumber, t } from "@origingame/engine/ui";
+import { For, Icon, Show, Text, View, formatNumber, packClass, t } from "@origingame/engine/ui";
 import "./star-bar.en.ogt";
 
 export interface StarBarStar {
@@ -44,11 +44,11 @@ export function StarBar(props: StarBarProps) {
       valueMax={max()}
       valueNow={props.value ?? 0}
     >
-      <View class="flex-col items-center">
+      <View class={`flex-col items-center py-0.5 px-2 nine-chip-cut bg-glass ${packClass("Plate", "frame")}`}>
         <Show when={(props.label ?? "") !== "" && !props.compact}>
-          <Text class="text-caption text-fg-muted text-shadow-xs">{props.label}</Text>
+          <Text class="text-caption text-fg-muted">{props.label}</Text>
         </Show>
-        <Text class="text-display-sm font-bold tabular-nums whitespace-nowrap text-fg text-shadow-xs group-data-compact/starbar:text-xl">{props.valueText || formatNumber(props.value ?? 0)}</Text>
+        <Text class="text-display-sm font-bold tabular-nums whitespace-nowrap text-fg group-data-compact/starbar:text-xl">{props.valueText || formatNumber(props.value ?? 0)}</Text>
       </View>
       <View class={`relative group-data-compact/starbar:w-35 w-50 group-data-compact/starbar:h-6 h-8`}>
         <View class="absolute inset-x-4 top-3 h-2 overflow-hidden rounded-capsule bg-bg-subtle group-data-compact/starbar:inset-x-3 group-data-compact/starbar:top-2.5 group-data-compact/starbar:h-1">
