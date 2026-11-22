@@ -42,6 +42,8 @@ mod drop_shadows;
 mod extract_cost;
 #[path = "../flow.rs"]
 mod flow;
+#[path = "../flow_acceptance.rs"]
+mod flow_acceptance;
 #[path = "../flow_prefetch.rs"]
 mod flow_prefetch;
 #[path = "../font_packs.rs"]

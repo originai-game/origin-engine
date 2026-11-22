@@ -1,0 +1,22 @@
+type timeline
+version 1
+---
+# The 2D physics minigame: live, held for the game from 0.2 s.
+duration 1
+track scene {
+  key 0 {
+    scene "scenes/arcade.ogt"
+  }
+}
+track camera {
+  key 0 {
+    position 0 1.5 8
+    target 0 1.5 0
+    fov 45
+  }
+}
+track marker {
+  key 0.2 {
+    name "flow.hold"
+  }
+}

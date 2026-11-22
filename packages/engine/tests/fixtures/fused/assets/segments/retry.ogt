@@ -1,0 +1,11 @@
+type timeline
+version 1
+---
+# The ending a lost level reaches: footage from 6 s.
+duration 2
+track video {
+  key 0 {
+    video "clips/film.ogt"
+    from 6
+  }
+}

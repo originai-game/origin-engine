@@ -1,0 +1,22 @@
+type timeline
+version 1
+---
+# The 3D level: live, held for the game from 0.5 s.
+duration 1
+track scene {
+  key 0 {
+    scene "scenes/level.ogt"
+  }
+}
+track camera {
+  key 0 {
+    position 0 3 7
+    target 0 0.3 0
+    fov 50
+  }
+}
+track marker {
+  key 0.5 {
+    name "flow.hold"
+  }
+}

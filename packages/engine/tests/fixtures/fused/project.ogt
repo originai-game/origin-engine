@@ -1,0 +1,19 @@
+type project
+version 1
+---
+# The flow acceptance fixture (crates/og-runtime/tests/flow_acceptance.rs
+# and docs/design.md's film plan): one flow plays a CG intro on footage, a
+# 3D physics level the game plays, an in-engine cutscene, a 2D physics
+# minigame and a live-action ending. The engine starts and draws the flow;
+# src/main.ts holds only the two games.
+name "Fused flow fixture"
+id "fused-flow-fixture"
+engine "0.9.0"
+entry "src/main.ts"
+flow "story/game.yarn"
+create {
+  form "3d"
+  genre "interactive-film"
+}
+tick 60
+seed 1

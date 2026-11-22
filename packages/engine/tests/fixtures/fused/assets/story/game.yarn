@@ -1,0 +1,41 @@
+#og-profile:yarn-spinner-3.2.2
+#og-name:game
+title: intro
+og-flow: segments/intro.ogt
+og-flow-chapter: chapter.intro
+---
+-> Watch again #line:intro.again
+    <<jump intro>>
+-> Play #line:intro.play #default
+    <<jump level>>
+===
+title: level
+og-flow: segments/level.ogt
+og-flow-chapter: chapter.level
+---
+-> won #line:level.won #outcome:won
+    <<jump cutscene>>
+-> lost #line:level.lost #outcome:lost
+    <<jump lost>>
+===
+title: cutscene
+og-flow: segments/cutscene.ogt
+---
+<<jump arcade>>
+===
+title: arcade
+og-flow: segments/arcade.ogt
+---
+-> landed #line:arcade.landed #outcome:landed
+    <<jump ending>>
+===
+title: ending
+og-flow: segments/ending.ogt
+og-flow-ending: ending
+---
+===
+title: lost
+og-flow: segments/retry.ogt
+og-flow-ending: lost
+---
+===

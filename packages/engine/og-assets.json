@@ -1078,6 +1078,12 @@
       "visibility": "public"
     },
     {
+      "path": "tests/fixtures/fused/assets/clips/film.mp4",
+      "sha256": "6cb5ae8fb39529185b223134831924d359276d0be8413444fa5388e8ca46250b",
+      "size": 66860,
+      "visibility": "public"
+    },
+    {
       "path": "tests/fixtures/lane-panic/assets/models/walker.glb",
       "sha256": "e068aeca18b491e54b48ae8c264d208a414f9de455a571340bf55ef0c3d2face",
       "size": 34296,

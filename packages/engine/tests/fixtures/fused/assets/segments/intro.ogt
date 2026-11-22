@@ -1,0 +1,21 @@
+type timeline
+version 1
+---
+# The CG intro: footage from 0 s; Watch it again, or go on (#default).
+duration 2
+track video {
+  key 0 {
+    video "clips/film.ogt"
+  }
+}
+track marker {
+  key 0.5 {
+    name "flow.open"
+  }
+  key 1.5 {
+    name "flow.lock"
+  }
+  key 1.8 {
+    name "flow.cut"
+  }
+}

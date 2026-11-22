@@ -1,0 +1,11 @@
+type timeline
+version 1
+---
+# The live-action ending: footage from 8 s.
+duration 2
+track video {
+  key 0 {
+    video "clips/film.ogt"
+    from 8
+  }
+}

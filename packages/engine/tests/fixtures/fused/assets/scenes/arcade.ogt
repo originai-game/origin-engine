@@ -1,0 +1,50 @@
+type scene
+version 1
+---
+# The 2D physics minigame: a puck falls onto a floor in the xy plane. Its
+# og.Physics profile 2 switches the world to rapier2d while it is placed.
+name "Arcade"
+resource og.Physics {
+  profile 2
+}
+resource Sky {
+  enabled true
+  zenith 0.05 0.05 0.1
+  horizon 0.15 0.1 0.2
+  ground 0.05 0.05 0.05
+  sunIntensity 1
+  sunDirection 0 0.6 0.8
+}
+entity "arcade-floor" {
+  model "models/set.ogt"
+  RigidBody {
+    kind fixed
+  }
+  Collider {
+    shape box
+    size 12 0.1 1
+  }
+}
+entity "puck" {
+  model "models/ball.ogt"
+  Transform {
+    position 0 3 0
+  }
+  RigidBody {
+    mass 1
+  }
+  Collider {
+    shape sphere
+    radius 0.3
+  }
+}
+entity "arcade-light" {
+  Transform {
+    position 0 5 5
+    quaternion -0.3826834 0 0 0.9238795
+  }
+  DirectionalLight {
+    color 0.8 0.9 1
+    intensity 2
+  }
+}

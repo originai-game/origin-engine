@@ -393,3 +393,13 @@ one, and any flow can stop for a game.
   in the scene file. Without a Sky it is lit and reflected by the look's
   daylight sky even where the camera's dark background shows, so a night
   set comes out flat and pale.
+- **All of them in one flow.** A CG intro on footage, a 3D level held for
+  the game, an in-engine cutscene, a 2D physics minigame (its scene's
+  `resource og.Physics { profile 2 }` switches the world's simulation
+  while it is placed) and a live-action ending are five nodes of one
+  dialogue, and the game's code is only the two games. The decks warm the
+  segments each node may cut to: footage decoded to its first frame, a
+  scene's models, textures and pipelines prepared, and the engine modules
+  its segment needs (physics2d for the minigame) fetched, so after the
+  loading screen no cut waits. A warmed segment the flow can no longer
+  reach is let go on the next tick.
