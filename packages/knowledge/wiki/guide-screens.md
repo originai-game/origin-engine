@@ -102,7 +102,11 @@ colours sets those (`:root { --seed-primary: #c8102e; --seed-neutral:
 #3a3226; }`, or `og.ui.configure(engine, { seeds: { primary:
 color.fromHex(0xc8102e) } })`), and every ground, ink, state, status and
 team colour follows in both schemes with its contrast kept. Configuring
-new seeds at run time restyles the whole UI. `og style list`
+new seeds at run time restyles the whole UI. Art that is one picture in
+both schemes, such as a dark plate, names its scheme on its slot with
+`scheme-dark` (or `scheme-light`): the roles inside it, `text-fg` and the
+rest, then resolve in that scheme whatever the page's is, down to a nearer
+`scheme-*`. `og style list`
 names the built-in and installed packs.
 
 1. Run `og style new my-style --look neon-vector --scheme dark` in your

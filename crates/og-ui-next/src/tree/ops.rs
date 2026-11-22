@@ -200,7 +200,7 @@ impl Classes {
     /// Entry `i`'s record under interaction states `states` and data
     /// context `data`.
     pub(super) fn record(&mut self, i: u32, states: u16, data: u32) -> &Record {
-        let st = states & self.tracked(i);
+        let st = states & (self.tracked(i) | crate::classes::OTHER_SCHEME);
         if st == 0 && data == 0 {
             return &self.records[i as usize];
         }
@@ -331,6 +331,7 @@ impl Tree {
         shadow[3] *= 0.45;
         let fg = resolve("text-fg bg-focus", "", 0, "");
         self.cursor_colors = [shadow, fg.skin.ink, fg.skin.fill];
+        self.page_dark = fg.dark;
         // The root passes down the theme's body text in its ink, as the
         // page's body does.
         let mut root = resolve("text-fg text-body font-body", "", 0, "");
@@ -343,6 +344,10 @@ impl Tree {
             ..self.root
         };
         self.classes.resolve = Some(resolve);
+        // Which nodes are in the other scheme is relative to the page's.
+        for e in 0..self.els.len() as u32 {
+            self.els[e as usize].other = self.other_scheme(e);
+        }
         self.restyle_all();
         for e in 0..self.els.len() as u32 {
             let el = &self.els[e as usize];
@@ -369,9 +374,26 @@ impl Tree {
         }
     }
 
+    /// Whether element `e` is drawn in the other scheme than the page's:
+    /// the nearest `scheme-*` of it and its ancestors names that one.
+    fn other_scheme(&self, e: u32) -> bool {
+        let mut at = e;
+        while at != NONE {
+            let el = &self.els[at as usize];
+            if let Some(dark) = el.record.scheme {
+                return dark != self.page_dark;
+            }
+            at = el.parent;
+        }
+        false
+    }
+
     pub(super) fn restyle(&mut self, e: u32) {
         let class = self.els[e as usize].class;
-        let states = self.input.per(e).map_or(0, |p| p.states);
+        let mut states = self.input.per(e).map_or(0, |p| p.states);
+        if self.els[e as usize].other {
+            states |= crate::classes::OTHER_SCHEME;
+        }
         let data = self.els[e as usize].data;
         let record = self.classes.record(class, states, data);
         if self.els[e as usize].record != *record {
@@ -428,6 +450,7 @@ impl Tree {
             anchor: None,
             attrs: Vec::new(),
             data: 0,
+            other: false,
             image: None,
             entering: Some(false),
             eff: self.root,
@@ -1041,8 +1064,10 @@ impl Tree {
                 p = pe.parent;
             }
             let id = self.classes.data_id(data.trim_end());
-            if id != self.els[e as usize].data {
-                self.els[e as usize].data = id;
+            let other = self.other_scheme(e);
+            let el = &mut self.els[e as usize];
+            if id != el.data || other != el.other {
+                (el.data, el.other) = (id, other);
                 self.restyle(e);
             }
         }
@@ -2492,6 +2517,63 @@ mod tests {
             }
         }));
         t
+    }
+
+    /// A node under `scheme-dark` or `scheme-light` naming the other scheme
+    /// than the page's resolves with [`crate::classes::OTHER_SCHEME`], and
+    /// so does its subtree down to a nearer `scheme-*`; a sibling does not.
+    /// A class change or a page scheme change moves it. Ways this could
+    /// fail: only the node naming it flips (its labels keep the page's
+    /// ink), the nearest names are not the ones read, or a child keeps its
+    /// old scheme after its parent's class changes.
+    #[test]
+    fn a_scheme_class_resolves_its_subtree_in_that_scheme() {
+        let resolver = |page_dark: bool| -> Resolve {
+            Box::new(move |class, _, state, _| {
+                let mut r = Record {
+                    dark: page_dark != (state & crate::classes::OTHER_SCHEME != 0),
+                    ..Record::default()
+                };
+                for c in class.split_whitespace() {
+                    match c {
+                        "scheme-dark" => r.scheme = Some(true),
+                        "scheme-light" => r.scheme = Some(false),
+                        _ => {}
+                    }
+                }
+                r
+            })
+        };
+        let mut t = tree();
+        t.set_resolver(resolver(false));
+        let mut b = Batch::default();
+        for (id, class, parent) in [
+            (1, "scheme-dark", 0),
+            (2, "", 1),
+            (3, "scheme-light", 2),
+            (4, "", 3),
+            (5, "", 0),
+        ] {
+            b.op(1).u32(id).u8(0);
+            b.op(4).u32(id).str(class);
+            b.op(8).u32(parent).u32(id).u32(u32::MAX);
+        }
+        t.apply(&b.bytes()).unwrap();
+        frame(&mut t);
+        let dark = |t: &Tree| -> Vec<bool> {
+            (1..=5)
+                .map(|id| t.els[t.by_js[id] as usize].record.dark)
+                .collect()
+        };
+        assert_eq!(dark(&t), [true, true, false, false, false], "light page");
+        let mut b = Batch::default();
+        b.op(4).u32(1).str("");
+        t.apply(&b.bytes()).unwrap();
+        frame(&mut t);
+        assert_eq!(dark(&t), [false; 5], "its parent's class went");
+        t.set_resolver(resolver(true));
+        frame(&mut t);
+        assert_eq!(dark(&t), [true, true, false, false, true], "dark page");
     }
 
     /// Ids 1..=n as `class` views under a row at the root, each listening

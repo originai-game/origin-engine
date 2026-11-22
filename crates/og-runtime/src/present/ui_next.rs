@@ -442,30 +442,38 @@ fn resolver(
     if let Some(Value::Object(b)) = pack.theme(scheme).get("breakpoints") {
         widths.extend(b.values().filter_map(Value::as_f64).map(|w| w as f32));
     }
-    // The cook checked the theme: what it left out, it reported then.
-    let theme = if high_contrast {
-        pack.theme_json_high_contrast(scheme)
-    } else {
-        pack.theme_json(scheme)
+    let slots = slots.clone();
+    // The classes of the pack's theme, variants and images in a scheme.
+    let make = move |scheme: Scheme| {
+        // The cook checked the theme: what it left out, it reported then.
+        let theme = if high_contrast {
+            pack.theme_json_high_contrast(scheme)
+        } else {
+            pack.theme_json(scheme)
+        };
+        let mut classes = og_ui_next::classes::Classes::new(Some(&theme))
+            .or_else(|_| og_ui_next::classes::Classes::new(None))
+            .expect("the default theme reads")
+            .0;
+        // `packClass` at runtime: `@Component.slot[.variant]` tokens.
+        classes.set_variants(pack.variants().clone());
+        // `nine-<name>`: the pack's images, their textures loaded ahead
+        // ([`pack_images`]).
+        classes.set_images(
+            pack.images(scheme)
+                .iter()
+                .map(|(name, image)| {
+                    let slot = slots.get(&image.src).copied().unwrap_or(0);
+                    (name.clone(), og_ui_next::classes::nine_slice(image, slot))
+                })
+                .collect(),
+        );
+        classes
     };
-    let mut classes = og_ui_next::classes::Classes::new(Some(&theme))
-        .or_else(|_| og_ui_next::classes::Classes::new(None))
-        .expect("the default theme reads")
-        .0;
-    // `packClass` at runtime: `@Component.slot[.variant]` tokens.
-    classes.set_variants(pack.variants().clone());
-    // `nine-<name>`: the pack's images, their textures loaded ahead
-    // ([`pack_images`]).
-    classes.set_images(
-        pack.images(scheme)
-            .iter()
-            .map(|(name, image)| {
-                let slot = slots.get(&image.src).copied().unwrap_or(0);
-                (name.clone(), og_ui_next::classes::nine_slice(image, slot))
-            })
-            .collect(),
-    );
-    let classes = RefCell::new(classes);
+    let other_scheme = if dark { Scheme::Light } else { Scheme::Dark };
+    // The page's scheme's classes, and the other scheme's for a subtree
+    // that names it (`scheme-dark` over dark art), made when first asked.
+    let classes = RefCell::new([Some(make(scheme)), None]);
     let env = og_ui_next::classes::Env {
         window,
         dark,
@@ -474,13 +482,15 @@ fn resolver(
     // The tree asks for an entry's state records (motion's `starting:`
     // and `exit:`; the input's); the inline style lies over the classes.
     let resolve: Resolve = Box::new(move |class, style, states, data| {
-        let mut c = classes.borrow_mut();
-        let record = c.record_data(
-            class,
-            style,
-            &og_ui_next::classes::Env { states, ..env },
-            data,
-        );
+        let other = states & og_ui_next::classes::OTHER_SCHEME != 0;
+        let mut all = classes.borrow_mut();
+        let c = all[usize::from(other)].get_or_insert_with(|| make(other_scheme));
+        let env = og_ui_next::classes::Env {
+            states,
+            dark: dark != other,
+            ..env
+        };
+        let record = c.record_data(class, style, &env, data);
         sized.set(c.sized());
         record
     });
@@ -1339,7 +1349,8 @@ mod tests {
     }
 
     /// The resolver reads the pack's theme in the UI's scheme and gives the
-    /// tree's state records: `bg-surface` is the scheme's surface, and
+    /// tree's state records: `bg-surface` is the scheme's surface (the
+    /// other scheme's under [`og_ui_next::classes::OTHER_SCHEME`]), and
     /// `starting:` holds only under its bit.
     #[test]
     fn the_resolver_reads_the_scheme_and_the_state_bits() {
@@ -1361,6 +1372,16 @@ mod tests {
                 want,
                 "{scheme:?}"
             );
+            // A subtree under `scheme-*` naming the other scheme (dark
+            // art on a light page) resolves in that scheme.
+            let other = if dark { Scheme::Light } else { Scheme::Dark };
+            let hex = pack.theme(other)["colors"]["surface"].as_str().unwrap();
+            let want = resolve(&format!("bg-[{hex}]"), "", 0, "").skin.fill;
+            let bit = og_ui_next::classes::OTHER_SCHEME;
+            let r = resolve("bg-surface", "", bit, "");
+            assert_eq!(r.skin.fill, want, "{scheme:?}'s other");
+            assert_eq!(r.dark, !dark);
+            assert_eq!(resolve("scheme-dark", "", 0, "").scheme, Some(true));
         }
         let light = pack.theme(Scheme::Light)["colors"]["surface"].clone();
         assert_ne!(light, pack.theme(Scheme::Dark)["colors"]["surface"]);

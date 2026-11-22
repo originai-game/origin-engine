@@ -399,6 +399,12 @@ pub struct Record {
     /// Its `mask-[<gradient>]` (CSS's `mask-image`): the gradient's alpha
     /// over its border box scales everything it and its subtree draw.
     pub mask: Option<Gradient>,
+    /// Its `scheme-dark` (true) or `scheme-light`: the scheme its subtree
+    /// is drawn in whatever the page's, for art that is one picture in
+    /// both; `None` follows its parent.
+    pub scheme: Option<bool>,
+    /// The scheme it was resolved in.
+    pub dark: bool,
 }
 
 impl Record {
@@ -456,6 +462,8 @@ impl Default for Record {
             cursor: nsh_tailwind::effects::Cursor::Auto,
             z_index: None,
             mask: None,
+            scheme: None,
+            dark: false,
         }
     }
 }

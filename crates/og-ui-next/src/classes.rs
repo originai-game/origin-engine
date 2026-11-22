@@ -20,6 +20,12 @@ use rustc_hash::FxHashMap;
 
 pub use nsh_tailwind::tailwind::state;
 
+/// The [`Env::states`] bit that asks for an element's record in the other
+/// scheme than the page's: it or an ancestor carries `scheme-dark` or
+/// `scheme-light` and the page is in the other one. NSH's state bits stop
+/// below it; a resolver strips it before NSH sees the states.
+pub const OTHER_SCHEME: u16 = 1 << 15;
+
 /// What an element's classes are resolved against.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct Env {
@@ -54,6 +60,8 @@ struct Parsed {
     /// standing for name `n`), so NSH's own variant and order rules pick
     /// the one that holds.
     nine_list: Option<ClassList>,
+    /// Its last `scheme-dark` (true) or `scheme-light`.
+    scheme: Option<bool>,
 }
 
 /// A pack image (`Pack::images`) as the box image it draws, its texture
@@ -146,12 +154,26 @@ impl Classes {
         if !self.lists.contains_key(classes) {
             let expanded = self.expand(classes);
             let (mut rest, mut nine, mut stand) = (String::new(), Vec::new(), String::new());
+            let mut scheme = None;
             for class in expanded
                 .as_deref()
                 .unwrap_or(classes)
                 .split_ascii_whitespace()
             {
                 let (variants, utility) = class.rsplit_once(':').unwrap_or(("", class));
+                // The scheme a subtree's art is drawn in (Tailwind's
+                // `color-scheme` utilities), unconditional.
+                match class {
+                    "scheme-dark" => {
+                        scheme = Some(true);
+                        continue;
+                    }
+                    "scheme-light" => {
+                        scheme = Some(false);
+                        continue;
+                    }
+                    _ => {}
+                }
                 let Some(name) = utility.strip_prefix("nine-") else {
                     rest.push_str(class);
                     rest.push(' ');
@@ -173,6 +195,7 @@ impl Classes {
                     list,
                     nine,
                     nine_list,
+                    scheme,
                 },
             );
         }
@@ -235,12 +258,16 @@ impl Classes {
                 Some(g) => t.strip_prefix(g).and_then(|r| r.strip_prefix('/')) == Some(name),
             })
         };
-        let env = *env;
+        let env = Env {
+            states: env.states & !OTHER_SCHEME,
+            ..*env
+        };
         let parsed = self.parsed(classes);
-        let (list, nine, nine_list) = (
+        let (list, nine, nine_list, scheme) = (
             parsed.list.clone(),
             parsed.nine.clone(),
             parsed.nine_list.clone(),
+            parsed.scheme,
         );
         let cx = Context {
             env: ClassEnvironment {
@@ -276,6 +303,8 @@ impl Classes {
             let _ = out.set(&camel(name), value);
         }
         let mut record = record_of(&out, &props);
+        record.scheme = scheme;
+        record.dark = env.dark;
         // The `nine-<name>` that holds in `env`, the last one written.
         if let Some(nine_list) = nine_list {
             let mut stand = Style::default();

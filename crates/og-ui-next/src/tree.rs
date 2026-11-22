@@ -81,6 +81,10 @@ struct El {
     /// `group-data-*:` variants read; 0 none.
     attrs: Vec<Box<str>>,
     data: u32,
+    /// It is drawn in the other scheme than the page's: its nearest
+    /// `scheme-dark` or `scheme-light`, its own or an ancestor's, names
+    /// it ([`crate::classes::OTHER_SCHEME`]).
+    other: bool,
 }
 
 /// What an anchored node sits on (CONVENTIONS.md §World).
@@ -361,6 +365,8 @@ pub struct Tree {
     /// A batch changed a `data-*` prop, a class or the op tree's shape:
     /// the data contexts are worked out again after it.
     data_dirty: bool,
+    /// The scheme the page's records are resolved in ([`Tree::set_resolver`]).
+    page_dark: bool,
     /// The string tables op batches named (op 12), for the host to
     /// register ([`Tree::take_strings`]).
     strings: Vec<String>,
@@ -484,6 +490,7 @@ impl Tree {
             classes: ops::Classes::default(),
             events: Vec::new(),
             data_dirty: false,
+            page_dark: false,
             strings: Vec::new(),
             motion: crate::motion::Motion::new(),
             time: 0.0,
