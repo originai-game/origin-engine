@@ -4,8 +4,13 @@ use super::*;
 
 /// Whether the backend views a texture (`surface`: a surface's) in its
 /// format's other encoding, sRGB or plain. Missing on GL for textures and
-/// on GL and Android Vulkan for surfaces.
-fn views_other_encoding(adapter: &wgpu::Adapter, surface: bool) -> bool {
+/// on GL and Android Vulkan for surfaces, and refused at [`Tier::Compat`],
+/// where a view keeps its texture's format (gpuweb's compatibility-mode
+/// proposal: no format reinterpretation).
+fn views_other_encoding(adapter: &wgpu::Adapter, tier: Tier, surface: bool) -> bool {
+    if tier == Tier::Compat {
+        return false;
+    }
     let flag = if surface {
         wgpu::DownlevelFlags::SURFACE_VIEW_FORMATS
     } else {
@@ -21,11 +26,12 @@ fn views_other_encoding(adapter: &wgpu::Adapter, surface: bool) -> bool {
 /// instead.
 pub(crate) fn linear_view_format(
     adapter: &wgpu::Adapter,
+    tier: Tier,
     output: wgpu::TextureFormat,
     surface: bool,
 ) -> Option<wgpu::TextureFormat> {
     let srgb = output.add_srgb_suffix();
-    (srgb != output && views_other_encoding(adapter, surface)).then_some(srgb)
+    (srgb != output && views_other_encoding(adapter, tier, surface)).then_some(srgb)
 }
 
 /// The plain view format of an sRGB `output`, when the backend can view
@@ -36,11 +42,12 @@ pub(crate) fn linear_view_format(
 /// both.
 pub(crate) fn encoded_view_format(
     adapter: &wgpu::Adapter,
+    tier: Tier,
     output: wgpu::TextureFormat,
     surface: bool,
 ) -> Option<wgpu::TextureFormat> {
     let plain = output.remove_srgb_suffix();
-    (plain != output && views_other_encoding(adapter, surface)).then_some(plain)
+    (plain != output && views_other_encoding(adapter, tier, surface)).then_some(plain)
 }
 
 pub(crate) fn shader(device: &wgpu::Device, label: &str, source: String) -> wgpu::ShaderModule {

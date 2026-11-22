@@ -264,8 +264,8 @@ impl Renderer {
             present_mode: wgpu::PresentMode::Fifo,
             alpha_mode: wgpu::CompositeAlphaMode::Opaque,
             // The display pass writes the surface; nothing blends on it.
-            view_formats: linear_view_format(&adapter, format, true)
-                .or(encoded_view_format(&adapter, format, true))
+            view_formats: linear_view_format(&adapter, desc.tier, format, true)
+                .or(encoded_view_format(&adapter, desc.tier, format, true))
                 .filter(|_| wide.is_none())
                 .into_iter()
                 .collect(),
@@ -611,8 +611,8 @@ impl Renderer {
             &sprite_sampler,
             [0.0; 4],
         );
-        let offscreen_linear = linear_view_format(&adapter, output_format, false);
-        let offscreen_encoded = encoded_view_format(&adapter, output_format, false);
+        let offscreen_linear = linear_view_format(&adapter, desc.tier, output_format, false);
+        let offscreen_encoded = encoded_view_format(&adapter, desc.tier, output_format, false);
         let persistent = post::Persistent::new(
             &device,
             width,
