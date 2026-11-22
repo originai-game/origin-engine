@@ -103,6 +103,8 @@ pub(super) struct Per {
     pub value: String,
     pub placeholder: Box<str>,
     pub caret: usize,
+    /// The other selection edge (equal to the caret when collapsed).
+    pub anchor: usize,
     /// The pack slot its class names (`@Component.slot[.variant]`, from
     /// `packClass`, without the `@`): the scope of its sounds.
     pub slot: Box<str>,
@@ -623,15 +625,19 @@ impl Tree {
             return false;
         };
         let p = &mut self.input.per[e as usize];
-        let at = p.caret.min(p.value.len());
-        let before = p.value.len();
-        for ch in text.chars().filter(|c| !c.is_control()) {
-            p.value.insert(at + (p.value.len() - before), ch);
-        }
-        if p.value.len() == before {
+        if !text.chars().any(|c| !c.is_control()) {
             return false;
         }
-        p.caret = at + (p.value.len() - before);
+        let at = p.caret.min(p.value.len());
+        let start = p.anchor.min(at);
+        let end = p.anchor.max(at);
+        p.value.replace_range(start..end, "");
+        let before = p.value.len();
+        for ch in text.chars().filter(|c| !c.is_control()) {
+            p.value.insert(start + (p.value.len() - before), ch);
+        }
+        p.caret = start + (p.value.len() - before);
+        p.anchor = p.caret;
         self.edited(e);
         true
     }
@@ -639,27 +645,45 @@ impl Tree {
     /// An editing key on the focused `Input`: Backspace and Delete remove
     /// the grapheme cluster before and after the caret, ←/→ step over one,
     /// Home and End go to the ends. Whether it was one.
-    fn edit_key(&mut self, e: u32, code: &str) -> bool {
+    fn edit_key(&mut self, e: u32, code: &str, shift: bool) -> bool {
         let p = &mut self.input.per[e as usize];
         let at = p.caret.min(p.value.len());
         match code {
             "Backspace" | "Delete" => {
-                let (a, b) = if code == "Backspace" {
+                let (a, b) = if p.anchor != at {
+                    (p.anchor.min(at), p.anchor.max(at))
+                } else if code == "Backspace" {
                     (cluster_edge(&p.value, at, true), at)
                 } else {
                     (at, cluster_edge(&p.value, at, false))
                 };
                 p.caret = a;
+                p.anchor = a;
                 if a < b {
                     p.value.replace_range(a..b, "");
                     self.edited(e);
                 }
             }
-            "ArrowLeft" => p.caret = cluster_edge(&p.value, at, true),
-            "ArrowRight" => p.caret = cluster_edge(&p.value, at, false),
+            "ArrowLeft" => {
+                p.caret = if !shift && p.anchor != at {
+                    p.anchor.min(at)
+                } else {
+                    cluster_edge(&p.value, at, true)
+                }
+            }
+            "ArrowRight" => {
+                p.caret = if !shift && p.anchor != at {
+                    p.anchor.max(at)
+                } else {
+                    cluster_edge(&p.value, at, false)
+                }
+            }
             "Home" => p.caret = 0,
             "End" => p.caret = p.value.len(),
             _ => return false,
+        }
+        if !shift {
+            self.input.per[e as usize].anchor = self.input.per[e as usize].caret;
         }
         self.paint = true;
         true
@@ -1787,11 +1811,17 @@ impl Tree {
         // The focused `Input` edits with its keys (arrows across its text
         // included); the game's shortcuts with Control, Alt or Command
         // pass on.
-        if let Some(e) = self.editing()
-            && !(ctrl || alt || meta)
-            && self.edit_key(e, code)
-        {
-            return true;
+        if let Some(e) = self.editing() {
+            if code == "KeyA" && (ctrl || meta) && !alt {
+                let p = &mut self.input.per[e as usize];
+                p.anchor = 0;
+                p.caret = p.value.len();
+                self.paint = true;
+                return true;
+            }
+            if !(ctrl || alt || meta) && self.edit_key(e, code, shift) {
+                return true;
+            }
         }
         let dir = match code {
             "ArrowUp" => Some(og_input::frame::Nav::Up),

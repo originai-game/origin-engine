@@ -7,7 +7,7 @@
 
 use crate::arena::{Arena, Id, Run};
 use crate::icons::{IconAtlas, IconCell};
-use crate::record::{Record, Rgba, Shadow, Text, TextStroke};
+use crate::record::{Decoration, Record, Rgba, Shadow, Text, TextStroke};
 use og_draw::glyphs::Atlas;
 use og_draw::paint::{Paint, PaintKind, PaintQuad};
 use og_i18n::Direction;
@@ -34,6 +34,7 @@ struct Inherit {
     opacity: f32,
     text_shadow: Shadow,
     text_stroke: TextStroke,
+    decoration: Decoration,
 }
 
 struct El {
@@ -479,6 +480,7 @@ impl Tree {
                 opacity: 1.0,
                 text_shadow: Shadow::default(),
                 text_stroke: TextStroke::default(),
+                decoration: Decoration::default(),
             },
             els: Vec::new(),
             arena: Arena::new(),
@@ -882,7 +884,11 @@ impl Tree {
         let el = &self.els[e as usize];
         let r = &el.record;
         let eff = Inherit {
-            size: if r.text.sized { r.font_size } else { from.size },
+            size: r
+                .font_size_em
+                .map_or(if r.text.sized { r.font_size } else { from.size }, |em| {
+                    em * from.size
+                }),
             ink: if r.inked { r.skin.ink } else { from.ink },
             text: r.text.over(&from.text),
             opacity: from.opacity * r.skin.opacity,
@@ -895,6 +901,11 @@ impl Tree {
                 r.skin.text_stroke
             } else {
                 from.text_stroke
+            },
+            decoration: if r.skin.decoration.line != 0 {
+                r.skin.decoration
+            } else {
+                from.decoration
             },
         };
         let mut layout = r.layout_in(self.insets);
@@ -1722,11 +1733,18 @@ impl Tree {
                     )
                 });
             }
-            // An `Input` showing its placeholder draws it at half its ink.
+            // An `Input`'s own placeholder colour, else half its ink.
             let field = self.input.per(e as u32).filter(|f| f.input);
             let mut text_ink = ink;
             if field.is_some_and(|f| f.value.is_empty()) {
-                text_ink[3] *= 0.5;
+                text_ink = s.placeholder.map_or_else(
+                    || {
+                        let mut c = ink;
+                        c[3] *= 0.5;
+                        c
+                    },
+                    faded,
+                );
             }
             if let Some(leaf) = el.leaf
                 && !el.text.is_empty()
@@ -1786,6 +1804,23 @@ impl Tree {
                     }
                 }
                 let g = self.texts.leaf(leaf).expect("painted");
+                if let Some(f) = field.filter(|f| f.anchor != f.caret)
+                    && self.input.focus_el() == e as u32
+                {
+                    let color = faded(s.selection.unwrap_or([0.1, 0.3, 0.8, 0.4]));
+                    g.selection(f.anchor..f.caret, |[sx, sy, w, h]| {
+                        p.quads.push(quad(
+                            PaintKind::Solid,
+                            [lx + sx, ly + sy, w, h],
+                            clip,
+                            color,
+                            [0.; 4],
+                            [0.; 4],
+                            0,
+                            0,
+                        ));
+                    });
+                }
                 let placed = |q: &PaintQuad, dx: f32, dy: f32, color: Rgba| PaintQuad {
                     rect: [
                         q.rect[0] + lx + dx,
@@ -1818,7 +1853,7 @@ impl Tree {
                 }
                 p.quads
                     .extend(g.fill.iter().map(|q| placed(q, 0.0, 0.0, text_ink)));
-                let d = s.decoration;
+                let d = el.eff.decoration;
                 if d.line != 0 {
                     let mut c = if d.color[3] > 0.0 { d.color } else { own_ink };
                     c[3] *= alpha;
@@ -1841,23 +1876,16 @@ impl Tree {
                                 } else {
                                     thick
                                 });
-                                let top = if bit == D::OVERLINE {
+                                let top = if let (D::UNDERLINE, Some(offset)) = (bit, d.offset) {
+                                    base + offset - th / 2.0
+                                } else if bit == D::OVERLINE {
                                     base - above
                                 } else {
                                     base - above - th / 2.0
                                 };
                                 let top = (top * scale).round() / scale;
                                 let rect = [lx + x0, ly + top, w, th];
-                                p.quads.push(quad(
-                                    PaintKind::Solid,
-                                    rect,
-                                    clip,
-                                    c,
-                                    [0.0; 4],
-                                    [0.0; 4],
-                                    0,
-                                    0,
-                                ));
+                                decorate(p, rect, clip, c, d.style);
                             }
                         }
                     }
@@ -1867,6 +1895,7 @@ impl Tree {
             // the character it stands at, in the text's ink.
             if let (Some(leaf), Some(f)) = (el.leaf, field)
                 && self.input.focus_el() == e as u32
+                && f.anchor == f.caret
             {
                 let size = el.eff.size * self.text_scale;
                 let line = el.eff.text.line_height(el.eff.size) * self.text_scale;
@@ -1885,7 +1914,7 @@ impl Tree {
                     PaintKind::Solid,
                     rect,
                     clip,
-                    ink,
+                    s.caret.map_or(ink, faded),
                     [0.0; 4],
                     [0.0; 4],
                     0,
@@ -2061,6 +2090,73 @@ fn fitted(
         [x0, y0, (x1 - x0).max(0.0), (y1 - y0).max(0.0)],
         [u(x0), v(y0), u(x1), v(y1)],
     )
+}
+
+/// Paints the decoration through the existing solid/polyline primitives.
+fn decorate(
+    p: &mut Paint,
+    rect: [f32; 4],
+    clip: [f32; 4],
+    color: Rgba,
+    style: nsh_tailwind::style::DecorationStyle,
+) {
+    use nsh_tailwind::style::DecorationStyle::*;
+    let [x, y, width, th] = rect;
+    let solid = |p: &mut Paint, r, radius| {
+        p.quads.push(quad(
+            PaintKind::Solid,
+            r,
+            clip,
+            color,
+            [radius; 4],
+            [0.; 4],
+            0,
+            0,
+        ));
+    };
+    match style {
+        Solid => solid(p, rect, 0.),
+        Double => {
+            solid(p, [x, y - th, width, th], 0.);
+            solid(p, [x, y + th, width, th], 0.);
+        }
+        Dotted | Dashed => {
+            let length = if style == Dotted { th } else { 3. * th };
+            let mut at = 0.;
+            while at < width {
+                solid(
+                    p,
+                    [x + at, y, length.min(width - at), th],
+                    if style == Dotted { th / 2. } else { 0. },
+                );
+                at += length + th;
+            }
+        }
+        Wavy => {
+            let first = p.points.len() as u32;
+            let steps = (width / th).ceil() as u32;
+            if steps == 0 {
+                return;
+            }
+            for k in 0..=steps {
+                let at = width * k as f32 / steps as f32;
+                p.points.push([
+                    at + th,
+                    2. * th + th * og_core::math::sin(at / (4. * th) * std::f32::consts::TAU),
+                ]);
+            }
+            p.quads.push(quad(
+                PaintKind::Line,
+                [x - th, y - 1.5 * th, width + 2. * th, 4. * th],
+                clip,
+                color,
+                [0.; 4],
+                [th, 0., 0., 0.],
+                first,
+                steps + 1,
+            ));
+        }
+    }
 }
 
 #[allow(clippy::too_many_arguments)]

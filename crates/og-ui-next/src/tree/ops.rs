@@ -694,6 +694,7 @@ impl Tree {
                                 p.value.clear();
                                 p.value.push_str(value);
                                 p.caret = p.value.len();
+                                p.anchor = p.caret;
                             }
                             self.show_value(e);
                         }
@@ -4505,6 +4506,156 @@ mod tests {
             b.op(8).u32(parent).u32(id).u32(u32::MAX);
         }
         t.apply(&b.bytes()).unwrap();
+    }
+
+    #[test]
+    fn em_sizes_use_the_parent_once_and_remeasure_when_it_changes() {
+        let mut t = real();
+        nodes(
+            &mut t,
+            &[
+                (1, 0, "text-[32px] items-start", 0),
+                (2, 0, "text-[0.5em] items-start", 1),
+                (3, 0, "items-start", 2),
+            ],
+        );
+        let mut b = Batch::default();
+        b.op(2).u32(4).str("MMMM");
+        b.op(8).u32(3).u32(4).u32(u32::MAX);
+        b.op(2).u32(5).str("MMMM");
+        b.op(4).u32(5).str("text-[16px]");
+        b.op(8).u32(0).u32(5).u32(u32::MAX);
+        t.apply(&b.bytes()).unwrap();
+        frame(&mut t);
+        assert_eq!(t.op_box(4).unwrap()[2], t.op_box(5).unwrap()[2]);
+        let before = t.op_box(4).unwrap()[2];
+        let mut b = Batch::default();
+        b.op(4).u32(1).str("text-[48px] items-start");
+        t.apply(&b.bytes()).unwrap();
+        frame(&mut t);
+        assert!((t.op_box(4).unwrap()[2] / before - 1.5).abs() < 0.01);
+    }
+
+    #[test]
+    fn decoration_styles_and_offsets_reach_the_painted_text() {
+        let mut t = real();
+        nodes(
+            &mut t,
+            &[(
+                1,
+                0,
+                "text-white underline decoration-2 underline-offset-4",
+                0,
+            )],
+        );
+        let mut b = Batch::default();
+        b.op(2).u32(2).str("Read");
+        b.op(8).u32(1).u32(2).u32(u32::MAX);
+        t.apply(&b.bytes()).unwrap();
+        frame(&mut t);
+        let lines = |t: &Tree| {
+            t.drawn
+                .quads
+                .iter()
+                .filter(|q| q.kind == PaintKind::Solid as u32)
+                .map(|q| q.rect)
+                .collect::<Vec<_>>()
+        };
+        let solid = lines(&t);
+        assert_eq!(solid.len(), 1);
+        assert!(
+            t.drawn.quads.iter().all(|q| q.color == [1.; 4]),
+            "decorations use inherited currentColor"
+        );
+        for (style, count) in [("double", 2), ("dotted", 0), ("dashed", 0), ("wavy", 0)] {
+            let mut b = Batch::default();
+            b.op(4).u32(1).str(&format!(
+                "text-white underline decoration-2 underline-offset-8 decoration-{style}"
+            ));
+            t.apply(&b.bytes()).unwrap();
+            frame(&mut t);
+            if style == "wavy" {
+                assert_eq!(
+                    t.drawn
+                        .quads
+                        .iter()
+                        .filter(|q| q.kind == PaintKind::Line as u32)
+                        .count(),
+                    1
+                );
+                assert!(t.drawn.points.iter().any(|a| a[1] != t.drawn.points[0][1]));
+            } else {
+                let current = lines(&t);
+                if count != 0 {
+                    assert_eq!(current.len(), count);
+                } else {
+                    assert!(current.len() > 2);
+                }
+                assert!(current.iter().all(|r| r[1] > solid[0][1]));
+            }
+        }
+    }
+
+    #[test]
+    fn input_colors_and_grapheme_selections_are_drawn_and_edited() {
+        let mut t = real();
+        nodes(
+            &mut t,
+            &[(
+                1,
+                4,
+                "text-white placeholder:text-[#ff0000] caret-[#00ff00] selection:bg-[#0000ff]",
+                0,
+            )],
+        );
+        let mut b = Batch::default();
+        b.op(6).u32(1).str("placeholder").str("Name");
+        b.op(7).u32(1).u8(Event::Change as u8).u8(1);
+        t.apply(&b.bytes()).unwrap();
+        frame(&mut t);
+        let raster = PaintKind::Raster as u32;
+        assert!(t.drawn.quads.iter().any(|q| q.kind == raster));
+        assert!(
+            t.drawn
+                .quads
+                .iter()
+                .filter(|q| q.kind == raster)
+                .all(|q| q.color == [1., 0., 0., 1.])
+        );
+        t.key("Tab", false, false, false, false);
+        frame(&mut t);
+        assert!(t.drawn.quads.iter().any(|q| q.color == [0., 1., 0., 1.]));
+        t.type_text("ae\u{301}中");
+        t.key("ArrowLeft", true, false, false, false);
+        t.key("ArrowLeft", true, false, false, false);
+        frame(&mut t);
+        assert!(
+            t.drawn
+                .quads
+                .iter()
+                .any(|q| q.kind == PaintKind::Solid as u32
+                    && q.color == [0., 0., 1., 1.]
+                    && q.rect[2] > 0.)
+        );
+        t.type_text("X");
+        assert_eq!(
+            &*t.events.last().unwrap().value,
+            "aX",
+            "replace the entire accented cluster and Han"
+        );
+        t.key("KeyA", false, false, false, true);
+        t.key("Backspace", false, false, false, false);
+        assert_eq!(&*t.events.last().unwrap().value, "");
+        t.type_text("ab");
+        t.key("Home", false, false, false, false);
+        t.key("ArrowRight", true, false, false, false);
+        t.key("ArrowRight", false, false, false, false);
+        t.type_text("Z");
+        assert_eq!(
+            &*t.events.last().unwrap().value,
+            "aZb",
+            "an unshifted arrow collapses selection without another step"
+        );
     }
 
     /// `space-x-4` gives each child but the last a 16 px right margin, under

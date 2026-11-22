@@ -658,9 +658,17 @@ fn record_of(style: &Style, props: &ClassProps) -> Record {
     }
     if let Some(d) = text.decoration {
         skin.decoration.line = u8::from(d.underline) | (u8::from(d.line_through) << 2);
-        skin.decoration.color = text.decoration_color.map_or(skin.ink, linear);
+        skin.decoration.color = text.decoration_color.map_or([0.0; 4], linear);
         skin.decoration.thickness = text.decoration_thickness.map_or(0.0, |p| p.0);
     }
+    skin.decoration.style = text.decoration_style.unwrap_or_default();
+    skin.decoration.offset = text.underline_offset.map(|p| p.0);
+    skin.caret = text.caret_color.or(props.caret_color).map(linear);
+    skin.placeholder = text
+        .placeholder_color
+        .or(props.placeholder_color)
+        .map(linear);
+    skin.selection = text.selection_color.or(props.selection_color).map(linear);
     // The outline (`text-stroke-*`), its colour the text's by default.
     if let Some(w) = text.stroke_width {
         skin.text_stroke.width = w.0;
@@ -672,6 +680,8 @@ fn record_of(style: &Style, props: &ClassProps) -> Record {
         r.font_size = s.0;
         t.sized = true;
     }
+    r.font_size_em = text.font_size_em;
+    t.sized |= r.font_size_em.is_some();
     if let Some(w) = text.font_weight {
         t.weight = w;
         t.set |= Text::WEIGHT;
@@ -1150,6 +1160,11 @@ mod tests {
         let r = c.record_styled(class, "bogus-thing: 3", &env);
         assert_eq!((w(&r), r.skin.opacity), (w(&base), 0.5));
         assert_eq!(camel("border-top-left-radius"), "borderTopLeftRadius");
+        let r = c.record_styled("caret-[#ff0000] placeholder:text-white selection:bg-white", "font-size: 87.5%; caret-color: #00ff00; placeholder-color: #ff0000; selection-color: #0000ff", &env);
+        assert_eq!(r.font_size_em, Some(0.875));
+        assert_eq!(r.skin.caret, Some([0., 1., 0., 1.]));
+        assert_eq!(r.skin.placeholder, Some([1., 0., 0., 1.]));
+        assert_eq!(r.skin.selection, Some([0., 0., 1., 1.]));
     }
 
     #[test]
@@ -1361,14 +1376,11 @@ mod tests {
                   "line_height_multiple", "decoration", "decoration_color",
                   "decoration_thickness", "stroke_width", "stroke_color", "transform",
                   "hyphens", "shadow_color", "shadow_offset", "shadow_radius",
-                  "font_family", "italic", "font_variant"],
-                &[// Not drawn yet: `em` sizes, decoration styles and
-                  // offsets, `text-start` kept physical, `dir`, vertical
-                  // alignment and the input colours.
-                  "font_size_em",
-                  "decoration_style", "underline_offset", "text_align_physical",
-                  "writing_direction", "align_vertical", "placeholder_color",
-                  "selection_color", "caret_color"]),
+                  "font_family", "italic", "font_variant", "font_size_em",
+                  "decoration_style", "underline_offset", "placeholder_color",
+                  "selection_color", "caret_color"],
+                &[// `text-start` kept physical, `dir`, vertical alignment.
+                  "text_align_physical", "writing_direction", "align_vertical"]),
             ("PaintStyle", format!("{:#?}", PaintStyle::default()),
                 &["stroke", "stroke_width", "fill"],
                 // Not drawn: a `<Line>`'s dashes.
@@ -1382,11 +1394,10 @@ mod tests {
                 &[]),
             ("ClassProps", format!("{:#?}", ClassProps::default()),
                 &["ellipsize", "no_wrap", "text_shadows", "pointer_events",
-                  "number_of_lines", "space", "overflow_wrap"],
-                // Not drawn yet: `line-clamp-*`, `pointer-events-*`,
-                // `select-*`, `space-x-*` and the input colours.
-                &["selectable",
-                  "placeholder_color", "selection_color", "caret_color"]),
+                  "number_of_lines", "space", "overflow_wrap",
+                  "placeholder_color", "selection_color", "caret_color"],
+                // Selecting non-input text is not implemented.
+                &["selectable"]),
         ];
         for (name, debug, read, not_drawn) in structs {
             let mut want: Vec<String> = read

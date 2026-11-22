@@ -299,6 +299,24 @@ impl Text {
         ]
     }
 
+    /// Selection highlight rectangles in layout CSS pixels. Parley owns
+    /// bidi reordering and grapheme geometry, as it does for the caret.
+    pub fn selection(&self, range: std::ops::Range<usize>, mut f: impl FnMut([f32; 4])) {
+        let cursor =
+            |at| parley::Cursor::from_byte_index(&self.layout, at, parley::Affinity::Downstream);
+        parley::Selection::new(cursor(range.start), cursor(range.end)).geometry_with(
+            &self.layout,
+            |b, _| {
+                f([
+                    b.x0 as f32,
+                    b.y0 as f32 - self.trimmed[0],
+                    (b.x1 - b.x0) as f32,
+                    (b.y1 - b.y0) as f32,
+                ])
+            },
+        );
+    }
+
     /// Calls `f` with each character of `text` (the laid-out text) no
     /// face draws: one whose cluster took the missing glyph, or all of
     /// them when no face was found at all. White space, controls and the

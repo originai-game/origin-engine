@@ -3125,6 +3125,14 @@ fn text(theme: &Theme, v: &str, _neg: bool) -> Option<Vec<Decl>> {
     // A color with an opacity (`[#ff0000]/50`, `[color:rgb(0_0_255)]/25`)
     // is no size: it is read as a color below, modifier and all.
     if let Some(a) = arbitrary(base) {
+        let size = arbitrary_hinted(&a, "length").unwrap_or(&a);
+        if (size.ends_with("em") && !size.ends_with("rem")) || size.ends_with('%') {
+            let mut out = vec![arb(K::FontSize, size)?];
+            if line.is_some() {
+                out.push(line_height()?);
+            }
+            return Some(out);
+        }
         if let Some(l) = arbitrary_hinted(&a, "length").and_then(|s| class_length(theme, s)) {
             return one(setn(K::FontSize, l));
         }

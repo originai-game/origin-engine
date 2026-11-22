@@ -99,6 +99,10 @@ impl Leaf {
             self.layout.is_discretionary_break(at)
         })
     }
+
+    pub fn selection(&self, range: std::ops::Range<usize>, f: impl FnMut([f32; 4])) {
+        self.layout.selection(range, f);
+    }
 }
 
 /// Every text leaf's layout, by arena node.

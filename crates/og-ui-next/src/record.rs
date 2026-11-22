@@ -283,6 +283,9 @@ pub struct Decoration {
     pub color: Rgba,
     /// 0: from the font size.
     pub thickness: f32,
+    pub style: nsh_tailwind::style::DecorationStyle,
+    /// CSS px below the baseline; None uses the font's underline metrics.
+    pub offset: Option<f32>,
 }
 
 impl Decoration {
@@ -378,6 +381,9 @@ pub struct Skin {
     pub backdrop_blur: f32,
     pub text_shadow: Shadow,
     pub decoration: Decoration,
+    pub caret: Option<Rgba>,
+    pub placeholder: Option<Rgba>,
+    pub selection: Option<Rgba>,
     pub text_stroke: TextStroke,
     pub opacity: f32,
     /// An SVG shape's fill and stroke paint, and its stroke's width.
@@ -405,6 +411,9 @@ impl Default for Skin {
             backdrop_blur: 0.0,
             text_shadow: Shadow::default(),
             decoration: Decoration::default(),
+            caret: None,
+            placeholder: None,
+            selection: None,
             text_stroke: TextStroke::default(),
             opacity: 1.0,
             paint: [0.0, 0.0, 0.0, 1.0],
@@ -421,6 +430,8 @@ pub struct Record {
     pub layout: CompactStyle,
     pub skin: Skin,
     pub font_size: f32,
+    /// Own `em` size, relative to the parent's computed font size.
+    pub font_size_em: Option<f32>,
     /// The sides of its `inset` (0) and `padding` (1) that add the HUD's
     /// safe-area inset (`env(-og-hud-inset-left)`), bits top, right,
     /// bottom, left: the one runtime input a record leaves open.
@@ -530,6 +541,7 @@ impl Default for Record {
             layout: CompactStyle::from(&base),
             skin: Skin::default(),
             font_size: 16.0,
+            font_size_em: None,
             safe: [0; 2],
             text: Text::default(),
             inked: false,
