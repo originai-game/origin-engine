@@ -10,6 +10,8 @@
 //! included. Dev-dependencies are not edges: a test may build a scene with
 //! the cook.
 //!
+//! [`TOOLS_ONLY`] crates are linked by the tools layer alone.
+//!
 //! [`KNOWN`] is the edges that broke the rule when the table was written.
 //! It only shrinks: a line that no longer applies fails the test as well
 //! as a new one.
@@ -43,6 +45,7 @@ const LAYERS: &[(&str, &[&str])] = &[
             "og-physics-data",
             "og-records",
             "og-shape",
+            "og-shape-formats",
             "og-render-data",
             "og-tilemap",
             "og-timeline",
@@ -94,6 +97,12 @@ const DOMAINS: &[&[&str]] = &[
     &["og-reactive", "og-rive", "og-text", "og-ui-next"],
     &["og-video", "og-video-wasm"],
 ];
+
+/// Data-layer crates of a different link set (`docs/design.md` §2.1): the
+/// file codecs. Only a crate of the tools layer depends on one, so no
+/// runtime module, domain or host links them (and the web build never
+/// carries them).
+const TOOLS_ONLY: &[&str] = &["og-shape-formats"];
 
 /// `(crate, the crate it depends on)`.
 const KNOWN: &[(&str, &str)] = &[
@@ -172,6 +181,17 @@ fn a_crate_depends_downwards_and_a_domain_on_no_other() {
         "the workspace's layers (crates/og-core/tests/layers.rs).\n\
          Not in LAYERS; give each its layer: {unplaced:?}\n\
          In LAYERS and not under crates/; delete: {absent:?}",
+    );
+
+    let tools = LAYERS.iter().position(|(n, _)| *n == "tools").unwrap();
+    let outside: Vec<_> = manifests
+        .iter()
+        .flat_map(|(from, text)| dependencies(text).into_iter().map(move |to| (from, to)))
+        .filter(|(from, to)| TOOLS_ONLY.contains(&to.as_str()) && layer[from.as_str()] != tools)
+        .collect();
+    assert!(
+        outside.is_empty(),
+        "only the tools layer links the codecs (crates/og-core/tests/layers.rs, TOOLS_ONLY): {outside:?}",
     );
 
     let mut found = BTreeSet::new();

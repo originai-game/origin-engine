@@ -113,7 +113,7 @@ impl Material {
     }
 
     /// Each map slot, filled or not, with its kind.
-    pub(crate) fn map_slots(&self) -> [(&'static str, &Option<Texture>); 5] {
+    pub fn map_slots(&self) -> [(&'static str, &Option<Texture>); 5] {
         [
             (MAP_KINDS[0], &self.map),
             (MAP_KINDS[1], &self.metalness_map),
@@ -336,7 +336,8 @@ impl fmt::Display for ExportError {
 
 impl std::error::Error for ExportError {}
 
-pub(crate) fn finite(v: f64, what: impl Fn() -> String) -> Result<f64, ExportError> {
+#[doc(hidden)]
+pub fn finite(v: f64, what: impl Fn() -> String) -> Result<f64, ExportError> {
     if v.is_finite() {
         Ok(v)
     } else {
@@ -345,25 +346,35 @@ pub(crate) fn finite(v: f64, what: impl Fn() -> String) -> Result<f64, ExportErr
 }
 
 /// A joint after checks, in SI units and glTF space.
-pub(crate) struct Checked {
-    pub(crate) name: String,
-    pub(crate) kind: &'static str,
+pub struct Checked {
+    /// The joint's name.
+    pub name: String,
+    /// Its glTF kind (`revolute`, `prismatic`, ...).
+    pub kind: &'static str,
     /// The joint's node: the pivot after the joint's motion.
-    pub(crate) node: Rigid,
+    pub node: Rigid,
     /// The part's node under it: the pivot's inverse.
-    pub(crate) inverse: Rigid,
-    pub(crate) axis: Option<DVec3>,
-    pub(crate) value: f64,
-    pub(crate) span: Option<(f64, f64)>,
-    pub(crate) mimic: Option<(String, f64)>,
+    pub inverse: Rigid,
+    /// Its unit axis in glTF space (none for fixed and floating).
+    pub axis: Option<DVec3>,
+    /// Its value, in radians or metres.
+    pub value: f64,
+    /// Its range, in SI units.
+    pub span: Option<(f64, f64)>,
+    /// The joint it mimics, and the multiplier.
+    pub mimic: Option<(String, f64)>,
     /// For clips, in kernel units: the pivot, the unit axis in the
     /// pivot's own coordinates (none for fixed and floating), whether it
     /// slides, its range, and the leader it follows with the multiplier.
-    pub(crate) pivot: Rigid,
-    pub(crate) local: Option<DVec3>,
-    pub(crate) slides: bool,
-    pub(crate) kernel_span: Option<(f64, f64)>,
-    pub(crate) follows: Option<(String, f64)>,
+    pub pivot: Rigid,
+    /// The unit axis in the pivot's coordinates.
+    pub local: Option<DVec3>,
+    /// Whether it slides.
+    pub slides: bool,
+    /// Its range in kernel units.
+    pub kernel_span: Option<(f64, f64)>,
+    /// The leader it follows, and the multiplier.
+    pub follows: Option<(String, f64)>,
 }
 
 /// One keyframe of a [`Clip`]: a time and the joints' values then.
@@ -389,7 +400,7 @@ pub struct Clip {
 
 /// Metres per kernel unit of a joint's value: millimetres for a slide,
 /// radians otherwise.
-pub(crate) fn si(kind: JointKind) -> f64 {
+pub fn si(kind: JointKind) -> f64 {
     if kind == JointKind::Prismatic {
         METRES
     } else {
@@ -399,22 +410,28 @@ pub(crate) fn si(kind: JointKind) -> f64 {
 
 /// A rigid motion in kernel space: `p ↦ x·p.x + y·p.y + z·p.z + t`.
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub(crate) struct Rigid {
+pub struct Rigid {
+    /// Where the x axis goes.
     pub x: DVec3,
+    /// Where the y axis goes.
     pub y: DVec3,
+    /// Where the z axis goes.
     pub z: DVec3,
+    /// The translation.
     pub t: DVec3,
 }
 
 impl Rigid {
-    pub(crate) const IDENTITY: Rigid = Rigid {
+    #[doc(hidden)]
+    pub const IDENTITY: Rigid = Rigid {
         x: DVec3::X,
         y: DVec3::Y,
         z: DVec3::Z,
         t: DVec3::ZERO,
     };
 
-    pub(crate) fn of(f: &Frame) -> Rigid {
+    #[doc(hidden)]
+    pub fn of(f: &Frame) -> Rigid {
         Rigid {
             x: f.x,
             y: f.y,
@@ -423,16 +440,18 @@ impl Rigid {
         }
     }
 
-    pub(crate) fn rotate(&self, v: DVec3) -> DVec3 {
+    #[doc(hidden)]
+    pub fn rotate(&self, v: DVec3) -> DVec3 {
         self.x * v.x + self.y * v.y + self.z * v.z
     }
 
-    pub(crate) fn apply(&self, p: DVec3) -> DVec3 {
+    #[doc(hidden)]
+    pub fn apply(&self, p: DVec3) -> DVec3 {
         self.rotate(p) + self.t
     }
 
     /// `self ∘ other`: `other` first.
-    pub(crate) fn then(&self, other: &Rigid) -> Rigid {
+    pub fn then(&self, other: &Rigid) -> Rigid {
         Rigid {
             x: self.rotate(other.x),
             y: self.rotate(other.y),
@@ -441,7 +460,8 @@ impl Rigid {
         }
     }
 
-    pub(crate) fn inverse(&self) -> Rigid {
+    #[doc(hidden)]
+    pub fn inverse(&self) -> Rigid {
         // (R, t)⁻¹ = (Rᵀ, −Rᵀ t).
         let tr = |v: DVec3| DVec3::new(self.x.dot(v), self.y.dot(v), self.z.dot(v));
         Rigid {
@@ -453,7 +473,7 @@ impl Rigid {
     }
 
     /// Turn by `angle` radians about the unit axis `k` through the origin.
-    pub(crate) fn turn(k: DVec3, angle: f64) -> Rigid {
+    pub fn turn(k: DVec3, angle: f64) -> Rigid {
         let (sn, cs) = trig::sin_cos(angle);
         let r = |v: DVec3| v * cs + k.cross(v) * sn + k * (k.dot(v) * (1.0 - cs));
         Rigid {
@@ -466,7 +486,7 @@ impl Rigid {
 
     /// The same motion in glTF space (metres, Y up): translation and
     /// rotation (x, y, z, w).
-    pub(crate) fn gltf(&self) -> (DVec3, [f64; 4]) {
+    pub fn gltf(&self) -> (DVec3, [f64; 4]) {
         let down = |v: DVec3| DVec3::new(v.x, -v.z, v.y);
         let col = |e: DVec3| y_up(self.rotate(down(e)));
         (
@@ -478,7 +498,7 @@ impl Rigid {
 
 /// The rotation whose columns are `x`, `y`, `z` as a unit quaternion
 /// (x, y, z, w), by Shepperd's method: `+ - * /` and `sqrt` only.
-pub(crate) fn quaternion(x: DVec3, y: DVec3, z: DVec3) -> [f64; 4] {
+pub fn quaternion(x: DVec3, y: DVec3, z: DVec3) -> [f64; 4] {
     let (m00, m11, m22) = (x.x, y.y, z.z);
     let trace = m00 + m11 + m22;
     let q = if trace > 0.0 {
@@ -502,13 +522,15 @@ pub(crate) fn quaternion(x: DVec3, y: DVec3, z: DVec3) -> [f64; 4] {
 
 /// Checks a scene as every tool does before using it, and places each
 /// part: its joints' motions, composed from the root, in kernel space.
-pub(crate) fn check(scene: &Scene) -> Result<Vec<Rigid>, ExportError> {
+pub fn check(scene: &Scene) -> Result<Vec<Rigid>, ExportError> {
     Ok(check_joints(scene)?.into_iter().map(|(_, w)| w).collect())
 }
 
-pub(crate) type Leader = (JointKind, Option<(f64, f64)>, f64);
+#[doc(hidden)]
+pub type Leader = (JointKind, Option<(f64, f64)>, f64);
 
-pub(crate) fn check_joints(scene: &Scene) -> Result<Vec<(Option<Checked>, Rigid)>, ExportError> {
+#[doc(hidden)]
+pub fn check_joints(scene: &Scene) -> Result<Vec<(Option<Checked>, Rigid)>, ExportError> {
     // Each part's placement so far, by name.
     let mut parts: BTreeMap<&str, Rigid> = BTreeMap::new();
     let mut joints: BTreeMap<String, Leader> = BTreeMap::new();
@@ -674,11 +696,11 @@ pub enum Placement {
 }
 
 /// A part's name, its positions in metres (kernel axes) and its triangles.
-pub(crate) type Metres<'s> = (&'s str, Vec<DVec3>, &'s [[u32; 3]]);
+pub type Metres<'s> = (&'s str, Vec<DVec3>, &'s [[u32; 3]]);
 
 /// Each part's motion from rest at `at`, after the scene's checks: `None`
 /// where no non-zero joint value moves it (at rest, every part).
-pub(crate) fn motions(scene: &Scene, at: Placement) -> Result<Vec<Option<Rigid>>, ExportError> {
+pub fn motions(scene: &Scene, at: Placement) -> Result<Vec<Option<Rigid>>, ExportError> {
     let checked = check_joints(scene)?;
     let mut moved: BTreeMap<&str, Option<Rigid>> = BTreeMap::new();
     let mut out = Vec::with_capacity(scene.parts.len());
@@ -721,7 +743,7 @@ pub fn posed(scene: &Scene) -> Result<Vec<Solid>, ExportError> {
 }
 
 /// Every part's triangles in metres, after the scene's checks, at `at`.
-pub(crate) fn meshes<'s>(scene: &'s Scene, at: Placement) -> Result<Vec<Metres<'s>>, ExportError> {
+pub fn meshes<'s>(scene: &'s Scene, at: Placement) -> Result<Vec<Metres<'s>>, ExportError> {
     Ok(scene
         .parts
         .iter()

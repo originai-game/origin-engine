@@ -5,10 +5,15 @@ use og_shape::generators::solids::{BoxDesc, cuboid, sphere, torus};
 use og_shape::math::{DVec2, DVec3, Frame, HashError, OutputHash};
 use og_shape::mesh::Solid;
 use og_shape::tools::{
-    Affine, Decimate, Floaters, Import, ImportedPart, Joint, JointKind, Measure, Part, PlainGlb,
-    Repair, Scene, Unwrap, Uvs, apply_transform, collapse_short_edges, decimate, glb, glb_plain,
-    import, import_obj, join, lods, measure, no_files, repair, unwrap,
+    Affine, Decimate, Floaters, Import, ImportedPart, Joint, JointKind, Measure, Part, Repair,
+    Scene, Unwrap, Uvs, apply_transform, collapse_short_edges, decimate, join, lods, measure,
+    no_files, repair, unwrap,
 };
+use og_shape_formats::gltf::write::glb;
+use og_shape_formats::gltf::write::plain::PlainGlb;
+use og_shape_formats::gltf::write::plain::glb_plain;
+use og_shape_formats::import;
+use og_shape_formats::obj::read::import_obj;
 
 use crate::cases::Case;
 
@@ -490,7 +495,7 @@ fn measure_case(h: &mut OutputHash) -> Result<(), HashError> {
     );
     let mut s = repaired()?;
     unwrap(&mut s, &Unwrap::default()).map_err(fail)?;
-    let png = og_shape::tools::png(&og_shape::tools::Image {
+    let png = og_shape_formats::png::write::png(&og_shape::tools::Image {
         width: 8,
         height: 4,
         rgba: vec![255; 8 * 4 * 4],
@@ -622,21 +627,31 @@ fn skin_decimate_case(h: &mut OutputHash) -> Result<(), HashError> {
 /// skeleton; placed apart, the error naming the bones.
 /// A skinned, animated GLB under meshopt compression: its bytes.
 fn compress_case(h: &mut OutputHash) -> Result<(), HashError> {
-    let (bytes, report) =
-        og_shape::tools::compress(&skinned_support::skinned_glb_animated(None)).map_err(fail)?;
+    let (bytes, report) = og_shape_formats::gltf::write::compress::compress(
+        &skinned_support::skinned_glb_animated(None),
+    )
+    .map_err(fail)?;
     h.u64(report.compressed as u64);
     h.bytes(&bytes);
     // A plain mesh quantized, then under meshopt.
     let ball = og_shape::generators::solids::sphere(10.0).map_err(fail)?;
-    let plain =
-        og_shape::tools::glb_plain(&ball, &og_shape::tools::PlainGlb::default()).map_err(fail)?;
-    let (small, report) = og_shape::tools::quantize(&plain, 0).map_err(fail)?;
+    let plain = og_shape_formats::gltf::write::plain::glb_plain(
+        &ball,
+        &og_shape_formats::gltf::write::plain::PlainGlb::default(),
+    )
+    .map_err(fail)?;
+    let (small, report) =
+        og_shape_formats::gltf::write::compress::quantize(&plain, 0).map_err(fail)?;
     h.u64(report.accessors as u64);
-    h.bytes(&og_shape::tools::compress(&small).map_err(fail)?.0);
+    h.bytes(
+        &og_shape_formats::gltf::write::compress::compress(&small)
+            .map_err(fail)?
+            .0,
+    );
     // The same file under Draco (quantized in f32, rANS).
-    let (bytes, report) = og_shape::tools::compress_draco(
+    let (bytes, report) = og_shape_formats::draco::write::compress_draco(
         &skinned_support::skinned_glb_animated(None),
-        &og_shape::tools::Draco::default(),
+        &og_shape_formats::draco::write::Draco::default(),
     )
     .map_err(fail)?;
     h.u64(report.compressed as u64);

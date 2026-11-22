@@ -105,7 +105,7 @@ fn look_case(h: &mut OutputHash) -> Result<(), HashError> {
     let s = crate::look::painted_sphere()?;
     let mut part = og_shape::tools::Part::new("ball", &s);
     part.material = crate::look::material();
-    let glb = og_shape::tools::glb(&og_shape::tools::Scene {
+    let glb = og_shape_formats::gltf::write::glb(&og_shape::tools::Scene {
         name: "look".into(),
         parts: vec![part],
     })
@@ -148,7 +148,7 @@ fn bake_case(h: &mut OutputHash) -> Result<(), HashError> {
     let s = crate::look::painted_sphere()?;
     let mut part = og_shape::tools::Part::new("ball", &s);
     part.material = crate::look::material();
-    let glb = og_shape::tools::glb(&og_shape::tools::Scene {
+    let glb = og_shape_formats::gltf::write::glb(&og_shape::tools::Scene {
         name: "look".into(),
         parts: vec![part],
     })

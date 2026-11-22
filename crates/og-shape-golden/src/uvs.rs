@@ -8,12 +8,14 @@ use og_shape::generators::solids::{
 };
 use og_shape::math::{DVec3, HashError, OutputHash};
 use og_shape::mesh::Solid;
-use og_shape::tools::{
-    Decimate, Import, Part, PlainGlb, Repair, Scene, Texture, decimate, glb, glb_plain, import,
-    no_files, repair,
-};
+use og_shape::tools::{Decimate, Import, Part, Repair, Scene, Texture, decimate, no_files, repair};
+use og_shape_formats::gltf::write::glb;
+use og_shape_formats::gltf::write::plain::PlainGlb;
+use og_shape_formats::gltf::write::plain::glb_plain;
+use og_shape_formats::import;
 
 use crate::cases::Case;
+use og_shape_formats::ModelFiles;
 
 pub fn cases() -> Vec<Case> {
     vec![
@@ -199,7 +201,7 @@ fn glb_case(h: &mut OutputHash) -> Result<(), HashError> {
         ..Default::default()
     }))
     .map_err(fail)?;
-    let png = og_shape::tools::png(&og_shape::tools::Image {
+    let png = og_shape_formats::png::write::png(&og_shape::tools::Image {
         width: 4,
         height: 2,
         rgba: (0..32u8).map(|i| i * 8).collect(),
@@ -443,18 +445,20 @@ fn program_preview(h: &mut OutputHash) -> Result<(), HashError> {
         views: 2,
         ..Default::default()
     };
-    let v = og_shape::tools::views(&scene, &d, &og_shape::tools::CODEC).map_err(fail)?;
-    h.bytes(&og_shape::tools::png(&og_shape::tools::sheet(&v.images, 2)));
+    let v = og_shape::tools::views(&scene, &d, &og_shape_formats::texture::CODEC).map_err(fail)?;
+    h.bytes(&og_shape_formats::png::write::png(&og_shape::tools::sheet(
+        &v.images, 2,
+    )));
     for l in og_shape::tools::uv_view(
         &scene,
         &og_shape::tools::UvView { size: 128 },
-        &og_shape::tools::CODEC,
+        &og_shape_formats::texture::CODEC,
     )
     .map_err(fail)?
     {
         h.u64(u64::from(l.tiles));
         h.f64s(&l.uv_min)?;
-        h.bytes(&og_shape::tools::png(&l.image));
+        h.bytes(&og_shape_formats::png::write::png(&l.image));
     }
     Ok(())
 }

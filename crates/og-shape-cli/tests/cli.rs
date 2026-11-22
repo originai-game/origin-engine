@@ -2,6 +2,7 @@
 //! committed mesh with defects: each subcommand runs, files match the
 //! library's bytes, reports say what the kernel did, and mistakes exit 2.
 
+use og_shape_formats::ModelFiles;
 use std::process::Command;
 
 const PROGRAM: &str = concat!(
@@ -401,7 +402,7 @@ fn preview_draws_a_files_vertex_colours_in_place() {
         "{}",
         String::from_utf8_lossy(&out.stderr)
     );
-    let im = og_shape::tools::decode(&std::fs::read(&png).unwrap()).unwrap();
+    let im = og_shape_formats::texture::decode(&std::fs::read(&png).unwrap()).unwrap();
     let at = |x: u32, y: u32| {
         let i = ((y * im.width + x) * 4) as usize;
         [im.rgba[i], im.rgba[i + 1], im.rgba[i + 2]]
@@ -527,7 +528,7 @@ fn a_skinned_solid_is_written_with_its_skin() {
     let bytes =
         og_shape_cli::export::encode_solid("tet", &s, None, std::path::Path::new("tet.glb"))
             .unwrap();
-    let back = og_shape::tools::import(&bytes, &og_shape::tools::Import::default(), &|_: &str| {
+    let back = og_shape_formats::import(&bytes, &og_shape::tools::Import::default(), &|_: &str| {
         Err(String::new())
     })
     .unwrap();

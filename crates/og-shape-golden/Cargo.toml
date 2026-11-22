@@ -8,6 +8,7 @@ description = "Prints the golden output hash of every og-shape case, for the gat
 
 [dependencies]
 og-shape = { path = "../og-shape" }
+og-shape-formats = { path = "../og-shape-formats" }
 og-shape-cli = { path = "../og-shape-cli" }
 # Compresses the arrays of the hand-written binary FBX case.
 miniz_oxide = { version = "0.9.1", default-features = false, features = ["with-alloc"] }

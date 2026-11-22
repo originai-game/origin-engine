@@ -9,9 +9,12 @@ use crate::math::{DVec2, DVec3};
 use crate::mesh::Solid;
 
 /// Vertices split by surface, in kernel space (millimetres, Z up).
-pub(crate) struct Split {
+pub struct Split {
+    /// Positions of the split vertices.
     pub positions: Vec<DVec3>,
+    /// Their normals, smooth within a surface.
     pub normals: Vec<DVec3>,
+    /// Triangles over the split vertices.
     pub indices: Vec<u32>,
     /// Per split vertex, the solid's vertex it copies.
     pub sources: Vec<u32>,
@@ -29,7 +32,7 @@ pub(crate) struct Split {
 /// is the area-weighted sum of its surface's triangle normals around it,
 /// normalized. Vertices are numbered in order of first use by the
 /// triangles, so the result depends only on the solid.
-pub(crate) fn split(s: &Solid) -> Split {
+pub fn split(s: &Solid) -> Split {
     // The UV's f32 bits, as written: corners that write the same share a
     // vertex. (0, 0) for a solid with none.
     let uv_key = |i: usize, k: usize| {
@@ -95,7 +98,7 @@ pub(crate) fn split(s: &Solid) -> Split {
 }
 
 /// A triangle's unit normal, or zero for a degenerate one.
-pub(crate) fn face_normal(a: DVec3, b: DVec3, c: DVec3) -> DVec3 {
+pub fn face_normal(a: DVec3, b: DVec3, c: DVec3) -> DVec3 {
     let n = (b - a).cross(c - a);
     let len = n.length();
     if len > 0.0 { n / len } else { DVec3::ZERO }
@@ -103,20 +106,23 @@ pub(crate) fn face_normal(a: DVec3, b: DVec3, c: DVec3) -> DVec3 {
 
 /// Kernel space (millimetres, Z up) to glTF and OBJ space (metres, Y up):
 /// Z becomes Y, Y becomes −Z.
-pub(crate) fn y_up(p: DVec3) -> DVec3 {
+pub fn y_up(p: DVec3) -> DVec3 {
     DVec3::new(p.x, p.z, -p.y)
 }
 
 /// Millimetres to metres.
-pub(crate) const METRES: f64 = 0.001;
+pub const METRES: f64 = 0.001;
 
 /// A corner's shading frame as a plain GLB writes it: the unit normal
 /// (smooth within a surface), and the unit tangent along +u with its
 /// handedness `w` (±1; the bitangent is `w · normal × tangent`, along +v).
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
-pub(crate) struct CornerFrame {
+pub struct CornerFrame {
+    #[doc(hidden)]
     pub normal: DVec3,
+    #[doc(hidden)]
     pub tangent: DVec3,
+    #[doc(hidden)]
     pub w: f64,
 }
 
@@ -126,7 +132,7 @@ pub(crate) struct CornerFrame {
 /// `w` 1): MikkTSpace ([`crate::tools::mikk`]), from each corner's position,
 /// this normal and its UV, so a tool that derives its own tangents the
 /// same way agrees with the written `TANGENT`.
-pub(crate) fn corner_frames(s: &Solid) -> Vec<[CornerFrame; 3]> {
+pub fn corner_frames(s: &Solid) -> Vec<[CornerFrame; 3]> {
     let mut normal: BTreeMap<(u32, u32), DVec3> = BTreeMap::new();
     for (i, t) in s.triangles.iter().enumerate() {
         let [a, b, c] = t.map(|v| s.positions[v as usize]);

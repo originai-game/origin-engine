@@ -20,7 +20,7 @@
 //! is listed in the material's `dropped`). Vertex colours and the
 //! material's factors are kept either way. `--texture-max PX` shrinks
 //! each map kept whose longest side is over `PX` texels
-//! (`og_shape::tools::downsize`) and reports each map's size before and
+//! (`og_shape_formats::texture::downsize`) and reports each map's size before and
 //! after (`textures`).
 //!
 //! `--bake PX` keeps the look through a fresh unwrap: the repaired mesh
@@ -39,9 +39,11 @@
 
 use std::path::PathBuf;
 
-use og_shape::tools::{
-    Decimate, Downsize, ImageInfo, Import, Material, Measure, Place, Repair, Unwrap, downsize,
-};
+use og_shape::tools::{Decimate, ImageInfo, Import, Material, Measure, Place, Repair, Unwrap};
+
+use og_shape_formats::texture::Downsize;
+
+use og_shape_formats::texture::downsize;
 
 use crate::args::{Args, IMPORT_OPTIONS};
 use crate::report::{self, object};
@@ -89,13 +91,13 @@ pub struct ProcessDesc {
     pub ktx2: bool,
     /// With `ktx2` (which it implies): let a UASTC block be a copy of a
     /// neighbour where that costs at most this much squared error a
-    /// channel of a texel (`og_shape::tools::to_ktx2_rdo`); 0 does not.
+    /// channel of a texel (`og_shape_formats::texture::to_ktx2_rdo`); 0 does not.
     pub ktx2_rdo: f64,
     /// Write every map kept as KTX2 of ETC1S blocks under BasisLZ: far
     /// smaller files than `ktx2`'s UASTC, at a lower quality.
     pub etc1s: bool,
     /// Write every map that is not KTX2 as lossless WebP
-    /// (`EXT_texture_webp`, `og_shape::tools::to_webp`): every texel as it
+    /// (`EXT_texture_webp`, `og_shape_formats::texture::to_webp`): every texel as it
     /// is. Not with `ktx2` or `etc1s`.
     pub webp: bool,
     /// Bake the source's look into maps of this many texels across, on
@@ -166,15 +168,15 @@ fn texture_budget(
             let from = small.as_ref().unwrap_or(t);
             if !ktx2 {
                 return Ok(if webp {
-                    og_shape::tools::to_webp(from)?.or(small)
+                    og_shape_formats::texture::to_webp(from)?.or(small)
                 } else {
                     small
                 });
             }
             let packed = if etc1s {
-                og_shape::tools::to_ktx2_etc1s(from, d.color)?
+                og_shape_formats::texture::to_ktx2_etc1s(from, d.color)?
             } else {
-                og_shape::tools::to_ktx2_rdo(from, d.color, rdo)?
+                og_shape_formats::texture::to_ktx2_rdo(from, d.color, rdo)?
             };
             Ok(packed.or(small))
         });
@@ -432,7 +434,7 @@ fn bake_onto(
             distance: d.bake_distance,
             ..Default::default()
         },
-        &og_shape::tools::CODEC,
+        &og_shape_formats::texture::CODEC,
     )
     .map_err(failed)?;
     if baked.report.colors_baked {

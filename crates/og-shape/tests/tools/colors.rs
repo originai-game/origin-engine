@@ -10,9 +10,13 @@ use og_shape::generators::solids::{BoxDesc, CylinderDesc, cuboid, cylinder, sphe
 use og_shape::math::DVec3;
 use og_shape::mesh::{Solid, edge_key};
 use og_shape::tools::{
-    ColorSpace, Decimate, Import, Material, Part, PlainGlb, Repair, Scene, Texture, decimate, glb,
-    glb_plain, import, no_files, repair,
+    ColorSpace, Decimate, Import, Material, Part, Repair, Scene, Texture, decimate, no_files,
+    repair,
 };
+use og_shape_formats::gltf::write::glb;
+use og_shape_formats::gltf::write::plain::PlainGlb;
+use og_shape_formats::gltf::write::plain::glb_plain;
+use og_shape_formats::import;
 
 /// An affine colour of position, inside 0..=1 on the solids below.
 fn affine(p: DVec3) -> [f64; 4] {
@@ -243,7 +247,7 @@ fn a_cut_interpolates_colours_and_counts_the_tools_faces() {
 fn png(seed: u8) -> Texture {
     Texture::from_bytes(
         &format!("map{seed}.png"),
-        og_shape::tools::png(&og_shape::tools::Image {
+        og_shape_formats::png::write::png(&og_shape::tools::Image {
             width: 4,
             height: 2,
             rgba: (0..32).map(|i| (i * 8) as u8 ^ seed).collect(),
@@ -352,7 +356,7 @@ fn baseline_jpeg_decodes_as_a_reference_decoder_does() {
     // Four 8-texel stripes, 4:2:0, written by libjpeg (PIL, quality 95);
     // libjpeg reads these texels at row 8.
     let bytes = include_bytes!("../data/meshes/stripes_420.jpg");
-    let img = og_shape::tools::decode(bytes).unwrap();
+    let img = og_shape_formats::texture::decode(bytes).unwrap();
     assert_eq!((img.width, img.height), (32, 16));
     let reference = [[200, 31, 38], [20, 179, 60], [30, 60, 220], [240, 240, 22]];
     for (k, want) in reference.iter().enumerate() {
@@ -373,8 +377,8 @@ fn baseline_jpeg_decodes_as_a_reference_decoder_does() {
     let sof = lossless.windows(2).position(|w| w == [0xFF, 0xC0]).unwrap();
     lossless[sof + 1] = 0xC3;
     assert!(matches!(
-        og_shape::tools::decode(&lossless),
-        Err(og_shape::tools::TextureError::Unsupported(_))
+        og_shape_formats::texture::decode(&lossless),
+        Err(og_shape_formats::texture::TextureError::Unsupported(_))
     ));
 }
 

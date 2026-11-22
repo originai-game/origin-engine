@@ -64,7 +64,7 @@ pub fn environment(
     if bytes.starts_with(b"#?") {
         return og_shape::tools::Environment::from_hdr(&bytes).map_err(why);
     }
-    let image = og_shape::tools::decode(&bytes).map_err(|e| why(e.to_string()))?;
+    let image = og_shape_formats::texture::decode(&bytes).map_err(|e| why(e.to_string()))?;
     og_shape::tools::Environment::from_image(&image)
         .ok_or_else(|| why("a picture with no light in it".into()))
 }
@@ -349,7 +349,7 @@ fn render_pose(
 ) -> Result<Rendered, Failure> {
     with_scene(source, pose, &d.morph, |scene| {
         if let Some(uv) = &d.uv {
-            let layouts = uv_view(scene, uv, &og_shape::tools::CODEC).map_err(failed)?;
+            let layouts = uv_view(scene, uv, &og_shape_formats::texture::CODEC).map_err(failed)?;
             if layouts.is_empty() {
                 return Err(Failure::Failed(
                     "no part has UVs: nothing to lay out (a program's parts get them with \
@@ -375,7 +375,7 @@ fn render_pose(
                         ("tiles", l.tiles.to_string()),
                         ("under", string(if l.textured { "map" } else { "checker" })),
                     ]);
-                    (og_shape::tools::png(&l.image), about)
+                    (og_shape_formats::png::write::png(&l.image), about)
                 })
                 .collect();
             return Ok(Rendered {
@@ -387,7 +387,7 @@ fn render_pose(
             scene,
             &d.preview,
             d.environment.as_ref(),
-            &og_shape::tools::CODEC,
+            &og_shape_formats::texture::CODEC,
         )
         .map_err(failed)?;
         let undrawn = array(
@@ -404,7 +404,7 @@ fn render_pose(
                 .enumerate()
                 .map(|(k, (im, c))| {
                     (
-                        og_shape::tools::png(im),
+                        og_shape_formats::png::write::png(im),
                         object(&[("view", k.to_string()), ("camera", c.clone())]),
                     )
                 })
@@ -416,7 +416,7 @@ fn render_pose(
                 d.columns
             };
             vec![(
-                og_shape::tools::png(&og_shape::tools::sheet(&v.images, columns)),
+                og_shape_formats::png::write::png(&og_shape::tools::sheet(&v.images, columns)),
                 object(&[
                     ("columns", columns.to_string()),
                     ("cameras", array(&cameras)),

@@ -30,10 +30,10 @@ use crate::math::{DVec2, trig};
 use crate::tools::preview::Image;
 
 /// An sRGB byte as linear light in 0..=65535.
-pub(crate) struct Linear([u16; 256]);
+pub struct Linear([u16; 256]);
 
 /// The table, from the sRGB curve.
-pub(crate) fn linear_table() -> Linear {
+pub fn linear_table() -> Linear {
     let mut t = [0u16; 256];
     for (b, v) in t.iter_mut().enumerate() {
         *v = (to_linear(b as f64 / 255.0) * 65535.0 + 0.5).floor() as u16;
@@ -42,7 +42,7 @@ pub(crate) fn linear_table() -> Linear {
 }
 
 /// An sRGB component in 0..=1 to linear light.
-pub(crate) fn to_linear(c: f64) -> f64 {
+pub fn to_linear(c: f64) -> f64 {
     if c <= 0.04045 {
         c / 12.92
     } else {
@@ -51,7 +51,7 @@ pub(crate) fn to_linear(c: f64) -> f64 {
 }
 
 /// Linear light in 0..=1 to an sRGB component.
-pub(crate) fn to_srgb(l: f64) -> f64 {
+pub fn to_srgb(l: f64) -> f64 {
     if l <= 0.003_130_8 {
         l * 12.92
     } else {
@@ -60,12 +60,13 @@ pub(crate) fn to_srgb(l: f64) -> f64 {
 }
 
 impl Linear {
-    pub(crate) fn get(&self, b: u8) -> u32 {
+    #[doc(hidden)]
+    pub fn get(&self, b: u8) -> u32 {
         u32::from(self.0[usize::from(b)])
     }
 
     /// The byte whose linear value is nearest `l`; ties to the lower.
-    pub(crate) fn encode(&self, l: u32) -> u8 {
+    pub fn encode(&self, l: u32) -> u8 {
         // The last byte whose value is at most l.
         let k = self.0.partition_point(|&v| u32::from(v) <= l);
         if k == 0 {
@@ -85,7 +86,7 @@ impl Linear {
 }
 
 /// A texture's mip chain.
-pub(crate) struct Mips {
+pub struct Mips {
     levels: Vec<Image>,
     lin: Linear,
     /// Whether the bytes are data (a normal map), averaged and read as
@@ -95,13 +96,13 @@ pub(crate) struct Mips {
 
 impl Mips {
     /// The chain of an image (§ the module's rule).
-    pub(crate) fn new(image: Image) -> Mips {
+    pub fn new(image: Image) -> Mips {
         Mips::build(image, false)
     }
 
     /// The chain of a data image (a normal map): each level the plain
     /// mean of the one before, and samples the bytes as they are.
-    pub(crate) fn new_data(image: Image) -> Mips {
+    pub fn new_data(image: Image) -> Mips {
         Mips::build(image, true)
     }
 
@@ -148,13 +149,13 @@ impl Mips {
     }
 
     /// Level 0's size.
-    pub(crate) fn size(&self) -> (f64, f64) {
+    pub fn size(&self) -> (f64, f64) {
         let l = &self.levels[0];
         (f64::from(l.width), f64::from(l.height))
     }
 
     /// The level for a footprint of `rho2` = ρ² level-0 texels.
-    pub(crate) fn level(&self, rho2: f64) -> usize {
+    pub fn level(&self, rho2: f64) -> usize {
         let mut k = 0;
         let mut four = 4.0;
         while k + 1 < self.levels.len() && four <= 2.0 * rho2 {
@@ -165,7 +166,7 @@ impl Mips {
     }
 
     /// Linear RGBA in 0..=1 at `uv` on level `k`.
-    pub(crate) fn sample(&self, uv: DVec2, k: usize) -> [f64; 4] {
+    pub fn sample(&self, uv: DVec2, k: usize) -> [f64; 4] {
         let l = &self.levels[k];
         let (w, h) = (i64::from(l.width), i64::from(l.height));
         // Finite and far from i64's ends; a guard, not a clamp of real UVs.

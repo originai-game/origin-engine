@@ -12,7 +12,10 @@
 use std::path::PathBuf;
 
 use og_shape::mesh::Solid;
-use og_shape::tools::{Collide, Import, colliders, glb, obj, stl};
+use og_shape::tools::{Collide, Import, colliders};
+use og_shape_formats::gltf::write::glb;
+use og_shape_formats::obj::write::obj;
+use og_shape_formats::stl::write::stl;
 
 use crate::args::{Args, IMPORT_OPTIONS};
 use crate::export::written;

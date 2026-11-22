@@ -4,20 +4,27 @@
 
 /// A JSON value. Objects keep their keys in the order given.
 #[derive(Clone, Debug, PartialEq)]
-pub(crate) enum Json {
+pub enum Json {
+    /// `null`.
     Null,
+    /// `true` or `false`.
     Bool(bool),
+    /// A number, printed shortest round-trip.
     Num(f64),
+    /// A whole number.
     Int(u64),
+    /// A string.
     Str(String),
+    /// An array.
     Arr(Vec<Json>),
+    /// An object, its keys in this order.
     Obj(Vec<(&'static str, Json)>),
 }
 
 impl Json {
     /// Writes the value. Numbers must be finite (the callers check); `-0`
     /// is written `0`.
-    pub(crate) fn write(&self, out: &mut String) {
+    pub fn write(&self, out: &mut String) {
         match self {
             Json::Null => out.push_str("null"),
             Json::Bool(b) => out.push_str(if *b { "true" } else { "false" }),
@@ -55,16 +62,17 @@ impl Json {
 }
 
 /// A number from an f32 value: written so that it reads back as that f32.
-pub(crate) fn f32n(v: f32) -> Json {
+pub fn f32n(v: f32) -> Json {
     Json::Num(f64::from(v))
 }
 
 /// An array of numbers.
-pub(crate) fn nums(v: &[f64]) -> Json {
+pub fn nums(v: &[f64]) -> Json {
     Json::Arr(v.iter().map(|&x| Json::Num(x)).collect())
 }
 
-pub(crate) fn string(s: &str, out: &mut String) {
+#[doc(hidden)]
+pub fn string(s: &str, out: &mut String) {
     out.push('"');
     for c in s.chars() {
         match c {

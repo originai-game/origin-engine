@@ -2,7 +2,7 @@
 //!
 //! Entry: [`load`]. An [`Input`] is a path or a program's text. A path
 //! whose extension is `glb`, `gltf`, `obj` or `fbx` is a mesh, imported by
-//! `og_shape::tools::import` (glTF's external buffers and images and OBJ's
+//! `og_shape_formats::import` (glTF's external buffers and images and OBJ's
 //! material libraries are read beside it, through the same [`Files`]);
 //! any other path is a program (`{"name", "ops"}`) replayed by
 //! `og_shape::model::program::run_files`, with the fonts its `text` profiles
@@ -14,7 +14,8 @@ use std::path::{Path, PathBuf};
 
 use og_shape::mesh::Solid;
 use og_shape::model::Model;
-use og_shape::tools::{Import, Imported, Material, Part, Scene, apply_transform, import, join};
+use og_shape::tools::{Import, Imported, Material, Part, Scene, apply_transform, join};
+use og_shape_formats::import;
 
 use crate::{Failure, failed};
 

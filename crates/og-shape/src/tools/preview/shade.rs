@@ -235,7 +235,7 @@ pub(crate) struct Look<'a> {
 /// least `crease` (the cosine of [`CREASE_DEGREES`]) with its own,
 /// normalized. The triangle itself always counts unless it is degenerate;
 /// a zero sum gives +Z (only degenerate triangles have one).
-pub(crate) fn corner_normals(s: &Solid, crease: f64) -> Vec<[DVec3; 3]> {
+pub fn corner_normals(s: &Solid, crease: f64) -> Vec<[DVec3; 3]> {
     let weighted: Vec<DVec3> = s
         .triangles
         .iter()

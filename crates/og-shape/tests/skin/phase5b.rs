@@ -90,8 +90,11 @@ fn gltf_space(p: og_shape::math::DVec3) -> [f64; 3] {
 fn the_glb_reads_back_with_its_skin_and_poses_like_the_kernel() {
     let s = skin(&figure::body(), &figure::rig()).unwrap();
     let sk = s.skin.as_ref().unwrap();
-    let bytes = og_shape::tools::glb(&scene(&s)).unwrap();
-    assert_eq!(bytes, og_shape::tools::glb(&scene(&s)).unwrap());
+    let bytes = og_shape_formats::gltf::write::glb(&scene(&s)).unwrap();
+    assert_eq!(
+        bytes,
+        og_shape_formats::gltf::write::glb(&scene(&s)).unwrap()
+    );
     let doc = gltf::Gltf::from_slice(&bytes).unwrap();
     let blob = doc.blob.clone().expect("a BIN chunk");
     let skin_ = doc.skins().next().expect("a skin");

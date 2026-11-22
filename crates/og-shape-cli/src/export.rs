@@ -8,7 +8,7 @@
 //! in GLB).
 //!
 //! [`encode_solid`] writes the one solid the mesh tools make: GLB as
-//! `og_shape::tools::glb_plain` (one node, one mesh, with the solid's UVs and
+//! `og_shape_formats::gltf::write::plain::glb_plain` (one node, one mesh, with the solid's UVs and
 //! the texture given), or OBJ or STL.
 //!
 //! A mesh file exported as GLB keeps each part's UVs and base-colour
@@ -17,12 +17,18 @@
 use std::path::Path;
 
 use og_shape::mesh::Solid;
-use og_shape::tools::{Material, PlainGlb, glb, glb_plain, obj, stl};
+use og_shape::tools::Material;
+use og_shape_formats::gltf::write::glb;
+use og_shape_formats::gltf::write::plain::PlainGlb;
+use og_shape_formats::gltf::write::plain::glb_plain;
+use og_shape_formats::obj::write::obj;
+use og_shape_formats::stl::write::stl;
 
 use crate::args::{Args, IMPORT_OPTIONS};
 use crate::report::{object, string};
 use crate::source::{Local, Source, extension, load_uvs, scene};
 use crate::{Failure, Files, failed};
+use og_shape_formats::ModelFiles;
 
 fn bad_extension(out: &Path) -> Failure {
     Failure::Usage(format!(
@@ -64,7 +70,12 @@ pub fn encode(source: &Source, out: &Path) -> Result<Vec<u8>, Failure> {
 /// written at the model's pose, else `"rest"` (a GLB's meshes are always
 /// at rest, posed by its joint nodes).
 pub fn export(files: &dyn Files, source: &Source, out: &Path) -> Result<String, Failure> {
-    export_with(files, source, out, &og_shape::tools::UrdfDesc::default())
+    export_with(
+        files,
+        source,
+        out,
+        &og_shape_formats::urdf::write::UrdfDesc::default(),
+    )
 }
 
 /// [`export`], a URDF with what `robot` adds: each closed link's
@@ -74,7 +85,7 @@ pub fn export_with(
     files: &dyn Files,
     source: &Source,
     out: &Path,
-    robot: &og_shape::tools::UrdfDesc,
+    robot: &og_shape_formats::urdf::write::UrdfDesc,
 ) -> Result<String, Failure> {
     if extension(out) == "urdf" {
         return export_urdf(files, source, out, robot);
@@ -116,7 +127,7 @@ fn export_urdf(
     files: &dyn Files,
     source: &Source,
     out: &Path,
-    robot: &og_shape::tools::UrdfDesc,
+    robot: &og_shape_formats::urdf::write::UrdfDesc,
 ) -> Result<String, Failure> {
     let stem = out
         .file_stem()
@@ -125,7 +136,8 @@ fn export_urdf(
         Source::Program(model) => model.urdf_with(&stem, robot).map_err(failed)?,
         Source::Mesh(mesh) => {
             let placed = mesh.placed()?;
-            og_shape::tools::urdf_with(&scene(&mesh.name, &placed), &stem, robot).map_err(failed)?
+            og_shape_formats::urdf::write::urdf_with(&scene(&mesh.name, &placed), &stem, robot)
+                .map_err(failed)?
         }
     };
     files.write(out, urdf.xml.as_bytes())?;
@@ -181,7 +193,7 @@ fn export_usda(files: &dyn Files, source: &Source, out: &Path) -> Result<String,
                 .filter(|(_, p)| !p.clips.is_empty())
                 .map(|(part, p)| (part.name.as_str(), p.clips.as_slice()))
                 .collect();
-            og_shape::tools::usda_clips(&s, &stem, &clips).map_err(failed)?
+            og_shape_formats::usd::write::usda_clips(&s, &stem, &clips).map_err(failed)?
         }
     };
     let packed = extension(out) == "usdz";
@@ -189,7 +201,7 @@ fn export_usda(files: &dyn Files, source: &Source, out: &Path) -> Result<String,
     let bytes = if packed {
         // One file: the stage and its maps inside.
         names.extend(usd.textures.iter().map(|(name, _)| string(name)));
-        og_shape::tools::usdz(&usd, &format!("{stem}.usda"))
+        og_shape_formats::usd::write::usdz(&usd, &format!("{stem}.usda"))
     } else {
         for (name, bytes) in &usd.textures {
             files.write(&out.with_file_name(name), bytes)?;
@@ -283,7 +295,7 @@ pub fn encode_solid_clips(
             if let Some(m) = material {
                 part.material = m.clone();
             }
-            og_shape::tools::glb_skin_clips(
+            og_shape_formats::gltf::write::glb_skin_clips(
                 &og_shape::tools::Scene {
                     name: name.to_string(),
                     parts: vec![part],
@@ -367,7 +379,7 @@ pub fn write_solid_tangents(
         let mut part = og_shape::tools::Part::new(name, s);
         part.material = material.clone();
         part.tangents = true;
-        let bytes = og_shape::tools::glb_skin_clips(
+        let bytes = og_shape_formats::gltf::write::glb_skin_clips(
             &og_shape::tools::Scene {
                 name: name.to_string(),
                 parts: vec![part],
@@ -463,7 +475,7 @@ pub fn run(a: &Args) -> Result<String, Failure> {
             &Local,
             &source,
             &out,
-            &og_shape::tools::UrdfDesc {
+            &og_shape_formats::urdf::write::UrdfDesc {
                 density: a.number("--density")?.unwrap_or(0.0),
                 effort: a.number("--effort")?.unwrap_or(0.0),
                 velocity: a.number("--velocity")?.unwrap_or(0.0),

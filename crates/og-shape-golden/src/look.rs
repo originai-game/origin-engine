@@ -10,9 +10,16 @@ use og_shape::generators::solids::{
 use og_shape::math::{DVec3, HashError, OutputHash};
 use og_shape::mesh::Solid;
 use og_shape::tools::{
-    ColorSpace, Decimate, Downsize, Floaters, Import, Material, Part, PlainGlb, Repair, Scene,
-    Texture, decimate, decode, downsize, glb, glb_plain, import, repair,
+    ColorSpace, Decimate, Floaters, Import, Material, Part, Repair, Scene, Texture, decimate,
+    repair,
 };
+use og_shape_formats::gltf::write::glb;
+use og_shape_formats::gltf::write::plain::PlainGlb;
+use og_shape_formats::gltf::write::plain::glb_plain;
+use og_shape_formats::import;
+use og_shape_formats::texture::Downsize;
+use og_shape_formats::texture::decode;
+use og_shape_formats::texture::downsize;
 
 use crate::cases::Case;
 
@@ -81,7 +88,7 @@ pub fn hash_material(h: &mut OutputHash, m: &Material) -> Result<(), HashError> 
 }
 
 fn png(seed: u8, w: u32, h: u32) -> Vec<u8> {
-    og_shape::tools::png(&og_shape::tools::Image {
+    og_shape_formats::png::write::png(&og_shape::tools::Image {
         width: w,
         height: h,
         rgba: (0..w * h * 4)
@@ -329,7 +336,7 @@ fn ktx2_case(h: &mut OutputHash) -> Result<(), HashError> {
         (Texture::from_bytes("noise.png", png(9, 37, 23)), false),
     ];
     for (t, color) in &tex {
-        let k = og_shape::tools::to_ktx2(t, *color)
+        let k = og_shape_formats::texture::to_ktx2(t, *color)
             .map_err(fail)?
             .ok_or(HashError::NaN)?;
         h.str(&k.name);
@@ -349,7 +356,7 @@ fn etc1s_case(h: &mut OutputHash) -> Result<(), HashError> {
         (Texture::from_bytes("noise.png", png(9, 37, 23)), false),
     ];
     for (t, color) in &tex {
-        let k = og_shape::tools::to_ktx2_etc1s(t, *color)
+        let k = og_shape_formats::texture::to_ktx2_etc1s(t, *color)
             .map_err(fail)?
             .ok_or(HashError::NaN)?;
         h.bytes(&k.bytes);

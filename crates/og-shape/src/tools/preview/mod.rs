@@ -92,7 +92,7 @@ pub(crate) use edges::*;
 pub use environment::*;
 pub(crate) use ground::*;
 pub(crate) use raster::*;
-pub(crate) use shade::*;
+pub use shade::*;
 pub use sheet::*;
 
 /// An RGBA image, 8 bits per channel, rows top to bottom.
@@ -468,6 +468,3 @@ pub fn views_in(
     }
     Ok(out)
 }
-
-#[cfg(test)]
-mod tests;

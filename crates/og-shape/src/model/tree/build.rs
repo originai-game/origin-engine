@@ -39,19 +39,6 @@ impl Built {
     }
 }
 
-/// What [`Model::glb_atlas`] wrote.
-#[derive(Clone, Debug, Default, PartialEq)]
-pub struct AtlasExport {
-    /// The GLB.
-    pub glb: Vec<u8>,
-    /// The packing: where each island went, and the atlas's measures.
-    pub atlas: crate::tools::AtlasReport,
-    /// Materials the packed parts share, once alike ones are merged.
-    pub materials: usize,
-    /// Parts with UVs left out of the atlas: their material has a map.
-    pub own: Vec<String>,
-}
-
 impl Model {
     /// Measures of every part in the world at rest, in id order.
     pub fn measure(&self) -> Result<Vec<PartMeasures>, ModelError> {
@@ -262,17 +249,8 @@ impl Model {
         Ok(s)
     }
 
-    /// The model as GLB, posed (`crate::tools::glb`): metres, Y up, joints
-    /// as `s3d_joint` extras.
-    pub fn glb(&self) -> Result<Vec<u8>, ModelError> {
-        Ok(crate::tools::glb_clips(
-            &self.build()?.scene(),
-            &self.scene_clips(),
-        )?)
-    }
-
     /// The clips in the scene's units: millimetres for a slide.
-    pub(crate) fn scene_clips(&self) -> Vec<crate::tools::Clip> {
+    pub fn scene_clips(&self) -> Vec<crate::tools::Clip> {
         let k = self.unit.millimetres();
         self.clips
             .iter()
@@ -298,68 +276,6 @@ impl Model {
             .collect()
     }
 
-    /// The model as GLB ([`Model::glb`]) with its parts' UVs packed into
-    /// one atlas (`crate::tools::repack`: every UV island of every part
-    /// with UVs and a material without maps, at one texel density, on
-    /// `d`'s grid), and parts whose materials then agree (names aside)
-    /// sharing one material, named after the first. A part whose material
-    /// has a map keeps its own UVs (its map was painted for them) and its
-    /// material: [`AtlasExport::own`] names it. Joints, placements and
-    /// names are as [`Model::glb`] writes them.
-    pub fn glb_atlas(&self, d: &crate::tools::Atlas) -> Result<AtlasExport, ModelError> {
-        let built = self.build()?;
-        let mut scene = built.scene();
-        let packs = |m: &Material, s: &Solid| s.uvs.is_some() && m.maps().is_empty();
-        let mut own = Vec::new();
-        let mut taken: Vec<usize> = Vec::new();
-        let mut solids: Vec<Solid> = Vec::new();
-        for (k, p) in scene.parts.iter().enumerate() {
-            if packs(&p.material, p.solid) {
-                taken.push(k);
-                solids.push(p.solid.clone());
-            } else if p.solid.uvs.is_some() {
-                own.push(p.name.clone());
-            }
-        }
-        if solids.is_empty() {
-            return Err(ModelError::Atlas(crate::tools::AtlasError::NoUvs));
-        }
-        let atlas = crate::tools::repack(&mut solids, d)?;
-        // Materials alike (names aside) take the first one's name.
-        let bare = |m: &Material| Material {
-            name: String::new(),
-            ..m.clone()
-        };
-        let mut firsts: Vec<(Material, String)> = Vec::new();
-        for &k in &taken {
-            let p = &mut scene.parts[k];
-            let b = bare(&p.material);
-            let name = match firsts.iter().find(|(m, _)| *m == b) {
-                Some((_, n)) => n.clone(),
-                None => {
-                    let n = if p.material.name.is_empty() {
-                        p.name.clone()
-                    } else {
-                        p.material.name.clone()
-                    };
-                    firsts.push((b, n.clone()));
-                    n
-                }
-            };
-            p.material.name = name;
-        }
-        for (k, s) in taken.iter().zip(&solids) {
-            scene.parts[*k].solid = s;
-        }
-        let glb = crate::tools::glb_shared(&scene)?;
-        Ok(AtlasExport {
-            glb,
-            atlas,
-            materials: firsts.len(),
-            own,
-        })
-    }
-
     /// Where [`Model::obj`] and [`Model::stl`] put the parts: at the pose
     /// when any joint has a value other than 0, else at rest.
     pub fn mesh_placement(&self) -> Placement {
@@ -368,48 +284,6 @@ impl Model {
         } else {
             Placement::Rest
         }
-    }
-
-    /// The model's meshes as OBJ text, at its pose when one is set (the
-    /// header then ends `posed`; [`Model::mesh_placement`]), else at rest.
-    /// Parts no joint moves keep their rest positions bit for bit.
-    pub fn obj(&self) -> Result<String, ModelError> {
-        Ok(crate::tools::obj_at(
-            &self.build()?.scene(),
-            self.mesh_placement(),
-        )?)
-    }
-
-    /// The model's meshes as binary STL, at its pose when one is set (the
-    /// header then ends `posed`), else at rest.
-    pub fn stl(&self) -> Result<Vec<u8>, ModelError> {
-        Ok(crate::tools::stl_at(
-            &self.build()?.scene(),
-            self.mesh_placement(),
-        )?)
-    }
-
-    /// The model as URDF (`crate::tools::urdf`): its parts as links at
-    /// rest, its joints, and each link's STL named `<prefix>_<part>.stl`.
-    pub fn urdf(&self, prefix: &str) -> Result<crate::tools::Urdf, ModelError> {
-        self.urdf_with(prefix, &crate::tools::UrdfDesc::default())
-    }
-
-    /// [`Model::urdf`] with each closed link's `inertial` at a density
-    /// and the joints' limits (`crate::tools::urdf_with`).
-    pub fn urdf_with(
-        &self,
-        prefix: &str,
-        d: &crate::tools::UrdfDesc,
-    ) -> Result<crate::tools::Urdf, ModelError> {
-        Ok(crate::tools::urdf_with(&self.build()?.scene(), prefix, d)?)
-    }
-
-    /// The model as a USD stage (`crate::tools::usda`): its parts as
-    /// meshes at rest with their materials, maps named
-    /// `<prefix>_<part>_<kind>`.
-    pub fn usda(&self, prefix: &str) -> Result<crate::tools::Usd, ModelError> {
-        Ok(crate::tools::usda(&self.build()?.scene(), prefix)?)
     }
 
     /// A turntable of the posed model (`crate::tools::preview`).

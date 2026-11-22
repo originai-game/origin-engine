@@ -13,9 +13,9 @@ use og_shape::generators::solids::{
 use og_shape::math::predicates::orient2d;
 use og_shape::math::{DVec2, DVec3};
 use og_shape::mesh::Solid;
-use og_shape::tools::{
-    Decimate, Import, Part, Repair, Scene, Texture, decimate, glb, import, no_files, repair,
-};
+use og_shape::tools::{Decimate, Import, Part, Repair, Scene, Texture, decimate, no_files, repair};
+use og_shape_formats::gltf::write::glb;
+use og_shape_formats::import;
 use uverror::uv_error;
 
 fn flipped(s: &Solid) -> usize {
@@ -32,7 +32,7 @@ fn flipped(s: &Solid) -> usize {
 }
 
 fn png() -> Vec<u8> {
-    og_shape::tools::png(&og_shape::tools::Image {
+    og_shape_formats::png::write::png(&og_shape::tools::Image {
         width: 4,
         height: 2,
         rgba: (0..32).map(|i| (i * 8) as u8).collect(),
@@ -223,7 +223,8 @@ fn obj_keeps_its_vt_and_map_kd() {
         "albedo.png" => Ok(image.clone()),
         _ => Err(format!("no {uri}")),
     };
-    let im = og_shape::tools::import_obj(obj.as_bytes(), &Import::default(), &files).unwrap();
+    let im = og_shape_formats::obj::read::import_obj(obj.as_bytes(), &Import::default(), &files)
+        .unwrap();
     let p = &im.parts[0];
     assert_eq!(
         p.material.map.as_ref().map(|t| t.name.as_str()),

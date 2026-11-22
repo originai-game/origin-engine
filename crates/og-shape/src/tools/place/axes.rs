@@ -68,7 +68,8 @@ impl Axis {
         Axis::of(self.index(), !self.negative())
     }
 
-    pub(crate) fn of(index: usize, negative: bool) -> Axis {
+    #[doc(hidden)]
+    pub fn of(index: usize, negative: bool) -> Axis {
         Axis::ALL[index * 2 + usize::from(negative)]
     }
 
@@ -80,7 +81,7 @@ impl Axis {
     }
 
     /// `self × other` when both are axes at right angles.
-    pub(crate) fn cross(self, other: Axis) -> Option<Axis> {
+    pub fn cross(self, other: Axis) -> Option<Axis> {
         let (a, b) = (self.index(), other.index());
         if a == b {
             return None;
@@ -102,13 +103,14 @@ impl fmt::Display for Axis {
 /// `from[k]`, negated where `neg[k]`. Exact: it moves and negates
 /// numbers, and rounds none.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(crate) struct AxisTurn {
+pub struct AxisTurn {
     pub(crate) from: [usize; 3],
     pub(crate) neg: [bool; 3],
 }
 
 impl AxisTurn {
-    pub(crate) const IDENTITY: AxisTurn = AxisTurn {
+    #[doc(hidden)]
+    pub const IDENTITY: AxisTurn = AxisTurn {
         from: [0, 1, 2],
         neg: [false; 3],
     };
@@ -117,7 +119,7 @@ impl AxisTurn {
     /// Either may be left out: with only `up`, the smallest turn that
     /// stands `up` up; with only `front`, the smallest that brings it to
     /// −Y; with neither, no turn.
-    pub(crate) fn new(up: Option<Axis>, front: Option<Axis>) -> Result<AxisTurn, String> {
+    pub fn new(up: Option<Axis>, front: Option<Axis>) -> Result<AxisTurn, String> {
         use Axis::*;
         let (up, front) = match (up, front) {
             (None, None) => return Ok(AxisTurn::IDENTITY),
@@ -156,7 +158,7 @@ impl AxisTurn {
     }
 
     /// The turn applied to a point or a direction.
-    pub(crate) fn apply(&self, v: DVec3) -> DVec3 {
+    pub fn apply(&self, v: DVec3) -> DVec3 {
         let a = v.to_array();
         let c = |k: usize| {
             if self.neg[k] {
@@ -169,13 +171,13 @@ impl AxisTurn {
     }
 
     /// Where input axis `a` goes.
-    pub(crate) fn image(&self, a: Axis) -> Axis {
+    pub fn image(&self, a: Axis) -> Axis {
         let k = (0..3).find(|&k| self.from[k] == a.index()).unwrap_or(0);
         Axis::of(k, a.negative() != self.neg[k])
     }
 
     /// `self ∘ other`: `other` first.
-    pub(crate) fn then(&self, other: &AxisTurn) -> AxisTurn {
+    pub fn then(&self, other: &AxisTurn) -> AxisTurn {
         let mut t = AxisTurn::IDENTITY;
         for k in 0..3 {
             t.from[k] = other.from[self.from[k]];
@@ -186,7 +188,7 @@ impl AxisTurn {
 
     /// The turn applied after an affine map (to its columns and its
     /// translation): `self ∘ a`, exact.
-    pub(crate) fn after(&self, a: &Affine) -> Affine {
+    pub fn after(&self, a: &Affine) -> Affine {
         Affine {
             x: self.apply(a.x),
             y: self.apply(a.y),
@@ -196,7 +198,7 @@ impl AxisTurn {
     }
 
     /// The turn back.
-    pub(crate) fn inverse(&self) -> AxisTurn {
+    pub fn inverse(&self) -> AxisTurn {
         let mut t = AxisTurn::IDENTITY;
         for k in 0..3 {
             t.from[self.from[k]] = k;
@@ -206,7 +208,7 @@ impl AxisTurn {
     }
 
     /// The quarter turns about Z, counter-clockwise: 0 to 3.
-    pub(crate) fn quarter(n: u32) -> AxisTurn {
+    pub fn quarter(n: u32) -> AxisTurn {
         // (x, y) ↦ (−y, x) once.
         let once = AxisTurn {
             from: [1, 0, 2],
@@ -217,7 +219,7 @@ impl AxisTurn {
 }
 
 /// The input axis an axis turn sends to `output`.
-pub(crate) fn axes_input(t: &AxisTurn, output: Axis) -> Axis {
+pub fn axes_input(t: &AxisTurn, output: Axis) -> Axis {
     Axis::ALL
         .into_iter()
         .find(|&a| t.image(a) == output)
@@ -323,7 +325,7 @@ pub fn axis_measures(parts: &[Solid]) -> AxisMeasures {
 
 /// Every edge (positions welded exactly) has two triangles running it
 /// opposite ways.
-pub(crate) fn is_closed(s: &Solid) -> bool {
+pub fn is_closed(s: &Solid) -> bool {
     let (_, tris) = weld_exact(s);
     if tris.is_empty() {
         return false;
@@ -346,11 +348,13 @@ pub(crate) fn is_closed(s: &Solid) -> bool {
     edges.values().all(|&n| n == (1, 1))
 }
 
-pub(crate) fn vec3(v: DVec3) -> Json {
+#[doc(hidden)]
+pub fn vec3(v: DVec3) -> Json {
     Json::Arr(v.to_array().map(num).to_vec())
 }
 
-pub(crate) fn num(v: f64) -> Json {
+#[doc(hidden)]
+pub fn num(v: f64) -> Json {
     if v.is_finite() {
         Json::Num(v)
     } else {
@@ -358,12 +362,14 @@ pub(crate) fn num(v: f64) -> Json {
     }
 }
 
-pub(crate) fn axis_name(k: usize) -> Json {
+#[doc(hidden)]
+pub fn axis_name(k: usize) -> Json {
     Json::Str(["x", "y", "z"][k].into())
 }
 
 impl AxisMeasures {
-    pub(crate) fn json(&self) -> Json {
+    #[doc(hidden)]
+    pub fn json(&self) -> Json {
         Json::Obj(vec![
             ("size", vec3(self.size)),
             ("pivot_from_base", vec3(self.pivot_from_base)),

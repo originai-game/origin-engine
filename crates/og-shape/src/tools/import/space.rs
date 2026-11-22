@@ -56,7 +56,7 @@ impl Affine {
 /// if it is one to [`UNEVEN`]: `scale` is the mean axis length, `rigid`
 /// the axes made exactly orthonormal (Gram–Schmidt, x first), `uneven`
 /// how far `a` was from that.
-pub(crate) fn similarity(a: &Affine) -> Option<(f64, Affine, f64)> {
+pub fn similarity(a: &Affine) -> Option<(f64, Affine, f64)> {
     let l = [a.x.length(), a.y.length(), a.z.length()];
     let s = (l[0] + l[1] + l[2]) / 3.0;
     if !(s > 0.0 && s.is_finite()) || a.determinant() <= 0.0 {
@@ -82,7 +82,7 @@ pub(crate) fn similarity(a: &Affine) -> Option<(f64, Affine, f64)> {
 }
 
 /// The inverse of an affine map, if it is not singular.
-pub(crate) fn affine_inverse(a: &Affine) -> Option<Affine> {
+pub fn affine_inverse(a: &Affine) -> Option<Affine> {
     let det = a.determinant();
     if det == 0.0 || !det.is_finite() {
         return None;
@@ -109,7 +109,7 @@ pub(crate) fn affine_inverse(a: &Affine) -> Option<Affine> {
 /// (`bind(joint)`, kernel space), and the largest distance between one of
 /// those bones' placement and the blend. A weight naming no bone, a
 /// mirroring bind matrix, or a vertex with no weight is an error.
-pub(crate) fn place(
+pub fn place(
     positions: &[DVec3],
     raw: &[Vec<(u32, f64)>],
     bind: &dyn Fn(u32) -> Option<Affine>,
@@ -147,7 +147,7 @@ pub(crate) fn place(
 }
 
 /// The inverse of a rigid motion: its rotation transposed.
-pub(crate) fn rigid_inverse(a: &Affine) -> Affine {
+pub fn rigid_inverse(a: &Affine) -> Affine {
     let r = Affine {
         x: DVec3::new(a.x.x, a.y.x, a.z.x),
         y: DVec3::new(a.x.y, a.y.y, a.z.y),
@@ -161,7 +161,7 @@ pub(crate) fn rigid_inverse(a: &Affine) -> Affine {
 }
 
 /// A rigid motion as a frame, and as its inverse matrix (column-major).
-pub(crate) fn rest_and_inverse(r: &Affine) -> (Frame, [f64; 16]) {
+pub fn rest_and_inverse(r: &Affine) -> (Frame, [f64; 16]) {
     let i = rigid_inverse(r);
     (
         Frame {
@@ -181,7 +181,7 @@ pub(crate) fn rest_and_inverse(r: &Affine) -> (Frame, [f64; 16]) {
 /// transform is turned after; a skinned part's mesh and bones are turned
 /// (`apply_transform` and `Mesh::placed` take it as it is), and its
 /// transform conjugated, so either way it lands turned.
-pub(crate) fn turn_part(p: &mut ImportedPart, c: &AxisTurn) {
+pub fn turn_part(p: &mut ImportedPart, c: &AxisTurn) {
     if p.solid.skin.is_some() {
         p.solid = turned(&p.solid, c);
         let back = c.inverse().after(&Affine::IDENTITY);
@@ -193,13 +193,13 @@ pub(crate) fn turn_part(p: &mut ImportedPart, c: &AxisTurn) {
 
 /// glTF space (metres, Y up) to kernel space (Z up), unit-free:
 /// `(x, y, z) ↦ (x, −z, y)`.
-pub(crate) fn from_y_up(v: DVec3) -> DVec3 {
+pub fn from_y_up(v: DVec3) -> DVec3 {
     DVec3::new(v.x, -v.z, v.y)
 }
 
 /// A glTF-space affine map, conjugated into kernel space with the unit
 /// change applied to its translation.
-pub(crate) fn conjugate(m: &Affine, unit: f64) -> Affine {
+pub fn conjugate(m: &Affine, unit: f64) -> Affine {
     // P(x, y, z) = (x, −z, y); P⁻¹ e_x = e_x, P⁻¹ e_y = −e_z, P⁻¹ e_z = e_y.
     Affine {
         x: from_y_up(m.x),

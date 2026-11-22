@@ -94,7 +94,8 @@ pub(crate) fn data_byte(v: f64) -> u8 {
     (v * 255.0 + 0.5).floor() as u8
 }
 
-pub(crate) fn unit(v: DVec3) -> DVec3 {
+#[doc(hidden)]
+pub fn unit(v: DVec3) -> DVec3 {
     let l = v.length();
     if l > 0.0 { v / l } else { DVec3::ZERO }
 }

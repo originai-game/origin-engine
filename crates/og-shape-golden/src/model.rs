@@ -12,6 +12,7 @@ use og_shape::model::{
 };
 
 use crate::cases::Case;
+use og_shape_formats::ModelFiles;
 
 const WASHING_MACHINE: &str =
     include_str!("../../og-shape/tests/data/programs/washing_machine.json");
@@ -56,8 +57,8 @@ pub fn cases() -> Vec<Case> {
                         views: 2,
                         ..Default::default()
                     };
-                    m.preview(&d, &og_shape::tools::CODEC)
-                        .map(|v| og_shape::tools::png(&og_shape::tools::sheet(&v, 2)))
+                    m.preview(&d, &og_shape_formats::texture::CODEC)
+                        .map(|v| og_shape_formats::png::write::png(&og_shape::tools::sheet(&v, 2)))
                 })
             },
         },
@@ -81,8 +82,11 @@ pub fn cases() -> Vec<Case> {
             name: "model.washing_machine.png",
             run: |h| {
                 washing_machine(h, |m| {
-                    m.preview(&washing_machine_preview(), &og_shape::tools::CODEC)
-                        .map(|v| og_shape::tools::png(&og_shape::tools::sheet(&v, 4)))
+                    m.preview(
+                        &washing_machine_preview(),
+                        &og_shape_formats::texture::CODEC,
+                    )
+                    .map(|v| og_shape_formats::png::write::png(&og_shape::tools::sheet(&v, 4)))
                 })
             },
         },

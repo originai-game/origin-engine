@@ -25,7 +25,8 @@ pub(crate) fn closest_2d(p: DVec2, t: [DVec2; 3]) -> DVec2 {
 /// The frame at barycentric `b` of a triangle's corner frames: normal and
 /// tangent interpolated and normalised, the tangent made square to the
 /// normal, `w` the sign of the interpolated handedness (+1 on a tie).
-pub(crate) fn frame_at(f: &[CornerFrame; 3], b: [f64; 3]) -> CornerFrame {
+#[doc(hidden)]
+pub fn frame_at(f: &[CornerFrame; 3], b: [f64; 3]) -> CornerFrame {
     let n = unit(f[0].normal * b[0] + f[1].normal * b[1] + f[2].normal * b[2]);
     let t = f[0].tangent * b[0] + f[1].tangent * b[1] + f[2].tangent * b[2];
     let mut t = unit(t - n * n.dot(t));
@@ -45,7 +46,8 @@ pub(crate) fn frame_at(f: &[CornerFrame; 3], b: [f64; 3]) -> CornerFrame {
 /// at the nearest point of the triangle to its centre). Texel `y · size +
 /// x`, rows from the bottom (v up).
 #[allow(clippy::type_complexity)]
-pub(crate) fn rasterize(uv: &[[DVec2; 3]], size: u32) -> (Vec<u32>, Vec<([f64; 3], bool)>) {
+#[doc(hidden)]
+pub fn rasterize(uv: &[[DVec2; 3]], size: u32) -> (Vec<u32>, Vec<([f64; 3], bool)>) {
     let n = size as usize;
     let sz = f64::from(size);
     let mut owner = vec![u32::MAX; n * n];

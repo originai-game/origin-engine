@@ -6,9 +6,8 @@
 use og_shape::generators::solids::{BoxDesc, CylinderDesc, Generator, sphere, textured};
 use og_shape::math::{DVec3, HashError, OutputHash};
 use og_shape::mesh::Solid;
-use og_shape::tools::{
-    Material, Part, Preview, Scene, Texture, UvView, png, sheet, uv_view, views,
-};
+use og_shape::tools::{Material, Part, Preview, Scene, Texture, UvView, sheet, uv_view, views};
+use og_shape_formats::png::write::png;
 
 use crate::cases::Case;
 
@@ -113,7 +112,7 @@ fn textured_case(h: &mut OutputHash) -> Result<(), HashError> {
             fov: Some(0.8),
             ..Default::default()
         },
-        &og_shape::tools::CODEC,
+        &og_shape_formats::texture::CODEC,
     )
     .map_err(fail)?;
     h.bytes(&png(&sheet(&v.images, 3)));
@@ -131,7 +130,7 @@ fn textured_case(h: &mut OutputHash) -> Result<(), HashError> {
             no_ground: true,
             ..Default::default()
         },
-        &og_shape::tools::CODEC,
+        &og_shape_formats::texture::CODEC,
     )
     .map_err(fail)?;
     h.bytes(&png(&flat.images[0]));
@@ -173,7 +172,7 @@ fn colors_case(h: &mut OutputHash) -> Result<(), HashError> {
             width: 64,
             ..Default::default()
         },
-        &og_shape::tools::CODEC,
+        &og_shape_formats::texture::CODEC,
     )
     .map_err(fail)?;
     h.bytes(&png(&sheet(&v.images, 4)));
@@ -189,7 +188,8 @@ fn uv_case(h: &mut OutputHash) -> Result<(), HashError> {
     bare.map_positions(|p| p + DVec3::new(0.0, 30.0, 0.0), false);
     let mut s = scene(&can, &slab);
     s.parts.push(Part::new("bare", &bare));
-    let layouts = uv_view(&s, &UvView { size: 96 }, &og_shape::tools::CODEC).map_err(fail)?;
+    let layouts =
+        uv_view(&s, &UvView { size: 96 }, &og_shape_formats::texture::CODEC).map_err(fail)?;
     for l in &layouts {
         h.str(&l.material);
         h.u64(u64::from(l.tiles));

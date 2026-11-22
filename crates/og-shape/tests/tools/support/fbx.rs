@@ -143,7 +143,7 @@ pub fn binary_fbx() -> Vec<u8> {
         .collect();
     let uv = vec![0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0, 1.0];
     let uv_index: Vec<i32> = (0..24).map(|k| k % 4).collect();
-    let png = og_shape::tools::png(&og_shape::tools::Image {
+    let png = og_shape_formats::png::write::png(&og_shape::tools::Image {
         width: 16,
         height: 8,
         rgba: vec![200; 16 * 8 * 4],

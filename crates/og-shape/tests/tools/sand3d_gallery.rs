@@ -7,7 +7,9 @@
 #[path = "phase1/mod.rs"]
 mod phase1;
 
-use og_shape::tools::{Preview, glb, preview};
+use og_shape::tools::{Preview, preview};
+
+use og_shape_formats::gltf::write::glb;
 use phase1::programs;
 
 #[test]
@@ -41,7 +43,7 @@ fn every_program_builds_exports_and_previews() {
                 views: 1,
                 ..Default::default()
             },
-            &og_shape::tools::CODEC,
+            &og_shape_formats::texture::CODEC,
         )
         .unwrap();
         // Something other than background and ground was drawn.

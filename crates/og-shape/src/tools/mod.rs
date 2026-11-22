@@ -55,47 +55,27 @@
 //! - [`interference()`]: which parts of a posed scene pass through,
 //!   touch, or hold each other wholly inside ([`Interfering`]).
 
-mod atlas;
-mod bake;
-mod collide;
-mod compress;
-mod decimate;
-mod decode;
-mod draco;
-mod draco_edge;
-mod draco_write;
-mod etc1s;
-mod etc1s_write;
-mod export;
-mod fbx;
-mod image;
-mod import;
-mod interference;
-mod intersect;
-mod json;
-mod jsonread;
-mod ktx2;
-mod measure;
-mod meshglb;
-mod meshopt;
-mod mikk;
-mod place;
-mod png;
-mod polygon;
-mod preview;
-mod reorder;
-mod repair;
-mod sampler;
-mod skin;
-mod surface;
-mod texture;
-mod thicken;
-mod uastc;
-mod unwrap;
-mod urdf;
-mod usd;
-mod uvview;
-mod zstd;
+pub mod atlas;
+pub mod bake;
+pub mod collide;
+pub mod decimate;
+pub mod export;
+pub mod image;
+pub mod import;
+pub mod interference;
+pub mod intersect;
+pub mod json;
+pub mod measure;
+pub mod mikk;
+pub mod place;
+pub mod polygon;
+pub mod preview;
+pub mod repair;
+pub mod sampler;
+pub mod surface;
+pub mod thicken;
+pub mod unwrap;
+pub mod uvview;
 
 pub use atlas::{
     Atlas, AtlasError, AtlasMeasures, AtlasReport, ChartPlace, Packing, atlas_measures, pack,
@@ -103,44 +83,32 @@ pub use atlas::{
 };
 pub use bake::{Bake, BakeError, BakeReport, BakeSource, Baked, BakedMap, NormalMeasures, bake};
 pub use collide::{Collide, CollideError, ColliderReport, HullReport, colliders};
-pub use compress::{Compressed, Quantized, compress, quantize};
 pub use decimate::{
     Blocked, Decimate, DecimateError, DecimateReport, Rigid, collapse_short_edges, decimate, lods,
     merge_charts,
 };
-pub use decode::CODEC;
-pub use draco_write::{Draco, DracoReport, compress_draco};
 pub use export::{
     Clip, ClipKey, ColorSpace, ExportError, Joint, JointKind, MAP_KINDS, Material, Mimic, Part,
-    Placement, Scene, glb, glb_clips, glb_shared, glb_skin_clips, obj, obj_at, posed, stl, stl_at,
+    Placement, Scene, posed,
 };
-pub use fbx::import_fbx;
 pub use image::{Codec, ImageInfo, Texture};
 pub use import::{
     Affine, Import, ImportError, Imported, ImportedPart, ImportedSkeleton, Resolve, SkinScale,
-    UNEVEN, import, import_gltf, import_obj, no_files,
+    UNEVEN, no_files,
 };
 pub use interference::{Interfering, interference};
 pub use measure::{Measure, MeshMeasures, Piece, TextureMeasures, UvMeasures, measure};
-pub use meshglb::{PlainGlb, PlainGlbError, glb_plain};
 pub use place::{
     Axis, AxisMeasures, Pivot, Place, PlaceError, PlaceReport, Size, axis_measures, place,
 };
-pub use png::png;
 pub use preview::{
     Environment, Image, Preview, ViewCamera, Views, preview, preview_in, sheet, views, views_in,
 };
-pub use reorder::{Reordered, reorder};
 pub use repair::{
     Floaters, Holes, LARGE_HOLE_EDGES, NonManifold, Repair, RepairError, RepairReport, Weld,
     apply_transform, close_holes, join, join_clips, join_owned, orient, remove_degenerate,
     remove_floaters, repair, repair_owned, split_non_manifold, weld,
 };
-pub use texture::{
-    Downsize, TextureError, decode, downsize, to_ktx2, to_ktx2_etc1s, to_ktx2_rdo, to_webp,
-};
 pub use thicken::{Thickened, thicken};
 pub use unwrap::{Unwrap, UnwrapError, Uvs, unwrap};
-pub use urdf::{Urdf, UrdfDesc, urdf, urdf_with};
-pub use usd::{Usd, usda, usda_clips, usdz};
 pub use uvview::{UvImage, UvView, uv_view};

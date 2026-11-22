@@ -74,8 +74,8 @@ mod dilate;
 mod raster;
 mod sample;
 pub(crate) use dilate::*;
-pub(crate) use raster::*;
-pub(crate) use sample::*;
+pub use raster::*;
+pub use sample::*;
 
 /// How to bake. The zero value bakes 1024² maps, looks 2 % of the
 /// source's diagonal either way along the low normal, fills every empty
@@ -650,6 +650,3 @@ impl BakeReport {
         ])
     }
 }
-
-#[cfg(test)]
-mod tests;

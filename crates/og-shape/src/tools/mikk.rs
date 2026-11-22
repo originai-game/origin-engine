@@ -25,7 +25,7 @@ use crate::math::{DVec2, DVec3, trig};
 /// A corner's tangent: the unit direction of +u in the plane of its
 /// normal (zero where the mesh gives none), and the side +v falls on
 /// (1: `normal × tangent`; −1: the other).
-pub(crate) type Tangent = (DVec3, f64);
+pub type Tangent = (DVec3, f64);
 
 fn unit_or_same(v: DVec3) -> DVec3 {
     let l = v.length();
@@ -61,7 +61,7 @@ struct Group {
 
 /// Each triangle's corners' tangents, from its corners' positions, unit
 /// normals and UVs.
-pub(crate) fn tangents(
+pub fn tangents(
     positions: &[[DVec3; 3]],
     normals: &[[DVec3; 3]],
     uvs: &[[DVec2; 3]],

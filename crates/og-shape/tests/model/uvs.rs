@@ -4,6 +4,7 @@
 
 use og_shape::math::predicates::orient2d;
 use og_shape::model::program::{Fonts, Session, run_files, textures_named};
+use og_shape_formats::ModelFiles;
 use serde_json::{Value, json};
 
 /// A 64×64 checker, eight squares a side.
@@ -16,7 +17,7 @@ fn checker() -> Vec<u8> {
             rgba.extend_from_slice(&[c, c, if on { 60 } else { 200 }, 255]);
         }
     }
-    og_shape::tools::png(&og_shape::tools::Image {
+    og_shape_formats::png::write::png(&og_shape::tools::Image {
         width: 64,
         height: 64,
         rgba,
@@ -64,7 +65,7 @@ fn a_plate_with_a_hole_a_fillet_and_a_lofted_handle_exports_uvs_everywhere() {
     assert_eq!(part["closed"], true);
     // The GLB: TEXCOORD_0 on every vertex, the PNG embedded.
     let glb = m.glb().unwrap();
-    let imported = og_shape::tools::import(
+    let imported = og_shape_formats::import(
         &glb,
         &og_shape::tools::Import::default(),
         &og_shape::tools::no_files,

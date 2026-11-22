@@ -11,7 +11,7 @@ use crate::math::{DVec2, DVec3};
 /// is. Ear clipping runs in the plane of the polygon's Newell normal; a
 /// polygon with no ear (self-crossing, or with every corner in a line)
 /// falls back to a fan from the first corner left.
-pub(crate) fn triangulate(positions: &[DVec3], corners: &[u32]) -> Vec<[u32; 3]> {
+pub fn triangulate(positions: &[DVec3], corners: &[u32]) -> Vec<[u32; 3]> {
     let n = corners.len();
     if n < 3 {
         return Vec::new();

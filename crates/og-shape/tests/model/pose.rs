@@ -4,6 +4,7 @@
 use og_shape::generators::solids::{BoxDesc, CylinderDesc, cuboid, cylinder};
 use og_shape::math::{DVec3, Frame, trig};
 use og_shape::model::{Id, JointDesc, JointKind, Mimic, Model, ModelError, Placement};
+use og_shape_formats::ModelFiles;
 
 fn block(w: f64, d: f64, h: f64) -> og_shape::mesh::Solid {
     cuboid(&BoxDesc {

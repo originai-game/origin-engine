@@ -4,6 +4,7 @@
 
 use og_shape::math::trig;
 use og_shape::model::program::{Session, fonts_named, run};
+use og_shape_formats::ModelFiles;
 use serde_json::{Value, json};
 
 fn err(program: Value) -> String {

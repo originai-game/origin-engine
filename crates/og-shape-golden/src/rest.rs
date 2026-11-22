@@ -12,6 +12,7 @@ use og_shape::math::{HashError, OutputHash};
 use og_shape::model::{Model, ModelError, program};
 
 use crate::cases::Case;
+use og_shape_formats::ModelFiles;
 
 const PROGRAM: &str = r#"{"name": "rest", "ops": [
   {"op": "extrude", "name": "squircle", "height": 2,

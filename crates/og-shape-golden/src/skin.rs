@@ -10,7 +10,8 @@ use og_shape::mesh::{Bone, Skin, Solid, Weights};
 use og_shape::skin::{
     Pose, Rig, RigBone, Turn, bind, humanoid, measure_pose, pose, retarget, skin, skin_matrices,
 };
-use og_shape::tools::{Part, Scene, glb};
+use og_shape::tools::{Part, Scene};
+use og_shape_formats::gltf::write::glb;
 
 use crate::cases::Case;
 

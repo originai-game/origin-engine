@@ -17,6 +17,7 @@ use og_shape::mesh::Solid;
 use og_shape::model::program;
 
 use crate::cases::Case;
+use og_shape_formats::ModelFiles;
 
 const KNOB: &str = include_str!("../../og-shape/tests/data/programs/smallgaps_knob.json");
 const THROUGH: &str =

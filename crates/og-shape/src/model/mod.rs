@@ -36,5 +36,5 @@ pub use checked::loft;
 pub use error::ModelError;
 pub use place::Path;
 pub use tree::{
-    AtlasExport, BoolRecord, Built, Combine, Id, JointDesc, Key, Model, PartMeasures, Seating, Unit,
+    BoolRecord, Built, Combine, Id, JointDesc, Key, Model, PartMeasures, Seating, Unit,
 };

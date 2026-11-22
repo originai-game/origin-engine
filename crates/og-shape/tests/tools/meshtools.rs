@@ -15,10 +15,16 @@ use og_shape::generators::solids::{BoxDesc, cuboid, sphere};
 use og_shape::math::{DVec2, DVec3, Frame};
 use og_shape::mesh::Solid;
 use og_shape::tools::{
-    Decimate, Floaters, Import, Joint, JointKind, Measure, Part, PlainGlb, Preview, Repair, Scene,
-    Unwrap, decimate, glb, glb_plain, import, import_gltf, import_obj, join, measure, no_files,
-    obj, preview, repair, unwrap,
+    Decimate, Floaters, Import, Joint, JointKind, Measure, Part, Preview, Repair, Scene, Unwrap,
+    decimate, join, measure, no_files, preview, repair, unwrap,
 };
+use og_shape_formats::gltf::read::import_gltf;
+use og_shape_formats::gltf::write::glb;
+use og_shape_formats::gltf::write::plain::PlainGlb;
+use og_shape_formats::gltf::write::plain::glb_plain;
+use og_shape_formats::import;
+use og_shape_formats::obj::read::import_obj;
+use og_shape_formats::obj::write::obj;
 
 fn scene_parts() -> (Solid, Solid) {
     let body = cuboid(&BoxDesc {
@@ -284,7 +290,7 @@ fn the_chain_meets_a_texturing_budget() {
             views: 1,
             ..Default::default()
         },
-        &og_shape::tools::CODEC,
+        &og_shape_formats::texture::CODEC,
     )
     .unwrap();
     assert_eq!(views.len(), 1);
@@ -362,7 +368,8 @@ fn binary_fbx_with_pivots_compressed_arrays_and_a_texture() {
 
 #[test]
 fn a_skinned_glb_is_read_whole_and_never_broken_silently() {
-    use og_shape::tools::{PlainGlbError, apply_transform, collapse_short_edges};
+    use og_shape::tools::{apply_transform, collapse_short_edges};
+    use og_shape_formats::gltf::write::plain::PlainGlbError;
     let imported = import(&skinned::skinned_glb(true), &Import::default(), &no_files).unwrap();
     assert_eq!(imported.parts.len(), 1);
     let part = &imported.parts[0];
@@ -442,7 +449,7 @@ fn a_skinned_glb_is_read_whole_and_never_broken_silently() {
         views: 1,
         ..Default::default()
     };
-    assert!(preview(&scene, &d, &og_shape::tools::CODEC).is_ok());
+    assert!(preview(&scene, &d, &og_shape_formats::texture::CODEC).is_ok());
     // Round trip: glb writes the skin; reading it back gives the same
     // bones and weights (to f32).
     let bytes = glb(&scene).unwrap();
@@ -832,7 +839,8 @@ fn a_file_s_animation_poses_its_skin() {
 /// a tenth of a millimetre: the written clip is thinned).
 #[test]
 fn a_clip_is_written_back_and_read_as_the_same_motion() {
-    use og_shape::tools::{Part, Place, Scene, glb_skin_clips, join, join_clips, place};
+    use og_shape::tools::{Part, Place, Scene, join, join_clips, place};
+    use og_shape_formats::gltf::write::glb_skin_clips;
     for armature in [None, Some([0.01f32; 3])] {
         let first = import(
             &skinned::skinned_glb_animated(armature),
@@ -1081,7 +1089,8 @@ fn meshopt_compressed_views_read_as_the_plain_file() {
 /// solid's targets still fit its vertices and move them as before.
 #[test]
 fn morph_targets_are_read_carried_and_written() {
-    use og_shape::tools::{glb_skin_clips, join_clips};
+    use og_shape::tools::join_clips;
+    use og_shape_formats::gltf::write::glb_skin_clips;
     // A square of four vertices; the target `lift` raises one 0.5 m
     // (glTF's +y, the kernel's +z); the mesh rests at 0.25 of it, and
     // the clip takes it from 0 to 1 over a second.
@@ -1275,7 +1284,8 @@ fn a_draco_primitive_is_read() {
 /// reads back with both.
 #[test]
 fn a_skinned_part_is_written_with_tangents() {
-    use og_shape::tools::{glb_skin_clips, join_clips};
+    use og_shape::tools::join_clips;
+    use og_shape_formats::gltf::write::glb_skin_clips;
     let first = import(
         &skinned::skinned_glb_animated(None),
         &Import::default(),
@@ -1373,7 +1383,7 @@ fn a_mesh_its_node_s_animation_moves_is_a_skin_of_one_bone() {
 /// compressed twice.
 #[test]
 fn a_compressed_glb_reads_back_the_same() {
-    use og_shape::tools::compress;
+    use og_shape_formats::gltf::write::compress::compress;
     let ball = og_shape::generators::solids::sphere(10.0).unwrap();
     let plain = glb_plain(
         &ball,
@@ -1435,7 +1445,8 @@ fn a_compressed_glb_reads_back_the_same() {
 /// not compressed twice.
 #[test]
 fn a_draco_glb_reads_back_to_the_bits_kept() {
-    use og_shape::tools::{Draco, compress_draco};
+    use og_shape_formats::draco::write::Draco;
+    use og_shape_formats::draco::write::compress_draco;
     let ball = og_shape::generators::solids::sphere(10.0).unwrap();
     let plain = glb_plain(
         &ball,
@@ -1544,7 +1555,8 @@ fn a_draco_glb_reads_back_to_the_bits_kept() {
 /// more off than it does without.
 #[test]
 fn a_quantized_glb_reads_back_to_the_bits_kept() {
-    use og_shape::tools::{compress, quantize};
+    use og_shape_formats::gltf::write::compress::compress;
+    use og_shape_formats::gltf::write::compress::quantize;
     let mut ball = og_shape::generators::solids::sphere(10.0).unwrap();
     ball.map_positions(|p| p + DVec3::new(30.0, -5.0, 12.0), false);
     let plain = glb_plain(
@@ -1630,7 +1642,8 @@ fn a_quantized_glb_reads_back_to_the_bits_kept() {
 /// triangles come in no order.
 #[test]
 fn a_reordered_glb_is_the_same_mesh() {
-    use og_shape::tools::{compress, reorder};
+    use og_shape_formats::gltf::write::compress::compress;
+    use og_shape_formats::gltf::write::reorder::reorder;
     let ball = og_shape::generators::solids::sphere(10.0).unwrap();
     // The ball's triangles shuffled: an order no exporter left.
     let mut shuffled = ball.clone();
@@ -1720,7 +1733,8 @@ fn a_skinned_mesh_s_usd_stage_moves_as_its_clip() {
         name: "leg".into(),
         parts: vec![og_shape::tools::Part::new(&part.name, &part.solid)],
     };
-    let u = og_shape::tools::usda_clips(&scene, "leg", &[(&part.name, &part.clips)]).unwrap();
+    let u = og_shape_formats::usd::write::usda_clips(&scene, "leg", &[(&part.name, &part.clips)])
+        .unwrap();
     let t = &u.text;
     for (open, close) in [('{', '}'), ('[', ']'), ('(', ')')] {
         assert_eq!(t.matches(open).count(), t.matches(close).count(), "{open}");

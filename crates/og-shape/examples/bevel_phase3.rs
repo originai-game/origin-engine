@@ -12,7 +12,8 @@ use og_shape::generators::solids::{
 };
 use og_shape::math::{DVec2, DVec3};
 use og_shape::mesh::Solid;
-use og_shape::tools::{Part, Preview, Scene, png, preview, sheet};
+use og_shape::tools::{Part, Preview, Scene, preview, sheet};
+use og_shape_formats::png::write::png;
 
 type Error = Box<dyn std::error::Error>;
 
@@ -718,7 +719,7 @@ fn main() -> Result<(), Error> {
                 elevation: Some(0.6),
                 ..Default::default()
             },
-            &og_shape::tools::CODEC,
+            &og_shape_formats::texture::CODEC,
         )?;
         let bytes = png(&sheet(&views, 2));
         std::fs::write(format!("{dir}/{}.png", case.name), &bytes)?;

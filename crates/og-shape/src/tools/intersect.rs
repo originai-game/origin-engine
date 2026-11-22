@@ -10,12 +10,12 @@ use core::cmp::Ordering;
 use crate::math::DVec2;
 use crate::math::predicates::orient2d;
 
-pub(crate) use crate::boolean::selfcheck::degenerate;
+pub use crate::boolean::selfcheck::degenerate;
 
 /// Pairs of triangles `(i, j)`, `i < j`, that share no vertex index and
 /// still meet: a surface passing through (or touching) itself. Degenerate
 /// triangles are left out (they are counted on their own).
-pub(crate) fn self_intersections(
+pub fn self_intersections(
     positions: &[crate::math::DVec3],
     triangles: &[[u32; 3]],
 ) -> Vec<(u32, u32)> {
@@ -25,7 +25,7 @@ pub(crate) fn self_intersections(
 /// Two 2D triangles overlap in a region of positive area (touching along
 /// an edge or at a point does not count). Zero-area triangles overlap
 /// nothing.
-pub(crate) fn tris_overlap_2d(a: [DVec2; 3], b: [DVec2; 3]) -> bool {
+pub fn tris_overlap_2d(a: [DVec2; 3], b: [DVec2; 3]) -> bool {
     let ccw = |t: [DVec2; 3]| match orient2d(t[0], t[1], t[2]) {
         Ordering::Greater => Some(t),
         Ordering::Less => Some([t[0], t[2], t[1]]),

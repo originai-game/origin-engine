@@ -28,25 +28,16 @@
 //! [`ImportedPart::defaults`]) and its maps (base colour, metallic-
 //! roughness, normal, emissive, occlusion) as their files' bytes.
 
-use std::collections::BTreeMap;
 use std::fmt;
 
-use crate::math::{DVec2, DVec3, Frame};
-use crate::mesh::{Bone, Skin, Solid, Weights};
+use crate::math::{DVec3, Frame};
+use crate::mesh::{Skin, Solid};
 
-use crate::tools::draco;
-use crate::tools::export::{ColorSpace, Material};
-use crate::tools::image::{ImageInfo, Texture};
-use crate::tools::jsonread::{self, Value};
-use crate::tools::meshopt;
+use crate::tools::export::Material;
+use crate::tools::image::ImageInfo;
 use crate::tools::place::{Axis, AxisTurn, turned};
-use crate::tools::polygon::triangulate;
 
-mod gltf;
-mod obj;
 mod space;
-pub use gltf::*;
-pub use obj::*;
 pub use space::*;
 
 /// How to read a file. The zero value reads every format by its own
@@ -76,7 +67,7 @@ pub struct Import {
 impl Import {
     /// The turn from the file's axes to the kernel's, or why the options
     /// disagree.
-    fn axes(&self) -> Result<AxisTurn, ImportError> {
+    pub fn axes(&self) -> Result<AxisTurn, ImportError> {
         let given = self.up.is_some() || self.front.is_some();
         if self.z_up && given {
             return Err(ImportError::Unsupported(
@@ -257,56 +248,7 @@ pub fn no_files(uri: &str) -> Result<Vec<u8>, String> {
     Err(format!("no file system to read {uri:?} from"))
 }
 
-pub(crate) fn fmt_err(what: impl Into<String>) -> ImportError {
+/// A file that is not what its format says.
+pub fn fmt_err(what: impl Into<String>) -> ImportError {
     ImportError::Format(what.into())
 }
-
-/// Imports a file by its content: GLB by its magic, glTF JSON by a
-/// leading `{`, binary FBX by its magic and ASCII FBX by its header,
-/// otherwise OBJ text.
-pub fn import(bytes: &[u8], d: &Import, resolve: Resolve) -> Result<Imported, ImportError> {
-    let first = bytes
-        .iter()
-        .find(|b| !b.is_ascii_whitespace() && **b != 0xEF && **b != 0xBB && **b != 0xBF);
-    let head = &bytes[..bytes.len().min(4096)];
-    let ascii_fbx = head.windows(18).any(|w| w == b"FBXHeaderExtension");
-    if bytes.starts_with(b"glTF") || first == Some(&b'{') {
-        let mut m = import_gltf(bytes, resolve)?;
-        if d.turns() {
-            // From glTF's Y up to the file's own axes, as the kernel
-            // reads them.
-            let y_up = AxisTurn::new(Some(Axis::PosY), None).map_err(ImportError::Unsupported)?;
-            let c = d.axes()?.then(&y_up.inverse());
-            for p in &mut m.parts {
-                turn_part(p, &c);
-            }
-        }
-        Ok(m)
-    } else if bytes.starts_with(b"Kaydara FBX Binary") || ascii_fbx {
-        if d.turns() {
-            return Err(ImportError::Unsupported(
-                "up, front or z_up for FBX: its GlobalSettings say its axes; turn it with `place`"
-                    .into(),
-            ));
-        }
-        crate::tools::fbx::import_fbx(bytes, resolve)
-    } else {
-        import_obj(bytes, d, resolve)
-    }
-}
-
-pub(crate) fn unique(name: &str, used: &mut BTreeMap<String, ()>) -> String {
-    let base = if name.is_empty() { "part" } else { name };
-    let mut n = base.to_string();
-    let mut k = 1;
-    while used.contains_key(&n) {
-        n = format!("{base}.{k}");
-        k += 1;
-    }
-    used.insert(n.clone(), ());
-    n
-}
-
-// ── glTF ────────────────────────────────────────────────────────────────────
-
-// ── OBJ ─────────────────────────────────────────────────────────────────────

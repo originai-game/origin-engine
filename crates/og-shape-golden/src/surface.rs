@@ -9,6 +9,7 @@ use og_shape::math::{HashError, OutputHash};
 use og_shape::model::{Model, ModelError, program};
 
 use crate::cases::Case;
+use og_shape_formats::ModelFiles;
 
 const PROGRAM: &str = r#"{"name": "surface", "ops": [
   {"op": "cylinder", "name": "cyl", "radius": 4, "height": 6, "segments": 8},

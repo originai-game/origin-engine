@@ -150,7 +150,7 @@ pub struct PlaceReport {
 
 /// The whole placement: `p ↦ scale · yaw(axes(p)) + t`.
 #[derive(Clone, Copy, Debug)]
-pub(crate) struct Motion {
+pub struct Motion {
     pub(crate) axes: AxisTurn,
     /// cos and sin of a turn about Z that is not a quarter turn.
     pub(crate) yaw: Option<(f64, f64)>,
@@ -201,7 +201,7 @@ impl Motion {
 }
 
 /// `a · b`, column-major.
-pub(crate) fn mat_mul(a: &Mat4, b: &Mat4) -> Mat4 {
+pub fn mat_mul(a: &Mat4, b: &Mat4) -> Mat4 {
     let mut out = [0.0; 16];
     for c in 0..4 {
         for r in 0..4 {
@@ -211,7 +211,8 @@ pub(crate) fn mat_mul(a: &Mat4, b: &Mat4) -> Mat4 {
     out
 }
 
-pub(crate) fn moved(s: &Solid, m: &Motion) -> Solid {
+#[doc(hidden)]
+pub fn moved(s: &Solid, m: &Motion) -> Solid {
     let mut out = s.clone();
     // A morph offset is turned and scaled, not shifted.
     if let Some(morphs) = &mut out.morphs {
@@ -255,7 +256,7 @@ pub(crate) fn moved(s: &Solid, m: &Motion) -> Solid {
 
 /// A solid turned by an axis turn, exactly: its positions, and its skin
 /// as [`place`] turns one. Import uses it for a skinned part.
-pub(crate) fn turned(s: &Solid, t: &AxisTurn) -> Solid {
+pub fn turned(s: &Solid, t: &AxisTurn) -> Solid {
     moved(
         s,
         &Motion {
@@ -267,7 +268,8 @@ pub(crate) fn turned(s: &Solid, t: &AxisTurn) -> Solid {
     )
 }
 
-pub(crate) fn bounds(parts: &[Solid], f: impl Fn(DVec3) -> DVec3) -> Option<(DVec3, DVec3)> {
+#[doc(hidden)]
+pub fn bounds(parts: &[Solid], f: impl Fn(DVec3) -> DVec3) -> Option<(DVec3, DVec3)> {
     let mut it = parts.iter().flat_map(|s| s.positions.iter()).map(|&p| f(p));
     let first = it.next()?;
     Some(it.fold((first, first), |(lo, hi), p| (lo.min(p), hi.max(p))))

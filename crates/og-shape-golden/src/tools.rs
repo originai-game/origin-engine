@@ -5,9 +5,11 @@ use og_shape::generators::solids::{CylinderDesc, Extrude, cylinder, extrude, sph
 use og_shape::math::{DVec3, Frame, HashError, OutputHash};
 use og_shape::mesh::Solid;
 use og_shape::profile::{Circle, Rect, circle, rect};
-use og_shape::tools::{
-    Joint, JointKind, Material, Mimic, Part, Preview, Scene, glb, obj, png, preview, sheet, stl,
-};
+use og_shape::tools::{Joint, JointKind, Material, Mimic, Part, Preview, Scene, preview, sheet};
+use og_shape_formats::gltf::write::glb;
+use og_shape_formats::obj::write::obj;
+use og_shape_formats::png::write::png;
+use og_shape_formats::stl::write::stl;
 
 use crate::cases::Case;
 
@@ -29,13 +31,15 @@ pub fn cases() -> Vec<Case> {
             name: "tools.preview",
             run: |h| {
                 with_scene(h, |h, s| {
-                    preview(s, &Preview::default(), &og_shape::tools::CODEC).map(|views| {
-                        for v in &views {
-                            h.u64(u64::from(v.width));
-                            h.u64(u64::from(v.height));
-                            h.bytes(&v.rgba);
-                        }
-                    })
+                    preview(s, &Preview::default(), &og_shape_formats::texture::CODEC).map(
+                        |views| {
+                            for v in &views {
+                                h.u64(u64::from(v.width));
+                                h.u64(u64::from(v.height));
+                                h.bytes(&v.rgba);
+                            }
+                        },
+                    )
                 })
             },
         },
@@ -50,7 +54,7 @@ pub fn cases() -> Vec<Case> {
                         azimuth: 0.3,
                         ..Default::default()
                     };
-                    preview(s, &d, &og_shape::tools::CODEC)
+                    preview(s, &d, &og_shape_formats::texture::CODEC)
                         .map(|views| h.bytes(&png(&sheet(&views, 2))))
                 })
             },
@@ -136,7 +140,7 @@ fn facets(h: &mut OutputHash) -> Result<(), HashError> {
         elevation: Some(0.4),
         ..Default::default()
     };
-    match preview(&scene, &d, &og_shape::tools::CODEC) {
+    match preview(&scene, &d, &og_shape_formats::texture::CODEC) {
         Ok(views) => h.bytes(&png(&sheet(&views, 3))),
         Err(e) => h.str(&format!("error: {e}")),
     }

@@ -15,7 +15,10 @@
 use std::path::{Path, PathBuf};
 
 use og_shape::mesh::Solid;
-use og_shape::tools::{Import, Pivot, Place, Size, glb, obj, place as place_parts, stl};
+use og_shape::tools::{Import, Pivot, Place, Size, place as place_parts};
+use og_shape_formats::gltf::write::glb;
+use og_shape_formats::obj::write::obj;
+use og_shape_formats::stl::write::stl;
 
 use crate::args::{Args, IMPORT_OPTIONS};
 use crate::export::written;

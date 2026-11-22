@@ -5,11 +5,15 @@ use og_shape::generators::solids::{BoxDesc, cuboid, sphere, torus};
 use og_shape::math::{DVec2, DVec3, HashError, OutputHash};
 use og_shape::mesh::Solid;
 use og_shape::tools::{
-    Atlas, Bake, BakeSource, ChartPlace, Image, Material, Packing, PlainGlb, Texture, Unwrap, bake,
-    glb_plain, pack, png, repack, unwrap, unwrap_atlas,
+    Atlas, Bake, BakeSource, ChartPlace, Image, Material, Packing, Texture, Unwrap, bake, pack,
+    repack, unwrap, unwrap_atlas,
 };
+use og_shape_formats::gltf::write::plain::PlainGlb;
+use og_shape_formats::gltf::write::plain::glb_plain;
+use og_shape_formats::png::write::png;
 
 use crate::cases::Case;
+use og_shape_formats::ModelFiles;
 
 pub fn cases() -> Vec<Case> {
     vec![
@@ -219,7 +223,7 @@ fn bake_case(h: &mut OutputHash) -> Result<(), HashError> {
             distance: 6.0,
             ..Default::default()
         },
-        &og_shape::tools::CODEC,
+        &og_shape_formats::texture::CODEC,
     )
     .map_err(fail)?;
     h.str(&b.report.to_json());

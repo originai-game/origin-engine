@@ -5,9 +5,14 @@ use og_shape::generators::solids::{BoxDesc, CylinderDesc, cuboid, cylinder};
 use og_shape::math::{DVec3, Frame};
 use og_shape::mesh::Solid;
 use og_shape::tools::{
-    Clip, ClipKey, ExportError, Joint, JointKind, Material, Mimic, Part, Placement, Scene, glb,
-    glb_clips, obj, obj_at, stl, stl_at,
+    Clip, ClipKey, ExportError, Joint, JointKind, Material, Mimic, Part, Placement, Scene,
 };
+use og_shape_formats::gltf::write::glb;
+use og_shape_formats::gltf::write::glb_clips;
+use og_shape_formats::obj::write::obj;
+use og_shape_formats::obj::write::obj_at;
+use og_shape_formats::stl::write::stl;
+use og_shape_formats::stl::write::stl_at;
 
 fn solids() -> (Solid, Solid) {
     let base = cuboid(&BoxDesc {
@@ -405,12 +410,12 @@ fn a_urdf_s_links_are_weighed() {
     let (_, wheel) = solids();
     let mut s = scene(&slab, &wheel);
     s.parts.push(Part::new("sheet", &sheet));
-    let d = og_shape::tools::UrdfDesc {
+    let d = og_shape_formats::urdf::write::UrdfDesc {
         density: 1000.0,
         effort: 12.5,
         velocity: 3.0,
     };
-    let u = og_shape::tools::urdf_with(&s, "cart", &d).unwrap();
+    let u = og_shape_formats::urdf::write::urdf_with(&s, "cart", &d).unwrap();
     let link = |name: &str| {
         let at = u.xml.find(&format!("<link name=\"{name}\"")).unwrap();
         &u.xml[at..at + u.xml[at..].find("</link>").unwrap()]
@@ -444,16 +449,16 @@ fn a_urdf_s_links_are_weighed() {
     assert!(u.xml.contains("effort=\"12.5\" velocity=\"3\""));
     // Without a density, as before: no inertial anywhere.
     assert!(
-        !og_shape::tools::urdf(&s, "cart")
+        !og_shape_formats::urdf::write::urdf(&s, "cart")
             .unwrap()
             .xml
             .contains("<inertial>")
     );
     assert!(
-        og_shape::tools::urdf_with(
+        og_shape_formats::urdf::write::urdf_with(
             &s,
             "cart",
-            &og_shape::tools::UrdfDesc {
+            &og_shape_formats::urdf::write::UrdfDesc {
                 density: f64::NAN,
                 ..d
             }
@@ -482,7 +487,7 @@ fn a_urdf_s_links_stand_where_the_parts_were_built() {
         parent: "wheel".into(),
         ..Part::new("cap", &base)
     });
-    let u = og_shape::tools::urdf(&s, "cart").unwrap();
+    let u = og_shape_formats::urdf::write::urdf(&s, "cart").unwrap();
     let names: Vec<&str> = u.meshes.iter().map(|m| m.0.as_str()).collect();
     assert_eq!(
         names,
@@ -574,7 +579,7 @@ fn a_urdf_s_links_stand_where_the_parts_were_built() {
 fn a_usd_stage_holds_the_parts_as_built() {
     let (base, wheel) = solids();
     let s = scene(&base, &wheel);
-    let u = og_shape::tools::usda(&s, "cart").unwrap();
+    let u = og_shape_formats::usd::write::usda(&s, "cart").unwrap();
     let t = &u.text;
     assert!(t.starts_with("#usda 1.0\n"));
     assert!(t.contains("metersPerUnit = 0.001") && t.contains("upAxis = \"Z\""));
@@ -663,7 +668,7 @@ fn a_usd_stage_holds_the_parts_as_built() {
     );
     // Packed: a zip of the stage alone, stored, its bytes at a
     // multiple of 64, with the directory and end record a zip has.
-    let z = og_shape::tools::usdz(&u, "cart.usda");
+    let z = og_shape_formats::usd::write::usdz(&u, "cart.usda");
     assert_eq!(&z[..4], b"PK\x03\x04");
     let name_len = usize::from(u16::from_le_bytes([z[26], z[27]]));
     let extra = usize::from(u16::from_le_bytes([z[28], z[29]]));
@@ -695,7 +700,7 @@ fn material_extensions_go_through_a_glb() {
             ..Part::new("p", &base)
         }],
     };
-    let bytes = og_shape::tools::glb(&scene).unwrap();
+    let bytes = og_shape_formats::gltf::write::glb(&scene).unwrap();
     let text = String::from_utf8_lossy(&bytes).to_string();
     for name in [
         "KHR_materials_clearcoat",
@@ -706,7 +711,7 @@ fn material_extensions_go_through_a_glb() {
         assert!(text.matches(name).count() >= 2, "{name}");
     }
     assert!(!text.contains("extensionsRequired"));
-    let back = og_shape::tools::import(&bytes, &og_shape::tools::Import::default(), &|_: &str| {
+    let back = og_shape_formats::import(&bytes, &og_shape::tools::Import::default(), &|_: &str| {
         Err("no files".to_string())
     })
     .unwrap();

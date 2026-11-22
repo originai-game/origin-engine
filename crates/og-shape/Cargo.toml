@@ -17,11 +17,12 @@ spade = "2.15.1"
 ttf-parser = { version = "0.25.1", default-features = false, features = ["std", "opentype-layout", "glyph-names"] }
 i_overlay = { version = "9.1.0", default-features = false }
 serde_json = { version = "1.0.154", default-features = false, features = ["std"] }
-miniz_oxide = { version = "0.9.1", default-features = false, features = ["with-alloc"] }
-ruzstd = { version = "0.9.1", default-features = false, features = ["std"] }
-image-webp = "0.2.4"
 
 [dev-dependencies]
+# The integration tests read and write files (a test edge, not a layer edge).
+og-shape-formats = { path = "../og-shape-formats" }
+# Compresses the arrays of the hand-written binary FBX test files.
+miniz_oxide = { version = "0.9.1", default-features = false, features = ["with-alloc"] }
 gltf = { version = "1.4.1", default-features = false, features = ["utils", "names", "extras"] }
 
 # The determinism lint (clippy.toml beside this file).

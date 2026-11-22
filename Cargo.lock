@@ -3653,11 +3653,10 @@ dependencies = [
  "glam 0.34.1",
  "gltf",
  "i_overlay",
- "image-webp",
  "libm",
  "miniz_oxide 0.9.1",
+ "og-shape-formats",
  "robust",
- "ruzstd",
  "serde_json",
  "sha2",
  "spade",
@@ -3669,7 +3668,19 @@ name = "og-shape-cli"
 version = "0.9.0"
 dependencies = [
  "og-shape",
+ "og-shape-formats",
  "serde_json",
+]
+
+[[package]]
+name = "og-shape-formats"
+version = "0.9.0"
+dependencies = [
+ "gltf",
+ "image-webp",
+ "miniz_oxide 0.9.1",
+ "og-shape",
+ "ruzstd",
 ]
 
 [[package]]
@@ -3679,6 +3690,7 @@ dependencies = [
  "miniz_oxide 0.9.1",
  "og-shape",
  "og-shape-cli",
+ "og-shape-formats",
 ]
 
 [[package]]
