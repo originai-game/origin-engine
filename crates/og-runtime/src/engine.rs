@@ -32,10 +32,9 @@ pub(crate) use crate::registry::Modules;
 pub(crate) use module_state::Mount;
 mod resources;
 use crate::{
-    author::trace, bind::agents, bind::anim, bind::i18n, bind::modules, bind::terrain,
-    bind::timeline, bind::video, host::api, host::codec, ok_void, present::art, present::extract,
-    present::feel, present::interpolate, present::look, present::probes, world::assets,
-    world::save, world::stream,
+    author::trace, bind::agents, bind::anim, bind::modules, bind::timeline, host::api, host::codec,
+    ok_void, present::art, present::extract, present::feel, present::interpolate, present::look,
+    present::probes, world::assets, world::save, world::stream,
 };
 pub(crate) use resources::{
     bump_layout_epoch, layout_epoch, world_query_views, write_resource_value,
@@ -879,29 +878,22 @@ pub(crate) fn declare_game(desc: &Value) -> u32 {
     })
 }
 
-/// The actions the engine's modules register on a probe (`help` marks them
-/// `(registered)`). Their names are reserved for the engine whatever the
-/// build or the order: rprobe::MODULE_ACTIONS lists them, and a game's
-/// command of one of them is refused (a test holds the list to this).
+/// The actions the engine's modules register on a probe (`help` marks
+/// them `(registered)`), in the registry's order (COMMANDS). Their names
+/// are reserved for the engine whatever the build or the order:
+/// rprobe::module_actions lists them, and a game's command of one of them
+/// is refused (a test holds the list to this).
 pub(crate) fn register_module_actions(probe: &mut og_probe::Probe, engine_id: u32) {
-    crate::bind::agents::register_commands(probe, engine_id);
-    crate::bind::timeline::register_commands(probe, engine_id);
-    crate::bind::flow::register_commands(probe, engine_id);
-    crate::bind::motion::register_commands(probe, engine_id);
-    crate::bind::modules::docs::register_commands(probe, engine_id);
-    crate::author::probe::register_render_dump(probe, engine_id);
-    crate::present::probes::register_bake_dump(probe, engine_id);
-    #[cfg(not(feature = "publish"))]
-    crate::author::determinism::register(probe);
-    #[cfg(not(feature = "publish"))]
-    crate::author::inspector::register(probe, engine_id);
+    for c in crate::registry::COMMANDS {
+        (c.register)(probe, engine_id);
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    /// The engine's own registered actions are exactly MODULE_ACTIONS, so a
+    /// The engine's own registered actions are exactly module_actions, so a
     /// module that adds one without reserving it fails here.
     #[test]
     #[cfg(not(feature = "publish"))]
@@ -916,8 +908,7 @@ mod tests {
             .map(|c| c.name)
             .collect();
         have.sort();
-        let mut want: Vec<String> = crate::author::probe::MODULE_ACTIONS
-            .iter()
+        let mut want: Vec<String> = crate::author::probe::module_actions()
             .map(|s| s.to_string())
             .collect();
         want.sort();

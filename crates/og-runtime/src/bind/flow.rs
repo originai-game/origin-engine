@@ -340,9 +340,24 @@ fn insert(eng: &Engine, world: &mut World, e: Entity, name: &str, v: Value) -> R
         .map_err(|e| e.reason().to_string())
 }
 
+/// project.ogt's `flow` (its dialogue's asset id), before GameDesc.start:
+/// loaded, prepared and started as a game's og.story.load, og.flow.load
+/// and og.flow.start would.
+pub(crate) fn start_project_flow(
+    eng: &crate::engine::Engine,
+    dialogue: String,
+) -> Result<(), String> {
+    let start = || {
+        let story = crate::bind::story::og_story_load(eng.id, dialogue)?;
+        og_flow_load(eng.id, story.name.clone())?;
+        start_declared(eng.id, &story.name)
+    };
+    start().map_err(|e| format!("project.ogt's `flow`: {e}"))
+}
+
 /// Starts the flow project.ogt's `flow` declares (dialogue `name`, loaded
 /// and prepared): og.flow.current's from now on.
-pub(crate) fn start_declared(world: u32, name: &str) -> Result<(), String> {
+fn start_declared(world: u32, name: &str) -> Result<(), String> {
     let flow = og_flow_start(world, Some(json!({ "dialogue": name }).to_string()))?;
     let st = state(world)?;
     lock(&st).declared = flow.as_f64().map(|f| f as u64);

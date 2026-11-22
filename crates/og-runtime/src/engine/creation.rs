@@ -146,12 +146,14 @@ fn create_inner(game: u32, options: &str) -> Result<u32, String> {
     rprobe::install(&engine, a.game.facts)?;
     {
         let mut probe = engine.probe.borrow_mut();
-        super::agents::commit(&engine, probe.inbox());
-        super::timeline::commit(&engine, probe.inbox());
+        for commit in crate::registry::COMMIT {
+            commit(&engine, probe.inbox());
+        }
         register_module_actions(&mut probe, engine_id);
     }
-    // The host's locale (og run --locale, the browser's language).
-    super::i18n::request(&engine, options["locale"].as_str().unwrap_or(""));
+    for created in crate::registry::CREATED {
+        created(&engine, &options);
+    }
     ENGINES.with(|e| e.borrow_mut().push(Some(engine.clone())));
     #[cfg(not(feature = "publish"))]
     rprobe::set_reloader(&engine);
@@ -188,11 +190,9 @@ pub(super) fn run_start(eng: &Engine) -> Result<(), String> {
     if eng.state.borrow().boot_scene.is_some() {
         return Ok(());
     }
-    // The locale's font-pack faces, which the web fetches after the boot
-    // (docs/ui.md §3.4): start waits for them as it waits for the scene, so
-    // an og.load.font of one in start finds it, and the first frame needs
-    // them anyway.
-    if eng.state.borrow().start.is_some() && crate::bind::i18n::faces_pending(eng) {
+    // What the modules hold start for (the registry's HOLD_START), as it
+    // waits for the scene.
+    if eng.state.borrow().start.is_some() && crate::registry::HOLD_START.iter().any(|h| h(eng)) {
         return Ok(());
     }
     let look = eng.state.borrow_mut().boot_look.take();
@@ -205,15 +205,12 @@ pub(super) fn run_start(eng: &Engine) -> Result<(), String> {
             .push(json!({ "tick": 0, "warning": true, "text": text }));
         st.warnings.push(text);
     }
-    // project.ogt's `flow`: started before GameDesc.start, which may read
-    // it (og.flow.current) or pause it behind a title screen.
-    let flow = eng.state.borrow_mut().boot_flow.take();
-    if let Some(dialogue) = flow
-        && let Err(e) = start_flow(eng, &dialogue)
-    {
-        let text = format!("project.ogt's `flow`: {e}");
-        eng.state.borrow_mut().start_failed = Some(text.clone());
-        return Err(text);
+    // The modules' own starts (project.ogt's `flow`), before GameDesc.start.
+    for before in crate::registry::BEFORE_START {
+        if let Err(text) = before(eng) {
+            eng.state.borrow_mut().start_failed = Some(text.clone());
+            return Err(text);
+        }
     }
     let start = eng.state.borrow_mut().start.take();
     if let Some(start) = start {
@@ -230,15 +227,6 @@ pub(super) fn run_start(eng: &Engine) -> Result<(), String> {
         run_ui_registration(eng, callback)?;
     }
     Ok(())
-}
-
-/// Loads, prepares and starts the flow project.ogt declares (its
-/// dialogue's asset id), as a game's og.story.load, og.flow.load and
-/// og.flow.start would.
-fn start_flow(eng: &Engine, dialogue: &str) -> Result<(), String> {
-    let story = crate::bind::story::og_story_load(eng.id, dialogue.to_string())?;
-    crate::bind::flow::og_flow_load(eng.id, story.name.clone())?;
-    crate::bind::flow::start_declared(eng.id, &story.name)
 }
 
 pub(crate) fn run_ui_registration(eng: &Engine, callback: Option<u32>) -> Result<(), String> {

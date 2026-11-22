@@ -1,8 +1,17 @@
-//! The runtime's modules, in the orders they take part in an engine: the
-//! state each keeps beside a world and the records it registers only
-//! once a game names them.
+//! The runtime's modules: every place one takes part in an engine, each
+//! a list in the order the engine runs it. The engine's core
+//! (`engine/creation.rs`, `engine/lazy.rs`, `engine/module_state.rs`,
+//! `lib.rs`) walks these lists and names no module, so a new module is
+//! its own files, its `mod` line in `bind.rs` and its lines here.
+//!
+//! The lists are separate because their orders are: the order lazy
+//! records are registered in is a world's type table (so its hash), the
+//! mounts' order is the systems' schedule and the before-tick hooks' is
+//! what each reads of the others. Each is written out, never sorted.
 
 use crate::engine::lazy::Lazy;
+use crate::engine::{Engine, Mount};
+use crate::host::codec::Layout;
 use crate::{
     bind::agents, bind::destruction, bind::destruction2d, bind::flow, bind::forces, bind::i18n,
     bind::modules, bind::motion, bind::net, bind::particles, bind::shared, bind::sight,
@@ -12,6 +21,9 @@ use crate::{
 };
 use og_core::Reflect;
 use og_ecs::World;
+use og_physics::PhysicsSystem;
+use serde_json::Value;
+use std::collections::BTreeMap;
 
 /// Each module's state on one engine.
 #[derive(Default)]
@@ -609,4 +621,238 @@ fn enable_time_groups(world: &mut World, name: &str) -> og_core::Result<()> {
         world.register::<og_core::TimeGroup>()?;
     }
     Ok(())
+}
+
+/// What attaches to a lazy record: see [`ATTACH`].
+pub(crate) type AttachFn = fn(Mount<'_>, &mut World) -> Result<(), String>;
+
+/// Run on a lazy record's world once its module is granted it, as the
+/// record is registered or at assembly: the state the module keeps of it.
+pub(crate) const ATTACH: &[(&str, AttachFn)] = &[
+    (crate::bind::story::STORY, story::attach),
+    (crate::world::stream::cells::CELL, stream::cells::attach),
+    (crate::bind::sight::MAP, sight::attach),
+];
+
+/// What a module mounts on a world being assembled with.
+pub(crate) struct Assembly<'a> {
+    pub mount: Mount<'a>,
+    /// og-physics' profile (2D or 3D).
+    pub profile: u32,
+    pub physics: &'a PhysicsSystem,
+    /// Every component and resource the world has registered.
+    pub records: &'a [String],
+    pub layouts: &'a BTreeMap<String, Layout>,
+}
+
+/// A module's mount: its systems and state blocks on a world.
+pub(crate) type MountFn = fn(&mut World, &Assembly<'_>) -> Result<(), String>;
+
+/// Mounted after physics' and the UI's front, before the game's systems.
+pub(crate) const FRONT: &[MountFn] = &[
+    |w, a| terrain::mount(w, a.mount),
+    |w, a| platform::mount(w, a.mount),
+    |w, a| stream::mount(w, a.mount),
+    |w, a| net::mount(w, a.mount),
+    |w, a| story::mount(w, a.mount),
+    |w, a| agents::mount_ai(w, a.mount, a.profile, a.physics, a.records),
+];
+
+/// Mounted after the game's systems and tweens, before og-anim.
+pub(crate) const MIDDLE: &[MountFn] = &[
+    |w, a| video::install(w, a.mount, a.layouts),
+    |w, a| crate::bind::weather::install(w, a.layouts),
+    |w, a| crate::bind::season::install(w, a.layouts),
+    // og.path and og.timeline after tweens, before og-anim (an animation
+    // track sets players) and physics.
+    |w, a| timeline::install(w, a.mount, a.layouts),
+];
+
+/// Mounted after og-anim and game feel's middle, before physics' back.
+pub(crate) const BACK: &[MountFn] = &[
+    |w, a| agents::mount_nav(w, a.mount, a.profile, a.physics),
+    |_, a| {
+        destruction::set_physics(&a.mount.modules.destruction, a.physics);
+        Ok(())
+    },
+];
+
+/// Run as each tick starts, after a pending restore and the save's own
+/// hook, before the debug geometry and interpolation.
+pub(crate) const BEFORE_TICK: &[fn(&Engine, &mut World)] = &[
+    // The world's zero follows its focus (R12), before anything reads a
+    // place: cells, the raycast record, interpolation.
+    origin::before_tick,
+    // The water og.Buoyancy floats on this tick, at the new zero.
+    |e, w| crate::bind::physics_ext::before_tick(e, w),
+    // The air this tick's bodies and particles move through.
+    |e, w| wind::before_tick(e, w),
+    // The force fields this tick's bodies are accelerated by.
+    |e, w| forces::before_tick(e, w),
+    // What each team sees this tick (og.sight), from where things stand.
+    |e, w| sight::before_tick(e, w),
+    // A scene change asked for puts its scene in place, before the cells
+    // it places are seen.
+    scenes::before_tick,
+    // The scenes timelines' scene tracks cut to and from.
+    timeline::before_tick,
+    // World cells load and unload as the tick starts (G3-3).
+    stream::cells::before_tick,
+];
+
+/// A module's probe actions and the names it registers them under, which
+/// are reserved for the engine whatever the build or the order (a
+/// publish build registers fewer of them, never more).
+pub(crate) struct Commands {
+    pub register: fn(&mut og_probe::Probe, u32),
+    pub actions: &'static [&'static str],
+}
+
+/// The engine's own probe actions, registered in this order.
+pub(crate) const COMMANDS: &[Commands] = &[
+    Commands {
+        register: agents::register_commands,
+        actions: &[
+            // author::pulse, author::lanes, og.net, the debug geometry and
+            // author::review, which og.ai's registers first.
+            "dump_pulse",
+            "dump_lanes",
+            "lanes",
+            "dump_desync",
+            "dump_room",
+            "debug",
+            "view",
+            "turntable",
+            "dump_memory",
+            "dump_ai",
+            "dump_nav",
+            "locale",
+            "cover",
+            "dump_story",
+            "dump_stream",
+            "dump_platform",
+            "mip_stream",
+            "terrain_stream",
+        ],
+    },
+    Commands {
+        register: timeline::register_commands,
+        actions: &["timeline"],
+    },
+    Commands {
+        register: flow::register_commands,
+        actions: &["dump_flow", "flow"],
+    },
+    Commands {
+        register: motion::register_commands,
+        actions: &["dump_motion", "motion_backend"],
+    },
+    Commands {
+        register: modules::docs::register_commands,
+        actions: &["ui"],
+    },
+    Commands {
+        register: crate::author::probe::register_render_dump,
+        actions: &["dump_render"],
+    },
+    Commands {
+        register: crate::present::probes::register_bake_dump,
+        actions: &["bake_probes"],
+    },
+    Commands {
+        register: |_probe, _| {
+            #[cfg(not(feature = "publish"))]
+            crate::author::determinism::register(_probe);
+        },
+        actions: &["dump_determinism"],
+    },
+    Commands {
+        register: |_probe, _engine| {
+            #[cfg(not(feature = "publish"))]
+            crate::author::inspector::register(_probe, _engine);
+        },
+        actions: &["dump_inspector", "inspect"],
+    },
+];
+
+/// Run once the probe's world is the engine's (at creation): each takes
+/// the probe's inbox for its commands.
+pub(crate) const COMMIT: &[fn(&Engine, og_probe::Inbox)] = &[agents::commit, timeline::commit];
+
+/// Run once an engine is made, with the host's options.
+pub(crate) const CREATED: &[fn(&Engine, &Value)] = &[
+    // The host's locale (og run --locale, the browser's language).
+    |e, options| i18n::request(e, options["locale"].as_str().unwrap_or("")),
+];
+
+/// GameDesc.start waits while one of these holds, as it waits for the
+/// first scene.
+pub(crate) const HOLD_START: &[fn(&Engine) -> bool] = &[
+    // The locale's font-pack faces, which the web fetches after the boot
+    // (docs/ui.md §3.4): an og.load.font of one in start finds it, and
+    // the first frame needs them anyway.
+    i18n::faces_pending,
+];
+
+/// A module's start: see [`BEFORE_START`].
+pub(crate) type StartFn = fn(&Engine) -> Result<(), String>;
+
+/// Run before GameDesc.start, after GameDesc.look: a failure is the
+/// engine's start failure, in the words returned.
+pub(crate) const BEFORE_START: &[StartFn] = &[
+    // project.ogt's `flow`, which start may read (og.flow.current) or
+    // pause behind a title screen. Taken here, so a game without one never
+    // calls into the story module (wasm-modules.json).
+    |e| {
+        let flow = e.state.borrow_mut().boot_flow.take();
+        flow.map_or(Ok(()), |dialogue| flow::start_project_flow(e, dialogue))
+    },
+];
+
+#[cfg(test)]
+mod tests {
+    /// The engine's core walks the lists above and names no binding: a
+    /// module that adds itself by a call in one of these files fails here.
+    #[test]
+    fn the_core_names_no_module() {
+        let bind = include_str!("bind.rs");
+        let modules: Vec<&str> = bind
+            .lines()
+            .filter_map(|l| l.trim().strip_prefix("pub(crate) mod "))
+            .filter_map(|l| l.strip_suffix(';'))
+            .collect();
+        assert!(modules.contains(&"sight"), "bind.rs lists the bindings");
+        let core = [
+            ("engine/lazy.rs", include_str!("engine/lazy.rs")),
+            (
+                "engine/module_state.rs",
+                include_str!("engine/module_state.rs"),
+            ),
+            ("engine/creation.rs", include_str!("engine/creation.rs")),
+            ("lib.rs", include_str!("lib.rs")),
+        ];
+        let mut named = Vec::new();
+        for (file, text) in core {
+            for (n, line) in text.lines().enumerate() {
+                for m in &modules {
+                    // `super::` is engine.rs's alias of a binding.
+                    for path in [format!("bind::{m}"), format!("super::{m}::")] {
+                        let at = line.match_indices(&path).any(|(i, _)| {
+                            let rest = &line[i + path.len()..];
+                            !rest.starts_with(|c: char| c.is_alphanumeric() || c == '_')
+                                || path.ends_with("::")
+                        });
+                        if at {
+                            named.push(format!("{file}:{}: {}", n + 1, line.trim()));
+                        }
+                    }
+                }
+            }
+        }
+        assert!(
+            named.is_empty(),
+            "the core names a module:\n{}",
+            named.join("\n")
+        );
+    }
 }

@@ -11,7 +11,7 @@
 //! type (the same layout) and widens its system's declarations.
 
 use crate::engine::{Engine, Mount};
-use crate::registry::{LAZY, NEEDS, TOGETHER};
+use crate::registry::{ATTACH, LAZY, NEEDS, TOGETHER};
 use og_ecs::World;
 
 /// One lazily registered record and what its module does when it is.
@@ -29,6 +29,14 @@ pub(crate) fn needs(name: &str) -> &'static [&'static str] {
         .iter()
         .find(|(group, _)| group.contains(&name))
         .map_or(&[], |(_, n)| n)
+}
+
+/// Runs lazy record `name`'s attach ([`ATTACH`]), if it has one.
+fn attach(name: &str, mount: Mount<'_>, world: &mut World) -> Result<(), String> {
+    match ATTACH.iter().find(|(n, _)| *n == name) {
+        Some((_, attach)) => attach(mount, world),
+        None => Ok(()),
+    }
 }
 
 /// Lazy record `name` and the ones registered with it.
@@ -93,15 +101,7 @@ pub(crate) fn ensure(eng: &Engine, world: &mut World, name: &str) -> Result<(), 
             .insert_resource_bytes(id, &bytes)
             .map_err(|e| e.reason().to_string())?;
     }
-    if name == crate::bind::story::STORY {
-        crate::bind::story::attach(mount, world)?;
-    }
-    if name == crate::world::stream::cells::CELL {
-        crate::world::stream::cells::attach(mount, world)?;
-    }
-    if name == crate::bind::sight::MAP {
-        crate::bind::sight::attach(mount, world)?;
-    }
+    attach(name, mount, world)?;
     for partner in with_partners(lazy.name) {
         if partner != lazy.name {
             ensure(eng, world, partner)?;
@@ -157,15 +157,7 @@ pub(crate) fn enable(world: &mut World, mount: Mount<'_>, name: &str) -> Result<
     match LAZY.iter().find(|l| l.name == name) {
         Some(l) => {
             (l.enable)(world, mount).map_err(|e| format!("{name}: {}", e.reason()))?;
-            if name == crate::bind::story::STORY {
-                crate::bind::story::attach(mount, world)?;
-            }
-            if name == crate::world::stream::cells::CELL {
-                crate::world::stream::cells::attach(mount, world)?;
-            }
-            if name == crate::bind::sight::MAP {
-                crate::bind::sight::attach(mount, world)?;
-            }
+            attach(name, mount, world)?;
             Ok(())
         }
         None => Ok(()),

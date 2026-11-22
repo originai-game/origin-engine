@@ -491,41 +491,16 @@ pub(crate) fn resync_names(eng: &Engine) {
     }
 }
 
-/// The actions the engine's modules register (engine::register_module_actions):
-/// reserved like the core actions, so a game's command of one of these names
-/// is refused at registration, before or after the modules register theirs,
-/// in every build (a publish build registers fewer of them, never more).
-pub(crate) const MODULE_ACTIONS: &[&str] = &[
-    "bake_probes",
-    "cover",
-    "debug",
-    "dump_ai",
-    "dump_determinism",
-    "dump_desync",
-    "dump_flow",
-    "dump_inspector",
-    "dump_lanes",
-    "dump_motion",
-    "dump_memory",
-    "dump_nav",
-    "dump_platform",
-    "dump_pulse",
-    "dump_render",
-    "dump_room",
-    "dump_story",
-    "dump_stream",
-    "flow",
-    "inspect",
-    "lanes",
-    "locale",
-    "mip_stream",
-    "motion_backend",
-    "terrain_stream",
-    "timeline",
-    "turntable",
-    "ui",
-    "view",
-];
+/// The actions the engine's modules register (the registry's COMMANDS):
+/// reserved like the core actions, so a game's command of one of these
+/// names is refused at registration, before or after the modules register
+/// theirs, in every build (a publish build registers fewer of them, never
+/// more).
+pub(crate) fn module_actions() -> impl Iterator<Item = &'static str> {
+    crate::registry::COMMANDS
+        .iter()
+        .flat_map(|c| c.actions.iter().copied())
+}
 
 /// Why a game may not take `name`: a core action's or a module action's name.
 pub(crate) fn reserved(name: &str) -> Option<String> {
@@ -537,8 +512,8 @@ pub(crate) fn reserved(name: &str) -> Option<String> {
             "'{name}' is a core action; register under another name"
         ));
     }
-    MODULE_ACTIONS
-        .contains(&name)
+    module_actions()
+        .any(|a| a == name)
         .then(|| format!("'{name}' is a registered engine action; register under another name"))
 }
 
@@ -659,24 +634,10 @@ pub(crate) fn install(eng: &Rc<Engine>, facts: Option<u32>) -> Result<(), String
                 crate::present::presentation::before_tick(&mut rs, world);
             }
             crate::world::save::before_tick(&eng, world);
-            // The world's zero follows its focus (R12), before anything
-            // reads a place: cells, the raycast record, interpolation.
-            crate::world::origin::before_tick(&eng, world);
-            // The water og.Buoyancy floats on this tick, at the new zero.
-            crate::bind::physics_ext::before_tick(&eng, world);
-            // The air this tick's bodies and particles move through.
-            crate::bind::wind::before_tick(&eng, world);
-            // The force fields this tick's bodies are accelerated by.
-            crate::bind::forces::before_tick(&eng, world);
-            // What each team sees this tick (og.sight), from where things stand.
-            crate::bind::sight::before_tick(&eng, world);
-            // A scene change asked for puts its scene in place, before
-            // the cells it places are seen.
-            crate::world::scenes::before_tick(&eng, world);
-            // The scenes timelines' scene tracks cut to and from.
-            crate::bind::timeline::before_tick(&eng, world);
-            // World cells load and unload as the tick starts (G3-3).
-            crate::world::stream::cells::before_tick(&eng, world);
+            // The modules' own, in the registry's order (BEFORE_TICK).
+            for before in crate::registry::BEFORE_TICK {
+                before(&eng, world);
+            }
             crate::present::geometry::before_tick(&eng, world);
             if let Ok(mut rs) = eng.render.try_borrow_mut() {
                 // The models those cells placed start fading in with this
