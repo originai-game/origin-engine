@@ -1,0 +1,26 @@
+[package]
+name = "shape-golden"
+description = "Prints the golden output hash of every kernel case, for the gate to compare across targets."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[dependencies]
+shape-core.workspace = true
+shape-gen.workspace = true
+shape-bool.workspace = true
+shape-2d.workspace = true
+shape-mesh.workspace = true
+shape-edit.workspace = true
+shape-tools.workspace = true
+shape-bevel.workspace = true
+shape-model.workspace = true
+shape-skin.workspace = true
+shape-cli = { path = "../shape-cli" }
+# Compresses the arrays of the hand-written binary FBX case.
+miniz_oxide = { version = "0.9.1", default-features = false, features = ["with-alloc"] }
+
+[lints]
+workspace = true
