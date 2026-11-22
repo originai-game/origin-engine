@@ -133,8 +133,7 @@ What is on main, grouped by area, with the API module (`og.<module>`, from
   flex, grid, floats and shapes, anchor positioning, transitions with
   `@starting-style`, view transitions, masks, filters), mounted as a
   retained tree, drawn through og-render and addressable by the probe;
-  rich text, RTL, vertical text and CJK shaping. `docs/css-coverage.md` lists
-  what each property is proved to do.
+  rich text, RTL, vertical text and CJK shaping.
 - UI styles: each game ships its own (`type style`); the built-in style
   packs fantasy, scifi and cartoon (`templates/styles`) restyle every
   built-in component through tokens; the default style is
@@ -260,8 +259,7 @@ crates/            Rust workspace
   og-probe         command channel and probe over JSON-RPC
   og-cli           the `og` tool
   og-sccache-wrap  the rustc wrapper that starts the shared sccache server (docs/ci.md §The compiler cache)
-  og-tests         gfx reference harness; og-tests-cooked, og-tests-web: cooked and in-browser variants;
-                   og-tests-ui: the frames of og-ui (og-ui's own tests build no renderer)
+  og-tests         gfx reference harness; og-tests-cooked, og-tests-web: cooked and in-browser variants
 packages/
   engine           @origingame/engine: TypeScript API and runtime, web hosts, shell, the built-in UI components and screens (src/ui); a dist's engine/
   create           @origingame/create-game: the templates `og new` writes; a dist's create/

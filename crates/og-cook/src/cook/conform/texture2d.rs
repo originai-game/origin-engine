@@ -36,7 +36,7 @@ pub(in crate::cook) use art_layout::paint_of;
 use art_layout::{Art, Grid, Layout, grid_of, relayout};
 use process::run;
 
-use super::super::{Kind, Source, flipbook, look, rig2d, settings_block, tilemap, ui_documents};
+use super::super::{Kind, Source, flipbook, look, rig2d, settings_block, tilemap};
 use super::{AssetConform, ConformAction, ConformEntry, ProjectConform, TextureRole};
 use crate::look::LookFile;
 use og_core::hash::StableHasher;
@@ -161,38 +161,6 @@ struct Done {
     what: Vec<String>,
 }
 
-/// The texture ids a sheet-like asset's `texture` line names, resolved as
-/// its own importer resolves it.
-fn style_images(s: &Source, known: &BTreeSet<String>) -> Vec<String> {
-    let Ok(doc) = Document::parse(&String::from_utf8_lossy(&s.bytes)) else {
-        return Vec::new();
-    };
-    let dir = s.rel.rsplit_once('/').map_or("", |(d, _)| d);
-    ["atlas", "icons"]
-        .iter()
-        .filter_map(|k| {
-            doc.body
-                .get(k)?
-                .values
-                .first()?
-                .as_str()
-                .map(str::to_string)
-        })
-        .map(|p| {
-            let rel = if dir.is_empty() {
-                p.clone()
-            } else {
-                format!("{dir}/{p}")
-            };
-            if known.contains(&rel) {
-                rel
-            } else {
-                crate::runtime::asset_id(&p).to_string()
-            }
-        })
-        .collect()
-}
-
 const IMAGE_ROLES: [&str; 2] = ["sprite", "ui"];
 
 /// Reads each sheet's own `conform` line and takes it out of its text
@@ -264,11 +232,6 @@ pub(super) fn uses(
                         .and_then(|e| e.values.first()?.as_str())
                 {
                     add(flipbook::resolve(s, p), UseKind::Fixed("a 2D rig's parts"));
-                }
-            }
-            k if k == &ui_documents::STYLE => {
-                for id in style_images(s, known) {
-                    add(id, UseKind::Fixed("a UI style's atlas"));
                 }
             }
             k if k == &tilemap::TILEMAP => {

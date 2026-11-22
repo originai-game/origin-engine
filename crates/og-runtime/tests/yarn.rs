@@ -72,19 +72,24 @@ Mae: 🦊 [wave speed=2 active={{true}}]Hi 🌙[/wave] [plural value={{$n}} one=
     };
     let english = read();
     assert_eq!(english["text"], "Mae: 🦊 Hi 🌙 apples 0.1 {literal}");
-    let spans: Vec<og_ui::TextSpan> = serde_json::from_value(english["spans"].clone()).unwrap();
+    let spans = &english["spans"];
     assert_eq!(
-        (spans[0].name.as_str(), spans[0].position, spans[0].length),
-        ("character", 0, 5)
+        (
+            &spans[0]["name"],
+            &spans[0]["position"],
+            &spans[0]["length"]
+        ),
+        (&json!("character"), &json!(0), &json!(5))
     );
     assert_eq!(
-        (spans[1].name.as_str(), spans[1].position, spans[1].length),
-        ("wave", 7, 4)
+        (
+            &spans[1]["name"],
+            &spans[1]["position"],
+            &spans[1]["length"]
+        ),
+        (&json!("wave"), &json!(7), &json!(4))
     );
-    assert_eq!(
-        spans[1].properties["active"],
-        og_ui::TextSpanValue::Bool(true)
-    );
+    assert_eq!(spans[1]["properties"]["active"], json!(true));
     assert_eq!(english["choices"][0]["enabled"], false);
     // Other conversations consume the shared RNG, but cannot change an
     // already offered check target or its localized reason arguments.

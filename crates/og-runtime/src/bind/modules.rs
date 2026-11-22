@@ -46,13 +46,14 @@ pub(crate) mod ui_world;
 use crate::engine::{Engine, engine, running};
 use crate::{host::wire, parse, refuse};
 use og_core::glam::Vec3;
+use og_css::Srgba;
 use og_ecs::{Entity, SystemDesc, World};
 use og_input::frame::InputFrame;
 use og_physics::{
     MeshDesc, OverlapDesc, Physics, PhysicsQuery, PhysicsSystem, QueryFilter, RaycastDesc,
     ShapeCastDesc, ShapeDesc,
 };
-use og_ui::{Srgba, UiFont};
+use og_text::text::UiFont;
 use og_ui_model::{Insets, Viewport};
 use og_ui_next::fonts::Fonts;
 use og_ui_next::icons::IconAtlas;

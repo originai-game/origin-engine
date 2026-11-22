@@ -22,6 +22,61 @@ pub(crate) enum Field {
     Bytes,
 }
 
+/// The accessibility roles an artboard may take (`role`): the UI's
+/// element roles, as its accessibility tree names them.
+const ROLES: &[&str] = &[
+    "button",
+    "link",
+    "text",
+    "heading",
+    "image",
+    "checkbox",
+    "radio",
+    "switch",
+    "slider",
+    "spinbutton",
+    "textbox",
+    "combobox",
+    "listbox",
+    "option",
+    "tab",
+    "tablist",
+    "tabpanel",
+    "radiogroup",
+    "progressbar",
+    "meter",
+    "timer",
+    "status",
+    "alert",
+    "log",
+    "dialog",
+    "alertdialog",
+    "tooltip",
+    "separator",
+    "group",
+    "region",
+    "navigation",
+    "toolbar",
+    "menu",
+    "menubar",
+    "menuitem",
+    "menuitemcheckbox",
+    "menuitemradio",
+    "list",
+    "listitem",
+    "tree",
+    "treeitem",
+    "table",
+    "grid",
+    "row",
+    "rowheader",
+    "columnheader",
+    "cell",
+    "gridcell",
+    "figure",
+    "scrollbar",
+];
+
 #[cfg(test)]
 mod tests;
 
@@ -98,11 +153,11 @@ fn settings(body: &Block) -> Result<Settings, String> {
                         "state-machine" => a.machine = Some(word_or_string(f, 0)?),
                         "role" => {
                             let r = word_or_string(f, 0)?;
-                            if !og_ui::ROLES.contains(&r.as_str()) {
+                            if !ROLES.contains(&r.as_str()) {
                                 return Err(format!(
-                                    "line {}: role '{r}' is not an og-ui role ({})",
+                                    "line {}: role '{r}' is not a UI role ({})",
                                     f.line,
-                                    og_ui::ROLES.join(", ")
+                                    ROLES.join(", ")
                                 ));
                             }
                             a.role = Some(r);

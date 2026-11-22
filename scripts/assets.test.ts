@@ -161,7 +161,6 @@ const IN_GIT = new Set([
   "crates/og-api/search/words.bin",
   "crates/og-render/data/blue-noise-64.r8",
   "crates/og-render/data/grass-tile-1024.f32",
-  "crates/og-ui/tests/fixtures/world-placement.zlib",
   "templates/looks/assets/canvas/linen.png",
   "templates/looks/assets/canvas/paper.png",
   "templates/looks/assets/canvas/watercolor.png",

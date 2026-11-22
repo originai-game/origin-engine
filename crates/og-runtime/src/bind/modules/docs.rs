@@ -31,62 +31,6 @@ fn hash_of(eng: &Engine, id: &str) -> u64 {
         .unwrap_or(0)
 }
 
-pub(super) fn sheet_faces(
-    eng: &Engine,
-    faces: &[og_ui::doc::at_rules::FontFace],
-    source: &str,
-    owner: &str,
-) -> Result<Vec<og_ui_next::fonts::FamilyFace>, String> {
-    let mut out = Vec::new();
-    for face in faces {
-        let Some(src) = face
-            .src
-            .iter()
-            .find(|s| !s.starts_with("local:") && eng.assets.borrow().bundle_for(s).is_ok())
-        else {
-            continue;
-        };
-        let i = crate::world::assets::load_font(eng, src)
-            .map_err(|e| format!("{source}: @font-face {}: {src}: {e}", face.family))?;
-        let mut font = super::ui_config::ui_font(eng, crate::world::assets::handle(i) as f64)?;
-        font.metrics = face.metrics(font.metrics);
-        let weight = |w: f32| w.round().clamp(1.0, 1000.0) as u16;
-        // `auto`: a variable font's axis range (CSS Fonts 4 §4.5), else
-        // the normal value.
-        let axis = |tag: &[u8; 4], normal: f32| {
-            font.metrics
-                .file
-                .as_ref()
-                .and_then(|f| {
-                    f.axes()
-                        .iter()
-                        .find(|a| a.tag == *tag)
-                        .map(|a| (a.min, a.max))
-                })
-                .unwrap_or((normal, normal))
-        };
-        let (w0, w1) = face.weight.unwrap_or_else(|| axis(b"wght", 400.0));
-        let (s0, s1) = face.stretch.unwrap_or_else(|| axis(b"wdth", 100.0));
-        out.push(og_ui_next::fonts::FamilyFace {
-            family: face.family.clone(),
-            document: owner.to_owned(),
-            weight: (weight(w0), weight(w1)),
-            stretch: (
-                og_ui_next::fonts::FontQuery::width_tenths(s0),
-                og_ui_next::fonts::FontQuery::width_tenths(s1),
-            ),
-            style: match face.style.as_str() {
-                "italic" => og_ui_next::fonts::FaceStyle::Italic,
-                "oblique" => og_ui_next::fonts::FaceStyle::Oblique,
-                _ => og_ui_next::fonts::FaceStyle::Normal,
-            },
-            font,
-            ..og_ui_next::fonts::FamilyFace::default()
-        });
-    }
-    Ok(out)
-}
-
 /// A pack's font faces (its `pack.json` `fonts`), each file loaded as the
 /// family face its weight, style and `unicodeRange` declare (CSS Fonts 4
 /// §4); a weight or width left out is the variable face's axis range, else
@@ -147,37 +91,8 @@ pub(super) fn pack_faces(
     Ok(out)
 }
 
-/// A development build: puts the default style a development cook from a
-/// checkout carries (`@ui/base`, the source tree's when it is not the
-/// compiled one; og-cook's `ui_components::base_css`) in effect for the
-/// process, or the compiled one again when the bundle carries none. A
-/// pack-less UI takes its part sheet at once; packs and documents read
-/// before keep theirs until they are read again. Answers whether the
-/// default style changed.
-#[cfg(not(feature = "publish"))]
-pub(crate) fn apply_base(eng: &Engine) -> Result<bool, String> {
-    const PACK: &str = "@ui/base";
-    let css = {
-        let assets = eng.assets.borrow();
-        match assets.blob(PACK) {
-            Ok((bytes, bundle)) => {
-                let text = bundle
-                    .style_text(PACK, bytes.bytes())
-                    .map_err(|e| e.to_string())?;
-                let files: Vec<(String, String)> = serde_json::from_str(&text)
-                    .map_err(|e| format!("{PACK}: CSS pack sources: {e}"))?;
-                files.into_iter().next().map(|(_, css)| css)
-            }
-            Err(_) => None,
-        }
-    };
-    og_ui::set_base_css(css.as_deref())
-        .map_err(|e| format!("{PACK}: {e} (the default style stays)"))
-}
-
 /// After a hot reload (`og dev`): every style the UI is configured with
-/// that changed is applied again, the UI's state kept. In a development
-/// build an edited default style ([`apply_base`]) reads every style again.
+/// that changed is applied again, the UI's state kept.
 /// `fresh_ui`: the UI is a new one (a hot reload's rebuilt world), so the
 /// configured style is applied to it whatever changed. Each step's time
 /// goes to `laps`.
@@ -195,14 +110,6 @@ pub(crate) fn refresh(
             t = now;
         }
     };
-    #[cfg(not(feature = "publish"))]
-    let rebased = apply_base(eng).unwrap_or_else(|e| {
-        failed.push(format!("og dev: {e}"));
-        false
-    });
-    #[cfg(feature = "publish")]
-    let rebased = false;
-    lap(laps, "base");
     // Styles: an edited one is parsed again and the UI configured again.
     let styles: Vec<(usize, String)> = eng
         .assets
@@ -216,7 +123,7 @@ pub(crate) fn refresh(
     for (i, id) in styles {
         let now = hash_of(eng, &id);
         let before = with(eng.id, |d| d.styles.get(&i).copied());
-        if before.is_none_or(|b| b == now) && !rebased {
+        if before.is_none_or(|b| b == now) {
             continue;
         }
         match super::ui_config::read_style(eng, &id) {

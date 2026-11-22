@@ -323,24 +323,6 @@ row!(
 );
 
 row!(
-    /// The root of a CSS pack blob, named by its directory.
-    StyleMeta, "og.UiStyle", 2 {
-        /// Bytes of the JSON array of (CSS asset ID, source text) pairs.
-        text_bytes: u32,
-    }
-);
-
-/// The CSS pack blob: `text` holds source pairs validated with the same
-/// CSS parser the runtime uses. There is no author-facing manifest.
-pub struct Style;
-impl BlobKind for Style {
-    const NAME: &'static str = "og.UiStyle";
-    fn schemas() -> Vec<Schema> {
-        vec![StyleMeta::schema()]
-    }
-}
-
-row!(
     /// The root of a style pack blob (a pack's `pack.json`,
     /// og-ui-next's CONVENTIONS.md §Theme and packs).
     PackMeta, "og.UiPack", 1 {

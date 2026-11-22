@@ -657,7 +657,7 @@ fn new_frame(rs: &mut super::extract::RenderState, tick: u64) {
 fn font_metrics(
     rs: &super::extract::RenderState,
     render: usize,
-) -> Result<(og_ui::FontMetrics, f32), String> {
+) -> Result<(og_text::text::FontMetrics, f32), String> {
     let first = rs
         .fonts
         .get(render)
@@ -667,7 +667,10 @@ fn font_metrics(
         .scene
         .font(first)
         .ok_or("the font's first page is missing")?;
-    Ok((og_ui::FontMetrics::from_msdf(msdf), msdf.line_height))
+    Ok((
+        og_text::text::FontMetrics::from_msdf(msdf),
+        msdf.line_height,
+    ))
 }
 
 pub fn og_render_sprite(world: u32, desc: Option<String>) -> Result<(), String> {

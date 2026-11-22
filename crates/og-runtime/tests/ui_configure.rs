@@ -46,15 +46,8 @@ fn project() -> &'static Path {
             b"type import\nversion 1\n---\nfont {\n  charset latin\n  em_px 32\n  px_range 4\n}\n",
         );
         write(
-            "styles/mini/main.css",
-            br#"@font-face { font-family: Mini; src: url(Body.ttf); }
-                button::part(base) { opacity: 0.37; }
-                button::part(text) { font-family: Mini; }
-                .once { width: 61px; }"#,
-        );
-        write(
-            "styles/tinted/main.css",
-            br#".tinted { width: 1px; }"#,
+            "styles/mini/pack.json",
+            br##"{ "fonts": [{ "family": "Mini", "src": "Body.ttf" }], "theme": { "fontFamily": { "sans": "\"Mini\"" } } }"##,
         );
         write(
             "styles/tinted/pack.json",
@@ -77,22 +70,25 @@ fn project() -> &'static Path {
             br##"{ "theme": { "fontFamily": { "sans": "\"Nowhere\"" } } }"##,
         );
         let font = repo().join("templates/styles/shared/Cinzel-Bold.ttf");
-        write("styles/copied/Body.ttf", &std::fs::read(font).unwrap());
+        write("styles/copied/Body.ttf", &std::fs::read(&font).unwrap());
         write(
             "styles/copied/Body.ttf.ogt",
             b"type import\nversion 1\n---\nfont {\n  charset latin\n  em_px 32\n  px_range 4\n}\n",
         );
+        // Faces beside the pack, in a directory of it, and named from
+        // assets/ by a leading `/`.
+        write("styles/copied/nested/Numeric.ttf", &std::fs::read(font).unwrap());
         write(
-            "styles/copied/main.css",
-            br#"@import "nested/fonts.css";
-                button::part(text) { font-family: Copied, Mini; }
-                .once { width: 62px; }"#,
+            "styles/copied/nested/Numeric.ttf.ogt",
+            b"type import\nversion 1\n---\nfont {\n  charset latin\n  em_px 32\n  px_range 4\n}\n",
         );
         write(
-            "styles/copied/nested/fonts.css",
-            br#"@font-face { font-family: Copied; src: url(../Body.ttf); }
-                @font-face { font-family: Mini; src: url(../../mini/Body.ttf); }
-                @font-face { font-family: Numeric; src: url(/styles/mini/Body.ttf); }"#,
+            "styles/copied/pack.json",
+            br##"{ "fonts": [
+                { "family": "Copied", "src": "Body.ttf" },
+                { "family": "Numeric", "src": "nested/Numeric.ttf" },
+                { "family": "Mini", "src": "/styles/mini/Body.ttf" }
+            ], "theme": { "fontFamily": { "sans": "\"Copied\", \"Mini\"" } } }"##,
         );
         std::fs::write(
             root.join("project.ogt"),

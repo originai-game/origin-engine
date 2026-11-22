@@ -99,7 +99,6 @@ pub(crate) static SYSTEMS: &[&[&KindDef]] = &[
     tilemap::KINDS,
     rig2d::KINDS,
     flipbook::KINDS,
-    ui_documents::KINDS,
     ui_packs::KINDS,
     riv::KINDS,
     video::KINDS,

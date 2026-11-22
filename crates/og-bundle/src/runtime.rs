@@ -955,19 +955,6 @@ impl Bundle {
             .ok_or_else(|| invalid(&blob, "the Rive artboard is cut short"))
     }
 
-    /// The validated text of a UI style blob (parse it with og-ui's
-    /// `parse_style` and load the assets it names from the bundle).
-    pub fn style_text(&self, id: &str, bytes: &[u8]) -> Result<String, LoadError> {
-        let blob = self.blob::<format::Style>(id, bytes)?;
-        let meta = one::<format::StyleMeta>(&blob)?;
-        let text = blob.raw("text")?;
-        if text.len() < meta.text_bytes as usize {
-            return Err(invalid(&blob, "the style text is cut short"));
-        }
-        String::from_utf8(text[..meta.text_bytes as usize].to_vec())
-            .map_err(|_| invalid(&blob, "the style text is not UTF-8"))
-    }
-
     /// A style pack blob's `pack.json` (read it with og-ui-next's
     /// `pack::Layer::parse`; its asset paths are ids of this bundle).
     pub fn pack_text(&self, id: &str, bytes: &[u8]) -> Result<String, LoadError> {

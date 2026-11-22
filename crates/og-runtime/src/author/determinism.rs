@@ -241,29 +241,16 @@ pub fn anim_hash() -> u64 {
     h.finish()
 }
 
-/// What [`text_layout_hash`] lays out: a paragraph that breaks, one whose
-/// scripts fall back, and one with a styled run and an action's glyph.
-const TEXT_LAYOUT: &str = r#"<meta name="component" content="text-layout">
-<meta name="prop:width" content="string">
-<meta name="prop:plain" content="string">
-<meta name="prop:fallback" content="string">
-<column>
-  <p id="Plain" style:width={width}>{plain}</p>
-  <p id="Fallback" style:width={width}>{fallback}</p>
-  <p id="Rich" style:width={width}>office <span part="hot">affine</span> <kbd data-action="jump"></kbd> end</p>
-</column>
-<style>
-#Rich::part(hot) { color: var(--danger); }
-</style>"#;
-
-/// Actual paragraph positions, fallback glyphs and rich inline boxes, with
-/// the same cooked OpenType bytes on both hosts. No renderer or system fonts.
+/// Actual line breaks, shaped glyph positions and script fallback, with
+/// the same OpenType bytes on both hosts: a paragraph that breaks (combining
+/// marks, a tab, a no-break space, a soft hyphen, a zero-width space) and
+/// one whose Arabic and Devanagari fall back to the game's fonts, each at
+/// three widths. No renderer or system fonts.
 pub fn text_layout_hash() -> u64 {
-    use og_ui::*;
-    use og_ui_next::fonts::Fonts;
+    use og_text::text::{FontMetrics, UiFont, break_lines, pieces};
+    use og_ui_next::fonts::{FontRole, Fonts};
     use std::sync::Arc;
-    let mut scene = og_render::RenderScene::new();
-    let handle = scene.add_font(og_render::MsdfFont {
+    let msdf = og_render::MsdfFont {
         atlas: og_render::TextureHandle::from_slot(1).unwrap(),
         distance_range: 4.0,
         foreground: false,
@@ -271,21 +258,14 @@ pub fn text_layout_hash() -> u64 {
         line_height: 1.2,
         glyphs: Vec::new(),
         kerning: Vec::new(),
-    });
+    };
+    let mut scene = og_render::RenderScene::new();
+    let handle = scene.add_font(msdf.clone());
     let face = |bytes: &[u8]| {
-        let file = shape::FontFile::new(Arc::new(bytes.to_vec())).unwrap();
+        let file = og_text::shape::FontFile::new(Arc::new(bytes.to_vec())).unwrap();
         UiFont {
             handle: Some(handle),
-            metrics: FontMetrics::from_msdf(&og_render::MsdfFont {
-                atlas: og_render::TextureHandle::from_slot(1).unwrap(),
-                distance_range: 4.0,
-                foreground: false,
-                silhouette: false,
-                line_height: 1.2,
-                glyphs: Vec::new(),
-                kerning: Vec::new(),
-            })
-            .with_file(Some(file)),
+            metrics: FontMetrics::from_msdf(&msdf).with_file(Some(file)),
         }
     };
     let latin = face(include_bytes!(
@@ -297,66 +277,41 @@ pub fn text_layout_hash() -> u64 {
     let indic = face(include_bytes!(
         "../../../../tests/fixtures/ui-text/assets/fonts/NotoSansDevanagari-subset.ttf"
     ));
-    let mut ui = Ui::new(UiDesc {
-        fonts: Fonts {
-            body: latin.clone(),
-            display: Some(latin.clone()),
-            mono: Some(latin),
-            fallbacks: vec![arabic, indic],
-            ..Default::default()
-        },
+    let mut fonts = Fonts {
+        body: latin,
+        fallbacks: vec![arabic, indic],
         ..Default::default()
-    });
-    ui.define_action(ActionDesc {
-        name: "jump".into(),
-        keys: vec!["Space".into()],
-        ..Default::default()
-    });
-    ui.define_document(UiDocument::parse("text-layout.svelte", TEXT_LAYOUT).expect("it parses"));
-    let mount = og_reactive::reactive::SourceId::new("og.determinism", "text");
+    };
+    fonts.link();
     let mut h = StableHasher::new();
-    for width in ["53.25px", "91.75px", "231.5px"] {
-        let values = serde_json::json!({
-            "width": width,
-            "plain": "office cafe\u{301}\tA\u{a0}B a/b-c\u{200b}def ab\u{ad}cdef",
-            "fallback": "مرحبا 42 नमस्ते",
-        });
-        ui.mount_with_values(mount.clone(), "text-layout", &values)
-            .expect("it mounts");
-        // The frame it is built in, then the frame it is laid out in.
-        for _ in 0..2 {
-            ui.begin(InputFrame::default(), Viewport::new(640.0, 480.0));
-            ui.build_retained_documents(&bind::NoEnv)
-                .expect("it builds");
-            ui.end();
-        }
-        ui.unmount_document(&mount);
-        for item in &ui.frame().items {
-            if let DrawCmd::Text {
+    let size = 16.0;
+    for text in [
+        "office cafe\u{301}\tA\u{a0}B a/b-c\u{200b}def ab\u{ad}cdef",
+        "مرحبا 42 नमस्ते",
+    ] {
+        let font = fonts.for_text(FontRole::Body, text);
+        for width in [53.25f32, 91.75, 231.5] {
+            let lines = break_lines(
                 text,
-                x,
-                baseline,
+                &font.metrics,
                 size,
-                bounds,
-                placements,
-                ..
-            } = &item.cmd
-            {
-                h.write_str(text);
-                for v in [
-                    *x,
-                    *baseline,
-                    *size,
-                    bounds.x,
-                    bounds.y,
-                    bounds.width,
-                    bounds.height,
-                ] {
-                    h.write_u32(v.to_bits());
-                }
-                for g in placements {
-                    for v in [g.advance, g.x, g.y] {
+                0.0,
+                og_text::shape::Features::NONE,
+                Some(width),
+            );
+            for line in &lines {
+                h.write_str(&line.text);
+                h.write_u32(line.width.to_bits());
+                for p in pieces(font, &line.text, og_i18n::Direction::Ltr, 0.0) {
+                    h.write_str(&p.text);
+                    for v in [p.scale, p.dx, p.width] {
                         h.write_u32(v.to_bits());
+                    }
+                    for g in &p.placements {
+                        for v in [g.advance, g.x, g.y] {
+                            h.write_u32(v.to_bits());
+                        }
+                        h.write_u32(g.glyph.map_or(u32::MAX, u32::from));
                     }
                 }
             }

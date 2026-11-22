@@ -295,40 +295,21 @@ pub(super) fn read_style(eng: &Engine, id: &str) -> Result<LoadedStyle, String> 
     // A pack's pack.json names its faces (`fonts`) and the families its
     // text roles take (`theme.fontFamily`).
     let blob = format!("{id}/pack.json");
-    let pack = {
-        let assets = eng.assets.borrow();
-        match assets.blob(&blob) {
-            Ok((bytes, bundle)) => Some(
-                bundle
-                    .pack_text(&blob, bytes.bytes())
-                    .map_err(|e| e.to_string())?,
-            ),
-            Err(_) => None,
-        }
-    };
-    if let Some(text) = pack {
-        let layer = og_ui_next::pack::Layer::parse(&text).map_err(|e| format!("{blob}: {e}"))?;
-        let faces = docs::pack_faces(eng, &layer.fonts, &blob, &format!("@pack:{id}"))?;
-        return Ok(LoadedStyle {
-            id: id.to_owned(),
-            faces,
-            roles: layer.role_families(),
-        });
-    }
     let text = {
         let assets = eng.assets.borrow();
-        let (bytes, bundle) = assets.blob(id)?;
+        let (bytes, bundle) = assets
+            .blob(&blob)
+            .map_err(|e| format!("{id}: a style pack is a directory with a pack.json: {e}"))?;
         bundle
-            .style_text(id, bytes.bytes())
+            .pack_text(&blob, bytes.bytes())
             .map_err(|e| e.to_string())?
     };
-    let files = serde_json::from_str(&text).map_err(|e| format!("{id}: CSS pack sources: {e}"))?;
-    let pack = og_ui::style_pack::StylePack::parse(id, files)?;
-    let faces = docs::sheet_faces(eng, &pack.sheet.font_faces, id, &format!("@pack:{id}"))?;
+    let layer = og_ui_next::pack::Layer::parse(&text).map_err(|e| format!("{blob}: {e}"))?;
+    let faces = docs::pack_faces(eng, &layer.fonts, &blob, &format!("@pack:{id}"))?;
     Ok(LoadedStyle {
         id: id.to_owned(),
         faces,
-        roles: Default::default(),
+        roles: layer.role_families(),
     })
 }
 

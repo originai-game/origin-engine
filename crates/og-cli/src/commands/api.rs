@@ -243,12 +243,8 @@ fn presets(root: &Path) -> Result<Presets, String> {
 }
 
 /// The guides `og api gen` writes from other sources than the IDL, as (path, text).
-fn written_guides(root: &Path) -> [(&'static str, String); 3] {
+fn written_guides(root: &Path) -> [(&'static str, String); 2] {
     [
-        (
-            og_ui::doc::catalogue::PATH,
-            og_ui::doc::catalogue::markdown(),
-        ),
         (
             crate::vfx_catalogue::PATH,
             crate::vfx_catalogue::markdown(root),

@@ -1,20 +1,17 @@
-//! CSS directories are the authoring format; no manifest or generated atlas.
+//! A style pack is a directory with a pack.json (og-ui-next's
+//! CONVENTIONS.md §Theme and packs).
 use std::process::ExitCode;
 
-mod generate;
-#[cfg(test)]
-mod literals;
-
-const USAGE: &str = "usage: og style new <name> [--look <preset>] [--scheme dark|light] [--finish flat|gradient|glass|hologram|neon|paper|bevel|brush] [--out <directory>]\n       og style check-project [project] [art-contract options]\n       og style add <directory> [project]\n       og style list [project] [--json]";
+const USAGE: &str = "usage: og style check-project [project] [art-contract options]\n       og style add <directory> [project]\n       og style list [project] [--json]";
 
 pub fn run(args: &[&str]) -> ExitCode {
     let result = match args {
-        ["new", rest @ ..] => generate::run(rest),
+        ["new", ..] => Err::<(), String>("CSS packs are removed, so `og style new` is too; write the pack's pack.json (og api show screens, §3) or add one with `og style add <directory>`".into()),
         ["check-project", rest @ ..] => return crate::style_check::run(rest),
         ["add", rest @ ..] => return crate::ui::extensions::add(rest, "style"),
         ["list", rest @ ..] => return crate::ui::extensions::list(rest, Some("style")),
         ["--help"] | ["help"] => { println!("{USAGE}"); Ok(()) },
-        ["upgrade" | "art" | "pack", ..] => Err("legacy style.ogt conversion and atlas packing are removed; author CSS images, border-image and mask-image directly".into()),
+        ["upgrade" | "art" | "pack", ..] => Err("legacy style.ogt conversion and atlas packing are removed; name the art in the pack's pack.json (og api show screens, §3)".into()),
         _ => Err(USAGE.into()),
     };
     match result {

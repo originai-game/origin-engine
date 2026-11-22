@@ -57,7 +57,6 @@ type (`format::type_hash`); the schema version is the root's. All in
 | `og.Flipbook` | `FlipbookMeta` (text bytes) | `text` (the canonical sheet: frames resolved from the grid and an Aseprite or TexturePacker atlas, clips with frame indices and durations, the texture's size, `array`) |
 | `og.Rig` | `RigMeta` (text bytes) | `text` (the canonical humanoid map: its scheme and the bones it names) |
 | `og.ParticleEmitter` | `EmitterMeta` (text bytes) | `text` (the validated emitter file) |
-| `og.UiStyle` | `StyleMeta` (text bytes) | `text` (the validated style file) |
 | `og.MaterialShader` | `ShaderMeta` (text bytes) | `text` (the canonical shader file, its code inlined) |
 | `og.Behaviour` | `BehaviourMeta` (text bytes) | `text` (the validated behaviour file) |
 | `og.Strings` | `StringsMeta` (text bytes) | `text` (the validated string table) |

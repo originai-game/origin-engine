@@ -4,12 +4,3 @@
 # A line names a workspace crate that fmt, clippy and the native test build
 # skip; a line `bin <package>/<binary>` names one test binary of a kept crate
 # that the CPU and GPU steps skip.
-#
-# og-tests-ui draws the old og-ui against reference frames and og-ui-fuzz
-# feeds og-ui's parsers: both go when the og-ui deletion head lands, and the
-# og-ui CSS checklist binaries read docs/css-coverage.md, which goes with
-# them. Delete their lines here in the same commit as the code.
-og-tests-ui
-og-ui-fuzz
-bin og-ui/css_contain
-bin og-ui/css_layout

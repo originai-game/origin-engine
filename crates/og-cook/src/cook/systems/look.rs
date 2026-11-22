@@ -67,7 +67,7 @@ pub fn style_slugs() -> Vec<&'static str> {
 /// A game's `styles/<slug>` takes precedence over `@styles/<slug>`.
 pub fn resolve_style(name: &str, own: &dyn Fn(&str) -> bool) -> Result<String, String> {
     if name.ends_with(".ogt") {
-        return Err("style.ogt is removed; a UI style is a directory of CSS and assets".into());
+        return Err("style.ogt is removed; a UI style is a directory with a pack.json".into());
     }
     if name.contains('/') {
         let id = crate::runtime::asset_id(name);
@@ -103,26 +103,6 @@ pub fn style_files(id: &str) -> Vec<(&'static str, &'static [u8])> {
         .filter(|f| f.id().starts_with(&dir))
         .map(StyleFile::pair)
         .collect()
-}
-
-/// Shared built-in assets explicitly referenced by CSS URLs, together
-/// with their import settings. Unreferenced CJK fonts stay out of the bundle.
-pub fn shared_files(source: &str, css: &str) -> Vec<(&'static str, &'static [u8])> {
-    let mut out: Vec<(&'static str, &'static [u8])> = Vec::new();
-    for url in og_ui::doc::at_rules::urls(css) {
-        let r = og_ui::doc::at_rules::resolve(source, &url);
-        let settings = format!("{r}.ogt");
-        for f in styles()
-            .iter()
-            .filter(|f| f.id() == r || f.id() == settings)
-        {
-            let f = f.pair();
-            if !out.contains(&f) {
-                out.push(f);
-            }
-        }
-    }
-    out
 }
 
 /// Built-in assets a `pack.json` (at `source`) names, its fonts, images,
@@ -239,21 +219,17 @@ pub(crate) fn builtin_files(
     {
         let files = style_files(&id);
         for (source, bytes) in &files {
-            let text = String::from_utf8_lossy(bytes);
-            let named = if source.ends_with(".css") {
-                shared_files(source, &text)
-            } else if crate::cook::ui_packs::is_pack(source) {
-                pack_files(source, &text)
-            } else {
+            if !crate::cook::ui_packs::is_pack(source) {
                 continue;
-            };
-            for f in named {
+            }
+            for f in pack_files(source, &String::from_utf8_lossy(bytes)) {
                 if !out.contains(&f) {
                     out.push(f);
                 }
             }
         }
-        out.extend(files);
+        // A pack is its pack.json and the assets it names; CSS has no reader.
+        out.extend(files.into_iter().filter(|(id, _)| !id.ends_with(".css")));
     }
     out
 }

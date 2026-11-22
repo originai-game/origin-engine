@@ -24,7 +24,6 @@ serde_json = { version = "1", features = ["float_roundtrip"] }
 zmij = "1"
 og-physics = { path = "../og-physics" }
 og-audio = { path = "../og-audio" }
-og-ui = { path = "../og-ui", default-features = false }
 # The reactive session and its wire format, which the new core's stores use.
 og-reactive = { path = "../og-reactive" }
 # og-ui's new core: every document runs on it.
@@ -67,9 +66,9 @@ default = ["shaping", "fetch"]
 # reflected and record field docs are empty (og-core's and og-api's
 # `publish`: nothing in a publish build reads them).
 publish = ["og-probe/publish", "og-render/publish", "og-core/publish", "og-api/publish"]
-# og-ui's run-time shaping (rustybuzz: Arabic, Indic and the other shaped
+# The UI's run-time shaping (rustybuzz: Arabic, Indic and the other shaped
 # scripts). A build for games without them can leave it out.
-shaping = ["og-ui/shaping", "og-text/shaping"]
+shaping = ["og-text/shaping"]
 # Natively, og.load.data's integrity check of a version's files
 # (world/data.rs, og-net's sha384). On the web the engine Worker's fetch
 # checks it, so the wasm takes none.

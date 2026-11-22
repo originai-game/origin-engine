@@ -3,7 +3,7 @@
 //! - `ui-vector` (native: cooked by og-cook): an SVG emblem tessellated and
 //!   drawn at three sizes and turned.
 //! - `ui-rive` (native, `docs/ui.md` §3.3): rive-runtime's test artboards
-//!   (`tests/fixtures/rive`) converted by og-cook and drawn by og-ui's Rive
+//!   (`tests/fixtures/rive`) converted by og-cook and drawn by og-rive's
 //!   player: a circle on its artboard's ground; a nested artboard at its
 //!   container's opacity; two rectangles keyed by a cubic value
 //!   interpolator at four ticks of their animation; a second artboard of
@@ -84,9 +84,9 @@ fn rive_fixture(name: &str) -> Result<Vec<u8>, String> {
 /// `ui-rive`. See the module documentation.
 #[cfg(not(target_arch = "wasm32"))]
 pub fn rive() -> Result<RenderScene, String> {
-    use og_ui::rive::Player;
+    use og_rive::Player;
     use std::sync::Arc;
-    let load = |file: &str, artboard: &str| -> Result<Arc<og_ui::rive::Artboard>, String> {
+    let load = |file: &str, artboard: &str| -> Result<Arc<og_rive::Artboard>, String> {
         Ok(Arc::new(og_cook::cook::riv::artboard(
             &rive_fixture(file)?,
             artboard,
@@ -135,7 +135,7 @@ pub fn rive() -> Result<RenderScene, String> {
             let clip = (o.clips.len() - 1) as u32;
             // These artboards have no text: their shapes are all they draw.
             for d in p.draw(*rect, 1.0) {
-                if let og_ui::rive::Drawn::Shape(mut s) = d {
+                if let og_rive::Drawn::Shape(mut s) = d {
                     s.clip = Some(clip);
                     o.ui.shapes.push(*s);
                 }

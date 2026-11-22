@@ -17,16 +17,10 @@ gate_excluded_note() {
   [ -z "$ex" ] || og_say "excluded (scripts/gate-exclude.txt): $ex"
 }
 
-# UI is TSX: no .svelte document is tracked but these, which old og-ui's own
-# tests read until their head removes them. The list only shrinks.
-SVELTE_ALLOWED='crates/og-tests-ui/tests/fixtures/core-screens/creator-tools.svelte
-crates/og-tests-ui/tests/fixtures/core-screens/hud-editor.svelte
-crates/og-tests-ui/tests/fixtures/core-screens/settings.svelte
-crates/og-ui-fuzz/regressions/document/stylesheet-multibyte-in-rule.svelte'
-
+# UI is TSX: no .svelte document is tracked.
 check_no_svelte() {
   local found
-  found="$(git ls-files '*.svelte' | grep -vxF "$SVELTE_ALLOWED" || true)"
+  found="$(git ls-files '*.svelte')"
   [ -z "$found" ] || { og_err "tracked .svelte documents (UI is TSX):"$'\n'"$found"; return 1; }
 }
 
@@ -580,7 +574,7 @@ step_fixtures() {
 
 # The browser tiers in headless Chrome on WebGPU (docs/ci.md §Browser
 # reference tiers; `make web-reference`): the former test sample, og-tests'
-# and og-ui's gfx scenes (crates/og-tests-web), Ember Vale, the
+# gfx scenes (crates/og-tests-web), Ember Vale, the
 # vehicle-terrain fixture, the lanes' panic and the accessibility mirror. Run explicitly on any host with Chrome.
 #
 # Six groups, each with the projects only it cooks and exports (two
@@ -604,7 +598,7 @@ web_ui() {
   bun tests/web/autoplay.ts || rc=1
   return "$rc"
 }
-# og-tests' scenes and og-ui's against their tier's reference, else the recording tier's.
+# og-tests' scenes against their tier's reference, else the recording tier's.
 web_gfx() { bun tests/web/reference-gfx.ts; }
 # Ember Vale uses its native smoke's two frames and command timeline.
 # The vehicle-terrain fixture's slide frame: its tests/drive.og.ts itself

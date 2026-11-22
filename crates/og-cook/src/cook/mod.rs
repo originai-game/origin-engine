@@ -43,7 +43,6 @@ pub mod riv;
 #[cfg(test)]
 #[path = "../../../../tests/temp.rs"]
 mod test_dir;
-mod ui_documents;
 mod ui_packs;
 pub mod ui_screens;
 pub mod vector;

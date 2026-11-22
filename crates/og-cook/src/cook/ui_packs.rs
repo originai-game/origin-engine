@@ -1,5 +1,4 @@
-//! A `pack.json` style pack, cooked into its one blob (moved from
-//! `ui_documents.rs`, verbatim).
+//! A `pack.json` style pack, cooked into its one blob.
 
 use super::{
     BlobKind, CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, format, stamp,

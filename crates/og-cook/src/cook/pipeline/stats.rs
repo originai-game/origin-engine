@@ -608,19 +608,6 @@ fn other_stats(bundle: &Bundle, id: &str, ty: &str) -> Result<Option<(String, Va
                 }),
             )
         }
-        "og.UiStyle" => {
-            let text = bundle.style_text(id, &bytes()?).map_err(e)?;
-            let files = serde_json::from_str(&text).map_err(|e| format!("{id}: {e}"))?;
-            let s = og_ui::style_pack::StylePack::parse(id, files)?;
-            (
-                "style",
-                json!({
-                    "name": s.name,
-                    "fonts": s.sheet.font_faces.len(),
-                    "references": s.assets.len(),
-                }),
-            )
-        }
         "og.Strings" => {
             let t = og_i18n::StringTable::parse(&bundle.strings_text(id, &bytes()?).map_err(e)?)?;
             (

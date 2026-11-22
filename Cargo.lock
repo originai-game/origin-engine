@@ -109,12 +109,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "arbitrary"
-version = "1.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3bc62ac97cc33321f50863d514c3bc38a453947a8f9e781137e47c7401020aed"
-
-[[package]]
 name = "arrayref"
 version = "0.3.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -738,29 +732,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "cssparser"
-version = "0.38.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "11119743ad110e8c1bdccd930d7f5c30c99e5fc76a7b63ec9807e84eef0c5f59"
-dependencies = [
- "cssparser-macros",
- "dtoa-short",
- "itoa",
- "phf",
- "smallvec",
-]
-
-[[package]]
-name = "cssparser-macros"
-version = "0.7.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d045de693cb712d0b22c6a64be5b953f67b3ce00ab5ad3dd5d8b441886ab8e1a"
-dependencies = [
- "quote",
- "syn 3.0.9",
-]
-
-[[package]]
 name = "ctor"
 version = "1.0.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -821,27 +792,6 @@ name = "deranged"
 version = "0.5.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9e9de72ce2ad1f90dc62fa25f0f430ef85eb4b0d8fa0be4f30373bc40a21d28e"
-
-[[package]]
-name = "derive_more"
-version = "2.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d751e9e49156b02b44f9c1815bcb94b984cdcc4396ecc32521c739452808b134"
-dependencies = [
- "derive_more-impl",
-]
-
-[[package]]
-name = "derive_more-impl"
-version = "2.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "799a97264921d8623a957f6c3b9011f3b5492f557bbb7a5a19b7fa6d06ba8dcb"
-dependencies = [
- "proc-macro2",
- "quote",
- "rustc_version",
- "syn 2.0.119",
-]
 
 [[package]]
 name = "digest"
@@ -918,21 +868,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2d384c03a3090e54e7840f9f08d0bfb0860d58a527bfb78bd96cc5b921d4ba2e"
 dependencies = [
  "bytemuck",
-]
-
-[[package]]
-name = "dtoa"
-version = "1.0.11"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4c3cf4824e2d5f025c7b531afcb2325364084a16806f6d47fbc1f5fbd9960590"
-
-[[package]]
-name = "dtoa-short"
-version = "0.3.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cd1511a7b6a56299bd043a9c167a6d2bfb37bf84a6dfceaba651168adfb43c87"
-dependencies = [
- "dtoa",
 ]
 
 [[package]]
@@ -1625,7 +1560,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ed5909b6e89a2db4456e54cd5f673791d7eca6732202bbf2a9cc504fe2f9b84a"
 dependencies = [
  "allocator-api2",
- "equivalent",
  "foldhash",
  "serde",
  "serde_core",
@@ -2136,16 +2070,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "65cd87c9a6d60536580b316ad985726104730a5151c99845f2490428ef91240a"
 
 [[package]]
-name = "libfuzzer-sys"
-version = "0.4.13"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a9fd2f41a1cba099f79a0b6b6c35656cf7c03351a7bae8ff0f28f25270f929d2"
-dependencies = [
- "arbitrary",
- "cc",
-]
-
-[[package]]
 name = "libloading"
 version = "0.8.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2578,12 +2502,6 @@ checksum = "ee6cda3051665f1fb8d9e08fc35c96d5a244fb1be711a03b71118828afc9a873"
 dependencies = [
  "jni-sys 0.3.1",
 ]
-
-[[package]]
-name = "new_debug_unreachable"
-version = "1.0.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "650eef8c711430f1a879fdd01d4745a7deea475becfb90269c06775983bbf086"
 
 [[package]]
 name = "nix"
@@ -3226,7 +3144,6 @@ dependencies = [
 name = "og-cli"
 version = "0.9.0"
 dependencies = [
- "cssparser",
  "glam 0.34.1",
  "gltf",
  "image",
@@ -3245,7 +3162,6 @@ dependencies = [
  "og-render",
  "og-render-data",
  "og-shared",
- "og-ui",
  "og-ui-next",
  "oxc_allocator",
  "oxc_ast",
@@ -3304,7 +3220,6 @@ dependencies = [
  "og-tilemap",
  "og-timeline",
  "og-tween",
- "og-ui",
  "og-ui-next",
  "og-video",
  "opus-pure",
@@ -3669,7 +3584,6 @@ dependencies = [
  "og-tilemap",
  "og-timeline",
  "og-tween",
- "og-ui",
  "og-ui-model",
  "og-ui-next",
  "og-video",
@@ -3750,34 +3664,12 @@ dependencies = [
  "glam 0.34.1",
  "image",
  "og-anim",
- "og-bundle",
  "og-cook",
  "og-core",
- "og-draw",
  "og-env",
- "og-i18n",
- "og-input",
  "og-render",
+ "og-rive",
  "og-tests",
- "og-ui",
- "og-ui-next",
- "pollster",
- "serde_json",
-]
-
-[[package]]
-name = "og-tests-ui"
-version = "0.9.0"
-dependencies = [
- "image",
- "og-core",
- "og-draw",
- "og-i18n",
- "og-input",
- "og-render",
- "og-tests",
- "og-ui",
- "og-ui-next",
  "pollster",
  "serde_json",
 ]
@@ -3786,16 +3678,9 @@ dependencies = [
 name = "og-tests-web"
 version = "0.9.0"
 dependencies = [
- "image",
  "js-sys",
- "og-bundle",
- "og-core",
- "og-draw",
- "og-i18n",
- "og-input",
  "og-render",
  "og-tests",
- "og-ui",
  "serde_json",
  "wasm-bindgen",
  "wasm-bindgen-futures",
@@ -3841,48 +3726,6 @@ version = "0.9.0"
 dependencies = [
  "og-core",
  "og-ecs",
-]
-
-[[package]]
-name = "og-ui"
-version = "0.9.0"
-dependencies = [
- "bytemuck",
- "color",
- "cssparser",
- "elsa",
- "miniz_oxide 0.8.9",
- "og-core",
- "og-css",
- "og-draw",
- "og-ecs",
- "og-i18n",
- "og-input",
- "og-probe",
- "og-reactive",
- "og-rive",
- "og-text",
- "og-tween",
- "og-ui-model",
- "og-ui-next",
- "parley",
- "parley_engine",
- "precomputed-hash",
- "regex-lite",
- "selectors",
- "serde",
- "serde_json",
- "skrifa",
- "taffy",
- "ttf-parser",
-]
-
-[[package]]
-name = "og-ui-fuzz"
-version = "0.9.0"
-dependencies = [
- "libfuzzer-sys",
- "og-ui",
 ]
 
 [[package]]
@@ -4707,12 +4550,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4a6394b9e965e73d0a289ee54f589087e2c676aedf60885baf52c76b771e4958"
 
 [[package]]
-name = "precomputed-hash"
-version = "0.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "925383efa346730478fb4838dbe9137d2a47675ad789c546d150a6e1dd4ab31c"
-
-[[package]]
 name = "presser"
 version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5456,24 +5293,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "selectors"
-version = "0.43.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "474a2075f58859e8482495e1a2ae9634754ee383ad09a3c4093b8d9a51910fa3"
-dependencies = [
- "bitflags 2.13.2",
- "cssparser",
- "derive_more",
- "hashbrown 0.17.1",
- "log",
- "new_debug_unreachable",
- "precomputed-hash",
- "rustc-hash 2.1.3",
- "servo_arc",
- "smallvec",
-]
-
-[[package]]
 name = "self_cell"
 version = "1.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5541,15 +5360,6 @@ dependencies = [
  "serde",
  "serde_core",
  "zmij",
-]
-
-[[package]]
-name = "servo_arc"
-version = "0.6.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9f121f129345b5201873a0e253f630413d750b9d799613e2873fb768e592c2a7"
-dependencies = [
- "stable_deref_trait",
 ]
 
 [[package]]

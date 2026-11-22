@@ -4,7 +4,7 @@ version = "0.9.0"
 edition.workspace = true
 license.workspace = true
 rust-version.workspace = true
-description = "Origin Engine tests that cook a project: og-tests' gfx scenes made by og-cook and og-ui's cooked-font frames, apart so that og-tests and og-ui do not build on og-cook."
+description = "Origin Engine tests that cook a project: og-tests' gfx scenes made by og-cook, apart so that og-tests does not build on og-cook."
 publish = false
 autotests = false
 
@@ -17,26 +17,15 @@ og-cook = { path = "../og-cook" }
 og-anim = { path = "../og-anim" }
 # plant-scatter-autumn's leaf year.
 og-env = { path = "../og-env" }
-# ui-rive plays its converted artboards with og-ui's Rive player.
-og-ui = { path = "../og-ui" }
-# The fonts og-ui's test support names.
-og-ui-next = { path = "../og-ui-next" }
+# ui-rive plays its converted artboards with og-rive's player.
+og-rive = { path = "../og-rive" }
 glam = { workspace = true }
 # gltf_scenes writes its glTFs' JSON.
 serde_json = "1"
 
-# og-ui's tests that cook (tests/text_gfx.rs, materials_gfx.rs,
-# pack_contrast.rs) and og-ui's test support they include by path.
 [dev-dependencies]
 pollster = { workspace = true }
-# tests/support/text_scenes.rs reads the cooked fonts with og-bundle's loaders
-# (og-tests-web includes it by path, without og-cook).
-og-bundle = { path = "../og-bundle" }
-# og-ui's test support names the font and texture handles it gives.
-og-draw = { path = "../og-draw" }
 og-core = { path = "../og-core" }
-og-input = { path = "../og-input" }
-og-i18n = { path = "../og-i18n" }
 image = { workspace = true }
 
 [[bin]]

@@ -10,7 +10,7 @@ detail.
 Frames are judged on quality, never on their difference from a reference
 (AGENTS.md §Principles): any change may move frames, and a moved reference
 does not block a landing. The engine's own reference suites (og-tests,
-og-tests-ui, the font packs, og-cook's compressed frames) report a frame
+the font packs, og-cook's compressed frames) report a frame
 outside its tolerance as `REFERENCE MISMATCH` with its actual and diff
 PNGs, and the gate prints every report after rust-gpu; they still fail a
 crash, a missing reference, a frame of another size, a one-colour frame
@@ -40,14 +40,8 @@ push is retried on the new main, without a gate when what landed and the
 head's changes are both prose only (docs, tasks, changelog fragments,
 README, AGENTS — nothing a quick step reads) and after a recheck otherwise,
 until it lands or the recheck fails. Conflicts confined to generated
-files (`og_idl::OUTPUT_DIRS`, the UI theme) are regenerated, and so are
-conflicts in the wholly generated CSS checklist, docs/css-coverage.md,
-once `scripts/css-coverage.py` is merged, both sides kept where both added
-whole proof or MISSING entries at one place; the recheck then runs the
-steps this changed. A branch from before the checklist left docs/ui.md
-has its edits to the old `css-coverage` region dropped, and the new file
-regenerated in their place. Any other conflict, including one in
-docs/ui.md's written text, stops for the author. `python3 scripts/test-landing.py` exercises
+files (`og_idl::OUTPUT_DIRS`) are regenerated; the recheck then runs the
+steps this changed. Any other conflict stops for the author. `python3 scripts/test-landing.py` exercises
 concurrent landings against a disposable bare remote.
 
 ## Toolchain
@@ -60,8 +54,8 @@ installed by `scripts/install-tools.sh` (cargo-nextest when absent).
 |---|---|---|
 | Rust (rustc, rustfmt, clippy, rust-src; wasm32-unknown-unknown, wasm32-wasip1, x86_64-unknown-linux-gnu and x86_64-pc-windows-msvc targets) | nightly-2026-11-05 (1.101.0-nightly), edition 2024, `rust-version` 1.99 | `rust-toolchain.toml`, `Cargo.toml` `[workspace.package]` |
 | wgpu / naga | 30.0.1 | `Cargo.toml` `[workspace.dependencies]` |
-| AccessKit (native shared-frame accessibility schema) | 0.25.2 | `crates/og-ui/Cargo.toml` (exact; serde enabled, no OS adapter in the engine) |
-| Parley / parley_engine, HarfRust, Skrifa (UI text) | 0.12.0 / 0.12.0, 0.12.0, 0.44.0 | `crates/og-ui/Cargo.toml` (exact compatible stack; default features off, `libm`, Parley `complex-scripts`, no system font discovery) |
+| AccessKit (native shared-frame accessibility schema) | 0.25.2 | `crates/og-ui-next/Cargo.toml` (exact; serde enabled, no OS adapter in the engine) |
+| Parley / parley_engine, HarfRust, Skrifa (UI text) | 0.12.0 / 0.12.0, 0.12.0, 0.44.0 | `crates/og-text/Cargo.toml` (exact compatible stack; default features off, `libm`, no system font discovery) |
 | write-fonts (cook-only SFNT shaping tables) | 0.55.0 | `crates/og-cook/Cargo.toml` (exact, default features off; no runtime outlines in layout-only fonts) |
 | wasm-bindgen (crate and CLI), js-sys, web-sys, wasm-bindgen-futures | 0.2.129, 0.3.106, 0.3.106, 0.4.79 | `crates/og-host-web/Cargo.toml` (exact), the CLI from `Cargo.lock` |
 | rav1d (the AV1 decoder: native streams, og-cook's posters, the web fallback; BSD-2-Clause) | 1.1.0, 8-bit only, no assembly | `crates/og-video/Cargo.toml` |
@@ -631,7 +625,7 @@ on mismatch write `<scene>.actual.png` and `<scene>.diff.png` under
 ```
 # on the GPU host, after `scripts/gate/step.sh rust-build` in the full lane
 OG_GFX_CAPTURE=1 OG_UI_CAPTURE=1 scripts/gate/step.sh rust-gpu   # rewrite the references
-bun scripts/assets.ts status crates/og-tests crates/og-tests-ui    # see which frames moved
+bun scripts/assets.ts status crates/og-tests                        # see which frames moved
 git status --short -- '*/references/*'                             # and which are new
 ```
 
@@ -641,8 +635,8 @@ directory's `og-assets.json` pins its frames. Pin the moved and new frames
 push them, and commit the `og-assets.json` with the batch.
 
 `OG_GFX_CAPTURE` takes `1` or a comma list of og-tests scenes;
-`OG_UI_CAPTURE=1` rewrites og-ui's frames in
-`crates/og-tests-ui/references`. Record twice and compare the two sets byte
+`OG_UI_CAPTURE=1` rewrites the font packs' frames in
+`crates/og-tests/references`. Record twice and compare the two sets byte
 for byte before committing, so no frame flips on the host. Commit the new
 references in a batch and say what each moved frame now shows, not by how
 much it moved.

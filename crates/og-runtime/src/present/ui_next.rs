@@ -117,17 +117,6 @@ pub(crate) struct Next {
     pub(crate) haptic_strength: f32,
 }
 
-/// The style pack `og.ui.configure` set (its id and CSS files as the cook
-/// stored them), none for the default style.
-fn active_pack(engine: u32) -> Option<(String, Vec<(String, String)>)> {
-    let eng = crate::engine::engine(engine).ok()?;
-    let id = style_id(engine)?;
-    let assets = eng.assets.borrow();
-    let (bytes, bundle) = assets.blob(&id).ok()?;
-    let text = bundle.style_text(&id, bytes.bytes()).ok()?;
-    Some((id, serde_json::from_str(&text).ok()?))
-}
-
 /// The id of the style `og.ui.configure` set, none for the default.
 pub(crate) fn style_id(engine: u32) -> Option<String> {
     let eng = crate::engine::engine(engine).ok()?;
@@ -653,7 +642,7 @@ impl Next {
         self.tree = Some(tree);
         // Before the first op batch, so its records are the pack's from
         // its first frame.
-        self.pack = active_pack(engine).map(|(id, _)| id);
+        self.pack = style_id(engine);
         self.resolved = None;
         self.resolve(engine);
         // A new arena: the mirror is sent its whole tree again.
@@ -798,7 +787,7 @@ impl Next {
         // The game's pack over the defaults and the scheme: a switch
         // resolves every node's classes again ([`Next::resolve`]).
         self.dark = settings.dark;
-        self.pack = active_pack(engine).map(|(id, _)| id);
+        self.pack = style_id(engine);
         // A timeline's transition covers the frame with no UI mounted too:
         // an empty tree draws it.
         let cover = self.cover.take();

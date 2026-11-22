@@ -1,7 +1,0 @@
-# A document written before component styles lost their look and motion,
-# and how many look and motion declarations outside the roles it still has
-# (docs/ui.md §3.1). It only shrinks: convert a document and lower or drop
-# its line.
-hud/action-button.svelte	9
-hud/celebration.svelte	54
-hud/hero-button.svelte	12

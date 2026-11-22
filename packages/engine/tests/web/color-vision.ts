@@ -1,14 +1,12 @@
-// Colour-blind modes on the web (docs/ui.md §3.2): og-ui's colour vision
-// frame (crates/og-tests-ui/tests/support/scenes.rs `color_vision_scene`, the
-// overlay's swatches over a scene colour) drawn by crates/og-tests-web in
-// headless Chrome on WebGPU at 1280×720 and 390×844, once unfiltered and
-// once for each colour vision and filter. Each filtered frame must be the
-// CPU filter (`og_render::ColorFilter::apply_srgb8`) of the unfiltered one
-// within 2/255 on every channel of every pixel, must change at least an
-// eighth of the pixels, and taking the filter off must give back the
-// unfiltered frame exactly: the same checks as the native test
-// (crates/og-tests-ui/tests/color_vision.rs), so the WGSL pass and its routing
-// through the glass source behave alike on both hosts.
+// Colour-blind modes on the web (docs/ui.md §3.2): the renderer's colour
+// vision pass over two of og-tests' scenes (materials-physical and
+// mini-game-ui-shapes, crates/og-tests/src/scenes.rs) drawn by
+// crates/og-tests-web in headless Chrome on WebGPU, once unfiltered and once
+// for each colour vision and filter. Each filtered frame must be the CPU
+// filter (`og_render::ColorFilter::apply_srgb8`) of the unfiltered one within
+// 2/255 on every channel of every pixel, must change at least an eighth of
+// the pixels, and taking the filter off must give back the unfiltered frame
+// exactly, so the WGSL pass behaves as the CPU filter does.
 //
 //   bun tests/web/color-vision.ts [--chrome <path>]
 //
@@ -70,7 +68,7 @@ try {
   await tab.until("globalThis.__gfx || globalThis.__gfx_error", 60_000);
   const failed = await tab.eval<string | undefined>("globalThis.__gfx_error");
   if (failed) throw new Error(`the module did not load: ${failed}`);
-  for (const scene of ["og-ui/color-vision-1280", "og-ui/color-vision-390"]) {
+  for (const scene of ["materials-physical", "mini-game-ui-shapes"]) {
     const result = await tab.eval<{ adapter: string; rows: Row[]; restored: boolean }>(`(async () => {
       const gfx = globalThis.__gfx;
       const o = JSON.parse(await gfx.og_gfx_open(${JSON.stringify(scene)}));

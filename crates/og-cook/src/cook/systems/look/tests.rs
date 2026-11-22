@@ -468,57 +468,31 @@ fn shared_style_assets_are_read_from_the_checkout() {
     );
 }
 
-/// A built-in style's Chinese companions join the bundle of a game that
-/// shows Chinese (a `zh` string table) and only then: a game in English
-/// does not carry megabytes of outlines it never draws.
+/// A pack's Chinese companions join the bundle only when its pack.json
+/// names them: a pack in English does not carry megabytes of outlines it
+/// never draws.
 #[test]
-fn a_styles_chinese_companions_ride_with_a_chinese_game_only() {
-    let cjk = |css: &str| -> Vec<&'static str> {
-        shared_files("styles/example/main.css", css)
+fn a_styles_chinese_companions_ride_only_where_named() {
+    let cjk = |pack: &str| -> Vec<&'static str> {
+        pack_files("styles/example/pack.json", pack)
             .into_iter()
             .map(|(id, _)| id)
             .filter(|id| id.starts_with("@styles/cjk/"))
             .collect()
     };
-    let english = cjk(":root { --language: en; }");
-    assert!(english.is_empty(), "{english:?}");
-    let chinese = cjk(
-        "@font-face { font-family: CJK; src: url(/@styles/cjk/NotoSansSC-Regular.ttf); } @font-face { font-family: CJK; font-weight: 700; src: url(/@styles/cjk/NotoSansSC-Bold.ttf); }",
+    let english = cjk(
+        r#"{ "fonts": [{ "family": "Body", "src": "@styles/shared/InstrumentSans[wdth,wght].ttf" }] }"#,
     );
+    assert!(english.is_empty(), "{english:?}");
+    let chinese =
+        cjk(r#"{ "fonts": [{ "family": "CJK", "src": "@styles/cjk/NotoSansSC[wght].ttf" }] }"#);
     assert_eq!(
         chinese,
         [
-            "@styles/cjk/NotoSansSC-Regular.ttf",
-            "@styles/cjk/NotoSansSC-Regular.ttf.ogt",
-            "@styles/cjk/NotoSansSC-Bold.ttf",
-            "@styles/cjk/NotoSansSC-Bold.ttf.ogt",
+            "@styles/cjk/NotoSansSC[wght].ttf",
+            "@styles/cjk/NotoSansSC[wght].ttf.ogt",
         ]
     );
-}
-
-/// A generated style draws with shared fonts and icons: a game gets
-/// them in its bundle, whatever its languages, with their settings.
-#[test]
-fn a_seed_styles_shared_fonts_and_icons_ride_with_the_game() {
-    let css = "@font-face { font-family: Body; src: url(/@styles/shared/InstrumentSans-Regular.ttf); } @font-face { font-family: Mono; src: url(/@styles/shared/PTMono-Regular.ttf); } button::part(icon) { mask-image: url(/@styles/shared/ink-icons.png); }";
-    let ids: Vec<&str> = shared_files("styles/example/main.css", css)
-        .into_iter()
-        .map(|(id, _)| id)
-        .collect();
-    for id in [
-        "@styles/shared/InstrumentSans-Regular.ttf",
-        "@styles/shared/InstrumentSans-Regular.ttf.ogt",
-        "@styles/shared/PTMono-Regular.ttf",
-        "@styles/shared/ink-icons.png",
-        "@styles/shared/ink-icons.png.ogt",
-    ] {
-        assert!(ids.contains(&id), "{id}: {ids:?}");
-    }
-    assert!(
-        !ids.iter().any(|id| id.starts_with("@styles/cjk/")),
-        "{ids:?}"
-    );
-    assert!(!ids.contains(&"@styles/shared/Cinzel-Bold.ttf"), "{ids:?}");
 }
 
 #[test]

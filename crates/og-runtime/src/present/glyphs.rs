@@ -682,7 +682,7 @@ pub(crate) fn warn_missing(
     }
 }
 
-/// Of what og-ui's frame found missing (`og_ui::UiFrame::missing_glyphs`),
+/// Of what og-ui's frame found missing (the UI frame's missing glyphs),
 /// the (font, character) pairs no queued text has judged yet, judged now.
 pub(crate) fn unjudged(
     rs: &mut RenderState,
@@ -752,7 +752,7 @@ pub(crate) fn ui_lacking(rs: &mut RenderState, text: &str) -> Vec<(FontHandle, V
     let found: Vec<(FontHandle, Vec<char>)> = {
         let fonts = &rs.ui_fonts;
         let font = fonts.for_text(og_ui_next::fonts::FontRole::Body, text);
-        og_ui::pieces(font, text, crate::bind::i18n::direction(rs.engine), 0.0)
+        og_text::text::pieces(font, text, crate::bind::i18n::direction(rs.engine), 0.0)
             .into_iter()
             .filter_map(|p| {
                 let h = p.font?;

@@ -90,8 +90,8 @@ status `docs/roadmap.md`. Platform contracts implemented here:
 - **wgpu as published**, never vendored or patched.
 - **The web engine runs in a Worker** with an OffscreenCanvas; the main
   thread owns input and the shell.
-- **One design language.** `packages/design/tokens/*.css` generates og-ui's
-  default style (`crates/og-ui/src/theme.rs`, drift-checked), which
+- **One design language.** `packages/design/tokens/*.css` generates the
+  default style pack (`crates/og-ui-next/default/pack.json`, drift-checked), which
   origin-agent pins by version. Brand surfaces use `packages/brand`. A game's
   style pack restyles the built-in components through tokens and parts.
 

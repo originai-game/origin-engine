@@ -196,12 +196,6 @@ fn create_inner(game: u32, options: &str) -> Result<u32, String> {
     if !engine.assets.borrow().root.is_empty() {
         let i = engine.assets.borrow_mut().open_bundle("cooked");
         engine.assets.borrow_mut().default_bundle = Some(i);
-        // A development cook from a checkout carries the default style as
-        // the source tree has it, before any document or style is read.
-        #[cfg(not(feature = "publish"))]
-        if let Err(e) = crate::bind::modules::docs::apply_base(&engine) {
-            engine.state.borrow_mut().warnings.push(e);
-        }
     }
     // With `deferStart` the scene waits for the first tick boundary too: the
     // web host transcodes the bundle's Basis textures only once its renderer

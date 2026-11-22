@@ -75,17 +75,11 @@ pub(crate) fn misnamed(rel: &str, kind: Kind) -> Option<&str> {
 /// (CSS declarations, a recipe), which `.ogt`'s reader and `og fmt` leave
 /// alone.
 pub fn own_lines(ty: &str) -> bool {
-    [
-        "style",
-        og_ui::doc::SCREEN_TYPE,
-        og_ui::doc::COMPONENT_TYPE,
-        vfx2d::VFX2D_TYPE,
-    ]
-    .contains(&ty)
+    ["style", vfx2d::VFX2D_TYPE].contains(&ty)
 }
 
 /// The extensions of the texts the scan reads more than once.
-const TEXTS: [&str; 3] = ["ogt", "css", "json"];
+const TEXTS: [&str; 2] = ["ogt", "json"];
 
 pub(crate) fn scan_with(
     assets_dir: &Path,
@@ -141,16 +135,7 @@ pub(crate) fn scan_with(
                 builtins.insert(id.to_string(), bytes);
             }
         }
-        // CSS can explicitly reference the shared asset roots, including CJK.
-        if ext(rel) == "css"
-            && let Ok(text) =
-                read_file(path).and_then(|b| String::from_utf8(b).map_err(std::io::Error::other))
-        {
-            for (id, bytes) in look::shared_files(rel, &text) {
-                builtins.insert(id.to_string(), bytes);
-            }
-        }
-        // So can a game's own pack.json.
+        // A game's own pack.json can name them.
         if crate::cook::ui_packs::is_pack(rel)
             && let Ok(text) =
                 read_file(path).and_then(|b| String::from_utf8(b).map_err(std::io::Error::other))
@@ -291,14 +276,7 @@ pub(crate) fn scan_with(
                         continue;
                     }
                     Ok(doc) if doc.ty == "style" => {
-                        early_errors.push((rel.clone(), "style", "style.ogt is removed; author a directory of .css files and load its directory with og.load.style".into()));
-                        continue;
-                    }
-                    Ok(doc)
-                        if doc.ty == og_ui::doc::SCREEN_TYPE
-                            || doc.ty == og_ui::doc::COMPONENT_TYPE =>
-                    {
-                        early_errors.push((rel.clone(), "document", "UI documents use scriptless .svelte markup; replace the old screen/component dialect".into()));
+                        early_errors.push((rel.clone(), "style", "style.ogt is removed; author a directory with a pack.json and load its directory with og.load.style".into()));
                         continue;
                     }
                     Ok(doc) if let Some(kind) = ogt_kind(&doc.ty) => kind,
@@ -342,56 +320,6 @@ pub(crate) fn scan_with(
             fracture: None,
         });
     }
-    // Each directory with direct CSS children is a pack. Its cooked source
-    // contains those files and their imports, never a generated author manifest.
-    let directories: BTreeSet<_> = files
-        .iter()
-        .filter(|(id, _)| ext(id) == "css")
-        .filter_map(|(id, _)| id.rsplit_once('/').map(|(dir, _)| dir.to_string()))
-        .collect();
-    for dir in directories {
-        let mut css = BTreeMap::new();
-        let mut pending: Vec<_> = files
-            .iter()
-            .filter(|(id, _)| {
-                ext(id) == "css" && id.rsplit_once('/').is_some_and(|(parent, _)| parent == dir)
-            })
-            .map(|(id, _)| id.clone())
-            .collect();
-        while let Some(id) = pending.pop() {
-            if css.contains_key(&id) {
-                continue;
-            }
-            let bytes = read(&id, &assets_dir.join(&id))?;
-            let text = String::from_utf8(bytes)
-                .map_err(|_| CookError(format!("{id}: CSS must be UTF-8")))?;
-            pending.extend(
-                og_ui::UiDocument::imports(&text)
-                    .iter()
-                    .map(|path| og_ui::doc::at_rules::resolve(&id, path)),
-            );
-            css.insert(id, text);
-        }
-        let css: Vec<_> = css.into_iter().collect();
-        let bytes = serde_json::to_vec(&css).expect("CSS sources serialize");
-        sources.push(Source {
-            path: assets_dir.join(&dir),
-            rel: dir,
-            kind: &ui_documents::STYLE,
-            bytes,
-            settings: None,
-            settings_files: Vec::new(),
-            hash: 0,
-            gltf: None,
-            error: None,
-            encoded: Default::default(),
-            whole: Default::default(),
-            model: Default::default(),
-            conformed: None,
-            fracture: None,
-        });
-    }
-    ignored.retain(|id| ext(id) != "css");
     // The walk reads a directory's subdirectories before its `import.ogt`.
     defaults.sort_by_key(|d| d.depth());
     for s in sources.iter_mut() {

@@ -34,23 +34,10 @@ struct Manifest {
 }
 
 /// Whether a game hyphenates (CSS Text 4 §6.1): its code writes a
-/// `hyphens-auto` class (`code`, the bundler graph's reading), or its style
-/// sheets declare `hyphens: auto`. Only then does it ship hyphenation
-/// dictionaries.
-pub(crate) fn uses_auto_hyphens(sources: &[Source], code: &CodeGraph) -> bool {
+/// `hyphens-auto` class (`code`, the bundler graph's reading). Only then
+/// does it ship hyphenation dictionaries.
+pub(crate) fn uses_auto_hyphens(_sources: &[Source], code: &CodeGraph) -> bool {
     code.hyphens
-        || sources
-            .iter()
-            .filter(|s| s.kind == &crate::cook::ui_documents::STYLE)
-            .any(|s| {
-                let text = String::from_utf8_lossy(&s.bytes);
-                text.match_indices("hyphens").any(|(at, _)| {
-                    text[at + "hyphens".len()..]
-                        .trim_start()
-                        .strip_prefix(':')
-                        .is_some_and(|v| v.trim_start().starts_with("auto"))
-                })
-            })
 }
 
 /// The dictionary languages of the locales a game ships: its string

@@ -10,16 +10,6 @@
 // unless the scene names its own; a channel off by more than 32/255 is an outlier).
 // Every frame is also compared with its recording-tier reference, reported and kept
 // in the JSON whether or not it is the frame the run is judged against.
-// og-ui's reference scenes ride along as `og-ui/<name>` (sample-screen,
-// text-glow, glass, widget-set: crates/og-tests-ui/tests/support/scenes.rs, the
-// code og-ui's native gfx tests draw them with), judged the same way against
-// crates/og-tests-ui/references/<tier>/<name>.png, else the recording tier's. So do og-ui's
-// cooked-font text frames (text-bidi, text-kerning, text-edit,
-// text-mixed-runs: crates/og-ui/tests/support/text_scenes.rs): their fonts
-// are cooked first with `og cook` (text-fonts.ts: crates/og-ui/tests/text-fonts
-// with the former test sample's font files, as og-ui's text_gfx test cooks them),
-// served beside the module and handed to it before any scene opens; that
-// needs the og a build put in packages/engine/native/ (or $OG_BIN).
 //
 //   bun tests/web/reference-gfx.ts [--record] [--scene a,b] [--time <frames>] [--cpu-culling] [--cull-dump] [--bisect <spec;spec>] [--perf-out <dir>] [--out <dir>] [--chrome <path> | --firefox [<path>] | --safari]
 //
@@ -55,14 +45,13 @@
 // as webgpu-safari, falling back to webgpu, then the recording tier),
 // wasm-bindgen at the Cargo.lock version and the wasm32 target.
 
-import { cpSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { basename, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { androidOf, Browser, chromePath } from "./cdp.ts";
 import { Firefox, firefoxPath } from "./bidi.ts";
 import { Safari, safariDriverPath } from "./webdriver.ts";
 import { serve } from "./serve.ts";
-import { cookTextFonts } from "./text-fonts.ts";
 import { decodePng, encodePng, encodePngBest, type Image } from "../../src/node/png.ts";
 import { compareFrames as compare, RECORDING, TOLERANCE, type Tolerance as Limit } from "../support/png.ts";
 import { createRequire } from "node:module";
@@ -91,11 +80,9 @@ const out = resolve(opt("--out") ?? join(work, "out"));
 const firefox = args.includes("--firefox") ? firefoxPath(args) : undefined;
 const chrome = firefox || android || safari ? "" : chromePath(args);
 const refs = join(repo, "crates", "og-tests", "references");
-/** Where a scene's references live: og-ui's under crates/og-tests-ui/references. */
+/** Where a scene's references live. */
 function referencesOf(scene: string): { root: string; name: string } {
-  return scene.startsWith("og-ui/")
-    ? { root: join(repo, "crates", "og-tests-ui", "references"), name: scene.slice("og-ui/".length) }
-    : { root: refs, name: scene };
+  return { root: refs, name: scene };
 }
 /** The scenes crates/og-tests/tests/perf.rs times natively. */
 // The scenes crates/og-tests/tests/perf.rs times natively (tilemap-256 is
@@ -143,10 +130,6 @@ const have = run(["wasm-bindgen", "--version"]).trim().split(" ")[1];
 if (lock !== have) throw new Error(`wasm-bindgen ${have} does not match Cargo.lock ${lock} (scripts/install-tools.sh)`);
 const dist = join(work, "site");
 run(["wasm-bindgen", "--target", "web", "--out-dir", join(dist, "pkg"), "--out-name", "og-tests", raw]);
-// og-ui's cooked-font text frames: their fonts cooked, served under
-// /game/text-fonts/ and handed to the module on every page.
-const textFonts = cookTextFonts(repo, join(work, "text-fonts"));
-cpSync(textFonts.cooked, join(dist, "text-fonts"), { recursive: true });
 const buildMs = Math.round(performance.now() - t0);
 
 const html = `<!doctype html><html><head><meta charset="utf-8"><title>og-tests gfx</title></head><body>
@@ -198,15 +181,6 @@ async function page() {
   await t.until("globalThis.__gfx || globalThis.__gfx_error", 60_000);
   const failed = await t.eval<string | undefined>("globalThis.__gfx_error");
   if (failed) throw new Error(`the module did not load: ${failed}`);
-  await t.eval(`(async () => {
-    const gfx = globalThis.__gfx;
-    gfx.og_gfx_text_manifest(${JSON.stringify(textFonts.manifest)});
-    for (const f of ${JSON.stringify(textFonts.files)}) {
-      const r = await fetch("/game/text-fonts/" + f);
-      if (!r.ok) throw new Error("text font " + f + ": " + r.status);
-      gfx.og_gfx_text_file(f, new Uint8Array(await r.arrayBuffer()));
-    }
-  })()`);
   if (cpuCulling) await t.eval("globalThis.__gfx.og_gfx_cpu_culling(true)");
   return t;
 }
@@ -233,7 +207,7 @@ try {
       for (const r of refused) console.error(`FAIL shader ${r.label} (${tier}): ${r.messages.slice(0, 3).join("; ")}`);
     } else console.log(`ok   every renderer shader module compiles in the browser (${tier})`);
   }
-  const all = [...(await tab.eval<string[]>("__gfx.og_gfx_scenes()")), ...(await tab.eval<string[]>("__gfx.og_gfx_ui_scenes()"))];
+  const all = await tab.eval<string[]>("__gfx.og_gfx_scenes()");
   const only = opt("--scene")?.split(",");
   const timed = Number(opt("--time") ?? 0);
   const retained = all.filter((scene) => {

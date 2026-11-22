@@ -627,7 +627,7 @@ fn floating(rs: &mut RenderState, feel: &Feel, now: f64) {
             let font = rs
                 .ui_fonts
                 .for_text(og_ui_next::fonts::FontRole::Body, &t.text);
-            og_ui::pieces(font, &t.text, direction, 0.0)
+            og_text::text::pieces(font, &t.text, direction, 0.0)
         });
         let age = (now - t.start) as f32;
         if age < 0.0 || age > t.lifetime {
@@ -644,7 +644,8 @@ fn floating(rs: &mut RenderState, feel: &Feel, now: f64) {
         };
         // Each piece: its font's pages, where it starts and how wide it is
         // (em), and what it draws.
-        let mut parts: Vec<(Vec<og_render::FontHandle>, f32, f32, og_ui::Piece)> = Vec::new();
+        let mut parts: Vec<(Vec<og_render::FontHandle>, f32, f32, og_text::text::Piece)> =
+            Vec::new();
         if t.font == u32::MAX {
             let Some(pieces) = body else { continue };
             for piece in pieces {
@@ -656,7 +657,7 @@ fn floating(rs: &mut RenderState, feel: &Feel, now: f64) {
             let Some(p) = rs.fonts.get(t.font as usize) else {
                 continue;
             };
-            let piece = og_ui::Piece {
+            let piece = og_text::text::Piece {
                 font: None,
                 scale: 1.0,
                 dx: 0.0,

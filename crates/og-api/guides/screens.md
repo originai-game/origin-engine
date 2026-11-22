@@ -78,8 +78,9 @@ text (§5). The materials resource pack is documented in ui-materials §1.
 
 ## 3. Style packs
 
-A style pack is a directory of CSS and assets, with no manifest or
-`style.ogt`. Structure stays in `.svelte` documents. Haptics stay in `og.*`.
+A style pack is a directory with a `pack.json` (its theme, variants,
+fonts, images, icons and sounds) and the assets it names. Structure stays
+in TSX components. Haptics stay in `og.*`.
 
 The engine ships three packs that dress every core control, component and
 screen: `fantasy` (crimson bands, brass rims, painted plates), `scifi` (dark
@@ -220,11 +221,10 @@ screen can wait for it.
 
 ## 4. Structure and data
 
-- Write one `.svelte` file per screen or component. Declare contracts
-  with `<meta>`, structure with core HTML tags, and look in a scoped
-  `<style>` block. TypeScript builds no UI trees. A `<script lang="ts">`
-  holds only `const x = $derived(expr)`; state and logic live in a TS
-  system that writes stores.
+- Write one `.tsx` file per screen or component: a function that returns
+  its tree, with its props an exported interface and its look in class
+  strings. State and logic live in a TS system that writes stores; the
+  component reads them.
 - Read a named store with `{$gold}` or `disabled={$gold < 10}`. Use
   `bind:value={$volume}` for two-way controls. Ordinary attribute bindings
   never write. `onclick={buy}` names an action supplied by the game.
@@ -375,8 +375,9 @@ screen can wait for it.
   box's properties too.
   `li::marker { content: …; color: … }` and `list-style-image: url(name)`
   restyle list markers. `::first-letter`, `::first-line`, `::placeholder
-  { color }` and `::selection { background-color; color; text-decoration;
-  text-shadow }` style text.
+  { color }` and `::selection { background-color; color; text-decoration }`
+  style text. A text's shadow is a theme shadow class (`text-shadow-xs`,
+  `text-shadow-2xs`); there is no arbitrary `text-shadow-[…]`.
 - A link `<a href="#rules">` makes `#rules` `:target` and scrolls it to
   the start of its scroller (its `scroll-margin` above it, inside the
   scroller's `scroll-padding`). To point at a passage, put an id on its
@@ -471,7 +472,7 @@ screen can wait for it.
   var(--panel), #0000), #123`, `mask-image: linear-gradient(#000 70%,
   transparent)`, `clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%)`,
   `backdrop-filter: blur(12px)`, `filter: grayscale(1)` for a locked item,
-  `text-shadow: 0 2px 6px var(--accent)`. A shader look is
+  a theme shadow class such as `text-shadow-xs` on text. A shader look is
   `-og-material: shine(-0.5 0.2 0.6 1)`.
 - A declared input action also exposes a named event: after declaring
   `action:confirm`, use `onconfirm={start}` to handle it independently of
@@ -506,7 +507,7 @@ bars it does not hold, this guide does:
   only partly (a translucent plate, a HUD label on nothing) over black and
   over white, keeping the worse. Such text holds 4.5:1
   either on its plate over a bright scene (a sky, snow, a muzzle flash)
-  or on its halo (`text-shadow`, `-webkit-text-stroke`; read a pixel out
+  or on its halo (a `text-shadow-*` theme shadow, a text stroke; read a pixel out
   from the glyphs' edge on their weakest side): a round timer's caption on a translucent plate over a bright sky
   fell to 3.3:1. A nearly opaque plate, or a halo that rings the glyphs,
   is what holds it. A blurred shadow covers at most half at the glyphs'
@@ -515,13 +516,11 @@ bars it does not hold, this guide does:
   unblurred copies 1–1.5 px round the glyphs, in `contrast-color()` of the
   ink, read 12:1 over a white sky (the default `--tag-halo`). The engine
   draws a text as its CSS says and adds nothing over the scene: give text
-  that sits on nothing a ground, or the tag treatment,
-  `text-shadow: var(--tag-halo)` and, where the style sets one, a plate
-  (`background: var(--tag-fill); padding: var(--tag-pad); border-radius:
-  var(--tag-radius)`). `text-shadow` inherits, so a HUD writes it once on
-  its root and each text takes it in its own ink; a title or a figure
-  that its style gives a shadow of its own (`--title-shadow`,
-  `--figure-shadow`) draws that instead. The built-in HUD components do
+  that sits on nothing a ground, or the tag treatment: a theme halo
+  shadow class (`text-shadow-2xs`) and, where the pack sets one, a plate.
+  A text shadow inherits, so a HUD writes the class once on its root and
+  each text takes it in its own ink; a title or a figure whose pack gives
+  it a shadow of its own draws that instead. The built-in HUD components do
   this.
 - **`contrast-color()`** is white or black, whichever reads more on its
   ground: at least 4.58:1 on any opaque ground. Use it for ink on a
@@ -600,7 +599,7 @@ damage numbers are built-in component documents, not `og.ui` builders:
 use one in a screen by its declared name with props from named stores, and
 loading the screen loads it (§2). To change one, copy it with `og ui eject
 <name>` (`--list` names them with the screens) and edit
-`assets/ui/<name>.svelte`; the game's copy then replaces the built-in one
+`assets/ui/<name>.tsx`; the game's copy then replaces the built-in one
 in every screen, with no load of its own. Each declares its props, actions
 and a `fixture:default`, so `og ui preview` shows it at once.
 
