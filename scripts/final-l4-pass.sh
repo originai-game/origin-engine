@@ -306,7 +306,7 @@ sec_filters() {
   local src="$root/scripts/final-l4/filters" w="$OUT/filters" p
   p="$(mktemp -d)"; cp -r "$src/." "$p/"; rm -rf "$p/cooked" "$p/.og" "$p/node_modules"
   mkdir -p "$p/node_modules/@origingame" && ln -sfn "$root/packages/engine" "$p/node_modules/@origingame/engine"
-  local packs="default cartoon fantasy scifi" schemes="dark light" scenes="glass shadows spotlight minimap all" size=1920x1080 pk sc s
+  local packs="default cartoon fantasy scifi" schemes="dark light" scenes="glass shadows spotlight minimap all hud" size=1920x1080 pk sc s
   # The dry run proves the wiring only: one scene, small, and no timing (a CPU judges no budget).
   [ "$DRY" = 1 ] && packs="default" schemes="dark" scenes="all" size=320x180
   # One run a scene: a mount is never taken down mid-run.
@@ -319,11 +319,12 @@ sec_filters() {
   for f in "$w"/shots/*.png; do why="$(blank "$f")"; [ -n "$why" ] && fail filters "$(basename "$f" .png): $why"; done
   # shellcheck disable=SC2046
   sheet "$w" scenes $(ls "$w"/shots/*.png 2>/dev/null)
-  # The budget: the four scenes together, with their filters and without. Not on a dry run.
+  # The budget: the filter plan's §6 HUD (scene hud: 4 blurred cards, 8 drop-shadowed icons, 2
+  # backdrops), with its filters and without. Not on a dry run.
   if [ "$DRY" = 1 ]; then note "filters: cost not measured on a dry run"; rm -rf "$p"; return 0; fi
   local end=240
   (cd "$p" && OG_NATIVE_ADDON="$BUNDLE/bin/og-addon.node" "$BUNDLE/bin/og" cost . --json --runs 8 --ticks "60..$end" \
-    --on "--commands 0.02:scene:all" --off "--commands 0.02:scene:all:plain" -- --headless --no-check --size 1920x1080 --ticks $((end + 20))) > "$w/cost.json" 2> "$w/cost.log"
+    --on "--commands 0.02:scene:hud" --off "--commands 0.02:scene:hud:plain" -- --headless --no-check --size 1920x1080 --ticks $((end + 20))) > "$w/cost.json" 2> "$w/cost.log"
   local rc=$? ms
   ms="$(python3 -c 'import json,sys
 try: r=json.load(open(sys.argv[1]))

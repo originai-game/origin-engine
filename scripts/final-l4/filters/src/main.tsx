@@ -2,7 +2,7 @@
 // glass (backdrop blur over busy ground), shadows (blur, drop shadow and float shadow on cards,
 // text and a turned box), spotlight (TutorialScreen's shade with its round hole) and minimap
 // (MinimapView's round clip). `scene:<name>` mounts one; `scene:all` mounts the four in quarters
-// of the screen, the budget's HUD. A second argument `plain` draws the same nodes with no filter
+// of the screen; `scene:hud` is the filter plan's §6 HUD, which the budget is measured on. A second argument `plain` draws the same nodes with no filter
 // classes, the off side of `og cost`.
 import { og, type World } from "@origingame/engine";
 import { Text, View, mount } from "@origingame/engine/ui";
@@ -73,12 +73,40 @@ function Minimap(p: Fx) {
   );
 }
 
+// The filter plan's §6 HUD at 1080p, the scene the 0.5 ms budget is measured on: 4 blurred
+// cards (σ 8, up to 500×300), 8 drop-shadowed icons and labels (σ 4, up to 128×128) and 2
+// colour-function backdrops (σ 12 with brightness and saturation, a quarter screen each).
+function Hud(p: Fx) {
+  return (
+    <View class="relative size-full overflow-hidden">
+      <Stripes />
+      <View class={`absolute left-0 top-0 w-1/2 h-1/2 bg-material-thin ${fx(p, "backdrop-blur-thin backdrop-brightness-75 backdrop-saturate-50")}`} />
+      <View class={`absolute right-0 bottom-0 w-1/2 h-1/2 bg-material-thin ${fx(p, "backdrop-blur-thin backdrop-brightness-75 backdrop-saturate-50")}`} />
+      <View class="absolute inset-0 p-8 flex flex-row flex-wrap content-start gap-8">
+        {[0, 1, 2, 3].map(() => (
+          <View class={`w-125 h-75 rounded-card bg-card p-4 ${fx(p, "blur-lens")}`}>
+            <Text class="text-fg">Card</Text>
+          </View>
+        ))}
+      </View>
+      <View class="absolute left-8 bottom-8 flex flex-row gap-4">
+        {[0, 1, 2, 3, 4, 5, 6, 7].map((i) => (
+          <View class={`size-32 rounded-block bg-card flex items-center justify-center ${fx(p, "drop-shadow-md")}`}>
+            <Text class="text-fg">{`${i + 1}`}</Text>
+          </View>
+        ))}
+      </View>
+    </View>
+  );
+}
+
 const SCENES: Record<string, (p: Fx) => unknown> = { glass: Glass, shadows: Shadows, spotlight: Spotlight, minimap: Minimap };
 
 function scene(world: World, name: string, on: boolean): void {
   const one = SCENES[name];
   if (one) return void mount(world, () => one({ on }) as never, {}, { layer: "hud" });
-  if (name !== "all") throw new Error(`scene ${name}: one of all, ${Object.keys(SCENES).join(", ")}`);
+  if (name === "hud") return void mount(world, () => Hud({ on }) as never, {}, { layer: "hud" });
+  if (name !== "all") throw new Error(`scene ${name}: one of all, hud, ${Object.keys(SCENES).join(", ")}`);
   mount(world, () => (
     <View class="absolute inset-0 grid grid-cols-2 grid-rows-2">
       {Object.values(SCENES).map((s) => <View class="relative overflow-hidden">{s({ on }) as never}</View>)}
