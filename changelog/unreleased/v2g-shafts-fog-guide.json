@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "render guide §7",
+      "summary": "Corrects the claim that probe GI makes indoor fog as dark as its surroundings: local fog's hemisphere light and global fog's authored ambient have no geometric occlusion. Explains why scaling Fog.color does not change air contrast, distinguishes global and local fog's scattering gains, and states the content conditions for offscreen-sun shafts; no renderer or API behaviour changes."
+    }
+  ]
+}

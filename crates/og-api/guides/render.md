@@ -346,14 +346,27 @@ depth-normal prepass: the first one pays for it.
   volumetric fog shows the same haze without the shafts. Set the colour
   for the scene's light as for the plain fog (a night's haze dark, a
   city's glow in it); og.DayNight's `tintFog` and a cloud cover do that
-  for a cycle. The price: the fog is not lit by the sky on its own, so a
-  dark room with bright shafts wants a dark `Fog.color`, which tints the
-  shafts dark too; raise `scattering` (up to 4) to brighten them.
-- An og.FogVolume's colour is an albedo alone: besides the sun and the
-  lamps it scatters the sky's light evenly (the environment's,
-  og.Environment's hemisphere light and, where it reaches, the probe
-  GI's), so mist in a hollow is as bright as the night sky and smoke in
-  a closed room with GI as dark as the room.
+  for a cycle. This is authored ambient, not geometrically shadowed sky
+  light: at the same density it stays just as bright under a canopy or
+  inside a closed room as outside. Scaling the colour uniformly scales
+  both ambient and shafts, leaving their air contrast unchanged. Raising
+  global fog's scattering brightens the sun and lamps, not this ambient.
+- For an og.FogVolume, probe GI replaces environment light where it
+  covers the air; scattering scales both direct and environment light.
+  The hemisphere light and global fog's ambient have no geometric
+  occlusion. Do not assume that adding a volume and GI makes indoor fog
+  as dark as its surrounding surfaces.
+- For a visible shaft, the view ray must pass through sunlit air below
+  an opening, beside shadowed air, with a dim enough ambient and
+  background for their difference to show. Real canopy contrast also
+  relies on blocking sky light there; global fog does not infer that
+  darkness. A sun outside the frame works; ground dapples alone do not
+  establish a long sunlit path through the visible air. Arrange openings
+  on the sun-facing side of a canopy. Darkening ambient cannot create
+  missing direct light. Choose the opening and view before spending
+  more slices or density on the fog.
+  Strong forward scattering favours looking towards the light; weak
+  side-on shafts are not evidence that shadows failed.
 - Past `volumetricDistance` the fog goes on to the far scene and, by
   `Fog.sky`, over the sky, in its colour with the unshadowed sun's light
   in it: far towers fade into the haze as in the plain fog. Under the
