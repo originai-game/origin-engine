@@ -30,11 +30,17 @@
             ],
             "normals": [
               "smooth"
+            ],
+            "propFaces": [
+              40000
             ]
           },
           "ArtTexels": {
             "density": [
               128
+            ],
+            "maxSize": [
+              2048
             ]
           },
           "MaterialStyle": {
@@ -119,11 +125,17 @@
             ],
             "normals": [
               "smooth"
+            ],
+            "propFaces": [
+              40000
             ]
           },
           "ArtTexels": {
             "density": [
               128
+            ],
+            "maxSize": [
+              2048
             ]
           },
           "MaterialStyle": {
@@ -208,11 +220,17 @@
             ],
             "normals": [
               "smooth"
+            ],
+            "propFaces": [
+              40000
             ]
           },
           "ArtTexels": {
             "density": [
               128
+            ],
+            "maxSize": [
+              2048
             ]
           },
           "MaterialStyle": {
@@ -325,11 +343,17 @@
             ],
             "normals": [
               "smooth"
+            ],
+            "propFaces": [
+              40000
             ]
           },
           "ArtTexels": {
             "density": [
               128
+            ],
+            "maxSize": [
+              2048
             ]
           },
           "MaterialStyle": {
@@ -433,11 +457,17 @@
             ],
             "normals": [
               "smooth"
+            ],
+            "propFaces": [
+              40000
             ]
           },
           "ArtTexels": {
             "density": [
               128
+            ],
+            "maxSize": [
+              2048
             ]
           },
           "MaterialStyle": {
@@ -538,11 +568,17 @@
             ],
             "normals": [
               "smooth"
+            ],
+            "propFaces": [
+              40000
             ]
           },
           "ArtTexels": {
             "density": [
               128
+            ],
+            "maxSize": [
+              2048
             ]
           },
           "MaterialStyle": {
@@ -644,11 +680,17 @@
             ],
             "normals": [
               "smooth"
+            ],
+            "propFaces": [
+              40000
             ]
           },
           "ArtTexels": {
             "density": [
               128
+            ],
+            "maxSize": [
+              2048
             ]
           },
           "MaterialStyle": {

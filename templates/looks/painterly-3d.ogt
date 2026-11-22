@@ -25,10 +25,16 @@ PostEffects {
 }
 # The art contract (docs/art.md §2.1), from the catalogue entry's palette and
 # assets: a free palette graded by a LUT; 10k to 30k triangles; hand-painted
-# at up to 1 texel per screen pixel on 250 px characters.
+# at up to 1 texel per screen pixel on 250 px characters. Props are held to
+# the same 30k, and no texture is longer than 2048 texels (1 texel per
+# screen pixel on a model filling a 1080-line frame).
+# The palette is free (the catalogue's), so it states no colours: measure
+# reports the palette facts absent, never against invented colours.
 ArtTexels {
   density 128
+  maxSize 2048
 }
 ArtShape {
+  propFaces 30000
   characterFaces 30000
 }

@@ -21,7 +21,9 @@ PostEffects {
 }
 # The art contract (docs/art.md §2.1), from the catalogue entry's palette and
 # assets: sprites of 32 to 64 colours, 48 to 64 px characters on one pixel
-# size at 240 lines, nearest-filtered; set pieces of 2k to 20k triangles.
+# size at 240 lines, nearest-filtered; set pieces of 2k to 20k triangles,
+# textured at up to 2 texels per screen pixel, so none is longer than 4096
+# texels (a set piece filling a 1080-line frame).
 ArtPalette {
   maxColors 64
 }
@@ -31,6 +33,9 @@ ArtPixels {
   spriteSizes 48 64
   rotation cleanEdge
   snap true
+}
+ArtTexels {
+  maxSize 4096
 }
 ArtShape {
   propFaces 20000

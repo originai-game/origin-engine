@@ -19,11 +19,17 @@
           "ArtShape": {
             "characterFaces": [
               30000
+            ],
+            "propFaces": [
+              30000
             ]
           },
           "ArtTexels": {
             "density": [
               128
+            ],
+            "maxSize": [
+              2048
             ]
           },
           "MaterialStyle": {
@@ -110,11 +116,17 @@
           "ArtShape": {
             "characterFaces": [
               30000
+            ],
+            "propFaces": [
+              30000
             ]
           },
           "ArtTexels": {
             "density": [
               128
+            ],
+            "maxSize": [
+              2048
             ]
           },
           "MaterialStyle": {
@@ -226,11 +238,17 @@
           "ArtShape": {
             "characterFaces": [
               30000
+            ],
+            "propFaces": [
+              30000
             ]
           },
           "ArtTexels": {
             "density": [
               128
+            ],
+            "maxSize": [
+              2048
             ]
           },
           "MaterialStyle": {
@@ -347,11 +365,17 @@
           "ArtShape": {
             "characterFaces": [
               30000
+            ],
+            "propFaces": [
+              30000
             ]
           },
           "ArtTexels": {
             "density": [
               128
+            ],
+            "maxSize": [
+              2048
             ]
           },
           "MaterialStyle": {
@@ -459,11 +483,17 @@
           "ArtShape": {
             "characterFaces": [
               30000
+            ],
+            "propFaces": [
+              30000
             ]
           },
           "ArtTexels": {
             "density": [
               128
+            ],
+            "maxSize": [
+              2048
             ]
           },
           "MaterialStyle": {
@@ -568,11 +598,17 @@
           "ArtShape": {
             "characterFaces": [
               30000
+            ],
+            "propFaces": [
+              30000
             ]
           },
           "ArtTexels": {
             "density": [
               128
+            ],
+            "maxSize": [
+              2048
             ]
           },
           "MaterialStyle": {
@@ -678,11 +714,17 @@
           "ArtShape": {
             "characterFaces": [
               30000
+            ],
+            "propFaces": [
+              30000
             ]
           },
           "ArtTexels": {
             "density": [
               128
+            ],
+            "maxSize": [
+              2048
             ]
           },
           "MaterialStyle": {
@@ -777,11 +819,17 @@
             ],
             "normals": [
               "smooth"
+            ],
+            "propFaces": [
+              20000
             ]
           },
           "ArtTexels": {
             "density": [
               128
+            ],
+            "maxSize": [
+              2048
             ]
           },
           "MaterialStyle": {
@@ -896,11 +944,17 @@
             ],
             "normals": [
               "smooth"
+            ],
+            "propFaces": [
+              20000
             ]
           },
           "ArtTexels": {
             "density": [
               128
+            ],
+            "maxSize": [
+              2048
             ]
           },
           "MaterialStyle": {
@@ -1040,11 +1094,17 @@
             ],
             "normals": [
               "smooth"
+            ],
+            "propFaces": [
+              20000
             ]
           },
           "ArtTexels": {
             "density": [
               128
+            ],
+            "maxSize": [
+              2048
             ]
           },
           "MaterialStyle": {
@@ -1178,11 +1238,17 @@
             ],
             "normals": [
               "smooth"
+            ],
+            "propFaces": [
+              20000
             ]
           },
           "ArtTexels": {
             "density": [
               128
+            ],
+            "maxSize": [
+              2048
             ]
           },
           "MaterialStyle": {
@@ -1318,11 +1384,17 @@
             ],
             "normals": [
               "smooth"
+            ],
+            "propFaces": [
+              20000
             ]
           },
           "ArtTexels": {
             "density": [
               128
+            ],
+            "maxSize": [
+              2048
             ]
           },
           "MaterialStyle": {
@@ -1455,11 +1527,17 @@
             ],
             "normals": [
               "smooth"
+            ],
+            "propFaces": [
+              20000
             ]
           },
           "ArtTexels": {
             "density": [
               128
+            ],
+            "maxSize": [
+              2048
             ]
           },
           "MaterialStyle": {
@@ -1593,11 +1671,17 @@
             ],
             "normals": [
               "smooth"
+            ],
+            "propFaces": [
+              20000
             ]
           },
           "ArtTexels": {
             "density": [
               128
+            ],
+            "maxSize": [
+              2048
             ]
           },
           "MaterialStyle": {
@@ -1709,11 +1793,17 @@
           "ArtShape": {
             "characterFaces": [
               10000
+            ],
+            "propFaces": [
+              10000
             ]
           },
           "ArtTexels": {
             "density": [
               0
+            ],
+            "maxSize": [
+              2048
             ]
           },
           "Fog": {
@@ -1863,11 +1953,17 @@
           "ArtShape": {
             "characterFaces": [
               10000
+            ],
+            "propFaces": [
+              10000
             ]
           },
           "ArtTexels": {
             "density": [
               0
+            ],
+            "maxSize": [
+              2048
             ]
           },
           "Fog": {
@@ -2034,11 +2130,17 @@
           "ArtShape": {
             "characterFaces": [
               10000
+            ],
+            "propFaces": [
+              10000
             ]
           },
           "ArtTexels": {
             "density": [
               0
+            ],
+            "maxSize": [
+              2048
             ]
           },
           "Fog": {
@@ -2188,11 +2290,17 @@
           "ArtShape": {
             "characterFaces": [
               10000
+            ],
+            "propFaces": [
+              10000
             ]
           },
           "ArtTexels": {
             "density": [
               0
+            ],
+            "maxSize": [
+              2048
             ]
           },
           "Fog": {
@@ -2358,11 +2466,17 @@
           "ArtShape": {
             "characterFaces": [
               10000
+            ],
+            "propFaces": [
+              10000
             ]
           },
           "ArtTexels": {
             "density": [
               0
+            ],
+            "maxSize": [
+              2048
             ]
           },
           "Fog": {
@@ -2525,11 +2639,17 @@
           "ArtShape": {
             "characterFaces": [
               10000
+            ],
+            "propFaces": [
+              10000
             ]
           },
           "ArtTexels": {
             "density": [
               0
+            ],
+            "maxSize": [
+              2048
             ]
           },
           "Fog": {
@@ -2690,11 +2810,17 @@
           "ArtShape": {
             "characterFaces": [
               10000
+            ],
+            "propFaces": [
+              10000
             ]
           },
           "ArtTexels": {
             "density": [
               0
+            ],
+            "maxSize": [
+              2048
             ]
           },
           "Fog": {

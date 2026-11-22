@@ -38,6 +38,11 @@
               20000
             ]
           },
+          "ArtTexels": {
+            "maxSize": [
+              4096
+            ]
+          },
           "PostEffects": {
             "depthOfField": [
               true
@@ -114,6 +119,11 @@
           "ArtShape": {
             "propFaces": [
               20000
+            ]
+          },
+          "ArtTexels": {
+            "maxSize": [
+              4096
             ]
           },
           "PostEffects": {
@@ -215,6 +225,11 @@
           "ArtShape": {
             "propFaces": [
               20000
+            ]
+          },
+          "ArtTexels": {
+            "maxSize": [
+              4096
             ]
           },
           "PostEffects": {
@@ -323,6 +338,11 @@
               20000
             ]
           },
+          "ArtTexels": {
+            "maxSize": [
+              4096
+            ]
+          },
           "PostEffects": {
             "depthOfField": [
               true
@@ -399,6 +419,11 @@
           "ArtShape": {
             "propFaces": [
               20000
+            ]
+          },
+          "ArtTexels": {
+            "maxSize": [
+              4096
             ]
           },
           "PostEffects": {
@@ -495,6 +520,11 @@
               20000
             ]
           },
+          "ArtTexels": {
+            "maxSize": [
+              4096
+            ]
+          },
           "PostEffects": {
             "brightness": [
               0.03
@@ -588,6 +618,11 @@
           "ArtShape": {
             "propFaces": [
               20000
+            ]
+          },
+          "ArtTexels": {
+            "maxSize": [
+              4096
             ]
           },
           "PostEffects": {

@@ -28,6 +28,7 @@ Stylise {
   hatchingKeepColor false
 }
 ArtShape {
+  propFaces 20000
   characterFaces 20000
   normals smooth
 }

@@ -13,6 +13,9 @@
           "ArtShape": {
             "characterFaces": [
               100000
+            ],
+            "propFaces": [
+              100000
             ]
           },
           "ArtTexels": {
@@ -21,6 +24,9 @@
             ],
             "filter": [
               "linear"
+            ],
+            "maxSize": [
+              4096
             ],
             "mips": [
               "full"
@@ -85,6 +91,9 @@
           "ArtShape": {
             "characterFaces": [
               100000
+            ],
+            "propFaces": [
+              100000
             ]
           },
           "ArtTexels": {
@@ -93,6 +102,9 @@
             ],
             "filter": [
               "linear"
+            ],
+            "maxSize": [
+              4096
             ],
             "mips": [
               "full"
@@ -178,6 +190,9 @@
           "ArtShape": {
             "characterFaces": [
               100000
+            ],
+            "propFaces": [
+              100000
             ]
           },
           "ArtTexels": {
@@ -186,6 +201,9 @@
             ],
             "filter": [
               "linear"
+            ],
+            "maxSize": [
+              4096
             ],
             "mips": [
               "full"
@@ -270,6 +288,9 @@
           "ArtShape": {
             "characterFaces": [
               100000
+            ],
+            "propFaces": [
+              100000
             ]
           },
           "ArtTexels": {
@@ -278,6 +299,9 @@
             ],
             "filter": [
               "linear"
+            ],
+            "maxSize": [
+              4096
             ],
             "mips": [
               "full"
@@ -359,6 +383,9 @@
           "ArtShape": {
             "characterFaces": [
               100000
+            ],
+            "propFaces": [
+              100000
             ]
           },
           "ArtTexels": {
@@ -367,6 +394,9 @@
             ],
             "filter": [
               "linear"
+            ],
+            "maxSize": [
+              4096
             ],
             "mips": [
               "full"
@@ -431,6 +461,9 @@
           "ArtShape": {
             "characterFaces": [
               100000
+            ],
+            "propFaces": [
+              100000
             ]
           },
           "ArtTexels": {
@@ -439,6 +472,9 @@
             ],
             "filter": [
               "linear"
+            ],
+            "maxSize": [
+              4096
             ],
             "mips": [
               "full"
@@ -518,6 +554,9 @@
           "ArtShape": {
             "characterFaces": [
               100000
+            ],
+            "propFaces": [
+              100000
             ]
           },
           "ArtTexels": {
@@ -526,6 +565,9 @@
             ],
             "filter": [
               "linear"
+            ],
+            "maxSize": [
+              4096
             ],
             "mips": [
               "full"
@@ -602,6 +644,9 @@
           "ArtShape": {
             "characterFaces": [
               10000
+            ],
+            "propFaces": [
+              10000
             ]
           },
           "ArtTexels": {
@@ -610,6 +655,9 @@
             ],
             "filter": [
               "any"
+            ],
+            "maxSize": [
+              4096
             ],
             "mips": [
               "any"
@@ -688,6 +736,9 @@
           "ArtShape": {
             "characterFaces": [
               10000
+            ],
+            "propFaces": [
+              10000
             ]
           },
           "ArtTexels": {
@@ -696,6 +747,9 @@
             ],
             "filter": [
               "any"
+            ],
+            "maxSize": [
+              4096
             ],
             "mips": [
               "any"
@@ -786,6 +840,9 @@
           "ArtShape": {
             "characterFaces": [
               10000
+            ],
+            "propFaces": [
+              10000
             ]
           },
           "ArtTexels": {
@@ -794,6 +851,9 @@
             ],
             "filter": [
               "any"
+            ],
+            "maxSize": [
+              4096
             ],
             "mips": [
               "any"
@@ -872,6 +932,9 @@
           "ArtShape": {
             "characterFaces": [
               10000
+            ],
+            "propFaces": [
+              10000
             ]
           },
           "ArtTexels": {
@@ -880,6 +943,9 @@
             ],
             "filter": [
               "any"
+            ],
+            "maxSize": [
+              4096
             ],
             "mips": [
               "any"
@@ -972,6 +1038,9 @@
           "ArtShape": {
             "characterFaces": [
               10000
+            ],
+            "propFaces": [
+              10000
             ]
           },
           "ArtTexels": {
@@ -980,6 +1049,9 @@
             ],
             "filter": [
               "any"
+            ],
+            "maxSize": [
+              4096
             ],
             "mips": [
               "any"
@@ -1069,6 +1141,9 @@
           "ArtShape": {
             "characterFaces": [
               10000
+            ],
+            "propFaces": [
+              10000
             ]
           },
           "ArtTexels": {
@@ -1077,6 +1152,9 @@
             ],
             "filter": [
               "any"
+            ],
+            "maxSize": [
+              4096
             ],
             "mips": [
               "any"
@@ -1167,6 +1245,9 @@
           "ArtShape": {
             "characterFaces": [
               10000
+            ],
+            "propFaces": [
+              10000
             ]
           },
           "ArtTexels": {
@@ -1175,6 +1256,9 @@
             ],
             "filter": [
               "any"
+            ],
+            "maxSize": [
+              4096
             ],
             "mips": [
               "any"

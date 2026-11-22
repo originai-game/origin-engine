@@ -25,6 +25,7 @@ ArtTexels {
   mips any
 }
 ArtShape {
+  propFaces 10000
   characterFaces 10000
 }
 ArtCamera {

@@ -8,11 +8,17 @@
           "ArtShape": {
             "characterFaces": [
               30000
+            ],
+            "propFaces": [
+              30000
             ]
           },
           "ArtTexels": {
             "density": [
               128
+            ],
+            "maxSize": [
+              2048
             ]
           },
           "PostEffects": {
@@ -69,11 +75,17 @@
           "ArtShape": {
             "characterFaces": [
               30000
+            ],
+            "propFaces": [
+              30000
             ]
           },
           "ArtTexels": {
             "density": [
               128
+            ],
+            "maxSize": [
+              2048
             ]
           },
           "PostEffects": {
@@ -153,11 +165,17 @@
           "ArtShape": {
             "characterFaces": [
               30000
+            ],
+            "propFaces": [
+              30000
             ]
           },
           "ArtTexels": {
             "density": [
               128
+            ],
+            "maxSize": [
+              2048
             ]
           },
           "PostEffects": {
@@ -236,11 +254,17 @@
           "ArtShape": {
             "characterFaces": [
               30000
+            ],
+            "propFaces": [
+              30000
             ]
           },
           "ArtTexels": {
             "density": [
               128
+            ],
+            "maxSize": [
+              2048
             ]
           },
           "PostEffects": {
@@ -297,11 +321,17 @@
           "ArtShape": {
             "characterFaces": [
               30000
+            ],
+            "propFaces": [
+              30000
             ]
           },
           "ArtTexels": {
             "density": [
               128
+            ],
+            "maxSize": [
+              2048
             ]
           },
           "PostEffects": {
@@ -374,11 +404,17 @@
           "ArtShape": {
             "characterFaces": [
               30000
+            ],
+            "propFaces": [
+              30000
             ]
           },
           "ArtTexels": {
             "density": [
               128
+            ],
+            "maxSize": [
+              2048
             ]
           },
           "PostEffects": {
@@ -452,11 +488,17 @@
           "ArtShape": {
             "characterFaces": [
               30000
+            ],
+            "propFaces": [
+              30000
             ]
           },
           "ArtTexels": {
             "density": [
               128
+            ],
+            "maxSize": [
+              2048
             ]
           },
           "PostEffects": {
@@ -527,6 +569,9 @@
           "ArtShape": {
             "characterFaces": [
               0
+            ],
+            "propFaces": [
+              30000
             ]
           },
           "ArtTexels": {
@@ -602,6 +647,9 @@
           "ArtShape": {
             "characterFaces": [
               0
+            ],
+            "propFaces": [
+              30000
             ]
           },
           "ArtTexels": {
@@ -689,6 +737,9 @@
           "ArtShape": {
             "characterFaces": [
               0
+            ],
+            "propFaces": [
+              30000
             ]
           },
           "ArtTexels": {
@@ -775,6 +826,9 @@
           "ArtShape": {
             "characterFaces": [
               0
+            ],
+            "propFaces": [
+              30000
             ]
           },
           "ArtTexels": {
@@ -861,6 +915,9 @@
           "ArtShape": {
             "characterFaces": [
               0
+            ],
+            "propFaces": [
+              30000
             ]
           },
           "ArtTexels": {
@@ -944,6 +1001,9 @@
           "ArtShape": {
             "characterFaces": [
               0
+            ],
+            "propFaces": [
+              30000
             ]
           },
           "ArtTexels": {
@@ -1028,6 +1088,9 @@
           "ArtShape": {
             "characterFaces": [
               0
+            ],
+            "propFaces": [
+              30000
             ]
           },
           "ArtTexels": {
@@ -1111,6 +1174,9 @@
           "ArtTexels": {
             "density": [
               0
+            ],
+            "maxSize": [
+              2048
             ]
           },
           "PostEffects": {
@@ -1198,6 +1264,9 @@
           "ArtTexels": {
             "density": [
               0
+            ],
+            "maxSize": [
+              2048
             ]
           },
           "PostEffects": {
@@ -1306,6 +1375,9 @@
           "ArtTexels": {
             "density": [
               0
+            ],
+            "maxSize": [
+              2048
             ]
           },
           "PostEffects": {
@@ -1413,6 +1485,9 @@
           "ArtTexels": {
             "density": [
               0
+            ],
+            "maxSize": [
+              2048
             ]
           },
           "PostEffects": {
@@ -1517,6 +1592,9 @@
           "ArtTexels": {
             "density": [
               0
+            ],
+            "maxSize": [
+              2048
             ]
           },
           "PostEffects": {
@@ -1604,6 +1682,9 @@
           "ArtTexels": {
             "density": [
               0
+            ],
+            "maxSize": [
+              2048
             ]
           },
           "PostEffects": {
@@ -1706,6 +1787,9 @@
           "ArtTexels": {
             "density": [
               0
+            ],
+            "maxSize": [
+              2048
             ]
           },
           "PostEffects": {
@@ -1805,6 +1889,9 @@
           "ArtTexels": {
             "density": [
               128
+            ],
+            "maxSize": [
+              2048
             ]
           },
           "PostEffects": {
@@ -1880,6 +1967,9 @@
           "ArtTexels": {
             "density": [
               128
+            ],
+            "maxSize": [
+              2048
             ]
           },
           "PostEffects": {
@@ -1973,6 +2063,9 @@
           "ArtTexels": {
             "density": [
               128
+            ],
+            "maxSize": [
+              2048
             ]
           },
           "PostEffects": {
@@ -2065,6 +2158,9 @@
           "ArtTexels": {
             "density": [
               128
+            ],
+            "maxSize": [
+              2048
             ]
           },
           "PostEffects": {
@@ -2140,6 +2236,9 @@
           "ArtTexels": {
             "density": [
               128
+            ],
+            "maxSize": [
+              2048
             ]
           },
           "PostEffects": {
@@ -2226,6 +2325,9 @@
           "ArtTexels": {
             "density": [
               128
+            ],
+            "maxSize": [
+              2048
             ]
           },
           "PostEffects": {
@@ -2316,6 +2418,9 @@
           "ArtTexels": {
             "density": [
               128
+            ],
+            "maxSize": [
+              2048
             ]
           },
           "PostEffects": {

@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "look presets ArtShape.propFaces, ArtTexels.maxSize",
+      "summary": "Every 3D preset whose art direction gives a triangle range or a texel density now states a prop budget and a largest texture: painterly-3d and inked-comic-3d 30k triangles and 2048 texels, anime-cel-3d 40k and 2048, cinematic-realism 100k and 4096 (its muted variant 10k), pixel-3d-hybrid 4096 texels; inked's bold-comic and heavy-ink variants hold props to their character budgets. The cook holds props to them, and og model measure reports them. Looks whose palette is free (painterly, inked, cinematic, low-resolution) state no colours, and measure gives the palette facts as absent with that reason."
+    }
+  ]
+}
