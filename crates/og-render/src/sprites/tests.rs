@@ -55,7 +55,6 @@ pub(super) fn faced_sprites_sort_back_to_front_cull_to_the_frustum_and_cast_sun_
     };
     let f = build(
         &scene,
-        |_| None,
         0,
         |_| None,
         &[],
@@ -97,7 +96,6 @@ pub(super) fn faced_sprites_sort_back_to_front_cull_to_the_frustum_and_cast_sun_
     // By distance without a forward (a probe's faces), still far first.
     let f = build(
         &scene,
-        |_| None,
         0,
         |_| None,
         &[],
@@ -148,7 +146,6 @@ pub(super) fn a_sprite_anchored_elsewhere_keeps_its_corners() {
 pub(super) fn frame(scene: &RenderScene) -> SpriteFrame {
     build(
         scene,
-        |_| None,
         0,
         |_| None,
         &[],
@@ -198,7 +195,6 @@ pub(super) fn a_drop_shadow_draws_first_in_its_layer_projected_along_the_sun() {
     assert!(
         build(
             &scene,
-            |_| None,
             0,
             |_| None,
             &[],
@@ -406,7 +402,6 @@ pub(super) fn a_sprite_mesh_is_one_run_in_its_layers_sprite_order() {
     assert!(
         build(
             &scene,
-            |_| None,
             0,
             |_| None,
             &[],
@@ -462,7 +457,6 @@ pub(super) fn particles_simulated_in_compute_draw_their_range_in_layer_order_and
     let build_once = |gpu: &mut GpuSprites| {
         build(
             &scene,
-            |_| None,
             0,
             |_| None,
             &[],
@@ -501,7 +495,6 @@ pub(super) fn particles_simulated_in_compute_draw_their_range_in_layer_order_and
     assert_eq!((gpu.ranges.len(), gpu.total), (2, 140));
     let masked = build(
         &scene,
-        |_| None,
         0,
         |_| None,
         &[],

@@ -143,8 +143,8 @@ pub(crate) struct Ghost {
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) struct Floating {
     pub text: String,
-    /// The font: a FontPages index, or u32::MAX for the UI's body font.
-    pub font: u32,
+    /// Its font's family (a CSS family list; `sans-serif` the UI's body).
+    pub family: String,
     pub position: Vec3,
     pub drift: f32,
     pub start: f64,

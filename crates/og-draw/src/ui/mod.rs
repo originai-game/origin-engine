@@ -1383,40 +1383,6 @@ pub fn square_to_quad(quad: &[Vec2; 4]) -> Option<[[f32; 3]; 3]> {
     Some(m.map(|r| r.map(|v| v as f32)))
 }
 
-/// An outline around overlay text, drawn from its font's distance field.
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub struct UiTextOutline {
-    /// CSS px (up to the field's reach, half the font's distance range).
-    pub width: f32,
-    pub color: [f32; 4],
-    pub align: UiAlign,
-}
-
-/// A shadow under overlay text: the glyphs moved by `offset`, softened by
-/// `blur` CSS px.
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub struct UiTextShadow {
-    pub offset: Vec2,
-    pub blur: f32,
-    pub color: [f32; 4],
-}
-
-/// Effects of [`crate::Overlay::texts`]' text `text` (§5.6): shadows (in
-/// order, under everything), an outline, and a gradient fill whose `from`
-/// and `to` are fractions of `fill_box` (`[x, y, width, height]`, CSS px).
-/// `transform` maps the text's glyphs about its position (a 2×2 as
-/// [`UiShape::transform`], after its rotation; zero or `[1, 0, 0, 1]`: none):
-/// an element's turn, scale and skew, its effects' widths and offsets with it.
-#[derive(Clone, Debug, Default, PartialEq)]
-pub struct UiTextEffects {
-    pub text: u32,
-    pub shadows: Vec<UiTextShadow>,
-    pub outline: Option<UiTextOutline>,
-    pub fill: Option<UiGradient>,
-    pub fill_box: [f32; 4],
-    pub transform: [f32; 4],
-}
-
 /// A scene's cooked vector ([`crate::RenderScene::add_ui_vector`]).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct UiVectorHandle(pub u32);
@@ -1494,7 +1460,6 @@ pub struct UiList {
     pub shapes: Vec<UiShape>,
     pub clips: Vec<UiClip>,
     pub layers: Vec<UiLayer>,
-    pub text_effects: Vec<UiTextEffects>,
     pub vectors: Vec<UiVectorDraw>,
     /// The UI clock in seconds: patterns scroll and materials move by it.
     pub time: f32,

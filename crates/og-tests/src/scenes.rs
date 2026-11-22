@@ -204,7 +204,6 @@ pub const SCENES: &[&str] = &[
     "ui-effects",
     "ui-layers",
     "ui-ground",
-    "ui-text-effects",
     "ui-world",
     "ui-panel",
     "ui-glass-bright",
@@ -1914,14 +1913,10 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
             g.scene = crate::ui_scenes::glass_scene(which, load_font, true)?.0;
             Ok(())
         },
-        "ui-text-effects" => |g, _| {
-            g.scene = crate::ui_scenes::text_effects(load_font)?;
-            Ok(())
-        },
         // World-space UI (docs/ui.md §1, src/ui_scenes.rs): mass elements
         // (numbers, nameplates, bars, icons) and occluders over a 3D scene.
         "ui-world" => |g, _| {
-            g.scene = crate::ui_scenes::world(load_font, |s| sprite_textures(s)[1])?;
+            g.scene = crate::ui_scenes::world(load_msdf_font, |s| sprite_textures(s)[1])?;
             Ok(())
         },
         // A world panel (docs/ui.md §1): a UI layer drawn into a render

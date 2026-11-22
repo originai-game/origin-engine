@@ -19,10 +19,10 @@ use skrifa::outline::{DrawSettings, OutlinePen};
 use skrifa::{FontRef, GlyphId, MetadataProvider};
 
 /// Field pixels per em.
-pub const EM_PX: f32 = 48.0;
+pub const EM_PX: f32 = og_draw::glyphs::FIELD_EM_PX;
 /// The distances the field holds, field pixels across: `-RANGE / 2` to
 /// `RANGE / 2` around the edge.
-pub const RANGE: f32 = 12.0;
+pub const RANGE: f32 = og_draw::glyphs::FIELD_RANGE;
 
 /// A glyph's field: `width` × `height` RGBA texels, rows from the top,
 /// whose top left texel sits `left` field pixels right of the pen and `top`

@@ -35,8 +35,8 @@ pub use ui::{
     UiGradientKind, UiGround, UiImage, UiJoin, UiLayer, UiLight, UiList, UiMask, UiMassBarStyle,
     UiMassBatch, UiMassInstance, UiMassKey, UiMassKind, UiMassSpace, UiMassTemplate, UiMaterial,
     UiMaterialHandle, UiMode, UiOccluder, UiOcclusion, UiOrientation, UiPaint, UiParticleShape,
-    UiPath, UiRepeat, UiShape, UiSpread, UiStop, UiStroke, UiTextEffects, UiTextOutline,
-    UiTextShadow, UiTransfer, UiVectorData, UiVectorDraw, UiVectorHandle, UiVectorPaint,
-    UiVectorStroke, UiVectorVertex, flatten_cubic, format_number, glam_vec2, kurbo_point, oklab,
-    oklab_to_linear, parse_svg_path, polylines, square_to_quad, ui_scrim,
+    UiPath, UiRepeat, UiShape, UiSpread, UiStop, UiStroke, UiTransfer, UiVectorData, UiVectorDraw,
+    UiVectorHandle, UiVectorPaint, UiVectorStroke, UiVectorVertex, flatten_cubic, format_number,
+    glam_vec2, kurbo_point, oklab, oklab_to_linear, parse_svg_path, polylines, square_to_quad,
+    ui_scrim,
 };

@@ -235,12 +235,14 @@ impl Renderer {
                         .as_ref()
                         .expect("made before the pass"),
                 ),
-                RunSource::Font(f) => (
+                RunSource::Glyphs(tier, page) => {
+                    let Some(group) = self.paint.glyph_group(tier, page) else {
+                        continue;
+                    };
                     // A colour page's glyphs are images: the sprite pipeline.
-                    !self.cache.fonts[f.index()].layout.color,
-                    SpriteBlend::Alpha,
-                    &self.cache.fonts[f.index()].bind_group,
-                ),
+                    let colour = tier == og_draw::glyphs::GlyphTier::Color;
+                    (!colour, SpriteBlend::Alpha, group)
+                }
             };
             if current != Some((msdf, blend, tone_mapped)) {
                 let Some(pipeline) = match (msdf, blend, tone_mapped) {

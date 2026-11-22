@@ -34,7 +34,7 @@ pub struct TextDraw {
     pub font: og_draw::FontHandle,
     pub text: String,
     /// One per character of `text` (empty: the font's advances and kerning).
-    pub placements: Vec<og_draw::GlyphPlacement>,
+    pub placements: Vec<og_text::text::GlyphPlacement>,
     /// The pen at the line's baseline, CSS px.
     pub pen: Vec2,
     pub size: f32,

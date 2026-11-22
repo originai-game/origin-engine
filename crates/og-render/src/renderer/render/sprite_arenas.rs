@@ -160,9 +160,7 @@ impl Renderer {
                     count: 1,
                 }),
         );
-        let fonts = &self.cache.fonts;
         let arrays = &self.cache.texture_arrays;
-        let font = |i: usize| fonts.get(i).map(|f| &f.layout);
         let array_layers = |a: TextureArrayHandle| {
             scene
                 .contains_texture_array(a)
@@ -184,7 +182,6 @@ impl Renderer {
             .and_then(|r| r.frame.take());
         let mut sprite_frame = sprites::build(
             scene,
-            font,
             self.cache.textures.len(),
             array_layers,
             &particle_frame.sprites,
@@ -238,7 +235,6 @@ impl Renderer {
                 .collect();
             let f = sprites::build(
                 scene,
-                font,
                 self.cache.textures.len(),
                 array_layers,
                 &particle_frame.sprites,
@@ -301,7 +297,6 @@ impl Renderer {
                 let frustum = Frustum::from_view_proj(cam.view_proj);
                 let f = sprites::build(
                     scene,
-                    font,
                     self.cache.textures.len(),
                     array_layers,
                     &particle_frame.sprites,

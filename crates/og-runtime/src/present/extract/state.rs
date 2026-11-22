@@ -14,6 +14,8 @@ pub(crate) struct FontPages {
 #[derive(Clone, Debug)]
 pub(crate) struct QueuedText {
     pub font: usize,
+    /// Its font's family (`crate::present::faces::family_of`).
+    pub family: String,
     pub text: String,
     pub position: Vec3,
     pub size: f32,
@@ -26,9 +28,11 @@ pub(crate) struct QueuedText {
     /// World text: an outline (width as a fraction of the distance range) and its colour.
     pub outline: f32,
     pub outline_color: [f32; 4],
-    /// World text: a billboard (`TextDesc.facing`) turning about the point
-    /// `align` of each line along it (`og_render::TextFacing`).
+    /// World text: a billboard (`TextDesc.facing`) turning about its
+    /// position (`og_render::TextFacing`).
     pub facing: og_render::SpriteFacing,
+    /// Each line placed `align` of its width back from the position (0
+    /// its start, 0.5 its middle, 1 its end).
     pub align: f32,
 }
 
@@ -216,6 +220,10 @@ pub(crate) struct RenderState {
     /// The font files TSX text is laid out from and rastered
     /// (`crate::present::faces`).
     pub ui_faces: crate::present::faces::Faces,
+    /// World and overlay text's rasters and its layout scratch
+    /// (`crate::present::faces::text_glyphs`).
+    pub text_strikes: og_text::strike::Strikes,
+    pub text_layout: og_text::layout::Text,
     /// The documents, on og-ui's new core.
     pub ui_next: Option<Box<crate::present::ui_next::Next>>,
     /// A UI font's first atlas page → every page, so text is drawn per page.
@@ -345,6 +353,8 @@ impl RenderState {
             ui_fonts: Default::default(),
             ui_icons: Default::default(),
             ui_faces: Default::default(),
+            text_strikes: Default::default(),
+            text_layout: Default::default(),
             ui_next: None,
             ui_pages: BTreeMap::new(),
             runtime_fonts: IdMap::new(),

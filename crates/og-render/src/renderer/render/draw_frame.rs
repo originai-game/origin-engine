@@ -407,6 +407,10 @@ impl Renderer {
                     width: self.out_width,
                     height: self.out_height,
                 },
+                {
+                    let atlas = scene.ui.glyphs.lock().unwrap_or_else(|e| e.into_inner());
+                    og_draw::glyphs::GlyphTier::ALL.map(|t| atlas.pages(t).1.max(1) as f32)
+                },
                 &mut self.overlay.mass_eases,
             )?),
             (None, _) => None,

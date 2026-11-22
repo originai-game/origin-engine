@@ -57,8 +57,8 @@ impl Renderer {
             RunSource::Sprite(SpriteBlend::Alpha, t) if self.normal_group(scene, t).is_none() => {
                 Some(Source::Sprite)
             }
-            RunSource::Font(f) if self.cache.fonts[f.index()].layout.color => Some(Source::Sprite),
-            RunSource::Font(_) => Some(Source::Msdf),
+            RunSource::Glyphs(og_draw::glyphs::GlyphTier::Color, _) => Some(Source::Sprite),
+            RunSource::Glyphs(..) => Some(Source::Msdf),
             _ => None,
         }
     }
@@ -445,7 +445,10 @@ impl Renderer {
                 RunSource::Sprite(_, Some(t)) => self.cache.sprite_groups[t.index()]
                     .as_ref()
                     .expect("made before the pass"),
-                RunSource::Font(f) => &self.cache.fonts[f.index()].bind_group,
+                RunSource::Glyphs(tier, page) => match self.paint.glyph_group(tier, page) {
+                    Some(g) => g,
+                    None => continue,
+                },
                 _ => unreachable!("oit_billboard takes sprites and text"),
             };
             pass.set_bind_group(1, group, &[]);

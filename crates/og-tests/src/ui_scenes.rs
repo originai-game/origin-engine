@@ -15,8 +15,6 @@
 //!   mask, the built-in materials and a custom one.
 //! - `ui-ground`: a layer draped as a decal over a heightfield, a pillar
 //!   standing in it (a document's `<ground>`).
-//! - `ui-text-effects`: text outline in, out and across, a gradient fill
-//!   and stacked shadows.
 //! - `ui-glass-*` (§5.3): flat glass's weights, hairline, shadows, the
 //!   scrim and the fallbacks over bright, dark and busy backdrops
 //!   (`glass.rs`).
@@ -31,7 +29,7 @@ use og_render::{
     Background, ColorSpace, FontHandle, Mips, Overlay, RenderScene, Text, TextureData,
     TextureHandle, Tonemap, UiAlign, UiBlend, UiBuiltin, UiCap, UiClip, UiCorner, UiEdge, UiFit,
     UiGeometry, UiGradient, UiGradientKind, UiImage, UiJoin, UiLayer, UiMask, UiMaterial, UiMode,
-    UiPaint, UiShape, UiSpread, UiStop, UiStroke, UiTextEffects, UiTextOutline, UiTextShadow,
+    UiPaint, UiShape, UiSpread, UiStop, UiStroke,
 };
 
 mod effects_layers;

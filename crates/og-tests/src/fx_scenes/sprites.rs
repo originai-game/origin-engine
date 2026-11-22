@@ -265,7 +265,7 @@ pub fn fx_2d_scene() -> Result<RenderScene, String> {
         size: 0.6,
         color: [1.0, 0.95, 0.8, 1.0],
         layer: 100,
-        ..Text::new(font, "Dungeon 1   coins x3")
+        ..font.text("Dungeon 1   coins x3")
     });
     scene.look.post.glow = Some(Glow { intensity: 1.0 });
     scene.frame.camera = Camera::orthographic_2d(Vec2::ZERO, 12.0);

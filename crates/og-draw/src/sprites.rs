@@ -1,6 +1,7 @@
 //! Sprites, text and the overlay drawn over the finished frame.
 
-use crate::{FontHandle, SpriteArray, TextureHandle};
+use crate::glyphs::GlyphTier;
+use crate::{SpriteArray, TextureHandle};
 use glam::Vec3;
 
 /// A textured quad in the world's xy plane, facing +z (towards the 2D
@@ -177,32 +178,35 @@ impl MsdfFont {
     }
 }
 
-/// Where a shaper put one character of a [`Text`] ([`Text::placements`]),
-/// in em: the pen moves `advance` after it, and its glyph is drawn offset by
-/// `(x, y)` from the pen (y up), as HarfBuzz's positions are.
+/// One glyph of a [`Text`]: its raster in the glyph atlas
+/// ([`crate::glyphs`]) and where its quad lies.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
-pub struct GlyphPlacement {
-    pub advance: f32,
-    pub x: f32,
-    pub y: f32,
-    /// A shaped form drawn by the font's glyph id ([`GlyphKey::Id`])
-    /// instead of its character's glyph; the character stays in the text
-    /// (the cluster's first). `None`: the character's own glyph.
-    pub glyph: Option<u16>,
+pub struct TextGlyph {
+    /// The quad from the pen at the first line's baseline, in em, y up:
+    /// `[left, bottom, right, top]`.
+    pub rect: [f32; 4],
+    /// Its raster's tier: a distance field ([`GlyphTier::Field`]) or a
+    /// colour glyph ([`GlyphTier::Color`]).
+    pub tier: GlyphTier,
+    /// Its page of that tier.
+    pub page: u16,
+    /// Its rectangle in the page, texels: `[left, top, right, bottom]`.
+    pub uv: [u16; 4],
 }
 
-/// A run of text drawn with an MSDF font, laid out left to right from the
-/// pen at `position` (the first line's baseline), lines split at `\n`.
-/// Characters missing from the font are skipped and counted in
-/// [`crate::FrameStats::missing_glyphs`].
-#[derive(Clone, Debug, PartialEq)]
+/// Text in the world or the overlay: glyphs laid out and aligned by its
+/// writer (og-text) and rastered into the glyph atlas
+/// ([`crate::glyphs::Atlas`]), each drawn from its distance field, or a
+/// colour glyph in its own colours. The first line's baseline origin is at
+/// `position`; lines go down.
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct Text {
-    pub font: FontHandle,
-    pub text: String,
+    pub glyphs: Vec<TextGlyph>,
     pub position: Vec3,
-    /// Em size in world units.
+    /// Em size in world units (CSS px in the overlay).
     pub size: f32,
-    /// Counter-clockwise rotation around `position`, in radians.
+    /// Counter-clockwise rotation around `position`, in radians (clockwise
+    /// on screen in the overlay).
     pub rotation: f32,
     /// Linear RGBA.
     pub color: [f32; 4],
@@ -212,56 +216,6 @@ pub struct Text {
     /// [`Overlay::clips`] the text is cut to, per pixel (`None`: the whole
     /// output). Ignored for world text.
     pub clip: Option<u32>,
-    /// Added to every glyph's advance, in em (CSS `letter-spacing`: after
-    /// each character, the last included): a type ramp's tracking. 0 is the
-    /// font's own spacing.
-    pub tracking: f32,
-    /// In [`Overlay::texts`]: thickens the glyphs by this many CSS pixels at
-    /// their edge (a faux bold from the distance field; 0 is the font's
-    /// weight). Ignored for world text.
-    pub weight: f32,
-    /// In [`Overlay::texts`]: a soft glow around the glyphs read from the
-    /// font's true distance field (MTSDF alpha), drawn under every glyph of
-    /// the text. Ignored for world text (it has [`TextOutline`]).
-    pub glow: Option<TextGlow>,
-    /// Positions from a shaper, one per character of `text` (`\n` included):
-    /// each replaces its character's advance, kerning and tracking, and
-    /// offsets its glyph (marks over their bases, a right-to-left run's
-    /// visual order). Empty: the font's advances and kerning.
-    pub placements: Vec<GlyphPlacement>,
-}
-
-/// A glow around overlay text ([`Text::glow`]): `color`'s alpha at the
-/// glyph's edge, falling to nothing `radius` CSS pixels out. Its reach is
-/// capped by the font's distance range: half `distance_range` atlas pixels
-/// at the size drawn (a font cooked with `px_range 12` glows four times as
-/// far as one with 3).
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub struct TextGlow {
-    /// Linear RGBA.
-    pub color: [f32; 4],
-    /// CSS pixels.
-    pub radius: f32,
-}
-
-impl Text {
-    /// White text of em size 1 at the origin on layer 0.
-    pub fn new(font: FontHandle, text: impl Into<String>) -> Text {
-        Text {
-            font,
-            text: text.into(),
-            position: Vec3::ZERO,
-            size: 1.0,
-            rotation: 0.0,
-            color: [1.0; 4],
-            layer: 0,
-            clip: None,
-            tracking: 0.0,
-            weight: 0.0,
-            glow: None,
-            placements: Vec::new(),
-        }
-    }
 }
 
 /// Sprites and text drawn over the finished frame in screen space: after

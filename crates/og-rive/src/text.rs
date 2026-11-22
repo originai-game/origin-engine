@@ -627,7 +627,7 @@ fn ellipsize(runs: &[Run], pieces: &[Piece], width: f32, last: bool) -> Option<(
 }
 
 /// A piece as a text command draws it: what it draws and the placements.
-pub(super) fn shaped(r: &Run, text: &str) -> (String, Vec<og_draw::GlyphPlacement>) {
+pub(super) fn shaped(r: &Run, text: &str) -> (String, Vec<og_text::text::GlyphPlacement>) {
     drawn_line(r.metrics, text, Direction::Ltr, r.tracking, Features::NONE)
 }
 

@@ -6,20 +6,19 @@ pub fn og_render_floating_text(world: u32, desc: Option<String>) -> Result<(), S
     engine(world).and_then(|eng| {
         let d: crate::host::wire::FloatingTextDesc = crate::host::wire::arg(desc.as_deref(), "desc")?;
         let text = d.text;
-        let font = match d.font {
+        let (family, font) = match d.font {
             None => {
-                let has_ui = eng.render.borrow().ui_fonts.body.handle.is_some();
-                if !has_ui {
+                if !eng.render.borrow().ui_faces.any() {
                     return Err("desc.font is null and the UI has no body font: load one with og.load.font and pass it".into());
                 }
-                u32::MAX
+                ("sans-serif".to_string(), None)
             }
             Some(h) => {
                 let i = crate::world::assets::index_of(h as f64).ok_or_else(|| format!("{h} is not a font handle"))?;
-                if i >= eng.render.borrow().fonts.len() {
-                    return Err(format!("font {h} is not alive"));
-                }
-                i as u32
+                let render = eng.assets.borrow().fonts.get(i).map(|f| f.render).ok_or_else(|| format!("font {h} is not alive"))?;
+                let family = crate::present::faces::family_of(&eng, &mut eng.render.borrow_mut().ui_faces, i)
+                    .ok_or_else(|| format!("font {h} ships no file to lay text out from"))?;
+                (family, Some(render))
             }
         };
         let elapsed = with_world(&eng, |c| Ok(c.time_scale().elapsed), |w| Ok(w.time_scale().elapsed))?;
@@ -27,10 +26,9 @@ pub fn og_render_floating_text(world: u32, desc: Option<String>) -> Result<(), S
         let tick = with_world(&eng, |c| Ok(c.time().tick), |w| Ok(w.time().tick))?;
         let missing = {
             let mut rs = eng.render.borrow_mut();
-            if font == u32::MAX {
-                crate::present::glyphs::ui_lacking(&mut rs, &text)
-            } else {
-                crate::present::glyphs::lacking(&mut rs, font as usize, &text).into_iter().collect()
+            match font {
+                None => crate::present::glyphs::ui_lacking(&mut rs, &text),
+                Some(render) => crate::present::glyphs::lacking(&mut rs, render, &text).into_iter().collect(),
             }
         };
         crate::present::glyphs::warn_missing(&eng, tick, missing);
@@ -45,7 +43,7 @@ pub fn og_render_floating_text(world: u32, desc: Option<String>) -> Result<(), S
         let unit = (h % 2001) as f32 / 1000.0 - 1.0;
         sh.floating.push(Floating {
             text,
-            font,
+            family,
             position: d.position,
             drift: unit * d.spread.max(0.0),
             start: elapsed,

@@ -8,10 +8,10 @@
 
 use crate::RenderError;
 use crate::deferred::Deferred;
-use crate::scene::{FontHandle, Overlay, TextureArrayHandle, TextureHandle};
+use crate::scene::{Overlay, TextureArrayHandle, TextureHandle};
 use crate::sprites::FontLayout;
 use crate::ui::build::{self as ub, ShapePipe, ShapeSource, UiGpu, UiTables};
-use crate::ui::{UiAlign, UiLayer, UiVectorData, UiVectorHandle};
+use crate::ui::{UiLayer, UiVectorData, UiVectorHandle};
 use glam::Vec2;
 use std::collections::HashMap;
 
@@ -24,23 +24,14 @@ pub(crate) struct OverlayInstance {
     uv_rect: [f32; 4],
     color: [f32; 4],
     clip: [f32; 4],
-    /// MSDF text: x the glow's radius in CSS px, y the weight (CSS px of
-    /// thickening), z the pass (0 fill, 1 glow, 2 shadow, 3 outline under
-    /// the fill, 4 outline over it), w unused. Zero for sprites and plain
-    /// text; a sprite drawn from a texture array has its layer in w
-    /// (`shaders/overlay_array.wgsl`).
+    /// Glass: its corner and blur radii (device px) and its size (CSS px);
+    /// a sprite drawn from a texture array has its layer in w
+    /// (`shaders/overlay_array.wgsl`). Zero otherwise.
     effect: [f32; 4],
-    /// The glow's, shadow's or outline's linear RGBA.
+    /// Glass: its opacity in a.
     effect_color: [f32; 4],
-    /// MSDF text: x the outline inside, y the outline outside or the
-    /// shadow's softness (CSS px), z the fill's gradient + 1.
-    effect2: [f32; 4],
     /// The clip's shape + 1 (0: none).
     clip_shape: u32,
-    /// MSDF text under a map: what is left of it after its rotation, an
-    /// upper triangle `[x scale − 1, skew, y scale − 1]` applied to the
-    /// glyph's quad before it turns (zero: none; sprites and glass).
-    shear: [f32; 3],
 }
 
 pub(crate) const OVERLAY_STRIDE: u64 = std::mem::size_of::<OverlayInstance>() as u64;
@@ -48,7 +39,7 @@ pub(crate) const OVERLAY_STRIDE: u64 = std::mem::size_of::<OverlayInstance>() as
 pub(crate) const OVERLAY_LAYOUT: wgpu::VertexBufferLayout<'static> = wgpu::VertexBufferLayout {
     array_stride: OVERLAY_STRIDE,
     step_mode: wgpu::VertexStepMode::Instance,
-    attributes: &wgpu::vertex_attr_array![0 => Float32x4, 1 => Float32x4, 2 => Float32x4, 3 => Float32x4, 4 => Float32x4, 5 => Float32x4, 6 => Float32x4, 7 => Float32x4, 8 => Uint32, 9 => Float32x3],
+    attributes: &wgpu::vertex_attr_array![0 => Float32x4, 1 => Float32x4, 2 => Float32x4, 3 => Float32x4, 4 => Float32x4, 5 => Float32x4, 6 => Float32x4, 7 => Uint32],
 };
 
 /// What one overlay run draws with.
@@ -56,7 +47,9 @@ pub(crate) const OVERLAY_LAYOUT: wgpu::VertexBufferLayout<'static> = wgpu::Verte
 pub(crate) enum OverlaySource {
     /// A sprite texture (`None`: solid white).
     Sprite(Option<TextureHandle>),
-    Font(FontHandle),
+    /// Text's glyphs from a page of the glyph atlas: distance fields or
+    /// colour glyphs.
+    Glyphs(og_draw::glyphs::GlyphTier, u16),
     /// The overlay's glass panels (the blur pyramid, src/glass.rs).
     Glass,
     Array(TextureArrayHandle),
@@ -147,7 +140,6 @@ pub(crate) struct OverlayFrame {
     pub backdrops: Vec<u32>,
     pub sprites: u32,
     pub glyphs: u32,
-    pub missing_glyphs: u32,
     /// Mass elements: each batch's template, their glyph tables and the
     /// instances, in run order.
     pub mass_templates: Vec<crate::ui::mass::TemplateGpu>,
@@ -239,7 +231,8 @@ pub(crate) struct OverlayTarget {
 }
 
 /// Sorts an overlay's sprites, texts, glass and UI into runs (the world
-/// batch's order). `array_layers(a)`: the layers of an uploaded texture
+/// batch's order). `sides`: the glyph atlas's page side by tier, which
+/// its texts' glyphs read. `array_layers(a)`: the layers of an uploaded texture
 /// array (`None`: not uploaded or removed). A sprite drawn from an array
 /// ([`Overlay::sprite_arrays`]) joins its array's run.
 #[allow(clippy::too_many_arguments)]
@@ -252,6 +245,7 @@ pub(crate) fn build<'a>(
     panel_target: impl Fn(crate::TextureHandle) -> Option<crate::TargetTexture>,
     orientation: impl Fn(crate::TextureHandle) -> og_draw::UiOrientation,
     target: OverlayTarget,
+    sides: [f32; 3],
     mass_eases: &mut crate::ui::mass::EaseTables,
 ) -> Result<OverlayFrame, RenderError> {
     let ui = &overlay.ui;
@@ -301,9 +295,7 @@ pub(crate) fn build<'a>(
             clip,
             effect: [0.0; 4],
             effect_color: [0.0; 4],
-            effect2: [0.0; 4],
             clip_shape: shape,
-            shear: [0.0; 3],
         };
         if let Some(&(array, layer)) = arrays.get(&(i as u32)) {
             inst.effect[3] = layer as f32;
@@ -334,9 +326,7 @@ pub(crate) fn build<'a>(
                 clip,
                 effect: [g.radius.max(0.0), g.blur.max(0.0), g.size.x, g.size.y],
                 effect_color: [0.0, 0.0, 0.0, g.alpha.clamp(0.0, 1.0)],
-                effect2: [0.0; 4],
                 clip_shape: shape,
-                shear: [0.0; 3],
             },
         );
     }
@@ -464,147 +454,45 @@ pub(crate) fn build<'a>(
     }
     mass_eases.end_frame();
     let glyphs_from = keyed.len();
-    let effects: HashMap<u32, &crate::ui::UiTextEffects> =
-        ui.text_effects.iter().map(|e| (e.text, e)).collect();
-    let mut missing_glyphs = 0;
     for (i, text) in overlay.texts.iter().enumerate() {
-        let layout = font(text.font.index()).ok_or_else(|| {
-            RenderError::InvalidHandle(format!("overlay text {i}: font {}", text.font.index()))
-        })?;
         let (clip, shape) = clip_rect(overlay, &heads, text.clip, &format!("text {i}"))?;
-        let fx = effects.get(&(i as u32)).copied();
-        // The glyphs' map: the effects' transform after the text's rotation
-        // (y down: a positive rotation turns clockwise on screen), split
-        // into the turn the quad takes and the shear before it.
-        let (sin, cos) = text.rotation.sin_cos();
-        let map = ub::transform_of(fx.map_or(ub::IDENTITY, |f| f.transform));
-        let [ma, mb, mc, md] = map;
-        let [a, b, c, d] = [
-            ma * cos + mc * sin,
-            mb * cos + md * sin,
-            -ma * sin + mc * cos,
-            -mb * sin + md * cos,
-        ];
-        let rotate = |v: Vec2| Vec2::new(a * v.x + c * v.y, b * v.x + d * v.y);
-        let ux = (a * a + b * b).sqrt().max(1e-6);
-        let turn = b.atan2(a);
-        let shear = [ux - 1.0, (a * c + b * d) / ux, (a * d - b * c) / ux - 1.0];
-        // Widths in CSS px (weight, glow, outline, shadow softness) scale
-        // with the map's area.
-        let k = (ma * md - mb * mc).abs().sqrt();
         let origin = text.position.truncate();
-        let glow = text
-            .glow
-            .filter(|g| g.radius > 0.0 && g.color[3] > 0.0)
-            .map(|g| crate::scene::TextGlow {
-                radius: g.radius * k,
-                ..g
-            });
-        let weight = text.weight.max(0.0) * k;
-        // The passes in drawing order: every glyph's shadows, then glows,
-        // then an outline under the fill, the fill, an outline over it; so
-        // no glyph's shadow or glow lies over its neighbour's ink.
-        // (pass code, colour, effect2, offset)
-        let mut passes: Vec<(f32, [f32; 4], [f32; 4], Vec2)> = Vec::new();
-        if let Some(fx) = fx {
-            for s in &fx.shadows {
-                if s.color[3] > 0.0 {
-                    let o = Vec2::new(
-                        ma * s.offset.x + mc * s.offset.y,
-                        mb * s.offset.x + md * s.offset.y,
-                    );
-                    passes.push((2.0, s.color, [0.0, s.blur.max(0.0) * k, 0.0, 0.0], o));
-                }
-            }
-        }
-        if let Some(g) = glow {
-            passes.push((1.0, g.color, [0.0; 4], Vec2::ZERO));
-        }
-        let outline = fx
-            .and_then(|f| f.outline)
-            .filter(|o| o.width > 0.0)
-            .map(|o| crate::ui::UiTextOutline {
-                width: o.width * k,
-                ..o
-            });
-        if let Some(o) = outline.filter(|o| o.align == UiAlign::Outside) {
-            passes.push((3.0, o.color, [0.0, o.width, 0.0, 0.0], Vec2::ZERO));
-        }
-        let fill_gradient = fx
-            .and_then(|f| f.fill.as_ref().map(|g| (g, f.fill_box)))
-            .map(|(g, b)| tables.gradient(g, Some(b)) as f32 + 1.0)
-            .unwrap_or(0.0);
-        passes.push((0.0, [0.0; 4], [0.0, 0.0, fill_gradient, 0.0], Vec2::ZERO));
-        if let Some(o) = outline.filter(|o| o.align != UiAlign::Outside) {
-            let (inner, outer) = match o.align {
-                UiAlign::Inside => (o.width, 0.0),
-                _ => (0.5 * o.width, 0.5 * o.width),
-            };
-            passes.push((4.0, o.color, [inner, outer, 0.0, 0.0], Vec2::ZERO));
-        }
-        for &(pass, pass_color, effect2, offset) in &passes {
-            // A page of colour glyphs draws its images once, untinted but
-            // for the text's alpha, no gradient; their shadows, glow and
-            // outline come from their silhouette page, which draws no fill.
-            if (layout.color && pass != 0.0) || (layout.silhouette && pass == 0.0) {
+        for g in &text.glyphs {
+            let [l, b, r, t] = g.rect;
+            if r <= l || t <= b {
                 continue;
             }
-            // The pen in em, y down from the first baseline.
-            layout.walk(text, layout.line_height, |ch, g, pen, off| {
-                let Some(g) = g else {
-                    if !ch.is_whitespace() && pass == 0.0 {
-                        missing_glyphs += 1;
-                    }
-                    return;
-                };
-                let [l, b, r, t] = g.plane_bounds;
-                if r > l && t > b {
-                    // plane bounds are em y up from the baseline: the glyph's top
-                    // left is (l, -t) in y-down em; a placement's y is up too.
-                    let corner =
-                        rotate((pen + Vec2::new(off.x, -off.y) + Vec2::new(l, -t)) * text.size);
-                    let [al, at, ar, ab] = g.atlas_bounds;
-                    let glow_radius = glow.map_or(0.0, |gl| gl.radius);
-                    let at_layer = text.layer;
-                    keyed.push((
-                        target_of(at_layer, layers),
-                        at_layer,
-                        OverlaySource::Font(text.font),
-                        ov.len() as u32,
-                    ));
-                    ov.push(OverlayInstance {
-                        position_rotation: [
-                            origin.x + corner.x + offset.x,
-                            origin.y + corner.y + offset.y,
-                            0.0,
-                            turn,
-                        ],
-                        size_anchor: [(r - l) * text.size, (t - b) * text.size, 0.0, 0.0],
-                        uv_rect: [
-                            al / layout.atlas_size.x,
-                            at / layout.atlas_size.y,
-                            ar / layout.atlas_size.x,
-                            ab / layout.atlas_size.y,
-                        ],
-                        // A colour page's images keep their colours (those
-                        // in the text's colour mix it in, foreground_mix).
-                        color: if layout.color && !layout.foreground {
-                            [1.0, 1.0, 1.0, text.color[3]]
-                        } else {
-                            text.color
-                        },
-                        clip,
-                        effect: if layout.color {
-                            [0.0; 4]
-                        } else {
-                            [glow_radius, weight, pass, 0.0]
-                        },
-                        effect_color: pass_color,
-                        effect2: if layout.color { [0.0; 4] } else { effect2 },
-                        clip_shape: shape,
-                        shear,
-                    });
-                }
+            let color = g.tier == og_draw::glyphs::GlyphTier::Color;
+            let side = sides[g.tier as usize];
+            let [ul, ut, ur, ub] = g.uv.map(f32::from);
+            // The glyph's top left in y-down em, turned clockwise about
+            // the text's origin by its quad's rotation.
+            keyed.push((
+                target_of(text.layer, layers),
+                text.layer,
+                OverlaySource::Glyphs(g.tier, g.page),
+                ov.len() as u32,
+            ));
+            let (sin, cos) = text.rotation.sin_cos();
+            let corner = Vec2::new(l, -t) * text.size;
+            let corner = Vec2::new(
+                corner.x * cos - corner.y * sin,
+                corner.x * sin + corner.y * cos,
+            );
+            ov.push(OverlayInstance {
+                position_rotation: [origin.x + corner.x, origin.y + corner.y, 0.0, text.rotation],
+                size_anchor: [(r - l) * text.size, (t - b) * text.size, 0.0, 0.0],
+                uv_rect: [ul / side, ut / side, ur / side, ub / side],
+                // A colour glyph keeps its colours, at the text's alpha.
+                color: if color {
+                    [1.0, 1.0, 1.0, text.color[3]]
+                } else {
+                    text.color
+                },
+                clip,
+                effect: [0.0; 4],
+                effect_color: [0.0; 4],
+                clip_shape: shape,
             });
         }
     }
@@ -889,7 +777,6 @@ pub(crate) fn build<'a>(
         layer_masks,
         sprites,
         glyphs,
-        missing_glyphs,
         mass_templates,
         mass_table,
         mass_instances,

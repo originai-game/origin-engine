@@ -2,8 +2,8 @@
 
 use super::*;
 pub use og_draw::{
-    Glass, Glyph, GlyphKey, GlyphPlacement, Kern, MsdfFont, Overlay, Sprite, Text, TextGlow,
-    UI_LAYER, UI_OVERLAY_LAYER, screen_layer,
+    Glass, Glyph, GlyphKey, Kern, MsdfFont, Overlay, Sprite, Text, TextGlyph, UI_LAYER,
+    UI_OVERLAY_LAYER, screen_layer,
 };
 
 /// How a world sprite is turned towards the camera that draws it
@@ -356,18 +356,15 @@ pub struct SpriteOrder {
 }
 
 /// A world text turned to the camera ([`RenderScene::text_facing`]): it
-/// turns as one panel about its pivot, `position` moved forward along each
-/// line's baseline by `align` of that line's width (0 the line's start,
-/// 0.5 its middle, 1 its end; each line is moved back by as much so the
-/// pivot stays put, as an aligned text's lines are), and draws among the
-/// transparent meshes by the pivot's view depth, as a billboard does
-/// ([`RenderScene::sprite_facing`]). It is not culled.
+/// turns as one panel about its `position` (its glyphs placed and aligned
+/// about it by its writer), and draws among the transparent meshes by that
+/// point's view depth, as a billboard does ([`RenderScene::sprite_facing`]).
+/// It is not culled.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct TextFacing {
     /// The index in [`RenderScene::texts`].
     pub text: u32,
     pub facing: SpriteFacing,
-    pub align: f32,
 }
 
 /// An outline around one world text ([`RenderScene::text_outlines`]).
@@ -375,8 +372,9 @@ pub struct TextFacing {
 pub struct TextOutline {
     /// The index in [`RenderScene::texts`].
     pub text: u32,
-    /// The width as a fraction of the font's distance range (1: the widest
-    /// the atlas holds, half its `distance_range` in atlas pixels).
+    /// The width as a fraction of the glyph field's reach (1: the widest
+    /// it holds, half [`og_draw::glyphs::FIELD_RANGE`] field pixels, an
+    /// eighth of an em).
     pub width: f32,
     /// Linear RGBA.
     pub color: [f32; 4],

@@ -3,6 +3,7 @@
 use super::*;
 
 /// A debug label (`og.debug.text`).
+#[derive(Clone)]
 pub(super) struct DebugText {
     pub(super) until: u64,
     pub(super) position: Vec3,
@@ -181,7 +182,8 @@ pub(super) fn texts(rs: &mut RenderState, vp: (f32, f32)) {
     let proj = cam.projection.matrix(aspect, cam.near, cam.far);
     let vpm = proj * view;
     let mut out = Vec::new();
-    for t in &rs.geo.texts {
+    let labels = rs.geo.texts.clone();
+    for t in &labels {
         let clip = vpm * t.position.extend(1.0);
         if clip.w <= 1e-6 {
             continue;
@@ -190,40 +192,19 @@ pub(super) fn texts(rs: &mut RenderState, vp: (f32, f32)) {
         if ndc.z < 0.0 || ndc.z > 1.0 {
             continue;
         }
-        let Some(body) = rs
-            .ui_fonts
-            .for_text(og_ui_next::fonts::FontRole::Body, &t.text)
-            .handle
-        else {
-            continue;
-        };
-        let pages = rs
-            .ui_pages
-            .get(&body)
-            .cloned()
-            .unwrap_or_else(|| vec![body]);
-        let Some(first) = pages.first().and_then(|p| rs.scene.font(*p)) else {
-            continue;
-        };
-        let width = first.measure(&t.text) * t.size;
-        let x = (ndc.x * 0.5 + 0.5) * vp.0 - width * 0.5;
+        // Centred above its point in the UI's body face.
+        let glyphs = crate::present::faces::text_glyphs(rs, "sans-serif", &t.text, 0.5, t.color);
+        let x = (ndc.x * 0.5 + 0.5) * vp.0;
         let y = (0.5 - ndc.y * 0.5) * vp.1 - t.size * 0.6;
-        for page in pages {
-            out.push(og_render::Text {
-                font: page,
-                text: t.text.clone(),
-                position: Vec3::new(x, y, 0.0),
-                size: t.size,
-                rotation: 0.0,
-                color: t.color,
-                layer: og_render::screen_layer(og_render::UI_LAYER),
-                clip: None,
-                tracking: 0.0,
-                weight: 0.0,
-                glow: None,
-                placements: Vec::new(),
-            });
-        }
+        out.push(og_render::Text {
+            glyphs,
+            position: Vec3::new(x, y, 0.0),
+            size: t.size,
+            rotation: 0.0,
+            color: t.color,
+            layer: og_render::screen_layer(og_render::UI_LAYER),
+            clip: None,
+        });
     }
     if out.is_empty() {
         return;

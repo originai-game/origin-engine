@@ -12,7 +12,5 @@ mod gfx;
 mod render;
 #[path = "../terrain.rs"]
 mod terrain;
-#[path = "../text_outline.rs"]
-mod text_outline;
 #[path = "../ui.rs"]
 mod ui;

@@ -21,6 +21,12 @@ use std::sync::{Arc, Mutex};
 /// share it.
 pub type SharedAtlas = Arc<Mutex<Atlas>>;
 
+/// A distance field's pixels an em ([`GlyphTier::Field`]).
+pub const FIELD_EM_PX: f32 = 48.0;
+/// The distances a field holds, field pixels across: `-FIELD_RANGE / 2` to
+/// `FIELD_RANGE / 2` around the edge.
+pub const FIELD_RANGE: f32 = 12.0;
+
 /// A plot's side, pixels.
 pub const PLOT: u32 = 256;
 /// The frames a plot goes unused before it is emptied, and the cadence
@@ -31,11 +37,12 @@ pub const UNUSED_FRAMES: u64 = 64;
 const GUTTER: u32 = 1;
 
 /// What a page holds.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[repr(u8)]
 pub enum GlyphTier {
     /// Coverage at the drawn size, one byte a pixel: a glyph's fill, its
     /// outline's stroke or its blurred shadow.
+    #[default]
     Coverage = 0,
     /// A colour glyph at the drawn size, premultiplied sRGB RGBA.
     Color = 1,

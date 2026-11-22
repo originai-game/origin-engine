@@ -397,59 +397,56 @@ fn texts(rs: &mut RenderState, fresh: bool, vp: (f32, f32)) {
     // text is laid out for this frame.
     super::glyphs::generate(rs);
 
-    // Text, page by page; screen text into the overlay.
-    let queued_texts: &[QueuedText] = if fresh { &rs.texts } else { &[] };
-    for t in queued_texts {
-        let Some(font) = rs.fonts.get(t.font) else {
-            continue;
+    // Text from the glyph atlas; screen text into the overlay.
+    let queued = if fresh {
+        std::mem::take(&mut rs.texts)
+    } else {
+        Vec::new()
+    };
+    for t in &queued {
+        let glyphs = crate::present::faces::text_glyphs(rs, &t.family, &t.text, t.align, t.color);
+        let text = og_render::Text {
+            glyphs,
+            position: t.position,
+            size: t.size,
+            rotation: t.rotation,
+            color: t.color,
+            layer: t.layer,
+            clip: None,
         };
         let scene = &mut rs.scene;
-        for &page in &font.pages {
-            let text = og_render::Text {
-                font: page,
-                text: t.text.clone(),
-                position: t.position,
-                size: t.size,
-                rotation: t.rotation,
-                color: t.color,
-                layer: t.layer,
-                clip: None,
-                tracking: 0.0,
-                weight: 0.0,
-                glow: None,
-                placements: Vec::new(),
-            };
-            if t.screen {
-                let o = scene
-                    .ui
-                    .overlay
-                    .get_or_insert_with(|| og_render::Overlay::new(vp.0, vp.1, 0.0));
-                let clip = t.clip.map(|c| o.add_clip(c));
-                // Not the UI's alone: nothing names what it is made from.
-                o.key = None;
-                o.texts.push(og_render::Text {
-                    clip,
-                    layer: og_render::screen_layer(text.layer),
-                    ..text
+        if t.screen {
+            let o = scene
+                .ui
+                .overlay
+                .get_or_insert_with(|| og_render::Overlay::new(vp.0, vp.1, 0.0));
+            let clip = t.clip.map(|c| o.add_clip(c));
+            // Not the UI's alone: nothing names what it is made from.
+            o.key = None;
+            o.texts.push(og_render::Text {
+                clip,
+                layer: og_render::screen_layer(text.layer),
+                ..text
+            });
+        } else {
+            if t.outline > 0.0 {
+                scene.sprite.text_outlines.push(og_render::TextOutline {
+                    text: scene.sprite.texts.len() as u32,
+                    width: t.outline,
+                    color: t.outline_color,
                 });
-            } else {
-                if t.outline > 0.0 {
-                    scene.sprite.text_outlines.push(og_render::TextOutline {
-                        text: scene.sprite.texts.len() as u32,
-                        width: t.outline,
-                        color: t.outline_color,
-                    });
-                }
-                if t.facing != og_render::SpriteFacing::None {
-                    scene.sprite.text_facing.push(og_render::TextFacing {
-                        text: scene.sprite.texts.len() as u32,
-                        facing: t.facing,
-                        align: t.align,
-                    });
-                }
-                scene.sprite.texts.push(text);
             }
+            if t.facing != og_render::SpriteFacing::None {
+                scene.sprite.text_facing.push(og_render::TextFacing {
+                    text: scene.sprite.texts.len() as u32,
+                    facing: t.facing,
+                });
+            }
+            scene.sprite.texts.push(text);
         }
+    }
+    if fresh {
+        rs.texts = queued;
     }
 }
 

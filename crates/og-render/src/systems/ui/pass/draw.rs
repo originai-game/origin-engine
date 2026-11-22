@@ -42,20 +42,22 @@ impl Renderer {
             let range = run.first..run.first + run.count;
             match run.source {
                 OverlaySource::Sprite(_)
-                | OverlaySource::Font(_)
+                | OverlaySource::Glyphs(..)
                 | OverlaySource::Glass
                 | OverlaySource::Array(_) => {
                     let (pipeline, group) = match run.source {
                         OverlaySource::Sprite(t) => (overlay_pipes.sprite.get(), sprite_group(t)),
-                        OverlaySource::Font(f) => {
-                            let font = &self.cache.fonts[f.index()];
+                        OverlaySource::Glyphs(tier, page) => {
+                            let Some(group) = self.paint.glyph_group(tier, page) else {
+                                continue;
+                            };
                             // A colour page's glyphs are images.
-                            let pipeline = if font.layout.color {
+                            let pipeline = if tier == og_draw::glyphs::GlyphTier::Color {
                                 overlay_pipes.sprite.get()
                             } else {
                                 overlay_pipes.msdf.get()
                             };
-                            (pipeline, &font.bind_group)
+                            (pipeline, group)
                         }
                         OverlaySource::Glass => (
                             overlay_pipes.glass.get(),

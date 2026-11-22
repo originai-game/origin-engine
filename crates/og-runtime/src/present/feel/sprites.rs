@@ -109,7 +109,7 @@ impl StateBlock for SpriteBlock {
         u32_(out, sh.floating.len() as u32);
         for t in &sh.floating {
             put_bytes(out, t.text.as_bytes());
-            u32_(out, t.font);
+            put_bytes(out, t.family.as_bytes());
             for x in t.position.to_array() {
                 f32_(out, x);
             }
@@ -179,7 +179,12 @@ impl StateBlock for SpriteBlock {
             })?;
             sh.floating.push(Floating {
                 text,
-                font: r.u32()?,
+                family: String::from_utf8(r.sized()?.to_vec()).map_err(|_| {
+                    Error::new(
+                        ErrorKind::Parse,
+                        "og.sprite state block: family is not UTF-8",
+                    )
+                })?,
                 position: v3r(&mut r)?,
                 drift: r.f32()?,
                 start: r.f64()?,

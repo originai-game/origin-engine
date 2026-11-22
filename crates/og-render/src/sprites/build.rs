@@ -112,8 +112,8 @@ pub(super) fn tile_instances(
 
 /// Sorts the scene's sprites, the frame's 2D particles (`extra`) and texts
 /// into runs, with the tile layers and the layered strips placed before
-/// the sprites of their layer. `font(i)` is the layout of the scene's font
-/// `i`; `array_layers(a)` the layers of an uploaded texture array (`None`:
+/// the sprites of their layer, texts drawn from the glyph atlas's pages;
+/// `array_layers(a)` the layers of an uploaded texture array (`None`:
 /// not uploaded or removed); `lit(layer, light mask)` is the light map a
 /// receiver takes, 0 unlit, else 1 + its strip (`light2d::LightSlots`); `view` culls tile chunks (orthographic cameras). A sprite or
 /// particle drawn from an array ([`RenderScene::sprite_arrays`]) joins its
@@ -126,9 +126,8 @@ pub(super) fn tile_instances(
 /// its drop shadow) when its bounds miss the eye's frustum. With `seen`
 /// (the cull record's, per scene sprite), what it made of each.
 #[allow(clippy::too_many_arguments)]
-pub(crate) fn build<'a>(
+pub(crate) fn build(
     scene: &RenderScene,
-    font: impl Fn(usize) -> Option<&'a FontLayout>,
     texture_count: usize,
     array_layers: impl Fn(TextureArrayHandle) -> Option<u32>,
     extra: &[ExtraSprite],
@@ -455,11 +454,12 @@ pub(crate) fn build<'a>(
     }
     let sprites = keyed.len() as u32 - shadow_count - mesh_count - gpu_count + sprite_boards;
     let after_sprites = keyed.len() as u32;
-    let mut missing_glyphs = 0;
+    // The glyph atlas's page sides by tier, for the glyphs' texels.
+    let sides = {
+        let atlas = scene.ui.glyphs.lock().unwrap_or_else(|e| e.into_inner());
+        GlyphTier::ALL.map(|t| atlas.pages(t).1.max(1) as f32)
+    };
     for (i, text) in scene.sprite.texts.iter().enumerate() {
-        let font = font(text.font.index()).ok_or_else(|| {
-            RenderError::InvalidHandle(format!("text {i}: font {}", text.font.index()))
-        })?;
         // An outline rides on the glyph's flash colour and glow strength
         // (which plain glyphs leave unused).
         let (outline_color, outline) = match outlines.get(&(i as u32)) {
@@ -469,99 +469,68 @@ pub(crate) fn build<'a>(
             ),
             _ => ([255, 255, 255, 0], 0.0),
         };
-        // A colour glyph silhouette page draws only an outline: the shape
-        // grown by its width, all in the outline's colour, under the
-        // colour images (world text has no shadow or glow).
-        let silhouette_color = match outlines.get(&(i as u32)) {
-            _ if !font.silhouette => None,
-            Some(o) if o.width > 0.0 => Some([
-                o.color[0],
-                o.color[1],
-                o.color[2],
-                o.color[3] * text.color[3],
-            ]),
-            _ => continue,
-        };
         let (sin, cos) = text.rotation.sin_cos();
         let rotate = |v: Vec2| Vec2::new(v.x * cos - v.y * sin, v.x * sin + v.y * cos);
         let origin = text.position.truncate();
         // Faced text (`text_facing`) turns as one panel about its pivot:
-        // every glyph anchored there, its corner the anchor's offset (each
-        // line moved back by `align` of its width); a billboard sorting
-        // with the transparent meshes.
-        let (facing, align) = text_facing
+        // every glyph anchored there, its corner the anchor's offset; a
+        // billboard sorting with the transparent meshes.
+        let facing = text_facing
             .get(&(i as u32))
-            .map_or((SpriteFacing::None, 0.0), |t| (t.facing, t.align));
-        let widths = if facing != SpriteFacing::None && align != 0.0 {
-            font.walk(text, -font.line_height, |_, _, _, _| {})
-        } else {
-            Vec::new()
-        };
+            .map_or(SpriteFacing::None, |t| t.facing);
         let depth = eye.depth(text.position);
-        font.walk(text, -font.line_height, |ch, g, pen, offset| {
-            let Some(g) = g else {
-                if !ch.is_whitespace() {
-                    missing_glyphs += 1;
-                }
-                return;
-            };
-            let [l, b, r, t] = g.plane_bounds;
-            if r > l && t > b {
-                let corner = (pen + offset + Vec2::new(l, b)) * text.size;
-                let [al, at, ar, ab] = g.atlas_bounds;
-                let size = [(r - l) * text.size, (t - b) * text.size];
-                let mut inst = SpriteInstance {
-                    position_rotation: [
-                        origin.x + rotate(corner).x,
-                        origin.y + rotate(corner).y,
-                        text.position.z,
-                        text.rotation,
-                    ],
-                    size_anchor: [size[0], size[1], 0.0, 0.0],
-                    uv_rect: [
-                        al / font.atlas_size.x,
-                        at / font.atlas_size.y,
-                        ar / font.atlas_size.x,
-                        ab / font.atlas_size.y,
-                    ],
-                    // A colour page's images keep their colours (those
-                    // in the text's colour mix it in, foreground_mix).
-                    color: if let Some(c) = silhouette_color {
-                        c
-                    } else if font.color && !font.foreground {
-                        [1.0, 1.0, 1.0, text.color[3]]
-                    } else {
-                        text.color
-                    },
-                    // An outline rides on the flash colour, which on a
-                    // colour page would flash its images to it.
-                    flash: if font.color {
-                        [255, 255, 255, 0]
-                    } else {
-                        outline_color
-                    },
-                    fx: [if font.color { 0.0 } else { outline }, 0.0, 0.0],
-                    ground: NO_GROUND,
-                    layer: 0,
-                    facing: FACING_NONE,
-                    outline: NO_OUTLINE,
-                    outline_color: [0; 4],
-                };
-                if facing == SpriteFacing::None {
-                    keyed.push((text.layer, 0.0, RunSource::Font(text.font), false, inst));
-                } else {
-                    let line = (pen.y / -font.line_height).round() as usize;
-                    let back = widths.get(line).map_or(0.0, |w| w * align * text.size);
-                    let corner = corner - Vec2::new(back, 0.0);
-                    inst.position_rotation[0] = origin.x;
-                    inst.position_rotation[1] = origin.y;
-                    inst.size_anchor[2] = -corner.x / size[0];
-                    inst.size_anchor[3] = -corner.y / size[1];
-                    inst.facing = facing_code(facing);
-                    boards.push((depth, text.layer, RunSource::Font(text.font), inst));
-                }
+        for g in &text.glyphs {
+            let [l, b, r, t] = g.rect;
+            if r <= l || t <= b {
+                continue;
             }
-        });
+            let color = g.tier == GlyphTier::Color;
+            let corner = Vec2::new(l, b) * text.size;
+            let side = sides[g.tier as usize];
+            let [ul, ut, ur, ub] = g.uv.map(f32::from);
+            let size = [(r - l) * text.size, (t - b) * text.size];
+            let source = RunSource::Glyphs(g.tier, g.page);
+            let mut inst = SpriteInstance {
+                position_rotation: [
+                    origin.x + rotate(corner).x,
+                    origin.y + rotate(corner).y,
+                    text.position.z,
+                    text.rotation,
+                ],
+                size_anchor: [size[0], size[1], 0.0, 0.0],
+                // The world's y is up, a page's rows down.
+                uv_rect: [ul / side, ub / side, ur / side, ut / side],
+                // A colour glyph keeps its colours, at the text's alpha.
+                color: if color {
+                    [1.0, 1.0, 1.0, text.color[3]]
+                } else {
+                    text.color
+                },
+                // An outline rides on the flash colour, which on a colour
+                // glyph would flash it to that colour.
+                flash: if color {
+                    [255, 255, 255, 0]
+                } else {
+                    outline_color
+                },
+                fx: [if color { 0.0 } else { outline }, 0.0, 0.0],
+                ground: NO_GROUND,
+                layer: 0,
+                facing: FACING_NONE,
+                outline: NO_OUTLINE,
+                outline_color: [0; 4],
+            };
+            if facing == SpriteFacing::None {
+                keyed.push((text.layer, 0.0, source, false, inst));
+            } else {
+                inst.position_rotation[0] = origin.x;
+                inst.position_rotation[1] = origin.y;
+                inst.size_anchor[2] = -corner.x / size[0];
+                inst.size_anchor[3] = -corner.y / size[1];
+                inst.facing = facing_code(facing);
+                boards.push((depth, text.layer, source, inst));
+            }
+        }
     }
     let glyphs = keyed.len() as u32 - after_sprites + boards.len() as u32 - sprite_boards;
     // Stable: within a (layer, key, source, tone) run, submission order is kept.
@@ -740,7 +709,6 @@ pub(crate) fn build<'a>(
         glow_runs,
         sprites,
         glyphs,
-        missing_glyphs,
         tiles,
         tile_chunks,
         culled,

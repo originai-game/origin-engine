@@ -140,7 +140,7 @@ pub fn overlay_hud(scene: &mut RenderScene) -> Result<(), String> {
         size,
         color,
         layer,
-        ..Text::new(font, s)
+        ..font.text(s)
     };
     // The panel, the title and the health bar (exact token-like colours).
     o.sprites.push(solid(

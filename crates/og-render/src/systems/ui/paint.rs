@@ -60,6 +60,10 @@ pub(crate) enum PaintBind {
 struct GlyphPage {
     texture: wgpu::Texture,
     group: wgpu::BindGroup,
+    /// What binds it for a world or overlay text's glyphs: a field page
+    /// with its range and side (the sprite shaders' `msdf`), a colour page
+    /// as a plain sprite texture; none for a coverage page.
+    drawn: Option<wgpu::BindGroup>,
     /// Each plot's revision as last written.
     written: Vec<u32>,
 }
@@ -508,7 +512,12 @@ impl PaintRenderer {
 
     /// Makes a texture for each page `atlas` has and this has not, and
     /// writes the plots whose pixels changed since they were last written.
-    fn upload_glyphs(&mut self, device: &wgpu::Device, queue: &wgpu::Queue, atlas: &Atlas) {
+    pub(crate) fn upload_glyphs(
+        &mut self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        atlas: &Atlas,
+    ) {
         let now = (atlas.id(), atlas.revision());
         if self.glyphs_of == Some(now) {
             return;
@@ -554,10 +563,28 @@ impl PaintRenderer {
                         &self.glyph_sampler,
                         [0.0; 4],
                     );
+                    let params = match tier {
+                        GlyphTier::Coverage => None,
+                        GlyphTier::Color => Some([0.0, side as f32, side as f32, 0.0]),
+                        GlyphTier::Field => {
+                            Some([og_draw::glyphs::FIELD_RANGE, side as f32, side as f32, 0.0])
+                        }
+                    };
+                    let drawn = params.map(|p| {
+                        crate::sprite_bind_group(
+                            device,
+                            queue,
+                            &self.glyph_layout,
+                            &view,
+                            &self.glyph_sampler,
+                            p,
+                        )
+                    });
                     // A new texture is clear, as a plot never written is.
                     self.glyph_pages[t].push(GlyphPage {
                         texture,
                         group,
+                        drawn,
                         written: vec![0; (per_row * per_row) as usize],
                     });
                 }
@@ -816,6 +843,15 @@ impl PaintRenderer {
             behind,
             behind_group,
         });
+    }
+
+    /// What binds glyph atlas page `page` of `tier` for world and overlay
+    /// text ([`og_draw::TextGlyph`]); `None` before it is uploaded.
+    pub(crate) fn glyph_group(&self, tier: GlyphTier, page: u16) -> Option<&wgpu::BindGroup> {
+        self.glyph_pages[tier as usize]
+            .get(page as usize)?
+            .drawn
+            .as_ref()
     }
 
     /// The layer, where an output of its size needed one.
