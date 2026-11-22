@@ -52,7 +52,7 @@ module math {
 | [`frustum`](#value-frustum) | value |  | Frustum's pure functions: `frustum.fromCamera(camera, aspect)`, `frustum.intersectsBox(f, box)`. |
 | [`ray`](#value-ray) | value |  | Ray's pure functions: `ray.intersectBox(r, box)`, `ray.intersectTriangle(r, a, b, c)`. |
 | [`color`](#value-color) | value |  | Color's pure functions: `color.fromHex(0xff8800)`, `color.toHex(c)`, `color.fromHsl(h, s, l)`. |
-| [`math`](#value-math) | value |  | Math's functions with the same bits on every host: `math.sin(a)`, `math.atan2(y, x)`, `math.pow(x, y)`. |
+| [`math`](#value-math) | value |  | Math's functions with the same bits on every host: `math.sin(a)`, `math.atan2(y, x)`, `math.pow(x, y)`, `math.sqrt(x)`. |
 
 ## Values
 
@@ -72,7 +72,7 @@ const vec3: Vector3Math
 value vec3 Vector3Math "Vector3's pure functions: `vec3.add(a, b)`, `vec3.normalize(v)`, `vec3.applyQuaternion(v, q)`."
 ```
 
-<sub>Module `math` line 677</sub>
+<sub>Module `math` line 683</sub>
 
 <a id="value-vec2"></a>
 
@@ -88,7 +88,7 @@ const vec2: Vector2Math
 value vec2 Vector2Math "Vector2's pure functions: `vec2.add(a, b)`, `vec2.rotateAround(v, c, angle)`."
 ```
 
-<sub>Module `math` line 678</sub>
+<sub>Module `math` line 684</sub>
 
 <a id="value-quat"></a>
 
@@ -104,7 +104,7 @@ const quat: QuaternionMath
 value quat QuaternionMath "Quaternion's pure functions: `quat.multiply(a, b)`, `quat.slerp(a, b, t)`, `quat.fromEuler({ x, y, z })`."
 ```
 
-<sub>Module `math` line 679</sub>
+<sub>Module `math` line 685</sub>
 
 <a id="value-mat4"></a>
 
@@ -120,7 +120,7 @@ const mat4: Matrix4Math
 value mat4 Matrix4Math "Matrix4's pure functions: `mat4.multiply(a, b)`, `mat4.invert(m)`, `mat4.transformPoint(m, p)`."
 ```
 
-<sub>Module `math` line 680</sub>
+<sub>Module `math` line 686</sub>
 
 <a id="value-box3"></a>
 
@@ -136,7 +136,7 @@ const box3: Box3Math
 value box3 Box3Math "Box3's pure functions: `box3.fromPoints(points)`, `box3.intersectsBox(a, b)`."
 ```
 
-<sub>Module `math` line 681</sub>
+<sub>Module `math` line 687</sub>
 
 <a id="value-sphere"></a>
 
@@ -152,7 +152,7 @@ const sphere: SphereMath
 value sphere SphereMath "Sphere's pure functions: `sphere.containsPoint(s, p)`."
 ```
 
-<sub>Module `math` line 682</sub>
+<sub>Module `math` line 688</sub>
 
 <a id="value-plane"></a>
 
@@ -168,7 +168,7 @@ const plane: PlaneMath
 value plane PlaneMath "Plane's pure functions: `plane.distanceToPoint(pl, p)`."
 ```
 
-<sub>Module `math` line 683</sub>
+<sub>Module `math` line 689</sub>
 
 <a id="value-frustum"></a>
 
@@ -184,7 +184,7 @@ const frustum: FrustumMath
 value frustum FrustumMath "Frustum's pure functions: `frustum.fromCamera(camera, aspect)`, `frustum.intersectsBox(f, box)`."
 ```
 
-<sub>Module `math` line 684</sub>
+<sub>Module `math` line 690</sub>
 
 <a id="value-ray"></a>
 
@@ -200,7 +200,7 @@ const ray: RayMath
 value ray RayMath "Ray's pure functions: `ray.intersectBox(r, box)`, `ray.intersectTriangle(r, a, b, c)`."
 ```
 
-<sub>Module `math` line 685</sub>
+<sub>Module `math` line 691</sub>
 
 <a id="value-color"></a>
 
@@ -216,20 +216,20 @@ const color: ColorMath
 value color ColorMath "Color's pure functions: `color.fromHex(0xff8800)`, `color.toHex(c)`, `color.fromHsl(h, s, l)`."
 ```
 
-<sub>Module `math` line 686</sub>
+<sub>Module `math` line 692</sub>
 
 <a id="value-math"></a>
 
 ### `math`
 
-Math's functions with the same bits on every host: `math.sin(a)`, `math.atan2(y, x)`, `math.pow(x, y)`.
+Math's functions with the same bits on every host: `math.sin(a)`, `math.atan2(y, x)`, `math.pow(x, y)`, `math.sqrt(x)`.
 
 ```ts
 const math: ScalarMath
 ```
 
 ```ogt
-value math ScalarMath "Math's functions with the same bits on every host: `math.sin(a)`, `math.atan2(y, x)`, `math.pow(x, y)`."
+value math ScalarMath "Math's functions with the same bits on every host: `math.sin(a)`, `math.atan2(y, x)`, `math.pow(x, y)`, `math.sqrt(x)`."
 ```
 
-<sub>Module `math` line 687</sub>
+<sub>Module `math` line 693</sub>

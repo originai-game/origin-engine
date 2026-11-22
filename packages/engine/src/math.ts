@@ -824,5 +824,6 @@ export const math: typeof Api.math = Object.freeze({
   atan2: (y: number, x: number) => (x !== x || y !== y ? NaN : atan2(y, x)),
   exp: expImpl,
   log: logImpl,
+  sqrt: Math.sqrt,
   pow: powImpl,
 });

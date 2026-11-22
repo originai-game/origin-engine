@@ -1037,7 +1037,7 @@ export interface ColorMath {
 
 /**
  * JavaScript's Math functions whose results differ between JavaScript engines (Math.sin, Math.pow and the rest are only approximations, and V8, JavaScriptCore and SpiderMonkey round them differently), written with + - * / and sqrt only: the same bits on every host and every browser. The value `math`: `math.sin(a)`. A system whose result reaches the world (lockstep, replays, saves) uses these; `og check` names each Math call that should be one in a game with og.Lockstep.
- * Math.sqrt, Math.abs, Math.floor, Math.round, Math.min and Math.max are exact everywhere and stay as they are.
+ * Math.sqrt, Math.abs, Math.floor, Math.round, Math.min and Math.max are exact everywhere; math.sqrt is Math.sqrt.
  */
 export interface ScalarMath {
   /**
@@ -1096,6 +1096,12 @@ export interface ScalarMath {
    */
   log(x: number): number;
   /**
+   * The square root, as Math.sqrt (correctly rounded on every host, so the same bits): NaN below 0. Here so that every Math function a system uses has its `math` name.
+   *
+   * @param x The value.
+   */
+  sqrt(x: number): number;
+  /**
    * x to the y, as Math.pow and `**`: an integer y is multiplication by squaring (x * x for 2), any other y exp(y log x), NaN for a negative x.
    *
    * @param x The base.
@@ -1145,7 +1151,7 @@ export declare const ray: RayMath;
 export declare const color: ColorMath;
 
 /**
- * Math's functions with the same bits on every host: `math.sin(a)`, `math.atan2(y, x)`, `math.pow(x, y)`.
+ * Math's functions with the same bits on every host: `math.sin(a)`, `math.atan2(y, x)`, `math.pow(x, y)`, `math.sqrt(x)`.
  */
 export declare const math: ScalarMath;
 

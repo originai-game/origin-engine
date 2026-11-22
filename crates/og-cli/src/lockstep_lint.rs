@@ -387,6 +387,37 @@ mod tests {
             .collect()
     }
 
+    /// Every `math.x` an OG9001 message tells an author to call is a
+    /// function of the engine's `math` value (ScalarMath in the IDL).
+    #[test]
+    fn every_math_function_a_finding_names_exists() {
+        let idl = include_str!("../../og-api/api/math.ogt");
+        let body = &idl[idl.find("interface ScalarMath {").unwrap()..];
+        let body = &body[..body.find("\n  }\n").unwrap()];
+        let src: String = APPROXIMATED
+            .iter()
+            .map(|(m, _)| format!("Math.{m}(x);\n"))
+            .collect();
+        let mut named = 0;
+        for f in scan(&src) {
+            let mut rest = f.message.as_str();
+            while let Some(at) = rest.find("math.") {
+                let name: String = rest[at + 5..]
+                    .chars()
+                    .take_while(|c| c.is_ascii_alphanumeric())
+                    .collect();
+                assert!(
+                    body.contains(&format!("fn {name} {{")),
+                    "OG9001 names math.{name}, which ScalarMath does not have: {}",
+                    f.message
+                );
+                named += 1;
+                rest = &rest[at + 5..];
+            }
+        }
+        assert!(named > APPROXIMATED.len(), "{named}");
+    }
+
     #[test]
     fn approximated_math_random_and_the_clock_are_found_where_they_are() {
         let src = "const a = Math.sin(t) + Math.sqrt(2);\n  let r = Math.random();\nconst n = Date.now() + performance.now();\nconst p = Math . pow(x, y);\n";

@@ -106,7 +106,7 @@
         {
           "name": "math",
           "type": "ScalarMath",
-          "doc": "Math's functions with the same bits on every host: `math.sin(a)`, `math.atan2(y, x)`, `math.pow(x, y)`."
+          "doc": "Math's functions with the same bits on every host: `math.sin(a)`, `math.atan2(y, x)`, `math.pow(x, y)`, `math.sqrt(x)`."
         }
       ],
       "functions": [],
@@ -1623,7 +1623,7 @@
         },
         {
           "name": "ScalarMath",
-          "doc": "JavaScript's Math functions whose results differ between JavaScript engines (Math.sin, Math.pow and the rest are only approximations, and V8, JavaScriptCore and SpiderMonkey round them differently), written with + - * / and sqrt only: the same bits on every host and every browser. The value `math`: `math.sin(a)`. A system whose result reaches the world (lockstep, replays, saves) uses these; `og check` names each Math call that should be one in a game with og.Lockstep.\nMath.sqrt, Math.abs, Math.floor, Math.round, Math.min and Math.max are exact everywhere and stay as they are.",
+          "doc": "JavaScript's Math functions whose results differ between JavaScript engines (Math.sin, Math.pow and the rest are only approximations, and V8, JavaScriptCore and SpiderMonkey round them differently), written with + - * / and sqrt only: the same bits on every host and every browser. The value `math`: `math.sin(a)`. A system whose result reaches the world (lockstep, replays, saves) uses these; `og check` names each Math call that should be one in a game with og.Lockstep.\nMath.sqrt, Math.abs, Math.floor, Math.round, Math.min and Math.max are exact everywhere; math.sqrt is Math.sqrt.",
           "members": [
             {
               "name": "sin",
@@ -1754,6 +1754,21 @@
             {
               "name": "log",
               "doc": "The natural logarithm, as Math.log: -Infinity at 0, NaN below.",
+              "params": [
+                {
+                  "name": "x",
+                  "type": "f64",
+                  "optional": false,
+                  "doc": "The value."
+                }
+              ],
+              "returns": "f64",
+              "publish": true,
+              "host": false
+            },
+            {
+              "name": "sqrt",
+              "doc": "The square root, as Math.sqrt (correctly rounded on every host, so the same bits): NaN below 0. Here so that every Math function a system uses has its `math` name.",
               "params": [
                 {
                   "name": "x",

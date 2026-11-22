@@ -8,12 +8,12 @@ Module [`math`](../math.md) · [index](../index.md)
 
 JavaScript's Math functions whose results differ between JavaScript engines (Math.sin, Math.pow and the rest are only approximations, and V8, JavaScriptCore and SpiderMonkey round them differently), written with + - * / and sqrt only: the same bits on every host and every browser. The value `math`: `math.sin(a)`. A system whose result reaches the world (lockstep, replays, saves) uses these; `og check` names each Math call that should be one in a game with og.Lockstep.
 
-Math.sqrt, Math.abs, Math.floor, Math.round, Math.min and Math.max are exact everywhere and stay as they are.
+Math.sqrt, Math.abs, Math.floor, Math.round, Math.min and Math.max are exact everywhere; math.sqrt is Math.sqrt.
 
 ```ogt
 interface ScalarMath {
   doc "JavaScript's Math functions whose results differ between JavaScript engines (Math.sin, Math.pow and the rest are only approximations, and V8, JavaScriptCore and SpiderMonkey round them differently), written with + - * / and sqrt only: the same bits on every host and every browser. The value `math`: `math.sin(a)`. A system whose result reaches the world (lockstep, replays, saves) uses these; `og check` names each Math call that should be one in a game with og.Lockstep."
-  doc "Math.sqrt, Math.abs, Math.floor, Math.round, Math.min and Math.max are exact everywhere and stay as they are."
+  doc "Math.sqrt, Math.abs, Math.floor, Math.round, Math.min and Math.max are exact everywhere; math.sqrt is Math.sqrt."
   # members follow, each quoted below
 ```
 
@@ -282,6 +282,35 @@ fn log {
 
 <sub>Module `math` line 662</sub>
 
+<a id="member-ScalarMath-sqrt"></a>
+
+#### `ScalarMath.sqrt`
+
+The square root, as Math.sqrt (correctly rounded on every host, so the same bits): NaN below 0. Here so that every Math function a system uses has its `math` name.
+
+```ts
+ScalarMath.sqrt(x: number): number
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `x` | `number` | no | The value. |
+
+**Returns** `number`.
+
+Implemented by the TypeScript runtime over the members of this module: no binding symbol.
+
+```ogt
+fn sqrt {
+  doc "The square root, as Math.sqrt (correctly rounded on every host, so the same bits): NaN below 0. Here so that every Math function a system uses has its `math` name."
+  host false
+  param x f64 "The value."
+  returns f64
+}
+```
+
+<sub>Module `math` line 668</sub>
+
 <a id="member-ScalarMath-pow"></a>
 
 #### `ScalarMath.pow`
@@ -311,4 +340,4 @@ fn pow {
 }
 ```
 
-<sub>Module `math` line 668</sub>
+<sub>Module `math` line 674</sub>
