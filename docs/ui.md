@@ -2884,7 +2884,10 @@ under every pack: it reads each `.tsx`'s component and `fixtures`, writes
 one project (`target/ui-gallery/project`) that mounts one fixture per page
 on a two-tone stage (a bright sky over a dark floor, captioned with the
 component and fixture), cooks it once, and runs it headless once per pack and scheme,
-switching both with `og.ui.configure` and capturing every page. The
+switching both with `og.ui.configure` and capturing every page 12 ticks
+after it mounts; a page whose `dump_ui` still says `moving` (an entrance
+still popping) is captured again a second after it mounts, so every
+frame is judged at rest. The
 frames land in `<out>/<pack>/` (default `target/ui-gallery/out`; the light
 scheme's in `<out>/<pack>-light/`) with `index.html`, a row per fixture and
 a column per pack and scheme. `--schemes` is `dark` alone unless given. `--only` keeps the

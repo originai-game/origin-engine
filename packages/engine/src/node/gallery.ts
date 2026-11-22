@@ -410,58 +410,78 @@ async function main(): Promise<number> {
   /** The hard defects, by fixture: a mount that threw, a character no face draws, a frame that is the bare stage, a raw string key drawn, a word broken across lines, text under the contrast bar on its drawn ground. */
   const defects: string[] = [];
   if (!(await run(["cook", "."])).ok) return 1;
-  // A pack loads its look and fonts over a few frames; a page settles in 12 ticks.
-  const STEP = 15, SETTLE = 12, LEAD = 30;
+  // A pack loads its look and fonts over a few frames; a page settles in 12 ticks. A page whose UI is
+  // still `moving` then (an entrance, a transition) is shot again once it has had a second, longer
+  // than any built-in entrance, so a frame is judged at rest, never mid-pop.
+  const STEP = 15, SETTLE = 12, LEAD = 30, REST = 60;
   const at = (tick: number) => (tick / 60).toFixed(4);
   for (const { pack, scheme, key } of columns) {
     const shots = join(out, key);
     rmSync(shots, { recursive: true, force: true });
     mkdirSync(shots, { recursive: true });
-    const steps = [`${at(1)}:pack:${pack}`, `${at(2)}:scheme:${scheme}`];
-    list.forEach((_, n) => {
-      const t = LEAD + n * STEP;
-      steps.push(`${at(t)}:page:${n}`, `${at(t + SETTLE)}:screenshot`, `${at(t + SETTLE + 1)}:dump_ui`);
-    });
-    steps.push(`${at(LEAD + list.length * STEP + 1)}:quit`);
-    console.log(`${key}: ${list.length} fixtures`);
-    const r = await run(["run", ".", "--headless", "--no-check", "--size", size, "--out", shots, "--commands", steps.join(";")]);
-    if (!r.ok) return 1;
-    const where = (n: number) => `${key} ${list[n]!.name} · ${list[n]!.fixture}`;
-    const threw = new Set<number>();
-    for (const m of r.log.matchAll(/gallery page (\d+): ([^\n]*)/g)) {
-      const n = Number(m[1]);
-      if (threw.has(n)) continue;
-      threw.add(n);
-      defects.push(`${where(n)}: threw at mount: ${m[2]}`);
-    }
-    // A character no face draws, as the engine reports it with its tick: the page shown then draws tofu.
-    for (const m of r.log.matchAll(/WARN tick (\d+): a frame drew ([^\n]*?), which font/g)) {
-      const n = Math.floor((Number(m[1]) - LEAD) / STEP);
-      if (n >= 0 && n < list.length) defects.push(`${where(n)}: draws no glyph for ${m[2]}`);
-    }
-    const frameFiles = readdirSync(shots).filter((f) => /^screenshot-\d+\.png$/.test(f)).sort();
-    const dumps = readdirSync(shots).filter((f) => /^dump_ui-\d+\.json$/.test(f)).sort();
-    dumps.forEach((f, n) => {
-      if (n < list.length && !threw.has(n)) {
-        const dump = JSON.parse(readFileSync(join(shots, f), "utf8"));
-        const raw = rawKeys(dump, keys);
-        if (raw.length) defects.push(`${where(n)}: draws raw string keys ${raw.join(", ")}`);
-        const broken = brokenWords(dump);
-        if (broken.length) defects.push(`${where(n)}: breaks inside a word ${broken.join(", ")}`);
-        const shot = frameFiles[n];
-        const frame = shot ? decodePng(readFileSync(join(shots, shot))) : undefined;
-        // A fixture that lays out text yet leaves the bare stage drew nothing it meant to; an empty one meant to.
-        if (frame && (dump.elements ?? []).some((e: TextElement) => e.text && e.text !== `${list[n]!.name} · ${list[n]!.fixture}`) && bareStage(frame, frame.width / width)) defects.push(`${where(n)}: draws nothing: the frame is the bare stage, so nothing of it is checked`);
-        for (const low of frame ? lowContrast(dump, frame, frame.width / width) : []) defects.push(`${where(n)}: reads under the contrast bar: ${low}`);
+    /** Shoots `pages` (indices into list), each `settle` ticks after it mounts: per page, its frame file, its dump, what threw and the characters no face drew. */
+    const shoot = async (pages: number[], settle: number, dir: string) => {
+      mkdirSync(dir, { recursive: true });
+      const step = Math.max(STEP, settle + 3);
+      const steps = [`${at(1)}:pack:${pack}`, `${at(2)}:scheme:${scheme}`];
+      pages.forEach((n, i) => {
+        const t = LEAD + i * step;
+        steps.push(`${at(t)}:page:${n}`, `${at(t + settle)}:screenshot`, `${at(t + settle + 1)}:dump_ui`);
+      });
+      steps.push(`${at(LEAD + pages.length * step + 1)}:quit`);
+      const r = await run(["run", ".", "--headless", "--no-check", "--size", size, "--out", dir, "--commands", steps.join(";")]);
+      if (!r.ok) return undefined;
+      const threw = new Map<number, string>();
+      for (const m of r.log.matchAll(/gallery page (\d+): ([^\n]*)/g)) if (!threw.has(Number(m[1]))) threw.set(Number(m[1]), m[2]!);
+      // A character no face draws, as the engine reports it with its tick: the page shown then draws tofu.
+      const tofu = new Map<number, string>();
+      for (const m of r.log.matchAll(/WARN tick (\d+): a frame drew ([^\n]*?), which font/g)) {
+        const n = pages[Math.floor((Number(m[1]) - LEAD) / step)];
+        if (n !== undefined && !tofu.has(n)) tofu.set(n, m[2]!);
       }
-      rmSync(join(shots, f));
-    });
-    const frames = frameFiles;
-    if (frames.length !== list.length) {
-      console.error(`${key}: ${frames.length} frames for ${list.length} fixtures`);
-      return 1;
+      const frames = readdirSync(dir).filter((f) => /^screenshot-\d+\.png$/.test(f)).sort();
+      const dumps = readdirSync(dir).filter((f) => /^dump_ui-\d+\.json$/.test(f)).sort();
+      if (frames.length !== pages.length || dumps.length !== pages.length) {
+        console.error(`${key}: ${frames.length} frames and ${dumps.length} dumps for ${pages.length} fixtures`);
+        return undefined;
+      }
+      return new Map(pages.map((n, i) => {
+        const dump = JSON.parse(readFileSync(join(dir, dumps[i]!), "utf8"));
+        rmSync(join(dir, dumps[i]!));
+        return [n, { frame: join(dir, frames[i]!), dump, threw: threw.get(n), tofu: tofu.get(n) }] as const;
+      }));
+    };
+    console.log(`${key}: ${list.length} fixtures`);
+    const shot = await shoot(list.map((_, n) => n), SETTLE, shots);
+    if (!shot) return 1;
+    const moving = [...shot].filter(([, s]) => s.dump.moving === true && !s.threw).map(([n]) => n);
+    if (moving.length) {
+      console.log(`${key}: ${moving.length} fixtures still moving at ${SETTLE} ticks, shot again at ${REST}`);
+      const again = await shoot(moving, REST, join(shots, "rest"));
+      if (!again) return 1;
+      for (const [n, s] of again) {
+        rmSync(shot.get(n)!.frame);
+        shot.set(n, s);
+      }
     }
-    frames.forEach((f, n) => renameSync(join(shots, f), join(shots, `${String(n).padStart(4, "0")}.png`)));
+    for (const [n, s] of shot) {
+      const where = `${key} ${list[n]!.name} · ${list[n]!.fixture}`;
+      if (s.threw) defects.push(`${where}: threw at mount: ${s.threw}`);
+      if (s.tofu) defects.push(`${where}: draws no glyph for ${s.tofu}`);
+      if (!s.threw) {
+        const dump = s.dump;
+        const raw = rawKeys(dump, keys);
+        if (raw.length) defects.push(`${where}: draws raw string keys ${raw.join(", ")}`);
+        const broken = brokenWords(dump);
+        if (broken.length) defects.push(`${where}: breaks inside a word ${broken.join(", ")}`);
+        const frame = decodePng(readFileSync(s.frame));
+        // A fixture that lays out text yet leaves the bare stage drew nothing it meant to; an empty one meant to.
+        if ((dump.elements ?? []).some((e: TextElement) => e.text && e.text !== `${list[n]!.name} · ${list[n]!.fixture}`) && bareStage(frame, frame.width / width)) defects.push(`${where}: draws nothing: the frame is the bare stage, so nothing of it is checked`);
+        for (const low of lowContrast(dump, frame, frame.width / width)) defects.push(`${where}: reads under the contrast bar: ${low}`);
+      }
+      renameSync(s.frame, join(shots, `${String(n).padStart(4, "0")}.png`));
+    }
+    rmSync(join(shots, "rest"), { recursive: true, force: true });
   }
   writeFileSync(join(out, "index.html"), index(list, columns.map((c) => c.key), (k, n) => `${k}/${String(n).padStart(4, "0")}.png`));
   console.log(`${join(out, "index.html")}: ${list.length} fixtures × ${packNames.length} packs × ${schemes.length} scheme${schemes.length === 1 ? "" : "s"}`);
