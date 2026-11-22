@@ -36,7 +36,7 @@ pub struct Manifest {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub faces: Option<Vec<String>>,
     /// A font pack's hyphenation dictionaries (`<language>.hyph`), which
-    /// the cook ships for a game's locales when it uses `hyphens: auto`.
+    /// the cook ships for a game's locales when a class string in its code uses `hyphens-auto`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub hyphenation: Option<Vec<String>>,
 }

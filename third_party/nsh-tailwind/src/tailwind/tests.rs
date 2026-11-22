@@ -1680,8 +1680,11 @@ fn classes_without_a_native_meaning_are_unknown() {
         ),
         Vec::<String>::new()
     );
-    assert_eq!(styled("-z-10").z_index, -10);
-    assert_eq!(styled("z-[100]").z_index, 100);
+    assert_eq!(styled("-z-10").z_index, Some(-10));
+    assert_eq!(styled("z-[100]").z_index, Some(100));
+    assert_eq!(styled("z-0").z_index, Some(0), "z-0 stacks");
+    assert_eq!(styled("z-10 z-auto").z_index, None, "auto stacks nothing");
+    assert_eq!(styled("").z_index, None);
     // A theme of the app's own may give the bare form a value, as a
     // `--inset-shadow` in Tailwind's `@theme` does.
     let theme =

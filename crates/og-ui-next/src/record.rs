@@ -27,6 +27,9 @@ pub struct Text {
     pub scroll: [f32; 2],
     /// 0 none, 1 uppercase, 2 lowercase, 3 capitalize.
     pub transform: u8,
+    /// Where a line may break inside a word (`hyphens-*`): CSS's
+    /// `manual` (soft hyphens only) unless set. The line breaker reads it.
+    pub hyphens: nsh_tailwind::Hyphens,
     /// Which fields its own rules set: bit k for [`Text::WEIGHT`] and on.
     pub set: u16,
     /// Its font size was set by its own rules.
@@ -41,6 +44,7 @@ impl Text {
     pub const ALIGN: u16 = 16;
     pub const OVERFLOW: u16 = 32;
     pub const TRANSFORM: u16 = 64;
+    pub const HYPHENS: u16 = 128;
 
     /// Its letter spacing at `size`, CSS px.
     pub fn tracking(&self, size: f32) -> f32 {
@@ -82,6 +86,9 @@ impl Text {
         if own(Text::TRANSFORM) {
             t.transform = self.transform;
         }
+        if own(Text::HYPHENS) {
+            t.hyphens = self.hyphens;
+        }
         t.set = parent.set | self.set;
         t.sized = self.sized;
         t
@@ -101,6 +108,7 @@ impl Default for Text {
             overflow: 0,
             scroll: [0.0; 2],
             transform: 0,
+            hyphens: nsh_tailwind::Hyphens::Manual,
             set: 0,
             sized: false,
         }
@@ -385,6 +393,9 @@ pub struct Record {
     pub stroke_width: f32,
     /// The pointer over it (`cursor-*`); `Auto` takes its parent's.
     pub cursor: nsh_tailwind::effects::Cursor,
+    /// Its `z-*`: `None` for `z-auto` (the default), which stacks nothing;
+    /// `Some(0)` stacks at 0. The tree's stacking contexts read it.
+    pub z_index: Option<i32>,
 }
 
 impl Record {
@@ -440,6 +451,7 @@ impl Default for Record {
             stroke: None,
             stroke_width: 1.0,
             cursor: nsh_tailwind::effects::Cursor::Auto,
+            z_index: None,
         }
     }
 }

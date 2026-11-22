@@ -442,6 +442,18 @@ pub enum DecorationStyle {
     Wavy,
 }
 
+/// Where a line may break inside a word (`hyphens`, CSS Text 3 §5.4).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+pub enum Hyphens {
+    /// Only at a soft hyphen (U+00AD) the text holds: CSS's initial value.
+    #[default]
+    Manual,
+    /// Also where the language's hyphenation dictionary allows.
+    Auto,
+    /// Never: a soft hyphen is ignored too.
+    None,
+}
+
 /// Case changes applied to text (`textTransform`).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub enum TextTransform {
@@ -1158,6 +1170,8 @@ pub struct TextStyle {
     pub stroke_color: Option<Color>,
     /// Case transform.
     pub transform: Option<TextTransform>,
+    /// Hyphenation; `None` inherits (CSS's `manual` at the root).
+    pub hyphens: Option<Hyphens>,
     /// The text shadow's color (`textShadow`, `text-shadow-*`: its widest
     /// layer's).
     pub shadow_color: Option<Color>,
@@ -1206,6 +1220,7 @@ impl TextStyle {
         stroke_width: None,
         stroke_color: None,
         transform: None,
+        hyphens: None,
         shadow_color: None,
         shadow_offset: None,
         shadow_radius: None,
@@ -1302,8 +1317,9 @@ pub struct Style {
     /// Visual properties driven by native animation nodes; they override
     /// the static values while bound.
     pub animated: Vec<(crate::animation::AnimationProp, crate::animation::NodeId)>,
-    /// `zIndex`: stacking order among siblings (higher on top).
-    pub z_index: i32,
+    /// `zIndex`: stacking order among siblings (higher on top); `None` is
+    /// CSS's `auto`, which forms no stacking context, where `Some(0)` does.
+    pub z_index: Option<i32>,
     /// `verticalAlign`: where the element sits in its line when it is
     /// inside a `<Text>`.
     pub vertical_align: VerticalAlign,
@@ -1754,7 +1770,7 @@ impl Default for Style {
             text: TextStyle::default(),
             paint: PaintStyle::default(),
             animated: Vec::new(),
-            z_index: 0,
+            z_index: None,
             vertical_align: VerticalAlign::Baseline,
             direction: None,
             logical: Logical::default(),
@@ -1975,6 +1991,7 @@ style_keys! {
     FontVariant = "fontVariant": Text "FontVariantName[] | (string & {})" "OpenType number and letter forms: a list (`[\"tabular-nums\"]`), or CSS's names separated by spaces (`\"tabular-nums small-caps\"`).",
     TextShadow = "textShadow": Text "string | TextShadowLayer[]" "CSS's `text-shadow`: offsets, blur and color (`\"0 1px 2px rgb(0 0 0 / 0.3)\"`), several separated by commas, drawn as the widest one; or its layers (`[{ x: 0, y: 1, blur: 2, color: \"#0000004d\" }]`); a layer without a color is the text color; `\"none\"`.",
     TextTransform = "textTransform": Text "\"none\" | \"uppercase\" | \"lowercase\" | \"capitalize\"",
+    Hyphens = "hyphens": Text "\"manual\" | \"auto\" | \"none\"" "Where a line may break inside a word: at a soft hyphen (`manual`, the default), also where the language's dictionary allows (`auto`), or never (`none`).",
     TextAlign = "textAlign": Text "\"auto\" | \"left\" | \"center\" | \"right\" | \"justify\" | \"start\" | \"end\"" "`left` and `right` keep their sides in right-to-left layouts; `start` and `end` follow the direction.",
     PlaceholderColor = "placeholderColor": Input "ColorValue" "An input's placeholder (`placeholder:text-*`).",
     SelectionColor = "selectionColor": Text "ColorValue" "An input's or a selectable text's selection highlight (`selection:bg-*`); iOS draws an input's caret in it too, unless `caretColor` is set (UIKit tints both with one color).",
@@ -2126,6 +2143,8 @@ pub enum PropertyValue {
     TextShadow(Option<(TextShadow, bool)>),
     /// `textTransform`.
     TextTransform(Option<TextTransform>),
+    /// `hyphens`.
+    Hyphens(Option<Hyphens>),
     /// `textAlign`, and whether it is physical (`left` / `right`).
     TextAlign(Option<TextAlign>, bool),
     /// `boxShadow`'s layers, each with whether it names its color.
@@ -3165,6 +3184,10 @@ impl StyleKey {
                 };
                 PropertyValue::Flex(of(grow), of(shrink), basis)
             }
+            // `auto` is a NaN number: the one zIndex that is no integer.
+            K::ZIndex if matches!(value, StyleValue::Str("auto")) => {
+                PropertyValue::Number(of(f32::NAN))
+            }
             K::FlexGrow | K::FlexShrink | K::ZIndex | K::Order => {
                 PropertyValue::Number(of(number(value, 0.0)?))
             }
@@ -3452,6 +3475,13 @@ impl StyleKey {
                 Some("auto" | "top") => Some(percentage(0.0)),
                 Some("center") => Some(percentage(0.5)),
                 Some("bottom") => Some(percentage(1.0)),
+                Some(_) => return Err(StyleError::InvalidValue),
+            }),
+            K::Hyphens => PropertyValue::Hyphens(match keyword(value)? {
+                None => None,
+                Some("manual") => Some(Hyphens::Manual),
+                Some("auto") => Some(Hyphens::Auto),
+                Some("none") => Some(Hyphens::None),
                 Some(_) => return Err(StyleError::InvalidValue),
             }),
             K::TextTransform => PropertyValue::TextTransform(match keyword(value)? {
@@ -4013,7 +4043,7 @@ impl Style {
             (K::BorderRightWidth, V::Points(w)) => self.set_border_width(&[1], *w),
             (K::BorderBottomWidth, V::Points(w)) => self.set_border_width(&[2], *w),
             (K::BorderLeftWidth, V::Points(w)) => self.set_border_width(&[3], *w),
-            (K::ZIndex, V::Number(n)) => self.z_index = n.0 as i32,
+            (K::ZIndex, V::Number(n)) => self.z_index = (!n.0.is_nan()).then_some(n.0 as i32),
             (K::Order, V::Number(n)) => self.layout.order = n.0 as i32,
             (K::VerticalAlign, V::VerticalAlign(v)) => self.vertical_align = *v,
             (K::Direction, V::OptBool(v)) => self.direction = *v,
@@ -4153,6 +4183,7 @@ impl Style {
                 self.text.shadow_radius = widest.map(|s| s.radius);
             }
             (K::TextTransform, V::TextTransform(v)) => self.text.transform = *v,
+            (K::Hyphens, V::Hyphens(v)) => self.text.hyphens = *v,
             (K::TextAlign, V::TextAlign(align, physical)) => {
                 self.text.text_align = *align;
                 self.text.text_align_physical = *physical;

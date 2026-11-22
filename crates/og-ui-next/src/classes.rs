@@ -287,8 +287,9 @@ impl Classes {
                 &mut ClassProps::default(),
                 |_| {},
             );
-            let held = usize::try_from(stand.z_index - 1)
-                .ok()
+            let held = stand
+                .z_index
+                .and_then(|z| usize::try_from(z - 1).ok())
                 .and_then(|i| nine.get(i));
             if let Some(image) = held.and_then(|n| self.images.get(&**n)) {
                 record.skin.image = *image;
@@ -373,6 +374,7 @@ fn record_of(style: &Style, props: &ClassProps) -> Record {
         r.stroke_width = w.0;
     }
     r.cursor = style.view.cursor;
+    r.z_index = style.z_index;
     let (view, text, skin) = (&style.view, &style.text, &mut r.skin);
     skin.fill = linear(view.background_color);
     skin.opacity = view.opacity;
@@ -506,6 +508,11 @@ fn record_of(style: &Style, props: &ClassProps) -> Record {
             inset: false,
         };
         r.shadowed = true;
+    } else if props.text_shadows.as_deref().is_some_and(<[_]>::is_empty) {
+        // `text-shadow-none` sets a shadow of nothing, so a child of a
+        // shadowed parent draws none instead of inheriting it.
+        skin.text_shadow = Shadow::default();
+        r.shadowed = true;
     }
     if let Some(d) = text.decoration {
         skin.decoration.line = u8::from(d.underline) | (u8::from(d.line_through) << 2);
@@ -557,6 +564,10 @@ fn record_of(style: &Style, props: &ClassProps) -> Record {
             _ => 0,
         };
         t.set |= Text::TRANSFORM;
+    }
+    if let Some(h) = text.hyphens {
+        t.hyphens = h;
+        t.set |= Text::HYPHENS;
     }
     r.motion = motion_of(style);
     if let Some(nowrap) = props.no_wrap {
@@ -670,6 +681,37 @@ mod tests {
         assert_eq!((r.text.weight, r.text.transform, r.text.align), (700, 1, 1));
         assert_eq!(r.font_size, 18.0);
         assert_eq!(c.unknown("p-4 not-a-class"), ["not-a-class"]);
+        // z-index: unset and z-auto stack nothing, z-0 stacks at 0.
+        assert_eq!(c.record("p-1", &env).z_index, None);
+        assert_eq!(c.record("z-0", &env).z_index, Some(0));
+        assert_eq!(c.record("z-10 z-auto", &env).z_index, None);
+        assert_eq!(c.record("-z-1", &env).z_index, Some(-1));
+        // A nine-slice key's carrier leaves the element's own z-index alone.
+        assert_eq!(c.record("nine-none z-3", &env).z_index, Some(3));
+        // text-shadow-none sets a shadow of nothing over a parent's.
+        let parent = c.record("text-shadow-md", &env);
+        assert!(parent.shadowed && parent.skin.text_shadow.color[3] > 0.0);
+        let none = c.record("text-shadow-none", &env);
+        assert!(none.shadowed, "set, so it is not inherited");
+        assert_eq!(none.skin.text_shadow, Shadow::default());
+        assert!(!c.record("p-1", &env).shadowed);
+        // hyphens: manual unless set, inherited when not set.
+        use nsh_tailwind::Hyphens;
+        let auto = c.record("hyphens-auto", &env).text;
+        assert_eq!(auto.hyphens, Hyphens::Auto);
+        let plain = c.record("p-1", &env).text;
+        assert_eq!(plain.hyphens, Hyphens::Manual);
+        assert_eq!(plain.over(&auto).hyphens, Hyphens::Auto, "inherits");
+        let none = c.record("hyphens-none", &env).text;
+        assert_eq!(none.over(&auto).hyphens, Hyphens::None);
+        assert_eq!(
+            c.record("md:hyphens-auto", &env).text.hyphens,
+            Hyphens::Auto
+        );
+        assert!(
+            c.unknown("hyphens-auto hyphens-manual hyphens-none")
+                .is_empty()
+        );
         // The UI's size classes: narrow is under 600 wide, short under 500
         // tall, compact either; 844x390 is short and compact, not narrow.
         let size = "narrow:p-1 short:m-1 compact:gap-1";

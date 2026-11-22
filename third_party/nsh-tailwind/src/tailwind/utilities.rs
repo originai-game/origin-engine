@@ -1713,6 +1713,9 @@ fn keyword(u: &str) -> Option<Vec<Decl>> {
         "lowercase" => sets(K::TextTransform, "lowercase"),
         "capitalize" => sets(K::TextTransform, "capitalize"),
         "normal-case" => sets(K::TextTransform, "none"),
+        "hyphens-auto" => sets(K::Hyphens, "auto"),
+        "hyphens-manual" => sets(K::Hyphens, "manual"),
+        "hyphens-none" => sets(K::Hyphens, "none"),
         "text-left" => sets(K::TextAlign, "left"),
         "text-center" => sets(K::TextAlign, "center"),
         "text-right" => sets(K::TextAlign, "right"),
@@ -2090,7 +2093,7 @@ static PREFIXES: &[(&str, Handler)] = &[
     ("z", |_, v, n| {
         // `z-index` takes integers: bare positive ones, any arbitrary one.
         let z = match v {
-            "auto" if !n => 0.0,
+            "auto" if !n => f32::NAN,
             v => match arbitrary(v) {
                 Some(a) => unhinted(&a).trim().parse::<i32>().ok()? as f32,
                 None => int(v)?,
