@@ -1,0 +1,20 @@
+type table
+version 1
+---
+# The items and their stack limits (maxStack), read as the ItemRow component.
+row "coin" {
+  maxStack 50
+  name text "items.coin" "Coin"
+}
+row "ore" {
+  maxStack 10
+  name text "items.ore" "Iron ore"
+}
+row "ingot" {
+  maxStack 5
+  name text "items.ingot" "Iron ingot"
+}
+row "sword" {
+  maxStack 1
+  name text "items.sword" "Sword"
+}
