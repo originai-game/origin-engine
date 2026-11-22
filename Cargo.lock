@@ -3662,6 +3662,7 @@ dependencies = [
  "og-geom",
  "og-probe",
  "og-render",
+ "og-text",
  "og-tilemap",
  "og-tween",
  "pollster",
