@@ -439,7 +439,12 @@ async function main(): Promise<number> {
       });
       steps.push(`${at(LEAD + pages.length * step + 1)}:quit`);
       const r = await run(["run", ".", "--headless", "--no-check", "--size", size, "--out", dir, "--commands", steps.join(";")]);
-      if (!r.ok) return undefined;
+      if (!r.ok) {
+        // The run broke (a crash, a lost session): say where, with og's last lines.
+        const last = readdirSync(dir).filter((f) => /^screenshot-\d+\.png$/.test(f)).length;
+        console.error(`${key}: og run failed after ${last} of ${pages.length} pages (next: ${list[pages[last] ?? -1]?.name ?? "?"} · ${list[pages[last] ?? -1]?.fixture ?? "?"})\n${r.log.split("\n").filter((l) => !/^tick \d+ (screenshot|dump_ui):/.test(l)).slice(-40).join("\n")}`);
+        return undefined;
+      }
       const threw = new Map<number, string>();
       for (const m of r.log.matchAll(/gallery page (\d+): ([^\n]*)/g)) if (!threw.has(Number(m[1]))) threw.set(Number(m[1]), m[2]!);
       // A character no face draws, as the engine reports it with its tick: the page shown then draws tofu.
@@ -462,12 +467,13 @@ async function main(): Promise<number> {
     };
     console.log(`${key}: ${list.length} fixtures`);
     const shot = await shoot(list.map((_, n) => n), SETTLE, shots);
-    if (!shot) return 1;
+    // 2, not 1: a run that broke is not a lane finding.
+    if (!shot) return 2;
     const moving = [...shot].filter(([, s]) => s.dump.moving === true && !s.threw).map(([n]) => n);
     if (moving.length) {
       console.log(`${key}: ${moving.length} fixtures still moving at ${SETTLE} ticks, shot again at ${REST}`);
       const again = await shoot(moving, REST, join(shots, "rest"));
-      if (!again) return 1;
+      if (!again) return 2;
       for (const [n, s] of again) {
         rmSync(shot.get(n)!.frame);
         shot.set(n, s);

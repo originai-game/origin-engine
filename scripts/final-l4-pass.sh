@@ -62,7 +62,7 @@ for l in sys.stdin:
   # Ignored assets the checkout's sync leaves behind (the template fonts the text section's Chrome
   # sheets use, the fused fixture's footage, vehicle-terrain's assets): fetched here, shipped in the
   # bundle, put back by run.
-  local where="templates crates/og-tests packages/engine/tests/fixtures/fused tests/fixtures/vehicle-terrain"
+  local where="templates crates/og-tests packages/engine/tests/fixtures/fused tests/fixtures/vehicle-terrain packages/engine/vendor/basis packages/engine/motion packages/engine/shell/brand"
   # shellcheck disable=SC2086
   bun scripts/assets.ts ensure $where >/dev/null || die "bundle: assets ensure failed"
   rm -rf "$b/assets" && mkdir -p "$b/assets"
@@ -70,11 +70,44 @@ for l in sys.stdin:
   git ls-files -z -o -i --exclude-standard -- $where | grep -zvE '(^|/)(cooked|\.og|node_modules|og-out|dist)/' \
     | tar --null -T - -cf - | tar -xf - -C "$b/assets"
   du -sh "$b" | sed 's/^/final-l4-pass: bundle /'
-  echo "final-l4-pass: next: colab_gpu_sync the checkout and $b (repo final-l4-bundle), then run"
+  # Colab's upload refuses a large archive (a 290 MB one failed, 206 MB went through): the bundle
+  # also goes up as parts of at most 80 MB each, hard links into it, which assemble puts together.
+  local parts="$b.parts"
+  rm -rf "$parts"
+  python3 - "$b" "$parts" <<'PY'
+import os, sys
+b, parts = sys.argv[1], sys.argv[2]
+files = []
+for r, _, fs in os.walk(b):
+    for f in fs:
+        p = os.path.join(r, f); files.append((os.path.relpath(p, b), os.path.getsize(p)))
+groups, cur, size = [], [], 0
+for rel, n in sorted(files, key=lambda x: -x[1]):
+    if cur and size + n > 80 << 20: groups.append(cur); cur, size = [], 0
+    cur.append(rel); size += n
+groups.append(cur)
+for i, g in enumerate(groups):
+    for rel in g:
+        d = os.path.join(parts, f"p{i:02d}", os.path.dirname(rel)); os.makedirs(d, exist_ok=True)
+        os.link(os.path.join(b, rel), os.path.join(parts, f"p{i:02d}", rel))
+print(f"final-l4-pass: {len(groups)} parts in {parts}")
+PY
+  echo "final-l4-pass: next: colab_gpu_sync the checkout, then each $parts/pNN (repo final-l4-pNN), then on the host: scripts/final-l4-pass.sh assemble /content/work /content/work/final-l4-bundle, then run"
+}
+
+# ---------------------------------------------------------------- assemble (GPU host)
+# assemble WORK BUNDLE: the synced parts (WORK/final-l4-pNN) put together as BUNDLE, by hard links.
+assemble() {
+  local work="$1" b="$2" p
+  rm -rf "$b"; mkdir -p "$b"
+  for p in "$work"/final-l4-p[0-9][0-9]; do cp -al "$p/." "$b/"; done
+  chmod +x "$b/bin/og" "$b/bin/og-gfx" "$b"/bin/t/deps/* "$b"/web/native/og.* 2>/dev/null
+  [ -f "$b/sha" ] || die "assemble: no parts under $work"
+  echo "final-l4-pass: assembled $(cut -c1-9 "$b/sha") in $b ($(du -sh "$b" | cut -f1))"
 }
 
 # ---------------------------------------------------------------- run (GPU host)
-OUT="" BUNDLE="" DRY=0 MONTAGE=montage
+OUT="" BUNDLE="" DRY=0 MONTAGE=montage IM=magick
 fail() { echo "$1: $2" >> "$OUT/failures.txt"; echo "FAIL $1: $2" >&2; }
 note() { echo "$*" >> "$OUT/summary.txt"; echo "$*"; }
 
@@ -92,7 +125,7 @@ sheet() {
 
 # blank PNG: why the frame is black or blank (one flat colour), else nothing.
 blank() {
-  local s; s="$(magick "$1" -colorspace gray -format '%[fx:mean] %[fx:standard_deviation]' info: 2>/dev/null)" || { echo "unreadable"; return; }
+  local s; s="$($IM "$1" -colorspace gray -format '%[fx:mean] %[fx:standard_deviation]' info: 2>/dev/null)" || { echo "unreadable"; return; }
   awk -v s="$s" 'BEGIN { split(s, a, " "); if (a[1] < 0.02) print "black (mean " a[1] ")"; else if (a[2] < 0.004) print "blank (one colour, sd " a[2] ")" }'
 }
 
@@ -347,11 +380,18 @@ sec_gfx() {
   mkdir -p "$rep"
   [ "$DRY" = 1 ] && filter="gfx::ui_shapes"
   export OG_REFERENCE_REPORT_DIR="$rep" OG_TEST_REFERENCES="$root/crates/og-tests/references" OG_TEST_ASSETS="$root/crates/og-tests/assets"
+  # One process a scene, as nextest runs them: in one process the GPU memory of scene after scene
+  # piles up (21 GB by the tenth on the L4) and every later scene fails out of memory.
+  local t bin passed failed
   for pkg in og-tests og-tests-cooked; do
-    "$BUNDLE/bin/t/deps/$pkg-tests" "$filter" --test-threads=1 > "$OUT/gfx/$pkg.txt" 2>&1; rc=$?
+    bin="$BUNDLE/bin/t/deps/$pkg-tests" passed=0 failed=0
+    : > "$OUT/gfx/$pkg.txt"
+    for t in $("$bin" "$filter" --list 2>/dev/null | sed -n 's/: test$//p'); do
+      "$bin" "$t" --exact --test-threads=1 >> "$OUT/gfx/$pkg.txt" 2>&1; rc=$?
+      if [ "$rc" = 0 ]; then passed=$((passed + 1)); else failed=$((failed + 1)); fail gfx "$pkg $t: exit $rc (a crash, a broken frame or a missing reference; gfx/$pkg.txt)"; fi
+    done
     grep -q "missing GPU" "$OUT/gfx/$pkg.txt" && fail gfx "$pkg: no GPU adapter, so the scenes were skipped, never passed"
-    [ "$rc" = 0 ] || fail gfx "$pkg: exit $rc ($(grep -c '^test .* FAILED' "$OUT/gfx/$pkg.txt") failed: a crash, a broken frame or a missing reference; gfx/$pkg.txt)"
-    note "gfx $pkg: $(grep -E '^test result' "$OUT/gfx/$pkg.txt" | tail -1)"
+    note "gfx $pkg: $passed passed, $failed failed, one process a scene"
   done
   grep -h -m1 -oE '\[[a-z0-9-]+ on [^,]*' "$OUT"/gfx/*.txt | head -1 | sed 's/^/gfx adapter: /' >> "$OUT/summary.txt"
   # The movements: reference | actual | diff, side by side, one row each.
@@ -385,13 +425,17 @@ run() {
   if [ "$root" != "$built" ] && [ ! -e "$built" ]; then mkdir -p "$(dirname "$built")" && ln -s "$root" "$built"; fi
   command -v montage >/dev/null || command -v magick >/dev/null || { apt-get install -y -qq imagemagick >/dev/null 2>&1 || fail setup "no ImageMagick: no contact sheets"; }
   # ImageMagick 7's montage labels each frame with its name; 6's needs the label before reading.
-  MONTAGE="montage"; command -v magick >/dev/null && MONTAGE="magick montage"
+  MONTAGE="montage" IM="convert"; command -v magick >/dev/null && MONTAGE="magick montage" IM="magick"
   if [ -z "${CHROME:-}" ] && [[ " $only " == *" web "* || " $only " == *" web-compat "* || " $only " == *" text "* ]]; then
     CHROME="$(ls -d "$HOME"/.agent-browser/browsers/chrome-*/chrome 2>/dev/null | tail -1)"
     if [ -z "$CHROME" ]; then
       (cd /tmp && bunx @puppeteer/browsers install chrome@stable --path /content/chrome >/dev/null 2>&1)
       CHROME="$(ls -d /content/chrome/chrome/linux-*/chrome-linux64/chrome 2>/dev/null | tail -1)"
-      apt-get install -y -qq libnss3 libatk-bridge2.0-0 libgbm1 libxkbcommon0 libasound2 >/dev/null 2>&1
+      # Chrome for Testing ships no libraries: installing Google Chrome's package pulls them all in,
+      # under whatever names the host's release gives them.
+      (cd /tmp && curl -fsSLo chrome.deb https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb \
+        && apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq ./chrome.deb) >/dev/null 2>&1
+      ldd "$CHROME" 2>/dev/null | grep -q "not found" && fail setup "Chrome's libraries are missing: $(ldd "$CHROME" | grep "not found" | awk '{print $1}' | tr '\n' ' ')"
     fi
     [ -n "$CHROME" ] && export CHROME || fail setup "no Chrome for Testing: web and text cannot run"
   fi
@@ -421,6 +465,7 @@ run() {
 
 case "${1:-}" in
   bundle) shift; bundle "$@" ;;
+  assemble) shift; [ "$#" -eq 2 ] || die "assemble WORK BUNDLE"; assemble "$@" ;;
   run) shift; [ "$#" -ge 2 ] || die "run BUNDLE OUT [--dry] [--only a,b]"; run "$@" ;;
   *) sed -n '2,25p' "$0" | sed 's/^# \{0,1\}//'; exit 2 ;;
 esac

@@ -101,6 +101,8 @@ declare const process: {
   readonly argv: string[];
   readonly version: string;
   readonly pid: number;
+  /** POSIX only: the user id (0 is root). */
+  getuid?(): number;
   readonly ppid: number;
   exitCode?: number;
   exit(code?: number): never;

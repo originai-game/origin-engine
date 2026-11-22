@@ -157,6 +157,8 @@ export class Browser {
               ? ["--use-angle=vulkan", "--enable-features=WebGPU,Vulkan", "--disable-vulkan-surface"]
               : webGpuSwitches(true))]),
           "--ignore-gpu-blocklist", "--disable-gpu-vsync",
+          // Chrome refuses to start as root (a CI host such as Colab) without it.
+          ...(process.getuid?.() === 0 ? ["--no-sandbox"] : []),
           "--autoplay-policy=user-gesture-required", "--remote-debugging-port=0",
           ...(o.flags ?? []),
           "about:blank",
