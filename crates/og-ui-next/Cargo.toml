@@ -47,3 +47,8 @@ og-env = { path = "../og-env" }
 [[example]]
 name = "gen-pack"
 path = "scripts/gen_pack.rs"
+
+# packages/design/tokens.json's generator (scripts/gen-tokens.sh runs it).
+[[example]]
+name = "gen-tokens"
+path = "scripts/gen_tokens.rs"

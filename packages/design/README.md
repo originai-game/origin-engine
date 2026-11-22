@@ -7,13 +7,14 @@ surface (`color.css`, `type.css`, `space.css`, `effect.css`, `motion.css`,
 `state.css`, `density.css`, `role.css`, `derived.css`, `contrast.css`). A token is
 named by its path (`--motion-duration-fast`); a `:root[data-scheme=dark]`
 block holds what the dark scheme changes. Edit a value there, then run
-`crates/og-ui/scripts/gen-theme.sh`.
+`crates/og-ui-next/scripts/gen-tokens.sh` and
+`crates/og-ui-next/scripts/gen-pack.sh`.
 
-- **The engine** generates og-ui's default style from `tokens/*.css`
-  (`crates/og-ui/scripts/gen-theme.sh` writes `crates/og-ui/src/theme.rs`,
-  `crates/og-ui/default.css` and [`tokens.json`](tokens.json), the same
-  tokens as one tree;
-  og-ui's `tests/theme.rs` fails on drift). The default style is
+- **The engine** generates two files from `tokens/*.css`, both by
+  og-ui-next and both failing its tests on drift: [`tokens.json`](tokens.json),
+  the same tokens as one tree (`gen-tokens.sh`; `tests/design_tokens.rs`),
+  and the engine's default style pack, `crates/og-ui-next/default/pack.json`
+  (`gen-pack.sh`; the `pack::design` tests). The default style is
   origin-agent's look; a game may ship it, a built-in pack or a style of
   its own.
 - **origin-agent** pins this package by version, as it pins the engine.

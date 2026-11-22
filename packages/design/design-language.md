@@ -102,8 +102,8 @@ apart in OKLab under protanopia, deuteranopia and tritanopia, and the team
 seed's hue only picks which leads, the rest following in Okabe-Ito order.
 Teams 7 and 8 are fixed and hold only 0.05: past six, colour alone cannot.
 A selected row on a team keeps the selected ink; its team shows in its rim. A style or a game sets seeds, not the colours derived from them; the
-default seeds are the neutral chrome below. og-ui's
-`tests/theme.rs` holds every pair below across a sweep of seeds.
+default seeds are the neutral chrome below. og-ui-next's `pack::design`
+tests hold the `contrast` pairs for the default seeds and for a pack's.
 Glass tints (`material-thin/regular/thick`) are og-render's presets and
 stay neutral.
 
@@ -532,10 +532,13 @@ So the page states things, it does not explain them:
 - `packages/design/tests/tokens.test.ts` holds every `contrast`, `nonText`
   and `glassContrast` pair in both themes and the `linear` fills against
   their CSS values.
-- `crates/og-ui/tests/theme.rs` fails when `src/theme.rs` is not exactly
-  what the generator writes from `tokens/*.css` (`crates/og-ui/scripts/gen-theme.sh`
-  regenerates it), and when the tokens' material tints differ from
-  og-render's glass presets.
+- og-ui-next fails when a generated file is not exactly what its generator
+  writes from `tokens/*.css`: `tokens.json` (`crates/og-ui-next/tests/design_tokens.rs`;
+  `crates/og-ui-next/scripts/gen-tokens.sh` regenerates it) and the default
+  style pack, `crates/og-ui-next/default/pack.json` (the `pack::design`
+  tests; `scripts/gen-pack.sh`). The same tests hold the two-name
+  `contrast` pairs at 4.5:1 in both schemes, for the default seeds and for
+  a pack's.
 - og-tests `ui_glass_text_holds_contrast` measures text over the three
   weights in rendered frames.
 

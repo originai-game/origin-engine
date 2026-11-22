@@ -1,10 +1,18 @@
-//! Reads the design language's tokens (`packages/design/tokens/*.css`)
-//! into the tree the generators walk. A token is a custom property in a
-//! `:root` block, named by its path: `--motion-duration-fast` is
-//! `motion.duration.fast`. A `:root[data-scheme=dark]` block holds what
-//! the dark scheme changes. Media-wrapped root tokens stay conditional
-//! CSS in `_media`, not unconditional Rust palette values.
+//! `packages/design/tokens.json` from the design language's tokens
+//! (`packages/design/tokens/*.css`): the same tokens as one tree, for a
+//! client that reads JSON rather than CSS (origin-agent pins the package).
+//! A token is a custom property in a `:root` block, named by its path:
+//! `--motion-duration-fast` is `motion.duration.fast`. A
+//! `:root[data-scheme=dark]` block holds what the dark scheme changes.
+//! Media-wrapped root tokens stay conditional CSS in `_media`, never
+//! unconditional values. The seeds' and the palette's colours are written
+//! resolved, from the token table the default pack is generated from
+//! (`og_ui_next::Tokens`, pack/design.rs), so the two never disagree.
+//!
+//! `scripts/gen-tokens.sh` writes the file; `tests/design_tokens.rs` holds
+//! it equal to this module's output.
 
+use og_ui_next::Tokens;
 use serde_json::{Map, Number, Value};
 use std::path::Path;
 
@@ -145,7 +153,7 @@ fn kebab(s: &str) -> String {
 }
 
 /// The path of the custom property `name` (without its `--`).
-pub fn path(name: &str) -> Vec<String> {
+fn path(name: &str) -> Vec<String> {
     let group = GROUPS
         .iter()
         .filter(|g| {
@@ -235,8 +243,8 @@ fn read(file: &str, css: &str, tree: &mut Map<String, Value>) -> Result<String, 
         rest = &rest[open + close + 1..];
         if selector.starts_with("@media ") {
             // Validate the same token grammar without merging conditional
-            // values into the unconditional Rust palette. Keep the CSS in
-            // source order for the runtime's media-aware root cascade.
+            // values into the unconditional tree. Keep the CSS in source
+            // order for a client's media-aware root cascade.
             let body = read(file, body, &mut Map::new())?;
             let block = format!("{selector} {{{body}}}");
             normalized.push_str(&block);
@@ -247,8 +255,8 @@ fn read(file: &str, css: &str, tree: &mut Map<String, Value>) -> Result<String, 
                 .push(Value::String(block));
             continue;
         }
-        // High contrast's tokens are og-ui-next's pack data; og-ui remaps
-        // its own palette (Theme::to_high_contrast).
+        // High contrast's tokens are the default pack's `contrast`
+        // (pack/design.rs), not part of this tree.
         if selector.contains("[data-contrast=") {
             continue;
         }
@@ -261,9 +269,8 @@ fn read(file: &str, css: &str, tree: &mut Map<String, Value>) -> Result<String, 
                 ));
             }
         };
-        // The generated palette uses :root for dark and a more specific
-        // light selector. A conditional common token must override both;
-        // a dark override keeps its higher specificity, as in the input.
+        // A conditional common token overrides both schemes' own; a dark
+        // override keeps its higher specificity, as in the input.
         let selector = if dark {
             selector
         } else {
@@ -339,11 +346,9 @@ fn block_end(text: &str) -> Option<usize> {
     None
 }
 
-/// `tokens.json`, the same tokens as one tree for a client that reads
-/// JSON (origin-agent): groups nested, names as the tree spells them, each
-/// group's note (`docs`) as its `_doc`.
-pub fn json(tokens: &Value, docs: &[(Vec<String>, String)]) -> Result<String, String> {
-    let mut tree = tokens.as_object().cloned().unwrap_or_default();
+/// The tree as `tokens.json`'s text: groups nested, names as the tree
+/// spells them, each group's note (`docs`) as its `_doc`.
+fn write(mut tree: Map<String, Value>, docs: &[(Vec<String>, String)]) -> Result<String, String> {
     for (path, doc) in docs {
         let mut at = Some(&mut tree);
         for group in path {
@@ -360,7 +365,7 @@ pub fn json(tokens: &Value, docs: &[(Vec<String>, String)]) -> Result<String, St
     tree.insert(
         "_doc".to_string(),
         Value::String(
-            "Generated from packages/design/tokens/*.css by crates/og-ui/scripts/gen-theme.sh; never edit it by hand."
+            "Generated from packages/design/tokens/*.css by crates/og-ui-next/scripts/gen-tokens.sh; never edit it by hand."
                 .to_string(),
         ),
     );
@@ -374,7 +379,7 @@ pub fn json(tokens: &Value, docs: &[(Vec<String>, String)]) -> Result<String, St
 /// that are in the first one's top-level group (up to the next comment);
 /// the first such comment for a group wins. A comment on a token of a
 /// top-level group with no subgroups notes nothing.
-pub fn docs(dir: &Path) -> Result<Vec<(Vec<String>, String)>, String> {
+fn docs(dir: &Path) -> Result<Vec<(Vec<String>, String)>, String> {
     let mut out: Vec<(Vec<String>, String)> = Vec::new();
     for file in css_files(dir)? {
         let css = std::fs::read_to_string(&file).map_err(|e| format!("{}: {e}", file.display()))?;
@@ -471,17 +476,102 @@ fn css_files(dir: &Path) -> Result<Vec<std::path::PathBuf>, String> {
     Ok(files)
 }
 
-/// The tokens of every `.css` file in `dir`, in file-name order.
-pub fn load(dir: &Path) -> Result<Value, String> {
+/// A resolved colour as `tokens.json` writes it: `#rrggbb`, or
+/// `rgb(r g b / a)` when it is translucent.
+fn colour(table: &Tokens, name: &str) -> Result<String, String> {
+    let text = table
+        .get(name)
+        .ok_or_else(|| format!("{name} does not resolve (a var() no token sets, or a cycle)"))?;
+    let c = og_css::color::parse_str(text)
+        .map_err(|e| format!("{name}: `{text}`: {e}"))?
+        .literal()
+        .ok_or_else(|| format!("{name}: `{text}` is not a colour of its own"))?;
+    let [r, g, b] = c.rgb;
+    Ok(if c.alpha >= 1.0 {
+        format!("#{r:02x}{g:02x}{b:02x}")
+    } else {
+        format!("rgb({r} {g} {b} / {})", (c.alpha * 1000.0).round() / 1000.0)
+    })
+}
+
+/// `tokens.json` from every `.css` file in `dir`, in file-name order. The
+/// colours of the seeds and the palette (`seed`, `color`, `linear.color`)
+/// are the default seeds' resolved sRGB in each scheme, the dark one under
+/// `dark` where the dark block sets it or it resolves apart there (a
+/// derivation that reads a token the dark scheme changes); the CSS files
+/// keep the derivations.
+pub fn generate(dir: &Path) -> Result<String, String> {
     let files = css_files(dir)?;
     if files.is_empty() {
         return Err(format!("{}: no token files", dir.display()));
     }
     let mut tree = Map::new();
+    let mut all = String::new();
     for path in files {
         let css = std::fs::read_to_string(&path).map_err(|e| format!("{}: {e}", path.display()))?;
         let file = path.file_name().unwrap_or_default().to_string_lossy();
         read(&file, &css, &mut tree)?;
+        all.push_str(&css);
+        all.push('\n');
     }
-    Ok(Value::Object(tree))
+    let tokens = Tokens::parse(&all);
+    let (light, dark) = (tokens.scheme("light"), tokens.scheme("dark"));
+    for (prefix, base, over) in [
+        ("seed", &["seed"][..], &["dark", "seed"][..]),
+        ("color", &["color"], &["dark", "color"]),
+        (
+            "linear-color",
+            &["linear", "color"],
+            &["linear", "dark", "color"],
+        ),
+    ] {
+        let Some(Value::Object(lights)) = group(&mut tree, base).map(std::mem::take) else {
+            return Err(format!("the tokens have no {}", base.join(".")));
+        };
+        let own = match group(&mut tree, over).map(std::mem::take) {
+            Some(Value::Object(own)) => own,
+            _ => Map::new(),
+        };
+        let mut darks = Map::new();
+        let mut resolved = Map::new();
+        for (key, value) in lights {
+            if !value.is_string() {
+                resolved.insert(key, value);
+                continue;
+            }
+            let name = format!("--{prefix}-{}", kebab(&key));
+            let (l, d) = (colour(&light, &name)?, colour(&dark, &name)?);
+            if d != l || own.contains_key(&key) {
+                darks.insert(key.clone(), Value::String(d));
+            }
+            resolved.insert(key, Value::String(l));
+        }
+        *group(&mut tree, base).expect("read above") = Value::Object(resolved);
+        set(&mut tree, over, Value::Object(darks));
+    }
+    write(tree, &docs(dir)?)
+}
+
+/// The value at `path`, when every group on the way is there.
+fn group<'a>(tree: &'a mut Map<String, Value>, path: &[&str]) -> Option<&'a mut Value> {
+    let (last, groups) = path.split_last()?;
+    let mut at = tree;
+    for g in groups {
+        at = at.get_mut(*g)?.as_object_mut()?;
+    }
+    at.get_mut(*last)
+}
+
+/// Sets the value at `path`, making the groups on the way.
+fn set(tree: &mut Map<String, Value>, path: &[&str], value: Value) {
+    let (last, groups) = path.split_last().expect("a path");
+    let mut at = tree;
+    for g in groups {
+        at = at
+            .entry(g.to_string())
+            .or_insert_with(|| Value::Object(Map::new()))
+            .as_object_mut()
+            .expect("a group");
+    }
+    at.insert(last.to_string(), value);
 }
