@@ -27,6 +27,9 @@
 #                     0.18.0-ts7.1.0-dev.20260929 is a binary that reports
 #                     `Version 7.1.0-dev.20260930.4` (TSRS_REPORTS), the
 #                     string the present check compares
+#   wasmtime          the wasm32-wasip1 test runner of the shape-wasm32 step,
+#                     pinned by WASMTIME_VERSION and each release archive's
+#                     sha256
 #
 # Each tool is skipped when the right version is already on PATH. Linux x86_64
 # and aarch64 download release binaries into OG_TOOLS_BIN (default
@@ -47,6 +50,7 @@ ZIG_VERSION="${ZIG_VERSION:-0.17.0}"
 ZIG_SHA256=1cbe9df9f27e6b78d14ccbca43b6703a404ef79ef1c463de901d7f088d4e2026
 CARGO_ZIGBUILD_VERSION="${CARGO_ZIGBUILD_VERSION:-0.23.4}"
 CARGO_ZIGBUILD_SHA256=6b69963040818ca1ef573d8135a95aa902e17cf7f873c32c6426642dadfe7f59
+WASMTIME_VERSION="${WASMTIME_VERSION:-51.0.0}"
 BIN="${OG_TOOLS_BIN:-$HOME/.local/bin}"
 mkdir -p "$BIN"
 export PATH="$BIN:$PATH"
@@ -293,4 +297,29 @@ if command -v cargo-nextest >/dev/null; then
 else
   og_say "cargo-nextest: installing (cargo install --locked)"
   cargo install --locked cargo-nextest >/dev/null
+fi
+
+# wasmtime: runs og-shape's goldens built for wasm32-wasip1 (the
+# shape-wasm32 step); the release archive, checked against its sha256.
+if command -v wasmtime >/dev/null && [ "$(wasmtime --version | awk '{print $2}')" = "$WASMTIME_VERSION" ]; then
+  og_say "wasmtime $WASMTIME_VERSION: present"
+else
+  case "$os-$arch" in
+    Linux-x86_64)   w=x86_64-linux;  wsum=a18020674fac4107f329bc9ed720ea9c88e4b30a61e8a527787bcce051123d32 ;;
+    Linux-aarch64)  w=aarch64-linux; wsum=a263f34aefad1b24ba4d9ca635ddfea415f4acfe3f3f1bb6d4525c34fc6a7397 ;;
+    Darwin-x86_64)  w=x86_64-macos;  wsum=51767ef35ea3c2653205c09892f174b75e507cf8ffccfcba00ed557832f0e72d ;;
+    Darwin-aarch64) w=aarch64-macos; wsum=61dd882b44bcf854b301518781f407b9f6db4c6bd157a55f8f44b1f1357f93dc ;;
+    *) w="" ;;
+  esac
+  if [ -z "$w" ]; then
+    og_say "wasmtime: no release binary for $os-$arch; the shape-wasm32 step needs it"
+  else
+    og_say "wasmtime $WASMTIME_VERSION: installing"
+    a="wasmtime-v$WASMTIME_VERSION-$w"
+    fetch "https://github.com/bytecodealliance/wasmtime/releases/download/v$WASMTIME_VERSION/$a.tar.xz" "$tmp/$a.tar.xz"
+    [ "$( (sha256sum "$tmp/$a.tar.xz" 2>/dev/null || shasum -a 256 "$tmp/$a.tar.xz") | awk '{print $1}')" = "$wsum" ] || { og_err "$a.tar.xz: sha256 is not the pinned $wsum"; exit 1; }
+    tar -xJf "$tmp/$a.tar.xz" -C "$tmp"
+    cp "$tmp/$a/wasmtime" "$BIN/"
+    wasmtime --version
+  fi
 fi

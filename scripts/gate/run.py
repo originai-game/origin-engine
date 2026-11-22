@@ -29,6 +29,7 @@ NEEDS = {
     # Safari (macOS): the browser tests' lanes and publish builds over WebDriver.
     'safari': ('wasm-bindgen', 'rust-build'),
     'check-conformance': (),
+    'shape-wasm32': ('preflight',),
 }
 
 
@@ -45,7 +46,7 @@ def stop_group(proc, sig):
 
 
 QUICK = ('fmt', 'clippy', 'rust-build', 'rust-cpu', 'rust-gpu', 'drift', 'api-surface', 'bun-quick', 'engine-typecheck', 'wasm-check')
-FULL = QUICK + ('wasm-build', 'wasm-bindgen', 'bun-test', 'fixtures', 'guide-recipes', 'showcase', 'doc-tests', 'browser')
+FULL = QUICK + ('wasm-build', 'wasm-bindgen', 'bun-test', 'fixtures', 'guide-recipes', 'showcase', 'doc-tests', 'browser', 'shape-wasm32')
 # These consumers can cook the same projects. Serialize them when selected
 # together without adding tests to a scoped run merely to enforce ordering.
 PROJECT_STEPS = {'bun-test', 'fixtures', 'showcase', 'browser', 'web-reference'}

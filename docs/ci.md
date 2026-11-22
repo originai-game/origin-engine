@@ -74,6 +74,7 @@ installed by `scripts/install-tools.sh` (cargo-nextest when absent).
 | minisign (signs and checks a release's `SHA256SUMS`) | 0.11, the distribution's | `.agents/setup`; Homebrew's on macOS |
 | Chrome for Testing (`make web-reference`, browser tests) | the newest agent-browser install | `CHROME`, else `~/.agent-browser/browsers/chrome-<version>` (`tests/web/cdp.ts`); `libnss3`, `libnspr4` and unprivileged user namespaces from `.agents/setup`; outside the gate |
 | Mesa lavapipe (CPU rendering in orbs) | minimum 25.0.7 | `.agents/setup`; Debian bookworm-backports supplies Mesa and apt resolves its dependencies |
+| wasmtime (the `shape-wasm32` step's wasm32-wasip1 test runner) | 51.0.0 | `WASMTIME_VERSION` and each archive's sha256 in `scripts/install-tools.sh` |
 
 Every target and profile uses LLVM with eight frontend threads
 (`-Zthreads=8`); there are no backend overrides. Metadata embedding and the
@@ -296,6 +297,13 @@ scripts/release-wasm.sh` does, and `release.sh pack` calls it. `dev.txt`
 lists the shipping publish and lanes variants the size gate measures,
 despite its name.
 
+`shape-wasm32` (full) builds og-shape's golden test for wasm32-wasip1 and
+runs it under wasmtime (`CARGO_TARGET_WASM32_WASIP1_RUNNER`): every case
+must hash as `crates/og-shape-cli/tests/it/golden/hashes.txt` records, the
+same check rust-cpu makes natively, so the kernel's f64 arithmetic, own
+trig and exact predicates give the web target the native result. It reruns
+only when og-shape-cli's closure changed.
+
 ### Test binaries
 
 Each crate has at most one default integration binary, `tests`, declared
@@ -351,6 +359,7 @@ split, and the lowest such crate is its cause.
 | `safari` | Wire, player, export, device, and motion ticks in desktop Safari. Also plays publish builds of First Light and Side Scroller. | explicit, macOS |
 | `check-conformance` | `scripts/tsrs-diff.sh`: compare tsrs and pinned tsgo diagnostics over packages, templates, the test fixtures and the error corpus. | explicit |
 | perf | `scripts/perf.sh`: ignored `perf_*` assertions in og-tests, og-runtime and og-audio, release profile, serially under every GPU slot. An og-tests baseline holds the frame's milliseconds and, where the device has timestamp queries, each render-graph pass's GPU milliseconds (`passes_ms`): a pass over its own baseline by 15 % and 0.1 ms fails by name. | explicit |
+| `shape-wasm32` | `cargo test --release --target wasm32-wasip1 -p og-shape-cli --test tests golden` under wasmtime: og-shape's golden hashes on wasm32. | full |
 
 The gate requires nextest. Bun tests have a 30-second per-test timeout
 (`OG_BUN_TEST_TIMEOUT`). Refresh missing functional wasm with

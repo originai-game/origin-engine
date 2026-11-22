@@ -772,3 +772,15 @@ step_web_reference() {
     return 1
   fi
 }
+
+# og-shape's goldens built for wasm32-wasip1 and run under wasmtime: the
+# kernel's f64 arithmetic, own trig and exact predicates must hash the same
+# on the web target as natively (docs/ci.md §Lanes). wasmtime comes from
+# scripts/install-tools.sh.
+step_shape_wasm32() {
+  skip_unchanged shape-wasm32 "shape-wasm32" "$(python3 scripts/gate/inputs.py crates og-shape-cli)" && return $SKIP
+  command -v wasmtime >/dev/null || { og_err "shape-wasm32: no wasmtime; run scripts/install-tools.sh"; return 1; }
+  export RUSTC_WRAPPER=
+  CARGO_TARGET_WASM32_WASIP1_RUNNER=wasmtime \
+    cargo test --locked --release --target wasm32-wasip1 -p og-shape-cli --test tests golden
+}
