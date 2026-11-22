@@ -40,14 +40,26 @@ status `docs/roadmap.md`. Platform contracts implemented here:
 - The engine ships no skills. What a game author needs beyond a signature is
   a guide in `crates/og-api/guides/` (read through `og api find` and
   `og api show`) or `og` command help. A guide never restates the API and
-  names no platform tool or service.
+  names no platform tool or service. A guide may carry recipes: short
+  examples that compose the API for one mechanism, each type-checked and
+  run by the gate; a recipe is never a game.
 
 ## Principles
 
 - **The engine supplies facts and tools; the agent decides.** No engine
-  command scores or refuses on taste; thresholds belong in the guides.
-- **No gameplay templates.** `og create` writes one project skeleton; the
-  creation choices go into project.ogt's `create` block.
+  command scores or refuses on taste; thresholds belong in the guides. A
+  shipped system carries out a rule the game wrote into its components and
+  reports what it did; it never picks a value, ranks a play by taste or
+  decides an outcome the game did not state.
+- **No gameplay templates; mechanisms by name.** `og create` writes one
+  project skeleton; the creation choices go into project.ogt's `create`
+  block. The engine ships mechanisms, never games: primitives report facts
+  (a hit, an overlap, a candidate) and the small systems in `og.systems`
+  carry out the rules their components state (a window, a cooldown, a
+  stack limit). A game lists each system it uses by name, sets every number
+  (a zero value does nothing) and may copy a system's source to change it.
+  Nothing the engine ships holds a level, a rule set, a balance or a
+  genre's composition.
 - **Fix at the root; port the state of the art.** A problem is fixed where it
   arises, never worked around in a game, component or test. A missing feature
   starts from current papers and permissive implementations; keep their

@@ -91,6 +91,11 @@ beyond the platform SDK's rooms.
   other is wired in `og-runtime`, one binding file per domain and no
   domain algorithm. `crates/og-core/tests/layers.rs` holds the table and
   the edges that still break it.
+- **Mechanisms that span domains** (a volume on a bone that hits
+  colliders, candidates by range and line of sight) live in `og-play`, a
+  domain crate that depends on no other domain: it takes poses, shapes and
+  query answers as data through its own traits, and `og-runtime`'s
+  `bind/play.rs` feeds it. Its state is world state.
 - **A runtime module is loaded when it is used.** `og-runtime` is the core
   (declarations, engines, the tick, assets, saves, the probe) plus modules,
   one per IDL module that binds a feature crate (physics, story with
