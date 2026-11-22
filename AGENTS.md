@@ -88,7 +88,7 @@ status `docs/roadmap.md`. Platform contracts implemented here:
   cooked formats sit below feature crates; a tier is a capability set
   (§2.6 Tiers).
 - **wgpu from its latest release, or our fork of it.** The fork
-  (`https://ampcode.com/@origingame/wgpu`, pinned at a commit in
+  (`https://github.com/originai-game/wgpu`, pinned at a commit in
   `Cargo.toml`'s `[patch.crates-io]`) is based on the latest wgpu release
   and carries only patches that correspond to upstream PRs, each named in
   that comment. The engine goes back to crates.io once a wgpu release has

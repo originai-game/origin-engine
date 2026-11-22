@@ -393,9 +393,10 @@ glamx = { path = "third_party/glamx" }
 parley_engine = { path = "third_party/parley_engine" }
 # Layout, patched at the root (third_party/taffy/README.md).
 taffy = { path = "third_party/taffy" }
-# wgpu: origin-engine's fork (branch og/v30.0.2-compat), v30.0.2 plus WebGPU
-# compatibility mode. It carries only patches that correspond to upstream
-# PRs, and the engine goes back to crates.io once a wgpu release has them:
+# wgpu: origin-engine's fork (github.com/originai-game/wgpu, branch
+# og/v30.0.2-compat), v30.0.2 plus WebGPU compatibility mode. It carries
+# only patches that correspond to upstream PRs, and the engine goes back to
+# crates.io once a wgpu release has them:
 # - gfx-rs/wgpu#8764: the storage limits in the vertex and fragment stages;
 # - gfx-rs/wgpu#10293: `Features::CORE_FEATURES_AND_LIMITS` (at a free bit);
 # - `RequestAdapterOptions::feature_level` and `Limits::compatibility_defaults`,
@@ -405,12 +406,12 @@ taffy = { path = "third_party/taffy" }
 #   format table): towards gfx-rs/wgpu#8124, not yet an upstream PR;
 # - `TextureDescriptor::texture_binding_view_dimension`, passed on by the
 #   WebGPU backend only: the subset of gfx-rs/wgpu#8014 the browser needs.
-naga = { git = "https://ampcode.com/@origingame/wgpu", rev = "85f7562d3946fab31b895b7c91d888cf82b410db" }
-naga-types = { git = "https://ampcode.com/@origingame/wgpu", rev = "85f7562d3946fab31b895b7c91d888cf82b410db" }
-wgpu = { git = "https://ampcode.com/@origingame/wgpu", rev = "85f7562d3946fab31b895b7c91d888cf82b410db" }
-wgpu-core = { git = "https://ampcode.com/@origingame/wgpu", rev = "85f7562d3946fab31b895b7c91d888cf82b410db" }
-wgpu-core-deps-apple = { git = "https://ampcode.com/@origingame/wgpu", rev = "85f7562d3946fab31b895b7c91d888cf82b410db" }
-wgpu-core-deps-windows-linux-android = { git = "https://ampcode.com/@origingame/wgpu", rev = "85f7562d3946fab31b895b7c91d888cf82b410db" }
-wgpu-hal = { git = "https://ampcode.com/@origingame/wgpu", rev = "85f7562d3946fab31b895b7c91d888cf82b410db" }
-wgpu-naga-bridge = { git = "https://ampcode.com/@origingame/wgpu", rev = "85f7562d3946fab31b895b7c91d888cf82b410db" }
-wgpu-types = { git = "https://ampcode.com/@origingame/wgpu", rev = "85f7562d3946fab31b895b7c91d888cf82b410db" }
+naga = { git = "https://github.com/originai-game/wgpu", rev = "85f7562d3946fab31b895b7c91d888cf82b410db" }
+naga-types = { git = "https://github.com/originai-game/wgpu", rev = "85f7562d3946fab31b895b7c91d888cf82b410db" }
+wgpu = { git = "https://github.com/originai-game/wgpu", rev = "85f7562d3946fab31b895b7c91d888cf82b410db" }
+wgpu-core = { git = "https://github.com/originai-game/wgpu", rev = "85f7562d3946fab31b895b7c91d888cf82b410db" }
+wgpu-core-deps-apple = { git = "https://github.com/originai-game/wgpu", rev = "85f7562d3946fab31b895b7c91d888cf82b410db" }
+wgpu-core-deps-windows-linux-android = { git = "https://github.com/originai-game/wgpu", rev = "85f7562d3946fab31b895b7c91d888cf82b410db" }
+wgpu-hal = { git = "https://github.com/originai-game/wgpu", rev = "85f7562d3946fab31b895b7c91d888cf82b410db" }
+wgpu-naga-bridge = { git = "https://github.com/originai-game/wgpu", rev = "85f7562d3946fab31b895b7c91d888cf82b410db" }
+wgpu-types = { git = "https://github.com/originai-game/wgpu", rev = "85f7562d3946fab31b895b7c91d888cf82b410db" }
