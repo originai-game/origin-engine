@@ -1,0 +1,12 @@
+{
+  "added": [
+    {
+      "member": "PlaytestDesc.budget",
+      "summary": "A playtest states its frame budget (`budget: { frameMs: { p95: 16.6 }, gpuPasses: { main: { p95: 6 } } }`) and fails over it, naming the timing, its value and the ceiling. `run.timings`, `og run --json`'s `timings` and `og test --json`'s playtest event carry each rendered frame's step + render milliseconds and each render pass's GPU milliseconds (p50, p95), null with the reason in `missing` without a renderer or GPU timestamps, never 0; a budget the run could not measure is reported unchecked, never passed."
+    },
+    {
+      "member": "PlaytestDesc.restart",
+      "summary": "A restart check: `restart: { at }` holds the world after the restart's tick to a fresh start's after its first tick by the world's portable hash, the clock left out, and fails naming the first differing entity, component and field (`run.restart`, the playtest event's `restart`, `og run --restart-at`)."
+    }
+  ]
+}

@@ -20,7 +20,7 @@ import { expect } from "bun:test";
 import { appendFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { FrameUnchecked, PLAYTEST_CLOCK, type PlaytestAssertions, type PlaytestDesc, type PlaytestLockstep, type PlaytestRun } from "../playtest.ts";
+import { FrameUnchecked, PLAYTEST_CLOCK, type PlaytestAssertions, type PlaytestCeiling, type PlaytestDesc, type PlaytestLockstep, type PlaytestRestart, type PlaytestRun, type PlaytestTimings } from "../playtest.ts";
 import { loadNativeHost, native } from "./index.ts";
 import { decodePng } from "./png.ts";
 import { runInSession } from "./session-client.ts";
@@ -55,7 +55,10 @@ type Summary = {
   unchecked?: string[];
   expectations?: { failed: number; results: ExpectResult[] };
   assertions?: PlaytestAssertions;
+  timings?: PlaytestTimings;
+  restart?: PlaytestRestart;
 };
+const NO_TIMINGS: PlaytestTimings = { frameMs: null, gpuPasses: null, missing: { frameMs: "the run reported no timings", gpuPasses: "the run reported no timings" } };
 const EMPTY_ASSERTIONS: PlaytestAssertions = { violations: [], uncovered: [], sites: [], defaults: { fields: 0, ticks: 0, values: 0, totalMs: 0, meanUs: 0, maxUs: 0 } };
 
 /** The desc's own errors, before anything runs. */
@@ -73,7 +76,38 @@ function refusal(desc: PlaytestDesc): string | null {
     const name = room.name ?? "playtest";
     if (!/^[A-Za-z0-9._-]{1,54}$/.test(name)) return `room.name '${name}' is not a room id: 1 to 54 of letters, digits, '.', '_' and '-' (a then step's room adds .then-<n>)`;
   }
+  if (desc.restart !== undefined && !(Number.isFinite(desc.restart.at) && desc.restart.at > 0)) return `restart.at is ${desc.restart.at}: the seconds by which the script has restarted the game, above 0`;
+  if (desc.restart !== undefined && room) return "a room playtest takes no `restart`: check the restart in a playtest of one process";
+  const ceilings = [["frameMs", desc.budget?.frameMs], ...Object.entries(desc.budget?.gpuPasses ?? {}).map(([n, c]) => [`gpuPasses.${n}`, c] as const)] as const;
+  for (const [name, c] of ceilings) {
+    if (c === undefined) continue;
+    for (const [q, v] of Object.entries(c)) if (!["p50", "p95"].includes(q) || !(typeof v === "number" && v > 0)) return `budget.${name}.${q} is ${v}: a ceiling is p50 or p95, in milliseconds above 0`;
+  }
   return null;
+}
+
+/** PlaytestDesc.budget against a run's timings: each ceiling over is a failure, each the run could not measure unchecked. */
+function holdBudget(desc: PlaytestDesc, timings: PlaytestTimings, failures: string[], unchecked: string[]): number {
+  let checked = 0;
+  const hold = (name: string, ceiling: PlaytestCeiling | undefined, measured: { p50: number; p95: number } | null | undefined, missing: string | undefined) => {
+    for (const q of ["p50", "p95"] as const) {
+      const limit = ceiling?.[q];
+      if (limit === undefined) continue;
+      if (!measured) {
+        unchecked.push(`budget ${name}.${q} <= ${limit} ms: ${missing ?? "not measured"}, unchecked`);
+        continue;
+      }
+      checked++;
+      if (measured[q] > limit) failures.push(`budget ${name}.${q}: ${measured[q]} ms, over its ${limit} ms ceiling`);
+    }
+  };
+  hold("frameMs", desc.budget?.frameMs, timings.frameMs, timings.missing.frameMs);
+  for (const [pass, ceiling] of Object.entries(desc.budget?.gpuPasses ?? {})) {
+    const measured = timings.gpuPasses?.find((p) => p.name === pass);
+    const missing = timings.gpuPasses ? `the GPU timed no pass named ${pass} (it timed ${timings.gpuPasses.map((p) => p.name).join(", ")})` : timings.missing.gpuPasses;
+    hold(`gpuPasses.${pass}`, ceiling, measured, missing);
+  }
+  return checked;
 }
 
 export async function runPlaytest(desc: PlaytestDesc): Promise<PlaytestRun> {
@@ -138,6 +172,7 @@ export async function runPlaytest(desc: PlaytestDesc): Promise<PlaytestRun> {
     if (store) c.push("--platform-store", store);
     if (fakeFile) c.push("--platform-fake", fakeFile);
     if (desc.content !== undefined) c.push("--content", resolve(root ?? ".", desc.content));
+    if (desc.restart !== undefined && !room) c.push("--restart-at", String(desc.restart.at));
     return c;
   };
   const summarise = (exitCode: number, stdout: string, stderr: string, what: string): Summary | null => {
@@ -148,7 +183,7 @@ export async function runPlaytest(desc: PlaytestDesc): Promise<PlaytestRun> {
       summary = null;
     }
     // A run whose only failures are its expectations or assertions exits 1 with its summary: each is a check.
-    const expectedOnly = exitCode === 1 && summary !== null && ((summary.expectations?.failed ?? 0) > 0 || (summary.assertions?.violations.length ?? 0) > 0);
+    const expectedOnly = exitCode === 1 && summary !== null && ((summary.expectations?.failed ?? 0) > 0 || (summary.assertions?.violations.length ?? 0) > 0 || summary.restart?.ok === false);
     if ((exitCode !== 0 && !expectedOnly) || !summary) {
       failures.push(`${what} failed (exit ${exitCode}): ${stderr.trim() || stdout.trim()}`);
       return null;
@@ -176,6 +211,11 @@ export async function runPlaytest(desc: PlaytestDesc): Promise<PlaytestRun> {
     assertionLog.violations.push(...a.violations.map((v) => ({ run: what, ...v })));
     assertionLog.uncovered.push(...a.uncovered.map((u) => ({ run: what, ...u })));
     assertionLog.defaults.push({ run: what, ...a.defaults });
+    if (summary.restart) {
+      checks++;
+      const r = summary.restart;
+      if (!r.ok) failures.push(`${what}: restart: the world after ${r.tick} ticks is not a fresh start's (hash ${r.hash}, a fresh start's ${r.startHash}): ${r.first ?? "the hashes differ"}`);
+    }
     return summary;
   };
   const spawn = async (c: string[], what: string): Promise<Summary | null> => {
@@ -279,6 +319,7 @@ export async function runPlaytest(desc: PlaytestDesc): Promise<PlaytestRun> {
   } else summary = await spawn(command(desc.commands, out, clock), "og run");
   if (!summary) return refuse();
   for (const s of [summary, ...peerSummaries]) reports.push(s.assertions ?? EMPTY_ASSERTIONS);
+  checks += holdBudget(desc, summary.timings ?? NO_TIMINGS, failures, unchecked);
   const rendered = summary.tier !== "none";
   unchecked.push(...(summary.unchecked ?? []));
   // More runs of the same script (desc.runs), each with a fresh world into
@@ -313,6 +354,8 @@ export async function runPlaytest(desc: PlaytestDesc): Promise<PlaytestRun> {
       warnings: s.warnings,
       then: later,
       assertions: s.assertions ?? EMPTY_ASSERTIONS,
+      timings: s.timings ?? NO_TIMINGS,
+      restart: s.restart ?? null,
       netHash: s.netHash ?? "",
       lockstep: s.lockstep ?? null,
       peers,
@@ -394,6 +437,8 @@ export async function runPlaytest(desc: PlaytestDesc): Promise<PlaytestRun> {
     renderer: summary.renderer,
     adapterError: summary.adapterError,
     warnings: summary.warnings,
+    timings: summary.timings ?? NO_TIMINGS,
+    ...(summary.restart ? { restart: summary.restart } : {}),
     ...(room ? { netHashes: [summary, ...peerSummaries].map((s) => s.netHash ?? ""), lockstep: [summary, ...peerSummaries].map((s) => s.lockstep ?? null) } : {}),
   };
   if (failures.length > 0) refuse(extra);

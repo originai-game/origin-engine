@@ -8,6 +8,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { ogBin } from "./support/og-bin.ts";
+import { gpuTest } from "./support/gpu.ts";
 
 declare const Bun: {
   spawnSync(cmd: string[], o: { cwd: string; env: Record<string, string | undefined> }): { exitCode: number; stdout: Uint8Array; stderr: Uint8Array };
@@ -114,6 +115,81 @@ test("quits", async () => { expect((await runPlaytest({ commands: "0.1:quit" }))
   expect(r.stderr).toContain("og test: 2 suite(s) passed, 1 failed");
   rmSync(join(game, "unit.test.ts"));
   rmSync(join(game, "tests/b.og.ts"));
+}, 180_000);
+
+/** A game that counts its ticks and restarts in its 30th, leaving the count as a first tick does (1), or by mistake 2. */
+const restartGame = (good: boolean) => `import { defineResource, defineSystem, og, u32 } from "@origingame/engine";
+const Count = defineResource("Count", { n: u32() });
+const Tick = defineSystem("Tick", { reads: [], writes: [Count] }, (_q, _t, world) => {
+  const c = world.resource(Count);
+  if (!c.ok) return;
+  if (c.value.n === 29) c.value.n = ${good ? 1 : 2};
+  else c.value.n++;
+});
+export default og.game({ systems: [Tick] });
+`;
+
+test("a playtest's timings are absent with the reason without a renderer, and a budget on them is unchecked; a restart check names the first difference", () => {
+  const original = join(game, "src/main.ts");
+  rmSync(join(game, "tests/smoke.og.ts"), { force: true });
+  rmSync(join(game, "tests/a.og.ts"), { force: true });
+  writeFileSync(join(game, "tests/budget.og.ts"), `import { expect, test } from "bun:test";
+import { runPlaytest } from "@origingame/engine/playtest";
+test("frames", async () => {
+  const run = await runPlaytest({ commands: "0.3:quit", budget: { frameMs: { p95: 16.7 }, gpuPasses: { main: { p50: 2 } } } });
+  expect(run.timings.frameMs, "no frame timings").toBeNull();
+});`);
+  writeFileSync(join(game, "tests/restart.og.ts"), `import { expect, test } from "bun:test";
+import { runPlaytest } from "@origingame/engine/playtest";
+test("restarts", async () => {
+  const run = await runPlaytest({ commands: "1:quit", restart: { at: 0.5 } });
+  expect(run.restart?.ok, "restarted").toBe(true);
+});`);
+  try {
+    for (const good of [true, false]) {
+      writeFileSync(original, restartGame(good));
+      const ran = og("test", game, "--json");
+      const events = lines(ran.stdout);
+      if (!events.some((e) => e.playtest === "budget")) throw new Error(ran.stdout + ran.stderr);
+      const budget = events.find((e) => e.playtest === "budget") as Record<string, any>;
+      const restart = events.find((e) => e.playtest === "restart") as Record<string, any>;
+      if (good) {
+        expect(budget).toMatchObject({ ok: true, status: "unchecked" });
+        expect(budget.timings).toMatchObject({ frameMs: null, gpuPasses: null });
+        expect(budget.timings.missing.frameMs).toContain("no renderer");
+        expect(budget.timings.missing.gpuPasses).toContain("no renderer");
+        expect(budget.unchecked.filter((u: string) => u.startsWith("budget "))).toEqual([
+          expect.stringContaining("budget frameMs.p95 <= 16.7 ms: no renderer"),
+          expect.stringContaining("budget gpuPasses.main.p50 <= 2 ms: no renderer"),
+        ]);
+        expect(restart).toMatchObject({ ok: true, status: "passed", restart: { tick: 30, ok: true, first: null } });
+        expect(restart.restart.hash).toBe(restart.restart.startHash);
+      } else {
+        expect(restart).toMatchObject({ ok: false, status: "failed", restart: { tick: 30, ok: false } });
+        expect(restart.restart.first).toBe("resource Count.n is 2, a fresh start's 1");
+        expect(restart.failures.join("\n")).toContain("restart: the world after 30 ticks is not a fresh start's");
+      }
+    }
+  } finally {
+    writeFileSync(original, `import { og } from "@origingame/engine"; export default og.game({});`);
+    rmSync(join(game, "tests/budget.og.ts"));
+    rmSync(join(game, "tests/restart.og.ts"));
+  }
+}, 240_000);
+
+gpuTest("a playtest over its frame budget fails, naming the timing and its ceiling", () => {
+  writeFileSync(join(game, "tests/over.og.ts"), `import { expect, test } from "bun:test";
+import { runPlaytest } from "@origingame/engine/playtest";
+test("frames", async () => { expect((await runPlaytest({ commands: "0.5:quit", budget: { frameMs: { p95: 0.001 } } })).quit).toBe(true); });`);
+  try {
+    const r = Bun.spawnSync([ogBin(), "test", game, "--json"], { cwd: repo, env: { ...env, OG_RENDERER: process.env.OG_RENDERER ?? "hardware" } });
+    const over = lines(new TextDecoder().decode(r.stdout)).find((e) => e.playtest === "over") as Record<string, any>;
+    expect(over.timings.frameMs.p95).toBeGreaterThan(0.001);
+    expect(over).toMatchObject({ ok: false, status: "failed" });
+    expect(over.failures.join("\n")).toMatch(/budget frameMs\.p95: [\d.]+ ms, over its 0\.001 ms ceiling/);
+  } finally {
+    rmSync(join(game, "tests/over.og.ts"));
+  }
 }, 180_000);
 
 test("og probe prints the result as JSON, exits 1 on an error, and --raw prints the frame", async () => {

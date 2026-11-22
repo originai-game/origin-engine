@@ -62,6 +62,16 @@
 //   GameDesc.start and --setup have run. Together they are `og dev --engine`'s
 //   hot restart: the engine rebuilt, a new process carries the world on. A
 //   refused restore warns and the run goes on from the start.
+// - With --restart-at S (and --commands that restart the game before S
+//   seconds): once the run has played that many ticks, the world is compared
+//   with the world after the run's first tick (the restart's tick is the new
+//   game's first), by og-net's portable hash and diff, the clock left out
+//   (og.Time and og.TimeScale.elapsed: a restart cannot turn it back). --json's `restart` is the result; a
+//   world that differs fails the run, naming the first difference.
+// - --json's `timings`: each frame's step + render milliseconds (p50, p95)
+//   and each render pass's GPU milliseconds (the performance record's
+//   `gpu <pass>` lines), the first five frames left out. Without a renderer
+//   or GPU timestamps they are null and `missing` says why: never 0.
 
 import { copyFileSync, existsSync, mkdirSync, readFileSync, renameSync, rmSync, statSync, watch, writeFileSync } from "node:fs";
 import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
@@ -136,6 +146,7 @@ export async function run(argv: string[], output: RunOutput = hostProcess, contr
     let restoreFile: string | undefined;
     let handoffFile: string | undefined;
     let failureCapture: string | undefined;
+    let restartAt: number | undefined;
     const setup: string[] = [];
     for (let i = 0; i < argv.length; i++) {
       const a = argv[i]!;
@@ -181,6 +192,7 @@ export async function run(argv: string[], output: RunOutput = hostProcess, contr
       else if (a === "--restore") restoreFile = resolve(next());
       else if (a === "--handoff") handoffFile = resolve(next());
       else if (a === "--failure-capture") failureCapture = resolve(next());
+      else if (a === "--restart-at") restartAt = Number(next());
       else if (a === "--headless") {
         // Native runs are always headless; accepted for `og run --headless`.
       } else fail(`unknown argument '${a}'`);
@@ -199,6 +211,8 @@ export async function run(argv: string[], output: RunOutput = hostProcess, contr
     if (!Number.isInteger(forks) || forks < 0) fail("--forks takes a whole number of forks");
     if (forks > 0 && (commands === undefined || realtime || watchFile !== undefined || port !== undefined || room !== undefined || handoffFile !== undefined))
       fail("--forks forks a script's run: it takes --commands, not --realtime, --watch, --port, --room or --handoff");
+    if (restartAt !== undefined && (!(Number.isFinite(restartAt) && restartAt > 0) || commands === undefined))
+      fail("--restart-at takes the seconds by which --commands has restarted the game, above 0");
     if (captureOnly && (realtime || watchFile !== undefined || port !== undefined)) fail("--capture-only draws no display frame: it is for a script's run, not --realtime, --watch or --port");
 
     // --trace: the Chrome trace (src/trace.ts), continuing og's prelude (the cook) when appending.
@@ -550,6 +564,72 @@ export async function run(argv: string[], output: RunOutput = hostProcess, contr
     const systemsBefore = asJson ? systemTimes() : [];
     const stepTimes: number[] = [];
     const renderTimes: number[] = [];
+    // Each rendered frame's step + render milliseconds (ProbeTimings.frameMs), the first five left out.
+    const frameTimes: number[] = [];
+    // --restart-at: the world of a fresh start, and the table its hash is taken within (the clock left out).
+    type Restart = { tick: number; ok: boolean; hash: string; startHash: string; first: string | null; diff: unknown };
+    let restart: Restart | null = null;
+    let ticksRun = 0;
+    const restartTick = restartAt === undefined ? undefined : Math.max(1, Math.round(restartAt * engine.rate));
+    // Taken after the run's first tick (the engine's own systems set their state up in it): the
+    // restart's tick is the new game's first.
+    const takeStart = () => {
+      const save = engine.world.snapshot();
+      if (!save.ok) fail(`--restart-at: the engine refused the start's snapshot (${save.reason})`);
+      const own = JSON.parse(extras.og_node_replay_hash(engine.id, "")) as { table?: Record<string, string[]>; error?: string };
+      if (!own.table) fail(`--restart-at: ${own.error ?? "the world has no hash table"}`);
+      // The clock: og.Time and og.TimeScale's elapsed (its scaled elapsed time); scale and hitStop are the game's.
+      delete own.table!["og.Time"];
+      if (own.table!["og.TimeScale"]) own.table!["og.TimeScale"] = own.table!["og.TimeScale"]!.filter((f) => f !== "elapsed");
+      const table = JSON.stringify(own.table);
+      const hashed = JSON.parse(extras.og_node_replay_hash(engine.id, table)) as { hash: string };
+      return { save: save.value, table, hash: hashed.hash };
+    };
+    let startWorld: ReturnType<typeof takeStart> | null = null;
+    /** The world now against the start's: equal when og-net's diff finds nothing but the clock. */
+    const checkRestart = (tick: number): Restart => {
+      const start = startWorld!;
+      const hash = (JSON.parse(extras.og_node_replay_hash(engine.id, start.table)) as { hash: string }).hash;
+      type Diff = {
+        error?: string;
+        components?: Array<{ entity: string; component: string; fields?: Array<{ field: string; local: unknown; remote: unknown }>; only?: string }>;
+        entities?: { onlyLocal: string[]; onlyRemote: string[] };
+        resources?: Array<{ resource: string; fields?: Array<{ field: string; local: unknown; remote: unknown }>; only?: string }>;
+        events?: Array<{ event: string; local: number; remote: number }>;
+        blocks?: Array<{ block: string }>;
+        allocator?: boolean;
+      };
+      const d = JSON.parse(extras.og_node_replay_diff(engine.id, start.save)) as Diff;
+      if (d.error) return { tick, ok: false, hash, startHash: start.hash, first: `the diff failed: ${d.error}`, diff: d };
+      d.resources = (d.resources ?? [])
+        .filter((r) => r.resource !== "og.Time")
+        .map((r) => (r.resource === "og.TimeScale" && r.fields ? { ...r, fields: r.fields.filter((f) => f.field !== "elapsed") } : r))
+        .filter((r) => r.only || (r.fields?.length ?? 1) > 0);
+      const field = (f?: Array<{ field: string; local: unknown; remote: unknown }>) =>
+        f?.[0] ? `.${f[0].field} is ${JSON.stringify(f[0].remote)}, a fresh start's ${JSON.stringify(f[0].local)}` : "";
+      const c = d.components?.[0];
+      const r = d.resources[0];
+      const first = c
+        ? c.only === "local"
+          ? `${c.entity} has no ${c.component}, which a fresh start's has`
+          : c.only === "remote"
+            ? `${c.entity} has ${c.component}, which a fresh start's has not`
+            : `${c.entity} ${c.component}${field(c.fields)}`
+        : d.entities?.onlyLocal[0] !== undefined
+          ? `entity ${d.entities.onlyLocal[0]} of a fresh start is gone (${d.entities.onlyLocal.length} in all)`
+          : d.entities?.onlyRemote[0] !== undefined
+            ? `entity ${d.entities.onlyRemote[0]} is not in a fresh start (${d.entities.onlyRemote.length} in all)`
+            : r
+              ? `resource ${r.resource}${r.only ? " is missing" : field(r.fields)}`
+              : d.events?.[0]
+                ? `event queue ${d.events[0].event} holds ${d.events[0].remote}, a fresh start's ${d.events[0].local}`
+                : d.blocks?.[0]
+                  ? `module state ${d.blocks[0].block} differs`
+                  : d.allocator
+                    ? "the entity allocator differs (entities were despawned and spawned again: restore the start's world.snapshot instead)"
+                    : null;
+      return { tick, ok: first === null && hash === start.hash, hash, startHash: start.hash, first, diff: d };
+    };
     // Each frame's own time and the time between consecutive frames are the engine's performance record's
     // (`frame work`, `frame interval`: author/perf.rs), turned on after the first five frames unless --perf
     // records the whole run.
@@ -694,6 +774,7 @@ export async function run(argv: string[], output: RunOutput = hostProcess, contr
         if (asJson && framesSeen > 5) {
           if ((answer.ticks ?? 0) > 0) stepTimes.push(answer.stepMs ?? 0);
           if (answer.rendered) renderTimes.push(answer.renderMs ?? 0);
+          if (answer.rendered) frameTimes.push(((answer.ticks ?? 0) > 0 ? (answer.stepMs ?? 0) : 0) + (answer.renderMs ?? 0));
         }
         sink.pump();
         if (listening !== undefined) extras.og_node_probe_serve(engine.id);
@@ -702,6 +783,10 @@ export async function run(argv: string[], output: RunOutput = hostProcess, contr
         const tick = answer.tick ?? 0;
         at = { tick, behind: answer.behind ?? 0 };
         if (forks > 0) atTick(tick, answer.pending ?? 0);
+        // Counted by the ticks run, not og.Time: a restart that restores the start's world turns it back.
+        ticksRun += answer.ticks ?? 0;
+        if (restartTick !== undefined && startWorld === null && ticksRun >= 1) startWorld = takeStart();
+        if (restartTick !== undefined && restart === null && ticksRun >= restartTick) restart = checkRestart(ticksRun);
         if (control.signal && tick % 16 === 0) await sleep(0);
         if (answer.quit) {
           quit = true;
@@ -738,7 +823,7 @@ export async function run(argv: string[], output: RunOutput = hostProcess, contr
       outputs.push(tracePath);
     }
     // The record's frame lines, for --json's frame figures.
-    type PerfLine = { line: string; median: number; p95: number; max: number };
+    type PerfLine = { line: string; median: number; p95: number; max: number; frames?: number };
     const recorded = asJson ? ((JSON.parse(boundHost()!.abi.og_engine_perf_report(engine.id, "{}")) as { json: { lines?: PerfLine[] } | null }).json?.lines ?? []) : [];
     if (asJson && !perfDir) boundHost()!.abi.og_engine_perf(engine.id, false);
     if (perfDir) {
@@ -815,6 +900,10 @@ export async function run(argv: string[], output: RunOutput = hostProcess, contr
       }
     }
     const forkFailed = forkResults.some((f) => f.mismatches.length > 0);
+    if (restartTick !== undefined && restart === null)
+      restart = { tick: dump.tick, ok: false, hash: "", startHash: startWorld?.hash ?? "", first: `the run ended after ${ticksRun} ticks, before --restart-at's ${restartTick}`, diff: null };
+    const restartFailed = restart !== null && !restart.ok;
+    if (restart && !restart.ok) process.stderr.write(`og run: the world after ${restart.tick} ticks is not a fresh start's: ${restart.first}\n`);
     // Order statistics (nearest rank).
     const percentile = (xs: number[], q: number): number => {
       if (xs.length === 0) return 0;
@@ -840,6 +929,20 @@ export async function run(argv: string[], output: RunOutput = hostProcess, contr
       intervalMedianMs: r3(line("frame interval").median),
       intervalP95Ms: r3(line("frame interval").p95),
       intervalMaxMs: r3(line("frame interval").max),
+    };
+    // The frame and GPU pass timings a playtest's budget is held to: absent with the reason, never 0.
+    const gpuTimestamps = (JSON.parse(boundHost()!.abi.og_render_capabilities(engine.id)) as { gpuTimestamps?: boolean }).gpuTimestamps ?? false;
+    const noRenderer = tier === "none" ? `no renderer${adapterError ? ` (${adapterError})` : " (OG_RENDERER=none)"}` : null;
+    const gpuLines = recorded.filter((l) => l.line.startsWith("gpu ") && !l.line.endsWith("(in flight)") && !["gpu frame", "gpu overlapped", "gpu idle"].includes(l.line));
+    const timings = {
+      frameMs: frameTimes.length > 0 ? { p50: r3(percentile(frameTimes, 0.5)), p95: r3(percentile(frameTimes, 0.95)), frames: frameTimes.length } : null,
+      gpuPasses: gpuTimestamps && gpuLines.length > 0 ? gpuLines.map((l) => ({ name: l.line.slice(4), p50: l.median, p95: l.p95, frames: l.frames ?? 0 })) : null,
+      missing: {
+        ...(frameTimes.length > 0 ? {} : { frameMs: noRenderer ?? (asJson ? "the run rendered no frame after its first five, which compile pipelines" : "timings are taken with --json") }),
+        ...(gpuTimestamps && gpuLines.length > 0
+          ? {}
+          : { gpuPasses: noRenderer ?? (!gpuTimestamps ? "the device times no pass on the GPU (RenderCapabilities.gpuTimestamps false)" : "the GPU timed no pass after the run's first five frames") }),
+      },
     };
     // Each system's mean milliseconds a run over this run, slowest first.
     const systems = (dump.systems ?? [])
@@ -868,13 +971,14 @@ export async function run(argv: string[], output: RunOutput = hostProcess, contr
       facts: (engine.probe.state() as { facts?: unknown }).facts ?? null,
       advanceMs: +ms.toFixed(2),
       frames,
+      timings,
       systems,
       runtime: typeof Bun !== "undefined" ? `bun ${Bun.version}` : `node ${process.version}`,
       tier,
       renderer: tier,
       adapterError,
       // Whether the device timed each render pass on the GPU (RenderCapabilities.gpuTimestamps): the trace's gpu thread and ProbeTimings.gpuPasses.
-      gpuTimestamps: (JSON.parse(boundHost()!.abi.og_render_capabilities(engine.id)) as { gpuTimestamps?: boolean }).gpuTimestamps ?? false,
+      gpuTimestamps,
       quit,
       unchecked,
       uncheckedCount: unchecked.length + expectations.unchecked,
@@ -884,6 +988,7 @@ export async function run(argv: string[], output: RunOutput = hostProcess, contr
       expectations,
       assertions,
       ...(forks > 0 ? { forks: forkResults } : {}),
+      ...(restart ? { restart } : {}),
     };
     if (asJson) process.stdout.write(JSON.stringify(summary) + "\n");
     else {
@@ -897,7 +1002,7 @@ export async function run(argv: string[], output: RunOutput = hostProcess, contr
       for (const u of assertions.uncovered as Array<{ kind: string; name: string; key?: string }>)
         process.stdout.write(`never fired: ${u.kind} ${u.name}${u.key !== undefined ? ` [${u.key}]` : ""}\n`);
     }
-    return frameFailed || forkFailed || expectations.failed > 0 || assertions.violations.length > 0 || (requireChecked && summary.uncheckedCount > 0) ? 1 : 0;
+    return frameFailed || forkFailed || restartFailed || expectations.failed > 0 || assertions.violations.length > 0 || (requireChecked && summary.uncheckedCount > 0) ? 1 : 0;
   } catch (error) {
     if (error instanceof RunExit) return error.code;
     // Bun resolves source maps lazily; materialize the stack before cleanup

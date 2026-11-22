@@ -78,6 +78,10 @@ export interface PlaytestRun {
   readonly then: readonly PlaytestRun[];
   /** The run's assertions (the probe's `assertions`): violations, sites, buckets and what never fired. */
   readonly assertions: PlaytestAssertions;
+  /** The run's frame and GPU pass timings, which PlaytestDesc.budget is held to. */
+  readonly timings: PlaytestTimings;
+  /** With PlaytestDesc.restart: the world after its tick against a fresh start's; null without it. */
+  readonly restart: PlaytestRestart | null;
   /** og.net's shared hash at the end (og.net.hash): the world without this process's session, what lockstep peers compare. */
   readonly netHash: string;
   /** With PlaytestDesc.room: og.net.status at the end (running, the start tick, the seats, the first divergent tick); null outside a room. */
@@ -91,6 +95,58 @@ export interface PlaytestRun {
    * checks after it. Every check outside `frame` runs either way.
    */
   frame(files: string | readonly string[], check: () => void): void;
+}
+
+/** A timing's median and 95th percentile in milliseconds, over the frames that had it. */
+export interface PlaytestPercentiles {
+  readonly p50: number;
+  readonly p95: number;
+  readonly frames: number;
+}
+
+/**
+ * A run's timings (`og run --json`'s `timings`), the first five frames left out (they compile
+ * pipelines). `frameMs` is each rendered frame's step + render on the CPU (ProbeTimings.frameMs);
+ * `gpuPasses` each render pass's time alone on the GPU. Either is null without a renderer, or
+ * without GPU timestamps for the passes, and `missing` says why: never 0.
+ */
+export interface PlaytestTimings {
+  readonly frameMs: PlaytestPercentiles | null;
+  readonly gpuPasses: ReadonlyArray<PlaytestPercentiles & { readonly name: string }> | null;
+  readonly missing: { readonly frameMs?: string; readonly gpuPasses?: string };
+}
+
+/** A ceiling in milliseconds on a timing's median, its 95th percentile or both. */
+export interface PlaytestCeiling {
+  readonly p50?: number;
+  readonly p95?: number;
+}
+
+/**
+ * The timings the game holds a playtest to (PlaytestDesc.budget): over a ceiling fails the
+ * playtest, naming the timing, its value and the ceiling; a timing the run could not measure (no
+ * renderer, no GPU timestamps) is reported unchecked, never passed.
+ */
+export interface PlaytestBudget {
+  /** Each frame's step + render on the CPU. */
+  readonly frameMs?: PlaytestCeiling;
+  /** A render pass's GPU time, by its name in `timings.gpuPasses` (`main`, `tonemap`). */
+  readonly gpuPasses?: Readonly<Record<string, PlaytestCeiling>>;
+}
+
+/** PlaytestDesc.restart's result: the world after the restart against a fresh start's. */
+export interface PlaytestRestart {
+  /** The ticks the run had played when it was compared (a restored world's og.Time may read less). */
+  readonly tick: number;
+  /** Whether it is a fresh start's world (the clock left out). */
+  readonly ok: boolean;
+  /** Its portable hash, the clock left out, and the start world's. */
+  readonly hash: string;
+  readonly startHash: string;
+  /** The first difference, such as `hero Health.hp is 3, a fresh start's 10`; null when equal. */
+  readonly first: string | null;
+  /** og-net's whole diff of the two worlds (og replay compare's). */
+  readonly diff: unknown;
 }
 
 /** One violated assertion: its first failure. */
@@ -217,6 +273,20 @@ export interface PlaytestDesc {
    * `store: "keep"` keeps one store per place across them.
    */
   readonly room?: PlaytestRoom;
+  /**
+   * Ceilings on the run's timings (`run.timings`), stated by the game: `{ frameMs: { p95: 16.7 } }`.
+   * Over one fails the playtest; one the run could not measure is unchecked, never passed.
+   */
+  readonly budget?: PlaytestBudget;
+  /**
+   * A restart check: the script restarts the game (presses its Play again, sends its command) so
+   * that the restart runs in the tick at `at` seconds, and the world after that tick must be a fresh
+   * start's after its first tick (the restart's tick is the new game's first), the clock left out
+   * (og.Time, og.TimeScale.elapsed), by the world hash a replay and a save compare. A different
+   * world fails the playtest, naming the first differing entity, component and field. Entities
+   * despawned and spawned again differ too (the allocator moved on): reset them in place.
+   */
+  readonly restart?: { readonly at: number };
   /** More fresh runs after the script, in order (a relaunch): their runs are `run.then`. With `room`, every place of the room relaunches at once. */
   readonly then?: readonly PlaytestStep[];
   /**

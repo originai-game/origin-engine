@@ -220,6 +220,26 @@ it once. Read state before guessing at it:
   VS Code's profile views). Time inside the engine shows on the binding
   that called it. Run enough ticks for the samples to mean something: at
   one sample a millisecond, a system needs a few hundred ticks to show.
+- A playtest holds the game to its own numbers with `budget`: each
+  rendered frame's step + render on the CPU (`frameMs`) and each render
+  pass's GPU time (`gpuPasses`, by the pass names `run.timings` lists),
+  as a median or 95th-percentile ceiling. Over one fails the playtest,
+  naming the timing, its value and the ceiling; a run without a renderer
+  or GPU timestamps reports it unchecked, never passed. The first five
+  frames, which compile pipelines, are left out.
+
+```ts
+const run = await runPlaytest({ commands: "10:quit", budget: { frameMs: { p95: 16.6 }, gpuPasses: { main: { p95: 6 } } } });
+```
+
+- A restart is checked with `restart: { at }`: the script restarts the
+  game so the restart runs in the tick at `at` seconds, and the world
+  after that tick must hash as a fresh start's after its first tick, the
+  clock (og.Time, og.TimeScale.elapsed) left out. A difference fails the
+  playtest with the first differing entity, component and field
+  (`run.restart.first`) and og replay compare's whole diff
+  (`run.restart.diff`). Reset entities in place: one despawned and spawned
+  again moves the entity allocator, which a fresh start's world does not.
 - First frame on a phone over 4G within 2 s for a small game: a large
   first scene, fonts for every language at once and uncompressed textures
   are the usual causes. Stream what the first screen does not show.
@@ -332,7 +352,15 @@ Each line has an `event`, in this order:
    file's output directory, `og-out/test/<playtest>/`), `ms`, `assertions`
    (`{violations, uncovered, required, defaults}`), `runs`, `adapterErrors`
    and, when a run happened, the first run's `tick`, `hash`, `hashes`,
-   `tier`, `renderer`, `adapterError` and `warnings`.
+   `tier`, `renderer`, `adapterError`, `warnings` and `timings`: `frameMs`
+   (`{p50, p95, frames}`, each rendered frame's step + render milliseconds)
+   and `gpuPasses` (`[{name, p50, p95, frames}]`, each render pass's GPU
+   milliseconds), the first five frames left out; each is `null` without
+   a renderer, or without GPU timestamps for the passes, and `missing`
+   (`{frameMs?, gpuPasses?}`) says why, never 0. A `budget` it could not
+   hold is listed in `unchecked` (`budget frameMs.p95 <= 16.6 ms: <why>,
+   unchecked`) and one it exceeded in `failures`. With `restart`, the
+   first run's `restart`: `{tick, ok, hash, startHash, first, diff}`.
 3. `test`, last: `ok`, `suites`, `passed`, `failed`, `uncheckedSuites`,
    `uncheckedCount`, `skipped`, `renderer` (`null`, or `"none"` when a run
    found no GPU), `adapterError`, `adapterErrors` and `check` (`{ok, ms,
