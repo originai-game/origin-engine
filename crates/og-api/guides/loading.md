@@ -243,13 +243,15 @@ and fitted daylight estimate for LDR) and stores it:
 
 ```ts
 const map = og.load.environment(world, "env/day.ogt").value;
-const sun = og.load.environmentSun(world, map).value;
+const rotation = 0.4, intensity = 1.2; // the same values as og.Environment
+const sun = og.load.environmentSun(world, map, rotation, intensity).value;
 // sun.direction points towards the sun; a light shines along its -Z.
 light.set(og.DirectionalLight, { color: sun.color, intensity: sun.intensity });
 ```
 
-Aim the light's entity so its -Z points along `-sun.direction`, turned
-about +Y by `Environment.rotation` when that is not 0. The sun's disc
+Aim the light's entity so its -Z points along `-sun.direction`: the answer
+already applies runtime rotation and intensity (default 0 and 1). Its
+intensity is in DirectionalLight units, not lux; assign it directly. The sun's disc
 stays as authored in an LDR background (HDR keeps the extraction cap). `intensity` 0 means
 the image had no sun; the cook's report says what it took. A scene lit
 by a map alone (a studio, or an image whose sun is kept) sets a

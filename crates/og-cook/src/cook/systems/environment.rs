@@ -1,5 +1,5 @@
 //! The environment map cook step (phase 4): a `type environment` .ogt names
-//! an HDR image, an equirectangular one or a cube map, which is prefiltered
+//! an HDR or sRGB image, equirectangular or six faces, or a cube map, prefiltered
 //! here, at cook time, into og-render's `EnvironmentMapData`
 //! (`og_render_data::bake`): a cube of RGB9E5 levels, level `m` GGX-prefiltered
 //! at roughness `m / 4` (level 0 the radiance), and the diffuse irradiance
@@ -9,7 +9,7 @@
 //! type environment
 //! version 1
 //! ---
-//! source "studio.hdr"   # an equirectangular Radiance .hdr or OpenEXR .exr (linear RGB),
+//! source "studio.hdr"   # an equirectangular .hdr/.exr (linear) or .png/.jpg/.webp (sRGB),
 //!                       # or a KTX2 cube map (RGBA16F, RGB9E5, BC6H, ...: `cube_source`)
 //! faces "px.hdr" "nx.hdr" "py.hdr" "ny.hdr" "pz.hdr" "nz.hdr"
 //!                       # instead of source: six square faces, +x -x +y -y +z -z
@@ -19,6 +19,10 @@
 //! samples 256           # GGX samples per texel of each prefiltered level (16 to 4096)
 //! prefiltered false     # true: a KTX2 cube's own mip chain is the prefiltered levels
 //! sun keep              # extract: the sun leaves the image and is stored as a light
+//! hemisphere upper      # optional: bottom edge is horizon; fill the lower half
+//! ground 0.12 0.10 0.08  # optional linear RGB override of the horizon-row mean
+//! expand 0.25           # mild inverse tone curve for LDR lighting only
+//! sunBoost 1            # multiplier of the estimated LDR sun, extracted by default
 //! ```
 //!
 //! `sun extract` takes the image's sun out of the map
@@ -76,7 +80,7 @@ const KEYS: [&str; 12] = [
 
 /// What an environment bakes from.
 pub(crate) enum EnvironmentSource {
-    /// An equirectangular `.hdr` or `.exr`.
+    /// An equirectangular HDR or sRGB image.
     Equirect(String),
     /// A KTX2 cube map.
     Ktx2(String),
@@ -198,6 +202,9 @@ pub(crate) fn parse(rel: &str, root: &Path, text: &str) -> Result<EnvironmentDoc
                     f.line
                 ));
             }
+            if names.iter().any(|n| hdr_image(n)) && names.iter().any(|n| !hdr_image(n)) {
+                return Err("faces must all be HDR/EXR or all be sRGB PNG/JPG/WebP".into());
+            }
             EnvironmentSource::Faces(std::array::from_fn(|i| {
                 super::terrain::resolve(rel, root, names[i])
             }))
@@ -306,6 +313,7 @@ pub(crate) fn parse(rel: &str, root: &Path, text: &str) -> Result<EnvironmentDoc
                 .filter_map(|v| v.as_number().map(|n| n.as_f32()))
                 .collect();
             if values.len() != 3
+                || e.values.len() != 3
                 || values
                     .iter()
                     .any(|v| !v.is_finite() || !(0.0..=1.0).contains(v))
@@ -592,8 +600,7 @@ pub(crate) fn cook_environment(
             s.direction[2]
         ),
         (true, _) => {
-            "; sun extract: the image has no sun (nothing sixteen times brighter than the rest), so it is kept whole"
-                .into()
+            "; sun extract: no measurable sun was found, so the image is kept whole".into()
         }
     };
     let note = format!(

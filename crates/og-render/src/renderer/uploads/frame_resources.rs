@@ -123,12 +123,14 @@ impl Renderer {
     /// The sky pass's uniform for this frame: the background's blurriness
     /// and the map it draws (`SkyParams`).
     pub(crate) fn authored_environment(&self, scene: &RenderScene) -> bool {
-        self.drawn_environment(scene).is_some_and(|(m, blend)| {
-            !scene.environment_maps()[m.map.index()]
-                .background
-                .is_empty()
-                || blend.is_some_and(|(i, _)| !scene.environment_maps()[i].background.is_empty())
-        })
+        matches!(scene.lighting.environment.background, Background::Sky)
+            && self.drawn_environment(scene).is_some_and(|(m, blend)| {
+                !scene.environment_maps()[m.map.index()]
+                    .background
+                    .is_empty()
+                    || blend
+                        .is_some_and(|(i, _)| !scene.environment_maps()[i].background.is_empty())
+            })
     }
 
     pub(crate) fn write_sky_params(&self, scene: &RenderScene) {

@@ -33,4 +33,4 @@ fn shader {
 }
 ```
 
-<sub>Module `load` line 338</sub>
+<sub>Module `load` line 344</sub>

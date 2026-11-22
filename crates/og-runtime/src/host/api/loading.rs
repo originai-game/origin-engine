@@ -174,8 +174,17 @@ pub fn og_load_environment(world: u32, path: String) -> Result<serde_json::Value
     engine(world).and_then(|eng| super::environment::load(&eng, &path).map(asset_value))
 }
 
-pub fn og_load_environment_sun(world: u32, map: f64) -> Result<serde_json::Value, String> {
-    let sun = engine(world).and_then(|eng| super::environment::sun(&eng, index_of(map)))?;
+pub fn og_load_environment_sun(
+    world: u32,
+    map: f64,
+    rotation: f32,
+    intensity: f32,
+) -> Result<serde_json::Value, String> {
+    if !rotation.is_finite() || !intensity.is_finite() {
+        return Err("environmentSun rotation and intensity must be finite".into());
+    }
+    let sun = engine(world)
+        .and_then(|eng| super::environment::sun(&eng, index_of(map), rotation, intensity))?;
     let [x, y, z] = sun.direction;
     let [r, g, b] = sun.color;
     Ok(serde_json::json!({

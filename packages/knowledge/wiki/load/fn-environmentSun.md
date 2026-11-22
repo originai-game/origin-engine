@@ -11,13 +11,15 @@ The sun a cooked environment map holds apart from its image (`sun extract` in it
 See `loading §4`.
 
 ```ts
-og.load.environmentSun(world: World, map: EnvironmentMap): Result<EnvironmentSun>
+og.load.environmentSun(world: World, map: EnvironmentMap, rotation?: number, intensity?: number): Result<EnvironmentSun>
 ```
 
 | Parameter | Type | Optional | Doc |
 |---|---|---|---|
 | `world` | `World` | no | The world whose renderer owns the map. |
 | `map` | `EnvironmentMap` | no | A map og.load.environment answered. |
+| `rotation` | `number` | yes | The Environment.rotation in radians about +Y; applied here, not by the game. Default `0`. |
+| `intensity` | `number` | yes | The Environment.intensity multiplier, applied here to the cooked sun, in the same scale as the map lighting. Default `1`. |
 
 **Returns** `Result<EnvironmentSun>`: Refused for a handle that is not an environment map, or one whose streaming group is not resident yet.
 
@@ -29,6 +31,12 @@ fn environmentSun {
   guide "loading §4"
   param world World "The world whose renderer owns the map."
   param map EnvironmentMap "A map og.load.environment answered."
+  param rotation f32 "The Environment.rotation in radians about +Y; applied here, not by the game." {
+    default 0
+  }
+  param intensity f32 "The Environment.intensity multiplier, applied here to the cooked sun, in the same scale as the map lighting." {
+    default 1
+  }
   returns Result.EnvironmentSun "Refused for a handle that is not an environment map, or one whose streaming group is not resident yet."
 }
 ```

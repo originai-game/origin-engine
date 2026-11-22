@@ -85,8 +85,19 @@ macro_rules! __og_host_bindings_assets {
             fn og_load_environment(&self, world: u32, path: String) -> String {
                 $crate::host_impl::answer($crate::og_load_environment(world, path))
             }
-            fn og_load_environment_sun(&self, world: u32, map: f64) -> String {
-                $crate::host_impl::answer($crate::og_load_environment_sun(world, map))
+            fn og_load_environment_sun(
+                &self,
+                world: u32,
+                map: f64,
+                rotation: Option<f64>,
+                intensity: Option<f64>,
+            ) -> String {
+                $crate::host_impl::answer($crate::og_load_environment_sun(
+                    world,
+                    map,
+                    rotation.unwrap_or(0.0) as f32,
+                    intensity.unwrap_or(1.0) as f32,
+                ))
             }
 
             fn og_load_texture_array(&self, world: u32, path: String) -> String {

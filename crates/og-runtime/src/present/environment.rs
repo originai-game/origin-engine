@@ -59,7 +59,12 @@ pub(crate) fn load(eng: &Engine, path: &str) -> Result<usize, String> {
 }
 
 /// `og.load.environmentSun`: the sun the cook took out of the map's image.
-pub(crate) fn sun(eng: &Engine, index: Option<usize>) -> Result<og_render::EnvironmentSun, String> {
+pub(crate) fn sun(
+    eng: &Engine,
+    index: Option<usize>,
+    rotation: f32,
+    intensity: f32,
+) -> Result<og_render::EnvironmentSun, String> {
     let rs = eng.render.borrow();
     let (id, handle) = index
         .and_then(|i| rs.env.maps.get(i))
@@ -69,7 +74,12 @@ pub(crate) fn sun(eng: &Engine, index: Option<usize>) -> Result<og_render::Envir
         .ok_or_else(|| {
             format!("{id} is not loaded: its streaming group is not resident (og.stream.status)")
         })?;
-    Ok(map.sun)
+    let mut sun = map.sun;
+    sun.direction = (og_core::glam::Quat::from_rotation_y(rotation)
+        * og_core::glam::Vec3::from_array(sun.direction))
+    .to_array();
+    sun.intensity *= intensity.max(0.0);
+    Ok(sun)
 }
 
 /// At a tick boundary: adds the pending maps whose pack is now resident.

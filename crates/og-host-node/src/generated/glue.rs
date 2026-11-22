@@ -1624,9 +1624,9 @@ pub fn og_load_environment(env: Env, world: u32, path: String) -> String {
 }
 
 #[napi(js_name = "og_load_environment_sun")]
-pub fn og_load_environment_sun(env: Env, world: u32, map: f64) -> String {
+pub fn og_load_environment_sun(env: Env, world: u32, map: f64, rotation: Option<f64>, intensity: Option<f64>) -> String {
     let _env = crate::EnvScope::enter(&env);
-    <Host as LoadApi>::og_load_environment_sun(&Host, world, map)
+    <Host as LoadApi>::og_load_environment_sun(&Host, world, map, rotation, intensity)
 }
 
 #[napi(js_name = "og_load_emitter")]

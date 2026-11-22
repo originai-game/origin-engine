@@ -566,7 +566,7 @@ export interface HostAbi<A, V> {
   /** `og.load.environment` */
   og_load_environment(world: number, path: string): string;
   /** `og.load.environmentSun` */
-  og_load_environment_sun(world: number, map: number): string;
+  og_load_environment_sun(world: number, map: number, rotation: number | undefined, intensity: number | undefined): string;
   /** `og.load.emitter` */
   og_load_emitter(world: number, path: string): string;
   /** `og.load.effect` */

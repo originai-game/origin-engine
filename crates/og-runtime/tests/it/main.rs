@@ -67,6 +67,8 @@ mod instantiate_in_system;
 mod invariants;
 #[path = "../load_data.rs"]
 mod load_data;
+#[path = "../environment_sun.rs"]
+mod environment_sun;
 #[path = "../material_arrays.rs"]
 mod material_arrays;
 #[path = "../mesh_flash.rs"]

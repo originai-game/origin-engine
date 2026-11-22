@@ -618,7 +618,7 @@ pub trait LoadApi: Wire {
     /// `og.load.environment`
     fn og_load_environment(&self, world: u32, path: String) -> String;
     /// `og.load.environmentSun`
-    fn og_load_environment_sun(&self, world: u32, map: f64) -> String;
+    fn og_load_environment_sun(&self, world: u32, map: f64, rotation: Option<f64>, intensity: Option<f64>) -> String;
     /// `og.load.emitter`
     fn og_load_emitter(&self, world: u32, path: String) -> String;
     /// `og.load.effect`

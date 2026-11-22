@@ -767,6 +767,44 @@ fn ldr_panorama_and_faces_light_in_linear_space() {
             );
         }
     }
+    // Asymmetric faces catch a projection that duplicates, swaps or flips
+    // axes while a constant-grey cube still looks right.
+    let colors = [
+        [128, 0, 0],
+        [0, 128, 0],
+        [0, 0, 128],
+        [128, 128, 0],
+        [128, 0, 128],
+        [0, 128, 128],
+    ];
+    let images: Vec<_> = colors
+        .iter()
+        .enumerate()
+        .map(|(i, &c)| {
+            (
+                format!("{i}.png"),
+                ldr_image(16, 16, |_, _| c, image::ImageFormat::Png),
+            )
+        })
+        .collect();
+    let mut files: Vec<(&str, &[u8])> = images
+        .iter()
+        .map(|(n, b)| (n.as_str(), b.as_slice()))
+        .collect();
+    files.push(("cube.ogt", b"type environment\nversion 1\n---\nfaces \"0.png\" \"1.png\" \"2.png\" \"3.png\" \"4.png\" \"5.png\"\nsize 16\nsamples 16\nexpand 0\n"));
+    let root = project("ldr-oriented-faces", &files);
+    cook(&root);
+    let map = Bundle::open(&root.join("cooked"))
+        .unwrap()
+        .load_environment("cube.ogt")
+        .unwrap();
+    for (face, color) in colors.iter().enumerate() {
+        let got = og_render::rgb9e5_decode(map.background[face * 256 + 8 * 16 + 8]);
+        for c in 0..3 {
+            let expected = if color[c] == 0 { 0.0 } else { 0.21586 };
+            assert!((got[c] - expected).abs() < 0.004, "face {face}: {got:?}");
+        }
+    }
 }
 
 /// Ground fill is independent of a sky's blue zenith.
@@ -850,6 +888,7 @@ fn ldr_sun_is_removed_from_lighting_not_the_authored_background() {
             ("sky.png", &sky),
             ("sun.ogt", env("").as_bytes()),
             ("keep.ogt", env("sun keep").as_bytes()),
+            ("boost.ogt", env("sunBoost 3\nintensity 2").as_bytes()),
         ],
     );
     let report = cook(&root);
@@ -863,6 +902,11 @@ fn ldr_sun_is_removed_from_lighting_not_the_authored_background() {
     let bundle = Bundle::open(&root.join("cooked")).unwrap();
     let sun = bundle.load_environment("sun.ogt").unwrap();
     let keep = bundle.load_environment("keep.ogt").unwrap();
+    let boost = bundle.load_environment("boost.ogt").unwrap();
+    assert!(
+        (boost.sun.intensity / sun.sun.intensity - 6.0).abs() < 0.001,
+        "both sunBoost and cooked intensity must scale the directional light"
+    );
     assert!(
         sun.sun.intensity > 0.0 && sun.sun.direction[1] > 0.5 && sun.sun.angular_size > 0.0,
         "{:?}",
@@ -881,5 +925,69 @@ fn ldr_sun_is_removed_from_lighting_not_the_authored_background() {
     assert!(
         peak(&sun) < peak(&keep) - 0.05,
         "the prefilter must not retain the disc"
+    );
+    let incremental = cook(&root);
+    assert!(!incremental.cooked_outputs().iter().any(|o| o.cooked));
+    let stats = og_cook::cook::stats::cook_report_json(
+        &incremental,
+        &root.join("cooked"),
+        &Default::default(),
+    );
+    let entry = stats["assets"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|a| a["source"] == "sun.ogt")
+        .unwrap();
+    assert_eq!(entry["environment"]["facts"]["width"], 512);
+    assert!(
+        entry["environment"]["facts"]["clippedFraction"]
+            .as_f64()
+            .unwrap()
+            > 0.0
+    );
+    assert_eq!(
+        entry["environment"]["sun"]["intensity"],
+        serde_json::json!(sun.sun.intensity)
+    );
+}
+
+#[test]
+fn near_equirect_resamples_but_a_distant_aspect_names_its_size() {
+    let near = ldr_image(65, 32, |_, _| [128, 128, 128], image::ImageFormat::Png);
+    let far = ldr_image(65, 40, |_, _| [128, 128, 128], image::ImageFormat::Png);
+    let root = project(
+        "ldr-aspect",
+        &[
+            ("near.png", &near),
+            ("far.png", &far),
+            (
+                "near.ogt",
+                b"type environment\nversion 1\n---\nsource \"near.png\"\nsize 16\nsamples 16\n",
+            ),
+            (
+                "far.ogt",
+                b"type environment\nversion 1\n---\nsource \"far.png\"\nsize 16\nsamples 16\n",
+            ),
+        ],
+    );
+    let report = cook_project(&root, &Default::default()).unwrap();
+    let error = report
+        .assets
+        .iter()
+        .find(|a| a.source == "far.ogt")
+        .unwrap()
+        .error
+        .as_ref()
+        .unwrap();
+    assert!(
+        error.contains("65 × 40") && error.contains("2:1"),
+        "{error}"
+    );
+    assert!(
+        Bundle::open(&root.join("cooked"))
+            .unwrap()
+            .load_environment("near.ogt")
+            .is_ok()
     );
 }

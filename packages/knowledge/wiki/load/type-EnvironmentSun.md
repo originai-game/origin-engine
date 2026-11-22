@@ -10,17 +10,17 @@ The sun a cooked environment took out of its lighting image, for the Directional
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `direction` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | — | — | The unit direction towards the sun, in the map's own frame: the cook's `rotation` is applied, Environment.rotation is not (turn it about +Y by the same angle). |
+| `direction` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | — | — | The world-space unit direction towards the sun: both the cook's rotation and the runtime rotation argument are applied. |
 | `color` | `Color` | `{ r: 0, g: 0, b: 0 }` | — | — | — | Its linear colour, the largest channel 1: DirectionalLight.color. |
-| `intensity` | `number` | `0` | — | — | — | The light it gave a surface facing it: DirectionalLight.intensity. 0 when the environment has no sun to give (`sun keep`, an image with no sun, or an uncooked map). |
+| `intensity` | `number` | `0` | — | — | — | DirectionalLight.intensity units, including cooked and runtime intensity: assign directly. 0 for sun keep, no detected sun or an uncooked map. LDR estimates share the sky's relative linear-radiance scale, not calibrated lux. |
 | `angularSize` | `number` | `0` | — | — | — | The apparent disc diameter in radians (solid-angle equivalent diameter of the extracted region); 0 when none was found. An estimate for clipped LDR images. |
 
 ```ogt
 struct EnvironmentSun {
   doc "The sun a cooked environment took out of its lighting image, for the DirectionalLight that puts it back. LDR panoramas extract by default; their intensity is a relative-radiance estimate from the clipped disc and circumsolar gradient, not measured lux. HDR sources integrate measured radiance."
-  field direction Vector3 "The unit direction towards the sun, in the map's own frame: the cook's `rotation` is applied, Environment.rotation is not (turn it about +Y by the same angle)."
+  field direction Vector3 "The world-space unit direction towards the sun: both the cook's rotation and the runtime rotation argument are applied."
   field color Color "Its linear colour, the largest channel 1: DirectionalLight.color."
-  field intensity f32 "The light it gave a surface facing it: DirectionalLight.intensity. 0 when the environment has no sun to give (`sun keep`, an image with no sun, or an uncooked map)."
+  field intensity f32 "DirectionalLight.intensity units, including cooked and runtime intensity: assign directly. 0 for sun keep, no detected sun or an uncooked map. LDR estimates share the sky's relative linear-radiance scale, not calibrated lux."
   field angularSize f32 "The apparent disc diameter in radians (solid-angle equivalent diameter of the extracted region); 0 when none was found. An estimate for clipped LDR images."
 }
 ```

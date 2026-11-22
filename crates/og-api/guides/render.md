@@ -189,7 +189,8 @@ sunBoost 1
   the clipping lower bound rather than a fabricated fit. The original disc
   remains visible in the authored background, but is replaced with its
   surrounding sky before the lighting prefilter. `og.load.environmentSun`
-  reports direction, colour, intensity and `angularSize` (radians). Give
+  takes the map, Environment.rotation and Environment.intensity and reports
+  world direction, colour, DirectionalLight intensity and `angularSize` (radians). Give
   those to a DirectionalLight and aim its -Z away from that direction for
   actual shadows; the engine never adds a second light for you.
 
@@ -202,6 +203,11 @@ is estimated. Facts persist in the blob, so an incremental report retains
 them. Six faces report cues on their spherical projection; KTX2 chains have
 no source-image cues. No threshold scores the image and no seam is repaired:
 fix a visible wrap in the source, for example with a masked image edit.
+
+The report's sun intensity is in DirectionalLight units including the
+cook's `intensity`. The runtime answer additionally multiplies it by the
+Environment.intensity argument. Both use the sky's linear-radiance scale;
+LDR sunlight is estimated, not a calibrated illuminance measurement.
 
 | Need | Use | Cost |
 |---|---|---|

@@ -1355,7 +1355,7 @@ unsafe extern "C" fn og_load_environment(args: *const crate::OgValue, out: *mut 
 }
 
 unsafe extern "C" fn og_load_environment_sun(args: *const crate::OgValue, out: *mut crate::OgValue) {
-    let r = <Host as LoadApi>::og_load_environment_sun(&Host, unsafe { crate::arg(args, 0) }, unsafe { crate::arg(args, 1) });
+    let r = <Host as LoadApi>::og_load_environment_sun(&Host, unsafe { crate::arg(args, 0) }, unsafe { crate::arg(args, 1) }, unsafe { crate::arg(args, 2) }, unsafe { crate::arg(args, 3) });
     unsafe { crate::IntoC::into_c(r, out) }
 }
 
@@ -3628,7 +3628,7 @@ pub static SYMBOLS: &[crate::Symbol] = &[
     crate::Symbol { name: c"og_load_sound", arity: 2, call: og_load_sound },
     crate::Symbol { name: c"og_load_lut", arity: 2, call: og_load_lut },
     crate::Symbol { name: c"og_load_environment", arity: 2, call: og_load_environment },
-    crate::Symbol { name: c"og_load_environment_sun", arity: 2, call: og_load_environment_sun },
+    crate::Symbol { name: c"og_load_environment_sun", arity: 4, call: og_load_environment_sun },
     crate::Symbol { name: c"og_load_emitter", arity: 2, call: og_load_emitter },
     crate::Symbol { name: c"og_load_effect", arity: 2, call: og_load_effect },
     crate::Symbol { name: c"og_load_shader", arity: 2, call: og_load_shader },
