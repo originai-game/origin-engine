@@ -202,7 +202,7 @@ test("with deferStart, GameDesc.start waits for the first tick boundary; asking 
   const hello = engine.probe.hello();
   expect(hello.substrate).toBe("origin-engine");
   // The split modules, every one carried (packages/engine/scripts/wasm-modules.json).
-  expect(hello.modules).toEqual(["destruction", "motion", "nav", "physics", "physics2d", "physics3d", "story", "video"]);
+  expect(hello.modules).toEqual(["destruction", "motion", "nav", "physics", "physics2d", "physics3d", "render3d", "story", "video", "world3d"]);
   expect(starts).toBe(0);
   expect(engine.advance(0).ok).toBeTrue();
   expect(starts).toBe(1);
