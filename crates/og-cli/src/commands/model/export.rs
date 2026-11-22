@@ -7,7 +7,7 @@
 //! `"rest"`). A mesh file is written with its parts placed (skins kept
 //! in GLB).
 //!
-//! [`encode_solid`] writes the one solid the mesh tools make: GLB as
+//! [`encode_solid_clips`] writes the one solid the mesh tools make: GLB as
 //! `og_shape_formats::gltf::write::plain::glb_plain` (one node, one mesh, with the solid's UVs and
 //! the texture given), or OBJ or STL.
 //!
@@ -266,18 +266,9 @@ pub fn written(out: &Path, bytes: usize) -> String {
 }
 
 /// One solid in the format `out`'s extension names: a plain GLB (with
-/// the solid's UVs and colours, and `material` if given), OBJ or STL.
-pub fn encode_solid(
-    name: &str,
-    s: &Solid,
-    material: Option<&Material>,
-    out: &Path,
-) -> Result<Vec<u8>, Failure> {
-    encode_solid_clips(name, s, material, &[], out)
-}
-
-/// [`encode_solid`], a skinned solid's GLB with `clips` as animations of
-/// its bones (a file's own, carried through the tools).
+/// the solid's UVs and colours, and `material` if given), OBJ or STL; a
+/// skinned solid's GLB with `clips` as animations of its bones (a file's
+/// own, carried through the tools).
 pub fn encode_solid_clips(
     name: &str,
     s: &Solid,
@@ -523,7 +514,8 @@ mod tests {
                 Weights::single(1),
             ],
         });
-        let bytes = encode_solid("tet", &s, None, std::path::Path::new("tet.glb")).unwrap();
+        let bytes =
+            encode_solid_clips("tet", &s, None, &[], std::path::Path::new("tet.glb")).unwrap();
         let back =
             og_shape_formats::import(&bytes, &og_shape::tools::Import::default(), &|_: &str| {
                 Err(String::new())

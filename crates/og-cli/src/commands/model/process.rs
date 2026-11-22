@@ -110,11 +110,6 @@ pub struct ProcessDesc {
     pub out: Option<PathBuf>,
 }
 
-/// The chain's steps, in the order [`process_steps`] calls them.
-pub const STEPS: [&str; 7] = [
-    "import", "repair", "decimate", "unwrap", "textures", "measure", "export",
-];
-
 /// Takes every map off a material whose UVs were replaced, and says so.
 pub fn drop_maps(m: &mut Material) -> Vec<String> {
     m.maps_mut()
@@ -205,19 +200,6 @@ fn texture_budget(
 /// dropped), `textures` (null without a limit), `measures` and
 /// `output`.
 pub fn process(files: &dyn Files, d: &ProcessDesc) -> Result<String, Failure> {
-    process_steps(files, d, &mut |_| Ok(()))
-}
-
-/// As [`process`], calling `step(k)` before step `k` of [`STEPS`] (a
-/// front end reports progress there). An error from `step` stops the
-/// chain before that step and is returned; a step itself is never
-/// interrupted.
-pub fn process_steps(
-    files: &dyn Files,
-    d: &ProcessDesc,
-    step: &mut dyn FnMut(usize) -> Result<(), Failure>,
-) -> Result<String, Failure> {
-    step(0)?;
     let placing = d.place != Place::default();
     let (import, place) = if placing {
         let format = match &d.input {
@@ -232,7 +214,6 @@ pub fn process_steps(
     let imported = report::imported(&mesh.format, &mesh.imported);
     let mut clips = mesh.clips()?;
     let joined = mesh.take_joined()?;
-    step(1)?;
     let (mut fixed, r) = og_shape::tools::repair_owned(joined, &d.repair).map_err(failed)?;
     // The bake's source: the repaired mesh with its UVs and colours.
     let source = (d.bake > 0).then(|| fixed.clone());
@@ -245,7 +226,6 @@ pub fn process_steps(
         // must not hold the decimation back.
         fixed.uvs = None;
     }
-    step(2)?;
     let budget = if d.ratio == 0.0 {
         d.budget
     } else if d.budget > 0 || !(d.ratio > 0.0 && d.ratio <= 1.0) {
@@ -271,7 +251,6 @@ pub fn process_steps(
     } else {
         (fixed, "null".to_string())
     };
-    step(3)?;
     let (mut material, defaults, mut dropped) = mesh.material();
     // Baked before placing: the bake's distances are the file's.
     let mut low = low;
@@ -308,14 +287,12 @@ pub fn process_steps(
     } else {
         "null".to_string()
     };
-    step(4)?;
     let textures = texture_budget(
         &mut material,
         d.texture_max,
         (d.ktx2, d.etc1s, d.ktx2_rdo),
         d.webp,
     );
-    step(5)?;
     let images: Vec<ImageInfo> = material
         .maps()
         .into_iter()
@@ -330,7 +307,6 @@ pub fn process_steps(
             materials: core::slice::from_ref(&material),
         },
     );
-    step(6)?;
     let output = if baked.is_some() {
         super::export::write_solid_tangents(
             files,

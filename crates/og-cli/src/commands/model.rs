@@ -42,7 +42,7 @@ pub mod unwrap;
 #[cfg(test)]
 mod golden;
 
-pub use source::{Files, Input, Local, Mesh, Source};
+pub use source::{Files, Input};
 
 /// Why a command did not run.
 #[derive(Clone, Debug, PartialEq, Eq)]

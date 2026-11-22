@@ -51,8 +51,6 @@ pub enum Input {
     /// A program (`.json`) or a mesh file (`.glb`, `.gltf`, `.obj`,
     /// `.fbx`).
     Path(PathBuf),
-    /// A program's JSON text.
-    Program(String),
 }
 
 /// The extensions read as meshes.
@@ -113,9 +111,6 @@ pub fn load_uvs(
             "uvs asks a program's parts for UVs; a mesh keeps its own, or `unwrap` makes them"
                 .into(),
         )),
-        Input::Program(text) => {
-            program(files, text, "program", Path::new(""), uvs).map(Source::Program)
-        }
         Input::Path(p) if is_mesh(p) => mesh_file(files, p, d).map(Source::Mesh),
         Input::Path(p) => {
             let bytes = files.read(p)?;
