@@ -212,7 +212,9 @@ fn texture(
         format,
         usage,
         view_formats: &[],
-        texture_binding_view_dimension: None,
+        // A probe's six-layer textures are cubes (WebGPU compatibility mode
+        // infers `2d-array` for six layers).
+        texture_binding_view_dimension: (layers == 6).then_some(wgpu::TextureViewDimension::Cube),
     })
 }
 

@@ -397,7 +397,8 @@ impl PhysicalPipelines {
                 format: PACK_FORMAT,
                 usage: wgpu::TextureUsages::TEXTURE_BINDING,
                 view_formats: &[],
-                texture_binding_view_dimension: None,
+                // Bound as the material pack's array.
+                texture_binding_view_dimension: Some(wgpu::TextureViewDimension::D2Array),
             })
             .create_view(&wgpu::TextureViewDescriptor {
                 dimension: Some(wgpu::TextureViewDimension::D2Array),
@@ -459,7 +460,8 @@ impl PhysicalPipelines {
             format: PACK_FORMAT,
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
             view_formats: &[],
-            texture_binding_view_dimension: None,
+            // Bound as an array however many layers it has (WebGPU compatibility mode infers `2d` for one).
+            texture_binding_view_dimension: Some(wgpu::TextureViewDimension::D2Array),
         });
         for (layer, (uniform, views)) in layers.iter().enumerate() {
             let buffer = crate::buffer_init(

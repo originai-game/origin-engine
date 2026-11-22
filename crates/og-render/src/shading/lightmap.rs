@@ -429,7 +429,8 @@ impl Lightmaps {
                 format: wgpu::TextureFormat::Rgba16Float,
                 usage: wgpu::TextureUsages::TEXTURE_BINDING,
                 view_formats: &[],
-                texture_binding_view_dimension: None,
+                // Bound as an array however many layers it has (WebGPU compatibility mode infers `2d` for one).
+                texture_binding_view_dimension: Some(wgpu::TextureViewDimension::D2Array),
             },
             wgpu::util::TextureDataOrder::LayerMajor,
             bytemuck::cast_slice(&data),

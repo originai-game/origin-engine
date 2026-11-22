@@ -221,7 +221,8 @@ impl FftOcean {
                 | wgpu::TextureUsages::COPY_SRC
                 | wgpu::TextureUsages::COPY_DST,
             view_formats: &[],
-            texture_binding_view_dimension: None,
+            // Bound as an array however many layers it has (WebGPU compatibility mode infers `2d` for one).
+            texture_binding_view_dimension: Some(wgpu::TextureViewDimension::D2Array),
         });
         let level = |mip: u32| {
             fields.create_view(&wgpu::TextureViewDescriptor {

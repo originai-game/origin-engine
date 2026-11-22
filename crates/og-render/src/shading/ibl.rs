@@ -101,7 +101,8 @@ pub(crate) fn cube_texture(
             | wgpu::TextureUsages::COPY_SRC
             | wgpu::TextureUsages::COPY_DST,
         view_formats: &[],
-        texture_binding_view_dimension: None,
+        // Bound as a cube (WebGPU compatibility mode infers `2d-array` for six layers).
+        texture_binding_view_dimension: Some(wgpu::TextureViewDimension::Cube),
     })
 }
 

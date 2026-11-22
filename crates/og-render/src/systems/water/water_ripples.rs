@@ -206,7 +206,7 @@ impl Ripples {
         coarse: &wgpu::TextureView,
     ) -> Ripples {
         let side = Ripples::side(field.resolution);
-        let texture = |label, format| {
+        let texture = |label, format, binding: Option<wgpu::TextureViewDimension>| {
             device.create_texture(&wgpu::TextureDescriptor {
                 label: Some(label),
                 size: wgpu::Extent3d {
@@ -220,14 +220,19 @@ impl Ripples {
                 format,
                 usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::STORAGE_BINDING,
                 view_formats: &[],
-                texture_binding_view_dimension: None,
+                texture_binding_view_dimension: binding,
             })
         };
         let state = [
-            texture("water ripples state", STATE_FORMAT),
-            texture("water ripples state", STATE_FORMAT),
+            texture("water ripples state", STATE_FORMAT, None),
+            texture("water ripples state", STATE_FORMAT, None),
         ];
-        let heights = texture("water ripples heights", OUT_FORMAT);
+        // Bound as a 1-layer array (WebGPU compatibility mode infers `2d`).
+        let heights = texture(
+            "water ripples heights",
+            OUT_FORMAT,
+            Some(wgpu::TextureViewDimension::D2Array),
+        );
         // Written as a 2D storage texture, read by the water pass as a 1-layer array (water binding 1).
         let storage_view = heights.create_view(&Default::default());
         let view = heights.create_view(&wgpu::TextureViewDescriptor {

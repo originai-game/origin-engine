@@ -42,7 +42,8 @@ pub(crate) fn upload(
                 | wgpu::TextureUsages::COPY_DST
                 | wgpu::TextureUsages::COPY_SRC,
             view_formats: &[],
-            texture_binding_view_dimension: None,
+            // Bound as an array however many layers it has (WebGPU compatibility mode infers `2d` for one).
+            texture_binding_view_dimension: Some(wgpu::TextureViewDimension::D2Array),
         },
         wgpu::util::TextureDataOrder::LayerMajor,
         &data.texels(&info),

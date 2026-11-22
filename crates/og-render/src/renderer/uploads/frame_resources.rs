@@ -25,6 +25,7 @@ impl Renderer {
             self.info.shadow_map_size,
             wanted,
             wgpu::TextureFormat::R32Float,
+            wgpu::TextureViewDimension::D2Array,
         );
         self.shadows.shelter_key = None;
         self.shadows.shadow_cache.forget_layers();
@@ -85,6 +86,7 @@ impl Renderer {
             self.shadows.local_shadow_size,
             needed as u32,
             LOCAL_SHADOW_FORMAT,
+            wgpu::TextureViewDimension::D2Array,
         );
         self.shadows.shadow_cache.forget_layers();
         self.lights.environment = None;

@@ -604,12 +604,17 @@ impl ShadowMap {
         }
     }
 
+    /// `binding` is the dimension its views are bound as: `D2Array` for
+    /// the shadow maps' arrays (whatever their layer count), `D2` for a
+    /// one-layer map bound as its layer (WebGPU compatibility mode binds
+    /// only that dimension).
     pub(crate) fn new(
         device: &wgpu::Device,
         label: &str,
         size: u32,
         layers: u32,
         format: wgpu::TextureFormat,
+        binding: wgpu::TextureViewDimension,
     ) -> ShadowMap {
         let texture = device.create_texture(&wgpu::TextureDescriptor {
             label: Some(label),
@@ -634,7 +639,7 @@ impl ShadowMap {
                     wgpu::TextureUsages::empty()
                 },
             view_formats: &[],
-            texture_binding_view_dimension: None,
+            texture_binding_view_dimension: Some(binding),
         });
         let depth_texture = target_texture(
             device,

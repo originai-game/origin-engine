@@ -29,7 +29,8 @@ impl TerrainRenderer {
                 format,
                 usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
                 view_formats: &[],
-                texture_binding_view_dimension: None,
+                // Bound as an array however many layers it has (WebGPU compatibility mode infers `2d` for one).
+                texture_binding_view_dimension: Some(wgpu::TextureViewDimension::D2Array),
             });
             let v = t.create_view(&wgpu::TextureViewDescriptor {
                 dimension: Some(wgpu::TextureViewDimension::D2Array),

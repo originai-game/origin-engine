@@ -494,7 +494,8 @@ impl ArrayMaps {
                     format: wgpu::TextureFormat::Rgba8Unorm,
                     usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
                     view_formats: &[],
-                    texture_binding_view_dimension: None,
+                    // Bound as a 1-layer array (WebGPU compatibility mode infers `2d`).
+                    texture_binding_view_dimension: Some(wgpu::TextureViewDimension::D2Array),
                 },
                 wgpu::util::TextureDataOrder::LayerMajor,
                 &rgba,

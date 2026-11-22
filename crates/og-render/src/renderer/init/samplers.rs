@@ -89,6 +89,7 @@ impl Renderer {
             shadow_size,
             cascades.min(crate::RenderQuality::default().shadow_cascades),
             wgpu::TextureFormat::R32Float,
+            wgpu::TextureViewDimension::D2Array,
         );
         // Twelve layers to begin with; a frame that needs more grows it
         // (`grow_local_shadows`).
@@ -103,6 +104,7 @@ impl Renderer {
                 ))
                 .max(1) as u32,
             LOCAL_SHADOW_FORMAT,
+            wgpu::TextureViewDimension::D2Array,
         );
         SamplersAndShadowMapsOutputs {
             material_sampler,
