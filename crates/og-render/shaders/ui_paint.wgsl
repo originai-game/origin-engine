@@ -9,12 +9,20 @@
 // target stores what is returned, so the pass blends sRGB-encoded values, as
 // CSS does. Where the output is no such target, the pass draws a layer that
 // fs_layer draws over it (src/ui/paint.rs).
+//
+// A glyph's coverage goes through Skia's text preblend first, with Chrome
+// on Linux's gamma and contrast: a port of SkTMaskGamma (Skia,
+// src/core/SkMaskGamma.cpp; BSD-3-Clause, Copyright (c) 2011 Google Inc.;
+// third_party/skia-mask-gamma), its tables built by paint.rs
+// `preblend_table`.
 
 struct PaintFrame {
   // xy: the target in device pixels; z: device pixels per CSS pixel.
   output: vec4<f32>,
   // x: one code value of the target (a gradient's dither).
   extra: vec4<f32>,
+  // The preblend's eight rows of 256 coverages, a byte each.
+  preblend: array<vec4<u32>, 128>,
 };
 @group(0) @binding(0) var<uniform> frame: PaintFrame;
 
@@ -277,6 +285,17 @@ fn icon_distance(p: vec2<f32>, first: u32, count: u32) -> f32 {
   return best - 1.0;
 }
 
+// Skia's preblend of a glyph's coverage `c` for an ink `rgb` (linear):
+// the row of the ink's luminance as Skia takes it (its sRGB code values at
+// gamma 1.2, the top three bits of eight), the coverage's entry in it.
+fn preblend(c: f32, rgb: vec3<f32>) -> f32 {
+  let luma = dot(pow(clamp(srgb_encode(rgb), vec3<f32>(0.0), vec3<f32>(1.0)), vec3<f32>(1.2)), vec3<f32>(0.2126, 0.7152, 0.0722));
+  let row = u32(round(pow(luma, 1.0 / 1.2) * 255.0)) >> 5u;
+  let i = row * 256u + u32(round(clamp(c, 0.0, 1.0) * 255.0));
+  let word = frame.preblend[i / 16u][(i / 4u) % 4u];
+  return f32((word >> ((i % 4u) * 8u)) & 0xffu) / 255.0;
+}
+
 @fragment
 fn fs_paint(in: PaintOut) -> @location(0) vec4<f32> {
   // Sampled before any branch: derivatives need uniform control flow.
@@ -321,9 +340,9 @@ fn fs_paint(in: PaintOut) -> @location(0) vec4<f32> {
     }
     case 9u: {
       if (q.k.y == 0u) {
-        // Coverage is the text's alpha as it is: the pass blends encoded
-        // values, where a browser blends a glyph too.
-        a *= m.r;
+        // Coverage through Skia's preblend, then blended in encoded
+        // values, as Chrome's text is.
+        a *= preblend(m.r, rgb);
       } else if (q.k.y == 1u) {
         // A colour glyph: premultiplied, sRGB-encoded.
         rgb = srgb_decode(m.rgb / max(m.a, 1e-4));
