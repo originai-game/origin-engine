@@ -806,7 +806,10 @@ fn every_module_parses_as_wgsl_writes_its_operators() {
 /// - no two-component (`rg32*`) storage texture, but in the modules the
 ///   renderer builds only with `Caps::RG32_STORAGE` (`RG32_MODULES`);
 /// - `sample_mask` and `sample_index` only in the entry points the renderer
-///   builds without the compatibility tier (`GATED`).
+///   builds without the compatibility tier (`GATED`);
+/// - no storage buffer or texture a vertex stage reads, and four of each a
+///   fragment stage reads, but in the modules the renderer builds only with
+///   `Caps::VERTEX_STORAGE` (`VERTEX_STORAGE_MODULES`).
 mod compat {
     use naga::{
         Binding, BuiltIn, Expression as E, Function, ImageClass, Interpolation, Module, Sampling,
@@ -823,6 +826,10 @@ mod compat {
     /// Modules made only with `Caps::RG32_STORAGE`: the scatter cards'
     /// pass over the prepass's view depth (scatter/source.rs `kept`).
     const RG32_MODULES: [&str; 1] = ["scatter (prepass depth)"];
+
+    /// Modules made only with `Caps::VERTEX_STORAGE`: the meshlet path's
+    /// (`Renderer::meshlets`).
+    const VERTEX_STORAGE_MODULES: [&str; 1] = ["meshlet "];
 
     fn io(
         module: &Module,
@@ -892,6 +899,45 @@ mod compat {
         for (i, ep) in module.entry_points.iter().enumerate() {
             let at = ep.name.as_str();
             images(module, &ep.function, info.get_entry_point(i), at, &mut out);
+            // Storage a stage reaches, its callees' included: none in a
+            // vertex stage, four buffers and four textures in a fragment one.
+            if matches!(ep.stage, ShaderStage::Vertex | ShaderStage::Fragment)
+                && !VERTEX_STORAGE_MODULES.iter().any(|m| label.starts_with(m))
+            {
+                let ei = info.get_entry_point(i);
+                let (mut buffers, mut textures) = (Vec::new(), Vec::new());
+                for (g, v) in module.global_variables.iter() {
+                    if ei[g].is_empty() {
+                        continue;
+                    }
+                    let name = v.name.clone().unwrap_or_default();
+                    if let naga::AddressSpace::Storage { .. } = v.space {
+                        buffers.push(name);
+                    } else if let TypeInner::Image {
+                        class: ImageClass::Storage { .. },
+                        ..
+                    } = module.types[v.ty].inner
+                    {
+                        textures.push(name);
+                    }
+                }
+                let most = if ep.stage == ShaderStage::Vertex {
+                    0
+                } else {
+                    4
+                };
+                for (what, list) in [
+                    ("storage buffers", &buffers),
+                    ("storage textures", &textures),
+                ] {
+                    if list.len() > most {
+                        out.push(format!(
+                            "{at}: {} {what} {list:?} ({most} at most)",
+                            list.len()
+                        ));
+                    }
+                }
+            }
             let [x, y, z] = ep.workgroup_size;
             if ep.stage == ShaderStage::Compute && (x * y * z > 128 || x > 128 || y > 128) {
                 out.push(format!("{at}: workgroup {x}×{y}×{z} (128 at most)"));
@@ -956,7 +1002,8 @@ mod compat {
 /// [`compat`] over every module and variant: what a WebGPU compatibility
 /// adapter (Chrome 146+'s default on GLES and D3D11 devices) refuses.
 /// Broken by a `@interpolate(flat)` without `either`, a 256-wide
-/// workgroup or a `textureLoad` of a depth texture.
+/// workgroup, a `textureLoad` of a depth texture or a storage buffer read
+/// in a vertex stage.
 #[test]
 fn every_module_keeps_the_compatibility_rules() {
     let mut failures = Vec::new();
