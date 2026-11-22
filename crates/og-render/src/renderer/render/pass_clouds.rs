@@ -16,12 +16,9 @@ use super::*;
 pub(super) struct CloudsPass;
 
 impl CloudsPass {
-    /// The pass runs while the sky is the per-pixel one and has clouds.
+    /// Clouds are a layer over any background, not a procedural-sky feature.
     pub(super) fn runs(scene: &RenderScene) -> bool {
-        matches!(
-            scene.lighting.environment.background,
-            Background::Procedural { .. }
-        ) && scene.atmosphere.clouds.is_some()
+        scene.atmosphere.clouds.is_some()
     }
 }
 

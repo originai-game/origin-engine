@@ -508,7 +508,12 @@ depth-normal prepass: the first one pays for it.
   only the sky's light.
 - Clouds: bright tops, dark bases, silver edges against the sun. A broken
   sky hides the sun a share of the time; an overcast deck leaves flat grey
-  light on every surface. `steps` is their cost. Clouds are part of the
+  light on every surface. They also draw over an HDR or authored LDR
+  og.Environment background, lit by its SH ambient and the DirectionalLight
+  (set it from og.load.environmentSun). For a cloud sea, put `base` and
+  `base + thickness` below the camera: the same march draws the sunlit tops
+  and fades into the distant background without cutting at the horizon.
+  `steps` is their cost. Under a procedural sky, clouds are part of the
   sky: they are lit as bright as the sky behind them is drawn, so
   `environmentIntensity` (and og.DayNight's twilight lift) brightens or
   darkens the land under them, never the deck against the clear sky.

@@ -7597,7 +7597,7 @@ export declare function Lut(value?: Lut, options?: FieldOptions): FieldSpec<"Lut
 export declare function EnvironmentMap(value?: EnvironmentMap, options?: FieldOptions): FieldSpec<"EnvironmentMap">;
 
 /**
- * Image-based light from a cooked HDR environment map instead of the sky, as three.js scene.environment, and the map behind the scene, as scene.background = the environment. Load the map with og.load.environment: the cook has already prefiltered it (GGX levels for reflections from mirror to rough, harmonics for the diffuse light), so setting it costs a few copy passes. Without a map the sky lights the scene as before (og.Sky, a DayNight, or the built-in one). Read after each tick; it never feeds back into the simulation.
+ * Image-based light from a cooked HDR or sRGB LDR environment map, as three.js scene.environment, and optionally its background. Load with og.load.environment: GGX reflection levels and diffuse harmonics are cooked ahead of time. og.Clouds composite over the map, lit by the DirectionalLight (aim from og.load.environmentSun) and the map's SH ambient. Without a map, og.Sky, DayNight or the built-in sky lights the scene. Read after ticks; never affects simulation.
  *
  * The `Environment` resource (token `og.Environment`).
  */
@@ -17822,7 +17822,7 @@ export interface PhysicalSky {
 }
 
 /**
- * Clouds in the procedural sky: a volumetric cumulus layer raymarched through a curved shell over the planet, lit by the DirectionalLight drawn (self-shadowed, with multiple scattering) and the sky, faded with distance, and a thin high cirrus layer above. og.Wind carries them by the tick's clock, the same on every run and after a restore. Drawn over og.Sky, og.DayNight or og.PhysicalSky (alone they bring the built-in sky), they dim the sun and the sky's light by their cover, and the cumulus casts its shadows on the world (`shadows`). Visual only.
+ * Volumetric cumulus over any background, including an authored LDR or HDR Environment, plus thin high cirrus. The same curved-shell march works above, inside or below the deck: above top, see sunlit tops fading with distance. Lit by the DirectionalLight (aim from og.load.environmentSun for an authored sky) and the environment's SH ambient; procedural skies keep their clear-sky lighting. Wind drifts shapes deterministically. Cover dims scene lighting and cumulus casts shadows. Alone clouds bring the built-in sky. Visual only.
  * See `render §7`.
  *
  * The `Clouds` resource (token `og.Clouds`).
@@ -35284,7 +35284,7 @@ export declare namespace og {
    */
   const Interpolation: ComponentType<{ readonly off: FieldSpec<"bool"> }, Interpolation>;
   /**
-   * Image-based light from a cooked HDR environment map instead of the sky, as three.js scene.environment, and the map behind the scene, as scene.background = the environment. Load the map with og.load.environment: the cook has already prefiltered it (GGX levels for reflections from mirror to rough, harmonics for the diffuse light), so setting it costs a few copy passes. Without a map the sky lights the scene as before (og.Sky, a DayNight, or the built-in one). Read after each tick; it never feeds back into the simulation.
+   * Image-based light from a cooked HDR or sRGB LDR environment map, as three.js scene.environment, and optionally its background. Load with og.load.environment: GGX reflection levels and diffuse harmonics are cooked ahead of time. og.Clouds composite over the map, lit by the DirectionalLight (aim from og.load.environmentSun) and the map's SH ambient. Without a map, og.Sky, DayNight or the built-in sky lights the scene. Read after ticks; never affects simulation.
    */
   const Environment: ResourceType<{ readonly map: FieldSpec<"EnvironmentMap">; readonly intensity: FieldSpec<"f32">; readonly rotation: FieldSpec<"f32">; readonly background: FieldSpec<"bool">; readonly backgroundIntensity: FieldSpec<"f32">; readonly backgroundBlurriness: FieldSpec<"f32">; readonly groundHeight: FieldSpec<"f32">; readonly groundRadius: FieldSpec<"f32">; readonly groundCenter: FieldSpec<"Vector3">; readonly groundShadows: FieldSpec<"f32">; readonly blendTo: FieldSpec<"EnvironmentMap">; readonly blendWeight: FieldSpec<"f32">; readonly hemiSky: FieldSpec<"Color">; readonly hemiGround: FieldSpec<"Color">; readonly hemiIntensity: FieldSpec<"f32"> }, Environment>;
   /**
@@ -36668,7 +36668,7 @@ export declare namespace og {
    */
   const PhysicalSky: ResourceType<{ readonly enabled: FieldSpec<"bool">; readonly haze: FieldSpec<"f32">; readonly airDensity: FieldSpec<"f32">; readonly ozone: FieldSpec<"f32">; readonly groundAlbedo: FieldSpec<"Color">; readonly altitude: FieldSpec<"f32">; readonly night: FieldSpec<"Color"> }, PhysicalSky>;
   /**
-   * Clouds in the procedural sky: a volumetric cumulus layer raymarched through a curved shell over the planet, lit by the DirectionalLight drawn (self-shadowed, with multiple scattering) and the sky, faded with distance, and a thin high cirrus layer above. og.Wind carries them by the tick's clock, the same on every run and after a restore. Drawn over og.Sky, og.DayNight or og.PhysicalSky (alone they bring the built-in sky), they dim the sun and the sky's light by their cover, and the cumulus casts its shadows on the world (`shadows`). Visual only.
+   * Volumetric cumulus over any background, including an authored LDR or HDR Environment, plus thin high cirrus. The same curved-shell march works above, inside or below the deck: above top, see sunlit tops fading with distance. Lit by the DirectionalLight (aim from og.load.environmentSun for an authored sky) and the environment's SH ambient; procedural skies keep their clear-sky lighting. Wind drifts shapes deterministically. Cover dims scene lighting and cumulus casts shadows. Alone clouds bring the built-in sky. Visual only.
    * See `render §7`.
    */
   const Clouds: ResourceType<{ readonly enabled: FieldSpec<"bool">; readonly coverage: FieldSpec<"f32">; readonly density: FieldSpec<"f32">; readonly base: FieldSpec<"f32">; readonly thickness: FieldSpec<"f32">; readonly scale: FieldSpec<"f32">; readonly wind: FieldSpec<"Vector3">; readonly color: FieldSpec<"Color">; readonly detail: FieldSpec<"f32">; readonly layer: FieldSpec<"f32">; readonly layerAltitude: FieldSpec<"f32">; readonly shadows: FieldSpec<"f32">; readonly steps: FieldSpec<"u32"> }, Clouds>;

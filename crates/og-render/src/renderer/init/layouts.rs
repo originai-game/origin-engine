@@ -44,10 +44,17 @@ impl Renderer {
             // pipelines keep a texture slot (the terrain's screen AO).
             ShadowMap::cascade_layout_entry(1, wgpu::ShaderStages::FRAGMENT),
             texture_entry(2, false, wgpu::TextureViewDimension::D2Array),
-            texture_entry(3, true, wgpu::TextureViewDimension::Cube),
+            // The cloud strip's vertex march also reads map SH ambient.
+            wgpu::BindGroupLayoutEntry {
+                visibility: wgpu::ShaderStages::VERTEX_FRAGMENT,
+                ..texture_entry(3, true, wgpu::TextureViewDimension::Cube)
+            },
             texture_entry(4, true, wgpu::TextureViewDimension::Cube),
             tex2d(5),
-            sampler_entry(6, wgpu::SamplerBindingType::Filtering),
+            wgpu::BindGroupLayoutEntry {
+                visibility: wgpu::ShaderStages::VERTEX_FRAGMENT,
+                ..sampler_entry(6, wgpu::SamplerBindingType::Filtering)
+            },
             // The local lights and their clusters: one buffer, so the lit
             // pipelines keep their sixteen texture slots and within
             // WebGPU compatibility mode's four storage buffers.

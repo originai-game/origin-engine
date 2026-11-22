@@ -291,19 +291,16 @@ impl AtmosphereGpu {
         if let Some(w) = weather {
             a.weather = w.gpu();
         }
-        // Clouds and the aurora belong to the procedural sky the sky pass
-        // draws per pixel.
-        if let Some((look, ..)) = sky {
-            let radius = look
-                .physical
-                .map_or(6_360_000.0, |p| p.planet_radius.clamp(10.0, 1.0e5) * 1000.0);
-            if let Some((c, live)) = clouds {
-                a.clouds = c.gpu(tick as f64 / f64::from(rate), radius, eye);
+        let radius = sky
+            .and_then(|(look, ..)| look.physical)
+            .map_or(6_360_000.0, |p| p.planet_radius.clamp(10.0, 1.0e5) * 1000.0);
+        if let Some((c, live)) = clouds {
+            a.clouds = c.gpu(tick as f64 / f64::from(rate), radius, eye);
+            if let Some((look, sun, color)) = sky {
                 // The clouds' ambient is the clear sky's, never the image-based
                 // light's: the live sky captures the clouds into it, and lit by
                 // their own capture they converged several times too dark (an
                 // overcast noon drawn as night).
-                let (look, sun, color) = sky.expect("clouds only with the sky");
                 let row = crate::clouds::CLEAR_SKY_ROW;
                 for (i, e) in clear_sky_light(look, sun, color).iter().enumerate() {
                     a.clouds[row + i] = e.extend(0.0).to_array();
@@ -314,9 +311,11 @@ impl AtmosphereGpu {
                 // deck over it (water.wgsl).
                 a.clouds[4][3] = f32::from(live);
             }
-            if let Some(au) = aurora {
-                a.aurora = au.gpu(radius * 0.001);
-            }
+        }
+        if sky.is_some()
+            && let Some(au) = aurora
+        {
+            a.aurora = au.gpu(radius * 0.001);
         }
         // Seconds wrap every 2^16 ticks so f32 keeps sub-tick precision.
         a.time = [(tick % 65536) as f32 / rate, tick as f32, rate, 0.0];

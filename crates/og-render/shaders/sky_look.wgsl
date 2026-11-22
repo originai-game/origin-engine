@@ -48,13 +48,18 @@ fn moon_at(d: vec3<f32>, up: f32, halo_on: f32) -> vec4<f32> {
   return vec4<f32>(light * coverage + frame.sky_moon_look.rgb * halo, coverage);
 }
 
-// The clear sky's light on a surface facing unit `n` (its irradiance over pi, the image-based light's units, at the
-// sky's own strength): what clouds are lit by besides the sun, the cloud-free sky above and around them
-// (atmosphere.rs clear_sky_light, made each frame on the CPU), never the image-based light, which the live sky fills
-// with the clouds themselves (lit by their own capture they converged several times too dark). Overhead, or blended
-// from the horizontal ones towards the sun's bearing, away from it and across it.
+// Clear-sky irradiance over pi on a surface facing unit `n`. A map uses its SH cube. A procedural sky uses the
+// CPU's clear-sky samples (atmosphere.rs), never its live capture, which contains the clouds themselves (lit by
+// their own capture they converged several times too dark): overhead, or blended from the horizontal samples
+// towards the sun's bearing, away from it and across it.
 fn clear_sky_light(n: vec3<f32>) -> vec3<f32> {
   let c = frame.clouds;
+  // A map's irradiance cube is its rotated, blended SH ambient. Unlike
+  // the live procedural capture it contains no clouds to feed back.
+  // Undo the cover's dimming of ambient, just as the march undims the sun.
+  if (frame.sky_zenith.w < 0.5) {
+    return textureSampleLevel(irradiance_map, ibl_sampler, n, 0.0).rgb * frame.params.x / max(c[4].z, 1e-4);
+  }
   let s = normalize(vec3<f32>(frame.sky_sun_dir.x, 0.0, frame.sky_sun_dir.z) + vec3<f32>(0.0, 0.0, 1e-5));
   let h = normalize(vec3<f32>(n.x, 0.0, n.z) + vec3<f32>(1e-5, 0.0, 0.0));
   let w = dot(h, s);
@@ -69,6 +74,8 @@ fn clear_sky_light(n: vec3<f32>) -> vec3<f32> {
 fn cloud_deck(d: vec3<f32>) -> vec4<f32> {
   let c = frame.clouds;
   if (c[3].w < 0.5 || c[0].w <= 0.0 || c[0].y <= 0.0) { return vec4<f32>(0.0); }
+  // The uniform far-base strip belongs below a deck, never over its top.
+  if (frame.view_pos.y + frame.origin.y > c[0].z) { return vec4<f32>(0.0); }
   let to_light = normalize(frame.light_dir.xyz);
   let sun_side = clear_sky_light(normalize(vec3<f32>(to_light.x, 0.0, to_light.z) + vec3<f32>(0.0, 1e-3, 0.0)));
   let view_side = clear_sky_light(normalize(vec3<f32>(d.x, 0.0, d.z) + vec3<f32>(0.0, 1e-3, 0.0)));

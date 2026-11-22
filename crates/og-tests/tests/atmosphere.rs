@@ -316,6 +316,95 @@ fn the_clouds_stand_over_the_world_and_keep_their_shapes() {
     );
 }
 
+/// Clouds remain a non-empty lit layer over HDR, authored LDR and solid
+/// backgrounds, both from below and looking down onto their tops.
+#[test]
+#[ignore = "requires GPU"]
+fn clouds_draw_over_environment_backgrounds_above_and_below_the_deck() {
+    let rgb = vec![0.02; 32 * 16 * 3];
+    let mut map = og_render::bake::bake(
+        &og_render::bake::Equirect {
+            width: 32,
+            height: 16,
+            rgb: &rgb,
+        },
+        &og_render::bake::BakeDesc {
+            size: 16,
+            samples: 16,
+            sun: false,
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    for authored in [false, true] {
+        if authored {
+            map.background_size = 16;
+            map.background = vec![
+                og_render::rgb9e5([0.02; 3]);
+                og_render::EnvironmentMapData::background_texel_count(16)
+            ];
+        }
+        for solid in [false, true] {
+            if solid && !authored {
+                continue;
+            }
+            for height in [2.0, 600.0] {
+                let mut scene = RenderScene::new();
+                let handle = scene.add_environment_map(map.clone());
+                scene.lighting.environment_map = Some(og_render::EnvironmentMap::new(handle));
+                scene.lighting.environment.background = if solid {
+                    og_render::Background::Color(Vec3::splat(0.02))
+                } else {
+                    og_render::Background::Sky
+                };
+                scene.lighting.light.direction_to_light = Vec3::new(0.5, 0.8, -0.3).normalize();
+                scene.lighting.light.intensity = 3.0;
+                let pitch = if height > 400.0 { -15.0f32 } else { 15.0f32 }.to_radians();
+                scene.frame.camera = Camera {
+                    position: Vec3::new(0.0, height, 0.0),
+                    target: Vec3::new(0.0, height + pitch.sin(), -pitch.cos()),
+                    far: 100_000.0,
+                    ..Default::default()
+                };
+                let mut desc = scenes::base_desc();
+                desc.width = 320;
+                desc.height = 180;
+                let mut renderer = Renderer::new_blocking(&desc).expect("renderer");
+                renderer
+                    .render_capture(&scene, &RenderTarget::Offscreen)
+                    .expect("clear");
+                let clear = renderer.read_offscreen().unwrap();
+                scene.atmosphere.clouds = Some(og_render::Clouds {
+                    base: 180.0,
+                    thickness: 220.0,
+                    scale: 1800.0,
+                    coverage: 0.8,
+                    layer: 0.0,
+                    wind: Vec3::ZERO,
+                    ..Default::default()
+                });
+                scene.atmosphere.clouds.unwrap().light_scene(&mut scene);
+                renderer
+                    .render_capture(&scene, &RenderTarget::Offscreen)
+                    .expect("clouds");
+                let cloudy = renderer.read_offscreen().unwrap();
+                let lit = clear
+                    .pixels
+                    .as_chunks::<4>()
+                    .0
+                    .iter()
+                    .zip(cloudy.pixels.as_chunks::<4>().0.iter())
+                    .filter(|(a, b)| b[0] > a[0].saturating_add(10))
+                    .count();
+                assert!(
+                    lit > (desc.width * desc.height / 100) as usize,
+                    "non-empty lit cloud layer: authored={authored}, solid={solid}, height={height}"
+                );
+            }
+        }
+    }
+}
+
 /// The clouds' history goes with a renderer snapshot
 /// (`og_render::Renderer::save_state`): the display frames after a restore
 /// are the frames the uninterrupted run drew next, byte for byte, though

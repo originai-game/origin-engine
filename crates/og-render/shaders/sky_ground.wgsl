@@ -71,5 +71,9 @@ fn fs_sky_ground(in: SkyOut) -> @location(0) vec4<f32> {
       color *= ground_kept(eye + dir * tg);
     }
   }
-  return vec4<f32>(sky_fog(color, dir), sky_tone_fraction());
+  let background = sky_fog(color, dir);
+  if (frame.clouds[3].w > 0.5) {
+    return sky_clouds_stored(clouds_over(dir, in.pos.xy, in.grey), background, dir);
+  }
+  return vec4<f32>(background, sky_tone_fraction());
 }

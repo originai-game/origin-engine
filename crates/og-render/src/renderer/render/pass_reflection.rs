@@ -191,6 +191,7 @@ impl Renderer {
             stats.reflection_draws += n;
         }
         let sky = match scene.lighting.environment.background {
+            _ if scene.atmosphere.clouds.is_some() => self.sky.sky_look_pipeline.get(),
             Background::Sky => self.sky.sky_pipeline.get(),
             Background::Procedural { .. } => self.sky.sky_look_pipeline.get(),
             Background::Color(_) => None,

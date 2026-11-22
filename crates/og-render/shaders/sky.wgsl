@@ -88,6 +88,7 @@ fn sky_tone_fraction() -> f32 {
 // LDR colours use ordinary minification and a blur bias on their own box
 // mips. Each blended map has its own size and range.
 fn sky_background(eye: vec3<f32>, dir: vec3<f32>) -> vec3<f32> {
+  if (sky_params.look.x < 0.0) { return sky_params.turn.rgb; }
   let d = dome_lookup(eye, dir);
   if (sky_params.look.x > 0.5) {
     let c = sky_params.turn.x;
@@ -485,10 +486,9 @@ fn clouds_march(d: vec3<f32>, pixel: vec2<f32>) -> vec4<f32> {
   }
   let cos_t = dot(d, to_light);
   let phase = mix(hg_phase(cos_t, 0.8), hg_phase(cos_t, -0.25), 0.4);
-  // The clear sky's light from above and from the horizon (sky_look.wgsl clear_sky_light: never the image-based light,
-  // which the live sky fills with these clouds). As bright as the sky is drawn: the clouds are part of it, so neither
-  // the image-based light's strength (Environment::intensity, a light on surfaces, and a twilight's adaptation with
-  // it) nor the cover's dimming of it lights them.
+  // Clear-sky light from above and the horizon (sky_look.wgsl clear_sky_light). Maps use their SH ambient and
+  // Environment::intensity before the cover dims it. A procedural sky uses its cloud-free samples at the drawn
+  // sky's strength, never the live IBL capture, its strength on surfaces or its cover's dimming.
   let clear_top = clear_sky_light(vec3<f32>(0.0, 1.0, 0.0));
   // An aurora over them lights them too, as it lights the night (aurora_cloud_light): the high layer and the far
   // one take it with the sky's, the march through the cloud below.
@@ -880,6 +880,9 @@ fn aurora_air(d: vec3<f32>, viewer: f32) -> vec3<f32> {
 // would only add noise to the light): what moves in it moves in the
 // reflections and the ambient light.
 fn sky_look_behind(dir: vec3<f32>, pixel: vec2<f32>) -> vec3<f32> {
+  if (frame.sky_zenith.w < 0.5) {
+    return sky_fog(sky_background(frame.view_pos.xyz, dir) * (1.0 - frame.view_up.w), dir);
+  }
   var sky = sky_look(dir);
   if (scatter_on()) { sky = sky_physical_look(dir); }
   sky = aurora_over(sky, dir, pixel);
@@ -894,12 +897,23 @@ fn sky_stored(color: vec3<f32>) -> vec4<f32> {
   return vec4<f32>(clamp(color, vec3<f32>(0.0), vec3<f32>(65504.0)), 1.0);
 }
 
+// The same cloud layer over a procedural, HDR, authored LDR or colour
+// background. Clear authored pixels retain their untonemapped share;
+// cloud scattering uses the HDR share, like the scene's other light.
+fn sky_clouds_stored(clouds: vec4<f32>, background: vec3<f32>, dir: vec3<f32>) -> vec4<f32> {
+  let color = cloud_layer_over(clouds, background);
+  if (frame.sky_zenith.w > 0.5) { return sky_stored(land_fog(color, dir)); }
+  var stored = sky_stored(color);
+  stored.a = mix(1.0, sky_tone_fraction(), clouds.a);
+  return stored;
+}
+
 @fragment
 fn fs_sky_look(in: SkyOut) -> @location(0) vec4<f32> {
   if (frame.light_color.w > 0.5) { return debug_unsupported(in.pos.xy); }
   let dir = pixel_ray(in.ndc);
   let clouds = clouds_over(dir, in.pos.xy, in.grey);
-  return sky_stored(land_fog(cloud_layer_over(clouds, sky_look_behind(dir, in.pos.xy)), dir));
+  return sky_clouds_stored(clouds, sky_look_behind(dir, in.pos.xy), dir);
 }
 
 // The main camera's clouds, marched at half the frame's size each way (the cloud pass, pass_clouds.rs: a march is
@@ -1046,5 +1060,5 @@ fn fs_sky_look_low(in: SkyOut) -> @location(0) vec4<f32> {
     let uv = vec2<f32>(0.5 + 0.5 * in.ndc.x, 0.5 - 0.5 * in.ndc.y);
     clouds = textureSampleLevel(clouds_low, ibl_sampler, uv, 0.0);
   }
-  return sky_stored(land_fog(cloud_layer_over(clouds, sky_look_behind(dir, in.pos.xy)), dir));
+  return sky_clouds_stored(clouds, sky_look_behind(dir, in.pos.xy), dir);
 }

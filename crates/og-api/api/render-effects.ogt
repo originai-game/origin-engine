@@ -27,7 +27,7 @@
   }
 
   resource Environment {
-    doc "Image-based light from a cooked HDR environment map instead of the sky, as three.js scene.environment, and the map behind the scene, as scene.background = the environment. Load the map with og.load.environment: the cook has already prefiltered it (GGX levels for reflections from mirror to rough, harmonics for the diffuse light), so setting it costs a few copy passes. Without a map the sky lights the scene as before (og.Sky, a DayNight, or the built-in one). Read after each tick; it never feeds back into the simulation."
+    doc "Image-based light from a cooked HDR or sRGB LDR environment map, as three.js scene.environment, and optionally its background. Load with og.load.environment: GGX reflection levels and diffuse harmonics are cooked ahead of time. og.Clouds composite over the map, lit by the DirectionalLight (aim from og.load.environmentSun) and the map's SH ambient. Without a map, og.Sky, DayNight or the built-in sky lights the scene. Read after ticks; never affects simulation."
     field map EnvironmentMap "The map from og.load.environment; 0 lights by the sky."
     field intensity f32 "The strength of the map's light on every surface, as three.js scene.environmentIntensity; while a map is set it replaces RenderSettings.environmentIntensity." {
       default 1

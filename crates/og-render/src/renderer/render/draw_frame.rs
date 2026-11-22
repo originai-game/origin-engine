@@ -296,22 +296,24 @@ impl Renderer {
         }
         {
             use crate::deferred::Start;
+            if CloudsPass::runs(scene) {
+                if effects.prepass {
+                    self.sky.clouds_low.march_depth.start();
+                } else {
+                    self.sky.clouds_low.march.start();
+                }
+                self.sky.clouds_low.resolve.start();
+                self.sky.clouds_low.sky.start();
+                self.sky.sky_look_pipeline.start();
+            }
             match scene.lighting.environment.background {
                 Background::Sky
                     if self.sky.ground.maps.is_some() && ground_heights::wanted(scene) =>
                 {
                     self.sky.ground.pipeline.start()
                 }
+                _ if CloudsPass::runs(scene) => {}
                 Background::Sky => self.sky.sky_pipeline.start(),
-                Background::Procedural { .. } if scene.atmosphere.clouds.is_some() => {
-                    if effects.prepass {
-                        self.sky.clouds_low.march_depth.start();
-                    } else {
-                        self.sky.clouds_low.march.start();
-                    }
-                    self.sky.clouds_low.resolve.start();
-                    self.sky.clouds_low.sky.start();
-                }
                 Background::Procedural { .. } => self.sky.sky_look_pipeline.start(),
                 Background::Color(_) => {}
             }

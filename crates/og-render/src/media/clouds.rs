@@ -17,8 +17,8 @@
 //! The wind moves them by the tick's seconds, so they look the same on
 //! every run and after a restore; nothing in the simulation reads them.
 //!
-//! They are drawn over the procedural sky only
-//! ([`crate::Background::Procedural`]): the sky pass draws them, so they do
+//! They are drawn over any background, including authored environment
+//! maps: the sky pass draws them, so they do
 //! not light the scene by themselves; [`Clouds::light`] is how much a
 //! cover dims the sun and the sky's light under it, which the runtime
 //! applies.
@@ -113,6 +113,7 @@ impl Clouds {
         let period = f64::from(scale) * 4.0;
         let offset = |v: f32| (f64::from(v) * seconds).rem_euclid(period) as f32;
         let place = |v: f64| v.rem_euclid(period) as f32;
+        let light = self.light();
         [
             [
                 self.coverage.clamp(0.0, 1.0),
@@ -136,11 +137,9 @@ impl Clouds {
                 self.steps.clamp(8, 256) as f32,
                 1.0,
             ],
-            // How much the scene's sun was dimmed by this cover (the
-            // runtime applies Clouds::light to it); the clouds' own
-            // lighting undoes it. Their sky light is the sky's as drawn,
-            // which no cover dims.
-            [radius, self.light().0, 0.0, 0.0],
+            // The runtime dims scene sunlight and ambient under this
+            // cover. Clouds undo both: they are lit above their cover.
+            [radius, light.0, light.1, 0.0],
             self.flash.to_array(),
             // The clear sky's light, filled by AtmosphereGpu::new.
             [0.0; 4],

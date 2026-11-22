@@ -474,12 +474,13 @@ impl GroundProjection {
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
 pub(crate) struct SkyParams {
-    /// x: 1 when the background is an environment map drawn from its own
+    /// x: -1 for a solid colour, 1 when the background is an environment map drawn from its own
     /// cube at its full size (`map_cube`), y: the blurriness's prefiltered
     /// level (0: sharp), z: the map's background intensity, w: the blended
     /// map's weight.
     pub look: [f32; 4],
-    /// (cos, sin) of the map's turn about +y; zw unused.
+    /// (cos, sin) of the map's turn about +y, tone-mapped share, unused;
+    /// or RGB for a solid-colour background.
     pub turn: [f32; 4],
     /// xy: box-mip blur biases for the two authored backgrounds;
     /// zw: whether each map has authored box mips instead of GGX levels.
@@ -510,6 +511,13 @@ impl SkyParams {
             0.0
         };
         let level = blur * levels.saturating_sub(1) as f32;
+        if let Background::Color(color) = env.background {
+            return SkyParams {
+                look: [-1.0, 0.0, 1.0, 0.0],
+                turn: color.extend(0.0).to_array(),
+                authored: [0.0; 4],
+            };
+        }
         match map {
             Some(m) => SkyParams {
                 look: [1.0, level, m.scale, m.blend],

@@ -68,7 +68,7 @@ module render {
 | [`Texture()`](#column-Texture) | column kind |  | A Texture handle field (0 is none). |
 | [`Lut()`](#column-Lut) | column kind |  | A Lut handle field (0 is none). |
 | [`EnvironmentMap()`](#column-EnvironmentMap) | column kind |  | An EnvironmentMap handle field (0 is none). |
-| [`og.Environment`](render/record-Environment.md) | resource |  | Image-based light from a cooked HDR environment map instead of the sky, as three.js scene.environment, and the map behind the scene, as scene.background = the environment. |
+| [`og.Environment`](render/record-Environment.md) | resource |  | Image-based light from a cooked HDR or sRGB LDR environment map, as three.js scene.environment, and optionally its background. |
 | [`ParticleEmitter()`](#column-ParticleEmitter) | column kind |  | A ParticleEmitter handle field (0 is none). |
 | [`EffectMaterial()`](#column-EffectMaterial) | column kind |  | An EffectMaterial handle field (0 is none). |
 | [`AoMethod`](render/type-AoMethod.md) | enum |  | Which ambient occlusion algorithm runs. |
