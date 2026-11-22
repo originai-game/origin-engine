@@ -441,6 +441,16 @@ depth-normal prepass: the first one pays for it.
   turning in front of the player; 0 switches at once, right for loading a
   level. The deck costs what og.Clouds costs; `dim: 0` keeps the sky and
   the light as they are.
+- This is the one ramp a weather takes: write the weather wanted and
+  never step `kind` or `intensity` towards it. `change` is seconds per
+  unit of intensity, so for every switch to arrive within T seconds set
+  it to T over the heaviest intensity the game writes (a storm of rain at
+  2 in 6 s: 3). What else a game draws with the weather (its own sky,
+  fog, sea or wind) follows `drawnKind`, `drawnIntensity`, `fadingKind`
+  and `fadingIntensity`, a kind's amount being the sum of the two that
+  name it. They are the last tick's: the weather is drawn after the
+  game's systems. To switch at once in play, set `change` to 0 for that
+  tick and back once the drawn weather is the one written.
 - Aurora: hard electrons give a low aurora with a pink-violet border, soft
   ones a high red-topped one; the air dims it near the horizon.
 - Weather on surfaces: porous surfaces darken when wet and smooth ones

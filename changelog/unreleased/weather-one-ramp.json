@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "render guide §7 (og.Weather.change)",
+      "summary": "og.Weather.change is the one ramp a weather takes. The guide no longer leaves a game its own ramp with change 0 (the fix given when change was added): a game writes the weather it wants, sets change to its slowest switch over its heaviest intensity, and draws its own sky, fog, sea or wind from drawnKind, drawnIntensity, fadingKind and fadingIntensity."
+    }
+  ]
+}
