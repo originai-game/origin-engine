@@ -1439,6 +1439,9 @@ impl PaintRenderer {
     pub(crate) fn record_groups(&self, encoder: &mut crate::Encoder, cx: &GroupCx<'_>) -> u32 {
         let mut fx = self.fx.borrow_mut();
         fx.filters.begin();
+        // A result's binding lives as long as its target.
+        let Fx { filters, binds, .. } = &mut *fx;
+        binds.retain(|(v, _)| filters.holds(v));
         fx.results.clear();
         fx.results.resize(self.layers.len(), None);
         let mut draws = 0;
@@ -1641,6 +1644,7 @@ impl PaintRenderer {
             return 0;
         };
         let draws = fx.filters.record(encoder, &prepared);
+        fx.filters.done(&prepared);
         // A pass that did not run (its pipeline not made yet) leaves the
         // group out this frame.
         if draws < prepared.passes() {
@@ -1657,9 +1661,6 @@ impl PaintRenderer {
                     cx.sampler,
                     [0.0; 4],
                 );
-                if fx.binds.len() >= 64 {
-                    fx.binds.remove(0);
-                }
                 fx.binds.push((prepared.result.clone(), b.clone()));
                 b
             }

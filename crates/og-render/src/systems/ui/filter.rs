@@ -425,8 +425,74 @@ fn lattice(seed: f32) -> Vec<[f32; 4]> {
 
 /// A pooled result target.
 struct Pooled {
-    size: (u32, u32),
     view: wgpu::TextureView,
+}
+
+/// How many frames a pooled target stays unused before it is let go.
+const POOL_IDLE_FRAMES: u8 = 8;
+
+/// Things made by size and kept across frames: a frame takes what it
+/// needs, gives back what it no longer reads, and makes one only when
+/// none of its size is free, so a frame that needs what the last needed
+/// makes nothing. One no frame took for [`POOL_IDLE_FRAMES`] is let go.
+struct Pool<T> {
+    slots: Vec<Slot<T>>,
+}
+
+struct Slot<T> {
+    size: (u32, u32),
+    item: T,
+    /// Held now, and taken at all this frame (given back or not).
+    used: bool,
+    taken: bool,
+    idle: u8,
+}
+
+impl<T> Pool<T> {
+    const fn new() -> Self {
+        Pool { slots: Vec::new() }
+    }
+
+    /// Frees everything for a new frame, letting go of what stood idle.
+    fn begin(&mut self) {
+        for s in &mut self.slots {
+            s.idle = if s.taken { 0 } else { s.idle.saturating_add(1) };
+            (s.used, s.taken) = (false, false);
+        }
+        self.slots.retain(|s| s.idle < POOL_IDLE_FRAMES);
+    }
+
+    /// A free one of `size`, made by `make` when there is none.
+    fn take(&mut self, size: (u32, u32), make: impl FnOnce() -> T) -> usize {
+        if let Some(i) = self.slots.iter().position(|s| !s.used && s.size == size) {
+            (self.slots[i].used, self.slots[i].taken) = (true, true);
+            return i;
+        }
+        self.slots.push(Slot {
+            size,
+            item: make(),
+            used: true,
+            taken: true,
+            idle: 0,
+        });
+        self.slots.len() - 1
+    }
+
+    /// Gives `i` back for the rest of the frame.
+    fn give(&mut self, i: usize) {
+        self.slots[i].used = false;
+    }
+
+    fn items(&self) -> impl Iterator<Item = &T> {
+        self.slots.iter().map(|s| &s.item)
+    }
+}
+
+impl<T> std::ops::Index<usize> for Pool<T> {
+    type Output = T;
+    fn index(&self, i: usize) -> &T {
+        &self.slots[i].item
+    }
 }
 
 /// One pass of a prepared filter: its group and the pooled target it
@@ -440,6 +506,8 @@ struct Pass {
 /// result.
 pub(crate) struct Prepared {
     passes: Vec<Pass>,
+    /// The pooled target its result is in.
+    target: usize,
     pub result: wgpu::TextureView,
 }
 
@@ -499,8 +567,7 @@ pub(crate) struct FilterRunner {
     /// first frame on Metal.
     pipeline: crate::deferred::Deferred<wgpu::RenderPipeline>,
     layout: wgpu::BindGroupLayout,
-    pool: Vec<Pooled>,
-    used: Vec<bool>,
+    pool: Pool<Pooled>,
     uniforms: Vec<wgpu::Buffer>,
     next_uniform: usize,
     lattices: Vec<(u32, wgpu::TextureView)>,
@@ -584,8 +651,7 @@ impl FilterRunner {
         FilterRunner {
             pipeline,
             layout,
-            pool: Vec::new(),
-            used: Vec::new(),
+            pool: Pool::new(),
             uniforms: Vec::new(),
             next_uniform: 0,
             lattices: Vec::new(),
@@ -597,23 +663,33 @@ impl FilterRunner {
         crate::deferred::Start::start(&self.pipeline);
     }
 
-    /// Frees every target and parameter buffer for a new frame.
+    /// Frees every target and parameter buffer for a new frame; the
+    /// targets stay made for it (let go only when they stood idle).
     pub(crate) fn begin(&mut self) {
-        self.used = vec![false; self.pool.len()];
+        self.pool.begin();
         self.next_uniform = 0;
-        // Targets no frame used are let go when there are many.
-        if self.pool.len() > 32 {
-            self.pool.truncate(32);
-            self.used.truncate(32);
+    }
+
+    /// Whether `view` is one of its targets, still made.
+    pub(crate) fn holds(&self, view: &wgpu::TextureView) -> bool {
+        self.pool.items().any(|p| p.view == *view)
+    }
+
+    /// Gives back the targets `prepared` drew in but its result, once its
+    /// passes are recorded: a filter prepared after it draws in them.
+    pub(crate) fn done(&mut self, prepared: &Prepared) {
+        for pass in &prepared.passes {
+            if pass.target != prepared.target {
+                self.pool.give(pass.target);
+            }
         }
     }
 
     fn take(&mut self, device: &wgpu::Device, size: (u32, u32)) -> usize {
-        if let Some(i) = (0..self.pool.len()).find(|&i| !self.used[i] && self.pool[i].size == size)
-        {
-            self.used[i] = true;
-            return i;
-        }
+        self.pool.take(size, || Self::target(device, size))
+    }
+
+    fn target(device: &wgpu::Device, size: (u32, u32)) -> Pooled {
         let texture = device.create_texture(&wgpu::TextureDescriptor {
             label: Some("ui filter result"),
             size: wgpu::Extent3d {
@@ -629,10 +705,9 @@ impl FilterRunner {
             view_formats: &[],
             texture_binding_view_dimension: None,
         });
-        let view = texture.create_view(&Default::default());
-        self.pool.push(Pooled { size, view });
-        self.used.push(true);
-        self.pool.len() - 1
+        Pooled {
+            view: texture.create_view(&Default::default()),
+        }
     }
 
     fn lattice(
@@ -770,7 +845,7 @@ impl FilterRunner {
         let draws = invert(frame.space).is_some();
         let mut results: Vec<usize> = Vec::new();
         for p in primitives.iter().filter(|_| draws) {
-            let input = |i: UiFilterInput, results: &[usize], pool: &[Pooled]| match i {
+            let input = |i: UiFilterInput, results: &[usize], pool: &Pool<Pooled>| match i {
                 UiFilterInput::Result(k) if (k as usize) < results.len() => {
                     pool[results[k as usize]].view.clone()
                 }
@@ -821,11 +896,11 @@ impl FilterRunner {
             }
             results.push(out);
         }
-        let result = match (results.last(), passes.last()) {
-            (Some(&r), _) => self.pool[r].view.clone(),
+        let target = match (results.last(), passes.last()) {
+            (Some(&r), _) => r,
             // A capture with no primitives (or a space that draws
             // nothing: transparent) composites what it captured.
-            (None, Some(p)) if draws => self.pool[p.target].view.clone(),
+            (None, Some(p)) if draws => p.target,
             (None, _) => {
                 let out = self.take(device, size);
                 let params = FilterParams {
@@ -846,10 +921,15 @@ impl FilterRunner {
                     ],
                 );
                 passes.push(Pass { group, target: out });
-                self.pool[out].view.clone()
+                out
             }
         };
-        Some(Prepared { passes, result })
+        let result = self.pool[target].view.clone();
+        Some(Prepared {
+            passes,
+            target,
+            result,
+        })
     }
 
     /// Records a prepared filter's passes.
@@ -885,4 +965,53 @@ impl FilterRunner {
 /// The filter module: the blend modes, then the passes.
 pub(crate) fn source() -> String {
     format!("{}{}", super::UI_BLEND_MODES_WGSL, FILTER_WGSL)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Pool;
+
+    /// A frame that needs what the last needed makes nothing: what a
+    /// filter gives back is taken again in the same frame, and what a
+    /// frame took stays made for the next. Ways this could fail: a pool
+    /// cut back to a fixed count each frame (the HUD's 14 layers made
+    /// some 40 targets a frame), or targets freed only at a frame's end.
+    #[test]
+    fn a_steady_frame_makes_nothing_and_an_idle_target_is_let_go() {
+        let mut pool = Pool::new();
+        let mut made = 0;
+        // 14 filters a frame: 6 passes each, the last its result.
+        let frame = |pool: &mut Pool<u32>, made: &mut u32| {
+            pool.begin();
+            for k in 0..14u32 {
+                let size = (64 + 16 * (k % 3), 64);
+                let passes: Vec<usize> = (0..6)
+                    .map(|_| {
+                        pool.take(size, || {
+                            *made += 1;
+                            0
+                        })
+                    })
+                    .collect();
+                for &p in &passes[..5] {
+                    pool.give(p);
+                }
+            }
+        };
+        frame(&mut pool, &mut made);
+        let first = made;
+        assert!(first <= 14 + 3 * 5, "{first} made for one frame");
+        for _ in 0..100 {
+            frame(&mut pool, &mut made);
+        }
+        assert_eq!(made, first, "steady frames make nothing");
+        // Frames needing none (after the begin closing the last one):
+        // they stay a while, then go.
+        for _ in 0..super::POOL_IDLE_FRAMES {
+            pool.begin();
+        }
+        assert_eq!(pool.slots.len(), first as usize);
+        pool.begin();
+        assert!(pool.slots.is_empty());
+    }
 }
