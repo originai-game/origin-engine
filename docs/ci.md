@@ -525,9 +525,8 @@ frames with it), **lane-panic** (§The lanes wasm) and **video**
 (`tests/web/video-alpha.ts`: the video fixture's keyed stream, `alpha true`,
 decoded by the browser and folded on the GPU; its alpha ramp is read against
 white swatches at 25, 50 and 75 % opacity in the same frame, on the web
-frame and on `references/vulkan/keyed.png`, since the web's wide-gamut
-canvas blends translucent UI in linear light where an 8-bit sRGB output
-blends display values).
+frame and on `references/vulkan/keyed.png`; both hosts blend UI in encoded
+values, so the swatches read alike on web and native).
 
 ### og-tests' gfx scenes in the browser
 
