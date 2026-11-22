@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "meshes/pattern.webp",
+      "sha256": "97ac10f2a1035d2d0d95a4e23aeb165d1c4a667c78bfb70b36b88725dc2cbd45",
+      "size": 204,
+      "visibility": "public"
+    },
+    {
+      "path": "meshes/stripes_420.jpg",
+      "sha256": "58c170037e1c8135dc48fa290e9f8a55fc26d1cd1c6c5dd451d5d4927a3a92b5",
+      "size": 688,
+      "visibility": "public"
+    },
+    {
+      "path": "programs/checker.png",
+      "sha256": "83cb68bd3827639233f51475accc3b2e93a1857ea5d3d081317866ebaf555397",
+      "size": 207,
+      "visibility": "public"
+    },
+    {
+      "path": "programs/label.jpg",
+      "sha256": "94125880a3cda1558a456a12ea4d3b11d254c056167981440b9c8fcfda4a1c40",
+      "size": 1572,
+      "visibility": "public"
+    },
+    {
+      "path": "programs/label_progressive.jpg",
+      "sha256": "8340f7851d3966cb1cf3f2fbeab8995ba79efa036c91f25a2cebca413bad0c47",
+      "size": 843,
+      "visibility": "public"
+    }
+  ]
+}

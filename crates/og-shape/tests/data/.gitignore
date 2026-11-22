@@ -1,0 +1,7 @@
+# og-assets: the files og-assets.json pins, installed by `bun scripts/assets.ts ensure` (written by the tool)
+/meshes/pattern.webp
+/meshes/stripes_420.jpg
+/programs/checker.png
+/programs/label.jpg
+/programs/label_progressive.jpg
+# og-assets end
