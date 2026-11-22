@@ -195,7 +195,11 @@ pub(crate) fn grown(c: &Solid, t: f64, free: &[bool], diag: f64) -> Option<Vec<S
             }
         }
         let middle = at.iter().copied().sum::<DVec3>() / at.len() as f64;
-        solids.push(crate::edit::inset::space(&planes, middle, 1e-9 * diag)?);
+        solids.push(crate::edit::shell::inset::space(
+            &planes,
+            middle,
+            1e-9 * diag,
+        )?);
     }
     solids.push(c.clone());
     Some(solids)

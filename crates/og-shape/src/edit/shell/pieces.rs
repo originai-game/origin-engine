@@ -37,7 +37,7 @@ use crate::boolean::{BoolOp, Boolean, boolean_report, crossing_pairs, self_union
 use crate::math::{DVec2, DVec3};
 use crate::mesh::{CornerUvs, Solid};
 
-use crate::edit::{collapse, inset, offset};
+use crate::edit::shell::{collapse, inset, offset};
 
 /// A triangle whose doubled area is under this share of its longest
 /// side squared is a needle, and has no plane to speak of.
@@ -575,7 +575,7 @@ fn grown_of(
     {
         return None;
     }
-    crate::edit::faces::grown(c, first, free, diag)
+    crate::edit::shell::faces::grown(c, first, free, diag)
 }
 
 /// One piece's inner solid, the ways `shell` finds one, the first clean;

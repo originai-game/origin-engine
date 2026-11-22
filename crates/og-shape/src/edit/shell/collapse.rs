@@ -26,7 +26,7 @@ use std::collections::BTreeMap;
 use crate::math::DVec3;
 use crate::mesh::Solid;
 
-use crate::edit::{SAME_PLANE_COS, fit};
+use crate::edit::shell::{SAME_PLANE_COS, fit};
 
 /// Rounds of taking turned faces out before giving up.
 const ROUNDS: usize = 16;
