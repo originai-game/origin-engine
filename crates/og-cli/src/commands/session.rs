@@ -325,9 +325,19 @@ mod local {
             .mode(0o600)
             .open(dir.join("host.lock"))
             .map_err(|e| e.to_string())?;
-        lock.try_lock()
-            .map_err(|e| format!("another session owns this worktree: {e}"))?;
         let socket = dir.join("host.sock");
+        // The lock is held by a session that serves (this starter lost a
+        // race: leave it to the winner) or by one still going away (its host
+        // exited or crashed and its supervisor is cleaning up, its socket
+        // already refusing): wait for that one to let go and take over, so
+        // the command after a finished or crashed run gets a session.
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(10);
+        while let Err(e) = lock.try_lock() {
+            if UnixStream::connect(&socket).is_ok() || std::time::Instant::now() >= deadline {
+                return Err(format!("another session owns this worktree: {e}"));
+            }
+            std::thread::sleep(std::time::Duration::from_millis(20));
+        }
         if UnixStream::connect(&socket).is_ok() {
             return Err("a session still owns the socket".into());
         }

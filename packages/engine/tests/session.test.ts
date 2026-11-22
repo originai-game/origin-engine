@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { createConnection, createServer } from "node:net";
@@ -403,5 +403,44 @@ let starts=0;export default og.game({start(w){starts++;w.spawn({name:"fresh"});}
   } finally {
     if (hostPid) Bun.spawnSync(["kill", "-TERM", String(hostPid)], { stdout: "pipe", stderr: "pipe" });
     rmSync(dir, { recursive: true, force: true });
+  }
+}, 30_000);
+
+// A run after a session that went away (its host crashed, as on a GPU out-of-memory abort) starts
+// a new session, even while the old one's supervisor still holds the worktree's lock on its way
+// out. It used to fail at once with "another session owns this worktree", so a batch of
+// sequential runs lost the run after every crash.
+test.skipIf(process.platform !== "linux" || Bun.spawnSync(["flock", "-V"], { stdout: "pipe", stderr: "pipe" }).exitCode !== 0)("a run after a session that went away takes the worktree over", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "og-session-takeover-"));
+  const runtime = mkdtempSync(join(tmpdir(), "og-session-rt-"));
+  const entry = join(dir, "main.ts");
+  const env = { ...process.env, OG_RENDERER: "none", OG_ENGINE_PACKAGE: resolve(import.meta.dir!, ".."), OG_SESSION: "1", XDG_RUNTIME_DIR: runtime };
+  writeFileSync(entry, `import { og } from "@origingame/engine";
+export default og.game({facts(){return {pid:process.pid};}});`);
+  const invoke = async () => {
+    const child = Bun.spawn([ogBin(), "run", entry, "--headless", "--no-check", "--no-render", "--ticks", "2", "--json"], { env, stdout: "pipe", stderr: "pipe" });
+    const [code, stdout, stderr] = await Promise.all([child.exited, new Response(child.stdout).text(), new Response(child.stderr).text()]);
+    expect(code, stdout + stderr).toBe(0);
+    expect(stderr).not.toContain("running alone");
+    return JSON.parse(stdout.trim().split("\n").at(-1)!).facts.pid as number;
+  };
+  const sh = (args: string[]) => Bun.spawnSync(args, { stdout: "pipe", stderr: "pipe" }).exitCode;
+  let hostPid: number | undefined;
+  try {
+    const first = await invoke();
+    const [user] = readdirSync(runtime);
+    const [key] = readdirSync(join(runtime, user!));
+    const lock = join(runtime, user!, key!, "host.lock");
+    // The host crashes; something still holds the lock while the socket refuses.
+    sh(["kill", "-KILL", String(first)]);
+    const holder = Bun.spawn(["flock", lock, "sleep", "1.5"], { env, stdout: "ignore", stderr: "pipe" });
+    while (sh(["flock", "-n", "-E", "9", lock, "true"]) !== 9) await new Promise((r) => setTimeout(r, 10));
+    hostPid = await invoke();
+    await holder.exited;
+    expect(hostPid).not.toBe(first);
+  } finally {
+    if (hostPid) sh(["kill", "-TERM", String(hostPid)]);
+    rmSync(dir, { recursive: true, force: true });
+    rmSync(runtime, { recursive: true, force: true });
   }
 }, 30_000);
