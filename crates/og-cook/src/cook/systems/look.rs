@@ -49,13 +49,13 @@ use og_blob::BlobWriter;
 use og_core::ogt::{Number, Value};
 use std::path::Path;
 
-/// The built-in styles' slugs.
+/// The built-in styles' slugs: the directories with a pack.json.
 pub fn style_slugs() -> Vec<&'static str> {
     let mut out: Vec<&'static str> = styles()
         .iter()
         .filter_map(|f| {
             let (dir, file) = f.id().strip_prefix("@styles/")?.rsplit_once('/')?;
-            (!dir.contains('/') && file.ends_with(".css")).then_some(dir)
+            (!dir.contains('/') && file == "pack.json").then_some(dir)
         })
         .collect();
     out.sort();

@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "og cook",
+      "summary": "A look's `ui \"<name>\"` finds a built-in style that has a pack.json and no CSS file. The built-in styles were listed by their `.css` files, so a pack written only as pack.json was reported as not a built-in style."
+    }
+  ]
+}

@@ -1,4 +1,4 @@
-//! Built-in CSS packs and shared assets under `templates/styles/`, read
+//! Built-in style packs and shared assets under `templates/styles/`, read
 //! from disk rather than compiled into `og`. Published engines carry them
 //! in `styles/`. A look names a pack directory by slug; the game's own
 //! `assets/styles/<slug>/` wins over `@styles/<slug>/`.
@@ -127,14 +127,7 @@ fn find_dir() -> Option<PathBuf> {
         std::fs::read_dir(&p)
             .ok()?
             .flatten()
-            .any(|e| {
-                e.file_name() == "shared"
-                    || std::fs::read_dir(e.path())
-                        .into_iter()
-                        .flatten()
-                        .flatten()
-                        .any(|f| f.path().extension().is_some_and(|x| x == "css"))
-            })
+            .any(|e| e.file_name() == "shared" || e.path().join("pack.json").is_file())
             .then_some(p)
     };
     // A checkout's packages/engine has the checkout's packs two levels up.
@@ -199,7 +192,7 @@ pub fn styles_dir() -> Option<&'static Path> {
     table().dir.as_deref()
 }
 
-/// Where the built-in style file `id` (`@styles/fantasy/base.css`) is
+/// Where the built-in style file `id` (`@styles/fantasy/pack.json`) is
 /// read from.
 pub fn style_path(id: &str) -> Option<&'static Path> {
     let t = table();
@@ -224,9 +217,9 @@ pub fn style_licences() -> &'static [StyleFile] {
 fn pack_files_keep_nested_art_but_exclude_review_trees() {
     let root = super::test_dir::TempDir::new("style-files");
     for name in [
-        "fantasy/base.css",
+        "fantasy/pack.json",
         "fantasy/art/coin.svg",
-        "fantasy/tests/test.css",
+        "fantasy/tests/pack.json",
         "fantasy/art/references/coin.png",
         "fantasy/captures/sheet.png",
         "tests/clean/sheet.png",
@@ -241,5 +234,5 @@ fn pack_files_keep_nested_art_but_exclude_review_trees() {
         .into_iter()
         .map(|(pack, file, _)| format!("{pack}/{file}"))
         .collect();
-    assert_eq!(paths, ["fantasy/art/coin.svg", "fantasy/base.css"]);
+    assert_eq!(paths, ["fantasy/art/coin.svg", "fantasy/pack.json"]);
 }

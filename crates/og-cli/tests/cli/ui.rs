@@ -345,9 +345,9 @@ fn vfx_add_downloads_a_signed_pack_and_refuses_anything_else() {
 }
 
 /// A cook reads a built-in style pack from the engine's styles directory,
-/// outside the project: after the pack's CSS changes the next cook (`og ui
-/// preview` and `og ui review` cook first) takes the new CSS, not the
-/// cooked/ the project kept. Ways it could fail: the cook's index answering
+/// outside the project: after the pack's pack.json changes the next cook
+/// (`og ui preview` and `og ui review` cook first) takes the new one, not
+/// the cooked/ the project kept. Ways it could fail: the cook's index answering
 /// "unchanged" from the project's own files alone, or a code-only recook
 /// forgetting the pack's files.
 #[test]
@@ -394,17 +394,22 @@ fn a_cook_takes_the_style_pack_as_changed_since() {
             .unwrap();
         assert!(out.status.success(), "{}", text(&out));
     };
-    std::fs::write(pack.join("base.css"), ":root { --probe-first: 1px; }\n").unwrap();
+    std::fs::write(
+        pack.join("pack.json"),
+        "{ \"variants\": { \"Probe.frame\": \"opacity-35\" } }\n",
+    )
+    .unwrap();
     cook();
-    assert!(cooked_has("--probe-first"));
+    assert!(cooked_has("opacity-35"));
     // Code alone changes: the pack's files are still the cook's inputs.
     std::fs::write(game.join("src/main.ts"), "export default 1;\n").unwrap();
     cook();
-    std::fs::write(pack.join("base.css"), ":root { --probe-second: 22px; }\n").unwrap();
+    std::fs::write(
+        pack.join("pack.json"),
+        "{ \"variants\": { \"Probe.frame\": \"opacity-45\" } }\n",
+    )
+    .unwrap();
     cook();
-    assert!(
-        cooked_has("--probe-second"),
-        "the pack's edit was not cooked"
-    );
-    assert!(!cooked_has("--probe-first"));
+    assert!(cooked_has("opacity-45"), "the pack's edit was not cooked");
+    assert!(!cooked_has("opacity-35"));
 }
