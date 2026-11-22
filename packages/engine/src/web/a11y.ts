@@ -145,10 +145,15 @@ export class A11yMirror {
     Object.assign(root.style, { position: "fixed", left: "0px", top: "0px", width: "0px", height: "0px", pointerEvents: "none", overflow: "visible", zIndex: "0" } satisfies Partial<CSSStyleDeclaration>);
     doc.body.appendChild(root);
     this.root = root;
-    // A native range draws its thumb whatever its own style says.
-    const style = doc.createElement("style");
-    style.textContent = THUMB;
-    root.appendChild(style);
+    // A native range draws its thumb whatever its own style says. A constructed sheet, not a
+    // <style> element: a page's Content-Security-Policy of `style-src 'self'` refuses inline
+    // style elements (docs/web-export.md §Hosting), and it does not govern a constructed sheet.
+    const thumb = new CSSStyleSheet();
+    thumb.replaceSync(THUMB);
+    doc.adoptedStyleSheets = [...doc.adoptedStyleSheets, thumb];
+    this.#off.push(() => {
+      doc.adoptedStyleSheets = doc.adoptedStyleSheets.filter((s) => s !== thumb);
+    });
     const on = <K extends keyof HTMLElementEventMap>(type: K, fn: (e: HTMLElementEventMap[K]) => void) => {
       root.addEventListener(type, fn as EventListener);
       this.#off.push(() => root.removeEventListener(type, fn as EventListener));
