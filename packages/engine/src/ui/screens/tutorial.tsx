@@ -21,7 +21,7 @@ export interface TutorialScreenProps {
   y: number;
   /** The step's art (0: none). */
   texture: Texture | 0;
-  /** The `name` of the element the step points at, anywhere in the UI (name a `View` around an `Icon`): the rest of the screen dims and takes every press, the element stays lit and takes its own, and the card stands under it in place of x and y. Empty: nothing is dimmed and the card stands at x and y. While no element of that name shows, the whole screen dims and the card waits hidden. */
+  /** The `name` of the element the step points at, anywhere in the UI (name a `View` around an `Icon`): the rest of the screen dims and takes every press, the element stays lit and takes its own, and the card stands under it in place of x and y. Empty: nothing is dimmed and the card stands at x and y. While no element of that name shows, nothing is dimmed and the card stands at x and y. */
   target?: string;
   /** Content the caller supplies (was the highlight snippet). */
   highlight?: (() => JSX.Element) | undefined;
@@ -84,17 +84,21 @@ function StepCard(props: TutorialScreenProps) {
 /**
  * A tutorial step: a card with the step's title, what to do, its art and
  * the step count, and Next (hidden while the step waits for the player) and
- * Skip. Given a target, the screen dims around that element, which keeps its
- * own presses, and the card stands under it; else the card stands where the
- * game puts it.
+ * Skip. Given a target that shows, the screen dims around that element, which
+ * keeps its own presses, and the card stands under it; else (no target, or
+ * one not on screen) nothing dims and the card stands where the game puts it.
  */
 export function TutorialScreen(props: TutorialScreenProps) {
   return (
     <View class="relative h-full">
       <View class="absolute inset-0">{props.highlight?.()}</View>
       <Show when={props.target} fallback={<StepCard {...props} />}>
-        <View class="absolute inset-0 bg-scrim" spotlight={props.target}>
+        {/* data-lit: the target shows. Until it does, no shade, and the card stands at x and y. */}
+        <View class="group/spot absolute inset-0 data-lit:bg-scrim" spotlight={props.target}>
           <StepCard {...props} />
+          <View class="absolute inset-0 group-data-lit/spot:hidden">
+            <StepCard {...props} target="" />
+          </View>
         </View>
       </Show>
     </View>
@@ -104,6 +108,7 @@ export function TutorialScreen(props: TutorialScreenProps) {
 export const fixtures: Record<string, Partial<TutorialScreenProps>> = {
   default: {"step":2,"steps":5,"target":"","text":"Press the dodge button just before an attack lands to slip past it.","texture":0,"title":"Dodge","waits":false,"x":64,"y":120},
   spotlight: {"step":3,"steps":5,"target":"dodge-button","text":"This is your dodge. Press it just before an attack lands.","texture":0,"title":"Your dodge","waits":true,"x":64,"y":120},
+  targetMissing: {"step":3,"steps":5,"target":"dodge-button-offscreen","text":"This is your dodge. Press it just before an attack lands.","texture":0,"title":"Your dodge","waits":true,"x":64,"y":120},
 };
 
 /** The input actions it answers, with the label a hint shows for each. */
