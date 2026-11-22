@@ -7549,7 +7549,7 @@ export interface Interpolation {
 export type Lut = number & { readonly [handleType]: "Lut" };
 
 /**
- * A prefiltered HDR environment map for Environment.map, from og.load.environment (an `.ogt` of `type environment` naming an equirectangular `.hdr` or `.exr`, a KTX2 cube map, or six face images).
+ * A prefiltered environment map for Environment.map, from og.load.environment (an `.ogt` of `type environment` naming an equirectangular HDR/EXR or sRGB PNG/JPG/WebP, a KTX2 cube map, or six face images). LDR sources keep authored background colours apart from linear lighting; hemisphere upper fills the ground, exposures merges darker brackets, and og.load.environmentSun reports the extracted sun for a DirectionalLight.
  *
  * A generational handle: a number the engine hands out. A dead handle is an error value, never a crash.
  */
@@ -13573,7 +13573,7 @@ export interface PrefabLink {
 
 
 /**
- * The sun a cooked environment's `sun extract` took out of its image, for the DirectionalLight that puts it back.
+ * The sun a cooked environment took out of its lighting image, for the DirectionalLight that puts it back. LDR panoramas extract by default; their intensity is a relative-radiance estimate from the clipped disc and circumsolar gradient, not measured lux. HDR/bracketed sources integrate measured radiance.
  */
 export interface EnvironmentSun {
   /**
@@ -13586,6 +13586,10 @@ export interface EnvironmentSun {
    * The light it gave a surface facing it: DirectionalLight.intensity. 0 when the environment has no sun to give (`sun keep`, an image with no sun, or an uncooked map).
    */
   readonly intensity: number;
+  /**
+   * The apparent disc diameter in radians (solid-angle equivalent diameter of the extracted region); 0 when none was found. An estimate for clipped LDR images.
+   */
+  readonly angularSize: number;
 }
 
 

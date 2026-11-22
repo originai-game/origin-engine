@@ -182,6 +182,7 @@ pub fn og_load_environment_sun(world: u32, map: f64) -> Result<serde_json::Value
         "direction": { "x": x, "y": y, "z": z },
         "color": { "r": r, "g": g, "b": b },
         "intensity": sun.intensity,
+        "angularSize": sun.angular_size,
     }))
 }
 

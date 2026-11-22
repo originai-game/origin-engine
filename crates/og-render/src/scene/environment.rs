@@ -490,6 +490,8 @@ pub(crate) struct SkyMap {
     pub rotation: f32,
     pub scale: f32,
     pub blend: f32,
+    /// Tone-mapped share of the background (0 for an authored LDR sky).
+    pub tone_mapped: f32,
 }
 
 impl SkyParams {
@@ -506,7 +508,7 @@ impl SkyParams {
         match map {
             Some(m) => SkyParams {
                 look: [1.0, level, m.scale, m.blend],
-                turn: [m.rotation.cos(), m.rotation.sin(), 0.0, 0.0],
+                turn: [m.rotation.cos(), m.rotation.sin(), m.tone_mapped, 0.0],
             },
             None => SkyParams {
                 look: [0.0, level, 1.0, 0.0],
@@ -752,6 +754,7 @@ mod sky_params_tests {
             rotation: std::f32::consts::FRAC_PI_2,
             scale: 0.5,
             blend: 0.25,
+            tone_mapped: 1.0,
         };
         let p = SkyParams::new(&env(0.0), 5, Some(m));
         assert_eq!(p.look, [1.0, 0.0, 0.5, 0.25]);

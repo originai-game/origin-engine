@@ -71,5 +71,5 @@ fn fs_sky_ground(in: SkyOut) -> @location(0) vec4<f32> {
       color *= ground_kept(eye + dir * tg);
     }
   }
-  return vec4<f32>(sky_fog(color, dir), 1.0);
+  return vec4<f32>(sky_fog(color, dir), sky_tone_fraction());
 }

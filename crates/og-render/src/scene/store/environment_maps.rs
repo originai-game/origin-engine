@@ -42,6 +42,7 @@ impl RenderScene {
             texels: Vec::new(),
             irradiance,
             sun: Default::default(),
+            background: Vec::new(),
         });
         self.environment_equirects[handle.index()] = Some(std::sync::Arc::new(image));
         Ok(handle)
@@ -68,6 +69,7 @@ impl RenderScene {
             texels: Vec::new(),
             irradiance: [[0.0; 3]; 9],
             sun: Default::default(),
+            background: Vec::new(),
         };
         self.environment_map_revisions[i] += 1;
         self.environment_equirects[i] = None;

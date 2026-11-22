@@ -37,17 +37,21 @@ impl Renderer {
                 Some(GpuEnvironmentMap {
                     _texture: texture,
                     view,
+                    background: None,
                     bytes: 8 * environment::EnvironmentMapData::texel_count(image.size) as u64,
                 })
             } else if scene.environment_map_slot(i).0 {
                 let map = &scene.environment_maps()[i];
                 map.validate()
                     .map_err(|e| RenderError::InvalidData(format!("environment map {i}: {e}")))?;
-                let (texture, view) = environment::upload(&self.device, &self.queue, map);
+                let (texture, view) = environment::upload(&self.device, &self.queue, map, false);
+                let background = (!map.background.is_empty())
+                    .then(|| environment::upload(&self.device, &self.queue, map, true));
                 Some(GpuEnvironmentMap {
                     _texture: texture,
                     view,
-                    bytes: 4 * environment::EnvironmentMapData::texel_count(map.size) as u64,
+                    background,
+                    bytes: 4 * (map.texels.len() + map.background.len()) as u64,
                 })
             } else {
                 None

@@ -343,6 +343,8 @@ pub(crate) struct GpuEnvironmentMap {
     /// Held for the view.
     pub(crate) _texture: wgpu::Texture,
     pub(crate) view: wgpu::TextureView,
+    /// Authored LDR colours, otherwise the radiance view is the background.
+    pub(crate) background: Option<(wgpu::Texture, wgpu::TextureView)>,
     /// Bytes allocated, every level of every face.
     pub(crate) bytes: u64,
 }

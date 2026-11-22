@@ -714,3 +714,201 @@ fn sun_extract_stores_the_images_sun_beside_the_map() {
     );
     assert!(e.contains("sun extract takes the sun out before"), "{e}");
 }
+
+fn ldr_image(
+    w: u32,
+    h: u32,
+    pixel: impl Fn(u32, u32) -> [u8; 3],
+    format: image::ImageFormat,
+) -> Vec<u8> {
+    let img = image::RgbImage::from_fn(w, h, |x, y| image::Rgb(pixel(x, y)));
+    let mut out = std::io::Cursor::new(Vec::new());
+    image::DynamicImage::ImageRgb8(img)
+        .write_to(&mut out, format)
+        .unwrap();
+    out.into_inner()
+}
+
+/// A grey sRGB source must light as 0.216 linear, not 0.502. Both source
+/// layouts and all three LDR codecs reach the public bundle loader.
+#[test]
+fn ldr_panorama_and_faces_light_in_linear_space() {
+    for (ext, format) in [
+        ("png", image::ImageFormat::Png),
+        ("jpg", image::ImageFormat::Jpeg),
+        ("webp", image::ImageFormat::WebP),
+    ] {
+        let pano = ldr_image(65, 32, |_, _| [128, 128, 128], format);
+        let face = ldr_image(16, 16, |_, _| [128, 128, 128], format);
+        let env = format!(
+            "type environment\nversion 1\n---\nsource \"sky.{ext}\"\nsize 16\nsamples 16\nexpand 0\n"
+        );
+        let cube = format!(
+            "type environment\nversion 1\n---\nfaces \"f.{ext}\" \"f.{ext}\" \"f.{ext}\" \"f.{ext}\" \"f.{ext}\" \"f.{ext}\"\nsize 16\nsamples 16\nexpand 0\n"
+        );
+        let root = project(
+            &format!("ldr-{ext}"),
+            &[
+                ("sky.ogt", env.as_bytes()),
+                ("cube.ogt", cube.as_bytes()),
+                (&format!("sky.{ext}"), &pano),
+                (&format!("f.{ext}"), &face),
+            ],
+        );
+        cook(&root);
+        let bundle = Bundle::open(&root.join("cooked")).unwrap();
+        for name in ["sky.ogt", "cube.ogt"] {
+            let map = bundle.load_environment(name).unwrap();
+            let light = og_render::bake::irradiance(&map, glam::Vec3::Y);
+            assert!((light.x - 0.21586).abs() < 0.004, "{ext} {name}: {light}");
+            assert_eq!(
+                map.texels, map.background,
+                "no expansion: light and authored colours agree"
+            );
+        }
+    }
+}
+
+/// The darker bracket contains highlight information absent from the
+/// clipped source. Ground fill is independent of a sky's blue zenith.
+#[test]
+fn brackets_restore_highlights_and_upper_hemisphere_fills_ground() {
+    let bright = ldr_image(64, 32, |_, _| [255, 255, 255], image::ImageFormat::Png);
+    let dark = ldr_image(64, 32, |_, _| [188, 188, 188], image::ImageFormat::Png); // 0.503 linear at -3 EV → 4.024
+    let sky = ldr_image(
+        64,
+        16,
+        |_, y| {
+            if y < 12 {
+                [40, 80, 160]
+            } else {
+                [128, 100, 60]
+            }
+        },
+        image::ImageFormat::Png,
+    );
+    let env = |lines: &str| {
+        format!(
+            "type environment\nversion 1\n---\nsize 16\nsamples 16\nsun keep\nexpand 0\n{lines}\n"
+        )
+    };
+    let root = project(
+        "ldr-brackets-upper",
+        &[
+            ("bright.png", &bright),
+            ("dark.png", &dark),
+            ("sky.png", &sky),
+            (
+                "bracket.ogt",
+                env("source \"bright.png\"\nexposures \"dark.png\" -3").as_bytes(),
+            ),
+            (
+                "upper.ogt",
+                env("source \"sky.png\"\nhemisphere upper\nground 0.1 0.2 0.03").as_bytes(),
+            ),
+            (
+                "horizon.ogt",
+                env("source \"sky.png\"\nhemisphere upper").as_bytes(),
+            ),
+        ],
+    );
+    cook(&root);
+    let bundle = Bundle::open(&root.join("cooked")).unwrap();
+    let bracket = bundle.load_environment("bracket.ogt").unwrap();
+    assert!(
+        bracket.background.is_empty(),
+        "brackets are HDR, not a display plate"
+    );
+    let light = og_render::bake::irradiance(&bracket, glam::Vec3::Y);
+    assert!(
+        (light.x - 4.024).abs() < 0.03,
+        "dark exposure must restore radiance: {light}"
+    );
+    let down = |name: &str| {
+        let map = bundle.load_environment(name).unwrap();
+        og_render::rgb9e5_decode(map.background[3 * 16 * 16 + 8 * 16 + 8])
+    };
+    let ground = down("upper.ogt");
+    assert!(
+        (ground[0] - 0.1).abs() < 0.001
+            && (ground[1] - 0.2).abs() < 0.001
+            && (ground[2] - 0.03).abs() < 0.001,
+        "{ground:?}"
+    );
+    let ground = down("horizon.ogt");
+    assert!(
+        (ground[0] - 0.21586).abs() < 0.004 && ground[0] > ground[2] * 3.0,
+        "horizon, not zenith: {ground:?}"
+    );
+    // A darker source edit is a dependency: the bracket must recook.
+    let darker = ldr_image(64, 32, |_, _| [160, 160, 160], image::ImageFormat::Png);
+    std::fs::write(root.join("assets/dark.png"), darker).unwrap();
+    let report = cook(&root);
+    assert!(
+        report
+            .cooked_outputs()
+            .iter()
+            .any(|o| o.id == "bracket.ogt" && o.cooked)
+    );
+}
+
+#[test]
+fn ldr_sun_is_removed_from_lighting_not_the_authored_background() {
+    let sky = ldr_image(
+        512,
+        256,
+        |x, y| {
+            let r = (x as f32 - 300.0).hypot(y as f32 - 70.0);
+            if r < 2.5 {
+                [255, 255, 255]
+            } else {
+                let glow = (40.0 * (-r * r / 200.0).exp()) as u8;
+                [100 + glow, 130 + glow, 170 + glow]
+            }
+        },
+        image::ImageFormat::Png,
+    );
+    let env = |sun: &str| {
+        format!(
+            "type environment\nversion 1\n---\nsource \"sky.png\"\nsize 32\nsamples 16\nexpand 0\n{sun}\n"
+        )
+    };
+    let root = project(
+        "ldr-sun",
+        &[
+            ("sky.png", &sky),
+            ("sun.ogt", env("").as_bytes()),
+            ("keep.ogt", env("sun keep").as_bytes()),
+        ],
+    );
+    let report = cook(&root);
+    assert!(
+        report
+            .assets
+            .iter()
+            .flat_map(|a| &a.notes)
+            .any(|n| n.contains("clippedFraction"))
+    );
+    let bundle = Bundle::open(&root.join("cooked")).unwrap();
+    let sun = bundle.load_environment("sun.ogt").unwrap();
+    let keep = bundle.load_environment("keep.ogt").unwrap();
+    assert!(
+        sun.sun.intensity > 0.0 && sun.sun.direction[1] > 0.5 && sun.sun.angular_size > 0.0,
+        "{:?}",
+        sun.sun
+    );
+    assert_eq!(
+        sun.background, keep.background,
+        "the sun stays visible in the authored sky"
+    );
+    let peak = |m: &og_render::EnvironmentMapData| {
+        m.texels[..6 * 32 * 32]
+            .iter()
+            .map(|p| og_render::rgb9e5_decode(*p)[0])
+            .fold(0.0, f32::max)
+    };
+    assert!(
+        peak(&sun) < peak(&keep) - 0.05,
+        "the prefilter must not retain the disc"
+    );
+}

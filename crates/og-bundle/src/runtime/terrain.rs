@@ -481,6 +481,25 @@ impl Bundle {
                 direction: [meta.sun_x, meta.sun_y, meta.sun_z],
                 color: [meta.sun_r, meta.sun_g, meta.sun_b],
                 intensity: meta.sun_intensity,
+                angular_size: meta.sun_angular_size,
+            },
+            background: if meta.ldr_background != 0 {
+                let bytes = miniz_oxide::inflate::decompress_to_vec_zlib_with_limit(
+                    blob.raw("background")?,
+                    want * 4,
+                )
+                .map_err(|e| invalid(&blob, format!("background: {e:?}")))?;
+                if bytes.len() != want * 4 {
+                    return Err(invalid(&blob, "background: truncated"));
+                }
+                bytes
+                    .as_chunks::<4>()
+                    .0
+                    .iter()
+                    .map(|b| u32::from_le_bytes(*b))
+                    .collect()
+            } else {
+                Vec::new()
             },
         };
         map.validate().map_err(|e| invalid(&blob, e))?;

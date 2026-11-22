@@ -73,7 +73,13 @@ fn fs_sky(in: SkyOut) -> @location(0) vec4<f32> {
   let near = frame.inv_view_proj * vec4<f32>(in.ndc, 0.0, 1.0);
   let eye = near.xyz / near.w;
   let dir = pixel_ray(in.ndc);
-  return vec4<f32>(sky_fog(sky_background(eye, dir) * (1.0 - frame.view_up.w), dir), 1.0);
+  return vec4<f32>(sky_fog(sky_background(eye, dir) * (1.0 - frame.view_up.w), dir), sky_tone_fraction());
+}
+
+// The HDR target's alpha already carries the tone-mapped share for camera
+// plates and untonemapped sprites. An authored LDR sky uses that same path.
+fn sky_tone_fraction() -> f32 {
+  return select(1.0, sky_params.turn.z, sky_params.look.x > 0.5);
 }
 
 // The background along a view ray (through the grounded dome when there
@@ -82,18 +88,18 @@ fn fs_sky(in: SkyOut) -> @location(0) vec4<f32> {
 // own cube, turned, scaled and blended, or the sky cube.
 fn sky_background(eye: vec3<f32>, dir: vec3<f32>) -> vec3<f32> {
   let d = dome_lookup(eye, dir);
-  if (sky_params.look.y > 0.0) {
-    return textureSampleLevel(prefiltered_map, ibl_sampler, d, sky_params.look.y).rgb * sky_params.look.z;
-  }
   if (sky_params.look.x > 0.5) {
     let c = sky_params.turn.x;
     let s = sky_params.turn.y;
     let m = vec3<f32>(c * d.x - s * d.z, d.y, s * d.x + c * d.z);
-    var col = textureSampleLevel(map_cube, ibl_sampler, m, 0.0).rgb;
+    var col = textureSampleLevel(map_cube, ibl_sampler, m, sky_params.look.y).rgb;
     if (sky_params.look.w > 0.0) {
-      col = mix(col, textureSampleLevel(blend_cube, ibl_sampler, m, 0.0).rgb, sky_params.look.w);
+      col = mix(col, textureSampleLevel(blend_cube, ibl_sampler, m, sky_params.look.y).rgb, sky_params.look.w);
     }
     return col * sky_params.look.z;
+  }
+  if (sky_params.look.y > 0.0) {
+    return textureSampleLevel(prefiltered_map, ibl_sampler, d, sky_params.look.y).rgb;
   }
   return textureSampleLevel(sky_map, ibl_sampler, d, 0.0).rgb;
 }

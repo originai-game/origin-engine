@@ -120,7 +120,9 @@ impl Renderer {
             post_fx,
             glow,
             god_rays.is_some(),
-            sprite_frame.untonemapped || self.plate_group(scene).is_some(),
+            sprite_frame.untonemapped
+                || self.plate_group(scene).is_some()
+                || self.authored_environment(scene),
             scene.frame.tick,
             self.history_size().0,
             lens_flare.as_ref().map(|f| (f, flare_turn)),

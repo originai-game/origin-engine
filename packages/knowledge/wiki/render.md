@@ -62,7 +62,7 @@ module render {
 | [`og.render.compile`](render/fn-compile.md) | function | `(world: World): void` | Prepare this world's render and compute pipelines, as three.js renderer.compileAsync, a few per frame starting next frame. |
 | [`og.render.reveal`](render/fn-reveal.md) | function | `(world: World, entity: Entity, seconds: number): Result<void>` | Set the fade-in of entity's og.Model or light when streaming brings it into view. |
 | [`Lut`](render/type-Lut.md) | handle |  | A colour lookup table for PostEffects.lut, from og.load.lut (a `.cube` file). |
-| [`EnvironmentMap`](render/type-EnvironmentMap.md) | handle |  | A prefiltered HDR environment map for Environment.map, from og.load.environment (an `.ogt` of `type environment` naming an equirectangular `.hdr` or `.exr`, a KTX2 cube map, or six face images). |
+| [`EnvironmentMap`](render/type-EnvironmentMap.md) | handle |  | A prefiltered environment map for Environment.map, from og.load.environment (an `.ogt` of `type environment` naming an equirectangular HDR/EXR or sRGB PNG/JPG/WebP, a KTX2 cube map, or six face image… |
 | [`ParticleEmitter`](render/type-ParticleEmitter.md) | handle |  | A particle emitter asset for ParticleSystem.emitter, from og.load.emitter (an `.ogt` of `type particles`). |
 | [`EffectMaterial`](render/type-EffectMaterial.md) | handle |  | An effect material for og.Trail.effect and og.Beam.effect, from og.load.effect (an `.ogt` of `type effect`). |
 | [`Texture()`](#column-Texture) | column kind |  | A Texture handle field (0 is none). |
@@ -506,7 +506,7 @@ column Palette {
 }
 ```
 
-<sub>Module `render` line 1637</sub>
+<sub>Module `render` line 1636</sub>
 
 ```ogt
 column Look {
@@ -517,7 +517,7 @@ column Look {
 }
 ```
 
-<sub>Module `render` line 1644</sub>
+<sub>Module `render` line 1643</sub>
 
 ```ogt
 column DitherPattern {
@@ -528,7 +528,7 @@ column DitherPattern {
 }
 ```
 
-<sub>Module `render` line 1661</sub>
+<sub>Module `render` line 1660</sub>
 
 ```ogt
 column MaterialSurface {
@@ -539,7 +539,7 @@ column MaterialSurface {
 }
 ```
 
-<sub>Module `render` line 1676</sub>
+<sub>Module `render` line 1675</sub>
 
 ```ogt
 column OutlinePlace {
@@ -550,7 +550,7 @@ column OutlinePlace {
 }
 ```
 
-<sub>Module `render` line 1690</sub>
+<sub>Module `render` line 1689</sub>
 
 ```ogt
 column StyliseSpace {
@@ -561,7 +561,7 @@ column StyliseSpace {
 }
 ```
 
-<sub>Module `render` line 1705</sub>
+<sub>Module `render` line 1704</sub>
 
 ```ogt
 column PosterizeMode {
@@ -572,7 +572,7 @@ column PosterizeMode {
 }
 ```
 
-<sub>Module `render` line 1718</sub>
+<sub>Module `render` line 1717</sub>
 
 ```ogt
 column HalftoneMode {
@@ -583,7 +583,7 @@ column HalftoneMode {
 }
 ```
 
-<sub>Module `render` line 1732</sub>
+<sub>Module `render` line 1731</sub>
 
 ```ogt
 column HalftoneRegion {
@@ -594,7 +594,7 @@ column HalftoneRegion {
 }
 ```
 
-<sub>Module `render` line 1746</sub>
+<sub>Module `render` line 1745</sub>
 
 ```ogt
 column Light2DKind {
@@ -605,7 +605,7 @@ column Light2DKind {
 }
 ```
 
-<sub>Module `render` line 2197</sub>
+<sub>Module `render` line 2196</sub>
 
 ```ogt
 column ReflectionProbeMode {
@@ -616,7 +616,7 @@ column ReflectionProbeMode {
 }
 ```
 
-<sub>Module `render` line 3074</sub>
+<sub>Module `render` line 3073</sub>
 
 ```ogt
 column Shader {
@@ -627,7 +627,7 @@ column Shader {
 }
 ```
 
-<sub>Module `render` line 3124</sub>
+<sub>Module `render` line 3123</sub>
 
 ```ogt
 column LineMode {
@@ -638,7 +638,7 @@ column LineMode {
 }
 ```
 
-<sub>Module `render` line 3935</sub>
+<sub>Module `render` line 3934</sub>
 
 ```ogt
 column RenderTargetFormat {
@@ -649,7 +649,7 @@ column RenderTargetFormat {
 }
 ```
 
-<sub>Module `render` line 4146</sub>
+<sub>Module `render` line 4145</sub>
 
 ```ogt
 column RenderTarget {
@@ -660,7 +660,7 @@ column RenderTarget {
 }
 ```
 
-<sub>Module `render` line 4155</sub>
+<sub>Module `render` line 4154</sub>
 
 ```ogt
 column Post {
@@ -671,7 +671,7 @@ column Post {
 }
 ```
 
-<sub>Module `render` line 4295</sub>
+<sub>Module `render` line 4294</sub>
 
 ## Constants
 
@@ -687,28 +687,28 @@ column Post {
 const PARTICLES_ARMED u32 4294967295 "ParticleSystem.startTick's default: never written. A looping emitter emits as if started at tick 0; a one-shot (`looping false`) emits nothing until its startTick is written, so a burst spawned in `start` waits for its first use. Write it back to re-arm a one-shot without firing it."
 ```
 
-<sub>Module `render` line 2327</sub>
+<sub>Module `render` line 2326</sub>
 
 ```ogt
 const MAX_LIGHTS u32 256 "The most point and spot lights one frame draws, among those in view; past it the ones brightest at the camera are kept."
 ```
 
-<sub>Module `render` line 2991</sub>
+<sub>Module `render` line 2990</sub>
 
 ```ogt
 const MAX_CLUSTER_LIGHTS u32 64 "The most point and spot lights that shade one screen cluster (a 1/16 by 1/9 tile of the view and one of 24 depth slices); past it the ones brightest at the camera are kept there."
 ```
 
-<sub>Module `render` line 2992</sub>
+<sub>Module `render` line 2991</sub>
 
 ```ogt
 const UI_LAYER i32 1000 "The UI's layer among screen sprites and screen text (SpriteDesc and TextDesc with screen): those at or below it draw under every og.ui element, those above it over every one, modals, toasts and the screen transition included, in their layers' order either way."
 ```
 
-<sub>Module `render` line 2993</sub>
+<sub>Module `render` line 2992</sub>
 
 ```ogt
 const MAX_REFLECTION_PROBES u32 8 "The most og.ReflectionProbe components one frame samples, nearest the camera first; the rest are skipped."
 ```
 
-<sub>Module `render` line 3066</sub>
+<sub>Module `render` line 3065</sub>

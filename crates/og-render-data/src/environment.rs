@@ -45,6 +45,9 @@ pub struct EnvironmentMapData {
     /// The sun the bake took out of the image ([`bake::BakeDesc::sun`]);
     /// intensity 0: none.
     pub sun: EnvironmentSun,
+    /// Authored, linearised display colours for an LDR background, with
+    /// the same cube layout and levels as `texels`. Empty for HDR sources.
+    pub background: Vec<u32>,
 }
 
 /// The sun a bake took out of an environment map, to put back as a
@@ -62,6 +65,8 @@ pub struct EnvironmentSun {
     /// radiance taken out times its solid angle): a directional light's
     /// intensity. 0: the image has no sun.
     pub intensity: f32,
+    /// Apparent disc diameter in radians; 0 when no sun was extracted.
+    pub angular_size: f32,
 }
 
 impl EnvironmentMapData {
@@ -89,6 +94,9 @@ impl EnvironmentMapData {
                 self.size,
                 self.texels.len()
             ));
+        }
+        if !self.background.is_empty() && self.background.len() != want {
+            return Err("an LDR background has the same texel count as its environment".into());
         }
         if self.irradiance.iter().flatten().any(|v| !v.is_finite()) {
             return Err("an environment map's irradiance is not finite".into());
@@ -699,10 +707,12 @@ pub mod bake {
         }
         let keep = SUN_OVER_MEAN * rest / area;
         let (mut light, mut aim) = (Vec3::ZERO, Vec3::ZERO);
+        let mut disc_area = 0.0;
         for k in (0..base.len()).filter(|&k| inside(k)) {
             let luma = base[k].dot(LUMA);
             if luma > keep && luma > 0.0 {
                 let (d, solid) = at(k);
+                disc_area += solid;
                 let taken = base[k] * ((1.0 - keep / luma) * solid);
                 light += taken;
                 aim += d * taken.dot(LUMA);
@@ -717,6 +727,7 @@ pub mod bake {
             direction: aim.try_normalize().unwrap_or(towards).to_array(),
             color: (light / intensity).to_array(),
             intensity,
+            angular_size: 2.0 * (1.0 - disc_area / (2.0 * PI)).clamp(-1.0, 1.0).acos(),
         }
     }
 
@@ -894,6 +905,7 @@ pub mod bake {
             texels,
             irradiance: irradiance_of(desc.size, &out[0]),
             sun: Default::default(),
+            background: Vec::new(),
         };
         map.validate()?;
         Ok(map)
@@ -962,6 +974,7 @@ pub mod bake {
             texels,
             irradiance: irradiance_of(*n, base),
             sun,
+            background: Vec::new(),
         };
         map.validate()?;
         Ok(map)

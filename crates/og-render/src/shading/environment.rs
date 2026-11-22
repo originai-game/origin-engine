@@ -83,6 +83,7 @@ pub(crate) fn upload(
     device: &wgpu::Device,
     queue: &wgpu::Queue,
     map: &EnvironmentMapData,
+    background: bool,
 ) -> (wgpu::Texture, wgpu::TextureView) {
     let texture = device.create_texture(&wgpu::TextureDescriptor {
         label: Some("environment map"),
@@ -112,7 +113,13 @@ pub(crate) fn upload(
                 origin: wgpu::Origin3d::ZERO,
                 aspect: wgpu::TextureAspect::All,
             },
-            bytemuck::cast_slice(&map.texels[at..at + count]),
+            bytemuck::cast_slice(
+                &if background {
+                    &map.background
+                } else {
+                    &map.texels
+                }[at..at + count],
+            ),
             wgpu::TexelCopyBufferLayout {
                 offset: 0,
                 bytes_per_row: Some(4 * n),

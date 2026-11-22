@@ -854,7 +854,9 @@ impl Renderer {
                 camera: &camera,
                 post_fx,
                 scene,
-                untonemapped: arenas.sprite_frame.untonemapped || self.plate_group(scene).is_some(),
+                untonemapped: arenas.sprite_frame.untonemapped
+                    || self.plate_group(scene).is_some()
+                    || self.authored_environment(scene),
                 ao: effects.ao,
                 gi: effects.gi,
                 dof: effects.dof,

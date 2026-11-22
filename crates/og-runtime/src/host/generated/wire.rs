@@ -8610,6 +8610,7 @@ pub struct EnvironmentSun {
     pub direction: Vec3,
     pub color: Color,
     pub intensity: f32,
+    pub angular_size: f32,
 }
 
 impl Default for EnvironmentSun {
@@ -8618,6 +8619,7 @@ impl Default for EnvironmentSun {
             direction: Default::default(),
             color: Default::default(),
             intensity: Default::default(),
+            angular_size: Default::default(),
         }
     }
 }
@@ -8632,6 +8634,7 @@ impl FromJson for EnvironmentSun {
             direction: field(o, "direction", d.direction)?,
             color: field(o, "color", d.color)?,
             intensity: field(o, "intensity", d.intensity)?,
+            angular_size: field(o, "angularSize", d.angular_size)?,
         })
     }
 }
@@ -8642,6 +8645,7 @@ impl ToJson for EnvironmentSun {
         o.insert("direction".into(), self.direction.to_json());
         o.insert("color".into(), self.color.to_json());
         o.insert("intensity".into(), self.intensity.to_json());
+        o.insert("angularSize".into(), self.angular_size.to_json());
         Value::Object(o)
     }
 }

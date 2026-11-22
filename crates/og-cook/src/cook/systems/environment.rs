@@ -54,9 +54,12 @@ use og_blob::BlobWriter;
 use og_core::ogt::Document;
 use std::path::Path;
 
+#[path = "environment/image.rs"]
+mod prepare;
+
 pub(crate) const ENVIRONMENT_TYPE: &str = "environment";
 
-const KEYS: [&str; 8] = [
+const KEYS: [&str; 13] = [
     "source",
     "faces",
     "size",
@@ -65,6 +68,11 @@ const KEYS: [&str; 8] = [
     "samples",
     "prefiltered",
     "sun",
+    "hemisphere",
+    "ground",
+    "exposures",
+    "expand",
+    "sunBoost",
 ];
 
 /// What an environment bakes from.
@@ -91,6 +99,39 @@ fn hdr_image(name: &str) -> bool {
     lower.ends_with(".hdr") || lower.ends_with(".exr")
 }
 
+fn environment_image(name: &str) -> bool {
+    hdr_image(name)
+        || [".png", ".jpg", ".jpeg", ".webp"]
+            .iter()
+            .any(|ext| name.to_ascii_lowercase().ends_with(ext))
+}
+
+/// Both ranges enter the same float prefilter. LDR texture bytes are sRGB,
+/// not linear radiance; alpha has no meaning on a sky.
+fn decode_image(name: &str, bytes: &[u8]) -> Result<image::Rgb32FImage, CookError> {
+    if hdr_image(name) {
+        return image::load_from_memory(bytes)
+            .map(|img| img.to_rgb32f())
+            .map_err(|e| CookError(format!("{name}: {e}")));
+    }
+    let img = super::decode_image(bytes).map_err(|e| CookError(format!("{name}: {e}")))?;
+    let rgb = img
+        .rgba
+        .chunks_exact(4)
+        .flat_map(|p| {
+            [p[0], p[1], p[2]].map(|v| {
+                let v = v as f32 / 255.0;
+                if v <= 0.04045 {
+                    v / 12.92
+                } else {
+                    ((v + 0.055) / 1.055).powf(2.4)
+                }
+            })
+        })
+        .collect();
+    Ok(image::Rgb32FImage::from_raw(img.width, img.height, rgb).expect("decoded dimensions"))
+}
+
 /// An environment file's settings, read and checked.
 pub(crate) struct EnvironmentDoc {
     pub source: EnvironmentSource,
@@ -103,6 +144,11 @@ pub(crate) struct EnvironmentDoc {
     pub prefiltered: bool,
     /// `sun extract`.
     pub sun: bool,
+    pub upper: bool,
+    pub ground: Option<glam::Vec3>,
+    pub exposures: Vec<(String, f32)>,
+    pub expand: f32,
+    pub sun_boost: f32,
 }
 
 fn number(doc: &Document, key: &str, default: f32) -> Result<f32, String> {
@@ -146,9 +192,9 @@ pub(crate) fn parse(rel: &str, root: &Path, text: &str) -> Result<EnvironmentDoc
                     f.line
                 ));
             }
-            if let Some(bad) = names.iter().find(|n| !hdr_image(n)) {
+            if let Some(bad) = names.iter().find(|n| !environment_image(n)) {
                 return Err(format!(
-                    "line {}: face \"{bad}\": a face is a Radiance .hdr or OpenEXR .exr",
+                    "line {}: face \"{bad}\": a face is .hdr, .exr, .png, .jpg or .webp",
                     f.line
                 ));
             }
@@ -165,11 +211,11 @@ pub(crate) fn parse(rel: &str, root: &Path, text: &str) -> Result<EnvironmentDoc
             })?;
             if source.to_ascii_lowercase().ends_with(".ktx2") {
                 EnvironmentSource::Ktx2(super::terrain::resolve(rel, root, source))
-            } else if hdr_image(source) {
+            } else if environment_image(source) {
                 EnvironmentSource::Equirect(super::terrain::resolve(rel, root, source))
             } else {
                 return Err(format!(
-                    "source \"{source}\": an equirectangular Radiance .hdr or OpenEXR .exr, or a KTX2 cube map"
+                    "source \"{source}\": an equirectangular .hdr, .exr, .png, .jpg or .webp, or a KTX2 cube map"
                 ));
             }
         }
@@ -246,6 +292,73 @@ pub(crate) fn parse(rel: &str, root: &Path, text: &str) -> Result<EnvironmentDoc
     if samples.fract() != 0.0 || !(16.0..=4096.0).contains(&samples) {
         return Err(format!("samples {samples}: a whole number from 16 to 4096"));
     }
+    let upper = match doc.body.get("hemisphere") {
+        None => false,
+        Some(e) if e.values.len() == 1 && e.values[0].as_word() == Some("upper") => true,
+        Some(_) => return Err("hemisphere takes upper: an image from zenith to horizon".into()),
+    };
+    let ground = match doc.body.get("ground") {
+        None => None,
+        Some(e) => {
+            let values: Vec<f32> = e
+                .values
+                .iter()
+                .filter_map(|v| v.as_number().map(|n| n.as_f32()))
+                .collect();
+            if values.len() != 3
+                || values
+                    .iter()
+                    .any(|v| !v.is_finite() || !(0.0..=1.0).contains(v))
+            {
+                return Err("ground takes three linear RGB numbers in 0..1".into());
+            }
+            if !upper {
+                return Err("ground takes hemisphere upper".into());
+            }
+            Some(glam::Vec3::from_slice(&values))
+        }
+    };
+    let mut exposures = Vec::new();
+    if let Some(e) = doc.body.get("exposures") {
+        if e.values.is_empty() || e.values.len() % 2 != 0 {
+            return Err("exposures takes pairs of filename and EV relative to source: exposures \"dark.png\" -3".into());
+        }
+        for pair in e.values.chunks_exact(2) {
+            let name = pair[0]
+                .as_str()
+                .filter(|n| environment_image(n) && !hdr_image(n))
+                .ok_or("exposures names PNG, JPG or WebP images")?;
+            let ev = pair[1]
+                .as_number()
+                .map(|n| n.as_f32())
+                .filter(|v| v.is_finite() && (-24.0..0.0).contains(v))
+                .ok_or("an exposure EV must be negative, at least -24")?;
+            exposures.push((super::terrain::resolve(rel, root, name), ev));
+        }
+    }
+    if (upper || !exposures.is_empty()) && !matches!(&source, EnvironmentSource::Equirect(_)) {
+        return Err(
+            "hemisphere and exposures take an equirectangular source, not faces or KTX2".into(),
+        );
+    }
+    if !exposures.is_empty() && matches!(&source, EnvironmentSource::Equirect(s) if hdr_image(s)) {
+        return Err("exposures takes an LDR source (PNG, JPG or WebP) at EV 0".into());
+    }
+    let expand = number(&doc, "expand", 0.25)?;
+    if !(0.0..=0.9).contains(&expand) {
+        return Err("expand is in 0..0.9 (0 disables inverse tone mapping)".into());
+    }
+    let sun_boost = number(&doc, "sunBoost", 1.0)?;
+    if !(0.0..=100.0).contains(&sun_boost) {
+        return Err("sunBoost is in 0..100".into());
+    }
+    let ldr = match &source {
+        EnvironmentSource::Equirect(s) => !hdr_image(s),
+        EnvironmentSource::Faces(f) => f.iter().all(|s| !hdr_image(s)),
+        _ => false,
+    };
+    // LDR defaults to extracting the estimated disc, HDR keeps its prior contract.
+    let sun = sun || (ldr && doc.body.get("sun").is_none());
     Ok(EnvironmentDoc {
         source,
         size: doc.body.get("size").map(|_| size as u32),
@@ -254,6 +367,11 @@ pub(crate) fn parse(rel: &str, root: &Path, text: &str) -> Result<EnvironmentDoc
         samples: samples as u32,
         prefiltered,
         sun,
+        upper,
+        ground,
+        exposures,
+        expand,
+        sun_boost,
     })
 }
 
@@ -261,7 +379,11 @@ pub(crate) fn parse(rel: &str, root: &Path, text: &str) -> Result<EnvironmentDoc
 /// the walk does not list them.
 pub(crate) fn environment_files(rel: &str, root: &Path, text: &str) -> Vec<String> {
     parse(rel, root, text)
-        .map(|d| d.source.files())
+        .map(|d| {
+            let mut files = d.source.files();
+            files.extend(d.exposures.into_iter().map(|(f, _)| f));
+            files
+        })
         .unwrap_or_default()
 }
 
@@ -306,28 +428,68 @@ pub(crate) fn cook_environment(
         samples: doc.samples,
         sun: doc.sun,
     };
+    let mut facts = Vec::new();
     let (map, width, height, what) = match &doc.source {
         EnvironmentSource::Equirect(source) => {
-            let img = image::load_from_memory(&read(source)?)
-                .map_err(|e| CookError(format!("{source}: {e}")))?
-                .to_rgb32f();
-            let (width, height) = (img.width(), img.height());
-            if width < 2 * height.saturating_sub(1) || width > 2 * height + 1 {
-                return Err(CookError(format!(
-                    "{source} is {width} × {height}: an equirectangular image is twice as wide as it is tall"
-                )));
+            let img = decode_image(source, &read(source)?)?;
+            finite(source, img.as_raw())?;
+            facts.push(prepare::facts(&img));
+            let ldr = !hdr_image(source) && doc.exposures.is_empty();
+            let img = if doc.exposures.is_empty() {
+                img
+            } else {
+                let mut bracket = vec![(img, 0.0)];
+                for (name, ev) in &doc.exposures {
+                    bracket.push((decode_image(name, &read(name)?)?, *ev));
+                }
+                prepare::merge(&bracket)?
+            };
+            let mut img = prepare::panorama(source, img, &doc)?;
+            let (width, height) = img.dimensions();
+            let background = ldr.then(|| img.clone());
+            let mut sun = Default::default();
+            if ldr {
+                if doc.sun {
+                    sun = prepare::take_sun(&mut img, doc.sun_boost);
+                }
+                prepare::expand(img.as_mut(), doc.expand);
             }
             let rgb = img.into_raw();
-            finite(source, &rgb)?;
-            let map = og_render_data::bake::bake(
+            let mut map = og_render_data::bake::bake(
                 &og_render_data::bake::Equirect {
                     width,
                     height,
                     rgb: &rgb,
                 },
-                &desc,
+                &og_render_data::bake::BakeDesc {
+                    sun: doc.sun && !ldr,
+                    ..desc
+                },
             )
             .map_err(|e| CookError(format!("{source}: {e}")))?;
+            if ldr {
+                sun.direction = (glam::Quat::from_rotation_y(doc.rotation.to_radians())
+                    * glam::Vec3::from_array(sun.direction))
+                .to_array();
+                sun.intensity *= doc.intensity;
+                map.sun = sun;
+            }
+            if let Some(background) = background {
+                map.background = og_render_data::bake::bake(
+                    &og_render_data::bake::Equirect {
+                        width,
+                        height,
+                        rgb: background.as_raw(),
+                    },
+                    &og_render_data::bake::BakeDesc {
+                        intensity: 1.0,
+                        sun: false,
+                        ..desc
+                    },
+                )
+                .map_err(CookError)?
+                .texels;
+            }
             (map, width, height, format!("{source} {width} × {height}"))
         }
         EnvironmentSource::Ktx2(source) if doc.prefiltered => {
@@ -389,9 +551,7 @@ pub(crate) fn cook_environment(
             let mut rgb = Vec::new();
             let mut size = 0;
             for (i, face) in faces.iter().enumerate() {
-                let img = image::load_from_memory(&read(face)?)
-                    .map_err(|e| CookError(format!("{face}: {e}")))?
-                    .to_rgb32f();
+                let img = decode_image(face, &read(face)?)?;
                 let (w, h) = (img.width(), img.height());
                 if w != h {
                     return Err(CookError(format!(
@@ -410,11 +570,27 @@ pub(crate) fn cook_environment(
                 finite(face, &face_rgb)?;
                 rgb.extend(face_rgb.into_iter().map(|v| v.max(0.0)));
             }
-            let map = og_render_data::bake::bake_cube(
+            let background = faces.iter().all(|f| !hdr_image(f)).then(|| rgb.clone());
+            if background.is_some() {
+                prepare::expand(&mut rgb, doc.expand);
+            }
+            let mut map = og_render_data::bake::bake_cube(
                 &og_render_data::bake::CubeFaces { size, rgb: &rgb },
                 &desc,
             )
             .map_err(|e| CookError(format!("{}: {e}", faces[0])))?;
+            if let Some(rgb) = background {
+                map.background = og_render_data::bake::bake_cube(
+                    &og_render_data::bake::CubeFaces { size, rgb: &rgb },
+                    &og_render_data::bake::BakeDesc {
+                        intensity: 1.0,
+                        sun: false,
+                        ..desc
+                    },
+                )
+                .map_err(CookError)?
+                .texels;
+            }
             (
                 map,
                 size,
@@ -461,7 +637,20 @@ pub(crate) fn cook_environment(
             format!(", {} samples a texel", doc.samples)
         }
     );
-    Ok((blob, vec![note]))
+    facts.push(format!(
+        "environment sun: direction {:?}, color {:?}, intensity {:.6}, angularSize {:.6} rad{}",
+        map.sun.direction,
+        map.sun.color,
+        map.sun.intensity,
+        map.sun.angular_size,
+        if !map.background.is_empty() {
+            " (LDR relative-radiance estimate, not measured lux)"
+        } else {
+            ""
+        }
+    ));
+    facts.insert(0, note);
+    Ok((blob, facts))
 }
 
 /// A `type environment` blob of `map`: its meta (the source's size, the
@@ -491,6 +680,8 @@ pub(crate) fn environment_blob(
         sun_g: map.sun.color[1],
         sun_b: map.sun.color[2],
         sun_intensity: map.sun.intensity,
+        sun_angular_size: map.sun.angular_size,
+        ldr_background: u32::from(!map.background.is_empty()),
     };
     let sh: Vec<format::EnvironmentShRow> = map
         .irradiance
@@ -520,6 +711,18 @@ pub(crate) fn environment_blob(
         format::row_hash::<format::EnvironmentShRow>(),
     )
     .raw("texels", packed, 16);
+    if !map.background.is_empty() {
+        let bytes: Vec<u8> = map
+            .background
+            .iter()
+            .flat_map(|t| t.to_le_bytes())
+            .collect();
+        w.raw(
+            "background",
+            miniz_oxide::deflate::compress_to_vec_zlib(&bytes, 6),
+            16,
+        );
+    }
     (w.finish(), raw, zipped)
 }
 
@@ -545,7 +748,7 @@ fn plan_environment<'a>(
     let PlanState { parsed_refs, .. } = state;
     let deps = environment_dependencies(s);
     assets::record_dependencies(parsed_refs, &s.rel, &deps);
-    let st = stamp(&[b"environment 1", &hash, deps.as_bytes()]);
+    let st = stamp(&[b"environment 2", &hash, deps.as_bytes()]);
     outs.push((
         s.rel.clone(),
         format::EnvironmentMap::NAME,

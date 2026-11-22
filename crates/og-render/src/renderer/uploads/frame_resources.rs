@@ -122,11 +122,26 @@ impl Renderer {
 
     /// The sky pass's uniform for this frame: the background's blurriness
     /// and the map it draws (`SkyParams`).
+    pub(crate) fn authored_environment(&self, scene: &RenderScene) -> bool {
+        self.drawn_environment(scene).is_some_and(|(m, blend)| {
+            !scene.environment_maps()[m.map.index()]
+                .background
+                .is_empty()
+                || blend.is_some_and(|(i, _)| !scene.environment_maps()[i].background.is_empty())
+        })
+    }
+
     pub(crate) fn write_sky_params(&self, scene: &RenderScene) {
         let map = self.drawn_environment(scene).map(|(m, blend)| SkyMap {
             rotation: m.rotation,
             scale: m.background_intensity.max(0.0),
             blend: blend.map_or(0.0, |b| b.1),
+            tone_mapped: {
+                let tone =
+                    |i: usize| u32::from(scene.environment_maps()[i].background.is_empty()) as f32;
+                let first = tone(m.map.index());
+                blend.map_or(first, |(i, w)| first + (tone(i) - first) * w)
+            },
         });
         let params = SkyParams::new(&scene.lighting.environment, crate::ibl::PREFILTER_MIPS, map);
         crate::traffic::write_buffer(
@@ -324,6 +339,12 @@ impl Renderer {
             )
         });
         let reflection_group = reflection_group.collect();
+        let background = |i: usize| {
+            let gpu = self.cache.environment_maps[i]
+                .as_ref()
+                .expect("loaded above");
+            gpu.background.as_ref().map_or(&gpu.view, |(_, view)| view)
+        };
         let sky_group = bind_group(
             &self.device,
             "sky",
@@ -333,8 +354,10 @@ impl Renderer {
                 wgpu::BindingResource::TextureView(&self.sky.cloud_noise.view),
                 wgpu::BindingResource::Sampler(&self.sky.cloud_noise.sampler),
                 self.sky.sky_params.as_entire_binding(),
-                wgpu::BindingResource::TextureView(map.map_or(&ibl.sky, |m| view(m.map.index()))),
-                wgpu::BindingResource::TextureView(blend.map_or(&ibl.sky, |b| view(b.0))),
+                wgpu::BindingResource::TextureView(
+                    map.map_or(&ibl.sky, |m| background(m.map.index())),
+                ),
+                wgpu::BindingResource::TextureView(blend.map_or(&ibl.sky, |b| background(b.0))),
                 wgpu::BindingResource::TextureView(&self.sky.aurora_map.view),
             ],
         );
