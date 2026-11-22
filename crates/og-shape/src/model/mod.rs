@@ -25,16 +25,16 @@
 
 mod checked;
 mod error;
-mod model;
 pub mod place;
 pub mod program;
+mod tree;
 
 pub use crate::boolean::{BoolOp, BoolReport};
 pub use crate::math::Frame;
 pub use crate::tools::{Interfering, JointKind, Material, Mimic, Placement, Preview};
 pub use checked::loft;
 pub use error::ModelError;
-pub use model::{
+pub use place::Path;
+pub use tree::{
     AtlasExport, BoolRecord, Built, Combine, Id, JointDesc, Key, Model, PartMeasures, Seating, Unit,
 };
-pub use place::Path;

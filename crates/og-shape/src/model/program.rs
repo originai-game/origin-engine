@@ -128,8 +128,8 @@ use crate::tools::{JointKind, Material, Mimic};
 use serde_json::{Map, Value, json};
 
 use crate::model::error::ModelError;
-use crate::model::model::{Combine, Id, JointDesc, Model, Unit};
 use crate::model::place::{self, Path};
+use crate::model::tree::{Combine, Id, JointDesc, Model, Unit};
 
 /// A model and the program that built it.
 #[derive(Clone, Debug, Default)]
