@@ -67,6 +67,7 @@ references! {
     grass => "terrain-grass",
     snow_track => "terrain-snow-track",
     meshlets => "meshlet-forest",
+    plant_scatter => "plant-scatter",
     particles => "particles",
     trails => "trails-beams",
     effect_materials => "effect-materials",
