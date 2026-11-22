@@ -3315,3 +3315,8 @@ pub fn og_loading_idle(world: u32) -> bool {
 pub fn og_loading_status(world: u32) -> String {
     <Host as LoadingApi>::og_loading_status(&Host, world)
 }
+
+#[wasm_bindgen]
+pub fn og_play_candidates(world: u32, desc: Option<String>) -> String {
+    <Host as PlayApi>::og_play_candidates(&Host, world, desc)
+}

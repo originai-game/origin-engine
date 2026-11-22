@@ -1333,6 +1333,8 @@ export interface HostAbi<A, V> {
   og_loading_idle(world: number): boolean;
   /** `og.loading.status` */
   og_loading_status(world: number): string;
+  /** `og.play.candidates` */
+  og_play_candidates(world: number, desc: string | undefined): string;
 }
 
 /** Every binding symbol, in binding-table order, then the lifecycle and present members. */
@@ -1946,6 +1948,7 @@ export const SYMBOLS: readonly string[] = [
   "og_loading_done",
   "og_loading_idle",
   "og_loading_status",
+  "og_play_candidates",
   "og_host_set_dispatcher",
   "og_host_shared",
   "og_engine_create",

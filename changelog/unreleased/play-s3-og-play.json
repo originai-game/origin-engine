@@ -1,0 +1,20 @@
+{
+  "added": [
+    {
+      "member": "og.HitVolume",
+      "summary": "A hit volume (sphere, capsule or box) on a posed bone through og.BoneAttachment, or on any entity, swept each tick from its last pose along the turn and slide between the two, so a fast swing meets what it passed through; it strikes each og.HurtVolume of another team and owner, and the colliders on its `colliders` layers, once per owner's swing."
+    },
+    {
+      "member": "og.HurtVolume",
+      "summary": "What a hit volume strikes: a shape on a bone or entity with a team and an owner; a body's hurt volumes share their owner, so a swing strikes it once."
+    },
+    {
+      "member": "og.HitEvent",
+      "summary": "A hit volume struck a target for the first time in its owner's swing: the volume, owner, swing, target, the hurt volume met first, and where and which way they met."
+    },
+    {
+      "member": "og.play.candidates",
+      "summary": "Every entity carrying a component within a range and a cone of a point, nearest first with entity order breaking ties, with its distance, its angle off a forward direction and, when asked, whether a collider stands in between."
+    }
+  ]
+}

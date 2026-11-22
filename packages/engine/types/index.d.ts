@@ -356,6 +356,8 @@ export interface ColumnKinds {
   VfxAsset: { readonly array: Uint32Array; readonly stride: 2; readonly value: VfxAsset };
   /** A SightPlane field: the variant's index. */
   SightPlane: { readonly array: Uint32Array; readonly stride: 1; readonly value: SightPlane };
+  /** A VolumeShape field: the variant's index. */
+  VolumeShape: { readonly array: Uint32Array; readonly stride: 1; readonly value: VolumeShape };
 }
 
 // ── math ────────────────────────────────────────────────────────
@@ -33353,6 +33355,263 @@ export interface LoadingStatus {
 
 
 
+// ── play ────────────────────────────────────────────────────────
+// Mechanisms that span domains, as facts. An og.HitVolume (on a bone through og.BoneAttachment, or on any entity) is swept from where it was at the last tick to where it is, so a fast swing meets what it passed through, and strikes each og.HurtVolume of another team, and the colliders on its layers, once a swing: og.HitEvent. og.play.candidates lists what is in range, in a cone and in sight. Damage, prompts and choices are the game's rules.
+
+/**
+ * A hit or hurt volume's shape: og.HitVolume.shape and og.HurtVolume.shape.
+ * - `"sphere"`: A sphere of `radius` (a circle in 2D).
+ * - `"capsule"`: A capsule along its local y of `radius`, with `height` between the cap centres (three.js CapsuleGeometry).
+ * - `"box"`: A box of `size`, its full extents (three.js BoxGeometry).
+ */
+export type VolumeShape = "sphere" | "capsule" | "box";
+
+/**
+ * A VolumeShape field: the variant's index.
+ *
+ * A `VolumeShape` field: stored in a `Uint32Array` with stride 1.
+ * @param value The field's default; omitted, the column's zero value.
+ * @param options Range, unit, label, docs and the tunable flag.
+ */
+export declare function VolumeShape(value?: VolumeShape, options?: FieldOptions): FieldSpec<"VolumeShape">;
+
+/**
+ * What strikes: a shape at its entity's simulation pose (its og.Transform after its parents', a posed bone's frame with og.BoneAttachment; og.motion's drawn pose is never read). While `active` it is swept each tick from its last pose, along the turn and slide between the two, and strikes each og.HurtVolume of another team and owner, and each collider on `colliders`, once per owner's swing (og.HitEvent). Sizes are scaled by the entity's world scale.
+ *
+ * The value of the `HitVolume` component (token `og.HitVolume`).
+ */
+export interface HitVolume {
+  /** Its shape. */
+  shape: VolumeShape;
+  /**
+   * A box's full extents.
+   *
+   * @default { x: 1, y: 1, z: 1 }
+   * @range 0..
+   * @unit m (metres)
+   * @tunable
+   */
+  size: Vector3;
+  /**
+   * A sphere's or capsule's radius.
+   *
+   * @default 0.5
+   * @range 0..
+   * @unit m (metres)
+   * @tunable
+   */
+  radius: number;
+  /**
+   * A capsule's distance between its cap centres.
+   *
+   * @default 1
+   * @range 0..
+   * @unit m (metres)
+   * @tunable
+   */
+  height: number;
+  /**
+   * The shape's centre in its entity's frame.
+   *
+   * @unit m (metres)
+   */
+  offset: Vector3;
+  /** The shape's rotation in its entity's frame; a zero quaternion is no rotation. */
+  quaternion: Quaternion;
+  /**
+   * Whether it strikes this tick (an attack's active window). Swept from its last pose only when it was active at the last tick too; its first active tick tests where it is.
+   */
+  active: boolean;
+  /** Its team: it never strikes an og.HurtVolume of the same team (as og.AiAgent.team). */
+  team: number;
+  /**
+   * Whose swing it is: a target is struck once per owner and swing, whichever of the owner's volumes meets it, and never the owner's own hurt volumes; 0 is its own entity.
+   */
+  owner: Entity;
+  /**
+   * Which swing it is part of: change it for the next swing, and each target can be struck again. A swing is forgotten once none of its owner's volumes holds it.
+   */
+  swing: number;
+  /**
+   * The collider layers (og.Collider.layers bits) it strikes besides hurt volumes: walls, props; 0 strikes no collider.
+   */
+  colliders: number;
+  /**
+   * Written: where its shape's centre was at the last tick.
+   *
+   * @unit m (metres)
+   * @worldspace world (how og.WorldOrigin's shift moves it)
+   * @readonly written by the engine
+   */
+  readonly lastPosition: Vector3;
+  /**
+   * Written: its shape's rotation at the last tick.
+   *
+   * @readonly written by the engine
+   */
+  readonly lastQuaternion: Quaternion;
+  /**
+   * Written: whether it was active at the last tick (the sweep starts from the last pose).
+   *
+   * @readonly written by the engine
+   */
+  readonly wasActive: boolean;
+}
+
+/**
+ * What can be struck: a shape at its entity's simulation pose, as og.HitVolume's (a bone through og.BoneAttachment). An og.HitVolume of another team and owner strikes its owner once a swing, at the first of the owner's hurt volumes it meets. Sizes are scaled by the entity's world scale.
+ *
+ * The value of the `HurtVolume` component (token `og.HurtVolume`).
+ */
+export interface HurtVolume {
+  /** Its shape. */
+  shape: VolumeShape;
+  /**
+   * A box's full extents.
+   *
+   * @default { x: 1, y: 1, z: 1 }
+   * @range 0..
+   * @unit m (metres)
+   * @tunable
+   */
+  size: Vector3;
+  /**
+   * A sphere's or capsule's radius.
+   *
+   * @default 0.5
+   * @range 0..
+   * @unit m (metres)
+   * @tunable
+   */
+  radius: number;
+  /**
+   * A capsule's distance between its cap centres.
+   *
+   * @default 1
+   * @range 0..
+   * @unit m (metres)
+   * @tunable
+   */
+  height: number;
+  /**
+   * The shape's centre in its entity's frame.
+   *
+   * @unit m (metres)
+   */
+  offset: Vector3;
+  /** The shape's rotation in its entity's frame; a zero quaternion is no rotation. */
+  quaternion: Quaternion;
+  /** Its team: an og.HitVolume of the same team never strikes it. */
+  team: number;
+  /**
+   * Who is struck (og.HitEvent.target): a body's hurt volumes share their owner, so a swing strikes it once; 0 is its own entity.
+   */
+  owner: Entity;
+}
+
+/**
+ * A hit volume struck a target for the first time in its owner's swing, sent the tick it met it, in hit volume entity order, then where along its sweep, then target. A fact: what it does (damage, a stagger, a spark) is the game's.
+ *
+ * The payload of the `HitEvent` event (token `og.HitEvent`).
+ */
+export interface HitEvent {
+  /** The og.HitVolume's entity. */
+  readonly volume: Entity;
+  /** Its owner (og.HitVolume.owner, or the volume when that is 0). */
+  readonly owner: Entity;
+  /** Its swing. */
+  readonly swing: number;
+  /** Who was struck: the og.HurtVolume's owner, or the collider's entity. */
+  readonly target: Entity;
+  /** The og.HurtVolume met first; 0 for a collider. */
+  readonly hurt: Entity;
+  /**
+   * Where they met, on the target's surface (inside it when the volume's core is).
+   *
+   * @unit m (metres)
+   * @worldspace world (how og.WorldOrigin's shift moves it)
+   */
+  readonly point: Vector3;
+  /** The direction from the target towards the volume there: a knockback's, a spark's. */
+  readonly normal: Vector3;
+}
+
+/**
+ * Where og.play.candidates looks from, how far, in which cone, among which entities and whether it looks for walls in between.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface CandidatesDesc {
+  /**
+   * The point looked from, in world space.
+   *
+   * @default { x: 0, y: 0, z: 0 }
+   * @unit m (metres)
+   */
+  readonly from?: Vector3;
+  /**
+   * The direction angles are measured from; it need not be normalised and must not be zero.
+   *
+   * @default { x: 0, y: 0, z: -1 }
+   */
+  readonly forward?: Vector3;
+  /**
+   * How far it looks; 0 finds nothing.
+   *
+   * @default 0
+   * @range 0..
+   * @unit m (metres)
+   */
+  readonly range?: number;
+  /**
+   * The cone's half angle about `forward`; 0, or π and more, takes every direction.
+   *
+   * @default 0
+   * @range 0..
+   * @unit rad (radians: every rotation, heading, yaw, joint or steering limit, arc, uv rotation and cone; a cone is given as its half-angle)
+   */
+  readonly cone?: number;
+  /**
+   * The component the entities carry (og.Interactable, a game's component), by its name.
+   *
+   * @default ""
+   */
+  readonly with?: string;
+  /**
+   * Cast a ray to each one through `filter`: Candidate.visible is false when a collider stands in between.
+   *
+   * @default false
+   */
+  readonly sight?: boolean;
+  /**
+   * The colliders that block sight (exclude: the looker's own body).
+   *
+   * @default {}
+   */
+  readonly filter?: QueryFilter;
+}
+
+/** An entity og.play.candidates found. */
+export interface Candidate {
+  /** The entity. */
+  readonly entity: Entity;
+  /**
+   * From the point to its world position.
+   *
+   * @unit m (metres)
+   */
+  readonly distance: number;
+  /**
+   * Between the forward direction and the direction to it, 0 to π.
+   *
+   * @unit rad (radians: every rotation, heading, yaw, joint or steering limit, arc, uv rotation and cone; a cone is given as its half-angle)
+   */
+  readonly angle: number;
+  /** No collider of the filter stands in between (true when sight was not asked). */
+  readonly visible: boolean;
+}
+
+
 // ── og ──────────────────────────────────────────────────────────
 
 /**
@@ -38374,5 +38633,30 @@ export declare namespace og {
      * @param world The world.
      */
     function status(world: World): LoadingStatus;
+  }
+  /**
+   * What strikes: a shape at its entity's simulation pose (its og.Transform after its parents', a posed bone's frame with og.BoneAttachment; og.motion's drawn pose is never read). While `active` it is swept each tick from its last pose, along the turn and slide between the two, and strikes each og.HurtVolume of another team and owner, and each collider on `colliders`, once per owner's swing (og.HitEvent). Sizes are scaled by the entity's world scale.
+   */
+  const HitVolume: ComponentType<{ readonly shape: FieldSpec<"VolumeShape">; readonly size: FieldSpec<"Vector3">; readonly radius: FieldSpec<"f32">; readonly height: FieldSpec<"f32">; readonly offset: FieldSpec<"Vector3">; readonly quaternion: FieldSpec<"Quaternion">; readonly active: FieldSpec<"bool">; readonly team: FieldSpec<"u32">; readonly owner: FieldSpec<"Entity">; readonly swing: FieldSpec<"u32">; readonly colliders: FieldSpec<"u32">; readonly lastPosition: FieldSpec<"Vector3">; readonly lastQuaternion: FieldSpec<"Quaternion">; readonly wasActive: FieldSpec<"bool"> }, HitVolume>;
+  /**
+   * What can be struck: a shape at its entity's simulation pose, as og.HitVolume's (a bone through og.BoneAttachment). An og.HitVolume of another team and owner strikes its owner once a swing, at the first of the owner's hurt volumes it meets. Sizes are scaled by the entity's world scale.
+   */
+  const HurtVolume: ComponentType<{ readonly shape: FieldSpec<"VolumeShape">; readonly size: FieldSpec<"Vector3">; readonly radius: FieldSpec<"f32">; readonly height: FieldSpec<"f32">; readonly offset: FieldSpec<"Vector3">; readonly quaternion: FieldSpec<"Quaternion">; readonly team: FieldSpec<"u32">; readonly owner: FieldSpec<"Entity"> }, HurtVolume>;
+  /**
+   * A hit volume struck a target for the first time in its owner's swing, sent the tick it met it, in hit volume entity order, then where along its sweep, then target. A fact: what it does (damage, a stagger, a spark) is the game's.
+   */
+  const HitEvent: EventType<HitEvent>;
+  /**
+   * Mechanisms that span domains, as facts. An og.HitVolume (on a bone through og.BoneAttachment, or on any entity) is swept from where it was at the last tick to where it is, so a fast swing meets what it passed through, and strikes each og.HurtVolume of another team, and the colliders on its layers, once a swing: og.HitEvent. og.play.candidates lists what is in range, in a cone and in sight. Damage, prompts and choices are the game's rules.
+   */
+  namespace play {
+    /**
+     * Every entity carrying a component within a range and a cone of a point, nearest first (equal distances in entity order), with its distance, angle and whether it is in sight: what an interaction prompt, a lock-on or an aim assist picks from by its own rule. Inside a system it sees the colliders as castRay does.
+     *
+     * @param world The world.
+     * @param desc Where, how far, the cone, the component and sight.
+     * @returns The candidates; refused for a zero forward, a range or point that is not finite, or a component that was never declared.
+     */
+    function candidates(world: World, desc?: CandidatesDesc): Result<readonly Candidate[]>;
   }
 }

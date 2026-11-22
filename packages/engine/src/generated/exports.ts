@@ -172,3 +172,6 @@ export const VfxAsset = ((value = 0 as Api.VfxAsset, options) => spec("VfxAsset"
 
 // sight
 export const SightPlane = ((value = "ground" as Api.SightPlane, options) => spec("SightPlane", value, options)) as typeof Api.SightPlane;
+
+// play
+export const VolumeShape = ((value = "sphere" as Api.VolumeShape, options) => spec("VolumeShape", value, options)) as typeof Api.VolumeShape;

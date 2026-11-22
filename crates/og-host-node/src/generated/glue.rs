@@ -3969,3 +3969,9 @@ pub fn og_loading_status(env: Env, world: u32) -> String {
     let _env = crate::EnvScope::enter(&env);
     <Host as LoadingApi>::og_loading_status(&Host, world)
 }
+
+#[napi(js_name = "og_play_candidates")]
+pub fn og_play_candidates(env: Env, world: u32, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as PlayApi>::og_play_candidates(&Host, world, desc)
+}

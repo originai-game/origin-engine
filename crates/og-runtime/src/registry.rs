@@ -578,6 +578,19 @@ pub(crate) const LAZY: &[Lazy] = &[
     Lazy {
         name: crate::world::scenes::RECORDS[1],
         enable: |_, _| Ok(()),
+    }, // og.play: its system and state block once a game names any of its
+    // records (TOGETHER), the last one registered enabling it.
+    Lazy {
+        name: crate::bind::play::RECORDS[0],
+        enable: crate::bind::play::enable,
+    },
+    Lazy {
+        name: crate::bind::play::RECORDS[1],
+        enable: crate::bind::play::enable,
+    },
+    Lazy {
+        name: crate::bind::play::RECORDS[2],
+        enable: crate::bind::play::enable,
     },
 ];
 
@@ -595,6 +608,7 @@ pub(crate) const TOGETHER: &[&[&str]] = &[
     &crate::bind::flow::RECORDS,
     &crate::bind::shared::RECORDS,
     &crate::world::scenes::RECORDS,
+    &crate::bind::play::RECORDS,
     &[
         crate::world::stream::cells::CELL,
         crate::world::stream::cells::MEMBER,
@@ -675,8 +689,6 @@ pub(crate) const BACK: &[MountFn] = &[
         destruction::set_physics(&a.mount.modules.destruction, a.physics);
         Ok(())
     },
-    // og-play, with the poses og-anim left this tick.
-    crate::bind::play::mount,
 ];
 
 /// Run as each tick starts, after a pending restore and the save's own

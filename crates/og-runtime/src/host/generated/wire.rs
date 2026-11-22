@@ -25649,6 +25649,149 @@ impl ToJson for LoadingStatus {
     }
 }
 
+/// `VolumeShape`: packages/knowledge/wiki/play.md.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum VolumeShape {
+    #[default]
+    Sphere,
+    Capsule,
+    Box,
+}
+
+impl VolumeShape {
+    /// The variants' IDL names, in index order.
+    pub const NAMES: &'static [&'static str] = &["sphere", "capsule", "box"];
+    /// Every variant, in index order.
+    pub const ALL: &'static [Self] = &[Self::Sphere, Self::Capsule, Self::Box];
+    /// The IDL name.
+    pub fn as_str(self) -> &'static str {
+        Self::NAMES[self as usize]
+    }
+    /// The variant named `s`, or a refusal naming them all.
+    pub fn parse(s: &str) -> Result<Self, String> {
+        match Self::NAMES.iter().position(|n| *n == s) {
+            Some(i) => Ok(Self::ALL[i]),
+            None => Err(unknown_variant("VolumeShape", s, Self::NAMES)),
+        }
+    }
+}
+
+impl FromJson for VolumeShape {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::parse(variant(v, "VolumeShape", Self::NAMES)?)
+    }
+}
+
+impl ToJson for VolumeShape {
+    fn to_json(&self) -> Value {
+        Value::String(self.as_str().into())
+    }
+}
+
+/// `CandidatesDesc`: packages/knowledge/wiki/play.md.
+#[derive(Clone, Debug, PartialEq)]
+pub struct CandidatesDesc {
+    pub from: Vec3,
+    pub forward: Vec3,
+    pub range: f32,
+    pub cone: f32,
+    pub with: String,
+    pub sight: bool,
+    pub filter: QueryFilter,
+}
+
+impl Default for CandidatesDesc {
+    fn default() -> Self {
+        Self {
+            from: Default::default(),
+            forward: Vec3::new(0.0_f32, 0.0_f32, -1.0_f32),
+            range: Default::default(),
+            cone: Default::default(),
+            with: Default::default(),
+            sight: Default::default(),
+            filter: Default::default(),
+        }
+    }
+}
+
+impl FromJson for CandidatesDesc {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::from_json_over(v, Self::default())
+    }
+    fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+        let o = object(v)?;
+        Ok(Self {
+            from: field(o, "from", d.from)?,
+            forward: field(o, "forward", d.forward)?,
+            range: field(o, "range", d.range)?,
+            cone: field(o, "cone", d.cone)?,
+            with: field(o, "with", d.with)?,
+            sight: field(o, "sight", d.sight)?,
+            filter: field(o, "filter", d.filter)?,
+        })
+    }
+}
+
+impl ToJson for CandidatesDesc {
+    fn to_json(&self) -> Value {
+        let mut o = Map::new();
+        o.insert("from".into(), self.from.to_json());
+        o.insert("forward".into(), self.forward.to_json());
+        o.insert("range".into(), self.range.to_json());
+        o.insert("cone".into(), self.cone.to_json());
+        o.insert("with".into(), self.with.to_json());
+        o.insert("sight".into(), self.sight.to_json());
+        o.insert("filter".into(), self.filter.to_json());
+        Value::Object(o)
+    }
+}
+
+/// `Candidate`: packages/knowledge/wiki/play.md.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Candidate {
+    pub entity: u64,
+    pub distance: f32,
+    pub angle: f32,
+    pub visible: bool,
+}
+
+impl Default for Candidate {
+    fn default() -> Self {
+        Self {
+            entity: Default::default(),
+            distance: Default::default(),
+            angle: Default::default(),
+            visible: Default::default(),
+        }
+    }
+}
+
+impl FromJson for Candidate {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::from_json_over(v, Self::default())
+    }
+    fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+        let o = object(v)?;
+        Ok(Self {
+            entity: field(o, "entity", d.entity)?,
+            distance: field(o, "distance", d.distance)?,
+            angle: field(o, "angle", d.angle)?,
+            visible: field(o, "visible", d.visible)?,
+        })
+    }
+}
+
+impl ToJson for Candidate {
+    fn to_json(&self) -> Value {
+        let mut o = Map::new();
+        o.insert("entity".into(), self.entity.to_json());
+        o.insert("distance".into(), self.distance.to_json());
+        o.insert("angle".into(), self.angle.to_json());
+        o.insert("visible".into(), self.visible.to_json());
+        Value::Object(o)
+    }
+}
+
 /// The rows of the engine's records (IDL `component`, `resource` and
 /// `event`), as their layouts decode them: every field, with its IDL
 /// default, read through the same rules as the wire types.
@@ -37322,6 +37465,162 @@ pub mod record {
                 previous: field(o, "previous", d.previous)?,
                 root: field(o, "root", d.root)?,
                 entities: field(o, "entities", d.entities)?,
+            })
+        }
+    }
+
+    /// `HitVolume`: packages/knowledge/wiki/play.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct HitVolume {
+        pub shape: VolumeShape,
+        pub size: Vec3,
+        pub radius: f32,
+        pub height: f32,
+        pub offset: Vec3,
+        pub quaternion: Quat,
+        pub active: bool,
+        pub team: u32,
+        pub owner: u64,
+        pub swing: u32,
+        pub colliders: u32,
+        pub last_position: Vec3,
+        pub last_quaternion: Quat,
+        pub was_active: bool,
+    }
+
+    impl Default for HitVolume {
+        fn default() -> Self {
+            Self {
+                shape: Default::default(),
+                size: Vec3::new(1.0_f32, 1.0_f32, 1.0_f32),
+                radius: 0.5_f32,
+                height: 1.0_f32,
+                offset: Default::default(),
+                quaternion: Default::default(),
+                active: Default::default(),
+                team: Default::default(),
+                owner: Default::default(),
+                swing: Default::default(),
+                colliders: Default::default(),
+                last_position: Default::default(),
+                last_quaternion: Default::default(),
+                was_active: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for HitVolume {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                shape: field(o, "shape", d.shape)?,
+                size: field(o, "size", d.size)?,
+                radius: field(o, "radius", d.radius)?,
+                height: field(o, "height", d.height)?,
+                offset: field(o, "offset", d.offset)?,
+                quaternion: field(o, "quaternion", d.quaternion)?,
+                active: field(o, "active", d.active)?,
+                team: field(o, "team", d.team)?,
+                owner: field(o, "owner", d.owner)?,
+                swing: field(o, "swing", d.swing)?,
+                colliders: field(o, "colliders", d.colliders)?,
+                last_position: field(o, "lastPosition", d.last_position)?,
+                last_quaternion: field(o, "lastQuaternion", d.last_quaternion)?,
+                was_active: field(o, "wasActive", d.was_active)?,
+            })
+        }
+    }
+
+    /// `HurtVolume`: packages/knowledge/wiki/play.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct HurtVolume {
+        pub shape: VolumeShape,
+        pub size: Vec3,
+        pub radius: f32,
+        pub height: f32,
+        pub offset: Vec3,
+        pub quaternion: Quat,
+        pub team: u32,
+        pub owner: u64,
+    }
+
+    impl Default for HurtVolume {
+        fn default() -> Self {
+            Self {
+                shape: Default::default(),
+                size: Vec3::new(1.0_f32, 1.0_f32, 1.0_f32),
+                radius: 0.5_f32,
+                height: 1.0_f32,
+                offset: Default::default(),
+                quaternion: Default::default(),
+                team: Default::default(),
+                owner: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for HurtVolume {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                shape: field(o, "shape", d.shape)?,
+                size: field(o, "size", d.size)?,
+                radius: field(o, "radius", d.radius)?,
+                height: field(o, "height", d.height)?,
+                offset: field(o, "offset", d.offset)?,
+                quaternion: field(o, "quaternion", d.quaternion)?,
+                team: field(o, "team", d.team)?,
+                owner: field(o, "owner", d.owner)?,
+            })
+        }
+    }
+
+    /// `HitEvent`: packages/knowledge/wiki/play.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct HitEvent {
+        pub volume: u64,
+        pub owner: u64,
+        pub swing: u32,
+        pub target: u64,
+        pub hurt: u64,
+        pub point: Vec3,
+        pub normal: Vec3,
+    }
+
+    impl Default for HitEvent {
+        fn default() -> Self {
+            Self {
+                volume: Default::default(),
+                owner: Default::default(),
+                swing: Default::default(),
+                target: Default::default(),
+                hurt: Default::default(),
+                point: Default::default(),
+                normal: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for HitEvent {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                volume: field(o, "volume", d.volume)?,
+                owner: field(o, "owner", d.owner)?,
+                swing: field(o, "swing", d.swing)?,
+                target: field(o, "target", d.target)?,
+                hurt: field(o, "hurt", d.hurt)?,
+                point: field(o, "point", d.point)?,
+                normal: field(o, "normal", d.normal)?,
             })
         }
     }

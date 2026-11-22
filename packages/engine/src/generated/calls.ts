@@ -1002,6 +1002,9 @@ export const og = Object.freeze({
     idle: (world: { readonly id: number }): boolean => abi().og_loading_idle(world.id),
     status: (world: { readonly id: number }): unknown => JSON.parse(abi().og_loading_status(world.id)) as unknown,
   }),
+  play: Object.freeze({
+    candidates: (world: { readonly id: number }, desc?: unknown): unknown => JSON.parse(abi().og_play_candidates(world.id, json(desc))) as unknown,
+  }),
 });
 
 /** The members the IDL marks `custom`, by module or owner: src/runtime/custom.ts implements each. */

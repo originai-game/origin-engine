@@ -659,6 +659,12 @@
       "array": "Uint32Array",
       "stride": 1,
       "value": "SightPlane"
+    },
+    {
+      "name": "VolumeShape",
+      "array": "Uint32Array",
+      "stride": 1,
+      "value": "VolumeShape"
     }
   ],
   "components": [
@@ -8800,6 +8806,176 @@
           "readonly": true
         }
       ]
+    },
+    {
+      "id": 119,
+      "name": "HitVolume",
+      "schema": "og.HitVolume",
+      "module": "play",
+      "fields": [
+        {
+          "name": "shape",
+          "column": "VolumeShape",
+          "default": "sphere"
+        },
+        {
+          "name": "size",
+          "column": "Vector3",
+          "default": {
+            "x": 1,
+            "y": 1,
+            "z": 1
+          },
+          "tunable": true
+        },
+        {
+          "name": "radius",
+          "column": "f32",
+          "default": 0.5,
+          "tunable": true
+        },
+        {
+          "name": "height",
+          "column": "f32",
+          "default": 1,
+          "tunable": true
+        },
+        {
+          "name": "offset",
+          "column": "Vector3",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          }
+        },
+        {
+          "name": "quaternion",
+          "column": "Quaternion",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          }
+        },
+        {
+          "name": "active",
+          "column": "bool",
+          "default": false
+        },
+        {
+          "name": "team",
+          "column": "u32",
+          "default": 0
+        },
+        {
+          "name": "owner",
+          "column": "Entity",
+          "default": 0
+        },
+        {
+          "name": "swing",
+          "column": "u32",
+          "default": 0
+        },
+        {
+          "name": "colliders",
+          "column": "u32",
+          "default": 0
+        },
+        {
+          "name": "lastPosition",
+          "column": "Vector3",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "readonly": true
+        },
+        {
+          "name": "lastQuaternion",
+          "column": "Quaternion",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          },
+          "readonly": true
+        },
+        {
+          "name": "wasActive",
+          "column": "bool",
+          "default": false,
+          "readonly": true
+        }
+      ]
+    },
+    {
+      "id": 120,
+      "name": "HurtVolume",
+      "schema": "og.HurtVolume",
+      "module": "play",
+      "fields": [
+        {
+          "name": "shape",
+          "column": "VolumeShape",
+          "default": "sphere"
+        },
+        {
+          "name": "size",
+          "column": "Vector3",
+          "default": {
+            "x": 1,
+            "y": 1,
+            "z": 1
+          },
+          "tunable": true
+        },
+        {
+          "name": "radius",
+          "column": "f32",
+          "default": 0.5,
+          "tunable": true
+        },
+        {
+          "name": "height",
+          "column": "f32",
+          "default": 1,
+          "tunable": true
+        },
+        {
+          "name": "offset",
+          "column": "Vector3",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          }
+        },
+        {
+          "name": "quaternion",
+          "column": "Quaternion",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          }
+        },
+        {
+          "name": "team",
+          "column": "u32",
+          "default": 0
+        },
+        {
+          "name": "owner",
+          "column": "Entity",
+          "default": 0
+        }
+      ]
     }
   ],
   "resources": [
@@ -14995,6 +15171,57 @@
           "name": "entities",
           "type": "u32",
           "default": 0
+        }
+      ]
+    },
+    {
+      "id": 76,
+      "name": "HitEvent",
+      "schema": "og.HitEvent",
+      "module": "play",
+      "fields": [
+        {
+          "name": "volume",
+          "type": "Entity",
+          "default": 0
+        },
+        {
+          "name": "owner",
+          "type": "Entity",
+          "default": 0
+        },
+        {
+          "name": "swing",
+          "type": "u32",
+          "default": 0
+        },
+        {
+          "name": "target",
+          "type": "Entity",
+          "default": 0
+        },
+        {
+          "name": "hurt",
+          "type": "Entity",
+          "default": 0
+        },
+        {
+          "name": "point",
+          "type": "Vector3",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          }
+        },
+        {
+          "name": "normal",
+          "type": "Vector3",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          }
         }
       ]
     }
@@ -28159,6 +28386,28 @@
         }
       ],
       "returns": "LoadingStatus",
+      "publish": true
+    },
+    {
+      "id": 607,
+      "kind": "fn",
+      "path": "og.play.candidates",
+      "symbol": "og_play_candidates",
+      "module": "play",
+      "name": "candidates",
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        },
+        {
+          "name": "desc",
+          "type": "CandidatesDesc",
+          "optional": true
+        }
+      ],
+      "returns": "Result<List<Candidate>>",
       "publish": true
     }
   ],

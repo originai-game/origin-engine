@@ -97,6 +97,7 @@ pub mod exports {
         og_physics_soft_body_points, og_physics_stats, og_physics_vehicle_wheels, og_physics_water,
         og_physics_water_height,
     };
+    pub use super::play::og_play_candidates;
     pub use super::procgen::{
         og_procgen_bsp, og_procgen_noise, og_procgen_noise_grid, og_procgen_poisson_disk,
         og_procgen_wfc,

@@ -113,6 +113,12 @@ macro_rules! __og_host_bindings_simulation {
             }
         }
 
+        impl $crate::host_impl::api::PlayApi for $host {
+            fn og_play_candidates(&self, world: u32, desc: Option<String>) -> String {
+                $crate::host_impl::answer($crate::og_play_candidates(world, desc))
+            }
+        }
+
         impl $crate::host_impl::api::DestructionApi for $host {
             fn og_destruction_damage(
                 &self,

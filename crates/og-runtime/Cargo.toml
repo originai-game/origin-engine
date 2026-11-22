@@ -23,6 +23,7 @@ serde_json = { version = "1", features = ["float_roundtrip"] }
 # Shortest float formatting (serde_json's own): a system call's time payload.
 zmij = "1"
 og-physics = { path = "../og-physics" }
+og-play = { path = "../og-play" }
 og-audio = { path = "../og-audio" }
 # The reactive session and its wire format, which the new core's stores use.
 og-reactive = { path = "../og-reactive" }

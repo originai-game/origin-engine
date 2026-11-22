@@ -3317,6 +3317,11 @@ unsafe extern "C" fn og_loading_status(args: *const crate::OgValue, out: *mut cr
     unsafe { crate::IntoC::into_c(r, out) }
 }
 
+unsafe extern "C" fn og_play_candidates(args: *const crate::OgValue, out: *mut crate::OgValue) {
+    let r = <Host as PlayApi>::og_play_candidates(&Host, unsafe { crate::arg(args, 0) }, unsafe { crate::arg(args, 1) });
+    unsafe { crate::IntoC::into_c(r, out) }
+}
+
 /// Every entry, in the order of `packages/engine/src/generated/abi.ts`.
 pub static SYMBOLS: &[crate::Symbol] = &[
     crate::Symbol { name: c"og_host_set_dispatcher", arity: 1, call: og_host_set_dispatcher },
@@ -4015,4 +4020,5 @@ pub static SYMBOLS: &[crate::Symbol] = &[
     crate::Symbol { name: c"og_loading_done", arity: 1, call: og_loading_done },
     crate::Symbol { name: c"og_loading_idle", arity: 1, call: og_loading_idle },
     crate::Symbol { name: c"og_loading_status", arity: 1, call: og_loading_status },
+    crate::Symbol { name: c"og_play_candidates", arity: 2, call: og_play_candidates },
 ];

@@ -2,7 +2,7 @@
 
 # The Origin Engine API
 
-`@origingame/engine`, API version 1: 46 modules, generated from `crates/og-api/api.ogt`. Each module has an overview page and every function, component and type a page of its own under `<module>/`; every signature is quoted from the IDL. `og api find <words>` ranks every entry; `og api show <name>` prints one.
+`@origingame/engine`, API version 1: 47 modules, generated from `crates/og-api/api.ogt`. Each module has an overview page and every function, component and type a page of its own under `<module>/`; every signature is quoted from the IDL. `og api find <words>` ranks every entry; `og api show <name>` prints one.
 
 The Origin Engine API. Game code declares components and systems, and reads the world through typed views over engine memory.
 
@@ -58,6 +58,7 @@ Every failure is a returned Result; desc objects may omit any field; nothing rea
 | [`flow`](flow.md) | `og.flow.*` | kept | A game's flow as a Yarn dialogue of segments: film, cutscenes, levels and minigames. A node with an `og-flow: <timeline>` header plays that segment on a deck: footage, a live scene (a `scene` track) or both. Its choices open at `flow.open`, lock at `flow.lock` and are taken at the cut (`flow.cut`, else the end), else the `#default`. A playable segment stops at `flow.hold` until og.flow.advance takes a hidden `#outcome:<name>` choice (guide flow). |
 | [`scene`](scene.md) | `og.scene.*` | kept | Scene changes with their assets fetched first: og.scene.preload asks for every streaming group a scene declares, og.scene.progress says how much of them has arrived, and og.scene.change replaces the current scene with it as the next tick starts. A scene is a GameDesc.scenes name (`level2`) or an asset id (`scenes/level2.ogt`). |
 | [`loading`](loading.md) | `og.loading.*` | kept | The loading screen: who draws it (project.ogt `publish { loading engine \| game \| page }`), the stages the game reports while it loads, and when it is done. Every host answers the same calls; the web page also tells whatever page frames or hosts it (window events and, when framed, postMessage), so any site can draw its own loader. |
+| [`play`](play.md) | `og.play.*` | kept | Mechanisms that span domains, as facts. An og.HitVolume (on a bone through og.BoneAttachment, or on any entity) is swept from where it was at the last tick to where it is, so a fast swing meets what it passed through, and strikes each og.HurtVolume of another team, and the colliders on its layers, once a swing: og.HitEvent. og.play.candidates lists what is in range, in a cone and in sight. Damage, prompts and choices are the game's rules. |
 
 ## Guides
 

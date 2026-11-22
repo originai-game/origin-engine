@@ -1507,10 +1507,16 @@ pub trait LoadingApi: Wire {
     fn og_loading_status(&self, world: u32) -> String;
 }
 
-/// Every trait: a host is a type that implements all of them.
-pub trait Host: Lifecycle + Present + ReflectApi + WorldApi + SystemApi + GameApi + TransformApi + TimeApi + RngApi + ProcgenApi + InputApi + CameraApi + RenderApi + LoadApi + PhysicsApi + AtmosphereApi + AnimApi + TweenApi + TilemapApi + AudioApi + NavApi + AiApi + StoryApi + PlatformApi + I18nApi + UiApi + CommandsApi + ProbeApi + TerrainApi + StreamApi + VideoApi + DebugApi + AssertApi + PathApi + TimelineApi + NetApi + SharedApi + MotionApi + DestructionApi + VfxApi + SightApi + FlowApi + SceneApi + LoadingApi {}
+/// `play`: packages/knowledge/wiki/play.md.
+pub trait PlayApi: Wire {
+    /// `og.play.candidates`
+    fn og_play_candidates(&self, world: u32, desc: Option<String>) -> String;
+}
 
-impl<T: Lifecycle + Present + ReflectApi + WorldApi + SystemApi + GameApi + TransformApi + TimeApi + RngApi + ProcgenApi + InputApi + CameraApi + RenderApi + LoadApi + PhysicsApi + AtmosphereApi + AnimApi + TweenApi + TilemapApi + AudioApi + NavApi + AiApi + StoryApi + PlatformApi + I18nApi + UiApi + CommandsApi + ProbeApi + TerrainApi + StreamApi + VideoApi + DebugApi + AssertApi + PathApi + TimelineApi + NetApi + SharedApi + MotionApi + DestructionApi + VfxApi + SightApi + FlowApi + SceneApi + LoadingApi> Host for T {}
+/// Every trait: a host is a type that implements all of them.
+pub trait Host: Lifecycle + Present + ReflectApi + WorldApi + SystemApi + GameApi + TransformApi + TimeApi + RngApi + ProcgenApi + InputApi + CameraApi + RenderApi + LoadApi + PhysicsApi + AtmosphereApi + AnimApi + TweenApi + TilemapApi + AudioApi + NavApi + AiApi + StoryApi + PlatformApi + I18nApi + UiApi + CommandsApi + ProbeApi + TerrainApi + StreamApi + VideoApi + DebugApi + AssertApi + PathApi + TimelineApi + NetApi + SharedApi + MotionApi + DestructionApi + VfxApi + SightApi + FlowApi + SceneApi + LoadingApi + PlayApi {}
+
+impl<T: Lifecycle + Present + ReflectApi + WorldApi + SystemApi + GameApi + TransformApi + TimeApi + RngApi + ProcgenApi + InputApi + CameraApi + RenderApi + LoadApi + PhysicsApi + AtmosphereApi + AnimApi + TweenApi + TilemapApi + AudioApi + NavApi + AiApi + StoryApi + PlatformApi + I18nApi + UiApi + CommandsApi + ProbeApi + TerrainApi + StreamApi + VideoApi + DebugApi + AssertApi + PathApi + TimelineApi + NetApi + SharedApi + MotionApi + DestructionApi + VfxApi + SightApi + FlowApi + SceneApi + LoadingApi + PlayApi> Host for T {}
 
 /// Every binding symbol, in binding-table order (`bindings.json` ids).
 pub const SYMBOLS: &[&str] = &[
@@ -2123,6 +2129,7 @@ pub const SYMBOLS: &[&str] = &[
     "og_loading_done",
     "og_loading_idle",
     "og_loading_status",
+    "og_play_candidates",
 ];
 
 pub use og_records::{COLUMNS, ColumnDecl, FieldDecl, RECORDS, RecordDecl};

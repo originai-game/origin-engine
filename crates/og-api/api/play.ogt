@@ -1,0 +1,148 @@
+module play {
+  doc "Mechanisms that span domains, as facts. An og.HitVolume (on a bone through og.BoneAttachment, or on any entity) is swept from where it was at the last tick to where it is, so a fast swing meets what it passed through, and strikes each og.HurtVolume of another team, and the colliders on its layers, once a swing: og.HitEvent. og.play.candidates lists what is in range, in a cone and in sight. Damage, prompts and choices are the game's rules."
+
+  enum VolumeShape {
+    doc "A hit or hurt volume's shape: og.HitVolume.shape and og.HurtVolume.shape."
+    variant sphere "A sphere of `radius` (a circle in 2D)."
+    variant capsule "A capsule along its local y of `radius`, with `height` between the cap centres (three.js CapsuleGeometry)."
+    variant box "A box of `size`, its full extents (three.js BoxGeometry)."
+  }
+
+  column VolumeShape {
+    doc "A VolumeShape field: the variant's index."
+    array Uint32Array
+    stride 1
+    value VolumeShape
+  }
+
+  component HitVolume {
+    aliases "hitbox, attack box, weapon trace, melee hit detection, sword collider, active frames, Unreal weapon trace, Unity hitbox trigger, Godot Hitbox Area3D"
+    doc "What strikes: a shape at its entity's simulation pose (its og.Transform after its parents', a posed bone's frame with og.BoneAttachment; og.motion's drawn pose is never read). While `active` it is swept each tick from its last pose, along the turn and slide between the two, and strikes each og.HurtVolume of another team and owner, and each collider on `colliders`, once per owner's swing (og.HitEvent). Sizes are scaled by the entity's world scale."
+    field shape VolumeShape "Its shape."
+    field size Vector3 "A box's full extents." {
+      default 1 1 1
+      min 0
+      unit m
+      tunable true
+    }
+    field radius f32 "A sphere's or capsule's radius." {
+      default 0.5
+      min 0
+      unit m
+      tunable true
+    }
+    field height f32 "A capsule's distance between its cap centres." {
+      default 1
+      min 0
+      unit m
+      tunable true
+    }
+    field offset Vector3 "The shape's centre in its entity's frame." {
+      unit m
+    }
+    field quaternion Quaternion "The shape's rotation in its entity's frame; a zero quaternion is no rotation."
+    field active bool "Whether it strikes this tick (an attack's active window). Swept from its last pose only when it was active at the last tick too; its first active tick tests where it is."
+    field team u32 "Its team: it never strikes an og.HurtVolume of the same team (as og.AiAgent.team)."
+    field owner Entity "Whose swing it is: a target is struck once per owner and swing, whichever of the owner's volumes meets it, and never the owner's own hurt volumes; 0 is its own entity."
+    field swing u32 "Which swing it is part of: change it for the next swing, and each target can be struck again. A swing is forgotten once none of its owner's volumes holds it."
+    field colliders u32 "The collider layers (og.Collider.layers bits) it strikes besides hurt volumes: walls, props; 0 strikes no collider."
+    field lastPosition Vector3 "Written: where its shape's centre was at the last tick." {
+      readonly true
+      unit m
+      worldspace world
+    }
+    field lastQuaternion Quaternion "Written: its shape's rotation at the last tick." {
+      readonly true
+    }
+    field wasActive bool "Written: whether it was active at the last tick (the sweep starts from the last pose)." {
+      readonly true
+    }
+  }
+
+  component HurtVolume {
+    aliases "hurtbox, damage box, body hitbox, weak point, Godot Hurtbox"
+    doc "What can be struck: a shape at its entity's simulation pose, as og.HitVolume's (a bone through og.BoneAttachment). An og.HitVolume of another team and owner strikes its owner once a swing, at the first of the owner's hurt volumes it meets. Sizes are scaled by the entity's world scale."
+    field shape VolumeShape "Its shape."
+    field size Vector3 "A box's full extents." {
+      default 1 1 1
+      min 0
+      unit m
+      tunable true
+    }
+    field radius f32 "A sphere's or capsule's radius." {
+      default 0.5
+      min 0
+      unit m
+      tunable true
+    }
+    field height f32 "A capsule's distance between its cap centres." {
+      default 1
+      min 0
+      unit m
+      tunable true
+    }
+    field offset Vector3 "The shape's centre in its entity's frame." {
+      unit m
+    }
+    field quaternion Quaternion "The shape's rotation in its entity's frame; a zero quaternion is no rotation."
+    field team u32 "Its team: an og.HitVolume of the same team never strikes it."
+    field owner Entity "Who is struck (og.HitEvent.target): a body's hurt volumes share their owner, so a swing strikes it once; 0 is its own entity."
+  }
+
+  event HitEvent {
+    aliases "hit detected, on hit, attack landed, OnTriggerEnter hitbox"
+    doc "A hit volume struck a target for the first time in its owner's swing, sent the tick it met it, in hit volume entity order, then where along its sweep, then target. A fact: what it does (damage, a stagger, a spark) is the game's."
+    field volume Entity "The og.HitVolume's entity."
+    field owner Entity "Its owner (og.HitVolume.owner, or the volume when that is 0)."
+    field swing u32 "Its swing."
+    field target Entity "Who was struck: the og.HurtVolume's owner, or the collider's entity."
+    field hurt Entity "The og.HurtVolume met first; 0 for a collider."
+    field point Vector3 "Where they met, on the target's surface (inside it when the volume's core is)." {
+      unit m
+      worldspace world
+    }
+    field normal Vector3 "The direction from the target towards the volume there: a knockback's, a spark's."
+  }
+
+  struct CandidatesDesc {
+    doc "Where og.play.candidates looks from, how far, in which cone, among which entities and whether it looks for walls in between."
+    desc true
+    field from Vector3 "The point looked from, in world space." {
+      unit m
+    }
+    field forward Vector3 "The direction angles are measured from; it need not be normalised and must not be zero." {
+      default 0 0 -1
+    }
+    field range f32 "How far it looks; 0 finds nothing." {
+      min 0
+      unit m
+    }
+    field cone f32 "The cone's half angle about `forward`; 0, or π and more, takes every direction." {
+      min 0
+      unit rad
+    }
+    field with String "The component the entities carry (og.Interactable, a game's component), by its name."
+    field sight bool "Cast a ray to each one through `filter`: Candidate.visible is false when a collider stands in between."
+    field filter QueryFilter "The colliders that block sight (exclude: the looker's own body)."
+  }
+
+  struct Candidate {
+    doc "An entity og.play.candidates found."
+    field entity Entity "The entity."
+    field distance f32 "From the point to its world position." {
+      unit m
+    }
+    field angle f32 "Between the forward direction and the direction to it, 0 to π." {
+      unit rad
+    }
+    field visible bool "No collider of the filter stands in between (true when sight was not asked)."
+  }
+
+  fn candidates {
+    doc "Every entity carrying a component within a range and a cone of a point, nearest first (equal distances in entity order), with its distance, angle and whether it is in sight: what an interaction prompt, a lock-on or an aim assist picks from by its own rule. Inside a system it sees the colliders as castRay does."
+    aliases "nearby entities, targets in range, lock-on candidates, interactables in view, find in cone, Unity OverlapSphere then filter"
+    param world World "The world."
+    param desc CandidatesDesc "Where, how far, the cone, the component and sight."
+    returns Result.List.Candidate "The candidates; refused for a zero forward, a range or point that is not finite, or a component that was never declared."
+  }
+}
