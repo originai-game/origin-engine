@@ -1,0 +1,13 @@
+{
+  "simulation": "unchanged",
+  "breaking": [
+    {
+      "member": "webGpuMissing (@origingame/engine web shell)",
+      "change": "Asks for the adapter once. It no longer asks a second time after a null, which covered Chrome answering null while its GPU process starts (a request in the first moments after launch on a headless test host). The engine's own boot asks only where it needs the device, after the wasm and the first world.",
+      "fix": "Call webGpuMissing where the page needs the answer (before starting the engine, say), not as the page loads; read a null as no adapter.",
+      "find": [
+        "webGpuMissing"
+      ]
+    }
+  ]
+}

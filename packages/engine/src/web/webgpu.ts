@@ -26,18 +26,17 @@ export function webGpuAbsent(): string | null {
  * (og-render `FEATURE_LEVEL`), so a GPU that runs only WebGPU's
  * compatibility mode (GLES, D3D11) is supported: the browser still hands a
  * core adapter wherever it has one. Chrome on a Linux host with an NVIDIA GPU
- * answers a request without a power preference null and one with it the GPU;
- * its first request while the GPU process starts is null too (about 100 ms
- * after launch on the L4), and the next one is the GPU, so a null is asked
- * once more. It asks for an adapter: call it off the page's main thread.
+ * answers a request without a power preference null and one with it the GPU.
+ * It asks once, so call it where the page needs the answer, not as it loads
+ * (docs/ci.md §The final L4 pass), and off the page's main thread.
  */
 export async function webGpuMissing(lowPower: boolean): Promise<string | null> {
   const absent = webGpuAbsent();
   if (absent) return absent;
   const gpu = (globalThis.navigator as { gpu: { requestAdapter(options: { powerPreference: string; featureLevel: string }): Promise<unknown> } }).gpu;
   try {
-    const ask = () => gpu.requestAdapter({ powerPreference: lowPower ? "low-power" : "high-performance", featureLevel: "compatibility" });
-    return ((await ask()) ?? (await ask())) ? null : "the browser found no WebGPU adapter";
+    const adapter = await gpu.requestAdapter({ powerPreference: lowPower ? "low-power" : "high-performance", featureLevel: "compatibility" });
+    return adapter ? null : "the browser found no WebGPU adapter";
   } catch (e) {
     return `the browser's WebGPU did not start: ${e instanceof Error ? e.message : String(e)}`;
   }

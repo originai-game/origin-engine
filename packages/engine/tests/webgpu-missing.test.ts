@@ -48,17 +48,6 @@ test("it asks for the renderer's adapter: high-performance, or low-power where t
   }
 });
 
-test("a first null adapter is asked once more: Chrome's answer while its GPU process starts", async () => {
-  try {
-    let asks = 0;
-    withGpu({ requestAdapter: async () => (++asks === 1 ? null : {}) });
-    expect(await webGpuMissing(false)).toBeNull();
-    expect(asks).toBe(2);
-  } finally {
-    restore();
-  }
-});
-
 test("it asks at the compatibility feature level, so a GPU with only WebGPU's compatibility mode is supported", async () => {
   try {
     // A GLES or D3D11 GPU: no adapter at the default (core) level, one at the compatibility level.
