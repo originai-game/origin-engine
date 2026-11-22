@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "og check",
+      "summary": "A game made by `og new` outside the engine checkout whose `og` runs it type-checks clean: og now links that checkout's engine package into the game's node_modules (as it does for an installed engine), so the template's `types` entry `@origingame/engine/bun-test` resolves instead of failing with TS2688 and every run needing --no-check."
+    }
+  ]
+}

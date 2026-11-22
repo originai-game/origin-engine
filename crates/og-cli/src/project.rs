@@ -213,8 +213,11 @@ pub fn engine_package(project: Option<&Path>) -> Option<PathBuf> {
         let exe = std::env::current_exe().ok()?;
         crate::find_root(&exe)
     })?;
+    // The checkout og runs in or from (a game outside it, run by a checkout's
+    // og): linked like any other package, or the game's type check cannot
+    // resolve `@origingame/engine`.
     let p = repo.join("packages/engine");
-    ok(&p).then_some(p)
+    if ok(&p) { found(p) } else { None }
 }
 
 /// The link beside a game to the engine package og runs it with, where a

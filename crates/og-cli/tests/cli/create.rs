@@ -115,3 +115,54 @@ fn create_without_a_terminal_writes_the_chosen_look() {
     );
     assert!(!dir.join("other/project.ogt").exists(), "{t}");
 }
+
+/// A game `og new` makes outside the checkout whose `og` runs it (the
+/// checkout's og, no OG_ENGINE_PACKAGE) type-checks clean: og links the
+/// checkout's engine package into the game's node_modules, so the
+/// template's `types` entry (`@origingame/engine/bun-test`) resolves
+/// instead of failing with TS2688.
+#[cfg(unix)]
+#[test]
+fn a_new_game_outside_the_checkout_checks_clean() {
+    assert!(
+        std::env::var_os("PATH")
+            .is_some_and(|p| std::env::split_paths(&p).any(|d| d.join("tsrs").is_file())),
+        "this test needs tsrs on PATH (scripts/install-tools.sh)"
+    );
+    // Outside the checkout: its node_modules link must not resolve the engine.
+    let mut base = std::env::temp_dir();
+    if base.starts_with(repo()) {
+        base = PathBuf::from("/tmp");
+    }
+    let dir = base.join(format!("og-new-check-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    struct Remove(PathBuf);
+    impl Drop for Remove {
+        fn drop(&mut self) {
+            let _ = std::fs::remove_dir_all(&self.0);
+        }
+    }
+    let _remove = Remove(dir.clone());
+    let og_here = |args: &[&str]| {
+        og().current_dir(&dir)
+            .env_remove("OG_ENGINE_PACKAGE")
+            .env("OG_SESSION", "0")
+            .args(args)
+            .output()
+            .unwrap()
+    };
+    let out = og_here(&[
+        "new",
+        ".",
+        "--id",
+        "fresh",
+        "--premise",
+        "a test",
+        "--no-prompt",
+    ]);
+    assert!(out.status.success(), "{}", text(&out));
+    let out = og_here(&["check", "."]);
+    assert!(out.status.success(), "{}", text(&out));
+    assert!(!text(&out).contains("TS2688"), "{}", text(&out));
+}
