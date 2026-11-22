@@ -137,6 +137,13 @@ Colab host through the plugin, only on the coordinator's instruction.
 Reference movements are reported for quality review, not used as a
 pixel-difference landing gate (§Reference frames).
 
+On the L4, headless Chrome's WebGPU is SwiftShader: the NVIDIA 580 driver
+has no `VK_EXT_headless_surface`, so no Chrome launch both gives WebGPU the
+NVIDIA adapter and composites its canvas (`webGpuSwitches` in
+`packages/engine/src/node/device.ts`). Web frames are judged there; web GPU
+timings come from macrunner (Metal). Every web timing names its adapter,
+with `(software)` on a CPU rasterizer.
+
 ## Reference frames
 
 One reference set serves every real GPU backend. New frames are recorded
