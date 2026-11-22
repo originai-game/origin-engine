@@ -18,7 +18,7 @@ const CONTRACTS: [&str; 2] = ["probe.ogt", "platform.ogt"];
 
 /// Members that break a rule for a reason that stands, as (`Owner.field`,
 /// the rule, why).
-const EXCEPTIONS: [(&str, &str, &str); 8] = [
+const EXCEPTIONS: [(&str, &str, &str); 9] = [
     // A tick stamp, not a duration: the tick something happened at.
     (
         "LockstepSeat.since",
@@ -62,6 +62,12 @@ const EXCEPTIONS: [(&str, &str, &str); 8] = [
         "ReverbZone.damping",
         "damping",
         "a reverb's damping of high frequencies, not of motion",
+    ),
+    // `alpha` as a flag, the `type video` key it reports.
+    (
+        "VideoInfo.alpha",
+        "opacity",
+        "whether a video's frames carry the source's alpha (`alpha true`), not how opaque it is",
     ),
 ];
 

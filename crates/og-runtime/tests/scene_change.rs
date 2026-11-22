@@ -263,7 +263,9 @@ fn preload_asks_the_host_for_the_engine_modules_the_scene_needs() {
     ok(og_scene_preload(engine, "level2".into()));
     assert!(net.borrow().prefetched.is_empty(), "level2 needs no module");
     ok(og_scene_preload(engine, "scenes/arena.ogt".into()));
-    assert_eq!(net.borrow().prefetched, [["physics"]]);
+    // Its RigidBody needs `physics`, and the scene's simulation with it: no
+    // og.Physics sets the 2D profile, so that is rapier3d's `physics3d`.
+    assert_eq!(net.borrow().prefetched, [["physics", "physics3d"]]);
 }
 
 #[test]
