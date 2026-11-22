@@ -12,9 +12,6 @@ pub(crate) struct Cx<'a> {
     pub(crate) prefab_texts: &'a BTreeMap<String, String>,
     pub(crate) group_of: &'a BTreeMap<String, String>,
     pub(crate) pack_faces: &'a BTreeSet<String>,
-    /// The ideographs, kana and hangul the game's text shows: what a
-    /// shipped CJK face keeps of them (`font::subset`).
-    pub(crate) shown: &'a BTreeSet<char>,
     pub(crate) old_outputs: &'a BTreeMap<&'a str, &'a ManifestOutput>,
     pub(crate) schemas: &'a BTreeMap<String, Schema>,
     pub(crate) budgets: &'a stats::Budgets,

@@ -384,7 +384,6 @@ pub fn cook_project_with_texture_cache(
         texture_encoder.as_deref().unwrap_or("none")
     );
     let project_key = project_key(&cook_index, &sources, texture_cache);
-    let shown = formats::font::subset::shown(root, sources.iter().map(|s| s.bytes.as_slice()));
     let cx = Cx {
         root,
         assets_dir,
@@ -395,7 +394,6 @@ pub fn cook_project_with_texture_cache(
         prefab_texts: &prefab_texts,
         group_of: &group_of,
         pack_faces: &pack_faces,
-        shown: &shown,
         old_outputs: &old_outputs,
         schemas: &schemas,
         budgets: &project.budgets,
