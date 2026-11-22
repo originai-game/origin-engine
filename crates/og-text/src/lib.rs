@@ -3,7 +3,8 @@
 //! ([`text`], [`shape`]), glyphs rendered at run time ([`glyphs`]) and
 //! where their ink crosses a decoration line ([`ink`]), glyph coverage at
 //! its drawn size ([`raster`]) or as a distance field ([`sdf`]), colour
-//! glyphs painted ([`colr`]), the
+//! glyphs painted ([`colr`]), a run's glyphs put into the glyph atlas
+//! ([`strike`]), the
 //! closed collection of faces texts are laid out from ([`fonts`]), one
 //! Parley layout per text ([`layout`]), and the variant forms a face has
 //! (`FontFile::has_variant`).
@@ -20,5 +21,6 @@ pub mod overlap;
 pub mod raster;
 pub mod sdf;
 pub mod shape;
+pub mod strike;
 pub mod text;
 mod variants;

@@ -68,6 +68,10 @@ pub struct Glyph<'a> {
     pub hinting: Option<&'a HintingInstance>,
     /// The pen's fraction of a pixel in x, `0.0..1.0` (a subpixel bin).
     pub x_offset: f32,
+    /// A slant the face lacks (synthetic italic): each point moves right
+    /// by this times its height above the baseline, the angle's tangent;
+    /// 0 upright.
+    pub skew: f32,
 }
 
 /// A rastered glyph's coverage: `width` × `height` bytes, row by row from
@@ -128,6 +132,7 @@ impl Rasterizer {
         let mut pen = Pen {
             pieces: &mut self.pieces,
             dx: glyph.x_offset,
+            skew: glyph.skew,
             start: [0.0; 2],
             at: [0.0; 2],
         };
@@ -165,6 +170,7 @@ impl Rasterizer {
         let mut path = PathPen {
             path: kurbo::BezPath::new(),
             dx: f64::from(glyph.x_offset),
+            skew: f64::from(glyph.skew),
         };
         outline.draw(settings, &mut path).ok()?;
         let stroke = kurbo::Stroke::new(f64::from(width)).with_join(kurbo::Join::Round);
@@ -178,6 +184,7 @@ impl Rasterizer {
         let mut pen = Pen {
             pieces: &mut self.pieces,
             dx: 0.0,
+            skew: 0.0,
             start: [0.0; 2],
             at: [0.0; 2],
         };
@@ -340,36 +347,37 @@ pub fn blur(
     }
 }
 
-/// An outline pen that collects the outline as a kurbo path, shifted `dx`.
+/// An outline pen that collects the outline as a kurbo path, shifted `dx`
+/// and slanted by `skew`.
 struct PathPen {
     path: kurbo::BezPath,
     dx: f64,
+    skew: f64,
+}
+
+impl PathPen {
+    fn at(&self, x: f32, y: f32) -> (f64, f64) {
+        let y = f64::from(y);
+        (f64::from(x) + self.dx + self.skew * y, y)
+    }
 }
 
 impl OutlinePen for PathPen {
     fn move_to(&mut self, x: f32, y: f32) {
-        self.path.move_to((f64::from(x) + self.dx, f64::from(y)));
+        self.path.move_to(self.at(x, y));
     }
 
     fn line_to(&mut self, x: f32, y: f32) {
-        self.path.line_to((f64::from(x) + self.dx, f64::from(y)));
+        self.path.line_to(self.at(x, y));
     }
 
     fn quad_to(&mut self, cx: f32, cy: f32, x: f32, y: f32) {
-        let d = self.dx;
-        self.path.quad_to(
-            (f64::from(cx) + d, f64::from(cy)),
-            (f64::from(x) + d, f64::from(y)),
-        );
+        self.path.quad_to(self.at(cx, cy), self.at(x, y));
     }
 
     fn curve_to(&mut self, c0x: f32, c0y: f32, c1x: f32, c1y: f32, x: f32, y: f32) {
-        let d = self.dx;
-        self.path.curve_to(
-            (f64::from(c0x) + d, f64::from(c0y)),
-            (f64::from(c1x) + d, f64::from(c1y)),
-            (f64::from(x) + d, f64::from(y)),
-        );
+        self.path
+            .curve_to(self.at(c0x, c0y), self.at(c1x, c1y), self.at(x, y));
     }
 
     fn close(&mut self) {
@@ -377,15 +385,21 @@ impl OutlinePen for PathPen {
     }
 }
 
-/// An outline pen that collects lines and quadratics, shifted `dx` in x.
+/// An outline pen that collects lines and quadratics, shifted `dx` in x
+/// and slanted by `skew`.
 struct Pen<'a> {
     pieces: &'a mut Vec<Piece>,
     dx: f32,
+    skew: f32,
     start: [f32; 2],
     at: [f32; 2],
 }
 
 impl Pen<'_> {
+    fn point(&self, x: f32, y: f32) -> [f32; 2] {
+        [x + self.dx + self.skew * y, y]
+    }
+
     fn line(&mut self, p: [f32; 2]) {
         if p != self.at {
             self.pieces.push(Piece::Line(self.at, p));
@@ -397,18 +411,18 @@ impl Pen<'_> {
 impl OutlinePen for Pen<'_> {
     fn move_to(&mut self, x: f32, y: f32) {
         self.close();
-        self.start = [x + self.dx, y];
+        self.start = self.point(x, y);
         self.at = self.start;
     }
 
     fn line_to(&mut self, x: f32, y: f32) {
-        self.line([x + self.dx, y]);
+        self.line(self.point(x, y));
     }
 
     fn quad_to(&mut self, cx: f32, cy: f32, x: f32, y: f32) {
-        let p = [x + self.dx, y];
+        let p = self.point(x, y);
         self.pieces
-            .push(Piece::Quad(self.at, [cx + self.dx, cy], p));
+            .push(Piece::Quad(self.at, self.point(cx, cy), p));
         self.at = p;
     }
 
@@ -418,7 +432,7 @@ impl OutlinePen for Pen<'_> {
     /// `√3 / 36 · |p1 - 3 c1 + 3 c0 - p0| / n³`.
     fn curve_to(&mut self, c0x: f32, c0y: f32, c1x: f32, c1y: f32, x: f32, y: f32) {
         let p0 = self.at;
-        let (c0, c1, p1) = ([c0x + self.dx, c0y], [c1x + self.dx, c1y], [x + self.dx, y]);
+        let (c0, c1, p1) = (self.point(c0x, c0y), self.point(c1x, c1y), self.point(x, y));
         let d = [
             p1[0] - 3.0 * c1[0] + 3.0 * c0[0] - p0[0],
             p1[1] - 3.0 * c1[1] + 3.0 * c0[1] - p0[1],
@@ -640,6 +654,7 @@ mod tests {
                         coords: &[],
                         hinting: None,
                         x_offset: bin as f32 * 0.25,
+                        skew: 0.0,
                     };
                     let p = r.raster(g, &mut out).unwrap();
                     assert_eq!(out.len(), (p.width * p.height) as usize);
@@ -719,6 +734,7 @@ mod tests {
                     coords: &[],
                     hinting: None,
                     x_offset: 0.25,
+                    skew: 0.0,
                 };
                 let p = r.raster_stroke(g, w, &mut out).unwrap();
                 let lines = chords(&font, g.id, 48.0, 0.25);
@@ -830,6 +846,7 @@ mod tests {
             coords: &[],
             hinting,
             x_offset: 0.0,
+            skew: 0.0,
         };
         let p = r.raster(g(Some(&h)), &mut out).unwrap();
         let w = p.width as usize;

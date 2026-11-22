@@ -209,6 +209,7 @@ mod tests {
                     coords: &[],
                     hinting: None,
                     x_offset: 0.0,
+                    skew: 0.0,
                 };
                 let p = r.raster(g, &mut cov).unwrap();
                 let at = |x: i32, y: i32| {
