@@ -19,5 +19,5 @@ export type { FieldSpec, Token, SystemToken, SystemDescIn, HookToken, HookDescIn
 export { currentCall, isPublishBuild } from "./runtime/views.ts";
 export { beginBundle, systemClock, fixedClock, Engine, createEngine } from "./runtime/engine.ts";
 export type { CreateOptions, CommandOutput, LogLine, HostClock } from "./runtime/engine.ts";
-export { clip, ui } from "./runtime/modules.ts";
+export { clip, environmentSunRotation, ui } from "./runtime/modules.ts";
 export { og as calls, top, World } from "./generated/calls.ts";

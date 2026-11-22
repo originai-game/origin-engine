@@ -6601,6 +6601,7 @@
         "LoadProgress",
         "PrefabLink",
         "EnvironmentSun",
+        "EnvironmentSunTurn",
         "LoadBudget",
         "ImageKind",
         "GltfDataDesc",
@@ -6901,6 +6902,40 @@
           "returns": "Result<EnvironmentSun>",
           "returnsDoc": "Refused for a handle that is not an environment map, or one whose streaming group is not resident yet.",
           "publish": true
+        },
+        {
+          "name": "environmentSunRotation",
+          "doc": "The Environment.rotation that puts a cooked map's sun at `azimuth` around a view direction, so a sky is turned by where its sun should be (\"light from behind the camera's left\") instead of by a hand-tuned angle. The answer is exact for the map's extracted sun (og.load.environmentSun at rotation 0); its elevation is the map's, reported in `elevation`.\nSee `render §4`.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world whose renderer owns the map."
+            },
+            {
+              "name": "map",
+              "type": "EnvironmentMap",
+              "optional": false,
+              "doc": "A map og.load.environment answered, cooked with its sun extracted."
+            },
+            {
+              "name": "view",
+              "type": "Vector3",
+              "optional": false,
+              "doc": "The direction the view looks, such as the camera's forward; only its horizontal part counts."
+            },
+            {
+              "name": "azimuth",
+              "type": "f32",
+              "optional": false,
+              "doc": "Where the sun stands around the view, in radians from straight ahead and positive to the view's right: 0 ahead (the subject backlit), pi behind the viewer (the subject lit from the front), -pi/2 to its left, -3pi/4 behind its left shoulder."
+            }
+          ],
+          "returns": "Result<EnvironmentSunTurn>",
+          "returnsDoc": "Refused when og.load.environmentSun refuses the map, when the map holds no sun (its cook found none: the cook's report says why), when the sun stands straight overhead (no turn moves it), or when `view` is vertical.",
+          "publish": true,
+          "host": false
         },
         {
           "name": "emitter",
@@ -31664,6 +31699,32 @@
         "color",
         "intensity",
         "angularSize"
+      ],
+      "additionalProperties": false
+    },
+    "EnvironmentSunTurn": {
+      "x-og-kind": "struct",
+      "x-og-module": "load",
+      "description": "The Environment.rotation og.load.environmentSunRotation answered, and where the map's sun stands after it.",
+      "type": "object",
+      "properties": {
+        "rotation": {
+          "type": "number",
+          "description": "The Environment.rotation to set, in radians about +Y (-pi to pi); pass the same to og.load.environmentSun for the DirectionalLight."
+        },
+        "direction": {
+          "$ref": "#/$defs/Vector3",
+          "description": "The world-space unit direction towards the sun after the turn: og.load.environmentSun's direction at `rotation`."
+        },
+        "elevation": {
+          "type": "number",
+          "description": "The sun's elevation above the horizon in radians, which is the map's own: a turn about +Y never changes it, so a sun lower or higher than wanted needs another sky."
+        }
+      },
+      "required": [
+        "rotation",
+        "direction",
+        "elevation"
       ],
       "additionalProperties": false
     },

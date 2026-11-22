@@ -33,4 +33,4 @@ fn emitter {
 }
 ```
 
-<sub>Module `load` line 328</sub>
+<sub>Module `load` line 346</sub>

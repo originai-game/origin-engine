@@ -204,6 +204,66 @@ sunBoost 1
   those to a DirectionalLight and aim its -Z away from that direction for
   actual shadows; the engine never adds a second light for you.
 
+When the cook finds no sun, its message and `environment.sun.missing` in
+the report name the cause: none bright enough (no pixel above the horizon
+with every channel near white), a clipped area (white clouds or haze
+touching the sun joined its disc), or a disc too large (over 0.03 sr,
+about 11° across). Draw one small, unclipped white disc with the clouds
+around it below white.
+
+#### Turning a sky by its sun
+
+`og.load.environmentSunRotation(world, map, view, azimuth)` answers the
+Environment.rotation that stands the map's sun at `azimuth` around a view
+direction: 0 straight ahead (the subject backlit), π behind the viewer,
+−π/2 to its left, −3π/4 behind its left shoulder ("light from the upper
+left" over a camera looking at the subject). Set the same rotation on
+og.Environment and pass it to og.load.environmentSun for the light. A turn
+about +Y never changes the sun's height: `elevation` reports the map's,
+and a different height needs a different sky.
+
+```ts
+const forward = og.transform.cameraForward(camera.quaternion); // the direction the view looks
+const turn = og.load.environmentSunRotation(world, map, forward, -0.75 * Math.PI);
+if (!turn.ok) throw new Error(turn.reason);
+env.rotation = turn.value.rotation;
+const sun = og.load.environmentSun(world, map, turn.value.rotation, env.intensity);
+```
+
+#### Matching an authored sky's exposure
+
+An authored LDR background is drawn as its source, without exposure or
+the tone curve, and the auto-exposure meter leaves it out. So:
+
+- `autoExposure` (on in most looks) meters the lit models alone to middle
+  grey, whatever the sky: a dark whale against a pale sky comes out as
+  bright as a pale one, and neither a darker tint nor a lower
+  Environment.intensity moves it. Use it when the camera moves between
+  places whose light differs and no source frame is to be matched.
+- To match a source image, turn it off and keep `exposure 1`. With
+  `toneMapping none` and Environment.intensity 1, a diffuse surface of
+  albedo a in the sky's light is drawn at a × the sky's mean linear
+  radiance, as a photograph of it would be: the source's brightness.
+  Lighten or darken the models by their albedo, not by the intensity.
+  `neutral` adds a highlight shoulder and takes 0.04 off every channel
+  (a mid-grey wall about 10 % darker). ACES lifts these mid-tones about
+  1.5 times and AgX (the cinematic-realism look's curve) reshapes them
+  too, so under either the intensity that matches is no longer 1: measure
+  it against the source frame.
+- Add the sun the cook took out with og.load.environmentSun at the same
+  intensity; the default `expand 0.25` opens the sky's highlights a little.
+
+```text
+type look
+version 1
+---
+RenderSettings {
+  autoExposure false
+  exposure 1
+  toneMapping none
+}
+```
+
 `og cook --report` stores each environment's source facts under
 `environment.facts`: wrap edge-column mean/max absolute channel difference
 in linear RGB, clipped pixel fraction (any channel at white), lower-half

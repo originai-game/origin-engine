@@ -43,4 +43,4 @@ fn gltfData {
 }
 ```
 
-<sub>Module `load` line 636</sub>
+<sub>Module `load` line 654</sub>

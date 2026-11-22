@@ -12,7 +12,7 @@ See `loading §1`.
 
 - **TypeScript**: functions are the namespace `og.load`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
-- **Core** (what most games use): `og.load.gltf`, `og.load.font`, `og.load.emitter`, `og.load.texture`, `og.load.animation`, `og.load.rig`, `og.load.flipbook`, `og.load.tilemap`, `og.load.vfx`; 76 more are advanced (`og api show load --all`).
+- **Core** (what most games use): `og.load.gltf`, `og.load.font`, `og.load.emitter`, `og.load.texture`, `og.load.animation`, `og.load.rig`, `og.load.flipbook`, `og.load.tilemap`, `og.load.vfx`; 78 more are advanced (`og api show load --all`).
 - **Index**: [every module and guide](index.md).
 
 ```ogt
@@ -64,6 +64,8 @@ module load {
 | [`og.load.environment`](load/fn-environment.md) | function | `(world: World, path: string): Result<EnvironmentMap>` | A prefiltered environment map for Environment.map, from a cooked `.ogt` of `type environment` (an equirectangular .hdr or .exr, a KTX2 cube map, or six faces). |
 | [`EnvironmentSun`](load/type-EnvironmentSun.md) | struct |  | The sun a cooked environment took out of its lighting image, for the DirectionalLight that puts it back. |
 | [`og.load.environmentSun`](load/fn-environmentSun.md) | function | `(world: World, map: EnvironmentMap, rotation?: number, intensity?: number): Result<EnvironmentSun>` | The sun a cooked environment map holds apart from its image (`sun extract` in its `.ogt`): the direction, colour and intensity to give a DirectionalLight, so the sun is counted once, casts shadows an… |
+| [`EnvironmentSunTurn`](load/type-EnvironmentSunTurn.md) | struct |  | The Environment.rotation og.load.environmentSunRotation answered, and where the map's sun stands after it. |
+| [`og.load.environmentSunRotation`](load/fn-environmentSunRotation.md) | function | `(world: World, map: EnvironmentMap, view: Vector3, azimuth: number): Result<EnvironmentSunTurn>` | The Environment.rotation that puts a cooked map's sun at `azimuth` around a view direction, so a sky is turned by where its sun should be ("light from behind the camera's left") instead of by a hand-… |
 | [`og.load.emitter`](load/fn-emitter.md) | function | `(world: World, path: string): Result<ParticleEmitter>` | A particle emitter asset for ParticleSystem.emitter, from a cooked `.ogt` of `type particles`: its shape, emission, motion, look, rendering (billboards, meshes or 2D sprites), collision, sub-emitters… |
 | [`og.load.effect`](load/fn-effect.md) | function | `(world: World, path: string): Result<EffectMaterial>` | An effect material for og.Trail.effect and og.Beam.effect, from a cooked `.ogt` of `type effect` (the file emitters and composed effects name with `effect`): its textures, UV motion, erosion, fresnel… |
 | [`og.load.shader`](load/fn-shader.md) | function | `(world: World, path: string): Result<Shader>` | A material shader for og.render.shaderMaterial, from a cooked `.ogt` of `type shader` (its WGSL compiled by the cook for every back end): `mode hooks` (the default) defines hooks of the lit shader; `… |

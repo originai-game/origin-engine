@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "og.load.environmentSunRotation",
+      "summary": "The Environment.rotation that stands a cooked map's sun at an azimuth around a view direction (0 ahead, pi behind the viewer, negative to its left), with the sun's direction after the turn and its elevation, so a sky is turned by where its sun should be instead of a hand-tuned angle. Render §4 adds it and a recipe for matching an authored LDR sky's exposure (autoExposure meters the models alone; a fixed exposure with toneMapping none at intensity 1 keeps the source's brightness)."
+    }
+  ]
+}

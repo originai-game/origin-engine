@@ -13599,6 +13599,25 @@ export interface EnvironmentSun {
 }
 
 
+/**
+ * The Environment.rotation og.load.environmentSunRotation answered, and where the map's sun stands after it.
+ */
+export interface EnvironmentSunTurn {
+  /**
+   * The Environment.rotation to set, in radians about +Y (-pi to pi); pass the same to og.load.environmentSun for the DirectionalLight.
+   */
+  readonly rotation: number;
+  /**
+   * The world-space unit direction towards the sun after the turn: og.load.environmentSun's direction at `rotation`.
+   */
+  readonly direction: Vector3;
+  /**
+   * The sun's elevation above the horizon in radians, which is the map's own: a turn about +Y never changes it, so a sun lower or higher than wanted needs another sky.
+   */
+  readonly elevation: number;
+}
+
+
 
 
 
@@ -35971,6 +35990,17 @@ export declare namespace og {
      * @returns Refused for a handle that is not an environment map, or one whose streaming group is not resident yet.
      */
     function environmentSun(world: World, map: EnvironmentMap, rotation?: number, intensity?: number): Result<EnvironmentSun>;
+    /**
+     * The Environment.rotation that puts a cooked map's sun at `azimuth` around a view direction, so a sky is turned by where its sun should be ("light from behind the camera's left") instead of by a hand-tuned angle. The answer is exact for the map's extracted sun (og.load.environmentSun at rotation 0); its elevation is the map's, reported in `elevation`.
+     * See `render §4`.
+     *
+     * @param world The world whose renderer owns the map.
+     * @param map A map og.load.environment answered, cooked with its sun extracted.
+     * @param view The direction the view looks, such as the camera's forward; only its horizontal part counts.
+     * @param azimuth Where the sun stands around the view, in radians from straight ahead and positive to the view's right: 0 ahead (the subject backlit), pi behind the viewer (the subject lit from the front), -pi/2 to its left, -3pi/4 behind its left shoulder.
+     * @returns Refused when og.load.environmentSun refuses the map, when the map holds no sun (its cook found none: the cook's report says why), when the sun stands straight overhead (no turn moves it), or when `view` is vertical.
+     */
+    function environmentSunRotation(world: World, map: EnvironmentMap, view: Vector3, azimuth: number): Result<EnvironmentSunTurn>;
     /**
      * A particle emitter asset for ParticleSystem.emitter, from a cooked `.ogt` of `type particles`: its shape, emission, motion, look, rendering (billboards, meshes or 2D sprites), collision, sub-emitters and events. Every line runs the same in compute and on the CPU path. The textures, texture array, mesh model, effect material and sub-emitters it names are loaded with it (a sub-emitter that fires its parent is refused); while the array's streaming group is not resident its systems draw nothing. Loaded once per path.
      * See `loading §5`.
