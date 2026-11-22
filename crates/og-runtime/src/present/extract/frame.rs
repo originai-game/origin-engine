@@ -391,12 +391,8 @@ fn effects(
     (vp, tick)
 }
 
-/// Characters the fonts lack, then the text queued for this frame.
+/// Text queued for this frame.
 fn texts(rs: &mut RenderState, fresh: bool, vp: (f32, f32)) {
-    // Characters the fonts lack, rendered from their files before any
-    // text is laid out for this frame.
-    super::glyphs::generate(rs);
-
     // Text from the glyph atlas; screen text into the overlay.
     let queued = if fresh {
         std::mem::take(&mut rs.texts)

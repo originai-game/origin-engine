@@ -83,8 +83,6 @@ pub(crate) struct Next {
     font: bool,
     /// The accessibility tree the host's mirror was last sent.
     a11y: og_ui_next::a11y::Tree,
-    /// A tree was made and has not painted yet.
-    fresh: bool,
     /// The render state's textures by Texture handle index, as of this
     /// frame: what the tree's images resolve their sources against (the
     /// tree paints while the render state is borrowed).
@@ -92,10 +90,6 @@ pub(crate) struct Next {
     /// Each of `textures`' size in texels (0 unknown): `object-*` fits an
     /// image's source by it.
     texture_sizes: Rc<RefCell<Vec<[f32; 2]>>>,
-    /// The frame's run-time glyphs render all at once, not a few a frame
-    /// (`glyphs::generate`): a fresh tree painted, so its text arrives
-    /// with its panels.
-    pub(crate) settle_glyphs: bool,
     /// The on-screen controls' zones as last handed to the action map.
     zones: Vec<og_input::ControlZone>,
     /// The og-ui unit the tree lays out in (`UiFrame::unit`): its CSS px
@@ -642,11 +636,9 @@ impl Next {
             feedback_rng: 0,
             haptic_strength: 1.0,
             a11y: og_ui_next::a11y::Tree::new(),
-            fresh: false,
             textures: Rc::default(),
             texture_sizes: Rc::default(),
             generation: 0,
-            settle_glyphs: false,
             zones: Vec::new(),
             unit: 1.0,
         }
@@ -688,7 +680,6 @@ impl Next {
         self.resolve(engine);
         // A new arena: the mirror is sent its whole tree again.
         self.a11y.reset();
-        self.fresh = true;
         self.spans.build = now() - t0;
         self.spans.build_allocations = allocations() - a0;
     }
@@ -1072,7 +1063,6 @@ impl Next {
             self.generation += 1;
             std::mem::swap(&mut self.paint, &mut tree.drawn);
             self.paint.generation = self.generation;
-            self.settle_glyphs |= std::mem::take(&mut self.fresh);
         }
         let allocated = allocations() - a0;
         self.spans.frame = t2 - t0;

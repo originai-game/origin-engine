@@ -20,7 +20,7 @@
 //! audio stream (its resources).
 
 mod ui_config;
-pub(crate) use ui_config::{LoadedStyle, UiSettings, load_style, settings, ui_font};
+pub(crate) use ui_config::{LoadedStyle, UiSettings, load_style, settings};
 pub use ui_config::{og_load_style, og_ui_configure};
 mod ui_desc;
 mod ui_frame;
@@ -53,9 +53,7 @@ use og_physics::{
     MeshDesc, OverlapDesc, Physics, PhysicsQuery, PhysicsSystem, QueryFilter, RaycastDesc,
     ShapeCastDesc, ShapeDesc,
 };
-use og_text::text::UiFont;
 use og_ui_model::{Insets, Viewport};
-use og_ui_next::fonts::Fonts;
 use og_ui_next::icons::IconAtlas;
 use serde_json::{Map, Value, json};
 use std::cell::Cell;
@@ -259,7 +257,7 @@ pub(crate) fn mount_back(
                     && let Ok(eng) = engine(engine_id)
                 {
                     let missing = crate::bind::i18n::resolve_missing_chars(&eng, missing);
-                    crate::present::glyphs::warn_undrawn(&eng, ctx.time().tick, &missing);
+                    crate::present::faces::warn_undrawn(&eng, ctx.time().tick, &missing);
                 }
                 Ok(())
             },

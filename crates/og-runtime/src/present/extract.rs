@@ -14,8 +14,8 @@
 //!   renderer's default sun), the
 //!   `og.PointLight` / `og.SpotLight` (og-render culls and clusters them);
 //! - the `og.Camera` and `og.RenderSettings` resources;
-//! - the text `og.render.text` queued during the tick, with cooked
-//!   multi-page MSDF fonts mapped to one `MsdfFont` per page.
+//! - the text `og.render.text` queued during the tick, drawn from the
+//!   glyph atlas its characters are rastered into.
 
 mod frame;
 mod hierarchy;
@@ -25,8 +25,7 @@ mod wind;
 use crate::{
     author::review, bind::modules, bind::skeleton2d, bind::terrain, bind::video, present::art,
     present::atmosphere, present::baked, present::environment, present::feel, present::fx,
-    present::geometry, present::glyphs, present::interpolate, present::probes, present::views,
-    world::assets,
+    present::geometry, present::interpolate, present::probes, present::views, world::assets,
 };
 pub(crate) use frame::extract;
 pub use hierarchy::Hierarchy;
@@ -38,18 +37,15 @@ use crate::host::wire::FromJson;
 use glam::{Mat4, Quat, Vec3};
 use og_core::IdMap;
 use og_ecs::{Entity, QueryDesc, World};
-use og_render::{FontHandle, MaterialHandle, MeshHandle, RenderScene};
+use og_render::{MaterialHandle, MeshHandle, RenderScene};
 use serde_json::Value;
-use std::collections::BTreeMap;
 
 mod backend;
 mod columns;
-mod fonts;
 mod state;
 
 pub use backend::*;
 pub(crate) use columns::*;
-pub(crate) use fonts::*;
 pub(crate) use state::*;
 
 /// The IDL `AoResolutionSetting`'s variants, in order: RenderSettings.aoResolution.

@@ -196,23 +196,12 @@ pub(crate) fn apply(eng: &Engine) -> Result<(), String> {
         }
         (paths, s.catalog.direction())
     });
-    // The default face draws a role the game gave no font and no style
-    // backs (a style whose families have no face for it, too).
-    let default_roles = {
+    // The default face draws a role the game gave no font.
+    let unset = |field: &str| {
         let state = eng.state.borrow();
-        let rs = eng.render.borrow();
-        let f = &rs.ui_fonts;
-        let unset = |field| state.ui_desc.get(field).is_none_or(Value::is_null);
-        let styled = !unset("style");
-        let body = unset("font") && (!styled || f.body.handle.is_none());
-        [
-            body,
-            body && unset("displayFont") && (!styled || f.display.is_none()),
-            body && unset("monoFont") && (!styled || f.mono.is_none()),
-            body && unset("roundedFont") && (!styled || f.rounded.is_none()),
-        ]
+        state.ui_desc.get(field).is_none_or(Value::is_null)
     };
-    if default_roles[0]
+    if unset("font")
         && eng
             .assets
             .borrow()
@@ -221,12 +210,10 @@ pub(crate) fn apply(eng: &Engine) -> Result<(), String> {
     {
         paths.insert(0, og_ui_next::fonts::DEFAULT_FONT_ASSET.to_string());
     }
-    let mut default_font = None;
     // The same fonts for TSX text (present::faces): the default face
     // whenever the bundle has it, then the locale's in order, so a family
     // no file backs and a character no family has still draw.
     let mut faces = Vec::with_capacity(paths.len() + 1);
-    let mut chain = Vec::with_capacity(paths.len());
     let mut pending = Vec::new();
     let mut drawn = Vec::with_capacity(paths.len());
     for p in &paths {
@@ -237,11 +224,9 @@ pub(crate) fn apply(eng: &Engine) -> Result<(), String> {
         }
         drawn.push(p.clone());
         let i = crate::world::assets::load_font(eng, p).map_err(|e| format!("font '{p}': {e}"))?;
-        let font = crate::bind::modules::ui_font(eng, crate::world::assets::handle(i) as f64)?;
         if p == og_ui_next::fonts::DEFAULT_FONT_ASSET {
-            default_font = Some(font);
+            faces.insert(0, i);
         } else {
-            chain.push(font);
             faces.push(i);
         }
     }
@@ -268,37 +253,6 @@ pub(crate) fn apply(eng: &Engine) -> Result<(), String> {
             // body face, as a browser takes its default font.
             faces.insert(0, i);
         }
-    }
-    {
-        let mut rs = eng.render.borrow_mut();
-        let mut fonts = og_ui_next::fonts::Fonts {
-            chain,
-            cjk_locale: og_ui_next::fonts::CjkLocale::of_locale(&tag(eng.id)),
-            ..rs.ui_fonts.clone()
-        };
-        if let Some(font) = default_font {
-            fonts.body = font.clone();
-            for (slot, use_default) in [&mut fonts.display, &mut fonts.mono, &mut fonts.rounded]
-                .into_iter()
-                .zip(&default_roles[1..])
-            {
-                if *use_default {
-                    *slot = Some(font.clone());
-                }
-            }
-            fonts.families.retain(|f| f.document != "@default");
-            fonts.families.push(og_ui_next::fonts::FamilyFace {
-                family: "Instrument Sans".into(),
-                document: "@default".into(),
-                weight: (400, 700),
-                stretch: (750, 1000),
-                font,
-                ..Default::default()
-            });
-        }
-        rs.ui_fonts = fonts;
-        // Each face's mixed font, the locale's chain after it.
-        rs.ui_fonts.link();
     }
     // The style pack's files, in its order, by the same rule: one still
     // being fetched joins when it lands, and text draws from the next
@@ -432,10 +386,7 @@ pub(crate) fn ensure_packs(eng: &Engine) {
 /// installed pack not yet in the chain covers load that pack (the
 /// locale's CJK forms first) and are answered as drawn from next frame;
 /// the rest are returned, still missing.
-pub(crate) fn resolve_missing(
-    eng: &Engine,
-    missing: Vec<(og_render::FontHandle, Vec<char>)>,
-) -> Vec<(og_render::FontHandle, Vec<char>)> {
+pub(crate) fn resolve_missing(eng: &Engine, missing: Vec<char>) -> Vec<char> {
     let locale = language(eng.id);
     let (out, added) = with(eng.id, |s| {
         let Some(packs) = s.packs.as_deref().filter(|p| !p.is_empty()) else {
@@ -445,31 +396,25 @@ pub(crate) fn resolve_missing(
         let order = og_i18n::font_pack::fallback_order(packs, &locale);
         // Packs this frame loads: their characters draw from the next one.
         let mut fresh: Vec<String> = Vec::new();
-        let mut out = Vec::new();
-        for (face, chars) in missing {
-            let mut left = Vec::new();
-            for c in chars {
-                // Only a pack not yet in the chain answers it; one already in
-                // it lacks the outline after all (a cmap entry, no glyph).
-                let pack = order
-                    .iter()
-                    .map(|&i| &packs[i])
-                    .filter(|p| Some(&p.name) != own.as_ref())
-                    .find(|p| p.covers(c));
-                match pack {
-                    Some(p) if !s.loaded.contains(&p.name) => {
-                        s.loaded.push(p.name.clone());
-                        fresh.push(p.name.clone());
-                    }
-                    Some(p) if fresh.contains(&p.name) => {}
-                    _ => left.push(c),
+        let mut left = Vec::new();
+        for c in missing {
+            // Only a pack not yet in the chain answers it; one already in
+            // it lacks the outline after all (a cmap entry, no glyph).
+            let pack = order
+                .iter()
+                .map(|&i| &packs[i])
+                .filter(|p| Some(&p.name) != own.as_ref())
+                .find(|p| p.covers(c));
+            match pack {
+                Some(p) if !s.loaded.contains(&p.name) => {
+                    s.loaded.push(p.name.clone());
+                    fresh.push(p.name.clone());
                 }
-            }
-            if !left.is_empty() {
-                out.push((face, left));
+                Some(p) if fresh.contains(&p.name) => {}
+                _ => left.push(c),
             }
         }
-        (out, !fresh.is_empty())
+        (left, !fresh.is_empty())
     });
     if added && let Err(e) = apply(eng) {
         note(eng.id, format!("font packs: {e}"));
@@ -480,11 +425,7 @@ pub(crate) fn resolve_missing(
 /// [`resolve_missing`] for characters no face of the TSX UI's collection
 /// draws: what is left when the packs that cover the others load.
 pub(crate) fn resolve_missing_chars(eng: &Engine, missing: Vec<char>) -> Vec<char> {
-    let any = og_render::FontHandle::from_index(0);
-    let left: Vec<char> = resolve_missing(eng, vec![(any, missing)])
-        .into_iter()
-        .flat_map(|(_, chars)| chars)
-        .collect();
+    let left = resolve_missing(eng, missing);
     // A face still being fetched may have the rest: none is missing yet.
     if with(eng.id, |s| !s.pending.is_empty() || !s.styling.is_empty()) {
         return Vec::new();
@@ -535,12 +476,7 @@ pub fn fonts_pending() -> u32 {
             })
         })
         .sum();
-    // And their glyphs still rendering: the first frame shows the text whole.
     faces
-        + engines
-            .into_iter()
-            .map(crate::present::glyphs::glyphs_pending)
-            .sum::<u32>()
 }
 
 pub fn og_i18n_load(world: u32, path: String) -> Result<crate::host::wire::LocaleInfo, String> {

@@ -465,23 +465,19 @@ pub fn og_render_text(world: u32, desc: Option<String>) -> Result<(), String> {
             return Ok(());
         };
         let fi = index_of(font as f64).ok_or_else(|| format!("{font} is not a font handle"))?;
-        let render = eng
-            .assets
-            .borrow()
-            .fonts
-            .get(fi)
-            .map(|f| f.render)
-            .ok_or_else(|| format!("font {font} is not alive"))?;
+        let name = eng.assets.borrow().fonts.get(fi).map(|f| f.id.clone());
+        if name.is_none() {
+            return Err(format!("font {font} is not alive"));
+        }
         let tick = og_world_get_tick(world) as u64;
         let mut rs = eng.render.borrow_mut();
         new_frame(&mut rs, tick);
         let text = d.text;
         // Its missing glyphs warned of now, on the CPU, renderer or not.
-        if let Some(missing) = crate::present::glyphs::lacking(&mut rs, render, &text) {
-            drop(rs);
-            crate::present::glyphs::warn_missing(&eng, tick, vec![missing]);
-            rs = eng.render.borrow_mut();
-        }
+        let missing = crate::present::faces::lacking(&mut rs, &text);
+        drop(rs);
+        crate::present::faces::warn_missing(&eng, tick, name.as_deref(), &missing);
+        let mut rs = eng.render.borrow_mut();
         let size = d.size;
         let rotation = d.rotation;
         let position = d.position;
@@ -501,7 +497,6 @@ pub fn og_render_text(world: u32, desc: Option<String>) -> Result<(), String> {
         let family = crate::present::faces::family_of(&eng, &mut rs.ui_faces, fi)
             .ok_or_else(|| format!("font {font} ships no file to lay text out from"))?;
         rs.texts.push(super::extract::QueuedText {
-            font: render,
             family,
             text,
             position,
@@ -792,14 +787,9 @@ pub fn og_render_measure_text(
             .font
             .ok_or("TextMeasureDesc.font is null: load one with og.load.font")?;
         let fi = index_of(font as f64).ok_or_else(|| format!("{font} is not a font handle"))?;
-        let render = eng
-            .assets
-            .borrow()
-            .fonts
-            .get(fi)
-            .map(|f| f.render)
-            .ok_or_else(|| format!("font {font} is not alive"))?;
-        let _ = render;
+        if eng.assets.borrow().fonts.get(fi).is_none() {
+            return Err(format!("font {font} is not alive"));
+        }
         let size = d.size;
         let mut rs = eng.render.borrow_mut();
         let family = crate::present::faces::family_of(&eng, &mut rs.ui_faces, fi)

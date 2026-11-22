@@ -86,43 +86,6 @@ pub fn og_ui_configure(world: u32, desc: Option<String>) -> Result<(), String> {
         let d = merged_ui_desc(&eng.state.borrow().ui_desc, parse(desc.as_deref())?)?;
         // The merged desc (patch semantics are the merge's), read whole.
         let u: wire::UiDesc = wire::value(&d, "desc")?;
-        let style = match u.style.map(|h| h as f64) {
-            Some(h) => {
-                let i = super::assets::index_of(h)
-                    .ok_or_else(|| format!("style: {h} is not a UI style"))?;
-                let a = eng.assets.borrow();
-                let s = a
-                    .styles
-                    .get(i)
-                    .ok_or_else(|| format!("style: style {h} is not alive"))?;
-                Some((s.faces.clone(), s.roles.clone()))
-            }
-            None => None,
-        };
-        let font = |h: Option<u64>| -> Result<Option<UiFont>, String> {
-            h.map(|h| ui_font(&eng, h as f64)).transpose()
-        };
-        let fonts = Fonts {
-            body: font(u.font)?.unwrap_or_default(),
-            display: font(u.display_font)?,
-            mono: font(u.mono_font)?,
-            rounded: font(u.rounded_font)?,
-            fallbacks: u
-                .fallback_fonts
-                .iter()
-                .map(|&h| ui_font(&eng, h as f64))
-                .collect::<Result<Vec<_>, _>>()?,
-            fallback: None,
-            cjk: None,
-            cjk_display: None,
-            weights: [0; 6],
-            faces: Vec::new(),
-            chain: Vec::new(),
-            cjk_locale: og_ui_next::fonts::CjkLocale::default(),
-            families: Vec::new(),
-            family_lists: Default::default(),
-            backed: Default::default(),
-        };
         // A game's atlas (`icons`), else the style's; under either, the
         // set that draws the names it lacks (`fallbackIcons`).
         let atlas_of = |field: &str,
@@ -162,13 +125,13 @@ pub fn og_ui_configure(world: u32, desc: Option<String>) -> Result<(), String> {
                             "{field}.font: font {h} is not an icon set (cook SVGs with an .ogt of `type icons`)"
                         ));
                     }
-                    Some((ui_font(&eng, h)?, names))
+                    Some((eng.assets.borrow().fonts.get(i).and_then(|f| f.face.clone()), names))
                 }
                 None => None,
             };
             Ok(Some(match set {
-                Some((font, names)) => IconAtlas {
-                    font: Some(font),
+                Some((face, names)) => IconAtlas {
+                    face,
                     names,
                     ..IconAtlas::default()
                 },
@@ -183,45 +146,7 @@ pub fn og_ui_configure(world: u32, desc: Option<String>) -> Result<(), String> {
             }))
         };
         let atlas = atlas_of("icons", &u.icons)?.unwrap_or_default();
-        // The locale's chain and forms (og.i18n) and the documents' named
-        // families stay; the style's replace the last style's.
         let mut rs = eng.render.borrow_mut();
-        let (chain, cjk_locale, mut families) = (
-            rs.ui_fonts.chain.clone(),
-            rs.ui_fonts.cjk_locale,
-            rs.ui_fonts.families.clone(),
-        );
-        families.retain(|f| !f.document.starts_with("@pack:") && f.document != "@default");
-        if let Some((faces, _)) = &style {
-            families.extend(faces.clone());
-        }
-        let fonts = Fonts {
-            chain,
-            cjk_locale,
-            families,
-            ..fonts
-        };
-        let fontless = fonts.body.handle.is_none()
-            && fonts.display.is_none()
-            && fonts.mono.is_none()
-            && fonts.rounded.is_none()
-            && fonts.fallbacks.is_empty()
-            && fonts.fallback.is_none()
-            && fonts.chain.is_empty()
-            && fonts.families.is_empty();
-        rs.ui_fonts = fonts;
-        // A role the game gave no font takes the first of the style's
-        // families for it that has a face; one none backs is drawn in the
-        // default face (i18n::apply), never in none.
-        let roles = style.as_ref().map(|(_, r)| r.clone()).unwrap_or_default();
-        rs.ui_fonts.back_roles(roles.map(|names| {
-            names
-                .into_iter()
-                .map(og_ui_next::fonts::FontFamily::Named)
-                .collect()
-        }));
-        // Each face's mixed font: the chain and fallbacks after it.
-        rs.ui_fonts.link();
         rs.ui_icons = atlas;
         drop(rs);
         eng.render.borrow_mut().color_filter =
@@ -229,6 +154,12 @@ pub fn og_ui_configure(world: u32, desc: Option<String>) -> Result<(), String> {
         let mut st = eng.state.borrow_mut();
         st.ui_desc = d;
         // i18n::apply draws a role nothing backs in the default face.
+        let fontless = u.font.is_none()
+            && u.display_font.is_none()
+            && u.mono_font.is_none()
+            && u.rounded_font.is_none()
+            && u.fallback_fonts.is_empty()
+            && u.style.is_none();
         let default_available = eng
             .assets
             .borrow()
@@ -252,17 +183,13 @@ pub fn og_ui_configure(world: u32, desc: Option<String>) -> Result<(), String> {
     }
 }
 
-/// A loaded style directory and the font faces its CSS names.
+/// A loaded style directory and the font files it ships.
 pub(crate) struct LoadedStyle {
     pub id: String,
-    pub faces: Vec<og_ui_next::fonts::FamilyFace>,
     /// Its `fonts`: the font files it ships, first first. Each is loaded
     /// once it is fetched (the web reads them after the boot,
     /// `bind::i18n::apply`).
     pub files: Vec<String>,
-    /// The families its theme names for body, display, mono and rounded
-    /// text, first first ([`og_ui_next::pack::Layer::role_families`]).
-    pub roles: [Vec<String>; 4],
 }
 
 /// `og.load.style`: a cooked UI style, its atlas, fonts, icons and sounds loaded with it.
@@ -296,8 +223,8 @@ pub(super) fn read_style(eng: &Engine, id: &str) -> Result<LoadedStyle, String> 
     if id.ends_with(".ogt") {
         return Err("style.ogt is removed; og.load.style takes the directory containing the pack's pack.json".into());
     }
-    // A pack's pack.json names its faces (`fonts`) and the families its
-    // text roles take (`theme.fontFamily`).
+    // A pack's pack.json names its faces (`fonts`); the families its
+    // text roles take (`theme.fontFamily`) went with the TSX font state.
     let blob = format!("{id}/pack.json");
     let text = {
         let assets = eng.assets.borrow();
@@ -309,41 +236,8 @@ pub(super) fn read_style(eng: &Engine, id: &str) -> Result<LoadedStyle, String> 
             .map_err(|e| e.to_string())?
     };
     let layer = og_ui_next::pack::Layer::parse(&text).map_err(|e| format!("{blob}: {e}"))?;
-    let faces = docs::pack_faces(eng, &layer.fonts, &blob, &format!("@pack:{id}"))?;
     Ok(LoadedStyle {
         id: id.to_owned(),
-        faces,
-        roles: layer.role_families(),
         files: layer.fonts,
     })
-}
-
-/// A loaded font as the UI lays out and draws with it: its first atlas
-/// page's handle and metrics (every page carries every glyph's advance);
-/// the renderer draws the other pages from the same layout.
-pub(crate) fn ui_font(eng: &Engine, handle: f64) -> Result<UiFont, String> {
-    let index = super::assets::index_of(handle).ok_or_else(|| format!("{handle} is not a font"))?;
-    let (render, file, pixel) = eng
-        .assets
-        .borrow()
-        .fonts
-        .get(index)
-        .map(|f| (f.render, f.file.clone(), f.pixel))
-        .ok_or_else(|| format!("font {handle} is not alive"))?;
-    let mut rs = eng.render.borrow_mut();
-    let pages = rs
-        .fonts
-        .get(render)
-        .map(|p| p.pages.clone())
-        .ok_or_else(|| format!("font {handle} has no atlas"))?;
-    let first = *pages.first().ok_or("the font has no pages")?;
-    let msdf = rs
-        .scene
-        .font(first)
-        .cloned()
-        .ok_or("the font's first page is missing")?;
-    rs.ui_pages.insert(first, pages);
-    let mut font = UiFont::new(first, &msdf);
-    font.metrics = font.metrics.with_file(file).with_pixel(pixel);
-    Ok(font)
 }
