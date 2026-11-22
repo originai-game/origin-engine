@@ -125,8 +125,13 @@ Fit the program to the concept first, then texture it:
    first. Its `ratio` is model over image, so divide the parameter that
    sets that view's width or height by the ratio. `byIou` points at a
    view whose outline differs (a missing part or a wrong profile), and
-   `byColour` points at a part whose material is off. Fix them all, then
-   compare again.
+   `byColour` points at a part whose material is off. `byWidth` lists the
+   parts thinnest first: a part under two pixels (`resolved` false) cannot
+   match the silhouette at that size, and each view's `iouOnePixel` is the
+   most a fit of that silhouette can show, so a chair's legs read as the
+   view's resolution, not a wrong shape. Fix them all, then compare
+   again. Previews are lit and compare is not: `og model preview --views
+   front --unlit` draws the colours compare measures.
 3. `og model measure` lists every remaining problem in `issues`, each with
    the option that fixes it. A program's parts that touch are an
    assembly, not an issue.
@@ -179,13 +184,20 @@ are the game's.
   axes), triangles, materials and the look's facts. `issues` lists every defect
   (open, non-manifold or flipped edges, degenerate triangles, floating
   pieces, a budget the look states and the model exceeds), each with its fix. A fact the look does
-  not state is null, with the reason in `look.absent`.
-- `preview --views front,left,top --out DIR`: one PNG per view on a
-  transparent background. The views are `front`, `back`, `left`, `right`,
+  not state is null, with the reason in `look.absent`. Every 3D look
+  preset states a prop budget (`ArtShape.propFaces`) and, where it has
+  textures, the largest one (`ArtTexels.maxSize`); a look with a free
+  palette states no colours.
+- `preview --views front,left,top --out DIR [--unlit]`: one PNG per view
+  on a transparent background, lit with edges, or with `--unlit` each
+  part its material's colour as compare draws it. The views are `front`, `back`, `left`, `right`,
   `top`, `three_quarter`, or `camera:{"eye", "target", "up", "fov"?}`.
 - `compare --image view.png --view front`: silhouette IoU, the bounding
   box's aspect against the image's, and the colour distance per part. `--image front=f.png --image left=l.png …` compares
-  every view in one call and ranks them (`byIou`, `byAspect`, `byColour`).
+  every view in one call and ranks them (`byIou`, `byAspect`, `byColour`,
+  `byWidth`). Each part reports its width in the image's pixels and
+  whether the view resolves it, and each view `iouOnePixel`, the IoU a
+  one-pixel misfit leaves.
 - `process mesh.glb --out DIR [--height 1.2 | --size x,y,z]`: repair (only
   what `--weld`, `--non-manifold` and `--holes` ask), decimation, scaling,
   a base pivot, import settings with levels of detail and a collider, and

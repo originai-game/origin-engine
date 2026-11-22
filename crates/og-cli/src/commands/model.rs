@@ -101,6 +101,9 @@ const USAGE: &str = "usage: og model <command> <input> [options]
                                                 draws base-colour maps and vertex colours;
                                                 --each: a PNG a view with its camera;
                                                 --uv: each material's UV layout instead
+  preview  <input> --views front,left,… --out <dir> [--width PX] [--unlit]
+                                                a transparent PNG a named view, framed as
+                                                compare frames it; --unlit: as compare draws it
   import   <mesh> [-o out.glb|obj|stl]          parts, images and what was skipped
   repair   <mesh> [-o out] [--weld MM] [--weld-all] [--floaters FRACTION]
            [--floater-size MM] [--non-manifold] [--holes N [--holes-through]] [--thicken MM] [--fuse]

@@ -619,6 +619,39 @@ fn compare_reports_a_thin_part_the_view_cannot_resolve() {
     let _ = std::fs::remove_dir_all(&dir);
 }
 
+/// `preview --views --unlit` draws what `compare` measures: each part its
+/// material's own colour, so the model's colours against its unlit view
+/// differ by nothing, and against its lit view they differ by the light.
+#[test]
+fn an_unlit_preview_is_what_compare_measures() {
+    let dir = std::env::temp_dir().join(format!("og-model-unlit-{}", std::process::id()));
+    let farthest = |unlit: bool| -> f64 {
+        let out = dir.join(if unlit { "unlit" } else { "lit" });
+        let mut args = vec![
+            "preview",
+            PROGRAM,
+            "--views",
+            "front",
+            "--out",
+            out.to_str().unwrap(),
+            "--width",
+            "300",
+            "--json",
+        ];
+        if unlit {
+            args.push("--unlit");
+        }
+        report(&args);
+        let image = format!("front={}", out.join("front.png").display());
+        let f = report(&["compare", PROGRAM, "--image", &image, "--json"]);
+        f["byColour"][0]["colourDistance"].as_f64().unwrap()
+    };
+    let (unlit, lit) = (farthest(true), farthest(false));
+    assert!(unlit < 1.0, "unlit {unlit}");
+    assert!(lit > 3.0, "lit {lit}");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
 /// `process --out <folder>` writes a prop: scaled to the height asked
 /// (a bare number is metres), standing on its base at the origin, with
 /// import settings the cook reads and convex hulls beside it; `--size`

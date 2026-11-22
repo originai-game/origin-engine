@@ -244,9 +244,16 @@ pub fn with_scene<T>(
 }
 
 /// `--views` by name: `<dir>/<stem>.png` a view, transparent off the
-/// model, lit, with edges; the report lists each view, its file and its
-/// camera ([`views::camera_json`]).
-fn named(source: &Source, list: &[views::View], size: u32, dir: &Path) -> Result<String, Failure> {
+/// model, lit with edges, or with `unlit` each pixel its material's colour
+/// and no edges, as `og model compare` draws it; the report lists each
+/// view, its file and its camera ([`views::camera_json`]).
+fn named(
+    source: &Source,
+    list: &[views::View],
+    size: u32,
+    dir: &Path,
+    unlit: bool,
+) -> Result<String, Failure> {
     std::fs::create_dir_all(dir).map_err(|e| Failure::Failed(format!("{}: {e}", dir.display())))?;
     let mut out = Vec::new();
     for (v, stem) in list.iter().zip(views::stems(list)) {
@@ -256,8 +263,8 @@ fn named(source: &Source, list: &[views::View], size: u32, dir: &Path) -> Result
                 v,
                 (size, size),
                 views::Look {
-                    unlit: false,
-                    edges: true,
+                    unlit,
+                    edges: !unlit,
                 },
             )
         })?;
@@ -529,7 +536,13 @@ pub fn run(a: &Args) -> Result<String, Failure> {
     {
         let source = load_uvs(&Local, &a.input()?, &a.import()?, a.switch("--uvs"))?;
         let size = a.number("--width")?.unwrap_or(1024);
-        return named(&source, &views::parse(list)?, size, &a.out()?);
+        return named(
+            &source,
+            &views::parse(list)?,
+            size,
+            &a.out()?,
+            a.switch("--unlit"),
+        );
     }
     let out = a.out()?;
     if a.value(&["--uv-size"])?.is_some() && !a.switch("--uv") {
