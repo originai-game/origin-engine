@@ -11,6 +11,7 @@ use og_draw::{
 };
 use og_ui_model::Affine;
 use og_ui_model::codec::{R, W};
+use og_text::fonts::{Collection, FaceId};
 use std::sync::Arc;
 
 /// What a playing artboard draws, bottom to top, in screen space.
@@ -26,20 +27,36 @@ pub enum Drawn {
     Unclip,
 }
 
+/// A glyph a face draws: its id and its pen about the piece's pen, CSS
+/// px (y down).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct TextGlyph {
+    pub id: u32,
+    pub x: f32,
+    pub y: f32,
+}
+
 /// A run's piece of a text line in one of its style's paints, for og-ui's
 /// text command (`DrawCmd::Text`, styled when it has a gradient, an outline
-/// or a map).
+/// or a map). Its glyphs are laid out: they draw by face id and glyph id
+/// where Parley placed them.
 #[derive(Clone, Debug, PartialEq)]
 pub struct TextDraw {
-    pub font: og_draw::FontHandle,
-    pub text: String,
-    /// One per character of `text` (empty: the font's advances and kerning).
-    pub placements: Vec<og_text::text::GlyphPlacement>,
+    pub face: FaceId,
+    /// The face's index in its file (a collection file).
+    pub index: u32,
+    /// CSS px per em.
+    pub size: f32,
+    /// The face's variation location, 2.14 fixed point.
+    pub coords: Vec<i16>,
+    /// Bold the face lacks, drawn by emboldening (fontique's synthesis).
+    pub embolden: bool,
+    /// Italic the face lacks: a skew, degrees.
+    pub skew: Option<f32>,
+    /// The laid glyphs about `pen`.
+    pub glyphs: Vec<TextGlyph>,
     /// The pen at the line's baseline, CSS px.
     pub pen: Vec2,
-    pub size: f32,
-    /// Em after each glyph.
-    pub tracking: f32,
     /// The glyphs' map about the pen (`[1, 0, 0, 1]`: none).
     pub transform: [f32; 4],
     /// Linear RGBA (clear for a stroke, whose outline draws).
@@ -247,10 +264,11 @@ impl Player {
             .mul(&Affine::translate(a.origin.x * size.x, a.origin.y * size.y))
     }
 
-    /// What it draws in `rect`, bottom to top, at `opacity`.
-    pub fn draw(&self, rect: [f32; 4], opacity: f32) -> Vec<Drawn> {
+    /// What it draws in `rect`, bottom to top, at `opacity`. Texts lay
+    /// out in `fonts`, the collection their faces were registered in.
+    pub fn draw(&self, fonts: &mut Collection, rect: [f32; 4], opacity: f32) -> Vec<Drawn> {
         let mut out = Vec::new();
-        self.walk(&self.frame(rect), opacity, "", &mut |s, _| {
+        self.walk(fonts, &self.frame(rect), opacity, "", &mut |s, _| {
             if let Some(s) = s {
                 out.push(s);
             }
@@ -259,9 +277,9 @@ impl Player {
     }
 
     /// Its drawn objects in `rect`, bottom to top.
-    pub fn elements(&self, rect: [f32; 4]) -> Vec<RiveElement> {
+    pub fn elements(&self, fonts: &mut Collection, rect: [f32; 4]) -> Vec<RiveElement> {
         let mut out = Vec::new();
-        self.walk(&self.frame(rect), 1.0, "", &mut |_, e| {
+        self.walk(fonts, &self.frame(rect), 1.0, "", &mut |_, e| {
             if let Some(e) = e {
                 out.push(e);
             }
@@ -273,6 +291,7 @@ impl Player {
     /// `emit` gets each shape and, once per drawn object, its element.
     fn walk(
         &self,
+        fonts: &mut Collection,
         screen: &Affine,
         opacity: f32,
         prefix: &str,
@@ -469,7 +488,7 @@ impl Player {
                             text: String::new(),
                         }),
                     );
-                    p.walk(&inner, alpha[d as usize], &id, emit);
+                    p.walk(fonts, &inner, alpha[d as usize], &id, emit);
                 }
                 Kind::Text { .. } => {
                     let alpha = alpha[d as usize];
@@ -480,6 +499,7 @@ impl Player {
                         a,
                         &pose,
                         d,
+                        fonts,
                         &screen.mul(&world[d as usize]),
                         alpha,
                         id,
@@ -606,18 +626,20 @@ fn solve(x: f32, x1: f32, x2: f32) -> f32 {
 }
 
 /// Text node `d` drawn through `emit`, `m` its node's map to the screen:
-/// each piece of each line in each paint of its run's style, cut to its
-/// box when it clips, and its element (its box and words).
+/// each laid piece in each paint of its run's style, cut to its box when
+/// it clips, and its element (its box and words).
+#[allow(clippy::too_many_arguments)]
 fn draw_text(
     a: &Artboard,
     pose: &[Values],
     d: u32,
+    fonts: &mut Collection,
     m: &Affine,
     alpha: f32,
     id: String,
     emit: &mut dyn FnMut(Option<Drawn>, Option<RiveElement>),
 ) {
-    let Some(laid) = super::text::layout(a, pose, d) else {
+    let Some(laid) = super::text::layout(a, pose, d, fonts) else {
         return;
     };
     let to_screen = m.mul(&laid.transform);
@@ -652,19 +674,17 @@ fn draw_text(
         );
     }
     for (piece, pen) in &laid.drawn {
-        let r = &laid.runs[piece.run];
-        let Some(font) = r.handle else { continue };
-        let Kind::TextStyle { paints } = &a.nodes[r.style as usize].kind else {
+        let Kind::TextStyle { paints } = &a.nodes[piece.style as usize].kind else {
             continue;
         };
-        let (text, placements) = super::text::shaped(r, &piece.text);
         let line_box = screen_box([
             pen.x,
-            pen.y - r.ascent * r.size,
+            pen.y - piece.ascent,
             pen.x + piece.width,
-            pen.y + r.descent * r.size,
+            pen.y + piece.descent,
         ]);
-        for &p in paints {
+        for face in &piece.faces {
+            for &p in paints {
             let (shader, visible, stroke) = match &a.nodes[p as usize].kind {
                 Kind::Fill {
                     shader, visible, ..
@@ -729,12 +749,14 @@ fn draw_text(
             };
             emit(
                 Some(Drawn::Text(TextDraw {
-                    font,
-                    text: text.clone(),
-                    placements: placements.clone(),
+                    face: face.face,
+                    index: face.index,
+                    size: face.size,
+                    coords: face.coords.clone(),
+                    embolden: face.embolden,
+                    skew: face.skew,
+                    glyphs: face.glyphs.clone(),
                     pen: map(*pen),
-                    size: r.size,
-                    tracking: r.tracking,
                     transform: linear_map,
                     color,
                     gradient: if outline.is_some() { None } else { gradient },
@@ -743,6 +765,7 @@ fn draw_text(
                 })),
                 None,
             );
+            }
         }
     }
     if laid.clip.is_some() {

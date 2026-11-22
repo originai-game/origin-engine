@@ -17,10 +17,12 @@ mod player;
 mod text;
 
 pub use codec::{check, decode, encode};
-pub use player::{Drawn, Player, RiveElement, TextDraw};
+pub use player::{Drawn, Player, RiveElement, TextDraw, TextGlyph};
 
 use og_core::glam::Vec2;
 use og_draw::{UiCap, UiFillRule};
+use og_text::fonts::{Collection, FaceId};
+use std::sync::Arc;
 
 /// An artboard: its frame, its objects and its animations.
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -64,7 +66,7 @@ pub struct Artboard {
 
 /// A font an artboard's text is set in: a font the cook made from the
 /// `.riv` (the file's own, or the project font its settings name for a
-/// referenced one), with the face's line metrics as Rive lays lines out.
+/// referenced one).
 #[derive(Clone, Debug, PartialEq)]
 pub struct Font {
     /// The font's asset id, `<file>.riv#font<n>`.
@@ -73,9 +75,10 @@ pub struct Font {
     /// its horizontal header's, as Rive reads them.
     pub ascent: f32,
     pub descent: f32,
-    /// The font once loaded ([`Artboard::bind_fonts`]); not in the blob.
-    /// Text in an unbound font is laid out and drawn as if it had none.
-    pub font: Option<og_text::text::UiFont>,
+    /// The face its file was registered as in a collection
+    /// ([`Artboard::bind_fonts`]); not in the blob. Text in an unbound
+    /// font is laid out and drawn as if it had none.
+    pub font: Option<FaceId>,
 }
 
 /// An image an artboard draws: a texture cooked from the `.riv`.
@@ -102,14 +105,22 @@ impl Artboard {
         }
     }
 
-    /// Gives every font of this artboard and the ones it nests its loaded
-    /// font, by id (the loader's: `None` leaves its text undrawn).
-    pub fn bind_fonts(&mut self, font: &mut dyn FnMut(&str) -> Option<og_text::text::UiFont>) {
+    /// Registers every font of this artboard and the ones it nests in
+    /// `fonts`, the collection its text lays out from, by id (the
+    /// loader's file, or `None`, which leaves its text undrawn). Call it
+    /// before [`Player::draw`] and [`Player::elements`], which take the
+    /// same collection.
+    pub fn bind_fonts(
+        &mut self,
+        fonts: &mut Collection,
+        file: &mut dyn FnMut(&str) -> Option<Arc<Vec<u8>>>,
+    ) {
         for f in &mut self.fonts {
-            f.font = font(&f.id);
+            f.font = file(&f.id)
+                .and_then(|bytes| fonts.add(bytes).ok());
         }
         for n in &mut self.nested {
-            n.bind_fonts(font);
+            n.bind_fonts(fonts, file);
         }
     }
 }
