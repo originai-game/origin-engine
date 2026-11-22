@@ -331,3 +331,34 @@ fn post_effects_custom_is_a_list_of_every_pass_og_render_runs() {
             .any(|f| f.name.starts_with("custom") && f.name != "custom")
     );
 }
+
+/// A handle written to a u32 field (a clip from og.load.animation into
+/// `u32()`) is refused naming the handle field type that holds it; a
+/// number that is no handle is refused as before.
+#[test]
+fn a_handle_in_a_u32_field_names_the_handle_field_types() {
+    let fields: &'static [FieldDecl] = Box::leak(Box::new([field("clip", "u32", "0", 0)]));
+    let decl = RecordDecl {
+        kind: "resource",
+        name: "Clips",
+        schema: "Clips",
+        split: &[],
+        fields,
+    };
+    let layout = Layout::from_decl(&decl).unwrap();
+    let e = layout
+        .encode(None, Some(&json!({ "clip": 4_294_967_298u64 })))
+        .unwrap_err();
+    assert!(
+        e.contains("4294967298 is not a u32")
+            && e.contains("generation 1, index 2")
+            && e.contains("ClipAsset()"),
+        "{e}"
+    );
+    for not_a_handle in [json!(-1), json!(1.5), json!(1e300)] {
+        let e = layout
+            .encode(None, Some(&json!({ "clip": not_a_handle })))
+            .unwrap_err();
+        assert!(e.contains("is not a u32") && !e.contains("handle"), "{e}");
+    }
+}

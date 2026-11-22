@@ -56,6 +56,22 @@ pub(super) fn kind_label(kind: Kind) -> &'static str {
     }
 }
 
+/// What a number too large for a u32 is when it is a handle
+/// (`generation << 32 | index`, og-core's handle.rs; generations below
+/// 2^21): the field type that holds it, as record-bytes.ts says it. Empty
+/// for any other number.
+pub(super) fn handle_hint(n: f64) -> String {
+    let word = 4_294_967_296.0;
+    if n.fract() != 0.0 || n < word || n >= word * 2_097_152.0 {
+        return String::new();
+    }
+    format!(
+        ": it is a handle (generation {}, index {}), which a u32 field cannot hold; declare the field with the handle's own type, such as ClipAsset() for a clip from og.load.animation or og.anim.clip, Entity() for an entity, Asset() for a loaded asset (each handle type has a field of its name)",
+        (n / word).floor(),
+        n % word
+    )
+}
+
 /// One number or handle lane.
 pub(super) fn encode_number(kind: Kind, v: &Value, out: &mut Vec<u8>) -> Result<(), String> {
     match kind {
@@ -64,7 +80,7 @@ pub(super) fn encode_number(kind: Kind, v: &Value, out: &mut Vec<u8>) -> Result<
         Kind::U32 => {
             let n = number(v, "the value")?;
             if n.fract() != 0.0 || !(0.0..=u32::MAX as f64).contains(&n) {
-                return Err(format!("{n} is not a u32"));
+                return Err(format!("{n} is not a u32{}", handle_hint(n)));
             }
             out.extend_from_slice(&(n as u32).to_le_bytes())
         }

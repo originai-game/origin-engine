@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "u32",
+      "summary": "A handle written to a `u32()` field or list (a clip from og.load.animation, an entity) is refused with what it is and the field type that holds it: \"4294967298 is not a u32: it is a handle (generation 1, index 2) ... such as ClipAsset() for a clip\", on both the JSON and the byte path."
+    }
+  ]
+}

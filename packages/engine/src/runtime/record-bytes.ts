@@ -59,7 +59,7 @@ function writeLane(v: DataView, o: number, element: string, n: number): void {
 function listElement(value: unknown, element: string, i: number): number {
   const n = number(value, `element ${i}`);
   const whole = (lo: number, hi: number, what: string) => {
-    if (!Number.isInteger(n) || n < lo || n > hi) throw new Error(`element ${i}: ${n} is not ${what}`);
+    if (!Number.isInteger(n) || n < lo || n > hi) throw new Error(`element ${i}: ${n} is not ${what}${element === "u32" ? handleHint(n) : ""}`);
   };
   if (element === "u32") whole(0, 4294967295, "a u32");
   else if (element === "i32") whole(-2147483648, 2147483647, "an i32");
@@ -107,6 +107,16 @@ function decodeField(v: DataView, bytes: Uint8Array, f: RecordField): unknown {
   }
 }
 
+/**
+ * What a number too large for a u32 is when it is a handle (`generation << 32 | index`, generations below 2^21): the
+ * field type that holds it, as og-runtime's codec says it. Empty for any other number.
+ */
+function handleHint(n: number): string {
+  const word = 4294967296;
+  if (!Number.isInteger(n) || n < word || n >= word * 2097152) return "";
+  return `: it is a handle (generation ${Math.floor(n / word)}, index ${n % word}), which a u32 field cannot hold; declare the field with the handle's own type, such as ClipAsset() for a clip from og.load.animation or og.anim.clip, Entity() for an entity, Asset() for a loaded asset (each handle type has a field of its name)`;
+}
+
 function number(value: unknown, what: string): number {
   if (typeof value !== "number" || !Number.isFinite(value)) throw new Error(`${what} is a number, got ${JSON.stringify(value) ?? String(value)}`);
   return value;
@@ -137,7 +147,7 @@ function encodeField(v: DataView, bytes: Uint8Array, f: RecordField, value: unkn
     case "f64": return v.setFloat64(o, number(value, "the value"), true);
     case "u32": {
       const n = number(value, "the value");
-      if (!Number.isInteger(n) || n < 0 || n > 4294967295) throw new Error(`${n} is not a u32`);
+      if (!Number.isInteger(n) || n < 0 || n > 4294967295) throw new Error(`${n} is not a u32${handleHint(n)}`);
       return v.setUint32(o, n, true);
     }
     case "i32": {
