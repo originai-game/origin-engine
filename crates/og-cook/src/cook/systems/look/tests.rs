@@ -488,12 +488,9 @@ fn a_styles_chinese_companions_ride_only_where_named() {
             .filter(|id| id.starts_with("@styles/cjk/"))
             .collect()
     };
-    let english = cjk(
-        r#"{ "fonts": [{ "family": "Body", "src": "@styles/shared/InstrumentSans[wdth,wght].ttf" }] }"#,
-    );
+    let english = cjk(r#"{ "fonts": ["@styles/shared/InstrumentSans[wdth,wght].ttf"] }"#);
     assert!(english.is_empty(), "{english:?}");
-    let chinese =
-        cjk(r#"{ "fonts": [{ "family": "CJK", "src": "@styles/cjk/NotoSansSC[wght].ttf" }] }"#);
+    let chinese = cjk(r#"{ "fonts": ["@styles/cjk/NotoSansSC[wght].ttf"] }"#);
     assert_eq!(
         chinese,
         [

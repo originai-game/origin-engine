@@ -217,8 +217,7 @@ fn faced_world_text_reaches_the_renderer_with_its_pivot() {
     );
 }
 
-/// A project whose style has a Latin body face and a Chinese companion, and
-/// a Chinese string table (the cook brings the companion only then).
+/// A project whose style names a Latin body face and a Chinese companion.
 fn mixed_project() -> &'static Path {
     static ROOT: OnceLock<PathBuf> = OnceLock::new();
     ROOT.get_or_init(|| {
@@ -251,6 +250,12 @@ fn mixed_project() -> &'static Path {
             "type strings\nversion 1\n---\nlocale \"zh-CN\"\nstring \"judge.perfect\" \"完美\"\n"
                 .as_bytes(),
         );
+        // The direct font loads below are Rust calls, outside the TS code graph.
+        std::fs::write(
+            root.join("project.ogt"),
+            "type project\nversion 1\n---\npublish {\n  keep \"styles/mix/Body.ttf\"\n  keep \"@styles/cjk/NotoSansSC-Regular.ttf\"\n}\n",
+        )
+        .unwrap();
         let report = og_cook::cook_project(&root, &og_cook::CookOptions::default()).unwrap();
         assert!(report.ok(), "{:?}", report.errors());
         root
