@@ -147,7 +147,12 @@ fn a_stepped_player_holds_each_pose_for_its_step() {
                     ChannelPath::Rotation => pose[n].rotation.to_array().to_vec(),
                     _ => continue,
                 };
-                for (a, b) in got.iter().zip(s) {
+                // The root's horizontal travel is held in place (`off`).
+                let held_xz = ch.path == ChannelPath::Translation && n == 1;
+                for (lane, (a, b)) in got.iter().zip(s).enumerate() {
+                    if held_xz && lane != 1 {
+                        continue;
+                    }
                     assert!((a - b).abs() < 1e-4, "tick {k}: {got:?} vs {s:?}");
                 }
             }

@@ -89,6 +89,11 @@ walk or jump, so the generated stride has a start and a run to follow.
   use a BoneAttachment socket for a prop. Resolve names at load: node
   indices and a skin's joint indices are different; Animation.skinJoints
   bridges them. Read `og api show anim` for pose and frame semantics.
+- og.Skeleton's `rootMotion` decides where a clip's travel goes. `off`
+  (the default) holds the root joint's xz travel at its rest place: a run
+  or a swing on a rope plays on the spot, and the game moves the entity.
+  `planar` and `full` move og.Transform by the travel instead. Never
+  overwrite og.Transform each tick to cancel `full`; use `off`.
 - Retarget a clip library to the game's rig once, at load (og.load.rig
   and og.anim.retarget), never per frame.
 - Hitboxes and damage windows come from the tick: mark them with clip

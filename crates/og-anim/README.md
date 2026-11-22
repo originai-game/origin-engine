@@ -60,7 +60,7 @@ the variant names given.
 |---|---|---|---|
 | `asset` | u64 | 0 | the skeleton asset |
 | `skin` | u32 | 0 | which skin the palette is for |
-| `rootMotion` | enum `off` `planar` `full` | off | planar: the root joint's xz travel and yaw move `og.Transform`; full: all of its translation and rotation |
+| `rootMotion` | enum `off` `planar` `full` | off | off: the root joint's xz travel is held at its rest place (a travelling clip plays on the spot) and the entity stays; planar: the root joint's xz travel and yaw move `og.Transform`; full: all of its translation and rotation |
 | `rootJoint` | u32 | 0 | the joint root motion is extracted from (0, the skin's first joint, is usually the hips) |
 | `jointCount` | u32 | 0 | written: palette length |
 

@@ -17,7 +17,8 @@ use og_core::{Reflect, Str64};
 /// `og.Transform`, og-ecs's: root motion moves it.
 pub use og_ecs::transform::Transform;
 
-/// `Skeleton.rootMotion`: the root joint animates in place; the entity does not move.
+/// `Skeleton.rootMotion`: the root joint animates in place (its horizontal
+/// travel held at its rest place); the entity does not move.
 pub const ROOT_MOTION_OFF: u32 = 0;
 /// `Skeleton.rootMotion`: the root's horizontal (xz) travel and yaw move the entity's Transform.
 pub const ROOT_MOTION_PLANAR: u32 = 1;
@@ -35,7 +36,7 @@ pub struct Skeleton {
     /// Which of the asset's skins the joint palette is for (glTF skin index).
     #[reflect(min = 0)]
     pub skin: u32,
-    /// Root motion extraction: off (animate in place), planar (xz travel and yaw move the Transform) or full.
+    /// Root motion extraction: off (the root's xz travel is held in place and the entity stays), planar (xz travel and yaw move the Transform) or full.
     #[reflect(name = "rootMotion", variants = ["off", "planar", "full"])]
     pub root_motion: u32,
     /// The joint whose motion is extracted (an index into the skin's joints; 0 is its first joint, usually the hips).

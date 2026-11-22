@@ -890,9 +890,10 @@ fn gather(
         .then(|| ctx.get::<Transform>(e))
         .transpose()?;
     let mesh = blend.map_or(NONE, |b| b.mesh);
-    let root = (skeleton.root_motion != ROOT_MOTION_OFF)
-        .then(|| asset.joint_node(skeleton.skin, skeleton.root_joint))
-        .flatten()
+    // Every mode pins the root: `off` holds its travel in place, the others
+    // move the Transform by it.
+    let root = asset
+        .joint_node(skeleton.skin, skeleton.root_joint)
         .map(|n| RootMotion::new(&asset, n, skeleton.root_motion));
     let graph_asset = match &graph {
         Some(g) => Some(
@@ -1055,7 +1056,7 @@ fn run(
     for ev in evals {
         let (delta, events) = ev.out?;
         let mut w = ev.work;
-        if ev.root.is_some()
+        if ev.root.as_ref().is_some_and(|r| r.mode != ROOT_MOTION_OFF)
             && let Some(t) = w.transform.as_mut()
         {
             t.position += t.quaternion * (t.scale * delta.translation);

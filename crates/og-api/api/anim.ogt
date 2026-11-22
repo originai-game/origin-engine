@@ -32,7 +32,7 @@ module anim {
 
   enum RootMotion {
     doc "What the root joint's motion does to the entity."
-    variant off "The root animates in place; the entity does not move."
+    variant off "The root animates in place; the entity does not move. The root joint's horizontal (xz) travel is held at its rest place, so a travelling clip (a run, a swing on a rope) plays on the spot; its height and turns still animate."
     variant planar "The root's horizontal (xz) travel and yaw move og.Transform."
     variant full "The root's whole translation and rotation move og.Transform."
   }
@@ -89,7 +89,7 @@ module anim {
     field skin u32 "Which of the asset's skins the joint palette is for (glTF skin index)." {
       min 0
     }
-    field rootMotion RootMotion "Root motion extraction: off (animate in place), planar (xz travel and yaw move og.Transform) or full."
+    field rootMotion RootMotion "Root motion extraction: off (the root's xz travel is held in place and the entity stays), planar (xz travel and yaw move og.Transform) or full."
     field rootJoint u32 "The joint whose motion is extracted (an index into the skin's joints; 0 is its first joint, usually the hips)." {
       min 0
     }

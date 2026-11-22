@@ -344,3 +344,32 @@ fn root_motion_moves_the_transform_and_pins_the_hips() {
     let t: Transform = w.get(e).unwrap();
     assert!((t.position.z - 2.4).abs() < 0.05, "{t:?}");
 }
+
+#[test]
+fn root_motion_off_plays_a_travelling_clip_in_place() {
+    let (mut w, anim) = world();
+    let e = w
+        .spawn((
+            Transform::at(Vec3::new(1.0, 0.0, 0.0)),
+            skel(),
+            AnimationPlayer::new(WALK),
+        ))
+        .unwrap();
+    let rest = node_position(&skeleton().rest_pose(), 1);
+    for _ in 0..30 {
+        w.step().unwrap();
+    }
+    // Half a walk cycle travels the hips 0.6 m forward; with `off` they
+    // stay over their rest place, keeping the bob, and the entity stays.
+    let t: Transform = w.get(e).unwrap();
+    assert_eq!(t.position, Vec3::new(1.0, 0.0, 0.0));
+    let hips = node_position(&anim.pose(e).unwrap(), 1);
+    assert!(
+        (hips.x - rest.x).abs() < 1e-5 && (hips.z - rest.z).abs() < 1e-5,
+        "hips held in place: {hips} (rest {rest})"
+    );
+    assert!(
+        (hips.y - 1.0).abs() < 0.05,
+        "the bob stays in the pose: {hips}"
+    );
+}

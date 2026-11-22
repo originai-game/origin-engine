@@ -13,7 +13,7 @@
 //! therefore swaps at its middle instead of drawing both frames at once.
 
 use crate::asset::{ChannelPath, ClipAsset, NONE, SkeletonAsset};
-use crate::schema::{BLENDSHAPES, ROOT_MOTION_FULL};
+use crate::schema::{BLENDSHAPES, ROOT_MOTION_FULL, ROOT_MOTION_OFF};
 use crate::xform::{Trs, nlerp, twist_y};
 use og_core::glam::{Quat, Vec3};
 
@@ -225,7 +225,9 @@ impl Blend {
     }
 }
 
-/// How a skeleton's root motion is extracted.
+/// How a skeleton's root motion is extracted. With `off` nothing is
+/// extracted: the root's horizontal travel is pinned to its rest place, so
+/// a travelling clip plays in place, and the entity does not move.
 #[derive(Clone, Debug)]
 pub struct RootMotion {
     pub mode: u32,
@@ -266,10 +268,18 @@ impl RootMotion {
         m
     }
 
-    /// The part of a model-space transform root motion moves the entity by.
+    /// The part of a model-space transform root motion moves the entity by
+    /// (for `off`, the part the pose is pinned by: its horizontal travel
+    /// alone, so the root keeps its height and its turns).
     fn planar(&self, m: &Trs) -> Trs {
         if self.mode == ROOT_MOTION_FULL {
             Trs::new(m.translation, m.rotation, Vec3::ONE)
+        } else if self.mode == ROOT_MOTION_OFF {
+            Trs::new(
+                Vec3::new(m.translation.x, 0.0, m.translation.z),
+                Quat::IDENTITY,
+                Vec3::ONE,
+            )
         } else {
             Trs::new(
                 Vec3::new(m.translation.x, 0.0, m.translation.z),
@@ -450,8 +460,8 @@ impl Leaf<'_> {
         }
     }
 
-    /// The pose at `t1` over `base` (the rest pose), its travel pinned when
-    /// root motion is on.
+    /// The pose at `t1` over `base` (the rest pose), its root's travel
+    /// pinned ([`RootMotion`]).
     pub fn pose(&self, skeleton: &SkeletonAsset, root: Option<&RootMotion>, mesh: u32) -> Pose {
         self.pose_at(skeleton, root, mesh, self.t1)
     }
@@ -482,7 +492,7 @@ impl Leaf<'_> {
 
     /// The root's travel over this tick, in the entity's frame.
     pub fn delta(&self, skeleton: &SkeletonAsset, root: Option<&RootMotion>) -> Trs {
-        let Some(r) = root else {
+        let Some(r) = root.filter(|r| r.mode != ROOT_MOTION_OFF) else {
             return Trs::IDENTITY;
         };
         let mut d = Trs::IDENTITY;

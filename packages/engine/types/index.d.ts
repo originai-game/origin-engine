@@ -18996,7 +18996,7 @@ export declare function GraphAsset(value?: GraphAsset, options?: FieldOptions): 
 
 /**
  * What the root joint's motion does to the entity.
- * - `"off"`: The root animates in place; the entity does not move.
+ * - `"off"`: The root animates in place; the entity does not move. The root joint's horizontal (xz) travel is held at its rest place, so a travelling clip (a run, a swing on a rope) plays on the spot; its height and turns still animate.
  * - `"planar"`: The root's horizontal (xz) travel and yaw move og.Transform.
  * - `"full"`: The root's whole translation and rotation move og.Transform.
  */
@@ -19074,7 +19074,7 @@ export interface Skeleton {
    */
   skin: number;
   /**
-   * Root motion extraction: off (animate in place), planar (xz travel and yaw move og.Transform) or full.
+   * Root motion extraction: off (the root's xz travel is held in place and the entity stays), planar (xz travel and yaw move og.Transform) or full.
    */
   rootMotion: RootMotion;
   /**

@@ -22939,7 +22939,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 unit: "",
                 worldspace: "",
                 label: "",
-                doc: doc!("Root motion extraction: off (animate in place), planar (xz travel and yaw move og.Transform) or full."),
+                doc: doc!("Root motion extraction: off (the root's xz travel is held in place and the entity stays), planar (xz travel and yaw move og.Transform) or full."),
                 variants: &["off", "planar", "full"],
                 capacity: 0,
                 list: 0,
