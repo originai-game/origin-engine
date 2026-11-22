@@ -286,8 +286,71 @@ are not retroactive on seek unless authored that way.
 - og.SpringCollider keeps those chains out of the body: a sphere or
   capsule on the head, the chest or an upper arm, so hair, ears and tails
   do not swing through it. One entity per shape.
-- The order each tick: root motion, foot locks, og.IkChain, og.LookAt,
-  then spring bones top joint first.
+- og.Hang hangs a character from a rope. og.anim places the skeleton's
+  og.Transform so the `grip` joint (the hand) sits at `point`, its +Y runs
+  from the grip towards `anchor` by `lay`, and its front turns towards
+  `facing` (0 -1 0 lays the chest to the ground). Each of its `limbs` (an
+  og.IkChain on the free hand or a foot) reaches for the rope `reach`
+  metres from the grip, upward above 0. Copy the rope in each tick: for an
+  og.Rope, its first and last og.physics.ropePoints. For a physics swing
+  (og.Joint of kind rope), copy the joint's two anchors.
+- Play the swing clip with `rootMotion: "off"`: the clip poses the limbs,
+  the hang places the body, and nothing else moves the Transform. Ease
+  `lay` from 0 to 1 as he takes the rope and back to 0 before he lands, so
+  he lands on his feet. Ease `weight` to blend the hang in or out of the
+  entity's own place.
+- The order each tick: root motion, hangs, foot locks, og.IkChain,
+  og.LookAt, then spring bones top joint first.
+
+A rope swinging from a beam, its end the hang's grip point. The game eases
+the body onto the rope over its first second; og.anim places a skeleton
+that carries the hang (none here, so the recipe checks what it feeds in).
+
+```ts recipe ticks=150
+import { defineSystem, og } from "@origingame/engine";
+import type { Result, Vector3 } from "@origingame/engine";
+
+function must<T>(r: Result<T>): T {
+  if (!r.ok) throw new Error(r.reason);
+  return r.value;
+}
+
+const BEAM: Vector3 = { x: 0, y: 8, z: 0 };
+
+// Each tick the hang takes the rope as the last physics step left it.
+const Swing = defineSystem("Swing", { reads: [og.Rope], writes: [og.Hang] }, (_q, time, world) => {
+  const rope = world.find("rope")!;
+  const hang = world.find("hang")!;
+  // Refused until the rope's first physics step.
+  const got = og.physics.ropePoints(world, rope);
+  if (!got.ok || got.value.length === 0) return;
+  const points = got.value;
+  const h = must(world.get(hang, og.Hang));
+  const lay = Math.min(1, h.lay + time.dt);
+  must(world.set(hang, og.Hang, { ...h, anchor: points[0]!, point: points[points.length - 1]!, lay }));
+});
+
+const Check = defineSystem("Check", { reads: [og.Hang], writes: [] }, (_q, _time, world) => {
+  const h = must(world.get(world.find("hang")!, og.Hang));
+  if (h.lay === 0) return;
+  const dx = h.point.x - h.anchor.x, dy = h.point.y - h.anchor.y;
+  og.assert.always(Math.abs(Math.hypot(dx, dy) - 4) < 0.3, "the grip is the rope's end, a rope's length from the beam", { dx, dy });
+  og.assert.sometimes(h.point.y < 4.5, "the rope swings the grip down under the beam", {});
+  if (h.lay === 1) og.assert.reachable("he lies along the rope", {});
+});
+
+export default og.game({
+  systems: [Swing, Check],
+  start(world) {
+    // The rope starts out level, so it swings down and back.
+    const rope = must(world.spawn({ name: "rope", position: BEAM }));
+    must(world.insert(rope, og.Rope, { length: 4, segments: 8, damping: 0 }));
+    const hang = must(world.spawn({ name: "hang" }));
+    // On a character: skeleton (the og.Skeleton entity), grip (its hand joint), limbs and reach.
+    must(world.insert(hang, og.Hang, { anchor: BEAM, point: { x: 4, y: 8, z: 0 }, facing: { x: 0, y: -1, z: 0 }, lay: 0 }));
+  },
+});
+```
 
 ## 9. 2D animation: flipbooks and skeletons
 

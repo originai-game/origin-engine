@@ -84,6 +84,7 @@ const VERSIONS: &[(&str, u32, u64)] = &[
     ("og.FlipbookEvent", 1, 0x7d1245df738a14b1),
     ("og.Fluid3D", 3, 0xf49ede86efaaaa46),
     ("og.FootLock", 1, 0x335fb3e07795add3),
+    ("og.Hang", 1, 0x051cd84b13b50a0b),
     ("og.Gamepad", 3, 0x99e64f8fbc5a1170),
     ("og.IkChain", 1, 0xbbe02154306d4e60),
     ("og.IkTarget2D", 1, 0x4e454eb44cd38470),
@@ -200,6 +201,7 @@ fn physics_audio_animation_and_input_records_have_the_idl_layouts() {
     check::<og_anim::LookAt>(&mut failures);
     check::<og_anim::JointLimit>(&mut failures);
     check::<og_anim::FootLock>(&mut failures);
+    check::<og_anim::Hang>(&mut failures);
     check::<og_anim::SpringBone>(&mut failures);
     check::<og_anim::SpringCollider>(&mut failures);
     check::<og_anim::AnimationEvent>(&mut failures);

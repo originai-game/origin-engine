@@ -12,7 +12,7 @@ See `animation §7`.
 
 - **TypeScript**: functions are the namespace `og.anim`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
-- **Core** (what most games use): `og.Skeleton`, `og.AnimationPlayer`, `og.AnimationGraph`, `ClipInfo`, `Animation`, `GraphDesc`, `og.anim.graph`, `og.Flipbook`, `og.FlipbookEvent`, `FlipbookInfo`, `og.anim.clip`, `og.anim.clip`, `og.anim.clip`; 53 more are advanced (`og api show anim --all`).
+- **Core** (what most games use): `og.Skeleton`, `og.AnimationPlayer`, `og.AnimationGraph`, `ClipInfo`, `Animation`, `GraphDesc`, `og.anim.graph`, `og.Flipbook`, `og.FlipbookEvent`, `FlipbookInfo`, `og.anim.clip`, `og.anim.clip`, `og.anim.clip`; 54 more are advanced (`og api show anim --all`).
 - **Index**: [every module and guide](index.md).
 
 ```ogt
@@ -53,6 +53,7 @@ module anim {
 | [`og.LookAt`](anim/record-LookAt.md) | component |  | An aim constraint on a skeleton, applied after its clips, graph and IK chains: `joint` turns so its `axis` points at `target` and its `upAxis` leans towards `up` (three.js Object3D.lookAt: +Z at the … |
 | [`og.JointLimit`](anim/record-JointLimit.md) | component |  | How far a joint may turn from its rest rotation when og.anim's solvers (og.IkChain, og.LookAt, og.FootLock) turn it: a swing of `axis` within a cone and a twist about it within a range. |
 | [`og.FootLock`](anim/record-FootLock.md) | component |  | Foot locking: while the playing clips plant `foot`, it stays where it touched the ground through blends and root motion, its leg bent by two-bone IK, keeping its animated orientation; when the clips … |
+| [`og.Hang`](anim/record-Hang.md) | component |  | A hang on a rope: og.anim places the skeleton entity's og.Transform so the `grip` joint, as this tick's clips pose it, sits at `point`, its +Y running from the grip towards `anchor` by `lay` and its … |
 | [`SpringSpace`](anim/type-SpringSpace.md) | enum |  | Where a spring bone's tails move. |
 | [`SpringSpace()`](#column-SpringSpace) | column kind |  | A SpringSpace field: the variant's index. |
 | [`og.SpringBone`](anim/record-SpringBone.md) | component |  | A spring (jiggle) bone chain, three-vrm's VRMSpringBone: `joint` and its `bones` - 1 parents swing after their parents' motion. |
@@ -201,7 +202,7 @@ column SpringSpace {
 }
 ```
 
-<sub>Module `anim` line 450</sub>
+<sub>Module `anim` line 488</sub>
 
 ```ogt
 column SpringColliderShape {
@@ -212,7 +213,7 @@ column SpringColliderShape {
 }
 ```
 
-<sub>Module `anim` line 524</sub>
+<sub>Module `anim` line 562</sub>
 
 ```ogt
 column Rig {
@@ -223,7 +224,7 @@ column Rig {
 }
 ```
 
-<sub>Module `anim` line 619</sub>
+<sub>Module `anim` line 657</sub>
 
 ```ogt
 column FlipbookSheet {
@@ -234,7 +235,7 @@ column FlipbookSheet {
 }
 ```
 
-<sub>Module `anim` line 690</sub>
+<sub>Module `anim` line 728</sub>
 
 ```ogt
 column Rig2D {
@@ -245,4 +246,4 @@ column Rig2D {
 }
 ```
 
-<sub>Module `anim` line 793</sub>
+<sub>Module `anim` line 831</sub>

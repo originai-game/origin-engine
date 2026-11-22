@@ -4,6 +4,8 @@ mod flipbook;
 mod footlock;
 #[path = "../graph.rs"]
 mod graph;
+#[path = "../hang.rs"]
+mod hang;
 #[path = "../ik.rs"]
 mod ik;
 #[path = "../layers.rs"]

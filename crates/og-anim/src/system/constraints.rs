@@ -92,6 +92,56 @@ pub(super) fn foot_lock(
     Ok(lock)
 }
 
+/// One hang this tick: `w`'s Transform turned so its +Y runs from the grip
+/// towards the anchor (by `lay`, from upright) with its front towards
+/// `facing`, and moved so the grip joint, as this tick's clips pose it,
+/// sits at `point`; by `weight` from the Transform it had. Its limbs'
+/// targets go into `reaches`, by chain entity.
+pub(super) fn hold(w: &mut Work, hang: &mut Hang, reaches: &mut BTreeMap<u64, Vec3>) -> Result<()> {
+    let grip = joint(w, hang.grip, "og.Hang.grip")?;
+    let Some(t) = w.transform.as_mut() else {
+        return Ok(());
+    };
+    let weight = hang.weight.clamp(0.0, 1.0);
+    let rope = hang.anchor - hang.point;
+    let along = rope.normalize_or_zero();
+    let lay = hang.lay.clamp(0.0, 1.0);
+    let up = (Vec3::Y * (1.0 - lay) + along * lay)
+        .try_normalize()
+        .unwrap_or(Vec3::Y);
+    // The front: `facing`, else the entity's own, less its part along up.
+    let own = t.quaternion * Vec3::Z;
+    let want = if hang.facing.length_squared() > 0.0 {
+        hang.facing
+    } else {
+        own
+    };
+    let front = (want - up * want.dot(up))
+        .try_normalize()
+        .or_else(|| (own - up * own.dot(up)).try_normalize())
+        .unwrap_or_else(|| up.any_orthonormal_vector());
+    let side = up.cross(front);
+    let turned = unit(Quat::from_mat3(&og_core::glam::Mat3::from_cols(
+        side, up, front,
+    )));
+    let model = w.asset.model_space(&w.pose.nodes);
+    let g = model[grip as usize].translation;
+    let from = t.position + t.quaternion * (t.scale * g);
+    let rotation = nlerp(t.quaternion, turned, weight);
+    let at = from + (hang.point - from) * weight;
+    t.quaternion = rotation;
+    t.position = at - rotation * (t.scale * g);
+    for (i, &chain) in hang.limbs.as_slice().iter().enumerate() {
+        if chain == 0 {
+            continue;
+        }
+        let reach = hang.reach.as_slice().get(i).copied().unwrap_or(0.0);
+        reaches.insert(chain, hang.point + along * reach);
+    }
+    hang.held = weight > 0.0;
+    Ok(())
+}
+
 /// Joint limits by (skeleton entity, node).
 pub(super) type Limits = BTreeMap<(u64, u32), JointLimit>;
 

@@ -526,6 +526,60 @@ impl Default for FootLock {
     }
 }
 
+/// A hang on a rope: the skeleton entity's og.Transform is placed so the
+/// grip joint sits at `point` and the body lies along the rope from
+/// `anchor` through `point`, by `lay`; then each of `limbs` (og.IkChain
+/// entities) reaches for the rope `reach` metres from the grip. Applied
+/// after root motion and before foot locks and IK chains. Put it on its
+/// own entity; the rope's points (og.physics.ropePoints, a joint's anchor)
+/// are the game's to copy in each tick.
+#[derive(Clone, Copy, Debug, PartialEq, Reflect)]
+#[reflect(name = "og.Hang")]
+pub struct Hang {
+    /// The entity with the og.Skeleton that hangs (it needs an og.Transform).
+    pub skeleton: u64,
+    /// The gripping joint (an index into the skin's joints): the hand on the rope.
+    #[reflect(min = 0)]
+    pub grip: u32,
+    /// Where the grip is held, in the frame the skeleton entity's og.Transform is written in.
+    #[reflect(unit = "m")]
+    pub point: Vec3,
+    /// Where the rope is tied, in the same frame: the body lies along anchor to point.
+    #[reflect(unit = "m")]
+    pub anchor: Vec3,
+    /// The way the body's front (+Z) turns, in the same frame; the zero vector keeps the entity's.
+    pub facing: Vec3,
+    /// How far the body lies along the rope: 0 upright (+Y up), 1 its +Y along the rope.
+    #[reflect(min = 0, max = 1, default = 1, tunable)]
+    pub lay: f32,
+    /// How much of the hang is applied (0 = the entity's own Transform, 1 = hung).
+    #[reflect(min = 0, max = 1, default = 1, tunable)]
+    pub weight: f32,
+    /// og.IkChain entities on the same skeleton whose targets the hang sets on the rope.
+    pub limbs: og_core::List<u64, 4>,
+    /// Per limb, its target's distance along the rope from the grip (towards the anchor above 0); past the list's length 0.
+    pub reach: og_core::List<f32, 4>,
+    /// Written: the hang placed the skeleton this tick.
+    pub held: bool,
+}
+
+impl Default for Hang {
+    fn default() -> Self {
+        Hang {
+            skeleton: 0,
+            grip: 0,
+            point: Vec3::ZERO,
+            anchor: Vec3::ZERO,
+            facing: Vec3::ZERO,
+            lay: 1.0,
+            weight: 1.0,
+            limbs: og_core::List::default(),
+            reach: og_core::List::default(),
+            held: false,
+        }
+    }
+}
+
 /// `SpringBone.space`: the springs move in the frame the skeleton entity's
 /// Transform is written in, so the chain lags behind the entity's motion.
 pub const SPRING_WORLD: u32 = 0;

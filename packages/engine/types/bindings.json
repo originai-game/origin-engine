@@ -5877,6 +5877,81 @@
     },
     {
       "id": 70,
+      "name": "Hang",
+      "schema": "og.Hang",
+      "module": "anim",
+      "fields": [
+        {
+          "name": "skeleton",
+          "column": "Entity",
+          "default": 0
+        },
+        {
+          "name": "grip",
+          "column": "u32",
+          "default": 0
+        },
+        {
+          "name": "point",
+          "column": "Vector3",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          }
+        },
+        {
+          "name": "anchor",
+          "column": "Vector3",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          }
+        },
+        {
+          "name": "facing",
+          "column": "Vector3",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          }
+        },
+        {
+          "name": "lay",
+          "column": "f32",
+          "default": 1,
+          "tunable": true
+        },
+        {
+          "name": "weight",
+          "column": "f32",
+          "default": 1,
+          "tunable": true
+        },
+        {
+          "name": "limbs",
+          "column": "Entity",
+          "list": 4,
+          "default": []
+        },
+        {
+          "name": "reach",
+          "column": "f32",
+          "list": 4,
+          "default": []
+        },
+        {
+          "name": "held",
+          "column": "bool",
+          "default": false,
+          "readonly": true
+        }
+      ]
+    },
+    {
+      "id": 71,
       "name": "SpringBone",
       "schema": "og.SpringBone",
       "module": "anim",
@@ -5960,7 +6035,7 @@
       ]
     },
     {
-      "id": 71,
+      "id": 72,
       "name": "SpringCollider",
       "schema": "og.SpringCollider",
       "module": "anim",
@@ -6012,7 +6087,7 @@
       ]
     },
     {
-      "id": 72,
+      "id": 73,
       "name": "Flipbook",
       "schema": "og.Flipbook",
       "module": "anim",
@@ -6064,7 +6139,7 @@
       ]
     },
     {
-      "id": 73,
+      "id": 74,
       "name": "Skeleton2D",
       "schema": "og.Skeleton2D",
       "module": "anim",
@@ -6135,7 +6210,7 @@
       ]
     },
     {
-      "id": 74,
+      "id": 75,
       "name": "IkTarget2D",
       "schema": "og.IkTarget2D",
       "module": "anim",
@@ -6184,7 +6259,7 @@
       ]
     },
     {
-      "id": 75,
+      "id": 76,
       "name": "Tilemap",
       "schema": "og.Tilemap",
       "module": "tilemap",
@@ -6246,7 +6321,7 @@
       ]
     },
     {
-      "id": 76,
+      "id": 77,
       "name": "AudioSource",
       "schema": "og.AudioSource",
       "module": "audio",
@@ -6402,7 +6477,7 @@
       ]
     },
     {
-      "id": 77,
+      "id": 78,
       "name": "AudioListener",
       "schema": "og.AudioListener",
       "module": "audio",
@@ -6427,7 +6502,7 @@
       ]
     },
     {
-      "id": 78,
+      "id": 79,
       "name": "AudioBusFx",
       "schema": "og.AudioBusFx",
       "module": "audio",
@@ -6599,7 +6674,7 @@
       ]
     },
     {
-      "id": 79,
+      "id": 80,
       "name": "AudioBusNode",
       "schema": "og.AudioBusNode",
       "module": "audio",
@@ -6623,7 +6698,7 @@
       ]
     },
     {
-      "id": 80,
+      "id": 81,
       "name": "AudioSnapshot",
       "schema": "og.AudioSnapshot",
       "module": "audio",
@@ -6666,7 +6741,7 @@
       ]
     },
     {
-      "id": 81,
+      "id": 82,
       "name": "AudioEvent",
       "schema": "og.AudioEvent",
       "module": "audio",
@@ -6798,7 +6873,7 @@
       ]
     },
     {
-      "id": 82,
+      "id": 83,
       "name": "ReverbZone",
       "schema": "og.ReverbZone",
       "module": "audio",
@@ -6835,7 +6910,7 @@
       ]
     },
     {
-      "id": 83,
+      "id": 84,
       "name": "Music",
       "schema": "og.Music",
       "module": "audio",
@@ -6883,7 +6958,7 @@
       ]
     },
     {
-      "id": 84,
+      "id": 85,
       "name": "NavAgent",
       "schema": "og.NavAgent",
       "module": "nav",
@@ -7011,7 +7086,7 @@
       ]
     },
     {
-      "id": 85,
+      "id": 86,
       "name": "Steering",
       "schema": "og.Steering",
       "module": "nav",
@@ -7130,7 +7205,7 @@
       ]
     },
     {
-      "id": 86,
+      "id": 87,
       "name": "NavFilter",
       "schema": "og.NavFilter",
       "module": "nav",
@@ -7153,7 +7228,7 @@
       ]
     },
     {
-      "id": 87,
+      "id": 88,
       "name": "Crowd",
       "schema": "og.Crowd",
       "module": "nav",
@@ -7188,7 +7263,7 @@
       ]
     },
     {
-      "id": 88,
+      "id": 89,
       "name": "AiAgent",
       "schema": "og.AiAgent",
       "module": "ai",
@@ -7238,7 +7313,7 @@
       ]
     },
     {
-      "id": 89,
+      "id": 90,
       "name": "Perception",
       "schema": "og.Perception",
       "module": "ai",
@@ -7352,7 +7427,7 @@
       ]
     },
     {
-      "id": 90,
+      "id": 91,
       "name": "Perceivable",
       "schema": "og.Perceivable",
       "module": "ai",
@@ -7373,7 +7448,7 @@
       ]
     },
     {
-      "id": 91,
+      "id": 92,
       "name": "Terrain",
       "schema": "og.Terrain",
       "module": "terrain",
@@ -7427,7 +7502,7 @@
       ]
     },
     {
-      "id": 92,
+      "id": 93,
       "name": "TerrainStamp",
       "schema": "og.TerrainStamp",
       "module": "terrain",
@@ -7464,7 +7539,7 @@
       ]
     },
     {
-      "id": 93,
+      "id": 94,
       "name": "TerrainScatter",
       "schema": "og.TerrainScatter",
       "module": "terrain",
@@ -7602,7 +7677,7 @@
       ]
     },
     {
-      "id": 94,
+      "id": 95,
       "name": "Grass",
       "schema": "og.Grass",
       "module": "terrain",
@@ -7800,7 +7875,7 @@
       ]
     },
     {
-      "id": 95,
+      "id": 96,
       "name": "GrassType",
       "schema": "og.GrassType",
       "module": "terrain",
@@ -7853,7 +7928,7 @@
       ]
     },
     {
-      "id": 96,
+      "id": 97,
       "name": "GrassPusher",
       "schema": "og.GrassPusher",
       "module": "terrain",
@@ -7882,7 +7957,7 @@
       ]
     },
     {
-      "id": 97,
+      "id": 98,
       "name": "ScatterClearing",
       "schema": "og.ScatterClearing",
       "module": "terrain",
@@ -7902,7 +7977,7 @@
       ]
     },
     {
-      "id": 98,
+      "id": 99,
       "name": "StreamCell",
       "schema": "og.StreamCell",
       "module": "stream",
@@ -7946,7 +8021,7 @@
       ]
     },
     {
-      "id": 99,
+      "id": 100,
       "name": "StreamAnchor",
       "schema": "og.StreamAnchor",
       "module": "stream",
@@ -7964,7 +8039,7 @@
       ]
     },
     {
-      "id": 100,
+      "id": 101,
       "name": "CellMember",
       "schema": "og.CellMember",
       "module": "stream",
@@ -7978,7 +8053,7 @@
       ]
     },
     {
-      "id": 101,
+      "id": 102,
       "name": "VideoPlayer",
       "schema": "og.VideoPlayer",
       "module": "video",
@@ -8038,7 +8113,7 @@
       ]
     },
     {
-      "id": 102,
+      "id": 103,
       "name": "PathFollower",
       "schema": "og.PathFollower",
       "module": "path",
@@ -8092,7 +8167,7 @@
       ]
     },
     {
-      "id": 103,
+      "id": 104,
       "name": "Timeline",
       "schema": "og.Timeline",
       "module": "timeline",
@@ -8131,7 +8206,7 @@
       ]
     },
     {
-      "id": 104,
+      "id": 105,
       "name": "PlayerInput",
       "schema": "og.PlayerInput",
       "module": "net",
@@ -8175,7 +8250,7 @@
       ]
     },
     {
-      "id": 105,
+      "id": 106,
       "name": "SharedAvatar",
       "schema": "og.SharedAvatar",
       "module": "shared",
@@ -8188,7 +8263,7 @@
       ]
     },
     {
-      "id": 106,
+      "id": 107,
       "name": "RemoteAvatar",
       "schema": "og.RemoteAvatar",
       "module": "shared",
@@ -8220,7 +8295,7 @@
       ]
     },
     {
-      "id": 107,
+      "id": 108,
       "name": "SharedObject",
       "schema": "og.SharedObject",
       "module": "shared",
@@ -8234,7 +8309,7 @@
       ]
     },
     {
-      "id": 108,
+      "id": 109,
       "name": "MotionAgent",
       "schema": "og.MotionAgent",
       "module": "motion",
@@ -8267,7 +8342,7 @@
       ]
     },
     {
-      "id": 109,
+      "id": 110,
       "name": "Destructible",
       "schema": "og.Destructible",
       "module": "destruction",
@@ -8369,7 +8444,7 @@
       ]
     },
     {
-      "id": 110,
+      "id": 111,
       "name": "Chunk",
       "schema": "og.Chunk",
       "module": "destruction",
@@ -8411,7 +8486,7 @@
       ]
     },
     {
-      "id": 111,
+      "id": 112,
       "name": "PixelTerrain",
       "schema": "og.PixelTerrain",
       "module": "destruction",
@@ -8527,7 +8602,7 @@
       ]
     },
     {
-      "id": 112,
+      "id": 113,
       "name": "PixelPiece",
       "schema": "og.PixelPiece",
       "module": "destruction",
@@ -8569,7 +8644,7 @@
       ]
     },
     {
-      "id": 113,
+      "id": 114,
       "name": "Vfx",
       "schema": "og.Vfx",
       "module": "vfx",
@@ -8633,7 +8708,7 @@
       ]
     },
     {
-      "id": 114,
+      "id": 115,
       "name": "SightMap",
       "schema": "og.SightMap",
       "module": "sight",
@@ -8679,7 +8754,7 @@
       ]
     },
     {
-      "id": 115,
+      "id": 116,
       "name": "Sight",
       "schema": "og.Sight",
       "module": "sight",
@@ -8701,7 +8776,7 @@
       ]
     },
     {
-      "id": 116,
+      "id": 117,
       "name": "SightBlocker",
       "schema": "og.SightBlocker",
       "module": "sight",
@@ -8717,7 +8792,7 @@
       ]
     },
     {
-      "id": 117,
+      "id": 118,
       "name": "Flow",
       "schema": "og.Flow",
       "module": "flow",
@@ -8814,7 +8889,7 @@
       ]
     },
     {
-      "id": 118,
+      "id": 119,
       "name": "FlowDeck",
       "schema": "og.FlowDeck",
       "module": "flow",
@@ -8838,7 +8913,7 @@
       ]
     },
     {
-      "id": 119,
+      "id": 120,
       "name": "HitVolume",
       "schema": "og.HitVolume",
       "module": "play",
@@ -8944,7 +9019,7 @@
       ]
     },
     {
-      "id": 120,
+      "id": 121,
       "name": "HurtVolume",
       "schema": "og.HurtVolume",
       "module": "play",
@@ -9008,7 +9083,7 @@
       ]
     },
     {
-      "id": 121,
+      "id": 122,
       "name": "Attack",
       "schema": "og.Attack",
       "module": "combat",
@@ -9068,7 +9143,7 @@
       ]
     },
     {
-      "id": 122,
+      "id": 123,
       "name": "AttackMove",
       "schema": "og.AttackMove",
       "module": "combat",
@@ -9121,7 +9196,7 @@
       ]
     },
     {
-      "id": 123,
+      "id": 124,
       "name": "AttackLink",
       "schema": "og.AttackLink",
       "module": "combat",
@@ -9150,7 +9225,7 @@
       ]
     },
     {
-      "id": 124,
+      "id": 125,
       "name": "Health",
       "schema": "og.Health",
       "module": "combat",
@@ -9169,7 +9244,7 @@
       ]
     },
     {
-      "id": 125,
+      "id": 126,
       "name": "Hurt",
       "schema": "og.Hurt",
       "module": "combat",
@@ -9205,7 +9280,7 @@
       ]
     },
     {
-      "id": 126,
+      "id": 127,
       "name": "Interactable",
       "schema": "og.Interactable",
       "module": "interact",
@@ -9229,7 +9304,7 @@
       ]
     },
     {
-      "id": 127,
+      "id": 128,
       "name": "Interactor",
       "schema": "og.Interactor",
       "module": "interact",
@@ -9297,7 +9372,7 @@
       ]
     },
     {
-      "id": 128,
+      "id": 129,
       "name": "Door",
       "schema": "og.Door",
       "module": "interact",
@@ -9337,7 +9412,7 @@
       ]
     },
     {
-      "id": 129,
+      "id": 130,
       "name": "Toggle",
       "schema": "og.Toggle",
       "module": "interact",
@@ -9355,7 +9430,7 @@
       ]
     },
     {
-      "id": 130,
+      "id": 131,
       "name": "Grab",
       "schema": "og.Grab",
       "module": "interact",
@@ -9384,7 +9459,7 @@
       ]
     },
     {
-      "id": 131,
+      "id": 132,
       "name": "Container",
       "schema": "og.Container",
       "module": "inventory",
@@ -9404,7 +9479,7 @@
       ]
     },
     {
-      "id": 132,
+      "id": 133,
       "name": "ItemStack",
       "schema": "og.ItemStack",
       "module": "inventory",
@@ -9434,7 +9509,7 @@
       ]
     },
     {
-      "id": 133,
+      "id": 134,
       "name": "Pickup",
       "schema": "og.Pickup",
       "module": "inventory",
@@ -9447,7 +9522,7 @@
       ]
     },
     {
-      "id": 134,
+      "id": 135,
       "name": "Collector",
       "schema": "og.Collector",
       "module": "inventory",
@@ -9460,7 +9535,7 @@
       ]
     },
     {
-      "id": 135,
+      "id": 136,
       "name": "Ability",
       "schema": "og.Ability",
       "module": "abilities",
@@ -9525,7 +9600,7 @@
       ]
     },
     {
-      "id": 136,
+      "id": 137,
       "name": "Stat",
       "schema": "og.Stat",
       "module": "abilities",
@@ -9544,7 +9619,7 @@
       ]
     },
     {
-      "id": 137,
+      "id": 138,
       "name": "Modifier",
       "schema": "og.Modifier",
       "module": "abilities",
@@ -9567,7 +9642,7 @@
       ]
     },
     {
-      "id": 138,
+      "id": 139,
       "name": "Status",
       "schema": "og.Status",
       "module": "abilities",

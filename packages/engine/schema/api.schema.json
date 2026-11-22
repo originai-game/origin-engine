@@ -8642,6 +8642,7 @@
         "LookAt",
         "JointLimit",
         "FootLock",
+        "Hang",
         "SpringSpace",
         "SpringSpace",
         "SpringBone",
@@ -38350,6 +38351,100 @@
         "locked": {
           "type": "boolean",
           "description": "Written: the foot is held at its lock this tick.",
+          "default": false,
+          "readOnly": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "Hang": {
+      "x-og-kind": "component",
+      "x-og-module": "anim",
+      "description": "A hang on a rope: og.anim places the skeleton entity's og.Transform so the `grip` joint, as this tick's clips pose it, sits at `point`, its +Y running from the grip towards `anchor` by `lay` and its front (+Z) towards `facing`; then each of `limbs` (og.IkChain entities) gets its target on the rope, `reach` metres from the grip. After root motion, before og.FootLock and og.IkChain. One entity per hang; the game copies the rope's points in each tick.\nSee `animation §8`.",
+      "type": "object",
+      "properties": {
+        "skeleton": {
+          "$ref": "#/$defs/Entity",
+          "description": "The entity with the og.Skeleton that hangs; it needs an og.Transform.",
+          "default": 0
+        },
+        "grip": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The gripping joint (an index into the skin's joints): the hand on the rope.",
+          "default": 0,
+          "minimum": 0
+        },
+        "point": {
+          "$ref": "#/$defs/Vector3",
+          "description": "Where the grip is held, in the frame the skeleton entity's og.Transform is written in (world without a parent): the rope's end (og.physics.ropePoints' last).",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "x-og-unit": "m",
+          "x-og-worldspace": "hook"
+        },
+        "anchor": {
+          "$ref": "#/$defs/Vector3",
+          "description": "Where the rope is tied, in the same frame: the body lies along the line from here through `point`.",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "x-og-unit": "m",
+          "x-og-worldspace": "hook"
+        },
+        "facing": {
+          "$ref": "#/$defs/Vector3",
+          "description": "The way the body's front (+Z) turns, in the same frame (0 -1 0: chest to the ground); the zero vector keeps the entity's.",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          }
+        },
+        "lay": {
+          "type": "number",
+          "description": "How far the body lies along the rope: 0 upright (its +Y up), 1 its +Y along the rope; ease it in and out as the swing starts and ends.",
+          "default": 1,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-tunable": true
+        },
+        "weight": {
+          "type": "number",
+          "description": "How much of the hang is applied (0 = the entity's own Transform, 1 = hung).",
+          "default": 1,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-tunable": true
+        },
+        "limbs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Entity"
+          },
+          "maxItems": 4,
+          "description": "og.IkChain entities on the same skeleton whose targets the hang sets each tick on the rope, in world space: the free hand, the feet.",
+          "default": []
+        },
+        "reach": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "maxItems": 4,
+          "description": "Per limb, its target's distance along the rope from the grip, towards the anchor above 0 (the other hand higher up), below it under 0; past the list's length 0.",
+          "default": [],
+          "x-og-unit": "m"
+        },
+        "held": {
+          "type": "boolean",
+          "description": "Written: the hang placed the skeleton this tick.",
           "default": false,
           "readOnly": true
         }

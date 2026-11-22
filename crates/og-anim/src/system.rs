@@ -6,7 +6,7 @@ mod constraints;
 mod playback;
 mod state;
 
-use constraints::{Limits, aim, foot_lock, joint, solve, spring};
+use constraints::{Limits, aim, foot_lock, hold, joint, solve, spring};
 use playback::{eval_graph, eval_player};
 use state::AnimState;
 
@@ -525,6 +525,7 @@ pub fn install_with(world: &mut World, step: Option<StepDefault>) -> Result<Anim
     world.register::<LookAt>()?;
     world.register::<JointLimit>()?;
     world.register::<FootLock>()?;
+    world.register::<Hang>()?;
     world.register::<SpringBone>()?;
     world.register::<SpringCollider>()?;
     world.register::<AnimationEvent>()?;
@@ -538,6 +539,7 @@ pub fn install_with(world: &mut World, step: Option<StepDefault>) -> Result<Anim
         .write::<LookAt>()
         .read::<JointLimit>()
         .write::<FootLock>()
+        .write::<Hang>()
         .write::<SpringBone>()
         .read::<SpringCollider>()
         .write::<Transform>()
@@ -556,7 +558,8 @@ pub fn install_with(world: &mut World, step: Option<StepDefault>) -> Result<Anim
         .query(QueryDesc::new().read::<JointLimit>())
         .query(QueryDesc::new().read::<FootLock>())
         .query(QueryDesc::new().read::<SpringBone>())
-        .query(QueryDesc::new().read::<SpringCollider>());
+        .query(QueryDesc::new().read::<SpringCollider>())
+        .query(QueryDesc::new().read::<Hang>());
     let mut desc = desc;
     let step = match step {
         Some(st) => {
@@ -1023,6 +1026,7 @@ fn run(
     let foot_locks = entities(ctx, 8)?;
     let spring_bones = entities(ctx, 9)?;
     let spring_colliders = entities(ctx, 10)?;
+    let hangs = entities(ctx, 11)?;
 
     let mut sh = lock(shared);
     // Read every skeleton entity in entity order, up to the first one that
@@ -1090,6 +1094,23 @@ fn run(
         }
     }
 
+    // Hangs, after root motion and before foot locks and IK chains, in
+    // query order: each places its skeleton's Transform on the rope and
+    // gives its limbs' chains their targets there.
+    let mut hung: Vec<(Entity, Hang)> = Vec::with_capacity(hangs.len());
+    let mut reaches: BTreeMap<u64, Vec3> = BTreeMap::new();
+    for &h in &hangs {
+        let mut hang: Hang = ctx.get(h)?;
+        hang.held = false;
+        if let Some(w) = work
+            .iter_mut()
+            .find(|w| w.entity.to_bits() == hang.skeleton)
+        {
+            hold(w, &mut hang, &mut reaches)?;
+        }
+        hung.push((h, hang));
+    }
+
     // Foot locks, after root motion moved the Transforms and before the IK
     // chains, in query order. Only locks holding or releasing a foot are
     // kept.
@@ -1123,6 +1144,10 @@ fn run(
     let mut solved: Vec<(Entity, IkChain)> = Vec::with_capacity(chains.len());
     for &c in &chains {
         let mut chain: IkChain = ctx.get(c)?;
+        if let Some(&target) = reaches.get(&c.to_bits()) {
+            chain.target = target;
+            chain.space = IK_WORLD;
+        }
         chain.reached = false;
         chain.error = 0.0;
         if let Some(w) = work
@@ -1226,6 +1251,9 @@ fn run(
     }
     for (f, fl) in held {
         ctx.set(f, fl)?;
+    }
+    for (h, hang) in hung {
+        ctx.set(h, hang)?;
     }
     for (s, sb) in swung {
         ctx.set(s, sb)?;

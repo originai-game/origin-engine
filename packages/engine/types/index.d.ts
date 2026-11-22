@@ -19655,6 +19655,76 @@ export interface FootLock {
 }
 
 /**
+ * A hang on a rope: og.anim places the skeleton entity's og.Transform so the `grip` joint, as this tick's clips pose it, sits at `point`, its +Y running from the grip towards `anchor` by `lay` and its front (+Z) towards `facing`; then each of `limbs` (og.IkChain entities) gets its target on the rope, `reach` metres from the grip. After root motion, before og.FootLock and og.IkChain. One entity per hang; the game copies the rope's points in each tick.
+ * See `animation §8`.
+ *
+ * The value of the `Hang` component (token `og.Hang`).
+ */
+export interface Hang {
+  /** The entity with the og.Skeleton that hangs; it needs an og.Transform. */
+  skeleton: Entity;
+  /**
+   * The gripping joint (an index into the skin's joints): the hand on the rope.
+   *
+   * @range 0..
+   */
+  grip: number;
+  /**
+   * Where the grip is held, in the frame the skeleton entity's og.Transform is written in (world without a parent): the rope's end (og.physics.ropePoints' last).
+   *
+   * @unit m (metres)
+   * @worldspace hook (how og.WorldOrigin's shift moves it)
+   */
+  point: Vector3;
+  /**
+   * Where the rope is tied, in the same frame: the body lies along the line from here through `point`.
+   *
+   * @unit m (metres)
+   * @worldspace hook (how og.WorldOrigin's shift moves it)
+   */
+  anchor: Vector3;
+  /**
+   * The way the body's front (+Z) turns, in the same frame (0 -1 0: chest to the ground); the zero vector keeps the entity's.
+   */
+  facing: Vector3;
+  /**
+   * How far the body lies along the rope: 0 upright (its +Y up), 1 its +Y along the rope; ease it in and out as the swing starts and ends.
+   *
+   * @default 1
+   * @range 0..1
+   * @tunable
+   */
+  lay: number;
+  /**
+   * How much of the hang is applied (0 = the entity's own Transform, 1 = hung).
+   *
+   * @default 1
+   * @range 0..1
+   * @tunable
+   */
+  weight: number;
+  /**
+   * og.IkChain entities on the same skeleton whose targets the hang sets each tick on the rope, in world space: the free hand, the feet.
+   *
+   * @capacity 4 elements (List.Entity.4): reading answers a frozen copy (push throws); write a whole array, refused over the capacity, never truncated
+   */
+  limbs: readonly Entity[];
+  /**
+   * Per limb, its target's distance along the rope from the grip, towards the anchor above 0 (the other hand higher up), below it under 0; past the list's length 0.
+   *
+   * @capacity 4 elements (List.f32.4): reading answers a frozen copy (push throws); write a whole array, refused over the capacity, never truncated
+   * @unit m (metres)
+   */
+  reach: readonly number[];
+  /**
+   * Written: the hang placed the skeleton this tick.
+   *
+   * @readonly written by the engine
+   */
+  readonly held: boolean;
+}
+
+/**
  * Where a spring bone's tails move.
  * - `"world"`: The frame the skeleton entity's og.Transform is written in: the chain lags behind the entity's motion (walking, root motion, a jump).
  * - `"model"`: The skeleton's model space: only the animation moves the chain (a teleport or a vehicle carrying the entity does not).
@@ -36810,6 +36880,11 @@ export declare namespace og {
    * See `animation §8`.
    */
   const FootLock: ComponentType<{ readonly skeleton: FieldSpec<"Entity">; readonly foot: FieldSpec<"u32">; readonly weight: FieldSpec<"f32">; readonly release: FieldSpec<"f32">; readonly maxDistance: FieldSpec<"f32">; readonly planted: FieldSpec<"bool">; readonly locked: FieldSpec<"bool"> }, FootLock>;
+  /**
+   * A hang on a rope: og.anim places the skeleton entity's og.Transform so the `grip` joint, as this tick's clips pose it, sits at `point`, its +Y running from the grip towards `anchor` by `lay` and its front (+Z) towards `facing`; then each of `limbs` (og.IkChain entities) gets its target on the rope, `reach` metres from the grip. After root motion, before og.FootLock and og.IkChain. One entity per hang; the game copies the rope's points in each tick.
+   * See `animation §8`.
+   */
+  const Hang: ComponentType<{ readonly skeleton: FieldSpec<"Entity">; readonly grip: FieldSpec<"u32">; readonly point: FieldSpec<"Vector3">; readonly anchor: FieldSpec<"Vector3">; readonly facing: FieldSpec<"Vector3">; readonly lay: FieldSpec<"f32">; readonly weight: FieldSpec<"f32">; readonly limbs: ListSpec<"Entity">; readonly reach: ListSpec<"f32">; readonly held: FieldSpec<"bool"> }, Hang>;
   /**
    * A spring (jiggle) bone chain, three-vrm's VRMSpringBone: `joint` and its `bones` - 1 parents swing after their parents' motion. Each joint's tail (the next joint; for the last, its first child or its bone continued at the same length) is pulled towards its animated place by a damped spring (`frequency`, `damping`) under `gravity`, held at the bone's length, and the joint turns to it. Applied after og.IkChain and og.LookAt, top joint first. Tail positions and velocities are world state (the `og.anim` state block); a changed chain (skeleton, length or space) restarts at the animated pose.
    * See `animation §8`.

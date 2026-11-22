@@ -33081,6 +33081,59 @@ pub mod record {
         }
     }
 
+    /// `Hang`: packages/knowledge/wiki/anim.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct Hang {
+        pub skeleton: u64,
+        pub grip: u32,
+        pub point: Vec3,
+        pub anchor: Vec3,
+        pub facing: Vec3,
+        pub lay: f32,
+        pub weight: f32,
+        pub limbs: Vec<u64>,
+        pub reach: Vec<f32>,
+        pub held: bool,
+    }
+
+    impl Default for Hang {
+        fn default() -> Self {
+            Self {
+                skeleton: Default::default(),
+                grip: Default::default(),
+                point: Default::default(),
+                anchor: Default::default(),
+                facing: Default::default(),
+                lay: 1.0_f32,
+                weight: 1.0_f32,
+                limbs: Default::default(),
+                reach: Default::default(),
+                held: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for Hang {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                skeleton: field(o, "skeleton", d.skeleton)?,
+                grip: field(o, "grip", d.grip)?,
+                point: field(o, "point", d.point)?,
+                anchor: field(o, "anchor", d.anchor)?,
+                facing: field(o, "facing", d.facing)?,
+                lay: field(o, "lay", d.lay)?,
+                weight: field(o, "weight", d.weight)?,
+                limbs: field(o, "limbs", d.limbs)?,
+                reach: field(o, "reach", d.reach)?,
+                held: field(o, "held", d.held)?,
+            })
+        }
+    }
+
     /// `SpringBone`: packages/knowledge/wiki/anim.md.
     #[derive(Clone, Debug, PartialEq)]
     pub struct SpringBone {
