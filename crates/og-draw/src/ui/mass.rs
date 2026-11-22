@@ -1,6 +1,7 @@
-//! Mass elements' draw commands.
+//! Mass elements' draw commands. Text and numbers draw glyphs laid out
+//! once ([`crate::sprites::TextGlyph`]) from the glyph atlas's pages.
 
-use crate::{FontHandle, TextureHandle};
+use crate::{TextGlyph, TextureHandle};
 use glam::Vec2;
 use og_core::ease::Ease;
 use std::sync::Arc;
@@ -8,17 +9,23 @@ use std::sync::Arc;
 /// What each element of a template draws.
 #[derive(Clone, Debug, PartialEq)]
 pub enum UiMassKind {
-    /// The instance's value, formatted on the GPU in the template's font:
+    /// The instance's value, formatted on the GPU in the template's
+    /// `glyphs` (one per shader symbol code, [`NUMBER_SYMBOLS`]'s order):
     /// `decimals` digits after the point, a `+` on positive values with
     /// `plus`, and with `compact` 12.3k past 10,000 and 1.2M past a million.
     Number {
         decimals: u32,
         plus: bool,
         compact: bool,
+        /// The symbols' glyphs, laid out alone in the template's em size
+        /// and rastered into the glyph atlas: the symbol's quad from its
+        /// own origin (the shader places it by its advance) and the pen's
+        /// move past it. A blank glyph draws nothing but keeps its width.
+        glyphs: Vec<UiMassGlyph>,
     },
-    /// One of `strings` in the template's font (the value is its index):
+    /// One of `strings` in the template's glyphs (the value is its index):
     /// nameplates and loot labels, each string laid out once.
-    Text { strings: Vec<String> },
+    Text { strings: Vec<UiMassString> },
     /// A bar `size` wide: a back, a ghost to `aux[2]` (a fraction: the
     /// health just lost, draining) and a fill to the value (0 to 1) in the
     /// instance's colour, with rounded ends.
@@ -44,6 +51,30 @@ pub enum UiParticleShape {
     Square,
     Circle,
     Diamond,
+}
+
+/// The symbols a [`UiMassKind::Number`]'s glyphs cover, in the shader's
+/// symbol code order: the symbol's index is its code.
+pub const NUMBER_SYMBOLS: [char; 15] =
+    ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '+', '-', '.', 'k', 'M'];
+
+/// One glyph of a mass template's text: laid out into
+/// [`crate::sprites::TextGlyph`] and rastered into the glyph atlas (a
+/// blank one drew no room: it draws nothing but keeps its `advance`).
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct UiMassGlyph {
+    pub glyph: TextGlyph,
+    /// The pen's move past the glyph, in em.
+    pub advance: f32,
+}
+
+/// A [`UiMassKind::Text`]'s string: its glyphs in order (each's pen is in
+/// its quad) and the pen's total width in em, the template's pivot
+/// dividing it.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct UiMassString {
+    pub glyphs: Vec<UiMassGlyph>,
+    pub width: f32,
 }
 
 /// A key of the element's timeline at `t` (a fraction of its life): its
@@ -119,8 +150,7 @@ pub struct UiMassBarStyle {
 #[derive(Clone, Debug, PartialEq)]
 pub struct UiMassTemplate {
     pub kind: UiMassKind,
-    /// Text: its font (one page). Icon: `texture`.
-    pub font: Option<FontHandle>,
+    /// Icons: `texture`.
     pub texture: Option<TextureHandle>,
     /// Text and numbers: the em size; bars and icons: width and height
     /// (CSS px; `size.y` is ignored by text).
@@ -159,8 +189,8 @@ impl Default for UiMassTemplate {
                 decimals: 0,
                 plus: false,
                 compact: false,
+                glyphs: Vec::new(),
             },
-            font: None,
             texture: None,
             size: Vec2::new(18.0, 18.0),
             pivot: Vec2::new(0.5, 0.5),
@@ -207,7 +237,7 @@ impl UiMassTemplate {
             UiMassKind::Number { .. } => 16,
             UiMassKind::Text { strings } => strings
                 .iter()
-                .map(|s| s.chars().count() as u32)
+                .map(|s| s.glyphs.len() as u32)
                 .max()
                 .unwrap_or(1)
                 .clamp(1, UI_MASS_QUADS),

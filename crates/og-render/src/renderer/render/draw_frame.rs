@@ -358,7 +358,6 @@ impl Renderer {
             self.samples,
             scene.shaders(),
         );
-        let fonts = &self.cache.fonts;
         let arrays = &self.cache.texture_arrays;
         let array_layers = |a: TextureArrayHandle| {
             scene
@@ -396,7 +395,6 @@ impl Renderer {
             (Some(_), Some(frame)) => Some(frame),
             (Some(o), None) => Some(overlay::build(
                 o,
-                |i| fonts.get(i).map(|f| &f.layout),
                 self.cache.textures.len(),
                 array_layers,
                 |v| scene.ui.ui_vectors.get(v.index()),

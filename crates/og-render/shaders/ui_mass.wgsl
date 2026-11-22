@@ -2,7 +2,8 @@
 // element, `quads` quads each. The vertex stage projects the element's
 // point, evaluates its template's timeline at its age, formats its number
 // or picks its string, and places the quad; the fragment stage draws a
-// glyph from the font's distance field (with an outline), an icon or a bar.
+// glyph from the glyph atlas's distance field (with an outline), a colour
+// glyph in its own colours, an icon or a bar.
 // After ui_common.wgsl (the frame uniform, clips, occluders, scene depth).
 
 struct SpriteParams {
@@ -57,9 +58,9 @@ struct MassTemplate {
   bar: vec4<f32>,
 };
 // The table texture: each batch's template (32 texels, integers as exact
-// floats), then the glyphs (uv, plane, advance), strings' runs (start,
-// count, width) and icon frames (uv) at each template's base past them.
-// Texel i is at (i % 256, i / 256).
+// floats), then the glyphs (uv, quad, advance with a colour glyph's flag),
+// strings' runs (start, count, width) and icon frames (uv) at each
+// template's base past them. Texel i is at (i % 256, i / 256).
 @group(2) @binding(1) var table_tex: texture_2d<f32>;
 
 fn texel(i: u32) -> vec4<f32> {
@@ -138,6 +139,8 @@ struct MassOut {
   @location(4) @interpolate(flat, either) batch: u32,
   // Quad, segment count and drawn scale (bars only).
   @location(5) @interpolate(flat, either) bar: vec3<f32>,
+  // A text glyph's raster: 0 a distance field, 1 a colour glyph.
+  @location(6) @interpolate(flat, either) ink: u32,
 };
 
 fn ease_lut(base: u32, k: f32) -> f32 {
@@ -280,6 +283,7 @@ fn hidden() -> MassOut {
   o.half = vec2<f32>(1.0);
   o.batch = 0u;
   o.bar = vec3<f32>(0.0);
+  o.ink = 0u;
   return o;
 }
 
@@ -356,6 +360,7 @@ fn vs_mass(@builtin(vertex_index) vi: u32, m: MassInstance) -> MassOut {
   o.color = vec4<f32>(m.color.rgb, alpha);
   o.local = vec2<f32>(0.0);
   o.half = vec2<f32>(1.0);
+  o.ink = 0u;
   var rect = vec4<f32>(0.0); // x0 y0 x1 y1, CSS px
   var uv = vec4<f32>(0.0, 0.0, 1.0, 1.0);
   let base = tp.head.z;
@@ -394,6 +399,7 @@ fn vs_mass(@builtin(vertex_index) vi: u32, m: MassInstance) -> MassOut {
       return hidden();
     }
     uv = table(entry);
+    o.ink = u32(table(entry + 2u).y + 0.5);
     let left = at.x - tp.size.z * width * em;
     let top = at.y - tp.size.w * em;
     let baseline = top + 0.8 * em;
@@ -491,21 +497,27 @@ fn fs_mass(in: MassOut) -> @location(0) vec4<f32> {
   let screen_tex_size = vec2<f32>(1.0) / max(fwidthFine(in.uv), vec2<f32>(1e-6));
   let px_range = max(0.5 * dot(unit_range, screen_tex_size), 1.0);
   if (kind == KIND_NUMBER || kind == KIND_TEXT) {
-    let reach = 0.5 * px_range - 0.5;
-    let d = px_range * (median3(sample.r, sample.g, sample.b) - 0.5);
-    let true_d = px_range * (min(median3(sample.r, sample.g, sample.b), sample.a) - 0.5);
-    let fill = ink_cover(clamp(d + 0.5, 0.0, 1.0), rgb);
-    if ((tp.head.w & FLAG_OUTLINE) != 0u) {
-      let w = min(tp.misc.x * frame.output.z, reach);
-      let od = select(d, true_d, d < 0.0);
-      let band = clamp(od + w + 0.5, 0.0, 1.0);
-      let oa = band * tp.outline.a;
-      let fa = fill * a;
-      let out_a = fa + oa * a * (1.0 - fill);
-      rgb = mix(tp.outline.rgb, rgb, select(fill, fa / max(out_a, 1e-5), out_a > 0.0));
-      a = out_a;
+    if (in.ink != 0u) {
+      // A colour glyph keeps its colours, at the element's alpha.
+      rgb *= sample.rgb;
+      a *= sample.a;
     } else {
-      a *= fill;
+      let reach = 0.5 * px_range - 0.5;
+      let d = px_range * (median3(sample.r, sample.g, sample.b) - 0.5);
+      let true_d = px_range * (min(median3(sample.r, sample.g, sample.b), sample.a) - 0.5);
+      let fill = ink_cover(clamp(d + 0.5, 0.0, 1.0), rgb);
+      if ((tp.head.w & FLAG_OUTLINE) != 0u) {
+        let w = min(tp.misc.x * frame.output.z, reach);
+        let od = select(d, true_d, d < 0.0);
+        let band = clamp(od + w + 0.5, 0.0, 1.0);
+        let oa = band * tp.outline.a;
+        let fa = fill * a;
+        let out_a = fa + oa * a * (1.0 - fill);
+        rgb = mix(tp.outline.rgb, rgb, select(fill, fa / max(out_a, 1e-5), out_a > 0.0));
+        a = out_a;
+      } else {
+        a *= fill;
+      }
     }
   } else if (kind == KIND_BAR) {
     // The whole bar's rounded rectangle.
