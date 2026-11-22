@@ -25,4 +25,4 @@ enum ImageKind {
 }
 ```
 
-<sub>Module `load` line 558</sub>
+<sub>Module `load` line 570</sub>

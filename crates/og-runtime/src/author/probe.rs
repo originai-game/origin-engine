@@ -116,7 +116,7 @@ impl Capture for RuntimeCapture {
         }
     }
 
-    fn entity_render(&self, _world: &World, entity: Entity) -> Option<Value> {
+    fn entity_render(&self, world: &World, entity: Entity) -> Option<Value> {
         let rs = self.render.try_borrow().ok()?;
         let mut out = serde_json::Map::new();
         if let Some(level) = rs.lod_drawn.get(&entity.to_bits()) {
@@ -133,6 +133,27 @@ impl Capture for RuntimeCapture {
         }
         if let Some(terrain) = crate::bind::terrain::dump_render(&rs, entity.to_bits()) {
             out.insert("terrain".into(), terrain);
+        }
+        // An og.Model's shape facts from the cook (og.load.gltfInfo's `shape`).
+        if let Some(layout) = rs.draw.model.clone()
+            && let Ok(id) = world.id_by_name(&layout.schema)
+            && let Ok(bytes) = world.get_bytes(entity, id)
+            && let Ok(model) = layout.read::<crate::host::wire::record::Model>(&bytes)
+            && let Ok(eng) = crate::engine::engine(self.engine)
+            && let Some(index) = crate::world::assets::index_of(model.asset as f64)
+            && let Some(crate::world::assets::Payload::Gltf { shape: Some(s), .. }) =
+                eng.assets.borrow().entries.get(index).map(|a| &a.payload)
+        {
+            out.insert(
+                "shape".into(),
+                json!({
+                    "forward": [s.forward_x, s.forward_y, s.forward_z],
+                    "up": [s.up_x, s.up_y, s.up_z],
+                    "centre": [s.centre_x, s.centre_y, s.centre_z],
+                    "length": s.length,
+                    "top": s.top(),
+                }),
+            );
         }
         (!out.is_empty()).then_some(Value::Object(out))
     }

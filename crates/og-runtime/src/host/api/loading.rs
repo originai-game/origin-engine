@@ -358,6 +358,7 @@ pub fn og_load_gltf_info(world: u32, asset: f64) -> Result<crate::host::wire::Gl
                 materials,
                 variants,
                 lights,
+                shape,
             } => {
                 let rs = eng.render.borrow();
                 let parts = rs
@@ -384,6 +385,13 @@ pub fn og_load_gltf_info(world: u32, asset: f64) -> Result<crate::host::wire::Gl
                 Ok(wire::GltfInfo {
                     variants: variants.clone(),
                     lights: lights.len() as u32,
+                    shape: shape.map(|s| wire::ModelShape {
+                        forward: glam::Vec3::new(s.forward_x, s.forward_y, s.forward_z),
+                        up: glam::Vec3::new(s.up_x, s.up_y, s.up_z),
+                        centre: glam::Vec3::new(s.centre_x, s.centre_y, s.centre_z),
+                        length: s.length,
+                        top: s.top().to_vec(),
+                    }),
                     scenes: *scenes,
                     geometries: geometries.clone(),
                     parts,

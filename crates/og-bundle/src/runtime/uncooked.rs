@@ -837,6 +837,8 @@ impl UncookedGltf {
             variants: Vec::new(),
             variant_materials: Vec::new(),
             impostor: None,
+            // Uncooked models are not measured: og.load.gltfData reads no shape.
+            shape: None,
         };
         // The default scene's bounds, with the nodes' transforms.
         let world = model.node_world();

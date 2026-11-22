@@ -314,6 +314,9 @@ pub struct CookedModel {
     /// in place of the node's own transform, which glTF ignores for a
     /// skinned mesh.
     pub skin_binds: BTreeMap<usize, Mat4>,
+    /// Its shape facts in model space ([`crate::format::ShapeRow`]): none
+    /// for a model without triangles, or a blob of a cook before them.
+    pub shape: Option<ShapeRow>,
 }
 
 /// A model's octahedral impostor ([`crate::format::ImpostorRow`]): drawn
@@ -394,6 +397,11 @@ impl CookedModel {
             table::<ImpostorMaterialRow>(blob, "impostor_materials").unwrap_or_default();
         // Optional: only a model with a skinned mesh has them.
         let bind_rows = table::<NodeBindRow>(blob, "skin_binds").unwrap_or_default();
+        // Optional: only a model with triangles has it.
+        let shape = table::<ShapeRow>(blob, "shape")
+            .unwrap_or_default()
+            .first()
+            .copied();
         // Optional: only a model with foliage has them.
         let foliage_rows = table::<FoliageRow>(blob, "foliage_rows").unwrap_or_default();
         let foliage_bytes: &[u8] = if foliage_rows.is_empty() {
@@ -920,6 +928,7 @@ impl CookedModel {
             skipped_animations: meta.skipped_animations,
             skipped_skins: meta.skipped_skins,
             skin_binds,
+            shape,
         })
     }
 

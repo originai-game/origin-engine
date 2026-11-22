@@ -601,6 +601,7 @@ pub(crate) fn insert_model(
         materials,
         variants: model.variants.clone(),
         lights: model_lights(&model),
+        shape: model.shape,
     };
     let index = match into {
         Some(i) => {

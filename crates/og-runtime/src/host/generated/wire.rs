@@ -8292,6 +8292,56 @@ impl ToJson for GltfPart {
     }
 }
 
+/// `ModelShape`: packages/knowledge/wiki/load.md.
+#[derive(Clone, Debug, PartialEq)]
+pub struct ModelShape {
+    pub forward: Vec3,
+    pub up: Vec3,
+    pub centre: Vec3,
+    pub length: f32,
+    pub top: Vec<f32>,
+}
+
+impl Default for ModelShape {
+    fn default() -> Self {
+        Self {
+            forward: Default::default(),
+            up: Default::default(),
+            centre: Default::default(),
+            length: Default::default(),
+            top: Default::default(),
+        }
+    }
+}
+
+impl FromJson for ModelShape {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::from_json_over(v, Self::default())
+    }
+    fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+        let o = object(v)?;
+        Ok(Self {
+            forward: field(o, "forward", d.forward)?,
+            up: field(o, "up", d.up)?,
+            centre: field(o, "centre", d.centre)?,
+            length: field(o, "length", d.length)?,
+            top: field(o, "top", d.top)?,
+        })
+    }
+}
+
+impl ToJson for ModelShape {
+    fn to_json(&self) -> Value {
+        let mut o = Map::new();
+        o.insert("forward".into(), self.forward.to_json());
+        o.insert("up".into(), self.up.to_json());
+        o.insert("centre".into(), self.centre.to_json());
+        o.insert("length".into(), self.length.to_json());
+        o.insert("top".into(), self.top.to_json());
+        Value::Object(o)
+    }
+}
+
 /// `GltfInfo`: packages/knowledge/wiki/load.md.
 #[derive(Clone, Debug, PartialEq)]
 pub struct GltfInfo {
@@ -8301,6 +8351,7 @@ pub struct GltfInfo {
     pub materials: Vec<u64>,
     pub variants: Vec<String>,
     pub lights: u32,
+    pub shape: Option<ModelShape>,
     pub animations: Vec<String>,
 }
 
@@ -8313,6 +8364,7 @@ impl Default for GltfInfo {
             materials: Default::default(),
             variants: Default::default(),
             lights: Default::default(),
+            shape: Default::default(),
             animations: Default::default(),
         }
     }
@@ -8331,6 +8383,7 @@ impl FromJson for GltfInfo {
             materials: field(o, "materials", d.materials)?,
             variants: field(o, "variants", d.variants)?,
             lights: field(o, "lights", d.lights)?,
+            shape: field(o, "shape", d.shape)?,
             animations: field(o, "animations", d.animations)?,
         })
     }
@@ -8345,6 +8398,7 @@ impl ToJson for GltfInfo {
         o.insert("materials".into(), self.materials.to_json());
         o.insert("variants".into(), self.variants.to_json());
         o.insert("lights".into(), self.lights.to_json());
+        o.insert("shape".into(), self.shape.to_json());
         o.insert("animations".into(), self.animations.to_json());
         Value::Object(o)
     }

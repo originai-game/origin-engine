@@ -13326,6 +13326,32 @@ export interface GltfPart {
   readonly transform: Matrix4;
 }
 
+/**
+ * A cooked model's shape in its own space (og.Model's frame before its og.Transform): the axes a principal-axis fit of its triangles finds, its length and its top surface along that length. Place and turn things on a model from these, never from hand measurements (`physics §6.1`).
+ */
+export interface ModelShape {
+  /**
+   * Its long axis, a unit vector, signed towards +Z (else +X): a whale's or a ship's nose-to-tail line, either way round.
+   */
+  readonly forward: Vector3;
+  /** Of the other two axes the one nearest +Y, signed upward. */
+  readonly up: Vector3;
+  /**
+   * The middle of its length on the area-weighted centre line: where `top` heights are measured from.
+   */
+  readonly centre: Vector3;
+  /**
+   * Its extent along forward.
+   *
+   * @unit m (metres)
+   */
+  readonly length: number;
+  /**
+   * Its top surface's height above `centre` along up at 16 evenly spaced stations along forward, from the back (forward's least) to the front, each at the middle of its sixteenth: where a line down the centre line first meets the surface, else the highest point of that slice.
+   */
+  readonly top: readonly number[];
+}
+
 /** What a loaded glTF holds. */
 export interface GltfInfo {
   /** How many scenes it has. */
@@ -13347,6 +13373,10 @@ export interface GltfInfo {
    * See `loading §2`.
    */
   readonly lights: number;
+  /**
+   * Its shape facts from the cook; null for an uncooked load (og.load.gltfData) or a model without triangles.
+   */
+  readonly shape: ModelShape | null;
   /**
    * Its clip names, in glTF order, from the model's `#anim` blob (empty for a model without clips): a skinned glTF's animations, an animated `.vox`'s `frames` or `voxClip` names. og.load.animation answers the same clips with their ClipAsset handles and durations, and og.anim.clip finds one by name.
    */

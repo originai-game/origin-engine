@@ -638,6 +638,8 @@ pub fn cook(
         .unwrap_or(if scenes.is_empty() { NONE } else { 0 });
 
     let (lo, hi) = scene_bounds(src, &instanced);
+    // The shape facts a game stands things on (format's ShapeRow).
+    let shape = super::shape::shape(&super::shape::triangles(src, &instanced));
     let skipped_animations = doc.animations().count() as u32;
     let skipped_skins = doc.skins().count() as u32;
     if skipped_animations + skipped_skins > 0 {
@@ -786,6 +788,9 @@ pub fn cook(
     }
     if !skin_binds.is_empty() {
         w.table("skin_binds", &skin_binds, row_hash::<NodeBindRow>());
+    }
+    if let Some(shape) = &shape {
+        w.table("shape", std::slice::from_ref(shape), row_hash::<ShapeRow>());
     }
     if !foliage_rows.is_empty() {
         w.table("foliage_rows", &foliage_rows, row_hash::<FoliageRow>())

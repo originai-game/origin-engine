@@ -240,6 +240,95 @@ og.CharacterEvent is read the tick after: a jump pressed in tick T moves the
 character in T and its CHARACTER_JUMPED arrives in T + 1. Drive dust,
 squash, sounds and camera kicks from it.
 
+### 6.1 Standing on a moving or turned model
+
+A character that stands on a model's drawn surface (a whale's back, a
+ship's deck, a moving platform of any shape) is placed by physics, never by
+numbers measured off the model.
+
+- Read the model's shape from the cook: `og.load.gltfInfo(world, asset)`'s
+  `shape` gives its long axis (`forward`), its `up`, its `length`, its
+  centre and its `top` surface at 16 stations along its length, all in the
+  model's own space. The probe's `dump_entity` shows the same under
+  `render.shape`. Turn a place on the model into the world with the
+  entity's og.Transform. Nothing in the game depends on which way the
+  model was exported.
+- Collide with what is drawn: give the model an og.Collider of shape
+  `trimesh` with one of the glTF's geometries as its `mesh` (loaded
+  geometries are registered), or cook it with `model { collider true }`.
+  A moving model is a `kinematic` og.RigidBody moved by og.Velocity.
+- Each tick, cast down onto it with og.physics.castRay from above the
+  rider and stand the rider at the hit point. castRay is the gameplay
+  query: it is deterministic and sees the colliders as the tick started.
+  og.render.raycast is a render query: it answers what is drawn, at
+  transforms the game may not have simulated, and gameplay must not
+  branch on it.
+- Keep the rider's own place on the model in the model's frame (along
+  `forward`, across, from the shape's facts), so the model's turn and
+  travel carry it.
+
+A ridge turned a quarter about +Y, flying along +X; the rider keeps its
+place a metre ahead of the ridge's middle and stands on the surface by a
+cast each tick.
+
+```ts recipe ticks=120
+import { defineSystem, og } from "@origingame/engine";
+import type { Entity, Result, Vector3 } from "@origingame/engine";
+
+function must<T>(r: Result<T>): T {
+  if (!r.ok) throw new Error(r.reason);
+  return r.value;
+}
+
+// A ridge 8 m long down its local z: its top rises from 1 m at the ends to 2 m at the middle.
+function ridge(): { positions: Float32Array; indices: Uint32Array } {
+  const top = (z: number) => 2 - Math.abs(z) / 4;
+  const zs = [-4, 0, 4];
+  const p: number[] = [];
+  for (const z of zs) p.push(-1, 0, z, 1, 0, z, 1, top(z), z, -1, top(z), z);
+  const i: number[] = [];
+  for (let k = 0; k < 2; k++) {
+    for (let c = 0; c < 4; c++) {
+      const a = k * 4 + c, b = k * 4 + ((c + 1) % 4);
+      i.push(a, b, b + 4, a, b + 4, a + 4);
+    }
+  }
+  i.push(0, 1, 2, 0, 2, 3, 8, 9, 10, 8, 10, 11);
+  return { positions: new Float32Array(p), indices: new Uint32Array(i) };
+}
+
+/** The rider's place on the ridge: this far along its forward (+Z) from the middle. */
+const AHEAD = 1;
+
+const Ride = defineSystem("Ride", { reads: [], writes: [og.Transform] }, (_q, _time, world) => {
+  const whale = world.find("whale") as Entity;
+  const rider = world.find("rider") as Entity;
+  const t = must(world.get(whale, og.Transform));
+  const f = og.transform.forward(t.quaternion);
+  const at: Vector3 = { x: t.position.x + f.x * AHEAD, y: t.position.y, z: t.position.z + f.z * AHEAD };
+  const hit = must(og.physics.castRay(world, { origin: { x: at.x, y: at.y + 10, z: at.z }, direction: { x: 0, y: -1, z: 0 }, maxDistance: 20 }));
+  if (!hit) return;
+  must(world.set(rider, og.Transform, { ...must(world.get(rider, og.Transform)), position: hit.point }));
+  // The ridge stands 2 - 1/4 = 1.75 m a metre from its middle, wherever it has flown.
+  og.assert.always(Math.abs(hit.point.y - t.position.y - 1.75) < 0.01, "the rider stands on the drawn surface", { y: hit.point.y });
+  og.assert.sometimes(t.position.x > 3, "the ridge carried the rider along", {});
+});
+
+export default og.game({
+  systems: [Ride],
+  start(world) {
+    const mesh = must(og.render.bufferGeometry(world, { ...ridge(), physics: true }));
+    const whale = must(world.spawn({ name: "whale", position: { x: 0, y: 5, z: 0 } }));
+    const turned = og.transform.face({ x: 0, y: 0, z: 0 }, { x: 1, y: 0, z: 0 });
+    must(world.set(whale, og.Transform, { ...must(world.get(whale, og.Transform)), quaternion: turned }));
+    must(world.insert(whale, og.RigidBody, { kind: "kinematic" }));
+    must(world.insert(whale, og.Velocity, { linear: { x: 3, y: 0, z: 0 } }));
+    must(world.insert(whale, og.Collider, { shape: "trimesh", mesh }));
+    must(world.spawn({ name: "rider" }));
+  },
+});
+```
+
 <a id="guide-physics-7"></a>
 ### `physics §7` Vehicles
 

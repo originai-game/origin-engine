@@ -89,6 +89,8 @@ pub(crate) enum Payload {
         variants: Vec<String>,
         /// `KHR_lights_punctual`: what each instance spawns ([`spawn_lights`]).
         lights: Vec<ModelLight>,
+        /// The cook's shape facts (og.load.gltfInfo's `shape`).
+        shape: Option<og_bundle::format::ShapeRow>,
     },
     /// An uncooked load not yet in place (crate::world::uncooked).
     Uncooked,

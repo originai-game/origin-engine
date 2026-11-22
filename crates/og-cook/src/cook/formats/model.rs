@@ -18,6 +18,7 @@ mod impostor;
 mod lod_bake;
 pub mod plain;
 mod primitive;
+mod shape;
 pub(crate) mod skin_report;
 
 use super::conform;

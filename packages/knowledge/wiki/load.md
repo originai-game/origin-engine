@@ -12,7 +12,7 @@ See `loading §1`.
 
 - **TypeScript**: functions are the namespace `og.load`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
-- **Core** (what most games use): `og.load.gltf`, `og.load.font`, `og.load.emitter`, `og.load.texture`, `og.load.animation`, `og.load.rig`, `og.load.flipbook`, `og.load.tilemap`, `og.load.vfx`; 78 more are advanced (`og api show load --all`).
+- **Core** (what most games use): `og.load.gltf`, `og.load.font`, `og.load.emitter`, `og.load.texture`, `og.load.animation`, `og.load.rig`, `og.load.flipbook`, `og.load.tilemap`, `og.load.vfx`; 79 more are advanced (`og api show load --all`).
 - **Index**: [every module and guide](index.md).
 
 ```ogt
@@ -42,6 +42,7 @@ module load {
 | [`LoadStatus`](load/type-LoadStatus.md) | enum |  | Where a load is. |
 | [`GltfDesc`](load/type-GltfDesc.md) | desc struct |  | How to load a glTF, as three.js GLTFLoader options where they apply. |
 | [`GltfPart`](load/type-GltfPart.md) | struct |  | One placed primitive in the model's default scene. |
+| [`ModelShape`](load/type-ModelShape.md) | struct |  | A cooked model's shape in its own space (og.Model's frame before its og.Transform): the axes a principal-axis fit of its triangles finds, its length and its top surface along that length. |
 | [`GltfInfo`](load/type-GltfInfo.md) | struct |  | What a loaded glTF holds. |
 | [`BundleInfo`](load/type-BundleInfo.md) | struct |  | An open cooked bundle. |
 | [`FontInfo`](load/type-FontInfo.md) | struct |  | A loaded font's metrics, in em units unless stated. |

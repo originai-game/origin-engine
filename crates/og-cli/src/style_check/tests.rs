@@ -275,6 +275,7 @@ fn model(tris: usize, nodes: usize, tilted: usize) -> CookedModel {
         variant_materials: Vec::new(),
         impostor: None,
         skin_binds: Default::default(),
+        shape: None,
         primitives: vec![CookedPrimitive {
             material: 0,
             vertices,

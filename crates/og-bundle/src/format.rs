@@ -17,7 +17,7 @@
 //!
 //! | blob | root | sections |
 //! |---|---|---|
-//! | model (`og.Model`) | [`ModelMeta`] | `primitives` [`PrimitiveRow`], `lods` [`LodRow`], `clusters` [`ClusterRow`] (each level's meshlets), `meshes` [`MeshRow`], `materials` [`MaterialRow`], `textures` [`TextureRefRow`], `nodes` [`NodeRow`], `scenes` [`SceneRow`], `roots` (u32 node indices), `strings`, `vertices`, `indices`, `bvh_nodes` ([`BvhNodeRow`] rows, zlib) and `bvh_tris` (u32, zlib): each primitive's raycast BVH, og-render's `Bvh`, unless `raycast false`; `colliders` (optional, `collider true`: the primitive count, each one's u32 offset and length after the header, then og-physics' `bake_trimesh` bytes over LOD 0); `lights` [`LightRow`] (`KHR_lights_punctual`), `instances` [`InstanceRow`] (`EXT_mesh_gpu_instancing`), `variants` [`VariantRow`] and `variant_mappings` [`VariantMappingRow`] (`KHR_materials_variants`); `impostors` (optional, `impostor true`) [`ImpostorRow`] and `impostor_materials` (optional) [`ImpostorMaterialRow`]; `skin_binds` (optional) [`NodeBindRow`]; `foliage_rows` (optional) [`FoliageRow`] and `foliage` (their meshopt streams) |
+//! | model (`og.Model`) | [`ModelMeta`] | `primitives` [`PrimitiveRow`], `lods` [`LodRow`], `clusters` [`ClusterRow`] (each level's meshlets), `meshes` [`MeshRow`], `materials` [`MaterialRow`], `textures` [`TextureRefRow`], `nodes` [`NodeRow`], `scenes` [`SceneRow`], `roots` (u32 node indices), `strings`, `vertices`, `indices`, `bvh_nodes` ([`BvhNodeRow`] rows, zlib) and `bvh_tris` (u32, zlib): each primitive's raycast BVH, og-render's `Bvh`, unless `raycast false`; `colliders` (optional, `collider true`: the primitive count, each one's u32 offset and length after the header, then og-physics' `bake_trimesh` bytes over LOD 0); `lights` [`LightRow`] (`KHR_lights_punctual`), `instances` [`InstanceRow`] (`EXT_mesh_gpu_instancing`), `variants` [`VariantRow`] and `variant_mappings` [`VariantMappingRow`] (`KHR_materials_variants`); `impostors` (optional, `impostor true`) [`ImpostorRow`] and `impostor_materials` (optional) [`ImpostorMaterialRow`]; `skin_binds` (optional) [`NodeBindRow`]; `shape` (optional: a model with triangles) [`ShapeRow`]; `foliage_rows` (optional) [`FoliageRow`] and `foliage` (their meshopt streams) |
 //! | texture (`og.Texture`; a PNG, JPEG, KTX2, WebP, TGA, PSD or DDS source, a glTF's image, a texture array's layer) | [`TextureMeta`] | `ktx2` (a KTX2 file); `mips` (a streamed tail's whole chain), `orientation` (its source's EXIF orientation, a u32 2 to 8, the texels as stored; absent: upright) |
 //! | texture array (`og.TextureArray`, an `.ogt` of `type texture-array`) | [`TextureArrayMeta`] | `layers` [`ArrayLayerRow`] (each layer's `og.Texture` id, `<id>#layer<n>`), `strings` |
 //! | video (`og.Video`, an `.ogt` of `type video` cooked by ffmpeg) | [`VideoMeta`] | none: a clip's frames are the texture array `<id>#frames`, a stream's the `og.VideoStream` `<id>#stream` with its poster `<id>#poster`; its sound `<id>#audio` |
@@ -60,7 +60,7 @@ use og_core::{Reflect, Schema};
 
 /// Changes whenever the bytes the cook writes for the same input change.
 /// Part of every cook stamp, so a new cooker re-cooks everything.
-pub const COOKER_VERSION: &str = concat!("og-cook ", env!("CARGO_PKG_VERSION"), " r32");
+pub const COOKER_VERSION: &str = concat!("og-cook ", env!("CARGO_PKG_VERSION"), " r33");
 
 /// "None" in a u32 index field.
 pub const NONE: u32 = u32::MAX;
@@ -655,6 +655,40 @@ row!(
     }
 );
 
+/// Stations along a model's length in [`ShapeRow`]'s top profile.
+pub const SHAPE_STATIONS: usize = 16;
+
+row!(
+    /// A model's shape facts in model space (the `shape` table, one row; a
+    /// model with no triangles has none): its long axis (`forward`) and its
+    /// up axis from an area-weighted principal-axis fit of the default
+    /// scene's triangles, the length along forward, the centre line's
+    /// middle, and the top surface's height above the centre (along up) at
+    /// [`SHAPE_STATIONS`] evenly spaced stations from the back (forward's
+    /// least) to the front: where a line along -up through the centre line
+    /// first meets a triangle, else the slab's highest vertex.
+    ShapeRow, "og.ModelShape", 1 {
+        /// Signed towards +Z (else +X) of the model's own axes.
+        forward_x: f32, forward_y: f32, forward_z: f32,
+        /// Of the other two axes the one nearest +Y, signed upward.
+        up_x: f32, up_y: f32, up_z: f32,
+        centre_x: f32, centre_y: f32, centre_z: f32,
+        length: f32,
+        t0: f32, t1: f32, t2: f32, t3: f32, t4: f32, t5: f32, t6: f32, t7: f32,
+        t8: f32, t9: f32, t10: f32, t11: f32, t12: f32, t13: f32, t14: f32, t15: f32,
+    }
+);
+
+impl ShapeRow {
+    /// The top profile, back to front.
+    pub fn top(&self) -> [f32; SHAPE_STATIONS] {
+        [
+            self.t0, self.t1, self.t2, self.t3, self.t4, self.t5, self.t6, self.t7, self.t8,
+            self.t9, self.t10, self.t11, self.t12, self.t13, self.t14, self.t15,
+        ]
+    }
+}
+
 row!(
     /// A glTF scene: a range of the `roots` section.
     SceneRow, "og.ModelScene", 1 {
@@ -742,6 +776,7 @@ impl BlobKind for Model {
             VariantRow::schema(),
             VariantMappingRow::schema(),
             ClusterRow::schema(),
+            ShapeRow::schema(),
         ]
     }
 }
