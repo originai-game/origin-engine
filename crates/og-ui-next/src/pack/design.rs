@@ -14,23 +14,34 @@ use super::Scheme;
 use crate::tokens::Tokens;
 use serde_json::{Map, Value, json};
 
+const SEED: &str = include_str!("../../../../packages/design/tokens/seed.css");
+const COLOR: &str = include_str!("../../../../packages/design/tokens/color.css");
+const MOTION: &str = include_str!("../../../../packages/design/tokens/motion.css");
+
 /// The token files the theme reads, in the order the design applies them.
+/// Only the generator ([`default_pack_json`]) reads them all; at run time
+/// the palette ([`colors`]) reads the seeds and colours and the durations
+/// ([`durations`]) the motion tokens, so a game's module carries no more
+/// of the design's CSS than those.
 const FILES: [&str; 6] = [
-    include_str!("../../../../packages/design/tokens/seed.css"),
-    include_str!("../../../../packages/design/tokens/color.css"),
+    SEED,
+    COLOR,
     include_str!("../../../../packages/design/tokens/type.css"),
     include_str!("../../../../packages/design/tokens/space.css"),
     include_str!("../../../../packages/design/tokens/effect.css"),
-    include_str!("../../../../packages/design/tokens/motion.css"),
+    MOTION,
 ];
+
+/// The palette's files: the seeds and the colours derived from them.
+const PALETTE: [&str; 2] = [SEED, COLOR];
 
 /// The generated default pack.
 pub const DEFAULT_PACK: &str = include_str!("../../default/pack.json");
 
-/// The token table in each scheme, with `seeds` (CSS setting `--seed-*`)
-/// over the design's own.
-fn tables(seeds: &str) -> [Tokens; 2] {
-    let mut t = Tokens::parse(&FILES.concat());
+/// The token table of `files` in each scheme, with `seeds` (CSS setting
+/// `--seed-*`) over the design's own.
+fn tables(files: &[&str], seeds: &str) -> [Tokens; 2] {
+    let mut t = Tokens::parse(&files.concat());
     if !seeds.is_empty() {
         t.over(seeds);
     }
@@ -41,8 +52,8 @@ fn tables(seeds: &str) -> [Tokens; 2] {
 /// milliseconds: what og.ui.theme answers as `durations`.
 pub fn durations() -> std::collections::BTreeMap<String, f32> {
     const PREFIX: &str = "--motion-duration-";
-    let [t, _] = tables("");
-    names()
+    let [t, _] = tables(&[MOTION], "");
+    names(&[MOTION])
         .into_iter()
         .filter_map(|name| {
             let key = name.strip_prefix(PREFIX)?.to_owned();
@@ -56,10 +67,10 @@ pub fn durations() -> std::collections::BTreeMap<String, f32> {
         .collect()
 }
 
-/// Every token's name, in the files' order.
-fn names() -> Vec<String> {
+/// Every token's name in `files`, in their order.
+fn names(files: &[&str]) -> Vec<String> {
     let mut out: Vec<String> = Vec::new();
-    for file in FILES {
+    for file in files {
         for (_, body) in crate::sheet::blocks(file) {
             for (name, _) in crate::sheet::declarations(body) {
                 if name.starts_with("--") && !out.iter().any(|n| n == name) {
@@ -84,8 +95,8 @@ fn hex(text: &str) -> Option<String> {
 
 /// The design palette (`--color-*`) in each scheme, derived from `seeds`.
 pub fn colors(seeds: &str) -> [Map<String, Value>; 2] {
-    let names = names();
-    tables(seeds).map(|t| {
+    let names = names(&PALETTE);
+    tables(&PALETTE, seeds).map(|t| {
         let mut out = Map::new();
         for n in &names {
             let Some(name) = n.strip_prefix("--color-") else {
@@ -484,8 +495,8 @@ fn contrast(names: &[String]) -> [Value; 2] {
 
 /// `default/pack.json`: the design tokens as a pack.
 pub fn default_pack_json() -> String {
-    let names = names();
-    let [light, dark] = tables("").map(|t| Value::Object(theme(&t, &names)));
+    let names = names(&FILES);
+    let [light, dark] = tables(&FILES, "").map(|t| Value::Object(theme(&t, &names)));
     let [more_light, more_dark] = contrast(&names);
     let pack = json!({
         "about": "The engine's default pack, generated from packages/design/tokens/*.css by crates/og-ui-next/scripts/gen-pack.sh; never edit it by hand. Theme names are the tokens' without their prefix: --color-fg-muted is the colour fg-muted, --radius-card the radius card, --font-scale-body-size the font size body.",
@@ -598,6 +609,39 @@ mod tests {
 
     /// The design's contrast pairs (contrast.css `--contrast`, the two-name
     /// ones) hold in both schemes, for the default seeds and for a pack's.
+    /// The run time reads only the palette's and the motion's files: a
+    /// colour or duration that came to depend on another file's token
+    /// would resolve differently there than in the generated pack.
+    #[test]
+    fn the_run_times_files_resolve_as_the_whole_design_does() {
+        let seeds = ":root { --seed-primary: #2f8f5b; } :root[data-scheme=dark] { --seed-primary: #6fd39a; }";
+        for seeds in ["", seeds] {
+            let all = tables(&FILES, seeds).map(|t| {
+                let names = names(&FILES);
+                names
+                    .iter()
+                    .filter(|n| n.starts_with("--color-"))
+                    .map(|n| (n.clone(), t.get(n).and_then(hex)))
+                    .collect::<Vec<_>>()
+            });
+            let palette = colors(seeds);
+            for (scheme, all) in all.iter().enumerate() {
+                assert!(all.len() > 50, "the design names its colours");
+                for (n, c) in all {
+                    let got = palette[scheme].get(&n["--color-".len()..]);
+                    assert_eq!(got.and_then(|v| v.as_str()), c.as_deref(), "{n}");
+                }
+            }
+        }
+        let [t, _] = tables(&FILES, "");
+        let d = durations();
+        assert!(d.len() >= 10, "{d:?}");
+        for (name, ms) in &d {
+            let v = t.get(&format!("--motion-duration-{name}")).unwrap();
+            assert_eq!(v.trim(), format!("{ms}ms"), "{name}");
+        }
+    }
+
     #[test]
     fn derived_palettes_keep_the_designs_contrast_pairs() {
         let css = include_str!("../../../../packages/design/tokens/contrast.css");
