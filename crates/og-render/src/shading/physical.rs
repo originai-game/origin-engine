@@ -315,7 +315,6 @@ impl PhysicalPipelines {
                 sampler_entry(3, wgpu::SamplerBindingType::Filtering),
                 tex2d(4),
                 decals[0],
-                decals[1],
                 wgpu::BindGroupLayoutEntry {
                     binding: 7,
                     visibility: wgpu::ShaderStages::FRAGMENT,

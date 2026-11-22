@@ -1,5 +1,5 @@
 // Shared projected decals. The receiving pass declares fx.decal_info,
-// decal_atlas, fx_sampler, decal_list and decal_cells at its own group.
+// decal_atlas, fx_sampler and decal_data at its own group.
 struct DecalGpu {
   inv: mat4x4<f32>,
   axis: vec4<f32>,
@@ -9,6 +9,26 @@ struct DecalGpu {
   normal_rect: vec4<f32>,
   normal: vec4<f32>,
 };
+
+const DECAL_VEC4S: u32 = 10u;
+
+// Word `i` of the decals' clusters and references.
+fn decal_cell(i: u32) -> u32 {
+  let w = i + 4u;
+  return decal_data[w >> 2u][w & 3u];
+}
+
+fn decal_at(i: u32) -> DecalGpu {
+  let b = decal_data[0].x + i * DECAL_VEC4S;
+  let f = array<vec4<f32>, 10>(
+    bitcast<vec4<f32>>(decal_data[b]), bitcast<vec4<f32>>(decal_data[b + 1u]),
+    bitcast<vec4<f32>>(decal_data[b + 2u]), bitcast<vec4<f32>>(decal_data[b + 3u]),
+    bitcast<vec4<f32>>(decal_data[b + 4u]), bitcast<vec4<f32>>(decal_data[b + 5u]),
+    bitcast<vec4<f32>>(decal_data[b + 6u]), bitcast<vec4<f32>>(decal_data[b + 7u]),
+    bitcast<vec4<f32>>(decal_data[b + 8u]), bitcast<vec4<f32>>(decal_data[b + 9u]),
+  );
+  return DecalGpu(mat4x4<f32>(f[0], f[1], f[2], f[3]), f[4], f[5], f[6], f[7], f[8], f[9]);
+}
 
 struct DecalResult {
   albedo: vec3<f32>,
@@ -22,7 +42,7 @@ fn frame_decals(frag: vec2<f32>, p: vec3<f32>) -> vec2<u32> {
   if (fx.decal_info.x < 0.0 || frame.cluster.x <= 0.0) {
     return vec2<u32>(NO_CLUSTER, u32(abs(fx.decal_info.x)));
   }
-  let word = decal_cells[cluster_at(frag, p)];
+  let word = decal_cell(cluster_at(frag, p));
   return vec2<u32>(word & 0xffffffu, word >> 24u);
 }
 
@@ -102,8 +122,8 @@ fn apply_decals(frag: vec2<f32>, p: vec3<f32>, n: vec3<f32>, albedo: vec3<f32>, 
   let cells = CLUSTER_X * CLUSTER_Y * CLUSTER_Z;
   for (var k = 0u; k < range.y; k++) {
     var i = k;
-    if (range.x != NO_CLUSTER) { i = decal_cells[cells + range.x + k]; }
-    let d = decal_list[i];
+    if (range.x != NO_CLUSTER) { i = decal_cell(cells + range.x + k); }
+    let d = decal_at(i);
     let wet = d.normal.y > 0.5;
     if (wet_only && !wet) { continue; }
     let local = (d.inv * vec4<f32>(p, 1.0)).xyz;

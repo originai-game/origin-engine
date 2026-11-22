@@ -1,8 +1,7 @@
 //! Decals in the lit passes: each [`crate::effects::Decal`] packed as a GPU
 //! record with its bounding sphere ([`pack_decals`]), the records and their
-//! clusters in two storage buffers of the effect group ([`DecalBuffers`]:
-//! the records, binding 5, and their clusters, binding 6, binned by
-//! `clusters::DecalBins`) and those bindings' layout
+//! clusters (binned by `clusters::DecalBins`) in one storage buffer of the
+//! effect group ([`DecalBuffers`], binding 5) and its layout
 //! ([`decal_layout_entries`]). pbr.wgsl projects them.
 
 use crate::effects::{Decal, MAX_DECALS};
@@ -62,10 +61,13 @@ pub(crate) fn pack_decals(
     }
 }
 
-/// The fx group's entries for the decal buffers (bindings 5 and 6).
-pub(crate) fn decal_layout_entries() -> [wgpu::BindGroupLayoutEntry; 2] {
-    [5, 6].map(|binding| wgpu::BindGroupLayoutEntry {
-        binding,
+// decals.wgsl `decal_at` reads a record as ten vec4s.
+const _: () = assert!(size_of::<DecalGpu>() == 10 * 16);
+
+/// The fx group's entry for the decals' buffer (binding 5).
+pub(crate) fn decal_layout_entries() -> [wgpu::BindGroupLayoutEntry; 1] {
+    [wgpu::BindGroupLayoutEntry {
+        binding: 5,
         visibility: wgpu::ShaderStages::FRAGMENT,
         ty: wgpu::BindingType::Buffer {
             ty: wgpu::BufferBindingType::Storage { read_only: true },
@@ -73,23 +75,24 @@ pub(crate) fn decal_layout_entries() -> [wgpu::BindGroupLayoutEntry; 2] {
             min_binding_size: None,
         },
         count: None,
-    })
+    }]
 }
 
-/// The decal records and cells on the GPU, grown (to a power of two) as a
-/// frame needs; `generation` moves when a buffer is made again, so the
-/// effect groups that bind them are made again too.
+/// The decals' clusters and records in one buffer on the GPU (decals.wgsl
+/// `decal_data`: a header, the cells, then the records), grown (to a power
+/// of two) as a frame needs; `generation` moves when it is made again, so
+/// the effect groups that bind it are made again too.
 pub(crate) struct DecalBuffers {
-    pub records: wgpu::Buffer,
-    pub cells: wgpu::Buffer,
+    pub data: wgpu::Buffer,
+    bytes: Vec<u8>,
     pub generation: u32,
 }
 
-fn storage(device: &wgpu::Device, label: &str, size: u64) -> wgpu::Buffer {
+fn storage(device: &wgpu::Device, size: u64) -> wgpu::Buffer {
     crate::traffic::create_buffer(
         device,
         &wgpu::BufferDescriptor {
-            label: Some(label),
+            label: Some("decals"),
             size,
             usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
@@ -100,17 +103,18 @@ fn storage(device: &wgpu::Device, label: &str, size: u64) -> wgpu::Buffer {
 impl DecalBuffers {
     pub fn new(device: &wgpu::Device) -> DecalBuffers {
         DecalBuffers {
-            records: storage(device, "decals", 16 * size_of::<DecalGpu>() as u64),
-            cells: storage(
+            data: storage(
                 device,
-                "decal cells",
-                4 * crate::clusters::CLUSTERS as u64 + 1024,
+                16 + 4 * crate::clusters::CLUSTERS as u64
+                    + 1024
+                    + 16 * size_of::<DecalGpu>() as u64,
             ),
+            bytes: Vec::new(),
             generation: 0,
         }
     }
 
-    /// Writes the records and cells, growing either buffer that is short.
+    /// Writes the cells and records, growing the buffer when it is short.
     pub fn write(
         &mut self,
         device: &wgpu::Device,
@@ -118,40 +122,26 @@ impl DecalBuffers {
         records: &[DecalGpu],
         cells: &[u32],
     ) {
-        let grow = |b: &mut wgpu::Buffer, bytes: u64, label: &str| {
-            if bytes > b.size() {
-                *b = storage(device, label, bytes.next_power_of_two());
-                true
-            } else {
-                false
-            }
-        };
-        let r = bytemuck::cast_slice::<DecalGpu, u8>(records);
-        let c = bytemuck::cast_slice::<u32, u8>(cells);
-        let a = grow(&mut self.records, r.len() as u64, "decals");
-        let b = grow(&mut self.cells, c.len() as u64, "decal cells");
-        if a || b {
+        let first = (4 + cells.len()).div_ceil(4) as u32;
+        self.bytes.clear();
+        self.bytes
+            .extend_from_slice(bytemuck::bytes_of(&[first, 0, 0, 0]));
+        self.bytes.extend_from_slice(bytemuck::cast_slice(cells));
+        self.bytes.resize(first as usize * 16, 0);
+        self.bytes.extend_from_slice(bytemuck::cast_slice(records));
+        let len = self.bytes.len() as u64;
+        if len > self.data.size() {
+            self.data = storage(device, len.next_power_of_two());
             self.generation = self.generation.wrapping_add(1);
         }
-        if !r.is_empty() {
-            crate::traffic::write_buffer(queue, &self.records, 0, r);
-        }
-        if !c.is_empty() {
-            crate::traffic::write_buffer(queue, &self.cells, 0, c);
-        }
+        crate::traffic::write_buffer(queue, &self.data, 0, &self.bytes);
     }
 
-    /// The two bind group entries (bindings 5 and 6).
-    pub fn entries(&self) -> [wgpu::BindGroupEntry<'_>; 2] {
-        [
-            wgpu::BindGroupEntry {
-                binding: 5,
-                resource: self.records.as_entire_binding(),
-            },
-            wgpu::BindGroupEntry {
-                binding: 6,
-                resource: self.cells.as_entire_binding(),
-            },
-        ]
+    /// The bind group entry (binding 5).
+    pub fn entries(&self) -> [wgpu::BindGroupEntry<'_>; 1] {
+        [wgpu::BindGroupEntry {
+            binding: 5,
+            resource: self.data.as_entire_binding(),
+        }]
     }
 }

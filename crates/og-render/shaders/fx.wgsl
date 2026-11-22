@@ -17,8 +17,10 @@ struct Fx {
 @group(FX_GROUP) @binding(1) var ssao_tex: texture_2d<f32>;
 @group(FX_GROUP) @binding(2) var decal_atlas: texture_2d<f32>;
 @group(FX_GROUP) @binding(3) var fx_sampler: sampler;
-// The decal records and their clusters (fx.rs, clusters.rs `DecalBins`):
-// one word per cluster (first reference, 24 bits; count, 8 bits), then the
-// references, one record index a word.
-@group(FX_GROUP) @binding(5) var<storage, read> decal_list: array<DecalGpu>;
-@group(FX_GROUP) @binding(6) var<storage, read> decal_cells: array<u32>;
+// The decals' clusters and records in one buffer (decals.rs `DecalBuffers`,
+// one, as WebGPU's compatibility mode allows a fragment stage four storage
+// buffers): x of the first vec4 the records' first vec4; from word 4 one
+// word per cluster (first reference, 24 bits; count, 8 bits), then the
+// references, one record index a word (clusters.rs `DecalBins`); then the
+// records, DECAL_VEC4S vec4s each.
+@group(FX_GROUP) @binding(5) var<storage, read> decal_data: array<vec4<u32>>;
