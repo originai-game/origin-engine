@@ -11,7 +11,7 @@
 // Every frame is also compared with its recording-tier reference, reported and kept
 // in the JSON whether or not it is the frame the run is judged against.
 //
-//   bun tests/web/reference-gfx.ts [--record] [--scene a,b] [--time <frames>] [--cpu-culling] [--cull-dump] [--bisect <spec;spec>] [--perf-out <dir>] [--out <dir>] [--chrome <path> | --firefox [<path>] | --safari]
+//   bun tests/web/reference-gfx.ts [--build-only | --prebuilt] [--record] [--scene a,b] [--time <frames>] [--cpu-culling] [--cull-dump] [--bisect <spec;spec>] [--perf-out <dir>] [--out <dir>] [--chrome <path> | --firefox [<path>] | --safari]
 //
 // First, every WGSL module the renderer compiles (og_gfx_shader_sources)
 // goes through the browser's own compiler; one it refuses fails the run.
@@ -110,6 +110,8 @@ function run(cmd: string[]): string {
   return new TextDecoder().decode(r.stdout);
 }
 
+// --build-only builds the module and its page (dist/test-gfx/site) and stops; --prebuilt serves
+// the one there without building, on a host with no Rust (the final L4 pass's bundle carries it).
 // Functional frames use wasm-test; explicit timing uses the shipping profile.
 // Then wasm-bindgen for the browser. Its own
 // target dir: og-tests-web unifies og-render's features differently from the
@@ -117,21 +119,29 @@ function run(cmd: string[]): string {
 // features, so sharing target/wasm32-unknown-unknown would rebuild og-render
 // for both every time (scripts/check.sh wasm_build).
 const t0 = performance.now();
-const targetDir = join(process.env.CARGO_TARGET_DIR ? resolve(repo, process.env.CARGO_TARGET_DIR) : join(repo, "target"), "wasm-gfx");
-const profile = opt("--time") || perfOut ? "wasm" : "wasm-test";
-const messages = run(["cargo", "build", "--profile", profile, "--target", "wasm32-unknown-unknown", "--target-dir", targetDir, "-p", "og-tests-web", "--lib", "--message-format=json-render-diagnostics"]);
-const raw = messages
-  .split("\n")
-  .filter((l) => l.includes('"reason":"compiler-artifact"') && l.includes("og_tests_web"))
-  .flatMap((l) => (JSON.parse(l) as { filenames: string[] }).filenames)
-  .find((f) => f.endsWith(".wasm"));
-if (!raw) throw new Error("cargo built no og_tests_web.wasm");
-const lock = /name = "wasm-bindgen"\nversion = "([^"]+)"/.exec(readFileSync(join(repo, "Cargo.lock"), "utf8"))?.[1];
-const have = run(["wasm-bindgen", "--version"]).trim().split(" ")[1];
-if (lock !== have) throw new Error(`wasm-bindgen ${have} does not match Cargo.lock ${lock} (scripts/install-tools.sh)`);
 const dist = join(work, "site");
-run(["wasm-bindgen", "--target", "web", "--out-dir", join(dist, "pkg"), "--out-name", "og-tests", raw]);
+if (!args.includes("--prebuilt")) {
+  const targetDir = join(process.env.CARGO_TARGET_DIR ? resolve(repo, process.env.CARGO_TARGET_DIR) : join(repo, "target"), "wasm-gfx");
+  const profile = opt("--time") || perfOut ? "wasm" : "wasm-test";
+  const messages = run(["cargo", "build", "--profile", profile, "--target", "wasm32-unknown-unknown", "--target-dir", targetDir, "-p", "og-tests-web", "--lib", "--message-format=json-render-diagnostics"]);
+  const raw = messages
+    .split("\n")
+    .filter((l) => l.includes('"reason":"compiler-artifact"') && l.includes("og_tests_web"))
+    .flatMap((l) => (JSON.parse(l) as { filenames: string[] }).filenames)
+    .find((f) => f.endsWith(".wasm"));
+  if (!raw) throw new Error("cargo built no og_tests_web.wasm");
+  const lock = /name = "wasm-bindgen"\nversion = "([^"]+)"/.exec(readFileSync(join(repo, "Cargo.lock"), "utf8"))?.[1];
+  const have = run(["wasm-bindgen", "--version"]).trim().split(" ")[1];
+  if (lock !== have) throw new Error(`wasm-bindgen ${have} does not match Cargo.lock ${lock} (scripts/install-tools.sh)`);
+  run(["wasm-bindgen", "--target", "web", "--out-dir", join(dist, "pkg"), "--out-name", "og-tests", raw]);
+} else if (!existsSync(join(dist, "pkg", "og-tests.js"))) {
+  throw new Error(`--prebuilt: no ${join(dist, "pkg", "og-tests.js")} (bun tests/web/reference-gfx.ts --build-only)`);
+}
 const buildMs = Math.round(performance.now() - t0);
+if (args.includes("--build-only")) {
+  console.log(`og-tests gfx module built in ${buildMs} ms: ${dist}`);
+  process.exit(0);
+}
 
 const html = `<!doctype html><html><head><meta charset="utf-8"><title>og-tests gfx</title></head><body>
 <script type="module">

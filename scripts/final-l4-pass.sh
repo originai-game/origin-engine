@@ -60,10 +60,13 @@ for l in sys.stdin:
   # reference variants: OG_GATE_SKIP=web-reference scripts/check.sh full --only web-reference).
   [ -f packages/engine/dist/web-publish/origin-engine.js ] || die "bundle: no packages/engine/dist/web-publish; run OG_GATE_SKIP=web-reference scripts/check.sh full --only web-reference first"
   rm -rf "$b/web" && mkdir -p "$b/web" && cp -r packages/engine/dist/web packages/engine/dist/web-publish packages/engine/native "$b/web/"
+  # og-tests' gfx scenes as wasm, which the web gfx group serves: built here, where Rust is.
+  (cd packages/engine && bun tests/web/reference-gfx.ts --build-only >/dev/null) || die "bundle: reference-gfx.ts --build-only failed"
+  cp -r packages/engine/dist/test-gfx/site "$b/web/test-gfx-site"
   # Ignored assets the checkout's sync leaves behind (the template fonts the text section's Chrome
-  # sheets use, the fused fixture's footage, vehicle-terrain's assets, the environment section's
-  # sky): fetched here, shipped in the bundle, put back by run.
-  local where="templates crates/og-tests packages/engine/tests/fixtures/fused tests/fixtures/vehicle-terrain packages/engine/vendor/basis packages/engine/motion packages/engine/shell/brand crates/og-cook/tests/assets/environment"
+  # sheets use, every fixture's footage and models, the environment section's sky): fetched here,
+  # shipped in the bundle, put back by run.
+  local where="templates crates/og-tests packages/engine/tests/fixtures tests/fixtures packages/engine/vendor/basis packages/engine/motion packages/engine/shell/brand crates/og-cook/tests/assets/environment"
   # shellcheck disable=SC2086
   bun scripts/assets.ts ensure $where >/dev/null || die "bundle: assets ensure failed"
   rm -rf "$b/assets" && mkdir -p "$b/assets"
@@ -127,7 +130,8 @@ sheet() {
 # blank PNG: why the frame is black or blank (one flat colour), else nothing.
 blank() {
   local s; s="$($IM "$1" -colorspace gray -format '%[fx:mean] %[fx:standard_deviation]' info: 2>/dev/null)" || { echo "unreadable"; return; }
-  awk -v s="$s" 'BEGIN { split(s, a, " "); if (a[1] < 0.02) print "black (mean " a[1] ")"; else if (a[2] < 0.004) print "blank (one colour, sd " a[2] ")" }'
+  # A dark scheme's near-black ground with its cards drawn is a frame; one flat colour is not.
+  awk -v s="$s" 'BEGIN { split(s, a, " "); if (a[2] < 0.004) print (a[1] < 0.02 ? "black" : "blank (one colour") " (mean " a[1] ", sd " a[2] ")" }'
 }
 
 timed() { # timed SECTION: runs sec_SECTION, records its wall time
@@ -250,7 +254,7 @@ sec_web() {
   [ "$DRY" = 1 ] && unset OG_WEB_GPU
   declare -A cmd=(
     [ui]="bun tests/web/a11y.ts && bun tests/web/autoplay.ts"
-    [gfx]="bun tests/web/reference-gfx.ts --out $OUT/web/gfx"
+    [gfx]="bun tests/web/reference-gfx.ts --prebuilt --out $OUT/web/gfx"
     [vehicle-terrain]="bun tests/web/reference.ts --project tests/fixtures/vehicle-terrain --playtest tests/drive.og.ts --out $OUT/web/vehicle-terrain"
     [lane-panic]="bun tests/web/lane-panic.ts"
     [video]="bun tests/web/video-alpha.ts --out $OUT/web/video-alpha"
@@ -478,6 +482,8 @@ run() {
   # The engine package's native og and addon and its web build, which web and text serve.
   mkdir -p "$root/packages/engine/dist" "$root/packages/engine/native"
   cp -r "$BUNDLE/web/web" "$BUNDLE/web/web-publish" "$root/packages/engine/dist/"
+  rm -rf "$root/packages/engine/dist/test-gfx/site" && mkdir -p "$root/packages/engine/dist/test-gfx" \
+    && cp -r "$BUNDLE/web/test-gfx-site" "$root/packages/engine/dist/test-gfx/site"
   # By rename, never over a file a running og or addon has mapped.
   for a in "$BUNDLE"/web/native/*; do
     cmp -s "$a" "$root/packages/engine/native/${a##*/}" && continue
