@@ -462,8 +462,11 @@ impl Record {
         let add = |mask: u8, k: usize| if mask & (1 << k) != 0 { insets[k] } else { 0.0 };
         let [t, r, b, l] = [0, 1, 2, 3].map(|k| add(self.safe[0], k));
         let grow = |v: &mut LengthPercentageAuto, by: f32| {
-            if by != 0.0 && !v.is_auto() {
-                *v = LengthPercentageAuto::length(v.into_raw().value() + by);
+            let raw = v.into_raw();
+            if by != 0.0 && raw.has_calc() {
+                *v = LengthPercentageAuto::calc(rune_taffy::calc::plus(raw.calc_value(), by));
+            } else if by != 0.0 && !v.is_auto() {
+                *v = LengthPercentageAuto::length(raw.value() + by);
             }
         };
         grow(&mut s.inset.top, t);
@@ -472,8 +475,11 @@ impl Record {
         grow(&mut s.inset.left, l);
         let [t, r, b, l] = [0, 1, 2, 3].map(|k| add(self.safe[1], k));
         let pad = |v: &mut taffy::LengthPercentage, by: f32| {
-            if by != 0.0 {
-                *v = taffy::LengthPercentage::length(v.into_raw().value() + by);
+            let raw = v.into_raw();
+            if by != 0.0 && raw.has_calc() {
+                *v = taffy::LengthPercentage::calc(rune_taffy::calc::plus(raw.calc_value(), by));
+            } else if by != 0.0 {
+                *v = taffy::LengthPercentage::length(raw.value() + by);
             }
         };
         pad(&mut s.padding.top, t);

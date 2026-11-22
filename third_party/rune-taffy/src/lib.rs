@@ -9,6 +9,7 @@
 #![cfg_attr(not(windows), forbid(unsafe_code))]
 
 mod baseline_store;
+pub mod calc;
 mod cache;
 pub mod prelude;
 mod stack;

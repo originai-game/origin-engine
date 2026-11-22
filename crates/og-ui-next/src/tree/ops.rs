@@ -3358,6 +3358,47 @@ mod tests {
         );
     }
 
+    /// An inline `calc()`, `min()`, `max()` or `clamp()` resolves against
+    /// the containing block at layout, as the browser's does: the
+    /// crosshair's `left: calc(50% - 0.0715rem)` centres its arm instead of
+    /// dropping to 0.
+    #[test]
+    fn an_inline_calc_resolves_against_the_containing_block() {
+        let mut t = tree();
+        let classes = std::cell::RefCell::new(crate::classes::Classes::new(None).unwrap().0);
+        t.set_resolver(Box::new(move |class, style, _, _| {
+            classes
+                .borrow_mut()
+                .record_styled(class, style, &crate::classes::Env::default())
+        }));
+        let mut b = Batch::default();
+        for (id, class, style, parent) in [
+            (1, "relative w-[200px] h-[100px]", "", 0),
+            (
+                2,
+                "absolute h-[10px]",
+                "left: calc(50% - 10px); top: calc(50% - 0.3125rem); width: calc(3 * (25% - 2px))",
+                1,
+            ),
+            (
+                3,
+                "absolute h-[10px]",
+                "right: clamp(8px, 25%, 40px); bottom: max(5px, 10%); width: min(30px, 50%)",
+                1,
+            ),
+        ] {
+            b.op(1).u32(id).u8(0);
+            b.op(4).u32(id).str(class);
+            b.op(5).u32(id).str(style);
+            b.op(8).u32(parent).u32(id).u32(u32::MAX);
+        }
+        t.apply(&b.bytes()).unwrap();
+        frame(&mut t);
+        assert_eq!(t.op_box(2).unwrap(), [90.0, 45.0, 144.0, 10.0]);
+        // right 40 (25% is 50, clamped), bottom 10 (10% of 100).
+        assert_eq!(t.op_box(3).unwrap(), [130.0, 80.0, 30.0, 10.0]);
+    }
+
     /// Classes lay out with CSS's initial flex values: a `w-full min-w-0`
     /// bar beside a `shrink-0` count gives way to it (meta/daily-quests),
     /// and a `flex-1 min-h-0` `Scroll` in a column sized to its content

@@ -11,7 +11,7 @@ default = []
 baseline-taffy = []
 
 [dependencies]
-taffy = { version = "0.15", default-features = false, features = ["std", "taffy_tree", "flexbox", "grid", "block_layout", "content_size"] }
+taffy = { version = "0.15", default-features = false, features = ["std", "taffy_tree", "flexbox", "grid", "block_layout", "content_size", "calc"] }
 
 [target.'cfg(any(windows, target_os = "macos", target_os = "linux"))'.dependencies]
 stacker = "0.1"

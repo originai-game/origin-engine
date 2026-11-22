@@ -31,7 +31,7 @@ og-i18n = { path = "../og-i18n" }
 rune-taffy = { path = "../../third_party/rune-taffy" }
 # UI motion: transitions, presence and layout animation (src/motion.rs).
 rune-motion = { path = "../../third_party/rune-motion" }
-taffy = { version = "=0.15.1", default-features = false, features = ["std", "taffy_tree", "flexbox", "grid", "block_layout", "content_size"] }
+taffy = { version = "=0.15.1", default-features = false, features = ["std", "taffy_tree", "flexbox", "grid", "block_layout", "content_size", "calc"] }
 # The accessibility tree (a11y.rs), as og-ui pins it.
 accesskit = { version = "=0.25.2", features = ["serde"] }
 rustc-hash = "2"

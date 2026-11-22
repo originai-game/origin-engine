@@ -2557,6 +2557,10 @@ pub enum StyleError {
 enum Len {
     Px(f32),
     Pct(f32),
+    /// A `calc()`, `min()`, `max()` or `clamp()` that reads both a length
+    /// and a percentage, or compares: its handle in
+    /// [`rune_taffy::calc`], resolved at layout.
+    Calc(*const ()),
     Auto,
 }
 
@@ -2567,6 +2571,14 @@ impl Len {
             StyleValue::Str("auto") => Ok(Len::Auto),
             // A percentage, else a CSS length (`28px`, `1.5rem`, `28`), as
             // an inline style writes it.
+            // A `calc()` that reads a length or a percentage alone is that
+            // length (`calc(2 * 4px)`).
+            StyleValue::Str(s) if s.trim().ends_with(')') => match css::calc(s) {
+                Some(rune_taffy::calc::Expr::Sum { px, pct: 0.0 }) => Ok(Len::Px(px)),
+                Some(rune_taffy::calc::Expr::Sum { px: 0.0, pct }) => Ok(Len::Pct(pct)),
+                Some(e) => Ok(Len::Calc(rune_taffy::calc::handle(e))),
+                None => Err(StyleError::InvalidValue),
+            },
             StyleValue::Str(s) => match s.trim().strip_suffix('%') {
                 Some(p) => p.trim().parse::<f32>().ok().map(|p| Len::Pct(p / 100.0)),
                 None => css::length(s).map(Len::Px),
@@ -2580,6 +2592,7 @@ impl Len {
         match self {
             Len::Px(v) => Dimension::length(v),
             Len::Pct(v) => Dimension::percent(v),
+            Len::Calc(h) => Dimension::calc(h),
             Len::Auto => Dimension::auto(),
         }
     }
@@ -2588,6 +2601,7 @@ impl Len {
         match self {
             Len::Px(v) => LengthPercentageAuto::length(v),
             Len::Pct(v) => LengthPercentageAuto::percent(v),
+            Len::Calc(h) => LengthPercentageAuto::calc(h),
             Len::Auto => LengthPercentageAuto::auto(),
         }
     }
@@ -2596,6 +2610,7 @@ impl Len {
         match self {
             Len::Px(v) => Ok(LengthPercentage::length(v)),
             Len::Pct(v) => Ok(LengthPercentage::percent(v)),
+            Len::Calc(h) => Ok(LengthPercentage::calc(h)),
             Len::Auto => Err(StyleError::InvalidValue),
         }
     }

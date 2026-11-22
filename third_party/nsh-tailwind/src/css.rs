@@ -80,6 +80,222 @@ pub(crate) fn length(s: &str) -> Option<f32> {
     number(s)
 }
 
+/// `calc()`, `min()`, `max()` or `clamp()` over lengths (`px`, `pt`,
+/// `rem`, bare numbers as points) and percentages, with `+ - * /` and
+/// parentheses (CSS Values 4 §10): `calc(50% - 2rem)`, `calc(3 * (100% -
+/// 2rem))`, `clamp(8px, 50%, 4rem)`. A product or quotient takes a
+/// number on one side, as CSS's types require.
+pub(crate) fn calc(s: &str) -> Option<rune_taffy::calc::Expr> {
+    let s = s.trim();
+    if !["calc(", "min(", "max(", "clamp("]
+        .iter()
+        .any(|f| s.starts_with(f))
+    {
+        return None;
+    }
+    let mut p = Calc {
+        s: s.as_bytes(),
+        at: 0,
+    };
+    let v = p.sum()?;
+    p.space();
+    (p.at == p.s.len()).then_some(())?;
+    Some(match v {
+        CalcValue::Number(n) => Expr::Sum { px: n, pct: 0.0 },
+        CalcValue::Length(e) => e,
+    })
+}
+
+use rune_taffy::calc::Expr;
+
+enum CalcValue {
+    Number(f32),
+    Length(Expr),
+}
+
+struct Calc<'a> {
+    s: &'a [u8],
+    at: usize,
+}
+
+impl Calc<'_> {
+    fn space(&mut self) {
+        while self.s.get(self.at).is_some_and(u8::is_ascii_whitespace) {
+            self.at += 1;
+        }
+    }
+
+    fn eat(&mut self, c: u8) -> bool {
+        self.space();
+        let hit = self.s.get(self.at) == Some(&c);
+        self.at += hit as usize;
+        hit
+    }
+
+    fn sum(&mut self) -> Option<CalcValue> {
+        let mut v = self.product()?;
+        loop {
+            let sign = if self.eat(b'+') {
+                1.0
+            } else if self.eat(b'-') {
+                -1.0
+            } else {
+                return Some(v);
+            };
+            v = match (v, self.product()?) {
+                (CalcValue::Number(a), CalcValue::Number(b)) => CalcValue::Number(a + sign * b),
+                (CalcValue::Length(a), CalcValue::Length(b)) => {
+                    CalcValue::Length(add(a, scale(b, sign)))
+                }
+                _ => return None,
+            };
+        }
+    }
+
+    fn product(&mut self) -> Option<CalcValue> {
+        let mut v = self.term()?;
+        loop {
+            let div = if self.eat(b'*') {
+                false
+            } else if self.eat(b'/') {
+                true
+            } else {
+                return Some(v);
+            };
+            v = match (v, self.term()?, div) {
+                (CalcValue::Number(a), CalcValue::Number(b), false) => CalcValue::Number(a * b),
+                (CalcValue::Number(a), CalcValue::Number(b), true) => CalcValue::Number(a / b),
+                (CalcValue::Length(e), CalcValue::Number(k), false)
+                | (CalcValue::Number(k), CalcValue::Length(e), false) => {
+                    CalcValue::Length(scale(e, k))
+                }
+                (CalcValue::Length(e), CalcValue::Number(k), true) => {
+                    CalcValue::Length(scale(e, 1.0 / k))
+                }
+                _ => return None,
+            };
+        }
+    }
+
+    fn term(&mut self) -> Option<CalcValue> {
+        self.space();
+        let rest = std::str::from_utf8(&self.s[self.at..]).ok()?;
+        for (name, min_args, max_args) in [
+            ("calc(", 1, 1),
+            ("min(", 1, usize::MAX),
+            ("max(", 1, usize::MAX),
+            ("clamp(", 3, 3),
+        ] {
+            if rest.starts_with(name) {
+                self.at += name.len();
+                let mut args = Vec::new();
+                loop {
+                    args.push(self.sum()?);
+                    if !self.eat(b',') {
+                        break;
+                    }
+                }
+                (self.eat(b')') && (min_args..=max_args).contains(&args.len())).then_some(())?;
+                if name == "calc(" {
+                    return args.pop();
+                }
+                // A comparison of numbers is a number; of lengths, a length.
+                if args.iter().all(|a| matches!(a, CalcValue::Number(_))) {
+                    let n: Vec<f32> = args
+                        .iter()
+                        .filter_map(|a| match a {
+                            CalcValue::Number(n) => Some(*n),
+                            CalcValue::Length(_) => None,
+                        })
+                        .collect();
+                    return Some(CalcValue::Number(match name {
+                        "min(" => n.iter().copied().fold(f32::INFINITY, f32::min),
+                        "max(" => n.iter().copied().fold(f32::NEG_INFINITY, f32::max),
+                        _ => n[0].max(n[1].min(n[2])),
+                    }));
+                }
+                let mut e = Vec::with_capacity(args.len());
+                for a in args {
+                    match a {
+                        CalcValue::Length(l) => e.push(l),
+                        // `0` is a length too.
+                        CalcValue::Number(n) if n == 0.0 => e.push(Expr::Sum { px: 0.0, pct: 0.0 }),
+                        CalcValue::Number(_) => return None,
+                    }
+                }
+                return Some(CalcValue::Length(match name {
+                    "min(" => Expr::Min(e),
+                    "max(" => Expr::Max(e),
+                    _ => {
+                        let hi = e.pop()?;
+                        let v = e.pop()?;
+                        let lo = e.pop()?;
+                        Expr::Max(vec![lo, Expr::Min(vec![v, hi])])
+                    }
+                }));
+            }
+        }
+        if self.eat(b'(') {
+            let v = self.sum()?;
+            return self.eat(b')').then_some(v);
+        }
+        // A number with its sign, then its unit.
+        let start = self.at;
+        if matches!(self.s.get(self.at), Some(b'+' | b'-')) {
+            self.at += 1;
+        }
+        while self.s.get(self.at).is_some_and(|c| {
+            c.is_ascii_digit()
+                || *c == b'.'
+                || *c == b'e' && self.s.get(self.at + 1).is_some_and(u8::is_ascii_digit)
+        }) {
+            self.at += 1;
+        }
+        let n: f32 = std::str::from_utf8(&self.s[start..self.at])
+            .ok()?
+            .parse()
+            .ok()?;
+        let rest = &self.s[self.at..];
+        let unit = rest
+            .iter()
+            .take_while(|c| c.is_ascii_alphabetic() || **c == b'%')
+            .count();
+        self.at += unit;
+        let len = |px, pct| Some(CalcValue::Length(Expr::Sum { px, pct }));
+        match &rest[..unit] {
+            b"" => Some(CalcValue::Number(n)),
+            b"px" => len(n, 0.0),
+            b"pt" => len(n * 4.0 / 3.0, 0.0),
+            b"rem" => len(n * REM, 0.0),
+            b"%" => len(0.0, n / 100.0),
+            _ => None,
+        }
+    }
+}
+
+/// `a + b`, as one term when both are sums.
+fn add(a: Expr, b: Expr) -> Expr {
+    match (a, b) {
+        (Expr::Sum { px, pct }, Expr::Sum { px: x, pct: p }) => Expr::Sum {
+            px: px + x,
+            pct: pct + p,
+        },
+        (a, b) => Expr::Add(Box::new([a, b])),
+    }
+}
+
+/// `e × k`, as one term when `e` is a sum.
+fn scale(e: Expr, k: f32) -> Expr {
+    match e {
+        Expr::Sum { px, pct } => Expr::Sum {
+            px: px * k,
+            pct: pct * k,
+        },
+        e if k == 1.0 => e,
+        e => Expr::Scale(Box::new(e), k),
+    }
+}
+
 /// A length (in points) or a percentage (a fraction).
 pub(crate) fn length_or_percent(s: &str) -> Option<DefiniteLength> {
     match s.trim().strip_suffix('%') {

@@ -76,5 +76,10 @@ the changes after it are only these:
   a style sets of a node's own props (`line-clamp-*`, `pointer-events-*`,
   `text-ellipsis`, `select-*`) without NSH's core.
 
+- `css.rs` adds `calc()`, which parses `calc()`, `min()`, `max()` and
+  `clamp()` over lengths and percentages with `+ - * /`; `style.rs`'s `Len`
+  takes it (`Len::Calc`, a `rune_taffy::calc` handle), so an inline
+  `left: calc(50% - 2px)` resolves at layout instead of being rejected.
+
 Its own tests (`tailwind/tests.rs`, `geometry/tests.rs`, `style.rs`) run
 unchanged otherwise.
