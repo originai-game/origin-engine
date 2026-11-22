@@ -38,6 +38,21 @@ These are on branches, not on main.
   measurements of wasm product reuse, GPU document shards and Cargo unit
   graphs.
 - **The structure work** (§Structure).
+- **Clouds an author places:** volumetric clouds at positions the game
+  names, with cloud types set apart from each other. og.Clouds today is
+  one cumulus layer whose look follows `coverage`, plus the high `layer`;
+  nothing places a cloud.
+- **Fog over a cloud sea** (`v2g-sky-fog`): land fog stays below the
+  cumulus base while a cloud sea keeps the fog's `sky` share, `Clouds.base`
+  becomes a signed world y, and og.PhysicalSky's altitude sets the clouds'
+  curved shell and sunlight.
+- **The compat tier's plant-scatter reference:**
+  `gfx::frames_at_the_compat_tier` draws plant-scatter
+  (`COMPAT_SCENES`, `crates/og-tests/src/scenes.rs`) but
+  `crates/og-tests/references/og-assets.json` pins no
+  `vulkan/plant-scatter.png`, so the test fails on every GPU run, the L4
+  included. The L4 frame is judged before it is recorded: its clouds show
+  a dotted, checker-like pattern.
 
 ## Next
 
@@ -184,12 +199,55 @@ and is verified once on the GPU host. Open work is collected on PR #40.
   1.94 → 2.01 ms, the other passes flat). Each level's blades as an
   instance-rate vertex buffer recovers it on every tier with one path;
   it needs `first_instance` in indirect draws or fixed per-level regions.
+- Fog.start and Fog.sunPower do nothing while Fog.volumetric is on: the
+  volumetric medium replaces the plain fog where it draws, and
+  `og_render::VolumetricFog` (`crates/og-render/src/media/volumetric.rs`)
+  has neither member, so `extract`
+  (`crates/og-runtime/src/present/atmosphere/weather.rs`) passes neither
+  on. Frames with and without them measured byte-identical, and the IDL's
+  docs do not say so. Which members the volumetric path should honour is
+  open.
+- TerrainScatter's shadow cascades may draw copies past the impostor
+  distance at the mesh's cost: only the cost is measured, not which level
+  each cascade draws. The shadow passes draw the cull's off-camera set
+  (`crates/og-render/src/systems/vegetation/scatter/draw.rs`); per-pass
+  triangle counts come first.
+- The character controller takes f32 error for a ceiling above about
+  2048 m: `crates/og-physics/src/character/characters.rs:138` zeroes the
+  upward speed when the move falls short of the plan by more than 1e-4 m,
+  and the mover's translation is `end - centre` in world f32
+  (`mover.rs:318`, `352`, `365`), whose ulp is 2.44e-4 m there. A replay
+  that delivers 12 with no fall at 300, 1000 and 2000 m delivers 5 with 6
+  falls at 3000 and 4000 m. The fix: a ceiling is a hit of the upward
+  sweep, or the bound scales with the position's ulp.
+- `og style check-project` reports a rigged character's texel density 100
+  times too high when its Armature is scaled (0.01 against an inverse bind
+  matrix of about 100): `measure_model`
+  (`crates/og-cli/src/style_check/measures.rs`) places skinned vertices by
+  the node's world matrix, not the bind pose. The cook's own measure is
+  right.
+- The global fog's ambient has no geometric sky occlusion: `ambient` is
+  `fog.color` (`crates/og-runtime/src/present/atmosphere/weather.rs:65`)
+  and the froxels inject it unoccluded
+  (`crates/og-render/shaders/volumetric.wgsl:84`), so fog under a canopy or
+  indoors is no darker. Paused: the HG lobe at g = 0.9 is about 10° wide,
+  and neither 5, 9 or 16 fixed directions nor L1/L2 harmonics reconstruct
+  sky visibility closely enough. It resumes with a representation or an
+  alpha-aware visibility query that keeps that lobe, at an added steady
+  cost of at most 0.5 ms p95 on the L4 at 1280×720, cache refresh and wind
+  included.
+- `packages/engine/tests/flow-fused.test.ts` runs at its 120 s timeout:
+  one `og run` of the 12 s fixture takes 65–78 s on an idle machine and
+  about 108–120 s for the win case under the full eight-way bun-test.
 
 ## Decided
 
 - **Familiar syntax first:** Svelte templates and stores, standard CSS,
   GSAP, Yarn, bun:test, Rapier and the three.js vocabulary.
 - **New style packs** need a separate art sign-off.
+- **Video to game** (`docs/design.md` §2.9): `og video study` is its one
+  command; no gameplay template, `og video pair`, new `artBrief` member or
+  score for a segment.
 - **Not doing:** Cranelift, wasm-opt, Wild, remote compiler caches, Bazel,
   CRIU or process fork, VLM gating, Rust hot patching, splitting tests
   across machines, Radiance Cascades, and from Exact its Contract UI

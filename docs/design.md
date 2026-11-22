@@ -711,6 +711,64 @@ tick, exact seeking by snapshot, headless runs and the offline mixer.
 - `og render` and its capture members are development members, absent from
   `publish`.
 
+#### From gameplay video to a game
+
+A game author starts from a 10–15 s AI gameplay video and builds an
+ordinary Origin Engine game whose camera, art and core action match it. The
+process adapts lovisdotio/video-to-game (MIT); its Three.js page is not
+ported.
+
+- **The split.** The platform generates the video and every asset; paid
+  generation, accounts and money stay there (§2.8), and the engine calls no
+  generation service. The engine studies the video, builds the game and
+  checks it against the video.
+- **`og video study <clip>`** (`crates/og-cli/src/commands/video/study.rs`)
+  is the one command it adds. It writes `study.json`, the selected frames
+  at native size and a contact sheet of at most 24 cells. It samples every
+  `--interval` seconds (0.25) plus exact `--at` times, each the frame shown
+  at that time by its decoded presentation timestamp, never a frame number
+  over the nominal fps. `study.json` keeps every decoded frame's timestamp,
+  the time base and the packet-end duration; cut candidates where ffmpeg's
+  scene score passes `--cut-change` (0.35), with every score; 8-colour Oklab
+  palettes of the clip and of each cut segment; the mean FLIP between
+  adjacent samples, and its mean and median over `--window` (3 s) windows.
+  It reuses og-cook's ffmpeg and conform palette, og-cli's contact sheet
+  and og-probe's FLIP: no new crate, no optical flow. It measures and
+  names no best segment. `og video edges` writes the clip's final displayed
+  frame as its last.
+- **Three checks, none standing in for another.** Mechanics: `og test`
+  with real inputs, each core phase named in `require` and its order read
+  from the probe's `timeline`. Frames: study frames at times fixed before
+  tuning (`--at`), each paired through `og compare` (§2.11) with the game's
+  frame at the mapped tick of the same input route, and judged by eye.
+  Performance: timings on the GPU host (`docs/ci.md` §The GPU host) at the
+  target resolution; a recording's frame rate proves nothing, since
+  `og render` draws offline at the tick. The most active window of a
+  recording is a candidate for the proof clip, never evidence of a
+  mechanic.
+- **Design evidence stays in the project, out of `dist/`.** The source
+  video, study, spec, seeds and asset sources sit beside `assets/`, neither
+  imported nor cooked, so neither `og build` nor `og build --publish`
+  writes them (`docs/web-export.md` §Output layout). The video is kept,
+  not only its prompt: two generations of one prompt are two designs.
+- **Not done, by decision.** No gameplay template and no video-to-code step
+  (`og create` writes the one skeleton); no new `artBrief` member (study
+  frames enter as its existing `references`, the look the game has
+  accepted; the hero's identity goes in the subject); no `og video pair`
+  (`og compare` pairs frames); no score for a segment or a match.
+- **Engine capabilities added for it**, each general: og.anim's joint
+  queries, `Animation.skinJoints` and `og.anim.getNodeMatrix` reading the
+  last completed tick's pose (767e6be12); `--commands-file` for `og run`,
+  `og render` and `og replay record`, so a long input route stays out of
+  process arguments (1421ed94f); capture audio that keeps every packet
+  across bulk advances, so `og run --audio` and `og render` keep the whole
+  WAV and video (ba1539dca); web start preloads the pack fonts the code
+  explicitly reaches, so `og.load.font` in `start` succeeds on both hosts
+  (67286f24f).
+- **The workflow** (the spec, framing, asset preflight, the route, the
+  thresholds and the hand-over) is the video-to-game guide's,
+  `crates/og-api/guides/video-to-game.md`.
+
 ### 2.10 Lockstep
 
 Deterministic play over a room (IDL module `net`, crate `og-net`). Every peer
