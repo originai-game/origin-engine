@@ -53,7 +53,7 @@ installed by `scripts/install-tools.sh` (cargo-nextest when absent).
 | Tool | Version | Pinned by |
 |---|---|---|
 | Rust (rustc, rustfmt, clippy, rust-src; wasm32-unknown-unknown, wasm32-wasip1, x86_64-unknown-linux-gnu and x86_64-pc-windows-msvc targets) | nightly-2026-11-05 (1.101.0-nightly), edition 2024, `rust-version` 1.99 | `rust-toolchain.toml`, `Cargo.toml` `[workspace.package]` |
-| wgpu / naga | 30.0.2 with the fork's patches (branch `og/flash-2-hotspots` of `https://github.com/originai-game/wgpu-flash`) | `Cargo.toml` `[patch.crates-io]` (a commit; its comment lists the fork's patches) |
+| wgpu / naga | 30.0.2 with the fork's patches (branch `og/flash-3-trusted-core` of `https://github.com/originai-game/wgpu-flash`) | `Cargo.toml` `[patch.crates-io]` (a commit; its comment lists the fork's patches) |
 | AccessKit (native shared-frame accessibility schema) | 0.25.2 | `crates/og-ui-next/Cargo.toml` (exact; serde enabled, no OS adapter in the engine) |
 | Parley / parley_engine, HarfRust, Skrifa (UI text) | 0.12.0 / 0.12.0, 0.12.0, 0.44.0 | `crates/og-text/Cargo.toml` (exact compatible stack; default features off, `libm`, no system font discovery) |
 | write-fonts (cook-only SFNT shaping tables) | 0.55.0 | `crates/og-cook/Cargo.toml` (exact, default features off; no runtime outlines in layout-only fonts) |

@@ -555,6 +555,21 @@ impl Renderer {
                 if let Some(a) = arena {
                     a.clear(encoder);
                 }
+                // The passes below write the arena from their shaders:
+                // declared ahead of each (wgpu-flash transitions nothing
+                // inside a render pass, and leaves the arena readable after
+                // one). A no-op in the browser.
+                let write_arena = |encoder: &mut crate::Encoder| {
+                    if let Some(a) = arena {
+                        encoder.transition_resources(
+                            std::iter::once(wgpu::BufferTransition {
+                                buffer: &a.buffer,
+                                state: wgpu::BufferUses::STORAGE_READ_WRITE,
+                            }),
+                            std::iter::empty(),
+                        );
+                    }
+                };
                 let (frame_group, probes) = match (mode.arena(), oit_frame_group) {
                     (true, Some(g)) => (g, oit_probe_binding),
                     _ => (frame_bind_group, probe_binding),
@@ -564,6 +579,7 @@ impl Renderer {
                 // the OIT pass then keeps exact (oit_arena.wgsl).
                 if mode == oit::Oit::Front {
                     let mark = oit::Oit::Mark;
+                    write_arena(encoder);
                     let mut mark_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                         label: Some("main (oit front)"),
                         color_attachments: &[],
@@ -612,6 +628,7 @@ impl Renderer {
                         },
                     })
                 };
+                write_arena(encoder);
                 let mut oit_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                     label: Some("main (oit)"),
                     color_attachments: &[
