@@ -335,6 +335,9 @@ pub struct Tree {
     /// Each element's transform in `drawn.transforms` (its own composed
     /// with its ancestors'; 0 none), what its children compose onto.
     xfs: Vec<u32>,
+    /// Each element's mask in the last paint, its own or its nearest
+    /// masked ancestor's: a gradient of [`Tree::drawn`] plus 1, 0 none.
+    masks: Vec<u32>,
     /// The transforms of the last paint, which `xfs` index: [`Tree::drawn`]
     /// is the host's to take, and the probe reads where a text was drawn
     /// after it has.
@@ -470,6 +473,7 @@ impl Tree {
             anchor_placed: Vec::new(),
             glyphs: Vec::new(),
             xfs: Vec::new(),
+            masks: Vec::new(),
             painted_transforms: Vec::new(),
             textures: None,
             order: Vec::new(),
@@ -1022,6 +1026,8 @@ impl Tree {
         self.shown.resize(self.els.len(), unseen);
         self.glyphs.resize_with(self.els.len(), Glyphs::default);
         self.xfs.resize(self.els.len(), 0);
+        self.masks.clear();
+        self.masks.resize(self.els.len(), 0);
         let m = &tf.metrics;
         for k in 0..self.order.len() {
             let e = self.order[k] as usize;
@@ -1118,6 +1124,11 @@ impl Tree {
                 self.xfs[el.arena_parent as usize]
             };
             self.xfs[e] = pxf;
+            self.masks[e] = if el.arena_parent == NONE {
+                0
+            } else {
+                self.masks[el.arena_parent as usize]
+            };
             if !visible {
                 continue;
             }
@@ -1127,6 +1138,12 @@ impl Tree {
             t.translate = [t.translate[0] + kx, t.translate[1] + ky];
             let p = &mut self.drawn;
             let start = p.quads.len();
+            // Its own mask replaces an ancestor's over its subtree.
+            if let Some(g) = &r.mask {
+                let area = [x, y, b.w, b.h];
+                let gi = p.shaped_gradient(paint_gradient(g, area), g.stops().iter().copied());
+                self.masks[e] = gi + 1;
+            }
             let xf = transformed(p, pxf, &t, [x, y, b.w, b.h]);
             self.xfs[e] = xf;
             // The clip it sets for what it holds is drawn through its
@@ -1193,14 +1210,8 @@ impl Tree {
                 ));
             }
             if let Some(g) = &s.gradient {
-                // A `to <corner>` line runs perpendicular to the diagonal
-                // between the other two corners, so its angle is the box's.
-                let angle = match g.corner {
-                    [0, _] | [_, 0] => g.angle,
-                    [cx, cy] => og_core::math::atan2(f32::from(cx) * b.h, -f32::from(cy) * b.w),
-                };
                 let gi = p.shaped_gradient(
-                    paint_gradient(g, angle, b.w, b.h),
+                    paint_gradient(g, [x, y, b.w, b.h]),
                     g.stops().iter().copied(),
                 );
                 p.quads.push(quad(
@@ -1232,6 +1243,7 @@ impl Tree {
                 p.quads.push(PaintQuad {
                     uv: im.uv,
                     wipe: [cut, im.wipe_start, f32::from(u8::from(im.wipe_ccw)), 0.0],
+                    mask: 0,
                     ..quad(
                         PaintKind::Image,
                         rect,
@@ -1555,6 +1567,12 @@ impl Tree {
             if self.els[e].particles.is_some() {
                 self.paint_particles(e, rect, ink, clip, xf);
             }
+            let mask = self.masks[e];
+            if mask != 0 {
+                for q in &mut self.drawn.quads[start..] {
+                    q.mask = mask;
+                }
+            }
         }
         self.painted_transforms.clone_from(&self.drawn.transforms);
         let mut quads = std::mem::take(&mut self.drawn.quads);
@@ -1662,6 +1680,7 @@ fn quad(
         xf: 0,
         uv: [0.0; 4],
         wipe: [0.0; 4],
+        mask: 0,
     }
 }
 
@@ -1777,18 +1796,20 @@ fn clamped(s: Sighting, drawn: [f32; 4], m: f32, w: f32, h: f32) -> [f32; 2] {
 /// Corner radii (top left, top right, bottom right, bottom left) on a
 /// `w`×`h` box, all scaled down by one factor when two on a side would
 /// overlap, as CSS scales them.
-/// Gradient `g` over a box `w` × `h` CSS px as the paint list's: a linear
-/// one at `angle` (its corner already aimed), a radial one's ending shape
-/// sized by CSS Images 3's keywords, a conic one from its angle; centres in
-/// CSS px from the box's centre.
-fn paint_gradient(
-    g: &crate::record::Gradient,
-    angle: f32,
-    w: f32,
-    h: f32,
-) -> og_draw::paint::PaintGradient {
+/// Gradient `g` over the box `area` (x y w h, CSS px) as the paint list's:
+/// a linear one at its angle (a `to <corner>` one aimed at the box's
+/// corner), a radial one's ending shape sized by CSS Images 3's keywords, a
+/// conic one from its angle; centres in CSS px from the box's centre.
+fn paint_gradient(g: &crate::record::Gradient, area: [f32; 4]) -> og_draw::paint::PaintGradient {
     use crate::record::Shape;
     use nsh_tailwind::effects::GradientSize as Size;
+    let [_, _, w, h] = area;
+    // A `to <corner>` line runs perpendicular to the diagonal between the
+    // other two corners, so its angle is the box's.
+    let angle = match g.corner {
+        [0, _] | [_, 0] => g.angle,
+        [cx, cy] => og_core::math::atan2(f32::from(cx) * h, -f32::from(cy) * w),
+    };
     let (cx, cy) = (g.center[0] * w, g.center[1] * h);
     let center = [cx - w / 2.0, cy - h / 2.0];
     // The distances from the centre to the nearer and the farther side.
@@ -1821,6 +1842,7 @@ fn paint_gradient(
         shape,
         center,
         radii,
+        area,
     }
 }
 

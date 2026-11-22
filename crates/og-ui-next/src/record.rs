@@ -396,6 +396,9 @@ pub struct Record {
     /// Its `z-*`: `None` for `z-auto` (the default), which stacks nothing;
     /// `Some(0)` stacks at 0. The tree's stacking contexts read it.
     pub z_index: Option<i32>,
+    /// Its `mask-[<gradient>]` (CSS's `mask-image`): the gradient's alpha
+    /// over its border box scales everything it and its subtree draw.
+    pub mask: Option<Gradient>,
 }
 
 impl Record {
@@ -452,6 +455,7 @@ impl Default for Record {
             stroke_width: 1.0,
             cursor: nsh_tailwind::effects::Cursor::Auto,
             z_index: None,
+            mask: None,
         }
     }
 }

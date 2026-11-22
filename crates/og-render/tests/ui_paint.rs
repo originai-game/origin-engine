@@ -10,6 +10,7 @@
 //!   closed one missing its closing side
 //! - a conic gradient sweeping counter-clockwise or from the wrong angle, or
 //!   a radial one drawn as a circle of its wider radius
+//! - a mask measured over the quad instead of its own box, or ignored
 use glam::Vec3;
 use og_render::paint::{
     GRADIENT_CONIC, GRADIENT_RADIAL, IMAGE_FILL, PaintGradient, PaintKind, PaintQuad,
@@ -90,6 +91,7 @@ fn image(
         xf: 0,
         uv: [0.0, 0.0, 1.0, 1.0],
         wipe,
+        mask: 0,
     }
 }
 
@@ -193,6 +195,7 @@ fn line(points: &mut Vec<[f32; 2]>, pts: &[[f32; 2]], width: f32, closed: bool) 
         xf: 0,
         uv: [0.0; 4],
         wipe: [0.0; 4],
+        mask: 0,
     }
 }
 
@@ -257,6 +260,7 @@ fn gradient_box(scene: &mut RenderScene, rect: [f32; 4], g: PaintGradient) -> Pa
         xf: 0,
         uv: [0.0; 4],
         wipe: [0.0; 4],
+        mask: 0,
     }
 }
 
@@ -277,6 +281,7 @@ fn conic_and_radial_gradients_draw_their_shapes() {
             radii: [0.0; 2],
             first: 0,
             count: 0,
+            area: [0.0; 4],
         };
         vec![gradient_box(scene, [0.0, 0.0, 128.0, 128.0], g)]
     });
@@ -294,10 +299,51 @@ fn conic_and_radial_gradients_draw_their_shapes() {
             radii: [r, r / 2.0],
             first: 0,
             count: 0,
+            area: [0.0; 4],
         };
         vec![gradient_box(scene, [0.0, 32.0, 128.0, 64.0], g)]
     });
     near(at(&px, 64, 64), BLACK, "the centre");
     near(at(&px, 109, 64), grey(128), "half way out, across");
     near(at(&px, 64, 86), grey(128), "half way out, down");
+}
+
+#[test]
+#[ignore = "requires GPU"]
+fn a_mask_fades_what_it_covers_over_its_own_box() {
+    // A mask over the left half (x 0..64), opaque to transparent left to
+    // right, on two white boxes: one inside it, one past its right edge.
+    let px = render(|scene| {
+        let mask = PaintGradient {
+            angle: std::f32::consts::FRAC_PI_2,
+            area: [0.0, 0.0, 64.0, 128.0],
+            ..bytemuck::Zeroable::zeroed()
+        };
+        let mi = scene
+            .ui
+            .paint
+            .shaped_gradient(mask, [(0.0, [0.0, 0.0, 0.0, 1.0]), (1.0, [0.0; 4])]);
+        let white = |rect| PaintQuad {
+            rect,
+            clip: [0.0, 0.0, W as f32, W as f32],
+            color: [1.0; 4],
+            radius: [0.0; 4],
+            p: [0.0; 4],
+            kind: PaintKind::Solid as u32,
+            a: 0,
+            b: 0,
+            xf: 0,
+            uv: [0.0; 4],
+            wipe: [0.0; 4],
+            mask: mi + 1,
+        };
+        vec![
+            white([16.0, 16.0, 32.0, 96.0]),
+            white([80.0, 16.0, 32.0, 96.0]),
+        ]
+    });
+    // At 1/4 and 3/4 of the mask's width: three quarters and a quarter.
+    near(at(&px, 16, 64), grey(225), "near the mask's opaque edge");
+    near(at(&px, 47, 64), grey(137), "a quarter left");
+    near(at(&px, 96, 64), BLACK, "past the mask's transparent end");
 }

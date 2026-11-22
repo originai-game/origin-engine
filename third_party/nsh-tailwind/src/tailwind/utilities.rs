@@ -1713,6 +1713,7 @@ fn keyword(u: &str) -> Option<Vec<Decl>> {
         "lowercase" => sets(K::TextTransform, "lowercase"),
         "capitalize" => sets(K::TextTransform, "capitalize"),
         "normal-case" => sets(K::TextTransform, "none"),
+        "mask-none" => sets(K::MaskImage, "none"),
         "hyphens-auto" => sets(K::Hyphens, "auto"),
         "hyphens-manual" => sets(K::Hyphens, "manual"),
         "hyphens-none" => sets(K::Hyphens, "none"),
@@ -2398,6 +2399,19 @@ static PREFIXES: &[(&str, Handler)] = &[
         } else {
             Part::Gradient(kind)
         })
+    }),
+    // `mask-[<gradient>]` (Tailwind's arbitrary `mask-image`): the
+    // gradient's alpha decides how much of the element is drawn.
+    ("mask", |_, v, _| {
+        let value = arbitrary(v)?;
+        let a = arbitrary_hinted(&value, "image").unwrap_or(&value);
+        if !a.contains("gradient(") {
+            return None;
+        }
+        one(Decl::Style(StyleDecl::Set(
+            K::MaskImage,
+            K::MaskImage.parse_value(StyleValue::Str(a)).ok()?,
+        )))
     }),
     ("bg", |t, v, _| {
         // `[image:…]` says the value is an image, as Tailwind's type hint

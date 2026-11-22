@@ -4008,6 +4008,61 @@ mod tests {
         );
     }
 
+    /// A `mask-[<gradient>]` masks every quad of its element and its
+    /// subtree, measured over its own box; a nested mask replaces it under
+    /// it, and a sibling is not masked.
+    #[test]
+    fn a_mask_covers_its_subtree_over_its_own_box() {
+        let mut t = real();
+        let outer = "w-[200px] h-[100px] shrink-0 bg-white p-2 \
+            mask-[linear-gradient(to_right,black,transparent)]";
+        nodes(
+            &mut t,
+            &[
+                (1, 0, outer, 0),
+                (2, 0, "w-[50px] h-[20px] bg-black border border-white", 1),
+                (
+                    3,
+                    0,
+                    "w-[50px] h-[20px] bg-black mask-[radial-gradient(black,transparent)]",
+                    1,
+                ),
+                (4, 0, "w-[30px] h-[30px] shrink-0 bg-black", 0),
+            ],
+        );
+        frame(&mut t);
+        let d = &t.drawn;
+        let at = |id: u32| t.op_box(id).unwrap();
+        let mask_of = |id: u32| -> Vec<u32> {
+            let [x, y, w, h] = at(id);
+            d.quads
+                .iter()
+                .filter(|q| q.rect == [x, y, w, h] && q.kind == PaintKind::Solid as u32)
+                .map(|q| q.mask)
+                .collect()
+        };
+        let outer = mask_of(1);
+        assert_eq!(outer.len(), 1, "{:?}", d.quads);
+        assert_ne!(outer[0], 0, "the masked box");
+        assert_eq!(mask_of(2), outer, "its child takes its mask");
+        // The child's border too.
+        assert!(
+            d.quads
+                .iter()
+                .filter(|q| q.kind == PaintKind::Border as u32)
+                .all(|q| q.mask == outer[0])
+        );
+        let inner = mask_of(3);
+        assert!(inner[0] != 0 && inner != outer, "a nested mask replaces it");
+        assert_eq!(mask_of(4), [0], "a sibling is not masked");
+        let g = &d.gradients[outer[0] as usize - 1];
+        assert_eq!(g.area, at(1), "measured over the masking box");
+        assert_eq!(
+            d.gradients[inner[0] as usize - 1].shape,
+            og_draw::paint::GRADIENT_RADIAL
+        );
+    }
+
     /// Radial and conic backgrounds paint as their own shapes: a radial
     /// ellipse through the farthest corner (the CSS default), a circle off
     /// the centre to its farthest corner, and a conic sweep from its start

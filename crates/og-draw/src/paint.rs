@@ -84,6 +84,10 @@ pub struct PaintQuad {
     /// An image's radial wipe: the fraction hidden (0 none), the angle it
     /// starts at (radians, 0 up, clockwise), 1 to sweep counter-clockwise.
     pub wipe: [f32; 4],
+    /// The mask over it (`mask-[<gradient>]` on it or an ancestor): gradient
+    /// `mask - 1` of [`Paint::gradients`], whose alpha over its
+    /// [`PaintGradient::area`] scales the quad's; 0 none.
+    pub mask: u32,
 }
 
 /// [`PaintKind::Image`]'s flags: draw the centre slice.
@@ -105,6 +109,10 @@ pub struct PaintGradient {
     pub shape: u32,
     pub center: [f32; 2],
     pub radii: [f32; 2],
+    /// A mask's box, x y w h in CSS px before transforms, which `center`
+    /// and the line's length are measured in ([`PaintQuad::mask`]); a
+    /// background's is its own quad's, so it is unused there.
+    pub area: [f32; 4],
 }
 
 /// [`PaintGradient::shape`]: along a line.

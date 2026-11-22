@@ -344,6 +344,54 @@ fn fraction(l: &DefiniteLength) -> Option<f32> {
     }
 }
 
+/// An NSH gradient as a record's: its shape, angle, centre and up to
+/// [`GRADIENT_STOPS`] stops.
+fn gradient_of(g: &nsh_tailwind::effects::Gradient) -> Gradient {
+    let mid = [0.5; 2];
+    let (shape, angle, corner, center) = match g.kind {
+        GradientKind::Linear { angle } => (Shape::Linear, angle.0, [0, 0], mid),
+        GradientKind::LinearCorner { right, bottom } => (
+            Shape::Linear,
+            0.0,
+            [if right { 1 } else { -1 }, if bottom { 1 } else { -1 }],
+            mid,
+        ),
+        GradientKind::Radial { circle, size, x, y } => {
+            (Shape::Radial { circle, size }, 0.0, [0, 0], [x.0, y.0])
+        }
+        GradientKind::Conic { from, x, y } => (Shape::Conic, from.0, [0, 0], [x.0, y.0]),
+    };
+    let n = g.stops.len().min(GRADIENT_STOPS);
+    let mut out = Gradient {
+        shape,
+        angle,
+        corner,
+        center,
+        count: n as u8,
+        stops: [(0.0, [0.0; 4]); GRADIENT_STOPS],
+    };
+    let all = g.stops.len();
+    for (k, slot) in out.stops.iter_mut().take(n).enumerate() {
+        // Past the cap, every stop's place is sampled evenly, so
+        // the last stop is always kept.
+        let i = if n > 1 {
+            (k * (all - 1) + (n - 1) / 2) / (n - 1)
+        } else {
+            0
+        };
+        let s = &g.stops[i];
+        // An unplaced stop spreads evenly between its neighbours.
+        let even = if all > 1 {
+            i as f32 / (all - 1) as f32
+        } else {
+            0.0
+        };
+        let at = s.position.as_ref().and_then(fraction).unwrap_or(even);
+        *slot = (at, linear(s.color));
+    }
+    out
+}
+
 fn record_of(style: &Style, props: &ClassProps) -> Record {
     let mut r = Record {
         layout: CompactStyle::from(&style.layout),
@@ -435,57 +483,8 @@ fn record_of(style: &Style, props: &ClassProps) -> Record {
             };
             skin.shadow_count = k as u8 + 1;
         }
-        skin.gradient = fx
-            .background_images
-            .iter()
-            .map(|g| {
-                let mid = [0.5; 2];
-                let (shape, angle, corner, center) = match g.kind {
-                    GradientKind::Linear { angle } => (Shape::Linear, angle.0, [0, 0], mid),
-                    GradientKind::LinearCorner { right, bottom } => (
-                        Shape::Linear,
-                        0.0,
-                        [if right { 1 } else { -1 }, if bottom { 1 } else { -1 }],
-                        mid,
-                    ),
-                    GradientKind::Radial { circle, size, x, y } => {
-                        (Shape::Radial { circle, size }, 0.0, [0, 0], [x.0, y.0])
-                    }
-                    GradientKind::Conic { from, x, y } => {
-                        (Shape::Conic, from.0, [0, 0], [x.0, y.0])
-                    }
-                };
-                let n = g.stops.len().min(GRADIENT_STOPS);
-                let mut out = Gradient {
-                    shape,
-                    angle,
-                    corner,
-                    center,
-                    count: n as u8,
-                    stops: [(0.0, [0.0; 4]); GRADIENT_STOPS],
-                };
-                let all = g.stops.len();
-                for (k, slot) in out.stops.iter_mut().take(n).enumerate() {
-                    // Past the cap, every stop's place is sampled evenly, so
-                    // the last stop is always kept.
-                    let i = if n > 1 {
-                        (k * (all - 1) + (n - 1) / 2) / (n - 1)
-                    } else {
-                        0
-                    };
-                    let s = &g.stops[i];
-                    // An unplaced stop spreads evenly between its neighbours.
-                    let even = if all > 1 {
-                        i as f32 / (all - 1) as f32
-                    } else {
-                        0.0
-                    };
-                    let at = s.position.as_ref().and_then(fraction).unwrap_or(even);
-                    *slot = (at, linear(s.color));
-                }
-                out
-            })
-            .next();
+        skin.gradient = fx.background_images.first().map(gradient_of);
+        r.mask = fx.mask_images.first().map(gradient_of);
         skin.backdrop_blur = fx
             .backdrop_filters
             .iter()
@@ -711,6 +710,21 @@ mod tests {
         assert!(
             c.unknown("hyphens-auto hyphens-manual hyphens-none")
                 .is_empty()
+        );
+        // mask-[<gradient>] sets the mask; mask-none and no class clear it.
+        let m = c.record(
+            "mask-[linear-gradient(to_bottom,black_40%,transparent)]",
+            &env,
+        );
+        let g = m.mask.expect("a mask");
+        assert_eq!(g.stops()[0].0, 0.4, "{:?}", g.stops());
+        let cleared = "mask-[linear-gradient(black,transparent)] mask-none";
+        assert_eq!(c.record(cleared, &env).mask, None);
+        assert_eq!(c.record("p-1", &env).mask, None);
+        assert_eq!(
+            c.unknown("mask-[url(a.png)]"),
+            ["mask-[url(a.png)]"],
+            "only gradients"
         );
         // The UI's size classes: narrow is under 600 wide, short under 500
         // tall, compact either; 844x390 is short and compact, not narrow.

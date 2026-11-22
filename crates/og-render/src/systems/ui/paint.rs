@@ -268,12 +268,13 @@ impl PaintRenderer {
         let mut grew = self.group.is_none();
         grew |= write(device, queue, &mut self.quads, "ui paint quads", &self.gpu);
         self.gradient_rows.clear();
-        // Two rows a gradient: its angle, stops and shape, then its centre
-        // and radii (ui_paint.wgsl `gradients`).
+        // Three rows a gradient: its angle, stops and shape, its centre
+        // and radii, and a mask's box (ui_paint.wgsl `gradients`).
         for g in &paint.gradients {
             self.gradient_rows.extend([
                 [g.angle, g.first as f32, g.count as f32, g.shape as f32],
                 [g.center[0], g.center[1], g.radii[0], g.radii[1]],
+                g.area,
             ]);
         }
         grew |= write(
@@ -360,7 +361,8 @@ impl PaintRenderer {
                 r: q.radius,
                 p: q.p,
                 k: [q.kind, q.a, q.b, q.xf],
-                ..Default::default()
+                // The mask in w, which only an image's wipe shares (xyz).
+                w: [0.0, 0.0, 0.0, q.mask as f32],
             };
             if q.kind == PaintKind::Line as u32 {
                 self.segments_of(q, &paint.points, g);
@@ -406,7 +408,7 @@ impl PaintRenderer {
                     continue;
                 }
                 g.uv = q.uv;
-                g.w = q.wipe;
+                g.w = [q.wipe[0], q.wipe[1], q.wipe[2], g.w[3]];
                 wants = Some(PaintBind::Texture(t));
             }
             if let Some(w) = wants

@@ -244,6 +244,7 @@ impl Tree {
             xf: 0,
             uv: [0.0; 4],
             wipe: [0.0; 4],
+            mask: 0,
         };
         quads.extend([
             disc(r + 3.0, shadow),

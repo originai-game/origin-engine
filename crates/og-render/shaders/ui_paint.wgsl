@@ -35,13 +35,14 @@ struct PaintGpu {
   // count, or an image's flags (1 fill, 2 tile), w its transform (0 none).
   k: vec4<u32>,
   // An image's radial wipe: the fraction hidden, the start angle, 1 for
-  // counter-clockwise.
+  // counter-clockwise; w its mask, a gradient's index + 1 (0 none).
   w: vec4<f32>,
 };
 @group(0) @binding(1) var<storage, read> quads: array<PaintGpu>;
-// Two entries a gradient: x the angle (radians, CSS: 0 up, clockwise), y its
-// first stop, z its stops, w its shape (0 linear, 1 radial, 2 conic); then
-// its centre (xy, CSS px from the box's centre) and a radial one's radii (zw).
+// Three entries a gradient: x the angle (radians, CSS: 0 up, clockwise), y
+// its first stop, z its stops, w its shape (0 linear, 1 radial, 2 conic);
+// then its centre (xy, CSS px from the box's centre) and a radial one's radii
+// (zw); then a mask's box (x y w h, CSS px before transforms).
 @group(0) @binding(2) var<storage, read> gradients: array<vec4<f32>>;
 // Two entries a stop: its colour (linear, straight), then its offset in x.
 @group(0) @binding(3) var<storage, read> stops: array<vec4<f32>>;
@@ -63,6 +64,8 @@ struct PaintOut {
   @location(2) @interpolate(flat) index: u32,
   // Device pixels per CSS pixel of the box, its transform's scale included.
   @location(3) @interpolate(flat) aa: f32,
+  // The fragment's place in CSS px before transforms, which a mask reads.
+  @location(4) at: vec2<f32>,
 };
 
 @vertex
@@ -105,6 +108,7 @@ fn vs_paint(@builtin(vertex_index) vi: u32, @builtin(instance_index) ii: u32) ->
   o.uv = vec2<f32>(mix(q.uv.x, q.uv.z, c.x), mix(q.uv.y, q.uv.w, c.y));
   o.index = ii;
   o.aa = aa;
+  o.at = at;
   return o;
 }
 
@@ -154,8 +158,8 @@ fn grown(r: vec4<f32>, by: f32) -> vec4<f32> {
 // Gradient `gi` at `p` in a box of half size `half`: CSS's linear, radial
 // or conic gradient, mixed in premultiplied sRGB as CSS mixes it by default.
 fn gradient_at(gi: u32, p: vec2<f32>, half: vec2<f32>) -> vec4<f32> {
-  let g = gradients[2u * gi];
-  let shape = gradients[2u * gi + 1u];
+  let g = gradients[3u * gi];
+  let shape = gradients[3u * gi + 1u];
   var t: f32;
   if (g.w > 1.5) {
     // Around the centre, in turns from the start angle (0 up, clockwise).
@@ -401,6 +405,14 @@ fn fs_paint(in: PaintOut) -> @location(0) vec4<f32> {
     default: {
       a *= edge(sd_round_box(in.local, half, q.r), scale);
     }
+  }
+  // Its mask's alpha where it falls in the mask's box (CSS's mask-image:
+  // drawn where the mask is opaque, not where it is transparent).
+  if (q.w.w > 0.5) {
+    let mi = u32(q.w.w) - 1u;
+    let box = gradients[3u * mi + 2u];
+    let mh = 0.5 * box.zw;
+    a *= gradient_at(mi, in.at - box.xy - mh, mh).a;
   }
   if (a <= 0.0) {
     discard;
