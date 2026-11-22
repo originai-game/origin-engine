@@ -51,3 +51,7 @@ export function og_web_pipeline_mode(_mode: "sync" | "async" | "prewarm"): void 
 export function og_web_frame_skipped(): number {
   return 0;
 }
+// The engine here is the native host's, with no queued WebGPU frames.
+export function og_web_frames_in_flight(_engine: number): number {
+  return 0;
+}

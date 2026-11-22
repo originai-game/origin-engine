@@ -11,7 +11,7 @@
 // ready); the message loses the error or its stack; the shell's onCrash (the
 // play page's error card, shell/page.ts `fail`) is not called, or is called
 // twice; calls after it wait for an answer that never comes.
-import { beforeAll, expect, test } from "bun:test";
+import { afterAll, beforeAll, expect, test } from "bun:test";
 import { defineSystem, og } from "../src/index.ts";
 import { connectPage } from "../shell/transport.ts";
 import { browserOf, crashFields, deviceOf, gpuOf, type Context } from "../shell/telemetry.ts";
@@ -20,6 +20,7 @@ import { loadNativeHost } from "../src/node/index.ts";
 import type { GameToken } from "../src/runtime.ts";
 import { Shell, type HostError } from "../src/web/shell.ts";
 import { startWorker } from "../src/web/worker.ts";
+import { install } from "./support/dom.ts";
 
 function buildTheVillage(): void {
   throw new Error("the village has no well");
@@ -43,7 +44,7 @@ function canvas(): HTMLCanvasElement {
     clientHeight: 180,
     width: 0,
     height: 0,
-    ownerDocument: anything(),
+    ownerDocument: Object.setPrototypeOf({ adoptedStyleSheets: [] }, anything()),
     // The OffscreenCanvas the Worker draws on: its WebGPU context's configured device names its adapter (deviceReport).
     transferControlToOffscreen: () => ({ offscreen: true, getContext: () => ({ getConfiguration: () => ({ device: { adapterInfo: { vendor: "nvidia", architecture: "ada", description: "NVIDIA GeForce RTX 4070 Laptop GPU driver 566.03" } } }) }) }),
     getBoundingClientRect: () => ({ left: 0, top: 0, width: 320, height: 180 }),
@@ -72,7 +73,12 @@ class Port extends EventTarget {
   }
 }
 
-beforeAll(() => loadNativeHost());
+let uninstall: () => void;
+beforeAll(() => {
+  uninstall = install();
+  loadNativeHost();
+});
+afterAll(() => uninstall());
 
 /** The process's own scope back, as it was before startWorker took it. */
 function restore(): void {

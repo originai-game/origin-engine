@@ -2,9 +2,8 @@
 // elements, attributes, tree and focus that the text entry
 // (src/web/text-input.ts) and the accessibility mirror (src/web/a11y.ts)
 // touch, and what a screen reader would read of them. Not a DOM: enough of
-// one that those two run as written. `install()` puts its Node and
-// HTMLInputElement on globalThis (the mirror's instanceof checks) and gives
-// them back.
+// one that those two run as written. `install()` puts its Node,
+// HTMLInputElement and CSSStyleSheet on globalThis and gives them back.
 
 export class StandInNode extends EventTarget {
   nodeType = 1;
@@ -149,9 +148,17 @@ export class StandInInput extends StandInElement {
   step = "";
 }
 
+class StandInStyleSheet {
+  text = "";
+  replaceSync(text: string): void {
+    this.text = text;
+  }
+}
+
 export class StandInDocument {
   readonly body: StandInElement;
   activeElement: StandInElement | null;
+  adoptedStyleSheets: StandInStyleSheet[] = [];
   constructor() {
     this.body = new StandInElement(this, "body");
     this.activeElement = this.body;
@@ -196,15 +203,17 @@ export function standInCanvas(doc: StandInDocument, width = 1280, height = 720):
   return canvas as unknown as HTMLCanvasElement;
 }
 
-/** The globals the mirror's instanceof checks read; returns what puts them back. */
+/** The DOM globals the mirror uses; returns what puts them back. */
 export function install(): () => void {
   const g = globalThis as Record<string, unknown>;
-  const saved = { Node: g["Node"], HTMLInputElement: g["HTMLInputElement"] };
+  const saved = { Node: g["Node"], HTMLInputElement: g["HTMLInputElement"], CSSStyleSheet: g["CSSStyleSheet"] };
   g["Node"] = StandInNode;
   g["HTMLInputElement"] = StandInInput;
+  g["CSSStyleSheet"] = StandInStyleSheet;
   return () => {
     g["Node"] = saved.Node;
     g["HTMLInputElement"] = saved.HTMLInputElement;
+    g["CSSStyleSheet"] = saved.CSSStyleSheet;
   };
 }
 

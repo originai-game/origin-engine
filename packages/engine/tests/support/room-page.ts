@@ -14,6 +14,7 @@ import type { GameToken } from "../../src/runtime.ts";
 import { Shell } from "../../src/web/shell.ts";
 import { startWorker } from "../../src/web/worker.ts";
 import { playerRooms, type PlayerLink } from "../../shell/platform.ts";
+import { install } from "./dom.ts";
 
 const [bundle, root, port, room, bot, ticks] = process.argv.slice(2) as [string, string, string, string, string, string];
 
@@ -32,7 +33,7 @@ function canvas(): HTMLCanvasElement {
     clientHeight: 180,
     width: 0,
     height: 0,
-    ownerDocument: anything(),
+    ownerDocument: Object.setPrototypeOf({ adoptedStyleSheets: [] }, anything()),
     transferControlToOffscreen: () => ({ offscreen: true }),
     getBoundingClientRect: () => ({ left: 0, top: 0, width: 320, height: 180 }),
   }) as unknown as HTMLCanvasElement;
@@ -50,8 +51,9 @@ class Port extends EventTarget {
   terminate(): void {}
 }
 
-// The accessibility mirror's DOM class checks, with no DOM.
-(globalThis as Record<string, unknown>)["HTMLInputElement"] ??= class {};
+// The accessibility mirror's DOM globals, restored when this page exits.
+const uninstall = install();
+process.on("exit", uninstall);
 // The Worker fetches its bundle's manifest by path; the page's origin is this disk.
 const webFetch = globalThis.fetch;
 globalThis.fetch = (async (url: string | URL | Request, init?: RequestInit) =>

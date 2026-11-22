@@ -13,13 +13,14 @@
 // end to end, or nest wrongly (checkTrace); the document is not the
 // native one (its threads, its categories, a system per tick per system);
 // `stop` leaves it recording.
-import { beforeAll, expect, test } from "bun:test";
+import { afterAll, beforeAll, expect, test } from "bun:test";
 import { og, defineSystem } from "../src/index.ts";
 import { loadNativeHost } from "../src/node/index.ts";
 import type { GameToken } from "../src/runtime.ts";
 import { checkTrace, type TraceDocument, type TraceEvent } from "../src/trace.ts";
 import { Shell } from "../src/web/shell.ts";
 import { startWorker } from "../src/web/worker.ts";
+import { install } from "./support/dom.ts";
 
 /** Anything a DOM call asks for: every member is a callable that answers another. */
 function anything(): any {
@@ -38,7 +39,7 @@ function canvas(): HTMLCanvasElement {
     clientHeight: 180,
     width: 0,
     height: 0,
-    ownerDocument: anything(),
+    ownerDocument: Object.setPrototypeOf({ adoptedStyleSheets: [] }, anything()),
     transferControlToOffscreen: () => ({ offscreen: true }),
     getBoundingClientRect: () => ({ left: 0, top: 0, width: 320, height: 180 }),
   }) as unknown as HTMLCanvasElement;
@@ -63,7 +64,12 @@ class Port extends EventTarget {
   }
 }
 
-beforeAll(() => loadNativeHost());
+let uninstall: () => void;
+beforeAll(() => {
+  uninstall = install();
+  loadNativeHost();
+});
+afterAll(() => uninstall());
 
 const Spin = defineSystem("Spin", { writes: [og.Transform] }, (q, time) => {
   for (const a of q.archetypes()) {
