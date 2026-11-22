@@ -918,59 +918,73 @@ pub(super) fn scene_bounds(
     instanced: &std::collections::BTreeMap<usize, Vec<Mat4>>,
 ) -> (Vec3, Vec3) {
     let (mut lo, mut hi) = (Vec3::splat(f32::MAX), Vec3::splat(f32::MIN));
-    let doc = &src.doc;
-    // A skinned mesh's vertices are placed by its bind pose, not its node.
-    let binds = super::skin_binds(src);
-    if let Some(scene) = doc.default_scene().or_else(|| doc.scenes().next()) {
-        let mut stack: Vec<(gltf::Node, Mat4)> =
-            scene.nodes().map(|n| (n, Mat4::IDENTITY)).collect();
-        while let Some((node, parent)) = stack.pop() {
-            if node
-                .extension_value("KHR_node_visibility")
-                .and_then(|v| v.get("visible")?.as_bool())
-                == Some(false)
-            {
-                continue;
-            }
-            let (t, r, s) = node.transform().decomposed();
-            let world = parent
-                * Mat4::from_scale_rotation_translation(
-                    Vec3::from(s),
-                    Quat::from_array(r),
-                    Vec3::from(t),
-                );
-            // An instanced node draws its mesh at each instance only.
-            let at: Vec<Mat4> = match (binds.get(&node.index()), instanced.get(&node.index())) {
-                (Some(b), _) => vec![*b],
-                (None, Some(i)) => i.iter().map(|m| world * *m).collect(),
-                (None, None) => vec![world],
-            };
-            if let Some(mesh) = node.mesh() {
-                for prim in mesh
-                    .primitives()
-                    .filter(|p| p.mode() == gltf::mesh::Mode::Triangles)
-                {
-                    let reader = prim.reader(|b| Some(&src.buffers[b.index()].0[..]));
-                    if let Some(ps) = reader.read_positions() {
-                        for p in ps {
-                            for m in &at {
-                                let w = m.transform_point3(Vec3::from(p));
-                                lo = lo.min(w);
-                                hi = hi.max(w);
-                            }
-                        }
-                    }
+    visit_scene(src, instanced, |prim, at| {
+        let reader = prim.reader(|b| Some(&src.buffers[b.index()].0[..]));
+        if let Some(ps) = reader.read_positions() {
+            for p in ps {
+                for m in at {
+                    let w = m.transform_point3(Vec3::from(p));
+                    lo = lo.min(w);
+                    hi = hi.max(w);
                 }
             }
-            for c in node.children() {
-                stack.push((c, world));
-            }
         }
-    }
+    });
     if lo.x > hi.x {
         (lo, hi) = (Vec3::ZERO, Vec3::ZERO);
     }
     (lo, hi)
+}
+
+/// Every triangle primitive the default scene draws at rest, with the
+/// placements it is drawn at in model space (a skinned mesh at its bind
+/// pose, an instanced node at each instance), skipping the nodes hidden
+/// at rest and what is under them.
+pub(super) fn visit_scene(
+    src: &GltfSource,
+    instanced: &std::collections::BTreeMap<usize, Vec<Mat4>>,
+    mut f: impl FnMut(&gltf::Primitive, &[Mat4]),
+) {
+    let doc = &src.doc;
+    // A skinned mesh's vertices are placed by its bind pose, not its node.
+    let binds = super::skin_binds(src);
+    let Some(scene) = doc.default_scene().or_else(|| doc.scenes().next()) else {
+        return;
+    };
+    let mut stack: Vec<(gltf::Node, Mat4)> = scene.nodes().map(|n| (n, Mat4::IDENTITY)).collect();
+    while let Some((node, parent)) = stack.pop() {
+        if node
+            .extension_value("KHR_node_visibility")
+            .and_then(|v| v.get("visible")?.as_bool())
+            == Some(false)
+        {
+            continue;
+        }
+        let (t, r, s) = node.transform().decomposed();
+        let world = parent
+            * Mat4::from_scale_rotation_translation(
+                Vec3::from(s),
+                Quat::from_array(r),
+                Vec3::from(t),
+            );
+        // An instanced node draws its mesh at each instance only.
+        let at: Vec<Mat4> = match (binds.get(&node.index()), instanced.get(&node.index())) {
+            (Some(b), _) => vec![*b],
+            (None, Some(i)) => i.iter().map(|m| world * *m).collect(),
+            (None, None) => vec![world],
+        };
+        if let Some(mesh) = node.mesh() {
+            for prim in mesh
+                .primitives()
+                .filter(|p| p.mode() == gltf::mesh::Mode::Triangles)
+            {
+                f(&prim, &at);
+            }
+        }
+        for c in node.children() {
+            stack.push((c, world));
+        }
+    }
 }
 
 /// The asset ids of model `id`'s impostor atlases: the albedo, then the
