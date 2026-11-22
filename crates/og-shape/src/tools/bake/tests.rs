@@ -103,6 +103,7 @@ fn bakes_colour_and_bump_into_the_low_frame() {
             distance: 6.0,
             ..Default::default()
         },
+        &crate::tools::CODEC,
     )
     .unwrap();
     let r = &b.report;
@@ -195,6 +196,7 @@ fn a_thin_wall_bakes_its_near_side() {
             no_normals: true,
             ..Default::default()
         },
+        &crate::tools::CODEC,
     )
     .unwrap();
     let r = &b.report;

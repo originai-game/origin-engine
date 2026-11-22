@@ -108,13 +108,14 @@ pub use decimate::{
     Blocked, Decimate, DecimateError, DecimateReport, Rigid, collapse_short_edges, decimate, lods,
     merge_charts,
 };
+pub use decode::CODEC;
 pub use draco_write::{Draco, DracoReport, compress_draco};
 pub use export::{
     Clip, ClipKey, ColorSpace, ExportError, Joint, JointKind, MAP_KINDS, Material, Mimic, Part,
     Placement, Scene, glb, glb_clips, glb_shared, glb_skin_clips, obj, obj_at, posed, stl, stl_at,
 };
 pub use fbx::import_fbx;
-pub use image::{ImageInfo, Texture};
+pub use image::{Codec, ImageInfo, Texture};
 pub use import::{
     Affine, Import, ImportError, Imported, ImportedPart, ImportedSkeleton, Resolve, SkinScale,
     UNEVEN, import, import_gltf, import_obj, no_files,

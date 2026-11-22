@@ -19,8 +19,15 @@ use crate::tools::preview::Image;
 /// The most pixels an image may have: 64 Mi, a 8192² texture.
 pub const MAX_PIXELS: u64 = 1 << 26;
 
+/// The codecs the tools take ([`crate::tools::image::Codec`]): [`decode`]
+/// and the PNG encoder.
+pub const CODEC: crate::tools::image::Codec = crate::tools::image::Codec {
+    decode,
+    png: crate::tools::png::png,
+};
+
 /// The image an image file's bytes hold, as RGBA8, rows top to bottom.
-pub(crate) fn decode(bytes: &[u8]) -> Result<Image, String> {
+pub fn decode(bytes: &[u8]) -> Result<Image, String> {
     if !bytes.starts_with(b"\x89PNG\r\n\x1a\n")
         && !bytes.starts_with(&[0xFF, 0xD8])
         && !bytes.starts_with(b"\xabKTX 20")

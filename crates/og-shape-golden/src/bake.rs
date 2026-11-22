@@ -219,6 +219,7 @@ fn bake_case(h: &mut OutputHash) -> Result<(), HashError> {
             distance: 6.0,
             ..Default::default()
         },
+        &og_shape::tools::CODEC,
     )
     .map_err(fail)?;
     h.str(&b.report.to_json());

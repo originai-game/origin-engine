@@ -29,7 +29,7 @@ pub fn cases() -> Vec<Case> {
             name: "tools.preview",
             run: |h| {
                 with_scene(h, |h, s| {
-                    preview(s, &Preview::default()).map(|views| {
+                    preview(s, &Preview::default(), &og_shape::tools::CODEC).map(|views| {
                         for v in &views {
                             h.u64(u64::from(v.width));
                             h.u64(u64::from(v.height));
@@ -50,7 +50,8 @@ pub fn cases() -> Vec<Case> {
                         azimuth: 0.3,
                         ..Default::default()
                     };
-                    preview(s, &d).map(|views| h.bytes(&png(&sheet(&views, 2))))
+                    preview(s, &d, &og_shape::tools::CODEC)
+                        .map(|views| h.bytes(&png(&sheet(&views, 2))))
                 })
             },
         },
@@ -135,7 +136,7 @@ fn facets(h: &mut OutputHash) -> Result<(), HashError> {
         elevation: Some(0.4),
         ..Default::default()
     };
-    match preview(&scene, &d) {
+    match preview(&scene, &d, &og_shape::tools::CODEC) {
         Ok(views) => h.bytes(&png(&sheet(&views, 3))),
         Err(e) => h.str(&format!("error: {e}")),
     }

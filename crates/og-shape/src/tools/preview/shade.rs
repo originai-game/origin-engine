@@ -7,11 +7,16 @@ use super::*;
 pub(crate) struct Maps<'a> {
     /// Each texture with whether it was read as data, and its chain.
     pub(crate) seen: Vec<(&'a Texture, bool, Result<Mips, String>)>,
+    /// What decodes a texture's bytes.
+    pub(crate) decode: fn(&[u8]) -> Result<Image, String>,
 }
 
 impl<'a> Maps<'a> {
-    pub(crate) fn new() -> Maps<'a> {
-        Maps { seen: Vec::new() }
+    pub(crate) fn new(codec: &Codec) -> Maps<'a> {
+        Maps {
+            seen: Vec::new(),
+            decode: codec.decode,
+        }
     }
 
     /// The index of `t`'s chain, decoding it the first time.
@@ -28,11 +33,7 @@ impl<'a> Maps<'a> {
         let k = match self.seen.iter().position(|(s, d, _)| *s == t && *d == data) {
             Some(k) => k,
             None => {
-                let m = crate::tools::decode::decode(&t.bytes).map(if data {
-                    Mips::new_data
-                } else {
-                    Mips::new
-                });
+                let m = (self.decode)(&t.bytes).map(if data { Mips::new_data } else { Mips::new });
                 self.seen.push((t, data, m));
                 self.seen.len() - 1
             }

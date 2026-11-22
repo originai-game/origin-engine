@@ -3,6 +3,18 @@
 //! base-colour texture ([`Texture`]), kept as the file's bytes so export
 //! can write it back.
 
+/// How the tools read and write image files, as functions: an image
+/// file's bytes to RGBA8 (or why not), and RGBA8 to PNG bytes. The
+/// preview, the UV view and the bake take one; the codecs are the
+/// formats' (`crate::tools::CODEC` until they move out of the kernel).
+#[derive(Clone, Copy, Debug)]
+pub struct Codec {
+    /// Decodes an image file to RGBA8.
+    pub decode: fn(&[u8]) -> Result<crate::tools::Image, String>,
+    /// Encodes RGBA8 as PNG.
+    pub png: fn(&crate::tools::Image) -> Vec<u8>,
+}
+
 /// A base-colour texture (three.js's `map`): the image file's bytes as
 /// they were read, never decoded or re-encoded.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]

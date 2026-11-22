@@ -284,6 +284,7 @@ fn the_chain_meets_a_texturing_budget() {
             views: 1,
             ..Default::default()
         },
+        &og_shape::tools::CODEC,
     )
     .unwrap();
     assert_eq!(views.len(), 1);
@@ -441,7 +442,7 @@ fn a_skinned_glb_is_read_whole_and_never_broken_silently() {
         views: 1,
         ..Default::default()
     };
-    assert!(preview(&scene, &d).is_ok());
+    assert!(preview(&scene, &d, &og_shape::tools::CODEC).is_ok());
     // Round trip: glb writes the skin; reading it back gives the same
     // bones and weights (to f32).
     let bytes = glb(&scene).unwrap();

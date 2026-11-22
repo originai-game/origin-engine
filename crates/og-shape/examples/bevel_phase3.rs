@@ -718,6 +718,7 @@ fn main() -> Result<(), Error> {
                 elevation: Some(0.6),
                 ..Default::default()
             },
+            &og_shape::tools::CODEC,
         )?;
         let bytes = png(&sheet(&views, 2));
         std::fs::write(format!("{dir}/{}.png", case.name), &bytes)?;

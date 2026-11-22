@@ -56,7 +56,7 @@ pub fn cases() -> Vec<Case> {
                         views: 2,
                         ..Default::default()
                     };
-                    m.preview(&d)
+                    m.preview(&d, &og_shape::tools::CODEC)
                         .map(|v| og_shape::tools::png(&og_shape::tools::sheet(&v, 2)))
                 })
             },
@@ -81,7 +81,7 @@ pub fn cases() -> Vec<Case> {
             name: "model.washing_machine.png",
             run: |h| {
                 washing_machine(h, |m| {
-                    m.preview(&washing_machine_preview())
+                    m.preview(&washing_machine_preview(), &og_shape::tools::CODEC)
                         .map(|v| og_shape::tools::png(&og_shape::tools::sheet(&v, 4)))
                 })
             },

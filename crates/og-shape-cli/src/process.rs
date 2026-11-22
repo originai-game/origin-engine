@@ -432,6 +432,7 @@ fn bake_onto(
             distance: d.bake_distance,
             ..Default::default()
         },
+        &og_shape::tools::CODEC,
     )
     .map_err(failed)?;
     if baked.report.colors_baked {

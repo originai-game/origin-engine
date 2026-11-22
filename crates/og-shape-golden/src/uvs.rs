@@ -443,10 +443,14 @@ fn program_preview(h: &mut OutputHash) -> Result<(), HashError> {
         views: 2,
         ..Default::default()
     };
-    let v = og_shape::tools::views(&scene, &d).map_err(fail)?;
+    let v = og_shape::tools::views(&scene, &d, &og_shape::tools::CODEC).map_err(fail)?;
     h.bytes(&og_shape::tools::png(&og_shape::tools::sheet(&v.images, 2)));
-    for l in
-        og_shape::tools::uv_view(&scene, &og_shape::tools::UvView { size: 128 }).map_err(fail)?
+    for l in og_shape::tools::uv_view(
+        &scene,
+        &og_shape::tools::UvView { size: 128 },
+        &og_shape::tools::CODEC,
+    )
+    .map_err(fail)?
     {
         h.u64(u64::from(l.tiles));
         h.f64s(&l.uv_min)?;

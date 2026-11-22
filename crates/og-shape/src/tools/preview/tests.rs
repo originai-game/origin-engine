@@ -80,7 +80,7 @@ fn centre(parts: Vec<Part>) -> [u8; 3] {
         no_ground: true,
         ..Default::default()
     };
-    let im = &preview(&scene, &d).unwrap()[0];
+    let im = &preview(&scene, &d, &crate::tools::CODEC).unwrap()[0];
     let i = ((16 * 32 + 16) * 4) as usize;
     [im.rgba[i], im.rgba[i + 1], im.rgba[i + 2]]
 }
@@ -168,6 +168,7 @@ fn one_view(s: &Solid, material: Material, d: Preview) -> Views {
             no_ground: true,
             ..d
         },
+        &crate::tools::CODEC,
     )
     .unwrap()
 }
@@ -209,7 +210,13 @@ fn a_picture_all_round_lights_the_scene() {
             no_ground: true,
             ..Default::default()
         };
-        rgb_at(&views_in(&scene, &d, env).unwrap().images[0], 128, 128)
+        rgb_at(
+            &views_in(&scene, &d, env, &crate::tools::CODEC)
+                .unwrap()
+                .images[0],
+            128,
+            128,
+        )
     };
     let grey = Material {
         color: Some([0.5; 3]),

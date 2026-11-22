@@ -76,7 +76,7 @@ use crate::math::{DVec2, DVec3, trig};
 use crate::mesh::Solid;
 
 use crate::tools::export::{ColorSpace, ExportError, Material, Scene};
-use crate::tools::image::Texture;
+use crate::tools::image::{Codec, Texture};
 use crate::tools::sampler::{Mips, to_linear, to_srgb};
 use crate::tools::surface::face_normal;
 
@@ -193,8 +193,8 @@ pub const CREASE_DEGREES: f64 = 35.0;
 ///
 /// Errors as [`crate::tools::glb`] does on an invalid scene. [`views`] gives
 /// the cameras and the maps not drawn too.
-pub fn preview(scene: &Scene, d: &Preview) -> Result<Vec<Image>, ExportError> {
-    Ok(views(scene, d)?.images)
+pub fn preview(scene: &Scene, d: &Preview, codec: &Codec) -> Result<Vec<Image>, ExportError> {
+    Ok(views(scene, d, codec)?.images)
 }
 
 /// [`preview`], lit by a picture of what is all round ([`views_in`]).
@@ -202,8 +202,9 @@ pub fn preview_in(
     scene: &Scene,
     d: &Preview,
     environment: Option<&Environment>,
+    codec: &Codec,
 ) -> Result<Vec<Image>, ExportError> {
-    Ok(views_in(scene, d, environment)?.images)
+    Ok(views_in(scene, d, environment, codec)?.images)
 }
 
 /// The longest side of a preview image, in pixels.
@@ -221,8 +222,8 @@ pub const MAX_PIXELS: u64 = 1 << 28;
 /// [`MAX_PIXELS`] pixels in all ([`ExportError::TooLarge`]).
 /// Errors as [`crate::tools::glb`] does on an invalid scene, and on an elevation
 /// or field of view out of range.
-pub fn views(scene: &Scene, d: &Preview) -> Result<Views, ExportError> {
-    views_in(scene, d, None)
+pub fn views(scene: &Scene, d: &Preview, codec: &Codec) -> Result<Views, ExportError> {
+    views_in(scene, d, None, codec)
 }
 
 /// [`views`], lit by a picture of what is all round ([`Environment`])
@@ -231,6 +232,7 @@ pub fn views_in(
     scene: &Scene,
     d: &Preview,
     environment: Option<&Environment>,
+    codec: &Codec,
 ) -> Result<Views, ExportError> {
     // The same checks as export, and each part's pose.
     let placed = crate::tools::export::check(scene)?;
@@ -267,7 +269,7 @@ pub fn views_in(
         ));
     }
     let crease = trig::cos(trig::to_radians(CREASE_DEGREES));
-    let mut maps = Maps::new();
+    let mut maps = Maps::new(codec);
     let mut undrawn = Vec::new();
     let mut parts: Vec<Drawn> = Vec::with_capacity(scene.parts.len());
     for (p, m) in scene.parts.iter().zip(&placed) {

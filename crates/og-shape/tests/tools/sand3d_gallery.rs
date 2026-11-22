@@ -41,6 +41,7 @@ fn every_program_builds_exports_and_previews() {
                 views: 1,
                 ..Default::default()
             },
+            &og_shape::tools::CODEC,
         )
         .unwrap();
         // Something other than background and ground was drawn.

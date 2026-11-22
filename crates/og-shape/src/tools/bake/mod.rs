@@ -62,7 +62,7 @@ use crate::mesh::Solid;
 use crate::mesh::tree::{Tree, closest_on_triangle, tri};
 
 use crate::tools::export::{ColorSpace, Material};
-use crate::tools::image::Texture;
+use crate::tools::image::{Codec, Texture};
 use crate::tools::intersect::tris_overlap_2d;
 use crate::tools::json::Json;
 use crate::tools::measure::takes;
@@ -218,7 +218,7 @@ impl std::error::Error for BakeError {}
 /// mesh is not changed: when the report says `colors_baked`, write it
 /// without its vertex colours, and with `TANGENT` when a normal map was
 /// baked.
-pub fn bake(src: &BakeSource, low: &Solid, d: &Bake) -> Result<Baked, BakeError> {
+pub fn bake(src: &BakeSource, low: &Solid, d: &Bake, codec: &Codec) -> Result<Baked, BakeError> {
     let size = if d.size == 0 { 1024 } else { d.size };
     if size > 8192 {
         return Err(BakeError::BadDesc("size must be at most 8192".into()));
@@ -295,7 +295,7 @@ pub fn bake(src: &BakeSource, low: &Solid, d: &Bake) -> Result<Baked, BakeError>
                 kind_failed[k] = true;
                 continue;
             }
-            match crate::tools::texture::decode(&t.bytes) {
+            match (codec.decode)(&t.bytes) {
                 Ok(image) => {
                     row[k] = Some(Map {
                         image,
@@ -567,7 +567,7 @@ pub fn bake(src: &BakeSource, low: &Solid, d: &Bake) -> Result<Baked, BakeError>
         let Some(mut rgba) = img else { continue };
         dilate(&mut rgba, n, &level, &layers);
         let kind = crate::tools::export::MAP_KINDS[k];
-        let png = crate::tools::png::png(&Image {
+        let png = (codec.png)(&Image {
             width: size,
             height: size,
             rgba,

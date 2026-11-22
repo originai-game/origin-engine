@@ -32,6 +32,7 @@ use std::cmp::Ordering;
 use crate::math::DVec2;
 
 use crate::tools::export::{ExportError, Material, Scene};
+use crate::tools::image::Codec;
 use crate::tools::preview::{Image, Maps};
 
 /// What [`uv_view`] draws. The zero value is 512 × 512 images.
@@ -71,7 +72,7 @@ const MAX_TILES: f64 = 4096.0;
 /// The UV layout of each material's parts.
 ///
 /// Errors as [`crate::tools::glb`] does on an invalid scene.
-pub fn uv_view(scene: &Scene, d: &UvView) -> Result<Vec<UvImage>, ExportError> {
+pub fn uv_view(scene: &Scene, d: &UvView, codec: &Codec) -> Result<Vec<UvImage>, ExportError> {
     crate::tools::export::check(scene)?;
     let size = if d.size == 0 { 512 } else { d.size };
     // Material groups: (material, part indices).
@@ -86,7 +87,7 @@ pub fn uv_view(scene: &Scene, d: &UvView) -> Result<Vec<UvImage>, ExportError> {
             None => groups.push((&p.material, vec![i])),
         }
     }
-    let mut maps = Maps::new();
+    let mut maps = Maps::new(codec);
     let mut out = Vec::with_capacity(groups.len());
     for (material, list) in groups {
         let uvs: Vec<&Vec<[DVec2; 3]>> = list
@@ -373,7 +374,7 @@ mod tests {
             name: "t".into(),
             parts: vec![Part::new("p", &s)],
         };
-        let v = uv_view(&scene, &UvView { size: 64 }).unwrap();
+        let v = uv_view(&scene, &UvView { size: 64 }, &crate::tools::CODEC).unwrap();
         assert_eq!((v.len(), v[0].tiles, v[0].uv_min), (1, 1, [0.0, 0.0]));
         assert!(!v[0].textured);
         // The pixel at UV (0.25, 0.25) is covered (not dimmed), at (0.8,
@@ -389,6 +390,9 @@ mod tests {
             name: "t".into(),
             parts: vec![Part::new("p", &s)],
         };
-        assert_eq!(uv_view(&scene, &UvView { size: 64 }).unwrap()[0].tiles, 3);
+        assert_eq!(
+            uv_view(&scene, &UvView { size: 64 }, &crate::tools::CODEC).unwrap()[0].tiles,
+            3
+        );
     }
 }

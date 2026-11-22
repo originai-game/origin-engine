@@ -349,7 +349,7 @@ fn render_pose(
 ) -> Result<Rendered, Failure> {
     with_scene(source, pose, &d.morph, |scene| {
         if let Some(uv) = &d.uv {
-            let layouts = uv_view(scene, uv).map_err(failed)?;
+            let layouts = uv_view(scene, uv, &og_shape::tools::CODEC).map_err(failed)?;
             if layouts.is_empty() {
                 return Err(Failure::Failed(
                     "no part has UVs: nothing to lay out (a program's parts get them with \
@@ -383,8 +383,13 @@ fn render_pose(
                 undrawn: array(&undrawn),
             });
         }
-        let v =
-            og_shape::tools::views_in(scene, &d.preview, d.environment.as_ref()).map_err(failed)?;
+        let v = og_shape::tools::views_in(
+            scene,
+            &d.preview,
+            d.environment.as_ref(),
+            &og_shape::tools::CODEC,
+        )
+        .map_err(failed)?;
         let undrawn = array(
             &v.undrawn
                 .iter()

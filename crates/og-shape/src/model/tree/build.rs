@@ -413,7 +413,11 @@ impl Model {
     }
 
     /// A turntable of the posed model (`crate::tools::preview`).
-    pub fn preview(&self, d: &Preview) -> Result<Vec<Image>, ModelError> {
-        Ok(crate::tools::preview(&self.build()?.scene(), d)?)
+    pub fn preview(
+        &self,
+        d: &Preview,
+        codec: &crate::tools::Codec,
+    ) -> Result<Vec<Image>, ModelError> {
+        Ok(crate::tools::preview(&self.build()?.scene(), d, codec)?)
     }
 }
