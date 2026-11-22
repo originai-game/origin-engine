@@ -274,10 +274,6 @@ pub(crate) struct FontLayout {
     pub glyphs: HashMap<GlyphKey, Glyph>,
     pub kerning: HashMap<(char, char), f32>,
     pub atlas_size: Vec2,
-    /// A page of colour glyphs ([`MsdfFont::distance_range`] 0).
-    pub color: bool,
-    /// Its glyphs use the text's colour ([`MsdfFont::foreground`]).
-    pub foreground: bool,
 }
 
 impl FontLayout {
@@ -290,8 +286,6 @@ impl FontLayout {
                 .map(|k| ((k.left, k.right), k.adjust))
                 .collect(),
             atlas_size,
-            color: font.distance_range == 0.0,
-            foreground: font.foreground,
         }
     }
 }

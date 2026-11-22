@@ -112,16 +112,9 @@ impl Renderer {
         }
         // og-ui's paint arena (ui/paint.rs): uploaded when it changed.
         if !scene.ui.paint.is_empty() {
-            let fonts = &self.cache.fonts;
             let textures = self.cache.textures.len();
             // An image waits for its texture: a loaded one re-resolves.
-            let revisions = og_core::hash::hash_words(
-                scene
-                    .font_revisions()
-                    .iter()
-                    .copied()
-                    .chain([textures as u64]),
-            );
+            let revisions = og_core::hash::hash_words([textures as u64]);
             // Held only here: whoever paints fills the atlas between frames.
             let glyphs = scene.ui.glyphs.lock().unwrap_or_else(|e| e.into_inner());
             self.paint.upload(
@@ -129,7 +122,6 @@ impl Renderer {
                 &self.queue,
                 &scene.ui.paint,
                 &glyphs,
-                |h| fonts.get(h.index()).map(|f| &f.layout),
                 |t| t.index() < textures,
                 revisions,
                 (self.out_width, self.out_height),
