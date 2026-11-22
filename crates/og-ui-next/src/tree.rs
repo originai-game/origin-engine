@@ -342,6 +342,9 @@ pub struct Tree {
     /// Each element's mask in the last paint, its own or its nearest
     /// masked ancestor's: a gradient of [`Tree::drawn`] plus 1, 0 none.
     masks: Vec<u32>,
+    /// Each element's colour matrix in the last paint, its own composed
+    /// over its ancestors': one of [`Tree::drawn`]'s filters plus 1, 0 none.
+    filters: Vec<u32>,
     /// The transforms of the last paint, which `xfs` index: [`Tree::drawn`]
     /// is the host's to take, and the probe reads where a text was drawn
     /// after it has.
@@ -484,6 +487,7 @@ impl Tree {
             glyphs: Vec::new(),
             xfs: Vec::new(),
             masks: Vec::new(),
+            filters: Vec::new(),
             painted_transforms: Vec::new(),
             textures: None,
             order: Vec::new(),
@@ -1043,6 +1047,8 @@ impl Tree {
         self.xfs.resize(self.els.len(), 0);
         self.masks.clear();
         self.masks.resize(self.els.len(), 0);
+        self.filters.clear();
+        self.filters.resize(self.els.len(), 0);
         let m = &tf.metrics;
         for k in 0..self.order.len() {
             let e = self.order[k] as usize;
@@ -1149,6 +1155,11 @@ impl Tree {
             } else {
                 self.masks[el.arena_parent as usize]
             };
+            self.filters[e] = if el.arena_parent == NONE {
+                0
+            } else {
+                self.filters[el.arena_parent as usize]
+            };
             if !visible {
                 continue;
             }
@@ -1163,6 +1174,16 @@ impl Tree {
                 let area = [x, y, b.w, b.h];
                 let gi = p.shaped_gradient(paint_gradient(g, area), g.stops().iter().copied());
                 self.masks[e] = gi + 1;
+            }
+            // Its own filters, then its ancestors' over them (CSS's filter
+            // on each of the nested groups).
+            if let Some(own) = &r.filter {
+                let m = match self.filters[e] {
+                    0 => *own,
+                    k => og_draw::paint::color_then(own, &p.filters[k as usize - 1]),
+                };
+                p.filters.push(m);
+                self.filters[e] = p.filters.len() as u32;
             }
             let xf = transformed(p, pxf, &t, [x, y, b.w, b.h]);
             self.xfs[e] = xf;
@@ -1270,6 +1291,7 @@ impl Tree {
                     uv,
                     wipe: [cut, im.wipe_start, f32::from(u8::from(im.wipe_ccw)), 0.0],
                     mask: 0,
+                    filter: 0,
                     ..quad(
                         PaintKind::Image,
                         rect,
@@ -1599,10 +1621,10 @@ impl Tree {
             if self.els[e].particles.is_some() {
                 self.paint_particles(e, rect, ink, clip, xf);
             }
-            let mask = self.masks[e];
-            if mask != 0 {
+            let (mask, filter) = (self.masks[e], self.filters[e]);
+            if mask != 0 || filter != 0 {
                 for q in &mut self.drawn.quads[start..] {
-                    q.mask = mask;
+                    (q.mask, q.filter) = (mask, filter);
                 }
             }
         }
@@ -1759,6 +1781,7 @@ fn quad(
         uv: [0.0; 4],
         wipe: [0.0; 4],
         mask: 0,
+        filter: 0,
     }
 }
 

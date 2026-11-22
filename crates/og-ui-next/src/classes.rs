@@ -400,6 +400,76 @@ fn fraction(l: &DefiniteLength) -> Option<f32> {
     }
 }
 
+/// A colour filter function as its matrix (Filter Effects 1 §13, on the
+/// encoded colour); `None` for one that needs the pixels around it (blur,
+/// drop-shadow).
+fn color_matrix(f: &Filter) -> Option<og_draw::paint::ColorMatrix> {
+    type M3 = [[f32; 3]; 3];
+    let rows = |m: M3, offset: f32, alpha: f32| {
+        let [r, g, b] = m.map(|[x, y, z]| [x, y, z, 0.0]);
+        [
+            r,
+            g,
+            b,
+            [0.0, 0.0, 0.0, alpha],
+            [offset, offset, offset, 0.0],
+        ]
+    };
+    let diag = |s: f32| [[s, 0.0, 0.0], [0.0, s, 0.0], [0.0, 0.0, s]];
+    // `base` moved `t` of the way to `toward`, entry by entry.
+    let mix = |base: M3, toward: M3, t: f32| -> M3 {
+        std::array::from_fn(|i| {
+            std::array::from_fn(|k| base[i][k] + (toward[i][k] - base[i][k]) * t)
+        })
+    };
+    let id = diag(1.0);
+    Some(match *f {
+        Filter::Brightness(s) => rows(diag(s), 0.0, 1.0),
+        Filter::Contrast(s) => rows(diag(s), 0.5 - 0.5 * s, 1.0),
+        Filter::Grayscale(s) => {
+            let gray = [[0.2126, 0.7152, 0.0722]; 3];
+            rows(mix(id, gray, s.clamp(0.0, 1.0)), 0.0, 1.0)
+        }
+        Filter::Sepia(s) => {
+            let sepia = [
+                [0.393, 0.769, 0.189],
+                [0.349, 0.686, 0.168],
+                [0.272, 0.534, 0.131],
+            ];
+            rows(mix(id, sepia, s.clamp(0.0, 1.0)), 0.0, 1.0)
+        }
+        // From the luminance (0) through the colour (1), past it above 1.
+        Filter::Saturate(s) => rows(mix([[0.213, 0.715, 0.072]; 3], id, s.max(0.0)), 0.0, 1.0),
+        Filter::HueRotate(a) => {
+            let (sin, cos) = og_core::math::sin_cos(a.0);
+            let m = [
+                [
+                    0.213 + cos * 0.787 - sin * 0.213,
+                    0.715 - cos * 0.715 - sin * 0.715,
+                    0.072 - cos * 0.072 + sin * 0.928,
+                ],
+                [
+                    0.213 - cos * 0.213 + sin * 0.143,
+                    0.715 + cos * 0.285 + sin * 0.140,
+                    0.072 - cos * 0.072 - sin * 0.283,
+                ],
+                [
+                    0.213 - cos * 0.213 - sin * 0.787,
+                    0.715 - cos * 0.715 + sin * 0.715,
+                    0.072 + cos * 0.928 + sin * 0.072,
+                ],
+            ];
+            rows(m, 0.0, 1.0)
+        }
+        Filter::Invert(s) => {
+            let s = s.clamp(0.0, 1.0);
+            rows(diag(1.0 - 2.0 * s), s, 1.0)
+        }
+        Filter::Opacity(s) => rows(id, 0.0, s.clamp(0.0, 1.0)),
+        Filter::Blur(_) | Filter::DropShadow { .. } => return None,
+    })
+}
+
 /// An NSH gradient as a record's: its shape, angle, centre and up to
 /// [`GRADIENT_STOPS`] stops.
 fn gradient_of(g: &nsh_tailwind::effects::Gradient) -> Gradient {
@@ -553,6 +623,11 @@ fn record_of(style: &Style, props: &ClassProps) -> Record {
         }
         skin.gradient = fx.background_images.first().map(gradient_of);
         r.mask = fx.mask_images.first().map(gradient_of);
+        r.filter = fx
+            .filters
+            .iter()
+            .filter_map(color_matrix)
+            .reduce(|m, next| og_draw::paint::color_then(&m, &next));
         skin.backdrop_blur = fx
             .backdrop_filters
             .iter()
@@ -752,6 +827,17 @@ mod tests {
         assert_eq!((r.text.weight, r.text.transform, r.text.align), (700, 1, 1));
         assert_eq!(r.font_size, 18.0);
         assert_eq!(c.unknown("p-4 not-a-class"), ["not-a-class"]);
+        // Colour filters: grayscale's rows are the luminance, contrast
+        // pivots about the middle, and the functions compose in
+        // Tailwind's fixed order (brightness before invert), whatever the
+        // classes' order: 1 - 0.5 c.
+        let m = c.record("grayscale", &env).filter.unwrap();
+        assert!((m[0][1] - 0.7152).abs() < 1e-4 && (m[2][1] - 0.7152).abs() < 1e-4);
+        let m = c.record("contrast-200", &env).filter.unwrap();
+        assert_eq!((m[0][0], m[4][0]), (2.0, -0.5));
+        let m = c.record("invert brightness-50", &env).filter.unwrap();
+        assert_eq!((m[0][0], m[4][0]), (-0.5, 1.0));
+        assert_eq!(c.record("blur-sm", &env).filter, None);
         // `pointer-events-*` and `invisible`, which NSH keeps off the props.
         assert_eq!(c.record("pointer-events-none", &env).touch, Some(false));
         assert_eq!(c.record("pointer-events-auto", &env).touch, Some(true));
@@ -1266,9 +1352,12 @@ mod tests {
                 // Not drawn: a `<Line>`'s dashes.
                 &["stroke_dasharray"]),
             ("Effects", format!("{:#?}", Effects::default()),
-                &["box_shadows", "background_images", "backdrop_filters", "mask_images"],
-                // Not drawn yet: `blur-*`, `brightness-*` and the other filters.
-                &["filters"]),
+                // `filters`: its colour functions; its `blur-*` and
+                // `drop-shadow-*`, and `backdrop-*` but the blur, need an
+                // offscreen pass of their own and are not drawn yet.
+                &["box_shadows", "background_images", "backdrop_filters", "mask_images",
+                  "filters"],
+                &[]),
             ("ClassProps", format!("{:#?}", ClassProps::default()),
                 &["ellipsize", "no_wrap", "text_shadows", "pointer_events",
                   "number_of_lines", "space"],

@@ -40,6 +40,7 @@ fn image(t: TextureHandle, rect: [f32; 4]) -> PaintQuad {
         uv: [0.0, 0.0, 1.0, 1.0],
         wipe: [0.0; 4],
         mask: 0,
+        filter: 0,
     }
 }
 

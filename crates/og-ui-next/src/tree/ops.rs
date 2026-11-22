@@ -1880,6 +1880,41 @@ mod tests {
         assert_eq!(got[1].2, [3.0; 4], "its slices are the classes'");
     }
 
+    /// Colour filters compose into one matrix per element: its own
+    /// functions in order, then its ancestors' over them, as CSS filters
+    /// nested groups; a sibling outside stays unfiltered, and `blur-*`
+    /// adds no matrix. Ways this could fail: the parent's matrix applied
+    /// first (the wrong order for anything but scales), the child's
+    /// replacing it, or the matrix not reaching the child's quads.
+    #[test]
+    fn colour_filters_compose_down_the_subtree() {
+        let mut t = real();
+        nodes(
+            &mut t,
+            &[
+                (1, 0, "w-[10px] h-[10px] bg-white brightness-50", 0),
+                (2, 0, "w-[10px] h-[10px] bg-white invert", 1),
+                (3, 0, "w-[10px] h-[10px] bg-white", 0),
+                (4, 0, "w-[10px] h-[10px] bg-white blur-sm", 0),
+            ],
+        );
+        frame(&mut t);
+        let apply = |m: &og_draw::paint::ColorMatrix, c: [f32; 4]| -> [f32; 4] {
+            std::array::from_fn(|i| (0..4).map(|k| m[i][k] * c[k]).sum::<f32>() + m[4][i])
+        };
+        let filters: Vec<u32> = t.drawn.quads.iter().map(|q| q.filter).collect();
+        assert_eq!(filters.len(), 4);
+        assert!(filters[0] != 0 && filters[1] != 0 && filters[0] != filters[1]);
+        assert_eq!(&filters[2..], [0, 0], "unfiltered, and blur is no matrix");
+        let child = &t.drawn.filters[filters[1] as usize - 1];
+        // invert first, then halved: 0.2 → 0.8 → 0.4 (the other order
+        // gives 0.9).
+        let got = apply(child, [0.2, 0.2, 0.2, 1.0]);
+        assert!((got[0] - 0.4).abs() < 1e-5 && got[3] == 1.0, "{got:?}");
+        let parent = &t.drawn.filters[filters[0] as usize - 1];
+        assert!((apply(parent, [0.8, 0.0, 0.0, 1.0])[0] - 0.4).abs() < 1e-5);
+    }
+
     /// `object-*` fits an image's source of known size into its box as
     /// CSS does: `contain` letterboxes it, `cover` crops it about the
     /// centre (`object-top` from the top), `none` shows it at its size,

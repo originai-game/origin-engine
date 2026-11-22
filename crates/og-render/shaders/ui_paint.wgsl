@@ -38,12 +38,15 @@ struct PaintGpu {
   // An image's radial wipe: the fraction hidden, the start angle, 1 for
   // counter-clockwise; w its mask, a gradient's index + 1 (0 none).
   w: vec4<f32>,
+  // x: its colour matrix's first row in `gradients` + 1 (0 none).
+  f: vec4<u32>,
 };
 @group(0) @binding(1) var<storage, read> quads: array<PaintGpu>;
 // Three entries a gradient: x the angle (radians, CSS: 0 up, clockwise), y
 // its first stop, z its stops, w its shape (0 linear, 1 radial, 2 conic);
 // then its centre (xy, CSS px from the box's centre) and a radial one's radii
-// (zw); then a mask's box (x y w h, CSS px before transforms).
+// (zw); then a mask's box (x y w h, CSS px before transforms). After the
+// gradients, five rows a colour matrix: its rows r, g, b, a, then offsets.
 @group(0) @binding(2) var<storage, read> gradients: array<vec4<f32>>;
 // Two entries a stop: its colour (linear, straight), then its offset in x.
 @group(0) @binding(3) var<storage, read> stops: array<vec4<f32>>;
@@ -419,6 +422,27 @@ fn fs_paint(in: PaintOut) -> @location(0) vec4<f32> {
     discard;
   }
   rgb = srgb_encode(rgb);
+  // Its colour filters (CSS's brightness(), grayscale() and the rest, on
+  // the encoded, unpremultiplied colour), composed into one matrix.
+  if (q.f.x != 0u) {
+    let fi = q.f.x - 1u;
+    let c = vec4<f32>(rgb, a);
+    let o = clamp(
+      vec4<f32>(
+        dot(gradients[fi], c),
+        dot(gradients[fi + 1u], c),
+        dot(gradients[fi + 2u], c),
+        dot(gradients[fi + 3u], c),
+      ) + gradients[fi + 4u],
+      vec4<f32>(0.0),
+      vec4<f32>(1.0),
+    );
+    rgb = o.rgb;
+    a = o.a;
+    if (a <= 0.0) {
+      discard;
+    }
+  }
   if (dither) {
     // A pixel's worth of noise before the target's code values: a shallow
     // ramp shows no bands.

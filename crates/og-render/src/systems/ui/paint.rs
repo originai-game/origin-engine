@@ -29,6 +29,8 @@ pub(crate) struct PaintGpu {
     p: [f32; 4],
     k: [u32; 4],
     w: [f32; 4],
+    /// x: its colour matrix's first row in `gradients` + 1 (0 none).
+    f: [u32; 4],
 }
 
 /// What a run binds as group 1: the white sprite (nothing samples it), a
@@ -301,6 +303,10 @@ impl PaintRenderer {
                 g.area,
             ]);
         }
+        // Then five rows a colour matrix (`PaintGpu::f`).
+        for m in &paint.filters {
+            self.gradient_rows.extend(m);
+        }
         grew |= write(
             device,
             queue,
@@ -387,6 +393,16 @@ impl PaintRenderer {
                 k: [q.kind, q.a, q.b, q.xf],
                 // The mask in w, which only an image's wipe shares (xyz).
                 w: [0.0, 0.0, 0.0, q.mask as f32],
+                // Its colour matrix's five rows follow the gradients'.
+                f: [
+                    match q.filter {
+                        0 => 0,
+                        k => 3 * paint.gradients.len() as u32 + 5 * (k - 1) + 1,
+                    },
+                    0,
+                    0,
+                    0,
+                ],
             };
             if q.kind == PaintKind::Line as u32 {
                 self.segments_of(q, &paint.points, g);

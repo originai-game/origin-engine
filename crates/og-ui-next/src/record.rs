@@ -444,6 +444,11 @@ pub struct Record {
         nsh_tailwind::ResizeMode,
         nsh_tailwind::style::ObjectPosition,
     )>,
+    /// Its colour filters (`brightness-*`, `contrast-*`, `grayscale`,
+    /// `hue-rotate-*`, `invert`, `saturate-*`, `sepia`, `opacity-*` in
+    /// `filter`), composed in order into one matrix over everything it
+    /// and its subtree draw; `None` none.
+    pub filter: Option<og_draw::paint::ColorMatrix>,
 }
 
 impl Record {
@@ -506,6 +511,7 @@ impl Default for Record {
             fill: None,
             space: Spacing::default(),
             object: None,
+            filter: None,
             scheme: None,
             dark: false,
         }

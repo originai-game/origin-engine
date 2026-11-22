@@ -161,6 +161,7 @@ fn image(
         uv: [0.0, 0.0, 1.0, 1.0],
         wipe,
         mask: 0,
+        filter: 0,
     }
 }
 
@@ -265,6 +266,7 @@ fn line(points: &mut Vec<[f32; 2]>, pts: &[[f32; 2]], width: f32, closed: bool) 
         uv: [0.0; 4],
         wipe: [0.0; 4],
         mask: 0,
+        filter: 0,
     }
 }
 
@@ -330,6 +332,7 @@ fn gradient_box(scene: &mut RenderScene, rect: [f32; 4], g: PaintGradient) -> Pa
         uv: [0.0; 4],
         wipe: [0.0; 4],
         mask: 0,
+        filter: 0,
     }
 }
 
@@ -405,6 +408,7 @@ fn a_mask_fades_what_it_covers_over_its_own_box() {
             uv: [0.0; 4],
             wipe: [0.0; 4],
             mask: mi + 1,
+            filter: 0,
         };
         vec![
             white([16.0, 16.0, 32.0, 96.0]),
@@ -416,6 +420,49 @@ fn a_mask_fades_what_it_covers_over_its_own_box() {
     near(at(&px, 16, 64), grey(191), "near the mask's opaque edge");
     near(at(&px, 47, 64), grey(64), "a quarter left");
     near(at(&px, 96, 64), BLACK, "past the mask's transparent end");
+}
+
+#[test]
+#[ignore = "requires GPU"]
+fn a_colour_matrix_filters_the_encoded_colour() {
+    // A gradient first, so the matrices' rows sit after its three.
+    // brightness(0.5) on (200, 40, 40) halves its code values, as CSS's
+    // filter does (halving it in linear light gives 146 red); invert gives
+    // (55, 215, 215); opacity(0.5) of white over black is encoded grey.
+    let px = render(|scene| {
+        let paint = &mut scene.ui.paint;
+        paint.gradient(0.0, [(0.0, [1.0; 4]), (1.0, [1.0; 4])]);
+        let scale = |s: f32, alpha: f32, offset: f32| {
+            [
+                [s, 0.0, 0.0, 0.0],
+                [0.0, s, 0.0, 0.0],
+                [0.0, 0.0, s, 0.0],
+                [0.0, 0.0, 0.0, alpha],
+                [offset, offset, offset, 0.0],
+            ]
+        };
+        paint.filters.extend([
+            scale(0.5, 1.0, 0.0),
+            scale(-1.0, 1.0, 1.0),
+            scale(1.0, 0.5, 0.0),
+        ]);
+        let with = |q: PaintQuad, filter| PaintQuad { filter, ..q };
+        vec![
+            with(solid([0.0, 0.0, 32.0, 128.0], [200, 40, 40], 1.0), 1),
+            with(solid([32.0, 0.0, 32.0, 128.0], [200, 40, 40], 1.0), 2),
+            with(solid([64.0, 0.0, 32.0, 128.0], WHITE, 1.0), 3),
+            solid([96.0, 0.0, 32.0, 128.0], [200, 40, 40], 1.0),
+        ]
+    });
+    let exact = |x, want: [u8; 3], what: &str| {
+        let got = at(&px, x, 64);
+        let off = got.iter().zip(want).map(|(&g, w)| g.abs_diff(w)).max();
+        assert!(off <= Some(2), "{what}: {got:?}, expected {want:?}");
+    };
+    exact(16, [100, 20, 20], "brightness(0.5)");
+    exact(48, [55, 215, 215], "invert");
+    exact(80, [128, 128, 128], "opacity(0.5) over black");
+    exact(112, [200, 40, 40], "no filter");
 }
 
 /// sRGB's decoding of one channel.
@@ -442,6 +489,7 @@ fn solid(rect: [f32; 4], [r, g, b]: [u8; 3], alpha: f32) -> PaintQuad {
         uv: [0.0; 4],
         wipe: [0.0; 4],
         mask: 0,
+        filter: 0,
     }
 }
 

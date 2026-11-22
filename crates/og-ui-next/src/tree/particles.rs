@@ -248,6 +248,7 @@ impl Particles {
                 uv: [0.0; 4],
                 wipe: [0.0; 4],
                 mask: 0,
+                filter: 0,
             };
             match texture {
                 Some(bits) => {

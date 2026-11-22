@@ -88,6 +88,36 @@ pub struct PaintQuad {
     /// `mask - 1` of [`Paint::gradients`], whose alpha over its
     /// [`PaintGradient::area`] scales the quad's; 0 none.
     pub mask: u32,
+    /// The colour matrix over it (`brightness-*`, `grayscale` and the other
+    /// colour filters on it or an ancestor): `filter - 1` of
+    /// [`Paint::filters`]; 0 none.
+    pub filter: u32,
+}
+
+/// A colour filter as one matrix (CSS Filter Effects' colour functions
+/// composed, applied to the sRGB-encoded, unpremultiplied colour): rows r,
+/// g, b, a of coefficients on (r, g, b, a), then the offsets added to each.
+pub type ColorMatrix = [[f32; 4]; 5];
+
+/// The matrix that leaves a colour as it is.
+pub const COLOR_IDENTITY: ColorMatrix = [
+    [1.0, 0.0, 0.0, 0.0],
+    [0.0, 1.0, 0.0, 0.0],
+    [0.0, 0.0, 1.0, 0.0],
+    [0.0, 0.0, 0.0, 1.0],
+    [0.0; 4],
+];
+
+/// `outer` applied after `inner`: one matrix for both.
+pub fn color_then(inner: &ColorMatrix, outer: &ColorMatrix) -> ColorMatrix {
+    let mut m = [[0.0; 4]; 5];
+    for i in 0..4 {
+        for j in 0..4 {
+            m[i][j] = (0..4).map(|k| outer[i][k] * inner[k][j]).sum();
+        }
+        m[4][i] = (0..4).map(|k| outer[i][k] * inner[4][k]).sum::<f32>() + outer[4][i];
+    }
+    m
 }
 
 /// [`PaintKind::Image`]'s flags: draw the centre slice.
@@ -149,6 +179,8 @@ pub struct Paint {
     pub quads: Vec<PaintQuad>,
     pub gradients: Vec<PaintGradient>,
     pub stops: Vec<PaintStop>,
+    /// The colour matrices [`PaintQuad::filter`] names.
+    pub filters: Vec<ColorMatrix>,
     /// Each glyph font slot: the font's pages, first first (a run-time
     /// font adds pages as glyphs render; a glyph is drawn from the first
     /// page that has it).
@@ -171,6 +203,7 @@ impl Paint {
         self.quads.clear();
         self.gradients.clear();
         self.stops.clear();
+        self.filters.clear();
         self.points.clear();
         self.transforms.clear();
         self.transforms.push(IDENTITY);

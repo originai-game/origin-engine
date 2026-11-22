@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "brightness-*, contrast-*, grayscale, hue-rotate-*, invert, saturate-*, sepia, filter opacity",
+      "summary": "TSX colour filter classes parsed but did nothing; they now filter everything an element and its subtree draw, as CSS's `filter` does on the encoded colour, composed in Tailwind's order, and a nested element's filters apply under its ancestors'. `blur-*` and `drop-shadow-*` in a filter still draw nothing."
+    }
+  ]
+}
