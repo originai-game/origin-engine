@@ -680,17 +680,10 @@ interface DeviceInfo {
   deviceMemory: number | null;
   crossOriginIsolated: boolean;
   isSecureContext: boolean;
-  gpu: { vendor: string; architecture: string; description: string } | null;
 }
 
 const DEVICE_INFO = `(async () => {
   const nav = navigator;
-  let gpu = null;
-  try {
-    const a = nav.gpu ? await nav.gpu.requestAdapter() : null;
-    const i = a ? (a.info || (a.requestAdapterInfo ? await a.requestAdapterInfo() : null)) : null;
-    if (i) gpu = { vendor: i.vendor || "", architecture: i.architecture || "", description: i.description || "" };
-  } catch {}
   const c = document.querySelector("canvas");
   const ua = nav.userAgentData;
   return {
@@ -705,7 +698,6 @@ const DEVICE_INFO = `(async () => {
     deviceMemory: nav.deviceMemory || null,
     crossOriginIsolated: !!globalThis.crossOriginIsolated,
     isSecureContext: !!globalThis.isSecureContext,
-    gpu,
   };
 })()`;
 
@@ -750,6 +742,8 @@ interface Measured {
   readyMs: number;
   startMs: number;
   tier: string;
+  /** The WebGPU adapter the times were measured on, as the engine's perf report names it (webgpu.ts adapterName). */
+  adapter: string;
   seconds: number;
   frames: number;
   ticks: number;
@@ -782,7 +776,7 @@ async function measure(d: Driver, url: string, seconds: number): Promise<Measure
   const t0 = await d.eval<number>("__runtime_probe__.tick()");
   const began = performance.now();
   await sleep(seconds * 1000);
-  const t = await d.eval<{ json: { frames: number; lines: PerfLine[] } }>(`__runtime_probe__.perf("report")`);
+  const t = await d.eval<{ json: { frames: number; adapter: string; lines: PerfLine[] } }>(`__runtime_probe__.perf("report")`);
   const t1 = await d.eval<number>("__runtime_probe__.tick()");
   const elapsed = (performance.now() - began) / 1000;
   const after = await failed();
@@ -794,6 +788,7 @@ async function measure(d: Driver, url: string, seconds: number): Promise<Measure
     readyMs,
     startMs,
     tier: hello.tier ?? "unknown",
+    adapter: t.json.adapter,
     seconds: Math.round(elapsed * 100) / 100,
     frames: t.json.frames,
     ticks: t1 - t0,
@@ -869,7 +864,7 @@ function markdown(r: Report): string {
   L.push(`| User agent | ${d.userAgent} |`);
   L.push(`| Platform | ${d.platform}${d.mobile ? ", mobile" : ""} |`);
   L.push(`| Tier | ${m.tier} |`);
-  if (d.gpu) L.push(`| WebGPU adapter | ${[d.gpu.vendor, d.gpu.architecture, d.gpu.description].filter(Boolean).join(", ") || "(no info)"} |`);
+  L.push(`| WebGPU adapter | ${m.adapter} |`);
   L.push(`| DPR, viewport, screen | ${d.dpr}, ${d.viewport.width}×${d.viewport.height} CSS px, ${d.screen.width}×${d.screen.height} |`);
   if (d.canvas) L.push(`| Canvas | ${d.canvas.width}×${d.canvas.height} device px |`);
   L.push(`| Cores, memory | ${d.hardwareConcurrency ?? "n/a"}, ${d.deviceMemory === null ? "n/a" : `${d.deviceMemory} GB`} |`);
@@ -877,7 +872,7 @@ function markdown(r: Report): string {
   L.push("## Frames", "", "| | count | mean | p50 | p95 | p99 | max |", "|---|---|---|---|---|---|---|");
   for (const [name, s] of [["Display interval (ms)", m.interval], ["Engine work (ms)", m.work]] as const) L.push(`| ${name} | ${s.count} | ${s.mean} | ${s.p50} | ${s.p95} | ${s.p99} | ${s.max} |`);
   L.push("");
-  L.push(`First frame ${m.firstFrameMs} ms, ready ${m.readyMs} ms, play started ${m.startMs} ms after navigation; ${m.frames} frames and ${m.ticks} ticks in ${m.seconds} s (${r.fps} fps, ${r.ticksPerSecond} ticks/s).`, "");
+  L.push(`First frame ${m.firstFrameMs} ms on ${m.adapter}, ready ${m.readyMs} ms, play started ${m.startMs} ms after navigation; ${m.frames} frames and ${m.ticks} ticks in ${m.seconds} s (${r.fps} fps, ${r.ticksPerSecond} ticks/s).`, "");
   L.push("## Served", "", "| Path | COOP | COEP | CORP |", "|---|---|---|---|");
   for (const [path, h] of Object.entries(r.served)) L.push(`| ${path} | ${h["cross-origin-opener-policy"] ?? "-"} | ${h["cross-origin-embedder-policy"] ?? "-"} | ${h["cross-origin-resource-policy"] ?? "-"} |`);
   L.push("");
@@ -984,10 +979,10 @@ async function main(): Promise<void> {
     mkdirSync(dir, { recursive: true });
     writeFileSync(join(dir, "device.json"), JSON.stringify(report, null, 1) + "\n");
     writeFileSync(join(dir, "report.md"), markdown(report));
-    if (flag("--json")) process.stdout.write(JSON.stringify({ project: report.project, target, tier: m.tier, firstFrameMs: m.firstFrameMs, interval: m.interval, findings: findings.length, uncheckedCount: 0, report: join(dir, "report.md") }) + "\n");
+    if (flag("--json")) process.stdout.write(JSON.stringify({ project: report.project, target, tier: m.tier, adapter: m.adapter, firstFrameMs: m.firstFrameMs, interval: m.interval, findings: findings.length, uncheckedCount: 0, report: join(dir, "report.md") }) + "\n");
     else
       process.stdout.write(
-        `og run --device ${target}: ${m.tier}, first frame ${m.firstFrameMs} ms, frame p50 ${m.interval.p50} / p95 ${m.interval.p95} / p99 ${m.interval.p99} ms; ${findings.length} finding(s); ${join(dir, "report.md")}\n`,
+        `og run --device ${target}: ${m.tier} on ${m.adapter}, first frame ${m.firstFrameMs} ms, frame p50 ${m.interval.p50} / p95 ${m.interval.p95} / p99 ${m.interval.p99} ms; ${findings.length} finding(s); ${join(dir, "report.md")}\n`,
       );
   } finally {
     await cleanUp();

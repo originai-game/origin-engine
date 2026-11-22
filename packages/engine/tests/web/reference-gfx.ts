@@ -53,6 +53,7 @@ import { Firefox, firefoxPath } from "./bidi.ts";
 import { Safari, safariDriverPath } from "./webdriver.ts";
 import { serve } from "./serve.ts";
 import { decodePng, encodePng, encodePngBest, type Image } from "../../src/node/png.ts";
+import { adapterName } from "../../src/web/webgpu.ts";
 import { compareFrames as compare, RECORDING, TOLERANCE, type Tolerance as Limit } from "../support/png.ts";
 import { createRequire } from "node:module";
 
@@ -384,13 +385,17 @@ try {
           }
           return { runs, each, stats: JSON.parse(stats) };
         })()`), `timing ${scene}`);
+        // wgpu names no web adapter (its description only): vendor and architecture from the
+        // adapter the renderer asks for (og-render power_preference), software from the renderer's own.
+        const info = await tab.eval<Parameters<typeof adapterName>[0]>(`navigator.gpu.requestAdapter({ powerPreference: "high-performance" }).then((a) => a && a.info && { vendor: a.info.vendor, architecture: a.info.architecture, isFallbackAdapter: a.info.isFallbackAdapter }).catch(() => null)`).catch(() => null);
+        const adapter = adapterName(info, o.software);
         const runs = [...t.runs].sort((a, b) => a - b).map((v) => +v.toFixed(3));
         const each = [...t.each].sort((a, b) => a - b);
         const perf = {
           scene,
           tier,
           browser: firefox ? "Firefox (bidi.ts)" : safari ? "Safari (webdriver.ts)" : device ? `Chrome on ${device} (cdp.ts)` : "Chrome for Testing (cdp.ts)",
-          adapter: o.adapter,
+          adapter,
           culling: cpuCulling ? "cpu" : "auto",
           last_frame: t.stats,
           width: o.width,
@@ -402,16 +407,15 @@ try {
           load: loadavg().map((l) => +l.toFixed(1)),
           note: "each run ends in one capture (its readback waits for the GPU to finish the run's frames)",
         };
-        // Chrome names no WebGPU adapter and ANGLE's string is long: the
-        // directory names the machine (its CPU, which on Apple silicon is
-        // the GPU's name too), or the phone's model, the adapter string stays in the file.
+        // The directory names the machine (its CPU, which on Apple silicon is
+        // the GPU's name too), or the phone's model; the adapter stays in the file.
         const pdir = perfOut
           ? join(resolve(perfOut), `${tier}${cpuCulling ? "-cpu-culling" : ""}`)
           : join(repo, "crates", "og-tests", "perf", `${tier}-${firefox ? "firefox" : safari ? "safari" : "chrome"}-${slug(device?.replace(/ \(.*$/, "") ?? cpus()[0]?.model ?? "") || "unknown"}`);
         mkdirSync(pdir, { recursive: true });
         writeFileSync(join(pdir, `${scene}.json`), JSON.stringify(perf, null, 2) + "\n");
         row["frameMs"] = perf.frame_ms;
-        console.log(`time ${scene} (${tier}): ${perf.frame_ms} ms per frame with the GPU (best of ${RUNS} x ${timed}), submit median ${perf.submit_median_ms} ms, last frame ${JSON.stringify(t.stats)} -> ${pdir.slice(repo.length + 1)}`);
+        console.log(`time ${scene} (${tier}): ${perf.frame_ms} ms per frame on ${adapter} (best of ${RUNS} x ${timed}), submit median ${perf.submit_median_ms} ms, last frame ${JSON.stringify(t.stats)} -> ${pdir.slice(repo.length + 1)}`);
       }
       await tab.eval("globalThis.__gfx.og_gfx_close()");
     } catch (e) {

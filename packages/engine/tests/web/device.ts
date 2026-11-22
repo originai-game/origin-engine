@@ -80,6 +80,7 @@ interface DeviceReport {
     firstFrameMs: number;
     startMs: number;
     tier: string;
+    adapter: string;
     frames: number;
     ticks: number;
     interval: Stats;
@@ -99,16 +100,18 @@ for (const [name, extra, tiers] of [
   rmSync(dir, { recursive: true, force: true });
   const r = run(["--out", dir, ...extra]);
   check(r.code === 0, `${name}: og run --device ${target} exits 0`, r.stderr.trim().split("\n").slice(-4));
-  check(new RegExp(`^og run --device ${target}: .*first frame \\d+ ms, frame p50 [\\d.]+ / p95 [\\d.]+ / p99 [\\d.]+ ms`, "m").test(r.stdout), `${name}: prints the summary line`, r.stdout);
+  check(new RegExp(`^og run --device ${target}: \\S+ on [^,\\s]+/[^,\\s]+( \\(software\\))?, first frame \\d+ ms, frame p50 [\\d.]+ / p95 [\\d.]+ / p99 [\\d.]+ ms`, "m").test(r.stdout), `${name}: prints the summary line`, r.stdout);
   check(/serving .* at http:\/\/127\.0\.0\.1:\d+\/.*\(COOP\/COEP\)/.test(r.stderr), `${name}: prints the URLs it serves`, r.stderr.split("\n")[0]);
   const json = join(dir, "device.json");
   check(existsSync(join(dir, "report.md")) && existsSync(json), `${name}: report.md and device.json written`);
   if (!existsSync(json)) continue;
   const d = JSON.parse(readFileSync(json, "utf8")) as DeviceReport;
   const m = d.measured;
-  results[name] = { tier: m.tier, firstFrameMs: m.firstFrameMs, interval: m.interval, work: m.work, fps: d.fps, findings: d.findings.map((f) => f.measure) };
+  results[name] = { tier: m.tier, adapter: m.adapter, firstFrameMs: m.firstFrameMs, interval: m.interval, work: m.work, fps: d.fps, findings: d.findings.map((f) => f.measure) };
   check(m.firstFrameMs > 0 && m.startMs >= m.firstFrameMs, `${name}: first frame after navigation, play after it`, { firstFrameMs: m.firstFrameMs, startMs: m.startMs });
   check((tiers as readonly string[]).includes(m.tier), `${name}: tier ${m.tier}`, tiers);
+  // Headless Chrome on Linux runs WebGPU on SwiftShader (device.ts webGpuSwitches): its times must say so.
+  check(/^[^/\s]+\/[^/\s]+( \(software\))?$/.test(m.adapter) && (!safari && process.platform === "linux" ? m.adapter.endsWith(" (software)") : true), `${name}: the times name their adapter (${m.adapter})`, m.adapter);
   check(ordered(m.interval) && m.interval.count === Math.min(m.frames, 4096), `${name}: display interval p50 ≤ p95 ≤ p99 ≤ max, all > 0`, m.interval);
   check(ordered(m.work), `${name}: engine work p50 ≤ p95 ≤ p99 ≤ max, all > 0`, m.work);
   check(m.ticks > 0 && d.fps > 0, `${name}: the game ticked while timed`, { ticks: m.ticks, fps: d.fps });

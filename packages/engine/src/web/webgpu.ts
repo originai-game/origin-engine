@@ -35,3 +35,16 @@ export async function webGpuMissing(lowPower: boolean): Promise<string | null> {
     return `the browser's WebGPU did not start: ${e instanceof Error ? e.message : String(e)}`;
   }
 }
+
+/**
+ * A WebGPU adapter as a timing names it: `vendor/architecture` (`nvidia/lovelace`,
+ * `apple/metal-3`), with ` (software)` on a CPU rasterizer (the browser's fallback
+ * adapter, SwiftShader, llvmpipe, lavapipe), so a frame time measured on CPU
+ * WebGPU is never read as a GPU's. `unknown` where the browser names neither.
+ */
+export function adapterName(info: { vendor?: unknown; architecture?: unknown; isFallbackAdapter?: unknown } | null | undefined, software = false): string {
+  const vendor = typeof info?.vendor === "string" ? info.vendor : "";
+  const architecture = typeof info?.architecture === "string" ? info.architecture : "";
+  const name = vendor || architecture ? `${vendor || "unknown"}/${architecture || "unknown"}` : "unknown";
+  return software || info?.isFallbackAdapter === true || /swiftshader|llvmpipe|lavapipe/i.test(name) ? `${name} (software)` : name;
+}

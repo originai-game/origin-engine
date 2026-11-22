@@ -3,12 +3,20 @@
 // Worker measured of the run.
 
 import { beginBundle, boundHost, type Engine } from "../../runtime.ts";
+import { deviceReport } from "../boot.ts";
 import * as pipelines from "../pipelines.ts";
+import { adapterName } from "../webgpu.ts";
 import { pumpRoom } from "./platform.ts";
 import { pumpShared } from "./shared.ts";
 import type { Run } from "./run.ts";
 
 export type Calls = Record<string, (e: Engine, args: unknown[]) => unknown>;
+
+/** The adapter the renderer's device came from (webgpu.ts adapterName), `none` without a renderer. */
+function adapterOf(run: Run): string {
+  const report = run.engine && run.glue ? deviceReport(run.glue, run.engine.id, run.canvas) : null;
+  return report ? adapterName(report["info"] as Parameters<typeof adapterName>[0]) : "none";
+}
 
 /** The calls `run` answers. */
 export function callsOf(run: Run): Calls {
@@ -83,7 +91,7 @@ export function callsOf(run: Run): Calls {
         return run.trace.turn(run.engine, true);
       }
       if (a === "stop") return run.trace.turn(run.engine, false);
-      return run.trace.document(run.engine, { tier: run.lastTier, lanes: run.lanes });
+      return run.trace.document(run.engine, { tier: run.lastTier, adapter: adapterOf(run), lanes: run.lanes });
     },
     /**
      * The performance record (guide perf): `start` begins a fresh one, `stop` ends it, `report`
@@ -99,6 +107,10 @@ export function callsOf(run: Run): Calls {
         return true;
       }
       const report = JSON.parse(abi.og_engine_perf_report(run.engine.id, JSON.stringify(budgets ?? {}))) as { json: Record<string, unknown>; text: string };
+      // The adapter the times were measured on (the renderer's own device), so CPU WebGPU is never read as a GPU.
+      const adapter = adapterOf(run);
+      report.json["adapter"] = adapter;
+      report.text = report.text.replace(/^og perf: .*$/m, (head) => `${head} on ${adapter}`);
       // The pipelines asked for asynchronously and when each was made (pipelines.ts `compiled`):
       // the UI's and the overlay's by name, so one still compiling at Play shows.
       const all = pipelines.compiled();

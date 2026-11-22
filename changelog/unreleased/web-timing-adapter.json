@@ -1,0 +1,21 @@
+{
+  "simulation": "unchanged",
+  "breaking": [
+    {
+      "member": "og run --device",
+      "change": "device.json's `measured.device.gpu` is removed: it came from a second adapter the page asked for, which was not always the one the game drew on (Chrome on an NVIDIA host answers a request without a power preference null). `measured.adapter` names the renderer's own adapter.",
+      "fix": "Read `measured.adapter` (such as `nvidia/lovelace`, or `google/swiftshader (software)` on CPU WebGPU) instead of `measured.device.gpu`.",
+      "find": ["device.gpu"]
+    }
+  ],
+  "added": [
+    {
+      "member": "perf",
+      "summary": "On the web, the performance record (`perf report`, the shell's `perf()`) names the WebGPU adapter its times were measured on: `json.adapter` and its text's first line, `vendor/architecture` with ` (software)` on a CPU rasterizer (the fallback adapter, SwiftShader, llvmpipe, lavapipe), so a time measured on CPU WebGPU is never read as a GPU's. The web trace's `otherData.adapter` names it too."
+    },
+    {
+      "member": "og run --device",
+      "summary": "Its summary line, `--json` line, report.md and device.json name the adapter the frames were timed on (`chrome: webgpu on google/swiftshader (software), first frame …`)."
+    }
+  ]
+}

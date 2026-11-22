@@ -4,6 +4,7 @@
 // gets null.
 import { expect, test } from "bun:test";
 import { webGpuMissing } from "../src/web/shell.ts";
+import { adapterName } from "../src/web/webgpu.ts";
 
 const original = Object.getOwnPropertyDescriptor(globalThis, "navigator");
 const secure = Object.getOwnPropertyDescriptor(globalThis, "isSecureContext");
@@ -45,4 +46,13 @@ test("it asks for the renderer's adapter: high-performance, or low-power where t
   } finally {
     restore();
   }
+});
+
+test("a timing's adapter: vendor/architecture, software on a CPU rasterizer however it is told", () => {
+  expect(adapterName({ vendor: "nvidia", architecture: "lovelace", isFallbackAdapter: false })).toBe("nvidia/lovelace");
+  // Chrome's SwiftShader is the fallback adapter; Dawn on llvmpipe is not, and is known by name; the renderer's own flag counts too.
+  expect(adapterName({ vendor: "google", architecture: "swiftshader", isFallbackAdapter: true })).toBe("google/swiftshader (software)");
+  expect(adapterName({ vendor: "mesa", architecture: "llvmpipe", isFallbackAdapter: false })).toBe("mesa/llvmpipe (software)");
+  expect(adapterName({ vendor: "apple", architecture: "" }, true)).toBe("apple/unknown (software)");
+  expect(adapterName(null)).toBe("unknown");
 });
