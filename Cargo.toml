@@ -432,12 +432,12 @@ taffy = { path = "third_party/taffy" }
 #   ring; no bind group validation; wgpu-hal's dynamic layer casting to the
 #   backend's types unchecked; per-command calls given wgpu-core objects
 #   directly instead of looking ids up in the registry.
-naga = { git = "https://github.com/originai-game/wgpu-flash", rev = "ecd05a003f430c0797014212ae0c4088c19b735c" }
-naga-types = { git = "https://github.com/originai-game/wgpu-flash", rev = "ecd05a003f430c0797014212ae0c4088c19b735c" }
-wgpu = { git = "https://github.com/originai-game/wgpu-flash", rev = "ecd05a003f430c0797014212ae0c4088c19b735c" }
-wgpu-core = { git = "https://github.com/originai-game/wgpu-flash", rev = "ecd05a003f430c0797014212ae0c4088c19b735c" }
-wgpu-core-deps-apple = { git = "https://github.com/originai-game/wgpu-flash", rev = "ecd05a003f430c0797014212ae0c4088c19b735c" }
-wgpu-core-deps-windows-linux-android = { git = "https://github.com/originai-game/wgpu-flash", rev = "ecd05a003f430c0797014212ae0c4088c19b735c" }
-wgpu-hal = { git = "https://github.com/originai-game/wgpu-flash", rev = "ecd05a003f430c0797014212ae0c4088c19b735c" }
-wgpu-naga-bridge = { git = "https://github.com/originai-game/wgpu-flash", rev = "ecd05a003f430c0797014212ae0c4088c19b735c" }
-wgpu-types = { git = "https://github.com/originai-game/wgpu-flash", rev = "ecd05a003f430c0797014212ae0c4088c19b735c" }
+naga = { git = "https://github.com/originai-game/wgpu-flash", rev = "0b53cd534a583c9738af394c23d64611615e6193" }
+naga-types = { git = "https://github.com/originai-game/wgpu-flash", rev = "0b53cd534a583c9738af394c23d64611615e6193" }
+wgpu = { git = "https://github.com/originai-game/wgpu-flash", rev = "0b53cd534a583c9738af394c23d64611615e6193" }
+wgpu-core = { git = "https://github.com/originai-game/wgpu-flash", rev = "0b53cd534a583c9738af394c23d64611615e6193" }
+wgpu-core-deps-apple = { git = "https://github.com/originai-game/wgpu-flash", rev = "0b53cd534a583c9738af394c23d64611615e6193" }
+wgpu-core-deps-windows-linux-android = { git = "https://github.com/originai-game/wgpu-flash", rev = "0b53cd534a583c9738af394c23d64611615e6193" }
+wgpu-hal = { git = "https://github.com/originai-game/wgpu-flash", rev = "0b53cd534a583c9738af394c23d64611615e6193" }
+wgpu-naga-bridge = { git = "https://github.com/originai-game/wgpu-flash", rev = "0b53cd534a583c9738af394c23d64611615e6193" }
+wgpu-types = { git = "https://github.com/originai-game/wgpu-flash", rev = "0b53cd534a583c9738af394c23d64611615e6193" }
