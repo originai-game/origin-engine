@@ -374,7 +374,7 @@ fn vs_prepass_skinned(@builtin(vertex_index) vi: u32, v: VertexIn, i: SkinnedIns
     // section (morph1), so it needs no previous palette.
     if (i.morph1.x > 0.5) {
       let then = vec4<f32>(i.morph1.y, i.palette.y, 0.0, -1.0 - i.morph1.z);
-      prev = joint_palette[u32(i.morph1.x) - 1u] * skin_matrix(s.joints, s.weights, then);
+      prev = joint_matrix(u32(i.morph1.x) - 1u) * skin_matrix(s.joints, s.weights, then);
     }
   } else if (section > 0.5) {
     if (dot(s.weights, vec4<f32>(1.0)) >= 1e-6) {

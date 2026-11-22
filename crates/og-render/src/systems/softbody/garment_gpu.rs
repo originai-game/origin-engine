@@ -59,7 +59,7 @@ fn adjacency(t: &GarmentTopology) -> Vec<u32> {
 
 impl Pipelines {
     pub(crate) fn new(device: &wgpu::Device) -> Self {
-        let entries: Vec<_> = (0..4)
+        let mut entries: Vec<_> = (0..3)
             .map(|binding| wgpu::BindGroupLayoutEntry {
                 binding,
                 visibility: wgpu::ShaderStages::COMPUTE,
@@ -73,6 +73,17 @@ impl Pipelines {
                 count: None,
             })
             .collect();
+        // The joint palette (skin.rs), a data texture.
+        entries.push(wgpu::BindGroupLayoutEntry {
+            binding: 3,
+            visibility: wgpu::ShaderStages::COMPUTE,
+            ty: wgpu::BindingType::StorageTexture {
+                access: wgpu::StorageTextureAccess::WriteOnly,
+                format: wgpu::TextureFormat::Rgba32Float,
+                view_dimension: wgpu::TextureViewDimension::D2,
+            },
+            count: None,
+        });
         let layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("garment draw"),
             entries: &entries,
@@ -119,7 +130,7 @@ impl Pipelines {
         cache: &mut HashMap<(u64, usize), Mesh>,
         scene: &crate::RenderScene,
         draws: &[(u32, u32)],
-        output: &wgpu::Buffer,
+        output: &wgpu::TextureView,
         previous: Option<u32>,
         visual: Option<&VisualPipelines>,
     ) {
@@ -159,7 +170,7 @@ impl Pipelines {
                 rest.end as u64 * 16,
                 &input[rest.end * 16..],
             );
-            let entries: Vec<_> = [&mesh.input, &mesh.adjacency, &mesh.points, output]
+            let mut entries: Vec<_> = [&mesh.input, &mesh.adjacency, &mesh.points]
                 .into_iter()
                 .enumerate()
                 .map(|(i, b)| wgpu::BindGroupEntry {
@@ -167,6 +178,10 @@ impl Pipelines {
                     resource: b.as_entire_binding(),
                 })
                 .collect();
+            entries.push(wgpu::BindGroupEntry {
+                binding: 3,
+                resource: wgpu::BindingResource::TextureView(output),
+            });
             let group = device.create_bind_group(&wgpu::BindGroupDescriptor {
                 label: Some("garment draw"),
                 layout: &self.layout,

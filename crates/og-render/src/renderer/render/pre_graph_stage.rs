@@ -162,7 +162,7 @@ impl Renderer {
                             &mut self.cache.garments,
                             scene,
                             &skinned.garments,
-                            self.instances.palette.buffer(),
+                            self.instances.palette.view(),
                             skinned_motion.map(|_| joints_drawn),
                             self.world.visual.as_ref(),
                         );

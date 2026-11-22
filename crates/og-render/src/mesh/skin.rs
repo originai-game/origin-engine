@@ -469,18 +469,11 @@ pub(crate) const SKINNED_INSTANCE_LAYOUT: wgpu::VertexBufferLayout<'static> =
     };
 
 /// The palette group's layout: the joint palette (binding 0) and the morph
-/// deltas (binding 1) and immutable bakes (binding 2), read by the vertex shader.
+/// deltas (binding 1) and immutable bakes (binding 2), data textures of
+/// vec4s (data_texture.rs) read by the vertex shader.
 pub(crate) fn palette_layout(device: &wgpu::Device) -> wgpu::BindGroupLayout {
-    let entry = |binding| wgpu::BindGroupLayoutEntry {
-        binding,
-        visibility: wgpu::ShaderStages::VERTEX,
-        ty: wgpu::BindingType::Buffer {
-            ty: wgpu::BufferBindingType::Storage { read_only: true },
-            has_dynamic_offset: false,
-            min_binding_size: None,
-        },
-        count: None,
-    };
+    let entry =
+        |binding| crate::gpu::data_texture::data_entry(binding, wgpu::ShaderStages::VERTEX, false);
     device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
         label: Some("joint palette"),
         entries: &[entry(0), entry(1), entry(2)],
@@ -490,17 +483,23 @@ pub(crate) fn palette_layout(device: &wgpu::Device) -> wgpu::BindGroupLayout {
 /// The fewest vec4s a [`Vec4Array`] holds.
 const MIN_VEC4S: u32 = 1024;
 
-/// A growable storage buffer of vec4s the vertex shader reads.
+/// A growable data texture of vec4s the vertex shader reads
+/// (data_texture.rs): no storage in the vertex stage under WebGPU's
+/// compatibility mode.
 struct Vec4Array {
     capacity: u32,
-    buffer: Option<wgpu::Buffer>,
+    texture: Option<crate::gpu::data_texture::DataTexture>,
+    /// Beside `COPY_DST`: `STORAGE_BINDING` for the joint palette, which
+    /// the garments' compute writes their vertices into.
+    usage: wgpu::TextureUsages,
 }
 
 impl Vec4Array {
-    fn new() -> Vec4Array {
+    fn new(usage: wgpu::TextureUsages) -> Vec4Array {
         Vec4Array {
             capacity: 0,
-            buffer: None,
+            texture: None,
+            usage,
         }
     }
 
@@ -511,37 +510,35 @@ impl Vec4Array {
         if count <= self.capacity {
             return false;
         }
-        let capacity = count.next_power_of_two();
-        self.buffer = Some(crate::traffic::create_buffer(
+        let texture = crate::gpu::data_texture::DataTexture::new(
             device,
-            &wgpu::BufferDescriptor {
-                label: Some("vertex vec4 array"),
-                size: capacity as u64 * 16,
-                usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
-                mapped_at_creation: false,
-            },
-        ));
-        self.capacity = capacity;
+            "vertex vec4 array",
+            wgpu::TextureFormat::Rgba32Float,
+            count.next_power_of_two(),
+            self.usage | wgpu::TextureUsages::COPY_DST,
+        );
+        self.capacity = texture.texels;
+        self.texture = Some(texture);
         true
     }
 
     /// Writes `data` from the start, then `after` right after it.
     fn upload(&self, queue: &wgpu::Queue, data: &[[f32; 4]], after: &[[f32; 4]]) {
-        let buffer = self.buffer.as_ref().expect("made");
-        if !data.is_empty() {
-            crate::traffic::write_buffer(queue, buffer, 0, bytemuck::cast_slice(data));
+        let texture = self.texture.as_ref().expect("made");
+        if after.is_empty() {
+            if !data.is_empty() {
+                texture.write(queue, 0, bytemuck::cast_slice(data));
+            }
+            return;
         }
-        if !after.is_empty() {
-            let at = data.len() as u64 * 16;
-            crate::traffic::write_buffer(queue, buffer, at, bytemuck::cast_slice(after));
-        }
+        let all = [data, after].concat();
+        texture.write(queue, 0, bytemuck::cast_slice(&all));
     }
 
     fn resource(&self) -> wgpu::BindingResource<'_> {
-        self.buffer
-            .as_ref()
-            .expect("written before binding")
-            .as_entire_binding()
+        wgpu::BindingResource::TextureView(
+            &self.texture.as_ref().expect("written before binding").view,
+        )
     }
 }
 
@@ -592,15 +589,21 @@ pub(crate) struct GpuPalette {
 }
 
 impl GpuPalette {
-    pub(crate) fn buffer(&self) -> &wgpu::Buffer {
-        self.palette.buffer.as_ref().expect("palette uploaded")
+    /// The joint palette's texture, which the garments' compute writes.
+    pub(crate) fn view(&self) -> &wgpu::TextureView {
+        &self
+            .palette
+            .texture
+            .as_ref()
+            .expect("palette uploaded")
+            .view
     }
 
     pub fn new() -> GpuPalette {
         GpuPalette {
-            palette: Vec4Array::new(),
-            morphs: Vec4Array::new(),
-            baked: Vec4Array::new(),
+            palette: Vec4Array::new(wgpu::TextureUsages::STORAGE_BINDING),
+            morphs: Vec4Array::new(wgpu::TextureUsages::empty()),
+            baked: Vec4Array::new(wgpu::TextureUsages::empty()),
             bakes: BakeCache::default(),
             bind_group: None,
         }
