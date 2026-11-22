@@ -796,6 +796,7 @@ impl Tree {
                     line: eff.text.line_height(eff.size),
                     weight: eff.text.weight,
                     nowrap: eff.text.nowrap,
+                    clamp: eff.text.clamp,
                 },
             );
         }
@@ -1919,7 +1920,11 @@ fn lay_out(
         size.to_bits(),
         tracking.to_bits(),
         line.to_bits(),
-        u32::from(t.align) | u32::from(t.nowrap) << 2 | u32::from(bold) << 3,
+        u32::from(t.align)
+            | u32::from(t.nowrap) << 2
+            | u32::from(bold) << 3
+            | u32::from(t.overflow) << 4
+            | u32::from(t.clamp) << 8,
     ];
     if g.key == key && *g.text == *text {
         return;
@@ -1982,40 +1987,61 @@ fn lay_out(
                 prev = Some(ch);
             }
         };
+    // `line-clamp-*` shows its first lines, the last cut to fit an ellipsis
+    // when more follow; `truncate` (one line, `text-ellipsis`) cuts a line
+    // wider than the box the same way.
+    let shown = |n: usize| match t.clamp {
+        0 => n,
+        c => n.min(usize::from(c)),
+    };
+    let ellipsis = if m.has('\u{2026}') { "\u{2026}" } else { "..." };
+    let wide = |l: &str| og_text::text::widest_line(l, m, size, track, features);
+    let cut = |l: &str, w: f32, more: bool| -> Option<(String, f32)> {
+        if !more && (t.overflow != 1 || w <= width + 0.5) {
+            return None;
+        }
+        let mut s = l.trim_end().to_string();
+        loop {
+            let with = format!("{s}{ellipsis}");
+            let w = wide(&with);
+            if w <= width + 0.5 || s.is_empty() {
+                return Some((with, w));
+            }
+            s.pop();
+            s.truncate(s.trim_end().len());
+        }
+    };
+    let mut lines: Vec<(std::borrow::Cow<str>, f32)> = Vec::new();
     // Broken as the measure broke it (text.rs), by the same shaped layout
     // at the same width, so a text never breaks inside the box it sized.
     let wrap = (!t.nowrap && size > 0.0).then_some((width + 0.5) / size);
     if og_text::text::paragraph::lines_into(m, text, track, features, wrap, breaks) {
-        for (k, (r, w)) in breaks.iter().enumerate() {
+        lines.extend(breaks.iter().map(|(r, w)| {
             let l = text[r.clone()].trim_end_matches(['\n', '\r']);
-            place(k, l, w * size, &mut g.quads, &mut g.lines);
-            g.line_text.push_str(l);
-            g.line_text.push('\n');
-        }
-        return;
+            (l.into(), w * size)
+        }));
+    } else if t.nowrap || (wide(text) <= width + 0.5 && !text.contains('\n')) {
+        lines.extend(text.split('\n').map(|l| (l.into(), wide(l))));
+    } else {
+        let broken = og_text::text::break_lines_with_overflow(
+            text,
+            m,
+            size,
+            track,
+            features,
+            Some(width + 0.5),
+            false,
+        );
+        lines.extend(broken.into_iter().map(|l| (l.text.into(), l.width)));
     }
-    let one = og_text::text::widest_line(text, m, size, track, features);
-    if t.nowrap || (one <= width + 0.5 && !text.contains('\n')) {
-        for (k, l) in text.split('\n').enumerate() {
-            let w = og_text::text::widest_line(l, m, size, track, features);
-            place(k, l, w, &mut g.quads, &mut g.lines);
-            g.line_text.push_str(l);
-            g.line_text.push('\n');
-        }
-        return;
-    }
-    let lines = og_text::text::break_lines_with_overflow(
-        text,
-        m,
-        size,
-        track,
-        features,
-        Some(width + 0.5),
-        false,
-    );
-    for (k, l) in lines.iter().enumerate() {
-        place(k, &l.text, l.width, &mut g.quads, &mut g.lines);
-        g.line_text.push_str(&l.text);
+    let n = shown(lines.len());
+    for (k, (l, w)) in lines.iter().take(n).enumerate() {
+        let (l, w) = match cut(l, *w, k + 1 == n && n < lines.len()) {
+            Some((l, w)) => (l.into(), w),
+            None => (std::borrow::Cow::Borrowed(&**l), *w),
+        };
+        place(k, &l, w, &mut g.quads, &mut g.lines);
+        g.line_text.push_str(&l);
         g.line_text.push('\n');
     }
 }

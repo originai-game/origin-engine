@@ -30,6 +30,9 @@ pub struct Text {
     /// Where a line may break inside a word (`hyphens-*`): CSS's
     /// `manual` (soft hyphens only) unless set. The line breaker reads it.
     pub hyphens: nsh_tailwind::Hyphens,
+    /// The most lines it shows (`line-clamp-*`), the last ending in an
+    /// ellipsis when more follow; 0 all. Its text children take it.
+    pub clamp: u16,
     /// Which fields its own rules set: bit k for [`Text::WEIGHT`] and on.
     pub set: u16,
     /// Its font size was set by its own rules.
@@ -45,6 +48,7 @@ impl Text {
     pub const OVERFLOW: u16 = 32;
     pub const TRANSFORM: u16 = 64;
     pub const HYPHENS: u16 = 128;
+    pub const CLAMP: u16 = 256;
 
     /// Its letter spacing at `size`, CSS px.
     pub fn tracking(&self, size: f32) -> f32 {
@@ -89,6 +93,9 @@ impl Text {
         if own(Text::HYPHENS) {
             t.hyphens = self.hyphens;
         }
+        if own(Text::CLAMP) {
+            t.clamp = self.clamp;
+        }
         t.set = parent.set | self.set;
         t.sized = self.sized;
         t
@@ -109,6 +116,7 @@ impl Default for Text {
             scroll: [0.0; 2],
             transform: 0,
             hyphens: nsh_tailwind::Hyphens::Manual,
+            clamp: 0,
             set: 0,
             sized: false,
         }

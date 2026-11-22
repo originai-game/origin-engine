@@ -43,6 +43,8 @@ pub struct Run {
     pub weight: u16,
     /// Stays on one line.
     pub nowrap: bool,
+    /// The most lines it takes (`line-clamp-*`); 0 all.
+    pub clamp: u16,
 }
 
 impl Run {
@@ -54,6 +56,7 @@ impl Run {
             line: size * 1.2,
             weight: 400,
             nowrap: false,
+            clamp: 0,
         }
     }
 }
@@ -447,7 +450,7 @@ fn sync(store: &mut LayoutStore, nodes: &mut [Node], i: Id) -> (SlotId, bool) {
         [run.size, run.tracking, run.line]
             .map(f32::to_bits)
             .hash(&mut h);
-        (run.weight, run.nowrap).hash(&mut h);
+        (run.weight, run.nowrap, run.clamp).hash(&mut h);
         h.finish()
     });
     let (slot, dirty) = store.sync_node(

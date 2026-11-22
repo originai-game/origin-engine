@@ -625,6 +625,10 @@ fn record_of(style: &Style, props: &ClassProps) -> Record {
         t.nowrap = nowrap;
         t.set |= Text::NOWRAP;
     }
+    if let Some(n) = props.number_of_lines {
+        t.clamp = n.min(u32::from(u16::MAX)) as u16;
+        t.set |= Text::CLAMP;
+    }
     if props.ellipsize.is_some() {
         t.overflow = 1;
         t.set |= Text::OVERFLOW;
@@ -1250,10 +1254,11 @@ mod tests {
                 // Not drawn yet: `blur-*`, `brightness-*` and the other filters.
                 &["filters"]),
             ("ClassProps", format!("{:#?}", ClassProps::default()),
-                &["ellipsize", "no_wrap", "text_shadows", "pointer_events"],
+                &["ellipsize", "no_wrap", "text_shadows", "pointer_events",
+                  "number_of_lines"],
                 // Not drawn yet: `line-clamp-*`, `pointer-events-*`,
                 // `select-*`, `space-x-*` and the input colours.
-                &["number_of_lines", "selectable", "space",
+                &["selectable", "space",
                   "placeholder_color", "selection_color", "caret_color"]),
         ];
         for (name, debug, read, not_drawn) in structs {

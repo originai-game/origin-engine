@@ -27,12 +27,12 @@ pub fn measure(m: &FontMetrics, text: &str, run: &Run, width: Option<f32>) -> (f
     if let Some((w, lines)) =
         og_text::text::paragraph::measure(m, text, track, Features::NONE, wrap.map(|w| w / size))
     {
-        return (w * run.size, lines.max(1) as f32 * run.line);
+        return (w * run.size, clamped(run, lines) * run.line);
     }
     if run.nowrap || width.is_none() {
-        let lines = text.split('\n').count().max(1);
+        let lines = text.split('\n').count();
         let w = widest_line(text, m, run.size, track, Features::NONE);
-        return (w, lines as f32 * run.line);
+        return (w, clamped(run, lines) * run.line);
     }
     let lines = og_text::text::break_lines_with_overflow(
         text,
@@ -44,7 +44,16 @@ pub fn measure(m: &FontMetrics, text: &str, run: &Run, width: Option<f32>) -> (f
         false,
     );
     let w = lines.iter().map(|l| l.width).fold(0.0, f32::max);
-    (w, lines.len().max(1) as f32 * run.line)
+    (w, clamped(run, lines.len()) * run.line)
+}
+
+/// How many of `lines` a run shows: at least one, at most its clamp.
+fn clamped(run: &Run, lines: usize) -> f32 {
+    let shown = match run.clamp {
+        0 => lines,
+        n => lines.min(usize::from(n)),
+    };
+    shown.max(1) as f32
 }
 
 /// Where `lines` (each ended by `\n`, as `text` was laid out) start a

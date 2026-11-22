@@ -4045,6 +4045,37 @@ mod tests {
         }
     }
 
+    /// `line-clamp-2` shows a long text's first two lines, the second cut
+    /// to end in an ellipsis, and its box is two lines tall; `truncate`
+    /// cuts one line the same way. Ways this could fail: the clamp on the
+    /// element never reaching its text child, the measure still sizing
+    /// every line, or the ellipsis pushed past the box.
+    #[test]
+    fn line_clamp_and_truncate_cut_the_text_with_an_ellipsis() {
+        let mut t = real();
+        nodes(
+            &mut t,
+            &[
+                (1, 0, "w-[40px] text-[10px] leading-[10px] line-clamp-2", 0),
+                (3, 0, "w-[40px] text-[10px] truncate", 0),
+            ],
+        );
+        let mut b = Batch::default();
+        for (id, parent) in [(2, 1), (4, 3)] {
+            b.op(2).u32(id).str("aaaa bbbb cccc dddd");
+            b.op(8).u32(parent).u32(id).u32(u32::MAX);
+        }
+        t.apply(&b.bytes()).unwrap();
+        t.frame(&fixed_fonts(), &IconAtlas::default());
+        let lines = |id: usize| t.glyphs[t.by_js[id] as usize].line_text.clone();
+        // 5 px a character: eight fit in 40 px.
+        assert_eq!(lines(2), "aaaa\nbbbb\u{2026}\n");
+        assert_eq!(t.op_box(2).unwrap()[3], 20.0, "two lines tall");
+        assert_eq!(lines(4), "aaaa bb\u{2026}\n");
+        let x1 = t.glyphs[t.by_js[4] as usize].lines[0];
+        assert!(x1[2] <= 40.5, "{x1:?}");
+    }
+
     /// A text shadow and outline inherit, as CSS's do: a `<Text>`'s classes
     /// sit on the element and its glyphs on its text child. A child's own
     /// outline (here none) wins over its parent's.

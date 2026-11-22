@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "line-clamp-*, truncate, text-ellipsis",
+      "summary": "TSX `line-clamp-<n>` classes parsed but did nothing; a text now shows its first n lines, its box n lines tall, and the last ends in an ellipsis when more follow (`line-clamp-none` shows them all). `truncate` and `text-ellipsis` now end a line wider than its box in an ellipsis instead of cutting it off."
+    }
+  ]
+}
