@@ -67,6 +67,8 @@ struct Parsed {
     stagger: Option<[f32; 2]>,
     /// It has `transition-count`.
     count: bool,
+    /// Its last `glide-<name>`.
+    glide: Option<Box<str>>,
 }
 
 /// `stagger-<step>` or `stagger-<step>/<cap>` in ms (`stagger-40/400`):
@@ -180,6 +182,7 @@ impl Classes {
             let expanded = self.expand(classes);
             let (mut rest, mut nine, mut stand) = (String::new(), Vec::new(), String::new());
             let (mut scheme, mut stag, mut count) = (None, None, false);
+            let mut glide = None;
             for class in expanded
                 .as_deref()
                 .unwrap_or(classes)
@@ -201,6 +204,12 @@ impl Classes {
                     // transition's curve (the tree's counts).
                     "transition-count" => {
                         count = true;
+                        continue;
+                    }
+                    // A selection's indicator slides from the one it
+                    // replaces (the tree's glides).
+                    c if c.starts_with("glide-") && c.len() > 6 => {
+                        glide = Some(Box::from(&c[6..]));
                         continue;
                     }
                     c if stagger(c).is_some() => {
@@ -233,6 +242,7 @@ impl Classes {
                     scheme,
                     stagger: stag,
                     count,
+                    glide,
                 },
             );
         }
@@ -306,7 +316,7 @@ impl Classes {
             parsed.nine_list.clone(),
             parsed.scheme,
         );
-        let (stag, count) = (parsed.stagger, parsed.count);
+        let (stag, count, glide) = (parsed.stagger, parsed.count, parsed.glide.clone());
         let cx = Context {
             env: ClassEnvironment {
                 dark: env.dark,
@@ -371,6 +381,7 @@ impl Classes {
         record.scheme = scheme;
         record.stagger = stag;
         record.count = count;
+        record.glide = glide;
         record.dark = env.dark;
         // The `nine-<name>` that holds in `env`, the last one written.
         if let Some(nine_list) = nine_list {
@@ -910,6 +921,7 @@ fn motion_of(style: &Style) -> motion::Spec {
             Keyframes::Shimmer => motion::Keyframes::Shimmer,
             Keyframes::Rise => motion::Keyframes::Rise,
             Keyframes::Charge => motion::Keyframes::Charge,
+            Keyframes::Nudge => motion::Keyframes::Nudge,
         },
         duration: a.duration / 1000.0,
         delay: a.delay / 1000.0,

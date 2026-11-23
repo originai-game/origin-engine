@@ -90,6 +90,8 @@ pub enum Keyframes {
     /// Ours: gathers to 1.08× over its first 40% (eased in, the charge),
     /// jumps to 1.15× and settles back to its size (the burst's pop).
     Charge,
+    /// Ours: swells to 1.08× and back once (a control that became ready).
+    Nudge,
 }
 
 /// `animate-*` and how it is timed (the class resolver's presets, or
@@ -359,6 +361,9 @@ struct Live {
     /// When its entrance starts after a wait ([`Motion::enter_after`]), so
     /// entering again before it is drawn (a new record) keeps the wait.
     starts: f64,
+    /// A one-shot pose over whatever its record plays ([`Motion::cue`]),
+    /// and when it started (infinity: at the next sample).
+    cue: Option<(Loop, f64)>,
 }
 
 /// The UI's motion: what moves, sampled once per frame.
@@ -403,6 +408,7 @@ impl Motion {
         self.live.iter().any(|l| {
             l.tracks != 0
                 || l.exiting
+                || l.cue.is_some()
                 || l.spec.animate.is_some_and(|a| {
                     a.iterations.is_some() && (l.playing || l.since == f64::INFINITY)
                 })
@@ -421,6 +427,9 @@ impl Motion {
             let l = &mut self.live[i];
             if l.since == f64::INFINITY {
                 l.since = t;
+            }
+            if let Some((_, since)) = l.cue.as_mut().filter(|c| c.1 == f64::INFINITY) {
+                *since = t;
             }
             // What moved since the last tick moves this one, landing.
             let was = l.tracks != 0 || l.playing;
@@ -673,6 +682,7 @@ impl Motion {
             exiting: false,
             ends: f64::NEG_INFINITY,
             starts: f64::NEG_INFINITY,
+            cue: None,
         });
         self.live.len() - 1
     }
@@ -759,9 +769,39 @@ impl Motion {
             playing = run;
             l.posed = posed;
         }
+        if let Some((lp, since)) = l.cue {
+            let size = l.laid.map_or([0.0; 2], |b| [b.w, b.h]);
+            let (run, posed) = pose(&lp, (now - since).max(0.0), &mut s, size, self.reduced);
+            if run {
+                playing = true;
+                l.posed |= posed;
+            } else {
+                l.cue = None;
+            }
+        }
         l.shown = s;
         l.playing = playing;
         playing
+    }
+
+    /// Plays `lp` once on `id`, resting on `base`, over what its record
+    /// plays and through its restyles: an attention cue.
+    pub fn cue(&mut self, id: Id, lp: Loop, base: &Skin) {
+        let i = self.ensure(id, base);
+        self.live[i].cue = Some((lp, f64::INFINITY));
+        self.present(i);
+    }
+
+    /// `id`, which transitions its layout, was put on screen where the
+    /// element it replaces was last drawn (`from`, its parent's space):
+    /// it slides from there to its own box on its next layout.
+    pub fn glide(&mut self, id: Id, from: BoxLayout) {
+        if let Some(i) = self
+            .find(id)
+            .filter(|&i| self.live[i].spec.props & LAYOUT != 0)
+        {
+            self.live[i].laid = Some(from);
+        }
     }
 }
 
@@ -833,6 +873,7 @@ fn pose(lp: &Loop, elapsed: f64, s: &mut Skin, size: [f32; 2], reduced: bool) ->
             }
         }
         K::Shimmer => shift[0] = size[0] * lerp(-1.0, 4.2, ez(p)),
+        K::Nudge => scale = 1.0 + 0.08 * og_core::math::sin(std::f32::consts::PI * ez(p)),
         K::Rise => {
             let q = ez(p);
             *o *= q.clamp(0.0, 1.0);

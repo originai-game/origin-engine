@@ -1073,6 +1073,8 @@ pub enum Keyframes {
     /// Gathers to 1.08× over its first 40%, jumps to 1.15× and settles
     /// back to its size (a reveal's charge and burst).
     Charge,
+    /// Swells to 1.08× and back once (a control that became ready).
+    Nudge,
 }
 
 /// `animation*`: a keyframe animation running natively, forever by default.

@@ -763,7 +763,17 @@ what draws counts up or down, while the text a probe or a screen reader
 reads is the new one at once; a number whose words or unit change jumps,
 and reduced motion jumps. The slots `List.cascade`, `List.item`,
 `Reward.pop` and `Count.roll` carry the pack's timing for them (motion.css's
-cascade and count rows). A
+cascade and count rows).
+
+A selection's indicator glides: `glide-<name>` on an element that
+transitions its layout makes it, when put on screen, slide from where the
+nearest element of that name (by common ancestor) is drawn or was drawn in
+the last half second, as Framer Motion's `layoutId` does; a tab draws its
+indicator under `<Show when={selected}>` with `Tab.indicator`. A bar's fill
+eases on `Bar.fill` and the trail of what was just lost drains after it on
+`Bar.trail`. A control drawn disabled that becomes enabled plays the pack's
+`Attention.cue` (`animate-nudge`, a swell to 1.08x and back) once, over its
+own motion. A
 new slot is added here and to `design::SLOTS` before a component writes
 it.
 

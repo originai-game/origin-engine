@@ -512,6 +512,98 @@ impl Tree {
         }
     }
 
+    /// `e`'s ancestors, nearest first, four at most (`NONE` past the root).
+    fn ancestors(&self, e: u32) -> [u32; 4] {
+        let mut out = [NONE; 4];
+        let mut a = self.els[e as usize].parent;
+        for o in &mut out {
+            if a == NONE {
+                break;
+            }
+            *o = a;
+            a = self.els[a as usize].parent;
+        }
+        out
+    }
+
+    /// The box `e` was last drawn in, in surface space.
+    fn drawn_rect(&self, e: u32) -> Option<[f32; 4]> {
+        let a = self.abs.get(e as usize).filter(|a| a.2)?;
+        let n = self.els[e as usize].node;
+        let b = self
+            .motion
+            .box_of(n)
+            .unwrap_or_else(|| self.arena.box_of(n));
+        Some([a.0, a.1, b.w, b.h])
+    }
+
+    /// A `glide-<name>` element `e` is taken off the screen: where it was
+    /// is kept a moment for the one that replaces it.
+    fn left_glide(&mut self, e: u32) {
+        let t = self.time;
+        self.glides.retain(|g| t - g.1 < 0.5);
+        if let Some(rect) = self.drawn_rect(e) {
+            let name = self.els[e as usize].record.glide.clone().expect("a glide");
+            let anc = self.ancestors(e);
+            self.glides.push((name, t, rect, anc));
+        }
+    }
+
+    /// A `glide-<name>` element `child` went on screen: it slides from
+    /// the nearest element of its name, by their common ancestor, that
+    /// shows (the selection it replaces, removed after it) or left it in
+    /// the last half second (removed before it), as Framer Motion's
+    /// `layoutId` does. Nothing near: it enters as it is.
+    fn glide_from(&mut self, child: u32) {
+        let name = self.els[child as usize]
+            .record
+            .glide
+            .clone()
+            .expect("a glide");
+        let mine = self.ancestors(child);
+        let near = |anc: &[u32; 4]| mine.iter().position(|&a| a != NONE && anc.contains(&a));
+        let mut best: Option<(usize, [f32; 4])> = None;
+        let mut take = |level: Option<usize>, rect: [f32; 4]| {
+            if let Some(l) = level
+                && best.is_none_or(|b| l < b.0)
+            {
+                best = Some((l, rect));
+            }
+        };
+        for d in 0..self.els.len() as u32 {
+            let el = &self.els[d as usize];
+            if d == child || el.dead || el.record.glide.as_deref() != Some(&*name) {
+                continue;
+            }
+            if let Some(rect) = self.drawn_rect(d) {
+                take(near(&self.ancestors(d)), rect);
+            }
+        }
+        let t = self.time;
+        for g in self
+            .glides
+            .iter()
+            .filter(|g| *g.0 == *name && t - g.1 < 0.5)
+        {
+            take(near(&g.3), g.2);
+        }
+        let Some((_, [x, y, w, h])) = best else {
+            return;
+        };
+        let p = self.els[child as usize].arena_parent;
+        let (px, py) = match self.abs.get(p as usize) {
+            Some(a) => {
+                let [sx, sy] = self.scroll_of(p);
+                (a.0 - sx, a.1 - sy)
+            }
+            None => (0.0, 0.0),
+        };
+        let node = self.els[child as usize].node;
+        let mut from = self.arena.box_of(node);
+        (from.x, from.y, from.w, from.h) = (x - px, y - py, w, h);
+        self.motion.glide(node, from);
+    }
+
     /// How long `child`, put on screen now, waits for its turn in its
     /// parent's cascade (`stagger-<step>/<cap>`): the n-th child entering
     /// at this time waits n steps, never past the cap. 0 under a parent
@@ -857,8 +949,20 @@ impl Tree {
                     match name {
                         "disabled" => {
                             let on = !matches!(value, "" | "false" | "0");
+                            let was = self.els[e as usize].disabled;
                             self.els[e as usize].disabled = on;
                             self.set_state(e, DISABLED, on);
+                            // A control drawn disabled that becomes ready
+                            // calls for attention once (`Attention.cue`).
+                            if was && !on && self.els[e as usize].entering.is_none() {
+                                let cue = self.classes.get("@Attention.cue", "");
+                                let lp = self.classes.record(cue, 0, 0).motion.animate;
+                                if let Some(lp) = lp {
+                                    let el = &self.els[e as usize];
+                                    self.motion.cue(el.node, lp, &el.record.skin);
+                                    self.paint = true;
+                                }
+                            }
                         }
                         "tabIndex" => {
                             self.input.per[e as usize].tab =
@@ -1243,12 +1347,18 @@ impl Tree {
                     self.motion.enter_after(el.node, &el.record, from, wait);
                     if shown {
                         self.enter_subtree(child, wait);
+                        if self.els[child as usize].record.glide.is_some() {
+                            self.glide_from(child);
+                        }
                     }
                 }
                 // remove
                 9 => {
                     let _parent = r.u32()?;
                     let child = self.op(r.u32()?)?;
+                    if self.els[child as usize].record.glide.is_some() {
+                        self.left_glide(child);
+                    }
                     let el = &self.els[child as usize];
                     // With an `exit:` record it stays drawn, not hit,
                     // until its exit settles.
@@ -2783,6 +2893,105 @@ mod tests {
             (a - 0.5).abs() < 0.02,
             "a later row starts its own cascade: {a}"
         );
+    }
+
+    /// A `glide-<name>` indicator put on screen in another tab while the
+    /// old one is taken off slides from where the old one was drawn to its
+    /// own box on its layout transition; the first one shown, with nothing
+    /// to replace, appears where it is. Ways this could fail: the new one
+    /// jumping (no glide), sliding from the wrong space (its own parent's
+    /// origin rather than the old one's place), or the first one sliding in
+    /// from nowhere.
+    #[test]
+    fn a_selection_indicator_glides_from_the_one_it_replaces() {
+        let mut t = classed();
+        let mark = "absolute inset-x-0 bottom-0 h-[4px] bg-white transition-layout duration-100 ease-linear glide-tab";
+        t.set_time(1.0, false);
+        nodes(
+            &mut t,
+            &[
+                (1, 0, "flex-row w-full h-full items-start", 0),
+                (2, 0, "relative shrink-0 w-[100px] h-[40px]", 1),
+                (3, 0, "relative shrink-0 w-[100px] h-[40px]", 1),
+            ],
+        );
+        frame(&mut t);
+        let mut b = Batch::default();
+        b.op(1).u32(4).u8(0);
+        b.op(4).u32(4).str(mark);
+        b.op(8).u32(2).u32(4).u32(u32::MAX);
+        t.apply(&b.bytes()).unwrap();
+        t.set_time(1.05, false);
+        frame(&mut t);
+        let mark_x = |t: &Tree| {
+            t.drawn
+                .quads
+                .iter()
+                .find(|q| q.kind == PaintKind::Solid as u32 && q.rect[3] == 4.0)
+                .map(|q| q.rect[0])
+        };
+        assert_eq!(mark_x(&t), Some(0.0), "the first one is where it is");
+        t.set_time(1.5, false);
+        frame(&mut t);
+        // The selection moves to the second tab: the mark is remade there.
+        let mut b = Batch::default();
+        b.op(9).u32(2).u32(4);
+        b.op(10).u32(4);
+        b.op(1).u32(5).u8(0);
+        b.op(4).u32(5).str(mark);
+        b.op(8).u32(3).u32(5).u32(u32::MAX);
+        t.apply(&b.bytes()).unwrap();
+        frame(&mut t);
+        t.set_time(1.55, false);
+        frame(&mut t);
+        let x = mark_x(&t).unwrap();
+        assert!((x - 50.0).abs() < 2.0, "half way from the first tab: {x}");
+        t.set_time(1.7, false);
+        frame(&mut t);
+        assert_eq!(mark_x(&t), Some(100.0), "landed under the second");
+    }
+
+    /// A control drawn disabled that becomes enabled plays the pack's
+    /// `Attention.cue` once and comes back to its size; one enabled at
+    /// its first build, or disabled again, plays nothing. Ways this could
+    /// fail: no cue, a cue on every restyle, or one that never ends.
+    #[test]
+    fn a_control_that_becomes_ready_calls_for_attention_once() {
+        let mut t = tree();
+        let mut classes = crate::classes::Classes::new(None).unwrap().0;
+        classes.set_variants([("Attention.cue".to_string(), "animate-nudge".to_string())].into());
+        let classes = std::cell::RefCell::new(classes);
+        t.set_resolver(Box::new(move |class, _, states, _| {
+            let env = crate::classes::Env {
+                states,
+                ..Default::default()
+            };
+            classes.borrow_mut().record(class, &env)
+        }));
+        t.set_time(1.0, false);
+        nodes(&mut t, &[(1, 0, "shrink-0 w-[40px] h-[40px] bg-white", 0)]);
+        let mut b = Batch::default();
+        b.op(6).u32(1).str("disabled").str("true");
+        t.apply(&b.bytes()).unwrap();
+        frame(&mut t);
+        let width = |t: &Tree| {
+            let el = &t.els[t.op(1).unwrap() as usize];
+            40.0 * t.motion.skin(el.node, &el.record.skin).transform.scale[0]
+        };
+        assert_eq!(width(&t), 40.0);
+        assert!(!t.settling(), "nothing plays at the first build");
+        let mut b = Batch::default();
+        b.op(6).u32(1).str("disabled").str("false");
+        t.apply(&b.bytes()).unwrap();
+        frame(&mut t);
+        t.set_time(1.21, false);
+        frame(&mut t);
+        let w = width(&t);
+        assert!(w > 42.5, "swelled mid-cue: {w}");
+        t.set_time(1.5, false);
+        frame(&mut t);
+        assert_eq!(width(&t), 40.0, "back to its size");
+        assert!(!t.settling(), "played once");
     }
 
     /// A number in a `transition-count` text drawn already rolls to its new

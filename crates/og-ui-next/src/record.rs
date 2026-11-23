@@ -474,6 +474,10 @@ pub struct Record {
     /// Its `transition-count`: a number in its text rolls to a new one on
     /// its transition's curve.
     pub count: bool,
+    /// Its `glide-<name>`: put on screen while another element of that
+    /// name nearby shows or just left, it slides from where that one was
+    /// on its `transition-layout` (a selection's indicator).
+    pub glide: Option<Box<str>>,
     /// The scheme it was resolved in.
     pub dark: bool,
     /// `invisible` (CSS's `visibility: hidden`): it and its subtree are
@@ -590,6 +594,7 @@ impl Default for Record {
             scheme: None,
             stagger: None,
             count: false,
+            glide: None,
             dark: false,
         }
     }

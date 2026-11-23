@@ -25,6 +25,11 @@ enum Kind {
     Icon,
 }
 
+/// A `glide-<name>` element that left the screen: its name, the time,
+/// the box it was last drawn in (surface space) and the ancestors it was
+/// under, nearest first.
+type Left = (Box<str>, f64, [f32; 4], [u32; 4]);
+
 /// A text rolling to a new number ([`Tree::roll`]).
 #[derive(Clone, Debug)]
 struct Count {
@@ -540,6 +545,9 @@ pub struct Tree {
     cascade: (f64, Vec<(u32, u32)>),
     /// The texts rolling to a new number (`transition-count`).
     counts: Vec<Count>,
+    /// Elements with a `glide-<name>` that left the screen ([`ops`]'s
+    /// `glide_from`).
+    glides: Vec<Left>,
     gone: Vec<Id>,
     /// Op nodes' hover, press, focus and modals ([`input`]), and where
     /// the pointer was in the last frame and how many frames had painted
@@ -662,6 +670,7 @@ impl Tree {
             entering: Vec::new(),
             cascade: (f64::NAN, Vec::new()),
             counts: Vec::new(),
+            glides: Vec::new(),
             gone: Vec::new(),
             input: input::Input::new(),
             last_pointer: (f32::NAN, f32::NAN, 0),
