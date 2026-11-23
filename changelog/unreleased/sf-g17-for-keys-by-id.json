@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "ui.For",
+      "summary": "A <For> without `key` keys an object item by its `id` (else the item itself, as before), so a keyed collection a view model makes afresh on every change keeps its rows, their entrances and their state. About seventy built-in lists over { id } items passed no key and made every row again on each update: StarRating's lit stars replayed their pop and never showed on a results screen, and Results' counted stats restarted."
+    }
+  ]
+}

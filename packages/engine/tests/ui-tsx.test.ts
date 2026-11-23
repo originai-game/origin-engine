@@ -946,9 +946,14 @@ test("level path roads meet their discs, the carousel's Next arrow shows, the sh
 // list) all ran again when any one changed, so a branch beside a changing
 // figure was made again each time, losing its focus and replaying its
 // entrance; a spread set every prop again when one changed, calling a ref
-// each time.
-test("a changing child leaves its siblings' nodes, and a spread sets only what changed", async () => {
-  const source = `import { View, Text } from "@origingame/engine/ui";
+// each time; a For keyed its rows by the item itself, so a keyed collection
+// of { id } made afresh on every change (as a view model makes it) made
+// every row again, replaying StarRating's pop until its stars never showed.
+test("a changing child leaves its siblings' nodes, a spread sets only what changed, and a For keeps an id's row", async () => {
+  const source = `import { View, Text, For } from "@origingame/engine/ui";
+export function List(props: { items: ReadonlyArray<{ id: string; label: string }> }) {
+  return <View><For each={props.items}>{(i) => <Text>{i().label}</Text>}</For></View>;
+}
 export function Row(props: { on: boolean; more: boolean; n: number }) {
   return <View>{props.on ? <View><Text>badge</Text></View> : null}{props.more ? <Text>more</Text> : null}<Text>{props.n}</Text></View>;
 }
@@ -960,7 +965,7 @@ export function Wrap(props: { label: string; tag: string; ref?: unknown }) { ret
     const rt = fileURLToPath(new URL("../src/ui/rt.ts", import.meta.url));
     const ui = fileURLToPath(new URL("../src/ui/index.ts", import.meta.url));
     writeFileSync(join(dir, "Row.js"), compiled.code.replace('"@origingame/engine/ui/rt"', JSON.stringify(rt)).replace('"@origingame/engine/ui"', JSON.stringify(ui)));
-    const { Row, Wrap } = await import(join(dir, "Row.js"));
+    const { Row, Wrap, List } = await import(join(dir, "Row.js"));
     const world = { id: 9003 } as unknown as World;
     const batches: Op[][] = [];
     renderers.set(9003, new Renderer((bytes) => { batches.push(decode(bytes)); return reply([]); }, world));
@@ -989,6 +994,13 @@ export function Wrap(props: { label: string; tag: string; ref?: unknown }) { ret
     renderers.get(9003)!.flush();
     expect(batches.flat().filter((op) => op[0] === "remove")).toHaveLength(1);
     expect(batches.flat().some((op) => op[0] === "create")).toBe(false);
+    // A fresh array of the same ids keeps every row: only the label that changed is sent.
+    const second = createSignal("b");
+    mount(world, List, { get items() { return [{ id: "a", label: "A" }, { id: "b", label: second() }]; } }, { layer: "hud" });
+    batches.length = 0;
+    second.set("B");
+    renderers.get(9003)!.flush();
+    expect(batches.flat()).toEqual([["setText", expect.any(Number), "B"]]);
   } finally {
     rmSync(dir, { recursive: true, force: true });
     renderers.delete(9003);

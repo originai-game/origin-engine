@@ -436,7 +436,16 @@ export function cond(when: () => unknown, then: () => unknown, otherwise?: () =>
 
 interface Row { item: (() => unknown) & { set(v: unknown): void }; index: (() => number) & { set(v: number): void }; output: unknown; dispose: () => void }
 
-/** `<For each key>`: one row per item, kept while its key is (by default the item itself). */
+/** The key of a `<For>` row without a `key`: an object's `id` when it has one (a keyed collection, which a view model makes afresh on every change), else the item itself. */
+function itemKey(item: unknown): unknown {
+  if (item !== null && typeof item === "object") {
+    const id = (item as { id?: unknown }).id;
+    if (id !== undefined && id !== null) return id;
+  }
+  return item;
+}
+
+/** `<For each key>`: one row per item, kept while its key is (by default an object's `id`, else the item itself). */
 export function each<T>(source: () => readonly T[] | null | undefined, render: (item: () => T, index: () => number) => unknown, key?: (item: T) => unknown): Accessor<unknown[]> {
   let rows = new Map<unknown, Row[]>();
   onCleanup(() => { for (const list of rows.values()) for (const row of list) row.dispose(); });
@@ -447,7 +456,7 @@ export function each<T>(source: () => readonly T[] | null | undefined, render: (
       const next = new Map<unknown, Row[]>();
       const out: unknown[] = [];
       items.forEach((item, i) => {
-        const k = key ? key(item) : item;
+        const k = key ? key(item) : itemKey(item);
         let row = rows.get(k)?.shift();
         if (row) {
           row.item.set(item);

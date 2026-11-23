@@ -61,7 +61,7 @@ export declare function Show<T>(props: {
     keyed?: boolean;
     children: UiChild | ((value: () => NonNullable<T>) => UiChild);
 }): UiChild;
-/** `<For each={items} key={(i) => i.id}>{(item, index) => …}</For>`: compiled to the renderer's `each`. */
+/** `<For each={items} key={(i) => i.slot}>{(item, index) => …}</For>`: compiled to the renderer's `each`. A row is kept while its key is; without `key`, an object item's `id` is its key (a keyed collection keeps its rows, its entrances and its state, when the view model makes the array afresh), and any other item is its own. */
 export declare function For<T>(props: {
     each: readonly T[] | undefined | null;
     key?: (item: T) => unknown;
