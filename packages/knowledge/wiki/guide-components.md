@@ -4314,6 +4314,8 @@ The creator's tools on the HUD's smoked glass: the four tools a segmented switch
 | `onRedo?` | `(e: UiEvent, key?: string) => void` | The redo event, with the row's key where it comes from a row. |
 | `onSave?` | `(e: UiEvent, key?: string) => void` | The save event, with the row's key where it comes from a row. |
 | `onUndo?` | `(e: UiEvent, key?: string) => void` | The undo event, with the row's key where it comes from a row. |
+| `onTool?` | `(e: UiEvent, key?: string) => void` | A tool pressed, with its key (select, move, rotate or scale): the game sets `tool`. |
+| `onPanel?` | `(e: UiEvent, key?: string) => void` | A panel tab pressed on a phone, with its key (hierarchy, inspector or catalogue): the game sets `panel`. |
 
 Pack slots: `Button.plate`, `Button.plate.primary`, `Panel.frame`, `Screen.frame`.
 
@@ -4574,6 +4576,7 @@ A leaderboard: global, friends and league tabs, the period, the top rows with th
 | `onBack?` | `(e: UiEvent, key?: string) => void` | The back event, with the row's key where it comes from a row. |
 | `onPeriod?` | `(e: UiEvent, key?: string) => void` | The period event, with the row's key where it comes from a row. |
 | `onRow?` | `(e: UiEvent, key?: string) => void` | The row event, with the row's key where it comes from a row. |
+| `onTab?` | `(e: UiEvent, key?: string) => void` | A tab pressed, with its key (global, friends or league): the game sets `tab`. |
 
 Pack slots: `Button.plate`, `Chip.frame`, `Panel.frame`, `Plate.frame`, `Row.frame`, `Row.frame.selected`, `Screen.frame`.
 

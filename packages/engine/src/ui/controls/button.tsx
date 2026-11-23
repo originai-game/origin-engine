@@ -55,12 +55,14 @@ export function Button(props: ButtonProps) {
   );
 }
 
+const press = () => {};
+
 export const fixtures: Record<string, Partial<ButtonProps>> = {
-  default: { children: () => <Text>Continue</Text> },
-  primary: { variant: "primary", children: () => <Text>Start</Text> },
-  danger: { variant: "danger", children: () => <Text>Delete save</Text> },
-  ghost: { variant: "ghost", children: () => <Text>Cancel</Text> },
-  quiet: { variant: "quiet", small: true, children: () => <Text>Skip</Text> },
-  pressed: { pressed: true, children: () => <Text>Auto</Text> },
-  disabled: { disabled: true, children: () => <Text>Locked</Text> },
+  default: { onPress: press, children: () => <Text>Continue</Text> },
+  primary: { variant: "primary", onPress: press, children: () => <Text>Start</Text> },
+  danger: { variant: "danger", onPress: press, children: () => <Text>Delete save</Text> },
+  ghost: { variant: "ghost", onPress: press, children: () => <Text>Cancel</Text> },
+  quiet: { variant: "quiet", onPress: press, small: true, children: () => <Text>Skip</Text> },
+  pressed: { pressed: true, onPress: press, children: () => <Text>Auto</Text> },
+  disabled: { disabled: true, onPress: press, children: () => <Text>Locked</Text> },
 };

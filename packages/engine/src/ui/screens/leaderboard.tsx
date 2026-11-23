@@ -34,6 +34,8 @@ export interface LeaderboardScreenProps {
   onPeriod?: (e: UiEvent, key?: string) => void;
   /** The row event, with the row's key where it comes from a row. */
   onRow?: (e: UiEvent, key?: string) => void;
+  /** A tab pressed, with its key (global, friends or league): the game sets `tab`. */
+  onTab?: (e: UiEvent, key?: string) => void;
 }
 
 /**
@@ -55,13 +57,13 @@ export function LeaderboardScreen(props: LeaderboardScreenProps) {
         </Button>
       </View>
       <View class="flex-row flex-wrap items-center w-fit max-w-264 bg-tile nine-plate-cut p-0.75 mx-auto gap-0 compact:w-full" focus-group="wrap">
-        <Button class={`uppercase tracking-wide data-selection-off:text-fg-muted data-selection-on:text-fg data-selection-on:bg-surface-hover data-selection-on:inset-shadow-underline data-selection-on:inset-shadow-hud-accent compact:tracking-sm compact:grow compact:shrink compact:basis-0 compact:min-w-0 compact:px-1 ${packClass("Button", "plate")}`} data-selection-off={props.tab !== "global"} data-selection-on={props.tab === "global"}>
+        <Button class={`uppercase tracking-wide data-selection-off:text-fg-muted data-selection-on:text-fg data-selection-on:bg-surface-hover data-selection-on:inset-shadow-underline data-selection-on:inset-shadow-hud-accent compact:tracking-sm compact:grow compact:shrink compact:basis-0 compact:min-w-0 compact:px-1 ${packClass("Button", "plate")}`} data-selection-off={props.tab !== "global"} data-selection-on={props.tab === "global"} onPress={(e) => props.onTab?.(e, "global")}>
           <Text class="compact:text-ellipsis">{t("screen.leaderboard.global")}</Text>
         </Button>
-        <Button class={`uppercase tracking-wide data-selection-off:text-fg-muted data-selection-on:text-fg data-selection-on:bg-surface-hover data-selection-on:inset-shadow-underline data-selection-on:inset-shadow-hud-accent compact:tracking-sm compact:grow compact:shrink compact:basis-0 compact:min-w-0 compact:px-1 ${packClass("Button", "plate")}`} data-selection-off={props.tab !== "friends"} data-selection-on={props.tab === "friends"}>
+        <Button class={`uppercase tracking-wide data-selection-off:text-fg-muted data-selection-on:text-fg data-selection-on:bg-surface-hover data-selection-on:inset-shadow-underline data-selection-on:inset-shadow-hud-accent compact:tracking-sm compact:grow compact:shrink compact:basis-0 compact:min-w-0 compact:px-1 ${packClass("Button", "plate")}`} data-selection-off={props.tab !== "friends"} data-selection-on={props.tab === "friends"} onPress={(e) => props.onTab?.(e, "friends")}>
           <Text class="compact:text-ellipsis">{t("screen.leaderboard.friends")}</Text>
         </Button>
-        <Button class={`uppercase tracking-wide data-selection-off:text-fg-muted data-selection-on:text-fg data-selection-on:bg-surface-hover data-selection-on:inset-shadow-underline data-selection-on:inset-shadow-hud-accent compact:tracking-sm compact:grow compact:shrink compact:basis-0 compact:min-w-0 compact:px-1 ${packClass("Button", "plate")}`} data-selection-off={props.tab !== "league"} data-selection-on={props.tab === "league"}>
+        <Button class={`uppercase tracking-wide data-selection-off:text-fg-muted data-selection-on:text-fg data-selection-on:bg-surface-hover data-selection-on:inset-shadow-underline data-selection-on:inset-shadow-hud-accent compact:tracking-sm compact:grow compact:shrink compact:basis-0 compact:min-w-0 compact:px-1 ${packClass("Button", "plate")}`} data-selection-off={props.tab !== "league"} data-selection-on={props.tab === "league"} onPress={(e) => props.onTab?.(e, "league")}>
           <Text class="compact:text-ellipsis">{t("screen.leaderboard.league")}</Text>
         </Button>
       </View>

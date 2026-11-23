@@ -1,0 +1,19 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {
+      "member": "LeaderboardScreen",
+      "summary": "onTab(e, key) reports a tab pressed (global, friends or league); before, the tabs took only the tabNext/tabPrev actions and a finger could not switch them."
+    },
+    {
+      "member": "CreatorToolsScreen",
+      "summary": "onTool(e, key) reports a tool pressed (select, move, rotate, scale) and onPanel(e, key) a phone panel tab (hierarchy, inspector, catalogue); before, neither took a press."
+    }
+  ],
+  "fixed": [
+    {
+      "member": "Chat",
+      "summary": "Send presses: it calls onSend, as the row's submit action does; before, only Enter sent."
+    }
+  ]
+}
