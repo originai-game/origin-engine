@@ -1723,7 +1723,10 @@ every enabled control that answers a press shows under a finger (its
 the control moves itself under `active:`; `Screen.frame` is how a
 full-screen built-in enters and leaves (a screen that replaces one enters
 once the leaving one has left), `Modal.frame` how a dialog pops in and
-leaves, `Modal.scrim` the scrim it dims the screen with, fading on its own.
+leaves, `Modal.scrim` the scrim it dims the screen with, fading on its own;
+`List.cascade` and `List.item` how a list's rows enter one after another,
+`Reward.pop` how a reward pops in, and `Count.roll` how a number rolls to a
+new value (`stagger-*` and `transition-count`, CONVENTIONS.md).
 The default pack derives the four from motion.css's timing table (press,
 enter, exit, pop), so a pack restyles the whole UI's feel
 by its tokens or its own variants. A slot that paints its own

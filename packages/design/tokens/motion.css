@@ -52,7 +52,8 @@
      enter and exit rows. cascade: a list's or a panel's children
      entering one after another, step between them, never spread past cap. toast:
      in, held (hold; holdDanger for an error), out. screen: a game-screen
-     transition covers then reveals over this many slow durations. */
+     transition covers then reveals over this many slow durations. count: a
+     number rolling to a new value (Count.roll). */
   --motion-timing-hover-spring: default;
   --motion-timing-hover-magnet: 0.5;
   --motion-timing-press-in: 50ms;
@@ -70,6 +71,8 @@
   --motion-timing-cascade-step: 40ms;
   --motion-timing-cascade-cap: 400ms;
   --motion-timing-cascade-easing: out;
+  --motion-timing-count-duration: slow;
+  --motion-timing-count-easing: out;
   --motion-timing-toast-enter: base;
   --motion-timing-toast-hold: 3200ms;
   --motion-timing-toast-hold-danger: 6000ms;

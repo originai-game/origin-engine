@@ -279,7 +279,7 @@ pub(crate) fn join(light: &Value, dark: &Value) -> Value {
 /// component's translucent or cleared fill under it is overruled. A row
 /// and a table head are opaque grounds with their inks for the same
 /// reason: the lists, tables and feeds that sit over the scene.
-pub const SLOTS: [(&str, &str, &str); 15] = [
+pub const SLOTS: [(&str, &str, &str); 19] = [
     (
         "Press.feedback",
         "the squash a control that answers a press shows under it, unless its own classes move it under active (its default is the motion tokens': Timing::press)",
@@ -293,6 +293,26 @@ pub const SLOTS: [(&str, &str, &str); 15] = [
     (
         "Modal.frame",
         "a dialog or popup: how it pops in and leaves (Timing::modal)",
+        "",
+    ),
+    (
+        "List.cascade",
+        "a list whose rows enter one after another when it shows or gains rows (Timing::cascade)",
+        "",
+    ),
+    (
+        "List.item",
+        "a row of a list with List.cascade: how it enters in its turn",
+        "animate-rise",
+    ),
+    (
+        "Reward.pop",
+        "a reward or a reveal arriving: how it pops in (in its turn under List.cascade)",
+        "animate-pop",
+    ),
+    (
+        "Count.roll",
+        "a number that rolls to a new value: on the Text that holds it, it counts up or down on the count row (Timing::count)",
         "",
     ),
     (
@@ -624,6 +644,25 @@ impl Timing<'_> {
         )
     }
 
+    /// `List.cascade`: the rows a list puts on screen together enter one
+    /// after another, the cascade row's step apart, spread over its cap.
+    fn cascade(&self) -> String {
+        format!(
+            "stagger-{}/{}",
+            self.ms("--motion-timing-cascade-step"),
+            self.ms("--motion-timing-cascade-cap")
+        )
+    }
+
+    /// `Count.roll`: a number rolling to a new value on the count row.
+    fn count(&self) -> String {
+        format!(
+            "transition-count duration-{} ease-{}",
+            self.ms("--motion-timing-count-duration"),
+            self.ease("--motion-timing-count-easing")
+        )
+    }
+
     /// An easing row's name, as its `ease-*` utility takes it.
     fn ease(&self, name: &str) -> String {
         self.0
@@ -650,6 +689,8 @@ pub fn default_pack_json() -> String {
                 "Screen.frame" => Timing(motion).screen(),
                 "Modal.frame" => Timing(motion).modal(),
                 "Modal.scrim" => Timing(motion).scrim(),
+                "List.cascade" => Timing(motion).cascade(),
+                "Count.roll" => Timing(motion).count(),
                 _ => dress.to_owned(),
             };
             (slot.to_string(), json!(dress))
