@@ -45,11 +45,11 @@ export function CardReward(props: CardRewardProps) {
         </Text>
       </View>
       <Scroll class="grow shrink basis-0 w-full">
-        <View class="flex-row items-center w-full justify-center p-2 gap-3 compact:w-auto compact:justify-start compact:pr-12" role="listbox" label={t("card.reward.choices")}>
+        <View class={`flex-row items-center w-full justify-center p-2 gap-3 compact:w-auto compact:justify-start compact:pr-12 ${packClass("List", "cascade")}`} role="listbox" label={t("card.reward.choices")}>
           <Show when={(props.choices)?.length ?? 0} fallback={<Text class="text-center m-0 shrink" role="status">{t("card.reward.empty")}</Text>}><For each={props.choices}>
             {(c) => (
             <Show when={c().relic} fallback={
-                <View class={`flex-row items-stretch gap-1 shrink basis-48 min-w-26.5 aspect-7/10 justify-stretch p-0 compact:grow-0 compact:shrink-0 compact:min-w-0`} role="option" disabled={!c().enabled} selected={c().id === props.selected} label={c().name} description={c().text} onPress={(e) => props.onPick?.(e, c().id)}>
+                <View class={`flex-row items-stretch gap-1 shrink basis-48 min-w-26.5 aspect-7/10 justify-stretch p-0 compact:grow-0 compact:shrink-0 compact:min-w-0 ${packClass("Reward", "pop")}`} role="option" disabled={!c().enabled} selected={c().id === props.selected} label={c().name} description={c().text} onPress={(e) => props.onPick?.(e, c().id)}>
                   <View class="grow w-full">
                     <View class="grow w-full">
                       <CardFace name={c().name} cost={c().cost} icon={c().icon} art={c().art} type={c().type} typeLabel={c().typeLabel} rarity={c().rarity} text={c().text} dim={!c().enabled} />
@@ -60,7 +60,7 @@ export function CardReward(props: CardRewardProps) {
                   </View>
                 </View>
             }>
-              <View class={`flex-row items-stretch gap-1 group/relic shrink basis-48 min-w-26.5 aspect-7/10 justify-stretch p-0 compact:grow-0 compact:shrink-0 compact:min-w-0`} role="option" disabled={!c().enabled} selected={c().id === props.selected} label={c().name} description={c().text} onPress={(e) => props.onPick?.(e, c().id)}>
+              <View class={`flex-row items-stretch gap-1 group/relic shrink basis-48 min-w-26.5 aspect-7/10 justify-stretch p-0 compact:grow-0 compact:shrink-0 compact:min-w-0 ${packClass("Reward", "pop")}`} role="option" disabled={!c().enabled} selected={c().id === props.selected} label={c().name} description={c().text} onPress={(e) => props.onPick?.(e, c().id)}>
                 <View class="grow w-full">
                   <View class={`grow w-full items-center justify-center text-center border-2 border-gold nine-plate-cut p-2 gap-1 overflow-hidden text-fg ${packClass("Plate", "frame")}`}>
                     <View class={`flex-row items-center w-21/50 aspect-square justify-center bg-tile-pressed gap-0`}>

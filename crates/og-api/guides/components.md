@@ -375,6 +375,8 @@ A readout, not a button. A game can put it beside a separately named purchase co
 | `loading?` | `boolean` | Awaiting the amount; hides stale figures and reads Loading. |
 | `unavailable?` | `boolean` | The balance could not be read; hides stale figures and reads Unavailable. |
 
+Pack slots: `Count.roll`.
+
 Fixtures: `default`, `empty`, `full`, `loading`, `unavailable`, `overflow`.
 
 ## 12. EmptyState
@@ -682,7 +684,7 @@ Pick one of the game's offers: cards drawn as cards, relics as a gold plate with
 | `onPick?` | `(e: UiEvent, key?: string) => void` | The pick event, with the row's key where it comes from a row. |
 | `onSkip?` | `(e: UiEvent, key?: string) => void` | The skip event, with the row's key where it comes from a row. |
 
-Pack slots: `Button.plate`, `Plate.frame`.
+Pack slots: `Button.plate`, `List.cascade`, `Plate.frame`, `Reward.pop`.
 
 Fixtures: `default`, `relics`, `empty`.
 
@@ -1574,7 +1576,7 @@ The resource bar of an idle game: one cut chip per currency with its art in a so
 | `currencies?` | `ReadonlyArray<{ id: string; icon: string; name: string; amount: number; value: string; rate: string; perSecond: number; full: boolean }>` | The currencies in the game's order, keyed rows of { id, icon, name, amount, value, rate, perSecond, full }: value the amount as the game formats it (it wins; empty shows amount, a number, compacted: 12.3K, counting to each new amount); rate the income as the game words it (+1.2K/s; it wins; empty shows perSecond, a number per second, compacted; 0 hides it); perSecond also sets data-trend (up, down, flat) whether or not rate is given, so pass it with a worded rate too; full the store is at its cap, named Full. |
 | `loading?` | `boolean` | The amounts are on their way: each row keeps its icon and name and shows a placeholder for its figures. |
 
-Pack slots: `Chip.frame`, `Slot.frame`.
+Pack slots: `Chip.frame`, `Count.roll`, `Slot.frame`.
 
 Fixtures: `default`, `loading`, `full`, `draining`, `empty`, `overflow`.
 
@@ -1592,7 +1594,7 @@ The achievement list: a band with the title, then the overall count as a large f
 | `achievements` | `ReadonlyArray<{ id: string; name: string; about: string; icon: string; state: string; progress: number; progressText: string; date: string; hidden: boolean; rarity: string; tier: string; claimable: boolean; claimed: boolean }>` | The achievements in the game's order: keyed rows of { id, name, about, icon, state, progress, progressText, date, hidden, rarity, tier, claimable, claimed }: state locked, progress or unlocked; progress 0 to 1 and progressText (3 / 10) for one in progress; date when it was unlocked, as the game formats it, empty says Unlocked alone; hidden a secret one, shown as Hidden achievement until unlocked; rarity the share of players who have it (2.4%), empty hides it; tier common, rare, epic or legendary, shown as a word and as the medal's colour, empty hides the word; claimable a reward waiting; claimed it was taken, which hides Claim. |
 | `onClaim?` | `(e: UiEvent, key?: string) => void` | The claim event, with the row's key where it comes from a row. |
 
-Pack slots: `Button.plate.primary`, `Panel.frame`.
+Pack slots: `Button.plate.primary`, `List.cascade`, `List.item`, `Panel.frame`.
 
 Fixtures: `default`, `empty`, `overflow`.
 
@@ -1633,7 +1635,7 @@ Today's quests: a band with the title and when they refresh (the game counts it 
 | `loading?` | `boolean` | Today's quests are on their way: a spinner stands in. |
 | `onClaim?` | `(e: UiEvent, key?: string) => void` | The claim event, with the row's key where it comes from a row. |
 
-Pack slots: `Button.plate.primary`, `Panel.frame`.
+Pack slots: `Button.plate.primary`, `List.cascade`, `List.item`, `Panel.frame`.
 
 Fixtures: `default`, `empty`, `loading`, `overflow`.
 
@@ -1652,7 +1654,7 @@ A login reward calendar: a grid of day tiles with two corners cut, each a header
 | `compact?` | `boolean` | Its place is narrow (under about 300 px): the days (their state words go) tighten. The place decides, not the screen. |
 | `onClaim?` | `(e: UiEvent, key?: string) => void` | The claim event, with the row's key where it comes from a row. |
 
-Pack slots: `Panel.frame`.
+Pack slots: `List.cascade`, `List.item`, `Panel.frame`.
 
 Fixtures: `default`, `disabled`, `overflow`.
 
@@ -1721,7 +1723,7 @@ News and updates: articles with their date, kind, picture and summary, one expan
 | `onChoose?` | `(e: UiEvent, key?: string) => void` | The choose event, with the row's key where it comes from a row. |
 | `onOpen?` | `(e: UiEvent, key?: string) => void` | The open event, with the row's key where it comes from a row. |
 
-Pack slots: `Chip.frame`, `Panel.frame`.
+Pack slots: `Chip.frame`, `List.cascade`, `List.item`, `Panel.frame`.
 
 Fixtures: `default`, `empty`, `loading`, `error`, `overflow`.
 
@@ -1865,7 +1867,7 @@ A storefront: a band with a kicker over the title and the player's balances as c
 | `onTabNext?` | `(e: UiEvent, key?: string) => void` | The tabNext event, with the row's key where it comes from a row. |
 | `onTabPrev?` | `(e: UiEvent, key?: string) => void` | The tabPrev event, with the row's key where it comes from a row. |
 
-Pack slots: `Chip.frame`.
+Pack slots: `Chip.frame`, `Count.roll`, `List.cascade`, `List.item`.
 
 Fixtures: `default`, `empty`, `loading`, `error`, `overflow`.
 
@@ -2116,7 +2118,7 @@ Dropped against the .svelte: the socket's rarity rim (the rarity tints the socke
 | `onTake?` | `(e: UiEvent, key?: string) => void` | The take event, with the row's key where it comes from a row. |
 | `onTakeAll?` | `(e: UiEvent, key?: string) => void` | The takeAll event, with the row's key where it comes from a row. |
 
-Pack slots: `Button.plate`, `Button.plate.primary`, `Panel.frame`, `Row.frame`.
+Pack slots: `Button.plate`, `Button.plate.primary`, `List.cascade`, `List.item`, `Panel.frame`, `Row.frame`.
 
 Fixtures: `default`, `empty`, `loading`, `busy`, `error`.
 
@@ -2681,7 +2683,7 @@ The run's figures over the play field, set against the screen's end: the score a
 | `grade` | `string` | The grade the run is on course for as the game names it (S, AA); empty hides it. |
 | `best?` | `number` | The player's best on this chart; 0 hides it. Ahead or behind it shows as a signed gap beside it (on data-trend). Default 0. |
 
-Pack slots: `Chip.frame`, `Plate.frame`.
+Pack slots: `Chip.frame`, `Count.roll`, `Plate.frame`.
 
 Fixtures: `default`, `ahead`, `first`, `start`, `overflow`.
 
@@ -4382,7 +4384,7 @@ A leaderboard: global, friends and league tabs, the period, the top rows with th
 | `onRow?` | `(e: UiEvent, key?: string) => void` | The row event, with the row's key where it comes from a row. |
 | `onTab?` | `(e: UiEvent, key?: string) => void` | A tab pressed, with its key (global, friends or league): the game sets `tab`. |
 
-Pack slots: `Button.plate`, `Chip.frame`, `Panel.frame`, `Plate.frame`, `Row.frame`, `Row.frame.selected`, `Screen.frame`.
+Pack slots: `Button.plate`, `Chip.frame`, `List.cascade`, `List.item`, `Panel.frame`, `Plate.frame`, `Row.frame`, `Row.frame.selected`, `Screen.frame`.
 
 Fixtures: `default`.
 
@@ -4591,7 +4593,7 @@ After a match: the verdict set large in a lit fill (gold for a win, red for a lo
 | `onReplay?` | `((e: UiEvent, key?: string) => void) \| undefined` | The replay event, with the row's key where it comes from a row. |
 | `onTab?` | `(e: UiEvent, value: string) => void` | The tab switched (onTab), the tab's value (summary, graphs or board). Without it no tab row is drawn, and the page shows `tab`. |
 
-Pack slots: `Button.plate`, `Button.plate.primary`, `Chip.frame`, `Panel.frame`, `Screen.frame`.
+Pack slots: `Button.plate`, `Button.plate.primary`, `Chip.frame`, `Count.roll`, `List.cascade`, `List.item`, `Panel.frame`, `Reward.pop`, `Screen.frame`.
 
 Fixtures: `default`.
 

@@ -25,7 +25,7 @@ export function RhythmScoreHud(props: RhythmScoreHudProps) {
       <Text class={`text-xs font-semibold tracking-label uppercase whitespace-nowrap text-fg-muted py-0.25 px-1.5 nine-chip-cut bg-glass ${packClass("Plate", "frame")}`}>
         {t("rhythm.hud.score")}
       </Text>
-      <Text class={`text-8xl compact:text-5xl leading-flat font-bold tabular-nums whitespace-nowrap text-fg text-stroke-3 text-stroke-bg`}>
+      <Text class={`text-8xl compact:text-5xl leading-flat font-bold tabular-nums whitespace-nowrap text-fg text-stroke-3 text-stroke-bg ${packClass("Count", "roll")}`}>
         {formatNumber(props.score)}
       </Text>
       <Show when={props.accuracy !== "" || props.grade !== ""}>

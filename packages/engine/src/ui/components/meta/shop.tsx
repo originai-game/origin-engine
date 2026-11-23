@@ -77,7 +77,7 @@ export function Shop(props: ShopProps) {
               {(w) => (
               <View class={`flex-row items-center max-w-full pr-2 pl-1 bg-glass inset-ring-1 inset-ring-rim py-0.5 gap-1 rounded-capsule`} label={t("general.shop.amount", { amount: w().amount, currency: w().label })}>
                 <Icon class="size-5" name={w().icon} />
-                <Text class={`tabular-nums text-fg whitespace-nowrap font-bold text-ellipsis overflow-hidden shrink`}>
+                <Text class={`tabular-nums text-fg whitespace-nowrap font-bold text-ellipsis overflow-hidden shrink ${packClass("Count", "roll")}`}>
                   {w().amount}
                 </Text>
               </View>
@@ -116,11 +116,11 @@ export function Shop(props: ShopProps) {
                   </View>
               }>
                 <Scroll class="grow shrink basis-auto gap-2">
-                  <View class="grid grid-cols-fill-45 w-full p-1 gap-1 compact:grid-cols-2" role="grid" label={props.title !== '' ? props.title : t("general.shop.name")}>
+                  <View class={`grid grid-cols-fill-45 w-full p-1 gap-1 compact:grid-cols-2 ${packClass("List", "cascade")}`} role="grid" label={props.title !== '' ? props.title : t("general.shop.name")}>
                     <For each={props.offers}>
                       {(o) => (
                       <Show when={!o().soldOut && !o().owned && o().affordable} fallback={
-                          <View class={`group/offer w-full pt-1 pb-2 bg-tile nine-plate-cut px-1 hover:bg-none hover:bg-tile data-featured:col-span-2`} role="gridcell" data-sold-out={o().soldOut} data-owned={o().owned} data-affordable={o().affordable} selected={o().id === props.selected} disabled={true} label={t("general.shop.refused", { name: o().name, status: o().soldOut ? t("general.shop.soldOut") : o().owned ? t("general.shop.owned") : t("general.shop.short") })} data-plain={!o().featured} data-featured={o().featured} data-refused={true} data-selected={o().id === props.selected} data-tier-common={(o().rarity || 'common') === "common"}>
+                          <View class={`group/offer w-full pt-1 pb-2 bg-tile nine-plate-cut px-1 hover:bg-none hover:bg-tile data-featured:col-span-2 ${packClass("List", "item")}`} role="gridcell" data-sold-out={o().soldOut} data-owned={o().owned} data-affordable={o().affordable} selected={o().id === props.selected} disabled={true} label={t("general.shop.refused", { name: o().name, status: o().soldOut ? t("general.shop.soldOut") : o().owned ? t("general.shop.owned") : t("general.shop.short") })} data-plain={!o().featured} data-featured={o().featured} data-refused={true} data-selected={o().id === props.selected} data-tier-common={(o().rarity || 'common') === "common"}>
                             <View class="w-full gap-1">
                               <View class={`justify-center items-center w-full h-24 text-border-strong bg-well nine-plate-cut gap-2 compact:h-15`}>
                                 <View class="absolute opacity-26 inset-0" />
@@ -189,7 +189,7 @@ export function Shop(props: ShopProps) {
                             </Show>
                           </View>
                       }>
-                        <View class={`group/offer w-full pt-1 pb-2 bg-tile nine-plate-cut px-1 hover:bg-none hover:bg-tile data-featured:col-span-2`} role="gridcell" data-sold-out={o().soldOut} data-owned={o().owned} data-affordable={o().affordable} selected={o().id === props.selected} label={o().name} onPress={(e) => props.onBuy?.(e, o().id)} data-plain={!o().featured} data-featured={o().featured} data-selected={o().id === props.selected} data-tier-common={(o().rarity || 'common') === "common"}>
+                        <View class={`group/offer w-full pt-1 pb-2 bg-tile nine-plate-cut px-1 hover:bg-none hover:bg-tile data-featured:col-span-2 ${packClass("List", "item")}`} role="gridcell" data-sold-out={o().soldOut} data-owned={o().owned} data-affordable={o().affordable} selected={o().id === props.selected} label={o().name} onPress={(e) => props.onBuy?.(e, o().id)} data-plain={!o().featured} data-featured={o().featured} data-selected={o().id === props.selected} data-tier-common={(o().rarity || 'common') === "common"}>
                           <View class="w-full gap-1">
                             <View class={`justify-center items-center w-full h-24 text-border-strong bg-well nine-plate-cut gap-2 compact:h-15`}>
                               <View class="absolute opacity-26 inset-0" />

@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {
+      "member": "og.ui",
+      "summary": "transition-count on a Text rolls the one number in it to a new value on the Text's duration-* and ease-*, written as it was (its separators and decimals); the text a probe or a screen reader reads is the new one at once. A number whose words or unit change jumps, and so does every number under reduced motion. The pack slot Count.roll (400 ms ease-out in the default pack) carries the timing; Currency, the shop's wallet, idle resources, the rhythm score and the results' values roll."
+    }
+  ]
+}

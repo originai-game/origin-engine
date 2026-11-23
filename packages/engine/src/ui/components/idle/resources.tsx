@@ -45,7 +45,7 @@ export function IdleResources(props: IdleResourcesProps) {
                     <Show when={c().value} fallback={
                         <Counter class={`text-fg text-lg font-bold shrink`} value={c().amount} format="compact" duration="300" />
                     }>
-                      <Text class={`tabular-nums text-fg whitespace-nowrap text-lg font-bold shrink`}>
+                      <Text class={`tabular-nums text-fg whitespace-nowrap text-lg font-bold shrink ${packClass("Count", "roll")}`}>
                         {c().value}
                       </Text>
                     </Show>

@@ -116,10 +116,10 @@ export function ResultsScreen(props: ResultsScreenProps) {
               </Show>
           }>
             <View class="grid grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)] items-start gap-8 compact:grid-cols-1 compact:gap-4 short:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
-              <View class="grid grid-cols-fit-48.5 gap-3 compact:grid-cols-1 compact:gap-1 short:grid-cols-1 short:gap-1">
+              <View class={`grid grid-cols-fit-48.5 gap-3 compact:grid-cols-1 compact:gap-1 short:grid-cols-1 short:gap-1 ${packClass("List", "cascade")}`}>
                 <For each={props.stats}>
                   {(s) => (
-                  <View class={`nine-plate-cut bg-plate-hi text-fg transition duration-317 border border-rim justify-between py-3 px-4 gap-2 data-selected:text-fg disabled:text-fg-subtle data-done:text-fg-subtle data-down:opacity-45 compact:flex-row compact:min-h-0 compact:items-center compact:py-2 compact:px-3 short:flex-row short:min-h-0 short:items-center short:py-1 short:px-3`} data-best={s().best}>
+                  <View class={`nine-plate-cut bg-plate-hi text-fg transition duration-317 border border-rim justify-between py-3 px-4 gap-2 data-selected:text-fg disabled:text-fg-subtle data-done:text-fg-subtle data-down:opacity-45 compact:flex-row compact:min-h-0 compact:items-center compact:py-2 compact:px-3 short:flex-row short:min-h-0 short:items-center short:py-1 short:px-3 ${packClass("List", "item")}`} data-best={s().best}>
                     <View class="flex-row flex-wrap items-center justify-between gap-1 compact:justify-start compact:grow compact:shrink compact:basis-0 short:justify-start short:grow short:shrink short:basis-0">
                       <Text class={`tracking-label uppercase text-fg-muted text-xs font-semibold m-0 shrink`}>
                         {s().name}
@@ -131,7 +131,7 @@ export function ResultsScreen(props: ResultsScreenProps) {
                       </Show>
                     </View>
                     <Show when={s().count} fallback={
-                        <Text class={`tabular-nums text-fg leading-flat font-bold whitespace-nowrap m-0 compact:text-4xl short:text-4xl`}>
+                        <Text class={`tabular-nums text-fg leading-flat font-bold whitespace-nowrap m-0 compact:text-4xl short:text-4xl ${packClass("Count", "roll")}`}>
                           {t("screen.results.StatValue", { format: s().format, value: s().format === 'percent' ? s().value * 100 : s().value })}
                         </Text>
                     }>
@@ -146,17 +146,17 @@ export function ResultsScreen(props: ResultsScreenProps) {
                   <Text class="text-xs font-semibold tracking-label uppercase text-fg-muted m-0">
                     {t("screen.results.rewards")}
                   </Text>
-                  <View class="flex-row flex-wrap gap-3">
+                  <View class={`flex-row flex-wrap gap-3 ${packClass("List", "cascade")}`}>
                     <For each={props.rewards}>
                       {(r) => (
-                      <View class={`text-fg transition duration-317 items-center w-29 rounded-button data-selected:border-accent data-done:border-success active:border-accent disabled:text-fg-subtle disabled:scale-100 active:scale-96 data-locked:scale-100 data-down:opacity-45 compact:w-24 shrink`}>
+                      <View class={`text-fg transition duration-317 items-center w-29 rounded-button data-selected:border-accent data-done:border-success active:border-accent disabled:text-fg-subtle disabled:scale-100 active:scale-96 data-locked:scale-100 data-down:opacity-45 compact:w-24 shrink ${packClass("Reward", "pop")}`}>
                         <View class="bg-linear-to-b from-rim-strong via-rim via-45% to-rim-soft p-0.75 gap-2 size-26 compact:size-17">
                           <Art class="absolute bg-linear-to-b from-plate-hi to-plate-lo object-cover inset-0" kind="itemIcon" src={r().texture} />
                           <Show when={!r().texture && r().icon}>
                             <Icon class="absolute inset-0 m-auto size-14 compact:size-10 text-gold" name={r().icon ?? ""} />
                           </Show>
                         </View>
-                        <Text class="-mt-3 mb-0 text-xs font-bold tabular-nums text-fg bg-tile inset-shadow-lit whitespace-nowrap py-0 px-1 mx-0">
+                        <Text class={`-mt-3 mb-0 text-xs font-bold tabular-nums text-fg bg-tile inset-shadow-lit whitespace-nowrap py-0 px-1 mx-0 ${packClass("Count", "roll")}`}>
                           {t("screen.results.Amount", { r_amount: formatCompact(r().amount) })}
                         </Text>
                         <Text class="mt-1 mb-0 w-full text-center text-caption font-semibold text-fg mx-0">

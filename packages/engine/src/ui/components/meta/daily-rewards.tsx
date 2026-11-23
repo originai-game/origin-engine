@@ -45,10 +45,10 @@ export function DailyRewards(props: DailyRewardsProps) {
         </Show>
       </View>
       <Scroll class="grow shrink basis-0 gap-2">
-        <View class="grid grid-cols-7 w-full pt-0.5 pb-1 px-0 m-0 compact:grid-cols-3">
+        <View class={`grid grid-cols-7 w-full pt-0.5 pb-1 px-0 m-0 compact:grid-cols-3 ${packClass("List", "cascade")}`}>
           <For each={props.days}>
             {(d, i) => (
-            <View class="flex-row w-full gap-0 compact:data-alone:col-span-full" data-alone={i() % 3 === 0 && i() === props.days.length - 1}>
+            <View class={`flex-row w-full gap-0 compact:data-alone:col-span-full ${packClass("List", "item")}`} data-alone={i() % 3 === 0 && i() === props.days.length - 1}>
               <Show when={d().state === 'today' && props.canClaim} fallback={
                   <View class={`group/cell flex-row nine-plate-cut bg-raised-pressed border border-rim text-fg transition duration-317 w-full min-h-43.25 p-0 gap-0 data-selected:border-accent data-done:border-success active:border-accent data-milestone:border-epic data-state-missed:bg-surface data-state-today:bg-raised-pressed disabled:text-fg-subtle data-locked:scale-100 data-down:opacity-45 compact:min-h-38.5 shrink`} role="group" current={d().state === 'today'} label={t("general.rewards.day", { day: d().label, reward: d().amount, state: d().state === 'claimed' ? t("general.rewards.claimed") : d().state === 'missed' ? t("general.rewards.missed") : d().state === 'today' ? t("general.rewards.today") : t("general.rewards.upcoming") })} data-state-claimed={(d().state) === 'claimed'} data-state-missed={(d().state) === 'missed'} data-state-today={(d().state) === 'today'} data-milestone={d().milestone}>
                     <View class="w-full gap-0 shrink">

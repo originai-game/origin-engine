@@ -84,11 +84,11 @@ export function RpgLoot(props: RpgLootProps) {
           </Text>
         </Show>
       }>
-        <View class="grow shrink basis-0 min-h-0 p-0 m-0 gap-1 overflow-auto">
+        <View class={`grow shrink basis-0 min-h-0 p-0 m-0 gap-1 overflow-auto ${packClass("List", "cascade")}`}>
           <For each={items()}>
             {(item) => (
               <View
-                class={`group/row grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-2 gap-y-1 pr-2 pl-3 py-1 nine-plate-cut border-l-3 border-transparent hover:bg-surface-hover focus-within:border-hud-accent transition duration-317 ${packClass("Row", "frame")} group-data-tier-uncommon/row:border-uncommon group-data-tier-rare/row:border-rare group-data-tier-epic/row:border-epic group-data-tier-legendary/row:border-legendary group-data-tier-mythic/row:border-mythic`}
+                class={`group/row grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-2 gap-y-1 pr-2 pl-3 py-1 nine-plate-cut border-l-3 border-transparent hover:bg-surface-hover focus-within:border-hud-accent transition duration-317 ${packClass("Row", "frame")} group-data-tier-uncommon/row:border-uncommon group-data-tier-rare/row:border-rare group-data-tier-epic/row:border-epic group-data-tier-legendary/row:border-legendary group-data-tier-mythic/row:border-mythic ${packClass("List", "item")}`}
                 data-not-available={!item().available}
                 data-tier-common={(item().rarity || "common") === "common"}
                 data-tier-uncommon={(item().rarity || "common") === "uncommon"}

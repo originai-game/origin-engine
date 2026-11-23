@@ -41,10 +41,10 @@ export function News(props: NewsProps) {
           <Show when={props.error} fallback={
               <Show when={!(props.entries ?? []).length} fallback={
                   <Scroll class="shrink gap-2">
-                    <View class={`w-full p-0 m-0 gap-3`}>
+                    <View class={`w-full p-0 m-0 gap-3 ${packClass("List", "cascade")}`}>
                       <For each={(props.entries ?? [])}>
                         {(entry) => (
-                        <View>
+                        <View class={`${packClass("List", "item")}`}>
                           <View class={`border-rim-soft nine-plate-cut border border-rim transition duration-317 items-start py-3 px-4 gap-2 border data-selected:border-accent data-down:opacity-45`} data-unread={entry().unread} data-pinned={entry().pinned}>
                             <View class="flex-row flex-wrap items-center w-full gap-2">
                               <Text class={`font-bold text-caption text-info tracking-label uppercase bg-well py-0 px-1 rounded-capsule shrink`}>

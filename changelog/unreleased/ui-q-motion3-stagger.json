@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {
+      "member": "og.ui",
+      "summary": "stagger-<step>/<cap> (ms) on a parent makes the children put on screen together enter one after another, step apart and never spread past cap, through their starting: transition or their animate-*; a new animate-rise brings a row in from 12 px below. The pack slots List.cascade (stagger-40/400 in the default pack, from motion.css's cascade row), List.item (animate-rise) and Reward.pop (animate-pop) carry the timing, and the built-in quest, achievement, news, daily-reward, leaderboard, loot, shop, results and card-reward lists use them."
+    }
+  ]
+}

@@ -1,4 +1,4 @@
-import { Icon, Show, Text, View, formatCompact, t } from "@origingame/engine/ui";
+import { Icon, Show, Text, View, formatCompact, t, packClass } from "@origingame/engine/ui";
 import { Spinner } from "./spinner";
 import "./currency.en.ogt";
 
@@ -46,7 +46,7 @@ export function Currency(props: CurrencyProps) {
             <Show when={props.unavailable} fallback={
                 <View class="flex-row flex-wrap items-baseline gap-1">
                   <View class={`text-lg font-bold text-fg shrink`}>
-                    <Text class="tabular-nums">{props.valueText || formatCompact(props.amount)}</Text>
+                    <Text class={`tabular-nums ${packClass("Count", "roll")}`}>{props.valueText || formatCompact(props.amount)}</Text>
                   </View>
                   <Show when={props.limit}>
                     <View class={`text-caption text-fg-muted shrink`}>

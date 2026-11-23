@@ -785,6 +785,8 @@ test("every built-in full-screen screen fills a game's 390x844 column and takes 
       const Screen = Object.entries(mod).find(([k, v]) => /Screen$/.test(k) && typeof v === "function")![1] as (p: unknown) => never;
       const props = { ...(mod.fixtures as Record<string, Record<string, unknown>>).default, ...(extra ? { class: extra } : {}), ...more };
       const game = og.game({
+        // Measured at rest: entrances (a reward's pop) jump under reduced motion.
+        start: (world) => og.ui.configure(world, { reducedMotion: true }),
         ui(world) {
           // A game's own column, as Star Focus composes its screens: a flex column, not the mount's grid cell.
           mount(world, () => View({ role: "group", label: "column", class: `absolute left-0 top-0 w-[390px] h-[${height}px] flex-col`, children: Screen(props) }), {});
