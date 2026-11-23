@@ -127,7 +127,7 @@ export function Shop(props: ShopProps) {
                                 </Show>
                               </View>
                               <Show when={o().featured}>
-                                <Text class={`absolute top-2 left-2 max-w-[calc(50%-12px)] bg-hud-accent text-hud-accent-fg text-xs font-bold tracking-label uppercase leading-tight whitespace-nowrap text-ellipsis nine-plate-cut py-0.5 px-1 overflow-hidden`}>
+                                <Text class={`absolute top-2 left-2 bg-hud-accent text-hud-accent-fg text-xs font-bold tracking-label uppercase leading-tight whitespace-nowrap text-ellipsis nine-plate-cut py-0.5 px-1 overflow-hidden`} style={{ maxWidth: "calc(50% - 12px)" }}>
                                   {t("general.shop.featured")}
                                 </Text>
                               </Show>
@@ -196,7 +196,7 @@ export function Shop(props: ShopProps) {
                                 </Show>
                             </View>
                             <Show when={o().featured}>
-                              <Text class={`absolute top-2 left-2 max-w-[calc(50%-12px)] bg-hud-accent text-hud-accent-fg text-xs font-bold tracking-label uppercase leading-tight whitespace-nowrap text-ellipsis nine-plate-cut py-0.5 px-1 overflow-hidden`}>
+                              <Text class={`absolute top-2 left-2 bg-hud-accent text-hud-accent-fg text-xs font-bold tracking-label uppercase leading-tight whitespace-nowrap text-ellipsis nine-plate-cut py-0.5 px-1 overflow-hidden`} style={{ maxWidth: "calc(50% - 12px)" }}>
                                 {t("general.shop.featured")}
                               </Text>
                             </Show>
