@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "og-gfx",
+      "summary": "Evidence captures, motion sequences and effect timings now use each scene's render scale, matching the gfx harness instead of silently rendering half-resolution scenes at full resolution."
+    }
+  ]
+}

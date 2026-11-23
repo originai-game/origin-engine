@@ -366,6 +366,7 @@ fn run(
     }
     let t0 = Instant::now();
     let mut renderer = Renderer::new_blocking(&built.desc).map_err(|e| e.to_string())?;
+    renderer.set_render_scale(built.render_scale);
     let made_ms = t0.elapsed().as_secs_f64() * 1000.0;
     let mut stats = FrameStats::default();
     let (mut setup_ms, mut submit_ms, mut first_compiles) = (0.0, 0.0, Vec::new());
@@ -494,6 +495,7 @@ fn run(
 fn record(name: &str, dir: &Path, length: u32, step: u32) -> Result<(), String> {
     let mut built = scenes::build(name)?;
     let mut renderer = Renderer::new_blocking(&built.desc).map_err(|e| e.to_string())?;
+    renderer.set_render_scale(built.render_scale);
     let settled = built.frames.max(1);
     let save = |renderer: &mut Renderer, n: u32| -> Result<(), String> {
         renderer.wait_idle().map_err(|e| e.to_string())?;
@@ -691,6 +693,7 @@ const VARIANTS: &[Variant] = &[
 /// steadiest estimate of the uncontended cost.
 fn best_ms(built: &mut GfxScene, frames: u32) -> Result<(f64, FrameStats), String> {
     let mut renderer = Renderer::new_blocking(&built.desc).map_err(|e| e.to_string())?;
+    renderer.set_render_scale(built.render_scale);
     let mut stats = FrameStats::default();
     for f in 0..30 {
         if let Some(update) = built.update {

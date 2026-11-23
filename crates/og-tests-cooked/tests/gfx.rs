@@ -26,6 +26,51 @@ fn check(scene: &str) -> gfx::GfxReport {
     }
 }
 
+#[test]
+#[ignore = "requires GPU"]
+fn evidence_uses_the_scenes_render_scale() {
+    let scene = "smaa-t2x-moving";
+    let expected = gfx::render(scene).expect("render harness frame").image;
+    let tolerance = og_tests_cooked::scenes::build(scene).unwrap().tolerance;
+    let dir = out_dir("og-gfx-scale");
+    std::fs::create_dir_all(&dir).unwrap();
+    let still = dir.join("still.png");
+    let sequence = dir.join("sequence");
+    for args in [
+        vec!["--out".into(), still.clone().into_os_string()],
+        vec![
+            "--sequence".into(),
+            sequence.clone().into_os_string(),
+            "--length".into(),
+            "0".into(),
+        ],
+    ] {
+        let output = std::process::Command::new(env!("CARGO_BIN_EXE_og-gfx"))
+            .arg(scene)
+            .args(args)
+            .output()
+            .expect("run og-gfx");
+        assert!(output.status.success(), "{output:?}");
+    }
+    for path in [still, sequence.join("0000.png")] {
+        let actual = gfx::load_png(&path).unwrap();
+        assert_eq!(
+            (actual.width, actual.height),
+            (expected.width, expected.height)
+        );
+        og_tests::compare::compare(
+            &actual.pixels,
+            &expected.pixels,
+            expected.width,
+            expected.height,
+            &tolerance,
+        )
+        .unwrap()
+        .check(&tolerance)
+        .unwrap_or_else(|e| panic!("{} differs from the harness: {e}", path.display()));
+    }
+}
+
 macro_rules! references {
     ($($name:ident => $scene:literal),+ $(,)?) => {
         $(#[test]
