@@ -1008,6 +1008,7 @@
     "Button.plate": "",
     "Chip.frame": "",
     "Field.frame": "",
+    "Focus.ring": "outline-2 outline-focus -outline-offset-2",
     "Head.frame": "bg-surface text-fg-muted",
     "Panel.frame": "",
     "Plate.frame": "bg-glass text-fg",

@@ -651,7 +651,11 @@ badge), `Field.frame` (a text field's box), `Row.frame` (a row of a list,
 table or feed: `bg-raised-lo text-fg`; `selected` the chosen or local
 player's row, `bg-surface-hover` with a `hud-accent` leading edge; `muted`
 a row out of play, in `text-fg-muted`) and `Head.frame` (a table or list's
-head row: `bg-surface text-fg-muted`). A new slot is added here and to
+head row: `bg-surface text-fg-muted`). `Focus.ring` is the one the tree
+writes itself: the ring a control shows while a keyboard or pad focuses
+it (`outline-2 outline-focus -outline-offset-2`, inside the box so a scroller or the screen edge never cuts it), as a browser's
+`:focus-visible` outline, unless the control's own classes read
+`focus-visible:` or draw an outline. A new slot is added here and to
 `design::SLOTS` before a component writes it.
 
 ### Grounds and inks

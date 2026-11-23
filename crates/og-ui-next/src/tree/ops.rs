@@ -395,7 +395,21 @@ impl Tree {
             states |= crate::classes::OTHER_SCHEME;
         }
         let data = self.els[e as usize].data;
-        let record = self.classes.record(class, states, data);
+        let mut record = self.classes.record(class, states, data).clone();
+        // The focus ring every control shows while the keyboard or a pad
+        // has it, as a browser's `:focus-visible { outline: auto }` does:
+        // the pack's `Focus.ring`, unless the element's own classes style
+        // its focus (they read `focus-visible:`) or draw an outline.
+        // (An entry that reads a combination of states tracks them all, so
+        // whether focus-visible changes its record is asked directly.)
+        if states & FOCUS_VISIBLE != 0
+            && record.skin.outline.width == 0.0
+            && *self.classes.record(class, states & !FOCUS_VISIBLE, data) == record
+        {
+            let ring = self.classes.get("@Focus.ring", "");
+            record.skin.outline = self.classes.record(ring, 0, 0).skin.outline;
+        }
+        let record = &record;
         if self.els[e as usize].record != *record {
             // The new record's transition runs the change; a node not
             // drawn since it was made or inserted enters again with it.
@@ -3014,6 +3028,72 @@ mod tests {
         let x4 = t.op_box(4).unwrap()[0] + 5.0;
         at(&mut t, x4, 10.0, true, false);
         assert_eq!(t.focused_id(), Some(4));
+    }
+
+    /// A control whose classes say nothing of focus shows the pack's
+    /// `Focus.ring` while keys focus it, none after a press, and none once
+    /// it loses focus; one that styles `focus-visible:` itself keeps only
+    /// its own look.
+    #[test]
+    fn keys_focus_shows_the_packs_ring_unless_the_control_styles_focus() {
+        let mut t = tree();
+        let mut classes = crate::classes::Classes::new(None).unwrap().0;
+        classes.set_variants(
+            [(
+                "Focus.ring".to_string(),
+                "outline-2 outline-[#ff0000] outline-offset-2".to_string(),
+            )]
+            .into(),
+        );
+        let classes = std::cell::RefCell::new(classes);
+        t.set_resolver(Box::new(move |class, _, states, _| {
+            let env = crate::classes::Env {
+                states,
+                ..Default::default()
+            };
+            classes.borrow_mut().record(class, &env)
+        }));
+        buttons(
+            &mut t,
+            &[
+                "w-12 h-12",
+                "w-12 h-12 focus-visible:bg-[#00ff00]",
+                // A combination of states (Button's `data-pressed:hover:`)
+                // makes the entry read them all, focus-visible among them.
+                "w-12 h-12 hover:active:bg-[#0000ff]",
+            ],
+        );
+        let outline = |t: &Tree, id: u32| t.els[t.op(id).unwrap() as usize].record.skin.outline;
+        t.key("Tab", false, false, false, false);
+        assert_eq!(t.focused_id(), Some(1));
+        let ring = outline(&t, 1);
+        assert_eq!(
+            (ring.width, ring.offset),
+            (2.0, 2.0),
+            "keys show the pack's ring"
+        );
+        assert!(
+            ring.color[0] > 0.9 && ring.color[1] < 0.1,
+            "in the pack's colour: {ring:?}"
+        );
+        t.key("Tab", false, false, false, false);
+        assert_eq!(t.focused_id(), Some(2));
+        assert_eq!(outline(&t, 1).width, 0.0, "blurred");
+        assert_eq!(outline(&t, 2).width, 0.0, "its own focus look, no ring");
+        t.key("Tab", false, false, false, false);
+        assert_eq!(t.focused_id(), Some(3));
+        assert_eq!(
+            outline(&t, 3).width,
+            2.0,
+            "states combined elsewhere still ring"
+        );
+        t.key("Tab", true, false, false, false);
+        t.key("Tab", true, false, false, false);
+        // A press focuses without the ring.
+        at(&mut t, 5.0, 5.0, true, false);
+        at(&mut t, 5.0, 5.0, false, true);
+        assert_eq!(t.focused_id(), Some(1));
+        assert_eq!(outline(&t, 1).width, 0.0, "a press shows no ring");
     }
 
     /// While a `modal` view shows, focus goes into it, Tab stays in

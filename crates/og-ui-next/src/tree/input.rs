@@ -1062,7 +1062,9 @@ impl Tree {
             return;
         }
         p.states = states;
-        if self.classes.tracked(self.els[e as usize].class) & bit != 0 {
+        // Focus-visible restyles every element: its ring is the pack's
+        // when its own classes do not read it (`restyle`).
+        if bit == FOCUS_VISIBLE || self.classes.tracked(self.els[e as usize].class) & bit != 0 {
             self.restyle(e);
         }
     }

@@ -1715,7 +1715,9 @@ the format and every name the default pack defines.
 A component exposes the surfaces a pack restyles as slots, ending a class
 with `packClass(slot, part, variant)`: `Button.plate` (`primary` its main
 action), `Panel.frame`, `Plate.frame`, `Slot.frame`, `Chip.frame`,
-`Field.frame`, `Row.frame` and `Head.frame`. A slot that paints its own
+`Field.frame`, `Row.frame` and `Head.frame`. `Focus.ring` dresses the
+ring every control shows while a keyboard or pad focuses it, unless the
+control styles `focus-visible:` itself. A slot that paints its own
 fill owns the ink on it. A new slot is declared in the default pack and in
 `design::SLOTS` before a component writes it.
 

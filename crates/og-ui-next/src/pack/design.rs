@@ -279,7 +279,12 @@ pub(crate) fn join(light: &Value, dark: &Value) -> Value {
 /// component's translucent or cleared fill under it is overruled. A row
 /// and a table head are opaque grounds with their inks for the same
 /// reason: the lists, tables and feeds that sit over the scene.
-pub const SLOTS: [(&str, &str, &str); 10] = [
+pub const SLOTS: [(&str, &str, &str); 11] = [
+    (
+        "Focus.ring",
+        "the ring a control shows while a keyboard or pad focuses it, unless its own classes style focus-visible",
+        "outline-2 outline-focus -outline-offset-2",
+    ),
     ("Button.plate", "a button's body", ""),
     ("Panel.frame", "a window or panel's frame", ""),
     (
