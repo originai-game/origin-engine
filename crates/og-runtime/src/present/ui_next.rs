@@ -1298,6 +1298,23 @@ impl Next {
                                 );
                             }
                         }
+                        // Its motion facts (og-ui-next `OpNode`): a press
+                        // squashes it, and it enters from a `starting:`
+                        // record and leaves to an `exit:` one.
+                        if n.press {
+                            d.insert("press".into(), json!(true));
+                        }
+                        let presence: Vec<&str> = ["enter", "exit"]
+                            .into_iter()
+                            .zip(n.presence)
+                            .filter_map(|(k, on)| on.then_some(k))
+                            .collect();
+                        if !presence.is_empty() {
+                            d.insert("presence".into(), json!(presence));
+                        }
+                        if n.modal {
+                            d.insert("modal".into(), json!(true));
+                        }
                         d.into_iter().collect()
                     },
                     ..Default::default()

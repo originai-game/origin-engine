@@ -36,6 +36,12 @@ export interface FrameElement {
   textLines?: number[][];
   /** What its ancestors' overflow leaves on screen: [x, y, width, height]. */
   clip?: number[];
+  /** A press squashes it (the pack's `Press.feedback` or its own `active:` move). */
+  press?: boolean;
+  /** It enters from a `starting:` record and leaves to an `exit:` one. */
+  presence?: Array<"enter" | "exit">;
+  /** A `modal` view. */
+  modal?: boolean;
 }
 
 /** How a fixture is mounted: directly, or in a game's column; at a surface size. */

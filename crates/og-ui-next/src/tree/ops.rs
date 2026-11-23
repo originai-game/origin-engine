@@ -1327,6 +1327,14 @@ pub struct OpNode<'a> {
     /// it or an ancestor has one: a line's quad on screen is its box
     /// through it.
     pub transform: Option<[f32; 6]>,
+    /// A press squashes it: an enabled control a finger presses that its
+    /// own classes or the pack's `Press.feedback` move under a press.
+    pub press: bool,
+    /// Its classes give it a `starting:` record it enters from (0) and an
+    /// `exit:` record it leaves to (1).
+    pub presence: [bool; 2],
+    /// A `modal` view: a dialog the rest waits behind.
+    pub modal: bool,
 }
 
 impl Tree {
@@ -1433,6 +1441,15 @@ impl Tree {
                             .collect()
                     }),
                     transform,
+                    press: el.squash
+                        && self.presses(e as u32)
+                        && self
+                            .input
+                            .per(e as u32)
+                            .is_none_or(|p| p.states & DISABLED == 0)
+                        && !self.catcher(e as u32),
+                    presence: [0, 1].map(|k| self.classes.presence(el.class, k).is_some()),
+                    modal: self.input.per(e as u32).is_some_and(|p| p.modal),
                 })
             })
             .collect()
