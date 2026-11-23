@@ -279,7 +279,7 @@ pub(crate) fn join(light: &Value, dark: &Value) -> Value {
 /// component's translucent or cleared fill under it is overruled. A row
 /// and a table head are opaque grounds with their inks for the same
 /// reason: the lists, tables and feeds that sit over the scene.
-pub const SLOTS: [(&str, &str, &str); 14] = [
+pub const SLOTS: [(&str, &str, &str); 15] = [
     (
         "Press.feedback",
         "the squash a control that answers a press shows under it, unless its own classes move it under active (its default is the motion tokens': Timing::press)",
@@ -293,6 +293,11 @@ pub const SLOTS: [(&str, &str, &str); 14] = [
     (
         "Modal.frame",
         "a dialog or popup: how it pops in and leaves (Timing::modal)",
+        "",
+    ),
+    (
+        "Modal.scrim",
+        "the scrim behind a dialog: what dims the screen and how it fades in and out, apart from the dialog's pop (Timing::scrim)",
         "",
     ),
     (
@@ -577,13 +582,7 @@ impl Timing<'_> {
     /// `Screen.frame`: in from transparent at the enter scale on the enter
     /// row, out to transparent at the exit scale on the exit row.
     fn screen(&self) -> String {
-        let ease = |n: &str| {
-            self.0
-                .get(n)
-                .unwrap_or_else(|| panic!("{n}"))
-                .trim()
-                .to_owned()
-        };
+        let ease = |n: &str| self.ease(n);
         format!(
             "transition duration-{} ease-{} starting:opacity-0 starting:{} exit:opacity-0 exit:{} exit:duration-{} exit:ease-{}",
             self.ms("--motion-timing-enter-duration"),
@@ -595,30 +594,43 @@ impl Timing<'_> {
         )
     }
 
-    /// `Modal.frame`: a pop in from transparent at the pop scale on the
-    /// named transition's spring (its bounce b as damping 1 - b, its
-    /// duration as the response), out as a screen leaves.
+    /// `Modal.frame`: a pop in from transparent at the pop scale, back on
+    /// the pop row's spring (its damping, its duration as the response),
+    /// out as a screen leaves.
     fn modal(&self) -> String {
-        let named = self
-            .0
-            .get("--motion-timing-pop-transition")
-            .expect("pop transition");
-        let named = named.trim();
         let spring = Self::spring(
-            1.0 - self.num(&format!("--motion-named-{named}-bounce")),
-            self.ms(&format!("--motion-named-{named}-duration")) / 1000.0,
+            self.num("--motion-timing-pop-damping"),
+            self.ms("--motion-timing-pop-duration") / 1000.0,
         );
-        let ease = self
-            .0
-            .get("--motion-timing-exit-easing")
-            .expect("exit easing")
-            .trim();
         format!(
-            "transition {spring} starting:opacity-0 starting:{} exit:opacity-0 exit:{} exit:duration-{} exit:ease-{ease}",
+            "transition {spring} starting:opacity-0 starting:{} exit:opacity-0 exit:{} exit:duration-{} exit:ease-{}",
             self.scale("--motion-timing-pop-scale"),
             self.scale("--motion-timing-exit-scale"),
             self.ms("--motion-timing-exit-duration"),
+            self.ease("--motion-timing-exit-easing"),
         )
+    }
+
+    /// `Modal.scrim`: the scrim a dialog dims the screen with, fading in on
+    /// the enter row and out on the exit row, on its own while the dialog
+    /// pops.
+    fn scrim(&self) -> String {
+        format!(
+            "absolute inset-0 bg-scrim transition-opacity duration-{} ease-{} starting:opacity-0 exit:opacity-0 exit:duration-{} exit:ease-{}",
+            self.ms("--motion-timing-enter-duration"),
+            self.ease("--motion-timing-enter-easing"),
+            self.ms("--motion-timing-exit-duration"),
+            self.ease("--motion-timing-exit-easing"),
+        )
+    }
+
+    /// An easing row's name, as its `ease-*` utility takes it.
+    fn ease(&self, name: &str) -> String {
+        self.0
+            .get(name)
+            .unwrap_or_else(|| panic!("{name}"))
+            .trim()
+            .to_owned()
     }
 }
 
@@ -637,6 +649,7 @@ pub fn default_pack_json() -> String {
                 "Press.feedback" => Timing(motion).press(),
                 "Screen.frame" => Timing(motion).screen(),
                 "Modal.frame" => Timing(motion).modal(),
+                "Modal.scrim" => Timing(motion).scrim(),
                 _ => dress.to_owned(),
             };
             (slot.to_string(), json!(dress))

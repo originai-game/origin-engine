@@ -1721,9 +1721,11 @@ control styles `focus-visible:` itself. `Press.feedback` is the squash
 every enabled control that answers a press shows under a finger (its
 `active:` pose, in on its `active:` curve and back on its spring), unless
 the control moves itself under `active:`; `Screen.frame` is how a
-full-screen built-in enters and leaves, `Modal.frame` how a dialog pops in
-and leaves. The default pack derives the three from motion.css's timing
-table (press, enter, exit, pop), so a pack restyles the whole UI's feel
+full-screen built-in enters and leaves (a screen that replaces one enters
+once the leaving one has left), `Modal.frame` how a dialog pops in and
+leaves, `Modal.scrim` the scrim it dims the screen with, fading on its own.
+The default pack derives the four from motion.css's timing table (press,
+enter, exit, pop), so a pack restyles the whole UI's feel
 by its tokens or its own variants. A slot that paints its own
 fill owns the ink on it. A new slot is declared in the default pack and in
 `design::SLOTS` before a component writes it.

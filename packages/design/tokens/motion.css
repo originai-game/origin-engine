@@ -32,7 +32,7 @@
   /* How far a moment scales: `press` a control going down, `swell` a hover or
      a selection, `pop` a hit or a reward arriving, `shrink` what leaves; and
      how low a waiting thing breathes. */
-  --motion-scale-press: 0.96;
+  --motion-scale-press: 0.94;
   --motion-scale-swell: 1.15;
   --motion-scale-pop: 1.4;
   --motion-scale-shrink: 0.9;
@@ -45,8 +45,11 @@
      scale, in over `in`, back on a spring of this damping whose response is the
      duration named (og-ui-next's Press.feedback slot). enter and exit: a
      widget's arrival and departure, and the scale a screen (og-ui-next's
-     Screen.frame) arrives from and leaves to. pop: a modal (Modal.frame) arriving
-     from this scale on the named transition. cascade: a list's or a panel's children
+     Screen.frame) arrives from and leaves to; a screen that replaces one
+     leaving enters once it has left. pop: a modal (Modal.frame) arriving
+     from this scale, back on a spring of this damping whose response is the
+     duration named, over its backdrop (Modal.scrim), which fades on the
+     enter and exit rows. cascade: a list's or a panel's children
      entering one after another, step between them, never spread past cap. toast:
      in, held (hold; holdDanger for an error), out. screen: a game-screen
      transition covers then reveals over this many slow durations. */
@@ -54,15 +57,16 @@
   --motion-timing-hover-magnet: 0.5;
   --motion-timing-press-in: 50ms;
   --motion-timing-press-duration: instant;
-  --motion-timing-press-damping: 0.55;
-  --motion-timing-enter-duration: base;
+  --motion-timing-press-damping: 0.42;
+  --motion-timing-enter-duration: fast;
   --motion-timing-enter-easing: out;
-  --motion-timing-exit-duration: fast;
+  --motion-timing-exit-duration: instant;
   --motion-timing-exit-easing: exit;
   --motion-timing-enter-scale: 1.04;
   --motion-timing-exit-scale: 0.98;
   --motion-timing-pop-scale: 0.9;
-  --motion-timing-pop-transition: emphasis;
+  --motion-timing-pop-damping: 0.45;
+  --motion-timing-pop-duration: 340ms;
   --motion-timing-cascade-step: 40ms;
   --motion-timing-cascade-cap: 400ms;
   --motion-timing-cascade-easing: out;

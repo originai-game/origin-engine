@@ -675,9 +675,15 @@ spring while its colours keep their own transition (`Spec::transform`),
 unless the control's own classes move it under `active:`; a disabled
 control and a press catcher over a third of the surface (a screen's "tap to
 start") stay still. `Screen.frame` (a full-screen built-in's root:
-`starting:` and `exit:` from the enter and exit rows) and `Modal.frame` (a
-dialog's pop on the named spring) are written by components. The default
-pack derives all three from motion.css's timing table (`design::Timing`). A
+`starting:` and `exit:` from the enter and exit rows), `Modal.frame` (a
+dialog's pop on the pop row's spring) and `Modal.scrim` (the scrim behind
+a dialog, fading on the enter and exit rows apart from its pop) are written
+by components. The default pack derives all four from motion.css's timing
+table (`design::Timing`). An absolutely placed element put on screen beside
+an absolutely placed sibling on its way out holds its entrance (its own and
+its subtree's `starting:`) until that sibling's exit logically ends, so a
+screen that replaces one enters after it; flowing siblings (a list's rows)
+come and go together. A
 new slot is added here and to `design::SLOTS` before a component writes
 it.
 
