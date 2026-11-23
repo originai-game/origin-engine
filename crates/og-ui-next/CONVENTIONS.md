@@ -415,7 +415,10 @@ placement props (`occlusion`, `declutter`, `priority`, `clamp`,
   transitions counted, not its transform) plus `lift`'s x and y as
   fractions of that box's size, so `lift={[0, 1, 0]}` stands under it.
   Hidden while no live node of that name shows; the host is never asked,
-  and `occlusion`, `declutter` and `clamp` do not apply.
+  and `occlusion` and `declutter` do not apply. `clamp="edge"` (a
+  tooltip, a popover) shifts its drawn box along each axis to stay
+  `clampMargin` px inside the surface (Floating UI's `shift`); a box
+  wider than that keeps its start at the margin.
 - `spotlight="<name>"` (a tutorial step): the node's own `bg-*` colour
   covers the surface outside the named node's box, and it takes every
   press there, listening or not, so nothing under the shade gets one and

@@ -175,7 +175,9 @@ export interface HostProps {
     /**
      * `edge`: off the screen or behind the camera it stays, pinned
      * `clampMargin` px (24) inside the screen's edge toward its point, and
-     * carries `data-clamped` and `data-edge-top|right|bottom|left`.
+     * carries `data-clamped` and `data-edge-top|right|bottom|left`. Anchored
+     * to a UI node (a tooltip, a popover), its drawn box shifts along each
+     * axis to stay `clampMargin` px inside the screen.
      */
     clamp?: "none" | "edge" | undefined;
     clampMargin?: number | undefined;

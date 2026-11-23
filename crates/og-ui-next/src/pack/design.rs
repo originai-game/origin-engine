@@ -500,6 +500,101 @@ pub const SLOTS: &[(&str, &str, &str)] = &[
         "flex items-center justify-center size-11 shrink-0 text-lg font-bold text-fg-muted hover:text-fg active:bg-pressed disabled:text-fg-subtle",
     ),
     (
+        "Dialog.frame",
+        "a dialog's panel, over Modal.scrim (Modal.frame is how it pops in)",
+        "flex-col gap-3 w-115 max-w-full m-auto p-6 compact:p-4 rounded-panel bg-layer-1 text-fg shadow-overlay",
+    ),
+    (
+        "Dialog.title",
+        "a dialog's heading",
+        "font-display text-2xl font-bold leading-tight text-fg",
+    ),
+    (
+        "Dialog.body",
+        "what a dialog says under its heading",
+        "text-base leading-normal text-fg-muted",
+    ),
+    (
+        "Dialog.actions",
+        "the row of a dialog's buttons",
+        "flex-row flex-wrap justify-end gap-2 pt-2",
+    ),
+    (
+        "Sheet.frame",
+        "a sheet's panel at the bottom of the screen",
+        "flex-col gap-3 w-full max-h-[85%] mt-auto px-4 pt-2 pb-6 rounded-t-sheet bg-layer-1 text-fg shadow-overlay transition ease-out duration-240 starting:translate-y-12 starting:opacity-0 exit:translate-y-12 exit:opacity-0 exit:duration-180 exit:ease-exit",
+    ),
+    (
+        "Sheet.grabber",
+        "the handle at the top of a sheet",
+        "self-center w-10 h-1.5 my-1 rounded-capsule bg-border-strong",
+    ),
+    (
+        "Popover.frame",
+        "a popover's panel by its trigger",
+        "flex-col gap-2 min-w-48 max-w-80 p-3 rounded-card bg-layer-2 text-fg shadow-float transition duration-120 ease-out starting:opacity-0 starting:scale-95 exit:opacity-0",
+    ),
+    (
+        "Tooltip.frame",
+        "a tooltip's bubble",
+        "max-w-64 px-2.5 py-1.5 rounded-control bg-fg text-fg-inverse text-xs font-semibold shadow-float",
+    ),
+    (
+        "Toast.stack",
+        "the column toasts stack in",
+        "flex-col items-center gap-2 p-4 pt-[calc(env(safe-area-inset-top)+1rem)] pointer-events-none",
+    ),
+    (
+        "Toast.frame",
+        "a toast",
+        "flex-row items-center gap-3 w-full max-w-96 min-h-12 px-4 py-2 rounded-card bg-layer-2 text-fg shadow-float pointer-events-auto transition ease-out duration-240 starting:opacity-0 starting:-translate-y-4 exit:opacity-0 exit:duration-120",
+    ),
+    (
+        "Toast.frame.success",
+        "a toast saying something went well",
+        "inset-ring-1 inset-ring-success",
+    ),
+    (
+        "Toast.frame.danger",
+        "a toast saying something failed",
+        "inset-ring-1 inset-ring-danger",
+    ),
+    (
+        "Select.trigger",
+        "a select's button, showing its value",
+        "flex-row items-center justify-between gap-2 min-h-11 px-3 rounded-field bg-well inset-ring-1 inset-ring-border text-fg hover:inset-ring-border-strong aria-expanded:inset-ring-accent disabled:text-fg-subtle",
+    ),
+    (
+        "Select.list",
+        "a select's open list of options",
+        "flex-col p-1 rounded-card bg-layer-2 shadow-float transition duration-120 ease-out starting:opacity-0 starting:-translate-y-1 exit:opacity-0",
+    ),
+    (
+        "Select.option",
+        "an option of a select's list",
+        "flex-row items-center gap-2 min-h-11 px-3 rounded-control text-fg hover:bg-hover active:bg-pressed selected:bg-layer-4 selected:font-semibold disabled:text-fg-subtle",
+    ),
+    (
+        "Collapsible.trigger",
+        "what a collapsible's or accordion item's header presses",
+        "flex-row items-center justify-between gap-2 min-h-11 px-3 text-fg font-semibold hover:bg-hover active:bg-pressed",
+    ),
+    (
+        "Collapsible.chevron",
+        "the chevron that turns as it opens",
+        "size-4 text-fg-muted transition-transform duration-200 group-aria-expanded/collapsible:rotate-180",
+    ),
+    (
+        "Collapsible.panel",
+        "what a collapsible shows while open",
+        "flex-col gap-2 px-3 pb-3 text-fg-muted transition ease-out duration-200 starting:opacity-0 starting:-translate-y-1 exit:opacity-0 exit:duration-120",
+    ),
+    (
+        "Accordion.item",
+        "a section of an accordion",
+        "flex-col border-b border-border-muted",
+    ),
+    (
         "Progress.track",
         "a progress bar's track; its indicator is Bar.fill",
         "w-full h-2 overflow-hidden rounded-capsule bg-fill-strong shadow-sunk",

@@ -4602,6 +4602,71 @@ mod tests {
         assert_eq!(press(&mut t, 130.0, 70.0), [3]);
     }
 
+    /// A popup anchored to a UI node with `clamp="edge"` shifts its drawn
+    /// box (its translate counted) inside the surface less its margin on
+    /// each axis, and stands where `lift` puts it when it fits; without
+    /// `clamp` it hangs off the edge.
+    #[test]
+    fn an_edge_clamped_node_anchor_shifts_inside_the_surface() {
+        let mut t = tree();
+        let classes = std::cell::RefCell::new(crate::classes::Classes::new(None).unwrap().0);
+        t.set_resolver(Box::new(move |class, style, _, _| {
+            classes
+                .borrow_mut()
+                .record_styled(class, style, &crate::classes::Env::default())
+        }));
+        let (w, h) = t.size;
+        let mut b = Batch::default();
+        for (id, class, parent) in [
+            (1, "relative size-full".to_string(), 0),
+            (
+                2,
+                "absolute left-[4px] top-[4px] w-[20px] h-[20px]".to_string(),
+                1,
+            ),
+            // Centred over its trigger and 30 px over it.
+            (
+                3,
+                "w-[120px] h-[30px] -translate-x-1/2 -translate-y-full".to_string(),
+                1,
+            ),
+            (
+                4,
+                "w-[120px] h-[30px] -translate-x-1/2 -translate-y-full".to_string(),
+                1,
+            ),
+        ] {
+            b.op(1).u32(id).u8(0);
+            b.op(4).u32(id).str(&class);
+            b.op(8).u32(parent).u32(id).u32(u32::MAX);
+        }
+        b.op(6).u32(2).str("name").str("trigger");
+        for id in [3, 4] {
+            b.op(6).u32(id).str("anchor").str("trigger");
+            b.op(6).u32(id).str("lift").str("0.5,0,0");
+        }
+        b.op(6).u32(3).str("clamp").str("edge");
+        b.op(6).u32(3).str("clampMargin").str("8");
+        t.apply(&b.bytes()).unwrap();
+        frame(&mut t);
+        // Its drawn box would start at 14 − 60 = −46 and end at 4 − 30 = −26.
+        assert_eq!(t.op_box(3).unwrap()[..2], [8.0 + 60.0, 8.0 + 30.0]);
+        assert_eq!(t.op_box(4).unwrap()[..2], [14.0, 4.0], "unclamped");
+        // At the bottom right corner, and in the middle, where it fits.
+        for (x, y, want) in [
+            (w - 24.0, h - 4.0, [w - 8.0 - 60.0, h - 8.0]),
+            (w / 2.0, h / 2.0, [w / 2.0 + 10.0, h / 2.0]),
+        ] {
+            let mut b = Batch::default();
+            b.op(4).u32(2).str(&format!(
+                "absolute left-[{x}px] top-[{y}px] w-[20px] h-[20px]"
+            ));
+            t.apply(&b.bytes()).unwrap();
+            frame(&mut t);
+            assert_eq!(t.op_box(3).unwrap()[..2], want, "at {x},{y}");
+        }
+    }
+
     /// A spotlight carries `data-lit` while the node it names shows: on,
     /// off once the target hides, on again when it shows; its classes and
     /// its group's (`group-data-lit/spot:`) read it in the same frame.

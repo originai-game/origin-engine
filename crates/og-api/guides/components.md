@@ -4682,7 +4682,7 @@ Settings: a tab per page and its entries (toggles, ranges, choices and key bindi
 | `onDefaults?` | `((e: UiEvent, key?: string) => void) \| undefined` | The defaults event, with the row's key where it comes from a row. |
 | `onRevert?` | `((e: UiEvent, key?: string) => void) \| undefined` | The revert event, with the row's key where it comes from a row. |
 
-Pack slots: `Row.frame`, `Screen.frame`, `Tab.indicator`.
+Pack slots: `Row.frame`, `Screen.frame`.
 
 Fixtures: `default`.
 

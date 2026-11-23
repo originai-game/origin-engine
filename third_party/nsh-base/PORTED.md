@@ -24,3 +24,12 @@ in `crates/og-ui-next`.
 | `progress.rs` `Progress` | `controls/progress.tsx` | `value` 0 to 100, `indeterminate`, the progress bar role | Track and indicator are pack slots (`Progress.track`, `Bar.fill`, `Progress.indeterminate`) |
 | `roving.rs` | `crates/og-ui-next/src/tree/input.rs` `rove`, `focusRoving` | a group is one Tab stop: the focused member, else the current one, else the one last left, else the first | It works on the tree's focus groups, so a game's own `focusGroup` may rove too |
 | nsh-core's `accessibilityState` class states | `crates/og-ui-next/src/tree/ops.rs` | `checked:`, `indeterminate:`, `selected:`, `aria-pressed:`, `aria-expanded:`, `aria-busy:`, `aria-invalid:` and their `group-*:` forms | Set from the props of the same names |
+| `alert_dialog.rs`, the core's modal overlay | `controls/dialog.tsx` `Dialog` | modal for focus and screen readers, `back` and a scrim press close, `alertdialog` when it holds only buttons | We draw it ourselves (no platform alert); it fills its parent on the `modal` layer |
+| `sheet.rs` `Sheet` | `controls/sheet.tsx` | at the bottom edge over a scrim, the grabber, a swipe down closes, a footer | One detent; no drag to resize |
+| `popover.rs` `Popover` | `controls/popover.tsx` | anchored to its trigger, the trigger's expanded state, `back` closes | Placement `bottom` or `top`; it follows the trigger by the tree's node `anchor` |
+| `tooltip.rs` `Tooltip` | `controls/tooltip.tsx` | shows on hover and keyboard focus, describes its trigger | No delay or grace period yet |
+| Toast, `ToastStack` | `controls/toast.tsx` `ToastStack` | stacked at the top, announced as status or alert, swipe to dismiss | The game owns the list and each toast's time |
+| `select.rs` `Select` | `controls/select.tsx` | combobox role, arrows step the value while closed, the list a focus group with the chosen option selected | The list is under the trigger on every device; no type-ahead yet |
+| `collapsible.rs`, `accordion.rs` | `controls/collapsible.tsx` `Collapsible`, `Accordion` | the header's expanded state, one or `multiple` open | The panel enters by the pack's `Collapsible.panel`, not a springing clipped height |
+
+Not ported yet: `scrollbar.rs` (`Scroll` reports no offset for a drawn thumb to follow) and `Combobox`.

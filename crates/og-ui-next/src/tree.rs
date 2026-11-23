@@ -965,6 +965,14 @@ impl Tree {
             let mut at = a.seen.map_or(a.at, |s| s.at);
             if let Some(s) = a.seen.filter(|_| a.edge.is_some()) {
                 at = clamped(s, [ox, oy, bw, bh], a.margin, w, h);
+            } else if shown && a.clamp && matches!(a.target, Some(AnchorTarget::Node(_))) {
+                // A popup on a UI node: its drawn box shifts along each
+                // axis to stay inside the surface less the margin
+                // (Floating UI's `shift`); one wider than that keeps its
+                // start at the margin.
+                let shift =
+                    |x: f32, size: f32, extent: f32| x.min(extent - a.margin - size).max(a.margin);
+                at = [shift(at[0] + ox, bw, w) - ox, shift(at[1] + oy, bh, h) - oy];
             } else if shown && a.declutter != Declutter::None {
                 let mut r = [at[0] + ox, at[1] + oy, bw, bh];
                 for _ in 0..=placed.len() {
