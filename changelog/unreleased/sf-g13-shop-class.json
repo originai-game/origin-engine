@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "Shop",
+      "summary": "`class` comes after the shop's own classes. The shop fills its parent by default; `grow-0 basis-auto` makes it hug its offers, so a short catalogue (four ships) ends with its last row instead of leaving the panel half empty. A long catalogue still scrolls inside a filling shop."
+    }
+  ]
+}

@@ -1848,6 +1848,7 @@ A storefront: a band with a kicker over the title and the player's balances as c
 
 | Prop | Type | What |
 |---|---|---|
+| `class?` | `string \| undefined` | Classes after the shop's own: it fills its parent by default; `grow-0 basis-auto` makes it hug its offers. |
 | `title` | `string` | The shop's heading; empty takes the group's (Shop). |
 | `kicker?` | `string` | A small line over the title naming the place (Store, a merchant's town); empty hides it. |
 | `wallet` | `ReadonlyArray<{ id: string; icon: string; label: string; amount: string }>` | The player's balances shown in the band, keyed rows of { id, icon, label, amount }: amount as the game formats it; label names the currency for a screen reader. |

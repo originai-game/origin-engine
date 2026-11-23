@@ -5,6 +5,8 @@ import { Spinner } from "../base/spinner";
 import "./general.en.ogt";
 
 export interface ShopProps {
+  /** Classes after the shop's own: it fills its parent by default; `grow-0 basis-auto` makes it hug its offers. */
+  class?: string | undefined;
   /** The shop's heading; empty takes the group's (Shop). */
   title: string;
   /** A small line over the title naming the place (Store, a merchant's town); empty hides it. */
@@ -56,7 +58,7 @@ export interface ShopProps {
  */
 export function Shop(props: ShopProps) {
   return (
-    <View class={`grow shrink basis-0 border-rim nine-panel-cut bg-glass-hi text-fg p-4 gap-2 border disabled:text-fg-subtle`} label={props.title !== '' ? props.title : t("general.shop.name")} busy={props.loading}>
+    <View class={`grow shrink basis-0 min-h-0 border-rim nine-panel-cut bg-glass-hi text-fg p-4 gap-2 border disabled:text-fg-subtle ${props.class ?? ""}`} label={props.title !== '' ? props.title : t("general.shop.name")} busy={props.loading}>
       <View class="absolute left-4 right-3/10 top-0 h-px bg-linear-to-r from-sheen to-transparent to-70% pointer-events-none" />
       <View class={`flex-row flex-wrap items-end min-h-12 border-b border-rim-soft w-full py-1 px-4 gap-3`}>
         <View class="grow shrink basis-30 gap-0.5 compact:basis-full">
@@ -113,7 +115,7 @@ export function Shop(props: ShopProps) {
                     <Text class="text-center m-0">{t("general.shop.empty")}</Text>
                   </View>
               }>
-                <Scroll class="grow shrink basis-0 gap-2">
+                <Scroll class="grow shrink basis-auto gap-2">
                   <View class="grid grid-cols-fill-45 w-full p-1 gap-1 compact:grid-cols-2" role="grid" label={props.title !== '' ? props.title : t("general.shop.name")}>
                     <For each={props.offers}>
                       {(o) => (

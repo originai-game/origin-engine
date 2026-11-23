@@ -915,6 +915,16 @@ test("level path roads meet their discs, the carousel's Next arrow shows, the sh
     expect(well("Potion Pack").some(([, , w, h]) => w === 48 && h === 48)).toBe(false);
     expect(well("Map of the Reaches").some(([, , w, h]) => w === 48 && h === 48)).toBe(true);
 
+    // The shop fills its column by default and scrolls an overflowing grid inside it; given grow-0 basis-auto it hugs its offers.
+    const shopBox = (f: El[]) => { const root = f.find((e) => e.path.split("/").length === 3)!; const cells = f.filter((e) => e.role === "gridcell"); return { h: root.height, gridEnd: Math.max(...cells.map((c) => c.y + c.height)) - root.y }; };
+    const filled = shopBox(frameOf(2, "default"));
+    expect(filled.h).toBe(844);
+    const hug = shopBox(frameOf(2, "default", (p) => ({ ...p, class: "grow-0 basis-auto" })));
+    expect(hug.h).toBeLessThan(filled.h);
+    expect(hug.h - hug.gridEnd).toBeLessThanOrEqual(32);
+    const many = frameOf(2, "default", (p) => ({ ...p, offers: Array.from({ length: 24 }, (_, i) => ({ ...(p.offers as Array<Record<string, unknown>>)[1]!, id: `o${i}` })) }));
+    expect(shopBox(many).h).toBe(844);
+
     // StarRating's lg is a result's grade: larger than md's 32 px, the middle of three the largest and raised.
     const stars = (fixture: string) => {
       // After the pop entrances (each delayed by its index): the row is the mount's column's child.
