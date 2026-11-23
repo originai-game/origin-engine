@@ -26,6 +26,7 @@ pub mod frames;
 pub mod grammar;
 pub mod hull;
 pub mod lathe;
+pub mod layout;
 pub mod loft;
 pub mod merge;
 pub mod parts;
