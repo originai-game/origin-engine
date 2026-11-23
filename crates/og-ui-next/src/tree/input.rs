@@ -314,7 +314,7 @@ pub struct Input {
     latch: Option<(u32, bool, f64)>,
     /// The pointer is a finger, a finger is down, and a fling coasts
     /// (scroller, axis, speed px/s, last step time).
-    touch: bool,
+    pub(super) touch: bool,
     finger: Option<Finger>,
     fling: Option<(u32, bool, f32, f64)>,
     holding: Option<Holding>,
@@ -1146,7 +1146,23 @@ impl Tree {
             width: nsh_input::Points(b.w),
             height: nsh_input::Points(b.h),
         };
-        shown && nsh::released_inside(local, size, nsh_input::EdgeInsets::default())
+        // On a touch screen the box a press took by its grown target
+        // (`Tree::near_target`) keeps it while the finger stays in that.
+        let (gx, gy) = if self.input.touch {
+            (
+                ((TOUCH_TARGET - b.w) / 2.0).max(0.0),
+                ((TOUCH_TARGET - b.h) / 2.0).max(0.0),
+            )
+        } else {
+            (0.0, 0.0)
+        };
+        let slop = nsh_input::EdgeInsets {
+            top: nsh_input::Points(gy),
+            right: nsh_input::Points(gx),
+            bottom: nsh_input::Points(gy),
+            left: nsh_input::Points(gx),
+        };
+        shown && nsh::released_inside(local, size, slop)
     }
 
     /// The pointer on op nodes this frame, at (x, y): it hovers, a press

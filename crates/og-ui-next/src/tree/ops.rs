@@ -3030,6 +3030,38 @@ mod tests {
         assert_eq!(t.focused_id(), Some(4));
     }
 
+    /// On a touch screen a press just past a small control's box takes
+    /// it, the nearest one where two grown boxes meet; a mouse takes only
+    /// the box itself.
+    #[test]
+    fn a_finger_takes_the_nearest_small_control_within_the_touch_target() {
+        let mut t = stated();
+        // Two 50x20 buttons side by side at y 0..20.
+        buttons(&mut t, &["b", "b"]);
+        let pressed = |t: &mut Tree, x: f32, y: f32| {
+            t.events.clear();
+            at(t, x, y, true, false);
+            at(t, x, y, false, true);
+            t.events
+                .iter()
+                .filter(|f| f.event == Event::Press)
+                .map(|f| f.id)
+                .collect::<Vec<_>>()
+        };
+        assert_eq!(
+            pressed(&mut t, 10.0, 28.0),
+            [] as [u32; 0],
+            "a mouse: only the box"
+        );
+        t.set_device(true, false);
+        assert_eq!(pressed(&mut t, 60.0, 10.0), [2], "the second, first");
+        assert_eq!(pressed(&mut t, 10.0, 28.0), [1], "8 px under the first");
+        assert_eq!(pressed(&mut t, 60.0, 30.0), [2], "under the second");
+        assert_eq!(pressed(&mut t, 60.0, 10.0), [2], "the second itself");
+        assert_eq!(pressed(&mut t, 10.0, 33.0), [] as [u32; 0], "past 44 px");
+        assert_eq!(pressed(&mut t, 10.0, 10.0), [1], "the box itself");
+    }
+
     /// A control whose classes say nothing of focus shows the pack's
     /// `Focus.ring` while keys focus it, none after a press, and none once
     /// it loses focus; one that styles `focus-visible:` itself keeps only

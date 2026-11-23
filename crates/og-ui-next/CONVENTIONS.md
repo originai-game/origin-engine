@@ -171,7 +171,11 @@ machines do (ported as logic).
 
 - **Hit testing**: boxes in paint order, inside the clip their parent
   paints in; the last match wins. A node on its way out, or behind an open
-  `modal`, is never hit.
+  `modal`, is never hit. On a touch screen a press on no control goes to
+  the nearest enabled one whose drawn box, grown to 44 px square round its
+  centre, holds it, and the retention covers that grown box: a small
+  control keeps its look and still takes a finger (Apple's 44 pt, WCAG
+  2.5.8).
 - **States** that classes read: `hover:` (the node under the pointer and
   those around it), `active:` (held, while the pointer is on the node or
   within 8 px of it: NSH's press retention), `focus:`, `focus-visible:`

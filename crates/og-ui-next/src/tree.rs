@@ -2147,7 +2147,67 @@ impl Tree {
     /// parent paints them in, holds the point, the last painted in its
     /// stacking context; NONE for none.
     fn hit(&self, x: f32, y: f32) -> u32 {
-        self.hit_where(x, y, |el| el.clickable)
+        let e = self.hit_where(x, y, |el| el.clickable);
+        if e != NONE || !self.input.touch {
+            return e;
+        }
+        self.near_target(x, y)
+    }
+
+    /// On a touch screen, a press that lands on no control goes to the
+    /// nearest enabled one whose box, grown to [`TOUCH_TARGET`] square
+    /// round its centre, holds the point (Material's minimum interactive
+    /// size, Apple's 44 pt): a small control keeps its look and still
+    /// takes a finger. The nearest box wins; at a tie, the one on top.
+    fn near_target(&self, x: f32, y: f32) -> u32 {
+        let (mut best, mut far) = (NONE, f32::MAX);
+        for &e in self.stacking.order.iter().rev() {
+            let (e, el) = (e as usize, &self.els[e as usize]);
+            if !el.clickable || el.disabled || el.dead {
+                continue;
+            }
+            if self.shown.get(e).is_some_and(|s| s.out || !s.touch) {
+                continue;
+            }
+            let Some(&(bx, by, shown, _)) = self.abs.get(e) else {
+                continue;
+            };
+            // The clip its parent paints it in, as `topmost` reads it.
+            let all = [f32::MIN, f32::MIN, f32::MAX, f32::MAX];
+            let clip = match el.arena_parent {
+                _ if el.anchored().is_some() => all,
+                NONE => all,
+                p => self.abs.get(p as usize).map_or(all, |a| a.3),
+            };
+            if !shown || self.in_hole(e as u32, x, y).is_some() || !self.reachable(e as u32) {
+                continue;
+            }
+            let b = self
+                .motion
+                .box_of(el.node)
+                .unwrap_or_else(|| self.arena.box_of(el.node));
+            // What of it is drawn: a control scrolled out of view takes nothing.
+            let [x0, y0, x1, y1] = [
+                bx.max(clip[0]),
+                by.max(clip[1]),
+                (bx + b.w).min(clip[2]),
+                (by + b.h).min(clip[3]),
+            ];
+            if x1 <= x0 || y1 <= y0 {
+                continue;
+            }
+            let gx = ((TOUCH_TARGET - (x1 - x0)) / 2.0).max(0.0);
+            let gy = ((TOUCH_TARGET - (y1 - y0)) / 2.0).max(0.0);
+            if x < x0 - gx || x >= x1 + gx || y < y0 - gy || y >= y1 + gy {
+                continue;
+            }
+            let (dx, dy) = ((x0 - x).max(x - x1).max(0.0), (y0 - y).max(y - y1).max(0.0));
+            let d = dx * dx + dy * dy;
+            if d < far {
+                (best, far) = (e as u32, d);
+            }
+        }
+        best
     }
 
     /// [`Tree::hit`] over the elements `want` accepts; a press needs them
@@ -2219,6 +2279,11 @@ impl Tree {
         }
     }
 }
+
+/// The side, CSS px, a control's box is grown to for a finger on a touch
+/// screen ([`Tree::near_target`]): WCAG 2.5.8's enhanced target, Apple's
+/// 44 pt and the design's `--size-touch`.
+pub(crate) const TOUCH_TARGET: f32 = 44.0;
 
 /// A filter group open while its subtree paints: its element, its
 /// composite's place in the arena (written by [`close_group`]), its
