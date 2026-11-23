@@ -486,12 +486,44 @@ impl Tree {
                 continue;
             }
             self.els[d as usize].entering = Some(true);
+            let wait = wait + self.cascade(d);
             let el = &self.els[d as usize];
-            if let Some(from) = self.classes.presence(el.class, 0) {
-                self.motion
-                    .enter_after(el.node, &el.record, Some(from), wait);
+            let from = self.classes.presence(el.class, 0);
+            // A child its list staggers enters late even with no
+            // `starting:` of its own: its `animate-*` starts then.
+            if from.is_some() || wait > 0.0 {
+                self.motion.enter_after(el.node, &el.record, from, wait);
             }
         }
+    }
+
+    /// How long `child`, put on screen now, waits for its turn in its
+    /// parent's cascade (`stagger-<step>/<cap>`): the n-th child entering
+    /// at this time waits n steps, never past the cap. 0 under a parent
+    /// with none.
+    fn cascade(&mut self, child: u32) -> f32 {
+        let p = self.els[child as usize].parent;
+        let Some([step, cap]) = (p != NONE)
+            .then(|| self.els[p as usize].record.stagger)
+            .flatten()
+        else {
+            return 0.0;
+        };
+        if self.cascade.0 != self.time {
+            self.cascade = (self.time, Vec::new());
+        }
+        let ranks = &mut self.cascade.1;
+        let n = match ranks.iter_mut().find(|r| r.0 == p) {
+            Some(r) => {
+                r.1 += 1;
+                r.1 - 1
+            }
+            None => {
+                ranks.push((p, 1));
+                0
+            }
+        };
+        (n as f32 * step).min(cap)
     }
 
     /// How long `child`, put on screen beside an absolutely placed sibling
@@ -1177,6 +1209,11 @@ impl Tree {
                         NONE => !self.abs.is_empty(),
                         p => self.abs.get(p as usize).is_some_and(|a| a.2),
                     };
+                    let wait = if shown {
+                        self.handoff(child) + self.cascade(child)
+                    } else {
+                        0.0
+                    };
                     let el = &self.els[child as usize];
                     let from = self.classes.presence(el.class, 0).filter(|_| shown);
                     // One put back while it exits turns back from where it
@@ -1187,7 +1224,6 @@ impl Tree {
                             self.entering.push(child);
                         }
                     }
-                    let wait = if shown { self.handoff(child) } else { 0.0 };
                     let el = &self.els[child as usize];
                     self.motion.enter_after(el.node, &el.record, from, wait);
                     if shown {
@@ -2664,6 +2700,131 @@ mod tests {
         frame(&mut t);
         assert_eq!(child(&t), None, "out once its exit settled");
         assert!(t.leaving.is_empty());
+    }
+
+    /// A tree resolving real classes in the element's states.
+    fn classed() -> Tree {
+        let mut t = tree();
+        let classes = std::cell::RefCell::new(crate::classes::Classes::new(None).unwrap().0);
+        t.set_resolver(Box::new(move |class, _, states, _| {
+            let env = crate::classes::Env {
+                states,
+                ..Default::default()
+            };
+            classes.borrow_mut().record(class, &env)
+        }));
+        t
+    }
+
+    /// Rows put on screen together under a `stagger-<step>/<cap>` list
+    /// enter one after another, a step apart and never past the cap, with
+    /// or without a `starting:` of their own; rows added later start a
+    /// new cascade. Ways this could fail: every row entering at once, the
+    /// rank counted over all children ever added (a late row waiting for
+    /// rows long shown), or the cap ignored.
+    #[test]
+    fn a_staggered_lists_rows_enter_one_after_another() {
+        let mut t = classed();
+        let fade = "shrink-0 w-[50px] h-[10px] bg-white transition-opacity duration-100 ease-linear starting:opacity-0";
+        t.set_time(1.0, false);
+        nodes(&mut t, &[(1, 0, "w-full h-full stagger-40/80", 0)]);
+        frame(&mut t);
+        let mut b = Batch::default();
+        for id in 2..6 {
+            b.op(1).u32(id).u8(0);
+            b.op(4).u32(id).str(fade);
+            b.op(8).u32(1).u32(id).u32(u32::MAX);
+        }
+        t.apply(&b.bytes()).unwrap();
+        let alpha = |t: &Tree, id: u32| {
+            let r = t.op_box(id).unwrap();
+            t.drawn
+                .quads
+                .iter()
+                .find(|q| q.kind == PaintKind::Solid as u32 && q.rect == r)
+                .map_or(0.0, |q| q.color[3])
+        };
+        t.set_time(1.1, false);
+        frame(&mut t);
+        let a: Vec<f32> = (2..6).map(|id| alpha(&t, id)).collect();
+        assert!((a[0] - 1.0).abs() < 0.02, "the first in: {a:?}");
+        assert!((a[1] - 0.6).abs() < 0.02, "the second 40 ms behind: {a:?}");
+        assert!((a[2] - 0.2).abs() < 0.02, "the third 80 ms behind: {a:?}");
+        assert!(
+            (a[3] - 0.2).abs() < 0.02,
+            "the fourth held at the cap: {a:?}"
+        );
+        t.set_time(2.0, false);
+        frame(&mut t);
+        let mut b = Batch::default();
+        b.op(1).u32(6).u8(0);
+        b.op(4).u32(6).str(fade);
+        b.op(8).u32(1).u32(6).u32(u32::MAX);
+        t.apply(&b.bytes()).unwrap();
+        t.set_time(2.05, false);
+        frame(&mut t);
+        let a = alpha(&t, 6);
+        assert!(
+            (a - 0.5).abs() < 0.02,
+            "a later row starts its own cascade: {a}"
+        );
+    }
+
+    /// A number in a `transition-count` text drawn already rolls to its new
+    /// value on the text's curve, written as it was (grouped, its
+    /// decimals), while the text the probe reads is the new one at once;
+    /// it lands on the text exactly. Reduced motion jumps. Ways this could
+    /// fail: the drawn text jumping, the separator or the words around the
+    /// number lost, the roll starting from the drawn rather than the old
+    /// value when retargeted, or a first build rolling up from nothing.
+    #[test]
+    fn a_counted_number_rolls_to_its_new_value() {
+        let mut t = classed();
+        t.set_time(1.0, false);
+        nodes(
+            &mut t,
+            &[(1, 0, "transition-count duration-100 ease-linear", 0)],
+        );
+        let mut b = Batch::default();
+        b.op(2).u32(2).str("x1,000 gold");
+        b.op(8).u32(1).u32(2).u32(u32::MAX);
+        t.apply(&b.bytes()).unwrap();
+        frame(&mut t);
+        let drawn = |t: &Tree| {
+            let leaf = t.els[t.op(2).unwrap() as usize].leaf.unwrap();
+            t.arena.text_of(leaf).unwrap().to_string()
+        };
+        assert_eq!(drawn(&t), "x1,000 gold", "the first build shows as it is");
+        let mut b = Batch::default();
+        b.op(3).u32(2).str("x3,000 gold");
+        t.apply(&b.bytes()).unwrap();
+        t.set_time(1.05, false);
+        frame(&mut t);
+        assert_eq!(drawn(&t), "x2,000 gold", "half way");
+        assert_eq!(&*t.els[t.op(2).unwrap() as usize].text, "x3,000 gold");
+        // Retargeted mid-roll: from where it is drawn.
+        let mut b = Batch::default();
+        b.op(3).u32(2).str("x0 gold");
+        t.apply(&b.bytes()).unwrap();
+        t.set_time(1.1, false);
+        frame(&mut t);
+        assert_eq!(drawn(&t), "x1,000 gold", "half way down from 2,000");
+        t.set_time(1.2, false);
+        frame(&mut t);
+        assert_eq!(drawn(&t), "x0 gold", "landed");
+        assert!(!t.settling());
+        let mut b = Batch::default();
+        b.op(3).u32(2).str("x1.2K gold");
+        t.apply(&b.bytes()).unwrap();
+        t.set_time(1.25, false);
+        frame(&mut t);
+        assert_eq!(drawn(&t), "x1.2K gold", "a change of unit jumps");
+        t.set_time(1.3, true);
+        let mut b = Batch::default();
+        b.op(3).u32(2).str("x9 gold");
+        t.apply(&b.bytes()).unwrap();
+        frame(&mut t);
+        assert_eq!(drawn(&t), "x9 gold", "reduced motion jumps");
     }
 
     /// A screen put on beside an absolutely placed sibling on its way out

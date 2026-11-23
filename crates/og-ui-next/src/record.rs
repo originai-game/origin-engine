@@ -467,6 +467,13 @@ pub struct Record {
     /// is drawn in whatever the page's, for art that is one picture in
     /// both; `None` follows its parent.
     pub scheme: Option<bool>,
+    /// Its `stagger-<step>/<cap>` (seconds): the children put on screen
+    /// together enter one after another, `step` apart, spread over `cap`
+    /// at most.
+    pub stagger: Option<[f32; 2]>,
+    /// Its `transition-count`: a number in its text rolls to a new one on
+    /// its transition's curve.
+    pub count: bool,
     /// The scheme it was resolved in.
     pub dark: bool,
     /// `invisible` (CSS's `visibility: hidden`): it and its subtree are
@@ -581,6 +588,8 @@ impl Default for Record {
             effect_count: 0,
             backdrop_filter: None,
             scheme: None,
+            stagger: None,
+            count: false,
             dark: false,
         }
     }

@@ -85,6 +85,8 @@ pub enum Keyframes {
     Float,
     /// Ours: sweeps across from -100% to 420% of its width.
     Shimmer,
+    /// Ours: in from opacity 0, rising from 12 px below (a list's row).
+    Rise,
 }
 
 /// `animate-*` and how it is timed (the class resolver's presets, or
@@ -477,6 +479,9 @@ impl Motion {
         let from = from.map_or(&to.skin, |f| &f.skin);
         let mut spec = to.motion;
         spec.delay += wait;
+        if let Some(a) = spec.animate.as_mut() {
+            a.delay += wait;
+        }
         self.go(id, &spec, from, &to.skin, true);
         if let Some(i) = self.find(id).filter(|_| wait > 0.0) {
             self.live[i].starts = now + wait as f64;
@@ -536,6 +541,41 @@ impl Motion {
             .map_or(0.0, |i| {
                 (self.live[i].ends - self.store.now()).max(0.0) as f32
             })
+    }
+
+    /// The player's reduced-motion setting.
+    pub fn reduced(&self) -> bool {
+        self.reduced
+    }
+
+    /// Where a change on `spec`'s curve stands `t` seconds in, from 0 to 1
+    /// (a spring passes 1 and comes back), and whether it has come to rest:
+    /// a number that follows its text (`transition-count`).
+    pub fn progress(spec: &Spec, t: f32) -> (f32, bool) {
+        let t = (t - spec.delay).max(0.0);
+        match spec.ease {
+            Ease::Spring {
+                stiffness,
+                damping,
+                mass,
+            } => {
+                let s = Spring::from_stiffness_damping(stiffness, damping, mass);
+                let rest = t >= s.settling_duration(1e-3);
+                (
+                    if rest {
+                        1.0
+                    } else {
+                        s.sample(0.0, 0.0, 1.0, t).0
+                    },
+                    rest,
+                )
+            }
+            Ease::Bezier(e) if spec.duration > 0.0 => {
+                let x = t / spec.duration;
+                (bezier(e, x), x >= 1.0)
+            }
+            Ease::Bezier(_) => (1.0, true),
+        }
     }
 
     /// Whether `id` is on its way out (drawn, not hit).
@@ -790,6 +830,11 @@ fn pose(lp: &Loop, elapsed: f64, s: &mut Skin, size: [f32; 2], reduced: bool) ->
             }
         }
         K::Shimmer => shift[0] = size[0] * lerp(-1.0, 4.2, ez(p)),
+        K::Rise => {
+            let q = ez(p);
+            *o *= q.clamp(0.0, 1.0);
+            shift[1] = lerp(12.0, 0.0, q);
+        }
     }
     if !reduced {
         let t = &mut s.transform;

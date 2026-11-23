@@ -1068,6 +1068,8 @@ pub enum Keyframes {
     Float,
     /// Sweeps across its box, from -100% to 420% of its width.
     Shimmer,
+    /// In from transparent, rising from 12 px below (a list's row).
+    Rise,
 }
 
 /// `animation*`: a keyframe animation running natively, forever by default.

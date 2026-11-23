@@ -63,6 +63,30 @@ struct Parsed {
     nine_list: Option<ClassList>,
     /// Its last `scheme-dark` (true) or `scheme-light`.
     scheme: Option<bool>,
+    /// Its last `stagger-<step>[/<cap>]`, in seconds.
+    stagger: Option<[f32; 2]>,
+    /// It has `transition-count`.
+    count: bool,
+}
+
+/// `stagger-<step>` or `stagger-<step>/<cap>` in ms (`stagger-40/400`):
+/// the step between the children entering together and the most it
+/// spreads them over, in seconds (no cap: ten steps).
+fn stagger(class: &str) -> Option<[f32; 2]> {
+    let v = class.strip_prefix("stagger-")?;
+    let (step, cap) = v.split_once('/').unwrap_or((v, ""));
+    let step = step
+        .parse::<f32>()
+        .ok()
+        .filter(|s| s.is_finite() && *s >= 0.0)?;
+    let cap = match cap {
+        "" => step * 10.0,
+        c => c
+            .parse::<f32>()
+            .ok()
+            .filter(|c| c.is_finite() && *c >= 0.0)?,
+    };
+    Some([step / 1000.0, cap / 1000.0])
 }
 
 /// A pack image (`Pack::images`) as the box image it draws, its texture
@@ -155,7 +179,7 @@ impl Classes {
         if !self.lists.contains_key(classes) {
             let expanded = self.expand(classes);
             let (mut rest, mut nine, mut stand) = (String::new(), Vec::new(), String::new());
-            let mut scheme = None;
+            let (mut scheme, mut stag, mut count) = (None, None, false);
             for class in expanded
                 .as_deref()
                 .unwrap_or(classes)
@@ -171,6 +195,16 @@ impl Classes {
                     }
                     "scheme-light" => {
                         scheme = Some(false);
+                        continue;
+                    }
+                    // A number in its text rolls to a new one on its
+                    // transition's curve (the tree's counts).
+                    "transition-count" => {
+                        count = true;
+                        continue;
+                    }
+                    c if stagger(c).is_some() => {
+                        stag = stagger(c);
                         continue;
                     }
                     _ => {}
@@ -197,6 +231,8 @@ impl Classes {
                     nine,
                     nine_list,
                     scheme,
+                    stagger: stag,
+                    count,
                 },
             );
         }
@@ -270,6 +306,7 @@ impl Classes {
             parsed.nine_list.clone(),
             parsed.scheme,
         );
+        let (stag, count) = (parsed.stagger, parsed.count);
         let cx = Context {
             env: ClassEnvironment {
                 dark: env.dark,
@@ -332,6 +369,8 @@ impl Classes {
             record.space.y = margin(K::MarginBottom, &space.y).map(|m| (m.bottom, space.reverse_y));
         }
         record.scheme = scheme;
+        record.stagger = stag;
+        record.count = count;
         record.dark = env.dark;
         // The `nine-<name>` that holds in `env`, the last one written.
         if let Some(nine_list) = nine_list {
@@ -869,6 +908,7 @@ fn motion_of(style: &Style) -> motion::Spec {
             Keyframes::Beat => motion::Keyframes::Beat,
             Keyframes::Float => motion::Keyframes::Float,
             Keyframes::Shimmer => motion::Keyframes::Shimmer,
+            Keyframes::Rise => motion::Keyframes::Rise,
         },
         duration: a.duration / 1000.0,
         delay: a.delay / 1000.0,

@@ -683,7 +683,20 @@ table (`design::Timing`). An absolutely placed element put on screen beside
 an absolutely placed sibling on its way out holds its entrance (its own and
 its subtree's `starting:`) until that sibling's exit logically ends, so a
 screen that replaces one enters after it; flowing siblings (a list's rows)
-come and go together. A
+come and go together.
+
+Lists and numbers move through the same vocabulary. `stagger-<step>/<cap>`
+(ms) on a parent makes the children put on screen together enter one after
+another, `step` apart and never spread past `cap`; each child's `starting:`
+transition and its `animate-*` (`animate-rise` for a row, `animate-pop` for
+a reward) wait for their turn, and children added later start a new
+cascade. `transition-count` on a Text makes the one number in it roll to a
+new value on the Text's own `duration-*` and `ease-*` (a spring included):
+what draws counts up or down, while the text a probe or a screen reader
+reads is the new one at once; a number whose words or unit change jumps,
+and reduced motion jumps. The slots `List.cascade`, `List.item`,
+`Reward.pop` and `Count.roll` carry the pack's timing for them (motion.css's
+cascade and count rows). A
 new slot is added here and to `design::SLOTS` before a component writes
 it.
 
