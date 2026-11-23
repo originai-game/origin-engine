@@ -230,7 +230,13 @@ pub(crate) fn scan_with(
         }
     }
     for id in builtins.keys() {
-        let path = at.get(id).cloned().unwrap_or_else(|| assets_dir.join(id));
+        // A built-in style file is read where the styles are, so a file
+        // that names its neighbours (an icon set's SVGs) finds them.
+        let path = at
+            .get(id)
+            .cloned()
+            .or_else(|| look::style_path(id).map(Path::to_path_buf))
+            .unwrap_or_else(|| assets_dir.join(id));
         files.push((id.clone(), path));
     }
     let mut external: Vec<PathBuf> = builtins
