@@ -32,6 +32,7 @@
         "light": "#5e4a1b"
       },
       "art-fg": "#fff3e4",
+      "art-primary": "#d8503a",
       "art-primary-fg": "#fff3e4",
       "gold": {
         "dark": "#e2b84f",

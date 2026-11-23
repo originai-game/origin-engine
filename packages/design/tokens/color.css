@@ -139,6 +139,9 @@
   /* The ink on the plain button art (a pack with a light plain button
      writes a dark one). */
   --color-art-button-fg: #f4f6fb;
+  /* The primary button art's own colour: what lights it (a highlight's
+     aura, its glow). */
+  --color-art-primary: #f5b83a;
   --color-chart-easy: rgb(52 199 120);
   --color-chart-normal: rgb(50 160 230);
   --color-chart-hard: rgb(255 165 40);

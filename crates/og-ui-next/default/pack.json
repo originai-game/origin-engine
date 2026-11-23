@@ -476,6 +476,36 @@
         14.0
       ]
     },
+    "fx-coin": {
+      "slice": 0,
+      "src": "@styles/shared/fx/coin.png",
+      "tint": true
+    },
+    "fx-glint": {
+      "slice": 0,
+      "src": "@styles/shared/fx/glint.png",
+      "tint": true
+    },
+    "fx-ray": {
+      "slice": 0,
+      "src": "@styles/shared/fx/ray.png",
+      "tint": true
+    },
+    "fx-ring": {
+      "slice": 0,
+      "src": "@styles/shared/fx/ring.png",
+      "tint": true
+    },
+    "fx-shard": {
+      "slice": 0,
+      "src": "@styles/shared/fx/shard.png",
+      "tint": true
+    },
+    "fx-sparkle": {
+      "slice": 0,
+      "src": "@styles/shared/fx/sparkle.png",
+      "tint": true
+    },
     "glow": {
       "slice": 0,
       "src": "@styles/shared/art/glow.png",
@@ -775,6 +805,7 @@
       },
       "art-button-fg": "#f4f6fb",
       "art-fg": "#f4f6fb",
+      "art-primary": "#f5b83a",
       "art-primary-fg": "#3a2206",
       "bg": {
         "dark": "#000000",

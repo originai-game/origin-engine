@@ -208,6 +208,7 @@
       },
       "art-fg": "#ffffff",
       "art-button-fg": "#151a4a",
+      "art-primary": "#ffc83a",
       "art-primary-fg": "#151a4a",
       "bg": {
         "dark": "#1d4ac4",

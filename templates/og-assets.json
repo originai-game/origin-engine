@@ -2144,6 +2144,42 @@
       "visibility": "public"
     },
     {
+      "path": "styles/shared/fx/coin.png",
+      "sha256": "ed7d94d15153d1f5eb277679a263c429ad53135b35dd1a87ca175fe18dc0d787",
+      "size": 4343,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/fx/glint.png",
+      "sha256": "c184a44a2c7f8da2b2f34eb2ae0b4ecff87e4c4b3bff8dd19475683093235793",
+      "size": 4316,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/fx/ray.png",
+      "sha256": "be39942ca2fc8fb8aaf1f9b9c560179775ccad1269d2ddbd7f6485a4f3d5c6d6",
+      "size": 2376,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/fx/ring.png",
+      "sha256": "46c22b2a38c31fdecf4c4bea741ded84be50a67966efcd9bd74dcdab55179c4d",
+      "size": 6849,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/fx/shard.png",
+      "sha256": "f843e4e960a464ed17fdf9ebd8a43f373086c3f0c4545f966e3dd37c6ac9b74e",
+      "size": 2272,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/fx/sparkle.png",
+      "sha256": "d8f2345bb0396200714afc2ae10f439ee34b973559686333f076177e06daa5ec",
+      "size": 4502,
+      "visibility": "public"
+    },
+    {
       "path": "styles/shared/glow-icons.png",
       "sha256": "f021a5dc502c24f6df3af298090db7a7af7c7b9174cae87cb81c8dd7bc476bd8",
       "size": 47497,

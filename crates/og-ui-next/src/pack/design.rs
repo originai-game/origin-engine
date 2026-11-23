@@ -458,6 +458,15 @@ fn frames() -> Vec<(String, Value)> {
     put("chip-bevel".into(), [10.0; 4], true, true);
     put("badge".into(), [13.0, 14.0, 14.0, 14.0], true, false);
     put("divider".into(), [0.0, 88.0, 0.0, 88.0], true, false);
+    // The UI effects' particle textures (`templates/styles/shared/fx/`):
+    // the engine's emitters name them by id, and as images the fill
+    // colours them (`nine-fx-sparkle bg-gold`), stretched whole.
+    for name in ["sparkle", "glint", "shard", "coin", "ray", "ring"] {
+        out.push((
+            format!("fx-{name}"),
+            json!({ "src": format!("@styles/shared/fx/{name}.png"), "slice": 0, "tint": true }),
+        ));
+    }
     out
 }
 

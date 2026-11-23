@@ -35,6 +35,7 @@
         "light": "#005f80"
       },
       "art-fg": "#e9f7ff",
+      "art-primary": "#3be0ff",
       "art-primary-fg": "#03202c",
       "border-strong": {
         "dark": "#2ea6cf",

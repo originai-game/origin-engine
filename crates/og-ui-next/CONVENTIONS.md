@@ -464,6 +464,27 @@ its arena (tree/particles.rs).
   for a game whose code reaches the component, and `og.load.emitter` loads.
   A game's own component loads an emitter from its assets the same way, by
   its path.
+- **UI effects.** `Flourish` (components/hud/flourish.tsx) wraps what it
+  decorates and plays the engine's effect presets over it, once per shot
+  with its pack sound, reaching three to four times the target: `reward`
+  (a flash, rays, a ring, star glints, motes), `levelUp` (an 18% screen
+  wash, a column of light, rays, a ring, glints and rising stars),
+  `purchase` (a fountain of 26 spinning coins with light catching them,
+  the target popping), `reveal` (a 0.24 s charge, glints drawn in and a
+  glow swelling while the target gathers with `animate-charge`, then the
+  burst and the target's pop, then lingering motes; each tier richer:
+  rays from `rare`, a second set and more glints from `epic`, a third
+  set, more shards, a column and a screen wash from `legendary`) and
+  `highlight` (an aura in `art-primary` pulsing, a sweeping sheen and
+  twinkling stars, while it shows). The beams draw behind the target, the
+  rest over it. Its emitters are `components/hud/fx/` (`glints`, `flash`,
+  `shock-ring`, `rays`, `shards`, `coins`, `coin-glints`, `light-column`,
+  `rise`, `charge`, `charge-glow`, `wash`, `motes`, `twinkle`); their
+  textures are the default pack's `fx-sparkle`, `fx-glint`, `fx-shard`,
+  `fx-coin`, `fx-ray` and `fx-ring` (`@styles/shared/fx/`, white and grey
+  with alpha), which every TSX game carries, so an emitter names them by
+  id (`texture "@styles/shared/fx/sparkle.png"`) and the node's ink
+  colours them.
 
 ## Classes and the Record (head 1)
 
@@ -680,8 +701,9 @@ And this frame art (`templates/styles/shared/art/frames/`, drawn by
 templates/tools/make-frame-art.py), pictures with their own colours and
 depth unless marked tint; a pack's own image of the same name replaces
 one. Their ink is `art-fg` (`art-button-fg` on the plain buttons, which a
-pack with light plain buttons darkens), and `art-primary-fg` on the primary button
-(colours the same in both schemes, as the art is):
+pack with light plain buttons darkens), and `art-primary-fg` on the primary button,
+whose own colour is `art-primary` (what a highlight lights it with;
+colours the same in both schemes, as the art is):
 
 | Image | Picture | For |
 |---|---|---|
@@ -697,6 +719,7 @@ pack with light plain buttons darkens), and `art-primary-fg` on the primary butt
 | `chip-bevel` | tint: a bevelled tag | a rarity or tag chip (`bg-rare`) |
 | `badge` | a red pill with a white rim | a notification count |
 | `divider` | a champagne line fading out at its ends (height 2) | a rule between sections |
+| `fx-sparkle`, `fx-glint`, `fx-shard`, `fx-coin`, `fx-ray`, `fx-ring` | tint, stretched whole: the UI effects' particle textures (§Particles) | a static sparkle or glow (`nine-fx-sparkle bg-gold`) |
 
 The slots a pack dresses, each declared in the default pack so a
 component's `packClass` on it resolves under every pack:

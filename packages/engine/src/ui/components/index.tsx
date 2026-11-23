@@ -41,6 +41,7 @@ export { Crosshair } from "./hud/crosshair";
 export { DamageDirection } from "./hud/damage-direction";
 export { DamageNumbers } from "./hud/damage-numbers";
 export { HudEffect } from "./hud/effect";
+export { Flourish } from "./hud/flourish";
 export { HeroButton } from "./hud/hero-button";
 export { HudHint } from "./hud/hint";
 export { HoldButton } from "./hud/hold-button";
