@@ -413,6 +413,10 @@ impl Arena {
                 let (id, style) = self.touched[k];
                 let nodes = &self.nodes;
                 let slot = nodes[id as usize].slot;
+                // A node out of the tree has nothing in the store to patch.
+                if slot == DETACHED {
+                    continue;
+                }
                 let parent = |i: Id| {
                     let p = nodes[i as usize].parent;
                     (p != NONE).then_some(p)
@@ -482,6 +486,12 @@ impl Arena {
 
     /// Reconciles every element into the store (an element came or went).
     fn reconcile(&mut self) {
+        // A node the walk below does not reach (taken out, released) has no
+        // slot once the store compacts: it is marked detached, not left
+        // pointing at a slot that may be another node's or past the end.
+        for n in &mut self.nodes {
+            n.slot = DETACHED;
+        }
         self.store.begin_commit();
         let (slot, _) = sync(&mut self.store, &mut self.nodes, 0);
         self.root_slot = slot;
@@ -494,8 +504,12 @@ impl Arena {
     }
 
     /// An element's box, relative to its parent's.
+    /// A node out of the tree (taken out or released) has an empty box.
     pub fn box_of(&self, id: Id) -> BoxLayout {
-        self.store.box_layout(self.nodes[id as usize].slot)
+        match self.nodes[id as usize].slot {
+            DETACHED => BoxLayout::default(),
+            slot => self.store.box_layout(slot),
+        }
     }
 
     /// Whether `id`'s children run past the end of its content box, as a
@@ -509,6 +523,9 @@ impl Arena {
         })
     }
 }
+
+/// The slot of a node the last reconcile did not reach.
+const DETACHED: SlotId = SlotId(u32::MAX);
 
 /// `i`'s style with the margin its parent's `space-*` gives it: every
 /// child but the last, on a side its own margin leaves at 0.
@@ -569,4 +586,42 @@ fn sync(store: &mut LayoutStore, nodes: &mut [Node], i: Id) -> (SlotId, bool) {
     );
     nodes[i as usize].slot = slot;
     (slot, dirty)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A subtree taken out keeps its arena nodes, but the store compacts
+    /// their slots away: its boxes read empty, and a style set on it
+    /// touches nothing, rather than indexing a slot past the end or one
+    /// another node now holds (a screen closed and the next one opened).
+    #[test]
+    fn a_node_taken_out_reads_an_empty_box_after_the_store_compacts() {
+        let mut a = Arena::new();
+        let mut measure = |_: Id, _: &str, _: &Run, _: Avail| (0.0, 0.0);
+        let sized = |w: f32| {
+            CompactStyle::from(&taffy::Style {
+                size: taffy::Size::from_lengths(w, 10.0),
+                ..Default::default()
+            })
+        };
+        let screen = a.element(0, CompactStyle::default());
+        let rows: Vec<Id> = (0..100)
+            .map(|i| a.element(screen, sized(10.0 + i as f32)))
+            .collect();
+        a.layout(400.0, 800.0, &mut measure);
+        assert_eq!(a.box_of(rows[19]).w, 29.0);
+        // Over 64 slots, three quarters of them gone: the store compacts.
+
+        a.detach(screen);
+        let next = a.element(0, sized(50.0));
+        a.layout(400.0, 800.0, &mut measure);
+        assert_eq!(a.box_of(next).w, 50.0);
+        assert_eq!(a.box_of(rows[99]), BoxLayout::default(), "taken out");
+        a.set_style(rows[3], sized(99.0));
+        a.layout(400.0, 800.0, &mut measure);
+        assert_eq!(a.box_of(next).w, 50.0, "the shown node is untouched");
+        assert_eq!(a.box_of(rows[3]), BoxLayout::default());
+    }
 }
