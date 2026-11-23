@@ -142,7 +142,7 @@ uniform and centred, the stroke staying in px), 7 `Particles` (its
 `Paint.points`, box-relative, width `p.x`, closed `p.y`. Events: 0 press, 1 tap, 2 pointerdown,
 3 pointermove, 4 pointerup, 5 wheel, 6 focus, 7 blur, 8 key, 9 change,
 10 action, 11 longpress, 12 hold, 13 dragstart, 14 dragmove, 15 dragend, 16 drop,
-17 pinch, 18 rotate, 19 swipe.
+17 pinch, 18 rotate, 19 swipe, 20 contextmenu.
 
 The reply is `OGEV`, a u32 count and the events since the last batch, each
 an id (u32), event (u8), x and y on the UI's surface (f32), then key and
@@ -203,7 +203,11 @@ machines do (ported as logic).
   `focus` and `blur` as focus moves; `key` (`key` is the
   `KeyboardEvent.code`) to the focused node or the nearest around it that
   listens; `action` to the focused node or the nearest around it whose
-  `actions` list the action, with its name in `key`.
+  `actions` list the action, with its name in `key`; `contextmenu` (a
+  page's, NSH's `onContextMenu`) to the innermost node that listens under
+  the pointer when the secondary button goes down, or to the focused node
+  or the nearest around it that listens on Shift+F10 or the Menu key, with
+  `value` `"key"` and `x`, `y` at its box's bottom start.
 - **Focus**: a press focuses the nearest focusable node around what it
   hits, and a press on anything else blurs. Focusable means a press or tap
   listener, an `Input`, or a `tabIndex`. Tab and Shift+Tab go to positive

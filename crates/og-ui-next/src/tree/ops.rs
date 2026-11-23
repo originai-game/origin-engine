@@ -61,10 +61,15 @@ pub enum Event {
     /// direction (`left`, `right`, `up`, `down`), `value` its velocity
     /// `"vx vy"` in px/s (`onSwipe`).
     Swipe,
+    /// A context menu was asked for on it: the secondary button went down
+    /// over it (`x`, `y` the pointer), or Shift+F10 or the Menu key was
+    /// pressed while the focus was in it (`value` `"key"`, `x`, `y` its
+    /// box's bottom start) (`onContextMenu`).
+    ContextMenu,
 }
 
 impl Event {
-    const ALL: [Event; 20] = [
+    const ALL: [Event; 21] = [
         Event::Press,
         Event::Tap,
         Event::PointerDown,
@@ -85,6 +90,7 @@ impl Event {
         Event::Pinch,
         Event::Rotate,
         Event::Swipe,
+        Event::ContextMenu,
     ];
 
     pub fn bit(self) -> u32 {
@@ -5036,6 +5042,47 @@ mod tests {
         at(&mut t, 10.0, 30.0, false, true);
         let got: Vec<_> = t.events.iter().map(|f| (f.id, f.event)).collect();
         assert_eq!(got, [(2, Event::LongPress)]);
+    }
+
+    /// A right click asks the nearest node under it that listens for its
+    /// context menu, at the pointer; Shift+F10 and the Menu key ask the
+    /// focused one, at its box's bottom start, and pass on when no one
+    /// around the focus listens.
+    #[test]
+    fn a_right_click_or_the_menu_key_asks_for_a_context_menu() {
+        let mut t = stated();
+        buttons(&mut t, &["b", "b"]);
+        let mut b = Batch::default();
+        b.op(7).u32(2).u8(Event::ContextMenu as u8).u8(1);
+        t.apply(&b.bytes()).unwrap();
+        let menus = |t: &mut Tree| {
+            let got: Vec<_> = t
+                .events
+                .iter()
+                .filter(|f| f.event == Event::ContextMenu)
+                .map(|f| (f.id, f.x, f.y, f.value.to_string()))
+                .collect();
+            t.events.clear();
+            got
+        };
+        assert!(
+            !t.context_menu(10.0, 10.0),
+            "the first button does not listen"
+        );
+        assert!(t.context_menu(60.0, 12.0));
+        assert_eq!(menus(&mut t), [(2, 60.0, 12.0, String::new())]);
+        // The keys: the first button focused passes them on; the second
+        // takes them.
+        t.key("Tab", false, false, false, false);
+        assert!(!t.key("F10", true, false, false, false));
+        t.key("Tab", false, false, false, false);
+        t.events.clear();
+        assert!(t.key("ContextMenu", false, false, false, false));
+        assert!(
+            !t.key("F10", false, false, false, false),
+            "F10 alone is not it"
+        );
+        assert_eq!(menus(&mut t), [(2, 50.0, 20.0, "key".into())]);
     }
 
     /// A press held on a `hold` node reports its progress and presses it

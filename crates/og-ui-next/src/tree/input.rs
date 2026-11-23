@@ -2146,6 +2146,12 @@ impl Tree {
             self.tab(shift);
             return true;
         }
+        if ((code == "F10" && shift) || code == "ContextMenu")
+            && !(ctrl || alt || meta)
+            && self.context_menu_key()
+        {
+            return true;
+        }
         // The focused `Input` edits with its keys (arrows across its text
         // included); the game's shortcuts with Control, Alt or Command
         // pass on.
@@ -2251,6 +2257,49 @@ impl Tree {
         ev.key = code.into();
         self.events.push(ev);
         true
+    }
+
+    /// The secondary button went down at (x, y): `contextmenu` on the
+    /// nearest node there that listens (a page's `contextmenu`, NSH's
+    /// `onContextMenu`). Whether one heard it.
+    pub fn context_menu(&mut self, x: f32, y: f32) -> bool {
+        if !self.has_ops() {
+            return false;
+        }
+        self.sync_modals();
+        self.chain_at(x, y);
+        let l = self
+            .input
+            .chain
+            .iter()
+            .copied()
+            .find(|&e| self.els[e as usize].listens & OpEvent::ContextMenu.bit() != 0);
+        l.inspect(|&l| self.fire(l, OpEvent::ContextMenu, x, y))
+            .is_some()
+    }
+
+    /// Shift+F10 or the Menu key: `contextmenu` on the focused node or the
+    /// nearest around it that listens, `value` `"key"` and at its box's
+    /// bottom start, where a menu opened by the keys stands (WAI-ARIA).
+    fn context_menu_key(&mut self) -> bool {
+        let mut e = self.input.focus;
+        while e != NONE {
+            let el = &self.els[e as usize];
+            if !el.dead && el.listens & OpEvent::ContextMenu.bit() != 0 {
+                let r = self.rect(e);
+                let mut f = Fired::at(
+                    self.els[e as usize].js,
+                    OpEvent::ContextMenu,
+                    r.x,
+                    r.y + r.height,
+                );
+                f.value = "key".into();
+                self.events.push(f);
+                return true;
+            }
+            e = el.parent;
+        }
+        false
     }
 
     /// An input action fired (`confirm`, `back`, a game's own): the

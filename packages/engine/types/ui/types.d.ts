@@ -85,6 +85,13 @@ export interface HostProps {
     onRotate?: Handler;
     /** A pointer that went down on it was let go moving fast (300 px/s, 10 px): `key` its way, "left", "right", "up" or "down"; `value` its velocity, "vx vy" in px/s. A pinch's fingers swipe nothing. */
     onSwipe?: Handler;
+    /**
+     * A context menu was asked for on it: the secondary button (a right
+     * click) went down over it, at `x`, `y`; or Shift+F10 or the Menu key
+     * was pressed with the focus in it, `value` `"key"` and `x`, `y` its
+     * box's bottom start.
+     */
+    onContextMenu?: Handler;
     /** An on-screen stick: its box feeds this input action's x and y (from its centre, y up), with no handler. Like `touchPad` and `touchButton`, it is `active:` while a touch holds it. */
     touchStick?: string | undefined;
     /** An on-screen d-pad: its box feeds this input action, the nearest of eight directions. Held, it carries the way it reads as `data-dir-up`, `data-dir-right`, `data-dir-down` and `data-dir-left` (two on a diagonal), so a class lights the pressed arm (`group-data-dir-up/pad:`). */

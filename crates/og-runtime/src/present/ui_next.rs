@@ -1001,6 +1001,10 @@ impl Next {
             (f32::MIN, f32::MIN)
         };
         tree.pointer(px, py, ptr.pressed, ptr.released);
+        // A right click asks the node under it for its context menu.
+        if input.secondary_pressed {
+            tree.context_menu(ptr.x, ptr.y);
+        }
         // Every finger: pinches, turns and swipes on the elements they
         // went down on.
         if tree.has_ops() {
