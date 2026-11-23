@@ -402,7 +402,7 @@ parley = { path = "third_party/parley" }
 # Layout, patched at the root (third_party/taffy/README.md).
 taffy = { path = "third_party/taffy" }
 # wgpu: wgpu-flash, origin-engine's own fork, built for speed
-# (github.com/originai-game/wgpu-flash, branch og/flash-3-trusted-core): v30.0.2
+# (github.com/originai-game/wgpu-flash, branch fix/pending-write-lifetimes-20261123): v30.0.2
 # plus WebGPU compatibility mode and asynchronous pipeline creation. Its
 # crates keep wgpu's names, which [patch.crates-io] needs. Its patches, with
 # the upstream work each came from:
@@ -432,12 +432,14 @@ taffy = { path = "third_party/taffy" }
 #   ring; no bind group validation; wgpu-hal's dynamic layer casting to the
 #   backend's types unchecked; per-command calls given wgpu-core objects
 #   directly instead of looking ids up in the registry.
-naga = { git = "https://github.com/originai-game/wgpu-flash", rev = "0b53cd534a583c9738af394c23d64611615e6193" }
-naga-types = { git = "https://github.com/originai-game/wgpu-flash", rev = "0b53cd534a583c9738af394c23d64611615e6193" }
-wgpu = { git = "https://github.com/originai-game/wgpu-flash", rev = "0b53cd534a583c9738af394c23d64611615e6193" }
-wgpu-core = { git = "https://github.com/originai-game/wgpu-flash", rev = "0b53cd534a583c9738af394c23d64611615e6193" }
-wgpu-core-deps-apple = { git = "https://github.com/originai-game/wgpu-flash", rev = "0b53cd534a583c9738af394c23d64611615e6193" }
-wgpu-core-deps-windows-linux-android = { git = "https://github.com/originai-game/wgpu-flash", rev = "0b53cd534a583c9738af394c23d64611615e6193" }
-wgpu-hal = { git = "https://github.com/originai-game/wgpu-flash", rev = "0b53cd534a583c9738af394c23d64611615e6193" }
-wgpu-naga-bridge = { git = "https://github.com/originai-game/wgpu-flash", rev = "0b53cd534a583c9738af394c23d64611615e6193" }
-wgpu-types = { git = "https://github.com/originai-game/wgpu-flash", rev = "0b53cd534a583c9738af394c23d64611615e6193" }
+# - Pending-write lifetimes move to submissions and abandoned queue writes
+#   are released on teardown, breaking Device/resource reference cycles.
+naga = { git = "https://github.com/originai-game/wgpu-flash", rev = "68f335b76b4bb9afcb9948d3de4da174367c0341" }
+naga-types = { git = "https://github.com/originai-game/wgpu-flash", rev = "68f335b76b4bb9afcb9948d3de4da174367c0341" }
+wgpu = { git = "https://github.com/originai-game/wgpu-flash", rev = "68f335b76b4bb9afcb9948d3de4da174367c0341" }
+wgpu-core = { git = "https://github.com/originai-game/wgpu-flash", rev = "68f335b76b4bb9afcb9948d3de4da174367c0341" }
+wgpu-core-deps-apple = { git = "https://github.com/originai-game/wgpu-flash", rev = "68f335b76b4bb9afcb9948d3de4da174367c0341" }
+wgpu-core-deps-windows-linux-android = { git = "https://github.com/originai-game/wgpu-flash", rev = "68f335b76b4bb9afcb9948d3de4da174367c0341" }
+wgpu-hal = { git = "https://github.com/originai-game/wgpu-flash", rev = "68f335b76b4bb9afcb9948d3de4da174367c0341" }
+wgpu-naga-bridge = { git = "https://github.com/originai-game/wgpu-flash", rev = "68f335b76b4bb9afcb9948d3de4da174367c0341" }
+wgpu-types = { git = "https://github.com/originai-game/wgpu-flash", rev = "68f335b76b4bb9afcb9948d3de4da174367c0341" }

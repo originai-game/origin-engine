@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "renderer GPU resource lifetime",
+      "summary": "Recreating native renderers no longer retains their buffers, textures and devices until GPU memory is exhausted. Pending uploads now keep their resources only until the submission finishes, and abandoned uploads are released when their queue is dropped. This also fixes the atmosphere test sequence exhausting an L4 in one process."
+    }
+  ]
+}
