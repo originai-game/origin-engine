@@ -3020,6 +3020,222 @@
       "visibility": "public"
     },
     {
+      "path": "styles/shared/sfx/arcade/back.ogg",
+      "sha256": "23806c6555174d00e0919c9ffef52019569ba0bef196e9b68e6a4bc08f0b0a53",
+      "size": 7199,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/sfx/arcade/close.ogg",
+      "sha256": "39a29afec572276838d691c8c34ea99bf91cdebd24929766ed0190c56c28e09f",
+      "size": 7900,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/sfx/arcade/confirm.ogg",
+      "sha256": "369deeccfefc88ff675e09380bf7298f2ce5578db195d464ec4bddab91e24734",
+      "size": 8985,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/sfx/arcade/countdown.ogg",
+      "sha256": "0033aa5bb07b0c199d8f720f7ff6ad434358e7813fbffa4cec15ae6a76c2c848",
+      "size": 4802,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/sfx/arcade/error.ogg",
+      "sha256": "2fc6c1ead0626b35ba3c9df6d8a3e8a7be54cf048c437ecd794b58d17fba42bd",
+      "size": 7457,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/sfx/arcade/levelup.ogg",
+      "sha256": "831ea62b172dc877792393a4078e77e8ac5cef0d211dee4f5bb34b0db25a3154",
+      "size": 16164,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/sfx/arcade/open.ogg",
+      "sha256": "5992c949bf821a8bcbda039297e2b21dcfdc3925781836d51d52143ed6e70e81",
+      "size": 8466,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/sfx/arcade/purchase.ogg",
+      "sha256": "57df2f87c8d9d8d315cd2ec272d84b9fbf9b3ddb4a84641b05a30408acdd4328",
+      "size": 11343,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/sfx/arcade/reward.ogg",
+      "sha256": "10b6d41f4810622a482dbee02aaee195ca0352e31b64e6519835904488f5c688",
+      "size": 13673,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/sfx/arcade/tab.ogg",
+      "sha256": "faa4da488b806506c3d16ec8aa53fb4788467b87d6a28fcbf1f66371f0fbcf86",
+      "size": 6281,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/sfx/arcade/tap.ogg",
+      "sha256": "ce7c659ee218a6624a514a1d05aa85787e834327bf1afcd1ee265b94c0473fa4",
+      "size": 4556,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/sfx/arcade/toggle.ogg",
+      "sha256": "fea434be7788960841f418f8fef699530672585773ab3b3159ec16452f31ca6e",
+      "size": 5227,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/sfx/chiptune/back.ogg",
+      "sha256": "37ac7caac2fa48c93269216a457f04af3c5fd043b0ec7dc539a8e3413539d72b",
+      "size": 7357,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/sfx/chiptune/close.ogg",
+      "sha256": "404d1e1dede53fbf679e83b964f91bdbaff15254ac896fc42d88d4e5f6c09ae0",
+      "size": 7388,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/sfx/chiptune/confirm.ogg",
+      "sha256": "925ddbfd4f1498966ee9deecff138b26196b991126e5bfdf8c895a2206610ecd",
+      "size": 8809,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/sfx/chiptune/countdown.ogg",
+      "sha256": "3b59b2c55e4de77e3160de400fda7210f650036e5881a5b7a63e95785f986e28",
+      "size": 4819,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/sfx/chiptune/error.ogg",
+      "sha256": "62572ea2d5b3c5103a4d43adc975e85f290a3beedf86cd7d8c1055a26b97e20a",
+      "size": 7055,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/sfx/chiptune/levelup.ogg",
+      "sha256": "cab7682cd3e8a1fd1bef14aa69bf4f934ada4a7ca97c7f0e0d09500cc820a5b6",
+      "size": 19070,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/sfx/chiptune/open.ogg",
+      "sha256": "b8a74ff097072187e32bf7d72e697869511ba0c372911ac52badb03d9be5866e",
+      "size": 7661,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/sfx/chiptune/purchase.ogg",
+      "sha256": "35a1b3e4d7641361d3f5e4fabfb7c1755f25921ac8748fe3c8e6de92a15c7ab7",
+      "size": 12407,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/sfx/chiptune/reward.ogg",
+      "sha256": "5b866fb125cd15a460cee33e77ba7d55f387c7b8116d4a3a9b73ee6d87d94a88",
+      "size": 12625,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/sfx/chiptune/tab.ogg",
+      "sha256": "1ced8e5b38430856e19e172355a48e62adb98bc8086a22c427633a5f8d8a5123",
+      "size": 6598,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/sfx/chiptune/tap.ogg",
+      "sha256": "0e1e31435477be64831213d21c944fa1c569cfd9f6d441d6ee9c906d661dd5aa",
+      "size": 4446,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/sfx/chiptune/toggle.ogg",
+      "sha256": "5b4525ee09d1011403c8e85402bee638c5935b28b1f9b6e96ae595f0548a9151",
+      "size": 6147,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/sfx/cute/back.ogg",
+      "sha256": "102570d1bc99f2bf9a16900e96110e83e3cfd50ba1d3b7c43cb8efc9e8e98e3b",
+      "size": 7201,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/sfx/cute/close.ogg",
+      "sha256": "c530ed6d9f977e45554fdde86ef6053f1758cc35fe55030b972af80e430c2335",
+      "size": 6737,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/sfx/cute/confirm.ogg",
+      "sha256": "c2c746d92b357ac9e12c01a6f11f95eaa2069ff7d8d15ab7cf23b8e95f019711",
+      "size": 8834,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/sfx/cute/countdown.ogg",
+      "sha256": "4d323eefd9fa6432cc3103af6c84186401848c19c13b32f79dbe9bfebb580486",
+      "size": 4830,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/sfx/cute/error.ogg",
+      "sha256": "e6076322dbd863e43002928c20f6cb4490bd0cb9784529fe14da12913ab69d7a",
+      "size": 7977,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/sfx/cute/levelup.ogg",
+      "sha256": "942db24cc324b99051e9766f8e6223de9919ec9c5f844105ec146ea3bb068911",
+      "size": 16576,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/sfx/cute/open.ogg",
+      "sha256": "393dbd57a22517d529dd8f8ea7d14261c958396c0b128e3374ed9865b10ec665",
+      "size": 8241,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/sfx/cute/purchase.ogg",
+      "sha256": "5acb33cffb145ccb6bd1638dfa097d8a38c4d62a93d7833cb5ff38376f96177e",
+      "size": 10084,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/sfx/cute/reward.ogg",
+      "sha256": "16eedd39bdfbc70525242a9dd2b700917170708fd9f79eb7f01b654fb6ae6419",
+      "size": 12499,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/sfx/cute/tab.ogg",
+      "sha256": "c5f7601ff80719f91ca08124b2cc16d174b5716faa48b1a1c8f91ca30b086267",
+      "size": 6226,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/sfx/cute/tap.ogg",
+      "sha256": "ef8231dd154b0f9dc7bbba326a4dea417c02f0d8f060ac132442a9f4af7091a1",
+      "size": 5137,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/sfx/cute/toggle.ogg",
+      "sha256": "e0c79c2bcbcb5db2b357bb5f3f8e01ad562782cf4db360f7854791ccecc154d4",
+      "size": 5670,
+      "visibility": "public"
+    },
+    {
       "path": "styles/shared/sfx/default/back.ogg",
       "sha256": "04e4ce4012a27558045ef68c36b8ae9b51ac9b245b63b75c656664c6efded6fe",
       "size": 6895,
@@ -3089,6 +3305,294 @@
       "path": "styles/shared/sfx/default/toggle.ogg",
       "sha256": "a39bb398714fc18931c649680344c7c6527c21e1ed333d1e60ecad0c11e3635c",
       "size": 6074,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/sfx/glass/back.ogg",
+      "sha256": "d19d6dae0ae7f01b8cddb90721bf363ae4643f4f1058921622314e8fd570e769",
+      "size": 7098,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/sfx/glass/close.ogg",
+      "sha256": "93f77f0690907b24033d58045d624e2f8755a2e4c5ff05e519ac924a3b42048d",
+      "size": 7833,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/sfx/glass/confirm.ogg",
+      "sha256": "294e391ee6d68425d633f2875cd9aa5bf5905ce38d55039b0adc09559e3be924",
+      "size": 7847,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/sfx/glass/countdown.ogg",
+      "sha256": "bce82ac916abb6ef465ff0d2e3f37da29ebfca714e9e0317764574ca17a1caad",
+      "size": 5686,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/sfx/glass/error.ogg",
+      "sha256": "ecf9fb4fa0a89893208655d3885ba1cfb73ee695d05b28954b730700668732b0",
+      "size": 8548,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/sfx/glass/levelup.ogg",
+      "sha256": "dc9092612ffddfe95169218fa9e2ef760cb9f0384db95ceecc2d0a74fa321f37",
+      "size": 18317,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/sfx/glass/open.ogg",
+      "sha256": "f4bad2b2adb3d74f3ec091a9b9ae4a320164e21b3ec6bb06fdddd68916001778",
+      "size": 8481,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/sfx/glass/purchase.ogg",
+      "sha256": "c0448060bbecf01b489dd9ac7eeb9b8030f0318fe9ebb1d2b3d37ad5f5c8207d",
+      "size": 13509,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/sfx/glass/reward.ogg",
+      "sha256": "d9a15783c8d54268895827fbb26411da2488c4211af988fe5a138b4ef9dcb447",
+      "size": 12933,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/sfx/glass/tab.ogg",
+      "sha256": "9a48a3408d4e61fab378653bd0e34f42373cfb404d2631bd00dc76cd1cdf14e7",
+      "size": 6618,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/sfx/glass/tap.ogg",
+      "sha256": "38628f43798512f2f0b0fa870e6746cdc706d12225aab4bb0afd638939064aa6",
+      "size": 4833,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/sfx/glass/toggle.ogg",
+      "sha256": "f1cbb54a8c427fb0baa81695d78a21578a81e87b2c43d35f668d116ba8967fcd",
+      "size": 6405,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/sfx/mechanical/back.ogg",
+      "sha256": "337d9ba3eef014ef3acc989206c41d7aceccfda6d13b2a5df2f40e1379c472bd",
+      "size": 7784,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/sfx/mechanical/close.ogg",
+      "sha256": "f865a9bea1b8144d42e738ea1cd21d847feeaa2de117523a372eb961388a7569",
+      "size": 7799,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/sfx/mechanical/confirm.ogg",
+      "sha256": "671434313ab80f71d6a11135fa465dc6d68e01056efcda8e3c34cc349159c12c",
+      "size": 9919,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/sfx/mechanical/countdown.ogg",
+      "sha256": "79e94a379e4c9583677803f2998425603e05cf868ed6c619301bb12f483afd2d",
+      "size": 5416,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/sfx/mechanical/error.ogg",
+      "sha256": "3febf59d81e2c4ad6c5b0092d4806f60cfd2c38b7d59be55573832fc5297de6c",
+      "size": 8468,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/sfx/mechanical/levelup.ogg",
+      "sha256": "34a0b3f24f51695f5bc3833221c7a57bcce297089c05ef21f7f7117092f278f5",
+      "size": 21526,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/sfx/mechanical/open.ogg",
+      "sha256": "bcbdb36aefa3b611b931fb7a5ffe897c4d0a01b367df56aece50bee299177a02",
+      "size": 9113,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/sfx/mechanical/purchase.ogg",
+      "sha256": "cbff58b3ceb96547ac90ef05669bbb1fe9563b938d0c2ea3ef5f87bb2ecaaa9e",
+      "size": 13145,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/sfx/mechanical/reward.ogg",
+      "sha256": "af63ff6f02923599b6cca9f89c31c755bf86164472b4d59b8b70fbc06fd3a08a",
+      "size": 14277,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/sfx/mechanical/tab.ogg",
+      "sha256": "65f5451e77875fec1aeda2baef8dfe99d2f3d8fdec90a3dac9983a23390a17e7",
+      "size": 5326,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/sfx/mechanical/tap.ogg",
+      "sha256": "23bb18e255cd1df8a971d93fdad0293f5171999b54185619e1f28b975f649a9d",
+      "size": 5578,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/sfx/mechanical/toggle.ogg",
+      "sha256": "a4ca107b8ad3d5746b0919b4d477635c1540e66fa6168bf437cfba766c99897c",
+      "size": 5880,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/sfx/soft/back.ogg",
+      "sha256": "ba7d370c3be0ba6b05187593d3d61db8820a407f24ae837e8e8b1b30d6a96528",
+      "size": 6557,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/sfx/soft/close.ogg",
+      "sha256": "e2c7e6e8d05695af32accd57fb8f303f33cd1c93a77e042a816f2ae337fb0f1c",
+      "size": 7142,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/sfx/soft/confirm.ogg",
+      "sha256": "747e5d8d8a2d43d0a6d06936f37419d59a64595bb61f975bd19169652f1da8d4",
+      "size": 9170,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/sfx/soft/countdown.ogg",
+      "sha256": "ffd08da8e942e859a4350d10608db364c0ed886eea0b22a26fc611d068ef8bb4",
+      "size": 4646,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/sfx/soft/error.ogg",
+      "sha256": "6697adfee4fe574670823448ae9e0a896854640dae165dfe0372e1355839b6fb",
+      "size": 8054,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/sfx/soft/levelup.ogg",
+      "sha256": "4b42b3f0766dfb0f4f057a663cdda06bc59c61a5bed0b3bc8c6c62fa2abc0a05",
+      "size": 16309,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/sfx/soft/open.ogg",
+      "sha256": "85e70d36482470087ba1ac552993527a2b03614e1f1fdff6966cf752e4b67626",
+      "size": 9052,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/sfx/soft/purchase.ogg",
+      "sha256": "56ebf76ee6cea8bbfc54228d700c6518e28f42db82718d341f61b49bf122ee25",
+      "size": 11850,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/sfx/soft/reward.ogg",
+      "sha256": "3c0075efd05a369d60d04aba074720f04a1749e61dd83b353a2764f170f97498",
+      "size": 13334,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/sfx/soft/tab.ogg",
+      "sha256": "94b0e66651a11563171e3af97badfac83741c799699825ee4facb5875a0834ea",
+      "size": 5991,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/sfx/soft/tap.ogg",
+      "sha256": "f4f6a6a2f437b34936913f5c0bf14adee61272fcdbffdba2e19d4762b820e9e6",
+      "size": 4371,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/sfx/soft/toggle.ogg",
+      "sha256": "28a4b0cc466ea1cfd04751c28e9907f0c26c1219d350568d46c77be3fcd677b0",
+      "size": 5548,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/sfx/wood/back.ogg",
+      "sha256": "1e2796eb90ec4c75699a626143caa79a39682be95ce2d2d2b46d175abe0c8f9e",
+      "size": 7079,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/sfx/wood/close.ogg",
+      "sha256": "6640a863d80defe6662f40d7860da2467a0b8d61fc2d06a7d2994a1b1c3be09c",
+      "size": 6273,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/sfx/wood/confirm.ogg",
+      "sha256": "10a659852e57abc22f37217cbd024e0180852b1146b76cb7daa8279525144ca2",
+      "size": 8682,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/sfx/wood/countdown.ogg",
+      "sha256": "8dc78d18c9a7b143d16942393c13700027de83351053cc9e497eaa0376545f89",
+      "size": 4847,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/sfx/wood/error.ogg",
+      "sha256": "d380c4ada205a677f6040a7addfb16b9b0f2f16f32f8454f8e8c99e298285e97",
+      "size": 7842,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/sfx/wood/levelup.ogg",
+      "sha256": "b63957433f66dbb7f9a8e5e38652680f1f2e7a423fc0110ae7937a0422b8a2e4",
+      "size": 17118,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/sfx/wood/open.ogg",
+      "sha256": "e16ccaaf57301157e0a2054d9e2d89e549977eb24062eb2ab93d985cda31e44e",
+      "size": 7351,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/sfx/wood/purchase.ogg",
+      "sha256": "c7766ef27d38b7902ea20c565520abdf72eb98d5014ce36866ecc837b66c049f",
+      "size": 13575,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/sfx/wood/reward.ogg",
+      "sha256": "c0459db665c8fcf3727ed85fe2147f7dc7e5e19c8209a2c35f7d8d518ace10fe",
+      "size": 12569,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/sfx/wood/tab.ogg",
+      "sha256": "64da7df9f225ded6b3f9154fcb6f59c66aabbd821877dd2198edde325b7a37c7",
+      "size": 5679,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/sfx/wood/tap.ogg",
+      "sha256": "e324ae59e12a8184b825c706521c27da17d82164d07ea6cf48b0276142f1dae6",
+      "size": 4848,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/sfx/wood/toggle.ogg",
+      "sha256": "5b39952335b19d313c41e2791feaa22dc9df5c4c9fb7f6b0b8176006d9efcbbe",
+      "size": 5506,
       "visibility": "public"
     },
     {
