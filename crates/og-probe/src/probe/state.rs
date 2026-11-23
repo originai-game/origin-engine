@@ -66,6 +66,10 @@ pub(crate) struct Commands {
 pub(crate) struct Out {
     pub(super) outputs: Vec<Output>,
     pub(super) log: Vec<LogLine>,
+    /// Bounded recent copy of `log` kept across `take_log()` drains so
+    /// `Probe::logs` can always inspect warnings and refusal reasons.
+    pub(super) recent_log: VecDeque<LogLine>,
+    pub(super) dropped_logs: u64,
     /// The tick of the last unnamed `get` and how many it has had, so a
     /// second one on the same tick writes `get-<tick>-2.json`.
     pub(super) gets: (u64, u32),
@@ -363,11 +367,17 @@ impl Out {
     }
 
     pub(crate) fn note(&mut self, tick: u64, warning: bool, text: String) {
-        self.log.push(LogLine {
+        let line = LogLine {
             tick,
             warning,
             text,
-        });
+        };
+        if self.recent_log.len() >= MAX_RECENT_LOGS {
+            self.recent_log.pop_front();
+            self.dropped_logs += 1;
+        }
+        self.recent_log.push_back(line.clone());
+        self.log.push(line);
     }
 }
 

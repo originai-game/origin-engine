@@ -15,7 +15,7 @@ interface RuntimeProbe {
   # members follow, each quoted below
 ```
 
-<sub>Module `probe` line 764</sub>
+<sub>Module `probe` line 796</sub>
 
 <a id="member-RuntimeProbe-version"></a>
 
@@ -35,7 +35,7 @@ prop version u32 "PROBE_VERSION." {
 }
 ```
 
-<sub>Module `probe` line 768</sub>
+<sub>Module `probe` line 800</sub>
 
 <a id="member-RuntimeProbe-tick"></a>
 
@@ -59,7 +59,7 @@ fn tick {
 }
 ```
 
-<sub>Module `probe` line 771</sub>
+<sub>Module `probe` line 803</sub>
 
 <a id="member-RuntimeProbe-state"></a>
 
@@ -83,7 +83,7 @@ fn state {
 }
 ```
 
-<sub>Module `probe` line 776</sub>
+<sub>Module `probe` line 808</sub>
 
 <a id="member-RuntimeProbe-advance"></a>
 
@@ -112,7 +112,7 @@ fn advance {
 }
 ```
 
-<sub>Module `probe` line 781</sub>
+<sub>Module `probe` line 813</sub>
 
 <a id="member-RuntimeProbe-pause"></a>
 
@@ -135,7 +135,7 @@ fn pause {
 }
 ```
 
-<sub>Module `probe` line 787</sub>
+<sub>Module `probe` line 819</sub>
 
 <a id="member-RuntimeProbe-resume"></a>
 
@@ -158,7 +158,7 @@ fn resume {
 }
 ```
 
-<sub>Module `probe` line 791</sub>
+<sub>Module `probe` line 823</sub>
 
 <a id="member-RuntimeProbe-input"></a>
 
@@ -187,7 +187,7 @@ fn input {
 }
 ```
 
-<sub>Module `probe` line 795</sub>
+<sub>Module `probe` line 827</sub>
 
 <a id="member-RuntimeProbe-accepted"></a>
 
@@ -210,7 +210,7 @@ fn accepted {
 }
 ```
 
-<sub>Module `probe` line 801</sub>
+<sub>Module `probe` line 833</sub>
 
 <a id="member-RuntimeProbe-pick"></a>
 
@@ -241,7 +241,7 @@ fn pick {
 }
 ```
 
-<sub>Module `probe` line 805</sub>
+<sub>Module `probe` line 837</sub>
 
 <a id="member-RuntimeProbe-entity"></a>
 
@@ -270,7 +270,7 @@ fn entity {
 }
 ```
 
-<sub>Module `probe` line 812</sub>
+<sub>Module `probe` line 844</sub>
 
 <a id="member-RuntimeProbe-bounds"></a>
 
@@ -298,7 +298,7 @@ fn bounds {
 }
 ```
 
-<sub>Module `probe` line 818</sub>
+<sub>Module `probe` line 850</sub>
 
 <a id="member-RuntimeProbe-patch"></a>
 
@@ -330,7 +330,7 @@ fn patch {
 }
 ```
 
-<sub>Module `probe` line 823</sub>
+<sub>Module `probe` line 855</sub>
 
 <a id="member-RuntimeProbe-run"></a>
 
@@ -359,4 +359,4 @@ fn run {
 }
 ```
 
-<sub>Module `probe` line 830</sub>
+<sub>Module `probe` line 862</sub>

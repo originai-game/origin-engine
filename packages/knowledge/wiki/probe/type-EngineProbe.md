@@ -18,7 +18,7 @@ interface EngineProbe {
   # members follow, each quoted below
 ```
 
-<sub>Module `probe` line 838</sub>
+<sub>Module `probe` line 870</sub>
 
 <a id="member-EngineProbe-hello"></a>
 
@@ -42,7 +42,7 @@ fn hello {
 }
 ```
 
-<sub>Module `probe` line 843</sub>
+<sub>Module `probe` line 875</sub>
 
 <a id="member-EngineProbe-capture"></a>
 
@@ -97,7 +97,7 @@ fn capture {
 }
 ```
 
-<sub>Module `probe` line 848</sub>
+<sub>Module `probe` line 880</sub>
 
 <a id="member-EngineProbe-captureViews"></a>
 
@@ -143,7 +143,7 @@ fn captureViews {
 }
 ```
 
-<sub>Module `probe` line 869</sub>
+<sub>Module `probe` line 901</sub>
 
 <a id="member-EngineProbe-visible"></a>
 
@@ -177,7 +177,7 @@ fn visible {
 }
 ```
 
-<sub>Module `probe` line 885</sub>
+<sub>Module `probe` line 917</sub>
 
 <a id="member-EngineProbe-marks"></a>
 
@@ -216,7 +216,7 @@ fn marks {
 }
 ```
 
-<sub>Module `probe` line 892</sub>
+<sub>Module `probe` line 924</sub>
 
 <a id="member-EngineProbe-timeline"></a>
 
@@ -239,7 +239,7 @@ fn timeline {
 }
 ```
 
-<sub>Module `probe` line 902</sub>
+<sub>Module `probe` line 934</sub>
 
 <a id="member-EngineProbe-sweep"></a>
 
@@ -269,7 +269,7 @@ fn sweep {
 }
 ```
 
-<sub>Module `probe` line 906</sub>
+<sub>Module `probe` line 938</sub>
 
 <a id="member-EngineProbe-reload"></a>
 
@@ -292,7 +292,7 @@ fn reload {
 }
 ```
 
-<sub>Module `probe` line 913</sub>
+<sub>Module `probe` line 945</sub>
 
 <a id="member-EngineProbe-snapshot"></a>
 
@@ -315,7 +315,7 @@ fn snapshot {
 }
 ```
 
-<sub>Module `probe` line 917</sub>
+<sub>Module `probe` line 949</sub>
 
 <a id="member-EngineProbe-restore"></a>
 
@@ -344,7 +344,7 @@ fn restore {
 }
 ```
 
-<sub>Module `probe` line 921</sub>
+<sub>Module `probe` line 953</sub>
 
 <a id="member-EngineProbe-dump"></a>
 
@@ -374,7 +374,7 @@ fn dump {
 }
 ```
 
-<sub>Module `probe` line 927</sub>
+<sub>Module `probe` line 959</sub>
 
 <a id="member-EngineProbe-commands"></a>
 
@@ -402,7 +402,7 @@ fn commands {
 }
 ```
 
-<sub>Module `probe` line 934</sub>
+<sub>Module `probe` line 966</sub>
 
 <a id="member-EngineProbe-listen"></a>
 
@@ -432,7 +432,7 @@ fn listen {
 }
 ```
 
-<sub>Module `probe` line 939</sub>
+<sub>Module `probe` line 971</sub>
 
 <a id="member-EngineProbe-memory"></a>
 
@@ -455,7 +455,7 @@ fn memory {
 }
 ```
 
-<sub>Module `probe` line 946</sub>
+<sub>Module `probe` line 978</sub>
 
 <a id="member-EngineProbe-describe"></a>
 
@@ -485,7 +485,7 @@ fn describe {
 }
 ```
 
-<sub>Module `probe` line 950</sub>
+<sub>Module `probe` line 982</sub>
 
 <a id="member-EngineProbe-expect"></a>
 
@@ -513,7 +513,7 @@ fn expect {
 }
 ```
 
-<sub>Module `probe` line 957</sub>
+<sub>Module `probe` line 989</sub>
 
 <a id="member-EngineProbe-expectations"></a>
 
@@ -536,7 +536,7 @@ fn expectations {
 }
 ```
 
-<sub>Module `probe` line 962</sub>
+<sub>Module `probe` line 994</sub>
 
 <a id="member-EngineProbe-assertions"></a>
 
@@ -566,7 +566,7 @@ fn assertions {
 }
 ```
 
-<sub>Module `probe` line 966</sub>
+<sub>Module `probe` line 998</sub>
 
 <a id="member-EngineProbe-assertionEvents"></a>
 
@@ -589,7 +589,7 @@ fn assertionEvents {
 }
 ```
 
-<sub>Module `probe` line 973</sub>
+<sub>Module `probe` line 1005</sub>
 
 <a id="member-EngineProbe-observe"></a>
 
@@ -623,7 +623,7 @@ fn observe {
 }
 ```
 
-<sub>Module `probe` line 977</sub>
+<sub>Module `probe` line 1009</sub>
 
 <a id="member-EngineProbe-saveScene"></a>
 
@@ -657,7 +657,7 @@ fn saveScene {
 }
 ```
 
-<sub>Module `probe` line 987</sub>
+<sub>Module `probe` line 1019</sub>
 
 <a id="member-EngineProbe-pickUi"></a>
 
@@ -687,4 +687,92 @@ fn pickUi {
 }
 ```
 
-<sub>Module `probe` line 997</sub>
+<sub>Module `probe` line 1029</sub>
+
+<a id="member-EngineProbe-logs"></a>
+
+#### `EngineProbe.logs`
+
+Recent probe log and warning entries (including refusal reasons from patch, reload, commands and save_scene).
+
+```ts
+EngineProbe.logs(take?: boolean): ProbeLogs
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `take` | `boolean` | yes | Clear the log ring after answering. Default `false`. |
+
+**Returns** `ProbeLogs`.
+
+Binding symbol `og_engine_probe_logs` · publish builds: dropped
+
+```ogt
+fn logs {
+  doc "Recent probe log and warning entries (including refusal reasons from patch, reload, commands and save_scene)."
+  param take bool "Clear the log ring after answering." {
+    default false
+  }
+  returns ProbeLogs
+}
+```
+
+<sub>Module `probe` line 1035</sub>
+
+<a id="member-EngineProbe-set"></a>
+
+#### `EngineProbe.set`
+
+Synchronously write any reflected component or resource field (`<entity>.<Component>.<field>` or `<Resource>.<field>`) using a JSON value, recording it for saveScene.
+
+```ts
+EngineProbe.set(target: string, value: unknown): ProbeSetResult
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `target` | `string` | no | Target path (`<entity>.<Component>.<field>` or `<Resource>.<field>`). |
+| `value` | `unknown` | no | New JSON value. |
+
+**Returns** `ProbeSetResult`.
+
+Binding symbol `og_engine_probe_set` · publish builds: dropped
+
+```ogt
+fn set {
+  doc "Synchronously write any reflected component or resource field (`<entity>.<Component>.<field>` or `<Resource>.<field>`) using a JSON value, recording it for saveScene."
+  param target String "Target path (`<entity>.<Component>.<field>` or `<Resource>.<field>`)."
+  param value Json "New JSON value."
+  returns ProbeSetResult
+}
+```
+
+<sub>Module `probe` line 1042</sub>
+
+<a id="member-EngineProbe-get"></a>
+
+#### `EngineProbe.get`
+
+Synchronously read any reflected resource, resource field, entity, component, or component field.
+
+```ts
+EngineProbe.get(target: string): ProbeGetResult
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `target` | `string` | no | Target path (`<Resource>[.<field>]` or `<entity>[.<Component>[.<field>]]`). |
+
+**Returns** `ProbeGetResult`.
+
+Binding symbol `og_engine_probe_get` · publish builds: dropped
+
+```ogt
+fn get {
+  doc "Synchronously read any reflected resource, resource field, entity, component, or component field."
+  param target String "Target path (`<Resource>[.<field>]` or `<entity>[.<Component>[.<field>]]`)."
+  returns ProbeGetResult
+}
+```
+
+<sub>Module `probe` line 1048</sub>

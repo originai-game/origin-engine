@@ -97,7 +97,7 @@ fn every_member_answers_as_protocol_5_says() {
     assert_eq!(hello["tier"], json!("vulkan"));
     assert!(["dev", "release"].contains(&hello["build"].as_str().unwrap()));
     assert_eq!(hello["members"], json!(MEMBERS));
-    assert_eq!(MEMBERS.len(), 34, "13 protocol-5 members + 21 wire members");
+    assert_eq!(MEMBERS.len(), 37, "13 protocol-5 members + 24 wire members");
     // assertions: an empty report, a fresh one after take.
     let report = t.ok("assertions", json!({"take": true}));
     assert_eq!(report["violations"], json!([]));
@@ -679,6 +679,66 @@ fn a_sweep_yields_one_frame_per_value_and_restores_the_world() {
     );
     assert!(!h.probe.quit_requested());
     assert_eq!(h.probe.pending(), 1);
+}
+
+#[test]
+fn logs_set_get_and_observe_truncation() {
+    let mut h = build(7, false);
+
+    // patch refusal returns false AND records the reason in `logs`, surviving take_log().
+    assert_eq!(
+        h.result(
+            "patch",
+            json!({"id": "player", "parameter": "Mover.lane", "value": 2})
+        ),
+        json!(false)
+    );
+    let drained = h.probe.take_log();
+    assert!(!drained.is_empty(), "take_log sees patch refusal");
+    let logs = h.result("logs", json!({}));
+    assert_eq!(logs["dropped"], json!(0));
+    let entries = logs["entries"].as_array().unwrap();
+    assert!(
+        entries
+            .iter()
+            .any(|e| e["warning"] == json!(true)
+                && e["text"].as_str().unwrap().contains("not tunable")),
+        "logs should retain patch refusal reason after take_log: {logs}"
+    );
+    // `take: true` drains the probe's recent log ring.
+    let taken = h.result("logs", json!({"take": true}));
+    assert_eq!(taken["entries"].as_array().unwrap().len(), entries.len());
+    assert_eq!(h.result("logs", json!({}))["entries"], json!([]));
+
+    // Synchronous `set` writes non-tunable fields and resources, and reports errors cleanly.
+    let set_ok = h.result("set", json!({"target": "player.Mover.lane", "value": 3}));
+    assert_eq!(set_ok, json!({"ok": true}));
+    let got = h.result("get", json!({"target": "player.Mover.lane"}));
+    assert_eq!(got, json!({"ok": true, "value": 3}));
+
+    let set_bad = h.result("set", json!({"target": "ghost.Mover.lane", "value": 3}));
+    assert_eq!(set_bad["ok"], json!(false));
+    assert!(set_bad["error"].as_str().unwrap().contains("ghost"));
+
+    let get_bad = h.result("get", json!({"target": "ghost.Mover.lane"}));
+    assert_eq!(get_bad["ok"], json!(false));
+    assert!(get_bad["error"].as_str().unwrap().contains("ghost"));
+
+    // `observe` reports `truncated` only when a component exceeds OBSERVE_ROWS (256).
+    let small = h.result("observe", json!({}));
+    assert!(small.get("truncated").is_none());
+
+    for i in 0..270 {
+        h.world
+            .spawn((crate::support::Mover {
+                speed: i as f32,
+                lane: i,
+            },))
+            .unwrap();
+    }
+    let big = h.result("observe", json!({"records": ["Mover"]}));
+    assert_eq!(big["components"]["Mover"].as_object().unwrap().len(), 256);
+    assert_eq!(big["truncated"]["Mover"], json!(271));
 }
 
 fn write_evidence(name: &str, value: &Value) {

@@ -1,0 +1,18 @@
+{
+  "added": [
+    {
+      "member": "probe (protocol 5, additive): logs, set, get; observe.truncated",
+      "summary": "Strictly additive wire members on EngineProbe (dev/release builds only): `logs(take?)` returns recent probe log and warning entries (including refusal reasons from `patch`, `reload`, `commands`, and `save_scene`) without disturbing `take_log`; `set(target, value)` synchronously writes any reflected component or resource field as JSON and reports `{ ok, error? }`; `get(target)` synchronously reads any reflected resource, entity, component, or field as `{ ok, value?, error? }`. `observe` now includes a `truncated` map (`{ Component: totalCount }`) when any component exceeds the 256-row cap."
+    },
+    {
+      "member": "og mcp, og probe",
+      "summary": "`og mcp` expands from 7 to 20 tools (`run_logs`, `check`, `cook`, `build`, `create`, `explore`, `replay`, `ui`, `style`, `model`, `assets`, `prefab`, `doctor`, alongside existing tools), extracts PNG/WAV binaries for `capture_views`, `sweep`, and `listen` instead of returning raw base64, and continuously drains background `run` stderr into a ring buffer. `og probe` adds `--timeout` / `OG_PROBE_TIMEOUT` (default 30s) and decodes `sweep` frames and `listen` WAVs."
+    }
+  ],
+  "fixed": [
+    {
+      "member": "og --help, start guide",
+      "summary": "Synced `og <cmd> --help` with implemented flags across `run`, `test`, `replay`, `probe`, `mcp`, `dev`, `build`, `ui`, and `doctor`, and indexed all remaining guides in `start.md` §5."
+    }
+  ]
+}

@@ -352,6 +352,23 @@ macro_rules! __og_host_bindings_engine {
             fn og_engine_probe_pick_ui(&self, engine_probe: u32, x: f64, y: f64) -> String {
                 $crate::og_engine_probe_pick_ui(engine_probe, x, y)
             }
+
+            fn og_engine_probe_logs(&self, engine_probe: u32, take: Option<bool>) -> String {
+                $crate::og_engine_probe_logs(engine_probe, take)
+            }
+
+            fn og_engine_probe_set(
+                &self,
+                engine_probe: u32,
+                target: String,
+                value: String,
+            ) -> String {
+                $crate::og_engine_probe_set(engine_probe, target, value)
+            }
+
+            fn og_engine_probe_get(&self, engine_probe: u32, target: String) -> String {
+                $crate::og_engine_probe_get(engine_probe, target)
+            }
         }
 
         impl $crate::host_impl::api::DebugApi for $host {
