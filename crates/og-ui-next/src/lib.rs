@@ -20,6 +20,7 @@ pub mod record;
 pub mod sheet;
 pub mod svg;
 pub mod text;
+pub mod theme;
 pub mod tokens;
 pub mod tree;
 pub mod view;

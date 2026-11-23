@@ -676,6 +676,46 @@ is an error naming where it is, never ignored):
 
 Motion is classes in `variants` until the motion thread's ease form lands.
 
+### Theme recipes
+
+A theme is a recipe (`theme.json`), not a hand-written pack: it picks one
+value per dimension (`material`, `shape`, `type`, `motion`, `ornament`,
+`effects`, `sound`, `icons`, `density`, each a file in
+`templates/themes/dimensions/<dimension>/<value>.json`) and a `color`
+(`source`, `accent`, `neutral`, `danger`, `variant`, `scheme`). The taste
+is in those files; `og_ui_next::theme` only merges and maps.
+
+```json
+{
+  "extends": "@themes/tactical",
+  "with": ["weathered"],
+  "color": { "source": "#5cc8ff", "neutral": "#5d6b78" },
+  "ornament": { "panel": "hairline" },
+  "pack": { "images": { "panel": { "src": "art/panel-hand.png", "slice": 24 } } }
+}
+```
+
+- `theme::resolve` reads the parent first (`extends`, one theme, resolved
+  whole), then each `with` mix-in in order (`templates/themes/mixins/`),
+  then the recipe's own keys. Objects merge key by key; anything else,
+  arrays included, is replaced. An unknown key, a wrong form or an
+  `extends` loop is an error naming the file (a loop names its chain).
+  `"ornament": "studs"` is one per piece (`button`, `panel`, `plate`,
+  `slot`, `chip`), so a later layer can change one piece's.
+- `theme::compile` maps the resolved recipe: the colours to `seeds`; the
+  shape's `radius` and the type's `fontFamily`, `tracking` and `fonts`;
+  the motion's slots; the sound's `sounds`; the icons' `iconSet` and
+  `icon-*` colours (a bare name is a palette or colour role). The
+  material's faces become the art palette (each at the material's OKLCH
+  lightness and chroma, in the neutral's or accent's hue) and the art
+  slots (`Button.plate[.primary]`, `Panel.frame`, `Plate.frame`,
+  `Chip.frame`, `Slot.frame`, `Field.frame`) draw that art with their fill
+  cleared. The art spec goes to og-cook's generator (`cook/ui_art.rs`).
+- `pack`, written as a pack.json, lies over the compiled layer and the
+  generated art: a hand-drawn image replaces its generated one by name.
+  The layer order is unchanged: the default pack, the look's theme, the
+  game's own.
+
 ### The default pack's names
 
 The theme speaks the design language's words: a name is the token's

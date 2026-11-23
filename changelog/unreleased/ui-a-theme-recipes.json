@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "Theme recipes",
+      "summary": "A theme is a recipe (`theme.json`) that picks a value per dimension (material, shape, type, motion, ornament, effects, sound, icons, density) and a `color`, with `extends` (one parent), `with` (mix-ins, in order) and `pack` (a pack.json laid over the result, so a hand-drawn image replaces a generated one by name). Unknown keys and `extends` loops are errors naming the file. og-cook reads it in a later release; the format is in og-ui-next's CONVENTIONS.md \u00a7Theme recipes."
+    }
+  ]
+}
