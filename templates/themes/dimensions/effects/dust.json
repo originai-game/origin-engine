@@ -1,0 +1,9 @@
+{
+  "about": "Slow motes and soft rings (paper, stone).",
+  "textures": [
+    "@styles/shared/fx/glint.png",
+    "@styles/shared/fx/ring.png"
+  ],
+  "textGlow": 0.0,
+  "shadow": "soft"
+}

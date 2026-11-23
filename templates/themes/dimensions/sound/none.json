@@ -1,0 +1,50 @@
+{
+  "about": "Silent: every event at volume 0.",
+  "sounds": {
+    "press": {
+      "volume": 0
+    },
+    "hover": {
+      "volume": 0
+    },
+    "select": {
+      "volume": 0
+    },
+    "toggle": {
+      "volume": 0
+    },
+    "tab": {
+      "volume": 0
+    },
+    "countdown": {
+      "volume": 0
+    },
+    "back": {
+      "volume": 0
+    },
+    "cancel": {
+      "volume": 0
+    },
+    "close": {
+      "volume": 0
+    },
+    "open": {
+      "volume": 0
+    },
+    "confirm": {
+      "volume": 0
+    },
+    "error": {
+      "volume": 0
+    },
+    "purchase": {
+      "volume": 0
+    },
+    "reward": {
+      "volume": 0
+    },
+    "levelup": {
+      "volume": 0
+    }
+  }
+}

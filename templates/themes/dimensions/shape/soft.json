@@ -1,0 +1,22 @@
+{
+  "about": "Small even radii (minimal, storybook).",
+  "art": {
+    "family": "rounded",
+    "radius": {
+      "control": 6,
+      "panel": 10,
+      "chip": 4,
+      "slot": 6
+    }
+  },
+  "radius": {
+    "control": 4,
+    "field": 6,
+    "block": 6,
+    "button": 6,
+    "card": 8,
+    "panel": 10,
+    "sheet": 14,
+    "capsule": 9999
+  }
+}

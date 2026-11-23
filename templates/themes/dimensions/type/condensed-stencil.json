@@ -1,0 +1,27 @@
+{
+  "about": "Big Shoulders Stencil display, Barlow Semi Condensed text, Rajdhani figures: military.",
+  "fonts": [
+    "@styles/shared/BigShouldersStencilDisplay-SemiBold.ttf",
+    "@styles/shared/BarlowSemiCondensed-SemiBold.ttf",
+    "@styles/shared/Rajdhani-Bold.ttf",
+    "@styles/cjk/NotoSansSC[wght].ttf"
+  ],
+  "families": {
+    "rounded": "Barlow Semi Condensed",
+    "display": "Big Shoulders Stencil Display",
+    "sans": "Barlow Semi Condensed",
+    "mono": "Rajdhani"
+  },
+  "cjk": "Noto Sans SC",
+  "fontFamily": {
+    "display": "\"Big Shoulders Stencil Display\", \"Noto Sans SC\", -apple-system, system-ui, \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+    "mono": "\"Rajdhani\", \"Noto Sans SC\", ui-monospace, Menlo, monospace",
+    "rounded": "\"Barlow Semi Condensed\", \"Noto Sans SC\", ui-rounded, system-ui, \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+    "sans": "\"Barlow Semi Condensed\", \"Noto Sans SC\", -apple-system, system-ui, \"PingFang SC\", \"Microsoft YaHei\", sans-serif"
+  },
+  "tracking": {
+    "display-md": 0.02,
+    "display-lg": 0.02,
+    "label": 0.16
+  }
+}

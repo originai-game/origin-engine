@@ -1,0 +1,22 @@
+{
+  "about": "Instrument Sans throughout: the neutral default.",
+  "fonts": [
+    "@styles/shared/InstrumentSans[wdth,wght].ttf",
+    "@styles/shared/PTMono-Regular.ttf",
+    "@styles/cjk/NotoSansSC[wght].ttf"
+  ],
+  "families": {
+    "rounded": "Instrument Sans",
+    "display": "Instrument Sans",
+    "sans": "Instrument Sans",
+    "mono": "PT Mono"
+  },
+  "cjk": "Noto Sans SC",
+  "fontFamily": {
+    "display": "\"Instrument Sans\", \"Noto Sans SC\", -apple-system, system-ui, \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+    "mono": "\"PT Mono\", \"Noto Sans SC\", ui-monospace, Menlo, monospace",
+    "rounded": "\"Instrument Sans\", \"Noto Sans SC\", ui-rounded, system-ui, \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+    "sans": "\"Instrument Sans\", \"Noto Sans SC\", -apple-system, system-ui, \"PingFang SC\", \"Microsoft YaHei\", sans-serif"
+  },
+  "tracking": {}
+}

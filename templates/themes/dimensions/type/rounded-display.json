@@ -1,0 +1,25 @@
+{
+  "about": "Lilita One display, Fredoka text: casual and chunky.",
+  "fonts": [
+    "@styles/shared/LilitaOne-Regular.ttf",
+    "@styles/shared/Fredoka[wdth,wght].ttf",
+    "@styles/cjk/ZCOOLKuaiLe-Regular.ttf",
+    "@styles/cjk/NotoSansSC[wght].ttf"
+  ],
+  "families": {
+    "rounded": "Fredoka",
+    "display": "Lilita One",
+    "sans": "Fredoka",
+    "mono": "Fredoka"
+  },
+  "cjk": "ZCOOL KuaiLe",
+  "fontFamily": {
+    "display": "\"Lilita One\", \"ZCOOL KuaiLe\", -apple-system, system-ui, \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+    "mono": "\"Fredoka\", \"ZCOOL KuaiLe\", ui-monospace, Menlo, monospace",
+    "rounded": "\"Fredoka\", \"ZCOOL KuaiLe\", ui-rounded, system-ui, \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+    "sans": "\"Fredoka\", \"ZCOOL KuaiLe\", -apple-system, system-ui, \"PingFang SC\", \"Microsoft YaHei\", sans-serif"
+  },
+  "tracking": {
+    "display-md": 0.01
+  }
+}

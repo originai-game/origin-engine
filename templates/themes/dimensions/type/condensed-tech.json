@@ -1,0 +1,27 @@
+{
+  "about": "Chakra Petch display, Barlow Semi Condensed text: technical scifi.",
+  "fonts": [
+    "@styles/shared/ChakraPetch-SemiBold.ttf",
+    "@styles/shared/ChakraPetch-Bold.ttf",
+    "@styles/shared/BarlowSemiCondensed-SemiBold.ttf",
+    "@styles/shared/Rajdhani-Bold.ttf",
+    "@styles/cjk/NotoSansSC[wght].ttf"
+  ],
+  "families": {
+    "rounded": "Barlow Semi Condensed",
+    "display": "Chakra Petch",
+    "sans": "Barlow Semi Condensed",
+    "mono": "Rajdhani"
+  },
+  "cjk": "Noto Sans SC",
+  "fontFamily": {
+    "display": "\"Chakra Petch\", \"Noto Sans SC\", -apple-system, system-ui, \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+    "mono": "\"Rajdhani\", \"Noto Sans SC\", ui-monospace, Menlo, monospace",
+    "rounded": "\"Barlow Semi Condensed\", \"Noto Sans SC\", ui-rounded, system-ui, \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+    "sans": "\"Barlow Semi Condensed\", \"Noto Sans SC\", -apple-system, system-ui, \"PingFang SC\", \"Microsoft YaHei\", sans-serif"
+  },
+  "tracking": {
+    "label": 0.16,
+    "kicker": 0.22
+  }
+}

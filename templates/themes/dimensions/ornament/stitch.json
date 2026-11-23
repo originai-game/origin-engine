@@ -1,0 +1,8 @@
+{
+  "about": "A dashed stitch inside the edge (cloth, leather).",
+  "art": {
+    "kind": "stitch",
+    "inset": 3.5,
+    "alpha": 0.5
+  }
+}

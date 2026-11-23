@@ -1,0 +1,23 @@
+{
+  "about": "A whole-point staircase.",
+  "art": {
+    "family": "pixel",
+    "step": 1,
+    "radius": {
+      "control": 3,
+      "panel": 4,
+      "chip": 2,
+      "slot": 3
+    }
+  },
+  "radius": {
+    "control": 0,
+    "field": 0,
+    "block": 0,
+    "button": 0,
+    "card": 0,
+    "panel": 0,
+    "sheet": 0,
+    "capsule": 0
+  }
+}

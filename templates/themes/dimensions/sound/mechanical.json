@@ -1,0 +1,118 @@
+{
+  "about": "Metal switches, servos and latches: military, industrial.",
+  "sounds": {
+    "press": {
+      "clips": [
+        "@styles/shared/sfx/mechanical/tap.ogg"
+      ],
+      "volume": [
+        0.45,
+        0.5
+      ],
+      "pitch": [
+        0.96,
+        1.04
+      ]
+    },
+    "hover": {
+      "clips": [
+        "@styles/shared/sfx/mechanical/tap.ogg"
+      ],
+      "volume": 0.12,
+      "pitch": [
+        1.18,
+        1.26
+      ]
+    },
+    "select": {
+      "clips": [
+        "@styles/shared/sfx/mechanical/tab.ogg"
+      ],
+      "volume": 0.5,
+      "pitch": [
+        0.98,
+        1.02
+      ]
+    },
+    "toggle": {
+      "clips": [
+        "@styles/shared/sfx/mechanical/toggle.ogg"
+      ],
+      "volume": 0.5,
+      "pitch": [
+        0.98,
+        1.02
+      ]
+    },
+    "tab": {
+      "clips": [
+        "@styles/shared/sfx/mechanical/tab.ogg"
+      ],
+      "volume": 0.5,
+      "pitch": [
+        0.98,
+        1.02
+      ]
+    },
+    "countdown": {
+      "clips": [
+        "@styles/shared/sfx/mechanical/countdown.ogg"
+      ],
+      "volume": 0.6
+    },
+    "back": {
+      "clips": [
+        "@styles/shared/sfx/mechanical/back.ogg"
+      ],
+      "volume": 0.5
+    },
+    "cancel": {
+      "clips": [
+        "@styles/shared/sfx/mechanical/back.ogg"
+      ],
+      "volume": 0.5
+    },
+    "close": {
+      "clips": [
+        "@styles/shared/sfx/mechanical/close.ogg"
+      ],
+      "volume": 0.45
+    },
+    "open": {
+      "clips": [
+        "@styles/shared/sfx/mechanical/open.ogg"
+      ],
+      "volume": 0.45
+    },
+    "confirm": {
+      "clips": [
+        "@styles/shared/sfx/mechanical/confirm.ogg"
+      ],
+      "volume": 0.55
+    },
+    "error": {
+      "clips": [
+        "@styles/shared/sfx/mechanical/error.ogg"
+      ],
+      "volume": 0.55
+    },
+    "purchase": {
+      "clips": [
+        "@styles/shared/sfx/mechanical/purchase.ogg"
+      ],
+      "volume": 0.6
+    },
+    "reward": {
+      "clips": [
+        "@styles/shared/sfx/mechanical/reward.ogg"
+      ],
+      "volume": 0.5
+    },
+    "levelup": {
+      "clips": [
+        "@styles/shared/sfx/mechanical/levelup.ogg"
+      ],
+      "volume": 0.55
+    }
+  }
+}

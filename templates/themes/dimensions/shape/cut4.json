@@ -1,0 +1,29 @@
+{
+  "about": "Four chamfered corners (scifi).",
+  "art": {
+    "family": "cut4",
+    "cut": {
+      "control": 5,
+      "panel": 5,
+      "chip": 3,
+      "slot": 5,
+      "badge": 3
+    },
+    "radius": {
+      "control": 0,
+      "panel": 0,
+      "chip": 0,
+      "slot": 0
+    }
+  },
+  "radius": {
+    "control": 0,
+    "field": 0,
+    "block": 0,
+    "button": 0,
+    "card": 0,
+    "panel": 0,
+    "sheet": 0,
+    "capsule": 9999
+  }
+}

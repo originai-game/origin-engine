@@ -1,0 +1,33 @@
+{
+  "about": "Fusion Pixel throughout, tracked in (its advances are wide).",
+  "fonts": [
+    "@styles/cjk/FusionPixel12-zhHans.ttf"
+  ],
+  "families": {
+    "rounded": "Fusion Pixel 12px Prop zh-Hans",
+    "display": "Fusion Pixel 12px Prop zh-Hans",
+    "sans": "Fusion Pixel 12px Prop zh-Hans",
+    "mono": "Fusion Pixel 12px Prop zh-Hans"
+  },
+  "cjk": null,
+  "fontFamily": {
+    "display": "\"Fusion Pixel 12px Prop zh-Hans\", -apple-system, system-ui, \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+    "mono": "\"Fusion Pixel 12px Prop zh-Hans\", ui-monospace, Menlo, monospace",
+    "rounded": "\"Fusion Pixel 12px Prop zh-Hans\", ui-rounded, system-ui, \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+    "sans": "\"Fusion Pixel 12px Prop zh-Hans\", -apple-system, system-ui, \"PingFang SC\", \"Microsoft YaHei\", sans-serif"
+  },
+  "tracking": {
+    "xs": -0.04,
+    "sm": -0.04,
+    "md": -0.04,
+    "lg": -0.04,
+    "xl": -0.04,
+    "2xl": -0.04,
+    "3xl": -0.04,
+    "label": -0.04,
+    "kicker": -0.04,
+    "display-sm": -0.04,
+    "display-md": -0.04,
+    "display-lg": -0.04
+  }
+}

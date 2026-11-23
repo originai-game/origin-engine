@@ -1,0 +1,95 @@
+{
+  "about": "Ink on rice paper: a faint wash pooling low, a brushed outline (wuxia, xianxia).",
+  "art": {
+    "drop": {
+      "dy": 1.0,
+      "blur": 1.0,
+      "alpha": 0.18
+    },
+    "outline": {
+      "width": 1.5
+    },
+    "grain": {
+      "kind": "wash",
+      "cell": 16,
+      "strength": 0.03,
+      "color": {
+        "mix": [
+          "bottom",
+          "outline",
+          0.55
+        ]
+      },
+      "seed": 11
+    },
+    "sunk": {
+      "depth": 8,
+      "alpha": 0.1
+    },
+    "press": {
+      "dy": 1.5
+    }
+  },
+  "scheme": "light",
+  "faces": {
+    "button": {
+      "hue": "n",
+      "l": [
+        0.93,
+        0.88
+      ],
+      "c": 0.02
+    },
+    "panel": {
+      "hue": "n",
+      "l": [
+        0.95,
+        0.9
+      ],
+      "c": 0.02
+    },
+    "plate": {
+      "hue": "n",
+      "l": [
+        0.92,
+        0.87
+      ],
+      "c": 0.02
+    },
+    "chip": {
+      "hue": "n",
+      "l": [
+        0.89,
+        0.84
+      ],
+      "c": 0.025
+    },
+    "slot": {
+      "hue": "n",
+      "l": [
+        0.85,
+        0.91
+      ],
+      "c": 0.02
+    },
+    "field": {
+      "hue": "n",
+      "l": [
+        0.97,
+        0.94
+      ],
+      "c": 0.015
+    }
+  },
+  "primary": {
+    "l": [
+      0.5,
+      0.4
+    ],
+    "c": 0.12
+  },
+  "text": {
+    "min": 0.82,
+    "max": 1.0
+  }
+}

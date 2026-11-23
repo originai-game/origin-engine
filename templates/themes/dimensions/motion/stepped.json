@@ -1,0 +1,17 @@
+{
+  "about": "No tweening: cuts and stepped staggers (pixel).",
+  "variants": {
+    "Press.feedback": "transition-transform duration-0 active:scale-96 active:duration-0",
+    "Modal.frame": "transition duration-0 starting:opacity-0 exit:opacity-0 exit:duration-0",
+    "Screen.frame": "transition duration-0 starting:opacity-0 exit:opacity-0 exit:duration-0",
+    "List.cascade": "stagger-80/480",
+    "List.item": "",
+    "Count.roll": "",
+    "Reward.pop": "animate-pop",
+    "Tab.indicator": "glide-tab",
+    "Bar.fill": "",
+    "Bar.trail": "transition-layout duration-0 delay-400",
+    "Attention.cue": "animate-nudge",
+    "Modal.scrim": "absolute inset-0 bg-scrim"
+  }
+}

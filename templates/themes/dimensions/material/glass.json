@@ -1,0 +1,93 @@
+{
+  "about": "Translucent dark glass: a hairline, a lit top edge, a soft drop (Honkai: Star Rail, Destiny 2).",
+  "art": {
+    "drop": {
+      "dy": 1.5,
+      "blur": 1.6,
+      "alpha": 0.5
+    },
+    "face": {
+      "alpha": 0.9
+    },
+    "hairline": {
+      "alpha": 0.18
+    },
+    "toplight": {
+      "depth": 6,
+      "alpha": 0.3
+    },
+    "sunk": {
+      "depth": 10,
+      "alpha": 0.35
+    },
+    "press": {
+      "dy": 1.5
+    },
+    "hover": {
+      "toward": "#ffffff",
+      "t": 0.08
+    }
+  },
+  "scheme": "dark",
+  "faces": {
+    "button": {
+      "hue": "n",
+      "l": [
+        0.3,
+        0.2
+      ],
+      "c": 0.03
+    },
+    "panel": {
+      "hue": "n",
+      "l": [
+        0.24,
+        0.16
+      ],
+      "c": 0.03
+    },
+    "plate": {
+      "hue": "n",
+      "l": [
+        0.24,
+        0.15
+      ],
+      "c": 0.03
+    },
+    "chip": {
+      "hue": "n",
+      "l": [
+        0.3,
+        0.22
+      ],
+      "c": 0.04
+    },
+    "slot": {
+      "hue": "n",
+      "l": [
+        0.14,
+        0.2
+      ],
+      "c": 0.03
+    },
+    "field": {
+      "hue": "n",
+      "l": [
+        0.13,
+        0.18
+      ],
+      "c": 0.02
+    }
+  },
+  "primary": {
+    "l": [
+      0.66,
+      0.54
+    ],
+    "c": 0.12
+  },
+  "text": {
+    "min": 0.0,
+    "max": 0.36
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "about": "A hand-drawn edge pushed in and out by noise (ink).",
+  "art": {
+    "family": "brush",
+    "wobble": 0.45,
+    "seed": 13,
+    "radius": {
+      "control": 4,
+      "panel": 6,
+      "chip": 3,
+      "slot": 4
+    }
+  },
+  "radius": {
+    "control": 2,
+    "field": 3,
+    "block": 3,
+    "button": 3,
+    "card": 4,
+    "panel": 6,
+    "sheet": 8,
+    "capsule": 9999
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "about": "Square sparks, no blur (pixel).",
+  "textures": [
+    "@styles/shared/fx/shard.png",
+    "@styles/shared/fx/glint.png"
+  ],
+  "textGlow": 0.0,
+  "shadow": "none",
+  "pixel": true
+}

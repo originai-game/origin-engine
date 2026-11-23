@@ -1,0 +1,109 @@
+{
+  "about": "Brushed metal: a lit rim, streaks along the stretch, a hard outline (military and industrial UIs).",
+  "art": {
+    "drop": {
+      "dy": 1.5,
+      "blur": 1.4,
+      "alpha": 0.5
+    },
+    "outline": {
+      "width": 1
+    },
+    "rim": {
+      "lo": {
+        "mix": [
+          "bottom",
+          "outline",
+          0.3
+        ]
+      },
+      "hi": {
+        "mix": [
+          "top",
+          "#ffffff",
+          0.6
+        ]
+      },
+      "width": 2
+    },
+    "grain": {
+      "kind": "brushed",
+      "cell": 0.75,
+      "strength": 0.08,
+      "seed": 3
+    },
+    "toplight": {
+      "depth": 4,
+      "alpha": 0.35
+    },
+    "sunk": {
+      "depth": 10,
+      "alpha": 0.4
+    },
+    "press": {
+      "dy": 1.5
+    }
+  },
+  "scheme": "dark",
+  "faces": {
+    "button": {
+      "hue": "n",
+      "l": [
+        0.42,
+        0.3
+      ],
+      "c": 0.025
+    },
+    "panel": {
+      "hue": "n",
+      "l": [
+        0.3,
+        0.22
+      ],
+      "c": 0.02
+    },
+    "plate": {
+      "hue": "n",
+      "l": [
+        0.28,
+        0.2
+      ],
+      "c": 0.02
+    },
+    "chip": {
+      "hue": "n",
+      "l": [
+        0.36,
+        0.28
+      ],
+      "c": 0.03
+    },
+    "slot": {
+      "hue": "n",
+      "l": [
+        0.16,
+        0.24
+      ],
+      "c": 0.02
+    },
+    "field": {
+      "hue": "n",
+      "l": [
+        0.15,
+        0.2
+      ],
+      "c": 0.015
+    }
+  },
+  "primary": {
+    "l": [
+      0.66,
+      0.54
+    ],
+    "c": 0.12
+  },
+  "text": {
+    "min": 0.0,
+    "max": 0.36
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "about": "Square corners with a 2-point ease.",
+  "art": {
+    "family": "rounded",
+    "radius": {
+      "control": 2,
+      "panel": 2,
+      "chip": 1,
+      "slot": 2
+    }
+  },
+  "radius": {
+    "control": 0,
+    "field": 0,
+    "block": 0,
+    "button": 0,
+    "card": 0,
+    "panel": 0,
+    "sheet": 0,
+    "capsule": 0
+  }
+}

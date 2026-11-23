@@ -1,0 +1,106 @@
+{
+  "about": "Woven cloth: a fine weave at low strength, a stitched border (banners, tabards).",
+  "art": {
+    "drop": {
+      "dy": 1.2,
+      "blur": 1.2,
+      "alpha": 0.35
+    },
+    "outline": {
+      "width": 1.25
+    },
+    "grain": {
+      "kind": "weave",
+      "cell": 1.5,
+      "strength": 0.05,
+      "color": {
+        "mix": [
+          "bottom",
+          "outline",
+          0.55
+        ]
+      },
+      "seed": 4
+    },
+    "edge": {
+      "color": {
+        "mix": [
+          "bottom",
+          "outline",
+          0.55
+        ]
+      },
+      "width": 3,
+      "alpha": 0.2
+    },
+    "sunk": {
+      "depth": 8,
+      "alpha": 0.25
+    },
+    "press": {
+      "dy": 1.5
+    }
+  },
+  "scheme": "dark",
+  "faces": {
+    "button": {
+      "hue": "n",
+      "l": [
+        0.48,
+        0.4
+      ],
+      "c": 0.08
+    },
+    "panel": {
+      "hue": "n",
+      "l": [
+        0.36,
+        0.3
+      ],
+      "c": 0.07
+    },
+    "plate": {
+      "hue": "n",
+      "l": [
+        0.32,
+        0.26
+      ],
+      "c": 0.06
+    },
+    "chip": {
+      "hue": "n",
+      "l": [
+        0.44,
+        0.36
+      ],
+      "c": 0.08
+    },
+    "slot": {
+      "hue": "n",
+      "l": [
+        0.2,
+        0.28
+      ],
+      "c": 0.05
+    },
+    "field": {
+      "hue": "n",
+      "l": [
+        0.22,
+        0.28
+      ],
+      "c": 0.04
+    }
+  },
+  "primary": {
+    "l": [
+      0.62,
+      0.5
+    ],
+    "c": 0.12
+  },
+  "text": {
+    "min": 0.0,
+    "max": 0.36
+  }
+}

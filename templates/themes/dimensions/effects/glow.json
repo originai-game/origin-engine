@@ -1,0 +1,10 @@
+{
+  "about": "Soft halos: glints and rings, a glow behind lit text.",
+  "textures": [
+    "@styles/shared/fx/glint.png",
+    "@styles/shared/fx/ring.png",
+    "@styles/shared/fx/sparkle.png"
+  ],
+  "textGlow": 0.45,
+  "shadow": "glow"
+}

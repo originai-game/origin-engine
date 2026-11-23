@@ -1,0 +1,10 @@
+{
+  "about": "Dark spatter and a ring (ink).",
+  "textures": [
+    "@styles/shared/fx/shard.png",
+    "@styles/shared/fx/ring.png"
+  ],
+  "textGlow": 0.0,
+  "shadow": "none",
+  "ink": "fg"
+}

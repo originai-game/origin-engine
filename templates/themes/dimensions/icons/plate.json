@@ -1,0 +1,10 @@
+{
+  "about": "Embossed: a light rim, a soft shade, no gloss.",
+  "set": "@styles/shared/icons/game.ogt",
+  "colors": {
+    "icon-outline": "#ffffffcc",
+    "icon-shadow": "#00000040",
+    "icon-gloss": "#ffffff00",
+    "icon-shade": "#0000004d"
+  }
+}

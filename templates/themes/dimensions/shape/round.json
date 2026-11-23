@@ -1,0 +1,22 @@
+{
+  "about": "Large soft radii (casual, cartoon).",
+  "art": {
+    "family": "rounded",
+    "radius": {
+      "control": 16,
+      "panel": 20,
+      "chip": 9,
+      "slot": 14
+    }
+  },
+  "radius": {
+    "control": 10,
+    "field": 12,
+    "block": 14,
+    "button": 14,
+    "card": 18,
+    "panel": 22,
+    "sheet": 28,
+    "capsule": 9999
+  }
+}

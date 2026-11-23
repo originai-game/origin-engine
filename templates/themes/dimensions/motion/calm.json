@@ -1,0 +1,17 @@
+{
+  "about": "Slow, settled, no overshoot (storybook, minimal, ink).",
+  "variants": {
+    "Press.feedback": "transition-transform ease-spring-[1600,80] active:scale-98 active:duration-120 active:ease-out",
+    "Modal.frame": "transition ease-spring-[220,30] starting:opacity-0 starting:scale-98 exit:opacity-0 exit:duration-180 exit:ease-exit",
+    "Screen.frame": "transition duration-400 ease-out starting:opacity-0 exit:opacity-0 exit:duration-180 exit:ease-exit",
+    "List.cascade": "stagger-60/600",
+    "List.item": "animate-rise",
+    "Count.roll": "transition-count duration-600 ease-out",
+    "Reward.pop": "animate-rise",
+    "Tab.indicator": "transition-layout ease-spring-[300,34] glide-tab",
+    "Bar.fill": "transition-layout duration-400 ease-out",
+    "Bar.trail": "transition-layout duration-500 delay-500 ease-out",
+    "Attention.cue": "animate-nudge",
+    "Modal.scrim": "absolute inset-0 bg-scrim transition-opacity duration-260 ease-out starting:opacity-0 exit:opacity-0 exit:duration-180 exit:ease-exit"
+  }
+}

@@ -1355,4 +1355,190 @@ mod tests {
         }
         assert!(wrong.is_empty(), "differ from the Python: {wrong:?}");
     }
+
+    /// Every value of the theme dimension data (`templates/themes/dimensions/`)
+    /// names files that exist and are pinned, fonts by the family names the
+    /// files themselves give, and only keys the default pack declares; every
+    /// material, shape and ornament draws through the generator.
+    ///
+    /// Ways this could fail: a family typed as it is spelt on a website
+    /// rather than in the file (tactical's display face never applied), a
+    /// clip or texture renamed or never pinned, a token or slot name the
+    /// pack does not have, an art layer the generator does not know.
+    #[test]
+    fn the_theme_dimensions_name_real_things_and_draw() {
+        let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+        let templates = root.join("templates");
+        let read = |p: &Path| -> Value {
+            serde_json::from_str(&std::fs::read_to_string(p).unwrap())
+                .unwrap_or_else(|e| panic!("{}: {e}", p.display()))
+        };
+        let pack = read(&root.join("crates/og-ui-next/default/pack.json"));
+        let pinned: Vec<String> = read(&templates.join("og-assets.json"))["files"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|f| f["path"].as_str().unwrap().to_owned())
+            .collect();
+        let mut bad = Vec::new();
+        let file = |bad: &mut Vec<String>, at: &str, name: &str| -> Option<PathBuf> {
+            let rel = name.strip_prefix('@').unwrap_or(name);
+            let p = templates.join(rel);
+            if !pinned.iter().any(|f| f == rel) {
+                bad.push(format!("{at}: {name} is not pinned"));
+            }
+            if p.exists() {
+                Some(p)
+            } else {
+                bad.push(format!(
+                    "{at}: {name} is missing (bun scripts/assets.ts ensure templates)"
+                ));
+                None
+            }
+        };
+        let keys = |v: &Value| -> Vec<String> {
+            v.as_object()
+                .map(|o| o.keys().cloned().collect())
+                .unwrap_or_default()
+        };
+        let dims = templates.join("themes/dimensions");
+        let values = |dim: &str| -> Vec<(String, Value)> {
+            let mut out: Vec<_> = std::fs::read_dir(dims.join(dim))
+                .unwrap()
+                .map(|e| e.unwrap().path())
+                .map(|p| {
+                    (
+                        p.file_stem().unwrap().to_string_lossy().into_owned(),
+                        read(&p),
+                    )
+                })
+                .collect();
+            out.sort_by(|a, b| a.0.cmp(&b.0));
+            out
+        };
+        let unknown = |bad: &mut Vec<String>, at: &str, got: &Value, of: &Value| {
+            for k in keys(got) {
+                if of.get(&k).is_none() {
+                    bad.push(format!("{at}: the default pack has no `{k}`"));
+                }
+            }
+        };
+
+        // type: fonts exist, and the families named are the files' own
+        for (name, v) in values("type") {
+            let at = format!("type/{name}");
+            let mut fonts = og_text::fonts::Collection::new();
+            let mut have = Vec::new();
+            for f in v["fonts"].as_array().unwrap() {
+                let Some(p) = file(&mut bad, &at, f.as_str().unwrap()) else {
+                    continue;
+                };
+                let id = fonts
+                    .add(std::sync::Arc::new(std::fs::read(&p).unwrap()))
+                    .unwrap();
+                have.push(fonts.family_name(id).unwrap().to_owned());
+            }
+            let named = v["families"]
+                .as_object()
+                .unwrap()
+                .values()
+                .chain(v.get("cjk"));
+            for family in named.filter_map(Value::as_str) {
+                if !have.iter().any(|h| h == family) {
+                    bad.push(format!(
+                        "{at}: no font is family \"{family}\" (the files: {have:?})"
+                    ));
+                }
+            }
+            unknown(
+                &mut bad,
+                &at,
+                &v["fontFamily"],
+                &pack["theme"]["fontFamily"],
+            );
+            unknown(&mut bad, &at, &v["tracking"], &pack["theme"]["tracking"]);
+        }
+        for (name, v) in values("sound") {
+            let at = format!("sound/{name}");
+            unknown(&mut bad, &at, &v["sounds"], &pack["sounds"]);
+            for cue in v["sounds"].as_object().unwrap().values() {
+                for c in cue["clips"].as_array().into_iter().flatten() {
+                    file(&mut bad, &at, c.as_str().unwrap());
+                }
+            }
+        }
+        for (name, v) in values("effects") {
+            for t in v["textures"].as_array().unwrap() {
+                file(&mut bad, &format!("effects/{name}"), t.as_str().unwrap());
+            }
+        }
+        for (name, v) in values("icons") {
+            let at = format!("icons/{name}");
+            let set = v["set"].as_str().unwrap();
+            if !templates.join(set.trim_start_matches('@')).exists() {
+                bad.push(format!("{at}: no icon set {set}"));
+            }
+            unknown(&mut bad, &at, &v["colors"], &pack["theme"]["colors"]);
+        }
+        let slots: Vec<String> = keys(&values("motion")[0].1["variants"]);
+        for (name, v) in values("motion") {
+            let at = format!("motion/{name}");
+            unknown(&mut bad, &at, &v["variants"], &pack["variants"]);
+            if keys(&v["variants"]) != slots {
+                bad.push(format!("{at}: sets other motion slots than {slots:?}"));
+            }
+        }
+        for (name, v) in values("shape") {
+            if keys(&v["radius"]) != keys(&pack["theme"]["radius"]) {
+                bad.push(format!(
+                    "shape/{name}: radius keys differ from the default pack's"
+                ));
+            }
+        }
+
+        // the art: each material, shape and ornament draws (with the parity
+        // fixture's first palette standing in for a resolved colour)
+        let specs: Value = serde_json::from_str(include_str!(
+            "../../../../templates/tools/theme-art-specs.json"
+        ))
+        .unwrap();
+        let base = specs.as_object().unwrap().values().next().unwrap().clone();
+        let mut draws = |at: String, material: &Value, shape: &Value, ornament: Option<&Value>| {
+            let mut spec = base.clone();
+            spec["material"] = material.clone();
+            spec["shape"] = shape.clone();
+            spec["ornament"] = ornament.map_or(
+                json!({}),
+                |o| json!({"button": o, "panel": o, "plate": o, "slot": o, "chip": o}),
+            );
+            if let Err(e) = draw(&spec) {
+                bad.push(format!("{at}: {e}"));
+            }
+        };
+        let round = values("shape")
+            .into_iter()
+            .find(|s| s.0 == "round")
+            .unwrap()
+            .1;
+        let flat = values("material")
+            .into_iter()
+            .find(|s| s.0 == "flat")
+            .unwrap()
+            .1;
+        for (name, v) in values("material") {
+            draws(format!("material/{name}"), &v["art"], &round["art"], None);
+        }
+        for (name, v) in values("shape") {
+            draws(format!("shape/{name}"), &flat["art"], &v["art"], None);
+        }
+        for (name, v) in values("ornament") {
+            draws(
+                format!("ornament/{name}"),
+                &flat["art"],
+                &round["art"],
+                Some(&v["art"]),
+            );
+        }
+        assert!(bad.is_empty(), "{}", bad.join("\n"));
+    }
 }

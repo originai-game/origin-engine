@@ -1,0 +1,116 @@
+{
+  "about": "Glossy plastic: a thick outline, a two-tone face under a gloss band, a deep lip a press sinks into (Royal Match, Brawl Stars).",
+  "art": {
+    "drop": {
+      "dy": 1.5,
+      "blur": 1.0,
+      "alpha": 0.35
+    },
+    "outline": {
+      "width": 2.5
+    },
+    "lip": {
+      "height": 6,
+      "top": {
+        "mix": [
+          "bottom",
+          "#000000",
+          0.35
+        ]
+      },
+      "bottom": {
+        "mix": [
+          "bottom",
+          "#000000",
+          0.5
+        ]
+      }
+    },
+    "face": {
+      "split": 0.55
+    },
+    "gloss": {
+      "band": 0.42,
+      "alpha": [
+        0.5,
+        0.1
+      ],
+      "inset": 3,
+      "radius": 16
+    },
+    "shade": {
+      "frac": 0.25,
+      "alpha": 0.12
+    },
+    "sunk": {
+      "depth": 12,
+      "alpha": 0.3,
+      "lip": 0.5
+    },
+    "press": {
+      "dy": 4
+    }
+  },
+  "scheme": "dark",
+  "faces": {
+    "button": {
+      "hue": "a",
+      "l": [
+        0.84,
+        0.7
+      ],
+      "c": 0.13
+    },
+    "panel": {
+      "hue": "n",
+      "l": [
+        0.3,
+        0.24
+      ],
+      "c": 0.12
+    },
+    "plate": {
+      "hue": "n",
+      "l": [
+        0.32,
+        0.26
+      ],
+      "c": 0.13
+    },
+    "chip": {
+      "hue": "n",
+      "l": [
+        0.34,
+        0.28
+      ],
+      "c": 0.14
+    },
+    "slot": {
+      "hue": "n",
+      "l": [
+        0.28,
+        0.36
+      ],
+      "c": 0.1
+    },
+    "field": {
+      "hue": "n",
+      "l": [
+        0.25,
+        0.31
+      ],
+      "c": 0.08
+    }
+  },
+  "primary": {
+    "l": [
+      0.86,
+      0.74
+    ],
+    "c": 0.12
+  },
+  "text": {
+    "min": 0.0,
+    "max": 0.36
+  }
+}

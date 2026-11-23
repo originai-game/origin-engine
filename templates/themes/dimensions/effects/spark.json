@@ -1,0 +1,10 @@
+{
+  "about": "Hot sparks and shards (metal, scifi).",
+  "textures": [
+    "@styles/shared/fx/shard.png",
+    "@styles/shared/fx/glint.png",
+    "@styles/shared/fx/ring.png"
+  ],
+  "textGlow": 0.2,
+  "shadow": "drop"
+}

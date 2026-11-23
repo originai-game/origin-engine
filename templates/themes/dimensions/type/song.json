@@ -1,0 +1,23 @@
+{
+  "about": "Noto Serif SC throughout with Cinzel figures: guofeng, wuxia (no licensed calligraphy face yet).",
+  "fonts": [
+    "@styles/cjk/NotoSerifSC[wght].ttf"
+  ],
+  "families": {
+    "rounded": "Noto Serif SC",
+    "display": "Noto Serif SC",
+    "sans": "Noto Serif SC",
+    "mono": "Noto Serif SC"
+  },
+  "cjk": null,
+  "fontFamily": {
+    "display": "\"Noto Serif SC\", -apple-system, system-ui, \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+    "mono": "\"Noto Serif SC\", ui-monospace, Menlo, monospace",
+    "rounded": "\"Noto Serif SC\", ui-rounded, system-ui, \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+    "sans": "\"Noto Serif SC\", -apple-system, system-ui, \"PingFang SC\", \"Microsoft YaHei\", sans-serif"
+  },
+  "tracking": {
+    "kicker": 0.3,
+    "label": 0.2
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "about": "Flat ink: the rim in the text colour, no gloss, no drop.",
+  "set": "@styles/shared/icons/game.ogt",
+  "colors": {
+    "icon-outline": "fg",
+    "icon-shadow": "#00000000",
+    "icon-gloss": "#ffffff00",
+    "icon-shade": "#00000024"
+  }
+}

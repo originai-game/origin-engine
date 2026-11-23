@@ -1,0 +1,82 @@
+{
+  "about": "Pixel surface: a 1-point bevel, no blur or drop (retro platformers).",
+  "art": {
+    "outline": {
+      "width": 1
+    },
+    "bevel": {
+      "width": 1,
+      "hi": 0.45,
+      "lo": 0.35
+    },
+    "sunk": {
+      "depth": 4,
+      "alpha": 0.3
+    },
+    "press": {
+      "dy": 1
+    }
+  },
+  "scheme": "dark",
+  "faces": {
+    "button": {
+      "hue": "n",
+      "l": [
+        0.5,
+        0.4
+      ],
+      "c": 0.06
+    },
+    "panel": {
+      "hue": "n",
+      "l": [
+        0.3,
+        0.24
+      ],
+      "c": 0.06
+    },
+    "plate": {
+      "hue": "n",
+      "l": [
+        0.26,
+        0.2
+      ],
+      "c": 0.05
+    },
+    "chip": {
+      "hue": "n",
+      "l": [
+        0.42,
+        0.34
+      ],
+      "c": 0.06
+    },
+    "slot": {
+      "hue": "n",
+      "l": [
+        0.18,
+        0.24
+      ],
+      "c": 0.05
+    },
+    "field": {
+      "hue": "n",
+      "l": [
+        0.16,
+        0.2
+      ],
+      "c": 0.04
+    }
+  },
+  "primary": {
+    "l": [
+      0.66,
+      0.54
+    ],
+    "c": 0.12
+  },
+  "text": {
+    "min": 0.0,
+    "max": 0.36
+  }
+}

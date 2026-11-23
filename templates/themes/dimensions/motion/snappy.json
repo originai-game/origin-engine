@@ -1,0 +1,17 @@
+{
+  "about": "Short and stiff (tactical, scifi).",
+  "variants": {
+    "Press.feedback": "transition-transform ease-spring-[3200,110] active:scale-96 active:duration-50 active:ease-out",
+    "Modal.frame": "transition ease-spring-[520,46] starting:opacity-0 starting:scale-96 exit:opacity-0 exit:duration-120 exit:ease-exit",
+    "Screen.frame": "transition duration-120 ease-out starting:opacity-0 exit:opacity-0 exit:duration-80 exit:ease-exit",
+    "List.cascade": "stagger-25/250",
+    "List.item": "animate-rise",
+    "Count.roll": "transition-count duration-250 ease-out",
+    "Reward.pop": "animate-pop",
+    "Tab.indicator": "transition-layout ease-spring-[700,52] glide-tab",
+    "Bar.fill": "transition-layout duration-160 ease-out",
+    "Bar.trail": "transition-layout duration-250 delay-300 ease-out",
+    "Attention.cue": "animate-nudge",
+    "Modal.scrim": "absolute inset-0 bg-scrim transition-opacity duration-120 ease-out starting:opacity-0 exit:opacity-0 exit:duration-80 exit:ease-exit"
+  }
+}

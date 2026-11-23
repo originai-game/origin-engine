@@ -1,0 +1,118 @@
+{
+  "about": "Crystal chimes and airy bells: premium RPG.",
+  "sounds": {
+    "press": {
+      "clips": [
+        "@styles/shared/sfx/glass/tap.ogg"
+      ],
+      "volume": [
+        0.45,
+        0.5
+      ],
+      "pitch": [
+        0.96,
+        1.04
+      ]
+    },
+    "hover": {
+      "clips": [
+        "@styles/shared/sfx/glass/tap.ogg"
+      ],
+      "volume": 0.12,
+      "pitch": [
+        1.18,
+        1.26
+      ]
+    },
+    "select": {
+      "clips": [
+        "@styles/shared/sfx/glass/tab.ogg"
+      ],
+      "volume": 0.5,
+      "pitch": [
+        0.98,
+        1.02
+      ]
+    },
+    "toggle": {
+      "clips": [
+        "@styles/shared/sfx/glass/toggle.ogg"
+      ],
+      "volume": 0.5,
+      "pitch": [
+        0.98,
+        1.02
+      ]
+    },
+    "tab": {
+      "clips": [
+        "@styles/shared/sfx/glass/tab.ogg"
+      ],
+      "volume": 0.5,
+      "pitch": [
+        0.98,
+        1.02
+      ]
+    },
+    "countdown": {
+      "clips": [
+        "@styles/shared/sfx/glass/countdown.ogg"
+      ],
+      "volume": 0.6
+    },
+    "back": {
+      "clips": [
+        "@styles/shared/sfx/glass/back.ogg"
+      ],
+      "volume": 0.5
+    },
+    "cancel": {
+      "clips": [
+        "@styles/shared/sfx/glass/back.ogg"
+      ],
+      "volume": 0.5
+    },
+    "close": {
+      "clips": [
+        "@styles/shared/sfx/glass/close.ogg"
+      ],
+      "volume": 0.45
+    },
+    "open": {
+      "clips": [
+        "@styles/shared/sfx/glass/open.ogg"
+      ],
+      "volume": 0.45
+    },
+    "confirm": {
+      "clips": [
+        "@styles/shared/sfx/glass/confirm.ogg"
+      ],
+      "volume": 0.55
+    },
+    "error": {
+      "clips": [
+        "@styles/shared/sfx/glass/error.ogg"
+      ],
+      "volume": 0.55
+    },
+    "purchase": {
+      "clips": [
+        "@styles/shared/sfx/glass/purchase.ogg"
+      ],
+      "volume": 0.6
+    },
+    "reward": {
+      "clips": [
+        "@styles/shared/sfx/glass/reward.ogg"
+      ],
+      "volume": 0.5
+    },
+    "levelup": {
+      "clips": [
+        "@styles/shared/sfx/glass/levelup.ogg"
+      ],
+      "volume": 0.55
+    }
+  }
+}

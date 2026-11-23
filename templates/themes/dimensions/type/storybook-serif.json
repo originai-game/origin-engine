@@ -1,0 +1,22 @@
+{
+  "about": "Cinzel display, Newsreader text: illustrated, literary.",
+  "fonts": [
+    "@styles/shared/Cinzel[wght].ttf",
+    "@styles/shared/Newsreader[opsz,wght].ttf",
+    "@styles/cjk/NotoSerifSC[wght].ttf"
+  ],
+  "families": {
+    "rounded": "Newsreader",
+    "display": "Cinzel",
+    "sans": "Newsreader",
+    "mono": "Newsreader"
+  },
+  "cjk": "Noto Serif SC",
+  "fontFamily": {
+    "display": "\"Cinzel\", \"Noto Serif SC\", -apple-system, system-ui, \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+    "mono": "\"Newsreader\", \"Noto Serif SC\", ui-monospace, Menlo, monospace",
+    "rounded": "\"Newsreader\", \"Noto Serif SC\", ui-rounded, system-ui, \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+    "sans": "\"Newsreader\", \"Noto Serif SC\", -apple-system, system-ui, \"PingFang SC\", \"Microsoft YaHei\", sans-serif"
+  },
+  "tracking": {}
+}

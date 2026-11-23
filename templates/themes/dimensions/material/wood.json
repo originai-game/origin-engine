@@ -1,0 +1,100 @@
+{
+  "about": "Planed wood: rings along the stretch, a bevelled edge (fantasy taverns, CRPG inventories).",
+  "art": {
+    "drop": {
+      "dy": 1.5,
+      "blur": 1.2,
+      "alpha": 0.45
+    },
+    "outline": {
+      "width": 1.5
+    },
+    "grain": {
+      "kind": "wood",
+      "cell": 2.2,
+      "strength": 0.08,
+      "color": {
+        "mix": [
+          "bottom",
+          "outline",
+          0.55
+        ]
+      },
+      "seed": 9
+    },
+    "bevel": {
+      "width": 2,
+      "hi": 0.22,
+      "lo": 0.3
+    },
+    "sunk": {
+      "depth": 10,
+      "alpha": 0.35
+    },
+    "press": {
+      "dy": 1.5
+    }
+  },
+  "scheme": "dark",
+  "faces": {
+    "button": {
+      "hue": "n",
+      "l": [
+        0.5,
+        0.38
+      ],
+      "c": 0.08
+    },
+    "panel": {
+      "hue": "n",
+      "l": [
+        0.4,
+        0.3
+      ],
+      "c": 0.07
+    },
+    "plate": {
+      "hue": "n",
+      "l": [
+        0.34,
+        0.26
+      ],
+      "c": 0.06
+    },
+    "chip": {
+      "hue": "n",
+      "l": [
+        0.46,
+        0.36
+      ],
+      "c": 0.08
+    },
+    "slot": {
+      "hue": "n",
+      "l": [
+        0.22,
+        0.3
+      ],
+      "c": 0.05
+    },
+    "field": {
+      "hue": "n",
+      "l": [
+        0.2,
+        0.26
+      ],
+      "c": 0.04
+    }
+  },
+  "primary": {
+    "l": [
+      0.66,
+      0.54
+    ],
+    "c": 0.12
+  },
+  "text": {
+    "min": 0.0,
+    "max": 0.36
+  }
+}

@@ -1,0 +1,100 @@
+{
+  "about": "Carved stone: a two-scale mottled grain, a chiselled bevel (dungeons, ruins).",
+  "art": {
+    "drop": {
+      "dy": 1.5,
+      "blur": 1.4,
+      "alpha": 0.5
+    },
+    "outline": {
+      "width": 1.5
+    },
+    "grain": {
+      "kind": "stone",
+      "cell": 10,
+      "strength": 0.06,
+      "color": {
+        "mix": [
+          "bottom",
+          "outline",
+          0.55
+        ]
+      },
+      "seed": 6
+    },
+    "bevel": {
+      "width": 2,
+      "hi": 0.2,
+      "lo": 0.35
+    },
+    "sunk": {
+      "depth": 10,
+      "alpha": 0.4
+    },
+    "press": {
+      "dy": 1.5
+    }
+  },
+  "scheme": "dark",
+  "faces": {
+    "button": {
+      "hue": "n",
+      "l": [
+        0.52,
+        0.44
+      ],
+      "c": 0.02
+    },
+    "panel": {
+      "hue": "n",
+      "l": [
+        0.36,
+        0.3
+      ],
+      "c": 0.015
+    },
+    "plate": {
+      "hue": "n",
+      "l": [
+        0.32,
+        0.26
+      ],
+      "c": 0.015
+    },
+    "chip": {
+      "hue": "n",
+      "l": [
+        0.46,
+        0.38
+      ],
+      "c": 0.02
+    },
+    "slot": {
+      "hue": "n",
+      "l": [
+        0.2,
+        0.26
+      ],
+      "c": 0.01
+    },
+    "field": {
+      "hue": "n",
+      "l": [
+        0.2,
+        0.25
+      ],
+      "c": 0.01
+    }
+  },
+  "primary": {
+    "l": [
+      0.62,
+      0.5
+    ],
+    "c": 0.12
+  },
+  "text": {
+    "min": 0.0,
+    "max": 0.36
+  }
+}

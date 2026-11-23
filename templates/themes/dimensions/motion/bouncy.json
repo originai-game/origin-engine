@@ -1,0 +1,17 @@
+{
+  "about": "Material's expressive scheme: overshoot and pop (cartoon, candy).",
+  "variants": {
+    "Press.feedback": "transition-transform ease-spring-[1800,22] active:scale-90 active:duration-50 active:ease-out",
+    "Modal.frame": "transition ease-spring-[300,11] starting:opacity-0 starting:scale-75 exit:opacity-0 exit:scale-90 exit:duration-120 exit:ease-exit",
+    "Screen.frame": "transition ease-spring-[300,18] starting:opacity-0 starting:scale-95 exit:opacity-0 exit:duration-120 exit:ease-exit",
+    "List.cascade": "stagger-50/500",
+    "List.item": "animate-pop",
+    "Count.roll": "transition-count duration-500 ease-out",
+    "Reward.pop": "animate-pop",
+    "Tab.indicator": "transition-layout ease-spring-[420,18] glide-tab",
+    "Bar.fill": "transition-layout ease-spring-[300,20]",
+    "Bar.trail": "transition-layout duration-350 delay-450 ease-out",
+    "Attention.cue": "animate-nudge",
+    "Modal.scrim": "absolute inset-0 bg-scrim transition-opacity duration-180 ease-out starting:opacity-0 exit:opacity-0 exit:duration-120 exit:ease-exit"
+  }
+}

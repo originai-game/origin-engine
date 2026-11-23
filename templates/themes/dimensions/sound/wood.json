@@ -1,0 +1,118 @@
+{
+  "about": "Hollow wood knocks and marimba: fantasy.",
+  "sounds": {
+    "press": {
+      "clips": [
+        "@styles/shared/sfx/wood/tap.ogg"
+      ],
+      "volume": [
+        0.45,
+        0.5
+      ],
+      "pitch": [
+        0.96,
+        1.04
+      ]
+    },
+    "hover": {
+      "clips": [
+        "@styles/shared/sfx/wood/tap.ogg"
+      ],
+      "volume": 0.12,
+      "pitch": [
+        1.18,
+        1.26
+      ]
+    },
+    "select": {
+      "clips": [
+        "@styles/shared/sfx/wood/tab.ogg"
+      ],
+      "volume": 0.5,
+      "pitch": [
+        0.98,
+        1.02
+      ]
+    },
+    "toggle": {
+      "clips": [
+        "@styles/shared/sfx/wood/toggle.ogg"
+      ],
+      "volume": 0.5,
+      "pitch": [
+        0.98,
+        1.02
+      ]
+    },
+    "tab": {
+      "clips": [
+        "@styles/shared/sfx/wood/tab.ogg"
+      ],
+      "volume": 0.5,
+      "pitch": [
+        0.98,
+        1.02
+      ]
+    },
+    "countdown": {
+      "clips": [
+        "@styles/shared/sfx/wood/countdown.ogg"
+      ],
+      "volume": 0.6
+    },
+    "back": {
+      "clips": [
+        "@styles/shared/sfx/wood/back.ogg"
+      ],
+      "volume": 0.5
+    },
+    "cancel": {
+      "clips": [
+        "@styles/shared/sfx/wood/back.ogg"
+      ],
+      "volume": 0.5
+    },
+    "close": {
+      "clips": [
+        "@styles/shared/sfx/wood/close.ogg"
+      ],
+      "volume": 0.45
+    },
+    "open": {
+      "clips": [
+        "@styles/shared/sfx/wood/open.ogg"
+      ],
+      "volume": 0.45
+    },
+    "confirm": {
+      "clips": [
+        "@styles/shared/sfx/wood/confirm.ogg"
+      ],
+      "volume": 0.55
+    },
+    "error": {
+      "clips": [
+        "@styles/shared/sfx/wood/error.ogg"
+      ],
+      "volume": 0.55
+    },
+    "purchase": {
+      "clips": [
+        "@styles/shared/sfx/wood/purchase.ogg"
+      ],
+      "volume": 0.6
+    },
+    "reward": {
+      "clips": [
+        "@styles/shared/sfx/wood/reward.ogg"
+      ],
+      "volume": 0.5
+    },
+    "levelup": {
+      "clips": [
+        "@styles/shared/sfx/wood/levelup.ogg"
+      ],
+      "volume": 0.55
+    }
+  }
+}

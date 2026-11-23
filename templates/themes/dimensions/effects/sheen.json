@@ -1,0 +1,9 @@
+{
+  "about": "A moving light sweep and sparkles (glass, plastic).",
+  "textures": [
+    "@styles/shared/fx/sparkle.png",
+    "@styles/shared/fx/ray.png"
+  ],
+  "textGlow": 0.0,
+  "shadow": "drop"
+}

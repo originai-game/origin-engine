@@ -1,0 +1,29 @@
+{
+  "about": "Two chamfered corners, top left and bottom right (tactical).",
+  "art": {
+    "family": "cut",
+    "cut": {
+      "control": 5,
+      "panel": 6,
+      "chip": 3,
+      "slot": 5,
+      "badge": 4
+    },
+    "radius": {
+      "control": 1,
+      "panel": 1,
+      "chip": 1,
+      "slot": 1
+    }
+  },
+  "radius": {
+    "control": 0,
+    "field": 0,
+    "block": 0,
+    "button": 0,
+    "card": 0,
+    "panel": 0,
+    "sheet": 0,
+    "capsule": 9999
+  }
+}
