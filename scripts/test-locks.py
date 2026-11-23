@@ -18,6 +18,11 @@ class Locks(unittest.TestCase):
         self.jobs = []
         self.named = {}
         self.addCleanup(self.stop_jobs)
+        self.bin = self.root / 'bin'
+        self.bin.mkdir()
+        query = self.bin / 'nvidia-smi'
+        query.write_text('#!/bin/sh\necho 23034\n')
+        query.chmod(0o755)
         self.script = self.root / 'build.sh'
         self.script.write_text('''#!/bin/sh
 set -eu
@@ -25,7 +30,7 @@ set -eu
 echo $$ > "$ROOT/$1.pid"
 case "$2" in
   gate) og_lock_acquire "$ROOT/gate" "$1" ;;
-  one) og_gpu_acquire "$1" ;;
+  one) og_gpu_acquire "$1" "$BUDGET" ;;
   all) og_gpu_acquire_all "$1" ;;
   shared) og_admission_acquire shared "$1" ;;
   exclusive) og_admission_acquire exclusive "$1" ;;
@@ -56,10 +61,12 @@ while [ ! -f "$ROOT/$1.release" ]; do sleep 0.05; done
                 self.fail('timed out; logs: ' + '\n'.join(p.read_text() for p in self.root.glob('*.log')))
             time.sleep(0.02)
 
-    def start(self, name, kind, slots=1):
+    def start(self, name, kind, slots=1, budget=1024):
         with (self.root / f'{name}.log').open('w') as log:
             job = subprocess.Popen(['sh', str(self.script), name, kind], stdout=log, stderr=log,
                                    env=dict(os.environ, LOCK=str(LOCK), ROOT=str(self.root),
+                                            PATH=str(self.bin) + os.pathsep + os.environ['PATH'],
+                                            BUDGET='' if budget is None else str(budget),
                                             OG_GPU_ROOT=str(self.root / 'gpu'),
                                             OG_GPU_SLOTS='' if slots is None else str(slots),
                                             OG_LOCK_OWNER='', OG_MEASURE_BACKOFF='0'))
@@ -118,12 +125,12 @@ while [ ! -f "$ROOT/$1.release" ]; do sleep 0.05; done
         holders = []
         for i in range(6):
             name = f'holder{i}'
-            holder = self.start(name, 'one', slots=None)
+            holder = self.start(name, 'one', slots=6)
             self.acquired(name)
             holders.append((name, holder))
-        seventh = self.start('seventh', 'one', slots=None)
+        seventh = self.start('seventh', 'one', slots=6)
         self.queued(seventh)
-        self.wait(lambda: 'gpu: all 6 slots busy' in (self.root / 'seventh.log').read_text())
+        self.wait(lambda: 'waiting for 1 of 6 GiB slots' in (self.root / 'seventh.log').read_text())
         self.assertFalse((self.root / 'seventh.acquired').exists())
         self.release(*holders.pop(0))
         self.acquired('seventh')
@@ -132,12 +139,12 @@ while [ ! -f "$ROOT/$1.release" ]; do sleep 0.05; done
         for name, holder in holders:
             if name != 'seventh':
                 self.release(name, holder)
-        exclusive = self.start('all', 'all', slots=None)
+        exclusive = self.start('all', 'all', slots=6)
         self.queued(exclusive)
         barrier = self.root / 'gpu/gpu-all.lock/owner'
         self.wait(lambda: barrier.exists() and barrier.read_text().startswith(f'{self.pid(exclusive)} '))
         self.assertFalse((self.root / 'all.acquired').exists())
-        later = self.start('later', 'one', slots=None)
+        later = self.start('later', 'one', slots=6)
         self.queued(later)
         time.sleep(2.2)
         self.assertFalse((self.root / 'later.acquired').exists(), 'later single bypassed an all-slots waiter')
@@ -150,6 +157,32 @@ while [ ! -f "$ROOT/$1.release" ]; do sleep 0.05; done
         self.release('all', exclusive)
         self.acquired('later')
         self.release('later', later)
+
+    def test_l4_serializes_undeclared_work_and_packs_only_declared_budgets(self):
+        heavy = self.start('heavy', 'one', slots=None, budget=None)
+        self.acquired('heavy')
+        self.assertEqual(len(list((self.root / 'gpu').glob('gpu-slot-*.lock'))), 22)
+        second = self.start('second', 'one', slots=None, budget=None)
+        self.queued(second)
+        self.wait(lambda: 'waiting for 22 of 22 GiB slots' in (self.root / 'second.log').read_text())
+        self.assertFalse((self.root / 'second.acquired').exists())
+        self.release('heavy', heavy)
+        self.acquired('second')
+        self.release('second', second)
+
+        # Round UP: two 10 GiB + 1 MiB reservations exhaust 22 credits.
+        first = self.start('small1', 'one', slots=None, budget=10241)
+        self.acquired('small1')
+        second = self.start('small2', 'one', slots=None, budget=10241)
+        self.acquired('small2')
+        third = self.start('small3', 'one', slots=None, budget=1025)
+        self.queued(third)
+        self.wait(lambda: 'waiting for 2 of 22 GiB slots' in (self.root / 'small3.log').read_text())
+        self.assertFalse((self.root / 'small3.acquired').exists())
+        self.release('small1', first)
+        self.acquired('small3')
+        self.release('small2', second)
+        self.release('small3', third)
 
     def test_ownerless_gpu_locks_are_recovered(self):
         for name in ('gpu-all.lock', 'gpu-slot-1.lock'):

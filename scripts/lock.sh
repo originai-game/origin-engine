@@ -40,7 +40,7 @@ og_temp_prepare() {
 og_gpu_root="${OG_GPU_ROOT:-$HOME/.cache/og-gate}"
 og_gpu_impl() {
   cat <<'OG_GPU_IMPL'
-og_gpu_lock_version=9
+og_gpu_lock_version=10
 
 # Process birth, not command text, identifies an owner after PID reuse.
 # Keep the human-readable owner file compatible with older lanes.
@@ -258,13 +258,12 @@ og_lock_release() {
   return 0
 }
 
-# GPU slots (the owner, 2026-11-04): Metal on macrunner runs a few GPU suites
-# at once, so scoped GPU work (an area's og-tests, `og run --commands`
-# frames, a sheet render) takes one of OG_GPU_SLOTS slots (default 6)
-# instead of the whole machine. Reference pixels do not depend on what else
-# runs; frame-time and perf measurements do, so they take every slot.
+# GPU slots represent GiB of adapter memory, not concurrent processes.
+# Undeclared work reserves the whole adapter: one heavy suite peaks near
+# the L4's capacity. Only a measured, declared smaller budget may share it.
+# Without a memory query the conservative capacity is one slot.
 #
-#   og_gpu_acquire WHAT            one slot, held until exit
+#   og_gpu_acquire WHAT [MiB]      declared budget, or the whole adapter
 #   og_gpu_acquire_all WHAT        every slot (perf, the full gate)
 #
 # Slots are ~/.cache/og-gate/gpu-slot-N.lock directories, taken lowest first;
@@ -279,6 +278,20 @@ og_lock_release() {
 # everyone sources that file, so the newest version on the machine wins for
 # every newly started caller. Already waiting shells retain their functions.
 # Bump og_gpu_lock_version with any change in this implementation.
+og_gpu_capacity() {
+  og_gpu_capacity_value="${OG_GPU_SLOTS:-}"
+  if [ -z "$og_gpu_capacity_value" ]; then
+    og_gpu_memory="$(nvidia-smi --query-gpu=memory.total --format=csv,noheader,nounits 2>/dev/null |
+      awk '$1 ~ /^[0-9]+$/ { if (!m || $1 < m) m = $1 } END { if (m) print int(m / 1024) }' || true)"
+    og_gpu_capacity_value="${og_gpu_memory:-1}"
+  fi
+  case "$og_gpu_capacity_value" in
+    ''|0|*[!0-9]*) echo 'gpu: capacity must be positive' >&2; return 1 ;;
+  esac
+  OG_GPU_CAPACITY="$og_gpu_capacity_value"
+  export OG_GPU_CAPACITY
+}
+
 og_gpu_dead() {
   og_gpu_pid="$(cut -d' ' -f1 "$1/owner" 2>/dev/null || true)"
   if [ -n "$og_gpu_pid" ]; then ! og_owner_alive "$1"; return; fi
@@ -310,20 +323,34 @@ og_gpu_try() { # og_gpu_try N WHAT: take slot N now or fail
 og_gpu_acquire() {
   if [ -n "${OG_GPU_OWNER:-}" ] && og_owner_inherited "$og_gpu_root/gpu-all.lock"; then return 0; fi
   if [ -n "${OG_GPU_SLOT:-}" ] && og_owner_inherited "$og_gpu_root/gpu-slot-$OG_GPU_SLOT.lock"; then return 0; fi
+  og_gpu_capacity || return 1
+  og_gpu_need="$OG_GPU_CAPACITY"
+  if [ -n "${2:-}" ]; then
+    case "$2" in 0|*[!0-9]*) echo 'gpu: budget must be positive MiB' >&2; return 1 ;; esac
+    og_gpu_need=$(( ($2 + 1023) / 1024 ))
+    [ "$og_gpu_need" -le "$OG_GPU_CAPACITY" ] || og_gpu_need="$OG_GPU_CAPACITY"
+  fi
   og_queue_join "$og_gpu_root/gpu-wait-fifo" "$1" || return 1
   og_gpu_said=""
+  og_gpu_taken=0
+  og_gpu_first=""
   while :; do
     if ! og_queue_turn; then sleep 1; continue; fi
     # An exclusive holder (og_gpu_acquire_all) blocks new single slots, so it is not starved.
     if [ ! -d "$og_gpu_root/gpu-all.lock" ] || [ "$(cut -d' ' -f1 "$og_gpu_root/gpu-all.lock/owner" 2>/dev/null)" = "$$" ]; then
       og_gpu_n=1
-      while [ "$og_gpu_n" -le "${OG_GPU_SLOTS:-6}" ]; do
+      while [ "$og_gpu_n" -le "$OG_GPU_CAPACITY" ]; do
         if og_gpu_try "$og_gpu_n" "$1"; then
-          OG_GPU_SLOT="$og_gpu_n"
+          og_gpu_taken=$((og_gpu_taken + 1))
+          [ -n "$og_gpu_first" ] || og_gpu_first="$og_gpu_n"
           OG_LOCK_IDENTITIES="${OG_LOCK_IDENTITIES:-} $(cat "$og_gpu_slot/identity")"
-          export OG_GPU_SLOT OG_LOCK_IDENTITIES
-          og_queue_leave
-          return 0
+          export OG_LOCK_IDENTITIES
+          if [ "$og_gpu_taken" -eq "$og_gpu_need" ]; then
+            OG_GPU_SLOT="$og_gpu_first"
+            export OG_GPU_SLOT
+            og_queue_leave
+            return 0
+          fi
         fi
         og_gpu_n=$((og_gpu_n + 1))
       done
@@ -331,7 +358,7 @@ og_gpu_acquire() {
       rm -rf "$og_gpu_root/gpu-all.lock"
     fi
     if [ -z "$og_gpu_said" ]; then
-      printf '%s\n' "gpu: all ${OG_GPU_SLOTS:-6} slots busy, waiting ($1)" >&2
+      printf '%s\n' "gpu: waiting for $og_gpu_need of $OG_GPU_CAPACITY GiB slots ($1)" >&2
       og_gpu_said=1
     fi
     sleep 2
@@ -340,6 +367,7 @@ og_gpu_acquire() {
 
 og_gpu_acquire_all() {
   if [ -n "${OG_GPU_OWNER:-}" ] && og_owner_inherited "$og_gpu_root/gpu-all.lock"; then return 0; fi
+  og_gpu_capacity || return 1
   og_queue_join "$og_gpu_root/gpu-wait-fifo" "$1" || return 1
   until og_queue_turn; do sleep 1; done
   while ! mkdir "$og_gpu_root/gpu-all.lock" 2>/dev/null; do
@@ -352,7 +380,7 @@ og_gpu_acquire_all() {
   export OG_GPU_OWNER OG_LOCK_IDENTITIES
   og_lock_dirs="${og_lock_dirs:-}${og_lock_dirs:+ }$og_gpu_root/gpu-all.lock"
   og_gpu_n=1
-  while [ "$og_gpu_n" -le "${OG_GPU_SLOTS:-6}" ]; do
+  while [ "$og_gpu_n" -le "$OG_GPU_CAPACITY" ]; do
     until og_gpu_try "$og_gpu_n" "$1"; do sleep 2; done
     og_gpu_n=$((og_gpu_n + 1))
   done

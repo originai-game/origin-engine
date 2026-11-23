@@ -6,16 +6,10 @@
 #   models are cooked once per test build), so those tests run in parallel;
 # - a test that asserts a wall-clock bound runs in the perf lane
 #   (scripts/perf.sh, under exclusive admission), never in the gate;
-# - GPU-bound binaries share a group, and the longest work starts first.
-
-[test-groups]
-# GPU-bound binaries: beyond a few at once they only share one adapter and
-# compile the same shaders in parallel; the other slots stay for CPU tests.
-gpu = { max-threads = 4 }
-
-[[profile.default.overrides]]
-filter = 'package(og-tests) | package(og-tests-cooked) | package(og-render)'
-test-group = 'gpu'
+# - the gate schedules GPU tests by GiB, not a fixed process count. It
+#   appends a profile.gpu override reserving the whole adapter by default.
+#   A measured smaller budget belongs in profile.gpu.overrides here as
+#   threads-required = ceil(peak MiB / 1024); see docs/ci.md §The GPU host.
 
 # Determinism runs that step two worlds on two threads take two slots. The
 # 500-body pile reports, never asserts, its seconds, so it needs no more
@@ -31,7 +25,7 @@ test(the_pile_is_deterministic_and_a_restore_at_tick_1800_ends_in_the_same_world
 threads-required = 2
 
 # The long poles start first: og-tests and og-tests-cooked are the most
-# work behind the narrowest group (gpu, 4 at once), and og-cook's cooks,
+# GPU work, and og-cook's cooks,
 # the pile and the walk are the longest single tests. Started last, they
 # set the wall time.
 [[profile.default.overrides]]
@@ -57,6 +51,8 @@ test-threads = 2
 path = "junit.xml"
 
 [profile.gpu]
-test-threads = 2
+# Direct nextest invocations are conservative too; the gate supplies its
+# adapter-sized credit pool and per-test reservations.
+test-threads = 1
 [profile.gpu.junit]
 path = "junit.xml"

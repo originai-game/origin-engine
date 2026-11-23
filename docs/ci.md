@@ -132,6 +132,26 @@ and stops itself after 30 idle minutes. The former `gcp-l4` orb is retired;
 the sections below that name it describe the same steps, now run on Colab.
 The compatibility hosts are listed in AGENTS.md §Building and testing.
 
+GPU concurrency is a memory reservation, not a fixed four-test group.
+`scripts/lock.sh` queries the adapter's total memory with `nvidia-smi` and
+rounds down to GiB credits (22 on the 23,034 MiB L4); without a memory query
+it permits one credit. Work without a declared budget takes the whole
+adapter. This serializes og-tests GPU, clouds and particles on the L4:
+one serial test has already peaked at 22,275 MiB. A parallel-only OOM that
+passes alone is pressure, not a correctness failure; report both runs.
+
+`rust-gpu` reserves the adapter, then nextest shares those same GiB credits
+among tests. Undeclared tests reserve every credit. Only a measured smaller
+peak may enable overlap: declare the test's filter and
+`threads-required = ceil(peak MiB / 1024)` in a `profile.gpu.overrides`
+entry of `.config/nextest.toml`. Include headroom in that measured budget;
+clouds, particles and other undeclared cases must not inherit a small
+budget. Other GPU callers may pass their measured MiB budget as the second
+argument to `og_gpu_acquire`; omitting it reserves the whole adapter.
+`OG_GPU_SLOTS` overrides the credit capacity for lock tests, not a process
+count. `OG_GATE_THREADS` controls CPU nextest concurrency; GPU nextest uses
+the adapter-sized credit pool instead. Timing runs still reserve it all.
+
 `scripts/gpu-env.sh` holds the Vulkan/NVIDIA pins and sets no gate
 overrides, so it can also be sourced for landing (`scripts/release.sh`
 sources it). The former L4 milestone runner (`scripts/gpu-milestone.sh`)

@@ -213,9 +213,25 @@ def run(kind):
         # reported unchecked, never drawn on the CPU. OG_RENDERER=software
         # asks for it explicitly.
         env.setdefault('OG_RENDERER', 'hardware')
+    threads = os.environ['OG_GATE_THREADS']
+    gpu_config = None
+    if kind == 'gpu':
+        # step.sh reserves the adapter. One nextest thread is one GiB;
+        # undeclared tests take the whole pool. Earlier explicit per-test
+        # budgets in the checked-in config win over this fallback.
+        threads = os.environ['OG_GPU_CAPACITY']
+        gpu_config = LOGS / 'gpu-nextest.toml'
+        gpu_config.write_text((ROOT / '.config/nextest.toml').read_text() + f'''
+[[profile.gpu.overrides]]
+filter = 'all()'
+threads-required = {threads}
+''')
+        print(f'GPU memory pool: {threads} GiB credits; undeclared tests reserve all', flush=True)
     command = ['cargo', 'nextest', 'run', '--cargo-metadata', str(LOGS / 'cargo.json'),
                '--binaries-metadata', str(LOGS / 'binaries.json'), '--profile', kind,
-               '--test-threads', os.environ['OG_GATE_THREADS'], '-E', ' | '.join(groups)]
+               '--test-threads', threads, '-E', ' | '.join(groups)]
+    if gpu_config:
+        command.extend(['--config-file', str(gpu_config)])
     if kind == 'gpu':
         # Without a hardware adapter every GPU test is skipped: nothing to run
         # is the unchecked report below, not nextest's failure.
