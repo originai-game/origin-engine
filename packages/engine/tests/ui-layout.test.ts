@@ -45,3 +45,24 @@ test("every built-in fixture keeps its controls in reach of a finger and on the 
   const gone = [...known].filter((k) => !found.has(k));
   expect({ added, gone }).toEqual({ added: [], gone: [] });
 }, 900_000);
+
+// HudBar fills to value over max: the port drew value x 100% (2184 of 3420
+// filled the whole well). Its fill is the meter's child at its left with
+// the fill's share of its width; its ghost, at the ghost's share, is wider,
+// and with no ghost it rests at the fill.
+test("a HudBar fills to its value over its max", async () => {
+  const { list, frame, dispose } = await fixtureFrames((p) => p.name === "hud/bar" && (p.fixture === "default" || p.fixture === "mana" || p.fixture === "empty"));
+  const host = HOSTS.find((h) => h.column)!;
+  try {
+    const widths = Object.fromEntries(list.map((page) => {
+      const els = frame(page, host);
+      // The well: the thin box that holds the ghost and the fill.
+      const meter = els.find((e) => e.height > 0 && e.height < 20 && els.some((k) => k.parent === e.id))!;
+      const kids = els.filter((e) => e.parent === meter.id).map((e) => Math.round((e.width / meter.width) * 100) / 100);
+      return [page.fixture, kids.slice(0, 2)];
+    }));
+    expect(widths).toEqual({ default: [0.78, 0.64], mana: [0.72, 0.72], empty: [0, 0] });
+  } finally {
+    dispose();
+  }
+}, 900_000);

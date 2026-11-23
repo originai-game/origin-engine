@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "HudBar",
+      "summary": "HudBar fills to value over max again: since the TSX port its fill was value x 100% wide, so any bar whose max is not 1 (2184 of 3420 health) drew full and a loss never showed. Its ghost now rests at the fill and lags it on a loss (Bar.trail), as BossBar's does, so a loss shows without a ghost prop; a game's ghost still holds it longer."
+    }
+  ]
+}
