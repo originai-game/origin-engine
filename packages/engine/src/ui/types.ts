@@ -68,6 +68,8 @@ export interface HostProps {
   focusGroup?: "stop" | "wrap" | undefined;
   /** With `focusGroup`: focus coming back into it lands on the member it last had. */
   focusMemory?: boolean | undefined;
+  /** With `focusGroup`: the group is one Tab stop (a tab list, a radio group, a toolbar). Tab enters it at its focused member, else its selected, checked or pressed one, else the one it last had, else its first; the arrows move among them all. */
+  focusRoving?: boolean | undefined;
   /** Makes it draggable, carrying this data: a press moved past the slop picks it up, as do Enter, Space or `confirm` on it when focused. */
   draggable?: string | undefined;
   /** Makes it a drop target with this id: a carried node let go over it, or put down while it has the focus, drops here. While a node is carried by the keys, targets are focus stops. */

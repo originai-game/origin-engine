@@ -127,6 +127,9 @@ pub(super) struct Per {
     pub group: Option<bool>,
     pub memory: bool,
     pub last: Option<u32>,
+    /// `focusRoving`: with `focusGroup`, the group is one Tab stop
+    /// (WAI-ARIA's roving tab index, NSH base's `roving.rs`).
+    pub roving: bool,
 }
 
 /// A node being dragged, or a press on one not yet past the slop.
@@ -1710,12 +1713,59 @@ impl Tree {
     /// wrapping (NSH's `tab_stop`), and shows it.
     fn tab(&mut self, back: bool) {
         self.tab_stops();
+        self.rove();
         let stops = &self.input.stops;
         let current = stops.iter().position(|&e| e == self.input.focus);
         let next = nsh::tab_stop(current, stops.len(), back, true);
         let e = next.map_or(NONE, |i| stops[i]);
         self.input.modality = Modality::Keyboard;
         self.focus(e);
+    }
+
+    /// Keeps one stop of each roving group (`focusRoving`) among the Tab
+    /// stops, as NSH base's `Roving` makes only one item focusable: the
+    /// member with the focus, else its selected, checked or pressed member
+    /// (a tab list's, a radio group's), else the one it last had (a
+    /// toolbar's), else its first. The arrows still move
+    /// among all of them.
+    fn rove(&mut self) {
+        let mut stops = std::mem::take(&mut self.input.stops);
+        let mut keep: Vec<(u32, u32)> = Vec::new();
+        let outer = |t: &Tree, e: u32| {
+            let (mut g, mut top) = (t.group_of(e), NONE);
+            while g != NONE {
+                if t.input.per(g).is_some_and(|p| p.roving) {
+                    top = g;
+                }
+                g = t.group_of(g);
+            }
+            top
+        };
+        for &e in &stops {
+            let g = outer(self, e);
+            if g == NONE || keep.iter().any(|k| k.0 == g) {
+                continue;
+            }
+            let members = || stops.iter().copied().filter(|&m| outer(self, m) == g);
+            let current = crate::classes::state::SELECTED
+                | crate::classes::state::CHECKED
+                | crate::classes::state::ARIA_PRESSED;
+            let focus = self.input.focus;
+            let last = self.input.per(g).and_then(|p| p.last);
+            let pick = members()
+                .find(|&m| m == focus)
+                .or_else(|| {
+                    members().find(|&m| self.input.per(m).is_some_and(|p| p.states & current != 0))
+                })
+                .or_else(|| members().find(|&m| Some(m) == last))
+                .unwrap_or(e);
+            keep.push((g, pick));
+        }
+        stops.retain(|&e| {
+            let g = outer(self, e);
+            g == NONE || keep.iter().any(|k| k.1 == e)
+        });
+        self.input.stops = stops;
     }
 
     /// The element's box on screen, as og-ui's navigation reads it.

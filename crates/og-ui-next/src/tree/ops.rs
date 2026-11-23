@@ -1057,6 +1057,10 @@ impl Tree {
                             self.input.per[e as usize].memory =
                                 !matches!(value, "" | "false" | "0" | "null");
                         }
+                        "focusRoving" => {
+                            self.input.per[e as usize].roving =
+                                !matches!(value, "" | "false" | "0" | "null");
+                        }
                         "draggable" => self.input.per[e as usize].drag = value.trim().into(),
                         "dropTarget" => self.input.per[e as usize].drop = value.trim().into(),
                         "knob" => {
@@ -5308,6 +5312,36 @@ mod tests {
         );
         // 4 is under 2; from 4 Up lands on 2, or on 3 when the group
         // remembers it had 3.
+        // A roving group is one Tab stop: Tab enters it at its pressed
+        // member (3), else the member it last had.
+        let mut t = build("row", "stop", false);
+        let mut b = Batch::default();
+        b.op(6).u32(10).str("focusRoving").str("true");
+        b.op(6).u32(3).str("pressed").str("true");
+        t.apply(&b.bytes()).unwrap();
+        let mut order = Vec::new();
+        for _ in 0..3 {
+            t.key("Tab", false, false, false, false);
+            order.push(t.focused_id().unwrap());
+        }
+        assert_eq!(
+            order,
+            [4, 3, 4],
+            "one stop for the group, at its pressed member"
+        );
+        let mut b = Batch::default();
+        b.op(6).u32(3).str("pressed").str("false");
+        t.apply(&b.bytes()).unwrap();
+        t.key("Tab", false, false, false, false);
+        t.nav(Nav::Left);
+        assert_eq!(t.focused_id(), Some(2), "the arrows move inside it");
+        t.key("Tab", false, false, false, false);
+        t.key("Tab", false, false, false, false);
+        assert_eq!(
+            t.focused_id(),
+            Some(2),
+            "it comes back to the member it left"
+        );
         for (memory, lands) in [(false, 2), (true, 3)] {
             let mut t = build("col", "stop", memory);
             t.nav(Nav::Right);
