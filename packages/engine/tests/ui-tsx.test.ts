@@ -835,10 +835,10 @@ test("level path roads meet their discs, the carousel's Next arrow shows, the sh
     const mods = (await import(out)) as Record<string, Record<string, unknown>>;
     loadNativeHost();
     type El = { id: string; parent: string; name: string; role: string; text: string; path: string; x: number; y: number; width: number; height: number };
-    const frameOf = (i: number, fixture: string) => {
+    const frameOf = (i: number, fixture: string, patch: (p: Record<string, unknown>) => Record<string, unknown> = (p) => p) => {
       const mod = mods[`P${i}`]!;
       const Part = Object.entries(mod).find(([k, v]) => /^[A-Z]/.test(k) && typeof v === "function")![1] as (p: unknown) => never;
-      const props = (mod.fixtures as Record<string, Record<string, unknown>>)[fixture]!;
+      const props = patch((mod.fixtures as Record<string, Record<string, unknown>>)[fixture]!);
       const game = og.game({ ui(world) { mount(world, () => View({ class: "absolute left-0 top-0 w-[390px] h-[844px] flex-col", children: Part(props) }), {}); } });
       const created = createEngine(game as unknown as GameToken);
       if (!created.ok) throw new Error(created.reason);
@@ -875,6 +875,19 @@ test("level path roads meet their discs, the carousel's Next arrow shows, the sh
     const tile = shop.filter((e) => e.role === "gridcell" && tag.path.startsWith(`${e.path}/`))[0]!;
     const name = shop.find((e) => e.text === tile.name && e.path.startsWith(`${tile.path}/`))!;
     expect(tag.y + Math.max(tag.height, 12)).toBeLessThanOrEqual(name.y);
+
+    // An offer's image fills its art well; an offer without one shows its icon.
+    const pictured = frameOf(2, "default", (p) => ({ ...p, offers: (p.offers as Array<Record<string, unknown>>).map((o) => (o.id === "potion" ? { ...o, image: 7 } : o)) }));
+    const well = (offer: string) => {
+      const cell = pictured.find((e) => e.role === "gridcell" && e.name === offer)!;
+      const w = pictured.filter((e) => e.path.startsWith(`${cell.path}/`) && e.height === 96 && e.width > 96)[0]!;
+      return pictured.filter((e) => e.path.startsWith(`${w.path}/`) && e.width > 0).map((e) => [e.x - w.x, e.y - w.y, e.width, e.height]);
+    };
+    const potion = pictured.find((e) => e.role === "gridcell" && e.name === "Potion Pack")!;
+    const box = pictured.filter((e) => e.path.startsWith(`${potion.path}/`) && e.height === 96)[0]!;
+    expect(well("Potion Pack")).toContainEqual([0, 0, box.width, 96]);
+    expect(well("Potion Pack").some(([, , w, h]) => w === 48 && h === 48)).toBe(false);
+    expect(well("Map of the Reaches").some(([, , w, h]) => w === 48 && h === 48)).toBe(true);
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }

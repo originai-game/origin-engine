@@ -1,4 +1,5 @@
-import { For, Icon, Scroll, Show, Text, packClass, type UiEvent, View, formatNumber, t } from "@origingame/engine/ui";
+import { For, Icon, Image, Scroll, Show, Text, packClass, type UiEvent, View, formatNumber, t } from "@origingame/engine/ui";
+import type { Texture } from "@origingame/engine";
 import { Button } from "../../controls/button";
 import { Spinner } from "../base/spinner";
 import "./general.en.ogt";
@@ -14,8 +15,8 @@ export interface ShopProps {
   tabs: ReadonlyArray<{ id: string; label: string; count: number }>;
   /** The category shown. */
   tab: string;
-  /** The offers in the shown category, in the game's order: keyed rows of { id, name, icon, detail, rarity, badge, badgeTone, featured, soldOut, owned, affordable }: detail a second line (×500, 7 days); rarity common, uncommon, rare, epic, legendary or mythic, the light behind the art (empty is common); badge a corner tag the game words (−30%, New), empty none, on gold unless badgeTone is success; featured a wide tile; soldOut, owned and affordable the game's verdicts: a sold out, owned or unaffordable (affordable false) tile keeps the focus, is marked disabled, says why in words on its foot and reports nothing. */
-  offers: ReadonlyArray<{ id: string; name: string; icon: string; detail: string; rarity: string; badge: string; badgeTone: string; featured: boolean; soldOut: boolean; owned: boolean; affordable: boolean }>;
+  /** The offers in the shown category, in the game's order: keyed rows of { id, name, icon, image?, detail, rarity, badge, badgeTone, featured, soldOut, owned, affordable }: image the offer's picture filling its art well (a render of the item), 0 or absent shows icon; detail a second line (×500, 7 days); rarity common, uncommon, rare, epic, legendary or mythic, the light behind the art (empty is common); badge a corner tag the game words (−30%, New), empty none, on gold unless badgeTone is success; featured a wide tile; soldOut, owned and affordable the game's verdicts: a sold out, owned or unaffordable (affordable false) tile keeps the focus, is marked disabled, says why in words on its foot and reports nothing. */
+  offers: ReadonlyArray<{ id: string; name: string; icon: string; image?: Texture | 0; detail: string; rarity: string; badge: string; badgeTone: string; featured: boolean; soldOut: boolean; owned: boolean; affordable: boolean }>;
   /** Every offer's price, one row per currency: keyed rows of { id, offer, icon, label, amount, was, short }: offer an offer's id; amount and was (the struck price before a discount, empty none) as the game formats them; label the currency's name; short marks the currency the player lacks. */
   prices: ReadonlyArray<{ id: string; offer: string; icon: string; label: string; amount: string; was: string; short: boolean }>;
   /** The offer the focus rests on; empty is none. */
@@ -121,7 +122,9 @@ export function Shop(props: ShopProps) {
                             <View class="w-full gap-1">
                               <View class={`justify-center items-center w-full h-24 text-border-strong bg-well nine-plate-cut gap-2 compact:h-15`}>
                                 <View class="absolute opacity-26 inset-0" />
-                                <Icon class="size-12 compact:size-9" name={o().icon} />
+                                <Show when={o().image} fallback={<Icon class="size-12 compact:size-9" name={o().icon} />}>
+                                  <Image class="absolute inset-0 size-full object-cover" src={o().image} />
+                                </Show>
                               </View>
                               <Show when={o().featured}>
                                 <Text class={`absolute top-2 left-2 max-w-[calc(50%-12px)] bg-hud-accent text-hud-accent-fg text-xs font-bold tracking-label uppercase leading-tight whitespace-nowrap text-ellipsis nine-plate-cut py-0.5 px-1 overflow-hidden`}>
@@ -188,7 +191,9 @@ export function Shop(props: ShopProps) {
                           <View class="w-full gap-1">
                             <View class={`justify-center items-center w-full h-24 text-border-strong bg-well nine-plate-cut gap-2 compact:h-15`}>
                               <View class="absolute opacity-26 inset-0" />
-                              <Icon class="size-12 compact:size-9" name={o().icon} />
+                              <Show when={o().image} fallback={<Icon class="size-12 compact:size-9" name={o().icon} />}>
+                                  <Image class="absolute inset-0 size-full object-cover" src={o().image} />
+                                </Show>
                             </View>
                             <Show when={o().featured}>
                               <Text class={`absolute top-2 left-2 max-w-[calc(50%-12px)] bg-hud-accent text-hud-accent-fg text-xs font-bold tracking-label uppercase leading-tight whitespace-nowrap text-ellipsis nine-plate-cut py-0.5 px-1 overflow-hidden`}>
