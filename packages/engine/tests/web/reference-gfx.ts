@@ -55,6 +55,7 @@ import { serve } from "./serve.ts";
 import { decodePng, encodePng, encodePngBest, type Image } from "../../src/node/png.ts";
 import { adapterName } from "../../src/web/webgpu.ts";
 import { compareFrames as compare, RECORDING, TOLERANCE, type Tolerance as Limit } from "../support/png.ts";
+import { buildGfxWasm } from "../support/gfx-build.ts";
 import { createRequire } from "node:module";
 
 const { cpus, loadavg } = createRequire(import.meta.url)("node:os") as { cpus(): { model: string }[]; loadavg(): number[] };
@@ -123,13 +124,7 @@ const dist = join(work, "site");
 if (!args.includes("--prebuilt")) {
   const targetDir = join(process.env.CARGO_TARGET_DIR ? resolve(repo, process.env.CARGO_TARGET_DIR) : join(repo, "target"), "wasm-gfx");
   const profile = opt("--time") || perfOut ? "wasm" : "wasm-test";
-  const messages = run(["cargo", "build", "--profile", profile, "--target", "wasm32-unknown-unknown", "--target-dir", targetDir, "-p", "og-tests-web", "--lib", "--message-format=json-render-diagnostics"]);
-  const raw = messages
-    .split("\n")
-    .filter((l) => l.includes('"reason":"compiler-artifact"') && l.includes("og_tests_web"))
-    .flatMap((l) => (JSON.parse(l) as { filenames: string[] }).filenames)
-    .find((f) => f.endsWith(".wasm"));
-  if (!raw) throw new Error("cargo built no og_tests_web.wasm");
+  const raw = buildGfxWasm(run, targetDir, profile);
   const lock = /name = "wasm-bindgen"\nversion = "([^"]+)"/.exec(readFileSync(join(repo, "Cargo.lock"), "utf8"))?.[1];
   const have = run(["wasm-bindgen", "--version"]).trim().split(" ")[1];
   if (lock !== have) throw new Error(`wasm-bindgen ${have} does not match Cargo.lock ${lock} (scripts/install-tools.sh)`);

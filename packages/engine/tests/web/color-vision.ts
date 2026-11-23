@@ -19,6 +19,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { Browser, chromePath } from "./cdp.ts";
 import { serve } from "./serve.ts";
+import { buildGfxWasm } from "../support/gfx-build.ts";
 
 declare const Bun: {
   spawnSync(cmd: string[], o?: { cwd?: string; stdout?: string; stderr?: string }): { exitCode: number; stdout: Uint8Array; stderr: Uint8Array };
@@ -39,13 +40,7 @@ function run(cmd: string[]): string {
 
 // og-tests-web in its own target dir, as reference-gfx.ts builds it.
 const targetDir = join(process.env.CARGO_TARGET_DIR ? resolve(repo, process.env.CARGO_TARGET_DIR) : join(repo, "target"), "wasm-gfx");
-const messages = run(["cargo", "build", "--profile", "wasm-test", "--target", "wasm32-unknown-unknown", "--target-dir", targetDir, "-p", "og-tests-web", "--lib", "--message-format=json-render-diagnostics"]);
-const raw = messages
-  .split("\n")
-  .filter((l) => l.includes('"reason":"compiler-artifact"') && l.includes("og_tests_web"))
-  .flatMap((l) => (JSON.parse(l) as { filenames: string[] }).filenames)
-  .find((f) => f.endsWith(".wasm"));
-if (!raw) throw new Error("cargo built no og_tests_web.wasm");
+const raw = buildGfxWasm(run, targetDir, "wasm-test");
 const lock = /name = "wasm-bindgen"\nversion = "([^"]+)"/.exec(readFileSync(join(repo, "Cargo.lock"), "utf8"))?.[1];
 const have = run(["wasm-bindgen", "--version"]).trim().split(" ")[1];
 if (lock !== have) throw new Error(`wasm-bindgen ${have} does not match Cargo.lock ${lock} (scripts/install-tools.sh)`);

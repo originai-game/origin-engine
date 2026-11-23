@@ -2,11 +2,12 @@
 // compressed size, a host's probe) is kept in the user's cache directory,
 // never in the engine's install, and builds side by side keep each other's.
 import { expect, test } from "bun:test";
-import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { ENGINE_FACTS, factGet, factPut, factsFile } from "../src/node/web-build.ts";
+import { buildGfxWasm } from "./support/gfx-build.ts";
 
 declare const Bun: { spawnSync(cmd: string[], o: { env: Record<string, string | undefined> }): { exitCode: number } };
 
@@ -55,5 +56,42 @@ test("with the cache off a build keeps its facts for itself and writes nothing",
   } finally {
     if (before === undefined) delete process.env.OG_BUILD_CACHE;
     else process.env.OG_BUILD_CACHE = before;
+  }
+});
+
+test("gfx builds reject unverified, zeroed and header-preserving corrupted cached wasm", () => {
+  const dir = mkdtempSync(join(tmpdir(), "og-gfx-integrity-"));
+  const raw = join(dir, "og_tests_web.wasm");
+  // Valid modules differing only in a custom section, so magic alone
+  // cannot distinguish the compiler's output from the corrupt cache.
+  const compiled = new Uint8Array([0, 97, 115, 109, 1, 0, 0, 0, 0, 2, 1, 97]);
+  const changed = Uint8Array.from(compiled);
+  changed[11] = 98;
+  let fresh = true;
+  let brokenBuild = false;
+  const run = (command: string[]) => {
+    if (command[1] === "clean") {
+      fresh = false;
+      return "";
+    }
+    if (!fresh) writeFileSync(raw, brokenBuild ? new Uint8Array(compiled.length) : compiled);
+    const result = JSON.stringify({ reason: "compiler-artifact", target: { name: "og_tests_web" }, filenames: [raw], fresh });
+    fresh = true;
+    return result;
+  };
+  try {
+    // A fresh artifact from before receipts existed is not silently blessed.
+    writeFileSync(raw, changed);
+    expect(Array.from(readFileSync(buildGfxWasm(run, dir, "wasm-test")))).toEqual(Array.from(compiled));
+    writeFileSync(raw, new Uint8Array(compiled.length));
+    expect(Array.from(readFileSync(buildGfxWasm(run, dir, "wasm-test")))).toEqual(Array.from(compiled));
+    writeFileSync(raw, changed);
+    expect(Array.from(readFileSync(buildGfxWasm(run, dir, "wasm-test")))).toEqual(Array.from(compiled));
+    // A compiler that returns a broken NEW output must fail, not attest it.
+    brokenBuild = true;
+    writeFileSync(raw, new Uint8Array(compiled.length));
+    expect(() => buildGfxWasm(run, dir, "wasm-test")).toThrow("invalid or unverified wasm build product");
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
   }
 });
