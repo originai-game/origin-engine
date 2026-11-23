@@ -20,6 +20,7 @@ mod combine;
 mod joints;
 mod materials;
 mod nodes;
+mod skin;
 pub use build::*;
 pub use combine::*;
 pub use joints::*;
@@ -121,6 +122,12 @@ pub(crate) fn motion(from: &Frame, to: &Frame) -> Frame {
 /// A solid mapped by a placement (rigid: no mirror).
 pub(crate) fn placed(mut s: Solid, f: &Frame) -> Solid {
     s.map_positions(|p| f.point_to_world(p), false);
+    if let Some(skin) = &mut s.skin {
+        for bone in &mut skin.bones {
+            bone.rest = f.compose(&bone.rest);
+            bone.inverse_bind = crate::mesh::skin::frame_inverse_matrix(&bone.rest);
+        }
+    }
     rounded(s)
 }
 

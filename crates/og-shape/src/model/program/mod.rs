@@ -1015,6 +1015,214 @@ pub(crate) fn dispatch(m: &mut Model, a: &Args) -> Result<(Value, bool), ModelEr
                 m.clip(a.str("name")?, &out)?;
                 Ok((none(), true))
             }
+            "skin" => {
+                let id = a.id("id")?;
+                match (a.opt("bones"), a.opt("joints")) {
+                    (Some(_), Some(_)) => Err(a.bad(
+                        "bones",
+                        "give bones (regions) or joints (bone-heat), not both",
+                    )),
+                    (None, None) => Err(a.bad(
+                        "bones",
+                        "give bones (region rig) or joints (bone-heat skeleton)",
+                    )),
+                    (Some(bones_v), None) => {
+                        let list = bones_v.as_array().ok_or_else(|| {
+                            a.bad("bones", "a list of {name, parent?, pivot, regions?}")
+                        })?;
+                        let mut bones = Vec::with_capacity(list.len());
+                        for (i, item) in list.iter().enumerate() {
+                            let what = format!("bones[{i}]");
+                            let o = item.as_object().ok_or_else(|| {
+                                a.bad(&what, "an object {name, parent?, pivot, regions?}")
+                            })?;
+                            only(o, &what, &["name", "parent", "pivot", "regions"])?;
+                            let name = o
+                                .get("name")
+                                .and_then(Value::as_str)
+                                .ok_or_else(|| a.bad(&what, "a bone name"))?
+                                .to_string();
+                            let parent = match o.get("parent") {
+                                None | Some(Value::Null) => String::new(),
+                                Some(v) => v
+                                    .as_str()
+                                    .ok_or_else(|| a.bad(&what, "parent must be a string"))?
+                                    .to_string(),
+                            };
+                            let pivot = match o.get("pivot") {
+                                Some(pv) if pv.is_array() => {
+                                    let p = vec3_of(pv).ok_or_else(|| {
+                                        a.bad(&what, "pivot is [x, y, z] or a frame")
+                                    })?;
+                                    Frame {
+                                        origin: p,
+                                        ..Frame::IDENTITY
+                                    }
+                                }
+                                Some(pv) => frame_of(pv).map_err(|e| a.bad(&what, &e))?,
+                                None => Frame::IDENTITY,
+                            };
+                            let regions = match o.get("regions") {
+                                None => Vec::new(),
+                                Some(rv) => rv
+                                    .as_array()
+                                    .ok_or_else(|| a.bad(&what, "regions is a list of face names"))?
+                                    .iter()
+                                    .map(|r| {
+                                        r.as_str()
+                                            .map(str::to_string)
+                                            .ok_or_else(|| a.bad(&what, "region names are strings"))
+                                    })
+                                    .collect::<Result<Vec<_>, _>>()?,
+                            };
+                            bones.push(crate::skin::RigBone {
+                                name,
+                                parent,
+                                pivot,
+                                regions,
+                            });
+                        }
+                        let rig = crate::skin::Rig {
+                            bones,
+                            blend: a.num_or("blend", 0.0)?,
+                            max_edge: a.num_or("maxEdge", 0.0)?,
+                        };
+                        m.skin(id, &rig)?;
+                        Ok((json!({"bones": rig.bones.len()}), true))
+                    }
+                    (None, Some(joints_v)) => {
+                        let list = joints_v
+                            .as_array()
+                            .ok_or_else(|| a.bad("joints", "a list of {name, parent?, at}"))?;
+                        let mut joints = Vec::with_capacity(list.len());
+                        for (i, item) in list.iter().enumerate() {
+                            let what = format!("joints[{i}]");
+                            let o = item
+                                .as_object()
+                                .ok_or_else(|| a.bad(&what, "an object {name, parent?, at}"))?;
+                            only(o, &what, &["name", "parent", "at"])?;
+                            let name = o
+                                .get("name")
+                                .and_then(Value::as_str)
+                                .ok_or_else(|| a.bad(&what, "a joint name"))?
+                                .to_string();
+                            let parent = match o.get("parent") {
+                                None | Some(Value::Null) => String::new(),
+                                Some(v) => v
+                                    .as_str()
+                                    .ok_or_else(|| a.bad(&what, "parent must be a string"))?
+                                    .to_string(),
+                            };
+                            let at = o
+                                .get("at")
+                                .and_then(vec3_of)
+                                .ok_or_else(|| a.bad(&what, "at: [x, y, z]"))?;
+                            joints.push(crate::skin::Joint { name, parent, at });
+                        }
+                        let report = m.bind(id, &crate::skin::Skeleton { joints })?;
+                        Ok((
+                            json!({
+                                "vertices": report.vertices,
+                                "weightedBones": report.weighted_bones,
+                                "unseen": report.unseen,
+                                "pieces": report.pieces,
+                            }),
+                            true,
+                        ))
+                    }
+                }
+            }
+            "humanoid" => {
+                let id = a.id("id")?;
+                let bind = a.bool_or("bind", true)?;
+                let (sk, fit, bound) = m.humanoid(id, bind)?;
+                let joints: Vec<Value> = sk
+                    .joints
+                    .iter()
+                    .map(|j| {
+                        json!({
+                            "name": j.name,
+                            "parent": j.parent,
+                            "at": [j.at.x, j.at.y, j.at.z],
+                        })
+                    })
+                    .collect();
+                let mut answer = json!({
+                    "joints": joints,
+                    "height": fit.height,
+                    "outside": fit.outside,
+                    "armDrop": fit.arm_drop,
+                });
+                if let Some(b) = bound {
+                    answer["bind"] = json!({
+                        "vertices": b.vertices,
+                        "weightedBones": b.weighted_bones,
+                        "unseen": b.unseen,
+                    });
+                }
+                Ok((answer, true))
+            }
+            "morph" => {
+                let id = a.id("id")?;
+                let name = a.str("name")?;
+                let weight = a.num_or("weight", 0.0)?;
+                let has_target = a.opt("target").is_some();
+                let has_deltas = a.opt("deltas").is_some();
+                let has_region_xform = a.opt("regions").is_some()
+                    || a.opt("offset").is_some()
+                    || a.opt("scale").is_some();
+                let modes = usize::from(has_target)
+                    + usize::from(has_deltas)
+                    + usize::from(has_region_xform);
+                if modes != 1 {
+                    return Err(a.bad(
+                        "morph",
+                        "give one of: target (part id), deltas (per-vertex vectors), or regions/offset/scale",
+                    ));
+                }
+                if has_target {
+                    let target = a.id("target")?;
+                    m.morph_target(id, name, target, weight)?;
+                } else if let Some(dv) = a.opt("deltas") {
+                    let list = dv
+                        .as_array()
+                        .ok_or_else(|| a.bad("deltas", "a list of [dx, dy, dz] vectors"))?;
+                    let deltas: Vec<DVec3> = list
+                        .iter()
+                        .enumerate()
+                        .map(|(i, v)| {
+                            vec3_of(v).ok_or_else(|| a.bad(&format!("deltas[{i}]"), "[dx, dy, dz]"))
+                        })
+                        .collect::<Result<Vec<_>, _>>()?;
+                    m.morph_deltas(id, name, &deltas, weight)?;
+                } else {
+                    let regions = match a.opt("regions") {
+                        None => Vec::new(),
+                        Some(rv) => rv
+                            .as_array()
+                            .ok_or_else(|| a.bad("regions", "a list of face names"))?
+                            .iter()
+                            .map(|r| {
+                                r.as_str()
+                                    .map(str::to_string)
+                                    .ok_or_else(|| a.bad("regions", "region names are strings"))
+                            })
+                            .collect::<Result<Vec<_>, _>>()?,
+                    };
+                    let offset = match a.opt("offset") {
+                        None => DVec3::ZERO,
+                        Some(ov) => vec3_of(ov).ok_or_else(|| a.bad("offset", "[dx, dy, dz]"))?,
+                    };
+                    let scale = match a.opt("scale") {
+                        None => None,
+                        Some(sv) => {
+                            Some(vec3_of(sv).ok_or_else(|| a.bad("scale", "[sx, sy, sz]"))?)
+                        }
+                    };
+                    m.morph_regions(id, name, &regions, offset, scale, weight)?;
+                }
+                Ok((none(), true))
+            }
             other => Err(ModelError::Program(format!(
                 "no operation {other:?}; operations: {}",
                 OPS.iter().map(|(o, _)| *o).collect::<Vec<_>>().join(", ")

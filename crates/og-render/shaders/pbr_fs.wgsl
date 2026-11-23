@@ -203,8 +203,8 @@ fn lit_fragment(in: VertexOut) -> vec4<f32> {
   let dpx = world_dx(in.world_pos);
   let dpy = world_dy(in.world_pos);
   var s: Surface;
-  s.metallic = clamp(material.mr.x * metalness_sample.b, 0.0, 1.0);
-  s.roughness = clamp(material.mr.y * roughness_sample.g, 0.04, 1.0);
+  s.metallic = clamp(surface_metalness(hook, params, material.mr.x * metalness_sample.b), 0.0, 1.0);
+  s.roughness = clamp(surface_roughness(hook, params, material.mr.y * roughness_sample.g), 0.04, 1.0);
   s.albedo = base.rgb;
 
   var n = normalize(in.normal);
@@ -472,10 +472,11 @@ fn lit_fragment(in: VertexOut) -> vec4<f32> {
   }
   // What the material's AO map keeps of the light around it (it darkens
   // only that), with the style's shadow darkness.
-  var kept = keep;
+  var ao = 1.0;
   if (material.flags.y >= 0.0) {
-    kept *= mix(1.0, material_sample(ao_tex, UV_AO, uv).r, material.flags.y);
+    ao = mix(1.0, material_sample(ao_tex, UV_AO, uv).r, material.flags.y);
   }
+  let kept = keep * clamp(surface_ao(hook, params, ao), 0.0, 1.0);
   let emitted = surface_emissive(hook, params, material.emissive.rgb * material_sample(emissive_tex, UV_EMISSIVE, uv).rgb);
   let shaded = surface_sum(s, color, around, emitted, material.flags.z, kept);
   color = shaded_color(shaded);

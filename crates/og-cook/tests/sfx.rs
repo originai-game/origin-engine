@@ -104,3 +104,70 @@ fn a_cooked_preset_is_a_sound_the_runtime_loads() {
         "QOA keeps the preset's waveform: {snr:.1} dB SNR"
     );
 }
+
+#[test]
+fn custom_synth_layers_cook_deterministically_and_validate_inputs() {
+    use og_cook::cook::sfx::{parse_desc, render_desc};
+
+    let custom = r#"type sfx
+version 1
+---
+volume 0.9
+seed 4
+layer sine {
+  freq 520
+  freq_end 130
+  attack 0.002
+  decay 0.04
+  sustain 0.06
+  sustain_level 0.6
+  release 0.14
+  fm_freq 260
+  fm_index 1.5
+  lowpass 2400
+  q 2.0
+  drive 1.8
+  gain 0.7
+}
+layer noise {
+  freq 1800
+  attack 0.001
+  sustain 0.02
+  decay 0.08
+  highpass 600
+  lowpass 5000
+  gain 0.3
+  delay 0.01
+}
+"#;
+    let d1 = parse_desc(custom).expect("custom synth parses");
+    assert!(d1.preset.is_none());
+    assert_eq!(d1.layers.len(), 2);
+    let a = render_desc(&d1);
+    let b = render_desc(&parse_desc(custom).unwrap());
+    assert_eq!(a, b, "custom synth is deterministic");
+    let peak = a.iter().map(|s| s.unsigned_abs()).max().unwrap_or(0);
+    assert!(peak > 5000, "audible signal, got peak {peak}");
+
+    // Cook round-trip on disk.
+    let root = PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join("og-cook-sfx-synth");
+    let _ = std::fs::remove_dir_all(&root);
+    std::fs::create_dir_all(root.join("assets/sfx")).unwrap();
+    std::fs::write(root.join("assets/sfx/bell.ogt"), custom).unwrap();
+    let report = cook_project(&root, &CookOptions::default()).unwrap();
+    assert!(report.errors().is_empty(), "{:?}", report.errors());
+    let sound = Bundle::open(&root.join("cooked"))
+        .unwrap()
+        .load_sound("sfx/bell.ogt")
+        .unwrap();
+    assert_eq!(sound.meta.frames as usize, a.len());
+
+    // Error cases: empty, unknown wave, unknown field, excessive duration.
+    assert!(parse_desc("type sfx\nversion 1\n---\nvolume 0.5\n").is_err());
+    assert!(parse_desc("type sfx\nversion 1\n---\nlayer chirp { freq 440 }\n").is_err());
+    assert!(parse_desc("type sfx\nversion 1\n---\nlayer sine { bogus 1 }\n").is_err());
+    assert!(
+        parse_desc("type sfx\nversion 1\n---\nlayer sine { decay 40 }\n").is_err(),
+        "duration over 30s refused"
+    );
+}

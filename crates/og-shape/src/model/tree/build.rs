@@ -234,6 +234,12 @@ impl Model {
         let mut s = self.world_solid(id)?;
         if k != 1.0 {
             s.map_positions(|p| p * k, false);
+            if let Some(skin) = &mut s.skin {
+                for bone in &mut skin.bones {
+                    bone.rest.origin *= k;
+                    bone.inverse_bind = crate::mesh::skin::frame_inverse_matrix(&bone.rest);
+                }
+            }
             s = rounded(s);
         }
         // A map spanning `size` units: UVs in images, not units.

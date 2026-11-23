@@ -224,4 +224,12 @@ pub(crate) const OPS: &[(&str, &[&str])] = &[
     ),
     ("pose", &["joint", "value", "clip", "time"]),
     ("clip", &["name", "keys"]),
+    ("skin", &["id", "bones", "joints", "blend", "maxEdge"]),
+    ("humanoid", &["id", "bind"]),
+    (
+        "morph",
+        &[
+            "id", "name", "target", "deltas", "regions", "offset", "scale", "weight",
+        ],
+    ),
 ];

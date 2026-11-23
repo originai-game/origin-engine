@@ -69,6 +69,10 @@ struct PostUniform {
     params: [[f32; 4]; MAX_SHADER_PARAMS],
     /// xy: the target's size in pixels, z: seconds, w: unused.
     screen: [f32; 4],
+    /// Inverse view-projection matrix (clip -> render-origin-relative world).
+    inv_view_proj: [[f32; 4]; 4],
+    /// xyz: camera position (render-origin-relative), w: 1 if orthographic else 0.
+    camera_pos: [f32; 4],
 }
 
 /// A compiled pass, or why it is skipped.
@@ -279,6 +283,8 @@ impl CustomPosts {
         post: usize,
         views: [&wgpu::TextureView; 5],
         size: (u32, u32),
+        inv_view_proj: [[f32; 4]; 4],
+        camera_pos: [f32; 4],
     ) -> u32 {
         let Some((
             _,
@@ -298,6 +304,8 @@ impl CustomPosts {
                 scene.frame.tick as f32 / scene.frame.tick_rate.max(1e-6),
                 0.0,
             ],
+            inv_view_proj,
+            camera_pos,
         };
         crate::traffic::write_buffer(queue, uniform, 0, bytemuck::bytes_of(&u));
         let [read, scene_color, depth, gbuffer, write] = views;

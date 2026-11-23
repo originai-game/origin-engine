@@ -619,8 +619,8 @@ fn physical_fragment(in: PhysicalOut) -> vec4<f32> {
   let film_maps = pack_sample(physical.layers.w, pack_uv);  // the coat's normal, iridescence
   let aniso_maps = pack_sample(physical.layers2.x, pack_uv); // anisotropy, the film's thickness
   var s: Surface;
-  s.metallic = clamp(material.mr.x * maps.r, 0.0, 1.0);
-  s.roughness = clamp(material.mr.y * maps.g, 0.04, 1.0);
+  s.metallic = clamp(surface_metalness(hook, params, material.mr.x * maps.r), 0.0, 1.0);
+  s.roughness = clamp(surface_roughness(hook, params, material.mr.y * maps.g), 0.04, 1.0);
   s.albedo = base.rgb;
 
   var decal_emissive = vec3<f32>(0.0);
@@ -771,10 +771,11 @@ fn physical_fragment(in: PhysicalOut) -> vec4<f32> {
   // What the material's AO map and the style's shadow darkness keep of
   // the light around it, then the screen's occlusion; `ao_direct` also
   // scales the emitted light.
-  var kept = keep;
+  var ao = 1.0;
   if (material.flags.y >= 0.0) {
-    kept *= mix(1.0, maps.b, material.flags.y);
+    ao = mix(1.0, maps.b, material.flags.y);
   }
+  let kept = keep * clamp(surface_ao(hook, params, ao), 0.0, 1.0);
   let ibl_scale = material.flags.z * kept * around.occlusion.ambient;
   let bounce = around.occlusion.bounce * kept;
   let ao_direct = around.occlusion.all;

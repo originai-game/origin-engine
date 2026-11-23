@@ -1,5 +1,5 @@
 //! Material shader hooks (the E5 round): a [`MaterialShader`] is a WGSL
-//! snippet that defines any of four fixed hooks of the lit shader, with
+//! snippet that defines any of seven fixed hooks of the lit shader, with
 //! uniforms it declares. A material given the shader draws with a pipeline
 //! built from the lit shader and the snippet; every other material keeps
 //! the built-in hooks (identities, so its frames are unchanged).
@@ -9,10 +9,13 @@
 //! struct Hook { world: vec3<f32>, local: vec3<f32>, normal: vec3<f32>,
 //!               uv: vec2<f32>, color: vec4<f32>, time: f32, eye: vec3<f32>,
 //!               front: f32, origin: vec3<f32>, wind: vec4<f32> }
-//! fn vertex_offset(h: Hook, p: Params) -> vec3<f32>              // world-space offset (0)
-//! fn surface_color(h: Hook, p: Params, c: vec4<f32>) -> vec4<f32> // base colour and alpha (c)
+//! fn vertex_offset(h: Hook, p: Params) -> vec3<f32>                // world-space offset (0)
+//! fn surface_color(h: Hook, p: Params, c: vec4<f32>) -> vec4<f32>  // base colour and alpha (c)
 //! fn surface_normal(h: Hook, p: Params, n: vec3<f32>) -> vec3<f32> // world normal (n)
 //! fn surface_emissive(h: Hook, p: Params, e: vec3<f32>) -> vec3<f32> // emitted light (e)
+//! fn surface_roughness(h: Hook, p: Params, r: f32) -> f32          // roughness in 0.04..1 (r)
+//! fn surface_metalness(h: Hook, p: Params, m: f32) -> f32          // metalness in 0..1 (m)
+//! fn surface_ao(h: Hook, p: Params, ao: f32) -> f32                // ambient occlusion in 0..1 (ao)
 //! ```
 //!
 //! `Params` holds the declared parameters by name (`p.amount`), at most
@@ -35,7 +38,7 @@
 //! with the previous drawn frame's parameters, position and clock for motion
 //! vectors; unchanged parameters settle on the next frame even when no tick
 //! advances. `og-cook` compiles every shader asset with naga
-//! (WGSL, SPIR-V and MSL) and refuses the asset
+//! (WGSL, SPIR-V, MSL and HLSL) and refuses the asset
 //! with naga's message when it does not.
 
 /// The most parameters a shader declares.
@@ -43,11 +46,14 @@ pub const MAX_SHADER_PARAMS: usize = 8;
 
 /// The hooks a snippet may define, in the order the module documentation
 /// lists them.
-pub const SHADER_HOOKS: [&str; 4] = [
+pub const SHADER_HOOKS: [&str; 7] = [
     "vertex_offset",
     "surface_color",
     "surface_normal",
     "surface_emissive",
+    "surface_roughness",
+    "surface_metalness",
+    "surface_ao",
 ];
 
 /// A parameter's WGSL type.
@@ -237,11 +243,14 @@ fn effect_custom1() -> vec4<f32> { return hook_custom1; }
 fn effect_custom2() -> vec4<f32> { return hook_custom2; }
 ";
 
-const DEFAULT_HOOKS: [&str; 4] = [
+const DEFAULT_HOOKS: [&str; 7] = [
     "fn vertex_offset(h: Hook, p: Params) -> vec3<f32> { return vec3<f32>(0.0); }\n",
     "fn surface_color(h: Hook, p: Params, c: vec4<f32>) -> vec4<f32> { return c; }\n",
     "fn surface_normal(h: Hook, p: Params, n: vec3<f32>) -> vec3<f32> { return n; }\n",
     "fn surface_emissive(h: Hook, p: Params, e: vec3<f32>) -> vec3<f32> { return e; }\n",
+    "fn surface_roughness(h: Hook, p: Params, r: f32) -> f32 { return r; }\n",
+    "fn surface_metalness(h: Hook, p: Params, m: f32) -> f32 { return m; }\n",
+    "fn surface_ao(h: Hook, p: Params, ao: f32) -> f32 { return ao; }\n",
 ];
 
 /// The `Hook` and `Params` structs, `shader_params()`, the snippet, the

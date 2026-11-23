@@ -174,14 +174,15 @@ fn scatter_lit(in: ScatterOut, h: Hook, base: vec4<f32>, out_a: f32, dpx: vec3<f
     return vec4<f32>(vec3<f32>(select(1.0, ao, fx.ao.x > 0.5)), out_a);
   }
   if (frame.light_color.w > 0.5 && (frame.light_color.w < 1.5 || frame.light_color.w > 6.5)) { return debug_unsupported(in.clip.xy); }
-  let emissive = surface_emissive(h, shader_params(), material.emissive.rgb * textureSample(emissive_tex, material_sampler, material_uv(UV_EMISSIVE, in.uv)).rgb);
+  let params = shader_params();
+  let emissive = surface_emissive(h, params, material.emissive.rgb * textureSample(emissive_tex, material_sampler, material_uv(UV_EMISSIVE, in.uv)).rgb);
   if ((mode & 2u) != 0u) {
     if (frame.light_color.w > 2.5 && frame.light_color.w < 3.5) { return vec4<f32>(base.rgb, out_a); }
     return vec4<f32>(apply_fog(base.rgb + emissive, in.world), out_a);
   }
   var s: Surface;
-  s.metallic = clamp(material.mr.x * textureSample(metalness_tex, material_sampler, material_uv(UV_METALNESS, in.uv)).b, 0.0, 1.0);
-  s.roughness = clamp(material.mr.y * textureSample(roughness_tex, material_sampler, material_uv(UV_METALNESS, in.uv)).g, 0.04, 1.0);
+  s.metallic = clamp(surface_metalness(h, params, material.mr.x * textureSample(metalness_tex, material_sampler, material_uv(UV_METALNESS, in.uv)).b), 0.0, 1.0);
+  s.roughness = clamp(surface_roughness(h, params, material.mr.y * textureSample(roughness_tex, material_sampler, material_uv(UV_METALNESS, in.uv)).g), 0.04, 1.0);
   s.albedo = base.rgb;
   s.f0 = mix(vec3<f32>(0.04), s.albedo, s.metallic);
   // A leaf lets the sun through (brdf's leaf_transmission), as pbr_fs.wgsl.
@@ -193,7 +194,7 @@ fn scatter_lit(in: ScatterOut, h: Hook, base: vec4<f32>, out_a: f32, dpx: vec3<f
   let v = toward_eye(in.world);
   n *= material_face(h.front);
   let n_geo = n;
-  n = normalize(surface_normal(h, shader_params(), n));
+  n = normalize(surface_normal(h, params, n));
   // The decals over the copy, then the rain, snow and dust on it, as on a
   // mesh (decals.wgsl, weather_surface.wgsl; pbr_fs.wgsl).
   let decaled = surface_decals(s, n, n_geo, in.clip.xy, in.world, dpx, dpy);
@@ -234,10 +235,11 @@ fn scatter_lit(in: ScatterOut, h: Hook, base: vec4<f32>, out_a: f32, dpx: vec3<f
   }
   sun.direct += crown_passed_sun(s, map_shadow, in.crown.y);
   // What the material's AO map keeps of the light around the copy.
-  var keep = 1.0;
+  var ao = 1.0;
   if (material.flags.y >= 0.0) {
-    keep = mix(1.0, textureSample(ao_tex, material_sampler, material_uv(UV_AO, in.uv)).r, material.flags.y);
+    ao = mix(1.0, textureSample(ao_tex, material_sampler, material_uv(UV_AO, in.uv)).r, material.flags.y);
   }
+  let keep = clamp(surface_ao(h, params, ao), 0.0, 1.0);
   // The caustics, the local lights and the light around the copy, as every
   // lit surface's (surface_shade.wgsl); the screen-space reflections unless
   // blended: then it lies over the surface they were traced for.
@@ -260,7 +262,9 @@ struct ScatterPrepass {
 
 @fragment
 fn fs_prepass(in: ScatterOut, @builtin(front_facing) front: bool) -> ScatterPrepass {
-  let base = surface_color(scatter_hook(in, front), shader_params(), season_mix(material.base_color * in.color, in.season) * textureSample(base_color_tex, material_sampler, material_uv(UV_MAP, in.uv)));
+  let h = scatter_hook(in, front);
+  let params = shader_params();
+  let base = surface_color(h, params, season_mix(material.base_color * in.color, in.season) * textureSample(base_color_tex, material_sampler, material_uv(UV_MAP, in.uv)));
   let flat_n = normalize(cross(dpdxFine(in.world), dpdyFine(in.world)));
   if ((material.emissive.w >= 0.0 && base.a < material.emissive.w) || dither_cut(scatter_hidden(in.fade), in.clip.xy, frame.drawn.w)) {
     discard;
@@ -275,8 +279,8 @@ fn fs_prepass(in: ScatterOut, @builtin(front_facing) front: bool) -> ScatterPrep
   o.gbuffer = vec4<f32>(oct_encode(n), (cur - prev) * vec2<f32>(0.5, -0.5));
   // The reflectivity screen-space reflections read, as the lit pass shades
   // the copy (none unlit).
-  var metalness = material.mr.x * textureSample(metalness_tex, material_sampler, material_uv(UV_METALNESS, in.uv)).b;
-  var roughness = clamp(material.mr.y * textureSample(roughness_tex, material_sampler, material_uv(UV_METALNESS, in.uv)).g, 0.04, 1.0);
+  var metalness = clamp(surface_metalness(h, params, material.mr.x * textureSample(metalness_tex, material_sampler, material_uv(UV_METALNESS, in.uv)).b), 0.0, 1.0);
+  var roughness = clamp(surface_roughness(h, params, material.mr.y * textureSample(roughness_tex, material_sampler, material_uv(UV_METALNESS, in.uv)).g), 0.04, 1.0);
   // Wet copies and the puddles on them as the lit pass shades them
   // (weather_surface.wgsl weather_gloss), so reflections see them.
   let unlit = (u32(material.flags.w) & 2u) != 0u;

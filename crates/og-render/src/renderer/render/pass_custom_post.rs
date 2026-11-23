@@ -10,6 +10,8 @@ pub(super) struct CustomPostPass;
 pub(super) struct CustomPostPlan<'f> {
     pub scene: &'f RenderScene,
     pub posts: &'f [usize],
+    pub inv_view_proj: [[f32; 4]; 4],
+    pub camera_pos: [f32; 4],
 }
 
 impl Pass for CustomPostPass {
@@ -64,6 +66,8 @@ impl Pass for CustomPostPass {
                 write,
             ],
             r.history_size(),
+            plan.inv_view_proj,
+            plan.camera_pos,
         );
     }
 }

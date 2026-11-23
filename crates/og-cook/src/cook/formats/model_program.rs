@@ -55,8 +55,25 @@ pub struct MaterialOver {
     pub opacity: Option<f64>,
     /// Linear RGB.
     pub emissive: Option<[f64; 3]>,
-    /// An image file beside the text.
+    pub emissive_intensity: Option<f64>,
+    /// Image files beside the text.
     pub map: Option<String>,
+    pub normal_map: Option<String>,
+    pub normal_scale: Option<f64>,
+    pub roughness_map: Option<String>,
+    pub emissive_map: Option<String>,
+    pub ao_map: Option<String>,
+    pub ao_map_intensity: Option<f64>,
+    pub clearcoat: Option<f64>,
+    pub clearcoat_roughness: Option<f64>,
+    /// Linear RGB sheen colour.
+    pub sheen: Option<[f64; 3]>,
+    pub sheen_roughness: Option<f64>,
+    pub transmission: Option<f64>,
+    pub iridescence: Option<f64>,
+    pub alpha_test: Option<f64>,
+    pub transparent: Option<bool>,
+    pub double_sided: Option<bool>,
 }
 
 /// A program source, read.
@@ -79,13 +96,29 @@ pub struct Program {
 pub const ATLAS_PADDING: u32 = 4;
 
 /// The fields a material block takes.
-const MATERIAL_FIELDS: [&str; 6] = [
+const MATERIAL_FIELDS: [&str; 22] = [
     "color",
     "metalness",
     "roughness",
     "opacity",
     "emissive",
+    "emissiveIntensity",
     "map",
+    "normalMap",
+    "normalScale",
+    "roughnessMap",
+    "metalnessMap",
+    "emissiveMap",
+    "aoMap",
+    "aoMapIntensity",
+    "clearcoat",
+    "clearcoatRoughness",
+    "sheen",
+    "sheenRoughness",
+    "transmission",
+    "iridescence",
+    "alphaTest",
+    "doubleSided",
 ];
 
 fn at(e: &Entry, msg: impl std::fmt::Display) -> String {
@@ -115,25 +148,61 @@ fn material(e: &Entry) -> Result<MaterialOver, String> {
                 Err(at(f, format!("is 0 to 1, got {v}")))
             }
         };
+        let non_neg = |v: f64| -> Result<f64, String> {
+            if v >= 0.0 {
+                Ok(v)
+            } else {
+                Err(at(f, format!("cannot be negative, got {v}")))
+            }
+        };
         let rgb = || -> Result<[f64; 3], String> {
             if f.values.len() != 3 {
                 return Err(at(f, "takes r g b, linear 0 to 1"));
             }
             Ok([num(0)?, num(1)?, num(2)?])
         };
+        let rel_image = || -> Result<String, String> {
+            let file = f.string(0).map_err(|x| at(f, x))?;
+            if file.is_empty() || file.starts_with('/') || file.contains('\\') {
+                return Err(at(f, "names an image file beside the model, in quotes"));
+            }
+            Ok(file.to_string())
+        };
+        let flag = || -> Result<bool, String> {
+            f.values
+                .first()
+                .and_then(|v| v.as_bool())
+                .ok_or_else(|| at(f, "takes true or false"))
+        };
         match f.key.as_str() {
             "color" => m.color = Some(rgb()?),
             "emissive" => m.emissive = Some(rgb()?),
+            "emissiveIntensity" | "emissive_intensity" => {
+                m.emissive_intensity = Some(non_neg(num(0)?)?)
+            }
             "metalness" => m.metalness = Some(unit(num(0)?)?),
             "roughness" => m.roughness = Some(unit(num(0)?)?),
             "opacity" => m.opacity = Some(unit(num(0)?)?),
-            "map" => {
-                let file = f.string(0).map_err(|x| at(f, x))?;
-                if file.is_empty() || file.starts_with('/') || file.contains('\\') {
-                    return Err(at(f, "names an image file beside the model, in quotes"));
-                }
-                m.map = Some(file.to_string());
+            "map" => m.map = Some(rel_image()?),
+            "normalMap" | "normal_map" => m.normal_map = Some(rel_image()?),
+            "normalScale" | "normal_scale" => m.normal_scale = Some(non_neg(num(0)?)?),
+            "roughnessMap" | "roughness_map" | "metalnessMap" | "metalness_map" => {
+                m.roughness_map = Some(rel_image()?)
             }
+            "emissiveMap" | "emissive_map" => m.emissive_map = Some(rel_image()?),
+            "aoMap" | "ao_map" => m.ao_map = Some(rel_image()?),
+            "aoMapIntensity" | "ao_map_intensity" => m.ao_map_intensity = Some(unit(num(0)?)?),
+            "clearcoat" => m.clearcoat = Some(unit(num(0)?)?),
+            "clearcoatRoughness" | "clearcoat_roughness" => {
+                m.clearcoat_roughness = Some(unit(num(0)?)?)
+            }
+            "sheen" | "sheenColor" | "sheen_color" => m.sheen = Some(rgb()?),
+            "sheenRoughness" | "sheen_roughness" => m.sheen_roughness = Some(unit(num(0)?)?),
+            "transmission" => m.transmission = Some(unit(num(0)?)?),
+            "iridescence" => m.iridescence = Some(unit(num(0)?)?),
+            "alphaTest" | "alpha_test" => m.alpha_test = Some(unit(num(0)?)?),
+            "transparent" => m.transparent = Some(flag()?),
+            "doubleSided" | "double_sided" => m.double_sided = Some(flag()?),
             other => {
                 return Err(at(
                     f,
@@ -242,9 +311,15 @@ pub struct Written {
 }
 
 impl Program {
-    /// Whether a material block paints a map, so every part needs UVs.
+    /// Whether a material block paints any texture map, so every part needs UVs.
     pub fn wants_uvs(&self) -> bool {
-        self.materials.iter().any(|m| m.map.is_some())
+        self.materials.iter().any(|m| {
+            m.map.is_some()
+                || m.normal_map.is_some()
+                || m.roughness_map.is_some()
+                || m.emissive_map.is_some()
+                || m.ao_map.is_some()
+        })
     }
 
     /// The program replayed at its parameters, with UVs on every part when
@@ -355,16 +430,26 @@ impl Program {
                     m.name
                 ));
             }
-            let map = match &m.map {
-                Some(f) => {
-                    let bytes = read(f).map_err(|e| format!("material {:?}: {f}: {e}", m.name))?;
-                    files.push((f.clone(), bytes.clone()));
-                    Some(Texture::from_bytes(f, bytes))
+            let mut load_tex = |slot: &Option<String>| -> Result<Option<Texture>, String> {
+                match slot {
+                    Some(path) => {
+                        let bytes = read(path)
+                            .map_err(|e| format!("material {:?}: {path}: {e}", m.name))?;
+                        files.push((path.clone(), bytes.clone()));
+                        Ok(Some(Texture::from_bytes(path, bytes)))
+                    }
+                    None => Ok(None),
                 }
-                None => None,
+            };
+            let maps = LoadedMaps {
+                map: load_tex(&m.map)?,
+                normal: load_tex(&m.normal_map)?,
+                roughness: load_tex(&m.roughness_map)?,
+                emissive: load_tex(&m.emissive_map)?,
+                ao: load_tex(&m.ao_map)?,
             };
             for p in scene.parts.iter_mut().filter(|p| key(p) == m.name) {
-                over(&mut p.material, m, map.as_ref());
+                over(&mut p.material, m, &maps);
             }
         }
         Ok((f(&scene, &model)?, files))
@@ -386,8 +471,16 @@ fn linear(c: f64) -> f64 {
     }
 }
 
+struct LoadedMaps {
+    map: Option<Texture>,
+    normal: Option<Texture>,
+    roughness: Option<Texture>,
+    emissive: Option<Texture>,
+    ao: Option<Texture>,
+}
+
 /// `m` over `material`: its colours linear from here on.
-fn over(material: &mut Material, m: &MaterialOver, map: Option<&Texture>) {
+fn over(material: &mut Material, m: &MaterialOver, maps: &LoadedMaps) {
     if material.color_space == ColorSpace::Srgb {
         material.color = material.color.map(|c| c.map(linear));
         material.emissive = material.emissive.map(linear);
@@ -399,6 +492,9 @@ fn over(material: &mut Material, m: &MaterialOver, map: Option<&Texture>) {
     if let Some(e) = m.emissive {
         material.emissive = e;
     }
+    if let Some(v) = m.emissive_intensity {
+        material.emissive_intensity = Some(v);
+    }
     if let Some(v) = m.metalness {
         material.metalness = v;
     }
@@ -408,8 +504,53 @@ fn over(material: &mut Material, m: &MaterialOver, map: Option<&Texture>) {
     if let Some(v) = m.opacity {
         material.opacity = Some(v);
     }
-    if let Some(t) = map {
+    if let Some(t) = &maps.map {
         material.map = Some(t.clone());
+    }
+    if let Some(t) = &maps.normal {
+        material.normal_map = Some(t.clone());
+    }
+    if let Some(v) = m.normal_scale {
+        material.normal_scale = Some(v);
+    }
+    if let Some(t) = &maps.roughness {
+        material.metalness_map = Some(t.clone());
+    }
+    if let Some(t) = &maps.emissive {
+        material.emissive_map = Some(t.clone());
+    }
+    if let Some(t) = &maps.ao {
+        material.ao_map = Some(t.clone());
+    }
+    if let Some(v) = m.ao_map_intensity {
+        material.ao_map_intensity = Some(v);
+    }
+    if let Some(v) = m.clearcoat {
+        material.clearcoat = v;
+    }
+    if let Some(v) = m.clearcoat_roughness {
+        material.clearcoat_roughness = v;
+    }
+    if let Some(c) = m.sheen {
+        material.sheen = c;
+    }
+    if let Some(v) = m.sheen_roughness {
+        material.sheen_roughness = v;
+    }
+    if let Some(v) = m.transmission {
+        material.transmission = v;
+    }
+    if let Some(v) = m.iridescence {
+        material.iridescence = v;
+    }
+    if let Some(v) = m.alpha_test {
+        material.alpha_test = Some(v);
+    }
+    if let Some(v) = m.transparent {
+        material.transparent = Some(v);
+    }
+    if let Some(v) = m.double_sided {
+        material.double_sided = v;
     }
 }
 
@@ -421,9 +562,21 @@ mod tests {
         {"op":"box","name":"body","width":400,"depth":250,"height":"$height"},
         {"op":"material","ids":[0],"name":"wood","color":"#806040"}]}"##;
 
+    fn png_1x1() -> Vec<u8> {
+        let mut buf = Vec::new();
+        let mut enc = png::Encoder::new(&mut buf, 1, 1);
+        enc.set_color(png::ColorType::Rgba);
+        enc.set_depth(png::BitDepth::Eight);
+        let mut w = enc.write_header().unwrap();
+        w.write_image_data(&[128, 128, 255, 255]).unwrap();
+        drop(w);
+        buf
+    }
+
     fn files(name: &str) -> Result<Vec<u8>, String> {
         match name {
             "crate.shape.json" => Ok(PROGRAM.as_bytes().to_vec()),
+            "n.png" | "mr.png" | "em.png" | "ao.png" => Ok(png_1x1()),
             _ => Err("no such file".into()),
         }
     }
@@ -461,5 +614,54 @@ mod tests {
                 .unwrap_err()
                 .contains("shininess")
         );
+    }
+
+    #[test]
+    fn material_overrides_apply_pbr_maps_and_extensions() {
+        let text = "\
+type model
+version 1
+---
+program \"crate.shape.json\"
+material \"wood\" {
+  normalMap \"n.png\"
+  normalScale 0.8
+  roughnessMap \"mr.png\"
+  emissiveMap \"em.png\"
+  aoMap \"ao.png\"
+  clearcoat 0.7
+  clearcoatRoughness 0.15
+  sheen 0.2 0.3 0.4
+  sheenRoughness 0.5
+  transmission 0.25
+  iridescence 0.6
+  doubleSided true
+}
+";
+        let prog = parse("rich.ogt", text.as_bytes(), &files).unwrap();
+        assert!(prog.wants_uvs());
+        let (mat, read) = prog
+            .scene(0, &files, |scene, _| Ok(scene.parts[0].material.clone()))
+            .unwrap();
+        assert!(mat.normal_map.is_some());
+        assert_eq!(mat.normal_scale, Some(0.8));
+        assert!(mat.metalness_map.is_some());
+        assert!(mat.emissive_map.is_some());
+        assert!(mat.ao_map.is_some());
+        assert_eq!(mat.clearcoat, 0.7);
+        assert_eq!(mat.clearcoat_roughness, 0.15);
+        assert_eq!(mat.sheen, [0.2, 0.3, 0.4]);
+        assert_eq!(mat.sheen_roughness, 0.5);
+        assert_eq!(mat.transmission, 0.25);
+        assert_eq!(mat.iridescence, 0.6);
+        assert!(mat.double_sided);
+        assert!(read.iter().any(|(k, _)| k == "n.png"));
+        assert!(read.iter().any(|(k, _)| k == "mr.png"));
+        assert!(read.iter().any(|(k, _)| k == "em.png"));
+        assert!(read.iter().any(|(k, _)| k == "ao.png"));
+        // Exports cleanly to GLB with extensions intact.
+        let written = prog.glb(&files).unwrap();
+        let (doc, _, _) = gltf::import_slice(&written.glb).unwrap();
+        assert_eq!(doc.materials().count(), 1);
     }
 }
