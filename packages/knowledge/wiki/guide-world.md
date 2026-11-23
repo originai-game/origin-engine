@@ -151,7 +151,15 @@ world.insert(ground, og.Collider, { shape: "heightfield", mesh: t.geometry });
   cleared through flowers): its top row runs along the terrain's -z edge,
   as the control map, loaded linear. It needs GPU culling
   (RenderCapabilities.compute) and is drawn only: placement and footprints
-  do not read it.
+  do not read it, so chunks are still placed over the whole layer out to
+  `distance`. To place fewer copies, lower `density`, paint the layer
+  fainter or shorten `distance`.
+- The probe's dump_render `scatter` lists, per og.TerrainScatter, what the
+  main camera's GPU cull counted: its chunks taken, the copies placed in
+  them, the copies drawn at each level and as the impostor's cards, and
+  their triangles (`countsLag`: how many frames old the counts are).
+  Count what draws before adding copies: far copies only a few pixels
+  tall are placed and drawn but read as nothing.
 - og.Grass is generated on the GPU every frame: curved blades on a
   blue-noise pattern fixed to the terrain, in clumps sharing tint and
   height, never over holes. With distance blades thin out, widen to keep

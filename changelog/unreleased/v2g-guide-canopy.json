@@ -1,0 +1,12 @@
+{
+  "added": [
+    {
+      "member": "guide video-to-game",
+      "summary": "Lessons from a two-clip recreation: cost recorded per generation, the join of two clips' places checked against the light, the land and the shot script's real camera measured before tuning, model size, levels and texture colour preflighted, shape judged before colour, grading by Oklab numbers, performance held to frame interval and attributed by removing one content group a run, and GPU time used as one batch."
+    },
+    {
+      "member": "guide world",
+      "summary": "§3: a density map does not reduce a scatter's placement, and dump_render's `scatter` counts each scatter's chunks, copies, levels, impostor cards and triangles."
+    }
+  ]
+}
