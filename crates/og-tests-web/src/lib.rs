@@ -183,7 +183,8 @@ mod web {
 
     /// Two-output-pixel bars must keep their foreground colour under a
     /// camera pan, not take sky history when a jittered scene sample misses
-    /// the bar. Integer output-pixel motion excludes history-filter blur.
+    /// the bar. Integer pans isolate frame selection; a fractional pan
+    /// also exercises the history filter at surface edges.
     #[wasm_bindgen]
     pub async fn og_gfx_check_taau_motion() -> Result<u32, JsValue> {
         use og_render::{
@@ -191,16 +192,16 @@ mod web {
             RenderDesc, RenderScene, Tonemap, Upscaler, shapes,
         };
         let mut checked = 0;
-        for (name, scale, moving, prepass, uncover_pixels, corners) in [
-            ("stationary half", 0.5, false, false, 0, false),
-            ("moving full", 1.0, true, false, 0, false),
-            ("moving half", 0.5, true, false, 0, false),
-            ("moving half with prepass", 0.5, true, true, 0, false),
-            ("uncovered half with prepass", 0.5, false, true, 16, false),
+        for (name, scale, pan, prepass, uncover_pixels, corners) in [
+            ("stationary half", 0.5, 0.0, false, 0, false),
+            ("moving full", 1.0, 1.0, false, 0, false),
+            ("moving half", 0.5, 1.0, false, 0, false),
+            ("moving half with prepass", 0.5, 1.0, true, 0, false),
+            ("uncovered half with prepass", 0.5, 0.0, true, 16, false),
             (
                 "uncovered edge half with prepass",
                 0.5,
-                false,
+                0.0,
                 true,
                 14,
                 false,
@@ -208,11 +209,12 @@ mod web {
             (
                 "uncovered corner half with prepass",
                 0.5,
-                false,
+                0.0,
                 true,
                 14,
                 true,
             ),
+            ("fractional pan half with prepass", 0.5, 0.5, true, 0, false),
         ] {
             let uncover = uncover_pixels > 0;
             let mut scene = RenderScene::new();
@@ -312,11 +314,7 @@ mod web {
             }
             renderer.reset_history();
             for frame in 0_u32..88 {
-                let x = if moving {
-                    frame.saturating_sub(64) as f32 * 0.09375
-                } else {
-                    0.0
-                };
+                let x = frame.saturating_sub(64) as f32 * 0.09375 * pan;
                 scene.frame.camera.position.x = x;
                 scene.frame.camera.target.x = x;
                 if uncover {
@@ -380,10 +378,16 @@ mod web {
                 }
                 continue;
             }
-            let shift = if moving { 23 } else { 0 };
             for center in centers {
                 for dx in [-1, 0, 8] {
-                    let x = (center - shift + dx) as usize;
+                    let at = center as f32 - 23.0 * pan;
+                    let x = (at.floor() as i32 + dx) as usize;
+                    // Only a fully covered pixel has an unambiguous red
+                    // result. A fractional pan leaves one such pixel in
+                    // each two-pixel bar; integer pans leave two.
+                    if dx != 8 && ((x as f32) < at - 1.0 || x as f32 + 1.0 > at + 1.0) {
+                        continue;
+                    }
                     let pixel = &image.pixels[(64 * 256 + x) * 4..][..4];
                     // 188 is half linear light encoded as sRGB. Inside a
                     // bar, its colour must be nearer red than white or

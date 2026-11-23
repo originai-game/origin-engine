@@ -51,6 +51,14 @@ fn from_ycocg(c: vec3<f32>) -> vec3<f32> {
   return vec3<f32>(c.x + c.y - c.z, c.x + c.z, c.x - c.y - c.z);
 }
 
+fn catmull_rom_weights(f: vec2<f32>) -> array<vec2<f32>, 4> {
+  return array<vec2<f32>, 4>(
+    f * (-0.5 + f * (1.0 - 0.5 * f)),
+    1.0 + f * f * (-2.5 + 1.5 * f),
+    f * (0.5 + f * (2.0 - 1.5 * f)),
+    f * f * (-0.5 + 0.5 * f));
+}
+
 // Catmull-Rom over the 4x4 texels around uv in 9 bilinear taps (the
 // middle two of each row and column merged into one tap; Jimenez,
 // "Filmic SMAA", 2016). Negative lobes can ring: the caller clamps.
@@ -59,10 +67,11 @@ fn history_catmull_rom(uv: vec2<f32>) -> vec3<f32> {
   let p = uv * size;
   let t1 = floor(p - 0.5) + 0.5;
   let f = p - t1;
-  let w0 = f * (-0.5 + f * (1.0 - 0.5 * f));
-  let w1 = 1.0 + f * f * (-2.5 + 1.5 * f);
-  let w2 = f * (0.5 + f * (2.0 - 1.5 * f));
-  let w3 = f * f * (-0.5 + 0.5 * f);
+  let weights = catmull_rom_weights(f);
+  let w0 = weights[0];
+  let w1 = weights[1];
+  let w2 = weights[2];
+  let w3 = weights[3];
   let w12 = w1 + w2;
   let t0 = (t1 - 1.0) / size;
   let t3 = (t1 + 2.0) / size;
@@ -78,6 +87,62 @@ fn history_catmull_rom(uv: vec2<f32>) -> vec3<f32> {
   c += sample_exact(history, linear_sampler, vec2<f32>(t12.x, t3.y)).rgb * (w12.x * w3.y);
   c += sample_exact(history, linear_sampler, vec2<f32>(t3.x, t3.y)).rgb * (w3.x * w3.y);
   return max(c, vec3<f32>(0.0));
+}
+
+// Float32 roundoff in inverse/project matrix products, not a scene-depth
+// threshold. Shared by whole-footprint visibility and individual taps.
+const DEPTH_ROUNDOFF: f32 = 32.0 * 1.1920929e-7;
+
+fn saved_depth(at: vec2<i32>) -> f32 {
+  let size = vec2<i32>(textureDimensions(previous_depth));
+  let q = clamp(at, vec2<i32>(0), size - 1);
+  return textureSampleLevel(previous_depth, depth_sampler, (vec2<f32>(q) + 0.5) / vec2<f32>(size), 0.0).r;
+}
+
+// Do not interpolate a foreground's history with a farther surface. A
+// closer history can carry sub-scene-pixel foreground missed this frame;
+// whole-footprint occlusion is checked separately before this filter.
+fn history_on_surface(uv: vec2<f32>, expected_uv: vec2<f32>, expected: f32,
+                      catmull_rom: bool, current_sample: vec4<f32>) -> vec4<f32> {
+  let size = vec2<f32>(textureDimensions(history));
+  let scene_size = vec2<f32>(textureDimensions(previous_depth));
+  let p = uv * size - 0.5;
+  let base = vec2<i32>(floor(p));
+  let f = fract(p);
+  let linear_weights = array<vec2<f32>, 4>(vec2<f32>(0.0), 1.0 - f, f, vec2<f32>(0.0));
+  var weights = linear_weights;
+  if (catmull_rom) { weights = catmull_rom_weights(f); }
+  var colour = vec3<f32>(0.0);
+  var total = 0.0;
+  var alpha = 0.0;
+  var alpha_total = 0.0;
+  for (var y = 0; y < 4; y++) {
+    for (var x = 0; x < 4; x++) {
+      let weight = weights[x].x * weights[y].y;
+      if (weight == 0.0) { continue; }
+      let q = clamp(base + vec2<i32>(x - 1, y - 1), vec2<i32>(0), vec2<i32>(size) - 1);
+      let at = vec2<i32>(floor((vec2<f32>(q) + 0.5) / size * scene_size + taa.previous_jitter.xy));
+      let d = saved_depth(at);
+      // A slanted surface changes depth across the footprint. Bound that
+      // change by its local slope and the actual distance from the
+      // reprojected scene sample. Opposite one-sided slopes mark an edge
+      // or extremum, not a plane spanning two different surfaces.
+      let left = vec2<f32>(d - saved_depth(at - vec2<i32>(1, 0)), d - saved_depth(at - vec2<i32>(0, 1)));
+      let right = vec2<f32>(saved_depth(at + vec2<i32>(1, 0)) - d, saved_depth(at + vec2<i32>(0, 1)) - d);
+      let slope = select(vec2<f32>(0.0), min(abs(left), abs(right)), left * right > vec2<f32>(0.0));
+      let distance = abs(vec2<f32>(at) + 0.5 - (expected_uv * scene_size + taa.previous_jitter.xy));
+      if (d > expected + dot(slope, distance) + DEPTH_ROUNDOFF) { continue; }
+      let c = textureLoad(history, q, 0);
+      colour += c.rgb * weight;
+      total += weight;
+      let a = linear_weights[x].x * linear_weights[y].y;
+      alpha += c.a * a;
+      alpha_total += a;
+    }
+  }
+  // Catmull-Rom's outer lobes alone cannot reconstruct this pixel.
+  if (total <= 0.0 || alpha_total <= 0.0) { return current_sample; }
+  return vec4<f32>(max(colour / total, vec3<f32>(0.0)), alpha / alpha_total);
 }
 
 // A new history takes only the current frame, with the same jittered
@@ -182,6 +247,7 @@ fn resolve(in: VsOut, catmull_rom: bool, smaa: bool) -> vec4<f32> {
   let here = in.pos.xy / out_size;
   let reprojected = camera_reprojection(at, size);
   var motion = reprojected.xy;
+  var history_depth = reprojected.z;
   // Whether this sample moves otherwise than the camera moves it (an
   // object or a skinned mesh on its motion vectors).
   var own_motion = false;
@@ -204,7 +270,9 @@ fn resolve(in: VsOut, catmull_rom: bool, smaa: bool) -> vec4<f32> {
     return cur4;
   }
   if (upscale && any(motion_at != at)) {
-    motion = camera_reprojection(motion_at, size).xy;
+    let foreground = camera_reprojection(motion_at, size);
+    motion = foreground.xy;
+    history_depth = foreground.z;
     own_motion = false;
     if (taa.still.y > 0.5 && !is_sky_depth(textureLoad(view_depth_tex, motion_at, 0).r)) {
       let v = textureLoad(velocity_tex, motion_at, 0).zw;
@@ -224,7 +292,10 @@ fn resolve(in: VsOut, catmull_rom: bool, smaa: bool) -> vec4<f32> {
       // Disoccluded off the frame: no history.
       return fresh(in);
     }
-    if (catmull_rom) {
+    if (upscale && !smaa && !own_motion) {
+      let sample_uv = (vec2<f32>(motion_at) + 0.5 - jitter) / vec2<f32>(size);
+      hist4 = history_on_surface(prev_uv, sample_uv - motion, history_depth, catmull_rom, cur4);
+    } else if (catmull_rom) {
       hist4 = vec4<f32>(history_catmull_rom(prev_uv), sample_exact(history, linear_sampler, prev_uv).a);
     } else {
       hist4 = sample_exact(history, linear_sampler, prev_uv);
@@ -318,15 +389,11 @@ fn was_occluded(uv: vec2<f32>, expected: f32) -> bool {
   var farthest = 0.0;
   for (var y = 0; y < 2; y++) {
     for (var x = 0; x < 2; x++) {
-      let q = clamp(at + vec2<i32>(x, y), vec2<i32>(0), size - 1);
-      let d = textureSampleLevel(previous_depth, depth_sampler, (vec2<f32>(q) + 0.5) / vec2<f32>(size), 0.0).r;
+      let d = saved_depth(at + vec2<i32>(x, y));
       farthest = max(farthest, d);
     }
   }
-  // Float32 roundoff in the inverse/project matrix products, not a
-  // scene-distance threshold or an accumulation/colour-clamp adjustment.
-  let roundoff = 32.0 * 1.1920929e-7;
-  return expected > farthest + roundoff;
+  return expected > farthest + DEPTH_ROUNDOFF;
 }
 
 // Whether a sample moving on its own motion vectors (an object, a skinned

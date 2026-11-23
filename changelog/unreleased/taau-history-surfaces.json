@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "RenderOptions.upscaler",
+      "summary": "TAAU excludes farther-surface history taps from camera-reprojected foreground and renormalizes the selected bilinear or Catmull-Rom filter. Previously, interpolation could put background colour back into newly uncovered fence detail after visibility rejection. The filter retains closer sub-pixel foreground coverage and accounts for local depth slope. Object-motion handling, blend weights and mode defaults are unchanged."
+    }
+  ]
+}
