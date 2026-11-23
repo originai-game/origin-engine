@@ -418,6 +418,11 @@ pub(crate) fn resolve(
         if s.kind == &crate::cook::texture::TEXTURE && s.own_settings() {
             consumed.remove(&s.rel);
         }
+        // A model program is a model of its own at its own values, also
+        // when a `type model` variant reads it as its part.
+        if s.kind == &crate::cook::model::MODEL && model_program::is_program(&s.rel) {
+            consumed.remove(&s.rel);
+        }
         if s.kind == &terrain::TERRAIN {
             for layer in
                 terrain::layer_files(&s.rel, assets_dir, &String::from_utf8_lossy(&s.bytes))

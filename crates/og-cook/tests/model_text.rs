@@ -120,8 +120,10 @@ fn cooked(name: &str, files: &[(&str, &[u8])]) -> PathBuf {
 /// A program file is a model of its own: it cooks, with levels of detail as
 /// a glTF's, and is not dropped as a file it read itself (it was: the
 /// program is the first file it reads, so it consumed itself and cooked to
-/// nothing, with no error). A `type model` text naming a program still
-/// takes it in as its own part.
+/// nothing, with no error). A `type model` text naming a program reads it
+/// as its part, and the program still cooks at its own values beside it
+/// (it did not: the variant consumed it, so a game loading the program
+/// itself found it missing from the bundle).
 #[test]
 fn a_program_file_cooks_with_levels_of_detail() {
     let program = br##"{
@@ -148,10 +150,12 @@ fn a_program_file_cooks_with_levels_of_detail() {
     assert!(sources.contains(&"models/pebble.shape.json"), "{sources:?}");
     assert!(sources.contains(&"models/slab-tall.ogt"), "{sources:?}");
     assert!(
-        !sources.contains(&"models/slab.shape.json"),
-        "the variant's program is its part: {sources:?}"
+        sources.contains(&"models/slab.shape.json"),
+        "a program a variant names is a model of its own too: {sources:?}"
     );
     let bundle = Bundle::open(&root.join("cooked")).unwrap();
+    bundle.load_model("models/slab.shape.json").unwrap();
+    bundle.load_model("models/slab-tall.ogt").unwrap();
     let model = bundle.load_model("models/pebble.shape.json").unwrap();
     let p = &model.primitives[0];
     assert_eq!(p.lods.len(), 3, "the default levels, as a glTF's");
