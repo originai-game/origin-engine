@@ -46,6 +46,10 @@ feeds back into the simulation.
 | `smaa` | TAA's blur unwanted | no history; not combined with TAAU |
 | `smaaT2x` | temporal without TAA | resolves in linear display colour before stylisation and the overlay; the first frame and every camera cut use the current frame alone |
 
+- Below render scale 1, `smaaT2x` still combines only two scene-resolution
+  frames: sub-pixel geometry such as thin wires can disappear or break into
+  dashes. It is not a temporal upscaler. Under `taa`, `taau` reconstructs
+  that detail across its longer jitter sequence at the output resolution.
 - `msaaSamples` 1 draws FXAA. Where the device resolved no MSAA (TAA,
   FXAA, off, or FXAA for want of a multisampled HDR format) it reads 1;
   RenderCapabilities.antialias is what is drawn now.
