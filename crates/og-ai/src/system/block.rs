@@ -274,9 +274,11 @@ impl StateBlock for AiBlock {
     /// its `blackboard` (every key, an entity value as an entity) and its
     /// `perception` (the way it last moved, whether it ever saw or heard).
     /// A noise is a `noise` record on its source (one with none is in the
-    /// global `noises`). The ticks things started, wait until and were last
-    /// seen or heard at are the clock, which a restart does not turn back:
-    /// left out, as og.ecs leaves its change ticks.
+    /// global `noises`). A behaviour is named by what it parsed to, never
+    /// its handle's number. The ticks a state and a running node started at
+    /// and an agent last saw or heard at are [`Field::Tick`]s, a cooldown's
+    /// or wait's end an [`Field::Until`]: compared relative to each world's
+    /// clock, which a restart does not turn back.
     fn form(&self, bytes: &[u8]) -> Result<og_core::block_form::BlockForm> {
         use og_core::block_form::{BlockForm, Field, Record, Records};
         use serde_json::json;
@@ -285,6 +287,7 @@ impl StateBlock for AiBlock {
             .downcast::<Saved>()
             .expect("decoded by AiBlock::decode");
         let mut out = Records::default();
+        let behaviours = lock(&self.0.behaviours);
         for (k, m) in &s.mems {
             let nodes: Vec<_> = m
                 .nodes
@@ -294,9 +297,20 @@ impl StateBlock for AiBlock {
                             "point": n.point.to_array() })
                 })
                 .collect();
+            let mut mind = Record::new(*k, "mind");
+            // Each node's clock: when it started running, and until when it waits.
+            for (i, n) in m.nodes.iter().enumerate() {
+                let since = if n.running { n.since } else { 0 };
+                mind = mind
+                    .field(&format!("node {i} since"), Field::Tick(since))
+                    .field(&format!("node {i} until"), Field::Until(n.until));
+            }
+            let behaviour = behaviours
+                .name(m.behaviour)
+                .unwrap_or_else(|| format!("unknown {:#x}", m.behaviour));
             out.entities.push(
-                Record::new(*k, "mind")
-                    .field("behaviour", Field::of(&m.behaviour))
+                mind.field("behaviour", Field::of(&behaviour))
+                    .field("stateSince", Field::Tick(m.state_since))
                     .field("started", Field::of(&m.started))
                     .field("entered", Field::of(&m.entered))
                     .field("state", Field::of(&m.state))
@@ -336,8 +350,14 @@ impl StateBlock for AiBlock {
                         "forward",
                         Field::of(&s.forward.get(&k).map(|v| v.to_array())),
                     )
-                    .field("everSeen", Field::of(&s.seen.contains_key(&k)))
-                    .field("everHeard", Field::of(&s.heard.contains_key(&k))),
+                    .field(
+                        "lastSeen",
+                        Field::Tick(s.seen.get(&k).copied().unwrap_or(0)),
+                    )
+                    .field(
+                        "lastHeard",
+                        Field::Tick(s.heard.get(&k).copied().unwrap_or(0)),
+                    ),
             );
         }
         let mut unsourced = Vec::new();

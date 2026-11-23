@@ -977,6 +977,21 @@ impl Snapshot {
         set
     }
 
+    /// og.Time.tick, the clock a module's tick fields are on; `None`
+    /// without og.Time.
+    pub fn clock(&self) -> Option<u64> {
+        let t = self.types.iter().position(|t| t.name == "og.Time")?;
+        let (_, bytes) = self.resources.iter().find(|(r, _)| *r == t)?;
+        let ty = &self.types[t];
+        let i = ty.schema.fields.iter().position(|f| f.name == "tick")?;
+        let b = bytes.get(ty.layout.range(i))?;
+        match ty.schema.fields[i].ty {
+            FieldType::U32 => Some(u32::from_le_bytes(b.try_into().ok()?) as u64),
+            FieldType::U64 => Some(u64::from_le_bytes(b.try_into().ok()?)),
+            _ => None,
+        }
+    }
+
     /// An entity's path: its og.Parent chain's ids joined by `/`
     /// (`level/door`, `#4.1`).
     pub fn entity_path(&self, entity: u64) -> String {
@@ -1064,14 +1079,31 @@ fn pair(start: &Snapshot, now: &Snapshot) -> Pairing {
     }
 }
 
+/// What a u64 names in the engine's registries (og-runtime's
+/// `world_handle_names`: `nav grid #…`, `behaviour guard #…`), so a handle
+/// a module gave in another order compares by what it names; empty for a
+/// value no registry gave.
+pub type Names<'a> = &'a dyn Fn(u64) -> Vec<String>;
+
 /// Whether a handle lane of `now` stands for the same thing as `start`'s:
-/// equal bits, or an entity paired with it.
-fn same_handle(start: &[u8], now: &[u8], map: &std::collections::HashMap<u64, u64>) -> bool {
+/// equal bits, an entity paired with it, or a registry handle naming the
+/// same thing (a grid, a behaviour).
+fn same_handle(
+    start: &[u8],
+    now: &[u8],
+    map: &std::collections::HashMap<u64, u64>,
+    names: Names<'_>,
+) -> bool {
     if start == now {
         return true;
     }
     let bits = |b: &[u8]| u64::from_le_bytes(b.try_into().expect("8 bytes"));
-    map.get(&bits(now)) == Some(&bits(start))
+    let (a, b) = (bits(start), bits(now));
+    if map.get(&b) == Some(&a) {
+        return true;
+    }
+    let (x, y) = (names(a), names(b));
+    x.iter().any(|n| y.contains(n))
 }
 
 /// The fields of one record that differ after the pairing, as
@@ -1081,6 +1113,7 @@ fn record_changes(
     (now, tn, bn): (&Snapshot, usize, &[u8]),
     skip: &[String],
     map: &std::collections::HashMap<u64, u64>,
+    names: Names<'_>,
 ) -> Vec<Value> {
     let (ss, sn) = (&start.types[ts], &now.types[tn]);
     let mut out = Vec::new();
@@ -1096,7 +1129,7 @@ fn record_changes(
         let g = &sn.schema.fields[j];
         let y = &bn[sn.layout.range(j)];
         let same = match (f.ty, g.ty) {
-            (FieldType::U64, FieldType::U64) => same_handle(x, y, map),
+            (FieldType::U64, FieldType::U64) => same_handle(x, y, map, names),
             (
                 FieldType::List(og_core::Scalar::U64, _),
                 FieldType::List(og_core::Scalar::U64, _),
@@ -1105,7 +1138,7 @@ fn record_changes(
                     og_core::list_elements(f.ty, x).collect(),
                     og_core::list_elements(g.ty, y).collect(),
                 );
-                a.len() == b.len() && a.iter().zip(&b).all(|(p, q)| same_handle(p, q, map))
+                a.len() == b.len() && a.iter().zip(&b).all(|(p, q)| same_handle(p, q, map, names))
             }
             _ => f.ty == g.ty && x == y,
         };
@@ -1124,7 +1157,7 @@ fn record_changes(
 /// in that order; resources and event queues by name, `ignore` and each
 /// peer's session left out. Entity ids, the allocator and module state
 /// blocks (which hold ids of their own) are not in it.
-fn structural_hash(s: &Snapshot, order: &[usize], ignore: &Ignore) -> u64 {
+fn structural_hash(s: &Snapshot, order: &[usize], ignore: &Ignore, names: Names<'_>) -> u64 {
     use std::collections::HashMap;
     let place: HashMap<u64, u32> = order
         .iter()
@@ -1157,8 +1190,17 @@ fn structural_hash(s: &Snapshot, order: &[usize], ignore: &Ignore) -> u64 {
                         h.write_u32(k);
                     }
                     None => {
-                        h.write(&[0]);
-                        h.write(lane);
+                        let bits = u64::from_le_bytes(lane.try_into().expect("8 bytes"));
+                        match names(bits).first() {
+                            Some(name) => {
+                                h.write(&[2]);
+                                h.write_str(name);
+                            }
+                            None => {
+                                h.write(&[0]);
+                                h.write(lane);
+                            }
+                        }
                     }
                 }
             }
@@ -1216,20 +1258,43 @@ fn structural_hash(s: &Snapshot, order: &[usize], ignore: &Ignore) -> u64 {
 /// (og-ecs's `World::block_form`): `None` for a block the world lacks.
 pub type Forms<'a> = &'a dyn Fn(&str, &[u8]) -> Option<Result<BlockForm, String>>;
 
-/// Whether `now`'s field stands for `start`'s through the pairing.
-fn same_field(start: &Field, now: &Field, map: &std::collections::HashMap<u64, u64>) -> bool {
+/// A tick field relative to `s`'s clock (og.Time.tick): how long ago a
+/// [`Field::Tick`] was, how many ticks are left until a [`Field::Until`]
+/// (none once passed); `None` for never or none. Without og.Time in the
+/// snapshot, the tick itself.
+fn relative(s: &Snapshot, f: &Field) -> Option<i64> {
+    let now = s.clock().unwrap_or(0) as i64;
+    match *f {
+        Field::Tick(0) | Field::Until(0) => None,
+        Field::Tick(t) => Some(now - t as i64),
+        Field::Until(t) => Some(t as i64 - now).filter(|left| *left > 0),
+        _ => None,
+    }
+}
+
+/// Whether `now`'s field stands for `start`'s: entities through the
+/// pairing, ticks relative to each world's clock.
+fn same_field(
+    (s1, start): (&Snapshot, &Field),
+    (s2, now): (&Snapshot, &Field),
+    map: &std::collections::HashMap<u64, u64>,
+) -> bool {
     let entity = |a: &u64, b: &u64| a == b || map.get(b) == Some(a);
     match (start, now) {
         (Field::Entity(a), Field::Entity(b)) => entity(a, b),
         (Field::Entities(a), Field::Entities(b)) => {
             a.len() == b.len() && a.iter().zip(b).all(|(x, y)| entity(x, y))
         }
+        (Field::Tick(_), Field::Tick(_)) | (Field::Until(_), Field::Until(_)) => {
+            relative(s1, start) == relative(s2, now)
+        }
         (Field::Value(a), Field::Value(b)) => a == b,
         _ => false,
     }
 }
 
-/// A field as JSON: an entity by its path in its own world.
+/// A field as JSON: an entity by its path in its own world, a tick by how
+/// long ago it was (`{ ticksAgo }`) or how long is left (`{ ticksLeft }`).
 fn field_value(s: &Snapshot, f: &Field) -> Value {
     let id = |e: u64| {
         if s.rows.iter().any(|r| r.entity == e) {
@@ -1243,6 +1308,8 @@ fn field_value(s: &Snapshot, f: &Field) -> Value {
     match f {
         Field::Entity(e) => id(*e),
         Field::Entities(l) => Value::Array(l.iter().map(|e| id(*e)).collect()),
+        Field::Tick(_) => relative(s, f).map_or(Value::Null, |n| json!({ "ticksAgo": n })),
+        Field::Until(_) => relative(s, f).map_or(Value::Null, |n| json!({ "ticksLeft": n })),
         Field::Value(v) => v.clone(),
     }
 }
@@ -1263,7 +1330,7 @@ fn block_changes(
     let mut out = Vec::new();
     for (g, f) in &a.global {
         match b.global.iter().find(|(h, _)| h == g) {
-            Some((_, f2)) if same_field(f, f2, map) => {}
+            Some((_, f2)) if same_field((start, f), (now, f2), map) => {}
             other => out.push(json!({ "block": name, "global": g, "start": field_value(start, f), "now": other.map(|(_, f2)| field_value(now, f2)) })),
         }
     }
@@ -1292,6 +1359,9 @@ fn block_changes(
         match f {
             Field::Entity(e) => format!("e{}", at(e)),
             Field::Entities(l) => format!("{:?}", l.iter().map(at).collect::<Vec<_>>()),
+            Field::Tick(_) | Field::Until(_) => {
+                format!("t{:?}", relative(if from_now { now } else { start }, f))
+            }
             Field::Value(v) => v.to_string(),
         }
     };
@@ -1326,7 +1396,7 @@ fn block_changes(
                 let mut fields = Vec::new();
                 for (n, f) in &r.fields {
                     match r2.fields.iter().find(|(m, _)| m == n) {
-                        Some((_, f2)) if same_field(f, f2, map) => {}
+                        Some((_, f2)) if same_field((start, f), (now, f2), map) => {}
                         other => fields.push(json!({ "field": n, "start": field_value(start, f), "now": other.map(|(_, f2)| field_value(now, f2)) })),
                     }
                 }
@@ -1379,7 +1449,13 @@ fn block_changes(
 /// or its form fails) is listed in `unchecked`, never passed. `hash` and
 /// `startHash` are each world's structural hash (entities by their paired
 /// place; module blocks left out).
-pub fn restart_diff(start: &Snapshot, now: &Snapshot, ignore: &Ignore, forms: Forms<'_>) -> Value {
+pub fn restart_diff(
+    start: &Snapshot,
+    now: &Snapshot,
+    ignore: &Ignore,
+    forms: Forms<'_>,
+    handles: Names<'_>,
+) -> Value {
     let pairing = pair(start, now);
     let map = &pairing.now_to_start;
     let mut truncated = 0usize;
@@ -1411,7 +1487,8 @@ pub fn restart_diff(start: &Snapshot, now: &Snapshot, ignore: &Ignore, forms: Fo
                 .find(|(u, _)| now.type_name(*u) == name)
             {
                 Some((u, b2)) => {
-                    let fields = record_changes((start, *t, bytes), (now, *u, b2), skip, map);
+                    let fields =
+                        record_changes((start, *t, bytes), (now, *u, b2), skip, map, handles);
                     if !fields.is_empty() {
                         push(
                             &mut components,
@@ -1463,8 +1540,13 @@ pub fn restart_diff(start: &Snapshot, now: &Snapshot, ignore: &Ignore, forms: Fo
             .find(|(u, _)| now.type_name(*u) == name)
         {
             Some((u, b2)) => {
-                let fields =
-                    record_changes((start, *t, bytes), (now, *u, b2), skip.unwrap_or(&[]), map);
+                let fields = record_changes(
+                    (start, *t, bytes),
+                    (now, *u, b2),
+                    skip.unwrap_or(&[]),
+                    map,
+                    handles,
+                );
                 if !fields.is_empty() {
                     resources.push(json!({ "resource": name, "fields": fields }));
                 }
@@ -1494,7 +1576,7 @@ pub fn restart_diff(start: &Snapshot, now: &Snapshot, ignore: &Ignore, forms: Fo
         let same_list = |a: &[Vec<u8>], b: &[Vec<u8>], r: &Queue| {
             a.len() == b.len()
                 && a.iter().zip(b).all(|(x, y)| {
-                    record_changes((start, q.ty, x), (now, r.ty, y), &[], map).is_empty()
+                    record_changes((start, q.ty, x), (now, r.ty, y), &[], map, handles).is_empty()
                 })
         };
         let same = theirs.is_some_and(|r| {
@@ -1571,8 +1653,8 @@ pub fn restart_diff(start: &Snapshot, now: &Snapshot, ignore: &Ignore, forms: Fo
         || !records.is_empty();
     json!({
         "differs": differs,
-        "hash": format!("{:016x}", structural_hash(now, &now_order, ignore)),
-        "startHash": format!("{:016x}", structural_hash(start, &start_order, ignore)),
+        "hash": format!("{:016x}", structural_hash(now, &now_order, ignore, handles)),
+        "startHash": format!("{:016x}", structural_hash(start, &start_order, ignore, handles)),
         "components": components,
         "names": names,
         "entities": { "missing": missing, "extra": extra },
@@ -1767,6 +1849,10 @@ mod tests {
         None
     }
 
+    fn no_names(_: u64) -> Vec<String> {
+        Vec::new()
+    }
+
     /// A physics-like block: (entity, linear velocity) per body, a gravity first.
     fn bodies(gravity: f32, list: &[(u64, f32)]) -> Vec<u8> {
         let mut out = gravity.to_le_bytes().to_vec();
@@ -1798,6 +1884,114 @@ mod tests {
         })
     }
 
+    /// `w` with og.Time at `tick`, and an AI-like block holding the hero's
+    /// state start and cooldown end on that clock.
+    fn clocked(w: &Snapshot, tick: u32, since: u64, until: u64) -> Snapshot {
+        let mut w = w.clone();
+        let mut time = ty("og.Time", &[]);
+        time.schema
+            .fields
+            .push(FieldSchema::new("tick", FieldType::U32));
+        time.layout = Layout::of(&time.schema);
+        w.types.push(time);
+        w.resources
+            .push((w.types.len() - 1, tick.to_le_bytes().to_vec()));
+        let mut b = w.rows[0].entity.to_le_bytes().to_vec();
+        b.extend_from_slice(&since.to_le_bytes());
+        b.extend_from_slice(&until.to_le_bytes());
+        w.blocks = vec![("og.ai".into(), b)];
+        w
+    }
+
+    fn mind_forms(name: &str, b: &[u8]) -> Option<Result<BlockForm, String>> {
+        (name == "og.ai").then(|| {
+            let word = |i: usize| u64::from_le_bytes(b[i * 8..i * 8 + 8].try_into().unwrap());
+            Ok(BlockForm::Entities(Records {
+                global: vec![],
+                entities: vec![
+                    Record::new(word(0), "mind")
+                        .field("stateSince", Field::Tick(word(1)))
+                        .field("cooldown", Field::Until(word(2))),
+                ],
+            }))
+        })
+    }
+
+    #[test]
+    fn a_registry_handle_compares_by_what_it_names() {
+        // The hero's Target holds a grid's handle: 7 in the fresh start, 9 after a restart that
+        // made its grids in another order.
+        let with = |w: &Snapshot, h: u64| {
+            let mut w = w.clone();
+            let t = w.rows[0].components[1].0;
+            w.rows[0].components[1] = (t, h.to_le_bytes().to_vec());
+            w
+        };
+        let start = with(&arena(), 7);
+        let now = with(&respawned(&arena()), 9);
+        let grids = |h: u64| match h {
+            7 | 9 => vec!["nav grid #1f".to_owned()],
+            8 => vec!["nav grid #2e".to_owned()],
+            _ => Vec::new(),
+        };
+        let d = restart_diff(&start, &now, &Ignore::new(), &no_forms, &grids);
+        assert_eq!(d["differs"], json!(false), "{d:#}");
+        assert_eq!(d["hash"], d["startHash"]);
+        // Another grid is a difference, and so is the same number without names.
+        let other = with(&respawned(&arena()), 8);
+        assert_eq!(
+            restart_diff(&start, &other, &Ignore::new(), &no_forms, &grids)["components"][0]["component"],
+            json!("Target")
+        );
+        assert_eq!(
+            restart_diff(&start, &now, &Ignore::new(), &no_forms, &no_names)["differs"],
+            json!(true)
+        );
+    }
+
+    #[test]
+    fn a_modules_ticks_compare_relative_to_each_worlds_clock() {
+        let start = clocked(&arena(), 1, 1, 6);
+        let respawned = respawned(&arena());
+        // The restart at tick 30 entered its state then, with a cooldown 5 ticks long, as the
+        // fresh start did at tick 1.
+        let now = clocked(&respawned, 30, 30, 35);
+        let d = restart_diff(
+            &start,
+            &now,
+            &Ignore::from([("og.Time".to_owned(), vec![])]),
+            &mind_forms,
+            &no_names,
+        );
+        assert_eq!(d["differs"], json!(false), "{d:#}");
+        // A cooldown left from the last game (2 ticks left, not 5) is a difference, by how long is left.
+        let stale = clocked(&respawned, 30, 30, 32);
+        let d = restart_diff(
+            &start,
+            &stale,
+            &Ignore::from([("og.Time".to_owned(), vec![])]),
+            &mind_forms,
+            &no_names,
+        );
+        assert_eq!(
+            d["records"][0],
+            json!({ "block": "og.ai", "entity": "hero", "record": "mind", "fields": [{ "field": "cooldown", "start": { "ticksLeft": 5 }, "now": { "ticksLeft": 2 } }] })
+        );
+        // Two passed cooldowns are alike, however long ago they ended.
+        let passed = clocked(&respawned, 30, 30, 12);
+        let a = clocked(&arena(), 1, 1, 0);
+        assert_eq!(
+            restart_diff(
+                &a,
+                &passed,
+                &Ignore::from([("og.Time".to_owned(), vec![])]),
+                &mind_forms,
+                &no_names
+            )["differs"],
+            json!(false)
+        );
+    }
+
     #[test]
     fn a_module_block_compares_by_entity_through_the_pairing() {
         let mut start = arena();
@@ -1809,7 +2003,7 @@ mod tests {
             "og.physics".into(),
             bodies(-9.8, &[(coin, 2.5), (hero, 0.0)]),
         )];
-        let d = restart_diff(&start, &now, &Ignore::new(), &body_forms);
+        let d = restart_diff(&start, &now, &Ignore::new(), &body_forms, &no_names);
         assert_eq!(d["differs"], json!(false), "{d:#}");
         assert_eq!(d["unchecked"], json!([]));
         // A body left moving after the restart: the entity, the record and the field.
@@ -1818,7 +2012,7 @@ mod tests {
             "og.physics".into(),
             bodies(-9.8, &[(coin, 2.5), (hero, 4.0)]),
         )];
-        let d = restart_diff(&start, &moving, &Ignore::new(), &body_forms);
+        let d = restart_diff(&start, &moving, &Ignore::new(), &body_forms, &no_names);
         assert_eq!(d["differs"], json!(true));
         assert_eq!(
             d["records"][0],
@@ -1830,7 +2024,7 @@ mod tests {
             "og.physics".into(),
             bodies(-1.0, &[(coin, 2.5), (hero, 0.0), (9, 0.0)]),
         )];
-        let d = restart_diff(&start, &stale, &Ignore::new(), &body_forms);
+        let d = restart_diff(&start, &stale, &Ignore::new(), &body_forms, &no_names);
         assert_eq!(d["records"][0]["global"], json!("gravity"));
         assert_eq!(
             d["records"][1],
@@ -1838,7 +2032,7 @@ mod tests {
         );
         // Without a form, a block whose ids moved is unchecked, never passed.
         assert_eq!(
-            restart_diff(&start, &moving, &Ignore::new(), &no_forms)["unchecked"][0],
+            restart_diff(&start, &moving, &Ignore::new(), &no_forms, &no_names)["unchecked"][0],
             json!("og.physics: this world has no such block to read it")
         );
     }
@@ -1851,14 +2045,14 @@ mod tests {
             start.portable_hash(&start.portable_table()),
             now.portable_hash(&now.portable_table())
         );
-        let d = restart_diff(&start, &now, &Ignore::new(), &no_forms);
+        let d = restart_diff(&start, &now, &Ignore::new(), &no_forms, &no_names);
         assert_eq!(d["differs"], json!(false), "{d:#}");
         assert_eq!(d["hash"], d["startHash"]);
         // The hero's Target holding the first coin instead of the second is a difference.
         let mut wrong = now.clone();
         let target = wrong.rows[0].components[1].0;
         wrong.rows[0].components[1] = (target, ((1u64 << 32) | 1).to_le_bytes().to_vec());
-        let d = restart_diff(&start, &wrong, &Ignore::new(), &no_forms);
+        let d = restart_diff(&start, &wrong, &Ignore::new(), &no_forms, &no_names);
         assert_eq!(d["components"][0]["entity"], json!("hero"));
         assert_eq!(d["components"][0]["component"], json!("Target"));
         assert_ne!(d["hash"], d["startHash"]);
@@ -1869,7 +2063,7 @@ mod tests {
             components: vec![(1, floats(&[30.0]))],
         });
         leak.slots.push((0, true));
-        let d = restart_diff(&start, &leak, &Ignore::new(), &no_forms);
+        let d = restart_diff(&start, &leak, &Ignore::new(), &no_forms, &no_names);
         assert_eq!(d["differs"], json!(true));
         assert_eq!(d["entities"]["extra"], json!(["#3.0"]));
         assert_eq!(d["entities"]["missing"], json!([]));
@@ -1877,19 +2071,19 @@ mod tests {
         let mut lost = now.clone();
         lost.rows.pop();
         assert_eq!(
-            restart_diff(&start, &lost, &Ignore::new(), &no_forms)["entities"]["missing"],
+            restart_diff(&start, &lost, &Ignore::new(), &no_forms, &no_names)["entities"]["missing"],
             json!(["#2.0"])
         );
         // An ignored field is left out.
         let mut moved = now.clone();
         moved.resources[0].1 = floats(&[9.0]);
         assert_eq!(
-            restart_diff(&start, &moved, &Ignore::new(), &no_forms)["resources"][0]["resource"],
+            restart_diff(&start, &moved, &Ignore::new(), &no_forms, &no_names)["resources"][0]["resource"],
             json!("Clock")
         );
         let clock = Ignore::from([("Clock".to_owned(), vec![])]);
         assert_eq!(
-            restart_diff(&start, &moved, &clock, &no_forms)["differs"],
+            restart_diff(&start, &moved, &clock, &no_forms, &no_names)["differs"],
             json!(false)
         );
     }

@@ -249,6 +249,11 @@ const run = await runPlaytest({ commands: "10:quit", budget: { frameMs: { p95: 1
   og.anim's layers and foot locks, a tween, a path, an emitter
   (`run.restart.diff.records`: `crate og.physics body.linear is [0,5,0], a
   fresh start's [0,0,0]`); what is no entity's (a gravity) compares as is.
+  A grid, navmesh, flow field or behaviour handle compares by what it
+  names, so one made or loaded in another order reads the same; a
+  module's tick (a state's start, a cooldown's end, a last sighting)
+  compares by how long ago it was or how long is left, so a restarted
+  cooldown counts as one, however late in the run it came.
   A module state the check could not read is listed in `unchecked`, never
   passed.
 - First frame on a phone over 4G within 2 s for a small game: a large

@@ -80,7 +80,7 @@ pub mod exports {
         og_nav_build, og_nav_carve, og_nav_cell_at, og_nav_find_path, og_nav_finish_link,
         og_nav_flow_at, og_nav_flow_field, og_nav_grid, og_nav_grid_from_tilemap, og_nav_load,
         og_nav_nearest, og_nav_path_of, og_nav_set_area, og_nav_set_cost, og_nav_set_flow_targets,
-        og_nav_set_link, og_nav_set_link_open, og_nav_set_obstacle,
+        og_nav_set_link, og_nav_set_link_open, og_nav_set_obstacle, world_handle_names,
     };
     pub use super::net::{
         og_net_command, og_net_commands, og_net_final_hash, og_net_hash, og_net_resimulating,

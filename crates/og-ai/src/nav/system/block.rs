@@ -622,6 +622,9 @@ impl StateBlock for NavBlock {
             .downcast::<Saved>()
             .expect("decoded by NavBlock::decode");
         let mut out = Records::default();
+        // A grid, navmesh or flow field by what it names, never its handle's number.
+        let navs = lock(&self.0.navs);
+        let named = |h: u64| navs.name(h).unwrap_or_else(|| format!("unknown {h:#x}"));
         for (k, p) in &saved.paths {
             let (links, traverse) = saved
                 .crossing
@@ -637,7 +640,7 @@ impl StateBlock for NavBlock {
                     .field("corners", Field::of(&corners))
                     .field("next", Field::of(&p.next))
                     .field("target", Field::of(&v3(p.target)))
-                    .field("nav", Field::of(&p.nav))
+                    .field("nav", Field::of(&named(p.nav)))
                     .field("version", Field::of(&p.version))
                     .field("age", Field::of(&p.age))
                     .field("poly", Field::of(&p.poly))
@@ -649,7 +652,7 @@ impl StateBlock for NavBlock {
         for (h, costs) in &saved.grids {
             let down = saved.rows_down.as_ref().map(|d| d.contains(h));
             out.global.push((
-                format!("grid {h}"),
+                format!("grid {}", named(*h)),
                 Field::of(&json!({ "costs": costs, "rowsDown": down })),
             ));
         }
@@ -670,15 +673,21 @@ impl StateBlock for NavBlock {
                 .get(h)
                 .map(|l| l.iter().map(|(id, l)| json!([id, link_json(l)])).collect());
             out.global.push((
-                format!("navmesh {h}"),
+                format!("navmesh {}", named(*h)),
                 Field::of(&json!({ "obstacles": obstacles, "areas": areas, "links": links })),
             ));
         }
         for (h, targets) in &saved.flows {
-            out.global.push((format!("flow {h}"), Field::of(targets)));
+            out.global
+                .push((format!("flow {}", named(*h)), Field::of(targets)));
         }
+        let versions: BTreeMap<String, u64> = saved
+            .versions
+            .iter()
+            .map(|(h, v)| (named(*h), *v))
+            .collect();
         out.global
-            .push(("versions".to_owned(), Field::of(&saved.versions)));
+            .push(("versions".to_owned(), Field::of(&versions)));
         out.global
             .push(("origin".to_owned(), Field::of(&v3(saved.origin))));
         Ok(BlockForm::Entities(out))

@@ -104,6 +104,15 @@ impl Behaviours {
         self.entries.insert(h, Arc::new(b));
         h
     }
+
+    /// What handle `h` names, independent of the order behaviours were
+    /// loaded in: the behaviour's name and a hash of what it parsed to
+    /// (`patrol #1f…`); `None` for a handle this engine never gave.
+    pub fn name(&self, h: u64) -> Option<String> {
+        let b = self.entries.get(&h)?;
+        let hash = og_core::hash::hash_bytes(format!("{b:?}").as_bytes());
+        Some(format!("{} #{hash:016x}", b.name))
+    }
     pub fn get(&self, h: u64) -> Option<Arc<Behaviour>> {
         self.entries.get(&h).cloned()
     }

@@ -493,6 +493,8 @@ pub struct Navs {
     /// (loaded from a file, or made before any shift) is in the world's
     /// first frame.
     frames: IdMap<u64, Vec3>,
+    /// Per entry, what it names ([`Navs::name`]).
+    names: IdMap<u64, String>,
 }
 
 impl Navs {
@@ -500,6 +502,20 @@ impl Navs {
     pub fn insert(&mut self, nav: Nav) -> u64 {
         self.next += 1;
         let h = self.next | (1u64 << 32);
+        // Named as made: two equal grids made in either order get the same
+        // names; the same made twice is told apart by `@2`.
+        let base = self.name_of(&nav);
+        let n = self
+            .names
+            .values()
+            .filter(|v| v.split(" @").next() == Some(base.as_str()))
+            .count();
+        let name = if n == 0 {
+            base
+        } else {
+            format!("{base} @{}", n + 1)
+        };
+        self.names.insert(h, name);
         self.entries.insert(h, nav);
         h
     }
@@ -524,6 +540,28 @@ impl Navs {
 
     pub fn get(&self, h: u64) -> Option<&Nav> {
         self.entries.get(&h)
+    }
+
+    /// What handle `h` names, independent of the order the grids,
+    /// navmeshes and flow fields were made in: its kind and a hash of its
+    /// contents as made (`grid #…`, `navmesh #…`), a flow field by its
+    /// grid's name and its targets; `None` for a handle never given.
+    pub fn name(&self, h: u64) -> Option<String> {
+        self.names.get(&h).cloned()
+    }
+
+    fn name_of(&self, nav: &Nav) -> String {
+        match nav {
+            Nav::Flow { grid, targets, .. } => {
+                let grid = self.name(*grid).unwrap_or_else(|| "none".into());
+                let hash = og_core::hash::hash_bytes(format!("{targets:?}").as_bytes());
+                format!("flow over {grid} to #{hash:016x}")
+            }
+            other => {
+                let hash = og_core::hash::hash_bytes(format!("{other:?}").as_bytes());
+                format!("{} #{hash:016x}", other.kind())
+            }
+        }
     }
 
     pub fn get_mut(&mut self, h: u64) -> Option<&mut Nav> {

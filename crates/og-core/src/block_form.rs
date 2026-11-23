@@ -9,8 +9,11 @@
 //! that state by entity instead: one [`Record`] per entity and thing it
 //! holds (`body`, `collider`, `layer 0`), each with its fields by name, an
 //! entity reference as [`Field::Entity`] so the comparison reads it through
-//! its pairing of the two worlds' entities, and the state that is no
-//! entity's as [`Records::global`].
+//! its pairing of the two worlds' entities, a tick on the world's clock as
+//! [`Field::Tick`] or [`Field::Until`] so it compares relative to each
+//! world's current tick, and the state that is no entity's as
+//! [`Records::global`]. A module's own registry handle (a nav grid, a
+//! behaviour) is given as the thing it names, never its handle's number.
 
 use serde::Serialize;
 use serde_json::Value;
@@ -54,6 +57,14 @@ pub enum Field {
     Entity(u64),
     /// A list of entities' id bits.
     Entities(Vec<u64>),
+    /// A tick in the past on og.Time's clock (`state_since`, last seen),
+    /// compared by how long ago it was in each world's own snapshot: a
+    /// restart does not turn the clock back. 0 is never.
+    Tick(u64),
+    /// A deadline tick on og.Time's clock (a cooldown's end), compared by
+    /// the ticks left until it in each world's snapshot, none once passed.
+    /// 0 is none.
+    Until(u64),
     /// Any other value, as JSON (numbers exact, as the module's).
     Value(Value),
 }

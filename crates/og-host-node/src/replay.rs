@@ -10,7 +10,8 @@
 //!   `state::diff` as JSON, or `{"error": reason}`;
 //! - `og_node_restart_diff`: og-net's `state::restart_diff` of a fresh
 //!   start's save (start) against the world now, within an ignore table,
-//!   each module block in its per-entity form, for `og run --restart-at`.
+//!   each module block in its per-entity form and registry handles by
+//!   what they name, for `og run --restart-at`.
 
 // napi registers the exports outside `cfg(test)` only.
 #![cfg_attr(test, allow(dead_code))]
@@ -76,7 +77,15 @@ pub fn og_node_restart_diff(engine: u32, save_text: String, ignore_json: String)
                     Err(e) => Some(Err(e)),
                 }
             };
-            Ok(restart_diff(&start, &world(engine)?, &ignore, &forms))
+            // A grid's or a behaviour's handle by what it names.
+            let names = |h: u64| og_runtime::world_handle_names(engine, h);
+            Ok(restart_diff(
+                &start,
+                &world(engine)?,
+                &ignore,
+                &forms,
+                &names,
+            ))
         });
     match diffed {
         Ok(v) => v.to_string(),

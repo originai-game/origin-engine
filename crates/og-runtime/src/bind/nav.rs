@@ -139,6 +139,30 @@ fn navs(engine: u32) -> Result<og_ai::nav::SharedNavs, String> {
         .ok_or_else(|| format!("no engine {engine}"))
 }
 
+/// What a u64 of engine `engine`'s world names in og.nav's and og.ai's
+/// registries, each tagged by its registry (`nav grid #…`, `behaviour
+/// guard #…`): a restart check compares a handle by these, so one made
+/// or loaded in another order reads the same. Empty for a value neither
+/// gave.
+pub fn world_handle_names(engine: u32, h: u64) -> Vec<String> {
+    let mut out = Vec::new();
+    if let Ok(n) = navs(engine)
+        && let Some(name) = lock(&n).name(h)
+    {
+        out.push(format!("nav {name}"));
+    }
+    if let Some(ai) = crate::bind::agents::with(engine, |m| m.ai.clone()).flatten()
+        && let Some(name) = ai
+            .behaviours
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .name(h)
+    {
+        out.push(format!("behaviour {name}"));
+    }
+    out
+}
+
 fn handle(h: f64) -> u64 {
     if h.is_finite() && h >= 0.0 {
         h as u64

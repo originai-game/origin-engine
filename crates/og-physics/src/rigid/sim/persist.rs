@@ -427,30 +427,74 @@ impl Sim {
     }
 }
 
+/// One contact point's place, the same in two worlds whatever handles
+/// their colliders hold: on each side, the collider's index among its
+/// body's colliders, the shape feature it touches and its local point's
+/// bits, the two sides in sorted order (so which collider rapier names
+/// first does not matter).
+type PointKey = [(u32, u32, [u32; 3]); 2];
+
+/// Sums each point's (normal impulse, warm-start impulse) in [`PointKey`]
+/// order: two equal worlds sum the same numbers in the same order, so the
+/// sums are equal to the bit, with no tolerance.
+pub(crate) fn canonical_sums(points: &mut [(PointKey, f32, f32)]) -> (f32, f32) {
+    points.sort_by(|a, b| {
+        a.0.cmp(&b.0)
+            .then(a.1.to_bits().cmp(&b.1.to_bits()))
+            .then(a.2.to_bits().cmp(&b.2.to_bits()))
+    });
+    points
+        .iter()
+        .fold((0.0, 0.0), |(i, w), p| (i + p.1, w + p.2))
+}
+
 /// The narrow phase by entity: per touching pair (summed over the pairs
 /// between the same two entities' colliders), a `contact` record on the
 /// first collider's entity keyed by the second's, and the same on the
 /// second's keyed by the first's (which collider rapier names first follows
 /// the handles, which differ between worlds); per intersecting sensor
-/// pair, a `sensor contact` likewise.
+/// pair, a `sensor contact` likewise. Impulses are summed in a canonical
+/// order ([`canonical_sums`]), never in the narrow phase's handle order.
 fn contact_records(w: &rp::PhysicsWorld, out: &mut Vec<Record>) {
     let entity = |h: rp::ColliderHandle| w.colliders.get(h).map_or(0, |c| c.user_data as u64);
-    /// Pairs, manifolds, points, impulse, warm-start impulse.
-    type Sums = (u32, u32, u32, f32, f32);
+    // A collider's index among its body's colliders (0 for one with no body).
+    let index = |h: rp::ColliderHandle| {
+        w.colliders
+            .get(h)
+            .and_then(|c| c.parent())
+            .and_then(|b| w.bodies.get(b))
+            .and_then(|b| b.colliders().iter().position(|&c| c == h))
+            .unwrap_or(0) as u32
+    };
+    let bits = |p: &rp::Vector| {
+        let a: [f32; 3] = {
+            let a = p.to_array();
+            let v: &[f32] = &a;
+            [v[0], v[1], v.get(2).copied().unwrap_or(0.0)]
+        };
+        a.map(f32::to_bits)
+    };
+    /// Pairs, manifolds, points, and every point's key and impulses.
+    type Sums = (u32, u32, u32, Vec<(PointKey, f32, f32)>);
     let mut touching: BTreeMap<(u64, u64), Sums> = BTreeMap::new();
     for p in w.narrow_phase.contact_pairs() {
         if !p.has_any_active_contact() {
             continue;
         }
         let (a, b) = (entity(p.collider1), entity(p.collider2));
+        let (i1, i2) = (index(p.collider1), index(p.collider2));
         let s = touching.entry((a.min(b), a.max(b))).or_default();
         s.0 += 1;
         for m in p.solver_manifolds() {
             s.1 += 1;
             s.2 += m.points.len() as u32;
             for c in &m.points {
-                s.3 += c.data.impulse;
-                s.4 += c.data.warmstart_impulse;
+                let mut key = [
+                    (i1, c.fid1.0, bits(&c.local_p1)),
+                    (i2, c.fid2.0, bits(&c.local_p2)),
+                ];
+                key.sort_unstable();
+                s.3.push((key, c.data.impulse, c.data.warmstart_impulse));
             }
         }
     }
@@ -461,7 +505,8 @@ fn contact_records(w: &rp::PhysicsWorld, out: &mut Vec<Record>) {
             vec![(a, b), (b, a)]
         }
     };
-    for ((a, b), (pairs, manifolds, points, impulse, warm)) in touching {
+    for ((a, b), (pairs, manifolds, points, mut each)) in touching {
+        let (impulse, warm) = canonical_sums(&mut each);
         for (on, with) in both(a, b) {
             out.push(
                 Record::new(on, "contact")
@@ -489,5 +534,48 @@ fn contact_records(w: &rp::PhysicsWorld, out: &mut Vec<Record>) {
                     .field("pairs", Field::of(&pairs)),
             );
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// The same contact points as two worlds' narrow phases list them, in
+    /// other handle orders (pairs in another order, each pair's colliders
+    /// named the other way round), sum to the same bits; the impulses are
+    /// ones whose f32 sum depends on its order (1e8 + 1 - 1e8).
+    #[test]
+    fn contacts_listed_in_another_handle_order_sum_to_the_same_bits() {
+        let side = |collider: u32, feature: u32, x: f32| (collider, feature, [x.to_bits(), 0, 0]);
+        let point = |a: (u32, u32, [u32; 3]), b: (u32, u32, [u32; 3]), impulse: f32, warm: f32| {
+            let mut key = [a, b];
+            key.sort_unstable();
+            (key, impulse, warm)
+        };
+        let listed = [
+            point(side(0, 7, 0.5), side(1, 2, -0.5), 1.0e8, 3.0),
+            point(side(0, 8, 0.25), side(1, 2, 0.5), 1.0, 1.0e8),
+            point(side(1, 9, 1.0), side(0, 3, 0.0), -1.0e8, -1.0e8),
+        ];
+        let narrow = listed
+            .iter()
+            .fold((0.0f32, 0.0f32), |(i, w), p| (i + p.1, w + p.2));
+        let mut first = listed.to_vec();
+        // The other world: pairs reversed, each one's two colliders swapped.
+        let mut other: Vec<_> = listed
+            .iter()
+            .rev()
+            .map(|&(k, i, w)| point(k[1], k[0], i, w))
+            .collect();
+        let reversed = other
+            .iter()
+            .fold((0.0f32, 0.0f32), |(i, w), p| (i + p.1, w + p.2));
+        assert_ne!(narrow, reversed, "the impulses' sum depends on its order");
+        let (a, b) = (canonical_sums(&mut first), canonical_sums(&mut other));
+        assert_eq!(
+            (a.0.to_bits(), a.1.to_bits()),
+            (b.0.to_bits(), b.1.to_bits())
+        );
     }
 }

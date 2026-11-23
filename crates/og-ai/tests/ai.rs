@@ -806,6 +806,15 @@ fn the_block_form_names_each_agents_memory_and_its_entities() {
     };
     let mind = record(s.guard, "mind");
     assert_eq!(get(mind, "started"), Some(Field::of(&true)));
+    // The behaviour by what it is, not its handle's number; its clock as ticks the comparison
+    // reads relative to the world's.
+    let Some(Field::Value(serde_json::Value::String(behaviour))) = get(mind, "behaviour") else {
+        panic!("the behaviour by name");
+    };
+    assert!(behaviour.starts_with("guard #"), "{behaviour}");
+    assert!(matches!(get(mind, "stateSince"), Some(Field::Tick(_))));
+    assert!(matches!(get(mind, "node 0 until"), Some(Field::Until(_))));
+    assert!(matches!(get(mind, "node 0 since"), Some(Field::Tick(_))));
     assert_eq!(get(mind, "baseSpeed"), Some(Field::of(&2.0f32)));
     let board = record(s.guard, "blackboard");
     assert_eq!(get(board, "prey"), Some(Field::Entity(s.hero.to_bits())));
