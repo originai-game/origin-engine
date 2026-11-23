@@ -15,6 +15,9 @@ pub(crate) struct Persistent {
     pub offscreen_encoded: Option<wgpu::TextureView>,
     /// TAA history ping-pong: frame `n` writes `history[n % 2]`.
     pub history: Option<[wgpu::TextureView; 2]>,
+    /// The previous resolved frame's scene depth, copied after the
+    /// resolve has finished reading it. Sized to the scene, not output.
+    pub taa_depth: Option<((u32, u32), wgpu::TextureView)>,
     /// T2x stores the two raw, spatially filtered display frames, never
     /// the temporal resolve. sRGB in SDR; float for resolved HDR output.
     pub smaa_history: Option<[wgpu::TextureView; 2]>,
@@ -86,9 +89,34 @@ impl Persistent {
             offscreen_linear,
             offscreen_encoded,
             history,
+            taa_depth: None,
             smaa_history: smaa_history(device, width, height, chain_format, antialias),
             gi: None,
         }
+    }
+
+    /// The depth beside the TAA colour history; true when made anew.
+    pub fn ensure_taa_depth(&mut self, device: &wgpu::Device, width: u32, height: u32) -> bool {
+        if self
+            .taa_depth
+            .as_ref()
+            .is_some_and(|(size, _)| *size == (width, height))
+        {
+            return false;
+        }
+        let view = target_texture(
+            device,
+            "taa previous depth",
+            width,
+            height,
+            DEPTH_FORMAT,
+            wgpu::TextureUsages::TEXTURE_BINDING
+                | wgpu::TextureUsages::COPY_DST
+                | wgpu::TextureUsages::COPY_SRC,
+        )
+        .create_view(&Default::default());
+        self.taa_depth = Some(((width, height), view));
+        true
     }
 
     /// The GI's copies at the scene's size; true when they were made anew

@@ -29,6 +29,7 @@ const HISTORY_BYTES: u64 = 768 << 20;
 /// The GPU parts of a save, each copied back or started afresh on its own.
 struct GpuParts {
     taa: Option<GpuCopy>,
+    taa_depth: Option<GpuCopy>,
     smaa: Option<GpuCopy>,
     gi: Option<((u32, u32), GpuCopy)>,
     ssr: Option<ssr::SsrSave>,
@@ -41,6 +42,7 @@ struct GpuParts {
 impl GpuParts {
     fn bytes(&self) -> u64 {
         self.taa.as_ref().map_or(0, GpuCopy::bytes)
+            + self.taa_depth.as_ref().map_or(0, GpuCopy::bytes)
             + self.smaa.as_ref().map_or(0, GpuCopy::bytes)
             + self.gi.as_ref().map_or(0, |(_, c)| c.bytes())
             + self.ssr.as_ref().map_or(0, ssr::SsrSave::bytes)
@@ -137,6 +139,11 @@ impl Renderer {
             };
             GpuParts {
                 taa: pair(&self.persistent.history, e),
+                taa_depth: self
+                    .persistent
+                    .taa_depth
+                    .as_ref()
+                    .map(|(_, view)| GpuCopy::of(device, e, &[view.texture()], &[])),
                 smaa: pair(&self.persistent.smaa_history, e),
                 gi: self.persistent.gi.as_ref().map(|(size, [a, b])| {
                     (
@@ -249,7 +256,15 @@ impl Renderer {
                 (None, None) => true,
                 _ => false,
             };
-            if pair(&g.taa, &self.persistent.history, e) {
+            let depth = match (&g.taa_depth, &self.persistent.taa_depth) {
+                (Some(c), Some((_, view))) => c.back(e, &[view.texture()], &[]),
+                (None, None) => true,
+                // A save before the first TAA frame had no valid history
+                // to test depth against; its first frame starts fresh.
+                (None, Some(_)) => s.taa_history.is_none(),
+                _ => false,
+            };
+            if pair(&g.taa, &self.persistent.history, e) && depth {
                 self.history.taa_history = s.taa_history;
                 self.history.taa_history_frames = s.taa_history_frames;
             } else {

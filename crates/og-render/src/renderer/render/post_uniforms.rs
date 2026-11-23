@@ -71,6 +71,16 @@ impl Renderer {
             prepass,
         }: WriteFramePostUniformsInputs<'_>,
     ) -> FramePostHistory {
+        if taa
+            && self
+                .persistent
+                .ensure_taa_depth(&self.device, self.width, self.height)
+        {
+            // Colour and depth must describe the same frame. The new
+            // depth is not a previous frame, and its bindings changed.
+            self.history.taa_history = None;
+            self.graph.invalidate();
+        }
         // Screen-space GI reads the previous frame's lit image: TAA's
         // history, or without TAA its own copy of the main pass's image.
         let gi_copy = (gi.is_some() || ssr.is_some()) && !taa;
@@ -305,6 +315,12 @@ impl Renderer {
             let prev = self.history.taa_history.unwrap_or(cam.view_proj);
             let jitter = self.taa_jitter();
             let (hw, hh) = self.history_size();
+            // Histories and phase are saved/restored together. A valid
+            // depth belongs to the preceding phase, not this jitter.
+            let previous_jitter = frame::halton_jitter(
+                self.phase().saturating_sub(1),
+                frame::jitter_phases((self.width, self.height), (hw, hh)),
+            );
             let taa_uniform = post::TaaUniform {
                 inv_view_proj: cam.jittered_view_proj.inverse().to_cols_array_2d(),
                 cur_view_proj: cam.view_proj.to_cols_array_2d(),
@@ -331,6 +347,7 @@ impl Renderer {
                         0.0
                     },
                 ],
+                previous_jitter: [previous_jitter.x, previous_jitter.y, 0.0, 0.0],
             };
             crate::traffic::write_buffer(
                 &self.queue,

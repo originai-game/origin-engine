@@ -8,4 +8,5 @@ struct Taa {
   params: vec4<f32>,  // x: current frame weight (1 = no history), yz: the scene's size, w: sharpening (0..1)
   still: vec4<f32>,   // x: 1 when the camera is where the history's frame had it (decided on the CPU), y: 1 with the prepass's velocity bound, zw: the jitter (scene px, y down)
   upscale: vec4<f32>, // xy: the history's size (the output's under TAAU), z: 1 under TAAU, w: SMAA area layer (0 for 1x, 1/2 for T2x)
+  previous_jitter: vec4<f32>, // xy: the previous scene depth's jitter (scene px)
 };

@@ -30,6 +30,11 @@ impl BindCx<'_> {
                 tex(self.gbuffer()),
                 tex(self.depth()),
                 tex(reactive),
+                tex(self
+                    .persistent
+                    .taa_depth
+                    .as_ref()
+                    .map_or(&self.passes.far_depth, |(_, view)| view)),
             ],
         )
     }
@@ -75,30 +80,45 @@ impl Temporal {
     ) -> Option<u32> {
         let passes = cx.passes;
         Some(match pass {
-            FramePass::Taa if passes.fsr.active() => passes.fsr.encode(encoder),
             FramePass::TaaSharpen if passes.fsr.active() => passes.fsr.encode_rcas(encoder),
-            FramePass::Taa => match (
-                if cx.taa_blend {
-                    &passes.taa
+            FramePass::Taa => {
+                let draws = if passes.fsr.active() {
+                    passes.fsr.encode(encoder)
                 } else {
-                    &passes.taa_fresh
-                },
-                &cx.persistent.history,
-                &self.taa,
-            ) {
-                (Some(pipeline), Some(history), Some(groups)) => {
-                    fullscreen_pass(
-                        encoder,
-                        "taa",
-                        &history[cx.slot],
-                        CLEAR,
-                        pipeline.get(),
-                        &groups[cx.slot],
-                    );
-                    1
-                }
-                _ => 0,
-            },
+                    match (
+                        if cx.taa_blend {
+                            &passes.taa
+                        } else {
+                            &passes.taa_fresh
+                        },
+                        &cx.persistent.history,
+                        &self.taa,
+                    ) {
+                        (Some(pipeline), Some(history), Some(groups)) => {
+                            fullscreen_pass(
+                                encoder,
+                                "taa",
+                                &history[cx.slot],
+                                CLEAR,
+                                pipeline.get(),
+                                &groups[cx.slot],
+                            );
+                            1
+                        }
+                        _ => 0,
+                    }
+                };
+                // Keep the depth of precisely the frame written into the
+                // colour history. Copy only after its reader's pass ends.
+                let (_, previous_depth) = cx.persistent.taa_depth.as_ref().expect("TAA depth");
+                let depth = cx.graph.view("depth").texture();
+                encoder.copy_texture_to_texture(
+                    depth.as_image_copy(),
+                    previous_depth.texture().as_image_copy(),
+                    depth.size(),
+                );
+                draws
+            }
             FramePass::TaaSharpen => match (&passes.taa_sharpen_pipeline, &self.sharpen) {
                 (Some(pipeline), Some(groups)) => {
                     fullscreen_pass(

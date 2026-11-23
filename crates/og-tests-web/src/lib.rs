@@ -191,11 +191,12 @@ mod web {
             RenderDesc, RenderScene, Tonemap, Upscaler, shapes,
         };
         let mut checked = 0;
-        for (name, scale, moving, prepass) in [
-            ("stationary half", 0.5, false, false),
-            ("moving full", 1.0, true, false),
-            ("moving half", 0.5, true, false),
-            ("moving half with prepass", 0.5, true, true),
+        for (name, scale, moving, prepass, uncover) in [
+            ("stationary half", 0.5, false, false, false),
+            ("moving full", 1.0, true, false, false),
+            ("moving half", 0.5, true, false, false),
+            ("moving half with prepass", 0.5, true, true, false),
+            ("uncovered half with prepass", 0.5, false, true, true),
         ] {
             let mut scene = RenderScene::new();
             scene.frame.quality.upscaler = Upscaler::Taau;
@@ -223,8 +224,12 @@ mod web {
                 emissive: [1.0, 0.0, 0.0],
                 ..Default::default()
             });
-            let centers = [48, 80, 112, 144, 176, 208];
-            for x in centers {
+            let centers: Vec<i32> = if uncover {
+                (0..64).map(|i| 3 + 4 * i).collect()
+            } else {
+                vec![48, 80, 112, 144, 176, 208]
+            };
+            for &x in &centers {
                 scene.add_instance(mesh, red, Default::default());
                 scene
                     .objects
@@ -234,6 +239,22 @@ mod web {
                     .transform
                     .w_axis
                     .x = (x as f32 - 128.0) * 0.09375;
+            }
+            if uncover {
+                // The grey occluder covers x=64..128 at z=1. Moving it
+                // sixteen output pixels exposes white gaps among the red
+                // bars. Grey lies inside their red/white colour box, so
+                // colour clipping alone cannot reject the old occluder.
+                let cover = scene.add_mesh(shapes::plane_xy(5.0, 4.0));
+                let grey = scene.add_material(Material {
+                    base_color: [0.0, 0.0, 0.0, 1.0],
+                    emissive: [0.25; 3],
+                    ..Default::default()
+                });
+                scene.add_instance(cover, grey, Default::default());
+                let cover = scene.objects.instances.last_mut().unwrap();
+                cover.transform.w_axis.x = -2.5;
+                cover.transform.w_axis.z = 1.0;
             }
             let mut renderer = Renderer::new(&RenderDesc {
                 width: 256,
@@ -281,6 +302,24 @@ mod web {
                 };
                 scene.frame.camera.position.x = x;
                 scene.frame.camera.target.x = x;
+                if uncover {
+                    scene.objects.previous_transforms = scene
+                        .objects
+                        .instances
+                        .iter()
+                        .map(|i| i.transform)
+                        .collect();
+                    if frame == 87 {
+                        scene
+                            .objects
+                            .instances
+                            .last_mut()
+                            .unwrap()
+                            .transform
+                            .w_axis
+                            .x += 1.25;
+                    }
+                }
                 renderer
                     .render(&scene, &RenderTarget::Offscreen)
                     .map_err(err)?;
@@ -299,6 +338,18 @@ mod web {
             let errors = GPU_ERRORS.with(|errors| std::mem::take(&mut *errors.borrow_mut()));
             if !errors.is_empty() {
                 return Err(err(format!("TAAU {name}: {}", errors.join("\n"))));
+            }
+            if uncover {
+                for x in [68, 72, 76] {
+                    let pixel = &image.pixels[(64 * 256 + x) * 4..][..4];
+                    if !pixel[..3].iter().all(|c| *c > 188) {
+                        return Err(err(format!(
+                            "TAAU {name}: old occluder trailed into background at ({x},64): {pixel:?}"
+                        )));
+                    }
+                    checked += 1;
+                }
+                continue;
             }
             let shift = if moving { 23 } else { 0 };
             for center in centers {

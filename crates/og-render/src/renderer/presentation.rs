@@ -282,6 +282,11 @@ impl Renderer {
                 .flatten()
                 .map(view_bytes)
                 .sum::<u64>()
+            + self
+                .persistent
+                .taa_depth
+                .as_ref()
+                .map_or(0, |(_, v)| view_bytes(v))
             + self.post.fsr.bytes();
         let shadows = texture_bytes(&self.shadows.cascade_map.texture)
             + texture_bytes(&self.shadows.local_map.texture)

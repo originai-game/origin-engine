@@ -61,14 +61,14 @@ pub(super) fn declare(g: &mut RenderGraph, cx: &PlanCx, p: FramePass) {
         // With a prepass TAA binds its velocity and view depth.
         // The OIT revealage is its reactive mask (taa.wgsl).
         FramePass::Taa => {
-            let mut reads = vec![names.main, "depth", "history-read"];
+            let mut reads = vec![names.main, "depth", "history-read", "history-depth-read"];
             if prepass {
                 reads.extend(["gbuffer", "lindepth"]);
             }
             if cfg.oit.is_some() {
                 reads.push("oit.reveal");
             }
-            g.pass(name, &reads, &["history-write"])
+            g.pass(name, &reads, &["history-write", "history-depth-write"])
         }
         FramePass::TaaSharpen if prepass => g.pass(
             name,

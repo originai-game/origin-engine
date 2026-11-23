@@ -81,12 +81,15 @@ fn frame(g: &mut RenderGraph, cx: &PlanCx) {
             ),
         );
     }
-    let depth_usage =
+    let mut depth_usage =
         if ((cfg.taa || smaa_t2x) && !msaa) || cfg.oit == Some(true) || cfg.transmission {
             ATTACH_BIND
         } else {
             wgpu::TextureUsages::RENDER_ATTACHMENT
         };
+    if cfg.taa {
+        depth_usage |= wgpu::TextureUsages::COPY_SRC;
+    }
     if cfg.oit.is_some() {
         g.transient(
             "oit.accum",
@@ -103,7 +106,10 @@ fn frame(g: &mut RenderGraph, cx: &PlanCx) {
     }
     g.transient("depth", desc(w, h, DEPTH_FORMAT, cfg.samples, depth_usage));
     if cfg.taa {
-        g.import("history-read").import("history-write");
+        g.import("history-read")
+            .import("history-write")
+            .import("history-depth-read")
+            .import("history-depth-write");
     }
     if cfg.ssr {
         g.import("ssr");

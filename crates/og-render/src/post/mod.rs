@@ -298,6 +298,8 @@ pub(crate) struct TaaUniform {
     /// z: 1 under TAAU (the scene drawn smaller or larger than the output
     /// and resolved up to it here). w: SMAA area layer (0 for 1x, 1/2 for T2x).
     pub upscale: [f32; 4],
+    /// xy: the previous frame's scene jitter, for its depth texture.
+    pub previous_jitter: [f32; 4],
 }
 
 pub(crate) fn layout_entry(binding: u32, ty: wgpu::BindingType) -> wgpu::BindGroupLayoutEntry {

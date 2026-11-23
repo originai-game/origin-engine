@@ -36,6 +36,9 @@
 // or motion of their own, so under them the history is trusted less: its
 // weight scaled by the revealage (a reactive mask; white without OIT).
 @group(0) @binding(8) var reactive_tex: texture_2d<f32>;
+// The previous frame's scene depth. Unlike colour clipping, visibility
+// can distinguish an uncovered surface from the occluder in its history.
+@group(0) @binding(9) var previous_depth: texture_2d<f32>;
 
 fn to_ycocg(c: vec3<f32>) -> vec3<f32> {
   return vec3<f32>(
@@ -177,7 +180,8 @@ fn resolve(in: VsOut, catmull_rom: bool, smaa: bool) -> vec4<f32> {
   // CPU compared the view-projections), or the prepass's velocity where
   // the prepass drew this sample (objects and skinned meshes move it).
   let here = in.pos.xy / out_size;
-  var motion = camera_motion(motion_at, size);
+  let reprojected = camera_reprojection(motion_at, size);
+  var motion = reprojected.xy;
   // Whether this sample moves otherwise than the camera moves it (an
   // object or a skinned mesh on its motion vectors).
   var own_motion = false;
@@ -185,6 +189,13 @@ fn resolve(in: VsOut, catmull_rom: bool, smaa: bool) -> vec4<f32> {
     let v = textureLoad(velocity_tex, motion_at, 0).zw;
     own_motion = any(abs(v - motion) * out_size > vec2<f32>(0.5));
     motion = v;
+  }
+  // Only a camera-reprojected surface has a known previous depth: the
+  // prepass's two-component object vectors do not carry depth motion.
+  // A foreground surface that covered this point last frame invalidates
+  // its history even when that colour lies inside the current box.
+  if (!smaa && !own_motion && was_occluded(here - motion, reprojected.z)) {
+    return fresh(in);
   }
   var hist4: vec4<f32>;
   if (all(abs(motion) * out_size < vec2<f32>(1e-3))) {
@@ -264,18 +275,43 @@ fn resolve(in: VsOut, catmull_rom: bool, smaa: bool) -> vec4<f32> {
   return vec4<f32>((cur * wc + hist * wh) / (wc + wh), (cur4.a * wc + hist_a * wh) / (wc + wh));
 }
 
-// The camera's motion (uv per frame) of scene pixel `q`'s world point,
-// through its depth; none for a still camera.
-fn camera_motion(q: vec2<i32>, size: vec2<i32>) -> vec2<f32> {
-  if (taa.still.x > 0.5) { return vec2<f32>(0.0); }
+// xy: camera motion (uv/frame); z: this surface's previous window depth.
+fn camera_reprojection(q: vec2<i32>, size: vec2<i32>) -> vec3<f32> {
   // Scene pixel q shows the jittered frame's clip position at its centre.
   let uv = (vec2<f32>(q) + 0.5) / vec2<f32>(size);
   let d = textureSampleLevel(depth, depth_sampler, uv, 0.0).r;
+  if (taa.still.x > 0.5) { return vec3<f32>(0.0, 0.0, d); }
   let w = taa.inv_view_proj * vec4<f32>(uv.x * 2.0 - 1.0, 1.0 - uv.y * 2.0, d, 1.0);
   let world = w.xyz / w.w;
   let cur_clip = taa.cur_view_proj * vec4<f32>(world, 1.0);
   let prev_clip = taa.prev_view_proj * vec4<f32>(world, 1.0);
-  return (cur_clip.xy / cur_clip.w - prev_clip.xy / prev_clip.w) * vec2<f32>(0.5, -0.5);
+  let motion = (cur_clip.xy / cur_clip.w - prev_clip.xy / prev_clip.w) * vec2<f32>(0.5, -0.5);
+  return vec3<f32>(motion, prev_clip.z / prev_clip.w);
+}
+
+fn camera_motion(q: vec2<i32>, size: vec2<i32>) -> vec2<f32> {
+  if (taa.still.x > 0.5) { return vec2<f32>(0.0); }
+  return camera_reprojection(q, size).xy;
+}
+
+fn was_occluded(uv: vec2<f32>, expected: f32) -> bool {
+  let size = vec2<i32>(textureDimensions(previous_depth));
+  // Colour history is unjittered; the saved scene depth is not. The
+  // farthest of the four footprint taps is conservative at thin edges:
+  // reject only when every tap had a closer surface, not merely one.
+  let at = vec2<i32>(floor(uv * vec2<f32>(size) + taa.previous_jitter.xy - 0.5));
+  var farthest = 0.0;
+  for (var y = 0; y < 2; y++) {
+    for (var x = 0; x < 2; x++) {
+      let q = clamp(at + vec2<i32>(x, y), vec2<i32>(0), size - 1);
+      let d = textureSampleLevel(previous_depth, depth_sampler, (vec2<f32>(q) + 0.5) / vec2<f32>(size), 0.0).r;
+      farthest = max(farthest, d);
+    }
+  }
+  // Float32 roundoff in the inverse/project matrix products, not a
+  // scene-distance threshold or an accumulation/colour-clamp adjustment.
+  let roundoff = 32.0 * 1.1920929e-7;
+  return expected > farthest + roundoff;
 }
 
 // Whether a sample moving on its own motion vectors (an object, a skinned
