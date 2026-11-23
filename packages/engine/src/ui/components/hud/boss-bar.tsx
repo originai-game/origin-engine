@@ -28,7 +28,7 @@ export interface BossBarProps {
   value?: number;
   /** Full health; a nonpositive capacity shows no health instead of dividing by zero. */
   max?: number;
-  /** Health before the latest loss: a warm ghost behind the fill that drains after it (at or under value: none). */
+  /** Health before the latest loss: a light ghost behind the fill, the health just lost, that drains after it (at or under value: none). */
   ghost?: number;
   /** Keyed phases in the fight's order; the game owns phase progression. A diamond on the bar marks each boundary between phases (the first phase is the bar's right end), dimmed once health has passed it. */
   phases?: ReadonlyArray<BossBarPhase>;
@@ -103,7 +103,7 @@ export function BossBar(props: BossBarProps) {
             data-inv={invulnerable()}
             data-critical={critical()}
           >
-            <View class="absolute left-0 top-0 h-full bg-linear-to-r from-gold to-gold transition-layout duration-350 delay-450 ease-out" style={{ width: `${ghost() * 100}%` }} />
+            <View class="absolute left-0 top-0 h-full bg-fg transition-layout duration-350 delay-450 ease-out" data-ghost style={{ width: `${ghost() * 100}%` }} />
             <View
               class={`absolute left-0 top-0 h-full bg-linear-to-r from-legendary to-legendary shadow-glow shadow-late transition-layout duration-350 ease-out group-data-inv/health:bg-none group-data-inv/health:bg-fg-subtle group-data-inv/health:shadow-none`}
               style={{ width: `${share() * 100}%` }}

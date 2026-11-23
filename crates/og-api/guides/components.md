@@ -821,7 +821,7 @@ A boss's bar across the top of the screen, on a HUD plate: a Boss tag, the name 
 | `epithet?` | `string` | The boss's title as the game words it (Warden of the Ninefold Gate), beside the name; empty hides it. |
 | `value?` | `number` | Health, clamped to the supplied range for display; its share of max stands in figures at the bar's end. |
 | `max?` | `number` | Full health; a nonpositive capacity shows no health instead of dividing by zero. |
-| `ghost?` | `number` | Health before the latest loss: a warm ghost behind the fill that drains after it (at or under value: none). |
+| `ghost?` | `number` | Health before the latest loss: a light ghost behind the fill, the health just lost, that drains after it (at or under value: none). |
 | `phases?` | `ReadonlyArray<BossBarPhase>` | Keyed phases in the fight's order; the game owns phase progression. A diamond on the bar marks each boundary between phases (the first phase is the bar's right end), dimmed once health has passed it. |
 | `phase?` | `string` | The current phase's stable id; read out with the health. |
 | `stagger?` | `number` | The stagger gauge's fill, 0 to 1 (the boss breaks at 1); negative hides the gauge. |
