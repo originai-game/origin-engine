@@ -4087,7 +4087,7 @@ Actions: `open` (Open).
 
 ## 184. Confirm
 
-A confirmation dialog on its own panel: the question as its heading, what follows from it, and Cancel and Confirm (the danger variant when confirming destroys something). The game closes it.
+A confirmation dialog on its own panel over the pack's scrim, which dims the screen while the panel pops in: the question as its heading, what follows from it, and Cancel and Confirm (the danger variant when confirming destroys something). The game closes it.
 
 `import { Confirm } from "@origingame/engine/ui/components"` (kit `screens`, `packages/engine/src/ui/screens/confirm.tsx`).
 
@@ -4102,7 +4102,7 @@ A confirmation dialog on its own panel: the question as its heading, what follow
 | `onCancel?` | `(e: UiEvent, key?: string) => void` | The cancel event, with the row's key where it comes from a row. |
 | `onConfirm?` | `(e: UiEvent, key?: string) => void` | The confirm event, with the row's key where it comes from a row. |
 
-Pack slots: `Button.plate`, `Button.plate.primary`, `Modal.frame`, `Panel.frame`.
+Pack slots: `Button.plate`, `Button.plate.primary`, `Modal.frame`, `Modal.scrim`, `Panel.frame`.
 
 Fixtures: `default`, `overflow`.
 

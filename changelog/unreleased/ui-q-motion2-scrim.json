@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {
+      "member": "og.ui",
+      "summary": "A new pack slot, Modal.scrim: the scrim behind a dialog, which dims the screen and fades in and out on motion.css's enter and exit rows apart from the dialog's pop. Confirm draws it behind its panel; a game's own dialog takes it with packClass(\"Modal\", \"scrim\") on a sibling before the panel."
+    }
+  ]
+}

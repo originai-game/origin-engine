@@ -22,13 +22,15 @@ export interface ConfirmProps {
 }
 
 /**
- * A confirmation dialog on its own panel: the question as its heading, what
+ * A confirmation dialog on its own panel over the pack's scrim, which dims
+ * the screen while the panel pops in: the question as its heading, what
  * follows from it, and Cancel and Confirm (the danger variant when
  * confirming destroys something). The game closes it.
  */
 export function Confirm(props: ConfirmProps) {
   return (
     <Show when={props.open}>
+      <View class={packClass("Modal", "scrim")} />
       <View class={`group/confirm shrink min-h-0 m-auto w-115 max-w-full h-auto pt-6 pb-4 nine-panel-cut bg-plate-hi border border-rim text-fg px-6 gap-2 short:min-w-105 short:w-fit short:max-w-180 compact:p-4 ${packClass("Panel", "frame")} ${packClass("Modal", "frame")}`} modal={true} label={props.title} data-danger={props.danger === true} onAction={{ back: (e) => props.onCancel?.(e) }}>
       <Show when={props.danger}>
         <View class={`items-center gap-x-2 text-xs font-bold tracking-label uppercase text-danger`}>
