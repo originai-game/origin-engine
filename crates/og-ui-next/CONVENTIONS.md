@@ -475,7 +475,7 @@ its arena (tree/particles.rs).
   burst and the target's pop, then lingering motes; each tier richer:
   rays from `rare`, a second set and more glints from `epic`, a third
   set, more shards, a column and a screen wash from `legendary`) and
-  `highlight` (an aura in `art-primary` pulsing, a sweeping sheen and
+  `highlight` (an aura in `accent` pulsing, a sweeping sheen and
   twinkling stars, while it shows). The beams draw behind the target, the
   rest over it. Its emitters are `components/hud/fx/` (`glints`, `flash`,
   `shock-ring`, `rays`, `shards`, `coins`, `coin-glints`, `light-column`,
@@ -595,8 +595,8 @@ is an error naming where it is, never ignored):
   in its base state and through hover, press and disabled: the
   component's ink was chosen for the component's own ground. `og check`
   reports one that does not (OG9107, `pack::grounds_without_ink`). Art keeps its colours in both schemes, so its
-  ink is a colour the pack writes the same in both (the built-in packs'
-  `art-fg` and `art-primary-fg`), not a scheme role such as `fg`.
+  ink is a colour the pack writes the same in both, not a scheme role
+  such as `fg`.
 - **`images`**: nine-slice art by name (lower-case words joined by `-`):
   `{ src, slice, width?, fill?, repeat? }`. `slice` is the insets into the
   image in its pixels (one number, or `[top, right, bottom, left]`);
@@ -650,8 +650,8 @@ is an error naming where it is, never ignored):
   at random, at a volume and pitch from their ranges, from a seeded
   stream (a replay plays the same).
   The default pack sounds every event from the engine's UI sound set
-  (`@styles/shared/sfx/default/<clip>.ogg`); scifi, fantasy and cartoon
-  each carry their own clips of the same names in `sfx/`. The clips are
+  (`@styles/shared/sfx/default/<clip>.ogg`); a pack may carry its own
+  clips of the same names in `sfx/`. The clips are
   `tap`, `toggle`, `tab`, `countdown`, `back`, `close`, `open`, `confirm`,
   `error`, `purchase`, `reward` and `levelup`, mastered so the events are
   balanced against each other (templates/tools/master-ui-sounds.py): a
@@ -697,29 +697,10 @@ Every look has these images, white masks coloured by the element's fill
 | `panel-cut` | the same corners cut 12 | a HUD panel |
 | `chip-cut` | the trailing top corner cut 6 | a tag, badge or chip |
 
-And this frame art (`templates/styles/shared/art/frames/`, drawn by
-templates/tools/make-frame-art.py), pictures with their own colours and
-depth unless marked tint; a pack's own image of the same name replaces
-one. Their ink is `art-fg` (`art-button-fg` on the plain buttons, which a
-pack with light plain buttons darkens), and `art-primary-fg` on the primary button,
-whose own colour is `art-primary` (what a highlight lights it with;
-colours the same in both schemes, as the art is):
-
-| Image | Picture | For |
-|---|---|---|
-| `button`, `button-hover`, `button-pressed` | a slate button with a lit rim, a gloss and a 4-point lip a press flattens | a button's body in its states |
-| `button-primary` (`-hover`, `-pressed`) | the same in gold | the primary action |
-| `button-danger` (`-hover`, `-pressed`) | the same in red | a destructive action |
-| `button-disabled` | the same in grey | any button disabled |
-| `panel` | slate glass, a champagne rim, an inner hairline with gold corners | a window or panel |
-| `plate` | a dark glass pill | a currency or HUD read-out |
-| `field` | a sunk well | a text field |
-| `slot` | a sunk square with a lit metal rim | an item or ability slot |
-| `slot-rim` | tint: a ring glowing inward, its centre open | a slot's rarity, over `slot` (`bg-epic`) |
-| `chip-bevel` | tint: a bevelled tag | a rarity or tag chip (`bg-rare`) |
-| `badge` | a red pill with a white rim | a notification count |
-| `divider` | a champagne line fading out at its ends (height 2) | a rule between sections |
-| `fx-sparkle`, `fx-glint`, `fx-shard`, `fx-coin`, `fx-ray`, `fx-ring` | tint, stretched whole: the UI effects' particle textures (§Particles) | a static sparkle or glow (`nine-fx-sparkle bg-gold`) |
+And the UI effects' particle textures (`templates/styles/shared/fx/`),
+tint, stretched whole (§Particles): `fx-sparkle`, `fx-glint`, `fx-shard`,
+`fx-coin`, `fx-ray` and `fx-ring`, for a static sparkle or glow
+(`nine-fx-sparkle bg-gold`).
 
 The slots a pack dresses, each declared in the default pack so a
 component's `packClass` on it resolves under every pack:

@@ -55,7 +55,7 @@ test("no-prompt creation uses source choices even with an outdated packed catalo
   cpSync(join(pkg, "../knowledge/scripts"), join(checkout, "packages/knowledge/scripts"), { recursive: true });
   const catalogue = readFileSync(join(pkg, "../knowledge/looks/catalogue.json"), "utf8");
   writeFileSync(join(checkout, "packages/knowledge/looks/catalogue.json"), catalogue);
-  writeFileSync(join(source, "looks/catalogue.json"), catalogue.replaceAll('"ui": "default"', '"ui": "fantasy"'));
+  writeFileSync(join(source, "looks/catalogue.json"), catalogue.replaceAll('"ui": "default"', '"ui": "elsewhere"'));
   const r = Bun.spawnSync(["bun", join(source, "bin/create.ts"), "game", "--no-prompt"], { cwd: checkout });
   expect(r.exitCode, new TextDecoder().decode(r.stderr)).toBe(0);
   expect(read("checkout/game/project.ogt")).toContain('ui "default"');
@@ -143,8 +143,7 @@ test("creation choices infer a premise, preserve overrides, and serialize every 
   // A style folded into a look's variant, or deleted, is no look: it fails as any unknown name.
   for (const gone of ["watercolor-wash", "16bit-pixel", "illuminated-manuscript"]) expect(() => resolveCreationChoices("", { look: gone })).toThrow(`no look preset '${gone}'; pick one of cinematic-realism,`);
   // A look's own UI pack is the default UI choice; an explicit one wins.
-  expect(resolveCreationChoices("", { look: "cartoon-2d" }).ui).toBe("cartoon");
-  expect(resolveCreationChoices("", { look: "neon-vector" }).ui).toBe("scifi");
+  expect(resolveCreationChoices("", { look: "cartoon-2d" }).ui).toBe("default");
   expect(resolveCreationChoices("", { look: "painterly-3d", ui: "default" }).ui).toBe("default");
 });
 
@@ -296,7 +295,7 @@ test("genre interactive-film writes the flow skeleton over the one skeleton, run
   expect(read("film/src/main.ts")).not.toContain("og.flow");
   expect(read("film/project.ogt")).toMatch(/^flow "story\/film.yarn"$/m);
   expect(read("film-genre/project.ogt")).toMatch(/^flow "story\/film.yarn"$/m);
-  expect(read("film/assets/looks/film.ogt")).toBe('type look\nversion 1\n---\nextends "painterly-3d"\nvariant "lush"\nui "fantasy"\n');
+  expect(read("film/assets/looks/film.ogt")).toBe('type look\nversion 1\n---\nextends "painterly-3d"\nvariant "lush"\nui "default"\n');
   // A game of another genre has neither.
   const plain = cli("plain-game", "--genre", "rpg", "--lang", "en", "--no-prompt");
   expect(plain.code, plain.err).toBe(0);
@@ -319,7 +318,7 @@ test("the creation document matches the options, and a release cannot ship an un
   const paths = new Set(slots.map(s => s.path));
   const referenced = [...doc.options.look.flatMap(l => [l.preview, ...l.variants.map(v => v.preview)]), ...doc.options.ui.map(o => o.preview!)];
   expect(referenced.map(p => p.path).sort()).toEqual([...paths].sort());
-  expect(paths.has("previews/pixel.8bit.webp") && paths.has("previews/ui/scifi.webp")).toBeTrue();
+  expect(paths.has("previews/pixel.8bit.webp") && paths.has("previews/ui/default.webp")).toBeTrue();
   expect(slots.map(s => s.kind).filter(k => k !== "look" && k !== "variant" && k !== "ui")).toEqual([]);
   expect(slots.some(s => s.path.startsWith("previews/mood/"))).toBeFalse();
   expect(doc.options).not.toHaveProperty("mood");
@@ -337,8 +336,8 @@ test("the creation document matches the options, and a release cannot ship an un
   const full = creationDocument(filled);
   expect(full.options.look.find(l => l.id === "pixel")!.variants[0]!.preview).toEqual({ path: "previews/pixel.8bit.webp", ...filled["previews/pixel.8bit.webp"]! });
   expect(JSON.stringify(creationDocument(filled))).toBe(JSON.stringify(full));
-  const { ["previews/ui/scifi.webp"]: _, ...short } = filled;
-  expect(() => creationDocument(short)).toThrow("previews/ui/scifi.webp");
+  const { ["previews/ui/default.webp"]: _, ...short } = filled;
+  expect(() => creationDocument(short)).toThrow("previews/ui/default.webp");
   expect(() => creationDocument({ ...filled, "previews/mood/dark.webp": filled["previews/pixel.webp"]! })).toThrow("previews/mood/dark.webp");
   expect(() => creationDocument({ ...filled, "previews/extra.webp": filled["previews/pixel.webp"]! })).toThrow("previews/extra.webp");
   const printed = Bun.spawnSync(["bun", join(pkg, "bin/create.ts"), "--creation"]);

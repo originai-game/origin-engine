@@ -3,6 +3,7 @@
 // Not a component: the gallery records its plays.
 import { Flourish } from "@origingame/engine/ui/components/hud/flourish";
 import { Icon, Text, View } from "@origingame/engine/ui";
+import { Button } from "@origingame/engine/ui/controls/button";
 
 export interface EffectSheetProps {
   /** Which effect, and for reveal which rarity. */
@@ -11,11 +12,11 @@ export interface EffectSheetProps {
 }
 
 function Target(props: EffectSheetProps) {
-  if (props.kind == "levelUp") return <View class="px-6 py-2 rounded-panel bg-bg nine-plate"><Text class="text-display-md font-bold text-gold">LV 12</Text></View>;
-  if (props.kind == "highlight") return <View class="h-14 w-56 items-center justify-center pb-1 nine-button-primary"><Text class="text-lg font-bold text-art-primary-fg">Claim</Text></View>;
-  if (props.kind == "purchase") return <View class="flex-row items-center gap-1 pl-2 pr-4 h-10 nine-plate"><Icon class="size-7" name="coin" /><Text class="text-lg font-bold text-art-fg">12,480</Text></View>;
+  if (props.kind == "levelUp") return <View class="px-6 py-2 rounded-panel bg-glass"><Text class="text-display-md font-bold text-gold">LV 12</Text></View>;
+  if (props.kind == "highlight") return <Button variant="primary" class="h-14 w-56" onPress={() => {}}><Text>Claim</Text></Button>;
+  if (props.kind == "purchase") return <View class="flex-row items-center gap-1 pl-2 pr-4 h-10 rounded-full bg-glass"><Icon class="size-7" name="coin" /><Text class="text-lg font-bold text-fg">12,480</Text></View>;
   const name = props.kind == "reward" ? "chest" : props.rarity == "legendary" ? "crown" : props.rarity == "rare" ? "shield" : "gem";
-  return <View class="size-24 items-center justify-center nine-slot"><Icon class="size-16" name={name} /></View>;
+  return <View class="size-24 items-center justify-center rounded-field bg-tile border-2 border-border-strong"><Icon class="size-16" name={name} /></View>;
 }
 
 export function EffectSheet(props: EffectSheetProps) {

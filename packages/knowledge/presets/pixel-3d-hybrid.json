@@ -77,7 +77,7 @@
         },
         "mood": "warm",
         "name": null,
-        "ui": "fantasy",
+        "ui": "default",
         "uiSeeds": {},
         "variant": null
       },
@@ -183,7 +183,7 @@
         },
         "mood": "bright",
         "name": null,
-        "ui": "fantasy",
+        "ui": "default",
         "uiSeeds": {},
         "variant": null
       },
@@ -294,7 +294,7 @@
         },
         "mood": "dark",
         "name": null,
-        "ui": "fantasy",
+        "ui": "default",
         "uiSeeds": {},
         "variant": null
       },
@@ -377,7 +377,7 @@
         },
         "mood": "warm",
         "name": null,
-        "ui": "fantasy",
+        "ui": "default",
         "uiSeeds": {},
         "variant": null
       },
@@ -476,7 +476,7 @@
         },
         "mood": "cold",
         "name": null,
-        "ui": "fantasy",
+        "ui": "default",
         "uiSeeds": {},
         "variant": null
       },
@@ -576,7 +576,7 @@
         },
         "mood": "soft",
         "name": null,
-        "ui": "fantasy",
+        "ui": "default",
         "uiSeeds": {},
         "variant": null
       },
@@ -679,7 +679,7 @@
         },
         "mood": "high-contrast",
         "name": null,
-        "ui": "fantasy",
+        "ui": "default",
         "uiSeeds": {},
         "variant": null
       },

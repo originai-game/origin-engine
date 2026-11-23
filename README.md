@@ -134,9 +134,8 @@ What is on main, grouped by area, with the API module (`og.<module>`, from
   `@starting-style`, view transitions, masks, filters), mounted as a
   retained tree, drawn through og-render and addressable by the probe;
   rich text, RTL, vertical text and CJK shaping.
-- UI styles: each game ships its own (`type style`); the built-in style
-  packs fantasy, scifi and cartoon (`templates/styles`) restyle every
-  built-in component through tokens; the default style is
+- UI styles: each game ships its own (`type style`); a game's style
+  pack restyles every built-in component through tokens; the default style is
   generated from `packages/design`'s tokens.
 - Built-in components (`packages/engine/src/ui`, `docs/ui.md` §4):
   controls, containers, data views (virtualised lists, tables, charts),

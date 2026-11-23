@@ -233,192 +233,11 @@
     "xbox.y": "@styles/shared/glyphs/face-y.svg"
   },
   "images": {
-    "badge": {
-      "slice": [
-        52.0,
-        56.0,
-        56.0,
-        56.0
-      ],
-      "src": "@styles/shared/art/frames/badge.png",
-      "width": [
-        13.0,
-        14.0,
-        14.0,
-        14.0
-      ]
-    },
-    "button": {
-      "slice": [
-        68.0,
-        72.0,
-        84.0,
-        72.0
-      ],
-      "src": "@styles/shared/art/frames/button.png",
-      "width": [
-        17.0,
-        18.0,
-        21.0,
-        18.0
-      ]
-    },
-    "button-danger": {
-      "slice": [
-        68.0,
-        72.0,
-        84.0,
-        72.0
-      ],
-      "src": "@styles/shared/art/frames/button-danger.png",
-      "width": [
-        17.0,
-        18.0,
-        21.0,
-        18.0
-      ]
-    },
-    "button-danger-hover": {
-      "slice": [
-        68.0,
-        72.0,
-        84.0,
-        72.0
-      ],
-      "src": "@styles/shared/art/frames/button-danger-hover.png",
-      "width": [
-        17.0,
-        18.0,
-        21.0,
-        18.0
-      ]
-    },
-    "button-danger-pressed": {
-      "slice": [
-        68.0,
-        72.0,
-        84.0,
-        72.0
-      ],
-      "src": "@styles/shared/art/frames/button-danger-pressed.png",
-      "width": [
-        17.0,
-        18.0,
-        21.0,
-        18.0
-      ]
-    },
-    "button-disabled": {
-      "slice": [
-        68.0,
-        72.0,
-        84.0,
-        72.0
-      ],
-      "src": "@styles/shared/art/frames/button-disabled.png",
-      "width": [
-        17.0,
-        18.0,
-        21.0,
-        18.0
-      ]
-    },
-    "button-hover": {
-      "slice": [
-        68.0,
-        72.0,
-        84.0,
-        72.0
-      ],
-      "src": "@styles/shared/art/frames/button-hover.png",
-      "width": [
-        17.0,
-        18.0,
-        21.0,
-        18.0
-      ]
-    },
-    "button-pressed": {
-      "slice": [
-        68.0,
-        72.0,
-        84.0,
-        72.0
-      ],
-      "src": "@styles/shared/art/frames/button-pressed.png",
-      "width": [
-        17.0,
-        18.0,
-        21.0,
-        18.0
-      ]
-    },
-    "button-primary": {
-      "slice": [
-        68.0,
-        72.0,
-        84.0,
-        72.0
-      ],
-      "src": "@styles/shared/art/frames/button-primary.png",
-      "width": [
-        17.0,
-        18.0,
-        21.0,
-        18.0
-      ]
-    },
-    "button-primary-hover": {
-      "slice": [
-        68.0,
-        72.0,
-        84.0,
-        72.0
-      ],
-      "src": "@styles/shared/art/frames/button-primary-hover.png",
-      "width": [
-        17.0,
-        18.0,
-        21.0,
-        18.0
-      ]
-    },
-    "button-primary-pressed": {
-      "slice": [
-        68.0,
-        72.0,
-        84.0,
-        72.0
-      ],
-      "src": "@styles/shared/art/frames/button-primary-pressed.png",
-      "width": [
-        17.0,
-        18.0,
-        21.0,
-        18.0
-      ]
-    },
     "card-frame": {
       "fill": false,
       "slice": 60,
       "src": "@styles/shared/art/card-frame.png",
       "width": 15
-    },
-    "chip-bevel": {
-      "slice": [
-        40.0,
-        40.0,
-        40.0,
-        40.0
-      ],
-      "src": "@styles/shared/art/frames/chip-bevel.png",
-      "tint": true,
-      "width": [
-        10.0,
-        10.0,
-        10.0,
-        10.0
-      ]
     },
     "chip-cut": {
       "slice": 24,
@@ -445,36 +264,6 @@
       "slice": 0,
       "src": "@styles/shared/shapes/disc.svg",
       "tint": true
-    },
-    "divider": {
-      "slice": [
-        0.0,
-        352.0,
-        0.0,
-        352.0
-      ],
-      "src": "@styles/shared/art/frames/divider.png",
-      "width": [
-        0.0,
-        88.0,
-        0.0,
-        88.0
-      ]
-    },
-    "field": {
-      "slice": [
-        56.0,
-        56.0,
-        56.0,
-        56.0
-      ],
-      "src": "@styles/shared/art/frames/field.png",
-      "width": [
-        14.0,
-        14.0,
-        14.0,
-        14.0
-      ]
     },
     "fx-coin": {
       "slice": 0,
@@ -511,41 +300,11 @@
       "src": "@styles/shared/art/glow.png",
       "tint": true
     },
-    "panel": {
-      "slice": [
-        128.0,
-        128.0,
-        128.0,
-        128.0
-      ],
-      "src": "@styles/shared/art/frames/panel.png",
-      "width": [
-        32.0,
-        32.0,
-        32.0,
-        32.0
-      ]
-    },
     "panel-cut": {
       "slice": 48,
       "src": "@styles/shared/shapes/panel-cut.svg",
       "tint": true,
       "width": 12
-    },
-    "plate": {
-      "slice": [
-        72.0,
-        80.0,
-        72.0,
-        80.0
-      ],
-      "src": "@styles/shared/art/frames/plate.png",
-      "width": [
-        18.0,
-        20.0,
-        18.0,
-        20.0
-      ]
     },
     "plate-cut": {
       "slice": 24,
@@ -561,38 +320,6 @@
     "sheen": {
       "slice": 0,
       "src": "@styles/shared/art/sheen.png"
-    },
-    "slot": {
-      "slice": [
-        72.0,
-        72.0,
-        72.0,
-        72.0
-      ],
-      "src": "@styles/shared/art/frames/slot.png",
-      "width": [
-        18.0,
-        18.0,
-        18.0,
-        18.0
-      ]
-    },
-    "slot-rim": {
-      "fill": false,
-      "slice": [
-        72.0,
-        72.0,
-        72.0,
-        72.0
-      ],
-      "src": "@styles/shared/art/frames/slot-rim.png",
-      "tint": true,
-      "width": [
-        18.0,
-        18.0,
-        18.0,
-        18.0
-      ]
     },
     "socket": {
       "slice": 76,
@@ -803,10 +530,6 @@
         "dark": "#4fd8ff",
         "light": "#1c5b6d"
       },
-      "art-button-fg": "#f4f6fb",
-      "art-fg": "#f4f6fb",
-      "art-primary": "#f5b83a",
-      "art-primary-fg": "#3a2206",
       "bg": {
         "dark": "#000000",
         "light": "#e7f3ff"

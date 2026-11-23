@@ -146,7 +146,7 @@ describe("vfx archives", () => {
     });
     // ui previews are the creation document's alone, filled like the rest.
     expect(manifest.creation).toEqual({ url: "https://origingame.ai/downloads/engine/1.2.3-dev.4/creation.json", sha256: sha(readFileSync(join(dir, "creation.json"))), size: statSync(join(dir, "creation.json")).size });
-    expect(JSON.parse(readFileSync(join(dir, "creation.json"), "utf8")).previews["previews/ui/fantasy.webp"]).toEqual({ url: "https://origingame.ai/downloads/engine/1.2.3-dev.4/previews/ui/fantasy.webp", sha256: sha("ui"), size: 2, engine: "1.2.3-dev.4" });
+    expect(JSON.parse(readFileSync(join(dir, "creation.json"), "utf8")).previews["previews/ui/default.webp"]).toEqual({ url: "https://origingame.ai/downloads/engine/1.2.3-dev.4/previews/ui/default.webp", sha256: sha("ui"), size: 2, engine: "1.2.3-dev.4" });
     expect(manifest).toMatchObject({ version: "1.2.3-dev.4", channel: "dev", checksums: "SHA256SUMS", signature: "SHA256SUMS.minisig" });
     expect(manifest).not.toHaveProperty("symbols");
     const sums = readFileSync(join(dir, "SHA256SUMS"), "utf8");
@@ -156,7 +156,7 @@ describe("vfx archives", () => {
     expect(sums).toContain("  manifest.json\n");
     expect(sums).toContain(`${manifest.looks.catalogue.sha256}  looks/catalogue.json\n`);
     expect(sums).toContain(`${sha("pix")}  previews/pixel.webp\n`);
-    for (const f of ["previews/pixel.8bit.webp", "previews/ui/fantasy.webp", "creation.json"]) expect(sums).toContain(`  ${f}\n`);
+    for (const f of ["previews/pixel.8bit.webp", "previews/ui/default.webp", "creation.json"]) expect(sums).toContain(`  ${f}\n`);
     // A dev build carries the launcher's installers too: the site's root installer may be older than its name.
     for (const f of ["install.sh", "install.ps1"]) expect(sums).toContain(`${sha(readFileSync(join(dir, f)))}  ${f}\n`);
     // Every line verifies from the version's directory, as publish checks them.
@@ -194,7 +194,7 @@ const SLOTS: (Slot & { bytes: string })[] = [
   { path: "previews/pixel.webp", kind: "look", look: "pixel", bytes: "pix" },
   { path: "previews/pixel.8bit.webp", kind: "variant", look: "pixel", variant: "8bit", bytes: "8bit" },
   { path: "previews/neon-vector.webp", kind: "look", look: "neon-vector", bytes: "neon" },
-  { path: "previews/ui/fantasy.webp", kind: "ui", pack: "fantasy", bytes: "ui" },
+  { path: "previews/ui/default.webp", kind: "ui", pack: "default", bytes: "ui" },
 ];
 /** A version directory with its previews as scripts/release.sh previews leaves them, and an engine package with a catalogue. */
 function drawLooks(dir: string, version: string, revision: string) {
@@ -239,9 +239,9 @@ describe("the look previews", () => {
     writeFileSync(join(dir, "previews/pixel.webp"), "old");
     expect(() => d.looks()).toThrow(/previews\/pixel\.webp is not the preview looks-render\.json recorded/);
     writeFileSync(join(dir, "previews/pixel.webp"), "pix");
-    rmSync(join(dir, "previews/ui/fantasy.webp"));
-    expect(() => d.looks()).toThrow(/no previews\/ui\/fantasy\.webp/);
-    writeFileSync(join(dir, "previews/ui/fantasy.webp"), "ui");
+    rmSync(join(dir, "previews/ui/default.webp"));
+    expect(() => d.looks()).toThrow(/no previews\/ui\/default\.webp/);
+    writeFileSync(join(dir, "previews/ui/default.webp"), "ui");
     writeFileSync(join(dir, "previews/ui/retired.webp"), "x");
     expect(() => d.looks()).toThrow(/previews\/ui\/retired\.webp: no preview slot names them/);
     rmSync(join(dir, "previews/ui/retired.webp"));

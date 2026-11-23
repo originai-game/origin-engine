@@ -5,9 +5,10 @@ the changelog; rules are in `AGENTS.md`, the UI contract in `docs/ui.md`.
 
 ## Order
 
-1. **The UI art direction (now).** One design language across the style
-   packs: the built-in components and screens (`@ui/`), dressed by the
-   fantasy, scifi and cartoon packs through tokens and parts.
+1. **The UI art direction (now).** One design language: the built-in
+   components and screens (`@ui/`), composed from a ported base and
+   dressed by theme recipes through tokens and parts (the old fantasy,
+   scifi and cartoon packs are deleted).
 2. **Native desktop packages (now)** (§Direction).
 3. **The performance pass** (§Below target), then the real-device run.
 4. **The engine's showcase page**, rebuilt from scratch as a page of the

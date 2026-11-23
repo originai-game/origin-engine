@@ -1,5 +1,5 @@
 // og's text sheets against Chrome's, row by row (a port of the text thread's measure.py).
-// usage: bun measure.ts <og-dir> <chrome-dir> <out-dir> [packs, default default,cartoon,fantasy,scifi]
+// usage: bun measure.ts <og-dir> <chrome-dir> <out-dir> [packs, default default]
 // <og-dir> holds og-<pack>.png (run.sh's sheets), <chrome-dir> chrome-<pack>.png (chrome-sheets.ts).
 // Writes <out-dir>/cmp-<pack>.png (og over Chrome, then 4x crops of the 12–16 px Latin and Chinese
 // rows), rows.json, and prints ink ratio, width, baseline and top per row.
@@ -17,7 +17,7 @@ if (!ogDir || !chDir || !outArg) {
 }
 const out = resolve(outArg);
 mkdirSync(out, { recursive: true });
-const PACKS = (packArg ?? "default,cartoon,fantasy,scifi").split(",");
+const PACKS = (packArg ?? "default").split(",");
 const SIZES = [12, 14, 16, 20, 28, 48];
 const LINES = ["latin", "cjk", "digits"];
 const BG = [0x14, 0x1a, 0x22];

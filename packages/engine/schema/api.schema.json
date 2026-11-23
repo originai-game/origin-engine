@@ -47809,7 +47809,7 @@
         },
         "source": {
           "type": "string",
-          "description": "Its file and line (`styles/fantasy/style.ogt:210`); empty for the engine's default style."
+          "description": "Its file and line (`styles/mine/pack.json:210`); empty for the engine's default style."
         }
       },
       "required": [

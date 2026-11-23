@@ -26692,9 +26692,7 @@ export interface PickResult {
 export interface UiPickRule {
   /** Its selector, as the style writes it (`Button.base[primary]`). */
   readonly selector: string;
-  /**
-   * Its file and line (`styles/fantasy/style.ogt:210`); empty for the engine's default style.
-   */
+  /** Its file and line (`styles/mine/pack.json:210`); empty for the engine's default style. */
   readonly source: string;
 }
 

@@ -276,7 +276,7 @@ fn a_name_that_says_one_type_over_a_file_of_another_is_a_warning() {
 ///
 /// Ways this could fail: every default image cooked whatever the code
 /// draws (before 2026-11-23); an unnamed image left out with nothing said
-/// when the name was a typo; a name a template cut short (`button-`) or a
+/// when the name was a typo; a name a template cut short (`fx-`) or a
 /// game pack's own image reported as missing.
 #[test]
 fn a_default_image_joins_only_when_named_and_an_unknown_one_is_a_warning() {
@@ -288,7 +288,7 @@ fn a_default_image_joins_only_when_named_and_an_unknown_one_is_a_warning() {
         r##"{ "images": { "crest": { "src": "@styles/shared/art/glow.png", "slice": 0 } } }"##,
     )
     .unwrap();
-    let nine = ["plate", "button-", "crest", "panle"].map(String::from);
+    let nine = ["sheen", "fx-", "crest", "panle"].map(String::from);
     let options = CookOptions {
         code: og_cook::cook::CodeGraph {
             tsx: true,
@@ -305,10 +305,10 @@ fn a_default_image_joins_only_when_named_and_an_unknown_one_is_a_warning() {
             "`nine-panle` names no image in the default pack or a pack the game holds: it draws nothing"
         ]
     );
-    let frames = root.join("cooked/@styles/shared/art/frames");
-    assert!(frames.join("plate.png.ogb").exists());
-    assert!(frames.join("button-primary.png.ogb").exists());
-    assert!(!frames.join("panel.png.ogb").exists());
+    let shared = root.join("cooked/@styles/shared");
+    assert!(shared.join("art/sheen.png.ogb").exists());
+    assert!(shared.join("fx/sparkle.png.ogb").exists());
+    assert!(!shared.join("art/card-frame.png.ogb").exists());
 }
 
 /// A source rewritten in the timestamp tick it was last written in, at the

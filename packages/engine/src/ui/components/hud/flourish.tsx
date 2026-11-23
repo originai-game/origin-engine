@@ -1,5 +1,6 @@
 import { og, type ParticleEmitter } from "@origingame/engine";
 import { For, Icon, Particles, Show, Text, View, useWorld } from "@origingame/engine/ui";
+import { Button } from "../../controls/button";
 import charge from "./fx/charge.ogt";
 import chargeGlow from "./fx/charge-glow.ogt";
 import coinGlints from "./fx/coin-glints.ogt";
@@ -81,7 +82,7 @@ export function Flourish(props: FlourishProps) {
     <View class={`items-center ${props.class ?? ""}`}>
       <View class="relative self-stretch items-center justify-center">
         <Show when={kind() == "highlight"}>
-          <View class="absolute inset-0.5 rounded-panel bg-art-primary opacity-40 shadow-glow-lg shadow-art-primary animate-pulse" />
+          <View class="absolute inset-0.5 rounded-panel bg-accent opacity-40 shadow-glow-lg shadow-accent animate-pulse" />
         </Show>
         <For each={shots()} key={(s) => s.id}>
           {() => (
@@ -173,14 +174,14 @@ export function Flourish(props: FlourishProps) {
 }
 
 const ICON = (name: string) => () => (
-  <View class="size-24 items-center justify-center nine-slot"><Icon class="size-16" name={name} /></View>
+  <View class="size-24 items-center justify-center rounded-field bg-tile border-2 border-border-strong"><Icon class="size-16" name={name} /></View>
 );
 
 export const fixtures: Record<string, Partial<FlourishProps>> = {
   reward: { kind: "reward", shots: [{ id: "1" }], children: ICON("chest") },
-  levelUp: { kind: "levelUp", shots: [{ id: "1" }], children: () => <View class="px-6 py-2 rounded-panel bg-bg nine-plate"><Text class="text-display-md font-bold text-gold">LV 12</Text></View> },
-  purchase: { kind: "purchase", shots: [{ id: "1" }], children: () => <View class="flex-row items-center gap-1 pl-2 pr-4 h-10 nine-plate"><Icon class="size-7" name="coin" /><Text class="text-lg font-bold text-art-fg">12,480</Text></View> },
+  levelUp: { kind: "levelUp", shots: [{ id: "1" }], children: () => <View class="px-6 py-2 rounded-panel bg-glass"><Text class="text-display-md font-bold text-gold">LV 12</Text></View> },
+  purchase: { kind: "purchase", shots: [{ id: "1" }], children: () => <View class="flex-row items-center gap-1 pl-2 pr-4 h-10 rounded-full bg-glass"><Icon class="size-7" name="coin" /><Text class="text-lg font-bold text-fg">12,480</Text></View> },
   reveal: { kind: "reveal", rarity: "epic", shots: [{ id: "1" }], children: ICON("gem") },
   revealLegendary: { kind: "reveal", rarity: "legendary", shots: [{ id: "1" }], children: ICON("crown") },
-  highlight: { kind: "highlight", children: () => <View class="h-14 w-56 items-center justify-center pb-1 nine-button-primary"><Text class="text-lg font-bold text-art-primary-fg">Claim</Text></View> },
+  highlight: { kind: "highlight", children: () => <Button variant="primary" class="h-14 w-56" onPress={() => {}}><Text>Claim</Text></Button> },
 };

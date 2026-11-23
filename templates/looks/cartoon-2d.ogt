@@ -8,7 +8,7 @@ version 1
 # as a storybook or ink it as a rubber-hose cartoon.
 name "Cartoon 2D"
 mood "bright"
-ui "cartoon"
+ui "default"
 Stylise {
   posterize 10
   posterizeMode tone

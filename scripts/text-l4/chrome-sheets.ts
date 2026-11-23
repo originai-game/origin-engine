@@ -2,7 +2,7 @@
 // `sans` family list (its pack.json theme), with the default pack's body face and
 // the Chinese face behind it as og's fallback chain has them, and the body text's line
 // height the UI root passes down.
-// usage: bun chrome-sheets.ts <chrome> <out-dir> [packs, default default,cartoon,fantasy,scifi]
+// usage: bun chrome-sheets.ts <chrome> <out-dir> [packs, default default]
 // Writes <out-dir>/chrome-<pack>.html and chrome-<pack>.png (1200x620, DPR 1).
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
@@ -16,14 +16,13 @@ if (!chrome || !outArg) {
 const out = resolve(outArg);
 mkdirSync(out, { recursive: true });
 const styles = resolve(import.meta.dir, "../../templates/styles");
-const packs = (packArg ?? "default,cartoon,fantasy,scifi").split(",");
+const packs = (packArg ?? "default").split(",");
 const SIZES = [12, 14, 16, 20, 28, 48];
 const LINES = ["Settings · Quit to menu · Hamburgefonstiv", "开始游戏 设置 第 3 关 · Level 3", "0123456789 +1,240 XP 06:54 ×320"];
 
 /** Each family the packs' sans lists name, with its files and their weight ranges. */
 const FACES: Record<string, Array<[string, string]>> = {
   "Instrument Sans": [["shared/InstrumentSans[wdth,wght].ttf", "400 700"]],
-  Fredoka: [["cartoon/Fredoka[wdth,wght].ttf", "300 700"]],
   Newsreader: [["shared/Newsreader[opsz,wght].ttf", "200 800"]],
   Spectral: [["shared/Spectral-SemiBold.ttf", "600"]],
   "Barlow Semi Condensed": [["shared/BarlowSemiCondensed-SemiBold.ttf", "600"]],

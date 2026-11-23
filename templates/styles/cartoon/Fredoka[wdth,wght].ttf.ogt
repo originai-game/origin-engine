@@ -1,8 +1,0 @@
-type import
-version 1
----
-# Cartoon's text face, variable (wght 300–700, wdth 75–125), so each weight
-# is its own outlines. The face ships whole; every character is drawn from
-# its outlines at the size it is shown.
-font {
-}

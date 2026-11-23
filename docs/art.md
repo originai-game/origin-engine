@@ -177,9 +177,10 @@ summary as warnings and never refuses a build.
 
 Twelve looks, every one offered to a new game (`creationLooks`), with the
 UI pack their `ui` line names: cinematic-realism, anime-cel-3d,
-inked-comic-3d, faceted-low-poly, low-resolution-3d, pixel and
-minimal-geometric (default); painterly-3d and pixel-3d-hybrid (fantasy);
-neon-vector (scifi); toy-3d and cartoon-2d (cartoon). The validator keeps a
+inked-comic-3d, faceted-low-poly, low-resolution-3d, pixel,
+minimal-geometric, painterly-3d, pixel-3d-hybrid, neon-vector, toy-3d and
+cartoon-2d (default). Every look names the default pack until the theme
+recipes land. The validator keeps a
 look for every creation view. The default-style looks also set `uiSeeds`, the
 UI's seed colours taken from their scenes, so the default style matches
 each one.

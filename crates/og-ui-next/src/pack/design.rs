@@ -430,61 +430,15 @@ fn art() -> Vec<(String, Value)> {
         ]
         .into_iter()
         .map(|(name, image)| (name.to_owned(), image))
-        .chain(frames())
+        .chain(effects())
         .collect()
 }
 
-/// The frame art every look has (`templates/styles/shared/art/frames/`,
-/// drawn 4x by templates/tools/make-frame-art.py): buttons with a lip a
-/// press flattens (`button`, `button-primary`, `button-danger`, each with
-/// `-hover` and `-pressed`, and `button-disabled`), a slate `panel` with a
-/// champagne rim, a currency `plate`, a sunk `field` and item `slot`, a
-/// notification `badge`, a `divider` that fades out at its ends; and two
-/// tint pieces the fill colours: a slot's `slot-rim` (a rarity) and a
-/// `chip-bevel`. Insets are in points, `[top, right, bottom, left]`.
-fn frames() -> Vec<(String, Value)> {
+/// The UI effects' particle textures (`templates/styles/shared/fx/`): the
+/// engine's emitters name them by id, and as images the fill colours them
+/// (`nine-fx-sparkle bg-gold`), stretched whole.
+fn effects() -> Vec<(String, Value)> {
     let mut out = Vec::new();
-    let mut put = |name: String, slice: [f32; 4], fill: bool, tint: bool| {
-        let mut image = json!({
-            "src": format!("@styles/shared/art/frames/{name}.png"),
-            "slice": slice.map(|s| s * 4.0),
-            "width": slice,
-        });
-        if !fill {
-            image["fill"] = json!(false);
-        }
-        if tint {
-            image["tint"] = json!(true);
-        }
-        out.push((name, image));
-    };
-    for base in ["button", "button-primary", "button-danger"] {
-        for state in ["", "-hover", "-pressed"] {
-            put(
-                format!("{base}{state}"),
-                [17.0, 18.0, 21.0, 18.0],
-                true,
-                false,
-            );
-        }
-    }
-    put(
-        "button-disabled".into(),
-        [17.0, 18.0, 21.0, 18.0],
-        true,
-        false,
-    );
-    put("panel".into(), [32.0; 4], true, false);
-    put("plate".into(), [18.0, 20.0, 18.0, 20.0], true, false);
-    put("field".into(), [14.0; 4], true, false);
-    put("slot".into(), [18.0; 4], true, false);
-    put("slot-rim".into(), [18.0; 4], false, true);
-    put("chip-bevel".into(), [10.0; 4], true, true);
-    put("badge".into(), [13.0, 14.0, 14.0, 14.0], true, false);
-    put("divider".into(), [0.0, 88.0, 0.0, 88.0], true, false);
-    // The UI effects' particle textures (`templates/styles/shared/fx/`):
-    // the engine's emitters name them by id, and as images the fill
-    // colours them (`nine-fx-sparkle bg-gold`), stretched whole.
     for name in ["sparkle", "glint", "shard", "coin", "ray", "ring"] {
         out.push((
             format!("fx-{name}"),
@@ -1027,8 +981,8 @@ mod tests {
             })
             .collect();
         assert!(pairs.len() > 40, "{}", pairs.len());
-        let cartoon = ":root { --seed-primary: #ffc71f; --seed-neutral: #232a73; --seed-danger: #ff7272; --seed-team: #45b3ff; }";
-        for seeds in ["", cartoon] {
+        let warm = ":root { --seed-primary: #ffc71f; --seed-neutral: #232a73; --seed-danger: #ff7272; --seed-team: #45b3ff; }";
+        for seeds in ["", warm] {
             for (i, c) in colors(seeds).iter().enumerate() {
                 let low: Vec<String> = pairs
                     .iter()

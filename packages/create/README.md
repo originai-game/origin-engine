@@ -74,8 +74,7 @@ look names and descriptions remain in the catalogue.
 
 `creationLooks()` lists the looks a new game may pick: the catalogue's
 twelve, each with a preset. Pass it to `creationSchema`. A name that is no
-look fails with the list. A look's UI pack (default, cartoon, fantasy or
-scifi) is the default UI choice. `variant` names one of the look's variants
+look fails with the list. A look's UI pack (default) is the default UI choice. `variant` names one of the look's variants
 (docs/art.md §2.11) and is written into the look file.
 
 The inference helpers suggest choices using English and Chinese keywords.

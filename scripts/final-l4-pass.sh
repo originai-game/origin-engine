@@ -148,7 +148,7 @@ sec_gallery() {
   [ "$DRY" = 1 ] && only=(--only "hud/crosshair · default,shooter/radar · default,racing/garage · default,screens/subtitles · captions")
   rm -rf "$root/target/ui-gallery/project"
   (cd "$root/packages/engine" && OG_NATIVE_ADDON="$BUNDLE/bin/og-addon.node" bun src/node/gallery.ts --og "$BUNDLE/bin/og" \
-    --packs default,cartoon,fantasy,scifi --schemes dark,light --out "$OUT/gallery/frames" "${only[@]}")
+    --packs default --schemes dark,light --out "$OUT/gallery/frames" "${only[@]}")
   local rc=$?
   cp "$OUT/gallery/frames/defects.txt" "$OUT/lane.txt" 2>/dev/null || : > "$OUT/lane.txt"
   local c
@@ -335,7 +335,7 @@ sec_filters() {
   local src="$root/scripts/final-l4/filters" w="$OUT/filters" p
   p="$(mktemp -d)"; cp -r "$src/." "$p/"; rm -rf "$p/cooked" "$p/.og" "$p/node_modules"
   mkdir -p "$p/node_modules/@origingame" && ln -sfn "$root/packages/engine" "$p/node_modules/@origingame/engine"
-  local packs="default cartoon fantasy scifi" schemes="dark light" scenes="glass shadows spotlight minimap all hud" size=1920x1080 pk sc s
+  local packs="default" schemes="dark light" scenes="glass shadows spotlight minimap all hud" size=1920x1080 pk sc s
   # The dry run proves the wiring only: one scene, small, and no timing (a CPU judges no budget).
   [ "$DRY" = 1 ] && packs="default" schemes="dark" scenes="all" size=320x180
   # One run a scene: a mount is never taken down mid-run.

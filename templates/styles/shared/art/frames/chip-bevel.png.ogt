@@ -1,7 +1,0 @@
-type import
-version 1
----
-# A tint piece: grey shading with alpha, which the fill colours.
-texture {
-  kind linear
-}

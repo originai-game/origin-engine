@@ -34,9 +34,6 @@ export const CHOICE_LABELS = {
   },
   ui: {
     default: ["Core default", "核心默认", "The engine core UI with its built-in components.", "引擎核心界面及其内置组件。"],
-    cartoon: ["Cartoon", "卡通", "Rounded shapes, bold colour and playful controls.", "圆润的形状、鲜明的色彩与活泼的控件。"],
-    fantasy: ["Fantasy", "奇幻", "Warm textured panels and ornament for magical worlds.", "适合魔法世界的温暖质感面板与装饰。"],
-    scifi: ["Science fiction", "科幻", "Dark translucent glass and technical displays.", "深色半透明玻璃与技术显示屏。"],
   },
   platform: {
     "phone-portrait": ["Phone portrait", "手机竖屏", "A tall mobile screen with touch by default.", "纵向手机画面，默认触控。"],

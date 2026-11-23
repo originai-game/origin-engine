@@ -1,0 +1,35 @@
+{
+  "simulation": "unchanged",
+  "breaking": [
+    {
+      "member": "Built-in style pack @styles/scifi",
+      "change": "Removed with its art, fonts and sounds: the theme recipes replace the built-in packs. A look's or create block's `ui \"scifi\"` and `og.load.style(world, \"@styles/scifi\")` name no pack; the UI draws in the default pack.",
+      "fix": "Write `ui \"default\"` (og upgrade rewrites it) and drop the og.load.style call. A game that copied the pack into assets/styles/scifi/ keeps its copy by naming it, but removes the files its pack.json names under @styles/scifi/.",
+      "find": ["@styles/scifi", "ui \"scifi\""],
+      "codemod": { "from": "ui \"scifi\"", "to": "ui \"default\"" }
+    },
+    {
+      "member": "Built-in style pack @styles/fantasy",
+      "change": "Removed with its art, fonts and sounds: the theme recipes replace the built-in packs. A look's or create block's `ui \"fantasy\"` and `og.load.style(world, \"@styles/fantasy\")` name no pack; the UI draws in the default pack.",
+      "fix": "Write `ui \"default\"` (og upgrade rewrites it) and drop the og.load.style call. A game that copied the pack into assets/styles/fantasy/ keeps its copy by naming it, but removes the files its pack.json names under @styles/fantasy/.",
+      "find": ["@styles/fantasy", "ui \"fantasy\""],
+      "codemod": { "from": "ui \"fantasy\"", "to": "ui \"default\"" }
+    },
+    {
+      "member": "Built-in style pack @styles/cartoon",
+      "change": "Removed with its art, fonts (Lilita One, Fredoka) and sounds: the theme recipes replace the built-in packs. A look's or create block's `ui \"cartoon\"` and `og.load.style(world, \"@styles/cartoon\")` name no pack; the UI draws in the default pack.",
+      "fix": "Write `ui \"default\"` (og upgrade rewrites it) and drop the og.load.style call. A game that copied the pack into assets/styles/cartoon/ keeps its copy by naming it, but removes the files its pack.json names under @styles/cartoon/.",
+      "find": ["@styles/cartoon", "ui \"cartoon\""],
+      "codemod": { "from": "ui \"cartoon\"", "to": "ui \"default\"" }
+    },
+    {
+      "member": "Default pack frame art and its ink tokens",
+      "change": "Removed: the default pack's images button, button-primary, button-danger (each with -hover and -pressed), button-disabled, panel, plate, field, slot, slot-rim, chip-bevel, badge and divider (@styles/shared/art/frames/), and the colours art-fg, art-primary-fg, art-button-fg and art-primary. A `nine-<name>` class of one now draws nothing and the cook warns; a `text-art-fg` class is unknown. The built-in components drew none of them; the default pack dresses its slots in plain tokens until the theme recipes land. The fx-* particle textures, the shapes and socket, glow, sheen and card-frame stay.",
+      "fix": "Draw the control the built-in way (Button with its variant, or the slot's packClass) or a plain token box (`rounded-field bg-tile border-2 border-border-strong` for a slot, `rounded-full bg-glass` for a currency plate), and write a role ink (`text-fg`, `text-primary-fg`) in place of art-*. A game's own pack may name its own images by these names.",
+      "find": ["nine-button", "nine-panel ", "nine-panel\"", "nine-panel`", "nine-plate ", "nine-plate\"", "nine-plate`", "nine-field", "nine-slot", "nine-chip-bevel", "nine-badge", "nine-divider", "art-fg", "art-primary", "art-button-fg", "art/frames/"]
+    }
+  ],
+  "fixed": [
+    { "member": "Look presets' ui line", "summary": "toy-3d, cartoon-2d, neon-vector, painterly-3d and pixel-3d-hybrid now name ui \"default\", and the creation choices' ui enum is default alone, until the theme recipes land." }
+  ]
+}

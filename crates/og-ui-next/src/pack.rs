@@ -381,7 +381,7 @@ impl Layer {
     }
 
     /// Resolves every asset path against the pack's directory `dir` (its
-    /// asset id, `styles/cartoon`): a path starting with `@` or `/` names
+    /// asset id, `styles/mine`): a path starting with `@` or `/` names
     /// an asset by id and stays (`/` dropped).
     pub fn resolve(&mut self, dir: &str) {
         let at = |p: &mut String| {
@@ -932,13 +932,6 @@ mod tests {
                 "variants.Plate.frame"
             ]
         );
-        // The built-in packs give every ground its ink.
-        let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../templates/styles");
-        for p in ["cartoon", "fantasy", "scifi"] {
-            let text = std::fs::read_to_string(format!("{root}/{p}/pack.json")).unwrap();
-            let l = Layer::parse(&text).unwrap();
-            assert_eq!(grounds_without_ink(&base, &l), Vec::<String>::new(), "{p}");
-        }
     }
 
     #[test]
@@ -981,16 +974,16 @@ mod tests {
             "fonts": ["a.ttf", "@styles/shared/b.ttf", "v.ttf"],
             "icons": { "star": "art/star.svg" },
             "sounds": { "press": { "clips": ["/sfx/tap.ogt"], "volume": [0.2, 0.3] }, "Button.base": { "hover": { "clips": ["t.ogt"] } } } }"##).unwrap();
-        l.resolve("styles/cartoon");
+        l.resolve("styles/mine");
         assert_eq!(
             l.assets(),
             [
                 "@styles/shared/b.ttf",
                 "sfx/tap.ogt",
-                "styles/cartoon/a.ttf",
-                "styles/cartoon/art/star.svg",
-                "styles/cartoon/t.ogt",
-                "styles/cartoon/v.ttf"
+                "styles/mine/a.ttf",
+                "styles/mine/art/star.svg",
+                "styles/mine/t.ogt",
+                "styles/mine/v.ttf"
             ]
         );
         let again = Layer::parse(&l.to_json()).unwrap();

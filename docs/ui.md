@@ -1985,12 +1985,14 @@ rewards, legal card targets, or note timing.
 
 | Style pack | Visual language | Commercial review references | Status |
 | --- | --- | --- | --- |
-| `fantasy` | Painted frames and materials with room for dense content | Baldur's Gate 3, Diablo IV | Built, shipped with the engine; art-approved (pilot) |
-| `scifi` | Instrument hierarchy, precise geometry, sparse emphasis | Elite Dangerous, Starfield | Built, shipped with the engine; awaiting art approval |
-| `cartoon` | Rounded forms, deliberate thickness, clear primary actions | Mario Kart 8 Deluxe, Bloons TD 6 | Built, shipped with the engine |
+| `fantasy` | Painted frames and materials with room for dense content | Baldur's Gate 3, Diablo IV | Deleted (2026-11-23); rebuilt as a theme recipe |
+| `scifi` | Instrument hierarchy, precise geometry, sparse emphasis | Elite Dangerous, Starfield | Deleted (2026-11-23); rebuilt as a theme recipe |
+| `cartoon` | Rounded forms, deliberate thickness, clear primary actions | Mario Kart 8 Deluxe, Bloons TD 6 | Deleted (2026-11-23); rebuilt as a theme recipe |
 | `pixel` | Consistent pixel grid, integer scaling, readable glyphs | Stardew Valley, Octopath Traveler | Not yet built |
 | `storybook` | Paper and illustrated edges, quiet ornament, readable text | Pentiment, Strange Horticulture | Not yet built |
 
+The engine ships only the default pack, in plain tokens with no frame
+art, until the theme recipes replace the packs (the owner, 2026-11-23).
 A built pack lives in `templates/styles/<name>/` and ships with the engine
 as `@styles/<name>`, with the art it names. A pack is one `pack.json`
 over the engine's default pack (crates/og-ui-next/CONVENTIONS.md §Theme and
@@ -2006,9 +2008,8 @@ integration owner then updates the schema and bilingual labels together.
 There are no `auto`, `custom`, or `generated` pseudo-packs.
 
 The 12 look presets in `templates/looks/` and the generated look catalogue
-own look-to-UI recommendations: toy-3d and cartoon-2d name cartoon,
-painterly-3d and pixel-3d-hybrid fantasy, neon-vector scifi, the rest core
-default. A recommendation is a seed, not proof of fit; an explicit
+own look-to-UI recommendations; every look names `default` until the
+theme recipes land. A recommendation is a seed, not proof of fit; an explicit
 creation UI choice wins. Game-authored styles use explicit asset paths in
 the actual look; the creation block records the initial constraint, not
 the current path.
@@ -2083,7 +2084,7 @@ document is its text, and a parsed document has no cooked form.
 
 Built-in styles live in `templates/styles/<name>` and ship in the engine
 package's `styles/<name>`, loaded as `@styles/<name>`
-(`og.load.style(world, "@styles/scifi")`, or a look's `ui "scifi"`); the
+(`og.load.style(world, "@styles/<name>")`, or a look's `ui "<name>"`); the
 cook bundles only a style the game names. Resource and effect packs live in
 `packages/engine/extensions/<name>` and font packs in
 `templates/fonts/<name>`, each described by its `extension.json`.

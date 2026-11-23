@@ -271,10 +271,10 @@ test("docs/art.md's looks list, moods and variants table are the catalogue's and
   };
   expect(problems(original)).toEqual([]);
   // A look the catalogue has that the list does not name, and one it names that the catalogue has no style for.
-  expect(problems(original.replace("neon-vector (scifi); ", ""))).toEqual([
+  expect(problems(original.replace("neon-vector, ", ""))).toEqual([
     "docs/art.md §2.6's looks list does not name neon-vector",
   ]);
-  expect(problems(original.replace("toy-3d and cartoon-2d (cartoon)", "toy-3d and comic-2d (cartoon)"))).toEqual([
+  expect(problems(original.replace("toy-3d and\ncartoon-2d (default)", "toy-3d and\ncomic-2d (default)"))).toEqual([
     "docs/art.md §2.6's looks list names comic-2d, which the catalogue has no style for",
     "docs/art.md §2.6's looks list does not name cartoon-2d",
   ]);

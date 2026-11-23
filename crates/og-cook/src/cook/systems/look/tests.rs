@@ -507,7 +507,7 @@ fn every_preset_checks_against_the_records_with_the_built_ins() {
         .map(|(id, _)| *id)
         .chain(styles().iter().map(StyleFile::id))
         .collect();
-    // A built-in UI pack is named by its directory (`@styles/cartoon`).
+    // A built-in UI pack is named by its directory (`@styles/<name>`).
     let packs: Vec<String> = style_slugs()
         .iter()
         .map(|s| format!("@styles/{s}"))

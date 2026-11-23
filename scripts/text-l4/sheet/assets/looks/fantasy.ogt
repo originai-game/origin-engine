@@ -1,6 +1,0 @@
-type look
-version 1
----
-# Names @styles/fantasy so the cook bundles it; the sheet switches packs itself.
-name "sheet fantasy"
-ui "fantasy"

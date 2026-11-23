@@ -2,7 +2,7 @@
 # The text section of the final L4 pass: run once over one main SHA on the GPU host.
 #   scripts/text-l4/run.sh <og> <chrome> <out-dir> [packs]
 # <og> is a built og, <chrome> a Chrome for Testing binary, packs default
-# default,cartoon,fantasy,scifi. Needs only bun beyond them: every PNG is read and
+# default. Needs only bun beyond them: every PNG is read and
 # written with packages/engine/src/node/png.ts.
 # OG_ENGINE_PACKAGE must point at this checkout's packages/engine with dist/web built
 # (scripts/release-wasm.sh --development, then packages/engine/scripts/build.sh's copy).
@@ -16,7 +16,7 @@
 #   failures.txt: one line per failed step; the exit code is 1 when it is not empty.
 set -u
 here="$(cd "$(dirname "$0")" && pwd)"; root="$(cd "$here/../.." && pwd)"
-og="$(realpath "$1")"; chrome="$(realpath "$2")"; out="$(realpath -m "$3")"; packs="${4:-default,cartoon,fantasy,scifi}"
+og="$(realpath "$1")"; chrome="$(realpath "$2")"; out="$(realpath -m "$3")"; packs="${4:-default}"
 mkdir -p "$out/sheets" "$out/cmp"
 : > "$out/failures.txt"
 fail() { echo "$1" | tee -a "$out/failures.txt" >&2; }

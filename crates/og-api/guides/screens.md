@@ -90,16 +90,12 @@ A style pack is a directory with a `pack.json` (its theme, variants,
 fonts, images, icons and sounds) and the assets it names. Structure stays
 in TSX components. Haptics stay in `og.*`.
 
-The engine ships three packs that dress every core control, component and
-screen: `fantasy` (crimson bands, brass rims, painted plates), `scifi` (dark
-glass, thin glowing rims, chamfered frames) and `cartoon` (candy colours,
-thick dark outlines, chunky buttons that sink when pressed). Name one in
-the look (`ui "scifi"`), which makes the cook bundle it, or load it as
-`@styles/scifi` in place of a directory of the game's own below. To
-change one, copy it with `og style add scifi` into `assets/styles/scifi/`,
-which the look then resolves before the built-in one, and edit the copy's
-`pack.json`: its seeds, the theme values it sets over the default pack,
-its art and the classes of the slots it dresses. The palette is
+The engine ships the default pack, which dresses every core control,
+component and screen in plain tokens. A game's own pack lies over it:
+name its directory in the look (`ui "my-style"`), which makes the cook
+bundle it, and write in its `pack.json` its seeds, the theme values it
+sets over the default pack, its art and the classes of the slots it
+dresses. The palette is
 derived from seed colours. A pack or a game that only wants its own
 colours sets those (`"seeds": { "primary": "#c8102e", "neutral":
 "#3a3226" }` in its pack.json, or `og.ui.configure(engine, { seeds: {
@@ -112,8 +108,7 @@ rest, then resolve in that scheme whatever the page's is, down to a nearer
 `scheme-*`. `og style list`
 names the built-in and installed packs.
 
-1. Make `assets/styles/my-style/` with a `pack.json` (or copy a built-in
-   pack there with `og style add scifi` and rename it). A pack holds only
+1. Make `assets/styles/my-style/` with a `pack.json`. A pack holds only
    what it changes: what it does not set keeps the default pack's value.
 2. Write its `seeds` and, where the derived palette is not what you want,
    the `theme` colours, radii and font families; its `fonts`; its
