@@ -37,10 +37,7 @@ component part. Review every component under it with
   `chip`); a class `nine-<name>` draws one.
 - **`variants`**: the classes of the slots it dresses (`Button.plate`,
   `Button.plate.primary`, `Panel.frame`, `Plate.frame`, `Chip.frame`).
-- **`sounds`**: `back`, `cancel`, `close`, `confirm`, `error`, `open`,
-  `press`, `reward`, `select` for the whole pack, and its own for
-  `Button.plate`, `Button.plate.primary`, `Slot.frame`, from the shared set
-  (`@styles/shared/sfx-*`).
+- **`sounds`**: every event (`press`, `hover`, `select`, `confirm`, `cancel`, `back`, `open`, `close`, `error`, `reward`, `toggle`, `tab`, `levelup`, `purchase`, `countdown`) from the pack's own clips in `sfx/` (`tap`, `toggle`, `tab`, `countdown`, `back`, `close`, `open`, `confirm`, `error`, `purchase`, `reward`, `levelup`; `.ogg`, mastered by `templates/tools/master-ui-sounds.py`), and a hover for `Button.plate`, `Button.plate.primary`, `Slot.frame`.
 - **`icons`**: 5 of the default set's names drawn by its own art.
 - **Icon tones** (`icon-*` colours in `theme`): the engine's game icon set
   (`@styles/shared/icons/`, its names in that README) in candy colours, the pack's navy ink as the rim and a hard navy drop; the
@@ -63,4 +60,4 @@ component part. Review every component under it with
 - No face here carries Arabic, so the `ar` locale warns of missing glyphs
   under this pack; a game that ships Arabic adds a face for it.
 - The SVGs in `art/` were drawn for this pack; nothing in it is generated.
-- Sounds are the shared set (`@styles/shared/sfx-*`).
+- Its sounds (`sfx/`) were generated for this pack; see `../shared/LICENSES.md`.

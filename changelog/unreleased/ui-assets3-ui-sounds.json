@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "style pack sounds",
+      "summary": "The engine's UI sound set: twelve short clips (`tap`, `toggle`, `tab`, `countdown`, `back`, `close`, `open`, `confirm`, `error`, `purchase`, `reward`, `levelup`) mastered to one balanced mix, in four styles. The default pack now sounds every event from `@styles/shared/sfx/default/`, so a TSX UI clicks, confirms and rewards without a pack naming any sound; scifi, fantasy and cartoon carry their own clips in `sfx/` instead of the synthesised `@styles/shared/sfx-*` presets. A pack lies over the default one: an event it leaves out sounds the default clip, and `\"volume\": 0` mutes it."
+    }
+  ]
+}

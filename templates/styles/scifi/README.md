@@ -38,10 +38,7 @@ component part. Review every component under it with
 - **`variants`**: the classes of the slots it dresses (`Button.plate`,
   `Panel.frame`, `Plate.frame`, `Slot.frame`, `Chip.frame`, `Field.frame`,
   `Button.plate.primary`).
-- **`sounds`**: `back`, `cancel`, `close`, `confirm`, `error`, `open`,
-  `press`, `reward`, `select` for the whole pack, and its own for
-  `Button.plate`, `Button.plate.primary`, from the shared set
-  (`@styles/shared/sfx-*`).
+- **`sounds`**: every event (`press`, `hover`, `select`, `confirm`, `cancel`, `back`, `open`, `close`, `error`, `reward`, `toggle`, `tab`, `levelup`, `purchase`, `countdown`) from the pack's own clips in `sfx/` (`tap`, `toggle`, `tab`, `countdown`, `back`, `close`, `open`, `confirm`, `error`, `purchase`, `reward`, `levelup`; `.ogg`, mastered by `templates/tools/master-ui-sounds.py`), and a hover for `Button.plate`, `Button.plate.primary`.
 - **`icons`**: 2 of the default set's names drawn by its own art.
 - **Icon tones** (`icon-*` colours in `theme`): the engine's game icon set
   (`@styles/shared/icons/`, its names in that README) in cold metals and enamels, a dark teal rim and a cyan glow for the drop shadow; the

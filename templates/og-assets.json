@@ -1376,6 +1376,78 @@
       "visibility": "public"
     },
     {
+      "path": "styles/cartoon/sfx/back.ogg",
+      "sha256": "05ac2b06ae4dad689feffebd892573f82f5a31dfa3659a8fe21c454781dc6335",
+      "size": 6714,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/cartoon/sfx/close.ogg",
+      "sha256": "536c432c8bbb19c7360ee530aec159c95532447623c8df1e2362c6eb3d004be4",
+      "size": 6496,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/cartoon/sfx/confirm.ogg",
+      "sha256": "03b280e0544f1b0d8b72ef0af573eb5ba95dc2e3b681badf90bbfbf418822b13",
+      "size": 7310,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/cartoon/sfx/countdown.ogg",
+      "sha256": "aa666ddb6afe4afa83971dcb9d5c9b5f17b61a2a22afd3f35e1e795d57991d32",
+      "size": 4819,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/cartoon/sfx/error.ogg",
+      "sha256": "2f16d0a4e6cfcfb51e37bd3120dbe60df086ec7cc2afd67d2db9454c4998d87d",
+      "size": 7187,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/cartoon/sfx/levelup.ogg",
+      "sha256": "0f815ed9ff121afbe8e9091f61142feeeeb145a41f3efd66f12b9681f770fdf8",
+      "size": 13244,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/cartoon/sfx/open.ogg",
+      "sha256": "42b17ab9411c88791fe0327b5785a023bf4bb47cade637c46626a0d3bb16c768",
+      "size": 7435,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/cartoon/sfx/purchase.ogg",
+      "sha256": "be21331ed06bb36e40108c52ca5336826159850a8c0922306d75febb0591744d",
+      "size": 11400,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/cartoon/sfx/reward.ogg",
+      "sha256": "5d90e9ae137edea18f2892d3d374229963b98cba8bab56a2aea4da156ed78c0c",
+      "size": 11854,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/cartoon/sfx/tab.ogg",
+      "sha256": "ea3325fe14c9e6b4a2e592827f29142528a6bfc9b11ca9d96de6bfbe45e72644",
+      "size": 6054,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/cartoon/sfx/tap.ogg",
+      "sha256": "96c31078f3b8d1467a99eaaecf47094254713e9110b6b23d94c3b9b5d360bd4a",
+      "size": 4696,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/cartoon/sfx/toggle.ogg",
+      "sha256": "369495cc9c8eb42120d7181cb4279d8c8c1c55b667d1d7a75887a005d354e4e7",
+      "size": 5457,
+      "visibility": "public"
+    },
+    {
       "path": "styles/cjk/FusionPixel12-zhHans.ttf",
       "sha256": "b336514c53b5f83f60749d4226619414d334333562c4ded994b2e66a23006e8b",
       "size": 1377892,
@@ -1472,6 +1544,78 @@
       "visibility": "public"
     },
     {
+      "path": "styles/fantasy/sfx/back.ogg",
+      "sha256": "bf84bacb8f69fa6d5d65c67cc535edcf3113da5e6822183729417483703ff356",
+      "size": 6869,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/fantasy/sfx/close.ogg",
+      "sha256": "0c298496a4ba578792388f1fbb25c0d071cd8db6265f8c1aa5a2fbe2cae13c37",
+      "size": 7234,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/fantasy/sfx/confirm.ogg",
+      "sha256": "8950899740cab86c1aa72c2f4697b1cd94043cc72a22c07a0b9f32b7301e4226",
+      "size": 8261,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/fantasy/sfx/countdown.ogg",
+      "sha256": "9156e7a69ca536580ca84a9bc697c6c20c16936f65166a51ce1a55fd92f0bf8c",
+      "size": 4855,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/fantasy/sfx/error.ogg",
+      "sha256": "04045241d26a259625155b0e5adfc65398be8d5c7043a870536bcc2ab39f3edc",
+      "size": 7618,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/fantasy/sfx/levelup.ogg",
+      "sha256": "10b05010e63cee5fe0bd65d132373ccd6c3f05927b957eaa94e5c46d32a7814d",
+      "size": 17137,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/fantasy/sfx/open.ogg",
+      "sha256": "8eb2d7314a5671c915aee9ae61d5d7ff6094439ae02acfb56ac9d08c9b88dd51",
+      "size": 9270,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/fantasy/sfx/purchase.ogg",
+      "sha256": "7b94171c68f84fbbbbe538071ea6d3054dc821473902b16f6c1a98432e5e829b",
+      "size": 12035,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/fantasy/sfx/reward.ogg",
+      "sha256": "bdd984f029a4d8d418b8d656d579a54fe730b689a8d9e6df233a11d805e7d8fc",
+      "size": 13130,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/fantasy/sfx/tab.ogg",
+      "sha256": "798a8e5262aaddc22001c7f8920eef18d3bbf9c8b6c0b3e05c8e9c963bc286f0",
+      "size": 6564,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/fantasy/sfx/tap.ogg",
+      "sha256": "c6106b413a223ea0ab4ae63180dc120c0bdad31ec5ef9d3e123d3565c9270fef",
+      "size": 5421,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/fantasy/sfx/toggle.ogg",
+      "sha256": "b6740e03a71cd4dec9c99a52700bdd1d0b10b16304bcb5c61e3736e036ef85fd",
+      "size": 6401,
+      "visibility": "public"
+    },
+    {
       "path": "styles/scifi/art/button-disabled.png",
       "sha256": "1c6fa0688983414d0afc909fe8489e237e3ced82bbe044c1ed2cf855076b1bc6",
       "size": 15090,
@@ -1529,6 +1673,78 @@
       "path": "styles/scifi/art/plate.png",
       "sha256": "12915f979543abceb65116a3db4053fc161fb441f66613792719726c7e3962a6",
       "size": 19492,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/scifi/sfx/back.ogg",
+      "sha256": "f02e3f729730b7901706378e1565f1a6ac577852c7a48f9dbbe4ed836f59b97e",
+      "size": 6796,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/scifi/sfx/close.ogg",
+      "sha256": "9bc87d2978fce5657b6ea33cfe7f4383aec7aa43db5d2e87ac63322eaab7dc7b",
+      "size": 8557,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/scifi/sfx/confirm.ogg",
+      "sha256": "46e039318064a7dd5ca50cb810fc98b034c8efc8279f82561cc57d51ccda0059",
+      "size": 8452,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/scifi/sfx/countdown.ogg",
+      "sha256": "a4215b8bbb6ae4df61d16af7b83b5778a7630d257b99ae51d523c550abbf2f0f",
+      "size": 5524,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/scifi/sfx/error.ogg",
+      "sha256": "a5dc3add68634835abd6b97d9756238f4831cfacca80198025150b72e927c78c",
+      "size": 8393,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/scifi/sfx/levelup.ogg",
+      "sha256": "bcb924cfe2688b4e5a0fd7c7ada8ab0810f21d11fa70d5d4e753c83364d56f0d",
+      "size": 17137,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/scifi/sfx/open.ogg",
+      "sha256": "07590740c0de6b60b919c03f3d609177212eb1669dbcbbcc2fb01306a650c799",
+      "size": 9802,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/scifi/sfx/purchase.ogg",
+      "sha256": "d9561dfc41750102d7c983934148df957f6728d9f77a01361264fa7e5be90740",
+      "size": 11095,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/scifi/sfx/reward.ogg",
+      "sha256": "9ea1dfc027df72bf8c0e46d8fe48777072cc2adb3ccfec90814e2adb8703e06d",
+      "size": 11619,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/scifi/sfx/tab.ogg",
+      "sha256": "76a47dc47286cc9afac179c19bb2c27cffee48cf9a4bc344141db60401ae5f41",
+      "size": 6811,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/scifi/sfx/tap.ogg",
+      "sha256": "d2466b05b2352627d7c62d1e966ae63404c7759aa2ff879f99803c254f24472f",
+      "size": 5987,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/scifi/sfx/toggle.ogg",
+      "sha256": "2ed69c20a119870a7466d5d7a2009305591e07c919b11bd7513c47b4dd0cb471",
+      "size": 6696,
       "visibility": "public"
     },
     {
@@ -3167,6 +3383,78 @@
       "path": "styles/shared/plate-icons.png",
       "sha256": "a02ec5bd2606454ba11ca0836d576ffe09641a463fd7f6eeba3d30b21b62d374",
       "size": 19918,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/sfx/default/back.ogg",
+      "sha256": "04e4ce4012a27558045ef68c36b8ae9b51ac9b245b63b75c656664c6efded6fe",
+      "size": 6895,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/sfx/default/close.ogg",
+      "sha256": "32f91c3031be2e2240cd3b82720ad268476e12426c3d57b20379c6868888a8a9",
+      "size": 7272,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/sfx/default/confirm.ogg",
+      "sha256": "a8009039cfca42faf8de69a42131e9691cbca4e39497cabbd8e9451174fb7809",
+      "size": 7985,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/sfx/default/countdown.ogg",
+      "sha256": "845c8b25991f51294e421e2bbdcb1713f0c035391b9290fa2daeed254c02f3e8",
+      "size": 4722,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/sfx/default/error.ogg",
+      "sha256": "2d5b998a2d7698f988ce26f64cc780d7ffcad160f3046dd97eea0bfa15f35fdf",
+      "size": 7455,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/sfx/default/levelup.ogg",
+      "sha256": "7963d855f770b2013dfa171dd6e79330808f870dd1bca4c84fc64ff605f671f3",
+      "size": 18086,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/sfx/default/open.ogg",
+      "sha256": "47f3530c7921eca8b0a3f365efd9f96a5c75e3f1b8e03786230bb586c6408d67",
+      "size": 7054,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/sfx/default/purchase.ogg",
+      "sha256": "f0ed60cab0e4b4a425ca333a2dd1413bc2280d28b577f0b91c523865bae25481",
+      "size": 11004,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/sfx/default/reward.ogg",
+      "sha256": "9a33c035651710d9c9e70062bfa7255c04d07eaea7561f477adb23312bf241c5",
+      "size": 11478,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/sfx/default/tab.ogg",
+      "sha256": "6fd7c3af9f5a85f2aa06a2f679855cd81b3d6a6b68df3be48842da3aaee8d03a",
+      "size": 6746,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/sfx/default/tap.ogg",
+      "sha256": "2a7a06bb466b205f2249249d2ca33cfb7b68d658f3d5c8a6d7a1ac5c496f1977",
+      "size": 4949,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/sfx/default/toggle.ogg",
+      "sha256": "a39bb398714fc18931c649680344c7c6527c21e1ed333d1e60ecad0c11e3635c",
+      "size": 6074,
       "visibility": "public"
     },
     {

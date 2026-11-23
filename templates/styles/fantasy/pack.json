@@ -103,103 +103,149 @@
     "Button.plate": {
       "hover": {
         "clips": [
-          "@styles/shared/sfx-tap2.ogt"
-        ],
-        "volume": 0.1
-      },
-      "press": {
-        "clips": [
-          "@styles/shared/sfx-tap.ogt"
+          "sfx/tap.ogg"
         ],
         "pitch": [
-          0.94,
-          0.99
+          1.18,
+          1.26
         ],
-        "volume": [
-          0.22,
-          0.28
-        ]
+        "volume": 0.12
       }
     },
     "Button.plate.primary": {
       "hover": {
         "clips": [
-          "@styles/shared/sfx-tap2.ogt"
+          "sfx/tap.ogg"
         ],
-        "volume": 0.1
+        "pitch": [
+          1.18,
+          1.26
+        ],
+        "volume": 0.12
       },
       "press": {
         "clips": [
-          "@styles/shared/sfx-confirm.ogt"
+          "sfx/confirm.ogg"
         ],
         "pitch": [
-          0.92,
-          0.96
+          0.98,
+          1.02
         ],
-        "volume": 0.3
+        "volume": 0.45
       }
     },
     "back": {
       "clips": [
-        "@styles/shared/sfx-back.ogt"
+        "sfx/back.ogg"
       ],
-      "volume": 0.24
+      "volume": 0.5
     },
     "cancel": {
       "clips": [
-        "@styles/shared/sfx-back.ogt"
+        "sfx/back.ogg"
       ],
-      "volume": 0.24
+      "volume": 0.5
     },
     "close": {
       "clips": [
-        "@styles/shared/sfx-back.ogt"
+        "sfx/close.ogg"
       ],
-      "volume": 0.2
+      "volume": 0.45
     },
     "confirm": {
       "clips": [
-        "@styles/shared/sfx-confirm.ogt"
+        "sfx/confirm.ogg"
       ],
-      "volume": 0.3
+      "volume": 0.5
+    },
+    "countdown": {
+      "clips": [
+        "sfx/countdown.ogg"
+      ],
+      "volume": 0.5
     },
     "error": {
       "clips": [
-        "@styles/shared/sfx-error.ogt"
+        "sfx/error.ogg"
       ],
-      "volume": 0.3
+      "volume": 0.5
+    },
+    "hover": {
+      "clips": [
+        "sfx/tap.ogg"
+      ],
+      "pitch": [
+        1.18,
+        1.26
+      ],
+      "volume": 0.12
+    },
+    "levelup": {
+      "clips": [
+        "sfx/levelup.ogg"
+      ],
+      "volume": 0.5
     },
     "open": {
       "clips": [
-        "@styles/shared/sfx-open.ogt"
+        "sfx/open.ogg"
       ],
-      "volume": 0.22
+      "volume": 0.45
     },
     "press": {
       "clips": [
-        "@styles/shared/sfx-tap.ogt",
-        "@styles/shared/sfx-tap2.ogt"
+        "sfx/tap.ogg"
       ],
       "pitch": [
-        0.94,
-        0.99
+        0.96,
+        1.04
       ],
       "volume": [
-        0.22,
-        0.28
+        0.45,
+        0.5
       ]
+    },
+    "purchase": {
+      "clips": [
+        "sfx/purchase.ogg"
+      ],
+      "volume": 0.5
     },
     "reward": {
       "clips": [
-        "@styles/shared/sfx-reward.ogt"
+        "sfx/reward.ogg"
       ],
-      "volume": 0.32
+      "volume": 0.5
     },
     "select": {
       "clips": [
-        "@styles/shared/sfx-confirm.ogt"
+        "sfx/tab.ogg"
       ],
-      "volume": 0.28
+      "pitch": [
+        0.98,
+        1.02
+      ],
+      "volume": 0.5
+    },
+    "tab": {
+      "clips": [
+        "sfx/tab.ogg"
+      ],
+      "pitch": [
+        0.98,
+        1.02
+      ],
+      "volume": 0.5
+    },
+    "toggle": {
+      "clips": [
+        "sfx/toggle.ogg"
+      ],
+      "pitch": [
+        0.98,
+        1.02
+      ],
+      "volume": 0.5
     }
   },
   "variants": {

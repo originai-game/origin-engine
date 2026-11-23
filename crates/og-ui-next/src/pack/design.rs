@@ -673,6 +673,49 @@ impl Timing<'_> {
     }
 }
 
+/// The default pack's sounds: each event's clip of the shared set
+/// (`@styles/shared/sfx/default/`, mastered by
+/// templates/tools/master-ui-sounds.py so the events are balanced), with a
+/// small pitch spread on the repeated ones.
+fn sounds() -> Value {
+    const SFX: &str = "@styles/shared/sfx/default";
+    let sound = |clip: &str, volume: Value, pitch: Option<[f32; 2]>| {
+        let mut s = json!({ "clips": [format!("{SFX}/{clip}.ogg")], "volume": volume });
+        if let Some(p) = pitch {
+            s["pitch"] = json!(p);
+        }
+        s
+    };
+    let jitter = Some([0.98, 1.02]);
+    let hover = sound("tap", json!(0.12), Some([1.18, 1.26]));
+    let mut out = Map::new();
+    for (event, clip, volume, pitch) in [
+        ("press", "tap", json!([0.45, 0.5]), Some([0.96, 1.04])),
+        ("select", "tab", json!(0.5), jitter),
+        ("confirm", "confirm", json!(0.5), None),
+        ("cancel", "back", json!(0.5), None),
+        ("back", "back", json!(0.5), None),
+        ("open", "open", json!(0.45), None),
+        ("close", "close", json!(0.45), None),
+        ("error", "error", json!(0.5), None),
+        ("reward", "reward", json!(0.5), None),
+        ("toggle", "toggle", json!(0.5), jitter),
+        ("tab", "tab", json!(0.5), jitter),
+        ("levelup", "levelup", json!(0.5), None),
+        ("purchase", "purchase", json!(0.5), None),
+        ("countdown", "countdown", json!(0.5), None),
+    ] {
+        out.insert(event.into(), sound(clip, volume, pitch));
+    }
+    out.insert("hover".into(), hover.clone());
+    out.insert("Button.plate".into(), json!({ "hover": hover }));
+    out.insert(
+        "Button.plate.primary".into(),
+        json!({ "hover": hover, "press": sound("confirm", json!(0.45), jitter) }),
+    );
+    Value::Object(out)
+}
+
 /// `default/pack.json`: the design tokens as a pack.
 pub fn default_pack_json() -> String {
     let names = names(&FILES);
@@ -698,6 +741,7 @@ pub fn default_pack_json() -> String {
         "images": shapes(),
         "icons": icons(),
         "iconSet": "@styles/shared/icons/game.ogt",
+        "sounds": sounds(),
     });
     let mut out = serde_json::to_string_pretty(&pack).unwrap();
     out.push('\n');
@@ -791,6 +835,19 @@ mod tests {
             .filter(|src| !pins.contains(&format!("\"path\": \"{src}\"")))
             .collect();
         assert!(unpinned.is_empty(), "icons not pinned: {unpinned:?}");
+        // Every event the default pack sounds is a pinned clip too.
+        let layer = crate::pack::Layer::default_pack();
+        let clips: Vec<&str> = layer
+            .assets()
+            .into_iter()
+            .filter(|src| src.ends_with(".ogg"))
+            .collect();
+        assert!(clips.len() >= 12, "{clips:?}");
+        let unpinned: Vec<&&str> = clips
+            .iter()
+            .filter(|src| !pins.contains(&format!("\"path\": \"{}\"", src.trim_start_matches('@'))))
+            .collect();
+        assert!(unpinned.is_empty(), "sounds not pinned: {unpinned:?}");
     }
 
     /// WCAG contrast of `ink` on `ground`, a translucent ground over `bg`.

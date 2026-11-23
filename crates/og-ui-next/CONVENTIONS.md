@@ -292,7 +292,7 @@ machines do (ported as logic).
 |---|---|---|
 | `actions` | names, space separated | the input actions it answers (`onAction={{ confirm, details }}`) |
 | `glyph` | an action's name | a `Text` node showing that action's binding on the current device (`<Glyph action>`) |
-| `sound` | `open`, `close`, `error` or `reward` | the pack event the node sounds when it first paints, once (§Theme and packs, `sounds`) |
+| `sound` | a pack event: `open`, `close`, `error`, `reward`, `toggle`, `tab`, `levelup`, `purchase`, `countdown` (or an input one) | the pack event the node sounds when it first paints, once (§Theme and packs, `sounds`) |
 | `autofocus` | bool | it takes the focus once it shows |
 | `hold` | seconds | a press or `confirm` must be held this long to press it |
 | `value` | text | an `Input`'s text, set from outside |
@@ -628,6 +628,15 @@ is an error naming where it is, never ignored):
   when the node first paints: a keyed row sounds once per key. One clip
   at random, at a volume and pitch from their ranges, from a seeded
   stream (a replay plays the same).
+  The default pack sounds every event from the engine's UI sound set
+  (`@styles/shared/sfx/default/<clip>.ogg`); scifi, fantasy and cartoon
+  each carry their own clips of the same names in `sfx/`. The clips are
+  `tap`, `toggle`, `tab`, `countdown`, `back`, `close`, `open`, `confirm`,
+  `error`, `purchase`, `reward` and `levelup`, mastered so the events are
+  balanced against each other (templates/tools/master-ui-sounds.py): a
+  pack's `volume` sets its taste, not the mix. A pack lies over the
+  default one, so an event it leaves out sounds the default clip; it
+  mutes one with `"volume": 0`.
 
 Motion is classes in `variants` until the motion thread's ease form lands.
 

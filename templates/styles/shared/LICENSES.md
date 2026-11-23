@@ -1,4 +1,4 @@
-# The shared fonts and icons: licences
+# The shared fonts, icons and sounds: licences
 
 Fonts and icon sheets the generated seed styles draw with (`og style new`,
 docs/ui.md §3.3). They came from the paper and neon packs, which were
@@ -12,6 +12,7 @@ not a style.
 | `*.ogt` except `sfx-*.ogt` | CC0 1.0 | import settings written by the same script |
 | `icons/game.ogt`, `icons/README.md`, `icons/game/*.svg` of the hero icons (`coin`, `gem`, `star`, `heart`, `shield`, `energy`, `ammo`, `lock`, `key`, `chest`, `gift`, `crown`, `potion`, `ticket`, `xp`, `alert`, `new`, `rarity`, `trophy`, `hourglass`) | CC0 1.0 | self-made by the Origin Engine authors: drawn by `templates/tools/make-game-icons.py` (deterministic), redrawn by hand from a concept sheet generated with origin's image tools; no generated raster is shipped |
 | `icons/game/*.svg`, the other icons | CC BY 3.0 (`third_party/game-icons/LICENSE`) | game-icons.net (github.com/game-icons/icons), each icon's author in `third_party/game-icons/ICONS.md`; paths scaled to the 24-unit grid and the background square dropped by the same script. Credited by the engine's credits (`engineCredits`) |
+| `sfx/default/*.ogg`, and each pack's `sfx/*.ogg` (`styles/scifi`, `styles/fantasy`, `styles/cartoon`) | Engine licence | Generated for the engine with origin's `generate_sfx` (ElevenLabs text-to-sound, model eleven_text_to_sound_v3) under the Origin platform's commercial account; the prompts and each original's media id are in `templates/tools/master-ui-sounds.py`, which trims, fades, levels and encodes them (deterministic). No third-party recording is included. |
 | `sfx-*.ogt` | Engine licence | Original engine sound-synthesis presets, moved from the removed clean style; no recordings are bundled. |
 | `InstrumentSans-Regular.ttf` | SIL Open Font License 1.1 (`OFL.txt`) | Instrument Sans (github.com/Instrument/instrument-sans); unmodified. Copyright 2022 The Instrument Sans Project Authors (https://github.com/Instrument/instrument-sans) |
 | `InstrumentSans[wdth,wght].ttf` | SIL Open Font License 1.1 (`OFL.txt`) | Instrument Sans, the variable font (wdth 75–100, wght 400–700) from google/fonts `ofl/instrumentsans`; unmodified. The default UI face. Copyright 2022 The Instrument Sans Project Authors (https://github.com/Instrument/instrument-sans) |
