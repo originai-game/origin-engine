@@ -194,6 +194,24 @@ struct El {
     other: bool,
 }
 
+/// Theme colour role `role` (`gold`, `icon-outline`) as a toned icon
+/// paints it: the theme's in the page's scheme, or the other one's,
+/// resolved once a resolver (`cache` is cleared with it).
+fn tone(
+    classes: &ops::Classes,
+    cache: &std::cell::RefCell<std::collections::HashMap<(Box<str>, bool), Rgba>>,
+    role: &str,
+    other: bool,
+) -> Rgba {
+    let key = (Box::<str>::from(role), other);
+    if let Some(c) = cache.borrow().get(&key) {
+        return *c;
+    }
+    let c = classes.tone(role, other);
+    cache.borrow_mut().insert(key, c);
+    c
+}
+
 /// What an anchored node sits on (CONVENTIONS.md §World).
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum AnchorTarget {
@@ -532,6 +550,9 @@ pub struct Tree {
     /// The `<Particles>` nodes' tick and which wait for their emitter
     /// ([`particles`]).
     particles: particles::Clock,
+    /// The theme colours toned icons have asked for, by role and whether
+    /// in the other scheme, resolved once a resolver ([`Tree::tone`]).
+    tone_colors: std::cell::RefCell<std::collections::HashMap<(Box<str>, bool), Rgba>>,
 }
 
 /// What an element passes down in a frame, as motion shows it: its
@@ -646,6 +667,7 @@ impl Tree {
             last_pointer: (f32::NAN, f32::NAN, 0),
             paints: 0,
             particles: Default::default(),
+            tone_colors: Default::default(),
             missing: Vec::new(),
             warnings: Vec::new(),
             warned_layers: Vec::new(),
@@ -1980,18 +2002,44 @@ impl Tree {
                 let square = [x + (b.w - size) / 2.0, y + (b.h - size) / 2.0, size, size];
                 match icons.find_drawn(&el.text) {
                     Some((IconCell::Face(face, index), _)) => {
-                        // Its field, in the glyph atlas: put back when the
-                        // atlas dropped it, drawn nothing this frame when
-                        // it has no room for it yet.
-                        if let Some((q, plot)) = face.quad(atlas, index, square) {
-                            if !self.plots.contains(&plot) {
-                                self.plots.push(plot);
+                        // Its fields, in the glyph atlas: put back when the
+                        // atlas dropped them, drawn nothing this frame when
+                        // it has no room for them yet. A toned icon is a
+                        // sticker: its silhouette's shadow and outline, then
+                        // each tone in its colour role.
+                        let mut layers: Vec<(u32, [f32; 4], Rgba, f32)> = Vec::new();
+                        match face.tones.of(index) {
+                            Some(tones) => {
+                                let [o, dx, dy] = face.tones.sticker.map(|v| v * size);
+                                let at =
+                                    |dx: f32, dy: f32| [square[0] + dx, square[1] + dy, size, size];
+                                let role = |r: &str| {
+                                    faded(tone(&self.classes, &self.tone_colors, r, el.other))
+                                };
+                                layers.push((index, at(dx, dy), role("icon-shadow"), o));
+                                layers.push((index, square, role("icon-outline"), o));
+                                for (g, r) in tones {
+                                    let c = if r.is_empty() { icon_ink } else { role(r) };
+                                    layers.push((*g, square, c, 0.0));
+                                }
                             }
-                            p.quads.push(PaintQuad {
-                                color: icon_ink,
-                                clip,
-                                ..q
-                            });
+                            None => layers.push((index, square, icon_ink, 0.0)),
+                        }
+                        for (glyph, at, color, grow) in layers {
+                            if color[3] <= 0.0 {
+                                continue;
+                            }
+                            if let Some((q, plot)) = face.quad(atlas, glyph, at) {
+                                if !self.plots.contains(&plot) {
+                                    self.plots.push(plot);
+                                }
+                                p.quads.push(PaintQuad {
+                                    color,
+                                    clip,
+                                    p: [grow, 0.0, q.p[2], q.p[3]],
+                                    ..q
+                                });
+                            }
                         }
                     }
                     // A texture grid's cell: a picture in its own colours, a

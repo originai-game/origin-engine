@@ -126,6 +126,10 @@ pub struct IconAtlas {
     /// The atlas that draws the names this one lacks (`UiDesc.fallbackIcons`):
     /// a game's whole set under a style pack's few painted icons.
     pub fallback: Option<Box<IconAtlas>>,
+    /// The style pack's icon sets (its `iconSet`s, the top layer's first,
+    /// each the next's `under`): what draws the names the game's icons
+    /// lack, before the engine's default vectors.
+    pub under: Option<Arc<IconAtlas>>,
 }
 
 /// An icon set's icons in the shared glyph atlas, one cell each: the
@@ -140,6 +144,68 @@ pub struct IconFace {
     pub id: u32,
     /// Each icon's cell, in atlas pixels.
     pub cells: Arc<[Cell]>,
+    /// Its icons drawn in tones, as stickers.
+    pub tones: Tones,
+}
+
+/// An icon set's toned icons (og-cook's `tones` section): each is drawn
+/// as a sticker, its silhouette (the icon's own glyph) moved by the
+/// shadow's offset in the `icon-shadow` colour and grown by the outline
+/// in `icon-outline`, then each of its glyphs in its colour role (an
+/// empty role: the icon's ink), so a pack's theme recolours every tone.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct Tones {
+    /// The outline's width and the shadow's offset (x, y), in em.
+    pub sticker: [f32; 3],
+    /// Each toned icon (by index, ascending) and its glyphs.
+    pub icons: Vec<(u32, ToneGlyphs)>,
+}
+
+/// A toned icon's glyphs and their colour roles, in paint order.
+pub type ToneGlyphs = Vec<(u32, Box<str>)>;
+
+impl Tones {
+    /// The `tones` section's text: `sticker <outline> <dx> <dy>`, then one
+    /// line an icon, `<icon> <glyph>:<role> …`. A line it cannot read is
+    /// left out (that icon draws in one tone).
+    pub fn parse(text: &str) -> Tones {
+        let mut out = Tones::default();
+        for line in text.lines() {
+            let mut words = line.split_ascii_whitespace();
+            match words.next() {
+                Some("sticker") => {
+                    for v in &mut out.sticker {
+                        *v = words.next().and_then(|w| w.parse().ok()).unwrap_or(0.0);
+                    }
+                }
+                Some(icon) => {
+                    let Ok(icon) = icon.parse::<u32>() else {
+                        continue;
+                    };
+                    let glyphs: Option<ToneGlyphs> = words
+                        .map(|w| {
+                            let (g, role) = w.split_once(':')?;
+                            Some((g.parse().ok()?, role.into()))
+                        })
+                        .collect();
+                    if let Some(glyphs) = glyphs.filter(|g| !g.is_empty()) {
+                        out.icons.push((icon, glyphs));
+                    }
+                }
+                None => {}
+            }
+        }
+        out.icons.sort_by_key(|(i, _)| *i);
+        out
+    }
+
+    /// Icon `icon`'s glyphs and their colour roles, when it has tones.
+    pub fn of(&self, icon: u32) -> Option<&[(u32, Box<str>)]> {
+        self.icons
+            .binary_search_by_key(&icon, |(i, _)| *i)
+            .ok()
+            .map(|k| self.icons[k].1.as_slice())
+    }
 }
 
 /// One icon's field: its placement and pixels, as
@@ -273,6 +339,14 @@ impl IconAtlas {
     /// The icon named `name`, and whether it is a full-colour picture
     /// (its atlas's `pictures`), drawn in its own colours.
     pub fn find_drawn(&self, name: &str) -> Option<(IconCell, bool)> {
+        self.find_layered(name).or_else(|| {
+            crate::default_icons::find(name).map(|name| (IconCell::Builtin(name), false))
+        })
+    }
+
+    /// The icon named `name` from this atlas, its fallbacks, then the
+    /// pack's sets under it; not the default vectors.
+    fn find_layered(&self, name: &str) -> Option<(IconCell, bool)> {
         let own = self.index_of(name).and_then(|k| {
             if let Some(face) = &self.face {
                 Some((IconCell::Face(face.clone(), k), false))
@@ -281,10 +355,8 @@ impl IconAtlas {
                     .map(|t| (IconCell::Image(t, self.uv(k)), self.pictures))
             }
         });
-        own.or_else(|| self.fallback.as_deref()?.find_drawn(name))
-            .or_else(|| {
-                crate::default_icons::find(name).map(|name| (IconCell::Builtin(name), false))
-            })
+        own.or_else(|| self.fallback.as_deref()?.find_layered(name))
+            .or_else(|| self.under.as_deref()?.find_layered(name))
     }
 
     /// This atlas and the fallbacks under it, top first.

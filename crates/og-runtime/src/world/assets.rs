@@ -891,6 +891,7 @@ fn icon_face(
     Some(std::sync::Arc::new(og_ui_next::icons::IconFace {
         id: u32::MAX - index as u32,
         cells: cells.into(),
+        tones: og_ui_next::icons::Tones::parse(&font.tones),
     }))
 }
 

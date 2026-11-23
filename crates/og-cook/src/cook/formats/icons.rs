@@ -42,6 +42,19 @@
 //! colour fills by the nonzero rule; `none` does not), inherited from the
 //! `<svg>` element. Anything else is refused with the icon and element
 //! named.
+//!
+//! An icon is drawn in tones when a path's `fill` or `stroke` is a theme
+//! colour, `var(--color-<role>)`: each run of consecutive paths in one
+//! tone (the icon's ink for any other paint) is a glyph of its own, past
+//! the icons' glyphs, and the icon's own glyph is its silhouette, every
+//! path together (what a host that draws one tone draws). The `tones`
+//! section lists them, one line an icon, `<icon> <glyph>:<role> …` in
+//! paint order (an empty role: the ink), after the set's line
+//! `sticker <outline> <dx> <dy>`: a toned icon is drawn over its
+//! silhouette grown by `outline` in the `icon-outline` colour and its
+//! silhouette moved by `dx`, `dy` in `icon-shadow`, each in em (the
+//! set's `sticker` line gives them in 24ths of the em, a 24-unit grid's
+//! units; 0 0 0 when it has none).
 
 use super::{CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, stamp};
 use crate::format::{self, *};
@@ -64,6 +77,8 @@ pub struct IconSet {
     pub join: Join,
     /// (name, SVG file stem), in index order.
     pub icons: Vec<(String, String)>,
+    /// A toned icon's outline width and shadow offset, in 24ths of the em.
+    pub sticker: [f32; 3],
 }
 
 /// How a stroke's segments meet at a corner (SVG's `stroke-linejoin`).
@@ -101,6 +116,7 @@ pub fn parse(text: &str) -> Result<IconSet, String> {
         range: 8,
         join: Join::Miter,
         icons: Vec::new(),
+        sticker: [0.0; 3],
     };
     for e in &doc.body.entries {
         let at = |m: String| format!("line {}: {m}", e.line);
@@ -146,9 +162,22 @@ pub fn parse(text: &str) -> Result<IconSet, String> {
                 }
                 set.icons.push((name, file));
             }
+            "sticker" => {
+                let mut v = [0.0; 3];
+                for (k, x) in v.iter_mut().enumerate() {
+                    *x = e.f32(k).map_err(|x| at(x.to_string()))?;
+                }
+                if !(0.0..=4.0).contains(&v[0]) || v[1].abs() > 4.0 || v[2].abs() > 4.0 {
+                    return Err(at(
+                        "sticker <outline> <dx> <dy>: 24ths of the em, 0 to 4 (an offset -4 to 4)"
+                            .into(),
+                    ));
+                }
+                set.sticker = v;
+            }
             other => {
                 return Err(at(format!(
-                    "`{other}` is not an icon set line (source, size, range, join, icon)"
+                    "`{other}` is not an icon set line (source, size, range, join, sticker, icon)"
                 )));
             }
         }
@@ -203,6 +232,9 @@ struct Shape {
     join: Join,
     limit: f32,
     filled: bool,
+    /// The theme colour it is painted in (`var(--color-<role>)`); empty:
+    /// the icon's ink.
+    tone: String,
 }
 
 /// The value of attribute `name` in a start tag's text.
@@ -326,6 +358,29 @@ fn shapes(svg: &str, join: Join) -> Result<(Vec<Shape>, [f32; 4]), String> {
                         .ok_or("a stroke-miterlimit is a number of at least 1")?,
                     None => 4.0,
                 };
+                // Its tone: the theme colour its paint names. A path that
+                // fills and strokes paints both in one.
+                fn role(v: Option<&str>) -> Option<&str> {
+                    v.and_then(|v| v.trim().strip_prefix("var(--color-")?.strip_suffix(')'))
+                        .map(str::trim)
+                }
+                let fill_role = role(inherit(tag, svg_tag, "fill")).filter(|_| fill);
+                let stroke_role = role(inherit(tag, svg_tag, "stroke")).filter(|_| stroke);
+                let tone = match (fill_role, stroke_role) {
+                    (Some(f), Some(s)) if f != s => {
+                        return Err(format!(
+                            "a <path> fills in {f} and strokes in {s}: one tone a path"
+                        ));
+                    }
+                    (Some(r), _) | (_, Some(r)) => {
+                        if r.is_empty() || !r.chars().all(|c| c.is_ascii_alphanumeric() || c == '-')
+                        {
+                            return Err(format!("var(--color-{r}) does not name a colour role"));
+                        }
+                        r.to_owned()
+                    }
+                    (None, None) => String::new(),
+                };
                 out.push(Shape {
                     subpaths: flatten(d)?,
                     half: if stroke { width / 2.0 } else { 0.0 },
@@ -333,6 +388,7 @@ fn shapes(svg: &str, join: Join) -> Result<(Vec<Shape>, [f32; 4]), String> {
                     join,
                     limit,
                     filled: fill,
+                    tone,
                 });
             }
             "g" | "defs" | "title" | "desc" => {
@@ -554,6 +610,28 @@ fn render(shapes: &[Shape], view: [f32; 4], size: u32, range: u32, pad: u32) -> 
     rgba
 }
 
+/// A toned icon's glyphs: one a run of consecutive shapes in one tone,
+/// numbered from `first`, with its tone.
+fn runs_of(shapes: &[Shape], first: u32) -> Vec<(u32, String)> {
+    shapes
+        .chunk_by(|a, b| a.tone == b.tone)
+        .zip(first..)
+        .map(|(run, g)| (g, run[0].tone.clone()))
+        .collect()
+}
+
+/// The `tones` section: the sticker (given in 24ths of the em, written in
+/// em), then each toned icon's glyphs and tones.
+fn tones_section(sticker: [f32; 3], runs: &[(u32, Vec<(u32, String)>)]) -> String {
+    let [o, dx, dy] = sticker.map(|v| v / 24.0);
+    let mut lines = vec![format!("sticker {o} {dx} {dy}")];
+    lines.extend(runs.iter().map(|(i, tones)| {
+        let t: Vec<String> = tones.iter().map(|(g, r)| format!("{g}:{r}")).collect();
+        format!("{i} {}", t.join(" "))
+    }));
+    lines.join("\n")
+}
+
 /// Cooks an icon set into an `og.Font` blob with a `names` section.
 pub(crate) fn cook(s: &Source, stamp: u64) -> Result<(Vec<u8>, Vec<String>), CookError> {
     let text = std::str::from_utf8(&s.bytes)
@@ -563,26 +641,41 @@ pub(crate) fn cook(s: &Source, stamp: u64) -> Result<(Vec<u8>, Vec<String>), Coo
     let pad = set.range.div_ceil(2) + 1;
     let cell = set.size + 2 * pad;
     let count = set.icons.len() as u32;
-    let cols = (f64::from(count).sqrt().ceil() as u32).max(1);
-    let rows = count.div_ceil(cols);
-    let width = cols * (cell + 1) + 1;
-    let height = (rows * (cell + 1) + 1).div_ceil(4) * 4;
-    if width > 8192 || height > 8192 {
-        return Err(CookError(format!(
-            "{count} icons at size {} need a {width}x{height} page; lower size",
-            set.size
-        )));
-    }
-    let mut page = vec![0u8; (width * height * 4) as usize];
-    let mut glyphs = Vec::with_capacity(set.icons.len());
-    let edge = pad as f32 / set.size as f32;
+    // Every icon's field (its silhouette), then each toned icon's runs of
+    // one tone, a glyph each, and the `tones` lines naming them.
+    let mut fields = Vec::with_capacity(set.icons.len());
+    let mut runs: Vec<(u32, Vec<(u32, String)>)> = Vec::new();
+    let mut extra = Vec::new();
     for (i, (name, file)) in set.icons.iter().enumerate() {
         let path = dir.join(format!("{file}.svg"));
         let svg = std::fs::read_to_string(&path)
             .map_err(|e| CookError(format!("icon \"{name}\": {}: {e}", path.display())))?;
         let (sh, view) = shapes(&svg, set.join)
             .map_err(|e| CookError(format!("icon \"{name}\" ({file}.svg): {e}")))?;
-        let pixels = render(&sh, view, set.size, set.range, pad);
+        fields.push(render(&sh, view, set.size, set.range, pad));
+        if sh.iter().all(|s| s.tone.is_empty()) {
+            continue;
+        }
+        runs.push((i as u32, runs_of(&sh, count + extra.len() as u32)));
+        for run in sh.chunk_by(|a, b| a.tone == b.tone) {
+            extra.push(render(run, view, set.size, set.range, pad));
+        }
+    }
+    let total = count + extra.len() as u32;
+    let cols = (f64::from(total).sqrt().ceil() as u32).max(1);
+    let rows = total.div_ceil(cols);
+    let width = cols * (cell + 1) + 1;
+    let height = (rows * (cell + 1) + 1).div_ceil(4) * 4;
+    if width > 8192 || height > 8192 {
+        return Err(CookError(format!(
+            "{total} icon glyphs at size {} need a {width}x{height} page; lower size",
+            set.size
+        )));
+    }
+    let mut page = vec![0u8; (width * height * 4) as usize];
+    let mut glyphs = Vec::with_capacity(total as usize);
+    let edge = pad as f32 / set.size as f32;
+    for (i, pixels) in fields.iter().chain(&extra).enumerate() {
         let (gx, gy) = (
             1 + (i as u32 % cols) * (cell + 1),
             1 + (i as u32 / cols) * (cell + 1),
@@ -614,7 +707,7 @@ pub(crate) fn cook(s: &Source, stamp: u64) -> Result<(Vec<u8>, Vec<String>), Coo
         ascender: 1.0,
         descender: 0.0,
         line_gap: 0.0,
-        glyph_count: count,
+        glyph_count: total,
         page_count: 1,
         page_width: width,
         page_height: height,
@@ -635,11 +728,17 @@ pub(crate) fn cook(s: &Source, stamp: u64) -> Result<(Vec<u8>, Vec<String>), Coo
             16,
         )
         .raw("names", names.join("\n").into_bytes(), 16);
+    if !runs.is_empty() {
+        w.raw("tones", tones_section(set.sticker, &runs).into_bytes(), 16);
+    }
     Ok((
         w.finish(),
         vec![format!(
-            "{count} icon(s) from {}/, {} px each, range {}: a {width}x{height} page",
-            set.source, set.size, set.range
+            "{count} icon(s), {} in tones, from {}/, {} px each, range {}: a {width}x{height} page",
+            runs.len(),
+            set.source,
+            set.size,
+            set.range
         )],
     ))
 }
@@ -815,6 +914,46 @@ mod tests {
             px(&round, 6, 6) < 0.5,
             "outside the round join: {}",
             px(&round, 6, 6)
+        );
+    }
+
+    #[test]
+    fn a_toned_icon_draws_a_glyph_a_run_of_one_tone_as_the_runtime_reads_it() {
+        let svg = r#"<svg viewBox="0 0 24 24"><path d="M2 2H22V22H2Z" fill="var(--color-icon-gold)"/><path d="M4 4H8V8H4Z" fill="var(--color-icon-gloss)"/><path d="M10 4H14V8H10Z" stroke="var(--color-icon-gloss)" fill="none"/><path d="M4 14H8V18H4Z"/><path d="M14 14H18V18H14Z" fill="var(--color-icon-gold)"/></svg>"#;
+        let (sh, _) = shapes(svg, Join::Round).unwrap();
+        let section = tones_section([1.2, 0.0, 2.4], &[(3, runs_of(&sh, 40))]);
+        let tones = og_ui_next::icons::Tones::parse(&section);
+        let glyphs: Vec<(u32, &str)> = tones
+            .of(3)
+            .unwrap()
+            .iter()
+            .map(|(g, r)| (*g, &**r))
+            .collect();
+        // Paint order kept: the two gloss paths are one glyph, the plain
+        // path the ink's, and gold again after it a glyph of its own.
+        assert_eq!(
+            glyphs,
+            [
+                (40, "icon-gold"),
+                (41, "icon-gloss"),
+                (42, ""),
+                (43, "icon-gold")
+            ]
+        );
+        assert!(
+            tones.of(2).is_none(),
+            "an icon without tones draws in its ink"
+        );
+        let [o, dx, dy] = tones.sticker;
+        assert!(
+            (o - 0.05).abs() < 1e-6 && dx == 0.0 && (dy - 0.1).abs() < 1e-6,
+            "{:?}",
+            tones.sticker
+        );
+        let both = svg.replacen(r#"fill="none""#, r#"fill="var(--color-icon-red)""#, 1);
+        assert!(
+            shapes(&both, Join::Round).is_err(),
+            "a path paints one tone"
         );
     }
 

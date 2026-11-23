@@ -614,6 +614,10 @@ pub struct CookedFont {
     /// An icon set's names (an `.ogt` of `type icons`, cook::icons): icon
     /// `i` is the glyph at U+E000 + i. Empty for a text font.
     pub names: Vec<String>,
+    /// An icon set's toned icons (its `tones` section, cook::icons): the
+    /// sticker line, then each toned icon's glyphs and colour roles.
+    /// Empty when no icon has tones.
+    pub tones: String,
     /// A pixel font's grid, its pixels to the em (`font { pixel <grid> }`,
     /// the blob's `pixel` section); 0 for an outline font.
     pub pixel: u32,

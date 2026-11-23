@@ -1,0 +1,12 @@
+{
+  "added": [
+    {
+      "member": "icon sets (type icons)",
+      "summary": "An icon set's SVG may paint a path in a theme colour, `fill=\"var(--color-<role>)\"` (or stroke): the icon is then drawn in tones, each run of one tone in the pack's colour for that role, over an outline and drop shadow of its silhouette (`sticker <outline> <dx> <dy>` in the set, in 24ths of the em; colours `icon-outline` and `icon-shadow`)."
+    },
+    {
+      "member": "style pack iconSet",
+      "summary": "A pack.json's `iconSet` names the icon set (.ogt of type icons) `<Icon name>` draws from under the game's own icons; a later pack layer's set wins by name, so a pack can restyle a few hero icons."
+    }
+  ]
+}

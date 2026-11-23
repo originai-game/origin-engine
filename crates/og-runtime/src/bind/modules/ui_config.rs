@@ -152,8 +152,10 @@ pub fn og_ui_configure(world: u32, desc: Option<String>) -> Result<(), String> {
                 },
             }))
         };
-        let atlas = atlas_of("icons", &u.icons)?.unwrap_or_default();
+        let mut atlas = atlas_of("icons", &u.icons)?.unwrap_or_default();
         let mut rs = eng.render.borrow_mut();
+        // The pack's icon sets stay under the game's (`pack_images`).
+        atlas.under = rs.ui_icons.under.take();
         rs.ui_icons = atlas;
         drop(rs);
         eng.render.borrow_mut().color_filter =

@@ -192,6 +192,20 @@ fn resolved(resolve: Option<&Resolve>, c: &str, s: &str) -> (Record, [Option<Box
 }
 
 impl Classes {
+    /// Theme colour role `role` as `text-<role>` resolves it, in the
+    /// page's scheme or the other one; transparent without a resolver.
+    pub(super) fn tone(&self, role: &str, other: bool) -> Rgba {
+        let Some(f) = &self.resolve else {
+            return [0.0; 4];
+        };
+        let state = if other {
+            crate::classes::OTHER_SCHEME
+        } else {
+            0
+        };
+        f(&format!("text-{role}"), "", state, "").skin.ink
+    }
+
     /// The interaction states entry `i` reads.
     pub(super) fn tracked(&self, i: u32) -> u16 {
         self.tracked.get(i as usize).copied().unwrap_or(0)
@@ -344,6 +358,7 @@ impl Tree {
             ..self.root
         };
         self.classes.resolve = Some(resolve);
+        self.tone_colors.borrow_mut().clear();
         // Which nodes are in the other scheme is relative to the page's.
         for e in 0..self.els.len() as u32 {
             self.els[e as usize].other = self.other_scheme(e);

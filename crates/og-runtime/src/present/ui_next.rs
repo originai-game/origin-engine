@@ -247,6 +247,32 @@ pub(crate) fn pack_images(engine: u32) {
                 .insert(event.into(), cue);
         }
     }
+    // Its icon sets, each loaded once as a font: under the game's own
+    // icons, the top layer's first.
+    let mut under: Option<std::sync::Arc<og_ui_next::icons::IconAtlas>> = None;
+    for src in all.icon_sets.iter().rev() {
+        match crate::world::assets::load_font(&eng, src) {
+            Ok(i) => {
+                let assets = eng.assets.borrow();
+                let font = assets.fonts.get(i);
+                match font.and_then(|f| Some((f.face.clone()?, f.icons.clone()))) {
+                    Some((face, names)) if !names.is_empty() => {
+                        under = Some(std::sync::Arc::new(og_ui_next::icons::IconAtlas {
+                            face: Some(face),
+                            names,
+                            under,
+                            ..Default::default()
+                        }));
+                    }
+                    _ => warnings.push(format!(
+                        "og.ui: the pack's icon set {src} is not an icon set"
+                    )),
+                }
+            }
+            Err(e) => warnings.push(format!("og.ui: the pack's icon set {src}: {e}")),
+        }
+    }
+    eng.render.borrow_mut().ui_icons.under = under;
     let sounds = Rc::new(sounds);
     if let Some(next) = &mut eng.render.borrow_mut().ui_next {
         if let Some(tree) = &mut next.tree {

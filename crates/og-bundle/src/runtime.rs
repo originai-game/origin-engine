@@ -1103,6 +1103,10 @@ impl Bundle {
                         .collect()
                 })
                 .unwrap_or_default(),
+            tones: blob
+                .raw_opt("tones")
+                .map(|b| String::from_utf8_lossy(b).into_owned())
+                .unwrap_or_default(),
         })
     }
 

@@ -124,6 +124,9 @@ pub struct Layer {
     /// families as the files do.
     pub fonts: Vec<String>,
     pub icons: BTreeMap<String, String>,
+    /// The icon set (an `.ogt` of `type icons`) `<Icon name>` draws from,
+    /// under the game's own icons: a later layer's over an earlier one's.
+    pub icon_set: Option<String>,
     /// Nine-slice art by name, per scheme ([`Scheme::ALL`] order).
     pub images: [BTreeMap<String, NineSlice>; 2],
     /// The pack-wide sounds under `""`, a slot's under its key.
@@ -140,6 +143,9 @@ pub struct Pack {
     variants: BTreeMap<String, String>,
     pub fonts: Vec<String>,
     pub icons: BTreeMap<String, String>,
+    /// The layers' icon sets, the last layer's first: an icon is drawn
+    /// from the first that names it.
+    pub icon_sets: Vec<String>,
     images: [BTreeMap<String, NineSlice>; 2],
     pub sounds: BTreeMap<String, Sounds>,
 }
@@ -251,6 +257,10 @@ impl Layer {
                         layer.icons.insert(name.clone(), src.to_owned());
                     }
                 }
+                "iconSet" => {
+                    let src = v.as_str().ok_or("iconSet: a path to an icon set (.ogt)")?;
+                    layer.icon_set = Some(src.to_owned());
+                }
                 "sounds" => {
                     for (k, v) in object(v, "sounds")? {
                         if SOUND_EVENTS.contains(&k.as_str()) {
@@ -282,7 +292,7 @@ impl Layer {
                 }
                 other => {
                     return Err(format!(
-                        "{other}: not a pack key; one of about, scheme, seeds, theme, contrast, variants, images, fonts, icons, sounds"
+                        "{other}: not a pack key; one of about, scheme, seeds, theme, contrast, variants, images, fonts, icons, iconSet, sounds"
                     ));
                 }
             }
@@ -325,6 +335,7 @@ impl Layer {
     pub fn assets(&self) -> Vec<&str> {
         let mut out: Vec<&str> = self.fonts.iter().map(String::as_str).collect();
         out.extend(self.icons.values().map(String::as_str));
+        out.extend(self.icon_set.as_deref());
         out.extend(
             self.images
                 .iter()
@@ -355,6 +366,7 @@ impl Layer {
         };
         self.fonts.iter_mut().for_each(at);
         self.icons.values_mut().for_each(at);
+        self.icon_set.iter_mut().for_each(at);
         for m in &mut self.images {
             m.values_mut().for_each(|n| at(&mut n.src));
         }
@@ -401,6 +413,9 @@ impl Layer {
         }
         if !self.icons.is_empty() {
             root.insert("icons".into(), json!(self.icons));
+        }
+        if let Some(set) = &self.icon_set {
+            root.insert("iconSet".into(), json!(set));
         }
         let [light, dark] = &self.images;
         if !light.is_empty() || !dark.is_empty() {
@@ -451,6 +466,7 @@ impl Pack {
             variants: BTreeMap::new(),
             fonts: Vec::new(),
             icons: BTreeMap::new(),
+            icon_sets: Vec::new(),
             images: Default::default(),
             sounds: BTreeMap::new(),
         };
@@ -491,6 +507,7 @@ impl Pack {
             pack.variants.extend(layer.variants.clone());
             pack.fonts.extend(layer.fonts.iter().cloned());
             pack.icons.extend(layer.icons.clone());
+            pack.icon_sets.splice(0..0, layer.icon_set.iter().cloned());
             for (have, over) in pack.images.iter_mut().zip(&layer.images) {
                 have.extend(over.clone());
             }
