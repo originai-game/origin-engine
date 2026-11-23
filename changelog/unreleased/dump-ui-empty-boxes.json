@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "probe dump_ui, og ui check frames (TSX UI elements)",
+      "summary": "A shown node whose box is empty of itself, such as a text no face measures or a zero-size view, is listed again where it is laid out. The probe dropped every node with no visible area, meant for one a scroller or overflow clip cuts away entirely; it now drops only that."
+    }
+  ]
+}

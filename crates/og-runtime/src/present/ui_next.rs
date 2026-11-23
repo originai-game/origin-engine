@@ -1215,8 +1215,14 @@ impl Next {
             .collect();
         let elements = ops
             .iter()
-            // What a scroller or a cut box hides entirely is not on screen.
-            .filter(|n| n.shown && n.visible[2] > n.visible[0] && n.visible[3] > n.visible[1])
+            // What a scroller or a cut box hides entirely is not on screen;
+            // a box that is empty of itself (a text with no face to measure
+            // it, a zero-size view) still is, where it is laid out.
+            .filter(|n| {
+                n.shown
+                    && !(n.clipped
+                        && (n.visible[2] <= n.visible[0] || n.visible[3] <= n.visible[1]))
+            })
             .map(|n| {
                 let f = facts.get(&n.node);
                 let control = f
