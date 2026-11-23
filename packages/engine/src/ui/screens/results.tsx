@@ -1,5 +1,5 @@
 import type { Texture } from "@origingame/engine";
-import {For, Scroll, Show, Text, packClass, type UiEvent, View, formatCompact, t} from "@origingame/engine/ui";
+import {For, Icon, Scroll, Show, Text, packClass, type UiEvent, View, formatCompact, t} from "@origingame/engine/ui";
 import { Art } from "../controls/art";
 import { Button } from "../controls/button";
 import { Counter } from "../controls/counter";
@@ -23,8 +23,8 @@ export interface ResultsScreenProps {
   xp?: number;
   /** XP gained. */
   gained?: number;
-  /** The rewards: { name, amount, texture }. */
-  rewards: ReadonlyArray<{ amount: number; id: string; name: string; texture: Texture | 0 }>;
+  /** The rewards: { name, amount, texture, icon? }: texture the reward's picture filling its well; 0 shows icon (an atlas icon name, as a Shop price's) on the well's plate. */
+  rewards: ReadonlyArray<{ amount: number; id: string; name: string; texture: Texture | 0; icon?: string }>;
   /** summary, graphs or board. */
   tab: string;
   /** Content the caller supplies (was the celebration snippet). */
@@ -152,6 +152,9 @@ export function ResultsScreen(props: ResultsScreenProps) {
                       <View class={`text-fg transition duration-317 items-center w-29 rounded-button data-selected:border-accent data-done:border-success active:border-accent disabled:text-fg-subtle disabled:scale-100 active:scale-96 data-locked:scale-100 data-down:opacity-45 compact:w-24 shrink`}>
                         <View class="bg-linear-to-b from-rim-strong via-rim via-45% to-rim-soft p-0.75 gap-2 size-26 compact:size-17">
                           <Art class="absolute bg-linear-to-b from-plate-hi to-plate-lo object-cover inset-0" kind="itemIcon" src={r().texture} />
+                          <Show when={!r().texture && r().icon}>
+                            <Icon class="absolute inset-0 m-auto size-14 compact:size-10 text-gold" name={r().icon ?? ""} />
+                          </Show>
                         </View>
                         <Text class="-mt-3 mb-0 text-xs font-bold tabular-nums text-fg bg-tile inset-shadow-lit whitespace-nowrap py-0 px-1 mx-0">
                           {t("screen.results.Amount", { r_amount: formatCompact(r().amount) })}
@@ -194,7 +197,7 @@ export function ResultsScreen(props: ResultsScreenProps) {
 const press = () => {};
 
 export const fixtures: Record<string, Partial<ResultsScreenProps>> = {
-  default: {"gained":1240,"grade":"A","level":18,"rewards":[{"amount":320,"id":"item-0","name":"Gold","texture":0},{"amount":1,"id":"item-1","name":"Crate","texture":0}],"stats":[{"best":true,"count":true,"id":"item-0","name":"Score","value":48210},{"best":false,"id":"item-1","name":"Kills","value":14},{"best":false,"format":"percent","id":"item-2","name":"Accuracy","value":0.62}],"tab":"summary","title":"Victory","won":true,"xp":0.45,"onReplay":press,"onAgain":press,"onContinue":press},
+  default: {"gained":1240,"grade":"A","level":18,"rewards":[{"amount":320,"id":"item-0","name":"Gold","texture":0,"icon":"coin"},{"amount":1,"id":"item-1","name":"Crate","texture":0,"icon":"bag"}],"stats":[{"best":true,"count":true,"id":"item-0","name":"Score","value":48210},{"best":false,"id":"item-1","name":"Kills","value":14},{"best":false,"format":"percent","id":"item-2","name":"Accuracy","value":0.62}],"tab":"summary","title":"Victory","won":true,"xp":0.45,"onReplay":press,"onAgain":press,"onContinue":press},
 };
 
 /** The input actions it answers, with the label a hint shows for each. */

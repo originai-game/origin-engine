@@ -806,7 +806,9 @@ test("every built-in full-screen screen fills a game's 390x844 column and takes 
         const tabs = els.filter((e) => e.role === "tab").map((e) => e.name);
         const panel = els.find((e) => e.parent === root.id && e.height > 0)!;
         const rule = els.find((e) => e.height === 1 && e.width > 0 && !e.role);
-        return { name, box: [root.x, root.y, root.width, root.height], panel: [panel.y, panel.height], rule: rule && [rule.width, els.filter((e) => e.parent === rule.id).length], shown, tabs };
+        // Each reward's icon, drawn in its well when it has no picture: an atlas glyph named as the icon.
+        const wells = ["coin", "bag"].map((icon) => els.filter((e) => (e as El & { text: string }).text === icon).map((e) => [e.width, e.height]));
+        return { name, box: [root.x, root.y, root.width, root.height], panel: [panel.y, panel.height], rule: rule && [rule.width, els.filter((e) => e.parent === rule.id).length], shown, tabs, wells };
       } finally {
         renderers.delete(id);
         engine.destroy();
@@ -816,6 +818,8 @@ test("every built-in full-screen screen fills a game's 390x844 column and takes 
     // Results never clips its grade, stats or rewards: all on a phone, and on a short column the page scrolls from its top.
     const results = rootOf("results");
     expect(["A", "Score", "Kills", "screen.results.rewards"].map((t) => [t, results.shown(t)])).toEqual([["A", true], ["Score", true], ["Kills", true], ["screen.results.rewards", true]]);
+    // A reward without a picture draws its icon in the well, not an empty plate.
+    expect(results.wells).toEqual([[[56, 56]], [[56, 56]]]);
     // The verdict's rule is a bare line under the title: no ornament on it to stray from the grade's stars.
     expect(results.rule).toEqual([expect.any(Number), 0]);
     expect(results.rule![0]).toBeGreaterThan(200);

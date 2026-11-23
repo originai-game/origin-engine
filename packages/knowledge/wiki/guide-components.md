@@ -4785,7 +4785,7 @@ After a match: the verdict set large in a lit fill (gold for a win, red for a lo
 | `level?` | `number` | The level after the match; absent, no level, XP or progress is drawn (a game without levels). |
 | `xp?` | `number` | Progress to the next level after the match, 0 to 1. |
 | `gained?` | `number` | XP gained. |
-| `rewards` | `ReadonlyArray<{ amount: number; id: string; name: string; texture: Texture \| 0 }>` | The rewards: { name, amount, texture }. |
+| `rewards` | `ReadonlyArray<{ amount: number; id: string; name: string; texture: Texture \| 0; icon?: string }>` | The rewards: { name, amount, texture, icon? }: texture the reward's picture filling its well; 0 shows icon (an atlas icon name, as a Shop price's) on the well's plate. |
 | `tab` | `string` | summary, graphs or board. |
 | `celebration?` | `(() => JSX.Element) \| undefined` | Content the caller supplies (was the celebration snippet). |
 | `graph?` | `(() => JSX.Element) \| undefined` | Content the caller supplies (was the graph snippet). |

@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {
+      "member": "ResultsScreen",
+      "summary": "A results reward may name an `icon` (an atlas icon, as a Shop price's), drawn in its well when it has no `texture`: a currency reward with no picture showed an empty dark box above its amount."
+    }
+  ]
+}
