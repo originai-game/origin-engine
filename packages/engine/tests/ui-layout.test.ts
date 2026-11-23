@@ -4,7 +4,8 @@
 // for each (support/fixture-layout.ts): a control a finger cannot take (one
 // drawn under 24 px, or under 44 px with its grown target on another
 // control), a control drawn off the surface with nothing to scroll it in,
-// and a line of text cut by its box.
+// a line of text cut by its box, and a surface's frame that does not show
+// (no fill, or the fill of the framed surface round it).
 //
 // The findings the built-ins still have are listed in
 // fixtures/ui-layout-known.json, each to be fixed in its component: a new
@@ -20,7 +21,7 @@ import { expect, test } from "bun:test";
 import { readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { fixtureFrames, HOSTS } from "./support/fixture-frames.ts";
-import { cutText, offSurface, touchTargets } from "./support/fixture-layout.ts";
+import { cutText, lostFrames, offSurface, touchTargets } from "./support/fixture-layout.ts";
 
 const KNOWN = fileURLToPath(new URL("./fixtures/ui-layout-known.json", import.meta.url));
 
@@ -31,7 +32,7 @@ test("every built-in fixture keeps its controls in reach of a finger and on the 
     for (const page of list) {
       for (const host of HOSTS) {
         const els = frame(page, host);
-        for (const f of [...touchTargets(els, host), ...offSurface(els, host), ...cutText(els, host)]) {
+        for (const f of [...touchTargets(els, host), ...offSurface(els, host), ...cutText(els, host), ...lostFrames(els)]) {
           found.set(`${host.name} | ${page.name} · ${page.fixture} | ${f.key}`, f.detail);
         }
       }

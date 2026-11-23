@@ -1530,6 +1530,9 @@ pub struct OpNode<'a> {
     pub presence: [bool; 2],
     /// A `modal` view: a dialog the rest waits behind.
     pub modal: bool,
+    /// It draws a nine-sliced frame its fill colours (a tint mask): that
+    /// fill (linear RGB, alpha), at rest. `None`: no such frame.
+    pub frame: Option<[f32; 4]>,
 }
 
 impl Tree {
@@ -1645,6 +1648,13 @@ impl Tree {
                         && !self.catcher(e as u32),
                     presence: [0, 1].map(|k| self.classes.presence(el.class, k).is_some()),
                     modal: self.input.per(e as u32).is_some_and(|p| p.modal),
+                    frame: {
+                        let im = &el.record.skin.image;
+                        (im.texture != 0
+                            && im.slice != [0.0; 4]
+                            && im.tint == crate::record::Tint::Fill)
+                            .then_some(el.record.skin.fill)
+                    },
                 })
             })
             .collect()

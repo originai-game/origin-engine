@@ -76,3 +76,25 @@ export function cutText(els: FrameElement[], host: Host): Finding[] {
   }
   return out;
 }
+
+/**
+ * A surface's frame that does not show: a tint-mask frame with no fill
+ * draws nothing, and one inside another framed surface in the very same
+ * fill is lost in it (with no border round it, nothing parts them).
+ */
+export function lostFrames(els: FrameElement[]): Finding[] {
+  const byId = new Map(els.map((e) => [e.id, e]));
+  const out: Finding[] = [];
+  const what = (e: FrameElement) => `${e.role || "view"} ${Math.round(e.width)}x${Math.round(e.height)}${e.text ? ` "${e.text.slice(0, 20)}"` : ""}`;
+  for (const e of els) {
+    const f = e.frame;
+    if (!f || e.width <= 0 || e.height <= 0) continue;
+    if (f[3]! <= 0.001) { out.push({ key: `frame with no fill ${what(e)}`, detail: "a tint-mask frame drawn in a transparent fill draws nothing" }); continue; }
+    let a = byId.get(e.parent);
+    while (a && !a.frame) a = byId.get(a.parent);
+    if (a && a.frame!.every((v, i) => Math.abs(v - f[i]!) < (i < 3 ? 1.5 : 0.01))) {
+      out.push({ key: `frame lost in its parent's ${what(e)}`, detail: `drawn in ${f.join(",")}, the fill of the framed ${what(a)} round it` });
+    }
+  }
+  return out;
+}

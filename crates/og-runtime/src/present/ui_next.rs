@@ -1360,6 +1360,13 @@ impl Next {
                         if n.modal {
                             d.insert("modal".into(), json!(true));
                         }
+                        // The fill its nine-sliced frame is drawn in, sRGB
+                        // 0-255 with alpha 0-1: a nested frame on the same
+                        // ground as its parent's does not show.
+                        if let Some([r, g, b, a]) = n.frame {
+                            let srgb = og_core::color::linear_to_srgb8;
+                            d.insert("frame".into(), json!([srgb(r), srgb(g), srgb(b), a]));
+                        }
                         d.into_iter().collect()
                     },
                     ..Default::default()

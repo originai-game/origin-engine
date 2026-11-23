@@ -42,6 +42,8 @@ export interface FrameElement {
   presence?: Array<"enter" | "exit">;
   /** A `modal` view. */
   modal?: boolean;
+  /** The fill its tint-mask frame (`nine-plate-cut`…) draws in: sRGB 0-255, alpha 0-1. */
+  frame?: number[];
 }
 
 /** How a fixture is mounted: directly, or in a game's column; at a surface size. */
