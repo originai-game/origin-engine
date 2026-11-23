@@ -167,3 +167,82 @@ fn describe_orders_entities_nearest_first_with_ui_and_pick_falls_back_to_the_vie
     let out = h.probe.take_outputs();
     assert_eq!(out[0].file_name(), "frame.json");
 }
+
+/// A renderer whose frame is one grey, the tick's number: the frame of one
+/// tick tells itself apart from every other tick's.
+struct TickGrey;
+
+impl og_probe::Capture for TickGrey {
+    fn tier(&self) -> &str {
+        "vulkan"
+    }
+    fn target_size(&self) -> (u32, u32) {
+        (4, 2)
+    }
+    fn capture(&mut self, world: &World, width: u32, height: u32) -> Option<og_probe::Frame> {
+        let (width, height) = if width == 0 { (4, 2) } else { (width, height) };
+        let v = world.time().tick as u8;
+        let image = og_probe::frame::Rgba {
+            width,
+            height,
+            pixels: [v, v, v, 255].repeat((width * height) as usize),
+        };
+        Some(og_probe::Frame {
+            width,
+            height,
+            png: og_probe::frame::encode_png(&image),
+        })
+    }
+}
+
+#[test]
+fn a_failed_frame_check_writes_the_frame_it_compared_at_its_own_tick() {
+    let mut h = build(1, false);
+    h.probe.set_capture(Box::new(TickGrey));
+    let reference = og_probe::frame::encode_png(&og_probe::frame::Rgba {
+        width: 4,
+        height: 2,
+        pixels: [200, 200, 200, 255].repeat(8),
+    });
+    let wanted = reference.clone();
+    h.probe
+        .set_reader(move |path| (path == "refs/grey.png").then(|| wanted.clone()));
+    // The check fails at tick 30; the run goes on to tick 50, whose frame
+    // differs, so only the compared one is the evidence.
+    let script =
+        "0.5:expect:frame:refs/grey.png:rmse:<=1;0.6:expect:region:0,0,1,1:color:#c8c8c8:2";
+    h.probe.schedule(&h.world, script).unwrap();
+    run(&mut h, 50);
+    let results = h.probe.take_expectations();
+    assert_eq!(
+        results
+            .iter()
+            .map(|r| (r.status, r.tick))
+            .collect::<Vec<_>>(),
+        vec![(Status::Fail, 30), (Status::Fail, 36)]
+    );
+    assert!(
+        results[0]
+            .reason
+            .ends_with("the compared frame is .failure/frame-grey@30.png"),
+        "{}",
+        results[0].reason
+    );
+    let out = h.probe.take_outputs();
+    let files: Vec<(String, u64)> = out.iter().map(|o| (o.file_name(), o.tick)).collect();
+    assert_eq!(
+        files,
+        vec![
+            (".failure/frame-grey@30.png".into(), 30),
+            (".failure/frame-grey@30.reference.png".into(), 30),
+            (".failure/region@36.png".into(), 36),
+        ]
+    );
+    let grey = |i: usize| {
+        let og_probe::Payload::Png { bytes, .. } = &out[i].payload else {
+            panic!("{} is no PNG", files[i].0);
+        };
+        og_probe::frame::decode_png(bytes).unwrap().pixels[0]
+    };
+    assert_eq!((grey(0), grey(1), grey(2)), (30, 200, 36));
+}

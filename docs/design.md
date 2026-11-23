@@ -1132,8 +1132,9 @@ retries; an accepted run is never retried. Native bundling is cached under
 
 **Playtests.** A playtest file is a `bun:test` file whose tests await
 `runPlaytest`. A failed one reports `failureCaptures` (world dump, save and
-the last drawn frame); an unavailable frame is reported unavailable, never
-fabricated. These saves are diagnostics, not presentation checkpoints.
+the last drawn frame, `last@<tick>.png`, and each failed frame check's
+compared frame at its own tick, `<check>@<tick>.png`, with its reference);
+an unavailable frame is reported unavailable, never fabricated. These saves are diagnostics, not presentation checkpoints.
 `og test --affected <rev>` selects suites by changed source dependencies;
 anything unclassified or unresolved selects, unselected suites count as
 `skipped`, and an invalid revision fails.

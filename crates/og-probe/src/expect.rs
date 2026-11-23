@@ -21,11 +21,21 @@
 //! as an unchecked screenshot is; so are an entity's `render.*` fields and
 //! the renderer's timings (`triangles`, `render`, `passes`).
 
-use crate::frame::{Rgba, decode_png};
+use crate::command::{Output, Payload};
+use crate::frame::{Rgba, decode_png, encode_png};
 use crate::hooks::find_by_text;
 use crate::probe::Probe;
 use og_ecs::World;
 use serde_json::{Value, json};
+
+/// The frame a region or frame check compared: its evidence when it fails.
+pub(crate) struct Compared {
+    /// The check's file name: `region`, or `frame-<reference's stem>`.
+    name: String,
+    frame: Rgba,
+    /// The reference PNG it was compared with (width, height, bytes).
+    reference: Option<(u32, u32, Vec<u8>)>,
+}
 
 /// How an expectation came out.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -537,30 +547,63 @@ impl Probe {
             observed: Value::Null,
             reason: String::new(),
         };
-        self.evaluate(world, parsed, &mut r);
+        let compared = self.evaluate(world, parsed, &mut r);
+        // A failed frame check's evidence is the frame it compared, at its
+        // own tick, never a later one: `.failure/<check>@<tick>.png`, and
+        // its reference beside it as `<check>@<tick>.reference.png`.
+        if let Some(c) = compared.filter(|_| r.status == Status::Fail && !self.checks.quiet) {
+            let stem = format!(".failure/{}@{tick}", c.name);
+            r.reason = format!("{}; the compared frame is {stem}.png", r.reason);
+            let at = at.unwrap_or(0.0);
+            let png = |path: String, width: u32, height: u32, bytes: Vec<u8>| Output {
+                tick,
+                action: "expect".into(),
+                path: Some(path),
+                payload: Payload::Png {
+                    width,
+                    height,
+                    bytes,
+                },
+            };
+            let (width, height) = (c.frame.width, c.frame.height);
+            let frame = png(format!("{stem}.png"), width, height, encode_png(&c.frame));
+            self.out.emit(at, frame);
+            if let Some((width, height, bytes)) = c.reference {
+                self.out.emit(
+                    at,
+                    png(format!("{stem}.reference.png"), width, height, bytes),
+                );
+            }
+        }
         Ok(self.checks.record(&mut self.out, &mut self.timeline, r))
     }
 
     /// Evaluates `parsed` on the world as it is into `r`, which opens as a
     /// pass: its expected and observed values, and the status and reason
-    /// when it fails or cannot be checked. One method per kind.
-    fn evaluate(&mut self, world: &mut World, parsed: Expect, r: &mut ExpectResult) {
+    /// when it fails or cannot be checked. One method per kind; a frame
+    /// check answers the frame it compared.
+    fn evaluate(
+        &mut self,
+        world: &mut World,
+        parsed: Expect,
+        r: &mut ExpectResult,
+    ) -> Option<Compared> {
         match parsed {
+            Expect::Region {
+                rect,
+                color,
+                tolerance,
+            } => return self.host.expect_region(world, rect, color, tolerance, r),
+            Expect::Frame {
+                reference,
+                rmse: limit,
+            } => return self.host.expect_reference(world, reference, limit, r),
             Expect::Within { id, bounds } if bounds.len() == 4 => {
                 self.within_frame(world, &id, &bounds, r);
             }
             Expect::Within { id, bounds } => self.within_box(world, &id, &bounds, r),
             Expect::Event { name, count } => self.event_count(world, &name, count, r),
             Expect::UiText { query } => self.ui_text(world, &query, r),
-            Expect::Region {
-                rect,
-                color,
-                tolerance,
-            } => self.host.expect_region(world, rect, color, tolerance, r),
-            Expect::Frame {
-                reference,
-                rmse: limit,
-            } => self.host.expect_reference(world, reference, limit, r),
             Expect::State { path, op, value } => {
                 let facts = self.host.facts(world);
                 check_path(r, &facts, "state().facts", "facts.", &path, op, &value);
@@ -573,6 +616,7 @@ impl Probe {
                 value,
             } => self.field(world, &id, &path, op, &value, r),
         }
+        None
     }
 
     /// `entity:<id>:within:x,y,w,h`: the entity's visible box in the frame
@@ -812,19 +856,22 @@ impl crate::probe::state::Host {
         color: [u8; 3],
         tolerance: f32,
         r: &mut ExpectResult,
-    ) {
+    ) -> Option<Compared> {
         r.expected = json!({"color": format!("#{:02x}{:02x}{:02x}", color[0], color[1], color[2]), "tolerance": tolerance});
-        let Some(image) = self.expect_frame(world, r) else {
-            return;
-        };
+        let image = self.expect_frame(world, r)?;
         let scale = self.css_scale(world, &image);
         let x0 = ((rect[0] * scale).floor().max(0.0) as u32).min(image.width);
         let y0 = ((rect[1] * scale).floor().max(0.0) as u32).min(image.height);
         let x1 = (((rect[0] + rect[2]) * scale).ceil().max(0.0) as u32).min(image.width);
         let y1 = (((rect[1] + rect[3]) * scale).ceil().max(0.0) as u32).min(image.height);
+        let compared = |frame| Compared {
+            name: "region".into(),
+            frame,
+            reference: None,
+        };
         if x1 <= x0 || y1 <= y0 {
             fail(r, "the region is outside the frame".into());
-            return;
+            return Some(compared(image));
         }
         let mut sum = [0f64; 3];
         for y in y0..y1 {
@@ -847,6 +894,7 @@ impl crate::probe::state::Host {
                 format!("the region's mean colour is {off} off in a channel"),
             );
         }
+        Some(compared(image))
     }
 
     /// `expect:frame`: the frame against a reference file, by RMSE.
@@ -856,7 +904,7 @@ impl crate::probe::state::Host {
         reference: String,
         limit: f64,
         r: &mut ExpectResult,
-    ) {
+    ) -> Option<Compared> {
         r.expected = json!({"reference": reference, "rmse": format!("<= {limit}")});
         let reference_png = match self.reader.as_ref() {
             Some(read) => read(&reference),
@@ -867,18 +915,16 @@ impl crate::probe::state::Host {
                 r,
                 format!("cannot read the reference '{reference}' (a path in the project)"),
             );
-            return;
+            return None;
         };
         let wanted = match decode_png(&bytes) {
             Ok(img) => img,
             Err(e) => {
                 fail(r, format!("{reference}: {e}"));
-                return;
+                return None;
             }
         };
-        let Some(image) = self.frame_rgba_sized(world, r, wanted.width, wanted.height) else {
-            return;
-        };
+        let image = self.frame_rgba_sized(world, r, wanted.width, wanted.height)?;
         match rmse(&image, &wanted) {
             None => fail(r, "the frame and the reference differ in size".into()),
             Some(v) => {
@@ -891,6 +937,14 @@ impl crate::probe::state::Host {
                 }
             }
         }
+        let stem = std::path::Path::new(&reference)
+            .file_stem()
+            .map_or_else(|| "reference".into(), |s| s.to_string_lossy().into_owned());
+        Some(Compared {
+            name: format!("frame-{stem}"),
+            reference: Some((wanted.width, wanted.height, bytes)),
+            frame: image,
+        })
     }
 
     /// The frame at the target's size, or `None` with the result marked

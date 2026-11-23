@@ -10,7 +10,7 @@
 //
 //   bun src/node/playtest-run.ts --file <tests/x.og.ts> --entry <game bundle> [--root <project>] [--out <dir>] [--json] [--result <file>]
 
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { basename, dirname, join, resolve } from "node:path";
 import { bunTest } from "./playtest-files.ts";
 import { encodePng } from "./png.ts";
@@ -96,6 +96,14 @@ for (const dir of runs.flatMap((r) => r.captures)) {
     rmSync(dir, { recursive: true, force: true });
     continue;
   }
+  const world = join(dir, "world.json"), snapshot = join(dir, "world.ogsave");
+  // The world's last tick: the tick its dump, its save and its last frame show.
+  let last: number | null = null;
+  try {
+    last = (JSON.parse(readFileSync(world, "utf8")) as { tick: number }).tick;
+  } catch {
+    last = null;
+  }
   let frame: { status: "captured"; path: string } | { status: "unavailable"; reason: string } = { status: "unavailable", reason: "no renderer or no completed frame" };
   const raw = join(dir, "frame.rgba");
   try {
@@ -106,7 +114,8 @@ for (const dir of runs.flatMap((r) => r.captures)) {
         const header = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
         const width = header.getUint32(0, true), height = header.getUint32(4, true);
         if (width === 0 || height === 0 || bytes.length !== 8 + width * height * 4) throw new Error("invalid frame dimensions");
-        const path = join(dir, "frame.png");
+        // Named for its tick: the last tick's frame, never a frame check's own (those are <check>@<tick>.png).
+        const path = join(dir, `last@${last ?? "end"}.png`);
         writeFileSync(path, encodePng({ width, height, rgba: bytes.subarray(8) }));
         frame = { status: "captured", path };
       }
@@ -117,8 +126,17 @@ for (const dir of runs.flatMap((r) => r.captures)) {
     rmSync(raw, { force: true });
   }
   if (!existsSync(dir)) continue;
-  const world = join(dir, "world.json"), snapshot = join(dir, "world.ogsave");
-  failureCaptures.push({ run: dirname(dir), world: existsSync(world) ? world : null, snapshot: existsSync(snapshot) ? snapshot : null, frame });
+  // Every file of the evidence with the tick it shows: each failed frame check's compared frame
+  // (`<check>@<tick>.png`) and its reference (`.reference.png`), then the world's last tick.
+  const files: Array<{ path: string; tick: number | null; what: "compared" | "reference" | "last" | "world" | "snapshot" }> = [];
+  for (const f of readdirSync(dir).sort()) {
+    const m = /^(.+)@(\d+)(\.reference)?\.png$/.exec(f);
+    if (m && m[1] !== "last") files.push({ path: join(dir, f), tick: Number(m[2]), what: m[3] ? "reference" : "compared" });
+  }
+  if (frame.status === "captured") files.push({ path: frame.path, tick: last, what: "last" });
+  if (existsSync(world)) files.push({ path: world, tick: last, what: "world" });
+  if (existsSync(snapshot)) files.push({ path: snapshot, tick: last, what: "snapshot" });
+  failureCaptures.push({ run: dirname(dir), tick: last, world: existsSync(world) ? world : null, snapshot: existsSync(snapshot) ? snapshot : null, frame, files });
 }
 
 const first = runs[0];
@@ -154,7 +172,10 @@ if (asJson) process.stdout.write(JSON.stringify(line) + "\n");
 else {
   process.stdout.write(`${!ok ? "FAIL" : unchecked.length > 0 ? "UNCHECKED" : "PASS"} ${name} (${tests} tests, ${assertionCount} checks, ${unchecked.length} GPU frame/expectation checks unchecked, ${line.ms} ms)\n`);
   for (const f of failures) process.stdout.write(`  - ${f.split("\n").slice(0, 8).join("\n    ")}\n`);
-  for (const capture of failureCaptures) process.stdout.write(`  evidence: ${capture.world ?? "world unavailable"}; ${capture.frame.status === "captured" ? capture.frame.path : capture.frame.reason}\n`);
+  for (const capture of failureCaptures) {
+    for (const f of capture.files.filter((f) => f.what === "compared")) process.stdout.write(`  compared frame (tick ${f.tick}): ${f.path}\n`);
+    process.stdout.write(`  evidence at the last tick${capture.tick === null ? "" : ` (${capture.tick})`}: ${capture.world ?? "world unavailable"}; ${capture.frame.status === "captured" ? capture.frame.path : capture.frame.reason}\n`);
+  }
   for (const u of unchecked) process.stdout.write(`  ~ ${u}: no renderer, frame unchecked\n`);
   for (const u of assertionLog.uncovered as Array<{ run: string; kind: string; name: string; key?: string }>) process.stdout.write(`  ? ${u.run}: ${u.kind} '${u.name}'${u.key !== undefined ? ` [${u.key}]` : ""} never fired\n`);
 }

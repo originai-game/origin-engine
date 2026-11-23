@@ -330,7 +330,7 @@ impl Out {
     /// beside it as `<stem>-2.<ext>` (then `-3`, ...), with a warning naming
     /// both steps, so a check reading the first finds what it expects and
     /// the clash is in the run's warnings instead of far from its cause.
-    pub(super) fn emit(&mut self, at: f64, mut output: Output) {
+    pub(crate) fn emit(&mut self, at: f64, mut output: Output) {
         let named = output.path.is_some();
         let wanted = output.file_name();
         let mut name = wanted.clone();

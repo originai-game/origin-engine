@@ -359,7 +359,16 @@ Each line has an `event`, in this order:
    `.og.ts`), `file`, `ok`, `status` (`passed`, `unchecked` or `failed`),
    `tests`, `checks` (every `expect()`), `frameChecks`, `unchecked` (the
    frames left unchecked), `uncheckedCount`, `failures` (strings),
-   `failureCaptures` (`{run, world, snapshot, frame}` each), `out` (the
+   `failureCaptures` (`{run, tick, world, snapshot, frame, files}` each:
+   `tick` the world's last tick, which `world`, `snapshot` and `frame`
+   show; `frame` the last tick's frame, `.failure/last@<tick>.png`, never
+   a frame check's; `files` every file of the evidence as `{path, tick,
+   what}`, `what` one of `compared`, `reference`, `last`, `world` and
+   `snapshot`. A failed `expect:frame` or `expect:region` writes the frame
+   it compared at its own tick, `.failure/<check>@<tick>.png` (`<check>` is
+   `region` or `frame-<the reference's file stem>`), and an `expect:frame`
+   its reference beside it, `<check>@<tick>.reference.png`; its failure
+   names the compared file), `out` (the
    file's output directory, `og-out/test/<playtest>/`), `ms`, `assertions`
    (`{violations, uncovered, required, defaults}`), `runs`, `adapterErrors`
    and, when a run happened, the first run's `tick`, `hash`, `hashes`,

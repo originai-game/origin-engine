@@ -38,7 +38,7 @@ interface Result {
   tier: string;
   hash: string;
   hashes: string[];
-  failureCaptures: { world: string | null; snapshot: string | null; frame: { status: "captured"; path: string } | { status: "unavailable"; reason: string } }[];
+  failureCaptures: { tick: number | null; world: string | null; snapshot: string | null; frame: { status: "captured"; path: string } | { status: "unavailable"; reason: string }; files: { path: string; tick: number | null; what: string }[] }[];
 }
 
 const result = (stdout: string): Result => JSON.parse(stdout.split("\n").find((l) => l.startsWith('{"playtest"'))!);
@@ -162,6 +162,18 @@ gpuTest("a GPU run checks the frames without changing simulation, dumps or hashe
   expect(image.rgba).toEqual(decodePng(readFileSync(join(out, "surface.png"))).rgba);
   expect(JSON.parse(readFileSync(capture.world, "utf8")).hash).toBe(lit.hash);
   expect(readFileSync(capture.snapshot, "utf8")).toMatch(/^og-save:/);
+  // The last tick's frame is named for its tick, never taken for a frame check's.
+  expect(capture.frame.path.endsWith(`/last@${capture.tick}.png`)).toBeTrue();
+  // A frame check that fails before the last tick: its evidence is the frame it compared, at its tick.
+  writeFileSync(join(game, "tests/surface.og.ts"), SURFACE.replace("0.4:screenshot:surface.png", "0.35:expect:region:0,0,8,8:color:#ff00ff:0;0.35:screenshot:at-check.png;0.4:screenshot:surface.png"));
+  const missed = result(run(command, true).stdout);
+  const evidence = missed.failureCaptures[0]!;
+  const compared = evidence.files.filter((f) => f.what === "compared");
+  expect(compared.map((f) => [f.path.split("/").pop(), f.tick])).toEqual([[`region@21.png`, 21]]);
+  expect(missed.failures.join("\n")).toContain("the compared frame is .failure/region@21.png");
+  expect(evidence.tick).toBeGreaterThan(21);
+  expect(evidence.files.find((f) => f.what === "last")?.tick).toBe(evidence.tick);
+  expect(decodePng(readFileSync(compared[0]!.path)).rgba).toEqual(decodePng(readFileSync(join(out, "at-check.png"))).rgba);
 }, 120_000);
 
 test("a refused adapter is reported without hiding other renderer failures", () => {

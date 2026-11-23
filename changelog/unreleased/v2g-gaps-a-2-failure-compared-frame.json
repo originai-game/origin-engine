@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "og test failureCaptures",
+      "summary": "A failed `expect:frame` or `expect:region` now leaves the frame it compared, at the check's own tick, as its evidence: `.failure/<check>@<tick>.png` (`region`, or `frame-<the reference's file stem>`), with an `expect:frame`'s reference beside it as `<check>@<tick>.reference.png`, and its failure message names that file. Before, the only frame was the world's last tick's, `.failure/frame.png`, which a reader took for the compared one (a car's HUD read 40 km/h there where the checked frame read 39). That frame is now named for its tick, `.failure/last@<tick>.png`. Each `og test --json` failure capture adds `tick` (the world's last tick) and `files` (`{path, tick, what}`, `what` `compared`, `reference`, `last`, `world` or `snapshot`); `frame.path` names the renamed file."
+    }
+  ]
+}
