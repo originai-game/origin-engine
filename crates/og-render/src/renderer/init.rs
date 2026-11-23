@@ -32,6 +32,72 @@ use shaders::{ShadersAndLayoutsInputs, ShadersAndLayoutsOutputs};
 /// native backends ignore the feature level.
 const FEATURE_LEVEL: wgpu::FeatureLevel = wgpu::FeatureLevel::Compatibility;
 
+/// Cold browser GPU processes can initially report no adapter. Keep the
+/// retry here so the player and offscreen renderers use the same policy.
+async fn request_adapter(
+    instance: &wgpu::Instance,
+    desc: &RenderDesc,
+    surface: Option<&wgpu::Surface<'_>>,
+) -> Result<wgpu::Adapter, RenderError> {
+    let options = wgpu::RequestAdapterOptions {
+        feature_level: FEATURE_LEVEL,
+        power_preference: power_preference(desc),
+        force_fallback_adapter: false,
+        compatible_surface: surface,
+        ..Default::default()
+    };
+    #[cfg(not(target_arch = "wasm32"))]
+    return instance
+        .request_adapter(&options)
+        .await
+        .map_err(|e| RenderError::NoAdapter(format!("{:?}: {e}", desc.backend)));
+
+    #[cfg(target_arch = "wasm32")]
+    {
+        use std::{future::Future, task::Poll};
+        use wasm_bindgen::{JsCast, JsValue};
+
+        let deadline = js_sys::Date::now() + 30_000.0;
+        let mut reason = "the adapter request did not finish".to_owned();
+        loop {
+            let mut request = std::pin::pin!(instance.request_adapter(&options));
+            loop {
+                let timer = js_sys::Promise::new(&mut |resolve, _| {
+                    let timeout = js_sys::Reflect::get(&js_sys::global(), &"setTimeout".into())
+                        .unwrap()
+                        .unchecked_into::<js_sys::Function>();
+                    let _ = timeout.call2(&JsValue::NULL, &resolve, &100.into());
+                });
+                let mut timer = std::pin::pin!(wasm_bindgen_futures::JsFuture::from(timer));
+                let answer = std::future::poll_fn(|cx| {
+                    if let Poll::Ready(answer) = request.as_mut().poll(cx) {
+                        return Poll::Ready(Some(answer));
+                    }
+                    timer.as_mut().poll(cx).map(|_| None)
+                })
+                .await;
+                match answer {
+                    Some(Ok(adapter)) => return Ok(adapter),
+                    Some(Err(error)) => {
+                        reason = error.to_string();
+                        // Do not spin when requestAdapter resolves null immediately.
+                        let _ = timer.await;
+                        break;
+                    }
+                    None if js_sys::Date::now() < deadline => continue,
+                    None => break,
+                }
+            }
+            if js_sys::Date::now() >= deadline {
+                return Err(RenderError::NoAdapter(format!(
+                    "{:?}: no WebGPU adapter after 30000 ms: {reason}",
+                    desc.backend
+                )));
+            }
+        }
+    }
+}
+
 impl Renderer {
     /// Times each render-graph pass's CPU encoding with `clock` (ms) and,
     /// where the device has timestamp queries, its GPU time
@@ -135,16 +201,7 @@ impl Renderer {
             return Err(disabled_error());
         }
         let instance = desc.backend.instance();
-        let adapter = instance
-            .request_adapter(&wgpu::RequestAdapterOptions {
-                feature_level: FEATURE_LEVEL,
-                power_preference: power_preference(desc),
-                force_fallback_adapter: false,
-                compatible_surface: None,
-                ..Default::default()
-            })
-            .await
-            .map_err(|e| RenderError::NoAdapter(format!("{:?}: {e}", desc.backend)))?;
+        let adapter = request_adapter(&instance, desc, None).await?;
         let format = desc.output_format.unwrap_or(DEFAULT_OUTPUT_FORMAT);
         Self::from_adapter(adapter, None, format, desc, None).await
     }
@@ -200,16 +257,7 @@ impl Renderer {
         if renderer_disabled() {
             return Err(disabled_error());
         }
-        let adapter = instance
-            .request_adapter(&wgpu::RequestAdapterOptions {
-                feature_level: FEATURE_LEVEL,
-                power_preference: power_preference(desc),
-                force_fallback_adapter: false,
-                compatible_surface: Some(&surface),
-                ..Default::default()
-            })
-            .await
-            .map_err(|e| RenderError::NoAdapter(format!("{:?}: {e}", desc.backend)))?;
+        let adapter = request_adapter(instance, desc, Some(&surface)).await?;
         let caps = surface.get_capabilities(&adapter);
         // The widest output the surface and display offer (a caller's own
         // format keeps sRGB): the frame composes in float and the display
