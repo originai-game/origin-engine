@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "Theme recipes",
+      "summary": "A generated piece with a `stitch` ornament tiles its edges (`repeat: \"tile\"`) with a dash period that fits the tile, so the stitch stays dashed along a stretched edge instead of becoming a solid line."
+    }
+  ]
+}

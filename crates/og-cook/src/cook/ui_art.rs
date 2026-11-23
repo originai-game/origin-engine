@@ -139,7 +139,26 @@ struct Canvas {
     ny: usize,
     x: F,
     y: F,
+    /// The finished image's columns and rows, each the sample it shows:
+    /// the stretch column and row repeated over the band.
+    cols: Vec<usize>,
+    rows: Vec<usize>,
+    /// The finished image. Layers are drawn on the samples and laid over
+    /// it, so a layer drawn in its own coordinates can vary along the band.
     rgba: Vec<Rgba>,
+    /// Whether a layer varies along the band, so the piece tiles it.
+    tiled: bool,
+}
+
+fn blend(base: &mut Rgba, c: Rgba, alpha: f64) {
+    let a = clamp(alpha) * c[3];
+    let ba = base[3];
+    let out_a = a + ba * (1.0 - a);
+    let d = out_a.max(1e-6);
+    for k in 0..3 {
+        base[k] = (c[k] * a + base[k] * ba * (1.0 - a)) / d;
+    }
+    base[3] = out_a;
 }
 
 impl Canvas {
@@ -156,6 +175,16 @@ impl Canvas {
                 y.push(j as f64 / scale as f64);
             }
         }
+        let s = scale;
+        let idx = |n: usize, at: usize, band: usize| -> Vec<usize> {
+            (0..at * s)
+                .chain(std::iter::repeat_n(at * s, band * s))
+                .chain(at * s + 1..n * s + 1)
+                .collect()
+        };
+        let cols = idx(w, l, band.0);
+        let rows = idx(h, t, band.1);
+        let rgba = vec![[0.0; 4]; cols.len() * rows.len()];
         Canvas {
             s: scale as f64,
             si: scale,
@@ -167,7 +196,10 @@ impl Canvas {
             ny,
             x,
             y,
-            rgba: vec![[0.0; 4]; nx * ny],
+            cols,
+            rows,
+            rgba,
+            tiled: false,
         }
     }
 
@@ -183,21 +215,50 @@ impl Canvas {
         self.x.iter().zip(&self.y).map(|(&x, &y)| f(x, y)).collect()
     }
 
+    /// Lays `color` over the image at coverage `alpha`, both on the samples.
     fn over(&mut self, color: &Col, alpha: &[f64]) {
-        for (i, base) in self.rgba.iter_mut().enumerate() {
+        let w = self.cols.len();
+        for (k, base) in self.rgba.iter_mut().enumerate() {
+            let i = self.rows[k / w] * self.nx + self.cols[k % w];
             let c = match color {
                 Col::One(c) => *c,
                 Col::Each(v) => v[i],
             };
-            let a = clamp(alpha[i]) * c[3];
-            let ba = base[3];
-            let out_a = a + ba * (1.0 - a);
-            let d = out_a.max(1e-6);
-            for k in 0..3 {
-                base[k] = (c[k] * a + base[k] * ba * (1.0 - a)) / d;
-            }
-            base[3] = out_a;
+            blend(base, c, alpha[i]);
         }
+    }
+
+    /// Lays `c` over the image at coverage `alpha`, on the image's pixels.
+    fn over_whole(&mut self, c: Rgba, alpha: &[f64]) {
+        for (base, &a) in self.rgba.iter_mut().zip(alpha) {
+            blend(base, c, a);
+        }
+    }
+
+    /// A sample field as the finished image lays it out.
+    fn whole(&self, v: &[f64]) -> F {
+        let w = self.cols.len();
+        (0..self.rgba.len())
+            .map(|k| v[self.rows[k / w] * self.nx + self.cols[k % w]])
+            .collect()
+    }
+
+    /// Each finished pixel's own position in points: its sample's, moved on
+    /// by its run through the band, a whole band past it.
+    fn place(&self) -> (F, F) {
+        let [t, _, _, l] = self.insets;
+        let axis = |j: usize, at: usize, band: usize| {
+            let j = if j < (at + band) * self.si { j } else { j + 1 };
+            j as f64 / self.s
+        };
+        let w = self.cols.len();
+        let x = (0..self.rgba.len())
+            .map(|k| axis(k % w, l, self.band.0))
+            .collect();
+        let y = (0..self.rgba.len())
+            .map(|k| axis(k / w, t, self.band.1))
+            .collect();
+        (x, y)
     }
 
     fn over1(&mut self, c: Rgba, alpha: &[f64]) {
@@ -232,27 +293,14 @@ impl Canvas {
             .collect()
     }
 
-    /// The finished image: the stretch column and row repeated over the band.
+    /// The finished image as RGBA bytes.
     fn bytes(&self) -> (u32, u32, Vec<u8>) {
-        let [t, _, _, l] = self.insets;
-        let s = self.si;
-        let idx = |n: usize, at: usize, band: usize| -> Vec<usize> {
-            (0..at * s)
-                .chain(std::iter::repeat_n(at * s, band * s))
-                .chain(at * s + 1..n * s + 1)
-                .collect()
-        };
-        let cols = idx(self.w, l, self.band.0);
-        let rows = idx(self.h, t, self.band.1);
-        let mut out = Vec::with_capacity(cols.len() * rows.len() * 4);
-        for &r in &rows {
-            for &c in &cols {
-                for v in self.rgba[r * self.nx + c] {
-                    out.push((clamp(v) * 255.0 + 0.5).floor() as u8);
-                }
-            }
-        }
-        (cols.len() as u32, rows.len() as u32, out)
+        let out = self
+            .rgba
+            .iter()
+            .flat_map(|px| px.map(|v| (clamp(v) * 255.0 + 0.5).floor() as u8))
+            .collect();
+        (self.cols.len() as u32, self.rows.len() as u32, out)
     }
 }
 
@@ -781,20 +829,26 @@ fn ornament(cv: &mut Canvas, c: &Colors, d: &[f64], o: &Value, b: [f64; 4]) -> R
             cv.over1(col, &rg.iter().map(|&r| r * a).collect::<F>());
         }
         "stitch" => {
-            let rg = ring(cv, &inner, 0.9);
-            let period = opt(o, "period", 3.0);
-            let al: F = (0..n)
+            // Dashes drawn on the finished image, so they run on along the
+            // band, and the piece tiles its band instead of stretching it:
+            // the period fits a whole number of dashes per band. x - y round
+            // the top-left and bottom-right corners, x + y round the others:
+            // each runs across its corners' tangent, so no corner turns solid.
+            let rg = cv.whole(&ring(cv, &inner, 0.9));
+            let band = cv.band.0.max(1) as f64;
+            let period = band / (band / opt(o, "period", 3.0) + 0.5).floor().max(1.0);
+            let (sx, sy) = (cv.whole(&cv.x), cv.whole(&cv.y));
+            let (px, py) = cv.place();
+            let al: F = (0..rg.len())
                 .map(|i| {
-                    // x - y round the top-left and bottom-right corners,
-                    // x + y round the others: each runs across its corners'
-                    // tangent, so no corner's stitch turns solid
-                    let (x, y) = (cv.x[i], cv.y[i]);
-                    let back = (x - (x0 + x1) / 2.0) * (y - (y0 + y1) / 2.0) > 0.0;
+                    let back = (sx[i] - (x0 + x1) / 2.0) * (sy[i] - (y0 + y1) / 2.0) > 0.0;
+                    let (x, y) = (px[i], py[i]);
                     let t = (if back { x - y } else { x + y }) / period;
                     rg[i] * b2f((t - t.floor()) < 0.55) * a
                 })
                 .collect();
-            cv.over1(col, &al);
+            cv.over_whole(col, &al);
+            cv.tiled = true;
         }
         "brackets" => {
             for (cx, cy, sx, sy) in corners {
@@ -998,6 +1052,9 @@ pub fn draw(spec: &Value) -> Result<Vec<Piece>, String> {
         }
         if tint {
             e["tint"] = json!(true);
+        }
+        if cv.tiled {
+            e["repeat"] = json!("tile");
         }
         let (width, height, rgba) = cv.bytes();
         out.push(Piece {
@@ -1354,7 +1411,11 @@ mod tests {
                 if want[name][&p.name] != fnv(&bytes) {
                     wrong.push(format!("{name}/{}", p.name));
                 }
-                // the stretch band: identical columns, identical rows
+                // the stretch band: identical columns, identical rows (a
+                // tiled piece varies along it, and tiles it)
+                if p.entry["repeat"] == "tile" {
+                    continue;
+                }
                 let w = p.width as usize;
                 let [t, _, _, l] =
                     [0, 1, 2, 3].map(|i| p.entry["slice"][i].as_u64().unwrap() as usize);

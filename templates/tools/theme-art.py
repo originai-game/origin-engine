@@ -99,11 +99,40 @@ class Canvas:
         ys = np.arange(ny, dtype=np.float64) / scale
         self.x = np.broadcast_to(xs[None, :], (ny, nx)).copy()
         self.y = np.broadcast_to(ys[:, None], (ny, nx)).copy()
-        self.rgba = np.zeros((ny, nx, 4))
+        # The finished image's columns and rows, each the sample it shows: the
+        # stretch column and row repeated over the band. Layers are drawn on
+        # the samples and laid over the finished image, so a layer drawn in
+        # the image's own coordinates (`whole`) can vary along the band.
+        S = scale
+        self.cols = np.concatenate([np.arange(l * S), np.full(band[0] * S, l * S, int), np.arange(l * S + 1, self.w * S + 1)])
+        self.rows = np.concatenate([np.arange(t * S), np.full(band[1] * S, t * S, int), np.arange(t * S + 1, self.h * S + 1)])
+        self.rgba = np.zeros((len(self.rows), len(self.cols), 4))
+        self.tiled = False
 
-    def over(self, color, alpha):
-        """Lays `color` (rgba, or per pixel) over the canvas at coverage `alpha`."""
-        c = np.broadcast_to(np.asarray(color, np.float64), self.rgba.shape)
+    def whole(self, v):
+        """A sample field as the finished image lays it out."""
+        return v[self.rows][:, self.cols]
+
+    def place(self):
+        """Each finished pixel's own position in points: its sample's, moved on
+        by its run through the band, a whole band past it."""
+        def axis(n, at, band):
+            j = np.arange(n, dtype=np.float64)
+            return np.where(j < (at + band) * self.S, j, j + 1) / self.S
+        t, r, b, l = self.insets
+        x = axis(len(self.cols), l, self.band[0])
+        y = axis(len(self.rows), t, self.band[1])
+        return np.broadcast_to(x[None, :], self.rgba.shape[:2]), np.broadcast_to(y[:, None], self.rgba.shape[:2])
+
+    def over(self, color, alpha, whole=False):
+        """Lays `color` (rgba, or per pixel) over the canvas at coverage `alpha`,
+        both on the samples (or on the finished image's pixels when `whole`)."""
+        c = np.asarray(color, np.float64)
+        if not whole:
+            if c.ndim == 3:
+                c = self.whole(c)
+            alpha = self.whole(alpha)
+        c = np.broadcast_to(c, self.rgba.shape)
         a = clamp(alpha)[..., None] * c[..., 3:4]
         base = self.rgba
         ba = base[..., 3:4]
@@ -112,13 +141,8 @@ class Canvas:
         self.rgba = np.concatenate([rgb, out_a], axis=-1)
 
     def bytes(self):
-        """The finished image: the stretch column and row repeated over the band, as RGBA bytes."""
-        t, r, b, l = self.insets
-        S = self.S
-        px = np.floor(clamp(self.rgba) * 255 + 0.5).astype(np.uint8)
-        cols = np.concatenate([np.arange(l * S), np.full(self.band[0] * S, l * S, int), np.arange(l * S + 1, self.w * S + 1)])
-        rows = np.concatenate([np.arange(t * S), np.full(self.band[1] * S, t * S, int), np.arange(t * S + 1, self.h * S + 1)])
-        return px[rows][:, cols]
+        """The finished image as RGBA bytes."""
+        return np.floor(clamp(self.rgba) * 255 + 0.5).astype(np.uint8)
 
 
 def clamp(v, lo=0.0, hi=1.0):
@@ -472,15 +496,22 @@ def ornament(cv, C, d, orn, box):
     if kind == "hairline":
         cv.over(col, (cover(cv, inner) - cover(cv, inner + 0.75)) * a)
     elif kind == "stitch":
-        ring = cover(cv, inner) - cover(cv, inner + 0.9)
-        # dashes: a step along the perimeter, x - y round the top-left and
-        # bottom-right corners and x + y round the others (each runs across its
-        # corners' tangent, so no corner's stitch turns into a solid stroke)
-        cx, cy = (x0 + x1) / 2, (y0 + y1) / 2
-        back = (cv.x - cx) * (cv.y - cy) > 0
-        t = np.where(back, cv.x - cv.y, cv.x + cv.y) / orn.get("period", 3.0)
+        # Dashes drawn on the finished image, so they run on along the band,
+        # and the piece tiles its band instead of stretching it: the period is
+        # fitted to a whole number of dashes per band, so the tiles meet. They
+        # step along the perimeter: x - y round the top-left and bottom-right
+        # corners and x + y round the others (each runs across its corners'
+        # tangent, so no corner's stitch turns into a solid stroke).
+        ring = cv.whole(cover(cv, inner) - cover(cv, inner + 0.9))
+        band = max(cv.band[0], 1)
+        period = band / max(1.0, np.floor(band / orn.get("period", 3.0) + 0.5))
+        sx, sy = cv.whole(cv.x), cv.whole(cv.y)
+        back = (sx - (x0 + x1) / 2) * (sy - (y0 + y1) / 2) > 0
+        x, y = cv.place()
+        t = np.where(back, x - y, x + y) / period
         dash = ((t - np.floor(t)) < 0.55).astype(np.float64)
-        cv.over(col, ring * dash * a)
+        cv.over(col, ring * dash * a, whole=True)
+        cv.tiled = True
     elif kind == "brackets":
         for cx, cy, sx, sy in corners:
             px, py = (cv.x - cx) * sx, (cv.y - cy) * sy
@@ -565,6 +596,8 @@ def draw(spec):
             e["fill"] = False
         if tint:
             e["tint"] = True
+        if cv.tiled:
+            e["repeat"] = "tile"
         out.append((name, cv.bytes(), e))
 
     def orn(role):
