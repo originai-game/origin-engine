@@ -312,13 +312,16 @@ export function bindProp(node: UiNode, name: string, read: () => unknown): void 
 /**
  * Sets every prop of `props`, followed; a prop that goes is unset. Its
  * `children` go in `node` unless the element has children of its own
- * (`skipChildren`, which the compile passes).
+ * (`skipChildren`, which the compile passes), and the props in `skip` are
+ * left to the element's attributes written after the spread (the compile
+ * passes their names), so `<View {...props} class={merged}>` keeps
+ * `merged` whatever of `props` changes.
  */
-export function spread(node: UiNode, props: Record<string, unknown>, skipChildren = false): void {
+export function spread(node: UiNode, props: Record<string, unknown>, skipChildren = false, skip: readonly string[] = []): void {
   if (!skipChildren) insert(node, () => props.children);
   let keys: string[] = [];
   createRenderEffect(() => {
-    const next = Object.keys(props).filter((k) => k !== "children");
+    const next = Object.keys(props).filter((k) => k !== "children" && !skip.includes(k));
     for (const key of keys) if (!next.includes(key)) prop(node, key, undefined);
     for (const key of next) prop(node, key, props[key]);
     keys = next;

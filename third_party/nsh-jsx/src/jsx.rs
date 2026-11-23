@@ -764,7 +764,27 @@ impl<'a> Compiler<'a, '_> {
             _ => true,
         });
         let opening = el.opening_element.unbox();
-        for attr in opening.attributes {
+        // The names each attribute written after position i sets: a spread
+        // leaves them to those attributes, so the later one wins on every
+        // update as at the first, whatever the spread's props change.
+        let later: Vec<Vec<String>> = (0..opening.attributes.len())
+            .map(|i| {
+                let mut names: Vec<String> = opening.attributes[i + 1..]
+                    .iter()
+                    .filter_map(|a| match a {
+                        JSXAttributeItem::Attribute(a) => match &a.name {
+                            JSXAttributeName::Identifier(id) => Some(id.name.to_string()),
+                            JSXAttributeName::NamespacedName(_) => None,
+                        },
+                        JSXAttributeItem::SpreadAttribute(_) => None,
+                    })
+                    .collect();
+                names.sort();
+                names.dedup();
+                names
+            })
+            .collect();
+        for (i, attr) in opening.attributes.into_iter().enumerate() {
             match attr {
                 JSXAttributeItem::Attribute(a) => {
                     let a = a.unbox();
@@ -802,8 +822,18 @@ impl<'a> Compiler<'a, '_> {
                     let mut e = s.unbox().argument;
                     self.visit_expression(&mut e);
                     let spread = self.use_helper("spread");
-                    // The element's own children win over a spread's `children`.
-                    body.push_str(&format!("{spread}({v}, {}, {has_children});", g.hole(e)));
+                    // The element's own children win over a spread's `children`,
+                    // and its attributes written after the spread over its keys.
+                    let skip = if later[i].is_empty() {
+                        String::new()
+                    } else {
+                        let names: Vec<String> = later[i].iter().map(|n| quote(n)).collect();
+                        format!(", [{}]", names.join(", "))
+                    };
+                    body.push_str(&format!(
+                        "{spread}({v}, {}, {has_children}{skip});",
+                        g.hole(e)
+                    ));
                 }
             }
         }
@@ -1660,6 +1690,22 @@ mod tests {
         .unwrap());
         assert!(code.contains("_$spread(__nsh_hv0, p, false);"), "{code}");
         assert!(code.contains("_$spread(__nsh_hv1, p, true);"), "{code}");
+    }
+
+    #[test]
+    fn a_spread_leaves_the_attributes_after_it_to_them() {
+        let code = flat(
+            &compile(
+                r#"import { View } from "@origingame/engine/ui";
+            declare const p: { class?: string };
+            export const a = <View role="row" {...p} class={`x ${p.class}`} role="button" />;"#,
+            )
+            .unwrap(),
+        );
+        assert!(
+            code.contains(r#"_$spread(__nsh_hv0, p, false, ["class", "role"]);"#),
+            "{code}"
+        );
     }
 
     #[test]

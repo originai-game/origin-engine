@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "Button",
+      "summary": "An attribute written after a spread (`<View {...props} class={merged}>`) wins on every update, not only the first: when a reactive prop of the caller's changed (a `disabled` read from a signal), the spread set every prop again and the caller's bare `class` replaced the merged one, so a Button with a class of the caller's lost min-h-11 and its padding and stood 20 px tall instead of 44. Every built-in component built that way keeps its own class and attributes; an attribute written before a spread still gives way to it."
+    }
+  ]
+}

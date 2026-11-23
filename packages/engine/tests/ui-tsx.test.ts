@@ -707,3 +707,47 @@ test("a built-in screen draws no row the game passes no handler for", async () =
     rmSync(dir, { recursive: true, force: true });
   }
 });
+
+// An attribute written after a spread wins on every update, not only the
+// first: Button (`<View {...props} class={merged}>`) keeps its merged class
+// when a reactive prop of the caller's changes, rather than taking the
+// caller's bare `class` and losing min-h-11.
+test("a caller's class and a reactive prop keep a component's merged class", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "og-tsx-spread-"));
+  try {
+    writeFileSync(join(dir, "project.ogt"), "type project\nversion 1\n---\n");
+    writeFileSync(join(dir, "main.tsx"), `import { Text } from "@origingame/engine/ui";
+import { Button } from "@origingame/engine/ui/components";
+export function Probe(props: { off: boolean }) {
+  return <Button class="text-fg" disabled={props.off}><Text>a</Text></Button>;
+}
+`);
+    const out = join(dir, "game.js");
+    const b = await bundleGame(join(dir, "main.tsx"), out, "native");
+    if (!b.ok) throw new Error(b.reason);
+    const rt = fileURLToPath(new URL("../src/ui/rt.ts", import.meta.url));
+    const ui = fileURLToPath(new URL("../src/ui/index.ts", import.meta.url));
+    writeFileSync(out, readFileSync(out, "utf8").replace(/(["'])[^"']*\/ui\/rt(\.ts)?\1/g, JSON.stringify(rt)).replace(/(["'])@origingame\/engine\/ui\1/g, JSON.stringify(ui)));
+    const { Probe } = await import(out);
+    loadNativeHost();
+    const batches: Op[][] = [];
+    const world = { id: 9200 } as unknown as World;
+    renderers.set(9200, new Renderer((bytes) => { batches.push(decode(bytes)); return reply([]); }, world));
+    const off = createSignal(false);
+    mount(world, Probe, { get off() { return off(); } });
+    const ops = () => batches.flat();
+    const button = ops().find((op) => op[0] === "setProp" && op[2] === "role" && op[3] === "button")![1] as number;
+    const cls = () => String(ops().filter((op) => op[0] === "setClass" && op[1] === button).at(-1)![2]);
+    expect(cls()).toContain("min-h-11");
+    for (const v of [true, false, true]) {
+      off.set(v);
+      renderers.get(9200)!.flush();
+      expect(ops()).toContainEqual(["setProp", button, "disabled", String(v)]);
+      expect(cls()).toContain("min-h-11");
+      expect(cls()).toContain("text-fg");
+    }
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+    renderers.delete(9200);
+  }
+});
