@@ -445,6 +445,13 @@ struct ScatterGpu {
     /// which is rarely the part that draws the card (a tree's wood), then
     /// that part's own colour before its texture; zero for a card as baked.
     card_leaves: [[f32; 4]; 4],
+    /// xyz: where the terrain's copies stand in the frame: its place, which
+    /// a copy (placed about it, `prepare.rs`) is drawn moved by; zero for a
+    /// model impostor's, whose instances are in the frame.
+    terrain: [f32; 4],
+    /// xyz: how far the terrain moved since the last frame (the frame's
+    /// metres), which a copy's previous position is moved back by.
+    moved: [f32; 4],
 }
 
 /// [`ScatterGpu::card_leaves`] of a plant of `parts` (mesh, material): of
@@ -557,10 +564,10 @@ struct ScatterKey {
     /// The placement's parameters: the scatter's, the scatters' placed
     /// before it and, when a rule reads it, the water's (as bits).
     params: Vec<u32>,
+    /// The terrain's turn and scale (its transform without its place): the
+    /// copies are placed about the terrain, so its place, and the scene's
+    /// origin (`origin.rs`), move them without placing them again.
     transform: [u32; 16],
-    /// The scene's origin the chunk's transforms are relative to
-    /// (`origin.rs`): `transform` is its terrain's placement in the world.
-    origin: [u32; 3],
     layers: Vec<u32>,
     mesh: usize,
 }
@@ -660,6 +667,9 @@ pub(crate) struct ScatterBatch {
     culled: Vec<Option<crate::scatter_cull::Culled>>,
     /// How far the wind moves a copy at most: the chunks' bounds grow by it.
     sway: f32,
+    /// Where its terrain stands in the frame: its chunks' copies and
+    /// bounds are about it.
+    at: Vec3,
     /// The impostor's material: the chunks' copies past the impostor
     /// distance draw as it.
     impostor: Option<usize>,
@@ -817,6 +827,9 @@ pub(crate) struct ScatterRenderer {
     /// Per scatter (its index in the scene's), the [`SharedKey`] its
     /// chunks were last looked up by.
     shared: Vec<Option<SharedKey>>,
+    /// Per scatter, where its terrain stood in the world the last frame
+    /// (its place plus the scene's origin): how far it moved since.
+    stood: Vec<Option<Vec3>>,
     frame: u64,
     /// Chunks built for the last frame.
     pub built: u32,

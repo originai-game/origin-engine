@@ -161,6 +161,7 @@ impl ScatterRenderer {
                     continue;
                 }
                 let mut mesh_bound = false;
+                let center_at = b.at;
                 for (n, k) in b.chunks.iter().enumerate() {
                     let Some(c) = self.chunks.get(k) else {
                         continue;
@@ -171,7 +172,7 @@ impl ScatterRenderer {
                         Some((_, at)) => at.lists_level(set, l as u32),
                         None => l == 0,
                     };
-                    if !drawn || !visible(c.center, c.radius + b.sway) {
+                    if !drawn || !visible(c.center + b.at, c.radius + b.sway) {
                         continue;
                     }
                     if !bound {
@@ -189,7 +190,7 @@ impl ScatterRenderer {
                     }
                     // Each chunk's reflection probe (probe_select.rs).
                     if let Some(b) = probes.as_deref_mut() {
-                        b.at(pass, c.center, c.radius);
+                        b.at(pass, c.center + center_at, c.radius);
                     }
                     match culled {
                         Some((cull, at)) => {
@@ -231,7 +232,7 @@ impl ScatterRenderer {
                     continue;
                 };
                 let Some(buffer) = &c.buffer else { continue };
-                if !visible(c.center, c.radius) {
+                if !visible(c.center + b.at, c.radius) {
                     continue;
                 }
                 let culled = culled_of(b, n);
@@ -243,8 +244,8 @@ impl ScatterRenderer {
                     bind_with(pass, impostor_group, group, b.offset);
                     bound = true;
                 }
-                if let Some(b) = probes.as_deref_mut() {
-                    b.at(pass, c.center, c.radius);
+                if let Some(p) = probes.as_deref_mut() {
+                    p.at(pass, c.center + b.at, c.radius);
                 }
                 match culled {
                     Some((cull, at)) => {

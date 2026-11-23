@@ -697,3 +697,59 @@ fn grass_grows_only_where_the_height_blend_draws_its_layer() {
         "{meadow} bright pixels where the blend draws grass"
     );
 }
+
+/// A terrain that moves carries its scattered copies without placing them
+/// again: after the chunks in reach are placed, moving the terrain (and
+/// the island and the camera with it) places none, and the frame is the
+/// frame before the move, the copies where they were on the ground.
+#[test]
+#[ignore = "requires GPU"]
+fn a_moving_terrain_keeps_its_scatter_placed() {
+    let mut scene = ts::grass_scene();
+    let mut r = Renderer::new_blocking(&scenes::base_desc()).expect("renderer");
+    let mut placed = 0;
+    for _ in 0..64 {
+        let stats = r.render(&scene, &RenderTarget::Offscreen).expect("render");
+        placed += stats.scatter_built;
+        if placed > 0 && stats.scatter_built == 0 {
+            break;
+        }
+    }
+    assert!(placed > 0, "the grass was placed");
+    let still = r.read_offscreen().expect("capture");
+    let step = Vec3::new(0.37, 0.0, -1.13);
+    let shift = Mat4::from_translation(step);
+    for k in 1..=4 {
+        // The whole island moves, the camera with it.
+        let by = step * k as f32;
+        scene.world.terrains[0].transform = Mat4::from_translation(by);
+        for i in &mut scene.objects.instances {
+            i.transform = shift * i.transform;
+        }
+        for i in &mut scene.objects.impostors {
+            i.transform = shift * i.transform;
+        }
+        scene.frame.camera.position += step;
+        scene.frame.camera.target += step;
+        let stats = r.render(&scene, &RenderTarget::Offscreen).expect("render");
+        assert_eq!(stats.scatter_built, 0, "chunks placed again {k} steps on");
+    }
+    let moved = r.read_offscreen().expect("capture");
+    let diff = still
+        .pixels
+        .chunks(4)
+        .zip(moved.pixels.chunks(4))
+        .map(|(a, b)| {
+            (0..3)
+                .map(|c| (a[c] as i32 - b[c] as i32).abs())
+                .sum::<i32>()
+        })
+        .filter(|&d| d > 24)
+        .count();
+    let share = diff as f32 / (still.width * still.height) as f32;
+    if share > 0.01 {
+        save("og-terrain", "scatter-moving-terrain-still", &still);
+        save("og-terrain", "scatter-moving-terrain-moved", &moved);
+    }
+    assert!(share <= 0.01, "{:.2}% of the pixels changed", share * 100.0);
+}

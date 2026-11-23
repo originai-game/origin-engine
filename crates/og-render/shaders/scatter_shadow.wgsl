@@ -14,14 +14,14 @@ struct ScatterShadowOut {
 
 @vertex
 fn vs_shadow(v: ScatterVertex, i: ScatterInstance) -> ScatterShadowOut {
-  return scatter_shadow_vertex(v, i, SCATTER_RIGID, false);
+  return scatter_shadow_vertex(v, scatter_placed(i), SCATTER_RIGID, false);
 }
 
 // A foliage mesh's copy (pipelines.rs FOLIAGE_KIND), its leaves grown and
 // bent as the lit pass draws them (scatter.wgsl scatter_vertex).
 @vertex
 fn vs_shadow_foliage(v: ScatterVertex, i: ScatterInstance, f: ScatterFoliage) -> ScatterShadowOut {
-  return scatter_shadow_vertex(v, i, f, true);
+  return scatter_shadow_vertex(v, scatter_placed(i), f, true);
 }
 
 fn scatter_shadow_vertex(v: ScatterVertex, i: ScatterInstance, f: ScatterFoliage, foliage: bool) -> ScatterShadowOut {

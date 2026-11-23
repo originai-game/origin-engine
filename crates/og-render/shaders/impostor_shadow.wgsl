@@ -23,7 +23,8 @@ struct ImpostorShadowOut {
 };
 
 @vertex
-fn vs_impostor_shadow(@builtin(vertex_index) vertex: u32, i: ScatterInstance) -> ImpostorShadowOut {
+fn vs_impostor_shadow(@builtin(vertex_index) vertex: u32, copy: ScatterInstance) -> ImpostorShadowOut {
+  let i = scatter_placed(copy);
   let size = imp_scale(i.m3);
   // Kept invertible when gone (the card is culled then).
   let model = scatter_shrunk(instance_matrix(i.m0, i.m1, i.m2, i.m3), max(size, 1e-4));

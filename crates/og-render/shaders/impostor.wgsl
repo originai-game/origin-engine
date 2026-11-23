@@ -45,7 +45,7 @@ struct ImpostorOut {
 
 @vertex
 fn vs_impostor(@builtin(vertex_index) vertex: u32, i: ScatterInstance) -> ImpostorOut {
-  return imp_vertex(vertex, i);
+  return imp_vertex(vertex, scatter_placed(i));
 }
 
 fn imp_vertex(vertex: u32, i: ScatterInstance) -> ImpostorOut {
@@ -54,7 +54,7 @@ fn imp_vertex(vertex: u32, i: ScatterInstance) -> ImpostorOut {
   let model = scatter_shrunk(instance_matrix(i.m0, i.m1, i.m2, i.m3), max(size, 1e-4));
   let card = imp_card(model, vertex, frame.view_pos.xyz, false);
   let world = card.world + vec4<f32>(imp_sway(card, i, size, false), 0.0);
-  let previous = card.world + vec4<f32>(imp_sway(card, i, size, true), 0.0);
+  let previous = card.world + vec4<f32>(imp_sway(card, i, size, true) - scatter.moved.xyz, 0.0);
   var o: ImpostorOut;
   o.fade = imp_hidden(i);
   o.clip = select(SCATTER_GONE, mul_point(frame.view_proj, world), size > 0.0 && abs(o.fade) < 1.0);
@@ -430,7 +430,7 @@ fn fs_impostor_prepass(in: ImpostorOut) -> ImpostorPrepass {
 // before shading only the pixels something nearer than the whole model hides.
 @vertex
 fn vs_impostor_front(@builtin(vertex_index) vertex: u32, i: ScatterInstance) -> ImpostorOut {
-  var o = imp_vertex(vertex, i);
+  var o = imp_vertex(vertex, scatter_placed(i));
   let ortho = frame.view_pos.w > 0.5;
   let toward = select(normalize(frame.view_pos.xyz - o.centre), -frame.view_forward.xyz, ortho);
   let front = mul_point(frame.view_proj, vec4<f32>(o.centre + toward * o.root_extent.w, 1.0));

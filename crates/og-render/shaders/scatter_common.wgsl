@@ -11,7 +11,7 @@ struct ScatterUniform {
   view_proj: mat4x4<f32>,     // unjittered (prepass velocity)
   prev_view_proj: mat4x4<f32>,
   wind: vec4<f32>,            // xy: og.Wind's horizontal direction (x, z), z: the scatter's sway (0: still), w: the trample's recovery (s)
-  wind_shape: vec4<f32>,      // x: the frame's origin's y, y: the mesh's top above its origin (m), zw: the frame's origin's x and z (origin.rs)
+  wind_shape: vec4<f32>,      // x: what a point of the frame is shifted by on y to the copies' own place (the frame's origin for a model impostor's, less the terrain's place for a scatter's), y: the mesh's top above its origin (m), zw: that shift on x and z (origin.rs)
   impostor: vec4<f32>,        // the impostor's sphere in the model's space (impostor.rs): xyz its centre, w its radius
   impostor_grid: vec4<f32>,   // x: frames per side of its atlas, y: the distance past which copies draw as impostors (0: never), z: 1 with alpha to coverage, w: 1 when its material's roughness map is the material atlas (impostor.wgsl imp_material)
   impostor_light: vec4<f32>,  // xyz: towards the sun (the shadow cascades' cards face it), w: an impostor's 1 when its atlases hold the lower hemisphere's frames (impostor.rs Impostor::below; a crowd card's elevation)
@@ -28,6 +28,13 @@ struct ScatterUniform {
   // then that part's own colour before its texture (rgb); zero for a
   // card as baked.
   card_leaves: array<vec4<f32>, 4>,
+  // xyz: where the terrain stands in the frame; a copy is placed about it
+  // (scatter.rs) and drawn moved to it (scatter_placed). Zero for a model
+  // impostor's, whose instances are in the frame.
+  terrain: vec4<f32>,
+  // xyz: how far the terrain moved since the last frame: a copy's
+  // previous position is moved back by it.
+  moved: vec4<f32>,
 };
 @group(2) @binding(0) var<uniform> scatter: ScatterUniform;
 // The frame's wind (wind.rs WindField) and the simulated field's lean
@@ -65,7 +72,17 @@ struct ScatterFoliage {
 
 const SCATTER_RIGID = ScatterFoliage(vec4<f32>(0.0), vec4<f32>(0.0));
 
-// The frame's origin (origin.rs), which places a copy's tree in the world.
+// Copy `i` in the frame: moved from its place about the terrain to where
+// the terrain stands.
+fn scatter_placed(i: ScatterInstance) -> ScatterInstance {
+  var o = i;
+  o.m3 = i.m3 + scatter.terrain.xyz;
+  return o;
+}
+
+// What places a copy's tree where its hashes read it: the frame's origin
+// (origin.rs) for a model impostor's, the terrain's place taken off for a
+// scatter's, so its hashes keep their bits as the terrain moves.
 fn scatter_origin() -> vec3<f32> {
   return vec3<f32>(scatter.wind_shape.z, scatter.wind_shape.x, scatter.wind_shape.w);
 }
@@ -105,9 +122,8 @@ fn scatter_hidden(near: f32) -> f32 {
 // A clip position outside the view: the copy's triangles are culled.
 const SCATTER_GONE = vec4<f32>(2.0, 2.0, 2.0, 1.0);
 
-// A hash in [0, 1) of the copy standing at `base` (its place in the world,
-// the same wherever the frame's origin is: scatter.rs places the copies in
-// the world first).
+// A hash in [0, 1) of the copy standing at `base` (by its own place, the
+// same wherever the frame's origin and its terrain are: scatter_origin).
 fn scatter_copy_unit(base: vec3<f32>) -> f32 {
   let at = base.xz + scatter.wind_shape.zw;
   return hash_to_unit(hash_lowbias(bitcast<u32>(at.x) ^ hash_lowbias(bitcast<u32>(at.y))));

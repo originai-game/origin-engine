@@ -45,6 +45,7 @@ struct CullItem {
   bins: vec4<u32>,          // x: the places each region holds, y: the mesh's levels (1 to 3), z: 1 with a card region, w: the sets (1: the main camera's only)
   bands: vec4<u32>,         // x: the first level the main camera's set has a region for, y: how many it has (0: no copy draws its mesh), zw: the second set's
   source: vec4<u32>,        // x: the chunk's first vector in its page of the pool (`copies`)
+  offset: vec4<f32>,        // xyz: where the copies, placed about the terrain, stand in the frame
 };
 
 // scatter_cull.rs ITEM_SLOT: a chunk's row, one per workgroup.
@@ -103,7 +104,7 @@ fn cull_occluded(c: vec3<f32>, r: f32) -> bool {
 fn cull_regions(k: u32) -> vec2<u32> {
   let v0 = cull_copy(k, 0u);
   let v2 = cull_copy(k, 2u);
-  let at = v2.yzw;
+  let at = v2.yzw + item.offset.xyz;
   let scale = length(v0.xyz);
   let flat = at.xz - view.camera.xz;
   let d2 = dot(flat, flat);

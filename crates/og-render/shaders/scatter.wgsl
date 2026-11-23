@@ -54,13 +54,13 @@ fn scatter_hook(in: ScatterOut, front: bool) -> Hook {
 
 @vertex
 fn vs(v: ScatterVertex, i: ScatterInstance) -> ScatterOut {
-  return scatter_vertex(v, i, SCATTER_RIGID, false);
+  return scatter_vertex(v, scatter_placed(i), SCATTER_RIGID, false);
 }
 
 // A foliage mesh's copy (pipelines.rs FOLIAGE_KIND).
 @vertex
 fn vs_foliage(v: ScatterVertex, i: ScatterInstance, f: ScatterFoliage) -> ScatterOut {
-  return scatter_vertex(v, i, f, true);
+  return scatter_vertex(v, scatter_placed(i), f, true);
 }
 
 fn scatter_vertex(v: ScatterVertex, i: ScatterInstance, f: ScatterFoliage, foliage: bool) -> ScatterOut {
@@ -119,7 +119,7 @@ fn scatter_vertex(v: ScatterVertex, i: ScatterInstance, f: ScatterFoliage, folia
   // The camera and the wind move the copies on screen: where the vertex
   // was swayed to the previous frame.
   o.cur_clip = mul_point(scatter.view_proj, world);
-  h.world = (model * vec4<f32>(rest, 1.0)).xyz + prev_sway;
+  h.world = (model * vec4<f32>(rest, 1.0)).xyz + prev_sway - scatter.moved.xyz;
   h.time = frame.time.w;
   h.wind = frame.foliage_wind[1][0];
   let previous = h.world + vertex_offset(h, previous_shader_params());

@@ -159,6 +159,7 @@ impl ScatterRenderer {
             group,
             chunks: HashMap::new(),
             shared: Vec::new(),
+            stood: Vec::new(),
             frame: 0,
             built: 0,
             last_tick: None,

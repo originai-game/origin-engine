@@ -227,6 +227,8 @@ impl ScatterRenderer {
             foliage: [[0.0; 4]; 5],
             leaf_year: crate::foliage::LeafCalendar::gpu(scene.atmosphere.leaves),
             card_leaves: [[0.0; 4]; 4],
+            terrain: [0.0; 4],
+            moved: [0.0; 4],
         };
         let wind_dir = {
             let d = wind.map_or(Vec3::X, |w| w.direction);
@@ -265,6 +267,7 @@ impl ScatterRenderer {
             let frame = self.frame;
             self.retain_chunks(|_, c| frame - c.used < KEEP_FRAMES);
             self.shared.clear();
+            self.stood.clear();
             return ScatterBatches {
                 scatters: batches,
                 impostors,
@@ -281,6 +284,7 @@ impl ScatterRenderer {
         let mut budget = CHUNKS_PER_FRAME;
         let mut gpu_budget = GPU_CHUNKS_PER_FRAME;
         self.shared.resize(scene.world.scatters.len(), None);
+        self.stood.resize(scene.world.scatters.len(), None);
         // Each scatter's terrain draw and parameters: what places before it.
         // A model's further parts are placed by its first.
         let (placing, slots) = ScatterDraw::placing(&scene.world.scatters);
@@ -312,6 +316,13 @@ impl ScatterRenderer {
                 Err(_) => continue,
             };
             let model = t.transform;
+            // The copies are placed about the terrain's place (`at`, in the
+            // frame) with its turn and scale (`turned`), and drawn moved to
+            // it: a terrain that moves keeps its chunks.
+            let at = model.w_axis.truncate();
+            let mut turned = model;
+            turned.w_axis = glam::Vec4::W;
+            let about = Mat4::from_translation(at);
             let along = horizontal_scale(model);
             let local = model.inverse().transform_point3(camera);
             let eye = Vec2::new(local.x, local.z);
@@ -337,13 +348,13 @@ impl ScatterRenderer {
                 t.layers.len(),
                 scene.world.water.iter().map(|w| {
                     let mut m = w.transform;
-                    m.w_axis += scene.frame.origin.extend(0.0);
+                    m.w_axis -= at.extend(0.0);
                     (m, w.size, w.endless)
                 }),
             )
             .with_clearings(scene.world.scatter_clearings.iter().map(|c| {
                 let mut c = *c;
-                c.transform.w_axis += scene.frame.origin.extend(0.0);
+                c.transform.w_axis -= at.extend(0.0);
                 c
             }));
             let mut params: Vec<u32> = std::iter::once(&s)
@@ -362,21 +373,17 @@ impl ScatterRenderer {
                 params.extend(m.to_cols_array().map(f32::to_bits));
                 params.extend(half.to_array().map(f32::to_bits));
             }
-            // The copies are placed in the world (the terrain's placement
-            // plus the scene's origin: exact, as the origin is on a coarse
-            // grid) and then moved by the origin, so each copy's place, and
-            // the wind's phase hashed from its bits, is the same bits
-            // wherever the origin is (`origin.rs`).
-            let world = scene.frame.origin != Vec3::ZERO;
-            let placed_on = if world {
+            // Each copy's place about the terrain, and the hashes taken from
+            // its bits (its shrink, the wind's phase), are the same bits
+            // wherever the terrain and the scene's origin are (`origin.rs`).
+            let placed_on = if at != Vec3::ZERO {
                 let mut w = t.clone();
-                w.transform.w_axis += scene.frame.origin.extend(0.0);
+                w.transform = turned;
                 std::borrow::Cow::Owned(w)
             } else {
                 std::borrow::Cow::Borrowed(t)
             };
-            let transform = placed_on.transform.to_cols_array().map(f32::to_bits);
-            let origin = scene.frame.origin.to_array().map(f32::to_bits);
+            let transform = turned.to_cols_array().map(f32::to_bits);
             let layers: Vec<u32> = t
                 .layers
                 .iter()
@@ -400,7 +407,6 @@ impl ScatterRenderer {
                 revision: revisions[di],
                 params,
                 transform,
-                origin,
                 layers,
                 mesh: d.mesh.index(),
             };
@@ -457,7 +463,7 @@ impl ScatterRenderer {
                         } else {
                             w.size * 0.5
                         };
-                        (w.transform.inverse(), half)
+                        (w.transform.inverse() * about, half)
                     })
                     .collect(),
                 None => Vec::new(),
@@ -469,6 +475,7 @@ impl ScatterRenderer {
                     .scatter_clearings
                     .iter()
                     .filter_map(|c| c.local())
+                    .map(|(m, half)| (m * about, half))
                     .collect(),
                 None => Vec::new(),
             };
@@ -496,7 +503,7 @@ impl ScatterRenderer {
                 let plan = gpu.and_then(|_| {
                     let (x, z) = (cx * CHUNK_CELLS, cz * CHUNK_CELLS);
                     crate::scatter_place::plan(&crate::scatter_place::PlaceInput {
-                        model: t.transform,
+                        model: turned,
                         size: layout.size,
                         layers: chain.clone(),
                         cells: (
@@ -579,7 +586,7 @@ impl ScatterRenderer {
                     // Its bounds: its rectangle over the data's height range.
                     let (h0, h1) = source.range();
                     let (center, radius) = crate::visibility::bounds::world_sphere(
-                        t.transform,
+                        turned,
                         Vec3::new(a.x, h0, a.y),
                         Vec3::new(b.x.min(half.x), h1, b.y.min(half.y)),
                     );
@@ -621,12 +628,7 @@ impl ScatterRenderer {
                                 complete = false;
                                 break 'cells;
                             }
-                            Some(Some((_, mut m, _))) => {
-                                if world {
-                                    m.w_axis -= scene.frame.origin.extend(0.0);
-                                }
-                                placed.push(m)
-                            }
+                            Some(Some((_, m, _))) => placed.push(m),
                             Some(None) => {}
                         }
                     }
@@ -704,17 +706,20 @@ impl ScatterRenderer {
                 view_proj: view_proj.to_cols_array_2d(),
                 prev_view_proj: prev_view_proj.to_cols_array_2d(),
                 wind: wind_row,
-                wind_shape: [
-                    scene.frame.origin.y,
-                    mesh_top,
-                    scene.frame.origin.x,
-                    scene.frame.origin.z,
-                ],
+                // A copy's place about the terrain is what its hashes read:
+                // the frame's point less the terrain's place.
+                wind_shape: [-at.y, mesh_top, -at.x, -at.z],
                 impostor: [0.0; 4],
                 impostor_grid: [0.0; 4],
                 impostor_light: [0.0; 4],
                 impostor_trim: super::trim_gpu(crate::CardTrim::FULL),
                 trample,
+                terrain: at.extend(0.0).to_array(),
+                moved: {
+                    let stood = at + scene.frame.origin;
+                    let last = self.stood[si].replace(stood).unwrap_or(stood);
+                    (stood - last).extend(0.0).to_array()
+                },
                 foliage: super::foliage_gpu(scene.mesh_foliage(d.mesh)),
                 leaf_year: crate::foliage::LeafCalendar::gpu(scene.atmosphere.leaves),
                 // Its card's leaves: of it and the further parts drawn with it.
@@ -789,7 +794,9 @@ impl ScatterRenderer {
                 .map(|k| {
                     let c = self.chunks.get(k)?;
                     let slot = c.slot?;
-                    if !off_camera && !view.intersects_sphere(c.center, c.radius + sway) {
+                    // Its bounds are about the terrain, as its copies are.
+                    let center = c.center + at;
+                    if !off_camera && !view.intersects_sphere(center, c.radius + sway) {
                         return None;
                     }
                     cull_items.push(crate::scatter_cull::CullItem {
@@ -797,6 +804,7 @@ impl ScatterRenderer {
                         first_part: d.with.is_none(),
                         slot,
                         to_terrain: t.transform.inverse(),
+                        offset: at,
                         extent: layout.size,
                         copies: c.count,
                         placed: c.placed.is_some(),
@@ -810,7 +818,7 @@ impl ScatterRenderer {
                         card: impostor.is_some() && d.with.is_none(),
                         off_camera,
                         reach: {
-                            let to = c.center - camera;
+                            let to = center - camera;
                             let flat = to.x.hypot(to.z);
                             (flat - c.radius, flat + c.radius)
                         },
@@ -832,6 +840,7 @@ impl ScatterRenderer {
                 offset: (si as u64 * SLOT) as u32,
                 chunks: keys,
                 sway,
+                at,
                 // A further part's far copies are its first part's card.
                 impostor: impostor
                     .filter(|_| d.with.is_none())

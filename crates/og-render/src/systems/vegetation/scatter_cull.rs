@@ -165,6 +165,7 @@ pub(crate) struct ItemGpu {
     bins: [u32; 4],
     bands: [u32; 4],
     source: [u32; 4],
+    offset: [f32; 4],
 }
 
 /// One chunk to cull this frame, as the scatter renderer plans it.
@@ -179,6 +180,8 @@ pub(crate) struct CullItem {
     pub slot: Slot,
     /// The terrain's space from the frame's, and its size there.
     pub to_terrain: Mat4,
+    /// Where its copies, placed about the terrain, stand in the frame.
+    pub offset: glam::Vec3,
     pub extent: glam::Vec2,
     /// Its copies, the mesh's index count and radius about its origin,
     /// how far a copy moves at most and the scatter's distance (m).
@@ -1006,6 +1009,7 @@ impl ScatterCull {
                     bands[k][1].count,
                 ],
                 source: [(i.slot.offset() / 16) as u32, 0, 0, 0],
+                offset: i.offset.extend(0.0).to_array(),
             };
             let at = row_of[k] as usize * ITEM_SLOT as usize;
             rows[at..at + std::mem::size_of::<ItemGpu>()].copy_from_slice(bytemuck::bytes_of(&gpu));
@@ -1332,6 +1336,7 @@ mod tests {
             first_part: true,
             slot: Slot::default(),
             to_terrain: Mat4::IDENTITY,
+            offset: glam::Vec3::ZERO,
             extent: glam::Vec2::ONE,
             copies: 8,
             placed: false,
@@ -1446,6 +1451,7 @@ mod tests {
                 first_part: true,
                 slot: Slot::default(),
                 to_terrain: Mat4::IDENTITY,
+                offset: glam::Vec3::ZERO,
                 extent: glam::Vec2::splat(64.0),
                 copies: 600 + 37 * (k % 11),
                 placed: false,

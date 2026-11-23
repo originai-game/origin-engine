@@ -291,7 +291,6 @@ fn chunk_keys_compare_by_value() {
         revision: 3,
         params,
         transform: [0; 16],
-        origin: [0; 3],
         layers: vec![1, 2],
         mesh: 4,
     };
