@@ -53,6 +53,13 @@ export declare const Particles: (props: HostProps & {
 export declare const Input: (props: HostProps & {
     value?: string | undefined;
     placeholder?: string | undefined;
+    type?: "text" | "password" | "number" | "email" | "url" | "tel" | "search" | undefined;
+    inputMode?: "none" | "text" | "decimal" | "numeric" | "tel" | "search" | "email" | "url" | undefined;
+    autoComplete?: string | undefined;
+    secret?: boolean | undefined;
+    multiline?: boolean | undefined;
+    maxLength?: number | undefined;
+    readOnly?: boolean | undefined;
 }) => UiNode;
 /** `<Show when={c} fallback={…} keyed>`: compiled to the renderer's `cond`. */
 export declare function Show<T>(props: {

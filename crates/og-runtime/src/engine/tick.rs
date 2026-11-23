@@ -264,8 +264,15 @@ fn frame_here(id: u32, eng: &Engine, elapsed_ms: f64, interval_ms: Option<f64>) 
         let st = eng.state.borrow();
         (st.accumulator_ms, st.step_ms, st.render_ms)
     };
-    // The TSX core keeps no text control the page edits and no clipboard.
-    let (text, copy): (Value, Option<String>) = (Value::Null, None);
+    let (text, copy): (Value, Option<String>) = eng
+        .render
+        .try_borrow_mut()
+        .ok()
+        .and_then(|mut rs| {
+            let ui = rs.ui_next.as_mut()?;
+            Some((ui.text_target(), ui.take_copy()))
+        })
+        .unwrap_or((Value::Null, None));
     // `cursor`: the pointer's shape the UI resolved (og.ui.frameCursor, a
     // CSS cursor name): the web shell sets the canvas's. `cursorImage`, on
     // the frames where it changed: the first of its `url()` images that

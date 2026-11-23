@@ -1,40 +1,30 @@
 # The built-in UI library
 
-Svelte documents built into the engine: `controls/` (each HTML control's
-inside), `components/` (HUD, feedback and pattern pieces, and the genre
-groups) and `screens/`. og-ui provides the capabilities they are written
-on; none of their look is drawn in Rust. docs/ui.md §1 and §2.4 hold the
-contract, `components/README.md` and `screens/README.md` the catalogues.
+TSX components styled with Tailwind utility classes and theme pack slots
+(`crates/og-ui-next/CONVENTIONS.md`): `controls/` (reusable interactive
+primitives), `components/` (HUD, feedback and pattern pieces, and the genre
+groups) and `screens/`. `og-ui-next` provides layout, text, input, animation
+and accessibility; none of a component's look is hardcoded in Rust.
+`docs/ui.md` §1–§4 holds the contract, `components/README.md` and
+`screens/README.md` the catalogues.
 
-## Control documents
+## Controls
 
-A control document is the inside of the element its
-`<meta name="control">` names, instantiated under every such element. A
-game writes the element (`<progress value={$done}>`) and never names the
-document; the cook bundles it when a document of the game has the
-element. `og ui eject controls/<name>` copies one into
-`assets/ui/controls/`, and the game's copy is then that element's control
-everywhere.
+Import reusable controls from `@origingame/engine/ui/components` (or from
+`@origingame/engine/ui/controls/<name>`). `og ui eject controls/<name>` copies
+any control into `assets/ui/controls/<name>.tsx` to customize in a game.
 
-Each one declares the props it reads from its host's attributes, lists
-its parts in `<meta name="parts">`, and reads tokens only. A pack dresses
-it through the control's hook tokens and `host::part(name)` rules, which
-outrank the document's own.
-
-A control that must remember something between frames that the game has
-no stake in (its picker being open) declares it as instance state,
-`<meta name="state:open" content="bool">`: each host has its own value,
-which the document writes with `bind:` and a snapshot carries
-(docs/ui.md §2 Components in documents).
-
-| Host element | Document |
-|---|---|
-| `<progress>`: a track filled to its value | `controls/progress` |
-| `<meter>`: a track whose fill wears its value's region | `controls/meter` |
-
-### Parts
-
-| Document | Parts | Props read from the host |
-|---|---|---|
-| `controls/progress` | `track`, `fill` | `value` |
-| `controls/meter` | `track`, `fill` | `value`, `min`, `max`; `region`, derived by og-ui |
+| Control | File | Pack slots | Role / purpose |
+|---|---|---|---|
+| `Art` | `controls/art.tsx` | pack nine-slice class | Stretched or nine-sliced pack artwork |
+| `Button` | `controls/button.tsx` | `Button.plate[.primary\|danger]` | Primary, plain, danger, ghost, quiet actions; hold-to-confirm |
+| `Checkbox` | `controls/checkbox.tsx` | `Checkbox.box` | Binary or `"mixed"` checkbox (`role="checkbox"`) |
+| `Counter` | `controls/counter.tsx` | — | Animated numeric readout (`tabular-nums`) |
+| `Dialog` | `controls/dialog.tsx` | `Modal.scrim`, `Panel.frame`, `Modal.frame` | Modal dialog (`role="dialog"` / `"alertdialog"`) with focus trap |
+| `Meter` | `controls/meter.tsx` | `Bar.fill` | Scalar gauge (`role="meter"`) with low/high/optimum regions |
+| `Progress` | `controls/progress.tsx` | `Bar.fill` | Determinate progress bar (`role="progressbar"`) |
+| `Select` | `controls/select.tsx` | `Select.trigger`, `Select.menu` | Dropdown combobox (`role="combobox"` + `role="listbox"`) |
+| `Slider` | `controls/slider.tsx` | `Slider.track`, `Slider.fill`, `Slider.thumb` | Range slider (`role="slider"`) with drag and arrow keys |
+| `Switch` | `controls/switch.tsx` | `Switch.track`, `Switch.thumb` | Toggle switch (`role="switch"`) |
+| `Tabs` | `controls/tabs.tsx` | `Tab.bar`, `Tab.indicator` | Horizontal tab bar (`role="tablist"` + `role="tab"`) |
+| `Tooltip` | `controls/tooltip.tsx` | `Tooltip.frame` | Anchored tooltip (`role="tooltip"`) |

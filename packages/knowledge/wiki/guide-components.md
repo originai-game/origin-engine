@@ -24,7 +24,7 @@ By kit (the directory a component is filed in):
 - `shooter`: `ShooterAbilities`, `CombatHud`, `ShooterDamage`, `ShooterEffects`, `Loadout`, `ShooterObjectives`, `ShooterPickups`, `ShooterPrompt`, `ShooterRadar`, `ShooterRound`, `ShooterSquad`, `ShooterVitals`
 - `strategy`: `StrategyAlerts`, `StrategyClock`, `StrategyCommands`, `StrategyGroups`, `StrategyMinimap`, `StrategyQueue`, `StrategyResources`, `StrategySelection`, `StrategyTower`, `StrategyWave`
 - `world`: `Compass`, `InteractionPrompt`, `LootLabel`, `MinimapView`, `Minimap`, `Nameplate`, `OverheadBars`, `SpeechBubble`, `Waypoint`
-- `controls`: `Art`, `Button`, `Counter`, `Meter`, `Progress`
+- `controls`: `Art`, `Button`, `Checkbox`, `Counter`, `Dialog`, `Meter`, `Progress`, `Select`, `Slider`, `Switch`, `Tabs`, `Tooltip`
 - `screens`: `Banner`, `Calendar`, `CalibrationScreen`, `Card`, `Confirm`, `CreatorToolsScreen`, `CreditsScreen`, `DataList`, `FlowChaptersScreen`, `FlowChoices`, `FlowChartScreen`, `FlowGalleryScreen`, `FlowPicture`, `FlowScreen`, `GameOverScreen`, `HudEditorScreen`, `KeyValues`, `LeaderboardScreen`, `LoadingScreen`, `MainMenuScreen`, `ModeSelectScreen`, `NotificationsScreen`, `ObjectiveTracker`, `Pagination`, `PauseScreen`, `ResultsScreen`, `SaveLoadScreen`, `SettingsScreen`, `SplashScreen`, `StarRating`, `Subtitles`, `Table`, `TitleScreen`, `Tree`, `TutorialScreen`
 
 <a id="guide-components-1"></a>
@@ -4162,7 +4162,32 @@ A piece of a panel: drawn on a panel's ground.
 Fixtures: `default`, `primary`, `danger`, `warning`, `contrast`, `outline`, `ghost`, `ghost-muted`, `ghost-faint`, `large`, `pressed`, `busy`, `disabled`.
 
 <a id="guide-components-178"></a>
-### `components §178` Counter
+### `components §178` Checkbox
+
+A control that is checked, unchecked or indeterminate (NSH base's `Checkbox`): it owns its presses, keys and state for screen readers; the pack draws its box (`Checkbox.indicator`, whose `checked:` and `indeterminate:` follow it) and the marks inside (`Checkbox.mark`, `Checkbox.dash`).
+
+`import { Checkbox } from "@origingame/engine/ui/components"` (kit `controls`, `packages/engine/src/ui/controls/checkbox.tsx`).
+
+| Prop | Type | What |
+|---|---|---|
+| `checked?` | `boolean \| undefined` | Checked or not. The game owns the value: a press reports the next one with `onChange`, and the checkbox shows what the game passes back. |
+| `indeterminate?` | `boolean \| undefined` | Neither (a "select all" over a partial selection), over `checked`: screen readers say mixed, and a press asks for checked. |
+| `disabled?` | `boolean \| undefined` |  |
+| `invalid?` | `boolean \| undefined` | Its value fails the game's checks: screen readers say invalid, and `aria-invalid:` styles apply. |
+| `label?` | `string \| undefined` | What a screen reader calls it when its children have no text that says it. |
+| `description?` | `string \| undefined` |  |
+| `class?` | `string \| undefined` | Classes of the document that uses it, after its own. |
+| `onChange?` | `((e: UiEvent, checked: boolean) => void) \| undefined` | The value a press asks for: `true` from unchecked and from indeterminate, `false` from checked. |
+| `children?` | `any` | The label after the box. |
+
+Pack slots: `Checkbox.dash`, `Checkbox.indicator`, `Checkbox.mark`.
+
+A piece of a panel: drawn on a panel's ground.
+
+Fixtures: `unchecked`, `checked`, `indeterminate`, `disabled`.
+
+<a id="guide-components-179"></a>
+### `components §179` Counter
 
 A number that counts to its value as it changes. The count itself is the motion head's (a value-change transition on the text); until it lands the number shows its value at once.
 
@@ -4177,8 +4202,30 @@ A number that counts to its value as it changes. The count itself is the motion 
 | `duration?` | `number \| string \| undefined` | How long a count takes, in ms; the motion head's. |
 | `class?` | `string \| undefined` |  |
 
-<a id="guide-components-179"></a>
-### `components §179` Meter
+<a id="guide-components-180"></a>
+### `components §180` Dialog
+
+A dialog over a scrim (NSH base's `Dialog`; an alert dialog is one with buttons and no other content): modal for screen readers and focus, it pops in by `Modal.frame` over `Modal.scrim`. The pack draws its panel (`Dialog.frame`), heading (`Dialog.title`), text (`Dialog.body`) and button row (`Dialog.actions`). It fills its parent, so a game puts it on the `modal` layer or over the screen it covers.
+
+`import { Dialog } from "@origingame/engine/ui/components"` (kit `controls`, `packages/engine/src/ui/controls/dialog.tsx`).
+
+| Prop | Type | What |
+|---|---|---|
+| `open` | `boolean` | Shown or not. The game owns it: Escape, `back` or a press on the scrim reports `onClose`, and the game hides it. |
+| `title?` | `string \| undefined` | Its heading, which screen readers name it by. |
+| `description?` | `string \| undefined` | What it says under the heading. |
+| `dismissible?` | `boolean \| undefined` | A press on the scrim closes it (default true); a dialog that must be answered sets false. |
+| `class?` | `string \| undefined` | Classes of the document that uses it, on its panel. |
+| `onClose?` | `((e: UiEvent) => void) \| undefined` |  |
+| `actions?` | `any` | The buttons, in a row at its foot. |
+| `children?` | `any` | What it holds between its text and its buttons. |
+
+Pack slots: `Dialog.actions`, `Dialog.body`, `Dialog.frame`, `Dialog.title`, `Modal.frame`, `Modal.scrim`.
+
+Fixtures: `default`.
+
+<a id="guide-components-181"></a>
+### `components §181` Meter
 
 A track whose fill wears its value's region: good, middling or poor.
 
@@ -4197,8 +4244,8 @@ Pack slots: `Bar.fill`.
 
 Fixtures: `optimum`, `suboptimum`, `poor`.
 
-<a id="guide-components-180"></a>
-### `components §180` Progress
+<a id="guide-components-182"></a>
+### `components §182` Progress
 
 A linear progress bar (NSH base's `Progress`): it owns its role, its range 0 to 100 and the indicator's width by the value; the pack draws its track (`Progress.track`) and its indicator (`Bar.fill`, which eases as the value moves).
 
@@ -4217,8 +4264,129 @@ A piece of a panel: drawn on a panel's ground.
 
 Fixtures: `empty`, `third`, `full`, `indeterminate`.
 
-<a id="guide-components-181"></a>
-### `components §181` Banner
+<a id="guide-components-183"></a>
+### `components §183` Select
+
+One value picked from a list (NSH base's `Select`): a combobox for screen readers whose arrows step the value while closed, and whose list opens under the trigger at its width, as one focus group the arrows move in. The pack draws the trigger (`Select.trigger`, `aria-expanded:` while open), the list (`Select.list`) and each option (`Select.option`, `selected:` for the chosen one).
+
+`import { Select } from "@origingame/engine/ui/components"` (kit `controls`, `packages/engine/src/ui/controls/select.tsx`).
+
+| Prop | Type | What |
+|---|---|---|
+| `value` | `string` | The chosen option's value. The game owns it: a pick reports `onChange`. |
+| `options` | `readonly SelectOption[]` |  |
+| `open?` | `boolean \| undefined` | Its list is shown. The game owns it: a press on the trigger reports `onOpenChange`, a pick or `back` closes it. |
+| `disabled?` | `boolean \| undefined` |  |
+| `label?` | `string \| undefined` | What screen readers call it ("Quality"). |
+| `class?` | `string \| undefined` | Classes of the document that uses it, on its trigger. |
+| `onChange?` | `((e: UiEvent, value: string) => void) \| undefined` |  |
+| `onOpenChange?` | `((e: UiEvent, open: boolean) => void) \| undefined` |  |
+
+Each `SelectOption`:
+
+| Field | Type | What |
+|---|---|---|
+| `value` | `string` |  |
+| `label` | `string` |  |
+| `disabled?` | `boolean \| undefined` |  |
+
+Pack slots: `Select.list`, `Select.option`, `Select.trigger`.
+
+A piece of a panel: drawn on a panel's ground.
+
+Fixtures: `closed`, `open`.
+
+<a id="guide-components-184"></a>
+### `components §184` Slider
+
+A value picked along a track (NSH base's `Slider`: a volume, a sensitivity): it owns its presses, drags, keys (the arrows by a step, Page Up and Down by a tenth, Home and End to the ends) and its range for screen readers; the pack draws its track (`Slider.track`), the filled range (`Slider.range`) and the thumb (`Slider.thumb`).
+
+`import { Slider } from "@origingame/engine/ui/components"` (kit `controls`, `packages/engine/src/ui/controls/slider.tsx`).
+
+| Prop | Type | What |
+|---|---|---|
+| `value` | `number` | The value, from `min` to `max`. The game owns it: a press, a drag or a key reports the next one with `onChange`. |
+| `min?` | `number \| undefined` | The range; default 0 to 100. |
+| `max?` | `number \| undefined` |  |
+| `step?` | `number \| undefined` | What the value snaps to, and what one arrow key moves it by; default 1. |
+| `disabled?` | `boolean \| undefined` |  |
+| `label?` | `string \| undefined` | What a screen reader calls it ("Music volume"). |
+| `valueText?` | `string \| undefined` | The value as words for screen readers ("80%"). |
+| `class?` | `string \| undefined` | Classes of the document that uses it, after its own. |
+| `onChange?` | `((e: UiEvent, value: number) => void) \| undefined` | The value it asks for, snapped to the step, as often as it changes during a drag. |
+| `onChangeEnd?` | `((e: UiEvent, value: number) => void) \| undefined` | The change ended (the pointer lifted, a key's step done): the value it ended at, once. |
+
+Pack slots: `Slider.range`, `Slider.thumb`, `Slider.track`.
+
+A piece of a panel: drawn on a panel's ground.
+
+Fixtures: `default`, `empty`, `full`, `disabled`.
+
+<a id="guide-components-185"></a>
+### `components §185` Switch
+
+A setting that is on or off and takes effect at once (NSH base's `Switch`): it owns its presses, keys and state for screen readers; the pack draws its track (`Switch.track`) and the thumb that moves along it (`Switch.thumb`), whose `checked:` and `disabled:` follow the switch.
+
+`import { Switch } from "@origingame/engine/ui/components"` (kit `controls`, `packages/engine/src/ui/controls/switch.tsx`).
+
+| Prop | Type | What |
+|---|---|---|
+| `checked?` | `boolean \| undefined` | On or off. The game owns the value: a press reports the opposite with `onChange`. |
+| `disabled?` | `boolean \| undefined` |  |
+| `label?` | `string \| undefined` | What a screen reader calls it when its children have no text that says it. |
+| `description?` | `string \| undefined` |  |
+| `class?` | `string \| undefined` | Classes of the document that uses it, after its own. |
+| `onChange?` | `((e: UiEvent, checked: boolean) => void) \| undefined` |  |
+| `children?` | `any` | The label before the track. |
+
+Pack slots: `Switch.thumb`, `Switch.track`.
+
+A piece of a panel: drawn on a panel's ground.
+
+Fixtures: `off`, `on`, `disabled`.
+
+<a id="guide-components-186"></a>
+### `components §186` Tabs
+
+The tab list around `Tab`s (NSH base's `Tabs`): one stop of Tab, at the selected tab; the arrows move among its tabs and select each one they reach (WAI-ARIA's tab list, automatic activation). It holds no value and no content: the game shows the selected tab's content beside it.
+
+`import { Tabs } from "@origingame/engine/ui/components"` (kit `controls`, `packages/engine/src/ui/controls/tabs.tsx`).
+
+| Prop | Type | What |
+|---|---|---|
+| `label?` | `string \| undefined` | What screen readers call the list ("Sections"). |
+| `class?` | `string \| undefined` | Classes of the document that uses it, after its own. |
+| `children?` | `any` |  |
+
+Pack slots: `Tab.indicator`, `Tab.item`, `Tab.list`, `Tab.mark`.
+
+A piece of a panel: drawn on a panel's ground.
+
+Fixtures: `default`.
+
+<a id="guide-components-187"></a>
+### `components §187` Tooltip
+
+A hint over its trigger (NSH base's `Tooltip`): it shows while the pointer is over the trigger or the keyboard's focus is in it (WAI-ARIA's tooltip), and its text describes the trigger for screen readers. The pack draws the bubble (`Tooltip.frame`); it stands centred over the trigger's box wherever it moves (`anchor`).
+
+`import { Tooltip } from "@origingame/engine/ui/components"` (kit `controls`, `packages/engine/src/ui/controls/tooltip.tsx`).
+
+| Prop | Type | What |
+|---|---|---|
+| `text` | `string` | What it says. |
+| `placement?` | `"top" \| "bottom" \| undefined` | Where it stands: over its trigger (`top`, the default) or under it (`bottom`). |
+| `open?` | `boolean \| undefined` | Shown whatever the pointer does (a tutorial's hint); otherwise it shows while the trigger is hovered or keyboard-focused. |
+| `class?` | `string \| undefined` | Classes of the document that uses it, on its bubble. |
+| `children?` | `any` | The trigger. |
+
+Pack slots: `Tooltip.frame`.
+
+A piece of a panel: drawn on a panel's ground.
+
+Fixtures: `default`.
+
+<a id="guide-components-188"></a>
+### `components §188` Banner
 
 A call across the scene with no plate: the headline in large HUD type (white, one stroke under the fill and a soft shadow), a lit gold rule under it and the line beneath in quieter HUD type. It rises in with the reward sound; under reduced motion it fades in place.
 
@@ -4233,8 +4401,8 @@ Pack slots: `Plate.frame`.
 
 Fixtures: `default`.
 
-<a id="guide-components-182"></a>
-### `components §182` Calendar
+<a id="guide-components-189"></a>
+### `components §189` Calendar
 
 A HUD plate: the month between cut arrow keys, the days dark recesses, today lit in the accent and a marked day carrying a gold diamond.
 
@@ -4255,8 +4423,8 @@ Fixtures: `default`.
 
 Actions: `previous` (Previous month), `next` (Next month), `pick` (Choose day).
 
-<a id="guide-components-183"></a>
-### `components §183` CalibrationScreen
+<a id="guide-components-190"></a>
+### `components §190` CalibrationScreen
 
 Calibration in three steps: brightness (gamma), the audio offset measured from taps, and the controller's dead zone, each with its slider and test. The game owns the values and writes them back from the events.
 
@@ -4286,8 +4454,8 @@ Fixtures: `default`.
 
 Actions: `confirm` (Next), `back` (Back).
 
-<a id="guide-components-184"></a>
-### `components §184` Card
+<a id="guide-components-191"></a>
+### `components §191` Card
 
 A card: a picture across its top, a heading, a line or two under it, a badge at its top end and the actions the caller supplies. It reports onOpen.
 
@@ -4308,8 +4476,8 @@ Fixtures: `default`.
 
 Actions: `open` (Open).
 
-<a id="guide-components-185"></a>
-### `components §185` Confirm
+<a id="guide-components-192"></a>
+### `components §192` Confirm
 
 A confirmation dialog on its own panel over the pack's scrim, which dims the screen while the panel pops in: the question as its heading, what follows from it, and Cancel and Confirm (the danger variant when confirming destroys something). The game closes it.
 
@@ -4332,8 +4500,8 @@ Fixtures: `default`, `overflow`.
 
 Actions: `confirm` (Confirm), `cancel` (Cancel).
 
-<a id="guide-components-186"></a>
-### `components §186` CreatorToolsScreen
+<a id="guide-components-193"></a>
+### `components §193` CreatorToolsScreen
 
 The creator's tools on the HUD's smoked glass: the four tools a segmented switch lit in the accent, the panels plates with tracked capital titles. On a phone the panel tabs are one strip that scrolls sideways, each a finger's target; a focus move scrolls its tab into view.
 
@@ -4364,8 +4532,8 @@ Fixtures: `default`.
 
 Actions: `back` (Exit).
 
-<a id="guide-components-187"></a>
-### `components §187` CreditsScreen
+<a id="guide-components-194"></a>
+### `components §194` CreditsScreen
 
 The credits: the sections' titles and names rolling over the key art's veil, the logo at the head, and the end and licences the caller supplies. The game moves the roll (offset); it reports onBack and onFaster.
 
@@ -4389,8 +4557,8 @@ Fixtures: `default`.
 
 Actions: `confirm` (Faster), `back` (Back).
 
-<a id="guide-components-188"></a>
-### `components §188` DataList
+<a id="guide-components-195"></a>
+### `components §195` DataList
 
 A HUD plate of rows: a name, its detail and its figure.
 
@@ -4410,8 +4578,8 @@ Fixtures: `default`.
 
 Actions: `choose` (Open).
 
-<a id="guide-components-189"></a>
-### `components §189` FlowChaptersScreen
+<a id="guide-components-196"></a>
+### `components §196` FlowChaptersScreen
 
 A chapter select: the story's chapters in order with their thumbnails, the selected one shown, and Back. It reports onSelect with the chapter's key.
 
@@ -4431,8 +4599,8 @@ Fixtures: `default`.
 
 Actions: `select` (Play the chapter), `back` (Back).
 
-<a id="guide-components-190"></a>
-### `components §190` FlowChoices
+<a id="guide-components-197"></a>
+### `components §197` FlowChoices
 
 An interactive film's choice window over its footage (flow guide §4): a thin bar over the choices drains with the time left; the choices are cut plates docked at the foot, the pending one ringed in the accent, one that cannot be taken dim, a quick-time one with its progress under its words. Hotspots are lit frames at the fractions of the picture the flow gives, so they land on it when the game draws the picture to fill the surface. Past the lock the choices stay and take nothing.
 
@@ -4447,8 +4615,8 @@ Pack slots: `Screen.frame`.
 
 Fixtures: `default`, `locked`, `closed`.
 
-<a id="guide-components-191"></a>
-### `components §191` FlowChartScreen
+<a id="guide-components-198"></a>
+### `components §198` FlowChartScreen
 
 The story so far over the dimmed flow: a band with Back and the title, the chart of flow nodes (seen ones done, the one playing current, the rest locked), and the picked node on a plate lit in the accent, its words beside Play from here, which drops under them where the plate is narrow.
 
@@ -4478,8 +4646,8 @@ Fixtures: `default`, `unseen`, `none`.
 
 Actions: `pick` (Pick a node), `play` (Play from here), `back` (Back).
 
-<a id="guide-components-192"></a>
-### `components §192` FlowGalleryScreen
+<a id="guide-components-199"></a>
+### `components §199` FlowGalleryScreen
 
 An endings gallery: the endings reached and locked, with their thumbnails, the selected one shown, and Back. It reports onSelect with the ending's key.
 
@@ -4499,8 +4667,8 @@ Fixtures: `default`.
 
 Actions: `select` (Watch the ending again), `back` (Back).
 
-<a id="guide-components-193"></a>
-### `components §193` FlowPicture
+<a id="guide-components-200"></a>
+### `components §200` FlowPicture
 
 The footage filling the surface, cropped to cover it, over a deep shade (so a live scene under the flow shows only where the footage has none): the previous picture under it while a dissolve runs. FlowChoices' hotspot fractions land on it because it fills the same surface.
 
@@ -4517,8 +4685,8 @@ Pack slots: `Button.plate`, `Screen.frame`.
 
 Fixtures: `default`, `skip`.
 
-<a id="guide-components-194"></a>
-### `components §194` FlowScreen
+<a id="guide-components-201"></a>
+### `components §201` FlowScreen
 
 A flow as the player sees it, what the engine mounts for project.ogt's `flow`: its picture with its dissolve (a segment with no footage leaves the live scene showing), the captions its timelines say, and its choice window with hotspots and quick-time progress, each press passed to og.flow.choose. Read from og.flow.view each tick; nothing of it is world state.
 
@@ -4532,8 +4700,8 @@ Pack slots: `Button.plate`, `Screen.frame`.
 
 Fixtures: `default`, `skip`.
 
-<a id="guide-components-195"></a>
-### `components §195` GameOverScreen
+<a id="guide-components-202"></a>
+### `components §202` GameOverScreen
 
 Game over: the defeat's line, the run's score and the best, an optional revive offer with its price and the seconds it stays, and Retry, Checkpoint and Quit. The game decides the offer and what each choice costs.
 
@@ -4563,8 +4731,8 @@ Fixtures: `default`.
 
 Actions: `confirm` (Retry).
 
-<a id="guide-components-196"></a>
-### `components §196` HudEditorScreen
+<a id="guide-components-203"></a>
+### `components §203` HudEditorScreen
 
 The HUD editor's frame: a hint at the top until the player moves something, over the editor the caller supplies.
 
@@ -4582,8 +4750,8 @@ Fixtures: `default`.
 
 Actions: `back` (Done).
 
-<a id="guide-components-197"></a>
-### `components §197` KeyValues
+<a id="guide-components-204"></a>
+### `components §204` KeyValues
 
 A table of key and value rows, each with an optional change (a stat comparison). Read only.
 
@@ -4597,8 +4765,8 @@ A piece of a panel: drawn on a panel's ground.
 
 Fixtures: `default`.
 
-<a id="guide-components-198"></a>
-### `components §198` LeaderboardScreen
+<a id="guide-components-205"></a>
+### `components §205` LeaderboardScreen
 
 A leaderboard: global, friends and league tabs, the period, the top rows with the player's own marked, the player's row pinned, and the league's promotion and demotion lines. The game owns the rows.
 
@@ -4625,8 +4793,8 @@ Fixtures: `default`.
 
 Actions: `confirm` (Profile), `back` (Back), `tabNext` (Next tab), `tabPrev` (Previous tab).
 
-<a id="guide-components-199"></a>
-### `components §199` LoadingScreen
+<a id="guide-components-206"></a>
+### `components §206` LoadingScreen
 
 The key art fills the screen. At its foot, over a shade that grows with the words: where the player is going (an eyebrow and the place), the tip on a cut smoked-glass plate, and the progress as the HUD's leaning bar with a spinner and the figure; once ready, Continue (or nothing, when the game does not wait). A press anywhere asks for the next tip.
 
@@ -4652,8 +4820,8 @@ Fixtures: `default`.
 
 Actions: `confirm` (Continue).
 
-<a id="guide-components-200"></a>
-### `components §200` MainMenuScreen
+<a id="guide-components-207"></a>
+### `components §207` MainMenuScreen
 
 The main menu over the key art: the logo or the name as a wordmark, Continue with the last save's line when a save exists, New game, Modes, Settings, Credits and Quit, each drawn only when the game passes its handler, a news card (pressable with onNews) and the version. It resolves in the dark scheme in both schemes.
 
@@ -4685,8 +4853,8 @@ Fixtures: `default`.
 
 Actions: `confirm` (Select).
 
-<a id="guide-components-201"></a>
-### `components §201` ModeSelectScreen
+<a id="guide-components-208"></a>
+### `components §208` ModeSelectScreen
 
 A mode select: the modes as cards with their line, tag and picture, a locked mode's reason, the selected one's detail, and Play. It reports onSelect and onPlay; the game decides what is locked.
 
@@ -4709,8 +4877,8 @@ Fixtures: `default`.
 
 Actions: `confirm` (Play), `back` (Back).
 
-<a id="guide-components-202"></a>
-### `components §202` NotificationsScreen
+<a id="guide-components-209"></a>
+### `components §209` NotificationsScreen
 
 The notification stack in the HUD's top-right corner. A notification is a glass plate with two corners cut, a rail down its leading edge and a wash from it in its tone, the tone's mark in an octagon socket, its title in small capitals of the tone and its body in white, and a quiet close. A toast is the compact form: its mark and its words on a plate that slides back out when it leaves. Each tone has its own hue (warn an amber well apart from gold). Under reduced motion they appear in place.
 
@@ -4729,8 +4897,8 @@ Fixtures: `default`.
 
 Actions: `dismiss` (Dismiss).
 
-<a id="guide-components-203"></a>
-### `components §203` ObjectiveTracker
+<a id="guide-components-210"></a>
+### `components §210` ObjectiveTracker
 
 The tracked objectives over the scene, with no plate: the quest in gold small capitals, then each objective with a gold diamond (filled once done, its words struck and dimmed) over a thin leaning bar in a dark well, cut into cells when the game counts its steps. The first not done is lit; on a phone only it is shown. Read only.
 
@@ -4745,8 +4913,8 @@ Pack slots: `Plate.frame`.
 
 Fixtures: `default`.
 
-<a id="guide-components-204"></a>
-### `components §204` Pagination
+<a id="guide-components-211"></a>
+### `components §211` Pagination
 
 A row of cut keys, the current page lit.
 
@@ -4766,8 +4934,8 @@ Fixtures: `default`.
 
 Actions: `previous` (Previous page), `next` (Next page), `page` (Go to page).
 
-<a id="guide-components-205"></a>
-### `components §205` PauseScreen
+<a id="guide-components-212"></a>
+### `components §212` PauseScreen
 
 The pause menu: Resume, Settings, Controls, Save (grey when not allowed), Load, Quit to menu and Quit game, each drawn only when the game passes its handler, and the game's own rows among them, with the current objective and the time played beside it. Each reports its event.
 
@@ -4807,8 +4975,8 @@ Fixtures: `default`, `ownRows`.
 
 Actions: `confirm` (Select), `back` (Resume).
 
-<a id="guide-components-206"></a>
-### `components §206` ResultsScreen
+<a id="guide-components-213"></a>
+### `components §213` ResultsScreen
 
 After a match: the verdict set large in a lit fill (gold for a win, red for a loss) over the dimmed scene, a rule with a lit diamond, the level in an octagon beside the XP gained and the leaning progress bar, the grade on a hexagon, then the tabs. Summary shows each stat on a cut plate (a best in gold) and each reward as octagon art with its amount on a tag and its name under it. The page scrolls over the actions.
 
@@ -4840,8 +5008,8 @@ Fixtures: `default`.
 
 Actions: `confirm` (Continue).
 
-<a id="guide-components-207"></a>
-### `components §207` SaveLoadScreen
+<a id="guide-components-214"></a>
+### `components §214` SaveLoadScreen
 
 Saving or loading: the slots with their title, place, time played, date and thumbnail (autosaves marked, empty slots offered for a new save), the selected one's preview, and Save or Load and Delete. The game writes the saves.
 
@@ -4867,8 +5035,8 @@ Fixtures: `default`.
 
 Actions: `confirm` (Select), `back` (Back), `details` (Delete).
 
-<a id="guide-components-208"></a>
-### `components §208` SettingsScreen
+<a id="guide-components-215"></a>
+### `components §215` SettingsScreen
 
 Settings: a tab per page and its entries (toggles, ranges, choices and key bindings), Apply and Revert while changes wait, and Defaults. The game owns every value and writes back what the events report.
 
@@ -4897,8 +5065,8 @@ Fixtures: `default`.
 
 Actions: `confirm` (Select), `back` (Back), `tabNext` (Next page), `tabPrev` (Previous page).
 
-<a id="guide-components-209"></a>
-### `components §209` SplashScreen
+<a id="guide-components-216"></a>
+### `components §216` SplashScreen
 
 The boot splash: the studio marks one after another (a texture, or the name set as type), boot progress and what is loading, and Skip. The game moves through the marks.
 
@@ -4920,8 +5088,8 @@ Fixtures: `default`.
 
 Actions: `confirm` (Skip).
 
-<a id="guide-components-210"></a>
-### `components §210` StarRating
+<a id="guide-components-217"></a>
+### `components §217` StarRating
 
 A row of rating stars, each lit once it is earned. The style draws the stars as SVG glyphs (an outlined empty star, a gold one with a lit edge and a glow); the engine draws no vector shapes, so each is the atlas star icon, one tint lit and a dim one unearned, landing with the pop entrance (the style's land, without its overshoot) delayed by the star's index.
 
@@ -4936,8 +5104,8 @@ A row of rating stars, each lit once it is earned. The style draws the stars as 
 
 Fixtures: `default`, `none`, `large`, `all`.
 
-<a id="guide-components-211"></a>
-### `components §211` Subtitles
+<a id="guide-components-218"></a>
+### `components §218` Subtitles
 
 The latest lines at the foot of the screen, centred in HUD type over a soft dark band: the speaker in gold small capitals over the words in white. An older line steps back, smaller. Nothing shows without a line.
 
@@ -4952,8 +5120,8 @@ Pack slots: `Plate.frame`, `Screen.frame`.
 
 Fixtures: `default`, `captions`.
 
-<a id="guide-components-212"></a>
-### `components §212` Table
+<a id="guide-components-219"></a>
+### `components §219` Table
 
 A HUD plate of plain rows: the first column a name, the others figures.
 
@@ -4972,8 +5140,8 @@ Fixtures: `default`.
 
 Actions: `choose` (Open row).
 
-<a id="guide-components-213"></a>
-### `components §213` TitleScreen
+<a id="guide-components-220"></a>
+### `components §220` TitleScreen
 
 The title screen over the key art: the logo or the name as a wordmark, Press any button (Tap on a touch screen) when the game passes onStart, the legal line and the version. Any press reports onStart. It resolves in the dark scheme in both schemes.
 
@@ -4996,8 +5164,8 @@ Fixtures: `default`.
 
 Actions: `confirm` (Start).
 
-<a id="guide-components-214"></a>
-### `components §214` Tree
+<a id="guide-components-221"></a>
+### `components §221` Tree
 
 A HUD plate of rows, each indented by its depth with a faint guide down from its parent; the chosen row is washed in the accent from its leading edge. A leaf has no twisty and keeps its room, so its name lines up with its siblings' that open. A name longer than its row wraps inside it, at any word.
 
@@ -5016,8 +5184,8 @@ Fixtures: `default`, `overflow`.
 
 Actions: `toggle` (Open or close), `choose` (Select).
 
-<a id="guide-components-215"></a>
-### `components §215` TutorialScreen
+<a id="guide-components-222"></a>
+### `components §222` TutorialScreen
 
 A tutorial step: a card with the step's title, what to do, its art and the step count, and Next (hidden while the step waits for the player) and Skip. Given a target that shows, the screen dims around that element, which keeps its own presses, and the card stands under it; else (no target, or one not on screen) nothing dims and the card stands where the game puts it.
 

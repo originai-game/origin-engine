@@ -59,7 +59,17 @@ export const Line = host<HostProps & { points: readonly number[]; closed?: boole
  * meshes) does not draw.
  */
 export const Particles = host<HostProps & { emitter?: ParticleEmitter | 0 | undefined; seed?: number | undefined; delay?: number | undefined; restart?: string | number | undefined }>("particles");
-export const Input = host<HostProps & { value?: string | undefined; placeholder?: string | undefined }>("input");
+export const Input = host<HostProps & {
+  value?: string | undefined;
+  placeholder?: string | undefined;
+  type?: "text" | "password" | "number" | "email" | "url" | "tel" | "search" | undefined;
+  inputMode?: "none" | "text" | "decimal" | "numeric" | "tel" | "search" | "email" | "url" | undefined;
+  autoComplete?: string | undefined;
+  secret?: boolean | undefined;
+  multiline?: boolean | undefined;
+  maxLength?: number | undefined;
+  readOnly?: boolean | undefined;
+}>("input");
 
 /** `<Show when={c} fallback={…} keyed>`: compiled to the renderer's `cond`. */
 export declare function Show<T>(props: { when: T | undefined | null | false; fallback?: UiChild; keyed?: boolean; children: UiChild | ((value: () => NonNullable<T>) => UiChild) }): UiChild;
