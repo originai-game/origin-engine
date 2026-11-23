@@ -144,6 +144,12 @@ export function rendererFor(world: World): Renderer {
   return ui;
 }
 
+/** @internal Sets `ui.locale` to the world's locale and its loaded locales; read at each tick boundary. */
+export function readLocale(ui: Renderer, world: number): void {
+  const locale = JSON.parse(abi().og_i18n_locale(world)) as { active: string; locales: string[] };
+  ui.locale.set(`${locale.active}|${locale.locales.join(",")}`);
+}
+
 /** The UI layers a mount may be on. */
 export type UiLayer = "hud" | "menu" | "modal" | "popover" | "toast" | "tooltip" | "system";
 
@@ -184,19 +190,25 @@ export function useStore<T>(store: { subscribe(run: (value: T) => void): () => v
   return value;
 }
 
-/** The translation of `key` in the mount's locale (`params` fill its slots). */
+/** The mount's world, read with its locale so the caller redraws when the locale changes. */
+function localized(): number {
+  useContext(RendererContext)?.locale();
+  return idOf(useWorld());
+}
+
+/** The translation of `key` in the mount's locale (`params` fill its slots); redrawn when the locale changes. */
 export function t(key: string, params?: Record<string, unknown>): string {
-  return abi().og_i18n_t(idOf(useWorld()), key, json(params));
+  return abi().og_i18n_t(localized(), key, json(params));
 }
 export function formatNumber(value: number, format?: unknown): string {
-  return abi().og_i18n_format_number(idOf(useWorld()), value, json(format));
+  return abi().og_i18n_format_number(localized(), value, json(format));
 }
 export function formatCompact(value: number, decimals?: number): string {
-  return abi().og_i18n_format_compact(idOf(useWorld()), value, decimals);
+  return abi().og_i18n_format_compact(localized(), value, decimals);
 }
 export function formatDuration(seconds: number, style?: string): string {
-  return abi().og_i18n_format_duration(idOf(useWorld()), seconds, style);
+  return abi().og_i18n_format_duration(localized(), seconds, style);
 }
 export function formatCurrency(amount: number, currency: string): string {
-  return abi().og_i18n_format_currency(idOf(useWorld()), amount, currency);
+  return abi().og_i18n_format_currency(localized(), amount, currency);
 }

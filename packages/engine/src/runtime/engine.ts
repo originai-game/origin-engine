@@ -11,7 +11,7 @@ import { type CursorImage, type Result, json, parse, refused } from "./result.ts
 import { rt } from "./state.ts";
 import { QueryImpl, learnBuild } from "./views.ts";
 import { rateOf, uiReactor, uiReactors, worldFor, worlds } from "./world.ts";
-import { mount, renderers } from "../ui/index.ts";
+import { mount, readLocale, renderers } from "../ui/index.ts";
 import { flowScreen } from "../ui/rt.ts";
 import type { UiChild } from "../ui/types.ts";
 import { pumpInspector } from "../ui/inspector-host.ts";
@@ -36,6 +36,7 @@ export const dispatch: Dispatcher = (kind, engine, id, query, tick, dt, elapsed,
       const ui = renderers.get(engine);
       if (ui) {
         ui.clock.set({ tick, dt });
+        readLocale(ui, engine);
         ui.flush();
         const errors = ui.errors.splice(0);
         if (errors.length > 0) return errors.join("\n");

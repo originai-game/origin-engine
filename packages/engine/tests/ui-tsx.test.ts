@@ -348,7 +348,7 @@ test("onLongPress and onHold listen on the tree's codes, with hold and autofocus
 // A built-in component's string table, cooked into a game that uses the
 // built-in components and recorded by its import, reaches the world before
 // the component's t() reads it: without it the text is the raw key.
-test("a component's imported string table is registered before it is built", () => {
+test("a component's imported string table is registered before it is built, and its text follows a locale change", () => {
   loadNativeHost();
   const dir = mkdtempSync(join(tmpdir(), "og-tsx-strings-"));
   try {
@@ -363,14 +363,20 @@ test("a component's imported string table is registered before it is built", () 
       ui(world) {
         // What the build makes of the component's `import "./states.en.ogt"`.
         strings("@ui/components/base/states.en.ogt");
-        mount(world, () => { shown.push(t("base.error.retry")); return Text({ children: shown[0] }); }, {});
+        strings("@ui/components/base/states.zh-CN.ogt");
+        mount(world, () => Text({ children: () => { const s = t("base.error.retry"); shown.push(s); return s; } }), {});
       },
     });
     const created = createEngine(game as unknown as GameToken, { root: dir });
     if (!created.ok) throw new Error(created.reason);
     const engine = created.value;
     engine.frame(1000 / 60);
-    expect(shown).toEqual(["Try again"]);
+    expect(shown[0]).toBe("Try again");
+    // A locale switch redraws the text at the next tick boundary.
+    og.i18n.setLocale(engine.world, "zh-CN");
+    engine.frame(1000 / 60);
+    engine.frame(1000 / 60);
+    expect(shown.at(-1)).toBe("重试");
     renderers.delete((engine.world as unknown as { id: number }).id);
   } finally {
     rmSync(dir, { recursive: true, force: true });

@@ -113,7 +113,7 @@ export declare function mount<P>(world: World, Component: (props: P) => UiChild,
 export declare function useStore<T>(store: {
     subscribe(run: (value: T) => void): () => void;
 }): Accessor<T>;
-/** The translation of `key` in the mount's locale (`params` fill its slots). */
+/** The translation of `key` in the mount's locale (`params` fill its slots); redrawn when the locale changes. */
 export declare function t(key: string, params?: Record<string, unknown>): string;
 export declare function formatNumber(value: number, format?: unknown): string;
 export declare function formatCompact(value: number, decimals?: number): string;

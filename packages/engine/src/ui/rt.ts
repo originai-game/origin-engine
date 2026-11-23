@@ -95,6 +95,12 @@ export class Renderer {
    * clock, so a replay reveals the same characters on the same tick.
    */
   readonly clock = createSignal({ tick: 0, dt: 0 }, { equals: (a, b) => a.tick === b.tick && a.dt === b.dt });
+  /**
+   * The world's active locale and its loaded locales, set at each tick
+   * boundary before the flush: what `t()` and the formatters read, so a
+   * `setLocale` redraws every string the UI shows in the new language.
+   */
+  readonly locale = createSignal("");
 
   private readonly transport: Transport;
   readonly world: World;
