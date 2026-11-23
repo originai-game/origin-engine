@@ -312,6 +312,12 @@ impl AtmosphereGpu {
                 for (i, e) in clear_sky_light(look, sun, color).iter().enumerate() {
                     a.clouds[row + i] = e.extend(0.0).to_array();
                 }
+                // What lies under the horizon, in the w of the three
+                // horizontal rows (sky_look.wgsl `low_sky_light`).
+                let under = clear_sky_mean(look, sun, color, Vec3::NEG_Y);
+                for (i, e) in under.to_array().iter().enumerate() {
+                    a.clouds[row + 1 + i][3] = *e;
+                }
                 // A live sky holds the deck in the image-based light, which the
                 // scene then leaves undimmed (RenderScene::sky_captured). The
                 // sea's foam takes that captured light, not the analytical
@@ -619,23 +625,31 @@ pub(crate) fn clear_sky_light(look: &SkyLook, sun: Vec3, color: Vec3) -> [Vec3; 
     let s = sun.normalize_or(Vec3::Y);
     let toward = Vec3::new(s.x, 0.0, s.z).normalize_or(Vec3::Z);
     let across = Vec3::new(-toward.z, 0.0, toward.x);
-    [Vec3::Y, toward, -toward, across].map(|n| {
-        let t = if n.y.abs() > 0.5 { Vec3::X } else { Vec3::Y };
-        let b = n.cross(t).normalize();
-        let t = b.cross(n);
-        let (mut sum, mut weight) = (Vec3::ZERO, 0.0);
-        for theta in [15.0f32, 45.0, 75.0] {
-            let (st, ct) = theta.to_radians().sin_cos();
-            for k in 0..8 {
-                let (sp, cp) = (k as f32 * std::f32::consts::FRAC_PI_4).sin_cos();
-                let d = (n * ct + (t * cp + b * sp) * st).normalize();
-                let w = ct * st;
-                sum += clear_sky(look, s, color, d) * w;
-                weight += w;
-            }
+    [Vec3::Y, toward, -toward, across].map(|n| clear_sky_mean(look, sun, color, n))
+}
+
+/// The cosine weighted mean of [`clear_sky`] over the hemisphere about unit
+/// `n` ([`clear_sky_light`]). About straight down it is what lies under
+/// the horizon: the ground the sky draws there, which a surface facing
+/// the horizon takes half of its light from (sky_look.wgsl
+/// `low_sky_light` takes it out again).
+fn clear_sky_mean(look: &SkyLook, sun: Vec3, color: Vec3, n: Vec3) -> Vec3 {
+    let s = sun.normalize_or(Vec3::Y);
+    let t = if n.y.abs() > 0.5 { Vec3::X } else { Vec3::Y };
+    let b = n.cross(t).normalize();
+    let t = b.cross(n);
+    let (mut sum, mut weight) = (Vec3::ZERO, 0.0);
+    for theta in [15.0f32, 45.0, 75.0] {
+        let (st, ct) = theta.to_radians().sin_cos();
+        for k in 0..8 {
+            let (sp, cp) = (k as f32 * std::f32::consts::FRAC_PI_4).sin_cos();
+            let d = (n * ct + (t * cp + b * sp) * st).normalize();
+            let w = ct * st;
+            sum += clear_sky(look, s, color, d) * w;
+            weight += w;
         }
-        sum / weight
-    })
+    }
+    sum / weight
 }
 
 fn mix3(a: Vec3, b: Vec3, t: f32) -> Vec3 {

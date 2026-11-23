@@ -38,7 +38,9 @@ module atmosphere {
 | [`og.DayNight`](atmosphere/record-DayNight.md) | resource |  | A day-night cycle: the time of day drives the sun's direction, the sky's colours, stars and moon, the DirectionalLight drawn (the sun by day, a dim moon opposite it by night), the ambient light and t… |
 | [`og.Season`](atmosphere/record-Season.md) | resource |  | The time of year: a calendar date, a latitude and a climate. |
 | [`og.PhysicalSky`](atmosphere/record-PhysicalSky.md) | resource |  | A physical sky: sunlight, and by night moonlight by its phase, scattered by the air (Rayleigh) and haze (Mie), with ozone, in a spherical atmosphere of Earth's proportions with multiple scattering (H… |
-| [`og.Clouds`](atmosphere/record-Clouds.md) | resource |  | Volumetric cumulus over any background, including an authored LDR or HDR Environment, plus thin high cirrus. |
+| [`CloudKind`](atmosphere/type-CloudKind.md) | enum |  | What kind of cloud og.Clouds' volumetric layer holds: the shape its clouds take, whatever their cover. |
+| [`CloudKind()`](#column-CloudKind) | column kind |  | A CloudKind field: the variant's index. |
+| [`og.Clouds`](atmosphere/record-Clouds.md) | resource |  | Volumetric clouds of one kind (`kind`: cumulus by default) over any background, including an authored LDR or HDR Environment, plus thin high cirrus. |
 | [`og.Aurora`](atmosphere/record-Aurora.md) | resource |  | The aurora: curtains of light in the upper atmosphere raymarched in the procedural sky (after Lawlor and Genetti 2011), each a sheet of falling electrons along the auroral oval, folded by travelling … |
 | [`og.WeatherState`](atmosphere/record-WeatherState.md) | resource |  | The weather's effect on the world, simulated in the tick from og.Weather so gameplay can read it: how wet the ground is, how much standing water, snow and dust lie on it, and the lightning strikes, d… |
 | [`og.LightningStrike`](atmosphere/record-LightningStrike.md) | event |  | Lightning struck, in the tick og.weather drew it (og.WeatherState.lightning): read in the systems after og.weather that tick, or the next tick's first. |
@@ -55,11 +57,23 @@ module atmosphere {
 
 ## Column kinds
 
-Each is a factory, `WindMotorKind(value?, options?)`, that makes one field of a component or resource layout.
+Each is a factory, `CloudKind(value?, options?)`, that makes one field of a component or resource layout.
 
 | Column | Value | Typed array | Stride | Doc |
 |---|---|---|---|---|
+| <a id="column-CloudKind"></a>`CloudKind` | `CloudKind` | `Uint32Array` | 1 | A CloudKind field: the variant's index. |
 | <a id="column-WindMotorKind"></a>`WindMotorKind` | `WindMotorKind` | `Uint32Array` | 1 | A WindMotorKind field: the variant's index. |
+
+```ogt
+column CloudKind {
+  doc "A CloudKind field: the variant's index."
+  array Uint32Array
+  stride 1
+  value CloudKind
+}
+```
+
+<sub>Module `atmosphere` line 358</sub>
 
 ```ogt
 column WindMotorKind {
@@ -70,7 +84,7 @@ column WindMotorKind {
 }
 ```
 
-<sub>Module `atmosphere` line 736</sub>
+<sub>Module `atmosphere` line 752</sub>
 
 ## Constants
 

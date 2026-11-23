@@ -84,6 +84,7 @@ export const SoftBodyShape = ((value = "sphere" as Api.SoftBodyShape, options) =
 export { MAX_RAYCAST_HITS, LOCK_TRANSLATION_X, LOCK_TRANSLATION_Y, LOCK_TRANSLATION_Z, LOCK_ROTATION_X, LOCK_ROTATION_Y, LOCK_ROTATION_Z, PROFILE_2D, PROFILE_3D, CHARACTER_JUMPED, CHARACTER_LANDED, CHARACTER_WALL_JUMPED, CHARACTER_AIR_JUMPED, CHARACTER_LEFT_GROUND, CHARACTER_BUMPED, PIN_TOP, PIN_TOP_CORNERS, PIN_LEFT, PIN_TOP_RINGS } from "./consts.ts";
 
 // atmosphere
+export const CloudKind = ((value = "cumulus" as Api.CloudKind, options) => spec("CloudKind", value, options)) as typeof Api.CloudKind;
 export const WindMotorKind = ((value = "omni" as Api.WindMotorKind, options) => spec("WindMotorKind", value, options)) as typeof Api.WindMotorKind;
 export { WEATHER_NONE, WEATHER_RAIN, WEATHER_SNOW, WEATHER_DUST, WEATHER_MIST, SEASON_SPRING, SEASON_SUMMER, SEASON_AUTUMN, SEASON_WINTER } from "./consts.ts";
 

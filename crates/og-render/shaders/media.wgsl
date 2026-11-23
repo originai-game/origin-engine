@@ -89,3 +89,13 @@ fn hg_phase(cos_t: f32, g: f32) -> f32 {
   let g2 = g * g;
   return (1.0 - g2) / (4.0 * PI * pow(max(1.0 + g2 - 2.0 * g * cos_t, 1e-4), 1.5));
 }
+
+// Draine's phase function (Draine 2003, "Scattering by Interstellar Dust
+// Grains"), Henyey-Greenstein's with a lobe that rises again backwards by
+// `a` (0: Henyey-Greenstein's own): with it Jendersie and d'Eon fit Mie
+// scattering by water droplets (sky.wgsl `cloud_phase`).
+fn draine_phase(cos_t: f32, g: f32, a: f32) -> f32 {
+  let g2 = g * g;
+  return (1.0 - g2) * (1.0 + a * cos_t * cos_t)
+    / (4.0 * PI * pow(max(1.0 + g2 - 2.0 * g * cos_t, 1e-5), 1.5) * (1.0 + a * (1.0 + 2.0 * g2) / 3.0));
+}

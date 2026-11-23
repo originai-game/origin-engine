@@ -567,7 +567,31 @@ depth-normal prepass: the first one pays for it.
   (set it from og.load.environmentSun). For a cloud sea, put `base` and
   `base + thickness` below the camera: the same march draws the sunlit tops
   and fades into the distant background without cutting at the horizon.
-  `steps` is their cost. Under a procedural sky, clouds are part of the
+  `steps` is their cost. `kind` is the clouds' shape and `coverage` how
+  much of the sky they take; set them apart. Cumulus is heaps on a flat
+  base (0.2 to 0.4 cover reads as fair weather, since from the ground the
+  clouds' sides fill the gaps towards the horizon; past 0.8 it closes into
+  a lumpy deck). For a sheet or a sea of cloud use stratus (flat, even) or
+  stratocumulus (rolls and patches with gaps) at 0.7 to 0.95, not cumulus
+  at a high cover. Cumulonimbus is storm towers: give it 6 to 10 km of
+  `thickness` and a cover under 0.5, or the towers merge. A cloud has a
+  surface: `density` is what its body reaches some tens of metres inside
+  it (0.04 is a solid white cumulus with a dark base; 0.01 to 0.02 lets
+  the sun through a thin sheet), and `detail` is how deep the fine noise
+  erodes that surface (0 smooth lumps, 0.35 billows, 1 wisps). Clouds
+  shade themselves and each other over kilometres, so towards a low sun
+  or moon their bodies are darker than the sky and their rims bright.
+  A base is as dark as its cloud is thick: a cumulus under some 300 m of
+  `thickness` lets most of the light through and is bright from below.
+  Heaps need a `thickness` of a fifth of `scale` or more; thinner, they
+  are flat slabs seen from the side. Under a gradient sky or an
+  og.Environment map, which have no air to fade them, a low layer fades
+  with its distance and is gone before the horizon. Under a map the
+  clouds take the map's light at og.Environment's `intensity`: at 1 they
+  are lit as the map's own clouds are, shaded bases under lit edges; at
+  2 they stand brighter than the sky drawn behind them, evenly, and
+  their shade is lost.
+  Under a procedural sky, clouds are part of the
   sky: they are lit as bright as the sky behind them is drawn, so
   `environmentIntensity` (and og.DayNight's twilight lift) brightens or
   darkens the land under them, never the deck against the clear sky.

@@ -117,6 +117,20 @@ impl Renderer {
                     visibility: wgpu::ShaderStages::VERTEX_FRAGMENT,
                     ..texture_entry(6, true, wgpu::TextureViewDimension::D2)
                 },
+                // The clouds' detail volume and map (clouds.rs) and their
+                // Beer shadow map (clouds/shadow.rs).
+                wgpu::BindGroupLayoutEntry {
+                    visibility: wgpu::ShaderStages::VERTEX_FRAGMENT,
+                    ..texture_entry(7, true, wgpu::TextureViewDimension::D3)
+                },
+                wgpu::BindGroupLayoutEntry {
+                    visibility: wgpu::ShaderStages::VERTEX_FRAGMENT,
+                    ..texture_entry(8, true, wgpu::TextureViewDimension::D2)
+                },
+                wgpu::BindGroupLayoutEntry {
+                    visibility: wgpu::ShaderStages::VERTEX_FRAGMENT,
+                    ..texture_entry(9, true, wgpu::TextureViewDimension::D2)
+                },
             ],
         });
         let material_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {

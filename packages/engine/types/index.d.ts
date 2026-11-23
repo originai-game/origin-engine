@@ -279,6 +279,8 @@ export interface ColumnKinds {
   Simulation: { readonly array: Uint32Array; readonly stride: 1; readonly value: Simulation };
   /** A SoftBodyShape field: the variant's index. */
   SoftBodyShape: { readonly array: Uint32Array; readonly stride: 1; readonly value: SoftBodyShape };
+  /** A CloudKind field: the variant's index. */
+  CloudKind: { readonly array: Uint32Array; readonly stride: 1; readonly value: CloudKind };
   /** A WindMotorKind field: the variant's index. */
   WindMotorKind: { readonly array: Uint32Array; readonly stride: 1; readonly value: WindMotorKind };
   /** A SkeletonAsset handle field. */
@@ -17941,7 +17943,25 @@ export interface PhysicalSky {
 }
 
 /**
- * Volumetric cumulus over any background, including an authored LDR or HDR Environment, plus thin high cirrus. The same curved-shell march works above, inside or below the deck: above top, see sunlit tops fading with distance. Lit by the DirectionalLight (aim from og.load.environmentSun for an authored sky) and the environment's SH ambient; procedural skies keep their clear-sky lighting. Wind drifts shapes deterministically. Cover dims scene lighting and cumulus casts shadows. Alone clouds bring the built-in sky. Visual only.
+ * What kind of cloud og.Clouds' volumetric layer holds: the shape its clouds take, whatever their cover.
+ * - `"cumulus"`: Heaped clouds on a flat base, their tops domes of billows: fair weather at a low cover, towering at a high one.
+ * - `"stratus"`: A flat, even sheet low in the layer: a grey overcast, or a sea of cloud seen from above.
+ * - `"stratocumulus"`: A low sheet of rolls and patches with gaps between them.
+ * - `"cumulonimbus"`: Towers through the whole layer, the strongest spreading into an anvil under its top: give the layer 6 to 10 km of thickness.
+ */
+export type CloudKind = "cumulus" | "stratus" | "stratocumulus" | "cumulonimbus";
+
+/**
+ * A CloudKind field: the variant's index.
+ *
+ * A `CloudKind` field: stored in a `Uint32Array` with stride 1.
+ * @param value The field's default; omitted, the column's zero value.
+ * @param options Range, unit, label, docs and the tunable flag.
+ */
+export declare function CloudKind(value?: CloudKind, options?: FieldOptions): FieldSpec<"CloudKind">;
+
+/**
+ * Volumetric clouds of one kind (`kind`: cumulus by default) over any background, including an authored LDR or HDR Environment, plus thin high cirrus. The same curved-shell march works above, inside or below the deck: above top, see sunlit tops fading with distance. Lit by the DirectionalLight (aim from og.load.environmentSun for an authored sky) and the environment's SH ambient; procedural skies keep their clear-sky lighting. Wind drifts shapes deterministically. Cover dims scene lighting and the clouds cast shadows. Alone clouds bring the built-in sky. Visual only.
  * See `render §7`.
  *
  * The `Clouds` resource (token `og.Clouds`).
@@ -17949,8 +17969,10 @@ export interface PhysicalSky {
 export interface Clouds {
   /** Draw the clouds. */
   enabled: boolean;
+  /** The kind of cloud in the volumetric layer. */
+  kind: CloudKind;
   /**
-   * How much of the sky the cumulus covers: 0 none, 0.3 fair weather, 0.6 broken, 1 overcast.
+   * How much of the sky the clouds cover: 0 none, 0.3 fair weather, 0.6 broken, 1 overcast.
    *
    * @default 0.45
    * @range 0..1
@@ -17959,7 +17981,7 @@ export interface Clouds {
    */
   coverage: number;
   /**
-   * How thick they are per metre (0.04: cumulus; 0.01: thin and translucent; 0.08: dense storm cloud).
+   * How thick a cloud's body is per metre, reached some tens of metres inside its surface (0.04: cumulus; 0.01: thin and translucent; 0.08: dense storm cloud).
    *
    * @default 0.04
    * @range 0..0.5
@@ -18007,7 +18029,7 @@ export interface Clouds {
    */
   color: Color;
   /**
-   * How much fine noise erodes their edges (0: smooth blobs, 1: wispy).
+   * How deep fine noise erodes their surface (0: smooth lumps, 0.35: billows, 1: wispy).
    *
    * @default 0.35
    * @range 0..1
@@ -36933,10 +36955,10 @@ export declare namespace og {
    */
   const PhysicalSky: ResourceType<{ readonly enabled: FieldSpec<"bool">; readonly haze: FieldSpec<"f32">; readonly airDensity: FieldSpec<"f32">; readonly ozone: FieldSpec<"f32">; readonly groundAlbedo: FieldSpec<"Color">; readonly altitude: FieldSpec<"f32">; readonly night: FieldSpec<"Color"> }, PhysicalSky>;
   /**
-   * Volumetric cumulus over any background, including an authored LDR or HDR Environment, plus thin high cirrus. The same curved-shell march works above, inside or below the deck: above top, see sunlit tops fading with distance. Lit by the DirectionalLight (aim from og.load.environmentSun for an authored sky) and the environment's SH ambient; procedural skies keep their clear-sky lighting. Wind drifts shapes deterministically. Cover dims scene lighting and cumulus casts shadows. Alone clouds bring the built-in sky. Visual only.
+   * Volumetric clouds of one kind (`kind`: cumulus by default) over any background, including an authored LDR or HDR Environment, plus thin high cirrus. The same curved-shell march works above, inside or below the deck: above top, see sunlit tops fading with distance. Lit by the DirectionalLight (aim from og.load.environmentSun for an authored sky) and the environment's SH ambient; procedural skies keep their clear-sky lighting. Wind drifts shapes deterministically. Cover dims scene lighting and the clouds cast shadows. Alone clouds bring the built-in sky. Visual only.
    * See `render §7`.
    */
-  const Clouds: ResourceType<{ readonly enabled: FieldSpec<"bool">; readonly coverage: FieldSpec<"f32">; readonly density: FieldSpec<"f32">; readonly base: FieldSpec<"f32">; readonly thickness: FieldSpec<"f32">; readonly scale: FieldSpec<"f32">; readonly wind: FieldSpec<"Vector3">; readonly color: FieldSpec<"Color">; readonly detail: FieldSpec<"f32">; readonly layer: FieldSpec<"f32">; readonly layerAltitude: FieldSpec<"f32">; readonly shadows: FieldSpec<"f32">; readonly steps: FieldSpec<"u32"> }, Clouds>;
+  const Clouds: ResourceType<{ readonly enabled: FieldSpec<"bool">; readonly kind: FieldSpec<"CloudKind">; readonly coverage: FieldSpec<"f32">; readonly density: FieldSpec<"f32">; readonly base: FieldSpec<"f32">; readonly thickness: FieldSpec<"f32">; readonly scale: FieldSpec<"f32">; readonly wind: FieldSpec<"Vector3">; readonly color: FieldSpec<"Color">; readonly detail: FieldSpec<"f32">; readonly layer: FieldSpec<"f32">; readonly layerAltitude: FieldSpec<"f32">; readonly shadows: FieldSpec<"f32">; readonly steps: FieldSpec<"u32"> }, Clouds>;
   /**
    * The aurora: curtains of light in the upper atmosphere raymarched in the procedural sky (after Lawlor and Genetti 2011), each a sheet of falling electrons along the auroral oval, folded by travelling waves and curled by a Kelvin-Helmholtz instability, glowing by height as the electrons' energy deposits (green oxygen near 114 km, a nitrogen border below, red oxygen above 200 km; Whiter et al. 2023). Emission only, under the clouds; invisible against a daylight sky. It follows the tick's clock. Drawn over the procedural sky. Visual only.
    * See `render §7`.

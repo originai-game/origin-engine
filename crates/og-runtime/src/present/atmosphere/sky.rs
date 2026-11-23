@@ -7,7 +7,7 @@ use crate::bind::season::Now as SeasonNow;
 use crate::bind::wind::WorldWind;
 use crate::engine::engine;
 use crate::host::codec::Layout;
-use crate::host::wire::{FromJson, record};
+use crate::host::wire::{self, FromJson, record};
 use crate::present::fx::resource;
 use glam::Vec3;
 #[cfg(not(feature = "publish"))]
@@ -275,6 +275,12 @@ pub(super) fn extract(
         .and_then(|c| record::Clouds::from_json(&c).ok())
         .filter(|c| c.enabled)
         .map(|c| og_render::Clouds {
+            kind: match c.kind {
+                wire::CloudKind::Cumulus => og_render::CloudKind::Cumulus,
+                wire::CloudKind::Stratus => og_render::CloudKind::Stratus,
+                wire::CloudKind::Stratocumulus => og_render::CloudKind::Stratocumulus,
+                wire::CloudKind::Cumulonimbus => og_render::CloudKind::Cumulonimbus,
+            },
             coverage: c.coverage,
             density: c.density,
             base: c.base,

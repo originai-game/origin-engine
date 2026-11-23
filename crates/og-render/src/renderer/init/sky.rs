@@ -158,7 +158,7 @@ impl Renderer {
         let ground =
             ground_heights::GroundCatcher::new(device, [frame_layout, sky_layout], samples);
         let ibl = ibl::IblGenerator::new(device);
-        let cloud_noise = clouds::CloudNoise::placeholder(device, queue);
+        let cloud_noise = clouds::CloudNoise::placeholder(device);
         let cloud_shadow = clouds::CloudShadow::placeholder(device);
         let sky_params = crate::traffic::create_buffer(
             device,

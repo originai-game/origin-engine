@@ -20,6 +20,12 @@ struct SkyParams {
 // The aurora's footprint and deposition table (aurora.rs): a 1×1
 // placeholder until a frame has an aurora.
 @group(1) @binding(6) var aurora_map: texture_2d<f32>;
+// The clouds' Beer shadow map (clouds/shadow.rs, cloud_shadow_bake.wgsl):
+// over the cloud field's period, the cloud along the ray to the sun as a
+// slab: r where it begins (of the layer's height, from the top), g where
+// it ends, b its optical depth. A texel of nothing until it is baked
+// (frame.clouds[11].z).
+@group(1) @binding(9) var cloud_light: texture_2d<f32>;
 
 // grey: the overcast strip's shared grey (clouds_over), a cloud layer as clouds_march answers one, made by
 // vs_sky_look; zero from vs_sky, for the fragment stages that march no clouds (each pipeline with vs_sky_look
@@ -240,7 +246,160 @@ fn sky_physical_look(d: vec3<f32>) -> vec3<f32> {
 // the sun's and the sky's dimming by the cover (Clouds::light); [5] a
 // lightning flash in the cloud: where (frame coordinates), how bright;
 // [6..10] the clear sky's light; [10] xy the viewer's place in the world
-// (x and z, wrapped as the wind's offset is).
+// (x and z, wrapped as the wind's offset is), zw the run per metre it
+// rises of the ray their shadow is baked along; [11] x the world's shadow
+// map's side, y its strength, z 1 when the Beer shadow map holds the
+// frame's clouds; [12], [13] the kind's numbers (clouds_shape.wgsl).
+
+// ── the clouds' light ───────────────────────────────────────────────
+// Cloud droplets' phase function: the blend of a Henyey-Greenstein and a
+// Draine lobe that Jendersie and d'Eon fit to Mie scattering ("An
+// Approximate Mie Scattering Function for Fog and Cloud Rendering",
+// SIGGRAPH 2023 Talks, equations 2 to 7), at a droplet diameter of 6 µm:
+// a narrow forward peak (a cloud's silver lining against the sun) over a
+// broad lobe that rises again backwards (a cloud's relief with the sun
+// behind the eye, which a forward lobe alone leaves to the ambient light).
+const CLOUD_G_HG: f32 = 0.9774;
+const CLOUD_G_D: f32 = 0.5212;
+const CLOUD_ALPHA: f32 = 18.28;
+const CLOUD_W_D: f32 = 0.4595;
+
+// The phase function with its lobes `k` as eccentric: 1 the droplets'
+// own; less, light that has scattered more than once (Wrenninge, Kulla
+// and Lundqvist, "Oz: The Great and Volumetric", SIGGRAPH 2013 Talks).
+fn cloud_phase(cos_t: f32, k: f32) -> f32 {
+  return mix(hg_phase(cos_t, CLOUD_G_HG * k), draine_phase(cos_t, CLOUD_G_D * k, CLOUD_ALPHA * k), CLOUD_W_D);
+}
+
+// The phase function towards the eye of the sun's light scattered once,
+// twice, three and four times (cloud_sunlit), each per steradian: the same
+// along a ray.
+fn cloud_phases(cos_t: f32) -> vec4<f32> {
+  return vec4<f32>(cloud_phase(cos_t, 1.0), cloud_phase(cos_t, 0.5), cloud_phase(cos_t, 0.25), cloud_phase(cos_t, 0.125));
+}
+
+// The sun's light a point of cloud scatters towards the eye, per unit of
+// that light and of the cloud's extinction there. `od`: the optical depth
+// of cloud between the point and the sun; `near`: that of its first tens
+// of metres; `deep`: that of the cloud's envelope, the cloud without its
+// billows (cloud_light_depth); `phase`: cloud_phases; `inner`: the share
+// of the light scattered more than once that reaches the eye from there
+// (less at a cloud's skin, where half its directions are clear air, than
+// in its body: Schneider's in-scatter probability, which draws the dark
+// rims of sunlit billows; never on the light scattered once).
+//   - scattered once: Beer's law and the droplets' phase function, which
+//     is all of the silver lining;
+//   - scattered twice, three and four times: Wrenninge's octaves (2013),
+//     each with half the last's extinction, share and eccentricity (Hillaire
+//     2016: an octave's share never above its extinction's scale, so none
+//     adds energy; at seven times those shares, as they were, a cloud's
+//     edge towards the sun was several times a white surface and clipped);
+//   - scattered many times: even in every direction, a white cloud's own
+//     light (CLOUD_DIFFUSE of the sun's returns, summed along a ray into
+//     a thick cloud's sunlit face, about what a white surface does, the
+//     sun's light over pi). It crosses the cloud as a diffusing slab lets
+//     it through, falling as one over the depth of the envelope (Beer's
+//     law for it left the shaded side of a cloud under a low sun black,
+//     and the depth of the cloud as drawn showed every lump of a cloud's
+//     top on its base, as bands), and is shaded by the cloud's first tens
+//     of metres towards the sun: the crease between two billows, and
+//     the face of a cloud that turns from the sun, by seven tenths.
+fn cloud_sunlit(od: f32, near: f32, deep: f32, phase: vec4<f32>, inner: f32) -> f32 {
+  let again = 0.5 * exp(-0.5 * od) * phase.y + 0.25 * exp(-0.25 * od) * phase.z + 0.125 * exp(-0.125 * od) * phase.w;
+  let many = CLOUD_DIFFUSE * (0.3 + 0.7 * exp(-0.5 * near)) / (1.0 + CLOUD_DIFFUSION * deep);
+  return exp(-od) * phase.x + (again + many) * inner;
+}
+
+// The sky's and the ground's light on a point of cloud, as the light it
+// scatters towards the eye per unit of its extinction (a cloud scatters a
+// uniform light back as it is): the mean of what reaches it from above and
+// from below. From above: the sky (`up`) through the cloud over the point;
+// from below: the ground and the low sky (`down`) through the cloud under
+// it; and of each, what the cloud on the point's other side turns back: a
+// cloud scatters and does not absorb, so what a depth of it does not let
+// through it sends back. A thick cloud's top is as bright as the sky and
+// its base as the ground and the low sky that light it. (With each stream
+// alone a base took half of the light below it and none other: darker
+// than anything it could see, and a sunset's cloud a black body in a gold
+// rim.) The light is turned back once: deep in a tall cloud, far from its
+// top and its base, neither stream arrives, and a storm's flank is dark.
+// (Turned back without end, as in a slab with no sides, the middle of
+// any depth of cloud stood as bright as the mean of the sky and the
+// ground: a storm's tower with no shade on it.) `tau_up` and `tau_down`:
+// those optical depths.
+fn cloud_skylit(up: vec3<f32>, down: vec3<f32>, tau_up: f32, tau_down: f32) -> vec3<f32> {
+  let through_up = 1.0 / (1.0 + CLOUD_DIFFUSION * tau_up);
+  let through_down = 1.0 / (1.0 + CLOUD_DIFFUSION * tau_down);
+  return 0.5 * (up * (through_up * (2.0 - through_down)) + down * (through_down * (2.0 - through_up)));
+}
+
+// How much of its surroundings a point of cloud's surface sees, from the
+// dimensional profile there (Schneider 2022, the ambient light's
+// probability): the cloud's surface is where the profile meets the noise,
+// so a low profile at it is a billow standing out to the cloud's envelope,
+// open to the sky all round, and a high one the bottom of a crease between
+// billows, which sees a strip of it. Under a sky with no sun to speak of
+// (an overcast, an authored dusk) this is all of a cloud's relief.
+fn cloud_open(profile: f32) -> f32 {
+  // (Rounded where the profile becomes whole, so the root's slope does
+  // not end there at once.)
+  return mix(0.55, 1.0, (sqrt(max(1.0 - profile, 0.0) + 0.01) - 0.1) / 0.905);
+}
+
+// The ground's light on the clouds over it, as cloud_skylit takes it: a
+// ground of a quarter albedo lit by the sun the cover leaves it and the
+// sky (`top`). Under a map too: its lower half is the horizon drawn down
+// or a photograph's foreground, not what lies under the clouds (lit by it
+// as it is, a deck's bases were as bright as its tops).
+fn cloud_ground(top: vec3<f32>, sun: vec3<f32>, up: f32) -> vec3<f32> {
+  let c = frame.clouds;
+  let reach = min(c[4].y, 1.0) * (1.0 - 0.6 * c[0].x);
+  return CLOUD_GROUND * (sun * (max(up, 0.0) * reach / PI) + top * cloud_under());
+}
+
+// The share of what a cloud's base sees under it that is the air's light,
+// the low sky's, and not the ground's: the air between the base and the
+// ground it looks down on, a depth of the base's height over the cosine
+// of how steeply it looks, lets through exp(-x / mu) of the ground, x the
+// base's height in CLOUD_AIR; over every direction under the horizon that
+// leaves 1 - E2(x) the air's (fitted). A cumulus base 1500 m up sees two
+// fifths air; a deck 180 m over the ground sees the ground, and a sea of
+// cloud kilometres over it the air alone. (At two fifths whatever the
+// height, a low deck's bases were lit by the horizon all round them, as
+// bright as the sky.)
+fn cloud_air_share() -> f32 {
+  let c = frame.clouds;
+  let x = max(c[0].z + c[6].w, 0.0) / CLOUD_AIR;
+  return 1.0 - exp(-1.9 * pow(x, 0.78));
+}
+
+// How much of the sky's light reaches under the layer: all of it through
+// the gaps, and through the clouds what a slab of the layer's depth lets
+// through.
+fn cloud_under() -> f32 {
+  let c = frame.clouds;
+  let through = 1.0 / (1.0 + CLOUD_DIFFUSION * c[0].y * c[0].w * 0.7 * c[12].y);
+  return 1.0 - c[0].x * (1.0 - through);
+}
+
+// The optical depth of cloud between the field's point `at`, `hf` of the
+// way up the layer, and the sun, read from the Beer shadow map
+// (cloud_shadow_bake.wgsl): the cloud along the ray the map was baked
+// along as the slab of even density with its moments, and the share of
+// that slab over the point. x: of the cloud as it is drawn; y: of its
+// envelope. `slant`: the sun's own ray's length over that ray's.
+fn cloud_light_depth(at: vec3<f32>, hf: f32, slant: f32, exact: bool) -> vec2<f32> {
+  let c = frame.clouds;
+  let base = at.xz - c[10].zw * (hf * c[0].w);
+  var m = textureSampleLevel(cloud_light, cloud_sampler, base / (4.0 * c[1].w), 0.0);
+  if (exact) { m = cloud_cubic(cloud_light, base / (4.0 * c[1].w)); }
+  if (m.r <= 1e-3) { return vec2<f32>(0.0); }
+  let mean = m.g / m.r;
+  // An even slab's half height is the square root of three times its
+  // spread; never thinner than a step of the bake.
+  let half = sqrt(3.0 * max(m.b / m.r - mean * mean, 0.0)) + 0.01;
+  return vec2<f32>(m.r, m.a) * (clamp((mean + half - (hf - 0.5)) / (2.0 * half), 0.0, 1.0) * slant);
+}
 
 // Where a ray from `o` along unit `d` meets the sphere of radius `r`
 // centred on the origin: (near, far), or (-1, -1) when it misses.
@@ -413,49 +572,35 @@ fn cloud_air(color: vec4<f32>, scattered: vec3<f32>, transmittance: f32, at: f32
   return vec4<f32>(color.rgb * transmittance + scattered * air.through + air_light * (1.0 - transmittance) * (1.0 - frame.view_up.w), color.a * transmittance);
 }
 
-// The volumetric layer between `a` and `b` metres along `d`, past where
-// the march reaches: its cells are below a pixel there, so the layer is
-// drawn as what it is on average (the far-cloud representation of
-// horizon cloud banks): a ray through `len` of a layer whose cells cover
-// a fraction `pc` of it meets one with probability 1 - (1 - pc)^(len /
-// cell), lit as the march lights a cloud (its sun through the mean
-// self-shadow of a cell, three octaves of multiple scattering, the sky's
-// ambient at mid-layer) and seen through the same fog and air.
-fn far_clouds(color: vec4<f32>, d: vec3<f32>, a: f32, b: f32, o: vec3<f32>, to_light: vec3<f32>, light: vec3<f32>, physical: bool, phase: f32, sky_top: vec3<f32>, sky_side: vec3<f32>) -> vec4<f32> {
-  let c = frame.clouds;
-  let len = b - a;
-  if (len <= 0.0 || c[0].x <= 0.0) { return color; }
-  let radius = c[4].x;
-  // cloud_density: a fraction pow(coverage, 1.25) at the base, thinning to
-  // the tops (about 0.6 of it over the layer).
-  let pc = clamp(pow(c[0].x, 1.25) * 0.6, 0.0, 0.999);
-  let cell = c[1].w * 0.25;
-  let opacity = 1.0 - pow(1.0 - pc, len / cell);
-  if (opacity <= 1e-4) { return color; }
-  let at = a + min(0.5 * len, cell / max(pc, 0.05));
-  let p = o + d * at;
-  let sun_here = cloud_sun(p, radius, to_light, light, physical);
-  // The mean of exp(-sigma x) over a half cell's depth towards the sun.
-  let depth = c[0].y * 0.5 * c[0].w * 0.5;
-  var sun = vec3<f32>(0.0);
-  var k = 1.0;
-  var e = 1.0;
-  for (var m = 0u; m < 3u; m++) {
-    let od = depth * e;
-    sun += sun_here * k * (1.0 - exp(-od)) / max(od, 1e-4) * mix(phase, 0.25 / PI, 1.0 - k);
-    k *= 0.6;
-    e *= 0.3;
-  }
-  var ambient = mix(sky_side * 0.6, sky_top, 0.5) * 0.675;
-  ambient = mix(ambient, vec3<f32>(luma(ambient)), c[0].x * 0.7);
-  let lit = cloud_view_fog((sun + ambient) * c[2].rgb, d, at);
-  if (physical) { return cloud_air(color, lit * opacity, 1.0 - opacity, at, d, to_light, light); }
-  // The gradient sky has no air to integrate: fade into it over 27 km.
-  return cloud_layer_mix(color, lit, opacity * exp(-a / 27000.0));
-}
-
 // The fine steps to a stride inside a cloud (clouds_march).
 const CLOUD_FINE: u32 = 6u;
+// cloud_sunlit's light scattered many times, at a cloud's sunlit skin; and
+// how fast it and the sky's and the ground's light fall with the optical
+// depth of cloud they cross (cloud_skylit: 0.75 (1 - g), g 0.85).
+const CLOUD_DIFFUSE: f32 = 0.65;
+const CLOUD_DIFFUSION: f32 = 0.1125;
+// The albedo of the ground under a procedural sky's clouds (cloud_ground).
+const CLOUD_GROUND: f32 = 0.25;
+// The depth of air in which the ground seen through it gives way to the
+// air's own light (cloud_air_share): a hazy day's.
+const CLOUD_AIR: f32 = 5000.0;
+
+// The droplets' forward peak is held at its value some 5° from the sun:
+// nearer, it is hundreds of times an even share, which a march's few
+// samples of a cloud's edge turn to sparkle and a hard rim.
+const CLOUD_PEAK: f32 = 4.0;
+// How much of what is behind a sample the cloud in front of it lets
+// through, under which the light's near samples are one (clouds_march).
+const CLOUD_BEHIND: f32 = 0.5;
+// What a cloud lets through of what is behind it where the march stops:
+// the samples past there are the dearest (lit, in the cloud's depth) and
+// add a fiftieth of the pixel at most.
+const CLOUD_OPAQUE: f32 = 0.02;
+// How far the march reaches: past it the air has taken the clouds.
+const CLOUD_REACH: f32 = 160000.0;
+// The distance a cloud fades into a sky that has no air to integrate over
+// (a gradient, a map), at most.
+const CLOUD_HAZE: f32 = 27000.0;
 
 // The high layer, then the volumetric layer, faded into the sky with distance.
 fn clouds_march(d: vec3<f32>, pixel: vec2<f32>) -> vec4<f32> {
@@ -467,8 +612,7 @@ fn clouds_march(d: vec3<f32>, pixel: vec2<f32>) -> vec4<f32> {
   // A ray that meets the ground sees no clouds, unless the eye is above the
   // cloud base: then it looks down onto the layer (a sea of cloud from a
   // mountain), and the march below stops at the base, before the ground.
-  let ground = cloud_sphere(o, d, radius - c[6].w);
-  if (ground.x > 0.0 && viewer <= c[0].z) { return vec4<f32>(0.0, 0.0, 0.0, 1.0); }
+  let earth = cloud_sphere(o, d, radius - c[6].w);
   // Under the physical sky the clouds are lit by their key, the sun or by
   // night the moon (cloud_key), at their own height: the key above the
   // air through the sky's own transmittance down to the sample, so a
@@ -487,7 +631,8 @@ fn clouds_march(d: vec3<f32>, pixel: vec2<f32>) -> vec4<f32> {
     light = key.light;
   }
   let cos_t = dot(d, to_light);
-  let phase = mix(hg_phase(cos_t, 0.8), hg_phase(cos_t, -0.25), 0.4);
+  var phase = cloud_phases(cos_t);
+  phase.x = min(phase.x, CLOUD_PEAK);
   // Clear-sky light from above and the horizon (sky_look.wgsl clear_sky_light). Maps use their SH ambient and
   // Environment::intensity before the cover dims it. A procedural sky uses its cloud-free samples at the drawn
   // sky's strength, never the live IBL capture, its strength on surfaces or its cover's dimming.
@@ -497,13 +642,26 @@ fn clouds_march(d: vec3<f32>, pixel: vec2<f32>) -> vec4<f32> {
   let aurora_top = aurora_cloud_light(0);
   let aurora_side = aurora_cloud_light(1);
   let sky_top = clear_top + aurora_top;
-  // The bases see the sky's low light, half of it from the horizon under
-  // the sun (its glow: the orange of a sunset's cloud bases).
-  let sun_side = clear_sky_light(normalize(vec3<f32>(to_light.x, 0.0, to_light.z) + vec3<f32>(0.0, 1e-3, 0.0)));
-  let view_side = clear_sky_light(normalize(vec3<f32>(d.x, 0.0, d.z) + vec3<f32>(0.0, 1e-3, 0.0)));
+  // The sky's low light, half of it from the horizon under the sun (its
+  // glow: the orange of a sunset's cloud bases).
+  let sun_side = low_sky_light(normalize(vec3<f32>(to_light.x, 0.0, to_light.z) + vec3<f32>(0.0, 1e-3, 0.0)));
+  let view_side = low_sky_light(normalize(vec3<f32>(d.x, 0.0, d.z) + vec3<f32>(0.0, 1e-3, 0.0)));
   let sky_side = mix(view_side, sun_side, 0.5);
-  // The layer's mean density, a fraction of its peak (as far_clouds takes it).
-  let cover_mean = clamp(pow(c[0].x, 1.25) * 0.6, 0.0, 0.999);
+  let bottom = radius + c[0].z;
+  // What lights a cloud from above, and from below: the ground, and
+  // through the air under the layer the low sky. (The light that travels
+  // sideways between clouds they pass on, scattering and not absorbing:
+  // dimmed by the cover as the ground's is, a sunset's cloud stood darker
+  // than the sky behind it.)
+  let sky_up = mix(clear_top, sky_side, 0.35);
+  // The ground under the clouds, lit by the key as it reaches their base
+  // and by the sky's dome as the clouds' tops are (by the zenith's alone,
+  // a sunset's ground had none of the glow that is most of its light).
+  let lit_ground = cloud_ground(sky_up, cloud_sun(vec3<f32>(0.0, bottom, 0.0), radius, to_light, light, physical), to_light.y);
+  let sky_low = mix(lit_ground, sky_side, cloud_air_share());
+  // How far under a cloud its own shade lies: under it with the key
+  // overhead, off to its side with the key low.
+  let overhead = clamp(to_light.y, 0.0, 1.0);
   var color = vec4<f32>(0.0, 0.0, 0.0, 1.0);
   // Under an overcast the distance fades the deck into more deck, not into the clear sky behind it: a bright clear
   // band at the horizon under a storm. The deck's base far off: its grey ambient (as the march lights a base, below)
@@ -511,27 +669,38 @@ fn clouds_march(d: vec3<f32>, pixel: vec2<f32>) -> vec4<f32> {
   let dk = cloud_deck(d);
   let deck_cover = dk.a;
   let deck = cloud_view_fog(dk.rgb, d, 60000.0);
+  let r = length(o);
 
   // The high thin layer (cirrus), streaked along the wind.
   if (c[3].x > 0.0) {
     let t = cloud_sphere(o, d, radius + c[3].y).y;
     if (t > 0.0) {
       let p = o + d * t;
-      // (Twice the wind up there; scales the offsets' wrap repeats in.)
-      let uv = (vec2<f32>(p.x, p.z) + c[10].xy - c[1].xz * 2.0) / (c[1].w * 2.0);
-      let n = textureSampleLevel(cloud_noise, cloud_sampler, vec3<f32>(uv.x * 0.25, uv.y, 0.37), 0.0);
-      let wisp = cloud_remap(n.r * 0.7 + n.g * 0.3, 1.0 - c[3].x, 1.0 - c[3].x * 0.3) * (0.5 + 0.5 * n.b);
+      // (Its own place, [14].zw: the eye's less twice the wind's offset,
+      // wrapped at eight of `uv`, which every scale below repeats in. By
+      // the volume's offsets, which wrap at two and four, the layer
+      // changed where they wrapped.)
+      let uv = (vec2<f32>(p.x, p.z) + c[14].zw) / (c[1].w * 2.0);
+      // Patches of it, drawn out twice along the wind, with fibres four
+      // times: where the layer stands is a broad field's, and the streaks
+      // are its texture (the streaks alone, over a threshold, were thin
+      // lines across a clear sky).
+      let patches = textureSampleLevel(cloud_noise, cloud_sampler, vec3<f32>(uv.x * 0.125 + 0.5, uv.y * 0.25, 0.71), 1.0).b;
+      let fibres = textureSampleLevel(cloud_noise, cloud_sampler, vec3<f32>(uv.x * 0.25, uv.y, 0.37), 1.0).g;
+      let wisp = cloud_remap(patches, 0.74 - 0.5 * c[3].x, 0.74) * (0.3 + 0.7 * smoothstep(0.25, 0.75, fibres));
       let fade = exp(-t / 120000.0);
-      let lit = cloud_sun(p, radius, to_light, light, physical) * (0.25 + phase * 1.5) * 0.2 + sky_top * 0.8;
+      // Ice, not droplets: a broad forward lobe and a little back.
+      let ice = mix(hg_phase(cos_t, 0.8), hg_phase(cos_t, -0.25), 0.4);
+      let lit = cloud_sun(p, radius, to_light, light, physical) * (0.25 + ice * 1.5) * 0.2 + sky_top * 0.8;
       color = cloud_layer_mix(color, cloud_view_fog(lit * c[2].rgb, d, t), clamp(wisp, 0.0, 1.0) * 0.6 * fade);
     }
   }
 
-  // The volumetric layer between the shells at base and base + thickness.
+  // The volumetric layer between the shells at base and base + thickness
+  // (no higher than the kind's clouds stand: a sheet is a quarter of it).
   if (c[0].w <= 0.0 || c[0].y <= 0.0) { return color; }
-  let r = length(o);
-  let bottom = radius + c[0].z;
-  let top = bottom + c[0].w;
+  let stand = c[12].y;
+  let top = bottom + c[0].w * stand;
   let outer = cloud_sphere(o, d, top);
   if (outer.y <= 0.0) { return color; }
   let inner = cloud_sphere(o, d, bottom);
@@ -545,158 +714,200 @@ fn clouds_march(d: vec3<f32>, pixel: vec2<f32>) -> vec4<f32> {
   } else if (inner.x > 0.0) {
     end = inner.x;
   }
-  let far = 60000.0;
-  // The far layer over the whole path, the fallback past the march's
-  // reach (only where the march starts past half of it: nearer, the march
-  // is drawn alone); else what lies past the march's reach, behind the
-  // march. One loop (one copy of far_clouds' code: DXC inlines every call).
-  let full = end;
-  end = min(end, start + far * 0.5);
-  var fallback = vec4<f32>(0.0);
-  var behind_far = vec4<f32>(0.0);
-  for (var j = 0u; j < 2u; j++) {
-    if (j == 0u && start <= far * 0.5) { continue; }
-    let layer = far_clouds(color, d, select(start, end, j == 1u), full, o, to_light, light, physical, phase, sky_top, sky_side);
-    if (j == 1u) { behind_far = layer; break; }
-    fallback = cloud_layer_mix(layer, deck, deck_cover);
-    if (start >= far) { return fallback; }
-  }
-  // Up to twice the strides towards the horizon, where the path is longest.
-  // The march crosses clear air in strides, reading the density's bound
-  // (cloud_density_bound: never less than it with its detail). A cumulus takes most of the
-  // light within some tens of metres and a stride is 60 to 300 m: marched in
-  // strides a cloud is one sample deep, its silhouette the stride's jitter
-  // and its light that one sample's. So a stride that finds cloud goes back
-  // to the last clear sample and crosses the cloud in fine steps, until a
-  // stride's length of them is clear again (Schneider 2015, the cheap and
-  // the full sample). A fine step is no shorter than what a pixel of the
-  // cloud target resolves at its distance.
-  let steps = u32(c[3].z * (2.0 - abs(d.y)));
-  let stride = (end - start) / f32(steps);
+  // The march goes on through the layer to where the ray leaves it or to
+  // its reach, its strides lengthening with the distance: the clouds far
+  // off are the same clouds, read as coarsely as a pixel sees them there,
+  // and the air takes them (cloud_air). (A layer of its own stood in for
+  // them past 30 km, the cover's mean with no shape: a band along the
+  // horizon.) Past the reach, the high layer and an overcast's deck.
+  let fallback = cloud_layer_mix(color, deck, deck_cover);
+  if (start >= CLOUD_REACH) { return fallback; }
+  end = min(end, CLOUD_REACH);
+  // The march crosses clear air in strides, reading the map (a column
+  // with no cloud at the sample's height has none whatever the noise) and
+  // there the billows without their detail (which never add cloud where
+  // the profile does not pass them), and a cloud in fine steps: a cumulus takes most of the light within some
+  // tens of metres, and its billows are some tens of metres across, so a
+  // stride that finds a cloud's column goes back to the last clear sample
+  // and crosses it in steps a sixth as long, until a stride's length of
+  // them is clear again (Schneider 2015, the cheap and the full sample).
+  // Both lengthen with the distance, as what a pixel resolves does
+  // (Schneider 2022): a stride is the distance over Clouds.steps, never
+  // less than the layer's thickness over 0.6 of them (48: 62 m to 3 km,
+  // 2 % of the distance past it; its fine steps 10 m, then 0.35 %, some
+  // two pixels of a 1080p frame's cloud target).
+  let steps = c[3].z;
+  let grow = 1.0 / steps;
+  let least = c[0].w / (0.6 * steps);
+  // What a pixel of the cloud target is wide a metre away (of a 1080p
+  // frame's: the level the noise is read at).
+  let spread = length(frame.view_rays[1].xyz) / 270.0;
   // A different start per pixel turns banding into fine noise: interleaved
   // gradient noise (Jimenez 2014), whose neighbours differ evenly, so a
-  // single frame shows an even fine grain rather than speckle, offset each
-  // drawn frame under TAA (frame.shadow.w, as the shadows' spiral turns), so
-  // its history averages the grain away. Offset by the tick, a frame drawn
-  // without one (a paused game, a still capture) kept the same grain and
-  // TAA held it.
+  // single frame shows an even fine grain rather than speckle. The cloud
+  // target's march turns it each frame it has a history (`pixel` moves:
+  // clouds_march_at), which averages the grain away with or without TAA;
+  // a view marched at its own pixels turns it under TAA (frame.shadow.w,
+  // as the shadows' spiral turns).
   var jitter = ign(pixel + max(frame.shadow.w - 1.0, 0.0) * 5.588238);
+  // The light's near samples take another sequence: with the march's own,
+  // a pixel whose march started late read its light far, and the two
+  // errors drew one pattern.
+  var light_jitter = ign(pixel.yx + 31.7 + max(frame.shadow.w - 1.0, 0.0) * 5.588238);
   // (A pixel of -1: undithered, the march's middle.)
-  if (pixel.x < 0.0) { jitter = 0.5; }
-  var t = start + stride * jitter;
-  var dt = stride;
+  if (pixel.x < 0.0) {
+    jitter = 0.5;
+    light_jitter = 0.5;
+  }
+  var t = start + max(start * grow, least) * jitter;
+  var dt = least;
+  var dt0 = least;
   // The fine steps left before the march strides again (0: striding), and
   // whether the last move was a stride over air the fine steps have not
   // crossed.
   var fine = 0u;
   var strode = true;
-  // The fine samples lit so far, the far light samples' optical depth
-  // (their nearer and farther pair's, read by turns) and the fine step the
-  // cloud was entered with.
-  var lit = 0u;
-  var far_od = vec2<f32>(0.0);
-  var dt0 = stride;
+  // Whether the last fine step was a lengthened one over clear air, and
+  // how far the march goes in fine steps again after one met cloud.
+  var lengthened = false;
+  var recross = 0.0;
   var transmittance = 1.0;
   var scattered = vec3<f32>(0.0);
   var depth = 0.0;
-  // The first of the six steps towards the light, each twice the last: the
-  // near ones see a billow's own shadow, the far ones the cloud's.
+  // Towards the light: two samples of the cloud as it is drawn, the second
+  // twice as far as the first (a billow's own shadow, and the crease's
+  // beside it), then the Beer shadow map from there (the cloud's own
+  // shadow and its neighbours', kilometres of it in one read; marched, it
+  // was half the clouds' cost and reached 1.4 km).
   let light_step = c[0].w * 0.012;
+  // The sun's ray's length over that of the ray the map was baked along
+  // (no lower than some 10°: clouds/shadow.rs RUN).
+  let slant = min(1.0 / max(to_light.y, 0.05), 20.0) / sqrt(1.0 + dot(c[10].zw, c[10].zw));
+  let mapped = c[11].z > 0.5;
   // A lightning strike's flash, a point in the cloud over the bolt's root
   // (frame coordinates in [5].xyz, made planet-centred about the viewer).
   let flash = c[5];
   let flash_at = vec3<f32>(flash.x - frame.view_pos.x, radius + flash.y + frame.origin.y, flash.z - frame.view_pos.z);
   // What lights a sample and what lies in front of it change over
   // kilometres, not over a fine step, so neither is worked out at every
-  // sample: the sun at the samples'
-  // height (cloud_sun) is read at the march's two ends at the layer's base
-  // and top and interpolated between, and the fog, the same past 5 km
-  // (cloud_fog), is read once for all the samples past there.
+  // sample: the sun at the samples' height (cloud_sun) is read at the
+  // march's two ends at the layer's base and top and interpolated between,
+  // and the fog, the same past 5 km (cloud_fog), is read once for all the
+  // samples past there.
   let span = max(end - start, 1.0);
   var sun_at: array<vec3<f32>, 4>;
   for (var k = 0u; k < 4u; k++) {
     let up = normalize(o + d * select(start, end, k >= 2u));
-    sun_at[k] = cloud_sun(up * select(bottom, top, k % 2u == 1u), radius, to_light, light, physical);
+    sun_at[k] = cloud_sun(up * select(bottom, bottom + c[0].w, k % 2u == 1u), radius, to_light, light, physical);
   }
   let fog_far = cloud_fog(d, 5000.0);
-  for (var i = 0u; i < steps * CLOUD_FINE; i++) {
+  for (var i = 0u; i < u32(steps) * 8u; i++) {
     if (t >= end) { break; }
     let p = o + d * t;
     let h = length(p) - radius;
+    let hf = (h - c[0].z) / c[0].w;
+    let at = cloud_noise_at(p, h);
     if (fine == 0u) {
-      if (cloud_density_bound(p, h) <= 0.0) {
+      // (A stride's test reads the map between its texels in straight
+      // lines: the creases that leaves are in a cloud's shape, which the
+      // fine steps below read.)
+      let far_col = cloud_column(cloud_map_at(at, false), hf);
+      let far_profile = cloud_profile(far_col, hf);
+      let stride = max(t * grow, least);
+      // (Half a stride of the billows about the sample.)
+      if (far_profile <= 0.0 || far_profile <= cloud_coarse(at, cloud_up(far_col, hf), stride * 0.5)) {
         t += stride;
         strode = true;
         continue;
       }
-      dt0 = max(stride / f32(CLOUD_FINE), t * 0.002);
+      dt0 = stride / f32(CLOUD_FINE);
       dt = dt0;
-      fine = u32(stride / dt) + 1u;
-      // Back over the stride that reached the cloud, once: the shell the
-      // erosion empties holds no fine sample, and a march that went back
-      // from it again would never leave it.
-      if (strode) { t = max(t - stride, start) + dt * jitter; }
-      strode = false;
+      lengthened = false;
+      fine = CLOUD_FINE + 1u;
+      // Back over the stride that reached the cloud, once.
+      if (strode) {
+        t = max(t - stride, start) + dt * jitter;
+        strode = false;
+        continue;
+      }
+    }
+    // Behind the cloud's visible surface (CLOUD_BEHIND) the map is read
+    // between its texels in straight lines: what is seen there is seen
+    // through the cloud in front, and its creases with it.
+    let behind = transmittance < CLOUD_BEHIND;
+    let m = cloud_map_at(at, !behind);
+    let col = cloud_column(m, hf);
+    let profile = cloud_profile(col, hf);
+    var cloud = vec3<f32>(0.0);
+    // (The detail where a pixel resolves it: its cells are a hundred and
+    // twenty-eighth of the scale.)
+    if (profile > 0.0) { cloud = cloud_density_from(at, col, hf, profile, t * spread, t * spread * 128.0 < c[1].w); }
+    let sigma = cloud.x;
+    // A lengthened step (below) that reached cloud goes back over itself
+    // in fine ones, as a stride does: the cloud's surface is found to a
+    // fine step.
+    if (sigma > 0.0 && lengthened) {
+      // (Fine up to here again, whatever is clear on the way.)
+      recross = t;
+      t = t - dt + dt0 * jitter;
+      dt = dt0;
+      lengthened = false;
       continue;
     }
-    // (The weather map's value here serves the light's two near samples too.)
-    let map = cloud_map(cloud_noise_at(p, h));
-    let sigma = cloud_density_mapped(p, h, 1u, map);
     fine -= 1u;
     if (sigma > 0.0) {
-      fine = u32(stride / dt) + 1u;
-      let hf = clamp((h - c[0].z) / c[0].w, 0.0, 1.0);
+      lengthened = false;
+      fine = CLOUD_FINE + 1u;
       let along = clamp((t - start) / span, 0.0, 1.0);
       let sun_here = mix(mix(sun_at[0], sun_at[1], hf), mix(sun_at[2], sun_at[3], hf), along);
-      // The column towards the light: six steps, the first two through the
-      // eroded cloud, each sample somewhere in its own step by the pixel's
-      // jitter (at the steps' middles a cloud's shade fell in terraces, one
-      // to a step). The four far ones (90 m to 1.4 km off: the cloud's own
-      // shadow, which changes over hundreds of metres, not over a fine
-      // step; read at every sample they were half the march's cost) are
-      // read two at a time by turns, the steps of 4 and 16 times the first
-      // step's length, then of 8 and 32, each pair held for the next sample
-      // (all four at the first): every sample reads two, the nearer (within
-      // 350 m) with the weather map's value here.
+      // (The near sample somewhere in its step by the pixel's jitter: at
+      // the step's middle a cloud's shade fell in terraces. The map's
+      // texel here serves it: it is within one of it.)
       var od = 0.0;
-      var reach = light_step;
-      for (var k = 0u; k < 2u; k++) {
-        let q = p + to_light * (reach * (1.0 + jitter) - light_step);
-        od += cloud_density_mapped(q, length(q) - radius, 1u, map) * reach;
-        reach *= 2.0;
-      }
-      let turn = lit % 2u;
-      if (lit == 0u) {
-        far_od = vec2<f32>(0.0);
-      } else if (turn == 0u) {
-        far_od.x = 0.0;
+      var deep = 0.0;
+      // One step over three lengths of `light_step`, read without the
+      // detail at a place the pixel's jitter picks in its middle half
+      // (two steps, read with it, cost a tenth more of the pass and moved
+      // no box's relief on the L4). Behind the cloud's visible surface
+      // the step is the sample's own density over it: the relief a read
+      // resolves is not seen there.
+      let reach_near = 3.0 * light_step;
+      if (behind) {
+        od = sigma * reach_near;
       } else {
-        far_od.y = 0.0;
+        let q_near = p + to_light * ((0.25 + 0.5 * light_jitter) * reach_near);
+        let qn_hf = (length(q_near) - radius - c[0].z) / c[0].w;
+        let q_col = cloud_column(m, qn_hf);
+        let q_profile = cloud_profile(q_col, qn_hf);
+        if (q_profile > 0.0) {
+          od = cloud_density_from(cloud_noise_at(q_near, length(q_near) - radius), q_col, qn_hf, q_profile, 1.5 * light_step, false).x * reach_near;
+        }
       }
-      for (var k = 0u; k < select(1u, 2u, lit == 0u); k++) {
-        let pair = (turn + k) % 2u;
-        let near = reach * select(1.0, 2.0, pair == 1u);
-        let q = p + to_light * (near * (1.0 + jitter) - light_step);
-        let q_far = p + to_light * (near * 4.0 * (1.0 + jitter) - light_step);
-        let s = cloud_density_mapped(q, length(q) - radius, 0u, map) * near + cloud_density(q_far, length(q_far) - radius, true) * near * 4.0;
-        far_od += select(vec2<f32>(s, 0.0), vec2<f32>(0.0, s), pair == 1u);
+      var reach = 4.0 * light_step;
+      let near = od;
+      let q = p + to_light * (3.0 * light_step);
+      let q_hf = (length(q) - radius - c[0].z) / c[0].w;
+      if (mapped) {
+        if (q_hf < 1.0) {
+          let far_od = cloud_light_depth(cloud_noise_at(q, length(q) - radius), max(q_hf, 0.0), slant, !behind);
+          deep = od + far_od.y;
+          od += far_od.x;
+        }
+      } else {
+        // Before the map is baked (a first frame): three samples of the
+        // cloud without its detail, each twice as far as the last.
+        for (var k = 0u; k < 3u; k++) {
+          let far_q = p + to_light * (reach * 1.5 - light_step);
+          let far_h = length(far_q) - radius;
+          od += cloud_density_in(cloud_noise_at(far_q, far_h), (far_h - c[0].z) / c[0].w, reach, false) * reach;
+          reach *= 2.0;
+        }
+        deep = od;
       }
-      lit += 1u;
-      od += far_od.x + far_od.y;
-      // Four octaves of multiple scattering (Wrenninge 2013; Hillaire,
-      // "Physically Based Sky, Atmosphere and Cloud Rendering in
-      // Frostbite", 2016), the later ones reaching deep into the shadowed
-      // side, so it is lifted above near-black, and a sunlit face returns
-      // most of the sun's light as a thick cloud does (three at 0.6 left it
-      // a mid grey).
-      var sun = vec3<f32>(0.0);
-      var a = 1.0;
-      var b = 1.0;
-      for (var m = 0u; m < 4u; m++) {
-        sun += sun_here * a * exp(-od * b) * mix(phase, 0.25 / PI, 1.0 - a);
-        a *= 0.75;
-        b *= 0.33;
-      }
+      // Less of the light scattered again reaches the eye from a cloud's
+      // skin than from its body.
+      let within = mix(0.6, 1.0, smoothstep(0.0, 0.3, cloud.y));
+      var sun = sun_here * cloud_sunlit(od, near, deep, phase, within);
       if (flash.w > 0.0) {
         // The flash lights the cloud from inside about the root: falling
         // off over 600 m and dimmed by the cloud between, scattered evenly
@@ -705,19 +916,29 @@ fn clouds_march(d: vec3<f32>, pixel: vec2<f32>) -> vec4<f32> {
         let dist2 = dot(to, to);
         sun += vec3<f32>(0.75, 0.82, 1.0) * flash.w * (0.25 / PI) * exp(-sqrt(dist2) * c[0].y * 0.03) / (1.0 + dist2 / 3.6e5);
       }
-      // The sky's light reaches a thin edge whole and a dense core through
-      // the cloud round it: the body's own shade, which a flat ambient
-      // term lacks.
-      let open = 1.0 - 0.35 * clamp(sigma / max(c[0].y, 1e-6), 0.0, 1.0);
-      var ambient = mix(sky_side * 0.6, clear_top, hf) * (0.35 + 0.65 * hf) * open;
+      // The cloud over the sample and under it, in its own column: from
+      // the sample to the column's top, and down to its base, where it
+      // hangs. (Eased to the core's, so the depth's slope has no step
+      // round a cloud's core.)
+      let solid = c[0].y * c[0].w * 0.7 * cloud_ease(col.inside / CLOUD_SIDE);
+      let tau_up = solid * max(col.top - hf, 0.0);
+      let tau_down = solid * max(hf, 0.0) * cloud_base(col, hf);
+      // The ground and the air under a cloud stand in its shade, by what
+      // the column lets through, when its key is overhead: a heap's base
+      // is grey at noon and a storm's dark, and lit from the side under a
+      // low sun.
+      // (A crease between two billows sees a strip of what is under the
+      // cloud, as it sees a strip of the sky: lit from below alike in
+      // crease and billow, a base was one even sheet.)
+      let open = cloud_open(profile);
+      let below = sky_low * (open * (1.0 - overhead * (1.0 - 1.0 / (1.0 + CLOUD_DIFFUSION * solid * col.top))));
+      var ambient = cloud_skylit(sky_up * open, below, tau_up, tau_down);
       // Under a cover of cloud the light between them is the clouds' own,
       // grey, not the clear sky's blue.
       ambient = mix(ambient, vec3<f32>(luma(ambient)), c[0].x * 0.7);
-      // The aurora's light from above reaches down into the cloud as diffuse light through a scattering slab
-      // (two-stream, g 0.85: 1 / (1 + 0.75 (1 - g) tau), tau the layer's depth over the sample), its colour kept, as
-      // a cloud scatters every wavelength alike; from the side through the cover's gaps.
-      let tau_up = c[0].y * cover_mean * (1.0 - hf) * c[0].w;
-      ambient += (aurora_top / (1.0 + 0.1125 * tau_up) + aurora_side * 0.6 * (1.0 - c[0].x)) * open;
+      // The aurora's light from above reaches down into the cloud as the
+      // sky's does, its colour kept; from the side through the cover's gaps.
+      ambient += (aurora_top / (1.0 + CLOUD_DIFFUSION * tau_up) + aurora_side * 0.6 * (1.0 - c[0].x)) * open;
       var fog = fog_far;
       if (t < 5000.0) { fog = cloud_fog(d, t); }
       let s = mix((sun + ambient) * c[2].rgb * (1.0 - frame.view_up.w), fog.rgb, fog.a) * sigma;
@@ -728,37 +949,58 @@ fn clouds_march(d: vec3<f32>, pixel: vec2<f32>) -> vec4<f32> {
       // The depth the cloud's light comes from, weighted by what it adds.
       depth += t * transmittance * (1.0 - seg);
       transmittance *= seg;
-      if (transmittance < 0.01) { break; }
+      if (transmittance < CLOUD_OPAQUE) { break; }
       // Behind the cloud's visible surface the fine steps lengthen with
-      // what is already hidden, up to five times at nothing let through:
+      // what is already hidden, up to seven times at nothing let through:
       // what they find is seen through the cloud in front, and the step's
       // integration above is exact over any length of even density.
-      dt = dt0 * (1.0 + 4.0 * (1.0 - transmittance));
+      dt = dt0 * (1.0 + 6.0 * (1.0 - transmittance));
+    } else {
+      // In a cloud's envelope where its billows are eroded away, the
+      // step is as long as the erosion's slope leaves clear (cloud_clear),
+      // up to a stride: the gaps between billows are crossed in steps
+      // that close in on the next billow's surface, as a distance field
+      // is traced. (All of them fine, the march spent two fifths of its
+      // samples on such air; lengthened by rote, half as long again each,
+      // they stepped over the thin edges of billows, which drew soft.)
+      if (t >= recross) {
+        let clear = min(cloud_clear(cloud.z), max(t * grow, least));
+        let fine_step = dt0 * (1.0 + 6.0 * (1.0 - transmittance));
+        lengthened = clear > fine_step * 1.2;
+        dt = max(fine_step, clear);
+      } else {
+        lengthened = false;
+      }
     }
     t += dt;
   }
-  // The march stops with a hundredth of what is behind the cloud left, and
+  // The march stops with a fiftieth of what is behind the cloud left, and
   // an opaque cloud leaves none: the sun's disc, some thousand times the
   // sky beside it, drew through a cloud that hid it as a circle on the
   // cloud. What the march stops at is opaque.
-  transmittance = max(transmittance - 0.01, 0.0) / 0.99;
+  transmittance = max(transmittance - CLOUD_OPAQUE, 0.0) / (1.0 - CLOUD_OPAQUE);
   // The air between the viewer and the clouds blends them into the sky (or, under an overcast, into the deck's own
   // mean colour along this ray, the fallback's where the ray found little cloud).
-  // Fog controls atmospheric extinction, not the finite march's reach.
-  // Height fog can leave distant cloud visible: taper coverage to the
-  // fallback before the hard start>=far exit, with either fog setting.
-  let range_fade = 1.0 - smoothstep(far * 0.5, far, start);
-  var marched = vec4<f32>(behind_far.rgb * transmittance + scattered, behind_far.a * transmittance);
+  // Fog controls atmospheric extinction, not the march's reach: the march tapers to the fallback towards its reach,
+  // with either fog setting.
+  let range_fade = 1.0 - smoothstep(CLOUD_REACH * 0.6, CLOUD_REACH, start);
+  // The depth the clouds' light comes from (where the ray met none, where it met the layer).
+  var at = start;
+  if (transmittance < 0.999) { at = depth / (1.0 - transmittance); }
+  var marched = vec4<f32>(color.rgb * transmittance + scattered, color.a * transmittance);
   if (physical) {
     // (A march that met no cloud lets its background through as it is.)
-    if (transmittance < 1.0) {
-      marched = cloud_air(behind_far, scattered, transmittance, depth / max(1.0 - transmittance, 1e-4), d, to_light, light);
-    }
+    if (transmittance < 1.0) { marched = cloud_air(color, scattered, transmittance, at, d, to_light, light); }
   } else {
-    // The gradient sky has no air to integrate: fade into it over 27 km.
-    let fade = exp(-start / (far * 0.45));
+    // A gradient or a map has no air to integrate, and holds its own horizon: the clouds fade into what is
+    // behind them with their distance, to a third where their base stands 3 degrees over the horizon and all but
+    // gone at 1. Lower than that a layer's clouds stand one behind the other however thin they are (a base
+    // 170 m up is there 10 km off), and with no air to take them they drew whole down to the horizon's line:
+    // a stack of slabs over a seam with the ground's colour.
+    let haze = select(CLOUD_HAZE, clamp((bottom - r) * 19.1, 2000.0, CLOUD_HAZE), r < bottom);
+    let fade = exp(-at / haze);
     let mean = mix(deck, scattered / max(1.0 - transmittance, 1e-3), smoothstep(0.05, 0.5, 1.0 - transmittance));
-    marched = mix(cloud_layer_mix(behind_far, mean, deck_cover), marched, fade);
+    marched = mix(cloud_layer_mix(color, mean, deck_cover), marched, fade);
   }
   return mix(fallback, marched, range_fade);
 }
@@ -961,7 +1203,8 @@ struct CloudsTemporal {
   prev_view_proj: mat4x4<f32>,
   // xy: the cloud target's size, zw: which texel of each two by two the march takes this frame.
   size: vec4<f32>,
-  // x: 1 when the march takes one texel of each two by two (into the quarter target), 0 every texel.
+  // x: 1 when the march takes one texel of each two by two (into the quarter target), 0 every texel; y: the
+  // march's dither's turn this frame (0 to 15; 0 without a history, which would not average them).
   mode: vec4<f32>,
 };
 @group(2) @binding(2) var<uniform> clouds_temporal: CloudsTemporal;
@@ -1001,7 +1244,13 @@ fn clouds_march_at(in: SkyOut) -> MarchAt {
   let size = clouds_temporal.size.xy;
   let at = min(floor(in.pos.xy) * 2.0 + clouds_temporal.size.zw, size - 1.0) + 0.5;
   let ndc = vec2<f32>(at.x / size.x * 2.0 - 1.0, 1.0 - at.y / size.y * 2.0);
-  return MarchAt(ndc, at, vec2<f32>(2.0, -2.0) / size);
+  // (The position is the dither's: the quarter target's own texel, where neighbours are a texel apart as the
+  // noise is made for. At the cloud target's texel, two apart, the noise of a row's texels rose a ninth at a
+  // time: runs of texels that started their march alike, which drew streaks along the rows of a cloud's base.
+  // It is moved by the frame's turn (CloudsTemporal: a part of a texel, which moves the noise's value by as much
+  // of its range), so the resolve's blend of each march into the history averages the grain with any
+  // antialiasing or none.)
+  return MarchAt(ndc, in.pos.xy + clouds_temporal.mode.y, vec2<f32>(2.0, -2.0) / size);
 }
 
 @fragment
@@ -1026,7 +1275,8 @@ fn fs_clouds_low_depth(in: SkyOut) -> @location(0) vec4<f32> {
 // clouds): every texel reads the history where its ray was the frame before (a cloud is far enough that its
 // direction alone reprojects it), held within what this frame marched round it so a cloud that moved or a flash
 // leaves no ghost; the texel the frame marched blends its march into that, so the march's dither averages over the
-// frames that march it. A ray the history did not see reads the march. Into this frame's cloud target, which the
+// frames that march it (a third of it each time: the last three marches of a texel weigh nearly alike, and their
+// starts are spread evenly, CloudsTemporal). A ray the history did not see reads the march. Into this frame's cloud target, which the
 // sky reads and the next frame's resolve reprojects.
 @fragment
 fn fs_clouds_resolve(in: SkyOut) -> @location(0) vec4<f32> {
@@ -1047,7 +1297,7 @@ fn fs_clouds_resolve(in: SkyOut) -> @location(0) vec4<f32> {
   if (prev.w > 0.0 && all(uv >= vec2<f32>(0.0)) && all(uv <= vec2<f32>(1.0))) {
     let seen = clamp(textureSampleLevel(clouds_history, ibl_sampler, uv, 0.0), lo, hi);
     let marched = all((at & vec2<i32>(1)) == vec2<i32>(clouds_temporal.size.zw));
-    out = select(seen, mix(seen, fresh, 0.5), marched);
+    out = select(seen, mix(seen, fresh, 1.0 / 3.0), marched);
   }
   return out;
 }

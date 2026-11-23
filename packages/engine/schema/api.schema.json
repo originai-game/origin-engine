@@ -8549,6 +8549,8 @@
         "DayNight",
         "Season",
         "PhysicalSky",
+        "CloudKind",
+        "CloudKind",
         "Clouds",
         "Aurora",
         "WeatherState",
@@ -36567,10 +36569,28 @@
       },
       "additionalProperties": false
     },
+    "CloudKind": {
+      "x-og-kind": "enum",
+      "x-og-module": "atmosphere",
+      "description": "What kind of cloud og.Clouds' volumetric layer holds: the shape its clouds take, whatever their cover.",
+      "type": "string",
+      "enum": [
+        "cumulus",
+        "stratus",
+        "stratocumulus",
+        "cumulonimbus"
+      ],
+      "x-og-variants": {
+        "cumulus": "Heaped clouds on a flat base, their tops domes of billows: fair weather at a low cover, towering at a high one.",
+        "stratus": "A flat, even sheet low in the layer: a grey overcast, or a sea of cloud seen from above.",
+        "stratocumulus": "A low sheet of rolls and patches with gaps between them.",
+        "cumulonimbus": "Towers through the whole layer, the strongest spreading into an anvil under its top: give the layer 6 to 10 km of thickness."
+      }
+    },
     "Clouds": {
       "x-og-kind": "resource",
       "x-og-module": "atmosphere",
-      "description": "Volumetric cumulus over any background, including an authored LDR or HDR Environment, plus thin high cirrus. The same curved-shell march works above, inside or below the deck: above top, see sunlit tops fading with distance. Lit by the DirectionalLight (aim from og.load.environmentSun for an authored sky) and the environment's SH ambient; procedural skies keep their clear-sky lighting. Wind drifts shapes deterministically. Cover dims scene lighting and cumulus casts shadows. Alone clouds bring the built-in sky. Visual only.\nSee `render §7`.",
+      "description": "Volumetric clouds of one kind (`kind`: cumulus by default) over any background, including an authored LDR or HDR Environment, plus thin high cirrus. The same curved-shell march works above, inside or below the deck: above top, see sunlit tops fading with distance. Lit by the DirectionalLight (aim from og.load.environmentSun for an authored sky) and the environment's SH ambient; procedural skies keep their clear-sky lighting. Wind drifts shapes deterministically. Cover dims scene lighting and the clouds cast shadows. Alone clouds bring the built-in sky. Visual only.\nSee `render §7`.",
       "type": "object",
       "properties": {
         "enabled": {
@@ -36578,9 +36598,14 @@
           "description": "Draw the clouds.",
           "default": false
         },
+        "kind": {
+          "$ref": "#/$defs/CloudKind",
+          "description": "The kind of cloud in the volumetric layer.",
+          "default": "cumulus"
+        },
         "coverage": {
           "type": "number",
-          "description": "How much of the sky the cumulus covers: 0 none, 0.3 fair weather, 0.6 broken, 1 overcast.",
+          "description": "How much of the sky the clouds cover: 0 none, 0.3 fair weather, 0.6 broken, 1 overcast.",
           "default": 0.45,
           "minimum": 0,
           "maximum": 1,
@@ -36589,7 +36614,7 @@
         },
         "density": {
           "type": "number",
-          "description": "How thick they are per metre (0.04: cumulus; 0.01: thin and translucent; 0.08: dense storm cloud).",
+          "description": "How thick a cloud's body is per metre, reached some tens of metres inside its surface (0.04: cumulus; 0.01: thin and translucent; 0.08: dense storm cloud).",
           "default": 0.04,
           "minimum": 0,
           "maximum": 0.5,
@@ -36641,7 +36666,7 @@
         },
         "detail": {
           "type": "number",
-          "description": "How much fine noise erodes their edges (0: smooth blobs, 1: wispy).",
+          "description": "How deep fine noise erodes their surface (0: smooth lumps, 0.35: billows, 1: wispy).",
           "default": 0.35,
           "minimum": 0,
           "maximum": 1,

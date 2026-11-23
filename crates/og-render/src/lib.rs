@@ -316,7 +316,7 @@ pub use auto_quality::{AutoQuality, AutoQualityBounds, FrameSample, Rung, step_p
 pub use capture::{
     BACKLOG_TIMEOUT, CAPTURE_TIMEOUT, CaptureRequest, capture_timeouts, png, png_best,
 };
-pub use clouds::Clouds;
+pub use clouds::{CloudKind, Clouds};
 pub use clusters::{CLUSTER_GRID, MAX_CLUSTER_LIGHTS};
 pub use custom::{FULL_SHADER_ENTRIES, example as example_full_shader};
 pub use debris::{

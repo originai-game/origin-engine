@@ -1,11 +1,19 @@
-//! The clouds' shadow on the world: how much of the sun's beam the layer
-//! lets through, baked over one period of the cloud field
-//! (cloud_shadow_bake.wgsl) and read by every lit surface with the sun's
-//! own shadow (lighting.wgsl `cloud_shadow`, the frame group's
-//! `cloud_shadow_map`). The field repeats every four tiles of the noise,
-//! so the map tiles over the world: the wind's drift and the eye's place
-//! only shift where it is read, and it is baked again only when the layer,
-//! the sun's height or the shapes' turning over move it a step.
+//! The clouds' shadow, baked over one period of the cloud field
+//! (cloud_shadow_bake.wgsl) into two maps of one march towards the sun:
+//!
+//! - their shadow on the world: how much of the sun's beam the layer lets
+//!   through, read by every lit surface with the sun's own shadow
+//!   (lighting.wgsl `cloud_shadow`, the frame group's `cloud_shadow_map`);
+//! - their shadow on themselves, a Beer shadow map (Hillaire 2020;
+//!   `third_party/nubis-clouds.md`): where the cloud along the ray begins
+//!   and ends and its optical depth, which the sky's march reads for the
+//!   cloud between a sample and the sun past its own near samples (sky.wgsl
+//!   `cloud_light_depth`, the sky group's `cloud_light`).
+//!
+//! The field repeats every four tiles of the scale, so the maps tile over
+//! the world: the wind's drift and the eye's place only shift where they
+//! are read, and they are baked again only when the layer, the sun's
+//! height or the shapes' turning over move them a step.
 
 use super::{CloudNoise, Clouds};
 use glam::{Vec2, Vec3};
@@ -15,20 +23,27 @@ use glam::{Vec2, Vec3};
 pub(crate) const SIDE: u32 = 512;
 /// A storage format a shader may read without a texture slot (frame.wgsl).
 const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::R32Float;
+/// The Beer shadow map's: filtered by the sky's march.
+const LIGHT_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
 /// The steepest ray the map is baked along and read at, as its run per
 /// metre it rises (a sun 9.5° up): lower, the shadows keep that slant.
 const RUN: f32 = 6.0;
 
-/// The map the frame groups bind (a texel of nothing until a frame's clouds
-/// cast a shadow), what bakes it, and what it holds.
+/// The map the frame groups bind and the one the sky group binds (each a
+/// texel of nothing until a frame's clouds cast a shadow), what bakes
+/// them, and what they hold.
 pub(crate) struct CloudShadow {
     pub view: wgpu::TextureView,
+    /// The Beer shadow map.
+    pub light: wgpu::TextureView,
     pass: Option<BakePass>,
     /// What the map was last baked from.
     baked: Option<Bake>,
     /// The frame's bake, planned ([`CloudShadow::update`]) and not yet
     /// recorded ([`CloudShadow::encode`]).
     pending: bool,
+    /// Whether the maps hold a bake.
+    drawn: bool,
     /// The frame uniform's rows for this frame's shadow, when it has one.
     rows: Option<([f32; 2], [f32; 4])>,
 }
@@ -99,10 +114,12 @@ impl Clouds {
 impl CloudShadow {
     pub(crate) fn placeholder(device: &wgpu::Device) -> CloudShadow {
         CloudShadow {
-            view: texture(device, 1),
+            view: texture(device, 1, FORMAT),
+            light: texture(device, 1, LIGHT_FORMAT),
             pass: None,
             baked: None,
             pending: false,
+            drawn: false,
             rows: None,
         }
     }
@@ -114,38 +131,48 @@ impl CloudShadow {
     }
 
     /// The frame uniform's rows while this frame's clouds cast a shadow:
-    /// the ray's run per metre it rises (`frame.clouds[10].zw`) and the
-    /// map's side and the shadow's strength (`[11]`).
+    /// the ray's run per metre it rises (`frame.clouds[10].zw`), and
+    /// (`[11]`) the world's map's side (0: no shadow falls on the world),
+    /// that shadow's strength and whether the Beer shadow map holds this
+    /// frame's clouds.
     pub(crate) fn rows(&self) -> Option<([f32; 2], [f32; 4])> {
         self.rows
     }
 
     /// Plans the frame's shadow for `clouds` at `seconds` under a light
-    /// towards `to_light`, and its bake when the map holds another:
-    /// [`CloudShadow::encode`] records it before any pass reads the map.
-    /// `None`, or clouds that cast none, or a light from below: no shadow.
+    /// towards `to_light`, and its bake when the maps hold another:
+    /// [`CloudShadow::encode`] records it before any pass reads them.
+    /// `world`: whether the shadow falls on the world (never from a light
+    /// below the horizon, whose ray is baked at the steepest slant the map
+    /// takes for the clouds alone). `None`, or no layer: no shadow.
     /// `frame`: the main camera's frame uniform, whose clouds the bake reads.
     pub(crate) fn update(
         &mut self,
         device: &wgpu::Device,
         queue: &wgpu::Queue,
-        clouds: Option<(&Clouds, f64, Vec3)>,
+        clouds: Option<(&Clouds, f64, Vec3, bool)>,
         noise: &CloudNoise,
         frame: &wgpu::Buffer,
     ) {
         self.rows = None;
-        let Some((clouds, seconds, to_light)) = clouds else {
+        let Some((clouds, seconds, to_light, world)) = clouds else {
             return;
         };
-        let strength = clouds.shadow();
         let to_light = to_light.normalize_or_zero();
-        if strength <= 0.0 || to_light.y <= 1e-3 || !noise.made {
+        let level = Vec2::new(to_light.x, to_light.z);
+        let layer = clouds.thickness > 0.0 && clouds.density > 0.0 && clouds.coverage > 0.0;
+        if !layer || to_light == Vec3::ZERO || !noise.made {
             return;
         }
-        let run = (Vec2::new(to_light.x, to_light.z) / to_light.y).clamp_length_max(RUN);
+        let run = if to_light.y > 1e-3 {
+            (level / to_light.y).clamp_length_max(RUN)
+        } else {
+            level.normalize_or_zero() * RUN
+        };
         let bake = Bake::of(clouds, seconds, run);
         if self.pass.is_none() {
-            self.view = texture(device, SIDE);
+            self.view = texture(device, SIDE, FORMAT);
+            self.light = texture(device, SIDE, LIGHT_FORMAT);
             self.pass = Some(BakePass::new(device, frame));
         }
         let pass = self.pass.as_ref().expect("made above");
@@ -154,7 +181,19 @@ impl CloudShadow {
             self.baked = Some(bake);
             self.pending = true;
         }
-        self.rows = Some((run.to_array(), [SIDE as f32, strength, 0.0, 0.0]));
+        // The maps hold a bake, or this frame's is recorded before its
+        // passes (encode).
+        let held = self.drawn || (pass.pipeline.ready().is_some() && noise.drawing());
+        let strength = if world && to_light.y > 1e-3 {
+            clouds.shadow()
+        } else {
+            0.0
+        };
+        let side = if strength > 0.0 && held { SIDE as f32 } else { 0.0 };
+        self.rows = Some((
+            run.to_array(),
+            [side, strength, f32::from(u8::from(held)), 0.0],
+        ));
     }
 
     /// Records the bake [`CloudShadow::update`] planned: nothing without one.
@@ -173,6 +212,7 @@ impl CloudShadow {
             return;
         }
         self.pending = false;
+        self.drawn = true;
         let group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("cloud shadow"),
             layout: &pass.layout,
@@ -192,6 +232,18 @@ impl CloudShadow {
                 wgpu::BindGroupEntry {
                     binding: 3,
                     resource: wgpu::BindingResource::TextureView(&self.view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 4,
+                    resource: wgpu::BindingResource::TextureView(&self.light),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 7,
+                    resource: wgpu::BindingResource::TextureView(&noise.detail),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 8,
+                    resource: wgpu::BindingResource::TextureView(&noise.map),
                 },
             ],
         });
@@ -224,7 +276,7 @@ impl CloudShadow {
     }
 }
 
-fn texture(device: &wgpu::Device, side: u32) -> wgpu::TextureView {
+fn texture(device: &wgpu::Device, side: u32, format: wgpu::TextureFormat) -> wgpu::TextureView {
     device
         .create_texture(&wgpu::TextureDescriptor {
             label: Some("cloud shadow"),
@@ -236,8 +288,12 @@ fn texture(device: &wgpu::Device, side: u32) -> wgpu::TextureView {
             mip_level_count: 1,
             sample_count: 1,
             dimension: wgpu::TextureDimension::D2,
-            format: FORMAT,
-            usage: wgpu::TextureUsages::STORAGE_BINDING,
+            format,
+            usage: if format == FORMAT {
+                wgpu::TextureUsages::STORAGE_BINDING
+            } else {
+                wgpu::TextureUsages::STORAGE_BINDING | wgpu::TextureUsages::TEXTURE_BINDING
+            },
             view_formats: &[],
             texture_binding_view_dimension: None,
         })
@@ -283,6 +339,30 @@ impl BakePass {
                         access: wgpu::StorageTextureAccess::WriteOnly,
                         format: FORMAT,
                         view_dimension: wgpu::TextureViewDimension::D2,
+                    },
+                ),
+                entry(
+                    4,
+                    wgpu::BindingType::StorageTexture {
+                        access: wgpu::StorageTextureAccess::WriteOnly,
+                        format: LIGHT_FORMAT,
+                        view_dimension: wgpu::TextureViewDimension::D2,
+                    },
+                ),
+                entry(
+                    7,
+                    wgpu::BindingType::Texture {
+                        sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                        view_dimension: wgpu::TextureViewDimension::D3,
+                        multisampled: false,
+                    },
+                ),
+                entry(
+                    8,
+                    wgpu::BindingType::Texture {
+                        sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                        view_dimension: wgpu::TextureViewDimension::D2,
+                        multisampled: false,
                     },
                 ),
             ],

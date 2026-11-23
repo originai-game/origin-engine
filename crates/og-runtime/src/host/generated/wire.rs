@@ -10417,6 +10417,46 @@ impl ToJson for PhysicsStats {
     }
 }
 
+/// `CloudKind`: packages/knowledge/wiki/atmosphere.md.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum CloudKind {
+    #[default]
+    Cumulus,
+    Stratus,
+    Stratocumulus,
+    Cumulonimbus,
+}
+
+impl CloudKind {
+    /// The variants' IDL names, in index order.
+    pub const NAMES: &'static [&'static str] = &["cumulus", "stratus", "stratocumulus", "cumulonimbus"];
+    /// Every variant, in index order.
+    pub const ALL: &'static [Self] = &[Self::Cumulus, Self::Stratus, Self::Stratocumulus, Self::Cumulonimbus];
+    /// The IDL name.
+    pub fn as_str(self) -> &'static str {
+        Self::NAMES[self as usize]
+    }
+    /// The variant named `s`, or a refusal naming them all.
+    pub fn parse(s: &str) -> Result<Self, String> {
+        match Self::NAMES.iter().position(|n| *n == s) {
+            Some(i) => Ok(Self::ALL[i]),
+            None => Err(unknown_variant("CloudKind", s, Self::NAMES)),
+        }
+    }
+}
+
+impl FromJson for CloudKind {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::parse(variant(v, "CloudKind", Self::NAMES)?)
+    }
+}
+
+impl ToJson for CloudKind {
+    fn to_json(&self) -> Value {
+        Value::String(self.as_str().into())
+    }
+}
+
 /// `WindMotorKind`: packages/knowledge/wiki/atmosphere.md.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum WindMotorKind {
@@ -32180,6 +32220,7 @@ pub mod record {
     #[derive(Clone, Debug, PartialEq)]
     pub struct Clouds {
         pub enabled: bool,
+        pub kind: CloudKind,
         pub coverage: f32,
         pub density: f32,
         pub base: f32,
@@ -32198,6 +32239,7 @@ pub mod record {
         fn default() -> Self {
             Self {
                 enabled: Default::default(),
+                kind: Default::default(),
                 coverage: 0.45_f32,
                 density: 0.04_f32,
                 base: 1500.0_f32,
@@ -32222,6 +32264,7 @@ pub mod record {
             let o = object(v)?;
             Ok(Self {
                 enabled: field(o, "enabled", d.enabled)?,
+                kind: field(o, "kind", d.kind)?,
                 coverage: field(o, "coverage", d.coverage)?,
                 density: field(o, "density", d.density)?,
                 base: field(o, "base", d.base)?,

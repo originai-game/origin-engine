@@ -208,16 +208,19 @@ impl Renderer {
                 scene.lighting.environment.background,
                 Background::Procedural { .. }
             );
+            // The clouds' own shadow is baked under any sky; the world
+            // takes it under the procedural one.
             let clouds = scene
                 .atmosphere
                 .clouds
                 .as_ref()
-                .filter(|_| procedural && self.info.caps.contains(crate::Caps::COMPUTE))
+                .filter(|_| self.info.caps.contains(crate::Caps::COMPUTE))
                 .map(|c| {
                     (
                         c,
                         scene.frame.tick as f64 / f64::from(rate),
-                        scene.lighting.light.direction_to_light,
+                        c.key_direction(scene),
+                        procedural,
                     )
                 });
             let made = self.sky.cloud_shadow.made();
@@ -367,6 +370,9 @@ impl Renderer {
                 ),
                 wgpu::BindingResource::TextureView(blend.map_or(&ibl.sky, |b| background(b.0))),
                 wgpu::BindingResource::TextureView(&self.sky.aurora_map.view),
+                wgpu::BindingResource::TextureView(&self.sky.cloud_noise.detail),
+                wgpu::BindingResource::TextureView(&self.sky.cloud_noise.map),
+                wgpu::BindingResource::TextureView(&self.sky.cloud_shadow.light),
             ],
         );
         self.lights.environment = Some((key, group, sky_group, reflection_group));

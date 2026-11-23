@@ -90,7 +90,7 @@ struct Frame {
   sky_moon_look: vec4<f32>,   // rgb: the lit moon's colour, w: phase (0 new, 0.5 full)
   time: vec4<f32>,            // x: seconds, y: tick, z: ticks per second, w: previous drawn seconds
   sky_scatter: array<vec4<f32>, 38>,  // the physical sky (sky_scatter.wgsl; [0].w 0: the gradient)
-  clouds: array<vec4<f32>, 12>,  // the clouds (clouds.rs Clouds::gpu; [3].w 0: none; [4].w 1: captured in IBL; [6..10] the clear sky's light; [10].zw, [11] their shadow)
+  clouds: array<vec4<f32>, 15>,  // the clouds (clouds.rs Clouds::gpu; [3].w 0: none; [4].w 1: captured in IBL; [6..10] the clear sky's light; [10].zw, [11] their shadow; [12] to [14].xy their kind, [14].zw the high layer's place)
   aurora: array<vec4<f32>, 5>,  // the aurora (aurora.rs Aurora::gpu; [0].y 0: none)
   weather: vec4<f32>,         // weather_surface.wgsl: x wetness, y puddles, z snow cover, w rain ripples
   weather_look: vec4<f32>,    // rgb: snow colour, w: puddle size (m)

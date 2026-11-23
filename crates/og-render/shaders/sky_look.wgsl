@@ -67,6 +67,26 @@ fn clear_sky_light(n: vec3<f32>) -> vec3<f32> {
   return mix(side, c[6].rgb, clamp(n.y, 0.0, 1.0));
 }
 
+// The low sky's light towards unit horizontal `n`: the sky over the
+// horizon there alone. Half of what falls on an upright face
+// (clear_sky_light) comes from under the horizon, and what falls on a face
+// turned down is all from there, so twice the upright's less the
+// downward's is the sky's own. What is under the horizon is no sky: a
+// map's lower half is the horizon drawn down or a photograph's foreground
+// (with it, an afternoon map's pink ground lit every base pink, as bright
+// as the sky over it), and a procedural sky's is its ground, which the
+// clouds take their light from apart (sky.wgsl cloud_ground; with it, a
+// sunset's dark land halved the glow along the horizon that lights the
+// bases). The downward light: a map's from its cube, a procedural sky's
+// from the w of the three horizontal rows (atmosphere.rs).
+fn low_sky_light(n: vec3<f32>) -> vec3<f32> {
+  let c = frame.clouds;
+  let side = clear_sky_light(n);
+  var under = vec3<f32>(c[7].w, c[8].w, c[9].w);
+  if (frame.sky_zenith.w < 0.5) { under = clear_sky_light(vec3<f32>(0.0, -1.0, 0.0)); }
+  return max(2.0 * side - under, 0.25 * side);
+}
+
 // An overcast deck's base seen far off along `d`, as the sky's march lights a base (sky.wgsl clouds_over): its grey
 // ambient from the clear sky's low light (clear_sky_light) and a little of the sun through it. a: how much of the sky
 // the deck closes (none under a broken sky), the weight the distant sky, what lies under the horizon and a mirror of

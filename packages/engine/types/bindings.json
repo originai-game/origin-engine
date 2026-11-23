@@ -415,6 +415,12 @@
       "value": "SoftBodyShape"
     },
     {
+      "name": "CloudKind",
+      "array": "Uint32Array",
+      "stride": 1,
+      "value": "CloudKind"
+    },
+    {
       "name": "WindMotorKind",
       "array": "Uint32Array",
       "stride": 1,
@@ -12926,6 +12932,11 @@
           "name": "enabled",
           "column": "bool",
           "default": false
+        },
+        {
+          "name": "kind",
+          "column": "CloudKind",
+          "default": "cumulus"
         },
         {
           "name": "coverage",

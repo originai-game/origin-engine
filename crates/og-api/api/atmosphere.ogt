@@ -347,18 +347,34 @@ module atmosphere {
     }
   }
 
+  enum CloudKind {
+    doc "What kind of cloud og.Clouds' volumetric layer holds: the shape its clouds take, whatever their cover."
+    variant cumulus "Heaped clouds on a flat base, their tops domes of billows: fair weather at a low cover, towering at a high one."
+    variant stratus "A flat, even sheet low in the layer: a grey overcast, or a sea of cloud seen from above."
+    variant stratocumulus "A low sheet of rolls and patches with gaps between them."
+    variant cumulonimbus "Towers through the whole layer, the strongest spreading into an anvil under its top: give the layer 6 to 10 km of thickness."
+  }
+
+  column CloudKind {
+    doc "A CloudKind field: the variant's index."
+    array Uint32Array
+    stride 1
+    value CloudKind
+  }
+
   resource Clouds {
-    doc "Volumetric cumulus over any background, including an authored LDR or HDR Environment, plus thin high cirrus. The same curved-shell march works above, inside or below the deck: above top, see sunlit tops fading with distance. Lit by the DirectionalLight (aim from og.load.environmentSun for an authored sky) and the environment's SH ambient; procedural skies keep their clear-sky lighting. Wind drifts shapes deterministically. Cover dims scene lighting and cumulus casts shadows. Alone clouds bring the built-in sky. Visual only."
+    doc "Volumetric clouds of one kind (`kind`: cumulus by default) over any background, including an authored LDR or HDR Environment, plus thin high cirrus. The same curved-shell march works above, inside or below the deck: above top, see sunlit tops fading with distance. Lit by the DirectionalLight (aim from og.load.environmentSun for an authored sky) and the environment's SH ambient; procedural skies keep their clear-sky lighting. Wind drifts shapes deterministically. Cover dims scene lighting and the clouds cast shadows. Alone clouds bring the built-in sky. Visual only."
     guide "render §7"
     field enabled bool "Draw the clouds."
-    field coverage f32 "How much of the sky the cumulus covers: 0 none, 0.3 fair weather, 0.6 broken, 1 overcast." {
+    field kind CloudKind "The kind of cloud in the volumetric layer."
+    field coverage f32 "How much of the sky the clouds cover: 0 none, 0.3 fair weather, 0.6 broken, 1 overcast." {
       default 0.45
       min 0
       max 1
       unit ratio
       tunable true
     }
-    field density f32 "How thick they are per metre (0.04: cumulus; 0.01: thin and translucent; 0.08: dense storm cloud)." {
+    field density f32 "How thick a cloud's body is per metre, reached some tens of metres inside its surface (0.04: cumulus; 0.01: thin and translucent; 0.08: dense storm cloud)." {
       default 0.04
       min 0
       max 0.5
@@ -390,7 +406,7 @@ module atmosphere {
     field color Color "Their albedo: white for fair-weather clouds, a grey for rain clouds." {
       default 1 1 1
     }
-    field detail f32 "How much fine noise erodes their edges (0: smooth blobs, 1: wispy)." {
+    field detail f32 "How deep fine noise erodes their surface (0: smooth lumps, 0.35: billows, 1: wispy)." {
       default 0.35
       min 0
       max 1

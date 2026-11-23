@@ -1,19 +1,24 @@
-//! Clouds (the R4 round): a volumetric layer raymarched in the sky pass
-//! over a curved shell around the planet, lit by the sun (under the
-//! physical sky, the sunlight through the air down to each sample's own
-//! height, so a sunset lights low clouds orange from below; else the
-//! frame's directional light: Beer's law towards it, with three octaves
-//! of the multiple scattering approximation of Wrenninge et al.), the
-//! environment's irradiance and a lightning strike's flash inside them
-//! ([`Clouds::flash`]), faded into the sky with distance; and a thin high layer
-//! (cirrus) over it. Their shapes are the cloudscape of Schneider's Horizon
-//! Zero Dawn and Nubis talks (`third_party/nubis-clouds.md`): a tiling 128³
-//! noise volume (a carved Perlin–Worley base shape, two Worley detail
-//! channels, a weather map), made once on the GPU by a compute pass the
-//! first frame that has clouds; a weather map and a height gradient that
-//! stand each cloud on the layer's base; and a march in strides through
-//! clear air and fine steps through cloud (`clouds_shape.wgsl`, sky.wgsl
-//! `clouds_march`).
+//! Clouds: a volumetric layer raymarched in the sky pass over a curved shell
+//! around the planet, and a thin high layer (cirrus) over it.
+//!
+//! Their shape is a dimensional profile eroded by noise, after Schneider's
+//! "Nubis, Evolved" and "Nubis³" (`third_party/nubis-clouds.md`): a baked
+//! map says how far inside a cloud each column of the layer stands and how
+//! tall the cloud is there, the [`CloudKind`]'s numbers stand it on a flat
+//! base and round its top, and two tiling noise volumes (billows of some
+//! hundreds of metres, and of some tens) cut its surface into bulges and
+//! creases (`clouds_noise.wgsl`, `clouds_shape.wgsl`). All three fields are
+//! made once on the GPU the first frame that has clouds ([`CloudNoise`]).
+//!
+//! They are lit by the sun (under the physical sky, the sunlight through
+//! the air down to each sample's own height, so a sunset lights low clouds
+//! orange from below; else the frame's directional light) through the cloud
+//! between: two samples near, then a Beer shadow map of the whole field
+//! (`clouds/shadow.rs`), scattered by a phase function fitted to cloud
+//! droplets and by octaves of multiple scattering; by the sky above them
+//! and the ground below, each through the cloud between; and by a lightning
+//! strike's flash inside them ([`Clouds::flash`]). sky.wgsl `clouds_march`.
+//!
 //! The wind moves them by the tick's seconds, so they look the same on
 //! every run and after a restore; nothing in the simulation reads them.
 //!
@@ -28,10 +33,126 @@ use glam::Vec3;
 mod shadow;
 pub(crate) use shadow::{CloudShadow, bake_source};
 
-/// The noise volume's size per side.
-pub(crate) const NOISE_SIZE: u32 = 128;
+/// The shape volume's size per side and its levels (clouds_noise.wgsl).
+const SHAPE_SIZE: u32 = 128;
+const SHAPE_LEVELS: u32 = 4;
+/// The detail volume's.
+const DETAIL_SIZE: u32 = 64;
+const DETAIL_LEVELS: u32 = 3;
+/// The map's side: the whole field, four tiles of [`Clouds::scale`].
+const MAP_SIZE: u32 = 512;
 /// The vec4s of the frame uniform's cloud block (`frame.clouds`).
-pub(crate) const CLOUD_VEC4S: usize = 12;
+pub(crate) const CLOUD_VEC4S: usize = 15;
+
+/// What kind of cloud the volumetric layer holds: the shape its clouds
+/// take, whatever their cover.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum CloudKind {
+    /// Heaped clouds on a flat base, their tops domes of billows.
+    #[default]
+    Cumulus,
+    /// A flat, even sheet low in the layer.
+    Stratus,
+    /// A low sheet of rolls and patches with gaps between.
+    Stratocumulus,
+    /// Towers through the whole layer, the strongest spreading into an
+    /// anvil under its top.
+    Cumulonimbus,
+}
+
+/// A [`CloudKind`]'s numbers (clouds_shape.wgsl `cloud_column`,
+/// `cloud_profile`, `cloud_density_from`).
+struct KindShape {
+    /// The share of a cloud's height at which it is widest.
+    girth: f32,
+    /// How far up the layer a cloud stands in its core.
+    height: f32,
+    /// The power a cloud's top rounds off by: 2 a dome, more a tower
+    /// that stands wide to a flat top, less a sheet whose profile falls
+    /// from its widest height all the way up.
+    power: f32,
+    /// How much a cloud narrows from its widest down to its base.
+    under: f32,
+    /// How far a vigorous tower spreads under the layer's top.
+    anvil: f32,
+    /// Which of the map's fields places the clouds: 0 the broad one, 1 the
+    /// one of closer cells.
+    cells: f32,
+    /// How much of the field a cloud's side takes from its edge to its core.
+    edge: f32,
+    /// How deep the noise erodes (of the profile).
+    erosion: f32,
+    /// How much the tops' heights vary from cloud to cloud.
+    vary: f32,
+    /// The share of a cloud's height over its base in which it becomes
+    /// whole: a cumulus's base is nearly flat, a sheet's hangs ragged.
+    base: f32,
+}
+
+impl CloudKind {
+    fn shape(self) -> KindShape {
+        match self {
+            // (A heap is widest just over its base and its sides lean from
+            // there: by a dome's power, 2, they stood upright over the
+            // base for a sixth of the cloud's height, a skirt under every
+            // dome.)
+            CloudKind::Cumulus => KindShape {
+                girth: 0.06,
+                height: 1.0,
+                power: 1.4,
+                under: 0.6,
+                anvil: 0.0,
+                cells: 0.0,
+                edge: 0.45,
+                erosion: 0.75,
+                vary: 0.7,
+                base: 0.16,
+            },
+            // (A sheet's relief is its tops' erosion: the profile falls
+            // from the widest height all the way up (power 1) and the
+            // noise erodes nearly all of it, so the billows stand some
+            // 80 m out of a sheet 450 m deep. By a dome's profile eroded
+            // as a heap's is, they stood 20 m: a sheet as smooth as a
+            // table.)
+            CloudKind::Stratus => KindShape {
+                girth: 0.3,
+                height: 0.28,
+                power: 1.0,
+                under: 0.3,
+                anvil: 0.0,
+                cells: 0.0,
+                edge: 0.6,
+                erosion: 0.9,
+                vary: 0.8,
+                base: 0.2,
+            },
+            CloudKind::Stratocumulus => KindShape {
+                girth: 0.3,
+                height: 0.5,
+                power: 1.5,
+                under: 0.5,
+                anvil: 0.0,
+                cells: 1.0,
+                edge: 0.7,
+                erosion: 0.9,
+                vary: 0.4,
+                base: 0.3,
+            },
+            CloudKind::Cumulonimbus => KindShape {
+                girth: 0.1,
+                height: 1.0,
+                power: 5.0,
+                under: 0.5,
+                anvil: 1.2,
+                cells: 0.0,
+                edge: 0.4,
+                erosion: 0.8,
+                vary: 0.3,
+                base: 0.05,
+            },
+        }
+    }
+}
 /// The first of the clouds' block's rows that hold the clear sky's light
 /// ([`crate::atmosphere::AtmosphereGpu::new`]): overhead, then horizontal
 /// towards the sun, away from it and across.
@@ -40,23 +161,28 @@ pub(crate) const CLEAR_SKY_ROW: usize = 6;
 /// Clouds over the scene. See the module documentation.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Clouds {
+    /// What kind of cloud the volumetric layer holds.
+    pub kind: CloudKind,
     /// How much of the sky the volumetric layer covers (0: none, 1: overcast).
     pub coverage: f32,
-    /// Their extinction per metre at full density (0.03 to 0.08: cumulus;
+    /// The extinction per metre of a cloud's body (0.04 to 0.12: cumulus;
     /// lower: thin, translucent clouds).
     pub density: f32,
     /// The layer's base and thickness, in metres above the world's y 0
     /// (thickness 0: no volumetric layer).
     pub base: f32,
     pub thickness: f32,
-    /// The size of the largest cloud shapes, in metres (one tile of the noise).
+    /// The size of the largest cloud shapes, in metres: the cloud field
+    /// repeats every four of it, and a cloud is a sixth to a third of it
+    /// across.
     pub scale: f32,
     /// How far the wind carries them per second (x and z; y turns the
     /// shapes over as they go).
     pub wind: Vec3,
     /// Their albedo (white for water clouds; a grey for storm clouds).
     pub color: Vec3,
-    /// How much the small noise erodes their edges (0: smooth blobs).
+    /// How much the noise erodes their surface (0: smooth lumps, 0.35:
+    /// billows, 1: ragged and wispy).
     pub detail: f32,
     /// The high thin layer's cover (0: none) and height in metres.
     pub layer: f32,
@@ -75,6 +201,7 @@ pub struct Clouds {
 impl Default for Clouds {
     fn default() -> Self {
         Clouds {
+            kind: CloudKind::Cumulus,
             coverage: 0.45,
             density: 0.04,
             base: 1500.0,
@@ -97,12 +224,15 @@ impl Clouds {
     /// `radius` metres: (coverage, density, base, thickness), (the wind's
     /// offset, scale), (colour, detail), (layer, layer altitude, steps, on),
     /// (radius, the sun's and the sky's dimming by [`Clouds::light`],
-    /// which the scene's light is assumed to carry), and after the clear
+    /// which the scene's light is assumed to carry), after the clear
     /// sky's rows where the eye stands in the world (`eye`: its x and z):
-    /// the clouds stand over the world, not over the eye. The offset and
-    /// the eye's place wrap every four tiles (a period of every scale the
-    /// sky reads the noise at) so f32 keeps its precision however long the
-    /// clock runs and however far the eye goes.
+    /// the clouds stand over the world, not over the eye; and the kind's
+    /// numbers (clouds_shape.wgsl), with the high layer's place. The offset
+    /// and the eye's place wrap every four tiles (a period of every scale
+    /// the sky reads the volumetric layer's fields at), and the high
+    /// layer's place every sixteen (a period of its own, which are
+    /// broader), so f32 keeps its precision however long the clock runs and
+    /// however far the eye goes.
     pub(crate) fn gpu(
         &self,
         seconds: f64,
@@ -113,7 +243,14 @@ impl Clouds {
         let period = f64::from(scale) * 4.0;
         let offset = |v: f32| (f64::from(v) * seconds).rem_euclid(period) as f32;
         let place = |v: f64| v.rem_euclid(period) as f32;
+        // The high layer's place: the eye's less the offset of the wind up
+        // there, twice the layer's below.
+        let high = |eye: f64, wind: f32| {
+            (eye - 2.0 * f64::from(wind) * seconds).rem_euclid(period * 4.0) as f32
+        };
         let light = self.light();
+        let kind = self.kind.shape();
+        let detail = self.detail.clamp(0.0, 1.0);
         [
             [
                 self.coverage.clamp(0.0, 1.0),
@@ -127,10 +264,7 @@ impl Clouds {
                 offset(self.wind.z),
                 scale,
             ],
-            self.color
-                .max(Vec3::ZERO)
-                .extend(self.detail.clamp(0.0, 1.0))
-                .to_array(),
+            self.color.max(Vec3::ZERO).extend(detail).to_array(),
             [
                 self.layer.clamp(0.0, 1.0),
                 self.layer_altitude.max(self.base + self.thickness),
@@ -151,7 +285,59 @@ impl Clouds {
             [0.0; 4],
             [place(eye.x), place(eye.y), 0.0, 0.0],
             [0.0; 4],
+            [kind.girth, kind.height, kind.power, kind.anvil],
+            // No detail: smooth lumps, eroded half as deep.
+            [
+                kind.cells,
+                kind.edge,
+                kind.erosion * (0.5 + 0.5 * (detail / 0.35).min(1.0)),
+                kind.vary,
+            ],
+            [
+                kind.base,
+                kind.under,
+                high(eye.x, self.wind.x),
+                high(eye.y, self.wind.z),
+            ],
         ]
+    }
+}
+
+impl Clouds {
+    /// Towards the light that keys the clouds in `scene`, which their own
+    /// shadow is baked along (`clouds/shadow.rs`): under a procedural
+    /// physical sky the sky's sun or its moon, whichever is the brighter
+    /// at the cloud base, as sky.wgsl `cloud_key` chooses (a shadow baked
+    /// along the set sun's ray while the rising moon keyed the clouds lay
+    /// across them, and they stood darker than the night sky); under any
+    /// other sky the scene's directional light.
+    pub(crate) fn key_direction(&self, scene: &crate::RenderScene) -> Vec3 {
+        let environment = &scene.lighting.environment;
+        let crate::Background::Procedural {
+            sun_direction,
+            sun_color,
+        } = environment.background
+        else {
+            return scene.lighting.light.direction_to_light;
+        };
+        let Some((look, air)) = environment
+            .sky
+            .look
+            .and_then(|look| Some((look, look.physical?)))
+        else {
+            return scene.lighting.light.direction_to_light;
+        };
+        let sun = sun_direction.normalize_or(Vec3::Y);
+        let moon_light = look.moon_light();
+        if moon_light == Vec3::ZERO {
+            return sun;
+        }
+        let moon = look.moon_toward(sun);
+        let base = self.base + air.altitude.max(0.0);
+        let luma = Vec3::new(0.2126, 0.7152, 0.0722);
+        let s = (sun_color * air.sun_transmittance(base, sun.y)).dot(luma);
+        let m = (moon_light * air.sun_transmittance(base, moon.y)).dot(luma);
+        if m > s { moon } else { sun }
     }
 }
 
@@ -241,21 +427,48 @@ impl Clouds {
     }
 }
 
-/// The noise volume and its sampler, bound by the sky pass (its group's
-/// bindings 1 and 2): a 1³ placeholder until a frame has clouds.
+/// The clouds' baked fields and their sampler, bound by the sky pass (its
+/// group's bindings 1, 2, 7 and 8) and the shadow's bake: the shape and
+/// detail volumes and the map (clouds_noise.wgsl). Placeholders of one
+/// texel until a frame has clouds.
 pub(crate) struct CloudNoise {
+    /// The shape volume.
     pub view: wgpu::TextureView,
+    /// The detail volume.
+    pub detail: wgpu::TextureView,
+    /// The map.
+    pub map: wgpu::TextureView,
     pub sampler: wgpu::Sampler,
-    /// Whether the full volume is made: drawn, or its draw pending.
+    /// Whether the full fields are made: drawn, or their draw pending.
     pub made: bool,
-    /// The volume's draw [`CloudNoise::make`] planned and
-    /// [`CloudNoise::submit`] submits: its pipeline, compiling on a worker
-    /// meanwhile, and its group.
-    pending: Option<(
-        crate::deferred::Deferred<wgpu::ComputePipeline>,
-        wgpu::BindGroup,
-    )>,
-    _texture: wgpu::Texture,
+    /// The fields' draw [`CloudNoise::make`] planned and
+    /// [`CloudNoise::submit`] submits.
+    pending: Option<NoiseDraw>,
+    _textures: [wgpu::Texture; 3],
+}
+
+/// The fields' pipelines (clouds_noise.wgsl's entry points), compiling on a
+/// worker from the frame that plans the draw.
+struct NoisePipelines {
+    shape: wgpu::ComputePipeline,
+    detail: wgpu::ComputePipeline,
+    map: wgpu::ComputePipeline,
+    mips: wgpu::ComputePipeline,
+}
+
+#[derive(Clone, Copy)]
+enum NoiseStep {
+    Shape,
+    Detail,
+    Map,
+    Mips,
+}
+
+struct NoiseDraw {
+    pipelines: crate::deferred::Deferred<NoisePipelines>,
+    /// Each step's group and workgroups, in order: a level after the one
+    /// it averages.
+    steps: Vec<(NoiseStep, wgpu::BindGroup, [u32; 3])>,
 }
 
 /// The main camera's clouds marched at half the frame's size (render/pass_clouds.rs, sky.wgsl `fs_clouds_low`): a
@@ -300,6 +513,24 @@ struct TemporalUniform {
 /// The texel of each two by two that the frame of `phase` marches: the four in turn, each across from the last.
 fn block_offset(phase: u64) -> [f32; 2] {
     [[0.0, 0.0], [1.0, 1.0], [1.0, 0.0], [0.0, 1.0]][(phase % 4) as usize]
+}
+
+/// How far the frame of `phase` moves the march's dither, in texels along
+/// the diagonal: interleaved gradient noise's value moves through its
+/// range 3.865 times in a texel of it, so this is a share of the range.
+/// The four texels of a two by two start their marches a quarter of the
+/// range apart, across from each other first (a 2 x 2 ordered dither over
+/// the noise), and each time a texel is marched again its start moves on
+/// by the golden ratio: the marches the resolve blends into a texel are
+/// spread evenly over a step, whichever of the four it is. (Moved by the
+/// frame's count alone, a row's two texels kept starts close together and
+/// the next row's another pair: fine level lines on a cloud's shaded side
+/// and across a base.) None without a history to average them in.
+fn dither_turn(phase: u64) -> f32 {
+    const RANGE_PER_TEXEL: f64 = 52.982_918_9 * (0.067_110_56 + 0.005_837_15);
+    let ordered = [0.0, 0.5, 0.25, 0.75][(phase % 4) as usize];
+    let again = ((phase / 4) % 64) as f64 * 0.618_033_988_75;
+    ((ordered + again).fract() / RANGE_PER_TEXEL) as f32
 }
 
 /// The cloud target's history (Schneider 2015, the temporal upsampling of the Horizon Zero Dawn clouds): the last
@@ -402,7 +633,12 @@ impl CloudsTemporal {
         let u = TemporalUniform {
             prev_view_proj: previous.map_or(view_proj, |(_, m)| m).to_cols_array_2d(),
             size: [w as f32, h as f32, x, y],
-            mode: [f32::from(u8::from(self.reproject)), 0.0, 0.0, 0.0],
+            mode: [
+                f32::from(u8::from(self.reproject)),
+                if self.reproject { dither_turn(phase) } else { 0.0 },
+                0.0,
+                0.0,
+            ],
         };
         crate::traffic::write_buffer(queue, &self.uniform, 0, bytemuck::bytes_of(&u));
         self.drawn = Some((phase, view_proj));
@@ -453,46 +689,52 @@ impl CloudsTemporal {
     }
 }
 
-fn volume(device: &wgpu::Device, size: u32, storage: bool) -> wgpu::Texture {
+const FIELD_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
+/// The map's: half floats, for a cloud's top follows it (eight bits
+/// would give that top 256 heights).
+const MAP_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
+
+/// A field's texture: a volume of `size` a side with `levels` levels, or
+/// (`flat`) a map of `size` a side.
+fn field(device: &wgpu::Device, label: &str, size: u32, levels: u32, flat: bool) -> wgpu::Texture {
     device.create_texture(&wgpu::TextureDescriptor {
-        label: Some("cloud noise"),
+        label: Some(label),
         size: wgpu::Extent3d {
             width: size,
             height: size,
-            depth_or_array_layers: size,
+            depth_or_array_layers: if flat { 1 } else { size },
         },
-        mip_level_count: 1,
+        mip_level_count: levels,
         sample_count: 1,
-        dimension: wgpu::TextureDimension::D3,
-        format: wgpu::TextureFormat::Rgba8Unorm,
-        usage: if storage {
-            wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::STORAGE_BINDING
+        dimension: if flat {
+            wgpu::TextureDimension::D2
         } else {
-            wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST
+            wgpu::TextureDimension::D3
         },
+        format: if flat { MAP_FORMAT } else { FIELD_FORMAT },
+        usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::STORAGE_BINDING,
         view_formats: &[],
         texture_binding_view_dimension: None,
     })
 }
 
+/// One level of `texture`.
+fn level(texture: &wgpu::Texture, level: u32) -> wgpu::TextureView {
+    texture.create_view(&wgpu::TextureViewDescriptor {
+        base_mip_level: level,
+        mip_level_count: Some(1),
+        ..Default::default()
+    })
+}
+
 impl CloudNoise {
-    pub(crate) fn placeholder(device: &wgpu::Device, queue: &wgpu::Queue) -> CloudNoise {
-        let texture = volume(device, 1, false);
-        crate::traffic::write_texture(
-            queue,
-            texture.as_image_copy(),
-            &[0, 0, 0, 0],
-            wgpu::TexelCopyBufferLayout {
-                offset: 0,
-                bytes_per_row: Some(4),
-                rows_per_image: Some(1),
-            },
-            wgpu::Extent3d {
-                width: 1,
-                height: 1,
-                depth_or_array_layers: 1,
-            },
-        );
+    pub(crate) fn placeholder(device: &wgpu::Device) -> CloudNoise {
+        // (Zero where never written: nothing reads them without clouds.)
+        let textures = [
+            field(device, "cloud shape", 1, 1, false),
+            field(device, "cloud detail", 1, 1, false),
+            field(device, "cloud map", 1, 1, true),
+        ];
         let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
             label: Some("cloud noise"),
             address_mode_u: wgpu::AddressMode::Repeat,
@@ -500,46 +742,111 @@ impl CloudNoise {
             address_mode_w: wgpu::AddressMode::Repeat,
             mag_filter: wgpu::FilterMode::Linear,
             min_filter: wgpu::FilterMode::Linear,
-            mipmap_filter: wgpu::MipmapFilterMode::Nearest,
+            mipmap_filter: wgpu::MipmapFilterMode::Linear,
             ..Default::default()
         });
         CloudNoise {
-            view: texture.create_view(&Default::default()),
+            view: textures[0].create_view(&Default::default()),
+            detail: textures[1].create_view(&Default::default()),
+            map: textures[2].create_view(&Default::default()),
             sampler,
             made: false,
             pending: None,
-            _texture: texture,
+            _textures: textures,
         }
     }
 
-    /// Makes the full volume (once), to draw by a compute pass of
-    /// `clouds_noise.wgsl` before the frame's passes read it
-    /// ([`CloudNoise::submit`]). Its pipeline starts compiling on a worker
-    /// now, so the frame's other work and compiles overlap it: made here,
-    /// it was the first frame's longest wait before any of the frame's
-    /// pipelines started (a second of llvmpipe's).
+    /// Makes the full fields (once), to draw by compute passes of
+    /// `clouds_noise.wgsl` before the frame's passes read them
+    /// ([`CloudNoise::submit`]). Their pipelines start compiling on a
+    /// worker now, so the frame's other work and compiles overlap them:
+    /// made here, they were the first frame's longest wait before any of
+    /// the frame's pipelines started (a second of llvmpipe's).
     pub(crate) fn make(&mut self, device: &wgpu::Device) {
-        let texture = volume(device, NOISE_SIZE, true);
-        let view = texture.create_view(&Default::default());
-        let layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("cloud noise"),
-            entries: &[wgpu::BindGroupLayoutEntry {
-                binding: 0,
-                visibility: wgpu::ShaderStages::COMPUTE,
-                ty: wgpu::BindingType::StorageTexture {
-                    access: wgpu::StorageTextureAccess::WriteOnly,
-                    format: wgpu::TextureFormat::Rgba8Unorm,
-                    view_dimension: wgpu::TextureViewDimension::D3,
-                },
-                count: None,
-            }],
-        });
-        let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("cloud noise"),
-            bind_group_layouts: &[Some(&layout)],
-            immediate_size: 0,
-        });
-        let pipeline = {
+        let textures = [
+            field(device, "cloud shape", SHAPE_SIZE, SHAPE_LEVELS, false),
+            field(device, "cloud detail", DETAIL_SIZE, DETAIL_LEVELS, false),
+            field(device, "cloud map", MAP_SIZE, 1, true),
+        ];
+        let entry = |binding, ty| wgpu::BindGroupLayoutEntry {
+            binding,
+            visibility: wgpu::ShaderStages::COMPUTE,
+            ty,
+            count: None,
+        };
+        let out = |view_dimension| wgpu::BindingType::StorageTexture {
+            access: wgpu::StorageTextureAccess::WriteOnly,
+            format: match view_dimension {
+                wgpu::TextureViewDimension::D2 => MAP_FORMAT,
+                _ => FIELD_FORMAT,
+            },
+            view_dimension,
+        };
+        let layout = |label, entries: &[wgpu::BindGroupLayoutEntry]| {
+            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                label: Some(label),
+                entries,
+            })
+        };
+        let volume = layout(
+            "cloud noise volume",
+            &[entry(0, out(wgpu::TextureViewDimension::D3))],
+        );
+        let map = layout(
+            "cloud noise map",
+            &[entry(1, out(wgpu::TextureViewDimension::D2))],
+        );
+        let mips = layout(
+            "cloud noise mips",
+            &[
+                entry(0, out(wgpu::TextureViewDimension::D3)),
+                entry(
+                    2,
+                    wgpu::BindingType::Texture {
+                        sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                        view_dimension: wgpu::TextureViewDimension::D3,
+                        multisampled: false,
+                    },
+                ),
+            ],
+        );
+        let group = |layout: &wgpu::BindGroupLayout, entries: &[(u32, &wgpu::TextureView)]| {
+            let entries: Vec<_> = entries
+                .iter()
+                .map(|(binding, view)| wgpu::BindGroupEntry {
+                    binding: *binding,
+                    resource: wgpu::BindingResource::TextureView(view),
+                })
+                .collect();
+            device.create_bind_group(&wgpu::BindGroupDescriptor {
+                label: Some("cloud noise"),
+                layout,
+                entries: &entries,
+            })
+        };
+        let mut steps = Vec::new();
+        for (texture, step, size, levels) in [
+            (&textures[0], NoiseStep::Shape, SHAPE_SIZE, SHAPE_LEVELS),
+            (&textures[1], NoiseStep::Detail, DETAIL_SIZE, DETAIL_LEVELS),
+        ] {
+            let views: Vec<_> = (0..levels).map(|l| level(texture, l)).collect();
+            steps.push((step, group(&volume, &[(0, &views[0])]), [size / 4; 3]));
+            for l in 1..levels as usize {
+                let n = (size >> l) / 4;
+                steps.push((
+                    NoiseStep::Mips,
+                    group(&mips, &[(0, &views[l]), (2, &views[l - 1])]),
+                    [n; 3],
+                ));
+            }
+        }
+        let map_view = textures[2].create_view(&Default::default());
+        steps.push((
+            NoiseStep::Map,
+            group(&map, &[(1, &map_view)]),
+            [MAP_SIZE / 8, MAP_SIZE / 8, 1],
+        ));
+        let pipelines = {
             let device = device.clone();
             crate::deferred::Deferred::anywhere(move || {
                 crate::deferred::note(|| "cloud noise".into());
@@ -550,73 +857,97 @@ impl CloudNoise {
                         source: wgpu::ShaderSource::Wgsl(NOISE_WGSL.into()),
                     },
                 );
-                crate::traffic::create_compute_pipeline(
-                    &device,
-                    &wgpu::ComputePipelineDescriptor {
+                let pipeline = |layout: &wgpu::BindGroupLayout, entry_point| {
+                    let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                         label: Some("cloud noise"),
-                        layout: Some(&pipeline_layout),
-                        module: &module,
-                        entry_point: Some("main"),
-                        compilation_options: Default::default(),
-                        cache: crate::pipeline_cache::of(&device).as_ref(),
-                    },
-                )
+                        bind_group_layouts: &[Some(layout)],
+                        immediate_size: 0,
+                    });
+                    crate::traffic::create_compute_pipeline(
+                        &device,
+                        &wgpu::ComputePipelineDescriptor {
+                            label: Some("cloud noise"),
+                            layout: Some(&layout),
+                            module: &module,
+                            entry_point: Some(entry_point),
+                            compilation_options: Default::default(),
+                            cache: crate::pipeline_cache::of(&device).as_ref(),
+                        },
+                    )
+                };
+                NoisePipelines {
+                    shape: pipeline(&volume, "shape"),
+                    detail: pipeline(&volume, "detail"),
+                    map: pipeline(&map, "map"),
+                    mips: pipeline(&mips, "mips"),
+                }
             })
         };
-        crate::deferred::Start::start(&pipeline);
-        let group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("cloud noise"),
-            layout: &layout,
-            entries: &[wgpu::BindGroupEntry {
-                binding: 0,
-                resource: wgpu::BindingResource::TextureView(&view),
-            }],
-        });
-        self.pending = Some((pipeline, group));
-        self.view = view;
-        self._texture = texture;
+        crate::deferred::Start::start(&pipelines);
+        self.pending = Some(NoiseDraw { pipelines, steps });
+        self.view = textures[0].create_view(&Default::default());
+        self.detail = textures[1].create_view(&Default::default());
+        self.map = map_view;
+        self._textures = textures;
         self.made = true;
     }
 
-    /// Whether the full volume is drawn: what a bake that keeps what it
+    /// Whether the full fields are drawn: what a bake that keeps what it
     /// reads waits for.
     pub(crate) fn drawn(&self) -> bool {
         self.made && self.pending.is_none()
     }
 
-    /// Submits the volume's draw [`CloudNoise::make`] planned, waiting for
-    /// its pipeline if it is still compiling natively: before the frame's
-    /// own commands, the first that read it. While its pipeline is not
-    /// ready the draw waits for a later frame (gpu/deferred.rs).
+    /// Whether the full fields are drawn or [`CloudNoise::submit`] draws
+    /// them this frame.
+    pub(crate) fn drawing(&self) -> bool {
+        self.made
+            && self
+                .pending
+                .as_ref()
+                .is_none_or(|draw| draw.pipelines.ready().is_some())
+    }
+
+    /// Submits the fields' draw [`CloudNoise::make`] planned, waiting for
+    /// its pipelines if they are still compiling natively: before the
+    /// frame's own commands, the first that read them. While the pipelines
+    /// are not ready the draw waits for a later frame (gpu/deferred.rs).
     pub(crate) fn submit(&mut self, device: &wgpu::Device, queue: &wgpu::Queue) {
         if self
             .pending
             .as_ref()
-            .is_some_and(|(pipeline, _)| pipeline.ready().is_none())
+            .is_some_and(|draw| draw.pipelines.ready().is_none())
         {
             return;
         }
-        let Some((pipeline, group)) = self.pending.take() else {
+        let Some(draw) = self.pending.take() else {
             return;
         };
+        let pipelines = draw.pipelines.wait();
         let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
             label: Some("cloud noise"),
         });
-        {
+        // A pass a step: a level is read by the step after the one that
+        // wrote it.
+        for (step, group, [x, y, z]) in &draw.steps {
             let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
                 label: Some("cloud noise"),
                 timestamp_writes: None,
             });
-            pass.set_pipeline(pipeline.wait());
-            pass.set_bind_group(0, &group, &[]);
-            let n = NOISE_SIZE / 4;
-            pass.dispatch_workgroups(n, n, n);
+            pass.set_pipeline(match step {
+                NoiseStep::Shape => &pipelines.shape,
+                NoiseStep::Detail => &pipelines.detail,
+                NoiseStep::Map => &pipelines.map,
+                NoiseStep::Mips => &pipelines.mips,
+            });
+            pass.set_bind_group(0, group, &[]);
+            pass.dispatch_workgroups(*x, *y, *z);
         }
         queue.submit(Some(encoder.finish()));
     }
 }
 
-/// The noise volume's compute shader, after the hashes it draws from.
+/// The fields' compute shader, after the hashes it draws from.
 pub(crate) const NOISE_WGSL: &str = wgsl_library!("clouds_noise.wgsl");
 
 #[cfg(test)]
@@ -704,6 +1035,13 @@ mod tests {
             "{at:?}"
         );
         assert!((f64::from(at[1]) - (tile - 50.0)).abs() < 0.01, "{at:?}");
+        // The high layer's place goes against twice the wind and with the
+        // eye, and wraps at sixteen tiles.
+        let high = c.gpu(10.0, 6.36e6, glam::DVec2::new(500.0, 0.0))[14];
+        assert!((high[2] - 260.0).abs() < 1e-3, "{high:?}");
+        assert!((f64::from(high[3]) - (tile * 4.0 - 80.0)).abs() < 0.01, "{high:?}");
+        let round = c.gpu(10.0, 6.36e6, glam::DVec2::new(500.0 + tile * 4.0, 0.0))[14];
+        assert!((high[2] - round[2]).abs() < 0.01, "{high:?} {round:?}");
     }
 
     /// A broken sky barely dims the sun; overcast takes most of it, and
