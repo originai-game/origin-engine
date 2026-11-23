@@ -801,6 +801,25 @@ pub(crate) fn dispatch(m: &mut Model, a: &Args) -> Result<(Value, bool), ModelEr
                 let r = m.dent(a.id("id")?, &d)?;
                 Ok((json!({"crossingPairs": r.crossing_pairs}), true))
             }
+            "displace" => {
+                use crate::edit::{Displace, Noise};
+                let noise = match a.opt("noise").and_then(Value::as_str).unwrap_or("fbm") {
+                    "fbm" => Noise::Fbm,
+                    "ridged" => Noise::Ridged,
+                    "crater" => Noise::Crater,
+                    _ => return Err(a.bad("noise", "\"fbm\", \"ridged\" or \"crater\"")),
+                };
+                let d = Displace {
+                    noise,
+                    scale: a.num("scale")?,
+                    amount: a.num("amount")?,
+                    octaves: a.u32_or("octaves", 0)?,
+                    seed: a.u32_or("seed", 0)?,
+                    density: a.num_or("density", 0.0)?,
+                };
+                let r = m.displace(a.id("id")?, &d)?;
+                Ok((json!({"crossingPairs": r.crossing_pairs}), true))
+            }
             "subdivide" => {
                 let d = Subdivide {
                     levels: a.u32_or("levels", 0)?,

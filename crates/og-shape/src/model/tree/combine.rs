@@ -422,6 +422,16 @@ impl Model {
         })
     }
 
+    /// Moves the surface by noise ([`crate::edit::displace`]), read in
+    /// the part's own space: the part keeps its features as it moves.
+    pub fn displace(
+        &mut self,
+        id: Id,
+        d: &crate::edit::Displace,
+    ) -> Result<EditReport, ModelError> {
+        self.edit_report(id, |s, _| Ok(crate::edit::displace_report(s, d)?))
+    }
+
     /// Fillets on named edges ([`crate::bevel::fillet`]).
     pub fn fillet(&mut self, id: Id, d: &Fillet) -> Result<(), ModelError> {
         self.edit(id, |s, _| Ok(crate::bevel::fillet(s, d)?))

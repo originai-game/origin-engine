@@ -11,6 +11,7 @@
 //! | [`seat`] | cut the volume a part fills | `cut`, `<part>.*` |
 //! | [`shell`] | cut a solid offset inside the surface | `cut`, `shell.*` |
 //! | [`dent`] | press the surface in, subdividing where needed | `dent` on moved faces |
+//! | [`displace`] | move the surface along its normals by noise (fbm, ridged, craters) | none |
 //! | [`merge`] | append, no boolean | faces as given |
 
 use std::collections::BTreeMap;
@@ -26,6 +27,7 @@ use crate::profile::Profile;
 use robust::{Coord3D, orient3d};
 
 mod dent;
+mod displace;
 mod hole;
 mod merge;
 mod pocket;
@@ -33,6 +35,7 @@ mod seat;
 mod shell;
 mod split;
 pub use dent::*;
+pub use displace::{Displace, MAX_OCTAVES, Noise, displace, displace_report};
 pub use hole::*;
 pub use merge::*;
 pub use pocket::*;

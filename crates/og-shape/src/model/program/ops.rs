@@ -183,6 +183,12 @@ pub(crate) const OPS: &[(&str, &[&str])] = &[
     ("shell", &["id", "thickness", "open"]),
     ("dent", &["id", "at", "radius", "depth"]),
     ("subdivide", &["id", "levels", "sharp"]),
+    (
+        "displace",
+        &[
+            "id", "noise", "scale", "amount", "octaves", "seed", "density",
+        ],
+    ),
     ("fillet", &["id", "radius", "edges", "segments", "profile"]),
     (
         "chamfer",

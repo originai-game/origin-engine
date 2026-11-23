@@ -67,6 +67,14 @@ XY plane), `at` and `transform` (a new frame), `scale`, `group`,
   welds two parts without a boolean.
 - Edits: `hole` (with `counterbore` or `countersink`), `pocket`, `split`,
   `shell` (hollow out, with an `open` face), `dent` and `subdivide`.
+- Organic surfaces: `displace` moves a part's surface along its normals by
+  noise (`noise` `fbm`, `ridged` or `crater`; `scale` the largest
+  feature, `amount` the most it moves, `octaves`, `seed`, crater
+  `density`). It adds no vertices: subdivide first until edges are under
+  a quarter of `scale`. A rock is a `box` or `sphere`, `subdivide`
+  `levels` 4, then `displace`; a second `displace` with `crater` pocks it.
+  Its `crossingPairs` is not 0 when `amount` folds the surface through
+  itself; lower it or subdivide more.
 - Bevels: `fillet` (`radius`), `chamfer` (`distance`) and `soften`, on
   every edge or on the named `edges`, such as `"side"` or `"top"`.
 

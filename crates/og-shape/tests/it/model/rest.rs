@@ -640,3 +640,66 @@ fn a_shell_is_hollowed_piece_by_piece_where_its_hollow_pinches_off() {
     ];
     assert!(hollow(holes, 9.0, json!(["top"])) > 0.0);
 }
+
+#[test]
+fn displace_roughens_a_subdivided_part_deterministically() {
+    let p = |noise: &str, amount: f64, seed: u32| {
+        json!({"name": "t", "ops": [
+            {"op": "units", "unit": "m"},
+            {"op": "box", "name": "rock", "width": 2, "depth": 2, "height": 2},
+            {"op": "subdivide", "id": 0, "levels": 4},
+            {"op": "displace", "id": 0, "noise": noise, "scale": 1.2, "amount": amount,
+             "octaves": 4, "seed": seed},
+        ]})
+    };
+    let smooth = part(
+        &json!({"name": "t", "ops": [
+            {"op": "units", "unit": "m"},
+            {"op": "box", "name": "rock", "width": 2, "depth": 2, "height": 2},
+            {"op": "subdivide", "id": 0, "levels": 4},
+        ]}),
+        "rock",
+    );
+    for noise in ["fbm", "ridged", "crater"] {
+        let a = part(&p(noise, 0.15, 3), "rock");
+        // Closed (checked by `part`), the same mesh, and a different shape.
+        assert_eq!(a.triangles, smooth.triangles, "{noise}");
+        assert!(
+            (a.volume - smooth.volume).abs() > 1e-3,
+            "{noise} moved nothing"
+        );
+        if noise != "crater" {
+            // Lumps and crests reach the corners; craters are local.
+            assert_ne!(a.bounds_min, smooth.bounds_min, "{noise}");
+        }
+        // The same program builds the same bytes; another seed another rock.
+        let glb = |v: &Value| run(&v.to_string()).unwrap().glb().unwrap();
+        assert_eq!(glb(&p(noise, 0.15, 3)), glb(&p(noise, 0.15, 3)), "{noise}");
+        assert_ne!(glb(&p(noise, 0.15, 3)), glb(&p(noise, 0.15, 4)), "{noise}");
+        // Nothing moves further than `amount` (crater rims rise to 0.6 of it).
+        let far = a.bounds_max.x.max(-a.bounds_min.x);
+        assert!(far <= smooth.bounds_max.x + 0.15 + 1e-9, "{noise}: {far}");
+    }
+    // Whole-number fields take parameters (evaluated in f64): a variant
+    // sets its own seed and levels.
+    let param = json!({"name": "t", "params": {"seed": 3, "levels": 4}, "ops": [
+        {"op": "units", "unit": "m"},
+        {"op": "box", "name": "rock", "width": 2, "depth": 2, "height": 2},
+        {"op": "subdivide", "id": 0, "levels": "$levels"},
+        {"op": "displace", "id": 0, "noise": "fbm", "scale": 1.2, "amount": 0.15,
+         "octaves": 4, "seed": "$seed"},
+    ]});
+    let glb = |v: &Value| run(&v.to_string()).unwrap().glb().unwrap();
+    assert_eq!(glb(&param), glb(&p("fbm", 0.15, 3)));
+    let e = err(json!({"name": "t", "params": {"seed": 2.5}, "ops": [
+        {"op": "box", "name": "rock", "width": 2, "depth": 2, "height": 2},
+        {"op": "subdivide", "id": 0},
+        {"op": "displace", "id": 0, "scale": 1, "amount": 0.1, "seed": "$seed"},
+    ]}));
+    assert!(e.contains("seed") && e.contains("whole number"), "{e}");
+    // Bad values are refused, naming the field.
+    let e = err(p("fbm", 0.0, 0));
+    assert!(e.contains("op 3 displace") && e.contains("amount"), "{e}");
+    let e = err(p("perlin", 0.1, 0));
+    assert!(e.contains("noise"), "{e}");
+}

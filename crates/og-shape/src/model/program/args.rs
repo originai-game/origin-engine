@@ -216,8 +216,15 @@ impl Args<'_> {
     pub(crate) fn u32_or(&self, k: &str, d: u32) -> Result<u32, ModelError> {
         match self.opt(k) {
             None => Ok(d),
+            // A parameter's expression is evaluated in f64: a whole value
+            // of it (`"$seed + 1"`) is a whole number too.
             Some(v) => v
                 .as_u64()
+                .or_else(|| {
+                    v.as_f64()
+                        .filter(|f| f.fract() == 0.0 && *f >= 0.0 && *f <= f64::from(u32::MAX))
+                        .map(|f| f as u64)
+                })
                 .and_then(|n| u32::try_from(n).ok())
                 .ok_or_else(|| self.bad(k, "a whole number")),
         }
