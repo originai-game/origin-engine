@@ -33,8 +33,15 @@ component part. Review every component under it with
   last with a `unicodeRange`.
 - **`images`**: nine-slice art by name (`button`, `button-hover`,
   `button-pressed`, `button-disabled`, `button-primary`,
-  `button-primary-hover`, `button-primary-pressed`, `panel`, `plate`,
-  `chip`); a class `nine-<name>` draws one.
+  `button-primary-hover`, `button-primary-pressed`, `button-danger`,
+  `button-danger-hover`, `button-danger-pressed`, `panel`, `plate`, `chip`,
+  `slot`); a class `nine-<name>` draws one. All are `art/frames/`, drawn
+  by templates/tools/make-frame-art.py: a thick navy outline, a two-tone
+  face under a glossy top band and a deep lip a press sinks into; sky-blue
+  plain, sunny-yellow primary and red danger buttons, a cream panel under
+  a tangerine header band (its slot dressed `scheme-light`, ink `fg`),
+  navy plates, chips and slot wells. Its plain button's ink is
+  `art-button-fg` (navy on the light blue).
 - **`variants`**: the classes of the slots it dresses (`Button.plate`,
   `Button.plate.primary`, `Panel.frame`, `Plate.frame`, `Chip.frame`).
 - **`sounds`**: every event (`press`, `hover`, `select`, `confirm`, `cancel`, `back`, `open`, `close`, `error`, `reward`, `toggle`, `tab`, `levelup`, `purchase`, `countdown`) from the pack's own clips in `sfx/` (`tap`, `toggle`, `tab`, `countdown`, `back`, `close`, `open`, `confirm`, `error`, `purchase`, `reward`, `levelup`; `.ogg`, mastered by `templates/tools/master-ui-sounds.py`), and a hover for `Button.plate`, `Button.plate.primary`, `Slot.frame`.

@@ -403,10 +403,62 @@ fn art() -> Vec<(String, Value)> {
         ("glow", json!({ "src": "@styles/shared/art/glow.png", "slice": 0, "tint": true })),
         ("sheen", json!({ "src": "@styles/shared/art/sheen.png", "slice": 0 })),
         ("card-frame", json!({ "src": "@styles/shared/art/card-frame.png", "slice": 60, "width": 15, "fill": false })),
-    ]
-    .into_iter()
-    .map(|(name, image)| (name.to_owned(), image))
-    .collect()
+        ]
+        .into_iter()
+        .map(|(name, image)| (name.to_owned(), image))
+        .chain(frames())
+        .collect()
+}
+
+/// The frame art every look has (`templates/styles/shared/art/frames/`,
+/// drawn 4x by templates/tools/make-frame-art.py): buttons with a lip a
+/// press flattens (`button`, `button-primary`, `button-danger`, each with
+/// `-hover` and `-pressed`, and `button-disabled`), a slate `panel` with a
+/// champagne rim, a currency `plate`, a sunk `field` and item `slot`, a
+/// notification `badge`, a `divider` that fades out at its ends; and two
+/// tint pieces the fill colours: a slot's `slot-rim` (a rarity) and a
+/// `chip-bevel`. Insets are in points, `[top, right, bottom, left]`.
+fn frames() -> Vec<(String, Value)> {
+    let mut out = Vec::new();
+    let mut put = |name: String, slice: [f32; 4], fill: bool, tint: bool| {
+        let mut image = json!({
+            "src": format!("@styles/shared/art/frames/{name}.png"),
+            "slice": slice.map(|s| s * 4.0),
+            "width": slice,
+        });
+        if !fill {
+            image["fill"] = json!(false);
+        }
+        if tint {
+            image["tint"] = json!(true);
+        }
+        out.push((name, image));
+    };
+    for base in ["button", "button-primary", "button-danger"] {
+        for state in ["", "-hover", "-pressed"] {
+            put(
+                format!("{base}{state}"),
+                [17.0, 18.0, 21.0, 18.0],
+                true,
+                false,
+            );
+        }
+    }
+    put(
+        "button-disabled".into(),
+        [17.0, 18.0, 21.0, 18.0],
+        true,
+        false,
+    );
+    put("panel".into(), [32.0; 4], true, false);
+    put("plate".into(), [18.0, 20.0, 18.0, 20.0], true, false);
+    put("field".into(), [14.0; 4], true, false);
+    put("slot".into(), [18.0; 4], true, false);
+    put("slot-rim".into(), [18.0; 4], false, true);
+    put("chip-bevel".into(), [10.0; 4], true, true);
+    put("badge".into(), [13.0, 14.0, 14.0, 14.0], true, false);
+    put("divider".into(), [0.0, 88.0, 0.0, 88.0], true, false);
+    out
 }
 
 /// The input prompt glyphs every look has (`templates/styles/shared/glyphs/`,

@@ -31,7 +31,9 @@ component part. Review every component under it with
 - **`images`**: nine-slice art by name (`frame-filigree`, `button-iron`,
   `button-iron-hover`, `button-iron-pressed`, `button-red`,
   `button-red-hover`, `button-red-pressed`, `button-disabled`, `plate`,
-  `chip`); a class `nine-<name>` draws one.
+  `chip`, and `button-primary`, `button-primary-hover`,
+  `button-primary-pressed` as the red ones, so the primary art and its
+  `art-primary-fg` ink agree); a class `nine-<name>` draws one.
 - **`variants`**: the classes of the slots it dresses (`Button.plate`,
   `Button.plate.primary`, `Panel.frame`, `Plate.frame`, `Chip.frame`).
 - **`sounds`**: every event (`press`, `hover`, `select`, `confirm`, `cancel`, `back`, `open`, `close`, `error`, `reward`, `toggle`, `tab`, `levelup`, `purchase`, `countdown`) from the pack's own clips in `sfx/` (`tap`, `toggle`, `tab`, `countdown`, `back`, `close`, `open`, `confirm`, `error`, `purchase`, `reward`, `levelup`; `.ogg`, mastered by `templates/tools/master-ui-sounds.py`), and a hover for `Button.plate`, `Button.plate.primary`.

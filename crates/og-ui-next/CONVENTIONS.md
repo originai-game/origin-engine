@@ -676,6 +676,28 @@ Every look has these images, white masks coloured by the element's fill
 | `panel-cut` | the same corners cut 12 | a HUD panel |
 | `chip-cut` | the trailing top corner cut 6 | a tag, badge or chip |
 
+And this frame art (`templates/styles/shared/art/frames/`, drawn by
+templates/tools/make-frame-art.py), pictures with their own colours and
+depth unless marked tint; a pack's own image of the same name replaces
+one. Their ink is `art-fg` (`art-button-fg` on the plain buttons, which a
+pack with light plain buttons darkens), and `art-primary-fg` on the primary button
+(colours the same in both schemes, as the art is):
+
+| Image | Picture | For |
+|---|---|---|
+| `button`, `button-hover`, `button-pressed` | a slate button with a lit rim, a gloss and a 4-point lip a press flattens | a button's body in its states |
+| `button-primary` (`-hover`, `-pressed`) | the same in gold | the primary action |
+| `button-danger` (`-hover`, `-pressed`) | the same in red | a destructive action |
+| `button-disabled` | the same in grey | any button disabled |
+| `panel` | slate glass, a champagne rim, an inner hairline with gold corners | a window or panel |
+| `plate` | a dark glass pill | a currency or HUD read-out |
+| `field` | a sunk well | a text field |
+| `slot` | a sunk square with a lit metal rim | an item or ability slot |
+| `slot-rim` | tint: a ring glowing inward, its centre open | a slot's rarity, over `slot` (`bg-epic`) |
+| `chip-bevel` | tint: a bevelled tag | a rarity or tag chip (`bg-rare`) |
+| `badge` | a red pill with a white rim | a notification count |
+| `divider` | a champagne line fading out at its ends (height 2) | a rule between sections |
+
 The slots a pack dresses, each declared in the default pack so a
 component's `packClass` on it resolves under every pack:
 `Button.plate` (a button's body; `primary` its main action), `Panel.frame`

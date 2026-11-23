@@ -354,6 +354,33 @@
         6.0,
         6.9
       ]
+    },
+    "button-primary": {
+      "src": "art/button-red.svg",
+      "slice": [
+        28,
+        24,
+        28,
+        24
+      ]
+    },
+    "button-primary-hover": {
+      "src": "art/button-red-hover.svg",
+      "slice": [
+        28,
+        24,
+        28,
+        24
+      ]
+    },
+    "button-primary-pressed": {
+      "src": "art/button-red-pressed.svg",
+      "slice": [
+        28,
+        24,
+        28,
+        24
+      ]
     }
   }
 }

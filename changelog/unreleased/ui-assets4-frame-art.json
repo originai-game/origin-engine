@@ -1,0 +1,12 @@
+{
+  "added": [
+    {
+      "member": "style pack images",
+      "summary": "Frame art with depth for every pack: the default pack's `button`, `button-primary`, `button-danger` (each with `-hover` and `-pressed`), `button-disabled`, `panel`, `plate`, `field`, `slot`, `badge` and `divider`, and the tint pieces `slot-rim` (a slot's rarity, `nine-slot-rim bg-epic`) and `chip-bevel`, drawn as `nine-<name>`; and the theme colours `art-fg`, `art-button-fg` and `art-primary-fg`, the ink on that art. A pack's own image of the same name replaces one, as before."
+    },
+    {
+      "member": "scifi and cartoon style packs",
+      "summary": "New frame art for scifi and cartoon. Scifi: dark translucent glass with a lit hairline, a soft drop and one cyan accent per piece (a leading-edge bar, a header tab, a corner notch), rounded on one radius rule, and a flat lit-cyan primary; it adds `slot` and `divider`. Cartoon: a thick navy outline, two-tone faces under a glossy band and a deep lip, sky-blue, yellow and red buttons, a cream panel under a tangerine header (`Panel.frame` now `scheme-light` with `fg` ink), navy plates, chips and slots; it adds `button-danger` and `slot`, and its plain button's ink is `art-button-fg`. The fantasy pack names its red buttons `button-primary` too, so its primary art matches its `art-primary-fg`."
+    }
+  ]
+}

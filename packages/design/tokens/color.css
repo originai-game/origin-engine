@@ -131,6 +131,14 @@
   --color-icon-shade: #0000003d;
   --color-icon-gloss: #ffffff8c;
   --color-icon-mark: #ffffff;
+  /* The ink on the frame art (templates/styles/shared/art/frames/), the
+     same in both schemes as the art is: on the slate and red pieces, and
+     on the gold primary button. */
+  --color-art-fg: #f4f6fb;
+  --color-art-primary-fg: #3a2206;
+  /* The ink on the plain button art (a pack with a light plain button
+     writes a dark one). */
+  --color-art-button-fg: #f4f6fb;
   --color-chart-easy: rgb(52 199 120);
   --color-chart-normal: rgb(50 160 230);
   --color-chart-hard: rgb(255 165 40);

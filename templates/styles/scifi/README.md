@@ -34,7 +34,15 @@ component part. Review every component under it with
   `cut-plate`, `cut-cell`, `cut-chip`, `cut-button`, `cut-field`, `button`,
   `button-hover`, `button-pressed`, `button-disabled`, `button-primary`,
   `button-primary-hover`, `button-primary-pressed`, `panel`, `plate`,
-  `chip`); a class `nine-<name>` draws one.
+  `chip`, `slot`, `divider`); a class `nine-<name>` draws one. The
+  buttons, `panel`, `plate`, `chip`, `slot` and `divider` are the
+  material set in `art/frames/` (drawn by templates/tools/make-frame-art.py:
+  dark translucent glass, a white hairline with its top edge lit, a soft
+  drop and no glow, one cyan accent per piece: a bar on a button's or
+  plate's leading edge, a tab on the panel's top, a notch in a slot's
+  corner; radius 6 on controls, 10 on panels, 4 on chips; a flat lit-cyan
+  primary with a light inner gradient); the default
+  pack's `field`, `badge`, `slot-rim` and `chip-bevel` show through.
 - **`variants`**: the classes of the slots it dresses (`Button.plate`,
   `Panel.frame`, `Plate.frame`, `Slot.frame`, `Chip.frame`, `Field.frame`,
   `Button.plate.primary`).
@@ -46,6 +54,7 @@ component part. Review every component under it with
 
 ## Art provenance
 
-Every SVG in `art/` was drawn by hand for this pack; there are no generated
-textures. Fonts (Chakra Petch, Barlow Condensed, Barlow Semi Condensed,
+Every SVG in `art/` was drawn by hand for this pack, and `art/frames/` is
+drawn by templates/tools/make-frame-art.py (CC0, deterministic); there are
+no generated textures. Fonts (Chakra Petch, Barlow Condensed, Barlow Semi Condensed,
 Rajdhani) come from `@styles/shared` under their own licences there.

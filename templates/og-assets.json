@@ -1364,6 +1364,90 @@
       "visibility": "public"
     },
     {
+      "path": "styles/cartoon/art/frames/button-danger-hover.png",
+      "sha256": "f73a6dfab14a8c3e6f967efd9d507ba44c406a43249172f6a2c85d9f11f92cc7",
+      "size": 8516,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/cartoon/art/frames/button-danger-pressed.png",
+      "sha256": "97beb97388652bccfd88b3ff3e2687c3f8168035d75ed898b5ad00b1dc391d99",
+      "size": 8194,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/cartoon/art/frames/button-danger.png",
+      "sha256": "0a9b142c4eac05529dd8e9bf660934867ba942721b2777a817903b961751917c",
+      "size": 8383,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/cartoon/art/frames/button-disabled.png",
+      "sha256": "8b7ffc2d9efc88f78c586d7cf4f728e885c11f8dd71acd9db69412468972aef3",
+      "size": 8222,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/cartoon/art/frames/button-hover.png",
+      "sha256": "6341157f6897166afb42a2fc31c92c6bfb00cf1bcc3a8b7d0b10f2b432be18d0",
+      "size": 8198,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/cartoon/art/frames/button-pressed.png",
+      "sha256": "8f73346374206a23e951197eb990e0e5e7b7cf7f977ed02d86b26a2d4c199be4",
+      "size": 8036,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/cartoon/art/frames/button-primary-hover.png",
+      "sha256": "b0dcb46d556bda472e6bbebba23c3274970ede059d9889f2a8e1a6eaaf0e7647",
+      "size": 8340,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/cartoon/art/frames/button-primary-pressed.png",
+      "sha256": "938f9d48cd8177532bf0a1c39e86b80281832edb479b645389251e7685adeb70",
+      "size": 8161,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/cartoon/art/frames/button-primary.png",
+      "sha256": "bb19670dbaeb2a7e9e81d6828d054f0bd2186e3bbb24c541e58935d9900c18f1",
+      "size": 8356,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/cartoon/art/frames/button.png",
+      "sha256": "6bd0629c93a578547c3f282513e48219504a44aa94becd232afab89a05f8b2fb",
+      "size": 8277,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/cartoon/art/frames/chip.png",
+      "sha256": "89cf3e625116a71ed8e03c6f99ddd1dcb2386e649c62b97f96337b12b023a615",
+      "size": 4502,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/cartoon/art/frames/panel.png",
+      "sha256": "e13f3b9d63aafd5b5b4a0c7b302345e4f9909de6ec1ef8b99a39f89ee2b6955a",
+      "size": 13060,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/cartoon/art/frames/plate.png",
+      "sha256": "53680c859d664ff8d5e29171118fa81f4e74f9624176e8e37ec61c6bfe9406ff",
+      "size": 6829,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/cartoon/art/frames/slot.png",
+      "sha256": "81249987058ba933409c6e5de22a7e052d9a88e000f39d0f8e5b05b50e26844e",
+      "size": 6346,
+      "visibility": "public"
+    },
+    {
       "path": "styles/cartoon/art/panel.png",
       "sha256": "d839dff07d59b074f806fb33bd6678a24d05ef221ecc4c09060db271af98139f",
       "size": 24337,
@@ -1664,6 +1748,78 @@
       "visibility": "public"
     },
     {
+      "path": "styles/scifi/art/frames/button-disabled.png",
+      "sha256": "c7bc8ac6bffeb52f010c570b660cb420590376d5a76a55ba561bfad4d98fc376",
+      "size": 6002,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/scifi/art/frames/button-hover.png",
+      "sha256": "b62a8e74844ff46cc1f8f99596d2dcd1c7d4c75740d31c96d7b745b27aef5831",
+      "size": 7320,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/scifi/art/frames/button-pressed.png",
+      "sha256": "8604f38b7182630858188a38c88b8dc6b56562506ff50e61b1c0412af96b662e",
+      "size": 6668,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/scifi/art/frames/button-primary-hover.png",
+      "sha256": "3ea147a5f8c652e6b71d5f88a1e5458465e6d0bcfa14bc2bdf27e4e7642f9962",
+      "size": 4906,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/scifi/art/frames/button-primary-pressed.png",
+      "sha256": "47589444187e1268334e30441bd97c88cb93f1936368827660e30504b996d1a3",
+      "size": 4959,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/scifi/art/frames/button-primary.png",
+      "sha256": "d8d8f41780d11260c02a147e0b094499cae09b5766e6def3c0ef2776aab02d48",
+      "size": 4963,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/scifi/art/frames/button.png",
+      "sha256": "d41832b3f54b2cd573b429b99966884efac215023135d2233547a633b0e7b92c",
+      "size": 6639,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/scifi/art/frames/chip.png",
+      "sha256": "b652fb11e097f95c75ae68b2127003d52b299128e2341df1e392b6bcc0d15f33",
+      "size": 1823,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/scifi/art/frames/divider.png",
+      "sha256": "6de3a0ae9c5428d209d1027faac7dfe78401066fe3e0515ca35b543595baf385",
+      "size": 366,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/scifi/art/frames/panel.png",
+      "sha256": "aaf26309bae85ddf27520b2291c9627e32dcec32005a487b7cf3f9cd0a5c688d",
+      "size": 14523,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/scifi/art/frames/plate.png",
+      "sha256": "fbcde3ff789f67475fee8d95b063d71cccf891df63ae73218c96dad0e616d9b3",
+      "size": 5353,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/scifi/art/frames/slot.png",
+      "sha256": "885e52572f28ebf7f2ac726f93718224be960daaa2402ef3229503ab1292b42d",
+      "size": 5539,
+      "visibility": "public"
+    },
+    {
       "path": "styles/scifi/art/panel.png",
       "sha256": "b98d9d4290dfb13caf10df55e8d29c28671e6e3e3fb8136c90d63a6b9e89d368",
       "size": 25943,
@@ -1853,6 +2009,114 @@
       "path": "styles/shared/art/card-frame.png",
       "sha256": "a4bb6e79eb8f098ba681ce6ff003457f8668e12a956d3ae154be75f523e04e21",
       "size": 135164,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/art/frames/badge.png",
+      "sha256": "8ce0a5698b9a5bae6bea9a0ee36ab1e87c361a9a673a03eb5e64e1b75e022a08",
+      "size": 6612,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/art/frames/button-danger-hover.png",
+      "sha256": "b38de4f4fcd27929343e672871cb5a4158ec680608b12b985a5313d8d448dbf5",
+      "size": 12414,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/art/frames/button-danger-pressed.png",
+      "sha256": "5878bf20f01a8c8f9ed6dcb5612f4bc4acd3fab9e2357fc73c33af96159eacef",
+      "size": 12238,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/art/frames/button-danger.png",
+      "sha256": "5f08c95ba1604d7f05e93633ee9f5803e352657fa5a8ea10e780c7e377fcb933",
+      "size": 12614,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/art/frames/button-disabled.png",
+      "sha256": "70b5c6ff0110068e9350568a9ad29ed1ec1329457fad2c240a0102674ae55858",
+      "size": 11547,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/art/frames/button-hover.png",
+      "sha256": "5d363029b9ed3bba508c3fec2724044d0b57745342cef9f8ebe93549a9a5b672",
+      "size": 11929,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/art/frames/button-pressed.png",
+      "sha256": "80c44738fc78b4c145927f26804e505e24bcacbaecf09105ee4b1c5a90fa1196",
+      "size": 11807,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/art/frames/button-primary-hover.png",
+      "sha256": "507ca7d20f91d0dfa856a5a698aee5f9c2f1c8b36bf5717113ae7eefd5f685ec",
+      "size": 11937,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/art/frames/button-primary-pressed.png",
+      "sha256": "a10175de1756c9c74d65aceeb7eb6cbbbc1bbbaa0769dd9201f472e984b2dbd5",
+      "size": 11747,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/art/frames/button-primary.png",
+      "sha256": "70088930dcc1a0ba77a2e77a8fe4e054650a944c5f8022a18329f0e961670b10",
+      "size": 12017,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/art/frames/button.png",
+      "sha256": "f91fde4f54146cc76b560040201e19b7a40187cef3b4ab2920c81844e7c5e1d4",
+      "size": 12092,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/art/frames/chip-bevel.png",
+      "sha256": "420c0647d7453e89fd7d145f14a56809161edd969e7307f9ee9ac326a447f672",
+      "size": 2921,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/art/frames/divider.png",
+      "sha256": "69349d18f37fec9ac6f15cc19d40ca7ddc834904d40586e80be21b8cde602252",
+      "size": 1877,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/art/frames/field.png",
+      "sha256": "e3a6077fe6ba454c97f16a52cd517b8a94d81bb7f442491e052df0061770183f",
+      "size": 3814,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/art/frames/panel.png",
+      "sha256": "3387ece1076b1b2c0a56e27a230b82ca919d8014519036d5571611ac824ad7d2",
+      "size": 20768,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/art/frames/plate.png",
+      "sha256": "b74c080e4d9979cfda7ff2149efd878b8750a0d979e114208696fd88962426e0",
+      "size": 10983,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/art/frames/slot-rim.png",
+      "sha256": "2231f31a0a425d9b2fb6e2fdcab457015d4e6a448d6a0ffa23c7053a4bc54eb0",
+      "size": 6634,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/art/frames/slot.png",
+      "sha256": "6bbf466ab2d410a262a74adde9e1921ad09050282a1b4d8e9d9e0ce2fa472206",
+      "size": 8658,
       "visibility": "public"
     },
     {
