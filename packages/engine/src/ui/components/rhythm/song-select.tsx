@@ -181,7 +181,7 @@ export function RhythmSongSelect(props: RhythmSongSelectProps) {
                               </Show>
                             </View>
                           </Show>
-                          <Text class={`w-full text-start text-display-xl compact:text-title leading-flat font-bold whitespace-nowrap text-ellipsis overflow-hidden text-fg text-stroke-3 text-stroke-bg`}>
+                          <Text class={`w-full text-start text-display-xl compact:text-title leading-tight font-bold line-clamp-2 text-fg text-stroke-3 text-stroke-bg`}>
                             {s().title}
                           </Text>
                           <Text class={`w-full text-start text-base compact:text-caption whitespace-nowrap text-ellipsis overflow-hidden text-fg-muted`}>

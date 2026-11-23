@@ -1,5 +1,9 @@
 import {createSignal, For, Icon, Scroll, Show, Text, packClass, type UiEvent, View, t} from "@origingame/engine/ui";
 import { Button } from "../controls/button";
+import { Select } from "../controls/select";
+import { Slider } from "../controls/slider";
+import { Switch } from "../controls/switch";
+import { Tab, Tabs } from "../controls/tabs";
 import "./settings.en.ogt";
 
 export interface SettingsScreenProps {
@@ -66,17 +70,18 @@ export function SettingsScreen(props: SettingsScreenProps) {
       </View>
       <View class="grow shrink basis-0 gap-y-4">
         <Show when={props.page}>
-          <View class={`flex-row items-center gap-x-3 border-b border-rim`} role="tablist">
+          <View class={`flex-row items-center gap-x-3 border-b border-rim`}>
             <Text class="flex-none pointer-coarse:hidden" glyph="tabPrev" />
-            <Scroll class="grow shrink gap-x-6 py-0.5 px-4 compact:gap-x-4 compact:-mx-4">
-              <For each={props.pages}>
-                {(p) => (
-                <View class={`text-fg-muted transition duration-317 data-selected:text-fg data-selected:bg-none data-selected:bg-raised-hover-lo hover:bg-surface-hover compact:text-base`} role="tab" tabIndex={0} selected={props.page === p().id} label={p().name} onPress={(e) => props.onPage?.(e, p().id)}>
-                  <Show when={props.page === p().id}><View class={`absolute inset-x-2 bottom-0 h-0.75 rounded-capsule bg-accent pointer-events-none ${packClass("Tab", "indicator")}`} /></Show>
-                  <Text>{p().name}</Text>
-                </View>
-                )}
-              </For>
+            <Scroll class="grow shrink compact:-mx-4">
+              <Tabs class="border-b-0 gap-x-2 px-2" label={t("screen.settings.title")}>
+                <For each={props.pages}>
+                  {(p) => (
+                    <Tab class="shrink-0" selected={props.page === p().id} onPress={(e) => props.onPage?.(e, p().id)}>
+                      <Text class="whitespace-nowrap">{p().name}</Text>
+                    </Tab>
+                  )}
+                </For>
+              </Tabs>
             </Scroll>
             <Text class="flex-none pointer-coarse:hidden" glyph="tabNext" />
           </View>
@@ -86,52 +91,20 @@ export function SettingsScreen(props: SettingsScreenProps) {
                 {(entry) => {
                 const value = entry().value;
                 const num = typeof value === "number" ? value : undefined;
-                const at = Math.max(0, Math.min(100, ((Math.min(Math.max(num ?? (entry().min ?? 0), entry().min ?? 0), entry().max ?? 100)) - (entry().min ?? 0)) / ((entry().max ?? 100) - (entry().min ?? 0) || 1)) * 100);
-                /** The pointer's drag: the track's box rides in e.value ("x y width height"), pointerdown captures the moves. */
-                const dragged = (e: UiEvent) => {
-                  const [bx, , bw] = e.value.split(" ").map(Number);
-                  const min = entry().min ?? 0;
-                  const max = entry().max ?? 100;
-                  const step = entry().step ?? 1;
-                  const raw = min + Math.min(1, Math.max(0, (e.x - bx) / (bw || 1))) * (max - min);
-                  props.onChange?.(e, entry().id, Math.min(max, Math.max(min, min + Math.round((raw - min) / step) * step)));
-                };
                 return (
                 <Show when={entry().page === props.page}>
                   <View class={`group/row text-fg transition duration-317 hover:bg-surface-hover data-selected:text-fg disabled:text-fg-subtle data-done:text-fg-subtle data-down:opacity-45 ${packClass("Row", "frame")}`} label={entry().description}>
                     <Show when={entry().kind === "toggle"}>
-                      <View class="flex-row items-center group/switch min-h-16 text-lg grow shrink text-fg-muted py-1 px-4 compact:text-base compact:gap-y-1 compact:py-2 compact:px-3 group-hover/row:text-fg" role="switch" tabIndex={0} checked={entry().value === true} label={entry().name} data-checked={entry().value === true} onPress={(e) => props.onChange?.(e, entry().id, !(entry().value === true))}>
-                        <Text>{entry().name}</Text>
-                        <View class="ml-auto relative h-4 w-7 rounded-capsule bg-track inset-ring-1 inset-ring-rim">
-                          <View class="absolute top-0.5 left-0.5 size-3 rounded-capsule bg-fg-muted transition-transform duration-200 ease-out group-data-checked/switch:translate-x-3 group-data-checked/switch:bg-accent" />
-                        </View>
-                      </View>
+                      <Switch class="min-h-16 text-lg text-fg-muted py-1 px-4 compact:text-base compact:py-2 compact:px-3 group-hover/row:text-fg" checked={entry().value === true} onChange={(e, on) => props.onChange?.(e, entry().id, on)}>
+                        <Text class="grow shrink">{entry().name}</Text>
+                      </Switch>
                     </Show>
                     <Show when={entry().kind === "range"}>
                       <View class="grid grid-cols-2 items-center gap-x-6 min-h-16 text-lg py-1 px-4 compact:grid-cols-1 compact:items-stretch compact:text-base compact:gap-y-1 compact:py-2 compact:px-3">
                         <Text class="grow shrink text-fg-muted m-0 group-hover/row:text-fg">
                           {entry().name}
                         </Text>
-                        <View
-                          class="relative flex-row items-center h-9"
-                          role="slider"
-                          tabIndex={0}
-                          label={entry().name}
-                          valueMin={entry().min ?? 0}
-                          valueMax={entry().max ?? 100}
-                          valueNow={num ?? (entry().min ?? 0)}
-                          onKey={(e) => {
-                            const now = num ?? (entry().min ?? 0);
-                            const step = entry().step ?? 1;
-                            if (e.key === "ArrowRight" || e.key === "ArrowUp") props.onChange?.(e, entry().id, Math.min(entry().max ?? 100, now + step));
-                            else if (e.key === "ArrowLeft" || e.key === "ArrowDown") props.onChange?.(e, entry().id, Math.max(entry().min ?? 0, now - step));
-                          }}
-                        >
-                          <View class="relative grow shrink basis-0 h-1 rounded-capsule bg-track inset-shadow-lit ring ring-rim" onPointerDown={dragged} onPointerMove={dragged}>
-                            <View class="absolute left-0 top-0 h-full rounded-capsule bg-accent" style={{ width: `${at}%` }} />
-                            <View class="absolute top-0 size-2.5 -translate-y-1 rounded-capsule bg-accent shadow-panel" style={{ left: `calc(${at}% - 5px)` }} />
-                          </View>
-                        </View>
+                        <Slider value={num ?? (entry().min ?? 0)} min={entry().min} max={entry().max} step={entry().step} label={entry().name} onChange={(e, v) => props.onChange?.(e, entry().id, v)} />
                       </View>
                     </Show>
                     <Show when={entry().kind === "select"}>
@@ -139,39 +112,14 @@ export function SettingsScreen(props: SettingsScreenProps) {
                         <Text class="grow shrink text-fg-muted m-0 group-hover/row:text-fg">
                           {entry().name}
                         </Text>
-                        <View class="flex-col gap-1 min-w-0">
-                          <View
-                            class={`flex-row items-center justify-between gap-2 h-9 py-0 px-3 rounded-control bg-tile inset-ring-1 inset-ring-rim data-open:inset-ring-1 data-open:inset-ring-hud-accent`}
-                            role="combobox"
-                            tabIndex={0}
-                            label={entry().name}
-                            expanded={openChoice() === entry().id}
-                            valueText={String(entry().value)}
-                            data-open={openChoice() === entry().id}
-                            onKey={(e) => {
-                              const options = entry().options ?? [];
-                              const at = Math.max(0, options.indexOf(String(entry().value)));
-                              const wrap = (next: number) => options[((next % options.length) + options.length) % options.length];
-                              if (e.key === "ArrowRight" || e.key === "ArrowDown") props.onChange?.(e, entry().id, wrap(at + 1));
-                              else if (e.key === "ArrowLeft" || e.key === "ArrowUp") props.onChange?.(e, entry().id, wrap(at - 1));
-                            }}
-                            onPress={(e) => openChoice.set(openChoice() === entry().id ? "" : entry().id)}
-                          >
-                            <Text class="text-start min-w-0 truncate">{String(entry().value)}</Text>
-                            <Icon class={`size-4 shrink ${openChoice() === entry().id ? "rotate-180" : ""}`} name="chevronDown" />
-                          </View>
-                          <Show when={openChoice() === entry().id}>
-                            <View class={`flex-col rounded-control bg-tile inset-ring-1 inset-ring-rim overflow-hidden`} role="listbox" label={entry().name} onAction={{ back: (e) => openChoice.set("") }}>
-                              <For each={entry().options ?? []}>
-                                {(opt) => (
-                                  <View class="flex-row items-center justify-start gap-2 min-h-8 py-0 px-3 text-start text-sm font-semibold text-fg bg-raised-lo inset-shadow-lit inset-ring-1 inset-ring-rim transition duration-317 hover:bg-none hover:bg-raised-hover-lo data-selected:text-accent data-selected:bg-surface-hover data-selected:inset-ring-1 data-selected:inset-ring-hud-accent" role="option" tabIndex={0} selected={opt() === String(entry().value)} label={opt()} onPress={(e) => { props.onChange?.(e, entry().id, opt()); openChoice.set(""); }}>
-                                    <Text class="whitespace-nowrap">{opt()}</Text>
-                                  </View>
-                                )}
-                              </For>
-                            </View>
-                          </Show>
-                        </View>
+                        <Select
+                          value={String(entry().value)}
+                          options={(entry().options ?? []).map((o) => ({ value: o, label: o }))}
+                          open={openChoice() === entry().id}
+                          label={entry().name}
+                          onChange={(e, v) => props.onChange?.(e, entry().id, v)}
+                          onOpenChange={(_, open) => openChoice.set(open ? entry().id : "")}
+                        />
                       </View>
                     </Show>
                     <Show when={entry().kind === "binding"}>

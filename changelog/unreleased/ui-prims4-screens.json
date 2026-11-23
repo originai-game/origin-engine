@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "SettingsScreen, LeaderboardScreen, SongSelect",
+      "summary": "Settings draws its pages, toggles, ranges and choices with the built-in Tabs, Switch, Slider and Select (one Tab stop for the pages, the selected page's mark under it alone). The leaderboard's tabs are Tabs, and its list is as tall as its rows, so the pinned row stands under them instead of at the screen's foot, and on a phone each ranked row keeps its score at its end instead of dropping it under the rank. The song select's detail title wraps to two lines instead of cutting a long title short."
+    }
+  ]
+}
