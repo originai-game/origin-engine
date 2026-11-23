@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "Projectile",
+      "summary": "A projectile whose shooter is despawned while it flies (an enemy killed with its bullets in the air) no longer fails the default live-entity invariant: og.Projectile.shooter is a weak reference, which the IDL now marks with `weak true` and the invariant skips."
+    }
+  ]
+}

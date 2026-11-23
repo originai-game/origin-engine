@@ -17,7 +17,7 @@ Token `og.Projectile`, registered under the schema name `og.Projectile`; its val
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
 | `damage` | `number` | `0` | ≥ 0 | — | tunable | What each strike takes from the target's og.Health; 0 takes nothing, and is never spent. |
-| `shooter` | `Entity` | `0` | — | — | — | Who fired it: og.Damaged.source and og.Died.source (the projectile itself when 0), and never struck by it. |
+| `shooter` | `Entity` | `0` | — | — | may name a despawned entity | Who fired it: og.Damaged.source and og.Died.source (the projectile itself when 0), and never struck by it. It may be despawned while its shots fly (an enemy killed with its bullets in the air): they keep striking, and the events name it as it was. |
 | `pierce` | `number` | `0` | ≥ 0 | — | tunable | Strikes that take damage before it is spent: 1 for a bullet that stops at the first it hurts, 0 for one never spent (a beam). |
 | `struck` | `number` | `0` | — | — | read only | Written: its strikes that took damage. |
 
@@ -30,7 +30,9 @@ component Projectile {
     min 0
     tunable true
   }
-  field shooter Entity "Who fired it: og.Damaged.source and og.Died.source (the projectile itself when 0), and never struck by it."
+  field shooter Entity "Who fired it: og.Damaged.source and og.Died.source (the projectile itself when 0), and never struck by it. It may be despawned while its shots fly (an enemy killed with its bullets in the air): they keep striking, and the events name it as it was." {
+    weak true
+  }
   field pierce u32 "Strikes that take damage before it is spent: 1 for a bullet that stops at the first it hurts, 0 for one never spent (a beam)." {
     min 0
     tunable true

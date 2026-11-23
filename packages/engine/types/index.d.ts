@@ -34029,7 +34029,7 @@ export interface Projectile {
    */
   damage: number;
   /**
-   * Who fired it: og.Damaged.source and og.Died.source (the projectile itself when 0), and never struck by it.
+   * Who fired it: og.Damaged.source and og.Died.source (the projectile itself when 0), and never struck by it. It may be despawned while its shots fly (an enemy killed with its bullets in the air): they keep striking, and the events name it as it was.
    */
   shooter: Entity;
   /**

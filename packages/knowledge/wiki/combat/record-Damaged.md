@@ -46,4 +46,4 @@ event Damaged {
 }
 ```
 
-<sub>Module `combat` line 143</sub>
+<sub>Module `combat` line 145</sub>

@@ -258,3 +258,39 @@ fn a_float_field_at_its_declared_bound_is_in_range() {
         "{range}"
     );
 }
+
+/// A `weak` Entity field may outlive what it names: a bullet whose shooter
+/// died with it in flight is no violation, while a plain reference is.
+#[test]
+fn a_weak_reference_to_a_despawned_entity_is_no_violation() {
+    let e = engine();
+    let spawn = || {
+        value(og_runtime::host_impl::answer(og_world_spawn(e, None)))
+            .as_f64()
+            .unwrap()
+    };
+    let (shooter, bullet) = (spawn(), spawn());
+    value(og_runtime::host_impl::answer(og_world_insert(
+        e,
+        bullet,
+        "og.Projectile".into(),
+        Some(json!({"damage": 1, "shooter": shooter, "pierce": 1}).to_string()),
+    )));
+    value(og_runtime::host_impl::answer(og_world_insert(
+        e,
+        bullet,
+        "Target".into(),
+        Some(json!({"of": shooter}).to_string()),
+    )));
+    value(og_engine_advance(e, 1));
+    value(og_runtime::host_impl::answer(og_world_despawn(e, shooter)));
+    value(og_engine_advance(e, 1));
+    let r = report(e, true);
+    named(&r, "live entity Target.of");
+    let shooter_flagged = r["violations"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|v| v["name"].as_str().unwrap().contains("Projectile.shooter"));
+    assert!(!shooter_flagged, "{r}");
+}

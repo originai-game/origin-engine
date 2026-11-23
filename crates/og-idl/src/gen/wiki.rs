@@ -301,6 +301,9 @@ fn field_notes(f: &Field) -> String {
     if f.readonly {
         n.push("read only".to_string());
     }
+    if f.weak {
+        n.push("may name a despawned entity".to_string());
+    }
     if f.optional {
         n.push("optional".to_string());
     }

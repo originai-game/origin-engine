@@ -447,6 +447,10 @@ pub struct Field {
     pub label: Option<String>,
     pub tunable: bool,
     pub readonly: bool,
+    /// `weak true`: an Entity reference that may outlive what it names (a
+    /// projectile's shooter, which can die while its shots fly); the default
+    /// live-entity invariant does not read it.
+    pub weak: bool,
     pub optional: bool,
     pub see: Vec<GuideRef>,
     /// The `group` heading it sits under, if any.

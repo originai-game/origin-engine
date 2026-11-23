@@ -64,15 +64,16 @@ pub(crate) struct Plan {
 /// The default invariants on one engine: what they check and since when.
 pub(crate) type ModuleState = RefCell<Plan>;
 
-/// Whether a field of `schema` holds an entity: the IDL's column for an
-/// engine record (a module's derived layout reads every u64 as one), the
+/// Whether a field of `schema` holds an entity the invariant checks: the
+/// IDL's column for an engine record (a module's derived layout reads every
+/// u64 as one) unless it is `weak`, which may outlive what it names; the
 /// layout's kind for a game's.
 fn is_entity(schema: &str, field: &crate::host::codec::FieldLayout) -> bool {
     match og_api::host::RECORDS.iter().find(|d| d.schema == schema) {
         Some(d) => d
             .fields
             .iter()
-            .any(|f| f.name == field.name && f.column == "Entity"),
+            .any(|f| f.name == field.name && f.column == "Entity" && !f.weak),
         None => field.kind == crate::host::codec::Kind::Entity,
     }
 }

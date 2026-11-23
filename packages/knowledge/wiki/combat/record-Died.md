@@ -29,4 +29,4 @@ event Died {
 }
 ```
 
-<sub>Module `combat` line 162</sub>
+<sub>Module `combat` line 164</sub>

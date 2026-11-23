@@ -312,6 +312,7 @@ impl Loader {
             label: None,
             tunable: false,
             readonly: false,
+            weak: false,
             optional: false,
             see: Vec::new(),
             group: None,
@@ -345,11 +346,12 @@ impl Loader {
                 "label" => f.label = self.string_value(child),
                 "tunable" => f.tunable = self.bool_value(child).unwrap_or(false),
                 "readonly" => f.readonly = self.bool_value(child).unwrap_or(false),
+                "weak" => f.weak = self.bool_value(child).unwrap_or(false),
                 "optional" => f.optional = self.bool_value(child).unwrap_or(false),
                 other => self.error(
                     child.line,
                     format!(
-                        "unknown key `{other}` in field `{}`: expected doc, guide, default, min, max, step, unit, worldspace, label, tunable, readonly or optional",
+                        "unknown key `{other}` in field `{}`: expected doc, guide, default, min, max, step, unit, worldspace, label, tunable, readonly, weak or optional",
                         f.name
                     ),
                 ),

@@ -750,6 +750,8 @@ pub fn records_rs(ix: &Index<'_>) -> String {
          \x20   /// The default value as JSON.\n\
          \x20   pub default: &'static str,\n\
          \x20   pub readonly: bool,\n\
+         \x20   /// An Entity field that may name a despawned entity (`weak` in the IDL).\n\
+         \x20   pub weak: bool,\n\
          \x20   pub tunable: bool,\n\
          \x20   /// The meaningful range and Tune's increment; `None` when unstated.\n\
          \x20   pub min: Option<f64>,\n\
@@ -823,11 +825,12 @@ pub fn records_rs(ix: &Index<'_>) -> String {
                     _ => String::new(),
                 };
                 out.push_str(&format!(
-                    "            FieldDecl {{\n                name: \"{}\",\n                column: \"{}\",\n                default: {:?},\n                readonly: {},\n                tunable: {},\n                min: {},\n                max: {},\n                step: {},\n                unit: {:?},\n                worldspace: {:?},\n                label: {:?},\n                doc: doc!({:?}),\n                variants: &[{}],\n                capacity: {},\n                list: {},\n            }},\n",
+                    "            FieldDecl {{\n                name: \"{}\",\n                column: \"{}\",\n                default: {:?},\n                readonly: {},\n                weak: {},\n                tunable: {},\n                min: {},\n                max: {},\n                step: {},\n                unit: {:?},\n                worldspace: {:?},\n                label: {:?},\n                doc: doc!({:?}),\n                variants: &[{}],\n                capacity: {},\n                list: {},\n            }},\n",
                     f.name,
                     ix.list(&f.ty).map_or(f.ty.name(), |(element, _)| element.name()),
                     default,
                     f.readonly,
+                    f.weak,
                     f.tunable,
                     opt(f.min),
                     opt(f.max),

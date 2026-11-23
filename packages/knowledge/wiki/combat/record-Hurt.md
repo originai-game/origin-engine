@@ -49,4 +49,4 @@ component Hurt {
 }
 ```
 
-<sub>Module `combat` line 118</sub>
+<sub>Module `combat` line 120</sub>

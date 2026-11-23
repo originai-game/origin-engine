@@ -21,4 +21,4 @@ resource CombatAttackers {
 }
 ```
 
-<sub>Module `combat` line 170</sub>
+<sub>Module `combat` line 172</sub>
