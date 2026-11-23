@@ -42,6 +42,9 @@ pub(crate) struct Scan {
     /// style pack's, an engine string table's): inputs of the cook as much
     /// as its own assets are.
     pub(crate) external: Vec<PathBuf>,
+    /// What the scan found that does not stop the cook (a `nine-<name>`
+    /// class whose image no pack has): the report's warnings.
+    pub(crate) warnings: Vec<String>,
 }
 
 /// The project's assets for a reader of its sources alone (the art
@@ -149,6 +152,7 @@ pub(crate) fn scan_with(
         }
     }
     let mut early_errors: Vec<(String, &'static str, String)> = Vec::new();
+    let mut warnings: Vec<String> = Vec::new();
     // The engine string tables and emitters the bundle holds (its
     // components'), read from the files the bundler resolved; each cooks
     // by its own `type`.
@@ -192,7 +196,41 @@ pub(crate) fn scan_with(
             .chain(builtins.values().map(|b| b.to_vec()))
             .filter_map(|b| String::from_utf8(b).ok())
             .collect();
-        nine.extend(super::graph::nine_names(texts.iter().map(String::as_str)));
+        // The packs the bundle holds (the game's own, a look's built-in
+        // one): the classes their variants write, and the images they have.
+        let layers: Vec<og_ui_next::pack::Layer> = files
+            .iter()
+            .filter(|(rel, _)| crate::cook::ui_packs::is_pack(rel))
+            .filter_map(|(_, path)| read_file(path).ok())
+            .chain(
+                builtins
+                    .iter()
+                    .filter(|(id, _)| crate::cook::ui_packs::is_pack(id))
+                    .map(|(_, b)| b.to_vec()),
+            )
+            .filter_map(|b| og_ui_next::pack::Layer::parse(&String::from_utf8(b).ok()?).ok())
+            .collect();
+        nine.extend(super::graph::nine_names(
+            layers
+                .iter()
+                .flat_map(|l| l.variants.values().map(String::as_str)),
+        ));
+        // A class whose image no pack the bundle holds has draws nothing:
+        // the cook says so, rather than leave the art missing silently.
+        let have: BTreeSet<&str> = std::iter::once(&pack)
+            .chain(&layers)
+            .flat_map(|l| l.images.iter().flat_map(|m| m.keys().map(String::as_str)))
+            .collect();
+        for name in &nine {
+            if !name.is_empty()
+                && name != og_ui_next::pack::NINE_NONE
+                && !have.iter().any(|image| image.starts_with(name.as_str()))
+            {
+                warnings.push(format!(
+                    "`nine-{name}` names no image in the default pack or a pack the game holds: it draws nothing"
+                ));
+            }
+        }
         let images = || pack.images.iter().flat_map(|m| m.iter());
         let kept: BTreeSet<&str> = images()
             .filter(|(name, image)| {
@@ -396,6 +434,7 @@ pub(crate) fn scan_with(
         ignored,
         early_errors,
         external,
+        warnings,
     })
 }
 

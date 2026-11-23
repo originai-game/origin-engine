@@ -330,6 +330,7 @@ pub fn cook_project_with_texture_cache(
         mut ignored,
         mut early_errors,
         mut consumed,
+        warnings: scan_warnings,
     } = scan_sources(assets_dir, &cook_index, threads, &options.code)?;
     laps.lap("scan");
     let imported = import(&mut sources, &mut consumed, texture_cache, threads);
@@ -455,7 +456,7 @@ pub fn cook_project_with_texture_cache(
         threads,
     )?;
     laps.lap("finish");
-    let (conformed, warnings) = diagnose(
+    let (conformed, mut warnings) = diagnose(
         &cx,
         &plan,
         &mut reports,
@@ -464,6 +465,7 @@ pub fn cook_project_with_texture_cache(
         conformed,
         warnings,
     );
+    warnings.extend(scan_warnings);
     reports.sort_by(|a, b| a.source.cmp(&b.source));
     laps.lap("diagnose");
     let mut report = Report {

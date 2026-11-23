@@ -270,6 +270,47 @@ fn a_name_that_says_one_type_over_a_file_of_another_is_a_warning() {
     assert_eq!(again.warnings, report.warnings);
 }
 
+/// The default pack's images join a TSX game's bundle only when a
+/// `nine-<name>` class names them, and a class whose image no pack has is
+/// a warning, so art never goes missing silently.
+///
+/// Ways this could fail: every default image cooked whatever the code
+/// draws (before 2026-11-23); an unnamed image left out with nothing said
+/// when the name was a typo; a name a template cut short (`button-`) or a
+/// game pack's own image reported as missing.
+#[test]
+fn a_default_image_joins_only_when_named_and_an_unknown_one_is_a_warning() {
+    let root = PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join("og-cook-nine");
+    let _ = std::fs::remove_dir_all(&root);
+    std::fs::create_dir_all(root.join("assets/styles/mine")).unwrap();
+    std::fs::write(
+        root.join("assets/styles/mine/pack.json"),
+        r##"{ "images": { "crest": { "src": "@styles/shared/art/glow.png", "slice": 0 } } }"##,
+    )
+    .unwrap();
+    let nine = ["plate", "button-", "crest", "panle"].map(String::from);
+    let options = CookOptions {
+        code: og_cook::cook::CodeGraph {
+            tsx: true,
+            nine: nine.into_iter().collect(),
+            ..Default::default()
+        },
+        ..CookOptions::default()
+    };
+    let report = cook_project(&root, &options).unwrap();
+    assert!(report.ok(), "{:?}", report.errors());
+    assert_eq!(
+        report.warnings,
+        [
+            "`nine-panle` names no image in the default pack or a pack the game holds: it draws nothing"
+        ]
+    );
+    let frames = root.join("cooked/@styles/shared/art/frames");
+    assert!(frames.join("plate.png.ogb").exists());
+    assert!(frames.join("button-primary.png.ogb").exists());
+    assert!(!frames.join("panel.png.ogb").exists());
+}
+
 /// A source rewritten in the timestamp tick it was last written in, at the
 /// same length, keeps its size and times, and the cook after it still cooks it.
 /// File times advance in ticks (4 ms on ext4), so a cook and an edit both fit

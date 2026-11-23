@@ -103,6 +103,8 @@ pub(crate) struct Scanned {
     pub(crate) ignored: Vec<String>,
     pub(crate) early_errors: Vec<EarlyError>,
     pub(crate) consumed: BTreeSet<String>,
+    /// The scan's warnings ([`scan::Scan::warnings`]).
+    pub(crate) warnings: Vec<String>,
 }
 
 pub(crate) fn scan_sources(
@@ -116,6 +118,7 @@ pub(crate) fn scan_sources(
         ignored,
         early_errors,
         external,
+        warnings,
     } = scan::scan_with(assets_dir, &|path| cook_index.read(path), threads, code)?;
     cook_index.note_external(&external);
     let mut consumed: BTreeSet<String> = BTreeSet::new();
@@ -130,6 +133,7 @@ pub(crate) fn scan_sources(
         ignored,
         early_errors,
         consumed,
+        warnings,
     })
 }
 

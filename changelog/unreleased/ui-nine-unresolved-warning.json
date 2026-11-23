@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {
+      "member": "og cook",
+      "summary": "The cook warns about a `nine-<name>` class whose image is in neither the default pack nor a pack the game holds (\"`nine-panle` names no image in the default pack or a pack the game holds: it draws nothing\"). It reads the class from the game's code, the built-in components the game imports or a pack's variants, so a misspelt or missing frame never draws nothing silently."
+    }
+  ]
+}
