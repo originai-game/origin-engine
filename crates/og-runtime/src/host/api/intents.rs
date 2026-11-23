@@ -17,6 +17,7 @@ pub(crate) fn send_intent(
     og_input::InputLayer::validate_intent(&schema, hash, payload).map_err(err)?;
     let tick = if let Some(ctx) = ctx {
         ctx.send_bytes(id, payload).map_err(err)?;
+        ctx.note_input_event(id);
         ctx.time().tick + 1
     } else {
         let world = eng.world()?;
@@ -52,6 +53,14 @@ pub fn og_input_intent(world: u32, event: String, payload: String) -> Result<(),
         let ctx = frame.as_ref().map(|frame| unsafe { frame.ctx() });
         send_intent(&eng, ctx.as_deref(), &event, &bytes)
     })()
+}
+
+/// The event types the input path has delivered in this world (og-input's
+/// sink marks each intent's): input a restart check leaves out.
+pub fn world_input_events(world: u32) -> Vec<String> {
+    engine(world)
+        .and_then(|eng| eng.world().map(|w| w.input_events()))
+        .unwrap_or_default()
 }
 
 pub fn og_input_take_intents(world: u32) -> Vec<Value> {

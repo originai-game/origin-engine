@@ -774,6 +774,11 @@ impl<'w> SystemContext<'w> {
         Ok(queue.current.clone())
     }
 
+    /// [`World::note_input_event`] from inside a system.
+    pub fn note_input_event(&self, id: SchemaId) {
+        self.world.note_input_event(id);
+    }
+
     /// Sends event `id` from packed bytes; it is delivered at the next tick
     /// (declared write).
     pub fn send_bytes(&self, id: SchemaId, bytes: &[u8]) -> Result<()> {

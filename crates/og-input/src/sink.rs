@@ -79,6 +79,8 @@ impl InputLayer {
         let schema = world.schema(id)?;
         Self::validate_intent(schema, layout_hash, payload)?;
         world.send_bytes(id, payload)?;
+        // The intent's type is input from now on: a restart check leaves its queue out.
+        world.note_input_event(id);
         self.accepted += 1;
         Ok(())
     }

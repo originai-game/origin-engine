@@ -174,6 +174,10 @@ pub struct World {
     /// transform (animation sockets). The owning module saves its pose;
     /// this reader is installation, not snapshot state.
     pub(crate) parent_frames: Option<Box<ParentFrameSource>>,
+    /// The event types the input path has delivered (og-input's sink, an
+    /// og.input.intent): input, like og.KeyDown, not world state, so no
+    /// snapshot carries it and a restore keeps it.
+    pub(crate) input_events: RefCell<std::collections::BTreeSet<SchemaId>>,
 }
 
 type ParentFrameSource =
@@ -219,6 +223,7 @@ impl World {
             resume: None,
             reactive: Default::default(),
             parent_frames: None,
+            input_events: RefCell::new(std::collections::BTreeSet::new()),
         };
         world.archetype_for(Vec::new());
         world.time_id = world.register::<Time>()?;
@@ -924,6 +929,21 @@ impl World {
     }
 
     /// Sends event `id` from packed bytes.
+    /// Marks event `id` as one the input path delivers (og-input's sink
+    /// calls it for every intent): its queue is the player's input, which a
+    /// restart check leaves out as it does og.KeyDown's.
+    pub fn note_input_event(&self, id: SchemaId) {
+        self.input_events.borrow_mut().insert(id);
+    }
+
+    /// The names of the event types [`World::note_input_event`] marked.
+    pub fn input_events(&self) -> Vec<String> {
+        let ids = self.input_events.borrow();
+        ids.iter()
+            .map(|id| self.registry.name(*id).to_owned())
+            .collect()
+    }
+
     pub fn send_bytes(&mut self, id: SchemaId, bytes: &[u8]) -> Result<()> {
         self.registry.check(id)?;
         self.registry.check_value(id, bytes)?;

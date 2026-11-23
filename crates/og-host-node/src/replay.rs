@@ -84,6 +84,10 @@ pub fn og_node_restart_diff(
             let start = Snapshot::decode(&og_runtime::save_snapshot_bytes(&save_text)?)?;
             let now = world(engine)?;
             let (kept_ignore, kept) = restart_kept(&start, &now, &keep)?;
+            // The queue of an event the input path delivered is input, as og.KeyDown's is.
+            for name in og_runtime::world_input_events(engine) {
+                ignore.insert(name, Vec::new());
+            }
             for (ty, fields) in kept_ignore {
                 match ignore.get_mut(&ty) {
                     // An empty list already leaves the whole type out.

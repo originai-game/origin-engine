@@ -134,6 +134,24 @@ export default og.game({ systems: [Tick] });
  * its 30th tick despawns them all and spawns them again (new ids, the hero's Target a new handle),
  * or by mistake keeps one coin of the last game.
  */
+/**
+ * A game whose start (the setup's `start`) sends two Go intents and whose restart (`again`) sends
+ * one: each Go sets Count.n back to 1. Its restarted world is a fresh start's but for the Go queue,
+ * which holds the input that caused each start.
+ */
+const intentGame = `import { defineEvent, defineResource, defineSystem, og, u32 } from "@origingame/engine";
+const Count = defineResource("Count", { n: u32() });
+const Go = defineEvent("Go", { k: u32() });
+const Tick = defineSystem("Tick", { reads: [Go], writes: [Count] }, (_q, _t, world) => {
+  const c = world.resource(Count);
+  if (!c.ok) return;
+  if (world.events(Go).length > 0) c.value.n = 1;
+  else c.value.n++;
+});
+const go = (world: any) => { og.input.intent(world, Go, { k: 1 }); };
+export default og.game({ systems: [Tick], commands: { start: (w) => { go(w); go(w); }, again: (w) => go(w) } });
+`;
+
 const respawnGame = (leak: boolean) => `import { defineComponent, defineResource, defineSystem, Entity, og, u32 } from "@origingame/engine";
 const Count = defineResource("Count", { n: u32() });
 const Piece = defineComponent("Piece", { v: u32() });
@@ -280,6 +298,23 @@ test("keeps a field the world lacks", async () => {
     expect(kept, JSON.stringify(events)).toMatchObject({ ok: true, status: "passed", restart: { tick: 30, ok: true, first: null, kept: [{ name: "Count.n", start: 1, now: 2 }] } });
     expect(wrong?.ok, JSON.stringify(wrong)).toBe(false);
     expect(JSON.stringify(wrong)).toContain("restart keep `Count.m`: `Count` has no field `m` (its fields: n)");
+    // An intent's queue is the player's input, as og.KeyDown's is: a start by two intents and a
+    // restart by one compare equal.
+    writeFileSync(original, intentGame);
+    writeFileSync(join(game, "tests/restart.og.ts"), `import { expect, test } from "bun:test";
+import { runPlaytest } from "@origingame/engine/playtest";
+test("restarts by intent", async () => {
+  const run = await runPlaytest({ setup: "start", commands: "0.49:again;1:quit", restart: { at: 0.5 } });
+  expect(run.restart?.ok, "restarted").toBe(true);
+});`);
+    const byIntent = lines(og("test", game, "--json").stdout).find((e) => e.playtest === "restart") as Record<string, any> | undefined;
+    expect(byIntent, JSON.stringify(byIntent?.restart ?? byIntent)).toMatchObject({ ok: true, status: "passed", restart: { ok: true, first: null } });
+    writeFileSync(join(game, "tests/restart.og.ts"), `import { expect, test } from "bun:test";
+import { runPlaytest } from "@origingame/engine/playtest";
+test("restarts", async () => {
+  const run = await runPlaytest({ commands: "1:quit", restart: { at: 0.5 } });
+  expect(run.restart?.ok, "restarted").toBe(true);
+});`);
     rmSync(join(game, "tests/budget.og.ts"));
     // Despawning everything and spawning it again is a restart; one entity left over is not, by name.
     for (const leak of [false, true]) {

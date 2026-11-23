@@ -266,6 +266,13 @@ const run = await runPlaytest({ commands: "10:quit", budget: { frameMs: { p95: 1
   declare fails the playtest. Keep is the game's statement, not an
   ignore: the clock is the engine's own and is never listed, and state
   that belongs to the run (its score, the enemies on screen) is never kept.
+- The input that caused each start is not compared. Raw input queues
+  (og.KeyDown, og.PointerDown, ...) are the session's, and so is the queue
+  of every event type the input path has delivered: an og.input.intent (a
+  menu's Play, a results screen's Again) marks its event type as input in
+  og-input's sink, and the restart check leaves that queue out whatever
+  the type is named. A fresh start by two intents and a restart by one
+  compare equal; what those intents did to the world is still compared.
 - First frame on a phone over 4G within 2 s for a small game: a large
   first scene, fonts for every language at once and uncompressed textures
   are the usual causes. Stream what the first screen does not show.

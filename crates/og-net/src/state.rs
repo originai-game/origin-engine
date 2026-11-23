@@ -1652,7 +1652,10 @@ pub fn restart_diff(
     let mut events = Vec::new();
     for q in &start.events {
         let name = start.type_name(q.ty);
-        if SESSION_EVENTS.contains(&name) {
+        // The session's input queues, and a type the ignore table leaves out whole (the queue
+        // of an event the input path delivers, which the host names: og.input.intent's).
+        if SESSION_EVENTS.contains(&name) || ignored(ignore, name).is_some_and(<[String]>::is_empty)
+        {
             continue;
         }
         let theirs = now.events.iter().find(|r| now.type_name(r.ty) == name);
