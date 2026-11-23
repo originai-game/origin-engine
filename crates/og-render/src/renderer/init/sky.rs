@@ -147,6 +147,26 @@ impl Renderer {
             // take vs_sky's triangle and compile no march of their own.
             clouds::CloudsLow {
                 sky: sky_state(&sky_low_pl, "vs_sky", "fs_sky_look_low"),
+                front: deferred_hdr(
+                    device,
+                    &with(&depth),
+                    sky_shader.clone(),
+                    samples,
+                    move |layout, module| HdrPipeline {
+                        alpha_to_coverage: false,
+                        label: "clouds over opaque",
+                        layout,
+                        module,
+                        vs: "vs_sky",
+                        fs: "fs_clouds_front",
+                        buffers: &[],
+                        cull: None,
+                        depth_write: false,
+                        depth_compare: wgpu::CompareFunction::Always,
+                        blend: Some(wgpu::BlendState::PREMULTIPLIED_ALPHA_BLENDING),
+                        samples,
+                    },
+                ),
                 march: march(&with(&temporal), "vs_sky_look", "fs_clouds_low"),
                 march_depth: march(&with(&depth), "vs_sky_look", "fs_clouds_low_depth"),
                 resolve: march(&with(&resolve), "vs_sky", "fs_clouds_resolve"),

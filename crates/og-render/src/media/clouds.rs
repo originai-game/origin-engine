@@ -23,8 +23,8 @@
 //! every run and after a restore; nothing in the simulation reads them.
 //!
 //! They are drawn over any background, including authored environment
-//! maps: the sky pass draws them, so they do
-//! not light the scene by themselves; [`Clouds::light`] is how much a
+//! maps, and in front of opaque surfaces up to the main view's scene depth.
+//! They do not light the scene by themselves; [`Clouds::light`] is how much a
 //! cover dims the sun and the sky's light under it, which the runtime
 //! applies.
 
@@ -488,6 +488,8 @@ pub(crate) struct CloudsLow {
     /// The procedural sky drawn at the frame's size under the cloud target's clouds, in place of
     /// `SkyState::sky_look_pipeline`.
     pub sky: crate::deferred::Sampled<wgpu::RenderPipeline>,
+    /// Finite cloud transport over opaque pixels, using the prepass's distance.
+    pub front: crate::deferred::Sampled<wgpu::RenderPipeline>,
     pub temporal: CloudsTemporal,
 }
 

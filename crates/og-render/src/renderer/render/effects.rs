@@ -46,6 +46,10 @@ pub(super) struct FrameEffects {
     pub motion_read: bool,
     pub ui_depth: bool,
     pub prepass: bool,
+    /// Keep the sky march's covered-pixel optimization when another effect
+    /// already needed depth. Reading it only for clouds costs more than
+    /// marching the small sky target in otherwise depthless scenes.
+    pub clouds_sky_depth: bool,
     /// Under TAA or motion blur, whether an instance moved since the frame
     /// before (its previous transform is not its own, or debris moves):
     /// without, its previous records are the instances' own and are not
@@ -257,7 +261,9 @@ impl Renderer {
             custom_posts,
             motion_read,
             ui_depth,
-            prepass,
+            clouds_sky_depth: prepass,
+            // Foreground clouds integrate only as far as each opaque surface.
+            prepass: prepass || scene.atmosphere.clouds.is_some(),
             instances_moved,
         }
     }

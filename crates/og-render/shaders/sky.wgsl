@@ -547,28 +547,27 @@ fn cloud_air(color: vec4<f32>, scattered: vec3<f32>, transmittance: f32, at: f32
   let moon_light = sky_moon_light();
   let moon_dir = select(sun_dir, normalize(frame.sky_moon.xyz), frame.sky_moon.w > 0.0);
   let air = air_path(d, sun_dir, moon_dir, moon_light, sky_viewer_km(), at * 0.001, steps);
-  // The deck's base as cloud_deck lights it (the clear sky's low light,
-  // a fiftieth of the key), its key the one above the air that lights the
-  // clouds (cloud_key, `to_light` and `light`), not the scene's light:
-  // that is the clouds' own dimming of it only where the scene was lit by
-  // Clouds::light_scene, and a lightning flash turns it towards the bolt.
-  let sun_side = clear_sky_light(normalize(vec3<f32>(to_light.x, 0.0, to_light.z) + vec3<f32>(0.0, 1e-3, 0.0)));
-  let view_side = clear_sky_light(normalize(vec3<f32>(d.x, 0.0, d.z) + vec3<f32>(0.0, 1e-3, 0.0)));
-  let above = light * scatter_sun_transmittance(frame.sky_scatter[3].x + (c[0].z + c[6].w) * 0.001, to_light.y);
-  // In the hue of the light falling on it (a dusk's lavender, warmer
-  // towards the glow), greyed by the cover as the march greys a cloud's
-  // ambient: a cloud scatters every wavelength alike.
-  let lit_base = (mix(view_side, sun_side, 0.5) * 0.21 + above * 0.02) * c[2].rgb * 2.0;
-  let base = mix(lit_base, vec3<f32>(dot(lit_base, LUMA)), c[0].x * 0.7);
-  let cover = cloud_deck(vec3<f32>(0.0, 1.0, 0.0)).a;
   let scale = frame.sky_glow.yzw * frame.sky_horizon.w;
-  let under = 0.5 * base * (vec3<f32>(1.0) - air.through);
   // The moonlit air and the night's floor (sky_physical_look's
   // sky_scatter[5], in the share this path holds of it) as its sky light:
   // the clouds hide the moon as they hide that sky, and a closed deck
   // replaces both with its own.
   let night = (air.moon + frame.sky_scatter[5].rgb * (vec3<f32>(1.0) - air.through)) * frame.sky_horizon.w;
-  let air_light = air.sun * scale * min(c[4].y, 1.0) + mix(air.sky * scale + night, under, cover);
+  var dome = air.sky * scale + night;
+  let cover = cloud_deck(vec3<f32>(0.0, 1.0, 0.0)).a;
+  if (cover > 0.0) {
+    // The deck's base as cloud_deck lights it: its key is the one above
+    // the air, not the scene's cloud-dimmed or lightning-turned light.
+    // This term has zero weight without a deck; skip its lighting then.
+    let sun_side = clear_sky_light(normalize(vec3<f32>(to_light.x, 0.0, to_light.z) + vec3<f32>(0.0, 1e-3, 0.0)));
+    let view_side = clear_sky_light(normalize(vec3<f32>(d.x, 0.0, d.z) + vec3<f32>(0.0, 1e-3, 0.0)));
+    let above = light * scatter_sun_transmittance(frame.sky_scatter[3].x + (c[0].z + c[6].w) * 0.001, to_light.y);
+    let lit_base = (mix(view_side, sun_side, 0.5) * 0.21 + above * 0.02) * c[2].rgb * 2.0;
+    let base = mix(lit_base, vec3<f32>(dot(lit_base, LUMA)), c[0].x * 0.7);
+    let under = 0.5 * base * (vec3<f32>(1.0) - air.through);
+    dome = mix(dome, under, cover);
+  }
+  let air_light = air.sun * scale * min(c[4].y, 1.0) + dome;
   return vec4<f32>(color.rgb * transmittance + scattered * air.through + air_light * (1.0 - transmittance) * (1.0 - frame.view_up.w), color.a * transmittance);
 }
 
@@ -604,11 +603,22 @@ const CLOUD_HAZE: f32 = 27000.0;
 
 // The high layer, then the volumetric layer, faded into the sky with distance.
 fn clouds_march(d: vec3<f32>, pixel: vec2<f32>) -> vec4<f32> {
+  return clouds_march_to(d, pixel, CLOUD_REACH, false);
+}
+
+// The same transport in front of an opaque surface. The distant deck is
+// a sky approximation, never matter between the eye and a finite surface.
+fn clouds_march_to(d: vec3<f32>, pixel: vec2<f32>, limit: f32, finite: bool) -> vec4<f32> {
   let c = frame.clouds;
   if (c[3].w < 0.5) { return vec4<f32>(0.0, 0.0, 0.0, 1.0); }
   let radius = c[4].x;
   let viewer = cloud_viewer();
   let o = vec3<f32>(0.0, radius + viewer, 0.0);
+  // A segment whose two ends are under the base cannot reach either
+  // cloud shell. Test before evaluating any lighting or noise.
+  if (finite && viewer < c[0].z && length(o + d * limit) < radius + c[0].z) {
+    return vec4<f32>(0.0, 0.0, 0.0, 1.0);
+  }
   // A ray that meets the ground sees no clouds, unless the eye is above the
   // cloud base: then it looks down onto the layer (a sea of cloud from a
   // mountain), and the march below stops at the base, before the ground.
@@ -666,15 +676,19 @@ fn clouds_march(d: vec3<f32>, pixel: vec2<f32>) -> vec4<f32> {
   // Under an overcast the distance fades the deck into more deck, not into the clear sky behind it: a bright clear
   // band at the horizon under a storm. The deck's base far off: its grey ambient (as the march lights a base, below)
   // and a little of the sun through it.
-  let dk = cloud_deck(d);
-  let deck_cover = dk.a;
-  let deck = cloud_view_fog(dk.rgb, d, 60000.0);
+  var deck_cover = 0.0;
+  var deck = vec3<f32>(0.0);
+  if (!finite) {
+    let dk = cloud_deck(d);
+    deck_cover = dk.a;
+    if (deck_cover > 0.0) { deck = cloud_view_fog(dk.rgb, d, 60000.0); }
+  }
   let r = length(o);
 
   // The high thin layer (cirrus), streaked along the wind.
   if (c[3].x > 0.0) {
     let t = cloud_sphere(o, d, radius + c[3].y).y;
-    if (t > 0.0) {
+    if (t > 0.0 && (!finite || t < limit)) {
       let p = o + d * t;
       // (Its own place, [14].zw: the eye's less twice the wind's offset,
       // wrapped at eight of `uv`, which every scale below repeats in. By
@@ -720,9 +734,10 @@ fn clouds_march(d: vec3<f32>, pixel: vec2<f32>) -> vec4<f32> {
   // and the air takes them (cloud_air). (A layer of its own stood in for
   // them past 30 km, the cover's mean with no shape: a band along the
   // horizon.) Past the reach, the high layer and an overcast's deck.
-  let fallback = cloud_layer_mix(color, deck, deck_cover);
+  let fallback = cloud_layer_mix(color, deck, select(deck_cover, 0.0, finite));
   if (start >= CLOUD_REACH) { return fallback; }
-  end = min(end, CLOUD_REACH);
+  end = min(end, limit);
+  if (end <= start) { return color; }
   // The march crosses clear air in strides, reading the map (a column
   // with no cloud at the sample's height has none whatever the noise) and
   // there the billows without their detail (which never add cloud where
@@ -944,7 +959,7 @@ fn clouds_march(d: vec3<f32>, pixel: vec2<f32>) -> vec4<f32> {
       let s = mix((sun + ambient) * c[2].rgb * (1.0 - frame.view_up.w), fog.rgb, fog.a) * sigma;
       // The step's light as the step itself dims it (Hillaire 2016, the
       // energy-conserving integration).
-      let seg = exp(-sigma * dt);
+      let seg = exp(-sigma * select(dt, min(dt, end - t), finite));
       scattered += transmittance * (s - s * seg) / sigma;
       // The depth the cloud's light comes from, weighted by what it adds.
       depth += t * transmittance * (1.0 - seg);
@@ -1000,7 +1015,7 @@ fn clouds_march(d: vec3<f32>, pixel: vec2<f32>) -> vec4<f32> {
     let haze = select(CLOUD_HAZE, clamp((bottom - r) * 19.1, 2000.0, CLOUD_HAZE), r < bottom);
     let fade = exp(-at / haze);
     let mean = mix(deck, scattered / max(1.0 - transmittance, 1e-3), smoothstep(0.05, 0.5, 1.0 - transmittance));
-    marched = mix(cloud_layer_mix(color, mean, deck_cover), marched, fade);
+    marched = mix(cloud_layer_mix(color, mean, select(deck_cover, 0.0, finite)), marched, fade);
   }
   return mix(fallback, marched, range_fade);
 }
@@ -1269,6 +1284,21 @@ fn fs_clouds_low_depth(in: SkyOut) -> @location(0) vec4<f32> {
   let block = select(1.0, 2.0, clouds_temporal.mode.x > 0.5);
   if (clouds_covered(in.pos.xy, m.texel * block)) { return vec4<f32>(0.0, 0.0, 0.0, 1.0); }
   return clouds_low_texel(m.ndc, m.pos, in.grey, m.texel);
+}
+
+// Opaque pixels have their own finite ray, not the sky ray behind them.
+// Keep these out of the direction-only cloud history: an opaque edge
+// must use this frame's surface distance, including on a camera cut.
+@fragment
+fn fs_clouds_front(in: SkyOut) -> @location(0) vec4<f32> {
+  let depth = textureLoad(clouds_depth, vec2<i32>(in.pos.xy), 0).r;
+  if (is_sky_depth(depth)) { return vec4<f32>(0.0); }
+  let d = pixel_ray(in.ndc);
+  let distance = depth / max(dot(d, frame.view_forward.xyz), 1e-6);
+  let layer = clouds_march_to(d, in.pos.xy, min(distance, CLOUD_REACH), true);
+  // Premultiplied opacity blending: L + T * opaque. Alpha is the HDR
+  // share, so cloud coverage takes authored pixels towards tone mapping.
+  return vec4<f32>(layer.rgb, 1.0 - layer.a);
 }
 
 // The resolve of a frame that marched one texel of each two by two (Schneider 2015, the temporal upsampling of the

@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "og.Clouds",
+      "summary": "Clouds in the main view can pass in front of opaque geometry. Their scattering and transmittance stop at each surface's depth, so nearby objects do not receive the cloud layer behind them."
+    }
+  ]
+}

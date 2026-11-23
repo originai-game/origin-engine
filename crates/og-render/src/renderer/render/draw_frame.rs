@@ -299,13 +299,14 @@ impl Renderer {
         {
             use crate::deferred::Start;
             if CloudsPass::runs(scene) {
-                if effects.prepass {
+                if effects.clouds_sky_depth {
                     self.sky.clouds_low.march_depth.start();
                 } else {
                     self.sky.clouds_low.march.start();
                 }
                 self.sky.clouds_low.resolve.start();
                 self.sky.clouds_low.sky.start();
+                self.sky.clouds_low.front.start();
                 self.sky.sky_look_pipeline.start();
             }
             match scene.lighting.environment.background {
@@ -925,7 +926,8 @@ impl Renderer {
         // The bind steps of the passes whose plans hold nothing of the
         // frame's: the pass list reads them.
         plans.live_sky = LiveSkyPass::bind(self, &mut frames.live_sky, ());
-        plans.clouds = CloudsPass::bind(self, &mut frames.clouds, scene);
+        plans.clouds =
+            CloudsPass::bind(self, &mut frames.clouds, (scene, effects.clouds_sky_depth));
         plans.gi_probes = GiProbesPass::bind(self, &mut frames.gi_probes, ());
         plans.light_2d = Light2dPass::bind(self, &mut frames.light_2d, scene);
         let Light2dFrame {

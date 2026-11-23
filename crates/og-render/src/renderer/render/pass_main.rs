@@ -423,6 +423,36 @@ impl Renderer {
             }
             stats.draw_calls += 1;
         }
+        // The sky layer is behind opaque surfaces. Their finite cloud
+        // transport belongs over their lit colour, before transparency.
+        if CloudsPass::runs(scene)
+            && let (Some(front), Some(depth)) = (
+                self.sky.clouds_low.front.get(),
+                self.graph.try_view("lindepth"),
+            )
+        {
+            let group = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
+                label: Some("clouds over opaque"),
+                layout: &self.sky.clouds_low.temporal.depth,
+                entries: &[
+                    wgpu::BindGroupEntry {
+                        binding: 1,
+                        resource: wgpu::BindingResource::TextureView(depth),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 2,
+                        resource: self.sky.clouds_low.temporal.uniform.as_entire_binding(),
+                    },
+                ],
+            });
+            part!("main: foreground clouds");
+            pass.set_pipeline(front);
+            pass.set_bind_group(1, sky_group, &[]);
+            pass.set_bind_group(2, &group, &[]);
+            pass.draw(0..3, 0..1);
+            pass.set_bind_group(2, fx_group, &[]);
+            stats.draw_calls += 1;
+        }
         if split {
             drop(pass);
             if transmission_view.is_some() {

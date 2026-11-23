@@ -10,6 +10,9 @@
 //! sky's own draw's did, so in a frame with a prepass it reads the frame's view depth
 //! and skips the texels only covered pixels read (`clouds_covered`). The live sky's faces, the probes, the mirrors and the
 //! views march at their own pixels.
+//! Opaque main-view pixels are composited separately in `pass_main.rs`:
+//! `fs_clouds_front` integrates the same transport only up to their depth,
+//! without putting finite surface rays into the sky's directional history.
 
 use super::*;
 
@@ -32,18 +35,19 @@ impl Pass for CloudsPass {
     type Frame = ();
     type PlanIn<'a> = ();
     type UploadIn<'a> = ();
-    type BindIn<'f> = &'f RenderScene;
-    type Plan<'f> = ();
+    type BindIn<'f> = (&'f RenderScene, bool);
+    /// Whether the sky march uses the existing covered-pixel depth skip.
+    type Plan<'f> = bool;
 
     fn state(r: &Renderer) -> &Self::State {
         &r.sky.clouds_low
     }
 
-    fn bind<'f>(_: &'f Renderer, _: &'f mut (), scene: &'f RenderScene) -> Option<()> {
-        CloudsPass::runs(scene).then_some(())
+    fn bind<'f>(_: &'f Renderer, _: &'f mut (), (scene, depth): Self::BindIn<'f>) -> Option<bool> {
+        CloudsPass::runs(scene).then_some(depth)
     }
 
-    fn encode<'f>(st: &Self::State, _: &(), _: FramePass, cx: &mut EncodeCx<'_, 'f>) {
+    fn encode<'f>(st: &Self::State, sky_depth: &bool, _: FramePass, cx: &mut EncodeCx<'_, 'f>) {
         let r = cx.ctx.r;
         let t = &st.temporal;
         let step = wgpu::BindGroupEntry {
@@ -51,7 +55,7 @@ impl Pass for CloudsPass {
             resource: t.uniform.as_entire_binding(),
         };
         // The prepass's view depth in a frame with one: the march skips what its surfaces cover.
-        let depth = r.graph.try_view("lindepth");
+        let depth = sky_depth.then(|| r.graph.view("lindepth"));
         let march_group = match depth {
             Some(depth) => r.device.create_bind_group(&wgpu::BindGroupDescriptor {
                 label: Some("clouds low depth"),

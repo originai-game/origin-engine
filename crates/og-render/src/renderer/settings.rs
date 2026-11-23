@@ -201,6 +201,7 @@ impl Renderer {
             &self.sky.sky_pipeline,
             &self.sky.sky_look_pipeline,
             &self.sky.clouds_low.sky,
+            &self.sky.clouds_low.front,
             &self.sky.ground.pipeline,
             &self.sprite.sprite_pipeline,
             &self.sprite.sprite_additive_pipeline,

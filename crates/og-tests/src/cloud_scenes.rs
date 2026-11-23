@@ -18,6 +18,9 @@ pub const CLOUDSCAPE_SCENES: &[&str] = &[
     "cloudscape-stratocumulus",
     "cloudscape-stratus",
     "cloudscape-cumulonimbus",
+    "cloudscape-geometry",
+    "cloudscape-geometry-near",
+    "cloudscape-geometry-physical",
 ];
 
 /// `scene`'s camera lifted over the colonnade's capitals and pitched
@@ -38,6 +41,81 @@ pub fn sky_view(mut scene: RenderScene, height: f32, pitch: f32) -> RenderScene 
 pub fn cloudscape_scene(name: &str) -> RenderScene {
     let earth = PhysicalAtmosphere::EARTH;
     match name {
+        // Star Focus ENGINE-ISSUES §14: a 200 m box in a 400 m cloud
+        // layer, viewed from 300 m at 55 degrees. Review only, no reference.
+        "cloudscape-geometry" | "cloudscape-geometry-near" => {
+            let mut scene = RenderScene::new();
+            scene.lighting.environment.background = og_render::Background::Color(Vec3::splat(0.02));
+            scene.atmosphere.clouds = Some(Clouds {
+                base: 0.0,
+                thickness: 400.0,
+                scale: 1200.0,
+                coverage: 0.8,
+                layer: 0.0,
+                wind: Vec3::ZERO,
+                ..Clouds::default()
+            });
+            let box_mesh = scene.add_mesh(og_render::shapes::cuboid(Vec3::splat(200.0)));
+            let blue = scene.add_standard_material(og_render::StandardMaterial {
+                color: Vec3::new(0.05, 0.2, 0.7),
+                unlit: 1,
+                ..Default::default()
+            });
+            scene.add_instance(
+                box_mesh,
+                blue,
+                glam::Mat4::from_translation(Vec3::Y * 100.0),
+            );
+            let pitch = 55f32.to_radians();
+            scene.frame.camera.position =
+                Vec3::new(0.0, 100.0 + 300.0 * pitch.sin(), 300.0 * pitch.cos());
+            scene.frame.camera.target = Vec3::Y * 100.0;
+            // Keep the whole intersected box visible in the portrait view too.
+            scene.frame.camera.projection = og_render::Projection::Perspective {
+                fov_y_degrees: 120.0,
+            };
+            scene.frame.camera.far = 100_000.0;
+            if name == "cloudscape-geometry-near" {
+                // Same projected box and sky, a thousand times nearer:
+                // isolate finite transport from an upsampled sky fringe.
+                let eye = scene.frame.camera.position;
+                scene.objects.instances[0].transform =
+                    glam::Mat4::from_translation(eye + (Vec3::Y * 100.0 - eye) * 0.001)
+                        * glam::Mat4::from_scale(Vec3::splat(0.001));
+                scene.frame.camera.near = 0.001;
+            }
+            scene
+        }
+        // Retain the original fuller-screen, physically lit cost rig.
+        // Its camera, exposure and white material predate the contrast rig.
+        "cloudscape-geometry-physical" => {
+            let mut scene = clouded(
+                physical_sky_scene(12.5, earth, false),
+                Clouds {
+                    base: 0.0,
+                    thickness: 400.0,
+                    scale: 1200.0,
+                    coverage: 0.8,
+                    layer: 0.0,
+                    wind: Vec3::ZERO,
+                    ..Clouds::default()
+                },
+            );
+            scene.objects.instances.clear();
+            let mesh = scene.add_mesh(og_render::shapes::cuboid(Vec3::splat(200.0)));
+            let white = scene.add_standard_material(og_render::StandardMaterial {
+                color: Vec3::splat(0.8),
+                roughness: 0.9,
+                ..Default::default()
+            });
+            scene.add_instance(mesh, white, glam::Mat4::from_translation(Vec3::Y * 100.0));
+            let pitch = 55f32.to_radians();
+            scene.frame.camera.position =
+                Vec3::new(0.0, 100.0 + 300.0 * pitch.sin(), 300.0 * pitch.cos());
+            scene.frame.camera.target = Vec3::Y * 100.0;
+            scene.frame.camera.far = 100_000.0;
+            scene
+        }
         // Fair-weather cumulus two fifths over the sky, the sun high
         // behind the camera's left.
         "cloudscape-noon" => sky_view(

@@ -14,6 +14,66 @@ use og_render::{Camera, RenderScene, RenderTarget, Renderer, RgbaImage};
 use og_tests::harness::{luma_f32, out_dir, px_f32};
 use og_tests::scenes;
 
+/// Opaque surfaces stop the cloud ray: a nearby object stays visible,
+/// while the same projected object behind a thick cloud is attenuated.
+#[test]
+#[ignore = "requires GPU"]
+fn clouds_occlude_geometry_only_along_the_segment_in_front_of_it() {
+    let mut desc = scenes::base_desc();
+    desc.width = 320;
+    desc.height = 240;
+    let mut renderer = Renderer::new_blocking(&desc).expect("renderer");
+    let mut draw = |distance: f32, clouds: bool| {
+        let mut scene = RenderScene::new();
+        scene.lighting.environment.background = og_render::Background::Color(Vec3::ZERO);
+        scene.frame.camera = Camera {
+            position: Vec3::new(0.0, 40.0, 0.0),
+            target: Vec3::new(0.0, 40.0, -1.0),
+            far: 10_000.0,
+            ..Default::default()
+        };
+        scene.atmosphere.clouds = clouds.then_some(og_render::Clouds {
+            base: 0.0,
+            thickness: 400.0,
+            coverage: 1.0,
+            density: 0.1,
+            color: Vec3::ZERO,
+            detail: 0.0,
+            layer: 0.0,
+            wind: Vec3::ZERO,
+            ..Default::default()
+        });
+        let mesh = scene.add_mesh(og_render::shapes::cuboid(Vec3::splat(distance * 0.4)));
+        let white = scene.add_standard_material(og_render::StandardMaterial {
+            color: Vec3::ONE,
+            unlit: 1,
+            ..Default::default()
+        });
+        scene.add_instance(
+            mesh,
+            white,
+            Mat4::from_translation(Vec3::new(0.0, 40.0, -distance)),
+        );
+        renderer
+            .render_capture(&scene, &RenderTarget::Offscreen)
+            .expect("render");
+        let image = renderer.read_offscreen().expect("capture");
+        luma_f32(px_f32(&image, image.width / 2, image.height / 2))
+    };
+    let clear = draw(1000.0, false);
+    let near = draw(1.0, true);
+    let far = draw(1000.0, true);
+    println!("opaque geometry: clear {clear:.1}, nearby {near:.1}, behind clouds {far:.1}");
+    assert!(
+        near > clear * 0.8,
+        "clouds behind a nearby surface must not hide it"
+    );
+    assert!(
+        far < clear * 0.6,
+        "clouds in front of a distant surface must hide it"
+    );
+}
+
 /// A mesh replaced with RenderScene::set_mesh (cloth) draws its new shape
 /// on the next frame, in place when the sizes match and in new buffers when
 /// they do not; a skinned mesh is refused.

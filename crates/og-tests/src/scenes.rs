@@ -1432,7 +1432,10 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         | "cloudscape-aloft"
         | "cloudscape-stratocumulus"
         | "cloudscape-stratus"
-        | "cloudscape-cumulonimbus" => |g, name| {
+        | "cloudscape-cumulonimbus"
+        | "cloudscape-geometry"
+        | "cloudscape-geometry-near"
+        | "cloudscape-geometry-physical" => |g, name| {
             g.scene = crate::cloud_scenes::cloudscape_scene(name);
             g.desc.antialias = Antialias::Tier;
             g.frames = 8;
