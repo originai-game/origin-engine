@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "Theme recipes",
+      "summary": "Generated theme art shades a bevelled material's rounded corner along its arc instead of across a diagonal join, and a pixel shape's badge, rims and outlines are whole blocks with no doubled stepped edge. The art redraws on the next cook."
+    }
+  ]
+}

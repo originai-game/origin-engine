@@ -213,6 +213,14 @@ class Shape:
         """How far a corner's shaping reaches in: what a nine-slice inset must clear."""
         return max(self.radius(role), self.cut(role) if self.family in ("cut", "cut4") else 0.0)
 
+    def span(self, cv):
+        """The samples a block of the stepped field spans (1 for a smooth field)."""
+        return int(np.floor(self.step * cv.S + 0.5)) if self.family == "pixel" else 1
+
+    def whole(self, w):
+        """A width the stepped field draws as whole blocks."""
+        return float(np.ceil(w / self.step) * self.step) if self.family == "pixel" else w
+
     def coords(self, cv):
         if self.family != "pixel":
             return cv.x, cv.y
@@ -229,6 +237,10 @@ class Shape:
             d = rounded(x, y, box, 0.0)
             return chamfer(d, x, y, box, ("tl", "tr", "br", "bl"), self.cut(role) * scale_cut)
         d = rounded(x, y, box, r)
+        if self.family == "pixel":
+            # each block wholly in or out: its distance a half step from any
+            # whole-step offset, so no block is partly covered
+            return (np.floor(d / self.step) + 0.5) * self.step
         if self.family == "brush":
             # an uneven hand-drawn edge: the boundary pushed in and out by noise
             d = d + (noise(x, y, 5.0, self.seed) - 0.5) * 2 * self.wobble
@@ -272,24 +284,32 @@ def shifted(a, dy):
     return out
 
 
-def grad(d):
-    """Central differences along each axis (one-sided at the edges)."""
-    gx = np.zeros_like(d)
-    gy = np.zeros_like(d)
-    gx[:, 1:-1] = (d[:, 2:] - d[:, :-2]) / 2
-    gx[:, 0] = d[:, 1] - d[:, 0]
-    gx[:, -1] = d[:, -1] - d[:, -2]
-    gy[1:-1] = (d[2:] - d[:-2]) / 2
-    gy[0] = d[1] - d[0]
-    gy[-1] = d[-1] - d[-2]
+def grad(d, k=1):
+    """Central differences `k` samples apart along each axis (nearer at the edges)."""
+    def span(n):
+        i = np.arange(n)
+        return np.minimum(i + k, n - 1), np.maximum(i - k, 0)
+    hx, lx = span(d.shape[1])
+    hy, ly = span(d.shape[0])
+    gx = (d[:, hx] - d[:, lx]) / (hx - lx).astype(np.float64)[None, :]
+    gy = (d[hy] - d[ly]) / (hy - ly).astype(np.float64)[:, None]
     return gx, gy
 
 
-def lit(d):
-    """How much an edge faces the light (above, a little left): 0 to 1."""
-    gx, gy = grad(d)
+def lit(d, k=1):
+    """How much an edge faces the light (above, a little left): 0 to 1. `k` is
+    the field's block in samples: a stepped field is flat inside a block, so its
+    slope is read a block apart."""
+    gx, gy = grad(d, k)
     n = np.sqrt(gx * gx + gy * gy) + 1e-9
     return clamp(0.5 + 0.5 * ((0 - gy / n) * 0.92 - (gx / n) * 0.38))
+
+
+def lit_step(L):
+    """A bevel's two tones from `lit`: hard along straight edges, blended
+    round a curve so a rounded corner shades along its arc, not across a
+    diagonal join."""
+    return ramp((L - 0.35) / 0.3)
 
 
 def shadow(cv, d, dy, sigma, alpha, color):
@@ -337,13 +357,13 @@ def grain_field(cv, g, box):
     raise SystemExit(f"unknown grain {kind}")
 
 
-def surface(cv, C, M, d, box, sunk=False):
+def surface(cv, C, M, d, box, sunk=False, k=1):
     """Paints a face of the material over distance field `d` (inside the outline and lip)."""
     x0, y0, x1, y1 = box
     face_d = d
     rim = M.get("rim")
     if rim:
-        L = lit(d)[..., None]
+        L = lit(d, k)[..., None]
         cv.over(C(rim["lo"]) * (1 - L) + C(rim["hi"]) * L, cover(cv, d))
         face_d = d + rim["width"]
     f = M.get("face", {})
@@ -371,8 +391,7 @@ def surface(cv, C, M, d, box, sunk=False):
     if bv:
         w = bv["width"]
         ring = cover(cv, face_d) - cover(cv, face_d + w)
-        L = lit(face_d)
-        light = (L > 0.5).astype(np.float64)
+        light = lit_step(lit(face_d, k))
         cv.over(hexc("#ffffff"), ring * light * bv["hi"])
         cv.over(hexc("#000000"), ring * (1 - light) * bv["lo"])
         cv.over(C(bv.get("inner", "top")), cover(cv, face_d + w) * bv.get("inner_alpha", 0.0))
@@ -423,7 +442,7 @@ def piece(cv, C, M, shape, role, box, face, lip_h=0.0, sunk=False, drop=True, or
         cv.over(vgrad(cv, C(lp["top"]), C(lp["bottom"]), y1 - lip_h - 2, y1), cover(cv, body))
         fbox = (x0, y0, x1, y1 - lip_h)
         body = shape.dist(cv, fbox, role, scale_cut)
-    face_d = surface(cv, C, M, body, fbox, sunk)
+    face_d = surface(cv, C, M, body, fbox, sunk, shape.span(cv))
     if orn and orn.get("kind", "none") != "none":
         ornament(cv, C, face_d, orn, fbox)
     return face_d
@@ -630,7 +649,7 @@ def draw(spec):
     cv = Canvas(S, [13, 14, 14, 14], band=(2, 0))
     ow = M["outline"]["width"] if M.get("outline") else 1.0
     bm = dict(M)
-    bm["outline"] = {"color": spec.get("badge_rim", "#ffffff"), "width": max(ow, 1.5)}
+    bm["outline"] = {"color": spec.get("badge_rim", "#ffffff"), "width": shape.whole(max(ow, 1.5))}
     face = C.pair("badge") if "badge" in spec["palette"] else (hexc("#d83834"), hexc("#a00c1a"))
     bo = bm["outline"]["width"] + 0.5
     piece(cv, C, bm, shape, "badge", (bo, bo, cv.w - bo, cv.h - bo), face, scale_cut=0.6)
@@ -646,9 +665,9 @@ def draw(spec):
     ring = cover(cv, body) - cover(cv, body + rw)
     glen = 3.0 if hard else 7.0
     inner = clamp(1 + (body + rw) / glen) * cover(cv, body + rw)
-    L = lit(body)
+    L = lit(body, shape.span(cv))
     if hard:
-        grey = 0.7 + 0.3 * (L > 0.5).astype(np.float64)
+        grey = 0.7 + 0.3 * lit_step(L)
     elif metal:
         grey = 0.6 + 0.4 * L
     else:
@@ -659,9 +678,9 @@ def draw(spec):
     body = shape.dist(cv, (1.0, 1.0, cv.w - 1.0, cv.h - 1.0), "chip", 0.6)
     cv.over(np.array([0.16, 0.16, 0.16, 1.0]), cover(cv, body))
     bw = M["bevel"]["width"] if hard else 1.0
-    L = lit(body)
+    L = lit(body, shape.span(cv))
     if hard:
-        rim = 0.17 + 0.36 * (L > 0.5).astype(np.float64)
+        rim = 0.17 + 0.36 * lit_step(L)
     elif metal:
         rim = 0.12 + 0.5 * L
     else:

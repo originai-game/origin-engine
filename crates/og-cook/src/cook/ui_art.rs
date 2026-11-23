@@ -394,9 +394,30 @@ impl Shape<'_> {
                 "brush" => {
                     rounded(x, y, b, r) + (noise(x, y, 5.0, self.seed) - 0.5) * 2.0 * self.wobble
                 }
+                // each block wholly in or out: its distance a half step
+                // from any whole-step offset, so no block is partly covered
+                "pixel" => ((rounded(x, y, b, r) / s).floor() + 0.5) * s,
                 _ => rounded(x, y, b, r),
             }
         })
+    }
+
+    /// The samples a block of the stepped field spans (1 for a smooth one).
+    fn span(&self, cv: &Canvas) -> usize {
+        if self.family == "pixel" {
+            (self.step * cv.s + 0.5).floor() as usize
+        } else {
+            1
+        }
+    }
+
+    /// A width the stepped field draws as whole blocks.
+    fn whole(&self, w: f64) -> f64 {
+        if self.family == "pixel" {
+            (w / self.step).ceil() * self.step
+        } else {
+            w
+        }
     }
 }
 
@@ -442,31 +463,32 @@ fn blur(cv: &Canvas, mut a: F, sigma: f64) -> F {
     a
 }
 
-fn lit(cv: &Canvas, d: &[f64]) -> F {
+/// How much an edge faces the light (above, a little left): 0 to 1, from
+/// central differences `k` samples apart (nearer at the edges). A stepped
+/// field is flat inside a block, so its slope is read a block apart.
+fn lit(cv: &Canvas, d: &[f64], k: usize) -> F {
     let (nx, ny) = (cv.nx, cv.ny);
+    let span = |i: usize, n: usize| ((i + k).min(n - 1), i.saturating_sub(k));
     let mut out = vec![0.0; d.len()];
     for j in 0..ny {
         for i in 0..nx {
             let at = |i: usize, j: usize| d[j * nx + i];
-            let gx = if i == 0 {
-                at(1, j) - at(0, j)
-            } else if i == nx - 1 {
-                at(nx - 1, j) - at(nx - 2, j)
-            } else {
-                (at(i + 1, j) - at(i - 1, j)) / 2.0
-            };
-            let gy = if j == 0 {
-                at(i, 1) - at(i, 0)
-            } else if j == ny - 1 {
-                at(i, ny - 1) - at(i, ny - 2)
-            } else {
-                (at(i, j + 1) - at(i, j - 1)) / 2.0
-            };
+            let (hx, lx) = span(i, nx);
+            let (hy, ly) = span(j, ny);
+            let gx = (at(hx, j) - at(lx, j)) / (hx - lx) as f64;
+            let gy = (at(i, hy) - at(i, ly)) / (hy - ly) as f64;
             let n = (gx * gx + gy * gy).sqrt() + 1e-9;
             out[j * nx + i] = clamp(0.5 + 0.5 * ((0.0 - gy / n) * 0.92 - (gx / n) * 0.38));
         }
     }
     out
+}
+
+/// A bevel's two tones from `lit`: hard along straight edges, blended round
+/// a curve so a rounded corner shades along its arc, not across a diagonal.
+fn lit_step(l: f64) -> f64 {
+    let t = clamp((l - 0.35) / 0.3);
+    t * t * (3.0 - 2.0 * t)
 }
 
 fn shadow(cv: &mut Canvas, d: &[f64], dy: f64, sigma: f64, alpha: f64, color: Rgba) {
@@ -536,11 +558,12 @@ fn surface(
     d: &[f64],
     b: [f64; 4],
     sunk: bool,
+    k: usize,
 ) -> Result<F, String> {
     let [x0, y0, x1, y1] = b;
     let mut face_d = d.to_vec();
     if let Some(rim) = m.get("rim") {
-        let l = lit(cv, d);
+        let l = lit(cv, d, k);
         let (lo, hi) = (c.get(&rim["lo"])?, c.get(&rim["hi"])?);
         let col = Col::Each(
             l.iter()
@@ -589,18 +612,10 @@ fn surface(
     if let Some(bv) = m.get("bevel") {
         let w = key(bv, "width")?;
         let rg = ring(cv, &face_d, w);
-        let l = lit(cv, &face_d);
+        let l: F = lit(cv, &face_d, k).into_iter().map(lit_step).collect();
         let (hi, lo) = (key(bv, "hi")?, key(bv, "lo")?);
-        cv.over1(
-            WHITE,
-            &zip(&rg, &l, |r, l| r * if l > 0.5 { 1.0 } else { 0.0 } * hi),
-        );
-        cv.over1(
-            BLACK,
-            &zip(&rg, &l, |r, l| {
-                r * (1.0 - if l > 0.5 { 1.0 } else { 0.0 }) * lo
-            }),
-        );
+        cv.over1(WHITE, &zip(&rg, &l, |r, l| r * l * hi));
+        cv.over1(BLACK, &zip(&rg, &l, |r, l| r * (1.0 - l) * lo));
         let inner = c.get(bv.get("inner").unwrap_or(&json!("top")))?;
         let ia = opt(bv, "inner_alpha", 0.0);
         let al: F = cv.cover(&add(&face_d, w)).iter().map(|&v| v * ia).collect();
@@ -724,7 +739,7 @@ fn piece(
         fb = [x0, y0, x1, y1 - lip_h];
         body = shape.dist(cv, fb, role, scale_cut);
     }
-    let fd = surface(cv, c, m, &body, fb, sunk)?;
+    let fd = surface(cv, c, m, &body, fb, sunk, shape.span(cv))?;
     if let Some(o) = orn {
         ornament(cv, c, &fd, o, fb)?;
     }
@@ -1167,13 +1182,13 @@ pub fn draw(spec: &Value) -> Result<Vec<Piece>, String> {
         .unwrap_or(1.0);
     let mut bm = m.clone();
     let rim_c = spec.get("badge_rim").cloned().unwrap_or(json!("#ffffff"));
-    bm["outline"] = json!({ "color": rim_c, "width": ow.max(1.5) });
+    bm["outline"] = json!({ "color": rim_c, "width": shape.whole(ow.max(1.5)) });
     let face = if spec["palette"].get("badge").is_some() {
         c.pair("badge")?
     } else {
         (hexc("#d83834")?, hexc("#a00c1a")?)
     };
-    let bo = ow.max(1.5) + 0.5;
+    let bo = shape.whole(ow.max(1.5)) + 0.5;
     let b = [bo, bo, cv.wf() - bo, cv.hf() - bo];
     piece(
         &mut cv, &mut c, &bm, &shape, "badge", b, face, 0.0, false, true, None, 0.6,
@@ -1190,10 +1205,10 @@ pub fn draw(spec: &Value) -> Result<Vec<Piece>, String> {
     let glen = if hard { 3.0 } else { 7.0 };
     let ci2 = cv.cover(&add(&body, rw));
     let inner = zip(&body, &ci2, |b, c| clamp(1.0 + (b + rw) / glen) * c);
-    let l = lit(&cv, &body);
+    let l = lit(&cv, &body, shape.span(&cv));
     let tone = |l: f64, soft: (f64, f64), strong: (f64, f64)| {
         if hard {
-            soft.0 + soft.1 * b2f(l > 0.5)
+            soft.0 + soft.1 * lit_step(l)
         } else if metal {
             strong.0 + strong.1 * l
         } else {
@@ -1204,7 +1219,7 @@ pub fn draw(spec: &Value) -> Result<Vec<Piece>, String> {
         l.iter()
             .map(|&l| {
                 let g = if hard {
-                    0.7 + 0.3 * b2f(l > 0.5)
+                    0.7 + 0.3 * lit_step(l)
                 } else {
                     tone(l, (0.78, 0.22), (0.6, 0.4))
                 };
@@ -1225,7 +1240,7 @@ pub fn draw(spec: &Value) -> Result<Vec<Piece>, String> {
     } else {
         1.0
     };
-    let l = lit(&cv, &body);
+    let l = lit(&cv, &body, shape.span(&cv));
     let rim = Col::Each(
         l.iter()
             .map(|&l| {
