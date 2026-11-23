@@ -635,7 +635,11 @@ impl CloudsTemporal {
             size: [w as f32, h as f32, x, y],
             mode: [
                 f32::from(u8::from(self.reproject)),
-                if self.reproject { dither_turn(phase) } else { 0.0 },
+                if self.reproject {
+                    dither_turn(phase)
+                } else {
+                    0.0
+                },
                 0.0,
                 0.0,
             ],
@@ -1039,7 +1043,10 @@ mod tests {
         // eye, and wraps at sixteen tiles.
         let high = c.gpu(10.0, 6.36e6, glam::DVec2::new(500.0, 0.0))[14];
         assert!((high[2] - 260.0).abs() < 1e-3, "{high:?}");
-        assert!((f64::from(high[3]) - (tile * 4.0 - 80.0)).abs() < 0.01, "{high:?}");
+        assert!(
+            (f64::from(high[3]) - (tile * 4.0 - 80.0)).abs() < 0.01,
+            "{high:?}"
+        );
         let round = c.gpu(10.0, 6.36e6, glam::DVec2::new(500.0 + tile * 4.0, 0.0))[14];
         assert!((high[2] - round[2]).abs() < 0.01, "{high:?} {round:?}");
     }

@@ -189,7 +189,11 @@ impl CloudShadow {
         } else {
             0.0
         };
-        let side = if strength > 0.0 && held { SIDE as f32 } else { 0.0 };
+        let side = if strength > 0.0 && held {
+            SIDE as f32
+        } else {
+            0.0
+        };
         self.rows = Some((
             run.to_array(),
             [side, strength, f32::from(u8::from(held)), 0.0],

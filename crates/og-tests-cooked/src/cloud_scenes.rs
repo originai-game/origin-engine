@@ -79,7 +79,11 @@ pub fn authored_scene(height: f32, pitch: f32, intensity: f32) -> Result<RenderS
     // From over the deck a closed sea of it; from under it a broken deck
     // of denser heaps, which hang separate lobes with shaded bases where
     // the thinner, closer deck was one even sheet seen from below.
-    let (density, coverage) = if height > 180.0 { (0.04, 0.65) } else { (0.1, 0.45) };
+    let (density, coverage) = if height > 180.0 {
+        (0.04, 0.65)
+    } else {
+        (0.1, 0.45)
+    };
     let clouds = Clouds {
         density,
         base: 180.0,

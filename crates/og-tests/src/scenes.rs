@@ -1495,14 +1495,12 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         | "cloudscape-aloft"
         | "cloudscape-stratocumulus"
         | "cloudscape-stratus"
-        | "cloudscape-cumulonimbus" => {
-            |g, name| {
-                g.scene = crate::cloud_scenes::cloudscape_scene(name);
-                g.desc.antialias = Antialias::Tier;
-                g.frames = 8;
-                Ok(())
-            }
-        }
+        | "cloudscape-cumulonimbus" => |g, name| {
+            g.scene = crate::cloud_scenes::cloudscape_scene(name);
+            g.desc.antialias = Antialias::Tier;
+            g.frames = 8;
+            Ok(())
+        },
         // R5: the sea under the physical sky, and a stream's flow map.
         "water-ocean" | "water-ocean-gale" | "water-ocean-sunset" | "water-flow-map"
         | "water-ocean-night" | "water-shore" | "water-shallows" | "water-river" => |g, name| {
