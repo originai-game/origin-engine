@@ -24,8 +24,8 @@ use pipeline::{
 mod systems;
 pub use systems::{animated, efk, look, probes, strings_extract, tilemap, vfx2d};
 use systems::{
-    autorig, behaviour, effect, environment, flipbook, fracture, fracture_cache, hlod, lightmap,
-    navmesh, rig2d, shader_check, story, story_functions, strings, table, terrain, vfx,
+    autorig, behaviour, district, effect, environment, flipbook, fracture, fracture_cache, hlod,
+    lightmap, navmesh, rig2d, shader_check, story, story_functions, strings, table, terrain, vfx,
 };
 mod formats;
 /// A source image decoded to RGBA8.

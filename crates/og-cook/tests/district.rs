@@ -1,0 +1,127 @@
+//! Districts (`type district`): a district cooks through the whole cook
+//! into a scene of streaming cells, each a cell group packing its own
+//! model, whose materials read the library's textures; the grammars and
+//! the library are part of it, not assets of their own.
+
+use og_cook::cook::{CookOptions, Report, cook_project};
+use og_cook::runtime::Bundle;
+use std::path::{Path, PathBuf};
+
+fn project(name: &str) -> PathBuf {
+    let root = std::env::temp_dir().join(format!("og-cook-district-{name}-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&root);
+    for d in ["districts", "grammars", "materials", "models", "textures"] {
+        std::fs::create_dir_all(root.join("assets").join(d)).unwrap();
+    }
+    root
+}
+
+fn write(root: &Path, id: &str, text: &str) {
+    std::fs::write(root.join("assets").join(id), text).unwrap();
+}
+
+fn cook(root: &Path) -> Report {
+    let options = CookOptions {
+        threads: 2,
+        // As `og cook` passes them: the colliders are og.Collider rows.
+        schemas: og_cook::cook::engine_schemas(),
+        ..CookOptions::default()
+    };
+    cook_project(root, &options).expect("the cook runs")
+}
+
+const GRAMMAR: &str = "type grammar\nversion 1\n---\nparam height 8\nstart Lot\nrule Lot {\n  extrude height {\n    sides Wall\n    top Roof\n  }\n}\nrule Wall {\n  label wall\n}\nrule Roof {\n  roof hip 30 {\n    slope Tiles\n  }\n}\nrule Tiles {\n  label roof\n}\n";
+
+const LIBRARY: &str = "type materials\nversion 1\n---\nmaterial \"brick\" {\n  label wall\n  tile 1 1\n  map \"textures/brick.png\"\n}\nmaterial \"slate\" {\n  label roof\n  color 0.1 0.1 0.12\n}\nmaterial \"asphalt\" {\n  label road\n  color 0.05 0.05 0.05\n}\nmaterial \"stone\" {\n  label pavement\n  label kerb\n  label ground\n  color 0.4 0.4 0.4\n}\n";
+
+const LAMP: &str = "type model\nversion 1\n---\nmaterial \"iron\" {\n  color 0.05 0.05 0.05\n}\npart \"post\" {\n  material \"iron\"\n  cylinderGeometry {\n    radiusTop 0.06\n    radiusBottom 0.08\n    height 4\n  }\n  at {\n    position 0 2 0\n  }\n}\n";
+
+const DISTRICT: &str = "type district\nversion 1\n---\nseed 3\nregion {\n  point 0 0\n  point 120 0\n  point 120 80\n  point 0 80\n}\nstreets {\n  grid 60 40\n  width 8\n  sidewalk 2\n  kerb 0.15\n}\nlots {\n  width 6 12\n  depth 10 16\n}\nbuildings {\n  density 1\n  height 6 12\n  rule \"grammars/house.ogt\"\n}\nprop \"lamp\" {\n  model \"models/lamp.ogt\"\n  every 20\n  kerb 0.4\n  collider capsule 0.1 3.8\n}\nmaterials \"materials/town.ogt\"\ncells {\n  size 64\n  load 100\n}\n";
+
+#[test]
+fn a_district_cooks_into_streaming_cells_of_its_own_models() {
+    let root = project("cells");
+    write(&root, "grammars/house.ogt", GRAMMAR);
+    write(&root, "materials/town.ogt", LIBRARY);
+    write(&root, "models/lamp.ogt", LAMP);
+    write(&root, "districts/town.ogt", DISTRICT);
+    let px: Vec<u8> = (0..16 * 16)
+        .flat_map(|i| [150, 70 + (i % 7) as u8 * 10, 50, 255])
+        .collect();
+    image::save_buffer(
+        root.join("assets/textures/brick.png"),
+        &px,
+        16,
+        16,
+        image::ColorType::Rgba8,
+    )
+    .unwrap();
+    let report = cook(&root);
+    assert!(report.ok(), "{:?}", report.errors());
+    let bundle = Bundle::open(&root.join("cooked")).unwrap();
+    // The grammar and the library are the district's, not assets.
+    assert!(bundle.output("grammars/house.ogt").is_err());
+    assert!(bundle.output("materials/town.ogt").is_err());
+    let town = bundle.load_scene("districts/town.ogt").unwrap();
+    let cells: Vec<&str> = town
+        .entities
+        .iter()
+        .filter_map(|e| e.subscene.as_deref())
+        .collect();
+    assert!(cells.len() >= 2, "{cells:?}");
+    let mut buildings = 0;
+    for cell in &cells {
+        // Each cell's sub-scene and model are packed in its own group.
+        let out = bundle.output(cell).unwrap();
+        let group = out.group.clone().expect("a cell group");
+        let model = format!("{}.glb", cell.trim_end_matches(".ogt"));
+        assert_eq!(
+            bundle.output(&model).unwrap().group.as_deref(),
+            Some(group.as_str())
+        );
+        let scene = bundle.load_scene(cell).unwrap();
+        buildings += scene
+            .entities
+            .iter()
+            .filter(|e| e.name.contains("/building-"))
+            .count();
+        assert!(scene.components.iter().any(|t| t.name == "Collider"));
+        let m = bundle.load_model(&model).unwrap();
+        let names: Vec<&str> = m.materials.iter().map(|x| x.name.as_str()).collect();
+        assert!(names.contains(&"asphalt"), "{names:?}");
+        if names.contains(&"brick") {
+            assert!(!m.textures.is_empty(), "the brick reads its map");
+        }
+    }
+    assert!(buildings > 10, "{buildings} buildings");
+    // A second cook of nothing changed is the same bytes.
+    let first = std::fs::read(
+        root.join("cooked")
+            .join(&bundle.output(cells[0]).unwrap().file),
+    )
+    .unwrap();
+    let _ = std::fs::remove_dir_all(root.join("cooked"));
+    let _ = std::fs::remove_dir_all(root.join(".og"));
+    assert!(cook(&root).ok());
+    let bundle = Bundle::open(&root.join("cooked")).unwrap();
+    let again = std::fs::read(
+        root.join("cooked")
+            .join(&bundle.output(cells[0]).unwrap().file),
+    )
+    .unwrap();
+    assert_eq!(first, again);
+}
+
+#[test]
+fn a_district_naming_a_missing_grammar_fails_naming_it() {
+    let root = project("missing");
+    write(&root, "materials/town.ogt", LIBRARY);
+    write(&root, "models/lamp.ogt", LAMP);
+    write(&root, "districts/town.ogt", DISTRICT);
+    let report = cook(&root);
+    let errors = format!("{:?}", report.errors());
+    assert!(
+        !report.ok() && errors.contains("grammars/house.ogt"),
+        "{errors}"
+    );
+}

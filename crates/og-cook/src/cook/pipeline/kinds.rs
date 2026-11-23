@@ -85,6 +85,7 @@ pub(crate) static SYSTEMS: &[&[&KindDef]] = &[
     table::KINDS,
     navmesh::KINDS,
     terrain::KINDS,
+    district::KINDS,
     lightmap::KINDS,
     environment::KINDS,
     timeline::KINDS,

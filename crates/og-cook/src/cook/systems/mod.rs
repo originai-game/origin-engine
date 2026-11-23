@@ -5,6 +5,7 @@ use super::*;
 pub mod animated;
 pub(super) mod autorig;
 pub(super) mod behaviour;
+pub(super) mod district;
 pub(super) mod effect;
 pub mod efk;
 pub(super) mod environment;

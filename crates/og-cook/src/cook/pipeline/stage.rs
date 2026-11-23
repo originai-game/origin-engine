@@ -128,6 +128,8 @@ pub(crate) fn scan_sources(
     animated::expand(&mut sources, &mut consumed);
     // Effekseer projects become composed effects and what they need (`efk/`).
     efk::expand(&mut sources, &mut consumed);
+    // Districts become a scene, its cells and their models (`district/`).
+    district::expand(&mut sources, &mut consumed);
     Ok(Scanned {
         sources,
         ignored,

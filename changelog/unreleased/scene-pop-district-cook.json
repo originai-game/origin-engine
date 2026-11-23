@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "type district",
+      "summary": "A district asset (`type district`) lays out a whole area from rules and a seed at cook time: a street grid over a region or one street's both sides, blocks, lots fronting the streets, a building per lot from weighted building rules (`type grammar`, CGA-style split grammars where every part carries a label), and roadside props along the pavements with their colliders. A material library (`type materials`) gives each label its materials, drawn per building by weight with its own brightness, warmth and texture phase. The district cooks into an ordinary scene: buildings merged per cell (`merge false` keeps one model per building), levels of detail from the grammars' `detail`, a box collider per building, instanced props, and with `cells` a streaming cell per square with its own group and the district's `hlod`. Deterministic from the seed on every host. The districts guide covers the three formats and the workflow."
+    }
+  ]
+}
