@@ -50,744 +50,56 @@ Each layer has one authoring form:
 - Data uses the `svelte/store` model (§2.1). Games prepare named stores and
   the components read them.
 
-The [screens guide](../crates/og-api/guides/screens.md) describes the
-syntax. A document must meet these requirements:
+The normative wire, primitive, class-vocabulary, input and accessibility
+contracts live in [`crates/og-ui-next/CONVENTIONS.md`](../crates/og-ui-next/CONVENTIONS.md);
+the author guide is [`crates/og-api/guides/screens.md`](../crates/og-api/guides/screens.md).
+There are no `.svelte` documents, no `<style>` sheets and no CSS cascade.
 
-- A `.svelte` file has compile-time `<meta>` declarations, one root
-  element, and document-scoped `<style>`; there is no `<template>` wrapper.
-  Metadata declares screen or component identity, layer, focus, typed
-  props, actions, and preview fixtures. IDs are unique within the document.
-- Text uses `{expr}` and attributes `attr={expr}`. Mounted stores are
-  `$name`; props and each-row aliases are plain names. Expressions are
-  read-only. `onclick={action}` dispatches a named mounted action, not a
-  call body. `bind:value` writes a writable store or keyed row field in the
-  current tick batch; `value` alone is read-only.
-- `{#each $items as item, i (item.id)}` names the row's position `i`: from
-  0, in the list's order, following a move, insert or remove. It is for
-  display (a rank, a slot number); a key that uses it is refused, since a
-  row keeps its identity when the list reorders.
-- `{#each labels as label, i (label)}` iterates a string-list prop or
-  writable value, keyed by each string itself. Strings must be nonempty
-  and unique; repeated labels need object rows with distinct keys, not
-  index keys. Literal string-list defaults work too. Reordering preserves
-  the kept strings' controls, focus and state; changing a string removes
-  its old row and creates a new one. Strings remain strings when read or
-  passed to another component, and cannot be written through the row alias.
-- `{#each row.cells as cell, i (cell.id)}` inside an each reads a list held
-  in a row: an array of objects, each with a nonempty string key field,
-  none twice. Its rows follow the list as the holding field is patched
-  (new keys are made, missing ones go, kept ones move), and `bind:` on a
-  nested row's field writes the holding row. The key is a field of the
-  item, written `(cell.id)`.
-- A declared input action dispatches a named markup event of its own:
-  `<meta name="action:confirm" content="Start">` enables
-  `onconfirm={start}`. A handler outside any `{#each}` row is the page's
-  and acts wherever the focus is; one inside a row acts only while a focus
-  (the shared one or a pad's) is within that row, with its row key.
-- Each loop needs stable, nonempty string keys and may have an empty
-  branch; missing, index-based, empty, and duplicate keys are errors.
-  `selected` and `mark` name collection keys, never row indices.
-- Capitalized tags resolve document components. Content uses
-  `{#snippet name()}…{/snippet}` and `{@render name?.()}`; mount content
-  names a document and snippet, never a TypeScript callback. `<slot>` is
-  refused with its replacement.
-- Visible text uses `t(key, { named: value })` with ICU parameters or
-  static `i18n="key"` with fallback content. Unlocalized visible literals
-  warn at cook and fail publish. Object expressions are allowed only for
-  translation parameters and classes. Companion English messages use cooked
-  string tables. The pseudo-locale (`og ui check`'s pseudo cells,
-  `og run --locale pseudo`) shows them accented, 40 % longer and in
-  brackets (`og_i18n::pseudo_text`).
-- JSX, `$state` (instance state is metadata, see Components in
-  documents), `$effect`, `$bindable` outside a prop's default,
-  statements, imports and functions in a script, `{@html}`, `on:click`,
-  `<svelte:document>`, `<svelte:boundary>` and the Svelte 4 elements are
-  refused, each with the form to use. Parse errors name file, line,
-  column, and a fix.
+- **Primitives** are PascalCase imports from `@origingame/engine/ui`
+  (lowercase HTML tags are a compile error): `View`, `Text`, `Image` (with
+  `src` or a pack's `nine-*` class and radial `wipe`), `Icon`, `Scroll`,
+  `Input`, `Line` (polylines with `points`, `viewBox`, `fit`), `Particles`
+  (CPU-stepped engine particle emitter), and control flow `<Show>`, `<For>`,
+  `<Switch>` / `<Match>`.
+- **Components** are `.tsx` functions returning JSX, compiled by `nsh-jsx`
+  into Solid-style reactive renderer calls (`@origingame/engine/ui/rt`).
+  A component body runs once; reactive props are read inside JSX expressions
+  or `createMemo` / `createEffect`, and `useStore(store)` bridges named
+  `og.ui.scope` stores into signals.
+- **Styling** uses Tailwind v4 utility classes resolved in Rust against the
+  active style pack's `pack.json` tokens (checked by `og check` rule
+  `OG9105`) plus `packClass("Component", "slot", variant?)` for pack-dressed
+  artwork and sound scopes. Interaction states use variants (`hover:`,
+  `active:`, `focus:`, `focus-visible:`, `focus-within:`, `disabled:`,
+  `data-*:`, `group-*:`), presence uses `starting:` and `exit:`, and layout
+  motion uses `glide-*`.
+- **Events & actions**: `onPress`, `onTap`, `onPointerDown/Move/Up`,
+  `onWheel`, `onFocus`, `onBlur`, `onKey`, `onChange`, `onLongPress`,
+  `onHold`, drag-and-drop (`onDragStart/Move/End`, `onDrop`), gestures
+  (`onPinch`, `onRotate`, `onSwipe`), and `onAction={{ confirm, back, ... }}`
+  run at the tick boundary with `{ world, type, x, y, key, value }`.
+- **Mounting & layers**: `mount(world, Component, props, { layer })` mounts
+  a component on `hud`, `menu`, `modal`, `popover`, `toast`, `tooltip`, or
+  `system` and returns its unmount callback.
+- **Anchors, touch & accessibility**: `anchor` / `lift` / `occlusion` /
+  `declutter` / `clamp` attach nodes to world entities or named UI nodes;
+  `touchStick`, `touchPad` and `touchButton` wire on-screen controls into
+  `og-input`; `role`, `label`, `description`, `checked`, `pressed`,
+  `selected`, `expanded`, `modal`, `live`, and range props populate the
+  AccessKit tree (and the web shell's `A11yMirror`).
+- **Localization**: visible text uses `t(key, params)` and the formatters
+  from `@origingame/engine/ui` with companion `.ogt` string tables imported
+  beside the component (`import "./screen.en.ogt"`). Pseudo-locale
+  verification runs through `og ui check`.
 
-#### Svelte blocks, script and directives
+#### Composition discipline
 
-Each keeps Svelte 5's meaning mapped onto og-ui; none runs code in the
-tick.
-
-- `{#key expr}` remakes its content when `expr` changes: new elements
-  (ids carry the value's hash), the old leaving with their exits.
-- `{@const name = expr}` sits directly inside a block or component and is
-  replaced by its expression where read (no binding). A name for a
-  non-path expression is read whole.
-- `{#await $load}…{:then value}…{:catch error}{/await}` reads a store or
-  row field holding `{ status: "pending" | "fulfilled" | "rejected", value,
-  reason }` (`Promise.allSettled`'s words), written by a TS system; no
-  promise runs in the tick.
-- A prop is declared once, as `<meta name="prop:name" content="type"
-  data-doc="…">`. Left out, it reads its type's zero value (`""`, `0`,
-  `false`, `[]` with no rows, `{}`, null for `any`), so a component is
-  usable as `<Name />`; `data-default="…"` gives another: a string's is
-  the attribute's text, the other types' are JSON of that type (`5`,
-  `true`). A list prop's default is `[]`: its rows come from the
-  collection its user binds. Only a `data-required` prop must be passed:
-  it is required in the generated `.d.ts`, and a mount leaving it out
-  returns an error naming the instance and prop. `$props()` is refused.
-- `<script lang="ts">` holds only `const name = $derived(expr)` and
-  `$derived.by(() => expr)` over pure expressions. Derived values are
-  replaced where read. State and logic live in a TS system.
-- `transition:`, `in:` and `out:` (`|local`, `|global` accepted) set the
-  element's `enter`/`exit` from `fade`, `fly`, `slide` (scales along its
-  axis; layout does not shrink), `scale`, `blur` (through `filter: blur()`)
-  and `draw` (an SVG shape's stroke, as Svelte's; `speed` is refused, give
-  `duration`), with literal `duration` (default 400 ms), `delay` and
-  `svelte/easing` names (elastic and bounce are springs).
-  Alternatively, `out:fade={{ motion: 'exit' }}` reads a style's whole
-  motion token (`ui`, `panel`, `emphasis`, `playful`, `enter`, `exit`) at
-  playback, including its duration and easing. `motion` cannot be mixed
-  with `duration` or `easing`; `delay` and the transition's geometry still
-  apply. `animate:flip={{ motion: 'panel' }}` uses the same tokens.
-  `in:receive`/`out:send`/`transition:crossfade` with `{{ key }}` is the
-  shared-element key (`match`).
-- `animate:flip` on a keyed `{#each}` child is its layout motion (default
-  300 ms, `cubicOut`).
-- `style="…"`, `style:prop="value"` and `style:prop={expr}` (any supported
-  property; `style:--name` a custom property) are the element's own
-  declarations: they beat every rule but an `!important` one, and
-  `style:prop|important` beats that too. A bound value carries its unit.
-  On a component instance a custom property is a style prop, written
-  bare: `<Meter --fill={$hp / $max}/>`.
-- `bind:this={name}` makes `name` the element's id, readable wherever an
-  expression names an element and as `#name` in CSS.
-- `use:name={params}` sends a DocEvent of kind `use` named `name` with
-  `{ phase, params }`, phase `create`, `update` (params changed) or
-  `destroy`; the game's TS handler does the action's work.
-- `<svelte:window onresize bind:innerWidth bind:innerHeight/>` beside the
-  root reports the screen size in CSS px (also `$ui.width`, `$ui.height`).
-  Keys reach a game as input actions, so `onkeydown` is refused.
-- `<svelte:element this>` takes a text tag (`p`, `span`, `small`,
-  `h1`–`h6`) for inline content or a block tag; another value is nothing.
-  Its descendants take no ids.
-
-Core elements use HTML's tag and attribute names wherever HTML names the
-role; a pre-HTML tag (`<field>`, `<slider>`, `<toggle>`, `<divider>`,
-`<image>`, a `<label>` that neither wraps a checkbox nor has `for`) is
-refused with its HTML form. CSS type selectors match the written tag
-(`input[type=range]`). Elements HTML has no name for (`column`, `row`,
-`stack`, `grid`, `panel`, `scroll`, the virtualised `list` and `cells`,
-`art`, `icon`, `tabs`, `badge`, `spacer`) keep their names. The mapping:
-
-Native `<tabs>` scrolls a long set horizontally by default; `fill` makes
-its tabs equally wide, without cutting their labels. For a short set that
-must all be visible, write `<tabs fit items={$labels}>`: side padding
-compresses to `space.xs` first, then the tabs share the track in proportion
-to their contents. Labels wrap at word boundaries to at most two lines;
-an overwide word ellipsizes on its own line instead of splitting, and the
-full text remains the accessible name. `fit fill` keeps equal widths
-when those fit and uses proportional widths when they do not. Give
-icon-only tabs `items={$emptyLabels} icons={$icons} aria-labels={$names}`:
-the parallel `aria-labels` string list supplies their accessible names.
-
-| Document | Core kind | Notes |
-|---|---|---|
-| `<input>` (`type` text, password, number, email, url, tel, search) | field | `placeholder`, `maxlength`, `minlength`, `readonly`, `required`, `pattern`, `min`, `max`, `step` (`any`), `aria-invalid`, `list` (below); `appearance: none` drops its frame |
-| `<textarea rows>` | field (multi-line) | the same constraints; `rows` lines shown |
-| `<input type="range">` | slider | `min`, `max`, `step`, `disabled`, `list`; `data-fill-origin` sets the value the fill grows from; `::part(reach)`, `track`, `fill`, `tick`, `knob`, `core` and `bubble` are boxes CSS sizes and paints, the slider keeping input, focus and role |
-| `<input type="range" bind:low bind:high>` | slider (range) | two knobs on one track, the fill between: a press takes the nearer, each knob is a focus stop, neither passes the other; `data-min-gap` keeps them apart. Readout `low – high`; to a screen reader two sliders, `<name>, minimum` and `<name>, maximum` |
-| `<datalist id>` of `<option value [label]>` | — | draws nothing. A range's `list` ticks each option and labels it under the track. A text input's `list` offers options (or `items={$names}`) as suggestions under the focused field (dressed `Dropdown.list`, `Dropdown.option`): those containing the text, case and accents ignored, prefix matches first, at most 8. Focus stays in the field; Down reaches the list, a choice writes the value and returns focus, Back closes it until the player types |
-| `<input type="checkbox" switch>` | toggle | `checked`, `disabled`; `::part(track)`, `::part(knob)` sized by CSS |
-| `<input type="checkbox">` | toggle | `checked`, `indeterminate` (a dash; a press turns it on) |
-| `<label><input type="checkbox"> Caption</label>` | toggle | one node; the caption sits where written, `flex-direction: row-reverse` swaps it; a `<small>` inside is its description |
-| `<label for="id">` | — | a checkbox takes its text as caption; an input, textarea, select, range, meter or progress takes it as accessible name and the label stays a text |
-| `<hr>` | divider | |
-| `<img>` | image | `src`, `alt`; `object-view-box: inset(…%)` of the texture; `object-fit`, `object-position`, `image-rendering` (Images below) |
-| `<p>`, `<span>`, `<small>`, `<text>` | label | inline `<b>`/`<strong>`, `<i>`/`<em>`, `<u>`, `<s>`/`<del>`, `<sub>`/`<sup>`, `<br>`, `<span>` and `<a href>` style runs |
-| `<h1>` … `<h6>` | label (heading) | `aria-level` 1–6; UA type steps `xl3`, `xl`, `lg`, `body`, `sm`, `xs` |
-| `<a href>` | label (a link) | a click sends a `link` event named by its href; accent ink, underline |
-| `<div>`, `<section>`, `<header>`, `<footer>`, `<nav>`, `<main>`, `<aside>`, `<article>` | box | layout from `display`; landmarks take their ARIA roles, `region` for a named `<section>` |
-| `<ul>`, `<ol>`, `<li>` | box (list, listitem) | not virtualised (that is `<list>`); `<ol start reversed>`, `<li value>` |
-| `<button>`, `<progress>` | button, progress | a `<button>`'s children lay out as a centred row in its frame and take its ink when they have none |
-| `<select>`, `<option>`, `<optgroup>` | select | §2.4 |
-| `<dialog>` | dialog | §2.4; `appearance: none` drops its frame |
-| `<details>` with a first `<summary>` | details | §2.4 |
-| `<meter>` | meter | §2.4; `::part(track)` a box CSS sizes and paints |
-| `<table>`, `<caption>`, `<thead>`, `<tbody>`, `<tfoot>`, `<tr>`, `<th>`, `<td>` | box (table, row, cell, columnheader, rowheader) | CSS table layout with HTML's UA displays and `colspan` (1–1000), `rowspan` (0–1000); `{#each}` rows included. The first `<caption>` names the table; `scope` (or position) makes a `<th>` a row or column header |
-| `<form onsubmit onreset>` | box | a `<button>` submits (`type="reset"` resets, `type="button"` neither); a submit or reset button outside a form is refused. Enter in one of its single-line text fields submits it as a press of its first submit button would (nothing while that button is `disabled`, or when the form has none). Submit is constraint-validated as HTML's: while a field is `:invalid` the action is not sent and the first invalid field takes focus; `novalidate`/`formnovalidate` skip it. In an `{#each}` only the button's row's fields count |
-| `<fieldset disabled>` with a first `<legend>` | box (group) | the legend names it; `disabled` disables every control but the legend's |
-| `<figure>` with `<figcaption>` | box (figure) | the figcaption names it |
-| `<output for="ids">` | label (status) | read politely as it changes |
-| `<input type="date">` (`time`, `datetime-local`, `month`, `week`) `bind:value` | datetime (group) | og-ui steppers per part (Year, Month, Day, Week, Hour, Minute, Second when `step` or the value has seconds), each a focus stop; no OS picker. Overflow carries (30 February is 1 March); a moved month keeps the day in range. HTML's value forms, kept in `min`…`max` and on the `step` grid from `min`. Empty, it shows `min` (else `max`, else 2000-01-01 00:00; no clock is read) and writes once stepped. Empty-and-required or out of range is `:invalid`. Parts `Stepper.*`; probe `<id>/<Part>/Frame/Inc` |
-
-`<video src={$player}>` and `<audio src={$player}>` play a player the game
-owns, the entity of an og.VideoPlayer or og.AudioSource; `src` is never a
-file name (spawn the player in a system). `bind:paused`,
-`bind:currentTime`, `bind:volume`, `bind:muted`, `bind:duration`,
-`bind:ended`, `autoplay`, `loop`, `poster` and `controls` follow Svelte and
-HTML. Requests go as `og.MediaIntent` through the recorded intent path and
-apply at the next tick, so playback stays world state; read-backs are the
-last tick's. A media element rebuilds every frame while mounted. An
-`<audio>` has no `currentTime`, `duration`, `ended` or `poster`.
-
-`<template>` is refused (snippets replace it). `<input type="file" accept
-multiple bind:value>` is built only where `og.ui.filePicker` is true (false
-on both hosts today; elsewhere the frame warns): a press sends the host a
-`filepick` event and the host writes the chosen names. `field-sizing`
-(CSS UI 4) applies to text inputs, textareas (along the inline axis),
-selects and file inputs.
-
-#### Inline elements, inline objects, span parts and translated markup
-
-A text element's inline markup is elements (kind `inline`, CSS 2 §9.2.2):
-`<span>`, `<a href>`, `<b>`, `<strong>`, `<i>`, `<em>`, `<u>`, `<s>`,
-`<del>`, `<sub>`, `<sup>`, `<ruby>`, `<rb>`, `<rt>`, `<rtc>`, `<rp>` and an
-SVG `<tspan>`, each with any attributes (`class`, `id`, `data-*`, `lang`,
-`style`, `part`). Selectors match them as any element: class, id,
-attribute, structural (among their text's inline elements), child and
-descendant, and states (`a:hover`, from the pointer over a link's words or
-the probe). Every inherited text property and `vertical-align` and
-`display` apply to the words in them. Their margin, border and padding
-take room on the line before their first character and after their last
-(CSS 2 §10.3.1), the first and last characters shaped apart; across the
-line they grow the element's fragments, never the line (§10.6.1). Under
-`box-decoration-break: clone` each line holds both edges, and the line
-breaks with room for them (CSS Fragmentation 3 §5.4). An edge's side is
-its words' direction's: a wrapped element whose words run against its
-own direction (Chinese in a `dir="rtl"` span) takes its left edge on its
-first line, not CSS 2 §8.6's right. `width`, `height`
-and percentage or `auto` margins and padding take no room on them. Each
-one styling its words or taking room is a node under its text (kind
-`inline`, in the probe), out of its flow: its fragments are one per line
-it has words on, each its border box around its words' content area (CSS
-2 §9.4.2), and its box their union. A link is hit on its fragments, not
-across the lines between them. HTML's look is the UA sheet's (`b { font-weight:
-bold }`, `sub { vertical-align: sub; font-size: smaller }`, the ruby
-`display`s), so a rule overrides it. An inline element takes no event
-handlers, `bind:`, `use:` or transitions: put them on the text. In a block,
-a formatting element joins the words around it into an anonymous text; a
-`<span>` or `<a>` with attributes there is a text of its own, as a flex
-item is.
-
-A text element's words may hold one-em inline objects with literal
-attributes: `<img src="coin" alt="">` (a registered picture,
-`UiDesc.images`), `<og-icon name>` (the icon layers) and `<kbd
-data-action>` (the action's glyph). Icon lookup uses the game's/style's
-atlas, then `UiDesc.fallbackIcons`, then the style pack's icon sets
-(`iconSet`, the default pack's the engine's game icon set,
-`templates/styles/shared/icons/`: filled and multi-tone game icons whose
-tones are theme colours), then the engine's Lucide vectors, a last resort
-for utility glyphs (arrows, close, settings).
-`og_ui::DEFAULT_ICON_NAMES` lists that last set; its SVG filenames under
-`third_party/lucide/icons/` give the same names for repository checks.
-The vectors allocate and parse only when drawn, once per used icon; a
-game supplying every requested name loads no default geometry or texture.
-Unknown names still warn. `<span part="big">` names its element
-for `p::part(big)`, whose declarations win over its element's rules and
-which takes `color`, `font`, `font-family`, `font-weight`,
-`font-style`, `text-decoration-line`, `-og-text-motion`, `vertical-align`,
-`text-combine-upright` (down a vertical line, `all` sets the run in one
-upright em, one unit of the line), and `font-size`, `line-height` and `letter-spacing` in px or em. A run's
-`vertical-align` follows CSS 2.1 §10.8 and CSS Inline 3 §4: the
-shorthand sets `alignment-baseline`, `baseline-shift` and
-`baseline-source`, and a box's alignment baseline (its parent's
-`dominant-baseline` for `baseline`) meets the same baseline of the
-paragraph's root text. A font's baselines are its `BASE` table's, the rest
-synthesized as Appendix A.2 suggests (ideographic over and under from the
-ascent and descent, mathematical at the minus sign's centre, else the
-x-middle, hanging at 0.6em); `middle`, `text-top` and `text-bottom` place
-a box as CSS 2.1 does. `baseline-shift: center` centres a box on its line
-box; on a run of text itself it keeps its baseline place (Parley has no
-line-relative centre). An inline block aligns by its last baseline
-(`baseline-source: auto`): a text's last line, or its last in-flow
-child's. Runs align against the paragraph's root text, not an enclosing
-run's. A translated
-string styles runs with MessageFormat 2 markup: `{#b}…{/b}`, `{#i}`,
-`{#u}`, `{#s}`, `{#br/}`; `\{` escapes a brace.
-
-#### Glyphs and the `$ui` store
-
-`<kbd>Esc</kbd>` is a keycap. `<kbd data-action="jump"></kbd>` is the
-action's glyph on the device used last (key, the pad family's button, or
-touch icon; the style's icon where the atlas has one, else the name on a
-cap), named by the action's label. With `data-og-rebind bind:value` it
-captures the next key code into the store (Escape cancels); the game
-applies it through og.input.
-
-Every document reads the engine's `$ui` store unless a mount binds its own
-`ui`: `$ui.device` (`keyboardMouse`, `xbox`, `playstation`, `switch`,
-`touch`…), `$ui.coarsePointer`, `$ui.width`, `$ui.height`, and
-`$ui.actions`, the top layer's action bar, each `{ action, hint, icon,
-text, hold }`. It publishes only on change.
-
-`$captions` is read the same way: the lines the engine is saying now, a
-collection of `{ id, text }` keyed by `id`, in the order of the timelines
-playing and of their caption tracks. A timeline's caption track draws
-nothing itself; the built-in `subtitles` screen shows `$captions` after
-the game's own `$lines`, and any document may iterate it. A line that
-stays keeps its row. `$toasts` is the toasts up (`og.ui.toast`), oldest
-first, each `{ id, text, tone, leaving }`: it stays its time, then is
-`leaving` for a fast duration while its exit plays; at most three stay up.
-The built-in `notifications` screen shows them after its own `$items`; a
-document's `onclick={dismissToast}` in a row of `$toasts` dismisses that
-toast, answered by the engine and never sent to the game.
-
-#### ARIA
-
-Any element takes ARIA over its kind's semantics: `role` (one of og.ui's
-roles; another is refused at parse), `aria-label`, `aria-labelledby` and
-`aria-describedby` (one id's text follows it when bound; several ids join
-their literal texts), `aria-description`, `aria-value*`, and the states
-`aria-checked`, `-selected`, `-expanded`, `-pressed`, `-busy`, `-disabled`
-(also inert), `-level` and `-current`. A bound one updates the tree when
-its element rebuilds.
-
-#### Checkboxes, radios, steppers, menus and press events
-
-`<input type="radio" value bind:group={$level}>` is checked while the
-store holds its value; radios binding one store are one group (`name` adds
-nothing). `<input type="number">` is an editable field with increment and
-decrement buttons bounded by `min`, `max`, `step`; `data-wrap` wraps,
-`data-large-step` sets Shift and held repeats, `data-format` (an ICU
-message over `value`) applies only while unfocused. `<menu>` is a box with
-role menu whose buttons are menu items, each as wide as the menu, label at
-its start. Beyond `onclick`: `onhold` once per press held `data-hold` ms
-(default 500; the button draws `::-og-hold` as it fills), `oncontextmenu`
-on a secondary or long press, `ontoggle` for `<details>` and popovers,
-`onclose` for `<dialog>`.
-
-#### Counters, typewriters, cyclers, spotlights and colour inputs
-
-`<og-counter value duration decimals format from>` counts to its value as
-it changes; `from` starts its first count there (a score counting up as its
-screen opens), and `format` writes the number as a binding's format does
-(`compact`, `percent`, `clock` …), `decimals` then being the format's digit
-count.
-`<og-typewriter rate>` reveals grapheme clusters per second, restarts when
-its text changes, shows the whole text under reduced motion and fires
-`onrevealed` once. `<select data-cycle>` is previous, option and next,
-wrapping past disabled options (its bound `items` without `<option>`s).
-An open `<og-spotlight target>` dims all but the target element, outlines
-it and shows its content as a callout; the shade takes presses
-(`closedby="any"` closes on one). `<input type="color" bind:value>` is a
-swatch opening a saturation/value square, hue slider and hex field, and
-writes `#rrggbb`. Each keeps its progress in widget memory, so a snapshot
-restores it mid-way.
-
-Generic component documents live beside the screens in
-`packages/engine/src/ui/screens/`, each with props, actions and a default
-fixture: `card`, `confirm` (a modal with cancel and confirm, danger when
-`$danger`), `pagination`, `data-list`, `key-values`, `table`, `tree`,
-`calendar`, `objective-tracker`, `star-rating`, `banner`, `subtitles` (HUD
-layer) and `notifications` (toast layer). The settings screen builds its
-tree from `$pages` (`{ id, name }`, a tab each), `$entries` (`{ id, page,
-name, description, kind, value, … }`, kind `toggle`, `range`, `select` or
-`binding`, written back as changed), `$page` and `$pending` (Apply and
-Revert take presses only then); with `$page` empty it shows its `tree`
-content alone. Use and ejection: §5.
-
-#### Tooltips and popovers
-
-`title` is the element's tooltip, shown after the pointer rests, and its
-accessible description. `popover` (`auto`, `manual`, `hint`), its
-invokers (`popovertarget`, `popovertargetaction`, `interestfor`) and
-light dismiss follow HTML. An open popover sits in a layer over the page,
-placed by CSS anchor positioning against its invoker; with no placement it
-hangs under the control (above it with more room, kept on screen). It is a
-raised panel (`--panel-raised`, the panel radius; a `hint` the tooltip's)
-that its CSS overrides, and `::-og-arrow { width; background }` draws on
-the side facing the anchor. Its content keeps HTML margins.
-An `interestfor` control's `interest-delay-start` and `-end` (or the
-`interest-delay` shorthand) time its hint: shown after the pointer rests
-that long (keyboard focus shows it at once), kept that long after the
-pointer and focus leave; `normal` is the style's slow and fast durations.
-`contextmenu="id"` (engine attribute) opens popover `id` at a secondary or
-long press, anchored at that point with no arrow. A `<button>` centres its
-label by `text-align: center` as HTML's UA sheet does. A popover is built
-every frame; whether it is open, shown or closing is snapshotted. Closed,
-it is HTML's `display: none` popover and keeps no style: it opens from its
-`@starting-style`, showing from the frame `:popover-open` matches, and its
-`opacity`, `transform`, transitions and animations move its layer. An
-`allow-discrete` transition of `overlay` (or `display`) keeps a closing
-popover up, inert, until it ends. A styled `::backdrop` covers the page
-under it while it is up. With no transition or animation of its own, an
-`auto` popover keeps the engine's drop-in.
-
-#### HTML blocks and lists
-
-Layout follows CSS Display 3, CSS 2 block flow with margin collapsing
-(§8.3.1), CSS 2.1 §10.8 line boxes, CSS 2 §17 tables with HTML's table
-model, Position 3, Writing Modes 4, Anchor Positioning 1, floats (CSS 2
-§9.5) with Shapes 1 contours, Multi-column 1, Lists 3, Generated Content 3,
-Values 4 and 5, Sizing 3, Flexbox 1 and Grid (with `subgrid` and
-`masonry`). HTML's UA rules come first in every cascade: list indents and
-markers, the heading steps above, and block margins (`<p>`, `<ul>`, `<ol>`
-1em, nested lists none; headings 0.67em to 2.33em of their step). Heading
-defaults set size, weight and tracking, not a `font` shorthand: headings
-and `<small>` retain the document's inherited font family and line height.
-The engine differs or limits as follows:
-
-- **Display.** Only boxes take every `display` value; other elements take
-  `none`, `block`, `inline`, `inline-block` and `flow-root`. An
-  inline-level element is atomic: an `inline` box's text does not break
-  across its parent's lines, while inline markup inside a text (`<b>`,
-  `<span>`, `<a>`) flows as runs. Text between elements is an anonymous
-  text element; `i18n` on a box translates its one run. A block's auto
-  width fills its block parent; a document root fills the column or stack
-  it is mounted in, never widened by a child's min-content. A stack places
-  its children without margins.
-- **Tables.** `border-spacing` and `border-collapse` are not supported:
-  cells are separate and `gap` spaces them. A table part outside a table
-  lays out as a block; a `table-column` px `width` is a least width. A
-  cell centres its content unless `vertical-align` is `top` or
-  `text-top` (the start), `bottom` or `text-bottom` (the end), or a
-  baseline (the start).
-- **Position.** A fixed box is placed in the whole surface and keeps its
-  static position on an axis with no inset; an absolute one with no inset
-  on an axis stands at its parent's start there.
-- **Direction.** A document root takes the surface's direction (the
-  locale's, or `og.ui.configure`); a right-to-left surface mirrors the
-  document whole, its physical sides and transforms keeping their places.
-  Each element's text is its own bidi paragraph (`embed` reads as
-  `isolate`); with no declared direction a paragraph takes its first
-  strong character's.
-- **Writing modes.** SVG's `lr`, `rl`, `tb` values are accepted. An
-  element whose mode differs from its parent's lays out in a frame of its
-  own (an orthogonal flow sized from its containing block, else the
-  viewport). Upright glyphs take the face's `vmtx` and `vert`/`vrt2`
-  forms, which the cook keeps for every face in the chain; without them
-  brackets and dashes turn and the ideographic comma and full stop move to
-  the em's upper right. Selection, `::selection`, shadows, glow and rich
-  text work in vertical lines. Text on a path keeps its physical box. A
-  container variant (`Query::container`) reads a vertical element's
-  height. `glyph-orientation-vertical` is read as `text-orientation`;
-  `text-combine-upright` combines a whole text or a `::part` run (`all`)
-  or each short digit run (`digits`), squeezing it across to one em.
-- **Ruby and emphasis marks.** `<ruby>`, `<rb>`, `<rt>`, `<rtc>` and
-  `<rp>` are inline elements of a text with the UA sheet's ruby
-  `display`s, and any inline element takes `display: ruby`, `ruby-base`,
-  `ruby-text`, `ruby-base-container`, `ruby-text-container` and `none`
-  (and `ruby-position`), from a rule or its `::part`. CSS Ruby 1 §2.2's anonymous boxes and §2.3's pairing
-  make each segment one unbreakable box of its line, with any number of
-  levels and nested rubies; `ruby-merge` is not read (`separate`).
-  Emphasis marks are drawn shapes; their side follows the content language through the user-agent rules (under for `zh`, over
-  for `ja` and `ko`); a ruby's base takes them outside its annotations,
-  its `<rt>` none.
-- **Anchors.** Anchors are this frame's boxes; the winning
-  `position-try` option and its side are kept per frame for a popover's
-  arrow.
-- **Floats.** No `float` in flex, grid, table or multi-column containers.
-  `shape-outside: url()` reads the texture's alpha on the CPU when the
-  document loads: any texture natively, a lossless one (`kind pixel`) on
-  the web; an unreadable one keeps the float's box, with a note.
-- **Columns.** Flows break between children and between a text's lines,
-  with `orphans` and `widows` at 2; `break-inside: avoid` keeps a text
-  whole; every other box is monolithic. 3D `column-rule` styles draw
-  solid. A split text's box is its first fragment.
-- **Lists and generated content.** An `outside` marker hangs half an em
-  before the item and costs it no room. Disc, circle and square markers are
-  drawn shapes; `list-style-image` draws a registered picture one em tall.
-  An item's number comes from the sibling index the structural selectors
-  keep, so a keyed reorder renumbers only moved items, O(log n) per edit.
-  `::before`/`::after` on a text element are runs of its text (text
-  properties only); on any other element they are real boxes (`inline` by
-  default) that take every box property. A pseudo-element is a synthetic
-  node made at cook: it is never a child to `:nth-child`, `:empty` or `+`,
-  adds no binding and exists only while `content` makes it. Their
-  `content`'s alternative text (after `/`: strings, counters and
-  `attr()`) is what the accessibility tree reads in place of what they
-  draw, inside their text element's text or as their own text record;
-  an empty one leaves them out. Counter
-  styles are the predefined ones plus `@counter-style`. Counters run in
-  document order; a retained subtree replays its counter effects and
-  rebuilds only when counters enter it differently. `::marker` takes
-  `content` and `color`; `::first-line` rebuilds its element every frame;
-  `::placeholder` takes `color`; `::selection` takes `background-color`,
-  `color` and `text-decoration`, its glyphs redrawn clipped to the
-  selected runs (selected text keeps the text's theme shadow). `::highlight(<name>)` takes the same four
-  and styles the ranges the game registers under that name with
-  `og.ui.setHighlight` (CSS Custom Highlight API); a highlight with no rule
-  paints nothing. The overlays stack under the selection's by priority;
-  of equal priorities, the highlight registered later is above. In
-  both, each property comes from the nearest of the text's element and
-  its ancestors that declares it, `background-color` too (highlight
-  inheritance), so `:root::selection { … }` styles every element. `::file-selector-button` is a file input's button, a box of its own beside the names chosen: its rules style it as they style a `<button>`, and the input takes the press and the focus. The CSS 2
-  single-colon spellings work.
-- **Units.** Physical units are 96 px to the inch. Viewport units read the
-  play surface; the small and large forms read it with the browser's
-  controls shown and hidden (`Viewport.smallWidth`…), which the web shell
-  measures from `100svh` and `100lvh` on resize; natively all forms are
-  the surface. `rem` and the root font units read the body type step; `em`,
-  `lh`, `ch`, `ex` (0.5em), `cap` and `ic` read the element's step (else
-  the body's) and the body face's metrics. All become px when the element
-  resolves, except a margin's `em`. A `calc()` of lengths reduces to a sum
-  of `%`, px and em terms that layout resolves; `min()`, `max()`,
-  `clamp()`, `round()`, `mod()`, `rem()`, `abs()` and `hypot()` mixing `%`
-  with px are evaluated at layout and must stand alone as the value; other
-  functions refuse mixed units. Margins accept these functions too: their
-  percentages read the containing block's width on every side, including
-  logical margins, while font-relative terms compute before layout.
-  NaN is 0 and infinity the largest value.
-  `var()` substitutes first, so a `style:--w` store moves only its element;
-  viewport and container unit readers resolve again on resize. Container
-  units with no container are viewport units. `attr()` takes Values 5's
-  types; `data-*` attributes are kept for it and for selectors.
-- **Safe area and HUD band.** The engine root pads normal-flow content by
-  `Viewport.safe_area`; `env(safe-area-inset-*)` measures from the
-  viewport edge as the spec says, so adding it in normal flow counts the
-  inset twice (a 47 px inset under 8 px padding starts content at 55 px;
-  adding the env starts it at 102 px). A full-viewport page uses
-  `position: fixed; inset: 0` and applies the env values once. The host's
-  covered region (`Viewport.covered`: a published page's round Back, top
-  left) folds into the one edge whose inset clears it for the least
-  surface: on landscape or desktop it widens the left inset, on portrait
-  it deepens the top; plain normal-flow padding clears only the hardware
-  safe area. `env(-og-hud-inset-*)` are those insets with left and right
-  grown alike until the band is at most `UiDesc.hudMaxAspect` (21:9 by
-  default; 0 the whole safe area) times its height, centred. A HUD is
-  placed at the HUD insets (`left: calc(env(-og-hud-inset-left) + 16px)`);
-  full-screen art and dialogs read the safe-area insets. A change to any
-  of these re-resolves only their readers.
-- **Sizes.** Every element is `box-sizing: border-box` by default (the
-  common reset as UA rule). `stretch` is CSS Sizing 4's stretch-fit size:
-  the containing block's size less the box's margins, the same in a block,
-  a flex line or a grid area. Across a flex line it fills the line, as
-  `align-self: stretch` does. Along one it is the container's whole inner
-  size, so siblings that share a row or column say so with `flex: 1` (and
-  `min-width: 0` or `min-height: 0` to let content shrink), never with
-  `stretch`. A percentage bound against an unknown size is ignored. A flex
-  item without `flex` properties is CSS's `flex: 0 1 auto`: it does not
-  grow, and shrinks with its siblings when the line overflows. `order`
-  keeps the document's reading order.
-- **Grid.** One `repeat(auto-fill | auto-fit, …)` per axis, of fixed
-  sizes or `minmax(<fixed>, <flexible>)` (`repeat(auto-fill,
-  minmax(min(140px, 100%), 1fr))`, whose tile shrinks to a grid narrower
-  than one). A track size is a length, a percentage, a math function of px
-  and % (`calc()`, `min()`, `max()`, `clamp()`; its % reads the grid's
-  inner size), `fr`, a content keyword, `minmax()` or `fit-content()`.
-  A masonry item keeps the width of the track it is first given.
-
-#### Borders, shadows, outlines and overflow
-
-Borders, outlines, radii and shadows follow Backgrounds and Borders 3 and
-`corner-shape` from Borders 4; overflow follows Overflow 3. A border pads
-the box (border-box sizing); an outline takes no room, so `:focus-visible
-{ outline }` replaces the core focus ring for that element. Differing
-sides draw as strips; a uniform `dashed` border or outline on round
-corners is dashed as browsers do, half a dash at each corner. One uniform
-px radius is the element's `radius`, which states and transitions animate.
-A `<button>`'s own box declarations are its plate part's (§3.2).
-
-Core control focus outlines follow the painted part, not its larger input
-reach. `input[type=range]::part(focus)` follows the moving knob, with
-`--state-focus-ring-offset` outside it; the track keeps the slider's focus
-stop, keyboard adjustment and accessibility role.
-
-Text and fonts follow Fonts 4, Text 3 and 4 and Text Decoration 3, beside
-the house form `font: var(--text-<step>)`. A generic family picks the
-style's body, display or mono role. `text-transform` cases for the UI's
-locale. `text-wrap-style: balance` breaks at the narrowest width keeping
-the line count, `pretty` at the widest that keeps it with no one-word last
-line, `stable` is `auto`. `hyphens: none` drops soft hyphens.
-CJK spacing follows Text 4 §8.4 and §8.5, planned on the lines a pass
-broke and shaped again until it holds: `text-autospace` puts 1/8ic
-between an ideograph and a Latin letter or digit on one line (never at a
-break, so it never pushes a character to the next line), and French
-no-break spaces under `punctuation`; `text-spacing-trim` sets fullwidth
-punctuation half-width by the face's `halt` (a face without it keeps the
-full width), a line's start and end by its keywords, `allow-end` pulling
-the next line's character and closing bracket back when only trimmed it
-fits. Both are the paragraph's values, horizontal lines only.
-`-webkit-text-stroke`, `-webkit-text-fill-color` and `paint-order` outline
-and fill glyphs. Inherited properties pass down as custom properties do,
-re-resolving only their readers. `accent-color` inks checkboxes,
-switches, sliders, radios and progress, and what a control draws on its
-accent (a check mark) is `contrast-color()` of it; `caret-color` a
-field's caret and `caret-shape` its form (a bar, a block under the next
-character's advance, or an underscore below it; 1ch at the end); `color-scheme` picks `light-dark()`'s side.
-
-Colours take all of CSS Color 4 and 5 (`crates/og-ui/src/style/css_color.rs`).
-Linebender's `color` crate parses absolute colours and owns every space,
-conversion and CSS Color 4 §12 interpolation; og-css adds `var()` roles,
-`currentColor`, `light-dark()`, `contrast-color()` (white or black,
-whichever has the greater WCAG 2 ratio: at least 4.58:1 on any opaque
-ground), `color-mix()` over one colour or more (CSS Color 5 §3.3, OKLab
-when no space is named), relative colours and gamut mapping
-(out-of-gamut colours by OKLCh chroma reduction) into the output's gamut:
-sRGB, or Display P3 where the renderer's surface presents it
-(`Theme::gamut`, from the viewport), so `color(display-p3 …)` and a wide
-`oklch()` keep their range there. A colour that reads no role,
-`currentColor` or `light-dark()` and lies in sRGB reduces to sRGB at
-cook; a wider one, and the others, resolve against the active style when
-drawn. One parse
-(`style_file::parse_color`) reads every hex literal.
-
-Transforms follow Transforms 1 and 2 (individual properties first).
-`transform-box` `content-box` and `fill-box` are the content box, others
-the border box. An element whose plane leaves the screen's draws itself
-and its subtree into a layer through its projective map (perspective-correct
-text; hits through the inverse). A `preserve-3d` context draws its planes
-back to front by centre depth; intersecting planes are not split.
-Motion Path 1's `offset-path` (`path()`, `circle()`, `ray()` with its
-size; not `contain`, `at <position>` or other shapes), `offset-distance`
-(animatable), `offset-rotate`, `offset-anchor` and `offset-position` move
-an element's anchor along a path in its parent's laid-out border box, as
-one matrix between the individual properties and `transform`; the
-`offset` shorthand is not taken.
-
-CSS paint follows Backgrounds 3, Images 3 and 4, Masking 1, Shapes 2
-(`shape()`), Filter Effects 1 and 2 and Compositing 1, with these engine
-rules and limits:
-
-- Painter levels preserve submission order where paint overlaps. A font
-  followed by a shape can share a level because the renderer already
-  sorts fonts before shapes; the reverse crossing advances. Ambiguous
-  pipeline crossings keep conservative levels. Top-level untransformed
-  round-rectangle outer shadows use the analytic shader's compact Y
-  support with device-pixel guards, not a filled rectangle around the
-  unshifted box. Other geometry, transforms and offscreen targets keep
-  broad bounds. Retained levels use the same bounds and invalidate when
-  the viewport's raster scale changes. Emit into an overlay with the
-  viewport's size and DPR, as required by `UiFrame::emit`; a separately
-  rescaled overlay is not that viewport's raster target.
-- `url(<file>)` resolves beside the stylesheet that wrote it (inline styles
-  beside the document) and names a cooked texture (SVG included) the
-  document load registers; it never selects an atlas icon or a numeric
-  handle. A missing image warns. Monochrome icons are `mask-image: url()`
-  over `background-color: currentColor`.
-- Gradients take at most 128 stops, mixed in OKLab (CSS Images 4's
-  default for every gradient), or in the space an `in <colour space>
-  [<hue> hue]` names: `color`'s piecewise OKLab approximation of that mix,
-  within an eighth of a just-noticeable difference, so a hue sweep shows
-  no bands. og-render keeps a gradient's stops in its frame's points table
-  and finds a pixel's two by binary search. A mix that leaves the
-  output's gamut (sRGB, or Display P3 on a wide surface) is gamut mapped
-  per pixel by CSS Color 4 §13.2's OKLCh chroma reduction (color.wgsl's
-  `gamut_map`), keeping its lightness and hue. A gradient layer is a
-  tile of its concrete size (`UiPaint::GradientImage`); each layer is one
-  image fill whose size, placement and repeat og-render resolves per pixel
-  from the texture's own size (`UiFit::Background`), so a host never tells
-  the UI an image's size.
-- `image-set()` takes the lowest density at least the DPR, else the
-  highest; `x`, `dppx`, `dpi`, `dpcm` (with math), `type()` before or after.
-  Unsupported MIME types are dropped before density deduplication and are
-  not cook inputs; malformed MIME strings drop their candidate; nested sets
-  are refused; zero density paints nothing; an unusable set in a mask is
-  transparent black. The chosen density divides natural size (mask tiles
-  and automatic border-image widths too; slices stay in source pixels).
-  Images reselect when the DPR changes.
-- `background-clip: text` paints the layers through the glyphs' coverage.
-  A `fixed` layer's element repaints when it moves.
-- `border-image` draws through `UiFit::BorderImage`; masks and
-  `mask-border` combine through og-render's Porter-Duff blends.
-- `clip-path` on a CSS box treats `fill-box` as the content box and
-  `stroke-box`/`view-box` as the border box; `url(#id)` names an inline SVG
-  `<clipPath>`; clipping is by analytic path coverage. `polygon()` points
-  accept mixed length-percentage math such as `calc(100% - 12px)`;
-  horizontal percentages use the reference box's used width, vertical
-  percentages its used height, and pixel offsets stay fixed on resize.
-- `filter` functions are layers in order; a run of colour functions is one
-  matrix, split where a value can leave 0..1, so CSS's clamps hold.
-  `url(#id)` names an inline SVG `<filter>` (below); a `url()` naming none
-  drops the list.
-- `backdrop-filter` captures what is drawn under the element in its
-  backdrop root (the screen, an ancestor's group, or a world panel's,
-  ground's or 3D plane's layer), over the border box grown by three
-  deviations of each blur and the shadows' reach, clamping reads at the
-  capture's edge. Its blur is an exact Gaussian; the theme's
-  `-og-effect: backdrop` glass keeps the pyramid. Backdrop sampling is
-  opt-in for the whole UI (below); off submits no backdrop operation,
-  including standalone filter chains, rather than a zero-blur pass.
-- `mix-blend-mode`: `multiply` and `screen` are fixed-function blends in
-  linear light (a few levels darker than a browser's mid-tones) and
-  `plus-lighter` is fixed-function; every other mode reads the backdrop and
-  blends sRGB-encoded values. `filter`, `mask-image` and `-og-material`
-  isolate as `isolation: isolate` does. A world panel's layer (§1) drops
-  the blends that read what is under them.
-- `-og-material: <name>(<params>…)` composites the element and subtree
-  through a built-in layer material (dissolve, shine, hologram, glitch,
-  ripple, pixelate, color-adjust, outline, blur) or a custom one
-  (ui-materials guide), groups of up to four numbers or a colour in the
-  material's order; no CSS standard has shader materials.
-- Paint changes repaint only their element; an idle retained element
-  builds nothing. A moving `transform` or `opacity` repaints nothing: the
-  element's and its subtree's commands are kept and placed again.
-
-Overflow and scrolling: `scrollbar-width: thin` is half width with a
-half-width grab strip; `scrollbar-color`'s track runs the whole edge
-(`auto`: the style's thumb, no track). Scroll Snap 1 applies to drags,
-flings and wheels; `proximity` snaps within a third of the view;
-`scroll-snap-stop: always` stops a wheel at the first such area past where
-it started (saved UI state). A fling is steered onto its target exactly.
-`overscroll-behavior` `contain` and `none` act alike (og-ui draws no
-glow or bounce). `scroll-behavior: smooth` glides a scroll into view as a
-fling; reduced motion jumps. `scroll-initial-target: nearest` (Scroll
-Snap 2) starts a scroll container that appears scrolled to the first such
-element in it, at its view's start, from its first frame (its layout runs
-again once); a target added to a container already shown does not move
-it, and floating layers' containers are not covered. A drag on a
-container that scrolls both ways keeps to the axis its first move runs
-along, within a 2:1 slope of it, until released (saved UI state);
-`scroll-axis-lock: none` (Overflow 5) lets it move freely. A container
-scrolled down from its start follows an anchor box (Scroll Anchoring 1):
-the first box in view, searched inside the first one only partly in
-view; when content above it changes size, the offset moves by as much on
-the same frame (saved UI state). `overflow-anchor: none` turns it off on
-a container and keeps a subtree from anchoring; snapping containers and
-floating layers are not anchored. `scroll-marker-group: before | after`
-(Overflow 5 §3) builds a `::scroll-marker-group` box beside a scroll
-container holding the `::scroll-marker` (given a `content`) of each
-element inside it, in tree order; a marker scrolls its element to the
-container's start when pressed. `::scroll-button(<dir> | *)` with a
-`content` builds a button before the container that pages 85% of its
-view, and matches `:disabled` where it cannot scroll further. The marker
-for the section in view matches `:target-current` (those before and
-after it `:target-before` and `:target-after`), by §3.1.8's example
-algorithm at the offset a glide comes to rest at; the one pressed stays
-current while the container stays where it scrolled to. On
-`scroll-target-group: auto` the `<a href="#id">` links inside take the
-same states. The states follow one frame after the scroll (saved UI
-state). A modal
-`<dialog data-detents="40% 90%">` is a
-bottom sheet (full width, opened at its first detent, dragged between
-detents, swiped down to close, writing `open` back); `data-edge=
-"inline-start" | "inline-end"` docks it to a side, its detents widths. The
-attributes control gestures; CSS controls looks.
-
-#### Components in documents
-
-Built-in components are documents: a game uses one by the name its
-`<meta name="component">` declares, and a game's own component is a
-document of the same form (§5). Game code reaches the UI through
-`@origingame/engine` only; private source imports, casts that evade the
-API and game-side Rust are not extension points.
-
-Every component group declares its members' input and output types,
-semantic parts, state combinations, documents, and interactions before
-implementation. An intent names the affected item or command by stable ID,
-never a row index; the game decides whether it is legal and applies it.
-UI state lives in scope sources and core interaction state (§2.1), never
-module globals: two worlds cannot share selection, reordering or removing
-data cannot select a different object, and snapshots keep what an
-interaction needs to resume.
-
-A document holds UI state of its own as instance state:
-`<meta name="state:open" content="bool">` (a `number`, `string` or `bool`,
-with `data-default`) gives every instance of the document, and every host
-of a control document, a value of its own. The document reads it by its
-name and writes it with `bind:` (`<details bind:open={open}>`,
-`<input type="checkbox" bind:checked={open}>`); nothing outside the
-instance reads it, and a state shares no name with a prop. It is for what
-the game has no stake in: a picker being open, the tab shown, a row
-expanded. What the game must know stays a store the game binds. The value
-is a store of the UI's reactive session named by the instance's mount and
-path, so a snapshot carries it and a restored instance finds its own; it
-goes when the instance does (a row removed and added again starts from
-the default). `$state` stays refused.
-
-A control is its HTML element (§2.4): og-ui holds the element's value,
-binding, role, focus and behaviour, and the element's inside is a control
-document of the library. Selection, drag-and-drop, scrolling, focus, and
-keyboard and gamepad navigation are og-ui capabilities any element takes
-by attribute or CSS. Components compose the control elements rather than
-draw substitutes: a strip of buttons is not tabs, and a `<div>` with a
-width is not a `<progress>`. Generic meters, counters, timers, slots,
-lists, grids, tables, charts, tooltips, cards, rewards, confirmations,
-and node graphs are ungrouped library documents. Domain names do not
-justify duplicate controls.
+One control kind has one visual grammar. Reusable interactive controls live in
+`packages/engine/src/ui/controls/` (§2.4) and are imported from
+`@origingame/engine/ui/components` or ejected with `og ui eject`. Generic
+meters, counters, timers, slots, lists, grids, tables, charts, tooltips,
+cards, rewards, confirmations and dialogs are shared library components;
+domain names do not justify duplicate controls.
 
 ### 2.1 Retained authoring model
 
@@ -1314,331 +626,67 @@ core shaping and line breaking. Span motion is checkpointed and restores
 exactly; reduced motion makes it stationary. Components use this core text
 path, never a private renderer.
 
-### 2.3 Text input types
+### 2.3 Text input (`Input`)
 
-`<input>` takes HTML's `type` (`text`, `password`, `number`, `email`,
-`url`, `tel`, `search`), `inputmode` and `autocomplete`; `FieldDesc`
-carries the same three. Validity follows the HTML Living Standard,
-including `required`, `minlength`, `pattern` (compiled as `^(?:pattern)$`;
-an invalid pattern is a parse error), `min`, `max` and `step` (default 1,
-`any` off); an empty field is never a type mismatch. Any failure matches
-`:invalid` in retained and immediate drawing. A number field types only
-digits, a sign, a point and an exponent. `maxlength` stops typing;
-`readonly` drops every edit and keeps selection, copy and the focus stop.
-`<textarea rows>` shows that many lines (0 is 4).
+`<Input>` from `@origingame/engine/ui` is the engine's text-entry primitive.
+It accepts `value`, `placeholder`, `type` (`text`, `password`, `number`,
+`email`, `url`, `tel`, `search`), `inputMode`, `autoComplete`, `secret`,
+`multiline`, `maxLength`, and `readOnly`, alongside standard `HostProps`
+(`onChange`, `onFocus`, `onBlur`, `onKey`, `disabled`, `tabIndex`, `label`).
 
-`disabled` removes the focus stop and rejects edits, including when a focused
-field becomes disabled. Its frame and value parts match `:disabled`; this
-does not make a `readonly` field disabled.
-
-Editing is Parley's (`parley::editing`): the text is laid out as it is
-drawn (a face without a usable file through a layout-only face of its own
-advances and kerning), and Parley's cursor and selection place the caret
-from a press, move it by grapheme cluster on screen (across a bidi edge to
-its other place, kept as the cursor's affinity), by word (UAX #29 with
-ICU's dictionaries: Thai, Lao, Khmer, Myanmar, Chinese and Japanese by
-their words) and by line, break an area's lines (UAX #14), and give
-Backspace (a character, a whole emoji or line break) and Delete (a
-cluster) what they remove. og-ui keeps the gestures (drag with edge
-scroll, double and triple press), scrolling, typed text and composition,
-the platform's keys, undo grouping, the input types and the accessible
-value.
-
-A password draws one bullet per character (`*` where the face lacks
-U+2022); the probe and accessibility tree read the mask; copy, cut and the
-kill buffer never take it, the host gets no selection, and word moves treat
-it as one word. Its reveal toggle `<id>/Reveal` sits at the field's end,
-dressed `<component>.reveal[revealed]` with a `reveal-icon` subpart, named
-Show or Hide password, keeping the text focus; revealed is saved UI state.
-
-A field's `::part(frame)` is a box over its padding box that draws the
-text and takes padding, border, background, radius and states (without its
-own padding it keeps the control's inset); the control keeps size, focus,
-editing and role. `::part(reveal)`, `::part(clear)` and a number's
-`::part(button)` (`.inc`, `.dec`) are boxes filling their buttons.
-
-A text input focused by a pad opens og-ui's on-screen keyboard, docked at
-the bottom over a scrim: the pad walks its keys (Y erases, LB and RB move
-the caret, Back closes), shift locks on a quick second press, and Done (or
-Back) returns focus to the input, which reopens it only after losing
-focus. `type` and `inputmode` choose its layout (`numeric`, `decimal`,
-`tel` the number pad; a `password` PIN digits only), `enterkeyhint` labels
-Done, `maxlength` counts down, and `lang="ja"` offers kana composition
-with voicing marks and candidates. `inputmode="none"` opens none. Parts:
-`Keyboard.panel`, `.preview`, `.key[wide][action][active][primary]`,
-`.candidates`, `.candidate`.
-
-The host receives type, effective `inputmode`, `autocomplete` and `secret`
-with the focused target; the web shell stands a hidden `<input>` (or
-`<textarea>`) with them so phones show the right keyboard and autofill; a
-number uses a text input with the decimal keyboard.
-
-#### Selectable text
-
-`user-select` (default `none`; a control's subtree stays `none` unless it
-sets it) makes plain text elements and vertical rich text selectable;
-horizontal rich text and text controls keep their own selection. A drag
-selects, a double press a word (UAX #29 with ICU's dictionaries), a
-triple press a line, Shift extends; on a coarse pointer a 500 ms long
-press selects a word and an immediate drag scrolls. A drag crosses elements in tree order. Ctrl+C
-(Cmd+C under mac keys) copies unless a text control has focus, joining
-elements with line breaks and restoring what wraps dropped. The fill is
-`TextEdit.selection`; the pointer is an I-beam. The selection is saved UI
-state, read by `dump_ui` as `selection`; only changed ranges repaint.
-
-#### Pointer, touch and visibility
-
-`cursor` takes every CSS UI 4 keyword and `url()` images (a registered
-texture, cooked SVG included; natively any, on the web a lossless `kind
-pixel` one), tried in order, larger than 128×128 or unreadable falling
-through with a note; `og.ui.frameCursor` answers it, and the frame answer
-carries `cursor` and, when it changed, `cursorImage`. The web shell sets
-the canvas cursor; Origin Desktop sets the OS cursor from the `Cursor`
-message (docs/design.md §2.6). At most eight decoded images are kept. A
-`clip-path` bounds where an element's cursor applies; presses still hit
-its box.
-
-`pointer-events` follows CSS, and inline SVG shapes take SVG's values
-against their geometry. `touch-action` (Pointer Events 3) applies on a
-coarse pointer, intersected with ancestors'. `visibility` follows CSS;
-the `visible false` prop removes an element from layout. These are read
-from the frame's orders, so a declared value costs nothing while idle.
-`interactivity: inert` (CSS UI 4) makes an element and its subtree inert
-as the `inert` attribute does; a declared value wins over the attribute,
-as HTML's `[inert] { interactivity: inert }` rule has it.
-
-A scroll container with no scroll range on either axis does not take a
-press from a control around it. Its scroll-container membership remains
-for wheel handoff and overscroll boundaries. A container with overflow
-can still take a press to drag-scroll; its actionable children keep their
-own presses.
-
-#### Containment, resize and will-change
-
-`contain` and `content-visibility` follow Containment 2. A skipped
-subtree is left out of the layout walk and costs nothing while idle; an
-`auto` one skips from the frame after it is found more than half a
-viewport outside its clip with no focus inside, stays in the
-accessibility tree, and keeps its last laid-out size under
-`contain-intrinsic-size: auto`. `resize` (CSS UI 4) draws a three-row dot
-handle in the style's strong control ink; a drag sets width or height in
-CSS px within its bounds, presentation state (not saved) written only
-while dragged. `will-change` makes now what the properties it names would
-(Will Change 1 §2): a stacking property makes a stacking context drawn as
-its own group layer, and `transform`, `perspective`, `filter`,
-`backdrop-filter` or `contain` also holds fixed descendants; other names
-make neither.
-
-#### Images
-
-`object-fit` and `object-position` follow CSS Images on `<img>`; on
-`<art>` `object-fit` also keeps `nineSlice` and `tile` and
-`object-position` replaces the spec's focal point. The renderer reads the
-region's size from the texture. `image-rendering: pixelated | crisp-edges`
-(and legacy `optimizeSpeed`) samples every image the element draws at the
-nearest top-level texel; `auto`, `smooth`, `high-quality` keep the
-texture's sampling.
-
-#### Text on a path
-
-`-og-text-path` sets an element's text along a path as SVG 2's
-`<textPath>` does (CSS `offset-path` moves the element itself, above):
-each grapheme cluster sits centred on the path, turned to it.
-
-```css
-.title { -og-text-path: path("M0 90 Q170 -20 340 90"); -og-text-path-offset: 50%; text-align: center; }
-.seal  { -og-text-path: circle(52px); -og-text-path-side: right; }
-```
-
-- `-og-text-path`: `none`, `path("<SVG path data>")` in CSS px from the
-  content box's origin, or `circle([<radius>])` centred in the content box
-  from its top, clockwise (default radius the closest side). `ray()`,
-  `inset()` and other offset shapes are errors.
-- `-og-text-path-offset`: the anchor's place in px or % of the length;
-  `text-align` is the anchor (`start`, `center`, `end`).
-- `-og-text-path-side: right` runs the path backwards.
-
-The text is one line (breaks are spaces); a cluster off an open path is
-not drawn and a circle wraps. An element with no size of its own is its
-path's extent. Path data flattens once per string; an unchanged path text
-does not repaint. It is not selectable; its accessible name is its text.
-TypeScript's `textPath` is `{ data, radius, offset, percent, reverse }`
-(empty `data` a circle; unparsable data keeps lines). References:
-`text-path-1280`, `text-path-390`.
+- **Editing & keys**: typed text arrives through `og-input`'s `og.TextInput`
+  stream (with printable-key fallback when no stream is active). Backspace
+  and Delete step by UAX #29 grapheme cluster; `Ctrl`/`Alt` + Arrow /
+  Backspace / Delete step by word; `Shift` extends selection; `Ctrl`/`Cmd` +
+  `A`/`C`/`X` handle select-all, copy, and cut; `Enter` inserts a newline
+  when `multiline` is set.
+- **IME composition**: active preedit text (`input.composition`) is rendered
+  inline at the selection with an underline and does not fire `onChange`
+  until committed. Blurring clears uncommitted preedit text.
+- **Password & read-only fields**: `type="password"` or `secret={true}`
+  masks displayed characters with `•`, reports an empty selection to the
+  host, and blocks copy/cut. `readOnly={true}` keeps focus, selection, and
+  copy while ignoring edits. `maxLength` caps Unicode scalar count.
+- **Host text-entry bridge**: every frame while an `<Input>` is focused,
+  the runtime includes `text` (`{ path, rect, multiline, selection,
+  composing, type?, inputmode?, autocomplete?, secret? }`) in CSS px of the
+  play surface and `copy` (when copied/cut) in the frame answer. The web
+  shell (`packages/engine/src/web/text-input.ts`) positions its hidden
+  `<input>` or `<textarea>` over `rect` so mobile keyboards, IME candidate
+  windows, autofill, and browser clipboard events work seamlessly.
 
 #### Live regions
 
-A node with a `live` prop, or the role `status`, `log` (polite) or
-`alert` (assertive), is a live region in the accessibility tree
-(crates/og-ui-next CONVENTIONS.md §Accessibility); `status` and `alert`
-are atomic. The engine keeps no announcement queue: the web mirror gives
-the node `aria-live` and `aria-atomic` with its text as content, and a
-native window's AccessKit adapter announces it, so the platform says
-what changes in it. Both work in publish builds.
+A node with a `live` prop (`"polite"` or `"assertive"`), or the role
+`status`, `log` (polite) or `alert` (assertive), is a live region in the
+accessibility tree (`crates/og-ui-next/CONVENTIONS.md` §Accessibility);
+`status` and `alert` are atomic. The web mirror sets `aria-live` and
+`aria-atomic` on the mirrored node, and native windows forward AccessKit
+updates to the OS screen reader.
 
-```svelte
-<text role="status">{$saved}</text>
-<column aria-live="polite" aria-atomic="true"><text>Gold</text><text>{$gold}</text></column>
-{#each $alerts as a (a.id)}<text role="alert">{a.text}</text>{/each}
-```
+### 2.4 Built-in controls
 
-### 2.4 Controls and control documents
+Reusable controls live in `packages/engine/src/ui/controls/` and are
+re-exported from `@origingame/engine/ui/components` (and individually under
+`@origingame/engine/ui/controls/<name>`). Each control uses pack tokens and
+`packClass(...)` slots, exposes full keyboard/gamepad/ARIA semantics, and
+ships `fixtures` for `og ui check` and `og ui preview`. Run
+`og ui eject controls/<name>` to copy any control into a game to customize.
 
-A control is HTML's element with HTML's attributes: `<input>`, `<select>`,
-`<progress>`, `<meter>`, `<details>`, `<dialog>` and the rest keep their
-tags, bindings, roles and keys, and a game's markup names no component
-for them. og-ui keeps what a document cannot express: the value and its
-binding, the role, focus, the behaviour and the element's states. The
-element's inside is a control document of the library
-(`packages/engine/src/ui/controls/`), instantiated under every element its
-selector matches, as a browser's user-agent shadow tree is. Components and
-packs dress controls and never draw substitutes.
-
-A control document is a component document that names its host in place
-of a component name: `<meta name="control" content="progress">`, a tag
-with optional attribute tests (`input[type=range]`). Of two that match an
-element, the one with more tests is its control. Its contract:
-
-- **Props read the host.** A declared prop reads the host's authored
-  attribute of its name, bound or literal (`bind:value` passes a writable
-  prop), else its default; an `any` prop is null while the attribute is
-  absent. A state og-ui derives for the host is a prop of the same kind
-  (`<meter>`'s `region`). A control document takes no content prop its
-  host's element does not have.
-- **`:host`.** `:host` and `:host(<compound>)` select the host element,
-  and a `:host` rule takes every property there: the control's default
-  size and display are its document's. `:host([value])` reads the
-  attribute a prop of that name reads, `:host(:hover)` the host's live
-  state; the state goes inside the parentheses. `:host(<compound>) .inner`
-  styles an element of the document by the host.
-- **Parts.** An element with `part="track"` is the host's
-  `::part(track)`, listed in the document's `<meta name="parts">`. A part
-  keeps its name for as long as the control exists; where CSS names the
-  box with a standard pseudo-element (`::backdrop`, `::details-content`,
-  `::picker(select)`, `::placeholder`, `::selection`) the control takes
-  the standard name alone. A control written inside a control document
-  makes parts of its own inside parts of that document's host with
-  `exportparts` (CSS Shadow Parts §4.2): `<progress
-  exportparts="fill: bar-fill">` in the meter's document lets a page
-  write `meter::part(bar-fill)`. Only a control in a control document
-  exports; a component instance exports nothing.
-- **Standard pseudo-elements.** An element declared `pseudo="name"` is
-  the host's standard pseudo-element of that name, a namespace apart from
-  `part`: `backdrop` (a `<dialog>`'s or a popover's), `details-content`
-  (`<details>`), `picker` and `picker-icon` (`<select>`, styled as
-  `::picker(select)` and `::picker-icon`), `checkmark` (`<option>`) and
-  `file-selector-button` (`input[type=file]`). One element of the
-  document is each, only in a control document whose host HTML gives
-  that pseudo-element; a summary's marker stays CSS's `::marker`. The
-  host's document and the style reach it as they reach a part
-  (`details::details-content`, depth +1); no `exportparts` names it. A
-  state pseudo-class after it reads the element's own state
-  (`input::file-selector-button:hover` is the pointer on the button). The
-  document styles its own element as `[pseudo="backdrop"]`; its
-  `:host::backdrop` is refused.
-- **Rank.** The document's own rules style its elements at depth 0
-  (§3.2), in the `og-components` layer. A `::part()` rule of the default
-  style, a pack or the document the host stands in reaches a part at
-  depth +1 and wins over them; the document's `:host` rules reach the
-  host at depth -1 and lose to every rule written for the host where it
-  stands.
-- **Inheritance.** The host's custom properties and inherited properties
-  pass into the document, so a token set on a control reaches its parts.
-- **Values.** Its `<style>` reads tokens only (§3.1), as every built-in
-  document's does; the control's hook tokens (`--meter-*`, `--slider-*`)
-  are what a pack sets.
-- **Loading.** The cook bundles a control document when a game's
-  documents use its element, and a screen's load brings the controls its
-  elements need. `og ui eject controls/<name>` copies one into the game,
-  whose copy then is the control for that element everywhere.
-
-An element with no control document loaded is drawn by og-ui's own
-fallback for its kind while the controls move to documents
-([roadmap](roadmap.md)); the documents so far are `progress` and
-`meter`. `<hr>` has no inside: the default style's `hr` rule draws it as
-a `--stroke-hairline` line in `currentColor` (`--line`), across its
-container or, with `vertical`, down it, and any rule for `hr` restyles it.
-
-`<select bind:value>` lists literal `<option>`s in at most one level of
-`<optgroup>`, valued by text when `value` is absent; `selected` and
-`disabled` follow HTML. A bound list is `items={$labels} values={$ids}`;
-`{#each}` inside is refused. The list opens over the page at the chosen
-option; press, Enter, Space or pad A opens and picks, arrows skip disabled
-options, letters typeahead, Escape, pad B or an outside press closes, and
-focus returns to the trigger. The value, never the label, is written.
-`select::picker(select)` styles the open list's box over `Dropdown.list`
-(its `max-height` bounds the rows, which scroll). Parts:
-`Dropdown.trigger[open][invalid]`, `Dropdown.list`, `Dropdown.group`,
-`Dropdown.option[selected][disabled]`; roles combobox, listbox, option.
-
-`select { appearance: base-select }` is HTML's customizable select: the
-select is built from its own children, not the native dropdown, and the
-document styles every part. Its first `<button>` child is the trigger's
-content (with none, the chosen option's label), and `<selectedcontent>` in
-that button shows a copy of the chosen option's content. A press on the
-select opens `::picker(select)`, an auto popover in the top layer anchored
-to it (CSS anchor positioning, under it by default), holding its other
-children: `<option>`s with any content, `<optgroup>`s and `<hr>`s. A press
-on an enabled option chooses it, writes its value (to the binding, else as
-the select's own), fires `onchange` and closes the picker; a press outside
-or Back closes it unchanged. The chosen option matches `:checked`, a
-disabled one `:disabled`, and the select `:open` while its picker is.
-`::picker-icon` and `::checkmark` come with control documents (their
-`pseudo=` elements); until then a document draws its own.
-
-`<dialog bind:open aria-label>` follows HTML. `modal` (a literal, never
-bound: a modal's content is built in the top layer under `<id>/Panel`) is
-`showModal()`: a scrim taking every press, focus moved in, trapped and
-returned to the opener, the panel centred in the viewport.
-The panel's border box is capped to the safe surface after styling,
-including an author's width, height and minimums. The scrim's padding
-and device/host-covered insets leave the available room; a smaller
-dialog keeps its preferred size. Unmarked content scrolls as a whole.
-For fixed title and actions, put `data-layout="shell"` on the dialog
-and wrap only its body in `data-layout="scroll" data-fill`. The body
-shrinks to the remaining space and scrolls independently; the engine
-does not infer regions from heading, paragraph or footer tags. Keep
-fixed children small enough to fit together; the whole-panel fallback
-remains available when they cannot. These modal constraints do not
-change non-modal dialogs, popovers or generic overlay primitives.
-`dialog::backdrop` is the scrim's box (default background the style's
-`scrim`) and takes every box property; to a style pack it is
-`Dialog.backdrop`. Without `modal` it is `show()` in place
-(`Dialog.panel[open]`). `closedby` follows HTML: `closerequest` (a
-modal's default) is Escape, Back or pad B, for an in-place dialog only
-with focus inside; `any` adds a scrim press; `none` (an in-place dialog's
-default) leaves closing to the document. Closing writes `open` false.
-
-A `<small>` beside a select or input with `aria-invalid` is its message;
-`aria-invalid` puts the danger frame on the control.
-
-`data-og-instant` on an element lands its first entrance's
-`@starting-style` at once (the screen behind the web's play gate); a later
-entrance plays.
-
-`<details bind:open><summary>` is a disclosure: the summary
-(`Details.summary[open]`, role button with `expanded`) toggles it by
-press, Enter, Space or pad A; its marker points to the inline end closed
-and down open. A literal `open` is the initial state; the player's toggle
-is saved UI state. `<details name>` is an exclusive group. A closed dialog
-or disclosure builds no content: its children are released and built
-afresh when it opens. `details::details-content` (Pseudo-Elements 4)
-styles the content box under the summary with every box property over
-the disclosure's own padding and gap; a closed disclosure hides the box
-whole (CSS keeps its margins, borders and background and hides only its
-contents), and `details[open]` follows the element's open state (a
-literal or bound `open`, or the player's toggle).
-
-`<meter>` dresses its fill by HTML's region, `Meter.fill[region=optimum |
-suboptimum | poor]` (undressed: success, warn, danger), over `Meter.track`;
-`low` and `high` clamp into the range, `optimum` defaults to the middle.
-
-A range input, `<progress>` and `<meter>` in a vertical writing mode stand
-up (Writing Modes 4 vertical form controls): their `height` is the track's
-length (160 px by default), and the value runs top to bottom, or bottom to
-top under `direction: rtl` (`sideways-lr` the reverse). A slider's labelled
-marks stand beside its track, its bubble beside the knob. `<select>` stays
-across.
+| Control | Pack slots | ARIA role & behaviour |
+|---|---|---|
+| `Art` | pack nine-slice class | Stretched or nine-sliced pack artwork |
+| `Button` | `Button.plate[.primary\|danger]` | `button`; variants (`primary`, `danger`, `ghost`, `quiet`), `small`, `pressed`, `hold` |
+| `Checkbox` | `Checkbox.box` | `checkbox`; boolean or `"mixed"` indeterminate state |
+| `Counter` | — | Animated numeric readout (`tabular-nums`) |
+| `Dialog` | `Modal.scrim`, `Panel.frame`, `Modal.frame` | `dialog` / `alertdialog`; scrim, focus trap (`modal={true}`), `back` dismiss, scrollable body & footer |
+| `Meter` | `Bar.fill` | `meter`; scalar gauge with low/high/optimum regions |
+| `Progress` | `Bar.fill` | `progressbar`; determinate 0..1 progress bar |
+| `Select` | `Select.trigger`, `Select.menu` | `combobox` + `listbox` + `option`; press to open, Arrow keys to cycle, Escape/`back` to close |
+| `Slider` | `Slider.track`, `Slider.fill`, `Slider.thumb` | `slider`; pointer drag and Arrow/Home/End stepping |
+| `Switch` | `Switch.track`, `Switch.thumb` | `switch`; binary toggle with animated thumb |
+| `Tabs` | `Tab.bar`, `Tab.indicator` | `tablist` + `tab`; focus-group wrapping and active indicator |
+| `Tooltip` | `Tooltip.frame` | `tooltip`; lightweight label/detail anchored to a named UI node |
 
 ### 2.5 Split screen
 

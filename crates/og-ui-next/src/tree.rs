@@ -2246,22 +2246,41 @@ impl Tree {
                     }
                 }
                 let g = self.texts.leaf(leaf).expect("painted");
-                if let Some(f) = field.filter(|f| f.anchor != f.caret)
+                if let Some(f) = field
                     && self.input.focus_el() == e as u32
                 {
-                    let color = faded(s.selection.unwrap_or([0.1, 0.3, 0.8, 0.4]));
-                    g.selection(f.anchor..f.caret, |[sx, sy, w, h]| {
-                        p.quads.push(quad(
-                            PaintKind::Solid,
-                            [lx + sx, ly + sy, w, h],
-                            clip,
-                            color,
-                            [0.; 4],
-                            [0.; 4],
-                            0,
-                            0,
-                        ));
-                    });
+                    if let Some((cs, ce)) = f.composing_display_range() {
+                        let line_h = (1.0 * scale).round().max(1.0) / scale;
+                        let ucolor = faded(own_ink);
+                        g.selection(cs..ce, |[sx, sy, w, h]| {
+                            p.quads.push(quad(
+                                PaintKind::Solid,
+                                [lx + sx, ly + sy + h - line_h, w, line_h],
+                                clip,
+                                ucolor,
+                                [0.; 4],
+                                [0.; 4],
+                                0,
+                                0,
+                            ));
+                        });
+                    } else if f.anchor != f.caret {
+                        let (s0, s1) = f.selection_range();
+                        let (d0, d1) = (f.display_offset(s0), f.display_offset(s1));
+                        let color = faded(s.selection.unwrap_or([0.1, 0.3, 0.8, 0.4]));
+                        g.selection(d0..d1, |[sx, sy, w, h]| {
+                            p.quads.push(quad(
+                                PaintKind::Solid,
+                                [lx + sx, ly + sy, w, h],
+                                clip,
+                                color,
+                                [0.; 4],
+                                [0.; 4],
+                                0,
+                                0,
+                            ));
+                        });
+                    }
                 }
                 let placed = |q: &PaintQuad, dx: f32, dy: f32, color: Rgba| PaintQuad {
                     rect: [
@@ -2342,12 +2361,18 @@ impl Tree {
             // the character it stands at, in the text's ink.
             if let (Some(leaf), Some(f)) = (el.leaf, field)
                 && self.input.focus_el() == e as u32
-                && f.anchor == f.caret
+                && (f.anchor == f.caret || !f.composing.is_empty())
             {
                 let size = el.eff.size * self.text_scale;
                 let line = el.eff.text.line_height(el.eff.size) * self.text_scale;
                 // The placeholder shows: the caret stands before it.
-                let at = if f.value.is_empty() { 0 } else { f.caret };
+                let at = if let Some((_, ce)) = f.composing_display_range() {
+                    ce
+                } else if f.value.is_empty() {
+                    0
+                } else {
+                    f.display_offset(f.caret)
+                };
                 let [cx, top, height] = match el.text.is_empty() {
                     true => None,
                     false => self.texts.caret(leaf, at),

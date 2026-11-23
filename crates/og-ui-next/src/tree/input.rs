@@ -105,6 +105,20 @@ pub(super) struct Per {
     pub caret: usize,
     /// The other selection edge (equal to the caret when collapsed).
     pub anchor: usize,
+    /// Active IME preedit text (shown inline at the selection, committed on `type_text`).
+    pub composing: String,
+    /// HTML input hints forwarded to the host's hidden text element.
+    pub input_type: Box<str>,
+    pub input_mode: Box<str>,
+    pub autocomplete: Box<str>,
+    /// Password input: displays bullets and refuses copy/cut.
+    pub secret: bool,
+    /// Multi-line text area: permits newlines.
+    pub multiline: bool,
+    /// Maximum Unicode scalar count (0 = unlimited).
+    pub max_length: usize,
+    /// Read-only field: allows focus/selection/copy, refuses edits.
+    pub read_only: bool,
     /// The pack slot its class names (`@Component.slot[.variant]`, from
     /// `packClass`, without the `@`): the scope of its sounds.
     pub slot: Box<str>,
@@ -221,6 +235,55 @@ fn cluster_edge(text: &str, at: usize, back: bool) -> usize {
             .copied()
             .find(|&b| b > at)
             .unwrap_or(text.len())
+    }
+}
+
+/// Word boundary before (`back`) or after byte `at` in `text`, for Ctrl/Alt+Arrow
+/// and Ctrl/Alt+Backspace/Delete.
+fn word_edge(text: &str, at: usize, back: bool) -> usize {
+    let at = at.min(text.len());
+    let is_word = |c: char| c.is_alphanumeric() || c == '_';
+    if back {
+        let mut iter = text[..at].char_indices().rev().peekable();
+        while let Some(&(_, c)) = iter.peek() {
+            if c.is_whitespace() {
+                iter.next();
+            } else {
+                break;
+            }
+        }
+        let Some((first_i, first_c)) = iter.next() else {
+            return 0;
+        };
+        let target_word = is_word(first_c);
+        let mut pos = first_i;
+        for (i, c) in iter {
+            if is_word(c) == target_word && !c.is_whitespace() {
+                pos = i;
+            } else {
+                break;
+            }
+        }
+        pos
+    } else {
+        let mut iter = text[at..].char_indices().peekable();
+        while let Some(&(_, c)) = iter.peek() {
+            if c.is_whitespace() {
+                iter.next();
+            } else {
+                break;
+            }
+        }
+        let Some((_, first_c)) = iter.next() else {
+            return text.len();
+        };
+        let target_word = is_word(first_c);
+        for (i, c) in iter {
+            if is_word(c) != target_word || c.is_whitespace() {
+                return at + i;
+            }
+        }
+        text.len()
     }
 }
 
@@ -344,6 +407,82 @@ pub struct Input {
     /// A press `confirm` made: it sounds `confirm`, not `press`.
     confirming: bool,
     drag: Option<Drag>,
+    /// Text copied or cut from the focused `Input` this frame (`Tree::take_copy`).
+    copied: Option<String>,
+}
+
+/// The focused `Input` reported to the host shell (`packages/engine/src/web/text-input.ts`)
+/// so the page can position its hidden `<input>`/`<textarea>` for mobile keyboards,
+/// IME candidate windows, autofill, and clipboard events.
+#[derive(Clone, Debug, PartialEq)]
+pub struct TextTarget {
+    pub path: String,
+    pub rect: [f32; 4],
+    pub multiline: bool,
+    pub selection: String,
+    pub composing: bool,
+    pub input_type: String,
+    pub input_mode: String,
+    pub autocomplete: String,
+    pub secret: bool,
+}
+
+impl TextTarget {
+    pub fn to_json(&self) -> serde_json::Value {
+        let mut obj = serde_json::Map::new();
+        obj.insert("path".into(), serde_json::json!(self.path));
+        obj.insert("rect".into(), serde_json::json!(self.rect));
+        obj.insert("multiline".into(), serde_json::json!(self.multiline));
+        obj.insert("selection".into(), serde_json::json!(self.selection));
+        obj.insert("composing".into(), serde_json::json!(self.composing));
+        if !self.input_type.is_empty() {
+            obj.insert("type".into(), serde_json::json!(self.input_type));
+        }
+        if !self.input_mode.is_empty() {
+            obj.insert("inputmode".into(), serde_json::json!(self.input_mode));
+        }
+        if !self.autocomplete.is_empty() {
+            obj.insert("autocomplete".into(), serde_json::json!(self.autocomplete));
+        }
+        if self.secret {
+            obj.insert("secret".into(), serde_json::json!(true));
+        }
+        serde_json::Value::Object(obj)
+    }
+}
+
+impl Per {
+    /// Byte offset in the displayed text corresponding to a byte offset in `self.value`.
+    pub(crate) fn display_offset(&self, byte: usize) -> usize {
+        let clamped = byte.min(self.value.len());
+        if self.secret {
+            self.value[..clamped].chars().count() * '•'.len_utf8()
+        } else {
+            clamped
+        }
+    }
+
+    /// The selection range in `self.value` bytes, ordered `start <= end`.
+    pub(crate) fn selection_range(&self) -> (usize, usize) {
+        let at = self.caret.min(self.value.len());
+        let anc = self.anchor.min(self.value.len());
+        (anc.min(at), anc.max(at))
+    }
+
+    /// The active IME composition range in displayed text bytes, if composing.
+    pub(crate) fn composing_display_range(&self) -> Option<(usize, usize)> {
+        if self.composing.is_empty() {
+            return None;
+        }
+        let (start, _) = self.selection_range();
+        let d_start = self.display_offset(start);
+        let d_len = if self.secret {
+            self.composing.chars().count() * '•'.len_utf8()
+        } else {
+            self.composing.len()
+        };
+        Some((d_start, d_start + d_len))
+    }
 }
 
 /// A pointer that went down on an element hearing `onPinch`, `onRotate`
@@ -595,16 +734,33 @@ impl Tree {
         }
     }
 
-    /// Shows an `Input`'s text, or its placeholder while it is empty, and
-    /// paints its caret again.
+    /// Shows an `Input`'s text (masked when `secret`, with active IME
+    /// `composing` text spliced at the selection), or its placeholder while
+    /// both are empty, and paints its caret again.
     pub(super) fn show_value(&mut self, e: u32) {
         let p = &self.input.per[e as usize];
-        let shown = if p.value.is_empty() {
-            &*p.placeholder
+        let shown = if p.value.is_empty() && p.composing.is_empty() {
+            p.placeholder.to_string()
+        } else if p.composing.is_empty() {
+            if p.secret {
+                "•".repeat(p.value.chars().count())
+            } else {
+                p.value.clone()
+            }
         } else {
-            &*p.value
+            let (start, end) = p.selection_range();
+            let mut s = String::with_capacity(p.value.len() + p.composing.len());
+            if p.secret {
+                s.push_str(&"•".repeat(p.value[..start].chars().count()));
+                s.push_str(&"•".repeat(p.composing.chars().count()));
+                s.push_str(&"•".repeat(p.value[end..].chars().count()));
+            } else {
+                s.push_str(&p.value[..start]);
+                s.push_str(&p.composing);
+                s.push_str(&p.value[end..]);
+            }
+            s
         };
-        let shown = shown.to_owned();
         self.set_text(e, &shown);
         self.paint = true;
     }
@@ -615,6 +771,57 @@ impl Tree {
         (f != NONE && self.input.per(f).is_some_and(|p| p.input) && !self.disabled(f)).then_some(f)
     }
 
+    /// The focused `Input` for the host shell's text-entry overlay
+    /// (`packages/engine/src/web/text-input.ts`), or `None` when no `Input` is focused.
+    pub fn text_target(&self) -> Option<TextTarget> {
+        let e = self.editing()?;
+        let p = &self.input.per[e as usize];
+        let &(x, y, ..) = self.abs.get(e as usize)?;
+        let b = self.arena.box_of(self.els[e as usize].node);
+        let selection = if p.secret {
+            String::new()
+        } else {
+            let (start, end) = p.selection_range();
+            p.value[start..end].to_owned()
+        };
+        Some(TextTarget {
+            path: self.els[e as usize].node.to_string(),
+            rect: [x, y, b.w, b.h],
+            multiline: p.multiline,
+            selection,
+            composing: !p.composing.is_empty(),
+            input_type: p.input_type.to_string(),
+            input_mode: p.input_mode.to_string(),
+            autocomplete: p.autocomplete.to_string(),
+            secret: p.secret,
+        })
+    }
+
+    /// Text copied or cut from a focused `Input` since the last call.
+    pub fn take_copy(&mut self) -> Option<String> {
+        self.input.copied.take()
+    }
+
+    /// Updates active IME preedit composition on the focused `Input` without
+    /// firing `change` until committed via [`Tree::type_text`]. Empty string
+    /// clears composition.
+    pub fn compose(&mut self, text: &str) -> bool {
+        let Some(e) = self.editing() else {
+            return false;
+        };
+        let p = &mut self.input.per[e as usize];
+        if p.read_only {
+            return false;
+        }
+        if p.composing == text {
+            return true;
+        }
+        p.composing.clear();
+        p.composing.push_str(text);
+        self.show_value(e);
+        true
+    }
+
     /// Text typed this frame (og-input's `og.TextInput` stream, or the
     /// printable keys) goes into the focused `Input` at its caret, which
     /// hears `change` with its new text. Whether one took it.
@@ -623,37 +830,68 @@ impl Tree {
             return false;
         };
         let p = &mut self.input.per[e as usize];
-        if !text.chars().any(|c| !c.is_control()) {
+        if p.read_only {
             return false;
         }
-        let at = p.caret.min(p.value.len());
-        let start = p.anchor.min(at);
-        let end = p.anchor.max(at);
-        p.value.replace_range(start..end, "");
-        let before = p.value.len();
-        for ch in text.chars().filter(|c| !c.is_control()) {
-            p.value.insert(start + (p.value.len() - before), ch);
+        let had_composing = !p.composing.is_empty();
+        let allow_newline = p.multiline;
+        let filtered: String = text
+            .chars()
+            .filter(|&c| !c.is_control() || (allow_newline && c == '\n'))
+            .collect();
+        if filtered.is_empty() {
+            if had_composing {
+                p.composing.clear();
+                self.show_value(e);
+            }
+            return false;
         }
-        p.caret = start + (p.value.len() - before);
+        p.composing.clear();
+        let (start, end) = p.selection_range();
+        p.value.replace_range(start..end, "");
+        let max_len = p.max_length;
+        let existing_chars = p.value.chars().count();
+        let insert_str: String = if max_len > 0 {
+            let room = max_len.saturating_sub(existing_chars);
+            filtered.chars().take(room).collect()
+        } else {
+            filtered
+        };
+        p.value.insert_str(start, &insert_str);
+        p.caret = start + insert_str.len();
         p.anchor = p.caret;
         self.edited(e);
         true
     }
 
     /// An editing key on the focused `Input`: Backspace and Delete remove
-    /// the grapheme cluster before and after the caret, ←/→ step over one,
-    /// Home and End go to the ends. Whether it was one.
-    fn edit_key(&mut self, e: u32, code: &str, shift: bool) -> bool {
+    /// the grapheme cluster before and after the caret, ←/→ step over one
+    /// (or a word with `word`), Home and End go to the ends. Whether it was one.
+    fn edit_key(&mut self, e: u32, code: &str, shift: bool, word: bool) -> bool {
         let p = &mut self.input.per[e as usize];
         let at = p.caret.min(p.value.len());
         match code {
             "Backspace" | "Delete" => {
+                if p.read_only {
+                    return true;
+                }
+                p.composing.clear();
                 let (a, b) = if p.anchor != at {
                     (p.anchor.min(at), p.anchor.max(at))
                 } else if code == "Backspace" {
-                    (cluster_edge(&p.value, at, true), at)
+                    let prev = if word {
+                        word_edge(&p.value, at, true)
+                    } else {
+                        cluster_edge(&p.value, at, true)
+                    };
+                    (prev, at)
                 } else {
-                    (at, cluster_edge(&p.value, at, false))
+                    let next = if word {
+                        word_edge(&p.value, at, false)
+                    } else {
+                        cluster_edge(&p.value, at, false)
+                    };
+                    (at, next)
                 };
                 p.caret = a;
                 p.anchor = a;
@@ -665,6 +903,8 @@ impl Tree {
             "ArrowLeft" => {
                 p.caret = if !shift && p.anchor != at {
                     p.anchor.min(at)
+                } else if word {
+                    word_edge(&p.value, at, true)
                 } else {
                     cluster_edge(&p.value, at, true)
                 }
@@ -672,6 +912,8 @@ impl Tree {
             "ArrowRight" => {
                 p.caret = if !shift && p.anchor != at {
                     p.anchor.max(at)
+                } else if word {
+                    word_edge(&p.value, at, false)
                 } else {
                     cluster_edge(&p.value, at, false)
                 }
@@ -1630,6 +1872,14 @@ impl Tree {
             return;
         }
         if old != NONE {
+            if self
+                .input
+                .per(old)
+                .is_some_and(|p| p.input && !p.composing.is_empty())
+            {
+                self.input.per[old as usize].composing.clear();
+                self.show_value(old);
+            }
             self.set_state(old, FOCUSED, false);
             self.set_state(old, FOCUS_VISIBLE, false);
             let mut a = old;
@@ -1840,14 +2090,40 @@ impl Tree {
         // included); the game's shortcuts with Control, Alt or Command
         // pass on.
         if let Some(e) = self.editing() {
-            if code == "KeyA" && (ctrl || meta) && !alt {
+            let cmd = (ctrl || meta) && !alt;
+            if cmd && code == "KeyA" {
                 let p = &mut self.input.per[e as usize];
                 p.anchor = 0;
                 p.caret = p.value.len();
                 self.paint = true;
                 return true;
             }
-            if !(ctrl || alt || meta) && self.edit_key(e, code, shift) {
+            if cmd && matches!(code, "KeyC" | "KeyX") {
+                let p = &mut self.input.per[e as usize];
+                let (start, end) = p.selection_range();
+                if start < end {
+                    if !p.secret {
+                        self.input.copied = Some(p.value[start..end].to_owned());
+                    }
+                    if code == "KeyX" && !p.read_only {
+                        p.composing.clear();
+                        p.value.replace_range(start..end, "");
+                        p.caret = start;
+                        p.anchor = start;
+                        self.edited(e);
+                    }
+                }
+                return true;
+            }
+            if !(ctrl || alt || meta)
+                && matches!(code, "Enter" | "NumpadEnter")
+                && self.input.per[e as usize].multiline
+            {
+                self.type_text("\n");
+                return true;
+            }
+            let word = (ctrl || alt) && !meta;
+            if (!ctrl && !alt && !meta || word) && self.edit_key(e, code, shift, word) {
                 return true;
             }
         }

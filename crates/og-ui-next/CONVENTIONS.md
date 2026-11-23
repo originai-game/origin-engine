@@ -235,15 +235,19 @@ machines do (ported as logic).
   held on it that long, not on release; `hold` events carry the progress
   in `value` each frame (`"0.42"`, `"1"` as it completes, `"0"` when it
   lets go early: release, leaving it, or a pan).
-- **Text fields**: a focused `Input` takes typed text (og-input's
-  `og.TextInput` stream, or the printable keys) at its caret and hears
-  `change` with its whole text in `value` each time. Backspace and Delete
-  remove the grapheme cluster before and after the caret (UAX #29: a base
-  and its marks go together), ←/→ step over one, Home and End go to the
-  ends; keys with Control, Alt or Command pass on to the game. `value` set
-  from outside replaces the text (caret at its end, no `change`);
-  `placeholder` shows at half ink while it is empty. One line, no
-  selection, undo or input-method composition yet.
+- **Text fields**: a focused `Input` takes typed text (`og.TextInput` stream,
+  or printable keys) and IME preedit composition (`input.composition`, shown
+  underlined until committed) at its caret, hearing `change` with its whole
+  text in `value` on edits. Backspace and Delete remove a grapheme cluster
+  (UAX #29) or a word with Ctrl/Alt; ←/→ step by cluster or word, Shift
+  extends selection, Home/End go to ends, Ctrl/Cmd+A/C/X select all, copy,
+  and cut (blocked when `secret`/`type="password"`). `value` set from outside
+  replaces the text (caret at end, no `change`); `placeholder` shows at half
+  ink while empty. Optional props: `type`, `inputMode`, `autoComplete`,
+  `secret`, `multiline`, `maxLength`, `readOnly`. While focused, `tick`
+  reports `text` (`TextTarget`) and `copy` so the web shell positions its
+  hidden `<input>`/`<textarea>` for mobile keyboards, IME, autofill and
+  clipboard.
 - **Focus groups**: a node with `focusGroup` makes its focusable
   descendants one group for the arrows, the d-pad and the stick (og-ui's
   rule): a move picks among the group's members first; at its edge

@@ -1011,8 +1011,11 @@ impl Next {
         // device.
         if tree.has_ops() {
             tree.wheel(ptr.x, ptr.y, ptr.wheel[0], ptr.wheel[1]);
-            // Typed text goes into the focused `Input` before its keys
-            // edit it, as they arrived.
+            // Typed text and IME preedit go into the focused `Input` before
+            // its keys edit it, as they arrived.
+            if let Some(comp) = &input.composition {
+                tree.compose(comp);
+            }
             if !input.text.is_empty() {
                 tree.type_text(&input.text);
             }
@@ -1167,6 +1170,26 @@ impl Next {
     /// onto.
     pub(crate) fn surface(&self) -> Option<(f32, f32)> {
         self.tree.as_ref().map(|t| t.size())
+    }
+
+    /// The focused `Input` for the host shell's text-entry overlay
+    /// (`packages/engine/src/web/text-input.ts`), in CSS px, or `Value::Null`.
+    pub(crate) fn text_target(&self) -> Value {
+        let Some(mut target) = self.tree.as_ref().and_then(|t| t.text_target()) else {
+            return Value::Null;
+        };
+        let u = self.unit;
+        if u != 1.0 {
+            for v in &mut target.rect {
+                *v *= u;
+            }
+        }
+        target.to_json()
+    }
+
+    /// Text copied or cut from a focused `Input` since the last frame.
+    pub(crate) fn take_copy(&mut self) -> Option<String> {
+        self.tree.as_mut().and_then(|t| t.take_copy())
     }
 
     /// The accessibility tree's update for the web shell's mirror

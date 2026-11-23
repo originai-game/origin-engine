@@ -1017,10 +1017,43 @@ impl Tree {
                                 // Set from outside: the caret goes to the end.
                                 p.value.clear();
                                 p.value.push_str(value);
+                                p.composing.clear();
                                 p.caret = p.value.len();
                                 p.anchor = p.caret;
                             }
                             self.show_value(e);
+                        }
+                        "type" if self.input.per[e as usize].input => {
+                            let v = value.trim();
+                            let p = &mut self.input.per[e as usize];
+                            p.input_type = v.into();
+                            if v == "password" {
+                                p.secret = true;
+                            }
+                            self.show_value(e);
+                        }
+                        "inputMode" | "inputmode" if self.input.per[e as usize].input => {
+                            self.input.per[e as usize].input_mode = value.trim().into();
+                        }
+                        "autoComplete" | "autocomplete" if self.input.per[e as usize].input => {
+                            self.input.per[e as usize].autocomplete = value.trim().into();
+                        }
+                        "secret" if self.input.per[e as usize].input => {
+                            self.input.per[e as usize].secret =
+                                !matches!(value, "" | "false" | "0" | "null");
+                            self.show_value(e);
+                        }
+                        "multiline" if self.input.per[e as usize].input => {
+                            self.input.per[e as usize].multiline =
+                                !matches!(value, "" | "false" | "0" | "null");
+                        }
+                        "maxLength" | "maxlength" if self.input.per[e as usize].input => {
+                            self.input.per[e as usize].max_length =
+                                value.trim().parse::<usize>().unwrap_or(0);
+                        }
+                        "readOnly" | "readonly" if self.input.per[e as usize].input => {
+                            self.input.per[e as usize].read_only =
+                                !matches!(value, "" | "false" | "0" | "null");
                         }
                         "focusGroup" => {
                             self.input.per[e as usize].group = match value.trim() {
@@ -5020,6 +5053,74 @@ mod tests {
         assert_eq!(t.focused_id(), Some(2));
         assert_eq!(caret(&mut t), None, "no caret without the focus");
         assert!(!t.type_text("x"));
+    }
+
+    #[test]
+    fn an_input_supports_text_target_ime_clipboard_and_modes() {
+        let mut t = stated();
+        let mut b = Batch::default();
+        b.op(1).u32(1).u8(4);
+        b.op(7).u32(1).u8(Event::Change as u8).u8(1);
+        b.op(6).u32(1).str("type").str("email");
+        b.op(6).u32(1).str("inputMode").str("email");
+        b.op(6).u32(1).str("autoComplete").str("email");
+        b.op(8).u32(0).u32(1).u32(u32::MAX);
+        b.op(1).u32(2).u8(4);
+        b.op(7).u32(2).u8(Event::Change as u8).u8(1);
+        b.op(6).u32(2).str("type").str("password");
+        b.op(6).u32(2).str("maxLength").str("4");
+        b.op(8).u32(0).u32(2).u32(u32::MAX);
+        t.apply(&b.bytes()).unwrap();
+        let mut fonts = og_text::fonts::Collection::new();
+        let mut atlas = Default::default();
+        t.present(&mut fonts, &mut atlas, &IconAtlas::default());
+        assert!(t.text_target().is_none(), "no target while unfocused");
+
+        // Focus first Input: text_target carries path, rect, hints.
+        t.key("Tab", false, false, false, false);
+        assert_eq!(t.focused_id(), Some(1));
+        let target = t.text_target().expect("focused input reports TextTarget");
+        assert_eq!(target.input_type, "email");
+        assert_eq!(target.input_mode, "email");
+        assert_eq!(target.autocomplete, "email");
+        assert!(!target.secret);
+        assert!(!target.composing);
+
+        // IME composition displays preedit without firing change until committed.
+        t.events.clear();
+        assert!(t.compose("ni"));
+        assert!(t.events.is_empty(), "composing must not fire change");
+        assert!(t.text_target().unwrap().composing);
+        assert!(t.type_text("你好 world"));
+        assert!(!t.text_target().unwrap().composing);
+        assert_eq!(t.events.last().unwrap().value.as_ref(), "你好 world");
+
+        // Ctrl+A + Ctrl+C copies selection; Ctrl+X cuts it.
+        assert!(t.key("KeyA", false, true, false, false));
+        assert_eq!(t.text_target().unwrap().selection, "你好 world");
+        assert!(t.key("KeyC", false, true, false, false));
+        assert_eq!(t.take_copy().as_deref(), Some("你好 world"));
+        assert!(t.take_copy().is_none());
+
+        // Word-jump back with Ctrl+ArrowLeft + Shift selects "world", then Ctrl+X cuts it.
+        t.key("End", false, false, false, false);
+        assert!(t.key("ArrowLeft", true, true, false, false));
+        assert_eq!(t.text_target().unwrap().selection, "world");
+        assert!(t.key("KeyX", false, true, false, false));
+        assert_eq!(t.take_copy().as_deref(), Some("world"));
+        assert_eq!(t.events.last().unwrap().value.as_ref(), "你好 ");
+
+        // Password Input: maxLength caps chars, secret blocks copy and reports empty selection.
+        t.key("Tab", false, false, false, false);
+        assert_eq!(t.focused_id(), Some(2));
+        assert!(t.type_text("123456"));
+        assert_eq!(t.events.last().unwrap().value.as_ref(), "1234");
+        assert!(t.key("KeyA", false, true, false, false));
+        let pw_target = t.text_target().unwrap();
+        assert!(pw_target.secret);
+        assert_eq!(pw_target.selection, "");
+        assert!(t.key("KeyC", false, true, false, false));
+        assert!(t.take_copy().is_none(), "password must never copy");
     }
 
     /// A control sounds the pack's sound for its slot (`@Component.slot`
