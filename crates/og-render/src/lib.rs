@@ -683,4 +683,11 @@ pub struct Renderer {
     oit: oit::OitState,
     /// The systems the last scene rendered has ([`renderer::readback::Reach`]).
     reach: renderer::readback::Reach,
+    /// A batch for each loaded material on each kind of mesh it can draw
+    /// ([`Renderer::loaded_batches`]), what they were read at (the
+    /// material and mesh counts, whether every batch takes the effect
+    /// shader and the decals' derivatives) and whether the frame had a
+    /// depth prepass: what [`Renderer::warm`] makes the pipelines of
+    /// before any instance does.
+    loaded: ((usize, usize, bool, bool), Vec<renderer::Batch>, bool),
 }

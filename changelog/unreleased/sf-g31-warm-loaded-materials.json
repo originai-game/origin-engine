@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "og.render.compile",
+      "summary": "`og.render.compile(world)` now also makes the lit, prepass, shadow and order-independent pipelines of every material the game has loaded, on each kind of mesh it can draw, before any instance uses it, and also while nothing is drawn yet (a first model still loading). Previously only the plain opaque material was made ahead, so the first frame that spawned something blended or lean compiled its pipelines (Star Focus: 19.8 ms at its first landing and 17 ms at tick 197, both gone)."
+    }
+  ]
+}

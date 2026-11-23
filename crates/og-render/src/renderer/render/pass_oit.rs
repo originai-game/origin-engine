@@ -29,7 +29,7 @@ impl Renderer {
 
     /// The OIT pipeline source of a blended batch, as `lit_pipeline_of`
     /// picks its sorted pipeline.
-    pub(super) fn oit_lit_source(b: &Batch, skinned: bool, physical: bool) -> Source {
+    pub(in crate::renderer) fn oit_lit_source(b: &Batch, skinned: bool, physical: bool) -> Source {
         use oit::LitModule;
         let module = match (physical, b.shader) {
             (true, None) => LitModule::Physical,

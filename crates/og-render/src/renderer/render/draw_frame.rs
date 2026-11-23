@@ -344,6 +344,27 @@ impl Renderer {
                 scene_water,
                 prepass: effects.prepass,
             });
+        // What a loaded material draws with once something has it, for
+        // warm() to make before it does: read again when a material or
+        // mesh is added, or the frame's effects change every batch's.
+        let decals =
+            !scene.effects.decals.is_empty() && !self.info.without.contains(LitFeatures::DECALS);
+        let plain = self.lit.plain_effects;
+        let read = (
+            self.cache.materials.len(),
+            self.cache.meshes.len(),
+            plain,
+            decals,
+        );
+        if self.loaded.0 != read {
+            let mut loaded = self.loaded_batches(scene);
+            for b in loaded.iter_mut().filter(|_| plain) {
+                b.effects = true;
+                b.derivatives |= decals;
+            }
+            (self.loaded.0, self.loaded.1) = (read, loaded);
+        }
+        self.loaded.2 = effects.prepass;
         // Texture filters: a sprite group made with the other sampler is remade;
         // before any group is made this frame (the overlay's, first, below).
         for i in 0..self.cache.textures.len() {

@@ -827,6 +827,7 @@ impl Renderer {
             stylise_chain: None,
             oit,
             reach: Default::default(),
+            loaded: Default::default(),
         })
     }
 }

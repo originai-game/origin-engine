@@ -125,6 +125,50 @@ impl Renderer {
         runs.iter().map(|r| self.batch_of(scene, r)).collect()
     }
 
+    /// A batch for every loaded material on each kind of mesh it can
+    /// draw (the first plain mesh, the first compact one), as a frame
+    /// that first draws it with an instance would make it: its lit,
+    /// prepass, shadow and blended pipelines are those a frame reaches as
+    /// soon as the game spawns something with it.
+    pub(crate) fn loaded_batches(&self, scene: &RenderScene) -> Vec<Batch> {
+        let meshes = &self.cache.meshes;
+        let plain = |m: &&GpuMesh| m.index_count > 0 && m.foliage.is_none() && m.surface.is_none();
+        let first = |compact: bool| {
+            (meshes.iter()).position(|m| plain(&m) && m.compact.is_some() == compact)
+        };
+        let kinds: Vec<usize> = [first(false), first(true)].into_iter().flatten().collect();
+        let pairs: Vec<instances::Ahead> = (0..self.cache.materials.len())
+            .flat_map(|material| {
+                kinds.iter().map(move |&mesh| instances::Ahead {
+                    mesh,
+                    material,
+                    cast: true,
+                    mirrored: false,
+                })
+            })
+            .collect();
+        let (meshes, materials) = (&self.cache.meshes, &self.cache.materials);
+        (pairs.iter())
+            .map(|a| {
+                let run = instances::Run {
+                    mesh: a.mesh,
+                    material: a.material,
+                    cast: true,
+                    reveal: false,
+                    layers: 1,
+                    first: 0,
+                    count: 0,
+                    dequant: Self::dequant(meshes, materials, a.mesh, a.material),
+                    array: materials[a.material].array.is_some(),
+                    probe: crate::probe_select::NONE,
+                    mirrored: false,
+                    reach: None,
+                };
+                self.batch_of(scene, &run)
+            })
+            .collect()
+    }
+
     /// How a (mesh, material) run undoes its vertices' quantisation
     /// ([`instances::Run::dequant`]): a plain material drawing a compact
     /// mesh draws its compact vertices; anything else the f32 ones.

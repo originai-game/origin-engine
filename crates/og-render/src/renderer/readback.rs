@@ -160,6 +160,7 @@ impl Renderer {
             || (r.particles && self.particles.gpu.warm())
             || self.particles.gpu.warm_loaded(&self.device, self.samples)
             || self.warm_loaded_oit()
+            || self.warm_loaded_materials()
             || (r.lights_2d
                 && self
                     .lights_2d
@@ -597,5 +598,53 @@ mod tests {
         while renderer.warm() {}
         assert_eq!(made(&renderer), 3, "warming made all three");
         assert!(oit(&renderer), "and the alpha billboards' OIT pipeline");
+    }
+
+    /// [`Renderer::warm`] makes the pipelines of a material the scene has
+    /// loaded and no instance draws yet: the first frame something is
+    /// spawned with a blended material compiles neither its lit pipeline
+    /// nor its order-independent one.
+    #[test]
+    #[ignore = "requires GPU"]
+    fn warming_makes_the_pipelines_of_loaded_materials_nothing_draws() {
+        let desc = RenderDesc {
+            width: 64,
+            height: 64,
+            ..Default::default()
+        };
+        let mut renderer = Renderer::new_blocking(&desc).expect("renderer");
+        let mut scene = RenderScene::new();
+        scene.frame.camera = Camera {
+            position: Vec3::new(0.0, 0.0, 4.0),
+            target: Vec3::ZERO,
+            ..Default::default()
+        };
+        // Loaded, drawn by nothing yet: no instance at all, as while the
+        // game's first model still loads.
+        scene.add_mesh(shapes::plane_xy(1.0, 1.0));
+        scene.add_standard_material(StandardMaterial {
+            transparent: 1,
+            opacity: 0.5,
+            ..Default::default()
+        });
+        renderer
+            .render(&scene, &RenderTarget::Offscreen)
+            .expect("render");
+        let blended = |r: &Renderer| r.lit.pbr_pipelines.keys().any(|&(_, blend, ..)| blend);
+        let oit = |r: &Renderer| {
+            r.oit
+                .pipelines
+                .keys()
+                .any(|&(source, ..)| matches!(source, crate::oit::Source::Lit(..)))
+        };
+        assert!(!blended(&renderer), "no frame drew the blended material");
+        assert!(!oit(&renderer), "nor its OIT pipeline");
+        while renderer.warm() {}
+        assert!(blended(&renderer), "warming made its lit pipeline");
+        let lists = renderer
+            .info
+            .caps
+            .contains(crate::Caps::MRT | crate::Caps::INDEPENDENT_BLEND);
+        assert_eq!(oit(&renderer), lists, "and its OIT one where OIT runs");
     }
 }

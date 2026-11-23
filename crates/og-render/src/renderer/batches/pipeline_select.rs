@@ -154,6 +154,63 @@ impl Renderer {
         varying || once || shadows
     }
 
+    /// Makes the pipelines of one loaded material's batch
+    /// ([`Renderer::loaded_batches`]) that no frame has made: its lit,
+    /// prepass and shadow ones and, blended, its order-independent one in
+    /// the mode a frame of this size runs. False when none is left
+    /// ([`Renderer::warm`]): something spawned with a material the game
+    /// loaded at start then draws its first frame without compiling.
+    pub(crate) fn warm_loaded_materials(&mut self) -> bool {
+        let (read, loaded, prepass) = std::mem::take(&mut self.loaded);
+        let samples = self.samples;
+        let oit = self.info.caps.contains(Caps::MRT | Caps::INDEPENDENT_BLEND);
+        let mode = loaded
+            .iter()
+            .any(|b| b.transparent && b.blend)
+            .then(|| {
+                oit.then(|| {
+                    self.oit
+                        .frame_mode(&self.device, &self.queue, self.width, self.height)
+                })
+            })
+            .flatten();
+        let mut made = false;
+        for b in &loaded {
+            let lit = !self
+                .pipeline_jobs(std::slice::from_ref(b), &[], prepass)
+                .is_empty();
+            let physical = b.physical && self.lit.physical.is_some();
+            let source = Self::oit_lit_source(b, false, physical);
+            let blended = mode.filter(|_| b.transparent && b.blend).filter(|&m| {
+                let modes: &[oit::Oit] = if m == oit::Oit::Front {
+                    &[oit::Oit::Front, oit::Oit::Mark]
+                } else {
+                    &[m]
+                };
+                (modes.iter()).any(|&m| !self.oit.pipelines.contains_key(&(source, m, samples)))
+            });
+            if lit {
+                self.ensure_pipelines_now(std::slice::from_ref(b), &[], prepass);
+            }
+            if let Some(m) = blended {
+                self.ensure_oit_pipelines(
+                    m,
+                    std::slice::from_ref(b),
+                    &[],
+                    &[],
+                    false,
+                    (false, false),
+                );
+            }
+            if lit || blended.is_some() {
+                made = true;
+                break;
+            }
+        }
+        self.loaded = (read, loaded, prepass);
+        made
+    }
+
     fn ensure_pipelines_now(&mut self, batches: &[Batch], skinned: &[Batch], prepass: bool) {
         let local = self.info.shadowed_lights > 0;
         let (features, declared) = (self.frame_features, self.lit.pbr_shader.declared);
