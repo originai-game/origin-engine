@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "StarRating",
+      "summary": "`size: \"lg\"` draws a result's grade as the puzzle summary does: 78 px stars (52 on a phone), the middle of three raised and 100 px, unearned ones dim. `class` places the row, after its own classes. md, 32 px stars in a line, stays the default."
+    }
+  ]
+}

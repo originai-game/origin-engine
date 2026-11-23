@@ -829,9 +829,9 @@ test("every built-in full-screen screen fills a game's 390x844 column and takes 
 // all stacked at the lane's left edge); Carousel's Next arrow, which had no
 // size and drew nothing; Shop's Featured tag, which must sit on the art,
 // not on the offer's name.
-test("level path roads meet their discs, the carousel's Next arrow shows, the shop's Featured tag sits on its art", async () => {
+test("level path roads meet their discs, the carousel's Next arrow shows, the shop's Featured tag sits on its art, StarRating's lg grade", async () => {
   const dir = mkdtempSync(join(tmpdir(), "og-tsx-parts-"));
-  const parts = ["puzzle/level-path", "panels/carousel", "meta/shop"];
+  const parts = ["puzzle/level-path", "panels/carousel", "meta/shop", "../screens/star-rating"];
   try {
     writeFileSync(join(dir, "project.ogt"), "type project\nversion 1\n---\n");
     const src = (n: string) => fileURLToPath(new URL(`../src/ui/components/${n}.tsx`, import.meta.url));
@@ -845,7 +845,7 @@ test("level path roads meet their discs, the carousel's Next arrow shows, the sh
     const mods = (await import(out)) as Record<string, Record<string, unknown>>;
     loadNativeHost();
     type El = { id: string; parent: string; name: string; role: string; text: string; path: string; x: number; y: number; width: number; height: number };
-    const frameOf = (i: number, fixture: string, patch: (p: Record<string, unknown>) => Record<string, unknown> = (p) => p) => {
+    const frameOf = (i: number, fixture: string, patch: (p: Record<string, unknown>) => Record<string, unknown> = (p) => p, frames = 3) => {
       const mod = mods[`P${i}`]!;
       const Part = Object.entries(mod).find(([k, v]) => /^[A-Z]/.test(k) && typeof v === "function")![1] as (p: unknown) => never;
       const props = patch((mod.fixtures as Record<string, Record<string, unknown>>)[fixture]!);
@@ -855,7 +855,7 @@ test("level path roads meet their discs, the carousel's Next arrow shows, the sh
       const engine = created.value;
       const id = (engine.world as unknown as { id: number }).id;
       try {
-        for (let n = 0; n < 3; n++) engine.frame(1000 / 60);
+        for (let n = 0; n < frames; n++) engine.frame(1000 / 60);
         return (JSON.parse(native().og_node_ui_frame(id)) as { elements: El[] }).elements;
       } finally {
         renderers.delete(id);
@@ -898,6 +898,19 @@ test("level path roads meet their discs, the carousel's Next arrow shows, the sh
     expect(well("Potion Pack")).toContainEqual([0, 0, box.width, 96]);
     expect(well("Potion Pack").some(([, , w, h]) => w === 48 && h === 48)).toBe(false);
     expect(well("Map of the Reaches").some(([, , w, h]) => w === 48 && h === 48)).toBe(true);
+
+    // StarRating's lg is a result's grade: larger than md's 32 px, the middle of three the largest and raised.
+    const stars = (fixture: string) => {
+      // After the pop entrances (each delayed by its index): the row is the mount's column's child.
+      const f = frameOf(3, fixture, (p) => p, 90);
+      const row = f.find((e) => e.path.split("/").length === 3)!;
+      return f.filter((e) => e.parent === row.id).map((e) => [e.width, e.y + e.height]);
+    };
+    expect(stars("default").map(([w]) => w)).toEqual([32, 32, 32]);
+    const [side, mid, end] = stars("large") as [number[], number[], number[]];
+    expect(side[0]! > 32 && mid[0]! > side[0]! && end[0] === side[0]).toBe(true);
+    expect(end[1]).toBe(side[1]!);
+    expect(mid[1]! < side[1]!).toBe(true);
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }

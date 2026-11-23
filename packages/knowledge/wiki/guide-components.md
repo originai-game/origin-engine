@@ -4882,8 +4882,10 @@ A row of rating stars, each lit once it is earned. The style draws the stars as 
 |---|---|---|
 | `stars` | `ReadonlyArray<{ id: string; index: number; lit: boolean }>` | A keyed collection of { id, index (0 first), lit }: one star each; a lit star is earned and drawn filled. |
 | `label` | `string` | What it says to a screen reader (2 of 3 stars). |
+| `size?` | `"md" \| "lg"` | md (the default): 32 px stars in a line. lg: a result's grade, 78 px stars (52 on a phone) with the middle of three raised and larger, as the puzzle summary draws them. |
+| `class?` | `string \| undefined` | Classes after the row's own (a placement, a margin). |
 
-Fixtures: `default`, `none`, `all`.
+Fixtures: `default`, `none`, `large`, `all`.
 
 <a id="guide-components-210"></a>
 ### `components §210` Subtitles
