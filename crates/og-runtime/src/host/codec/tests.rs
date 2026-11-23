@@ -12,6 +12,7 @@ fn field(
         column,
         default,
         readonly: false,
+        weak: false,
         tunable: false,
         min: None,
         max: None,
