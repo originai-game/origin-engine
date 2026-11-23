@@ -72,6 +72,7 @@ export function SettingsScreen(props: SettingsScreenProps) {
               <For each={props.pages}>
                 {(p) => (
                 <View class={`text-fg-muted transition duration-317 data-selected:text-fg data-selected:bg-none data-selected:bg-raised-hover-lo hover:bg-surface-hover compact:text-base`} role="tab" tabIndex={0} selected={props.page === p().id} label={p().name} onPress={(e) => props.onPage?.(e, p().id)}>
+                  <Show when={props.page === p().id}><View class={`absolute inset-x-2 bottom-0 h-0.75 rounded-capsule bg-accent pointer-events-none ${packClass("Tab", "indicator")}`} /></Show>
                   <Text>{p().name}</Text>
                 </View>
                 )}

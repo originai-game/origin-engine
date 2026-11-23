@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {
+      "member": "og.ui",
+      "summary": "A control drawn disabled that becomes enabled plays the pack's new Attention.cue slot once (animate-nudge in the default pack: a swell to 1.08x and back over 420 ms), over its own motion; reduced motion skips the swell. animate-nudge is a new keyframe class."
+    }
+  ]
+}

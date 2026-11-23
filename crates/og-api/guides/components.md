@@ -574,7 +574,7 @@ The card library of a deck builder: a heading, filter tabs and a grid of cards t
 | `onTabNext?` | `(e: UiEvent, key?: string) => void` | The tabNext event, with the row's key where it comes from a row. |
 | `onTabPrev?` | `(e: UiEvent, key?: string) => void` | The tabPrev event, with the row's key where it comes from a row. |
 
-Pack slots: `Chip.frame`, `Panel.frame`.
+Pack slots: `Chip.frame`, `Panel.frame`, `Tab.indicator`.
 
 Fixtures: `default`, `empty`.
 
@@ -809,6 +809,8 @@ One bar of a HUD, a block a plate is built from: it fills to value over max in i
 | `showValue?` | `boolean` | Its figure, value over max, upright over the bar; for a bar thick enough to hold a line of text. |
 | `name?` | `string` | What a screen reader calls it; empty is its kind (Health, Mana, Stamina, Experience). |
 
+Pack slots: `Bar.fill`, `Bar.trail`.
+
 Fixtures: `default`, `mana`, `cells`, `shield`, `figure`, `low`, `empty`, `overflow`.
 
 ## 33. BossBar
@@ -850,7 +852,7 @@ Each `BossBarWeakness`:
 | `icon?` | `Texture \| 0` | A texture (og.load.texture); 0 draws the glyph in its place. |
 | `glyph?` | `string` | An icon name, in art's place. |
 
-Pack slots: `Plate.frame`.
+Pack slots: `Bar.fill`, `Bar.trail`, `Plate.frame`.
 
 Fixtures: `default`, `critical`, `invulnerable`, `defeated`, `loading`, `overflow`.
 
@@ -1250,7 +1252,7 @@ A bar fills the width its container gives it: a caption over it at the start and
 | `indeterminate?` | `boolean` | Working with no known value: a band sweeps along the track. |
 | `tone?` | `string` | The fill's tone: primary (empty), success, warn, danger or info. |
 
-Pack slots: `Plate.frame`.
+Pack slots: `Bar.fill`, `Plate.frame`.
 
 Fixtures: `default`, `indeterminate`, `success`, `danger`.
 
@@ -1435,6 +1437,8 @@ A stat with its bar: the icon and label before a leaning well that fills to valu
 | `bare?` | `boolean` | No HUD plate behind it. |
 | `name?` | `string` | What a screen reader calls it; empty is the label, else Health. |
 
+Pack slots: `Bar.fill`.
+
 Fixtures: `default`.
 
 ## 63. StatusGrid
@@ -1576,7 +1580,7 @@ The upgrade shop of an idle game: a ×1 / ×10 / ×100 / Max choice of how many 
 | `onBuy?` | `(e: UiEvent, key?: string) => void` | The buy event, with the row's key where it comes from a row. |
 | `onChooseamount?` | `(e: UiEvent, key?: string) => void` | The chooseamount event, with the row's key where it comes from a row. |
 
-Pack slots: `Button.plate.primary`, `Chip.frame`, `Panel.frame`, `Row.frame`, `Slot.frame`.
+Pack slots: `Button.plate.primary`, `Chip.frame`, `Panel.frame`, `Row.frame`, `Slot.frame`, `Tab.indicator`.
 
 Fixtures: `default`, `max`, `disabled`, `maxed`, `empty`, `overflow`.
 
@@ -1882,7 +1886,7 @@ A storefront: a band with a kicker over the title and the player's balances as c
 | `onTabNext?` | `(e: UiEvent, key?: string) => void` | The tabNext event, with the row's key where it comes from a row. |
 | `onTabPrev?` | `(e: UiEvent, key?: string) => void` | The tabPrev event, with the row's key where it comes from a row. |
 
-Pack slots: `Chip.frame`, `Count.roll`, `List.cascade`, `List.item`.
+Pack slots: `Chip.frame`, `Count.roll`, `List.cascade`, `List.item`, `Tab.indicator`.
 
 Fixtures: `default`, `empty`, `loading`, `error`, `overflow`.
 
@@ -1914,7 +1918,7 @@ Dropped from the .svelte: the load bar's lean (skew is not a class the record dr
 | `onTabPrev?` | `(e: UiEvent, key?: string) => void` | The tabPrev event, with the row's key where it comes from a row. |
 | `onMove?` | `(e: UiEvent, move: { dragged: string; target: string }) => void` | A tile dropped on another: the dragged item's key and the target's. A locked tile is not picked up; the dragged tile goes home, and the game reorders, swaps or stacks as it sees fit. |
 
-Pack slots: `Chip.frame`, `Panel.frame`, `Slot.frame`.
+Pack slots: `Chip.frame`, `Panel.frame`, `Slot.frame`, `Tab.indicator`.
 
 Fixtures: `default`, `empty`, `over`, `overflow`.
 
@@ -2982,7 +2986,7 @@ The menu's top bar: its screens as tabs and a close button. Reports choose (a sc
 | `onTabNext?` | `(e: UiEvent) => void` | Next screen. |
 | `onClose?` | `(e: UiEvent) => void` | Close (the button, Escape or B). |
 
-Pack slots: `Button.plate`.
+Pack slots: `Button.plate`, `Tab.indicator`.
 
 Fixtures: `default`.
 
@@ -3999,6 +4003,8 @@ A track whose fill wears its value's region: good, middling or poor.
 | `class?` | `string \| undefined` |  |
 | `label?` | `string \| undefined` |  |
 
+Pack slots: `Bar.fill`.
+
 Fixtures: `optimum`, `suboptimum`, `poor`.
 
 ## 180. Progress
@@ -4012,6 +4018,8 @@ A track filled to its value: a capsule well and its fill, which eases as the val
 | `value` | `number` | Done, 0 to 1. |
 | `class?` | `string \| undefined` | Classes of the document that uses it, after its own. |
 | `label?` | `string \| undefined` |  |
+
+Pack slots: `Bar.fill`.
 
 Fixtures: `empty`, `third`, `full`.
 
@@ -4608,7 +4616,7 @@ After a match: the verdict set large in a lit fill (gold for a win, red for a lo
 | `onReplay?` | `((e: UiEvent, key?: string) => void) \| undefined` | The replay event, with the row's key where it comes from a row. |
 | `onTab?` | `(e: UiEvent, value: string) => void` | The tab switched (onTab), the tab's value (summary, graphs or board). Without it no tab row is drawn, and the page shows `tab`. |
 
-Pack slots: `Button.plate`, `Button.plate.primary`, `Chip.frame`, `Count.roll`, `List.cascade`, `List.item`, `Panel.frame`, `Reward.pop`, `Screen.frame`.
+Pack slots: `Button.plate`, `Button.plate.primary`, `Chip.frame`, `Count.roll`, `List.cascade`, `List.item`, `Panel.frame`, `Reward.pop`, `Screen.frame`, `Tab.indicator`.
 
 Fixtures: `default`.
 
@@ -4663,7 +4671,7 @@ Settings: a tab per page and its entries (toggles, ranges, choices and key bindi
 | `onDefaults?` | `((e: UiEvent, key?: string) => void) \| undefined` | The defaults event, with the row's key where it comes from a row. |
 | `onRevert?` | `((e: UiEvent, key?: string) => void) \| undefined` | The revert event, with the row's key where it comes from a row. |
 
-Pack slots: `Button.plate`, `Button.plate.primary`, `Row.frame`, `Screen.frame`.
+Pack slots: `Button.plate`, `Button.plate.primary`, `Row.frame`, `Screen.frame`, `Tab.indicator`.
 
 Fixtures: `default`.
 

@@ -93,13 +93,13 @@ export function Shop(props: ShopProps) {
               <For each={props.tabs}>
                 {(c) => (
                 <View class={`flex-row items-center justify-center group/tab text-fg-muted transition duration-317 min-h-11 min-w-11 py-0 px-2 gap-1 data-selected:text-fg`} role="tab" selected={c().id === props.tab} label={c().label} onPress={(e) => props.onChoosetab?.(e, c().id)} data-selected={c().id === props.tab}>
+                  <Show when={c().id === props.tab}><View class={`absolute inset-x-1 bottom-0 h-0.75 bg-hud-accent shadow-glow pointer-events-none ${packClass("Tab", "indicator")}`} /></Show>
                   <Text class="whitespace-nowrap">{c().label}</Text>
                   <Show when={c().count > 0}>
                     <Text class={`text-xs font-bold text-fg-subtle py-0 px-1 rounded-capsule group-data-selected/tab:bg-none group-data-selected/tab:bg-hud-accent group-data-selected/tab:text-hud-accent-fg ${packClass("Chip", "frame")}`}>
                       {formatNumber(c().count)}
                     </Text>
                   </Show>
-                  <Text class="absolute bottom-0 h-0.75 bg-hud-accent shadow-glow opacity-0 inset-x-1 group-data-selected/tab:opacity-100" />
                 </View>
                 )}
               </For>

@@ -1,4 +1,4 @@
-import { For, Icon, Show, Text, View, t } from "@origingame/engine/ui";
+import { For, Icon, Show, Text, View, t, packClass } from "@origingame/engine/ui";
 import "./stat-bar.en.ogt";
 
 export interface StatBarProps {
@@ -87,7 +87,7 @@ export function StatBar(props: StatBarProps) {
           <Show when={(props.heal ?? 0) > 0}>
             <View class="absolute left-0 top-0 h-full bg-success" style={{ width: `${Math.min((props.value + (props.heal ?? 0)) / max(), 1) * 100}%` }} />
           </Show>
-          <View class="absolute left-0 top-0 h-full bg-health inset-shadow-lit transition-layout duration-180 ease-out group-data-mana/stat:bg-mana group-data-stamina/stat:bg-success group-data-xp/stat:bg-xp group-data-low/stat:bg-warn group-data-critical/stat:bg-critical" style={{ width: `${fraction() * 100}%` }} />
+          <View class={`absolute left-0 top-0 h-full bg-health inset-shadow-lit ${packClass("Bar", "fill")} group-data-mana/stat:bg-mana group-data-stamina/stat:bg-success group-data-xp/stat:bg-xp group-data-low/stat:bg-warn group-data-critical/stat:bg-critical`} style={{ width: `${fraction() * 100}%` }} />
           <Show when={(props.shieldMax ?? 0) > 0 && (props.shield ?? 0) > 0}>
             <View class="absolute left-0 top-0 w-full h-17/50 bg-info" style={{ width: `${Math.min((props.shield ?? 0) / (props.shieldMax ?? 1), 1) * 100}%` }} />
           </Show>

@@ -1,4 +1,4 @@
-import { View } from "@origingame/engine/ui";
+import { View, packClass } from "@origingame/engine/ui";
 
 export interface ProgressProps {
   /** Done, 0 to 1. */
@@ -14,7 +14,7 @@ export function Progress(props: ProgressProps) {
   return (
     <View role="progressbar" label={props.label} class={`w-full h-2 overflow-hidden rounded-capsule bg-fill-strong shadow-sunk ${props.class ?? ""}`}>
       <View
-        class={`h-full min-w-2 rounded-capsule bg-accent inset-shadow-lit transition-layout duration-180 ease-out data-empty:hidden`}
+        class={`h-full min-w-2 rounded-capsule bg-accent inset-shadow-lit ${packClass("Bar", "fill")} data-empty:hidden`}
         data-empty={fraction() <= 0}
         style={{ width: `${fraction() * 100}%` }}
       />

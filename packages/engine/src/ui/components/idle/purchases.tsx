@@ -39,6 +39,7 @@ export function IdlePurchases(props: IdlePurchasesProps) {
             <For each={props.amounts}>
               {(a) => (
               <View class={`flex-row items-center justify-center gap-1 min-h-11 min-w-11 text-fg-muted py-0 px-2 rounded-control compact:min-w-0 compact:grow compact:shrink compact:basis-0 data-checked:bg-surface-hover data-checked:text-fg data-checked:inset-shadow-lit`} role="radio" onPress={(e) => props.onChooseamount?.(e, a().id)} data-checked={a().id === props.amount}>
+                <Show when={a().id === props.amount}><View class={`absolute inset-x-2 bottom-0 h-0.75 rounded-capsule bg-accent pointer-events-none ${packClass("Tab", "indicator")}`} /></Show>
                 <Text>{a().label ? a().label : a().id === 'max' ? t("idle.purchases.max") : t("idle.purchases.times", { count: a().id })}</Text>
               </View>
               )}

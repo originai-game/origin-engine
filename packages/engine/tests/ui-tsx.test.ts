@@ -1039,7 +1039,7 @@ test("no built-in component or pack restates its spacing or size under an intera
 test("BossBar's ghost is a light colour of its own, not the fill's", () => {
   const src = readFileSync(fileURLToPath(new URL("../src/ui/components/hud/boss-bar.tsx", import.meta.url)), "utf8");
   const colours = (cls: string) => [...cls.matchAll(/(?<![\w-])(?:bg|from|via|to)-([a-z-]+)/g)].map((m) => m[1]).filter((c) => !["linear-to-r", "linear-to-b", "none", "transparent"].includes(c!));
-  const ghost = src.match(/class="([^"]*)" data-ghost/)![1]!;
+  const ghost = src.match(/class=(?:"([^"]*)"|\{`([^`]*)`\}) data-ghost/)!.slice(1).find((c) => c !== undefined)!;
   const fill = src.match(/class=\{`([^`]*from-legendary[^`]*)`\}/)![1]!;
   expect(colours(ghost)).toEqual(["fg"]);
   expect(colours(fill).filter((c) => colours(ghost).includes(c))).toEqual([]);

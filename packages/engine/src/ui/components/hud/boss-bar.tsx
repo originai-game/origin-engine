@@ -105,9 +105,9 @@ export function BossBar(props: BossBarProps) {
             data-inv={invulnerable()}
             data-critical={critical()}
           >
-            <View class="absolute left-0 top-0 h-full bg-fg transition-layout duration-350 delay-450 ease-out" data-ghost style={{ width: `${ghost() * 100}%` }} />
+            <View class={`absolute left-0 top-0 h-full bg-fg ${packClass("Bar", "trail")}`} data-ghost style={{ width: `${ghost() * 100}%` }} />
             <View
-              class={`absolute left-0 top-0 h-full bg-linear-to-r from-legendary to-legendary shadow-glow shadow-late transition-layout duration-350 ease-out group-data-inv/health:bg-none group-data-inv/health:bg-fg-subtle group-data-inv/health:shadow-none`}
+              class={`absolute left-0 top-0 h-full bg-linear-to-r from-legendary to-legendary shadow-glow shadow-late ${packClass("Bar", "fill")} group-data-inv/health:bg-none group-data-inv/health:bg-fg-subtle group-data-inv/health:shadow-none`}
               style={{ width: `${share() * 100}%` }}
             >
               <View class="absolute inset-0 bg-linear-to-b from-sheen to-transparent to-42% group-data-inv/health:hidden" />

@@ -1,4 +1,4 @@
-import { For, Show, Text, View, t } from "@origingame/engine/ui";
+import { For, Show, Text, View, t, packClass } from "@origingame/engine/ui";
 import "./bar.en.ogt";
 
 export interface HudBarProps {
@@ -54,8 +54,8 @@ export function HudBar(props: HudBarProps) {
       data-xp={(props.kind ?? "health") == "xp"}
       data-low={props.low}
     >
-      <View class="absolute left-0 top-0 h-full bg-linear-to-r from-gold to-gold transition-layout duration-350 delay-450 ease-out" style={{ width: `${ghost() * 100}%` }} />
-      <View class="absolute left-0 top-0 h-full bg-linear-to-b from-sheen to-transparent to-42% bg-foe shadow-glow shadow-foe group-data-mana/bar:bg-mana group-data-mana/bar:shadow-glow group-data-mana/bar:shadow-mana group-data-stamina/bar:bg-linear-to-b group-data-stamina/bar:from-sheen group-data-stamina/bar:to-transparent group-data-stamina/bar:to-42% group-data-stamina/bar:bg-gold group-data-stamina/bar:shadow-glow group-data-stamina/bar:shadow-gold group-data-shield/bar:bg-ally group-data-shield/bar:shadow-glow group-data-shield/bar:shadow-ally group-data-xp/bar:bg-linear-to-r group-data-xp/bar:from-xp group-data-xp/bar:to-xp group-data-xp/bar:shadow-glow group-data-xp/bar:shadow-xp group-data-low/bar:bg-linear-to-b group-data-low/bar:from-sheen group-data-low/bar:to-transparent group-data-low/bar:to-42% group-data-low/bar:bg-critical group-data-low/bar:shadow-glow group-data-low/bar:shadow-critical" style={{ width: `${value() * 100}%` }} />
+      <View class={`absolute left-0 top-0 h-full bg-linear-to-r from-gold to-gold ${packClass("Bar", "trail")}`} style={{ width: `${ghost() * 100}%` }} />
+      <View class={`${packClass("Bar", "fill")} absolute left-0 top-0 h-full bg-linear-to-b from-sheen to-transparent to-42% bg-foe shadow-glow shadow-foe group-data-mana/bar:bg-mana group-data-mana/bar:shadow-glow group-data-mana/bar:shadow-mana group-data-stamina/bar:bg-linear-to-b group-data-stamina/bar:from-sheen group-data-stamina/bar:to-transparent group-data-stamina/bar:to-42% group-data-stamina/bar:bg-gold group-data-stamina/bar:shadow-glow group-data-stamina/bar:shadow-gold group-data-shield/bar:bg-ally group-data-shield/bar:shadow-glow group-data-shield/bar:shadow-ally group-data-xp/bar:bg-linear-to-r group-data-xp/bar:from-xp group-data-xp/bar:to-xp group-data-xp/bar:shadow-glow group-data-xp/bar:shadow-xp group-data-low/bar:bg-linear-to-b group-data-low/bar:from-sheen group-data-low/bar:to-transparent group-data-low/bar:to-42% group-data-low/bar:bg-critical group-data-low/bar:shadow-glow group-data-low/bar:shadow-critical`} style={{ width: `${value() * 100}%` }} />
       <Show when={(props.segment ?? 0) > 0 && (props.max ?? 1) > 0}>
         <For each={Array.from({ length: Math.max(Math.ceil(cells()) - 1, 0) }, (_, i) => i)}>
           {(i) => <View class="absolute top-0 bottom-0 w-0.75 bg-glass -translate-x-full" style={{ left: `${((i() + 1) / cells()) * 100}%` }} />}
