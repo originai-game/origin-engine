@@ -148,9 +148,23 @@ entry of `.config/nextest.toml`. Include headroom in that measured budget;
 clouds, particles and other undeclared cases must not inherit a small
 budget. Other GPU callers may pass their measured MiB budget as the second
 argument to `og_gpu_acquire`; omitting it reserves the whole adapter.
-`OG_GPU_SLOTS` overrides the credit capacity for lock tests, not a process
-count. `OG_GATE_THREADS` controls CPU nextest concurrency; GPU nextest uses
+`OG_GPU_SLOTS` overrides the credit capacity, not a process count.
+`OG_GATE_THREADS` controls CPU nextest concurrency; GPU nextest uses
 the adapter-sized credit pool instead. Timing runs still reserve it all.
+
+Compatibility hosts without `nvidia-smi` must set `OG_GPU_SLOTS` in their
+gate environment to a measured usable GPU-memory budget, rounded down to
+GiB; otherwise the safe fallback is one credit. On macrunner (Metal,
+unified memory), read physical bytes with `sysctl -n hw.memsize` and reserve
+memory for macOS and CPU work: start with at most half of physical memory,
+then lower it if the measured workload needs more headroom. On studio-win,
+use the selected adapter's dedicated memory reported by DXGI (or the
+Vulkan device-local heap), not system RAM; `Win32_VideoController.AdapterRAM`
+is only 32 bits and cannot represent modern large adapters. For example,
+a validated 12 GiB usable budget means `OG_GPU_SLOTS=12`, not twelve tests.
+Do not carry forward the former value of six as a concurrency setting.
+Undeclared heavy work remains serial intentionally; a larger capacity only
+allows measured smaller test reservations to share the adapter.
 
 `scripts/gpu-env.sh` holds the Vulkan/NVIDIA pins and sets no gate
 overrides, so it can also be sourced for landing (`scripts/release.sh`
