@@ -1,0 +1,13 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "emissive texture warning",
+      "summary": "The cook's \"albedo baked into emission\" warning no longer flags painted glow maps. With a base-colour map of the same size beside it, an emissive map is flagged only when it glows on at least half its texels and repeats the base colour there; glowing lines, seams and veins over a surface of another colour are not. Without one, the mean-luminance rule is unchanged."
+    },
+    {
+      "member": "og model measure colours",
+      "summary": "A model program's painted surface counts the palette it was mixed from (each part's colour, each layer's colour and emission) against the look's `ArtPalette.maxColors`, not every shaded texel of its maps, so a textured prop no longer reports `overColours` by thousands."
+    }
+  ]
+}

@@ -480,6 +480,23 @@ pub fn paint_scene(scene: &Scene, d: &Paint, codec: &Codec) -> Result<Option<Pai
         images[3][px + 3] = 255;
     }
     let (level, layers) = dilation(&filled, n, 0);
+    // The colours the maps were mixed from, sRGB, each once.
+    let byte = |c: f64| (c.clamp(0.0, 1.0) * 255.0 + 0.5).floor() as u8;
+    let mut palette = std::collections::BTreeSet::new();
+    for &k in &taken {
+        let m = &scene.parts[k].material;
+        let c = m.color.unwrap_or([1.0; 3]);
+        let c = match m.color_space {
+            ColorSpace::Srgb => c,
+            ColorSpace::Linear => c.map(crate::tools::sampler::to_srgb),
+        };
+        palette.insert(c.map(byte));
+        for l in m.surface.iter().flat_map(|s| &s.layers) {
+            for c in l.color.iter().chain(l.emissive.iter()) {
+                palette.insert(c.map(byte));
+            }
+        }
+    }
     let first = &scene.parts[taken[0]].material;
     let mut material = Material {
         name: if first.name.is_empty() {
@@ -501,6 +518,7 @@ pub fn paint_scene(scene: &Scene, d: &Paint, codec: &Codec) -> Result<Option<Pai
         ao_map: None,
         ao_map_intensity: None,
         surface: None,
+        painted_from: Some(palette.into_iter().collect()),
         ..first.clone()
     };
     let mut report = PaintReport {

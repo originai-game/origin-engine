@@ -292,6 +292,7 @@ fn a_material_and_colours_survive_both_glb_writers() {
         transmission: 0.375,
         iridescence: 0.625,
         surface: None,
+        painted_from: None,
     };
     let mut part = Part::new("ball", &s);
     part.material = m.clone();

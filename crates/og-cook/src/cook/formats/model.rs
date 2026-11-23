@@ -133,8 +133,35 @@ pub struct GltfSource {
 impl GltfSource {
     /// A neutral, full-strength emissive map may contain accidental albedo.
     /// glTF emissive RGB is sRGB; luminance is measured in linear light.
+    /// With a base-colour map of the same size beside it, albedo baked into
+    /// emission is emission that repeats the base colour: the map is
+    /// flagged when it glows on at least half its texels and repeats the
+    /// base colour (within 8 %) on at least half of those. A painted glow
+    /// map (lines, seams, veins over a surface of their own colour) is not.
+    /// Without one, a mean linear luminance above 0.01 is flagged.
     pub(crate) fn emissive_warnings(&self) -> Result<Vec<String>, String> {
-        let mut means = std::collections::BTreeMap::new();
+        let linear: [f64; 256] = std::array::from_fn(|v| {
+            let s = v as f64 / 255.0;
+            if s <= 0.04045 {
+                s / 12.92
+            } else {
+                ((s + 0.055) / 1.055).powf(2.4)
+            }
+        });
+        let lum = |p: &[u8; 4]| {
+            0.2126 * linear[p[0] as usize]
+                + 0.7152 * linear[p[1] as usize]
+                + 0.0722 * linear[p[2] as usize]
+        };
+        let mut decoded = std::collections::BTreeMap::new();
+        let mut image = |index: usize| -> Result<std::rc::Rc<super::texture::Image>, String> {
+            if let Some(i) = decoded.get(&index) {
+                return Ok(std::rc::Rc::clone(i));
+            }
+            let i = std::rc::Rc::new(super::texture::decode(&self.images[index])?);
+            decoded.insert(index, std::rc::Rc::clone(&i));
+            Ok(i)
+        };
         let mut notes = Vec::new();
         for material in self.doc.materials() {
             if material.emissive_factor() != [1.0; 3] {
@@ -144,34 +171,35 @@ impl GltfSource {
                 continue;
             };
             let index = texture.texture().source().index();
-            let mean = match means.entry(index) {
-                std::collections::btree_map::Entry::Occupied(e) => *e.get(),
-                std::collections::btree_map::Entry::Vacant(e) => {
-                    let image = super::texture::decode(&self.images[index])?;
-                    let linear: [f64; 256] = std::array::from_fn(|v| {
-                        let s = v as f64 / 255.0;
-                        if s <= 0.04045 {
-                            s / 12.92
-                        } else {
-                            ((s + 0.055) / 1.055).powf(2.4)
-                        }
-                    });
-                    let sum: f64 = image
-                        .rgba
-                        .as_chunks::<4>()
-                        .0
+            let glow = image(index)?;
+            let px = glow.rgba.as_chunks::<4>().0;
+            let mean =
+                px.iter().map(&lum).sum::<f64>() / (f64::from(glow.width) * f64::from(glow.height));
+            let base = material
+                .pbr_metallic_roughness()
+                .base_color_texture()
+                .map(|t| image(t.texture().source().index()))
+                .transpose()?
+                .filter(|b| b.width == glow.width && b.height == glow.height);
+            let flagged = match &base {
+                None => mean > 0.01,
+                Some(b) => {
+                    let lit: Vec<usize> = (0..px.len()).filter(|&i| lum(&px[i]) > 0.01).collect();
+                    let bp = b.rgba.as_chunks::<4>().0;
+                    let same = lit
                         .iter()
-                        .map(|p| {
-                            0.2126 * linear[p[0] as usize]
-                                + 0.7152 * linear[p[1] as usize]
-                                + 0.0722 * linear[p[2] as usize]
-                        })
-                        .sum();
-                    *e.insert(sum / (f64::from(image.width) * f64::from(image.height)))
+                        .filter(|&&i| (0..3).all(|c| px[i][c].abs_diff(bp[i][c]) <= 20))
+                        .count();
+                    lit.len() * 2 >= px.len() && same * 2 >= lit.len().max(1)
                 }
             };
-            if mean > 0.01 {
-                notes.push(format!("warning: emissive texture: material {} '{}': emissive factor [1, 1, 1], image {index} mean linear luminance {mean:.5} >0.01; check for albedo baked into emission (no automatic change)", material.index().unwrap(), material.name().unwrap_or("")));
+            if flagged {
+                let why = if base.is_some() {
+                    "it repeats the base colour over most of the map"
+                } else {
+                    ">0.01"
+                };
+                notes.push(format!("warning: emissive texture: material {} '{}': emissive factor [1, 1, 1], image {index} mean linear luminance {mean:.5} {why}; check for albedo baked into emission (no automatic change)", material.index().unwrap(), material.name().unwrap_or("")));
             }
         }
         Ok(notes)

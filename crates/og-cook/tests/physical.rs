@@ -350,3 +350,69 @@ fn full_strength_emissive_texture_warns_on_mean_linear_luminance_only() {
         "warning never changes emission"
     );
 }
+
+/// With a base-colour map beside it, an emissive map is flagged for albedo
+/// only when it repeats the base colour over most of itself: a copy of the
+/// base colour warns, glowing lines over a surface of another colour (what
+/// a painted surface writes) do not, though their mean is above 0.01.
+#[test]
+fn an_emissive_map_warns_only_where_it_repeats_the_base_colour() {
+    use serde_json::json;
+    let root = PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join("og-cook-emissive-albedo");
+    let _ = std::fs::remove_dir_all(&root);
+    std::fs::create_dir_all(root.join("assets")).unwrap();
+    let png = |f: &dyn Fn(u32) -> [u8; 4]| {
+        let mut image = image::RgbaImage::new(128, 1);
+        for x in 0..128 {
+            image.put_pixel(x, 0, image::Rgba(f(x)));
+        }
+        let mut out = std::io::Cursor::new(Vec::new());
+        image.write_to(&mut out, image::ImageFormat::Png).unwrap();
+        out.into_inner()
+    };
+    let shade = |x: u32| [90 + x as u8, 120, 160, 255];
+    let lines = |x: u32| {
+        if x % 10 == 0 {
+            [40, 255, 255, 255]
+        } else {
+            [0, 0, 0, 255]
+        }
+    };
+    for (name, glow) in [
+        ("baked", &shade as &dyn Fn(u32) -> [u8; 4]),
+        ("lines", &lines),
+    ] {
+        let glb = physical_glb(&png(glow));
+        let glb = gltf::binary::Glb::from_slice(&glb).unwrap();
+        let mut doc: serde_json::Value = serde_json::from_slice(&glb.json).unwrap();
+        doc["extensionsUsed"] = json!([]);
+        doc["images"]
+            .as_array_mut()
+            .unwrap()
+            .push(json!({ "uri": format!("{name}-base.png") }));
+        doc["textures"]
+            .as_array_mut()
+            .unwrap()
+            .push(json!({ "source": 1 }));
+        doc["materials"] = json!([{
+            "name": "hull",
+            "emissiveFactor": [1.0, 1.0, 1.0],
+            "emissiveTexture": { "index": 0 },
+            "pbrMetallicRoughness": { "baseColorTexture": { "index": 1 } }
+        }, { "name": "plain" }]);
+        doc["buffers"][0]["uri"] = json!(format!("{name}.bin"));
+        std::fs::write(root.join(format!("assets/{name}.gltf")), doc.to_string()).unwrap();
+        std::fs::write(root.join(format!("assets/{name}.bin")), glb.bin.unwrap()).unwrap();
+        std::fs::write(root.join(format!("assets/{name}-base.png")), png(&shade)).unwrap();
+    }
+    let report = cook_project(&root, &CookOptions::default()).unwrap();
+    assert!(report.ok(), "{:?}", report.errors());
+    let flagged = |name: &str| {
+        report
+            .warnings
+            .iter()
+            .any(|w| w.contains(&format!("assets/{name}.gltf:")) && w.contains("emissive texture"))
+    };
+    assert!(flagged("baked"), "{:?}", report.warnings);
+    assert!(!flagged("lines"), "{:?}", report.warnings);
+}

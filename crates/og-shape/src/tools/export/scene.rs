@@ -94,6 +94,10 @@ pub struct Material {
     /// A procedural surface ([`crate::tools::paint`]): its layers cooked
     /// into the maps on a fresh atlas when the scene is painted.
     pub surface: Option<Box<crate::tools::paint::Surface>>,
+    /// A painted material's palette: the sRGB colours its maps were mixed
+    /// from (each part's colour, each layer's colour and emission), which
+    /// is what the look's colour budget counts for it, not its texels.
+    pub painted_from: Option<Vec<[u8; 3]>>,
 }
 
 /// The kinds of map a [`Material`] carries, in the order reports list

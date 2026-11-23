@@ -11,7 +11,8 @@
 //! Every report but `--posed` also carries the facts a prop pipeline reads, at its top
 //! level and in the GLB's frame ([`facts`]): `size` `[x, y, z]` in metres
 //! (+Y up), `triangles`, `vertices`, `partCount`, `colours` (distinct
-//! sRGB colours over untextured materials and every map's opaque texels)
+//! sRGB colours over untextured materials, every map's opaque texels, and
+//! a painted surface's palette instead of its texels)
 //! and `materials`. In a
 //! project whose look sets an art contract (read from its cooked look, as
 //! `og check` does), `look` adds how the model sits against it: each
@@ -144,6 +145,12 @@ pub fn facts(scene: &Scene, contract: Option<&crate::style_check::Contract>) -> 
     // each map's opaque texels (sRGB), as ArtPalette.maxColors counts.
     let mut colours = std::collections::BTreeSet::new();
     for p in &scene.parts {
+        // A painted map shows the palette it was mixed from (shaded, as
+        // a cel band shades a flat colour): those colours count.
+        if let Some(palette) = &p.material.painted_from {
+            colours.extend(palette.iter().copied());
+            continue;
+        }
         match p
             .material
             .map
@@ -393,6 +400,66 @@ mod tests {
     use super::*;
     use og_shape::generators::solids::{BoxDesc, cuboid};
     use og_shape::tools::{Material, Part};
+
+    /// A painted surface counts the colours it was mixed from against the
+    /// look's budget, not its texels (shaded, jittered, thousands of them):
+    /// a base colour and two layer colours are 3 of a budget of 4.
+    #[test]
+    fn a_painted_surface_counts_its_palette_not_its_texels() {
+        use og_shape::tools::{Layer, Paint, Pattern, Surface, paint_scene};
+        let s = cuboid(&BoxDesc {
+            width: 1000.0,
+            depth: 1000.0,
+            height: 400.0,
+        })
+        .unwrap();
+        let mut scene = Scene {
+            name: "plate".into(),
+            parts: vec![Part {
+                material: Material {
+                    name: "hull".into(),
+                    color: Some([0.5, 0.52, 0.56]),
+                    surface: Some(Box::new(Surface {
+                        density: 64.0,
+                        layers: vec![
+                            Layer {
+                                pattern: Pattern::Noise,
+                                scale: 0.3,
+                                jitter: 0.3,
+                                color: Some([0.2, 0.2, 0.25]),
+                                ..Default::default()
+                            },
+                            Layer {
+                                pattern: Pattern::Edges,
+                                width: 0.05,
+                                color: Some([0.9, 0.9, 0.9]),
+                                ..Default::default()
+                            },
+                        ],
+                        ..Default::default()
+                    })),
+                    ..Default::default()
+                },
+                ..Part::new("plate", &s)
+            }],
+        };
+        let painted = paint_scene(
+            &scene,
+            &Paint::default(),
+            &og_shape_formats::texture::decode::CODEC,
+        )
+        .unwrap()
+        .expect("painted");
+        painted.apply(&mut scene);
+        let contract = crate::style_check::Contract {
+            look: "looks/test.ogt".into(),
+            max_colors: 4,
+            ..Default::default()
+        };
+        let f = facts(&scene, Some(&contract));
+        assert_eq!(f["colours"], 3, "{f}");
+        assert_eq!(f["look"]["coloursRatio"], 0.75, "{f}");
+    }
 
     /// A box 1 m wide (x), 2 m deep (kernel y) and 3 m tall (kernel z) is
     /// [1, 3, 2] in the GLB's frame; its dark red base colour is nearest the
