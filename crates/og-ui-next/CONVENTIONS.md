@@ -667,8 +667,19 @@ head row: `bg-surface text-fg-muted`). `Focus.ring` is the one the tree
 writes itself: the ring a control shows while a keyboard or pad focuses
 it (`outline-2 outline-focus -outline-offset-2`, inside the box so a scroller or the screen edge never cuts it), as a browser's
 `:focus-visible` outline, unless the control's own classes read
-`focus-visible:` or draw an outline. A new slot is added here and to
-`design::SLOTS` before a component writes it.
+`focus-visible:` or draw an outline. `Press.feedback` is the other: the
+squash every enabled control a finger presses (a press or tap handler, or
+an action's `touchButton`) shows under `active:`, laid over its own
+transform, its transform in on the slot's `active:` curve and back on its
+spring while its colours keep their own transition (`Spec::transform`),
+unless the control's own classes move it under `active:`; a disabled
+control and a press catcher over a third of the surface (a screen's "tap to
+start") stay still. `Screen.frame` (a full-screen built-in's root:
+`starting:` and `exit:` from the enter and exit rows) and `Modal.frame` (a
+dialog's pop on the named spring) are written by components. The default
+pack derives all three from motion.css's timing table (`design::Timing`). A
+new slot is added here and to `design::SLOTS` before a component writes
+it.
 
 ### Grounds and inks
 

@@ -279,7 +279,22 @@ pub(crate) fn join(light: &Value, dark: &Value) -> Value {
 /// component's translucent or cleared fill under it is overruled. A row
 /// and a table head are opaque grounds with their inks for the same
 /// reason: the lists, tables and feeds that sit over the scene.
-pub const SLOTS: [(&str, &str, &str); 11] = [
+pub const SLOTS: [(&str, &str, &str); 14] = [
+    (
+        "Press.feedback",
+        "the squash a control that answers a press shows under it, unless its own classes move it under active (its default is the motion tokens': Timing::press)",
+        "",
+    ),
+    (
+        "Screen.frame",
+        "a full-screen built-in's root: how it enters and leaves (Timing::screen)",
+        "",
+    ),
+    (
+        "Modal.frame",
+        "a dialog or popup: how it pops in and leaves (Timing::modal)",
+        "",
+    ),
     (
         "Focus.ring",
         "the ring a control shows while a keyboard or pad focuses it, unless its own classes style focus-visible",
@@ -498,6 +513,115 @@ fn contrast(names: &[String]) -> [Value; 2] {
     })
 }
 
+/// The motion slots' defaults, from motion.css's timing table, so a pack
+/// restyles them by its tokens or its own `variants`.
+struct Timing<'a>(&'a Tokens);
+
+impl Timing<'_> {
+    fn num(&self, name: &str) -> f64 {
+        let v = self.0.get(name).unwrap_or_else(|| panic!("{name}"));
+        v.trim().parse().unwrap_or_else(|_| panic!("{name}: {v}"))
+    }
+
+    /// A duration in ms: its own (`50ms`) or the `--motion-duration-*` it names.
+    fn ms(&self, name: &str) -> f64 {
+        let ms = |v: &str| {
+            v.trim()
+                .strip_suffix("ms")
+                .and_then(|n| n.trim().parse::<f64>().ok())
+        };
+        let v = self.0.get(name).unwrap_or_else(|| panic!("{name}"));
+        ms(v)
+            .or_else(|| {
+                self.0
+                    .get(&format!("--motion-duration-{}", v.trim()))
+                    .and_then(ms)
+            })
+            .unwrap_or_else(|| panic!("{name}: {v} names no duration"))
+    }
+
+    /// A scale as a `scale-*` utility.
+    fn scale(&self, name: &str) -> String {
+        let s = self.num(name);
+        let pct = s * 100.0;
+        if (pct - pct.round()).abs() < 1e-6 {
+            format!("scale-{}", pct.round())
+        } else {
+            format!("scale-[{s}]")
+        }
+    }
+
+    /// NSH's `ease-spring-[stiffness,damping]` of a unit mass for a damping
+    /// ratio ζ and a response T in seconds: k = (2π/T)², c = 4πζ/T.
+    fn spring(zeta: f64, response: f64) -> String {
+        let tau = std::f64::consts::TAU;
+        let (k, c) = ((tau / response).powi(2), 2.0 * tau * zeta / response);
+        format!("ease-spring-[{},{}]", k.round(), (c * 10.0).round() / 10.0)
+    }
+
+    /// `Press.feedback`: the press scale (`--motion-scale-press`) under
+    /// `active:`, in over the press row's `in` on ease-out, and back on its
+    /// spring (its damping, its duration as the response).
+    fn press(&self) -> String {
+        let spring = Self::spring(
+            self.num("--motion-timing-press-damping"),
+            self.ms("--motion-timing-press-duration") / 1000.0,
+        );
+        format!(
+            "transition-transform {spring} active:{} active:duration-{} active:ease-out",
+            self.scale("--motion-scale-press"),
+            self.ms("--motion-timing-press-in")
+        )
+    }
+
+    /// `Screen.frame`: in from transparent at the enter scale on the enter
+    /// row, out to transparent at the exit scale on the exit row.
+    fn screen(&self) -> String {
+        let ease = |n: &str| {
+            self.0
+                .get(n)
+                .unwrap_or_else(|| panic!("{n}"))
+                .trim()
+                .to_owned()
+        };
+        format!(
+            "transition duration-{} ease-{} starting:opacity-0 starting:{} exit:opacity-0 exit:{} exit:duration-{} exit:ease-{}",
+            self.ms("--motion-timing-enter-duration"),
+            ease("--motion-timing-enter-easing"),
+            self.scale("--motion-timing-enter-scale"),
+            self.scale("--motion-timing-exit-scale"),
+            self.ms("--motion-timing-exit-duration"),
+            ease("--motion-timing-exit-easing"),
+        )
+    }
+
+    /// `Modal.frame`: a pop in from transparent at the pop scale on the
+    /// named transition's spring (its bounce b as damping 1 - b, its
+    /// duration as the response), out as a screen leaves.
+    fn modal(&self) -> String {
+        let named = self
+            .0
+            .get("--motion-timing-pop-transition")
+            .expect("pop transition");
+        let named = named.trim();
+        let spring = Self::spring(
+            1.0 - self.num(&format!("--motion-named-{named}-bounce")),
+            self.ms(&format!("--motion-named-{named}-duration")) / 1000.0,
+        );
+        let ease = self
+            .0
+            .get("--motion-timing-exit-easing")
+            .expect("exit easing")
+            .trim();
+        format!(
+            "transition {spring} starting:opacity-0 starting:{} exit:opacity-0 exit:{} exit:duration-{} exit:ease-{ease}",
+            self.scale("--motion-timing-pop-scale"),
+            self.scale("--motion-timing-exit-scale"),
+            self.ms("--motion-timing-exit-duration"),
+        )
+    }
+}
+
 /// `default/pack.json`: the design tokens as a pack.
 pub fn default_pack_json() -> String {
     let names = names(&FILES);
@@ -507,7 +631,16 @@ pub fn default_pack_json() -> String {
         "about": "The engine's default pack, generated from packages/design/tokens/*.css by crates/og-ui-next/scripts/gen-pack.sh; never edit it by hand. Theme names are the tokens' without their prefix: --color-fg-muted is the colour fg-muted, --radius-card the radius card, --font-scale-body-size the font size body.",
         "theme": join(&light, &dark),
         "contrast": join(&more_light, &more_dark),
-        "variants": SLOTS.iter().map(|(slot, _, dress)| (slot.to_string(), json!(dress))).collect::<Map<_, _>>(),
+        "variants": SLOTS.iter().map(|&(slot, _, dress)| {
+            let motion = &tables(&[MOTION], "")[0];
+            let dress = match slot {
+                "Press.feedback" => Timing(motion).press(),
+                "Screen.frame" => Timing(motion).screen(),
+                "Modal.frame" => Timing(motion).modal(),
+                _ => dress.to_owned(),
+            };
+            (slot.to_string(), json!(dress))
+        }).collect::<Map<_, _>>(),
         "images": shapes(),
         "icons": icons(),
     });

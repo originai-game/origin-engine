@@ -43,6 +43,9 @@ struct El {
     disabled: bool,
     /// It answers a press: an element with a press or tap handler.
     clickable: bool,
+    /// A press moves it: its own classes under `active:`, or the pack's
+    /// `Press.feedback` (`restyle`).
+    squash: bool,
     /// The renderer's id of the op node ([`ops`]).
     js: u32,
     /// An op node's events (bits by [`ops::Event`]) and its class entry.

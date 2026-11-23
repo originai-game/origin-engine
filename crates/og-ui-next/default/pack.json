@@ -1010,11 +1010,14 @@
     "Field.frame": "",
     "Focus.ring": "outline-2 outline-focus -outline-offset-2",
     "Head.frame": "bg-surface text-fg-muted",
+    "Modal.frame": "transition ease-spring-[146,16.9] starting:opacity-0 starting:scale-90 exit:opacity-0 exit:scale-98 exit:duration-180 exit:ease-exit",
     "Panel.frame": "",
     "Plate.frame": "bg-glass text-fg",
+    "Press.feedback": "transition-transform ease-spring-[2742,57.6] active:scale-96 active:duration-50 active:ease-out",
     "Row.frame": "bg-raised-lo text-fg",
     "Row.frame.muted": "bg-raised-lo text-fg-muted",
     "Row.frame.selected": "bg-surface-hover text-fg border-l-3 border-hud-accent",
+    "Screen.frame": "transition duration-240 ease-out starting:opacity-0 starting:scale-104 exit:opacity-0 exit:scale-98 exit:duration-180 exit:ease-exit",
     "Slot.frame": ""
   }
 }

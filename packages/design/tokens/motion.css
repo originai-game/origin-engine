@@ -41,20 +41,28 @@
      and spring names above (or a number of its own). A style overrides a row in
      its motion block (docs/ui.md §3.1); the default style takes these. hover:
      the lift on the spring named and, for a pad's virtual cursor, how much it
-     slows and settles over a control (magnet 0–1). press: the squash in at once,
-     back on a spring of this damping over the duration named. enter and exit: a
-     widget's arrival and departure. cascade: a list's or a panel's children
+     slows and settles over a control (magnet 0–1). press: the squash to the press
+     scale, in over `in`, back on a spring of this damping whose response is the
+     duration named (og-ui-next's Press.feedback slot). enter and exit: a
+     widget's arrival and departure, and the scale a screen (og-ui-next's
+     Screen.frame) arrives from and leaves to. pop: a modal (Modal.frame) arriving
+     from this scale on the named transition. cascade: a list's or a panel's children
      entering one after another, step between them, never spread past cap. toast:
      in, held (hold; holdDanger for an error), out. screen: a game-screen
      transition covers then reveals over this many slow durations. */
   --motion-timing-hover-spring: default;
   --motion-timing-hover-magnet: 0.5;
+  --motion-timing-press-in: 50ms;
   --motion-timing-press-duration: instant;
   --motion-timing-press-damping: 0.55;
   --motion-timing-enter-duration: base;
   --motion-timing-enter-easing: out;
   --motion-timing-exit-duration: fast;
   --motion-timing-exit-easing: exit;
+  --motion-timing-enter-scale: 1.04;
+  --motion-timing-exit-scale: 0.98;
+  --motion-timing-pop-scale: 0.9;
+  --motion-timing-pop-transition: emphasis;
   --motion-timing-cascade-step: 40ms;
   --motion-timing-cascade-cap: 400ms;
   --motion-timing-cascade-easing: out;

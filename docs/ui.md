@@ -1717,7 +1717,14 @@ with `packClass(slot, part, variant)`: `Button.plate` (`primary` its main
 action), `Panel.frame`, `Plate.frame`, `Slot.frame`, `Chip.frame`,
 `Field.frame`, `Row.frame` and `Head.frame`. `Focus.ring` dresses the
 ring every control shows while a keyboard or pad focuses it, unless the
-control styles `focus-visible:` itself. A slot that paints its own
+control styles `focus-visible:` itself. `Press.feedback` is the squash
+every enabled control that answers a press shows under a finger (its
+`active:` pose, in on its `active:` curve and back on its spring), unless
+the control moves itself under `active:`; `Screen.frame` is how a
+full-screen built-in enters and leaves, `Modal.frame` how a dialog pops in
+and leaves. The default pack derives the three from motion.css's timing
+table (press, enter, exit, pop), so a pack restyles the whole UI's feel
+by its tokens or its own variants. A slot that paints its own
 fill owns the ink on it. A new slot is declared in the default pack and in
 `design::SLOTS` before a component writes it.
 

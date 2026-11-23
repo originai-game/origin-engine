@@ -409,6 +409,40 @@ impl Tree {
             let ring = self.classes.get("@Focus.ring", "");
             record.skin.outline = self.classes.record(ring, 0, 0).skin.outline;
         }
+        // The press every control that answers one shows, as a game's
+        // buttons squash under a finger: the pack's `Press.feedback`, its
+        // pose under `active:` laid over the element's own transform and
+        // its transform's curve kept up and down (in on its `active:`
+        // curve, back on its spring), unless the element's own classes
+        // move it under a press. A disabled control and a press catcher
+        // (a screen's "tap to start") stay still.
+        let mut squash = false;
+        if self.presses(e) {
+            let own_press = |c: &mut Classes, s: u16| c.record(class, s, data).skin.transform;
+            let own = own_press(&mut self.classes, states | PRESSED)
+                != own_press(&mut self.classes, states & !PRESSED);
+            let press = self.classes.get("@Press.feedback", "");
+            let p = self
+                .classes
+                .record(press, states | PRESSED, 0)
+                .skin
+                .transform;
+            squash = own || !p.is_identity();
+            if !own && states & DISABLED == 0 && !self.catcher(e) {
+                let p = self.classes.record(press, states & PRESSED, 0).clone();
+                if p.motion.props & crate::motion::TRANSFORM != 0 {
+                    record.motion.transform = Some((p.motion.ease, p.motion.duration));
+                }
+                let t = &mut record.skin.transform;
+                let s = p.skin.transform.scale;
+                t.scale = [t.scale[0] * s[0], t.scale[1] * s[1]];
+                t.translate = [
+                    t.translate[0] + p.skin.transform.translate[0],
+                    t.translate[1] + p.skin.transform.translate[1],
+                ];
+            }
+        }
+        self.els[e as usize].squash = squash;
         let record = &record;
         if self.els[e as usize].record != *record {
             // The new record's transition runs the change; a node not
@@ -425,6 +459,16 @@ impl Tree {
             self.reapply(e);
             self.paint = true;
         }
+    }
+
+    /// Whether op element `e` is a control a finger presses: it answers a
+    /// press, or it is an action's touch button (`touchButton`).
+    pub(super) fn presses(&self, e: u32) -> bool {
+        self.els[e as usize].clickable
+            || self
+                .input
+                .per(e)
+                .is_some_and(|p| matches!(p.zone, Some((og_input::ZoneKind::Button, _))))
     }
 
     /// `top` went on screen: the elements under it not drawn yet, built
@@ -449,6 +493,13 @@ impl Tree {
         }
     }
 
+    /// Whether op element `e` covers over a third of the surface: a press
+    /// catcher (a screen's "tap to start", a backdrop), not a control.
+    pub(super) fn catcher(&self, e: u32) -> bool {
+        let b = self.arena.box_of(self.els[e as usize].node);
+        b.w * b.h * 3.0 > self.size.0 * self.size.1
+    }
+
     /// The element op node `id` is.
     fn op(&self, id: u32) -> Result<u32, String> {
         match self.by_js.get(id as usize) {
@@ -470,6 +521,7 @@ impl Tree {
             node,
             disabled: false,
             clickable: false,
+            squash: false,
             js: id,
             listens: 0,
             class,
@@ -765,10 +817,13 @@ impl Tree {
                             } else if per.zone.as_ref().is_some_and(|z| z.0 == kind) {
                                 per.zone = None;
                             }
+                            let zone = per.zone.is_some();
                             self.input.zone_els.retain(|&z| z != e);
-                            if per.zone.is_some() {
+                            if zone {
                                 self.input.zone_els.push(e);
                             }
+                            // A touch button squashes by the pack's press, or no longer.
+                            self.restyle(e);
                         }
                         "value" | "placeholder" if self.input.per[e as usize].input => {
                             let p = &mut self.input.per[e as usize];
@@ -1036,9 +1091,14 @@ impl Tree {
                     } else {
                         el.listens & !ev.bit()
                     };
+                    let was = el.clickable;
                     el.clickable = el.listens & (Event::Press.bit() | Event::Tap.bit()) != 0;
                     let (node, pressable) = (el.node, el.clickable);
                     self.sem.pressable(node, pressable);
+                    if was != pressable {
+                        // Its squash under a press is the pack's now, or no longer.
+                        self.restyle(e);
+                    }
                 }
                 // insert
                 8 => {
@@ -3289,6 +3349,89 @@ mod tests {
         at(&mut t, 5.0, 5.0, false, true);
         assert_eq!(t.focused_id(), Some(1));
         assert_eq!(outline(&t, 1).width, 0.0, "a press shows no ring");
+    }
+
+    /// A control that answers a press squashes to the pack's
+    /// `Press.feedback` under it, in on the slot's `active:` curve and
+    /// back on its spring, over its own transform; one whose classes move
+    /// it under a press keeps only its own, and a disabled control or a
+    /// view that answers no press stays still.
+    #[test]
+    fn a_press_squashes_a_control_by_the_packs_press_feedback() {
+        let mut t = tree();
+        let mut classes = crate::classes::Classes::new(None).unwrap().0;
+        classes.set_variants(
+            [(
+                "Press.feedback".to_string(),
+                "transition-transform ease-spring-[900,30] active:scale-90 active:duration-50 active:ease-out"
+                    .to_string(),
+            )]
+            .into(),
+        );
+        let classes = std::cell::RefCell::new(classes);
+        t.set_resolver(Box::new(move |class, _, states, _| {
+            let env = crate::classes::Env {
+                states,
+                ..Default::default()
+            };
+            classes.borrow_mut().record(class, &env)
+        }));
+        buttons(
+            &mut t,
+            &[
+                "w-12 h-12 translate-x-1 transition-colors duration-300",
+                "w-12 h-12 active:scale-[0.5]",
+            ],
+        );
+        let rec = |t: &Tree, id: u32| t.els[t.op(id).unwrap() as usize].record.clone();
+        at(&mut t, 5.0, 5.0, true, false);
+        let down = rec(&t, 1);
+        assert_eq!(down.skin.transform.scale, [0.9, 0.9], "squashed");
+        assert_eq!(
+            down.skin.transform.translate[0], 4.0,
+            "over its own translate"
+        );
+        assert!(
+            matches!(down.motion.transform, Some((crate::motion::Ease::Bezier(_), d)) if (d - 0.05).abs() < 1e-6),
+            "in on the slot's active curve: {:?}",
+            down.motion.transform
+        );
+        assert_eq!(
+            down.motion.duration, 0.3,
+            "its colours keep their own timing"
+        );
+        at(&mut t, 5.0, 5.0, false, true);
+        let up = rec(&t, 1);
+        assert_eq!(up.skin.transform.scale, [1.0, 1.0], "let go");
+        assert!(
+            matches!(
+                up.motion.transform,
+                Some((crate::motion::Ease::Spring { .. }, _))
+            ),
+            "back on the spring: {:?}",
+            up.motion.transform
+        );
+        at(&mut t, 5.0, 53.0, true, false);
+        assert_eq!(
+            rec(&t, 2).skin.transform.scale,
+            [0.5, 0.5],
+            "its own press only"
+        );
+        assert_eq!(rec(&t, 2).motion.transform, None);
+        at(&mut t, 5.0, 53.0, false, true);
+        // Disabled: the press does not reach it, and a held state shows no squash.
+        let mut b = Batch::default();
+        b.op(4).u32(1).str("w-12 h-12 disabled:opacity-50");
+        t.apply(&b.bytes()).unwrap();
+        frame(&mut t);
+        let e = t.op(1).unwrap();
+        t.set_state(e, DISABLED, true);
+        t.set_state(e, PRESSED, true);
+        assert_eq!(
+            rec(&t, 1).skin.transform.scale,
+            [1.0, 1.0],
+            "disabled stays still"
+        );
     }
 
     /// While a `modal` view shows, focus goes into it, Tab stays in

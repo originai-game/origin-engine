@@ -113,6 +113,11 @@ pub struct Spec {
     pub delay: f32,
     pub ease: Ease,
     pub animate: Option<Loop>,
+    /// The transform's own curve and duration (seconds), over `props`,
+    /// `ease` and `duration`: the pack's press feedback (`Press.feedback`),
+    /// which the tree gives a control that answers a press, so its squash
+    /// releases on the pack's spring while its colours keep their own.
+    pub transform: Option<(Ease, f32)>,
 }
 
 impl Default for Spec {
@@ -124,6 +129,7 @@ impl Default for Spec {
             delay: 0.0,
             ease: Ease::EASE,
             animate: None,
+            transform: None,
         }
     }
 }
@@ -131,19 +137,32 @@ impl Default for Spec {
 impl Spec {
     /// The animation a change runs on, or none when it jumps.
     fn anim(&self) -> Option<Anim> {
-        let curve = match self.ease {
+        Self::curve(self.ease, self.duration, self.delay)
+    }
+
+    /// The animation channel group `group` runs on, or none when it jumps.
+    fn anim_of(&self, group: u8) -> Option<Anim> {
+        match self.transform {
+            Some((ease, duration)) if group == TRANSFORM => Self::curve(ease, duration, 0.0),
+            _ if self.props & group != 0 => self.anim(),
+            _ => None,
+        }
+    }
+
+    fn curve(ease: Ease, duration: f32, delay: f32) -> Option<Anim> {
+        let curve = match ease {
             Ease::Spring {
                 stiffness,
                 damping,
                 mass,
             } => Curve::Spring(Spring::from_stiffness_damping(stiffness, damping, mass)),
-            Ease::Bezier([a, b, c, d]) if self.duration > 0.0 => Curve::Tween {
-                duration: self.duration,
+            Ease::Bezier([a, b, c, d]) if duration > 0.0 => Curve::Tween {
+                duration,
                 easing: Easing::cubic(a, b, c, d),
             },
             Ease::Bezier(_) => return None,
         };
-        Some(Anim::new(curve).delay(self.delay.max(0.0)))
+        Some(Anim::new(curve).delay(delay.max(0.0)))
     }
 }
 
@@ -587,7 +606,6 @@ impl Motion {
     /// (or is already moving) animates if `spec` transitions its group,
     /// else jumps. `replay` restarts its keyframes.
     fn go(&mut self, id: Id, spec: &Spec, from: &Skin, to: &Skin, replay: bool) {
-        let anim = spec.anim();
         let n = node(id);
         let mut at = self.find(id);
         for ch in 0..CHANNELS {
@@ -597,7 +615,7 @@ impl Motion {
             if !tracked && a == b {
                 continue;
             }
-            match anim.filter(|_| spec.props & GROUPS[ch].0 != 0) {
+            match spec.anim_of(GROUPS[ch].0) {
                 Some(anim) => {
                     if !tracked {
                         self.store.set(n, PROPS[ch], a);
