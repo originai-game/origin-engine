@@ -4568,9 +4568,9 @@ After a match: the verdict set large in a lit fill (gold for a win, red for a lo
 | `grade` | `string` | The grade (S, A, B …; empty: none). |
 | `title` | `string` | The result's line (Victory, Stage clear). |
 | `stats` | `ReadonlyArray<{ best: boolean; count?: boolean; id: string; name: string; value: number; format?: string; decimals?: number }>` | The stats: { name, value, best (bool), format (number or percent; defaults to number), count (bool), decimals }. A stat with count counts up from 0 as the screen opens, written whole or with decimals digits after the point; the others show their value as it is, fractions kept. |
-| `level` | `number` | The level after the match. |
-| `xp` | `number` | Progress to the next level after the match, 0 to 1. |
-| `gained` | `number` | XP gained. |
+| `level?` | `number` | The level after the match; absent, no level, XP or progress is drawn (a game without levels). |
+| `xp?` | `number` | Progress to the next level after the match, 0 to 1. |
+| `gained?` | `number` | XP gained. |
 | `rewards` | `ReadonlyArray<{ amount: number; id: string; name: string; texture: Texture \| 0 }>` | The rewards: { name, amount, texture }. |
 | `tab` | `string` | summary, graphs or board. |
 | `celebration?` | `(() => JSX.Element) \| undefined` | Content the caller supplies (was the celebration snippet). |
@@ -4579,7 +4579,7 @@ After a match: the verdict set large in a lit fill (gold for a win, red for a lo
 | `onAgain?` | `((e: UiEvent, key?: string) => void) \| undefined` | The again event, with the row's key where it comes from a row. |
 | `onContinue?` | `((e: UiEvent, key?: string) => void) \| undefined` | The continue event, with the row's key where it comes from a row. |
 | `onReplay?` | `((e: UiEvent, key?: string) => void) \| undefined` | The replay event, with the row's key where it comes from a row. |
-| `onTab?` | `(e: UiEvent, value: string) => void` | The tab switched (onTab), the tab's value (summary, graphs or board). |
+| `onTab?` | `(e: UiEvent, value: string) => void` | The tab switched (onTab), the tab's value (summary, graphs or board). Without it no tab row is drawn, and the page shows `tab`. |
 
 Pack slots: `Button.plate`, `Button.plate.primary`, `Chip.frame`, `Panel.frame`.
 

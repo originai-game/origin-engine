@@ -1,0 +1,14 @@
+{
+  "fixed": [
+    {
+      "member": "ResultsScreen, GameOverScreen, PuzzleSummary",
+      "summary": "The verdict line shows: it was transparent text over a gradient box (the port lost the clip to the glyphs), so Results drew a gold or red bar and no title, as did Game over and the puzzle summary. It is drawn in gold (danger red for a loss). Results' tab row is drawn only for a caller that switches tabs (onTab), as R3's rule for built-in rows, and its labels (Summary, Graphs, Scoreboard) come from the string table, with zh-CN."
+    }
+  ],
+  "added": [
+    {
+      "member": "ResultsScreen",
+      "summary": "level, xp and gained are optional. Without level, Results draws no level, XP or progress bar, for a game without levels."
+    }
+  ]
+}

@@ -17,12 +17,12 @@ export interface ResultsScreenProps {
   title: string;
   /** The stats: { name, value, best (bool), format (number or percent; defaults to number), count (bool), decimals }. A stat with count counts up from 0 as the screen opens, written whole or with decimals digits after the point; the others show their value as it is, fractions kept. */
   stats: ReadonlyArray<{ best: boolean; count?: boolean; id: string; name: string; value: number; format?: string; decimals?: number }>;
-  /** The level after the match. */
-  level: number;
+  /** The level after the match; absent, no level, XP or progress is drawn (a game without levels). */
+  level?: number;
   /** Progress to the next level after the match, 0 to 1. */
-  xp: number;
+  xp?: number;
   /** XP gained. */
-  gained: number;
+  gained?: number;
   /** The rewards: { name, amount, texture }. */
   rewards: ReadonlyArray<{ amount: number; id: string; name: string; texture: Texture | 0 }>;
   /** summary, graphs or board. */
@@ -39,7 +39,7 @@ export interface ResultsScreenProps {
   onContinue?: ((e: UiEvent, key?: string) => void) | undefined;
   /** The replay event, with the row's key where it comes from a row. */
   onReplay?: ((e: UiEvent, key?: string) => void) | undefined;
-  /** The tab switched (onTab), the tab's value (summary, graphs or board). */
+  /** The tab switched (onTab), the tab's value (summary, graphs or board). Without it no tab row is drawn, and the page shows `tab`. */
   onTab?: (e: UiEvent, value: string) => void;
 }
 
@@ -58,28 +58,30 @@ export function ResultsScreen(props: ResultsScreenProps) {
         <Scroll class="grow shrink basis-0 gap-6 compact:justify-start compact:gap-3 short:justify-start short:gap-2">
           <View class="items-end gap-6 compact:items-start compact:gap-3">
             <View class="grow shrink basis-0 gap-3 compact:gap-2">
-              <Text class={`font-display font-bold leading-flat tracking-xs uppercase text-transparent bg-linear-to-b from-glass from-18% via-gold-hi via-52% to-warn m-0 short:text-8xl data-outcome-lost:bg-linear-to-b data-outcome-lost:from-glass data-outcome-lost:from-10% data-outcome-lost:via-danger data-outcome-lost:via-48% data-outcome-lost:to-critical data-outcome-lost:bg-transparent`} data-outcome-lost={!props.won} data-outcome-won={props.won}>
+              <Text class={`font-display text-display-lg compact:text-display-md font-bold leading-flat tracking-xs uppercase text-gold-hi m-0 short:text-8xl data-outcome-lost:text-danger`} data-outcome-lost={!props.won} data-outcome-won={props.won}>
                 {props.title}
               </Text>
               <View class="h-0.5">
                 <Text class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rotate-45 bg-hud-accent shadow-glow size-2.25" />
               </View>
-              <View class="items-center max-w-160 gap-3">
-                <Text class="text-center leading-13.5 bg-linear-to-b from-epic to-glass-lo text-fg text-title font-bold tabular-nums size-13.5 compact:leading-10 compact:text-base compact:size-10">
-                  {props.level}
-                </Text>
-                <View class="grow shrink basis-0 gap-1">
-                  <View class="flex-row flex-wrap items-baseline justify-between gap-x-3">
-                    <Text class="text-xs font-semibold tracking-label uppercase text-fg-muted m-0 compact:hidden shrink">
-                      {t("screen.results.LevelValue", { level: props.level })}
-                    </Text>
-                    <Text class="text-base font-bold tabular-nums text-epic m-0 shrink">
-                      {t("screen.results.Gained", { gained: props.gained })}
-                    </Text>
+              <Show when={props.level !== undefined}>
+                <View class="items-center max-w-160 gap-3">
+                  <Text class="text-center leading-13.5 bg-linear-to-b from-epic to-glass-lo text-fg text-title font-bold tabular-nums size-13.5 compact:leading-10 compact:text-base compact:size-10">
+                    {props.level}
+                  </Text>
+                  <View class="grow shrink basis-0 gap-1">
+                    <View class="flex-row flex-wrap items-baseline justify-between gap-x-3">
+                      <Text class="text-xs font-semibold tracking-label uppercase text-fg-muted m-0 compact:hidden shrink">
+                        {t("screen.results.LevelValue", { level: props.level })}
+                      </Text>
+                      <Text class="text-base font-bold tabular-nums text-epic m-0 shrink">
+                        {t("screen.results.Gained", { gained: props.gained })}
+                      </Text>
+                    </View>
+                    <Progress class="w-full h-2.5" value={props.xp ?? 0} />
                   </View>
-                  <Progress class="w-full h-2.5" value={props.xp} />
                 </View>
-              </View>
+              </Show>
             </View>
             <Show when={props.grade !== ""}>
               <View class="items-center gap-1">
@@ -95,15 +97,17 @@ export function ResultsScreen(props: ResultsScreenProps) {
             </Show>
           </View>
           <View>{props.celebration?.()}</View>
-          <View class="flex-row w-full" role="tablist" label={t("screen.results.grade")}>
-            <For each={[{ value: "summary", label: "Summary" }, { value: "graphs", label: "Graphs" }, { value: "board", label: "Scoreboard" }] as const}>
-              {(tab) => (
-                <View class={`flex-row gap-1 justify-center items-center grow min-h-11 border-b-2 border-transparent data-selected:border-accent data-selected:text-accent text-fg-muted`} role="tab" tabIndex={0} selected={props.tab === tab().value} label={tab().label} onPress={(e) => props.onTab?.(e, tab().value)}>
-                  <Text>{tab().label}</Text>
-                </View>
-              )}
-            </For>
-          </View>
+          <Show when={props.onTab}>
+            <View class="flex-row w-full" role="tablist" label={t("screen.results.grade")}>
+              <For each={[{ value: "summary", label: t("screen.results.tabSummary") }, { value: "graphs", label: t("screen.results.tabGraphs") }, { value: "board", label: t("screen.results.tabBoard") }]}>
+                {(tab) => (
+                  <View class={`flex-row gap-1 justify-center items-center grow min-h-11 border-b-2 border-transparent data-selected:border-accent data-selected:text-accent text-fg-muted`} role="tab" tabIndex={0} selected={props.tab === tab().value} label={tab().label} onPress={(e) => props.onTab?.(e, tab().value)}>
+                    <Text>{tab().label}</Text>
+                  </View>
+                )}
+              </For>
+            </View>
+          </Show>
           <Show when={props.tab === "summary"} fallback={
               <Show when={props.tab === "graphs"} fallback={
                   <Show when={props.tab === "board"}>

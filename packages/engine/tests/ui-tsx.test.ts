@@ -774,10 +774,10 @@ test("every built-in full-screen screen fills a game's 390x844 column and takes 
     loadNativeHost();
 
     type El = { id: string; parent: string; name: string; role: string; x: number; y: number; width: number; height: number };
-    const rootOf = (name: string, extra?: string, height = 844) => {
+    const rootOf = (name: string, extra?: string, height = 844, more: Record<string, unknown> = {}) => {
       const mod = mods[`S${FULL_SCREENS.indexOf(name)}`]!;
       const Screen = Object.entries(mod).find(([k, v]) => /Screen$/.test(k) && typeof v === "function")![1] as (p: unknown) => never;
-      const props = { ...(mod.fixtures as Record<string, Record<string, unknown>>).default, ...(extra ? { class: extra } : {}) };
+      const props = { ...(mod.fixtures as Record<string, Record<string, unknown>>).default, ...(extra ? { class: extra } : {}), ...more };
       const game = og.game({
         ui(world) {
           // A game's own column, as Star Focus composes its screens: a flex column, not the mount's grid cell.
@@ -795,7 +795,8 @@ test("every built-in full-screen screen fills a game's 390x844 column and takes 
         // Paths run mount/column/root: the screen's root is the column's one child.
         const root = els.find((e) => (e as El & { path: string }).path.split("/").length === 3)!;
         const shown = (text: string) => els.some((e) => (e as El & { text: string }).text === text && e.y >= 0 && e.y < height);
-        return { name, box: [root.x, root.y, root.width, root.height], shown };
+        const tabs = els.filter((e) => e.role === "tab").map((e) => e.name);
+        return { name, box: [root.x, root.y, root.width, root.height], shown, tabs };
       } finally {
         renderers.delete(id);
         engine.destroy();
@@ -807,6 +808,9 @@ test("every built-in full-screen screen fills a game's 390x844 column and takes 
     expect(["A", "Score", "Kills", "screen.results.rewards"].map((t) => [t, results.shown(t)])).toEqual([["A", true], ["Score", true], ["Kills", true], ["screen.results.rewards", true]]);
     const short = rootOf("results", undefined, 360);
     expect({ box: short.box, title: short.shown("Victory") }).toEqual({ box: [0, 0, 390, 360], title: true });
+    // Results draws its tab row only for a caller that switches tabs (onTab), its labels from the string table.
+    expect(results.tabs).toEqual([]);
+    expect(rootOf("results", undefined, 844, { onTab: () => {} }).tabs).toEqual(["screen.results.tabSummary", "screen.results.tabGraphs", "screen.results.tabBoard"]);
     // The caller's class comes after the screen's own: an inset it gives wins.
     expect(rootOf("title", "top-[100px]").box).toEqual([0, 100, 390, 744]);
   } finally {
