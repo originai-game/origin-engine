@@ -42,9 +42,13 @@ pub(crate) fn cook_strings(s: &Source, stamp: u64) -> Result<(Vec<u8>, Vec<Strin
 /// The cook's check across a project's string tables: per table, every
 /// key the base table has and it lacks, takes other arguments for, or
 /// has that the base lacks (og-i18n's `check_tables`), as (source, line).
+/// Only the project's own tables: an engine table the bundle holds
+/// (`@ui/…`) belongs to its component's catalogue, not the project's, and
+/// the engine's own test keeps its locales in step.
 pub(crate) fn check_strings(sources: &[(&str, &[u8])]) -> Vec<(String, String)> {
     let tables: Vec<(String, og_i18n::StringTable)> = sources
         .iter()
+        .filter(|(rel, _)| !rel.starts_with('@'))
         .filter_map(|(rel, bytes)| {
             let t = og_i18n::StringTable::parse(std::str::from_utf8(bytes).ok()?).ok()?;
             Some((rel.to_string(), t))
@@ -104,6 +108,45 @@ impl Job for StringsJob<'_> {
 
 #[cfg(test)]
 mod tests {
+    /// A built-in's zh-CN table the bundle holds is not the project's: a
+    /// complete game zh table beside it has no missing or extra keys.
+    #[test]
+    fn engine_tables_are_not_checked_against_the_project_base() {
+        let table = |locale: &str, base: bool, keys: &[&str]| {
+            let mut s = format!("type strings\nversion 1\n---\nlocale \"{locale}\"\n");
+            if base {
+                s.push_str("base true\n");
+            }
+            for k in keys {
+                s.push_str(&format!("string \"{k}\" \"{k}\"\n"));
+            }
+            s.into_bytes()
+        };
+        let en = table("en", true, &["hud.score"]);
+        let zh = table("zh-CN", false, &["hud.score"]);
+        let ui = table("zh-CN", false, &["screen.pause.resume"]);
+        let ja = table("ja", false, &["hud.extra"]);
+        let gaps = super::check_strings(&[
+            ("strings/en.ogt", &en),
+            ("@ui/screens/pause.zh-CN.ogt", &ui),
+            ("strings/zh.ogt", &zh),
+            ("strings/ja.ogt", &ja),
+        ]);
+        assert_eq!(
+            gaps,
+            vec![
+                (
+                    "strings/ja.ogt".to_string(),
+                    "missing key 'hud.score' (en has it)".to_string()
+                ),
+                (
+                    "strings/ja.ogt".to_string(),
+                    "key 'hud.extra' is not in the base table (en does not have it)".to_string()
+                ),
+            ]
+        );
+    }
+
     /// Every string table the engine's UI ships in English has a zh-CN
     /// translation beside it with exactly its keys, each taking the same
     /// arguments: the two cannot drift apart.
