@@ -56,6 +56,12 @@ impl Rng {
         self.state = if state == 0 { 1 } else { state };
     }
 
+    /// Back to its seed's first draw, as [`Rng::new`] made it: a game's
+    /// restart draws what a fresh start draws.
+    pub fn reset(&mut self) {
+        *self = Rng::new(self.seed);
+    }
+
     /// A fresh generator on a derived seed, for a subsystem that must not
     /// perturb the main sequence by drawing from it. Labels hash by UTF-16
     /// code unit, as the Web substrate's `charCodeAt` does.

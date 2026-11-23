@@ -255,6 +255,9 @@ pub fn og_rng_integer(world: u32, low: i32, high: i32) -> i32 {
 pub fn og_rng_chance(world: u32, p: f64) -> bool {
     with_rng(world, false, |r| chance(r, p))
 }
+pub fn og_rng_reset(world: u32) {
+    with_rng(world, (), Rng::reset)
+}
 pub fn og_rng_fork(world: u32, label: String) -> u32 {
     match read_rng(world, |r| r.fork(&label)) {
         Some(r) => new_stream(world, r),

@@ -689,6 +689,11 @@ pub fn og_rng_fork(world: u32, label: String) -> u32 {
 }
 
 #[wasm_bindgen]
+pub fn og_rng_reset(world: u32) {
+    <Host as RngApi>::og_rng_reset(&Host, world)
+}
+
+#[wasm_bindgen]
 pub fn og_procgen_noise(desc: String, x: f64, y: f64, z: f64) -> f64 {
     <Host as ProcgenApi>::og_procgen_noise(&Host, desc, x, y, z)
 }

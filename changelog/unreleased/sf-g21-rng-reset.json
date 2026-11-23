@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {
+      "member": "og.Rng",
+      "summary": "og.Rng.reset() returns the main stream to its seed's first draw, as a fresh start has it. A game's restart (Retry, Play again) calls it so the restarted world draws what a fresh start draws; until now no call could, so a game that drew from og.Rng could never pass a playtest's `restart` check. Needs og.Rng among the system's writes."
+    }
+  ]
+}

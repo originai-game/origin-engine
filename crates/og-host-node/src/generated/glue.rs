@@ -825,6 +825,12 @@ pub fn og_rng_fork(env: Env, world: u32, label: String) -> u32 {
     <Host as RngApi>::og_rng_fork(&Host, world, label)
 }
 
+#[napi(js_name = "og_rng_reset")]
+pub fn og_rng_reset(env: Env, world: u32) {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as RngApi>::og_rng_reset(&Host, world)
+}
+
 #[napi(js_name = "og_procgen_noise")]
 pub fn og_procgen_noise(env: Env, desc: String, x: f64, y: f64, z: f64) -> f64 {
     let _env = crate::EnvScope::enter(&env);

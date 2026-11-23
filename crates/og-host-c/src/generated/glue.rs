@@ -689,6 +689,11 @@ unsafe extern "C" fn og_rng_fork(args: *const crate::OgValue, out: *mut crate::O
     unsafe { crate::IntoC::into_c(r, out) }
 }
 
+unsafe extern "C" fn og_rng_reset(args: *const crate::OgValue, out: *mut crate::OgValue) {
+    let r = <Host as RngApi>::og_rng_reset(&Host, unsafe { crate::arg(args, 0) });
+    unsafe { crate::IntoC::into_c(r, out) }
+}
+
 unsafe extern "C" fn og_procgen_noise(args: *const crate::OgValue, out: *mut crate::OgValue) {
     let r = <Host as ProcgenApi>::og_procgen_noise(&Host, unsafe { crate::arg(args, 0) }, unsafe { crate::arg(args, 1) }, unsafe { crate::arg(args, 2) }, unsafe { crate::arg(args, 3) });
     unsafe { crate::IntoC::into_c(r, out) }
@@ -3500,6 +3505,7 @@ pub static SYMBOLS: &[crate::Symbol] = &[
     crate::Symbol { name: c"og_rng_weighted", arity: 2, call: og_rng_weighted },
     crate::Symbol { name: c"og_rng_permutation", arity: 2, call: og_rng_permutation },
     crate::Symbol { name: c"og_rng_fork", arity: 2, call: og_rng_fork },
+    crate::Symbol { name: c"og_rng_reset", arity: 1, call: og_rng_reset },
     crate::Symbol { name: c"og_procgen_noise", arity: 4, call: og_procgen_noise },
     crate::Symbol { name: c"og_procgen_noise_grid", arity: 1, call: og_procgen_noise_grid },
     crate::Symbol { name: c"og_procgen_poisson_disk", arity: 1, call: og_procgen_poisson_disk },

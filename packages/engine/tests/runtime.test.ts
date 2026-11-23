@@ -301,6 +301,21 @@ test("refusals are Results that name the reason", () => {
   expect(rng.ok).toBeTrue();
 });
 
+test("og.Rng.reset returns the stream to its seed's first draw, as a fresh start has it", () => {
+  const fresh = start(og.game({ seed: 7 }) as unknown as GameToken);
+  const read = fresh.world.resource(og.Rng);
+  if (!read.ok) throw new Error(read.reason);
+  const rng = read.value;
+  const start0 = rng.state;
+  const first = [rng.next(), rng.next(), rng.next()];
+  expect(rng.state).not.toBe(start0);
+  rng.reset();
+  // A restart draws what the fresh start drew, from the same state, on the same seed.
+  expect(rng.state).toBe(start0);
+  expect(rng.seed).toBe(7);
+  expect([rng.next(), rng.next(), rng.next()]).toEqual(first);
+});
+
 test("GameDesc.commandHelp gives a game's actions their usage in help, and get reads a resource", () => {
   const engine = start(
     og.game({

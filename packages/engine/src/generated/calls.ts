@@ -425,6 +425,7 @@ export const resourceMethods: Readonly<Record<string, (world: number) => object>
     weighted: (weights: unknown): unknown => custom.Rng.weighted(world, weights),
     permutation: (n: number): unknown => custom.Rng.permutation(world, n),
     fork: (label: string): unknown => custom.Rng.fork(world, label),
+    reset: (): unknown => custom.Rng.reset(world),
   }),
   "og.Input": (world: number) => ({
     down: (key: string): boolean => abi().og_input_down(world, key),
@@ -1030,6 +1031,7 @@ export interface Custom {
     weighted(world: number, weights: unknown): unknown;
     permutation(world: number, n: number): unknown;
     fork(world: number, label: string): unknown;
+    reset(world: number): unknown;
   };
   readonly RuntimeProbe: {
     advance(self: RuntimeProbe, steps: number): unknown;

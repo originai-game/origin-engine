@@ -299,6 +299,8 @@ export interface HostAbi<A, V> {
   og_rng_permutation(world: number, n: number): string;
   /** `Rng.fork` */
   og_rng_fork(world: number, label: string): number;
+  /** `Rng.reset` */
+  og_rng_reset(world: number): void;
   /** `og.procgen.noise` */
   og_procgen_noise(desc: string, x: number, y: number, z: number): number;
   /** `og.procgen.noiseGrid` */
@@ -1447,6 +1449,7 @@ export const SYMBOLS: readonly string[] = [
   "og_rng_weighted",
   "og_rng_permutation",
   "og_rng_fork",
+  "og_rng_reset",
   "og_procgen_noise",
   "og_procgen_noise_grid",
   "og_procgen_poisson_disk",

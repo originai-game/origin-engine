@@ -337,6 +337,9 @@ macro_rules! __og_host_bindings_world {
             fn og_rng_fork(&self, world: u32, label: String) -> u32 {
                 $crate::og_rng_fork(world, label)
             }
+            fn og_rng_reset(&self, world: u32) {
+                $crate::og_rng_reset(world)
+            }
             fn og_rng_stream_weighted(&self, rng_stream: u32, weights: String) -> i32 {
                 $crate::og_rng_stream_weighted(rng_stream, weights)
             }

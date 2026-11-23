@@ -201,6 +201,7 @@ export const rngCustom: Custom["Rng"] = {
   weighted: (world, weights) => (checkAccess("write", "og.Rng"), abi().og_rng_weighted(world, JSON.stringify(weights))),
   permutation: (world, n) => (checkAccess("write", "og.Rng"), parse<number[]>(abi().og_rng_permutation(world, n))),
   fork: (world, label) => (checkAccess("read", "og.Rng"), new RngStream(abi().og_rng_fork(world, label))),
+  reset: (world) => (checkAccess("write", "og.Rng"), abi().og_rng_reset(world)),
 };
 
 /** A resource read as JSON (og.Time, og.Rng): computed by the engine, read only. */

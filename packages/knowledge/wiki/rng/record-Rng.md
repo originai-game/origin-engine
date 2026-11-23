@@ -68,6 +68,11 @@ resource Rng {
     param label String "The subsystem's name, such as `spawner`."
     returns RngStream
   }
+  fn reset {
+    custom true
+    doc "Return the stream to its seed's first draw, as a fresh start has it: a game's restart (Retry, Play again) calls it so the restarted world draws what a fresh start draws, which a playtest's `restart` check holds it to. Moves the state, so it needs og.Rng among the writes."
+    aliases "reseed, restart the random sequence, rewind rng"
+  }
 }
 ```
 
@@ -277,3 +282,29 @@ fn fork {
 ```
 
 <sub>Module `rng` line 93</sub>
+
+<a id="member-Rng-reset"></a>
+
+#### `Rng.reset`
+
+Return the stream to its seed's first draw, as a fresh start has it: a game's restart (Retry, Play again) calls it so the restarted world draws what a fresh start draws, which a playtest's `restart` check holds it to. Moves the state, so it needs og.Rng among the writes.
+
+Also known as: reseed, restart the random sequence, rewind rng
+
+```ts
+Rng.reset(): void
+```
+
+**Returns** `void`.
+
+Binding symbol `og_rng_reset` · publish builds: kept
+
+```ogt
+fn reset {
+  custom true
+  doc "Return the stream to its seed's first draw, as a fresh start has it: a game's restart (Retry, Play again) calls it so the restarted world draws what a fresh start draws, which a playtest's `restart` check holds it to. Moves the state, so it needs og.Rng among the writes."
+  aliases "reseed, restart the random sequence, rewind rng"
+}
+```
+
+<sub>Module `rng` line 99</sub>

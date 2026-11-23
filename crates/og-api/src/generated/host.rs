@@ -331,6 +331,8 @@ pub trait RngApi: Wire {
     fn og_rng_permutation(&self, world: u32, n: u32) -> String;
     /// `Rng.fork`
     fn og_rng_fork(&self, world: u32, label: String) -> u32;
+    /// `Rng.reset`
+    fn og_rng_reset(&self, world: u32);
 }
 
 /// `procgen`: packages/knowledge/wiki/procgen.md.
@@ -1632,6 +1634,7 @@ pub const SYMBOLS: &[&str] = &[
     "og_rng_weighted",
     "og_rng_permutation",
     "og_rng_fork",
+    "og_rng_reset",
     "og_procgen_noise",
     "og_procgen_noise_grid",
     "og_procgen_poisson_disk",

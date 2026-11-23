@@ -2888,6 +2888,10 @@ export interface Rng {
    * @param label The subsystem's name, such as `spawner`.
    */
   fork(label: string): RngStream;
+  /**
+   * Return the stream to its seed's first draw, as a fresh start has it: a game's restart (Retry, Play again) calls it so the restarted world draws what a fresh start draws, which a playtest's `restart` check holds it to. Moves the state, so it needs og.Rng among the writes.
+   */
+  reset(): void;
 }
 
 // ── procgen ─────────────────────────────────────────────────────
