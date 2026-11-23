@@ -317,8 +317,12 @@ pub(crate) fn import(
                         .map_or(String::new(), |(d, _)| format!("{d}/"));
                     for (p, _) in &g.external {
                         // As the asset it names: `cells/../textures/a.png` is
-                        // `textures/a.png` (s59).
-                        consumed.insert(normalise_rel(&format!("{base}{p}")));
+                        // `textures/a.png` (s59). A program reads itself, and
+                        // a model is never part of itself.
+                        let file = normalise_rel(&format!("{base}{p}"));
+                        if file != s.rel {
+                            consumed.insert(file);
+                        }
                     }
                     s.gltf = Some(g);
                 }

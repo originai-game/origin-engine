@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "model program files",
+      "summary": "A model program file under assets/ (`rock.shape.json`) cooks as a model of its own, with levels of detail as a glTF's. It cooked to nothing, without an error: the program is the first file it reads, and the cook dropped every file a model read as part of that model, the program included. A `type model` text naming a program still takes the program in as its part."
+    }
+  ]
+}

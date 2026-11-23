@@ -117,6 +117,49 @@ fn cooked(name: &str, files: &[(&str, &[u8])]) -> PathBuf {
     root
 }
 
+/// A program file is a model of its own: it cooks, with levels of detail as
+/// a glTF's, and is not dropped as a file it read itself (it was: the
+/// program is the first file it reads, so it consumed itself and cooked to
+/// nothing, with no error). A `type model` text naming a program still
+/// takes it in as its own part.
+#[test]
+fn a_program_file_cooks_with_levels_of_detail() {
+    let program = br##"{
+  "name": "pebble",
+  "ops": [
+    { "op": "units", "unit": "m" },
+    { "op": "box", "name": "pebble", "width": 2.4, "depth": 1.9, "height": 1.5 },
+    { "op": "subdivide", "id": 0, "levels": 4 },
+    { "op": "material", "ids": [0], "name": "stone", "color": "#8a8f96", "roughness": 0.6 }
+  ]
+}"##;
+    let variant = b"type model\nversion 1\n---\nprogram \"slab.shape.json\"\n";
+    let root = project(
+        "og-cook-model-program-file",
+        &[
+            ("models/pebble.shape.json", program),
+            ("models/slab.shape.json", program),
+            ("models/slab-tall.ogt", variant),
+        ],
+    );
+    let report = cook_project(&root, &CookOptions::default()).unwrap();
+    assert!(report.ok(), "{:?}", report.errors());
+    let sources: Vec<&str> = report.assets.iter().map(|a| a.source.as_str()).collect();
+    assert!(sources.contains(&"models/pebble.shape.json"), "{sources:?}");
+    assert!(sources.contains(&"models/slab-tall.ogt"), "{sources:?}");
+    assert!(
+        !sources.contains(&"models/slab.shape.json"),
+        "the variant's program is its part: {sources:?}"
+    );
+    let bundle = Bundle::open(&root.join("cooked")).unwrap();
+    let model = bundle.load_model("models/pebble.shape.json").unwrap();
+    let p = &model.primitives[0];
+    assert_eq!(p.lods.len(), 3, "the default levels, as a glTF's");
+    let full = p.lods[0].count / 3;
+    assert!(full >= 3000, "{full} triangles at level 0");
+    assert!(p.lods[2].count < p.lods[0].count / 2, "{:?}", p.lods);
+}
+
 #[test]
 fn a_cooked_gear_raycasts_where_its_triangles_are() {
     let root = cooked(
