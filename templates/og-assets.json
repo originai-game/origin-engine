@@ -1394,6 +1394,12 @@
       "visibility": "public"
     },
     {
+      "path": "styles/shared/Fredoka[wdth,wght].ttf",
+      "sha256": "2ba02e68b152868aef9ba28e24b3648c7d457fe6f25c761f2c2c53fb61a73fc8",
+      "size": 159184,
+      "visibility": "public"
+    },
+    {
       "path": "styles/shared/InstrumentSans-Regular.ttf",
       "sha256": "a22cb26e48fd79bcb01bf2fc92d36785474dce36d9c544ab0a8868c2657c4a87",
       "size": 68028,
@@ -1403,6 +1409,12 @@
       "path": "styles/shared/InstrumentSans[wdth,wght].ttf",
       "sha256": "b24f1812584816958afcf22e22d08e44318c5e51651e25d2438efdde389b33b1",
       "size": 194336,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/LilitaOne-Regular.ttf",
+      "sha256": "f5b641c45c69d772ee4eda687bc9fda411d5cad6b0b45371491da4580cbc8d59",
+      "size": 28092,
       "visibility": "public"
     },
     {
