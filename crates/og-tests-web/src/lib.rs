@@ -181,6 +181,152 @@ mod web {
         Err(err("scatter capture did not land in 10000 polls"))
     }
 
+    /// Two-output-pixel bars must keep their foreground colour under a
+    /// camera pan, not take sky history when a jittered scene sample misses
+    /// the bar. Integer output-pixel motion excludes history-filter blur.
+    #[wasm_bindgen]
+    pub async fn og_gfx_check_taau_motion() -> Result<u32, JsValue> {
+        use og_render::{
+            AmbientOcclusion, Antialias, Background, Camera, Exposure, Material, Projection,
+            RenderDesc, RenderScene, Tonemap, Upscaler, shapes,
+        };
+        let mut checked = 0;
+        for (name, scale, moving, prepass) in [
+            ("stationary half", 0.5, false, false),
+            ("moving full", 1.0, true, false),
+            ("moving half", 0.5, true, false),
+            ("moving half with prepass", 0.5, true, true),
+        ] {
+            let mut scene = RenderScene::new();
+            scene.frame.quality.upscaler = Upscaler::Taau;
+            // At z=0, one world step of 6/64 projects to exactly one
+            // output pixel; the plane's width projects to two.
+            scene.frame.camera = Camera {
+                position: [0.0, 0.0, 6.0].into(),
+                target: [0.0; 3].into(),
+                projection: Projection::Perspective {
+                    fov_y_degrees: 90.0,
+                },
+                exposure: Exposure::linear(1.0),
+                ..Default::default()
+            };
+            scene.lighting.environment.background = Background::Color([1.0; 3].into());
+            scene.lighting.light.cast_shadows = false;
+            scene.look.post.tonemap = Tonemap::None;
+            // AO requests the real depth/velocity prepass. The emissive
+            // bars do not take ambient lighting or its occlusion.
+            scene.look.post.ao = prepass.then(AmbientOcclusion::default);
+            scene.atmosphere.fog = None;
+            let mesh = scene.add_mesh(shapes::plane_xy(0.1875, 4.0));
+            let red = scene.add_material(Material {
+                base_color: [0.0, 0.0, 0.0, 1.0],
+                emissive: [1.0, 0.0, 0.0],
+                ..Default::default()
+            });
+            let centers = [48, 80, 112, 144, 176, 208];
+            for x in centers {
+                scene.add_instance(mesh, red, Default::default());
+                scene
+                    .objects
+                    .instances
+                    .last_mut()
+                    .unwrap()
+                    .transform
+                    .w_axis
+                    .x = (x as f32 - 128.0) * 0.09375;
+            }
+            let mut renderer = Renderer::new(&RenderDesc {
+                width: 256,
+                height: 128,
+                backend: Backend::WebGpu,
+                antialias: Antialias::Taa,
+                ..scenes::base_desc()
+            })
+            .await
+            .map_err(err)?;
+            GPU_ERRORS.with(|errors| errors.borrow_mut().clear());
+            renderer.device().on_uncaptured_error(std::sync::Arc::new(
+                |e: og_render::wgpu::Error| {
+                    GPU_ERRORS.with(|errors| errors.borrow_mut().push(e.to_string()));
+                },
+            ));
+            renderer.set_render_scale(scale);
+            // Release and settle background compilation, not an image
+            // assertion: each case below has a fixed number of renders.
+            for _ in 0..2 {
+                renderer
+                    .render(&scene, &RenderTarget::Offscreen)
+                    .map_err(err)?;
+                tick().await?;
+            }
+            for _ in 0..10_000 {
+                let pipelines = og_render::pipeline_stats();
+                if pipelines.requested == pipelines.settled {
+                    break;
+                }
+                tick().await?;
+            }
+            let pipelines = og_render::pipeline_stats();
+            if pipelines.requested != pipelines.settled {
+                return Err(err(format!(
+                    "TAAU {name}: pipelines did not finish compiling"
+                )));
+            }
+            renderer.reset_history();
+            for frame in 0_u32..88 {
+                let x = if moving {
+                    frame.saturating_sub(64) as f32 * 0.09375
+                } else {
+                    0.0
+                };
+                scene.frame.camera.position.x = x;
+                scene.frame.camera.target.x = x;
+                renderer
+                    .render(&scene, &RenderTarget::Offscreen)
+                    .map_err(err)?;
+            }
+            let mut request = renderer.begin_capture().map_err(err)?;
+            let mut image = None;
+            for _ in 0..10_000 {
+                image = request.try_finish(&renderer).map_err(err)?;
+                if image.is_some() {
+                    break;
+                }
+                tick().await?;
+            }
+            let image = image
+                .ok_or_else(|| err(format!("TAAU {name}: capture did not land in 10000 polls")))?;
+            let errors = GPU_ERRORS.with(|errors| std::mem::take(&mut *errors.borrow_mut()));
+            if !errors.is_empty() {
+                return Err(err(format!("TAAU {name}: {}", errors.join("\n"))));
+            }
+            let shift = if moving { 23 } else { 0 };
+            for center in centers {
+                for dx in [-1, 0, 8] {
+                    let x = (center - shift + dx) as usize;
+                    let pixel = &image.pixels[(64 * 256 + x) * 4..][..4];
+                    // 188 is half linear light encoded as sRGB. Inside a
+                    // bar, its colour must be nearer red than white or
+                    // black; between bars, nearer white than red.
+                    let foreground = pixel[0] > 188 && pixel[1] < 188 && pixel[2] < 188;
+                    let background = pixel[..3].iter().all(|c| *c > 188);
+                    if if dx == 8 { !background } else { !foreground } {
+                        return Err(err(format!(
+                            "TAAU {name}: {} at ({x},64): {pixel:?}",
+                            if dx == 8 {
+                                "foreground trailed into sky"
+                            } else {
+                                "bar took background history"
+                            }
+                        )));
+                    }
+                    checked += 1;
+                }
+            }
+        }
+        Ok(checked)
+    }
+
     /// Whether the scenes opened from now on cull on the CPU
     /// (as a device without indirect draws) rather than on the GPU.
     #[wasm_bindgen]

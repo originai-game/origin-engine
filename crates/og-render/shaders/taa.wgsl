@@ -145,6 +145,15 @@ fn resolve(in: VsOut, catmull_rom: bool, smaa: bool) -> vec4<f32> {
   var hi = vec3<f32>(-1e9);
   var a_lo = 1e9;
   var a_hi = -1e9;
+  // An output pixel can lie on foreground geometry while its nearest
+  // jittered scene sample falls beside it. Reproject that pixel with the
+  // closest surface in the footprint, not the background's motion. Keep
+  // colour sampling and its confidence at the original scene sample.
+  var motion_at = at;
+  var closest_depth = 1.0;
+  if (upscale) {
+    closest_depth = textureSampleLevel(depth, depth_sampler, (vec2<f32>(at) + 0.5) / vec2<f32>(size), 0.0).r;
+  }
   for (var y = -1; y <= 1; y++) {
     for (var x = -1; x <= 1; x++) {
       let q = clamp(at + vec2<i32>(x, y), vec2<i32>(0), size - 1);
@@ -154,6 +163,13 @@ fn resolve(in: VsOut, catmull_rom: bool, smaa: bool) -> vec4<f32> {
       hi = max(hi, c);
       a_lo = min(a_lo, t.a);
       a_hi = max(a_hi, t.a);
+      if (upscale) {
+        let d = textureSampleLevel(depth, depth_sampler, (vec2<f32>(q) + 0.5) / vec2<f32>(size), 0.0).r;
+        if (d < closest_depth) {
+          closest_depth = d;
+          motion_at = q;
+        }
+      }
     }
   }
 
@@ -161,24 +177,12 @@ fn resolve(in: VsOut, catmull_rom: bool, smaa: bool) -> vec4<f32> {
   // CPU compared the view-projections), or the prepass's velocity where
   // the prepass drew this sample (objects and skinned meshes move it).
   let here = in.pos.xy / out_size;
-  var motion = vec2<f32>(0.0);
+  var motion = camera_motion(motion_at, size);
   // Whether this sample moves otherwise than the camera moves it (an
   // object or a skinned mesh on its motion vectors).
   var own_motion = false;
-  if (taa.still.x < 0.5) {
-    // This pixel's world point, seen by the previous frame, from its
-    // window position (exact on every backend).
-    let uv_j = (s + select(vec2<f32>(0.0), jitter, upscale)) / vec2<f32>(size);
-    let d = textureSampleLevel(depth, depth_sampler, (vec2<f32>(at) + 0.5) / vec2<f32>(size), 0.0).r;
-    let ndc = vec2<f32>(uv_j.x * 2.0 - 1.0, 1.0 - uv_j.y * 2.0);
-    let w = taa.inv_view_proj * vec4<f32>(ndc, d, 1.0);
-    let world = w.xyz / w.w;
-    let cur_clip = taa.cur_view_proj * vec4<f32>(world, 1.0);
-    let prev_clip = taa.prev_view_proj * vec4<f32>(world, 1.0);
-    motion = (cur_clip.xy / cur_clip.w - prev_clip.xy / prev_clip.w) * vec2<f32>(0.5, -0.5);
-  }
-  if (taa.still.y > 0.5 && !is_sky_depth(textureLoad(view_depth_tex, at, 0).r)) {
-    let v = textureLoad(velocity_tex, at, 0).zw;
+  if (taa.still.y > 0.5 && !is_sky_depth(textureLoad(view_depth_tex, motion_at, 0).r)) {
+    let v = textureLoad(velocity_tex, motion_at, 0).zw;
     own_motion = any(abs(v - motion) * out_size > vec2<f32>(0.5));
     motion = v;
   }

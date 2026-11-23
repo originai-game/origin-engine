@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "RenderOptions.upscaler",
+      "summary": "TAAU below render scale 1 reprojects thin foreground detail with the closest surface's motion in its sampling neighbourhood, rather than borrowing background history when the nearest jittered scene sample misses that detail. Colour sampling, history filters, mode defaults and blend weights are unchanged."
+    }
+  ]
+}
