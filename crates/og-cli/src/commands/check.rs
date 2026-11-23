@@ -1647,39 +1647,76 @@ mod tests {
         let mut files = Vec::new();
         crate::lockstep_lint::sources(&ui, &mut files);
         files.retain(|f| f.extension().is_some_and(|e| e == "tsx"));
+        // The edges `s` draws besides its nine-* frame, if it draws one.
+        let mut edges = |s: &str| {
+            let r = classes.record(s, &env).skin;
+            if r.image.slice == [0.0; 4] {
+                return Vec::new();
+            }
+            let mut edges = Vec::new();
+            if r.border.iter().any(|&w| w > 0.0) {
+                edges.push("border");
+            }
+            let ring = r.shadows[..r.shadow_count as usize]
+                .iter()
+                .any(|sh| !sh.inset && sh.blur == 0.0 && sh.spread > 0.0);
+            if ring {
+                edges.push("ring");
+            }
+            if r.outline.width > 0.0 {
+                edges.push("outline");
+            }
+            if edges.is_empty() {
+                Vec::new()
+            } else {
+                vec![edges.join(" ")]
+            }
+        };
         let mut twice = Vec::new();
+        // The pack slots a component puts on a framed element
+        // (`packClass("Row", "frame", "selected")` beside `nine-*`).
+        let mut framed_slots = std::collections::BTreeSet::new();
         for path in files {
             let text = std::fs::read_to_string(&path).unwrap();
-            for u in nsh_jsx::unknown_classes_with(&path.to_string_lossy(), &text, |s| {
-                let r = classes.record(s, &env).skin;
-                if r.image.slice == [0.0; 4] {
-                    return Vec::new();
+            for line in text.lines().filter(|l| l.contains("nine-")) {
+                for call in line.split("packClass(").skip(1) {
+                    let args: Vec<_> = call
+                        .split(')')
+                        .next()
+                        .unwrap_or("")
+                        .split(',')
+                        .map(|a| a.trim().trim_matches('"'))
+                        .collect();
+                    if args
+                        .iter()
+                        .all(|a| !a.is_empty() && a.chars().all(|c| c.is_ascii_alphanumeric()))
+                    {
+                        framed_slots.insert(args.join("."));
+                    }
                 }
-                let mut edges = Vec::new();
-                if r.border.iter().any(|&w| w > 0.0) {
-                    edges.push("border");
-                }
-                let ring = r.shadows[..r.shadow_count as usize]
-                    .iter()
-                    .any(|sh| !sh.inset && sh.blur == 0.0 && sh.spread > 0.0);
-                if ring {
-                    edges.push("ring");
-                }
-                if r.outline.width > 0.0 {
-                    edges.push("outline");
-                }
-                if edges.is_empty() {
-                    Vec::new()
-                } else {
-                    vec![edges.join(" ")]
-                }
-            }) {
+            }
+            for u in nsh_jsx::unknown_classes_with(&path.to_string_lossy(), &text, &mut edges) {
                 let file = path
                     .strip_prefix(&ui)
                     .unwrap_or(&path)
                     .display()
                     .to_string();
                 twice.push(format!("{file}:{}: {}", u.line, u.class));
+            }
+        }
+        // A slot carries the look a theme gives it, so it is held to the
+        // same rule over a frame: the slots components frame, and any
+        // slot that draws a frame itself.
+        assert!(
+            framed_slots.contains("Row.frame.selected"),
+            "slots are found"
+        );
+        for (key, value) in pack.variants() {
+            let framed = framed_slots.contains(key) || value.contains("nine-");
+            for e in edges(&format!("nine-plate-cut {value}")) {
+                if framed {
+                    twice.push(format!("pack slot {key}: {e}"));
+                }
             }
         }
         assert!(
