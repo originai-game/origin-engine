@@ -1088,4 +1088,146 @@ mod tests {
         }
         assert!(at(0.9, 0.04).0 < 0.1);
     }
+
+    /// The map's equalise tables (clouds_noise.wgsl `FIELD_Q`, `TALL_Q`,
+    /// `CELLS_Q`, `VALUE_Q`) are the sixteenth quantiles of the fields the
+    /// map's recipe draws: this twin draws them with og_core's `pcg`
+    /// (hash.wgsl's, operation for operation) over the map's texels and
+    /// measures them. It holds the recipe's lines, so a changed recipe
+    /// fails here until its tables are measured again (with tables from an
+    /// earlier recipe, a cover of 0.3 stood six tenths of the sky in cloud).
+    /// On a mismatch the failure prints the lines to paste.
+    #[test]
+    fn the_maps_equalise_tables_are_its_recipes_quantiles() {
+        use og_core::hash::{pcg, unit24};
+        let hash = |c: [i32; 3], salt: u32| -> f32 {
+            unit24(pcg(
+                (c[0] as u32).wrapping_mul(73856093)
+                    ^ (c[1] as u32).wrapping_mul(19349663)
+                    ^ (c[2] as u32).wrapping_mul(83492791)
+                    ^ salt.wrapping_mul(2654435761),
+            ))
+        };
+        let wrap = |c: i32, f: i32| ((c % f) + f) % f;
+        let value2 = |p: [f32; 2], f: f32, salt: u32| -> f32 {
+            let q = [p[0] * f, p[1] * f];
+            let c = [q[0].floor() as i32, q[1].floor() as i32];
+            let t = [q[0] - q[0].floor(), q[1] - q[1].floor()];
+            let s = [t[0] * t[0] * (3.0 - 2.0 * t[0]), t[1] * t[1] * (3.0 - 2.0 * t[1])];
+            let fi = f as i32;
+            let mut v = 0.0;
+            for k in 0..4 {
+                let o = [k & 1, k >> 1];
+                let m = [
+                    if o[0] == 0 { 1.0 - s[0] } else { s[0] },
+                    if o[1] == 0 { 1.0 - s[1] } else { s[1] },
+                ];
+                v += hash([wrap(c[0] + o[0], fi), wrap(c[1] + o[1], fi), 0], salt) * m[0] * m[1];
+            }
+            v
+        };
+        // Each feature point's cell (wrapped) and the squared distance to it.
+        let features = |p: [f32; 2], f: f32, salt: u32| -> Vec<([i32; 3], f32)> {
+            let q = [p[0] * f, p[1] * f];
+            let cell = [q[0].floor() as i32, q[1].floor() as i32];
+            let fi = f as i32;
+            let mut out = Vec::with_capacity(9);
+            for y in -1..=1 {
+                for x in -1..=1 {
+                    let c = [cell[0] + x, cell[1] + y];
+                    let w = [wrap(c[0], fi), wrap(c[1], fi), 0];
+                    let v = [
+                        q[0] - (c[0] as f32 + hash(w, salt)),
+                        q[1] - (c[1] as f32 + hash(w, salt + 1)),
+                    ];
+                    out.push((w, v[0] * v[0] + v[1] * v[1]));
+                }
+            }
+            out
+        };
+        let blob2 = |p: [f32; 2], f: f32, salt: u32| -> f32 {
+            let d = features(p, f, salt).into_iter().fold(1e9f32, |d, (_, dd)| d.min(dd));
+            1.0 - d.min(1.0)
+        };
+        let dome2 = |p: [f32; 2], f: f32, salt: u32| -> f32 {
+            features(p, f, salt).into_iter().fold(0.0f32, |best, (w, dd)| {
+                let s = (1.0 - dd / 0.64).max(0.0);
+                best.max((0.5 + 0.5 * hash(w, salt + 2)) * s * s.sqrt())
+            })
+        };
+        let smoothstep = |a: f32, b: f32, x: f32| {
+            let t = ((x - a) / (b - a)).clamp(0.0, 1.0);
+            t * t * (3.0 - 2.0 * t)
+        };
+        let mix = |a: f32, b: f32, t: f32| a + (b - a) * t;
+        // The recipe, as clouds_noise.wgsl `map` writes it.
+        let recipe = [
+            "  let region = 0.6 * value2(p, 3.0, 80u) + 0.25 * value2(p, 6.0, 81u) + 0.15 * value2(p, 12.0, 79u);",
+            "  let big = smoothstep(0.35, 0.65, value2(p, 3.0, 94u));",
+            "  let small = max(dome2(p, 12.0, 82u), 0.8 * dome2(p, 24.0, 84u));",
+            "  let large = max(dome2(p, 6.0, 96u), 0.8 * dome2(p, 12.0, 98u));",
+            "  let field = 0.85 * mix(small, large, big) * (0.4 + 0.6 * smoothstep(0.25, 0.75, region)) + 0.15 * region;",
+            "  let cells = 0.6 * blob2(p, 32.0, 86u) + 0.4 * blob2(p, 64.0, 88u);",
+            "  let tall = 0.5 * (0.6 * value2(p, 8.0, 90u) + 0.4 * value2(p, 16.0, 91u)) + 0.5 * big;",
+            "  let vigour = 0.6 * value2(p, 8.0, 92u) + 0.4 * value2(p, 16.0, 93u);",
+            "    let s = max(1.0 - dot(v, v) / 0.64, 0.0);",
+            "    best = max(best, (0.5 + 0.5 * hash(w, salt + 2u)) * s * sqrt(s));",
+            "  return 1.0 - min(d, 1.0);",
+        ];
+        for line in recipe {
+            assert!(
+                NOISE_WGSL.contains(line),
+                "clouds_noise.wgsl's map recipe changed; change this twin's and measure the tables again:\n{line}"
+            );
+        }
+        let n = MAP_SIZE as usize;
+        let mut fields: [Vec<f32>; 4] = std::array::from_fn(|_| Vec::with_capacity(n * n));
+        for y in 0..n {
+            for x in 0..n {
+                let p = [(x as f32 + 0.5) / n as f32, (y as f32 + 0.5) / n as f32];
+                let region = 0.6 * value2(p, 3.0, 80) + 0.25 * value2(p, 6.0, 81) + 0.15 * value2(p, 12.0, 79);
+                let big = smoothstep(0.35, 0.65, value2(p, 3.0, 94));
+                let small = dome2(p, 12.0, 82).max(0.8 * dome2(p, 24.0, 84));
+                let large = dome2(p, 6.0, 96).max(0.8 * dome2(p, 12.0, 98));
+                let field = 0.85 * mix(small, large, big) * (0.4 + 0.6 * smoothstep(0.25, 0.75, region)) + 0.15 * region;
+                let cells = 0.6 * blob2(p, 32.0, 86) + 0.4 * blob2(p, 64.0, 88);
+                let tall = 0.5 * (0.6 * value2(p, 8.0, 90) + 0.4 * value2(p, 16.0, 91)) + 0.5 * big;
+                let vigour = 0.6 * value2(p, 8.0, 92) + 0.4 * value2(p, 16.0, 93);
+                for (v, f) in fields.iter_mut().zip([field, tall, cells, vigour]) {
+                    v.push(f);
+                }
+            }
+        }
+        let mut wrong = Vec::new();
+        for (name, values) in ["FIELD_Q", "TALL_Q", "CELLS_Q", "VALUE_Q"].into_iter().zip(fields.iter_mut()) {
+            values.sort_by(f32::total_cmp);
+            // The quantile at i/16 of the sorted values, between its two
+            // neighbours.
+            let measured: Vec<f32> = (0..17)
+                .map(|i| {
+                    let at = (values.len() - 1) as f64 * i as f64 / 16.0;
+                    let lo = at.floor() as usize;
+                    let hi = (lo + 1).min(values.len() - 1);
+                    mix(values[lo], values[hi], (at - lo as f64) as f32)
+                })
+                .collect();
+            let line = format!(
+                "const {name} = array<f32, 17>({});",
+                measured.iter().map(|v| format!("{v:.4}")).collect::<Vec<_>>().join(", ")
+            );
+            let head = format!("const {name} = array<f32, 17>(");
+            let start = NOISE_WGSL.find(&head).unwrap_or_else(|| panic!("{head} is not in clouds_noise.wgsl"));
+            let text = &NOISE_WGSL[start + head.len()..];
+            let text = &text[..text.find(')').expect("the table ends")];
+            let table: Vec<f32> = text.split(',').map(|v| v.trim().parse().expect("a number")).collect();
+            if table.len() != 17 || table.iter().zip(&measured).any(|(a, b)| (a - b).abs() > 1.5e-3) {
+                wrong.push(line);
+            }
+        }
+        assert!(
+            wrong.is_empty(),
+            "clouds_noise.wgsl's equalise tables are not the quantiles of its recipe; paste these:\n{}",
+            wrong.join("\n")
+        );
+    }
 }

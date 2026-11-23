@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "Clouds.coverage",
+      "summary": "The clouds' map is equalised through the quantiles of the recipe that draws it: they had stayed from an earlier recipe, so `coverage` stood more of the sky in cloud than it says (0.3 stood six tenths, 0.5 seven), clouds stood taller than their kind, cumulonimbus towers merged into walls with straight-sided strips and scattered small lumps between them, and cumulus closed into a bank at a fair-weather cover. `coverage` is again the share of the sky the clouds take, as the render guide says (0.2 to 0.4 fair weather, towers apart under 0.5); a game that tuned its cover against the old tables sees less cloud at the same number. A test now recomputes the quantiles from the recipe, so the tables cannot drift from it again."
+    }
+  ]
+}
