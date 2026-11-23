@@ -18,7 +18,7 @@
 
 use napi_derive::napi;
 use og_net::Snapshot;
-use og_net::state::{Ignore, diff, restart_diff};
+use og_net::state::{Ignore, diff, restart_diff, restart_kept};
 use serde_json::json;
 use std::collections::BTreeMap;
 
@@ -62,13 +62,38 @@ pub fn og_node_replay_diff(engine: u32, save_text: String) -> String {
 }
 
 /// og-net's structural restart diff of a fresh start's save against the
-/// world, leaving out `ignore_json` (`{type: [field, ...]}`, `[]` the whole type).
+/// world, leaving out `ignore_json` (`{type: [field, ...]}`, `[]` the whole
+/// type, the engine's own) and the game's `keep_json` (`["Type.field", ...]`,
+/// the progress it carries across a restart, which must exist), each kept
+/// field reported under `kept` with its start and restart values.
 #[napi(js_name = "og_node_restart_diff")]
-pub fn og_node_restart_diff(engine: u32, save_text: String, ignore_json: String) -> String {
+pub fn og_node_restart_diff(
+    engine: u32,
+    save_text: String,
+    ignore_json: String,
+    keep_json: String,
+) -> String {
     let diffed = serde_json::from_str::<Ignore>(&ignore_json)
         .map_err(|e| format!("the ignore table: {e}"))
         .and_then(|ignore| {
+            let keep = serde_json::from_str::<Vec<String>>(&keep_json)
+                .map_err(|e| format!("the keep list: {e}"))?;
+            Ok((ignore, keep))
+        })
+        .and_then(|(mut ignore, keep)| {
             let start = Snapshot::decode(&og_runtime::save_snapshot_bytes(&save_text)?)?;
+            let now = world(engine)?;
+            let (kept_ignore, kept) = restart_kept(&start, &now, &keep)?;
+            for (ty, fields) in kept_ignore {
+                match ignore.get_mut(&ty) {
+                    // An empty list already leaves the whole type out.
+                    Some(entry) if entry.is_empty() => {}
+                    Some(entry) => entry.extend(fields),
+                    None => {
+                        ignore.insert(ty, fields);
+                    }
+                }
+            }
             // Each module block read by the world's own block code, by entity.
             let forms = |name: &str, bytes: &[u8]| {
                 let blocks = [(name.to_owned(), bytes.to_vec())];
@@ -79,13 +104,9 @@ pub fn og_node_restart_diff(engine: u32, save_text: String, ignore_json: String)
             };
             // A grid's or a behaviour's handle by what it names.
             let names = |h: u64| og_runtime::world_handle_names(engine, h);
-            Ok(restart_diff(
-                &start,
-                &world(engine)?,
-                &ignore,
-                &forms,
-                &names,
-            ))
+            let mut d = restart_diff(&start, &now, &ignore, &forms, &names);
+            d["kept"] = json!(kept);
+            Ok(d)
         });
     match diffed {
         Ok(v) => v.to_string(),

@@ -1,6 +1,6 @@
 //! `og run [project|entry] [--headless] [--commands "t:action[:args];..." | --commands-file <f>] [--seed S]
 //! [--port P] [--ticks N] [--out DIR] [--size WxH] [--setup action[:arg]]...
-//! [--audio null|device|<out.wav>] [--content <dir>] [--platform-store <file.json>] [--platform-fake <file.json>] [--clock <UTC ms>] [--locale <tag>] [--trace <out.json>] [--perf <dir> [--budget <line>=<ms>]...] [--gpu-serial] [--profile <out.cpuprofile|out.md>] [--capture-only] [--forks N] [--restart-at S] [--json] [--no-check]`
+//! [--audio null|device|<out.wav>] [--content <dir>] [--platform-store <file.json>] [--platform-fake <file.json>] [--clock <UTC ms>] [--locale <tag>] [--trace <out.json>] [--perf <dir> [--budget <line>=<ms>]...] [--gpu-serial] [--profile <out.cpuprofile|out.md>] [--capture-only] [--forks N] [--restart-at S [--restart-keep Type.field,...]] [--json] [--no-check]`
 //!
 //! Cooks the project, type-checks it (crate::check: a type error stops the
 //! run before anything is bundled, its diagnostics printed, or with
@@ -54,7 +54,7 @@ use crate::project::{self, Project};
 use std::path::Path;
 use std::process::ExitCode;
 
-const USAGE: &str = "usage: og run [project|entry] [--headless] [--commands \"t:action[:args];...\" | --commands-file <f>] [--seed S] [--port P] [--ticks N] [--out DIR] [--size WxH] [--setup action[:arg]]... [--audio null|device|<out.wav>] [--content <dir>] [--platform-store <file.json>] [--platform-fake <file.json>] [--clock <UTC ms>] [--locale <tag>] [--trace <out.json>] [--perf <dir> [--budget <line>=<ms>]...] [--gpu-serial] [--profile <out.cpuprofile|out.md>] [--room ws://127.0.0.1:P/<room>|wss://<host>/<room>] [--shared ws://127.0.0.1:P/|wss://<host>/|https://<host>:P/ [--shared-token-file <f>] [--shared-cert-hash <hex>]] [--capture-only] [--forks N] [--restart-at S] [--json] [--no-check]\n       og run --device chrome|safari|android[:serial]|iphone[:udid] [project] [--seconds N] [--port P] [--out DIR] [--size WxH] [--headed] [--chrome <path>] [--cert <pem> --key <pem>] [--host <ip>] [--json]";
+const USAGE: &str = "usage: og run [project|entry] [--headless] [--commands \"t:action[:args];...\" | --commands-file <f>] [--seed S] [--port P] [--ticks N] [--out DIR] [--size WxH] [--setup action[:arg]]... [--audio null|device|<out.wav>] [--content <dir>] [--platform-store <file.json>] [--platform-fake <file.json>] [--clock <UTC ms>] [--locale <tag>] [--trace <out.json>] [--perf <dir> [--budget <line>=<ms>]...] [--gpu-serial] [--profile <out.cpuprofile|out.md>] [--room ws://127.0.0.1:P/<room>|wss://<host>/<room>] [--shared ws://127.0.0.1:P/|wss://<host>/|https://<host>:P/ [--shared-token-file <f>] [--shared-cert-hash <hex>]] [--capture-only] [--forks N] [--restart-at S [--restart-keep Type.field,...]] [--json] [--no-check]\n       og run --device chrome|safari|android[:serial]|iphone[:udid] [project] [--seconds N] [--port P] [--out DIR] [--size WxH] [--headed] [--chrome <path>] [--cert <pem> --key <pem>] [--host <ip>] [--json]";
 
 /// What `og run` was asked.
 pub struct RunArgs {
@@ -174,6 +174,7 @@ pub fn parse(args: &[&str]) -> Result<RunArgs, String> {
             | "--room"
             | "--forks"
             | "--restart-at"
+            | "--restart-keep"
             | "--shared"
             | "--shared-token-file"
             | "--shared-cert-hash") => {

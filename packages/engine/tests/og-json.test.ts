@@ -261,6 +261,25 @@ test("restarts", async () => {
         expect(restart.failures.join("\n")).toContain("restart: the world after 30 ticks is not a fresh start's");
       }
     }
+    // The same restart keeping Count.n on purpose passes and says what it carried over; a kept name
+    // the world does not declare fails, naming the fields it has.
+    writeFileSync(join(game, "tests/restart.og.ts"), `import { expect, test } from "bun:test";
+import { runPlaytest } from "@origingame/engine/playtest";
+test("keeps", async () => {
+  const run = await runPlaytest({ commands: "1:quit", restart: { at: 0.5, keep: ["Count.n"] } });
+  expect(run.restart?.ok, "restarted").toBe(true);
+});`);
+    writeFileSync(join(game, "tests/miskept.og.ts"), `import { test } from "bun:test";
+import { runPlaytest } from "@origingame/engine/playtest";
+test("keeps a field the world lacks", async () => {
+  await runPlaytest({ commands: "1:quit", restart: { at: 0.5, keep: ["Count.m"] } });
+});`);
+    const events = lines(og("test", game, "--json").stdout) as Array<Record<string, any>>;
+    const kept = events.find((e) => e.playtest === "restart"), wrong = events.find((e) => e.playtest === "miskept");
+    rmSync(join(game, "tests/miskept.og.ts"));
+    expect(kept, JSON.stringify(events)).toMatchObject({ ok: true, status: "passed", restart: { tick: 30, ok: true, first: null, kept: [{ name: "Count.n", start: 1, now: 2 }] } });
+    expect(wrong?.ok, JSON.stringify(wrong)).toBe(false);
+    expect(JSON.stringify(wrong)).toContain("restart keep `Count.m`: `Count` has no field `m` (its fields: n)");
     rmSync(join(game, "tests/budget.og.ts"));
     // Despawning everything and spawning it again is a restart; one entity left over is not, by name.
     for (const leak of [false, true]) {
@@ -304,6 +323,7 @@ test("restarts", async () => {
     writeFileSync(original, `import { og } from "@origingame/engine"; export default og.game({});`);
     rmSync(join(game, "tests/budget.og.ts"), { force: true });
     rmSync(join(game, "tests/restart.og.ts"));
+    rmSync(join(game, "tests/miskept.og.ts"), { force: true });
   }
 }, 360_000);
 

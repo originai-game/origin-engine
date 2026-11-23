@@ -152,6 +152,8 @@ export async function run(argv: string[], output: RunOutput = hostProcess, contr
     let handoffFile: string | undefined;
     let failureCapture: string | undefined;
     let restartAt: number | undefined;
+    // --restart-keep: the progress the game carries across the restart, `Type.field` each.
+    const restartKeep: string[] = [];
     const setup: string[] = [];
     for (let i = 0; i < argv.length; i++) {
       const a = argv[i]!;
@@ -198,6 +200,7 @@ export async function run(argv: string[], output: RunOutput = hostProcess, contr
       else if (a === "--handoff") handoffFile = resolve(next());
       else if (a === "--failure-capture") failureCapture = resolve(next());
       else if (a === "--restart-at") restartAt = Number(next());
+      else if (a === "--restart-keep") restartKeep.push(...next().split(",").map((k) => k.trim()).filter(Boolean));
       else if (a === "--headless") {
         // Native runs are always headless; accepted for `og run --headless`.
       } else fail(`unknown argument '${a}'`);
@@ -218,6 +221,7 @@ export async function run(argv: string[], output: RunOutput = hostProcess, contr
       fail("--forks forks a script's run: it takes --commands, not --realtime, --watch, --port, --room or --handoff");
     if (restartAt !== undefined && (!(Number.isFinite(restartAt) && restartAt > 0) || commands === undefined))
       fail("--restart-at takes the seconds by which --commands has restarted the game, above 0");
+    if (restartKeep.length > 0 && restartAt === undefined) fail("--restart-keep names what a restart keeps: it takes --restart-at");
     if (captureOnly && (realtime || watchFile !== undefined || port !== undefined)) fail("--capture-only draws no display frame: it is for a script's run, not --realtime, --watch or --port");
 
     // --trace: the Chrome trace (src/trace.ts), continuing og's prelude (the cook) when appending.
@@ -572,7 +576,8 @@ export async function run(argv: string[], output: RunOutput = hostProcess, contr
     // Each rendered frame's step + render milliseconds (ProbeTimings.frameMs), the first five left out.
     const frameTimes: number[] = [];
     // --restart-at: the world of a fresh start, compared with the world after the restart's tick.
-    type Restart = { tick: number; ok: boolean; hash: string; startHash: string; first: string | null; unchecked: string[]; diff: unknown };
+    type Kept = { name: string; entity?: string; start: unknown; now: unknown };
+    type Restart = { tick: number; ok: boolean; hash: string; startHash: string; first: string | null; unchecked: string[]; kept: Kept[]; diff: unknown };
     let restart: Restart | null = null;
     let ticksRun = 0;
     const restartTick = restartAt === undefined ? undefined : Math.max(1, Math.round(restartAt * engine.rate));
@@ -602,9 +607,10 @@ export async function run(argv: string[], output: RunOutput = hostProcess, contr
         blocks?: Array<{ block: string }>;
         records?: Array<{ block: string; entity?: string; record?: string; global?: string; fields?: Fields; only?: string; start?: unknown; now?: unknown }>;
         unchecked?: string[];
+        kept?: Kept[];
       };
-      const d = JSON.parse(extras.og_node_restart_diff(engine.id, startWorld!, restartIgnore)) as Diff;
-      if (d.error) return { tick, ok: false, hash: "", startHash: "", first: `the diff failed: ${d.error}`, unchecked: [], diff: d };
+      const d = JSON.parse(extras.og_node_restart_diff(engine.id, startWorld!, restartIgnore, JSON.stringify(restartKeep))) as Diff;
+      if (d.error) return { tick, ok: false, hash: "", startHash: "", first: `the diff failed: ${d.error}`, unchecked: [], kept: [], diff: d };
       const field = (f?: Fields) => (f?.[0] ? `.${f[0].field} is ${JSON.stringify(f[0].now)}, a fresh start's ${JSON.stringify(f[0].start)}` : "");
       const c = d.components?.[0];
       const r = d.resources?.[0];
@@ -642,7 +648,7 @@ export async function run(argv: string[], output: RunOutput = hostProcess, contr
                       : d.blocks?.[0]
                         ? `module state ${d.blocks[0].block} differs`
                         : null;
-      return { tick, ok: first === null && d.differs === false, hash: d.hash!, startHash: d.startHash!, first, unchecked: d.unchecked ?? [], diff: d };
+      return { tick, ok: first === null && d.differs === false, hash: d.hash!, startHash: d.startHash!, first, unchecked: d.unchecked ?? [], kept: d.kept ?? [], diff: d };
     };
     // Each frame's own time and the time between consecutive frames are the engine's performance record's
     // (`frame work`, `frame interval`: author/perf.rs), turned on after the first five frames unless --perf
@@ -915,7 +921,7 @@ export async function run(argv: string[], output: RunOutput = hostProcess, contr
     }
     const forkFailed = forkResults.some((f) => f.mismatches.length > 0);
     if (restartTick !== undefined && restart === null)
-      restart = { tick: dump.tick, ok: false, hash: "", startHash: "", first: `the run ended after ${ticksRun} ticks, before --restart-at's ${restartTick}`, unchecked: [], diff: null };
+      restart = { tick: dump.tick, ok: false, hash: "", startHash: "", first: `the run ended after ${ticksRun} ticks, before --restart-at's ${restartTick}`, unchecked: [], kept: [], diff: null };
     const restartFailed = restart !== null && !restart.ok;
     if (restart && !restart.ok) process.stderr.write(`og run: the world after ${restart.tick} ticks is not a fresh start's: ${restart.first}\n`);
     // Order statistics (nearest rank).

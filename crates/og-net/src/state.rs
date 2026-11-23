@@ -942,6 +942,89 @@ pub fn diff(local: &Snapshot, remote: &Snapshot) -> Value {
 /// list) or the fields it names.
 pub type Ignore = BTreeMap<String, Vec<String>>;
 
+/// The progress a game deliberately carries across a restart (`og run
+/// --restart-keep`): each `Type.field` names a component's or a resource's
+/// field the start's world declares, or is an error naming what does exist.
+/// Answers the ignore table that leaves those fields out of [`restart_diff`]
+/// and the report of each: its value at the fresh start and after the
+/// restart, per paired entity for a component. Unlike [`Ignore`], which is
+/// the engine's own (the clock), this is the game's stated carry-over.
+pub fn restart_kept(
+    start: &Snapshot,
+    now: &Snapshot,
+    keep: &[String],
+) -> Result<(Ignore, Vec<Value>), String> {
+    let mut ignore = Ignore::new();
+    let mut kept = Vec::new();
+    let pairing = pair(start, now);
+    // A record's field by name, as JSON (null where its type lacks it).
+    let read = |s: &Snapshot, t: usize, bytes: &[u8], field: &str| {
+        let ty = &s.types[t];
+        ty.schema
+            .fields
+            .iter()
+            .position(|f| f.name == field)
+            .map_or(Value::Null, |i| {
+                field_json(&ty.schema.fields[i], &bytes[ty.layout.range(i)])
+            })
+    };
+    for name in keep {
+        let (ty, field) = name.rsplit_once('.').ok_or_else(|| {
+            format!(
+                "restart keep `{name}`: name a component's or a resource's field, as `Run.best`"
+            )
+        })?;
+        let t = start
+            .types
+            .iter()
+            .position(|x| x.name == ty)
+            .ok_or_else(|| {
+                format!("restart keep `{name}`: the world has no component or resource `{ty}`")
+            })?;
+        let fields = &start.types[t].schema.fields;
+        if !fields.iter().any(|f| f.name == field) {
+            let names: Vec<&str> = fields.iter().map(|f| f.name.as_str()).collect();
+            return Err(format!(
+                "restart keep `{name}`: `{ty}` has no field `{field}` (its fields: {})",
+                names.join(", ")
+            ));
+        }
+        ignore
+            .entry(ty.to_owned())
+            .or_default()
+            .push(field.to_owned());
+        if let Some((_, bytes)) = start.resources.iter().find(|(u, _)| *u == t) {
+            let now_value = now
+                .resources
+                .iter()
+                .find(|(u, _)| now.type_name(*u) == ty)
+                .map_or(Value::Null, |(u, b)| read(now, *u, b, field));
+            kept.push(
+                json!({ "name": name, "start": read(start, t, bytes, field), "now": now_value }),
+            );
+            continue;
+        }
+        for &(i, j) in &pairing.pairs {
+            let (rs, rn) = (&start.rows[i], &now.rows[j]);
+            let Some((_, bytes)) = rs.components.iter().find(|(u, _)| *u == t) else {
+                continue;
+            };
+            let now_value = rn
+                .components
+                .iter()
+                .find(|(u, _)| now.type_name(*u) == ty)
+                .map_or(Value::Null, |(u, b)| read(now, *u, b, field));
+            kept.push(json!({
+                "name": name,
+                "entity": start.entity_path(rs.entity),
+                "start": read(start, t, bytes, field),
+                "now": now_value,
+            }));
+        }
+    }
+    Ok((ignore, kept))
+}
+
 fn ignored<'a>(ignore: &'a Ignore, ty: &str) -> Option<&'a [String]> {
     ignore.get(ty).map(Vec::as_slice)
 }

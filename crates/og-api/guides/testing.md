@@ -248,6 +248,16 @@ const run = await runPlaytest({ commands: "10:quit", budget: { frameMs: { p95: 1
   cooldown counts as one, however late in the run it came.
   A module state the check could not read is listed in `unchecked`, never
   passed.
+- Progress the game deliberately carries across a restart (coins earned,
+  a best score, unlocked stages) is stated with `restart: { at, keep }`:
+  each entry a field of a component or a resource the world declares
+  (`keep: ["Run.best", "Wallet.coins"]`). Those fields are left out of the
+  comparison and `run.restart.kept` reports each with its value at the
+  fresh start and after the restart (by entity for a component), so a
+  reader sees what the game carried over. A name the world does not
+  declare fails the playtest. Keep is the game's statement, not an
+  ignore: the clock is the engine's own and is never listed, and state
+  that belongs to the run (its score, the enemies on screen) is never kept.
 - First frame on a phone over 4G within 2 s for a small game: a large
   first scene, fonts for every language at once and uncompressed textures
   are the usual causes. Stream what the first screen does not show.

@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {
+      "member": "PlaytestDesc.restart",
+      "summary": "restart takes `keep`: the progress a game deliberately carries across a restart (`keep: [\"Run.best\", \"Wallet.coins\"]`), each a field of a component or a resource the world declares. Those fields are left out of the comparison and `run.restart.kept` reports each with its value at the fresh start and after the restart (by entity for a component). A name the world does not declare fails the playtest, naming the fields the type has. `og run --restart-keep Type.field,...` beside --restart-at. Until now a game with in-world progress could not pass the restart check once a run had earned anything."
+    }
+  ]
+}

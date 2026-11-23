@@ -78,6 +78,7 @@ function refusal(desc: PlaytestDesc): string | null {
   }
   if (desc.restart !== undefined && !(Number.isFinite(desc.restart.at) && desc.restart.at > 0)) return `restart.at is ${desc.restart.at}: the seconds by which the script has restarted the game, above 0`;
   if (desc.restart !== undefined && room) return "a room playtest takes no `restart`: check the restart in a playtest of one process";
+  for (const k of desc.restart?.keep ?? []) if (!/^[^.,\s]+(\.[^.,\s]+)*\.[^.,\s]+$/.test(k)) return `restart.keep names ${JSON.stringify(k)}: name a component's or a resource's field, as \`Run.best\``;
   const ceilings = [["frameMs", desc.budget?.frameMs], ...Object.entries(desc.budget?.gpuPasses ?? {}).map(([n, c]) => [`gpuPasses.${n}`, c] as const)] as const;
   for (const [name, c] of ceilings) {
     if (c === undefined) continue;
@@ -173,6 +174,7 @@ export async function runPlaytest(desc: PlaytestDesc): Promise<PlaytestRun> {
     if (fakeFile) c.push("--platform-fake", fakeFile);
     if (desc.content !== undefined) c.push("--content", resolve(root ?? ".", desc.content));
     if (desc.restart !== undefined && !room) c.push("--restart-at", String(desc.restart.at));
+    if (desc.restart?.keep?.length && !room) c.push("--restart-keep", desc.restart.keep.join(","));
     return c;
   };
   const summarise = (exitCode: number, stdout: string, stderr: string, what: string): Summary | null => {

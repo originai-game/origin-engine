@@ -147,6 +147,11 @@ export interface PlaytestRestart {
   readonly first: string | null;
   /** Module state blocks that could not be read by entity (`<block>: <why>`): not compared, listed in the playtest's `unchecked`, never passed. */
   readonly unchecked: readonly string[];
+  /**
+   * Each field of PlaytestDesc.restart.keep, with its value at the fresh start and after the restart
+   * (per paired entity for a component, its path in `entity`): what the game carried across it.
+   */
+  readonly kept: ReadonlyArray<{ readonly name: string; readonly entity?: string; readonly start: unknown; readonly now: unknown }>;
   /** og-net's whole restart diff: `{ differs, components, names, entities: { missing, extra }, resources, events, blocks, records, unchecked }`; `records` are the modules' per-entity state that differs (`{ block, entity, record, fields }`, `{ block, global }`). */
   readonly diff: unknown;
 }
@@ -291,7 +296,16 @@ export interface PlaytestDesc {
    * left out, so despawning everything and spawning it again is a restart. A different world, or an extra or missing
    * entity, fails the playtest, naming the first difference by entity path.
    */
-  readonly restart?: { readonly at: number };
+  readonly restart?: {
+    readonly at: number;
+    /**
+     * The progress the game deliberately carries across a restart, each a field of a component or a
+     * resource the world declares (`Run.best`, `Wallet.coins`): left out of the comparison and
+     * reported in `run.restart.kept` with both values. A name the world does not declare fails the
+     * playtest. The clock is the engine's own and needs no entry.
+     */
+    readonly keep?: readonly string[];
+  };
   /** More fresh runs after the script, in order (a relaunch): their runs are `run.then`. With `room`, every place of the room relaunches at once. */
   readonly then?: readonly PlaytestStep[];
   /**
