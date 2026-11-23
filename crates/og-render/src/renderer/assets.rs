@@ -630,6 +630,7 @@ impl Renderer {
                     || material.dissolves(),
                 features: crate::pipeline_features::Features::of_material(material),
                 outline: material.outlineWidth > 0.0,
+                outline_width: material.outlineWidth.clamp(0.0, 31.0),
                 shader: hooked.map(|h| h.0.index()),
                 // An array-map instance's transform carries its layer: the
                 // occluder depth pass reads transforms as they are.

@@ -413,3 +413,33 @@ fn contact_shadows_take_the_ao_target_before_the_main_pass() {
         }
     }
 }
+
+/// The jump flood reaches the widest line the frame draws and no farther,
+/// dropping its steps in pairs so the last jump still writes `.a`.
+#[test]
+fn the_outline_flood_reaches_just_past_the_widest_line() {
+    // fs_outline_wide inks up to width + 1 from the seed; a flood from step k reaches 2k (with the extra 1).
+    for (widest, first, steps) in [
+        (0.0, 4, vec![1, 1]),
+        (1.0, 4, vec![1, 1]),
+        (2.5, 2, vec![4, 2, 1, 1]),
+        (7.0, 2, vec![4, 2, 1, 1]),
+        (7.5, 0, vec![16, 8, 4, 2, 1, 1]),
+        (31.875, 0, vec![16, 8, 4, 2, 1, 1]),
+    ] {
+        assert_eq!(jfa_first(widest), first, "{widest} px");
+        let run: Vec<u32> = JFA_STEPS[first as usize..].to_vec();
+        assert_eq!(run, steps, "{widest} px");
+        let reach: u32 = run.iter().sum();
+        // The full flood is the ceiling it always had (lines up to 31.875 px).
+        assert!(
+            reach as f32 >= (widest + 1.0).min(32.0),
+            "{widest} px reaches {reach}"
+        );
+        assert_eq!(
+            jfa_targets(first).0,
+            "outline-jfa.a",
+            "the first jump reads the seeds"
+        );
+    }
+}

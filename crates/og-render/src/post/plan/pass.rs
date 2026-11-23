@@ -184,6 +184,23 @@ pub(crate) enum FramePass {
 /// second step of 1 (JFA+1, Rong and Tan 2006) for the last ties.
 pub(crate) const JFA_STEPS: [u32; 6] = [16, 8, 4, 2, 1, 1];
 
+/// The first of [`JFA_STEPS`] a frame runs, for the widest line it can
+/// draw in pixels: a flood whose first step is k reaches 2k - 1 pixels
+/// (and the extra step one more), and `fs_outline_wide` inks a pixel
+/// up to `width + 1` from its seed. It drops the steps in pairs, so the
+/// last jump still writes `outline-jfa.a` and the first reads the seeds
+/// there: from 16 (31.875 px lines), 4 (up to 7 px) or 1 (up to 1 px).
+pub(crate) fn jfa_first(widest: f32) -> u32 {
+    let reach = (widest.max(0.0) + 1.0).ceil();
+    if reach <= 2.0 {
+        4
+    } else if reach <= 8.0 {
+        2
+    } else {
+        0
+    }
+}
+
 /// The jump flood target jump `i` reads and the one it writes: from the
 /// seeds' `outline-jfa.a`, back and forth, the last (an even count) back
 /// in `.a`, which `OutlineWide` reads.

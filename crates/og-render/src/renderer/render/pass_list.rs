@@ -105,6 +105,7 @@ impl Renderer {
                 outline: effects.outline,
                 outline_outside: scene.look.stylise.material.outline_place
                     != crate::OutlinePlace::Inside,
+                outline_widest: effects.outline_widest,
                 taa,
                 taa_sharpen: self.post.taa_sharpen > 0.0,
                 dof: effects.dof.is_some(),

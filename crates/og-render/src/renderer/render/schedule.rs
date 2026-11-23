@@ -197,6 +197,9 @@ pub(crate) struct PassDecisions<'a> {
     pub outline: bool,
     /// Lines outside the silhouettes too (the jump flood).
     pub outline_outside: bool,
+    /// The widest line the frame can draw, in pixels: how far the jump
+    /// flood reaches (`post::jfa_first`).
+    pub outline_widest: f32,
     pub taa: bool,
     pub taa_sharpen: bool,
     pub dof: bool,
@@ -344,7 +347,7 @@ pub(crate) fn frame_passes(d: &PassDecisions<'_>, caps: Caps) -> Vec<FramePass> 
         // Lines outside the silhouettes: the jump flood (fxpost.wgsl).
         if d.outline_outside {
             push(FramePass::OutlineSeed);
-            for i in 0..post::JFA_STEPS.len() as u32 {
+            for i in post::jfa_first(d.outline_widest)..post::JFA_STEPS.len() as u32 {
                 push(FramePass::OutlineJump(i));
             }
             push(FramePass::OutlineWide);
@@ -512,6 +515,7 @@ mod tests {
             glow: true,
             outline: true,
             outline_outside: true,
+            outline_widest: 31.875,
             taa: true,
             taa_sharpen: true,
             dof: true,
@@ -542,6 +546,24 @@ mod tests {
                 hdr_output: true,
             },
         }
+    }
+
+    #[test]
+    fn a_thin_outline_runs_a_short_jump_flood() {
+        let jumps = |widest: f32| {
+            let d = PassDecisions {
+                outline_widest: widest,
+                ..everything(&[])
+            };
+            frame_passes(&d, Caps::FULL)
+                .iter()
+                .filter(|p| matches!(p, FramePass::OutlineJump(_)))
+                .count()
+        };
+        // anime-cel-3d's 2.5 px line: 4, 2, 1, 1 (it ran all six, 32 px of flood).
+        assert_eq!(jumps(2.5), 4);
+        assert_eq!(jumps(1.0), 2);
+        assert_eq!(jumps(20.0), 6);
     }
 
     #[test]

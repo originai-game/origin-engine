@@ -202,6 +202,9 @@ pub(crate) struct GpuMaterial {
     pub(crate) dissolve: bool,
     /// Has its own outline (turns the outline pass on).
     pub(crate) outline: bool,
+    /// Its outline's width in pixels (0: none), before the style's
+    /// distance scaling.
+    pub(crate) outline_width: f32,
     /// Uses toon, rim, flash or dissolve.
     pub(crate) effects: bool,
     /// The lit features it draws with (`Features::of_material`).

@@ -29,6 +29,8 @@ pub(super) struct FrameEffects {
     pub contact: bool,
     pub bent: bool,
     pub outline: bool,
+    /// The widest outline the frame can draw, in pixels.
+    pub outline_widest: f32,
     pub dof: Option<DepthOfField>,
     pub motion_blur: Option<MotionBlur>,
     pub screen_blur: Option<ScreenBlur>,
@@ -132,6 +134,24 @@ impl Renderer {
                 .iter()
                 .chain(skinned_batches)
                 .any(|b| !b.transparent && self.cache.materials[b.material].outline);
+        // The widest line, for the jump flood's reach (post::jfa_first): the
+        // post outline's, the style's and each drawn material's, a styled
+        // line grown up to its near cap (lighting.wgsl style_line_width).
+        let style = &scene.look.stylise.material;
+        let grow = if style.outline_distance > 0.0 {
+            style.outline_near_cap.clamp(1.0, 4.0)
+        } else {
+            1.0
+        };
+        let material_widest = batches
+            .iter()
+            .chain(skinned_batches)
+            .filter(|b| !b.transparent)
+            .map(|b| self.cache.materials[b.material].outline_width)
+            .fold(style.outline_width.clamp(0.0, 31.0), f32::max);
+        let outline_widest = (material_widest * grow)
+            .max(post_fx.outline.map_or(0.0, |o| o.width.max(0.0)))
+            .min(31.875);
         let dof = post_fx.depth_of_field;
         let motion_blur = post_fx.motion_blur;
         let screen_blur = post_fx.screen_blur.filter(|b| b.strength != 0.0);
@@ -223,6 +243,7 @@ impl Renderer {
             contact,
             bent,
             outline,
+            outline_widest,
             dof,
             motion_blur,
             screen_blur,
