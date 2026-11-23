@@ -38252,6 +38252,41 @@ pub mod record {
         }
     }
 
+    /// `Projectile`: packages/knowledge/wiki/combat.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct Projectile {
+        pub damage: f32,
+        pub shooter: u64,
+        pub pierce: u32,
+        pub struck: u32,
+    }
+
+    impl Default for Projectile {
+        fn default() -> Self {
+            Self {
+                damage: Default::default(),
+                shooter: Default::default(),
+                pierce: Default::default(),
+                struck: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for Projectile {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                damage: field(o, "damage", d.damage)?,
+                shooter: field(o, "shooter", d.shooter)?,
+                pierce: field(o, "pierce", d.pierce)?,
+                struck: field(o, "struck", d.struck)?,
+            })
+        }
+    }
+
     /// `Health`: packages/knowledge/wiki/combat.md.
     #[derive(Clone, Debug, PartialEq)]
     pub struct Health {

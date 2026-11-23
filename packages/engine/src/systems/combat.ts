@@ -1,8 +1,10 @@
 // og.systems.combat (IDL `combat`): an og.Attack plays og.AttackMove entities
 // tick by tick, takes og.AttackLink entities on buffered presses
 // (og.input.consume) inside their windows, and drives its og.HitVolume
-// entities; last tick's og.HitEvent takes its move's damage from the
-// target's og.Health unless the target's og.Hurt says it is invulnerable.
+// entities; last tick's og.HitEvent takes its move's damage, or its
+// og.Projectile's, from the target's og.Health unless the target's og.Hurt
+// says it is invulnerable. A projectile is no attacker: it never enters
+// og.CombatAttackers, and og.combat despawns it once its pierce is spent.
 // A game lists the systems in GameDesc.systems and sets every number: a
 // zero window, damage or invulnerability does nothing.
 //
@@ -30,6 +32,7 @@ const HitEvent = T.HitEvent!;
 const Damaged = T.Damaged!;
 const Died = T.Died!;
 const CombatAttackers = T.CombatAttackers!;
+const Projectile = T.Projectile!;
 
 type V3 = { x: number; y: number; z: number };
 type Phase = "idle" | "startup" | "active" | "recovery";
@@ -69,11 +72,18 @@ interface HurtValue {
   knockback: number;
 }
 interface HitValue {
+  volume: Entity;
   owner: Entity;
   swing: number;
   target: Entity;
   point: V3;
   normal: V3;
+}
+interface ProjectileValue {
+  damage: number;
+  shooter: Entity;
+  pierce: number;
+  struck: number;
 }
 interface VolumeValue {
   active: boolean;
@@ -123,44 +133,66 @@ export const combatIndex = defineSystem(
   },
 );
 
-/** Last tick's hits: each of a move's swing takes the move's damage. */
+/** A hit's damage taken from its target, as og.Damaged and og.Died from `source`: whether it took any. */
+function strike(world: World, tick: number, hit: HitValue, amount: number, source: Entity, move: Entity): boolean {
+  if (!(amount > 0)) return false;
+  const health = get<{ value: number; dead: boolean }>(world, hit.target, Health);
+  if (!health || health.dead) return false;
+  const hurt = get<HurtValue>(world, hit.target, Hurt);
+  if (hurt && tick < hurt.invulnerableUntil) return false;
+  const left = Math.max(0, health.value - amount);
+  const dead = left <= 0;
+  set(world, hit.target, Health, { value: left, dead });
+  let knockback: V3 = { x: 0, y: 0, z: 0 };
+  if (hurt) {
+    const changes: Partial<HurtValue> = {};
+    if (hurt.invulnerableTicks > 0) changes.invulnerableUntil = tick + hurt.invulnerableTicks;
+    if (hurt.staggerTicks > 0) changes.staggeredUntil = tick + hurt.staggerTicks;
+    if (changes.invulnerableUntil !== undefined || changes.staggeredUntil !== undefined) set(world, hit.target, Hurt, changes);
+    // Away from the volume: the hit's normal points from the target towards it.
+    if (hurt.knockback > 0) knockback = { x: -hit.normal.x * hurt.knockback, y: -hit.normal.y * hurt.knockback, z: -hit.normal.z * hurt.knockback };
+  }
+  emit(world, Damaged, { target: hit.target, source, move, swing: hit.swing, amount, health: left, point: hit.point, knockback });
+  if (dead) emit(world, Died, { entity: hit.target, source });
+  return true;
+}
+
+/**
+ * Last tick's hits, in event order: a projectile's takes its damage, and
+ * counts towards its pierce when it took any; any other takes the damage of
+ * its owner's swing.
+ */
 function damage(world: World, tick: number): void {
+  // The projectiles struck in this run, with their count so far.
+  const shots = new Map<Entity, { p: ProjectileValue; struck: number }>();
   for (const hit of world.events(HitEvent as never) as unknown as readonly HitValue[]) {
-    const health = get<{ value: number; dead: boolean }>(world, hit.target, Health);
-    if (!health || health.dead) continue;
+    let shot = shots.get(hit.volume);
+    if (!shot) {
+      const p = get<ProjectileValue>(world, hit.volume, Projectile);
+      if (p) shots.set(hit.volume, (shot = { p, struck: p.struck }));
+    }
+    if (shot) {
+      const { p } = shot;
+      // Its shooter, or a hit after it was spent in this run (the rest of its sweep): nothing.
+      if (hit.target === p.shooter || (p.pierce > 0 && shot.struck >= p.pierce)) continue;
+      // Only a strike that takes damage counts: a target without og.Health
+      // (a graze ring), a dead one or one in its i-frames lets it pass.
+      if (strike(world, tick, hit, p.damage, p.shooter || hit.owner, 0 as Entity)) shot.struck += 1;
+      continue;
+    }
     // A hit is read the tick after it struck, before any attack moves, so its
     // swing is its attacker's current one: it takes the move that swing
     // started, even if the game has cut it since.
     const attack = get<AttackValue>(world, hit.owner, Attack);
     if (!attack || attack.swing !== hit.swing) continue;
-    const moveEntity = attack.swingMove;
-    const move = get<MoveValue>(world, moveEntity, AttackMove);
-    if (!move || !(move.damage > 0)) continue;
-    const hurt = get<HurtValue>(world, hit.target, Hurt);
-    if (hurt && tick < hurt.invulnerableUntil) continue;
-    const left = Math.max(0, health.value - move.damage);
-    const dead = left <= 0;
-    set(world, hit.target, Health, { value: left, dead });
-    let knockback: V3 = { x: 0, y: 0, z: 0 };
-    if (hurt) {
-      const changes: Partial<HurtValue> = {};
-      if (hurt.invulnerableTicks > 0) changes.invulnerableUntil = tick + hurt.invulnerableTicks;
-      if (hurt.staggerTicks > 0) changes.staggeredUntil = tick + hurt.staggerTicks;
-      if (changes.invulnerableUntil !== undefined || changes.staggeredUntil !== undefined) set(world, hit.target, Hurt, changes);
-      // Away from the volume: the hit's normal points from the target towards it.
-      if (hurt.knockback > 0) knockback = { x: -hit.normal.x * hurt.knockback, y: -hit.normal.y * hurt.knockback, z: -hit.normal.z * hurt.knockback };
-    }
-    emit(world, Damaged, {
-      target: hit.target,
-      source: hit.owner,
-      move: moveEntity,
-      swing: hit.swing,
-      amount: move.damage,
-      health: left,
-      point: hit.point,
-      knockback,
-    });
-    if (dead) emit(world, Died, { entity: hit.target, source: hit.owner });
+    const move = get<MoveValue>(world, attack.swingMove, AttackMove);
+    if (move) strike(world, tick, hit, move.damage, hit.owner, attack.swingMove);
+  }
+  for (const [e, { p, struck }] of shots) {
+    if (p.pierce > 0 && struck >= p.pierce) {
+      const d = world.despawn(e);
+      if (!d.ok) throw new Error(`og.combat: ${d.reason}`);
+    } else if (struck !== p.struck) set(world, e, Projectile, { struck });
   }
 }
 
@@ -243,7 +275,7 @@ export const combatStep = defineSystem(
   "og.combat",
   {
     reads: [AttackMove, AttackLink, HitEvent, CombatAttackers],
-    writes: [Attack, Health, Hurt, HitVolume, Damaged, Died],
+    writes: [Attack, Health, Hurt, HitVolume, Projectile, Damaged, Died],
     after: ["og.combatIndex"],
   },
   (_q: unknown, time: { tick: number; scaledDt: number }, world: World) => {

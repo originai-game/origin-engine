@@ -1,5 +1,5 @@
 module combat {
-  doc "The records og.systems.combat carries out: an og.Attack plays og.AttackMove entities tick by tick (startup, active, recovery), drives its og.HitVolume entities in the active window, and takes an og.AttackLink when its input action's buffered press lands in the link's window (og.input.consume); an og.HitEvent of a move's swing takes the move's damage from the target's og.Health, unless its og.Hurt says it is invulnerable, and is reported as og.Damaged and, once, og.Died. Every number is the game's: a zero window, damage or invulnerability does nothing."
+  doc "The records og.systems.combat carries out: an og.Attack plays og.AttackMove entities tick by tick (startup, active, recovery), drives its og.HitVolume entities in the active window, and takes an og.AttackLink when its input action's buffered press lands in the link's window (og.input.consume); an og.HitEvent of a move's swing or an og.Projectile takes its damage from the target's og.Health, unless its og.Hurt says it is invulnerable, and is reported as og.Damaged and, once, og.Died. Every number is the game's: a zero window, damage or invulnerability does nothing."
   guide "combat §1"
 
   enum AttackPhase {
@@ -86,6 +86,24 @@ module combat {
     }
   }
 
+  component Projectile {
+    aliases "bullet, shot, missile, bullet damage, piercing shot, shmup bullet, Unity projectile, Godot bullet Area2D"
+    doc "A shot's damage beside its og.HitVolume, without an og.Attack: leave the volume's `owner` 0, so each projectile strikes a target once. A hit takes `damage` under the target's og.Hurt, as a move's does. Only a strike that takes damage counts in `struck`: a target without og.Health (a graze volume), a dead one, one in its i-frames or its `shooter` lets it pass. Once `struck` reaches `pierce` og.systems.combat despawns it (with its descendants) before it strikes again. Moving it and a lifetime or range are the game's."
+    guide "combat §2"
+    field damage f32 "What each strike takes from the target's og.Health; 0 takes nothing, and is never spent." {
+      min 0
+      tunable true
+    }
+    field shooter Entity "Who fired it: og.Damaged.source and og.Died.source (the projectile itself when 0), and never struck by it."
+    field pierce u32 "Strikes that take damage before it is spent: 1 for a bullet that stops at the first it hurts, 0 for one never spent (a beam)." {
+      min 0
+      tunable true
+    }
+    field struck u32 "Written: its strikes that took damage." {
+      readonly true
+    }
+  }
+
   component Health {
     aliases "hit points, HP, life, health bar value, damageable"
     doc "What a target has left. og.systems.combat takes a hit's damage from `value` (never below 0) and sets `dead` when it reaches 0, sending og.Died once; it never heals. A dead target takes no more damage."
@@ -127,10 +145,10 @@ module combat {
     doc "A hit took damage from a target's og.Health: sent by og.systems.combat the tick it read the og.HitEvent, in event order."
     guide "combat §2"
     field target Entity "The entity with the og.Health."
-    field source Entity "The attacker (og.HitEvent.owner)."
-    field move Entity "The og.AttackMove whose swing it was."
-    field swing u32 "The attacker's swing."
-    field amount f32 "The damage taken (the move's, whatever was left)."
+    field source Entity "The attacker (og.HitEvent.owner), or the og.Projectile's shooter."
+    field move Entity "The og.AttackMove whose swing it was; 0 for an og.Projectile."
+    field swing u32 "The attacker's swing (og.HitEvent.swing)."
+    field amount f32 "The damage taken (the move's or the projectile's, whatever was left)."
     field health f32 "What the target has left."
     field point Vector3 "Where they met (og.HitEvent.point)." {
       unit m
@@ -146,7 +164,7 @@ module combat {
     doc "A target's og.Health reached 0: sent once, the tick the hit was read (og.Health.dead is set)."
     guide "combat §2"
     field entity Entity "The entity with the og.Health."
-    field source Entity "The attacker whose hit it was."
+    field source Entity "The attacker whose hit it was, or the og.Projectile's shooter."
   }
 
   resource CombatAttackers {

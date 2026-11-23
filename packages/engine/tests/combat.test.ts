@@ -146,3 +146,140 @@ test("a restore mid-swing ends on the hash of the run that did not save", () => 
   expect({ hash: engine.hash(), facts: fixture.facts(world) }).toEqual(straight);
   engine.destroy();
 });
+
+// og.Projectile: shots that are their own owners, without an og.Attack.
+// - damage taken from the owner's move only → the three shots take none
+// - one owner's swing shared by every shot → the second and third do nothing
+// - pierce counted on a hit that took no damage → the bullet dies on the
+//   graze ring and never reaches the target
+// - a spent shot left alive → it strikes the third target
+// - projectiles listed as attackers → 1,500 of them throw
+// - i-frames ignored for a shot → the second shot in the window takes damage
+function shots(build: (world: World) => void) {
+  const engine = must(createEngine(og.game({ tick: 60, seed: 1, systems: [...og.systems.combat], start: build } as never) as GameToken, {}));
+  const world = engine.world;
+  const damaged: { target: Entity; source: Entity; amount: number; move: Entity }[] = [];
+  let hits = 0;
+  const step = (n: number) => {
+    for (let i = 0; i < n; i++) {
+      must(engine.advance(1));
+      hits += world.events(og.HitEvent).length;
+      for (const d of world.events(og.Damaged)) damaged.push(d as never);
+    }
+  };
+  return { engine, world, damaged, step, hits: () => hits };
+}
+
+/** A target of team 2 at `y`, with og.Health unless `health` is negative. */
+function target(world: World, name: string, y: number, health = -1, hurt?: object): Entity {
+  const e = must(world.spawn({ name, position: { x: 0, y, z: 0 } }));
+  must(world.insert(e, og.HurtVolume, { shape: "sphere", radius: 0.5, team: 2 }));
+  if (health >= 0) must(world.insert(e, og.Health, { value: health }));
+  if (hurt) must(world.insert(e, og.Hurt, hurt));
+  return e;
+}
+
+/** A shot of team 1 at `y`, as its own owner. */
+function shot(world: World, name: string, y: number, projectile: object): Entity {
+  const e = must(world.spawn({ name, position: { x: 0, y, z: 0 } }));
+  must(world.insert(e, og.HitVolume, { shape: "sphere", radius: 0.1, active: true, team: 1 }));
+  must(world.insert(e, og.Projectile, projectile));
+  return e;
+}
+
+/** Moves every shot named in `names` up by `dy`. */
+function fly(world: World, names: readonly string[], dy: number) {
+  for (const n of names) {
+    const e = world.find(n);
+    if (e === null) continue;
+    const t = must(world.get(e, og.Transform));
+    must(world.set(e, og.Transform, { position: { ...t.position, y: t.position.y + dy } }));
+  }
+}
+
+test("three projectiles through a target each strike it once", () => {
+  const names = ["s0", "s1", "s2"];
+  const { engine, world, damaged, step, hits } = shots((w) => {
+    const ship = must(w.spawn({ name: "ship", position: { x: 0, y: -50, z: 0 } }));
+    target(w, "drone", 5, 10);
+    names.forEach((n, i) => shot(w, n, -i, { damage: 1, shooter: ship, pierce: 0 }));
+  });
+  for (let i = 0; i < 60; i++) {
+    fly(world, names, 0.25);
+    step(1);
+  }
+  expect(hits()).toBe(3);
+  expect(damaged.length).toBe(3);
+  expect(damaged.every((d) => d.source === world.find("ship") && d.move === 0 && d.amount === 1)).toBe(true);
+  expect(must(world.get(world.find("drone")!, og.Health)).value).toBe(7);
+  // Pierce 0: never spent.
+  expect(names.every((n) => world.find(n) !== null)).toBe(true);
+  engine.destroy();
+});
+
+test("pierce 2 through three targets strikes two, then the shot is spent", () => {
+  const { engine, world, damaged, step } = shots((w) => {
+    for (let i = 0; i < 3; i++) target(w, `t${i}`, 3 + 3 * i, 5);
+    shot(w, "bolt", 0, { damage: 2, pierce: 2 });
+  });
+  const bolt = world.find("bolt")!;
+  for (let i = 0; i < 80; i++) {
+    fly(world, ["bolt"], 0.25);
+    step(1);
+  }
+  expect(damaged.map((d) => d.target)).toEqual([world.find("t0")!, world.find("t1")!]);
+  expect(damaged[0]!.source).toBe(bolt); // no shooter: the projectile itself
+  expect(world.find("bolt")).toBeNull();
+  expect(must(world.get(world.find("t2")!, og.Health)).value).toBe(5);
+  engine.destroy();
+});
+
+test("a strike that takes no damage spends nothing: through a graze volume, then into a target", () => {
+  const { engine, world, damaged, step, hits } = shots((w) => {
+    target(w, "graze", 3); // no og.Health
+    target(w, "core", 7, 4);
+    shot(w, "bullet", 0, { damage: 1, pierce: 1 });
+  });
+  const bullet = world.find("bullet")!;
+  let afterGraze = -1;
+  for (let i = 0; i < 60 && world.find("bullet") !== null; i++) {
+    fly(world, ["bullet"], 0.25);
+    step(1);
+    if (hits() === 1 && afterGraze < 0 && damaged.length === 0) afterGraze = must(world.get(bullet, og.Projectile)).struck;
+  }
+  expect(afterGraze).toBe(0);
+  expect(hits()).toBe(2);
+  expect(damaged.map((d) => d.target)).toEqual([world.find("core")!]);
+  expect(world.find("bullet")).toBeNull();
+  engine.destroy();
+});
+
+test("a second projectile inside the target's invulnerability does nothing and passes on", () => {
+  const { engine, world, damaged, step } = shots((w) => {
+    target(w, "drone", 3, 10, { invulnerableTicks: 30 });
+    shot(w, "a", 0, { damage: 1, pierce: 1 });
+    shot(w, "b", -1, { damage: 1, pierce: 1 });
+  });
+  for (let i = 0; i < 40; i++) {
+    fly(world, ["a", "b"], 0.25);
+    step(1);
+  }
+  expect(damaged.length).toBe(1);
+  expect(must(world.get(world.find("drone")!, og.Health)).value).toBe(9);
+  expect(world.find("a")).toBeNull();
+  // Blocked by the i-frames, it is not spent.
+  expect(must(world.get(world.find("b")!, og.Projectile)).struck).toBe(0);
+  engine.destroy();
+});
+
+test("1,500 live projectiles do not throw, and each strikes", () => {
+  const { engine, world, damaged, step } = shots((w) => {
+    target(w, "boss", 0, 10_000);
+    for (let i = 0; i < 1500; i++) shot(w, "", 0, { damage: 1, pierce: 1 });
+  });
+  step(3);
+  expect(damaged.length).toBe(1500);
+  expect(must(world.get(world.find("boss")!, og.Health)).value).toBe(8500);
+  expect(must(world.resource(og.CombatAttackers)).attackers.length).toBe(0);
+  engine.destroy();
+});

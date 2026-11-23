@@ -17,10 +17,10 @@ Token `og.Damaged`, registered under the schema name `og.Damaged`; its value typ
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
 | `target` | `Entity` | `0` | — | — | — | The entity with the og.Health. |
-| `source` | `Entity` | `0` | — | — | — | The attacker (og.HitEvent.owner). |
-| `move` | `Entity` | `0` | — | — | — | The og.AttackMove whose swing it was. |
-| `swing` | `number` | `0` | — | — | — | The attacker's swing. |
-| `amount` | `number` | `0` | — | — | — | The damage taken (the move's, whatever was left). |
+| `source` | `Entity` | `0` | — | — | — | The attacker (og.HitEvent.owner), or the og.Projectile's shooter. |
+| `move` | `Entity` | `0` | — | — | — | The og.AttackMove whose swing it was; 0 for an og.Projectile. |
+| `swing` | `number` | `0` | — | — | — | The attacker's swing (og.HitEvent.swing). |
+| `amount` | `number` | `0` | — | — | — | The damage taken (the move's or the projectile's, whatever was left). |
 | `health` | `number` | `0` | — | — | — | What the target has left. |
 | `point` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | worldspace `world` | Where they met (og.HitEvent.point). |
 | `knockback` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `mps` | — | og.Hurt.knockback along the hit, away from the volume: zero without og.Hurt or a knockback. |
@@ -31,10 +31,10 @@ event Damaged {
   doc "A hit took damage from a target's og.Health: sent by og.systems.combat the tick it read the og.HitEvent, in event order."
   guide "combat §2"
   field target Entity "The entity with the og.Health."
-  field source Entity "The attacker (og.HitEvent.owner)."
-  field move Entity "The og.AttackMove whose swing it was."
-  field swing u32 "The attacker's swing."
-  field amount f32 "The damage taken (the move's, whatever was left)."
+  field source Entity "The attacker (og.HitEvent.owner), or the og.Projectile's shooter."
+  field move Entity "The og.AttackMove whose swing it was; 0 for an og.Projectile."
+  field swing u32 "The attacker's swing (og.HitEvent.swing)."
+  field amount f32 "The damage taken (the move's or the projectile's, whatever was left)."
   field health f32 "What the target has left."
   field point Vector3 "Where they met (og.HitEvent.point)." {
     unit m
@@ -46,4 +46,4 @@ event Damaged {
 }
 ```
 
-<sub>Module `combat` line 125</sub>
+<sub>Module `combat` line 143</sub>

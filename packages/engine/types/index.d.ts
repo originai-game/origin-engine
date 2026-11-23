@@ -33827,7 +33827,7 @@ export interface Candidate {
 
 
 // ── combat ──────────────────────────────────────────────────────
-// The records og.systems.combat carries out: an og.Attack plays og.AttackMove entities tick by tick (startup, active, recovery), drives its og.HitVolume entities in the active window, and takes an og.AttackLink when its input action's buffered press lands in the link's window (og.input.consume); an og.HitEvent of a move's swing takes the move's damage from the target's og.Health, unless its og.Hurt says it is invulnerable, and is reported as og.Damaged and, once, og.Died. Every number is the game's: a zero window, damage or invulnerability does nothing.
+// The records og.systems.combat carries out: an og.Attack plays og.AttackMove entities tick by tick (startup, active, recovery), drives its og.HitVolume entities in the active window, and takes an og.AttackLink when its input action's buffered press lands in the link's window (og.input.consume); an og.HitEvent of a move's swing or an og.Projectile takes its damage from the target's og.Health, unless its og.Hurt says it is invulnerable, and is reported as og.Damaged and, once, og.Died. Every number is the game's: a zero window, damage or invulnerability does nothing.
 // See `combat §1`.
 
 /**
@@ -33996,6 +33996,39 @@ export interface AttackLink {
 }
 
 /**
+ * A shot's damage beside its og.HitVolume, without an og.Attack: leave the volume's `owner` 0, so each projectile strikes a target once. A hit takes `damage` under the target's og.Hurt, as a move's does. Only a strike that takes damage counts in `struck`: a target without og.Health (a graze volume), a dead one, one in its i-frames or its `shooter` lets it pass. Once `struck` reaches `pierce` og.systems.combat despawns it (with its descendants) before it strikes again. Moving it and a lifetime or range are the game's.
+ * See `combat §2`.
+ *
+ * The value of the `Projectile` component (token `og.Projectile`).
+ */
+export interface Projectile {
+  /**
+   * What each strike takes from the target's og.Health; 0 takes nothing, and is never spent.
+   *
+   * @range 0..
+   * @tunable
+   */
+  damage: number;
+  /**
+   * Who fired it: og.Damaged.source and og.Died.source (the projectile itself when 0), and never struck by it.
+   */
+  shooter: Entity;
+  /**
+   * Strikes that take damage before it is spent: 1 for a bullet that stops at the first it hurts, 0 for one never spent (a beam).
+   *
+   * @range 0..
+   * @tunable
+   */
+  pierce: number;
+  /**
+   * Written: its strikes that took damage.
+   *
+   * @readonly written by the engine
+   */
+  readonly struck: number;
+}
+
+/**
  * What a target has left. og.systems.combat takes a hit's damage from `value` (never below 0) and sets `dead` when it reaches 0, sending og.Died once; it never heals. A dead target takes no more damage.
  * See `combat §2`.
  *
@@ -34065,13 +34098,13 @@ export interface Hurt {
 export interface Damaged {
   /** The entity with the og.Health. */
   readonly target: Entity;
-  /** The attacker (og.HitEvent.owner). */
+  /** The attacker (og.HitEvent.owner), or the og.Projectile's shooter. */
   readonly source: Entity;
-  /** The og.AttackMove whose swing it was. */
+  /** The og.AttackMove whose swing it was; 0 for an og.Projectile. */
   readonly move: Entity;
-  /** The attacker's swing. */
+  /** The attacker's swing (og.HitEvent.swing). */
   readonly swing: number;
-  /** The damage taken (the move's, whatever was left). */
+  /** The damage taken (the move's or the projectile's, whatever was left). */
   readonly amount: number;
   /** What the target has left. */
   readonly health: number;
@@ -34099,7 +34132,7 @@ export interface Damaged {
 export interface Died {
   /** The entity with the og.Health. */
   readonly entity: Entity;
-  /** The attacker whose hit it was. */
+  /** The attacker whose hit it was, or the og.Projectile's shooter. */
   readonly source: Entity;
 }
 
@@ -39883,6 +39916,11 @@ export declare namespace og {
    * See `combat §1`.
    */
   const AttackLink: ComponentType<{ readonly action: FieldSpec<"str">; readonly to: FieldSpec<"Entity">; readonly open: FieldSpec<"u32">; readonly close: FieldSpec<"u32"> }, AttackLink>;
+  /**
+   * A shot's damage beside its og.HitVolume, without an og.Attack: leave the volume's `owner` 0, so each projectile strikes a target once. A hit takes `damage` under the target's og.Hurt, as a move's does. Only a strike that takes damage counts in `struck`: a target without og.Health (a graze volume), a dead one, one in its i-frames or its `shooter` lets it pass. Once `struck` reaches `pierce` og.systems.combat despawns it (with its descendants) before it strikes again. Moving it and a lifetime or range are the game's.
+   * See `combat §2`.
+   */
+  const Projectile: ComponentType<{ readonly damage: FieldSpec<"f32">; readonly shooter: FieldSpec<"Entity">; readonly pierce: FieldSpec<"u32">; readonly struck: FieldSpec<"u32"> }, Projectile>;
   /**
    * What a target has left. og.systems.combat takes a hit's damage from `value` (never below 0) and sets `dead` when it reaches 0, sending og.Died once; it never heals. A dead target takes no more damage.
    * See `combat §2`.

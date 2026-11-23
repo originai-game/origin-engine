@@ -84,6 +84,72 @@ Typical numbers at 60 Hz: 20 to 40 invulnerable ticks for a player, 0 to 10
 for a crowd of enemies, 10 to 20 stagger ticks for a light hit. A zero value
 does nothing.
 
+**Projectiles.** A shot needs no og.Attack: an **og.Projectile** beside its
+og.HitVolume carries its `damage`, its `shooter` (og.Damaged.source and
+og.Died.source, never struck by it) and its `pierce`. Leave the volume's
+`owner` 0: each projectile is its own owner, so it strikes a target once,
+and two projectiles strike it twice. A hit takes its damage under the
+target's og.Hurt as a move's does (invulnerability, stagger, knockback);
+og.Damaged.move is 0. Only a strike that takes damage counts in `struck`:
+a target without og.Health (a graze ring, a wall), a dead one or one in its
+i-frames lets the shot pass. Once `struck` reaches `pierce` the projectile
+is spent and og.systems.combat despawns it, with its descendants, before it
+strikes again. A pierce of 0 is never spent (a beam). Projectiles never
+count as attackers, so a screen of them has no cap. Moving them, and
+despawning them at a range, after a time or at a wall (an og.HitEvent with
+`hurt` 0), are the game's.
+
+Three shots of 1 damage into a drone with 3 health: each strikes it once
+and is spent, and the third kills it.
+
+```ts recipe
+import { defineSystem, og } from "@origingame/engine";
+import type { Entity, Result, World } from "@origingame/engine";
+
+function must<T>(r: Result<T>): T {
+  if (!r.ok) throw new Error(r.reason);
+  return r.value;
+}
+
+const SHIPS = 1;
+const DRONES = 2;
+
+// The game's: each shot flies up 0.25 m a tick.
+const Fly = defineSystem("Fly", { reads: [og.Projectile], writes: [og.Transform] }, (q) => {
+  for (const a of q.archetypes()) {
+    const position = a.column(og.Transform).position;
+    for (let i = 0; i < a.count; i++) position[i * 3 + 1]! += 0.25;
+  }
+});
+
+const Check = defineSystem("Check", { reads: [og.Health, og.Died], after: ["og.combat"] }, (_q, time, world) => {
+  for (const d of world.events(og.Died)) {
+    og.assert.always(d.source === world.find("ship"), "the ship's shot killed the drone", {});
+    og.assert.reachable("the drone died", {});
+  }
+  if (time.tick !== 100) return;
+  const shots = ["shot0", "shot1", "shot2"].filter((n) => world.find(n) !== null).length;
+  const health = must(world.get(world.find("drone") as Entity, og.Health));
+  og.assert.always(health.dead && shots === 0, "three shots, each spent at its strike, took its 3 health", { shots, health: health.value });
+});
+
+export default og.game({
+  systems: [...og.systems.combat, Fly, Check],
+  start(world: World) {
+    const ship = must(world.spawn({ name: "ship" }));
+    must(world.insert(ship, og.HurtVolume, { shape: "sphere", radius: 0.5, team: SHIPS }));
+    const drone = must(world.spawn({ name: "drone", position: { x: 0, y: 5, z: 0 } }));
+    must(world.insert(drone, og.HurtVolume, { shape: "sphere", radius: 0.5, team: DRONES }));
+    must(world.insert(drone, og.Health, { value: 3 }));
+    for (let i = 0; i < 3; i++) {
+      const shot = must(world.spawn({ name: `shot${i}`, position: { x: 0, y: -i, z: 0 } }));
+      must(world.insert(shot, og.HitVolume, { shape: "sphere", radius: 0.1, active: true, team: SHIPS }));
+      must(world.insert(shot, og.Projectile, { damage: 1, shooter: ship, pierce: 1 }));
+    }
+  },
+});
+```
+
 To change a rule (armour that ignores stagger, damage scaled by a stat),
 copy `systems/combat.ts` from the engine package into the game and list the
 copy in GameDesc.systems instead of og.systems.combat.

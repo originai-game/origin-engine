@@ -16905,7 +16905,7 @@
     },
     {
       "name": "combat",
-      "doc": "The records og.systems.combat carries out: an og.Attack plays og.AttackMove entities tick by tick (startup, active, recovery), drives its og.HitVolume entities in the active window, and takes an og.AttackLink when its input action's buffered press lands in the link's window (og.input.consume); an og.HitEvent of a move's swing takes the move's damage from the target's og.Health, unless its og.Hurt says it is invulnerable, and is reported as og.Damaged and, once, og.Died. Every number is the game's: a zero window, damage or invulnerability does nothing.\nSee `combat §1`.",
+      "doc": "The records og.systems.combat carries out: an og.Attack plays og.AttackMove entities tick by tick (startup, active, recovery), drives its og.HitVolume entities in the active window, and takes an og.AttackLink when its input action's buffered press lands in the link's window (og.input.consume); an og.HitEvent of a move's swing or an og.Projectile takes its damage from the target's og.Health, unless its og.Hurt says it is invulnerable, and is reported as og.Damaged and, once, og.Died. Every number is the game's: a zero window, damage or invulnerability does nothing.\nSee `combat §1`.",
       "place": "namespace",
       "publish": true,
       "types": [
@@ -16914,6 +16914,7 @@
         "Attack",
         "AttackMove",
         "AttackLink",
+        "Projectile",
         "Health",
         "Hurt",
         "Damaged",
@@ -58692,6 +58693,44 @@
       },
       "additionalProperties": false
     },
+    "Projectile": {
+      "x-og-kind": "component",
+      "x-og-module": "combat",
+      "description": "A shot's damage beside its og.HitVolume, without an og.Attack: leave the volume's `owner` 0, so each projectile strikes a target once. A hit takes `damage` under the target's og.Hurt, as a move's does. Only a strike that takes damage counts in `struck`: a target without og.Health (a graze volume), a dead one, one in its i-frames or its `shooter` lets it pass. Once `struck` reaches `pierce` og.systems.combat despawns it (with its descendants) before it strikes again. Moving it and a lifetime or range are the game's.\nSee `combat §2`.",
+      "type": "object",
+      "properties": {
+        "damage": {
+          "type": "number",
+          "description": "What each strike takes from the target's og.Health; 0 takes nothing, and is never spent.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-tunable": true
+        },
+        "shooter": {
+          "$ref": "#/$defs/Entity",
+          "description": "Who fired it: og.Damaged.source and og.Died.source (the projectile itself when 0), and never struck by it.",
+          "default": 0
+        },
+        "pierce": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Strikes that take damage before it is spent: 1 for a bullet that stops at the first it hurts, 0 for one never spent (a beam).",
+          "default": 0,
+          "minimum": 0,
+          "x-og-tunable": true
+        },
+        "struck": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Written: its strikes that took damage.",
+          "default": 0,
+          "readOnly": true
+        }
+      },
+      "additionalProperties": false
+    },
     "Health": {
       "x-og-kind": "component",
       "x-og-module": "combat",
@@ -58776,21 +58815,21 @@
         },
         "source": {
           "$ref": "#/$defs/Entity",
-          "description": "The attacker (og.HitEvent.owner)."
+          "description": "The attacker (og.HitEvent.owner), or the og.Projectile's shooter."
         },
         "move": {
           "$ref": "#/$defs/Entity",
-          "description": "The og.AttackMove whose swing it was."
+          "description": "The og.AttackMove whose swing it was; 0 for an og.Projectile."
         },
         "swing": {
           "type": "integer",
           "minimum": 0,
           "maximum": 4294967295,
-          "description": "The attacker's swing."
+          "description": "The attacker's swing (og.HitEvent.swing)."
         },
         "amount": {
           "type": "number",
-          "description": "The damage taken (the move's, whatever was left)."
+          "description": "The damage taken (the move's or the projectile's, whatever was left)."
         },
         "health": {
           "type": "number",
@@ -58832,7 +58871,7 @@
         },
         "source": {
           "$ref": "#/$defs/Entity",
-          "description": "The attacker whose hit it was."
+          "description": "The attacker whose hit it was, or the og.Projectile's shooter."
         }
       },
       "required": [

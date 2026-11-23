@@ -9272,6 +9272,37 @@
     },
     {
       "id": 126,
+      "name": "Projectile",
+      "schema": "og.Projectile",
+      "module": "combat",
+      "fields": [
+        {
+          "name": "damage",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
+        },
+        {
+          "name": "shooter",
+          "column": "Entity",
+          "default": 0
+        },
+        {
+          "name": "pierce",
+          "column": "u32",
+          "default": 0,
+          "tunable": true
+        },
+        {
+          "name": "struck",
+          "column": "u32",
+          "default": 0,
+          "readonly": true
+        }
+      ]
+    },
+    {
+      "id": 127,
       "name": "Health",
       "schema": "og.Health",
       "module": "combat",
@@ -9290,7 +9321,7 @@
       ]
     },
     {
-      "id": 127,
+      "id": 128,
       "name": "Hurt",
       "schema": "og.Hurt",
       "module": "combat",
@@ -9326,7 +9357,7 @@
       ]
     },
     {
-      "id": 128,
+      "id": 129,
       "name": "Interactable",
       "schema": "og.Interactable",
       "module": "interact",
@@ -9350,7 +9381,7 @@
       ]
     },
     {
-      "id": 129,
+      "id": 130,
       "name": "Interactor",
       "schema": "og.Interactor",
       "module": "interact",
@@ -9418,7 +9449,7 @@
       ]
     },
     {
-      "id": 130,
+      "id": 131,
       "name": "Door",
       "schema": "og.Door",
       "module": "interact",
@@ -9458,7 +9489,7 @@
       ]
     },
     {
-      "id": 131,
+      "id": 132,
       "name": "Toggle",
       "schema": "og.Toggle",
       "module": "interact",
@@ -9476,7 +9507,7 @@
       ]
     },
     {
-      "id": 132,
+      "id": 133,
       "name": "Grab",
       "schema": "og.Grab",
       "module": "interact",
@@ -9505,7 +9536,7 @@
       ]
     },
     {
-      "id": 133,
+      "id": 134,
       "name": "Container",
       "schema": "og.Container",
       "module": "inventory",
@@ -9525,7 +9556,7 @@
       ]
     },
     {
-      "id": 134,
+      "id": 135,
       "name": "ItemStack",
       "schema": "og.ItemStack",
       "module": "inventory",
@@ -9555,7 +9586,7 @@
       ]
     },
     {
-      "id": 135,
+      "id": 136,
       "name": "Pickup",
       "schema": "og.Pickup",
       "module": "inventory",
@@ -9568,7 +9599,7 @@
       ]
     },
     {
-      "id": 136,
+      "id": 137,
       "name": "Collector",
       "schema": "og.Collector",
       "module": "inventory",
@@ -9581,7 +9612,7 @@
       ]
     },
     {
-      "id": 137,
+      "id": 138,
       "name": "Ability",
       "schema": "og.Ability",
       "module": "abilities",
@@ -9646,7 +9677,7 @@
       ]
     },
     {
-      "id": 138,
+      "id": 139,
       "name": "Stat",
       "schema": "og.Stat",
       "module": "abilities",
@@ -9665,7 +9696,7 @@
       ]
     },
     {
-      "id": 139,
+      "id": 140,
       "name": "Modifier",
       "schema": "og.Modifier",
       "module": "abilities",
@@ -9688,7 +9719,7 @@
       ]
     },
     {
-      "id": 140,
+      "id": 141,
       "name": "Status",
       "schema": "og.Status",
       "module": "abilities",
