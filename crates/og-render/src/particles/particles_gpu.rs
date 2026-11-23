@@ -271,6 +271,51 @@ pub(crate) struct Look {
     double_sided: bool,
 }
 
+/// Every draw the scene's loaded emitters (each with its trail) and effect
+/// materials (an effect mesh's, at its default additive blend or the
+/// material's own) can need, as `prepare` would key it on their first frame.
+/// Sprite mode is the 2D batch's, and a material shader's hook is made on
+/// first use: neither is listed.
+pub(crate) fn reachable_draws(scene: &crate::RenderScene) -> Vec<(ParticleBlend, DrawKind, Look)> {
+    let mut out = Vec::new();
+    let mut push = |k: (ParticleBlend, DrawKind, Look)| {
+        if k.2.hook.is_none() && !out.contains(&k) {
+            out.push(k);
+        }
+    };
+    for e in scene.emitters() {
+        if matches!(e.render, ParticleRender::Sprite { .. }) {
+            continue;
+        }
+        let kind = draw_kind(e);
+        let material = e.effect.and_then(|h| scene.effect_material(h));
+        let drawn = |kind| match kind {
+            DrawKind::Billboard | DrawKind::Mesh | DrawKind::Trail => material,
+            _ => None,
+        };
+        let blend = drawn(kind)
+            .and_then(|m| m.blend)
+            .unwrap_or_else(|| e.blend());
+        let hook = |kind| drawn(kind).and_then(|m| m.shader).map(|h| h.index());
+        if e.trail.is_none_or(|t| t.head) {
+            push((blend, kind, look_of(kind, drawn(kind), hook(kind))));
+        }
+        if e.trail.is_some() {
+            let t = DrawKind::Trail;
+            push((blend, t, look_of(t, drawn(t), hook(t))));
+        }
+    }
+    for m in scene.effect_materials() {
+        let look = look_of(DrawKind::Mesh, Some(m), m.shader.map(|h| h.index()));
+        push((
+            m.blend.unwrap_or(ParticleBlend::Additive),
+            DrawKind::Mesh,
+            look,
+        ));
+    }
+    out
+}
+
 /// The [`Look`] of a system of kind `kind` drawn with `material`.
 fn look_of(kind: DrawKind, material: Option<&crate::EffectMaterial>, hook: Option<usize>) -> Look {
     match material {
@@ -363,10 +408,15 @@ pub(crate) struct ParticleRenderer {
         wgpu::ComputePipeline,
     )>,
     pub draw_layout: wgpu::BindGroupLayout,
-    draw: HashMap<
+    pub(crate) draw: HashMap<
         (ParticleBlend, u32, DrawKind, Look),
         crate::deferred::Deferred<wgpu::RenderPipeline>,
     >,
+    /// The draws the scene's loaded emitters and effect materials can
+    /// reach before any of them is spawned ([`reachable_draws`]), and the
+    /// emitter and material counts they were read at: what
+    /// [`ParticleRenderer::warm`] makes ahead of their first frame.
+    reachable: (usize, usize, Vec<(ParticleBlend, DrawKind, Look)>),
     pub(crate) draw_module: crate::deferred::Module,
     /// The draw module with an effect material's hook, by shader index.
     hook_modules: HashMap<usize, wgpu::ShaderModule>,

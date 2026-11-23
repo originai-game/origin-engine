@@ -14,6 +14,47 @@ impl ParticleRenderer {
         crate::deferred::warm_one(&[&self.sim, &self.sprites_pipeline])
     }
 
+    /// Reads what the scene's loaded emitters and effect materials can draw
+    /// ([`reachable_draws`]), again only when either count changed.
+    pub(crate) fn note_loaded(&mut self, scene: &crate::RenderScene) {
+        let counts = (scene.emitters().len(), scene.effect_materials().len());
+        if (self.reachable.0, self.reachable.1) != counts {
+            self.reachable = (counts.0, counts.1, reachable_draws(scene));
+        }
+    }
+
+    /// Whether a loaded emitter draws in the order-independent pass
+    /// ([`in_oit`]'s systems): its OIT pipeline is warmed too.
+    pub(crate) fn loaded_oit(&self) -> bool {
+        self.reachable.2.iter().any(|&(b, k, l)| {
+            k == DrawKind::Billboard && b == ParticleBlend::Alpha && l.hook.is_none()
+        })
+    }
+
+    /// Makes one draw pipeline a loaded emitter or effect material can
+    /// reach and no frame has made yet; false when none is left
+    /// ([`crate::Renderer::warm`]): a composed effect loaded at start then
+    /// draws its first frame without compiling.
+    pub(crate) fn warm_loaded(&mut self, device: &wgpu::Device, samples: u32) -> bool {
+        // Their simulation too, which a frame without particles never made.
+        if !self.reachable.2.is_empty() && self.warm() {
+            return true;
+        }
+        let next = self
+            .reachable
+            .2
+            .iter()
+            .copied()
+            .find(|&(b, k, l)| !self.draw.contains_key(&(b, samples, k, l)));
+        match next {
+            Some((blend, kind, look)) => {
+                self.make_draw(device, (blend, samples, kind, look), &[]);
+                true
+            }
+            None => false,
+        }
+    }
+
     /// Carries every system across a move of the render origin (`origin.rs`;
     /// `d`, the old origin minus the new, is added to what is in world
     /// space): their last emitter transforms now, their world-space
@@ -191,6 +232,7 @@ impl ParticleRenderer {
             sim,
             draw_layout,
             draw: HashMap::new(),
+            reachable: (0, 0, Vec::new()),
             draw_module,
             hook_modules: HashMap::new(),
             frame_wgsl: frame_wgsl.to_string(),
@@ -355,108 +397,119 @@ impl ParticleRenderer {
     ) {
         for s in frame.systems.iter().filter(|s| s.kind != DrawKind::Sprite) {
             let key = (s.blend, samples, s.kind, s.look);
-            if self.draw.contains_key(&key) {
-                continue;
+            if !self.draw.contains_key(&key) {
+                self.make_draw(device, key, shaders);
             }
-            if let Some(h) = s.look.hook
-                && !self.hook_modules.contains_key(&h)
-            {
-                let source = draw_source(&self.frame_wgsl, shaders.get(h));
-                let module = crate::gpu::shader_module(
-                    device,
-                    wgpu::ShaderModuleDescriptor {
-                        label: Some("particles (effect hook)"),
-                        source: wgpu::ShaderSource::Wgsl(source.into()),
-                    },
-                );
-                self.hook_modules.insert(h, module);
-            }
-            let blend = match s.blend {
-                _ if s.kind == DrawKind::Distort => wgpu::BlendState::ALPHA_BLENDING,
-                ParticleBlend::Additive => wgpu::BlendState {
-                    color: wgpu::BlendComponent {
-                        src_factor: wgpu::BlendFactor::SrcAlpha,
-                        dst_factor: wgpu::BlendFactor::One,
-                        operation: wgpu::BlendOperation::Add,
-                    },
-                    alpha: wgpu::BlendComponent {
-                        src_factor: wgpu::BlendFactor::Zero,
-                        dst_factor: wgpu::BlendFactor::One,
-                        operation: wgpu::BlendOperation::Add,
-                    },
-                },
-                ParticleBlend::Alpha => wgpu::BlendState::ALPHA_BLENDING,
-                // What is behind less the colour at its alpha.
-                ParticleBlend::Subtractive => wgpu::BlendState {
-                    color: wgpu::BlendComponent {
-                        src_factor: wgpu::BlendFactor::SrcAlpha,
-                        dst_factor: wgpu::BlendFactor::One,
-                        operation: wgpu::BlendOperation::ReverseSubtract,
-                    },
-                    alpha: KEEP_ALPHA,
-                },
-                // What is behind times the colour (`blend_out` mixes it
-                // towards white by its alpha).
-                ParticleBlend::Multiply => wgpu::BlendState {
-                    color: wgpu::BlendComponent {
-                        src_factor: wgpu::BlendFactor::Dst,
-                        dst_factor: wgpu::BlendFactor::Zero,
-                        operation: wgpu::BlendOperation::Add,
-                    },
-                    alpha: KEEP_ALPHA,
-                },
-            };
-            let mesh = s.kind == DrawKind::Mesh;
-            let trail = s.kind == DrawKind::Trail;
-            // An effect mesh is blended like a billboard: no depth written.
-            let solid = mesh && !s.look.effect_mesh;
-            let module = match s.look.hook {
-                Some(h) => self.hook_modules[&h].clone(),
-                None => self.draw_module.get().clone(),
-            };
-            let (device, layout) = (device.clone(), self.draw_pl.clone());
-            let buffers = if mesh {
-                vec![Some(PARTICLE_LAYOUT), Some(MESH_LAYOUT)]
-            } else if trail {
-                vec![Some(PARTICLE_LAYOUT), Some(TRAIL_LAYOUT)]
-            } else {
-                vec![Some(PARTICLE_LAYOUT)]
-            };
-            let (kind, double_sided) = (s.kind, s.look.double_sided);
-            // An entry of the pipeline cache (gpu/deferred.rs), asked for now.
-            let p = crate::deferred::Deferred::anywhere(move || {
-                crate::hdr_pipeline(
-                    &device,
-                    crate::HdrPipeline {
-                        alpha_to_coverage: false,
-                        label: "particles",
-                        layout: &layout,
-                        module: &module,
-                        vs: match kind {
-                            DrawKind::Mesh => "vs_mesh",
-                            DrawKind::Trail => "vs_trail",
-                            _ => "vs",
-                        },
-                        fs: match kind {
-                            DrawKind::Billboard | DrawKind::Trail => "fs",
-                            DrawKind::Mesh => "fs_mesh",
-                            DrawKind::Distort => "fs_distort",
-                            DrawKind::Sprite => unreachable!("filtered above"),
-                        },
-                        buffers: &buffers,
-                        cull: (mesh && !double_sided).then_some(wgpu::Face::Back),
-                        // Debris occludes what is behind it, and itself.
-                        depth_write: solid,
-                        depth_compare: wgpu::CompareFunction::LessEqual,
-                        blend: Some(blend),
-                        samples,
-                    },
-                )
-            });
-            crate::deferred::Start::start(&p);
-            self.draw.insert(key, p);
         }
         let _ = HDR_FORMAT;
+    }
+
+    /// Makes the draw pipeline for `key`, (blend, samples, kind, look),
+    /// started on the pipeline cache.
+    fn make_draw(
+        &mut self,
+        device: &wgpu::Device,
+        key: (ParticleBlend, u32, DrawKind, Look),
+        shaders: &[crate::MaterialShader],
+    ) {
+        let (blend_of, samples, kind_of, look) = key;
+        if let Some(h) = look.hook
+            && !self.hook_modules.contains_key(&h)
+        {
+            let source = draw_source(&self.frame_wgsl, shaders.get(h));
+            let module = crate::gpu::shader_module(
+                device,
+                wgpu::ShaderModuleDescriptor {
+                    label: Some("particles (effect hook)"),
+                    source: wgpu::ShaderSource::Wgsl(source.into()),
+                },
+            );
+            self.hook_modules.insert(h, module);
+        }
+        let blend = match blend_of {
+            _ if kind_of == DrawKind::Distort => wgpu::BlendState::ALPHA_BLENDING,
+            ParticleBlend::Additive => wgpu::BlendState {
+                color: wgpu::BlendComponent {
+                    src_factor: wgpu::BlendFactor::SrcAlpha,
+                    dst_factor: wgpu::BlendFactor::One,
+                    operation: wgpu::BlendOperation::Add,
+                },
+                alpha: wgpu::BlendComponent {
+                    src_factor: wgpu::BlendFactor::Zero,
+                    dst_factor: wgpu::BlendFactor::One,
+                    operation: wgpu::BlendOperation::Add,
+                },
+            },
+            ParticleBlend::Alpha => wgpu::BlendState::ALPHA_BLENDING,
+            // What is behind less the colour at its alpha.
+            ParticleBlend::Subtractive => wgpu::BlendState {
+                color: wgpu::BlendComponent {
+                    src_factor: wgpu::BlendFactor::SrcAlpha,
+                    dst_factor: wgpu::BlendFactor::One,
+                    operation: wgpu::BlendOperation::ReverseSubtract,
+                },
+                alpha: KEEP_ALPHA,
+            },
+            // What is behind times the colour (`blend_out` mixes it
+            // towards white by its alpha).
+            ParticleBlend::Multiply => wgpu::BlendState {
+                color: wgpu::BlendComponent {
+                    src_factor: wgpu::BlendFactor::Dst,
+                    dst_factor: wgpu::BlendFactor::Zero,
+                    operation: wgpu::BlendOperation::Add,
+                },
+                alpha: KEEP_ALPHA,
+            },
+        };
+        let mesh = kind_of == DrawKind::Mesh;
+        let trail = kind_of == DrawKind::Trail;
+        // An effect mesh is blended like a billboard: no depth written.
+        let solid = mesh && !look.effect_mesh;
+        let module = match look.hook {
+            Some(h) => self.hook_modules[&h].clone(),
+            None => self.draw_module.get().clone(),
+        };
+        let (device, layout) = (device.clone(), self.draw_pl.clone());
+        let buffers = if mesh {
+            vec![Some(PARTICLE_LAYOUT), Some(MESH_LAYOUT)]
+        } else if trail {
+            vec![Some(PARTICLE_LAYOUT), Some(TRAIL_LAYOUT)]
+        } else {
+            vec![Some(PARTICLE_LAYOUT)]
+        };
+        let (kind, double_sided) = (kind_of, look.double_sided);
+        // An entry of the pipeline cache (gpu/deferred.rs), asked for now.
+        let p = crate::deferred::Deferred::anywhere(move || {
+            crate::hdr_pipeline(
+                &device,
+                crate::HdrPipeline {
+                    alpha_to_coverage: false,
+                    label: "particles",
+                    layout: &layout,
+                    module: &module,
+                    vs: match kind {
+                        DrawKind::Mesh => "vs_mesh",
+                        DrawKind::Trail => "vs_trail",
+                        _ => "vs",
+                    },
+                    fs: match kind {
+                        DrawKind::Billboard | DrawKind::Trail => "fs",
+                        DrawKind::Mesh => "fs_mesh",
+                        DrawKind::Distort => "fs_distort",
+                        DrawKind::Sprite => unreachable!("filtered above"),
+                    },
+                    buffers: &buffers,
+                    cull: (mesh && !double_sided).then_some(wgpu::Face::Back),
+                    // Debris occludes what is behind it, and itself.
+                    depth_write: solid,
+                    depth_compare: wgpu::CompareFunction::LessEqual,
+                    blend: Some(blend),
+                    samples,
+                },
+            )
+        });
+        crate::deferred::Start::start(&p);
+        self.draw.insert(key, p);
     }
 
     /// Draws the frame's 3D systems on a camera's layers (`mask`) that

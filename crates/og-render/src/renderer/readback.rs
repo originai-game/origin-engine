@@ -158,6 +158,8 @@ impl Renderer {
                     deferred::warm_one(&[&g.pipeline, &g.pipelines[0], &g.pipelines[1]])
                 }))
             || (r.particles && self.particles.gpu.warm())
+            || self.particles.gpu.warm_loaded(&self.device, self.samples)
+            || self.warm_loaded_oit()
             || (r.lights_2d
                 && self
                     .lights_2d
@@ -168,6 +170,39 @@ impl Renderer {
             || (r.metaballs && self.world.metaballs.warm())
             || (r.fluids && self.world.fluid3d.get().is_some_and(|f| f.warm()))
             || (r.lines && self.lines.warm())
+    }
+
+    /// The OIT pipeline of the alpha particles a loaded emitter draws
+    /// ([`crate::particles::particles_gpu::ParticleRenderer::loaded_oit`]),
+    /// in the mode a frame of this size runs: their first frame then
+    /// draws without compiling it. True when this call asked for it.
+    fn warm_loaded_oit(&mut self) -> bool {
+        if !self.particles.gpu.loaded_oit()
+            || !self.info.caps.contains(Caps::MRT | Caps::INDEPENDENT_BLEND)
+        {
+            return false;
+        }
+        let mode = self
+            .oit
+            .frame_mode(&self.device, &self.queue, self.width, self.height);
+        let modes: &[crate::oit::Oit] = if mode == crate::oit::Oit::Front {
+            &[crate::oit::Oit::Front, crate::oit::Oit::Mark]
+        } else {
+            &[mode]
+        };
+        let samples = self.samples;
+        let missing = |r: &Self| {
+            modes.iter().any(|&m| {
+                !r.oit
+                    .pipelines
+                    .contains_key(&(crate::oit::Source::Particles, m, samples))
+            })
+        };
+        if !missing(self) {
+            return false;
+        }
+        self.ensure_oit_pipelines(mode, &[], &[], &[], true, (false, false));
+        true
     }
 
     /// The full variant of a batch's lit pipeline that a frame has drawn
@@ -512,5 +547,55 @@ mod tests {
             .map(|&(.., effects)| effects)
             .collect();
         assert_eq!(plain, [true], "the plain lit variants made");
+    }
+
+    /// [`Renderer::warm`] makes the draw pipelines of an emitter and an
+    /// effect material the scene has loaded but never spawned: the first
+    /// kill of a game that loads its effects at start then draws without
+    /// compiling (the frame before only knew the systems it drew).
+    #[test]
+    #[ignore = "requires GPU"]
+    fn warming_makes_the_draws_of_loaded_effects_none_has_spawned() {
+        let desc = RenderDesc {
+            width: 64,
+            height: 64,
+            ..Default::default()
+        };
+        let mut renderer = Renderer::new_blocking(&desc).expect("renderer");
+        let mut scene = RenderScene::new();
+        scene.add_emitter(crate::ParticleEmitter::default());
+        // Alpha billboards draw in the order-independent pass.
+        scene.add_emitter(crate::ParticleEmitter {
+            blend: Some(crate::ParticleBlend::Alpha),
+            ..Default::default()
+        });
+        scene.add_effect_material(crate::EffectMaterial::default());
+        renderer
+            .render(&scene, &RenderTarget::Offscreen)
+            .expect("render");
+        let wanted = crate::particles::particles_gpu::reachable_draws(&scene);
+        assert_eq!(
+            wanted.len(),
+            3,
+            "two billboards and an effect mesh: {wanted:?}"
+        );
+        let samples = renderer.samples;
+        let made = |r: &Renderer| {
+            wanted
+                .iter()
+                .filter(|&&(b, k, l)| r.particles.gpu.draw.contains_key(&(b, samples, k, l)))
+                .count()
+        };
+        let oit = |r: &Renderer| {
+            r.oit
+                .pipelines
+                .keys()
+                .any(|&(source, _, _)| source == crate::oit::Source::Particles)
+        };
+        assert_eq!(made(&renderer), 0, "no frame drew them");
+        assert!(!oit(&renderer), "nor the alpha one's OIT pipeline");
+        while renderer.warm() {}
+        assert_eq!(made(&renderer), 3, "warming made all three");
+        assert!(oit(&renderer), "and the alpha billboards' OIT pipeline");
     }
 }

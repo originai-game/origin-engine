@@ -68,7 +68,7 @@ impl Renderer {
     /// blended skinned ones, `billboards`' sources, alpha particles and
     /// strips. Made before culling, so for every blended batch.
     #[allow(clippy::too_many_arguments)]
-    pub(super) fn ensure_oit_pipelines(
+    pub(in crate::renderer) fn ensure_oit_pipelines(
         &mut self,
         mode: Oit,
         batches: &[Batch],
