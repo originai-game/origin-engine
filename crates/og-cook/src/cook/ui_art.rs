@@ -785,7 +785,12 @@ fn ornament(cv: &mut Canvas, c: &Colors, d: &[f64], o: &Value, b: [f64; 4]) -> R
             let period = opt(o, "period", 3.0);
             let al: F = (0..n)
                 .map(|i| {
-                    let t = (cv.x[i] + cv.y[i]) / period;
+                    // x - y round the top-left and bottom-right corners,
+                    // x + y round the others: each runs across its corners'
+                    // tangent, so no corner's stitch turns solid
+                    let (x, y) = (cv.x[i], cv.y[i]);
+                    let back = (x - (x0 + x1) / 2.0) * (y - (y0 + y1) / 2.0) > 0.0;
+                    let t = (if back { x - y } else { x + y }) / period;
                     rg[i] * b2f((t - t.floor()) < 0.55) * a
                 })
                 .collect();

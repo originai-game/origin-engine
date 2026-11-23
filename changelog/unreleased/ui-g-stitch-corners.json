@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "Theme recipes",
+      "summary": "The generated `stitch` ornament stays dashed round every corner; at the top-left and bottom-right of a rounded piece it no longer turns into a solid stroke."
+    }
+  ]
+}

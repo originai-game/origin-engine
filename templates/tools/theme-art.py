@@ -473,8 +473,12 @@ def ornament(cv, C, d, orn, box):
         cv.over(col, (cover(cv, inner) - cover(cv, inner + 0.75)) * a)
     elif kind == "stitch":
         ring = cover(cv, inner) - cover(cv, inner + 0.9)
-        # dashes: a step along the perimeter's x + y, the same along a stretched edge's band
-        t = (cv.x + cv.y) / orn.get("period", 3.0)
+        # dashes: a step along the perimeter, x - y round the top-left and
+        # bottom-right corners and x + y round the others (each runs across its
+        # corners' tangent, so no corner's stitch turns into a solid stroke)
+        cx, cy = (x0 + x1) / 2, (y0 + y1) / 2
+        back = (cv.x - cx) * (cv.y - cy) > 0
+        t = np.where(back, cv.x - cv.y, cv.x + cv.y) / orn.get("period", 3.0)
         dash = ((t - np.floor(t)) < 0.55).astype(np.float64)
         cv.over(col, ring * dash * a)
     elif kind == "brackets":
