@@ -218,6 +218,9 @@ pub struct FieldLayout {
     pub default: Value,
     pub readonly: bool,
     pub tunable: bool,
+    /// An Entity field that may outlive what it names: the IDL's `weak`,
+    /// or a game record's `weak` option. The live-entity invariant skips it.
+    pub weak: bool,
     pub min: Option<f64>,
     pub max: Option<f64>,
     pub step: Option<f64>,

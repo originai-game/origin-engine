@@ -19,6 +19,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `label` | `string` | `""` | — | — | — | The person-facing name; empty uses the field name. |
 | `doc` | `string` | `""` | — | — | — | One sentence on what the field means. |
 | `tunable` | `boolean` | `false` | — | — | — | Publish the field to Tune and to the probe's bounds and patch. |
+| `weak` | `boolean` | `false` | — | — | — | An Entity field only: it may outlive the entity it names (a handle to an effect that despawns itself, a target that may die), so the live-entity invariant does not check it. Test it with world.alive before use. |
 | `worldspace` | `string` | `""` | — | — | — | Where a Vector2, Vector3, f32 or f64 field's numbers lie when og.WorldOrigin shifts: `world` (a point, moved by every shift), `root` (in its Transform's frame: moved on a root entity), `none` (an offset, size, direction), then optionally axes (`world y`: an absolute height); empty: not a coordinate. |
 
 ```ogt
@@ -32,6 +33,7 @@ struct FieldOptions {
   field label String "The person-facing name; empty uses the field name."
   field doc String "One sentence on what the field means."
   field tunable bool "Publish the field to Tune and to the probe's bounds and patch."
+  field weak bool "An Entity field only: it may outlive the entity it names (a handle to an effect that despawns itself, a target that may die), so the live-entity invariant does not check it. Test it with world.alive before use."
   field worldspace String "Where a Vector2, Vector3, f32 or f64 field's numbers lie when og.WorldOrigin shifts: `world` (a point, moved by every shift), `root` (in its Transform's frame: moved on a root entity), `none` (an offset, size, direction), then optionally axes (`world y`: an absolute height); empty: not a coordinate."
 }
 ```

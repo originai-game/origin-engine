@@ -17868,6 +17868,11 @@
           "description": "Publish the field to Tune and to the probe's bounds and patch.",
           "default": false
         },
+        "weak": {
+          "type": "boolean",
+          "description": "An Entity field only: it may outlive the entity it names (a handle to an effect that despawns itself, a target that may die), so the live-entity invariant does not check it. Test it with world.alive before use.",
+          "default": false
+        },
         "worldspace": {
           "type": "string",
           "description": "Where a Vector2, Vector3, f32 or f64 field's numbers lie when og.WorldOrigin shifts: `world` (a point, moved by every shift), `root` (in its Transform's frame: moved on a root entity), `none` (an offset, size, direction), then optionally axes (`world y`: an absolute height); empty: not a coordinate.",

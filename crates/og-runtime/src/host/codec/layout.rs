@@ -64,6 +64,12 @@ impl Layout {
                     .filter(|s| !s.is_empty())
                     .map(str::to_string)
             };
+            let weak = o.get("weak").and_then(Value::as_bool).unwrap_or(false);
+            if weak && k != Kind::Entity {
+                return Err(format!(
+                    "'{schema}.{name}': only an Entity field is weak (it names an entity that may be despawned)"
+                ));
+            }
             let worldspace = opt_str("worldspace");
             if let Some(w) = &worldspace {
                 og_core::Worldspace::of(w, ty).map_err(|e| format!("'{schema}.{name}': {e}"))?;
@@ -76,6 +82,7 @@ impl Layout {
                 default: f.get("default").cloned().unwrap_or(Value::Null),
                 readonly: false,
                 tunable: o.get("tunable").and_then(Value::as_bool).unwrap_or(false),
+                weak,
                 min: opt_num("min"),
                 max: opt_num("max"),
                 step: opt_num("step"),
@@ -135,6 +142,7 @@ impl Layout {
                 default: serde_json::from_str(f.default).unwrap_or(Value::Null),
                 readonly: f.readonly,
                 tunable: f.tunable,
+                weak: f.weak,
                 min: f.min,
                 max: f.max,
                 step: f.step,
@@ -172,6 +180,8 @@ impl Layout {
                     default: Value::Null,
                     readonly: true,
                     tunable: f.tunable,
+                    // The IDL's declaration carries `weak`; the invariant reads it there.
+                    weak: false,
                     min: f.min,
                     max: f.max,
                     step: None,

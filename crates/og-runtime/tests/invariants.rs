@@ -40,6 +40,11 @@ fn engine() -> u32 {
         "Target".into(),
         json!([{"name": "of", "kind": "Entity", "default": 0, "options": {}}]).to_string(),
     )));
+    value(og_runtime::host_impl::answer(og_reflect_define_component(
+        "Glimpse".into(),
+        json!([{"name": "of", "kind": "Entity", "default": 0, "options": {"weak": true}}])
+            .to_string(),
+    )));
     value(og_runtime::host_impl::answer(og_reflect_define_resource(
         "Wind".into(),
         json!([{"name": "speed", "kind": "f32", "default": 1, "options": {}}]).to_string(),
@@ -260,7 +265,8 @@ fn a_float_field_at_its_declared_bound_is_in_range() {
 }
 
 /// A `weak` Entity field may outlive what it names: a bullet whose shooter
-/// died with it in flight is no violation, while a plain reference is.
+/// died with it in flight is no violation, nor is a game field declared
+/// with the `weak` option, while a plain reference is.
 #[test]
 fn a_weak_reference_to_a_despawned_entity_is_no_violation() {
     let e = engine();
@@ -282,6 +288,12 @@ fn a_weak_reference_to_a_despawned_entity_is_no_violation() {
         "Target".into(),
         Some(json!({"of": shooter}).to_string()),
     )));
+    value(og_runtime::host_impl::answer(og_world_insert(
+        e,
+        bullet,
+        "Glimpse".into(),
+        Some(json!({"of": shooter}).to_string()),
+    )));
     value(og_engine_advance(e, 1));
     value(og_runtime::host_impl::answer(og_world_despawn(e, shooter)));
     value(og_engine_advance(e, 1));
@@ -291,6 +303,9 @@ fn a_weak_reference_to_a_despawned_entity_is_no_violation() {
         .as_array()
         .unwrap()
         .iter()
-        .any(|v| v["name"].as_str().unwrap().contains("Projectile.shooter"));
+        .any(|v| {
+            let name = v["name"].as_str().unwrap();
+            name.contains("Projectile.shooter") || name.contains("Glimpse.of")
+        });
     assert!(!shooter_flagged, "{r}");
 }
