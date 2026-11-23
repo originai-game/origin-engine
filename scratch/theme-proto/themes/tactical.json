@@ -1,0 +1,10 @@
+{
+  "about": "Military instrument: brushed metal, cut corners, stencil display type, snappy motion.",
+  "color": { "source": "#d9a531", "accent": "#e8c25a", "neutral": "#4c5643", "scheme": "dark" },
+  "material": "metal",
+  "shape": "cut",
+  "type": "condensed-stencil",
+  "motion": "snappy",
+  "ornament": { "panel": "brackets", "plate": "studs" },
+  "sound": "scifi"
+}

@@ -1,0 +1,9 @@
+{
+  "about": "Casual mobile: glossy plastic with a deep lip, round shapes, rounded display type, bouncy motion.",
+  "color": { "source": "#ff5c9a", "accent": "#4cc3ff", "neutral": "#5b3fb0", "scheme": "dark" },
+  "material": "plastic",
+  "shape": "round",
+  "type": "rounded-display",
+  "motion": "bouncy",
+  "sound": "cartoon"
+}

@@ -1,0 +1,9 @@
+{
+  "about": "Retro pixel: a whole-point staircase, a 1-point bevel, a pixel face, stepped motion.",
+  "color": { "source": "#f0a43a", "accent": "#7bd36a", "neutral": "#3d3366", "scheme": "dark" },
+  "material": "pixel",
+  "shape": "pixel",
+  "type": "pixel",
+  "motion": "stepped",
+  "ornament": { "panel": "hairline" }
+}

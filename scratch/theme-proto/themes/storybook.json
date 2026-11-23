@@ -1,0 +1,10 @@
+{
+  "about": "Illustrated paper: quiet ornament, serif type, calm motion (Pentiment, Strange Horticulture).",
+  "color": { "source": "#2f6b4f", "accent": "#a5552a", "neutral": "#8a6a44", "scheme": "light" },
+  "material": "paper",
+  "shape": "soft",
+  "type": "storybook-serif",
+  "motion": "calm",
+  "ornament": { "panel": "filigree", "slot": "hairline" },
+  "sound": "fantasy"
+}

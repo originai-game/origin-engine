@@ -1,0 +1,5 @@
+{
+  "extends": "tactical",
+  "color": { "source": "#5cc8ff", "accent": "#bfe9ff", "neutral": "#5d6b78" },
+  "ornament": { "panel": "hairline" }
+}
