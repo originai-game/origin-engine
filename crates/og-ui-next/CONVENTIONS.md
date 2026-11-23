@@ -605,6 +605,13 @@ is an error naming where it is, never ignored):
   reports one that does not (OG9107, `pack::grounds_without_ink`). Art keeps its colours in both schemes, so its
   ink is a colour the pack writes the same in both, not a scheme role
   such as `fg`.
+- **A frame is its box's edge**, as CSS `border-image` is: a box that
+  draws a nine-sliced image draws no border (the border keeps only its
+  room) and its outline, the focus ring included, is the frame's own
+  silhouette grown by the outline under the frame. A component never puts
+  a border, ring or outline on a framed element (og-cli's
+  `no_engine_component_edges_a_framed_element_twice`); an edge that
+  carries a state (a rarity, a selection) is a strip inside the frame.
 - **`images`**: nine-slice art by name (lower-case words joined by `-`):
   `{ src, slice, width?, fill?, repeat? }`. `slice` is the insets into the
   image in its pixels (one number, or `[top, right, bottom, left]`);

@@ -1806,6 +1806,13 @@ impl Tree {
                 c[3] *= alpha;
                 c
             };
+            let im = &match &el.image {
+                Some(props) => props.over(&s.image, self.textures.as_ref()),
+                None => s.image,
+            };
+            let image = og_draw::TextureHandle::from_slot(im.texture).filter(|_| im.wipe > 0.0);
+            // CSS `border-image`: a nine-sliced frame is the box's edge.
+            let framed = image.is_some() && im.slice != [0.0; 4];
             // Outer shadows under the box, the last listed lowest.
             let shadows = &s.shadows[..usize::from(s.shadow_count)];
             for sh in shadows
@@ -1825,11 +1832,37 @@ impl Tree {
                     0,
                 ));
             }
-            let im = &match &el.image {
-                Some(props) => props.over(&s.image, self.textures.as_ref()),
-                None => s.image,
-            };
-            let image = og_draw::TextureHandle::from_slot(im.texture).filter(|_| im.wipe > 0.0);
+            // A framed box's outline follows its frame, as a browser's
+            // follows `border-radius`: the frame's silhouette in the
+            // outline's colour, grown by its width (and a positive offset),
+            // under the box. It is always outside, since the frame covers
+            // what is inside.
+            let o = &s.outline;
+            if let Some(t) = image.filter(|_| framed && o.width > 0.0 && o.color[3] > 0.0) {
+                let out = o.width + o.offset.max(0.0);
+                let grown = [x - out, y - out, b.w + 2.0 * out, b.h + 2.0 * out];
+                let width = if im.width == [0.0; 4] {
+                    im.slice
+                } else {
+                    im.width
+                };
+                let fit = (grown[2] / (width[1] + width[3]))
+                    .min(grown[3] / (width[0] + width[2]))
+                    .min(1.0);
+                p.quads.push(PaintQuad {
+                    uv: im.uv,
+                    ..quad(
+                        PaintKind::Image,
+                        grown,
+                        clip,
+                        faded(o.color),
+                        width.map(|w| w * fit),
+                        im.slice,
+                        t.to_bits(),
+                        og_draw::paint::IMAGE_FILL,
+                    )
+                });
+            }
             // A fill-tinted image takes the fill's colour in its place.
             let fill_tints = image.is_some() && im.tint == crate::record::Tint::Fill;
             if let Some(([hx, hy, hw, hh], hr)) = hole.filter(|_| s.fill[3] > 0.0) {
@@ -1951,7 +1984,12 @@ impl Tree {
             } else {
                 0
             };
-            if (s.border_color[3] > 0.0 || sides != 0) && s.border.iter().any(|&w| w > 0.0) {
+            // The frame takes the border's place: the border keeps only
+            // its room in the layout.
+            if !framed
+                && (s.border_color[3] > 0.0 || sides != 0)
+                && s.border.iter().any(|&w| w > 0.0)
+            {
                 p.quads.push(PaintQuad {
                     uv: faded(s.border_side),
                     ..quad(
@@ -1966,8 +2004,7 @@ impl Tree {
                     )
                 });
             }
-            let o = &s.outline;
-            if o.width > 0.0 && o.color[3] > 0.0 {
+            if !framed && o.width > 0.0 && o.color[3] > 0.0 {
                 // The ring of the box grown by the offset and the width; its
                 // corners follow the box's, as browsers draw them.
                 let out = o.offset + o.width;

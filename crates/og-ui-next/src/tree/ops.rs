@@ -5567,6 +5567,73 @@ mod tests {
         t.apply(&b.bytes()).unwrap();
     }
 
+    /// A nine-sliced frame is its box's edge, as CSS `border-image` is: a
+    /// framed box draws no border (it keeps the border's room), and its
+    /// outline is the frame's own silhouette grown by the outline, under
+    /// the frame, never a rectangle round it. An unframed box draws both
+    /// as rectangles.
+    ///
+    /// Ways this could fail: the border drawn over the art (a rectangle
+    /// round a cut or rounded plate, xiaomao's double edges); the focus
+    /// ring drawn as a rectangle round it, or over the frame.
+    #[test]
+    fn a_frame_is_its_boxs_edge_and_its_outline_follows_it() {
+        let mut t = tree();
+        let classes = std::cell::RefCell::new(crate::classes::Classes::new(None).unwrap().0);
+        t.set_resolver(Box::new(move |class, _, _, _| {
+            let mut r = classes.borrow_mut().record(
+                &class.replace("frame-art", ""),
+                &crate::classes::Env::default(),
+            );
+            if class.contains("frame-art") {
+                r.skin.image.texture = 4;
+                r.skin.image.slice = [6.0; 4];
+            }
+            r
+        }));
+        let edged = "w-[100px] h-[40px] shrink-0 border-2 border-white outline-2 outline-red-500 outline-offset-1";
+        nodes(
+            &mut t,
+            &[
+                (1, 0, "flex-col gap-4 p-8", 0),
+                (2, 0, &format!("{edged} frame-art"), 1),
+                (3, 0, edged, 1),
+            ],
+        );
+        frame(&mut t);
+        let d = &t.drawn;
+        let tex = og_draw::TextureHandle::from_slot(4).unwrap().to_bits();
+        let [x, y, w, h] = t.op_box(2).unwrap();
+        let framed: Vec<_> = d
+            .quads
+            .iter()
+            .filter(|q| q.kind == PaintKind::Image as u32 && q.a == tex)
+            .map(|q| (q.rect, q.color))
+            .collect();
+        let red = framed[0].1;
+        assert!(
+            red[0] > 0.5 && red[1] < 0.2,
+            "the ring in the outline's colour: {red:?}"
+        );
+        assert_eq!(
+            framed.iter().map(|f| f.0).collect::<Vec<_>>(),
+            [[x - 3.0, y - 3.0, w + 6.0, h + 6.0], [x, y, w, h]],
+            "the ring, grown by width and offset, then the frame over it"
+        );
+        let borders: Vec<[f32; 4]> = d
+            .quads
+            .iter()
+            .filter(|q| q.kind == PaintKind::Border as u32)
+            .map(|q| q.rect)
+            .collect();
+        let [ux, uy, uw, uh] = t.op_box(3).unwrap();
+        assert_eq!(
+            borders,
+            [[ux, uy, uw, uh], [ux - 3.0, uy - 3.0, uw + 6.0, uh + 6.0]],
+            "only the unframed box draws its border and outline rectangles"
+        );
+    }
+
     /// `justify-center-safe` and `items-center-safe` centre content that
     /// fits and start content that overflows (CSS's `safe center`), where
     /// `justify-center` pushes an overflowing child above its parent's top
