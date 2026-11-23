@@ -26,8 +26,8 @@ const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::R32Float;
 /// The Beer shadow map's: filtered by the sky's march.
 const LIGHT_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
 /// The steepest ray the map is baked along and read at, as its run per
-/// metre it rises (a sun 9.5° up): lower, the shadows keep that slant.
-const RUN: f32 = 6.0;
+/// metre it rises (a sun 2.9° up): lower, the shadows keep that slant.
+const RUN: f32 = 20.0;
 
 /// The map the frame groups bind and the one the sky group binds (each a
 /// texel of nothing until a frame's clouds cast a shadow), what bakes
@@ -470,6 +470,7 @@ mod tests {
         let of = |coverage: f32| {
             Clouds {
                 coverage,
+                thickness: 1800.0,
                 ..Clouds::default()
             }
             .shadow()

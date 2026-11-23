@@ -386,7 +386,7 @@ module atmosphere {
       tunable true
     }
     field thickness f32 "How tall the layer is (0: no cumulus, only the high layer)." {
-      default 1800
+      default 900
       min 0
       unit m
       tunable true

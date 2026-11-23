@@ -205,7 +205,7 @@ impl Default for Clouds {
             coverage: 0.45,
             density: 0.04,
             base: 1500.0,
-            thickness: 1800.0,
+            thickness: 900.0,
             scale: 9000.0,
             wind: Vec3::new(12.0, 0.4, 4.0),
             color: Vec3::ONE,
@@ -973,6 +973,7 @@ mod tests {
         let storm = Clouds {
             coverage: 0.97,
             density: 0.09,
+            thickness: 1800.0,
             ..Clouds::default()
         };
         let mut scene = crate::RenderScene::new();
@@ -1059,6 +1060,7 @@ mod tests {
             Clouds {
                 coverage,
                 density,
+                thickness: 1800.0,
                 ..Clouds::default()
             }
             .light()
@@ -1076,6 +1078,7 @@ mod tests {
         let unshadowed = Clouds {
             coverage: 0.5,
             shadows: 0.0,
+            thickness: 1800.0,
             ..Clouds::default()
         };
         assert!((unshadowed.light().0 - (1.0 - 0.8 * 0.125)).abs() < 1e-5);

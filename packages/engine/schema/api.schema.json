@@ -36656,7 +36656,7 @@
         "thickness": {
           "type": "number",
           "description": "How tall the layer is (0: no cumulus, only the high layer).",
-          "default": 1800,
+          "default": 900,
           "minimum": 0,
           "x-og-unit": "m",
           "x-og-tunable": true

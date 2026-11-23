@@ -68,7 +68,7 @@ fn vs_sky_look(@builtin(vertex_index) i: u32) -> SkyOut {
     let az = vec3<f32>(f.x * cos(a) - f.z * sin(a), 0.0, f.x * sin(a) + f.z * cos(a));
     let flat_d = normalize(az + vec3<f32>(1e-6, 0.0, 0.0));
     let ray = flat_d * sqrt(1.0 - lowest * lowest) + vec3<f32>(0.0, lowest, 0.0);
-    o.grey += clouds_march(ray, vec2<f32>(-1.0)) * 0.25;
+    o.grey += clouds_march(ray, vec2<f32>(-1.0), length(frame.view_rays[1].xyz) / 270.0) * 0.25;
   }
   return o;
 }
@@ -357,20 +357,25 @@ fn cloud_ground(top: vec3<f32>, sun: vec3<f32>, up: f32) -> vec3<f32> {
   return CLOUD_GROUND * (sun * (max(up, 0.0) * reach / PI) + top * cloud_under());
 }
 
-// The share of what a cloud's base sees under it that is the air's light,
-// the low sky's, and not the ground's: the air between the base and the
-// ground it looks down on, a depth of the base's height over the cosine
-// of how steeply it looks, lets through exp(-x / mu) of the ground, x the
-// base's height in CLOUD_AIR; over every direction under the horizon that
-// leaves 1 - E2(x) the air's (fitted). A cumulus base 1500 m up sees two
-// fifths air; a deck 180 m over the ground sees the ground, and a sea of
-// cloud kilometres over it the air alone. (At two fifths whatever the
-// height, a low deck's bases were lit by the horizon all round them, as
-// bright as the sky.)
-fn cloud_air_share() -> f32 {
+// The share of the lower hemisphere filled by the air rather than the
+// ground. Integrate the physical atmosphere's exponential Rayleigh and
+// Mie extinction between the ground and the base; two-stream transport
+// (mean cosine 1/2) gives the air's share in each wavelength. A fixed
+// 5 km haze made clean-air sunset bases an even bright beige. Background
+// maps and gradients have no atmosphere: retain that haze for them.
+fn cloud_air_share() -> vec3<f32> {
   let c = frame.clouds;
+  if (scatter_on()) {
+    let ground = max(c[6].w, 0.0) * 0.001;
+    let height = max(c[0].z + c[6].w, 0.0) * 0.001;
+    let scale = frame.sky_scatter[1];
+    let rayleigh = (exp(-ground * scale.z) - exp(-height * scale.z)) / scale.z;
+    let mie = (exp(-ground * scale.w) - exp(-height * scale.w)) / scale.w;
+    let depth = frame.sky_scatter[0].rgb * rayleigh + vec3<f32>(scale.y * mie);
+    return vec3<f32>(1.0) - exp(-2.0 * max(depth, vec3<f32>(0.0)));
+  }
   let x = max(c[0].z + c[6].w, 0.0) / CLOUD_AIR;
-  return 1.0 - exp(-1.9 * pow(x, 0.78));
+  return vec3<f32>(1.0 - exp(-1.9 * pow(x, 0.78)));
 }
 
 // How much of the sky's light reaches under the layer: all of it through
@@ -469,7 +474,7 @@ fn cloud_layer_mix(layer: vec4<f32>, over: vec3<f32>, w: f32) -> vec4<f32> {
 // undithered, into one grey every pixel shares: the deck's mean there along four fixed azimuths about the view
 // (`grey`, from vs_sky_look). The
 // far base fades into it towards the horizon and below it, with no copy of a feature to fan or streak.
-fn clouds_over(d: vec3<f32>, pixel: vec2<f32>, grey: vec4<f32>) -> vec4<f32> {
+fn clouds_over(d: vec3<f32>, pixel: vec2<f32>, grey: vec4<f32>, spread: f32) -> vec4<f32> {
   let c = frame.clouds;
   if (c[3].w < 0.5) { return vec4<f32>(0.0, 0.0, 0.0, 1.0); }
   let viewer = cloud_viewer();
@@ -493,7 +498,7 @@ fn clouds_over(d: vec3<f32>, pixel: vec2<f32>, grey: vec4<f32>) -> vec4<f32> {
       ray = flat_d * sqrt(1.0 - lowest * lowest) + vec3<f32>(0.0, lowest, 0.0);
       at = vec2<f32>(-1.0);
     }
-    let m = clouds_march(ray, at);
+    let m = clouds_march(ray, at, spread);
     if (k == 0u) { own = m; } else { column = m; }
   }
   if (!low) { return column; }
@@ -603,7 +608,7 @@ const CLOUD_REACH: f32 = 160000.0;
 const CLOUD_HAZE: f32 = 27000.0;
 
 // The high layer, then the volumetric layer, faded into the sky with distance.
-fn clouds_march(d: vec3<f32>, pixel: vec2<f32>) -> vec4<f32> {
+fn clouds_march(d: vec3<f32>, pixel: vec2<f32>, spread: f32) -> vec4<f32> {
   let c = frame.clouds;
   if (c[3].w < 0.5) { return vec4<f32>(0.0, 0.0, 0.0, 1.0); }
   let radius = c[4].x;
@@ -733,15 +738,12 @@ fn clouds_march(d: vec3<f32>, pixel: vec2<f32>) -> vec4<f32> {
   // them is clear again (Schneider 2015, the cheap and the full sample).
   // Both lengthen with the distance, as what a pixel resolves does
   // (Schneider 2022): a stride is the distance over Clouds.steps, never
-  // less than the layer's thickness over 0.6 of them (48: 62 m to 3 km,
-  // 2 % of the distance past it; its fine steps 10 m, then 0.35 %, some
-  // two pixels of a 1080p frame's cloud target).
+  // less than the layer's thickness over 0.6 of them, or a third of the
+  // shape scale over them. A shallow layer with large billows needs no
+  // finer strides than its shapes; the fine steps still find its surface.
   let steps = c[3].z;
   let grow = 1.0 / steps;
-  let least = c[0].w / (0.6 * steps);
-  // What a pixel of the cloud target is wide a metre away (of a 1080p
-  // frame's: the level the noise is read at).
-  let spread = length(frame.view_rays[1].xyz) / 270.0;
+  let least = max(c[0].w / 0.6, c[1].w / 3.0) / steps;
   // A different start per pixel turns banding into fine noise: interleaved
   // gradient noise (Jimenez 2014), whose neighbours differ evenly, so a
   // single frame shows an even fine grain rather than speckle. The cloud
@@ -766,6 +768,7 @@ fn clouds_march(d: vec3<f32>, pixel: vec2<f32>) -> vec4<f32> {
   // whether the last move was a stride over air the fine steps have not
   // crossed.
   var fine = 0u;
+  var fine_count = CLOUD_FINE + 1u;
   var strode = true;
   // Whether the last fine step was a lengthened one over clear air, and
   // how far the march goes in fine steps again after one met cloud.
@@ -781,7 +784,7 @@ fn clouds_march(d: vec3<f32>, pixel: vec2<f32>) -> vec4<f32> {
   // was half the clouds' cost and reached 1.4 km).
   let light_step = c[0].w * 0.012;
   // The sun's ray's length over that of the ray the map was baked along
-  // (no lower than some 10°: clouds/shadow.rs RUN).
+  // (no lower than 2.9°: clouds/shadow.rs RUN).
   let slant = min(1.0 / max(to_light.y, 0.05), 20.0) / sqrt(1.0 + dot(c[10].zw, c[10].zw));
   let mapped = c[11].z > 0.5;
   // A lightning strike's flash, a point in the cloud over the bolt's root
@@ -820,10 +823,15 @@ fn clouds_march(d: vec3<f32>, pixel: vec2<f32>) -> vec4<f32> {
         strode = true;
         continue;
       }
-      dt0 = stride / f32(CLOUD_FINE);
+      // Resolve an optical depth near the surface of a dense tower,
+      // unless it is smaller than a pixel. Thickness alone left an 8 km
+      // tower's visible skin one sample deep and drew contour rings on
+      // its smooth cap, even though its erosion was properly filtered.
+      dt0 = min(stride / f32(CLOUD_FINE), max(1.0 / c[0].y, t * spread));
       dt = dt0;
       lengthened = false;
-      fine = CLOUD_FINE + 1u;
+      fine_count = u32(ceil(stride / dt0)) + 1u;
+      fine = fine_count;
       // Back over the stride that reached the cloud, once.
       if (strode) {
         t = max(t - stride, start) + dt * jitter;
@@ -839,9 +847,9 @@ fn clouds_march(d: vec3<f32>, pixel: vec2<f32>) -> vec4<f32> {
     let col = cloud_column(m, hf);
     let profile = cloud_profile(col, hf);
     var cloud = vec3<f32>(0.0);
-    // (The detail where a pixel resolves it: its cells are a hundred and
-    // twenty-eighth of the scale.)
-    if (profile > 0.0) { cloud = cloud_density_from(at, col, hf, profile, t * spread, t * spread * 128.0 < c[1].w); }
+    // The detail's coarsest cells are a sixty-fourth of the scale; its
+    // higher octaves fade to their mean with this view's pixel footprint.
+    if (profile > 0.0) { cloud = cloud_density_from(at, col, hf, profile, t * spread, t * spread * 64.0 < c[1].w); }
     let sigma = cloud.x;
     // A lengthened step (below) that reached cloud goes back over itself
     // in fine ones, as a stride does: the cloud's surface is found to a
@@ -857,7 +865,7 @@ fn clouds_march(d: vec3<f32>, pixel: vec2<f32>) -> vec4<f32> {
     fine -= 1u;
     if (sigma > 0.0) {
       lengthened = false;
-      fine = CLOUD_FINE + 1u;
+      fine = fine_count;
       let along = clamp((t - start) / span, 0.0, 1.0);
       let sun_here = mix(mix(sun_at[0], sun_at[1], hf), mix(sun_at[2], sun_at[3], hf), along);
       // (The near sample somewhere in its step by the pixel's jitter: at
@@ -1154,9 +1162,10 @@ fn sky_clouds_stored(clouds: vec4<f32>, background: vec3<f32>, dir: vec3<f32>) -
 
 @fragment
 fn fs_sky_look(in: SkyOut) -> @location(0) vec4<f32> {
-  if (frame.light_color.w > 0.5) { return debug_unsupported(in.pos.xy); }
   let dir = pixel_ray(in.ndc);
-  let clouds = clouds_over(dir, in.pos.xy, in.grey);
+  let spread = max(length(dpdx(dir)), length(dpdy(dir)));
+  if (frame.light_color.w > 0.5) { return debug_unsupported(in.pos.xy); }
+  let clouds = clouds_over(dir, in.pos.xy, in.grey, spread);
   return sky_clouds_stored(clouds, sky_look_behind(dir, in.pos.xy), dir);
 }
 
@@ -1215,6 +1224,7 @@ struct CloudsTemporal {
 // The cloud target's texel along `ndc`, at `pos` of the target: `texel` is a texel in NDC.
 fn clouds_low_texel(ndc: vec2<f32>, pos: vec2<f32>, grey: vec4<f32>, texel: vec2<f32>) -> vec4<f32> {
   var d = pixel_ray(ndc);
+  let spread = max(length(pixel_ray(ndc + vec2<f32>(texel.x, 0.0)) - d), length(pixel_ray(ndc + vec2<f32>(0.0, texel.y)) - d));
   // The horizon is an edge in the clouds (a ray that meets the ground sees none, one just over it the farthest)
   // and the sky's draw reads this target between its texels: a texel under the horizon beside one over it marches
   // that one's ray, so a pixel over the horizon reads only clouds over it. A pixel under it reads none
@@ -1225,7 +1235,7 @@ fn clouds_low_texel(ndc: vec2<f32>, pos: vec2<f32>, grey: vec4<f32>, texel: vec2
       if (near.y > d.y) { d = near; }
     }
   }
-  let layer = clouds_over(d, pos, grey);
+  let layer = clouds_over(d, pos, grey, spread);
   return vec4<f32>(clamp(layer.rgb, vec3<f32>(0.0), vec3<f32>(65504.0)), layer.a);
 }
 

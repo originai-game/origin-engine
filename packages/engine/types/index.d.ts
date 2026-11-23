@@ -18010,7 +18010,7 @@ export interface Clouds {
   /**
    * How tall the layer is (0: no cumulus, only the high layer).
    *
-   * @default 1800
+   * @default 900
    * @range 0..
    * @unit m (metres)
    * @tunable

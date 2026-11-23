@@ -535,6 +535,7 @@ fn the_clouds_shade_the_ground_under_them() {
         // a ray 50 degrees off the zenith through 1.8 km of layer met a
         // cloud from all but one or two of the sixteen.)
         c.coverage = 0.35;
+        c.thickness = 1800.0;
         c.shadows = shadows;
         scene.atmosphere.adaptation = Default::default();
         scene.objects.instances.clear();

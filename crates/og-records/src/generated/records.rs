@@ -22107,7 +22107,7 @@ pub const RECORDS: &[RecordDecl] = &[
             FieldDecl {
                 name: "thickness",
                 column: "f32",
-                default: "1800",
+                default: "900",
                 readonly: false,
                 weak: false,
                 tunable: true,

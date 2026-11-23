@@ -52,11 +52,12 @@ fn ground_kept(p: vec3<f32>) -> vec3<f32> {
 
 @fragment
 fn fs_sky_ground(in: SkyOut) -> @location(0) vec4<f32> {
+  let dir = pixel_ray(in.ndc);
+  let spread = max(length(dpdx(dir)), length(dpdy(dir)));
   if (frame.light_color.w > 0.5) { return debug_unsupported(in.pos.xy); }
   // The view ray as the sky's (sky.wgsl fs_sky): from the pixel's near point along pixel_ray.
   let near = frame.inv_view_proj * vec4<f32>(in.ndc, 0.0, 1.0);
   let eye = near.xyz / near.w;
-  let dir = pixel_ray(in.ndc);
   var color = sky_background(eye, dir) * (1.0 - frame.view_up.w);
   // Where the ray meets the dome's ground before it leaves the dome (as
   // frame.wgsl dome_lookup finds it).
@@ -73,7 +74,7 @@ fn fs_sky_ground(in: SkyOut) -> @location(0) vec4<f32> {
   }
   let background = sky_fog(color, dir);
   if (frame.clouds[3].w > 0.5) {
-    return sky_clouds_stored(clouds_over(dir, in.pos.xy, in.grey), background, dir);
+    return sky_clouds_stored(clouds_over(dir, in.pos.xy, in.grey, spread), background, dir);
   }
   return vec4<f32>(background, sky_tone_fraction());
 }

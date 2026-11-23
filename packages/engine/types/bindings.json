@@ -12959,7 +12959,7 @@
         {
           "name": "thickness",
           "column": "f32",
-          "default": 1800,
+          "default": 900,
           "tunable": true
         },
         {

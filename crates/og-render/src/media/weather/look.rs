@@ -367,6 +367,9 @@ impl WeatherLook {
         if scene.atmosphere.clouds.is_none() && procedural && self.cover > 0.0 {
             scene.atmosphere.clouds = Some(Clouds {
                 coverage: 0.0,
+                // Rain and snow bring a full deck, not the shallow
+                // fair-weather layer used by a bare Clouds component.
+                thickness: 1800.0,
                 ..Clouds::default()
             });
         }

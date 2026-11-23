@@ -19,7 +19,7 @@ Token `og.Clouds`, registered under the schema name `og.Clouds`; its value type 
 | `coverage` | `number` | `0.45` | 0 … 1 | `ratio` | tunable | How much of the sky the clouds cover: 0 none, 0.3 fair weather, 0.6 broken, 1 overcast. |
 | `density` | `number` | `0.04` | 0 … 0.5 | — | tunable | How thick a cloud's body is per metre, reached some tens of metres inside its surface (0.04: cumulus; 0.01: thin and translucent; 0.08: dense storm cloud). |
 | `base` | `number` | `1500` | — | `m` | tunable | The cloud base's world y, in metres; negative places it below the game's origin. With og.PhysicalSky, its altitude is the sea-level height of world y 0 for the clouds too. |
-| `thickness` | `number` | `1800` | ≥ 0 | `m` | tunable | How tall the layer is (0: no cumulus, only the high layer). |
+| `thickness` | `number` | `900` | ≥ 0 | `m` | tunable | How tall the layer is (0: no cumulus, only the high layer). |
 | `scale` | `number` | `9000` | 500 … 200000 | `m` | tunable | The size of the largest cloud shapes. |
 | `wind` | `Vector3` | `{ x: 0, y: 0.4, z: 0 }` | — | `mps` | tunable | Their own motion, added to og.Wind's (which carries them twice as fast as it blows at the ground): x and z a drift, y how fast their shapes turn over. |
 | `color` | `Color` | `{ r: 1, g: 1, b: 1 }` | — | — | — | Their albedo: white for fair-weather clouds, a grey for rain clouds. |
@@ -54,7 +54,7 @@ resource Clouds {
     tunable true
   }
   field thickness f32 "How tall the layer is (0: no cumulus, only the high layer)." {
-    default 1800
+    default 900
     min 0
     unit m
     tunable true

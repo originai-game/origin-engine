@@ -2,7 +2,7 @@
 // compute pass the first frame that has clouds, each tiling in every axis
 // (every lattice point is hashed from its cell wrapped by the frequency):
 //
-//   shape, 128³ (one tile a quarter of Clouds.scale):
+//   shape, 128³ (one tile half of Clouds.scale):
 //     r: the billows, Schneider's Perlin-Worley as what erodes a cloud:
 //        the distance to the nearest feature point (Worley's F1) at 4, 8,
 //        16 and 32 cells, low in a billow's middle and high in the creases
@@ -14,7 +14,7 @@
 //     b: an inverted Worley fBm at 8, 16 and 32 cells (the high layer's body)
 //     a: the wisps a base hangs in: that fBm of smooth distances, which
 //        have no crease where two cells meet
-//   detail, 64³ (one tile a thirty-second of the scale):
+//   detail, 64³ (one tile a sixteenth of the scale):
 //     r: the billows again, eight times finer
 //     g: the same field read through a gradient-noise warp (curled wisps)
 //     b: an inverted Worley fBm at 8 and 16 cells

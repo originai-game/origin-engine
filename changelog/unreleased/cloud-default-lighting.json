@@ -1,0 +1,21 @@
+{
+  "simulation": "changed",
+  "breaking": [
+    {
+      "member": "og.Clouds.thickness",
+      "change": "The default cloud layer is 900 m deep instead of 1800 m. The rebuilt clouds reach their body's density near the surface; a shallower default leaves blue gaps when seen from the ground. Explicit thickness values and coverage semantics are unchanged. Worlds relying on the component default hash differently.",
+      "fix": "Review skies that omit thickness. Set thickness: 1800 explicitly to retain the previous layer depth.",
+      "find": ["Clouds"]
+    }
+  ],
+  "fixed": [
+    {
+      "member": "og.Clouds",
+      "summary": "Low sunset clouds bake their self-shadow along the sun's ray down to 2.9 degrees rather than clamping it at 9.5 degrees. Physical skies derive the fill below a cloud from their own spectral atmosphere instead of a fixed 5 km haze."
+    },
+    {
+      "member": "og.Clouds",
+      "summary": "Cloud tops use broader billows, with fine erosion fading to its mean at the actual view's pixel footprint and towards the cloud top. Cumulonimbus anvils retain smoother caps than their turbulent towers, and dense layers resolve the visible skin by optical depth rather than thickness alone. Authored density, coverage and shadow strength are not reduced."
+    }
+  ]
+}

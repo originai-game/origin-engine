@@ -839,6 +839,7 @@ mod sky_params_tests {
         let mut overcast = crate::RenderScene::new();
         crate::Clouds {
             coverage: 1.0,
+            thickness: 1800.0,
             ..crate::Clouds::default()
         }
         .light_scene(&mut overcast);

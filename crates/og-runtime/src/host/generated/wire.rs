@@ -32243,7 +32243,7 @@ pub mod record {
                 coverage: 0.45_f32,
                 density: 0.04_f32,
                 base: 1500.0_f32,
-                thickness: 1800.0_f32,
+                thickness: 900.0_f32,
                 scale: 9000.0_f32,
                 wind: Vec3::new(0.0_f32, 0.4_f32, 0.0_f32),
                 color: Color { r: 1.0_f32, g: 1.0_f32, b: 1.0_f32 },
