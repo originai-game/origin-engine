@@ -41,7 +41,7 @@ export interface CreatorToolsScreenProps {
  */
 export function CreatorToolsScreen(props: CreatorToolsScreenProps) {
   return (
-    <View class={`absolute inset-0 text-fg ${props.class ?? ""}`}>
+    <View class={`absolute inset-0 text-fg ${packClass("Screen", "frame")} ${props.class ?? ""}`}>
       <View class={`flex-row border-rim bg-linear-to-b from-plate-hi to-plate-lo inset-shadow-lit inset-ring-1 inset-ring-rim text-fg flex-wrap items-center p-2 gap-2 border disabled:text-fg-subtle ${packClass("Panel", "frame")}`} role="toolbar">
         <Button class={`bg-tile inset-ring-1 inset-ring-rim-soft h-7 font-semibold tracking-label uppercase px-2.75 narrow:h-8 narrow:py-0 narrow:px-3.75 data-selection-on:bg-none data-selection-on:bg-hud-accent data-selection-on:text-hud-accent-fg data-selection-on:border-transparent data-selection-on:inset-shadow-underline data-selection-on:inset-shadow-hud-accent data-selection-on:inset-ring-1 data-selection-on:inset-ring-rim-soft data-selection-off:border-transparent shrink ${props.tool === "select" ? "" : packClass("Button", "plate")}`} data-selection-off={props.tool !== "select"} data-selection-on={props.tool === "select"}>
           <Text>{t("screen.creator-tools.select")}</Text>

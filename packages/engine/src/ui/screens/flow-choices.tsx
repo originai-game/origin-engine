@@ -1,4 +1,4 @@
-import { For, Show, Text, View, createMemo, t, type UiEvent } from "@origingame/engine/ui";
+import { For, Show, Text, View, createMemo, packClass, t, type UiEvent } from "@origingame/engine/ui";
 import type { FlowView } from "@origingame/engine";
 import { Progress } from "../controls/progress";
 import "./flow-choices.en.ogt";
@@ -52,7 +52,7 @@ export function FlowChoices(props: FlowChoicesProps) {
   const now = createMemo(() => rows(props.view));
   return (
     <Show when={now().open}>
-      <View class="absolute inset-0">
+      <View class={`absolute inset-0 ${packClass("Screen", "frame")}`}>
         <View class="absolute inset-0">
           <For each={now().spots} key={(s) => s.index}>
             {(s) => (

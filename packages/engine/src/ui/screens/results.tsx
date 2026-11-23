@@ -53,7 +53,7 @@ export interface ResultsScreenProps {
  */
 export function ResultsScreen(props: ResultsScreenProps) {
   return (
-    <View class={`absolute inset-0 bg-linear-to-r from-glass via-glass via-55% to-glass py-8 px-16 compact:p-3 short:py-3 short:px-4 ${props.class ?? ""}`}>
+    <View class={`absolute inset-0 bg-linear-to-r from-glass via-glass via-55% to-glass py-8 px-16 compact:p-3 short:py-3 short:px-4 ${packClass("Screen", "frame")} ${props.class ?? ""}`}>
       <View class={`text-fg max-w-384 p-0 mx-auto gap-4 size-full disabled:text-fg-subtle short:flex-row compact:gap-3 compact:h-auto compact:max-h-full compact:my-auto shrink ${packClass("Panel", "frame")}`}>
         <Scroll class="grow shrink basis-0 compact:grow-0 compact:basis-auto gap-6 compact:justify-start compact:gap-3 short:justify-start short:gap-2">
           <View class="flex-row items-end gap-6 compact:items-start compact:gap-3">

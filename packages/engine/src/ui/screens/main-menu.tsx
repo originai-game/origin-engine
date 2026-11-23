@@ -49,7 +49,7 @@ export interface MainMenuScreenProps {
  */
 export function MainMenuScreen(props: MainMenuScreenProps) {
   return (
-    <View class={`absolute inset-0 scheme-dark text-fg overflow-hidden ${props.class ?? ""}`}>
+    <View class={`absolute inset-0 scheme-dark text-fg overflow-hidden ${packClass("Screen", "frame")} ${props.class ?? ""}`}>
       <Show when={props.keyArt !== 0}>
         <Art class="absolute object-cover inset-0 size-full" kind="keyArt" src={props.keyArt} />
       </Show>

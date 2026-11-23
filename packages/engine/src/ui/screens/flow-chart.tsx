@@ -1,4 +1,4 @@
-import { Icon, Show, Text, type UiEvent, View, t } from "@origingame/engine/ui";
+import { Icon, Show, Text, type UiEvent, View, packClass, t } from "@origingame/engine/ui";
 import { NodeGraph } from "../components/panels/node-graph";
 import { Button } from "../controls/button";
 import "./flow-chart.en.ogt";
@@ -43,7 +43,7 @@ export interface FlowChartScreenProps {
  */
 export function FlowChartScreen(props: FlowChartScreenProps) {
   return (
-    <View class={`absolute inset-0 pt-8 pb-6 px-12 gap-y-4 text-accent-hover overflow-hidden compact:pt-4 compact:px-4 compact:gap-y-3 ${props.class ?? ""}`}>
+    <View class={`absolute inset-0 pt-8 pb-6 px-12 gap-y-4 text-accent-hover overflow-hidden compact:pt-4 compact:px-4 compact:gap-y-3 ${packClass("Screen", "frame")} ${props.class ?? ""}`}>
       <View class="absolute bg-glass inset-0" />
       <View class="items-baseline gap-x-4 p-0 compact:flex-wrap compact:gap-y-1">
         <Button class="text-accent-hover compact:-ml-2" onPress={(e) => props.onBack?.(e)}>

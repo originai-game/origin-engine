@@ -23,7 +23,7 @@ export interface FlowPictureProps {
  */
 export function FlowPicture(props: FlowPictureProps) {
   return (
-    <View class="absolute inset-0">
+    <View class={`absolute inset-0 ${packClass("Screen", "frame")}`}>
       <Show when={props.previous}>
         <Image class="absolute inset-0 size-full object-cover" src={props.previous} />
       </Show>

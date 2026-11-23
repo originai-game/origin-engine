@@ -32,7 +32,7 @@ export interface CreditsScreenProps {
  */
 export function CreditsScreen(props: CreditsScreenProps) {
   return (
-    <View class={`absolute inset-0 grow shrink basis-0 text-fg p-0 gap-0 overflow-hidden ${props.class ?? ""}`} onPress={(e) => props.onFaster?.(e)} onAction={{ confirm: (e) => props.onFaster?.(e) }}>
+    <View class={`absolute inset-0 grow shrink basis-0 text-fg p-0 gap-0 overflow-hidden ${packClass("Screen", "frame")} ${props.class ?? ""}`} onPress={(e) => props.onFaster?.(e)} onAction={{ confirm: (e) => props.onFaster?.(e) }}>
       <Show when={props.keyArt !== 0}>
         <Art class="absolute object-cover inset-0 size-full" kind="keyArt" src={props.keyArt} />
       </Show>

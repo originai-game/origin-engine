@@ -90,7 +90,7 @@ function StepCard(props: TutorialScreenProps) {
  */
 export function TutorialScreen(props: TutorialScreenProps) {
   return (
-    <View class="relative h-full">
+    <View class={`relative h-full ${packClass("Screen", "frame")}`}>
       <View class="absolute inset-0">{props.highlight?.()}</View>
       <Show when={props.target} fallback={<StepCard {...props} />}>
         {/* data-lit: the target shows. Until it does, no shade, and the card stands at x and y. */}

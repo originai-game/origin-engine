@@ -49,7 +49,7 @@ export function QtePrompt(props: QtePromptProps) {
     >
       <Text class="text-caption font-semibold text-shadow-xs">{(props.label ?? "") !== "" ? props.label : t("hud.qte-prompt.respond")}</Text>
       <View
-        class={`relative flex-row items-center justify-center min-h-11 max-w-full py-2 px-3 gap-x-2 border-rim-strong bg-linear-to-b from-plate-hi to-plate-lo shadow-float ring ring-shade-deep rounded-button border overflow-hidden active:bg-none active:bg-tile-pressed active:scale-96 disabled:opacity-50 disabled:scale-100`}
+        class={`relative flex-row items-center justify-center min-h-11 max-w-full py-2 px-3 gap-x-2 border-rim-strong bg-linear-to-b from-plate-hi to-plate-lo shadow-float ring ring-shade-deep rounded-button border overflow-hidden active:bg-none active:bg-tile-pressed disabled:opacity-50`}
         role="button"
         label={(props.label ?? "") !== "" ? props.label : t("hud.qte-prompt.respond")}
         {...(hold ? { hold: Math.max(props.holdMs ?? 600, 1) / 1000, onHold: (e: UiEvent) => holdFill.set(e.value === "0" ? 0 : Math.min(Number(e.value), 1)) } : {})}

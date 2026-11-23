@@ -4056,7 +4056,7 @@ Calibration in three steps: brightness (gamma), the audio offset measured from t
 | `onNext?` | `(e: UiEvent, key?: string) => void` | The next event, with the row's key where it comes from a row. |
 | `onTap?` | `(e: UiEvent, key?: string) => void` | The tap event, with the row's key where it comes from a row. |
 
-Pack slots: `Button.plate`, `Button.plate.primary`, `Panel.frame`.
+Pack slots: `Button.plate`, `Button.plate.primary`, `Panel.frame`, `Screen.frame`.
 
 Fixtures: `default`.
 
@@ -4100,7 +4100,7 @@ A confirmation dialog on its own panel: the question as its heading, what follow
 | `onCancel?` | `(e: UiEvent, key?: string) => void` | The cancel event, with the row's key where it comes from a row. |
 | `onConfirm?` | `(e: UiEvent, key?: string) => void` | The confirm event, with the row's key where it comes from a row. |
 
-Pack slots: `Button.plate`, `Button.plate.primary`, `Panel.frame`.
+Pack slots: `Button.plate`, `Button.plate.primary`, `Modal.frame`, `Panel.frame`.
 
 Fixtures: `default`, `overflow`.
 
@@ -4129,7 +4129,7 @@ The creator's tools on the HUD's smoked glass: the four tools a segmented switch
 | `onSave?` | `(e: UiEvent, key?: string) => void` | The save event, with the row's key where it comes from a row. |
 | `onUndo?` | `(e: UiEvent, key?: string) => void` | The undo event, with the row's key where it comes from a row. |
 
-Pack slots: `Button.plate`, `Button.plate.primary`, `Panel.frame`.
+Pack slots: `Button.plate`, `Button.plate.primary`, `Panel.frame`, `Screen.frame`.
 
 Fixtures: `default`.
 
@@ -4153,7 +4153,7 @@ The credits: the sections' titles and names rolling over the key art's veil, the
 | `onBack?` | `(e: UiEvent, key?: string) => void` | The back event, with the row's key where it comes from a row. |
 | `onFaster?` | `(e: UiEvent, key?: string) => void` | The faster event, with the row's key where it comes from a row. |
 
-Pack slots: `Button.plate`.
+Pack slots: `Button.plate`, `Screen.frame`.
 
 Fixtures: `default`.
 
@@ -4193,7 +4193,7 @@ A chapter select: the story's chapters in order with their thumbnails, the selec
 | `onBack?` | `(e: UiEvent, key?: string) => void` | The back event, with the row's key where it comes from a row. |
 | `onSelect?` | `(e: UiEvent, key?: string) => void` | The select event, with the row's key where it comes from a row. |
 
-Pack slots: `Button.plate`.
+Pack slots: `Button.plate`, `Screen.frame`.
 
 Fixtures: `default`.
 
@@ -4209,6 +4209,8 @@ An interactive film's choice window over its footage (flow guide §4): a thin ba
 |---|---|---|
 | `view` | `FlowView \| null` | What the flow shows now (og.flow.view's value, set each tick); null or a view without a window hides the screen. |
 | `onChoose?` | `((e: UiEvent, index: number) => void) \| undefined` | A choice was taken, by its row or its hotspot: pass `index` (ChoiceView.index) to og.flow.choose. |
+
+Pack slots: `Screen.frame`.
 
 Fixtures: `default`, `locked`, `closed`.
 
@@ -4236,6 +4238,8 @@ The story so far over the dimmed flow: a band with Back and the title, the chart
 | `onPlay?` | `(e: UiEvent) => void` | Play from the picked node. |
 | `onBack?` | `(e: UiEvent) => void` |  |
 
+Pack slots: `Screen.frame`.
+
 Fixtures: `default`, `unseen`, `none`.
 
 Actions: `pick` (Pick a node), `play` (Play from here), `back` (Back).
@@ -4254,7 +4258,7 @@ An endings gallery: the endings reached and locked, with their thumbnails, the s
 | `onBack?` | `(e: UiEvent, key?: string) => void` | The back event, with the row's key where it comes from a row. |
 | `onSelect?` | `(e: UiEvent, key?: string) => void` | The select event, with the row's key where it comes from a row. |
 
-Pack slots: `Button.plate`.
+Pack slots: `Button.plate`, `Screen.frame`.
 
 Fixtures: `default`.
 
@@ -4273,7 +4277,7 @@ The footage filling the surface, cropped to cover it, over a deep shade (so a li
 | `mix?` | `number \| undefined` | How far the dissolve is: the picture's opacity over the previous one (FlowView.mix). |
 | `onSkip?` | `((e: UiEvent) => void) \| undefined` | Given, a Skip button at the top corner calls it: a cutscene the player has seen (og.flow.skip, or the game's own). |
 
-Pack slots: `Button.plate`.
+Pack slots: `Button.plate`, `Screen.frame`.
 
 Fixtures: `default`, `skip`.
 
@@ -4287,7 +4291,7 @@ A flow as the player sees it, what the engine mounts for project.ogt's `flow`: i
 |---|---|---|
 | `flow?` | `Entity \| undefined` | The flow it draws; left out, og.flow.current's (project.ogt's `flow`). |
 
-Pack slots: `Button.plate`.
+Pack slots: `Button.plate`, `Screen.frame`.
 
 Fixtures: `default`, `skip`.
 
@@ -4315,7 +4319,7 @@ Game over: the defeat's line, the run's score and the best, an optional revive o
 | `onRetry?` | `((e: UiEvent, key?: string) => void) \| undefined` | The retry event, with the row's key where it comes from a row. |
 | `onRevive?` | `((e: UiEvent, key?: string) => void) \| undefined` | The revive event, with the row's key where it comes from a row. |
 
-Pack slots: `Button.plate`, `Button.plate.primary`, `Panel.frame`.
+Pack slots: `Button.plate`, `Button.plate.primary`, `Panel.frame`, `Screen.frame`.
 
 Fixtures: `default`.
 
@@ -4333,7 +4337,7 @@ The HUD editor's frame: a hint at the top until the player moves something, over
 | `showHint?` | `boolean` | The hint at the top shows (false once the player has moved something). |
 | `editorEditor?` | `(() => JSX.Element) \| undefined` | Content the caller supplies (was the editorEditor snippet). |
 
-Pack slots: `Panel.frame`.
+Pack slots: `Panel.frame`, `Screen.frame`.
 
 Fixtures: `default`.
 
@@ -4373,7 +4377,7 @@ A leaderboard: global, friends and league tabs, the period, the top rows with th
 | `onPeriod?` | `(e: UiEvent, key?: string) => void` | The period event, with the row's key where it comes from a row. |
 | `onRow?` | `(e: UiEvent, key?: string) => void` | The row event, with the row's key where it comes from a row. |
 
-Pack slots: `Button.plate`, `Chip.frame`, `Panel.frame`, `Plate.frame`, `Row.frame`, `Row.frame.selected`.
+Pack slots: `Button.plate`, `Chip.frame`, `Panel.frame`, `Plate.frame`, `Row.frame`, `Row.frame.selected`, `Screen.frame`.
 
 Fixtures: `default`.
 
@@ -4399,7 +4403,7 @@ The key art fills the screen. At its foot, over a shade that grows with the word
 | `onContinue?` | `(e: UiEvent, key?: string) => void` | The continue event, with the row's key where it comes from a row. |
 | `onNextTip?` | `(e: UiEvent, key?: string) => void` | The nextTip event, with the row's key where it comes from a row. |
 
-Pack slots: `Button.plate.primary`, `Chip.frame`, `Panel.frame`.
+Pack slots: `Button.plate.primary`, `Chip.frame`, `Panel.frame`, `Screen.frame`.
 
 Fixtures: `default`.
 
@@ -4431,7 +4435,7 @@ The main menu over the key art: the logo or the name as a wordmark, Continue wit
 | `onQuit?` | `((e: UiEvent, key?: string) => void) \| undefined` | The quit event, with the row's key where it comes from a row. |
 | `onSettings?` | `((e: UiEvent, key?: string) => void) \| undefined` | The settings event, with the row's key where it comes from a row. |
 
-Pack slots: `Panel.frame`.
+Pack slots: `Panel.frame`, `Screen.frame`.
 
 Fixtures: `default`.
 
@@ -4454,7 +4458,7 @@ A mode select: the modes as cards with their line, tag and picture, a locked mod
 | `onPlay?` | `((e: UiEvent, key?: string) => void) \| undefined` | The play event, with the row's key where it comes from a row. |
 | `onSelect?` | `(e: UiEvent, key?: string) => void` | The select event, with the row's key where it comes from a row. |
 
-Pack slots: `Button.plate`, `Button.plate.primary`, `Chip.frame`.
+Pack slots: `Button.plate`, `Button.plate.primary`, `Chip.frame`, `Screen.frame`.
 
 Fixtures: `default`.
 
@@ -4550,7 +4554,7 @@ Each `PauseRow`:
 | `danger?` | `boolean` | Tinted as a danger when hovered, as Quit game is. |
 | `disabled?` | `boolean` | Drawn grey and takes no press. |
 
-Pack slots: `Panel.frame`.
+Pack slots: `Panel.frame`, `Screen.frame`.
 
 Fixtures: `default`, `ownRows`.
 
@@ -4582,7 +4586,7 @@ After a match: the verdict set large in a lit fill (gold for a win, red for a lo
 | `onReplay?` | `((e: UiEvent, key?: string) => void) \| undefined` | The replay event, with the row's key where it comes from a row. |
 | `onTab?` | `(e: UiEvent, value: string) => void` | The tab switched (onTab), the tab's value (summary, graphs or board). Without it no tab row is drawn, and the page shows `tab`. |
 
-Pack slots: `Button.plate`, `Button.plate.primary`, `Chip.frame`, `Panel.frame`.
+Pack slots: `Button.plate`, `Button.plate.primary`, `Chip.frame`, `Panel.frame`, `Screen.frame`.
 
 Fixtures: `default`.
 
@@ -4608,7 +4612,7 @@ Saving or loading: the slots with their title, place, time played, date and thum
 | `onSave?` | `((e: UiEvent, key?: string) => void) \| undefined` | The save event, with the row's key where it comes from a row. |
 | `onSelect?` | `(e: UiEvent, key?: string) => void` | The select event, with the row's key where it comes from a row. |
 
-Pack slots: `Button.plate`, `Button.plate.primary`, `Panel.frame`, `Row.frame`, `Row.frame.selected`.
+Pack slots: `Button.plate`, `Button.plate.primary`, `Panel.frame`, `Row.frame`, `Row.frame.selected`, `Screen.frame`.
 
 Fixtures: `default`.
 
@@ -4637,7 +4641,7 @@ Settings: a tab per page and its entries (toggles, ranges, choices and key bindi
 | `onDefaults?` | `((e: UiEvent, key?: string) => void) \| undefined` | The defaults event, with the row's key where it comes from a row. |
 | `onRevert?` | `((e: UiEvent, key?: string) => void) \| undefined` | The revert event, with the row's key where it comes from a row. |
 
-Pack slots: `Button.plate`, `Button.plate.primary`, `Row.frame`.
+Pack slots: `Button.plate`, `Button.plate.primary`, `Row.frame`, `Screen.frame`.
 
 Fixtures: `default`.
 
@@ -4658,6 +4662,8 @@ The boot splash: the studio marks one after another (a texture, or the name set 
 | `status` | `string` | What is loading, small beside the bar's figure (empty: nothing). |
 | `custom?` | `(() => JSX.Element) \| undefined` | Content the caller supplies (was the custom snippet). |
 | `onSkip?` | `(e: UiEvent, key?: string) => void` | The skip event, with the row's key where it comes from a row. |
+
+Pack slots: `Screen.frame`.
 
 Fixtures: `default`.
 
@@ -4689,7 +4695,7 @@ The latest lines at the foot of the screen, centred in HUD type over a soft dark
 | `lines?` | `ReadonlyArray<{ id: string; speaker: string; text: string }> \| undefined` | The game's own lines, oldest first, each { id, speaker, text }; the game drops a line when it is done. |
 | `captions?` | `ReadonlyArray<{ id: string; text: string }> \| undefined` | The captions the timelines are saying (og.timeline.captions(world), set each tick), after the game's lines: a film segment's SRT track, a cutscene's caption track. |
 
-Pack slots: `Plate.frame`.
+Pack slots: `Plate.frame`, `Screen.frame`.
 
 Fixtures: `default`, `captions`.
 
@@ -4728,6 +4734,8 @@ The title screen over the key art: the logo or the name as a wordmark, Press any
 | `name` | `string` | The game's name, set as a wordmark where there is no logo (empty: the logo slot's placeholder). |
 | `background?` | `(() => JSX.Element) \| undefined` | Content the caller supplies (was the background snippet). |
 | `onStart?` | `((e: UiEvent, key?: string) => void) \| undefined` | The start event, with the row's key where it comes from a row. |
+
+Pack slots: `Screen.frame`.
 
 Fixtures: `default`.
 
@@ -4774,7 +4782,7 @@ A tutorial step: a card with the step's title, what to do, its art and the step 
 | `onNext?` | `(e: UiEvent, key?: string) => void` | The next event, with the row's key where it comes from a row. |
 | `onSkip?` | `(e: UiEvent, key?: string) => void` | The skip event, with the row's key where it comes from a row. |
 
-Pack slots: `Button.plate`, `Button.plate.primary`, `Panel.frame`.
+Pack slots: `Button.plate`, `Button.plate.primary`, `Panel.frame`, `Screen.frame`.
 
 Fixtures: `default`, `spotlight`, `targetMissing`.
 

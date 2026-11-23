@@ -39,7 +39,7 @@ export interface LoadingScreenProps {
  */
 export function LoadingScreen(props: LoadingScreenProps) {
   return (
-    <View class={`absolute inset-0 text-fg overflow-hidden ${props.class ?? ""}`} onPress={(e) => props.onNextTip?.(e)}>
+    <View class={`absolute inset-0 text-fg overflow-hidden ${packClass("Screen", "frame")} ${props.class ?? ""}`} onPress={(e) => props.onNextTip?.(e)}>
       <Show when={props.keyArt}>
         <Art class="absolute object-cover inset-0" kind="tutorial" src={props.keyArt} />
       </Show>

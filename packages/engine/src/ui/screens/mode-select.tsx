@@ -30,7 +30,7 @@ export interface ModeSelectScreenProps {
  */
 export function ModeSelectScreen(props: ModeSelectScreenProps) {
   return (
-    <View class={`absolute inset-0 pt-8 pb-6 text-fg gap-y-6 px-12 overflow-hidden compact:pt-4 compact:pb-3 compact:gap-y-3 compact:px-4 ${props.class ?? ""}`}>
+    <View class={`absolute inset-0 pt-8 pb-6 text-fg gap-y-6 px-12 overflow-hidden compact:pt-4 compact:pb-3 compact:gap-y-3 compact:px-4 ${packClass("Screen", "frame")} ${props.class ?? ""}`}>
       <Show when={props.keyArt !== 0}>
         <Art class="absolute object-cover inset-0 size-full" kind="keyArt" src={props.keyArt} />
       </Show>

@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {
+      "member": "og.ui",
+      "summary": "The built-in screens enter and leave: every full-screen built-in takes Screen.frame before its caller class, and Confirm pops in by Modal.frame. The built-ins' own active:scale-96/97 are gone, so the pack's Press.feedback squashes them all alike (touch-controls' pad keeps its own)."
+    }
+  ]
+}
