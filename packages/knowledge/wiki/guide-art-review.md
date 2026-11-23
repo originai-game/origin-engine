@@ -85,6 +85,12 @@ well as still (`og render` a clip):
   checks on the frame; do not count its `intended` traits as defects.
 - **Consistency.** Line width, outline colour, light direction and
   shadow softness agree across characters, props and UI.
+- **Facing.** Each moving model's nose points along its travel: a ship
+  flying up the screen shows its nose up, a foe diving at the player
+  points at the player, a walker leads with its face. A model whose nose
+  is off is fixed in its import settings (`front`/`up`, loading
+  §2), checked with `og model preview --axes`, not by a turn in
+  game code.
 - **Nothing generic.** A frame that could be any engine's default scene
   (grey ground, default sky, uniform lighting) is not done.
 

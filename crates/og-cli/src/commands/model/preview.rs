@@ -50,6 +50,9 @@ pub struct PreviewDesc {
     /// A picture of what is all round the scene, to light it by in
     /// place of the plain sky over the ground ([`environment`]).
     pub environment: Option<og_shape::tools::Environment>,
+    /// The engine's axes drawn over each view at the model's origin,
+    /// labelled (`--axes`, [`super::axes`]): which way it faces.
+    pub axes: bool,
 }
 
 /// The picture at `path` as the light all round a scene: an
@@ -434,6 +437,19 @@ fn render_pose(
                 .collect::<Vec<_>>(),
         );
         let cameras: Vec<String> = v.cameras.iter().map(camera).collect();
+        let mut v = v;
+        if d.axes {
+            for (im, c) in v.images.iter_mut().zip(&v.cameras) {
+                super::axes::draw(im, c);
+            }
+        }
+        let axes = || {
+            if d.axes {
+                super::axes::ABOUT.to_string()
+            } else {
+                "null".into()
+            }
+        };
         let images = if d.each {
             v.images
                 .iter()
@@ -442,7 +458,11 @@ fn render_pose(
                 .map(|(k, (im, c))| {
                     (
                         og_shape_formats::png::write::png(im),
-                        object(&[("view", k.to_string()), ("camera", c.clone())]),
+                        object(&[
+                            ("view", k.to_string()),
+                            ("camera", c.clone()),
+                            ("axes", axes()),
+                        ]),
                     )
                 })
                 .collect()
@@ -457,6 +477,7 @@ fn render_pose(
                 object(&[
                     ("columns", columns.to_string()),
                     ("cameras", array(&cameras)),
+                    ("axes", axes()),
                 ]),
             )]
         };
@@ -524,6 +545,7 @@ pub fn run(a: &Args) -> Result<String, Failure> {
         "--time",
         "--frames",
         "--env",
+        "--axes",
         IMPORT_OPTIONS[0],
         IMPORT_OPTIONS[1],
         IMPORT_OPTIONS[2],
@@ -587,7 +609,13 @@ pub fn run(a: &Args) -> Result<String, Failure> {
             Some(path) => Some(environment(&Local, Path::new(path))?),
             None => None,
         },
+        axes: a.switch("--axes"),
     };
+    if d.axes && d.uv.is_some() {
+        return Err(Failure::Usage(
+            "--axes draws over views, not --uv layouts".into(),
+        ));
+    }
     let source = load_uvs(&Local, &a.input()?, &a.import()?, a.switch("--uvs"))?;
     write(&Local, &out, &render(&source, &d)?)
 }

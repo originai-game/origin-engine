@@ -67,7 +67,7 @@ pub struct Plain {
 }
 
 /// A `.glb`'s JSON and BIN chunks, or a `.gltf`'s text.
-fn chunks(bytes: &[u8]) -> Result<(&[u8], Option<Vec<u8>>), String> {
+pub(crate) fn chunks(bytes: &[u8]) -> Result<(&[u8], Option<Vec<u8>>), String> {
     if bytes.len() < 12 || &bytes[0..4] != b"glTF" {
         return Ok((bytes, None));
     }

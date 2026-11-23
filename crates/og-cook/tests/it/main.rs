@@ -48,6 +48,8 @@ mod impostor;
 mod lod;
 #[path = "../look_builtins.rs"]
 mod look_builtins;
+#[path = "../model_orient.rs"]
+mod model_orient;
 #[path = "../model_text.rs"]
 mod model_text;
 #[path = "../motion_cache.rs"]

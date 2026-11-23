@@ -16,6 +16,7 @@ mod blob;
 pub(crate) mod ext;
 mod impostor;
 mod lod_bake;
+pub(crate) mod orient;
 pub mod plain;
 mod primitive;
 mod shape;

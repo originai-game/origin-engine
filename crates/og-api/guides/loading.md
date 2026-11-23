@@ -141,6 +141,31 @@ model {
   playback range, else over every frame. A node's `_loop` repeats its
   keys as the editor plays them.
 
+### Orientation
+
+The cooked model faces +Z with +Y up (the facing guide). A model from a
+generator or a store often faces another way: state its axes in the
+import settings and the cook turns it, so the game places it with no turn
+of its own:
+
+```text
+type import
+version 1
+---
+model {
+  front "-x"   # the file's axis its nose points along
+  up "+y"      # the file's axis that is up
+}
+```
+
+Either may be left out: `up` is +y unless `front` lies along y, and with
+`up` alone the front is the smallest turn's. The turn wraps each scene's
+roots in one node, so meshes, skins, clips and fracture chunks turn
+together. Check the nose with `og model preview <file> --axes`: it draws
+the engine's `+Z FRONT`, `+Y UP` and `+X` at the origin as the cook will
+place them (preview the source with the same `--up`/`--front` the import
+settings state, or the cooked result).
+
 ### Level of detail
 
 The cook simplifies every mesh into levels. The default is

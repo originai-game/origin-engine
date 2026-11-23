@@ -1,0 +1,13 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {
+      "member": "model import settings: front, up",
+      "summary": "A model's import settings state the file's axes that are its front (nose) and up: `model { front \"-x\" up \"+y\" }`. The cook turns it so the cooked model faces +Z with +Y up, as the facing guide says; meshes, skins, clips and fracture chunks turn together. A generated or bought model facing another way no longer needs a turn in game code. Axes along one line are refused."
+    },
+    {
+      "member": "og model preview --axes",
+      "summary": "Draws the engine's axes at the model's origin over each view, labelled +Z FRONT (blue), +Y UP (green) and +X (red), and says so in the report's `axes`: a fact an agent can see to check a model's nose before using it."
+    }
+  ]
+}

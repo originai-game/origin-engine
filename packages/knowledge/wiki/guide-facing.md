@@ -18,7 +18,11 @@ The world is right-handed with +Y up. What faces which way:
 | Anything on the 2D plane (x right, y up) | local +X | local -Y | turns about +Z |
 
 In every row right is forward × up. An object faces +Z as a glTF model
-does (`models` covers import), so a model needs no turn to walk forwards. A
+does (`models` covers import), so a model needs no turn to walk forwards.
+A model authored facing another axis states it in its import settings
+(`model { front "-x" up "+y" }`, loading §2) and the cook turns
+it; never turn it per entity in game code. `og model preview --axes`
+shows where its nose is. A
 camera looks down -Z, so a camera at +Z looking at the origin has the
 identity rotation.
 

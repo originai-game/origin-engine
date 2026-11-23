@@ -24,6 +24,7 @@
 use std::process::ExitCode;
 
 pub mod args;
+pub mod axes;
 pub mod bake;
 pub mod build;
 pub mod collide;
@@ -97,10 +98,12 @@ const USAGE: &str = "usage: og model <command> <input> [options]
                                                 each way and where its mass sits
   preview  <input> -o <out.png> [--views N] [--width PX] [--height PX]
            [--columns N] [--elevation RAD] [--azimuth RAD] [--no-edges] [--no-ground]
-           [--fov RAD] [--unlit] [--each] [--uv [--uv-size PX]] [--env PICTURE]
+           [--fov RAD] [--unlit] [--each] [--uv [--uv-size PX]] [--env PICTURE] [--axes]
                                                 draws base-colour maps and vertex colours;
                                                 --each: a PNG a view with its camera;
                                                 --uv: each material's UV layout instead
+                                                --axes: the engine axes at the origin,
+                                                labelled (+Z FRONT, +Y UP, +X)
   preview  <input> --views front,left,… --out <dir> [--width PX] [--unlit]
                                                 a transparent PNG a named view, framed as
                                                 compare frames it; --unlit: as compare draws it

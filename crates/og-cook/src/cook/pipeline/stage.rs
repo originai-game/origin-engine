@@ -241,6 +241,22 @@ pub(crate) fn import(
                 }
             }
         }
+        // Its stated front and up (`model { front "-x" up "+y" }`): turned
+        // to +Z and +Y before the fracture cut and the load read it
+        // (`model/orient.rs`).
+        if s.kind == &crate::cook::model::MODEL {
+            match model::orient::settings(settings_block(s, "model")).and_then(|o| {
+                o.map(|(front, up)| model::orient::apply(&s.bytes, front, up))
+                    .transpose()
+            }) {
+                Ok(Some(turned)) => s.bytes = turned,
+                Ok(None) => {}
+                Err(e) => {
+                    s.error = Some(e);
+                    continue;
+                }
+            }
+        }
         // A `fracture` block: the glb cut into its chunks (`fracture.rs`).
         if s.kind == &crate::cook::model::MODEL {
             let dir = s.path.parent().unwrap_or(Path::new("."));
