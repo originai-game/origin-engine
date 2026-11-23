@@ -643,23 +643,37 @@ pub(crate) fn cook(s: &Source, stamp: u64) -> Result<(Vec<u8>, Vec<String>), Coo
     let count = set.icons.len() as u32;
     // Every icon's field (its silhouette), then each toned icon's runs of
     // one tone, a glyph each, and the `tones` lines naming them.
-    let mut fields = Vec::with_capacity(set.icons.len());
-    let mut runs: Vec<(u32, Vec<(u32, String)>)> = Vec::new();
-    let mut extra = Vec::new();
-    for (i, (name, file)) in set.icons.iter().enumerate() {
+    // Each icon renders on its own (a field per pixel against every edge,
+    // the cook's slowest step), on every core; the page is laid out in
+    // the set's order after, so the output does not depend on the threads.
+    let threads = std::thread::available_parallelism().map_or(1, usize::from);
+    let rendered = crate::cook::each(&set.icons, threads, |(name, file)| {
         let path = dir.join(format!("{file}.svg"));
         let svg = std::fs::read_to_string(&path)
             .map_err(|e| CookError(format!("icon \"{name}\": {}: {e}", path.display())))?;
         let (sh, view) = shapes(&svg, set.join)
             .map_err(|e| CookError(format!("icon \"{name}\" ({file}.svg): {e}")))?;
-        fields.push(render(&sh, view, set.size, set.range, pad));
-        if sh.iter().all(|s| s.tone.is_empty()) {
+        let field = render(&sh, view, set.size, set.range, pad);
+        let toned: Vec<Vec<u8>> = if sh.iter().all(|s| s.tone.is_empty()) {
+            Vec::new()
+        } else {
+            sh.chunk_by(|a, b| a.tone == b.tone)
+                .map(|run| render(run, view, set.size, set.range, pad))
+                .collect()
+        };
+        Ok::<_, CookError>((field, sh, toned))
+    });
+    let mut fields = Vec::with_capacity(set.icons.len());
+    let mut runs: Vec<(u32, Vec<(u32, String)>)> = Vec::new();
+    let mut extra = Vec::new();
+    for (i, r) in rendered.into_iter().enumerate() {
+        let (field, sh, toned) = r?;
+        fields.push(field);
+        if toned.is_empty() {
             continue;
         }
         runs.push((i as u32, runs_of(&sh, count + extra.len() as u32)));
-        for run in sh.chunk_by(|a, b| a.tone == b.tone) {
-            extra.push(render(run, view, set.size, set.range, pad));
-        }
+        extra.extend(toned);
     }
     let total = count + extra.len() as u32;
     let cols = (f64::from(total).sqrt().ceil() as u32).max(1);
