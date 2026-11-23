@@ -2,7 +2,7 @@ use std::{rc::Rc, sync::Arc};
 
 use ordered_float::OrderedFloat;
 use taffy::{
-    AlignContent, AlignItems, Dimension, Display, FlexDirection, FlexWrap, LengthPercentage,
+    AlignContent, AlignItems, AlignmentSafety, Dimension, Display, FlexDirection, FlexWrap, LengthPercentage,
     LengthPercentageAuto, Position,
 };
 
@@ -2815,8 +2815,27 @@ fn keyword<'a>(v: StyleValue<'a>) -> Result<Option<&'a str>, StyleError> {
     }
 }
 
+/// CSS's overflow position before an alignment keyword: `safe center`
+/// falls back to start when the content overflows its container, so a
+/// short page centres and a long one starts at the top instead of
+/// overflowing both ends; `unsafe center` centres regardless. Returns the
+/// keyword after it and its safety.
+fn safety(word: Option<&str>) -> (Option<&str>, AlignmentSafety) {
+    match word.map(str::trim) {
+        Some(w) if w.starts_with("safe ") => (Some(w[5..].trim_start()), AlignmentSafety::Safe),
+        Some(w) if w.starts_with("unsafe ") => (Some(w[7..].trim_start()), AlignmentSafety::Unsafe),
+        w => (w, AlignmentSafety::Default),
+    }
+}
+
 fn align_items(v: StyleValue<'_>) -> Result<Option<AlignItems>, StyleError> {
-    Ok(match keyword(v)? {
+    let (word, safe) = safety(keyword(v)?);
+    let base = align_items_keyword(word)?;
+    Ok(base.map(|a| AlignItems { safety: safe, ..a }))
+}
+
+fn align_items_keyword(word: Option<&str>) -> Result<Option<AlignItems>, StyleError> {
+    Ok(match word {
         None => None,
         Some("flex-start") => Some(AlignItems::FLEX_START),
         Some("flex-end") => Some(AlignItems::FLEX_END),
@@ -2839,7 +2858,13 @@ fn align_items(v: StyleValue<'_>) -> Result<Option<AlignItems>, StyleError> {
 /// `normal`, which [`resolve_normal_alignment`] makes React Native's
 /// `flex-start` outside grids.
 fn align_content(v: StyleValue<'_>) -> Result<AlignContent, StyleError> {
-    Ok(match keyword(v)? {
+    let (word, safe) = safety(keyword(v)?);
+    let base = align_content_keyword(word)?;
+    Ok(if safe == AlignmentSafety::Default { base } else { AlignContent { safety: safe, ..base } })
+}
+
+fn align_content_keyword(word: Option<&str>) -> Result<AlignContent, StyleError> {
+    Ok(match word {
         None | Some("normal") => AlignContent::NORMAL,
         Some("flex-start") => AlignContent::FLEX_START,
         Some("flex-end") => AlignContent::FLEX_END,

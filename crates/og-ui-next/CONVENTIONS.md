@@ -495,6 +495,14 @@ Classes are Tailwind v4.1's vocabulary as NSH resolves it
 There is no cascade: only `group` states and `focus-within` cross nodes.
 Breakpoints read the UI's own box; `touch:` reads the input.
 
+Alignment takes Tailwind's `-safe` forms (`justify-center-safe`,
+`justify-end-safe`, `items-center-safe`, `items-end-safe`,
+`self-center-safe`, `self-end-safe`, `content-center-safe`,
+`content-end-safe`), CSS's `safe` overflow position: the content is
+centred (or at the end) while it fits and starts at the start once it
+overflows, so a page that centres when short never pushes its top above
+a scroll's when long. `justify-center` overflows both ends.
+
 A class list writes one `style::Record`: layout into the node's
 rune-taffy style, and these paint fields (fixed size, no allocation):
 

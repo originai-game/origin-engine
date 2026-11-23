@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "og.ui",
+      "summary": "Tailwind's safe alignment classes: justify-center-safe, justify-end-safe, items-center-safe, items-end-safe, self-center-safe, self-end-safe, content-center-safe and content-end-safe (and `safe` / `unsafe` before an alignment keyword in a style). Content that fits is centred or at the end; content that overflows starts at the start, so a page that centres when short no longer pushes its top above a scroll's when long."
+    }
+  ]
+}

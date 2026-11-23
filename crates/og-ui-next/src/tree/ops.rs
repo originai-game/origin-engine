@@ -5567,6 +5567,60 @@ mod tests {
         t.apply(&b.bytes()).unwrap();
     }
 
+    /// `justify-center-safe` and `items-center-safe` centre content that
+    /// fits and start content that overflows (CSS's `safe center`), where
+    /// `justify-center` pushes an overflowing child above its parent's top
+    /// and `items-center` past its left.
+    #[test]
+    fn safe_centring_starts_what_overflows() {
+        let mut t = real();
+        nodes(
+            &mut t,
+            &[
+                (
+                    1,
+                    0,
+                    "absolute left-0 top-0 w-[100px] h-[100px] flex-col justify-center-safe items-center-safe",
+                    0,
+                ),
+                (2, 0, "w-[40px] h-[40px] shrink-0", 1),
+                (
+                    3,
+                    0,
+                    "absolute left-[200px] top-0 w-[100px] h-[100px] flex-col justify-center-safe items-center-safe",
+                    0,
+                ),
+                (4, 0, "w-[160px] h-[160px] shrink-0", 3),
+                (
+                    5,
+                    0,
+                    "absolute left-[400px] top-0 w-[100px] h-[100px] flex-col justify-center items-center",
+                    0,
+                ),
+                (6, 0, "w-[160px] h-[160px] shrink-0", 5),
+            ],
+        );
+        frame(&mut t);
+        let at = |t: &Tree, id| {
+            let [x, y, ..] = t.op_box(id).unwrap();
+            [
+                x - t.op_box(id - 1).unwrap()[0],
+                y - t.op_box(id - 1).unwrap()[1],
+            ]
+        };
+        assert_eq!(at(&t, 2), [30.0, 30.0], "what fits is centred");
+        assert_eq!(
+            at(&t, 4),
+            [0.0, 0.0],
+            "what overflows starts at the top left"
+        );
+        assert_eq!(
+            at(&t, 6),
+            [-30.0, -30.0],
+            "unsafe centring overflows both ends"
+        );
+    }
+
     #[test]
     fn em_sizes_use_the_parent_once_and_remeasure_when_it_changes() {
         let mut t = real();

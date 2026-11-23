@@ -1543,6 +1543,17 @@ fn keyword(u: &str) -> Option<Vec<Decl>> {
         "justify-normal" => sets(K::JustifyContent, "normal"),
         "justify-end" => sets(K::JustifyContent, "flex-end"),
         "justify-center" => sets(K::JustifyContent, "center"),
+        // Tailwind's `-safe` forms (CSS's `safe` overflow position): centred
+        // or at the end while the content fits, at the start once it
+        // overflows, so a scroll's long page is never pushed above its top.
+        "justify-center-safe" => sets(K::JustifyContent, "safe center"),
+        "justify-end-safe" => sets(K::JustifyContent, "safe flex-end"),
+        "content-center-safe" => sets(K::AlignContent, "safe center"),
+        "content-end-safe" => sets(K::AlignContent, "safe flex-end"),
+        "items-center-safe" => sets(K::AlignItems, "safe center"),
+        "items-end-safe" => sets(K::AlignItems, "safe flex-end"),
+        "self-center-safe" => sets(K::AlignSelf, "safe center"),
+        "self-end-safe" => sets(K::AlignSelf, "safe flex-end"),
         "justify-between" => sets(K::JustifyContent, "space-between"),
         "justify-around" => sets(K::JustifyContent, "space-around"),
         "justify-evenly" => sets(K::JustifyContent, "space-evenly"),
