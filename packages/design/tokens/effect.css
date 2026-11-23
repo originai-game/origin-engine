@@ -54,6 +54,17 @@
   --elevation-floating-y: 4px;
   --elevation-floating-blur: 12px;
   --elevation-floating-alpha: 0.35;
+  /* rune-kit's other elevations: `overlay` under a dialog or sheet over
+     everything, `control` under a raised control, `input` under a field. */
+  --elevation-overlay-y: 12px;
+  --elevation-overlay-blur: 32px;
+  --elevation-overlay-alpha: 0.45;
+  --elevation-control-y: 1px;
+  --elevation-control-blur: 2px;
+  --elevation-control-alpha: 0.25;
+  --elevation-input-y: 0px;
+  --elevation-input-blur: 0px;
+  --elevation-input-alpha: 0;
   /* The engine's glass parts (`-og-material`): the saturation their backdrop
      takes (`dark.glass` remaps it) and the blur each weight uses, by the `vars`
      material blurs. */

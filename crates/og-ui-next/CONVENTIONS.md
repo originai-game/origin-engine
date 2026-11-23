@@ -720,13 +720,18 @@ tint, stretched whole (§Particles): `fx-sparkle`, `fx-glint`, `fx-shard`,
 The slots a pack dresses, each declared in the default pack so a
 component's `packClass` on it resolves under every pack:
 `Button.plate` (a button's body; `primary` its main action), `Panel.frame`
-(a window or panel), `Plate.frame` (a HUD plate over the scene: `bg-glass
-text-fg`), `Slot.frame` (an ability or item slot), `Chip.frame` (a tag or
-badge), `Field.frame` (a text field's box), `Row.frame` (a row of a list,
-table or feed: `bg-raised-lo text-fg`; `selected` the chosen or local
-player's row, `bg-surface-hover` with a `hud-accent` leading edge; `muted`
-a row out of play, in `text-fg-muted`) and `Head.frame` (a table or list's
-head row: `bg-surface text-fg-muted`). `Focus.ring` is the one the tree
+(a window or panel: `bg-layer-1`), `Plate.frame` (a plate over the scene or
+inside a panel: `bg-layer-2 text-fg`), `Slot.frame` (an ability or item
+slot), `Chip.frame` (a tag or badge), `Field.frame` (a text field's box),
+`Row.frame` (a row of a list, table or feed: `bg-layer-3 text-fg`;
+`selected` the chosen or local player's row, `bg-layer-4` with a
+`hud-accent` leading bar inside it, `inset-shadow-bar`; `muted` a row out
+of play, in `text-fg-muted`) and `Head.frame` (a table or list's head row:
+`bg-surface text-fg-muted`). The layers (`layer-1` to `layer-4`, rune-kit's
+`Kit` palette) step off each other, so a surface inside another takes the
+next layer and its frame shows; the layout check reports a frame in its
+parent's fill or in none.
+`Focus.ring` is the one the tree
 writes itself: the ring a control shows while a keyboard or pad focuses
 it (`outline-2 outline-focus -outline-offset-2`, inside the box so a scroller or the screen edge never cuts it), as a browser's
 `:focus-visible` outline, unless the control's own classes read

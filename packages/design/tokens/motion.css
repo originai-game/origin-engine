@@ -102,6 +102,10 @@
   --motion-spring-sheet-response: 300ms;
   --motion-spring-momentum-damping: 0.8;
   --motion-spring-momentum-response: 400ms;
+  /* rune-kit's `disclosure`: a height that opens and closes (an accordion,
+     a collapsible). */
+  --motion-spring-disclosure-damping: 0.9;
+  --motion-spring-disclosure-response: 280ms;
   /* The engine's named transitions (`transition: var(--motion-<name>)` in a
      document, a widget's motion token): each a spring of a perceptual duration
      and a bounce (0 none, towards 1 more), capped by a style's overshoot; `ui`

@@ -350,11 +350,15 @@ pub const SLOTS: [(&str, &str, &str); 23] = [
         "outline-2 outline-focus -outline-offset-2",
     ),
     ("Button.plate", "a button's body", ""),
-    ("Panel.frame", "a window or panel's frame", ""),
+    (
+        "Panel.frame",
+        "a window or panel's frame (the first layer)",
+        "bg-layer-1",
+    ),
     (
         "Plate.frame",
-        "a HUD plate over the scene",
-        "bg-glass text-fg",
+        "a plate over the scene or inside a panel (the layer above a panel's)",
+        "bg-layer-2 text-fg",
     ),
     ("Slot.frame", "an ability or item slot", ""),
     ("Chip.frame", "a tag, badge or chip", ""),
@@ -362,17 +366,17 @@ pub const SLOTS: [(&str, &str, &str); 23] = [
     (
         "Row.frame",
         "a row of a list, table or feed",
-        "bg-raised-lo text-fg",
+        "bg-layer-3 text-fg",
     ),
     (
         "Row.frame.selected",
         "the chosen row, or the local player's",
-        "bg-surface-hover text-fg border-l-3 border-hud-accent",
+        "bg-layer-4 text-fg inset-shadow-bar",
     ),
     (
         "Row.frame.muted",
         "a row out of play (disconnected, locked, spent)",
-        "bg-raised-lo text-fg-muted",
+        "bg-layer-3 text-fg-muted",
     ),
     (
         "Head.frame",

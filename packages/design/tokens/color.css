@@ -20,6 +20,20 @@
 :root {
   --color-bg: oklch(from var(--seed-neutral) 0.963 min(c, 0.04) h);
   --color-bg-subtle: oklch(from var(--seed-neutral) 0.935 min(c, 0.04) h);
+  /* The layers (rune-kit's `Kit` palette, layer_01..04): the grounds a
+     surface stands on, each a step off the one under it, so a surface inside
+     another takes the next layer and shows. Light steps darker, dark steps
+     lighter. The ink solver registers them as grounds. */
+  --color-layer-1: oklch(from var(--seed-neutral) 0.985 min(c, 0.02) h);
+  --color-layer-2: oklch(from var(--seed-neutral) 0.955 min(c, 0.03) h);
+  --color-layer-3: oklch(from var(--seed-neutral) 0.925 min(c, 0.03) h);
+  --color-layer-4: oklch(from var(--seed-neutral) 0.895 min(c, 0.03) h);
+  /* rune-kit's remaining roles: the generic hover and press washes over any
+     ground, the switch knob when on, and the muted border. */
+  --color-hover: oklch(from var(--seed-neutral) 0.575 min(c, 0.02) h / 0.08);
+  --color-pressed: oklch(from var(--seed-neutral) 0.575 min(c, 0.02) h / 0.16);
+  --color-knob-on: oklch(from var(--seed-neutral) 1 min(c, 0.04) h);
+  --color-border-muted: oklch(from var(--seed-neutral) 0.93 min(c, 0.04) h);
   --color-surface: oklch(from var(--seed-neutral) 1 min(c, 0.04) h);
   --color-surface-raised: oklch(from var(--seed-neutral) 1 min(c, 0.04) h);
   --color-surface-hover: oklch(from var(--seed-neutral) 0.923 min(c, 0.04) h);
@@ -39,7 +53,7 @@
   --color-accent-active: oklch(from var(--color-accent) max(calc(l - 0.1), 0) c h);
   --color-accent-soft: oklch(from var(--color-accent) l c h / 0.06);
   --color-accent-fg: contrast-color(var(--color-accent));
-  --color-accent-ink: color(from color(from oklch(from var(--seed-accent) calc(l - 0.02) c h) srgb clamp(0, r, 1) clamp(0, g, 1) clamp(0, b, 1)) xyz-d65 calc(x * min(1, calc(0.125 / y))) calc(y * min(1, calc(0.125 / y))) calc(z * min(1, calc(0.125 / y))));
+  --color-accent-ink: color(from color(from oklch(from var(--seed-accent) calc(l - 0.02) c h) srgb clamp(0, r, 1) clamp(0, g, 1) clamp(0, b, 1)) xyz-d65 calc(x * min(1, calc(0.115 / y))) calc(y * min(1, calc(0.115 / y))) calc(z * min(1, calc(0.115 / y))));
   --color-focus: color(from color(from oklch(from var(--seed-accent) calc(l + 0.12) c h) srgb clamp(0, r, 1) clamp(0, g, 1) clamp(0, b, 1)) xyz-d65 calc(x * min(1, calc(0.245 / y))) calc(y * min(1, calc(0.245 / y))) calc(z * min(1, calc(0.245 / y))));
   --color-shadow: #000000;
   --color-danger: color(from color(from var(--seed-danger) srgb clamp(0, r, 1) clamp(0, g, 1) clamp(0, b, 1)) xyz-d65 calc(x * min(1, calc(0.088 / y))) calc(y * min(1, calc(0.088 / y))) calc(z * min(1, calc(0.088 / y))));
@@ -63,7 +77,7 @@
   --color-health: #1b7a38;
   --color-mana: #0062c4;
   --color-xp: #7d3fc4;
-  --color-gold: #8a5a00;
+  --color-gold: #855500;
   --color-hud: oklch(from var(--seed-neutral) 0.986 min(c, 0.04) h / 0.86);
   --color-knob: oklch(from var(--seed-neutral) 1 min(c, 0.04) h);
   --color-stick: oklch(from var(--seed-neutral) 0.396 min(c, 0.04) h);
@@ -163,10 +177,10 @@
      of one that is locked or missed. Opaque
      wherever nothing shows through, since the engine blends in linear
      light. */
-  --color-glass-hi: oklch(from var(--seed-neutral) 1 min(c, 0.02) h / 0.97);
-  --color-glass: oklch(from var(--seed-neutral) 0.985 min(c, 0.02) h / 0.97);
+  --color-glass-hi: var(--color-layer-2);
+  --color-glass: var(--color-layer-1);
   --color-glass-lo: oklch(from var(--seed-neutral) 0.955 min(c, 0.03) h / 0.97);
-  --color-plate-hi: oklch(from var(--seed-neutral) 1 min(c, 0.02) h / 0.9);
+  --color-plate-hi: var(--color-layer-2);
   --color-plate-lo: oklch(from var(--seed-neutral) 0.96 min(c, 0.03) h / 0.86);
   --color-rim: oklch(from var(--seed-neutral) 0.8 min(c, 0.04) h);
   --color-rim-soft: oklch(from var(--seed-neutral) 0.88 min(c, 0.04) h);
@@ -181,8 +195,8 @@
   --color-entry-hi: oklch(from var(--seed-neutral) 1 min(c, 0.02) h / 0.82);
   --color-entry-lo: oklch(from var(--seed-neutral) 0.975 min(c, 0.02) h / 0.66);
   --color-entry-grain: oklch(from var(--seed-neutral) 0.9 min(c, 0.03) h / 0.5);
-  --color-raised-hi: oklch(from var(--seed-neutral) 1 min(c, 0.02) h);
-  --color-raised-lo: oklch(from var(--seed-neutral) 0.945 min(c, 0.03) h);
+  --color-raised-hi: var(--color-layer-4);
+  --color-raised-lo: var(--color-layer-3);
   --color-raised-hover-hi: oklch(from var(--seed-neutral) 1 min(c, 0.02) h);
   --color-raised-hover-lo: oklch(from var(--seed-neutral) 0.97 min(c, 0.03) h);
   --color-raised-pressed: oklch(from var(--seed-neutral) 0.9 min(c, 0.03) h);
@@ -276,6 +290,14 @@
 :root[data-scheme=dark] {
   --color-bg: oklch(from var(--seed-neutral) 0 min(c, 0.04) h);
   --color-bg-subtle: oklch(from var(--seed-neutral) 0.179 min(c, 0.04) h);
+  --color-layer-1: oklch(from var(--seed-neutral) 0.225 min(c, 0.04) h);
+  --color-layer-2: oklch(from var(--seed-neutral) 0.27 min(c, 0.04) h);
+  --color-layer-3: oklch(from var(--seed-neutral) 0.315 min(c, 0.04) h);
+  --color-layer-4: oklch(from var(--seed-neutral) 0.36 min(c, 0.04) h);
+  --color-hover: rgb(255 255 255 / 0.06);
+  --color-pressed: rgb(0 0 0 / 0.18);
+  --color-knob-on: oklch(from var(--seed-neutral) 0.985 min(c, 0.04) h);
+  --color-border-muted: oklch(from var(--seed-neutral) 0.28 min(c, 0.04) h);
   --color-surface: oklch(from var(--seed-neutral) 0.227 min(c, 0.04) h);
   --color-surface-raised: oklch(from var(--seed-neutral) 0.294 min(c, 0.04) h);
   --color-surface-hover: oklch(from var(--seed-neutral) 0.349 min(c, 0.04) h);
@@ -307,16 +329,16 @@
   --color-scrim: rgb(0 0 0 / 0.42);
   --color-health: #30d158;
   --color-mana: #409cff;
-  --color-xp: #c86ff5;
+  --color-xp: #de85ff;
   --color-gold: #ffcf5a;
   --color-hud: oklch(from var(--seed-neutral) 0.201 min(c, 0.04) h / 0.8);
   --color-knob: oklch(from var(--seed-neutral) 0.971 min(c, 0.04) h);
   --color-stick: oklch(from var(--seed-neutral) 0.971 min(c, 0.04) h);
   --color-sheen: rgb(255 255 255 / 0.12);
-  --color-glass-hi: oklch(from var(--seed-neutral) 0.31 min(c, 0.04) h / 0.97);
-  --color-glass: oklch(from var(--seed-neutral) 0.225 min(c, 0.04) h / 0.97);
+  --color-glass-hi: var(--color-layer-2);
+  --color-glass: var(--color-layer-1);
   --color-glass-lo: oklch(from var(--seed-neutral) 0.16 min(c, 0.04) h / 0.98);
-  --color-plate-hi: oklch(from var(--seed-neutral) 0.27 min(c, 0.04) h / 0.9);
+  --color-plate-hi: var(--color-layer-2);
   --color-plate-lo: oklch(from var(--seed-neutral) 0.15 min(c, 0.04) h / 0.92);
   --color-rim: oklch(from var(--seed-neutral) 0.46 min(c, 0.04) h);
   --color-rim-soft: oklch(from var(--seed-neutral) 0.36 min(c, 0.04) h);
@@ -338,8 +360,8 @@
   --color-entry-hi: oklch(from var(--seed-neutral) 0.265 min(c, 0.04) h / 0.88);
   --color-entry-lo: oklch(from var(--seed-neutral) 0.205 min(c, 0.04) h / 0.74);
   --color-entry-grain: oklch(from var(--seed-neutral) 0.31 min(c, 0.04) h / 0.55);
-  --color-raised-hi: oklch(from var(--seed-neutral) 0.4 min(c, 0.04) h);
-  --color-raised-lo: oklch(from var(--seed-neutral) 0.3 min(c, 0.04) h);
+  --color-raised-hi: var(--color-layer-4);
+  --color-raised-lo: var(--color-layer-3);
   --color-raised-hover-hi: oklch(from var(--seed-neutral) 0.47 min(c, 0.04) h);
   --color-raised-hover-lo: oklch(from var(--seed-neutral) 0.35 min(c, 0.04) h);
   --color-raised-pressed: oklch(from var(--seed-neutral) 0.25 min(c, 0.04) h);
