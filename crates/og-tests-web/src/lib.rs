@@ -191,13 +191,15 @@ mod web {
             RenderDesc, RenderScene, Tonemap, Upscaler, shapes,
         };
         let mut checked = 0;
-        for (name, scale, moving, prepass, uncover) in [
-            ("stationary half", 0.5, false, false, false),
-            ("moving full", 1.0, true, false, false),
-            ("moving half", 0.5, true, false, false),
-            ("moving half with prepass", 0.5, true, true, false),
-            ("uncovered half with prepass", 0.5, false, true, true),
+        for (name, scale, moving, prepass, uncover_pixels) in [
+            ("stationary half", 0.5, false, false, 0),
+            ("moving full", 1.0, true, false, 0),
+            ("moving half", 0.5, true, false, 0),
+            ("moving half with prepass", 0.5, true, true, 0),
+            ("uncovered half with prepass", 0.5, false, true, 16),
+            ("uncovered edge half with prepass", 0.5, false, true, 14),
         ] {
+            let uncover = uncover_pixels > 0;
             let mut scene = RenderScene::new();
             scene.frame.quality.upscaler = Upscaler::Taau;
             // At z=0, one world step of 6/64 projects to exactly one
@@ -242,8 +244,8 @@ mod web {
             }
             if uncover {
                 // The grey occluder covers x=64..128 at z=1. Moving it
-                // sixteen output pixels exposes white gaps among the red
-                // bars. Grey lies inside their red/white colour box, so
+                // fourteen or sixteen output pixels exposes white gaps
+                // among the red bars. Grey lies inside their colour box, so
                 // colour clipping alone cannot reject the old occluder.
                 let cover = scene.add_mesh(shapes::plane_xy(5.0, 4.0));
                 let grey = scene.add_material(Material {
@@ -317,7 +319,7 @@ mod web {
                             .unwrap()
                             .transform
                             .w_axis
-                            .x += 1.25;
+                            .x += uncover_pixels as f32 * (5.0 / 64.0);
                     }
                 }
                 renderer
@@ -340,11 +342,14 @@ mod web {
                 return Err(err(format!("TAAU {name}: {}", errors.join("\n"))));
             }
             if uncover {
-                for x in [68, 72, 76] {
+                // A fourteen-pixel shift is not a multiple of the bar
+                // spacing: borrowing the cover's motion lands a white
+                // gap on a red bar in the old frame, exposing the error.
+                for x in [68, 72, 76, 77] {
                     let pixel = &image.pixels[(64 * 256 + x) * 4..][..4];
                     if !pixel[..3].iter().all(|c| *c > 188) {
                         return Err(err(format!(
-                            "TAAU {name}: old occluder trailed into background at ({x},64): {pixel:?}"
+                            "TAAU {name}: uncovered background took unrelated history at ({x},64): {pixel:?}"
                         )));
                     }
                     checked += 1;

@@ -180,13 +180,13 @@ fn resolve(in: VsOut, catmull_rom: bool, smaa: bool) -> vec4<f32> {
   // CPU compared the view-projections), or the prepass's velocity where
   // the prepass drew this sample (objects and skinned meshes move it).
   let here = in.pos.xy / out_size;
-  let reprojected = camera_reprojection(motion_at, size);
+  let reprojected = camera_reprojection(at, size);
   var motion = reprojected.xy;
   // Whether this sample moves otherwise than the camera moves it (an
   // object or a skinned mesh on its motion vectors).
   var own_motion = false;
-  if (taa.still.y > 0.5 && !is_sky_depth(textureLoad(view_depth_tex, motion_at, 0).r)) {
-    let v = textureLoad(velocity_tex, motion_at, 0).zw;
+  if (taa.still.y > 0.5 && !is_sky_depth(textureLoad(view_depth_tex, at, 0).r)) {
+    let v = textureLoad(velocity_tex, at, 0).zw;
     own_motion = any(abs(v - motion) * out_size > vec2<f32>(0.5));
     motion = v;
   }
@@ -194,8 +194,20 @@ fn resolve(in: VsOut, catmull_rom: bool, smaa: bool) -> vec4<f32> {
   // prepass's two-component object vectors do not carry depth motion.
   // A foreground surface that covered this point last frame invalidates
   // its history even when that colour lies inside the current box.
+  // Test the colour sample before borrowing a neighbour's motion: a
+  // moving foreground in the footprint must not disable visibility
+  // rejection for the camera-reprojected background it just uncovered.
   if (!smaa && !own_motion && was_occluded(here - motion, reprojected.z)) {
     return fresh(in);
+  }
+  if (upscale && any(motion_at != at)) {
+    motion = camera_reprojection(motion_at, size).xy;
+    own_motion = false;
+    if (taa.still.y > 0.5 && !is_sky_depth(textureLoad(view_depth_tex, motion_at, 0).r)) {
+      let v = textureLoad(velocity_tex, motion_at, 0).zw;
+      own_motion = any(abs(v - motion) * out_size > vec2<f32>(0.5));
+      motion = v;
+    }
   }
   var hist4: vec4<f32>;
   if (all(abs(motion) * out_size < vec2<f32>(1e-3))) {
