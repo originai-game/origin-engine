@@ -36,6 +36,9 @@ pollster = { workspace = true, optional = true }
 og-css = { path = "../og-css", optional = true }
 winit = { version = "0.30.12", default-features = false, features = ["rwh_06", "x11"], optional = true }
 
+[build-dependencies]
+serde_json = "1"
+
 [dev-dependencies]
 pollster = { workspace = true }
 # render_without: the renderer's one-time warnings, collected.

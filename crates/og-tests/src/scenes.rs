@@ -291,70 +291,7 @@ pub fn asset(rel: &str) -> Result<std::borrow::Cow<'static, [u8]>, String> {
 
 #[cfg(target_arch = "wasm32")]
 pub fn asset(rel: &str) -> Result<std::borrow::Cow<'static, [u8]>, String> {
-    let bytes: &'static [u8] = match rel {
-        "trickster.glb" => include_bytes!("../assets/trickster.glb"),
-        "dropship.glb" => include_bytes!("../assets/dropship.glb"),
-        "env/studio.hdr" => include_bytes!("../assets/env/studio.hdr"),
-        "env/kloofendal.hdr" => include_bytes!("../assets/env/kloofendal.hdr"),
-        "env/spruit.hdr" => include_bytes!("../assets/env/spruit.hdr"),
-        // The set dressing (kit.rs).
-        "kit/column.glb" => include_bytes!("../assets/kit/column.glb"),
-        "kit/column_broken.glb" => include_bytes!("../assets/kit/column_broken.glb"),
-        "kit/arch.glb" => include_bytes!("../assets/kit/arch.glb"),
-        "kit/watchtower.glb" => include_bytes!("../assets/kit/watchtower.glb"),
-        "kit/boulder.glb" => include_bytes!("../assets/kit/boulder.glb"),
-        "kit/pine.glb" => include_bytes!("../assets/kit/pine.glb"),
-        "kit/townhouse.glb" => include_bytes!("../assets/kit/townhouse.glb"),
-        "kit/streetlamp.glb" => include_bytes!("../assets/kit/streetlamp.glb"),
-        "kit/car.glb" => include_bytes!("../assets/kit/car.glb"),
-        "kit/adobe.glb" => include_bytes!("../assets/kit/adobe.glb"),
-        "kit/crate.glb" => include_bytes!("../assets/kit/crate.glb"),
-        "kit/barrel.glb" => include_bytes!("../assets/kit/barrel.glb"),
-
-        "kit/winebarrel.glb" => include_bytes!("../assets/kit/winebarrel.glb"),
-        "kit/palm.glb" => include_bytes!("../assets/kit/palm.glb"),
-        "kit/torii.glb" => include_bytes!("../assets/kit/torii.glb"),
-        "kit/stone_bench.glb" => include_bytes!("../assets/kit/stone_bench.glb"),
-        "kit/toro.glb" => include_bytes!("../assets/kit/toro.glb"),
-        "kit/ground/grass.color.jpg" => include_bytes!("../assets/kit/ground/grass.color.jpg"),
-        "kit/ground/grass.normal.jpg" => include_bytes!("../assets/kit/ground/grass.normal.jpg"),
-        "kit/ground/grass.orm.jpg" => include_bytes!("../assets/kit/ground/grass.orm.jpg"),
-        "kit/ground/cobbles.color.jpg" => include_bytes!("../assets/kit/ground/cobbles.color.jpg"),
-        "kit/ground/cobbles.normal.jpg" => {
-            include_bytes!("../assets/kit/ground/cobbles.normal.jpg")
-        }
-        "kit/ground/cobbles.orm.jpg" => include_bytes!("../assets/kit/ground/cobbles.orm.jpg"),
-        "kit/ground/planks.color.jpg" => include_bytes!("../assets/kit/ground/planks.color.jpg"),
-        "kit/ground/planks.normal.jpg" => include_bytes!("../assets/kit/ground/planks.normal.jpg"),
-        "kit/ground/planks.orm.jpg" => include_bytes!("../assets/kit/ground/planks.orm.jpg"),
-        "kit/ground/stone.color.jpg" => include_bytes!("../assets/kit/ground/stone.color.jpg"),
-        "sprites2d/cistern.jpg" => include_bytes!("../assets/sprites2d/cistern.jpg"),
-        "sprites2d/workshop.jpg" => include_bytes!("../assets/sprites2d/workshop.jpg"),
-        "sprites2d/flask.png" => include_bytes!("../assets/sprites2d/flask.png"),
-        "sprites2d/pipe.png" => include_bytes!("../assets/sprites2d/pipe.png"),
-        "sprites2d/stone-block.png" => include_bytes!("../assets/sprites2d/stone-block.png"),
-        "sprites2d/hero-knight.png" => include_bytes!("../assets/sprites2d/hero-knight.png"),
-        "sprites2d/hero-mage.png" => include_bytes!("../assets/sprites2d/hero-mage.png"),
-        "sprites2d/hero-ranger.png" => include_bytes!("../assets/sprites2d/hero-ranger.png"),
-        "sprites2d/tree-oak.png" => include_bytes!("../assets/sprites2d/tree-oak.png"),
-        "sprites2d/sign-shield.png" => include_bytes!("../assets/sprites2d/sign-shield.png"),
-        "sprites2d/vault.jpg" => include_bytes!("../assets/sprites2d/vault.jpg"),
-        "sprites2d/chest.png" => include_bytes!("../assets/sprites2d/chest.png"),
-        "sprites2d/cauldron.png" => include_bytes!("../assets/sprites2d/cauldron.png"),
-        "sprites2d/vault-block.png" => include_bytes!("../assets/sprites2d/vault-block.png"),
-        "sprites2d/cave-tiles.png" => include_bytes!("../assets/sprites2d/cave-tiles.png"),
-        "sprites2d/torch.png" => include_bytes!("../assets/sprites2d/torch.png"),
-        "sprites2d/crystal.png" => include_bytes!("../assets/sprites2d/crystal.png"),
-        "sprites2d/rooftops.jpg" => include_bytes!("../assets/sprites2d/rooftops.jpg"),
-        "kit/ground/stone.normal.jpg" => include_bytes!("../assets/kit/ground/stone.normal.jpg"),
-        "kit/ground/stone.orm.jpg" => include_bytes!("../assets/kit/ground/stone.orm.jpg"),
-        "kit/counter.glb" => include_bytes!("../assets/kit/counter.glb"),
-        _ => {
-            return Err(format!(
-                "{rel}: not compiled into the wasm harness (scenes::asset)"
-            ));
-        }
-    };
+    let bytes: &'static [u8] = include!(concat!(env!("OUT_DIR"), "/scene_assets.rs"));
     Ok(bytes.into())
 }
 
