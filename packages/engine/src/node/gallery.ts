@@ -178,7 +178,7 @@ function page(world: World, n: number): void {
         <View class="absolute inset-x-0 bottom-0 h-1/2 bg-[#141a22]" />
         {/* A fixture that points at an element by its name (a tutorial step's target) gets one to point at: the game's button it would light; a fixture named \`…Missing\` gets none (a target not on screen). */}
         {(() => { const target = ({ ...fixtures.default, ...fixtures[fixture] } as { target?: unknown }).target; return typeof target === "string" && target !== "" && !fixture.endsWith("Missing") ? <View name={target} class="absolute left-1/4 top-1/5 size-24 rounded-full border-2 border-rim-strong bg-raised shadow-float" /> : null; })()}
-        <View class={place === "screen" ? "absolute inset-0 p-6 grid" : place === "panel" ? \`absolute inset-6 p-4 border border-rim rounded-panel bg-glass text-fg \${packClass("Panel", "frame")}\` : "absolute inset-0 p-6"}>{Component(withArt(world, { ...fixtures.default, ...fixtures[fixture] }, art))}</View>
+        <View class={place === "screen" ? "absolute inset-0 p-6 grid grid-cols-1 grid-rows-1" : place === "panel" ? \`absolute inset-6 p-4 border border-rim rounded-panel bg-glass text-fg \${packClass("Panel", "frame")}\` : "absolute inset-0 p-6"}>{Component(withArt(world, { ...fixtures.default, ...fixtures[fixture] }, art))}</View>
         <Text class="absolute left-2 bottom-1 text-xs text-white/70 font-mono">{\`\${name} · \${fixture}\`}</Text>
       </View>
     ), {}, { layer: "hud" });

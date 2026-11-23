@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "@ui",
+      "summary": "A mounted component's grid cell no longer grows to its content: a screen with a long row (a confirm dialog's buttons, a card reward's row) stays on a 390 px phone instead of running off its right edge."
+    }
+  ]
+}

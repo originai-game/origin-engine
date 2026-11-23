@@ -106,7 +106,7 @@ test("a TSX component's ops, its updates and its events", async () => {
     expect(first).toContainEqual(["createText", 5, "3"]);
     expect(first.at(-1)).toEqual(["insert", 0, 1, -1]);
     // The mount is one grid cell over the surface: a component's root is stretched to it.
-    expect(first).toContainEqual(["setClass", 1, "absolute inset-0 grid"]);
+    expect(first).toContainEqual(["setClass", 1, "absolute inset-0 grid grid-cols-1 grid-rows-1"]);
     expect(first.some((op) => op[0] === "createText" && op[2] === "on")).toBe(false);
     expect(first.filter((op) => op[0] === "createText" && (op[2] === "low" || op[2] === "high")).map((op) => op[2])).toEqual(["low"]);
 

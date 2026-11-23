@@ -167,8 +167,11 @@ export function mount<P>(world: World, Component: (props: P) => UiChild, props: 
       const node = element("view");
       // The mount is the UI's surface, one grid cell: a component's root is
       // stretched to the surface's size (definite, so its `flex-1` and `h-full`
-      // children fill it) unless it sizes or places itself.
-      ui.setClass(node, "absolute inset-0 grid");
+      // children fill it) unless it sizes or places itself. The cell is
+      // `minmax(0, 1fr)` both ways: a grid item's automatic minimum is its
+      // content, so a long row would widen an implicit track past the
+      // surface and carry the screen off it.
+      ui.setClass(node, "absolute inset-0 grid grid-cols-1 grid-rows-1");
       ui.setProp(node, "layer", options?.layer ?? "hud");
       insert(node, component(Component, props));
       return node;
