@@ -669,6 +669,23 @@ pub fn compile(recipe: &Map<String, Value>, read: &mut Read) -> Result<Theme, St
                 json!(format!("scheme-{s} nine-{image}{states} bg-transparent hover:bg-transparent active:bg-transparent text-{fg}")),
             );
         }
+        // A button variant without art of its own keeps its own plate over
+        // the art the theme gives `Button.plate`: no art (a second edge on
+        // it), the page's scheme and the variant's own fill and ink.
+        for (slot, _, dress) in crate::pack::design::SLOTS {
+            let Some(_) = slot.strip_prefix("Button.plate.") else {
+                continue;
+            };
+            if ART_SLOTS.iter().any(|(s, _)| s == slot) {
+                continue;
+            }
+            variants.insert(
+                (*slot).into(),
+                json!(format!(
+                    "scheme-normal nine-none hover:nine-none active:nine-none disabled:nine-none {dress}"
+                )),
+            );
+        }
         // Ground registration (plan §4): each art slot's faces are grounds
         // of the scheme its text reads in, with the design's own surfaces;
         // every ink role is moved in OKLCH lightness until it holds its
@@ -950,6 +967,17 @@ mod tests {
                 .unwrap()
                 .starts_with("scheme-light nine-button-primary hover:nine-button-primary-hover")
         );
+        // A button variant without art of its own draws its own plate in
+        // the page's scheme, not a second edge over the base's art.
+        for v in ["danger", "outline", "ghost-muted"] {
+            let class = t.pack["variants"][format!("Button.plate.{v}")]
+                .as_str()
+                .unwrap();
+            assert!(
+                class.starts_with("scheme-normal nine-none "),
+                "{v}: {class}"
+            );
+        }
         assert!(
             t.pack["variants"]["Press.feedback"]
                 .as_str()

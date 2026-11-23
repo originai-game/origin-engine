@@ -81,6 +81,8 @@ pub struct Sem {
     pub selected: Option<bool>,
     pub expanded: Option<bool>,
     pub busy: bool,
+    /// Its value fails the game's checks (`invalid`).
+    pub invalid: bool,
     pub hidden: bool,
     pub modal: bool,
     pub current: bool,
@@ -130,6 +132,7 @@ impl Sem {
             .hash(&mut h);
         (
             s.busy,
+            s.invalid,
             s.hidden,
             s.exiting,
             s.modal,
@@ -156,6 +159,7 @@ static PLAIN: Sem = Sem {
     selected: None,
     expanded: None,
     busy: false,
+    invalid: false,
     hidden: false,
     modal: false,
     current: false,
@@ -292,6 +296,7 @@ impl Semantics {
             "selected" => s.selected = v.flag(),
             "expanded" => s.expanded = v.flag(),
             "busy" => s.busy = v.flag() == Some(true),
+            "invalid" => s.invalid = v.flag() == Some(true),
             "hidden" => s.hidden = v.flag() == Some(true),
             "modal" => s.modal = v.flag() == Some(true),
             "current" => s.current = v.flag() == Some(true),
@@ -895,6 +900,9 @@ fn describe(node: &mut Node, s: &Slot, arena: &Arena, m: &Sem) {
     if m.busy {
         node.set_busy();
     }
+    if m.invalid {
+        node.set_invalid(accesskit::Invalid::True);
+    }
     if m.modal {
         node.set_modal();
     }
@@ -1024,6 +1032,7 @@ pub fn facts(n: &Node) -> Facts {
         (n.is_expanded() == Some(true), "expanded"),
         (n.is_expanded() == Some(false), "collapsed"),
         (n.is_busy(), "busy"),
+        (n.invalid().is_some(), "invalid"),
         (n.is_modal(), "modal"),
         (n.aria_current().is_some(), "current"),
         (n.supports_action(Action::Focus), "focusable"),

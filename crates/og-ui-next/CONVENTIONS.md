@@ -331,12 +331,20 @@ unsets it.
 | `pressed` | `true`, `false` or `"mixed"` | a toggle button's state |
 | `selected`, `expanded` | bool | an option's or tab's, a disclosure's |
 | `busy`, `current` | bool | loading; the current item of a set |
+| `invalid` | bool | its value fails the game's checks |
 | `disabled` | bool | unavailable: no actions |
 | `tabIndex` | number | `>= 0` the keyboard reaches it, `-1` it does not |
 | `level` | 1–6 | a heading's level |
 | `live` | `"polite"`, `"assertive"`, `"off"` | how its changes are announced (`status` and `log` are polite, `alert` assertive) |
 | `modal` | bool | a dialog: while one is shown the tree holds only the topmost and what contains it |
 | `hidden` | bool | left out of the tree with its subtree; it still draws |
+
+The states among these are also class states, as NSH's core sets them
+from `accessibilityState`: `checked` is `checked:` (`"mixed"`
+`indeterminate:`), `pressed` `aria-pressed:`, `selected` `selected:` and
+`aria-selected:`, `expanded` `aria-expanded:`, `busy` `aria-busy:` and
+`invalid` `aria-invalid:`; a `group`'s reach its descendants'
+`group-<state>:`.
 
 Roles: `button` `link` `heading` `image` `text` `checkbox` `radio`
 `switch` `slider` `spinbutton` `textbox` `combobox` `listbox` `option`

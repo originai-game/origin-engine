@@ -283,7 +283,7 @@ pub(crate) fn join(light: &Value, dark: &Value) -> Value {
 /// component's translucent or cleared fill under it is overruled. A row
 /// and a table head are opaque grounds with their inks for the same
 /// reason: the lists, tables and feeds that sit over the scene.
-pub const SLOTS: [(&str, &str, &str); 23] = [
+pub const SLOTS: &[(&str, &str, &str)] = &[
     (
         "Press.feedback",
         "the squash a control that answers a press shows under it, unless its own classes move it under active (its default is the motion tokens': Timing::press)",
@@ -349,7 +349,166 @@ pub const SLOTS: [(&str, &str, &str); 23] = [
         "the ring a control shows while a keyboard or pad focuses it, unless its own classes style focus-visible",
         "outline-2 outline-focus -outline-offset-2",
     ),
-    ("Button.plate", "a button's body", ""),
+    (
+        "Button.plate",
+        "a button's body: rune-kit's neutral variant, and the states every variant shares (hover, pressed, a toggle's aria-pressed, selected, disabled, aria-busy)",
+        "rounded-button text-fg bg-raised-lo shadow-raise inset-shadow-sunk inset-ring-1 inset-ring-rim transition duration-317 hover:bg-none hover:bg-raised-hover-lo hover:shadow-plate hover:inset-ring-well-rim active:bg-none active:bg-raised-pressed aria-pressed:bg-none aria-pressed:bg-border-strong aria-pressed:inset-ring-2 aria-pressed:inset-ring-accent selected:bg-none selected:bg-border-strong selected:inset-ring-2 selected:inset-ring-accent disabled:text-fg-subtle disabled:bg-none disabled:bg-fill disabled:shadow-none disabled:inset-ring-1 disabled:inset-ring-rim-soft aria-busy:opacity-80",
+    ),
+    (
+        "Button.plate.primary",
+        "the main action (rune-kit's submit)",
+        "text-accent-fg bg-linear-to-b from-sheen to-transparent to-48% bg-accent inset-shadow-none inset-ring-0 hover:bg-linear-to-b hover:from-sheen hover:to-lit hover:to-60% hover:bg-accent active:bg-linear-to-b active:from-shade active:to-transparent active:to-60% active:bg-accent",
+    ),
+    (
+        "Button.plate.danger",
+        "a destructive action",
+        "text-danger-fg bg-linear-to-b from-sheen to-transparent to-48% bg-danger inset-shadow-none inset-ring-0 hover:bg-linear-to-b hover:from-sheen hover:to-lit hover:to-60% hover:bg-danger active:bg-linear-to-b active:from-shade active:to-transparent active:to-60% active:bg-danger",
+    ),
+    (
+        "Button.plate.warning",
+        "an action with a cost or a risk",
+        "text-warn-fg bg-linear-to-b from-sheen to-transparent to-48% bg-warn inset-shadow-none inset-ring-0 hover:bg-linear-to-b hover:from-sheen hover:to-lit hover:to-60% hover:bg-warn active:bg-linear-to-b active:from-shade active:to-transparent active:to-60% active:bg-warn",
+    ),
+    (
+        "Button.plate.contrast",
+        "the inverse of the page: a light button on a dark page",
+        "text-fg-inverse bg-none bg-fg shadow-raise inset-shadow-none inset-ring-0 hover:bg-none hover:bg-fg active:bg-none active:bg-fg-muted",
+    ),
+    (
+        "Button.plate.outline",
+        "a rim on the page, no fill",
+        "text-fg bg-none bg-transparent shadow-none inset-shadow-none inset-ring-0 hover:bg-none hover:bg-hover hover:shadow-none active:bg-none active:bg-pressed disabled:bg-none disabled:bg-transparent disabled:inset-ring-0 inset-ring-1 inset-ring-border-strong hover:inset-ring-border-strong",
+    ),
+    (
+        "Button.plate.ghost",
+        "no plate until hovered or pressed",
+        "text-fg bg-none bg-transparent shadow-none inset-shadow-none inset-ring-0 hover:bg-none hover:bg-hover hover:shadow-none active:bg-none active:bg-pressed disabled:bg-none disabled:bg-transparent disabled:inset-ring-0",
+    ),
+    (
+        "Button.plate.ghost-muted",
+        "a ghost in the muted ink: a secondary action beside others",
+        "text-fg-muted hover:text-fg bg-none bg-transparent shadow-none inset-shadow-none inset-ring-0 hover:bg-none hover:bg-hover hover:shadow-none active:bg-none active:bg-pressed disabled:bg-none disabled:bg-transparent disabled:inset-ring-0",
+    ),
+    (
+        "Button.plate.ghost-faint",
+        "a ghost in the faint ink: the least of a set (Skip)",
+        "text-fg-subtle hover:text-fg-muted bg-none bg-transparent shadow-none inset-shadow-none inset-ring-0 hover:bg-none hover:bg-hover hover:shadow-none active:bg-none active:bg-pressed disabled:bg-none disabled:bg-transparent disabled:inset-ring-0",
+    ),
+    (
+        "Button.spinner",
+        "what a busy button shows before its label",
+        "size-4 shrink-0 rounded-capsule border-2 border-current border-t-transparent animate-spin",
+    ),
+    (
+        "Checkbox.indicator",
+        "a checkbox's box; checked: and indeterminate: follow the checkbox",
+        "flex items-center justify-center size-5 shrink-0 rounded-control bg-fill-strong inset-ring-2 inset-ring-border-strong text-accent-fg transition duration-120 checked:bg-accent checked:inset-ring-0 indeterminate:bg-accent indeterminate:inset-ring-0 disabled:opacity-50",
+    ),
+    (
+        "Radio.indicator",
+        "a radio's circle; checked: follows the radio",
+        "flex items-center justify-center size-5 shrink-0 rounded-capsule bg-fill-strong inset-ring-2 inset-ring-border-strong transition duration-120 checked:inset-ring-accent disabled:opacity-50",
+    ),
+    (
+        "Radio.dot",
+        "the dot inside a checked radio",
+        "size-2.5 rounded-capsule bg-accent scale-0 transition-transform duration-120 group-checked/radio:scale-100",
+    ),
+    (
+        "Switch.track",
+        "a switch's track; checked: follows the switch",
+        "relative h-6 w-11 shrink-0 rounded-capsule bg-fill-strong inset-ring-1 inset-ring-border-strong transition duration-200 checked:bg-accent checked:inset-ring-0 disabled:opacity-50",
+    ),
+    (
+        "Switch.thumb",
+        "the thumb that moves along a switch's track",
+        "absolute top-0.5 left-0.5 size-5 rounded-capsule bg-knob shadow-raise transition-transform duration-200 ease-out checked:translate-x-5 checked:bg-accent-fg",
+    ),
+    (
+        "Tab.item",
+        "a tab of a tab list",
+        "flex-row items-center justify-center gap-2 min-h-11 px-3 text-sm font-semibold text-fg-muted transition duration-120 hover:text-fg selected:text-fg disabled:text-fg-subtle",
+    ),
+    (
+        "Checkbox.mark",
+        "the check inside a checked checkbox",
+        "size-3.5 text-accent-fg",
+    ),
+    (
+        "Checkbox.dash",
+        "the dash inside an indeterminate checkbox",
+        "w-2.5 h-0.5 rounded-capsule bg-accent-fg",
+    ),
+    (
+        "Tab.list",
+        "a tab list's row",
+        "flex-row items-stretch border-b border-border-muted",
+    ),
+    (
+        "Tab.mark",
+        "the selected tab's mark: an underline (Tab.indicator is how it slides)",
+        "inset-x-2 bottom-0 h-0.75 rounded-capsule bg-accent",
+    ),
+    (
+        "Toggle.item",
+        "a toggle button, alone or in a toggle group; aria-pressed: is on",
+        "flex-row items-center justify-center gap-2 min-h-11 min-w-11 px-3 rounded-control text-sm font-semibold text-fg-muted transition duration-120 hover:bg-hover hover:text-fg active:bg-pressed aria-pressed:bg-layer-4 aria-pressed:text-fg aria-pressed:shadow-raise disabled:text-fg-subtle",
+    ),
+    (
+        "ToggleGroup.frame",
+        "a toggle group's box: a segmented control's well",
+        "flex-row items-stretch gap-0.5 p-0.5 rounded-field bg-layer-2",
+    ),
+    (
+        "Toolbar.frame",
+        "a toolbar's bar",
+        "flex-row items-center gap-1 p-1 rounded-field bg-layer-2",
+    ),
+    (
+        "Toolbar.separator",
+        "the line between runs of a toolbar's items",
+        "self-stretch w-px my-1.5 bg-border",
+    ),
+    (
+        "Slider.track",
+        "a slider's track",
+        "relative grow h-1.5 rounded-capsule bg-fill-strong",
+    ),
+    (
+        "Slider.range",
+        "the filled part of a slider's track, from its start to the thumb",
+        "absolute left-0 top-0 h-full rounded-capsule bg-accent",
+    ),
+    (
+        "Slider.thumb",
+        "a slider's thumb",
+        "absolute top-1/2 size-5 -translate-x-1/2 -translate-y-1/2 rounded-capsule bg-knob shadow-raise inset-ring-2 inset-ring-accent transition-transform duration-120 group-active/slider:scale-110 disabled:opacity-50",
+    ),
+    (
+        "NumberInput.frame",
+        "a number input's box, around its field and steppers",
+        "flex-row items-center rounded-field bg-well inset-ring-1 inset-ring-border",
+    ),
+    (
+        "NumberInput.field",
+        "a number input's text",
+        "grow min-w-0 px-2 text-center text-base font-semibold tabular-nums text-fg",
+    ),
+    (
+        "NumberInput.step",
+        "a number input's decrement and increment buttons",
+        "flex items-center justify-center size-11 shrink-0 text-lg font-bold text-fg-muted hover:text-fg active:bg-pressed disabled:text-fg-subtle",
+    ),
+    (
+        "Progress.track",
+        "a progress bar's track; its indicator is Bar.fill",
+        "w-full h-2 overflow-hidden rounded-capsule bg-fill-strong shadow-sunk",
+    ),
+    (
+        "Progress.indeterminate",
+        "a progress bar's indicator while its extent is unknown",
+        "w-1/3 animate-pulse",
+    ),
     (
         "Panel.frame",
         "a window or panel's frame (the first layer)",

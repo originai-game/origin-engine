@@ -123,6 +123,8 @@ export interface HostProps {
   selected?: boolean | undefined;
   expanded?: boolean | undefined;
   busy?: boolean | undefined;
+  /** Its value fails the game's checks: screen readers say invalid, and `aria-invalid:` classes apply. */
+  invalid?: boolean | undefined;
   current?: boolean | undefined;
   hidden?: boolean | undefined;
   modal?: boolean | undefined;

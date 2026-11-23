@@ -340,6 +340,17 @@ fn upgrade(dir: &Path, to: Option<&str>, dry: bool) -> Value {
                 }
                 continue;
             }
+            if b["codemod"]["kind"] == "progress-percent" {
+                for (file, text, touched) in &mut texts {
+                    let Some((upgraded, n)) = progress_percent(text) else {
+                        continue;
+                    };
+                    codemods.push(json!({ "version": version, "member": member, "file": rel(file), "from": "Progress value 0 to 1", "to": "0 to 100", "count": n }));
+                    *touched = true;
+                    *text = upgraded;
+                }
+                continue;
+            }
             if b["codemod"]["kind"] == "ui-kits" {
                 review.push(json!({
                     "version": version, "member": member,
@@ -748,6 +759,55 @@ fn light_mobility(text: &str) -> Option<(String, usize)> {
             }
         }
         out.push_str(&line);
+    }
+    (n > 0).then_some((out, n))
+}
+
+/// The built-in `Progress`'s value, from 0 to 1 to NSH base's percentage:
+/// on a line opening a `<Progress`, its `value={x}` becomes
+/// `value={(x) * 100}` and a literal `value={0.4}` becomes `value={40}`.
+/// A value spread over several lines is left for the author.
+fn progress_percent(text: &str) -> Option<(String, usize)> {
+    let (mut out, mut n) = (String::with_capacity(text.len()), 0);
+    for l in text.split_inclusive('\n') {
+        let Some(tag) = l.find("<Progress") else {
+            out.push_str(l);
+            continue;
+        };
+        let after = &l[tag..];
+        let Some(v) = after.find("value={").map(|v| tag + v + "value={".len()) else {
+            out.push_str(l);
+            continue;
+        };
+        // The expression's closing brace, nested ones skipped.
+        let mut depth = 1;
+        let mut end = None;
+        for (i, c) in l[v..].char_indices() {
+            match c {
+                '{' => depth += 1,
+                '}' => {
+                    depth -= 1;
+                    if depth == 0 {
+                        end = Some(v + i);
+                        break;
+                    }
+                }
+                _ => {}
+            }
+        }
+        let Some(end) = end else {
+            out.push_str(l);
+            continue;
+        };
+        let expr = l[v..end].trim();
+        let to = match expr.parse::<f64>() {
+            Ok(x) => format!("{}", (x * 1e6).round() / 1e4),
+            Err(_) => format!("({expr}) * 100"),
+        };
+        out.push_str(&l[..v]);
+        out.push_str(&to);
+        out.push_str(&l[end..]);
+        n += 1;
     }
     (n > 0).then_some((out, n))
 }
@@ -1514,6 +1574,19 @@ if (film.open && marker === "flow.cut") run("10.6:flow:choose:0", `flow:play`);
             "{out}"
         );
         assert!(out.contains("og.Model, { static: true }"), "{out}");
+    }
+
+    #[test]
+    fn progress_percent_scales_a_progress_value_and_leaves_others() {
+        let code = "<Progress value={hp() / max} class=\"w-full\" />\n<Progress value={0.33} />\n<Meter value={0.5} />\n";
+        let (out, n) = progress_percent(code).expect("rewritten");
+        assert_eq!(n, 2);
+        assert!(
+            out.contains("<Progress value={(hp() / max) * 100} class="),
+            "{out}"
+        );
+        assert!(out.contains("<Progress value={33} />"), "{out}");
+        assert!(out.contains("<Meter value={0.5} />"), "{out}");
     }
 
     #[test]

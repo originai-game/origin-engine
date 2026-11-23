@@ -200,6 +200,13 @@ impl Classes {
                         scheme = Some(false);
                         continue;
                     }
+                    // The scheme of the element's parent again, over one
+                    // a slot or an earlier class named (`color-scheme:
+                    // normal`).
+                    "scheme-normal" => {
+                        scheme = None;
+                        continue;
+                    }
                     // A number in its text rolls to a new one on its
                     // transition's curve (the tree's counts).
                     "transition-count" => {
@@ -1410,6 +1417,14 @@ mod tests {
         let r = c.record_data(owned, "", &env, "owned");
         assert_eq!(r.skin.image, Slice::default(), "the state's fill shows");
         assert!(r.skin.fill[3] > 0.0);
+        // A slot variant over its base's art: `nine-none` drops the art,
+        // `scheme-normal` the scheme the base drew it in.
+        let r = c.record("scheme-light nine-plate scheme-normal nine-none", &env);
+        assert_eq!((r.skin.image, r.scheme), (Slice::default(), None));
+        assert_eq!(
+            c.record("scheme-light nine-plate", &env).scheme,
+            Some(false)
+        );
     }
 
     /// A side's colour over the border's (a spinner's arc,

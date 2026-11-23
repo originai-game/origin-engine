@@ -21,3 +21,15 @@ commit `a8ca769b944598e179f33cc6843629b90e6ca831`, MIT, licence in
 Changed: the view for the page keys is the nearest scroll's, else the
 screen's; the letters' pause is counted in ticks, so it is deterministic;
 names are the members' accessible names from the frame before.
+
+## Kit (token roles and the button matrix)
+
+From rune at commit `337a06f38` (MIT, `LICENSE`): the `Kit` schema's roles
+(Palette's `layer_01…04`, `border_muted/base/strong`, `hover`, `pressed`,
+`knob`/`knob_on`; Elevation; Motion) are adopted as design tokens in
+`packages/design/tokens` (`layer-1…4`, `border-muted`, `hover`, `pressed`,
+`knob-on`), and its Button's variants and sizes as the pack slots
+`Button.plate.<variant>` (neutral, primary for submit, danger, warning,
+outline, contrast, ghost, ghost-muted, ghost-faint) and the sizes sm, md and
+lg of `packages/engine/src/ui/controls/button.tsx`. rune-kit's Loading
+variant is the button's `busy` state. No source is vendored.
