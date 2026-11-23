@@ -331,7 +331,13 @@ impl Classes {
             rtl: env.rtl,
             states: env.states,
             position: 0,
-            group: &|_| 0,
+            // A group's states, as `tree::ops` writes them in the
+            // data: `name/@bits` (`/@bits` for an unnamed group).
+            group: &|name| {
+                data.split(' ')
+                    .find_map(|t| t.strip_prefix(name)?.strip_prefix("/@")?.parse().ok())
+                    .unwrap_or(0)
+            },
         };
         // CSS's initial flex values under the classes: an item is `flex: 0
         // 1 auto` with the automatic minimum, so it shrinks with its

@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "UI classes",
+      "summary": "The state variants NSH's Tailwind reads from a node's accessibility state now apply: `checked:` and `indeterminate:` (the `checked` prop, `\"mixed\"` for indeterminate), `aria-pressed:` (`pressed`), `selected:` and `aria-selected:` (`selected`), `aria-expanded:` (`expanded`) and `aria-busy:` (`busy`). A `group`'s states reach its descendants' `group-<state>:` classes (`group-hover:`, `group-checked:`, `group-aria-pressed:`), which until now never matched."
+    }
+  ]
+}

@@ -126,18 +126,42 @@ impl Fired {
 pub type Resolve = Box<dyn Fn(&str, &str, u16, &str) -> Record>;
 
 use crate::classes::state::{
-    DISABLED, EXIT, FOCUS_VISIBLE, FOCUS_WITHIN, FOCUSED, HOVERED, PRESSED, STARTING,
+    ARIA_PRESSED, BUSY, CHECKED, DISABLED, EXIT, EXPANDED, FOCUS_VISIBLE, FOCUS_WITHIN, FOCUSED,
+    HOVERED, INDETERMINATE, INVALID, PRESSED, SELECTED, STARTING,
 };
 
-/// The states input sets on op nodes, which their classes may read.
-const INTERACTION: [u16; 6] = [
+/// The states input and the accessibility props set on op nodes, which
+/// their classes may read: NSH's core sets `selected:`, `checked:`,
+/// `indeterminate:`, `aria-expanded:`, `aria-pressed:`, `aria-busy:` and
+/// `aria-invalid:` from a view's `accessibilityState`, as ours does from
+/// the props of the same names.
+pub(super) const INTERACTION: [u16; 13] = [
     PRESSED,
     HOVERED,
     FOCUSED,
     DISABLED,
     FOCUS_WITHIN,
     FOCUS_VISIBLE,
+    SELECTED,
+    CHECKED,
+    INDETERMINATE,
+    EXPANDED,
+    ARIA_PRESSED,
+    BUSY,
+    INVALID,
 ];
+
+/// The states a group's descendants read (`group-hover:`,
+/// `group-checked:`): all of [`INTERACTION`].
+pub(super) const GROUP_STATES: u16 = {
+    let mut all = 0;
+    let mut i = 0;
+    while i < INTERACTION.len() {
+        all |= INTERACTION[i];
+        i += 1;
+    }
+    all
+};
 
 /// The records of the class and style pairs the op nodes use, each
 /// resolved once; an entry's key is `class\0style`. `presence` holds an
@@ -243,7 +267,7 @@ impl Classes {
 
     /// The groups entry `i`'s classes make it (`group`: `""`,
     /// `group/name`: `name`).
-    fn groups(&self, i: u32) -> impl Iterator<Item = &str> {
+    pub(super) fn groups(&self, i: u32) -> impl Iterator<Item = &str> {
         let class = self.keys.get(i as usize).map_or("", |k| Self::split(k).0);
         class.split_ascii_whitespace().filter_map(|c| match c {
             "group" => Some(""),
@@ -1242,6 +1266,25 @@ impl Tree {
                             }
                             self.paint = true;
                         }
+                        // An accessibility state is also the class state
+                        // of its name, as NSH's core sets it from a view's
+                        // `accessibilityState`: `checked` true is
+                        // `checked:`, "mixed" `indeterminate:`.
+                        "checked" | "pressed" | "selected" | "expanded" | "busy" | "invalid" => {
+                            let v = value.trim().trim_matches('"');
+                            let on = matches!(v, "true" | "1");
+                            match name {
+                                "checked" => {
+                                    self.set_state(e, CHECKED, on);
+                                    self.set_state(e, INDETERMINATE, v == "mixed");
+                                }
+                                "pressed" => self.set_state(e, ARIA_PRESSED, on),
+                                "selected" => self.set_state(e, SELECTED, on),
+                                "expanded" => self.set_state(e, EXPANDED, on),
+                                "busy" => self.set_state(e, BUSY, on),
+                                _ => self.set_state(e, INVALID, on),
+                            }
+                        }
                         // A `data-*` attribute, on unless empty or false:
                         // the classes' `data-*:` variants read it here,
                         // their `group-data-*:` ones in its group's nodes.
@@ -1444,6 +1487,12 @@ impl Tree {
                         continue;
                     }
                     seen.push(g.to_owned());
+                    // Its states, which `group-<state>:` reads.
+                    let st = self.input.per(p).map_or(0, |pp| pp.states) & GROUP_STATES;
+                    if st != 0 {
+                        use std::fmt::Write;
+                        let _ = write!(data, "{g}/@{st} ");
+                    }
                     for a in &pe.attrs {
                         data.push_str(g);
                         data.push('/');
@@ -2630,6 +2679,68 @@ mod tests {
         t.apply(&b.bytes()).unwrap();
         assert_eq!(rec(&t, 2), (0.9, 16.0), "the group's change restyles it");
         assert_eq!(rec(&t, 1), (1.0, 16.0));
+    }
+
+    /// A node's accessibility state is its class state, as NSH's core
+    /// sets it from `accessibilityState`: `checked:` on a checked node,
+    /// `indeterminate:` on a mixed one, and a `group`'s state reaches its
+    /// descendants' `group-checked:` and `group-aria-pressed:`. Real
+    /// classes, end to end.
+    #[test]
+    fn accessibility_states_are_class_states_for_the_node_and_its_group() {
+        let mut t = tree();
+        let classes = std::cell::RefCell::new(crate::classes::Classes::new(None).unwrap().0);
+        t.set_resolver(Box::new(move |class, style, states, data| {
+            let env = crate::classes::Env {
+                states,
+                ..Default::default()
+            };
+            classes.borrow_mut().record_data(class, style, &env, data)
+        }));
+        let mut b = Batch::default();
+        for (id, class, parent) in [
+            (
+                1,
+                "group w-[10px] checked:w-[20px] indeterminate:w-[30px]",
+                0,
+            ),
+            (
+                2,
+                "w-[10px] group-checked:w-[40px] group-aria-pressed:w-[50px]",
+                1,
+            ),
+        ] {
+            b.op(1).u32(id).u8(0);
+            b.op(4).u32(id).str(class);
+            b.op(8).u32(parent).u32(id).u32(u32::MAX);
+        }
+        t.apply(&b.bytes()).unwrap();
+        let width = |t: &mut Tree, id| {
+            frame(t);
+            t.op_box(id).unwrap()[2]
+        };
+        assert_eq!((width(&mut t, 1), width(&mut t, 2)), (10.0, 10.0));
+        let mut b = Batch::default();
+        b.op(6).u32(1).str("checked").str("true");
+        t.apply(&b.bytes()).unwrap();
+        assert_eq!(
+            (width(&mut t, 1), width(&mut t, 2)),
+            (20.0, 40.0),
+            "checked"
+        );
+        let mut b = Batch::default();
+        b.op(6).u32(1).str("checked").str("\"mixed\"");
+        t.apply(&b.bytes()).unwrap();
+        assert_eq!((width(&mut t, 1), width(&mut t, 2)), (30.0, 10.0), "mixed");
+        let mut b = Batch::default();
+        b.op(6).u32(1).str("checked").str("false");
+        b.op(6).u32(1).str("pressed").str("true");
+        t.apply(&b.bytes()).unwrap();
+        assert_eq!(
+            (width(&mut t, 1), width(&mut t, 2)),
+            (10.0, 50.0),
+            "a pressed toggle"
+        );
     }
 
     #[test]

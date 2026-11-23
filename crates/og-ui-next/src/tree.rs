@@ -1326,6 +1326,8 @@ impl Tree {
         for e in self.entering.drain(..) {
             self.els[e as usize].entering = None;
         }
+        // Input since the last batch may have changed a group's states.
+        self.refresh_data();
         let moving = self.motion.tick_at(self.time) | !self.counts.is_empty();
         self.roll();
         self.settle_exits();

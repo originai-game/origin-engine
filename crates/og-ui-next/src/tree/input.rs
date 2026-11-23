@@ -1060,6 +1060,16 @@ impl Tree {
             return;
         }
         p.states = states;
+        // A group's descendants read its states (`group-checked:`).
+        if bit & super::ops::GROUP_STATES != 0
+            && self
+                .classes
+                .groups(self.els[e as usize].class)
+                .next()
+                .is_some()
+        {
+            self.data_dirty = true;
+        }
         // Focus-visible restyles every element, and a press every control:
         // the ring and the squash are the pack's when its own classes do
         // not read them (`restyle`).
