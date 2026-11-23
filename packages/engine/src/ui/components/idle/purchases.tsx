@@ -89,7 +89,7 @@ export function IdlePurchases(props: IdlePurchasesProps) {
                       </Text>
                     </Show>
                     <Show when={!u().maxed && !u().locked && !u().affordable}>
-                      <Text class={`font-bold text-xs leading-4.5 tabular-nums nine-chip-cut bg-layer-2 text-fg-muted transition duration-317 whitespace-nowrap tracking-label uppercase py-0 px-1 data-tag-short:bg-none data-tag-short:bg-danger data-tag-short:text-danger-fg ${packClass("Chip", "frame")}`} data-tag-short={true}>
+                      <Text class={`font-bold text-xs leading-4.5 tabular-nums nine-chip-cut bg-layer-2 text-fg-muted transition duration-317 whitespace-nowrap tracking-label uppercase py-0 px-1 data-tag-short:bg-none data-tag-short:bg-danger data-tag-short:nine-chip-cut data-tag-short:text-danger-fg ${packClass("Chip", "frame")}`} data-tag-short={true}>
                         {t("idle.purchases.short")}
                       </Text>
                     </Show>

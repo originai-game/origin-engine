@@ -34,6 +34,94 @@ use crate::ui_values::Scale;
 /// The check's code in `og check`'s warnings.
 pub const CODE: u32 = 9108;
 
+/// The code of a child's ink on an art slot (OG9107, the pack ground-ink
+/// rule carried to the text inside a slot).
+pub const ART_INK: u32 = 9107;
+
+/// A theme's art slots as grounds: what OG9107 checks a child's ink on.
+#[derive(Clone, Debug, Default)]
+pub struct ArtGrounds {
+    /// Each scheme's colours by name (`Scheme::ALL` order).
+    pub colors: [BTreeMap<String, String>; 2],
+    /// Each art slot (`Button.plate.primary`): its scheme and the faces of
+    /// its art.
+    pub slots: BTreeMap<String, (usize, Vec<String>)>,
+}
+
+impl ArtGrounds {
+    /// The art slots of a compiled theme, over the default pack.
+    pub fn of(theme: &og_ui_next::theme::Theme) -> Result<ArtGrounds, String> {
+        use og_ui_next::pack::{Layer, Pack, Scheme};
+        let pack = Pack::new(&[Layer::default_pack(), theme.layer(Default::default())?]);
+        let colors = Scheme::ALL.map(|s| {
+            serde_json::from_str::<serde_json::Value>(&pack.theme_json(s))
+                .ok()
+                .and_then(|v| {
+                    Some(
+                        v.get("colors")?
+                            .as_object()?
+                            .iter()
+                            .filter_map(|(k, v)| Some((k.clone(), v.as_str()?.to_owned())))
+                            .collect(),
+                    )
+                })
+                .unwrap_or_default()
+        });
+        let mut slots = BTreeMap::new();
+        for (key, class) in pack.variants() {
+            let (images, rest) = og_ui_next::pack::split_nine(class);
+            let Some(image) = images.first() else {
+                continue;
+            };
+            let role = match *image {
+                "button-primary" => "primary",
+                "button-danger" => "danger",
+                i => i,
+            };
+            let Some(faces) = theme.art["palette"][role].as_array() else {
+                continue;
+            };
+            let scheme = usize::from(!rest.split_whitespace().any(|c| c == "scheme-light"));
+            let faces = faces
+                .iter()
+                .filter_map(|f| f.as_str().map(str::to_owned))
+                .collect();
+            slots.insert(key.clone(), (scheme, faces));
+        }
+        Ok(ArtGrounds { colors, slots })
+    }
+}
+
+/// The slot keys a `packClass(component, slot, variant?)` call can give:
+/// a literal variant, each literal branch of a conditional one (a branch
+/// that is no string gives the bare slot), or none.
+fn slot_keys(c: &oxc_ast::ast::CallExpression) -> Vec<String> {
+    let lit = |a: Option<&oxc_ast::ast::Argument>| match a.and_then(|a| a.as_expression()) {
+        Some(Expression::StringLiteral(s)) => Some(s.value.display().to_string()),
+        _ => None,
+    };
+    let (Some(component), Some(slot)) = (lit(c.arguments.first()), lit(c.arguments.get(1))) else {
+        return Vec::new();
+    };
+    let base = format!("{component}.{slot}");
+    let variants: Vec<Option<String>> = match c.arguments.get(2).and_then(|a| a.as_expression()) {
+        None => vec![None],
+        Some(Expression::StringLiteral(s)) => vec![Some(s.value.display().to_string())],
+        Some(Expression::ConditionalExpression(x)) => [&x.consequent, &x.alternate]
+            .into_iter()
+            .map(|e| match e {
+                Expression::StringLiteral(s) => Some(s.value.display().to_string()),
+                _ => None,
+            })
+            .collect(),
+        Some(_) => vec![None],
+    };
+    variants
+        .into_iter()
+        .map(|v| v.map_or(base.clone(), |v| format!("{base}.{v}")))
+        .collect()
+}
+
 /// The least opacity a ground under text has, in either scheme: below it,
 /// the scene behind shows through enough to move the label's contrast.
 const OPAQUE: f32 = 0.85;
@@ -88,7 +176,13 @@ fn alpha(hex: &str) -> f32 {
 }
 
 /// The findings in one TSX source.
-pub fn scan(path: &Path, text: &str, colors: &Colors, scale: &Scale) -> Vec<Finding> {
+pub fn scan(
+    path: &Path,
+    text: &str,
+    colors: &Colors,
+    scale: &Scale,
+    art: Option<&ArtGrounds>,
+) -> Vec<Finding> {
     let Ok(source_type) = SourceType::from_path(path) else {
         return Vec::new();
     };
@@ -103,6 +197,7 @@ pub fn scan(path: &Path, text: &str, colors: &Colors, scale: &Scale) -> Vec<Find
         colors,
         scale,
         consts: names.consts,
+        art,
         frames: Vec::new(),
         found: BTreeMap::new(),
     };
@@ -141,6 +236,7 @@ struct Scan<'s, 'p, 'a> {
     colors: &'s Colors,
     scale: &'s Scale,
     consts: HashMap<&'p str, &'p Expression<'a>>,
+    art: Option<&'s ArtGrounds>,
     frames: Vec<Frame>,
     /// By byte offset, so a constant shared by several elements is one finding.
     found: BTreeMap<u32, Finding>,
@@ -218,7 +314,10 @@ impl<'p, 'a> Scan<'_, 'p, 'a> {
             }
             Expression::CallExpression(c) => match &c.callee {
                 Expression::Identifier(i) if i.name == "packClass" => {
-                    out.push(("@slot".to_owned(), c.span.start))
+                    out.push(("@slot".to_owned(), c.span.start));
+                    for key in slot_keys(c) {
+                        out.push((format!("@slot:{key}"), c.span.start));
+                    }
                 }
                 // A local class function (`row()`): its body.
                 callee => self.tokens(callee, depth + 1, out),
@@ -229,6 +328,87 @@ impl<'p, 'a> Scan<'_, 'p, 'a> {
                 }
             }
             _ => {}
+        }
+    }
+
+    /// OG9107 for a child: the text just pushed, when the nearest ground
+    /// under it is an art slot (a slot whose art is its ground and whose
+    /// ink the theme solved on that art). An ink a child sets, or the slot
+    /// element's own state ink (which lies over the slot's), replaces the
+    /// slot's ink, so each is held to 4.5:1 on the art's faces.
+    fn check_art_ink(&mut self) {
+        let Some(art) = self.art else { return };
+        let n = self.frames.len();
+        for i in (0..n).rev() {
+            let f = &self.frames[i];
+            let slots: Vec<(&str, &(usize, Vec<String>))> = f
+                .tokens
+                .iter()
+                .filter_map(|(c, _)| c.strip_prefix("@slot:"))
+                .filter_map(|k| art.slots.get_key_value(k).map(|(k, v)| (k.as_str(), v)))
+                .collect();
+            if slots.is_empty() {
+                if f.ground {
+                    return;
+                }
+                continue;
+            }
+            let own = f.tokens.iter().filter(|(c, _)| c.contains(':'));
+            let inner = self.frames[i + 1..].iter().flat_map(|g| g.tokens.iter());
+            let near: Vec<&(String, u32)> = own.chain(inner).collect();
+            // A state that sets its own art or shape (`data-on:nine-none`,
+            // `data-on:nine-chip-cut`) replaces the slot's, so the state's
+            // own fill is the ground its `-fg` ink pairs with.
+            let dropped = |prefix: &str| {
+                let own = format!("{prefix}nine-");
+                self.frames[i..]
+                    .iter()
+                    .any(|g| g.tokens.iter().any(|(c, _)| c.starts_with(&own)))
+            };
+            let mut low = Vec::new();
+            for (class, at) in near.iter().copied() {
+                let Some(("text", colour, _)) = colour_class(class) else {
+                    continue;
+                };
+                let prefix = class.rsplit_once(':').map_or("", |(p, _)| p);
+                if !prefix.is_empty() && dropped(&format!("{prefix}:")) {
+                    continue;
+                }
+                let ratio = og_ui_next::theme::INKS
+                    .iter()
+                    .find(|(r, _)| *r == colour)
+                    .map_or(4.5, |(_, r)| *r);
+                for (key, (scheme, faces)) in &slots {
+                    let Some(ink) = art.colors[*scheme].get(colour) else {
+                        continue;
+                    };
+                    let r = faces
+                        .iter()
+                        .map(|f| og_ui_next::theme::contrast(ink, f))
+                        .fold(f32::MAX, f32::min);
+                    if r < ratio {
+                        low.push((class.clone(), *at, key.to_string(), r, ratio));
+                        break;
+                    }
+                }
+            }
+            for (class, at, key, r, ratio) in low {
+                let (line, col) = self.position(at);
+                self.found.insert(
+                    at,
+                    Finding {
+                        code: ART_INK,
+                        line,
+                        col,
+                        class: class.clone(),
+                        message: format!(
+                            "`{class}` sets the ink on {key}'s art at {r:.2}:1 (under {ratio}:1): the theme solved the slot's own ink on that art, so leave the ink to the slot; a state that paints its own fill sets its own shape with it (`data-on:nine-chip-cut`, or `data-on:nine-none`)"
+                        ),
+                        fix: None,
+                    },
+                );
+            }
+            return;
         }
     }
 
@@ -419,7 +599,7 @@ impl<'p, 'a> Visit<'a> for Scan<'_, 'p, 'a> {
             }
         }
         let ground = tokens.iter().any(|(c, _)| {
-            c == "@slot"
+            c.starts_with("@slot")
                 || colour_class(c).is_some_and(|(p, colour, _)| {
                     p != "text"
                         && (self.colors.contains_key(colour)
@@ -436,6 +616,9 @@ impl<'p, 'a> Visit<'a> for Scan<'_, 'p, 'a> {
             ground,
             text,
         });
+        if TEXT_TAGS.contains(&name) {
+            self.check_art_ink();
+        }
         walk::walk_jsx_element(self, e);
         let f = self.frames.pop().unwrap();
         if f.text {
@@ -466,7 +649,13 @@ pub fn files(dirs: &[&Path]) -> Vec<std::path::PathBuf> {
 }
 
 /// Every finding under `dirs`, paths relative to `root`.
-pub fn lint(root: &Path, dirs: &[&Path], colors: &Colors, scale: &Scale) -> Vec<(String, Finding)> {
+pub fn lint(
+    root: &Path,
+    dirs: &[&Path],
+    colors: &Colors,
+    scale: &Scale,
+    art: Option<&ArtGrounds>,
+) -> Vec<(String, Finding)> {
     let mut out = Vec::new();
     let mut seen = BTreeSet::new();
     for path in files(dirs) {
@@ -481,7 +670,7 @@ pub fn lint(root: &Path, dirs: &[&Path], colors: &Colors, scale: &Scale) -> Vec<
             .unwrap_or(&path)
             .to_string_lossy()
             .replace('\\', "/");
-        for f in scan(&path, &text, colors, scale) {
+        for f in scan(&path, &text, colors, scale, art) {
             out.push((rel.clone(), f));
         }
     }
@@ -504,7 +693,7 @@ mod tests {
         .into_iter()
         .map(|(k, v)| (k.to_owned(), v))
         .collect();
-        scan(Path::new("a.tsx"), src, &colors, &Scale::new(&[]))
+        scan(Path::new("a.tsx"), src, &colors, &Scale::new(&[]), None)
             .into_iter()
             .filter(|f| f.code == CODE)
             .map(|f| format!("{}:{} {}", f.line, f.col, f.class))
@@ -523,6 +712,7 @@ const X = <View class="bg-well/79 w-[2rem]"><Text>a</Text><View class="bg-well/7
             src,
             &colors(&themes),
             &Scale::new(&themes),
+            None,
         )
         .into_iter()
         .map(|f| (f.code, f.class, f.fix.map(|f| f.0)))

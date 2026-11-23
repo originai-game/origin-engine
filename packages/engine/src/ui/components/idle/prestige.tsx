@@ -105,7 +105,7 @@ export function IdlePrestige(props: IdlePrestigeProps) {
             <View class={`bg-tile inset-ring-1 inset-ring-rim p-2 gap-1`} data-met={props.met === true}>
               <View class="flex-row items-center w-full gap-1">
                 <Text class="grow shrink basis-0 text-start text-fg">{props.requirement}</Text>
-                <View class={`flex-row items-center bg-tile nine-chip-cut text-xs font-semibold tracking-label uppercase text-fg-muted py-0 px-1 gap-0.5 data-met:bg-success data-met:bg-none data-met:text-success-fg ${packClass("Chip", "frame")}`} data-met={props.met === true}>
+                <View class={`flex-row items-center bg-tile nine-chip-cut text-xs font-semibold tracking-label uppercase text-fg-muted py-0 px-1 gap-0.5 data-met:bg-success data-met:bg-none data-met:nine-chip-cut data-met:text-success-fg ${packClass("Chip", "frame")}`} data-met={props.met === true}>
                   <Icon class="text-shadow-tag size-3" name={props.met ? 'check' : 'lock'} />
                   <Text class="whitespace-nowrap text-shadow-tag shrink">
                     {props.met ? t("idle.prestige.met") : t("idle.prestige.notMet")}

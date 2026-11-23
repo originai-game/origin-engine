@@ -127,7 +127,7 @@ export function RacingLapHud(props: RacingLapHudProps) {
             <Text class={`min-w-0 text-xs font-semibold tracking-label uppercase whitespace-nowrap overflow-hidden text-fg-muted compact:tracking-normal`}>{props.sector !== "" ? props.sector : t("racing.lap.split")}</Text>
             {/* A tag in the split's own colour ahead and behind (boon and foe fills with their inks); the pack's neutral chip dresses only the even state. */}
             <Text
-              class={`shrink-0 py-0 px-1.5 text-reading font-bold tabular-nums whitespace-nowrap text-fg bg-well nine-chip-cut data-ahead:bg-boon data-ahead:text-boon-fg data-behind:bg-foe data-behind:text-foe-fg ${(props.splitState ?? "even") === "even" ? packClass("Chip", "frame") : ""}`}
+              class={`shrink-0 py-0 px-1.5 text-reading font-bold tabular-nums whitespace-nowrap text-fg bg-well nine-chip-cut data-ahead:bg-boon data-ahead:nine-chip-cut data-ahead:text-boon-fg data-behind:bg-foe data-behind:nine-chip-cut data-behind:text-foe-fg ${(props.splitState ?? "even") === "even" ? packClass("Chip", "frame") : ""}`}
               data-ahead={(props.splitState ?? "even") === "ahead"}
               data-behind={(props.splitState ?? "even") === "behind"}
             >

@@ -4547,7 +4547,7 @@ A row of cut keys, the current page lit.
 | `onPage?` | `(e: UiEvent, key?: string) => void` | The page event, with the row's key where it comes from a row. |
 | `onPrevious?` | `(e: UiEvent, key?: string) => void` | The previous event, with the row's key where it comes from a row. |
 
-Pack slots: `Button.plate`.
+Pack slots: `Button.plate`, `Button.plate.…`.
 
 Fixtures: `default`.
 

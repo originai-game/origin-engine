@@ -1040,6 +1040,22 @@ fn ui_grounds_lint(root: &Path, dirs: &[&Path], game: Option<&Path>, json: bool)
     {
         layers.push(layer);
     }
+    // The game's theme recipe (`styles/game/theme.json`): its layer, and its
+    // art slots as the grounds a child's ink is checked on (OG9107). One
+    // that does not compile is the cook's error.
+    let theme = game
+        .map(|g| g.with_file_name(og_cook::cook::ui_themes::RECIPE))
+        .and_then(|r| std::fs::read_to_string(&r).ok())
+        .and_then(|t| og_cook::cook::ui_themes::compile(&t, "styles/game/theme.json").ok());
+    if let Some(layer) = theme
+        .as_ref()
+        .and_then(|t| t.layer(Default::default()).ok())
+    {
+        layers.push(layer);
+    }
+    let art = theme
+        .as_ref()
+        .and_then(|t| crate::ui_grounds::ArtGrounds::of(t).ok());
     let pack = Pack::new(&layers);
     let colors = crate::ui_grounds::colors(&Scheme::ALL.map(|s| pack.theme_json(s)));
     // The pack's own scheme first: a colour written by hand is a role's
@@ -1049,7 +1065,7 @@ fn ui_grounds_lint(root: &Path, dirs: &[&Path], game: Option<&Path>, json: bool)
         _ => [Scheme::Dark, Scheme::Light],
     };
     let scale = crate::ui_values::Scale::new(&schemes.map(|s| pack.theme_json(s)));
-    let found = crate::ui_grounds::lint(root, dirs, &colors, &scale);
+    let found = crate::ui_grounds::lint(root, dirs, &colors, &scale, art.as_ref());
     if found.is_empty() {
         return;
     }
@@ -1724,6 +1740,67 @@ mod tests {
             "a nine-* frame with its own edge as well ({}):\n{}",
             twice.len(),
             twice.join("\n")
+        );
+    }
+
+    /// No engine component sets an ink on a theme's art that the art does
+    /// not carry (OG9107 on a child): under a theme of every material, the
+    /// text inside an art slot reads in the slot's solved ink, or in one
+    /// that holds 4.5:1 on that art too.
+    #[test]
+    fn no_engine_component_inks_over_a_themes_art() {
+        let ui = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../packages/engine/src/ui");
+        let materials = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../templates/themes/dimensions/material");
+        let mut low = std::collections::BTreeSet::new();
+        let mut names: Vec<String> = std::fs::read_dir(&materials)
+            .unwrap()
+            .map(|e| {
+                e.unwrap()
+                    .path()
+                    .file_stem()
+                    .unwrap()
+                    .to_string_lossy()
+                    .into_owned()
+            })
+            .collect();
+        names.sort();
+        for m in names {
+            for source in ["#d9a531", "#5cc8ff", "#ff5c9a"] {
+                let recipe = format!(
+                    r##"{{ "material": "{m}", "shape": "soft", "color": {{ "source": "{source}", "neutral": "#4c5643" }} }}"##
+                );
+                let theme = og_cook::cook::ui_themes::compile(&recipe, "test").unwrap();
+                let art = crate::ui_grounds::ArtGrounds::of(&theme).unwrap();
+                let colors = crate::ui_grounds::colors(
+                    &art.colors
+                        .clone()
+                        .map(|c| serde_json::json!({ "colors": c }).to_string()),
+                );
+                let scale = crate::ui_values::Scale::new(&[]);
+                for (file, f) in crate::ui_grounds::lint(&ui, &[&ui], &colors, &scale, Some(&art)) {
+                    if f.code == crate::ui_grounds::ART_INK {
+                        low.insert(format!(
+                            "{file}:{}: {} ({m} {source}: {})",
+                            f.line,
+                            f.class,
+                            f.message.split(" (under").next().unwrap_or("")
+                        ));
+                    }
+                }
+            }
+        }
+        // one line per class, its first material
+        let mut seen = std::collections::BTreeSet::new();
+        let low: Vec<_> = low
+            .into_iter()
+            .filter(|l| seen.insert(l.split(" (").next().unwrap().to_owned()))
+            .collect();
+        assert!(
+            low.is_empty(),
+            "{} inks on art:\n{}",
+            low.len(),
+            low.join("\n")
         );
     }
 

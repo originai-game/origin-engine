@@ -96,7 +96,7 @@ export function Reveal(props: RevealProps) {
                                 </Show>
                               </View>
                             </Flourish>
-                            <Text class={`text-xs font-bold tracking-kicker uppercase text-border-strong`}>
+                            <Text class={`text-xs font-bold tracking-kicker uppercase text-fg-muted`}>
                               {reward().rarity === 'mythic' ? t("meta.rarity.mythic") : reward().rarity === 'legendary' ? t("meta.rarity.legendary") : reward().rarity === 'epic' ? t("meta.rarity.epic") : reward().rarity === 'rare' ? t("meta.rarity.rare") : reward().rarity === 'uncommon' ? t("meta.rarity.uncommon") : t("meta.rarity.common")}
                             </Text>
                             <Text class={`text-fg max-w-full font-semibold`}>

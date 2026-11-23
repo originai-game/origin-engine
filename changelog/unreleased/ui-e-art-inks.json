@@ -1,0 +1,14 @@
+{
+  "added": [
+    {
+      "member": "og check",
+      "summary": "OG9107 covers the text inside a theme's art slot: an ink a child sets, or a state's ink on the slot element, that reads under its ratio on the slot's art is reported at its class, with the fix (leave the ink to the slot, or give the state its own shape: `data-on:nine-chip-cut`)."
+    }
+  ],
+  "fixed": [
+    {
+      "member": "Built-in components",
+      "summary": "The states that paint their own fill and ink (a claimed or owned tag, a podium place, a selected tool, the current page) set their own shape with it, so under a theme's art they show their fill instead of an ink on art it was not chosen for. Pagination's current page is a primary button; the reveal's rarity word reads in `fg-muted`."
+    }
+  ]
+}

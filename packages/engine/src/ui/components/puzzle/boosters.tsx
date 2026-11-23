@@ -45,7 +45,7 @@ export function PuzzleBoosters(props: PuzzleBoostersProps) {
                     <View class={`grow shrink basis-0 justify-center items-center absolute shadow-plate inset-ring-2 inset-ring-rim inset-0 gap-2 rounded-full group-data-armed/booster:shadow-glow-lg group-data-armed/booster:inset-ring-3 group-data-armed/booster:inset-ring-hud-accent group-data-armed/booster:translate-x-0 group-data-armed/booster:-translate-y-1.5`}>
                       <Icon class="text-shadow-tag size-7/10" name={b().icon} />
                     </View>
-                    <Text class={`absolute -right-1 -bottom-0.5 min-w-4 text-center whitespace-nowrap text-xs font-bold text-fg bg-tile nine-chip-cut text-shadow-tag py-0 px-0.5 data-out:text-gold-fg data-out:bg-none data-out:bg-gold ${packClass("Chip", "frame")}`} data-out={b().count === 0}>
+                    <Text class={`absolute -right-1 -bottom-0.5 min-w-4 text-center whitespace-nowrap text-xs font-bold text-fg bg-tile nine-chip-cut text-shadow-tag py-0 px-0.5 data-out:nine-chip-cut data-out:text-gold-fg data-out:bg-none data-out:bg-gold ${packClass("Chip", "frame")}`} data-out={b().count === 0}>
                       {b().count === 0 ? '+' : t("puzzle.boosters.times", { count: formatNumber(b().count) })}
                     </Text>
                   </View>

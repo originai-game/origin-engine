@@ -67,7 +67,7 @@ export function RhythmResults(props: RhythmResultsProps) {
               </Show>
               <View class={`flex-col items-start gap-0.5 min-w-0`}>
                 <Text
-                  class={`whitespace-nowrap py-0 px-2 text-base font-bold tracking-label uppercase text-hud-accent-fg bg-hud-accent nine-chip-cut data-tag-failed:text-critical-fg data-tag-failed:bg-critical ${packClass("Chip", "frame")}`}
+                  class={`whitespace-nowrap py-0 px-2 text-base font-bold tracking-label uppercase text-hud-accent-fg bg-hud-accent nine-chip-cut data-tag-failed:nine-chip-cut data-tag-failed:text-critical-fg data-tag-failed:bg-critical ${packClass("Chip", "frame")}`}
                   data-tag-cleared={props.cleared}
                   data-tag-failed={!props.cleared}
                 >

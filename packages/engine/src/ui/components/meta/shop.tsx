@@ -100,7 +100,7 @@ export function Shop(props: ShopProps) {
                   <Show when={c().id === props.tab}><View class={`absolute inset-x-1 bottom-0 h-0.75 bg-hud-accent shadow-glow pointer-events-none ${packClass("Tab", "indicator")}`} /></Show>
                   <Text class="whitespace-nowrap">{c().label}</Text>
                   <Show when={c().count > 0}>
-                    <Text class={`text-xs font-bold text-fg-subtle py-0 px-1 rounded-capsule group-data-selected/tab:bg-none group-data-selected/tab:bg-hud-accent group-data-selected/tab:text-hud-accent-fg ${packClass("Chip", "frame")}`}>
+                    <Text class={`text-xs font-bold text-fg-subtle py-0 px-1 rounded-capsule group-data-selected/tab:bg-none group-data-selected/tab:bg-hud-accent group-data-selected/tab:nine-none group-data-selected/tab:text-hud-accent-fg ${packClass("Chip", "frame")}`}>
                       {formatNumber(c().count)}
                     </Text>
                   </Show>
@@ -178,13 +178,13 @@ export function Shop(props: ShopProps) {
                                   </View>
                                 </Show>
                                 <Show when={o().owned && !o().soldOut}>
-                                  <View class={`flex-row items-center ml-auto text-xs font-bold tracking-label uppercase text-fg-muted nine-plate-cut py-0.5 px-1 gap-0.5 data-kind-owned:bg-none data-kind-owned:bg-success data-kind-owned:text-success-fg ${packClass("Chip", "frame")}`} data-kind-owned={true}>
+                                  <View class={`flex-row items-center ml-auto text-xs font-bold tracking-label uppercase text-fg-muted nine-plate-cut py-0.5 px-1 gap-0.5 data-kind-owned:bg-none data-kind-owned:bg-success data-kind-owned:nine-plate-cut data-kind-owned:text-success-fg ${packClass("Chip", "frame")}`} data-kind-owned={true}>
                                     <Icon class="size-3" name="check" />
                                     <Text class="whitespace-nowrap shrink">{t("general.shop.owned")}</Text>
                                   </View>
                                 </Show>
                                 <Show when={!o().affordable && !o().soldOut && !o().owned}>
-                                  <View class={`flex-row items-center ml-auto text-xs font-bold tracking-label uppercase text-fg-muted nine-plate-cut py-0.5 px-1 gap-0.5 data-kind-short:bg-none data-kind-short:bg-danger data-kind-short:text-danger-fg ${packClass("Chip", "frame")}`} data-kind-short={true}>
+                                  <View class={`flex-row items-center ml-auto text-xs font-bold tracking-label uppercase text-fg-muted nine-plate-cut py-0.5 px-1 gap-0.5 data-kind-short:bg-none data-kind-short:bg-danger data-kind-short:nine-plate-cut data-kind-short:text-danger-fg ${packClass("Chip", "frame")}`} data-kind-short={true}>
                                     <Text class="whitespace-nowrap shrink">{t("general.shop.short")}</Text>
                                   </View>
                                 </Show>
