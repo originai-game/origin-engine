@@ -190,17 +190,28 @@ class Shape:
     def __init__(self, spec):
         self.family = spec.get("family", "rounded")
         self.radii = spec.get("radius", {})
-        self.cut = spec.get("cut", 0.0)
+        self.cuts = spec.get("cut", 0.0)
         self.step = spec.get("step", 1.0)
         self.wobble = spec.get("wobble", 0.0)
         self.seed = spec.get("seed", 7)
 
     def radius(self, role):
-        return self.radii.get(role, self.radii.get("control", 6.0))
+        if role in self.radii:
+            return self.radii[role]
+        if role == "badge":
+            return 12.5
+        return self.radii.get("control", 6.0)
+
+    def cut(self, role):
+        """A chamfer's size, one for every piece or by role (`{"control": 5, "panel": 8}`)."""
+        c = self.cuts
+        if isinstance(c, dict):
+            return c.get(role, c.get("control", 0.0))
+        return c
 
     def corner(self, role):
         """How far a corner's shaping reaches in: what a nine-slice inset must clear."""
-        return max(self.radius(role), self.cut if self.family in ("cut", "cut4") else 0.0)
+        return max(self.radius(role), self.cut(role) if self.family in ("cut", "cut4") else 0.0)
 
     def coords(self, cv):
         if self.family != "pixel":
@@ -213,10 +224,10 @@ class Shape:
         r = self.radius(role)
         if self.family == "cut":
             d = rounded(x, y, box, min(r, 2.0))
-            return chamfer(d, x, y, box, ("tl", "br"), self.cut * scale_cut)
+            return chamfer(d, x, y, box, ("tl", "br"), self.cut(role) * scale_cut)
         if self.family == "cut4":
             d = rounded(x, y, box, 0.0)
-            return chamfer(d, x, y, box, ("tl", "tr", "br", "bl"), self.cut * scale_cut)
+            return chamfer(d, x, y, box, ("tl", "tr", "br", "bl"), self.cut(role) * scale_cut)
         d = rounded(x, y, box, r)
         if self.family == "brush":
             # an uneven hand-drawn edge: the boundary pushed in and out by noise
@@ -614,31 +625,51 @@ def draw(spec):
     cv.over(C(spec.get("divider", "orn")), line * ends)
     put("divider", cv, fill=True)
 
-    # badge: a notification pill
+    # badge: a notification pill in the theme's shape and material, ringed
+    # in its badge rim (white unless the spec names one) over its own outline
     cv = Canvas(S, [13, 14, 14, 14], band=(2, 0))
-    body = rounded(cv.x, cv.y, (2.0, 1.0, cv.w - 2.0, cv.h - 1.0), 12.5)
-    shadow(cv, body, 1.0, 0.9, 0.5, C("shadow"))
-    cv.over(hexc("#ffffff"), cover(cv, body))
-    face = body + 1.75
-    cv.over(vgrad(cv, hexc("#d83834"), hexc("#a00c1a"), 3.0, cv.h - 2.0), cover(cv, face))
-    cv.over(hexc("#ffffff"), cover(cv, face + 1.2) * clamp((11 - cv.y) / 7) * 0.35)
+    ow = M["outline"]["width"] if M.get("outline") else 1.0
+    bm = dict(M)
+    bm["outline"] = {"color": spec.get("badge_rim", "#ffffff"), "width": max(ow, 1.5)}
+    face = C.pair("badge") if "badge" in spec["palette"] else (hexc("#d83834"), hexc("#a00c1a"))
+    bo = bm["outline"]["width"] + 0.5
+    piece(cv, C, bm, shape, "badge", (bo, bo, cv.w - bo, cv.h - bo), face, scale_cut=0.6)
     put("badge", cv)
 
-    # tint pieces: grey shading with alpha that the element's fill colours
+    # tint pieces: grey shading with alpha that the element's fill colours,
+    # lit as the material lights an edge: a hard two-tone step (a bevel), a
+    # strong metal sweep (a rim) or a soft sweep
+    hard, metal = bool(M.get("bevel")), bool(M.get("rim"))
     cv = Canvas(S, [si, si, si, si])
     body = shape.dist(cv, (2.0, 2.0, cv.w - 2.0, cv.h - 2.0), "slot", 0.8)
-    ring = cover(cv, body) - cover(cv, body + 2.25)
-    inner = clamp(1 + (body + 2.25) / 7) * cover(cv, body + 2.25)
-    grey = 0.78 + 0.22 * lit(body)
+    rw = max(2.25, ow + 0.75)
+    ring = cover(cv, body) - cover(cv, body + rw)
+    glen = 3.0 if hard else 7.0
+    inner = clamp(1 + (body + rw) / glen) * cover(cv, body + rw)
+    L = lit(body)
+    if hard:
+        grey = 0.7 + 0.3 * (L > 0.5).astype(np.float64)
+    elif metal:
+        grey = 0.6 + 0.4 * L
+    else:
+        grey = 0.78 + 0.22 * L
     cv.over(np.stack([grey, grey, grey, np.ones_like(grey)], -1), clamp(ring + inner * 0.45))
     put("slot-rim", cv, fill=False, tint=True)
     cv = Canvas(S, [ci, ci + 1, ci, ci + 1])
     body = shape.dist(cv, (1.0, 1.0, cv.w - 1.0, cv.h - 1.0), "chip", 0.6)
     cv.over(np.array([0.16, 0.16, 0.16, 1.0]), cover(cv, body))
-    rim = (0.17 + 0.36 * lit(body))[..., None]
+    bw = M["bevel"]["width"] if hard else 1.0
+    L = lit(body)
+    if hard:
+        rim = 0.17 + 0.36 * (L > 0.5).astype(np.float64)
+    elif metal:
+        rim = 0.12 + 0.5 * L
+    else:
+        rim = 0.17 + 0.36 * L
+    rim = rim[..., None]
     cv.over(np.concatenate([rim, rim, rim, np.ones_like(rim)], -1), cover(cv, body + 1.0))
     cv.over(vgrad(cv, np.array([0.33, 0.33, 0.33, 1]), np.array([0.24, 0.24, 0.24, 1]), 3.0, cv.h - 3.0),
-            cover(cv, body + 2.0))
+            cover(cv, body + 1.0 + bw))
     put("chip-bevel", cv, tint=True)
     return out
 

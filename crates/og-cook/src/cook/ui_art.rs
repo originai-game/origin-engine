@@ -327,7 +327,7 @@ fn noise(x: f64, y: f64, cell: f64, seed: i64) -> f64 {
 struct Shape<'a> {
     family: &'a str,
     radii: &'a Value,
-    cut: f64,
+    cuts: &'a Value,
     step: f64,
     wobble: f64,
     seed: i64,
@@ -335,15 +335,30 @@ struct Shape<'a> {
 
 impl Shape<'_> {
     fn radius(&self, role: &str) -> f64 {
-        self.radii
-            .get(role)
-            .and_then(Value::as_f64)
-            .unwrap_or_else(|| opt(self.radii, "control", 6.0))
+        if let Some(r) = self.radii.get(role).and_then(Value::as_f64) {
+            return r;
+        }
+        if role == "badge" {
+            return 12.5;
+        }
+        opt(self.radii, "control", 6.0)
+    }
+
+    /// A chamfer's size, one for every piece or by role.
+    fn cut(&self, role: &str) -> f64 {
+        match self.cuts {
+            Value::Object(_) => self
+                .cuts
+                .get(role)
+                .and_then(Value::as_f64)
+                .unwrap_or_else(|| opt(self.cuts, "control", 0.0)),
+            v => v.as_f64().unwrap_or(0.0),
+        }
     }
 
     fn corner(&self, role: &str) -> f64 {
         let cut = if matches!(self.family, "cut" | "cut4") {
-            self.cut
+            self.cut(role)
         } else {
             0.0
         };
@@ -366,7 +381,7 @@ impl Shape<'_> {
                     y,
                     b,
                     &["tl", "br"],
-                    self.cut * scale_cut,
+                    self.cut(role) * scale_cut,
                 ),
                 "cut4" => chamfer(
                     rounded(x, y, b, 0.0),
@@ -374,7 +389,7 @@ impl Shape<'_> {
                     y,
                     b,
                     &["tl", "tr", "br", "bl"],
-                    self.cut * scale_cut,
+                    self.cut(role) * scale_cut,
                 ),
                 "brush" => {
                     rounded(x, y, b, r) + (noise(x, y, 5.0, self.seed) - 0.5) * 2.0 * self.wobble
@@ -938,7 +953,7 @@ pub fn draw(spec: &Value) -> Result<Vec<Piece>, String> {
             .and_then(Value::as_str)
             .unwrap_or("rounded"),
         radii: sh.get("radius").unwrap_or(&empty),
-        cut: opt(sh, "cut", 0.0),
+        cuts: sh.get("cut").unwrap_or(&Value::Null),
         step: opt(sh, "step", 1.0),
         wobble: opt(sh, "wobble", 0.0),
         seed: sh.get("seed").and_then(Value::as_i64).unwrap_or(7),
@@ -1144,34 +1159,55 @@ pub fn draw(spec: &Value) -> Result<Vec<Piece>, String> {
     cv.over1(dc, &zip(&line, &ends, |l, e| l * e));
     put(&mut out, "divider", &cv, true, false);
 
+    // badge: the theme's shape and material, ringed in its badge rim
     let mut cv = Canvas::new(si, [13.0, 14.0, 14.0, 14.0], (2, 0));
-    let (w, h) = (cv.wf(), cv.hf());
-    let body = cv.map(|x, y| rounded(x, y, [2.0, 1.0, w - 2.0, h - 1.0], 12.5));
-    shadow(&mut cv, &body, 1.0, 0.9, 0.5, c.named("shadow")?);
-    let cb = cv.cover(&body);
-    cv.over1(WHITE, &cb);
-    let face = add(&body, 1.75);
-    let g = cv.vgrad(hexc("#d83834")?, hexc("#a00c1a")?, 3.0, h - 2.0);
-    let cf = cv.cover(&face);
-    cv.over(&g, &cf);
-    let c2 = cv.cover(&add(&face, 1.2));
-    cv.over1(
-        WHITE,
-        &zip(&c2, &cv.y, |c, y| c * clamp((11.0 - y) / 7.0) * 0.35),
-    );
+    let ow = m
+        .get("outline")
+        .map(|o| opt(o, "width", 0.0))
+        .unwrap_or(1.0);
+    let mut bm = m.clone();
+    let rim_c = spec.get("badge_rim").cloned().unwrap_or(json!("#ffffff"));
+    bm["outline"] = json!({ "color": rim_c, "width": ow.max(1.5) });
+    let face = if spec["palette"].get("badge").is_some() {
+        c.pair("badge")?
+    } else {
+        (hexc("#d83834")?, hexc("#a00c1a")?)
+    };
+    let bo = ow.max(1.5) + 0.5;
+    let b = [bo, bo, cv.wf() - bo, cv.hf() - bo];
+    piece(
+        &mut cv, &mut c, &bm, &shape, "badge", b, face, 0.0, false, true, None, 0.6,
+    )?;
     put(&mut out, "badge", &cv, true, false);
 
+    // tint pieces, lit as the material lights an edge
+    let (hard, metal) = (m.get("bevel").is_some(), m.get("rim").is_some());
     let mut cv = Canvas::new(si, [sl; 4], (4, 4));
     let b = [2.0, 2.0, cv.wf() - 2.0, cv.hf() - 2.0];
     let body = shape.dist(&cv, b, "slot", 0.8);
-    let rg = ring(&cv, &body, 2.25);
-    let ci2 = cv.cover(&add(&body, 2.25));
-    let inner = zip(&body, &ci2, |b, c| clamp(1.0 + (b + 2.25) / 7.0) * c);
+    let rw = 2.25f64.max(ow + 0.75);
+    let rg = ring(&cv, &body, rw);
+    let glen = if hard { 3.0 } else { 7.0 };
+    let ci2 = cv.cover(&add(&body, rw));
+    let inner = zip(&body, &ci2, |b, c| clamp(1.0 + (b + rw) / glen) * c);
     let l = lit(&cv, &body);
+    let tone = |l: f64, soft: (f64, f64), strong: (f64, f64)| {
+        if hard {
+            soft.0 + soft.1 * b2f(l > 0.5)
+        } else if metal {
+            strong.0 + strong.1 * l
+        } else {
+            soft.0 + soft.1 * l
+        }
+    };
     let grey = Col::Each(
         l.iter()
             .map(|&l| {
-                let g = 0.78 + 0.22 * l;
+                let g = if hard {
+                    0.7 + 0.3 * b2f(l > 0.5)
+                } else {
+                    tone(l, (0.78, 0.22), (0.6, 0.4))
+                };
                 [g, g, g, 1.0]
             })
             .collect(),
@@ -1184,11 +1220,16 @@ pub fn draw(spec: &Value) -> Result<Vec<Piece>, String> {
     let body = shape.dist(&cv, b, "chip", 0.6);
     let cb = cv.cover(&body);
     cv.over1([0.16, 0.16, 0.16, 1.0], &cb);
+    let bw = if hard {
+        key(&m["bevel"], "width")?
+    } else {
+        1.0
+    };
     let l = lit(&cv, &body);
     let rim = Col::Each(
         l.iter()
             .map(|&l| {
-                let r = 0.17 + 0.36 * l;
+                let r = tone(l, (0.17, 0.36), (0.12, 0.5));
                 [r, r, r, 1.0]
             })
             .collect(),
@@ -1202,7 +1243,7 @@ pub fn draw(spec: &Value) -> Result<Vec<Piece>, String> {
         3.0,
         h - 3.0,
     );
-    let c2 = cv.cover(&add(&body, 2.0));
+    let c2 = cv.cover(&add(&body, 1.0 + bw));
     cv.over(&g, &c2);
     put(&mut out, "chip-bevel", &cv, true, true);
     Ok(out)

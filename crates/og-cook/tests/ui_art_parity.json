@@ -1,6 +1,6 @@
 {
  "flat-round": {
-  "badge": "ed1942c08e0d9521",
+  "badge": "a3a556135fd3c225",
   "button": "d942ded8e443997d",
   "button-danger": "0b8f5088d577d0d9",
   "button-danger-hover": "a409cfd29b131ef9",
@@ -18,10 +18,10 @@
   "panel": "ae0477e6abcf588d",
   "plate": "cc93ec00c89e0779",
   "slot": "ce92620b7efa8aa5",
-  "slot-rim": "7858d1c48b333f52"
+  "slot-rim": "9f3327526f94c665"
  },
  "glass-cut4": {
-  "badge": "c27c657747eb68b5",
+  "badge": "d8185c209543e605",
   "button": "7ec7db4b75da2b30",
   "button-danger": "1cc0b4dde733625a",
   "button-danger-hover": "e0f587032da5c52b",
@@ -42,7 +42,7 @@
   "slot-rim": "e54208d7f45c74f2"
  },
  "ink-brush": {
-  "badge": "9773162f90e3cee9",
+  "badge": "3cce5a076d3febcc",
   "button": "edce408f5ee091b5",
   "button-danger": "9edd4ee78e35ceef",
   "button-danger-hover": "6d294d394c008c6a",
@@ -63,28 +63,28 @@
   "slot-rim": "e02aa6b8b0d4e9dc"
  },
  "metal-cut": {
-  "badge": "c27c657747eb68b5",
-  "button": "c481d8471848a0d7",
-  "button-danger": "a37856bb219978b3",
-  "button-danger-hover": "9a1191c24dfcd65b",
-  "button-danger-pressed": "623f4231e45a1404",
-  "button-disabled": "7640ff790367c5ea",
-  "button-hover": "f870d4008f907794",
-  "button-pressed": "f145aa619dc94ae9",
-  "button-primary": "fd15b3ac7c38f627",
-  "button-primary-hover": "3c47ee25fc0805bf",
-  "button-primary-pressed": "cde404ab7425d690",
-  "chip": "3199b7f52b2c23a2",
-  "chip-bevel": "11a87249b4664cef",
+  "badge": "1873b35a87ed3261",
+  "button": "d57739435a1c7265",
+  "button-danger": "f3787ef7358ce7cc",
+  "button-danger-hover": "af3011b9e5f7a87c",
+  "button-danger-pressed": "c71809146f176081",
+  "button-disabled": "ca0c66366d25eb9b",
+  "button-hover": "6aed6f7f3319dba6",
+  "button-pressed": "2867f988487aa90d",
+  "button-primary": "fc73514cda8d6737",
+  "button-primary-hover": "e2ce566892128777",
+  "button-primary-pressed": "dfc0d52704a451fa",
+  "chip": "56ed984bb9ef860f",
+  "chip-bevel": "8503116a4e2e7048",
   "divider": "bf0f8bd17360d3d7",
-  "field": "8bb09e82fb7aab46",
-  "panel": "503f73b8b4f27532",
-  "plate": "4c09783f7e3a26f7",
-  "slot": "a49929c6413ab676",
-  "slot-rim": "58bed1a15f7dc4dc"
+  "field": "148fa9d7c3ba6fc3",
+  "panel": "2488cead00de5982",
+  "plate": "aa171bd35b2e0370",
+  "slot": "74f347528cade2c0",
+  "slot-rim": "35b7e212c687fb0d"
  },
  "paper-soft": {
-  "badge": "15f8b72b2ec06119",
+  "badge": "459421f176173565",
   "button": "93097ce7e4768ba5",
   "button-danger": "e9266966617bfa84",
   "button-danger-hover": "9730697815080727",
@@ -105,7 +105,7 @@
   "slot-rim": "8f98a509248bd668"
  },
  "pixel-pixel": {
-  "badge": "c27c657747eb68b5",
+  "badge": "60c3eed4c3a181d9",
   "button": "a81627283aa4c574",
   "button-danger": "bcb97367688e92b5",
   "button-danger-hover": "ccaebf26502d442c",
@@ -117,16 +117,16 @@
   "button-primary-hover": "ba47978a8c13b8f1",
   "button-primary-pressed": "fd04a5e4015c9f79",
   "chip": "387f56e28c787992",
-  "chip-bevel": "82a954548e287151",
+  "chip-bevel": "15577d9a5ef6b53a",
   "divider": "268c7138f3f350a7",
   "field": "43881f2cc2375df5",
   "panel": "d87959145ef7644d",
   "plate": "bda08fb3f6d54d6a",
   "slot": "bfcfb516cd6fe953",
-  "slot-rim": "73fedb47c8286f6d"
+  "slot-rim": "13036e3ded61c505"
  },
  "plastic-round": {
-  "badge": "d62e1298a3522269",
+  "badge": "fb30af1ab07d6ff9",
   "button": "8d6e09de013cd8e5",
   "button-danger": "d490288fe1f4edf5",
   "button-danger-hover": "6106713f72431c79",
@@ -144,10 +144,10 @@
   "panel": "0a78fe55227907d9",
   "plate": "2b14466b1933efe5",
   "slot": "534a7b4aed7aabf5",
-  "slot-rim": "7858d1c48b333f52"
+  "slot-rim": "9f3327526f94c665"
  },
  "wood-round": {
-  "badge": "c27c657747eb68b5",
+  "badge": "699fbdb0aa463865",
   "button": "ef7731c6b973df29",
   "button-danger": "dbaa22a4c34b7fc9",
   "button-danger-hover": "6b80534afe6f565b",
@@ -159,12 +159,12 @@
   "button-primary-hover": "3b267df9e330a4f6",
   "button-primary-pressed": "b6ef551077fabbbe",
   "chip": "15c99616766ab0e9",
-  "chip-bevel": "ce7a66ed81efde35",
+  "chip-bevel": "24a07161758bdf68",
   "divider": "01dca69769d4e687",
   "field": "ad8b6858360c57f1",
   "panel": "c2f891c3ddf6ee08",
   "plate": "4cd3afcae6ce9e4e",
   "slot": "299ee18530f23ccc",
-  "slot-rim": "d80978f3e6fc3c61"
+  "slot-rim": "ad23d9a6f3ad0c35"
  }
 }

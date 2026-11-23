@@ -296,7 +296,13 @@
   },
   "shape": {
    "family": "cut",
-   "cut": 9,
+   "cut": {
+    "control": 5,
+    "panel": 6,
+    "chip": 3,
+    "slot": 5,
+    "badge": 4
+   },
    "radius": {
     "control": 1,
     "panel": 1,
