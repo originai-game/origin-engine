@@ -19,7 +19,9 @@ impl Renderer {
 
     /// [`Renderer::restart`], blocking (native only).
     pub fn restart_blocking(self, desc: &RenderDesc) -> Result<Renderer, RenderError> {
-        pollster::block_on(self.restart(desc))
+        // Restart owns the previous renderer across adapter initialization.
+        // Keep that large future off pollster's nested executor stack frames.
+        pollster::block_on(Box::pin(self.restart(desc)))
     }
 
     /// [`Renderer::recreate`] headless, blocking: a renderer like this one
