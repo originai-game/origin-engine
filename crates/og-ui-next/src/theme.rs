@@ -719,6 +719,11 @@ pub fn compile(recipe: &Map<String, Value>, read: &mut Read) -> Result<Theme, St
             "shape": shape.as_ref().and_then(|s| s.get("art")).cloned().unwrap_or(json!({})),
             "ornament": ornaments,
         });
+        // A material's panel dressing (a coloured header band) goes to the
+        // art as the generator reads it.
+        if let Some(p) = m.get("panel") {
+            art["panel"] = p.clone();
+        }
     }
     if let Some(i) = &icons {
         if let Some(set) = i.get("set") {

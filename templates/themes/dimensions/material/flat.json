@@ -116,5 +116,19 @@
   "text": {
     "min": 0.82,
     "max": 1.0
+  },
+  "panel": {
+    "header": {
+      "height": 7,
+      "color": "accent",
+      "rule": {
+        "mix": [
+          "accent",
+          "#000000",
+          0.3
+        ]
+      },
+      "lift": 0.25
+    }
   }
 }
