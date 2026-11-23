@@ -53,7 +53,11 @@
      entering one after another, step between them, never spread past cap. toast:
      in, held (hold; holdDanger for an error), out. screen: a game-screen
      transition covers then reveals over this many slow durations. count: a
-     number rolling to a new value (Count.roll). */
+     number rolling to a new value (Count.roll). glide: a selection's
+     indicator sliding to the new one, on a spring of this damping whose
+     response is the duration (Tab.indicator). bar: a fill easing to a new
+     value (Bar.fill); trail: what was just lost draining after it, held
+     `delay` first (Bar.trail). */
   --motion-timing-hover-spring: default;
   --motion-timing-hover-magnet: 0.5;
   --motion-timing-press-in: 50ms;
@@ -73,6 +77,12 @@
   --motion-timing-cascade-easing: out;
   --motion-timing-count-duration: slow;
   --motion-timing-count-easing: out;
+  --motion-timing-glide-damping: 0.8;
+  --motion-timing-glide-duration: 300ms;
+  --motion-timing-bar-duration: base;
+  --motion-timing-bar-easing: out;
+  --motion-timing-trail-duration: 350ms;
+  --motion-timing-trail-delay: 450ms;
   --motion-timing-toast-enter: base;
   --motion-timing-toast-hold: 3200ms;
   --motion-timing-toast-hold-danger: 6000ms;

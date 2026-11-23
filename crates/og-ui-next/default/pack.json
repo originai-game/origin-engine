@@ -1476,6 +1476,9 @@
     }
   },
   "variants": {
+    "Attention.cue": "animate-nudge",
+    "Bar.fill": "transition-layout duration-240 ease-out",
+    "Bar.trail": "transition-layout duration-350 delay-450 ease-out",
     "Button.plate": "",
     "Chip.frame": "",
     "Count.roll": "transition-count duration-400 ease-out",
@@ -1494,6 +1497,7 @@
     "Row.frame.muted": "bg-raised-lo text-fg-muted",
     "Row.frame.selected": "bg-surface-hover text-fg border-l-3 border-hud-accent",
     "Screen.frame": "transition duration-180 ease-out starting:opacity-0 starting:scale-104 exit:opacity-0 exit:scale-98 exit:duration-120 exit:ease-exit",
-    "Slot.frame": ""
+    "Slot.frame": "",
+    "Tab.indicator": "transition-layout ease-spring-[439,33.5] glide-tab"
   }
 }

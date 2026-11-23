@@ -1730,7 +1730,11 @@ once the leaving one has left), `Modal.frame` how a dialog pops in and
 leaves, `Modal.scrim` the scrim it dims the screen with, fading on its own;
 `List.cascade` and `List.item` how a list's rows enter one after another,
 `Reward.pop` how a reward pops in, and `Count.roll` how a number rolls to a
-new value (`stagger-*` and `transition-count`, CONVENTIONS.md).
+new value (`stagger-*` and `transition-count`, CONVENTIONS.md);
+`Tab.indicator` the mark that glides to a newly selected tab or segment
+(`glide-<name>`), `Bar.fill` and `Bar.trail` how a bar eases and its lost
+part drains after it, and `Attention.cue` what a control plays once when it
+becomes enabled.
 The default pack derives the four from motion.css's timing table (press,
 enter, exit, pop), so a pack restyles the whole UI's feel
 by its tokens or its own variants. A slot that paints its own

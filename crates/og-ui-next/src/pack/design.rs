@@ -279,7 +279,7 @@ pub(crate) fn join(light: &Value, dark: &Value) -> Value {
 /// component's translucent or cleared fill under it is overruled. A row
 /// and a table head are opaque grounds with their inks for the same
 /// reason: the lists, tables and feeds that sit over the scene.
-pub const SLOTS: [(&str, &str, &str); 19] = [
+pub const SLOTS: [(&str, &str, &str); 23] = [
     (
         "Press.feedback",
         "the squash a control that answers a press shows under it, unless its own classes move it under active (its default is the motion tokens': Timing::press)",
@@ -309,6 +309,26 @@ pub const SLOTS: [(&str, &str, &str); 19] = [
         "Reward.pop",
         "a reward or a reveal arriving: how it pops in (in its turn under List.cascade)",
         "animate-pop",
+    ),
+    (
+        "Tab.indicator",
+        "the mark under a selected tab or segment, sliding from the one it replaces (Timing::indicator)",
+        "",
+    ),
+    (
+        "Bar.fill",
+        "a bar's or meter's fill: how it eases to a new value (Timing::bar)",
+        "",
+    ),
+    (
+        "Bar.trail",
+        "the trail behind a bar's fill: what was just lost, draining after the fill (Timing::trail)",
+        "",
+    ),
+    (
+        "Attention.cue",
+        "what a control plays once when it turns from disabled to enabled",
+        "animate-nudge",
     ),
     (
         "Count.roll",
@@ -724,6 +744,35 @@ impl Timing<'_> {
         )
     }
 
+    /// `Tab.indicator`: a selection's indicator, sliding on the glide row's
+    /// spring from the one it replaces (`glide-tab`).
+    fn indicator(&self) -> String {
+        let spring = Self::spring(
+            self.num("--motion-timing-glide-damping"),
+            self.ms("--motion-timing-glide-duration") / 1000.0,
+        );
+        format!("transition-layout {spring} glide-tab")
+    }
+
+    /// `Bar.fill`: a fill easing to a new value on the bar row.
+    fn bar(&self) -> String {
+        format!(
+            "transition-layout duration-{} ease-{}",
+            self.ms("--motion-timing-bar-duration"),
+            self.ease("--motion-timing-bar-easing")
+        )
+    }
+
+    /// `Bar.trail`: what was lost draining after the fill, on the trail row.
+    fn trail(&self) -> String {
+        format!(
+            "transition-layout duration-{} delay-{} ease-{}",
+            self.ms("--motion-timing-trail-duration"),
+            self.ms("--motion-timing-trail-delay"),
+            self.ease("--motion-timing-bar-easing")
+        )
+    }
+
     /// An easing row's name, as its `ease-*` utility takes it.
     fn ease(&self, name: &str) -> String {
         self.0
@@ -795,6 +844,9 @@ pub fn default_pack_json() -> String {
                 "Modal.scrim" => Timing(motion).scrim(),
                 "List.cascade" => Timing(motion).cascade(),
                 "Count.roll" => Timing(motion).count(),
+                "Tab.indicator" => Timing(motion).indicator(),
+                "Bar.fill" => Timing(motion).bar(),
+                "Bar.trail" => Timing(motion).trail(),
                 _ => dress.to_owned(),
             };
             (slot.to_string(), json!(dress))
