@@ -5,7 +5,7 @@
 
 import { expect, test } from "bun:test";
 import { defineSystem, og, type World } from "@origingame/engine";
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -945,4 +945,23 @@ export function Wrap(props: { label: string; tag: string; ref?: unknown }) { ret
     rmSync(dir, { recursive: true, force: true });
     renderers.delete(9003);
   }
+});
+
+// A caller's class comes after a component's own, and a later utility wins
+// (CONVENTIONS.md §Classes); but a state variant applies after every plain
+// utility. A built-in that restates its padding or size under hover:,
+// active: or focus: takes it back from the caller while that state holds
+// (Button's `active:py-0 active:px-4` undid a caller's `p-2` while pressed,
+// so the label jumped). Its own data-* states are its own to size.
+test("no built-in component or pack restates its spacing or size under an interaction state", () => {
+  const ui = fileURLToPath(new URL("../src/ui/", import.meta.url));
+  const repo = fileURLToPath(new URL("../../../", import.meta.url));
+  const walk = (d: string): string[] => readdirSync(d, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? walk(join(d, e.name)) : [join(d, e.name)]));
+  const files = [
+    ...walk(ui).filter((f) => f.endsWith(".tsx")),
+    join(repo, "crates/og-ui-next/default/pack.json"),
+    ...readdirSync(join(repo, "templates/styles")).map((d) => join(repo, "templates/styles", d, "pack.json")).filter((f) => existsSync(f)),
+  ];
+  const found = files.flatMap((f) => [...readFileSync(f, "utf8").matchAll(/(?<![\w-])(?:hover|active|focus|focus-visible|focus-within):(?:p[xytrbl]?|m[xytrbl]?|w|h|size|min-h|min-w|max-h|max-w|gap)-[\w.[\]/]+/g)].map((m) => `${f.slice(repo.length)}: ${m[0]}`));
+  expect(found).toEqual([]);
 });

@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "@ui/controls/button",
+      "summary": "A caller's padding holds while a Button is pressed: it no longer restates `py-0 px-4` under `active:`, which won over the caller's class while pressed and shifted the label."
+    }
+  ]
+}
