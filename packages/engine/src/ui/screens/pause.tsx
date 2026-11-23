@@ -2,6 +2,8 @@ import {For, Scroll, Icon, Show, Text, packClass, type UiEvent, View, formatDura
 import "./pause.en.ogt";
 
 export interface PauseScreenProps {
+  /** Classes after the screen's own (a placement, an inset): the root fills the layer it is mounted in by default. */
+  class?: string | undefined;
   /** The current objective (empty: none). */
   objective: string;
   /** Seconds played this run. */
@@ -86,7 +88,7 @@ function pauseRows(props: PauseScreenProps): Entry[] {
  */
 export function PauseScreen(props: PauseScreenProps) {
   return (
-    <View class="flex-row text-fg overflow-hidden">
+    <View class={`absolute inset-0 flex-row text-fg overflow-hidden ${props.class ?? ""}`}>
       <View class={`absolute inset-0 compact:bg-linear-to-b compact:from-glass compact:via-glass compact:via-40% compact:to-glass compact:bg-transparent`} />
       <Scroll class={`pr-8 pl-12 text-fg w-160 max-w-full h-full transition duration-240 ease-out py-8 compact:pt-8 compact:pb-4 compact:w-full compact:px-4 short:py-3 short:px-4 disabled:text-fg-subtle starting:opacity-0 starting:-translate-x-6 starting:translate-y-0 shrink`}>
         <Text class={`font-display text-8xl font-bold leading-tight tracking-xs uppercase text-fg text-shadow-xs text-shadow-bg m-0 compact:text-display-lg`}>

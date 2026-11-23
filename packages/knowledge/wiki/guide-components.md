@@ -4222,6 +4222,7 @@ Calibration in three steps: brightness (gamma), the audio offset measured from t
 
 | Prop | Type | What |
 |---|---|---|
+| `class?` | `string \| undefined` | Classes after the screen's own (a placement, an inset): the root fills the layer it is mounted in by default. |
 | `step` | `string` | brightness, offset or controller. |
 | `brightness` | `number` | The gamma's adjustment, 0 to 1 (two-way). |
 | `offset` | `number` | The audio offset in ms, -200 to 200 (two-way). |
@@ -4298,6 +4299,7 @@ The creator's tools on the HUD's smoked glass: the four tools a segmented switch
 
 | Prop | Type | What |
 |---|---|---|
+| `class?` | `string \| undefined` | Classes after the screen's own (a placement, an inset): the root fills the layer it is mounted in by default. |
 | `tool` | `string` | select, move, rotate or scale. |
 | `playing?` | `boolean` | The world is playing. |
 | `selected` | `string` | The selected object's name (empty: none). |
@@ -4327,6 +4329,7 @@ The credits: the sections' titles and names rolling over the key art's veil, the
 
 | Prop | Type | What |
 |---|---|---|
+| `class?` | `string \| undefined` | Classes after the screen's own (a placement, an inset): the root fills the layer it is mounted in by default. |
 | `sections` | `ReadonlyArray<{ id: string; names: ReadonlyArray<{ id: string; name: string; role: string }>; title: string }>` | The sections: { title, names: [{ name, role }] }. |
 | `offset` | `number` | How far the roll has run, CSS px. |
 | `keyArt` | `Texture \| 0` | The key art's texture under the roll's veil (og.load.texture; 0: the style's dark ground). |
@@ -4372,6 +4375,7 @@ A chapter select: the story's chapters in order with their thumbnails, the selec
 
 | Prop | Type | What |
 |---|---|---|
+| `class?` | `string \| undefined` | Classes after the screen's own (a placement, an inset): the root fills the layer it is mounted in by default. |
 | `chapters` | `ReadonlyArray<{ id: string; title: string; thumb: Texture \| 0; locked: boolean }>` | The chapters, in order (og.flow.load's chapters): keyed rows of { id, title, thumb (texture: the chapter's save's poster), locked (not reached yet: no save to play from) }. |
 | `selected` | `string` | The chapter selected now (its key). |
 | `onBack?` | `(e: UiEvent, key?: string) => void` | The back event, with the row's key where it comes from a row. |
@@ -4406,6 +4410,7 @@ The story so far over the dimmed flow: a band with Back and the title, the chart
 
 | Prop | Type | What |
 |---|---|---|
+| `class?` | `string \| undefined` | Classes after the screen's own (a placement, an inset): the root fills the layer it is mounted in by default. |
 | `nodes` | `ReadonlyArray<{ id: string; x: number; y: number; label: string; icon: string; state: string; shape: string; team: string }>` | og.flow.chart's nodes as NodeGraph's: keyed rows of { id (the node), x, y, label, icon, state, shape, team }. state: current (where the flow is), done (a segment seen), locked (not seen); an ending's shape diamond, a chapter's square, the rest circle. |
 | `links` | `ReadonlyArray<{ id: string; points: readonly number[]; active: boolean }>` | og.flow.chart's links as NodeGraph's: keyed rows of { id, points, active }, points the link's FlowChartLink.points, active a choice the player has taken. |
 | `view` | `readonly [number, number, number, number]` | The chart's extent, [0, 0, chart.width, chart.height] from og.flow.chart. |
@@ -4434,6 +4439,7 @@ An endings gallery: the endings reached and locked, with their thumbnails, the s
 
 | Prop | Type | What |
 |---|---|---|
+| `class?` | `string \| undefined` | Classes after the screen's own (a placement, an inset): the root fills the layer it is mounted in by default. |
 | `endings` | `ReadonlyArray<{ id: string; title: string; thumb: Texture \| 0; locked: boolean }>` | The endings, in order (og.flow.load's endings): keyed rows of { id, title, thumb (texture: the ending segment's poster), locked (not reached in any playthrough: its title stays hidden) }. |
 | `selected` | `string` | The ending selected now (its key). |
 | `onBack?` | `(e: UiEvent, key?: string) => void` | The back event, with the row's key where it comes from a row. |
@@ -4487,6 +4493,7 @@ Game over: the defeat's line, the run's score and the best, an optional revive o
 
 | Prop | Type | What |
 |---|---|---|
+| `class?` | `string \| undefined` | Classes after the screen's own (a placement, an inset): the root fills the layer it is mounted in by default. |
 | `title` | `string` | The defeat's line. |
 | `score` | `number` | The run's score. |
 | `best` | `number` | The best score. |
@@ -4517,6 +4524,7 @@ The HUD editor's frame: a hint at the top until the player moves something, over
 
 | Prop | Type | What |
 |---|---|---|
+| `class?` | `string \| undefined` | Classes after the screen's own (a placement, an inset): the root fills the layer it is mounted in by default. |
 | `showHint?` | `boolean` | The hint at the top shows (false once the player has moved something). |
 | `editorEditor?` | `(() => JSX.Element) \| undefined` | Content the caller supplies (was the editorEditor snippet). |
 
@@ -4550,6 +4558,7 @@ A leaderboard: global, friends and league tabs, the period, the top rows with th
 
 | Prop | Type | What |
 |---|---|---|
+| `class?` | `string \| undefined` | Classes after the screen's own (a placement, an inset): the root fills the layer it is mounted in by default. |
 | `tab` | `string` | global, friends or league. |
 | `period` | `string` | The period, as text (This week). |
 | `rows` | `ReadonlyArray<{ id: string; name: string; rank: number; score: number; texture: Texture \| 0; you: boolean }>` | The top rows: { rank, name, score, you (bool), texture }. |
@@ -4576,6 +4585,7 @@ The key art fills the screen. At its foot, over a shade that grows with the word
 
 | Prop | Type | What |
 |---|---|---|
+| `class?` | `string \| undefined` | Classes after the screen's own (a placement, an inset): the root fills the layer it is mounted in by default. |
 | `keyArt` | `Texture \| 0` | The key art's texture (og.load.texture; 0: the style's placeholder). |
 | `place` | `string` | Where the player is going. |
 | `tip` | `string` | A tip or a line of lore. |
@@ -4602,6 +4612,7 @@ The main menu over the key art: the logo or the name as a wordmark, Continue wit
 
 | Prop | Type | What |
 |---|---|---|
+| `class?` | `string \| undefined` | Classes after the screen's own (a placement, an inset): the root fills the layer it is mounted in by default. |
 | `canContinue?` | `boolean` | A save exists: Continue shows and takes the focus. |
 | `saveLine` | `string` | Under Continue: where the last save stands (chapter, time played). |
 | `version` | `string` | The build's version, shown small in the corner. |
@@ -4634,6 +4645,7 @@ A mode select: the modes as cards with their line, tag and picture, a locked mod
 
 | Prop | Type | What |
 |---|---|---|
+| `class?` | `string \| undefined` | Classes after the screen's own (a placement, an inset): the root fills the layer it is mounted in by default. |
 | `modes` | `ReadonlyArray<{ id: string; line: string; locked: boolean; name: string; reason: string; tag: string; texture: Texture \| 0 }>` | The modes: { name, line, tag, locked, reason, texture }. |
 | `selected` | `string` | The stable collection key selected now. |
 | `keyArt` | `Texture \| 0` | The key art's texture under the screen's veil (og.load.texture; 0: the style's dark ground). |
@@ -4716,6 +4728,7 @@ The pause menu: Resume, Settings, Controls, Save (grey when not allowed), Load, 
 
 | Prop | Type | What |
 |---|---|---|
+| `class?` | `string \| undefined` | Classes after the screen's own (a placement, an inset): the root fills the layer it is mounted in by default. |
 | `objective` | `string` | The current objective (empty: none). |
 | `played` | `number` | Seconds played this run. |
 | `canSave?` | `boolean` | Saving is allowed here. |
@@ -4756,6 +4769,7 @@ After a match: the verdict set large in a lit fill (gold for a win, red for a lo
 
 | Prop | Type | What |
 |---|---|---|
+| `class?` | `string \| undefined` | Classes after the screen's own (a placement, an inset): the root fills the layer it is mounted in by default. |
 | `won?` | `boolean` | The player won. |
 | `grade` | `string` | The grade (S, A, B …; empty: none). |
 | `title` | `string` | The result's line (Victory, Stage clear). |
@@ -4788,6 +4802,7 @@ Saving or loading: the slots with their title, place, time played, date and thum
 
 | Prop | Type | What |
 |---|---|---|
+| `class?` | `string \| undefined` | Classes after the screen's own (a placement, an inset): the root fills the layer it is mounted in by default. |
 | `mode` | `string` | save or load: the title and the main action. |
 | `slots` | `ReadonlyArray<{ auto: boolean; date: string; empty: boolean; id: string; place: string; played: number; thumb: Texture \| 0; title: string }>` | The saves: { title, place, played (seconds), date (text), auto (bool), empty (bool), thumb (texture) }. |
 | `selected` | `string` | The stable collection key selected now. |
@@ -4814,6 +4829,7 @@ Settings: a tab per page and its entries (toggles, ranges, choices and key bindi
 
 | Prop | Type | What |
 |---|---|---|
+| `class?` | `string \| undefined` | Classes after the screen's own (a placement, an inset): the root fills the layer it is mounted in by default. |
 | `note` | `string` | A line under the title (Some changes apply after a restart); empty: none. |
 | `pages` | `ReadonlyArray<{ id: string; name: string }>` | The settings' pages as a keyed collection of { id, name }: a tab each. |
 | `entries` | `ReadonlyArray<{ id: string; page: string; name: string; description: string; kind: string; value: boolean \| number \| string; min?: number; max?: number; step?: number; options?: ReadonlyArray<string>; action?: string }>` | The settings as a keyed collection of { id, page, name, description, kind: toggle\|range\|select\|binding, value, min, max, step, options, action }, shown on their page's tab; each value is written back as the player changes it (two-way via onChange). |
@@ -4843,6 +4859,7 @@ The boot splash: the studio marks one after another (a texture, or the name set 
 
 | Prop | Type | What |
 |---|---|---|
+| `class?` | `string \| undefined` | Classes after the screen's own (a placement, an inset): the root fills the layer it is mounted in by default. |
 | `marks` | `ReadonlyArray<{ id: string; name: string; texture: Texture \| 0 }>` | The marks in order: { name, texture } (texture: an og.load.texture handle; 0 sets the name as a wordmark). |
 | `mark` | `string` | The stable collection key selected now. |
 | `progress` | `number` | Boot progress, 0 to 1 (below 0: no bar). |
@@ -4913,6 +4930,7 @@ The title screen over the key art: the logo or the name as a wordmark, Press any
 
 | Prop | Type | What |
 |---|---|---|
+| `class?` | `string \| undefined` | Classes after the screen's own (a placement, an inset): the root fills the layer it is mounted in by default. |
 | `version` | `string` | The build's version. |
 | `legal` | `string` | The legal line at the foot (copyright, trademarks). |
 | `keyArt` | `Texture \| 0` | The key art's texture under the title (og.load.texture; 0: the style's dark ground). The screen sits over a picture, so it resolves in the dark scheme in both: its veils darken the art instead of washing it pale. |

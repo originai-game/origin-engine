@@ -5,6 +5,8 @@ import { Button } from "../controls/button";
 import "./mode-select.en.ogt";
 
 export interface ModeSelectScreenProps {
+  /** Classes after the screen's own (a placement, an inset): the root fills the layer it is mounted in by default. */
+  class?: string | undefined;
   /** The modes: { name, line, tag, locked, reason, texture }. */
   modes: ReadonlyArray<{ id: string; line: string; locked: boolean; name: string; reason: string; tag: string; texture: Texture | 0 }>;
   /** The stable collection key selected now. */
@@ -28,7 +30,7 @@ export interface ModeSelectScreenProps {
  */
 export function ModeSelectScreen(props: ModeSelectScreenProps) {
   return (
-    <View class={`pt-8 pb-6 text-fg gap-y-6 px-12 overflow-hidden compact:pt-4 compact:pb-3 compact:gap-y-3 compact:px-4`}>
+    <View class={`absolute inset-0 pt-8 pb-6 text-fg gap-y-6 px-12 overflow-hidden compact:pt-4 compact:pb-3 compact:gap-y-3 compact:px-4 ${props.class ?? ""}`}>
       <Show when={props.keyArt !== 0}>
         <Art class="absolute object-cover inset-0 size-full" kind="keyArt" src={props.keyArt} />
       </Show>

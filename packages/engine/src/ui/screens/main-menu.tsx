@@ -4,6 +4,8 @@ import { Art } from "../controls/art";
 import "./main-menu.en.ogt";
 
 export interface MainMenuScreenProps {
+  /** Classes after the screen's own (a placement, an inset): the root fills the layer it is mounted in by default. */
+  class?: string | undefined;
   /** A save exists: Continue shows and takes the focus. */
   canContinue?: boolean;
   /** Under Continue: where the last save stands (chapter, time played). */
@@ -47,7 +49,7 @@ export interface MainMenuScreenProps {
  */
 export function MainMenuScreen(props: MainMenuScreenProps) {
   return (
-    <View class="scheme-dark text-fg overflow-hidden">
+    <View class={`absolute inset-0 scheme-dark text-fg overflow-hidden ${props.class ?? ""}`}>
       <Show when={props.keyArt !== 0}>
         <Art class="absolute object-cover inset-0 size-full" kind="keyArt" src={props.keyArt} />
       </Show>

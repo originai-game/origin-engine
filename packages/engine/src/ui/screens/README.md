@@ -60,6 +60,20 @@ disabled? }`), drawn as the built-in ones in their place and reported by
 `onRow` with their key. `ui-tsx.test.ts` presses every button of these
 screens with one handler left out and fails on a press that does nothing.
 
+## Placement
+
+A full-screen screen (title, main menu, mode select, splash, loading,
+pause, settings, HUD editor, save and load, results, game over,
+leaderboard, calibration, credits, creator tools and the film's chapter,
+chart and gallery screens) fills the layer it is mounted in: its root is
+`absolute inset-0`, so it covers a game's own column or a centred portrait
+frame as well as the mount's surface, whatever that parent's layout.
+Each takes a `class`, applied after its own classes, for a placement or
+inset of the game's (`top-[env(safe-area-inset-top)]`). A screen whose
+content is taller than its layer scrolls it: Results never cuts its grade,
+stats or rewards. `ui-tsx.test.ts` mounts every one in a 390×844 column
+and fails on a root of any other size.
+
 `og ui eject --list` prints these generic screens. og-ui's
 `tests/component_documents.rs` builds each from its fixtures, and
 og-tests-ui's `tests/document_frames.rs` draws its `fixture:default` in

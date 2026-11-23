@@ -2,6 +2,8 @@ import {Show, Text, View, t, packClass} from "@origingame/engine/ui";
 import "./hud-editor.en.ogt";
 
 export interface HudEditorScreenProps {
+  /** Classes after the screen's own (a placement, an inset): the root fills the layer it is mounted in by default. */
+  class?: string | undefined;
   /** The hint at the top shows (false once the player has moved something). */
   showHint?: boolean;
   /** Content the caller supplies (was the editorEditor snippet). */
@@ -14,7 +16,7 @@ export interface HudEditorScreenProps {
  */
 export function HudEditorScreen(props: HudEditorScreenProps) {
   return (
-    <View>
+    <View class={`absolute inset-0 ${props.class ?? ""}`}>
       <Show when={props.showHint}>
         <View class={`absolute w-max top-6 bg-plate-hi border border-rim backdrop-blur-regular nine-panel-cut py-3 px-6 mx-auto inset-x-0 compact:top-12 ${packClass("Panel", "frame")}`}>
           <Text class={`text-center line-clamp-2 text-reading font-semibold text-fg m-0`}>

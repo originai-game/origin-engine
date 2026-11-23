@@ -5,6 +5,8 @@ import { Counter } from "../controls/counter";
 import "./splash.en.ogt";
 
 export interface SplashScreenProps {
+  /** Classes after the screen's own (a placement, an inset): the root fills the layer it is mounted in by default. */
+  class?: string | undefined;
   /** The marks in order: { name, texture } (texture: an og.load.texture handle; 0 sets the name as a wordmark). */
   marks: ReadonlyArray<{ id: string; name: string; texture: Texture | 0 }>;
   /** The stable collection key selected now. */
@@ -26,7 +28,7 @@ export interface SplashScreenProps {
  */
 export function SplashScreen(props: SplashScreenProps) {
   return (
-    <View class={`text-fg items-center gap-y-6 p-12 compact:pt-8 compact:pb-15 compact:px-6`} onPress={(e) => props.onSkip?.(e)} onAction={{ confirm: (e) => props.onSkip?.(e) }}>
+    <View class={`absolute inset-0 text-fg items-center gap-y-6 p-12 compact:pt-8 compact:pb-15 compact:px-6 ${props.class ?? ""}`} onPress={(e) => props.onSkip?.(e)} onAction={{ confirm: (e) => props.onSkip?.(e) }}>
       <View class="items-center gap-y-6 w-full mt-auto">
         <For each={props.marks}>
           {(m) => (

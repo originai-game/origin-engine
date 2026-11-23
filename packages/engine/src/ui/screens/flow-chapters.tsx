@@ -5,6 +5,8 @@ import { Button } from "../controls/button";
 import "./flow-chapters.en.ogt";
 
 export interface FlowChaptersScreenProps {
+  /** Classes after the screen's own (a placement, an inset): the root fills the layer it is mounted in by default. */
+  class?: string | undefined;
   /** The chapters, in order (og.flow.load's chapters): keyed rows of { id, title, thumb (texture: the chapter's save's poster), locked (not reached yet: no save to play from) }. */
   chapters: ReadonlyArray<{ id: string; title: string; thumb: Texture | 0; locked: boolean }>;
   /** The chapter selected now (its key). */
@@ -22,7 +24,7 @@ export interface FlowChaptersScreenProps {
  */
 export function FlowChaptersScreen(props: FlowChaptersScreenProps) {
   return (
-    <View class={`pt-8 pb-6 text-fg gap-y-4 px-12 overflow-hidden compact:pt-4 compact:gap-y-3`}>
+    <View class={`absolute inset-0 pt-8 pb-6 text-fg gap-y-4 px-12 overflow-hidden compact:pt-4 compact:gap-y-3 ${props.class ?? ""}`}>
       <View class={`absolute bg-glass inset-0`} />
       <View class={`flex-row items-baseline gap-x-4 p-0 compact:flex-wrap compact:gap-y-1`}>
         <Button class={`text-fg-muted compact:-ml-2 ${packClass("Button", "plate")}`} onPress={(e) => props.onBack?.(e)}>

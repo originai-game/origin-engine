@@ -12,6 +12,8 @@ function ordinal(n: number): string {
 }
 
 export interface LeaderboardScreenProps {
+  /** Classes after the screen's own (a placement, an inset): the root fills the layer it is mounted in by default. */
+  class?: string | undefined;
   /** global, friends or league. */
   tab: string;
   /** The period, as text (This week). */
@@ -41,7 +43,7 @@ export interface LeaderboardScreenProps {
  */
 export function LeaderboardScreen(props: LeaderboardScreenProps) {
   return (
-    <View class={`text-fg grow shrink basis-0 p-8 gap-3 compact:p-3 compact:gap-2 disabled:text-fg-subtle`}>
+    <View class={`absolute inset-0 text-fg grow shrink basis-0 p-8 gap-3 compact:p-3 compact:gap-2 disabled:text-fg-subtle ${props.class ?? ""}`}>
       <View class={`absolute bg-linear-to-r from-shade-deep via-shade-deep via-55% to-shade-deep inset-0`} />
       <View class={`w-full max-w-264 flex-row flex-wrap items-center gap-y-2 gap-x-3 p-0 mx-auto`}>
         <Button class={`shrink ${packClass("Button", "plate")}`} onPress={(e) => props.onBack?.(e)}><Text>{t("screen.common.back")}</Text></Button>

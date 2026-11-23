@@ -5,6 +5,8 @@ import { Button } from "../controls/button";
 import "./credits.en.ogt";
 
 export interface CreditsScreenProps {
+  /** Classes after the screen's own (a placement, an inset): the root fills the layer it is mounted in by default. */
+  class?: string | undefined;
   /** The sections: { title, names: [{ name, role }] }. */
   sections: ReadonlyArray<{ id: string; names: ReadonlyArray<{ id: string; name: string; role: string }>; title: string }>;
   /** How far the roll has run, CSS px. */
@@ -30,7 +32,7 @@ export interface CreditsScreenProps {
  */
 export function CreditsScreen(props: CreditsScreenProps) {
   return (
-    <View class={`grow shrink basis-0 text-fg p-0 gap-0 overflow-hidden`} onPress={(e) => props.onFaster?.(e)} onAction={{ confirm: (e) => props.onFaster?.(e) }}>
+    <View class={`absolute inset-0 grow shrink basis-0 text-fg p-0 gap-0 overflow-hidden ${props.class ?? ""}`} onPress={(e) => props.onFaster?.(e)} onAction={{ confirm: (e) => props.onFaster?.(e) }}>
       <Show when={props.keyArt !== 0}>
         <Art class="absolute object-cover inset-0 size-full" kind="keyArt" src={props.keyArt} />
       </Show>

@@ -5,6 +5,8 @@ import { Button } from "../controls/button";
 import "./flow-gallery.en.ogt";
 
 export interface FlowGalleryScreenProps {
+  /** Classes after the screen's own (a placement, an inset): the root fills the layer it is mounted in by default. */
+  class?: string | undefined;
   /** The endings, in order (og.flow.load's endings): keyed rows of { id, title, thumb (texture: the ending segment's poster), locked (not reached in any playthrough: its title stays hidden) }. */
   endings: ReadonlyArray<{ id: string; title: string; thumb: Texture | 0; locked: boolean }>;
   /** The ending selected now (its key). */
@@ -22,7 +24,7 @@ export interface FlowGalleryScreenProps {
  */
 export function FlowGalleryScreen(props: FlowGalleryScreenProps) {
   return (
-    <View class={`pt-8 pb-6 text-fg gap-y-4 px-12 overflow-hidden compact:pt-4 compact:gap-y-3`}>
+    <View class={`absolute inset-0 pt-8 pb-6 text-fg gap-y-4 px-12 overflow-hidden compact:pt-4 compact:gap-y-3 ${props.class ?? ""}`}>
       <View class={`absolute bg-glass inset-0`} />
       <View class={`flex-row items-baseline gap-x-4 p-0 compact:flex-wrap compact:gap-y-1`}>
         <Button class={`text-fg-muted compact:-ml-2 ${packClass("Button", "plate")}`} onPress={(e) => props.onBack?.(e)}>

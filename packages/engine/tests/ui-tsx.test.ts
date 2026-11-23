@@ -751,3 +751,65 @@ export function Probe(props: { off: boolean }) {
     renderers.delete(9200);
   }
 });
+
+// A built-in full-screen screen fills the layer it is mounted in and takes
+// the caller's `class` after its own (screens README, Placement). Ways this
+// could fail: a root sized to its content (Star Focus's title, a 198 px band
+// in an 844 px column), a root that fills only along a flex parent's main
+// axis, or a caller's class dropped or applied before the screen's own.
+const FULL_SCREENS = ["calibration", "creator-tools", "credits", "flow-chapters", "flow-chart", "flow-gallery", "game-over", "hud-editor", "leaderboard", "loading", "main-menu", "mode-select", "pause", "results", "save-load", "settings", "splash", "title"];
+test("every built-in full-screen screen fills a game's 390x844 column and takes its class", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "og-tsx-fill-"));
+  try {
+    writeFileSync(join(dir, "project.ogt"), "type project\nversion 1\n---\n");
+    const src = (n: string) => fileURLToPath(new URL(`../src/ui/screens/${n}.tsx`, import.meta.url));
+    writeFileSync(join(dir, "main.ts"), FULL_SCREENS.map((n, i) => `export * as S${i} from ${JSON.stringify(src(n))};`).join("\n") + "\n");
+    const out = join(dir, "game.js");
+    const b = await bundleGame(join(dir, "main.ts"), out, "native");
+    if (!b.ok) throw new Error(b.reason);
+    const rt = fileURLToPath(new URL("../src/ui/rt.ts", import.meta.url));
+    const ui = fileURLToPath(new URL("../src/ui/index.ts", import.meta.url));
+    writeFileSync(out, readFileSync(out, "utf8").replace(/(["'])[^"']*\/ui\/rt(\.ts)?\1/g, JSON.stringify(rt)).replace(/(["'])@origingame\/engine\/ui\1/g, JSON.stringify(ui)));
+    const mods = (await import(out)) as Record<string, Record<string, unknown>>;
+    loadNativeHost();
+
+    type El = { id: string; parent: string; name: string; role: string; x: number; y: number; width: number; height: number };
+    const rootOf = (name: string, extra?: string, height = 844) => {
+      const mod = mods[`S${FULL_SCREENS.indexOf(name)}`]!;
+      const Screen = Object.entries(mod).find(([k, v]) => /Screen$/.test(k) && typeof v === "function")![1] as (p: unknown) => never;
+      const props = { ...(mod.fixtures as Record<string, Record<string, unknown>>).default, ...(extra ? { class: extra } : {}) };
+      const game = og.game({
+        ui(world) {
+          // A game's own column, as Star Focus composes its screens: a flex column, not the mount's grid cell.
+          mount(world, () => View({ role: "group", label: "column", class: `absolute left-0 top-0 w-[390px] h-[${height}px] flex-col`, children: Screen(props) }), {});
+        },
+      });
+      const created = createEngine(game as unknown as GameToken);
+      if (!created.ok) throw new Error(created.reason);
+      const engine = created.value;
+      const id = (engine.world as unknown as { id: number }).id;
+      try {
+        for (let i = 0; i < 3; i++) engine.frame(1000 / 60);
+        const els = (JSON.parse(native().og_node_ui_frame(id)) as { elements: El[] }).elements;
+        // Under the surface and the mount's layer (`1/<layer>`): the game's column, then the screen's root.
+        // Paths run mount/column/root: the screen's root is the column's one child.
+        const root = els.find((e) => (e as El & { path: string }).path.split("/").length === 3)!;
+        const shown = (text: string) => els.some((e) => (e as El & { text: string }).text === text && e.y >= 0 && e.y < height);
+        return { name, box: [root.x, root.y, root.width, root.height], shown };
+      } finally {
+        renderers.delete(id);
+        engine.destroy();
+      }
+    };
+    expect(FULL_SCREENS.map((name) => { const r = rootOf(name); return { name: r.name, box: r.box }; })).toEqual(FULL_SCREENS.map((name) => ({ name, box: [0, 0, 390, 844] })));
+    // Results never clips its grade, stats or rewards: all on a phone, and on a short column the page scrolls from its top.
+    const results = rootOf("results");
+    expect(["A", "Score", "Kills", "screen.results.rewards"].map((t) => [t, results.shown(t)])).toEqual([["A", true], ["Score", true], ["Kills", true], ["screen.results.rewards", true]]);
+    const short = rootOf("results", undefined, 360);
+    expect({ box: short.box, title: short.shown("Victory") }).toEqual({ box: [0, 0, 390, 360], title: true });
+    // The caller's class comes after the screen's own: an inset it gives wins.
+    expect(rootOf("title", "top-[100px]").box).toEqual([0, 100, 390, 744]);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});

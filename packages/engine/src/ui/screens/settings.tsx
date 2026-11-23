@@ -3,6 +3,8 @@ import { Button } from "../controls/button";
 import "./settings.en.ogt";
 
 export interface SettingsScreenProps {
+  /** Classes after the screen's own (a placement, an inset): the root fills the layer it is mounted in by default. */
+  class?: string | undefined;
   /** A line under the title (Some changes apply after a restart); empty: none. */
   note: string;
   /** The settings' pages as a keyed collection of { id, name }: a tab each. */
@@ -40,7 +42,7 @@ export function SettingsScreen(props: SettingsScreenProps) {
   const listening = createSignal("");
   const openChoice = createSignal("");
   return (
-    <View class={`pt-8 pb-6 text-fg gap-y-4 px-12 overflow-hidden compact:pt-4 compact:pb-3 compact:gap-y-3 compact:px-4`}>
+    <View class={`absolute inset-0 pt-8 pb-6 text-fg gap-y-4 px-12 overflow-hidden compact:pt-4 compact:pb-3 compact:gap-y-3 compact:px-4 ${props.class ?? ""}`}>
       <View class={`absolute bg-glass inset-0`} />
       <View class={`flex-row min-h-12 border-b border-rim-soft items-baseline gap-x-4 py-1 px-4 compact:flex-wrap compact:gap-y-1`}>
         <Show when={props.onBack}>

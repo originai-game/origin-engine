@@ -7,6 +7,8 @@ import { Progress } from "../controls/progress";
 import "./results.en.ogt";
 
 export interface ResultsScreenProps {
+  /** Classes after the screen's own (a placement, an inset): the root fills the layer it is mounted in by default. */
+  class?: string | undefined;
   /** The player won. */
   won?: boolean;
   /** The grade (S, A, B …; empty: none). */
@@ -51,7 +53,7 @@ export interface ResultsScreenProps {
  */
 export function ResultsScreen(props: ResultsScreenProps) {
   return (
-    <View class="bg-linear-to-r from-glass via-glass via-55% to-glass py-8 px-16 compact:p-3 short:py-3 short:px-4">
+    <View class={`absolute inset-0 bg-linear-to-r from-glass via-glass via-55% to-glass py-8 px-16 compact:p-3 short:py-3 short:px-4 ${props.class ?? ""}`}>
       <View class={`text-fg max-w-384 p-0 mx-auto gap-4 size-full disabled:text-fg-subtle short:flex-row compact:gap-3 shrink ${packClass("Panel", "frame")}`}>
         <Scroll class="grow shrink basis-0 gap-6 compact:justify-start compact:gap-3 short:justify-start short:gap-2">
           <View class="items-end gap-6 compact:items-start compact:gap-3">

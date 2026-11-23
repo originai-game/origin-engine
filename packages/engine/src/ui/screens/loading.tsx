@@ -6,6 +6,8 @@ import { Button } from "../controls/button";
 import "./loading.en.ogt";
 
 export interface LoadingScreenProps {
+  /** Classes after the screen's own (a placement, an inset): the root fills the layer it is mounted in by default. */
+  class?: string | undefined;
   /** The key art's texture (og.load.texture; 0: the style's placeholder). */
   keyArt: Texture | 0;
   /** Where the player is going. */
@@ -37,7 +39,7 @@ export interface LoadingScreenProps {
  */
 export function LoadingScreen(props: LoadingScreenProps) {
   return (
-    <View class="text-fg overflow-hidden" onPress={(e) => props.onNextTip?.(e)}>
+    <View class={`absolute inset-0 text-fg overflow-hidden ${props.class ?? ""}`} onPress={(e) => props.onNextTip?.(e)}>
       <Show when={props.keyArt}>
         <Art class="absolute object-cover inset-0" kind="tutorial" src={props.keyArt} />
       </Show>

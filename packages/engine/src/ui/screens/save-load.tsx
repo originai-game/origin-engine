@@ -5,6 +5,8 @@ import { Button } from "../controls/button";
 import "./save-load.en.ogt";
 
 export interface SaveLoadScreenProps {
+  /** Classes after the screen's own (a placement, an inset): the root fills the layer it is mounted in by default. */
+  class?: string | undefined;
   /** save or load: the title and the main action. */
   mode: string;
   /** The saves: { title, place, played (seconds), date (text), auto (bool), empty (bool), thumb (texture) }. */
@@ -35,7 +37,7 @@ export interface SaveLoadScreenProps {
  */
 export function SaveLoadScreen(props: SaveLoadScreenProps) {
   return (
-    <View class={`pt-8 pb-6 text-fg gap-y-6 px-12 overflow-hidden compact:pt-4 compact:pb-3 compact:gap-y-3 compact:px-4`}>
+    <View class={`absolute inset-0 pt-8 pb-6 text-fg gap-y-6 px-12 overflow-hidden compact:pt-4 compact:pb-3 compact:gap-y-3 compact:px-4 ${props.class ?? ""}`}>
       <View class={`absolute bg-glass inset-0`} />
       <View class={`flex-row min-h-12 border-b border-rim-soft items-center gap-x-4 py-1 px-4 narrow:flex-wrap narrow:gap-y-1`}>
         <Show when={props.onBack}>

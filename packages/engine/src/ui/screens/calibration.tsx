@@ -43,6 +43,8 @@ function Slider(props: {
 }
 
 export interface CalibrationScreenProps {
+  /** Classes after the screen's own (a placement, an inset): the root fills the layer it is mounted in by default. */
+  class?: string | undefined;
   /** brightness, offset or controller. */
   step: string;
   /** The gamma's adjustment, 0 to 1 (two-way). */
@@ -80,7 +82,7 @@ export interface CalibrationScreenProps {
  */
 export function CalibrationScreen(props: CalibrationScreenProps) {
   return (
-    <View class="grow shrink basis-0 justify-center items-center text-fg w-full p-8 gap-2 compact:p-3">
+    <View class={`absolute inset-0 grow shrink basis-0 justify-center items-center text-fg w-full p-8 gap-2 compact:p-3 ${props.class ?? ""}`}>
       <View class="absolute inset-0" />
       <View class={`nine-panel-cut bg-plate-hi border border-rim text-fg gap-y-4 w-full max-w-190 py-6 px-8 compact:gap-y-3 compact:p-4 disabled:text-fg-subtle ${packClass("Panel", "frame")}`}>
         <View class="flex-row items-center gap-x-2 p-0 m-0 compact:gap-x-1">

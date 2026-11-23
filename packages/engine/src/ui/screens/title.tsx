@@ -4,6 +4,8 @@ import { Art } from "../controls/art";
 import "./title.en.ogt";
 
 export interface TitleScreenProps {
+  /** Classes after the screen's own (a placement, an inset): the root fills the layer it is mounted in by default. */
+  class?: string | undefined;
   /** The build's version. */
   version: string;
   /** The legal line at the foot (copyright, trademarks). */
@@ -28,7 +30,7 @@ export interface TitleScreenProps {
  */
 export function TitleScreen(props: TitleScreenProps) {
   return (
-    <View class={`scheme-dark text-fg p-0 overflow-hidden`} onPress={(e) => props.onStart?.(e)} onAction={{ confirm: (e) => props.onStart?.(e) }}>
+    <View class={`absolute inset-0 scheme-dark text-fg p-0 overflow-hidden ${props.class ?? ""}`} onPress={(e) => props.onStart?.(e)} onAction={{ confirm: (e) => props.onStart?.(e) }}>
       <Show when={props.keyArt !== 0}>
         <Art class="absolute object-cover inset-0 size-full" kind="keyArt" src={props.keyArt} />
       </Show>

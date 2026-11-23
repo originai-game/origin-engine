@@ -4,6 +4,8 @@ import { Button } from "../controls/button";
 import "./flow-chart.en.ogt";
 
 export interface FlowChartScreenProps {
+  /** Classes after the screen's own (a placement, an inset): the root fills the layer it is mounted in by default. */
+  class?: string | undefined;
   /** og.flow.chart's nodes as NodeGraph's: keyed rows of { id (the node), x, y, label, icon, state, shape, team }. state: current (where the flow is), done (a segment seen), locked (not seen); an ending's shape diamond, a chapter's square, the rest circle. */
   nodes: ReadonlyArray<{ id: string; x: number; y: number; label: string; icon: string; state: string; shape: string; team: string }>;
   /** og.flow.chart's links as NodeGraph's: keyed rows of { id, points, active }, points the link's FlowChartLink.points, active a choice the player has taken. */
@@ -41,7 +43,7 @@ export interface FlowChartScreenProps {
  */
 export function FlowChartScreen(props: FlowChartScreenProps) {
   return (
-    <View class="pt-8 pb-6 px-12 gap-y-4 text-accent-hover overflow-hidden compact:pt-4 compact:px-4 compact:gap-y-3">
+    <View class={`absolute inset-0 pt-8 pb-6 px-12 gap-y-4 text-accent-hover overflow-hidden compact:pt-4 compact:px-4 compact:gap-y-3 ${props.class ?? ""}`}>
       <View class="absolute bg-glass inset-0" />
       <View class="items-baseline gap-x-4 p-0 compact:flex-wrap compact:gap-y-1">
         <Button class="text-accent-hover compact:-ml-2" onPress={(e) => props.onBack?.(e)}>
