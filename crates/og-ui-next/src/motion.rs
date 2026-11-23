@@ -348,6 +348,12 @@ struct Live {
     /// Its keyframes played at the last sample.
     playing: bool,
     exiting: bool,
+    /// When its exit logically ends (the store's time): what replaces it
+    /// enters then.
+    ends: f64,
+    /// When its entrance starts after a wait ([`Motion::enter_after`]), so
+    /// entering again before it is drawn (a new record) keeps the wait.
+    starts: f64,
 }
 
 /// The UI's motion: what moves, sampled once per frame.
@@ -452,14 +458,29 @@ impl Motion {
     /// element of the first build, which appears as it is. An element
     /// inserted again while it exits turns back from where it is.
     pub fn enter(&mut self, id: Id, to: &Record, from: Option<&Record>) {
+        self.enter_after(id, to, from, 0.0);
+    }
+
+    /// [`Motion::enter`], holding its `starting:` record `wait` seconds
+    /// first: a screen that replaces one leaving enters once that one has
+    /// left ([`Motion::leaves_in`]).
+    pub fn enter_after(&mut self, id: Id, to: &Record, from: Option<&Record>, wait: f32) {
         if let Some(i) = self.find(id).filter(|&i| self.live[i].exiting) {
             self.live[i].exiting = false;
             let base = self.live[i].base;
             self.go(id, &to.motion, &base, &to.skin, false);
             return;
         }
+        let now = self.store.now();
+        let held = self.find(id).map_or(0.0, |i| self.live[i].starts - now);
+        let wait = wait.max(held as f32).max(0.0);
         let from = from.map_or(&to.skin, |f| &f.skin);
-        self.go(id, &to.motion, from, &to.skin, true);
+        let mut spec = to.motion;
+        spec.delay += wait;
+        self.go(id, &spec, from, &to.skin, true);
+        if let Some(i) = self.find(id).filter(|_| wait > 0.0) {
+            self.live[i].starts = now + wait as f64;
+        }
     }
 
     /// `id`'s record changed from `old` to `new` (a class, a state, the
@@ -482,7 +503,15 @@ impl Motion {
         self.go(id, &to.motion, &from.skin, &to.skin, false);
         match self.find(id) {
             Some(i) if self.live[i].tracks & !FRAME_BIT != 0 => {
-                self.live[i].exiting = true;
+                let m = &to.motion;
+                let end = [m.anim(), m.anim_of(TRANSFORM)]
+                    .into_iter()
+                    .flatten()
+                    .map(|a| a.delay + a.curve.logical_duration())
+                    .fold(0.0f32, f32::max);
+                let l = &mut self.live[i];
+                l.exiting = true;
+                l.ends = self.store.now() + end as f64;
                 true
             }
             _ => {
@@ -497,6 +526,16 @@ impl Motion {
         if let Some(i) = self.find(id) {
             self.drop_live(i);
         }
+    }
+
+    /// Seconds until `id`'s exit logically ends (a spring's perceptual
+    /// duration, a tween's own); 0 when it is not exiting.
+    pub fn leaves_in(&self, id: Id) -> f32 {
+        self.find(id)
+            .filter(|&i| self.live[i].exiting)
+            .map_or(0.0, |i| {
+                (self.live[i].ends - self.store.now()).max(0.0) as f32
+            })
     }
 
     /// Whether `id` is on its way out (drawn, not hit).
@@ -589,6 +628,8 @@ impl Motion {
             posed: false,
             playing: false,
             exiting: false,
+            ends: f64::NEG_INFINITY,
+            starts: f64::NEG_INFINITY,
         });
         self.live.len() - 1
     }

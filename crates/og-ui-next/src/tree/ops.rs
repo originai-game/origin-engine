@@ -476,7 +476,7 @@ impl Tree {
     /// records, as CSS's `@starting-style` applies to every element first
     /// drawn (a screen inside the `<Show>` branch or the mount that brings
     /// it).
-    fn enter_subtree(&mut self, top: u32) {
+    fn enter_subtree(&mut self, top: u32, wait: f32) {
         for i in 0..self.entering.len() {
             let d = self.entering[i];
             if d == top || self.els[d as usize].entering != Some(false) {
@@ -488,9 +488,42 @@ impl Tree {
             self.els[d as usize].entering = Some(true);
             let el = &self.els[d as usize];
             if let Some(from) = self.classes.presence(el.class, 0) {
-                self.motion.enter(el.node, &el.record, Some(from));
+                self.motion
+                    .enter_after(el.node, &el.record, Some(from), wait);
             }
         }
+    }
+
+    /// How long `child`, put on screen beside an absolutely placed sibling
+    /// on its way out, holds its entrance: until what leaves there has
+    /// left, so a screen that replaces one (a `<Show>` branch, a mount)
+    /// enters after it instead of over it. 0 for anything else: a list's
+    /// rows, which flow, come and go together.
+    fn handoff(&self, child: u32) -> f32 {
+        let abs =
+            |e: u32| self.els[e as usize].record.layout.position() == taffy::Position::Absolute;
+        if !abs(child) {
+            return 0.0;
+        }
+        let parent = self.els[child as usize].parent;
+        let mut wait = 0.0f32;
+        for s in 0..self.els.len() as u32 {
+            let el = &self.els[s as usize];
+            if s == child || el.dead || el.parent != parent || !abs(s) {
+                continue;
+            }
+            if !self.motion.exiting(el.node) && !self.leaving.iter().any(|l| l.0 == s) {
+                continue;
+            }
+            wait = wait.max(self.motion.leaves_in(el.node));
+            for d in 0..self.els.len() as u32 {
+                let el = &self.els[d as usize];
+                if !el.dead && self.is_under(d, s) {
+                    wait = wait.max(self.motion.leaves_in(el.node));
+                }
+            }
+        }
+        wait
     }
 
     /// Whether op element `e` covers over a third of the surface: a press
@@ -1154,10 +1187,11 @@ impl Tree {
                             self.entering.push(child);
                         }
                     }
+                    let wait = if shown { self.handoff(child) } else { 0.0 };
                     let el = &self.els[child as usize];
-                    self.motion.enter(el.node, &el.record, from);
+                    self.motion.enter_after(el.node, &el.record, from, wait);
                     if shown {
-                        self.enter_subtree(child);
+                        self.enter_subtree(child, wait);
                     }
                 }
                 // remove
@@ -2630,6 +2664,64 @@ mod tests {
         frame(&mut t);
         assert_eq!(child(&t), None, "out once its exit settled");
         assert!(t.leaving.is_empty());
+    }
+
+    /// A screen put on beside an absolutely placed sibling on its way out
+    /// holds its `starting:` record until that one has left, then enters;
+    /// a row that flows enters at once beside it. Ways this could fail:
+    /// the two screens fading over each other (no wait), the wait lost
+    /// when the screen restyles before its first draw, or a list's rows
+    /// held too.
+    #[test]
+    fn a_screen_that_replaces_one_leaving_enters_once_it_has_left() {
+        let mut t = tree();
+        let classes = std::cell::RefCell::new(crate::classes::Classes::new(None).unwrap().0);
+        t.set_resolver(Box::new(move |class, _, states, _| {
+            let env = crate::classes::Env {
+                states,
+                ..Default::default()
+            };
+            classes.borrow_mut().record(class, &env)
+        }));
+        let fade = "w-[50px] h-[20px] bg-white transition-opacity duration-100 ease-linear starting:opacity-0 exit:opacity-0";
+        let old = format!("absolute top-[100px] left-0 {fade}");
+        let new = format!("absolute top-[100px] left-[100px] {fade}");
+        let row = format!("shrink-0 {fade}");
+        t.set_time(1.0, false);
+        nodes(&mut t, &[(1, 0, "w-full h-full", 0), (2, 0, &old, 1)]);
+        frame(&mut t);
+        t.set_time(1.5, false);
+        frame(&mut t);
+        let alpha = |t: &Tree, x: f32, y: f32| {
+            t.drawn
+                .quads
+                .iter()
+                .find(|q| q.kind == PaintKind::Solid as u32 && q.rect[0] == x && q.rect[1] == y)
+                .map(|q| q.color[3])
+        };
+        assert_eq!(alpha(&t, 0.0, 100.0), Some(1.0));
+        let mut b = Batch::default();
+        b.op(9).u32(1).u32(2);
+        b.op(10).u32(2);
+        for (id, class) in [(3, &new), (4, &row)] {
+            b.op(1).u32(id).u8(0);
+            b.op(4).u32(id).str(class);
+            b.op(8).u32(1).u32(id).u32(u32::MAX);
+        }
+        t.apply(&b.bytes()).unwrap();
+        t.set_time(1.55, false);
+        frame(&mut t);
+        let a = alpha(&t, 0.0, 100.0).unwrap();
+        assert!((a - 0.5).abs() < 0.02, "the old one half out: {a}");
+        let a = alpha(&t, 100.0, 100.0).unwrap_or(0.0);
+        assert!(a < 0.01, "the new one held while the old leaves: {a}");
+        let a = alpha(&t, 0.0, 0.0).unwrap();
+        assert!((a - 0.5).abs() < 0.02, "a flowing row enters at once: {a}");
+        t.set_time(1.65, false);
+        frame(&mut t);
+        assert_eq!(alpha(&t, 0.0, 100.0), None, "the old one gone");
+        let a = alpha(&t, 100.0, 100.0).unwrap();
+        assert!((a - 0.5).abs() < 0.02, "half in 0.05 s after it left: {a}");
     }
 
     /// A node classed before it is first drawn, while detached or after
