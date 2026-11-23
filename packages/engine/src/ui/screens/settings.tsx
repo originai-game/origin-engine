@@ -46,7 +46,7 @@ export function SettingsScreen(props: SettingsScreenProps) {
       <View class={`absolute bg-glass inset-0`} />
       <View class={`flex-row min-h-12 border-b border-rim-soft items-baseline gap-x-4 py-1 px-4 compact:flex-wrap compact:gap-y-1`}>
         <Show when={props.onBack}>
-          <Button class={`text-fg-muted compact:-ml-2 shrink ${packClass("Button", "plate")}`} onPress={(e) => props.onBack?.(e)}>
+          <Button class={`text-fg-muted compact:-ml-2 shrink`} onPress={(e) => props.onBack?.(e)}>
             <View class="flex-row items-center gap-x-1">
               <Icon class="size-4 rtl:-scale-x-100 rtl:scale-y-100 shrink" name="chevronLeft" />
               <Text class="shrink">{t("screen.common.back")}</Text>
@@ -204,17 +204,17 @@ export function SettingsScreen(props: SettingsScreenProps) {
           </View>
           <View class="flex-row flex-wrap items-center justify-end gap-y-2 gap-x-3 compact:grid compact:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
             <Show when={props.onDefaults}>
-              <Button class={`mr-auto compact:mr-0 compact:col-span-full compact:justify-self-start compact:-ml-2 shrink ${packClass("Button", "plate")}`} onPress={(e) => props.onDefaults?.(e)}>
+              <Button class={`mr-auto compact:mr-0 compact:col-span-full compact:justify-self-start compact:-ml-2 shrink`} onPress={(e) => props.onDefaults?.(e)}>
                 <Text>{t("screen.settings.defaults")}</Text>
               </Button>
             </Show>
             <Show when={props.onRevert}>
-              <Button class={`text-fg bg-plate-hi nine-plate-cut min-w-40 h-9 disabled:border-transparent active:border-transparent hover:bg-plate-hi hover:bg-transparent hover:border-transparent compact:min-w-0 data-pressed:hover:border-transparent shrink ${packClass("Button", "plate")}`} onPress={(e) => props.onRevert?.(e)} disabled={!props.pending}>
+              <Button class={`text-fg bg-plate-hi nine-plate-cut min-w-40 h-9 disabled:border-transparent active:border-transparent hover:bg-plate-hi hover:bg-transparent hover:border-transparent compact:min-w-0 data-pressed:hover:border-transparent shrink`} onPress={(e) => props.onRevert?.(e)} disabled={!props.pending}>
                 <Text>{t("screen.settings.revert")}</Text>
               </Button>
             </Show>
             <Show when={props.onApply}>
-              <Button class={`text-accent nine-plate-cut min-w-40 h-9 compact:min-w-0 shrink ${packClass("Button", "plate", "primary")}`} disabled={!props.pending} onPress={(e) => props.onApply?.(e)}>
+              <Button variant="primary" class={`nine-plate-cut min-w-40 h-9 compact:min-w-0 shrink`} disabled={!props.pending} onPress={(e) => props.onApply?.(e)}>
                 <Text>{t("screen.settings.apply")}</Text>
               </Button>
             </Show>

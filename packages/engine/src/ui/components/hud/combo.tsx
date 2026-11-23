@@ -40,7 +40,7 @@ export function Combo(props: ComboProps) {
         {state == "broken" ? t("hud.combo.broken") : state == "active" ? t("hud.combo.active") : t("hud.combo.idle")}
       </Text>
       <Show when={(props.remaining ?? -1) >= 0}>
-        <Progress value={Math.min(Math.max(props.remaining ?? 0, 0), 1)} label={t("hud.combo.window")} class="w-full" />
+        <Progress value={Math.min(Math.max(props.remaining ?? 0, 0), 1) * 100} label={t("hud.combo.window")} class="w-full" />
       </Show>
     </View>
   );

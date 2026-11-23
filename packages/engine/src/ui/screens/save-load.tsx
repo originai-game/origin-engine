@@ -41,7 +41,7 @@ export function SaveLoadScreen(props: SaveLoadScreenProps) {
       <View class={`absolute bg-glass inset-0`} />
       <View class={`flex-row min-h-12 border-b border-rim-soft items-center gap-x-4 py-1 px-4 narrow:flex-wrap narrow:gap-y-1`}>
         <Show when={props.onBack}>
-          <Button class={`text-fg-muted narrow:-ml-2 shrink ${packClass("Button", "plate")}`} onPress={(e) => props.onBack?.(e)}>
+          <Button class={`text-fg-muted narrow:-ml-2 shrink`} onPress={(e) => props.onBack?.(e)}>
             <View class="flex-row items-center gap-x-1">
               <Icon class="size-4 rtl:-scale-x-100 rtl:scale-y-100 shrink" name="chevronLeft" />
               <Text class="shrink">{t("screen.common.back")}</Text>
@@ -129,26 +129,26 @@ export function SaveLoadScreen(props: SaveLoadScreenProps) {
           <View class={`shrink narrow:hidden`}>{props.preview?.()}</View>
           <View class={`flex-row flex-wrap justify-end mt-auto pt-3 gap-2 narrow:pt-0`}>
             <Show when={props.onDelete}>
-              <Button class={`text-danger nine-plate-cut grow shrink basis-30 h-9 narrow:basis-25 ${packClass("Button", "plate")}`} onPress={(e) => props.onDelete?.(e)} onAction={{ details: (e) => props.onDelete?.(e) }}>
+              <Button class={`text-danger nine-plate-cut grow shrink basis-30 h-9 narrow:basis-25`} onPress={(e) => props.onDelete?.(e)} onAction={{ details: (e) => props.onDelete?.(e) }}>
                 <Text>{t("screen.save-load.delete")}</Text>
               </Button>
             </Show>
             <Show when={props.mode === "save"} fallback={
                 <Show when={props.slots.length > 0}>
                   <Show when={props.onLoad}>
-                    <Button class={`text-accent nine-plate-cut grow shrink basis-30 h-9 narrow:basis-25 ${packClass("Button", "plate", "primary")}`} onPress={(e) => props.onLoad?.(e)}>
+                    <Button variant="primary" class={`nine-plate-cut grow shrink basis-30 h-9 narrow:basis-25`} onPress={(e) => props.onLoad?.(e)}>
                       <Text>{t("screen.save-load.load")}</Text>
                     </Button>
                   </Show>
                 </Show>
             }>
               <Show when={props.onNewSlot}>
-                <Button class={`text-fg bg-plate-hi nine-plate-cut grow shrink basis-30 h-9 disabled:border-transparent active:border-transparent hover:bg-plate-hi hover:bg-transparent hover:border-transparent narrow:basis-25 data-pressed:hover:border-transparent ${packClass("Button", "plate")}`} onPress={(e) => props.onNewSlot?.(e)}>
+                <Button class={`text-fg bg-plate-hi nine-plate-cut grow shrink basis-30 h-9 disabled:border-transparent active:border-transparent hover:bg-plate-hi hover:bg-transparent hover:border-transparent narrow:basis-25 data-pressed:hover:border-transparent`} onPress={(e) => props.onNewSlot?.(e)}>
                   <Text>{t("screen.save-load.new")}</Text>
                 </Button>
               </Show>
               <Show when={props.onSave}>
-                <Button class={`text-accent nine-plate-cut grow shrink basis-30 h-9 narrow:basis-25 ${packClass("Button", "plate", "primary")}`} onPress={(e) => props.onSave?.(e)}>
+                <Button variant="primary" class={`nine-plate-cut grow shrink basis-30 h-9 narrow:basis-25`} onPress={(e) => props.onSave?.(e)}>
                   <Text>{t("screen.save-load.save")}</Text>
                 </Button>
               </Show>

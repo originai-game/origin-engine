@@ -40,7 +40,7 @@ export function NotificationsScreen(props: NotificationsScreenProps) {
             </Text>
             <Text class={`font-semibold m-0`}>{n().body}</Text>
           </View>
-          <Button class={`text-fg-subtle self-start ${packClass("Button", "plate")}`} onPress={(e) => props.onDismiss?.(e, n().id)} label={n().title}>
+          <Button class={`text-fg-subtle self-start`} onPress={(e) => props.onDismiss?.(e, n().id)} label={n().title}>
             <Icon class="size-4" name="close" />
           </Button>
         </View>
@@ -50,7 +50,7 @@ export function NotificationsScreen(props: NotificationsScreenProps) {
         {(t) => (
         <View class={`group/frame flex-row pr-0 pl-1 nine-plate-cut text-fg items-center w-auto max-w-full py-0 gap-3 transition duration-240 ease-in data-leaving:translate-x-8 data-leaving:opacity-0 disabled:text-fg-subtle compact:w-auto ${packClass("Plate", "frame")}`} data-leaving={t().leaving === true} data-tone-danger={(t().tone) === 'danger'} data-tone-success={(t().tone) === 'success'} data-tone-warn={(t().tone) === 'warn'}>
           <View class="absolute left-0 w-1 bg-info inset-y-0 group-data-tone-success/frame:bg-none group-data-tone-success/frame:bg-success group-data-tone-warn/frame:bg-none group-data-tone-warn/frame:bg-warn group-data-tone-danger/frame:bg-none group-data-tone-danger/frame:bg-danger" />
-          <Button class={`w-full text-start gap-1 shrink text-fg ${packClass("Button", "plate")}`} onPress={(e) => props.onDismissToast?.(e, t().id)}>
+          <Button class={`w-full text-start gap-1 shrink text-fg`} onPress={(e) => props.onDismissToast?.(e, t().id)}>
             <Icon class="text-info size-4 group-data-tone-success/frame:text-success group-data-tone-warn/frame:text-warn group-data-tone-danger/frame:text-danger" name={t().tone === 'success' ? 'check' : t().tone === 'warn' ? 'bolt' : t().tone === 'danger' ? 'close' : 'star'} />
             <Text>{t().text}</Text>
           </Button>

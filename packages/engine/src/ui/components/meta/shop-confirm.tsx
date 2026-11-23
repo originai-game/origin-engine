@@ -126,10 +126,10 @@ export function ShopConfirm(props: ShopConfirmProps) {
           <Text class={`text-danger m-0`} role="status">{props.reason}</Text>
         </Show>
         <View class="flex-row items-center w-full gap-1">
-          <Button class={`grow shrink basis-0 min-h-12.75 gap-1 ${packClass("Button", "plate")}`} label={t("general.confirm.cancel")} onPress={(e) => props.onCancel?.(e)}>
+          <Button class={`grow shrink basis-0 min-h-12.75 gap-1`} label={t("general.confirm.cancel")} onPress={(e) => props.onCancel?.(e)}>
             <Text>{t("general.confirm.cancel")}</Text>
           </Button>
-          <Button class={`text-accent grow shrink basis-0 min-h-12.75 gap-1 compact:grow ${packClass("Button", "plate", "primary")}`} disabled={!props.canBuy || props.busy} label={props.busy ? t("general.confirm.busy") : t("general.confirm.buy")} onPress={(e) => props.onConfirm?.(e)}>
+          <Button variant="primary" class={`grow shrink basis-0 min-h-12.75 gap-1 compact:grow`} disabled={!props.canBuy || props.busy} label={props.busy ? t("general.confirm.busy") : t("general.confirm.buy")} onPress={(e) => props.onConfirm?.(e)}>
             <Text>{props.busy ? t("general.confirm.busy") : t("general.confirm.buy")}</Text>
           </Button>
         </View>

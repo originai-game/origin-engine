@@ -27,7 +27,7 @@ export function FlowChaptersScreen(props: FlowChaptersScreenProps) {
     <View class={`absolute inset-0 pt-8 pb-6 text-fg gap-y-4 px-12 overflow-hidden compact:pt-4 compact:gap-y-3 ${packClass("Screen", "frame")} ${props.class ?? ""}`}>
       <View class={`absolute bg-glass inset-0`} />
       <View class={`flex-row items-baseline gap-x-4 p-0 compact:flex-wrap compact:gap-y-1`}>
-        <Button class={`text-fg-muted compact:-ml-2 ${packClass("Button", "plate")}`} onPress={(e) => props.onBack?.(e)}>
+        <Button class={`text-fg-muted compact:-ml-2`} onPress={(e) => props.onBack?.(e)}>
           <View class="flex-row items-center gap-x-1">
             <Icon class="size-4 rtl:-scale-x-100 rtl:scale-y-100 shrink" name="chevronLeft" />
             <Text class="shrink">{t("screen.common.back")}</Text>

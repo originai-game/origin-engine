@@ -94,7 +94,7 @@ export function LoadingScreen(props: LoadingScreenProps) {
               </Text>
             </Show>
             <Show when={props.ready && props.waits}>
-              <Button class={`text-accent gap-x-2 min-h-11 font-bold px-5.5 compact:grow compact:shrink compact:basis-auto animate-pop ${packClass("Button", "plate", "primary")}`} onPress={(e) => props.onContinue?.(e)} onAction={{ confirm: (e) => props.onContinue?.(e) }} autofocus>
+              <Button variant="primary" class={`gap-x-2 min-h-11 font-bold px-5.5 compact:grow compact:shrink compact:basis-auto animate-pop`} onPress={(e) => props.onContinue?.(e)} onAction={{ confirm: (e) => props.onContinue?.(e) }} autofocus>
                 <Text class="min-w-5.5 text-xs leading-loose font-bold text-center text-fg bg-hud-accent-fg uppercase tracking-label whitespace-normal py-0 px-1 rounded-control pointer-coarse:hidden">
                   {t("screen.loading.continueKey")}
                 </Text>

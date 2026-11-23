@@ -68,17 +68,17 @@ export function GameOverScreen(props: GameOverScreenProps) {
         <Show when={props.offer} fallback={
             <View class="grid justify-items-stretch self-stretch gap-2 short:justify-self-stretch">
               <Show when={props.onRetry}>
-                <Button class={`text-accent min-h-9 ${packClass("Button", "plate", "primary")}`} onPress={(e) => props.onRetry?.(e)}>
+                <Button variant="primary" class={`min-h-9`} onPress={(e) => props.onRetry?.(e)}>
                   <Text>{t("screen.game-over.retry")}</Text>
                 </Button>
               </Show>
               <Show when={props.checkpoint && props.onCheckpoint}>
-                <Button class={`${packClass("Button", "plate")}`} onPress={(e) => props.onCheckpoint?.(e)}>
+                <Button class={``} onPress={(e) => props.onCheckpoint?.(e)}>
                   <Text>{t("screen.game-over.checkpoint")}</Text>
                 </Button>
               </Show>
               <Show when={props.onQuit}>
-                <Button class={`${packClass("Button", "plate")}`} onPress={(e) => props.onQuit?.(e)}><Text>{t("screen.game-over.quit")}</Text></Button>
+                <Button class={``} onPress={(e) => props.onQuit?.(e)}><Text>{t("screen.game-over.quit")}</Text></Button>
               </Show>
             </View>
         }>
@@ -91,12 +91,12 @@ export function GameOverScreen(props: GameOverScreenProps) {
             </Text>
             <View class="self-stretch">{props.offerArt?.()}</View>
             <Show when={props.onRevive}>
-              <Button class={`text-accent justify-self-stretch min-h-9 ${packClass("Button", "plate", "primary")}`} onPress={(e) => props.onRevive?.(e)}>
+              <Button variant="primary" class={`justify-self-stretch min-h-9`} onPress={(e) => props.onRevive?.(e)}>
                 <Text>{t("screen.game-over.Revive", { price: props.price })}</Text>
               </Button>
             </Show>
             <Show when={props.onDecline}>
-              <Button class={`justify-self-stretch ${packClass("Button", "plate")}`} onPress={(e) => props.onDecline?.(e)}>
+              <Button class={`justify-self-stretch`} onPress={(e) => props.onDecline?.(e)}>
                 <Text>{t("screen.game-over.decline")}</Text>
               </Button>
             </Show>

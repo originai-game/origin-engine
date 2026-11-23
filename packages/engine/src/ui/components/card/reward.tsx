@@ -88,7 +88,7 @@ export function CardReward(props: CardRewardProps) {
       </Scroll>
       <Show when={props.skipLabel}>
         <View class="flex-row items-center justify-center gap-2">
-          <Button class={`min-w-48 min-h-11 shrink ${packClass("Button", "plate")}`} onPress={(e) => props.onSkip?.(e)}>
+          <Button class={`min-w-48 min-h-11 shrink`} onPress={(e) => props.onSkip?.(e)}>
             <Text>{props.skipLabel}</Text>
           </Button>
         </View>

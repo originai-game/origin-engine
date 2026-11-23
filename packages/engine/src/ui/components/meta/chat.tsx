@@ -108,7 +108,7 @@ export function Chat(props: ChatProps) {
       </Show>
       <View class={`flex-row w-full gap-1`} onAction={{ submit: (e) => props.onSend?.(e) }}>
         <Input class="grow shrink basis-0 min-h-11" label={t("general.chat.placeholder")} placeholder={t("general.chat.placeholder")} disabled={!props.canSend} value={props.draft} onChange={(e) => props.onDraft?.(e, e.value.slice(0, props.maxLength))} />
-        <Button class={`text-accent min-h-11 min-w-11 ${packClass("Button", "plate", "primary")}`} label={t("general.chat.send")} disabled={!props.canSend} onPress={(e) => props.onSend?.(e)}>
+        <Button variant="primary" class={`min-h-11 min-w-11`} label={t("general.chat.send")} disabled={!props.canSend} onPress={(e) => props.onSend?.(e)}>
           <View class="flex-row items-center gap-1">
             <Icon class="size-4 shrink" name="play" />
             <Text class="compact:hidden shrink">{t("general.chat.send")}</Text>

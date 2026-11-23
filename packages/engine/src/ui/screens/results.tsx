@@ -76,7 +76,7 @@ export function ResultsScreen(props: ResultsScreenProps) {
                         {t("screen.results.Gained", { gained: props.gained })}
                       </Text>
                     </View>
-                    <Progress class="w-full h-2.5" value={props.xp ?? 0} />
+                    <Progress class="w-full h-2.5" value={(props.xp ?? 0) * 100} />
                   </View>
                 </View>
               </Show>
@@ -174,17 +174,17 @@ export function ResultsScreen(props: ResultsScreenProps) {
         </Scroll>
         <View class="flex-row flex-wrap justify-end gap-2 compact:grid compact:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] short:flex-nowrap short:justify-end short:flex-col">
           <Show when={props.onReplay}>
-            <Button class={`min-h-11 min-w-36 compact:min-w-0 compact:col-span-full compact:row-[2] shrink ${packClass("Button", "plate")}`} onPress={(e) => props.onReplay?.(e)}>
+            <Button class={`min-h-11 min-w-36 compact:min-w-0 compact:col-span-full compact:row-[2] shrink`} onPress={(e) => props.onReplay?.(e)}>
               <Text>{t("screen.results.replay")}</Text>
             </Button>
           </Show>
           <Show when={props.onAgain}>
-            <Button class={`min-h-11 min-w-36 compact:min-w-0 shrink ${packClass("Button", "plate")}`} onPress={(e) => props.onAgain?.(e)}>
+            <Button class={`min-h-11 min-w-36 compact:min-w-0 shrink`} onPress={(e) => props.onAgain?.(e)}>
               <Text>{t("screen.results.again")}</Text>
             </Button>
           </Show>
           <Show when={props.onContinue}>
-            <Button class={`text-accent min-h-11 min-w-36 compact:min-w-0 shrink ${packClass("Button", "plate", "primary")}`} onPress={(e) => props.onContinue?.(e)} onAction={{ confirm: (e) => props.onContinue?.(e) }}>
+            <Button variant="primary" class={`min-h-11 min-w-36 compact:min-w-0 shrink`} onPress={(e) => props.onContinue?.(e)} onAction={{ confirm: (e) => props.onContinue?.(e) }}>
               <Text>{t("screen.results.continue")}</Text>
             </Button>
           </Show>

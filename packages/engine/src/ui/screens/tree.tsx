@@ -28,10 +28,10 @@ export function Tree(props: TreeProps) {
             <Show when={r().depth > 0}>
           <View class={`absolute top-0 bottom-0 w-px bg-rim-soft`} style={{ left: `calc(${(r().depth - 0.5) * 1.143}rem + 0.571rem)` }} />
             </Show>
-            <Button class={`size-6 p-0 justify-center items-center shrink-0 ${r().open == null ? "invisible" : ""} ${packClass("Button", "plate")}`} label={r().label} onPress={(e) => props.onToggle?.(e, r().id)}>
+            <Button class={`size-6 p-0 justify-center items-center shrink-0 ${r().open == null ? "invisible" : ""}`} label={r().label} onPress={(e) => props.onToggle?.(e, r().id)}>
               <Icon class={`size-3 ${r().open ? "rotate-90" : ""}`} name="play" />
             </Button>
-            <Button class={`grow shrink basis-0 min-w-0 text-start justify-start whitespace-normal py-0.5 data-selected:text-fg data-selected:font-semibold ${packClass("Button", "plate")}`} onPress={(e) => props.onChoose?.(e, r().id)}>
+            <Button class={`grow shrink basis-0 min-w-0 text-start justify-start whitespace-normal py-0.5 data-selected:text-fg data-selected:font-semibold`} onPress={(e) => props.onChoose?.(e, r().id)}>
               <Text class="min-w-0 text-start">{r().label}</Text>
             </Button>
           </View>

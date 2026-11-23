@@ -63,7 +63,7 @@ export function CardHand(props: CardHandProps) {
                   </View>
                 </Show>
                 <Show when={c().id === props.selected && c().playable}>
-                  <Button class={`text-accent absolute left-1/10 top-full mt-0.5 w-4/5 min-h-11 ${packClass("Button", "plate", "primary")}`} onPress={(e) => props.onPlay?.(e, c().id)}>
+                  <Button variant="primary" class={`absolute left-1/10 top-full mt-0.5 w-4/5 min-h-11`} onPress={(e) => props.onPlay?.(e, c().id)}>
                     <Text>{t("card.hand.play")}</Text>
                   </Button>
                 </Show>

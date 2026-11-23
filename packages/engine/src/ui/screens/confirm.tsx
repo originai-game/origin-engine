@@ -47,10 +47,10 @@ export function Confirm(props: ConfirmProps) {
         </Text>
       </Scroll>
       <View class={`flex-row flex-wrap-reverse items-center mt-3 gap-2`}>
-        <Button class={`text-fg nine-plate-cut grow shrink max-w-full min-h-11 py-2 disabled:border-transparent active:bg-transparent active:border-transparent hover:bg-transparent hover:border-transparent data-pressed:hover:border-transparent ${packClass("Button", "plate")}`} onPress={(e) => props.onCancel?.(e)} autofocus>
+        <Button class={`text-fg nine-plate-cut grow shrink max-w-full min-h-11 py-2 disabled:border-transparent active:bg-transparent active:border-transparent hover:bg-transparent hover:border-transparent data-pressed:hover:border-transparent`} onPress={(e) => props.onCancel?.(e)} autofocus>
           <Text class="whitespace-normal">{props.cancel}</Text>
         </Button>
-        <Button class={`nine-plate-cut grow shrink max-w-full min-h-11 py-2 text-accent ${packClass("Button", "plate", "primary")}`} onPress={(e) => props.onConfirm?.(e)}>
+        <Button variant="primary" class={`nine-plate-cut grow shrink max-w-full min-h-11 py-2`} onPress={(e) => props.onConfirm?.(e)}>
           <Text class="whitespace-normal">{props.confirm}</Text>
         </Button>
       </View>

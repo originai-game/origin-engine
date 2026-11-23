@@ -37,7 +37,7 @@ export function ModeSelectScreen(props: ModeSelectScreenProps) {
       <View class={`absolute bg-glass inset-0`} />
       <View class={`flex-row min-h-12 border-b border-rim-soft items-center gap-x-4 py-1 px-4 narrow:flex-wrap narrow:gap-y-1`}>
         <Show when={props.onBack}>
-          <Button class={`narrow:-ml-2 shrink ${packClass("Button", "plate")}`} onPress={(e) => props.onBack?.(e)}>
+          <Button class={`narrow:-ml-2 shrink`} onPress={(e) => props.onBack?.(e)}>
             <View class="flex-row items-center gap-x-1">
               <Icon class="size-4 rtl:-scale-x-100 rtl:scale-y-100 shrink" name="chevronLeft" />
               <Text class="shrink">{t("screen.common.back")}</Text>
@@ -86,7 +86,7 @@ export function ModeSelectScreen(props: ModeSelectScreenProps) {
       <View>{props.detail?.()}</View>
       <View class="flex-row justify-end">
         <Show when={props.onPlay}>
-          <Button class={`text-accent min-w-60 h-9 compact:min-w-0 compact:grow compact:shrink compact:basis-0 ${packClass("Button", "plate", "primary")}`} disabled={props.modes.length === 0} onPress={(e) => props.onPlay?.(e)} onAction={{ confirm: (e) => props.onPlay?.(e) }}>
+          <Button variant="primary" class={`min-w-60 h-9 compact:min-w-0 compact:grow compact:shrink compact:basis-0`} disabled={props.modes.length === 0} onPress={(e) => props.onPlay?.(e)} onAction={{ confirm: (e) => props.onPlay?.(e) }}>
             <Text>{t("screen.mode-select.play")}</Text>
           </Button>
         </Show>

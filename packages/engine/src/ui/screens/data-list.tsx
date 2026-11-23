@@ -26,7 +26,7 @@ export function DataList(props: DataListProps) {
         }>
           <For each={props.rows ?? []}>
             {(r) => (
-              <Button class={`w-full min-w-0 justify-stretch flex-row items-center gap-3 py-2 px-4 border-b border-rim-soft text-fg ${packClass("Button", "plate")}`} onPress={(e) => props.onChoose?.(e, r().id)}>
+              <Button class={`w-full min-w-0 justify-stretch flex-row items-center gap-3 py-2 px-4 border-b border-rim-soft text-fg`} onPress={(e) => props.onChoose?.(e, r().id)}>
                 <View class="flex-col items-start gap-0.5 grow shrink basis-0 min-w-0 text-start">
                   <Text class={`font-semibold text-start m-0`}>{r().title}</Text>
                   <Text class={`opacity-60 text-start m-0 shrink`}>{r().detail}</Text>

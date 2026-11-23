@@ -127,7 +127,7 @@ export function RpgLoot(props: RpgLootProps) {
                   </Show>
                 </View>
                 <Button
-                  class={`shrink-0 min-h-11 compact:col-[2_/_4] compact:justify-self-end ${packClass("Button", "plate")}`}
+                  class={`shrink-0 min-h-11 compact:col-[2_/_4] compact:justify-self-end`}
                   disabled={!item().available || loading() || busy()}
                   label={t("rpg.loot.takeItem", { name: item().name })}
                   onPress={(e) => props.onTake?.(e, item().id)}
@@ -140,11 +140,11 @@ export function RpgLoot(props: RpgLootProps) {
         </View>
       </Show>
       <View class="shrink flex-row items-center w-full mt-auto gap-2">
-        <Button class={`grow shrink basis-0 min-h-11 gap-1 ${packClass("Button", "plate")}`} label={t("rpg.economy.close")} onPress={(e) => props.onClose?.(e)}>
+        <Button class={`grow shrink basis-0 min-h-11 gap-1`} label={t("rpg.economy.close")} onPress={(e) => props.onClose?.(e)}>
           <Text glyph="back" class={keyCap} />
           <Text>{t("rpg.economy.close")}</Text>
         </Button>
-        <Button variant="primary" class={`grow-[1.4] shrink basis-0 min-h-11 gap-1 ${packClass("Button", "plate", "primary")}`} disabled={!items().length || !props.canTakeAll || loading() || busy()} onPress={(e) => props.onTakeAll?.(e)}>
+        <Button variant="primary" class={`grow-[1.4] shrink basis-0 min-h-11 gap-1`} disabled={!items().length || !props.canTakeAll || loading() || busy()} onPress={(e) => props.onTakeAll?.(e)}>
           <Text>{t("rpg.loot.all")}</Text>
         </Button>
       </View>

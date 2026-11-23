@@ -128,7 +128,7 @@ export function IdlePrestige(props: IdlePrestigeProps) {
       </Scroll>
       <Show when={props.confirming} fallback={
           <View class="flex-row flex-wrap items-center w-full justify-end gap-2">
-            <Button class={`text-accent min-h-11 min-w-30 gap-1 compact:min-w-0 compact:grow compact:shrink compact:basis-0 pointer-coarse:grow pointer-coarse:shrink pointer-coarse:basis-0 ${packClass("Button", "plate", "primary")}`} disabled={!props.met} onPress={(e) => props.onRequest?.(e)}>
+            <Button variant="primary" class={`min-h-11 min-w-30 gap-1 compact:min-w-0 compact:grow compact:shrink compact:basis-0 pointer-coarse:grow pointer-coarse:shrink pointer-coarse:basis-0`} disabled={!props.met} onPress={(e) => props.onRequest?.(e)}>
               <Icon class="size-4" name={props.icon} />
               <Text>{t("idle.prestige.request")}</Text>
             </Button>
@@ -137,10 +137,10 @@ export function IdlePrestige(props: IdlePrestigeProps) {
         <View class={`bg-tile shadow-glow-lg shadow-warn inset-ring-2 inset-ring-warn p-3 gap-3`} role="alertdialog" label={t("idle.prestige.ask", { gain: props.gain, currency: props.currency })} onAction={{ back: (e) => props.onCancel?.(e) }}>
           <Text class="text-fg m-0">{t("idle.prestige.ask", { gain: props.gain, currency: props.currency })}</Text>
           <View class="flex-row flex-wrap items-center w-full justify-end gap-2">
-            <Button class={`min-h-11 min-w-30 gap-1 compact:min-w-0 compact:grow compact:shrink compact:basis-0 pointer-coarse:grow pointer-coarse:shrink pointer-coarse:basis-0 ${packClass("Button", "plate")}`} onPress={(e) => props.onCancel?.(e)}>
+            <Button class={`min-h-11 min-w-30 gap-1 compact:min-w-0 compact:grow compact:shrink compact:basis-0 pointer-coarse:grow pointer-coarse:shrink pointer-coarse:basis-0`} onPress={(e) => props.onCancel?.(e)}>
               <Text>{t("idle.prestige.cancel")}</Text>
             </Button>
-            <Button class={`text-danger min-h-11 min-w-30 gap-1 compact:min-w-0 compact:grow compact:shrink compact:basis-0 pointer-coarse:grow pointer-coarse:shrink pointer-coarse:basis-0 ${packClass("Button", "plate")}`} onPress={(e) => props.onConfirm?.(e)}>
+            <Button class={`text-danger min-h-11 min-w-30 gap-1 compact:min-w-0 compact:grow compact:shrink compact:basis-0 pointer-coarse:grow pointer-coarse:shrink pointer-coarse:basis-0`} onPress={(e) => props.onConfirm?.(e)}>
               <Text>{t("idle.prestige.confirm")}</Text>
             </Button>
           </View>

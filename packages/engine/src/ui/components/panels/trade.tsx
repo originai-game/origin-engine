@@ -214,12 +214,12 @@ export function RpgTrade(props: RpgTradeProps) {
                   </View>
                 </View>
                 <Show when={selling()} fallback={
-                  <Button variant="primary" class={`w-full min-h-12.75 gap-1 ${packClass("Button", "plate", "primary")}`} disabled={!good().available || locked()} label={t("rpg.trade.buy")} onPress={(e) => props.onBuy?.(e, good().id)}>
+                  <Button variant="primary" class={`w-full min-h-12.75 gap-1`} disabled={!good().available || locked()} label={t("rpg.trade.buy")} onPress={(e) => props.onBuy?.(e, good().id)}>
                     <Text glyph="details" class={keyCap} />
                     <Text>{t("rpg.trade.buy")}</Text>
                   </Button>
                 }>
-                  <Button variant="primary" class={`w-full min-h-12.75 gap-1 ${packClass("Button", "plate", "primary")}`} disabled={!good().available || locked()} label={t("rpg.trade.sell")} onPress={(e) => props.onSell?.(e, good().id)}>
+                  <Button variant="primary" class={`w-full min-h-12.75 gap-1`} disabled={!good().available || locked()} label={t("rpg.trade.sell")} onPress={(e) => props.onSell?.(e, good().id)}>
                     <Text glyph="details" class={keyCap} />
                     <Text>{t("rpg.trade.sell")}</Text>
                   </Button>

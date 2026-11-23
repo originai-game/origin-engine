@@ -76,7 +76,7 @@ export function DailyQuests(props: DailyQuestsProps) {
                         <Text class="text-center text-xl font-bold tabular-nums">{q().reward}</Text>
                       </View>
                       <Show when={q().state === 'done'}>
-                        <Button class={`text-accent min-h-11 animate-pop ${packClass("Button", "plate", "primary")}`} onPress={(e) => props.onClaim?.(e, q().id)}>
+                        <Button variant="primary" class={`min-h-11 animate-pop`} onPress={(e) => props.onClaim?.(e, q().id)}>
                           <Text>{t("general.quests.claim")}</Text>
                         </Button>
                       </Show>

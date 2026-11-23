@@ -69,7 +69,7 @@ export function CardDeckList(props: CardDeckListProps) {
             <For each={props.entries}>
               {(e) => (
               <View class={`flex-row items-center text-rim-strong transition duration-317 w-full pr-0.5 gap-0.5 rounded-control data-type-attack:text-danger data-type-skill:text-info data-type-power:text-epic data-type-curse:text-fg-subtle data-down:opacity-45 ${e().id === props.selected ? packClass("Row", "frame", "selected") : packClass("Row", "frame")}`} role="listitem" current={e().id === props.selected} data-type-attack={(e().type) === 'attack'} data-type-curse={(e().type) === 'curse'} data-type-power={(e().type) === 'power'} data-type-skill={(e().type) === 'skill'} data-type-status={(e().type) === 'status'} data-selected={e().id === props.selected}>
-                <Button class={`grow shrink basis-0 min-h-11 px-2 text-fg ${packClass("Button", "plate")}`} label={e().name} onPress={(ev) => props.onChoose?.(ev, e().id)}>
+                <Button class={`grow shrink basis-0 min-h-11 px-2 text-fg`} label={e().name} onPress={(ev) => props.onChoose?.(ev, e().id)}>
                   <View class="flex-row items-center w-full gap-2">
                     <View class={`flex-row items-center w-6.25 h-7.25 justify-center bg-linear-to-b from-hud-accent-hi to-hud-accent text-hud-accent-fg font-bold gap-0`} label={t("card.face.cost", { cost: e().cost })}>
                       <Text class="shrink">{e().cost}</Text>
@@ -96,7 +96,7 @@ export function CardDeckList(props: CardDeckListProps) {
       </Show>
       <Show when={props.confirmLabel}>
         <View class="flex-row items-center w-full gap-2">
-          <Button class={`text-accent w-full min-h-11 shrink ${packClass("Button", "plate", "primary")}`} disabled={!props.canConfirm} onPress={(e) => props.onConfirm?.(e)}>
+          <Button variant="primary" class={`w-full min-h-11 shrink`} disabled={!props.canConfirm} onPress={(e) => props.onConfirm?.(e)}>
             <Text>{props.confirmLabel}</Text>
           </Button>
         </View>

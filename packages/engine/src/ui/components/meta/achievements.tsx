@@ -105,7 +105,7 @@ export function Achievements(props: AchievementsProps) {
                 </Show>
                 <Show when={a().claimed} fallback={
                     <Show when={a().claimable}>
-                      <Button class={`text-accent min-h-11 compact:w-full animate-pop ${packClass("Button", "plate", "primary")}`} onPress={(e) => props.onClaim?.(e, a().id)}>
+                      <Button variant="primary" class={`min-h-11 compact:w-full animate-pop`} onPress={(e) => props.onClaim?.(e, a().id)}>
                         <Text>{t("general.achievements.claim")}</Text>
                       </Button>
                     </Show>

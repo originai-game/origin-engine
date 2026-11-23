@@ -137,10 +137,10 @@ export function CalibrationScreen(props: CalibrationScreenProps) {
                   {t("screen.calibration.offsetHint")}
                 </Text>
                 <View class="flex-row flex-wrap items-center gap-y-2 gap-x-3">
-                  <Button class={`text-fg bg-layer-3 nine-plate-cut min-w-40 h-9 disabled:border-transparent active:border-transparent hover:bg-plate-hi hover:bg-transparent hover:border-transparent compact:min-w-0 compact:grow compact:shrink compact:basis-full data-pressed:hover:border-transparent ${packClass("Button", "plate")}`} onPress={(e) => props.onMeasure?.(e)}>
+                  <Button class={`text-fg bg-layer-3 nine-plate-cut min-w-40 h-9 disabled:border-transparent active:border-transparent hover:bg-plate-hi hover:bg-transparent hover:border-transparent compact:min-w-0 compact:grow compact:shrink compact:basis-full data-pressed:hover:border-transparent`} onPress={(e) => props.onMeasure?.(e)}>
                     <Text>{t("screen.calibration.start")}</Text>
                   </Button>
-                  <Button class={`text-accent nine-plate-cut min-w-40 h-9 compact:min-w-0 compact:grow compact:shrink compact:basis-0 ${packClass("Button", "plate")}`} onPress={(e) => props.onTap?.(e)}>
+                  <Button class={`text-accent nine-plate-cut min-w-40 h-9 compact:min-w-0 compact:grow compact:shrink compact:basis-0`} onPress={(e) => props.onTap?.(e)}>
                     <Text>{t("screen.calibration.tap")}</Text>
                   </Button>
                   <Text class="text-base leading-normal text-fg-muted line-clamp-3 tabular-nums m-0 compact:text-base shrink">
@@ -164,15 +164,15 @@ export function CalibrationScreen(props: CalibrationScreenProps) {
           </View>
         </Show>
         <View class="flex-row flex-wrap items-center justify-between gap-2">
-          <Button class={`text-fg bg-layer-3 nine-plate-cut min-w-40 h-9 disabled:border-transparent active:border-transparent hover:bg-plate-hi hover:bg-transparent hover:border-transparent compact:min-w-0 compact:grow compact:shrink compact:basis-0 data-pressed:hover:border-transparent ${packClass("Button", "plate")}`} onPress={(e) => props.onBack?.(e)}>
+          <Button class={`text-fg bg-layer-3 nine-plate-cut min-w-40 h-9 disabled:border-transparent active:border-transparent hover:bg-plate-hi hover:bg-transparent hover:border-transparent compact:min-w-0 compact:grow compact:shrink compact:basis-0 data-pressed:hover:border-transparent`} onPress={(e) => props.onBack?.(e)}>
             <Text>{t("screen.common.back")}</Text>
           </Button>
           <Show when={props.step === "controller"} fallback={
-              <Button class={`text-accent nine-plate-cut min-w-40 h-9 compact:min-w-0 compact:grow compact:shrink compact:basis-0 ${packClass("Button", "plate", "primary")}`} onPress={(e) => props.onNext?.(e)}>
+              <Button variant="primary" class={`nine-plate-cut min-w-40 h-9 compact:min-w-0 compact:grow compact:shrink compact:basis-0`} onPress={(e) => props.onNext?.(e)}>
                 <Text>{t("screen.calibration.next")}</Text>
               </Button>
           }>
-            <Button class={`text-accent nine-plate-cut min-w-40 h-9 compact:min-w-0 compact:grow compact:shrink compact:basis-0 ${packClass("Button", "plate", "primary")}`} onPress={(e) => props.onDone?.(e)}>
+            <Button variant="primary" class={`nine-plate-cut min-w-40 h-9 compact:min-w-0 compact:grow compact:shrink compact:basis-0`} onPress={(e) => props.onDone?.(e)}>
               <Text>{t("screen.calibration.done")}</Text>
             </Button>
           </Show>

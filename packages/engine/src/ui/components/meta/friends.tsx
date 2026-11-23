@@ -39,7 +39,7 @@ export function Friends(props: FriendsProps) {
         <Text class={`grow shrink font-display text-base font-bold leading-tight tracking-tight text-fg m-0`}>
           {props.title !== '' ? props.title : t("general.friends.name")}
         </Text>
-        <Button class={`min-h-11 ${packClass("Button", "plate")}`} onPress={(e) => props.onAdd?.(e)}>
+        <Button class={`min-h-11`} onPress={(e) => props.onAdd?.(e)}>
           <Icon class="size-4" name="plus" />
           <Text>{t("general.friends.add")}</Text>
         </Button>
@@ -68,11 +68,11 @@ export function Friends(props: FriendsProps) {
                     </Show>
                   </View>
                   <View class="flex-row items-center ml-auto gap-1">
-                    <Button class={`text-accent min-h-11 min-w-11 ${packClass("Button", "plate", "primary")}`} label={t("general.friends.acceptName", { name: r().name })} onPress={(e) => props.onAccept?.(e, r().id)}>
+                    <Button variant="primary" class={`min-h-11 min-w-11`} label={t("general.friends.acceptName", { name: r().name })} onPress={(e) => props.onAccept?.(e, r().id)}>
                       <Icon class="size-4" name="check" />
                       <Text class="compact:hidden">{t("general.friends.accept")}</Text>
                     </Button>
-                    <Button class={`min-h-11 min-w-11 ${packClass("Button", "plate")}`} label={t("general.friends.declineName", { name: r().name })} onPress={(e) => props.onDecline?.(e, r().id)}>
+                    <Button class={`min-h-11 min-w-11`} label={t("general.friends.declineName", { name: r().name })} onPress={(e) => props.onDecline?.(e, r().id)}>
                       <Icon class="size-4" name="close" />
                       <Text class="compact:hidden">{t("general.friends.decline")}</Text>
                     </Button>
@@ -125,7 +125,7 @@ export function Friends(props: FriendsProps) {
                     </View>
                   </View>
                   <Show when={f().canInvite || f().invited}>
-                    <Button class={`min-h-11 min-w-11 ${packClass("Button", "plate")}`} data-invited={f().invited} disabled={f().invited} label={f().invited ? t("general.friends.invitedName", { name: f().name }) : t("general.friends.inviteName", { name: f().name })} onPress={(e) => props.onInvite?.(e, f().id)}>
+                    <Button class={`min-h-11 min-w-11`} data-invited={f().invited} disabled={f().invited} label={f().invited ? t("general.friends.invitedName", { name: f().name }) : t("general.friends.inviteName", { name: f().name })} onPress={(e) => props.onInvite?.(e, f().id)}>
                       <Icon class="size-4" name={f().invited ? 'clock' : 'plus'} />
                       <Text class="compact:hidden">
                         {f().invited ? t("general.friends.invited") : t("general.friends.invite")}
