@@ -892,3 +892,57 @@ test("level path roads meet their discs, the carousel's Next arrow shows, the sh
     rmSync(dir, { recursive: true, force: true });
   }
 });
+
+// The renderer follows nsh-js (dom.rs), not the web port it came from. Ways
+// it diverged: consecutive dynamic children (the compile groups them in one
+// list) all ran again when any one changed, so a branch beside a changing
+// figure was made again each time, losing its focus and replaying its
+// entrance; a spread set every prop again when one changed, calling a ref
+// each time.
+test("a changing child leaves its siblings' nodes, and a spread sets only what changed", async () => {
+  const source = `import { View, Text } from "@origingame/engine/ui";
+export function Row(props: { on: boolean; more: boolean; n: number }) {
+  return <View>{props.on ? <View><Text>badge</Text></View> : null}{props.more ? <Text>more</Text> : null}<Text>{props.n}</Text></View>;
+}
+export function Wrap(props: { label: string; tag: string; ref?: unknown }) { return <View {...props} class="p-4" />; }`;
+  const compiled = compileJsx("Row.tsx", source);
+  if (!compiled.ok) throw new Error(compiled.reason);
+  const dir = mkdtempSync(join(tmpdir(), "og-tsx-items-"));
+  try {
+    const rt = fileURLToPath(new URL("../src/ui/rt.ts", import.meta.url));
+    const ui = fileURLToPath(new URL("../src/ui/index.ts", import.meta.url));
+    writeFileSync(join(dir, "Row.js"), compiled.code.replace('"@origingame/engine/ui/rt"', JSON.stringify(rt)).replace('"@origingame/engine/ui"', JSON.stringify(ui)));
+    const { Row, Wrap } = await import(join(dir, "Row.js"));
+    const world = { id: 9003 } as unknown as World;
+    const batches: Op[][] = [];
+    renderers.set(9003, new Renderer((bytes) => { batches.push(decode(bytes)); return reply([]); }, world));
+    const n = createSignal(1), on = createSignal(true), more = createSignal(false), label = createSignal("a");
+    mount(world, Row, { get on() { return on(); }, get more() { return more(); }, get n() { return n(); } }, { layer: "hud" });
+    const refs: unknown[] = [];
+    mount(world, Wrap, { get label() { return label(); }, tag: "t", ref: (x: unknown) => refs.push(x) }, { layer: "hud" });
+    batches.length = 0;
+    n.set(2);
+    renderers.get(9003)!.flush();
+    expect(batches.flat()).toEqual([["setText", expect.any(Number), "2"]]);
+    batches.length = 0;
+    // The branch beside the badge shows: only its node is made, and the badge's stays.
+    more.set(true);
+    renderers.get(9003)!.flush();
+    expect(batches.flat().filter((op) => op[0] === "remove" || op[0] === "create" || op[0] === "createText").map((op) => op[0] === "createText" ? op[2] : op[0])).toEqual(["create", "more"]);
+    batches.length = 0;
+    label.set("b");
+    renderers.get(9003)!.flush();
+    // The spread sends the one prop that changed, and the ref is called once.
+    expect(batches.flat()).toEqual([["setProp", expect.any(Number), "label", "b"]]);
+    expect(refs).toHaveLength(1);
+    // A branch that does change is still made and taken out.
+    batches.length = 0;
+    on.set(false);
+    renderers.get(9003)!.flush();
+    expect(batches.flat().filter((op) => op[0] === "remove")).toHaveLength(1);
+    expect(batches.flat().some((op) => op[0] === "create")).toBe(false);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+    renderers.delete(9003);
+  }
+});

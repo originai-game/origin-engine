@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "@ui/rt",
+      "summary": "A spread sets only the props that changed (a ref is called once), and a changing child no longer makes its dynamic siblings again: a branch beside a changing figure keeps its node, its focus and its entrance, as NSH's native renderer does."
+    }
+  ]
+}

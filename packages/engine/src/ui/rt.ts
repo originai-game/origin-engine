@@ -319,12 +319,15 @@ export function bindProp(node: UiNode, name: string, read: () => unknown): void 
  */
 export function spread(node: UiNode, props: Record<string, unknown>, skipChildren = false, skip: readonly string[] = []): void {
   if (!skipChildren) insert(node, () => props.children);
-  let keys: string[] = [];
+  // The values set last run: an unchanged one is not set again (nsh-js's
+  // spread_run), so a ref is called once and one changed prop sends one op.
+  let prev = new Map<string, unknown>();
   createRenderEffect(() => {
-    const next = Object.keys(props).filter((k) => k !== "children" && !skip.includes(k));
-    for (const key of keys) if (!next.includes(key)) prop(node, key, undefined);
-    for (const key of next) prop(node, key, props[key]);
-    keys = next;
+    const next = new Map<string, unknown>();
+    for (const key of Object.keys(props)) if (key !== "children" && !skip.includes(key)) next.set(key, props[key]);
+    for (const key of prev.keys()) if (!next.has(key)) prop(node, key, undefined);
+    for (const [key, value] of next) if (!prev.has(key) || !Object.is(prev.get(key), value)) prop(node, key, value);
+    prev = next;
   });
 }
 
@@ -370,14 +373,38 @@ export function insert(parent: UiNode, value: unknown, before: UiNode | null = n
     previous = next;
   };
   // A list with functions in it (consecutive dynamic children, as the
-  // compile groups them) is followed like a function.
+  // compile groups them) is followed with a memo per function.
   if (!dynamic(value)) { show(value); return; }
+  if (typeof value !== "function") {
+    const items = memoize(value);
+    createRenderEffect(() => show(items));
+    return;
+  }
   createRenderEffect(() => {
-    const v = typeof value === "function" ? (value as () => unknown)() : value;
-    // A function returned is followed by an effect of its own, so what it
-    // reads does not make the outer components again.
+    const v = (value as () => unknown)();
+    // A function or list of them returned is followed by an effect of its
+    // own, so what it reads does not make the outer components again.
     if (typeof v === "function") createRenderEffect(() => show((v as () => unknown)()));
+    else if (dynamic(v)) { const items = memoize(v); createRenderEffect(() => show(items)); }
     else show(v);
+  });
+}
+
+/**
+ * A list of children with a memo for each function in it (nsh-js's
+ * memoize_run): a change one of them reads runs only that one, and the
+ * nodes the others made stay (keeping their focus, scroll and entrance)
+ * rather than being made again.
+ */
+function memoize(value: unknown): unknown {
+  if (!Array.isArray(value)) return value;
+  return value.map((v) => (typeof v === "function" ? itemMemo(v as () => unknown) : Array.isArray(v) ? memoize(v) : v));
+}
+
+function itemMemo(fn: () => unknown): Accessor<unknown> {
+  return createMemo(() => {
+    const r = fn();
+    return typeof r === "function" ? itemMemo(r as () => unknown) : dynamic(r) ? memoize(r) : r;
   });
 }
 
