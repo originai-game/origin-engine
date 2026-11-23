@@ -24,7 +24,8 @@ pub struct CodeGraph {
     /// read from: its components' string tables, and the emitters they
     /// draw (`@ui/components/hud/fx/sparks.ogt`, a `type particles`).
     pub tables: BTreeMap<String, PathBuf>,
-    /// The built-in `@ui/` documents the code names by id.
+    /// The built-in `@ui/` documents and `@styles/` files the code names by
+    /// id.
     pub ids: BTreeSet<String>,
     /// The code reads `raycast` (og.render.raycast): its models carry a
     /// cooked raycast BVH.
@@ -33,6 +34,10 @@ pub struct CodeGraph {
     /// variant): its text hyphenates, so its locales' hyphenation
     /// dictionaries ship ([`hyphens_auto`]).
     pub hyphens: bool,
+    /// The images the code's `nine-<name>` classes name, by name: the
+    /// default pack's images that join the bundle ([`nine_names`]).
+    #[serde(default)]
+    pub nine: BTreeSet<String>,
     /// The game's own code the bundle holds (its modules outside the
     /// engine), by absolute path: what the asset index reads for the
     /// assets the code loads ([`super::assets::add_code`]).
@@ -78,13 +83,13 @@ impl CodeGraph {
                 if rel.extension().is_some_and(|e| e == "ogt") {
                     let id = format!("{TABLE_PREFIX}{}", rel.to_string_lossy().replace('\\', "/"));
                     graph.tables.insert(id, file);
-                } else if !graph.hyphens
-                    && rel.extension().is_some_and(|e| e == "tsx" || e == "ts")
+                } else if rel.extension().is_some_and(|e| e == "tsx" || e == "ts")
                     && let Ok(text) = std::fs::read_to_string(&file)
                     && let Ok(refs) = ts_refs::parse(&file, &text)
                 {
                     // The engine's components write classes too.
                     graph.hyphens |= hyphens_auto(&refs);
+                    graph.nine.extend(nine_names(strings(&refs)));
                 }
                 continue;
             }
@@ -103,11 +108,12 @@ impl CodeGraph {
             graph.raycast |= refs.names.contains("raycast")
                 || refs.literals.iter().any(|l| l.value == "raycast");
             graph.hyphens |= hyphens_auto(&refs);
+            graph.nine.extend(nine_names(strings(&refs)));
             graph.ids.extend(
                 refs.literals
                     .into_iter()
                     .map(|l| l.value)
-                    .filter(|v| v.starts_with(TABLE_PREFIX)),
+                    .filter(|v| v.starts_with(TABLE_PREFIX) || v.starts_with("@styles/")),
             );
             graph.files.push(file);
         }
@@ -119,15 +125,43 @@ impl CodeGraph {
 /// whitespace-separated token whose utility, after its variants
 /// (`md:hyphens-auto`) and an important mark, is `hyphens-auto`.
 fn hyphens_auto(refs: &ts_refs::References) -> bool {
-    refs.literals
-        .iter()
-        .map(|l| l.value.as_str())
-        .chain(refs.fragments.iter().map(String::as_str))
+    strings(refs)
         .flat_map(str::split_ascii_whitespace)
         .any(|class| {
             let utility = class.rsplit(':').next().unwrap_or(class);
             utility.trim_matches('!') == "hyphens-auto"
         })
+}
+
+/// The strings the code writes: its literals and its templates' text.
+fn strings(refs: &ts_refs::References) -> impl Iterator<Item = &str> {
+    refs.literals
+        .iter()
+        .map(|l| l.value.as_str())
+        .chain(refs.fragments.iter().map(String::as_str))
+}
+
+/// The image names of the `nine-<name>` classes in `texts` (code's strings
+/// or a pack.json), after a class's variants (`hover:nine-plate`) and
+/// important mark. A name is matched as a prefix ([`names_image`]), so a
+/// class cut short by a substitution (`nine-${art}` writes `nine-`) keeps
+/// every image it may name.
+pub fn nine_names<'a>(texts: impl Iterator<Item = &'a str>) -> BTreeSet<String> {
+    texts
+        .flat_map(|t| t.split(|c: char| c.is_ascii_whitespace() || c == '"'))
+        .filter_map(|class| {
+            let utility = class.rsplit(':').next().unwrap_or(class);
+            utility
+                .trim_matches('!')
+                .strip_prefix("nine-")
+                .map(str::to_owned)
+        })
+        .collect()
+}
+
+/// Whether the image `name` may be what one of `nine` names.
+pub fn names_image(nine: &BTreeSet<String>, name: &str) -> bool {
+    nine.iter().any(|n| name.starts_with(n.as_str()))
 }
 
 #[cfg(test)]
@@ -197,6 +231,25 @@ mod tests {
         )
         .unwrap();
         assert!(write(&[&main, &wrap]).hyphens);
+        // The images `nine-` classes name, under a variant, in a template
+        // whose substitution cuts a name short (it keeps every image the
+        // name starts), from the game's code and the engine's.
+        let skin = engine.join("src/ui/components/hud/skin.tsx");
+        std::fs::write(
+            &skin,
+            "export const S = (a: string) => <p class={`hover:nine-plate nine-button-${a}`} />;\n",
+        )
+        .unwrap();
+        std::fs::write(
+            &page,
+            "export const P = () => <p class=\"!nine-slot\" />;\n",
+        )
+        .unwrap();
+        let nine = write(&[&main, &skin, &page]).nine;
+        let named = |n: &str| names_image(&nine, n);
+        assert!(named("plate") && named("button-primary") && named("slot"));
+        assert!(!named("button") && !named("panel") && !named("glow"));
+        assert!(write(&[&main, &aim]).nine.is_empty());
         assert_eq!(
             all.tables.into_iter().collect::<Vec<_>>(),
             vec![("@ui/components/hud/bar.en.ogt".to_string(), table)]

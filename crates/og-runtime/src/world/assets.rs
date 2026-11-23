@@ -496,6 +496,20 @@ impl Assets {
         ))
     }
 
+    /// Whether a cooked bundle is open and none holds `id`: an asset the
+    /// cook left out, not one still on its way.
+    pub(crate) fn lacks(&self, id: &str) -> bool {
+        let open: Vec<&Bundle> = self
+            .entries
+            .iter()
+            .filter_map(|e| match &e.payload {
+                Payload::Bundle { bundle, .. } => Some(&**bundle),
+                _ => None,
+            })
+            .collect();
+        !open.is_empty() && open.iter().all(|b| b.output(id).is_err())
+    }
+
     pub(crate) fn bundle_from(
         &self,
         id: &str,

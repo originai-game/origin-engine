@@ -155,11 +155,22 @@ pub(crate) fn pack_images(engine: u32) {
     let mut layers = vec![og_ui_next::pack::Layer::default_pack()];
     layers.extend(pack.as_deref().and_then(|id| pack_layer(engine, id)));
     let all = Pack::new(&layers);
+    // The cook bundles only the default pack's images the code names
+    // (`nine-<name>`); the rest are left out on purpose.
+    let defaults: std::collections::BTreeSet<&str> = layers[0]
+        .images
+        .iter()
+        .flat_map(|m| m.values().map(|n| n.src.as_str()))
+        .collect();
     let mut slots = BTreeMap::new();
     let mut warnings = Vec::new();
     for scheme in [Scheme::Light, Scheme::Dark] {
         for image in all.images(scheme).values() {
             if slots.contains_key(&image.src) {
+                continue;
+            }
+            if defaults.contains(image.src.as_str()) && eng.assets.borrow().lacks(&image.src) {
+                slots.insert(image.src.clone(), 0);
                 continue;
             }
             let slot = match crate::world::assets::load_texture(&eng, &image.src) {

@@ -176,22 +176,51 @@ pub(crate) fn scan_with(
             builtins.insert(f.id().to_string(), f.bytes());
         }
     }
-    // The default pack's images (its shapes, `nine-disc` …) are every UI's:
-    // they join a project with a TSX UI, with their import
-    // settings, read from the built-in styles.
+    // The default pack's fonts, icons and sounds join a project with a TSX
+    // UI, with their import settings, read from the built-in styles. Of its
+    // images (its shapes, frames and effect textures) only those a
+    // `nine-<name>` class names (in the code or a pack the bundle holds),
+    // or the code or a text names by id (an emitter's `texture`), join:
+    // the runtime draws no other.
     if code.tsx {
         let pack = og_ui_next::pack::Layer::default_pack();
-        let srcs: BTreeSet<String> = pack
+        let mut nine = code.nine.clone();
+        let texts: Vec<String> = files
+            .iter()
+            .filter(|(rel, _)| TEXTS.contains(&ext(rel).as_str()))
+            .filter_map(|(_, path)| read_file(path).ok())
+            .chain(builtins.values().map(|b| b.to_vec()))
+            .filter_map(|b| String::from_utf8(b).ok())
+            .collect();
+        nine.extend(super::graph::nine_names(texts.iter().map(String::as_str)));
+        let images = || pack.images.iter().flat_map(|m| m.iter());
+        let kept: BTreeSet<&str> = images()
+            .filter(|(name, image)| {
+                super::graph::names_image(&nine, name)
+                    || code.ids.contains(&image.src)
+                    || texts.iter().any(|t| t.contains(image.src.as_str()))
+            })
+            .map(|(_, image)| image.src.as_str())
+            .collect();
+        let left_out: BTreeSet<&str> = images()
+            .map(|(_, image)| image.src.as_str())
+            .filter(|src| !kept.contains(src))
+            .collect();
+        let wanted: Vec<&str> = pack
             .assets()
             .into_iter()
-            .flat_map(|src| [src.to_owned(), format!("{src}.ogt")])
+            .filter(|src| !left_out.contains(src))
+            .collect();
+        let srcs: BTreeSet<String> = wanted
+            .iter()
+            .flat_map(|src| [(*src).to_owned(), format!("{src}.ogt")])
             .collect();
         for f in look::styles().iter().filter(|f| srcs.contains(f.id())) {
             builtins.insert(f.id().to_string(), f.bytes());
         }
         // An engine whose styles predate an image would cook without it and
         // every `nine-<name>` naming it would draw nothing at run time.
-        for src in pack.assets() {
+        for src in wanted {
             if !builtins.contains_key(src) {
                 let dir = look::styles_dir().map_or_else(
                     || "no built-in styles directory was found".to_owned(),

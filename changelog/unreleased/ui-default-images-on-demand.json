@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "og cook",
+      "summary": "A game with a TSX UI no longer cooks every image of the default pack, whatever it draws. Only the images a `nine-<name>` class names join its bundle, in the game's code, the built-in components it imports or a pack it holds, along with the ones its code or an emitter names by id (`@styles/shared/fx/coin.png`). A fresh project that imports one built-in component cooks about a third faster (6 s to 4 s), and a bundle carries none of the frame and effect art it never draws. A `nine-` class built in a template (`nine-${name}`) keeps every image its written part starts."
+    }
+  ]
+}
