@@ -2,6 +2,7 @@ import { For, Icon, Image, Scroll, Show, Text, packClass, type UiEvent, View, fo
 import type { Texture } from "@origingame/engine";
 import { Button } from "../../controls/button";
 import { Spinner } from "../base/spinner";
+import { Flourish } from "../hud/flourish";
 import "./general.en.ogt";
 
 export interface ShopProps {
@@ -21,6 +22,8 @@ export interface ShopProps {
   offers: ReadonlyArray<{ id: string; name: string; icon: string; image?: Texture | 0; detail: string; rarity: string; badge: string; badgeTone: string; featured: boolean; soldOut: boolean; owned: boolean; affordable: boolean }>;
   /** Every offer's price, one row per currency: keyed rows of { id, offer, icon, label, amount, was, short }: offer an offer's id; amount and was (the struck price before a discount, empty none) as the game formats them; label the currency's name; short marks the currency the player lacks. */
   prices: ReadonlyArray<{ id: string; offer: string; icon: string; label: string; amount: string; was: string; short: boolean }>;
+  /** The purchases the game completed, keyed rows of { id, offer }: id the tick it went through, as text; offer the offer's id. A new row throws coins from that offer's art and pops it, with the pack's purchase sound; a kept row plays once, so drop a row once it has played. Default []. */
+  purchases?: ReadonlyArray<{ id: string; offer: string }>;
   /** The offer the focus rests on; empty is none. */
   selected: string;
   /** The catalogue is on its way: a spinner stands in. */
@@ -47,7 +50,8 @@ export interface ShopProps {
  * name and detail, and one ruled foot with its price in one or more
  * currencies (a discount's old price struck before it, and named: 700
  * Gems, was 1,000). The game owns the catalogue, every price and every
- * verdict (sold out, owned, unaffordable); the shop reports buy (a tile's
+ * verdict (sold out, owned, unaffordable), and says when a purchase went
+ * through (a fountain of coins from the offer's art); the shop reports buy (a tile's
  * key, which the game answers with a ShopConfirm), choosetab (a category's
  * key), tabNext and tabPrev (E/Q, bumpers) and retry. A tile the game
  * refused has no buy handler: it keeps the focus so a player can read it,
@@ -122,12 +126,14 @@ export function Shop(props: ShopProps) {
                       <Show when={!o().soldOut && !o().owned && o().affordable} fallback={
                           <View class={`group/offer w-full pt-1 pb-2 bg-tile nine-plate-cut px-1 hover:bg-none hover:bg-tile data-featured:col-span-2 ${packClass("List", "item")}`} role="gridcell" data-sold-out={o().soldOut} data-owned={o().owned} data-affordable={o().affordable} selected={o().id === props.selected} disabled={true} label={t("general.shop.refused", { name: o().name, status: o().soldOut ? t("general.shop.soldOut") : o().owned ? t("general.shop.owned") : t("general.shop.short") })} data-plain={!o().featured} data-featured={o().featured} data-refused={true} data-selected={o().id === props.selected} data-tier-common={(o().rarity || 'common') === "common"}>
                             <View class="w-full gap-1">
-                              <View class={`justify-center items-center w-full h-24 text-border-strong bg-well nine-plate-cut gap-2 compact:h-15`}>
-                                <View class="absolute opacity-26 inset-0" />
-                                <Show when={o().image} fallback={<Icon class="size-12 compact:size-9" name={o().icon} />}>
-                                  <Image class="absolute inset-0 size-full object-cover" src={o().image} />
-                                </Show>
-                              </View>
+                              <Flourish kind="purchase" shots={(props.purchases ?? []).filter((b) => b.offer === o().id)} class="w-full">
+                                <View class={`justify-center items-center w-full h-24 text-border-strong bg-well nine-plate-cut gap-2 compact:h-15`}>
+                                  <View class="absolute opacity-26 inset-0" />
+                                  <Show when={o().image} fallback={<Icon class="size-12 compact:size-9" name={o().icon} />}>
+                                    <Image class="absolute inset-0 size-full object-cover" src={o().image} />
+                                  </Show>
+                                </View>
+                              </Flourish>
                               <Show when={o().featured}>
                                 <Text class={`absolute top-2 left-2 bg-hud-accent text-hud-accent-fg text-xs font-bold tracking-label uppercase leading-tight whitespace-nowrap text-ellipsis nine-plate-cut py-0.5 px-1 overflow-hidden`} style={{ maxWidth: "calc(50% - 12px)" }}>
                                   {t("general.shop.featured")}
@@ -191,12 +197,14 @@ export function Shop(props: ShopProps) {
                       }>
                         <View class={`group/offer w-full pt-1 pb-2 bg-tile nine-plate-cut px-1 hover:bg-none hover:bg-tile data-featured:col-span-2 ${packClass("List", "item")}`} role="gridcell" data-sold-out={o().soldOut} data-owned={o().owned} data-affordable={o().affordable} selected={o().id === props.selected} label={o().name} onPress={(e) => props.onBuy?.(e, o().id)} data-plain={!o().featured} data-featured={o().featured} data-selected={o().id === props.selected} data-tier-common={(o().rarity || 'common') === "common"}>
                           <View class="w-full gap-1">
-                            <View class={`justify-center items-center w-full h-24 text-border-strong bg-well nine-plate-cut gap-2 compact:h-15`}>
-                              <View class="absolute opacity-26 inset-0" />
-                              <Show when={o().image} fallback={<Icon class="size-12 compact:size-9" name={o().icon} />}>
-                                  <Image class="absolute inset-0 size-full object-cover" src={o().image} />
-                                </Show>
-                            </View>
+                            <Flourish kind="purchase" shots={(props.purchases ?? []).filter((b) => b.offer === o().id)} class="w-full">
+                              <View class={`justify-center items-center w-full h-24 text-border-strong bg-well nine-plate-cut gap-2 compact:h-15`}>
+                                <View class="absolute opacity-26 inset-0" />
+                                <Show when={o().image} fallback={<Icon class="size-12 compact:size-9" name={o().icon} />}>
+                                    <Image class="absolute inset-0 size-full object-cover" src={o().image} />
+                                  </Show>
+                              </View>
+                            </Flourish>
                             <Show when={o().featured}>
                               <Text class={`absolute top-2 left-2 bg-hud-accent text-hud-accent-fg text-xs font-bold tracking-label uppercase leading-tight whitespace-nowrap text-ellipsis nine-plate-cut py-0.5 px-1 overflow-hidden`} style={{ maxWidth: "calc(50% - 12px)" }}>
                                 {t("general.shop.featured")}
@@ -266,6 +274,7 @@ export function Shop(props: ShopProps) {
 
 export const fixtures: Record<string, Partial<ShopProps>> = {
   default: {"title":"","kicker":"Store","wallet":[{"id":"gold","icon":"coin","label":"Gold","amount":"12,450"},{"id":"gems","icon":"gem","label":"Gems","amount":"3,200"}],"tabs":[{"id":"featured","label":"Featured","count":3},{"id":"items","label":"Items","count":12},{"id":"looks","label":"Looks","count":8},{"id":"bundles","label":"Bundles","count":2}],"tab":"featured","offers":[{"id":"bundle","name":"Founder Bundle","icon":"crown","detail":"3 items, 500 gems","rarity":"legendary","badge":"−30%","badgeTone":"","featured":true,"soldOut":false,"owned":false,"affordable":true},{"id":"potion","name":"Potion Pack","icon":"potion","detail":"×10","rarity":"uncommon","badge":"","badgeTone":"","featured":false,"soldOut":false,"owned":false,"affordable":true},{"id":"cape","name":"Ember Cape","icon":"fire","detail":"Look","rarity":"epic","badge":"New","badgeTone":"success","featured":false,"soldOut":false,"owned":true,"affordable":true},{"id":"key","name":"Vault Key","icon":"key","detail":"×1","rarity":"rare","badge":"","badgeTone":"","featured":false,"soldOut":true,"owned":false,"affordable":true},{"id":"shield","name":"Dragonscale Shield","icon":"shield","detail":"Shield","rarity":"legendary","badge":"","badgeTone":"","featured":false,"soldOut":false,"owned":false,"affordable":false},{"id":"map","name":"Map of the Reaches","icon":"map","detail":"Reveals the east","rarity":"common","badge":"","badgeTone":"","featured":false,"soldOut":false,"owned":false,"affordable":true},{"id":"band","name":"Moonlit Band","icon":"gem","detail":"Ring · +4 Intellect","rarity":"rare","badge":"","badgeTone":"","featured":false,"soldOut":false,"owned":false,"affordable":true}],"prices":[{"id":"bundle-gems","offer":"bundle","icon":"gem","label":"Gems","amount":"700","was":"1,000","short":false},{"id":"potion-gold","offer":"potion","icon":"coin","label":"Gold","amount":"1,200","was":"","short":false},{"id":"potion-gems","offer":"potion","icon":"gem","label":"Gems","amount":"40","was":"","short":false},{"id":"cape-gems","offer":"cape","icon":"gem","label":"Gems","amount":"250","was":"","short":false},{"id":"key-gold","offer":"key","icon":"coin","label":"Gold","amount":"5,000","was":"","short":false},{"id":"shield-gems","offer":"shield","icon":"gem","label":"Gems","amount":"4,800","was":"","short":true},{"id":"map-gold","offer":"map","icon":"coin","label":"Gold","amount":"800","was":"","short":false},{"id":"band-gold","offer":"band","icon":"coin","label":"Gold","amount":"3,250","was":"","short":false}],"selected":"bundle","loading":false,"error":""},
+  purchased: {"purchases":[{"id":"1","offer":"potion"}]},
   empty: {"title":"","wallet":[{"id":"gold","icon":"coin","label":"Gold","amount":"0"}],"tabs":[{"id":"items","label":"Items","count":0}],"tab":"items","offers":[],"prices":[],"selected":"","loading":false,"error":"","kicker":""},
   loading: {"title":"","wallet":[],"tabs":[],"tab":"","offers":[],"prices":[],"selected":"","loading":true,"error":"","kicker":""},
   error: {"title":"","wallet":[],"tabs":[],"tab":"","offers":[],"prices":[],"selected":"","loading":false,"error":"The shop could not be reached.","kicker":""},

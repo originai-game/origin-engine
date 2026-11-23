@@ -1,0 +1,12 @@
+{
+  "added": [
+    {
+      "member": "og.ui",
+      "summary": "Shop takes `purchases`, keyed rows of { id, offer } for the purchases the game completed: a new row throws Flourish's coins from that offer's art and pops it, with the pack's purchase sound (drop a row once it has played)."
+    },
+    {
+      "member": "og.ui",
+      "summary": "The built-ins draw Flourish where the game already says so: Celebration's levelUp adds the level-up light (a column, a wash, rays and rising stars) round its new level and sounds levelup once; Reveal's revealed rewards each burst in with a reveal of their rarity; DailyRewards' Claim foot pulses with the highlight's aura, sheen and stars while today can be claimed. Reduced motion draws none of the particles."
+    }
+  ]
+}

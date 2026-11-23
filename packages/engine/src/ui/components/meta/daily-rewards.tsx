@@ -1,4 +1,5 @@
 import {For, Icon, Scroll, Show, Text, packClass, type UiEvent, View, t} from "@origingame/engine/ui";
+import { Flourish } from "../hud/flourish";
 import "./general.en.ogt";
 
 export interface DailyRewardsProps {
@@ -24,7 +25,8 @@ export interface DailyRewardsProps {
  * check stamp over its dimmed art; a missed day is hatched with its word in
  * danger; a milestone is violet with a ribbon. The game owns the schedule,
  * the rewards and the clock; the calendar reports claim (today's key) while
- * canClaim holds: only then is today's tile a button; every other day is a
+ * canClaim holds: only then is today's tile a button, its Claim foot
+ * pulsing with the highlight's aura, sheen and stars; every other day is a
  * labelled tile that takes no focus and reports nothing. A day shows the
  * word of the state the game gave it. Seven across on a desktop, four on a
  * narrow panel, three on a phone, where a last day alone on its row takes
@@ -90,12 +92,14 @@ export function DailyRewards(props: DailyRewardsProps) {
                     <Text class={`text-xl font-bold tabular-nums text-fg pt-0 pb-1 text-center px-0.5 m-0 group-data-state-claimed/cell:text-fg-muted group-data-state-missed/cell:text-fg-muted`}>
                       {d().amount}
                     </Text>
-                    <View class={`flex-row items-center tracking-label uppercase text-fg-subtle w-full justify-center font-bold text-caption p-0.5 gap-0.5 compact:flex-col compact:tracking-normal group-data-state-claimed/cell:bg-none group-data-state-claimed/cell:bg-success group-data-state-claimed/cell:text-success-fg group-data-state-missed/cell:bg-none group-data-state-missed/cell:bg-danger group-data-state-missed/cell:text-danger-fg group-data-state-today/cell:text-gold-fg group-data-state-today/cell:bg-none group-data-state-today/cell:bg-gold animate-pop`} data-state-claimed={(d().state) === 'claimed'} data-state-missed={(d().state) === 'missed'} data-state-today={(d().state) === 'today'}>
-                      <Icon class="size-4" name="star" />
-                      <Text class="text-center compact:whitespace-nowrap group-data-narrow/dailyrewards:hidden shrink">
-                        {t("general.rewards.claim")}
-                      </Text>
-                    </View>
+                    <Flourish kind="highlight" class="w-full">
+                      <View class={`flex-row items-center tracking-label uppercase text-fg-subtle w-full justify-center font-bold text-caption p-0.5 gap-0.5 compact:flex-col compact:tracking-normal group-data-state-claimed/cell:bg-none group-data-state-claimed/cell:bg-success group-data-state-claimed/cell:text-success-fg group-data-state-missed/cell:bg-none group-data-state-missed/cell:bg-danger group-data-state-missed/cell:text-danger-fg group-data-state-today/cell:text-gold-fg group-data-state-today/cell:bg-none group-data-state-today/cell:bg-gold animate-pop`} data-state-claimed={(d().state) === 'claimed'} data-state-missed={(d().state) === 'missed'} data-state-today={(d().state) === 'today'}>
+                        <Icon class="size-4" name="star" />
+                        <Text class="text-center compact:whitespace-nowrap group-data-narrow/dailyrewards:hidden shrink">
+                          {t("general.rewards.claim")}
+                        </Text>
+                      </View>
+                    </Flourish>
                   </View>
                 </View>
               </Show>

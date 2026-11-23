@@ -893,7 +893,7 @@ Fixtures: `default`, `critical`, `invulnerable`, `defeated`, `loading`, `overflo
 <a id="guide-components-34"></a>
 ### `components §34` Celebration
 
-A reward over the HUD: confetti thrown from the top edge, a burst's ring and sparks, a level-up's ring of light with its word in gold, its new level and embers rising under it, or fireworks' five shells. Each play runs once per shot, with the pack's reward sound. The particles are the engine's emitters drawn by `Particles` (./fx/*.ogt), one node per ink, so a pack's roles colour them; reduced motion draws none. The level-up's rays wait for pack art.
+A reward over the HUD: confetti thrown from the top edge, a burst's ring and sparks, a level-up's ring of light with its word in gold, its new level and embers rising under it, or fireworks' five shells. Each play runs once per shot, with the pack's reward sound; a level-up's light (a column, a wash, rays and rising stars) is Flourish's, which sounds levelup. The particles are the engine's emitters drawn by `Particles` (./fx/*.ogt), one node per ink, so a pack's roles colour them; reduced motion draws none.
 
 `import { Celebration } from "@origingame/engine/ui/components"` (kit `hud`, `packages/engine/src/ui/components/hud/celebration.tsx`).
 
@@ -1059,6 +1059,7 @@ A flourish around what it decorates, the engine's UI effect presets: a reward's 
 | `shots?` | `ReadonlyArray<{ id: string }>` | Its plays, each { id } (the tick it fired, as text): a new id plays it again; a kept one plays once. highlight needs none. |
 | `rarity?` | `string` | reveal: the rarity whose colour and tier it takes (common, uncommon, rare, epic, legendary, mythic); empty is legendary. |
 | `children?` | `any` | What it decorates (an icon, a slot, a price, a button); the effect is drawn over and around it. |
+| `class?` | `string \| undefined` | Classes after its own: it hugs what it decorates; `w-full` (or a grid cell's stretch) lets a full-width target fill its place. |
 
 Fixtures: `reward`, `levelUp`, `purchase`, `reveal`, `revealLegendary`, `highlight`.
 
@@ -1734,7 +1735,7 @@ Fixtures: `default`, `empty`, `loading`, `overflow`.
 <a id="guide-components-73"></a>
 ### `components §73` DailyRewards
 
-A login reward calendar: a grid of day tiles with two corners cut, each a header strip with its day, the reward's icon large in the middle, its amount, and a foot with its state in words and a mark. Today is lit gold (a gold header and foot, a glow round the tile); a day taken carries a check stamp over its dimmed art; a missed day is hatched with its word in danger; a milestone is violet with a ribbon. The game owns the schedule, the rewards and the clock; the calendar reports claim (today's key) while canClaim holds: only then is today's tile a button; every other day is a labelled tile that takes no focus and reports nothing. A day shows the word of the state the game gave it. Seven across on a desktop, four on a narrow panel, three on a phone, where a last day alone on its row takes the whole row.
+A login reward calendar: a grid of day tiles with two corners cut, each a header strip with its day, the reward's icon large in the middle, its amount, and a foot with its state in words and a mark. Today is lit gold (a gold header and foot, a glow round the tile); a day taken carries a check stamp over its dimmed art; a missed day is hatched with its word in danger; a milestone is violet with a ribbon. The game owns the schedule, the rewards and the clock; the calendar reports claim (today's key) while canClaim holds: only then is today's tile a button, its Claim foot pulsing with the highlight's aura, sheen and stars; every other day is a labelled tile that takes no focus and reports nothing. A day shows the word of the state the game gave it. Seven across on a desktop, four on a narrow panel, three on a phone, where a last day alone on its row takes the whole row.
 
 `import { DailyRewards } from "@origingame/engine/ui/components"` (kit `meta`, `packages/engine/src/ui/components/meta/daily-rewards.tsx`).
 
@@ -1887,7 +1888,7 @@ Fixtures: `default`, `private`, `pending`, `loading`, `error`, `empty`, `no-stat
 <a id="guide-components-79"></a>
 ### `components §79` Reveal
 
-A reward reveal: a kicker naming the source over the title; sealed, the prize large over a gold glow with the game's words under it and Open; revealing, a spinner and Skip; revealed, each reward in a socket of its rarity (its count in a corner, a dot when it is new) with the rarity in words over its name, and Continue. Rewards stay hidden until the game says they are revealed; a reward is a button that reports inspect with its key. The game owns the roll, the timing and the rewards; the panel reports open, skip, inspect, continue and retry.
+A reward reveal: a kicker naming the source over the title; sealed, the prize large over a gold glow with the game's words under it and Open; revealing, a spinner and Skip; revealed, each reward in a socket of its rarity (its count in a corner, a dot when it is new), each bursting in as it shows with a reveal of its rarity's light, with the rarity in words over its name, and Continue. Rewards stay hidden until the game says they are revealed; a reward is a button that reports inspect with its key. The game owns the roll, the timing and the rewards; the panel reports open, skip, inspect, continue and retry.
 
 `import { Reveal } from "@origingame/engine/ui/components"` (kit `meta`, `packages/engine/src/ui/components/meta/reveal.tsx`).
 
@@ -1945,7 +1946,7 @@ Actions: `back` (Cancel).
 <a id="guide-components-81"></a>
 ### `components §81` Shop
 
-A storefront: a band with a kicker over the title and the player's balances as chips, category tabs with their counts between the bumper caps, and a grid of offer tiles. A tile is its art in a well over a glow of its rarity, corner tags (Featured, and a badge the game words), its name and detail, and one ruled foot with its price in one or more currencies (a discount's old price struck before it, and named: 700 Gems, was 1,000). The game owns the catalogue, every price and every verdict (sold out, owned, unaffordable); the shop reports buy (a tile's key, which the game answers with a ShopConfirm), choosetab (a category's key), tabNext and tabPrev (E/Q, bumpers) and retry. A tile the game refused has no buy handler: it keeps the focus so a player can read it, is marked disabled (aria-disabled), dims its art and says why in words on its foot. The selected tile wears corner brackets. The grid fills the height it is given and scrolls inside it; narrow, it is two columns and the tabs scroll sideways.
+A storefront: a band with a kicker over the title and the player's balances as chips, category tabs with their counts between the bumper caps, and a grid of offer tiles. A tile is its art in a well over a glow of its rarity, corner tags (Featured, and a badge the game words), its name and detail, and one ruled foot with its price in one or more currencies (a discount's old price struck before it, and named: 700 Gems, was 1,000). The game owns the catalogue, every price and every verdict (sold out, owned, unaffordable), and says when a purchase went through (a fountain of coins from the offer's art); the shop reports buy (a tile's key, which the game answers with a ShopConfirm), choosetab (a category's key), tabNext and tabPrev (E/Q, bumpers) and retry. A tile the game refused has no buy handler: it keeps the focus so a player can read it, is marked disabled (aria-disabled), dims its art and says why in words on its foot. The selected tile wears corner brackets. The grid fills the height it is given and scrolls inside it; narrow, it is two columns and the tabs scroll sideways.
 
 `import { Shop } from "@origingame/engine/ui/components"` (kit `meta`, `packages/engine/src/ui/components/meta/shop.tsx`).
 
@@ -1959,6 +1960,7 @@ A storefront: a band with a kicker over the title and the player's balances as c
 | `tab` | `string` | The category shown. |
 | `offers` | `ReadonlyArray<{ id: string; name: string; icon: string; image?: Texture \| 0; detail: string; rarity: string; badge: string; badgeTone: string; featured: boolean; soldOut: boolean; owned: boolean; affordable: boolean }>` | The offers in the shown category, in the game's order: keyed rows of { id, name, icon, image?, detail, rarity, badge, badgeTone, featured, soldOut, owned, affordable }: image the offer's picture filling its art well (a render of the item), 0 or absent shows icon; detail a second line (×500, 7 days); rarity common, uncommon, rare, epic, legendary or mythic, the light behind the art (empty is common); badge a corner tag the game words (−30%, New), empty none, on gold unless badgeTone is success; featured a wide tile; soldOut, owned and affordable the game's verdicts: a sold out, owned or unaffordable (affordable false) tile keeps the focus, is marked disabled, says why in words on its foot and reports nothing. |
 | `prices` | `ReadonlyArray<{ id: string; offer: string; icon: string; label: string; amount: string; was: string; short: boolean }>` | Every offer's price, one row per currency: keyed rows of { id, offer, icon, label, amount, was, short }: offer an offer's id; amount and was (the struck price before a discount, empty none) as the game formats them; label the currency's name; short marks the currency the player lacks. |
+| `purchases?` | `ReadonlyArray<{ id: string; offer: string }>` | The purchases the game completed, keyed rows of { id, offer }: id the tick it went through, as text; offer the offer's id. A new row throws coins from that offer's art and pops it, with the pack's purchase sound; a kept row plays once, so drop a row once it has played. Default []. |
 | `selected` | `string` | The offer the focus rests on; empty is none. |
 | `loading?` | `boolean` | The catalogue is on its way: a spinner stands in. |
 | `error` | `string` | Why the catalogue could not load, as the game words it; empty is none. Shows a Try again button. |
@@ -1970,7 +1972,7 @@ A storefront: a band with a kicker over the title and the player's balances as c
 
 Pack slots: `Chip.frame`, `Count.roll`, `List.cascade`, `List.item`, `Tab.indicator`.
 
-Fixtures: `default`, `empty`, `loading`, `error`, `overflow`.
+Fixtures: `default`, `purchased`, `empty`, `loading`, `error`, `overflow`.
 
 Actions: `tabPrev` (Previous category), `tabNext` (Next category).
 

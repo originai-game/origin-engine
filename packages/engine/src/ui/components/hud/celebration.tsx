@@ -1,6 +1,7 @@
 import { og, type ParticleEmitter } from "@origingame/engine";
 import { For, Particles, Show, Text, View, t, useWorld } from "@origingame/engine/ui";
 import "./celebration.en.ogt";
+import { Flourish } from "./flourish";
 import confetti from "./fx/confetti.ogt";
 import embers from "./fx/embers.ogt";
 import firework from "./fx/firework.ogt";
@@ -36,10 +37,11 @@ const SHELLS = [
  * A reward over the HUD: confetti thrown from the top edge, a burst's ring
  * and sparks, a level-up's ring of light with its word in gold, its new
  * level and embers rising under it, or fireworks' five shells. Each play
- * runs once per shot, with the pack's reward sound. The particles are the
- * engine's emitters drawn by `Particles` (./fx/*.ogt), one node per ink,
- * so a pack's roles colour them; reduced motion draws none. The
- * level-up's rays wait for pack art.
+ * runs once per shot, with the pack's reward sound; a level-up's light
+ * (a column, a wash, rays and rising stars) is Flourish's, which sounds
+ * levelup. The particles are the engine's emitters drawn by `Particles`
+ * (./fx/*.ogt), one node per ink, so a pack's roles colour them; reduced
+ * motion draws none.
  */
 export function Celebration(props: CelebrationProps) {
   const kind = () => props.kind ?? "";
@@ -47,8 +49,8 @@ export function Celebration(props: CelebrationProps) {
   return (
     <View class="absolute inset-0 text-fg text-shadow-2xs">
       <For each={props.shots ?? []} key={(s) => s.id}>
-        {() => (
-          <View sound={kind() == "levelUp" ? "levelup" : "reward"} class="absolute inset-0 flex-col items-center justify-center">
+        {(shot) => (
+          <View sound={kind() == "levelUp" ? undefined : "reward"} class="absolute inset-0 flex-col items-center justify-center">
             <Show when={kind() == "confetti"}>
               <View class="absolute top-0 inset-x-0 h-1">
                 <Particles class="absolute inset-0 text-hud-accent-ink" emitter={fx.confetti} seed={1} />
@@ -63,9 +65,11 @@ export function Celebration(props: CelebrationProps) {
                 <Text class="relative max-w-full mb-3 text-title font-bold tracking-label uppercase text-center text-gold animate-stamp">
                   {props.title || t("component.celebration.level-up")}
                 </Text>
-                <Show when={props.value}>
-                  <Text class="relative text-8xl font-bold tabular-nums leading-flat whitespace-nowrap text-fg shadow-none animate-pop compact:text-display-md">{props.value}</Text>
-                </Show>
+                <Flourish kind="levelUp" shots={[shot()]}>
+                  <Show when={props.value}>
+                    <Text class="relative text-8xl font-bold tabular-nums leading-flat whitespace-nowrap text-fg shadow-none animate-pop compact:text-display-md">{props.value}</Text>
+                  </Show>
+                </Flourish>
                 <View class="absolute bottom-8 w-60 max-w-full h-2">
                   <Particles class="absolute inset-0 text-gold" emitter={fx.embers} seed={1} />
                   <Particles class="absolute inset-0 text-warn" emitter={fx.embers} seed={2} />

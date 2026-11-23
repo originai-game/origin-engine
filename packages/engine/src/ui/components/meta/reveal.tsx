@@ -2,6 +2,7 @@ import {For, Icon, Scroll, Show, Text, packClass, type UiEvent, View, t} from "@
 import { EmptyState } from "../base/empty-state";
 import { ErrorState } from "../base/error-state";
 import { Spinner } from "../base/spinner";
+import { Flourish } from "../hud/flourish";
 import "./meta.en.ogt";
 
 export interface RevealProps {
@@ -39,7 +40,8 @@ export interface RevealProps {
  * A reward reveal: a kicker naming the source over the title; sealed, the
  * prize large over a gold glow with the game's words under it and Open;
  * revealing, a spinner and Skip; revealed, each reward in a socket of its
- * rarity (its count in a corner, a dot when it is new) with the rarity in
+ * rarity (its count in a corner, a dot when it is new), each bursting in
+ * as it shows with a reveal of its rarity's light, with the rarity in
  * words over its name, and Continue. Rewards stay hidden until the game
  * says they are revealed; a reward is a button that reports inspect with
  * its key. The game owns the roll, the timing and the rewards; the panel
@@ -80,18 +82,20 @@ export function Reveal(props: RevealProps) {
                       <View class="shrink basis-30">
                         <View class={`flex-row items-center justify-center gap-1 group/reward w-full p-0 hover:bg-transparent hover:bg-none hover:shadow-none`} role="button" disabled={(props.disabled ?? false)} label={t("meta.reveal.reward", { name: reward().name, rarity: reward().rarity === 'mythic' ? t("meta.rarity.mythic") : reward().rarity === 'legendary' ? t("meta.rarity.legendary") : reward().rarity === 'epic' ? t("meta.rarity.epic") : reward().rarity === 'rare' ? t("meta.rarity.rare") : reward().rarity === 'uncommon' ? t("meta.rarity.uncommon") : t("meta.rarity.common") })} onPress={(e) => props.onInspect?.(e, reward().id)} data-tier-common={(reward().rarity || 'common') === "common"}>
                           <View class="w-full items-center text-center gap-1">
-                            <View class={`grow shrink basis-0 justify-center items-center w-30 max-w-full aspect-square bg-tile border-2 border-border-strong nine-plate-cut gap-2 compact:w-24 ${packClass("Slot", "frame")}`}>
-                              <Icon class="size-7/10" name={reward().icon} />
-                              <View class="absolute bottom-0 h-0.75 text-border-strong bg-current inset-x-2" />
-                              <Show when={reward().amount}>
-                                <Text class={`absolute right-1 bottom-2 text-xs font-bold leading-snug whitespace-nowrap text-fg bg-well nine-chip-cut py-0 px-0.5 ${packClass("Chip", "frame")}`}>
-                                  {reward().amount}
-                                </Text>
-                              </Show>
-                              <Show when={reward().fresh}>
-                                <View class={`bg-hud-accent text-fg absolute right-2 top-2 shadow-glow-sm ring-2 ring-shade-deep size-1 rounded-capsule`} label={t("meta.new")} />
-                              </Show>
-                            </View>
+                            <Flourish kind="reveal" rarity={reward().rarity} shots={[{ id: reward().id }]} class="max-w-full">
+                              <View class={`grow shrink basis-0 justify-center items-center w-30 max-w-full aspect-square bg-tile border-2 border-border-strong nine-plate-cut gap-2 compact:w-24 ${packClass("Slot", "frame")}`}>
+                                <Icon class="size-7/10" name={reward().icon} />
+                                <View class="absolute bottom-0 h-0.75 text-border-strong bg-current inset-x-2" />
+                                <Show when={reward().amount}>
+                                  <Text class={`absolute right-1 bottom-2 text-xs font-bold leading-snug whitespace-nowrap text-fg bg-well nine-chip-cut py-0 px-0.5 ${packClass("Chip", "frame")}`}>
+                                    {reward().amount}
+                                  </Text>
+                                </Show>
+                                <Show when={reward().fresh}>
+                                  <View class={`bg-hud-accent text-fg absolute right-2 top-2 shadow-glow-sm ring-2 ring-shade-deep size-1 rounded-capsule`} label={t("meta.new")} />
+                                </Show>
+                              </View>
+                            </Flourish>
                             <Text class={`text-xs font-bold tracking-kicker uppercase text-border-strong`}>
                               {reward().rarity === 'mythic' ? t("meta.rarity.mythic") : reward().rarity === 'legendary' ? t("meta.rarity.legendary") : reward().rarity === 'epic' ? t("meta.rarity.epic") : reward().rarity === 'rare' ? t("meta.rarity.rare") : reward().rarity === 'uncommon' ? t("meta.rarity.uncommon") : t("meta.rarity.common")}
                             </Text>
