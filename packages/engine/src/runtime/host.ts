@@ -67,6 +67,8 @@ const uiRegistrationReads = new Set([
   "og_i18n_format_date", "og_i18n_format_time", "og_i18n_format_duration",
   // What FlowScreen reads as it mounts.
   "og_flow_current", "og_flow_view", "og_timeline_captions",
+  // A built-in's particles as it mounts (Celebration, Flourish): a render-side load, kept by path.
+  "og_load_emitter",
 ]);
 const abiReturns = new Map(bindings.calls.filter(call => "symbol" in call)
   .map(call => [call.symbol, call.returns]));

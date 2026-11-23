@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "og.load.emitter",
+      "summary": "GameDesc.ui may load an emitter: a UI built there that draws particles (Celebration, Flourish, and the Shop, Reveal and DailyRewards that use it) registered with the error `og_load_emitter is not allowed`. The load is render-side and kept by path, so a repeat returns the same handle."
+    }
+  ]
+}
