@@ -24,6 +24,8 @@ export interface FlourishProps {
   rarity?: string;
   /** What it decorates (an icon, a slot, a price, a button); the effect is drawn over and around it. */
   children?: any;
+  /** Classes after its own: it hugs what it decorates; `w-full` (or a grid cell's stretch) lets a full-width target fill its place. */
+  class?: string | undefined;
 }
 
 /** A built-in emitter in the mount's world; 0, which draws nothing, when the bundle does not hold it. */
@@ -76,8 +78,8 @@ export function Flourish(props: FlourishProps) {
     return pose() && all.length ? [all[all.length - 1]!] : [];
   };
   return (
-    <View class="items-center">
-      <View class="relative items-center justify-center">
+    <View class={`items-center ${props.class ?? ""}`}>
+      <View class="relative self-stretch items-center justify-center">
         <Show when={kind() == "highlight"}>
           <View class="absolute inset-0.5 rounded-panel bg-art-primary opacity-40 shadow-glow-lg shadow-art-primary animate-pulse" />
         </Show>
@@ -112,7 +114,7 @@ export function Flourish(props: FlourishProps) {
         </For>
         <Show when={latest().length == 0}>{props.children}</Show>
         <For each={latest()} key={(s) => s.id}>
-          {() => <View class={pose()}>{props.children}</View>}
+          {() => <View class={`self-stretch items-center ${pose()}`}>{props.children}</View>}
         </For>
         <Show when={kind() == "highlight"}>
           <View class="absolute inset-x-0.5 top-0.5 bottom-1.5 rounded-panel overflow-hidden">
