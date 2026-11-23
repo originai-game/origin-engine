@@ -46,6 +46,7 @@ pub use schemas::engine_schemas;
 #[cfg(test)]
 #[path = "../../../../tests/temp.rs"]
 mod test_dir;
+pub mod ui_art;
 mod ui_packs;
 pub mod ui_screens;
 pub mod vector;

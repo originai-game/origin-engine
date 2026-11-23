@@ -1,0 +1,779 @@
+{
+ "flat-round": {
+  "scale": 4,
+  "palette": {
+   "button": [
+    "#9be7d8",
+    "#38b8a4"
+   ],
+   "primary": [
+    "#ffd166",
+    "#f4a020"
+   ],
+   "danger": [
+    "#ff7a7a",
+    "#e0404a"
+   ],
+   "disabled": [
+    "#a3a7b4",
+    "#7d8191"
+   ],
+   "panel": [
+    "#fbf7f0",
+    "#efe7d9"
+   ],
+   "plate": [
+    "#4a4e7a",
+    "#363a62"
+   ],
+   "chip": [
+    "#5d63a0",
+    "#464b84"
+   ],
+   "slot": [
+    "#2e3258",
+    "#424878"
+   ],
+   "field": [
+    "#ffffff",
+    "#f2eee6"
+   ],
+   "outline": "#22243f",
+   "shadow": "#22243f",
+   "orn": "#e0703a",
+   "accent": "#38b8a4",
+   "header": "#e86f4c"
+  },
+  "material": {
+   "drop": {
+    "dy": 1.5,
+    "blur": 0.8,
+    "alpha": 0.35
+   },
+   "outline": {
+    "width": 2.5
+   },
+   "lip": {
+    "height": 6,
+    "top": {
+     "mix": [
+      "bottom",
+      "#000000",
+      0.38
+     ]
+    },
+    "bottom": {
+     "mix": [
+      "bottom",
+      "#000000",
+      0.5
+     ]
+    }
+   },
+   "face": {
+    "split": 0.55
+   },
+   "gloss": {
+    "band": 0.46,
+    "alpha": [
+     0.55,
+     0.12
+    ],
+    "inset": 3.5,
+    "radius": 16
+   },
+   "toplight": {
+    "depth": 8,
+    "alpha": 0.6
+   },
+   "sunk": {
+    "depth": 12,
+    "alpha": 0.2,
+    "lip": 0.8
+   },
+   "press": {
+    "dy": 4
+   },
+   "hover": {
+    "toward": "#ffffff",
+    "t": 0.14
+   }
+  },
+  "shape": {
+   "family": "rounded",
+   "radius": {
+    "control": 16,
+    "panel": 20,
+    "chip": 9,
+    "slot": 14
+   }
+  },
+  "panel": {
+   "header": {
+    "height": 23,
+    "color": "header",
+    "rule": "#b04a2a",
+    "lift": 0.2
+   }
+  }
+ },
+ "glass-cut4": {
+  "scale": 4,
+  "palette": {
+   "button": [
+    "#1a2a38",
+    "#0b131b"
+   ],
+   "primary": [
+    "#8cf0ff",
+    "#3cc9ec"
+   ],
+   "danger": [
+    "#e2525c",
+    "#b02434"
+   ],
+   "disabled": [
+    "#1d252d",
+    "#151b21"
+   ],
+   "panel": [
+    "#14202c",
+    "#0a1118"
+   ],
+   "plate": [
+    "#16222e",
+    "#0b1219"
+   ],
+   "chip": [
+    "#163042",
+    "#0d1d29"
+   ],
+   "slot": [
+    "#0a1118",
+    "#14202b"
+   ],
+   "field": [
+    "#0a1017",
+    "#121a23"
+   ],
+   "outline": "#05080c",
+   "shadow": "#000000",
+   "orn": "#5fe3ff",
+   "accent": "#5fe3ff",
+   "header": "#163042"
+  },
+  "material": {
+   "drop": {
+    "dy": 1.5,
+    "blur": 1.6,
+    "alpha": 0.5
+   },
+   "face": {
+    "alpha": 0.9
+   },
+   "hairline": {
+    "alpha": 0.18
+   },
+   "toplight": {
+    "depth": 6,
+    "alpha": 0.3
+   },
+   "sunk": {
+    "depth": 10,
+    "alpha": 0.35
+   },
+   "press": {
+    "dy": 1.5
+   },
+   "hover": {
+    "toward": "#ffffff",
+    "t": 0.08
+   }
+  },
+  "shape": {
+   "family": "cut4",
+   "cut": 5,
+   "radius": {
+    "control": 0,
+    "panel": 0,
+    "chip": 0,
+    "slot": 0
+   }
+  },
+  "ornament": {
+   "button": {
+    "kind": "bar",
+    "size": 13
+   },
+   "panel": {
+    "kind": "tab",
+    "size": 10
+   },
+   "slot": {
+    "kind": "notch",
+    "size": 9
+   }
+  }
+ },
+ "metal-cut": {
+  "scale": 4,
+  "palette": {
+   "button": [
+    "#4a5143",
+    "#323829"
+   ],
+   "primary": [
+    "#d9a531",
+    "#a77818"
+   ],
+   "danger": [
+    "#d8404c",
+    "#9a1c28"
+   ],
+   "disabled": [
+    "#55585a",
+    "#424547"
+   ],
+   "panel": [
+    "#2c3127",
+    "#1d2119"
+   ],
+   "plate": [
+    "#272b22",
+    "#1a1d16"
+   ],
+   "chip": [
+    "#3a4033",
+    "#2b3025"
+   ],
+   "slot": [
+    "#15180f",
+    "#22261c"
+   ],
+   "field": [
+    "#121510",
+    "#1a1d16"
+   ],
+   "outline": "#0b0d08",
+   "shadow": "#000000",
+   "orn": "#e8c25a",
+   "accent": "#e8c25a",
+   "header": "#3a4033",
+   "rim_lo": "#2a2e24",
+   "rim_hi": "#c9cfbd"
+  },
+  "material": {
+   "drop": {
+    "dy": 1.5,
+    "blur": 1.4,
+    "alpha": 0.5
+   },
+   "outline": {
+    "width": 1
+   },
+   "rim": {
+    "lo": "rim_lo",
+    "hi": "rim_hi",
+    "width": 2
+   },
+   "grain": {
+    "kind": "brushed",
+    "cell": 0.75,
+    "strength": 0.08,
+    "seed": 3
+   },
+   "toplight": {
+    "depth": 4,
+    "alpha": 0.35
+   },
+   "sunk": {
+    "depth": 10,
+    "alpha": 0.4
+   },
+   "press": {
+    "dy": 1.5
+   }
+  },
+  "shape": {
+   "family": "cut",
+   "cut": 9,
+   "radius": {
+    "control": 1,
+    "panel": 1,
+    "chip": 1,
+    "slot": 1
+   }
+  },
+  "ornament": {
+   "panel": {
+    "kind": "brackets",
+    "size": 10
+   },
+   "plate": {
+    "kind": "studs"
+   }
+  }
+ },
+ "paper-soft": {
+  "scale": 4,
+  "palette": {
+   "button": [
+    "#f6ecdc",
+    "#e9dcc4"
+   ],
+   "primary": [
+    "#3f8a66",
+    "#2f6b4f"
+   ],
+   "danger": [
+    "#c0434c",
+    "#9a2c34"
+   ],
+   "disabled": [
+    "#9a9286",
+    "#857d72"
+   ],
+   "panel": [
+    "#f8efdf",
+    "#efe1c8"
+   ],
+   "plate": [
+    "#f1e5cf",
+    "#e6d6b9"
+   ],
+   "chip": [
+    "#eadbc0",
+    "#dccaa9"
+   ],
+   "slot": [
+    "#e2d2b5",
+    "#efe3cc"
+   ],
+   "field": [
+    "#fbf6ec",
+    "#f3ead9"
+   ],
+   "outline": "#5a4630",
+   "shadow": "#3a2a18",
+   "orn": "#a5552a",
+   "accent": "#a5552a",
+   "header": "#2f6b4f",
+   "paper_shade": "#8a6a44"
+  },
+  "material": {
+   "drop": {
+    "dy": 1.2,
+    "blur": 1.2,
+    "alpha": 0.22
+   },
+   "outline": {
+    "width": 1.25
+   },
+   "grain": {
+    "kind": "noise",
+    "cell": 7,
+    "strength": 0.05,
+    "color": "paper_shade",
+    "light": "#fffaf0",
+    "seed": 5
+   },
+   "edge": {
+    "color": "paper_shade",
+    "width": 4,
+    "alpha": 0.22
+   },
+   "sunk": {
+    "depth": 8,
+    "alpha": 0.12
+   },
+   "press": {
+    "dy": 1.5
+   }
+  },
+  "shape": {
+   "family": "rounded",
+   "radius": {
+    "control": 6,
+    "panel": 10,
+    "chip": 4,
+    "slot": 6
+   }
+  },
+  "ornament": {
+   "panel": {
+    "kind": "filigree"
+   },
+   "slot": {
+    "kind": "hairline",
+    "alpha": 0.6
+   }
+  }
+ },
+ "plastic-round": {
+  "scale": 4,
+  "palette": {
+   "button": [
+    "#b8e6ff",
+    "#4cc3ff"
+   ],
+   "primary": [
+    "#ffc2dc",
+    "#ff5c9a"
+   ],
+   "danger": [
+    "#ffb0a8",
+    "#f2545c"
+   ],
+   "disabled": [
+    "#8a8790",
+    "#5d5a64"
+   ],
+   "panel": [
+    "#6b4fc2",
+    "#4a3296"
+   ],
+   "plate": [
+    "#5a3fb0",
+    "#40288a"
+   ],
+   "chip": [
+    "#6a4fcc",
+    "#4c34a0"
+   ],
+   "slot": [
+    "#2c1e66",
+    "#3d2a86"
+   ],
+   "field": [
+    "#2a1d60",
+    "#36267a"
+   ],
+   "outline": "#1f1240",
+   "shadow": "#1f1240",
+   "orn": "#ffe36b",
+   "accent": "#4cc3ff",
+   "header": "#ff5c9a"
+  },
+  "material": {
+   "drop": {
+    "dy": 1.5,
+    "blur": 1.0,
+    "alpha": 0.35
+   },
+   "outline": {
+    "width": 2.5
+   },
+   "lip": {
+    "height": 6,
+    "top": {
+     "mix": [
+      "bottom",
+      "#000000",
+      0.35
+     ]
+    },
+    "bottom": {
+     "mix": [
+      "bottom",
+      "#000000",
+      0.5
+     ]
+    }
+   },
+   "face": {
+    "split": 0.55
+   },
+   "gloss": {
+    "band": 0.42,
+    "alpha": [
+     0.5,
+     0.1
+    ],
+    "inset": 3,
+    "radius": 16
+   },
+   "shade": {
+    "frac": 0.25,
+    "alpha": 0.12
+   },
+   "sunk": {
+    "depth": 12,
+    "alpha": 0.3,
+    "lip": 0.5
+   },
+   "press": {
+    "dy": 4
+   }
+  },
+  "shape": {
+   "family": "rounded",
+   "radius": {
+    "control": 18,
+    "panel": 22,
+    "chip": 10,
+    "slot": 14
+   }
+  }
+ },
+ "wood-round": {
+  "scale": 4,
+  "palette": {
+   "button": [
+    "#8a5a32",
+    "#64401f"
+   ],
+   "primary": [
+    "#d8a234",
+    "#a8741a"
+   ],
+   "danger": [
+    "#b8343c",
+    "#86202a"
+   ],
+   "disabled": [
+    "#6a5e52",
+    "#544a40"
+   ],
+   "panel": [
+    "#6e4826",
+    "#4f3218"
+   ],
+   "plate": [
+    "#5a3a1e",
+    "#432a14"
+   ],
+   "chip": [
+    "#7a5230",
+    "#5c3c20"
+   ],
+   "slot": [
+    "#2e1e10",
+    "#3e2a18"
+   ],
+   "field": [
+    "#2a1c10",
+    "#362416"
+   ],
+   "outline": "#1e1208",
+   "shadow": "#000000",
+   "orn": "#e8c06a",
+   "accent": "#e8c06a",
+   "header": "#4f3218",
+   "grain": "#2a180a"
+  },
+  "material": {
+   "drop": {
+    "dy": 1.5,
+    "blur": 1.2,
+    "alpha": 0.45
+   },
+   "outline": {
+    "width": 1.5
+   },
+   "grain": {
+    "kind": "wood",
+    "cell": 2.2,
+    "strength": 0.08,
+    "color": "grain",
+    "seed": 9
+   },
+   "bevel": {
+    "width": 2,
+    "hi": 0.22,
+    "lo": 0.3
+   },
+   "sunk": {
+    "depth": 10,
+    "alpha": 0.35
+   },
+   "press": {
+    "dy": 1.5
+   }
+  },
+  "shape": {
+   "family": "rounded",
+   "radius": {
+    "control": 10,
+    "panel": 14,
+    "chip": 6,
+    "slot": 10
+   }
+  },
+  "ornament": {
+   "panel": {
+    "kind": "runes"
+   },
+   "button": {
+    "kind": "stitch",
+    "inset": 3.5,
+    "alpha": 0.5
+   }
+  }
+ },
+ "pixel-pixel": {
+  "scale": 4,
+  "palette": {
+   "button": [
+    "#6a5f8f",
+    "#544a78"
+   ],
+   "primary": [
+    "#f0a43a",
+    "#c87e1a"
+   ],
+   "danger": [
+    "#e2525c",
+    "#b83442"
+   ],
+   "disabled": [
+    "#5e5a66",
+    "#4a4652"
+   ],
+   "panel": [
+    "#3d3366",
+    "#2e2652"
+   ],
+   "plate": [
+    "#2e2652",
+    "#231c42"
+   ],
+   "chip": [
+    "#5a4f86",
+    "#463c6e"
+   ],
+   "slot": [
+    "#1a1434",
+    "#241c44"
+   ],
+   "field": [
+    "#16112c",
+    "#1e1838"
+   ],
+   "outline": "#0e0a1e",
+   "shadow": "#000000",
+   "orn": "#7bd36a",
+   "accent": "#7bd36a",
+   "header": "#2e2652"
+  },
+  "material": {
+   "outline": {
+    "width": 1
+   },
+   "bevel": {
+    "width": 1,
+    "hi": 0.45,
+    "lo": 0.35
+   },
+   "sunk": {
+    "depth": 4,
+    "alpha": 0.3
+   },
+   "press": {
+    "dy": 1
+   }
+  },
+  "shape": {
+   "family": "pixel",
+   "step": 1,
+   "radius": {
+    "control": 3,
+    "panel": 4,
+    "chip": 2,
+    "slot": 3
+   }
+  },
+  "ornament": {
+   "panel": {
+    "kind": "hairline"
+   }
+  }
+ },
+ "ink-brush": {
+  "scale": 4,
+  "palette": {
+   "button": [
+    "#efe6d2",
+    "#e0d3b8"
+   ],
+   "primary": [
+    "#b8312c",
+    "#8c1e1c"
+   ],
+   "danger": [
+    "#3a3632",
+    "#24201c"
+   ],
+   "disabled": [
+    "#a59c8e",
+    "#8f877a"
+   ],
+   "panel": [
+    "#f2ead8",
+    "#e6dcc4"
+   ],
+   "plate": [
+    "#e9dfc8",
+    "#dccfb2"
+   ],
+   "chip": [
+    "#e2d6bc",
+    "#d4c6a6"
+   ],
+   "slot": [
+    "#d8ccb0",
+    "#e8dec8"
+   ],
+   "field": [
+    "#f6f0e2",
+    "#ece3cf"
+   ],
+   "outline": "#1c1a18",
+   "shadow": "#1c1a18",
+   "orn": "#b8312c",
+   "accent": "#b8312c",
+   "header": "#1c1a18",
+   "wash": "#2a2622"
+  },
+  "material": {
+   "drop": {
+    "dy": 1.0,
+    "blur": 1.0,
+    "alpha": 0.18
+   },
+   "outline": {
+    "width": 1.5
+   },
+   "grain": {
+    "kind": "wash",
+    "cell": 16,
+    "strength": 0.03,
+    "color": "wash",
+    "seed": 11
+   },
+   "sunk": {
+    "depth": 8,
+    "alpha": 0.1
+   },
+   "press": {
+    "dy": 1.5
+   }
+  },
+  "shape": {
+   "family": "brush",
+   "wobble": 0.45,
+   "seed": 13,
+   "radius": {
+    "control": 4,
+    "panel": 6,
+    "chip": 3,
+    "slot": 4
+   }
+  },
+  "ornament": {
+   "panel": {
+    "kind": "brush-corner",
+    "size": 9
+   }
+  }
+ }
+}
