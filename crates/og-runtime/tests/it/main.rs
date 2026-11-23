@@ -110,6 +110,8 @@ mod pixel_terrain;
 mod prefabs;
 #[path = "../preview_overlay.rs"]
 mod preview_overlay;
+#[path = "../probe_counts.rs"]
+mod probe_counts;
 #[path = "../publish.rs"]
 mod publish;
 #[path = "../raycast_record_cost.rs"]

@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "og run --json / og test: probe calls",
+      "summary": "A probe call reads the last frame's GPU counts back only when it reports them (state().timings.triangles; dump_render and a timings.triangles check already read their own). Every call used to read them, and natively that read waits for the GPU, so `og run --json` draining assertion events each frame, and with it every playtest, put a GPU sync in every frame: a 1200-tick 1080p run took 18.7 s instead of 12.2 s, and playtest frameMs budgets measured that wait, not the game."
+    }
+  ]
+}
