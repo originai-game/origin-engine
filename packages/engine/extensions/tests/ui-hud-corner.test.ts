@@ -78,12 +78,13 @@ function close(engine: Engine): void {
 
 const meet = (a: Rect, b: Rect): number => Math.max(0, Math.min(a.x + a.width, b.x + b.width) - Math.max(a.x, b.x)) * Math.max(0, Math.min(a.y + a.height, b.y + b.height) - Math.max(a.y, b.y));
 
-/** The HUD's readouts, by label: each the box that holds its label's text. */
+/** The HUD's readouts, by label: each the box that holds its label's text (the text run's Text's parent). */
 function readouts(engine: Engine, name: string): Map<string, Rect> {
   const ui = (engine.probe.dump({ what: "ui" }) as unknown as { elements: Element[] }).elements;
   const out = new Map<string, Rect>();
   for (const { label } of HUDS[name]!) {
-    const text = ui.find((e) => e.text === label);
+    const run = ui.find((e) => e.text === label);
+    const text = run && ui.find((e) => e.id === run.parent);
     const box = text && ui.find((e) => e.id === text.parent);
     if (box) out.set(label, box);
   }
