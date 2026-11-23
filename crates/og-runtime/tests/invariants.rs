@@ -299,13 +299,9 @@ fn a_weak_reference_to_a_despawned_entity_is_no_violation() {
     value(og_engine_advance(e, 1));
     let r = report(e, true);
     named(&r, "live entity Target.of");
-    let shooter_flagged = r["violations"]
-        .as_array()
-        .unwrap()
-        .iter()
-        .any(|v| {
-            let name = v["name"].as_str().unwrap();
-            name.contains("Projectile.shooter") || name.contains("Glimpse.of")
-        });
+    let shooter_flagged = r["violations"].as_array().unwrap().iter().any(|v| {
+        let name = v["name"].as_str().unwrap();
+        name.contains("Projectile.shooter") || name.contains("Glimpse.of")
+    });
     assert!(!shooter_flagged, "{r}");
 }

@@ -71,10 +71,10 @@ mod instantiate_in_system;
 mod invariants;
 #[path = "../load_data.rs"]
 mod load_data;
-#[path = "../matrix_world.rs"]
-mod matrix_world;
 #[path = "../material_arrays.rs"]
 mod material_arrays;
+#[path = "../matrix_world.rs"]
+mod matrix_world;
 #[path = "../mesh_flash.rs"]
 mod mesh_flash;
 #[path = "../mid_tick_save.rs"]
