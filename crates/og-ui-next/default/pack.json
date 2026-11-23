@@ -1451,6 +1451,9 @@
       },
       "tab-selected": "0 2px 4px 0 #00000073, inset 0 1px 0 0 #ffffff26"
     },
+    "textShadow": {
+      "tag": "1.5px 0 0 contrast-color(currentColor), -1.5px 0 0 contrast-color(currentColor), 0 1.5px 0 contrast-color(currentColor), 0 -1.5px 0 contrast-color(currentColor), 1px 1px 0 contrast-color(currentColor), -1px 1px 0 contrast-color(currentColor), 1px -1px 0 contrast-color(currentColor), -1px -1px 0 contrast-color(currentColor)"
+    },
     "tracking": {
       "2xl": -0.015,
       "3xl": -0.02,

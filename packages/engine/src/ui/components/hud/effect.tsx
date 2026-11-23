@@ -49,7 +49,7 @@ export function HudEffect(props: HudEffectProps) {
         </Show>
       </View>
       <Show when={props.label}>
-        <Text class={`max-w-16 py-0 px-1.25 text-xs font-bold tabular-nums whitespace-nowrap truncate text-fg text-shadow-2xs nine-chip-cut bg-raised-pressed compact:px-0.75 group-data-harmful/effect:text-foe-ink ${packClass("Chip", "frame")}`}>
+        <Text class={`max-w-16 py-0 px-1.25 text-xs font-bold tabular-nums whitespace-nowrap truncate text-fg text-shadow-tag nine-chip-cut bg-raised-pressed compact:px-0.75 group-data-harmful/effect:text-foe-ink ${packClass("Chip", "frame")}`}>
           {props.label}
         </Text>
       </Show>

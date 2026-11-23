@@ -32,7 +32,7 @@ export function IdleResources(props: IdleResourcesProps) {
             {(c) => (
             <View class={`flex-row items-center nine-plate-cut bg-plate-hi text-fg transition duration-317 border border-rim-soft shrink pr-2 pl-0.5 min-h-11 max-w-full py-0.5 gap-1 data-full:border-gold data-down:opacity-45 compact:grow compact:shrink compact:basis-0 compact:pr-1`} data-loading={props.loading === true} label={props.loading ? t("idle.resources.loading", { name: c().name }) : t("idle.resources.row", { name: c().name, amount: c().value ? c().value : formatCompact(c().amount) })} data-full={c().full} data-trend-down={((c().perSecond < 0 ? 'down' : c().perSecond > 0 ? 'up' : 'flat') === 'down') || ((c().perSecond < 0 ? 'down' : c().perSecond > 0 ? 'up' : 'flat') === "down")} data-trend-up={((c().perSecond < 0 ? 'down' : c().perSecond > 0 ? 'up' : 'flat') === 'up') || ((c().perSecond < 0 ? 'down' : c().perSecond > 0 ? 'up' : 'flat') === "up")} data-trend-flat={(c().perSecond < 0 ? 'down' : c().perSecond > 0 ? 'up' : 'flat') === "flat"}>
               <View class={`justify-center items-center bg-tile border-2 border-border-strong nine-plate-cut gap-2 size-12 compact:size-8 ${packClass("Slot", "frame")}`}>
-                <Icon class="text-shadow-2xs size-18/25" name={c().icon} />
+                <Icon class="text-shadow-tag size-18/25" name={c().icon} />
               </View>
               <View class="gap-0 shrink">
                 <Text class={`text-fg-muted whitespace-nowrap text-ellipsis text-start text-xs font-semibold overflow-hidden`}>
@@ -50,13 +50,13 @@ export function IdleResources(props: IdleResourcesProps) {
                       </Text>
                     </Show>
                     <Show when={c().full}>
-                      <Text class={`text-shadow-2xs bg-gold nine-chip-cut whitespace-nowrap text-xs font-semibold tracking-label uppercase text-gold-fg py-0 px-0.5 ${packClass("Chip", "frame")}`}>
+                      <Text class={`text-shadow-tag bg-gold nine-chip-cut whitespace-nowrap text-xs font-semibold tracking-label uppercase text-gold-fg py-0 px-0.5 ${packClass("Chip", "frame")}`}>
                         {t("idle.resources.full")}
                       </Text>
                     </Show>
                   </View>
                   <Show when={c().rate || c().perSecond !== 0}>
-                    <Text class={`text-fg-muted whitespace-nowrap text-ellipsis text-xs font-bold tabular-nums text-shadow-2xs overflow-hidden data-trend-up:text-success data-trend-down:text-warn`} data-trend-down={((c().perSecond < 0 ? 'down' : c().perSecond > 0 ? 'up' : 'flat') === 'down') || ((c().perSecond < 0 ? 'down' : c().perSecond > 0 ? 'up' : 'flat') === "down")} data-trend-up={((c().perSecond < 0 ? 'down' : c().perSecond > 0 ? 'up' : 'flat') === 'up') || ((c().perSecond < 0 ? 'down' : c().perSecond > 0 ? 'up' : 'flat') === "up")} data-trend-flat={(c().perSecond < 0 ? 'down' : c().perSecond > 0 ? 'up' : 'flat') === "flat"}>
+                    <Text class={`text-fg-muted whitespace-nowrap text-ellipsis text-xs font-bold tabular-nums text-shadow-tag overflow-hidden data-trend-up:text-success data-trend-down:text-warn`} data-trend-down={((c().perSecond < 0 ? 'down' : c().perSecond > 0 ? 'up' : 'flat') === 'down') || ((c().perSecond < 0 ? 'down' : c().perSecond > 0 ? 'up' : 'flat') === "down")} data-trend-up={((c().perSecond < 0 ? 'down' : c().perSecond > 0 ? 'up' : 'flat') === 'up') || ((c().perSecond < 0 ? 'down' : c().perSecond > 0 ? 'up' : 'flat') === "up")} data-trend-flat={(c().perSecond < 0 ? 'down' : c().perSecond > 0 ? 'up' : 'flat') === "flat"}>
                       {c().rate ? c().rate : c().perSecond > 0 ? t("idle.resources.perSecond", { rate: formatCompact(c().perSecond) }) : t("idle.resources.perSecondDown", { rate: formatCompact(c().perSecond) })}
                     </Text>
                   </Show>

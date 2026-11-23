@@ -10,6 +10,6 @@ pub use crate::{
     color::{Hsla, Rgba},
     effects::{BoxShadow, ColorStop, Filter, Gradient, GradientKind, GradientSize, KeyframeAnimation, Keyframes, Outline, Transition, TransitionProps, WindowsBackdrop},
     geometry::{Bounds, Corners, Edges, Point, Points, Size},
-    style::{BorderStyle, Borders, Color, CornerRadii, DecorationStyle, EllipsizeMode, EnvVar, FontVariant, LineHeight, ObjectPosition, PaintStyle, PositionAxis, PropertyValue, Style, StyleDecl, StyleError, StyleKey, StylePatch, StyleValue, SvgPaint, TextAlign, TextDecoration, TextShadow, TextStyle, TextTransform, Hyphens, TransformOrigin, TransformProperty, VerticalAlign, ViewStyle},
+    style::{BorderStyle, Borders, Color, CornerRadii, DecorationStyle, EllipsizeMode, EnvVar, FontVariant, LineHeight, ObjectPosition, PaintStyle, PositionAxis, PropertyValue, Style, StyleDecl, StyleError, StyleKey, StylePatch, StyleValue, SvgPaint, ShadowInk, TextAlign, TextDecoration, TextShadow, TextShadows, TEXT_SHADOW_LAYERS, TextStyle, TextTransform, Hyphens, TransformOrigin, TransformProperty, VerticalAlign, ViewStyle},
     transform::{Decomposed, MAX_TRANSFORMS, Matrix, Transform, TransformKind, TransformOp, translation},
 };

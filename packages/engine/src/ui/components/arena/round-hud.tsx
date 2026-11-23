@@ -116,7 +116,7 @@ export function ArenaRoundHud(props: ArenaRoundHudProps) {
               {props.outcome == "won" ? t("arena.round.won") : props.outcome == "lost" ? t("arena.round.lost") : t("arena.round.draw")}
             </Text>
             <Show when={(props.detail ?? "") != ""}>
-              <Text class="max-w-full text-center text-base font-semibold tracking-label uppercase text-fg text-shadow-2xs">{props.detail}</Text>
+              <Text class="max-w-full text-center text-base font-semibold tracking-label uppercase text-fg text-shadow-tag">{props.detail}</Text>
             </Show>
           </View>
         </Show>

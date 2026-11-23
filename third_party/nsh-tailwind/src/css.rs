@@ -814,22 +814,52 @@ pub(crate) fn shadow_layers(s: &str) -> Option<Vec<(BoxShadow, bool)>> {
     split_top(s, ',').into_iter().map(shadow_layer).collect()
 }
 
-/// A `text-shadow` list (`none` is empty): offsets, blur and color.
-pub(crate) fn text_shadows(s: &str) -> Option<Vec<(crate::style::TextShadow, bool)>> {
-    shadow_layers(s)?
+/// A `text-shadow` list (`none` is empty): offsets, blur and color. A layer
+/// in `currentColor`, `contrast-color(currentColor)` or no colour at all
+/// keeps that as its ink, resolved against each text's own ink when drawn
+/// (CSS inherits `currentColor` as the keyword).
+pub(crate) fn text_shadows(s: &str) -> Option<Vec<crate::style::TextShadow>> {
+    use crate::style::ShadowInk;
+    let s = s.trim();
+    if s.is_empty() || s == "none" {
+        return Some(Vec::new());
+    }
+    split_top(s, ',')
         .into_iter()
-        .map(|(l, colored)| {
-            (!l.inset && l.spread.0 == 0.0).then_some((
-                crate::style::TextShadow {
-                    color: l.color,
-                    offset_x: l.offset_x,
-                    offset_y: l.offset_y,
-                    radius: l.blur,
-                },
-                colored,
-            ))
+        .map(|layer| {
+            let (rest, ink) = match contrast_current(layer) {
+                Some(rest) => (rest, ShadowInk::ContrastCurrent),
+                None if mentions_current_color(layer) => (
+                    with_current_color(layer, Color(0x0000_00ff)),
+                    ShadowInk::Current,
+                ),
+                None => (layer.to_owned(), ShadowInk::Color),
+            };
+            let (l, colored) = shadow_layer(&rest)?;
+            let ink = match ink {
+                ShadowInk::Color if !colored => ShadowInk::Current,
+                ink => ink,
+            };
+            (!l.inset && l.spread.0 == 0.0).then_some(crate::style::TextShadow {
+                color: l.color,
+                ink,
+                offset_x: l.offset_x,
+                offset_y: l.offset_y,
+                radius: l.blur,
+            })
         })
         .collect()
+}
+
+/// `layer` without its `contrast-color(currentColor)` (in any case and
+/// spacing), if it writes one.
+fn contrast_current(layer: &str) -> Option<String> {
+    let lower = layer.to_ascii_lowercase();
+    let start = lower.find("contrast-color(")?;
+    let open = start + "contrast-color(".len();
+    let close = open + lower[open..].find(')')?;
+    is_current_color(&lower[open..close])
+        .then(|| format!("{}{}", &layer[..start], &layer[close + 1..]))
 }
 
 /// One shadow, `[inset] <x> <y> [<blur> [<spread>]] [<color>]` (words in

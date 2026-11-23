@@ -395,7 +395,10 @@ screen can wait for it.
   restyle list markers. `::first-letter`, `::first-line`, `::placeholder
   { color }` and `::selection { background-color; color; text-decoration }`
   style text. A text's shadow is a theme shadow class (`text-shadow-xs`,
-  `text-shadow-2xs`); there is no arbitrary `text-shadow-[…]`.
+  `text-shadow-tag`); there is no arbitrary `text-shadow-[…]`. A class
+  draws every layer of its theme entry, as CSS draws a `text-shadow` list
+  (the first on top), and a layer in `currentColor` or
+  `contrast-color(currentColor)` takes each text's own ink.
 - A link `<a href="#rules">` makes `#rules` `:target` and scrolls it to
   the start of its scroller (its `scroll-margin` above it, inside the
   scroller's `scroll-padding`). To point at a passage, put an id on its
@@ -534,8 +537,11 @@ bars it does not hold, this guide does:
   unblurred copies 1–1.5 px round the glyphs, in `contrast-color()` of the
   ink, read 12:1 over a white sky (the default `--tag-halo`). The engine
   draws a text as its CSS says and adds nothing over the scene: give text
-  that sits on nothing a ground, or the tag treatment: a theme halo
-  shadow class (`text-shadow-2xs`) and, where the pack sets one, a plate.
+  that sits on nothing a ground, or the tag treatment: the theme halo
+  class `text-shadow-tag` (the style's `--tag-halo`, every layer of it,
+  in TSX as in CSS) and, where the pack sets one, a plate. A pack sets its
+  own halo as `textShadow.tag` in its theme. `text-shadow-2xs` is
+  Tailwind's faint drop, not a halo.
   A text shadow inherits, so a HUD writes the class once on its root and
   each text takes it in its own ink; a title or a figure whose pack gives
   it a shadow of its own draws that instead. The built-in HUD components do

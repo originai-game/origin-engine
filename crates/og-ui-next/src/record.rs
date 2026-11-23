@@ -357,6 +357,46 @@ impl Default for Slice {
     }
 }
 
+/// The most text-shadow layers a record keeps (nsh's).
+pub const TEXT_SHADOWS: usize = nsh_tailwind::TEXT_SHADOW_LAYERS;
+
+/// A text shadow's layers, first on top as CSS paints them, and each one's
+/// ink: its own `color`, or the text's ink (or its contrast colour) at that
+/// colour's alpha, resolved per text when drawn as CSS inherits
+/// `currentColor`. Empty draws nothing.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct TextShadows {
+    pub layers: [Shadow; TEXT_SHADOWS],
+    pub ink: [nsh_tailwind::ShadowInk; TEXT_SHADOWS],
+    pub count: u8,
+}
+
+impl TextShadows {
+    /// Its layers with their inks, first on top.
+    pub fn each(&self) -> impl DoubleEndedIterator<Item = (&Shadow, nsh_tailwind::ShadowInk)> {
+        let n = usize::from(self.count);
+        self.layers[..n].iter().zip(self.ink[..n].iter().copied())
+    }
+
+    /// Layer `layer`'s colour over a text in `ink` (linear RGBA).
+    pub fn color(layer: &Shadow, kind: nsh_tailwind::ShadowInk, ink: Rgba) -> Rgba {
+        use nsh_tailwind::ShadowInk as K;
+        let a = layer.color[3];
+        match kind {
+            K::Color => layer.color,
+            K::Current => [ink[0], ink[1], ink[2], a * ink[3]],
+            // CSS Color 5's contrast-color(): white or black, whichever
+            // contrasts more with the ink (WCAG 2 contrast).
+            K::ContrastCurrent => {
+                let y = 0.2126 * ink[0] + 0.7152 * ink[1] + 0.0722 * ink[2];
+                let white = 1.05 / (y + 0.05) >= (y + 0.05) / 0.05;
+                let v = if white { 1.0 } else { 0.0 };
+                [v, v, v, a]
+            }
+        }
+    }
+}
+
 /// An element's paint: every field the paint pass reads, `Copy`, so motion
 /// holds an animated copy of it per node and repaint reads either.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -382,7 +422,7 @@ pub struct Skin {
     pub transform: Transform,
     /// `backdrop-filter: blur()`, CSS px; 0 none.
     pub backdrop_blur: f32,
-    pub text_shadow: Shadow,
+    pub text_shadows: TextShadows,
     pub decoration: Decoration,
     pub caret: Option<Rgba>,
     pub placeholder: Option<Rgba>,
@@ -412,7 +452,7 @@ impl Default for Skin {
             outline: Outline::default(),
             transform: Transform::default(),
             backdrop_blur: 0.0,
-            text_shadow: Shadow::default(),
+            text_shadows: TextShadows::default(),
             decoration: Decoration::default(),
             caret: None,
             placeholder: None,

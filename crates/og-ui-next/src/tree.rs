@@ -7,7 +7,7 @@
 
 use crate::arena::{Arena, Id, Run};
 use crate::icons::{IconAtlas, IconCell};
-use crate::record::{Decoration, Record, Rgba, Shadow, Text, TextStroke};
+use crate::record::{Decoration, Record, Rgba, Text, TextShadows, TextStroke};
 use og_draw::glyphs::Atlas;
 use og_draw::paint::{Paint, PaintEffect, PaintGroup, PaintKind, PaintQuad};
 use og_i18n::Direction;
@@ -137,7 +137,7 @@ struct Inherit {
     ink: Rgba,
     text: Text,
     opacity: f32,
-    text_shadow: Shadow,
+    text_shadows: TextShadows,
     text_stroke: TextStroke,
     decoration: Decoration,
 }
@@ -571,7 +571,7 @@ pub struct Tree {
 struct Shown {
     alpha: f32,
     ink: Rgba,
-    text_shadow: Shadow,
+    text_shadows: TextShadows,
     text_stroke: TextStroke,
     out: bool,
     /// A press, a hover and the cursor reach it (`pointer-events-*`).
@@ -624,7 +624,7 @@ impl Tree {
                 ink: [1.0; 4],
                 text: root.text,
                 opacity: 1.0,
-                text_shadow: Shadow::default(),
+                text_shadows: TextShadows::default(),
                 text_stroke: TextStroke::default(),
                 decoration: Decoration::default(),
             },
@@ -1128,10 +1128,10 @@ impl Tree {
             ink: if r.inked { r.skin.ink } else { from.ink },
             text: r.text.over(&from.text),
             opacity: from.opacity * r.skin.opacity,
-            text_shadow: if r.shadowed {
-                r.skin.text_shadow
+            text_shadows: if r.shadowed {
+                r.skin.text_shadows
             } else {
-                from.text_shadow
+                from.text_shadows
             },
             text_stroke: if r.stroked {
                 r.skin.text_stroke
@@ -1473,7 +1473,7 @@ impl Tree {
         let top = Shown {
             alpha: 1.0,
             ink: self.root.ink,
-            text_shadow: self.root.text_shadow,
+            text_shadows: self.root.text_shadows,
             text_stroke: self.root.text_stroke,
             out: false,
             touch: true,
@@ -1549,7 +1549,7 @@ impl Tree {
                     Shown {
                         alpha: eff.opacity,
                         ink: eff.ink,
-                        text_shadow: eff.text_shadow,
+                        text_shadows: eff.text_shadows,
                         text_stroke: eff.text_stroke,
                         out: false,
                         touch: true,
@@ -1563,10 +1563,10 @@ impl Tree {
             let s = self.motion.skin(el.node, &r.skin);
             let alpha = from.alpha * s.opacity * el.anchored().map_or(1.0, Anchor::alpha);
             let own_ink = if r.inked { s.ink } else { from.ink };
-            let text_shadow = if r.shadowed {
-                s.text_shadow
+            let text_shadows = if r.shadowed {
+                s.text_shadows
             } else {
-                from.text_shadow
+                from.text_shadows
             };
             let text_stroke = if r.stroked {
                 s.text_stroke
@@ -1576,7 +1576,7 @@ impl Tree {
             self.shown[e] = Shown {
                 alpha,
                 ink: own_ink,
-                text_shadow,
+                text_shadows,
                 text_stroke,
                 out: from.out
                     || self.motion.exiting(el.node)
@@ -2167,12 +2167,22 @@ impl Tree {
                 {
                     width = width.min(right - (x + lb.x)).max(0.0);
                 }
-                let sh = text_shadow;
+                let sh = text_shadows;
                 let st = text_stroke;
+                // A raster per distinct blur among the layers that draw.
+                let mut blurs = [0.0f32; crate::record::TEXT_SHADOWS];
+                let mut n_blurs = 0u8;
+                for (l, _) in sh.each().filter(|(l, _)| l.color[3] > 0.0) {
+                    if !blurs[..usize::from(n_blurs)].contains(&l.blur) {
+                        blurs[usize::from(n_blurs)] = l.blur;
+                        n_blurs += 1;
+                    }
+                }
                 let look = crate::text::Look {
                     scale,
                     field: sdf,
-                    shadow: (sh.color[3] > 0.0).then_some(sh.blur),
+                    shadows: blurs,
+                    shadow_count: n_blurs,
                     stroke: if st.color[3] > 0.0 {
                         st.width.max(0.0)
                     } else {
@@ -2227,16 +2237,21 @@ impl Tree {
                     color,
                     ..*q
                 };
-                // The shadow lowest, a whole number of device pixels off.
-                if look.shadow.is_some() {
-                    let mut c = sh.color;
+                // The shadows lowest, the last layer first as CSS paints
+                // them, each a whole number of device pixels off, in its
+                // colour over this text's ink.
+                for (l, kind) in sh.each().rev().filter(|(l, _)| l.color[3] > 0.0) {
+                    let Some(j) = look.blurs().iter().position(|&b| b == l.blur) else {
+                        continue;
+                    };
+                    let mut c = TextShadows::color(l, kind, own_ink);
                     c[3] *= alpha;
-                    let [dx, dy] = sh.offset.map(|d| match sdf {
+                    let [dx, dy] = l.offset.map(|d| match sdf {
                         true => d,
                         false => (d * scale).round() / scale,
                     });
                     p.quads
-                        .extend(g.shadow.iter().map(|q| placed(q, dx, dy, c)));
+                        .extend(g.shadow[j].iter().map(|q| placed(q, dx, dy, c)));
                 }
                 // The outline under the fill: the band the stroke's width
                 // wide on each glyph's outline (`-webkit-text-stroke`).

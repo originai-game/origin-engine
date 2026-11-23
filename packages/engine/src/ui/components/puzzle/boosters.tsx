@@ -24,7 +24,7 @@ export function PuzzleBoosters(props: PuzzleBoostersProps) {
   return (
     <View class={`grow shrink basis-0 border-rim bg-linear-to-b from-plate-hi to-plate-lo text-fg p-1 gap-2 rounded-block border disabled:text-fg-subtle`} label={t("puzzle.boosters.name")}>
       <Show when={(props.boosters ?? []).length} fallback={
-          <Text class={`grow shrink basis-0 text-center text-shadow-2xs p-4 m-0`} role="status">
+          <Text class={`grow shrink basis-0 text-center text-shadow-tag p-4 m-0`} role="status">
             {t("puzzle.boosters.empty")}
           </Text>
       }>
@@ -37,15 +37,15 @@ export function PuzzleBoosters(props: PuzzleBoostersProps) {
                   <Show when={!b().available || b().id === props.armed} fallback={
                       <View class="h-4.25 mb-0.5" />
                   }>
-                    <Text class={`h-4.25 mb-0.5 whitespace-nowrap leading-normal text-xs font-semibold tracking-label uppercase text-fg-muted bg-tile inset-shadow-lit text-shadow-2xs py-0 px-0.5 group-data-armed/booster:text-hud-accent-fg group-data-armed/booster:bg-none group-data-armed/booster:bg-hud-accent`} data-armed={b().available && b().id === props.armed}>
+                    <Text class={`h-4.25 mb-0.5 whitespace-nowrap leading-normal text-xs font-semibold tracking-label uppercase text-fg-muted bg-tile inset-shadow-lit text-shadow-tag py-0 px-0.5 group-data-armed/booster:text-hud-accent-fg group-data-armed/booster:bg-none group-data-armed/booster:bg-hud-accent`} data-armed={b().available && b().id === props.armed}>
                       {b().available ? t("puzzle.boosters.armed") : t("puzzle.boosters.locked")}
                     </Text>
                   </Show>
                   <View class="size-16 compact:size-12">
                     <View class={`grow shrink basis-0 justify-center items-center absolute shadow-plate inset-ring-2 inset-ring-rim inset-0 gap-2 rounded-full group-data-armed/booster:shadow-glow-lg group-data-armed/booster:inset-ring-3 group-data-armed/booster:inset-ring-hud-accent group-data-armed/booster:translate-x-0 group-data-armed/booster:-translate-y-1.5`}>
-                      <Icon class="text-shadow-2xs size-7/10" name={b().icon} />
+                      <Icon class="text-shadow-tag size-7/10" name={b().icon} />
                     </View>
-                    <Text class={`absolute -right-1 -bottom-0.5 min-w-4 text-center whitespace-nowrap text-xs font-bold text-fg bg-tile nine-chip-cut text-shadow-2xs py-0 px-0.5 data-out:text-gold-fg data-out:bg-none data-out:bg-gold ${packClass("Chip", "frame")}`} data-out={b().count === 0}>
+                    <Text class={`absolute -right-1 -bottom-0.5 min-w-4 text-center whitespace-nowrap text-xs font-bold text-fg bg-tile nine-chip-cut text-shadow-tag py-0 px-0.5 data-out:text-gold-fg data-out:bg-none data-out:bg-gold ${packClass("Chip", "frame")}`} data-out={b().count === 0}>
                       {b().count === 0 ? '+' : t("puzzle.boosters.times", { count: formatNumber(b().count) })}
                     </Text>
                   </View>

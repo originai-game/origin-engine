@@ -55,7 +55,7 @@ export function ShooterEffects(props: ShooterEffectsProps) {
               </Show>
             </View>
             <Show when={e().label}>
-              <Text class={`max-w-14 py-0 px-1.25 text-xs font-bold tabular-nums whitespace-nowrap truncate text-fg text-shadow-2xs nine-chip-cut bg-tile compact:px-0.75 group-data-harmful/effects:text-danger ${packClass("Chip", "frame")}`}>
+              <Text class={`max-w-14 py-0 px-1.25 text-xs font-bold tabular-nums whitespace-nowrap truncate text-fg text-shadow-tag nine-chip-cut bg-tile compact:px-0.75 group-data-harmful/effects:text-danger ${packClass("Chip", "frame")}`}>
                 {e().label}
               </Text>
             </Show>

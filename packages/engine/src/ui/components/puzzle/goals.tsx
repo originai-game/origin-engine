@@ -37,26 +37,26 @@ export function PuzzleGoals(props: PuzzleGoalsProps) {
           <Text class={`tabular-nums whitespace-nowrap text-display-lg font-bold data-low:text-warn compact:text-4xl`} data-low={props.low === true}>
             {props.counter === 'time' ? formatDuration(props.seconds) : formatNumber(props.moves)}
           </Text>
-          <Text class={`tracking-label uppercase opacity-78 whitespace-nowrap text-xs font-semibold text-shadow-2xs`}>
+          <Text class={`tracking-label uppercase opacity-78 whitespace-nowrap text-xs font-semibold text-shadow-tag`}>
             {props.counter === 'time' ? t("puzzle.goals.time") : t("puzzle.goals.moves")}
           </Text>
           <Show when={props.low}>
-            <Text class={`mt-0.5 whitespace-nowrap text-xs font-semibold tracking-label uppercase text-warn-fg bg-warn nine-chip-cut text-shadow-2xs py-0 px-1 ${packClass("Chip", "frame")}`}>
+            <Text class={`mt-0.5 whitespace-nowrap text-xs font-semibold tracking-label uppercase text-warn-fg bg-warn nine-chip-cut text-shadow-tag py-0 px-1 ${packClass("Chip", "frame")}`}>
               {t("puzzle.goals.low")}
             </Text>
           </Show>
         </View>
         <View class={`flex-row flex-wrap grow shrink basis-0 justify-center gap-1 compact:basis-full`} role="list" label={t("puzzle.goals.name")}>
-          <Show when={(props.goals)?.length ?? 0} fallback={<Text class={`tracking-xs text-fg-muted self-center text-center text-shadow-2xs m-0 shrink`}>   {t("puzzle.goals.none")} </Text>}><For each={props.goals}>
+          <Show when={(props.goals)?.length ?? 0} fallback={<Text class={`tracking-xs text-fg-muted self-center text-center text-shadow-tag m-0 shrink`}>   {t("puzzle.goals.none")} </Text>}><For each={props.goals}>
             {(g) => (
             <View class={`items-center min-w-20.75 max-w-32 inset-ring-1 inset-ring-rim-soft py-0.5 px-1 gap-0 compact:min-w-0 compact:grow compact:shrink compact:basis-0 ${packClass("Chip", "frame")}`} role="listitem" label={g().done ? t("puzzle.goals.done", { label: g().label }) : t("puzzle.goals.left", { label: g().label, left: g().left })} data-done={g().done}>
               <View class={`group/socket grow shrink basis-0 justify-center items-center gap-2 size-12 compact:size-8`}>
-                <Icon class="text-shadow-2xs size-full" name={g().icon} />
+                <Icon class="text-shadow-tag size-full" name={g().icon} />
               </View>
               <Show when={g().done}>
                 <Icon class={`absolute top-0.5 right-0.5 bg-success shadow-glow-sm shadow-success size-4 rounded-control text-success-fg`} name="check" />
               </Show>
-              <Text class={`whitespace-nowrap text-xl font-bold tabular-nums text-fg text-shadow-2xs data-done:text-success`} data-done={g().done}>
+              <Text class={`whitespace-nowrap text-xl font-bold tabular-nums text-fg text-shadow-tag data-done:text-success`} data-done={g().done}>
                 {formatNumber(g().left)}
               </Text>
               <Text class={`text-fg-muted max-w-full whitespace-nowrap text-ellipsis text-xs font-semibold overflow-hidden`}>
@@ -68,7 +68,7 @@ export function PuzzleGoals(props: PuzzleGoalsProps) {
         </View>
         <View class={`justify-center min-w-57.5 py-1 px-2 gap-0.5 compact:grow compact:shrink compact:basis-0 compact:min-w-0`} role="status" label={t("puzzle.goals.scoreName", { score: formatNumber(props.score) })}>
           <View class="flex-row items-baseline gap-1">
-            <Text class={`grow shrink basis-0 tracking-label uppercase text-fg-muted whitespace-nowrap text-xs font-semibold text-shadow-2xs`}>
+            <Text class={`grow shrink basis-0 tracking-label uppercase text-fg-muted whitespace-nowrap text-xs font-semibold text-shadow-tag`}>
               {t("puzzle.goals.score")}
             </Text>
             <Text class={`tabular-nums text-fg whitespace-nowrap text-title font-bold shrink`}>
@@ -83,7 +83,7 @@ export function PuzzleGoals(props: PuzzleGoalsProps) {
               <For each={props.stars}>
                 {(s) => (
                 <View class={`absolute top-0 text-fg-muted size-4 data-lit:text-gold`} data-lit={(props.progress ?? -1) >= s().at}>
-                  <Icon class="text-shadow-2xs size-full" name="star" />
+                  <Icon class="text-shadow-tag size-full" name="star" />
                 </View>
                 )}
               </For>

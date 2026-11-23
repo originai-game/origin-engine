@@ -65,7 +65,7 @@ function Side(props: { name?: string; team: "a" | "b"; fighters?: ReadonlyArray<
     <View class="flex-1 min-w-0 flex-col gap-y-1 compact:flex-none compact:gap-y-1" role="group" label={heading()}>
       <Text class={`pb-1 max-w-full ${props.team == "b" ? "text-end " : "text-start "}${ink()} ${glow()} text-display-xl leading-none font-bold uppercase tracking-sm group-data-compact/versus:text-display-sm whitespace-normal`}>{heading()}</Text>
       <Show when={fighters().length} fallback={
-        <Text class="p-4 text-center text-base text-fg-muted text-shadow-2xs" role="status">{t("arena.versus.waiting")}</Text>
+        <Text class="p-4 text-center text-base text-fg-muted text-shadow-tag" role="status">{t("arena.versus.waiting")}</Text>
       }>
         <View class="flex-col gap-y-1" role="list" label={heading()}>
           <For each={fighters()} key={(f) => f.id}>

@@ -56,7 +56,7 @@ export function AbilitySlot(props: AbilitySlotProps) {
       <View class={`flex-row items-center justify-center gap-1 group/slot border-rim-strong bg-linear-to-b from-plate-hi to-plate-lo shadow-float ring ring-shade-deep transition duration-317 w-full aspect-square p-0 rounded-button border overflow-hidden data-selected:border-accent data-done:border-success data-active:border-accent data-active:shadow-glow data-active:shadow-accent data-full:border-gold data-shape-round:rounded-capsule data-shape-square:rounded-button active:bg-none active:bg-tile-pressed hover:shadow-plate hover:inset-ring-1 hover:inset-ring-well-rim data-empty:shadow-sunk data-locked:shadow-sunk data-locked:scale-100 disabled:shadow-sunk data-down:opacity-45 data-play-pulse:animate-pulse ${packClass("Slot", "frame")}`} role="button" onPress={(e) => props.onUse?.(e)} label={props.name} valueText={props.locked ? t("component.ability-slot.locked") : props.disabled ? t("component.ability-slot.unavailable") : props.cooldown > 0 ? formatNumber(props.cooldown) : t("component.ability-slot.ready")} disabled={props.locked || props.disabled} data-play-pulse={(props.active || (props.ultimate ?? -1) >= 1 ? 'pulse' : null) === "pulse"} data-cooling={props.cooldown > 0} data-tinted={props.unaffordable || props.outOfRange} data-full={(props.ultimate ?? -1) >= 1} data-active={props.active || (props.ultimate ?? -1) >= 1} data-locked={props.locked} data-shape-round={((props.ultimate ?? -1) >= 0 ? 'round' : 'square') === "round"} data-shape-square={((props.ultimate ?? -1) >= 0 ? 'round' : 'square') === "square"}>
         <View class="gap-2 size-full">
           <View class={`absolute bg-tile shadow-sunk justify-center items-center inset-0.5 gap-2 rounded-field group-data-ultimate/abilityslot:rounded-capsule group-data-tinted/slot:bg-linear-to-t group-data-tinted/slot:from-danger group-data-tinted/slot:to-transparent group-data-tinted/slot:to-75% group-data-tinted/slot:bg-tile`}>
-            <Icon class="text-fg text-shadow-2xs size-33/50 group-data-ultimate/abilityslot:size-1/2 group-disabled/slot:text-fg-subtle" name={props.icon} />
+            <Icon class="text-fg text-shadow-tag size-33/50 group-data-ultimate/abilityslot:size-1/2 group-disabled/slot:text-fg-subtle" name={props.icon} />
           </View>
           <Show when={(props.ultimate ?? -1) >= 0}>
             <View class="absolute inset-0 nine-ring bg-gold" wipe={Math.min(Math.max(props.ultimate ?? 0, 0), 1)} />
@@ -64,14 +64,14 @@ export function AbilitySlot(props: AbilitySlotProps) {
           <Show when={props.cooldown > 0}>
             <View class="absolute inset-0 nine-disc bg-scrim" wipe={Math.min(props.cooldown / (props.cooldownMax ?? 1), 1)} wipeCcw />
             <View class="items-center justify-center max-w-105 absolute mx-auto inset-0 gap-2">
-              <Text class={`tabular-nums text-fg text-shadow-2xs text-xl`}>
+              <Text class={`tabular-nums text-fg text-shadow-tag text-xl`}>
                 {props.cooldown < 10 ? formatNumber(props.cooldown) : formatDuration(props.cooldown)}
               </Text>
             </View>
           </Show>
           <Show when={(props.ultimate ?? -1) >= 0 && (props.ultimate ?? -1) < 1}>
             <View class="flex-row items-center absolute bottom-0 justify-center inset-x-0 gap-2">
-              <Text class={`text-caption tabular-nums bg-raised-pressed inset-ring-1 inset-ring-rim text-gold transition duration-317 text-shadow-2xs py-0 px-2 rounded-capsule shrink`}>
+              <Text class={`text-caption tabular-nums bg-raised-pressed inset-ring-1 inset-ring-rim text-gold transition duration-317 text-shadow-tag py-0 px-2 rounded-capsule shrink`}>
                 {`${formatNumber((props.ultimate ?? 0) * 100, { decimals: 0 })}%`}
               </Text>
             </View>
@@ -83,31 +83,31 @@ export function AbilitySlot(props: AbilitySlotProps) {
           </Show>
           <Show when={props.locked}>
             <View class="items-center justify-center max-w-105 absolute mx-auto inset-0 gap-2">
-              <Icon class="text-fg text-shadow-2xs size-1/2 group-disabled/slot:text-fg-subtle" name="lock" />
+              <Icon class="text-fg text-shadow-tag size-1/2 group-disabled/slot:text-fg-subtle" name="lock" />
             </View>
           </Show>
           <Show when={props.cost && props.cooldown <= 0 && !props.locked}>
             <Show when={(props.ultimate ?? -1) >= 0} fallback={
                 <View class="flex-row items-center absolute bottom-0.5 left-0.5 gap-2">
-                  <Text class={`text-caption tabular-nums bg-surface-raised inset-ring-1 inset-ring-rim text-mana transition duration-317 text-shadow-2xs py-0 px-2 rounded-capsule data-short:text-danger shrink`} data-short={props.unaffordable}>
+                  <Text class={`text-caption tabular-nums bg-surface-raised inset-ring-1 inset-ring-rim text-mana transition duration-317 text-shadow-tag py-0 px-2 rounded-capsule data-short:text-danger shrink`} data-short={props.unaffordable}>
                     {props.cost}
                   </Text>
                 </View>
             }>
               <View class="flex-row items-center absolute top-0 justify-center inset-x-0 gap-2">
-                <Text class={`text-caption tabular-nums bg-surface-raised inset-ring-1 inset-ring-rim text-mana transition duration-317 text-shadow-2xs py-0 px-2 rounded-capsule data-short:text-danger shrink`} data-short={props.unaffordable}>
+                <Text class={`text-caption tabular-nums bg-surface-raised inset-ring-1 inset-ring-rim text-mana transition duration-317 text-shadow-tag py-0 px-2 rounded-capsule data-short:text-danger shrink`} data-short={props.unaffordable}>
                   {props.cost}
                 </Text>
               </View>
             </Show>
           </Show>
           <Show when={props.count > 0}>
-            <Text class={`absolute right-1.5 bottom-1.5 tabular-nums text-fg text-shadow-2xs text-reading`}>
+            <Text class={`absolute right-1.5 bottom-1.5 tabular-nums text-fg text-shadow-tag text-reading`}>
               {formatNumber(props.count)}
             </Text>
           </Show>
           <Show when={props.maxCharges > 1 && props.cooldown <= 0 && !props.locked}>
-            <Text class={`absolute top-0.5 right-0.5 text-caption tabular-nums bg-raised-lo inset-ring-1 inset-ring-rim text-fg transition duration-317 min-w-4 text-shadow-2xs py-0 px-2 rounded-capsule`}>
+            <Text class={`absolute top-0.5 right-0.5 text-caption tabular-nums bg-raised-lo inset-ring-1 inset-ring-rim text-fg transition duration-317 min-w-4 text-shadow-tag py-0 px-2 rounded-capsule`}>
               {formatNumber(props.charges)}
             </Text>
           </Show>
@@ -119,7 +119,7 @@ export function AbilitySlot(props: AbilitySlotProps) {
         </View>
       </Show>
       <Show when={props.hotkey || props.action}>
-        <Text class={`text-caption tabular-nums bg-surface-raised inset-ring-1 inset-ring-rim text-fg transition duration-317 max-w-full whitespace-nowrap text-shadow-2xs py-0 px-2 rounded-capsule overflow-hidden`} glyph={props.hotkey ? undefined : props.action}>
+        <Text class={`text-caption tabular-nums bg-surface-raised inset-ring-1 inset-ring-rim text-fg transition duration-317 max-w-full whitespace-nowrap text-shadow-tag py-0 px-2 rounded-capsule overflow-hidden`} glyph={props.hotkey ? undefined : props.action}>
           {props.hotkey}
         </Text>
       </Show>

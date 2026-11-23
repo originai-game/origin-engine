@@ -66,7 +66,7 @@ export function HudBar(props: HudBarProps) {
       </Show>
       <Show when={props.showValue}>
         <View class="absolute inset-0 flex-row items-center justify-center px-1 overflow-hidden">
-          <Text class="text-caption tabular-nums whitespace-nowrap text-fg text-shadow-2xs">{t("hud.bar.figure", { now: props.value, max: props.max ?? 1 })}</Text>
+          <Text class="text-caption tabular-nums whitespace-nowrap text-fg text-shadow-tag">{t("hud.bar.figure", { now: props.value, max: props.max ?? 1 })}</Text>
         </View>
       </Show>
     </View>

@@ -41,7 +41,7 @@ impl Scheme {
 }
 
 /// The theme sections a pack may set: NSH's `Theme::from_json` keys.
-pub const THEME_KEYS: [&str; 18] = [
+pub const THEME_KEYS: [&str; 19] = [
     "colors",
     "spacing",
     "rem",
@@ -56,6 +56,7 @@ pub const THEME_KEYS: [&str; 18] = [
     "shadow",
     "insetShadow",
     "dropShadow",
+    "textShadow",
     "blur",
     "perspective",
     "aspect",

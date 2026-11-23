@@ -142,7 +142,7 @@ fn pack_tree() -> Tree {
 }
 
 /// DamageNumbers' class, as hud/damage-numbers.tsx gives each number.
-const DAMAGE: &str = "-translate-x-1/2 animate-float text-[1.286rem] font-bold tabular-nums whitespace-nowrap text-fg text-shadow-2xs";
+const DAMAGE: &str = "-translate-x-1/2 animate-float text-[1.286rem] font-bold tabular-nums whitespace-nowrap text-fg text-shadow-tag";
 
 /// Hit `k` spawned: a text node anchored to entity `k`, its number, in
 /// the root.

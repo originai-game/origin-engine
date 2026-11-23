@@ -78,7 +78,7 @@ export function StatBar(props: StatBarProps) {
         </Show>
         <Show when={props.label}>
           <View class="bg-raised-pressed inset-ring-1 inset-ring-rim rounded-control py-0 px-1 shrink-0">
-            <Text class="text-xs font-semibold tracking-label uppercase whitespace-nowrap text-fg-muted text-shadow-2xs">{props.label}</Text>
+            <Text class="text-xs font-semibold tracking-label uppercase whitespace-nowrap text-fg-muted text-shadow-tag">{props.label}</Text>
           </View>
         </Show>
         <View class="relative min-w-0 flex-1 h-4.5 overflow-hidden bg-track shadow-plate ring ring-rim group-data-critical/stat:shadow-glow group-data-critical/stat:shadow-critical group-data-critical/stat:ring group-data-critical/stat:ring-critical group-data-critical/stat:animate-pulse">
@@ -98,13 +98,13 @@ export function StatBar(props: StatBarProps) {
           </Show>
           <Show when={props.showValue && props.valueInside}>
             <View class="absolute right-0 top-0 h-full flex-row items-center px-2">
-              <Text class="text-reading font-bold tabular-nums whitespace-nowrap text-fg text-shadow-2xs group-data-critical/stat:text-danger">{text()}</Text>
+              <Text class="text-reading font-bold tabular-nums whitespace-nowrap text-fg text-shadow-tag group-data-critical/stat:text-danger">{text()}</Text>
             </View>
           </Show>
         </View>
         <Show when={props.showValue && !props.valueInside}>
           <View class="bg-raised-pressed inset-ring-1 inset-ring-rim rounded-control py-0 px-1 shrink-0">
-            <Text class="text-reading font-bold tabular-nums whitespace-nowrap text-fg text-shadow-2xs group-data-critical/stat:text-danger">{text()}</Text>
+            <Text class="text-reading font-bold tabular-nums whitespace-nowrap text-fg text-shadow-tag group-data-critical/stat:text-danger">{text()}</Text>
           </View>
         </Show>
       </View>

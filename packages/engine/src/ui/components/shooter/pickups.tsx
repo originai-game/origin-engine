@@ -55,9 +55,9 @@ export function ShooterPickups(props: ShooterPickupsProps) {
                 <Image class="size-full" src={p().icon} />
               </Show>
             </View>
-            <Text class="min-w-0 text-sm font-semibold whitespace-nowrap truncate text-shadow-2xs text-stroke-3 text-stroke-bg compact:text-caption">{p().name}</Text>
+            <Text class="min-w-0 text-sm font-semibold whitespace-nowrap truncate text-shadow-tag text-stroke-3 text-stroke-bg compact:text-caption">{p().name}</Text>
             <Text
-              class={`shrink-0 text-sm font-bold tabular-nums whitespace-nowrap text-fg-muted text-shadow-2xs text-stroke-3 text-stroke-bg compact:text-caption group-data-rarity-rare/pickup:text-rare group-data-rarity-epic/pickup:text-epic group-data-rarity-legendary/pickup:text-gold`}
+              class={`shrink-0 text-sm font-bold tabular-nums whitespace-nowrap text-fg-muted text-shadow-tag text-stroke-3 text-stroke-bg compact:text-caption group-data-rarity-rare/pickup:text-rare group-data-rarity-epic/pickup:text-epic group-data-rarity-legendary/pickup:text-gold`}
             >
               {t("shooter.pickups.count", { quantity: formatNumber(p().quantity ?? 0) })}
             </Text>

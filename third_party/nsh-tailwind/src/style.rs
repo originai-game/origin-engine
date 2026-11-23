@@ -1103,11 +1103,55 @@ impl ViewStyle {
     };
 }
 
+/// What a text shadow layer is painted in.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum ShadowInk {
+    /// Its own `color`.
+    #[default]
+    Color,
+    /// `currentColor`: the ink of each text it reaches (it inherits as the
+    /// keyword, as CSS's does), at `color`'s alpha.
+    Current,
+    /// `contrast-color(currentColor)`: white or black, whichever contrasts
+    /// more with each text's ink, at `color`'s alpha.
+    ContrastCurrent,
+}
+
+/// The most layers a text shadow keeps (CSS lists more are cut here).
+pub const TEXT_SHADOW_LAYERS: usize = 8;
+
+/// A text shadow's layers, first on top as CSS paints them (`textShadow`,
+/// `text-shadow-*`); empty is `none`.
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
+pub struct TextShadows {
+    layers: [TextShadow; TEXT_SHADOW_LAYERS],
+    len: u8,
+}
+
+impl TextShadows {
+    /// The first [`TEXT_SHADOW_LAYERS`] of `layers`.
+    pub fn new(layers: impl IntoIterator<Item = TextShadow>) -> TextShadows {
+        let mut out = TextShadows::default();
+        for l in layers.into_iter().take(TEXT_SHADOW_LAYERS) {
+            out.layers[out.len as usize] = l;
+            out.len += 1;
+        }
+        out
+    }
+
+    /// Its layers, first on top.
+    pub fn layers(&self) -> &[TextShadow] {
+        &self.layers[..self.len as usize]
+    }
+}
+
 /// A shadow behind text (`textShadow`, `text-shadow-*`).
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub struct TextShadow {
-    /// Color.
+    /// Color (only its alpha when `ink` is not [`ShadowInk::Color`]).
     pub color: Color,
+    /// What the layer is painted in.
+    pub ink: ShadowInk,
     /// Horizontal offset.
     pub offset_x: Points,
     /// Vertical offset.
@@ -1172,13 +1216,9 @@ pub struct TextStyle {
     pub transform: Option<TextTransform>,
     /// Hyphenation; `None` inherits (CSS's `manual` at the root).
     pub hyphens: Option<Hyphens>,
-    /// The text shadow's color (`textShadow`, `text-shadow-*`: its widest
-    /// layer's).
-    pub shadow_color: Option<Color>,
-    /// The text shadow's offset.
-    pub shadow_offset: Option<Point<Points>>,
-    /// The text shadow's blur radius.
-    pub shadow_radius: Option<Points>,
+    /// The text shadow's layers (`textShadow`, `text-shadow-*`); `None`
+    /// inherits, empty is `none`.
+    pub shadows: Option<TextShadows>,
     /// `fontVariant`.
     pub font_variant: Option<FontVariant>,
     /// `writingDirection`: right to left (`Some(true)`), left to right, or
@@ -1221,9 +1261,7 @@ impl TextStyle {
         stroke_color: None,
         transform: None,
         hyphens: None,
-        shadow_color: None,
-        shadow_offset: None,
-        shadow_radius: None,
+        shadows: None,
         font_variant: None,
         writing_direction: None,
         align_vertical: None,
@@ -1231,30 +1269,6 @@ impl TextStyle {
         selection_color: None,
         caret_color: None,
     };
-}
-
-impl TextStyle {
-    /// The text shadow these properties describe, if any. Like NSShadow, an
-    /// offset or radius without a color uses black at a third of opacity.
-    pub fn shadow(&self) -> Option<TextShadow> {
-        if self.shadow_color.is_none()
-            && self.shadow_offset.is_none()
-            && self.shadow_radius.is_none()
-        {
-            return None;
-        }
-        let color = self.shadow_color.unwrap_or(Color(0x0000_0055));
-        if color.is_transparent() {
-            return None;
-        }
-        let offset = self.shadow_offset.unwrap_or_default();
-        Some(TextShadow {
-            color,
-            offset_x: offset.x,
-            offset_y: offset.y,
-            radius: self.shadow_radius.unwrap_or_default().max(Points::ZERO),
-        })
-    }
 }
 
 /// What `fill` or `stroke` paints with (CSS's and SVG's `<paint>`).
@@ -1389,7 +1403,6 @@ pub(crate) struct Pending {
     /// `currentColor`, filled in by [`Style::apply_current_color`].
     current_shadows: u64,
     /// The `textShadow` names no color.
-    current_text_shadow: bool,
     /// The color properties set to `currentColor` last ([`current_bits`]),
     /// filled in by [`Style::apply_current_color`].
     current_colors: u16,
@@ -2140,7 +2153,7 @@ pub enum PropertyValue {
     /// `fontVariant`.
     FontVariant(Option<FontVariant>),
     /// `textShadow`: the widest layer and whether it names its color.
-    TextShadow(Option<(TextShadow, bool)>),
+    TextShadow(TextShadows),
     /// `textTransform`.
     TextTransform(Option<TextTransform>),
     /// `hyphens`.
@@ -2344,10 +2357,12 @@ impl StylePatch {
         ) {
             // Its layers (`drop-shadow()`s) without a color are the text
             // color's: as a width's.
+            // A text shadow's colourless layers keep `currentColor` as
+            // their ink, resolved against each text's when it draws.
             let colorless = match key {
                 StyleKey::BoxShadow => style.pending.current_shadows != 0,
                 StyleKey::Filter => style.pending.current_drop_shadows != 0,
-                _ => style.pending.current_text_shadow,
+                _ => false,
             };
             if colorless {
                 self.insert_current_color(key);
@@ -2652,6 +2667,9 @@ fn opt_lp(v: StyleValue<'_>) -> Result<Option<LengthPercentage>, StyleError> {
 /// properties that take a color, alone or in a gradient, a shadow or a
 /// filter; `color` itself takes it alone: the inherited color).
 fn defers_current_color(key: StyleKey) -> bool {
+    // Not `textShadow`: its layers keep `currentColor` (and
+    // `contrast-color(currentColor)`) as their ink, which each text it
+    // reaches resolves against its own, as CSS inherits the keyword.
     matches!(
         key,
         StyleKey::BackgroundImage
@@ -2659,7 +2677,6 @@ fn defers_current_color(key: StyleKey) -> bool {
             | StyleKey::Filter
             | StyleKey::BackdropFilter
             | StyleKey::BoxShadow
-            | StyleKey::TextShadow
     ) || current_bits(key).is_some()
 }
 
@@ -3442,19 +3459,10 @@ impl StyleKey {
                 None => None,
                 Some(s) => Some(FontVariant::parse(s).ok_or(StyleError::InvalidValue)?),
             }),
-            K::TextShadow => {
-                let layers = match keyword(value)? {
-                    None => Vec::new(),
-                    Some(s) => crate::css::text_shadows(s).ok_or(StyleError::InvalidValue)?,
-                };
-                // One text shadow natively: the widest layer stands for all,
-                // as the classes' does.
-                PropertyValue::TextShadow(
-                    layers
-                        .into_iter()
-                        .max_by(|a, b| a.0.radius.0.total_cmp(&b.0.radius.0)),
-                )
-            }
+            K::TextShadow => PropertyValue::TextShadow(TextShadows::new(match keyword(value)? {
+                None => Vec::new(),
+                Some(s) => crate::css::text_shadows(s).ok_or(StyleError::InvalidValue)?,
+            })),
             K::NumberOfLines => PropertyValue::NumberOfLines(match value {
                 StyleValue::Null => None,
                 StyleValue::Number(n) if n >= 0.0 => Some(n as u32),
@@ -3739,9 +3747,6 @@ impl Style {
                     }
                 }
             });
-        }
-        if self.pending.current_text_shadow {
-            self.text.shadow_color = Some(current);
         }
         let colors = self.pending.current_colors;
         for (bit, key) in CURRENT_KEYS.iter().enumerate() {
@@ -4190,13 +4195,7 @@ impl Style {
             (K::UserSelect, V::OptBool(v)) => self.pending.user_select = *v,
             (K::PointerEvents, V::PointerEvents(v)) => self.pending.pointer_events = *v,
             (K::FontVariant, V::FontVariant(v)) => self.text.font_variant = *v,
-            (K::TextShadow, V::TextShadow(v)) => {
-                self.pending.current_text_shadow = v.is_some_and(|(_, colored)| !colored);
-                let widest = v.map(|(s, _)| s);
-                self.text.shadow_color = widest.map(|s| s.color);
-                self.text.shadow_offset = widest.map(|s| point(s.offset_x, s.offset_y));
-                self.text.shadow_radius = widest.map(|s| s.radius);
-            }
+            (K::TextShadow, V::TextShadow(v)) => self.text.shadows = Some(*v),
             (K::TextTransform, V::TextTransform(v)) => self.text.transform = *v,
             (K::Hyphens, V::Hyphens(v)) => self.text.hyphens = *v,
             (K::TextAlign, V::TextAlign(align, physical)) => {
@@ -5343,7 +5342,8 @@ mod tests {
         assert_eq!(s.view.outline.color, text);
         assert_eq!(s.text.decoration_color, Some(text));
         assert_eq!(s.view.effects.as_ref().unwrap().box_shadows[0].color, text);
-        assert_eq!(s.text.shadow_color, Some(text));
+        // A text shadow keeps `currentColor` for each text it reaches.
+        assert_eq!(s.text.shadows.unwrap().layers()[0].ink, ShadowInk::Current);
         // And `currentColor` wins over an earlier value.
         let mut s = Style::default();
         s.set("backgroundColor", StyleValue::Str("red")).unwrap();
@@ -5462,26 +5462,35 @@ mod tests {
 
     #[test]
     fn text_shadows_are_css() {
-        // The widest layer stands for all, as the classes' does.
+        // Every layer, first on top, as CSS lists them.
         let mut s = Style::default();
         s.set(
             "textShadow",
             StyleValue::Str("0 1px 1px rgb(0 0 0 / 0.2), 2px 3px 6px red"),
         )
         .unwrap();
-        assert_eq!(s.text.shadow_radius, Some(px(6.0)));
-        assert_eq!(s.text.shadow_offset, Some(point(px(2.0), px(3.0))));
-        assert_eq!(s.text.shadow_color, Color::parse("red"));
-        // A layer without a color is the text color, filled in once known.
-        s.set("textShadow", StyleValue::Str("0 1px 2px")).unwrap();
-        s.apply_current_color(Color(0x1234_56ff));
-        assert_eq!(s.text.shadow_color, Some(Color(0x1234_56ff)));
+        let shadows = s.text.shadows.unwrap();
+        let [a, b] = shadows.layers() else { panic!("{shadows:?}") };
+        assert_eq!((a.offset_y, a.radius, a.color), (px(1.0), px(1.0), Color(0x0000_0033)));
+        assert_eq!((b.offset_x, b.offset_y, b.radius), (px(2.0), px(3.0), px(6.0)));
+        assert_eq!(Some(b.color), Color::parse("red"));
+        assert_eq!((a.ink, b.ink), (ShadowInk::Color, ShadowInk::Color));
+        // A layer without a color, or in currentColor, is each text's ink;
+        // contrast-color(currentColor) its contrast, at the alpha written.
+        s.set(
+            "textShadow",
+            StyleValue::Str("0 1px 2px, 1px 0 currentColor, -1px 0 0 contrast-color(currentColor)"),
+        )
+        .unwrap();
+        let inks: Vec<ShadowInk> = s.text.shadows.unwrap().layers().iter().map(|l| l.ink).collect();
+        assert_eq!(inks, [ShadowInk::Current, ShadowInk::Current, ShadowInk::ContrastCurrent]);
+        assert_eq!(s.text.shadows.unwrap().layers()[2].offset_x, px(-1.0));
         assert_eq!(
             s.set("textShadow", StyleValue::Str("inset 0 1px red")),
             Err(StyleError::InvalidValue)
         );
         s.set("textShadow", StyleValue::Str("none")).unwrap();
-        assert_eq!(s.text.shadow_radius, None);
+        assert_eq!(s.text.shadows, Some(TextShadows::default()));
     }
 
     #[test]

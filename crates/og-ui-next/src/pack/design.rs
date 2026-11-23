@@ -23,13 +23,14 @@ const MOTION: &str = include_str!("../../../../packages/design/tokens/motion.css
 /// the palette ([`colors`]) reads the seeds and colours and the durations
 /// ([`durations`]) the motion tokens, so a game's module carries no more
 /// of the design's CSS than those.
-const FILES: [&str; 6] = [
+const FILES: [&str; 7] = [
     SEED,
     COLOR,
     include_str!("../../../../packages/design/tokens/type.css"),
     include_str!("../../../../packages/design/tokens/space.css"),
     include_str!("../../../../packages/design/tokens/effect.css"),
     MOTION,
+    include_str!("../../../../packages/design/tokens/role.css"),
 ];
 
 /// The palette's files: the seeds and the colours derived from them.
@@ -219,6 +220,9 @@ fn theme(t: &Tokens, names: &[String]) -> Map<String, Value> {
             .find(|f| n == &format!("--font-{f}"))
         {
             put("fontFamily", name, Value::String(v.to_owned()));
+        } else if n == "--role-tag-halo" {
+            // The halo text over the scene wears: `text-shadow-tag`.
+            put("textShadow", "tag", Value::String(shadow(v)));
         } else if let Some(name) = after("--inset-shadow-") {
             put("insetShadow", name, Value::String(shadow(v)));
         } else if let Some(name) = after("--shadow-") {

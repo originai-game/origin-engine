@@ -69,7 +69,7 @@ function EffectTile(props: { effect: StatusGridEffect; debuff: boolean }) {
       <View
         class={`relative size-8 overflow-hidden rounded-control bg-linear-to-b from-raised-lo to-surface ring ring-shade-deep flex-col items-center justify-center border ${edge()}`}
       >
-        <Icon class="size-6 text-fg text-shadow-2xs group-data-expiring/statusgrid:animate-pulse" name={props.effect.icon} />
+        <Icon class="size-6 text-fg text-shadow-tag group-data-expiring/statusgrid:animate-pulse" name={props.effect.icon} />
         <Show when={duration() > 0 && remaining() < duration()}>
           <View class="absolute inset-0 nine-tile bg-shade-deep" wipe={1 - remaining() / duration()} />
         </Show>

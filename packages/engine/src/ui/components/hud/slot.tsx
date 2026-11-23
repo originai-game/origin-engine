@@ -108,7 +108,7 @@ export function HudSlot(props: HudSlotProps) {
           <Show when={(props.icon ?? 0) > 0} fallback={
             <View class="absolute inset-0 flex-col items-center justify-center bg-linear-to-b from-raised-lo to-surface">
               <Show when={(props.glyph ?? "") !== ""}>
-                <Icon class={`size-1/2 text-fg text-shadow-2xs ${cooling() || unaffordable() ? "opacity-45" : ""}`} name={props.glyph} />
+                <Icon class={`size-1/2 text-fg text-shadow-tag ${cooling() || unaffordable() ? "opacity-45" : ""}`} name={props.glyph} />
               </Show>
             </View>
           }>
@@ -122,17 +122,17 @@ export function HudSlot(props: HudSlotProps) {
           </Show>
           <Show when={cooling() && (props.time ?? "") !== ""}>
             <View class="absolute inset-0 flex-row items-center justify-center">
-              <Text class={`${ultimate() ? "text-base" : "text-title"} leading-none font-bold tabular-nums whitespace-nowrap text-fg text-stroke-3 text-stroke-bg text-shadow-2xs`}>{props.time}</Text>
+              <Text class={`${ultimate() ? "text-base" : "text-title"} leading-none font-bold tabular-nums whitespace-nowrap text-fg text-stroke-3 text-stroke-bg text-shadow-tag`}>{props.time}</Text>
             </View>
           </Show>
           <Show when={unaffordable() && (props.reason ?? "") !== "" && cooldown() <= 0}>
             <View class="absolute inset-0 flex-row items-center justify-center px-0.5">
-              <Text class="max-w-full max-h-21/25 text-center text-xs leading-none font-bold tracking-normal uppercase whitespace-nowrap overflow-hidden text-mana text-shadow-2xs">{props.reason}</Text>
+              <Text class="max-w-full max-h-21/25 text-center text-xs leading-none font-bold tracking-normal uppercase whitespace-nowrap overflow-hidden text-mana text-shadow-tag">{props.reason}</Text>
             </View>
           </Show>
           <Show when={ultimate() && charge() < 1}>
             <View class="absolute inset-0 flex-row items-center justify-center">
-              <Text class="text-base leading-none font-bold tabular-nums whitespace-nowrap text-fg text-stroke-3 text-stroke-bg text-shadow-2xs">{`${formatNumber(charge() * 100, { decimals: 0 })}%`}</Text>
+              <Text class="text-base leading-none font-bold tabular-nums whitespace-nowrap text-fg text-stroke-3 text-stroke-bg text-shadow-tag">{`${formatNumber(charge() * 100, { decimals: 0 })}%`}</Text>
             </View>
           </Show>
           <Show when={(props.count ?? 0) > 0}>

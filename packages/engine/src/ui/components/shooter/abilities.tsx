@@ -96,14 +96,14 @@ export function ShooterAbilities(props: ShooterAbilitiesProps) {
                   </View>
                   <Show when={(s().cooldown ?? 0) > 0 && (s().time ?? "") != ""}>
                     <View class="absolute inset-0 flex-row items-center justify-center pointer-events-none">
-                      <Text class="text-title leading-none font-bold tabular-nums whitespace-nowrap text-fg text-shadow-2xs text-stroke-3 text-stroke-bg compact:text-base group-data-ultimate/ability:text-base compact:group-data-ultimate/ability:text-caption">
+                      <Text class="text-title leading-none font-bold tabular-nums whitespace-nowrap text-fg text-shadow-tag text-stroke-3 text-stroke-bg compact:text-base group-data-ultimate/ability:text-base compact:group-data-ultimate/ability:text-caption">
                         {s().time}
                       </Text>
                     </View>
                   </Show>
                   <Show when={s().ultimate && (s().charge ?? 0) < 1}>
                     <View class="absolute inset-0 flex-row items-center justify-center pointer-events-none">
-                      <Text class="text-title leading-none font-bold tabular-nums whitespace-nowrap text-fg text-shadow-2xs text-stroke-3 text-stroke-bg compact:text-base group-data-ultimate/ability:text-base compact:group-data-ultimate/ability:text-caption">
+                      <Text class="text-title leading-none font-bold tabular-nums whitespace-nowrap text-fg text-shadow-tag text-stroke-3 text-stroke-bg compact:text-base group-data-ultimate/ability:text-base compact:group-data-ultimate/ability:text-caption">
                         {`${formatNumber(Math.max(s().charge ?? 0, 0) * 100, { decimals: 0 })}%`}
                       </Text>
                     </View>

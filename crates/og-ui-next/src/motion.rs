@@ -26,7 +26,7 @@ use rune_motion::{
 use rune_taffy::BoxLayout;
 
 use crate::arena::Id;
-use crate::record::{Record, Rgba, SHADOWS, Shadow, Skin};
+use crate::record::{Record, Rgba, SHADOWS, Shadow, Skin, TEXT_SHADOWS};
 
 /// `transition-colors`: fill, ink, border and outline colours.
 pub const COLORS: u8 = 1;
@@ -190,15 +190,20 @@ impl Animatable for L {
 }
 
 /// A skin's animated values, one track each.
-const CHANNELS: usize = 13;
+const CHANNELS: usize = 13 + TEXT_SHADOWS - 1;
 const OPACITY_CH: usize = 0;
 const RADIUS_CH: usize = 5;
 const TRANSFORM_CH: usize = 6;
 /// The first box shadow's channel; the other three follow.
 const SHADOW_CH: usize = 7;
+/// The first text-shadow layer's channel; the others follow.
 const TEXT_SHADOW_CH: usize = SHADOW_CH + SHADOWS;
-const BLUR_CH: usize = TEXT_SHADOW_CH + 1;
+const BLUR_CH: usize = TEXT_SHADOW_CH + TEXT_SHADOWS;
 const _: () = assert!(BLUR_CH + 1 == CHANNELS);
+const _: () = assert!(
+    CHANNELS < 32,
+    "tracks is a u32 with FRAME_BIT above the channels"
+);
 
 /// Each channel's transition group and settle class.
 const GROUPS: [(u8, PropClass); CHANNELS] = [
@@ -213,8 +218,15 @@ const GROUPS: [(u8, PropClass); CHANNELS] = [
     (SHADOW, PropClass::Color),
     (SHADOW, PropClass::Color),
     (SHADOW, PropClass::Color),
-    (SHADOW, PropClass::Color), // text shadow
-    (SHADOW, PropClass::Blur),  // backdrop blur
+    (SHADOW, PropClass::Color), // text shadow layers
+    (SHADOW, PropClass::Color),
+    (SHADOW, PropClass::Color),
+    (SHADOW, PropClass::Color),
+    (SHADOW, PropClass::Color),
+    (SHADOW, PropClass::Color),
+    (SHADOW, PropClass::Color),
+    (SHADOW, PropClass::Color),
+    (SHADOW, PropClass::Blur), // backdrop blur
 ];
 
 const PROPS: [Prop<L>; CHANNELS] = {
@@ -285,8 +297,8 @@ fn read(ch: usize, s: &Skin) -> L {
                 t.percent[1],
             ]);
         }
-        TEXT_SHADOW_CH => v = shadow_lanes(&s.text_shadow),
         BLUR_CH => v[0] = s.backdrop_blur,
+        TEXT_SHADOW_CH.. => v = shadow_lanes(&s.text_shadows.layers[ch - TEXT_SHADOW_CH]),
         _ => v = shadow_lanes(&s.shadows[ch - SHADOW_CH]),
     }
     L(v)
@@ -305,8 +317,14 @@ fn write(ch: usize, s: &mut Skin, L(v): &L) {
             (t.translate, t.scale, t.rotate) = ([v[0], v[1]], [v[2], v[3]], v[4]);
             t.percent = [v[5], v[6]];
         }
-        TEXT_SHADOW_CH => put_shadow(&mut s.text_shadow, v),
         BLUR_CH => s.backdrop_blur = v[0].max(0.0),
+        TEXT_SHADOW_CH.. => {
+            let (k, t) = (ch - TEXT_SHADOW_CH, &mut s.text_shadows);
+            put_shadow(&mut t.layers[k], v);
+            // As a box shadow's: a layer only one side has draws while it
+            // moves; its ink is the resting skin's.
+            t.count = t.count.max(k as u8 + 1);
+        }
         _ => {
             let k = ch - SHADOW_CH;
             put_shadow(&mut s.shadows[k], v);
@@ -326,7 +344,7 @@ fn node(id: Id) -> NodeId {
 }
 
 const NONE: u32 = u32::MAX;
-const FRAME_BIT: u16 = 1 << CHANNELS;
+const FRAME_BIT: u32 = 1 << CHANNELS;
 
 /// An element motion holds state for: one with a track in flight, a
 /// keyframe animation, a layout transition, or an exit under way.
@@ -339,7 +357,7 @@ struct Live {
     /// What paint draws this frame.
     shown: Skin,
     /// Channels with a track, and [`FRAME_BIT`].
-    tracks: u16,
+    tracks: u32,
     /// Its last laid-out box, parent space.
     laid: Option<BoxLayout>,
     /// The box paint draws while its layout moves.
@@ -703,7 +721,7 @@ impl Motion {
         let n = node(id);
         let mut at = self.find(id);
         for ch in 0..CHANNELS {
-            let bit = 1u16 << ch;
+            let bit = 1u32 << ch;
             let tracked = at.is_some_and(|i| self.live[i].tracks & bit != 0);
             let (a, b) = (read(ch, from), read(ch, to));
             if !tracked && a == b {

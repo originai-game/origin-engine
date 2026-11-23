@@ -226,6 +226,7 @@ impl Default for Theme {
                 .into_iter()
                 .map(|l| TextShadow {
                     color: l.color,
+                    ink: Default::default(),
                     offset_x: l.offset_x,
                     offset_y: l.offset_y,
                     radius: l.blur,
@@ -447,6 +448,7 @@ impl Theme {
     ///   "fontWeight": { "heavy": 850 },
     ///   "radius": { "card": 14 },
     ///   "shadow": { "card": "0 2px 8px rgb(0 0 0 / 0.12)" },
+    ///   "textShadow": { "tag": "1px 0 0 contrast-color(currentColor), -1px 0 0 contrast-color(currentColor)" },
     ///   "tracking": { "label": 0.08 },
     ///   "leading": { "dense": 1.15 },
     ///   "blur": { "glass": 20 },
@@ -615,6 +617,13 @@ impl Theme {
                         _ => &mut self.drop_shadows,
                     };
                     target.insert(name.into(), list);
+                    Ok(())
+                }),
+                "textShadow" => each(v, key, ignored, &mut |name, s| {
+                    let list = s.as_str().and_then(css::text_shadows).ok_or_else(|| {
+                        ThemeError(format!("textShadow `{name}` must be a CSS text-shadow"))
+                    })?;
+                    self.text_shadows.insert(name.into(), list);
                     Ok(())
                 }),
                 "ease" => each(v, "ease", ignored, &mut |name, e| {

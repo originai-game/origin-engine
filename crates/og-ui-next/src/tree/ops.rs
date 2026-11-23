@@ -5789,6 +5789,82 @@ mod tests {
         }
     }
 
+    /// The halo class (`text-shadow-tag`, the style's `--tag-halo`) rings
+    /// a text's glyphs as CSS draws that list: eight unblurred copies round
+    /// them, the last layer lowest, each in `contrast-color()` of the ink.
+    /// Over a white backdrop a white text's ring is black; a black text's
+    /// is white. Before, a TSX text kept one shadow layer.
+    #[test]
+    fn the_halo_class_rings_the_glyphs_in_the_inks_contrast() {
+        let pack = crate::pack::Pack::new(&[crate::pack::Layer::default_pack()]);
+        let theme = pack.theme_json(crate::pack::Scheme::Dark);
+        for (ink, ring) in [
+            ("text-white", [0.0, 0.0, 0.0, 1.0]),
+            ("text-black", [1.0; 4]),
+        ] {
+            let mut t = tree();
+            let classes =
+                std::cell::RefCell::new(crate::classes::Classes::new(Some(&theme)).unwrap().0);
+            t.set_resolver(Box::new(move |class, _, _, _| {
+                classes
+                    .borrow_mut()
+                    .record(class, &crate::classes::Env::default())
+            }));
+            // The halo written once on the root, as a HUD does; the text
+            // under it on a white plate.
+            nodes(
+                &mut t,
+                &[
+                    (1, 0, "text-shadow-tag", 0),
+                    (2, 0, &format!("bg-white p-4 {ink}"), 1),
+                ],
+            );
+            let mut b = Batch::default();
+            b.op(2).u32(3).str("H");
+            b.op(8).u32(2).u32(3).u32(u32::MAX);
+            t.apply(&b.bytes()).unwrap();
+            frame(&mut t);
+            let glyphs: Vec<&PaintQuad> = t
+                .drawn
+                .quads
+                .iter()
+                .filter(|q| q.kind == PaintKind::Raster as u32)
+                .collect();
+            let [ring_quads @ .., fill] = &glyphs[..] else {
+                panic!("no glyphs")
+            };
+            assert_eq!(ring_quads.len(), 8, "a copy per layer, under the fill");
+            let centre = |q: &PaintQuad| [q.rect[0] + q.rect[2] / 2.0, q.rect[1] + q.rect[3] / 2.0];
+            let [fx, fy] = centre(fill);
+            let sides: Vec<[i32; 2]> = ring_quads
+                .iter()
+                .map(|q| {
+                    assert_eq!(q.color, ring, "{ink}: the ring is its ink's contrast");
+                    let [x, y] = centre(q);
+                    [
+                        (x - fx).signum() as i32 * i32::from((x - fx).abs() > 0.5),
+                        (y - fy).signum() as i32 * i32::from((y - fy).abs() > 0.5),
+                    ]
+                })
+                .collect();
+            // --tag-halo's order reversed: CSS paints its first layer on top.
+            assert_eq!(
+                sides,
+                [
+                    [-1, -1],
+                    [1, -1],
+                    [-1, 1],
+                    [1, 1],
+                    [0, -1],
+                    [0, 1],
+                    [-1, 0],
+                    [1, 0]
+                ],
+                "{ink}"
+            );
+        }
+    }
+
     /// A text shadow and outline inherit, as CSS's do: a `<Text>`'s classes
     /// sit on the element and its glyphs on its text child. A child's own
     /// outline (here none) wins over its parent's.
@@ -5819,15 +5895,22 @@ mod tests {
             .iter()
             .filter(|q| q.kind == PaintKind::Raster as u32)
             .collect();
-        // "ab": its glyphs' shadows, their outlines (the band the stroke's
-        // 2 px wide, a pixel past the fill each side), then their fills;
-        // "c" has the shadow and no outline.
-        let [sa, sb, oa, ob, a, b, sc, c] = glyphs[..] else {
+        // "ab": its glyphs' shadows, `text-shadow-md`'s three layers the
+        // last first, then their outlines (the band the stroke's 2 px wide,
+        // a pixel past the fill each side), then their fills; "c" has the
+        // shadows and no outline.
+        let [s3a, s3b, s2a, s2b, s1a, s1b, oa, ob, a, b, s3c, s2c, s1c, c] = glyphs[..] else {
             panic!("{} glyph quads", glyphs.len());
         };
-        for (shadow, outline, fill) in [(sa, Some(oa), a), (sb, Some(ob), b), (sc, None, c)] {
-            assert!(shadow.rect[2] > fill.rect[2] + 2.0, "a blurred shadow");
-            assert!(shadow.rect[1] > fill.rect[1] - 0.5 * (shadow.rect[3] - fill.rect[3]));
+        for (shadows, outline, fill) in [
+            ([s1a, s2a, s3a], Some(oa), a),
+            ([s1b, s2b, s3b], Some(ob), b),
+            ([s1c, s2c, s3c], None, c),
+        ] {
+            // 1, 2 and 4 px of blur: each wider than the one above it.
+            assert!(shadows[0].rect[2] > fill.rect[2] + 1.0, "a blurred shadow");
+            assert!(shadows[1].rect[2] > shadows[0].rect[2]);
+            assert!(shadows[2].rect[2] > shadows[1].rect[2]);
             assert_ne!(fill.color, black);
             if let Some(o) = outline {
                 assert_eq!(o.color, black, "the outline is black");
@@ -6428,18 +6511,18 @@ mod tests {
         let g = PaintKind::Raster as u32;
         assert_eq!(
             kinds,
-            [g, g, g, g, PaintKind::Solid as u32],
-            "shadow, glyphs, underline"
+            [g, g, g, g, g, g, g, g, PaintKind::Solid as u32],
+            "text-shadow-md's three layers, glyphs, underline"
         );
-        // `text-shadow-md` is offset down, not across.
-        assert_eq!(
-            d.quads[2].rect[0], d.quads[4].rect[0],
+        // `text-shadow-md`'s lowest layer (0 2px 4px) is offset down, not
+        // across, under its glyph's fill.
+        let (shadow, fill) = (&d.quads[2], &d.quads[8]);
+        let mid = |q: &PaintQuad| [q.rect[0] + q.rect[2] / 2.0, q.rect[1] + q.rect[3] / 2.0];
+        assert!(
+            (mid(shadow)[0] - mid(fill)[0]).abs() < 0.5,
             "the shadow under its glyph"
         );
-        assert!(
-            d.quads[2].rect[1] > d.quads[4].rect[1],
-            "the shadow's offset"
-        );
+        assert!(mid(shadow)[1] > mid(fill)[1], "the shadow's offset");
         assert!(
             d.quads[2..].iter().all(|q| q.xf == cq.xf),
             "the text rides its parents"

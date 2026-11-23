@@ -58,7 +58,7 @@ export function OrbMeter(props: OrbMeterProps) {
         </Show>
       </View>
       <Show when={props.label}>
-        <Text class="text-xs font-semibold tracking-label uppercase whitespace-nowrap text-fg text-shadow-xs">{props.label}</Text>
+        <Text class="text-xs font-semibold tracking-label uppercase whitespace-nowrap text-fg text-shadow-tag">{props.label}</Text>
       </Show>
     </View>
   );

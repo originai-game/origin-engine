@@ -58,7 +58,7 @@ export function ModeSelectScreen(props: ModeSelectScreenProps) {
                 <Art class="absolute object-cover inset-0 size-full" kind="levelThumb" src={mode().texture} />
                 <View class={`absolute bg-linear-to-b from-transparent from-35% via-scrim via-60% to-shade-deep inset-0`} />
                 <Show when={mode().tag}>
-                  <Text class={`text-shadow-2xs bg-tile nine-chip-cut absolute top-4 right-4 text-xs font-bold tracking-label uppercase text-fg whitespace-nowrap text-ellipsis py-0.5 px-2 overflow-hidden data-fresh:bg-hud-accent data-fresh:bg-none data-fresh:text-hud-accent-fg compact:top-2 compact:right-2 ${packClass("Chip", "frame")}`} data-fresh={mode().locked}>
+                  <Text class={`text-shadow-tag bg-tile nine-chip-cut absolute top-4 right-4 text-xs font-bold tracking-label uppercase text-fg whitespace-nowrap text-ellipsis py-0.5 px-2 overflow-hidden data-fresh:bg-hud-accent data-fresh:bg-none data-fresh:text-hud-accent-fg compact:top-2 compact:right-2 ${packClass("Chip", "frame")}`} data-fresh={mode().locked}>
                     {mode().tag}
                   </Text>
                 </Show>

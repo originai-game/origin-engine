@@ -33,12 +33,21 @@ pub struct Look {
     pub scale: f32,
     /// Under a transform that is not a translation: distance fields.
     pub field: bool,
-    /// A text shadow's blur radius, CSS px; `None`: no shadow.
-    pub shadow: Option<f32>,
+    /// The text shadow layers' distinct blur radii, CSS px, the first
+    /// `shadow_count` of them (the rest 0): a raster each.
+    pub shadows: [f32; crate::record::TEXT_SHADOWS],
+    pub shadow_count: u8,
     /// The outline's width (`-webkit-text-stroke`), CSS px; 0 none.
     pub stroke: f32,
     /// The text colour a colour glyph's foreground takes, sRGB.
     pub ink: [f32; 3],
+}
+
+impl Look {
+    /// The shadow rasters' blur radii, CSS px.
+    pub fn blurs(&self) -> &[f32] {
+        &self.shadows[..usize::from(self.shadow_count)]
+    }
 }
 
 /// What a leaf's quads were made from.
@@ -68,7 +77,8 @@ pub struct Leaf {
     /// under both.
     pub fill: Vec<PaintQuad>,
     pub stroke: Vec<PaintQuad>,
-    pub shadow: Vec<PaintQuad>,
+    /// One list per blur of [`Look::blurs`], in its order.
+    pub shadow: Vec<Vec<PaintQuad>>,
     /// The atlas plots the quads read.
     plots: Vec<u32>,
     /// A glyph found no room in the atlas this frame: painted again next.
@@ -405,7 +415,8 @@ impl Texts {
         painted.look.ink = look.ink;
         leaf.fill.clear();
         leaf.stroke.clear();
-        leaf.shadow.clear();
+        leaf.shadow.iter_mut().for_each(Vec::clear);
+        leaf.shadow.resize_with(look.blurs().len(), Vec::new);
         leaf.plots.clear();
         leaf.lines.clear();
         leaf.line_text.clear();
@@ -459,20 +470,21 @@ impl Texts {
                     (pen, (q - pen * 4.0) as u8)
                 };
                 let base = (g.y * scale).round();
-                let forms = [
-                    (Some(Form::Fill), 0u8),
-                    (
-                        (look.stroke > 0.0).then_some(Form::Stroke(look.stroke * scale)),
-                        1,
-                    ),
-                    (look.shadow.map(|r| Form::Shadow(r.max(0.0) * scale)), 2),
-                ];
+                let stroke_form = (look.stroke > 0.0).then_some(Form::Stroke(look.stroke * scale));
+                let shadow_forms = look
+                    .blurs()
+                    .iter()
+                    .enumerate()
+                    .map(|(j, &r)| (Some(Form::Shadow(r.max(0.0) * scale)), 2 + j));
+                let forms = [(Some(Form::Fill), 0usize), (stroke_form, 1)]
+                    .into_iter()
+                    .chain(shadow_forms);
                 for (form, list) in forms {
                     let Some(form) = form else { continue };
                     let quads = match list {
                         0 => &mut *fill,
                         1 => &mut *stroke,
-                        _ => &mut *shadow,
+                        j => &mut shadow[j - 2],
                     };
                     let raster = if field {
                         None
@@ -507,7 +519,7 @@ impl Texts {
                                 let (grow, blur) = match form {
                                     Form::Fill => (bold, 0.0),
                                     Form::Stroke(_) => (bold + 0.5 * look.stroke, 0.0),
-                                    Form::Shadow(_) => (bold, look.shadow.unwrap_or(0.0)),
+                                    Form::Shadow(r) => (bold, r / scale),
                                 };
                                 let p = [grow, blur, og_text::sdf::RANGE, 0.0];
                                 (rect, GlyphTier::Field, p)
@@ -723,7 +735,8 @@ pub(crate) mod tests {
         let mut look = Look {
             scale: 1.0,
             field: false,
-            shadow: None,
+            shadows: [0.0; crate::record::TEXT_SHADOWS],
+            shadow_count: 0,
             stroke: 0.0,
             ink: [1.0; 3],
         };
@@ -766,7 +779,7 @@ pub(crate) mod tests {
         assert_eq!(missing.len(), 1);
         // An outline and a shadow: rasters of their own, under the fill.
         look.stroke = 2.0;
-        look.shadow = Some(4.0);
+        (look.shadows[0], look.shadow_count) = (4.0, 1);
         let leaf = texts.paint(
             &mut fonts,
             &mut atlas,
@@ -778,11 +791,11 @@ pub(crate) mod tests {
             &mut missing,
         );
         assert_eq!(
-            (leaf.fill.len(), leaf.stroke.len(), leaf.shadow.len()),
+            (leaf.fill.len(), leaf.stroke.len(), leaf.shadow[0].len()),
             (2, 2, 2)
         );
         assert!(leaf.stroke[0].rect[2] > leaf.fill[0].rect[2]);
-        assert!(leaf.shadow[0].rect[2] > leaf.stroke[0].rect[2]);
+        assert!(leaf.shadow[0][0].rect[2] > leaf.stroke[0].rect[2]);
         // G, o and the space (which has no ink), each in two more forms.
         assert_eq!(atlas.stats().glyphs, glyphs + 6);
         // At twice the pixels the rasters are twice the size, a CSS px
@@ -830,7 +843,8 @@ pub(crate) mod tests {
         let look = Look {
             scale: 1.0,
             field: false,
-            shadow: None,
+            shadows: [0.0; crate::record::TEXT_SHADOWS],
+            shadow_count: 0,
             stroke: 0.0,
             ink: [1.0; 3],
         };

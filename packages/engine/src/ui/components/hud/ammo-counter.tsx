@@ -61,10 +61,10 @@ export function AmmoCounter(props: AmmoCounterProps) {
         </View>
       </Show>
       <View class="flex-row items-baseline gap-2 max-w-full">
-        <Text class="min-w-0 text-8xl leading-flat font-bold tabular-nums whitespace-nowrap text-fg text-shadow-2xs text-stroke-3 text-stroke-bg data-low:text-warn data-empty:text-foe-ink compact:text-5xl" data-low={low()} data-empty={empty()}>
+        <Text class="min-w-0 text-8xl leading-flat font-bold tabular-nums whitespace-nowrap text-fg text-shadow-tag text-stroke-3 text-stroke-bg data-low:text-warn data-empty:text-foe-ink compact:text-5xl" data-low={low()} data-empty={empty()}>
           {formatNumber(props.magazine)}
         </Text>
-        <Text class="shrink-0 text-display-sm leading-none font-bold tabular-nums whitespace-nowrap text-fg-muted text-shadow-2xs text-stroke-3 text-stroke-bg compact:text-base">{formatNumber(props.reserve)}</Text>
+        <Text class="shrink-0 text-display-sm leading-none font-bold tabular-nums whitespace-nowrap text-fg-muted text-shadow-tag text-stroke-3 text-stroke-bg compact:text-base">{formatNumber(props.reserve)}</Text>
       </View>
       <Show when={props.capacity > 0}>
         <Show

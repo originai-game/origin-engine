@@ -8,7 +8,7 @@
 use crate::motion;
 use crate::pack::NineSlice;
 use crate::record::{
-    GRADIENT_STOPS, Gradient, Record, Rgba, SHADOWS, Shadow, Shape, Slice, Text, Tint,
+    GRADIENT_STOPS, Gradient, Record, Rgba, SHADOWS, Shadow, Shape, Slice, Text, TextShadows, Tint,
 };
 use nsh_tailwind::effects::{Filter, GradientKind, Keyframes};
 use nsh_tailwind::geometry::{DefiniteLength, Points, Size};
@@ -772,19 +772,22 @@ fn record_of(style: &Style, props: &ClassProps) -> Record {
         skin.ink = linear(c);
         r.inked = true;
     }
-    if let (Some(c), Some(o)) = (text.shadow_color, text.shadow_offset) {
-        skin.text_shadow = Shadow {
-            offset: [o.x.0, o.y.0],
-            blur: text.shadow_radius.map_or(0.0, |p| p.0),
-            spread: 0.0,
-            color: linear(c),
-            inset: false,
-        };
-        r.shadowed = true;
-    } else if props.text_shadows.as_deref().is_some_and(<[_]>::is_empty) {
-        // `text-shadow-none` sets a shadow of nothing, so a child of a
-        // shadowed parent draws none instead of inheriting it.
-        skin.text_shadow = Shadow::default();
+    // Every layer; `text-shadow-none` sets none, so a child of a shadowed
+    // parent draws none instead of inheriting it.
+    if let Some(list) = text.shadows {
+        let t = &mut skin.text_shadows;
+        *t = TextShadows::default();
+        for (k, l) in list.layers().iter().enumerate() {
+            t.layers[k] = Shadow {
+                offset: [l.offset_x.0, l.offset_y.0],
+                blur: l.radius.0.max(0.0),
+                spread: 0.0,
+                color: linear(l.color),
+                inset: false,
+            };
+            t.ink[k] = l.ink;
+        }
+        t.count = list.layers().len() as u8;
         r.shadowed = true;
     }
     if let Some(d) = text.decoration {
@@ -1024,10 +1027,10 @@ mod tests {
         assert_eq!(c.record("nine-none z-3", &env).z_index, Some(3));
         // text-shadow-none sets a shadow of nothing over a parent's.
         let parent = c.record("text-shadow-md", &env);
-        assert!(parent.shadowed && parent.skin.text_shadow.color[3] > 0.0);
+        assert!(parent.shadowed && parent.skin.text_shadows.count == 3);
         let none = c.record("text-shadow-none", &env);
         assert!(none.shadowed, "set, so it is not inherited");
-        assert_eq!(none.skin.text_shadow, Shadow::default());
+        assert_eq!(none.skin.text_shadows, TextShadows::default());
         assert!(!c.record("p-1", &env).shadowed);
         // hyphens: manual unless set, inherited when not set.
         use nsh_tailwind::Hyphens;
@@ -1532,7 +1535,7 @@ mod tests {
                   "letter_spacing", "letter_spacing_em", "line_height_em",
                   "line_height_multiple", "decoration", "decoration_color",
                   "decoration_thickness", "stroke_width", "stroke_color", "transform",
-                  "hyphens", "shadow_color", "shadow_offset", "shadow_radius",
+                  "hyphens", "shadows",
                   "font_family", "italic", "font_variant", "font_size_em",
                   "decoration_style", "underline_offset", "placeholder_color",
                   "selection_color", "caret_color"],
@@ -1551,7 +1554,7 @@ mod tests {
                   "filters"],
                 &[]),
             ("ClassProps", format!("{:#?}", ClassProps::default()),
-                &["ellipsize", "no_wrap", "text_shadows", "pointer_events",
+                &["ellipsize", "no_wrap", "pointer_events",
                   "number_of_lines", "space", "overflow_wrap",
                   "placeholder_color", "selection_color", "caret_color"],
                 // Selecting non-input text is not implemented.

@@ -47,7 +47,7 @@ export function Celebration(props: CelebrationProps) {
   const kind = () => props.kind ?? "";
   const fx = { confetti: emitter(confetti), sparks: emitter(sparks), embers: emitter(embers), firework: emitter(firework) };
   return (
-    <View class="absolute inset-0 text-fg text-shadow-2xs">
+    <View class="absolute inset-0 text-fg text-shadow-tag">
       <For each={props.shots ?? []} key={(s) => s.id}>
         {(shot) => (
           <View sound={kind() == "levelUp" ? undefined : "reward"} class="absolute inset-0 flex-col items-center justify-center">

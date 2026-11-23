@@ -1833,8 +1833,13 @@ text and the mass HUD that scale freely, and colour pages for COLR
 glyphs. Steady frames cost a lookup a glyph. Glyphs are presentation
 only.
 
-A text shadow (a theme `text-shadow-<name>` class; arbitrary
-`text-shadow-[…]` values are not supported) draws each glyph's
+A text shadow (a theme `text-shadow-<name>` class, or a pack theme's
+`textShadow` entry; arbitrary `text-shadow-[…]` values are not
+supported) is a list of up to eight layers, painted last first under the
+fill as CSS paints them; a layer in `currentColor` or
+`contrast-color(currentColor)` is resolved against each text's ink, so a
+halo written on a HUD's root rings every text in its own contrast. The
+default pack's `text-shadow-tag` is `--tag-halo`. Each layer draws each glyph's
 silhouette blurred by a Gaussian of standard deviation `blur-radius / 2`,
 rastered once per glyph and radius into the atlas. Its paint bounds
 include glyph overhang, the offset and three standard deviations,

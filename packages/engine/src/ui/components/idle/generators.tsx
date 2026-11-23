@@ -85,22 +85,22 @@ export function IdleGenerators(props: IdleGeneratorsProps) {
                           </Text>
                         </Show>
                         <Show when={!g().locked && g().boost}>
-                          <Text class={`text-shadow-2xs bg-tile nine-chip-cut whitespace-nowrap text-xs font-semibold tracking-label uppercase text-fg-muted py-0 px-1 data-tag-boost:bg-gold data-tag-boost:bg-none data-tag-boost:text-gold-fg ${packClass("Chip", "frame")}`} data-tag-boost={true}>
+                          <Text class={`text-shadow-tag bg-tile nine-chip-cut whitespace-nowrap text-xs font-semibold tracking-label uppercase text-fg-muted py-0 px-1 data-tag-boost:bg-gold data-tag-boost:bg-none data-tag-boost:text-gold-fg ${packClass("Chip", "frame")}`} data-tag-boost={true}>
                             {g().boost}
                           </Text>
                         </Show>
                         <Show when={!g().locked && g().auto}>
-                          <Text class={`text-shadow-2xs bg-tile nine-chip-cut whitespace-nowrap text-xs font-semibold tracking-label uppercase text-fg-muted py-0 px-1 data-tag-auto:bg-success data-tag-auto:bg-none data-tag-auto:text-success-fg ${packClass("Chip", "frame")}`} data-tag-auto={true}>
+                          <Text class={`text-shadow-tag bg-tile nine-chip-cut whitespace-nowrap text-xs font-semibold tracking-label uppercase text-fg-muted py-0 px-1 data-tag-auto:bg-success data-tag-auto:bg-none data-tag-auto:text-success-fg ${packClass("Chip", "frame")}`} data-tag-auto={true}>
                             {t("idle.generators.auto")}
                           </Text>
                         </Show>
                         <Show when={g().locked}>
                           <View class={`flex-row items-center bg-tile nine-chip-cut text-xs font-semibold tracking-label uppercase text-fg-muted py-0 px-1 gap-0.5 data-tag-locked:items-center data-tag-locked:min-w-0 data-tag-locked:max-w-full ${packClass("Chip", "frame")}`} data-tag-locked={true}>
-                            <Text class="whitespace-nowrap text-shadow-2xs shrink">
+                            <Text class="whitespace-nowrap text-shadow-tag shrink">
                               {t("idle.generators.locked")}
                             </Text>
-                            <Text class="bg-current whitespace-nowrap text-shadow-2xs size-0.75" />
-                            <Text class="whitespace-nowrap text-ellipsis text-shadow-2xs overflow-hidden shrink">
+                            <Text class="bg-current whitespace-nowrap text-shadow-tag size-0.75" />
+                            <Text class="whitespace-nowrap text-ellipsis text-shadow-tag overflow-hidden shrink">
                               {g().rate}
                             </Text>
                           </View>

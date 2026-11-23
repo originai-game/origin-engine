@@ -13,11 +13,11 @@ use crate::{
         BoxShadow, ColorStop, Filter, Gradient, GradientKind, GradientSize, KeyframeAnimation,
         Keyframes, Transition, TransitionProps,
     },
-    geometry::{DefiniteLength, Length, Points, REM_SIZE, Size, deg, percentage, point, px},
+    geometry::{DefiniteLength, Length, Points, REM_SIZE, Size, deg, percentage, px},
     props::PointerEvents,
     style::{
         Color, EllipsizeMode, FontVariant, LineHeight, PropertyValue, Style, StyleDecl, StyleKey,
-        StyleValue, TextShadow, TransformProperty,
+        StyleValue, ShadowInk, TextShadow, TextShadows, TransformProperty,
     },
     transform::TransformKind,
 };
@@ -599,7 +599,6 @@ impl Parts {
     pub(crate) fn finish(
         &self,
         style: &mut Style,
-        props: &mut ClassProps,
         theme: &Theme,
         window: Size<Points>,
         only: u16,
@@ -826,33 +825,15 @@ impl Parts {
             .as_ref()
             .filter(|_| has(touched::TEXT_SHADOW))
         {
-            // One text shadow natively: the widest layer stands for all.
-            let mut shadow = layers
-                .iter()
-                .copied()
-                .max_by(|a, b| a.radius.0.total_cmp(&b.radius.0));
+            // Every layer, first on top; a `text-shadow-<color>` paints them
+            // all in it.
             let color = self
                 .text_shadow_color
                 .map(|c| mixed(c, self.text_shadow_alpha.unwrap_or(1.0)));
-            if let (Some(s), Some(c)) = (shadow.as_mut(), color) {
-                s.color = c;
-            }
-            match shadow {
-                Some(s) => {
-                    style.text.shadow_color = Some(s.color);
-                    style.text.shadow_offset = Some(point(s.offset_x, s.offset_y));
-                    style.text.shadow_radius = Some(s.radius);
-                }
-                None => {
-                    style.text.shadow_color = None;
-                    style.text.shadow_offset = None;
-                    style.text.shadow_radius = None;
-                }
-            }
-            props.text_shadows = Some(match color {
-                Some(color) => layers.iter().map(|l| TextShadow { color, ..*l }).collect(),
-                None => layers.to_vec(),
-            });
+            style.text.shadows = Some(TextShadows::new(layers.iter().map(|l| match color {
+                Some(color) => TextShadow { color, ink: ShadowInk::Color, ..*l },
+                None => *l,
+            })));
         }
     }
 }

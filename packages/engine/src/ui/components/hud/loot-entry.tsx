@@ -48,7 +48,7 @@ export function HudLootEntry(props: HudLootEntryProps) {
           <Image class="absolute inset-0 size-full" src={props.icon} />
         </Show>
       </View>
-      <Text class={`min-w-0 text-sm font-semibold whitespace-nowrap truncate text-fg text-shadow-2xs data-epic:text-epic-hi data-legendary:text-legendary`} data-epic={rarity() === "epic"} data-legendary={rarity() === "legendary"}>
+      <Text class={`min-w-0 text-sm font-semibold whitespace-nowrap truncate text-fg text-shadow-tag data-epic:text-epic-hi data-legendary:text-legendary`} data-epic={rarity() === "epic"} data-legendary={rarity() === "legendary"}>
         {props.name}
       </Text>
       <Show when={props.label}>
@@ -57,7 +57,7 @@ export function HudLootEntry(props: HudLootEntryProps) {
         </Text>
       </Show>
       <Show when={(props.quantity ?? 0) > 0}>
-        <Text class={`shrink-0 text-sm font-bold tabular-nums whitespace-nowrap text-fg-muted text-shadow-2xs data-legendary:text-legendary`} data-legendary={rarity() === "legendary"}>
+        <Text class={`shrink-0 text-sm font-bold tabular-nums whitespace-nowrap text-fg-muted text-shadow-tag data-legendary:text-legendary`} data-legendary={rarity() === "legendary"}>
           {props.currency ? t("hud.loot-entry.gain", { quantity: formatNumber(props.quantity ?? 0) }) : t("hud.loot-entry.count", { quantity: formatNumber(props.quantity ?? 0) })}
         </Text>
       </Show>

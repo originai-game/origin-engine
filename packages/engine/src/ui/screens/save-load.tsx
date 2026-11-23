@@ -89,7 +89,7 @@ export function SaveLoadScreen(props: SaveLoadScreenProps) {
                   </Show>
                 </View>
                 <Show when={s().auto}>
-                  <Text class={`text-shadow-2xs bg-tile absolute top-2 right-3 text-xs font-bold tracking-label uppercase inset-shadow-lit py-0.5 px-2 rounded-control compact:right-auto compact:left-2`}>
+                  <Text class={`text-shadow-tag bg-tile absolute top-2 right-3 text-xs font-bold tracking-label uppercase inset-shadow-lit py-0.5 px-2 rounded-control compact:right-auto compact:left-2`}>
                     {t("screen.save-load.auto")}
                   </Text>
                 </Show>

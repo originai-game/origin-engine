@@ -40,7 +40,7 @@ use self::{
 use crate::{
     geometry::{Points, Size},
     props::PointerEvents,
-    style::{Color, EllipsizeMode, PropertyValue, Style, TextShadow},
+    style::{Color, EllipsizeMode, PropertyValue, Style},
 };
 
 /// Interaction states a class can depend on (`active:`, `hover:`, ...).
@@ -613,8 +613,6 @@ pub struct ClassProps {
     pub selection_color: Option<Color>,
     /// `caret-*` (inputs).
     pub caret_color: Option<Color>,
-    /// `text-shadow-*` layers beyond the first (drawn as one shadow).
-    pub text_shadows: Option<Vec<TextShadow>>,
     /// `space-x-*` / `space-y-*`: margins the view gives its children.
     pub space: Option<Space>,
 }
@@ -849,7 +847,7 @@ impl ClassList {
                 }
             }
         }
-        parts.finish(style, props, theme, cx.window, touched::ALL);
+        parts.finish(style, theme, cx.window, touched::ALL);
         inline(style);
         if self.deps & deps::CURRENT_COLOR != 0 {
             // What the classes set to `currentColor` inside a value.
@@ -875,7 +873,7 @@ impl ClassList {
                     }
                 }
             }
-            parts.finish(style, props, theme, cx.window, parts.touched);
+            parts.finish(style, theme, cx.window, parts.touched);
             if self.deps & deps::CURRENT_COLOR != 0 {
                 style.apply_current_color(current);
             }
