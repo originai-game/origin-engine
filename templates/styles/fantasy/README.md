@@ -23,7 +23,7 @@ component part. Review every component under it with
 - **`seeds`** (`accent`, `danger`, `info`, `neutral`, `primary`, `success`,
   `team`, `warn`): the palette is derived from them in both schemes at the
   contrast its pairs need, so `og.ui.configure`'s `seeds` retints the pack.
-- **`theme`**: the 16 colours it writes over the derived palette, 5 radii
+- **`theme`**: the 30 colours it writes over the derived palette, 5 radii
   and the font families (Fantasy Caps, Fantasy Display, Fantasy Serif,
   Fantasy Text).
 - **`fonts`**: each family's faces with their weight ranges, its CJK face
@@ -39,6 +39,9 @@ component part. Review every component under it with
   `Button.plate`, `Button.plate.primary`, from the shared set
   (`@styles/shared/sfx-*`).
 - **`icons`**: 3 of the default set's names drawn by its own art.
+- **Icon tones** (`icon-*` colours in `theme`): the engine's game icon set
+  (`@styles/shared/icons/`, its names in that README) in antique gold and deep enamels, an umber rim and a heavier drop; the
+  geometry is the default pack's.
 
 ## Art provenance
 

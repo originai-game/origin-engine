@@ -113,6 +113,24 @@
   --color-gold-fg: contrast-color(var(--color-gold));
   --color-gold-hi: #fff2c4;
   --color-epic-hi: #d9c6fe;
+  /* The icon set's tones (templates/styles/shared/icons/): an icon's
+     material colours, the same in both schemes as art is, then the
+     sticker every toned icon is drawn as: its outline, its drop shadow,
+     the darker and the lit shapes over its body, and its light marks. */
+  --color-icon-gold: #ffc53a;
+  --color-icon-red: #f2414f;
+  --color-icon-blue: #3d9bff;
+  --color-icon-green: #4ed15c;
+  --color-icon-purple: #b25cf5;
+  --color-icon-orange: #ff8a2a;
+  --color-icon-steel: #b9c3d6;
+  --color-icon-wood: #a9673b;
+  --color-icon-glass: #d6ebff;
+  --color-icon-outline: #181c36;
+  --color-icon-shadow: #00000059;
+  --color-icon-shade: #0000003d;
+  --color-icon-gloss: #ffffff8c;
+  --color-icon-mark: #ffffff;
   --color-chart-easy: rgb(52 199 120);
   --color-chart-normal: rgb(50 160 230);
   --color-chart-hard: rgb(255 165 40);

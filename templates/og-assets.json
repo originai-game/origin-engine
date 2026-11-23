@@ -2480,6 +2480,684 @@
       "visibility": "public"
     },
     {
+      "path": "styles/shared/icons/game/account.svg",
+      "sha256": "304798a7aadf9e295fcb50e79f63a61302f6cd9313cc6311e9a5718727f9194f",
+      "size": 772,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/icons/game/accuracy.svg",
+      "sha256": "c1a8681b9f491b0eb53112a8c1de53f1fe1613fc562001ef89ad2b58b80033cd",
+      "size": 574,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/icons/game/alert.svg",
+      "sha256": "5dc56357761bfbdcec9f486b1d6fe7311c5f69abeffc341454508d4f3b763827",
+      "size": 756,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/icons/game/ammo.svg",
+      "sha256": "b2bda6cee1d4502b5b823cb059b327a3adfef9d0cec4f63ecc1e6c7c78bedd77",
+      "size": 1101,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/icons/game/armor.svg",
+      "sha256": "e1a1df6382497f5893f5a89124627fcd3c1e7fb3704681501bed4a6392dc969f",
+      "size": 2300,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/icons/game/attack.svg",
+      "sha256": "c5c765cb168bf7254faf2b0a89f91adf66559c43ef220d22bd3a90bcc22a7c7b",
+      "size": 1016,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/icons/game/axe.svg",
+      "sha256": "6d040ce8c5a64e4a408af5d10c55496920ec891f7e5557ab57f0f34ace9630d7",
+      "size": 1061,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/icons/game/bag.svg",
+      "sha256": "e480093b619019cdc3ae8e680305d527c87c4b72b8b02f6a8d2683366fa03da3",
+      "size": 804,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/icons/game/bank.svg",
+      "sha256": "01795910851b855d5508aab0e7026a37d7e73c73adb9682ff600747a447e7298",
+      "size": 1072,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/icons/game/banner.svg",
+      "sha256": "03807c0f9301f67e19bcec9f871fc31cf9d88083bf21bf5ef8d74c3476cec50d",
+      "size": 739,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/icons/game/barrier.svg",
+      "sha256": "22fb259465b7342f20ada9e6e32e2c1cb3476b2c02247e308bd8bf317b53709a",
+      "size": 683,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/icons/game/bell.svg",
+      "sha256": "f6932d0cc3a6d5484a28f1f7dcef8eca436bdc66944f91955bba3d6807897ea2",
+      "size": 1840,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/icons/game/bleed.svg",
+      "sha256": "0b6e1d759368f4ebaea91e2e9f8abf70b06c8b99df67c4e2ee699c872a6553d3",
+      "size": 790,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/icons/game/blind.svg",
+      "sha256": "b0075444cf9ec5cff7f5d1b852d9728a013f01eb8aacbd2bdd114b8bc66b6030",
+      "size": 2664,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/icons/game/bomb.svg",
+      "sha256": "a76ff222726fd629a6cb6366be8b2de381e7840a37440083bc4c96b630c07f1e",
+      "size": 950,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/icons/game/book.svg",
+      "sha256": "5266da3f9d35e86bd0c0e8ffdcea5ca7855bea05aba46c85485ec39b0cfe7f29",
+      "size": 1710,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/icons/game/bow.svg",
+      "sha256": "088318c007228c7ead89ec8e0ca1efc3b98d9ebaf44fca530267c8aa686d5641",
+      "size": 909,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/icons/game/burn.svg",
+      "sha256": "e466ba6b79e2686ae98e51a554224494fd34d39540b6420e0808eea0c73a1fd8",
+      "size": 1156,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/icons/game/calendar.svg",
+      "sha256": "25ccdbfc19689966748cd59e17f76be1add64943a43d74257d16dbdc3e269605",
+      "size": 1186,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/icons/game/cards.svg",
+      "sha256": "8e2455f9bb7230a78a3e30d2399998f103f3f144acbd56bb67097e7844fbe570",
+      "size": 1666,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/icons/game/cart.svg",
+      "sha256": "44e2bd5cf1a4bf4c3381292e35f48ad715ef272cf902748bc5cb6afe483db8d6",
+      "size": 994,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/icons/game/cash.svg",
+      "sha256": "582d17689906b53b2d4c9a51643bbeb7ba1a3ac87059d47ea068dbab4afc2800",
+      "size": 1617,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/icons/game/castle.svg",
+      "sha256": "3987f46709b4d15e9b7dc05654113a2856f37b612da97ff8a4f0d7e66619e936",
+      "size": 1549,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/icons/game/charm.svg",
+      "sha256": "b6f11e49ed844326f9a0739083b2c32151179eb0de3ac3de718b8c2224fcd31c",
+      "size": 456,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/icons/game/chat.svg",
+      "sha256": "36f4d6d96b875e440ac641d6911838231b9ec5025280e9fbb47e4f45fd87bad6",
+      "size": 307,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/icons/game/chest.svg",
+      "sha256": "600258f1daa43f786a8b40c800469700a01456b32cf69a3bb29e47e693164f15",
+      "size": 1317,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/icons/game/chestOpen.svg",
+      "sha256": "6e87ffca356252d392382154186a1689e281d2ec3fd766437ab79ad22ef8b984",
+      "size": 3335,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/icons/game/coin.svg",
+      "sha256": "c82997f6900926d935df5e0a8a8607c159be94bec8d718f55d9fa6aafc609e82",
+      "size": 810,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/icons/game/coins.svg",
+      "sha256": "0be297492982a6c1e49cd66c0f6d019e4c70ff3407b5f26860b7e38caf1e424e",
+      "size": 8128,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/icons/game/compass.svg",
+      "sha256": "31657b4f33c8cd8f68845cb79a9ec649f31a19b733b9bb76c1c6f91589a06b3f",
+      "size": 1279,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/icons/game/crate.svg",
+      "sha256": "91a4fdc4f3b23fc029859628d100e1cdedf0f0783f5d40131ebf1af234fe9596",
+      "size": 2458,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/icons/game/crit.svg",
+      "sha256": "5f938ba56ed99683d2df8e24cca65f28caa7ae2248a1e89b14977ce7ff157970",
+      "size": 1060,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/icons/game/crown.svg",
+      "sha256": "ec08ffb19bc430c8a9fcf13c79972d82a38b6cfae4cc71e2b27ff24de3967c73",
+      "size": 1026,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/icons/game/curse.svg",
+      "sha256": "3f05d8b4eb66c5e0c1ff53ac5d14f5b0f07082a87df9a1c1ed19464eb476fd1c",
+      "size": 767,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/icons/game/dice.svg",
+      "sha256": "992d55ffbf65f686e44a48462602c317670bc4f9966a8d38aaf8d3bd9fb908bd",
+      "size": 3275,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/icons/game/dislike.svg",
+      "sha256": "c44284541bcfc2c7d1607091a99553347298a7312b7481359562b9460eee2b5f",
+      "size": 1257,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/icons/game/energy.svg",
+      "sha256": "abc861463edf935144d31205c304345aafc0f3531b57e6b6c7787c04fd86083e",
+      "size": 489,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/icons/game/event.svg",
+      "sha256": "f76c5ce4ec1049100bd75c5c40f83c1eb006b8f97d004c9f202c538aefdb318b",
+      "size": 3443,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/icons/game/exit.svg",
+      "sha256": "88a1c2a0ddf3ef5df618075ceed5b9a8a5ef4eb66d48b01c0c1b2dbd0136a74d",
+      "size": 541,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/icons/game/flame.svg",
+      "sha256": "5ecc1576c11d4d1a9c4ba464c8aa52f8984708cad8384f6353aac53f401da814",
+      "size": 641,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/icons/game/freeze.svg",
+      "sha256": "f34b5adcf1240993a5a2642c641fef26070f7f09007e4c743b13bb45a2de62a4",
+      "size": 1336,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/icons/game/friends.svg",
+      "sha256": "76cadbda965b79446965dfbc571e83ba1d9e1d8bd530b9acaadf8d99643a3037",
+      "size": 939,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/icons/game/gamepad.svg",
+      "sha256": "3587e89d5538c8d45ff6977044286da8c07a47e3c4c1372b0ebb4bbb7246d203",
+      "size": 1367,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/icons/game/gem.svg",
+      "sha256": "c09e0e985c138b39230cd4683613473ecd3ed17ca69b6e5de444b44d37bc5f9c",
+      "size": 560,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/icons/game/ghost.svg",
+      "sha256": "3dcadc38833556cea37eae410ab5d03273191dfe98b30d51649c7c405f530bea",
+      "size": 1182,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/icons/game/gift.svg",
+      "sha256": "29fa37cfe54d4c7e17ea085b237a282c007c8952474b6a7d911fc37a58561d6c",
+      "size": 1077,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/icons/game/handshake.svg",
+      "sha256": "5f0ac4e100ffcb02cf005c6ed312d3b0b34be5b66433e87fe223339a8ead7795",
+      "size": 2208,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/icons/game/haste.svg",
+      "sha256": "fc6f4ca6f5e5bea2da71151cae2c5a5f307fea79397bab25f5e85096d72ff038",
+      "size": 1421,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/icons/game/heart.svg",
+      "sha256": "cf446b77b4a94d2f064236a95c332d48dd1ab88c3965c98fdcef0b4451836432",
+      "size": 598,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/icons/game/hero.svg",
+      "sha256": "b0d2a62aad0ca5298b87f09e83cbe381c90f1ba5413e415d04e82f20026813e7",
+      "size": 539,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/icons/game/home.svg",
+      "sha256": "bc13bdd96900fad183476d7f74e1815d3444dedf565fb96fc357a048ed44423d",
+      "size": 284,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/icons/game/hourglass.svg",
+      "sha256": "753482439a50c9320fc6e9c865d27c7fe53ff3663094e18a467e180178e6d93c",
+      "size": 953,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/icons/game/info.svg",
+      "sha256": "871b751498fdc6605d747170396106c4582fb367cfe4c7000f85d4db1b922793",
+      "size": 619,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/icons/game/intellect.svg",
+      "sha256": "87690f5a007906b7994b7278fa64914203409e90a261d610a2522b0da44f9c4c",
+      "size": 3294,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/icons/game/key.svg",
+      "sha256": "f64bacbc8f8f2488dc81b01828f63f297e2e895529cbb020a7d8d9bea7df426c",
+      "size": 1084,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/icons/game/language.svg",
+      "sha256": "74d6c0030503ffc838ab17d4aed596a5b810c90e33bf9efac4b854359bcc303d",
+      "size": 2172,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/icons/game/laurels.svg",
+      "sha256": "5d8a81a693ed76772d0a6e1a4baf8db4a88c9d4535a29c73dc85c2379e20099c",
+      "size": 3856,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/icons/game/leaderboard.svg",
+      "sha256": "f4e3a4bf1546f207820901be1b7eac91c4bdfd5e3a3eac7bdfff5524fd7f84ed",
+      "size": 1443,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/icons/game/levelUp.svg",
+      "sha256": "8b9197703d468e369070d2773244a94aca25cf1f85d32a062bff8889f13faf45",
+      "size": 306,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/icons/game/like.svg",
+      "sha256": "bb1c4e4c273582d0a66bebd0d2e1bb0715f8ef612e0aa40626be854759750eb0",
+      "size": 2351,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/icons/game/lock.svg",
+      "sha256": "10bd51a68d5c0e45e665994caacc0b2b522543b0d40de99d758f8358a4fca465",
+      "size": 889,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/icons/game/lootBag.svg",
+      "sha256": "eccfa43ef8d843b143c0f54e39cfdc4409d1b3bd11aef1cde20f8d7903df371d",
+      "size": 1902,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/icons/game/luck.svg",
+      "sha256": "9d361aae30de7c5357772961ec164ac2bfe8da8209953a82451d6945aeb5d104",
+      "size": 654,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/icons/game/magic.svg",
+      "sha256": "4e044401cd2a74e23c478aca0e57ed4ba6214dcf7bfbc159ab519d33ab78162a",
+      "size": 1060,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/icons/game/mail.svg",
+      "sha256": "07ce1ca387076c128470b50747523da43540804ca5dcda566b41c46b44f029f3",
+      "size": 685,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/icons/game/map.svg",
+      "sha256": "f0c81e62d3f7cbc615e4b23ae8f548125866503419334bc4629344d9c41acf7d",
+      "size": 2520,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/icons/game/medal.svg",
+      "sha256": "93a4fea79bd69c4c40f7926eb5391c1ec97e000bedcb4a94d1f5649d850b37e4",
+      "size": 746,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/icons/game/megaphone.svg",
+      "sha256": "b23e57c238b8b67788400436a1450bb456125749c927b95d68c20c601135b181",
+      "size": 1251,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/icons/game/missions.svg",
+      "sha256": "31ab1ab7fa0098b3db945713672a8304c6d74ebeb7241da64c30d0db9b704404",
+      "size": 466,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/icons/game/music.svg",
+      "sha256": "77ed81927499173f48f5fe3b536514e3f8f364c137bff091c76b36099ccd0c2f",
+      "size": 915,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/icons/game/new.svg",
+      "sha256": "256edcef8a2116dacf0843f927d24d87d1fbc001c07dabfc14d87897e7e6f902",
+      "size": 702,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/icons/game/phone.svg",
+      "sha256": "ed5e802ac3841448480e34a38b2e4f0ef58cac4869ce63884f188fa182a02a0a",
+      "size": 393,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/icons/game/piggyBank.svg",
+      "sha256": "5adeb234bd78fba3a110e11dd3cc43574b506c10ff011d1a7f74f23ec0e4c340",
+      "size": 2151,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/icons/game/poison.svg",
+      "sha256": "75ab40b6e81c9b7a8264cc2ee2074ce29c18640814d72be0b4e3d85f2c5fc4c5",
+      "size": 2103,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/icons/game/potion.svg",
+      "sha256": "317997d3d3de3512a659862f7356b08f655ed22c09a54479edb72b3634dc44fa",
+      "size": 755,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/icons/game/power.svg",
+      "sha256": "b9161a60b93b5af447d98bd46396e3e04c7cb810d29d0d765eed9a37f047b40e",
+      "size": 399,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/icons/game/quest.svg",
+      "sha256": "8bde7fbe939021bed4e03e59e19e404411a7c3c79cb4a2e7a2bcc137d4666193",
+      "size": 1665,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/icons/game/rarity.svg",
+      "sha256": "e7291e01ce97da0ca0628c6247f7b1cbb5c02ef4f5e7bb5ea8fb68d376b18da9",
+      "size": 375,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/icons/game/regen.svg",
+      "sha256": "afc9fe8c6c29ce967d57a4b639ec409d18e7574ab2f984044e3830e2c028c0b1",
+      "size": 1057,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/icons/game/ribbon.svg",
+      "sha256": "87edd16d8e5fcb049e7dee282a33f88fb772ff2fbac525deb90ae4484bb634f2",
+      "size": 907,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/icons/game/rocket.svg",
+      "sha256": "a751cd33fc77d3433576ab53e23c4769f1f5382505b00455b406b3e52dbb9835",
+      "size": 1736,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/icons/game/root.svg",
+      "sha256": "a7e4a5e11c39087a22d1b289b34f3d56949e9dcda08f5b3ee7f1c1b720640b1a",
+      "size": 1030,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/icons/game/sale.svg",
+      "sha256": "eb46c7519e251688c2a399cd7412b613ec3ed1a466cb363a06754426f501d682",
+      "size": 2009,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/icons/game/save.svg",
+      "sha256": "965c25b8e842a4a7ede594553a23bf4ff2e9ac8ec15046fedf9bc564952d564e",
+      "size": 1260,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/icons/game/search.svg",
+      "sha256": "ee92beec63dd11dbcc2b1de9376c7aa8901e864e6164fa3b5c1ef1610154cbb5",
+      "size": 1049,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/icons/game/share.svg",
+      "sha256": "ddc40ca8d338128b26c504fa87c3e7f5b86923dc5f0440cfa295d9f75e91e6cd",
+      "size": 429,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/icons/game/shield.svg",
+      "sha256": "e287f6edef28063e1e75ae09a04401cdd9d27520ee48e890f2a000ace2661c76",
+      "size": 812,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/icons/game/shock.svg",
+      "sha256": "9b6e537402be5d0af36f5817c8cdf753d1db76f87a488a823a1bba77600d303f",
+      "size": 144,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/icons/game/shop.svg",
+      "sha256": "a61c301855a20d2b7d02096de2bd2dd185923354eeb170dc5f190b814b047357",
+      "size": 1574,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/icons/game/silence.svg",
+      "sha256": "050a80c9bfeaf6a007f54e953941a22e6ff0e8c704de3dafe4650b50745930be",
+      "size": 2289,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/icons/game/skull.svg",
+      "sha256": "18ffc2a8bbb11efb9f882e0da76f20bc1b59ef32199616f514d10d745a63e8b0",
+      "size": 1421,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/icons/game/sleep.svg",
+      "sha256": "4ec6dd7e7f2057a38f16e0162cb59e6ac2a5a38eeb9aeca7353222861df8dd34",
+      "size": 622,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/icons/game/slow.svg",
+      "sha256": "c3c8d7c9f9837e7bc22ae8895bbcc210adbc6e5a328bef2100c7aa67bbebe444",
+      "size": 1783,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/icons/game/sound.svg",
+      "sha256": "ebb6318a63f6fae2f97089253fe8fd4c129c29717a50fc94ca12bc5fa81470c8",
+      "size": 602,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/icons/game/soundOff.svg",
+      "sha256": "ac3affde0cc90a6c2c2207ecbf40fde0d52971a1dc5eace937d75acb641a311b",
+      "size": 260,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/icons/game/sparkles.svg",
+      "sha256": "c7a80a5a1fbd6237a9a50c51a03be76fe6b88e8c1f6c17ce817fae145d0a0ec4",
+      "size": 2062,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/icons/game/speed.svg",
+      "sha256": "0339a3cb6674405a52730c35511d3f4f74da86c70fa1c26fe9c8c2a474cf8718",
+      "size": 477,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/icons/game/staff.svg",
+      "sha256": "6206e9ce81892a422a59fc9b1dffe17350bebe1bac8b8f8476f52f736d31ad8a",
+      "size": 1933,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/icons/game/star.svg",
+      "sha256": "5c8d1fcad21de40613c3d811a9cc232fdb8594d0b1d970dadb24af932898198f",
+      "size": 651,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/icons/game/strength.svg",
+      "sha256": "279dbce1fc5e086b6dbc5d056f80743fce4e42d294aad212cfdc1b2a5c3f60f0",
+      "size": 2221,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/icons/game/stun.svg",
+      "sha256": "2b0d3decdec03db5744003fc28aeb86da1b37989b3d13258d5ab09ce8285b093",
+      "size": 1552,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/icons/game/sword.svg",
+      "sha256": "796c66ec3100a06867fbd80933903f122bed7d9f973d0e15e9e65bfa0786f3ad",
+      "size": 1109,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/icons/game/target.svg",
+      "sha256": "446445b0125b6a00bd99d0d3fe299b7bb8b0604ef4aff252e6f59205a79b51f3",
+      "size": 1048,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/icons/game/team.svg",
+      "sha256": "448badd18043a1da1a60680c8f35ae7f45ba3a591240be5bfea220583be06ef8",
+      "size": 5303,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/icons/game/ticket.svg",
+      "sha256": "2cad53d54b249ed9ba44d34097cd9cdbb663b841467f716ab1427d1898724849",
+      "size": 655,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/icons/game/trade.svg",
+      "sha256": "2790946338210bb9986fbd00ebf872c2219a2b0891229ff43efafa7fcc84a30a",
+      "size": 685,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/icons/game/trophy.svg",
+      "sha256": "d0b1f6516f590407f86d811ab0f15a38149c71ed8d25b6ca248f2385989d3202",
+      "size": 1026,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/icons/game/unlock.svg",
+      "sha256": "75e269d87f776a9d53fe4bd2ff75e6737c7e8f98065e1c99b3533af1f61042bf",
+      "size": 513,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/icons/game/vibrate.svg",
+      "sha256": "9e114c8a699fe9ac1f03b80b7e901ee6dc687be4fbc2700d54615ed8706ff44d",
+      "size": 859,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/icons/game/video.svg",
+      "sha256": "8ce9771721a8f7932c91baa257ec5c3d2291901ac690a2f52b6c757ca56e9990",
+      "size": 1392,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/icons/game/wallet.svg",
+      "sha256": "d0ca49e24e10ea17f07bf0ae639418b07247faa58ae81fbc17866c7f9f97bab8",
+      "size": 946,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/icons/game/weak.svg",
+      "sha256": "6f2893244500373b0175fcba331df4b5675821ada5254c5a42c45a6c625ab998",
+      "size": 336,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/icons/game/xp.svg",
+      "sha256": "e4caad0031b580ff0619c8ef78e005a72c46cc6e6caef8e32356d829c60d6ecd",
+      "size": 649,
+      "visibility": "public"
+    },
+    {
       "path": "styles/shared/ink-icons.png",
       "sha256": "8c851c59389e1100121e78663cb8d59a9a390744326193de08bb7263e1404dc9",
       "size": 27720,

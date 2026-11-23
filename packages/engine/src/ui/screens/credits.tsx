@@ -2,12 +2,13 @@ import {For, Icon, Show, Text, packClass, type UiEvent, View, t} from "@originga
 import type { Texture } from "@origingame/engine";
 import { Art } from "../controls/art";
 import { Button } from "../controls/button";
+import { engineCredits } from "./engine-credits";
 import "./credits.en.ogt";
 
 export interface CreditsScreenProps {
   /** Classes after the screen's own (a placement, an inset): the root fills the layer it is mounted in by default. */
   class?: string | undefined;
-  /** The sections: { title, names: [{ name, role }] }. */
+  /** The sections: { title, names: [{ name, role }] }. The engine's own credits (its art's authors) follow them. */
   sections: ReadonlyArray<{ id: string; names: ReadonlyArray<{ id: string; name: string; role: string }>; title: string }>;
   /** How far the roll has run, CSS px. */
   offset: number;
@@ -48,7 +49,7 @@ export function CreditsScreen(props: CreditsScreenProps) {
       <View class="grow shrink basis-0 overflow-hidden">
         <View class="absolute top-0 items-center gap-y-12 py-12 px-4 inset-x-0 compact:gap-y-8 compact:py-6 compact:px-4" style={{ translate: `0 ${-props.offset}px` }}>
           <Art class="w-full max-w-115 aspect-12/5 h-auto object-contain" kind="logo" src={props.logo} />
-          <For each={props.sections}>
+          <For each={[...props.sections, ...engineCredits.map((s) => ({ ...s, title: t(s.title) }))]}>
             {(s) => (
             <View class="w-full max-w-140 items-center text-center gap-y-4">
               <View class="flex-row items-center justify-center gap-x-3 w-full">

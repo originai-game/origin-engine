@@ -266,7 +266,11 @@ A text element's words may hold one-em inline objects with literal
 attributes: `<img src="coin" alt="">` (a registered picture,
 `UiDesc.images`), `<og-icon name>` (the icon layers) and `<kbd
 data-action>` (the action's glyph). Icon lookup uses the game's/style's
-atlas, then `UiDesc.fallbackIcons`, then the engine's Lucide vectors.
+atlas, then `UiDesc.fallbackIcons`, then the style pack's icon sets
+(`iconSet`, the default pack's the engine's game icon set,
+`templates/styles/shared/icons/`: filled and multi-tone game icons whose
+tones are theme colours), then the engine's Lucide vectors, a last resort
+for utility glyphs (arrows, close, settings).
 `og_ui::DEFAULT_ICON_NAMES` lists that last set; its SVG filenames under
 `third_party/lucide/icons/` give the same names for repository checks.
 The vectors allocate and parse only when drawn, once per used icon; a

@@ -4337,7 +4337,7 @@ The credits: the sections' titles and names rolling over the key art's veil, the
 | Prop | Type | What |
 |---|---|---|
 | `class?` | `string \| undefined` | Classes after the screen's own (a placement, an inset): the root fills the layer it is mounted in by default. |
-| `sections` | `ReadonlyArray<{ id: string; names: ReadonlyArray<{ id: string; name: string; role: string }>; title: string }>` | The sections: { title, names: [{ name, role }] }. |
+| `sections` | `ReadonlyArray<{ id: string; names: ReadonlyArray<{ id: string; name: string; role: string }>; title: string }>` | The sections: { title, names: [{ name, role }] }. The engine's own credits (its art's authors) follow them. |
 | `offset` | `number` | How far the roll has run, CSS px. |
 | `keyArt` | `Texture \| 0` | The key art's texture under the roll's veil (og.load.texture; 0: the style's dark ground). |
 | `logo` | `Texture \| 0` | The game's logo texture at the head of the roll (og.load.texture; 0: the logo slot's placeholder). |

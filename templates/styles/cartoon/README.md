@@ -26,7 +26,7 @@ component part. Review every component under it with
 - **`seeds`** (`accent`, `danger`, `info`, `neutral`, `primary`, `success`,
   `team`, `warn`): the palette is derived from them in both schemes at the
   contrast its pairs need, so `og.ui.configure`'s `seeds` retints the pack.
-- **`theme`**: the 30 colours it writes over the derived palette, 7 radii
+- **`theme`**: the 44 colours it writes over the derived palette, 7 radii
   and the font families (Cartoon Display, Cartoon Fallback, Cartoon Label,
   Cartoon Text).
 - **`fonts`**: each family's faces with their weight ranges, its CJK face
@@ -42,6 +42,9 @@ component part. Review every component under it with
   `Button.plate`, `Button.plate.primary`, `Slot.frame`, from the shared set
   (`@styles/shared/sfx-*`).
 - **`icons`**: 5 of the default set's names drawn by its own art.
+- **Icon tones** (`icon-*` colours in `theme`): the engine's game icon set
+  (`@styles/shared/icons/`, its names in that README) in candy colours, the pack's navy ink as the rim and a hard navy drop; the
+  geometry is the default pack's.
 
 ## Fonts and art
 

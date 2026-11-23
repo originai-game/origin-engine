@@ -602,6 +602,15 @@ is an error naming where it is, never ignored):
   `fallbackFonts`, the pack's other files, the locale's fonts and the
   default face. A role's Chinese face is the next family in its list.
 - **`icons`**: `name → art file`, over the default set, for `<Icon name>`.
+- **`iconSet`**: the icon set (an `.ogt` of `type icons`) `<Icon name>`
+  draws a name from when the game's own icons lack it; a later layer's
+  set over an earlier one's, then the engine's Lucide fallback. The
+  default pack's is the engine's game icon set,
+  `@styles/shared/icons/game.ogt` (its names in that directory's
+  README). An icon whose SVG paints in `var(--color-<role>)` is drawn in
+  tones from the merged theme, as a sticker (`icon-outline`,
+  `icon-shadow`), so a pack restyles it through its colours; a pack's own
+  set replaces a few hero icons by name.
 - **`sounds`**: by event (`press`, `hover`, `select`, `confirm`, `cancel`,
   `back`, `open`, `close`, `error`, `reward`) for the whole pack, or under a
   `Component.slot[.variant]` key for one slot: `{ clips, volume?, pitch? }`,
@@ -626,7 +635,7 @@ relative colours evaluated) to `#rrggbb[aa]` and points.
 
 | Section | Names | From |
 |---|---|---|
-| `colors` | every `--color-*`: `bg`, `bg-subtle`, `surface`, `surface-raised`, `surface-hover`, `card`, `fg`, `fg-muted`, `fg-subtle`, `fg-inverse`, `border`, `border-strong`, `well-rim`, `fill`, `fill-strong`, `accent`, `accent-hover`, `accent-active`, `accent-fg`, `accent-soft`, `accent-ink`, `focus`, `danger`, `warn`, `success`, `info`, `gold`, `health`, `mana`, `xp`, `hud`, `scrim`, `glass`, `glass-hi`, `glass-lo`, `plate-hi`, `plate-lo`, `rim`, `rim-soft`, `rim-strong`, `lit`, `lit-soft`, `shade`, `shade-deep`, `tile`, `tile-pressed`, `raised-*`, `glow`, `glow-soft`, `select-hi`, `select-lo`, `entry-*`, `stage*`, `material-*`, `team1`…`team8`, `common`…`mythic`, the ink on a fill of a status or rarity colour (`success-fg`, `danger-fg`, `warn-fg`, `info-fg`, `epic-fg`, `legendary-fg`), the HUD's `hud-accent`, `hud-accent-fg`, `hud-accent-hi`, `hud-accent-ink`, `foe`, `foe-fg`, `foe-ink`, `ally`, `ally-ink`, `boon`, `boon-fg`, `boon-ink`, `critical`, `critical-fg`, `fever`, `fever-fg`, `fever-ink`, `late`, `late-ink`, `well`, `key-hi`, `key-lo`, `key-fg`, `gold-fg`, `gold-hi`, `epic-hi` and `chart-easy`…`chart-master` with their `-fg` | `--color-<name>` (color.css) |
+| `colors` | every `--color-*`: `bg`, `bg-subtle`, `surface`, `surface-raised`, `surface-hover`, `card`, `fg`, `fg-muted`, `fg-subtle`, `fg-inverse`, `border`, `border-strong`, `well-rim`, `fill`, `fill-strong`, `accent`, `accent-hover`, `accent-active`, `accent-fg`, `accent-soft`, `accent-ink`, `focus`, `danger`, `warn`, `success`, `info`, `gold`, `health`, `mana`, `xp`, `hud`, `scrim`, `glass`, `glass-hi`, `glass-lo`, `plate-hi`, `plate-lo`, `rim`, `rim-soft`, `rim-strong`, `lit`, `lit-soft`, `shade`, `shade-deep`, `tile`, `tile-pressed`, `raised-*`, `glow`, `glow-soft`, `select-hi`, `select-lo`, `entry-*`, `stage*`, `material-*`, `team1`…`team8`, `common`…`mythic`, the ink on a fill of a status or rarity colour (`success-fg`, `danger-fg`, `warn-fg`, `info-fg`, `epic-fg`, `legendary-fg`), the HUD's `hud-accent`, `hud-accent-fg`, `hud-accent-hi`, `hud-accent-ink`, `foe`, `foe-fg`, `foe-ink`, `ally`, `ally-ink`, `boon`, `boon-fg`, `boon-ink`, `critical`, `critical-fg`, `fever`, `fever-fg`, `fever-ink`, `late`, `late-ink`, `well`, `key-hi`, `key-lo`, `key-fg`, `gold-fg`, `gold-hi`, `epic-hi`, `chart-easy`…`chart-master` with their `-fg`, and the icon set's tones, the same in both schemes: `icon-gold`, `icon-red`, `icon-blue`, `icon-green`, `icon-purple`, `icon-orange`, `icon-steel`, `icon-wood`, `icon-glass` (bodies), `icon-outline`, `icon-shadow` (the sticker under a toned icon), `icon-shade`, `icon-gloss`, `icon-mark` (shapes over it) | `--color-<name>` (color.css) |
 | `radius` | `control` `field` `block` `card` `panel` `sheet` `button` `capsule` | `--radius-<name>` (space.css) |
 | `fontSize` | `xs` `sm` `base` `lg` `xl`…`8xl` (over Tailwind's), `2xs` `meta` `caption` `body` `reading` `title` `display-sm`…`display-2xl`; `[size, line height ÷ size]` | `--font-scale-<name>-size` and `-line-height` |
 | `tracking` | `tight` `xs`…`xl` `wide` `label` `kicker` (`--font-tracking-*`), and the letter spacing of the scale steps `2xl`…`8xl` and `display-*` (`xl` is `--font-tracking-xl`) | type.css, in em |

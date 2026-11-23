@@ -1,0 +1,102 @@
+# game-icons.net icons in the engine's game icon set
+
+From https://github.com/game-icons/icons at `82d948812bfe3f269ef8f731dcdb07b08160edc4`, CC BY 3.0
+(`LICENSE`), their 512-unit paths scaled to the 24-unit grid and the
+site's background square dropped by `templates/tools/make-game-icons.py`.
+The engine's credits (`packages/engine/src/credits.ts`) name each author.
+
+| Engine name | game-icons.net icon | Author |
+|---|---|---|
+| `attack` | `lorc/crossed-swords` | Lorc |
+| `sword` | `lorc/broadsword` | Lorc |
+| `axe` | `lorc/battle-axe` | Lorc |
+| `bow` | `lorc/pocket-bow` | Lorc |
+| `staff` | `lorc/wizard-staff` | Lorc |
+| `magic` | `lorc/magic-swirl` | Lorc |
+| `armor` | `lorc/breastplate` | Lorc |
+| `speed` | `lorc/sprint` | Lorc |
+| `crit` | `lorc/on-target` | Lorc |
+| `accuracy` | `delapouite/crosshair` | Delapouite |
+| `strength` | `delapouite/biceps` | Delapouite |
+| `intellect` | `lorc/brain` | Lorc |
+| `luck` | `lorc/clover` | Lorc |
+| `levelUp` | `delapouite/upgrade` | Delapouite |
+| `bomb` | `lorc/unlit-bomb` | Lorc |
+| `skull` | `lorc/skull-crossed-bones` | Lorc |
+| `flame` | `carl-olsen/flame` | Carl Olsen |
+| `barrier` | `lorc/bolt-shield` | Lorc |
+| `home` | `delapouite/house` | Delapouite |
+| `shop` | `delapouite/shop` | Delapouite |
+| `bag` | `lorc/knapsack` | Lorc |
+| `hero` | `delapouite/person` | Delapouite |
+| `team` | `delapouite/meeple-group` | Delapouite |
+| `friends` | `delapouite/three-friends` | Delapouite |
+| `quest` | `lorc/scroll-unfurled` | Lorc |
+| `map` | `lorc/treasure-map` | Lorc |
+| `mail` | `lorc/envelope` | Lorc |
+| `chat` | `delapouite/chat-bubble` | Delapouite |
+| `leaderboard` | `delapouite/podium` | Delapouite |
+| `calendar` | `delapouite/calendar` | Delapouite |
+| `event` | `delapouite/party-popper` | Delapouite |
+| `castle` | `delapouite/castle` | Delapouite |
+| `banner` | `lorc/flying-flag` | Lorc |
+| `compass` | `lorc/compass` | Lorc |
+| `book` | `lorc/book-cover` | Lorc |
+| `search` | `lorc/magnifying-glass` | Lorc |
+| `cards` | `faithtoken/card-pick` | Faithtoken |
+| `dice` | `delapouite/rolling-dices` | Delapouite |
+| `rocket` | `lorc/rocket` | Lorc |
+| `sound` | `delapouite/speaker` | Delapouite |
+| `soundOff` | `delapouite/speaker-off` | Delapouite |
+| `music` | `delapouite/musical-notes` | Delapouite |
+| `bell` | `lorc/ringing-bell` | Lorc |
+| `vibrate` | `delapouite/vibrating-smartphone` | Delapouite |
+| `language` | `lorc/globe` | Lorc |
+| `gamepad` | `delapouite/gamepad` | Delapouite |
+| `save` | `delapouite/save` | Delapouite |
+| `exit` | `delapouite/exit-door` | Delapouite |
+| `power` | `lord-berandas/power-button` | Lord Berandas |
+| `info` | `delapouite/info` | Delapouite |
+| `account` | `delapouite/id-card` | Delapouite |
+| `phone` | `delapouite/smartphone` | Delapouite |
+| `unlock` | `delapouite/padlock-open` | Delapouite |
+| `like` | `delapouite/thumb-up` | Delapouite |
+| `dislike` | `delapouite/thumb-down` | Delapouite |
+| `handshake` | `delapouite/shaking-hands` | Delapouite |
+| `share` | `delapouite/share` | Delapouite |
+| `megaphone` | `delapouite/megaphone` | Delapouite |
+| `trade` | `lorc/trade` | Lorc |
+| `cart` | `delapouite/shopping-cart` | Delapouite |
+| `sale` | `delapouite/price-tag` | Delapouite |
+| `wallet` | `delapouite/wallet` | Delapouite |
+| `crate` | `delapouite/wooden-crate` | Delapouite |
+| `piggyBank` | `delapouite/piggy-bank` | Delapouite |
+| `coins` | `delapouite/coins-pile` | Delapouite |
+| `cash` | `delapouite/money-stack` | Delapouite |
+| `bank` | `delapouite/bank` | Delapouite |
+| `video` | `delapouite/video-camera` | Delapouite |
+| `chestOpen` | `skoll/open-treasure-chest` | Skoll |
+| `medal` | `lorc/medal` | Lorc |
+| `laurels` | `lorc/laurels` | Lorc |
+| `ribbon` | `delapouite/ribbon-medal` | Delapouite |
+| `lootBag` | `lorc/swap-bag` | Lorc |
+| `missions` | `delapouite/checklist` | Delapouite |
+| `target` | `lorc/archery-target` | Lorc |
+| `sparkles` | `delapouite/sparkles` | Delapouite |
+| `burn` | `lorc/flame-claws` | Lorc |
+| `freeze` | `lorc/snowflake-2` | Lorc |
+| `poison` | `lorc/poison-bottle` | Lorc |
+| `bleed` | `lorc/bleeding-wound` | Lorc |
+| `stun` | `delapouite/knocked-out-stars` | Delapouite |
+| `sleep` | `delapouite/night-sleep` | Delapouite |
+| `silence` | `delapouite/silenced` | Delapouite |
+| `slow` | `lorc/snail` | Lorc |
+| `haste` | `delapouite/running-shoe` | Delapouite |
+| `regen` | `delapouite/healing` | Delapouite |
+| `curse` | `lorc/cursed-star` | Lorc |
+| `blind` | `delapouite/blindfold` | Delapouite |
+| `shock` | `sbed/electric` | Sbed |
+| `ghost` | `lorc/ghost` | Lorc |
+| `root` | `lorc/root-tip` | Lorc |
+| `weak` | `lorc/broken-heart` | Lorc |
+| `charm` | `lorc/charm` | Lorc |

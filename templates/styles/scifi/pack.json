@@ -16,6 +16,20 @@
   },
   "theme": {
     "colors": {
+      "icon-gold": "#ffcf4a",
+      "icon-red": "#ff4f6a",
+      "icon-blue": "#2fd0ff",
+      "icon-green": "#3cf0a8",
+      "icon-purple": "#b47cff",
+      "icon-orange": "#ff9a3c",
+      "icon-steel": "#a9c4d6",
+      "icon-wood": "#6f7f8c",
+      "icon-glass": "#c8f4ff",
+      "icon-outline": "#06222f",
+      "icon-shadow": "#00c8ff33",
+      "icon-shade": "#00142a52",
+      "icon-gloss": "#d8fbff99",
+      "icon-mark": "#eafcff",
       "accent-ink": {
         "dark": "#8eeaff",
         "light": "#005f80"

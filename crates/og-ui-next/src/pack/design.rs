@@ -697,6 +697,7 @@ pub fn default_pack_json() -> String {
         }).collect::<Map<_, _>>(),
         "images": shapes(),
         "icons": icons(),
+        "iconSet": "@styles/shared/icons/game.ogt",
     });
     let mut out = serde_json::to_string_pretty(&pack).unwrap();
     out.push('\n');

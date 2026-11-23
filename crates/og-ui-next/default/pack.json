@@ -34,6 +34,7 @@
       }
     }
   },
+  "iconSet": "@styles/shared/icons/game.ogt",
   "icons": {
     "key.altleft": "@styles/shared/glyphs/key-alt.svg",
     "key.altright": "@styles/shared/glyphs/key-alt.svg",
@@ -505,6 +506,20 @@
         "dark": "#38e8ff",
         "light": "#105c66"
       },
+      "icon-blue": "#3d9bff",
+      "icon-glass": "#d6ebff",
+      "icon-gloss": "#ffffff8c",
+      "icon-gold": "#ffc53a",
+      "icon-green": "#4ed15c",
+      "icon-mark": "#ffffff",
+      "icon-orange": "#ff8a2a",
+      "icon-outline": "#181c36",
+      "icon-purple": "#b25cf5",
+      "icon-red": "#f2414f",
+      "icon-shade": "#0000003d",
+      "icon-shadow": "#00000059",
+      "icon-steel": "#b9c3d6",
+      "icon-wood": "#a9673b",
       "info": {
         "dark": "#5cc8ff",
         "light": "#0052a6"
