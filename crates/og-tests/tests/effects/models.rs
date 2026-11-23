@@ -418,6 +418,7 @@ fn a_model_fading_in_draws_its_share_of_pixels_and_of_its_shadow() {
 #[ignore = "requires GPU"]
 fn a_hidden_model_compiles_ahead_and_its_fade_waits_for_no_pipeline() {
     let mut scene = RenderScene::new();
+    scene.frame.display = true;
     let ground = scene.add_mesh(shapes::plane(14.0, 1.0));
     let white = scene.add_material(Material::default());
     scene.add_instance(ground, white, Mat4::IDENTITY);

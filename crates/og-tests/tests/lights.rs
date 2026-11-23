@@ -206,6 +206,7 @@ fn a_light_turned_on_mid_run_waits_for_no_compile() {
         ..scenes::base_desc()
     };
     let mut scene = scenes::build("materials").expect("materials").scene;
+    scene.frame.display = true;
     scene.lighting.lights.clear();
     scene.effects.decals.clear();
     let light = LightDesc {

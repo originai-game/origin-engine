@@ -187,6 +187,7 @@ fn grass_and_gpu_scatter_make_their_pipelines_before_the_camera_reaches_them() {
         n
     };
     let mut scene = RenderScene::new();
+    scene.frame.display = true;
     let h = scene.add_terrain(TerrainData::flat(Vec2::splat(256.0), 65, 65));
     scene.world.terrains.push(Terrain {
         layers: vec![TerrainLayer {
