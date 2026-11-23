@@ -12,6 +12,8 @@ test.skipIf(process.platform === "win32")("admitted inputs survive edits and kee
     const generations = join(dir, "generations");
     mkdirSync(join(root, "cooked"), { recursive: true });
     mkdirSync(join(root, ".og"));
+    mkdirSync(join(root, ".amp", "in"), { recursive: true });
+    writeFileSync(join(root, ".amp", "in", "scratch.glb"), "an agent's scratch");
     const entry = join(root, ".og", "game.native.js");
     const asset = join(root, "cooked", "model.ogb");
     const fake = join(dir, "fake.json");
@@ -38,6 +40,8 @@ test.skipIf(process.platform === "win32")("admitted inputs survive edits and kee
       expect(frozen.argv.slice(6, 10)).toEqual(argv.slice(6, 10));
       expect(frozen.argv[3]).toBe(root);
       expect(existsSync(join(frozen.inputRoot!, ".og"))).toBeFalse();
+      // An agent's scratch is not a game input (it once pushed a project past the size limit).
+      expect(existsSync(join(frozen.inputRoot!, ".amp"))).toBeFalse();
       expect(JSON.parse(readFileSync(`${frozen.argv[1]}.map`, "utf8")).sources).toEqual([join(root, "src/main.ts"), "og:worker"]);
       const next = freezeInputs(argv, dir, generations);
       try {

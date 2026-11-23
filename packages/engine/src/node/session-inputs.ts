@@ -3,7 +3,8 @@ import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "nod
 
 // Generation copies are private to an admitted request. Mutable platform
 // stores and output paths remain live: those are state, not prepared inputs.
-const OMIT = new Set([".git", ".og", "og-out", "node_modules", "dist"]);
+// `.amp` is an agent's workspace (scratch, captures, portals), never the game's.
+const OMIT = new Set([".git", ".og", ".amp", "og-out", "node_modules", "dist"]);
 const MAX_BYTES = 512 * 1024 * 1024;
 const MAX_FILES = 32768;
 

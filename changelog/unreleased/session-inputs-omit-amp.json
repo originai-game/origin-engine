@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "og run / og test: session inputs",
+      "summary": "A session's frozen copy of the project leaves out `.amp/`, an agent's workspace (scratch, captures, portals), as it leaves out `.git` and `.og`. An agent's scratch counted as game input and pushed a project past the 512 MiB admission limit, so `og run` failed with \"session inputs exceed 512 MiB\"."
+    }
+  ]
+}
