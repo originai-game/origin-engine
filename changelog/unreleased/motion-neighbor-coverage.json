@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "PostEffects.motionBlur",
+      "summary": "A stationary object beside a moving one no longer borrows the neighbor's velocity merely because it is nearby. Motion-blur dilation accepts a neighboring surface only when its centered, shutter-scaled sweep covers the pixel and the surface is not behind it. Object and camera motion still blur."
+    }
+  ]
+}

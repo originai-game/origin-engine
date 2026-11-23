@@ -113,6 +113,12 @@ follow smooth noise of the tick, so a replay shakes the same. Systems may
 call them; they take effect at the engine's og.camera system the same
 tick.
 
+Motion blur is separate: it integrates along the prepass's camera/object
+velocity for the authored shutter fraction. A nearby moving surface may
+contribute only where its shutter sweep covers the pixel and is not behind
+it. A stationary subject outside that sweep keeps its own zero velocity;
+putting it near a fast-moving object does not attach the two.
+
 | Field | Value | Source |
 |---|---|---|
 | og.Camera.traumaDecay | 1.5 per second | engine default |

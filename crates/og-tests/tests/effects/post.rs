@@ -2,6 +2,108 @@
 
 use super::*;
 
+/// A stationary marker above a moving card cannot be swept by horizontal
+/// card motion. They are independent meshes/materials/instances, no parent.
+#[test]
+#[ignore = "requires GPU"]
+fn motion_blur_does_not_borrow_a_neighbors_perpendicular_velocity() {
+    let mut scene = RenderScene::new();
+    scene.frame.camera = Camera {
+        position: Vec3::ZERO,
+        target: -Vec3::Z,
+        up: Vec3::Y,
+        projection: Projection::Perspective {
+            fov_y_degrees: 26.991467,
+        },
+        near: 0.1,
+        far: 100.0,
+        exposure: og_render::Exposure::linear(1.0),
+    };
+    scene.lighting.environment.background = Background::Color(Vec3::ZERO);
+    scene.lighting.environment.intensity = 0.0;
+    scene.lighting.light.intensity = 0.0;
+    scene.look.post.tonemap = Tonemap::None;
+    let white = scene.add_standard_material(og_render::StandardMaterial::basic(Vec3::splat(0.8)));
+    let red = scene.add_standard_material(og_render::StandardMaterial::basic(Vec3::new(
+        0.8, 0.03, 0.01,
+    )));
+    let card = scene.add_mesh(shapes::cuboid(Vec3::new(0.25, 0.7, 0.002)));
+    scene.add_instance(
+        card,
+        white,
+        Mat4::from_translation(Vec3::new(0.0, 0.0, -5.0)),
+    );
+    let marker = scene.add_mesh(shapes::sphere(24, 16));
+    scene.add_instance(
+        marker,
+        red,
+        Mat4::from_scale_rotation_translation(
+            Vec3::splat(0.04),
+            glam::Quat::IDENTITY,
+            Vec3::new(0.0, 0.5, -5.0),
+        ),
+    );
+    let desc = RenderDesc {
+        antialias: og_render::Antialias::Off,
+        ..small()
+    };
+    scene.look.post.motion_blur = Some(MotionBlur {
+        shutter: 0.5,
+        samples: 32,
+        max_pixels: 64.0,
+    });
+    let mut renderer = Renderer::new_blocking(&desc).unwrap();
+    renderer.render(&scene, &RenderTarget::Offscreen).unwrap();
+    scene.objects.previous_transforms = scene
+        .objects
+        .instances
+        .iter()
+        .map(|i| i.transform)
+        .collect();
+    scene.objects.instances[0].transform = Mat4::from_translation(Vec3::new(0.15, 0.0, -5.0));
+    renderer.render(&scene, &RenderTarget::Offscreen).unwrap();
+    let moving = renderer.read_offscreen().unwrap();
+    scene.look.post.motion_blur.as_mut().unwrap().shutter = 0.0;
+    let (sharp, _) = frame(&desc, &scene);
+    save("og-effects", "motion-neighbor-sharp", &sharp);
+    save("og-effects", "motion-neighbor-object", &moving);
+    let marker_region = (152, 46, 168, 59);
+    let change = |a: &RgbaImage, b: &RgbaImage, (x0, y0, x1, y1)| {
+        (y0..y1)
+            .flat_map(|y| (x0..x1).map(move |x| (x, y)))
+            .map(|(x, y)| px_clamped(a, x, y)[0].abs_diff(px_clamped(b, x, y)[0]))
+            .max()
+            .unwrap()
+    };
+    let marker_change = change(&moving, &sharp, marker_region);
+    println!("stationary marker max red-channel change: {marker_change}");
+    let peak_red = (marker_region.1..marker_region.3)
+        .flat_map(|y| (marker_region.0..marker_region.2).map(move |x| (x, y)))
+        .map(|(x, y)| px_clamped(&sharp, x, y)[0])
+        .max()
+        .unwrap();
+    assert!(peak_red > 100, "marker must be visible");
+    assert!(
+        change(&moving, &sharp, (150, 75, 190, 105)) > 20,
+        "moving card must still blur"
+    );
+    assert!(marker_change <= 2, "stationary marker borrowed card motion");
+    // Negative control: moving the camera must blur the marker itself.
+    scene.look.post.motion_blur.as_mut().unwrap().shutter = 0.5;
+    scene.objects.previous_transforms.clear();
+    scene.frame.camera.position.x = 0.15;
+    scene.frame.camera.target.x = 0.15;
+    renderer.render(&scene, &RenderTarget::Offscreen).unwrap();
+    let pan = renderer.read_offscreen().unwrap();
+    save("og-effects", "motion-neighbor-camera", &pan);
+    scene.look.post.motion_blur.as_mut().unwrap().shutter = 0.0;
+    let (pan_sharp, _) = frame(&desc, &scene);
+    assert!(
+        change(&pan, &pan_sharp, (140, 46, 163, 59)) > 20,
+        "camera motion must still blur the marker"
+    );
+}
+
 /// A thin highlight must streak continuously, not repeat as sixteen
 /// separated copies. The source is at x=240; zoom samples x + (160-x)t/2,
 /// so every pixel from 230 to 310 sees it strictly inside the tent.

@@ -857,9 +857,9 @@ fn fs_dof_composite(in: VsOut) -> @location(0) vec4<f32> {
   return vec4<f32>(mix(sharp.rgb, b.rgb, b.a * select(1.0, clamp(sharp.a, 0.0, 1.0), fxp.dof2.z > 0.5)), sharp.a);
 }
 
-// Taps along the fastest velocity around this pixel (a cheap dilation, so a
-// moving object smears over what is behind it), scaled by the shutter and
-// clamped.
+// Taps along the fastest velocity whose shutter sweep covers this pixel.
+// Mere proximity is not coverage: horizontal motion cannot smear a marker
+// above the moving surface, nor can a background surface smear a foreground.
 @fragment
 fn fs_motion_blur(in: VsOut) -> @location(0) vec4<f32> {
   let px = vec2<i32>(in.pos.xy);
@@ -871,7 +871,16 @@ fn fs_motion_blur(in: VsOut) -> @location(0) vec4<f32> {
     let a = f32(i) * PI * 0.25;
     let q = px + vec2<i32>(round(vec2<f32>(cos(a), sin(a)) * f32(reach)));
     let w = textureLoad(tex_gbuffer, prepass_px(q, size), 0).zw;
-    if (dot(w, w) > dot(v, v)) { v = w; }
+    let pixels = w * fxp.screen.xy;
+    let speed = length(pixels);
+    let direction = pixels / max(speed, 1e-6);
+    let delta = vec2<f32>(px - q);
+    let along = dot(delta, direction);
+    let across = length(delta - direction * along);
+    let half_sweep = min(speed * abs(fxp.mb.x), fxp.mb.z) * 0.5;
+    // One pixel of reconstruction support around the centred segment.
+    let covers = speed > 0.0 && abs(along) <= half_sweep + 1.0 && across <= 1.0;
+    if (covers && depth_at(q) <= depth_at(px) && dot(w, w) > dot(v, v)) { v = w; }
   }
   v *= fxp.mb.x;
   let len_px = length(v * fxp.screen.xy);
