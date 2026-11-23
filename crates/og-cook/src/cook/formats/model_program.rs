@@ -328,6 +328,17 @@ impl Program {
         if let Some(p) = &packed {
             p.apply(&mut scene);
         }
+        // Materials with a procedural surface: every part painted on a
+        // fresh atlas (`og_shape::tools::paint`).
+        let painted = og_shape::tools::paint_scene(
+            &scene,
+            &og_shape::tools::Paint::default(),
+            &og_shape_formats::texture::decode::CODEC,
+        )
+        .map_err(|e| format!("{}: {e}", self.file))?;
+        if let Some(p) = &painted {
+            p.apply(&mut scene);
+        }
         for m in &self.materials {
             let key = |p: &og_shape::tools::Part| {
                 if p.material.name.is_empty() {

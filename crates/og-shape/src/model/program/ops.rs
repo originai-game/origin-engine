@@ -213,6 +213,7 @@ pub(crate) const OPS: &[(&str, &[&str])] = &[
             "sheenRoughness",
             "transmission",
             "iridescence",
+            "surface",
         ],
     ),
     (

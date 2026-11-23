@@ -27,7 +27,7 @@ use crate::profile::Profile;
 use robust::{Coord3D, orient3d};
 
 mod dent;
-mod displace;
+pub(crate) mod displace;
 mod hole;
 mod merge;
 mod pocket;

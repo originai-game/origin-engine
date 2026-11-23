@@ -897,8 +897,15 @@ pub(crate) fn dispatch(m: &mut Model, a: &Args) -> Result<(Value, bool), ModelEr
                     sheen_roughness: a.num_or("sheenRoughness", 0.0)?,
                     transmission: a.num_or("transmission", 0.0)?,
                     iridescence: a.num_or("iridescence", 0.0)?,
+                    surface: match a.opt("surface") {
+                        None => None,
+                        Some(v) => Some(Box::new(surface(v).map_err(|w| a.bad("surface", &w))?)),
+                    },
                     ..Default::default()
                 };
+                if mat.surface.is_some() && mat.map.is_some() {
+                    return Err(a.bad("surface", "a map or a surface, not both"));
+                }
                 if a.opt("mapSize").is_some() && mat.map.is_none() {
                     return Err(a.bad("mapSize", "with a `map` only"));
                 }
@@ -1014,4 +1021,128 @@ pub(crate) fn dispatch(m: &mut Model, a: &Args) -> Result<(Value, bool), ModelEr
             ))),
         }
     }
+}
+
+/// A material's `surface` ([`crate::tools::paint::Surface`]): `{density,
+/// seed, normalScale, layers: [{pattern, scale, width, …}]}`.
+fn surface(v: &Value) -> Result<crate::tools::paint::Surface, String> {
+    use crate::tools::paint::{Layer, Pattern, Surface};
+    let o = v
+        .as_object()
+        .ok_or("an object: {density, seed, normalScale, layers}")?;
+    let fail = |e: ModelError| e.to_string();
+    only(o, "surface", &["density", "seed", "normalScale", "layers"]).map_err(fail)?;
+    let num = |o: &Map<String, Value>, k: &str, d: f64| -> Result<f64, String> {
+        match o.get(k) {
+            None => Ok(d),
+            Some(x) => x.as_f64().ok_or_else(|| format!("{k}: a number")),
+        }
+    };
+    let whole = |o: &Map<String, Value>, k: &str| -> Result<u32, String> {
+        let x = num(o, k, 0.0)?;
+        if x >= 0.0 && x.fract() == 0.0 && x <= f64::from(u32::MAX) {
+            Ok(x as u32)
+        } else {
+            Err(format!("{k}: a whole number, 0 or more"))
+        }
+    };
+    let colour = |o: &Map<String, Value>, k: &str| -> Result<Option<[f64; 3]>, String> {
+        match o.get(k) {
+            None => Ok(None),
+            Some(Value::String(s)) => hex(s).map(Some).ok_or_else(|| format!("{k}: \"#rrggbb\"")),
+            Some(Value::Array(a)) => {
+                match a.iter().map(Value::as_f64).collect::<Option<Vec<_>>>() {
+                    Some(c) if c.len() == 3 => Ok(Some([c[0], c[1], c[2]])),
+                    _ => Err(format!("{k}: \"#rrggbb\" or [r, g, b]")),
+                }
+            }
+            Some(_) => Err(format!("{k}: \"#rrggbb\" or [r, g, b]")),
+        }
+    };
+    let opt = |o: &Map<String, Value>, k: &str| -> Result<Option<f64>, String> {
+        o.get(k).map(|_| num(o, k, 0.0)).transpose()
+    };
+    let mut s = Surface {
+        density: num(o, "density", 0.0)?,
+        seed: whole(o, "seed")?,
+        normal_scale: num(o, "normalScale", 0.0)?,
+        layers: Vec::new(),
+    };
+    let layers = match o.get("layers") {
+        None => &[][..],
+        Some(Value::Array(a)) => &a[..],
+        Some(_) => return Err("layers: a list of layers".into()),
+    };
+    for (i, l) in layers.iter().enumerate() {
+        let at = |w: String| format!("layers[{i}]: {w}");
+        let o = l
+            .as_object()
+            .ok_or_else(|| at("an object {pattern, …}".into()))?;
+        only(
+            o,
+            "surface layer",
+            &[
+                "pattern",
+                "scale",
+                "width",
+                "cell",
+                "inset",
+                "axis",
+                "octaves",
+                "threshold",
+                "softness",
+                "seed",
+                "amount",
+                "breakup",
+                "color",
+                "jitter",
+                "roughness",
+                "metalness",
+                "emissive",
+                "glow",
+                "relief",
+            ],
+        )
+        .map_err(|e| at(fail(e)))?;
+        let pattern = o
+            .get("pattern")
+            .and_then(Value::as_str)
+            .and_then(Pattern::parse)
+            .ok_or_else(|| at(format!("pattern: {}", Pattern::NAMES)))?;
+        let axis = match o.get("axis") {
+            None => DVec3::Z,
+            Some(Value::String(d)) => place::direction(d)
+                .ok_or_else(|| at("axis: \"+X\", \"-Z\"… or [x, y, z]".into()))?,
+            Some(Value::Array(a)) => {
+                match a.iter().map(Value::as_f64).collect::<Option<Vec<_>>>() {
+                    Some(c) if c.len() == 3 => DVec3::new(c[0], c[1], c[2]),
+                    _ => return Err(at("axis: [x, y, z]".into())),
+                }
+            }
+            Some(_) => return Err(at("axis: \"+X\", \"-Z\"… or [x, y, z]".into())),
+        };
+        s.layers.push(Layer {
+            pattern,
+            scale: num(o, "scale", 0.0).map_err(at)?,
+            width: num(o, "width", 0.0).map_err(at)?,
+            cell: num(o, "cell", 0.0).map_err(at)?,
+            inset: num(o, "inset", 0.0).map_err(at)?,
+            axis,
+            octaves: whole(o, "octaves").map_err(at)?,
+            threshold: opt(o, "threshold").map_err(at)?,
+            softness: num(o, "softness", 0.0).map_err(at)?,
+            seed: whole(o, "seed").map_err(at)?,
+            amount: num(o, "amount", 1.0).map_err(at)?,
+            breakup: num(o, "breakup", 0.0).map_err(at)?,
+            color: colour(o, "color").map_err(at)?,
+            jitter: num(o, "jitter", 0.0).map_err(at)?,
+            roughness: opt(o, "roughness").map_err(at)?,
+            metalness: opt(o, "metalness").map_err(at)?,
+            emissive: colour(o, "emissive").map_err(at)?,
+            glow: num(o, "glow", 1.0).map_err(at)?,
+            relief: num(o, "relief", 0.0).map_err(at)?,
+        });
+    }
+    s.check()?;
+    Ok(s)
 }

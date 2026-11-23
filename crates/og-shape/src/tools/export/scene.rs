@@ -91,6 +91,9 @@ pub struct Material {
     /// A thin film's colours over the reflection, 0 none to 1
     /// (`KHR_materials_iridescence`'s factor; three.js `iridescence`).
     pub iridescence: f64,
+    /// A procedural surface ([`crate::tools::paint`]): its layers cooked
+    /// into the maps on a fresh atlas when the scene is painted.
+    pub surface: Option<Box<crate::tools::paint::Surface>>,
 }
 
 /// The kinds of map a [`Material`] carries, in the order reports list

@@ -160,6 +160,58 @@ fn a_program_file_cooks_with_levels_of_detail() {
     assert!(p.lods[2].count < p.lods[0].count / 2, "{:?}", p.lods);
 }
 
+/// A material's `surface` cooks into maps: a patterned base colour (not
+/// one colour), roughness and metalness, a normal map that bends (not
+/// flat), and emission only where a layer glows; the same program cooks
+/// the same texels twice.
+#[test]
+fn a_program_surface_cooks_patterned_maps() {
+    let program = br##"{
+  "name": "plate",
+  "ops": [
+    { "op": "units", "unit": "m" },
+    { "op": "box", "name": "plate", "width": 1.6, "depth": 1.2, "height": 0.4 },
+    { "op": "material", "ids": [0], "name": "hull", "color": "#7a8290", "roughness": 0.6,
+      "surface": { "density": 128, "layers": [
+        { "pattern": "panels", "scale": 0.4, "width": 0.02, "jitter": 0.3, "relief": -0.004, "color": "#2a2e36" },
+        { "pattern": "stripes", "scale": 0.5, "width": 0.03, "emissive": "#40c0ff", "glow": 2 },
+        { "pattern": "edges", "width": 0.05, "color": "#c8ccd2", "metalness": 1 }
+      ] } }
+  ]
+}"##;
+    let cook = |name: &str| {
+        let root = cooked(name, &[("models/plate.shape.json", program)]);
+        let bundle = Bundle::open(&root.join("cooked")).unwrap();
+        bundle
+            .load_model_with_textures("models/plate.shape.json")
+            .unwrap()
+    };
+    let (model, textures) = cook("og-cook-model-surface-a");
+    let m = &model.materials[model.primitives[0].material];
+    let tex = |slot: Option<usize>, what: &str| {
+        &textures[slot.unwrap_or_else(|| panic!("no {what} map"))]
+    };
+    let spread = |t: &og_render_data::TextureData, c: usize| {
+        let v: Vec<u8> = t.rgba.chunks(4).map(|p| p[c]).collect();
+        v.iter().max().unwrap() - v.iter().min().unwrap()
+    };
+    let base = tex(m.base_color_texture, "base-colour");
+    assert!(spread(base, 0) > 40, "the base colour is one colour");
+    let mr = tex(m.metallic_roughness_texture, "metallic-roughness");
+    assert!(spread(mr, 2) > 100, "the edges' metal is missing");
+    let normal = tex(m.normal_texture, "normal");
+    assert!(spread(normal, 0) > 20, "the normal map is flat");
+    let glow = tex(m.emissive_texture, "emissive");
+    let lit = glow.rgba.chunks(4).filter(|p| p[2] > 64).count();
+    let share = lit as f64 / (glow.rgba.len() / 4) as f64;
+    assert!(share > 0.01 && share < 0.5, "emission covers {share}");
+    let (_, again) = cook("og-cook-model-surface-b");
+    assert_eq!(textures.len(), again.len());
+    for (a, b) in textures.iter().zip(&again) {
+        assert!(a.rgba == b.rgba, "a surface cooks differently twice");
+    }
+}
+
 #[test]
 fn a_cooked_gear_raycasts_where_its_triangles_are() {
     let root = cooked(

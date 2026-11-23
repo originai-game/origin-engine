@@ -131,7 +131,7 @@ fn height(d: &Displace, p: DVec3) -> f64 {
 }
 
 /// Lowbias32 (Chris Wellons): a 32-bit integer hash.
-fn mix(mut x: u32) -> u32 {
+pub(crate) fn mix(mut x: u32) -> u32 {
     x ^= x >> 16;
     x = x.wrapping_mul(0x7feb_352d);
     x ^= x >> 15;
@@ -140,14 +140,14 @@ fn mix(mut x: u32) -> u32 {
 }
 
 /// The lattice point (x, y, z)'s hash under `seed`.
-fn corner(x: i64, y: i64, z: i64, seed: u32) -> u32 {
+pub(crate) fn corner(x: i64, y: i64, z: i64, seed: u32) -> u32 {
     let h = mix(seed ^ (x as u32));
     let h = mix(h ^ (y as u32).wrapping_mul(0x27d4_eb2d));
     mix(h ^ (z as u32).wrapping_mul(0x1656_67b1))
 }
 
 /// `h`'s share of 2³², in [0, 1).
-fn unit(h: u32) -> f64 {
+pub(crate) fn unit(h: u32) -> f64 {
     f64::from(h) / 4_294_967_296.0
 }
 
@@ -177,7 +177,7 @@ fn lerp(a: f64, b: f64, t: f64) -> f64 {
 }
 
 /// Gradient noise at `p`, about −1..1, 0 on every lattice point.
-fn gradient(p: DVec3, seed: u32) -> f64 {
+pub(crate) fn gradient(p: DVec3, seed: u32) -> f64 {
     let (fx, fy, fz) = (p.x.floor(), p.y.floor(), p.z.floor());
     let (x, y, z) = (fx as i64, fy as i64, fz as i64);
     let (dx, dy, dz) = (p.x - fx, p.y - fy, p.z - fz);
@@ -204,7 +204,7 @@ fn gradient(p: DVec3, seed: u32) -> f64 {
 /// (−1 at its centre) with a rim rising to 0.3 at its edge and falling to
 /// 0 at 1.6 radii. Overlapping craters add, the deepest bowl winning
 /// inside it.
-fn craters(p: DVec3, seed: u32, density: f64) -> f64 {
+pub(crate) fn craters(p: DVec3, seed: u32, density: f64) -> f64 {
     let (x, y, z) = (p.x.floor() as i64, p.y.floor() as i64, p.z.floor() as i64);
     let (mut bowl, mut rim) = (0.0f64, 0.0f64);
     for k in -1..=1 {

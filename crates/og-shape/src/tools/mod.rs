@@ -67,6 +67,7 @@ pub mod intersect;
 pub mod json;
 pub mod measure;
 pub mod mikk;
+pub mod paint;
 pub mod place;
 pub mod polygon;
 pub mod preview;
@@ -98,6 +99,7 @@ pub use import::{
 };
 pub use interference::{Interfering, interference};
 pub use measure::{Measure, MeshMeasures, Piece, TextureMeasures, UvMeasures, measure};
+pub use paint::{Layer, Paint, PaintError, PaintReport, Painted, Pattern, Surface, paint_scene};
 pub use place::{
     Axis, AxisMeasures, Pivot, Place, PlaceError, PlaceReport, Size, axis_measures, place,
 };

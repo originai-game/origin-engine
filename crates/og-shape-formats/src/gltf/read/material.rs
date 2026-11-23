@@ -106,6 +106,7 @@ impl Doc<'_> {
             sheen_roughness: factor("KHR_materials_sheen", "sheenRoughnessFactor", 0.0),
             transmission: factor("KHR_materials_transmission", "transmissionFactor", 0.0),
             iridescence: factor("KHR_materials_iridescence", "iridescenceFactor", 0.0),
+            surface: None,
         };
         // The factors of these are read; a map inside one is not.
         const READ: [&str; 5] = [

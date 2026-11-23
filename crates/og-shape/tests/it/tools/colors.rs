@@ -291,6 +291,7 @@ fn a_material_and_colours_survive_both_glb_writers() {
         sheen_roughness: 0.5,
         transmission: 0.375,
         iridescence: 0.625,
+        surface: None,
     };
     let mut part = Part::new("ball", &s);
     part.material = m.clone();

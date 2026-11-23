@@ -118,6 +118,35 @@ A variant's `material` blocks replace only the fields they name (`color`
 is linear here, as in glTF). `atlas <px>` packs every part's UVs into one
 atlas, the layout `og model bake` paints its maps on.
 
+## 4b. Procedural surfaces
+
+A `material` op takes `surface` instead of `map`: layers of patterns
+cooked into a base-colour, metallic-roughness, normal and (when a layer
+glows) emissive map on a fresh atlas, at `density` texels per metre
+(default 256). Lengths are metres. Nothing is painted by hand, and the
+same program cooks the same texels everywhere.
+
+```json
+{ "op": "material", "ids": [0], "name": "hull", "color": "#7a8290", "roughness": 0.6,
+  "surface": { "density": 256, "layers": [
+    { "pattern": "panels", "scale": 0.4, "width": 0.01, "jitter": 0.2, "relief": -0.003, "color": "#2a2e36" },
+    { "pattern": "rivets", "scale": 0.08, "width": 0.012, "cell": 0.4, "relief": 0.002 },
+    { "pattern": "stripes", "scale": 0.6, "width": 0.03, "axis": "+X", "emissive": "#40c0ff", "glow": 2 },
+    { "pattern": "edges", "width": 0.04, "color": "#c8ccd2", "metalness": 1, "breakup": 0.5 },
+    { "pattern": "cavities", "width": 0.05, "color": "#20242a", "roughness": 0.9 }
+  ] } }
+```
+
+Patterns: `noise` and `ridged` (mottling; with `threshold` and
+`softness`, patches), `craters`, `strata` (bands across `axis`), `stripes`,
+`panels` (seams, each panel its own tone), `rivets`, `veins` (thin
+branching lines), `edges` (convex edges and bends: wear) and `cavities`
+(concave ones: dirt). Each layer's mask, times `amount` and broken up by
+`breakup`, mixes in its `color`, `roughness`, `metalness` and `emissive`
+(times `glow`), varies the brightness by `jitter`, and raises the height
+by `relief` for the normal map. A part with a surface is unwrapped anew;
+over a displaced rock the patterns follow the surface without seams.
+
 <a id="guide-model-5"></a>
 ### `model §5` From concept views to a prop
 

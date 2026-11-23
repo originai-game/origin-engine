@@ -136,7 +136,18 @@ pub fn with_scene<T>(
                 ));
             }
             let built = m.build().map_err(failed)?;
-            run(&built.scene())
+            let mut scene = built.scene();
+            // Procedural surfaces drawn as the cook paints them.
+            let painted = og_shape::tools::paint_scene(
+                &scene,
+                &og_shape::tools::Paint::default(),
+                &og_shape_formats::texture::decode::CODEC,
+            )
+            .map_err(|e| Failure::Failed(e.to_string()))?;
+            if let Some(p) = &painted {
+                p.apply(&mut scene);
+            }
+            run(&scene)
         }
         Source::Mesh(mesh) => {
             // A file splits vertices at UV seams and hard normals; welded
