@@ -147,13 +147,13 @@ most; `--all` lists every member.
 | begin a game, find the API | `start` | `og.game`, `defineComponent`, `defineSystem` (`og api show system`) |
 | write systems that replay and save | determinism §1 | `World`, `og.Time`, `og.Rng` |
 | read a unit, an angle, a row or a name the right way round | `conventions`, `facing` | `og.transform.face`, `og.transform.face2d` |
-| test the loop, capture & measure frames | `testing`, `captures`, `perf` | `og.assert.always`, `og.assert.sometimes`, `og.probe.capture`, `og.probe.marks` |
+| test the loop, capture & measure frames | `testing`, `captures`, `perf` | `og.assert.always`, `og.assert.sometimes`, `og.assert.reachable` |
 | save and load progress | `saves` | `World.snapshot`, `World.restore`, `og.platform.saveSlot`, `og.platform.loadSlot` |
 | call the platform (store, scores, purchases) | saves §7 | `og.platform.storeGet`, `og.platform.result` |
 | read the player's input | `input` | `og.Input`, `og.input.action`, `og.Gamepad` |
 | move bodies, cast rays, control a character | `physics` | `og.RigidBody`, `og.Collider`, `og.CharacterController`, `og.physics.castRay` |
 | break things | physics §9, determinism §4 | `og.Destructible`, `og.destruction.explode` |
-| compose combat, abilities, items and interactions | `combat`, `abilities`, `items`, `interaction` | `og.systems.combatStep`, `og.systems.abilitiesStep`, `og.systems.inventoryStep`, `og.systems.interactStep` |
+| compose combat, abilities, items and interactions | `combat`, `abilities`, `items`, `interaction` | `og.systems.combat`, `og.systems.abilities`, `og.systems.inventory`, `og.systems.interact` |
 | author reflected data tables | `data` | `og.table`, `type table` |
 | point the camera | `camera` | `og.Camera`, `og.Follow2D`, `og.camera.shake` |
 | play sound and music | `audio` | `og.AudioSource`, `og.audio.createSound` |
