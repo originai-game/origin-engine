@@ -131,6 +131,12 @@ pub(super) fn camera_system(
         }
     }
     vcam::brain(ctx, engine_id, r, physics, &mut cam, dt)?;
+    let lens = record::Camera::from_json(&cam).map_err(invalid)?;
+    let viewport = crate::bind::modules::viewport_of(engine_id);
+    cam["lensStatus"] = json!(crate::present::lens::status(
+        &lens,
+        viewport.width.max(1.0) / viewport.height.max(1.0),
+    ));
     let out = layout
         .encode(Some(&bytes), Some(&cam))
         .map_err(|e| Error::new(ErrorKind::Invalid, e))?;

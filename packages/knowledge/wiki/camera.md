@@ -10,7 +10,7 @@ See `camera`.
 
 - **TypeScript**: functions are the namespace `og.camera`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
-- **Core** (what most games use): `og.Camera`, `og.Follow2D`, `og.camera.shake`; 10 more are advanced (`og api show camera --all`).
+- **Core** (what most games use): `og.Camera`, `og.Follow2D`, `og.camera.shake`; 18 more are advanced (`og api show camera --all`).
 - **Index**: [every module and guide](index.md).
 
 ```ogt
@@ -27,6 +27,14 @@ module camera {
 | Name | Kind | Signature | Summary |
 |---|---|---|---|
 | [`og.Camera`](camera/record-Camera.md) | resource |  | The camera the frame is rendered from. |
+| [`CameraLensMode`](camera/type-CameraLensMode.md) | enum |  | The source of a perspective camera's projection and optical effects. |
+| [`CameraLensMode()`](#column-CameraLensMode) | column kind |  | A CameraLensMode field. |
+| [`CameraGateFit`](camera/type-CameraGateFit.md) | enum |  | Fit a sensor to a target aspect without stretching pixels. |
+| [`CameraGateFit()`](#column-CameraGateFit) | column kind |  | A CameraGateFit field. |
+| [`CameraExposureMode`](camera/type-CameraExposureMode.md) | enum |  | Manual exposure source; existing artistic multipliers remain compensation. |
+| [`CameraExposureMode()`](#column-CameraExposureMode) | column kind |  | A CameraExposureMode field. |
+| [`CameraLensStatus`](camera/type-CameraLensStatus.md) | enum |  | The main camera's resolved projection source. |
+| [`CameraLensStatus()`](#column-CameraLensStatus) | column kind |  | A CameraLensStatus field. |
 | [`og.OrbitCamera`](camera/record-OrbitCamera.md) | component |  | Orbits og.Camera around the entity carrying it, as three.js OrbitControls: a left-button drag on the play surface turns it, the wheel zooms, autoRotate turns it on its own. |
 | [`og.FollowCamera`](camera/record-FollowCamera.md) | component |  | Chases the entity carrying it with og.Camera: a third-person 3D view that eases towards a point offset from the entity and looks at it. |
 | [`og.Follow2D`](camera/record-Follow2D.md) | component |  | Keeps og.Camera on the entity carrying it in the xy plane, for 2D games: the camera moves only when the entity leaves the dead zone, eases by smoothTime (smoothTimeY for y when set) and, with clamp, … |
@@ -39,3 +47,58 @@ module camera {
 | [`og.camera.shake`](camera/fn-shake.md) | function | `(world: World, trauma: number): Result<void>` | Add screen shake: trauma, clamped to 1, which og.Camera decays by traumaDecay. |
 | [`og.camera.punch`](camera/fn-punch.md) | function | `(world: World, amount: number): Result<void>` | A zoom punch: the view narrows by `amount` and springs back by Camera.punchDecay. |
 | [`og.camera.kick`](camera/fn-kick.md) | function | `(world: World, direction: Vector3, distance: number): Result<void>` | A directional nudge of the view (recoil, an impact from one side): offset by `distance` along `direction`, returning by Camera.kickDecay. |
+
+## Column kinds
+
+Each is a factory, `CameraLensMode(value?, options?)`, that makes one field of a component or resource layout.
+
+| Column | Value | Typed array | Stride | Doc |
+|---|---|---|---|---|
+| <a id="column-CameraLensMode"></a>`CameraLensMode` | `CameraLensMode` | `Uint32Array` | 1 | A CameraLensMode field. |
+| <a id="column-CameraGateFit"></a>`CameraGateFit` | `CameraGateFit` | `Uint32Array` | 1 | A CameraGateFit field. |
+| <a id="column-CameraExposureMode"></a>`CameraExposureMode` | `CameraExposureMode` | `Uint32Array` | 1 | A CameraExposureMode field. |
+| <a id="column-CameraLensStatus"></a>`CameraLensStatus` | `CameraLensStatus` | `Uint32Array` | 1 | A CameraLensStatus field. |
+
+```ogt
+column CameraLensMode {
+  doc "A CameraLensMode field."
+  array Uint32Array
+  stride 1
+  value CameraLensMode
+}
+```
+
+<sub>Module `camera` line 194</sub>
+
+```ogt
+column CameraGateFit {
+  doc "A CameraGateFit field."
+  array Uint32Array
+  stride 1
+  value CameraGateFit
+}
+```
+
+<sub>Module `camera` line 207</sub>
+
+```ogt
+column CameraExposureMode {
+  doc "A CameraExposureMode field."
+  array Uint32Array
+  stride 1
+  value CameraExposureMode
+}
+```
+
+<sub>Module `camera` line 219</sub>
+
+```ogt
+column CameraLensStatus {
+  doc "A CameraLensStatus field."
+  array Uint32Array
+  stride 1
+  value CameraLensStatus
+}
+```
+
+<sub>Module `camera` line 232</sub>

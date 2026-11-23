@@ -68,7 +68,7 @@ impl Renderer {
     ) -> Option<ssr::ScreenSpaceReflections> {
         let perspective = matches!(
             scene.frame.camera.projection,
-            Projection::Perspective { .. }
+            Projection::Perspective { .. } | Projection::PerspectiveShifted { .. }
         );
         scene
             .look

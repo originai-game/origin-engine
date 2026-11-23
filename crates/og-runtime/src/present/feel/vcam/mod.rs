@@ -16,6 +16,9 @@
 use super::*;
 use og_physics::{PhysicsSystem, QueryFilter, SHAPE_SPHERE, ShapeCastDesc, ShapeDesc};
 
+mod lens;
+use lens::Lens;
+
 pub(crate) const VCAM: &str = "og.VirtualCamera";
 pub(crate) const BRAIN: &str = "og.CameraBrain";
 pub(crate) const CUT: &str = "og.CameraCut";
@@ -74,6 +77,7 @@ struct Pose {
     rotation: Quat,
     fov: f32,
     focus: Option<(f32, f32)>,
+    lens: Lens,
 }
 
 /// `q` normalized (a zero quaternion: the identity).
@@ -154,7 +158,7 @@ fn evaluate(
     r: &Records,
     e: Entity,
     (v, row): (&mut Value, &record::VirtualCamera),
-    dt: f32,
+    (dt, aspect): (f32, f32),
     snap: bool,
     physics: Option<&og_physics::PhysicsQuery>,
 ) -> og_core::Result<Pose> {
@@ -252,15 +256,19 @@ fn evaluate(
         rotation,
         fov: row.fov,
         focus: (focus > 0.0).then(|| (focus, row.focus_range.max(0.0))),
+        lens: Lens::read(&record::Camera::from_json(v).map_err(invalid)?, aspect),
     })
 }
 
 /// `from` blended to `to` at curve weight `w`.
-fn mix(from: Pose, to: Pose, w: f32) -> Pose {
+fn mix(from: Pose, to: Pose, w: f32, aspect: f32) -> Pose {
     Pose {
         position: from.position + (to.position - from.position) * w,
         rotation: og_core::math::quat_slerp(from.rotation, to.rotation, w),
         fov: lerp(from.fov, to.fov, w),
+        lens: from
+            .lens
+            .blend(to.lens, w, lerp(from.fov, to.fov, w), aspect),
         focus: match (from.focus, to.focus) {
             (Some(a), Some(b)) => Some((lerp(a.0, b.0, w), lerp(a.1, b.1, w))),
             (a, None) => a,
@@ -338,6 +346,8 @@ pub(crate) fn brain(
     let prev = entity(brain_row.live);
     let order: Vec<Entity> = shots.iter().map(|s| s.0).collect();
     let index = |e: Entity| order.iter().position(|x| *x == e);
+    let viewport = crate::bind::modules::viewport_of(engine_id);
+    let aspect = viewport.width.max(1.0) / viewport.height.max(1.0);
     let physics = physics.tick_query().ok();
     // Every enabled shot (and the live and outgoing ones) keeps its follow
     // state current, so a cut to a standby shot lands where it should.
@@ -352,7 +362,15 @@ pub(crate) fn brain(
             continue;
         }
         let collide = if involved { physics.as_ref() } else { None };
-        poses[i] = Some(evaluate(ctx, r, e, (v, &*row), dt, snapped[i], collide)?);
+        poses[i] = Some(evaluate(
+            ctx,
+            r,
+            e,
+            (v, &*row),
+            (dt, aspect),
+            snapped[i],
+            collide,
+        )?);
     }
     let mut blend = brain_row.blend.clamp(0.0, 1.0);
     let mut from = from_entity;
@@ -381,6 +399,7 @@ pub(crate) fn brain(
                 position: shown.position,
                 rotation: unit(shown.quaternion),
                 fov: shown.fov,
+                lens: Lens::read(&shown, aspect),
                 focus: if brain_row.focus_held {
                     post_focus(ctx, l).map_err(bad)?
                 } else {
@@ -392,6 +411,7 @@ pub(crate) fn brain(
             brain["fromFov"] = json!(p.fov);
             brain["fromFocus"] = json!(p.focus.map_or(0.0, |x| x.0));
             brain["fromFocusRange"] = json!(p.focus.map_or(0.0, |x| x.1));
+            brain["fromLensProjection"] = jv3(p.lens.held_projection());
             from = None;
         } else {
             from = prev.filter(|_| blends);
@@ -435,7 +455,8 @@ pub(crate) fn brain(
             .and_then(index)
             .and_then(|i| poses[i])
             .unwrap_or_else(|| held(&now));
-        mix(from_pose, to, w)
+        brain["fromLensProjection"] = jv3(from_pose.lens.held_projection());
+        mix(from_pose, to, w, aspect)
     });
     // A held pose outlives the shot it came from.
     if from.is_some_and(|e| index(e).and_then(|i| poses[i]).is_none()) {
@@ -447,6 +468,7 @@ pub(crate) fn brain(
             cam["position"] = jv3(p.position);
             cam["quaternion"] = jq(p.rotation);
             cam["fov"] = json!(p.fov);
+            p.lens.write(cam);
         }
         let focus_held = brain_row.focus_held;
         focus(ctx, l, &mut brain, focus_held, out.and_then(|p| p.focus))?;
@@ -483,6 +505,7 @@ fn held(brain: &record::CameraBrain) -> Pose {
         rotation: unit(brain.from_quaternion),
         fov: brain.from_fov,
         focus: (focus > 0.0).then_some((focus, brain.from_focus_range)),
+        lens: Lens::held(brain.from_lens_projection, brain.from_fov),
     }
 }
 

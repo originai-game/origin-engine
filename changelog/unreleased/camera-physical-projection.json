@@ -1,0 +1,9 @@
+{
+  "simulation": "changed",
+  "added": [
+    {
+      "member": "Camera, VirtualCamera",
+      "summary": "Opt-in physical lens projection with explicit focal length and sensor dimensions, vertical/horizontal/fill/overscan gate fitting and lens shift. Zoom, picking and screen queries follow the fitted gate. Virtual cameras blend authored physical lenses, and interrupted mixed-lens projection blends are snapshot-owned. Artistic projection remains the default; physical post integration follows separately."
+    }
+  ]
+}

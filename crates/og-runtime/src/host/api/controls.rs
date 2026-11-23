@@ -611,6 +611,8 @@ fn camera_view_proj(cam: &record::Camera, w: f32, h: f32) -> glam::Mat4 {
     let proj = if cam.orthographic {
         let half_h = cam.height / 2.0 / zoom;
         og_core::math::orthographic(half_h * w / h, half_h, near, far)
+    } else if let Some(projection) = crate::present::lens::projection(cam, w / h) {
+        projection.matrix(w / h, near, far)
     } else {
         // three.js zoom scales the focal length.
         let (s, c) = og_core::math::sin_cos(cam.fov.to_radians() / 2.0);

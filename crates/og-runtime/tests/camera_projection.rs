@@ -113,3 +113,48 @@ fn the_camera_projects_and_unprojects_through_og_core_to_the_bit() {
 const PINNED: [u32; 8] = [
     0x4456fda2, 0x43d1ae6a, 0x3f7adf64, 0x3ffee6b8, 0x40bcb42b, 0xbe42cc59, 0xbda6f961, 0xbf7a7501,
 ];
+
+#[test]
+fn physical_gate_zoom_and_shift_project_and_pick_through_a_rotated_camera() {
+    let eye = glam::Vec3::new(1.0, 2.0, 6.0);
+    let rotation = glam::Quat::from_xyzw(0.0, YAW[1] as f32, 0.0, YAW[3] as f32);
+    let e = engine(json!({
+        "position": { "x": 1, "y": 2, "z": 6 },
+        "quaternion": { "x": 0, "y": YAW[1], "z": 0, "w": YAW[3] },
+        "lensMode": "physical", "focalLength": 50,
+        "sensorSize": { "x": 36, "y": 24 }, "zoom": 1.7,
+        "lensShift": { "x": 0.2, "y": -0.1 },
+        "fov": 110,
+    }));
+    let point = eye + rotation * glam::Vec3::new(0.3, -0.7, -5.0);
+    let screen = og_camera_world_to_screen(
+        e,
+        json!({
+            "x": point.x, "y": point.y, "z": point.z,
+        })
+        .to_string(),
+    )
+    .unwrap();
+    // Independent pinhole projection: fy=2*50/24*1.7; subtract twice
+    // the gate shift in NDC, then map to 1280x720 with top-left origin.
+    assert!((screen.x - 537.0).abs() < 0.002, "{screen:?}");
+    assert!((screen.y - 645.0).abs() < 0.002, "{screen:?}");
+    let ray: Value = serde_json::from_str(&og_runtime::host_impl::json(og_camera_screen_to_ray(
+        e,
+        f64::from(screen.x),
+        f64::from(screen.y),
+    )))
+    .unwrap();
+    let direction = (point - eye).normalize();
+    for (axis, expected) in ["x", "y", "z"].into_iter().zip(direction.to_array()) {
+        assert!((ray["direction"][axis].as_f64().unwrap() - f64::from(expected)).abs() < 1e-4);
+    }
+    // Invalid zero sensor does not guess a 35mm filmback or emit NaNs.
+    let invalid = engine(json!({ "lensMode": "physical", "focalLength": 50 }));
+    let artistic = engine(json!({}));
+    let point = json!({ "x": 1, "y": 0.3, "z": -5 }).to_string();
+    assert_eq!(
+        og_camera_world_to_screen(invalid, point.clone()),
+        og_camera_world_to_screen(artistic, point)
+    );
+}

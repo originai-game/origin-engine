@@ -102,7 +102,7 @@ impl Renderer {
                     max: c + half,
                 })
             }
-            Projection::Perspective { .. } => None,
+            Projection::Perspective { .. } | Projection::PerspectiveShifted { .. } => None,
         };
         water::water_2d_strips(&scene.sprite.water_2d, &mut ribbon_frame);
         // Each view's strips facing its own eye (views.rs): the same strip

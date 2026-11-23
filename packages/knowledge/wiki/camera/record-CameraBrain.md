@@ -44,6 +44,7 @@ Token `og.CameraBrain`, registered under the schema name `og.CameraBrain`; its v
 | `fromFov` | `number` | `0` | — | `deg` | read only | Its field of view. |
 | `fromFocus` | `number` | `0` | — | `m` | read only | Its focus distance (0: none). |
 | `fromFocusRange` | `number` | `0` | — | `m` | read only | Its focus range. |
+| `fromLensProjection` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | — | read only | Held resolved projection: vertical focal factor and shift x/y, before zoom, at the last evaluated aspect. An interrupted blend holds its exact displayed projection. |
 | `activations` | `number` | `0` | — | — | read only | How many times a virtual camera has been enabled (og.VirtualCamera.activated). |
 
 #### Depth of field held
@@ -120,6 +121,9 @@ resource CameraBrain {
     readonly true
     unit m
   }
+  field fromLensProjection Vector3 "Held resolved projection: vertical focal factor and shift x/y, before zoom, at the last evaluated aspect. An interrupted blend holds its exact displayed projection." {
+    readonly true
+  }
   field activations u32 "How many times a virtual camera has been enabled (og.VirtualCamera.activated)." {
     readonly true
   }
@@ -141,4 +145,4 @@ resource CameraBrain {
 }
 ```
 
-<sub>Module `camera` line 495</sub>
+<sub>Module `camera` line 600</sub>

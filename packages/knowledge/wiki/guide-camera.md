@@ -230,3 +230,61 @@ export default og.game({
   check og.net.resimulating first (`networking §4`).
 - A cutscene that leaves `solo` set keeps the shot after it ends: release
   it with 0.
+
+<a id="guide-camera-7"></a>
+### `camera §7` Physical lenses
+
+A physical perspective camera takes its angle from an explicit focal
+length and sensor, rather than `fov`. Millimetres describe the lens and
+sensor; scene distances remain metres. A 50 mm lens on a 24 mm high gate
+has a vertical field of view of about 26.99147°. `zoom` crops that gate.
+All new numbers start at zero: an incomplete lens falls back to `fov`,
+never to an engine-selected filmback. Orthographic cameras retain their
+existing height and do not become thin-lens cameras. `lensStatus` reports
+artistic, physical, invalid or orthographic after the camera system runs.
+
+```ts recipe ticks=2
+import { og } from "@origingame/engine";
+
+export default og.game({
+  start(world) {
+    const result = world.resource(og.Camera);
+    if (!result.ok) throw new Error(result.reason);
+    const camera = result.value;
+    camera.position = { x: 0, y: 0, z: 0 };
+    camera.quaternion = { x: 0, y: 0, z: 0, w: 1 };
+    camera.lensMode = "physical";
+    camera.focalLength = 50;
+    camera.sensorSize = { x: 36, y: 24 };
+    camera.gateFit = "vertical";
+    camera.lensShift = { x: 0.2, y: -0.1 };
+    const axis = camera.worldToScreen({ x: 0, y: 0, z: -5 })!;
+    const view = og.ui.viewport(world);
+    og.assert.always(Math.abs(axis.x / view.width - 0.3) < 0.001
+      && Math.abs(axis.y / view.height - 0.4) < 0.001,
+      "positive shift moves the viewed window, not the camera", { axis });
+  },
+});
+```
+
+Vertical gate fitting keeps sensor height; horizontal keeps sensor width.
+Fill uses the smaller fitted height, cropping the gate; overscan uses the
+larger, showing the whole gate. Neither stretches pixels. Shift is a
+fraction of each fitted dimension. Positive x/y moves the viewed window
+right/up, so a subject on the optical axis moves left/down. Screen queries,
+picking, shadows and the rendered view use the same shifted projection.
+
+Virtual cameras carry the same authored lens. Between two physical shots
+with the same gate fit, the brain blends focal length and sensor size,
+then derives the projection; it does not blend an unrelated fov. Different
+gate fits and physical/artistic transitions crossfade focal factors and
+shift. An interrupted transition holds those resolved factors in the
+brain's snapshot-owned state, at the last evaluated aspect. The held view
+therefore remains continuous even if its outgoing entity disappears.
+The old artistic-to-artistic fov blend is unchanged. A timeline camera
+track still owns the camera while it plays.
+
+The aperture, focus distance, shutter and exposure fields reserve the
+physical post channels; projection alone does not enable DoF or motion
+blur. Keep the corresponding PostEffects switches explicit. The artistic
+post settings and Camera.exposure remain independent authored inputs.

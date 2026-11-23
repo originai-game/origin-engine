@@ -378,7 +378,8 @@ fn debug_label(
     let (w, h) = (1280.0, 720.0);
     let cam = &scene.frame.camera;
     let fov = match cam.projection {
-        og_render::Projection::Perspective { fov_y_degrees } => fov_y_degrees,
+        og_render::Projection::Perspective { fov_y_degrees }
+        | og_render::Projection::PerspectiveShifted { fov_y_degrees, .. } => fov_y_degrees,
         og_render::Projection::Orthographic { .. } => 50.0,
     };
     let vpm =

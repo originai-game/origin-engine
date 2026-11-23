@@ -30,6 +30,25 @@ Token `og.Camera`, registered under the schema name `og.Camera`; its value type 
 | `orthographic` | `boolean` | `false` | — | — | — | Use an orthographic projection (the 2D profile) instead of a perspective one. |
 | `height` | `number` | `10` | ≥ 0.01 | `m` | — | The visible world height of the orthographic projection. |
 
+#### Physical lens
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `lensMode` | `CameraLensMode` | `"artistic"` | — | — | — | Artistic keeps fov; physical derives perspective from focalLength and sensorSize. An incomplete lens falls back to fov. |
+| `focalLength` | `number` | `0` | ≥ 0 | — | — | Physical focal length, in millimetres; zero leaves the lens incomplete. |
+| `sensorSize` | `Vector2` | `{ x: 0, y: 0 }` | — | — | — | Sensor width and height, in millimetres; both must be positive. |
+| `gateFit` | `CameraGateFit` | `"vertical"` | — | — | — | How the sensor fits the output aspect without stretching. |
+| `aperture` | `number` | `0` | ≥ 0 | — | — | Physical f-number; zero disables physical depth of field. |
+| `focusDistance` | `number` | `0` | ≥ 0 | `m` | — | Physical focus plane's axial distance from the camera, in metres. |
+| `shutterSpeed` | `number` | `0` | ≥ 0 | `s` | — | Physical exposure duration in seconds, not its reciprocal; zero disables physical motion blur. |
+| `iso` | `number` | `0` | ≥ 0 | — | — | Physical exposure sensitivity; zero leaves settings-derived exposure incomplete. |
+| `exposureMode` | `CameraExposureMode` | `"artistic"` | — | — | — | Artistic exposure, settings-derived exposure, or explicit EV100; automatic exposure overrides manual physical exposure. |
+| `ev100` | `number` | `0` | — | — | — | Explicit photographic EV100 in stops; zero is a valid exposure. |
+| `lensShift` | `Vector2` | `{ x: 0, y: 0 }` | — | — | — | Shift in fractions of the fitted gate; positive x/y moves the viewed window right/up (the optical-axis subject left/down). Perspective only. |
+| `lensBlending` | `boolean` | `false` | — | — | read only | Brain state: lensProjection overrides the projection during a mixed-mode or interrupted lens blend. |
+| `lensProjection` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | — | read only | Brain state: resolved vertical focal factor and gate shift x/y, before zoom, at the blend's aspect. |
+| `lensStatus` | `CameraLensStatus` | `"artistic"` | — | — | read only | Projection status after the camera system resolves its lens: artistic, physical, invalid or orthographic. |
+
 #### Output
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
@@ -115,6 +134,39 @@ resource Camera {
     default 10
     min 0.01
     unit m
+  }
+  group "Physical lens"
+  field lensMode CameraLensMode "Artistic keeps fov; physical derives perspective from focalLength and sensorSize. An incomplete lens falls back to fov."
+  field focalLength f32 "Physical focal length, in millimetres; zero leaves the lens incomplete." {
+    min 0
+  }
+  field sensorSize Vector2 "Sensor width and height, in millimetres; both must be positive."
+  field gateFit CameraGateFit "How the sensor fits the output aspect without stretching."
+  field aperture f32 "Physical f-number; zero disables physical depth of field." {
+    min 0
+  }
+  field focusDistance f32 "Physical focus plane's axial distance from the camera, in metres." {
+    min 0
+    unit m
+  }
+  field shutterSpeed f32 "Physical exposure duration in seconds, not its reciprocal; zero disables physical motion blur." {
+    min 0
+    unit s
+  }
+  field iso f32 "Physical exposure sensitivity; zero leaves settings-derived exposure incomplete." {
+    min 0
+  }
+  field exposureMode CameraExposureMode "Artistic exposure, settings-derived exposure, or explicit EV100; automatic exposure overrides manual physical exposure."
+  field ev100 f32 "Explicit photographic EV100 in stops; zero is a valid exposure."
+  field lensShift Vector2 "Shift in fractions of the fitted gate; positive x/y moves the viewed window right/up (the optical-axis subject left/down). Perspective only."
+  field lensBlending bool "Brain state: lensProjection overrides the projection during a mixed-mode or interrupted lens blend." {
+    readonly true
+  }
+  field lensProjection Vector3 "Brain state: resolved vertical focal factor and gate shift x/y, before zoom, at the blend's aspect." {
+    readonly true
+  }
+  field lensStatus CameraLensStatus "Projection status after the camera system resolves its lens: artistic, physical, invalid or orthographic." {
+    readonly true
   }
   group "Output"
   field background Color "The clear colour, as three.js Scene.background. The default is the brand ink #14161b in linear RGB." {
@@ -255,7 +307,7 @@ fn lookAt {
 }
 ```
 
-<sub>Module `camera` line 135</sub>
+<sub>Module `camera` line 168</sub>
 
 <a id="member-Camera-worldToScreen"></a>
 
@@ -286,7 +338,7 @@ fn worldToScreen {
 }
 ```
 
-<sub>Module `camera` line 139</sub>
+<sub>Module `camera` line 172</sub>
 
 <a id="member-Camera-screenToRay"></a>
 
@@ -316,4 +368,4 @@ fn screenToRay {
 }
 ```
 
-<sub>Module `camera` line 145</sub>
+<sub>Module `camera` line 178</sub>

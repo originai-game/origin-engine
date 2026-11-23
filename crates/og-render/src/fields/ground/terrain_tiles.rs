@@ -22,7 +22,8 @@ impl TerrainView {
     /// camera's pixel taken at the distance to its target).
     pub fn of(camera: &crate::Camera, height: u32) -> TerrainView {
         match camera.projection {
-            crate::Projection::Perspective { fov_y_degrees } => {
+            crate::Projection::Perspective { fov_y_degrees }
+            | crate::Projection::PerspectiveShifted { fov_y_degrees, .. } => {
                 TerrainView::perspective(camera.position, camera.far, fov_y_degrees, height)
             }
             crate::Projection::Orthographic { height: h } => TerrainView {

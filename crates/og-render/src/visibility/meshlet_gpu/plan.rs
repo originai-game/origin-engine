@@ -41,7 +41,8 @@ impl MeshletView {
     /// the frame's `height` in pixels (lod.rs `pixels_per_unit`).
     pub fn camera(camera: &crate::Camera, planes: &[Vec4], taken: Vec<u32>, height: u32) -> Self {
         let (perspective, per_unit) = match camera.projection {
-            crate::Projection::Perspective { fov_y_degrees } => (
+            crate::Projection::Perspective { fov_y_degrees }
+            | crate::Projection::PerspectiveShifted { fov_y_degrees, .. } => (
                 true,
                 height as f32 / (2.0 * (fov_y_degrees.to_radians() * 0.5).tan().max(1e-6)),
             ),

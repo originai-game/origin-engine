@@ -26,6 +26,12 @@ export const WorldOriginPlane = ((value = "xz" as Api.WorldOriginPlane, options)
 // input
 export { MAX_POINTERS, MAX_GAMEPADS } from "./consts.ts";
 
+// camera
+export const CameraLensMode = ((value = "artistic" as Api.CameraLensMode, options) => spec("CameraLensMode", value, options)) as typeof Api.CameraLensMode;
+export const CameraGateFit = ((value = "vertical" as Api.CameraGateFit, options) => spec("CameraGateFit", value, options)) as typeof Api.CameraGateFit;
+export const CameraExposureMode = ((value = "artistic" as Api.CameraExposureMode, options) => spec("CameraExposureMode", value, options)) as typeof Api.CameraExposureMode;
+export const CameraLensStatus = ((value = "artistic" as Api.CameraLensStatus, options) => spec("CameraLensStatus", value, options)) as typeof Api.CameraLensStatus;
+
 // render
 export const Geometry = ((value = 0 as Api.Geometry, options) => spec("Geometry", value, options)) as typeof Api.Geometry;
 export const Material = ((value = 0 as Api.Material, options) => spec("Material", value, options)) as typeof Api.Material;

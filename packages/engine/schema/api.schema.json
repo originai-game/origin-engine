@@ -4716,6 +4716,14 @@
       "publish": true,
       "types": [
         "Camera",
+        "CameraLensMode",
+        "CameraLensMode",
+        "CameraGateFit",
+        "CameraGateFit",
+        "CameraExposureMode",
+        "CameraExposureMode",
+        "CameraLensStatus",
+        "CameraLensStatus",
         "OrbitCamera",
         "FollowCamera",
         "Follow2D",
@@ -22165,6 +22173,96 @@
           "minimum": 0.01,
           "x-og-unit": "m"
         },
+        "lensMode": {
+          "$ref": "#/$defs/CameraLensMode",
+          "description": "Artistic keeps fov; physical derives perspective from focalLength and sensorSize. An incomplete lens falls back to fov.",
+          "default": "artistic"
+        },
+        "focalLength": {
+          "type": "number",
+          "description": "Physical focal length, in millimetres; zero leaves the lens incomplete.",
+          "default": 0,
+          "minimum": 0
+        },
+        "sensorSize": {
+          "$ref": "#/$defs/Vector2",
+          "description": "Sensor width and height, in millimetres; both must be positive.",
+          "default": {
+            "x": 0,
+            "y": 0
+          }
+        },
+        "gateFit": {
+          "$ref": "#/$defs/CameraGateFit",
+          "description": "How the sensor fits the output aspect without stretching.",
+          "default": "vertical"
+        },
+        "aperture": {
+          "type": "number",
+          "description": "Physical f-number; zero disables physical depth of field.",
+          "default": 0,
+          "minimum": 0
+        },
+        "focusDistance": {
+          "type": "number",
+          "description": "Physical focus plane's axial distance from the camera, in metres.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "m"
+        },
+        "shutterSpeed": {
+          "type": "number",
+          "description": "Physical exposure duration in seconds, not its reciprocal; zero disables physical motion blur.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "s"
+        },
+        "iso": {
+          "type": "number",
+          "description": "Physical exposure sensitivity; zero leaves settings-derived exposure incomplete.",
+          "default": 0,
+          "minimum": 0
+        },
+        "exposureMode": {
+          "$ref": "#/$defs/CameraExposureMode",
+          "description": "Artistic exposure, settings-derived exposure, or explicit EV100; automatic exposure overrides manual physical exposure.",
+          "default": "artistic"
+        },
+        "ev100": {
+          "type": "number",
+          "description": "Explicit photographic EV100 in stops; zero is a valid exposure.",
+          "default": 0
+        },
+        "lensShift": {
+          "$ref": "#/$defs/Vector2",
+          "description": "Shift in fractions of the fitted gate; positive x/y moves the viewed window right/up (the optical-axis subject left/down). Perspective only.",
+          "default": {
+            "x": 0,
+            "y": 0
+          }
+        },
+        "lensBlending": {
+          "type": "boolean",
+          "description": "Brain state: lensProjection overrides the projection during a mixed-mode or interrupted lens blend.",
+          "default": false,
+          "readOnly": true
+        },
+        "lensProjection": {
+          "$ref": "#/$defs/Vector3",
+          "description": "Brain state: resolved vertical focal factor and gate shift x/y, before zoom, at the blend's aspect.",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "readOnly": true
+        },
+        "lensStatus": {
+          "$ref": "#/$defs/CameraLensStatus",
+          "description": "Projection status after the camera system resolves its lens: artistic, physical, invalid or orthographic.",
+          "default": "artistic",
+          "readOnly": true
+        },
         "background": {
           "$ref": "#/$defs/Color",
           "description": "The clear colour, as three.js Scene.background. The default is the brand ink #14161b in linear RGB.",
@@ -22331,6 +22429,72 @@
         }
       },
       "additionalProperties": false
+    },
+    "CameraLensMode": {
+      "x-og-kind": "enum",
+      "x-og-module": "camera",
+      "description": "The source of a perspective camera's projection and optical effects.",
+      "type": "string",
+      "enum": [
+        "artistic",
+        "physical"
+      ],
+      "x-og-variants": {
+        "artistic": "Use the existing independent artistic parameters.",
+        "physical": "Use the authored physical lens; incomplete channels keep their artistic projection or disable that physical effect."
+      }
+    },
+    "CameraGateFit": {
+      "x-og-kind": "enum",
+      "x-og-module": "camera",
+      "description": "Fit a sensor to a target aspect without stretching pixels.",
+      "type": "string",
+      "enum": [
+        "vertical",
+        "horizontal",
+        "fill",
+        "overscan"
+      ],
+      "x-og-variants": {
+        "vertical": "Keep sensor height; width follows the target aspect.",
+        "horizontal": "Keep sensor width; height follows the target aspect.",
+        "fill": "Crop to fill: use the smaller fitted height.",
+        "overscan": "Show the whole gate: use the larger fitted height."
+      }
+    },
+    "CameraExposureMode": {
+      "x-og-kind": "enum",
+      "x-og-module": "camera",
+      "description": "Manual exposure source; existing artistic multipliers remain compensation.",
+      "type": "string",
+      "enum": [
+        "artistic",
+        "settings",
+        "ev100"
+      ],
+      "x-og-variants": {
+        "artistic": "Keep existing artistic exposure.",
+        "settings": "Derive exposure from aperture, shutterSpeed and iso.",
+        "ev100": "Use explicit ev100, including zero EV."
+      }
+    },
+    "CameraLensStatus": {
+      "x-og-kind": "enum",
+      "x-og-module": "camera",
+      "description": "The main camera's resolved projection source.",
+      "type": "string",
+      "enum": [
+        "artistic",
+        "physical",
+        "invalid",
+        "orthographic"
+      ],
+      "x-og-variants": {
+        "artistic": "The existing fov projection.",
+        "physical": "A valid physical lens or held lens crossfade.",
+        "invalid": "An incomplete physical lens: projection falls back to fov.",
+        "orthographic": "Orthographic height owns projection; perspective lens settings are inactive."
+      }
     },
     "OrbitCamera": {
       "x-og-kind": "component",
@@ -22922,6 +23086,74 @@
           "x-og-unit": "m",
           "x-og-tunable": true
         },
+        "lensMode": {
+          "$ref": "#/$defs/CameraLensMode",
+          "description": "Artistic keeps fov; physical derives perspective from focalLength and sensorSize.",
+          "default": "artistic"
+        },
+        "focalLength": {
+          "type": "number",
+          "description": "Physical focal length, in millimetres; zero leaves the lens incomplete.",
+          "default": 0,
+          "minimum": 0
+        },
+        "sensorSize": {
+          "$ref": "#/$defs/Vector2",
+          "description": "Sensor width and height, in millimetres; both must be positive.",
+          "default": {
+            "x": 0,
+            "y": 0
+          }
+        },
+        "gateFit": {
+          "$ref": "#/$defs/CameraGateFit",
+          "description": "How the sensor fits the output aspect without stretching.",
+          "default": "vertical"
+        },
+        "aperture": {
+          "type": "number",
+          "description": "Physical f-number; zero disables physical depth of field.",
+          "default": 0,
+          "minimum": 0
+        },
+        "focusDistance": {
+          "type": "number",
+          "description": "Physical focus plane's axial distance, in metres.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "m"
+        },
+        "shutterSpeed": {
+          "type": "number",
+          "description": "Physical exposure duration in seconds, not its reciprocal.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "s"
+        },
+        "iso": {
+          "type": "number",
+          "description": "Physical exposure sensitivity; zero leaves settings-derived exposure incomplete.",
+          "default": 0,
+          "minimum": 0
+        },
+        "exposureMode": {
+          "$ref": "#/$defs/CameraExposureMode",
+          "description": "Select artistic, settings-derived or explicit EV100 exposure.",
+          "default": "artistic"
+        },
+        "ev100": {
+          "type": "number",
+          "description": "Explicit photographic EV100 in stops; zero is a valid exposure.",
+          "default": 0
+        },
+        "lensShift": {
+          "$ref": "#/$defs/Vector2",
+          "description": "Shift in fractions of the fitted gate; positive x/y moves the viewed window right/up.",
+          "default": {
+            "x": 0,
+            "y": 0
+          }
+        },
         "blendTime": {
           "type": "number",
           "description": "Seconds the brain takes to blend to it when it goes live (0 cuts); below 0 uses og.CameraBrain's blendTime and blendEase.",
@@ -23109,6 +23341,16 @@
           "description": "Its focus range.",
           "default": 0,
           "x-og-unit": "m",
+          "readOnly": true
+        },
+        "fromLensProjection": {
+          "$ref": "#/$defs/Vector3",
+          "description": "Held resolved projection: vertical focal factor and shift x/y, before zoom, at the last evaluated aspect. An interrupted blend holds its exact displayed projection.",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
           "readOnly": true
         },
         "activations": {

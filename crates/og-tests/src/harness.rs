@@ -102,6 +102,10 @@ pub fn project(cam: &Camera, w: u32, h: u32, p: Vec3) -> (u32, u32) {
             cam.near,
             cam.far,
         ),
+        Projection::PerspectiveShifted { .. } => {
+            cam.projection
+                .matrix(w as f32 / h as f32, cam.near, cam.far)
+        }
         Projection::Orthographic { height } => {
             let hh = height * 0.5;
             let hw = hh * w as f32 / h as f32;

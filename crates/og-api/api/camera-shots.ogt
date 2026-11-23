@@ -53,6 +53,30 @@
       unit m
       tunable true
     }
+    group "Physical lens"
+    field lensMode CameraLensMode "Artistic keeps fov; physical derives perspective from focalLength and sensorSize."
+    field focalLength f32 "Physical focal length, in millimetres; zero leaves the lens incomplete." {
+      min 0
+    }
+    field sensorSize Vector2 "Sensor width and height, in millimetres; both must be positive."
+    field gateFit CameraGateFit "How the sensor fits the output aspect without stretching."
+    field aperture f32 "Physical f-number; zero disables physical depth of field." {
+      min 0
+    }
+    field focusDistance f32 "Physical focus plane's axial distance, in metres." {
+      min 0
+      unit m
+    }
+    field shutterSpeed f32 "Physical exposure duration in seconds, not its reciprocal." {
+      min 0
+      unit s
+    }
+    field iso f32 "Physical exposure sensitivity; zero leaves settings-derived exposure incomplete." {
+      min 0
+    }
+    field exposureMode CameraExposureMode "Select artistic, settings-derived or explicit EV100 exposure."
+    field ev100 f32 "Explicit photographic EV100 in stops; zero is a valid exposure."
+    field lensShift Vector2 "Shift in fractions of the fitted gate; positive x/y moves the viewed window right/up."
     group "Blend"
     field blendTime f32 "Seconds the brain takes to blend to it when it goes live (0 cuts); below 0 uses og.CameraBrain's blendTime and blendEase." {
       default -1
@@ -157,6 +181,9 @@
       readonly true
       unit m
     }
+    field fromLensProjection Vector3 "Held resolved projection: vertical focal factor and shift x/y, before zoom, at the last evaluated aspect. An interrupted blend holds its exact displayed projection." {
+      readonly true
+    }
     field activations u32 "How many times a virtual camera has been enabled (og.VirtualCamera.activated)." {
       readonly true
     }
@@ -214,4 +241,3 @@
 }
 
 # ── render ────────────────────────────────────────────────────────────────
-

@@ -12,7 +12,8 @@ pub(crate) fn shaken_camera(camera: &Camera, shake: CameraShake) -> Camera {
     let right = forward.cross(camera.up).normalize_or(Vec3::X);
     let up = right.cross(forward);
     let height = match camera.projection {
-        Projection::Perspective { fov_y_degrees } => {
+        Projection::Perspective { fov_y_degrees }
+        | Projection::PerspectiveShifted { fov_y_degrees, .. } => {
             2.0 * (fov_y_degrees.to_radians() * 0.5).tan()
                 * (camera.target - camera.position).length()
         }

@@ -205,6 +205,10 @@ fn camera(rs: &mut RenderState, b: &Begun) -> View {
             og_render::Projection::Orthographic {
                 height: c.height / zoom,
             }
+        } else if let Some(projection) =
+            super::super::lens::projection(c, size.0 as f32 / size.1.max(1) as f32)
+        {
+            projection
         } else {
             // three.js zoom narrows the field of view: tan(fov/2) / zoom.
             let half = (c.fov.to_radians() / 2.0).tan() / zoom;

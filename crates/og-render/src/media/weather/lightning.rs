@@ -156,7 +156,10 @@ pub fn add_lightning(
         // The core's least width at each point: BOLT_CORE of the view's
         // height at its distance (a vertical field of view's tangent).
         let fov = match scene.frame.camera.projection {
-            crate::Projection::Perspective { fov_y_degrees } => fov_y_degrees.to_radians(),
+            crate::Projection::Perspective { fov_y_degrees }
+            | crate::Projection::PerspectiveShifted { fov_y_degrees, .. } => {
+                fov_y_degrees.to_radians()
+            }
             _ => 1.0,
         };
         let eye = scene.frame.camera.position;

@@ -3381,6 +3381,163 @@ impl ToJson for InjectedInput {
     }
 }
 
+/// `CameraLensMode`: packages/knowledge/wiki/camera.md.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum CameraLensMode {
+    #[default]
+    Artistic,
+    Physical,
+}
+
+impl CameraLensMode {
+    /// The variants' IDL names, in index order.
+    pub const NAMES: &'static [&'static str] = &["artistic", "physical"];
+    /// Every variant, in index order.
+    pub const ALL: &'static [Self] = &[Self::Artistic, Self::Physical];
+    /// The IDL name.
+    pub fn as_str(self) -> &'static str {
+        Self::NAMES[self as usize]
+    }
+    /// The variant named `s`, or a refusal naming them all.
+    pub fn parse(s: &str) -> Result<Self, String> {
+        match Self::NAMES.iter().position(|n| *n == s) {
+            Some(i) => Ok(Self::ALL[i]),
+            None => Err(unknown_variant("CameraLensMode", s, Self::NAMES)),
+        }
+    }
+}
+
+impl FromJson for CameraLensMode {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::parse(variant(v, "CameraLensMode", Self::NAMES)?)
+    }
+}
+
+impl ToJson for CameraLensMode {
+    fn to_json(&self) -> Value {
+        Value::String(self.as_str().into())
+    }
+}
+
+/// `CameraGateFit`: packages/knowledge/wiki/camera.md.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum CameraGateFit {
+    #[default]
+    Vertical,
+    Horizontal,
+    Fill,
+    Overscan,
+}
+
+impl CameraGateFit {
+    /// The variants' IDL names, in index order.
+    pub const NAMES: &'static [&'static str] = &["vertical", "horizontal", "fill", "overscan"];
+    /// Every variant, in index order.
+    pub const ALL: &'static [Self] = &[Self::Vertical, Self::Horizontal, Self::Fill, Self::Overscan];
+    /// The IDL name.
+    pub fn as_str(self) -> &'static str {
+        Self::NAMES[self as usize]
+    }
+    /// The variant named `s`, or a refusal naming them all.
+    pub fn parse(s: &str) -> Result<Self, String> {
+        match Self::NAMES.iter().position(|n| *n == s) {
+            Some(i) => Ok(Self::ALL[i]),
+            None => Err(unknown_variant("CameraGateFit", s, Self::NAMES)),
+        }
+    }
+}
+
+impl FromJson for CameraGateFit {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::parse(variant(v, "CameraGateFit", Self::NAMES)?)
+    }
+}
+
+impl ToJson for CameraGateFit {
+    fn to_json(&self) -> Value {
+        Value::String(self.as_str().into())
+    }
+}
+
+/// `CameraExposureMode`: packages/knowledge/wiki/camera.md.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum CameraExposureMode {
+    #[default]
+    Artistic,
+    Settings,
+    Ev100,
+}
+
+impl CameraExposureMode {
+    /// The variants' IDL names, in index order.
+    pub const NAMES: &'static [&'static str] = &["artistic", "settings", "ev100"];
+    /// Every variant, in index order.
+    pub const ALL: &'static [Self] = &[Self::Artistic, Self::Settings, Self::Ev100];
+    /// The IDL name.
+    pub fn as_str(self) -> &'static str {
+        Self::NAMES[self as usize]
+    }
+    /// The variant named `s`, or a refusal naming them all.
+    pub fn parse(s: &str) -> Result<Self, String> {
+        match Self::NAMES.iter().position(|n| *n == s) {
+            Some(i) => Ok(Self::ALL[i]),
+            None => Err(unknown_variant("CameraExposureMode", s, Self::NAMES)),
+        }
+    }
+}
+
+impl FromJson for CameraExposureMode {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::parse(variant(v, "CameraExposureMode", Self::NAMES)?)
+    }
+}
+
+impl ToJson for CameraExposureMode {
+    fn to_json(&self) -> Value {
+        Value::String(self.as_str().into())
+    }
+}
+
+/// `CameraLensStatus`: packages/knowledge/wiki/camera.md.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum CameraLensStatus {
+    #[default]
+    Artistic,
+    Physical,
+    Invalid,
+    Orthographic,
+}
+
+impl CameraLensStatus {
+    /// The variants' IDL names, in index order.
+    pub const NAMES: &'static [&'static str] = &["artistic", "physical", "invalid", "orthographic"];
+    /// Every variant, in index order.
+    pub const ALL: &'static [Self] = &[Self::Artistic, Self::Physical, Self::Invalid, Self::Orthographic];
+    /// The IDL name.
+    pub fn as_str(self) -> &'static str {
+        Self::NAMES[self as usize]
+    }
+    /// The variant named `s`, or a refusal naming them all.
+    pub fn parse(s: &str) -> Result<Self, String> {
+        match Self::NAMES.iter().position(|n| *n == s) {
+            Some(i) => Ok(Self::ALL[i]),
+            None => Err(unknown_variant("CameraLensStatus", s, Self::NAMES)),
+        }
+    }
+}
+
+impl FromJson for CameraLensStatus {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::parse(variant(v, "CameraLensStatus", Self::NAMES)?)
+    }
+}
+
+impl ToJson for CameraLensStatus {
+    fn to_json(&self) -> Value {
+        Value::String(self.as_str().into())
+    }
+}
+
 /// `Side`: packages/knowledge/wiki/render.md.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum Side {
@@ -27258,6 +27415,20 @@ pub mod record {
         pub zoom: f32,
         pub orthographic: bool,
         pub height: f32,
+        pub lens_mode: CameraLensMode,
+        pub focal_length: f32,
+        pub sensor_size: Vec2,
+        pub gate_fit: CameraGateFit,
+        pub aperture: f32,
+        pub focus_distance: f32,
+        pub shutter_speed: f32,
+        pub iso: f32,
+        pub exposure_mode: CameraExposureMode,
+        pub ev100: f32,
+        pub lens_shift: Vec2,
+        pub lens_blending: bool,
+        pub lens_projection: Vec3,
+        pub lens_status: CameraLensStatus,
         pub background: Color,
         pub background_texture: u64,
         pub exposure: f32,
@@ -27292,6 +27463,20 @@ pub mod record {
                 zoom: 1.0_f32,
                 orthographic: Default::default(),
                 height: 10.0_f32,
+                lens_mode: Default::default(),
+                focal_length: Default::default(),
+                sensor_size: Default::default(),
+                gate_fit: Default::default(),
+                aperture: Default::default(),
+                focus_distance: Default::default(),
+                shutter_speed: Default::default(),
+                iso: Default::default(),
+                exposure_mode: Default::default(),
+                ev100: Default::default(),
+                lens_shift: Default::default(),
+                lens_blending: Default::default(),
+                lens_projection: Default::default(),
+                lens_status: Default::default(),
                 background: Color { r: 0.00699_f32, g: 0.00803_f32, b: 0.01096_f32 },
                 background_texture: Default::default(),
                 exposure: 1.0_f32,
@@ -27332,6 +27517,20 @@ pub mod record {
                 zoom: field(o, "zoom", d.zoom)?,
                 orthographic: field(o, "orthographic", d.orthographic)?,
                 height: field(o, "height", d.height)?,
+                lens_mode: field(o, "lensMode", d.lens_mode)?,
+                focal_length: field(o, "focalLength", d.focal_length)?,
+                sensor_size: field(o, "sensorSize", d.sensor_size)?,
+                gate_fit: field(o, "gateFit", d.gate_fit)?,
+                aperture: field(o, "aperture", d.aperture)?,
+                focus_distance: field(o, "focusDistance", d.focus_distance)?,
+                shutter_speed: field(o, "shutterSpeed", d.shutter_speed)?,
+                iso: field(o, "iso", d.iso)?,
+                exposure_mode: field(o, "exposureMode", d.exposure_mode)?,
+                ev100: field(o, "ev100", d.ev100)?,
+                lens_shift: field(o, "lensShift", d.lens_shift)?,
+                lens_blending: field(o, "lensBlending", d.lens_blending)?,
+                lens_projection: field(o, "lensProjection", d.lens_projection)?,
+                lens_status: field(o, "lensStatus", d.lens_status)?,
                 background: field(o, "background", d.background)?,
                 background_texture: field(o, "backgroundTexture", d.background_texture)?,
                 exposure: field(o, "exposure", d.exposure)?,
@@ -27666,6 +27865,17 @@ pub mod record {
         pub roll: f32,
         pub focus: f32,
         pub focus_range: f32,
+        pub lens_mode: CameraLensMode,
+        pub focal_length: f32,
+        pub sensor_size: Vec2,
+        pub gate_fit: CameraGateFit,
+        pub aperture: f32,
+        pub focus_distance: f32,
+        pub shutter_speed: f32,
+        pub iso: f32,
+        pub exposure_mode: CameraExposureMode,
+        pub ev100: f32,
+        pub lens_shift: Vec2,
         pub blend_time: f32,
         pub blend_ease: String,
         pub collide: bool,
@@ -27693,6 +27903,17 @@ pub mod record {
                 roll: Default::default(),
                 focus: Default::default(),
                 focus_range: 1.0_f32,
+                lens_mode: Default::default(),
+                focal_length: Default::default(),
+                sensor_size: Default::default(),
+                gate_fit: Default::default(),
+                aperture: Default::default(),
+                focus_distance: Default::default(),
+                shutter_speed: Default::default(),
+                iso: Default::default(),
+                exposure_mode: Default::default(),
+                ev100: Default::default(),
+                lens_shift: Default::default(),
                 blend_time: -1.0_f32,
                 blend_ease: String::from("power2.inOut"),
                 collide: Default::default(),
@@ -27726,6 +27947,17 @@ pub mod record {
                 roll: field(o, "roll", d.roll)?,
                 focus: field(o, "focus", d.focus)?,
                 focus_range: field(o, "focusRange", d.focus_range)?,
+                lens_mode: field(o, "lensMode", d.lens_mode)?,
+                focal_length: field(o, "focalLength", d.focal_length)?,
+                sensor_size: field(o, "sensorSize", d.sensor_size)?,
+                gate_fit: field(o, "gateFit", d.gate_fit)?,
+                aperture: field(o, "aperture", d.aperture)?,
+                focus_distance: field(o, "focusDistance", d.focus_distance)?,
+                shutter_speed: field(o, "shutterSpeed", d.shutter_speed)?,
+                iso: field(o, "iso", d.iso)?,
+                exposure_mode: field(o, "exposureMode", d.exposure_mode)?,
+                ev100: field(o, "ev100", d.ev100)?,
+                lens_shift: field(o, "lensShift", d.lens_shift)?,
                 blend_time: field(o, "blendTime", d.blend_time)?,
                 blend_ease: field(o, "blendEase", d.blend_ease)?,
                 collide: field(o, "collide", d.collide)?,
@@ -27759,6 +27991,7 @@ pub mod record {
         pub from_fov: f32,
         pub from_focus: f32,
         pub from_focus_range: f32,
+        pub from_lens_projection: Vec3,
         pub activations: u32,
         pub focus_held: bool,
         pub held_depth_of_field: bool,
@@ -27785,6 +28018,7 @@ pub mod record {
                 from_fov: Default::default(),
                 from_focus: Default::default(),
                 from_focus_range: Default::default(),
+                from_lens_projection: Default::default(),
                 activations: Default::default(),
                 focus_held: Default::default(),
                 held_depth_of_field: Default::default(),
@@ -27817,6 +28051,7 @@ pub mod record {
                 from_fov: field(o, "fromFov", d.from_fov)?,
                 from_focus: field(o, "fromFocus", d.from_focus)?,
                 from_focus_range: field(o, "fromFocusRange", d.from_focus_range)?,
+                from_lens_projection: field(o, "fromLensProjection", d.from_lens_projection)?,
                 activations: field(o, "activations", d.activations)?,
                 focus_held: field(o, "focusHeld", d.focus_held)?,
                 held_depth_of_field: field(o, "heldDepthOfField", d.held_depth_of_field)?,

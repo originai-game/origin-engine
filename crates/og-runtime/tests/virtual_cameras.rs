@@ -174,6 +174,62 @@ fn brain(engine: u32) -> Value {
 }
 
 #[test]
+fn physical_lenses_blend_authored_values_and_hold_an_interrupted_projection() {
+    let (engine, _) = start(false);
+    shot(
+        engine,
+        0.0,
+        json!({
+            "lensMode": "physical", "focalLength": 35,
+            "sensorSize": { "x": 36, "y": 24 },
+            "lensShift": { "x": 0.2, "y": -0.1 },
+        }),
+    );
+    ticks(engine, 2);
+    shot(
+        engine,
+        0.0,
+        json!({
+            "priority": 1, "blendTime": 1, "blendEase": "none",
+            "lensMode": "physical", "focalLength": 85,
+            "sensorSize": { "x": 48, "y": 32 },
+            "lensShift": { "x": -0.1, "y": 0.15 },
+        }),
+    );
+    ticks(engine, 18);
+    let w = brain(engine)["blend"].as_f64().unwrap();
+    let cam = camera(engine);
+    assert!(!cam["lensBlending"].as_bool().unwrap());
+    assert!((cam["focalLength"].as_f64().unwrap() - (35.0 + 50.0 * w)).abs() < 1e-4);
+    assert!((cam["sensorSize"]["y"].as_f64().unwrap() - (24.0 + 8.0 * w)).abs() < 1e-4);
+    let point = json!({ "x": 0.3, "y": 0.2, "z": -5 }).to_string();
+    let shown = og_runtime::og_camera_world_to_screen(engine, point.clone()).unwrap();
+    // Interrupt into an artistic lens. Its first frame must show exactly
+    // the held projection, not its nominal fov or either old endpoint.
+    shot(
+        engine,
+        0.0,
+        json!({ "priority": 2, "fov": 100, "blendTime": 1, "blendEase": "none" }),
+    );
+    ticks(engine, 1);
+    let held = og_runtime::og_camera_world_to_screen(engine, point.clone()).unwrap();
+    assert!((held - shown).length() < 0.001, "{shown:?} -> {held:?}");
+    let snap = value(og_runtime::host_impl::answer(og_world_snapshot(
+        engine, None,
+    )))
+    .as_str()
+    .unwrap()
+    .to_owned();
+    ticks(engine, 7);
+    let first = og_runtime::og_camera_world_to_screen(engine, point.clone());
+    value(og_runtime::host_impl::answer(og_world_restore(
+        engine, snap, None,
+    )));
+    ticks(engine, 7);
+    assert_eq!(first, og_runtime::og_camera_world_to_screen(engine, point));
+}
+
+#[test]
 fn a_restore_mid_blend_continues_the_same_blend() {
     let (engine, _) = start(false);
     shot(engine, 0.0, json!({}));

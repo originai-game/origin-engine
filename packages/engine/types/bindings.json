@@ -121,6 +121,30 @@
       "value": "WorldOriginPlane"
     },
     {
+      "name": "CameraLensMode",
+      "array": "Uint32Array",
+      "stride": 1,
+      "value": "CameraLensMode"
+    },
+    {
+      "name": "CameraGateFit",
+      "array": "Uint32Array",
+      "stride": 1,
+      "value": "CameraGateFit"
+    },
+    {
+      "name": "CameraExposureMode",
+      "array": "Uint32Array",
+      "stride": 1,
+      "value": "CameraExposureMode"
+    },
+    {
+      "name": "CameraLensStatus",
+      "array": "Uint32Array",
+      "stride": 1,
+      "value": "CameraLensStatus"
+    },
+    {
       "name": "Geometry",
       "array": "Uint32Array",
       "stride": 2,
@@ -1298,6 +1322,67 @@
           "column": "f32",
           "default": 1,
           "tunable": true
+        },
+        {
+          "name": "lensMode",
+          "column": "CameraLensMode",
+          "default": "artistic"
+        },
+        {
+          "name": "focalLength",
+          "column": "f32",
+          "default": 0
+        },
+        {
+          "name": "sensorSize",
+          "column": "Vector2",
+          "default": {
+            "x": 0,
+            "y": 0
+          }
+        },
+        {
+          "name": "gateFit",
+          "column": "CameraGateFit",
+          "default": "vertical"
+        },
+        {
+          "name": "aperture",
+          "column": "f32",
+          "default": 0
+        },
+        {
+          "name": "focusDistance",
+          "column": "f32",
+          "default": 0
+        },
+        {
+          "name": "shutterSpeed",
+          "column": "f32",
+          "default": 0
+        },
+        {
+          "name": "iso",
+          "column": "f32",
+          "default": 0
+        },
+        {
+          "name": "exposureMode",
+          "column": "CameraExposureMode",
+          "default": "artistic"
+        },
+        {
+          "name": "ev100",
+          "column": "f32",
+          "default": 0
+        },
+        {
+          "name": "lensShift",
+          "column": "Vector2",
+          "default": {
+            "x": 0,
+            "y": 0
+          }
         },
         {
           "name": "blendTime",
@@ -10655,6 +10740,89 @@
           "default": 10
         },
         {
+          "name": "lensMode",
+          "column": "CameraLensMode",
+          "default": "artistic"
+        },
+        {
+          "name": "focalLength",
+          "column": "f32",
+          "default": 0
+        },
+        {
+          "name": "sensorSize",
+          "column": "Vector2",
+          "default": {
+            "x": 0,
+            "y": 0
+          }
+        },
+        {
+          "name": "gateFit",
+          "column": "CameraGateFit",
+          "default": "vertical"
+        },
+        {
+          "name": "aperture",
+          "column": "f32",
+          "default": 0
+        },
+        {
+          "name": "focusDistance",
+          "column": "f32",
+          "default": 0
+        },
+        {
+          "name": "shutterSpeed",
+          "column": "f32",
+          "default": 0
+        },
+        {
+          "name": "iso",
+          "column": "f32",
+          "default": 0
+        },
+        {
+          "name": "exposureMode",
+          "column": "CameraExposureMode",
+          "default": "artistic"
+        },
+        {
+          "name": "ev100",
+          "column": "f32",
+          "default": 0
+        },
+        {
+          "name": "lensShift",
+          "column": "Vector2",
+          "default": {
+            "x": 0,
+            "y": 0
+          }
+        },
+        {
+          "name": "lensBlending",
+          "column": "bool",
+          "default": false,
+          "readonly": true
+        },
+        {
+          "name": "lensProjection",
+          "column": "Vector3",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "readonly": true
+        },
+        {
+          "name": "lensStatus",
+          "column": "CameraLensStatus",
+          "default": "artistic",
+          "readonly": true
+        },
+        {
           "name": "background",
           "column": "Color",
           "default": {
@@ -10892,6 +11060,16 @@
           "name": "fromFocusRange",
           "column": "f32",
           "default": 0,
+          "readonly": true
+        },
+        {
+          "name": "fromLensProjection",
+          "column": "Vector3",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
           "readonly": true
         },
         {

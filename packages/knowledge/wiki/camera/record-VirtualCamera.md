@@ -46,6 +46,22 @@ Token `og.VirtualCamera`, registered under the schema name `og.VirtualCamera`; i
 | `focus` | `number` | `0` | ≥ 0 | `m` | tunable | Depth of field: the focus distance it gives og.PostEffects (depthOfField on), handed back when no live camera has one. 0 leaves og.PostEffects alone. |
 | `focusRange` | `number` | `1` | ≥ 0 | `m` | tunable | Depth of field: the range around the focus distance that stays sharp. |
 
+#### Physical lens
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `lensMode` | `CameraLensMode` | `"artistic"` | — | — | — | Artistic keeps fov; physical derives perspective from focalLength and sensorSize. |
+| `focalLength` | `number` | `0` | ≥ 0 | — | — | Physical focal length, in millimetres; zero leaves the lens incomplete. |
+| `sensorSize` | `Vector2` | `{ x: 0, y: 0 }` | — | — | — | Sensor width and height, in millimetres; both must be positive. |
+| `gateFit` | `CameraGateFit` | `"vertical"` | — | — | — | How the sensor fits the output aspect without stretching. |
+| `aperture` | `number` | `0` | ≥ 0 | — | — | Physical f-number; zero disables physical depth of field. |
+| `focusDistance` | `number` | `0` | ≥ 0 | `m` | — | Physical focus plane's axial distance, in metres. |
+| `shutterSpeed` | `number` | `0` | ≥ 0 | `s` | — | Physical exposure duration in seconds, not its reciprocal. |
+| `iso` | `number` | `0` | ≥ 0 | — | — | Physical exposure sensitivity; zero leaves settings-derived exposure incomplete. |
+| `exposureMode` | `CameraExposureMode` | `"artistic"` | — | — | — | Select artistic, settings-derived or explicit EV100 exposure. |
+| `ev100` | `number` | `0` | — | — | — | Explicit photographic EV100 in stops; zero is a valid exposure. |
+| `lensShift` | `Vector2` | `{ x: 0, y: 0 }` | — | — | — | Shift in fractions of the fitted gate; positive x/y moves the viewed window right/up. |
+
 #### Blend
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
@@ -127,6 +143,30 @@ component VirtualCamera {
     unit m
     tunable true
   }
+  group "Physical lens"
+  field lensMode CameraLensMode "Artistic keeps fov; physical derives perspective from focalLength and sensorSize."
+  field focalLength f32 "Physical focal length, in millimetres; zero leaves the lens incomplete." {
+    min 0
+  }
+  field sensorSize Vector2 "Sensor width and height, in millimetres; both must be positive."
+  field gateFit CameraGateFit "How the sensor fits the output aspect without stretching."
+  field aperture f32 "Physical f-number; zero disables physical depth of field." {
+    min 0
+  }
+  field focusDistance f32 "Physical focus plane's axial distance, in metres." {
+    min 0
+    unit m
+  }
+  field shutterSpeed f32 "Physical exposure duration in seconds, not its reciprocal." {
+    min 0
+    unit s
+  }
+  field iso f32 "Physical exposure sensitivity; zero leaves settings-derived exposure incomplete." {
+    min 0
+  }
+  field exposureMode CameraExposureMode "Select artistic, settings-derived or explicit EV100 exposure."
+  field ev100 f32 "Explicit photographic EV100 in stops; zero is a valid exposure."
+  field lensShift Vector2 "Shift in fractions of the fitted gate; positive x/y moves the viewed window right/up."
   group "Blend"
   field blendTime f32 "Seconds the brain takes to blend to it when it goes live (0 cuts); below 0 uses og.CameraBrain's blendTime and blendEase." {
     default -1
@@ -168,4 +208,4 @@ component VirtualCamera {
 }
 ```
 
-<sub>Module `camera` line 400</sub>
+<sub>Module `camera` line 481</sub>

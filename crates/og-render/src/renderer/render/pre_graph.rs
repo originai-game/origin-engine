@@ -122,7 +122,8 @@ pub(super) fn encode_crowd_cull(
 ) -> Option<std::ops::Range<u32>> {
     let q0 = encoder.used();
     let (half_tan, ortho_height) = match scene.frame.camera.projection {
-        Projection::Perspective { fov_y_degrees } => {
+        Projection::Perspective { fov_y_degrees }
+        | Projection::PerspectiveShifted { fov_y_degrees, .. } => {
             (Some((fov_y_degrees.to_radians() * 0.5).tan()), 0.0)
         }
         Projection::Orthographic { height } => (None, height),

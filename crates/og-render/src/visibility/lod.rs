@@ -37,7 +37,8 @@ pub use og_render_data::lod::*;
 pub fn pixels_per_unit(camera: &Camera, center: Vec3, radius: f32, view_height: f32) -> f32 {
     match camera.projection {
         Projection::Orthographic { height } => view_height / height.max(1e-6),
-        Projection::Perspective { fov_y_degrees } => {
+        Projection::Perspective { fov_y_degrees }
+        | Projection::PerspectiveShifted { fov_y_degrees, .. } => {
             let d = (center - camera.position).length() - radius;
             if d <= 1e-6 {
                 return f32::MAX;

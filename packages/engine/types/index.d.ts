@@ -173,6 +173,14 @@ export interface ColumnKinds {
   Entity: { readonly array: Uint32Array; readonly stride: 2; readonly value: Entity };
   /** A WorldOriginPlane field: the variant's index. */
   WorldOriginPlane: { readonly array: Uint32Array; readonly stride: 1; readonly value: WorldOriginPlane };
+  /** A CameraLensMode field. */
+  CameraLensMode: { readonly array: Uint32Array; readonly stride: 1; readonly value: CameraLensMode };
+  /** A CameraGateFit field. */
+  CameraGateFit: { readonly array: Uint32Array; readonly stride: 1; readonly value: CameraGateFit };
+  /** A CameraExposureMode field. */
+  CameraExposureMode: { readonly array: Uint32Array; readonly stride: 1; readonly value: CameraExposureMode };
+  /** A CameraLensStatus field. */
+  CameraLensStatus: { readonly array: Uint32Array; readonly stride: 1; readonly value: CameraLensStatus };
   /** A Geometry handle field. */
   Geometry: { readonly array: Uint32Array; readonly stride: 2; readonly value: Geometry };
   /** A Material handle field. */
@@ -5075,6 +5083,75 @@ export interface Camera {
    * @unit m (metres)
    */
   height: number;
+  // ── Physical lens ──
+  /**
+   * Artistic keeps fov; physical derives perspective from focalLength and sensorSize. An incomplete lens falls back to fov.
+   */
+  lensMode: CameraLensMode;
+  /**
+   * Physical focal length, in millimetres; zero leaves the lens incomplete.
+   *
+   * @range 0..
+   */
+  focalLength: number;
+  /** Sensor width and height, in millimetres; both must be positive. */
+  sensorSize: Vector2;
+  /** How the sensor fits the output aspect without stretching. */
+  gateFit: CameraGateFit;
+  /**
+   * Physical f-number; zero disables physical depth of field.
+   *
+   * @range 0..
+   */
+  aperture: number;
+  /**
+   * Physical focus plane's axial distance from the camera, in metres.
+   *
+   * @range 0..
+   * @unit m (metres)
+   */
+  focusDistance: number;
+  /**
+   * Physical exposure duration in seconds, not its reciprocal; zero disables physical motion blur.
+   *
+   * @range 0..
+   * @unit s (seconds of simulation time)
+   */
+  shutterSpeed: number;
+  /**
+   * Physical exposure sensitivity; zero leaves settings-derived exposure incomplete.
+   *
+   * @range 0..
+   */
+  iso: number;
+  /**
+   * Artistic exposure, settings-derived exposure, or explicit EV100; automatic exposure overrides manual physical exposure.
+   */
+  exposureMode: CameraExposureMode;
+  /** Explicit photographic EV100 in stops; zero is a valid exposure. */
+  ev100: number;
+  /**
+   * Shift in fractions of the fitted gate; positive x/y moves the viewed window right/up (the optical-axis subject left/down). Perspective only.
+   */
+  lensShift: Vector2;
+  /**
+   * Brain state: lensProjection overrides the projection during a mixed-mode or interrupted lens blend.
+   *
+   * @readonly written by the engine
+   */
+  readonly lensBlending: boolean;
+  /**
+   * Brain state: resolved vertical focal factor and gate shift x/y, before zoom, at the blend's aspect.
+   *
+   * @readonly written by the engine
+   */
+  readonly lensProjection: Vector3;
+  /**
+   * Projection status after the camera system resolves its lens: artistic, physical, invalid or orthographic.
+   *
+   * @readonly written by the engine
+   */
+  readonly lensStatus: CameraLensStatus;
   // ── Output ──
   /**
    * The clear colour, as three.js Scene.background. The default is the brand ink #14161b in linear RGB.
@@ -5247,6 +5324,75 @@ export interface Camera {
    */
   screenToRay(x: number, y: number): Ray;
 }
+
+/**
+ * The source of a perspective camera's projection and optical effects.
+ * - `"artistic"`: Use the existing independent artistic parameters.
+ * - `"physical"`: Use the authored physical lens; incomplete channels keep their artistic projection or disable that physical effect.
+ */
+export type CameraLensMode = "artistic" | "physical";
+
+/**
+ * A CameraLensMode field.
+ *
+ * A `CameraLensMode` field: stored in a `Uint32Array` with stride 1.
+ * @param value The field's default; omitted, the column's zero value.
+ * @param options Range, unit, label, docs and the tunable flag.
+ */
+export declare function CameraLensMode(value?: CameraLensMode, options?: FieldOptions): FieldSpec<"CameraLensMode">;
+
+/**
+ * Fit a sensor to a target aspect without stretching pixels.
+ * - `"vertical"`: Keep sensor height; width follows the target aspect.
+ * - `"horizontal"`: Keep sensor width; height follows the target aspect.
+ * - `"fill"`: Crop to fill: use the smaller fitted height.
+ * - `"overscan"`: Show the whole gate: use the larger fitted height.
+ */
+export type CameraGateFit = "vertical" | "horizontal" | "fill" | "overscan";
+
+/**
+ * A CameraGateFit field.
+ *
+ * A `CameraGateFit` field: stored in a `Uint32Array` with stride 1.
+ * @param value The field's default; omitted, the column's zero value.
+ * @param options Range, unit, label, docs and the tunable flag.
+ */
+export declare function CameraGateFit(value?: CameraGateFit, options?: FieldOptions): FieldSpec<"CameraGateFit">;
+
+/**
+ * Manual exposure source; existing artistic multipliers remain compensation.
+ * - `"artistic"`: Keep existing artistic exposure.
+ * - `"settings"`: Derive exposure from aperture, shutterSpeed and iso.
+ * - `"ev100"`: Use explicit ev100, including zero EV.
+ */
+export type CameraExposureMode = "artistic" | "settings" | "ev100";
+
+/**
+ * A CameraExposureMode field.
+ *
+ * A `CameraExposureMode` field: stored in a `Uint32Array` with stride 1.
+ * @param value The field's default; omitted, the column's zero value.
+ * @param options Range, unit, label, docs and the tunable flag.
+ */
+export declare function CameraExposureMode(value?: CameraExposureMode, options?: FieldOptions): FieldSpec<"CameraExposureMode">;
+
+/**
+ * The main camera's resolved projection source.
+ * - `"artistic"`: The existing fov projection.
+ * - `"physical"`: A valid physical lens or held lens crossfade.
+ * - `"invalid"`: An incomplete physical lens: projection falls back to fov.
+ * - `"orthographic"`: Orthographic height owns projection; perspective lens settings are inactive.
+ */
+export type CameraLensStatus = "artistic" | "physical" | "invalid" | "orthographic";
+
+/**
+ * A CameraLensStatus field.
+ *
+ * A `CameraLensStatus` field: stored in a `Uint32Array` with stride 1.
+ * @param value The field's default; omitted, the column's zero value.
+ * @param options Range, unit, label, docs and the tunable flag.
+ */
+export declare function CameraLensStatus(value?: CameraLensStatus, options?: FieldOptions): FieldSpec<"CameraLensStatus">;
 
 /**
  * Orbits og.Camera around the entity carrying it, as three.js OrbitControls: a left-button drag on the play surface turns it, the wheel zooms, autoRotate turns it on its own.
@@ -5755,6 +5901,51 @@ export interface VirtualCamera {
    * @tunable
    */
   focusRange: number;
+  // ── Physical lens ──
+  /** Artistic keeps fov; physical derives perspective from focalLength and sensorSize. */
+  lensMode: CameraLensMode;
+  /**
+   * Physical focal length, in millimetres; zero leaves the lens incomplete.
+   *
+   * @range 0..
+   */
+  focalLength: number;
+  /** Sensor width and height, in millimetres; both must be positive. */
+  sensorSize: Vector2;
+  /** How the sensor fits the output aspect without stretching. */
+  gateFit: CameraGateFit;
+  /**
+   * Physical f-number; zero disables physical depth of field.
+   *
+   * @range 0..
+   */
+  aperture: number;
+  /**
+   * Physical focus plane's axial distance, in metres.
+   *
+   * @range 0..
+   * @unit m (metres)
+   */
+  focusDistance: number;
+  /**
+   * Physical exposure duration in seconds, not its reciprocal.
+   *
+   * @range 0..
+   * @unit s (seconds of simulation time)
+   */
+  shutterSpeed: number;
+  /**
+   * Physical exposure sensitivity; zero leaves settings-derived exposure incomplete.
+   *
+   * @range 0..
+   */
+  iso: number;
+  /** Select artistic, settings-derived or explicit EV100 exposure. */
+  exposureMode: CameraExposureMode;
+  /** Explicit photographic EV100 in stops; zero is a valid exposure. */
+  ev100: number;
+  /** Shift in fractions of the fitted gate; positive x/y moves the viewed window right/up. */
+  lensShift: Vector2;
   // ── Blend ──
   /**
    * Seconds the brain takes to blend to it when it goes live (0 cuts); below 0 uses og.CameraBrain's blendTime and blendEase.
@@ -5941,6 +6132,12 @@ export interface CameraBrain {
    * @readonly written by the engine
    */
   readonly fromFocusRange: number;
+  /**
+   * Held resolved projection: vertical focal factor and shift x/y, before zoom, at the last evaluated aspect. An interrupted blend holds its exact displayed projection.
+   *
+   * @readonly written by the engine
+   */
+  readonly fromLensProjection: Vector3;
   /**
    * How many times a virtual camera has been enabled (og.VirtualCamera.activated).
    *
@@ -35472,7 +35669,7 @@ export declare namespace og {
   /**
    * The camera the frame is rendered from. Rendering reads it after the tick; it never feeds back into the simulation.
    */
-  const Camera: ResourceType<{ readonly position: FieldSpec<"Vector3">; readonly quaternion: FieldSpec<"Quaternion">; readonly fov: FieldSpec<"f32">; readonly near: FieldSpec<"f32">; readonly far: FieldSpec<"f32">; readonly zoom: FieldSpec<"f32">; readonly orthographic: FieldSpec<"bool">; readonly height: FieldSpec<"f32">; readonly background: FieldSpec<"Color">; readonly backgroundTexture: FieldSpec<"Texture">; readonly exposure: FieldSpec<"f32">; readonly trauma: FieldSpec<"f32">; readonly traumaDecay: FieldSpec<"f32">; readonly shakeOffset: FieldSpec<"f32">; readonly shakeRoll: FieldSpec<"f32">; readonly shakeFrequency: FieldSpec<"f32">; readonly punch: FieldSpec<"f32">; readonly punchDecay: FieldSpec<"f32">; readonly kick: FieldSpec<"Vector3">; readonly kickDecay: FieldSpec<"f32">; readonly zoneActive: FieldSpec<"bool">; readonly zoneMin: FieldSpec<"Vector2">; readonly zoneMax: FieldSpec<"Vector2">; readonly zoneFromActive: FieldSpec<"bool">; readonly zoneFromMin: FieldSpec<"Vector2">; readonly zoneFromMax: FieldSpec<"Vector2">; readonly zoneScroll: FieldSpec<"f32">; readonly zoneScrollTime: FieldSpec<"f32">; readonly layers: FieldSpec<"u32"> }, Camera>;
+  const Camera: ResourceType<{ readonly position: FieldSpec<"Vector3">; readonly quaternion: FieldSpec<"Quaternion">; readonly fov: FieldSpec<"f32">; readonly near: FieldSpec<"f32">; readonly far: FieldSpec<"f32">; readonly zoom: FieldSpec<"f32">; readonly orthographic: FieldSpec<"bool">; readonly height: FieldSpec<"f32">; readonly lensMode: FieldSpec<"CameraLensMode">; readonly focalLength: FieldSpec<"f32">; readonly sensorSize: FieldSpec<"Vector2">; readonly gateFit: FieldSpec<"CameraGateFit">; readonly aperture: FieldSpec<"f32">; readonly focusDistance: FieldSpec<"f32">; readonly shutterSpeed: FieldSpec<"f32">; readonly iso: FieldSpec<"f32">; readonly exposureMode: FieldSpec<"CameraExposureMode">; readonly ev100: FieldSpec<"f32">; readonly lensShift: FieldSpec<"Vector2">; readonly lensBlending: FieldSpec<"bool">; readonly lensProjection: FieldSpec<"Vector3">; readonly lensStatus: FieldSpec<"CameraLensStatus">; readonly background: FieldSpec<"Color">; readonly backgroundTexture: FieldSpec<"Texture">; readonly exposure: FieldSpec<"f32">; readonly trauma: FieldSpec<"f32">; readonly traumaDecay: FieldSpec<"f32">; readonly shakeOffset: FieldSpec<"f32">; readonly shakeRoll: FieldSpec<"f32">; readonly shakeFrequency: FieldSpec<"f32">; readonly punch: FieldSpec<"f32">; readonly punchDecay: FieldSpec<"f32">; readonly kick: FieldSpec<"Vector3">; readonly kickDecay: FieldSpec<"f32">; readonly zoneActive: FieldSpec<"bool">; readonly zoneMin: FieldSpec<"Vector2">; readonly zoneMax: FieldSpec<"Vector2">; readonly zoneFromActive: FieldSpec<"bool">; readonly zoneFromMin: FieldSpec<"Vector2">; readonly zoneFromMax: FieldSpec<"Vector2">; readonly zoneScroll: FieldSpec<"f32">; readonly zoneScrollTime: FieldSpec<"f32">; readonly layers: FieldSpec<"u32"> }, Camera>;
   /**
    * Orbits og.Camera around the entity carrying it, as three.js OrbitControls: a left-button drag on the play surface turns it, the wheel zooms, autoRotate turns it on its own.
    * Driven by og.systems.cameras; the first entity carrying one, in query order, drives the camera.
@@ -35506,13 +35703,13 @@ export declare namespace og {
    * Registered when a game first names it (with og.CameraBrain and og.CameraCut), so a world without one keeps its hash. Its pose is tick state, drawing on no randomness; it changes only og.Camera and, with focus, og.PostEffects' depth of field. While a timeline's camera track plays, the timeline drives og.Camera; the brain waits.
    * See `camera §2`.
    */
-  const VirtualCamera: ComponentType<{ readonly priority: FieldSpec<"i32">; readonly enabled: FieldSpec<"bool">; readonly follow: FieldSpec<"Entity">; readonly followOffset: FieldSpec<"Vector3">; readonly followRotation: FieldSpec<"bool">; readonly smoothTime: FieldSpec<"f32">; readonly lookAt: FieldSpec<"Entity">; readonly lookOffset: FieldSpec<"Vector3">; readonly fov: FieldSpec<"f32">; readonly roll: FieldSpec<"f32">; readonly focus: FieldSpec<"f32">; readonly focusRange: FieldSpec<"f32">; readonly blendTime: FieldSpec<"f32">; readonly blendEase: FieldSpec<"Ease">; readonly collide: FieldSpec<"bool">; readonly radius: FieldSpec<"f32">; readonly recoverTime: FieldSpec<"f32">; readonly collisionMask: FieldSpec<"u32">; readonly eased: FieldSpec<"Vector3">; readonly pull: FieldSpec<"f32">; readonly activated: FieldSpec<"u32">; readonly primed: FieldSpec<"bool"> }, VirtualCamera>;
+  const VirtualCamera: ComponentType<{ readonly priority: FieldSpec<"i32">; readonly enabled: FieldSpec<"bool">; readonly follow: FieldSpec<"Entity">; readonly followOffset: FieldSpec<"Vector3">; readonly followRotation: FieldSpec<"bool">; readonly smoothTime: FieldSpec<"f32">; readonly lookAt: FieldSpec<"Entity">; readonly lookOffset: FieldSpec<"Vector3">; readonly fov: FieldSpec<"f32">; readonly roll: FieldSpec<"f32">; readonly focus: FieldSpec<"f32">; readonly focusRange: FieldSpec<"f32">; readonly lensMode: FieldSpec<"CameraLensMode">; readonly focalLength: FieldSpec<"f32">; readonly sensorSize: FieldSpec<"Vector2">; readonly gateFit: FieldSpec<"CameraGateFit">; readonly aperture: FieldSpec<"f32">; readonly focusDistance: FieldSpec<"f32">; readonly shutterSpeed: FieldSpec<"f32">; readonly iso: FieldSpec<"f32">; readonly exposureMode: FieldSpec<"CameraExposureMode">; readonly ev100: FieldSpec<"f32">; readonly lensShift: FieldSpec<"Vector2">; readonly blendTime: FieldSpec<"f32">; readonly blendEase: FieldSpec<"Ease">; readonly collide: FieldSpec<"bool">; readonly radius: FieldSpec<"f32">; readonly recoverTime: FieldSpec<"f32">; readonly collisionMask: FieldSpec<"u32">; readonly eased: FieldSpec<"Vector3">; readonly pull: FieldSpec<"f32">; readonly activated: FieldSpec<"u32">; readonly primed: FieldSpec<"bool"> }, VirtualCamera>;
   /**
    * Picks the live og.VirtualCamera every tick and blends og.Camera to it, as Cinemachine's brain: the solo shot if one is set, else the enabled one with the highest priority. A change of live camera blends from the previous camera (still moving) over the incoming one's blendTime by its blendEase; a change during a blend starts from the blended pose, so the view never jumps. The first live camera of a world cuts. With no live camera og.Camera is left where it is.
    * Registered with og.VirtualCamera. Its state fields are world state, so a replay or a restore mid-blend continues the same blend.
    * See `camera §2`.
    */
-  const CameraBrain: ResourceType<{ readonly enabled: FieldSpec<"bool">; readonly blendTime: FieldSpec<"f32">; readonly blendEase: FieldSpec<"Ease">; readonly solo: FieldSpec<"Entity">; readonly soloBlend: FieldSpec<"f32">; readonly soloEase: FieldSpec<"Ease">; readonly live: FieldSpec<"Entity">; readonly from: FieldSpec<"Entity">; readonly blend: FieldSpec<"f32">; readonly blendDuration: FieldSpec<"f32">; readonly blendCurve: FieldSpec<"Ease">; readonly fromPosition: FieldSpec<"Vector3">; readonly fromQuaternion: FieldSpec<"Quaternion">; readonly fromFov: FieldSpec<"f32">; readonly fromFocus: FieldSpec<"f32">; readonly fromFocusRange: FieldSpec<"f32">; readonly activations: FieldSpec<"u32">; readonly focusHeld: FieldSpec<"bool">; readonly heldDepthOfField: FieldSpec<"bool">; readonly heldFocusDistance: FieldSpec<"f32">; readonly heldFocusRange: FieldSpec<"f32"> }, CameraBrain>;
+  const CameraBrain: ResourceType<{ readonly enabled: FieldSpec<"bool">; readonly blendTime: FieldSpec<"f32">; readonly blendEase: FieldSpec<"Ease">; readonly solo: FieldSpec<"Entity">; readonly soloBlend: FieldSpec<"f32">; readonly soloEase: FieldSpec<"Ease">; readonly live: FieldSpec<"Entity">; readonly from: FieldSpec<"Entity">; readonly blend: FieldSpec<"f32">; readonly blendDuration: FieldSpec<"f32">; readonly blendCurve: FieldSpec<"Ease">; readonly fromPosition: FieldSpec<"Vector3">; readonly fromQuaternion: FieldSpec<"Quaternion">; readonly fromFov: FieldSpec<"f32">; readonly fromFocus: FieldSpec<"f32">; readonly fromFocusRange: FieldSpec<"f32">; readonly fromLensProjection: FieldSpec<"Vector3">; readonly activations: FieldSpec<"u32">; readonly focusHeld: FieldSpec<"bool">; readonly heldDepthOfField: FieldSpec<"bool">; readonly heldFocusDistance: FieldSpec<"f32">; readonly heldFocusRange: FieldSpec<"f32"> }, CameraBrain>;
   /** The live virtual camera changed (sent by the og.camera system; read the tick after). */
   const CameraCut: EventType<CameraCut>;
   /**

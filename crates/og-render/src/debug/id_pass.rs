@@ -790,7 +790,7 @@ pub fn id_pass_size(width: u32, height: u32) -> (u32, u32) {
 /// Projection kind of a camera as the probe reports it.
 pub fn projection_name(camera: &Camera) -> &'static str {
     match camera.projection {
-        Projection::Perspective { .. } => "perspective",
+        Projection::Perspective { .. } | Projection::PerspectiveShifted { .. } => "perspective",
         Projection::Orthographic { .. } => "orthographic",
     }
 }

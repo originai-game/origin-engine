@@ -31,6 +31,7 @@ macro_rules! wgsl {
     };
 }
 
+pub mod camera;
 pub mod clusters;
 pub mod custom;
 pub mod effect;

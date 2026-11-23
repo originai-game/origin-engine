@@ -97,6 +97,7 @@ fn view_projection(c: &Camera) -> Mat4 {
             c.near,
             c.far,
         ),
+        Projection::PerspectiveShifted { .. } => c.projection.matrix(aspect, c.near, c.far),
     };
     proj * view
 }

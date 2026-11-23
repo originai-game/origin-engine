@@ -1,0 +1,49 @@
+  enum CameraLensMode {
+    doc "The source of a perspective camera's projection and optical effects."
+    variant artistic "Use the existing independent artistic parameters."
+    variant physical "Use the authored physical lens; incomplete channels keep their artistic projection or disable that physical effect."
+  }
+  column CameraLensMode {
+    doc "A CameraLensMode field."
+    array Uint32Array
+    stride 1
+    value CameraLensMode
+  }
+  enum CameraGateFit {
+    doc "Fit a sensor to a target aspect without stretching pixels."
+    variant vertical "Keep sensor height; width follows the target aspect."
+    variant horizontal "Keep sensor width; height follows the target aspect."
+    variant fill "Crop to fill: use the smaller fitted height."
+    variant overscan "Show the whole gate: use the larger fitted height."
+  }
+  column CameraGateFit {
+    doc "A CameraGateFit field."
+    array Uint32Array
+    stride 1
+    value CameraGateFit
+  }
+  enum CameraExposureMode {
+    doc "Manual exposure source; existing artistic multipliers remain compensation."
+    variant artistic "Keep existing artistic exposure."
+    variant settings "Derive exposure from aperture, shutterSpeed and iso."
+    variant ev100 "Use explicit ev100, including zero EV."
+  }
+  column CameraExposureMode {
+    doc "A CameraExposureMode field."
+    array Uint32Array
+    stride 1
+    value CameraExposureMode
+  }
+  enum CameraLensStatus {
+    doc "The main camera's resolved projection source."
+    variant artistic "The existing fov projection."
+    variant physical "A valid physical lens or held lens crossfade."
+    variant invalid "An incomplete physical lens: projection falls back to fov."
+    variant orthographic "Orthographic height owns projection; perspective lens settings are inactive."
+  }
+  column CameraLensStatus {
+    doc "A CameraLensStatus field."
+    array Uint32Array
+    stride 1
+    value CameraLensStatus
+  }

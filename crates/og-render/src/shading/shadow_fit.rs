@@ -73,7 +73,7 @@ pub(crate) struct Cascade {
 /// The camera's projection with its near and far planes moved to `n` and `f`.
 fn slice_projection(cam: &Camera, aspect: f32, n: f32, f: f32) -> Mat4 {
     let n = match cam.projection {
-        Projection::Perspective { .. } => n.max(1e-4),
+        Projection::Perspective { .. } | Projection::PerspectiveShifted { .. } => n.max(1e-4),
         Projection::Orthographic { .. } => n,
     };
     cam.projection.matrix(aspect, n, f)
@@ -200,10 +200,19 @@ pub(crate) fn fit_cascades(
     // The anchor, the nearest and farthest distance shaded from it, and
     // how the splits between them are spread.
     let (anchor, near, far, lambda) = match cam.projection {
-        Projection::Perspective { fov_y_degrees } => {
+        Projection::Perspective { fov_y_degrees }
+        | Projection::PerspectiveShifted { fov_y_degrees, .. } => {
             // A far corner's distance from the camera over its view depth.
             let t = (fov_y_degrees.to_radians() * 0.5).tan();
-            let corner = (1.0 + t * t * (1.0 + aspect * aspect)).sqrt();
+            let corner = match cam.projection {
+                Projection::PerspectiveShifted { shift, .. } => {
+                    let shift = shift.abs() * 2.0;
+                    let x = t * aspect * (1.0 + shift.x);
+                    let y = t * (1.0 + shift.y);
+                    (1.0 + x * x + y * y).sqrt()
+                }
+                _ => (1.0 + t * t * (1.0 + aspect * aspect)).sqrt(),
+            };
             let scene = (bounds.0 - cam.position).length() + bounds.1;
             let far = round_up(scene.min(cam.far * corner)).min(max_distance);
             (cam.position, near_depth, far, SPLIT_LAMBDA)

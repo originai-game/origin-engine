@@ -499,6 +499,15 @@ pub fn perspective_focal(focal_y: f32, aspect: f32, near: f32, far: f32) -> Mat4
     )
 }
 
+/// A shifted perspective window. `shift` is in fractions of the fitted
+/// gate: positive x/y moves the viewed window right/up, not the camera.
+pub fn perspective_shifted(focal_y: f32, aspect: f32, near: f32, far: f32, shift: Vec2) -> Mat4 {
+    let mut matrix = perspective_focal(focal_y, aspect, near, far);
+    matrix.z_axis.x = 2.0 * shift.x;
+    matrix.z_axis.y = 2.0 * shift.y;
+    matrix
+}
+
 /// [`perspective_focal`] for a vertical field of view of `fov_y` radians,
 /// with the deterministic [`sin_cos`] (glam's `perspective_rh` uses the
 /// host `libm`): the engine's one camera perspective.

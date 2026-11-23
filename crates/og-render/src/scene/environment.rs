@@ -1,6 +1,8 @@
 //! Scene instances, camera, lights and post effects.
 
 use super::*;
+use glam::Vec2;
+pub use og_render_data::camera::{GateFit, PhysicalLens};
 
 /// One object to draw: a mesh with a material at a world transform. Callers
 /// submit instances one by one; the renderer batches all instances that share
@@ -129,6 +131,9 @@ impl Default for InstanceFx {
 pub enum Projection {
     /// Perspective with a vertical field of view in degrees.
     Perspective { fov_y_degrees: f32 },
+    /// Physical or blended perspective, with a shifted sensor window.
+    /// Positive shift moves the viewed window right/up, not the pose.
+    PerspectiveShifted { fov_y_degrees: f32, shift: Vec2 },
     /// Orthographic: `height` world units fill the target vertically; the
     /// width follows the target's aspect ratio. The 2D camera mode.
     Orthographic { height: f32 },
@@ -143,6 +148,13 @@ impl Projection {
         match *self {
             Projection::Perspective { fov_y_degrees } => {
                 og_core::math::perspective(fov_y_degrees.to_radians(), aspect, near, far)
+            }
+            Projection::PerspectiveShifted {
+                fov_y_degrees,
+                shift,
+            } => {
+                let (s, c) = og_core::math::sin_cos(fov_y_degrees.to_radians() * 0.5);
+                og_core::math::perspective_shifted(c / s, aspect, near, far, shift)
             }
             Projection::Orthographic { height } => {
                 let h = height.abs().max(1e-6) * 0.5;

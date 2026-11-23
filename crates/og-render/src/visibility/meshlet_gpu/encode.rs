@@ -73,6 +73,7 @@ impl MeshletGpu {
             && matches!(
                 scene.frame.camera.projection,
                 crate::Projection::Perspective { .. }
+                    | crate::Projection::PerspectiveShifted { .. }
             );
         let (rows, mut draws, items, workgroups, list) = plan(
             batches,

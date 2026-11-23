@@ -854,6 +854,16 @@ pub(crate) fn camera_frame(world: &World, rs: &mut RenderState, aspect: f32) {
                     fov_y_degrees: (2.0 * half.atan()).to_degrees(),
                 }
             }
+            og_render::Projection::PerspectiveShifted {
+                fov_y_degrees,
+                shift,
+            } => {
+                let half = (fov_y_degrees.to_radians() / 2.0).tan() / k;
+                og_render::Projection::PerspectiveShifted {
+                    fov_y_degrees: (2.0 * half.atan()).to_degrees(),
+                    shift,
+                }
+            }
         };
     }
     let mut shift = cam.kick;
